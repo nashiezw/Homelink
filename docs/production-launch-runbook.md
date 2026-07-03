@@ -184,7 +184,13 @@ Check these first:
 4. In Vercel, open the failed project -> **Settings** -> **General**.
 5. Find **Root Directory**.
 6. If it says `apps/api`, click **Edit** and change it back to the repository root.
-7. Redeploy.
+7. If the root directory is already correct and the error still happens, change **Install Command** to:
+
+```text
+npm install --legacy-peer-deps
+```
+
+8. Redeploy.
 
 What you should see after deploy:
 
