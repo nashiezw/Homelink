@@ -5,7 +5,7 @@ import { EnquiryPlatform } from "@/lib/enquiries/platform";
 import type { CreateEnquiryInput, CreateRoommateEnquiryInput, EnquiryListFilters, EnquiryStatus } from "@/lib/enquiries/types";
 import { syncEnquiryToPrisma } from "@/lib/enquiries/prisma-sync";
 import { dispatchEnquiryCreatedNotifications } from "@/lib/notifications/dispatch";
-import { defaultPlatformSettings } from "@/lib/settings/defaults";
+import { defaultPaymentSettings, defaultPlatformSettings } from "@/lib/settings/defaults";
 import { renderNotificationTemplate } from "@/lib/settings/runtime";
 import { matchRoommates, matchRooms } from "@/lib/roommates/matching";
 import { hashPassword } from "@/lib/auth/password";
@@ -44,6 +44,7 @@ import type {
   AccountStatus,
 } from "@/lib/store/types";
 import type { PaymentSettings, PlatformSettings } from "@/lib/settings/types";
+import { mergePaymentSettings, mergePlatformSettings } from "@/lib/settings/merge";
 import * as AgentPlatform from "@/lib/agents/platform";
 import type { AgentPlatformState } from "@/lib/agents/types";
 import { createDefaultHomepageCms } from "@/lib/homepage/cms-defaults";
@@ -611,7 +612,25 @@ function createInitialStore() {
   };
 }
 
+function migrateStoreState(state: ReturnType<typeof createInitialStore>) {
+  const base = createInitialStore();
+  return {
+    ...base,
+    ...state,
+    platformSettings: syncGeoToFlatLists(mergePlatformSettings(defaultPlatformSettings, state.platformSettings ?? base.platformSettings)),
+    paymentSettings: mergePaymentSettings(defaultPaymentSettings, state.paymentSettings ?? base.paymentSettings),
+    users: state.users ?? base.users,
+    agencies: state.agencies ?? base.agencies,
+    sessions: state.sessions ?? base.sessions,
+    favourites: state.favourites ?? base.favourites,
+    roommateProfiles: state.roommateProfiles ?? base.roommateProfiles,
+    userCredits: state.userCredits ?? base.userCredits,
+    userSubscriptions: state.userSubscriptions ?? base.userSubscriptions,
+  };
+}
+
 function finalizeStoreState(state: ReturnType<typeof createInitialStore>, options?: { skipSeeds?: boolean }) {
+  state = migrateStoreState(state);
   const persisted = loadPersistedSettingsSync();
   if (persisted) {
     state.platformSettings = syncGeoToFlatLists(persisted.platformSettings);

@@ -95,7 +95,13 @@ async function loadFromPostgres(version: number): Promise<StoreState | null> {
   try {
     const prisma = getMainPrisma();
     const row = await prisma.appStoreSnapshot.findUnique({ where: { id: "singleton" } });
-    if (!row || row.version !== version) return null;
+    if (!row) return null;
+    if (row.version !== version) {
+      console.warn("Loading persisted store snapshot from a previous version.", {
+        storedVersion: row.version,
+        currentVersion: version,
+      });
+    }
     return deserializeStoreState({
       version: row.version,
       savedAt: row.updatedAt.toISOString(),
