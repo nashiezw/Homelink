@@ -123,8 +123,10 @@ export function SiteHeader() {
 
   useEffect(() => {
     document.body.style.overflow = menuOpen ? "hidden" : "";
+    document.documentElement.style.overflow = menuOpen ? "hidden" : "";
     return () => {
       document.body.style.overflow = "";
+      document.documentElement.style.overflow = "";
     };
   }, [menuOpen]);
 
@@ -249,31 +251,31 @@ export function SiteHeader() {
 
       {/* Mobile / tablet drawer */}
       <div
-        className={cn("fixed inset-0 z-50 xl:hidden", menuOpen ? "pointer-events-auto" : "pointer-events-none")}
+        className={cn("fixed inset-0 z-[100] h-[100dvh] xl:hidden", menuOpen ? "pointer-events-auto" : "pointer-events-none")}
         aria-hidden={!menuOpen}
       >
         <div
           className={cn(
-            "absolute inset-0 bg-slate-900/40 backdrop-blur-[2px] transition-opacity duration-300",
+            "fixed inset-0 h-[100dvh] bg-slate-900/45 backdrop-blur-[2px] transition-opacity duration-300",
             menuOpen ? "opacity-100" : "opacity-0",
           )}
           onClick={() => setMenuOpen(false)}
         />
         <div
           className={cn(
-            "absolute inset-y-0 right-0 flex w-[min(100%,22rem)] flex-col bg-white shadow-2xl transition-transform duration-300 ease-out dark:bg-slate-950",
+            "fixed bottom-0 right-0 top-0 flex h-[100dvh] w-[min(100%,22rem)] max-w-full flex-col overflow-hidden bg-white shadow-2xl transition-transform duration-300 ease-out dark:bg-slate-950",
             menuOpen ? "translate-x-0" : "translate-x-full",
           )}
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="flex h-16 items-center justify-between border-b border-slate-100 px-4 dark:border-slate-800">
+          <div className="flex h-16 shrink-0 items-center justify-between border-b border-slate-100 px-4 dark:border-slate-800">
             <HomeLinkLogoLink variant="nav" onClick={() => setMenuOpen(false)} />
             <button type="button" className={iconButtonClass} aria-label="Close menu" onClick={() => setMenuOpen(false)}>
               <X className="size-5" />
             </button>
           </div>
 
-          <nav className="flex-1 overflow-y-auto px-3 py-4" aria-label="Mobile navigation">
+          <nav className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-white px-3 py-4 dark:bg-slate-950" aria-label="Mobile navigation">
             <div className="grid gap-0.5">
               {exploreNav.map((item) => (
                 <NavLink
@@ -341,7 +343,7 @@ export function SiteHeader() {
             <Link
               href={listHref}
               onClick={() => setMenuOpen(false)}
-              className="mt-5 flex h-11 w-full items-center justify-center rounded-[10px] bg-gradient-to-b from-emerald-600 to-emerald-700 text-sm font-bold text-white"
+              className="mt-5 flex h-11 w-full shrink-0 items-center justify-center rounded-[10px] bg-gradient-to-b from-emerald-600 to-emerald-700 text-sm font-bold text-white"
             >
               List property
             </Link>
