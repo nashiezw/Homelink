@@ -54,6 +54,10 @@ function defaultLegalPage(id: LegalPageId) {
   return defaultLegalPages.find((page) => page.id === id) ?? null;
 }
 
+function cloneDefaultLegalPages() {
+  return defaultLegalPages.map((page) => ({ ...page }));
+}
+
 type LegalPageDelegate = {
   findMany(args: {
     where?: { id?: { in: LegalPageId[] } };
@@ -82,12 +86,38 @@ type LegalPageDelegate = {
   }): Promise<Parameters<typeof toLegalPage>[0]>;
 };
 
+type LegalPagePrisma = {
+  legalPageRecord: LegalPageDelegate;
+  $executeRawUnsafe(sql: string): Promise<unknown>;
+};
+
+let legalPageTableReady = false;
+
 function legalPageDelegate() {
-  return (getMainPrisma() as unknown as { legalPageRecord: LegalPageDelegate }).legalPageRecord;
+  return (getMainPrisma() as unknown as LegalPagePrisma).legalPageRecord;
+}
+
+async function ensureLegalPageTable() {
+  if (legalPageTableReady) return;
+  const prisma = getMainPrisma() as unknown as LegalPagePrisma;
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS "LegalPageRecord" (
+      "id" TEXT PRIMARY KEY,
+      "title" TEXT NOT NULL,
+      "summary" TEXT NOT NULL,
+      "body" TEXT NOT NULL,
+      "effectiveDate" TIMESTAMP(3) NOT NULL,
+      "status" TEXT NOT NULL,
+      "savedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+  legalPageTableReady = true;
 }
 
 async function ensureLegalPageDefaults() {
   if (!isPostgresStoreEnabled()) return;
+  await ensureLegalPageTable();
   const legalPageRecord = legalPageDelegate();
   for (const page of defaultLegalPages) {
     await legalPageRecord.upsert({
@@ -108,14 +138,18 @@ async function ensureLegalPageDefaults() {
 export async function listLegalPages() {
   if (!isPostgresStoreEnabled()) {
     if (isStrictProduction()) throw new Error("DATABASE_URL is required for legal page persistence.");
-    return defaultLegalPages.map((page) => ({ ...page }));
+    return cloneDefaultLegalPages();
   }
-  await ensureLegalPageDefaults();
-  const rows = await legalPageDelegate().findMany({
-    where: { id: { in: ["terms", "privacy"] } },
-    orderBy: { id: "desc" },
-  });
-  return rows.map(toLegalPage).sort((a, b) => (a.id === "terms" ? -1 : b.id === "terms" ? 1 : 0));
+  try {
+    await ensureLegalPageDefaults();
+    const rows = await legalPageDelegate().findMany({
+      where: { id: { in: ["terms", "privacy"] } },
+      orderBy: { id: "desc" },
+    });
+    return rows.map(toLegalPage).sort((a, b) => (a.id === "terms" ? -1 : b.id === "terms" ? 1 : 0));
+  } catch {
+    return cloneDefaultLegalPages();
+  }
 }
 
 export async function getLegalPage(id: LegalPageId) {
@@ -124,15 +158,21 @@ export async function getLegalPage(id: LegalPageId) {
     const page = defaultLegalPage(id);
     return page ? { ...page } : null;
   }
-  await ensureLegalPageDefaults();
-  const row = await legalPageDelegate().findUnique({ where: { id } });
-  return row ? toLegalPage(row) : null;
+  try {
+    await ensureLegalPageDefaults();
+    const row = await legalPageDelegate().findUnique({ where: { id } });
+    return row ? toLegalPage(row) : null;
+  } catch {
+    const page = defaultLegalPage(id);
+    return page ? { ...page } : null;
+  }
 }
 
 export async function upsertLegalPage(page: LegalPage) {
   if (!isPostgresStoreEnabled()) {
     throw new Error("DATABASE_URL must point to PostgreSQL before legal pages can be saved.");
   }
+  await ensureLegalPageTable();
   const row = await legalPageDelegate().upsert({
     where: { id: page.id },
     create: {
