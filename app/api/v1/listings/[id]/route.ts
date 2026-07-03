@@ -11,7 +11,7 @@ type RouteContext = {
 
 export async function GET(_request: Request, { params }: RouteContext) {
   const { id } = await params;
-  const listing = getListing(id);
+  const listing = getListing(id, { incrementViews: true });
 
   if (!listing) {
     return problem(404, "LISTING_NOT_FOUND", "Listing could not be found.");

@@ -38,12 +38,12 @@ export function listListings(query: ListingQuery = {}) {
   return listings.filter((listing) => matchesListing(listing, query));
 }
 
-export function getListing(id: string) {
+export function getListing(id: string, options: { incrementViews?: boolean } = {}) {
   const listing = getStore().getListing(id);
   if (!listing) {
     return undefined;
   }
-  if (listing.status === "ACTIVE" || listing.status === "PENDING_REVIEW") {
+  if (options.incrementViews && (listing.status === "ACTIVE" || listing.status === "PENDING_REVIEW")) {
     getStore().incrementListingMetric(id, "views");
   }
   return toPublicListing(listing);
