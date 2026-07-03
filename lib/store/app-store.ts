@@ -1070,6 +1070,13 @@ class AppStore {
     scheduleStorePersist(this.state, STORE_VERSION);
   }
 
+  async flushPersistence() {
+    if (isStrictProduction() && !globalStore.__homelinkStoreHydrated) {
+      throw new Error("Store is still hydrating from Postgres; refusing to persist unhydrated server memory.");
+    }
+    await persistStoreState(this.state, STORE_VERSION);
+  }
+
   private touch() {
     this.markDirty();
   }

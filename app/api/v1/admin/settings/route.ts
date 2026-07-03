@@ -91,6 +91,11 @@ export async function PATCH(request: Request) {
       ip,
       preserveSecrets: true,
     });
+    try {
+      await store.flushPersistence();
+    } catch {
+      return problem(500, "PERSISTENCE_FAILED", "Settings could not be saved to the production database.");
+    }
     return ok({ settings: redactPaymentSettingsForAdmin(settings), health: store.getPaymentHealth() });
   }
 
@@ -98,6 +103,11 @@ export async function PATCH(request: Request) {
     ip,
     preserveSecrets: true,
   });
+  try {
+    await store.flushPersistence();
+  } catch {
+    return problem(500, "PERSISTENCE_FAILED", "Settings could not be saved to the production database.");
+  }
   return ok({ settings: redactPlatformSettingsForAdmin(settings) });
 }
 

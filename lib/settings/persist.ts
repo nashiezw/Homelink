@@ -90,9 +90,10 @@ async function migrateFileToDatabase(file: PersistedSettings) {
 }
 
 export async function loadPersistedSettings(): Promise<PersistedSettings | null> {
+  if (isStrictProduction()) return null;
+
   const fromDb = await loadFromDatabase();
   if (fromDb) return fromDb;
-  if (isStrictProduction()) return null;
 
   const fromFile = await (async () => {
     try {
@@ -112,9 +113,10 @@ export async function loadPersistedSettings(): Promise<PersistedSettings | null>
 }
 
 export function loadPersistedSettingsSync(): PersistedSettings | null {
+  if (isStrictProduction()) return null;
+
   const fromDb = loadFromDatabaseSync();
   if (fromDb) return fromDb;
-  if (isStrictProduction()) return null;
 
   const fromFile = loadFromFile();
   if (fromFile) {

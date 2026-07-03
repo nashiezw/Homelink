@@ -44,7 +44,7 @@ export function PlatformSettingsPanel({ defaultTab = "general" }: { defaultTab?:
     if (!settings) return;
     setSaving(true);
     const synced = syncGeoToFlatLists(settings);
-    const result = await apiFetch("/api/v1/admin/settings", {
+    const result = await apiFetch<{ settings: PlatformSettings }>("/api/v1/admin/settings", {
       method: "PATCH",
       body: JSON.stringify({ settings: synced }),
     });
@@ -53,8 +53,8 @@ export function PlatformSettingsPanel({ defaultTab = "general" }: { defaultTab?:
       showToast(result.error.message, "error");
       return;
     }
+    setSettings(result.data?.settings ? mergeSavedSettingsForForm(result.data.settings, synced) : synced);
     showToast("Platform settings saved.");
-    void load();
   }
 
   async function promoteAdmin(userId: string, makeSuperAdmin: boolean) {
@@ -353,6 +353,20 @@ export function PlatformSettingsPanel({ defaultTab = "general" }: { defaultTab?:
       )}
     </div>
   );
+}
+
+function mergeSavedSettingsForForm(serverSettings: PlatformSettings, submittedSettings: PlatformSettings): PlatformSettings {
+  const integrations = { ...serverSettings.integrations };
+  for (const key of ["cloudinarySecret", "smtpPass"] as const) {
+    if (isMaskedSecret(integrations[key])) {
+      integrations[key] = submittedSettings.integrations[key];
+    }
+  }
+  return { ...serverSettings, integrations };
+}
+
+function isMaskedSecret(value: string) {
+  return value.length > 0 && !/[A-Za-z0-9]/.test(value);
 }
 
 function GeoEditor({
