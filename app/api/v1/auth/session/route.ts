@@ -59,7 +59,7 @@ export async function POST(request: Request) {
         status: 201,
         headers: {
           "Content-Type": "application/json",
-          "Set-Cookie": sessionCookieHeader(session.id, getSessionTimeoutSeconds()),
+          "Set-Cookie": sessionCookieHeader(session.id, getSessionTimeoutSeconds(), user.id),
         },
       },
     );
@@ -88,7 +88,7 @@ export async function POST(request: Request) {
       status: 200,
       headers: {
         "Content-Type": "application/json",
-        "Set-Cookie": sessionCookieHeader(session.id, getSessionTimeoutSeconds()),
+        "Set-Cookie": sessionCookieHeader(session.id, getSessionTimeoutSeconds(), user.id),
       },
     },
   );

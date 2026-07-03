@@ -284,7 +284,16 @@ Enter:
 ```text
 NEXT_PUBLIC_APP_URL=https://homelinkzim.co.zw
 HOMELINK_STRICT_PRODUCTION=true
+HOMELINK_SESSION_SECRET=generate a long random value
 ```
+
+For `HOMELINK_SESSION_SECRET`:
+
+1. Open a password manager or random password generator.
+2. Generate a random value at least 32 characters long.
+3. Use letters, numbers, and symbols if Vercel accepts them.
+4. Paste that value only into Vercel.
+5. Do not paste it into chat, Git, screenshots, or docs.
 
 What each value means:
 
@@ -294,6 +303,9 @@ This tells HomeLink what its real public website URL is.
 
 HOMELINK_STRICT_PRODUCTION
 This blocks unsafe local/demo behavior in production.
+
+HOMELINK_SESSION_SECRET
+This signs login cookies so refreshes and serverless restarts do not log users out.
 
 ```
 

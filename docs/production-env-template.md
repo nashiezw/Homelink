@@ -7,6 +7,7 @@ Do not commit real secret values. Use this as a worksheet while filling your hos
 ```text
 NEXT_PUBLIC_APP_URL="https://homelinkzim.co.zw"
 HOMELINK_STRICT_PRODUCTION="true"
+HOMELINK_SESSION_SECRET=""
 DATABASE_URL="postgresql://..."
 SETTINGS_DATABASE_URL="file:./.data/settings.db"
 ```

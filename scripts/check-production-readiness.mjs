@@ -29,6 +29,10 @@ if (process.env.HOMELINK_STRICT_PRODUCTION !== "true") {
   warnings.push("Set HOMELINK_STRICT_PRODUCTION=true for the final launch environment.");
 }
 
+if (!has("HOMELINK_SESSION_SECRET")) {
+  warnings.push("Set HOMELINK_SESSION_SECRET to a long random value so login cookies remain stable across deploys.");
+}
+
 if (!has("NEXT_PUBLIC_APP_URL") || isLocalUrl(process.env.NEXT_PUBLIC_APP_URL)) {
   failures.push("NEXT_PUBLIC_APP_URL must be the public HTTPS origin.");
 }
