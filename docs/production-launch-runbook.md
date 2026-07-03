@@ -192,6 +192,54 @@ npm install --legacy-peer-deps
 
 8. Redeploy.
 
+If deployment fails with:
+
+```text
+Error: No Output Directory named "public" found after the Build completed.
+```
+
+This usually means Vercel is deploying the wrong folder or using the wrong framework settings.
+
+Do this:
+
+1. In Vercel, open the HomeLink project.
+2. Click **Settings**.
+3. Click **General**.
+4. Find **Root Directory**.
+5. If it says `apps/api`, click **Edit**.
+6. Change it back to the repository root.
+   - If Vercel shows a folder picker, choose the top-level repository folder.
+   - If Vercel shows a text box, clear `apps/api`.
+7. Find **Framework Preset**.
+8. Set it to **Next.js**.
+9. Find **Build Command**.
+10. Enter:
+
+```text
+npm run build
+```
+
+11. Find **Install Command**.
+12. Enter:
+
+```text
+npm install
+```
+
+13. Find **Output Directory**.
+14. Clear it completely. Leave it blank/default.
+15. Click **Save**.
+16. Go to **Deployments**.
+17. Click the three dots beside the latest deployment.
+18. Click **Redeploy**.
+19. If Vercel asks whether to use the existing build cache, choose **Redeploy without Build Cache**.
+
+Important:
+
+- The public website is the root Next.js app.
+- The root folder contains `app`, `components`, `public`, `next.config.ts`, and the website `package.json`.
+- The `apps/api` folder is a separate NestJS backend workspace. It is not the website deployment folder for this Vercel project.
+
 What you should see after deploy:
 
 - A deployment status page.
