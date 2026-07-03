@@ -236,7 +236,6 @@ Enter:
 ```text
 NEXT_PUBLIC_APP_URL=https://homelinkzim.co.zw
 HOMELINK_STRICT_PRODUCTION=true
-HOMELINK_MAINTENANCE_MODE=false
 ```
 
 What each value means:
@@ -248,8 +247,6 @@ This tells HomeLink what its real public website URL is.
 HOMELINK_STRICT_PRODUCTION
 This blocks unsafe local/demo behavior in production.
 
-HOMELINK_MAINTENANCE_MODE
-Leave this as false. Set it to true only when you intentionally want the public site to show the maintenance page.
 ```
 
 Do not enter Cloudinary, database, payment, or auth values yet unless you already have them.
