@@ -1,5 +1,6 @@
 import { requireAdmin } from "@/lib/admin/require-admin";
 import { ok, problem } from "@/lib/api/response";
+import { listLegalPages, upsertLegalPage } from "@/lib/legal-pages/persist";
 import { getStore } from "@/lib/store/app-store";
 
 export const dynamic = "force-dynamic";
@@ -13,6 +14,7 @@ export async function GET(request: Request) {
     blogPosts: store.listBlogPosts(),
     faqs: store.listCmsFaqs(),
     mediaAssets: store.listMediaAssets(),
+    legalPages: await listLegalPages(),
   });
 }
 
@@ -60,6 +62,19 @@ export async function PATCH(request: Request) {
       const asset = store.removeMediaAsset(body.assetId);
       if (!asset) return problem(404, "NOT_FOUND", "Media asset not found.");
       return ok({ asset });
+    }
+    case "upsert_legal_page": {
+      const page = body.page as { id?: string; title?: string; summary?: string; body?: string; status?: string } | undefined;
+      if (page?.id !== "terms" && page?.id !== "privacy") return problem(400, "INVALID_PAGE", "Legal page is not supported.");
+      if (!page.title?.trim()) return problem(400, "TITLE_REQUIRED", "Legal page title is required.");
+      if (!page.summary?.trim()) return problem(400, "SUMMARY_REQUIRED", "Legal page summary is required.");
+      if (!page.body?.trim()) return problem(400, "BODY_REQUIRED", "Legal page body is required.");
+      if (page.status && !["draft", "published"].includes(page.status)) return problem(400, "INVALID_STATUS", "Legal page status is not supported.");
+      try {
+        return ok({ page: await upsertLegalPage(body.page) });
+      } catch {
+        return problem(500, "PERSISTENCE_FAILED", "Legal page could not be saved to the database.");
+      }
     }
     default:
       return problem(400, "INVALID_ACTION", "Unknown action.");

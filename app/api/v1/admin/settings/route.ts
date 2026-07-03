@@ -11,7 +11,10 @@ import type { AdminRbacSettings, PaymentSettings, PlatformSettings } from "@/lib
 export const dynamic = "force-dynamic";
 
 function hasDedicatedSettingsPersistence() {
-  return Boolean(process.env.SETTINGS_DATABASE_URL);
+  const url = process.env.SETTINGS_DATABASE_URL ?? "";
+  if (!url) return false;
+  if (process.env.HOMELINK_STRICT_PRODUCTION === "true" && url.startsWith("file:")) return false;
+  return true;
 }
 
 async function flushStoreAfterSettingsSave(store: Awaited<ReturnType<typeof getHydratedStore>>) {

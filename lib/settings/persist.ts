@@ -30,7 +30,10 @@ function isStrictProduction() {
 }
 
 function isSettingsDatabaseEnabled() {
-  return Boolean(process.env.SETTINGS_DATABASE_URL);
+  const url = process.env.SETTINGS_DATABASE_URL ?? "";
+  if (!url) return false;
+  if (isStrictProduction() && url.startsWith("file:")) return false;
+  return true;
 }
 
 function hydrateSettings(settings: PersistedSettings): PersistedSettings {

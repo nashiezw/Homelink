@@ -3,8 +3,8 @@ import { getLegalPage } from "@/lib/legal-pages/persist";
 
 export const dynamic = "force-dynamic";
 
-export default async function TermsPage() {
-  const page = await getLegalPage("terms");
+export default async function PrivacyPage() {
+  const page = await getLegalPage("privacy");
 
-  return <LegalPageView page={page} fallbackTitle="Terms of Service" />;
+  return <LegalPageView page={page} fallbackTitle="Privacy Policy" />;
 }

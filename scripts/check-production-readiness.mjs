@@ -42,7 +42,7 @@ if (!process.env.DATABASE_URL?.startsWith("postgres")) {
 }
 
 if (process.env.HOMELINK_STRICT_PRODUCTION === "true" && process.env.SETTINGS_DATABASE_URL?.startsWith("file:")) {
-  warnings.push("Do not rely on SETTINGS_DATABASE_URL=file:... in production; strict production stores settings in the main Postgres-backed app snapshot.");
+  failures.push("SETTINGS_DATABASE_URL must not point to file: storage in strict production.");
 }
 
 for (const name of ["CLOUDINARY_CLOUD_NAME", "CLOUDINARY_API_KEY", "CLOUDINARY_API_SECRET"]) {

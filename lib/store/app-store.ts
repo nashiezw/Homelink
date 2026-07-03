@@ -1081,6 +1081,11 @@ class AppStore {
     this.markDirty();
   }
 
+  private persistResult<T>(result: T) {
+    this.touch();
+    return result;
+  }
+
   private adminState() {
     return this.state as unknown as AdminPlatform.AdminPlatformState;
   }
@@ -1106,11 +1111,14 @@ class AppStore {
       createdAt: new Date().toISOString(),
     };
     this.state.sessions.set(session.id, session);
+    this.touch();
     return session;
   }
 
   deleteSession(sessionId: string) {
-    this.state.sessions.delete(sessionId);
+    if (this.state.sessions.delete(sessionId)) {
+      this.touch();
+    }
   }
 
   getUserById(id: string) {
@@ -1155,6 +1163,7 @@ class AppStore {
     const user = this.getUserById(userId);
     if (user) {
       user.lastLoginAt = new Date().toISOString();
+      this.touch();
     }
   }
 
@@ -1617,6 +1626,7 @@ class AppStore {
   createTenancy(input: Parameters<typeof createTenancyPair>[0]) {
     const [landlordRecord, tenantRecord] = createTenancyPair(input);
     this.state.residenceRecords.unshift(tenantRecord, landlordRecord);
+    this.touch();
     return { tenancyId: landlordRecord.tenancyId, landlordRecord, tenantRecord };
   }
 
@@ -1638,6 +1648,7 @@ class AppStore {
     const theirs = records.find((r) => r.userId !== userId);
     if (!mine || !theirs) return null;
     confirmTenancyRecord(mine, theirs);
+    this.touch();
     return { records: this.getTenancyRecords(tenancyId) };
   }
 
@@ -1647,6 +1658,7 @@ class AppStore {
     const theirs = records.find((r) => r.userId !== userId);
     if (!mine || !theirs) return null;
     applyAddressConsent(mine, theirs, consent);
+    this.touch();
     return { records: this.getTenancyRecords(tenancyId) };
   }
 
@@ -1672,6 +1684,7 @@ class AppStore {
       createdAt: new Date().toISOString(),
     };
     this.state.tenancyReferences.unshift(ref);
+    this.touch();
     return ref;
   }
 
@@ -1701,6 +1714,7 @@ class AppStore {
         },
       ]);
     }
+    this.touch();
     return dispute;
   }
 
@@ -1714,6 +1728,7 @@ class AppStore {
     dispute.adminNote = adminNote;
     if (resolution === "removed") resolveDisputeRemoved(records);
     else resolveDisputeUpheld(records);
+    this.touch();
     return dispute;
   }
 
@@ -1790,6 +1805,7 @@ class AppStore {
         }
       }
       syncPairConfirmation(pair[0], pair[1]);
+      this.touch();
       return pair;
     }
 
@@ -1810,6 +1826,7 @@ class AppStore {
     tenantRecord.userConfirmed = true;
     tenantRecord.userConfirmedAt = new Date().toISOString();
     syncPairConfirmation(result.landlordRecord, tenantRecord);
+    this.touch();
     this.notifyTenancyParties(payment.tenantUserId, payment.landlordUserId, listing.title);
     return [result.landlordRecord, tenantRecord];
   }
@@ -1891,6 +1908,7 @@ class AppStore {
       notes: input.notes ?? "Self-reported — not verified",
     };
     this.state.residenceRecords.unshift(record);
+    this.touch();
     return record;
   }
 
@@ -1994,7 +2012,9 @@ class AppStore {
 
   removeFavourite(userId: string, listingId: string) {
     const set = this.state.favourites.get(userId);
-    set?.delete(listingId);
+    if (set?.delete(listingId)) {
+      this.touch();
+    }
     return { removed: true };
   }
 
@@ -2017,16 +2037,20 @@ class AppStore {
       createdAt: new Date().toISOString(),
     };
     this.state.savedSearches.unshift(saved);
+    this.touch();
     return saved;
   }
 
   createEnquiry(input: CreateEnquiryInput) {
     const enquiry = EnquiryPlatform.create(this.state, input, this.enquiryDeps());
+    this.touch();
     return enquiry;
   }
 
   createRoommateEnquiry(input: CreateRoommateEnquiryInput) {
-    return EnquiryPlatform.createRoommate(this.state, input, this.enquiryDeps());
+    const enquiry = EnquiryPlatform.createRoommate(this.state, input, this.enquiryDeps());
+    this.touch();
+    return enquiry;
   }
 
   private afterEnquiryCreated(enquiry: import("@/lib/enquiries/types").PropertyEnquiry) {
@@ -2124,6 +2148,7 @@ class AppStore {
   updateEnquiryStatus(id: string, status: EnquiryStatus, actor: { id: string; name: string }, reason?: string) {
     const updated = EnquiryPlatform.updateStatus(this.state, id, status, actor, reason);
     void syncEnquiryToPrisma(updated);
+    this.touch();
     return updated;
   }
 
@@ -2138,6 +2163,7 @@ class AppStore {
       });
     }
     void syncEnquiryToPrisma(enquiry);
+    this.touch();
     return enquiry;
   }
 
@@ -2145,7 +2171,9 @@ class AppStore {
     id: string,
     note: { authorId: string; authorName: string; body: string; internal: boolean },
   ) {
-    return EnquiryPlatform.addNote(this.state, id, note);
+    const enquiry = EnquiryPlatform.addNote(this.state, id, note);
+    this.touch();
+    return enquiry;
   }
 
   scheduleEnquiryViewing(
@@ -2153,7 +2181,9 @@ class AppStore {
     viewing: { scheduledAt: string; location: string; agentId?: string; agentName?: string },
     actor: { id: string; name: string },
   ) {
-    return EnquiryPlatform.scheduleViewing(this.state, id, viewing, actor);
+    const enquiry = EnquiryPlatform.scheduleViewing(this.state, id, viewing, actor);
+    this.touch();
+    return enquiry;
   }
 
   completeEnquiryViewing(
@@ -2163,7 +2193,9 @@ class AppStore {
     feedback: string,
     actor: { id: string; name: string },
   ) {
-    return EnquiryPlatform.completeViewing(this.state, id, viewingId, outcome, feedback, actor);
+    const enquiry = EnquiryPlatform.completeViewing(this.state, id, viewingId, outcome, feedback, actor);
+    this.touch();
+    return enquiry;
   }
 
   submitEnquiryOffer(
@@ -2171,11 +2203,15 @@ class AppStore {
     offer: { amount: number; currency: string; terms?: string; submittedById: string; submittedByName: string },
     actor: { id: string; name: string },
   ) {
-    return EnquiryPlatform.submitOffer(this.state, id, offer, actor);
+    const enquiry = EnquiryPlatform.submitOffer(this.state, id, offer, actor);
+    this.touch();
+    return enquiry;
   }
 
   respondEnquiryOffer(id: string, offerId: string, accepted: boolean, actor: { id: string; name: string }) {
-    return EnquiryPlatform.respondOffer(this.state, id, offerId, accepted, actor);
+    const enquiry = EnquiryPlatform.respondOffer(this.state, id, offerId, accepted, actor);
+    this.touch();
+    return enquiry;
   }
 
   addEnquiryDocument(
@@ -2183,15 +2219,21 @@ class AppStore {
     doc: { name: string; url: string; uploadedById: string; uploadedByName: string },
     actor: { id: string; name: string },
   ) {
-    return EnquiryPlatform.addDocument(this.state, id, doc, actor);
+    const enquiry = EnquiryPlatform.addDocument(this.state, id, doc, actor);
+    this.touch();
+    return enquiry;
   }
 
   recordEnquiryCommission(id: string, amount: number, actor: { id: string; name: string }) {
-    return EnquiryPlatform.recordCommission(this.state, id, amount, actor);
+    const enquiry = EnquiryPlatform.recordCommission(this.state, id, amount, actor);
+    this.touch();
+    return enquiry;
   }
 
   mergeEnquiries(targetId: string, sourceId: string, actor: { id: string; name: string }) {
-    return EnquiryPlatform.merge(this.state, targetId, sourceId, actor);
+    const enquiry = EnquiryPlatform.merge(this.state, targetId, sourceId, actor);
+    this.touch();
+    return enquiry;
   }
 
   getEnquiriesForOwner(ownerId: string) {
@@ -2230,6 +2272,7 @@ class AppStore {
       title: `Report: ${input.reason}`,
       status: "OPEN",
     });
+    this.touch();
     return report;
   }
 
@@ -2262,6 +2305,7 @@ class AppStore {
     if (conversation) {
       conversation.updatedAt = message.createdAt;
     }
+    this.touch();
     return message;
   }
 
@@ -2514,6 +2558,7 @@ class AppStore {
         this.onTenancyPaymentCompleted(completed);
       }
     }
+    this.touch();
     return payment;
   }
 
@@ -2522,6 +2567,7 @@ class AppStore {
     if (payment?.plan === "tenancy_payment") {
       this.onTenancyPaymentCompleted(payment);
     }
+    this.touch();
     return payment;
   }
 
@@ -2558,6 +2604,7 @@ class AppStore {
       createdAt: new Date().toISOString(),
     };
     this.state.notifications.unshift(notification);
+    this.touch();
     return notification;
   }
 
@@ -2613,11 +2660,13 @@ class AppStore {
     if (item) {
       item.status = "RESOLVED";
       item.resolutionNote = reason;
+      this.touch();
     }
     const report = this.state.reports.find((entry) => entry.id === id);
     if (report) {
       report.status = "RESOLVED";
       if (reason) report.adminNotes = reason;
+      this.touch();
     }
     return item ?? report ?? null;
   }
@@ -2627,12 +2676,14 @@ class AppStore {
     if (queueIdx >= 0) {
       this.state.reviewQueue[queueIdx].resolutionNote = reason;
       this.state.reviewQueue.splice(queueIdx, 1);
+      this.touch();
       return { id, dismissed: true };
     }
     const report = this.state.reports.find((entry) => entry.id === id);
     if (report) {
       report.status = "DISMISSED";
       if (reason) report.adminNotes = reason;
+      this.touch();
       return { id, dismissed: true };
     }
     return null;
@@ -2684,46 +2735,54 @@ class AppStore {
   }
 
   approveManualPayment(paymentId: string, actor: { id: string; name: string }, note?: string) {
-    return AdminPlatform.approveManualPayment(this.adminState(), paymentId, actor, note);
+    const payment = AdminPlatform.approveManualPayment(this.adminState(), paymentId, actor, note);
+    this.touch();
+    return payment;
   }
 
   rejectManualPayment(paymentId: string, actor: { id: string; name: string }, reason?: string) {
-    return AdminPlatform.rejectManualPayment(this.adminState(), paymentId, actor, reason);
+    const payment = AdminPlatform.rejectManualPayment(this.adminState(), paymentId, actor, reason);
+    this.touch();
+    return payment;
   }
 
   requestPaymentProof(paymentId: string, actor: { id: string; name: string }) {
-    return AdminPlatform.requestPaymentProof(this.adminState(), paymentId, actor);
+    const payment = AdminPlatform.requestPaymentProof(this.adminState(), paymentId, actor);
+    this.touch();
+    return payment;
   }
 
   uploadPaymentProof(paymentId: string, proofUrl: string) {
-    return AdminPlatform.uploadPaymentProof(this.adminState(), paymentId, proofUrl);
+    const payment = AdminPlatform.uploadPaymentProof(this.adminState(), paymentId, proofUrl);
+    this.touch();
+    return payment;
   }
 
   addFinanceNote(paymentId: string, actor: { id: string; name: string }, note: string) {
-    return AdminPlatform.addFinanceNote(this.adminState(), paymentId, actor, note);
+    return this.persistResult(AdminPlatform.addFinanceNote(this.adminState(), paymentId, actor, note));
   }
 
   reversePayment(paymentId: string, actor: { id: string; name: string }, reason?: string) {
-    return AdminPlatform.reversePayment(this.adminState(), paymentId, actor, reason);
+    return this.persistResult(AdminPlatform.reversePayment(this.adminState(), paymentId, actor, reason));
   }
 
   refundPayment(paymentId: string, actor: { id: string; name: string }, reason?: string) {
-    return AdminPlatform.refundPayment(this.adminState(), paymentId, actor, reason);
+    return this.persistResult(AdminPlatform.refundPayment(this.adminState(), paymentId, actor, reason));
   }
 
   recordManualPayment(
     input: Parameters<typeof AdminPlatform.recordManualPayment>[1],
     actor: { id: string; name: string },
   ) {
-    return AdminPlatform.recordManualPayment(this.adminState(), input, actor);
+    return this.persistResult(AdminPlatform.recordManualPayment(this.adminState(), input, actor));
   }
 
   grantComplimentary(input: Parameters<typeof AdminPlatform.grantComplimentary>[1], actor: { id: string; name: string }) {
-    return AdminPlatform.grantComplimentary(this.adminState(), input, actor);
+    return this.persistResult(AdminPlatform.grantComplimentary(this.adminState(), input, actor));
   }
 
   adjustUserCredits(userId: string, delta: number, actor: { id: string; name: string }, reason?: string) {
-    return AdminPlatform.adjustUserCredits(this.adminState(), userId, delta, actor, reason);
+    return this.persistResult(AdminPlatform.adjustUserCredits(this.adminState(), userId, delta, actor, reason));
   }
 
   getSupportTickets() {
@@ -2746,15 +2805,15 @@ class AppStore {
     input: Omit<import("@/lib/store/types").SupportTicket, "id" | "createdAt" | "updatedAt">,
     actor: { id: string; name: string },
   ) {
-    return AdminPlatform.createSupportTicket(this.adminState(), input, actor);
+    return this.persistResult(AdminPlatform.createSupportTicket(this.adminState(), input, actor));
   }
 
   escalateSupportTicket(ticketId: string, actor: { id: string; name: string }, escalation?: { team?: string; reason?: string }) {
-    return AdminPlatform.escalateSupportTicket(this.adminState(), ticketId, actor, escalation);
+    return this.persistResult(AdminPlatform.escalateSupportTicket(this.adminState(), ticketId, actor, escalation));
   }
 
   assignSupportTicket(ticketId: string, assignee: string, actor: { id: string; name: string }) {
-    return AdminPlatform.assignSupportTicket(this.adminState(), ticketId, assignee, actor);
+    return this.persistResult(AdminPlatform.assignSupportTicket(this.adminState(), ticketId, assignee, actor));
   }
 
   getVerificationRequests() {
@@ -2762,35 +2821,35 @@ class AppStore {
   }
 
   approveVerification(id: string, actor: { id: string; name: string }) {
-    return AdminPlatform.approveVerification(this.adminState(), id, actor);
+    return this.persistResult(AdminPlatform.approveVerification(this.adminState(), id, actor));
   }
 
   rejectVerification(id: string, actor: { id: string; name: string }, reason?: string) {
-    return AdminPlatform.rejectVerification(this.adminState(), id, actor, reason);
+    return this.persistResult(AdminPlatform.rejectVerification(this.adminState(), id, actor, reason));
   }
 
   adminApproveListing(listingId: string, actor: { id: string; name: string }) {
-    return AdminPlatform.adminApproveListing(this.adminState(), listingId, actor);
+    return this.persistResult(AdminPlatform.adminApproveListing(this.adminState(), listingId, actor));
   }
 
   adminRejectListing(listingId: string, actor: { id: string; name: string }, reason?: string) {
-    return AdminPlatform.adminRejectListing(this.adminState(), listingId, actor, reason);
+    return this.persistResult(AdminPlatform.adminRejectListing(this.adminState(), listingId, actor, reason));
   }
 
   adminEditListing(listingId: string, updates: Partial<ListingRecord>, actor: { id: string; name: string }) {
-    return AdminPlatform.adminEditListing(this.adminState(), listingId, updates, actor);
+    return this.persistResult(AdminPlatform.adminEditListing(this.adminState(), listingId, updates, actor));
   }
 
   transferListingOwnership(listingId: string, newOwnerId: string, actor: { id: string; name: string }) {
-    return AdminPlatform.transferListingOwnership(this.adminState(), listingId, newOwnerId, actor);
+    return this.persistResult(AdminPlatform.transferListingOwnership(this.adminState(), listingId, newOwnerId, actor));
   }
 
   featureListing(listingId: string, days: number, actor: { id: string; name: string }) {
-    return AdminPlatform.featureListing(this.adminState(), listingId, days, actor);
+    return this.persistResult(AdminPlatform.featureListing(this.adminState(), listingId, days, actor));
   }
 
   featureAgency(agencyId: string, actor: { id: string; name: string }) {
-    return AdminPlatform.featureAgency(this.adminState(), agencyId, actor);
+    return this.persistResult(AdminPlatform.featureAgency(this.adminState(), agencyId, actor));
   }
 
   listListingsAdmin(filters?: { q?: string; status?: string; type?: string; intent?: string; includeDeleted?: boolean }) {
@@ -2841,23 +2900,23 @@ class AppStore {
   }
 
   adminDeleteListing(listingId: string, actor: { id: string; name: string }, reason?: string) {
-    return AdminPlatform.adminDeleteListing(this.adminState(), listingId, actor, reason);
+    return this.persistResult(AdminPlatform.adminDeleteListing(this.adminState(), listingId, actor, reason));
   }
 
   adminArchiveListing(listingId: string, actor: { id: string; name: string }, reason?: string) {
-    return AdminPlatform.adminArchiveListing(this.adminState(), listingId, actor, reason);
+    return this.persistResult(AdminPlatform.adminArchiveListing(this.adminState(), listingId, actor, reason));
   }
 
   adminRestoreListing(listingId: string, actor: { id: string; name: string }) {
-    return AdminPlatform.adminRestoreListing(this.adminState(), listingId, actor);
+    return this.persistResult(AdminPlatform.adminRestoreListing(this.adminState(), listingId, actor));
   }
 
   adminUnfeatureListing(listingId: string, actor: { id: string; name: string }) {
-    return AdminPlatform.adminUnfeatureListing(this.adminState(), listingId, actor);
+    return this.persistResult(AdminPlatform.adminUnfeatureListing(this.adminState(), listingId, actor));
   }
 
   adminSetListingVerified(listingId: string, verified: boolean, actor: { id: string; name: string }) {
-    return AdminPlatform.adminSetListingVerified(this.adminState(), listingId, verified, actor);
+    return this.persistResult(AdminPlatform.adminSetListingVerified(this.adminState(), listingId, verified, actor));
   }
 
   adminBulkListingAction(
@@ -2904,47 +2963,47 @@ class AppStore {
     updates: Partial<Pick<Agency, "name" | "email" | "phone" | "city" | "subscriptionTier">>,
     actor: { id: string; name: string },
   ) {
-    return AdminPlatform.updateAgency(this.adminState(), agencyId, updates, actor);
+    return this.persistResult(AdminPlatform.updateAgency(this.adminState(), agencyId, updates, actor));
   }
 
   suspendAgency(agencyId: string, actor: { id: string; name: string }, reason?: string) {
-    return AdminPlatform.suspendAgency(this.adminState(), agencyId, actor, reason);
+    return this.persistResult(AdminPlatform.suspendAgency(this.adminState(), agencyId, actor, reason));
   }
 
   activateAgency(agencyId: string, actor: { id: string; name: string }) {
-    return AdminPlatform.activateAgency(this.adminState(), agencyId, actor);
+    return this.persistResult(AdminPlatform.activateAgency(this.adminState(), agencyId, actor));
   }
 
   deleteAgency(agencyId: string, actor: { id: string; name: string }, reason?: string) {
-    return AdminPlatform.deleteAgency(this.adminState(), agencyId, actor, reason);
+    return this.persistResult(AdminPlatform.deleteAgency(this.adminState(), agencyId, actor, reason));
   }
 
   verifyAgency(agencyId: string, actor: { id: string; name: string }) {
-    return AdminPlatform.verifyAgency(this.adminState(), agencyId, actor);
+    return this.persistResult(AdminPlatform.verifyAgency(this.adminState(), agencyId, actor));
   }
 
   rejectAgency(agencyId: string, actor: { id: string; name: string }, reason?: string) {
-    return AdminPlatform.rejectAgency(this.adminState(), agencyId, actor, reason);
+    return this.persistResult(AdminPlatform.rejectAgency(this.adminState(), agencyId, actor, reason));
   }
 
   deleteUser(userId: string, actor: { id: string; name: string }, reason?: string) {
-    return AdminPlatform.deleteUser(this.adminState(), userId, actor, reason);
+    return this.persistResult(AdminPlatform.deleteUser(this.adminState(), userId, actor, reason));
   }
 
   terminateUserSessions(userId: string, actor: { id: string; name: string }) {
-    return AdminPlatform.terminateUserSessions(this.adminState(), userId, actor);
+    return this.persistResult(AdminPlatform.terminateUserSessions(this.adminState(), userId, actor));
   }
 
   terminateAllSessions(actor: { id: string; name: string }) {
-    return AdminPlatform.terminateAllSessions(this.adminState(), actor);
+    return this.persistResult(AdminPlatform.terminateAllSessions(this.adminState(), actor));
   }
 
   resetUserVerification(userId: string, actor: { id: string; name: string }) {
-    return AdminPlatform.resetUserVerification(this.adminState(), userId, actor);
+    return this.persistResult(AdminPlatform.resetUserVerification(this.adminState(), userId, actor));
   }
 
   extendSubscription(userId: string, days: number, actor: { id: string; name: string }) {
-    return AdminPlatform.extendSubscription(this.adminState(), userId, days, actor);
+    return this.persistResult(AdminPlatform.extendSubscription(this.adminState(), userId, days, actor));
   }
 
   private enterpriseState(): EnterpriseOpsState {
@@ -2959,6 +3018,7 @@ class AppStore {
     const result = EnterpriseOps.updateEscrowHold(this.enterpriseState(), id, status);
     if (result) {
       this.recordAudit({ actorId: actor.id, actorName: actor.name, action: "UPDATE_ESCROW", target: id, targetType: "PAYMENT", metadata: { status }, ip: "admin" });
+      this.touch();
     }
     return result;
   }
@@ -2971,6 +3031,7 @@ class AppStore {
     const result = EnterpriseOps.updateChargeback(this.enterpriseState(), id, status);
     if (result) {
       this.recordAudit({ actorId: actor.id, actorName: actor.name, action: "UPDATE_CHARGEBACK", target: id, targetType: "PAYMENT", metadata: { status }, ip: "admin" });
+      this.touch();
     }
     return result;
   }
@@ -3093,6 +3154,7 @@ class AppStore {
     const result = EnterpriseOps.updateRefundRequest(this.enterpriseState(), id, status);
     if (result) {
       this.recordAudit({ actorId: actor.id, actorName: actor.name, action: "UPDATE_REFUND", target: id, targetType: "PAYMENT", metadata: { status }, ip: "admin" });
+      this.touch();
     }
     return result;
   }
@@ -3135,7 +3197,7 @@ class AppStore {
   }
 
   logWebhook(gateway: import("@/lib/settings/types").GatewayId, event: string, payload: Record<string, unknown>, status: "SUCCESS" | "FAILED" | "PENDING") {
-    return AdminPlatform.logWebhook(this.adminState(), gateway, event, payload, status);
+    return this.persistResult(AdminPlatform.logWebhook(this.adminState(), gateway, event, payload, status));
   }
 
   getUserCredits(userId: string) {
@@ -3152,7 +3214,7 @@ class AppStore {
 
   submitPMRequest(input: SubmitPMRequestInput, ip?: string) {
     PMStore.checkSLABreaches(this.pmState());
-    return PMStore.submitRequest(this.pmState(), input, (userId, channels) => this.pmNotify(userId, channels), { id: input.ownerId, name: input.ownerName, ip });
+    return this.persistResult(PMStore.submitRequest(this.pmState(), input, (userId, channels) => this.pmNotify(userId, channels), { id: input.ownerId, name: input.ownerName, ip }));
   }
 
   listPMRequests(filters?: Parameters<typeof PMStore.listRequests>[1]) {
@@ -3173,12 +3235,13 @@ class AppStore {
     if (r?.consultantId) {
       this.pmNotify(r.consultantId, [{ channel: "email", subject: `Assigned: ${r.requestNumber}`, body: `You have been assigned to request ${r.requestNumber}.` }]);
     }
+    this.touch();
     return r;
   }
 
   pmAssignAgency(requestId: string, agencyId: string, actor: { id: string; name: string }, ip?: string) {
     const agency = this.getAgency(agencyId);
-    return PMStore.assignAgency(this.pmState(), requestId, agencyId, agency?.name ?? agencyId, { ...actor, ip });
+    return this.persistResult(PMStore.assignAgency(this.pmState(), requestId, agencyId, agency?.name ?? agencyId, { ...actor, ip }));
   }
 
   pmSetStatus(requestId: string, status: import("@/lib/property-management/types").PMRequestStatus, actor: { id: string; name: string }, reason?: string, ip?: string) {
@@ -3186,19 +3249,20 @@ class AppStore {
     if (r) {
       this.pmNotify(r.ownerId, [{ channel: "email", subject: `Request ${r.requestNumber} updated`, body: `Status changed to ${status}.` }]);
     }
+    this.touch();
     return r;
   }
 
   pmAddNote(requestId: string, body: string, internal: boolean, actor: { id: string; name: string }, ip?: string) {
-    return PMStore.addNote(this.pmState(), requestId, { authorId: actor.id, authorName: actor.name, body, internal }, { ...actor, ip });
+    return this.persistResult(PMStore.addNote(this.pmState(), requestId, { authorId: actor.id, authorName: actor.name, body, internal }, { ...actor, ip }));
   }
 
   pmUploadDocument(requestId: string, name: string, type: string, url: string, actor: { id: string; name: string }, ip?: string) {
-    return PMStore.uploadDocument(this.pmState(), requestId, { name, type, url, uploadedBy: actor.id }, { ...actor, ip });
+    return this.persistResult(PMStore.uploadDocument(this.pmState(), requestId, { name, type, url, uploadedBy: actor.id }, { ...actor, ip }));
   }
 
   pmReviewDocument(requestId: string, docId: string, approved: boolean, actor: { id: string; name: string }, reason?: string, ip?: string) {
-    return PMStore.reviewDocument(this.pmState(), requestId, docId, approved, { ...actor, ip }, reason);
+    return this.persistResult(PMStore.reviewDocument(this.pmState(), requestId, docId, approved, { ...actor, ip }, reason));
   }
 
   pmRequestDocument(
@@ -3216,6 +3280,7 @@ class AppStore {
       const instructions = options?.instructions ? `\n\nInstructions: ${options.instructions}` : "";
       this.pmNotify(r.ownerId, [{ channel: "email", subject: "Document requested", body: `Please upload ${name}${due}.${instructions}` }]);
     }
+    this.touch();
     return doc;
   }
 
@@ -3226,43 +3291,46 @@ class AppStore {
       this.pmNotify(r.ownerId, [{ channel: "email", subject: "Inspection scheduled", body: `Inspection on ${scheduledAt}` }]);
       if (r.consultantId) this.pmNotify(r.consultantId, [{ channel: "email", subject: "Inspection assigned", body: scheduledAt }]);
     }
+    this.touch();
     return insp;
   }
 
   pmRescheduleInspection(requestId: string, inspectionId: string, scheduledAt: string, actor: { id: string; name: string }, ip?: string) {
-    return PMStore.rescheduleInspection(this.pmState(), requestId, inspectionId, scheduledAt, { ...actor, ip });
+    return this.persistResult(PMStore.rescheduleInspection(this.pmState(), requestId, inspectionId, scheduledAt, { ...actor, ip }));
   }
 
   pmCancelInspection(requestId: string, inspectionId: string, actor: { id: string; name: string }, ip?: string) {
-    return PMStore.cancelInspection(this.pmState(), requestId, inspectionId, { ...actor, ip });
+    return this.persistResult(PMStore.cancelInspection(this.pmState(), requestId, inspectionId, { ...actor, ip }));
   }
 
   pmAssignValuation(requestId: string, amount: number, currency: string, actor: { id: string; name: string }, ip?: string) {
-    return PMStore.assignValuation(this.pmState(), requestId, amount, currency, { ...actor, ip });
+    return this.persistResult(PMStore.assignValuation(this.pmState(), requestId, amount, currency, { ...actor, ip }));
   }
 
   pmApproveValuation(requestId: string, valuationId: string, actor: { id: string; name: string }, ip?: string) {
-    return PMStore.approveValuation(this.pmState(), requestId, valuationId, { ...actor, ip });
+    return this.persistResult(PMStore.approveValuation(this.pmState(), requestId, valuationId, { ...actor, ip }));
   }
 
   pmGenerateQuotation(requestId: string, title: string, lineItems: Array<{ label: string; amount: number }>, currency: string, actor: { id: string; name: string }, ip?: string) {
-    return PMStore.generateQuotation(this.pmState(), requestId, title, lineItems, currency, { ...actor, ip });
+    return this.persistResult(PMStore.generateQuotation(this.pmState(), requestId, title, lineItems, currency, { ...actor, ip }));
   }
 
   pmGenerateAgreement(requestId: string, type: "MANAGEMENT" | "TENANCY", title: string, actor: { id: string; name: string }, ip?: string) {
-    return PMStore.generateAgreement(this.pmState(), requestId, type, title, { ...actor, ip });
+    return this.persistResult(PMStore.generateAgreement(this.pmState(), requestId, type, title, { ...actor, ip }));
   }
 
   pmSignAgreement(requestId: string, agreementId: string | undefined, actor: { id: string; name: string }, ip?: string) {
     const agreement = PMStore.signAgreement(this.pmState(), requestId, agreementId, { ...actor, ip });
     const r = this.getPMRequest(requestId);
     if (r && agreement) this.pmNotify(r.ownerId, [{ channel: "email", subject: "Agreement signed", body: `${agreement.title} has been signed.` }]);
+    this.touch();
     return agreement;
   }
 
   pmActivateManagement(requestId: string, actor: { id: string; name: string }, ip?: string) {
     const r = PMStore.activateManagement(this.pmState(), requestId, { ...actor, ip });
     if (r) this.pmNotify(r.ownerId, [{ channel: "email", subject: "Property under management", body: `${r.propertyAddress} is now under active management.` }]);
+    this.touch();
     return r;
   }
 
@@ -3270,6 +3338,7 @@ class AppStore {
     const inv = PMStore.generateInvoice(this.pmState(), requestId, title, amount, currency, dueDate, { ...actor, ip });
     const r = this.getPMRequest(requestId);
     if (r && inv) this.pmNotify(r.ownerId, [{ channel: "email", subject: `Invoice: ${title}`, body: `Amount due: $${amount} by ${dueDate}` }]);
+    this.touch();
     return inv;
   }
 
@@ -3299,42 +3368,44 @@ class AppStore {
       body: `Emailed ${found.type}: ${found.title}`,
       internal: true,
     }, { ...actor, ip });
+    this.touch();
     return r;
   }
 
   pmLinkPayment(requestId: string, paymentId: string, invoiceId: string | undefined, actor: { id: string; name: string }, ip?: string) {
-    return PMStore.linkPayment(this.pmState(), requestId, paymentId, invoiceId, { ...actor, ip });
+    return this.persistResult(PMStore.linkPayment(this.pmState(), requestId, paymentId, invoiceId, { ...actor, ip }));
   }
 
   pmArchive(requestId: string, actor: { id: string; name: string }, ip?: string) {
-    return PMStore.archiveRequest(this.pmState(), requestId, { ...actor, ip });
+    return this.persistResult(PMStore.archiveRequest(this.pmState(), requestId, { ...actor, ip }));
   }
 
   pmDelete(requestId: string, actor: { id: string; name: string }, ip?: string) {
-    return PMStore.deleteRequest(this.pmState(), requestId, { ...actor, ip });
+    return this.persistResult(PMStore.deleteRequest(this.pmState(), requestId, { ...actor, ip }));
   }
 
   pmRestore(requestId: string, actor: { id: string; name: string }, ip?: string) {
-    return PMStore.restoreRequest(this.pmState(), requestId, { ...actor, ip });
+    return this.persistResult(PMStore.restoreRequest(this.pmState(), requestId, { ...actor, ip }));
   }
 
   pmMerge(targetId: string, sourceId: string, actor: { id: string; name: string }, ip?: string) {
-    return PMStore.mergeRequests(this.pmState(), targetId, sourceId, { ...actor, ip });
+    return this.persistResult(PMStore.mergeRequests(this.pmState(), targetId, sourceId, { ...actor, ip }));
   }
 
   pmTransfer(requestId: string, newOwnerId: string, actor: { id: string; name: string }, ip?: string) {
-    return PMStore.transferOwnership(this.pmState(), requestId, newOwnerId, { ...actor, ip });
+    return this.persistResult(PMStore.transferOwnership(this.pmState(), requestId, newOwnerId, { ...actor, ip }));
   }
 
   pmAddOffer(requestId: string, offer: Omit<import("@/lib/property-management/types").PMOffer, "id" | "createdAt" | "status">, actor: { id: string; name: string }, ip?: string) {
     const o = PMStore.addOffer(this.pmState(), requestId, offer, { ...actor, ip });
     const r = this.getPMRequest(requestId);
     if (r) this.pmNotify(r.ownerId, [{ channel: "email", subject: "New offer received", body: `${offer.partyName} offered $${offer.amount}` }]);
+    this.touch();
     return o;
   }
 
   pmAddInterestedParty(requestId: string, party: Omit<import("@/lib/property-management/types").InterestedParty, "id" | "createdAt">, actor: { id: string; name: string }, ip?: string) {
-    return PMStore.addInterestedParty(this.pmState(), requestId, party, { ...actor, ip });
+    return this.persistResult(PMStore.addInterestedParty(this.pmState(), requestId, party, { ...actor, ip }));
   }
 
   getConsultantMetrics(consultantId: string) {
@@ -3478,7 +3549,7 @@ class AppStore {
   }
 
   updateAgentSettings(settings: Partial<import("@/lib/agents/types").AgentSystemSettings>) {
-    return AgentPlatform.updateAgentSettings(this.state.agents, settings);
+    return this.persistResult(AgentPlatform.updateAgentSettings(this.state.agents, settings));
   }
 
   updateAgentCommissionRules(rules: import("@/lib/agents/types").CommissionRule[], actor?: { id: string; name: string }, reason = "Commission rules updated by administrator.") {
@@ -3509,6 +3580,7 @@ class AppStore {
         ip: "127.0.0.1",
       });
     }
+    this.touch();
     return updated;
   }
 
@@ -3525,13 +3597,15 @@ class AppStore {
   }
 
   saveAgentApplication(application: import("@/lib/agents/types").AgentApplication) {
-    return AgentPlatform.upsertApplication(this.state.agents, application);
+    return this.persistResult(AgentPlatform.upsertApplication(this.state.agents, application));
   }
 
   submitAgentApplication(applicationId: string) {
-    return AgentPlatform.submitApplication(this.state.agents, applicationId, (userId, subject, body) => {
+    const application = AgentPlatform.submitApplication(this.state.agents, applicationId, (userId, subject, body) => {
       this.createNotification(userId, { channel: "IN_APP", subject, body });
     });
+    this.touch();
+    return application;
   }
 
   updateAgentApplicationStatus(
@@ -3540,7 +3614,7 @@ class AppStore {
     actor: { id: string; name: string },
     note?: string,
   ) {
-    return AgentPlatform.updateApplicationStatus(
+    const application = AgentPlatform.updateApplicationStatus(
       this.state.agents,
       applicationId,
       status,
@@ -3550,10 +3624,12 @@ class AppStore {
         this.createNotification(userId, { channel: "IN_APP", subject, body });
       },
     );
+    this.touch();
+    return application;
   }
 
   approveAgentApplication(applicationId: string, actor: { id: string; name: string }) {
-    return AgentPlatform.approveApplication(
+    const application = AgentPlatform.approveApplication(
       this.state.agents,
       applicationId,
       (id) => this.getUserById(id) ?? undefined,
@@ -3563,6 +3639,8 @@ class AppStore {
         this.createNotification(userId, { channel: "IN_APP", subject, body });
       },
     );
+    this.touch();
+    return application;
   }
 
   getAgentProfileByUserId(userId: string) {
@@ -3581,6 +3659,7 @@ class AppStore {
     const profile = this.getAgentProfileByUserId(userId);
     if (!profile) return null;
     Object.assign(profile, updates, { updatedAt: new Date().toISOString() });
+    this.touch();
     return profile;
   }
 
@@ -3591,16 +3670,16 @@ class AppStore {
   }
 
   updateAgentLeadStatus(leadId: string, status: import("@/lib/agents/types").LeadStatus, notes?: string) {
-    return AgentPlatform.updateLeadStatus(this.state.agents, leadId, status, notes);
+    return this.persistResult(AgentPlatform.updateLeadStatus(this.state.agents, leadId, status, notes));
   }
 
   reassignAgentLead(leadId: string, agentUserId: string) {
-    return AgentPlatform.reassignLead(
+    return this.persistResult(AgentPlatform.reassignLead(
       this.state.agents,
       leadId,
       agentUserId,
       (id) => this.getUserById(id) ?? undefined,
-    );
+    ));
   }
 
   updateAgentLeadOwnership(
@@ -3624,6 +3703,7 @@ class AppStore {
         body: this.state.agents.settings.notificationTemplates.lead_ownership_changed,
       });
     }
+    this.touch();
     return lead;
   }
 
@@ -3647,6 +3727,7 @@ class AppStore {
         body: this.state.agents.settings.notificationTemplates.transaction_closed,
       });
     }
+    this.touch();
     return commission;
   }
 
@@ -3687,6 +3768,7 @@ class AppStore {
         },
         ip: "127.0.0.1",
       });
+      this.touch();
     }
     return commission;
   }
@@ -3700,6 +3782,7 @@ class AppStore {
         body: this.state.agents.settings.notificationTemplates.commission_approved,
       });
     }
+    this.touch();
     return commission;
   }
 
@@ -3717,6 +3800,7 @@ class AppStore {
         body: reason,
       });
     }
+    this.touch();
     return commission;
   }
 
@@ -3740,6 +3824,7 @@ class AppStore {
     const idx = this.state.agents.territories.findIndex((t) => t.id === territory.id);
     if (idx >= 0) this.state.agents.territories[idx] = territory;
     else this.state.agents.territories.push(territory);
+    this.touch();
     return territory;
   }
 
@@ -3752,7 +3837,7 @@ class AppStore {
   }
 
   completeAgentTraining(agentId: string, moduleId: string, score?: number) {
-    return AgentPlatform.completeTrainingModule(this.state.agents, agentId, moduleId, score);
+    return this.persistResult(AgentPlatform.completeTrainingModule(this.state.agents, agentId, moduleId, score));
   }
 
   addAgentRating(input: Omit<import("@/lib/agents/types").AgentRating, "id" | "createdAt" | "overall">) {
@@ -3762,6 +3847,7 @@ class AppStore {
       subject: "New review",
       body: this.state.agents.settings.notificationTemplates.review_received,
     });
+    this.touch();
     return rating;
   }
 
@@ -3776,6 +3862,7 @@ class AppStore {
   createAgentAppointment(appointment: Omit<import("@/lib/agents/types").AgentAppointment, "id">) {
     const record = { ...appointment, id: `appt_${crypto.randomUUID()}` };
     this.state.agents.appointments.unshift(record);
+    this.touch();
     return record;
   }
 
@@ -3801,7 +3888,7 @@ class AppStore {
   }
 
   deleteAgentTerritory(territoryId: string) {
-    return AgentPlatform.deleteTerritory(this.state.agents, territoryId);
+    return this.persistResult(AgentPlatform.deleteTerritory(this.state.agents, territoryId));
   }
 
   getHomepageSnapshot() {
@@ -3929,6 +4016,7 @@ class AppStore {
       source: "HOLIDAY_BOOKING",
     });
 
+    this.touch();
     return { enquiry };
   }
 
@@ -3966,6 +4054,7 @@ class AppStore {
       });
     }
 
+    this.touch();
     return enquiry;
   }
 
@@ -3988,6 +4077,7 @@ class AppStore {
       subject: "New holiday home review",
       body: `${input.reviewerName} left a ${review.overallExperience}★ review.`,
     });
+    this.touch();
     return review;
   }
 
@@ -4013,6 +4103,7 @@ class AppStore {
         metadata: { listingId: removed.listingId },
         ip: "admin",
       });
+      this.touch();
     }
     return removed;
   }
@@ -4032,6 +4123,7 @@ class AppStore {
       metadata: { ...settings },
       ip: "admin",
     });
+    this.touch();
     return updated;
   }
 

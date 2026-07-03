@@ -1,6 +1,6 @@
 "use client";
 
-import { BookOpen, ExternalLink, FileQuestion, ImageIcon, Plus, Trash2 } from "lucide-react";
+import { BookOpen, ExternalLink, FileQuestion, FileText, ImageIcon, Plus, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { AdminPanel, AdminTabStrip, AdminStatusBadge } from "@/components/admin/ui/admin-ui";
 import { Button } from "@/components/ui/button";
@@ -8,17 +8,19 @@ import { useApp } from "@/components/providers/app-provider";
 import { apiFetch } from "@/lib/api/client";
 import { AdminActionDialog, type AdminDialogConfig } from "@/components/admin/action-dialog";
 import type { CmsBlogPost, CmsFaq, CmsMediaAsset } from "@/lib/admin/enterprise-types";
+import type { LegalPage } from "@/lib/legal-pages/types";
 
 type CmsContentData = {
   blogPosts: CmsBlogPost[];
   faqs: CmsFaq[];
   mediaAssets: CmsMediaAsset[];
+  legalPages: LegalPage[];
 };
 
 export function CmsContentHub() {
   const { showToast } = useApp();
   const [data, setData] = useState<CmsContentData | null>(null);
-  const [tab, setTab] = useState<"blog" | "faq" | "media">("blog");
+  const [tab, setTab] = useState<"blog" | "faq" | "media" | "legal">("blog");
   const [newFaq, setNewFaq] = useState({ question: "", answer: "", category: "General" });
   const [dialog, setDialog] = useState<AdminDialogConfig | null>(null);
 
@@ -129,6 +131,43 @@ export function CmsContentHub() {
     });
   }
 
+  function editLegalPage(page: LegalPage) {
+    setDialog({
+      title: `Edit ${page.id === "terms" ? "terms" : "privacy"} page`,
+      message: "Update the public legal page. Published changes appear on the website after saving.",
+      tone: "info",
+      confirmLabel: "Save page",
+      fields: [
+        { name: "title", label: "Title", defaultValue: page.title, required: true },
+        { name: "summary", label: "Summary", type: "textarea", defaultValue: page.summary, required: true },
+        { name: "body", label: "Body", type: "textarea", defaultValue: page.body, required: true },
+        { name: "effectiveDate", label: "Effective date", type: "date", defaultValue: page.effectiveDate, required: true },
+        {
+          name: "status",
+          label: "Status",
+          type: "select",
+          defaultValue: page.status,
+          required: true,
+          options: [
+            { label: "Published", value: "published" },
+            { label: "Draft", value: "draft" },
+          ],
+        },
+      ],
+      onConfirm: (values) =>
+        action("upsert_legal_page", {
+          page: {
+            ...page,
+            title: values.title,
+            summary: values.summary,
+            body: values.body,
+            effectiveDate: values.effectiveDate,
+            status: values.status,
+          },
+        }),
+    });
+  }
+
   if (!data) return <p className="text-slate-400">Loading CMS content...</p>;
 
   return (
@@ -141,6 +180,7 @@ export function CmsContentHub() {
           { id: "blog", label: "Blog", count: data.blogPosts.length },
           { id: "faq", label: "FAQ", count: data.faqs.length },
           { id: "media", label: "Media library", count: data.mediaAssets.length },
+          { id: "legal", label: "Legal", count: data.legalPages.length },
         ]}
       />
 
@@ -243,6 +283,44 @@ export function CmsContentHub() {
                   </Button>
                 </div>
               </div>
+            ))}
+          </div>
+        </AdminPanel>
+      )}
+
+      {tab === "legal" && (
+        <AdminPanel title="Legal pages" description="Edit public Terms and Privacy pages">
+          <div className="grid gap-3 md:grid-cols-2">
+            {data.legalPages.map((page) => (
+              <article key={page.id} className="rounded-xl border border-white/[0.06] bg-slate-950/50 p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex min-w-0 gap-3">
+                    <FileText className="mt-1 size-5 shrink-0 text-emerald-400" />
+                    <div className="min-w-0">
+                      <p className="font-semibold text-white">{page.title}</p>
+                      <p className="mt-1 text-xs text-slate-500">/{page.id} - effective {page.effectiveDate}</p>
+                      <p className="mt-2 line-clamp-3 text-sm text-slate-400">{page.summary}</p>
+                    </div>
+                  </div>
+                  <AdminStatusBadge status={page.status} variant={page.status === "published" ? "success" : "muted"} />
+                </div>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <Button variant="secondary" onClick={() => editLegalPage(page)}>Edit</Button>
+                  <Button
+                    variant="secondary"
+                    onClick={() =>
+                      void action("upsert_legal_page", {
+                        page: { ...page, status: page.status === "published" ? "draft" : "published" },
+                      })
+                    }
+                  >
+                    {page.status === "published" ? "Unpublish" : "Publish"}
+                  </Button>
+                  <a href={`/${page.id}`} target="_blank" rel="noreferrer" className="inline-flex h-9 items-center gap-2 rounded-lg border border-white/10 px-3 text-xs text-slate-200 hover:bg-white/5">
+                    <ExternalLink className="size-3.5" /> View
+                  </a>
+                </div>
+              </article>
             ))}
           </div>
         </AdminPanel>

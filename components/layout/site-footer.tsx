@@ -45,6 +45,7 @@ const groups = [
       ["Careers", "/careers"],
       ["Contact", "/contact"],
       ["Terms", "/terms"],
+      ["Privacy", "/privacy"],
       ["Messages", "/messages"],
       ["My enquiries", "/enquiries"],
     ],
