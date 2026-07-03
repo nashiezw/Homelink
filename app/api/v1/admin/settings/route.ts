@@ -6,8 +6,22 @@ import { sendSmtpTestEmail } from "@/lib/integrations/smtp";
 import { getHydratedStore } from "@/lib/store/app-store";
 import { redactPaymentSettingsForAdmin, redactPlatformSettingsForAdmin, mergePlatformSecrets } from "@/lib/settings/redact";
 import { mergePlatformSettings } from "@/lib/settings/merge";
+import { savePersistedSettings } from "@/lib/settings/persist";
 import type { AdminRbacSettings, PaymentSettings, PlatformSettings } from "@/lib/settings/types";
 export const dynamic = "force-dynamic";
+
+function hasDedicatedSettingsPersistence() {
+  return Boolean(process.env.SETTINGS_DATABASE_URL);
+}
+
+async function flushStoreAfterSettingsSave(store: Awaited<ReturnType<typeof getHydratedStore>>) {
+  try {
+    await store.flushPersistence();
+  } catch (error) {
+    if (!hasDedicatedSettingsPersistence()) throw error;
+    console.warn("Settings saved, but app-store snapshot persistence failed.", error);
+  }
+}
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -96,7 +110,8 @@ export async function PATCH(request: Request) {
       preserveSecrets: true,
     });
     try {
-      await store.flushPersistence();
+      await savePersistedSettings(store.getPlatformSettings(), settings);
+      await flushStoreAfterSettingsSave(store);
     } catch {
       return problem(500, "PERSISTENCE_FAILED", "Settings could not be saved to the production database.");
     }
@@ -108,7 +123,8 @@ export async function PATCH(request: Request) {
     preserveSecrets: true,
   });
   try {
-    await store.flushPersistence();
+    await savePersistedSettings(settings, store.getPaymentSettings());
+    await flushStoreAfterSettingsSave(store);
   } catch {
     return problem(500, "PERSISTENCE_FAILED", "Settings could not be saved to the production database.");
   }

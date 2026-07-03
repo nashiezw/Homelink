@@ -29,6 +29,10 @@ function isStrictProduction() {
   return process.env.HOMELINK_STRICT_PRODUCTION === "true";
 }
 
+function isSettingsDatabaseEnabled() {
+  return Boolean(process.env.SETTINGS_DATABASE_URL);
+}
+
 function hydrateSettings(settings: PersistedSettings): PersistedSettings {
   const base = defaults();
   return {
@@ -90,10 +94,9 @@ async function migrateFileToDatabase(file: PersistedSettings) {
 }
 
 export async function loadPersistedSettings(): Promise<PersistedSettings | null> {
-  if (isStrictProduction()) return null;
-
-  const fromDb = await loadFromDatabase();
+  const fromDb = isSettingsDatabaseEnabled() ? await loadFromDatabase() : null;
   if (fromDb) return fromDb;
+  if (isStrictProduction()) return null;
 
   const fromFile = await (async () => {
     try {
@@ -113,10 +116,9 @@ export async function loadPersistedSettings(): Promise<PersistedSettings | null>
 }
 
 export function loadPersistedSettingsSync(): PersistedSettings | null {
-  if (isStrictProduction()) return null;
-
-  const fromDb = loadFromDatabaseSync();
+  const fromDb = isSettingsDatabaseEnabled() ? loadFromDatabaseSync() : null;
   if (fromDb) return fromDb;
+  if (isStrictProduction()) return null;
 
   const fromFile = loadFromFile();
   if (fromFile) {
@@ -133,13 +135,16 @@ export async function savePersistedSettings(platformSettings: PlatformSettings, 
     paymentSettings,
     savedAt: new Date().toISOString(),
   };
-  if (isStrictProduction()) {
-    return;
-  }
-
   try {
-    await saveToDatabase(platformSettings, paymentSettings);
+    if (isSettingsDatabaseEnabled()) {
+      await saveToDatabase(platformSettings, paymentSettings);
+    } else if (isStrictProduction()) {
+      return;
+    }
   } catch {
+    if (isStrictProduction()) {
+      throw new Error("Settings database persistence failed.");
+    }
     await mkdir(DATA_DIR, { recursive: true });
     await writeFile(SETTINGS_FILE, JSON.stringify(payload, null, 2), "utf8");
     return;
@@ -158,9 +163,6 @@ export function savePersistedSettingsSync(platformSettings: PlatformSettings, pa
     paymentSettings,
     savedAt: new Date().toISOString(),
   };
-  if (isStrictProduction()) {
-    return;
-  }
   if (!isStrictProduction()) {
     mkdirSync(DATA_DIR, { recursive: true });
     writeFileSync(SETTINGS_FILE, JSON.stringify(payload, null, 2), "utf8");
