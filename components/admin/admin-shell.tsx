@@ -326,101 +326,105 @@ export function AdminShell({ children }: { children: ReactNode }) {
             </div>
           )}
 
-          <header className="sticky top-0 z-30 border-b border-white/[0.06] bg-slate-950/80 backdrop-blur-2xl">
-            <div className="flex flex-wrap items-center gap-3 px-4 py-4 lg:px-8">
-              <button
-                type="button"
-                className="inline-flex size-10 items-center justify-center rounded-xl border border-white/10 text-slate-300 lg:hidden"
-                onClick={() => setMobileOpen(true)}
-                aria-label="Open navigation"
-              >
-                <Menu className="size-5" />
-              </button>
-              <div className="min-w-0 flex-1">
-                <AdminBreadcrumb
-                  items={[
-                    { label: "Admin", href: "/dashboard/admin?tab=overview" },
-                    { label: findNavGroup(activeTab)?.label ?? "Platform", href: undefined },
-                    { label: getAdminTabLabel(activeTab) },
-                  ]}
-                />
-                <p className="mt-1 truncate text-lg font-bold text-white">{getAdminTabLabel(activeTab)}</p>
+          <header className="sticky top-0 z-30 border-b border-white/[0.06] bg-slate-950/90 backdrop-blur-2xl">
+            <div className="grid gap-3 px-4 py-3 sm:px-5 lg:flex lg:items-center lg:px-8 lg:py-4">
+              <div className="grid min-w-0 grid-cols-[2.5rem_minmax(0,1fr)_2.5rem] items-center gap-3 lg:contents">
+                <button
+                  type="button"
+                  className="inline-flex size-10 items-center justify-center rounded-xl border border-white/10 text-slate-300 lg:hidden"
+                  onClick={() => setMobileOpen(true)}
+                  aria-label="Open navigation"
+                >
+                  <Menu className="size-5" />
+                </button>
+                <div className="min-w-0 lg:order-1 lg:flex-1">
+                  <div className="hidden sm:block">
+                    <AdminBreadcrumb
+                      items={[
+                        { label: "Admin", href: "/dashboard/admin?tab=overview" },
+                        { label: findNavGroup(activeTab)?.label ?? "Platform", href: undefined },
+                        { label: getAdminTabLabel(activeTab) },
+                      ]}
+                    />
+                  </div>
+                  <p className="truncate text-base font-bold text-white sm:mt-1 sm:text-lg lg:text-lg">{getAdminTabLabel(activeTab)}</p>
+                </div>
+                <div className="relative justify-self-end lg:order-4">
+                  <button
+                    type="button"
+                    onClick={() => void toggleNotifications()}
+                    className="relative inline-flex size-10 items-center justify-center rounded-xl border border-white/10 text-slate-300 transition hover:border-emerald-500/30 hover:bg-emerald-500/5 hover:text-white"
+                    aria-label="Open notifications"
+                    aria-expanded={notificationsOpen}
+                  >
+                    <Bell className="size-4" />
+                    {summary && summary.pendingListings + summary.openTickets + summary.pendingVerification + summary.openPmRequests > 0 && (
+                      <span className="absolute -right-0.5 -top-0.5 flex size-4 items-center justify-center rounded-full bg-amber-500 text-[9px] font-bold text-black">
+                        {Math.min(9, summary.pendingListings + summary.openTickets + summary.pendingVerification + summary.openPmRequests)}
+                      </span>
+                    )}
+                  </button>
+                  {notificationsOpen && (
+                    <div className="absolute right-0 top-12 z-50 w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-white/10 bg-slate-950 shadow-2xl shadow-black/50">
+                      <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
+                        <div>
+                          <p className="text-sm font-bold text-white">Notifications</p>
+                          <p className="text-xs text-slate-500">Live admin work queue</p>
+                        </div>
+                        <button type="button" onClick={() => setNotificationsOpen(false)} className="rounded-lg p-1 text-slate-500 hover:bg-white/5 hover:text-white" aria-label="Close notifications">
+                          <X className="size-4" />
+                        </button>
+                      </div>
+                      {summary && (
+                        <div className="grid grid-cols-2 gap-2 border-b border-white/10 p-3">
+                          <NotificationShortcut label="Listings" value={summary.pendingListings} onClick={() => navigate("properties")} />
+                          <NotificationShortcut label="Tickets" value={summary.openTickets} onClick={() => navigate("support")} />
+                          <NotificationShortcut label="Verifications" value={summary.pendingVerification} onClick={() => navigate("verification")} />
+                          <NotificationShortcut label="PM requests" value={summary.openPmRequests} onClick={() => navigate("property-management")} />
+                        </div>
+                      )}
+                      <div className="max-h-80 overflow-y-auto p-2">
+                        {notifications.slice(0, 8).map((notification) => (
+                          <button
+                            key={notification.id}
+                            type="button"
+                            onClick={() => {
+                              navigate(notification.subject.toLowerCase().includes("pm") || notification.subject.toLowerCase().includes("property management") ? "property-management" : "overview");
+                              setNotificationsOpen(false);
+                            }}
+                            className="w-full rounded-xl px-3 py-2.5 text-left transition hover:bg-white/[0.04]"
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <p className="text-sm font-semibold text-white">{notification.subject}</p>
+                              <span className="shrink-0 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold uppercase text-emerald-300">{notification.channel}</span>
+                            </div>
+                            <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-slate-400">{notification.body}</p>
+                            <p className="mt-1 text-[10px] text-slate-600">{new Date(notification.createdAt).toLocaleString()}</p>
+                          </button>
+                        ))}
+                        {notifications.length === 0 && <p className="px-3 py-6 text-center text-sm text-slate-500">No notifications yet.</p>}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
               <button
                 type="button"
                 onClick={() => setPaletteOpen(true)}
-                className="flex max-w-md flex-1 items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2.5 text-sm text-slate-400 transition hover:border-emerald-500/30 hover:bg-emerald-500/5"
+                className="flex min-w-0 items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2.5 text-sm text-slate-400 transition hover:border-emerald-500/30 hover:bg-emerald-500/5 lg:order-2 lg:max-w-md lg:flex-1"
               >
                 <Search className="size-4 shrink-0" />
                 <span className="truncate">Search modules, actions...</span>
                 <span className="ml-auto hidden rounded-md border border-white/10 px-1.5 py-0.5 text-[10px] sm:inline">Ctrl+K</span>
               </button>
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => void toggleNotifications()}
-                  className="relative inline-flex size-10 items-center justify-center rounded-xl border border-white/10 text-slate-300 transition hover:border-emerald-500/30 hover:bg-emerald-500/5 hover:text-white"
-                  aria-label="Open notifications"
-                  aria-expanded={notificationsOpen}
-                >
-                  <Bell className="size-4" />
-                  {summary && summary.pendingListings + summary.openTickets + summary.pendingVerification + summary.openPmRequests > 0 && (
-                    <span className="absolute -right-0.5 -top-0.5 flex size-4 items-center justify-center rounded-full bg-amber-500 text-[9px] font-bold text-black">
-                      {Math.min(9, summary.pendingListings + summary.openTickets + summary.pendingVerification + summary.openPmRequests)}
-                    </span>
-                  )}
-                </button>
-                {notificationsOpen && (
-                  <div className="absolute right-0 top-12 z-50 w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-white/10 bg-slate-950 shadow-2xl shadow-black/50">
-                    <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
-                      <div>
-                        <p className="text-sm font-bold text-white">Notifications</p>
-                        <p className="text-xs text-slate-500">Live admin work queue</p>
-                      </div>
-                      <button type="button" onClick={() => setNotificationsOpen(false)} className="rounded-lg p-1 text-slate-500 hover:bg-white/5 hover:text-white" aria-label="Close notifications">
-                        <X className="size-4" />
-                      </button>
-                    </div>
-                    {summary && (
-                      <div className="grid grid-cols-2 gap-2 border-b border-white/10 p-3">
-                        <NotificationShortcut label="Listings" value={summary.pendingListings} onClick={() => navigate("properties")} />
-                        <NotificationShortcut label="Tickets" value={summary.openTickets} onClick={() => navigate("support")} />
-                        <NotificationShortcut label="Verifications" value={summary.pendingVerification} onClick={() => navigate("verification")} />
-                        <NotificationShortcut label="PM requests" value={summary.openPmRequests} onClick={() => navigate("property-management")} />
-                      </div>
-                    )}
-                    <div className="max-h-80 overflow-y-auto p-2">
-                      {notifications.slice(0, 8).map((notification) => (
-                        <button
-                          key={notification.id}
-                          type="button"
-                          onClick={() => {
-                            navigate(notification.subject.toLowerCase().includes("pm") || notification.subject.toLowerCase().includes("property management") ? "property-management" : "overview");
-                            setNotificationsOpen(false);
-                          }}
-                          className="w-full rounded-xl px-3 py-2.5 text-left transition hover:bg-white/[0.04]"
-                        >
-                          <div className="flex items-start justify-between gap-3">
-                            <p className="text-sm font-semibold text-white">{notification.subject}</p>
-                            <span className="shrink-0 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold uppercase text-emerald-300">{notification.channel}</span>
-                          </div>
-                          <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-slate-400">{notification.body}</p>
-                          <p className="mt-1 text-[10px] text-slate-600">{new Date(notification.createdAt).toLocaleString()}</p>
-                        </button>
-                      ))}
-                      {notifications.length === 0 && <p className="px-3 py-6 text-center text-sm text-slate-500">No notifications yet.</p>}
-                    </div>
-                  </div>
-                )}
-              </div>
-              <div className="hidden items-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-xs sm:flex">
+              <div className="hidden items-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-xs xl:order-3 xl:flex">
                 <span className="size-2 animate-pulse rounded-full bg-emerald-400" />
                 <span className="font-medium text-emerald-300">Live platform</span>
               </div>
             </div>
           </header>
 
-          <main className="flex-1 p-4 lg:p-8 xl:p-10">{children}</main>
+          <main className="flex-1 px-4 py-5 sm:px-5 lg:p-8 xl:p-10">{children}</main>
         </div>
       </div>
 
@@ -548,5 +552,3 @@ function NavButton({
     </button>
   );
 }
-
-

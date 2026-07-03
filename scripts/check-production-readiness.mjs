@@ -49,6 +49,17 @@ for (const name of ["CLOUDINARY_CLOUD_NAME", "CLOUDINARY_API_KEY", "CLOUDINARY_A
   if (!has(name)) failures.push(`${name} is required for durable production media uploads.`);
 }
 
+const smtpPassConfigured = has("SMTP_PASS") || has("SMTP_PASSWORD") || has("RESEND_API_KEY");
+if (!has("SMTP_HOST")) failures.push("SMTP_HOST is required for transactional email.");
+if (!has("SMTP_USER")) failures.push("SMTP_USER is required for transactional email.");
+if (!smtpPassConfigured) failures.push("SMTP_PASS, SMTP_PASSWORD, or RESEND_API_KEY is required for transactional email.");
+if (!has("SMTP_FROM") && !has("EMAIL_FROM") && !has("RESEND_FROM") && !has("FROM_EMAIL")) {
+  failures.push("SMTP_FROM, EMAIL_FROM, RESEND_FROM, or FROM_EMAIL must be a verified sender address.");
+}
+if ((process.env.SMTP_HOST ?? "").includes("resend.com") && process.env.SMTP_USER !== "resend") {
+  failures.push("Resend SMTP requires SMTP_USER=resend.");
+}
+
 const gatewaySecrets = [
   "STRIPE_SECRET_KEY",
   "STRIPE_WEBHOOK_SECRET",

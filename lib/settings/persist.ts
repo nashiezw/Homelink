@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import { mkdir, readFile, writeFile } from "fs/promises";
 import path from "path";
-import { defaultPaymentSettings, defaultPlatformSettings } from "@/lib/settings/defaults";
+import { defaultPaymentSettings, defaultPlatformSettings, getPlatformIntegrationEnvOverrides } from "@/lib/settings/defaults";
 import { mergePaymentSettings, mergePlatformSettings } from "@/lib/settings/merge";
 import type { PaymentSettings, PlatformSettings } from "@/lib/settings/types";
 
@@ -38,8 +38,15 @@ function isSettingsDatabaseEnabled() {
 
 function hydrateSettings(settings: PersistedSettings): PersistedSettings {
   const base = defaults();
+  const platformSettings = mergePlatformSettings(base.platformSettings, settings.platformSettings);
   return {
-    platformSettings: mergePlatformSettings(base.platformSettings, settings.platformSettings),
+    platformSettings: {
+      ...platformSettings,
+      integrations: {
+        ...platformSettings.integrations,
+        ...getPlatformIntegrationEnvOverrides(),
+      },
+    },
     paymentSettings: mergePaymentSettings(base.paymentSettings, settings.paymentSettings),
     savedAt: settings.savedAt,
   };

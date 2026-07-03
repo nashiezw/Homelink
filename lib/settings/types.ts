@@ -173,6 +173,7 @@ export type PlatformSettings = {
     smtpPort: number;
     smtpUser: string;
     smtpPass: string;
+    smtpFrom: string;
     analyticsId: string;
     cdnUrl: string;
   };

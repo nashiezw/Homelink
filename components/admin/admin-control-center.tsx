@@ -80,8 +80,8 @@ const SECTION_BY_TAB: Partial<Record<AdminTab, string>> = {
 
 function Panel({ title, children, className }: { title: string; children: React.ReactNode; className?: string }) {
   return (
-    <section className={`rounded-xl border border-white/10 bg-slate-900/60 p-5 ${className ?? ""}`}>
-      <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-slate-400">{title}</h2>
+    <section className={`rounded-xl border border-white/10 bg-slate-900/60 p-4 sm:p-5 ${className ?? ""}`}>
+      <h2 className="mb-4 break-words text-sm font-semibold uppercase tracking-wider text-slate-400">{title}</h2>
       {children}
     </section>
   );
@@ -130,7 +130,7 @@ export function AdminControlCenter() {
   const o = data.overview;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 sm:space-y-8">
       <AdminPageHeader
         eyebrow="HomeLink Zimbabwe · Enterprise Control Centre"
         title={getAdminTabLabel(tab)}

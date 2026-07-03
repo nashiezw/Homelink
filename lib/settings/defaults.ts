@@ -3,6 +3,42 @@ import { buildDefaultGeo } from "@/lib/settings/geo";
 
 const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://homelinkzim.co.zw";
 
+function env(name: string) {
+  return process.env[name]?.trim() ?? "";
+}
+
+function envNumber(name: string, fallback: number) {
+  const value = Number(env(name));
+  return Number.isFinite(value) && value > 0 ? value : fallback;
+}
+
+export function getPlatformIntegrationEnvOverrides(): Partial<PlatformSettings["integrations"]> {
+  const overrides: Partial<PlatformSettings["integrations"]> = {};
+  const googleMapsKey = env("GOOGLE_MAPS_API_KEY") || env("NEXT_PUBLIC_GOOGLE_MAPS_API_KEY");
+  const smtpPass = env("SMTP_PASS") || env("SMTP_PASSWORD") || env("RESEND_API_KEY");
+  const smtpFrom = env("SMTP_FROM") || env("EMAIL_FROM") || env("RESEND_FROM") || env("FROM_EMAIL");
+
+  if (googleMapsKey) overrides.googleMapsKey = googleMapsKey;
+  if (env("CLOUDINARY_CLOUD_NAME")) overrides.cloudinaryCloud = env("CLOUDINARY_CLOUD_NAME");
+  if (env("CLOUDINARY_API_KEY")) overrides.cloudinaryKey = env("CLOUDINARY_API_KEY");
+  if (env("CLOUDINARY_API_SECRET")) overrides.cloudinarySecret = env("CLOUDINARY_API_SECRET");
+  if (env("FIREBASE_PROJECT_ID")) overrides.firebaseProjectId = env("FIREBASE_PROJECT_ID");
+  if (env("NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY")) overrides.clerkPublishableKey = env("NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY");
+  if (env("SMTP_HOST")) overrides.smtpHost = env("SMTP_HOST");
+  if (env("SMTP_PORT")) overrides.smtpPort = envNumber("SMTP_PORT", 587);
+  if (env("SMTP_USER")) overrides.smtpUser = env("SMTP_USER");
+  if (smtpPass) {
+    overrides.smtpPass = smtpPass;
+    if (!overrides.smtpHost && env("RESEND_API_KEY")) overrides.smtpHost = "smtp.resend.com";
+    if (!overrides.smtpUser && env("RESEND_API_KEY")) overrides.smtpUser = "resend";
+  }
+  if (smtpFrom) overrides.smtpFrom = smtpFrom;
+  if (env("NEXT_PUBLIC_ANALYTICS_ID")) overrides.analyticsId = env("NEXT_PUBLIC_ANALYTICS_ID");
+  if (env("NEXT_PUBLIC_CDN_URL")) overrides.cdnUrl = env("NEXT_PUBLIC_CDN_URL");
+
+  return overrides;
+}
+
 function gateway(
   partial: Omit<PaymentGatewayConfig, "webhookUrl" | "callbackUrl" | "successUrl" | "failedUrl"> &
     Partial<Pick<PaymentGatewayConfig, "webhookUrl" | "callbackUrl" | "successUrl" | "failedUrl">>,
@@ -282,18 +318,19 @@ export const defaultPlatformSettings: PlatformSettings = {
     },
   },
   integrations: {
-    googleMapsKey: "",
-    cloudinaryCloud: "",
-    cloudinaryKey: "",
-    cloudinarySecret: "",
-    firebaseProjectId: "",
-    clerkPublishableKey: "",
-    smtpHost: "",
-    smtpPort: 587,
-    smtpUser: "",
-    smtpPass: "",
-    analyticsId: "",
-    cdnUrl: "",
+    googleMapsKey: env("GOOGLE_MAPS_API_KEY") || env("NEXT_PUBLIC_GOOGLE_MAPS_API_KEY"),
+    cloudinaryCloud: env("CLOUDINARY_CLOUD_NAME"),
+    cloudinaryKey: env("CLOUDINARY_API_KEY"),
+    cloudinarySecret: env("CLOUDINARY_API_SECRET"),
+    firebaseProjectId: env("FIREBASE_PROJECT_ID"),
+    clerkPublishableKey: env("NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY"),
+    smtpHost: env("SMTP_HOST") || (env("RESEND_API_KEY") ? "smtp.resend.com" : ""),
+    smtpPort: envNumber("SMTP_PORT", 587),
+    smtpUser: env("SMTP_USER") || (env("RESEND_API_KEY") ? "resend" : ""),
+    smtpPass: env("SMTP_PASS") || env("SMTP_PASSWORD") || env("RESEND_API_KEY"),
+    smtpFrom: env("SMTP_FROM") || env("EMAIL_FROM") || env("RESEND_FROM") || env("FROM_EMAIL") || "support@homelinkzim.co.zw",
+    analyticsId: env("NEXT_PUBLIC_ANALYTICS_ID"),
+    cdnUrl: env("NEXT_PUBLIC_CDN_URL"),
   },
   ai: {
     searchEnabled: true,

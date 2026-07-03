@@ -201,11 +201,12 @@ export function audit(
 }
 
 export function getPlatformSettings(state: AdminPlatformState) {
+  const settings = mergePlatformSettings(defaultPlatformSettings, state.platformSettings);
   return {
-    ...state.platformSettings,
+    ...settings,
     enquiries: {
       ...defaultPlatformSettings.enquiries,
-      ...state.platformSettings.enquiries,
+      ...settings.enquiries,
     },
   };
 }

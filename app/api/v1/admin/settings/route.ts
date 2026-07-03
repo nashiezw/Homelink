@@ -89,6 +89,14 @@ export async function PATCH(request: Request) {
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipient)) {
         return ok({ ok: false, message: "Enter a valid recipient email address for the SMTP test." });
       }
+      console.info("Admin SMTP test requested.", {
+        recipient,
+        host: liveSettings.integrations.smtpHost || "<empty>",
+        port: liveSettings.integrations.smtpPort,
+        userConfigured: Boolean(liveSettings.integrations.smtpUser),
+        passConfigured: Boolean(liveSettings.integrations.smtpPass),
+        from: liveSettings.integrations.smtpFrom || "<empty>",
+      });
       const result = await sendSmtpTestEmail(liveSettings.integrations, recipient);
       return ok(result);
     }

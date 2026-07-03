@@ -662,6 +662,7 @@ smtpHost = smtp.resend.com
 smtpPort = 587
 smtpUser = resend
 smtpPass = your Resend API key
+smtpFrom = a sender address on your verified Resend domain, for example support@homelinkzim.co.zw
 ```
 
 If the test fails:
