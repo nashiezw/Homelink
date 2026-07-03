@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="540" viewBox="0 0 960 540" role="img" aria-label="Cloudinary API keys guide">
+  <rect width="960" height="540" fill="#f8fafc"/>
+  <rect x="38" y="36" width="884" height="468" rx="18" fill="#fff" stroke="#cbd5e1"/>
+  <text x="72" y="84" font-family="Arial" font-size="28" font-weight="700" fill="#0f172a">Cloudinary Console</text>
+  <text x="72" y="118" font-family="Arial" font-size="16" fill="#475569">Dashboard -> Product Environment Credentials</text>
+  <rect x="90" y="160" width="780" height="260" rx="12" fill="#eff6ff" stroke="#93c5fd"/>
+  <text x="126" y="210" font-family="Arial" font-size="20" font-weight="700" fill="#1e3a8a">Copy these three values</text>
+  <text x="126" y="260" font-family="Arial" font-size="16" fill="#1e40af">Cloud name</text>
+  <rect x="300" y="238" width="350" height="34" rx="6" fill="#fff" stroke="#60a5fa"/>
+  <text x="318" y="261" font-family="Arial" font-size="14" fill="#0f172a">your_cloud_name</text>
+  <text x="126" y="315" font-family="Arial" font-size="16" fill="#1e40af">API key</text>
+  <rect x="300" y="293" width="350" height="34" rx="6" fill="#fff" stroke="#60a5fa"/>
+  <text x="318" y="316" font-family="Arial" font-size="14" fill="#0f172a">123456789012345</text>
+  <text x="126" y="370" font-family="Arial" font-size="16" fill="#1e40af">API secret</text>
+  <rect x="300" y="348" width="350" height="34" rx="6" fill="#fff" stroke="#60a5fa"/>
+  <text x="318" y="371" font-family="Arial" font-size="14" fill="#0f172a">••••••••••••••••</text>
+  <text x="690" y="369" font-family="Arial" font-size="14" fill="#475569">Never paste this into Git.</text>
+</svg>

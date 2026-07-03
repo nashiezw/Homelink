@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="540" viewBox="0 0 960 540" role="img" aria-label="Vercel environment variable screen guide">
+  <rect width="960" height="540" fill="#f8fafc"/>
+  <rect x="32" y="28" width="896" height="484" rx="18" fill="#fff" stroke="#cbd5e1"/>
+  <text x="64" y="78" font-family="Arial" font-size="28" font-weight="700" fill="#0f172a">Vercel Project Settings</text>
+  <text x="64" y="112" font-family="Arial" font-size="16" fill="#475569">Project -> Settings -> Environment Variables</text>
+  <rect x="64" y="145" width="220" height="320" rx="10" fill="#f1f5f9" stroke="#cbd5e1"/>
+  <text x="88" y="185" font-family="Arial" font-size="18" font-weight="700" fill="#0f172a">Left menu</text>
+  <text x="88" y="228" font-family="Arial" font-size="16" fill="#64748b">General</text>
+  <rect x="82" y="252" width="178" height="42" rx="8" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="100" y="279" font-family="Arial" font-size="16" font-weight="700" fill="#1d4ed8">Environment Variables</text>
+  <text x="88" y="332" font-family="Arial" font-size="16" fill="#64748b">Domains</text>
+  <text x="88" y="372" font-family="Arial" font-size="16" fill="#64748b">Git</text>
+  <rect x="330" y="145" width="540" height="320" rx="10" fill="#fff" stroke="#cbd5e1"/>
+  <text x="360" y="190" font-family="Arial" font-size="20" font-weight="700" fill="#0f172a">Add Environment Variable</text>
+  <text x="360" y="228" font-family="Arial" font-size="15" fill="#475569">Name</text>
+  <rect x="360" y="240" width="220" height="38" rx="6" fill="#f8fafc" stroke="#94a3b8"/>
+  <text x="374" y="265" font-family="Arial" font-size="14" fill="#0f172a">NEXT_PUBLIC_APP_URL</text>
+  <text x="610" y="228" font-family="Arial" font-size="15" fill="#475569">Value</text>
+  <rect x="610" y="240" width="220" height="38" rx="6" fill="#f8fafc" stroke="#94a3b8"/>
+  <text x="624" y="265" font-family="Arial" font-size="14" fill="#0f172a">https://homelinkzim.co.zw</text>
+  <text x="360" y="318" font-family="Arial" font-size="15" fill="#475569">Environment</text>
+  <rect x="360" y="332" width="118" height="34" rx="17" fill="#dcfce7" stroke="#16a34a"/>
+  <text x="386" y="354" font-family="Arial" font-size="14" font-weight="700" fill="#166534">Production</text>
+  <rect x="668" y="390" width="162" height="44" rx="8" fill="#111827"/>
+  <text x="714" y="418" font-family="Arial" font-size="16" font-weight="700" fill="#fff">Save</text>
+  <path d="M284 273 L330 273" stroke="#2563eb" stroke-width="4" marker-end="url(#arrow)"/>
+  <defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#2563eb"/></marker></defs>
+</svg>

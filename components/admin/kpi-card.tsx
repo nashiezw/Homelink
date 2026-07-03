@@ -1,0 +1,63 @@
+"use client";
+
+import type { LucideIcon } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+type KpiCardProps = {
+  label: string;
+  value: string | number;
+  change?: string;
+  icon: LucideIcon;
+  tone?: "default" | "warning" | "danger" | "success";
+  compact?: boolean;
+};
+
+const toneStyles = {
+  default: {
+    card: "from-cyan-500/[0.12] via-slate-900/80 to-slate-950/90 border-cyan-500/15",
+    icon: "bg-cyan-500/15 text-cyan-300",
+    change: "text-cyan-400/90",
+  },
+  warning: {
+    card: "from-amber-500/[0.12] via-slate-900/80 to-slate-950/90 border-amber-500/15",
+    icon: "bg-amber-500/15 text-amber-300",
+    change: "text-amber-400/90",
+  },
+  danger: {
+    card: "from-red-500/[0.12] via-slate-900/80 to-slate-950/90 border-red-500/15",
+    icon: "bg-red-500/15 text-red-300",
+    change: "text-red-400/90",
+  },
+  success: {
+    card: "from-emerald-500/[0.12] via-slate-900/80 to-slate-950/90 border-emerald-500/15",
+    icon: "bg-emerald-500/15 text-emerald-300",
+    change: "text-emerald-400/90",
+  },
+};
+
+export function AdminKpiCard({ label, value, change, icon: Icon, tone = "default", compact }: KpiCardProps) {
+  const s = toneStyles[tone];
+  return (
+    <div
+      className={cn(
+        "relative overflow-hidden rounded-2xl border bg-gradient-to-br p-5 shadow-[0_1px_0_0_rgba(255,255,255,0.04)_inset]",
+        s.card,
+        compact && "p-4",
+      )}
+    >
+      <div className="pointer-events-none absolute -right-6 -top-6 size-24 rounded-full bg-white/[0.03] blur-2xl" />
+      <div className="relative flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">{label}</p>
+          <p className={cn("mt-2 font-bold tracking-tight text-white tabular-nums", compact ? "text-2xl" : "text-3xl")}>
+            {value}
+          </p>
+          {change && <p className={cn("mt-1.5 text-xs font-medium", s.change)}>{change}</p>}
+        </div>
+        <span className={cn("flex size-11 shrink-0 items-center justify-center rounded-xl", s.icon)}>
+          <Icon className="size-5" />
+        </span>
+      </div>
+    </div>
+  );
+}

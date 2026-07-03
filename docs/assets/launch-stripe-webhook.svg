@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="540" viewBox="0 0 960 540" role="img" aria-label="Stripe webhook endpoint guide">
+  <rect width="960" height="540" fill="#f8fafc"/>
+  <rect x="38" y="36" width="884" height="468" rx="18" fill="#fff" stroke="#cbd5e1"/>
+  <text x="72" y="84" font-family="Arial" font-size="28" font-weight="700" fill="#0f172a">Stripe Dashboard</text>
+  <text x="72" y="118" font-family="Arial" font-size="16" fill="#475569">Developers -> Webhooks -> Add endpoint</text>
+  <rect x="82" y="158" width="236" height="278" rx="10" fill="#f1f5f9" stroke="#cbd5e1"/>
+  <text x="106" y="200" font-family="Arial" font-size="18" font-weight="700" fill="#0f172a">Left menu</text>
+  <text x="106" y="244" font-family="Arial" font-size="16" fill="#64748b">API keys</text>
+  <rect x="100" y="268" width="164" height="42" rx="8" fill="#ede9fe" stroke="#7c3aed"/>
+  <text x="126" y="295" font-family="Arial" font-size="16" font-weight="700" fill="#5b21b6">Webhooks</text>
+  <rect x="360" y="158" width="500" height="278" rx="10" fill="#fff" stroke="#cbd5e1"/>
+  <text x="392" y="204" font-family="Arial" font-size="20" font-weight="700" fill="#0f172a">Add endpoint</text>
+  <text x="392" y="246" font-family="Arial" font-size="15" fill="#475569">Endpoint URL</text>
+  <rect x="392" y="260" width="410" height="38" rx="6" fill="#f8fafc" stroke="#94a3b8"/>
+  <text x="406" y="284" font-family="Arial" font-size="13" fill="#0f172a">https://homelinkzim.co.zw/api/v1/payments/webhooks/stripe</text>
+  <text x="392" y="334" font-family="Arial" font-size="15" fill="#475569">Events</text>
+  <rect x="392" y="348" width="220" height="34" rx="6" fill="#f8fafc" stroke="#94a3b8"/>
+  <text x="408" y="370" font-family="Arial" font-size="14" fill="#0f172a">checkout/payment events</text>
+  <rect x="650" y="376" width="152" height="42" rx="8" fill="#4c1d95"/>
+  <text x="684" y="402" font-family="Arial" font-size="15" font-weight="700" fill="#fff">Reveal secret</text>
+</svg>

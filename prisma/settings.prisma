@@ -1,0 +1,17 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../lib/generated/settings-client"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("SETTINGS_DATABASE_URL")
+}
+
+model PlatformSettingsRecord {
+  id        String   @id @default("singleton")
+  platform  String
+  payment   String
+  savedAt   DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

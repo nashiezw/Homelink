@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800">
+  <rect width="1200" height="800" fill="#064e3b"/>
+  <path d="M0 560 C260 430 420 670 690 510 C870 405 980 455 1200 345 L1200 800 L0 800Z" fill="#10b981" opacity=".72"/>
+  <rect x="120" y="120" width="420" height="360" rx="34" fill="#f8fafc"/>
+  <rect x="620" y="150" width="390" height="80" rx="24" fill="#ccfbf1"/>
+  <rect x="620" y="270" width="300" height="80" rx="24" fill="#a7f3d0"/>
+  <rect x="620" y="390" width="350" height="80" rx="24" fill="#6ee7b7"/>
+  <circle cx="260" cy="260" r="78" fill="#22d3ee"/>
+  <circle cx="390" cy="270" r="68" fill="#f59e0b"/>
+  <text x="120" y="690" font-family="Arial, sans-serif" font-size="58" font-weight="800" fill="#fff">Verified rooms. Better matches.</text>
+</svg>

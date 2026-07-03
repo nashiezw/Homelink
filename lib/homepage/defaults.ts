@@ -1,0 +1,40 @@
+import type { HomeTestimonial } from "@/lib/homepage/types";
+
+export const defaultHomepageTestimonials: HomeTestimonial[] = [
+  {
+    id: "t1",
+    name: "Rudo M.",
+    photoInitial: "R",
+    photoUrl: "/images/roommates/portrait-rudo.jpg",
+    rating: 5,
+    quote: "I could compare water, solar, and location before calling anyone. The trust score made choosing easy.",
+    propertyTitle: "Garden cottage in Avondale",
+    location: "Harare",
+    transactionType: "Rental",
+    date: "March 2026",
+  },
+  {
+    id: "t2",
+    name: "Tinashe K.",
+    photoInitial: "T",
+    photoUrl: "/images/roommates/portrait-taku.jpg",
+    rating: 5,
+    quote: "The search understood my budget and showed rooms near MSU transport. Much better than Facebook groups.",
+    propertyTitle: "Student room near MSU",
+    location: "Gweru",
+    transactionType: "Rental",
+    date: "February 2026",
+  },
+  {
+    id: "t3",
+    name: "Ndlovu Estates",
+    photoInitial: "N",
+    photoUrl: "/images/roommates/portrait-chipo.jpg",
+    rating: 5,
+    quote: "HomeLink made enquiries feel organised instead of chaotic. We filled our Hillside rental in under two weeks.",
+    propertyTitle: "Family home in Hillside",
+    location: "Bulawayo",
+    transactionType: "Rental",
+    date: "January 2026",
+  },
+];

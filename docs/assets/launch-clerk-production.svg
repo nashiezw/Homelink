@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="540" viewBox="0 0 960 540" role="img" aria-label="Clerk production instance guide">
+  <rect width="960" height="540" fill="#f8fafc"/>
+  <rect x="40" y="36" width="880" height="468" rx="18" fill="#fff" stroke="#cbd5e1"/>
+  <text x="72" y="84" font-family="Arial" font-size="28" font-weight="700" fill="#0f172a">Clerk Dashboard</text>
+  <text x="72" y="118" font-family="Arial" font-size="16" fill="#475569">Instance dropdown -> Create production instance</text>
+  <rect x="90" y="160" width="330" height="260" rx="12" fill="#f1f5f9" stroke="#cbd5e1"/>
+  <text x="120" y="205" font-family="Arial" font-size="18" font-weight="700" fill="#0f172a">Top bar</text>
+  <rect x="120" y="238" width="236" height="44" rx="8" fill="#fef3c7" stroke="#d97706"/>
+  <text x="144" y="266" font-family="Arial" font-size="16" font-weight="700" fill="#92400e">Development ▼</text>
+  <path d="M356 260 L486 260" stroke="#d97706" stroke-width="4" marker-end="url(#arrow)"/>
+  <rect x="500" y="160" width="330" height="260" rx="12" fill="#fff7ed" stroke="#fdba74"/>
+  <text x="530" y="205" font-family="Arial" font-size="18" font-weight="700" fill="#7c2d12">Dropdown</text>
+  <rect x="530" y="238" width="246" height="44" rx="8" fill="#ea580c"/>
+  <text x="552" y="266" font-family="Arial" font-size="16" font-weight="700" fill="#fff">Create production instance</text>
+  <text x="530" y="330" font-family="Arial" font-size="15" fill="#7c2d12">Then copy pk_live and sk_live keys.</text>
+  <defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#d97706"/></marker></defs>
+</svg>

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 1100">
+  <rect width="900" height="1100" fill="#0f172a"/>
+  <rect x="80" y="110" width="740" height="780" rx="44" fill="#f8fafc"/>
+  <path d="M450 210 L650 300 L620 520 C595 690 520 780 450 825 C380 780 305 690 280 520 L250 300Z" fill="#059669"/>
+  <path d="M365 505 L425 565 L555 405" fill="none" stroke="#fff" stroke-width="42" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="180" y="930" width="540" height="54" rx="27" fill="#34d399"/>
+  <text x="160" y="1040" font-family="Arial, sans-serif" font-size="54" font-weight="800" fill="#fff">Trust comes first</text>
+</svg>

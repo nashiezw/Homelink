@@ -1,0 +1,16 @@
+.next
+.next-*.log
+node_modules
+dist
+coverage
+.env
+.env.local
+.env.*.local
+*.tsbuildinfo
+*.log
+build-log.txt
+prisma/dev.db
+.data
+lib/generated
+.npm-cache
+tmp

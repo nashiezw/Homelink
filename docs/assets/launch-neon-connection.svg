@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="540" viewBox="0 0 960 540" role="img" aria-label="Neon database connection string guide">
+  <rect width="960" height="540" fill="#f8fafc"/>
+  <rect x="40" y="34" width="880" height="472" rx="18" fill="#fff" stroke="#cbd5e1"/>
+  <text x="72" y="82" font-family="Arial" font-size="28" font-weight="700" fill="#0f172a">Neon Dashboard</text>
+  <text x="72" y="116" font-family="Arial" font-size="16" fill="#475569">Project -> Dashboard -> Connection string</text>
+  <rect x="72" y="150" width="260" height="290" rx="10" fill="#f1f5f9" stroke="#cbd5e1"/>
+  <text x="96" y="190" font-family="Arial" font-size="18" font-weight="700" fill="#0f172a">Project sidebar</text>
+  <rect x="92" y="226" width="200" height="42" rx="8" fill="#ccfbf1" stroke="#0f766e"/>
+  <text x="124" y="253" font-family="Arial" font-size="16" font-weight="700" fill="#115e59">Dashboard</text>
+  <text x="96" y="314" font-family="Arial" font-size="16" fill="#64748b">Branches</text>
+  <text x="96" y="354" font-family="Arial" font-size="16" fill="#64748b">SQL Editor</text>
+  <rect x="380" y="150" width="480" height="290" rx="10" fill="#fff" stroke="#cbd5e1"/>
+  <text x="410" y="192" font-family="Arial" font-size="20" font-weight="700" fill="#0f172a">Connection Details</text>
+  <text x="410" y="235" font-family="Arial" font-size="15" fill="#475569">Database</text>
+  <rect x="410" y="248" width="180" height="36" rx="6" fill="#f8fafc" stroke="#94a3b8"/>
+  <text x="426" y="272" font-family="Arial" font-size="14" fill="#0f172a">homelink</text>
+  <text x="410" y="322" font-family="Arial" font-size="15" fill="#475569">Connection string</text>
+  <rect x="410" y="336" width="330" height="38" rx="6" fill="#f8fafc" stroke="#94a3b8"/>
+  <text x="424" y="360" font-family="Arial" font-size="13" fill="#0f172a">postgresql://user:pass@host/db?sslmode=require</text>
+  <rect x="760" y="336" width="70" height="38" rx="6" fill="#0f766e"/>
+  <text x="782" y="360" font-family="Arial" font-size="14" font-weight="700" fill="#fff">Copy</text>
+</svg>
