@@ -18,16 +18,8 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  try {
-    const configUrl = new URL("/api/v1/platform/config", request.url);
-    const response = await fetch(configUrl, { cache: "no-store" });
-    if (!response.ok) return NextResponse.next();
-    const json = (await response.json()) as { data?: { maintenanceMode?: boolean } };
-    if (json.data?.maintenanceMode) {
-      return NextResponse.rewrite(new URL("/maintenance", request.url));
-    }
-  } catch {
-    return NextResponse.next();
+  if (process.env.HOMELINK_MAINTENANCE_MODE === "true") {
+    return NextResponse.rewrite(new URL("/maintenance", request.url));
   }
 
   return NextResponse.next();
