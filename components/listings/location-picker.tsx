@@ -15,7 +15,7 @@ type LocationPickerProps = {
 
 export function LocationPicker({ province, city, suburb, onChange }: LocationPickerProps) {
   const { config } = usePlatformConfig();
-  const geo = config?.geo ?? [];
+  const geo = useMemo(() => config?.geo ?? [], [config?.geo]);
 
   const provinces = useMemo(() => geo.map((p) => p.name), [geo]);
 

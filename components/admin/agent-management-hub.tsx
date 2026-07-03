@@ -37,6 +37,8 @@ type AgentDocumentRow = {
   uploadedAt?: string;
 };
 
+const DEFAULT_COMMISSION_TYPES = ["SALE", "RENTAL", "MANAGEMENT"] as const;
+
 export function AgentManagementHub() {
   const { showToast } = useApp();
   const [data, setData] = useState<AdminAgentData | null>(null);
@@ -50,11 +52,9 @@ export function AgentManagementHub() {
   } | null>(null);
   const [dialog, setDialog] = useState<AdminDialogConfig | null>(null);
   const [documentPreview, setDocumentPreview] = useState<AgentDocumentRow | null>(null);
-  const defaultCommissionTypes = ["SALE", "RENTAL", "MANAGEMENT"] as const;
-
   const defaultRuleGroups = useMemo(
     () =>
-      defaultCommissionTypes.map((type) => ({
+      DEFAULT_COMMISSION_TYPES.map((type) => ({
         type,
         homelink: rules.find((rule) => rule.type === type && rule.scope === "DEFAULT" && rule.leadSource === "HOMELINK"),
         agent: rules.find((rule) => rule.type === type && rule.scope === "DEFAULT" && rule.leadSource === "AGENT"),
@@ -66,7 +66,7 @@ export function AgentManagementHub() {
       rules.filter(
         (rule) =>
           !(
-            defaultCommissionTypes.includes(rule.type as (typeof defaultCommissionTypes)[number]) &&
+            DEFAULT_COMMISSION_TYPES.includes(rule.type as (typeof DEFAULT_COMMISSION_TYPES)[number]) &&
             rule.scope === "DEFAULT" &&
             (rule.leadSource === "HOMELINK" || rule.leadSource === "AGENT")
           ),

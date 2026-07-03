@@ -152,8 +152,9 @@ export function RoomShareWizard({
   }, [intent]);
 
   useEffect(() => {
+    const photoUrls = photoUrlsRef.current;
     return () => {
-      photoUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
+      photoUrls.forEach((url) => URL.revokeObjectURL(url));
     };
   }, []);
 
