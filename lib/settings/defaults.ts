@@ -17,7 +17,7 @@ function gateway(
 }
 
 export const defaultPaymentSettings: PaymentSettings = {
-  defaultGateway: "paynow",
+  defaultGateway: "bank_transfer",
   liveMode: false,
   sandboxMode: true,
   currency: "USD",
@@ -82,7 +82,7 @@ export const defaultPaymentSettings: PaymentSettings = {
     gateway({
       id: "stripe",
       label: "Stripe",
-      enabled: true,
+      enabled: false,
       sandbox: true,
       apiKey: "",
       secretKey: "",
@@ -91,7 +91,7 @@ export const defaultPaymentSettings: PaymentSettings = {
     gateway({
       id: "paynow",
       label: "Paynow",
-      enabled: true,
+      enabled: false,
       sandbox: true,
       apiKey: "",
       secretKey: "",
@@ -100,7 +100,7 @@ export const defaultPaymentSettings: PaymentSettings = {
     gateway({
       id: "ecocash",
       label: "EcoCash",
-      enabled: true,
+      enabled: false,
       sandbox: false,
       apiKey: "",
       secretKey: "",
@@ -109,7 +109,7 @@ export const defaultPaymentSettings: PaymentSettings = {
     gateway({
       id: "onemoney",
       label: "OneMoney",
-      enabled: true,
+      enabled: false,
       sandbox: false,
       apiKey: "",
       secretKey: "",

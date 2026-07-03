@@ -370,6 +370,24 @@ Codex does:
 
 Goal: online payment webhooks cannot be faked.
 
+Launch decision: **skip Stripe for now**. HomeLink will launch with manual payments only. Do not add `STRIPE_SECRET_KEY` or `STRIPE_WEBHOOK_SECRET` until the Stripe account is approved and you are ready to accept live online payments.
+
+For this launch, confirm in the HomeLink admin payment settings:
+
+```text
+Stripe enabled: off
+Default payment method: bank_transfer
+Manual payment methods: bank_transfer, zipit, cash
+```
+
+Tell Codex:
+
+```text
+Step 6 skipped: Stripe is not ready and will stay disabled for launch.
+```
+
+Future Stripe setup:
+
 Screenshot-style guide:
 
 ![Stripe webhook guide](./assets/launch-stripe-webhook.svg)
@@ -422,6 +440,24 @@ Codex does:
 ## Step 7: Configure Paynow
 
 Goal: enable Zimbabwe payment flow only when real Paynow credentials are ready.
+
+Launch decision: **skip Paynow for now**. HomeLink will launch with manual payments only. Do not add `PAYNOW_INTEGRATION_ID` or `PAYNOW_INTEGRATION_KEY` until the Paynow merchant integration is ready.
+
+For this launch, confirm in the HomeLink admin payment settings:
+
+```text
+Paynow enabled: off
+Default payment method: bank_transfer
+Manual payment methods: bank_transfer, zipit, cash
+```
+
+Tell Codex:
+
+```text
+Step 7 skipped: Paynow is not ready and will stay disabled for launch.
+```
+
+Future Paynow setup:
 
 You do:
 
