@@ -65,9 +65,9 @@ Do this now:
 Write this down somewhere safe:
 
 ```text
-Domain registrar login website: ____________________
-Registrar username/email: ____________________
-Registrar support contact: ____________________
+Domain registrar login website: https://www.webdev.co.zw/
+Registrar username/email: nashiezw@gmail.com
+Registrar support contact: dns@webdev.co.zw / accounts@webdev.co.zw
 ```
 
 Also open this file while you work:
@@ -155,11 +155,36 @@ You do:
    - Install Command: `npm install`
    - Output Directory: leave blank/default
 7. If Vercel asks for **Root Directory**, leave it as the repository root unless the code is inside a subfolder.
+   - Important: do not select `apps/api` for the website deployment.
+   - If the screen shows `apps/api` as the root directory, click **Edit** and clear it or change it back to the repository root.
+   - The website is the root Next.js app. `apps/api` is only the separate backend workspace.
 8. Find the **Environment Variables** section before deploying.
 9. Add the two core production variables from Step 3.
 10. After adding those variables, click **Deploy**.
 
 If Vercel already deployed automatically before you added env values, that is okay. Add the env values in Step 3 and redeploy later.
+
+If deployment fails during `npm install` with:
+
+```text
+npm error Invalid Version:
+```
+
+Check these first:
+
+1. Confirm Vercel is deploying the repository root, not `apps/api`.
+2. Confirm the root `package.json` in GitHub contains:
+
+```text
+"name": "homelink-zimbabwe"
+"version": "0.1.0"
+```
+
+3. Confirm `package-lock.json` has been pushed to GitHub after the latest local changes.
+4. In Vercel, open the failed project -> **Settings** -> **General**.
+5. Find **Root Directory**.
+6. If it says `apps/api`, click **Edit** and change it back to the repository root.
+7. Redeploy.
 
 What you should see after deploy:
 
