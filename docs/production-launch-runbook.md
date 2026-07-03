@@ -311,6 +311,8 @@ This signs login cookies so refreshes and serverless restarts do not log users o
 
 Do not enter Cloudinary, database, payment, or auth values yet unless you already have them.
 
+Do not add `SETTINGS_DATABASE_URL` in Vercel for production. It is a local development SQLite setting only. In strict production, HomeLink stores platform/payment settings inside the main Postgres-backed app snapshot through `DATABASE_URL`.
+
 Tell Codex:
 
 ```text

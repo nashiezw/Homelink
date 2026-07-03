@@ -10,10 +10,16 @@ const STORE_FILE = path.join(DATA_DIR, "app-store.json");
 
 let persistTimer: ReturnType<typeof setTimeout> | null = null;
 let persistInFlight = false;
+let queuedSnapshot: SerializedStoreSnapshot | null = null;
+
+function isStrictProduction() {
+  return process.env.HOMELINK_STRICT_PRODUCTION === "true";
+}
 
 export async function loadPersistedStore(version: number): Promise<StoreState | null> {
   const fromPg = await loadFromPostgres(version);
   if (fromPg) return fromPg;
+  if (isStrictProduction()) return null;
 
   const fromFile = await loadFromFile(version);
   if (fromFile) {
@@ -25,6 +31,7 @@ export async function loadPersistedStore(version: number): Promise<StoreState | 
 }
 
 export function loadPersistedStoreSync(version: number): StoreState | null {
+  if (isStrictProduction()) return null;
   try {
     if (!existsSync(STORE_FILE)) return null;
     const raw = readFileSync(STORE_FILE, "utf8");
@@ -37,6 +44,10 @@ export function loadPersistedStoreSync(version: number): StoreState | null {
 }
 
 export function scheduleStorePersist(state: StoreState, version: number) {
+  if (isStrictProduction()) {
+    void persistStoreState(state, version);
+    return;
+  }
   if (persistTimer) clearTimeout(persistTimer);
   persistTimer = setTimeout(() => {
     void persistStoreState(state, version);
@@ -44,14 +55,48 @@ export function scheduleStorePersist(state: StoreState, version: number) {
 }
 
 export async function persistStoreState(state: StoreState, version: number) {
-  if (persistInFlight) return;
-  persistInFlight = true;
   const snapshot = serializeStoreState(state, version);
+  if (persistInFlight) {
+    queuedSnapshot = snapshot;
+    return;
+  }
+  persistInFlight = true;
   try {
-    await saveToPostgres(snapshot);
-    await saveToFile(snapshot);
+    await persistSnapshot(snapshot);
   } finally {
     persistInFlight = false;
+  }
+
+  if (queuedSnapshot) {
+    const next = queuedSnapshot;
+    queuedSnapshot = null;
+    await persistSerializedStoreSnapshot(next);
+  }
+}
+
+export async function persistSerializedStoreSnapshot(snapshot: SerializedStoreSnapshot) {
+  if (persistInFlight) {
+    queuedSnapshot = snapshot;
+    return;
+  }
+  persistInFlight = true;
+  try {
+    await persistSnapshot(snapshot);
+  } finally {
+    persistInFlight = false;
+  }
+
+  if (queuedSnapshot) {
+    const next = queuedSnapshot;
+    queuedSnapshot = null;
+    await persistSerializedStoreSnapshot(next);
+  }
+}
+
+async function persistSnapshot(snapshot: SerializedStoreSnapshot) {
+  await saveToPostgres(snapshot);
+  if (!isStrictProduction()) {
+    await saveToFile(snapshot);
   }
 }
 
@@ -72,7 +117,10 @@ async function loadFromPostgres(version: number): Promise<StoreState | null> {
 }
 
 async function saveToPostgres(snapshot: SerializedStoreSnapshot) {
-  if (!isPostgresStoreEnabled()) return;
+  if (!isPostgresStoreEnabled()) {
+    if (isStrictProduction()) throw new Error("DATABASE_URL is required for strict production store persistence.");
+    return;
+  }
   try {
     const prisma = getMainPrisma();
     await prisma.appStoreSnapshot.upsert({
@@ -88,12 +136,13 @@ async function saveToPostgres(snapshot: SerializedStoreSnapshot) {
         updatedAt: new Date(),
       },
     });
-  } catch {
-    // fall back to file only
+  } catch (error) {
+    if (isStrictProduction()) throw error;
   }
 }
 
 async function loadFromFile(version: number): Promise<StoreState | null> {
+  if (isStrictProduction()) return null;
   try {
     const raw = await readFile(STORE_FILE, "utf8");
     const snapshot = JSON.parse(raw) as SerializedStoreSnapshot;
@@ -105,11 +154,13 @@ async function loadFromFile(version: number): Promise<StoreState | null> {
 }
 
 async function saveToFile(snapshot: SerializedStoreSnapshot) {
+  if (isStrictProduction()) return;
   await mkdir(DATA_DIR, { recursive: true });
   await writeFile(STORE_FILE, JSON.stringify(snapshot), "utf8");
 }
 
 export function saveStoreFileSync(snapshot: SerializedStoreSnapshot) {
+  if (isStrictProduction()) return;
   mkdirSync(DATA_DIR, { recursive: true });
   writeFileSync(STORE_FILE, JSON.stringify(snapshot), "utf8");
 }

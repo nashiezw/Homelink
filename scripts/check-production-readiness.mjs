@@ -41,6 +41,10 @@ if (!process.env.DATABASE_URL?.startsWith("postgres")) {
   failures.push("DATABASE_URL must point to production PostgreSQL.");
 }
 
+if (process.env.HOMELINK_STRICT_PRODUCTION === "true" && process.env.SETTINGS_DATABASE_URL?.startsWith("file:")) {
+  warnings.push("Do not rely on SETTINGS_DATABASE_URL=file:... in production; strict production stores settings in the main Postgres-backed app snapshot.");
+}
+
 for (const name of ["CLOUDINARY_CLOUD_NAME", "CLOUDINARY_API_KEY", "CLOUDINARY_API_SECRET"]) {
   if (!has(name)) failures.push(`${name} is required for durable production media uploads.`);
 }

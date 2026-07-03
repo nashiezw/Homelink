@@ -25,6 +25,10 @@ function defaults(): PersistedSettings {
   };
 }
 
+function isStrictProduction() {
+  return process.env.HOMELINK_STRICT_PRODUCTION === "true";
+}
+
 function hydrateSettings(settings: PersistedSettings): PersistedSettings {
   const base = defaults();
   return {
@@ -67,6 +71,7 @@ async function saveToDatabase(platformSettings: PlatformSettings, paymentSetting
 }
 
 function loadFromFile(): PersistedSettings | null {
+  if (isStrictProduction()) return null;
   try {
     if (!existsSync(SETTINGS_FILE)) return null;
     const raw = readFileSync(SETTINGS_FILE, "utf8");
@@ -87,6 +92,7 @@ async function migrateFileToDatabase(file: PersistedSettings) {
 export async function loadPersistedSettings(): Promise<PersistedSettings | null> {
   const fromDb = await loadFromDatabase();
   if (fromDb) return fromDb;
+  if (isStrictProduction()) return null;
 
   const fromFile = await (async () => {
     try {
@@ -108,6 +114,7 @@ export async function loadPersistedSettings(): Promise<PersistedSettings | null>
 export function loadPersistedSettingsSync(): PersistedSettings | null {
   const fromDb = loadFromDatabaseSync();
   if (fromDb) return fromDb;
+  if (isStrictProduction()) return null;
 
   const fromFile = loadFromFile();
   if (fromFile) {
@@ -124,6 +131,9 @@ export async function savePersistedSettings(platformSettings: PlatformSettings, 
     paymentSettings,
     savedAt: new Date().toISOString(),
   };
+  if (isStrictProduction()) {
+    return;
+  }
 
   try {
     await saveToDatabase(platformSettings, paymentSettings);
@@ -134,8 +144,10 @@ export async function savePersistedSettings(platformSettings: PlatformSettings, 
   }
 
   // Keep JSON mirror for ops/debug
-  await mkdir(DATA_DIR, { recursive: true });
-  await writeFile(SETTINGS_FILE, JSON.stringify(payload, null, 2), "utf8");
+  if (!isStrictProduction()) {
+    await mkdir(DATA_DIR, { recursive: true });
+    await writeFile(SETTINGS_FILE, JSON.stringify(payload, null, 2), "utf8");
+  }
 }
 
 export function savePersistedSettingsSync(platformSettings: PlatformSettings, paymentSettings: PaymentSettings) {
@@ -144,8 +156,13 @@ export function savePersistedSettingsSync(platformSettings: PlatformSettings, pa
     paymentSettings,
     savedAt: new Date().toISOString(),
   };
-  mkdirSync(DATA_DIR, { recursive: true });
-  writeFileSync(SETTINGS_FILE, JSON.stringify(payload, null, 2), "utf8");
+  if (isStrictProduction()) {
+    return;
+  }
+  if (!isStrictProduction()) {
+    mkdirSync(DATA_DIR, { recursive: true });
+    writeFileSync(SETTINGS_FILE, JSON.stringify(payload, null, 2), "utf8");
+  }
   void savePersistedSettings(platformSettings, paymentSettings);
 }
 

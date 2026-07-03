@@ -214,7 +214,7 @@ export function MarketingCmsHub() {
               Live preview
             </p>
             <p className="mt-2 text-sm text-slate-400">
-              Changes save to the in-memory store and reflect on the public homepage immediately after you click Save.
+              Changes save to the platform store and reflect on the public homepage immediately after you click Save.
             </p>
             <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4 text-sm">
               <PreviewItem label="Hero title" value={`${cms.hero.title} ${cms.hero.titleHighlight}`} />

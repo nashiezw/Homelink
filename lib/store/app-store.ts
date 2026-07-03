@@ -1064,6 +1064,9 @@ class AppStore {
   }
 
   markDirty() {
+    if (isStrictProduction() && !globalStore.__homelinkStoreHydrated) {
+      throw new Error("Store is still hydrating from Postgres; refusing to persist unhydrated server memory.");
+    }
     scheduleStorePersist(this.state, STORE_VERSION);
   }
 
@@ -2642,7 +2645,9 @@ class AppStore {
     actor: { id: string; name: string },
     options?: { ip?: string; preserveSecrets?: boolean },
   ) {
-    return AdminPlatform.updatePlatformSettings(this.adminState(), updates, actor, options);
+    const settings = AdminPlatform.updatePlatformSettings(this.adminState(), updates, actor, options);
+    this.touch();
+    return settings;
   }
 
   getPaymentSettings() {
@@ -2654,7 +2659,9 @@ class AppStore {
     actor: { id: string; name: string },
     options?: { ip?: string; preserveSecrets?: boolean },
   ) {
-    return AdminPlatform.updatePaymentSettings(this.adminState(), updates, actor, options);
+    const settings = AdminPlatform.updatePaymentSettings(this.adminState(), updates, actor, options);
+    this.touch();
+    return settings;
   }
 
   getPaymentHealth() {
@@ -4143,7 +4150,13 @@ const globalStore = globalThis as typeof globalThis & {
   __homelinkStoreVersion?: number;
   __settingsHydrateStarted?: boolean;
   __storeHydrateStarted?: boolean;
+  __homelinkStoreHydrated?: boolean;
+  __homelinkStorePersistPending?: boolean;
 };
+
+function isStrictProduction() {
+  return process.env.HOMELINK_STRICT_PRODUCTION === "true";
+}
 
 export function getStore() {
   if (!globalStore.__homelinkStore || globalStore.__homelinkStoreVersion !== STORE_VERSION) {
@@ -4154,8 +4167,10 @@ export function getStore() {
     globalStore.__homelinkStoreVersion = STORE_VERSION;
     globalStore.__settingsHydrateStarted = false;
     globalStore.__storeHydrateStarted = false;
+    globalStore.__homelinkStoreHydrated = Boolean(synced);
+    globalStore.__homelinkStorePersistPending = false;
 
-    if (!synced) {
+    if (!synced && !isStrictProduction()) {
       void persistStoreState(globalStore.__homelinkStore.snapshotState(), STORE_VERSION);
     }
   }
@@ -4164,6 +4179,11 @@ export function getStore() {
     void loadPersistedStore(STORE_VERSION).then((loaded) => {
       if (loaded && globalStore.__homelinkStore && globalStore.__homelinkStoreVersion === STORE_VERSION) {
         globalStore.__homelinkStore.hydratePersistedState(loaded);
+      }
+      globalStore.__homelinkStoreHydrated = true;
+      if (globalStore.__homelinkStorePersistPending && globalStore.__homelinkStore) {
+        globalStore.__homelinkStorePersistPending = false;
+        scheduleStorePersist(globalStore.__homelinkStore.snapshotState(), STORE_VERSION);
       }
     });
   }
