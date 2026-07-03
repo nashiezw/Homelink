@@ -240,14 +240,14 @@ async function main() {
     method: "POST",
     body: JSON.stringify({
       plan: "tenancy_payment",
-      provider: "stripe",
+      provider: "bank_transfer",
       amount: 200,
       listingId: "harare-avondale-cottage",
       tenantUserId: "user_seeker_tinashe",
       landlordUserId: "user_landlord",
     }),
   });
-  assert("POST tenancy payment checkout", r.ok && r.data?.data?.redirectUrl);
+  assert("POST tenancy payment checkout", r.ok && r.data?.data?.redirectUrl && r.data?.data?.manualMethod);
 
   // Lease sign
   r = await req("/api/v1/tenancies/lease", {
