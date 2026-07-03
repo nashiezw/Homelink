@@ -1,17 +1,15 @@
-import js from "@eslint/js";
-import tsParser from "@typescript-eslint/parser";
-import tsPlugin from "@typescript-eslint/eslint-plugin";
-import nextPlugin from "@next/eslint-plugin-next";
+import { FlatCompat } from "@eslint/eslintrc";
+import { fileURLToPath } from "node:url";
+import path from "node:path";
 
-export default [
-  {
-    ...js.configs.recommended,
-    rules: {
-      ...js.configs.recommended.rules,
-      "no-undef": "off",
-      "no-control-regex": "off",
-    },
-  },
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const compat = new FlatCompat({
+  baseDirectory: __dirname,
+});
+
+const eslintConfig = [
   {
     ignores: [
       ".next/**",
@@ -19,34 +17,30 @@ export default [
       "lib/generated/**",
       "apps/api/dist/**",
       "coverage/**",
+      "next-env.d.ts",
     ],
   },
+  ...compat.extends("next/core-web-vitals", "next/typescript"),
   {
-    files: ["**/*.ts", "**/*.tsx"],
-    languageOptions: {
-      parser: tsParser,
-      parserOptions: {
-        ecmaVersion: "latest",
-        sourceType: "module",
-      },
-    },
-    plugins: {
-      "@typescript-eslint": tsPlugin,
-      "@next/next": nextPlugin,
-    },
+    files: ["**/*.{js,jsx,ts,tsx}"],
     rules: {
-      ...nextPlugin.configs.recommended.rules,
-      ...nextPlugin.configs["core-web-vitals"].rules,
       "no-undef": "off",
+      "no-control-regex": "off",
       "no-unused-vars": "off",
+      "prefer-const": "off",
+      "import/no-anonymous-default-export": "off",
+      "react/no-unescaped-entities": "off",
       "@typescript-eslint/no-explicit-any": "off",
+      "@typescript-eslint/triple-slash-reference": "off",
       "@typescript-eslint/no-unused-vars": [
         "error",
         {
           argsIgnorePattern: "^_",
-          varsIgnorePattern: "^_"
-        }
-      ]
+          varsIgnorePattern: "^_",
+        },
+      ],
     },
   },
 ];
+
+export default eslintConfig;
