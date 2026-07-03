@@ -4159,6 +4159,7 @@ const globalStore = globalThis as typeof globalThis & {
   __storeHydrateStarted?: boolean;
   __homelinkStoreHydrated?: boolean;
   __homelinkStorePersistPending?: boolean;
+  __homelinkStoreHydratePromise?: Promise<void>;
 };
 
 function isStrictProduction() {
@@ -4176,6 +4177,7 @@ export function getStore() {
     globalStore.__storeHydrateStarted = false;
     globalStore.__homelinkStoreHydrated = Boolean(synced);
     globalStore.__homelinkStorePersistPending = false;
+    globalStore.__homelinkStoreHydratePromise = undefined;
 
     if (!synced && !isStrictProduction()) {
       void persistStoreState(globalStore.__homelinkStore.snapshotState(), STORE_VERSION);
@@ -4183,7 +4185,7 @@ export function getStore() {
   }
   if (!globalStore.__storeHydrateStarted) {
     globalStore.__storeHydrateStarted = true;
-    void loadPersistedStore(STORE_VERSION).then((loaded) => {
+    globalStore.__homelinkStoreHydratePromise = loadPersistedStore(STORE_VERSION).then((loaded) => {
       if (loaded && globalStore.__homelinkStore && globalStore.__homelinkStoreVersion === STORE_VERSION) {
         globalStore.__homelinkStore.hydratePersistedState(loaded);
       }
@@ -4205,6 +4207,12 @@ export function getStore() {
     );
   }
   return globalStore.__homelinkStore;
+}
+
+export async function getHydratedStore() {
+  const store = getStore();
+  await globalStore.__homelinkStoreHydratePromise;
+  return store;
 }
 
 export function toPublicListing(listing: ListingRecord) {

@@ -9,8 +9,8 @@ const DATA_DIR = path.join(process.cwd(), ".data");
 const STORE_FILE = path.join(DATA_DIR, "app-store.json");
 
 let persistTimer: ReturnType<typeof setTimeout> | null = null;
-let persistInFlight = false;
 let queuedSnapshot: SerializedStoreSnapshot | null = null;
+let persistInFlight: Promise<void> | null = null;
 
 function isStrictProduction() {
   return process.env.HOMELINK_STRICT_PRODUCTION === "true";
@@ -56,40 +56,30 @@ export function scheduleStorePersist(state: StoreState, version: number) {
 
 export async function persistStoreState(state: StoreState, version: number) {
   const snapshot = serializeStoreState(state, version);
-  if (persistInFlight) {
-    queuedSnapshot = snapshot;
-    return;
-  }
-  persistInFlight = true;
-  try {
-    await persistSnapshot(snapshot);
-  } finally {
-    persistInFlight = false;
-  }
-
-  if (queuedSnapshot) {
-    const next = queuedSnapshot;
-    queuedSnapshot = null;
-    await persistSerializedStoreSnapshot(next);
-  }
+  await persistSerializedStoreSnapshot(snapshot);
 }
 
 export async function persistSerializedStoreSnapshot(snapshot: SerializedStoreSnapshot) {
   if (persistInFlight) {
     queuedSnapshot = snapshot;
+    await persistInFlight;
     return;
   }
-  persistInFlight = true;
-  try {
-    await persistSnapshot(snapshot);
-  } finally {
-    persistInFlight = false;
-  }
 
-  if (queuedSnapshot) {
+  queuedSnapshot = snapshot;
+  persistInFlight = drainPersistQueue();
+  try {
+    await persistInFlight;
+  } finally {
+    persistInFlight = null;
+  }
+}
+
+async function drainPersistQueue() {
+  while (queuedSnapshot) {
     const next = queuedSnapshot;
     queuedSnapshot = null;
-    await persistSerializedStoreSnapshot(next);
+    await persistSnapshot(next);
   }
 }
 

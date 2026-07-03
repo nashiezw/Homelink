@@ -3,7 +3,7 @@ import { requireAdmin } from "@/lib/admin/require-admin";
 import { ok, problem } from "@/lib/api/response";
 import { testGoogleMapsKey } from "@/lib/integrations/google-maps";
 import { sendSmtpTestEmail } from "@/lib/integrations/smtp";
-import { getStore } from "@/lib/store/app-store";
+import { getHydratedStore } from "@/lib/store/app-store";
 import { redactPaymentSettingsForAdmin, redactPlatformSettingsForAdmin, mergePlatformSecrets } from "@/lib/settings/redact";
 import type { AdminRbacSettings, PaymentSettings, PlatformSettings } from "@/lib/settings/types";
 export const dynamic = "force-dynamic";
@@ -15,7 +15,7 @@ export async function GET(request: Request) {
   const auth = requireAdmin(request, permission);
   if (auth.error) return auth.error;
 
-  const store = getStore();
+  const store = await getHydratedStore();
   if (section === "payments") {
     return ok({
       settings: redactPaymentSettingsForAdmin(store.getPaymentSettings()),
@@ -56,7 +56,7 @@ export async function PATCH(request: Request) {
   const auth = requireAdmin(request, permission);
   if (auth.error || !auth.user) return auth.error ?? problem(401, "UNAUTHORIZED", "Admin required.");
 
-  const store = getStore();
+  const store = await getHydratedStore();
   const actor = { id: auth.user.id, name: auth.user.name };
   const ip = getClientIp(request);
   const incomingPlatformSettings = body.settings as Partial<PlatformSettings> | undefined;
