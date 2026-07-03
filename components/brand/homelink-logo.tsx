@@ -15,8 +15,8 @@ type HomeLinkBrandProps = {
 const brandFont = "system-ui, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif";
 
 const iconSizes: Record<BrandVariant, string> = {
-  nav: "h-14 w-14 md:h-16 md:w-16",
-  header: "h-14 w-14 md:h-16 md:w-16",
+  nav: "h-10 w-10 md:h-12 md:w-12",
+  header: "h-10 w-10 md:h-12 md:w-12",
   footer: "h-14 w-14 sm:h-16 sm:w-16",
   auth: "h-[4.5rem] w-[4.5rem] sm:h-20 sm:w-20",
   icon: "h-10 w-10",
@@ -46,7 +46,9 @@ function NavWordmark({ className }: { className?: string }) {
 function NavLockup({ className }: { className?: string }) {
   return (
     <span className={cn("inline-flex items-center gap-2.5 md:gap-3", className)}>
-      <HomeLinkIcon className={iconSizes.nav} title="HomeLink" />
+      <span className="relative inline-flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-white/95 p-1 shadow-[0_2px_14px_rgba(0,0,0,0.14)] ring-1 ring-slate-200/80 dark:ring-white/15 md:h-14 md:w-14">
+        <HomeLinkIcon className={iconSizes.nav} title="HomeLink" />
+      </span>
       <NavWordmark />
     </span>
   );
