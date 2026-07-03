@@ -2,7 +2,9 @@ import { Briefcase, Globe2, HeartHandshake, MapPin, Sparkles } from "lucide-reac
 import Link from "next/link";
 import { PageShell } from "@/components/layout/page-shell";
 import { getMailtoHref } from "@/lib/settings/contact";
-import { getRuntimePlatformSettings } from "@/lib/settings/runtime";
+import { getHydratedRuntimePlatformSettings } from "@/lib/settings/runtime";
+
+export const dynamic = "force-dynamic";
 
 const roles = [
   {
@@ -32,8 +34,8 @@ const perks = [
   { label: "Harare HQ culture", icon: MapPin },
 ];
 
-export default function CareersPage() {
-  const { contact } = getRuntimePlatformSettings();
+export default async function CareersPage() {
+  const { contact } = await getHydratedRuntimePlatformSettings();
   return (
     <PageShell
       eyebrow="Careers"

@@ -2,7 +2,9 @@ import { Clock3, Mail, MessageCircle, Phone, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { PageShell } from "@/components/layout/page-shell";
 import { getMailtoHref, getTelHref, getWhatsAppHref } from "@/lib/settings/contact";
-import { getRuntimePlatformSettings } from "@/lib/settings/runtime";
+import { getHydratedRuntimePlatformSettings } from "@/lib/settings/runtime";
+
+export const dynamic = "force-dynamic";
 
 const paths = [
   ["Property owners", "Request management support", "/property-management"],
@@ -11,8 +13,8 @@ const paths = [
   ["Roommates", "Find rooms and compatible people", "/roommates"],
 ];
 
-export default function ContactPage() {
-  const { contact } = getRuntimePlatformSettings();
+export default async function ContactPage() {
+  const { contact } = await getHydratedRuntimePlatformSettings();
   const contactCards = [
     {
       title: "WhatsApp support",

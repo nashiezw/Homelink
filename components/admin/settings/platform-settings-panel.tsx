@@ -22,6 +22,12 @@ export function PlatformSettingsPanel({ defaultTab = "general" }: { defaultTab?:
   const [me, setMe] = useState<AdminMe | null>(null);
   const [tab, setTab] = useState<SettingsTab>(defaultTab);
   const [saving, setSaving] = useState(false);
+  const [testingIntegration, setTestingIntegration] = useState<"smtp" | "maps" | null>(null);
+  const [integrationTestResult, setIntegrationTestResult] = useState<{
+    ok: boolean;
+    message: string;
+  } | null>(null);
+  const [smtpTestEmail, setSmtpTestEmail] = useState("");
   const [promotingAdmin, setPromotingAdmin] = useState(false);
 
   const load = useCallback(async () => {
@@ -95,14 +101,30 @@ export function PlatformSettingsPanel({ defaultTab = "general" }: { defaultTab?:
   }
 
   async function testIntegration(type: "smtp" | "maps") {
-    const result = await apiFetch<{ ok: boolean; message: string; sample?: string }>("/api/v1/admin/settings", {
-      method: "PATCH",
-      body: JSON.stringify({ test: { type } }),
-    });
-    const message = result.data?.sample
-      ? `${result.data.message} (${result.data.sample})`
-      : result.data?.message ?? result.error?.message ?? "Test complete.";
-    showToast(message, result.data?.ok ? "success" : "error");
+    if (!settings) return;
+    setTestingIntegration(type);
+    setIntegrationTestResult(null);
+    try {
+      const result = await apiFetch<{ ok: boolean; message: string; sample?: string }>("/api/v1/admin/settings", {
+        method: "PATCH",
+        body: JSON.stringify({
+          settings: syncGeoToFlatLists(settings),
+          test: { type, email: type === "smtp" ? smtpTestEmail.trim() || undefined : undefined },
+        }),
+      });
+      const message = result.data?.sample
+        ? `${result.data.message} (${result.data.sample})`
+        : result.data?.message ?? result.error?.message ?? "Test complete.";
+      const ok = result.data?.ok ?? false;
+      setIntegrationTestResult({ ok, message });
+      showToast(message, ok ? "success" : "error");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Integration test failed.";
+      setIntegrationTestResult({ ok: false, message });
+      showToast(message, "error");
+    } finally {
+      setTestingIntegration(null);
+    }
   }
 
   if (!settings) return <p className="text-slate-400">Loading platform settings...</p>;
@@ -235,13 +257,26 @@ export function PlatformSettingsPanel({ defaultTab = "general" }: { defaultTab?:
 
       {tab === "integrations" && (
         <div className="space-y-4">
-          <div className="flex flex-wrap gap-2">
-            <Button variant="secondary" onClick={() => void testIntegration("smtp")}>
-              <TestTube2 className="size-4" /> Test SMTP
-            </Button>
-            <Button variant="secondary" onClick={() => void testIntegration("maps")}>
-              <TestTube2 className="size-4" /> Test Maps key
-            </Button>
+          <div className="space-y-3 rounded-xl border border-white/10 bg-slate-950/40 p-4">
+            <div className="grid gap-3 lg:grid-cols-[minmax(220px,1fr)_auto_auto] lg:items-end">
+              <Input
+                label="SMTP test recipient email"
+                value={smtpTestEmail}
+                onChange={setSmtpTestEmail}
+                type="email"
+              />
+              <Button className="w-full whitespace-nowrap lg:w-auto" variant="secondary" onClick={() => void testIntegration("smtp")} disabled={testingIntegration !== null}>
+                <TestTube2 className="size-4" /> {testingIntegration === "smtp" ? "Testing SMTP..." : "Test SMTP"}
+              </Button>
+              <Button className="w-full whitespace-nowrap lg:w-auto" variant="secondary" onClick={() => void testIntegration("maps")} disabled={testingIntegration !== null}>
+                <TestTube2 className="size-4" /> {testingIntegration === "maps" ? "Testing Maps..." : "Test Maps key"}
+              </Button>
+            </div>
+            {integrationTestResult && (
+              <p className={`rounded-lg border px-3 py-2 text-sm ${integrationTestResult.ok ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-200" : "border-red-500/30 bg-red-500/10 text-red-200"}`}>
+                {integrationTestResult.message}
+              </p>
+            )}
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             {Object.entries(settings.integrations).map(([key, value]) => (

@@ -5,6 +5,7 @@ import { testGoogleMapsKey } from "@/lib/integrations/google-maps";
 import { sendSmtpTestEmail } from "@/lib/integrations/smtp";
 import { getHydratedStore } from "@/lib/store/app-store";
 import { redactPaymentSettingsForAdmin, redactPlatformSettingsForAdmin, mergePlatformSecrets } from "@/lib/settings/redact";
+import { mergePlatformSettings } from "@/lib/settings/merge";
 import type { AdminRbacSettings, PaymentSettings, PlatformSettings } from "@/lib/settings/types";
 export const dynamic = "force-dynamic";
 
@@ -63,16 +64,19 @@ export async function PATCH(request: Request) {
 
   if (body.test) {
     const settings = store.getPlatformSettings();
+    const liveSettings = incomingPlatformSettings
+      ? mergePlatformSecrets(mergePlatformSettings(settings, incomingPlatformSettings), settings)
+      : settings;
     if (body.test.type === "smtp") {
-      const live = mergePlatformSecrets(
-        { ...settings, integrations: { ...settings.integrations } },
-        settings,
-      );
-      const result = await sendSmtpTestEmail(live.integrations, body.test.email ?? auth.user.email);
+      const recipient = body.test.email?.trim() || auth.user.email;
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipient)) {
+        return ok({ ok: false, message: "Enter a valid recipient email address for the SMTP test." });
+      }
+      const result = await sendSmtpTestEmail(liveSettings.integrations, recipient);
       return ok(result);
     }
     if (body.test.type === "maps") {
-      const result = await testGoogleMapsKey(settings.integrations.googleMapsKey);
+      const result = await testGoogleMapsKey(liveSettings.integrations.googleMapsKey);
       return ok(result);
     }
   }

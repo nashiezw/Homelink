@@ -1,5 +1,5 @@
 import { geocodeAddress } from "@/lib/integrations/google-maps";
-import { getRuntimePlatformSettings } from "@/lib/settings/runtime";
+import { getHydratedRuntimePlatformSettings } from "@/lib/settings/runtime";
 import { ok, problem } from "@/lib/api/response";
 
 export async function GET(request: Request) {
@@ -11,7 +11,7 @@ export async function GET(request: Request) {
     return problem(400, "LOCATION_REQUIRED", "city and suburb are required.");
   }
 
-  const settings = getRuntimePlatformSettings();
+  const settings = await getHydratedRuntimePlatformSettings();
   const mapsKey = settings.integrations.googleMapsKey;
   const query = `${suburb}, ${city}, Zimbabwe`;
 

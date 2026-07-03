@@ -4156,6 +4156,7 @@ const globalStore = globalThis as typeof globalThis & {
   __homelinkStore?: AppStore;
   __homelinkStoreVersion?: number;
   __settingsHydrateStarted?: boolean;
+  __settingsHydratePromise?: Promise<void>;
   __storeHydrateStarted?: boolean;
   __homelinkStoreHydrated?: boolean;
   __homelinkStorePersistPending?: boolean;
@@ -4174,6 +4175,7 @@ export function getStore() {
       : new AppStore();
     globalStore.__homelinkStoreVersion = STORE_VERSION;
     globalStore.__settingsHydrateStarted = false;
+    globalStore.__settingsHydratePromise = undefined;
     globalStore.__storeHydrateStarted = false;
     globalStore.__homelinkStoreHydrated = Boolean(synced);
     globalStore.__homelinkStorePersistPending = false;
@@ -4198,7 +4200,7 @@ export function getStore() {
   }
   if (!globalStore.__settingsHydrateStarted) {
     globalStore.__settingsHydrateStarted = true;
-    void import("@/lib/settings/persist").then(({ loadPersistedSettings }) =>
+    globalStore.__settingsHydratePromise = import("@/lib/settings/persist").then(({ loadPersistedSettings }) =>
       loadPersistedSettings().then((persisted) => {
         if (persisted && globalStore.__homelinkStore) {
           globalStore.__homelinkStore.applyPersistedSettings(persisted);
@@ -4212,6 +4214,7 @@ export function getStore() {
 export async function getHydratedStore() {
   const store = getStore();
   await globalStore.__homelinkStoreHydratePromise;
+  await globalStore.__settingsHydratePromise;
   return store;
 }
 

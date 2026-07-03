@@ -1,8 +1,12 @@
 import type { PlatformSettings, PublicPlatformConfig } from "@/lib/settings/types";
-import { getStore } from "@/lib/store/app-store";
+import { getHydratedStore, getStore } from "@/lib/store/app-store";
 
 export function getRuntimePlatformSettings(): PlatformSettings {
   return getStore().getPlatformSettings();
+}
+
+export async function getHydratedRuntimePlatformSettings(): Promise<PlatformSettings> {
+  return (await getHydratedStore()).getPlatformSettings();
 }
 
 export function toPublicPlatformConfig(settings: PlatformSettings): PublicPlatformConfig {
@@ -43,6 +47,10 @@ export function toPublicPlatformConfig(settings: PlatformSettings): PublicPlatfo
 
 export function getPublicPlatformConfig(): PublicPlatformConfig {
   return toPublicPlatformConfig(getRuntimePlatformSettings());
+}
+
+export async function getHydratedPublicPlatformConfig(): Promise<PublicPlatformConfig> {
+  return toPublicPlatformConfig(await getHydratedRuntimePlatformSettings());
 }
 
 export function isMaintenanceMode() {
