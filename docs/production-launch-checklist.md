@@ -28,8 +28,8 @@ This checklist tracks the remaining launch gates for taking HomeLink public.
 
 ## Operational Gates
 
-- [ ] Rotate all seed/demo passwords before launch.
-- [ ] Disable or remove demo credentials from public documentation.
+- [x] Rotate all seed/demo passwords before launch.
+- [x] Disable or remove demo credentials from public documentation.
 - [ ] Verify admin RBAC assignments for real operators.
 - [ ] Confirm backup and restore process for database and uploaded media.
 - [ ] Confirm monitoring for API errors, auth failures, upload failures, payment failures, and webhook failures.

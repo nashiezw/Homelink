@@ -7,7 +7,7 @@
 | Homepage + live search | Working | `/` |
 | Search + filters + map + AI | Working | `/search`, `POST /api/v1/search/ai` |
 | Property detail actions | Working | `/listings/[id]` |
-| Auth (demo sessions) | Working | `/auth`, `POST /api/v1/auth/session` |
+| Auth (local sessions) | Working | `/auth`, `POST /api/v1/auth/session` |
 | Favourites | Working | `/saved`, `/api/v1/users/me/favourites` |
 | Saved searches / alerts | Working | `POST /api/v1/saved-searches` |
 | Compare (local + API) | Working | `/compare` |
