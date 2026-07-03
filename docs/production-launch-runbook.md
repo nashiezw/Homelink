@@ -547,6 +547,14 @@ Goal: users and admins receive important messages.
 
 Beginner option: Brevo, Resend, SendGrid, or any SMTP provider.
 
+Current launch choice:
+
+```text
+Email provider: SMTP provider chosen by owner
+Sending domain: homelinkzim.co.zw
+Recommended sender: noreply@homelinkzim.co.zw or support@homelinkzim.co.zw
+```
+
 You do:
 
 1. Create an account with your chosen email provider.
@@ -556,9 +564,53 @@ You do:
    - SMTP port
    - SMTP username
    - SMTP password
-4. In HomeLink admin dashboard, open **Admin -> Settings -> Integrations**.
-5. Paste SMTP values.
-6. Send a test email.
+4. Do not paste the SMTP password into chat, Git, screenshots, or docs.
+
+Now enter the values in HomeLink:
+
+1. Open the latest Vercel temporary URL or production URL.
+2. Sign in as an admin.
+3. Open **Dashboard -> Admin**.
+4. Open **Settings**.
+5. Click the **Integrations** tab.
+6. Find these fields:
+
+```text
+smtpHost
+smtpPort
+smtpUser
+smtpPass
+```
+
+7. Enter your SMTP values:
+
+```text
+smtpHost = your SMTP host
+smtpPort = your SMTP port, usually 587 or 465
+smtpUser = your SMTP username
+smtpPass = your SMTP password or API key
+```
+
+8. Click **Save**.
+9. Click **Test SMTP**.
+10. Send the test to an email address you can open.
+11. Confirm the test email arrives.
+
+If your provider is Resend, common SMTP values are:
+
+```text
+smtpHost = smtp.resend.com
+smtpPort = 587
+smtpUser = resend
+smtpPass = your Resend API key
+```
+
+If the test fails:
+
+1. Confirm the domain verification records are added in Webdev DNS.
+2. Confirm the SMTP password/API key is copied exactly.
+3. Try port `587` first.
+4. If your provider specifically says to use SSL/SMTPS, try port `465`.
 
 Tell Codex:
 
