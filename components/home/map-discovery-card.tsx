@@ -35,9 +35,9 @@ const LAYER_MATCHERS: Record<string, RegExp> = {
 };
 
 const PIN_POSITIONS = [
-  "left-[28%] top-[33%]",
-  "left-[55%] top-[50%]",
-  "left-[72%] top-[39%]",
+  "left-[30%] top-[45%]",
+  "left-[56%] top-[58%]",
+  "left-[74%] top-[47%]",
 ];
 
 const AREA_COORDINATES: Record<string, UserPosition> = {
@@ -193,11 +193,11 @@ export function MapDiscoveryCard({ listings }: { listings: Listing[] }) {
         </div>
 
         {clusters.map((cluster, index) => (
-          <div key={cluster.location} className={`absolute ${PIN_POSITIONS[index]}`}>
+          <div key={cluster.location} className={`absolute z-10 ${PIN_POSITIONS[index]}`}>
             <MapPinCluster cluster={cluster} />
           </div>
         ))}
-        <div className="absolute left-5 top-[6.2rem] flex items-center gap-1.5 rounded-lg border border-white/20 bg-black/30 px-2.5 py-1.5 text-xs font-medium text-white shadow-lg backdrop-blur-md sm:top-[5.9rem]">
+        <div className="absolute left-5 top-[6.2rem] z-20 flex items-center gap-1.5 rounded-lg border border-white/20 bg-black/30 px-2.5 py-1.5 text-xs font-medium text-white shadow-lg backdrop-blur-md sm:top-[5.9rem]">
           <Building2 className="size-3.5 text-cyan-200" />
           {filteredListings.length
             ? area?.cbdDistance
