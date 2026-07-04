@@ -1,7 +1,7 @@
 import { mkdir, writeFile } from "fs/promises";
 import path from "path";
 import { getSessionUserIdFromRequest } from "@/lib/auth/session";
-import { hasCloudinaryConfig } from "@/lib/integrations/cloudinary";
+import { createCloudinaryUploadIntent, hasCloudinaryConfig } from "@/lib/integrations/cloudinary";
 import { requireStrictProductionConfig } from "@/lib/production/runtime";
 import { getUploadLimitsMb } from "@/lib/settings/runtime";
 import { created, problem } from "@/lib/api/response";
@@ -9,15 +9,17 @@ import { created, problem } from "@/lib/api/response";
 export const dynamic = "force-dynamic";
 
 const MAX_VIDEO_BYTES = 25 * 1024 * 1024;
+
+type CloudinaryUploadResponse = {
+  secure_url?: string;
+  public_id?: string;
+  bytes?: number;
+  resource_type?: string;
+  format?: string;
+  error?: { message?: string };
+};
+
 export async function POST(request: Request) {
-  if (requireStrictProductionConfig() && hasCloudinaryConfig()) {
-    return problem(410, "DIRECT_UPLOAD_REQUIRED", "Use the signed media upload intent for production uploads.");
-  }
-
-  if (requireStrictProductionConfig()) {
-    return problem(503, "MEDIA_STORAGE_NOT_CONFIGURED", "Durable media storage is required for production uploads.");
-  }
-
   const userId = getSessionUserIdFromRequest(request);
   if (!userId) {
     return problem(401, "UNAUTHORIZED", "Sign in to upload media.");
@@ -59,6 +61,50 @@ export async function POST(request: Request) {
       videoMatch ? "Video must be under 25 MB." : pdfMatch ? "Document must be under 10 MB." : `Image must be under ${getUploadLimitsMb()} MB.`,
     );
   }
+
+  if (hasCloudinaryConfig()) {
+    const resourceType = videoMatch ? "video" : pdfMatch ? "raw" : "image";
+    const intent = createCloudinaryUploadIntent({
+      folder: `homelink/${folder}`,
+      publicIdPrefix: `${folder}/${userId.slice(0, 8)}`,
+      resourceType,
+    });
+
+    if (!intent) {
+      return problem(503, "MEDIA_STORAGE_NOT_CONFIGURED", "Cloudinary credentials are required for durable media uploads.");
+    }
+
+    const form = new FormData();
+    for (const [key, value] of Object.entries(intent.fields)) {
+      form.append(key, String(value));
+    }
+    form.append("file", new Blob([buffer]), `upload.${ext}`);
+
+    const upload = await fetch(intent.uploadUrl, { method: "POST", body: form });
+    const cloudinary = (await upload.json()) as CloudinaryUploadResponse;
+
+    if (!upload.ok || !cloudinary.secure_url) {
+      return problem(
+        502,
+        "UPLOAD_FAILED",
+        cloudinary.error?.message ?? "Cloudinary could not store this file.",
+      );
+    }
+
+    return created({
+      url: cloudinary.secure_url,
+      filename: cloudinary.public_id ?? `upload.${ext}`,
+      size: cloudinary.bytes ?? buffer.length,
+      kind: cloudinary.resource_type ?? resourceType,
+      format: cloudinary.format,
+      provider: "cloudinary",
+    });
+  }
+
+  if (requireStrictProductionConfig()) {
+    return problem(503, "MEDIA_STORAGE_NOT_CONFIGURED", "Durable media storage is required for production uploads.");
+  }
+
   const dir = path.join(process.cwd(), "public", "uploads", folder);
   await mkdir(dir, { recursive: true });
 

@@ -22,6 +22,7 @@ import { RoommateEnquiryPanel } from "@/components/enquiries/roommate-enquiry-pa
 import { ListingCard } from "@/components/listings/listing-card";
 import { useApp } from "@/components/providers/app-provider";
 import { apiFetch } from "@/lib/api/client";
+import { recommendedRoommates } from "@/lib/roommates/content";
 import {
   labelGender,
   labelHousehold,
@@ -84,7 +85,19 @@ const LIFESTYLE_STYLES: Record<string, string> = {
 
 function isListingPlaceholderPhoto(url?: string) {
   if (!url) return true;
-  return /house|flat|room|hero|cottage|bulawayo|kwekwe|gweru|avondale|listing|property/i.test(url);
+  if (url.includes("/uploads/")) return false;
+  const filename = url.split("/").pop() ?? url;
+  if (/^portrait-/i.test(filename)) return false;
+  return /^(photo-|cover-|room-share-|hero|house|flat|cottage|listing|property|bulawayo|kwekwe|gweru|avondale)/i.test(filename);
+}
+
+function profilePhotoFor(profile: PublicProfile["profile"], userId: string) {
+  const candidates = [
+    profile.photoUrl,
+    ...(profile.photos ?? []),
+    recommendedRoommates.find((person) => person.id === userId)?.avatarUrl,
+  ];
+  return candidates.find((url) => url && !isListingPlaceholderPhoto(url));
 }
 
 function profileTagline(bio: string) {
@@ -141,7 +154,7 @@ export function RoommatePublicProfile({ userId }: { userId: string }) {
   }
 
   const { profile, name } = { profile: data.profile, name: data.name };
-  const photo = !isListingPlaceholderPhoto(profile.photoUrl) ? profile.photoUrl : undefined;
+  const photo = profilePhotoFor(profile, data.userId);
   const verifiedStays = data.residenceHistory.filter((r) => r.verified);
   const isSelf = user?.id === userId;
   const lifestyleStyle = LIFESTYLE_STYLES[profile.lifestyle] ?? LIFESTYLE_STYLES.professional;

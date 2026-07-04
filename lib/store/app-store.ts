@@ -1062,7 +1062,7 @@ function seedRoommateSeekers(state: ReturnType<typeof createInitialStore>) {
   ];
 
   for (const p of profiles) {
-    state.roommateProfiles.set(p.userId, {
+    const seededProfile: RoommateProfile = {
       id: `rm_${p.userId}`,
       userId: p.userId,
       lookingFor: "roommate",
@@ -1096,7 +1096,20 @@ function seedRoommateSeekers(state: ReturnType<typeof createInitialStore>) {
       moderationStatus: "active" as const,
       createdAt: daysAgo(14),
       updatedAt: daysAgo(1),
-    });
+    };
+    const existing = state.roommateProfiles.get(p.userId);
+    if (existing) {
+      state.roommateProfiles.set(p.userId, {
+        ...existing,
+        photoUrl: existing.photoUrl || seededProfile.photoUrl,
+        photos: existing.photos?.length ? existing.photos : seededProfile.photos,
+        active: existing.active ?? true,
+        verified: existing.verified ?? true,
+        moderationStatus: existing.moderationStatus ?? "active",
+      });
+    } else {
+      state.roommateProfiles.set(p.userId, seededProfile);
+    }
   }
 }
 
