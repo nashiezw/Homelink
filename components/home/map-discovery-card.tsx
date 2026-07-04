@@ -34,6 +34,12 @@ const LAYER_MATCHERS: Record<string, RegExp> = {
   security: /\b(security|secure|wall|walled|gate|gated|guard|safe)/i,
 };
 
+const PIN_POSITIONS = [
+  "left-[28%] top-[33%]",
+  "left-[55%] top-[50%]",
+  "left-[72%] top-[39%]",
+];
+
 const AREA_COORDINATES: Record<string, UserPosition> = {
   "avondale, harare": { lat: -17.8007, lng: 31.0335 },
   "belvedere, harare": { lat: -17.8335, lng: 31.0028 },
@@ -186,15 +192,11 @@ export function MapDiscoveryCard({ listings }: { listings: Listing[] }) {
           </div>
         </div>
 
-        <div className="absolute left-[28%] top-[33%]">
-          <MapPinCluster cluster={clusters[0]} />
-        </div>
-        <div className="absolute left-[55%] top-[50%]">
-          <MapPinCluster cluster={clusters[1]} />
-        </div>
-        <div className="absolute left-[72%] top-[39%]">
-          <MapPinCluster cluster={clusters[2]} />
-        </div>
+        {clusters.map((cluster, index) => (
+          <div key={cluster.location} className={`absolute ${PIN_POSITIONS[index]}`}>
+            <MapPinCluster cluster={cluster} />
+          </div>
+        ))}
         <div className="absolute left-5 top-[6.2rem] flex items-center gap-1.5 rounded-lg border border-white/20 bg-black/30 px-2.5 py-1.5 text-xs font-medium text-white shadow-lg backdrop-blur-md sm:top-[5.9rem]">
           <Building2 className="size-3.5 text-cyan-200" />
           {filteredListings.length
