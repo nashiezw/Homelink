@@ -67,7 +67,7 @@ export function BrowsePropertyTypes({ types }: BrowsePropertyTypesProps) {
                     </span>
                     <span className="mt-0.5 block text-xs text-slate-500 dark:text-slate-400">
                       {item.comingSoon
-                        ? "Coming soon"
+                        ? "Register interest"
                         : `${item.count.toLocaleString()} ${item.id === "roommates" ? "listings" : "properties"}`}
                     </span>
                   </span>

@@ -386,7 +386,7 @@ export default function AboutPage() {
                           <div className="mx-auto flex size-28 items-center justify-center rounded-[1.5rem] border border-white/15 bg-white/10 text-4xl font-black text-white shadow-xl backdrop-blur">
                             {founder.initials}
                           </div>
-                          <p className="mt-5 text-xs font-bold uppercase tracking-[0.2em] text-emerald-200">Founder portrait coming soon</p>
+                          <p className="mt-5 text-xs font-bold uppercase tracking-[0.2em] text-emerald-200">HomeLink Zimbabwe</p>
                         </div>
                       </div>
                     )}
