@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Listing } from "@/lib/types";
 
 const POI_LAYERS: Array<{ id: string; label: string; icon: LucideIcon }> = [
@@ -26,13 +26,63 @@ const POI_LAYERS: Array<{ id: string; label: string; icon: LucideIcon }> = [
   { id: "security", label: "Security", icon: Shield },
 ];
 
+const AREA_COORDINATES: Record<string, UserPosition> = {
+  "avondale, harare": { lat: -17.8007, lng: 31.0335 },
+  "belvedere, harare": { lat: -17.8335, lng: 31.0028 },
+  "borrowdale, harare": { lat: -17.7615, lng: 31.0893 },
+  "mount pleasant, harare": { lat: -17.7817, lng: 31.0533 },
+  "avondale west, harare": { lat: -17.7984, lng: 31.0148 },
+  "cbd, harare": { lat: -17.8292, lng: 31.0522 },
+  "hillside, bulawayo": { lat: -20.1783, lng: 28.6069 },
+  "cbd, bulawayo": { lat: -20.1561, lng: 28.5887 },
+  "kumalo, bulawayo": { lat: -20.1352, lng: 28.6026 },
+  "senga, gweru": { lat: -19.4825, lng: 29.8304 },
+  "ridgemont, gweru": { lat: -19.4568, lng: 29.8181 },
+  "newtown, kwekwe": { lat: -18.9245, lng: 29.8149 },
+  "msasa park, kwekwe": { lat: -18.9194, lng: 29.8297 },
+  "chikanga, mutare": { lat: -18.9957, lng: 32.6225 },
+  "murambi, mutare": { lat: -18.9833, lng: 32.65 },
+  "seke unit a, chitungwiza": { lat: -18.0058, lng: 31.0706 },
+  "chinotimba, victoria falls": { lat: -17.9316, lng: 25.8242 },
+};
+
+type UserPosition = {
+  lat: number;
+  lng: number;
+};
+
 export function MapDiscoveryCard({ listings }: { listings: Listing[] }) {
   const [layer, setLayer] = useState("all");
+  const [userPosition, setUserPosition] = useState<UserPosition | null>(null);
+  const [locationStatus, setLocationStatus] = useState<"checking" | "allowed" | "blocked" | "unavailable">("checking");
   const activeLayer = POI_LAYERS.find((l) => l.id === layer) ?? POI_LAYERS[0];
   const LayerIcon = activeLayer.icon;
-  const area = buildMapAreaSummary(listings);
-  const clusters = buildMapClusters(listings);
+  const area = useMemo(() => buildMapAreaSummary(listings, userPosition), [listings, userPosition]);
+  const clusters = useMemo(() => buildMapClusters(listings, userPosition), [listings, userPosition]);
   const href = area ? `/search?location=${encodeURIComponent(area.location)}` : "/search";
+
+  useEffect(() => {
+    requestUserLocation({ silent: true });
+  }, []);
+
+  function requestUserLocation({ silent = false }: { silent?: boolean } = {}) {
+    if (!("geolocation" in navigator)) {
+      setLocationStatus("unavailable");
+      return;
+    }
+    if (!silent) setLocationStatus("checking");
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setUserPosition({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        });
+        setLocationStatus("allowed");
+      },
+      () => setLocationStatus(silent ? "blocked" : "unavailable"),
+      { enableHighAccuracy: false, maximumAge: 10 * 60 * 1000, timeout: 7000 },
+    );
+  }
 
   return (
     <div className="group relative min-h-[28rem] overflow-hidden rounded-2xl border border-cyan-800/30 bg-[#062a34] shadow-[0_20px_60px_rgba(10,61,76,0.35)]">
@@ -88,7 +138,9 @@ export function MapDiscoveryCard({ listings }: { listings: Listing[] }) {
             </span>
             <div>
               <p className="font-semibold tracking-tight text-white">Map-first discovery</p>
-              <p className="text-xs text-cyan-100/85">Live listing context</p>
+              <p className="text-xs text-cyan-100/85">
+                {locationStatus === "allowed" ? "Sorted from your location" : "Live listing context"}
+              </p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -115,14 +167,14 @@ export function MapDiscoveryCard({ listings }: { listings: Listing[] }) {
           </div>
         </div>
 
-        <div className="pointer-events-none absolute left-[28%] top-[33%]">
-          <MapPinCluster homes={clusters[0] ?? "0"} />
+        <div className="absolute left-[28%] top-[33%]">
+          <MapPinCluster cluster={clusters[0]} />
         </div>
-        <div className="pointer-events-none absolute left-[55%] top-[50%]">
-          <MapPinCluster homes={clusters[1] ?? clusters[0] ?? "0"} />
+        <div className="absolute left-[55%] top-[50%]">
+          <MapPinCluster cluster={clusters[1] ?? clusters[0]} />
         </div>
-        <div className="pointer-events-none absolute left-[72%] top-[39%]">
-          <MapPinCluster homes={clusters[2] ?? clusters[0] ?? "0"} />
+        <div className="absolute left-[72%] top-[39%]">
+          <MapPinCluster cluster={clusters[2] ?? clusters[0]} />
         </div>
         <div className="absolute left-5 top-[6.2rem] flex items-center gap-1.5 rounded-lg border border-white/20 bg-black/30 px-2.5 py-1.5 text-xs font-medium text-white shadow-lg backdrop-blur-md sm:top-[5.9rem]">
           <Building2 className="size-3.5 text-cyan-200" />
@@ -140,7 +192,7 @@ export function MapDiscoveryCard({ listings }: { listings: Listing[] }) {
               </div>
               <p className="mt-0.5 text-xs text-slate-600 dark:text-slate-300">
                 {area
-                  ? `${area.count} featured ${area.count === 1 ? "listing" : "listings"} / typical price ${area.typicalPrice}`
+                  ? `${area.count} featured ${area.count === 1 ? "listing" : "listings"} / ${area.distanceLabel ?? `typical price ${area.typicalPrice}`}`
                   : "Browse active listings by city, suburb, type, and budget"}
               </p>
               <div className="mt-2 flex flex-wrap gap-1.5">
@@ -163,20 +215,25 @@ export function MapDiscoveryCard({ listings }: { listings: Listing[] }) {
               <ArrowRight className="size-4 opacity-80" aria-hidden="true" />
             </Link>
           </div>
+          {locationStatus !== "allowed" ? (
+            <button
+              type="button"
+              onClick={() => requestUserLocation()}
+              className="mt-3 w-full rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-800 transition hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-100"
+            >
+              {locationStatus === "checking" ? "Checking your location..." : "Use my location for nearer matches"}
+            </button>
+          ) : null}
         </div>
       </div>
     </div>
   );
 }
 
-function buildMapAreaSummary(listings: Listing[]) {
+function buildMapAreaSummary(listings: Listing[], userPosition: UserPosition | null) {
   if (!listings.length) return null;
-  const groups = new Map<string, Listing[]>();
-  for (const listing of listings) {
-    const key = `${listing.suburb}, ${listing.city}`;
-    groups.set(key, [...(groups.get(key) ?? []), listing]);
-  }
-  const [location, group] = [...groups.entries()].sort((a, b) => b[1].length - a[1].length)[0];
+  const groups = groupListingsByArea(listings);
+  const [location, group] = rankAreaGroups(groups, userPosition)[0];
   const prices = group.map((listing) => listing.price).sort((a, b) => a - b);
   const middle = Math.floor(prices.length / 2);
   const typicalPrice = prices.length % 2 ? prices[middle] : (prices[middle - 1] + prices[middle]) / 2;
@@ -185,6 +242,7 @@ function buildMapAreaSummary(listings: Listing[]) {
     ? (cbdDistances.reduce((sum, value) => sum + value, 0) / cbdDistances.length).toFixed(1)
     : null;
   const amenities = [...new Set(group.flatMap((listing) => listing.amenities))].slice(0, 3);
+  const distanceKm = userPosition ? nearestDistanceKm(group, userPosition) : null;
 
   return {
     location,
@@ -193,32 +251,85 @@ function buildMapAreaSummary(listings: Listing[]) {
     typicalPrice: `$${Math.round(typicalPrice).toLocaleString("en-US")}`,
     cbdDistance,
     amenities,
+    distanceLabel: distanceKm === null ? null : `${distanceKm.toFixed(1)} km from you`,
   };
 }
 
-function buildMapClusters(listings: Listing[]) {
-  if (!listings.length) return ["0"];
-  const groups = new Map<string, number>();
-  for (const listing of listings) {
-    const key = `${listing.suburb}, ${listing.city}`;
-    groups.set(key, (groups.get(key) ?? 0) + 1);
-  }
-  return [...groups.values()]
-    .sort((a, b) => b - a)
-    .slice(0, 3)
-    .map(String);
+function buildMapClusters(listings: Listing[], userPosition: UserPosition | null) {
+  if (!listings.length) return [];
+  const groups = rankAreaGroups(groupListingsByArea(listings), userPosition);
+  return groups.slice(0, 3).map(([location, group]) => {
+    const distanceKm = userPosition ? nearestDistanceKm(group, userPosition) : null;
+    return {
+      label: `${group.length} ${group.length === 1 ? "home" : "homes"}`,
+      location,
+      href: `/search?location=${encodeURIComponent(location)}`,
+      distanceLabel: distanceKm === null ? null : `${distanceKm.toFixed(1)} km`,
+    };
+  });
 }
 
-function MapPinCluster({ homes }: { homes: string }) {
+function groupListingsByArea(listings: Listing[]) {
+  const listingGroups = new Map<string, Listing[]>();
+  for (const listing of listings) {
+    const key = `${listing.suburb}, ${listing.city}`;
+    listingGroups.set(key, [...(listingGroups.get(key) ?? []), listing]);
+  }
+  return listingGroups;
+}
+
+function rankAreaGroups(groups: Map<string, Listing[]>, userPosition: UserPosition | null) {
+  return [...groups.entries()].sort((a, b) => {
+    if (userPosition) {
+      const aDistance = nearestDistanceKm(a[1], userPosition);
+      const bDistance = nearestDistanceKm(b[1], userPosition);
+      if (aDistance !== null && bDistance !== null && aDistance !== bDistance) return aDistance - bDistance;
+      if (aDistance !== null && bDistance === null) return -1;
+      if (aDistance === null && bDistance !== null) return 1;
+    }
+    return b[1].length - a[1].length;
+  });
+}
+
+function nearestDistanceKm(listings: Listing[], userPosition: UserPosition) {
+  const distances = listings
+    .map((listing) => {
+      const coordinates = listingCoordinates(listing);
+      if (!coordinates) return null;
+      return haversineKm(userPosition.lat, userPosition.lng, coordinates.lat, coordinates.lng);
+    })
+    .filter((value): value is number => value !== null);
+  return distances.length ? Math.min(...distances) : null;
+}
+
+function listingCoordinates(listing: Listing): UserPosition | null {
+  if (listing.latitude !== undefined && listing.longitude !== undefined) {
+    return { lat: listing.latitude, lng: listing.longitude };
+  }
+  return AREA_COORDINATES[`${listing.suburb}, ${listing.city}`.toLowerCase()] ?? null;
+}
+
+function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number) {
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+  return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function MapPinCluster({ cluster }: { cluster?: { label: string; href: string; location: string; distanceLabel: string | null } }) {
+  if (!cluster) return null;
   return (
-    <div className="relative -translate-x-1/2 -translate-y-full">
+    <Link href={cluster.href} aria-label={`View listings in ${cluster.location}`} title={cluster.distanceLabel ?? cluster.location} className="group/pin relative block -translate-x-1/2 -translate-y-full">
       <span className="map-pin-pulse absolute left-1/2 top-1/2 size-10 -translate-x-1/2 -translate-y-1/2 rounded-full bg-emerald-400/50" />
-      <span className="relative flex size-9 items-center justify-center rounded-full bg-gradient-to-br from-emerald-300 to-emerald-600 shadow-lg shadow-emerald-900/50 ring-2 ring-white">
+      <span className="relative flex size-9 items-center justify-center rounded-full bg-gradient-to-br from-emerald-300 to-emerald-600 shadow-lg shadow-emerald-900/50 ring-2 ring-white transition group-hover/pin:scale-110">
         <MapPin className="size-4 fill-white text-white" />
       </span>
       <span className="absolute left-1/2 top-full mt-1 -translate-x-1/2 whitespace-nowrap rounded-md bg-white px-2 py-0.5 text-[10px] font-bold text-ink shadow-md">
-        {homes} homes
+        {cluster.label}
       </span>
-    </div>
+    </Link>
   );
 }
