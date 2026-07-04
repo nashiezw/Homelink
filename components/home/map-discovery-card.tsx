@@ -5,16 +5,18 @@ import {
   Building2,
   Bus,
   GraduationCap,
+  Home,
   Hospital,
   MapPin,
   Navigation,
   Shield,
+  SlidersHorizontal,
   ShoppingBag,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import type { Listing } from "@/lib/types";
+import type { Listing, ListingIntent, PropertyType } from "@/lib/types";
 
 const POI_LAYERS: Array<{ id: string; label: string; icon: LucideIcon }> = [
   { id: "all", label: "All nearby essentials", icon: MapPin },
@@ -25,6 +27,40 @@ const POI_LAYERS: Array<{ id: string; label: string; icon: LucideIcon }> = [
   { id: "cbd", label: "CBD distance", icon: Building2 },
   { id: "security", label: "Security", icon: Shield },
 ];
+
+const PROPERTY_FILTERS: Array<{ value: "" | PropertyType; label: string }> = [
+  { value: "", label: "Any property" },
+  { value: "room", label: "Rooms" },
+  { value: "flat", label: "Flats" },
+  { value: "house", label: "Houses" },
+  { value: "cottage", label: "Cottages" },
+  { value: "commercial", label: "Commercial" },
+  { value: "land", label: "Land" },
+  { value: "holiday_home", label: "Holiday homes" },
+];
+
+const INTENT_FILTERS: Array<{ value: "" | ListingIntent; label: string }> = [
+  { value: "", label: "Rent or buy" },
+  { value: "rent", label: "Rent" },
+  { value: "buy", label: "Buy" },
+];
+
+const BUDGET_FILTERS = [
+  { value: "", label: "Any budget" },
+  { value: "150", label: "Under $150" },
+  { value: "350", label: "Under $350" },
+  { value: "650", label: "Under $650" },
+  { value: "1000", label: "Under $1k" },
+  { value: "2500", label: "Under $2.5k" },
+];
+
+const LAYER_MATCHERS: Record<string, RegExp> = {
+  schools: /\b(school|college|university|campus|uz|msu|teacher)/i,
+  hospitals: /\b(hospital|clinic|medical|mater dei|health)/i,
+  shops: /\b(shop|shops|centre|center|mall|village|ok |market|retail|cbd)/i,
+  transport: /\b(transport|kombi|bus|road|walk|walking|commute|access|route)/i,
+  security: /\b(security|secure|wall|walled|gate|gated|guard|safe)/i,
+};
 
 const AREA_COORDINATES: Record<string, UserPosition> = {
   "avondale, harare": { lat: -17.8007, lng: 31.0335 },
@@ -51,15 +87,42 @@ type UserPosition = {
   lng: number;
 };
 
+type MapFilters = {
+  city: string;
+  propertyType: "" | PropertyType;
+  intent: "" | ListingIntent;
+  maxBudget: string;
+  verifiedOnly: boolean;
+  layer: string;
+};
+
 export function MapDiscoveryCard({ listings }: { listings: Listing[] }) {
   const [layer, setLayer] = useState("all");
+  const [city, setCity] = useState("");
+  const [propertyType, setPropertyType] = useState<"" | PropertyType>("");
+  const [intent, setIntent] = useState<"" | ListingIntent>("");
+  const [maxBudget, setMaxBudget] = useState("");
+  const [verifiedOnly, setVerifiedOnly] = useState(true);
   const [userPosition, setUserPosition] = useState<UserPosition | null>(null);
   const [locationStatus, setLocationStatus] = useState<"checking" | "allowed" | "blocked" | "unavailable">("checking");
   const activeLayer = POI_LAYERS.find((l) => l.id === layer) ?? POI_LAYERS[0];
   const LayerIcon = activeLayer.icon;
-  const area = useMemo(() => buildMapAreaSummary(listings, userPosition), [listings, userPosition]);
-  const clusters = useMemo(() => buildMapClusters(listings, userPosition), [listings, userPosition]);
-  const href = area ? `/search?location=${encodeURIComponent(area.location)}` : "/search";
+  const cities = useMemo(() => [...new Set(listings.map((listing) => listing.city).filter(Boolean))].sort(), [listings]);
+  const mapFilters = useMemo(
+    () => ({ city, propertyType, intent, maxBudget, verifiedOnly, layer }),
+    [city, propertyType, intent, maxBudget, verifiedOnly, layer],
+  );
+  const filteredListings = useMemo(() => applyMapFilters(listings, mapFilters), [listings, mapFilters]);
+  const area = useMemo(
+    () => buildMapAreaSummary(filteredListings, userPosition, layer),
+    [filteredListings, userPosition, layer],
+  );
+  const clusters = useMemo(
+    () => buildMapClusters(filteredListings, userPosition, layer),
+    [filteredListings, userPosition, layer],
+  );
+  const href = buildSearchHref(area?.location ?? city, mapFilters);
+  const hasActiveFilters = Boolean(city || propertyType || intent || maxBudget || !verifiedOnly || layer !== "all");
 
   useEffect(() => {
     requestUserLocation({ silent: true });
@@ -85,7 +148,7 @@ export function MapDiscoveryCard({ listings }: { listings: Listing[] }) {
   }
 
   return (
-    <div className="group relative min-h-[28rem] overflow-hidden rounded-2xl border border-cyan-800/30 bg-[#062a34] shadow-[0_20px_60px_rgba(10,61,76,0.35)]">
+    <div className="group relative min-h-[34rem] overflow-hidden rounded-2xl border border-cyan-800/30 bg-[#062a34] shadow-[0_20px_60px_rgba(10,61,76,0.35)]">
       <div className="absolute inset-x-0 top-0 z-20 h-1 bg-gradient-to-r from-cyan-400 via-emerald-400 to-teal-300" />
       <svg className="absolute inset-0 h-full w-full" aria-hidden="true" preserveAspectRatio="none">
         <defs>
@@ -130,55 +193,98 @@ export function MapDiscoveryCard({ listings }: { listings: Listing[] }) {
 
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(45,212,191,0.24),transparent_20rem),linear-gradient(180deg,rgba(8,47,73,0.18),rgba(3,7,18,0.2))]" />
 
-      <div className="relative z-10 flex min-h-[28rem] flex-col justify-between p-4 sm:p-5">
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/15 bg-slate-950/28 p-3 shadow-lg backdrop-blur-md">
-          <div className="flex items-center gap-3">
-            <span className="flex size-11 items-center justify-center rounded-xl bg-white/15 shadow-inner ring-1 ring-white/25 backdrop-blur">
-              <Navigation className="size-5 text-cyan-100" aria-hidden="true" />
-            </span>
-            <div>
-              <p className="font-semibold tracking-tight text-white">Map-first discovery</p>
-              <p className="text-xs text-cyan-100/85">
-                {locationStatus === "allowed" ? "Sorted from your location" : "Live listing context"}
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <label className="relative min-w-[10rem]">
-              <span className="sr-only">Map layer</span>
-              <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-emerald-300">
-                <LayerIcon className="size-3.5" />
+      <div className="relative z-10 flex min-h-[34rem] flex-col justify-between p-4 sm:p-5">
+        <div className="rounded-xl border border-white/15 bg-slate-950/34 p-3 shadow-lg backdrop-blur-md">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <span className="flex size-11 items-center justify-center rounded-xl bg-white/15 shadow-inner ring-1 ring-white/25 backdrop-blur">
+                <Navigation className="size-5 text-cyan-100" aria-hidden="true" />
               </span>
-              <select
-                value={layer}
-                onChange={(e) => setLayer(e.target.value)}
-                className="w-full appearance-none rounded-lg border border-white/20 bg-white/10 py-2 pl-8 pr-8 text-xs font-medium text-white backdrop-blur transition hover:bg-white/15 focus:border-emerald-300/50 focus:outline-none focus:ring-2 focus:ring-emerald-400/30"
-              >
-                {POI_LAYERS.map((item) => (
-                  <option key={item.id} value={item.id} className="text-ink">
-                    {item.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <span className="hidden rounded-full border border-emerald-400/40 bg-emerald-500/20 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-emerald-100 sm:inline">
-              Data-led
-            </span>
+              <div>
+                <p className="font-semibold tracking-tight text-white">Map-first discovery</p>
+                <p className="text-xs text-cyan-100/85">
+                  {locationStatus === "allowed" ? "Nearest areas first" : "Use location or filters"}
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => requestUserLocation()}
+              className="inline-flex items-center gap-2 rounded-lg border border-emerald-300/35 bg-emerald-400/15 px-3 py-2 text-xs font-semibold text-emerald-50 transition hover:bg-emerald-400/25"
+            >
+              <Navigation className="size-3.5" aria-hidden="true" />
+              {locationStatus === "allowed" ? "Using your location" : locationStatus === "checking" ? "Checking location" : "Use my location"}
+            </button>
+          </div>
+
+          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+            <MapSelect label="City" value={city} onChange={setCity} icon={MapPin}>
+              <option value="">All cities</option>
+              {cities.map((item) => (
+                <option key={item} value={item}>
+                  {item}
+                </option>
+              ))}
+            </MapSelect>
+            <MapSelect label="Property" value={propertyType} onChange={(value) => setPropertyType(value as "" | PropertyType)} icon={Home}>
+              {PROPERTY_FILTERS.map((item) => (
+                <option key={item.value || "all"} value={item.value}>
+                  {item.label}
+                </option>
+              ))}
+            </MapSelect>
+            <MapSelect label="Purpose" value={intent} onChange={(value) => setIntent(value as "" | ListingIntent)} icon={SlidersHorizontal}>
+              {INTENT_FILTERS.map((item) => (
+                <option key={item.value || "all"} value={item.value}>
+                  {item.label}
+                </option>
+              ))}
+            </MapSelect>
+            <MapSelect label="Budget" value={maxBudget} onChange={setMaxBudget} icon={Building2}>
+              {BUDGET_FILTERS.map((item) => (
+                <option key={item.value || "all"} value={item.value}>
+                  {item.label}
+                </option>
+              ))}
+            </MapSelect>
+            <MapSelect label="Nearby" value={layer} onChange={setLayer} icon={LayerIcon}>
+              {POI_LAYERS.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.label}
+                </option>
+              ))}
+            </MapSelect>
+            <button
+              type="button"
+              onClick={() => setVerifiedOnly((value) => !value)}
+              className={`inline-flex h-10 items-center justify-center gap-2 rounded-lg border px-3 text-xs font-semibold transition ${
+                verifiedOnly
+                  ? "border-emerald-300/45 bg-emerald-400/18 text-emerald-50"
+                  : "border-white/20 bg-white/10 text-cyan-50 hover:bg-white/15"
+              }`}
+            >
+              <Shield className="size-3.5" aria-hidden="true" />
+              {verifiedOnly ? "Verified only" : "All listings"}
+            </button>
           </div>
         </div>
 
-        <div className="absolute left-[28%] top-[33%]">
+        <div className="absolute left-[28%] top-[43%]">
           <MapPinCluster cluster={clusters[0]} />
         </div>
-        <div className="absolute left-[55%] top-[50%]">
+        <div className="absolute left-[55%] top-[58%]">
           <MapPinCluster cluster={clusters[1] ?? clusters[0]} />
         </div>
-        <div className="absolute left-[72%] top-[39%]">
+        <div className="absolute left-[72%] top-[47%]">
           <MapPinCluster cluster={clusters[2] ?? clusters[0]} />
         </div>
-        <div className="absolute left-5 top-[6.2rem] flex items-center gap-1.5 rounded-lg border border-white/20 bg-black/30 px-2.5 py-1.5 text-xs font-medium text-white shadow-lg backdrop-blur-md sm:top-[5.9rem]">
+        <div className="absolute left-5 top-[15.5rem] flex items-center gap-1.5 rounded-lg border border-white/20 bg-black/30 px-2.5 py-1.5 text-xs font-medium text-white shadow-lg backdrop-blur-md sm:top-[14.3rem]">
           <Building2 className="size-3.5 text-cyan-200" />
-          {area?.cbdDistance ? `${area.cbdDistance} km median CBD distance` : "Explore by suburb"}
+          {filteredListings.length
+            ? area?.cbdDistance
+              ? `${area.cbdDistance} km median CBD distance`
+              : `${filteredListings.length} matching listings`
+            : "No matches yet"}
         </div>
 
         <div className="rounded-xl border border-white/20 bg-white/95 p-3 shadow-2xl shadow-slate-950/30 backdrop-blur-md dark:bg-slate-900/95">
@@ -192,7 +298,7 @@ export function MapDiscoveryCard({ listings }: { listings: Listing[] }) {
               </div>
               <p className="mt-0.5 text-xs text-slate-600 dark:text-slate-300">
                 {area
-                  ? `${area.count} featured ${area.count === 1 ? "listing" : "listings"} / ${area.distanceLabel ?? `typical price ${area.typicalPrice}`}`
+                  ? `${area.count} matching ${area.count === 1 ? "listing" : "listings"} / ${area.distanceLabel ?? `typical price ${area.typicalPrice}`}`
                   : "Browse active listings by city, suburb, type, and budget"}
               </p>
               <div className="mt-2 flex flex-wrap gap-1.5">
@@ -215,7 +321,22 @@ export function MapDiscoveryCard({ listings }: { listings: Listing[] }) {
               <ArrowRight className="size-4 opacity-80" aria-hidden="true" />
             </Link>
           </div>
-          {locationStatus !== "allowed" ? (
+          {hasActiveFilters ? (
+            <button
+              type="button"
+              onClick={() => {
+                setCity("");
+                setPropertyType("");
+                setIntent("");
+                setMaxBudget("");
+                setVerifiedOnly(true);
+                setLayer("all");
+              }}
+              className="mt-3 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200"
+            >
+              Reset map filters
+            </button>
+          ) : locationStatus !== "allowed" ? (
             <button
               type="button"
               onClick={() => requestUserLocation()}
@@ -230,10 +351,60 @@ export function MapDiscoveryCard({ listings }: { listings: Listing[] }) {
   );
 }
 
-function buildMapAreaSummary(listings: Listing[], userPosition: UserPosition | null) {
+function applyMapFilters(listings: Listing[], filters: MapFilters) {
+  const maxBudget = Number(filters.maxBudget);
+  const layerMatcher = LAYER_MATCHERS[filters.layer];
+  const layerFiltered = listings.filter((listing) => {
+    if (filters.city && listing.city !== filters.city) return false;
+    if (filters.propertyType && listing.type !== filters.propertyType) return false;
+    if (filters.intent && listing.intent !== filters.intent) return false;
+    if (filters.verifiedOnly && !listing.verified) return false;
+    if (Number.isFinite(maxBudget) && maxBudget > 0 && listing.price > maxBudget) return false;
+    if (layerMatcher && !listingMatchesLayer(listing, layerMatcher)) return false;
+    return true;
+  });
+
+  if (layerFiltered.length || !layerMatcher) return layerFiltered;
+
+  return listings.filter((listing) => {
+    if (filters.city && listing.city !== filters.city) return false;
+    if (filters.propertyType && listing.type !== filters.propertyType) return false;
+    if (filters.intent && listing.intent !== filters.intent) return false;
+    if (filters.verifiedOnly && !listing.verified) return false;
+    if (Number.isFinite(maxBudget) && maxBudget > 0 && listing.price > maxBudget) return false;
+    return true;
+  });
+}
+
+function listingMatchesLayer(listing: Listing, matcher: RegExp) {
+  const context = [
+    listing.title,
+    listing.description,
+    listing.highlight,
+    listing.suburb,
+    listing.city,
+    ...listing.amenities,
+    ...listing.nearby,
+  ].join(" ");
+  return matcher.test(context);
+}
+
+function buildSearchHref(location: string, filters: MapFilters) {
+  const params = new URLSearchParams();
+  if (location) params.set("location", location);
+  if (filters.propertyType) params.set("type", filters.propertyType);
+  if (filters.intent) params.set("intent", filters.intent);
+  if (filters.maxBudget) params.set("maxPrice", filters.maxBudget);
+  if (filters.verifiedOnly) params.set("verifiedOnly", "true");
+  if (filters.layer !== "all") params.set("nearby", filters.layer);
+  const query = params.toString();
+  return query ? `/search?${query}` : "/search";
+}
+
+function buildMapAreaSummary(listings: Listing[], userPosition: UserPosition | null, layer: string) {
   if (!listings.length) return null;
   const groups = groupListingsByArea(listings);
-  const [location, group] = rankAreaGroups(groups, userPosition)[0];
+  const [location, group] = rankAreaGroups(groups, userPosition, layer)[0];
   const prices = group.map((listing) => listing.price).sort((a, b) => a - b);
   const middle = Math.floor(prices.length / 2);
   const typicalPrice = prices.length % 2 ? prices[middle] : (prices[middle - 1] + prices[middle]) / 2;
@@ -255,9 +426,9 @@ function buildMapAreaSummary(listings: Listing[], userPosition: UserPosition | n
   };
 }
 
-function buildMapClusters(listings: Listing[], userPosition: UserPosition | null) {
+function buildMapClusters(listings: Listing[], userPosition: UserPosition | null, layer: string) {
   if (!listings.length) return [];
-  const groups = rankAreaGroups(groupListingsByArea(listings), userPosition);
+  const groups = rankAreaGroups(groupListingsByArea(listings), userPosition, layer);
   return groups.slice(0, 3).map(([location, group]) => {
     const distanceKm = userPosition ? nearestDistanceKm(group, userPosition) : null;
     return {
@@ -278,7 +449,7 @@ function groupListingsByArea(listings: Listing[]) {
   return listingGroups;
 }
 
-function rankAreaGroups(groups: Map<string, Listing[]>, userPosition: UserPosition | null) {
+function rankAreaGroups(groups: Map<string, Listing[]>, userPosition: UserPosition | null, layer: string) {
   return [...groups.entries()].sort((a, b) => {
     if (userPosition) {
       const aDistance = nearestDistanceKm(a[1], userPosition);
@@ -287,8 +458,37 @@ function rankAreaGroups(groups: Map<string, Listing[]>, userPosition: UserPositi
       if (aDistance !== null && bDistance === null) return -1;
       if (aDistance === null && bDistance !== null) return 1;
     }
-    return b[1].length - a[1].length;
+    if (layer === "cbd") {
+      const aCbd = medianCbdDistance(a[1]);
+      const bCbd = medianCbdDistance(b[1]);
+      if (aCbd !== null && bCbd !== null && aCbd !== bCbd) return aCbd - bCbd;
+      if (aCbd !== null && bCbd === null) return -1;
+      if (aCbd === null && bCbd !== null) return 1;
+    }
+    const countDifference = b[1].length - a[1].length;
+    if (countDifference) return countDifference;
+    const verifiedDifference = verifiedRatio(b[1]) - verifiedRatio(a[1]);
+    if (verifiedDifference) return verifiedDifference;
+    return averageTrustScore(b[1]) - averageTrustScore(a[1]);
   });
+}
+
+function medianCbdDistance(listings: Listing[]) {
+  const distances = listings
+    .map((listing) => listing.distanceToCbdKm)
+    .filter((value) => Number.isFinite(value))
+    .sort((a, b) => a - b);
+  if (!distances.length) return null;
+  const middle = Math.floor(distances.length / 2);
+  return distances.length % 2 ? distances[middle] : (distances[middle - 1] + distances[middle]) / 2;
+}
+
+function verifiedRatio(listings: Listing[]) {
+  return listings.length ? listings.filter((listing) => listing.verified).length / listings.length : 0;
+}
+
+function averageTrustScore(listings: Listing[]) {
+  return listings.length ? listings.reduce((sum, listing) => sum + listing.trustScore, 0) / listings.length : 0;
 }
 
 function nearestDistanceKm(listings: Listing[], userPosition: UserPosition) {
@@ -331,5 +531,35 @@ function MapPinCluster({ cluster }: { cluster?: { label: string; href: string; l
         {cluster.label}
       </span>
     </Link>
+  );
+}
+
+function MapSelect({
+  label,
+  value,
+  onChange,
+  icon: Icon,
+  children,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  icon: LucideIcon;
+  children: React.ReactNode;
+}) {
+  return (
+    <label className="relative">
+      <span className="sr-only">{label}</span>
+      <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-emerald-300">
+        <Icon className="size-3.5" aria-hidden="true" />
+      </span>
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="h-10 w-full appearance-none rounded-lg border border-white/20 bg-white/10 py-2 pl-8 pr-8 text-xs font-medium text-white backdrop-blur transition hover:bg-white/15 focus:border-emerald-300/50 focus:outline-none focus:ring-2 focus:ring-emerald-400/30 [&>option]:text-ink"
+      >
+        {children}
+      </select>
+    </label>
   );
 }

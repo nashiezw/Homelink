@@ -14,6 +14,7 @@ export type ListingQuery = {
   bedrooms?: number;
   bathrooms?: number;
   amenities?: string[];
+  nearby?: string;
   verifiedOnly?: boolean;
   availableNow?: boolean;
   gender?: GenderPreference;
@@ -114,6 +115,10 @@ export function matchesListing(listing: Listing, query: ListingQuery) {
     if (!amenityMatch) return false;
   }
 
+  if (query.nearby && !matchesNearbyLayer(listing, query.nearby)) {
+    return false;
+  }
+
   if (query.householdType || query.maritalStatus || query.gender || query.householdSize || query.ageMin) {
     const prefs = listing.tenantPreferences;
     if (!prefs) return true;
@@ -173,6 +178,7 @@ export function parseListingQuery(searchParams: URLSearchParams): ListingQuery {
     amenities: searchParams.getAll("amenities").length
       ? searchParams.getAll("amenities")
       : searchParams.get("amenities")?.split(",").filter(Boolean),
+    nearby: nearbyLayer(searchParams.get("nearby")),
     verifiedOnly:
       booleanParam(searchParams.get("verifiedOnly")) ??
       booleanParam(searchParams.get("verified")),
@@ -217,6 +223,36 @@ function intent(value: string | null) {
 function propertyType(value: string | null): PropertyType | undefined {
   const allowed = ["room", "house", "flat", "cottage", "commercial", "land", "holiday_home"];
   return allowed.includes(value ?? "") ? (value as PropertyType) : undefined;
+}
+
+function nearbyLayer(value: string | null) {
+  const allowed = ["schools", "hospitals", "shops", "transport", "cbd", "security"];
+  return allowed.includes(value ?? "") ? value ?? undefined : undefined;
+}
+
+function matchesNearbyLayer(listing: Listing, layer: string) {
+  if (layer === "cbd") {
+    return Number.isFinite(listing.distanceToCbdKm);
+  }
+  const patterns: Record<string, RegExp> = {
+    schools: /\b(school|college|university|campus|uz|msu|teacher)/i,
+    hospitals: /\b(hospital|clinic|medical|mater dei|health)/i,
+    shops: /\b(shop|shops|centre|center|mall|village|ok |market|retail|cbd)/i,
+    transport: /\b(transport|kombi|bus|road|walk|walking|commute|access|route)/i,
+    security: /\b(security|secure|wall|walled|gate|gated|guard|safe)/i,
+  };
+  const pattern = patterns[layer];
+  if (!pattern) return true;
+  const haystack = [
+    listing.title,
+    listing.description,
+    listing.highlight,
+    listing.city,
+    listing.suburb,
+    ...listing.amenities,
+    ...listing.nearby,
+  ].join(" ");
+  return pattern.test(haystack);
 }
 
 function genderParam(value: string | null): GenderPreference | undefined {

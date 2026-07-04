@@ -50,6 +50,7 @@ import type { HomepageResolvedContent } from "@/lib/homepage/cms-types";
 
 export type HomepageData = {
   trustMetrics: HomeTrustMetric[];
+  mapListings: Listing[];
   featuredListings: Listing[];
   propertyTypes: HomePropertyType[];
   featuredAgents: HomeFeaturedAgent[];

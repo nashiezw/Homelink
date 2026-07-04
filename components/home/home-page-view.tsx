@@ -23,7 +23,7 @@ export function HomePageView({ data }: HomePageViewProps) {
       <HomeBannerStrip banners={data.content.banners} placement="hero" />
       <TrustMetricsSection metrics={data.trustMetrics} />
       <FeaturedPropertiesSection listings={data.featuredListings} />
-      <LocalSearchSection listings={data.featuredListings} />
+      <LocalSearchSection listings={data.mapListings} />
       <BrowsePropertyTypes types={data.propertyTypes} />
       <HomeBannerStrip banners={data.content.banners} placement="mid" />
       <MarketplaceSafetySection />

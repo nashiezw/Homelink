@@ -158,6 +158,7 @@ export function getHomepageData(): HomepageData {
 
   return {
     trustMetrics: resolveTrustMetrics(cms, liveTrustMetrics),
+    mapListings: listings,
     featuredListings: resolveFeaturedListings(cms, listings),
     propertyTypes: resolvePropertyTypes(cms, listings, snapshot.roommateProfileCount),
     featuredAgents: resolveFeaturedAgents(cms, store),
