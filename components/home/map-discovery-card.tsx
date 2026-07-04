@@ -77,8 +77,8 @@ export function MapDiscoveryCard({ listings }: { listings: Listing[] }) {
     [filteredListings, userPosition, layer],
   );
   const clusters = useMemo(
-    () => buildMapClusters(filteredListings, userPosition, layer),
-    [filteredListings, userPosition, layer],
+    () => buildMapClusters(filteredListings, userPosition, layer, area?.location),
+    [filteredListings, userPosition, layer, area?.location],
   );
   const href = buildSearchHref(area?.location, layer);
 
@@ -312,9 +312,16 @@ function buildMapAreaSummary(listings: Listing[], userPosition: UserPosition | n
   };
 }
 
-function buildMapClusters(listings: Listing[], userPosition: UserPosition | null, layer: string) {
+function buildMapClusters(
+  listings: Listing[],
+  userPosition: UserPosition | null,
+  layer: string,
+  activeLocation?: string,
+) {
   if (!listings.length) return [];
-  const groups = rankAreaGroups(groupListingsByArea(listings), userPosition, layer);
+  const groups = rankAreaGroups(groupListingsByArea(listings), userPosition, layer).filter(
+    ([location]) => !activeLocation || location === activeLocation,
+  );
   return groups.slice(0, 3).map(([location, group]) => {
     const distanceKm = userPosition ? nearestDistanceKm(group, userPosition) : null;
     return {
