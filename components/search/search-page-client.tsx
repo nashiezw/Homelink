@@ -1,6 +1,6 @@
 "use client";
 
-import { Map, Search, SlidersHorizontal, Sparkles, X } from "lucide-react";
+import { Map as MapIcon, Search, SlidersHorizontal, Sparkles, X } from "lucide-react";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -30,6 +30,115 @@ const holidayFilters = [
   { label: "Wi-Fi", key: "wifi" },
   { label: "Pet friendly", key: "petFriendly" },
 ];
+
+const propertyTypeLabels: Record<string, { singular: string; plural: string }> = {
+  room: { singular: "room", plural: "rooms" },
+  flat: { singular: "flat", plural: "flats" },
+  house: { singular: "house", plural: "houses" },
+  cottage: { singular: "cottage", plural: "cottages" },
+  commercial: { singular: "commercial property", plural: "commercial properties" },
+  land: { singular: "land listing", plural: "land listings" },
+  holiday_home: { singular: "holiday home", plural: "holiday homes" },
+};
+
+type MarketLens = {
+  headline: string;
+  intro: string;
+  rows: Array<{ label: string; value: string }>;
+};
+
+function money(value: number) {
+  return `$${Math.round(value).toLocaleString("en-US")}`;
+}
+
+function median(values: number[]) {
+  if (!values.length) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  const middle = Math.floor(sorted.length / 2);
+  return sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
+}
+
+function mostCommon(items: string[]) {
+  const counts = new Map<string, number>();
+  for (const item of items.filter(Boolean)) counts.set(item, (counts.get(item) ?? 0) + 1);
+  return [...counts.entries()].sort((a, b) => b[1] - a[1])[0];
+}
+
+function compactJoin(items: string[]) {
+  return items.filter(Boolean).join(", ");
+}
+
+function buildMarketLens(
+  listings: Listing[],
+  searchParams: URLSearchParams,
+  nearby: { cbdDistanceKm: number; places: Array<{ type: string; name: string; distanceKm: number }> } | null,
+  loading: boolean,
+): MarketLens {
+  const type = searchParams.get("type") ?? "";
+  const label = propertyTypeLabels[type] ?? { singular: "property", plural: "properties" };
+  const city = searchParams.get("city")?.trim() ?? "";
+  const suburb = searchParams.get("suburb")?.trim() ?? "";
+  const maxPrice = Number(searchParams.get("maxPrice") ?? "");
+  const location = searchParams.get("location")?.trim() || compactJoin([suburb, city]);
+  const scope = location || "your search";
+
+  if (loading) {
+    return {
+      headline: "Checking current matches",
+      intro: "We are reading the live listings that match the client's filters.",
+      rows: [{ label: "Search focus", value: `${label.plural}${location ? ` in ${location}` : ""}` }],
+    };
+  }
+
+  if (!listings.length) {
+    const filters = [
+      location,
+      type ? label.plural : "",
+      Number.isFinite(maxPrice) && maxPrice > 0 ? `under ${money(maxPrice)}` : "",
+    ].filter(Boolean);
+    return {
+      headline: `No exact ${label.plural} found`,
+      intro: filters.length
+        ? `There are no active listings for ${filters.join(" ")}. Widen the area, budget, or amenities to see better options.`
+        : "There are no listings matching these filters yet. Widen the search to see more options.",
+      rows: [
+        { label: "Current focus", value: filters.join(" / ") || "No specific filters" },
+        { label: "Next best step", value: "Remove one filter" },
+      ],
+    };
+  }
+
+  const prices = listings.map((listing) => listing.price);
+  const topArea = mostCommon(listings.map((listing) => compactJoin([listing.suburb, listing.city]) || listing.city));
+  const topAmenity = mostCommon(listings.flatMap((listing) => listing.amenities));
+  const verifiedCount = listings.filter((listing) => listing.verified || listing.landlordVerified).length;
+  const availableNow = listings.filter((listing) => listing.availableFrom.toLowerCase() === "available now").length;
+  const nearbyMentions = [...new Set(listings.flatMap((listing) => listing.nearby).filter(Boolean))].slice(0, 3);
+  const cbdDistances = listings.map((listing) => listing.distanceToCbdKm).filter((value) => Number.isFinite(value) && value > 0);
+
+  const headline = Number.isFinite(maxPrice) && maxPrice > 0
+    ? `${listings.length} ${listings.length === 1 ? label.singular : label.plural} under ${money(maxPrice)}`
+    : `${listings.length} ${listings.length === 1 ? label.singular : label.plural} match ${scope}`;
+
+  const rows: MarketLens["rows"] = [
+    { label: "Best matching area", value: topArea ? `${topArea[0]} (${topArea[1]})` : scope },
+    { label: "Typical price", value: money(median(prices)) },
+    { label: "Lowest match", value: money(Math.min(...prices)) },
+    { label: "Verified options", value: `${verifiedCount}/${listings.length}` },
+  ];
+
+  if (availableNow) rows.push({ label: "Available now", value: String(availableNow) });
+  if (topAmenity) rows.push({ label: "Common feature", value: topAmenity[0] });
+  if (nearby) rows.push({ label: "CBD distance", value: `${nearby.cbdDistanceKm} km` });
+  else if (cbdDistances.length) rows.push({ label: "Median CBD distance", value: `${median(cbdDistances).toFixed(1)} km` });
+  if (nearbyMentions.length) rows.push({ label: "Nearby mentioned", value: nearbyMentions.join(", ") });
+
+  return {
+    headline,
+    intro: `This summary is based only on the ${listings.length} listing${listings.length === 1 ? "" : "s"} currently matching the client's filters${location ? ` in ${location}` : ""}.`,
+    rows: rows.slice(0, 7),
+  };
+}
 
 export function SearchPageClient() {
   const searchParams = useSearchParams();
@@ -75,6 +184,11 @@ export function SearchPageClient() {
     }
     return searchParams.get(filter.key) === filter.value;
   }), [searchParams]);
+
+  const marketLens = useMemo(
+    () => buildMarketLens(listings, searchParams, nearby, loading),
+    [listings, loading, nearby, searchParams],
+  );
 
   function toggleFilter(filter: (typeof smartFilters)[number]) {
     const params = new URLSearchParams(searchParams.toString());
@@ -164,10 +278,11 @@ export function SearchPageClient() {
               const data = new FormData(event.currentTarget);
               const params = new URLSearchParams(searchParams.toString());
               const location = String(data.get("location") ?? "");
+              params.delete("location");
               params.delete("city");
               params.delete("suburb");
               if (location.trim()) {
-                params.set("city", location.trim());
+                params.set("location", location.trim());
               }
               const maxPrice = String(data.get("maxPrice") ?? "");
               if (maxPrice) {
@@ -182,7 +297,7 @@ export function SearchPageClient() {
                 <Search className="size-4 text-emerald-700" aria-hidden="true" />
                 <input
                   name="location"
-                  defaultValue={searchParams.get("city") ?? searchParams.get("suburb") ?? ""}
+                  defaultValue={searchParams.get("location") ?? searchParams.get("city") ?? searchParams.get("suburb") ?? ""}
                   className="w-full bg-transparent outline-none"
                   placeholder="Harare, Avondale, Kwekwe CBD"
                 />
@@ -291,7 +406,7 @@ export function SearchPageClient() {
               {loading ? " (loading...)" : ""}
             </p>
             <Button variant="secondary" onClick={() => setMapOpen((open) => !open)}>
-              <Map className="size-4" aria-hidden="true" />
+              <MapIcon className="size-4" aria-hidden="true" />
               {mapOpen ? "Hide map" : "Map view"}
             </Button>
           </div>
@@ -312,26 +427,29 @@ export function SearchPageClient() {
 
         <aside className="h-fit overflow-hidden rounded-lg border border-cyan-700/30 bg-gradient-to-br from-ocean via-[#0f5364] to-ink text-white shadow-soft lg:sticky lg:top-24">
           <div className="border-b border-white/10 p-5">
-            <p className="text-sm font-semibold uppercase tracking-normal text-cyan-100">Local market lens</p>
+            <p className="text-sm font-semibold uppercase tracking-normal text-cyan-100">Search intelligence</p>
             <p className="mt-2 text-2xl font-semibold">
-              {nearby ? `${nearby.cbdDistanceKm} km to CBD` : "Harare demand is moving fastest under $650"}
+              {marketLens.headline}
             </p>
           </div>
           <div className="p-5">
-            <p className="font-semibold">Map and neighbourhood intelligence</p>
+            <p className="font-semibold">What matches this client</p>
             <p className="mt-2 text-sm leading-6 text-cyan-50">
-              OpenStreetMap powers map discovery with nearby schools, hospitals, shops, and transport.
+              {marketLens.intro}
             </p>
             <div className="mt-5 grid gap-3">
-              {(nearby?.places ?? [
-                { type: "school", name: "Schools nearby", distanceKm: 0.9 },
-                { type: "hospital", name: "Hospitals nearby", distanceKm: 2.4 },
-                { type: "shopping", name: "Shopping centres", distanceKm: 0.6 },
-                { type: "transport", name: "Transport", distanceKm: 0.3 },
-              ]).map((item) => (
-                <div key={item.name} className="rounded-md bg-white/12 px-3 py-3 text-sm">
+              {marketLens.rows.map((item) => (
+                <div key={item.label} className="rounded-md bg-white/12 px-3 py-3 text-sm">
                   <div className="flex items-center justify-between gap-3">
-                    <span>{item.name}</span>
+                    <span className="min-w-0 text-cyan-50">{item.label}</span>
+                    <span className="max-w-[52%] text-right font-semibold text-white">{item.value}</span>
+                  </div>
+                </div>
+              ))}
+              {nearby?.places.slice(0, 3).map((item) => (
+                <div key={`${item.type}-${item.name}`} className="rounded-md bg-white/8 px-3 py-3 text-sm">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="min-w-0 text-cyan-50">{item.name}</span>
                     <span className="font-semibold text-cyan-100">{item.distanceKm} km</span>
                   </div>
                 </div>

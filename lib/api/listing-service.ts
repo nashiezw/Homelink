@@ -4,6 +4,7 @@ import type { GenderPreference, HouseholdType, MaritalStatus } from "@/lib/roomm
 import { householdOccupants } from "@/lib/roommates/types";
 
 export type ListingQuery = {
+  location?: string;
   city?: string;
   suburb?: string;
   intent?: "rent" | "buy";
@@ -51,6 +52,19 @@ export function getListing(id: string, options: { incrementViews?: boolean } = {
 
 export function matchesListing(listing: Listing, query: ListingQuery) {
   const normalAmenities = listing.amenities.map(normalize);
+
+  if (query.location) {
+    const location = normalize(query.location);
+    const locationHaystack = normalize([
+      listing.city,
+      listing.suburb,
+      listing.title,
+      ...listing.nearby,
+    ].join(" "));
+    if (!locationHaystack.includes(location)) {
+      return false;
+    }
+  }
 
   if (query.city && !normalize(listing.city).includes(normalize(query.city))) {
     return false;
@@ -146,6 +160,7 @@ export function matchesListing(listing: Listing, query: ListingQuery) {
 
 export function parseListingQuery(searchParams: URLSearchParams): ListingQuery {
   return {
+    location: optional(searchParams.get("location")),
     city: optional(searchParams.get("city")),
     suburb: optional(searchParams.get("suburb")),
     intent: intent(searchParams.get("intent")),

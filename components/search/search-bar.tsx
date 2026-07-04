@@ -50,6 +50,7 @@ export function SearchBar({ compact = false, initialLocation = "", initialIntent
   function buildParams() {
     const params = new URLSearchParams();
     if (location.trim()) {
+      params.set("location", location.trim());
       const parts = location.split(",").map((part) => part.trim());
       if (parts[0]) params.set("city", parts[0]);
       if (parts[1]) {
