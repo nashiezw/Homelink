@@ -190,10 +190,10 @@ export function MapDiscoveryCard({ listings }: { listings: Listing[] }) {
           <MapPinCluster cluster={clusters[0]} />
         </div>
         <div className="absolute left-[55%] top-[50%]">
-          <MapPinCluster cluster={clusters[1] ?? clusters[0]} />
+          <MapPinCluster cluster={clusters[1]} />
         </div>
         <div className="absolute left-[72%] top-[39%]">
-          <MapPinCluster cluster={clusters[2] ?? clusters[0]} />
+          <MapPinCluster cluster={clusters[2]} />
         </div>
         <div className="absolute left-5 top-[6.2rem] flex items-center gap-1.5 rounded-lg border border-white/20 bg-black/30 px-2.5 py-1.5 text-xs font-medium text-white shadow-lg backdrop-blur-md sm:top-[5.9rem]">
           <Building2 className="size-3.5 text-cyan-200" />
