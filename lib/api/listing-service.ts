@@ -55,13 +55,14 @@ export function matchesListing(listing: Listing, query: ListingQuery) {
 
   if (query.location) {
     const location = normalize(query.location);
+    const locationTokens = location.split(" ").filter(Boolean);
     const locationHaystack = normalize([
       listing.city,
       listing.suburb,
       listing.title,
       ...listing.nearby,
     ].join(" "));
-    if (!locationHaystack.includes(location)) {
+    if (!locationTokens.every((token) => locationHaystack.includes(token))) {
       return false;
     }
   }

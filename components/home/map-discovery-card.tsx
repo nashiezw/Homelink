@@ -14,6 +14,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
+import type { Listing } from "@/lib/types";
 
 const POI_LAYERS: Array<{ id: string; label: string; icon: LucideIcon }> = [
   { id: "all", label: "All nearby essentials", icon: MapPin },
@@ -25,10 +26,13 @@ const POI_LAYERS: Array<{ id: string; label: string; icon: LucideIcon }> = [
   { id: "security", label: "Security", icon: Shield },
 ];
 
-export function MapDiscoveryCard() {
+export function MapDiscoveryCard({ listings }: { listings: Listing[] }) {
   const [layer, setLayer] = useState("all");
   const activeLayer = POI_LAYERS.find((l) => l.id === layer) ?? POI_LAYERS[0];
   const LayerIcon = activeLayer.icon;
+  const area = buildMapAreaSummary(listings);
+  const clusters = buildMapClusters(listings);
+  const href = area ? `/search?location=${encodeURIComponent(area.location)}` : "/search";
 
   return (
     <div className="group relative min-h-[28rem] overflow-hidden rounded-2xl border border-cyan-800/30 bg-[#062a34] shadow-[0_20px_60px_rgba(10,61,76,0.35)]">
@@ -84,7 +88,7 @@ export function MapDiscoveryCard() {
             </span>
             <div>
               <p className="font-semibold tracking-tight text-white">Map-first discovery</p>
-              <p className="text-xs text-cyan-100/85">OpenStreetMap / Google Maps ready</p>
+              <p className="text-xs text-cyan-100/85">Live listing context</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -106,39 +110,41 @@ export function MapDiscoveryCard() {
               </select>
             </label>
             <span className="hidden rounded-full border border-emerald-400/40 bg-emerald-500/20 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-emerald-100 sm:inline">
-              Live
+              Data-led
             </span>
           </div>
         </div>
 
         <div className="pointer-events-none absolute left-[28%] top-[33%]">
-          <MapPinCluster homes="3" />
+          <MapPinCluster homes={clusters[0] ?? "0"} />
         </div>
         <div className="pointer-events-none absolute left-[55%] top-[50%]">
-          <MapPinCluster homes="5" />
+          <MapPinCluster homes={clusters[1] ?? clusters[0] ?? "0"} />
         </div>
         <div className="pointer-events-none absolute left-[72%] top-[39%]">
-          <MapPinCluster homes="4" />
+          <MapPinCluster homes={clusters[2] ?? clusters[0] ?? "0"} />
         </div>
         <div className="absolute left-5 top-[6.2rem] flex items-center gap-1.5 rounded-lg border border-white/20 bg-black/30 px-2.5 py-1.5 text-xs font-medium text-white shadow-lg backdrop-blur-md sm:top-[5.9rem]">
           <Building2 className="size-3.5 text-cyan-200" />
-          CBD 2.7 km
+          {area?.cbdDistance ? `${area.cbdDistance} km median CBD distance` : "Explore by suburb"}
         </div>
 
         <div className="rounded-xl border border-white/20 bg-white/95 p-3 shadow-2xl shadow-slate-950/30 backdrop-blur-md dark:bg-slate-900/95">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
-                <p className="font-semibold text-ink dark:text-white">Avondale, Harare</p>
+                <p className="font-semibold text-ink dark:text-white">{area?.location ?? "Zimbabwe listings"}</p>
                 <span className="rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-bold text-white">
-                  92% match
+                  {area ? `${area.verifiedCount}/${area.count} verified` : "Search ready"}
                 </span>
               </div>
               <p className="mt-0.5 text-xs text-slate-600 dark:text-slate-300">
-                12 verified properties / high borehole coverage
+                {area
+                  ? `${area.count} featured ${area.count === 1 ? "listing" : "listings"} / typical price ${area.typicalPrice}`
+                  : "Browse active listings by city, suburb, type, and budget"}
               </p>
               <div className="mt-2 flex flex-wrap gap-1.5">
-                {["Solar backup", "Borehole", "Secure"].map((tag) => (
+                {(area?.amenities.length ? area.amenities : ["Verified", "Local context", "Map search"]).map((tag) => (
                   <span
                     key={tag}
                     className="rounded-full border border-emerald-200/80 bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200"
@@ -149,7 +155,7 @@ export function MapDiscoveryCard() {
               </div>
             </div>
             <Link
-              href="/search?city=Harare&suburb=Avondale"
+              href={href}
               className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-ink to-emerald-900 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-emerald-900/30 transition hover:from-emerald-900 hover:to-emerald-800"
             >
               <MapPin className="size-4" aria-hidden="true" />
@@ -161,6 +167,46 @@ export function MapDiscoveryCard() {
       </div>
     </div>
   );
+}
+
+function buildMapAreaSummary(listings: Listing[]) {
+  if (!listings.length) return null;
+  const groups = new Map<string, Listing[]>();
+  for (const listing of listings) {
+    const key = `${listing.suburb}, ${listing.city}`;
+    groups.set(key, [...(groups.get(key) ?? []), listing]);
+  }
+  const [location, group] = [...groups.entries()].sort((a, b) => b[1].length - a[1].length)[0];
+  const prices = group.map((listing) => listing.price).sort((a, b) => a - b);
+  const middle = Math.floor(prices.length / 2);
+  const typicalPrice = prices.length % 2 ? prices[middle] : (prices[middle - 1] + prices[middle]) / 2;
+  const cbdDistances = group.map((listing) => listing.distanceToCbdKm).filter((value) => Number.isFinite(value));
+  const cbdDistance = cbdDistances.length
+    ? (cbdDistances.reduce((sum, value) => sum + value, 0) / cbdDistances.length).toFixed(1)
+    : null;
+  const amenities = [...new Set(group.flatMap((listing) => listing.amenities))].slice(0, 3);
+
+  return {
+    location,
+    count: group.length,
+    verifiedCount: group.filter((listing) => listing.verified).length,
+    typicalPrice: `$${Math.round(typicalPrice).toLocaleString("en-US")}`,
+    cbdDistance,
+    amenities,
+  };
+}
+
+function buildMapClusters(listings: Listing[]) {
+  if (!listings.length) return ["0"];
+  const groups = new Map<string, number>();
+  for (const listing of listings) {
+    const key = `${listing.suburb}, ${listing.city}`;
+    groups.set(key, (groups.get(key) ?? 0) + 1);
+  }
+  return [...groups.values()]
+    .sort((a, b) => b - a)
+    .slice(0, 3)
+    .map(String);
 }
 
 function MapPinCluster({ homes }: { homes: string }) {

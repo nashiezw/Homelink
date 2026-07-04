@@ -15,8 +15,8 @@ export async function GET(request: Request) {
   const mapsKey = settings.integrations.googleMapsKey;
   const query = `${suburb}, ${city}, Zimbabwe`;
 
-  let cbdDistanceKm = 4.2;
-  let provider = "openstreetmap";
+  let cbdDistanceKm: number | null = null;
+  let provider = "not_configured";
 
   if (mapsKey) {
     const suburbHit = await geocodeAddress(mapsKey, query);
@@ -30,13 +30,8 @@ export async function GET(request: Request) {
   return ok({
     city,
     suburb,
-    cbdDistanceKm: Math.round(cbdDistanceKm * 10) / 10,
-    places: [
-      { type: "school", name: `${suburb} Primary`, distanceKm: 0.9 },
-      { type: "hospital", name: `${city} Medical Centre`, distanceKm: 2.4 },
-      { type: "shopping", name: `${suburb} shops`, distanceKm: 0.6 },
-      { type: "transport", name: "Main commuter route", distanceKm: 0.3 },
-    ],
+    cbdDistanceKm: cbdDistanceKm === null ? null : Math.round(cbdDistanceKm * 10) / 10,
+    places: [],
     provider,
   });
 }

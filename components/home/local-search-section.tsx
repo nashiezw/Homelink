@@ -3,6 +3,7 @@ import type { LucideIcon } from "lucide-react";
 import { CityLinks } from "@/components/home/city-links";
 import { MapDiscoveryCard } from "@/components/home/map-discovery-card";
 import { FadeIn } from "@/components/ui/fade-in";
+import type { Listing } from "@/lib/types";
 
 const ADVANTAGES: Array<{ title: string; body: string; icon: LucideIcon }> = [
   {
@@ -12,7 +13,7 @@ const ADVANTAGES: Array<{ title: string; body: string; icon: LucideIcon }> = [
   },
   {
     title: "Suburb-level intelligence",
-    body: "CBD distance, transport, schools, and security on every search.",
+    body: "Location context from listings and map data when available.",
     icon: MapPinned,
   },
   {
@@ -27,7 +28,7 @@ const ADVANTAGES: Array<{ title: string; body: string; icon: LucideIcon }> = [
   },
 ];
 
-export function LocalSearchSection() {
+export function LocalSearchSection({ listings }: { listings: Listing[] }) {
   return (
     <FadeIn>
       <section className="bg-white px-4 py-16 sm:px-6 lg:px-8 dark:bg-slate-950">
@@ -43,7 +44,7 @@ export function LocalSearchSection() {
 
           <div className="mt-10 grid gap-8 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] lg:items-stretch">
             <CityLinks />
-            <MapDiscoveryCard />
+            <MapDiscoveryCard listings={listings} />
           </div>
 
           <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

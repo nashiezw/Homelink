@@ -71,7 +71,7 @@ function compactJoin(items: string[]) {
 function buildMarketLens(
   listings: Listing[],
   searchParams: URLSearchParams,
-  nearby: { cbdDistanceKm: number; places: Array<{ type: string; name: string; distanceKm: number }> } | null,
+  nearby: { cbdDistanceKm: number | null; places: Array<{ type: string; name: string; distanceKm: number }> } | null,
   loading: boolean,
 ): MarketLens {
   const type = searchParams.get("type") ?? "";
@@ -129,7 +129,7 @@ function buildMarketLens(
 
   if (availableNow) rows.push({ label: "Available now", value: String(availableNow) });
   if (topAmenity) rows.push({ label: "Common feature", value: topAmenity[0] });
-  if (nearby) rows.push({ label: "CBD distance", value: `${nearby.cbdDistanceKm} km` });
+  if (nearby?.cbdDistanceKm !== null && nearby?.cbdDistanceKm !== undefined) rows.push({ label: "CBD distance", value: `${nearby.cbdDistanceKm} km` });
   else if (cbdDistances.length) rows.push({ label: "Median CBD distance", value: `${median(cbdDistances).toFixed(1)} km` });
   if (nearbyMentions.length) rows.push({ label: "Nearby mentioned", value: nearbyMentions.join(", ") });
 
@@ -151,7 +151,7 @@ export function SearchPageClient() {
   const [aiQuery, setAiQuery] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
   const [nearby, setNearby] = useState<{
-    cbdDistanceKm: number;
+    cbdDistanceKm: number | null;
     places: Array<{ type: string; name: string; distanceKm: number }>;
   } | null>(null);
 
@@ -168,7 +168,7 @@ export function SearchPageClient() {
       const suburb = searchParams.get("suburb");
       if (city && suburb) {
         const mapResult = await apiFetch<{
-          cbdDistanceKm: number;
+          cbdDistanceKm: number | null;
           places: Array<{ type: string; name: string; distanceKm: number }>;
         }>(`/api/v1/maps/nearby?city=${encodeURIComponent(city)}&suburb=${encodeURIComponent(suburb)}`);
         setNearby(mapResult.data ?? null);

@@ -539,6 +539,7 @@ export function RoommatesPageClient() {
     if (shareIntent === "seeking") {
       const params = new URLSearchParams();
       if (sharePanel.location.trim()) {
+        params.set("location", sharePanel.location.trim());
         const parts = sharePanel.location.split(",").map((p) => p.trim());
         if (parts[0]) params.set("city", parts[0]);
         if (parts[1]) params.set("suburb", parts[1]);
