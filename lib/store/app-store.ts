@@ -4392,16 +4392,20 @@ function isStrictProduction() {
   return process.env.HOMELINK_STRICT_PRODUCTION === "true";
 }
 
+function isPostgresBackedRuntime() {
+  return Boolean(process.env.DATABASE_URL?.match(/^postgres(ql)?:\/\//));
+}
+
 export function getStore() {
   if (
     isStrictProduction() &&
     process.env.HOMELINK_ALLOW_LEGACY_STORE !== "true" &&
-    process.env.DATABASE_URL?.match(/^postgres(ql)?:\/\//)
+    isPostgresBackedRuntime()
   ) {
     if (!globalStore.__homelinkLegacyStoreWarningShown) {
       globalStore.__homelinkLegacyStoreWarningShown = true;
       console.warn(
-        "Legacy in-memory AppStore compatibility fallback is active in strict production. Migrate remaining routes to Postgres."
+        "Postgres AppStore snapshot fallback is active for routes without dedicated tables. Continue migrating those routes to typed Postgres models."
       );
     }
   }
@@ -4427,6 +4431,8 @@ export function getStore() {
     globalStore.__homelinkStoreHydratePromise = loadPersistedStore(STORE_VERSION).then((loaded) => {
       if (loaded && globalStore.__homelinkStore && globalStore.__homelinkStoreVersion === STORE_VERSION) {
         globalStore.__homelinkStore.hydratePersistedState(loaded);
+      } else if (isStrictProduction() && isPostgresBackedRuntime() && globalStore.__homelinkStore) {
+        void persistStoreState(globalStore.__homelinkStore.snapshotState(), STORE_VERSION);
       }
       globalStore.__homelinkStoreHydrated = true;
       if (globalStore.__homelinkStorePersistPending && globalStore.__homelinkStore) {

@@ -40,7 +40,7 @@ export default async function ListingDetailPage({ params }: ListingDetailPagePro
     listing.images?.length ? listing.images : [listing.image, ...latestListings.filter((item) => item.id !== id).map((item) => item.image)]
   ).filter(Boolean) as string[];
 
-  const ownerId = listingRecord?.ownerId ?? getStore().getListing(id)?.ownerId;
+  const ownerId = shouldUsePostgresListings() ? listingRecord?.ownerId : getStore().getListing(id)?.ownerId;
   const holidayReviewSummary =
     listing.type === "holiday_home"
       ? shouldUsePostgresListings()

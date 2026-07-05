@@ -1,5 +1,6 @@
 import { requireAdminAsync } from "@/lib/admin/require-admin";
 import { ok } from "@/lib/api/response";
+import { getPostgresHolidayHomesAdminData } from "@/lib/admin/postgres-analytics";
 import { isPostgresStoreEnabled } from "@/lib/db/main-prisma";
 import { getStore } from "@/lib/store/app-store";
 
@@ -9,15 +10,7 @@ export async function GET(request: Request) {
   const auth = await requireAdminAsync(request);
   if ("error" in auth && auth.error) return auth.error;
   if (isPostgresStoreEnabled()) {
-    return ok({
-      listings: [],
-      enquiries: [],
-      reviews: [],
-      analytics: {},
-      settings: {},
-      seasonalRates: [],
-      refundRequests: [],
-    });
+    return ok(await getPostgresHolidayHomesAdminData());
   }
 
   const store = getStore();
@@ -59,7 +52,24 @@ export async function PATCH(request: Request) {
   const auth = await requireAdminAsync(request);
   if ("error" in auth && auth.error) return auth.error;
   if (!auth.user) return ok({});
-  if (isPostgresStoreEnabled()) return ok({ error: "not_available_in_production" });
+  if (isPostgresStoreEnabled()) {
+    const body = await request.json();
+    const { adminListingActionInPostgres } = await import("@/lib/listings/postgres-listing-repository");
+
+    if (body.listingId && body.featured !== undefined) {
+      return ok({ listing: await adminListingActionInPostgres(body.listingId, body.featured ? "feature" : "unfeature") });
+    }
+
+    if (body.listingId && body.status) {
+      return ok({ listing: await adminListingActionInPostgres(body.listingId, statusToAction(body.status)) });
+    }
+
+    if (body.listingId && body.verified !== undefined) {
+      return ok({ listing: await adminListingActionInPostgres(body.listingId, body.verified ? "verify" : "unverify") });
+    }
+
+    return ok(await getPostgresHolidayHomesAdminData());
+  }
 
   const body = await request.json();
   const store = getStore();
@@ -111,4 +121,11 @@ export async function PATCH(request: Request) {
     settings: store.getHolidayHomeSettings(),
     analytics: store.getHolidayHomeAnalytics(),
   });
+}
+
+function statusToAction(status: string) {
+  if (status === "ACTIVE") return "approve";
+  if (status === "REJECTED") return "reject";
+  if (status === "ARCHIVED") return "archive";
+  return "edit";
 }
