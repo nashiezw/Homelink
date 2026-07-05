@@ -21,7 +21,6 @@ import { BarChart, DonutChart, MetricRow, Sparkline } from "@/components/admin/c
 import {
   AdminMetricGrid,
   AdminPanel,
-  AdminQuickAction,
   AdminStatPill,
 } from "@/components/admin/ui/admin-ui";
 import type { ActivityItem, AdminOverview, AdminPropertyAnalytics, ChartPoint } from "@/lib/admin/types";
@@ -138,16 +137,7 @@ export function ExecutiveDashboard({
           </div>
         </AdminPanel>
 
-        <AdminPanel title="Command quick actions" description="High-priority operational workflows">
-          <div className="grid gap-2">
-            <AdminQuickAction icon={ShieldCheck} label="Verification queue" description={`${summary.pendingVerification} pending`} href="/dashboard/admin?tab=verification" />
-            <AdminQuickAction icon={Home} label="Listing approvals" description={`${summary.pendingListings} awaiting review`} href="/dashboard/admin?tab=properties" />
-            <AdminQuickAction icon={Wallet} label="Payments & escrow" description="Ledger, refunds, payouts" href="/dashboard/admin?tab=payments" />
-            <AdminQuickAction icon={Users} label="User directory" description="Roles, suspend, audit trail" href="/dashboard/admin?tab=users" />
-            <AdminQuickAction icon={Megaphone} label="Marketing & CMS" description="Homepage, campaigns, SEO" href="/dashboard/admin?tab=marketing" />
-            <AdminQuickAction icon={Zap} label="Reports & exports" description="Revenue, users, compliance" href="/dashboard/admin?tab=reports" />
-          </div>
-        </AdminPanel>
+        <CommandQuickActions summary={summary} />
       </div>
 
       <div className="grid gap-3 sm:gap-4 lg:grid-cols-2 xl:grid-cols-4">
@@ -252,5 +242,72 @@ export function ExecutiveDashboard({
         </AdminPanel>
       </div>
     </div>
+  );
+}
+
+function CommandQuickActions({ summary }: { summary: AdminSummary }) {
+  const actions = [
+    {
+      icon: ShieldCheck,
+      label: "Verification queue",
+      description: `${summary.pendingVerification} pending`,
+      href: "/dashboard/admin?tab=verification",
+    },
+    {
+      icon: Home,
+      label: "Listing approvals",
+      description: `${summary.pendingListings} awaiting review`,
+      href: "/dashboard/admin?tab=properties",
+    },
+    {
+      icon: Wallet,
+      label: "Payments & escrow",
+      description: "Ledger, refunds, payouts",
+      href: "/dashboard/admin?tab=payments",
+    },
+    {
+      icon: Users,
+      label: "User directory",
+      description: "Roles, suspend, audit trail",
+      href: "/dashboard/admin?tab=users",
+    },
+    {
+      icon: Megaphone,
+      label: "Marketing & CMS",
+      description: "Homepage, campaigns, SEO",
+      href: "/dashboard/admin?tab=marketing",
+    },
+    {
+      icon: Zap,
+      label: "Reports & exports",
+      description: "Revenue, users, compliance",
+      href: "/dashboard/admin?tab=reports",
+    },
+  ];
+
+  return (
+    <section className="rounded-2xl border border-white/[0.08] bg-[#07111f] p-3 shadow-[0_1px_0_0_rgba(255,255,255,0.04)_inset] sm:p-4">
+      <div className="mb-3 px-1">
+        <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-300">Command quick actions</h2>
+        <p className="mt-1 text-xs text-slate-500">High-priority operational workflows</p>
+      </div>
+      <div className="grid gap-2">
+        {actions.map(({ icon: Icon, label, description, href }) => (
+          <Link
+            key={href}
+            href={href}
+            className="relative isolate grid min-h-[4.25rem] w-full grid-cols-[2.75rem_minmax(0,1fr)] items-center gap-3 rounded-xl border border-white/[0.08] bg-[#0b1424] px-3 py-2.5 text-left shadow-sm transition hover:border-emerald-500/30 hover:bg-[#0d1a2d] focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+          >
+            <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-emerald-500/12 text-emerald-300">
+              <Icon className="size-5" aria-hidden="true" />
+            </span>
+            <span className="min-w-0">
+              <span className="block text-base font-semibold leading-5 text-white">{label}</span>
+              <span className="mt-1 block truncate text-sm text-slate-500">{description}</span>
+            </span>
+          </Link>
+        ))}
+      </div>
+    </section>
   );
 }
