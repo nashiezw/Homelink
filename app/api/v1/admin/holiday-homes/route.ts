@@ -1,12 +1,24 @@
-import { requireAdmin } from "@/lib/admin/require-admin";
+import { requireAdminAsync } from "@/lib/admin/require-admin";
 import { ok } from "@/lib/api/response";
+import { isPostgresStoreEnabled } from "@/lib/db/main-prisma";
 import { getStore } from "@/lib/store/app-store";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
-  const auth = requireAdmin(request);
-  if (auth.error) return auth.error;
+  const auth = await requireAdminAsync(request);
+  if ("error" in auth && auth.error) return auth.error;
+  if (isPostgresStoreEnabled()) {
+    return ok({
+      listings: [],
+      enquiries: [],
+      reviews: [],
+      analytics: {},
+      settings: {},
+      seasonalRates: [],
+      refundRequests: [],
+    });
+  }
 
   const store = getStore();
   return ok({
@@ -44,8 +56,10 @@ export async function GET(request: Request) {
 }
 
 export async function PATCH(request: Request) {
-  const auth = requireAdmin(request);
-  if (auth.error || !auth.user) return auth.error ?? ok({});
+  const auth = await requireAdminAsync(request);
+  if ("error" in auth && auth.error) return auth.error;
+  if (!auth.user) return ok({});
+  if (isPostgresStoreEnabled()) return ok({ error: "not_available_in_production" });
 
   const body = await request.json();
   const store = getStore();

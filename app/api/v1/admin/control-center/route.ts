@@ -12,19 +12,31 @@ import {
   getSystemHealth,
   getVerificationQueue,
 } from "@/lib/admin/compute-analytics";
-import { requireAdmin } from "@/lib/admin/require-admin";
+import { requireAdminAsync } from "@/lib/admin/require-admin";
 import { ok } from "@/lib/api/response";
+import { isPostgresStoreEnabled } from "@/lib/db/main-prisma";
 
 export const dynamic = "force-dynamic";
 
-export function GET(request: Request) {
-  const auth = requireAdmin(request);
-  if (auth.error) {
+export async function GET(request: Request) {
+  const auth = await requireAdminAsync(request);
+  if ("error" in auth && auth.error) {
     return auth.error;
   }
 
   const { searchParams } = new URL(request.url);
   const section = searchParams.get("section") ?? "overview";
+  if (isPostgresStoreEnabled()) {
+    const summary = {
+      users: { total: 0, activeToday: 0, weeklyActive: 0, pendingVerification: 0, blocked: 0, suspended: 0, deleted: 0 },
+      listings: { total: 0, active: 0, pending: 0, rejected: 0, flagged: 0 },
+      enquiries: { total: 0, open: 0, urgent: 0, closed: 0 },
+      payments: { totalRevenue: 0, pendingPayouts: 0, failedPayments: 0 },
+    };
+    if (section === "summary") return ok(summary);
+    if (section === "all") return ok({ overview: {}, activity: [], audit: [], summary });
+    return ok({ [section]: section === "overview" ? {} : {}, summary });
+  }
 
   switch (section) {
     case "overview":

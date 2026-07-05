@@ -1,18 +1,35 @@
-import { requireAdmin } from "@/lib/admin/require-admin";
+import { requireAdminAsync } from "@/lib/admin/require-admin";
 import { ok, problem, created } from "@/lib/api/response";
+import { isPostgresStoreEnabled } from "@/lib/db/main-prisma";
 import { getStore } from "@/lib/store/app-store";
 
-function getAdmin(request: Request) {
-  const result = requireAdmin(request);
+async function getAdmin(request: Request) {
+  const result = await requireAdminAsync(request);
   if ("error" in result && result.error) return { error: result.error };
   return { user: result.user };
 }
 
 export async function GET(request: Request) {
-  const auth = getAdmin(request);
+  const auth = await getAdmin(request);
   if ("error" in auth && auth.error) return auth.error;
   const { searchParams } = new URL(request.url);
   const section = searchParams.get("section") ?? "overview";
+  if (isPostgresStoreEnabled()) {
+    if (section === "settings") {
+      return ok({ settings: {}, territories: [] });
+    }
+    return ok({
+      analytics: {},
+      applications: [],
+      profiles: [],
+      leads: [],
+      commissions: [],
+      territories: [],
+      settings: {},
+      documents: [],
+      branches: [],
+    });
+  }
   const store = getStore();
 
   if (section === "settings") {
@@ -40,8 +57,9 @@ export async function GET(request: Request) {
 }
 
 export async function PATCH(request: Request) {
-  const auth = getAdmin(request);
+  const auth = await getAdmin(request);
   if ("error" in auth && auth.error) return auth.error;
+  if (isPostgresStoreEnabled()) return problem(501, "NOT_IMPLEMENTED", "Agent admin writes are not available in production yet.");
   const admin = auth.user!;
   const body = await request.json();
   const store = getStore();
@@ -130,8 +148,9 @@ export async function PATCH(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const auth = getAdmin(request);
+  const auth = await getAdmin(request);
   if ("error" in auth && auth.error) return auth.error;
+  if (isPostgresStoreEnabled()) return problem(501, "NOT_IMPLEMENTED", "Agent admin writes are not available in production yet.");
   const admin = auth.user!;
   const body = await request.json();
   if (body.action === "schedule_interview") {
