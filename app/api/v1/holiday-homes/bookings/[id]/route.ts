@@ -1,5 +1,10 @@
 import { getSessionUserIdFromRequest } from "@/lib/auth/session";
 import { ok, problem } from "@/lib/api/response";
+import {
+  listHolidayBookingsFromPostgres,
+  shouldUsePostgresHolidayBookings,
+  updateHolidayBookingStatusInPostgres,
+} from "@/lib/holiday-homes/postgres-booking-repository";
 import { getStore } from "@/lib/store/app-store";
 import type { HolidayBookingStatus } from "@/lib/holiday-homes/types";
 
@@ -14,7 +19,9 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   const { id } = await context.params;
   const body = (await request.json()) as { status?: HolidayBookingStatus };
   const store = getStore();
-  const enquiry = store.listHolidayBookingEnquiries().find((e) => e.id === id);
+  const enquiry = shouldUsePostgresHolidayBookings()
+    ? (await listHolidayBookingsFromPostgres()).find((e) => e.id === id)
+    : store.listHolidayBookingEnquiries().find((e) => e.id === id);
   if (!enquiry) {
     return problem(404, "NOT_FOUND", "Booking enquiry not found.");
   }
@@ -33,6 +40,8 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     return problem(400, "INVALID_STATUS", "Provide a valid status.");
   }
 
-  const updated = store.updateHolidayBookingEnquiryStatus(id, body.status, userId);
+  const updated = shouldUsePostgresHolidayBookings()
+    ? await updateHolidayBookingStatusInPostgres(id, body.status, userId)
+    : store.updateHolidayBookingEnquiryStatus(id, body.status, userId);
   return ok({ enquiry: updated });
 }

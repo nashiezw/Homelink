@@ -1,5 +1,11 @@
 import { getSessionUserIdFromRequest } from "@/lib/auth/session";
 import { ok, problem } from "@/lib/api/response";
+import {
+  createHolidayBookingInPostgres,
+  listHolidayBookingsFromPostgres,
+  shouldUsePostgresHolidayBookings,
+} from "@/lib/holiday-homes/postgres-booking-repository";
+import { getPostgresUserById } from "@/lib/auth/postgres-auth";
 import { getStore } from "@/lib/store/app-store";
 
 export const dynamic = "force-dynamic";
@@ -12,18 +18,27 @@ export async function GET(request: Request) {
 
   const { searchParams } = new URL(request.url);
   const listingId = searchParams.get("listingId") ?? undefined;
-  const store = getStore();
-  const user = store.getUserById(userId);
+  const store = shouldUsePostgresHolidayBookings() ? null : getStore();
+  const user = shouldUsePostgresHolidayBookings() ? await getPostgresUserById(userId) : store?.getUserById(userId);
   if (!user) return problem(401, "UNAUTHORIZED", "User not found.");
 
   if (user.roles.includes("ADMIN")) {
-    return ok({ enquiries: store.listHolidayBookingEnquiries(listingId ? { listingId } : undefined) });
+    if (shouldUsePostgresHolidayBookings()) {
+      return ok({ enquiries: await listHolidayBookingsFromPostgres(listingId ? { listingId } : undefined) });
+    }
+    return ok({ enquiries: store!.listHolidayBookingEnquiries(listingId ? { listingId } : undefined) });
   }
   if (user.roles.includes("AGENT")) {
-    return ok({ enquiries: store.listHolidayBookingEnquiries({ agentId: userId }) });
+    if (shouldUsePostgresHolidayBookings()) {
+      return ok({ enquiries: await listHolidayBookingsFromPostgres({ agentId: userId }) });
+    }
+    return ok({ enquiries: store!.listHolidayBookingEnquiries({ agentId: userId }) });
+  }
+  if (shouldUsePostgresHolidayBookings()) {
+    return ok({ enquiries: await listHolidayBookingsFromPostgres({ ownerId: userId, listingId }) });
   }
   return ok({
-    enquiries: store.listHolidayBookingEnquiries({ ownerId: userId, listingId }),
+    enquiries: store!.listHolidayBookingEnquiries({ ownerId: userId, listingId }),
   });
 }
 
@@ -34,9 +49,9 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json();
-  const store = getStore();
-  const user = store.getUserById(userId);
-  const result = store.createHolidayBookingEnquiry({
+  const store = shouldUsePostgresHolidayBookings() ? null : getStore();
+  const user = shouldUsePostgresHolidayBookings() ? await getPostgresUserById(userId) : store?.getUserById(userId);
+  const input = {
     listingId: body.listingId,
     guestUserId: userId,
     guestName: user?.name ?? body.guestName ?? "Guest",
@@ -46,7 +61,10 @@ export async function POST(request: Request) {
     checkOut: body.checkOut,
     guests: Number(body.guests) || 1,
     message: body.message,
-  });
+  };
+  const result = shouldUsePostgresHolidayBookings()
+    ? await createHolidayBookingInPostgres(input)
+    : store!.createHolidayBookingEnquiry(input);
 
   if (result.error) {
     return problem(400, "INVALID_BOOKING", result.error);

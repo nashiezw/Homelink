@@ -8,6 +8,9 @@ const adminPassword = requireSeedPassword("SEED_ADMIN_PASSWORD");
 
 const users = [
   { email: "admin@homelinkzim.co.zw", name: "HomeLink Admin", phone: "+263780000001", roles: [Role.ADMIN, Role.SEEKER], password: adminPassword },
+  { id: "user_seeker_tinashe", email: "tinashe.dube@homelinkzim.co.zw", name: "Tinashe Dube", phone: "+263770000000", roles: [Role.SEEKER, Role.LANDLORD], password: process.env.SEED_TINASHE_PASSWORD ?? standardPassword },
+  { id: "user_landlord", email: "landlord@homelinkzim.co.zw", name: "Tariro Moyo", phone: "+263771234568", roles: [Role.LANDLORD, Role.SEEKER], password: process.env.SEED_LANDLORD_PASSWORD ?? standardPassword },
+  { id: "user_agent_blessing", email: "blessing@harareprime.co.zw", name: "Blessing Muzenda", phone: "+263775678901", roles: [Role.AGENT, Role.SEEKER], password: standardPassword },
   { email: "tariro.moyo@homelinkzim.co.zw", name: "Tariro Moyo", phone: "+263771234567", roles: [Role.LANDLORD, Role.SEEKER], password: standardPassword },
   { email: "tendai.sithole@homelinkzim.co.zw", name: "Tendai Sithole", phone: "+263772220001", roles: [Role.AGENT, Role.SEEKER], password: standardPassword },
   { email: "rudo.ncube@homelinkzim.co.zw", name: "Rudo Ncube", phone: "+263773330002", roles: [Role.SEEKER], password: standardPassword },
@@ -17,7 +20,7 @@ const users = [
 const listings = [
   {
     slug: "harare-avondale-cottage",
-    ownerEmail: "tariro.moyo@homelinkzim.co.zw",
+    ownerEmail: "landlord@homelinkzim.co.zw",
     title: "Verified garden cottage near Avondale shops",
     description: "A quiet one-bedroom garden cottage with reliable water, solar backup, secure parking, and fast access to Avondale shops.",
     propertyType: "COTTAGE",
@@ -99,6 +102,7 @@ async function main() {
         identityStatus: VerificationStatus.VERIFIED,
       },
       create: {
+        ...(user.id ? { id: user.id } : {}),
         email: user.email,
         name: user.name,
         phone: user.phone,
@@ -171,6 +175,79 @@ async function main() {
   }
 
   const seeker = userRows.get("rudo.ncube@homelinkzim.co.zw");
+  const tinashe = userRows.get("tinashe.dube@homelinkzim.co.zw");
+  const landlord = userRows.get("landlord@homelinkzim.co.zw");
+  await prisma.roommateProfile.upsert({
+    where: { userId: tinashe.id },
+    update: {
+      budgetMin: 150,
+      budgetMax: 350,
+      occupation: "Software developer",
+      genderPreference: "any",
+      lifestyle: "quiet",
+      smoking: false,
+      pets: false,
+      age: 28,
+      preferredLocations: ["Avondale", "Borrowdale"],
+      active: true,
+      payload: {
+        lookingFor: "room",
+        furnished: true,
+        availableNow: true,
+        gender: "female",
+        genderPreference: "any",
+        age: 28,
+        preferredAgeMin: 22,
+        preferredAgeMax: 35,
+        religion: "christian",
+        religionPreference: "any",
+        maritalStatus: "single",
+        maritalStatusPreference: "any",
+        householdType: "single",
+        householdSize: 1,
+        bio: "Software developer seeking a calm, secure home near Avondale or Borrowdale.",
+        active: true,
+        verified: true,
+        moderationStatus: "active",
+        suburb: "Avondale",
+      },
+    },
+    create: {
+      userId: tinashe.id,
+      budgetMin: 150,
+      budgetMax: 350,
+      occupation: "Software developer",
+      genderPreference: "any",
+      lifestyle: "quiet",
+      smoking: false,
+      pets: false,
+      age: 28,
+      preferredLocations: ["Avondale", "Borrowdale"],
+      active: true,
+      payload: {
+        lookingFor: "room",
+        furnished: true,
+        availableNow: true,
+        gender: "female",
+        genderPreference: "any",
+        age: 28,
+        preferredAgeMin: 22,
+        preferredAgeMax: 35,
+        religion: "christian",
+        religionPreference: "any",
+        maritalStatus: "single",
+        maritalStatusPreference: "any",
+        householdType: "single",
+        householdSize: 1,
+        bio: "Software developer seeking a calm, secure home near Avondale or Borrowdale.",
+        active: true,
+        verified: true,
+        moderationStatus: "active",
+        suburb: "Avondale",
+      },
+    },
+  });
+
   await prisma.roommateProfile.upsert({
     where: { userId: seeker.id },
     update: {
@@ -219,6 +296,10 @@ async function main() {
   });
 
   const firstListing = await prisma.listing.findUnique({ where: { slug: listings[0].slug } });
+  await seedVerifiedTenancy(firstListing, landlord, tinashe);
+  await seedPropertyManagementRequest(landlord);
+  await seedHolidayBooking(firstListing, tinashe, landlord);
+  await seedAgentApplication(userRows.get("blessing@harareprime.co.zw"));
   const review = await prisma.review.findFirst({
     where: { authorId: seeker.id, listingId: firstListing.id, target: "listing", metadata: { path: ["seedKey"], equals: "review-avondale-cottage" } },
   });
@@ -236,6 +317,210 @@ async function main() {
   }
 
   console.log("Production seed completed without creating duplicates.");
+}
+
+async function seedPropertyManagementRequest(owner) {
+  const payload = {
+    id: "pm_seed_avondale",
+    requestNumber: "PM-SEED-001",
+    ownerId: owner.id,
+    ownerName: owner.name,
+    ownerEmail: owner.email,
+    ownerPhone: owner.phone,
+    propertyAddress: "12 Acacia Drive, Avondale",
+    city: "Harare",
+    suburb: "Avondale",
+    propertyType: "cottage",
+    serviceType: "full_management",
+    bedrooms: 1,
+    description: "Garden cottage requiring tenant sourcing, rent collection, and maintenance coordination.",
+    status: "IN_PROGRESS",
+    consultantId: null,
+    paymentIds: [],
+    documents: [],
+    slaBreached: false,
+    createdAt: new Date(Date.now() - 7 * 86400000).toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  await prisma.propertyManagementRequestRow.upsert({
+    where: { id: payload.id },
+    update: {
+      requestNumber: payload.requestNumber,
+      ownerId: owner.id,
+      status: payload.status,
+      consultantId: payload.consultantId,
+      payload,
+    },
+    create: {
+      id: payload.id,
+      requestNumber: payload.requestNumber,
+      ownerId: owner.id,
+      status: payload.status,
+      consultantId: payload.consultantId,
+      payload,
+    },
+  });
+}
+
+async function seedHolidayBooking(listing, guest, owner) {
+  const payload = {
+    id: "hbe_seed_001",
+    listingId: listing.id,
+    listingTitle: listing.title,
+    ownerId: owner.id,
+    guestUserId: guest.id,
+    guestName: guest.name,
+    guestEmail: guest.email,
+    guestPhone: guest.phone,
+    checkIn: new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10),
+    checkOut: new Date(Date.now() + 17 * 86400000).toISOString().slice(0, 10),
+    guests: 2,
+    message: "Weekend getaway for two.",
+    status: "NEW",
+    createdAt: new Date(Date.now() - 2 * 86400000).toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  await prisma.holidayBookingRecord.upsert({
+    where: { id: payload.id },
+    update: {
+      listingId: payload.listingId,
+      guestUserId: payload.guestUserId,
+      ownerId: payload.ownerId,
+      agentId: null,
+      status: payload.status,
+      payload,
+    },
+    create: {
+      id: payload.id,
+      listingId: payload.listingId,
+      guestUserId: payload.guestUserId,
+      ownerId: payload.ownerId,
+      agentId: null,
+      status: payload.status,
+      payload,
+    },
+  });
+}
+
+async function seedAgentApplication(agent) {
+  const payload = {
+    id: "app_seed_blessing",
+    userId: agent.id,
+    status: "APPROVED",
+    personal: {
+      fullName: agent.name,
+      email: agent.email,
+      phone: agent.phone,
+      whatsapp: agent.phone,
+    },
+    professional: {
+      city: "Harare",
+      yearsExperience: 5,
+      agencyName: "Harare Prime Estates",
+    },
+    declarationAccepted: true,
+    termsAccepted: true,
+    privacyAccepted: true,
+    createdAt: new Date(Date.now() - 30 * 86400000).toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  await prisma.agentApplicationRecord.upsert({
+    where: { id: payload.id },
+    update: { userId: agent.id, status: payload.status, payload },
+    create: { id: payload.id, userId: agent.id, status: payload.status, payload },
+  });
+  const progress = {
+    agentId: agent.id,
+    moduleId: "module_platform_basics",
+    status: "COMPLETED",
+    completedAt: new Date(Date.now() - 20 * 86400000).toISOString(),
+  };
+  await prisma.agentTrainingProgressRecord.upsert({
+    where: { agentId_moduleId: { agentId: agent.id, moduleId: progress.moduleId } },
+    update: { status: progress.status, payload: progress },
+    create: { agentId: agent.id, moduleId: progress.moduleId, status: progress.status, payload: progress },
+  });
+}
+
+async function seedVerifiedTenancy(listing, landlord, tenant) {
+  const tenancyId = "tenancy_seed_1";
+  const confirmedAt = new Date(Date.now() - 85 * 86400000).toISOString();
+  const startDate = new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10);
+  const base = {
+    tenancyId,
+    listingId: listing.id,
+    propertyTitle: listing.title,
+    fullAddress: "12 Acacia Drive, Avondale, Harare",
+    city: listing.city,
+    suburb: listing.suburb,
+    startDate,
+    status: "active",
+    verificationSource: "payment",
+    userConfirmed: true,
+    counterpartyConfirmed: true,
+    userConfirmedAt: confirmedAt,
+    counterpartyConfirmedAt: confirmedAt,
+    verified: true,
+    paymentId: "pay_seed_tenancy",
+    userAddressConsent: false,
+    counterpartyAddressConsent: false,
+    visibility: "public",
+    createdAt: confirmedAt,
+    notes: "Verified via HomeLink rent payment",
+  };
+  const landlordRecord = {
+    ...base,
+    id: "res_seed_landlord_1",
+    userId: landlord.id,
+    counterpartyUserId: tenant.id,
+    role: "landlord",
+  };
+  const tenantRecord = {
+    ...base,
+    id: "res_seed_tenant_1",
+    userId: tenant.id,
+    counterpartyUserId: landlord.id,
+    role: "tenant",
+  };
+  for (const record of [landlordRecord, tenantRecord]) {
+    await prisma.residenceRecordRow.upsert({
+      where: { id: record.id },
+      update: {
+        tenancyId,
+        userId: record.userId,
+        counterpartyId: record.counterpartyUserId,
+        listingId: listing.id,
+        status: record.status,
+        verified: record.verified,
+        payload: record,
+      },
+      create: {
+        id: record.id,
+        tenancyId,
+        userId: record.userId,
+        counterpartyId: record.counterpartyUserId,
+        listingId: listing.id,
+        status: record.status,
+        verified: record.verified,
+        payload: record,
+      },
+    });
+  }
+  const reference = {
+    id: "ref_seed_1",
+    tenancyId,
+    authorUserId: landlord.id,
+    authorName: landlord.name,
+    targetUserId: tenant.id,
+    authorRole: "landlord",
+    note: "Reliable tenant - paid on time and kept the property in great condition.",
+    createdAt: new Date(Date.now() - 30 * 86400000).toISOString(),
+  };
+  await prisma.tenancyReferenceRow.upsert({
+    where: { id: reference.id },
+    update: { tenancyId, targetUserId: tenant.id, payload: reference },
+    create: { id: reference.id, tenancyId, targetUserId: tenant.id, payload: reference },
+  });
 }
 
 async function reconcileSeedListingSlug(seed, owner) {

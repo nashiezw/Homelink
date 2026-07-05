@@ -1,5 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import { getMainPrisma, isPostgresStoreEnabled } from "@/lib/db/main-prisma";
+import { listResidenceHistoryFromPostgres } from "@/lib/residence/postgres-tenancy-repository";
 
 export function shouldUsePostgresRoommates() {
   return isPostgresStoreEnabled();
@@ -61,12 +62,13 @@ export async function getPublicRoommateProfileFromPostgres(userId: string) {
     include: { user: true },
   });
   if (!profile?.active || profile.user.accountStatus !== "ACTIVE") return null;
+  const residenceHistory = await listResidenceHistoryFromPostgres(userId);
   return {
     userId,
     name: profile.user.name,
     city: undefined,
     profile: toProfile(profile),
-    residenceHistory: [],
+    residenceHistory,
     listings: [],
   };
 }

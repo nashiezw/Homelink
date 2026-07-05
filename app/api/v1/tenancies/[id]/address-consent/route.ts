@@ -1,5 +1,9 @@
 import { getSessionUserIdFromRequest } from "@/lib/auth/session";
 import { ok, problem } from "@/lib/api/response";
+import {
+  setTenancyAddressConsentInPostgres,
+  shouldUsePostgresTenancies,
+} from "@/lib/residence/postgres-tenancy-repository";
 import { getStore } from "@/lib/store/app-store";
 
 export const dynamic = "force-dynamic";
@@ -17,6 +21,13 @@ export async function POST(
   const body = await request.json();
   const consent = Boolean(body.consent);
 
+  if (shouldUsePostgresTenancies()) {
+    const result = await setTenancyAddressConsentInPostgres(tenancyId, userId, consent);
+    if (!result) {
+      return problem(403, "FORBIDDEN", "Not part of this tenancy.");
+    }
+    return ok(result);
+  }
   const result = getStore().setTenancyAddressConsent(tenancyId, userId, consent);
   if (!result) {
     return problem(403, "FORBIDDEN", "Not part of this tenancy.");

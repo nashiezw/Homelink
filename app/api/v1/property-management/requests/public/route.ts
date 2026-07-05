@@ -1,5 +1,6 @@
 import { getSessionUserIdFromRequest } from "@/lib/auth/session";
 import { created, problem } from "@/lib/api/response";
+import { createPMRequestInPostgres, shouldUsePostgresPM } from "@/lib/property-management/postgres-pm-repository";
 import { getStore } from "@/lib/store/app-store";
 
 export const dynamic = "force-dynamic";
@@ -20,7 +21,6 @@ const SERVICE_MAP: Record<string, string> = {
 
 export async function POST(request: Request) {
   const body = await request.json();
-  const store = getStore();
   const sessionUserId = getSessionUserIdFromRequest(request);
 
   const fullName = typeof body.fullName === "string" ? body.fullName.trim() : "";
@@ -44,32 +44,37 @@ export async function POST(request: Request) {
   let ownerName: string;
 
   if (sessionUserId) {
-    const user = store.getUserById(sessionUserId);
-    if (!user) return problem(401, "UNAUTHORIZED", "Invalid session.");
-    ownerId = user.id;
-    ownerEmail = user.email;
-    ownerName = fullName || user.name;
+    if (shouldUsePostgresPM()) {
+      ownerId = sessionUserId;
+      ownerEmail = body.email?.trim() || `user+${sessionUserId}@homelinkzim.co.zw`;
+      ownerName = fullName;
+    } else {
+      const store = getStore();
+      const user = store.getUserById(sessionUserId);
+      if (!user) return problem(401, "UNAUTHORIZED", "Invalid session.");
+      ownerId = user.id;
+      ownerEmail = user.email;
+      ownerName = fullName || user.name;
+    }
   } else {
     ownerId = `guest_${crypto.randomUUID()}`;
     ownerEmail = body.email?.trim() || `guest+${phone.replace(/\D/g, "")}@homelinkzim.co.zw`;
     ownerName = fullName;
   }
 
-  const result = store.submitPMRequest(
-    {
-      ownerId,
-      ownerName,
-      ownerEmail,
-      ownerPhone: phone,
-      propertyAddress: location,
-      city,
-      propertyType: body.propertyType ?? "house",
-      serviceType: primaryService,
-      description: `Services requested: ${mappedServices.join(", ")}. Submitted via homepage hero.`,
-      bedrooms: body.bedrooms ? Number(body.bedrooms) : undefined,
-    },
-    clientIp(request),
-  );
+  const input = {
+    ownerId,
+    ownerName,
+    ownerEmail,
+    ownerPhone: phone,
+    propertyAddress: location,
+    city,
+    propertyType: body.propertyType ?? "house",
+    serviceType: primaryService,
+    description: `Services requested: ${mappedServices.join(", ")}. Submitted via homepage hero.`,
+    bedrooms: body.bedrooms ? Number(body.bedrooms) : undefined,
+  };
+  const result = shouldUsePostgresPM() ? await createPMRequestInPostgres(input) : getStore().submitPMRequest(input, clientIp(request));
 
   return created({
     request: result.request,

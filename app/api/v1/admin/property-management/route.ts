@@ -1,5 +1,6 @@
 import { requireAdmin } from "@/lib/admin/require-admin";
 import { ok } from "@/lib/api/response";
+import { listPMRequestsFromPostgres, shouldUsePostgresPM } from "@/lib/property-management/postgres-pm-repository";
 import { getStore } from "@/lib/store/app-store";
 
 export const dynamic = "force-dynamic";
@@ -13,11 +14,13 @@ export async function GET(request: Request) {
   const status = searchParams.get("status") ?? undefined;
 
   const store = getStore();
-  const requests = store.listPMRequests({
-    q,
-    status: status as import("@/lib/property-management/types").PMRequestStatus | undefined,
-    includeDeleted: searchParams.get("deleted") === "true",
-  });
+  const requests = shouldUsePostgresPM()
+    ? await listPMRequestsFromPostgres({ q, status })
+    : store.listPMRequests({
+        q,
+        status: status as import("@/lib/property-management/types").PMRequestStatus | undefined,
+        includeDeleted: searchParams.get("deleted") === "true",
+      });
 
   const summary = {
     total: requests.length,
@@ -31,7 +34,7 @@ export async function GET(request: Request) {
   return ok({
     requests,
     summary,
-    leads: store.listCRMLeads(),
-    consultants: store.listConsultants(),
+    leads: shouldUsePostgresPM() ? [] : store.listCRMLeads(),
+    consultants: shouldUsePostgresPM() ? [] : store.listConsultants(),
   });
 }

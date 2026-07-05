@@ -1,13 +1,20 @@
 import { getSessionUserIdFromRequest } from "@/lib/auth/session";
 import { created, ok, problem } from "@/lib/api/response";
+import {
+  listUserTenanciesFromPostgres,
+  shouldUsePostgresTenancies,
+} from "@/lib/residence/postgres-tenancy-repository";
 import { getStore } from "@/lib/store/app-store";
 
 export const dynamic = "force-dynamic";
 
-export function GET(request: Request) {
+export async function GET(request: Request) {
   const userId = getSessionUserIdFromRequest(request);
   if (!userId) {
     return problem(401, "UNAUTHORIZED", "Sign in to view tenancies.");
+  }
+  if (shouldUsePostgresTenancies()) {
+    return ok({ tenancies: await listUserTenanciesFromPostgres(userId) });
   }
   return ok({ tenancies: getStore().listUserTenancies(userId) });
 }

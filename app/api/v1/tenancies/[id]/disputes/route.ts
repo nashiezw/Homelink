@@ -1,5 +1,9 @@
 import { getSessionUserIdFromRequest } from "@/lib/auth/session";
 import { created, problem } from "@/lib/api/response";
+import {
+  addTenancyDisputeInPostgres,
+  shouldUsePostgresTenancies,
+} from "@/lib/residence/postgres-tenancy-repository";
 import { getStore } from "@/lib/store/app-store";
 
 export const dynamic = "force-dynamic";
@@ -22,6 +26,13 @@ export async function POST(
     return problem(400, "INVALID_INPUT", "Reason and details are required.");
   }
 
+  if (shouldUsePostgresTenancies()) {
+    const dispute = await addTenancyDisputeInPostgres(tenancyId, userId, reason, details);
+    if (!dispute) {
+      return problem(403, "FORBIDDEN", "Cannot dispute this record.");
+    }
+    return created({ dispute });
+  }
   const dispute = getStore().addTenancyDispute(tenancyId, userId, reason, details);
   if (!dispute) {
     return problem(403, "FORBIDDEN", "Cannot dispute this record.");

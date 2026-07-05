@@ -300,6 +300,107 @@ model PropertyEnquiryRecord {
   @@index([createdAt])
 }
 
+model ResidenceRecordRow {
+  id             String   @id
+  tenancyId      String
+  userId         String
+  counterpartyId String
+  listingId      String?
+  status         String
+  verified       Boolean  @default(false)
+  payload        Json
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([tenancyId])
+  @@index([userId])
+  @@index([counterpartyId])
+  @@index([listingId])
+  @@index([status])
+  @@index([verified])
+}
+
+model TenancyReferenceRow {
+  id           String   @id
+  tenancyId    String
+  targetUserId String
+  payload      Json
+  createdAt    DateTime @default(now())
+
+  @@index([tenancyId])
+  @@index([targetUserId])
+}
+
+model TenancyDisputeRow {
+  id        String   @id
+  tenancyId String
+  status    String
+  payload   Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenancyId])
+  @@index([status])
+}
+
+model PropertyManagementRequestRow {
+  id            String   @id
+  requestNumber String   @unique
+  ownerId       String
+  status        String
+  consultantId  String?
+  payload       Json
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([ownerId])
+  @@index([status])
+  @@index([consultantId])
+}
+
+model HolidayBookingRecord {
+  id          String   @id
+  listingId   String
+  guestUserId String
+  ownerId     String?
+  agentId     String?
+  status      String
+  payload     Json
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([listingId])
+  @@index([guestUserId])
+  @@index([ownerId])
+  @@index([agentId])
+  @@index([status])
+}
+
+model AgentApplicationRecord {
+  id        String   @id
+  userId    String   @unique
+  status    String
+  payload   Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+}
+
+model AgentTrainingProgressRecord {
+  id        String   @id @default(cuid())
+  agentId   String
+  moduleId  String
+  status    String
+  payload   Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([agentId, moduleId])
+  @@index([agentId])
+  @@index([status])
+}
+
 model Conversation {
   id           String                    @id @default(cuid())
   listingId    String?

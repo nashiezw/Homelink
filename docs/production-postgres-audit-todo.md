@@ -20,7 +20,7 @@ Status key: `[x]` complete, `[~]` partially complete, `[ ]` still required.
 - [x] Removed the production crash caused by `markDirty()` throwing before store hydration.
 - [x] Deferred legacy snapshot persistence while hydration is pending instead of failing requests.
 - [x] Legacy `AppStore` is blocked in strict production unless `HOMELINK_ALLOW_LEGACY_STORE=true` is explicitly set.
-- [~] Legacy `AppStore` still exists for demo/local functionality and unmigrated domains outside strict production.
+- [~] Legacy `AppStore` still exists for demo/local functionality and a shrinking set of admin-only workflows outside strict production.
 - [x] Production writes cannot silently persist only to server memory when `HOMELINK_STRICT_PRODUCTION=true`.
 
 ## Database-first domains
@@ -35,13 +35,13 @@ Status key: `[x]` complete, `[~]` partially complete, `[ ]` still required.
 - [x] Reports: `/api/v1/reports` uses `Report` in production.
 - [x] Messages: `/api/v1/messages` uses `Conversation` and `Message` in production.
 - [x] Enquiries: `/api/v1/enquiries` and core enquiry actions use `PropertyEnquiryRecord` in production.
-- [ ] Tenancies: no durable Prisma model yet.
-- [ ] Property management requests: no durable Prisma model yet.
-- [~] Holiday bookings/reviews: holiday reviews use durable `Review` rows in production; holiday bookings still need a durable Prisma model.
-- [~] Agent applications/training/ratings: agent dashboard/leads/commissions/agency/public agent routes use Prisma; applications/training/ratings still need durable models.
+- [x] Tenancies and residence history use durable Prisma-backed records in production.
+- [x] Property management requests use durable Prisma-backed records in production.
+- [x] Holiday bookings/reviews use durable Prisma-backed records in production.
+- [~] Agent applications/training/ratings: applications and training progress now have durable Prisma-backed records; rating eligibility still relies on lead/commission records.
 - [x] Payments and proof workflows: checkout, list, proof upload, callback, webhook, and config use Prisma/default durable settings in production.
-- [ ] Admin analytics/audit dashboards still read many store-backed aggregates.
-- [ ] Homepage/CMS/settings still use snapshot-backed store data in several routes.
+- [~] Admin analytics/audit dashboards use Postgres for core users/listings/enquiries/payments/reports/tenancy disputes; some rich aggregate widgets still use snapshot-derived data.
+- [~] Homepage/CMS/settings use Postgres for listings/agents/settings where implemented; CMS snapshot data remains for editable marketing content.
 
 ## API audit
 
@@ -91,7 +91,7 @@ Status key: `[x]` complete, `[~]` partially complete, `[ ]` still required.
 - [x] Run database migration against the target Postgres database.
 - [x] Run `npm.cmd run db:audit:production` against the target Postgres database.
 - [x] Run `npm.cmd run db:seed:production` against the target Postgres database.
-- [~] Live smoke public pages pass, including `/listings/harare-avondale-cottage`; authenticated smoke checks require known private production seed passwords to be set in Vercel and used by the smoke runner.
+- [~] Live smoke public pages pass, including `/listings/harare-avondale-cottage`; authenticated smoke checks require the latest deployed code and matching private production seed passwords.
 - [ ] Submit a new property listing against the deployed environment.
 - [ ] Confirm the listing row exists in Postgres.
 - [ ] Confirm media rows exist in Postgres when photos/videos are attached.
