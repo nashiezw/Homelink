@@ -1,11 +1,20 @@
 import { getPlanPrice, PLAN_DEFINITIONS } from "@/lib/payments/plans";
 import { ok } from "@/lib/api/response";
+import { getProductionPaymentSettings, shouldUsePostgresPayments } from "@/lib/payments/postgres-payment-repository";
 import { getStore } from "@/lib/store/app-store";
 
 export function GET() {
+  if (shouldUsePostgresPayments()) {
+    const settings = getProductionPaymentSettings();
+    return ok(paymentConfig(settings));
+  }
   const store = getStore();
   const settings = store.getPaymentSettings();
-  return ok({
+  return ok(paymentConfig(settings));
+}
+
+function paymentConfig(settings: ReturnType<typeof getProductionPaymentSettings>) {
+  return {
     plans: PLAN_DEFINITIONS.map((p) => ({
       id: p.id,
       name: p.name,
@@ -19,5 +28,5 @@ export function GET() {
     currency: settings.currency,
     bankDetails: settings.bankDetails,
     sandboxMode: settings.sandboxMode,
-  });
+  };
 }

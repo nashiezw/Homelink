@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getPaymentFromPostgres, shouldUsePostgresPayments } from "@/lib/payments/postgres-payment-repository";
 import { getStore } from "@/lib/store/app-store";
 
 export async function GET(
@@ -9,7 +10,11 @@ export async function GET(
   const url = new URL(request.url);
   const status = url.searchParams.get("status") ?? "success";
   const paymentId = url.searchParams.get("payment_id") ?? url.searchParams.get("id");
-  const payment = paymentId ? getStore().getPaymentById(paymentId) : null;
+  const payment = paymentId
+    ? shouldUsePostgresPayments()
+      ? await getPaymentFromPostgres(paymentId)
+      : getStore().getPaymentById(paymentId)
+    : null;
   const isTenancy = payment?.plan === "tenancy_payment";
 
   const redirectTo =

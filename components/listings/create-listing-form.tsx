@@ -202,18 +202,29 @@ export function CreateListingForm({ onSuccess }: CreateListingFormProps) {
       };
     }
 
-    const result = await apiFetch<{ id: string }>("/api/v1/listings", {
-      method: "POST",
-      body: JSON.stringify(payload),
-    });
-    setSubmitting(false);
+    try {
+      const result = await apiFetch<{ id: string }>("/api/v1/listings", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
 
-    if (result.data?.id) {
-      showToast("Listing submitted for review!");
-      onSuccess?.(result.data.id);
-      router.push(`/listings/${result.data.id}`);
-    } else {
-      showToast(result.error?.message ?? "Could not create listing.", "error");
+      if (result.error) {
+        showToast(result.error.message, "error");
+        return;
+      }
+
+      if (result.data?.id) {
+        showToast("Listing submitted for review!");
+        onSuccess?.(result.data.id);
+        router.push(`/listings/${result.data.id}`);
+      } else {
+        showToast("The listing was not saved. Please try again.", "error");
+      }
+    } catch (error) {
+      console.error("Listing submission failed", error);
+      showToast("The listing could not be submitted. Check your connection and try again.", "error");
+    } finally {
+      setSubmitting(false);
     }
   }
 

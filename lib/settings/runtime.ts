@@ -1,11 +1,19 @@
 import type { PlatformSettings, PublicPlatformConfig } from "@/lib/settings/types";
+import { defaultPlatformSettings } from "@/lib/settings/defaults";
+import { isPostgresStoreEnabled } from "@/lib/db/main-prisma";
 import { getHydratedStore, getStore } from "@/lib/store/app-store";
 
 export function getRuntimePlatformSettings(): PlatformSettings {
+  if (process.env.HOMELINK_STRICT_PRODUCTION === "true" && isPostgresStoreEnabled()) {
+    return defaultPlatformSettings;
+  }
   return getStore().getPlatformSettings();
 }
 
 export async function getHydratedRuntimePlatformSettings(): Promise<PlatformSettings> {
+  if (process.env.HOMELINK_STRICT_PRODUCTION === "true" && isPostgresStoreEnabled()) {
+    return defaultPlatformSettings;
+  }
   return (await getHydratedStore()).getPlatformSettings();
 }
 

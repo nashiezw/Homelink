@@ -1,6 +1,7 @@
 import { getSessionUserIdFromRequest } from "@/lib/auth/session";
 import { created, problem } from "@/lib/api/response";
 import { createCloudinaryUploadIntent } from "@/lib/integrations/cloudinary";
+import { getListingFromPostgres, shouldUsePostgresListings } from "@/lib/listings/postgres-listing-repository";
 import { requireStrictProductionConfig } from "@/lib/production/runtime";
 import { getStore } from "@/lib/store/app-store";
 
@@ -18,7 +19,7 @@ export async function POST(request: Request, { params }: RouteContext) {
     return problem(401, "UNAUTHORIZED", "Sign in to upload listing media.");
   }
 
-  const listing = getStore().getListing(id);
+  const listing = shouldUsePostgresListings() ? await getListingFromPostgres(id) : getStore().getListing(id);
 
   if (!listing) {
     return problem(404, "LISTING_NOT_FOUND", "Listing could not be found.");

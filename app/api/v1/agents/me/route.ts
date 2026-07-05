@@ -1,10 +1,17 @@
 import { getSessionUserIdFromRequest } from "@/lib/auth/session";
 import { ok, problem } from "@/lib/api/response";
+import { getAgentDashboardFromPostgres, shouldUsePostgresAgents } from "@/lib/agents/postgres-agent-repository";
 import { getStore } from "@/lib/store/app-store";
 
 export async function GET(request: Request) {
   const userId = getSessionUserIdFromRequest(request);
   if (!userId) return problem(401, "UNAUTHORIZED", "Sign in required.");
+
+  if (shouldUsePostgresAgents()) {
+    const dashboard = await getAgentDashboardFromPostgres(userId);
+    if (!dashboard) return problem(403, "FORBIDDEN", "Active agent profile required.");
+    return ok(dashboard);
+  }
 
   const store = getStore();
   const profile = store.getAgentProfileByUserId(userId);

@@ -44,6 +44,9 @@ enum ListingStatus {
   SOLD
   SUSPENDED
   EXPIRED
+  REJECTED
+  ARCHIVED
+  DELETED
 }
 
 enum ReportStatus {
@@ -113,12 +116,15 @@ model User {
   id                String                    @id @default(cuid())
   email             String                    @unique
   phone             String?                   @unique
+  passwordHash      String?
+  accountStatus     String                    @default("ACTIVE")
   name              String
   roles             Role[]                    @default([SEEKER])
   identityStatus    VerificationStatus        @default(PENDING)
   phoneVerifiedAt   DateTime?
   emailVerifiedAt   DateTime?
   createdAt         DateTime                  @default(now())
+  lastLoginAt       DateTime?
   updatedAt         DateTime                  @updatedAt
   listings          Listing[]
   favourites        Favourite[]
@@ -191,6 +197,10 @@ model Listing {
   swimmingPool               Boolean                   @default(false)
   availableFrom              DateTime?
   verifiedAt                 DateTime?
+  featured                   Boolean                   @default(false)
+  featuredUntil              DateTime?
+  views                      Int                       @default(0)
+  adminNotes                 String?
   expiresAt                  DateTime?
   leadSource                 LeadSource                @default(HOMELINK)
   leadCreatedById            String?
@@ -330,6 +340,8 @@ model RoommateProfile {
   pets               Boolean         @default(false)
   age                Int?
   preferredLocations String[]
+  active             Boolean         @default(true)
+  payload            Json?
   createdAt          DateTime        @default(now())
   updatedAt          DateTime        @updatedAt
   user               User            @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -357,6 +369,7 @@ model Review {
   rating    Int
   body      String
   target    String
+  metadata  Json?
   createdAt DateTime @default(now())
   author    User     @relation("ReviewAuthor", fields: [authorId], references: [id], onDelete: Cascade)
   listing   Listing? @relation(fields: [listingId], references: [id])
@@ -396,6 +409,12 @@ model Payment {
   currency    String          @default("USD")
   description String
   externalId  String?
+  plan        String?
+  method      String?
+  manual      Boolean         @default(false)
+  proofUrl    String?
+  proofStatus String?
+  metadata    Json?
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
   user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)

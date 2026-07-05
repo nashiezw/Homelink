@@ -2,6 +2,14 @@ import { getSessionUserIdFromRequest } from "@/lib/auth/session";
 import { created, ok, problem } from "@/lib/api/response";
 import { defaultEnquiryType } from "@/lib/enquiries/labels";
 import type { CreateEnquiryInput, EnquiryType } from "@/lib/enquiries/types";
+import {
+  createEnquiryInPostgres,
+  getEnquiryActor,
+  listEnquiriesFromPostgres,
+  shouldUsePostgresEnquiries,
+  summarizeEnquiries,
+} from "@/lib/enquiries/postgres-enquiry-repository";
+import { getListingFromPostgres } from "@/lib/listings/postgres-listing-repository";
 import { getStore } from "@/lib/store/app-store";
 
 export async function POST(request: Request) {
@@ -10,6 +18,37 @@ export async function POST(request: Request) {
 
   if (!body.listingId) {
     return problem(400, "INVALID_ENQUIRY", "listingId is required.");
+  }
+
+  if (shouldUsePostgresEnquiries()) {
+    const listing = await getListingFromPostgres(body.listingId);
+    if (!listing) {
+      return problem(404, "LISTING_NOT_FOUND", "Listing could not be found.");
+    }
+    const actor = userId ? await getEnquiryActor(userId) : null;
+    const enquiryType = (body.enquiryType as EnquiryType) ?? defaultEnquiryType(listing.type, listing.intent);
+    const input: CreateEnquiryInput = {
+      listingId: body.listingId,
+      seekerId: userId ?? "guest",
+      seekerName: actor?.name ?? body.name ?? "Guest",
+      seekerEmail: body.email,
+      seekerPhone: body.phone,
+      enquiryType,
+      message: body.message ?? "",
+      preferredDate: body.preferredDate,
+      preferredTime: body.preferredTime,
+      checkIn: body.checkIn,
+      checkOut: body.checkOut,
+      guests: body.guests,
+      channel: body.channel ?? "WEB",
+      source: body.source ?? "LISTING",
+    };
+    if (!input.message.trim()) {
+      return problem(400, "INVALID_ENQUIRY", "Please include a message or enquiry details.");
+    }
+    const enquiry = await createEnquiryInPostgres(input);
+    if (!enquiry) return problem(404, "LISTING_NOT_FOUND", "Listing could not be found.");
+    return created(enquiry);
   }
 
   const store = getStore();
@@ -45,20 +84,32 @@ export async function POST(request: Request) {
   return created(store.createEnquiry(input));
 }
 
-export function GET(request: Request) {
+export async function GET(request: Request) {
   const userId = getSessionUserIdFromRequest(request);
   if (!userId) {
     return problem(401, "UNAUTHORIZED", "Sign in to view enquiries.");
   }
+  const url = new URL(request.url);
+  const status = url.searchParams.get("status") ?? undefined;
+  const q = url.searchParams.get("q") ?? undefined;
+
+  if (shouldUsePostgresEnquiries()) {
+    const actor = await getEnquiryActor(userId);
+    if (!actor) return problem(401, "UNAUTHORIZED", "Session is no longer valid.");
+    const enquiries = await listEnquiriesFromPostgres({
+      status: status as import("@/lib/enquiries/types").EnquiryStatus | undefined,
+      q,
+      userId,
+      roles: actor.roles,
+    });
+    return actor.roles.includes("ADMIN") ? ok({ enquiries, analytics: summarizeEnquiries(enquiries) }) : ok({ enquiries });
+  }
+
   const store = getStore();
   const user = store.getUserById(userId);
   if (!user) {
     return problem(401, "UNAUTHORIZED", "Session is no longer valid.");
   }
-
-  const url = new URL(request.url);
-  const status = url.searchParams.get("status") ?? undefined;
-  const q = url.searchParams.get("q") ?? undefined;
 
   if (user.roles.includes("ADMIN")) {
     return ok({

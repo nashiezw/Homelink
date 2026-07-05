@@ -1,5 +1,6 @@
 import { getSessionUserIdFromRequest } from "@/lib/auth/session";
 import { created, problem } from "@/lib/api/response";
+import { addListingMediaInPostgres, shouldUsePostgresListings } from "@/lib/listings/postgres-listing-repository";
 import { getStore } from "@/lib/store/app-store";
 
 export const dynamic = "force-dynamic";
@@ -20,7 +21,9 @@ export async function POST(
     return problem(400, "INVALID_INPUT", "Provide at least one image URL.");
   }
 
-  const listing = getStore().addListingImages(id, userId, urls);
+  const listing = shouldUsePostgresListings()
+    ? await addListingMediaInPostgres(id, userId, urls, "image")
+    : getStore().addListingImages(id, userId, urls);
   if (!listing) {
     return problem(403, "FORBIDDEN", "You can only add photos to your own listings.");
   }

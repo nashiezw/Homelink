@@ -1,10 +1,14 @@
 import { ok } from "@/lib/api/response";
+import { getPublicAgentFromPostgres, shouldUsePostgresAgents } from "@/lib/agents/postgres-agent-repository";
 import { getStore } from "@/lib/store/app-store";
 
 type RouteContext = { params: Promise<{ slug: string }> };
 
 export async function GET(_request: Request, context: RouteContext) {
   const { slug } = await context.params;
+  if (shouldUsePostgresAgents()) {
+    return ok(await getPublicAgentFromPostgres(slug));
+  }
   const store = getStore();
   const profile = store.getAgentProfileBySlug(slug);
   if (!profile || profile.status !== "ACTIVE") {

@@ -1,6 +1,15 @@
 import { getSessionUserIdFromRequest } from "@/lib/auth/session";
 import { ok, problem } from "@/lib/api/response";
 import type { EnquiryStatus } from "@/lib/enquiries/types";
+import {
+  addEnquiryNoteInPostgres,
+  assignEnquiryAgentInPostgres,
+  canAccessPostgresEnquiry,
+  getEnquiryActor,
+  getEnquiryFromPostgres,
+  shouldUsePostgresEnquiries,
+  updateEnquiryStatusInPostgres,
+} from "@/lib/enquiries/postgres-enquiry-repository";
 import { getStore } from "@/lib/store/app-store";
 
 function actorFromRequest(request: Request, userId: string) {
@@ -24,6 +33,16 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   const userId = getSessionUserIdFromRequest(request);
   if (!userId) return problem(401, "UNAUTHORIZED", "Sign in required.");
   const { id } = await params;
+  if (shouldUsePostgresEnquiries()) {
+    const actor = await getEnquiryActor(userId);
+    if (!actor) return problem(401, "UNAUTHORIZED", "Invalid session.");
+    const enquiry = await getEnquiryFromPostgres(id);
+    if (!enquiry) return problem(404, "NOT_FOUND", "Enquiry not found.");
+    if (!canAccessPostgresEnquiry(enquiry, userId, actor.roles)) {
+      return problem(403, "FORBIDDEN", "You cannot view this enquiry.");
+    }
+    return ok({ enquiry });
+  }
   const store = getStore();
   const user = store.getUserById(userId);
   if (!user) return problem(401, "UNAUTHORIZED", "Invalid session.");
@@ -40,6 +59,43 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   if (!userId) return problem(401, "UNAUTHORIZED", "Sign in required.");
   const { id } = await params;
   const body = await request.json();
+  if (shouldUsePostgresEnquiries()) {
+    const actor = await getEnquiryActor(userId);
+    if (!actor) return problem(401, "UNAUTHORIZED", "Invalid session.");
+    const enquiry = await getEnquiryFromPostgres(id);
+    if (!enquiry) return problem(404, "NOT_FOUND", "Enquiry not found.");
+    if (!canAccessPostgresEnquiry(enquiry, userId, actor.roles)) {
+      return problem(403, "FORBIDDEN", "You cannot update this enquiry.");
+    }
+    try {
+      switch (body.action) {
+        case "update_status":
+          if (!body.status) return problem(400, "INVALID", "status is required.");
+          return ok({ enquiry: await updateEnquiryStatusInPostgres(id, body.status as EnquiryStatus, actor, body.reason) });
+        case "assign_agent":
+          if (!actor.roles.includes("ADMIN")) return problem(403, "FORBIDDEN", "Admin only.");
+          if (!body.agentId) return problem(400, "INVALID", "agentId is required.");
+          return ok({ enquiry: await assignEnquiryAgentInPostgres(id, body.agentId, actor) });
+        case "add_note":
+          return ok({
+            enquiry: await addEnquiryNoteInPostgres(id, {
+              authorId: userId,
+              authorName: actor.name,
+              body: body.body ?? "",
+              internal: Boolean(body.internal),
+            }),
+          });
+        default:
+          if (body.status) {
+            return ok({ enquiry: await updateEnquiryStatusInPostgres(id, body.status as EnquiryStatus, actor, body.reason) });
+          }
+          return problem(400, "INVALID_ACTION", "Unknown action.");
+      }
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "Action failed.";
+      return problem(400, "ENQUIRY_ACTION_FAILED", message);
+    }
+  }
   const store = getStore();
   const user = store.getUserById(userId);
   if (!user) return problem(401, "UNAUTHORIZED", "Invalid session.");

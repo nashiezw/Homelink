@@ -2,6 +2,12 @@ import { getSessionUserIdFromRequest } from "@/lib/auth/session";
 import { isRoommateMatchingEnabled } from "@/lib/features";
 import { created, ok, problem } from "@/lib/api/response";
 import { householdOccupants } from "@/lib/roommates/types";
+import {
+  getRoommateMatchesFromPostgres,
+  getRoommateProfileFromPostgres,
+  saveRoommateProfileInPostgres,
+  shouldUsePostgresRoommates,
+} from "@/lib/roommates/postgres-roommate-repository";
 import { getStore } from "@/lib/store/app-store";
 import type { RoommateProfile } from "@/lib/store/types";
 
@@ -49,13 +55,18 @@ function parseProfileBody(body: Record<string, unknown>): Partial<RoommateProfil
   };
 }
 
-export function GET(request: Request) {
+export async function GET(request: Request) {
   if (!isRoommateMatchingEnabled()) {
     return problem(503, "FEATURE_DISABLED", "Roommate matching is currently disabled.");
   }
   const userId = getSessionUserIdFromRequest(request);
   if (!userId) {
     return problem(401, "UNAUTHORIZED", "Sign in to view roommate matches.");
+  }
+  if (shouldUsePostgresRoommates()) {
+    const profile = await getRoommateProfileFromPostgres(userId);
+    const matches = await getRoommateMatchesFromPostgres(userId);
+    return ok({ profile, matches, count: matches.length });
   }
   const store = getStore();
   const profile = store.getRoommateProfile(userId);
@@ -72,6 +83,11 @@ export async function POST(request: Request) {
     return problem(401, "UNAUTHORIZED", "Sign in to save your roommate profile.");
   }
   const body = await request.json();
+  if (shouldUsePostgresRoommates()) {
+    const profile = await saveRoommateProfileInPostgres(userId, parseProfileBody(body));
+    const matches = await getRoommateMatchesFromPostgres(userId);
+    return created({ profile, matches, count: matches.length });
+  }
   const store = getStore();
   const profile = store.saveRoommateProfile(userId, parseProfileBody(body));
   const matches = store.getRoommateMatches(userId);

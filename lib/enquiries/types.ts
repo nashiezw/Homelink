@@ -200,6 +200,7 @@ export type CreateEnquiryInput = {
   channel?: PropertyEnquiry["channel"];
   source?: string;
   subjectType?: EnquirySubjectType;
+  roommateUserId?: string;
   holidayBookingId?: string;
   estimatedNights?: number;
   estimatedTotal?: number;

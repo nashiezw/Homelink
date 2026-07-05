@@ -8,6 +8,14 @@ import {
 } from "@/lib/auth/session";
 import { getRegistrationPolicy, getRateLimitPerMinute, getSessionTimeoutSeconds } from "@/lib/settings/runtime";
 import { ok, problem } from "@/lib/api/response";
+import {
+  createPostgresUser,
+  getPostgresUserByEmail,
+  getPostgresUserById,
+  recordPostgresLogin,
+  shouldUsePostgresAuth,
+  toPublicPostgresUser,
+} from "@/lib/auth/postgres-auth";
 import { getStore } from "@/lib/store/app-store";
 
 export async function POST(request: Request) {
@@ -31,8 +39,6 @@ export async function POST(request: Request) {
     return problem(400, "WEAK_PASSWORD", `Password must be at least ${policy.minPasswordLength} characters.`);
   }
 
-  const store = getStore();
-
   if (action === "register") {
     if (!policy.open) {
       return problem(403, "REGISTRATION_CLOSED", "New registrations are currently closed.");
@@ -40,6 +46,32 @@ export async function POST(request: Request) {
     if (!name.trim()) {
       return problem(400, "NAME_REQUIRED", "Name is required for registration.");
     }
+    if (shouldUsePostgresAuth()) {
+      if (await getPostgresUserByEmail(email)) {
+        return problem(409, "EMAIL_EXISTS", "An account with this email already exists.");
+      }
+      const user = await createPostgresUser({
+        email,
+        passwordHash: hashPassword(password),
+        name,
+        phone: body.phone,
+      });
+      const sessionId = `session_${crypto.randomUUID()}`;
+      return new NextResponse(
+        JSON.stringify({
+          data: toPublicPostgresUser(user),
+          meta: { requestId: crypto.randomUUID() },
+        }),
+        {
+          status: 201,
+          headers: {
+            "Content-Type": "application/json",
+            "Set-Cookie": sessionCookieHeader(sessionId, getSessionTimeoutSeconds(), user.id),
+          },
+        },
+      );
+    }
+    const store = getStore();
     if (store.getUserByEmail(email)) {
       return problem(409, "EMAIL_EXISTS", "An account with this email already exists.");
     }
@@ -65,6 +97,35 @@ export async function POST(request: Request) {
     );
   }
 
+  if (shouldUsePostgresAuth()) {
+    const user = await getPostgresUserByEmail(email);
+    if (!user?.passwordHash || !verifyPassword(password, user.passwordHash)) {
+      return problem(401, "INVALID_CREDENTIALS", "Email or password is incorrect.");
+    }
+    if (user.accountStatus === "SUSPENDED") {
+      return problem(403, "ACCOUNT_SUSPENDED", "Your account has been suspended. Contact support.");
+    }
+    if (user.accountStatus === "BLOCKED") {
+      return problem(403, "ACCOUNT_BLOCKED", "Your account has been blocked.");
+    }
+    const updated = await recordPostgresLogin(user.id);
+    const sessionId = `session_${crypto.randomUUID()}`;
+    return new NextResponse(
+      JSON.stringify({
+        data: toPublicPostgresUser(updated),
+        meta: { requestId: crypto.randomUUID() },
+      }),
+      {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json",
+          "Set-Cookie": sessionCookieHeader(sessionId, getSessionTimeoutSeconds(), user.id),
+        },
+      },
+    );
+  }
+
+  const store = getStore();
   const user = store.getUserByEmail(email);
   if (!user || !verifyPassword(password, user.passwordHash)) {
     return problem(401, "INVALID_CREDENTIALS", "Email or password is incorrect.");
@@ -97,7 +158,7 @@ export async function POST(request: Request) {
 export async function DELETE(request: Request) {
   const cookie = request.headers.get("cookie") ?? "";
   const match = cookie.match(/homelink_session=([^;]+)/);
-  if (match) {
+  if (match && !shouldUsePostgresAuth()) {
     getStore().deleteSession(match[1]);
   }
   return new NextResponse(
@@ -112,10 +173,17 @@ export async function DELETE(request: Request) {
   );
 }
 
-export function GET(request: Request) {
+export async function GET(request: Request) {
   const userId = getSessionUserIdFromRequest(request);
   if (!userId) {
     return problem(401, "UNAUTHORIZED", "Sign in to continue.");
+  }
+  if (shouldUsePostgresAuth()) {
+    const user = await getPostgresUserById(userId);
+    if (!user) {
+      return problem(401, "UNAUTHORIZED", "Session is no longer valid.");
+    }
+    return ok(toPublicPostgresUser(user));
   }
   const user = getStore().getUserById(userId);
   if (!user) {

@@ -1196,14 +1196,15 @@ class AppStore {
 
   markDirty() {
     if (isStrictProduction() && !globalStore.__homelinkStoreHydrated) {
-      throw new Error("Store is still hydrating from Postgres; refusing to persist unhydrated server memory.");
+      globalStore.__homelinkStorePersistPending = true;
+      return;
     }
     scheduleStorePersist(this.state, STORE_VERSION);
   }
 
   async flushPersistence() {
     if (isStrictProduction() && !globalStore.__homelinkStoreHydrated) {
-      throw new Error("Store is still hydrating from Postgres; refusing to persist unhydrated server memory.");
+      await globalStore.__homelinkStoreHydratePromise;
     }
     await persistStoreState(this.state, STORE_VERSION);
   }
@@ -4391,6 +4392,13 @@ function isStrictProduction() {
 }
 
 export function getStore() {
+  if (
+    isStrictProduction() &&
+    process.env.HOMELINK_ALLOW_LEGACY_STORE !== "true" &&
+    process.env.DATABASE_URL?.match(/^postgres(ql)?:\/\//)
+  ) {
+    throw new Error("Legacy in-memory AppStore access is blocked in strict production. Migrate this route to Postgres.");
+  }
   if (!globalStore.__homelinkStore || globalStore.__homelinkStoreVersion !== STORE_VERSION) {
     const synced = loadPersistedStoreSync(STORE_VERSION);
     globalStore.__homelinkStore = synced
