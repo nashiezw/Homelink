@@ -306,8 +306,8 @@ export function AdminShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen bg-[#05080f] text-slate-100">
-      <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,_rgba(16,185,129,0.12),_transparent),radial-gradient(ellipse_at_bottom_right,_rgba(6,182,212,0.08),_transparent_50%)]" />
-      <div className="relative flex">
+      <div className="pointer-events-none fixed inset-0 z-0 hidden bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,_rgba(16,185,129,0.12),_transparent),radial-gradient(ellipse_at_bottom_right,_rgba(6,182,212,0.08),_transparent_50%)] lg:block" />
+      <div className="relative z-10 flex">
         <aside className="sticky top-0 hidden h-screen w-[18rem] shrink-0 flex-col border-r border-white/[0.06] bg-slate-950/90 backdrop-blur-2xl lg:flex">
           {sidebar}
         </aside>
@@ -326,7 +326,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
             </div>
           )}
 
-          <header className="sticky top-0 z-30 border-b border-white/[0.06] bg-slate-950/90 backdrop-blur-2xl">
+          <header className="sticky top-0 z-30 border-b border-white/[0.06] bg-slate-950 lg:bg-slate-950/90 lg:backdrop-blur-2xl">
             <div className="grid gap-3 px-4 py-3 sm:px-5 lg:flex lg:items-center lg:px-8 lg:py-4">
               <div className="grid min-w-0 grid-cols-[2.5rem_minmax(0,1fr)_2.5rem] items-center gap-3 lg:contents">
                 <button

@@ -45,7 +45,7 @@ export function AdminPanel({
   return (
     <section
       className={cn(
-        "overflow-hidden rounded-2xl border border-white/[0.08] bg-gradient-to-b from-slate-900/90 to-slate-950/90 shadow-[0_1px_0_0_rgba(255,255,255,0.04)_inset]",
+        "overflow-hidden rounded-2xl border border-white/[0.08] bg-slate-950 shadow-[0_1px_0_0_rgba(255,255,255,0.04)_inset] lg:bg-gradient-to-b lg:from-slate-900/90 lg:to-slate-950/90",
         className,
       )}
     >
@@ -254,7 +254,7 @@ export function AdminQuickAction({
   href?: string;
 }) {
   const className =
-    "group flex w-full items-start gap-3 rounded-xl border border-white/[0.08] bg-slate-900/40 p-3 text-left transition hover:border-emerald-500/30 hover:bg-emerald-500/5 sm:p-4";
+    "group flex w-full items-start gap-3 rounded-xl border border-white/[0.08] bg-slate-950 p-3 text-left transition hover:border-emerald-500/30 hover:bg-emerald-500/5 sm:p-4 lg:bg-slate-900/40";
   const inner = (
     <>
       <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-400 transition group-hover:bg-emerald-500/20 sm:size-10">
