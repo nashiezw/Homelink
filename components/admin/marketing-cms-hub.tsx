@@ -91,9 +91,12 @@ export function MarketingCmsHub() {
   const [cms, setCms] = useState<HomepageCmsConfig | null>(null);
   const [saving, setSaving] = useState(false);
   const [listingQuery, setListingQuery] = useState("");
+  const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
+    setError(null);
     const result = await apiFetch<MarketingData>("/api/v1/admin/homepage");
+    if (result.error) setError(result.error.message);
     if (result.data) {
       setData(result.data);
       setCms(result.data.cms);
@@ -159,6 +162,7 @@ export function MarketingCmsHub() {
     void load();
   }
 
+  if (error) return <AdminLoadError message={error} onRetry={() => void load()} />;
   if (!data || !cms) return <p className="text-slate-400">Loading marketing CMS...</p>;
 
   const filteredListings = data.listings.filter(
@@ -608,6 +612,15 @@ export function MarketingCmsHub() {
       {tab === "coupons" && <MarketingEnterpriseHub />}
 
       {tab === "cms-content" && <CmsContentHub />}
+    </div>
+  );
+}
+
+function AdminLoadError({ message, onRetry }: { message: string; onRetry: () => void }) {
+  return (
+    <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-100">
+      <p>{message}</p>
+      <Button variant="secondary" className="mt-3" onClick={onRetry}>Retry</Button>
     </div>
   );
 }

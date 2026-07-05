@@ -57,14 +57,14 @@ export async function getRoommateMatchesFromPostgres(userId: string) {
 }
 
 export async function getPublicRoommateProfileFromPostgres(userId: string) {
-  const profile = await getMainPrisma().roommateProfile.findUnique({
-    where: { userId },
+  const profile = await getMainPrisma().roommateProfile.findFirst({
+    where: { OR: [{ userId }, { id: userId }] },
     include: { user: true },
   });
   if (!profile?.active || profile.user.accountStatus !== "ACTIVE") return null;
-  const residenceHistory = await listResidenceHistoryFromPostgres(userId);
+  const residenceHistory = await listResidenceHistoryFromPostgres(profile.userId);
   return {
-    userId,
+    userId: profile.userId,
     name: profile.user.name,
     city: undefined,
     profile: toProfile(profile),

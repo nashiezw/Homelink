@@ -29,13 +29,17 @@ export function PlatformSettingsPanel({ defaultTab = "general" }: { defaultTab?:
   } | null>(null);
   const [smtpTestEmail, setSmtpTestEmail] = useState("");
   const [promotingAdmin, setPromotingAdmin] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
+    setError(null);
     const [platform, rbac, currentAdmin] = await Promise.all([
       apiFetch<{ settings: PlatformSettings }>("/api/v1/admin/settings"),
       apiFetch<{ admins: AdminUser[]; eligibleUsers: AdminUser[] }>("/api/v1/admin/settings?section=rbac"),
       apiFetch<AdminMe>("/api/v1/admin/me"),
     ]);
+    const firstError = platform.error ?? rbac.error ?? currentAdmin.error;
+    if (firstError) setError(firstError.message);
     if (platform.data) setSettings(platform.data.settings);
     if (rbac.data) setAdmins(rbac.data.admins);
     if (rbac.data) setEligibleUsers(rbac.data.eligibleUsers);
@@ -127,6 +131,7 @@ export function PlatformSettingsPanel({ defaultTab = "general" }: { defaultTab?:
     }
   }
 
+  if (error) return <SettingsLoadError message={error} onRetry={() => void load()} />;
   if (!settings) return <p className="text-slate-400">Loading platform settings...</p>;
 
   const tabs: Array<{ id: SettingsTab; label: string }> = [
@@ -397,6 +402,15 @@ export function PlatformSettingsPanel({ defaultTab = "general" }: { defaultTab?:
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function SettingsLoadError({ message, onRetry }: { message: string; onRetry: () => void }) {
+  return (
+    <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-100">
+      <p>{message}</p>
+      <Button variant="secondary" className="mt-3" onClick={onRetry}>Retry</Button>
     </div>
   );
 }

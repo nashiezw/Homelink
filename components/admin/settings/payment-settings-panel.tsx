@@ -17,9 +17,12 @@ export function PaymentSettingsPanel() {
   const { showToast } = useApp();
   const [data, setData] = useState<PaymentSettingsResponse | null>(null);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
+    setError(null);
     const result = await apiFetch<PaymentSettingsResponse>("/api/v1/admin/settings?section=payments");
+    if (result.error) setError(result.error.message);
     if (result.data) setData(result.data);
   }, []);
 
@@ -95,6 +98,7 @@ export function PaymentSettingsPanel() {
     });
   }
 
+  if (error) return <PaymentSettingsLoadError message={error} onRetry={() => void load()} />;
   if (!data) return <p className="text-slate-400">Loading payment settings...</p>;
 
   const s = data.settings;
@@ -291,6 +295,15 @@ export function PaymentSettingsPanel() {
           </div>
         </section>
       )}
+    </div>
+  );
+}
+
+function PaymentSettingsLoadError({ message, onRetry }: { message: string; onRetry: () => void }) {
+  return (
+    <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-100">
+      <p>{message}</p>
+      <Button variant="secondary" className="mt-3" onClick={onRetry}>Retry</Button>
     </div>
   );
 }

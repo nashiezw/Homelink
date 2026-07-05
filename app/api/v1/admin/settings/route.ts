@@ -1,6 +1,14 @@
 import { getClientIp } from "@/lib/api/request-meta";
-import { requireAdmin } from "@/lib/admin/require-admin";
+import { requireAdmin, requireAdminAsync } from "@/lib/admin/require-admin";
+import {
+  getPostgresPaymentSettingsResponse,
+  getPostgresPlatformSettings,
+  getPostgresSettingsRbac,
+  savePostgresPaymentSettings,
+  savePostgresPlatformSettings,
+} from "@/lib/admin/postgres-admin-config";
 import { ok, problem } from "@/lib/api/response";
+import { isPostgresStoreEnabled } from "@/lib/db/main-prisma";
 import { testCloudinaryConfig } from "@/lib/integrations/cloudinary";
 import { testGoogleMapsKey } from "@/lib/integrations/google-maps";
 import { sendSmtpTestEmail } from "@/lib/integrations/smtp";
@@ -31,8 +39,18 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const section = searchParams.get("section") ?? "platform";
   const permission = section === "payments" ? "payments:read" : "platform:read";
-  const auth = requireAdmin(request, permission);
+  const auth = isPostgresStoreEnabled() ? await requireAdminAsync(request, permission) : requireAdmin(request, permission);
   if (auth.error) return auth.error;
+
+  if (isPostgresStoreEnabled()) {
+    if (section === "payments") return ok(await getPostgresPaymentSettingsResponse());
+    if (section === "rbac") return ok(await getPostgresSettingsRbac());
+    const settings = await getPostgresPlatformSettings();
+    return ok({
+      settings: redactPlatformSettingsForAdmin(settings),
+      maintenanceMode: settings.maintenanceMode,
+    });
+  }
 
   const store = await getHydratedStore();
   if (section === "payments") {
@@ -72,13 +90,38 @@ export async function PATCH(request: Request) {
       : section === "marketing"
         ? "marketing:write"
         : "platform:write";
-  const auth = requireAdmin(request, permission);
+  const auth = isPostgresStoreEnabled() ? await requireAdminAsync(request, permission) : requireAdmin(request, permission);
   if (auth.error || !auth.user) return auth.error ?? problem(401, "UNAUTHORIZED", "Admin required.");
+  const incomingPlatformSettings = body.settings as Partial<PlatformSettings> | undefined;
+
+  if (isPostgresStoreEnabled()) {
+    const actorEmail = "email" in auth.user ? auth.user.email : undefined;
+    if (body.test) {
+      const settings = await getPostgresPlatformSettings();
+      const liveSettings = incomingPlatformSettings
+        ? mergePlatformSecrets(mergePlatformSettings(settings, incomingPlatformSettings), settings)
+        : settings;
+      if (body.test.type === "smtp") {
+        const recipient = body.test.email?.trim() || actorEmail || "admin@homelinkzim.co.zw";
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipient)) {
+          return ok({ ok: false, message: "Enter a valid recipient email address for the SMTP test." });
+        }
+        return ok(await sendSmtpTestEmail(liveSettings.integrations, recipient));
+      }
+      if (body.test.type === "maps") return ok(await testGoogleMapsKey(liveSettings.integrations.googleMapsKey));
+      if (body.test.type === "cloudinary") return ok(await testCloudinaryConfig(liveSettings.integrations));
+    }
+    if (section === "payments") {
+      const settings = await savePostgresPaymentSettings((body.settings ?? {}) as Partial<PaymentSettings>);
+      return ok({ settings: redactPaymentSettingsForAdmin(settings), health: (await getPostgresPaymentSettingsResponse()).health });
+    }
+    const settings = await savePostgresPlatformSettings((body.settings ?? {}) as Partial<PlatformSettings>);
+    return ok({ settings: redactPlatformSettingsForAdmin(settings) });
+  }
 
   const store = await getHydratedStore();
   const actor = { id: auth.user.id, name: auth.user.name };
   const ip = getClientIp(request);
-  const incomingPlatformSettings = body.settings as Partial<PlatformSettings> | undefined;
 
   if (body.test) {
     const settings = store.getPlatformSettings();

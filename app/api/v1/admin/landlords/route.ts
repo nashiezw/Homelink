@@ -1,4 +1,4 @@
-import { requireAdmin } from "@/lib/admin/require-admin";
+import { requireAdmin, requireAdminAsync } from "@/lib/admin/require-admin";
 import { ok } from "@/lib/api/response";
 import { listPostgresLandlords } from "@/lib/admin/postgres-agency-management";
 import { isPostgresStoreEnabled } from "@/lib/db/main-prisma";
@@ -7,7 +7,7 @@ import { getStore } from "@/lib/store/app-store";
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
-  const auth = requireAdmin(request);
+  const auth = isPostgresStoreEnabled() ? await requireAdminAsync(request) : requireAdmin(request);
   if (auth.error) {
     return auth.error;
   }

@@ -1,5 +1,7 @@
-import { requireAdmin } from "@/lib/admin/require-admin";
+import { requireAdmin, requireAdminAsync } from "@/lib/admin/require-admin";
+import { getPostgresAdminPayment, updatePostgresPayment } from "@/lib/admin/postgres-admin-config";
 import { ok, problem } from "@/lib/api/response";
+import { isPostgresStoreEnabled } from "@/lib/db/main-prisma";
 import { getStore } from "@/lib/store/app-store";
 
 export const dynamic = "force-dynamic";
@@ -7,10 +9,16 @@ export const dynamic = "force-dynamic";
 type RouteContext = { params: Promise<{ id: string }> };
 
 export async function GET(request: Request, context: RouteContext) {
-  const auth = requireAdmin(request);
+  const auth = isPostgresStoreEnabled() ? await requireAdminAsync(request, "payments:read") : requireAdmin(request);
   if (auth.error) return auth.error;
 
   const { id } = await context.params;
+  if (isPostgresStoreEnabled()) {
+    const result = await getPostgresAdminPayment(id);
+    if (!result) return problem(404, "NOT_FOUND", "Payment not found.");
+    return ok(result);
+  }
+
   const store = getStore();
   const payment = store.getPaymentById(id);
   if (!payment) return problem(404, "NOT_FOUND", "Payment not found.");
@@ -20,11 +28,17 @@ export async function GET(request: Request, context: RouteContext) {
 }
 
 export async function PATCH(request: Request, context: RouteContext) {
-  const auth = requireAdmin(request);
+  const auth = isPostgresStoreEnabled() ? await requireAdminAsync(request, "payments:write") : requireAdmin(request);
   if (auth.error || !auth.user) return auth.error ?? problem(401, "UNAUTHORIZED", "Admin required.");
 
   const { id } = await context.params;
   const body = await request.json();
+  if (isPostgresStoreEnabled()) {
+    const payment = await updatePostgresPayment(id, String(body.action), body.reason, body.note);
+    if (!payment) return problem(400, "UNKNOWN_ACTION", `Unknown action: ${body.action}`);
+    return ok({ payment });
+  }
+
   const store = getStore();
   const actor = { id: auth.user.id, name: auth.user.name };
 

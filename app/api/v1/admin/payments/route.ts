@@ -1,18 +1,23 @@
-import { requireAdmin } from "@/lib/admin/require-admin";
+import { requireAdmin, requireAdminAsync } from "@/lib/admin/require-admin";
+import { createPostgresManualPayment, getPostgresPaymentsAdminData } from "@/lib/admin/postgres-admin-config";
 import { created, ok, problem } from "@/lib/api/response";
+import { isPostgresStoreEnabled } from "@/lib/db/main-prisma";
 import { getStore } from "@/lib/store/app-store";
 import type { PaymentMethod, PaymentStatus } from "@/lib/store/types";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
-  const auth = requireAdmin(request, "payments:read");
+  const auth = isPostgresStoreEnabled() ? await requireAdminAsync(request, "payments:read") : requireAdmin(request, "payments:read");
   if (auth.error) return auth.error;
 
   const { searchParams } = new URL(request.url);
   const status = searchParams.get("status") as PaymentStatus | null;
   const manual = searchParams.get("manual");
   const q = searchParams.get("q") ?? undefined;
+  if (isPostgresStoreEnabled()) {
+    return ok(await getPostgresPaymentsAdminData({ status, manual, q }));
+  }
 
   const store = getStore();
   const payments = store.listAllPayments({
@@ -48,7 +53,7 @@ export async function GET(request: Request) {
 }
 
 export async function PATCH(request: Request) {
-  const auth = requireAdmin(request, "payments:write");
+  const auth = isPostgresStoreEnabled() ? await requireAdminAsync(request, "payments:write") : requireAdmin(request, "payments:write");
   if (auth.error || !auth.user) return auth.error ?? problem(401, "UNAUTHORIZED", "Admin required.");
 
   const body = await request.json();
@@ -70,10 +75,26 @@ export async function PATCH(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const auth = requireAdmin(request, "payments:write");
+  const auth = isPostgresStoreEnabled() ? await requireAdminAsync(request, "payments:write") : requireAdmin(request, "payments:write");
   if (auth.error || !auth.user) return auth.error ?? problem(401, "UNAUTHORIZED", "Admin required.");
 
   const body = await request.json();
+  if (isPostgresStoreEnabled()) {
+    if (!body.userId || !body.plan || !body.amount || !body.method) {
+      return problem(400, "INVALID_INPUT", "userId, plan, amount, and method are required.");
+    }
+    const payment = await createPostgresManualPayment({
+      userId: body.userId,
+      method: body.method,
+      plan: body.plan,
+      amount: Number(body.amount),
+      referenceNumber: body.referenceNumber,
+      proofUrl: body.proofUrl,
+      listingId: body.listingId,
+      autoApprove: Boolean(body.autoApprove),
+    });
+    return created({ payment });
+  }
   const store = getStore();
   const actor = { id: auth.user.id, name: auth.user.name };
 

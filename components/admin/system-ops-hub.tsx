@@ -39,14 +39,18 @@ export function SystemOpsHub({ mode }: { mode: "system" | "ai" | "security" }) {
   const { showToast } = useApp();
   const [data, setData] = useState<OpsData>({});
   const [settings, setSettings] = useState<PlatformSettings | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   const load = useCallback(async () => {
+    setError(null);
     const section = mode === "security" ? "security" : mode === "ai" ? "all" : "system";
     const result = await apiFetch<OpsData>(`/api/v1/admin/control-center?section=${section}`);
+    if (result.error) setError(result.error.message);
     if (result.data) setData(result.data);
     if (mode === "ai" || mode === "security") {
       const platform = await apiFetch<{ settings: PlatformSettings }>("/api/v1/admin/settings");
+      if (platform.error) setError(platform.error.message);
       if (platform.data) setSettings(platform.data.settings);
     }
   }, [mode]);
@@ -192,7 +196,17 @@ export function SystemOpsHub({ mode }: { mode: "system" | "ai" | "security" }) {
     );
   }
 
+  if (error) return <LoadError message={error} onRetry={() => void load()} />;
   return <p className="text-slate-400">Loading operations data...</p>;
+}
+
+function LoadError({ message, onRetry }: { message: string; onRetry: () => void }) {
+  return (
+    <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-100">
+      <p>{message}</p>
+      <Button variant="secondary" className="mt-3" onClick={onRetry}>Retry</Button>
+    </div>
+  );
 }
 
 function formatLabel(key: string) {

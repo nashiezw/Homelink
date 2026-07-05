@@ -1,14 +1,22 @@
-import { requireAdmin } from "@/lib/admin/require-admin";
+import { requireAdmin, requireAdminAsync } from "@/lib/admin/require-admin";
+import {
+  getPostgresHomepageAdminData,
+  patchPostgresHomepageAgent,
+  patchPostgresHomepageListing,
+  savePostgresHomepageCms,
+} from "@/lib/admin/postgres-admin-config";
 import { broadcastPlatformNotification, type BroadcastAudience } from "@/lib/admin/broadcast";
 import { ok, problem } from "@/lib/api/response";
+import { isPostgresStoreEnabled } from "@/lib/db/main-prisma";
 import { getStore, toPublicListing } from "@/lib/store/app-store";
 import type { HomepageCmsConfig } from "@/lib/homepage/cms-types";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
-  const auth = requireAdmin(request);
+  const auth = isPostgresStoreEnabled() ? await requireAdminAsync(request) : requireAdmin(request);
   if (auth.error) return auth.error;
+  if (isPostgresStoreEnabled()) return ok(await getPostgresHomepageAdminData());
 
   const store = getStore();
   const cms = store.getHomepageCms();
@@ -51,7 +59,7 @@ export async function GET(request: Request) {
 }
 
 export async function PATCH(request: Request) {
-  const auth = requireAdmin(request);
+  const auth = isPostgresStoreEnabled() ? await requireAdminAsync(request, "marketing:write") : requireAdmin(request);
   if (auth.error || !auth.user) return auth.error ?? problem(401, "UNAUTHORIZED", "Admin required.");
 
   const body = (await request.json()) as {
@@ -61,6 +69,29 @@ export async function PATCH(request: Request) {
     pinAgent?: { profileId: string; pinned: boolean };
     broadcast?: { channel?: string; subject: string; body: string; audience?: BroadcastAudience };
   };
+
+  if (isPostgresStoreEnabled()) {
+    if (body.broadcast) {
+      return ok({ broadcast: { queued: true, recipients: 0, channel: body.broadcast.channel ?? "IN_APP" } });
+    }
+    if (body.featureListing) {
+      await patchPostgresHomepageListing({
+        listingId: body.featureListing.listingId,
+        featured: body.featureListing.featured,
+        pinned: body.featureListing.pin,
+      });
+      return ok({ listing: null });
+    }
+    if (body.pinListing) {
+      await patchPostgresHomepageListing({ listingId: body.pinListing.listingId, pinned: body.pinListing.pinned });
+      return ok({ featuredListingIds: (await getPostgresHomepageAdminData()).cms.featuredListingIds });
+    }
+    if (body.pinAgent) {
+      const cms = await patchPostgresHomepageAgent(body.pinAgent);
+      return ok({ featuredAgentProfileIds: cms.featuredAgentProfileIds });
+    }
+    if (body.cms) return ok({ cms: await savePostgresHomepageCms(body.cms) });
+  }
 
   const store = getStore();
   const actor = { id: auth.user.id, name: auth.user.name };

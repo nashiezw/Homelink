@@ -54,10 +54,13 @@ export function PaymentsAdminHub() {
     details?: Array<{ label: string; value: string | number | undefined }>;
   } | null>(null);
   const [dialog, setDialog] = useState<AdminDialogConfig | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
+    setError(null);
     const params = filter === "manual" ? "?manual=true" : filter === "pending" ? "?status=MANUAL_REVIEW" : "";
     const result = await apiFetch<PaymentsResponse>(`/api/v1/admin/payments${params}`);
+    if (result.error) setError(result.error.message);
     if (result.data) setData(result.data);
   }, [filter]);
 
@@ -186,6 +189,7 @@ export function PaymentsAdminHub() {
     URL.revokeObjectURL(url);
   }
 
+  if (error) return <PaymentsLoadError message={error} onRetry={() => void load()} />;
   if (!data) return <p className="text-slate-400">Loading payments...</p>;
   const manualMethods = data.settings.manualMethods.filter((method) => method.enabled);
 
@@ -439,6 +443,15 @@ export function PaymentsAdminHub() {
           </AdminPanel>
         </div>
       )}
+    </div>
+  );
+}
+
+function PaymentsLoadError({ message, onRetry }: { message: string; onRetry: () => void }) {
+  return (
+    <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-100">
+      <p>{message}</p>
+      <Button variant="secondary" className="mt-3" onClick={onRetry}>Retry</Button>
     </div>
   );
 }
