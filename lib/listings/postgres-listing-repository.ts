@@ -4,7 +4,7 @@ import {
   ListingStatus as DbListingStatus,
   PropertyType as DbPropertyType,
   Role as DbRole,
-  type Prisma,
+  Prisma,
 } from "@prisma/client";
 import { getMainPrisma, isPostgresStoreEnabled } from "@/lib/db/main-prisma";
 import { getStore } from "@/lib/store/app-store";
@@ -19,6 +19,45 @@ const LISTING_INCLUDE = {
 
 type PrismaListingRow = Prisma.ListingGetPayload<{ include: typeof LISTING_INCLUDE }>;
 type ListingInput = Partial<ListingRecord>;
+
+const SAFE_LISTING_SELECT = {
+  id: true,
+  ownerId: true,
+  intent: true,
+  propertyType: true,
+  status: true,
+  title: true,
+  description: true,
+  price: true,
+  city: true,
+  suburb: true,
+  latitude: true,
+  longitude: true,
+  bedrooms: true,
+  bathrooms: true,
+  furnished: true,
+  parking: true,
+  petFriendly: true,
+  wifi: true,
+  solarBackup: true,
+  borehole: true,
+  generator: true,
+  waterTank: true,
+  securityWall: true,
+  electricFence: true,
+  garden: true,
+  swimmingPool: true,
+  availableFrom: true,
+  verifiedAt: true,
+  owner: { select: { name: true, phone: true, identityStatus: true } },
+  media: {
+    select: { url: true, mediaType: true },
+    orderBy: { sortOrder: "asc" },
+  },
+  _count: { select: { favourites: true, enquiries: true } },
+} satisfies Prisma.ListingSelect;
+
+type SafeListingRow = Prisma.ListingGetPayload<{ select: typeof SAFE_LISTING_SELECT }>;
 
 const PROPERTY_TYPE_TO_DB: Record<PropertyType, DbPropertyType> = {
   room: DbPropertyType.ROOM,
@@ -167,32 +206,43 @@ export async function listListingsFromPostgres(query: {
 } = {}) {
   assertPostgresConfigured();
   const prisma = getMainPrisma();
+  const where = {
+    ...(query.status && STATUS_TO_DB[query.status] ? { status: STATUS_TO_DB[query.status] } : {}),
+    ...(!query.status && !query.includeDeleted ? { status: { not: DbListingStatus.DELETED } } : {}),
+    ...(query.type ? { propertyType: PROPERTY_TYPE_TO_DB[query.type as PropertyType] } : {}),
+    ...(query.intent ? { intent: normalizeIntent(query.intent) } : {}),
+    ...(query.q
+      ? {
+          OR: [
+            { id: { contains: query.q, mode: "insensitive" } },
+            { title: { contains: query.q, mode: "insensitive" } },
+            { city: { contains: query.q, mode: "insensitive" } },
+            { suburb: { contains: query.q, mode: "insensitive" } },
+          ],
+        }
+      : {}),
+  } satisfies Prisma.ListingWhereInput;
   const rows = await prisma.listing.findMany({
-    where: {
-      ...(query.status && STATUS_TO_DB[query.status] ? { status: STATUS_TO_DB[query.status] } : {}),
-      ...(!query.status && !query.includeDeleted ? { status: { not: DbListingStatus.DELETED } } : {}),
-      ...(query.type ? { propertyType: PROPERTY_TYPE_TO_DB[query.type as PropertyType] } : {}),
-      ...(query.intent ? { intent: normalizeIntent(query.intent) } : {}),
-      ...(query.q
-        ? {
-            OR: [
-              { id: { contains: query.q, mode: "insensitive" } },
-              { title: { contains: query.q, mode: "insensitive" } },
-              { city: { contains: query.q, mode: "insensitive" } },
-              { suburb: { contains: query.q, mode: "insensitive" } },
-            ],
-          }
-        : {}),
-    },
+    where,
     orderBy: { createdAt: "desc" },
     include: LISTING_INCLUDE,
+  }).catch(async (error: unknown) => {
+    if (!isMissingColumnError(error)) throw error;
+    return prisma.listing.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      select: SAFE_LISTING_SELECT,
+    });
   });
   return rows.map(toListingRecord);
 }
 
 export async function getListingFromPostgres(id: string) {
   assertPostgresConfigured();
-  const row = await getListingRow(id);
+  const row = await getListingRow(id).catch(async (error: unknown) => {
+    if (!isMissingColumnError(error)) throw error;
+    return getSafeListingRow(id);
+  });
   return row ? toListingRecord(row) : null;
 }
 
@@ -417,11 +467,18 @@ async function findDuplicateOwnerListing(input: ListingInput) {
   });
 }
 
-async function getListingRow(id: string): Promise<PrismaListingRow | null> {
+async function getListingRow(id: string): Promise<PrismaListingRow | SafeListingRow | null> {
   return getMainPrisma().listing.findUnique({ where: { id }, include: LISTING_INCLUDE });
 }
 
-function toListingRecord(row: PrismaListingRow): ListingRecord {
+async function getSafeListingRow(id: string): Promise<SafeListingRow | null> {
+  return getMainPrisma().listing.findUnique({
+    where: { id },
+    select: SAFE_LISTING_SELECT,
+  });
+}
+
+function toListingRecord(row: PrismaListingRow | SafeListingRow): ListingRecord {
   const images = row.media.filter((m) => m.mediaType === "image").map((m) => m.url);
   const videos = row.media.filter((m) => m.mediaType === "video").map((m) => m.url);
   const type = PROPERTY_TYPE_FROM_DB[row.propertyType] ?? "room";
@@ -441,18 +498,18 @@ function toListingRecord(row: PrismaListingRow): ListingRecord {
     images: images.length ? images : [fallbackListingImage(type)],
     videos,
     verified: Boolean(row.verifiedAt),
-    featured: row.featured,
-    featuredUntil: row.featuredUntil?.toISOString(),
+    featured: "featured" in row ? row.featured : false,
+    featuredUntil: "featuredUntil" in row ? row.featuredUntil?.toISOString() : undefined,
     availableFrom: row.availableFrom ? row.availableFrom.toISOString().slice(0, 10) : "Available now",
     amenities,
     description: row.description,
-    landlordName: row.propertyOwnerName ?? row.owner.name,
+    landlordName: "propertyOwnerName" in row ? row.propertyOwnerName ?? row.owner.name : row.owner.name,
     landlordVerified: row.owner.identityStatus === "VERIFIED",
-    phone: row.propertyOwnerPhone ?? row.owner.phone ?? "",
-    whatsapp: row.propertyOwnerPhone ?? row.owner.phone ?? "",
+    phone: "propertyOwnerPhone" in row ? row.propertyOwnerPhone ?? row.owner.phone ?? "" : row.owner.phone ?? "",
+    whatsapp: "propertyOwnerPhone" in row ? row.propertyOwnerPhone ?? row.owner.phone ?? "" : row.owner.phone ?? "",
     distanceToCbdKm: 5,
     nearby: amenities,
-    views: row.views,
+    views: "views" in row ? row.views : 0,
     saves: row._count.favourites,
     enquiries: row._count.enquiries,
     trustScore: row.verifiedAt ? 90 : 70,
@@ -461,15 +518,15 @@ function toListingRecord(row: PrismaListingRow): ListingRecord {
     status: DB_STATUS_TO_APP[row.status] ?? "PENDING_REVIEW",
     latitude: Number(row.latitude ?? -17.8292),
     longitude: Number(row.longitude ?? 31.0522),
-    leadSource: row.leadSource as "HOMELINK" | "AGENT",
-    leadCreatedById: row.leadCreatedById ?? undefined,
-    assignedAgentId: row.assignedAgentId ?? undefined,
-    propertyOwnerName: row.propertyOwnerName ?? undefined,
-    propertyOwnerEmail: row.propertyOwnerEmail ?? undefined,
-    propertyOwnerPhone: row.propertyOwnerPhone ?? undefined,
-    duplicateOwnerReviewStatus: row.duplicateOwnerReviewStatus as ListingRecord["duplicateOwnerReviewStatus"],
-    duplicateOwnerMatchId: row.duplicateOwnerMatchId ?? undefined,
-    adminNotes: row.adminNotes ?? undefined,
+    leadSource: "leadSource" in row ? (row.leadSource as "HOMELINK" | "AGENT") : "HOMELINK",
+    leadCreatedById: "leadCreatedById" in row ? row.leadCreatedById ?? undefined : undefined,
+    assignedAgentId: "assignedAgentId" in row ? row.assignedAgentId ?? undefined : undefined,
+    propertyOwnerName: "propertyOwnerName" in row ? row.propertyOwnerName ?? undefined : undefined,
+    propertyOwnerEmail: "propertyOwnerEmail" in row ? row.propertyOwnerEmail ?? undefined : undefined,
+    propertyOwnerPhone: "propertyOwnerPhone" in row ? row.propertyOwnerPhone ?? undefined : undefined,
+    duplicateOwnerReviewStatus: "duplicateOwnerReviewStatus" in row ? row.duplicateOwnerReviewStatus as ListingRecord["duplicateOwnerReviewStatus"] : "NOT_REQUIRED",
+    duplicateOwnerMatchId: "duplicateOwnerMatchId" in row ? row.duplicateOwnerMatchId ?? undefined : undefined,
+    adminNotes: "adminNotes" in row ? row.adminNotes ?? undefined : undefined,
   };
 }
 
@@ -483,7 +540,7 @@ function amenityBooleans(input: ListingInput) {
   );
 }
 
-function amenitiesFromRow(row: PrismaListingRow) {
+function amenitiesFromRow(row: PrismaListingRow | SafeListingRow) {
   const labels: Record<(typeof AMENITY_FLAGS)[number][0], string> = {
     furnished: "Furnished",
     parking: "Parking",
@@ -562,4 +619,8 @@ function assertPostgresConfigured() {
   if (!isPostgresStoreEnabled()) {
     throw new Error("DATABASE_URL must point to PostgreSQL for production listing persistence.");
   }
+}
+
+function isMissingColumnError(error: unknown) {
+  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2022";
 }

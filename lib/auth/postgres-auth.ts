@@ -1,4 +1,4 @@
-import { Role, VerificationStatus } from "@prisma/client";
+import { Prisma, Role, VerificationStatus } from "@prisma/client";
 import { getMainPrisma, isPostgresStoreEnabled } from "@/lib/db/main-prisma";
 
 export function shouldUsePostgresAuth() {
@@ -11,6 +11,29 @@ export async function getPostgresUserByEmail(email: string) {
 
 export async function getPostgresUserById(id: string) {
   return getMainPrisma().user.findUnique({ where: { id } });
+}
+
+const PUBLIC_USER_SELECT = {
+  id: true,
+  email: true,
+  phone: true,
+  name: true,
+  roles: true,
+  identityStatus: true,
+  phoneVerifiedAt: true,
+  emailVerifiedAt: true,
+  createdAt: true,
+} satisfies Prisma.UserSelect;
+
+export type PublicPostgresUserRow = Prisma.UserGetPayload<{ select: typeof PUBLIC_USER_SELECT }> & {
+  accountStatus?: string;
+};
+
+export async function getPostgresPublicUserById(id: string) {
+  return getMainPrisma().user.findUnique({
+    where: { id },
+    select: PUBLIC_USER_SELECT,
+  });
 }
 
 export async function createPostgresUser(input: {
@@ -32,10 +55,15 @@ export async function createPostgresUser(input: {
 }
 
 export async function recordPostgresLogin(userId: string) {
-  return getMainPrisma().user.update({
-    where: { id: userId },
-    data: { lastLoginAt: new Date() },
-  });
+  await getMainPrisma().user
+    .update({
+      where: { id: userId },
+      data: { lastLoginAt: new Date() },
+    })
+    .catch((error: unknown) => {
+      if (!isMissingColumnError(error)) throw error;
+    });
+  return getPostgresPublicUserById(userId);
 }
 
 export async function getPostgresUserCounts(userId: string) {
@@ -47,25 +75,14 @@ export async function getPostgresUserCounts(userId: string) {
   return { savedCount, alertCount };
 }
 
-export function toPublicPostgresUser(user: {
-  id: string;
-  email: string;
-  phone: string | null;
-  name: string;
-  roles: Role[];
-  accountStatus: string;
-  identityStatus: VerificationStatus;
-  phoneVerifiedAt: Date | null;
-  emailVerifiedAt: Date | null;
-  createdAt: Date;
-}) {
+export function toPublicPostgresUser(user: PublicPostgresUserRow) {
   return {
     id: user.id,
     name: user.name,
     email: user.email,
     phone: user.phone ?? undefined,
     roles: user.roles,
-    accountStatus: user.accountStatus,
+    accountStatus: user.accountStatus ?? "ACTIVE",
     verification: {
       identity: user.identityStatus,
       phone: user.phoneVerifiedAt ? "VERIFIED" : "PENDING",
@@ -73,4 +90,8 @@ export function toPublicPostgresUser(user: {
     },
     createdAt: user.createdAt.toISOString(),
   };
+}
+
+function isMissingColumnError(error: unknown) {
+  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2022";
 }

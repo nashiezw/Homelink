@@ -1,7 +1,7 @@
 import { getSessionUserIdFromRequest } from "@/lib/auth/session";
 import { ok, problem } from "@/lib/api/response";
 import {
-  getPostgresUserById,
+  getPostgresPublicUserById,
   getPostgresUserCounts,
   shouldUsePostgresAuth,
   toPublicPostgresUser,
@@ -14,7 +14,7 @@ export async function GET(request: Request) {
     return problem(401, "UNAUTHORIZED", "Sign in to continue.");
   }
   if (shouldUsePostgresAuth()) {
-    const user = await getPostgresUserById(userId);
+    const user = await getPostgresPublicUserById(userId);
     if (!user) {
       return problem(401, "UNAUTHORIZED", "Session is no longer valid.");
     }

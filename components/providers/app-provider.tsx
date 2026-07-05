@@ -55,19 +55,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const refreshUser = useCallback(async () => {
-    const result = await apiFetch<PublicUser>("/api/v1/auth/me");
-    if (result.data) {
-      setUser(result.data);
-    } else {
+    try {
+      const result = await apiFetch<PublicUser>("/api/v1/auth/me");
+      if (result.data) {
+        setUser(result.data);
+      } else {
+        setUser(null);
+      }
+    } catch {
       setUser(null);
     }
   }, []);
 
   const refreshFavourites = useCallback(async () => {
-    const result = await apiFetch<Listing[]>("/api/v1/users/me/favourites");
-    if (result.data) {
-      setFavourites(result.data.map((listing) => listing.id));
-    } else {
+    try {
+      const result = await apiFetch<Listing[]>("/api/v1/users/me/favourites");
+      if (result.data) {
+        setFavourites(result.data.map((listing) => listing.id));
+      } else {
+        setFavourites([]);
+      }
+    } catch {
       setFavourites([]);
     }
   }, []);
@@ -82,9 +90,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
     }
     void (async () => {
-      await refreshUser();
-      await refreshFavourites();
-      setLoading(false);
+      try {
+        await refreshUser();
+        await refreshFavourites();
+      } finally {
+        setLoading(false);
+      }
     })();
   }, [refreshFavourites, refreshUser]);
 

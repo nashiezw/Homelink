@@ -16,6 +16,16 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<Api
     },
     credentials: "include",
   });
+  const contentType = response.headers.get("content-type") ?? "";
+  if (!contentType.includes("application/json")) {
+    return {
+      data: undefined as T,
+      error: {
+        code: "NON_JSON_RESPONSE",
+        message: response.ok ? "Unexpected server response." : "Server error. Please try again.",
+      },
+    };
+  }
   return response.json() as Promise<ApiEnvelope<T>>;
 }
 
