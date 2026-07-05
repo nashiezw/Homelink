@@ -117,6 +117,45 @@ async function main() {
     userRows.set(user.email, row);
   }
 
+  const hararePrimeAgency = await prisma.agency.upsert({
+    where: { id: "agency_harare_prime_estates" },
+    update: {
+      name: "Harare Prime Estates",
+      phone: "+263775111222",
+      email: "hello@harareprime.co.zw",
+      city: "Harare",
+      verificationStatus: VerificationStatus.VERIFIED,
+      accountStatus: "ACTIVE",
+      subscriptionTier: "ENTERPRISE",
+      revenue: 1250,
+      leadConversion: 42,
+    },
+    create: {
+      id: "agency_harare_prime_estates",
+      name: "Harare Prime Estates",
+      phone: "+263775111222",
+      email: "hello@harareprime.co.zw",
+      city: "Harare",
+      verificationStatus: VerificationStatus.VERIFIED,
+      accountStatus: "ACTIVE",
+      subscriptionTier: "ENTERPRISE",
+      revenue: 1250,
+      leadConversion: 42,
+    },
+  });
+  for (const email of ["blessing@harareprime.co.zw", "tendai.sithole@homelinkzim.co.zw"]) {
+    const agent = userRows.get(email);
+    await prisma.agencyAgent.upsert({
+      where: { agencyId_userId: { agencyId: hararePrimeAgency.id, userId: agent.id } },
+      update: { title: email.startsWith("blessing") ? "Senior letting agent" : "Sales consultant" },
+      create: {
+        agencyId: hararePrimeAgency.id,
+        userId: agent.id,
+        title: email.startsWith("blessing") ? "Senior letting agent" : "Sales consultant",
+      },
+    });
+  }
+
   for (const seed of listings) {
     const owner = userRows.get(seed.ownerEmail);
     await reconcileSeedListingSlug(seed, owner);

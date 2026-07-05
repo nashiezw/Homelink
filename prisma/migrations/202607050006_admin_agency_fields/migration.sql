@@ -1,0 +1,9 @@
+ALTER TABLE "Agency"
+  ADD COLUMN IF NOT EXISTS "city" TEXT NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS "accountStatus" TEXT NOT NULL DEFAULT 'ACTIVE',
+  ADD COLUMN IF NOT EXISTS "subscriptionTier" TEXT NOT NULL DEFAULT 'FREE',
+  ADD COLUMN IF NOT EXISTS "revenue" DECIMAL(12, 2) NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS "leadConversion" INTEGER NOT NULL DEFAULT 0;
+
+CREATE INDEX IF NOT EXISTS "Agency_accountStatus_idx" ON "Agency"("accountStatus");
+CREATE INDEX IF NOT EXISTS "Agency_verificationStatus_idx" ON "Agency"("verificationStatus");

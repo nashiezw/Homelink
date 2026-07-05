@@ -147,7 +147,12 @@ model Agency {
   name               String
   phone              String
   email              String
+  city               String             @default("")
   verificationStatus VerificationStatus @default(PENDING)
+  accountStatus      String             @default("ACTIVE")
+  subscriptionTier   String             @default("FREE")
+  revenue            Decimal            @default(0) @db.Decimal(12, 2)
+  leadConversion     Int                @default(0)
   createdAt          DateTime           @default(now())
   updatedAt          DateTime           @updatedAt
   listings           Listing[]

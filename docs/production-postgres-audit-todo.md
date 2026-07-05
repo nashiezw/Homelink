@@ -38,9 +38,9 @@ Status key: `[x]` complete, `[~]` partially complete, `[ ]` still required.
 - [x] Tenancies and residence history use durable Prisma-backed records in production.
 - [x] Property management requests use durable Prisma-backed records in production.
 - [x] Holiday bookings/reviews use durable Prisma-backed records in production.
-- [~] Agent applications/training/ratings: applications and training progress now have durable Prisma-backed records; rating eligibility still relies on lead/commission records.
+- [~] Agent applications/training/ratings: applications, training progress, agency membership, and admin agency actions now have durable Prisma-backed records; rating eligibility still relies on lead/commission records.
 - [x] Payments and proof workflows: checkout, list, proof upload, callback, webhook, and config use Prisma/default durable settings in production.
-- [~] Admin analytics/audit dashboards use Postgres for core users/listings/enquiries/payments/reports/tenancy disputes; some rich aggregate widgets still use snapshot-derived data.
+- [~] Admin analytics/audit dashboards use Postgres for core users/listings/enquiries/payments/reports/tenancy disputes plus landlord/agency hub data; some rich aggregate widgets still use snapshot-derived data.
 - [~] Homepage/CMS/settings use Postgres for listings/agents/settings where implemented; CMS snapshot data remains for editable marketing content.
 
 ## API audit
@@ -64,6 +64,7 @@ Status key: `[x]` complete, `[~]` partially complete, `[ ]` still required.
 - [x] `/api/v1/roommates/profile`, `/api/v1/roommates/matches`, and public roommate profile routes use Prisma in production.
 - [x] `/api/v1/agents/me`, `/api/v1/agents/leads`, `/api/v1/agents/commissions`, `/api/v1/agents/public/[slug]`, and `/api/v1/agencies/me` use Prisma in production for durable subsets.
 - [x] `/api/v1/admin/users`, `/api/v1/admin/users/[id]`, and `/api/v1/users/lookup` use Prisma in production.
+- [x] `/api/v1/admin/landlords` and `/api/v1/admin/agencies` use Prisma in production, including agency verify/reject/suspend/activate/delete/feature/update actions.
 - [x] `/api/v1/holiday-homes/reviews` uses Prisma `Review` rows with metadata in production.
 - [x] Remaining legacy-store `app/api` routes are blocked by the strict production store guard instead of silently writing to memory.
 
@@ -72,6 +73,7 @@ Status key: `[x]` complete, `[~]` partially complete, `[ ]` still required.
 - [x] Prisma schema supports durable listing lifecycle states: `REJECTED`, `ARCHIVED`, `DELETED`.
 - [x] Prisma schema supports durable listing `featured`, `featuredUntil`, `views`, and `adminNotes`.
 - [x] Prisma schema supports durable holiday review metadata.
+- [x] Prisma schema supports durable admin agency fields: city, account status, subscription tier, revenue, and lead conversion.
 - [x] Build no longer fails by trying to prerender dynamic Postgres listing pages.
 - [x] Apply schema changes to the production database before deploy. Production Neon was repaired and Prisma migration history is up to date.
 - [ ] Configure Cloudinary production credentials.

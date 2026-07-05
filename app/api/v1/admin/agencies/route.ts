@@ -1,15 +1,20 @@
 import { requireAdmin } from "@/lib/admin/require-admin";
 import { ok, problem } from "@/lib/api/response";
+import { applyPostgresAgencyAction, listPostgresAgencies } from "@/lib/admin/postgres-agency-management";
+import { isPostgresStoreEnabled } from "@/lib/db/main-prisma";
 import { getStore } from "@/lib/store/app-store";
 
 export const dynamic = "force-dynamic";
 
-export function GET(request: Request) {
+export async function GET(request: Request) {
   const auth = requireAdmin(request);
   if (auth.error) return auth.error;
 
   const { searchParams } = new URL(request.url);
   const includeDeleted = searchParams.get("includeDeleted") === "true";
+  if (isPostgresStoreEnabled()) {
+    return ok(await listPostgresAgencies(includeDeleted));
+  }
 
   const store = getStore();
   const agencies = store.listAgencies(includeDeleted);
@@ -48,9 +53,18 @@ export async function PATCH(request: Request) {
     return problem(400, "INVALID_INPUT", "agencyId and action are required.");
   }
 
-  const store = getStore();
   const actor = { id: auth.user.id, name: auth.user.name };
+  if (isPostgresStoreEnabled()) {
+    try {
+      const agency = await applyPostgresAgencyAction(agencyId, action, actor, { reason, tier, name, email, phone, city });
+      if (!agency) return problem(404, "NOT_FOUND", "Agency not found.");
+      return ok({ agency });
+    } catch (error) {
+      return problem(400, "UNKNOWN_ACTION", error instanceof Error ? error.message : `Unknown action: ${action}`);
+    }
+  }
 
+  const store = getStore();
   switch (action) {
     case "verify":
       return ok({ agency: store.verifyAgency(agencyId, actor) });

@@ -9,7 +9,8 @@ Never paste the production database URL into chat, Git, screenshots, or docs. Se
 - Adds and backfills `Listing.slug`.
 - Adds `Review.metadata` as `JSONB`.
 - Ensures the Prisma schema and generated client know about `Listing.slug`.
-- Seeds initial users, listings, media, a roommate profile, an agent lead, and a review without duplicating rows.
+- Adds durable admin agency fields used by the landlord/agency hub.
+- Seeds initial users, listings, media, roommate profiles, agencies, agent memberships, tenancy/residence records, property-management requests, holiday bookings, agent records, and reviews without duplicating rows.
 - Provides an audit command that compares Prisma Client models/enums with the live Postgres schema.
 
 ## Safe Command Order
@@ -59,7 +60,7 @@ The production Neon database was repaired on July 5, 2026.
 - Prisma migration history is synchronized and `prisma migrate status` reports the schema is up to date.
 - `npm.cmd run db:audit:production` reported `issueCount: 0`.
 - `npm.cmd run db:seed:production` completed without creating duplicates.
-- Seed row counts after repair: 8 users, 4 listings, 4 active listings, 2 roommate profiles, 2 residence records, 1 tenancy reference, 1 review, 1 property-management request, 1 holiday booking, 1 agent lead, 1 agent application, 1 agent training progress record, and 4 media rows.
+- Seed row counts after the latest repair: 8 users, 4 listings, 4 active listings, 0 empty listing slugs, 6 media rows, 1 review, 2 roommate profiles, 1 agency, 2 agency memberships, 2 residence records, 1 tenancy reference, 1 property-management request, 1 holiday booking, 1 agent application, and 1 agent training progress record.
 - Canonical production slugs were verified for old public URLs, including `/listings/harare-avondale-cottage`.
 
 Remaining production launch tasks are environment/dashboard tasks: rotate the Neon password because it was pasted into chat, update Vercel with the rotated `DATABASE_URL`, set strict production variables, configure Cloudinary and SMTP, and redeploy.

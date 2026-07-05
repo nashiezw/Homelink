@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import { isStrictProductionMode } from "@/lib/production/runtime";
 
 const globalForPrisma = globalThis as typeof globalThis & {
   __mainPrisma?: PrismaClient;
@@ -16,7 +17,7 @@ export function getMainPrisma() {
 
 export function isPostgresStoreEnabled() {
   const url = process.env.DATABASE_URL ?? "";
-  return url.startsWith("postgresql://") || url.startsWith("postgres://");
+  return isStrictProductionMode() || url.startsWith("postgresql://") || url.startsWith("postgres://");
 }
 
 function withServerlessPoolDefaults(value?: string) {
