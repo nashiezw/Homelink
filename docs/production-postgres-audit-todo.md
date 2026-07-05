@@ -37,7 +37,7 @@ Status key: `[x]` complete, `[~]` partially complete, `[ ]` still required.
 - [x] Enquiries: `/api/v1/enquiries` and core enquiry actions use `PropertyEnquiryRecord` in production.
 - [ ] Tenancies: no durable Prisma model yet.
 - [ ] Property management requests: no durable Prisma model yet.
-- [ ] Holiday bookings/reviews: no durable Prisma model yet.
+- [~] Holiday bookings/reviews: holiday reviews use durable `Review` rows in production; holiday bookings still need a durable Prisma model.
 - [~] Agent applications/training/ratings: agent dashboard/leads/commissions/agency/public agent routes use Prisma; applications/training/ratings still need durable models.
 - [x] Payments and proof workflows: checkout, list, proof upload, callback, webhook, and config use Prisma/default durable settings in production.
 - [ ] Admin analytics/audit dashboards still read many store-backed aggregates.
@@ -64,12 +64,14 @@ Status key: `[x]` complete, `[~]` partially complete, `[ ]` still required.
 - [x] `/api/v1/roommates/profile`, `/api/v1/roommates/matches`, and public roommate profile routes use Prisma in production.
 - [x] `/api/v1/agents/me`, `/api/v1/agents/leads`, `/api/v1/agents/commissions`, `/api/v1/agents/public/[slug]`, and `/api/v1/agencies/me` use Prisma in production for durable subsets.
 - [x] `/api/v1/admin/users`, `/api/v1/admin/users/[id]`, and `/api/v1/users/lookup` use Prisma in production.
+- [x] `/api/v1/holiday-homes/reviews` uses Prisma `Review` rows with metadata in production.
 - [x] Remaining legacy-store `app/api` routes are blocked by the strict production store guard instead of silently writing to memory.
 
 ## Production readiness
 
 - [x] Prisma schema supports durable listing lifecycle states: `REJECTED`, `ARCHIVED`, `DELETED`.
 - [x] Prisma schema supports durable listing `featured`, `featuredUntil`, `views`, and `adminNotes`.
+- [x] Prisma schema supports durable holiday review metadata.
 - [x] Build no longer fails by trying to prerender dynamic Postgres listing pages.
 - [ ] Apply schema changes to the production database before deploy.
 - [ ] Configure Cloudinary production credentials.
