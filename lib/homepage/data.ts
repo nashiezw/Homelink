@@ -280,7 +280,7 @@ async function getPostgresHomepageData(): Promise<HomepageData> {
       label: "Happy customers",
       value: cms.testimonials.filter((testimonial) => testimonial.published !== false).length + reviewCount,
     },
-    { id: "rating", label: "Average rating", value: avgRating, decimals: 1, suffix: "â˜…" },
+    { id: "rating", label: "Average rating", value: avgRating, decimals: 1, suffix: "★" },
   ];
 
   return {

@@ -1,15 +1,18 @@
-import { Prisma, Role, VerificationStatus } from "@prisma/client";
+import { Role, VerificationStatus, type Prisma } from "@prisma/client";
 import { getMainPrisma, isPostgresStoreEnabled } from "@/lib/db/main-prisma";
+import { ensureCoreProductionSchema, isMissingSchemaError } from "@/lib/db/production-schema";
 
 export function shouldUsePostgresAuth() {
   return isPostgresStoreEnabled();
 }
 
 export async function getPostgresUserByEmail(email: string) {
+  await ensureCoreProductionSchema();
   return getMainPrisma().user.findUnique({ where: { email: email.trim().toLowerCase() } });
 }
 
 export async function getPostgresUserById(id: string) {
+  await ensureCoreProductionSchema();
   return getMainPrisma().user.findUnique({ where: { id } });
 }
 
@@ -30,6 +33,7 @@ export type PublicPostgresUserRow = Prisma.UserGetPayload<{ select: typeof PUBLI
 };
 
 export async function getPostgresPublicUserById(id: string) {
+  await ensureCoreProductionSchema();
   return getMainPrisma().user.findUnique({
     where: { id },
     select: PUBLIC_USER_SELECT,
@@ -42,6 +46,7 @@ export async function createPostgresUser(input: {
   name: string;
   phone?: string;
 }) {
+  await ensureCoreProductionSchema();
   return getMainPrisma().user.create({
     data: {
       email: input.email.trim().toLowerCase(),
@@ -55,18 +60,20 @@ export async function createPostgresUser(input: {
 }
 
 export async function recordPostgresLogin(userId: string) {
+  await ensureCoreProductionSchema();
   await getMainPrisma().user
     .update({
       where: { id: userId },
       data: { lastLoginAt: new Date() },
     })
     .catch((error: unknown) => {
-      if (!isMissingColumnError(error)) throw error;
+      if (!isMissingSchemaError(error)) throw error;
     });
   return getPostgresPublicUserById(userId);
 }
 
 export async function getPostgresUserCounts(userId: string) {
+  await ensureCoreProductionSchema();
   const prisma = getMainPrisma();
   const [savedCount, alertCount] = await Promise.all([
     prisma.favourite.count({ where: { userId } }),
@@ -90,8 +97,4 @@ export function toPublicPostgresUser(user: PublicPostgresUserRow) {
     },
     createdAt: user.createdAt.toISOString(),
   };
-}
-
-function isMissingColumnError(error: unknown) {
-  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2022";
 }

@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { Prisma } from "@prisma/client";
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
 import { getClientIp, checkRateLimit } from "@/lib/api/request-meta";
 import {
@@ -48,29 +47,16 @@ export async function POST(request: Request) {
       return problem(400, "NAME_REQUIRED", "Name is required for registration.");
     }
     if (shouldUsePostgresAuth()) {
-      const existing = await getPostgresUserByEmail(email).catch((error: unknown) => {
-        if (isMissingAuthColumnError(error)) return "MIGRATION_REQUIRED" as const;
-        throw error;
-      });
-      if (existing === "MIGRATION_REQUIRED") {
-        return problem(503, "AUTH_DATABASE_MIGRATION_REQUIRED", "Authentication database migration is still pending.");
-      }
+      const existing = await getPostgresUserByEmail(email);
       if (existing) {
         return problem(409, "EMAIL_EXISTS", "An account with this email already exists.");
       }
       const user = await createPostgresUser({
-          email,
-          passwordHash: hashPassword(password),
-          name,
-          phone: body.phone,
-        })
-        .catch((error: unknown) => {
-          if (isMissingAuthColumnError(error)) return null;
-          throw error;
-        });
-      if (!user) {
-        return problem(503, "AUTH_DATABASE_MIGRATION_REQUIRED", "Authentication database migration is still pending.");
-      }
+        email,
+        passwordHash: hashPassword(password),
+        name,
+        phone: body.phone,
+      });
       const sessionId = `session_${crypto.randomUUID()}`;
       return new NextResponse(
         JSON.stringify({
@@ -113,13 +99,7 @@ export async function POST(request: Request) {
   }
 
   if (shouldUsePostgresAuth()) {
-    const user = await getPostgresUserByEmail(email).catch((error: unknown) => {
-      if (isMissingAuthColumnError(error)) return "MIGRATION_REQUIRED" as const;
-      throw error;
-    });
-    if (user === "MIGRATION_REQUIRED") {
-      return problem(503, "AUTH_DATABASE_MIGRATION_REQUIRED", "Authentication database migration is still pending.");
-    }
+    const user = await getPostgresUserByEmail(email);
     if (!user?.passwordHash || !verifyPassword(password, user.passwordHash)) {
       return problem(401, "INVALID_CREDENTIALS", "Email or password is incorrect.");
     }
@@ -214,8 +194,4 @@ export async function GET(request: Request) {
     return problem(401, "UNAUTHORIZED", "Session is no longer valid.");
   }
   return ok(getStore().publicUser(user));
-}
-
-function isMissingAuthColumnError(error: unknown) {
-  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2022";
 }
