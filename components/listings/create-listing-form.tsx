@@ -203,7 +203,7 @@ export function CreateListingForm({ onSuccess }: CreateListingFormProps) {
     }
 
     try {
-      const result = await apiFetch<{ id: string }>("/api/v1/listings", {
+      const result = await apiFetch<{ id: string; slug?: string }>("/api/v1/listings", {
         method: "POST",
         body: JSON.stringify(payload),
       });
@@ -216,7 +216,7 @@ export function CreateListingForm({ onSuccess }: CreateListingFormProps) {
       if (result.data?.id) {
         showToast("Listing submitted for review!");
         onSuccess?.(result.data.id);
-        router.push(`/listings/${result.data.id}`);
+        router.push(`/listings/${result.data.slug ?? result.data.id}`);
       } else {
         showToast("The listing was not saved. Please try again.", "error");
       }

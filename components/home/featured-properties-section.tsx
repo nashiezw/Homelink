@@ -54,6 +54,7 @@ function FeaturedHeroCard({ listing }: { listing: Listing }) {
   const isRoom = listing.type === "room";
   const isLand = listing.type === "land";
   const isCommercial = listing.type === "commercial";
+  const href = `/listings/${listing.slug ?? listing.id}`;
 
   return (
     <article className="group hover-lift relative min-h-[28rem] overflow-hidden rounded-2xl border border-slate-200 bg-ink shadow-hero dark:border-slate-700 sm:min-h-[32rem]">
@@ -80,7 +81,7 @@ function FeaturedHeroCard({ listing }: { listing: Listing }) {
             <MapPin className="size-4" aria-hidden="true" />
             {listing.suburb}, {listing.city}
           </p>
-          <Link href={`/listings/${listing.id}`}>
+          <Link href={href}>
             <h3 className="mt-2 text-2xl font-semibold leading-tight transition hover:text-emerald-100 sm:text-3xl">
               {listing.title}
             </h3>
@@ -112,7 +113,7 @@ function FeaturedHeroCard({ listing }: { listing: Listing }) {
             ) : null}
           </div>
           <Link
-            href={`/listings/${listing.id}`}
+            href={href}
             className="mt-5 inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-white px-5 text-sm font-semibold text-emerald-800 transition hover:bg-emerald-50"
           >
             View property
@@ -125,6 +126,7 @@ function FeaturedHeroCard({ listing }: { listing: Listing }) {
 }
 
 function ListingCard({ listing, compact }: { listing: Listing; compact?: boolean }) {
+  const href = `/listings/${listing.slug ?? listing.id}`;
   return (
     <article className="group hover-lift overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:border-emerald-200 hover:shadow-card-hover dark:border-slate-700 dark:bg-slate-900">
       <div className={`relative overflow-hidden ${compact ? "h-44" : "h-52"}`}>
@@ -146,7 +148,7 @@ function ListingCard({ listing, compact }: { listing: Listing; compact?: boolean
               <MapPin className="size-3.5 shrink-0" aria-hidden="true" />
               {listing.suburb}, {listing.city}
             </p>
-            <Link href={`/listings/${listing.id}`}>
+            <Link href={href}>
               <h3 className="mt-1 font-semibold leading-6 text-slate-950 group-hover:text-emerald-800 dark:text-white">
                 {listing.title}
               </h3>
@@ -162,7 +164,7 @@ function ListingCard({ listing, compact }: { listing: Listing; compact?: boolean
           {listing.highlight}
         </p>
         <Link
-          href={`/listings/${listing.id}`}
+          href={href}
           className="mt-4 inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-slate-200 px-4 text-sm font-semibold text-slate-900 transition hover:border-emerald-200 hover:bg-emerald-50 dark:border-slate-700 dark:text-slate-100"
         >
           View details

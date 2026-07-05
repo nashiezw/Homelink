@@ -14,6 +14,7 @@ export type PropertyType =
 
 export type Listing = {
   id: string;
+  slug?: string;
   title: string;
   city: string;
   suburb: string;

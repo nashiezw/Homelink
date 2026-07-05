@@ -105,22 +105,64 @@ export async function getAgencyDashboardFromPostgres(userId: string) {
   const prisma = getMainPrisma();
   const membership = await prisma.agencyAgent.findFirst({
     where: { userId },
-    include: { agency: { include: { agents: { include: { user: true } }, listings: true } } },
+    include: {
+      agency: {
+        include: {
+          agents: { include: { user: true } },
+          listings: {
+            include: { owner: { select: { name: true } }, _count: { select: { enquiries: true } } },
+            orderBy: { createdAt: "desc" },
+          },
+        },
+      },
+    },
   });
   if (!membership) return null;
+  const totalViews = membership.agency.listings.reduce((sum, listing) => sum + listing.views, 0);
+  const totalEnquiries = membership.agency.listings.reduce((sum, listing) => sum + listing._count.enquiries, 0);
+  const verifiedListings = membership.agency.listings.filter((listing) => Boolean(listing.verifiedAt)).length;
   return {
-    agency: membership.agency,
+    agency: {
+      id: membership.agency.id,
+      name: membership.agency.name,
+      city: membership.agency.listings[0]?.city ?? "Zimbabwe",
+      verificationStatus: membership.agency.verificationStatus,
+    },
     agents: membership.agency.agents.map((agent) => ({
       id: agent.userId,
       name: agent.user.name,
       email: agent.user.email,
       title: agent.title,
+      listings: membership.agency.listings.filter((listing) => listing.ownerId === agent.userId).length,
+      enquiries: membership.agency.listings
+        .filter((listing) => listing.ownerId === agent.userId)
+        .reduce((sum, listing) => sum + listing._count.enquiries, 0),
+      views: membership.agency.listings
+        .filter((listing) => listing.ownerId === agent.userId)
+        .reduce((sum, listing) => sum + listing.views, 0),
+      performanceScore: 0,
     })),
-    listings: membership.agency.listings,
-    stats: {
-      agents: membership.agency.agents.length,
+    listings: membership.agency.listings.map((listing) => ({
+      id: listing.id,
+      slug: listing.slug,
+      title: listing.title,
+      suburb: listing.suburb,
+      city: listing.city,
+      type: listing.propertyType.toLowerCase(),
+      verified: Boolean(listing.verifiedAt),
+      trustScore: listing.verifiedAt ? 90 : 70,
+      views: listing.views,
+      enquiries: listing._count.enquiries,
+      status: listing.status,
+      ownerName: listing.owner.name,
+    })),
+    totals: {
       listings: membership.agency.listings.length,
-      activeListings: membership.agency.listings.filter((l) => l.status === "ACTIVE").length,
+      agents: membership.agency.agents.length,
+      enquiries: totalEnquiries,
+      views: totalViews,
+      verifiedListings,
+      approvalRate: membership.agency.listings.length ? Math.round((verifiedListings / membership.agency.listings.length) * 100) : 0,
     },
   };
 }

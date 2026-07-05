@@ -3,7 +3,7 @@ import { ListingDetailView } from "@/components/listings/listing-detail-view";
 import { getListing } from "@/lib/api/listing-service";
 import { latestListings } from "@/lib/listings";
 import {
-  getListingFromPostgres,
+  getListingByIdOrSlugFromPostgres,
   shouldUsePostgresListings,
   toPublicPostgresListing,
 } from "@/lib/listings/postgres-listing-repository";
@@ -25,7 +25,7 @@ export function generateStaticParams() {
 
 export default async function ListingDetailPage({ params }: ListingDetailPageProps) {
   const { id } = await params;
-  const listingRecord = shouldUsePostgresListings() ? await getListingFromPostgres(id) : null;
+  const listingRecord = shouldUsePostgresListings() ? await getListingByIdOrSlugFromPostgres(id) : null;
   const listing = shouldUsePostgresListings()
     ? listingRecord
       ? toPublicPostgresListing(listingRecord)
@@ -36,9 +36,11 @@ export default async function ListingDetailPage({ params }: ListingDetailPagePro
     notFound();
   }
 
-  const galleryImages = (
-    listing.images?.length ? listing.images : [listing.image, ...latestListings.filter((item) => item.id !== id).map((item) => item.image)]
-  ).filter(Boolean) as string[];
+  const galleryImages = shouldUsePostgresListings()
+    ? (listing.images?.length ? listing.images : [listing.image]).filter(Boolean)
+    : (
+        listing.images?.length ? listing.images : [listing.image, ...latestListings.filter((item) => item.id !== id).map((item) => item.image)]
+      ).filter(Boolean) as string[];
 
   const ownerId = shouldUsePostgresListings() ? listingRecord?.ownerId : getStore().getListing(id)?.ownerId;
   const holidayReviewSummary =

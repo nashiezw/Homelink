@@ -2,6 +2,7 @@ import { getListing } from "@/lib/api/listing-service";
 import { ok, problem } from "@/lib/api/response";
 import { getSessionUserIdFromRequest } from "@/lib/auth/session";
 import {
+  getListingByIdOrSlugFromPostgres,
   getListingFromPostgres,
   incrementListingViewsInPostgres,
   shouldUsePostgresListings,
@@ -18,7 +19,7 @@ type RouteContext = {
 
 export async function GET(_request: Request, { params }: RouteContext) {
   const { id } = await params;
-  const listingRecord = shouldUsePostgresListings() ? await getListingFromPostgres(id) : null;
+  const listingRecord = shouldUsePostgresListings() ? await getListingByIdOrSlugFromPostgres(id) : null;
   const listing = shouldUsePostgresListings()
     ? listingRecord
       ? toPublicPostgresListing(listingRecord)
@@ -30,7 +31,7 @@ export async function GET(_request: Request, { params }: RouteContext) {
   }
 
   if (listingRecord) {
-    await incrementListingViewsInPostgres(id);
+    await incrementListingViewsInPostgres(listingRecord.id);
   }
 
   return ok(listing);

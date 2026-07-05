@@ -15,6 +15,7 @@ type Analytics = {
   totals: { listings: number; views: number; saves: number; enquiries: number };
   listings: Array<{
     id: string;
+    slug?: string | null;
     title: string;
     suburb: string;
     city: string;
@@ -157,7 +158,7 @@ export function LandlordDashboardClient() {
                       Edit
                     </Link>
                     <Link
-                      href={`/listings/${listing.id}`}
+                      href={`/listings/${listing.slug ?? listing.id}`}
                       className="inline-flex h-9 items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:hover:bg-slate-800"
                     >
                       <ExternalLink className="size-3.5" />

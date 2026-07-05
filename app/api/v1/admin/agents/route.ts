@@ -1,7 +1,8 @@
 import { requireAdminAsync } from "@/lib/admin/require-admin";
 import { ok, problem, created } from "@/lib/api/response";
-import { isPostgresStoreEnabled } from "@/lib/db/main-prisma";
+import { getMainPrisma, isPostgresStoreEnabled } from "@/lib/db/main-prisma";
 import { getStore } from "@/lib/store/app-store";
+import { Role, VerificationStatus } from "@prisma/client";
 
 async function getAdmin(request: Request) {
   const result = await requireAdminAsync(request);
@@ -15,13 +16,47 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const section = searchParams.get("section") ?? "overview";
   if (isPostgresStoreEnabled()) {
+    const prisma = getMainPrisma();
+    const [agents, pendingApplications, leads, commissions] = await Promise.all([
+      prisma.user.findMany({
+        where: { roles: { has: Role.AGENT } },
+        select: { id: true, name: true, email: true, phone: true, identityStatus: true, createdAt: true },
+        orderBy: { createdAt: "desc" },
+      }),
+      prisma.user.count({ where: { roles: { has: Role.AGENT }, identityStatus: VerificationStatus.PENDING } }),
+      prisma.agentLeadRecord.findMany({ orderBy: { createdAt: "desc" }, take: 100 }),
+      prisma.agentCommissionRecord.findMany({ orderBy: { createdAt: "desc" }, take: 100 }),
+    ]);
+    const closedWon = leads.filter((lead) => lead.status === "CLOSED_WON").length;
+    const leadConversionRate = leads.length ? Math.round((closedWon / leads.length) * 1000) / 10 : 0;
     if (section === "settings") {
       return ok({ settings: {}, territories: [] });
     }
     return ok({
-      analytics: {},
-      applications: [],
-      profiles: [],
+      analytics: {
+        totalAgents: agents.length,
+        pendingApplications,
+        leadConversionRate,
+        activeLeads: leads.filter((lead) => !["CLOSED_WON", "CLOSED_LOST"].includes(lead.status)).length,
+        pendingCommissions: commissions.filter((commission) => commission.status === "PENDING").length,
+      },
+      applications: agents
+        .filter((agent) => agent.identityStatus === VerificationStatus.PENDING)
+        .map((agent) => ({
+          id: agent.id,
+          userId: agent.id,
+          status: "PENDING",
+          submittedAt: agent.createdAt.toISOString(),
+          name: agent.name,
+          email: agent.email,
+        })),
+      profiles: agents.map((agent) => ({
+        userId: agent.id,
+        userName: agent.name,
+        userEmail: agent.email,
+        phone: agent.phone,
+        verificationStatus: agent.identityStatus,
+      })),
       leads: [],
       commissions: [],
       territories: [],

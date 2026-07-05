@@ -1,10 +1,10 @@
 import { Prisma, Role } from "@prisma/client";
 import { listListings } from "@/lib/api/listing-service";
 import { getMainPrisma, isPostgresStoreEnabled } from "@/lib/db/main-prisma";
+import { isStrictProductionMode } from "@/lib/production/runtime";
 import { createDefaultHomepageCms } from "@/lib/homepage/cms-defaults";
 import type { HomepageCmsConfig } from "@/lib/homepage/cms-types";
 import type { HomepageData, HomeFeaturedAgent, HomePropertyType, HomeTrustMetric } from "@/lib/homepage/types";
-import { latestListings } from "@/lib/listings";
 import { getStore, toPublicListing } from "@/lib/store/app-store";
 import type { Listing, ListingIntent, PropertyType } from "@/lib/types";
 
@@ -12,6 +12,7 @@ type HomepageListing = Listing & { featured?: boolean };
 
 const HOMEPAGE_LISTING_SELECT = {
   id: true,
+  slug: true,
   title: true,
   city: true,
   suburb: true,
@@ -263,7 +264,7 @@ async function getPostgresHomepageData(): Promise<HomepageData> {
     prisma.user.count({ where: { roles: { has: Role.SEEKER } } }),
     prisma.review.aggregate({ _avg: { rating: true }, _count: { rating: true } }),
   ]);
-  const listings = postgresListings.length > 0 ? postgresListings : latestListings;
+  const listings = postgresListings;
   const verifiedListings = listings.filter((listing) => listing.verified);
   const cities = new Set(listings.map((listing) => listing.city).filter(Boolean));
   const avgRating = reviewAggregate._avg.rating ?? 4.9;
@@ -301,6 +302,7 @@ async function getPostgresHomepageData(): Promise<HomepageData> {
 
 async function getPostgresHomepageCms(): Promise<HomepageCmsConfig> {
   const defaults = createDefaultHomepageCms();
+  if (isStrictProductionMode()) return defaults;
   const snapshot = await getMainPrisma().appStoreSnapshot
     .findUnique({
       where: { id: "singleton" },
@@ -366,6 +368,7 @@ function toHomepageListing(row: HomepageListingRow): HomepageListing {
   const amenities = homepageAmenitiesFromRow(row);
   return {
     id: row.id,
+    slug: row.slug ?? undefined,
     title: row.title,
     city: row.city,
     suburb: row.suburb,

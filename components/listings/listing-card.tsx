@@ -13,6 +13,7 @@ export function ListingCard({ listing }: ListingCardProps) {
   const isRoom = listing.type === "room";
   const isLand = listing.type === "land";
   const isCommercial = listing.type === "commercial";
+  const href = `/listings/${listing.slug ?? listing.id}`;
 
   return (
     <article className="group overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:border-emerald-200 hover:shadow-soft dark:border-slate-700 dark:bg-slate-900">
@@ -42,7 +43,7 @@ export function ListingCard({ listing }: ListingCardProps) {
               <MapPin className="size-3.5" aria-hidden="true" />
               {listing.suburb}, {listing.city}
             </p>
-            <Link href={`/listings/${listing.id}`}>
+            <Link href={href}>
               <h3 className="mt-1 font-semibold leading-6 text-slate-950 hover:text-emerald-800">
                 {listing.title}
               </h3>

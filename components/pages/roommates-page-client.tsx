@@ -253,6 +253,7 @@ function RoomListingCard({
   size?: "spotlight" | "stacked" | "compact" | "standard";
 }) {
   const [saved, setSaved] = useState(false);
+  const listingHref = `/listings/${listing.slug ?? listing.id}`;
   const imageHeights = {
     spotlight: "h-64 sm:h-72 lg:h-80",
     stacked: "h-44 sm:h-48 lg:h-40",
@@ -263,7 +264,7 @@ function RoomListingCard({
   if (size === "spotlight") {
     return (
       <article className="group relative col-span-12 min-h-[28rem] overflow-hidden rounded-[1.5rem] border border-emerald-200/80 bg-slate-950 shadow-[0_20px_60px_rgba(16,185,129,0.12)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_28px_80px_rgba(16,185,129,0.18)] sm:min-h-[30rem] lg:col-span-7 lg:h-full lg:min-h-[31rem]">
-        <Link href={`/listings/${listing.id}`} className="absolute inset-0">
+        <Link href={listingHref} className="absolute inset-0">
           <Image
             src={listing.image}
             alt={listing.title}
@@ -300,7 +301,7 @@ function RoomListingCard({
             {listing.suburb}, {listing.city}
           </p>
           <div className="mt-3 flex flex-wrap items-end justify-between gap-3">
-            <Link href={`/listings/${listing.id}`} className="max-w-xl">
+            <Link href={listingHref} className="max-w-xl">
               <h3 className="text-2xl font-black leading-tight transition group-hover:text-emerald-200">
                 {listing.title}
               </h3>
@@ -317,7 +318,7 @@ function RoomListingCard({
               </span>
             ))}
             <Link
-              href={`/listings/${listing.id}`}
+              href={listingHref}
               className="ml-auto inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-white px-4 text-sm font-black text-emerald-900 transition hover:bg-emerald-50"
             >
               View details
@@ -338,7 +339,7 @@ function RoomListingCard({
       )}
     >
       <div className={cn("relative shrink-0 overflow-hidden", imageHeights[size])}>
-        <Link href={`/listings/${listing.id}`} className="block size-full">
+        <Link href={listingHref} className="block size-full">
           <Image
             src={listing.image}
             alt={listing.title}
@@ -381,7 +382,7 @@ function RoomListingCard({
           </p>
         </div>
 
-        <Link href={`/listings/${listing.id}`} className="mt-2 block">
+        <Link href={listingHref} className="mt-2 block">
           <h3 className={cn(
             "font-semibold leading-snug text-ink transition group-hover:text-emerald-800",
             "text-base",
@@ -403,7 +404,7 @@ function RoomListingCard({
         </div>
 
         <Link
-          href={`/listings/${listing.id}`}
+          href={listingHref}
           className="mt-4 inline-flex h-10 w-fit items-center justify-center gap-2 rounded-lg border border-slate-200 px-4 text-sm font-semibold text-ink transition hover:border-emerald-200 hover:bg-emerald-50"
         >
           View details

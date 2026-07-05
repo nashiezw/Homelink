@@ -1,4 +1,5 @@
 import { getStore } from "@/lib/store/app-store";
+import { isPostgresStoreEnabled } from "@/lib/db/main-prisma";
 import { createHmac, timingSafeEqual } from "crypto";
 
 export const SESSION_COOKIE = "homelink_session";
@@ -61,6 +62,7 @@ export function getSessionUserIdFromRequest(request: Request) {
   const cookieValue = decodeURIComponent(match[1]);
   const signedUserId = userIdFromSignedSession(cookieValue);
   if (signedUserId) return signedUserId;
+  if (isPostgresStoreEnabled()) return null;
 
   const session = getStore().getSession(cookieValue);
   return session?.userId ?? null;

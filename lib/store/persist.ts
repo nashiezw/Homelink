@@ -17,9 +17,9 @@ function isStrictProduction() {
 }
 
 export async function loadPersistedStore(version: number): Promise<StoreState | null> {
+  if (isStrictProduction()) return null;
   const fromPg = await loadFromPostgres(version);
   if (fromPg) return fromPg;
-  if (isStrictProduction()) return null;
 
   const fromFile = await loadFromFile(version);
   if (fromFile) {
@@ -45,7 +45,6 @@ export function loadPersistedStoreSync(version: number): StoreState | null {
 
 export function scheduleStorePersist(state: StoreState, version: number) {
   if (isStrictProduction()) {
-    void persistStoreState(state, version);
     return;
   }
   if (persistTimer) clearTimeout(persistTimer);
@@ -55,6 +54,7 @@ export function scheduleStorePersist(state: StoreState, version: number) {
 }
 
 export async function persistStoreState(state: StoreState, version: number) {
+  if (isStrictProduction()) return;
   const snapshot = serializeStoreState(state, version);
   await persistSerializedStoreSnapshot(snapshot);
 }

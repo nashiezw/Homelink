@@ -3,6 +3,7 @@ import {
   PaymentStatus,
   PropertyType,
   ReportStatus,
+  Role,
   VerificationStatus,
   type Prisma,
 } from "@prisma/client";
@@ -64,20 +65,24 @@ export async function getPostgresAdminSummary(): Promise<AdminSummary> {
     pendingVerification,
     flaggedReports,
     pendingRoommates,
+    pendingAgents,
+    openPmRequests,
   ] = await Promise.all([
     prisma.listing.count({ where: { status: ListingStatus.PENDING_REVIEW } }),
     prisma.userDocument.count({ where: { status: VerificationStatus.PENDING } }),
     prisma.report.count({ where: { status: { in: [ReportStatus.OPEN, ReportStatus.IN_REVIEW] } } }),
     prisma.roommateProfile.count({ where: { active: false } }),
+    prisma.user.count({ where: { roles: { has: Role.AGENT }, identityStatus: VerificationStatus.PENDING } }),
+    prisma.propertyEnquiryRecord.count({ where: { subjectType: "PROPERTY_MANAGEMENT", status: { notIn: ["COMPLETED", "CLOSED", "CANCELLED"] } } }),
   ]);
 
   return {
     pendingListings,
     openTickets: 0,
     pendingVerification,
-    openDisputes: 0,
-    pendingAgents: 0,
-    openPmRequests: 0,
+    openDisputes: flaggedReports,
+    pendingAgents,
+    openPmRequests,
     flaggedReports,
     pendingRoommates,
   };
@@ -94,7 +99,9 @@ export async function getPostgresAdminOverview(): Promise<AdminOverview> {
     prisma.report.count({ where: { status: { in: [ReportStatus.OPEN, ReportStatus.IN_REVIEW] } } }),
     getPostgresAdminSummary(),
   ]);
-  const revenue = paidPayments.reduce((sum, payment) => sum + Number(payment.amount), 0);
+  const monthStart = startOfMonth();
+  const monthlyPayments = paidPayments.filter((payment) => payment.createdAt >= monthStart);
+  const revenue = monthlyPayments.reduce((sum, payment) => sum + Number(payment.amount), 0);
   const todayRevenue = paidPayments
     .filter((payment) => payment.createdAt >= todayStart)
     .reduce((sum, payment) => sum + Number(payment.amount), 0);
@@ -257,7 +264,9 @@ export async function getPostgresModerationQueue(): Promise<ModerationItem[]> {
 export async function getPostgresPaymentsCenter() {
   const rows = await getMainPrisma().payment.findMany({ orderBy: { createdAt: "desc" }, take: 100 });
   const paid = rows.filter((row) => row.status === PaymentStatus.PAID);
-  const revenue = paid.reduce((sum, row) => sum + Number(row.amount), 0);
+  const monthStart = startOfMonth();
+  const monthlyPaid = paid.filter((row) => row.createdAt >= monthStart);
+  const revenue = monthlyPaid.reduce((sum, row) => sum + Number(row.amount), 0);
   return {
     subscriptionRevenue: paid.filter((row) => row.plan?.includes("pro") || row.plan === "agency").reduce((sum, row) => sum + Number(row.amount), 0),
     featuredRevenue: paid.filter((row) => row.plan === "featured_listing").reduce((sum, row) => sum + Number(row.amount), 0),
@@ -491,6 +500,76 @@ export async function getPostgresControlCenter(section: string) {
   }
 }
 
+export async function getPostgresLandlordAnalytics(userId: string) {
+  const prisma = getMainPrisma();
+  const [listings, enquiries, payments] = await Promise.all([
+    prisma.listing.findMany({
+      where: { ownerId: userId },
+      include: {
+        media: { orderBy: { sortOrder: "asc" } },
+        _count: { select: { favourites: true, enquiries: true, reports: true } },
+      },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.propertyEnquiryRecord.findMany({
+      where: { ownerId: userId },
+      orderBy: { createdAt: "desc" },
+      take: 50,
+    }),
+    prisma.payment.findMany({
+      where: { userId },
+      orderBy: { createdAt: "desc" },
+      take: 50,
+    }),
+  ]);
+
+  return {
+    stats: {
+      totalListings: listings.filter((listing) => listing.status !== ListingStatus.DELETED).length,
+      activeListings: listings.filter((listing) => listing.status === ListingStatus.ACTIVE).length,
+      pendingListings: listings.filter((listing) => listing.status === ListingStatus.PENDING_REVIEW).length,
+      totalViews: listings.reduce((sum, listing) => sum + listing.views, 0),
+      totalSaves: listings.reduce((sum, listing) => sum + listing._count.favourites, 0),
+      totalEnquiries: listings.reduce((sum, listing) => sum + listing._count.enquiries, 0),
+    },
+    totals: {
+      listings: listings.filter((listing) => listing.status === ListingStatus.ACTIVE).length,
+      views: listings.reduce((sum, listing) => sum + listing.views, 0),
+      saves: listings.reduce((sum, listing) => sum + listing._count.favourites, 0),
+      enquiries: listings.reduce((sum, listing) => sum + listing._count.enquiries, 0),
+    },
+    listings: listings.map((listing) => ({
+      id: listing.id,
+      slug: listing.slug,
+      title: listing.title,
+      city: listing.city,
+      suburb: listing.suburb,
+      status: listing.status,
+      price: Number(listing.price),
+      views: listing.views,
+      saves: listing._count.favourites,
+      enquiries: listing._count.enquiries,
+      image: listing.media.find((m) => m.mediaType === "image")?.url,
+      createdAt: listing.createdAt.toISOString(),
+    })),
+    enquiries: enquiries.map((row) => ({
+      id: row.id,
+      listingId: row.listingId,
+      status: row.status,
+      enquiryType: row.enquiryType,
+      createdAt: row.createdAt.toISOString(),
+      payload: row.payload,
+    })),
+    payments: payments.map((row) => ({
+      id: row.id,
+      amount: Number(row.amount),
+      status: row.status,
+      description: row.description,
+      createdAt: row.createdAt.toISOString(),
+    })),
+  };
+}
+
 async function getListingsLite(): Promise<ListingLite[]> {
   return getMainPrisma().listing.findMany({
     select: {
@@ -546,6 +625,11 @@ function startOfToday() {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   return today;
+}
+
+function startOfMonth() {
+  const today = new Date();
+  return new Date(today.getFullYear(), today.getMonth(), 1);
 }
 
 function formatRelativeTime(iso: string) {

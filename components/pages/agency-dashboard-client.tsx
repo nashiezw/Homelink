@@ -22,6 +22,7 @@ type AgencyDashboard = {
   }>;
   listings: Array<{
     id: string;
+    slug?: string | null;
     title: string;
     suburb: string;
     city: string;
@@ -171,7 +172,7 @@ export function AgencyDashboardClient() {
             data?.listings.map((listing) => (
               <Link
                 key={listing.id}
-                href={`/listings/${listing.id}`}
+                href={`/listings/${listing.slug ?? listing.id}`}
                 className="grid gap-3 border-b border-slate-200 p-5 transition last:border-b-0 hover:bg-emerald-50/60 dark:border-slate-700 dark:hover:bg-slate-800 md:grid-cols-[1fr_auto] md:items-center"
               >
                 <div>

@@ -30,6 +30,7 @@ import {
 
 type AdminListing = {
   id: string;
+  slug?: string | null;
   title: string;
   city: string;
   suburb: string;
@@ -408,7 +409,7 @@ export function PropertiesManagementHub() {
                   <Button variant="secondary" onClick={() => void listingAction("delete", selectedListing.id)}>Delete</Button>
                 )}
               </div>
-              <Link href={`/listings/${selectedListing.id}`} target="_blank" className="inline-flex items-center gap-1 text-cyan-400 hover:underline">
+              <Link href={`/listings/${selectedListing.slug ?? selectedListing.id}`} target="_blank" className="inline-flex items-center gap-1 text-cyan-400 hover:underline">
                 <ExternalLink className="size-3.5" /> View public page
               </Link>
               <div className="border-t border-white/[0.06] pt-4">

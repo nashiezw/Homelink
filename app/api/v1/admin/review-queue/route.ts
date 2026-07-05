@@ -2,9 +2,22 @@ export const dynamic = "force-dynamic";
 
 import { getSessionUserIdFromRequest } from "@/lib/auth/session";
 import { ok, problem } from "@/lib/api/response";
+import { requireAdminAsync } from "@/lib/admin/require-admin";
+import { getPostgresModerationQueue, getPostgresVerificationQueue } from "@/lib/admin/postgres-analytics";
+import { isPostgresStoreEnabled } from "@/lib/db/main-prisma";
 import { getStore } from "@/lib/store/app-store";
 
-export function GET(request: Request) {
+export async function GET(request: Request) {
+  if (isPostgresStoreEnabled()) {
+    const auth = await requireAdminAsync(request);
+    if ("error" in auth && auth.error) return auth.error;
+    const [moderation, verification] = await Promise.all([
+      getPostgresModerationQueue(),
+      getPostgresVerificationQueue(),
+    ]);
+    return ok([...verification, ...moderation]);
+  }
+
   const userId = getSessionUserIdFromRequest(request);
   if (!userId) {
     return problem(401, "UNAUTHORIZED", "Sign in to view the review queue.");
@@ -17,6 +30,12 @@ export function GET(request: Request) {
 }
 
 export async function PATCH(request: Request) {
+  if (isPostgresStoreEnabled()) {
+    const auth = await requireAdminAsync(request);
+    if ("error" in auth && auth.error) return auth.error;
+    return problem(501, "POSTGRES_REVIEW_ACTION_NOT_IMPLEMENTED", "Use the verification, listings, or moderation endpoints to resolve production review items.");
+  }
+
   const userId = getSessionUserIdFromRequest(request);
   if (!userId) {
     return problem(401, "UNAUTHORIZED", "Sign in to manage reviews.");

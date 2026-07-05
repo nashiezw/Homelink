@@ -4402,12 +4402,9 @@ export function getStore() {
     process.env.HOMELINK_ALLOW_LEGACY_STORE !== "true" &&
     isPostgresBackedRuntime()
   ) {
-    if (!globalStore.__homelinkLegacyStoreWarningShown) {
-      globalStore.__homelinkLegacyStoreWarningShown = true;
-      console.warn(
-        "Postgres AppStore snapshot fallback is active for routes without dedicated tables. Continue migrating those routes to typed Postgres models."
-      );
-    }
+    throw new Error(
+      "Legacy in-memory AppStore is disabled in strict production. Route must use typed Postgres persistence.",
+    );
   }
   if (!globalStore.__homelinkStore || globalStore.__homelinkStoreVersion !== STORE_VERSION) {
     const synced = loadPersistedStoreSync(STORE_VERSION);
@@ -4426,13 +4423,11 @@ export function getStore() {
       void persistStoreState(globalStore.__homelinkStore.snapshotState(), STORE_VERSION);
     }
   }
-  if (!globalStore.__storeHydrateStarted) {
+  if (!isStrictProduction() && !globalStore.__storeHydrateStarted) {
     globalStore.__storeHydrateStarted = true;
     globalStore.__homelinkStoreHydratePromise = loadPersistedStore(STORE_VERSION).then((loaded) => {
       if (loaded && globalStore.__homelinkStore && globalStore.__homelinkStoreVersion === STORE_VERSION) {
         globalStore.__homelinkStore.hydratePersistedState(loaded);
-      } else if (isStrictProduction() && isPostgresBackedRuntime() && globalStore.__homelinkStore) {
-        void persistStoreState(globalStore.__homelinkStore.snapshotState(), STORE_VERSION);
       }
       globalStore.__homelinkStoreHydrated = true;
       if (globalStore.__homelinkStorePersistPending && globalStore.__homelinkStore) {
