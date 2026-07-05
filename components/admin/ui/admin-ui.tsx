@@ -420,7 +420,60 @@ export function AdminDataTable<T extends { id?: string }>({
   }
 
   return (
-    <div className="overflow-x-auto">
+    <>
+      <div className="space-y-3 md:hidden">
+        {rows.map((row, idx) => {
+          const rowId = row.id ?? String(idx);
+          const active = selectedId === rowId;
+          return (
+            <article
+              key={rowId}
+              onClick={() => onRowClick?.(row)}
+              className={cn(
+                "rounded-xl border border-white/[0.07] bg-slate-950/45 p-3 transition",
+                onRowClick && "cursor-pointer hover:border-white/12 hover:bg-white/[0.03]",
+                active && "border-emerald-400/40 bg-emerald-500/[0.08]",
+              )}
+            >
+              <div className="flex items-start gap-3">
+                {selectable && (
+                  <input
+                    type="checkbox"
+                    checked={selectedIds?.has(rowId)}
+                    onChange={() => onToggleSelect?.(rowId)}
+                    onClick={(event) => event.stopPropagation()}
+                    className="mt-1 shrink-0"
+                    aria-label={`Select row ${idx + 1}`}
+                  />
+                )}
+                <div className="min-w-0 flex-1 space-y-2">
+                  {columns.map((col, columnIndex) => (
+                    <div
+                      key={col.key}
+                      className={cn(
+                        columnIndex === 0
+                          ? "text-sm font-semibold text-white"
+                          : "grid grid-cols-[6.5rem_minmax(0,1fr)] gap-2 text-xs",
+                      )}
+                    >
+                      {columnIndex === 0 ? (
+                        <div className="min-w-0 break-words">{col.render(row)}</div>
+                      ) : (
+                        <>
+                          <span className="text-slate-500">{col.header}</span>
+                          <span className="min-w-0 break-words text-slate-300">{col.render(row)}</span>
+                        </>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </article>
+          );
+        })}
+      </div>
+
+      <div className="hidden overflow-x-auto md:block">
       <table className="w-full min-w-[640px] text-left text-sm">
         <thead className="border-b border-white/[0.08] bg-slate-950/40 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
           <tr>
@@ -469,7 +522,8 @@ export function AdminDataTable<T extends { id?: string }>({
           })}
         </tbody>
       </table>
-    </div>
+      </div>
+    </>
   );
 }
 

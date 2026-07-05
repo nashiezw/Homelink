@@ -407,8 +407,63 @@ export function AgentManagementHub() {
       )}
 
       {subTab === "commissions" && (
-        <div className="overflow-x-auto rounded-xl border border-white/10">
-          <table className="min-w-full text-sm text-slate-300">
+        <>
+        <div className="space-y-3 md:hidden">
+          {commissions.map((c, index) => (
+            <article key={`${c.id}-${index}`} className="rounded-xl border border-white/10 bg-slate-950/45 p-3">
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div>
+                  <p className="font-semibold text-white">{c.agentName}</p>
+                  <p className="text-xs text-slate-500">{c.type} / {c.leadSource ?? "HOMELINK"}</p>
+                </div>
+                <span className="rounded-full bg-white/[0.06] px-2 py-0.5 text-[11px] font-semibold text-slate-300">{c.status}</span>
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                <div className="rounded-lg bg-white/[0.04] px-2 py-1.5">
+                  <p className="text-slate-500">HomeLink share</p>
+                  <p className="font-medium text-slate-200">${c.homelinkAmount.toFixed(2)}</p>
+                </div>
+                <div className="rounded-lg bg-white/[0.04] px-2 py-1.5">
+                  <p className="text-slate-500">Agent gross</p>
+                  <p className="font-medium text-slate-200">${c.agentAmount.toFixed(2)}</p>
+                </div>
+                <div className="rounded-lg bg-white/[0.04] px-2 py-1.5">
+                  <p className="text-slate-500">Net payout</p>
+                  <p className="font-medium text-slate-200">${c.netAgentAmount.toFixed(2)}</p>
+                </div>
+                <div className="rounded-lg bg-white/[0.04] px-2 py-1.5">
+                  <p className="text-slate-500">Split</p>
+                  <p className="font-medium text-slate-200">{c.ruleSnapshot.homelinkSplitPercent}% / {c.ruleSnapshot.agentSplitPercent}%</p>
+                </div>
+              </div>
+              <p className="mt-2 text-xs text-slate-400">{c.commissionRuleLabel ?? c.ruleSnapshot.ruleLabel ?? "Configured commission rule"}</p>
+              {c.payout && (
+                <p className="mt-1 text-xs text-slate-500">
+                  {c.payout.method.replace(/_/g, " ")} - {c.payout.reference}
+                </p>
+              )}
+              <div className="mt-3 flex flex-wrap gap-2">
+                {c.status === "PENDING" && (
+                  <Button variant="secondary" onClick={() => void adminAction({ action: "approve_commission", commissionId: c.id })}>
+                    Approve
+                  </Button>
+                )}
+                {c.status !== "PAID" && c.status !== "CANCELLED" && (
+                  <Button variant="secondary" onClick={() => void adminAction({ action: "pay_commission", commissionId: c.id })}>
+                    Pay
+                  </Button>
+                )}
+                {c.status !== "PAID" && c.status !== "CANCELLED" && (
+                  <Button variant="secondary" onClick={() => void adminAction({ action: "update_commission_status", commissionId: c.id, status: "DISPUTED", reason: "Marked disputed by administrator." })}>
+                    Dispute
+                  </Button>
+                )}
+              </div>
+            </article>
+          ))}
+        </div>
+        <div className="hidden overflow-x-auto rounded-xl border border-white/10 md:block">
+          <table className="min-w-[920px] text-sm text-slate-300">
             <thead className="bg-slate-900">
               <tr>
                 <th className="px-4 py-3 text-left">Agent</th>
@@ -467,6 +522,7 @@ export function AgentManagementHub() {
             </tbody>
           </table>
         </div>
+        </>
       )}
 
       {subTab === "territories" && (

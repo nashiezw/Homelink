@@ -277,7 +277,35 @@ export function PaymentsAdminHub() {
 
           <div className="grid gap-4 lg:grid-cols-3">
             <AdminPanel title="Payment ledger" className="lg:col-span-2">
-              <div className="overflow-x-auto">
+              <div className="space-y-3 md:hidden">
+                {data.payments.map((p) => (
+                  <article
+                    key={p.id}
+                    onClick={() => setSelected(p)}
+                    className={`cursor-pointer rounded-xl border p-3 transition ${
+                      selected?.id === p.id
+                        ? "border-emerald-400/40 bg-emerald-500/10"
+                        : "border-white/[0.06] bg-slate-950/45 hover:border-white/10"
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="font-semibold text-white">{p.plan}</p>
+                        <p className="truncate text-xs text-slate-500">{p.userName}</p>
+                      </div>
+                      <p className="shrink-0 text-sm font-bold text-emerald-400">${p.amount}</p>
+                    </div>
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      <StatusPill status={p.status} />
+                      <span className="rounded-full bg-white/[0.06] px-2 py-0.5 text-[11px] font-medium text-slate-300">
+                        {p.method.replace(/_/g, " ")}
+                      </span>
+                    </div>
+                  </article>
+                ))}
+              </div>
+
+              <div className="hidden overflow-x-auto md:block">
                 <table className="w-full text-left text-sm">
                   <thead className="border-b border-white/10 text-xs uppercase text-slate-500">
                     <tr>

@@ -226,7 +226,7 @@ export function PropertiesManagementHub() {
       />
 
       <AdminFilterBar>
-        <div className="relative min-w-[200px] flex-1">
+        <div className="relative min-w-0 flex-1 sm:min-w-[200px]">
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-500" />
           <AdminSearchInput value={q} onChange={setQ} placeholder="Search title, city, suburb, ID..." className="pl-10" />
         </div>

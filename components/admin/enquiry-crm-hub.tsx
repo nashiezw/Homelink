@@ -229,7 +229,7 @@ export function EnquiryCrmHub() {
           </div>
 
           <div className="flex flex-wrap gap-3">
-            <div className="relative min-w-[12rem] flex-1">
+            <div className="relative min-w-0 flex-1 sm:min-w-[12rem]">
               <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-500" />
               <input
                 value={q}

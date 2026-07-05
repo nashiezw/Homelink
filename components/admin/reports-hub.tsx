@@ -172,9 +172,27 @@ export function ReportsHub() {
 function ReportPreviewTable({ preview, compact = false }: { preview: ReportPreview; compact?: boolean }) {
   if (!preview.rows.length) return <p className="px-4 py-6 text-sm text-slate-400">No rows match this report yet.</p>;
   const keys = Object.keys(preview.rows[0]);
+  const rows = preview.rows.slice(0, compact ? 4 : preview.rows.length);
   return (
-    <div className="overflow-x-auto">
-      <table className="min-w-full text-left text-xs text-slate-300">
+    <>
+      <div className="space-y-3 md:hidden">
+        {rows.map((row, index) => (
+          <article key={`${preview.type}-card-${index}`} className="rounded-xl border border-white/[0.07] bg-slate-950/45 p-3">
+            <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500">Row {index + 1}</p>
+            <div className="space-y-2">
+              {keys.map((key) => (
+                <div key={key} className="grid grid-cols-[6.5rem_minmax(0,1fr)] gap-2 text-xs">
+                  <span className="text-slate-500">{key.replace(/([A-Z])/g, " $1")}</span>
+                  <span className="min-w-0 break-words text-slate-300">{formatPreviewValue(row[key])}</span>
+                </div>
+              ))}
+            </div>
+          </article>
+        ))}
+      </div>
+
+      <div className="hidden overflow-x-auto md:block">
+      <table className="min-w-[720px] text-left text-xs text-slate-300">
         <thead className="bg-slate-900 text-slate-400">
           <tr>
             {keys.map((key) => (
@@ -185,7 +203,7 @@ function ReportPreviewTable({ preview, compact = false }: { preview: ReportPrevi
           </tr>
         </thead>
         <tbody>
-          {preview.rows.slice(0, compact ? 4 : preview.rows.length).map((row, index) => (
+          {rows.map((row, index) => (
             <tr key={`${preview.type}-${index}`} className="border-t border-white/10">
               {keys.map((key) => (
                 <td key={key} className="max-w-[220px] truncate px-4 py-3">
@@ -196,7 +214,8 @@ function ReportPreviewTable({ preview, compact = false }: { preview: ReportPrevi
           ))}
         </tbody>
       </table>
-    </div>
+      </div>
+    </>
   );
 }
 

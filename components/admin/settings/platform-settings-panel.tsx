@@ -549,7 +549,7 @@ function RbacEditor({
         <h3 className="mb-3 text-sm font-semibold uppercase text-slate-400">Admin assignments</h3>
         <div className="mb-4 rounded-xl border border-cyan-500/20 bg-slate-950/60 p-4">
           <div className="flex flex-wrap items-end gap-3">
-            <label className="min-w-[240px] flex-1">
+            <label className="min-w-0 flex-1 sm:min-w-[240px]">
               <span className="mb-1 block text-xs font-semibold uppercase text-slate-500">Add admin user</span>
               <select
                 value={newAdminId}
