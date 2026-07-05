@@ -165,12 +165,16 @@ export function PropertiesManagementHub() {
 
   function toggleSelectAll() {
     if (!data) return;
-    if (selected.size === data.listings.length) {
+    const currentListings = workflowTab === "featured" ? data.listings.filter((listing) => listing.featured) : data.listings;
+    if (currentListings.length && currentListings.every((listing) => selected.has(listing.id))) {
       setSelected(new Set());
     } else {
-      setSelected(new Set(data.listings.map((l) => l.id)));
+      setSelected(new Set(currentListings.map((listing) => listing.id)));
     }
   }
+
+  const visibleListings = workflowTab === "featured" ? (data?.listings ?? []).filter((listing) => listing.featured) : data?.listings ?? [];
+  const allVisibleSelected = visibleListings.length > 0 && visibleListings.every((listing) => selected.has(listing.id));
 
   return (
     <div className="space-y-6">
@@ -259,12 +263,73 @@ export function PropertiesManagementHub() {
 
       <div className="grid gap-4 lg:grid-cols-3">
         <AdminPanel title="Listing inventory" description="Select rows for bulk actions or click to manage" className="lg:col-span-2">
-          <div className="overflow-x-auto">
+          <div className="space-y-3 md:hidden">
+            {visibleListings.map((listing) => (
+              <article
+                key={listing.id}
+                className={`cursor-pointer rounded-xl border p-3 transition ${
+                  selectedListing?.id === listing.id
+                    ? "border-cyan-400/40 bg-cyan-500/10"
+                    : "border-white/[0.06] bg-slate-950/45 hover:border-white/10"
+                }`}
+                onClick={() => setSelectedListing(listing)}
+              >
+                <div className="flex items-start gap-3">
+                  <input
+                    type="checkbox"
+                    checked={selected.has(listing.id)}
+                    onChange={() => toggleSelect(listing.id)}
+                    onClick={(event) => event.stopPropagation()}
+                    className="mt-1 shrink-0"
+                    aria-label={`Select ${listing.title}`}
+                  />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="line-clamp-2 text-sm font-semibold leading-snug text-white">{listing.title}</p>
+                        <p className="mt-1 text-xs text-slate-400">
+                          {listing.suburb}, {listing.city}
+                        </p>
+                      </div>
+                      <StatusBadge status={listing.status} />
+                    </div>
+
+                    <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                      <div className="rounded-lg bg-white/[0.04] px-2 py-1.5">
+                        <p className="text-slate-500">Type</p>
+                        <p className="font-medium capitalize text-slate-200">{listing.type}</p>
+                      </div>
+                      <div className="rounded-lg bg-white/[0.04] px-2 py-1.5">
+                        <p className="text-slate-500">Price</p>
+                        <p className="font-medium text-slate-200">${listing.price.toLocaleString()}</p>
+                      </div>
+                      <div className="rounded-lg bg-white/[0.04] px-2 py-1.5">
+                        <p className="text-slate-500">Owner</p>
+                        <p className="truncate font-medium text-slate-200">{listing.ownerName}</p>
+                      </div>
+                      <div className="rounded-lg bg-white/[0.04] px-2 py-1.5">
+                        <p className="text-slate-500">Stats</p>
+                        <p className="font-medium text-slate-200">{listing.views} views / {listing.enquiries} enquiries</p>
+                      </div>
+                    </div>
+
+                    <div className="mt-3 flex flex-wrap gap-1.5">
+                      {listing.verified && <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 text-[11px] font-medium text-emerald-300">Verified</span>}
+                      {listing.featured && <span className="rounded-full bg-amber-500/20 px-2 py-0.5 text-[11px] font-medium text-amber-300">Featured</span>}
+                      <span className="rounded-full bg-white/[0.06] px-2 py-0.5 text-[11px] font-medium capitalize text-slate-300">{listing.intent}</span>
+                    </div>
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
+
+          <div className="hidden overflow-x-auto md:block">
             <table className="w-full text-left text-sm">
               <thead className="border-b border-white/10 text-xs uppercase text-slate-500">
                 <tr>
                   <th className="px-3 py-3">
-                    <input type="checkbox" checked={data?.listings.length ? selected.size === data.listings.length : false} onChange={toggleSelectAll} />
+                    <input type="checkbox" checked={allVisibleSelected} onChange={toggleSelectAll} />
                   </th>
                   <th className="px-3 py-3">Property</th>
                   <th className="px-3 py-3">Type</th>
@@ -274,10 +339,7 @@ export function PropertiesManagementHub() {
                 </tr>
               </thead>
               <tbody>
-                {(workflowTab === "featured"
-                  ? (data?.listings ?? []).filter((l) => l.featured)
-                  : data?.listings ?? []
-                ).map((listing) => (
+                {visibleListings.map((listing) => (
                   <tr
                     key={listing.id}
                     className={`cursor-pointer border-b border-white/5 hover:bg-white/5 ${selectedListing?.id === listing.id ? "bg-cyan-500/10" : ""}`}
@@ -303,7 +365,7 @@ export function PropertiesManagementHub() {
               </tbody>
             </table>
           </div>
-          {!data?.listings.length && <p className="text-center text-sm text-slate-500">No listings match your filters.</p>}
+          {!visibleListings.length && <p className="py-8 text-center text-sm text-slate-500">No listings match your filters.</p>}
         </AdminPanel>
 
         <AdminPanel title="Listing detail" description={selectedListing ? selectedListing.title : "Select a listing"}>

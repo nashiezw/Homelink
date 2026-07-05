@@ -89,7 +89,7 @@ export function AdminFilterBar({ children, className }: { children: ReactNode; c
   return (
     <div
       className={cn(
-        "flex flex-col gap-3 rounded-xl border border-white/[0.08] bg-slate-900/50 p-4 lg:flex-row lg:items-center",
+        "flex flex-col gap-3 rounded-xl border border-white/[0.08] bg-slate-900/50 p-3 sm:p-4 lg:flex-row lg:items-center",
         className,
       )}
     >
@@ -138,7 +138,7 @@ export function AdminSelect({
       value={value}
       onChange={(e) => onChange(e.target.value)}
       className={cn(
-        "rounded-lg border border-white/10 bg-slate-950/80 px-3 py-2.5 text-sm text-white focus:border-emerald-500/40 focus:outline-none",
+        "w-full rounded-lg border border-white/10 bg-slate-950/80 px-3 py-2.5 text-sm text-white focus:border-emerald-500/40 focus:outline-none sm:w-auto",
         className,
       )}
     >
@@ -317,7 +317,7 @@ export function AdminToolbar({
   return (
     <div
       className={cn(
-        "flex flex-col gap-3 rounded-2xl border border-white/[0.08] bg-slate-900/40 p-4 lg:flex-row lg:items-center lg:justify-between",
+        "flex flex-col gap-3 rounded-2xl border border-white/[0.08] bg-slate-900/40 p-3 sm:p-4 lg:flex-row lg:items-center lg:justify-between",
         className,
       )}
     >
