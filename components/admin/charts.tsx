@@ -14,15 +14,15 @@ export function BarChart({
 }) {
   const max = Math.max(...data.map((d) => d.value), 1);
   return (
-    <div className={cn("flex h-48 items-end gap-2", className)}>
+    <div className={cn("flex h-40 items-end gap-1.5 sm:h-48 sm:gap-2", className)}>
       {data.map((point) => (
-        <div key={point.label} className="flex flex-1 flex-col items-center gap-2">
+        <div key={point.label} className="flex min-w-0 flex-1 flex-col items-center gap-2">
           <div
             className={cn("w-full rounded-t-md transition-all", color)}
             style={{ height: `${(point.value / max) * 100}%`, minHeight: 4 }}
             title={`${point.label}: ${point.value}`}
           />
-          <span className="text-[10px] text-slate-400">{point.label}</span>
+          <span className="max-w-full truncate text-[10px] text-slate-400">{point.label}</span>
         </div>
       ))}
     </div>
@@ -50,12 +50,12 @@ export function DonutChart({
     .join(", ");
 
   return (
-    <div className="flex items-center gap-6">
+    <div className="flex flex-col items-center gap-4 sm:flex-row sm:gap-6">
       <div
-        className="size-32 rounded-full"
+        className="size-28 rounded-full sm:size-32"
         style={{ background: `conic-gradient(${gradient})` }}
       />
-      <div className="grid gap-2 text-sm">
+      <div className="grid w-full gap-2 text-sm sm:w-auto">
         {segments.map((s) => (
           <div key={s.label} className="flex items-center gap-2">
             <span className="size-2.5 rounded-full" style={{ background: s.color }} />
@@ -89,9 +89,9 @@ export function Sparkline({ values, className }: { values: number[]; className?:
 
 export function MetricRow({ label, value, delta }: { label: string; value: string | number; delta?: string }) {
   return (
-    <div className="flex items-center justify-between border-b border-white/5 py-3 last:border-0">
-      <span className="text-sm text-slate-400">{label}</span>
-      <div className="text-right">
+    <div className="flex items-start justify-between gap-3 border-b border-white/5 py-3 last:border-0">
+      <span className="min-w-0 break-words text-sm text-slate-400">{label}</span>
+      <div className="shrink-0 text-right">
         <span className="font-semibold text-white">{value}</span>
         {delta && <p className="text-xs text-emerald-400">{delta}</p>}
       </div>

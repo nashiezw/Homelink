@@ -56,7 +56,7 @@ export function AdminPanel({
         </div>
         {action}
       </div>
-      <div className="p-4 sm:p-6">{children}</div>
+      <div className="p-3 sm:p-6">{children}</div>
     </section>
   );
 }
@@ -78,9 +78,9 @@ export function AdminStatPill({
     info: "border-cyan-500/20 bg-cyan-500/10 text-cyan-200",
   };
   return (
-    <div className={cn("rounded-xl border px-4 py-3", tones[tone])}>
+    <div className={cn("rounded-xl border px-3 py-2.5 sm:px-4 sm:py-3", tones[tone])}>
       <p className="text-[10px] font-semibold uppercase tracking-wider opacity-70">{label}</p>
-      <p className="mt-1 text-xl font-bold tabular-nums">{value}</p>
+      <p className="mt-1 text-lg font-bold tabular-nums sm:text-xl">{value}</p>
     </div>
   );
 }
@@ -254,11 +254,11 @@ export function AdminQuickAction({
   href?: string;
 }) {
   const className =
-    "group flex w-full items-start gap-3 rounded-xl border border-white/[0.08] bg-slate-900/40 p-4 text-left transition hover:border-emerald-500/30 hover:bg-emerald-500/5";
+    "group flex w-full items-start gap-3 rounded-xl border border-white/[0.08] bg-slate-900/40 p-3 text-left transition hover:border-emerald-500/30 hover:bg-emerald-500/5 sm:p-4";
   const inner = (
     <>
-      <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-400 transition group-hover:bg-emerald-500/20">
-        <Icon className="size-5" />
+      <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-400 transition group-hover:bg-emerald-500/20 sm:size-10">
+        <Icon className="size-4 sm:size-5" />
       </span>
       <div className="min-w-0">
         <p className="font-semibold text-white">{label}</p>

@@ -40,7 +40,7 @@ export function AdminKpiCard({ label, value, change, icon: Icon, tone = "default
   return (
     <div
       className={cn(
-        "relative overflow-hidden rounded-2xl border bg-gradient-to-br p-5 shadow-[0_1px_0_0_rgba(255,255,255,0.04)_inset]",
+        "relative overflow-hidden rounded-2xl border bg-gradient-to-br p-4 shadow-[0_1px_0_0_rgba(255,255,255,0.04)_inset] sm:p-5",
         s.card,
         compact && "p-4",
       )}
@@ -49,13 +49,13 @@ export function AdminKpiCard({ label, value, change, icon: Icon, tone = "default
       <div className="relative flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">{label}</p>
-          <p className={cn("mt-2 font-bold tracking-tight text-white tabular-nums", compact ? "text-2xl" : "text-3xl")}>
+          <p className={cn("mt-2 font-bold tracking-tight text-white tabular-nums", compact ? "text-2xl" : "text-2xl sm:text-3xl")}>
             {value}
           </p>
           {change && <p className={cn("mt-1.5 text-xs font-medium", s.change)}>{change}</p>}
         </div>
-        <span className={cn("flex size-11 shrink-0 items-center justify-center rounded-xl", s.icon)}>
-          <Icon className="size-5" />
+        <span className={cn("flex size-10 shrink-0 items-center justify-center rounded-xl sm:size-11", s.icon)}>
+          <Icon className="size-4 sm:size-5" />
         </span>
       </div>
     </div>

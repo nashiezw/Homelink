@@ -80,7 +80,7 @@ export function ExecutiveDashboard({
     summary.pendingAgents;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-5 sm:space-y-8">
       <AdminMetricGrid cols={4}>
         <AdminStatPill label="Action required" value={actionTotal} tone="warning" />
         <AdminStatPill label="Verification queue" value={summary.pendingVerification} tone="info" />
@@ -92,7 +92,7 @@ export function ExecutiveDashboard({
         />
       </AdminMetricGrid>
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-6">
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-6">
         <AdminKpiCard label="Monthly revenue" value={`$${o.revenue.mrr.toLocaleString()}`} icon={DollarSign} tone="success" change={`$${o.revenue.today.toLocaleString()} today`} />
         <AdminKpiCard label="ARR run-rate" value={`$${o.revenue.arr.toLocaleString()}`} icon={TrendingUp} />
         <AdminKpiCard label="Total users" value={o.users.total.toLocaleString()} icon={Users} change={`+${o.users.registrationsToday} today`} />
@@ -117,11 +117,11 @@ export function ExecutiveDashboard({
         )}
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-3">
+      <div className="grid gap-3 sm:gap-4 xl:grid-cols-3">
         <AdminPanel title="Revenue intelligence" description="Transactions, subscriptions & forecast" className="xl:col-span-2">
-          <div className="grid gap-6 lg:grid-cols-2">
+          <div className="grid gap-4 lg:grid-cols-2 lg:gap-6">
             <div>
-              <p className="text-3xl font-bold tracking-tight text-white">${o.revenue.forecast.toLocaleString()}</p>
+              <p className="text-2xl font-bold tracking-tight text-white sm:text-3xl">${o.revenue.forecast.toLocaleString()}</p>
               <p className="mt-1 text-sm text-slate-400">30-day revenue forecast</p>
               <div className="mt-4 text-emerald-400">
                 <Sparkline values={revenueSpark} />
@@ -150,7 +150,7 @@ export function ExecutiveDashboard({
         </AdminPanel>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-3 sm:gap-4 lg:grid-cols-2 xl:grid-cols-4">
         <AdminPanel title="Marketplace pulse">
           <div className="space-y-1">
             <MetricRow label="Total properties" value={o.properties.total} />
@@ -207,7 +207,7 @@ export function ExecutiveDashboard({
       </div>
 
       {propertyAnalytics && (
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div className="grid gap-3 sm:gap-4 lg:grid-cols-2">
           <AdminPanel title="Geographic performance" description="Listings by province">
             <div className="mb-4 flex items-center gap-2 text-slate-400">
               <Globe2 className="size-4" />
@@ -225,7 +225,7 @@ export function ExecutiveDashboard({
         </div>
       )}
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-3 sm:gap-4 lg:grid-cols-2">
         <AdminPanel title="User registrations" description="Registrations by day of week (platform data)">
           <BarChart data={growthData} color="bg-emerald-500" />
         </AdminPanel>
