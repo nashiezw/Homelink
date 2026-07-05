@@ -172,7 +172,6 @@ model Listing {
   intent                     ListingIntent
   propertyType               PropertyType
   status                     ListingStatus             @default(DRAFT)
-  slug                       String?                   @unique
   title                      String
   description                String
   price                      Decimal                   @db.Decimal(12, 2)
@@ -231,7 +230,6 @@ model Listing {
   @@index([propertyOwnerEmail])
   @@index([propertyOwnerPhone])
   @@index([price])
-  @@index([slug])
 }
 
 model ListingMedia {

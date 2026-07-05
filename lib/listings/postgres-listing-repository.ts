@@ -137,13 +137,11 @@ export async function createListingInPostgres(input: ListingInput, ownerId: stri
   const id = `listing_${crypto.randomUUID()}`;
   const title = sanitizeText(input.title, "New listing");
   const availability = parseAvailableFrom(input.availableFrom);
-  const slug = await uniqueListingSlug(title);
 
   const created = await prisma.$transaction(async (tx) => {
     const listing = await tx.listing.create({
       data: {
         id,
-        slug,
         ownerId,
         intent: normalizeIntent(isHoliday ? "rent" : input.intent),
         propertyType: PROPERTY_TYPE_TO_DB[type],
@@ -256,23 +254,12 @@ export async function getListingByIdOrSlugFromPostgres(value: string) {
   if (direct) return direct;
 
   const slug = slugify(value);
-  const row = await getMainPrisma().listing.findFirst({
-    where: {
-      OR: [
-        { slug },
-        { slug: value },
-      ],
-    },
-    include: LISTING_INCLUDE,
-  }).catch(async (error: unknown) => {
-    if (!isMissingColumnError(error)) throw error;
-    const rows = await getMainPrisma().listing.findMany({
-      select: { id: true, title: true },
-      take: 500,
-    });
-    const match = rows.find((listing) => slugify(listing.title) === slug || listing.id === value);
-    return match ? getListingRow(match.id) : null;
+  const rows = await getMainPrisma().listing.findMany({
+    select: { id: true, title: true },
+    take: 1000,
   });
+  const match = rows.find((listing) => listingSlug(listing.id, listing.title) === slug || slugify(listing.title) === slug);
+  const row = match ? await getListingRow(match.id) : null;
   return row ? toListingRecord(row) : null;
 }
 
@@ -316,7 +303,6 @@ export async function updateListingInPostgres(id: string, updates: ListingInput)
       where: { id },
       data: {
         ...(updates.title !== undefined ? { title: sanitizeText(updates.title, existing.title) } : {}),
-        ...(updates.title !== undefined ? { slug: await uniqueListingSlug(sanitizeText(updates.title, existing.title), id) } : {}),
         ...(updates.description !== undefined ? { description: sanitizeText(updates.description, existing.description) } : {}),
         ...(updates.city !== undefined ? { city: sanitizeText(updates.city, existing.city) } : {}),
         ...(updates.suburb !== undefined ? { suburb: sanitizeText(updates.suburb, existing.suburb) } : {}),
@@ -520,7 +506,7 @@ function toListingRecord(row: PrismaListingRow | SafeListingRow): ListingRecord 
   const amenities = amenitiesFromRow(row);
   return {
     id: row.id,
-    slug: "slug" in row ? row.slug ?? undefined : slugify(row.title),
+    slug: listingSlug(row.id, row.title),
     title: row.title,
     city: row.city,
     suburb: row.suburb,
@@ -637,33 +623,14 @@ function addDays(days: number) {
   return date.toISOString();
 }
 
-async function uniqueListingSlug(title: string, existingId?: string) {
-  const base = slugify(title) || `listing-${crypto.randomUUID().slice(0, 8)}`;
-  let candidate = base;
-  let index = 2;
-  while (await slugExists(candidate, existingId)) {
-    candidate = `${base}-${index}`;
-    index += 1;
-  }
-  return candidate;
-}
-
-async function slugExists(slug: string, existingId?: string) {
-  const row = await getMainPrisma().listing.findFirst({
-    where: {
-      slug,
-      ...(existingId ? { id: { not: existingId } } : {}),
-    },
-    select: { id: true },
-  }).catch((error: unknown) => {
-    if (isMissingColumnError(error)) return null;
-    throw error;
-  });
-  return Boolean(row);
-}
-
 function slugify(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+}
+
+function listingSlug(id: string, title: string) {
+  const suffix = id.replace(/[^a-zA-Z0-9]/g, "").slice(0, 8).toLowerCase();
+  const base = slugify(title) || "listing";
+  return suffix ? `${base}-${suffix}` : base;
 }
 
 async function updateListingOwnerInPostgres(listingId: string, newOwnerId: string) {

@@ -137,7 +137,7 @@ async function getRecommendedListings(): Promise<Listing[]> {
       const images = row.media.filter((media) => media.mediaType === "image").map((media) => media.url);
       return {
         id: row.id,
-        slug: row.slug ?? undefined,
+        slug: listingSlug(row.id, row.title),
         title: row.title,
         city: row.city,
         suburb: row.suburb,
@@ -169,4 +169,14 @@ async function getRecommendedListings(): Promise<Listing[]> {
   }
 
   return isStrictProductionMode() ? [] : latestListings.slice(0, 3);
+}
+
+function slugify(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+}
+
+function listingSlug(id: string, title: string) {
+  const suffix = id.replace(/[^a-zA-Z0-9]/g, "").slice(0, 8).toLowerCase();
+  const base = slugify(title) || "listing";
+  return suffix ? `${base}-${suffix}` : base;
 }

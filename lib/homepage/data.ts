@@ -12,7 +12,6 @@ type HomepageListing = Listing & { featured?: boolean };
 
 const HOMEPAGE_LISTING_SELECT = {
   id: true,
-  slug: true,
   title: true,
   city: true,
   suburb: true,
@@ -368,7 +367,7 @@ function toHomepageListing(row: HomepageListingRow): HomepageListing {
   const amenities = homepageAmenitiesFromRow(row);
   return {
     id: row.id,
-    slug: row.slug ?? undefined,
+    slug: listingSlug(row.id, row.title),
     title: row.title,
     city: row.city,
     suburb: row.suburb,
@@ -460,4 +459,10 @@ export function getFeaturedListingsFromStore(limit = 6) {
 
 function slugify(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+}
+
+function listingSlug(id: string, title: string) {
+  const suffix = id.replace(/[^a-zA-Z0-9]/g, "").slice(0, 8).toLowerCase();
+  const base = slugify(title) || "listing";
+  return suffix ? `${base}-${suffix}` : base;
 }

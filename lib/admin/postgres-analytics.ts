@@ -540,7 +540,7 @@ export async function getPostgresLandlordAnalytics(userId: string) {
     },
     listings: listings.map((listing) => ({
       id: listing.id,
-      slug: listing.slug,
+      slug: listingSlug(listing.id, listing.title),
       title: listing.title,
       city: listing.city,
       suburb: listing.suburb,
@@ -648,4 +648,14 @@ function readObject(value: Prisma.JsonValue): Record<string, unknown> {
 
 function stringValue(value: unknown, fallback: string) {
   return typeof value === "string" && value.trim() ? value : fallback;
+}
+
+function slugify(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+}
+
+function listingSlug(id: string, title: string) {
+  const suffix = id.replace(/[^a-zA-Z0-9]/g, "").slice(0, 8).toLowerCase();
+  const base = slugify(title) || "listing";
+  return suffix ? `${base}-${suffix}` : base;
 }

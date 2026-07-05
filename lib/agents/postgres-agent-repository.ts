@@ -144,7 +144,7 @@ export async function getAgencyDashboardFromPostgres(userId: string) {
     })),
     listings: membership.agency.listings.map((listing) => ({
       id: listing.id,
-      slug: listing.slug,
+      slug: listingSlug(listing.id, listing.title),
       title: listing.title,
       suburb: listing.suburb,
       city: listing.city,
@@ -240,4 +240,10 @@ function commissionRow(row: {
 
 function slugify(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+}
+
+function listingSlug(id: string, title: string) {
+  const suffix = id.replace(/[^a-zA-Z0-9]/g, "").slice(0, 8).toLowerCase();
+  const base = slugify(title) || "listing";
+  return suffix ? `${base}-${suffix}` : base;
 }
