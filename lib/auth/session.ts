@@ -7,13 +7,22 @@ const secureCookie = process.env.NODE_ENV === "production" ? "; Secure" : "";
 const signedSessionPrefix = "v2.";
 
 function getSessionSecret() {
-  return (
-    process.env.HOMELINK_SESSION_SECRET ||
-    process.env.AUTH_SECRET ||
-    process.env.NEXTAUTH_SECRET ||
-    process.env.DATABASE_URL ||
-    "homelink-local-session-secret"
-  );
+  return getSessionSecretCandidates()[0];
+}
+
+function getSessionSecretCandidates() {
+  const candidates = [
+    process.env.HOMELINK_SESSION_SECRET,
+    process.env.AUTH_SECRET,
+    process.env.NEXTAUTH_SECRET,
+    process.env.DATABASE_URL,
+    "homelink-local-session-secret",
+  ].filter((value): value is string => Boolean(value));
+  return [...new Set(candidates)];
+}
+
+function signWithSecret(value: string, secret: string) {
+  return createHmac("sha256", secret).update(value).digest("base64url");
 }
 
 function base64UrlEncode(value: string) {
@@ -25,14 +34,15 @@ function base64UrlDecode(value: string) {
 }
 
 function sign(value: string) {
-  return createHmac("sha256", getSessionSecret()).update(value).digest("base64url");
+  return signWithSecret(value, getSessionSecret());
 }
 
 function verifySignature(value: string, signature: string) {
-  const expected = sign(value);
-  const expectedBuffer = Buffer.from(expected);
   const signatureBuffer = Buffer.from(signature);
-  return expectedBuffer.length === signatureBuffer.length && timingSafeEqual(expectedBuffer, signatureBuffer);
+  return getSessionSecretCandidates().some((secret) => {
+    const expectedBuffer = Buffer.from(signWithSecret(value, secret));
+    return expectedBuffer.length === signatureBuffer.length && timingSafeEqual(expectedBuffer, signatureBuffer);
+  });
 }
 
 function signedSessionValue(sessionId: string, userId: string) {
