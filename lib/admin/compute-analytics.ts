@@ -295,6 +295,11 @@ export function getSystemHealth(): SystemHealth {
   const sessions = store.listAllSessions().length;
   const listings = store.listListings();
   const users = store.listUsers();
+  const cloudinaryConfigured = Boolean(
+    settings.integrations.cloudinaryCloud &&
+      settings.integrations.cloudinaryKey &&
+      settings.integrations.cloudinarySecret,
+  );
   const paymentStatus = health.some((h) => h.status === "down")
     ? "down"
     : health.some((h) => h.status === "degraded")
@@ -307,7 +312,7 @@ export function getSystemHealth(): SystemHealth {
     email: settings.integrations.smtpHost ? "operational" : "degraded",
     sms: "operational",
     whatsapp: "operational",
-    cloudinary: settings.integrations.cdnUrl ? "operational" : "degraded",
+    cloudinary: cloudinaryConfigured ? "operational" : "degraded",
     payments: paymentStatus,
     maps: "operational",
     cpu: Math.min(Math.round((sessions / Math.max(users.length, 1)) * 100), 95),

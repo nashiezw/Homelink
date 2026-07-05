@@ -1,6 +1,7 @@
 import { getClientIp } from "@/lib/api/request-meta";
 import { requireAdmin } from "@/lib/admin/require-admin";
 import { ok, problem } from "@/lib/api/response";
+import { testCloudinaryConfig } from "@/lib/integrations/cloudinary";
 import { testGoogleMapsKey } from "@/lib/integrations/google-maps";
 import { sendSmtpTestEmail } from "@/lib/integrations/smtp";
 import { getHydratedStore } from "@/lib/store/app-store";
@@ -61,7 +62,7 @@ export async function PATCH(request: Request) {
   const body = (await request.json()) as {
     section?: string;
     settings?: Partial<PlatformSettings> | Partial<PaymentSettings>;
-    test?: { type: "smtp" | "maps"; email?: string };
+    test?: { type: "smtp" | "maps" | "cloudinary"; email?: string };
   };
 
   const section = body.section ?? "platform";
@@ -102,6 +103,10 @@ export async function PATCH(request: Request) {
     }
     if (body.test.type === "maps") {
       const result = await testGoogleMapsKey(liveSettings.integrations.googleMapsKey);
+      return ok(result);
+    }
+    if (body.test.type === "cloudinary") {
+      const result = await testCloudinaryConfig(liveSettings.integrations);
       return ok(result);
     }
   }
