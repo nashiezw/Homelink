@@ -6,8 +6,8 @@ Current launch status:
 
 - Domain bought: `homelinkzim.co.zw`
 - Production website URL: `https://homelinkzim.co.zw`
-- Hosting: not bought/configured yet
-- Next thing to do: create the hosting project on Vercel, then connect the domain to it
+- Hosting: Vercel deployment appears reachable
+- Next thing to do: rotate the Neon password, update Vercel environment variables, configure Cloudinary/SMTP, and redeploy production
 
 Important rule: **never paste real secrets into Git, ChatGPT, screenshots, or public docs.** Secrets belong only in your hosting provider's environment-variable screen.
 
@@ -850,6 +850,8 @@ npm.cmd run db:audit:production
 npm.cmd run db:seed:production
 npm.cmd run build
 ```
+
+If `prisma migrate deploy` returns `P3005` because an existing production database was created before Prisma migrations were baselined, do not reset or drop production data. Apply only idempotent repair SQL that has been reviewed, then mark the matching migration folders as applied with `prisma migrate resolve --applied <migration_name>`.
 
 You do in the production environment:
 

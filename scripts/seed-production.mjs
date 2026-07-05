@@ -16,7 +16,7 @@ const users = [
 
 const listings = [
   {
-    slug: "verified-garden-cottage-near-avondale-shops-seed01",
+    slug: "harare-avondale-cottage",
     ownerEmail: "tariro.moyo@homelinkzim.co.zw",
     title: "Verified garden cottage near Avondale shops",
     description: "A quiet one-bedroom garden cottage with reliable water, solar backup, secure parking, and fast access to Avondale shops.",
@@ -48,7 +48,7 @@ const listings = [
     amenities: { borehole: true, securityWall: true, garden: true, petFriendly: true },
   },
   {
-    slug: "student-friendly-room-close-to-msu-transport-seed03",
+    slug: "gweru-senga-room",
     ownerEmail: "memory.chikanda@homelinkzim.co.zw",
     title: "Student-friendly room close to MSU transport",
     description: "A clean room suited to students and young professionals, close to transport routes and shared amenities.",
@@ -115,6 +115,7 @@ async function main() {
 
   for (const seed of listings) {
     const owner = userRows.get(seed.ownerEmail);
+    await reconcileSeedListingSlug(seed, owner);
     const listing = await prisma.listing.upsert({
       where: { slug: seed.slug },
       update: {
@@ -235,6 +236,25 @@ async function main() {
   }
 
   console.log("Production seed completed without creating duplicates.");
+}
+
+async function reconcileSeedListingSlug(seed, owner) {
+  const existingSlug = await prisma.listing.findUnique({ where: { slug: seed.slug }, select: { id: true } });
+  if (existingSlug) return;
+
+  const existingSeed = await prisma.listing.findFirst({
+    where: {
+      title: seed.title,
+      propertyOwnerEmail: owner.email,
+    },
+    select: { id: true },
+  });
+  if (!existingSeed) return;
+
+  await prisma.listing.update({
+    where: { id: existingSeed.id },
+    data: { slug: seed.slug },
+  });
 }
 
 function hashPassword(password) {

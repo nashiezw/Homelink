@@ -73,7 +73,7 @@ Status key: `[x]` complete, `[~]` partially complete, `[ ]` still required.
 - [x] Prisma schema supports durable listing `featured`, `featuredUntil`, `views`, and `adminNotes`.
 - [x] Prisma schema supports durable holiday review metadata.
 - [x] Build no longer fails by trying to prerender dynamic Postgres listing pages.
-- [~] Apply schema changes to the production database before deploy. `202607050004_production_schema_repair` is ready; run `npx.cmd prisma migrate deploy --schema prisma\schema.prisma` with the real production `DATABASE_URL`.
+- [x] Apply schema changes to the production database before deploy. Production Neon was repaired and Prisma migration history is up to date.
 - [ ] Configure Cloudinary production credentials.
 - [ ] Configure transactional email credentials.
 - [ ] Set `HOMELINK_STRICT_PRODUCTION=true`.
@@ -87,10 +87,11 @@ Status key: `[x]` complete, `[~]` partially complete, `[ ]` still required.
 - [x] `npm.cmd run lint` completed successfully.
 - [x] `npm.cmd exec prisma validate -- --schema prisma/schema.prisma` completed successfully.
 - [x] `npm.cmd run build` completed successfully.
-- [~] `npm.cmd run check:production` runs but fails until production Cloudinary and email variables are configured.
-- [ ] Run database migration against the target Postgres database.
-- [ ] Run `npm.cmd run db:audit:production` against the target Postgres database.
-- [ ] Run `npm.cmd run db:seed:production` against the target Postgres database.
+- [~] `npm.cmd run check:production` runs but fails until production Cloudinary, email, session secret, and non-file settings configuration are set in Vercel.
+- [x] Run database migration against the target Postgres database.
+- [x] Run `npm.cmd run db:audit:production` against the target Postgres database.
+- [x] Run `npm.cmd run db:seed:production` against the target Postgres database.
+- [~] Live smoke public pages pass, including `/listings/harare-avondale-cottage`; authenticated smoke checks require known private production seed passwords to be set in Vercel and used by the smoke runner.
 - [ ] Submit a new property listing against the deployed environment.
 - [ ] Confirm the listing row exists in Postgres.
 - [ ] Confirm media rows exist in Postgres when photos/videos are attached.
