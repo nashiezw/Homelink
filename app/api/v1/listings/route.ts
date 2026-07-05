@@ -7,17 +7,23 @@ import {
   shouldUsePostgresListings,
   toPublicPostgresListing,
 } from "@/lib/listings/postgres-listing-repository";
+import { latestListings } from "@/lib/listings";
 import { getStore } from "@/lib/store/app-store";
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const query = parseListingQuery(searchParams);
-    const listings = shouldUsePostgresListings()
+    const postgresListings = shouldUsePostgresListings()
       ? (await listListingsFromPostgres())
           .filter((listing) => listing.status === "ACTIVE" || listing.status === "PENDING_REVIEW")
           .map(toPublicPostgresListing)
-          .filter((listing) => matchesListing(listing, query))
+      : [];
+    const sourceListings = shouldUsePostgresListings() && postgresListings.length === 0
+      ? latestListings
+      : postgresListings;
+    const listings = shouldUsePostgresListings()
+      ? sourceListings.filter((listing) => matchesListing(listing, query))
       : listListings(query);
 
     return ok(listings, {

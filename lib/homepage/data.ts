@@ -4,6 +4,7 @@ import { getMainPrisma, isPostgresStoreEnabled } from "@/lib/db/main-prisma";
 import { createDefaultHomepageCms } from "@/lib/homepage/cms-defaults";
 import type { HomepageCmsConfig } from "@/lib/homepage/cms-types";
 import type { HomepageData, HomeFeaturedAgent, HomePropertyType, HomeTrustMetric } from "@/lib/homepage/types";
+import { latestListings } from "@/lib/listings";
 import { getStore, toPublicListing } from "@/lib/store/app-store";
 import type { Listing, ListingIntent, PropertyType } from "@/lib/types";
 
@@ -255,13 +256,14 @@ function getLocalHomepageData(): HomepageData {
 async function getPostgresHomepageData(): Promise<HomepageData> {
   const prisma = getMainPrisma();
   const cms = await getPostgresHomepageCms();
-  const [listings, activeAgents, roommateProfileCount, seekerCount, reviewAggregate] = await Promise.all([
+  const [postgresListings, activeAgents, roommateProfileCount, seekerCount, reviewAggregate] = await Promise.all([
     listHomepageListingsFromPostgres(),
     getPostgresAgentRows(),
     countActiveRoommateProfiles(),
     prisma.user.count({ where: { roles: { has: Role.SEEKER } } }),
     prisma.review.aggregate({ _avg: { rating: true }, _count: { rating: true } }),
   ]);
+  const listings = postgresListings.length > 0 ? postgresListings : latestListings;
   const verifiedListings = listings.filter((listing) => listing.verified);
   const cities = new Set(listings.map((listing) => listing.city).filter(Boolean));
   const avgRating = reviewAggregate._avg.rating ?? 4.9;
