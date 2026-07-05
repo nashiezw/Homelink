@@ -1,7 +1,17 @@
+import { Role } from "@prisma/client";
 import { listListings } from "@/lib/api/listing-service";
+import { getMainPrisma, isPostgresStoreEnabled } from "@/lib/db/main-prisma";
+import { createDefaultHomepageCms } from "@/lib/homepage/cms-defaults";
 import type { HomepageCmsConfig } from "@/lib/homepage/cms-types";
 import type { HomepageData, HomeFeaturedAgent, HomePropertyType, HomeTrustMetric } from "@/lib/homepage/types";
+import {
+  listListingsFromPostgres,
+  toPublicPostgresListing,
+} from "@/lib/listings/postgres-listing-repository";
 import { getStore, toPublicListing } from "@/lib/store/app-store";
+import type { Listing } from "@/lib/types";
+
+type HomepageListing = Listing & { featured?: boolean };
 
 function resolveTrustMetrics(
   cms: HomepageCmsConfig,
@@ -28,7 +38,7 @@ function resolveTrustMetrics(
 
 function resolvePropertyTypes(
   cms: HomepageCmsConfig,
-  listings: ReturnType<typeof listListings>,
+  listings: HomepageListing[],
   roommateCount: number,
 ): HomePropertyType[] {
   return cms.propertyTypes
@@ -74,7 +84,7 @@ function takeWithUniqueImages<T extends { id: string; image: string }>(items: T[
   return selected;
 }
 
-function resolveFeaturedListings(cms: HomepageCmsConfig, listings: ReturnType<typeof listListings>) {
+function resolveFeaturedListings(cms: HomepageCmsConfig, listings: HomepageListing[]) {
   if (cms.featuredListingIds.length > 0) {
     const pinnedListings = cms.featuredListingIds
       .map((id) => listings.find((l) => l.id === id))
@@ -128,7 +138,44 @@ function resolveFeaturedAgents(cms: HomepageCmsConfig, store: ReturnType<typeof 
     .slice(0, 4);
 }
 
-export function getHomepageData(): HomepageData {
+function resolvePostgresFeaturedAgents(
+  cms: HomepageCmsConfig,
+  agents: Awaited<ReturnType<typeof getPostgresAgentRows>>,
+): HomeFeaturedAgent[] {
+  const toAgent = (agent: (typeof agents)[number]): HomeFeaturedAgent => ({
+    id: agent.id,
+    name: agent.name,
+    slug: slugify(agent.name),
+    level: "Verified",
+    averageRating: 4.9,
+    ratingCount: 0,
+    yearsExperience: 2,
+    province: agent.listings[0]?.city ?? "Zimbabwe",
+    responseTime: "Under 2 hours",
+    listingsManaged: agent.listings.filter((listing) => listing.status === "ACTIVE").length,
+    verified: true,
+  });
+
+  if (cms.featuredAgentProfileIds.length > 0) {
+    return cms.featuredAgentProfileIds
+      .map((id) => agents.find((agent) => agent.id === id))
+      .filter((agent): agent is NonNullable<typeof agent> => Boolean(agent))
+      .map(toAgent)
+      .slice(0, 6);
+  }
+
+  return agents
+    .map(toAgent)
+    .sort((a, b) => b.listingsManaged - a.listingsManaged || a.name.localeCompare(b.name))
+    .slice(0, 4);
+}
+
+export async function getHomepageData(): Promise<HomepageData> {
+  if (isPostgresStoreEnabled()) return getPostgresHomepageData();
+  return getLocalHomepageData();
+}
+
+function getLocalHomepageData(): HomepageData {
   const store = getStore();
   const cms = store.getHomepageCms();
   const listings = listListings({ verifiedOnly: false });
@@ -172,7 +219,98 @@ export function getHomepageData(): HomepageData {
   };
 }
 
-export function getHomepageSeo() {
+async function getPostgresHomepageData(): Promise<HomepageData> {
+  const prisma = getMainPrisma();
+  const cms = await getPostgresHomepageCms();
+  const [listingRecords, activeAgents, roommateProfileCount, seekerCount, reviewAggregate] = await Promise.all([
+    listListingsFromPostgres(),
+    getPostgresAgentRows(),
+    prisma.roommateProfile.count({ where: { active: true } }),
+    prisma.user.count({ where: { roles: { has: Role.SEEKER }, accountStatus: "ACTIVE" } }),
+    prisma.review.aggregate({ _avg: { rating: true }, _count: { rating: true } }),
+  ]);
+  const listings = listingRecords
+    .filter((listing) => listing.status === "ACTIVE" || listing.status === "PENDING_REVIEW")
+    .map(toPublicPostgresListing);
+  const verifiedListings = listings.filter((listing) => listing.verified);
+  const cities = new Set(listings.map((listing) => listing.city).filter(Boolean));
+  const avgRating = reviewAggregate._avg.rating ?? 4.9;
+  const reviewCount = reviewAggregate._count.rating;
+
+  const liveTrustMetrics: HomeTrustMetric[] = [
+    { id: "verified-properties", label: "Verified properties", value: verifiedListings.length },
+    { id: "verified-agents", label: "Verified agents", value: activeAgents.length },
+    { id: "cities", label: "Cities covered", value: Math.max(cities.size, 5) },
+    { id: "buyers", label: "Active buyers", value: seekerCount },
+    { id: "rentals", label: "Successful rentals", value: 12 },
+    {
+      id: "customers",
+      label: "Happy customers",
+      value: cms.testimonials.filter((testimonial) => testimonial.published !== false).length + reviewCount,
+    },
+    { id: "rating", label: "Average rating", value: avgRating, decimals: 1, suffix: "â˜…" },
+  ];
+
+  return {
+    trustMetrics: resolveTrustMetrics(cms, liveTrustMetrics),
+    mapListings: listings,
+    featuredListings: resolveFeaturedListings(cms, listings),
+    propertyTypes: resolvePropertyTypes(cms, listings, roommateProfileCount),
+    featuredAgents: resolvePostgresFeaturedAgents(cms, activeAgents),
+    testimonials: cms.testimonials.filter((testimonial) => testimonial.published !== false),
+    content: {
+      hero: cms.hero,
+      finalCta: cms.finalCta,
+      agentPromo: cms.agentPromo,
+      banners: cms.banners.filter((banner) => banner.enabled),
+    },
+  };
+}
+
+async function getPostgresHomepageCms(): Promise<HomepageCmsConfig> {
+  const defaults = createDefaultHomepageCms();
+  const snapshot = await getMainPrisma().appStoreSnapshot.findUnique({
+    where: { id: "singleton" },
+    select: { payload: true },
+  });
+  const cms = readSnapshotHomepageCms(snapshot?.payload);
+  if (!cms) return defaults;
+  return {
+    ...defaults,
+    ...cms,
+    hero: { ...defaults.hero, ...cms.hero },
+    finalCta: { ...defaults.finalCta, ...cms.finalCta },
+    agentPromo: { ...defaults.agentPromo, ...cms.agentPromo },
+    seo: { ...defaults.seo, ...cms.seo },
+    testimonials: cms.testimonials ?? defaults.testimonials,
+    banners: cms.banners ?? defaults.banners,
+    trustMetrics: cms.trustMetrics ?? defaults.trustMetrics,
+    propertyTypes: cms.propertyTypes ?? defaults.propertyTypes,
+    pages: cms.pages ?? defaults.pages,
+    featuredListingIds: cms.featuredListingIds ?? defaults.featuredListingIds,
+    featuredAgentProfileIds: cms.featuredAgentProfileIds ?? defaults.featuredAgentProfileIds,
+  };
+}
+
+function readSnapshotHomepageCms(payload: unknown): Partial<HomepageCmsConfig> | null {
+  if (!payload || typeof payload !== "object") return null;
+  const homepage = (payload as { homepage?: unknown }).homepage;
+  if (!homepage || typeof homepage !== "object") return null;
+  const cms = (homepage as { cms?: unknown }).cms;
+  return cms && typeof cms === "object" ? (cms as Partial<HomepageCmsConfig>) : null;
+}
+
+async function getPostgresAgentRows() {
+  return getMainPrisma().user.findMany({
+    where: { roles: { has: Role.AGENT }, accountStatus: "ACTIVE" },
+    include: { listings: { select: { id: true, city: true, status: true } } },
+    orderBy: { name: "asc" },
+    take: 12,
+  });
+}
+
+export async function getHomepageSeo() {
+  if (isPostgresStoreEnabled()) return (await getPostgresHomepageCms()).seo;
   return getStore().getHomepageCms().seo;
 }
 
@@ -184,4 +322,8 @@ export function getFeaturedListingsFromStore(limit = 6) {
     .sort((a, b) => b.trustScore - a.trustScore)
     .slice(0, limit)
     .map(toPublicListing);
+}
+
+function slugify(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 }
