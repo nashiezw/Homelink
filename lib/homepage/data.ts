@@ -1,17 +1,50 @@
-import { Role } from "@prisma/client";
+import { Prisma, Role } from "@prisma/client";
 import { listListings } from "@/lib/api/listing-service";
 import { getMainPrisma, isPostgresStoreEnabled } from "@/lib/db/main-prisma";
 import { createDefaultHomepageCms } from "@/lib/homepage/cms-defaults";
 import type { HomepageCmsConfig } from "@/lib/homepage/cms-types";
 import type { HomepageData, HomeFeaturedAgent, HomePropertyType, HomeTrustMetric } from "@/lib/homepage/types";
-import {
-  listListingsFromPostgres,
-  toPublicPostgresListing,
-} from "@/lib/listings/postgres-listing-repository";
 import { getStore, toPublicListing } from "@/lib/store/app-store";
-import type { Listing } from "@/lib/types";
+import type { Listing, ListingIntent, PropertyType } from "@/lib/types";
 
 type HomepageListing = Listing & { featured?: boolean };
+
+const HOMEPAGE_LISTING_SELECT = {
+  id: true,
+  title: true,
+  city: true,
+  suburb: true,
+  price: true,
+  intent: true,
+  propertyType: true,
+  bedrooms: true,
+  bathrooms: true,
+  description: true,
+  latitude: true,
+  longitude: true,
+  verifiedAt: true,
+  availableFrom: true,
+  furnished: true,
+  parking: true,
+  petFriendly: true,
+  wifi: true,
+  solarBackup: true,
+  borehole: true,
+  generator: true,
+  waterTank: true,
+  securityWall: true,
+  electricFence: true,
+  garden: true,
+  swimmingPool: true,
+  owner: { select: { name: true, identityStatus: true } },
+  media: {
+    select: { url: true, mediaType: true },
+    orderBy: { sortOrder: "asc" },
+  },
+  _count: { select: { favourites: true, enquiries: true } },
+} satisfies Prisma.ListingSelect;
+
+type HomepageListingRow = Prisma.ListingGetPayload<{ select: typeof HOMEPAGE_LISTING_SELECT }>;
 
 function resolveTrustMetrics(
   cms: HomepageCmsConfig,
@@ -222,16 +255,13 @@ function getLocalHomepageData(): HomepageData {
 async function getPostgresHomepageData(): Promise<HomepageData> {
   const prisma = getMainPrisma();
   const cms = await getPostgresHomepageCms();
-  const [listingRecords, activeAgents, roommateProfileCount, seekerCount, reviewAggregate] = await Promise.all([
-    listListingsFromPostgres(),
+  const [listings, activeAgents, roommateProfileCount, seekerCount, reviewAggregate] = await Promise.all([
+    listHomepageListingsFromPostgres(),
     getPostgresAgentRows(),
-    prisma.roommateProfile.count({ where: { active: true } }),
-    prisma.user.count({ where: { roles: { has: Role.SEEKER }, accountStatus: "ACTIVE" } }),
+    countActiveRoommateProfiles(),
+    prisma.user.count({ where: { roles: { has: Role.SEEKER } } }),
     prisma.review.aggregate({ _avg: { rating: true }, _count: { rating: true } }),
   ]);
-  const listings = listingRecords
-    .filter((listing) => listing.status === "ACTIVE" || listing.status === "PENDING_REVIEW")
-    .map(toPublicPostgresListing);
   const verifiedListings = listings.filter((listing) => listing.verified);
   const cities = new Set(listings.map((listing) => listing.city).filter(Boolean));
   const avgRating = reviewAggregate._avg.rating ?? 4.9;
@@ -269,10 +299,15 @@ async function getPostgresHomepageData(): Promise<HomepageData> {
 
 async function getPostgresHomepageCms(): Promise<HomepageCmsConfig> {
   const defaults = createDefaultHomepageCms();
-  const snapshot = await getMainPrisma().appStoreSnapshot.findUnique({
-    where: { id: "singleton" },
-    select: { payload: true },
-  });
+  const snapshot = await getMainPrisma().appStoreSnapshot
+    .findUnique({
+      where: { id: "singleton" },
+      select: { payload: true },
+    })
+    .catch((error: unknown) => {
+      if (isMissingColumnOrTableError(error)) return null;
+      throw error;
+    });
   const cms = readSnapshotHomepageCms(snapshot?.payload);
   if (!cms) return defaults;
   return {
@@ -302,11 +337,105 @@ function readSnapshotHomepageCms(payload: unknown): Partial<HomepageCmsConfig> |
 
 async function getPostgresAgentRows() {
   return getMainPrisma().user.findMany({
-    where: { roles: { has: Role.AGENT }, accountStatus: "ACTIVE" },
-    include: { listings: { select: { id: true, city: true, status: true } } },
+    where: { roles: { has: Role.AGENT } },
+    select: {
+      id: true,
+      name: true,
+      listings: { select: { id: true, city: true, status: true } },
+    },
     orderBy: { name: "asc" },
     take: 12,
   });
+}
+
+async function listHomepageListingsFromPostgres(): Promise<HomepageListing[]> {
+  const rows = await getMainPrisma().listing.findMany({
+    where: { status: { in: ["ACTIVE", "PENDING_REVIEW"] } },
+    select: HOMEPAGE_LISTING_SELECT,
+    orderBy: { createdAt: "desc" },
+  });
+  return rows.map(toHomepageListing);
+}
+
+function toHomepageListing(row: HomepageListingRow): HomepageListing {
+  const images = row.media.filter((media) => media.mediaType === "image").map((media) => media.url);
+  const videos = row.media.filter((media) => media.mediaType === "video").map((media) => media.url);
+  const type = propertyTypeFromDb(row.propertyType);
+  const amenities = homepageAmenitiesFromRow(row);
+  return {
+    id: row.id,
+    title: row.title,
+    city: row.city,
+    suburb: row.suburb,
+    price: Number(row.price),
+    currency: "USD",
+    intent: row.intent.toLowerCase() as ListingIntent,
+    type,
+    bedrooms: row.bedrooms,
+    bathrooms: row.bathrooms,
+    image: images[0] ?? fallbackHomepageListingImage(type),
+    images: images.length ? images : [fallbackHomepageListingImage(type)],
+    videos,
+    verified: Boolean(row.verifiedAt),
+    availableFrom: row.availableFrom ? row.availableFrom.toISOString().slice(0, 10) : "Available now",
+    amenities,
+    description: row.description,
+    landlordName: row.owner.name,
+    landlordVerified: row.owner.identityStatus === "VERIFIED",
+    phone: "",
+    whatsapp: "",
+    distanceToCbdKm: 5,
+    nearby: amenities,
+    views: 0,
+    saves: row._count.favourites,
+    enquiries: row._count.enquiries,
+    trustScore: row.verifiedAt ? 90 : 70,
+    highlight: row.verifiedAt ? "Verified listing" : "New listing",
+    latitude: Number(row.latitude ?? -17.8292),
+    longitude: Number(row.longitude ?? 31.0522),
+  };
+}
+
+async function countActiveRoommateProfiles() {
+  return getMainPrisma().roommateProfile.count({ where: { active: true } }).catch((error: unknown) => {
+    if (isMissingColumnOrTableError(error)) return getMainPrisma().roommateProfile.count().catch(() => 0);
+    throw error;
+  });
+}
+
+function homepageAmenitiesFromRow(row: HomepageListingRow) {
+  return [
+    row.furnished ? "Furnished" : null,
+    row.parking ? "Parking" : null,
+    row.petFriendly ? "Pet friendly" : null,
+    row.wifi ? "Wi-Fi" : null,
+    row.solarBackup ? "Solar backup" : null,
+    row.borehole ? "Borehole" : null,
+    row.generator ? "Generator" : null,
+    row.waterTank ? "Water tank" : null,
+    row.securityWall ? "Security wall" : null,
+    row.electricFence ? "Electric fence" : null,
+    row.garden ? "Garden" : null,
+    row.swimmingPool ? "Swimming pool" : null,
+  ].filter((amenity): amenity is string => Boolean(amenity));
+}
+
+function propertyTypeFromDb(value: string): PropertyType {
+  const normalized = value.toLowerCase();
+  if (normalized === "room" || normalized === "house" || normalized === "flat" || normalized === "cottage") return normalized;
+  if (normalized === "commercial" || normalized === "land" || normalized === "holiday_home") return normalized;
+  return "room";
+}
+
+function fallbackHomepageListingImage(type?: PropertyType) {
+  if (type === "land") return "/images/roommates/photo-land-mutare.jpg";
+  if (type === "commercial") return "/images/roommates/photo-office-harare.jpg";
+  if (type === "holiday_home") return "/images/roommates/photo-lodge-vicfalls.jpg";
+  return "/images/roommates/photo-cottage-avondale.jpg";
+}
+
+function isMissingColumnOrTableError(error: unknown) {
+  return error instanceof Prisma.PrismaClientKnownRequestError && (error.code === "P2021" || error.code === "P2022");
 }
 
 export async function getHomepageSeo() {
