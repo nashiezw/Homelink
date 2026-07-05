@@ -324,7 +324,7 @@ export function HolidayHomesAdminHub() {
             <input type="checkbox" checked={settings.requireAdminApproval ?? false} onChange={(e) => setSettings({ ...settings, requireAdminApproval: e.target.checked })} />
             Require admin approval before listings go live
           </label>
-          <Button className="mt-4" onClick={() => void saveSettings()}>Save settings</Button>
+          <Button className="mt-4 w-full justify-center sm:w-auto" onClick={() => void saveSettings()}>Save settings</Button>
         </AdminPanel>
       )}
     </div>

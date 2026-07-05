@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useApp } from "@/components/providers/app-provider";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api/client";
+import { AdminTabStrip } from "@/components/admin/ui/admin-ui";
 import type { TenancyDispute } from "@/lib/residence/types";
 
 export function TenancyDisputesHub() {
@@ -53,14 +54,14 @@ export function TenancyDisputesHub() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap gap-2">
-        <Button variant={filter === "open" ? "primary" : "secondary"} onClick={() => setFilter("open")}>
-          Open ({openCount})
-        </Button>
-        <Button variant={filter === "all" ? "primary" : "secondary"} onClick={() => setFilter("all")}>
-          All disputes
-        </Button>
-      </div>
+      <AdminTabStrip
+        active={filter}
+        onChange={(id) => setFilter(id as typeof filter)}
+        tabs={[
+          { id: "open", label: "Open", count: openCount },
+          { id: "all", label: "All disputes" },
+        ]}
+      />
 
       {disputes.length === 0 ? (
         <p className="text-sm text-slate-400">No tenancy disputes in this queue.</p>

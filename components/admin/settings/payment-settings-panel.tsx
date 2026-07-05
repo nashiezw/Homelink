@@ -101,28 +101,30 @@ export function PaymentSettingsPanel() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap gap-4 text-sm">
-          <label className="flex items-center gap-2 text-slate-300">
-            <input type="checkbox" checked={s.sandboxMode} onChange={(e) => setData({ ...data, settings: { ...s, sandboxMode: e.target.checked } })} />
-            Sandbox mode
-          </label>
-          <label className="flex items-center gap-2 text-slate-300">
-            <input type="checkbox" checked={s.liveMode} onChange={(e) => setData({ ...data, settings: { ...s, liveMode: e.target.checked } })} />
-            Live mode
-          </label>
-          <label className="flex items-center gap-2 text-slate-300">
-            <input type="checkbox" checked={s.autoRetryEnabled} onChange={(e) => setData({ ...data, settings: { ...s, autoRetryEnabled: e.target.checked } })} />
-            Auto-retry
-          </label>
-          <label className="flex items-center gap-2 text-slate-300">
-            <input type="checkbox" checked={s.failedPaymentRecoveryEnabled} onChange={(e) => setData({ ...data, settings: { ...s, failedPaymentRecoveryEnabled: e.target.checked } })} />
-            Failed payment recovery
-          </label>
+      <div className="rounded-2xl border border-white/[0.08] bg-slate-950/70 p-3 shadow-[0_1px_0_0_rgba(255,255,255,0.04)_inset] sm:p-4">
+        <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+          <div className="grid gap-2 text-sm sm:grid-cols-2 xl:grid-cols-4">
+            <label className="flex items-center gap-2 rounded-lg bg-white/[0.04] px-3 py-2 text-slate-300">
+              <input type="checkbox" checked={s.sandboxMode} onChange={(e) => setData({ ...data, settings: { ...s, sandboxMode: e.target.checked } })} />
+              Sandbox mode
+            </label>
+            <label className="flex items-center gap-2 rounded-lg bg-white/[0.04] px-3 py-2 text-slate-300">
+              <input type="checkbox" checked={s.liveMode} onChange={(e) => setData({ ...data, settings: { ...s, liveMode: e.target.checked } })} />
+              Live mode
+            </label>
+            <label className="flex items-center gap-2 rounded-lg bg-white/[0.04] px-3 py-2 text-slate-300">
+              <input type="checkbox" checked={s.autoRetryEnabled} onChange={(e) => setData({ ...data, settings: { ...s, autoRetryEnabled: e.target.checked } })} />
+              Auto-retry
+            </label>
+            <label className="flex items-center gap-2 rounded-lg bg-white/[0.04] px-3 py-2 text-slate-300">
+              <input type="checkbox" checked={s.failedPaymentRecoveryEnabled} onChange={(e) => setData({ ...data, settings: { ...s, failedPaymentRecoveryEnabled: e.target.checked } })} />
+              Failed payment recovery
+            </label>
+          </div>
+          <Button className="w-full justify-center lg:w-auto" onClick={() => void save()} disabled={saving}>
+            <Save className="size-4" /> {saving ? "Saving..." : "Save all"}
+          </Button>
         </div>
-        <Button onClick={() => void save()} disabled={saving}>
-          <Save className="size-4" /> {saving ? "Saving..." : "Save all"}
-        </Button>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

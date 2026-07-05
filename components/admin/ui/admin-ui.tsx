@@ -208,32 +208,34 @@ export function AdminTabStrip({
   onChange: (id: string) => void;
 }) {
   return (
-    <div className="flex gap-1 overflow-x-auto rounded-xl border border-white/[0.08] bg-slate-950/50 p-1 [scrollbar-width:none]">
-      {tabs.map((tab) => (
-        <button
-          key={tab.id}
-          type="button"
-          onClick={() => onChange(tab.id)}
-          className={cn(
-            "flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition",
-            active === tab.id
-              ? "bg-emerald-600 text-white shadow-sm"
-              : "text-slate-400 hover:bg-white/5 hover:text-white",
-          )}
-        >
-          {tab.label}
-          {tab.count !== undefined && tab.count > 0 && (
-            <span
-              className={cn(
-                "rounded-full px-1.5 py-0.5 text-[10px] font-bold",
-                active === tab.id ? "bg-white/20" : "bg-amber-500/20 text-amber-300",
-              )}
-            >
-              {tab.count}
-            </span>
-          )}
-        </button>
-      ))}
+    <div className="rounded-2xl border border-white/[0.08] bg-slate-950/70 p-2 shadow-[0_1px_0_0_rgba(255,255,255,0.04)_inset]">
+      <div className="flex min-w-0 gap-1 overflow-x-auto rounded-xl bg-black/20 p-1 [scrollbar-width:none]">
+        {tabs.map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            onClick={() => onChange(tab.id)}
+            className={cn(
+              "flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition",
+              active === tab.id
+                ? "bg-emerald-600 text-white shadow-sm shadow-emerald-950/30"
+                : "text-slate-400 hover:bg-white/[0.06] hover:text-white",
+            )}
+          >
+            {tab.label}
+            {tab.count !== undefined && tab.count > 0 && (
+              <span
+                className={cn(
+                  "rounded-full px-1.5 py-0.5 text-[10px] font-bold",
+                  active === tab.id ? "bg-white/20" : "bg-amber-500/20 text-amber-300",
+                )}
+              >
+                {tab.count}
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

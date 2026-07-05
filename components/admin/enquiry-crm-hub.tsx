@@ -18,6 +18,7 @@ import type { EnquiryAnalytics, EnquirySettings, EnquiryStatus, PropertyEnquiry 
 import { apiFetch } from "@/lib/api/client";
 import { AdminActionFeedback } from "@/components/admin/action-feedback";
 import { AdminActionDialog, type AdminDialogConfig } from "@/components/admin/action-dialog";
+import { AdminTabStrip } from "@/components/admin/ui/admin-ui";
 
 const PIPELINE_STATUSES: EnquiryStatus[] = [
   "NEW",
@@ -133,22 +134,14 @@ export function EnquiryCrmHub() {
         details={feedback?.details}
         onClose={() => setFeedback(null)}
       />
-      <div className="flex flex-wrap gap-2">
-        <button
-          type="button"
-          onClick={() => setSubTab("queue")}
-          className={`rounded-lg px-4 py-2 text-sm font-medium ${subTab === "queue" ? "bg-emerald-600 text-white" : "bg-slate-800 text-slate-300"}`}
-        >
-          Enquiry queue
-        </button>
-        <button
-          type="button"
-          onClick={() => setSubTab("settings")}
-          className={`rounded-lg px-4 py-2 text-sm font-medium ${subTab === "settings" ? "bg-emerald-600 text-white" : "bg-slate-800 text-slate-300"}`}
-        >
-          Routing settings
-        </button>
-      </div>
+      <AdminTabStrip
+        active={subTab}
+        onChange={(id) => setSubTab(id as typeof subTab)}
+        tabs={[
+          { id: "queue", label: "Enquiry queue" },
+          { id: "settings", label: "Routing settings" },
+        ]}
+      />
 
       {subTab === "settings" && (
         <section className="rounded-xl border border-white/10 bg-slate-900/60 p-6">

@@ -129,7 +129,7 @@ export function SystemOpsHub({ mode }: { mode: "system" | "ai" | "security" }) {
               />
             ))}
           </div>
-          <Button className="mt-4" onClick={() => void saveAiOrSecurity({ ai: settings.ai, featureFlags: settings.featureFlags })} disabled={saving}>
+          <Button className="mt-4 w-full justify-center sm:w-auto" onClick={() => void saveAiOrSecurity({ ai: settings.ai, featureFlags: settings.featureFlags })} disabled={saving}>
             <Save className="size-4" /> {saving ? "Saving..." : "Save AI settings"}
           </Button>
         </section>
@@ -160,7 +160,7 @@ export function SystemOpsHub({ mode }: { mode: "system" | "ai" | "security" }) {
               <Toggle label="Phone verification required" checked={settings.phoneVerificationRequired} onChange={(v) => setSettings({ ...settings, phoneVerificationRequired: v })} />
             </div>
             <Button
-              className="mt-4"
+              className="mt-4 w-full justify-center sm:w-auto"
               onClick={() =>
                 void saveAiOrSecurity({
                   minPasswordLength: settings.minPasswordLength,

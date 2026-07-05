@@ -170,35 +170,37 @@ export function MarketingCmsHub() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap gap-2">
-          {TABS.map((t) => (
-            <button
-              key={t}
-              type="button"
-              onClick={() => setTab(t)}
-              className={cn(
-                "rounded-lg px-3 py-2 text-sm font-medium transition",
-                tab === t ? "bg-emerald-600 text-white" : "bg-slate-800 text-slate-300 hover:bg-slate-700",
-              )}
+      <div className="rounded-2xl border border-white/[0.08] bg-slate-950/70 p-2 shadow-[0_1px_0_0_rgba(255,255,255,0.04)_inset]">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex min-w-0 gap-1 overflow-x-auto rounded-xl bg-black/20 p-1 [scrollbar-width:none]">
+            {TABS.map((t) => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => setTab(t)}
+                className={cn(
+                  "shrink-0 rounded-lg px-3 py-2 text-sm font-medium transition",
+                  tab === t ? "bg-emerald-600 text-white shadow-sm shadow-emerald-950/30" : "text-slate-400 hover:bg-white/[0.06] hover:text-white",
+                )}
+              >
+                {TAB_LABELS[t]}
+              </button>
+            ))}
+          </div>
+          <div className="grid gap-2 sm:grid-cols-2 lg:flex lg:shrink-0">
+            <Link
+              href="/"
+              target="_blank"
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-white/10 px-4 text-sm text-slate-300 hover:bg-white/5"
             >
-              {TAB_LABELS[t]}
-            </button>
-          ))}
-        </div>
-        <div className="flex gap-2">
-          <Link
-            href="/"
-            target="_blank"
-            className="inline-flex h-10 items-center gap-2 rounded-lg border border-white/10 px-4 text-sm text-slate-300 hover:bg-white/5"
-          >
-            <ExternalLink className="size-4" />
-            Preview homepage
-          </Link>
-          <Button onClick={() => void saveCms()} disabled={saving}>
-            <Save className="mr-2 size-4" />
-            {saving ? "Saving..." : "Save all"}
-          </Button>
+              <ExternalLink className="size-4" />
+              Preview homepage
+            </Link>
+            <Button className="justify-center" onClick={() => void saveCms()} disabled={saving}>
+              <Save className="mr-2 size-4" />
+              {saving ? "Saving..." : "Save all"}
+            </Button>
+          </div>
         </div>
       </div>
 

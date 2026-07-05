@@ -11,6 +11,7 @@ import { apiFetch } from "@/lib/api/client";
 import { AdminActionFeedback } from "@/components/admin/action-feedback";
 import { AdminActionDialog, type AdminDialogConfig } from "@/components/admin/action-dialog";
 import { AdminKpiCard } from "@/components/admin/kpi-card";
+import { AdminTabStrip } from "@/components/admin/ui/admin-ui";
 import { BarChart, MetricRow } from "@/components/admin/charts";
 import { Eye, Users, Wallet, FileText, ShieldCheck } from "lucide-react";
 
@@ -305,20 +306,14 @@ export function AgentManagementHub() {
           </div>
         </div>
       )}
-      <div className="flex flex-wrap gap-2">
-        {(["overview", "applications", "leads", "commissions", "territories", "documents", "branches", "settings"] as const).map((t) => (
-          <button
-            key={t}
-            type="button"
-            onClick={() => setSubTab(t)}
-            className={`rounded-lg px-4 py-2 text-sm font-medium capitalize ${
-              subTab === t ? "bg-emerald-600 text-white" : "bg-slate-800 text-slate-300"
-            }`}
-          >
-            {t}
-          </button>
-        ))}
-      </div>
+      <AdminTabStrip
+        active={subTab}
+        onChange={(id) => setSubTab(id as typeof subTab)}
+        tabs={["overview", "applications", "leads", "commissions", "territories", "documents", "branches", "settings"].map((id) => ({
+          id,
+          label: id[0].toUpperCase() + id.slice(1),
+        }))}
+      />
 
       {subTab === "overview" && (
         <>
