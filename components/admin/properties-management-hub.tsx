@@ -243,7 +243,7 @@ export function PropertiesManagementHub() {
       {selected.size > 0 && (
         <AdminToolbar>
           <span className="text-sm font-medium text-cyan-200">{selected.size} listings selected</span>
-          <div className="flex flex-wrap gap-2">
+          <div className="grid gap-2 sm:flex sm:flex-wrap">
             <Button onClick={() => void listingAction("approve")}><CheckCircle2 className="size-4" /> Approve</Button>
             <Button variant="secondary" onClick={() => void listingAction("reject")}><XCircle className="size-4" /> Reject</Button>
             <Button variant="secondary" onClick={() => void listingAction("verify")}><ShieldCheck className="size-4" /> Verify</Button>
@@ -350,7 +350,7 @@ export function PropertiesManagementHub() {
                     </td>
                     <td className="px-3 py-3">
                       <p className="font-medium text-white">{listing.title}</p>
-                      <p className="text-xs text-slate-500">{listing.suburb}, {listing.city} · ${listing.price}</p>
+                      <p className="text-xs text-slate-500">{listing.suburb}, {listing.city} - ${listing.price}</p>
                       <div className="mt-1 flex gap-1">
                         {listing.verified && <span className="rounded bg-emerald-500/20 px-1.5 text-xs text-emerald-300">Verified</span>}
                         {listing.featured && <span className="rounded bg-amber-500/20 px-1.5 text-xs text-amber-300">Featured</span>}
@@ -359,7 +359,7 @@ export function PropertiesManagementHub() {
                     <td className="px-3 py-3 text-slate-300">{listing.type}</td>
                     <td className="px-3 py-3"><StatusBadge status={listing.status} /></td>
                     <td className="px-3 py-3 text-xs text-slate-400">{listing.ownerName}</td>
-                    <td className="px-3 py-3 text-xs text-slate-500">{listing.views}v · {listing.enquiries}e</td>
+                    <td className="px-3 py-3 text-xs text-slate-500">{listing.views}v - {listing.enquiries}e</td>
                   </tr>
                 ))}
               </tbody>

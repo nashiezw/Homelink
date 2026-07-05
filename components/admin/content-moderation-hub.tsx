@@ -80,11 +80,11 @@ export function ContentModerationHub({
             <p className="text-xs font-semibold uppercase text-amber-400">{item.type}</p>
             <p className="font-medium text-white">{item.title}</p>
             <p className="text-xs text-slate-500">
-              {item.reason} · {item.priority} · {item.status}
+              {item.reason} - {item.priority} - {item.status}
             </p>
             <p className="text-xs text-slate-600">{new Date(item.createdAt).toLocaleString()}</p>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="grid gap-2 sm:flex sm:flex-wrap">
             <Button variant="secondary" onClick={() => setSelected(item)}>View details</Button>
             <Button onClick={() => decide("resolve_moderation", item)}>Resolve</Button>
             <Button variant="secondary" onClick={() => decide("dismiss_moderation", item)}>

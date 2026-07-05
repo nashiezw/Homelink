@@ -234,7 +234,9 @@ export function PaymentsAdminHub() {
               ))}
             </div>
             <div className="flex gap-2">
-              <Button variant="secondary" onClick={() => void load()}><RefreshCw className="size-4" /></Button>
+              <Button variant="secondary" onClick={() => void load()} aria-label="Refresh payment ledger">
+                <RefreshCw className="size-4" />
+              </Button>
               <Button onClick={() => setShowManualForm(!showManualForm)}><Plus className="size-4" /> Record manual</Button>
             </div>
           </div>
@@ -344,14 +346,14 @@ export function PaymentsAdminHub() {
                     )}
                   </div>
                   {["MANUAL_REVIEW", "AWAITING_PROOF", "PENDING"].includes(selected.status) && (
-                    <div className="flex flex-wrap gap-2">
+                    <div className="grid gap-2 sm:flex sm:flex-wrap">
                       <Button onClick={() => void paymentAction("approve")}><CheckCircle2 className="size-4" /> Approve</Button>
                       <Button variant="secondary" onClick={() => void paymentAction("reject")}>Reject</Button>
                       <Button variant="secondary" onClick={() => void paymentAction("request_proof")}>Request proof</Button>
                     </div>
                   )}
                   {selected.status === "PAID" && (
-                    <div className="flex flex-wrap gap-2">
+                    <div className="grid gap-2 sm:flex sm:flex-wrap">
                       <Button variant="secondary" onClick={() => downloadReceipt(selected)}><Download className="size-4" /> Receipt</Button>
                       <Button variant="secondary" onClick={() => void paymentAction("refund")}>Refund</Button>
                     </div>
@@ -371,8 +373,8 @@ export function PaymentsAdminHub() {
             {data.escrowHolds.map((e) => (
               <div key={e.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/[0.06] bg-slate-950/50 p-4">
                 <div>
-                  <p className="font-medium text-white">${e.amount} — {e.userName}</p>
-                  <p className="text-xs text-slate-500">{e.listingTitle ?? "General hold"} · {e.holdReason}</p>
+                  <p className="font-medium text-white">${e.amount} - {e.userName}</p>
+                  <p className="text-xs text-slate-500">{e.listingTitle ?? "General hold"} - {e.holdReason}</p>
                 </div>
                 <div className="flex items-center gap-2">
                   <AdminStatusBadge status={e.status} variant={e.status === "HELD" ? "warning" : e.status === "DISPUTED" ? "danger" : "success"} />
@@ -395,8 +397,8 @@ export function PaymentsAdminHub() {
             {data.chargebacks.map((c) => (
               <div key={c.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/[0.06] bg-slate-950/50 p-4">
                 <div>
-                  <p className="font-medium text-white">${c.amount} — {c.userName}</p>
-                  <p className="text-xs text-slate-500">{c.reason} · Due {new Date(c.dueDate).toLocaleDateString()}</p>
+                  <p className="font-medium text-white">${c.amount} - {c.userName}</p>
+                  <p className="text-xs text-slate-500">{c.reason} - Due {new Date(c.dueDate).toLocaleDateString()}</p>
                 </div>
                 <div className="flex items-center gap-2">
                   <AdminStatusBadge status={c.status} variant={c.status === "UNDER_REVIEW" ? "warning" : "default"} />

@@ -69,10 +69,10 @@ export function AuditLogExplorer() {
             {data.entries.map((entry) => (
               <div key={entry.id} className="rounded-lg bg-slate-950/50 px-3 py-2.5 text-sm">
                 <p className="font-medium text-white">
-                  {entry.actor} — {entry.action.replace(/_/g, " ")}
+                  {entry.actor} - {entry.action.replace(/_/g, " ")}
                 </p>
                 <p className="text-xs text-slate-500">
-                  Target: {entry.target} · {new Date(entry.createdAt).toLocaleString()}
+                  Target: {entry.target} - {new Date(entry.createdAt).toLocaleString()}
                 </p>
               </div>
             ))}

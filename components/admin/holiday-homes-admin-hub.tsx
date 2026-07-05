@@ -198,7 +198,7 @@ export function HolidayHomesAdminHub() {
               <div key={listing.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-slate-950/50 px-4 py-3 text-sm">
                 <div>
                   <p className="font-medium text-white">{listing.title}</p>
-                  <p className="text-slate-400">{listing.city} · ${listing.nightlyRate}/night · {listing.status}</p>
+                  <p className="text-slate-400">{listing.city} - ${listing.nightlyRate}/night - {listing.status}</p>
                 </div>
                 <div className="flex gap-2">
                   {listing.status === "PENDING_REVIEW" && (
@@ -238,7 +238,7 @@ export function HolidayHomesAdminHub() {
               <div key={e.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/[0.06] bg-slate-950/50 p-3">
                 <div>
                   <p className="font-medium text-white">{e.listingTitle}</p>
-                  <p className="text-sm text-slate-400">{e.guestName} · {e.checkIn} → {e.checkOut}</p>
+                  <p className="text-sm text-slate-400">{e.guestName} - {e.checkIn} to {e.checkOut}</p>
                 </div>
                 <select
                   className="rounded-lg border border-white/10 bg-slate-900 px-2 py-1 text-xs text-white"
@@ -266,8 +266,8 @@ export function HolidayHomesAdminHub() {
           <div className="space-y-2">
             {(data.seasonalRates ?? []).map((s) => (
               <div key={s.id} className="rounded-xl border border-white/[0.06] bg-slate-950/50 p-4">
-                <p className="font-semibold text-white">{s.listingTitle} — {s.label}</p>
-                <p className="text-sm text-slate-400">${s.nightlyRate}/night · Min {s.minStay} nights</p>
+                <p className="font-semibold text-white">{s.listingTitle} - {s.label}</p>
+                <p className="text-sm text-slate-400">${s.nightlyRate}/night - Min {s.minStay} nights</p>
                 <p className="text-xs text-slate-600">{s.startDate} to {s.endDate}</p>
               </div>
             ))}
@@ -281,7 +281,7 @@ export function HolidayHomesAdminHub() {
             {(data.refundRequests ?? []).map((r) => (
               <div key={r.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/[0.06] bg-slate-950/50 p-4">
                 <div>
-                  <p className="font-medium text-white">${r.amount} — {r.guestName}</p>
+                  <p className="font-medium text-white">${r.amount} - {r.guestName}</p>
                   <p className="text-sm text-slate-400">{r.listingTitle}</p>
                   <p className="text-xs text-slate-500">{r.reason}</p>
                 </div>

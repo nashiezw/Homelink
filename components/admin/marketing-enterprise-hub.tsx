@@ -204,8 +204,8 @@ export function MarketingEnterpriseHub() {
               <div key={c.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/[0.06] bg-slate-950/50 p-3">
                 <div>
                   <p className="font-mono font-bold text-emerald-300">{c.code}</p>
-                  <p className="text-sm text-slate-400">{c.label} · {c.discountType === "percent" ? `${c.discountValue}%` : `$${c.discountValue}`} off</p>
-                  <p className="text-xs text-slate-600">{c.usedCount}/{c.maxUses} uses · {c.appliesTo}</p>
+                  <p className="text-sm text-slate-400">{c.label} - {c.discountType === "percent" ? `${c.discountValue}%` : `$${c.discountValue}`} off</p>
+                  <p className="text-xs text-slate-600">{c.usedCount}/{c.maxUses} uses - {c.appliesTo}</p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   <AdminStatusBadge status={c.active ? "active" : "inactive"} variant={c.active ? "success" : "muted"} />
@@ -235,7 +235,7 @@ export function MarketingEnterpriseHub() {
               <div key={c.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/[0.06] bg-slate-950/50 p-4">
                 <div>
                   <p className="font-semibold text-white">{c.name}</p>
-                  <p className="text-sm text-slate-400">{c.channel} · {c.audience} · {new Date(c.scheduledAt).toLocaleString()}</p>
+                  <p className="text-sm text-slate-400">{c.channel} - {c.audience} - {new Date(c.scheduledAt).toLocaleString()}</p>
                   <p className="text-xs text-slate-500">{c.subject}</p>
                 </div>
                 <div className="flex items-center gap-2">

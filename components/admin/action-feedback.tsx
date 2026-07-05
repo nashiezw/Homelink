@@ -58,7 +58,7 @@ export function AdminActionFeedback({
             ))}
           </div>
         )}
-        <div className="flex justify-end gap-2 border-t border-white/10 p-4">
+        <div className="grid gap-2 sm:flex sm:justify-end border-t border-white/10 p-4">
           <Button onClick={onClose}>Done</Button>
         </div>
       </div>

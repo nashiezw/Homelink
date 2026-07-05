@@ -1,6 +1,6 @@
 "use client";
 
-import type { LucideIcon } from "lucide-react";
+import { X, type LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
@@ -346,7 +346,7 @@ export function AdminPagination({
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/[0.06] px-4 py-3 text-sm text-slate-400">
       <p>
-        Showing <span className="font-medium text-white">{from}–{to}</span> of{" "}
+        Showing <span className="font-medium text-white">{from}-{to}</span> of{" "}
         <span className="font-medium text-white">{total}</span>
       </p>
       <div className="flex max-w-full items-center gap-1 overflow-x-auto [scrollbar-width:none]">
@@ -354,7 +354,8 @@ export function AdminPagination({
           type="button"
           disabled={page <= 1}
           onClick={() => onPageChange(page - 1)}
-          className="rounded-lg border border-white/10 px-3 py-1.5 disabled:opacity-40"
+          className="rounded-lg border border-white/10 px-3 py-1.5 transition hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
+          aria-label="Go to previous page"
         >
           Prev
         </button>
@@ -365,6 +366,7 @@ export function AdminPagination({
               key={p}
               type="button"
               onClick={() => onPageChange(p)}
+              aria-current={page === p ? "page" : undefined}
               className={cn(
                 "min-w-9 rounded-lg px-2 py-1.5 text-sm",
                 page === p ? "bg-emerald-600 text-white" : "border border-white/10 hover:bg-white/5",
@@ -378,7 +380,8 @@ export function AdminPagination({
           type="button"
           disabled={page >= pages}
           onClick={() => onPageChange(page + 1)}
-          className="rounded-lg border border-white/10 px-3 py-1.5 disabled:opacity-40"
+          className="rounded-lg border border-white/10 px-3 py-1.5 transition hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
+          aria-label="Go to next page"
         >
           Next
         </button>
@@ -476,54 +479,60 @@ export function AdminDataTable<T extends { id?: string }>({
       </div>
 
       <div className="hidden overflow-x-auto md:block">
-      <table className="w-full min-w-[640px] text-left text-sm">
-        <thead className="border-b border-white/[0.08] bg-slate-950/40 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-          <tr>
-            {selectable && (
-              <th className="w-10 px-4 py-3">
-                <input type="checkbox" checked={allSelected} onChange={onToggleSelectAll} />
-              </th>
-            )}
-            {columns.map((col) => (
-              <th key={col.key} className={cn("px-4 py-3", col.className)}>
-                {col.header}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row, idx) => {
-            const rowId = row.id ?? String(idx);
-            const active = selectedId === rowId;
-            return (
-              <tr
-                key={rowId}
-                onClick={() => onRowClick?.(row)}
-                className={cn(
-                  "border-b border-white/[0.04] transition",
-                  onRowClick && "cursor-pointer hover:bg-white/[0.03]",
-                  active && "bg-emerald-500/[0.08]",
-                )}
-              >
-                {selectable && (
-                  <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                    <input
-                      type="checkbox"
-                      checked={selectedIds?.has(rowId)}
-                      onChange={() => onToggleSelect?.(rowId)}
-                    />
-                  </td>
-                )}
-                {columns.map((col) => (
-                  <td key={col.key} className={cn("px-4 py-3", col.className)}>
-                    {col.render(row)}
-                  </td>
-                ))}
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+        <table className="w-full min-w-[640px] text-left text-sm">
+          <thead className="border-b border-white/[0.08] bg-slate-950/40 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+            <tr>
+              {selectable && (
+                <th className="w-10 px-4 py-3">
+                  <input
+                    type="checkbox"
+                    checked={allSelected}
+                    onChange={onToggleSelectAll}
+                    aria-label="Select all rows"
+                  />
+                </th>
+              )}
+              {columns.map((col) => (
+                <th key={col.key} className={cn("px-4 py-3", col.className)}>
+                  {col.header}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row, idx) => {
+              const rowId = row.id ?? String(idx);
+              const active = selectedId === rowId;
+              return (
+                <tr
+                  key={rowId}
+                  onClick={() => onRowClick?.(row)}
+                  className={cn(
+                    "border-b border-white/[0.04] transition",
+                    onRowClick && "cursor-pointer hover:bg-white/[0.03]",
+                    active && "bg-emerald-500/[0.08]",
+                  )}
+                >
+                  {selectable && (
+                    <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        checked={selectedIds?.has(rowId)}
+                        onChange={() => onToggleSelect?.(rowId)}
+                        aria-label={`Select row ${idx + 1}`}
+                      />
+                    </td>
+                  )}
+                  {columns.map((col) => (
+                    <td key={col.key} className={cn("px-4 py-3", col.className)}>
+                      {col.render(row)}
+                    </td>
+                  ))}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       </div>
     </>
   );
@@ -555,7 +564,7 @@ export function AdminConfirmDialog({
       >
         <h3 className="text-lg font-semibold text-white">{title}</h3>
         {description && <p className="mt-2 text-sm text-slate-400">{description}</p>}
-        <div className="mt-6 flex justify-end gap-2">
+        <div className="mt-6 grid gap-2 sm:flex sm:justify-end">
           <button type="button" onClick={onCancel} className="rounded-lg border border-white/10 px-4 py-2 text-sm text-slate-300">
             Cancel
           </button>
@@ -604,8 +613,13 @@ export function AdminDrawer({
               <h2 className="break-words text-lg font-semibold text-white">{title}</h2>
               {description && <p className="mt-1 text-sm text-slate-500">{description}</p>}
             </div>
-            <button type="button" onClick={onClose} className="rounded-lg p-2 text-slate-400 hover:bg-white/5">
-              ✕
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-lg p-2 text-slate-400 transition hover:bg-white/5 hover:text-white"
+              aria-label="Close drawer"
+            >
+              <X className="size-4" />
             </button>
           </div>
         </div>

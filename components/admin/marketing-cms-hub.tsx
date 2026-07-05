@@ -288,7 +288,7 @@ export function MarketingCmsHub() {
                 <div key={listing.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-slate-950/50 px-4 py-3 text-sm">
                   <div>
                     <p className="font-medium text-white">{listing.title}</p>
-                    <p className="text-slate-400">{listing.city} · trust {listing.trustScore}</p>
+                    <p className="text-slate-400">{listing.city} - trust {listing.trustScore}</p>
                   </div>
                   <div className="flex gap-2">
                     <Button variant="secondary" className="h-9" onClick={() => void featureListing(listing.id, !listing.featured)}>
@@ -466,9 +466,32 @@ export function MarketingCmsHub() {
                     Published on homepage
                   </label>
                   <div className="flex gap-1">
-                    <button type="button" className="rounded p-1 text-slate-400 hover:bg-white/5" onClick={() => moveTestimonial(cms, setCms, index, -1)}><ArrowUp className="size-4" /></button>
-                    <button type="button" className="rounded p-1 text-slate-400 hover:bg-white/5" onClick={() => moveTestimonial(cms, setCms, index, 1)}><ArrowDown className="size-4" /></button>
-                    <button type="button" className="rounded p-1 text-red-400 hover:bg-red-500/10" onClick={() => setCms({ ...cms, testimonials: cms.testimonials.filter((x) => x.id !== t.id) })}><Trash2 className="size-4" /></button>
+                    <button
+                      type="button"
+                      className="rounded p-1 text-slate-400 transition hover:bg-white/5 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+                      onClick={() => moveTestimonial(cms, setCms, index, -1)}
+                      disabled={index === 0}
+                      aria-label={`Move ${t.name} testimonial up`}
+                    >
+                      <ArrowUp className="size-4" />
+                    </button>
+                    <button
+                      type="button"
+                      className="rounded p-1 text-slate-400 transition hover:bg-white/5 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+                      onClick={() => moveTestimonial(cms, setCms, index, 1)}
+                      disabled={index === cms.testimonials.length - 1}
+                      aria-label={`Move ${t.name} testimonial down`}
+                    >
+                      <ArrowDown className="size-4" />
+                    </button>
+                    <button
+                      type="button"
+                      className="rounded p-1 text-red-400 transition hover:bg-red-500/10 hover:text-red-300"
+                      onClick={() => setCms({ ...cms, testimonials: cms.testimonials.filter((x) => x.id !== t.id) })}
+                      aria-label={`Remove ${t.name} testimonial`}
+                    >
+                      <Trash2 className="size-4" />
+                    </button>
                   </div>
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2">
@@ -518,7 +541,14 @@ export function MarketingCmsHub() {
                     }} />
                     Enabled
                   </label>
-                  <button type="button" className="text-red-400" onClick={() => setCms({ ...cms, banners: cms.banners.filter((b) => b.id !== banner.id) })}><Trash2 className="size-4" /></button>
+                  <button
+                    type="button"
+                    className="rounded p-1 text-red-400 transition hover:bg-red-500/10 hover:text-red-300"
+                    onClick={() => setCms({ ...cms, banners: cms.banners.filter((b) => b.id !== banner.id) })}
+                    aria-label={`Remove ${banner.title} banner`}
+                  >
+                    <Trash2 className="size-4" />
+                  </button>
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2">
                   <Field label="Title" value={banner.title} onChange={(v) => { const banners = [...cms.banners]; banners[index] = { ...banner, title: v }; setCms({ ...cms, banners }); }} />

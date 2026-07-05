@@ -136,7 +136,7 @@ export function AdminActionDialog({ config, onClose }: AdminActionDialogProps) {
           </div>
         )}
 
-        <div className="flex flex-wrap justify-end gap-2 border-t border-white/10 p-4">
+        <div className="grid gap-2 sm:flex sm:flex-wrap sm:justify-end border-t border-white/10 p-4">
           <Button variant="secondary" onClick={onClose} disabled={submitting}>
             {config.cancelLabel ?? "Cancel"}
           </Button>

@@ -41,7 +41,7 @@ export function TenancyDisputesHub() {
     });
     setResolving(null);
     if (result.data) {
-      showToast(resolution === "upheld" ? "Dispute upheld — record stays visible." : "Record removed from public history.");
+      showToast(resolution === "upheld" ? "Dispute upheld - record stays visible." : "Record removed from public history.");
       void load();
     } else {
       showToast(result.error?.message ?? "Could not resolve dispute.", "error");
@@ -82,7 +82,7 @@ export function TenancyDisputesHub() {
                   <p className="mt-1 text-sm text-slate-400">Reported by {d.reportedByName}</p>
                   <p className="mt-2 text-sm text-slate-300">{d.details}</p>
                   <p className="mt-2 text-xs text-slate-500">
-                    Tenancy {d.tenancyId} · {d.status} · {new Date(d.createdAt).toLocaleString()}
+                    Tenancy {d.tenancyId} - {d.status} - {new Date(d.createdAt).toLocaleString()}
                   </p>
                 </div>
                 <span className="rounded-full bg-amber-500/20 px-2 py-1 text-xs text-amber-300">{d.status}</span>
@@ -97,7 +97,7 @@ export function TenancyDisputesHub() {
                     onChange={(e) => setNotes((prev) => ({ ...prev, [d.id]: e.target.value }))}
                     className="w-full rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white"
                   />
-                  <div className="flex flex-wrap gap-2">
+                  <div className="grid gap-2 sm:flex sm:flex-wrap">
                     <Button
                       disabled={resolving === d.id}
                       onClick={() => void resolve(d.id, "upheld")}

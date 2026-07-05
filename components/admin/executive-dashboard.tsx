@@ -67,7 +67,7 @@ export function ExecutiveDashboard({
 
   const growthData = userGrowth.length
     ? userGrowth
-    : [{ label: "—", value: o.users.registrationsToday }];
+    : [{ label: "-", value: o.users.registrationsToday }];
 
   const healthColor =
     o.systemHealth === "healthy" ? "text-emerald-400" : o.systemHealth === "degraded" ? "text-amber-400" : "text-red-400";
@@ -218,7 +218,7 @@ export function ExecutiveDashboard({
           <AdminPanel title="Property types" description="Inventory mix">
             <div className="mb-4 flex items-center gap-2 text-slate-400">
               <MapPin className="size-4" />
-              <span className="text-xs">Avg rent ${propertyAnalytics.avgRent} · Avg sale ${propertyAnalytics.avgSale}</span>
+              <span className="text-xs">Avg rent ${propertyAnalytics.avgRent} - Avg sale ${propertyAnalytics.avgSale}</span>
             </div>
             <DonutChart data={propertyAnalytics.byType.filter((d) => d.value > 0)} />
           </AdminPanel>

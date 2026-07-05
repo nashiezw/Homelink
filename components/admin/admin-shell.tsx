@@ -297,7 +297,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
           <p className="mt-1 truncate text-sm font-medium text-white">{user.name}</p>
           <p className="truncate text-xs text-slate-500">{user.email}</p>
           {permissions.length > 0 && !permissions.includes("super") && (
-            <p className="mt-2 text-[10px] text-cyan-500/80">RBAC: {permissions.slice(0, 3).join(", ")}{permissions.length > 3 ? "…" : ""}</p>
+            <p className="mt-2 text-[10px] text-cyan-500/80">RBAC: {permissions.slice(0, 3).join(", ")}{permissions.length > 3 ? "..." : ""}</p>
           )}
         </div>
       </div>
@@ -315,7 +315,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
         <div className="flex min-w-0 flex-1 flex-col">
           {summary && (
             <div className="hidden border-b border-white/[0.06] bg-slate-950/50 px-4 py-2 lg:block lg:px-8">
-              <div className="flex flex-wrap gap-2">
+              <div className="grid gap-2 sm:flex sm:flex-wrap">
                 <ExecutivePill label="Pending listings" value={summary.pendingListings} tone="warning" />
                 <ExecutivePill label="Open tickets" value={summary.openTickets} tone="danger" />
                 <ExecutivePill label="Verifications" value={summary.pendingVerification} />

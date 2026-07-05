@@ -60,7 +60,7 @@ export function VerificationQueue({
                 <h3 className="mt-1 text-lg font-semibold text-white">{preview.subject}</h3>
                 <p className="text-sm text-slate-400">{preview.userName} - submitted {new Date(preview.submittedAt).toLocaleString()}</p>
               </div>
-              <div className="flex flex-wrap gap-2">
+              <div className="grid gap-2 sm:flex sm:flex-wrap">
                 <a
                   href={preview.documentUrl}
                   target="_blank"
@@ -93,7 +93,7 @@ export function VerificationQueue({
               <p className="mt-1 font-medium text-white">{item.userName}</p>
               <p className="text-sm text-slate-300">{item.subject}</p>
               <p className="mt-2 text-xs text-slate-500">
-                Priority: {item.priority} · Submitted {new Date(item.submittedAt).toLocaleString()}
+                Priority: {item.priority} - Submitted {new Date(item.submittedAt).toLocaleString()}
               </p>
               {item.documentUrl && (
                 <button

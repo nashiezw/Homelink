@@ -240,9 +240,9 @@ export function UserDirectory() {
     <div className="space-y-6">
       <AdminActionDialog config={dialog} onClose={() => setDialog(null)} />
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <AdminKpiCard label="Total users" value={totals?.totalUsers ?? totals?.total ?? "—"} icon={UserCog} />
-        <AdminKpiCard label="Active today" value={totals?.activeToday ?? "—"} icon={CheckCircle2} tone="success" />
-        <AdminKpiCard label="Premium" value={totals?.premium ?? "—"} icon={Crown} />
+        <AdminKpiCard label="Total users" value={totals?.totalUsers ?? totals?.total ?? "-"} icon={UserCog} />
+        <AdminKpiCard label="Active today" value={totals?.activeToday ?? "-"} icon={CheckCircle2} tone="success" />
+        <AdminKpiCard label="Premium" value={totals?.premium ?? "-"} icon={Crown} />
         <AdminKpiCard label="Suspended / blocked" value={(totals?.suspended ?? 0) + (totals?.blocked ?? 0)} icon={Ban} tone="warning" />
       </div>
 
@@ -258,7 +258,7 @@ export function UserDirectory() {
           onChange={setSort}
           options={[
             { value: "recent", label: "Last login" },
-            { value: "name", label: "Name A–Z" },
+            { value: "name", label: "Name A-Z" },
             { value: "score", label: "Performance score" },
           ]}
         />
@@ -267,7 +267,7 @@ export function UserDirectory() {
       {bulkSelected.size > 0 && (
         <AdminToolbar>
           <p className="text-sm font-medium text-emerald-200">{bulkSelected.size} users selected</p>
-          <div className="flex flex-wrap gap-2">
+          <div className="grid gap-2 sm:flex sm:flex-wrap">
             <Button variant="secondary" onClick={() => setNotifyOpen(true)}>
               <Mail className="size-4" /> Notify selected
             </Button>
@@ -381,7 +381,7 @@ export function UserDirectory() {
       >
         {selected && (
           <div className="space-y-6">
-            <div className="flex flex-wrap gap-2">
+            <div className="grid gap-2 sm:flex sm:flex-wrap">
               <AdminStatusBadge status={selected.accountStatus} variant={selected.accountStatus === "ACTIVE" ? "success" : "warning"} />
               {selected.verification.identity === "VERIFIED" && <AdminStatusBadge status="verified" variant="info" />}
               {selected.premium && <AdminStatusBadge status="premium" variant="info" />}
@@ -406,11 +406,11 @@ export function UserDirectory() {
                   <Metric label="Revenue" value={`$${selected.revenue ?? 0}`} />
                   <Metric label="Performance" value={selected.performanceScore} />
                   <Metric label="Warnings" value={selected.warnings} />
-                  <Metric label="City" value={selected.city ?? "—"} />
+                  <Metric label="City" value={selected.city ?? "-"} />
                 </div>
                 <div className="space-y-2">
                   <p className="text-xs font-semibold uppercase text-slate-500">Admin actions</p>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="grid gap-2 sm:flex sm:flex-wrap">
                     {selected.accountStatus !== "ACTIVE" && (
                       <Button onClick={() => void runAction(selected.id, "activate")}>Activate</Button>
                     )}
@@ -462,7 +462,7 @@ export function UserDirectory() {
                   detail?.listings.map((l) => (
                     <div key={l.id} className="rounded-xl border border-white/[0.06] bg-slate-950/50 p-3 text-sm">
                       <p className="font-medium text-white">{l.title}</p>
-                      <p className="text-xs text-slate-500">{l.status} · ${l.price ?? 0} · {l.views ?? 0} views</p>
+                      <p className="text-xs text-slate-500">{l.status} - ${l.price ?? 0} - {l.views ?? 0} views</p>
                     </div>
                   ))
                 )}
@@ -478,7 +478,7 @@ export function UserDirectory() {
                     <div key={p.id} className="flex items-center justify-between rounded-xl border border-white/[0.06] bg-slate-950/50 p-3 text-sm">
                       <div>
                         <p className="font-medium text-white">${p.amount}</p>
-                        <p className="text-xs text-slate-500">{p.plan ?? "payment"} · {p.status}</p>
+                        <p className="text-xs text-slate-500">{p.plan ?? "payment"} - {p.status}</p>
                       </div>
                       <Wallet className="size-4 text-slate-500" />
                     </div>
@@ -497,7 +497,7 @@ export function UserDirectory() {
                       <History className="mt-0.5 size-4 shrink-0 text-slate-500" />
                       <div>
                         <p className="text-slate-200">{a.action.replace(/_/g, " ")}</p>
-                        <p className="text-xs text-slate-500">{a.actorName} · {new Date(a.createdAt).toLocaleString()}</p>
+                        <p className="text-xs text-slate-500">{a.actorName} - {new Date(a.createdAt).toLocaleString()}</p>
                       </div>
                     </div>
                   ))
@@ -525,7 +525,7 @@ export function UserDirectory() {
               className="mt-2 w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white"
               placeholder="Message body..."
             />
-            <div className="mt-4 flex justify-end gap-2">
+            <div className="mt-4 grid gap-2 sm:flex sm:justify-end">
               <Button variant="secondary" onClick={() => setNotifyOpen(false)}>Cancel</Button>
               <Button onClick={() => void sendNotify()}>
                 <MessageSquare className="size-4" /> Send

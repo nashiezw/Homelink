@@ -207,11 +207,11 @@ export function RoommatesAdminHub() {
                       <div>
                         <p className="font-semibold text-white">{profile.userName}</p>
                         <p className="text-sm text-slate-400">
-                          {profile.lookingFor === "room" ? "Looking for a room" : "Looking for a roommate"} · $
-                          {profile.budgetMin}–{profile.budgetMax}
+                          {profile.lookingFor === "room" ? "Looking for a room" : "Looking for a roommate"} - $
+                          {profile.budgetMin}-{profile.budgetMax}
                         </p>
                         <p className="text-xs text-slate-500">
-                          {profile.suburb || profile.userCity} · {profile.userEmail}
+                          {profile.suburb || profile.userCity} - {profile.userEmail}
                         </p>
                       </div>
                     </div>
@@ -242,7 +242,7 @@ export function RoommatesAdminHub() {
             <p className="text-sm text-slate-500">Select a seeker to verify their profile, edit their bio, or suspend the account.</p>
           ) : (
             <div className="space-y-4">
-              <div className="flex flex-wrap gap-2">
+              <div className="grid gap-2 sm:flex sm:flex-wrap">
                 <Button onClick={() => void action("verify")}>Verify profile</Button>
                 <Button variant="secondary" onClick={() => void action("activate")}>Activate</Button>
                 <Button

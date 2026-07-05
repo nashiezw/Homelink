@@ -22,7 +22,7 @@ export function PlatformSettingsPanel({ defaultTab = "general" }: { defaultTab?:
   const [me, setMe] = useState<AdminMe | null>(null);
   const [tab, setTab] = useState<SettingsTab>(defaultTab);
   const [saving, setSaving] = useState(false);
-  const [testingIntegration, setTestingIntegration] = useState<"smtp" | "maps" | null>(null);
+  const [testingIntegration, setTestingIntegration] = useState<"smtp" | "maps" | "cloudinary" | null>(null);
   const [integrationTestResult, setIntegrationTestResult] = useState<{
     ok: boolean;
     message: string;
@@ -100,7 +100,7 @@ export function PlatformSettingsPanel({ defaultTab = "general" }: { defaultTab?:
     void load();
   }
 
-  async function testIntegration(type: "smtp" | "maps") {
+  async function testIntegration(type: "smtp" | "maps" | "cloudinary") {
     if (!settings) return;
     setTestingIntegration(type);
     setIntegrationTestResult(null);
@@ -150,7 +150,7 @@ export function PlatformSettingsPanel({ defaultTab = "general" }: { defaultTab?:
             AI toggles and security policies are managed in dedicated ops hubs to avoid duplication.
           </p>
         </div>
-        <div className="flex flex-wrap gap-2 sm:justify-end">
+        <div className="grid gap-2 sm:flex sm:flex-wrap sm:justify-end">
           <Link href="/dashboard/admin?tab=ai" className="inline-flex items-center gap-1 rounded-lg bg-white/10 px-3 py-2 text-sm text-white hover:bg-white/15">
             AI Control <ExternalLink className="size-3.5" />
           </Link>
@@ -266,7 +266,7 @@ export function PlatformSettingsPanel({ defaultTab = "general" }: { defaultTab?:
       {tab === "integrations" && (
         <div className="space-y-4">
           <div className="space-y-3 rounded-xl border border-white/10 bg-slate-950/40 p-4">
-            <div className="grid gap-3 lg:grid-cols-[minmax(220px,1fr)_auto_auto] lg:items-end">
+            <div className="grid gap-3 lg:grid-cols-[minmax(220px,1fr)_auto_auto_auto] lg:items-end">
               <Input
                 label="SMTP test recipient email"
                 value={smtpTestEmail}
@@ -278,6 +278,9 @@ export function PlatformSettingsPanel({ defaultTab = "general" }: { defaultTab?:
               </Button>
               <Button className="w-full whitespace-nowrap lg:w-auto" variant="secondary" onClick={() => void testIntegration("maps")} disabled={testingIntegration !== null}>
                 <TestTube2 className="size-4" /> {testingIntegration === "maps" ? "Testing Maps..." : "Test Maps key"}
+              </Button>
+              <Button className="w-full whitespace-nowrap lg:w-auto" variant="secondary" onClick={() => void testIntegration("cloudinary")} disabled={testingIntegration !== null}>
+                <TestTube2 className="size-4" /> {testingIntegration === "cloudinary" ? "Testing Cloudinary..." : "Test Cloudinary"}
               </Button>
             </div>
             {integrationTestResult && (
@@ -448,7 +451,12 @@ function GeoEditor({
           <div key={`${province.name}-${pIndex}`} className="rounded-xl border border-white/10 bg-slate-950/50 p-4">
             <div className="mb-3 flex items-center gap-2">
               <Input label="Province" value={province.name} onChange={(v) => updateProvince(pIndex, { name: v })} />
-              <button type="button" className="mt-5 rounded p-2 text-red-400 hover:bg-white/5" onClick={() => onGeoChange(geo.filter((_, i) => i !== pIndex))}>
+              <button
+                type="button"
+                className="mt-5 rounded p-2 text-red-400 transition hover:bg-red-500/10 hover:text-red-300"
+                onClick={() => onGeoChange(geo.filter((_, i) => i !== pIndex))}
+                aria-label={`Remove ${province.name} province`}
+              >
                 <Trash2 className="size-4" />
               </button>
             </div>
@@ -600,7 +608,7 @@ function RbacEditor({
               <div key={admin.id} className="rounded-lg border border-white/10 p-3">
                 <p className="font-medium text-white">{admin.name}</p>
                 <p className="text-xs text-slate-500">{admin.email}</p>
-                <div className="mt-2 flex flex-wrap gap-2">
+                <div className="mt-2 grid gap-2 sm:flex sm:flex-wrap">
                   {roles.map(([key, role]) => (
                     <label key={key} className="inline-flex items-center gap-1 rounded-full bg-white/5 px-2 py-1 text-xs text-slate-300">
                       <input

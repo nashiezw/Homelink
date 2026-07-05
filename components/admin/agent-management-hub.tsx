@@ -284,7 +284,7 @@ export function AgentManagementHub() {
                   {documentPreview.uploadedAt ? ` - uploaded ${new Date(documentPreview.uploadedAt).toLocaleDateString()}` : ""}
                 </p>
               </div>
-              <div className="flex flex-wrap gap-2">
+              <div className="grid gap-2 sm:flex sm:flex-wrap">
                 <a
                   href={documentPreview.url}
                   target="_blank"
@@ -333,7 +333,7 @@ export function AgentManagementHub() {
             <section className="rounded-xl border border-white/10 bg-slate-900/60 p-5">
               <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-slate-400">Top agents</h3>
               {analytics.topAgents.map((a) => (
-                <MetricRow key={a.id} label={a.name} value={`${a.deals} deals · $${a.revenue.toFixed(0)}`} />
+                <MetricRow key={a.id} label={a.name} value={`${a.deals} deals - $${a.revenue.toFixed(0)}`} />
               ))}
             </section>
             <BarChart
@@ -346,8 +346,8 @@ export function AgentManagementHub() {
               {profiles.map((p) => (
                 <div key={p.id} className="rounded-lg border border-white/10 p-4">
                   <p className="font-semibold text-white">{p.userName}</p>
-                  <p className="text-sm text-slate-400">{p.agentIdCode} · {p.level} · {p.status}</p>
-                  <div className="mt-3 flex flex-wrap gap-2">
+                  <p className="text-sm text-slate-400">{p.agentIdCode} - {p.level} - {p.status}</p>
+                  <div className="mt-3 grid gap-2 sm:flex sm:flex-wrap">
                     <Button variant="secondary" onClick={() => void adminAction({ action: "update_profile", userId: p.userId, updates: { level: "GOLD" } })}>
                       Promote to Gold
                     </Button>
@@ -369,10 +369,10 @@ export function AgentManagementHub() {
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <p className="font-semibold text-white">{app.personal.fullName || "Unnamed applicant"}</p>
-                  <p className="text-sm text-slate-400">{app.personal.email} · {app.status.replace(/_/g, " ")}</p>
+                  <p className="text-sm text-slate-400">{app.personal.email} - {app.status.replace(/_/g, " ")}</p>
                   <p className="text-sm text-slate-500">{app.professional.city}, {app.professional.province}</p>
                 </div>
-                <div className="flex flex-wrap gap-2">
+                <div className="grid gap-2 sm:flex sm:flex-wrap">
                   <Button onClick={() => void adminAction({ action: "update_application_status", applicationId: app.id, status: "PENDING_REVIEW" })}>Review</Button>
                   <Button onClick={() => void adminAction({ action: "update_application_status", applicationId: app.id, status: "TRAINING" })}>Send to training</Button>
                   <Button onClick={() => void adminAction({ action: "approve_application", applicationId: app.id })}>Approve</Button>
@@ -437,7 +437,7 @@ export function AgentManagementHub() {
                   {c.payout.method.replace(/_/g, " ")} - {c.payout.reference}
                 </p>
               )}
-              <div className="mt-3 flex flex-wrap gap-2">
+              <div className="mt-3 grid gap-2 sm:flex sm:flex-wrap">
                 {c.status === "PENDING" && (
                   <Button variant="secondary" onClick={() => void adminAction({ action: "approve_commission", commissionId: c.id })}>
                     Approve
@@ -494,7 +494,7 @@ export function AgentManagementHub() {
                     )}
                   </td>
                   <td className="px-4 py-3">
-                    <div className="flex flex-wrap gap-2">
+                    <div className="grid gap-2 sm:flex sm:flex-wrap">
                     {c.status === "PENDING" && (
                       <Button variant="secondary" onClick={() => void adminAction({ action: "approve_commission", commissionId: c.id })}>
                         Approve
@@ -540,8 +540,8 @@ export function AgentManagementHub() {
             {(data.documents ?? []).map((doc) => (
               <div key={doc.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-slate-800/50 px-4 py-3">
                 <div>
-                  <p className="font-medium text-white">{doc.agentName} — {doc.label}</p>
-                  <p className="text-xs text-slate-500">{doc.type} {doc.expiresAt ? `· Expires ${new Date(doc.expiresAt).toLocaleDateString()}` : ""}</p>
+                  <p className="font-medium text-white">{doc.agentName} - {doc.label}</p>
+                  <p className="text-xs text-slate-500">{doc.type} {doc.expiresAt ? `- Expires ${new Date(doc.expiresAt).toLocaleDateString()}` : ""}</p>
                 </div>
                 <div className="flex gap-2">
                   <span className="rounded-full bg-white/10 px-2 py-0.5 text-xs text-slate-300">{doc.status}</span>
@@ -572,7 +572,7 @@ export function AgentManagementHub() {
               <div key={b.id} className="rounded-lg border border-white/10 p-4">
                 <p className="font-semibold text-white">{b.name}</p>
                 <p className="text-sm text-slate-400">{b.city}, {b.province}</p>
-                <p className="text-xs text-slate-500">Manager: {b.managerName} · {b.agentCount} agents</p>
+                <p className="text-xs text-slate-500">Manager: {b.managerName} - {b.agentCount} agents</p>
                 <p className="text-xs text-slate-600">{b.active ? "Active" : "Inactive"}</p>
               </div>
             ))}
@@ -863,7 +863,7 @@ function LeadRow({
         </label>
       </div>
 
-      <div className="mt-3 flex flex-wrap gap-2">
+      <div className="mt-3 grid gap-2 sm:flex sm:flex-wrap">
         <Button
           variant="secondary"
           disabled={!statusChanged}

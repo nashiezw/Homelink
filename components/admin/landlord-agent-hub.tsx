@@ -108,7 +108,7 @@ export function LandlordAgentHub() {
   return (
     <div className="space-y-4">
       <AdminActionDialog config={dialog} onClose={() => setDialog(null)} />
-      <div className="flex flex-wrap gap-2">
+      <div className="grid gap-2 sm:flex sm:flex-wrap">
         <button
           type="button"
           onClick={() => setHubTab("landlords")}
@@ -198,7 +198,7 @@ export function LandlordAgentHub() {
                   <span>Response: ~{landlord.avgResponseMin}m</span>
                   {landlord.complaints > 0 && <span className="text-amber-400">{landlord.complaints} open complaints</span>}
                 </div>
-                <div className="mt-4 flex flex-wrap gap-2">
+                <div className="mt-4 grid gap-2 sm:flex sm:flex-wrap">
                   {landlord.verification.identity !== "VERIFIED" && (
                     <Button onClick={() => void userAction(landlord.id, "verify")}>
                       <ShieldCheck className="size-4" /> Verify
@@ -324,7 +324,7 @@ export function LandlordAgentHub() {
                     ))}
                   </div>
                 )}
-                <div className="mt-4 flex flex-wrap gap-2">
+                <div className="mt-4 grid gap-2 sm:flex sm:flex-wrap">
                   {agency.verificationStatus !== "VERIFIED" && (
                     <Button onClick={() => void agencyAction(agency.id, "verify")}>
                       <ShieldCheck className="size-4" /> Verify

@@ -199,7 +199,7 @@ export function CmsContentHub() {
                     <BookOpen className="mt-1 size-5 text-cyan-400" />
                     <div>
                       <p className="font-semibold text-white">{post.title}</p>
-                      <p className="text-xs text-slate-500">/{post.slug} · {post.author}</p>
+                      <p className="text-xs text-slate-500">/{post.slug} - {post.author}</p>
                       <p className="mt-1 line-clamp-2 text-sm text-slate-400">{post.excerpt}</p>
                     </div>
                   </div>
@@ -237,14 +237,14 @@ export function CmsContentHub() {
           </div>
           {data.faqs.map((faq) => (
             <div key={faq.id} className="mb-3 rounded-xl border border-white/[0.06] bg-slate-950/50 p-4">
-              <div className="flex flex-wrap gap-2">
+              <div className="grid gap-2 sm:flex sm:flex-wrap">
                 <FileQuestion className="size-4 shrink-0 text-emerald-400" />
                 <div className="min-w-0 flex-1">
                   <p className="font-medium text-white">{faq.question}</p>
                   <p className="mt-1 text-sm text-slate-400">{faq.answer}</p>
                   <p className="mt-1 text-xs text-slate-600">{faq.category}</p>
                 </div>
-                <div className="ml-auto flex flex-wrap gap-2">
+                <div className="grid gap-2 sm:ml-auto sm:flex sm:flex-wrap">
                   <AdminStatusBadge status={faq.published ? "published" : "draft"} variant={faq.published ? "success" : "muted"} />
                   <Button variant="secondary" onClick={() => void action("upsert_faq", { faq: { ...faq, published: !faq.published } })}>
                     {faq.published ? "Unpublish" : "Publish"}
@@ -272,9 +272,9 @@ export function CmsContentHub() {
               <div key={m.id} className="rounded-xl border border-white/[0.06] bg-slate-950/50 p-4">
                 <ImageIcon className="mb-2 size-8 text-slate-500" />
                 <p className="truncate font-medium text-white">{m.name}</p>
-                <p className="text-xs text-slate-500">{m.type} · {m.sizeKb} KB</p>
+                <p className="text-xs text-slate-500">{m.type} - {m.sizeKb} KB</p>
                 <p className="text-xs text-cyan-400 truncate">{m.url}</p>
-                <div className="mt-3 flex flex-wrap gap-2">
+                <div className="mt-3 grid gap-2 sm:flex sm:flex-wrap">
                   <a href={m.url} target="_blank" rel="noreferrer" className="inline-flex h-9 items-center gap-2 rounded-lg border border-white/10 px-3 text-xs text-slate-200 hover:bg-white/5">
                     <ExternalLink className="size-3.5" /> Open
                   </a>
@@ -304,7 +304,7 @@ export function CmsContentHub() {
                   </div>
                   <AdminStatusBadge status={page.status} variant={page.status === "published" ? "success" : "muted"} />
                 </div>
-                <div className="mt-4 flex flex-wrap gap-2">
+                <div className="mt-4 grid gap-2 sm:flex sm:flex-wrap">
                   <Button variant="secondary" onClick={() => editLegalPage(page)}>Edit</Button>
                   <Button
                     variant="secondary"

@@ -226,7 +226,7 @@ export function BookingsAdminHub() {
                           <p className="font-semibold text-white">{e.listingTitle}</p>
                           <p className="text-sm text-slate-400">{e.guestName}</p>
                           <p className="mt-1 text-xs text-slate-500">
-                            {e.checkIn} → {e.checkOut} · {e.guests} guests · {e.estimatedNights} nights
+                            {e.checkIn} to {e.checkOut} - {e.guests} guests - {e.estimatedNights} nights
                           </p>
                         </div>
                         <AdminStatusBadge status={e.status} variant={statusVariant(e.status)} />
@@ -258,7 +258,7 @@ export function BookingsAdminHub() {
                 <Metric label="Total" value={`$${selected.estimatedTotal}`} />
                 <Metric label="Submitted" value={new Date(selected.createdAt).toLocaleString()} />
               </div>
-              <div className="flex flex-wrap gap-2">
+              <div className="grid gap-2 sm:flex sm:flex-wrap">
                 {selected.status === "PENDING" && (
                   <>
                     <Button onClick={() => requestStatusUpdate(selected, "ACCEPTED")}>
@@ -276,7 +276,7 @@ export function BookingsAdminHub() {
                 )}
               </div>
               <p className="text-xs text-slate-500">
-                {declined} declined · {accepted} confirmed across all listings
+                {declined} declined - {accepted} confirmed across all listings
               </p>
             </div>
           )}

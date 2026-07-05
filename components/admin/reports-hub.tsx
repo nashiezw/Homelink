@@ -131,7 +131,7 @@ export function ReportsHub() {
                 {preview.totalRows} row{preview.totalRows === 1 ? "" : "s"} generated from live data on {new Date(preview.generatedAt).toLocaleString()}.
               </p>
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="grid gap-2 sm:flex sm:flex-wrap">
               <Button variant="secondary" onClick={() => void download(preview.type, "csv")} disabled={downloading === `${preview.type}-csv`}>
                 <Download className="size-4" /> {downloading === `${preview.type}-csv` ? "Exporting..." : "Download CSV"}
               </Button>
@@ -147,7 +147,7 @@ export function ReportsHub() {
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {filtered.map((report) => (
           <AdminPanel key={report.id} title={report.label} description={report.description}>
-            <div className="flex flex-wrap gap-2">
+            <div className="grid gap-2 sm:flex sm:flex-wrap">
               <Button variant="secondary" onClick={() => void loadPreview(report.id)} disabled={previewing === report.id}>
                 <Search className="size-4" /> {previewing === report.id ? "Loading..." : "Preview"}
               </Button>

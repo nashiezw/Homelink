@@ -266,7 +266,7 @@ export function SupportCrmHub() {
                   {ticket.escalationReason && <p className="mt-2 text-xs text-amber-200">Escalation: {ticket.escalationReason}</p>}
                   {ticket.resolutionNote && <p className="mt-2 text-xs text-emerald-200">Resolution: {ticket.resolutionNote}</p>}
                   <p className="mt-1 text-sm text-slate-400">
-                    {ticket.userName} · {ticket.assignee} · {new Date(ticket.createdAt).toLocaleString()}
+                    {ticket.userName} - {ticket.assignee} - {new Date(ticket.createdAt).toLocaleString()}
                   </p>
                   {ticket.body && <p className="mt-3 text-sm leading-relaxed text-slate-300">{ticket.body}</p>}
                 </div>

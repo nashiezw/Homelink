@@ -132,7 +132,7 @@ export function AdminControlCenter() {
   return (
     <div className="space-y-6 sm:space-y-8">
       <AdminPageHeader
-        eyebrow="HomeLink Zimbabwe · Enterprise Control Centre"
+        eyebrow="HomeLink Zimbabwe - Enterprise Control Centre"
         title={getAdminTabLabel(tab)}
         description={tabDescriptions[tab]}
       />
@@ -303,13 +303,13 @@ export function AdminControlCenter() {
 }
 
 const tabDescriptions: Record<AdminTab, string> = {
-  overview: "Executive command centre — revenue, growth, bookings, agents, and live platform intelligence.",
+  overview: "Executive command centre - revenue, growth, bookings, agents, and live platform intelligence.",
   users: "Search accounts, manage roles, suspend users, and review growth analytics.",
   properties: "Analyse listing quality and run bulk approve, verify, feature, archive, or delete actions.",
   verification: "Review landlord, agency, and identity verification submissions.",
   moderation: "Resolve tenancy disputes and content moderation items from reports and review queue.",
   support: "Manage customer support tickets with assignment, escalation, and resolution.",
-  enquiries: "Full enquiry CRM — assign agents, track pipeline, merge duplicates, and configure routing.",
+  enquiries: "Full enquiry CRM - assign agents, track pipeline, merge duplicates, and configure routing.",
   landlords: "Verify landlords, manage agencies, and control premium tiers.",
   agents: "Recruit agents, approve applications, pay commissions, and manage territories.",
   "property-management": "Full property management request workflow from intake to completion.",

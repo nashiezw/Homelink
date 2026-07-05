@@ -128,7 +128,7 @@ export function AdminOverridesHub() {
             ))}
           </select>
           <input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Reason (optional)" className="mb-3 w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white" />
-          <div className="flex flex-wrap gap-2">
+          <div className="grid gap-2 sm:flex sm:flex-wrap">
             <Button onClick={() => void override("approve_listing")}>Approve listing</Button>
             <Button variant="secondary" onClick={() => void override("reject_listing")}>Reject listing</Button>
             <Button variant="secondary" onClick={() => void override("feature_listing", { days: 7 })}>Feature 7 days</Button>
@@ -162,7 +162,7 @@ export function AdminOverridesHub() {
             <input type="number" value={days} onChange={(e) => setDays(Number(e.target.value))} className="w-24 rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white" />
             <span className="text-sm text-slate-400">days</span>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="grid gap-2 sm:flex sm:flex-wrap">
             <Button onClick={() => void override("extend_subscription", { days })}>Extend subscription</Button>
             <Button variant="secondary" onClick={() => void override("grant_complimentary", { plan: "landlord_pro", days })}>Complimentary Pro</Button>
             <Button variant="secondary" onClick={() => void override("grant_complimentary", { plan: "featured_listing", listingId: listings[0]?.id })}>Complimentary featured</Button>
@@ -184,7 +184,7 @@ export function AdminOverridesHub() {
               <option key={a.id} value={a.id}>{a.name} ({a.city})</option>
             ))}
           </select>
-          <div className="flex flex-wrap gap-2">
+          <div className="grid gap-2 sm:flex sm:flex-wrap">
             <Button onClick={() => void override("verify_agency", { useAgencyTarget: true })}>Verify agency</Button>
             <Button variant="secondary" onClick={() => void override("reject_agency", { useAgencyTarget: true })}>Reject agency</Button>
             <Button variant="secondary" onClick={() => void override("feature_agency", { useAgencyTarget: true })}>Enterprise tier</Button>

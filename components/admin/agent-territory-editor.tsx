@@ -60,10 +60,10 @@ export function TerritoryEditor({ territories, profiles, onSave, onDelete }: Ter
               <div>
                 <p className="font-semibold text-white">{territory.name}</p>
                 <p className="text-sm text-slate-400">
-                  {territory.province} · {territory.city} · {territory.active ? "Active" : "Inactive"}
+                  {territory.province} - {territory.city} - {territory.active ? "Active" : "Inactive"}
                 </p>
                 <p className="mt-2 text-sm text-slate-300">
-                  Suburbs: {territory.suburbs.join(", ") || "—"}
+                  Suburbs: {territory.suburbs.join(", ") || "-"}
                 </p>
                 <p className="mt-1 text-sm text-slate-400">
                   Agents:{" "}
@@ -72,7 +72,7 @@ export function TerritoryEditor({ territories, profiles, onSave, onDelete }: Ter
                     .join(", ") || "None assigned"}
                 </p>
               </div>
-              <div className="flex flex-wrap gap-2">
+              <div className="grid gap-2 sm:flex sm:flex-wrap">
                 <Button variant="secondary" onClick={() => startEdit(territory)}>
                   Edit
                 </Button>
