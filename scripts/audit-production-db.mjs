@@ -64,13 +64,13 @@ async function main() {
         issues.push({ severity: "error", model: model.name, field: field.name, issue: "missing column" });
         continue;
       }
-      if (field.isRequired && !field.hasDefaultValue && column.is_nullable === "YES") {
+      if (field.isRequired && !field.isList && !field.hasDefaultValue && column.is_nullable === "YES") {
         issues.push({ severity: "warn", model: model.name, field: field.name, issue: "required field is nullable in database" });
       }
       if (field.isList && !column.udt_name.startsWith("_")) {
         issues.push({ severity: "warn", model: model.name, field: field.name, issue: "list field is not an array column" });
       }
-      if (field.kind === "scalar") {
+      if (field.kind === "scalar" && !field.isList) {
         const expected = scalarTypeHints[field.type];
         if (expected && !expected.includes(column.data_type)) {
           issues.push({
@@ -97,7 +97,10 @@ async function main() {
     const tableName = model.dbName ?? model.name;
     for (const field of model.fields.filter((candidate) => candidate.isUnique || candidate.isId)) {
       const columnName = field.dbName ?? field.name;
-      const hasIndex = indexes.some((index) => index.tablename === tableName && index.indexdef.includes(`"${columnName}"`));
+      const hasIndex = indexes.some((index) => (
+        index.tablename === tableName &&
+        (index.indexdef.includes(`"${columnName}"`) || index.indexdef.includes(`(${columnName})`))
+      ));
       if (!hasIndex) {
         issues.push({ severity: "warn", model: model.name, field: field.name, issue: "missing unique/id index" });
       }

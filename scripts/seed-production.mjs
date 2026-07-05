@@ -3,8 +3,8 @@ import { PrismaClient, Role, VerificationStatus } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
-const standardPassword = process.env.SEED_STANDARD_PASSWORD || "ChangeMeHomeLink2026!";
-const adminPassword = process.env.SEED_ADMIN_PASSWORD || "ChangeMeAdminHomeLink2026!";
+const standardPassword = requireSeedPassword("SEED_STANDARD_PASSWORD");
+const adminPassword = requireSeedPassword("SEED_ADMIN_PASSWORD");
 
 const users = [
   { email: "admin@homelinkzim.co.zw", name: "HomeLink Admin", phone: "+263780000001", roles: [Role.ADMIN, Role.SEEKER], password: adminPassword },
@@ -94,6 +94,7 @@ async function main() {
         name: user.name,
         phone: user.phone,
         roles: user.roles,
+        passwordHash: hashPassword(user.password),
         accountStatus: "ACTIVE",
         identityStatus: VerificationStatus.VERIFIED,
       },
@@ -240,6 +241,14 @@ function hashPassword(password) {
   const salt = crypto.randomBytes(16).toString("hex");
   const hash = crypto.scryptSync(password, salt, 64).toString("hex");
   return `scrypt$${salt}$${hash}`;
+}
+
+function requireSeedPassword(name) {
+  const value = process.env[name];
+  if (!value || value.length < 16) {
+    throw new Error(`${name} must be set to a private value at least 16 characters long before seeding production.`);
+  }
+  return value;
 }
 
 function isPostgres(value = "") {
