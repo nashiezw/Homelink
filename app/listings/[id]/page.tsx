@@ -46,7 +46,7 @@ export default async function ListingDetailPage({ params }: ListingDetailPagePro
   const holidayReviewSummary =
     listing.type === "holiday_home"
       ? shouldUsePostgresListings()
-        ? await getHolidayHomeReviewSummaryFromPostgres(id)
+        ? await getHolidayHomeReviewSummaryFromPostgres(listingRecord?.id ?? id)
         : getStore().getHolidayHomeReviewSummary(id)
       : null;
 

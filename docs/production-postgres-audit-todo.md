@@ -73,7 +73,7 @@ Status key: `[x]` complete, `[~]` partially complete, `[ ]` still required.
 - [x] Prisma schema supports durable listing `featured`, `featuredUntil`, `views`, and `adminNotes`.
 - [x] Prisma schema supports durable holiday review metadata.
 - [x] Build no longer fails by trying to prerender dynamic Postgres listing pages.
-- [ ] Apply schema changes to the production database before deploy.
+- [~] Apply schema changes to the production database before deploy. `202607050004_production_schema_repair` is ready; run `npx.cmd prisma migrate deploy --schema prisma\schema.prisma` with the real production `DATABASE_URL`.
 - [ ] Configure Cloudinary production credentials.
 - [ ] Configure transactional email credentials.
 - [ ] Set `HOMELINK_STRICT_PRODUCTION=true`.
@@ -88,7 +88,9 @@ Status key: `[x]` complete, `[~]` partially complete, `[ ]` still required.
 - [x] `npm.cmd exec prisma validate -- --schema prisma/schema.prisma` completed successfully.
 - [x] `npm.cmd run build` completed successfully.
 - [~] `npm.cmd run check:production` runs but fails until production Cloudinary and email variables are configured.
-- [ ] Run database migration/push against the target Postgres database.
+- [ ] Run database migration against the target Postgres database.
+- [ ] Run `npm.cmd run db:audit:production` against the target Postgres database.
+- [ ] Run `npm.cmd run db:seed:production` against the target Postgres database.
 - [ ] Submit a new property listing against the deployed environment.
 - [ ] Confirm the listing row exists in Postgres.
 - [ ] Confirm media rows exist in Postgres when photos/videos are attached.

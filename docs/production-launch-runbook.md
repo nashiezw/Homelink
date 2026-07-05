@@ -845,6 +845,9 @@ npm.cmd run typecheck
 npm.cmd run lint
 npx.cmd prisma validate --schema prisma\schema.prisma
 npx.cmd prisma validate --schema prisma\settings.prisma
+npx.cmd prisma migrate deploy --schema prisma\schema.prisma
+npm.cmd run db:audit:production
+npm.cmd run db:seed:production
 npm.cmd run build
 ```
 

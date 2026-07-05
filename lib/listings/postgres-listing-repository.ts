@@ -23,6 +23,7 @@ type ListingInput = Partial<ListingRecord>;
 
 const SAFE_LISTING_SELECT = {
   id: true,
+  slug: true,
   ownerId: true,
   intent: true,
   propertyType: true,
@@ -142,6 +143,7 @@ export async function createListingInPostgres(input: ListingInput, ownerId: stri
     const listing = await tx.listing.create({
       data: {
         id,
+        slug: listingSlug(id, title),
         ownerId,
         intent: normalizeIntent(isHoliday ? "rent" : input.intent),
         propertyType: PROPERTY_TYPE_TO_DB[type],
@@ -254,6 +256,15 @@ export async function getListingByIdOrSlugFromPostgres(value: string) {
   if (direct) return direct;
 
   const slug = slugify(value);
+  const storedSlugRow = await getMainPrisma().listing.findUnique({
+    where: { slug },
+    include: LISTING_INCLUDE,
+  }).catch(async (error: unknown) => {
+    if (!isMissingColumnError(error)) throw error;
+    return null;
+  });
+  if (storedSlugRow) return toListingRecord(storedSlugRow);
+
   const rows = await getMainPrisma().listing.findMany({
     select: { id: true, title: true },
     take: 1000,
@@ -506,7 +517,7 @@ function toListingRecord(row: PrismaListingRow | SafeListingRow): ListingRecord 
   const amenities = amenitiesFromRow(row);
   return {
     id: row.id,
-    slug: listingSlug(row.id, row.title),
+    slug: "slug" in row && row.slug ? row.slug : listingSlug(row.id, row.title),
     title: row.title,
     city: row.city,
     suburb: row.suburb,

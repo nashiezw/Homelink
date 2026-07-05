@@ -167,6 +167,7 @@ model AgencyAgent {
 
 model Listing {
   id                         String                    @id @default(cuid())
+  slug                       String                    @unique
   ownerId                    String
   agencyId                   String?
   intent                     ListingIntent
