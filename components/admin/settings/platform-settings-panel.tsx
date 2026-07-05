@@ -163,20 +163,28 @@ export function PlatformSettingsPanel({ defaultTab = "general" }: { defaultTab?:
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        {tabs.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            onClick={() => setTab(t.id)}
-            className={`rounded-lg px-3 py-1.5 text-sm ${tab === t.id ? "bg-cyan-600 text-white" : "bg-white/10 text-slate-300"}`}
-          >
-            {t.label}
-          </button>
-        ))}
-        <Button className="ml-auto" onClick={() => void save()} disabled={saving}>
-          <Save className="size-4" /> {saving ? "Saving..." : "Save settings"}
-        </Button>
+      <div className="rounded-2xl border border-white/[0.08] bg-slate-950/70 p-2 shadow-[0_1px_0_0_rgba(255,255,255,0.04)_inset]">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex min-w-0 gap-1 overflow-x-auto rounded-xl bg-black/20 p-1 [scrollbar-width:none]">
+            {tabs.map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => setTab(t.id)}
+                className={`shrink-0 rounded-lg px-3 py-2 text-sm font-medium transition ${
+                  tab === t.id
+                    ? "bg-cyan-500 text-white shadow-sm shadow-cyan-950/40"
+                    : "text-slate-400 hover:bg-white/[0.06] hover:text-white"
+                }`}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+          <Button className="w-full shrink-0 justify-center sm:w-auto" onClick={() => void save()} disabled={saving}>
+            <Save className="size-4" /> {saving ? "Saving..." : "Save settings"}
+          </Button>
+        </div>
       </div>
 
       {tab === "general" && (
