@@ -1,7 +1,12 @@
 import { parseNaturalLanguageSearch } from "@/lib/api/ai-search";
-import { listListings } from "@/lib/api/listing-service";
+import { listListings, matchesListing } from "@/lib/api/listing-service";
 import { isAiSearchEnabled } from "@/lib/features";
 import { ok, problem } from "@/lib/api/response";
+import {
+  listListingsFromPostgres,
+  shouldUsePostgresListings,
+  toPublicPostgresListing,
+} from "@/lib/listings/postgres-listing-repository";
 
 export async function POST(request: Request) {
   if (!isAiSearchEnabled()) {
@@ -15,7 +20,12 @@ export async function POST(request: Request) {
   }
 
   const parsed = parseNaturalLanguageSearch(query);
-  const matches = listListings(parsed);
+  const matches = shouldUsePostgresListings()
+    ? (await listListingsFromPostgres())
+        .filter((listing) => listing.status === "ACTIVE")
+        .map(toPublicPostgresListing)
+        .filter((listing) => matchesListing(listing, parsed))
+    : listListings(parsed);
 
   return ok({
     parsed,

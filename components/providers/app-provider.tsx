@@ -24,7 +24,7 @@ type AppContextValue = {
   favourites: string[];
   compareIds: string[];
   toast: Toast | null;
-  refreshUser: () => Promise<void>;
+  refreshUser: () => Promise<PublicUser | null>;
   refreshFavourites: () => Promise<void>;
   signIn: (input: { email: string; password: string }) => Promise<PublicUser | null>;
   register: (input: { name: string; email: string; password: string }) => Promise<PublicUser | null>;
@@ -59,11 +59,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const result = await apiFetch<PublicUser>("/api/v1/auth/me");
       if (result.data) {
         setUser(result.data);
+        return result.data;
       } else {
         setUser(null);
+        return null;
       }
     } catch {
       setUser(null);
+      return null;
     }
   }, []);
 
@@ -91,8 +94,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
     void (async () => {
       try {
-        await refreshUser();
-        await refreshFavourites();
+        const currentUser = await refreshUser();
+        if (currentUser) {
+          await refreshFavourites();
+        } else {
+          setFavourites([]);
+        }
       } finally {
         setLoading(false);
       }
