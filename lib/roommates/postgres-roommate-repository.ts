@@ -63,11 +63,12 @@ export async function getPublicRoommateProfileFromPostgres(userId: string) {
   });
   if (!profile?.active || profile.user.accountStatus !== "ACTIVE") return null;
   const residenceHistory = await listResidenceHistoryFromPostgres(profile.userId);
+  const publicProfile = toProfile(profile);
   return {
     userId: profile.userId,
     name: profile.user.name,
-    city: undefined,
-    profile: toProfile(profile),
+    city: profileCity(publicProfile),
+    profile: publicProfile,
     residenceHistory,
     listings: [],
   };
@@ -122,6 +123,12 @@ function preferredCity(locations: string[]) {
   const first = locations[0] ?? "";
   const parts = first.split(",").map((part) => part.trim()).filter(Boolean);
   return parts.at(-1) || parts[0] || undefined;
+}
+
+function profileCity(profile: Record<string, unknown>) {
+  if (typeof profile.city === "string" && profile.city.trim()) return profile.city.trim();
+  const locations = Array.isArray(profile.preferredLocations) ? profile.preferredLocations.map(String) : [];
+  return preferredCity(locations);
 }
 
 function toProfile(row: {

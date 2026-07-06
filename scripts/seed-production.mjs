@@ -15,6 +15,9 @@ const users = [
   { email: "tendai.sithole@homelinkzim.co.zw", name: "Tendai Sithole", phone: "+263772220001", roles: [Role.AGENT, Role.SEEKER], password: standardPassword },
   { email: "rudo.ncube@homelinkzim.co.zw", name: "Rudo Ncube", phone: "+263773330002", roles: [Role.SEEKER], password: standardPassword },
   { email: "memory.chikanda@homelinkzim.co.zw", name: "Memory Chikanda", phone: "+263719002214", roles: [Role.LANDLORD, Role.SEEKER], password: standardPassword },
+  { email: "ndlovu.property.group@homelinkzim.co.zw", name: "Ndlovu Property Group", phone: "+263785552101", roles: [Role.LANDLORD, Role.SEEKER], password: standardPassword },
+  { email: "eastern.highlands.realty@homelinkzim.co.zw", name: "Eastern Highlands Realty", phone: "+263778883410", roles: [Role.LANDLORD, Role.SEEKER], password: standardPassword },
+  { email: "harare.prime.estates@homelinkzim.co.zw", name: "Harare Prime Estates", phone: "+263242123456", roles: [Role.LANDLORD, Role.AGENT, Role.SEEKER], password: standardPassword },
   { id: "user_seeker_rudo", email: "rudo.m@example.co.zw", name: "Rudo M.", phone: "+263771000001", roles: [Role.SEEKER], password: standardPassword },
   { id: "user_seeker_taku", email: "taku.n@example.co.zw", name: "Taku N.", phone: "+263771000002", roles: [Role.SEEKER], password: standardPassword },
   { id: "user_seeker_noma", email: "noma.s@example.co.zw", name: "Noma S.", phone: "+263771000003", roles: [Role.SEEKER], password: standardPassword },
@@ -49,8 +52,8 @@ const listings = [
     amenities: { wifi: true, solarBackup: true, borehole: true, parking: true, garden: true },
   },
   {
-    slug: "family-home-with-borehole-in-hillside-seed02",
-    ownerEmail: "tariro.moyo@homelinkzim.co.zw",
+    slug: "bulawayo-hillside-house",
+    ownerEmail: "ndlovu.property.group@homelinkzim.co.zw",
     title: "Family home with borehole in Hillside",
     description: "A spacious family home with a private garden, borehole, perimeter security, and room for remote work or study.",
     propertyType: "HOUSE",
@@ -81,7 +84,7 @@ const listings = [
     amenities: { wifi: true, waterTank: true },
   },
   {
-    slug: "riverside-holiday-lodge-near-victoria-falls-seed04",
+    slug: "victoria-falls-riverside-lodge",
     ownerEmail: "tariro.moyo@homelinkzim.co.zw",
     title: "Riverside holiday lodge near Victoria Falls",
     description: "A premium holiday lodge with Zambezi views, private garden, pool access, and concierge support for Victoria Falls adventures.",
@@ -95,6 +98,38 @@ const listings = [
     bathrooms: 2,
     image: "/images/roommates/photo-lodge-vicfalls.jpg",
     amenities: { wifi: true, borehole: true, parking: true, garden: true, swimmingPool: true },
+  },
+  {
+    slug: "mutare-murambi-land",
+    ownerEmail: "eastern.highlands.realty@homelinkzim.co.zw",
+    title: "Residential stand with mountain views",
+    description: "A residential stand in a growing pocket of Murambi with documented ownership and nearby utility access.",
+    propertyType: "LAND",
+    intent: "BUY",
+    status: "ACTIVE",
+    price: 18500,
+    city: "Mutare",
+    suburb: "Murambi",
+    bedrooms: 0,
+    bathrooms: 0,
+    image: "/images/roommates/photo-land-mutare.jpg",
+    amenities: { waterTank: true },
+  },
+  {
+    slug: "harare-cbd-office-suite",
+    ownerEmail: "harare.prime.estates@homelinkzim.co.zw",
+    title: "Ground-floor office suite in Harare CBD",
+    description: "A professional ground-floor commercial suite with reception area, open-plan workspace, kitchenette, and dedicated parking in the heart of Harare CBD.",
+    propertyType: "COMMERCIAL",
+    intent: "RENT",
+    status: "ACTIVE",
+    price: 1200,
+    city: "Harare",
+    suburb: "CBD",
+    bedrooms: 0,
+    bathrooms: 2,
+    image: "/images/roommates/photo-office-harare.jpg",
+    amenities: { parking: true, securityWall: true, generator: true, wifi: true },
   },
   {
     slug: "kwekwe-cbd-flat",
@@ -301,6 +336,7 @@ const roommateProfiles = [
     moveInDate: "2026-08-01",
     tags: ["Non-smoker", "No pets", "Early mornings", "Wi-Fi"],
     interests: ["Early mornings", "Wi-Fi", "Quiet household"],
+    languages: ["English", "Shona"],
     compatibility: 94,
   },
   {
@@ -329,6 +365,7 @@ const roommateProfiles = [
     availableNow: true,
     tags: ["Student", "Transport", "Shared kitchen"],
     interests: ["Near campus", "Shared kitchen", "Transport"],
+    languages: ["English", "Shona"],
     compatibility: 88,
   },
   {
@@ -357,6 +394,7 @@ const roommateProfiles = [
     moveInDate: "2026-07-15",
     tags: ["Pets OK", "Parking", "Furnished"],
     interests: ["Pet-friendly", "Parking", "Hybrid work"],
+    languages: ["English", "Ndebele"],
     compatibility: 91,
   },
   {
@@ -385,6 +423,7 @@ const roommateProfiles = [
     availableNow: true,
     tags: ["Furnished", "Parking", "Quiet"],
     interests: ["Night shift friendly", "Parking", "Furnished"],
+    languages: ["English", "Shona"],
     compatibility: 86,
   },
   {
@@ -413,6 +452,7 @@ const roommateProfiles = [
     moveInDate: "2026-09-01",
     tags: ["Budget", "Wi-Fi", "Shared kitchen"],
     interests: ["Budget-friendly", "Wi-Fi", "Shared kitchen"],
+    languages: ["English", "Shona"],
     compatibility: 82,
   },
   {
@@ -441,6 +481,7 @@ const roommateProfiles = [
     moveInDate: "2026-08-20",
     tags: ["House share", "Parking", "Security"],
     interests: ["House share", "Secure estate", "Parking"],
+    languages: ["English", "Shona"],
     compatibility: 90,
   },
 ];
@@ -520,7 +561,7 @@ async function main() {
 
   for (const seed of listings) {
     const owner = userRows.get(seed.ownerEmail);
-    await reconcileSeedListingSlug(seed, owner);
+    await reconcileSeedListingSlug(seed);
     const listing = await prisma.listing.upsert({
       where: { slug: seed.slug },
       update: {
@@ -981,14 +1022,13 @@ async function seedVerifiedTenancy(listing, landlord, tenant) {
   });
 }
 
-async function reconcileSeedListingSlug(seed, owner) {
+async function reconcileSeedListingSlug(seed) {
   const existingSlug = await prisma.listing.findUnique({ where: { slug: seed.slug }, select: { id: true } });
   if (existingSlug) return;
 
   const existingSeed = await prisma.listing.findFirst({
     where: {
       title: seed.title,
-      propertyOwnerEmail: owner.email,
     },
     select: { id: true },
   });
@@ -1015,7 +1055,7 @@ function roommateProfileData(profile) {
     payload: {
       id: `rm_${profile.userId}`,
       userId: profile.userId,
-      lookingFor: "roommate",
+      lookingFor: "room",
       budgetMin: profile.budgetMin,
       budgetMax: profile.budgetMax,
       occupation: profile.occupation,
@@ -1047,6 +1087,7 @@ function roommateProfileData(profile) {
       photos: [profile.photoUrl],
       tags: profile.tags,
       interests: profile.interests,
+      languages: profile.languages,
       compatibility: profile.compatibility,
       active: true,
       verified: true,
