@@ -1,13 +1,19 @@
 import { Role } from "@prisma/client";
 import { hashPassword } from "@/lib/auth/password";
 import { getMainPrisma, isPostgresStoreEnabled } from "@/lib/db/main-prisma";
-import { listAdminListingsFromPostgres } from "@/lib/listings/postgres-listing-repository";
+import {
+  listAdminListingsFromPostgres,
+  listListingsFromPostgres,
+  toPublicPostgresListing,
+} from "@/lib/listings/postgres-listing-repository";
+import { DEFAULT_AGENT_PERMISSIONS } from "@/lib/agents/defaults";
 import {
   getPostgresAgentTrainingCertificates,
   hasCompletedRequiredTraining,
   listPostgresAgentTrainingModules,
   listPostgresAgentTrainingProgress,
 } from "@/lib/agents/postgres-training-repository";
+import type { AgentApplication, AgentLevel, AgentProfile } from "@/lib/agents/types";
 
 export function shouldUsePostgresAgents() {
   return isPostgresStoreEnabled();
@@ -202,34 +208,133 @@ export async function inviteAgencyAgentInPostgres(agencyAdminId: string, input: 
 }
 
 export async function getPublicAgentFromPostgres(slug: string) {
-  const users = await getMainPrisma().user.findMany({
+  const prisma = getMainPrisma();
+  const users = await prisma.user.findMany({
     where: { roles: { has: Role.AGENT }, accountStatus: "ACTIVE" },
-    include: { agencyMemberships: { include: { agency: true } }, listings: true },
+    include: { agencyMemberships: { include: { agency: true } } },
   });
   const user = users.find((candidate) => slugify(candidate.name) === slug);
   if (!user) return null;
-  const trainingCompleted = await hasCompletedRequiredTraining(user.id);
+  const [trainingCompleted, applicationRecord, listings] = await Promise.all([
+    hasCompletedRequiredTraining(user.id),
+    prisma.agentApplicationRecord.findUnique({ where: { userId: user.id } }).catch(() => null),
+    listListingsFromPostgres({ status: "ACTIVE" }),
+  ]);
+  const application = applicationRecord ? toPublicAgentApplication(applicationRecord) : undefined;
+  const activeListings = listings.filter((listing) => listing.ownerId === user.id).map(toPublicPostgresListing);
   return {
-    profile: {
-      userId: user.id,
-      slug: slugify(user.name),
-      name: user.name,
-      status: "ACTIVE",
-      trainingCompleted,
-      certificateUrl: trainingCompleted ? "/uploads/agents/training-certificate.pdf" : undefined,
-    },
+    profile: toPublicAgentProfile(user, application, trainingCompleted),
     user: { name: user.name, phone: user.phone, email: user.email },
     agency: user.agencyMemberships[0]?.agency
       ? {
           id: user.agencyMemberships[0].agency.id,
           name: user.agencyMemberships[0].agency.name,
+          city: user.agencyMemberships[0].agency.city,
           verificationStatus: user.agencyMemberships[0].agency.verificationStatus,
         }
       : null,
     territories: [],
-    listings: user.listings.filter((listing) => listing.status === "ACTIVE"),
+    listings: activeListings,
     ratings: [],
   };
+}
+
+function toPublicAgentApplication(row: { id: string; userId: string; status: string; payload: unknown; createdAt: Date; updatedAt: Date }): AgentApplication {
+  const payload = readObject(row.payload);
+  const professional = readObject(payload.professional);
+  const personal = readObject(payload.personal);
+  return {
+    id: row.id,
+    userId: row.userId,
+    status: row.status as AgentApplication["status"],
+    personal: {
+      fullName: stringValue(personal.fullName) ?? "",
+      dateOfBirth: stringValue(personal.dateOfBirth) ?? "",
+      gender: stringValue(personal.gender) ?? "",
+      nationalId: stringValue(personal.nationalId) ?? "",
+      passport: stringValue(personal.passport) ?? "",
+      phone: stringValue(personal.phone) ?? "",
+      whatsapp: stringValue(personal.whatsapp) ?? "",
+      email: stringValue(personal.email) ?? "",
+      residentialAddress: stringValue(personal.residentialAddress) ?? "",
+    },
+    professional: {
+      yearsExperience: numberValue(professional.yearsExperience) ?? 0,
+      currentEmployer: stringValue(professional.currentEmployer) ?? "",
+      previousEmployer: stringValue(professional.previousEmployer) ?? stringValue(professional.agencyName) ?? "",
+      hasDriversLicence: Boolean(professional.hasDriversLicence),
+      hasOwnVehicle: Boolean(professional.hasOwnVehicle),
+      city: stringValue(professional.city) ?? "Harare",
+      province: stringValue(professional.province) ?? "Harare",
+      areasCovered: stringArray(professional.areasCovered),
+      languages: stringArray(professional.languages),
+      specialisations: stringArray(professional.specialisations),
+      propertyTypes: stringArray(professional.propertyTypes),
+    },
+    documents: readObject(payload.documents),
+    banking: {
+      bank: "",
+      branch: "",
+      accountName: "",
+      accountNumber: "",
+      ecocash: "",
+      onemoney: "",
+      innbucks: "",
+    },
+    references: [],
+    emergencyContact: { name: "", phone: "", relationship: "" },
+    declarationAccepted: true,
+    termsAccepted: true,
+    privacyAccepted: true,
+    adminNotes: [],
+    submittedAt: stringValue(payload.submittedAt) ?? row.createdAt.toISOString(),
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+  };
+}
+
+function toPublicAgentProfile(
+  user: { id: string; name: string; email: string; phone: string | null; accountStatus: string; createdAt: Date; updatedAt: Date },
+  application: AgentApplication | undefined,
+  trainingCompleted: boolean,
+): AgentProfile {
+  const professional = application?.professional;
+  const areas = professional?.areasCovered?.length ? professional.areasCovered : [professional?.city || "Harare"];
+  const yearsExperience = Number(professional?.yearsExperience ?? 0);
+  return {
+    id: `agent_profile_${user.id}`,
+    userId: user.id,
+    applicationId: application?.id ?? `agent_application_${user.id}`,
+    agentNumber: `HLZ-AG-${user.id.replace(/[^a-zA-Z0-9]/g, "").slice(-6).toUpperCase()}`,
+    agentIdCode: `AG-${user.id.replace(/[^a-zA-Z0-9]/g, "").slice(-8).toUpperCase()}`,
+    qrCodeData: `homelink-agent:${user.id}`,
+    level: agentLevel(yearsExperience),
+    status: user.accountStatus === "SUSPENDED" ? "SUSPENDED" : "ACTIVE",
+    biography: `${user.name} is a verified HomeLink Zimbabwe agent serving ${areas.join(", ")}.`,
+    photoUrl: stringValue(readObject(application).photoUrl),
+    areasServed: areas,
+    languages: professional?.languages?.length ? professional.languages : ["English", "Shona"],
+    specialisations: professional?.specialisations?.length ? professional.specialisations : ["Residential rentals", "Property sales", "Client viewings"],
+    propertyTypes: professional?.propertyTypes?.length ? professional.propertyTypes : ["house", "flat", "cottage"],
+    yearsExperience,
+    completedDeals: 0,
+    permissions: DEFAULT_AGENT_PERMISSIONS,
+    territoryIds: [],
+    trainingCompleted,
+    certificateUrl: trainingCompleted ? "/resources/agents/certificates/verified-agent-certificate.md" : undefined,
+    averageRating: 0,
+    ratingCount: 0,
+    publicSlug: slugify(user.name || user.email || user.id),
+    createdAt: user.createdAt.toISOString(),
+    updatedAt: user.updatedAt.toISOString(),
+  };
+}
+
+function agentLevel(yearsExperience: number): AgentLevel {
+  if (yearsExperience >= 10) return "PLATINUM";
+  if (yearsExperience >= 6) return "GOLD";
+  if (yearsExperience >= 3) return "SILVER";
+  return "BRONZE";
 }
 
 function commissionRow(row: {
@@ -260,6 +365,23 @@ function commissionRow(row: {
 
 function slugify(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+}
+
+function readObject(value: unknown): Record<string, any> {
+  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, any> : {};
+}
+
+function stringValue(value: unknown) {
+  return typeof value === "string" && value.trim() ? value : undefined;
+}
+
+function numberValue(value: unknown) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : undefined;
+}
+
+function stringArray(value: unknown) {
+  return Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === "string" && entry.trim().length > 0) : [];
 }
 
 function listingSlug(id: string, title: string) {

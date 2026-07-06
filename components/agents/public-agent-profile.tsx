@@ -49,6 +49,12 @@ function formatPropertyType(type: string) {
   return type.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+function safeStringArray(value: unknown, fallback: string[]) {
+  return Array.isArray(value) && value.length
+    ? value.filter((item): item is string => typeof item === "string" && item.trim().length > 0)
+    : fallback;
+}
+
 function profileTagline(bio: string) {
   const sentence = bio.split(/(?<=[.!?])\s+/)[0] ?? bio;
   return sentence.length > 140 ? `${sentence.slice(0, 137)}…` : sentence;
@@ -118,10 +124,23 @@ export function PublicAgentProfile({ slug }: { slug: string }) {
     );
   }
 
-  const { profile, user, agency, territories, listings, ratings } = data;
+  const { profile, user, agency } = data;
+  const territories = Array.isArray(data.territories) ? data.territories : [];
+  const listings = Array.isArray(data.listings) ? data.listings : [];
+  const ratings = Array.isArray(data.ratings) ? data.ratings : [];
   const name = user?.name ?? "HomeLink Agent";
-  const responseTime = profile.averageRating >= 4.8 ? "Under 1 hour" : "Under 2 hours";
-  const levelStyle = LEVEL_STYLES[profile.level];
+  const averageRating = Number.isFinite(Number(profile.averageRating)) ? Number(profile.averageRating) : 0;
+  const ratingCount = Number.isFinite(Number(profile.ratingCount)) ? Number(profile.ratingCount) : 0;
+  const yearsExperience = Number.isFinite(Number(profile.yearsExperience)) ? Number(profile.yearsExperience) : 0;
+  const completedDeals = Number.isFinite(Number(profile.completedDeals)) ? Number(profile.completedDeals) : 0;
+  const level = profile.level && LEVEL_STYLES[profile.level] ? profile.level : "BRONZE";
+  const biography = profile.biography || `${name} is a verified HomeLink Zimbabwe agent.`;
+  const specialisations = safeStringArray(profile.specialisations, ["Residential rentals", "Property sales"]);
+  const languages = safeStringArray(profile.languages, ["English"]);
+  const propertyTypes = safeStringArray(profile.propertyTypes, ["house", "flat"]);
+  const areasServed = safeStringArray(profile.areasServed, [user?.city ?? "Zimbabwe"]);
+  const responseTime = averageRating >= 4.8 ? "Under 1 hour" : "Under 2 hours";
+  const levelStyle = LEVEL_STYLES[level];
 
   const avgBreakdown =
     ratings.length > 0
@@ -167,7 +186,7 @@ export function PublicAgentProfile({ slug }: { slug: string }) {
                       )}
                     >
                       <Award className="size-3.5" />
-                      {profile.level}
+                      {level}
                     </span>
                   </div>
 
@@ -192,11 +211,11 @@ export function PublicAgentProfile({ slug }: { slug: string }) {
                   </p>
 
                   <div className="mt-3">
-                    <StarRating rating={profile.averageRating} count={profile.ratingCount} />
+                    <StarRating rating={averageRating} count={ratingCount} />
                   </div>
 
                   <p className="mt-4 max-w-2xl text-base leading-relaxed text-slate-600 dark:text-slate-300">
-                    {profileTagline(profile.biography)}
+                    {profileTagline(biography)}
                   </p>
                 </div>
               </div>
@@ -231,8 +250,8 @@ export function PublicAgentProfile({ slug }: { slug: string }) {
             </div>
 
             <dl className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <MetricCard label="Experience" value={`${profile.yearsExperience}+ yrs`} />
-              <MetricCard label="Completed deals" value={String(profile.completedDeals)} />
+              <MetricCard label="Experience" value={`${yearsExperience}+ yrs`} />
+              <MetricCard label="Completed deals" value={String(completedDeals)} />
               <MetricCard label="Active listings" value={String(listings.length)} />
               <MetricCard label="Response time" value={responseTime} />
             </dl>
@@ -243,20 +262,20 @@ export function PublicAgentProfile({ slug }: { slug: string }) {
           <div className="space-y-8">
             <section className="premium-card rounded-2xl p-6 sm:p-8">
               <h2 className="text-xl font-semibold text-slate-950 dark:text-white">About {name.split(" ")[0]}</h2>
-              <p className="mt-4 leading-relaxed text-slate-600 dark:text-slate-300">{profile.biography}</p>
+              <p className="mt-4 leading-relaxed text-slate-600 dark:text-slate-300">{biography}</p>
 
               <div className="mt-8 grid gap-8 sm:grid-cols-2">
-                <ChipGroup title="Specialisations" icon={<Target className="size-4 text-emerald-600" />} items={profile.specialisations} />
-                <ChipGroup title="Languages" icon={<Globe2 className="size-4 text-emerald-600" />} items={profile.languages} />
+                <ChipGroup title="Specialisations" icon={<Target className="size-4 text-emerald-600" />} items={specialisations} />
+                <ChipGroup title="Languages" icon={<Globe2 className="size-4 text-emerald-600" />} items={languages} />
                 <ChipGroup
                   title="Property types"
                   icon={<Building2 className="size-4 text-emerald-600" />}
-                  items={profile.propertyTypes.map(formatPropertyType)}
+                  items={propertyTypes.map(formatPropertyType)}
                 />
                 <ChipGroup
                   title="Areas served"
                   icon={<MapPin className="size-4 text-emerald-600" />}
-                  items={profile.areasServed}
+                  items={areasServed}
                 />
               </div>
             </section>
@@ -362,13 +381,13 @@ export function PublicAgentProfile({ slug }: { slug: string }) {
             <SidebarCard title="Credentials">
               <dl className="space-y-3 text-sm">
                 <CredRow label="Agent ID" value={profile.agentIdCode} />
-                <CredRow label="Performance tier" value={profile.level} />
+                <CredRow label="Performance tier" value={level} />
                 <CredRow
                   label="Training"
                   value={profile.trainingCompleted ? "HomeLink certified" : "In progress"}
                   highlight={profile.trainingCompleted}
                 />
-                <CredRow label="Total ratings" value={String(profile.ratingCount)} />
+                <CredRow label="Total ratings" value={String(ratingCount)} />
               </dl>
             </SidebarCard>
           </aside>
