@@ -2,6 +2,7 @@ import {
   createDefaultAgentSettings,
   DEFAULT_AGENT_PERMISSIONS,
   DEFAULT_COMMISSION_RULES,
+  defaultAgentTrainingModules,
   emptyApplicationPersonal,
   emptyApplicationProfessional,
 } from "@/lib/agents/defaults";
@@ -126,7 +127,7 @@ export function createEmptyAgentPlatformState(): AgentPlatformState {
     territories: [],
     leads: [],
     commissions: [],
-    trainingModules: defaultTrainingModules(),
+    trainingModules: defaultAgentTrainingModules(),
     trainingProgress: [],
     ratings: [],
     appointments: [],
@@ -134,47 +135,6 @@ export function createEmptyAgentPlatformState(): AgentPlatformState {
     walletEntries: [],
     roundRobinIndex: 0,
   };
-}
-
-function defaultTrainingModules() {
-  return [
-    {
-      id: "train_intro",
-      title: "Welcome to HomeLink Agents",
-      description: "Platform overview, brand standards, and compliance basics.",
-      type: "VIDEO" as const,
-      durationMinutes: 20,
-      required: true,
-      order: 1,
-    },
-    {
-      id: "train_listings",
-      title: "Listing Excellence",
-      description: "How to create high-converting listings with photos, video, and availability.",
-      type: "DOCUMENT" as const,
-      durationMinutes: 30,
-      required: true,
-      order: 2,
-    },
-    {
-      id: "train_leads",
-      title: "Lead Management",
-      description: "Accepting leads, scheduling viewings, and closing deals.",
-      type: "QUIZ" as const,
-      durationMinutes: 25,
-      required: true,
-      order: 3,
-    },
-    {
-      id: "train_compliance",
-      title: "Compliance & Ethics",
-      description: "Client data, contracts, and professional conduct.",
-      type: "ASSIGNMENT" as const,
-      durationMinutes: 15,
-      required: true,
-      order: 4,
-    },
-  ];
 }
 
 export function seedAgentPlatform(

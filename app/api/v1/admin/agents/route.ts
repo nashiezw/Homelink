@@ -20,6 +20,12 @@ import type {
 } from "@/lib/agents/types";
 import { ok, problem, created } from "@/lib/api/response";
 import { getMainPrisma, isPostgresStoreEnabled } from "@/lib/db/main-prisma";
+import {
+  getPostgresAgentSettings,
+  hasCompletedRequiredTraining,
+  listPostgresAgentTrainingModules,
+  savePostgresAgentSettings,
+} from "@/lib/agents/postgres-training-repository";
 import { getStore } from "@/lib/store/app-store";
 import { Prisma, Role, VerificationStatus } from "@prisma/client";
 
@@ -85,6 +91,9 @@ export async function PATCH(request: Request) {
       return ok(result);
     } catch (error) {
       console.error("Failed to update Postgres agent admin data", error);
+      if (error instanceof Error && error.message.includes("Training is required")) {
+        return problem(400, "TRAINING_REQUIRED", error.message);
+      }
       return problem(500, "AGENTS_WRITE_FAILED", "Agent management update could not be saved.");
     }
   }
@@ -196,7 +205,7 @@ export async function POST(request: Request) {
 
 async function getPostgresAgentAdminData() {
   const prisma = getMainPrisma();
-  const [agents, applications, leads, commissions, rules, trainingProgress] = await Promise.all([
+  const [agents, applications, leads, commissions, rules, trainingProgress, persistedSettings, trainingModules] = await Promise.all([
     prisma.user.findMany({
       where: { roles: { has: Role.AGENT } },
       include: { listings: { select: { id: true } } },
@@ -207,15 +216,28 @@ async function getPostgresAgentAdminData() {
     prisma.agentCommissionRecord.findMany({ orderBy: { createdAt: "desc" }, take: 200 }),
     prisma.agentCommissionRule.findMany({ orderBy: [{ priority: "asc" }, { createdAt: "desc" }] }),
     prisma.agentTrainingProgressRecord.findMany({ where: { status: "COMPLETED" } }),
+    getPostgresAgentSettings(),
+    listPostgresAgentTrainingModules(),
   ]);
 
   const agentApplications = applications.map(toAgentApplication);
+  const requiredModuleIds = new Set(trainingModules.filter((module) => module.required).map((module) => module.id));
   const agentProfiles = agents.map((agent, index) =>
-    toAgentProfile(agent, agentApplications.find((application) => application.userId === agent.id), trainingProgress, index),
+    toAgentProfile(
+      agent,
+      agentApplications.find((application) => application.userId === agent.id),
+      trainingProgress,
+      index,
+      persistedSettings.approvalWorkflow.trainingRequired,
+      requiredModuleIds,
+    ),
   );
   const agentLeads = leads.map(toAgentLead);
   const agentCommissions = commissions.map(toAgentCommission);
-  const settings = buildAgentSettings(rules);
+  const settings = {
+    ...persistedSettings,
+    commissionRules: buildAgentSettings(rules).commissionRules,
+  };
   const analytics = buildAgentAnalytics(agentProfiles, agentApplications, agentLeads, agentCommissions);
 
   return {
@@ -236,10 +258,18 @@ async function getPostgresAgentAdminData() {
 
 async function runPostgresAgentAction(body: Record<string, any>, actor: { id: string; name: string }) {
   const prisma = getMainPrisma();
-  if (body.action === "update_settings") return body.settings ?? createDefaultAgentSettings();
+  if (body.action === "update_settings") return savePostgresAgentSettings(body.settings ?? createDefaultAgentSettings());
   if (body.action === "update_commission_rules") return savePostgresCommissionRules(body.rules ?? DEFAULT_COMMISSION_RULES, actor, body.reason);
   if (body.action === "update_application_status") return updatePostgresAgentApplicationStatus(body.applicationId, body.status, actor, body.note);
-  if (body.action === "approve_application") return updatePostgresAgentApplicationStatus(body.applicationId, "APPROVED", actor, body.reason);
+  if (body.action === "approve_application") {
+    const existing = await prisma.agentApplicationRecord.findUnique({ where: { id: body.applicationId } });
+    if (!existing) return null;
+    const settings = await getPostgresAgentSettings();
+    if (settings.approvalWorkflow.trainingRequired && !(await hasCompletedRequiredTraining(existing.userId))) {
+      throw new Error("Training is required before this agent can be approved.");
+    }
+    return updatePostgresAgentApplicationStatus(body.applicationId, "APPROVED", actor, body.reason);
+  }
   if (body.action === "update_profile") {
     const status = body.updates?.status;
     const accountStatus = status === "SUSPENDED" ? "SUSPENDED" : status === "ACTIVE" ? "ACTIVE" : undefined;
@@ -532,11 +562,17 @@ function toAgentProfile(
     listings?: Array<{ id: string }>;
   },
   application: AgentApplication | undefined,
-  trainingProgress: Array<{ agentId: string }>,
+  trainingProgress: Array<{ agentId: string; moduleId: string }>,
   index: number,
+  trainingRequired = true,
+  requiredModuleIds: Set<string> = new Set(),
 ): AgentProfile {
   const professional = application?.professional ?? emptyApplicationProfessional();
   const completedDeals = 0;
+  const completedModuleIds = new Set(
+    trainingProgress.filter((progress) => progress.agentId === user.id).map((progress) => progress.moduleId),
+  );
+  const trainingCompleted = !trainingRequired || [...requiredModuleIds].every((moduleId) => completedModuleIds.has(moduleId));
   return {
     id: `agent_profile_${user.id}`,
     userId: user.id,
@@ -556,7 +592,7 @@ function toAgentProfile(
     completedDeals,
     permissions: DEFAULT_AGENT_PERMISSIONS,
     territoryIds: [],
-    trainingCompleted: trainingProgress.some((progress) => progress.agentId === user.id),
+    trainingCompleted,
     averageRating: 0,
     ratingCount: 0,
     publicSlug: slugify(user.name || user.email || user.id),

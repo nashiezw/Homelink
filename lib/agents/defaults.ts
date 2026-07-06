@@ -1,4 +1,4 @@
-import type { AgentPermissions, AgentSystemSettings, CommissionRule } from "@/lib/agents/types";
+import type { AgentPermissions, AgentSystemSettings, AgentTrainingModule, CommissionRule } from "@/lib/agents/types";
 
 export const DEFAULT_COMMISSION_RULES: CommissionRule[] = [
   {
@@ -167,6 +167,47 @@ export const DEFAULT_AGENT_PERMISSIONS: AgentPermissions = {
   canManageClients: true,
   canUploadDocuments: true,
 };
+
+export function defaultAgentTrainingModules(): AgentTrainingModule[] {
+  return [
+    {
+      id: "train_intro",
+      title: "Welcome to HomeLink Agents",
+      description: "Platform overview, brand standards, and compliance basics.",
+      type: "VIDEO",
+      durationMinutes: 20,
+      required: true,
+      order: 1,
+    },
+    {
+      id: "train_listings",
+      title: "Listing Excellence",
+      description: "How to create high-converting listings with photos, video, and availability.",
+      type: "DOCUMENT",
+      durationMinutes: 30,
+      required: true,
+      order: 2,
+    },
+    {
+      id: "train_leads",
+      title: "Lead Management",
+      description: "Accepting leads, scheduling viewings, and closing deals.",
+      type: "QUIZ",
+      durationMinutes: 25,
+      required: true,
+      order: 3,
+    },
+    {
+      id: "train_compliance",
+      title: "Compliance & Ethics",
+      description: "Client data, contracts, and professional conduct.",
+      type: "ASSIGNMENT",
+      durationMinutes: 15,
+      required: true,
+      order: 4,
+    },
+  ];
+}
 
 export function createDefaultAgentSettings(): AgentSystemSettings {
   return {

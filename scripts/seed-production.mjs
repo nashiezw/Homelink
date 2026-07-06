@@ -26,6 +26,45 @@ const AREA_COORDINATES = {
   "avondale west, harare": { latitude: -17.7984, longitude: 31.0148 },
 };
 
+const agentTrainingModules = [
+  {
+    id: "train_intro",
+    title: "Welcome to HomeLink Agents",
+    description: "Platform overview, brand standards, and compliance basics.",
+    type: "VIDEO",
+    durationMinutes: 20,
+    required: true,
+    order: 1,
+  },
+  {
+    id: "train_listings",
+    title: "Listing Excellence",
+    description: "How to create high-converting listings with photos, video, and availability.",
+    type: "DOCUMENT",
+    durationMinutes: 30,
+    required: true,
+    order: 2,
+  },
+  {
+    id: "train_leads",
+    title: "Lead Management",
+    description: "Accepting leads, scheduling viewings, and closing deals.",
+    type: "QUIZ",
+    durationMinutes: 25,
+    required: true,
+    order: 3,
+  },
+  {
+    id: "train_compliance",
+    title: "Compliance & Ethics",
+    description: "Client data, contracts, and professional conduct.",
+    type: "ASSIGNMENT",
+    durationMinutes: 15,
+    required: true,
+    order: 4,
+  },
+];
+
 const users = [
   { email: "admin@homelinkzim.co.zw", name: "HomeLink Admin", phone: "+263780000001", roles: [Role.ADMIN, Role.SEEKER], password: adminPassword },
   { id: "user_seeker_tinashe", email: "tinashe.dube@homelinkzim.co.zw", name: "Tinashe Dube", phone: "+263770000000", roles: [Role.SEEKER, Role.LANDLORD], password: process.env.SEED_TINASHE_PASSWORD ?? standardPassword },
@@ -840,6 +879,7 @@ async function main() {
     title: "Agency desk",
     yearsExperience: 8,
   });
+  await seedAgentTrainingModules();
   const review = await prisma.review.findFirst({
     where: { authorId: seeker.id, listingId: firstListing.id, target: "listing", metadata: { path: ["seedKey"], equals: "review-avondale-cottage" } },
   });
@@ -991,6 +1031,35 @@ async function seedAgentApplication(agent, profile) {
     update: { status: progress.status, payload: progress },
     create: { agentId: agent.id, moduleId: progress.moduleId, status: progress.status, payload: progress },
   });
+}
+
+async function seedAgentTrainingModules() {
+  for (const trainingModule of agentTrainingModules) {
+    await prisma.agentTrainingModuleRecord.upsert({
+      where: { id: trainingModule.id },
+      update: {
+        title: trainingModule.title,
+        description: trainingModule.description,
+        type: trainingModule.type,
+        durationMinutes: trainingModule.durationMinutes,
+        required: trainingModule.required,
+        order: trainingModule.order,
+        active: true,
+        payload: trainingModule,
+      },
+      create: {
+        id: trainingModule.id,
+        title: trainingModule.title,
+        description: trainingModule.description,
+        type: trainingModule.type,
+        durationMinutes: trainingModule.durationMinutes,
+        required: trainingModule.required,
+        order: trainingModule.order,
+        active: true,
+        payload: trainingModule,
+      },
+    });
+  }
 }
 
 async function seedVerifiedTenancy(listing, landlord, tenant) {

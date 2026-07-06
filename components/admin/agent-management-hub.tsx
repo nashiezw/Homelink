@@ -687,6 +687,35 @@ export function AgentManagementHub() {
             </div>
           )}
           <div className="rounded-xl border border-white/10 bg-slate-900/60 p-4">
+            <div className="mb-4 rounded-lg border border-cyan-400/20 bg-cyan-500/5 p-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="font-semibold text-white">Require training before approval</p>
+                  <p className="mt-1 text-sm text-slate-400">
+                    When enabled, agents must complete all required training modules before an admin can approve them.
+                  </p>
+                </div>
+                <label className="flex items-center gap-2 text-sm font-semibold text-slate-200">
+                  <input
+                    type="checkbox"
+                    checked={data.settings.approvalWorkflow.trainingRequired}
+                    onChange={(e) =>
+                      void adminAction({
+                        action: "update_settings",
+                        settings: {
+                          approvalWorkflow: {
+                            ...data.settings.approvalWorkflow,
+                            trainingRequired: e.target.checked,
+                          },
+                        },
+                      })
+                    }
+                    className="size-4 rounded border-slate-600 bg-slate-950"
+                  />
+                  {data.settings.approvalWorkflow.trainingRequired ? "Required" : "Optional"}
+                </label>
+              </div>
+            </div>
             <label className="text-sm text-slate-300">
               Lead assignment strategy
               <select

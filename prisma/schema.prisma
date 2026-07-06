@@ -407,6 +407,25 @@ model AgentTrainingProgressRecord {
   @@index([status])
 }
 
+model AgentTrainingModuleRecord {
+  id              String   @id
+  title           String
+  description     String
+  type            String
+  contentUrl      String?
+  durationMinutes Int      @default(0)
+  required        Boolean  @default(true)
+  order           Int      @default(0)
+  active          Boolean  @default(true)
+  payload         Json
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([active])
+  @@index([required])
+  @@index([order])
+}
+
 model Conversation {
   id           String                    @id @default(cuid())
   listingId    String?

@@ -77,6 +77,26 @@ async function applyCoreProductionSchema() {
   await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "AppSession_userId_idx" ON "AppSession"("userId")`);
   await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "AppSession_expiresAt_idx" ON "AppSession"("expiresAt")`);
   await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "AppSession_revokedAt_idx" ON "AppSession"("revokedAt")`);
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS "AgentTrainingModuleRecord" (
+      "id" TEXT NOT NULL,
+      "title" TEXT NOT NULL,
+      "description" TEXT NOT NULL,
+      "type" TEXT NOT NULL,
+      "contentUrl" TEXT,
+      "durationMinutes" INTEGER NOT NULL DEFAULT 0,
+      "required" BOOLEAN NOT NULL DEFAULT true,
+      "order" INTEGER NOT NULL DEFAULT 0,
+      "active" BOOLEAN NOT NULL DEFAULT true,
+      "payload" JSONB NOT NULL,
+      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT "AgentTrainingModuleRecord_pkey" PRIMARY KEY ("id")
+    )
+  `);
+  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "AgentTrainingModuleRecord_active_idx" ON "AgentTrainingModuleRecord"("active")`);
+  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "AgentTrainingModuleRecord_required_idx" ON "AgentTrainingModuleRecord"("required")`);
+  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "AgentTrainingModuleRecord_order_idx" ON "AgentTrainingModuleRecord"("order")`);
   await ensureBootstrapAdmin();
 }
 
