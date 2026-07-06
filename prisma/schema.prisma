@@ -1329,6 +1329,9 @@ model DocumentLibrary {
   searchableText     String                 @default("")
   downloadable       Boolean                @default(true)
   previewable        Boolean                @default(true)
+  visible            Boolean                @default(true)
+  sortOrder          Int                    @default(0)
+  downloadCount      Int                    @default(0)
   replacedById       String?
   active             Boolean                @default(true)
   createdById        String?

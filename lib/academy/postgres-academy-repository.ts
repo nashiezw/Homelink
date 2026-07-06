@@ -64,7 +64,7 @@ export async function getAcademyDashboard() {
   ] = await Promise.all([
     prisma.trainingCourse.findMany({ include: { category: true }, orderBy: { updatedAt: "desc" } }),
     prisma.trainingLesson.count(),
-    prisma.documentLibrary.findMany({ include: { category: true }, orderBy: { updatedAt: "desc" } }),
+    prisma.documentLibrary.findMany({ include: { category: true }, orderBy: [{ sortOrder: "asc" }, { updatedAt: "desc" }] }),
     prisma.videoLibrary.findMany({ orderBy: { updatedAt: "desc" } }),
     prisma.quiz.findMany({ include: { attempts: true }, orderBy: { updatedAt: "desc" } }),
     prisma.assignment.findMany({ orderBy: { updatedAt: "desc" } }),
@@ -232,6 +232,14 @@ export async function runAcademyAction(body: Record<string, any>, actor: Actor) 
     await notifyAgents("DOCUMENT_UPDATED", "Academy document added", `${document.title} is available in the document library.`);
     return document;
   }
+  if (action === "update_document") {
+    const document = await prisma.documentLibrary.update({
+      where: { id: String(body.documentId) },
+      data: documentUpdateInput(body.document ?? {}),
+    });
+    await audit(actor, "academy.document.update", document.id, { title: document.title });
+    return document;
+  }
   if (action === "replace_document") {
     const current = await prisma.documentLibrary.findUnique({ where: { id: String(body.documentId) } });
     if (!current) return null;
@@ -244,6 +252,20 @@ export async function runAcademyAction(body: Record<string, any>, actor: Actor) 
     await prisma.documentLibrary.update({ where: { id: current.id }, data: { active: false, replacedById: replacement.id } });
     await audit(actor, "academy.document.replace", replacement.id, { previousId: current.id, version: replacement.version });
     return replacement;
+  }
+  if (action === "delete_document") {
+    const document = await prisma.documentLibrary.update({
+      where: { id: String(body.documentId) },
+      data: { active: false, visible: false },
+    });
+    await audit(actor, "academy.document.delete", document.id, { title: document.title });
+    return document;
+  }
+  if (action === "reorder_documents") {
+    const ids = arrayOfStrings(body.documentIds);
+    await prisma.$transaction(ids.map((id, sortOrder) => prisma.documentLibrary.update({ where: { id }, data: { sortOrder } })));
+    await audit(actor, "academy.document.reorder", "document_library", { count: ids.length });
+    return { reordered: ids.length };
   }
   if (action === "create_video") {
     const video = await prisma.videoLibrary.create({ data: videoInput(body.video ?? {}) });
@@ -416,7 +438,30 @@ function documentInput(input: Record<string, any>, actorId: string): Prisma.Docu
     searchableText: String(input.searchableText ?? `${input.title ?? ""} ${input.description ?? ""}`),
     downloadable: input.downloadable !== false,
     previewable: input.previewable !== false,
+    visible: input.visible !== false,
+    sortOrder: numberOr(input.sortOrder, 0),
+    downloadCount: numberOr(input.downloadCount, 0),
     createdById: actorId,
+  };
+}
+
+function documentUpdateInput(input: Record<string, any>): Prisma.DocumentLibraryUncheckedUpdateInput {
+  return {
+    ...(typeof input.categoryId === "string" ? { categoryId: input.categoryId || null } : {}),
+    ...(typeof input.title === "string" ? { title: required(input.title, "Document title") } : {}),
+    ...(typeof input.description === "string" ? { description: stringOrNull(input.description) } : {}),
+    ...(typeof input.fileUrl === "string" ? { fileUrl: required(input.fileUrl, "File URL") } : {}),
+    ...(typeof input.fileName === "string" ? { fileName: input.fileName } : {}),
+    ...(input.fileType ? { fileType: enumValue(TrainingResourceType, input.fileType, TrainingResourceType.PDF) } : {}),
+    ...(input.fileSizeBytes !== undefined ? { fileSizeBytes: numberOr(input.fileSizeBytes, 0) } : {}),
+    ...(input.tags !== undefined ? { tags: arrayOfStrings(input.tags) } : {}),
+    ...(input.permissions !== undefined ? { permissions: arrayOfStrings(input.permissions) } : {}),
+    ...(typeof input.searchableText === "string" ? { searchableText: input.searchableText } : {}),
+    ...(typeof input.downloadable === "boolean" ? { downloadable: input.downloadable } : {}),
+    ...(typeof input.previewable === "boolean" ? { previewable: input.previewable } : {}),
+    ...(typeof input.visible === "boolean" ? { visible: input.visible } : {}),
+    ...(input.sortOrder !== undefined ? { sortOrder: numberOr(input.sortOrder, 0) } : {}),
+    active: input.active === undefined ? undefined : Boolean(input.active),
   };
 }
 

@@ -105,7 +105,7 @@ const NAV_GROUPS: Array<{ label: string; items: NavItem[] }> = [
       { id: "academy", label: "Assignments", icon: ClipboardCheck, academyView: "Assignments" },
       { id: "academy", label: "Final Exams", icon: GraduationCap, academyView: "Final Exams" },
       { id: "academy", label: "Certificates", icon: Award, academyView: "Certificates" },
-      { id: "academy", label: "Documents Library", icon: FileText, academyView: "Documents Library" },
+      { id: "academy", label: "Training Resources", icon: FileText, academyView: "Training Resources" },
       { id: "academy", label: "Video Library", icon: PlayCircle, academyView: "Video Library" },
       { id: "academy", label: "Announcements", icon: Megaphone, academyView: "Announcements" },
       { id: "academy", label: "Discussion Board", icon: MessageSquare, academyView: "Discussion Board" },

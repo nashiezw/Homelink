@@ -106,6 +106,9 @@ type AcademyDocument = {
   permissions: string[];
   downloadable: boolean;
   previewable: boolean;
+  visible: boolean;
+  sortOrder: number;
+  downloadCount: number;
   active: boolean;
   category?: { id: string; name: string } | null;
   updatedAt: string;
@@ -128,7 +131,7 @@ const academyTabs = [
   "Dashboard",
   "Courses",
   "Lessons",
-  "Documents Library",
+  "Training Resources",
   "Video Library",
   "Quizzes",
   "Assignments",
@@ -306,7 +309,7 @@ export function AgentAcademyHub() {
         </div>
       )}
 
-      {tab === "Documents Library" && (
+      {tab === "Training Resources" && (
         <LibraryView
           documents={data.documents}
           onCreate={() => setDrawer("document")}
@@ -440,13 +443,14 @@ function LibraryView({ documents, onCreate, onPreview, onReplace }: { documents:
           { key: "category", header: "Category", render: (document) => document.category?.name ?? "Uncategorised" },
           { key: "version", header: "Version", render: (document) => `v${document.version}` },
           { key: "permissions", header: "Permissions", render: (document) => document.permissions.join(", ") },
+          { key: "downloads", header: "Downloads", render: (document) => document.downloadCount ?? 0 },
           {
             key: "actions",
             header: "Actions",
             render: (document) => (
               <div className="flex flex-wrap gap-2">
                 <IconAction label="Preview" icon={Search} onClick={() => onPreview(document)} />
-                <a href={document.fileUrl} download className="inline-flex size-9 items-center justify-center rounded-lg border border-white/10 text-slate-300 hover:border-emerald-500/30 hover:bg-emerald-500/10 hover:text-white" title="Download">
+                <a href={`/api/v1/academy/documents/${document.id}/download`} className="inline-flex size-9 items-center justify-center rounded-lg border border-white/10 text-slate-300 hover:border-emerald-500/30 hover:bg-emerald-500/10 hover:text-white" title="Download">
                   <Download className="size-4" />
                 </a>
                 <IconAction label="Replace" icon={Upload} onClick={() => onReplace(document)} />
@@ -626,7 +630,7 @@ function DocumentPreview({ document, onClose }: { document: AcademyDocument; onC
       <section className="w-full max-w-5xl overflow-hidden rounded-2xl border border-white/10 bg-slate-950 shadow-2xl" onClick={(event) => event.stopPropagation()}>
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 p-4">
           <div><p className="font-semibold text-white">{document.title}</p><p className="text-xs text-slate-500">{document.fileType} - version {document.version}</p></div>
-          <div className="flex gap-2"><a href={document.fileUrl} download className="inline-flex items-center gap-2 rounded-lg border border-white/10 px-3 py-2 text-sm font-semibold text-slate-200"><Download className="size-4" /> Download</a><Button variant="secondary" onClick={onClose}>Close</Button></div>
+          <div className="flex gap-2"><a href={`/api/v1/academy/documents/${document.id}/download`} className="inline-flex items-center gap-2 rounded-lg border border-white/10 px-3 py-2 text-sm font-semibold text-slate-200"><Download className="size-4" /> Download</a><Button variant="secondary" onClick={onClose}>Close</Button></div>
         </div>
         <div className="h-[70vh] bg-slate-900 p-4">
           {isImage ? <img src={document.fileUrl} alt={document.title} className="h-full w-full object-contain" /> : isVideo ? <video src={document.fileUrl} controls className="h-full w-full bg-black" /> : isAudio ? <div className="flex h-full items-center justify-center"><audio src={document.fileUrl} controls className="w-full max-w-xl" /></div> : <iframe title={document.title} src={document.fileUrl} className="h-full w-full rounded-lg bg-white" />}

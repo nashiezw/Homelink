@@ -1,0 +1,951 @@
+[
+  {
+    "title": "HomeLink Zimbabwe Real Estate Agent Training Manual",
+    "description": "Official complete HomeLink Zimbabwe real estate sales and letting agent training manual.",
+    "category": "Training Manuals",
+    "fileName": "homelink-zimbabwe-real-estate-agent-training-manual.pdf",
+    "fileUrl": "/uploads/academy/homelink-zimbabwe-real-estate-agent-training-manual.pdf",
+    "fileType": "PDF",
+    "tags": [
+      "manual",
+      "training",
+      "real estate",
+      "agent academy"
+    ],
+    "sortOrder": 0,
+    "version": 1,
+    "fileSizeBytes": 1959643,
+    "manualPage": 1
+  },
+  {
+    "title": "Seller Information Form",
+    "description": "Branded A4 print-ready seller information form recreated from the official HomeLink Zimbabwe training manual.",
+    "category": "Property Forms",
+    "sourceCategory": "Client Documents",
+    "fileName": "seller-information-form.pdf",
+    "fileUrl": "/uploads/academy/resources/seller-information-form.pdf",
+    "fileType": "PDF",
+    "tags": [
+      "client documents",
+      "training resource",
+      "agent academy",
+      "print-ready"
+    ],
+    "sortOrder": 1,
+    "version": 1,
+    "fileSizeBytes": 69970,
+    "manualPage": 275
+  },
+  {
+    "title": "Buyer Registration Form",
+    "description": "Branded A4 print-ready buyer registration form recreated from the official HomeLink Zimbabwe training manual.",
+    "category": "Property Forms",
+    "sourceCategory": "Client Documents",
+    "fileName": "buyer-registration-form.pdf",
+    "fileUrl": "/uploads/academy/resources/buyer-registration-form.pdf",
+    "fileType": "PDF",
+    "tags": [
+      "client documents",
+      "training resource",
+      "agent academy",
+      "print-ready"
+    ],
+    "sortOrder": 2,
+    "version": 1,
+    "fileSizeBytes": 69940,
+    "manualPage": 277
+  },
+  {
+    "title": "Tenant Registration Form",
+    "description": "Branded A4 print-ready tenant registration form recreated from the official HomeLink Zimbabwe training manual.",
+    "category": "Property Forms",
+    "sourceCategory": "Client Documents",
+    "fileName": "tenant-registration-form.pdf",
+    "fileUrl": "/uploads/academy/resources/tenant-registration-form.pdf",
+    "fileType": "PDF",
+    "tags": [
+      "client documents",
+      "training resource",
+      "agent academy",
+      "print-ready"
+    ],
+    "sortOrder": 3,
+    "version": 1,
+    "fileSizeBytes": 69956,
+    "manualPage": 278
+  },
+  {
+    "title": "Landlord Registration Form",
+    "description": "Branded A4 print-ready landlord registration form recreated from the official HomeLink Zimbabwe training manual.",
+    "category": "Property Forms",
+    "sourceCategory": "Client Documents",
+    "fileName": "landlord-registration-form.pdf",
+    "fileUrl": "/uploads/academy/resources/landlord-registration-form.pdf",
+    "fileType": "PDF",
+    "tags": [
+      "client documents",
+      "training resource",
+      "agent academy",
+      "print-ready"
+    ],
+    "sortOrder": 4,
+    "version": 1,
+    "fileSizeBytes": 69964,
+    "manualPage": 279
+  },
+  {
+    "title": "Property Listing Form",
+    "description": "Branded A4 print-ready property listing form recreated from the official HomeLink Zimbabwe training manual.",
+    "category": "Property Forms",
+    "sourceCategory": "Client Documents",
+    "fileName": "property-listing-form.pdf",
+    "fileUrl": "/uploads/academy/resources/property-listing-form.pdf",
+    "fileType": "PDF",
+    "tags": [
+      "client documents",
+      "training resource",
+      "agent academy",
+      "print-ready"
+    ],
+    "sortOrder": 5,
+    "version": 1,
+    "fileSizeBytes": 69936,
+    "manualPage": 280
+  },
+  {
+    "title": "Buyer Needs Analysis Form",
+    "description": "Branded A4 print-ready buyer needs analysis form recreated from the official HomeLink Zimbabwe training manual.",
+    "category": "Property Forms",
+    "sourceCategory": "Client Documents",
+    "fileName": "buyer-needs-analysis-form.pdf",
+    "fileUrl": "/uploads/academy/resources/buyer-needs-analysis-form.pdf",
+    "fileType": "PDF",
+    "tags": [
+      "client documents",
+      "training resource",
+      "agent academy",
+      "print-ready"
+    ],
+    "sortOrder": 6,
+    "version": 1,
+    "fileSizeBytes": 69963,
+    "manualPage": 281
+  },
+  {
+    "title": "Tenant Needs Analysis Form",
+    "description": "Branded A4 print-ready tenant needs analysis form recreated from the official HomeLink Zimbabwe training manual.",
+    "category": "Property Forms",
+    "sourceCategory": "Client Documents",
+    "fileName": "tenant-needs-analysis-form.pdf",
+    "fileUrl": "/uploads/academy/resources/tenant-needs-analysis-form.pdf",
+    "fileType": "PDF",
+    "tags": [
+      "client documents",
+      "training resource",
+      "agent academy",
+      "print-ready"
+    ],
+    "sortOrder": 7,
+    "version": 1,
+    "fileSizeBytes": 69970,
+    "manualPage": 282
+  },
+  {
+    "title": "Property Viewing Register",
+    "description": "Branded A4 print-ready property viewing register recreated from the official HomeLink Zimbabwe training manual.",
+    "category": "Property Forms",
+    "sourceCategory": "Client Documents",
+    "fileName": "property-viewing-register.pdf",
+    "fileUrl": "/uploads/academy/resources/property-viewing-register.pdf",
+    "fileType": "PDF",
+    "tags": [
+      "client documents",
+      "training resource",
+      "agent academy",
+      "print-ready"
+    ],
+    "sortOrder": 8,
+    "version": 1,
+    "fileSizeBytes": 69933,
+    "manualPage": 283
+  },
+  {
+    "title": "Property Inspection Checklist",
+    "description": "Branded A4 print-ready property inspection checklist recreated from the official HomeLink Zimbabwe training manual.",
+    "category": "Property Forms",
+    "sourceCategory": "Client Documents",
+    "fileName": "property-inspection-checklist.pdf",
+    "fileUrl": "/uploads/academy/resources/property-inspection-checklist.pdf",
+    "fileType": "PDF",
+    "tags": [
+      "client documents",
+      "training resource",
+      "agent academy",
+      "print-ready"
+    ],
+    "sortOrder": 9,
+    "version": 1,
+    "fileSizeBytes": 69938,
+    "manualPage": 284
+  },
+  {
+    "title": "Viewing Feedback Form",
+    "description": "Branded A4 print-ready viewing feedback form recreated from the official HomeLink Zimbabwe training manual.",
+    "category": "Property Forms",
+    "sourceCategory": "Client Documents",
+    "fileName": "viewing-feedback-form.pdf",
+    "fileUrl": "/uploads/academy/resources/viewing-feedback-form.pdf",
+    "fileType": "PDF",
+    "tags": [
+      "client documents",
+      "training resource",
+      "agent academy",
+      "print-ready"
+    ],
+    "sortOrder": 10,
+    "version": 1,
+    "fileSizeBytes": 69938,
+    "manualPage": 285
+  },
+  {
+    "title": "Property Appraisal Form",
+    "description": "Branded A4 print-ready property appraisal form recreated from the official HomeLink Zimbabwe training manual.",
+    "category": "Property Forms",
+    "sourceCategory": "Client Documents",
+    "fileName": "property-appraisal-form.pdf",
+    "fileUrl": "/uploads/academy/resources/property-appraisal-form.pdf",
+    "fileType": "PDF",
+    "tags": [
+      "client documents",
+      "training resource",
+      "agent academy",
+      "print-ready"
+    ],
+    "sortOrder": 11,
+    "version": 1,
+    "fileSizeBytes": 69942,
+    "manualPage": 286
+  },
+  {
+    "title": "Listing Agreement Template",
+    "description": "Branded A4 print-ready listing agreement template recreated from the official HomeLink Zimbabwe training manual.",
+    "category": "Property Forms",
+    "sourceCategory": "Client Documents",
+    "fileName": "listing-agreement-template.pdf",
+    "fileUrl": "/uploads/academy/resources/listing-agreement-template.pdf",
+    "fileType": "PDF",
+    "tags": [
+      "client documents",
+      "training resource",
+      "agent academy",
+      "print-ready"
+    ],
+    "sortOrder": 12,
+    "version": 1,
+    "fileSizeBytes": 69943,
+    "manualPage": 287
+  },
+  {
+    "title": "Offer to Purchase Template",
+    "description": "Branded A4 print-ready offer to purchase template recreated from the official HomeLink Zimbabwe training manual.",
+    "category": "Property Forms",
+    "sourceCategory": "Client Documents",
+    "fileName": "offer-to-purchase-template.pdf",
+    "fileUrl": "/uploads/academy/resources/offer-to-purchase-template.pdf",
+    "fileType": "PDF",
+    "tags": [
+      "client documents",
+      "training resource",
+      "agent academy",
+      "print-ready"
+    ],
+    "sortOrder": 13,
+    "version": 1,
+    "fileSizeBytes": 69951,
+    "manualPage": 288
+  },
+  {
+    "title": "Rental Application Form",
+    "description": "Branded A4 print-ready rental application form recreated from the official HomeLink Zimbabwe training manual.",
+    "category": "Property Forms",
+    "sourceCategory": "Client Documents",
+    "fileName": "rental-application-form.pdf",
+    "fileUrl": "/uploads/academy/resources/rental-application-form.pdf",
+    "fileType": "PDF",
+    "tags": [
+      "client documents",
+      "training resource",
+      "agent academy",
+      "print-ready"
+    ],
+    "sortOrder": 14,
+    "version": 1,
+    "fileSizeBytes": 69926,
+    "manualPage": 289
+  },
+  {
+    "title": "Client Information Sheet",
+    "description": "Branded A4 print-ready client information sheet recreated from the official HomeLink Zimbabwe training manual.",
+    "category": "Property Forms",
+    "sourceCategory": "Client Documents",
+    "fileName": "client-information-sheet.pdf",
+    "fileUrl": "/uploads/academy/resources/client-information-sheet.pdf",
+    "fileType": "PDF",
+    "tags": [
+      "client documents",
+      "training resource",
+      "agent academy",
+      "print-ready"
+    ],
+    "sortOrder": 15,
+    "version": 1,
+    "fileSizeBytes": 69924,
+    "manualPage": 290
+  },
+  {
+    "title": "Daily Activity Planner",
+    "description": "Branded A4 print-ready daily activity planner recreated from the official HomeLink Zimbabwe training manual.",
+    "category": "Agent Templates",
+    "sourceCategory": "Operations",
+    "fileName": "daily-activity-planner.pdf",
+    "fileUrl": "/uploads/academy/resources/daily-activity-planner.pdf",
+    "fileType": "PDF",
+    "tags": [
+      "operations",
+      "training resource",
+      "agent academy",
+      "print-ready"
+    ],
+    "sortOrder": 16,
+    "version": 1,
+    "fileSizeBytes": 69936,
+    "manualPage": 291
+  },
+  {
+    "title": "Weekly Planner",
+    "description": "Branded A4 print-ready weekly planner recreated from the official HomeLink Zimbabwe training manual.",
+    "category": "Agent Templates",
+    "sourceCategory": "Operations",
+    "fileName": "weekly-planner.pdf",
+    "fileUrl": "/uploads/academy/resources/weekly-planner.pdf",
+    "fileType": "PDF",
+    "tags": [
+      "operations",
+      "training resource",
+      "agent academy",
+      "print-ready"
+    ],
+    "sortOrder": 17,
+    "version": 1,
+    "fileSizeBytes": 69906,
+    "manualPage": 292
+  },
+  {
+    "title": "Monthly Planner",
+    "description": "Branded A4 print-ready monthly planner recreated from the official HomeLink Zimbabwe training manual.",
+    "category": "Agent Templates",
+    "sourceCategory": "Operations",
+    "fileName": "monthly-planner.pdf",
+    "fileUrl": "/uploads/academy/resources/monthly-planner.pdf",
+    "fileType": "PDF",
+    "tags": [
+      "operations",
+      "training resource",
+      "agent academy",
+      "print-ready"
+    ],
+    "sortOrder": 18,
+    "version": 1,
+    "fileSizeBytes": 69918,
+    "manualPage": 293
+  },
+  {
+    "title": "Appointment Schedule",
+    "description": "Branded A4 print-ready appointment schedule recreated from the official HomeLink Zimbabwe training manual.",
+    "category": "Agent Templates",
+    "sourceCategory": "Operations",
+    "fileName": "appointment-schedule.pdf",
+    "fileUrl": "/uploads/academy/resources/appointment-schedule.pdf",
+    "fileType": "PDF",
+    "tags": [
+      "operations",
+      "training resource",
+      "agent academy",
+      "print-ready"
+    ],
+    "sortOrder": 19,
+    "version": 1,
+    "fileSizeBytes": 69891,
+    "manualPage": 294
+  },
+  {
+    "title": "Lead Tracking Sheet",
+    "description": "Branded A4 print-ready lead tracking sheet recreated from the official HomeLink Zimbabwe training manual.",
+    "category": "Agent Templates",
+    "sourceCategory": "Operations",
+    "fileName": "lead-tracking-sheet.pdf",
+    "fileUrl": "/uploads/academy/resources/lead-tracking-sheet.pdf",
+    "fileType": "PDF",
+    "tags": [
+      "operations",
+      "training resource",
+      "agent academy",
+      "print-ready"
+    ],
+    "sortOrder": 20,
+    "version": 1,
+    "fileSizeBytes": 69926,
+    "manualPage": 295
+  },
+  {
+    "title": "Client Follow-Up Register",
+    "description": "Branded A4 print-ready client follow-up register recreated from the official HomeLink Zimbabwe training manual.",
+    "category": "Agent Templates",
+    "sourceCategory": "Operations",
+    "fileName": "client-follow-up-register.pdf",
+    "fileUrl": "/uploads/academy/resources/client-follow-up-register.pdf",
+    "fileType": "PDF",
+    "tags": [
+      "operations",
+      "training resource",
+      "agent academy",
+      "print-ready"
+    ],
+    "sortOrder": 21,
+    "version": 1,
+    "fileSizeBytes": 69935,
+    "manualPage": 296
+  },
+  {
+    "title": "Open House Checklist",
+    "description": "Branded A4 print-ready open house checklist recreated from the official HomeLink Zimbabwe training manual.",
+    "category": "Agent Templates",
+    "sourceCategory": "Operations",
+    "fileName": "open-house-checklist.pdf",
+    "fileUrl": "/uploads/academy/resources/open-house-checklist.pdf",
+    "fileType": "PDF",
+    "tags": [
+      "operations",
+      "training resource",
+      "agent academy",
+      "print-ready"
+    ],
+    "sortOrder": 22,
+    "version": 1,
+    "fileSizeBytes": 69942,
+    "manualPage": 297
+  },
+  {
+    "title": "Property Marketing Checklist",
+    "description": "Branded A4 print-ready property marketing checklist recreated from the official HomeLink Zimbabwe training manual.",
+    "category": "Marketing Resources",
+    "sourceCategory": "Marketing",
+    "fileName": "property-marketing-checklist.pdf",
+    "fileUrl": "/uploads/academy/resources/property-marketing-checklist.pdf",
+    "fileType": "PDF",
+    "tags": [
+      "marketing",
+      "training resource",
+      "agent academy",
+      "print-ready"
+    ],
+    "sortOrder": 23,
+    "version": 1,
+    "fileSizeBytes": 69951,
+    "manualPage": 298
+  },
+  {
+    "title": "Property Photography Checklist",
+    "description": "Branded A4 print-ready property photography checklist recreated from the official HomeLink Zimbabwe training manual.",
+    "category": "Marketing Resources",
+    "sourceCategory": "Marketing",
+    "fileName": "property-photography-checklist.pdf",
+    "fileUrl": "/uploads/academy/resources/property-photography-checklist.pdf",
+    "fileType": "PDF",
+    "tags": [
+      "marketing",
+      "training resource",
+      "agent academy",
+      "print-ready"
+    ],
+    "sortOrder": 24,
+    "version": 1,
+    "fileSizeBytes": 69947,
+    "manualPage": 299
+  },
+  {
+    "title": "Property Description Template",
+    "description": "Branded A4 print-ready property description template recreated from the official HomeLink Zimbabwe training manual.",
+    "category": "Marketing Resources",
+    "sourceCategory": "Marketing",
+    "fileName": "property-description-template.pdf",
+    "fileUrl": "/uploads/academy/resources/property-description-template.pdf",
+    "fileType": "PDF",
+    "tags": [
+      "marketing",
+      "training resource",
+      "agent academy",
+      "print-ready"
+    ],
+    "sortOrder": 25,
+    "version": 1,
+    "fileSizeBytes": 69943,
+    "manualPage": 300
+  },
+  {
+    "title": "Social Media Content Planner",
+    "description": "Branded A4 print-ready social media content planner recreated from the official HomeLink Zimbabwe training manual.",
+    "category": "Marketing Resources",
+    "sourceCategory": "Marketing",
+    "fileName": "social-media-content-planner.pdf",
+    "fileUrl": "/uploads/academy/resources/social-media-content-planner.pdf",
+    "fileType": "PDF",
+    "tags": [
+      "marketing",
+      "training resource",
+      "agent academy",
+      "print-ready"
+    ],
+    "sortOrder": 26,
+    "version": 1,
+    "fileSizeBytes": 69941,
+    "manualPage": 301
+  },
+  {
+    "title": "WhatsApp Marketing Templates",
+    "description": "Branded A4 print-ready whatsapp marketing templates recreated from the official HomeLink Zimbabwe training manual.",
+    "category": "Marketing Resources",
+    "sourceCategory": "Marketing",
+    "fileName": "whatsapp-marketing-templates.pdf",
+    "fileUrl": "/uploads/academy/resources/whatsapp-marketing-templates.pdf",
+    "fileType": "PDF",
+    "tags": [
+      "marketing",
+      "training resource",
+      "agent academy",
+      "print-ready"
+    ],
+    "sortOrder": 27,
+    "version": 1,
+    "fileSizeBytes": 69956,
+    "manualPage": 302
+  },
+  {
+    "title": "Telephone Scripts",
+    "description": "Branded A4 print-ready telephone scripts recreated from the official HomeLink Zimbabwe training manual.",
+    "category": "Marketing Resources",
+    "sourceCategory": "Marketing",
+    "fileName": "telephone-scripts.pdf",
+    "fileUrl": "/uploads/academy/resources/telephone-scripts.pdf",
+    "fileType": "PDF",
+    "tags": [
+      "marketing",
+      "training resource",
+      "agent academy",
+      "print-ready"
+    ],
+    "sortOrder": 28,
+    "version": 1,
+    "fileSizeBytes": 69938,
+    "manualPage": 303
+  },
+  {
+    "title": "Cold Calling Scripts",
+    "description": "Branded A4 print-ready cold calling scripts recreated from the official HomeLink Zimbabwe training manual.",
+    "category": "Marketing Resources",
+    "sourceCategory": "Marketing",
+    "fileName": "cold-calling-scripts.pdf",
+    "fileUrl": "/uploads/academy/resources/cold-calling-scripts.pdf",
+    "fileType": "PDF",
+    "tags": [
+      "marketing",
+      "training resource",
+      "agent academy",
+      "print-ready"
+    ],
+    "sortOrder": 29,
+    "version": 1,
+    "fileSizeBytes": 69939,
+    "manualPage": 304
+  },
+  {
+    "title": "Email Templates",
+    "description": "Branded A4 print-ready email templates recreated from the official HomeLink Zimbabwe training manual.",
+    "category": "Marketing Resources",
+    "sourceCategory": "Marketing",
+    "fileName": "email-templates.pdf",
+    "fileUrl": "/uploads/academy/resources/email-templates.pdf",
+    "fileType": "PDF",
+    "tags": [
+      "marketing",
+      "training resource",
+      "agent academy",
+      "print-ready"
+    ],
+    "sortOrder": 30,
+    "version": 1,
+    "fileSizeBytes": 69901,
+    "manualPage": 305
+  },
+  {
+    "title": "Objection Handling Guide",
+    "description": "Branded A4 print-ready objection handling guide recreated from the official HomeLink Zimbabwe training manual.",
+    "category": "Marketing Resources",
+    "sourceCategory": "Marketing",
+    "fileName": "objection-handling-guide.pdf",
+    "fileUrl": "/uploads/academy/resources/objection-handling-guide.pdf",
+    "fileType": "PDF",
+    "tags": [
+      "marketing",
+      "training resource",
+      "agent academy",
+      "print-ready"
+    ],
+    "sortOrder": 31,
+    "version": 1,
+    "fileSizeBytes": 69932,
+    "manualPage": 306
+  },
+  {
+    "title": "Commission Calculation Worksheet",
+    "description": "Branded A4 print-ready commission calculation worksheet recreated from the official HomeLink Zimbabwe training manual.",
+    "category": "Compliance Documents",
+    "sourceCategory": "Administration",
+    "fileName": "commission-calculation-worksheet.pdf",
+    "fileUrl": "/uploads/academy/resources/commission-calculation-worksheet.pdf",
+    "fileType": "PDF",
+    "tags": [
+      "administration",
+      "training resource",
+      "agent academy",
+      "print-ready"
+    ],
+    "sortOrder": 32,
+    "version": 1,
+    "fileSizeBytes": 69944,
+    "manualPage": 307
+  },
+  {
+    "title": "Expense Tracker",
+    "description": "Branded A4 print-ready expense tracker recreated from the official HomeLink Zimbabwe training manual.",
+    "category": "Compliance Documents",
+    "sourceCategory": "Administration",
+    "fileName": "expense-tracker.pdf",
+    "fileUrl": "/uploads/academy/resources/expense-tracker.pdf",
+    "fileType": "PDF",
+    "tags": [
+      "administration",
+      "training resource",
+      "agent academy",
+      "print-ready"
+    ],
+    "sortOrder": 33,
+    "version": 1,
+    "fileSizeBytes": 69900,
+    "manualPage": 308
+  },
+  {
+    "title": "Mileage Log",
+    "description": "Branded A4 print-ready mileage log recreated from the official HomeLink Zimbabwe training manual.",
+    "category": "Compliance Documents",
+    "sourceCategory": "Administration",
+    "fileName": "mileage-log.pdf",
+    "fileUrl": "/uploads/academy/resources/mileage-log.pdf",
+    "fileType": "PDF",
+    "tags": [
+      "administration",
+      "training resource",
+      "agent academy",
+      "print-ready"
+    ],
+    "sortOrder": 34,
+    "version": 1,
+    "fileSizeBytes": 69903,
+    "manualPage": 309
+  },
+  {
+    "title": "File Checklist",
+    "description": "Branded A4 print-ready file checklist recreated from the official HomeLink Zimbabwe training manual.",
+    "category": "Compliance Documents",
+    "sourceCategory": "Administration",
+    "fileName": "file-checklist.pdf",
+    "fileUrl": "/uploads/academy/resources/file-checklist.pdf",
+    "fileType": "PDF",
+    "tags": [
+      "administration",
+      "training resource",
+      "agent academy",
+      "print-ready"
+    ],
+    "sortOrder": 35,
+    "version": 1,
+    "fileSizeBytes": 69882,
+    "manualPage": 310
+  },
+  {
+    "title": "Compliance Checklist",
+    "description": "Branded A4 print-ready compliance checklist recreated from the official HomeLink Zimbabwe training manual.",
+    "category": "Compliance Documents",
+    "sourceCategory": "Administration",
+    "fileName": "compliance-checklist.pdf",
+    "fileUrl": "/uploads/academy/resources/compliance-checklist.pdf",
+    "fileType": "PDF",
+    "tags": [
+      "administration",
+      "training resource",
+      "agent academy",
+      "print-ready"
+    ],
+    "sortOrder": 36,
+    "version": 1,
+    "fileSizeBytes": 69920,
+    "manualPage": 311
+  },
+  {
+    "title": "Document Submission Checklist",
+    "description": "Branded A4 print-ready document submission checklist recreated from the official HomeLink Zimbabwe training manual.",
+    "category": "Compliance Documents",
+    "sourceCategory": "Administration",
+    "fileName": "document-submission-checklist.pdf",
+    "fileUrl": "/uploads/academy/resources/document-submission-checklist.pdf",
+    "fileType": "PDF",
+    "tags": [
+      "administration",
+      "training resource",
+      "agent academy",
+      "print-ready"
+    ],
+    "sortOrder": 37,
+    "version": 1,
+    "fileSizeBytes": 69916,
+    "manualPage": 312
+  },
+  {
+    "title": "Monthly KPI Tracker",
+    "description": "Branded A4 print-ready monthly kpi tracker recreated from the official HomeLink Zimbabwe training manual.",
+    "category": "Assessments",
+    "sourceCategory": "Performance",
+    "fileName": "monthly-kpi-tracker.pdf",
+    "fileUrl": "/uploads/academy/resources/monthly-kpi-tracker.pdf",
+    "fileType": "PDF",
+    "tags": [
+      "performance",
+      "training resource",
+      "agent academy",
+      "print-ready"
+    ],
+    "sortOrder": 38,
+    "version": 1,
+    "fileSizeBytes": 69936,
+    "manualPage": 313
+  },
+  {
+    "title": "Listing Tracker",
+    "description": "Branded A4 print-ready listing tracker recreated from the official HomeLink Zimbabwe training manual.",
+    "category": "Assessments",
+    "sourceCategory": "Performance",
+    "fileName": "listing-tracker.pdf",
+    "fileUrl": "/uploads/academy/resources/listing-tracker.pdf",
+    "fileType": "PDF",
+    "tags": [
+      "performance",
+      "training resource",
+      "agent academy",
+      "print-ready"
+    ],
+    "sortOrder": 39,
+    "version": 1,
+    "fileSizeBytes": 69905,
+    "manualPage": 314
+  },
+  {
+    "title": "Closed Deals Register",
+    "description": "Branded A4 print-ready closed deals register recreated from the official HomeLink Zimbabwe training manual.",
+    "category": "Assessments",
+    "sourceCategory": "Performance",
+    "fileName": "closed-deals-register.pdf",
+    "fileUrl": "/uploads/academy/resources/closed-deals-register.pdf",
+    "fileType": "PDF",
+    "tags": [
+      "performance",
+      "training resource",
+      "agent academy",
+      "print-ready"
+    ],
+    "sortOrder": 40,
+    "version": 1,
+    "fileSizeBytes": 69920,
+    "manualPage": 315
+  },
+  {
+    "title": "Sales Performance Tracker",
+    "description": "Branded A4 print-ready sales performance tracker recreated from the official HomeLink Zimbabwe training manual.",
+    "category": "Assessments",
+    "sourceCategory": "Performance",
+    "fileName": "sales-performance-tracker.pdf",
+    "fileUrl": "/uploads/academy/resources/sales-performance-tracker.pdf",
+    "fileType": "PDF",
+    "tags": [
+      "performance",
+      "training resource",
+      "agent academy",
+      "print-ready"
+    ],
+    "sortOrder": 41,
+    "version": 1,
+    "fileSizeBytes": 69937,
+    "manualPage": 316
+  },
+  {
+    "title": "Personal Goal Planner",
+    "description": "Branded A4 print-ready personal goal planner recreated from the official HomeLink Zimbabwe training manual.",
+    "category": "Assessments",
+    "sourceCategory": "Performance",
+    "fileName": "personal-goal-planner.pdf",
+    "fileUrl": "/uploads/academy/resources/personal-goal-planner.pdf",
+    "fileType": "PDF",
+    "tags": [
+      "performance",
+      "training resource",
+      "agent academy",
+      "print-ready"
+    ],
+    "sortOrder": 42,
+    "version": 1,
+    "fileSizeBytes": 69907,
+    "manualPage": 317
+  },
+  {
+    "title": "Weekly Performance Review",
+    "description": "Branded A4 print-ready weekly performance review recreated from the official HomeLink Zimbabwe training manual.",
+    "category": "Assessments",
+    "sourceCategory": "Performance",
+    "fileName": "weekly-performance-review.pdf",
+    "fileUrl": "/uploads/academy/resources/weekly-performance-review.pdf",
+    "fileType": "PDF",
+    "tags": [
+      "performance",
+      "training resource",
+      "agent academy",
+      "print-ready"
+    ],
+    "sortOrder": 43,
+    "version": 1,
+    "fileSizeBytes": 69950,
+    "manualPage": 318
+  },
+  {
+    "title": "Property Selling Process Flowchart",
+    "description": "Branded A4 print-ready property selling process flowchart recreated from the official HomeLink Zimbabwe training manual.",
+    "category": "Reference Guides",
+    "sourceCategory": "Quick Reference Guides",
+    "fileName": "property-selling-process-flowchart.pdf",
+    "fileUrl": "/uploads/academy/resources/property-selling-process-flowchart.pdf",
+    "fileType": "PDF",
+    "tags": [
+      "quick reference guides",
+      "training resource",
+      "agent academy",
+      "print-ready"
+    ],
+    "sortOrder": 44,
+    "version": 1,
+    "fileSizeBytes": 70018,
+    "manualPage": 319
+  },
+  {
+    "title": "Property Rental Process Flowchart",
+    "description": "Branded A4 print-ready property rental process flowchart recreated from the official HomeLink Zimbabwe training manual.",
+    "category": "Reference Guides",
+    "sourceCategory": "Quick Reference Guides",
+    "fileName": "property-rental-process-flowchart.pdf",
+    "fileUrl": "/uploads/academy/resources/property-rental-process-flowchart.pdf",
+    "fileType": "PDF",
+    "tags": [
+      "quick reference guides",
+      "training resource",
+      "agent academy",
+      "print-ready"
+    ],
+    "sortOrder": 45,
+    "version": 1,
+    "fileSizeBytes": 70025,
+    "manualPage": 320
+  },
+  {
+    "title": "Buyer Journey Flowchart",
+    "description": "Branded A4 print-ready buyer journey flowchart recreated from the official HomeLink Zimbabwe training manual.",
+    "category": "Reference Guides",
+    "sourceCategory": "Quick Reference Guides",
+    "fileName": "buyer-journey-flowchart.pdf",
+    "fileUrl": "/uploads/academy/resources/buyer-journey-flowchart.pdf",
+    "fileType": "PDF",
+    "tags": [
+      "quick reference guides",
+      "training resource",
+      "agent academy",
+      "print-ready"
+    ],
+    "sortOrder": 46,
+    "version": 1,
+    "fileSizeBytes": 69990,
+    "manualPage": 321
+  },
+  {
+    "title": "Seller Journey Flowchart",
+    "description": "Branded A4 print-ready seller journey flowchart recreated from the official HomeLink Zimbabwe training manual.",
+    "category": "Reference Guides",
+    "sourceCategory": "Quick Reference Guides",
+    "fileName": "seller-journey-flowchart.pdf",
+    "fileUrl": "/uploads/academy/resources/seller-journey-flowchart.pdf",
+    "fileType": "PDF",
+    "tags": [
+      "quick reference guides",
+      "training resource",
+      "agent academy",
+      "print-ready"
+    ],
+    "sortOrder": 47,
+    "version": 1,
+    "fileSizeBytes": 69989,
+    "manualPage": 322
+  },
+  {
+    "title": "Landlord Journey Flowchart",
+    "description": "Branded A4 print-ready landlord journey flowchart recreated from the official HomeLink Zimbabwe training manual.",
+    "category": "Reference Guides",
+    "sourceCategory": "Quick Reference Guides",
+    "fileName": "landlord-journey-flowchart.pdf",
+    "fileUrl": "/uploads/academy/resources/landlord-journey-flowchart.pdf",
+    "fileType": "PDF",
+    "tags": [
+      "quick reference guides",
+      "training resource",
+      "agent academy",
+      "print-ready"
+    ],
+    "sortOrder": 48,
+    "version": 1,
+    "fileSizeBytes": 69996,
+    "manualPage": 323
+  },
+  {
+    "title": "Agent Daily Workflow",
+    "description": "Branded A4 print-ready agent daily workflow recreated from the official HomeLink Zimbabwe training manual.",
+    "category": "Reference Guides",
+    "sourceCategory": "Quick Reference Guides",
+    "fileName": "agent-daily-workflow.pdf",
+    "fileUrl": "/uploads/academy/resources/agent-daily-workflow.pdf",
+    "fileType": "PDF",
+    "tags": [
+      "quick reference guides",
+      "training resource",
+      "agent academy",
+      "print-ready"
+    ],
+    "sortOrder": 49,
+    "version": 1,
+    "fileSizeBytes": 69963,
+    "manualPage": 324
+  }
+]
