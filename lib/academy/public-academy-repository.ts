@@ -24,7 +24,9 @@ export async function listPublicAcademyCourses() {
     estimatedHours: Number(course.estimatedHours),
     durationMinutes: course.durationMinutes,
     instructor: course.instructor,
-    price: Number(course.price),
+    price: Number(course.publicPrice || course.price),
+    publicPrice: Number(course.publicPrice || course.price),
+    agentPrice: Number(course.agentPrice),
     currency: course.currency,
     accessDurationDays: course.accessDurationDays,
     certificateEnabled: course.certificateEnabled,
@@ -153,8 +155,8 @@ export async function registerPublicLearner(input: {
     data: {
       userId: input.learnerId,
       provider: PaymentProvider.PAYNOW,
-      status: Number(course.price) > 0 ? PaymentStatus.PENDING : PaymentStatus.PAID,
-      amount: course.price,
+      status: Number(course.publicPrice || course.price) > 0 ? PaymentStatus.PENDING : PaymentStatus.PAID,
+      amount: course.publicPrice || course.price,
       currency: course.currency,
       description: `${course.title} Academy enrolment`,
       plan: "academy_course",
@@ -165,7 +167,8 @@ export async function registerPublicLearner(input: {
     },
   });
   const now = new Date();
-  const isFree = Number(course.price) <= 0;
+  const payableAmount = course.publicPrice || course.price;
+  const isFree = Number(payableAmount) <= 0;
   const accessEndsAt = new Date(now.getTime() + course.accessDurationDays * 86400000);
   const application = await prisma.academyLearnerApplication.create({
     data: {
@@ -178,7 +181,7 @@ export async function registerPublicLearner(input: {
       phone: input.phone || null,
       organisation: input.organisation || null,
       motivation: input.motivation || null,
-      amount: course.price,
+      amount: payableAmount,
       currency: course.currency,
       accessStartsAt: isFree ? now : null,
       accessEndsAt: isFree ? accessEndsAt : null,

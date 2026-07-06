@@ -889,6 +889,8 @@ model TrainingCourse {
   certificateEnabled Boolean               @default(false)
   expiresAfterDays  Int?
   price             Decimal                @default(0) @db.Decimal(12, 2)
+  publicPrice       Decimal                @default(0) @db.Decimal(12, 2)
+  agentPrice        Decimal                @default(0) @db.Decimal(12, 2)
   currency          String                 @default("USD")
   registrationOpen  Boolean                @default(false)
   accessDurationDays Int                   @default(365)

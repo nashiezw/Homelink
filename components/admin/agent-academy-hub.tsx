@@ -13,6 +13,7 @@ import {
   ClipboardCheck,
   Copy,
   Download,
+  Eye,
   FileArchive,
   FileText,
   Film,
@@ -20,11 +21,13 @@ import {
   Library,
   Loader2,
   Megaphone,
+  Pencil,
   Plus,
   RotateCcw,
   Search,
   Settings,
   ShieldCheck,
+  Trash2,
   Trophy,
   Upload,
   Users,
@@ -127,6 +130,8 @@ type AcademyCourse = {
   certificateEnabled: boolean;
   expiresAfterDays?: number;
   price: string | number;
+  publicPrice: string | number;
+  agentPrice: string | number;
   currency: string;
   registrationOpen: boolean;
   accessDurationDays: number;
@@ -215,6 +220,8 @@ export function AgentAcademyHub() {
   const [drawer, setDrawer] = useState<"course" | "document" | "video" | "quiz" | "exam" | "assignment" | "path" | "announcement" | "badge" | null>(null);
   const [busy, setBusy] = useState(false);
   const [previewDocument, setPreviewDocument] = useState<AcademyDocument | null>(null);
+  const [selectedCourse, setSelectedCourse] = useState<AcademyCourse | null>(null);
+  const [viewCourse, setViewCourse] = useState<AcademyCourse | null>(null);
   const load = useCallback(async () => {
     const result = await apiFetch<AcademyData>("/api/v1/admin/academy");
     if (result.data) setData(result.data);
@@ -328,7 +335,7 @@ export function AgentAcademyHub() {
           <AdminFilterBar>
             <AdminSearchInput value={query} onChange={setQuery} placeholder="Search courses, tags, instructors..." className="lg:flex-1" />
             <AdminSelect value={statusFilter} onChange={setStatusFilter} options={["ALL", "DRAFT", "PUBLISHED", "ARCHIVED"].map((value) => ({ value, label: value.replace("_", " ") }))} />
-            <Button onClick={() => setDrawer("course")}><Plus className="size-4" /> New Course</Button>
+            <Button onClick={() => { setSelectedCourse(null); setDrawer("course"); }}><Plus className="size-4" /> New Course</Button>
           </AdminFilterBar>
           <AdminDataTable
             rows={courses}
@@ -343,6 +350,8 @@ export function AgentAcademyHub() {
                 header: "Actions",
                 render: (course) => (
                   <div className="flex flex-wrap gap-2">
+                    <IconAction label="View" icon={Eye} onClick={() => setViewCourse(course)} />
+                    <IconAction label="Edit" icon={Pencil} onClick={() => { setSelectedCourse(course); setDrawer("course"); }} />
                     <IconAction label="Duplicate" icon={Copy} onClick={() => void action({ action: "duplicate_course", courseId: course.id }, "Course duplicated.")} />
                     {course.status === "PUBLISHED" ? (
                       <IconAction label="Unpublish" icon={FileText} onClick={() => void action({ action: "unpublish_course", courseId: course.id }, "Course unpublished.")} />
@@ -354,6 +363,11 @@ export function AgentAcademyHub() {
                     ) : (
                       <IconAction label="Archive" icon={Archive} onClick={() => void action({ action: "archive_course", courseId: course.id }, "Course archived.")} />
                     )}
+                    <IconAction label="Delete" icon={Trash2} onClick={() => {
+                      if (window.confirm(`Delete ${course.title}? This permanently removes the course and its modules, lessons, enrolments, assessments, and public learner applications.`)) {
+                        void action({ action: "delete_course", courseId: course.id }, "Course permanently deleted.");
+                      }
+                    }} />
                   </div>
                 ),
               },
@@ -412,7 +426,15 @@ export function AgentAcademyHub() {
         />
       )}
 
-      <CourseDrawer open={drawer === "course"} busy={busy} onClose={() => setDrawer(null)} onSave={(course) => action({ action: "create_course", course }, "Course created in PostgreSQL.")} />
+      <CourseDrawer
+        open={drawer === "course"}
+        busy={busy}
+        course={selectedCourse}
+        onClose={() => { setDrawer(null); setSelectedCourse(null); }}
+        onSave={(course) => selectedCourse
+          ? action({ action: "update_course", courseId: selectedCourse.id, course }, "Course updated in PostgreSQL.")
+          : action({ action: "create_course", course }, "Course created in PostgreSQL.")}
+      />
       <DocumentDrawer open={drawer === "document"} busy={busy} onClose={() => setDrawer(null)} onSave={(document) => action({ action: "create_document", document }, "Document saved with version control.")} />
       <VideoDrawer open={drawer === "video"} busy={busy} onClose={() => setDrawer(null)} onSave={(video) => action({ action: "create_video", video }, "Video added to the Academy library.")} />
       <QuickBuilderDrawer type={drawer} busy={busy} courses={data.courses} onClose={() => setDrawer(null)} onSave={action} />
@@ -420,6 +442,7 @@ export function AgentAcademyHub() {
       <AnnouncementDrawer open={drawer === "announcement"} busy={busy} onClose={() => setDrawer(null)} onSave={(announcement) => action({ action: "create_announcement", announcement }, "Announcement published.")} />
       <BadgeDrawer open={drawer === "badge"} busy={busy} onClose={() => setDrawer(null)} onSave={(badge) => action({ action: "create_badge", badge }, "Badge created.")} />
       {previewDocument && <DocumentPreview document={previewDocument} onClose={() => setPreviewDocument(null)} />}
+      {viewCourse && <CoursePreview course={viewCourse} onClose={() => setViewCourse(null)} />}
     </div>
   );
 }
@@ -471,7 +494,8 @@ function CourseCell({ course }: { course: AcademyCourse }) {
         {course.featured && <span className="rounded-full bg-cyan-500/10 px-2 py-0.5 text-[10px] font-semibold text-cyan-300">Featured</span>}
         <span className="rounded-full bg-white/5 px-2 py-0.5 text-[10px] text-slate-400">{course.category?.name ?? "Uncategorised"}</span>
         <span className="rounded-full bg-white/5 px-2 py-0.5 text-[10px] text-slate-400">{course.estimatedHours}h</span>
-        <span className="rounded-full bg-white/5 px-2 py-0.5 text-[10px] text-slate-400">{course.currency} {Number(course.price).toFixed(2)}</span>
+        <span className="rounded-full bg-white/5 px-2 py-0.5 text-[10px] text-slate-400">Public {course.currency} {Number(course.publicPrice ?? course.price).toFixed(2)}</span>
+        <span className="rounded-full bg-white/5 px-2 py-0.5 text-[10px] text-slate-400">Agent {course.currency} {Number(course.agentPrice ?? 0).toFixed(2)}</span>
         {course.registrationOpen && <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-300">Public registration</span>}
       </div>
     </div>
@@ -723,20 +747,82 @@ function PublicLearnersPanel({
   );
 }
 
-function CourseDrawer({ open, busy, onClose, onSave }: { open: boolean; busy: boolean; onClose: () => void; onSave: (course: Record<string, unknown>) => Promise<unknown> }) {
-  const [course, setCourse] = useState({ title: "", description: "", categoryId: "", difficulty: "BEGINNER", status: "DRAFT", visibility: "INTERNAL_ONLY", instructor: "", estimatedHours: 1, passingPercentage: 80, language: "English", tags: "", featured: false, certificateEnabled: true, price: 0, currency: "USD", registrationOpen: false, accessDurationDays: 365 });
+function CoursePreview({ course, onClose }: { course: AcademyCourse; onClose: () => void }) {
   return (
-    <AdminDrawer open={open} title="Create Course" description="Unlimited courses with certificates, visibility, prerequisites, versioning, and analytics." onClose={onClose} width="xl">
+    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/70 p-4" onClick={onClose}>
+      <section className="w-full max-w-3xl rounded-2xl border border-white/10 bg-slate-950 p-6 shadow-2xl" onClick={(event) => event.stopPropagation()}>
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-emerald-300">Course preview</p>
+            <h2 className="mt-2 text-2xl font-semibold text-white">{course.title}</h2>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">{course.description}</p>
+          </div>
+          <Button variant="secondary" onClick={onClose}>Close</Button>
+        </div>
+        <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <AdminStatPill label="Status" value={course.status} tone={course.status === "PUBLISHED" ? "success" : "default"} />
+          <AdminStatPill label="Visibility" value={course.visibility.replace(/_/g, " ")} />
+          <AdminStatPill label="Difficulty" value={course.difficulty} />
+          <AdminStatPill label="Public price" value={`${course.currency} ${Number(course.publicPrice ?? course.price).toFixed(2)}`} tone="info" />
+          <AdminStatPill label="Agent price" value={`${course.currency} ${Number(course.agentPrice ?? 0).toFixed(2)}`} tone="info" />
+          <AdminStatPill label="Access days" value={course.accessDurationDays} />
+          <AdminStatPill label="Passing" value={`${course.passingPercentage}%`} />
+          <AdminStatPill label="Certificate" value={course.certificateEnabled ? "Enabled" : "Disabled"} />
+          <AdminStatPill label="Public registration" value={course.registrationOpen ? "Open" : "Closed"} tone={course.registrationOpen ? "success" : "default"} />
+        </div>
+        <div className="mt-5 rounded-xl border border-white/10 bg-slate-900/60 p-4">
+          <p className="text-sm font-semibold text-white">Admin editable fields</p>
+          <p className="mt-2 text-sm text-slate-400">Title, description, instructor, status, visibility, pricing for public learners, pricing for agents, currency, public registration, access duration, certificate availability, difficulty, pass percentage, tags, and featured state.</p>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function courseFormDefaults(course?: AcademyCourse | null) {
+  return {
+    title: course?.title ?? "",
+    description: course?.description ?? "",
+    categoryId: course?.categoryId ?? "",
+    difficulty: course?.difficulty ?? "BEGINNER" as AcademyCourse["difficulty"],
+    status: course?.status ?? "DRAFT" as AcademyCourse["status"],
+    visibility: course?.visibility ?? "INTERNAL_ONLY" as AcademyCourse["visibility"],
+    instructor: course?.instructor ?? "",
+    estimatedHours: Number(course?.estimatedHours ?? 1),
+    passingPercentage: Number(course?.passingPercentage ?? 80),
+    language: course?.language ?? "English",
+    tags: course?.tags?.join(", ") ?? "",
+    featured: Boolean(course?.featured),
+    certificateEnabled: course?.certificateEnabled ?? true,
+    price: Number(course?.price ?? course?.publicPrice ?? 0),
+    publicPrice: Number(course?.publicPrice ?? course?.price ?? 0),
+    agentPrice: Number(course?.agentPrice ?? 0),
+    currency: course?.currency ?? "USD",
+    registrationOpen: Boolean(course?.registrationOpen),
+    accessDurationDays: Number(course?.accessDurationDays ?? 365),
+  };
+}
+
+function CourseDrawer({ open, busy, course: editingCourse, onClose, onSave }: { open: boolean; busy: boolean; course?: AcademyCourse | null; onClose: () => void; onSave: (course: Record<string, unknown>) => Promise<unknown> }) {
+  const [course, setCourse] = useState(courseFormDefaults(editingCourse));
+  useEffect(() => {
+    if (open) setCourse(courseFormDefaults(editingCourse));
+  }, [editingCourse, open]);
+  const editing = Boolean(editingCourse);
+  return (
+    <AdminDrawer open={open} title={editing ? "Edit Course" : "Create Course"} description="Admin-controlled courses with status, visibility, public learner pricing, agent pricing, certificates, access duration, and analytics." onClose={onClose} width="xl">
       <FormGrid>
         <TextInput label="Course title" value={course.title} onChange={(title) => setCourse({ ...course, title })} />
         <TextInput label="Instructor" value={course.instructor} onChange={(instructor) => setCourse({ ...course, instructor })} />
         <TextArea label="Description" value={course.description} onChange={(description) => setCourse({ ...course, description })} className="sm:col-span-2" />
-        <SelectInput label="Difficulty" value={course.difficulty} options={["BEGINNER", "INTERMEDIATE", "ADVANCED", "EXPERT"]} onChange={(difficulty) => setCourse({ ...course, difficulty })} />
-        <SelectInput label="Status" value={course.status} options={["DRAFT", "PUBLISHED", "ARCHIVED"]} onChange={(status) => setCourse({ ...course, status })} />
-        <SelectInput label="Visibility" value={course.visibility} options={["INTERNAL_ONLY", "PUBLIC", "BRANCH_SPECIFIC", "ROLE_BASED"]} onChange={(visibility) => setCourse({ ...course, visibility })} />
+        <SelectInput label="Difficulty" value={course.difficulty} options={["BEGINNER", "INTERMEDIATE", "ADVANCED", "EXPERT"]} onChange={(difficulty) => setCourse({ ...course, difficulty: difficulty as AcademyCourse["difficulty"] })} />
+        <SelectInput label="Status" value={course.status} options={["DRAFT", "PUBLISHED", "ARCHIVED"]} onChange={(status) => setCourse({ ...course, status: status as AcademyCourse["status"] })} />
+        <SelectInput label="Visibility" value={course.visibility} options={["INTERNAL_ONLY", "PUBLIC", "BRANCH_SPECIFIC", "ROLE_BASED"]} onChange={(visibility) => setCourse({ ...course, visibility: visibility as AcademyCourse["visibility"] })} />
         <TextInput label="Estimated hours" type="number" value={String(course.estimatedHours)} onChange={(estimatedHours) => setCourse({ ...course, estimatedHours: Number(estimatedHours) })} />
         <TextInput label="Passing %" type="number" value={String(course.passingPercentage)} onChange={(passingPercentage) => setCourse({ ...course, passingPercentage: Number(passingPercentage) })} />
-        <TextInput label="Public price" type="number" value={String(course.price)} onChange={(price) => setCourse({ ...course, price: Number(price) })} />
+        <TextInput label="Legacy/default price" type="number" value={String(course.price)} onChange={(price) => setCourse({ ...course, price: Number(price), publicPrice: course.publicPrice || Number(price) })} />
+        <TextInput label="Public learner price" type="number" value={String(course.publicPrice)} onChange={(publicPrice) => setCourse({ ...course, publicPrice: Number(publicPrice), price: Number(publicPrice) })} />
+        <TextInput label="Agent price" type="number" value={String(course.agentPrice)} onChange={(agentPrice) => setCourse({ ...course, agentPrice: Number(agentPrice) })} />
         <TextInput label="Currency" value={course.currency} onChange={(currency) => setCourse({ ...course, currency })} />
         <TextInput label="Access duration days" type="number" value={String(course.accessDurationDays)} onChange={(accessDurationDays) => setCourse({ ...course, accessDurationDays: Number(accessDurationDays) })} />
         <TextInput label="Tags" value={course.tags} onChange={(tags) => setCourse({ ...course, tags })} />
@@ -744,7 +830,7 @@ function CourseDrawer({ open, busy, onClose, onSave }: { open: boolean; busy: bo
         <label className="flex items-center gap-2 text-sm text-slate-300"><input type="checkbox" checked={course.registrationOpen} onChange={(e) => setCourse({ ...course, registrationOpen: e.target.checked, visibility: e.target.checked ? "PUBLIC" : course.visibility })} /> Open to public learners</label>
         <label className="flex items-center gap-2 text-sm text-slate-300"><input type="checkbox" checked={course.certificateEnabled} onChange={(e) => setCourse({ ...course, certificateEnabled: e.target.checked })} /> Certificate enabled</label>
       </FormGrid>
-      <DrawerActions busy={busy} onClose={onClose} onSave={() => onSave({ ...course, tags: course.tags })} label="Create course" />
+      <DrawerActions busy={busy} disabled={!course.title.trim() || !course.description.trim()} onClose={onClose} onSave={() => onSave({ ...course, tags: course.tags })} label={editing ? "Save course" : "Create course"} />
     </AdminDrawer>
   );
 }

@@ -19,6 +19,8 @@ type PublicCourse = {
   durationMinutes: number;
   instructor?: string;
   price: number;
+  publicPrice: number;
+  agentPrice: number;
   currency: string;
   accessDurationDays: number;
   certificateEnabled: boolean;
@@ -98,7 +100,8 @@ export function PublicAcademyPage() {
                   <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">{course.description}</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-2xl font-bold text-emerald-700">{course.price ? `${course.currency} ${course.price.toFixed(2)}` : "Free"}</p>
+                  <p className="text-2xl font-bold text-emerald-700">{course.publicPrice ? `${course.currency} ${course.publicPrice.toFixed(2)}` : "Free"}</p>
+                  <p className="text-xs text-slate-500">Public learner price</p>
                   <p className="text-xs text-slate-500">{course.accessDurationDays} days access</p>
                 </div>
               </div>

@@ -15,6 +15,7 @@ const exploreNavBase = [
   { label: "Rent", href: "/search?intent=rent", feature: null },
   { label: "Buy", href: "/search?intent=buy", feature: null },
   { label: "Roommates", href: "/roommates", feature: "roommateMatching" as const },
+  { label: "Academy", href: "/academy", feature: null },
   { label: "Holidays", href: "/search?type=holiday_home", title: "Holiday Homes", feature: null },
   { label: "Land", href: "/search?type=land", feature: null },
   { label: "Commercial", href: "/search?type=commercial", feature: null },

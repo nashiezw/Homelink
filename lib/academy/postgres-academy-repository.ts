@@ -270,7 +270,12 @@ export async function runAcademyAction(body: Record<string, any>, actor: Actor) 
     await audit(actor, "academy.course.duplicate", copy.id, { sourceId: source.id });
     return copy;
   }
-  if (action === "archive_course" || action === "restore_course" || action === "delete_course") {
+  if (action === "delete_course") {
+    const course = await prisma.trainingCourse.delete({ where: { id: String(body.courseId) } });
+    await audit(actor, "academy.course.delete", course.id, { title: course.title });
+    return course;
+  }
+  if (action === "archive_course" || action === "restore_course") {
     const status = action === "restore_course" ? TrainingCourseStatus.DRAFT : TrainingCourseStatus.ARCHIVED;
     const course = await prisma.trainingCourse.update({ where: { id: String(body.courseId) }, data: { status } });
     await audit(actor, `academy.course.${action.replace("_course", "")}`, course.id, { status });
@@ -586,6 +591,8 @@ function courseInput(input: Record<string, any>, actorId: string, update = false
     certificateEnabled: Boolean(input.certificateEnabled),
     expiresAfterDays: optionalNumber(input.expiresAfterDays),
     price: decimalOr(input.price, 0),
+    publicPrice: decimalOr(input.publicPrice ?? input.price, 0),
+    agentPrice: decimalOr(input.agentPrice, 0),
     currency: String(input.currency ?? "USD"),
     registrationOpen: Boolean(input.registrationOpen),
     accessDurationDays: numberOr(input.accessDurationDays, 365),

@@ -217,6 +217,8 @@ async function seedCourse(manifest) {
       certificateEnabled: true,
       expiresAfterDays: 365,
       price: 75,
+      publicPrice: 75,
+      agentPrice: 0,
       currency: "USD",
       registrationOpen: true,
       accessDurationDays: 365,
@@ -235,9 +237,13 @@ async function seedCourse(manifest) {
       featured: true,
       certificateEnabled: true,
       price: 75,
+      publicPrice: 75,
+      agentPrice: 0,
       currency: "USD",
       registrationOpen: true,
       accessDurationDays: 365,
+      visibility: "PUBLIC",
+      roleNames: ["AGENT", "ADMIN", "PUBLIC_LEARNER"],
     },
   });
   await prisma.trainingModule.deleteMany({ where: { courseId: COURSE_ID } });
