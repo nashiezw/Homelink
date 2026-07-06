@@ -62,6 +62,8 @@ type AcademyData = {
   learningPaths: Array<{ id: string; title: string; description?: string; status: string; badgeTitle?: string; courses: Array<{ id: string; sortOrder: number; required: boolean; course: AcademyCourse }> }>;
   announcements: Array<{ id: string; title: string; body: string; audience: string; publishedAt?: string; expiresAt?: string; createdAt: string }>;
   badges: Array<{ id: string; name: string; description?: string; xp: number; active: boolean }>;
+  settings?: { id: string; payload: Record<string, unknown>; updatedAt: string } | null;
+  auditLogs: Array<{ id: string; actorId?: string; action: string; target: string; createdAt: string }>;
   topCourses: Array<{ id: string; title: string; completions: number; enrolments: number }>;
   mostDifficultCourse?: { title: string; average: number };
   mostFailedQuiz?: { title: string; failed: number; attempts: number };
@@ -187,7 +189,7 @@ export function AgentAcademyHub() {
   const [tab, setTab] = useState<AcademyTab>("Dashboard");
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
-  const [drawer, setDrawer] = useState<"course" | "document" | "video" | "quiz" | "exam" | "assignment" | null>(null);
+  const [drawer, setDrawer] = useState<"course" | "document" | "video" | "quiz" | "exam" | "assignment" | "path" | "announcement" | "badge" | null>(null);
   const [busy, setBusy] = useState(false);
   const [previewDocument, setPreviewDocument] = useState<AcademyDocument | null>(null);
   const load = useCallback(async () => {
@@ -316,6 +318,11 @@ export function AgentAcademyHub() {
                 render: (course) => (
                   <div className="flex flex-wrap gap-2">
                     <IconAction label="Duplicate" icon={Copy} onClick={() => void action({ action: "duplicate_course", courseId: course.id }, "Course duplicated.")} />
+                    {course.status === "PUBLISHED" ? (
+                      <IconAction label="Unpublish" icon={FileText} onClick={() => void action({ action: "unpublish_course", courseId: course.id }, "Course unpublished.")} />
+                    ) : (
+                      <IconAction label="Publish" icon={CheckCircle2} onClick={() => void action({ action: "publish_course", courseId: course.id }, "Course published.")} />
+                    )}
                     {course.status === "ARCHIVED" ? (
                       <IconAction label="Restore" icon={RotateCcw} onClick={() => void action({ action: "restore_course", courseId: course.id }, "Course restored.")} />
                     ) : (
@@ -375,6 +382,7 @@ export function AgentAcademyHub() {
           tab={tab}
           data={data}
           openDrawer={(next) => setDrawer(next)}
+          action={action}
         />
       )}
 
@@ -382,6 +390,9 @@ export function AgentAcademyHub() {
       <DocumentDrawer open={drawer === "document"} busy={busy} onClose={() => setDrawer(null)} onSave={(document) => action({ action: "create_document", document }, "Document saved with version control.")} />
       <VideoDrawer open={drawer === "video"} busy={busy} onClose={() => setDrawer(null)} onSave={(video) => action({ action: "create_video", video }, "Video added to the Academy library.")} />
       <QuickBuilderDrawer type={drawer} busy={busy} courses={data.courses} onClose={() => setDrawer(null)} onSave={action} />
+      <LearningPathDrawer open={drawer === "path"} busy={busy} courses={data.courses} onClose={() => setDrawer(null)} onSave={(path) => action({ action: "create_learning_path", path }, "Learning path created.")} />
+      <AnnouncementDrawer open={drawer === "announcement"} busy={busy} onClose={() => setDrawer(null)} onSave={(announcement) => action({ action: "create_announcement", announcement }, "Announcement published.")} />
+      <BadgeDrawer open={drawer === "badge"} busy={busy} onClose={() => setDrawer(null)} onSave={(badge) => action({ action: "create_badge", badge }, "Badge created.")} />
       {previewDocument && <DocumentPreview document={previewDocument} onClose={() => setPreviewDocument(null)} />}
     </div>
   );
@@ -499,7 +510,17 @@ function DocumentCell({ document }: { document: AcademyDocument }) {
   );
 }
 
-function FeatureWorkbench({ tab, data, openDrawer }: { tab: AcademyTab; data: AcademyData; openDrawer: (drawer: "quiz" | "exam" | "assignment" | null) => void }) {
+function FeatureWorkbench({
+  tab,
+  data,
+  openDrawer,
+  action,
+}: {
+  tab: AcademyTab;
+  data: AcademyData;
+  openDrawer: (drawer: "quiz" | "exam" | "assignment" | "path" | "announcement" | "badge" | null) => void;
+  action: (body: Record<string, unknown>, success: string) => Promise<unknown>;
+}) {
   if (tab === "Lessons") {
     return (
       <BuilderList
@@ -515,18 +536,26 @@ function FeatureWorkbench({ tab, data, openDrawer }: { tab: AcademyTab; data: Ac
       />
     );
   }
-  if (tab === "Quizzes") return <BuilderList title="Quiz Builder" icon={ClipboardCheck} rows={data.quizzes} actionLabel="Create Quiz" onCreate={() => openDrawer("quiz")} />;
-  if (tab === "Assignments") return <BuilderList title="Assignments" icon={ClipboardCheck} rows={data.assignments} actionLabel="Create Assignment" onCreate={() => openDrawer("assignment")} />;
-  if (tab === "Final Exams") return <BuilderList title="Final Examination System" icon={GraduationCap} rows={data.exams} actionLabel="Create Exam" onCreate={() => openDrawer("exam")} />;
-  if (tab === "Certificates") return <BuilderList title="Certificate Management" icon={Award} rows={data.certificates.map((c) => ({ id: c.id, title: c.certificateNumber, active: c.status === "ACTIVE" }))} actionLabel="Auto Generated" />;
+  if (tab === "Quizzes") {
+    return <BuilderList title="Quiz Builder" icon={ClipboardCheck} rows={data.quizzes.map((quiz) => ({ ...quiz, detail: `${quiz.passingPercentage}% pass mark` }))} actionLabel="Create Quiz" onCreate={() => openDrawer("quiz")} onArchive={(row) => action({ action: row.active === false ? "restore_quiz" : "archive_quiz", quizId: row.id }, row.active === false ? "Quiz restored." : "Quiz archived.")} />;
+  }
+  if (tab === "Assignments") {
+    return <BuilderList title="Assignments" icon={ClipboardCheck} rows={data.assignments.map((assignment) => ({ ...assignment, detail: `${assignment.points} points` }))} actionLabel="Create Assignment" onCreate={() => openDrawer("assignment")} onArchive={(row) => action({ action: row.active === false ? "restore_assignment" : "archive_assignment", assignmentId: row.id }, row.active === false ? "Assignment restored." : "Assignment archived.")} />;
+  }
+  if (tab === "Final Exams") {
+    return <BuilderList title="Final Examination System" icon={GraduationCap} rows={data.exams.map((exam) => ({ ...exam, detail: `${exam.durationMinutes} min - ${exam.passingScore}% pass` }))} actionLabel="Create Exam" onCreate={() => openDrawer("exam")} onArchive={(row) => action({ action: row.active === false ? "restore_exam" : "archive_exam", examId: row.id }, row.active === false ? "Exam restored." : "Exam archived.")} />;
+  }
+  if (tab === "Certificates") {
+    return <BuilderList title="Certificate Management" icon={Award} rows={data.certificates.map((c) => ({ id: c.id, title: c.certificateNumber, active: c.status === "ACTIVE", detail: `${c.agentId} - ${new Date(c.issuedAt).toLocaleDateString()}` }))} actionLabel="Issued automatically after completion" />;
+  }
   if (tab === "Learning Paths") {
-    return <BuilderList title="Learning Paths" icon={Library} rows={data.learningPaths.map((path) => ({ id: path.id, title: path.title, active: path.status === "PUBLISHED", detail: `${path.courses.length} course(s) - ${path.badgeTitle ?? "No badge"}` }))} actionLabel="Structured programmes" />;
+    return <BuilderList title="Learning Paths" icon={Library} rows={data.learningPaths.map((path) => ({ id: path.id, title: path.title, active: path.status === "PUBLISHED", detail: `${path.courses.length} course(s) - ${path.badgeTitle ?? "No badge"}` }))} actionLabel="Create Path" onCreate={() => openDrawer("path")} onArchive={(row) => action({ action: row.active === false ? "restore_learning_path" : "archive_learning_path", pathId: row.id }, row.active === false ? "Learning path restored." : "Learning path archived.")} />;
   }
   if (tab === "Announcements") {
-    return <BuilderList title="Announcements" icon={Megaphone} rows={data.announcements.map((announcement) => ({ id: announcement.id, title: announcement.title, active: Boolean(announcement.publishedAt), detail: `${announcement.audience} - ${announcement.body}` }))} actionLabel="Published updates" />;
+    return <BuilderList title="Announcements" icon={Megaphone} rows={data.announcements.map((announcement) => ({ id: announcement.id, title: announcement.title, active: Boolean(announcement.publishedAt) && !announcement.expiresAt, detail: `${announcement.audience} - ${announcement.body}` }))} actionLabel="New Announcement" onCreate={() => openDrawer("announcement")} onArchive={(row) => action({ action: row.active === false ? "restore_announcement" : "archive_announcement", announcementId: row.id }, row.active === false ? "Announcement restored." : "Announcement archived.")} />;
   }
   if (tab === "Badges") {
-    return <BuilderList title="Badges and Achievements" icon={BadgeCheck} rows={data.badges.map((badge) => ({ id: badge.id, title: badge.name, active: badge.active, detail: `${badge.xp} XP - ${badge.description ?? ""}` }))} actionLabel="Automatic awards" />;
+    return <BuilderList title="Badges and Achievements" icon={BadgeCheck} rows={data.badges.map((badge) => ({ id: badge.id, title: badge.name, active: badge.active, detail: `${badge.xp} XP - ${badge.description ?? ""}` }))} actionLabel="Create Badge" onCreate={() => openDrawer("badge")} onArchive={(row) => action({ action: row.active === false ? "restore_badge" : "archive_badge", badgeId: row.id }, row.active === false ? "Badge restored." : "Badge archived.")} />;
   }
   if (tab === "Analytics") {
     return (
@@ -536,21 +565,29 @@ function FeatureWorkbench({ tab, data, openDrawer }: { tab: AcademyTab; data: Ac
       </div>
     );
   }
+  if (tab === "Settings") {
+    return <AcademySettingsPanel settings={data.settings?.payload ?? {}} auditLogs={data.auditLogs} onSave={(settings) => action({ action: "update_settings", settings }, "Academy settings saved.")} />;
+  }
   return (
-    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-      {featureTiles.filter(([label]) => label === tab).map(([label, Icon, description]) => (
-        <section key={String(label)} className="rounded-xl border border-white/10 bg-slate-900/60 p-6">
-          <Icon className="size-7 text-emerald-400" />
-          <h3 className="mt-4 text-lg font-semibold text-white">{label}</h3>
-          <p className="mt-2 text-sm leading-6 text-slate-400">{description}</p>
-          <p className="mt-4 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-xs font-semibold text-emerald-200">Backed by dedicated PostgreSQL tables and Academy audit logs.</p>
-        </section>
-      ))}
-    </div>
+    <OperationalPanel tab={tab} />
   );
 }
 
-function BuilderList({ title, icon: Icon, rows, actionLabel, onCreate }: { title: string; icon: typeof ClipboardCheck; rows: Array<{ id: string; title: string; active?: boolean; [key: string]: unknown }>; actionLabel: string; onCreate?: () => void }) {
+function BuilderList({
+  title,
+  icon: Icon,
+  rows,
+  actionLabel,
+  onCreate,
+  onArchive,
+}: {
+  title: string;
+  icon: typeof ClipboardCheck;
+  rows: Array<{ id: string; title: string; active?: boolean; [key: string]: unknown }>;
+  actionLabel: string;
+  onCreate?: () => void;
+  onArchive?: (row: { id: string; title: string; active?: boolean; [key: string]: unknown }) => unknown;
+}) {
   return (
     <section className="rounded-xl border border-white/10 bg-slate-900/60">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 p-4">
@@ -566,9 +603,32 @@ function BuilderList({ title, icon: Icon, rows, actionLabel, onCreate }: { title
           { key: "title", header: "Title", render: (row) => <span className="font-semibold text-white">{row.title}</span> },
           { key: "detail", header: "Detail", render: (row) => <span className="text-sm text-slate-400">{String(row.detail ?? "")}</span> },
           { key: "state", header: "State", render: (row) => <AdminStatusBadge status={row.active === false ? "Hidden" : "Active"} variant={row.active === false ? "muted" : "success"} /> },
+          {
+            key: "actions",
+            header: "Actions",
+            render: (row) => onArchive ? <IconAction label={row.active === false ? "Restore" : "Archive"} icon={row.active === false ? RotateCcw : Archive} onClick={() => void onArchive(row)} /> : <span className="text-xs text-slate-500">{actionLabel}</span>,
+          },
         ]}
         emptyMessage="No records yet."
       />
+    </section>
+  );
+}
+
+function OperationalPanel({ tab }: { tab: AcademyTab }) {
+  const tile = featureTiles.find(([label]) => label === tab);
+  const Icon = tile?.[1] ?? Library;
+  const description = tile?.[2] ?? "Operational records are managed through the Academy workflow and audit log.";
+  return (
+    <section className="rounded-xl border border-white/10 bg-slate-900/60 p-6">
+      <Icon className="size-7 text-emerald-400" />
+      <h3 className="mt-4 text-lg font-semibold text-white">{tab}</h3>
+      <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">{description}</p>
+      <div className="mt-5 grid gap-3 md:grid-cols-3">
+        <AdminStatPill label="Data source" value="PostgreSQL" tone="success" />
+        <AdminStatPill label="Audit logging" value="Enabled" />
+        <AdminStatPill label="Permissions" value="Admin protected" tone="info" />
+      </div>
     </section>
   );
 }
@@ -664,6 +724,132 @@ function QuickBuilderDrawer({ type, busy, courses, onClose, onSave }: { type: st
       </FormGrid>
       <DrawerActions busy={busy} onClose={onClose} onSave={() => onSave({ action: config[1], [config[2]]: form }, config[3])} label={config[0]} />
     </AdminDrawer>
+  );
+}
+
+function LearningPathDrawer({ open, busy, courses, onClose, onSave }: { open: boolean; busy: boolean; courses: AcademyCourse[]; onClose: () => void; onSave: (path: Record<string, unknown>) => Promise<unknown> }) {
+  const [path, setPath] = useState({ title: "", description: "", status: "PUBLISHED", badgeTitle: "", courseIds: [] as string[] });
+  return (
+    <AdminDrawer open={open} title="Create Learning Path" description="Combine courses into a sequenced Academy programme with automatic progress tracking." onClose={onClose} width="lg">
+      <FormGrid>
+        <TextInput label="Path title" value={path.title} onChange={(title) => setPath({ ...path, title })} />
+        <SelectInput label="Status" value={path.status} options={["DRAFT", "PUBLISHED", "ARCHIVED"]} onChange={(status) => setPath({ ...path, status })} />
+        <TextInput label="Badge title" value={path.badgeTitle} onChange={(badgeTitle) => setPath({ ...path, badgeTitle })} />
+        <TextArea label="Description" value={path.description} onChange={(description) => setPath({ ...path, description })} className="sm:col-span-2" />
+      </FormGrid>
+      <div className="mt-4 rounded-xl border border-white/10 bg-slate-950/60 p-4">
+        <p className="text-sm font-semibold text-white">Courses</p>
+        <div className="mt-3 space-y-2">
+          {courses.map((course) => (
+            <label key={course.id} className="flex items-start gap-2 rounded-lg border border-white/10 p-3 text-sm text-slate-300">
+              <input
+                type="checkbox"
+                checked={path.courseIds.includes(course.id)}
+                onChange={(event) =>
+                  setPath({
+                    ...path,
+                    courseIds: event.target.checked ? [...path.courseIds, course.id] : path.courseIds.filter((id) => id !== course.id),
+                  })
+                }
+              />
+              <span><span className="font-semibold text-white">{course.title}</span><span className="block text-xs text-slate-500">{course.status} - {course.estimatedHours}h</span></span>
+            </label>
+          ))}
+        </div>
+      </div>
+      <DrawerActions busy={busy} disabled={!path.title || !path.courseIds.length} onClose={onClose} onSave={() => onSave(path)} label="Create path" />
+    </AdminDrawer>
+  );
+}
+
+function AnnouncementDrawer({ open, busy, onClose, onSave }: { open: boolean; busy: boolean; onClose: () => void; onSave: (announcement: Record<string, unknown>) => Promise<unknown> }) {
+  const [announcement, setAnnouncement] = useState({ title: "", body: "", audience: "ALL", publishedAt: true });
+  return (
+    <AdminDrawer open={open} title="Publish Announcement" description="Send Academy announcements to agents, learners, trainers, or all users." onClose={onClose} width="lg">
+      <FormGrid>
+        <TextInput label="Title" value={announcement.title} onChange={(title) => setAnnouncement({ ...announcement, title })} />
+        <SelectInput label="Audience" value={announcement.audience} options={["ALL", "AGENTS", "LEARNERS", "TRAINERS", "ADMINS"]} onChange={(audience) => setAnnouncement({ ...announcement, audience })} />
+        <TextArea label="Message" value={announcement.body} onChange={(body) => setAnnouncement({ ...announcement, body })} className="sm:col-span-2" />
+        <label className="flex items-center gap-2 text-sm text-slate-300">
+          <input type="checkbox" checked={announcement.publishedAt} onChange={(event) => setAnnouncement({ ...announcement, publishedAt: event.target.checked })} />
+          Publish immediately
+        </label>
+      </FormGrid>
+      <DrawerActions busy={busy} disabled={!announcement.title || !announcement.body} onClose={onClose} onSave={() => onSave(announcement)} label="Publish" />
+    </AdminDrawer>
+  );
+}
+
+function BadgeDrawer({ open, busy, onClose, onSave }: { open: boolean; busy: boolean; onClose: () => void; onSave: (badge: Record<string, unknown>) => Promise<unknown> }) {
+  const [badge, setBadge] = useState({ name: "", description: "", xp: 100, iconUrl: "", active: true });
+  return (
+    <AdminDrawer open={open} title="Create Badge" description="Create automatic Academy achievements, XP rewards, and learner recognition badges." onClose={onClose} width="lg">
+      <FormGrid>
+        <TextInput label="Badge name" value={badge.name} onChange={(name) => setBadge({ ...badge, name })} />
+        <TextInput label="XP" type="number" value={String(badge.xp)} onChange={(xp) => setBadge({ ...badge, xp: Number(xp) })} />
+        <TextInput label="Icon URL" value={badge.iconUrl} onChange={(iconUrl) => setBadge({ ...badge, iconUrl })} />
+        <TextArea label="Description" value={badge.description} onChange={(description) => setBadge({ ...badge, description })} className="sm:col-span-2" />
+        <label className="flex items-center gap-2 text-sm text-slate-300">
+          <input type="checkbox" checked={badge.active} onChange={(event) => setBadge({ ...badge, active: event.target.checked })} />
+          Active
+        </label>
+      </FormGrid>
+      <DrawerActions busy={busy} disabled={!badge.name} onClose={onClose} onSave={() => onSave(badge)} label="Create badge" />
+    </AdminDrawer>
+  );
+}
+
+function AcademySettingsPanel({ settings, auditLogs, onSave }: { settings: Record<string, unknown>; auditLogs: AcademyData["auditLogs"]; onSave: (settings: Record<string, unknown>) => Promise<unknown> }) {
+  const [draft, setDraft] = useState({
+    academyName: String(settings.academyName ?? "HomeLink Agent Academy"),
+    certificatePrefix: String(settings.certificatePrefix ?? "HLA"),
+    primaryColour: String(settings.primaryColour ?? "#008b68"),
+    accentColour: String(settings.accentColour ?? "#c6a15b"),
+    paymentInstructions: String(settings.paymentInstructions ?? "Upload proof of payment for admin approval before course activation."),
+    accessDurationDays: String(settings.accessDurationDays ?? "365"),
+    supportedFormats: Array.isArray(settings.supportedFormats) ? (settings.supportedFormats as string[]).join(", ") : "PDF, DOCX, XLSX, PPTX, IMAGE, VIDEO, AUDIO, ZIP",
+  });
+  return (
+    <div className="grid gap-4 xl:grid-cols-3">
+      <section className="rounded-xl border border-white/10 bg-slate-900/60 p-5 xl:col-span-2">
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <div>
+            <h3 className="font-semibold text-white">Academy Settings</h3>
+            <p className="mt-1 text-sm text-slate-400">Branding, certificates, payments, access rules, document formats, and operational defaults.</p>
+          </div>
+          <Button
+            onClick={() =>
+              void onSave({
+                ...settings,
+                academyName: draft.academyName,
+                certificatePrefix: draft.certificatePrefix,
+                primaryColour: draft.primaryColour,
+                accentColour: draft.accentColour,
+                paymentInstructions: draft.paymentInstructions,
+                accessDurationDays: Number(draft.accessDurationDays) || 365,
+                supportedFormats: draft.supportedFormats.split(",").map((item) => item.trim()).filter(Boolean),
+              })
+            }
+          >
+            <CheckCircle2 className="size-4" /> Save Settings
+          </Button>
+        </div>
+        <FormGrid>
+          <TextInput label="Academy name" value={draft.academyName} onChange={(academyName) => setDraft({ ...draft, academyName })} />
+          <TextInput label="Certificate prefix" value={draft.certificatePrefix} onChange={(certificatePrefix) => setDraft({ ...draft, certificatePrefix })} />
+          <TextInput label="Primary colour" value={draft.primaryColour} onChange={(primaryColour) => setDraft({ ...draft, primaryColour })} />
+          <TextInput label="Accent colour" value={draft.accentColour} onChange={(accentColour) => setDraft({ ...draft, accentColour })} />
+          <TextInput label="Access duration days" type="number" value={draft.accessDurationDays} onChange={(accessDurationDays) => setDraft({ ...draft, accessDurationDays })} />
+          <TextInput label="Supported formats" value={draft.supportedFormats} onChange={(supportedFormats) => setDraft({ ...draft, supportedFormats })} />
+          <TextArea label="Payment instructions" value={draft.paymentInstructions} onChange={(paymentInstructions) => setDraft({ ...draft, paymentInstructions })} className="sm:col-span-2" />
+        </FormGrid>
+      </section>
+      <ActivityPanel title="Audit Log" icon={Settings}>
+        {auditLogs.slice(0, 12).map((entry) => (
+          <MetricRow key={entry.id} label={entry.action.replace("academy.", "").replace(/\./g, " ")} value={new Date(entry.createdAt).toLocaleDateString()} />
+        ))}
+      </ActivityPanel>
+    </div>
   );
 }
 

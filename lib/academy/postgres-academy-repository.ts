@@ -66,6 +66,7 @@ export async function getAcademyDashboard() {
     learningPaths,
     announcements,
     badges,
+    settings,
     recentActivity,
   ] = await Promise.all([
     prisma.trainingCourse.findMany({ include: { category: true }, orderBy: { updatedAt: "desc" } }),
@@ -89,6 +90,7 @@ export async function getAcademyDashboard() {
     prisma.learningPath.findMany({ include: { courses: { include: { course: true }, orderBy: { sortOrder: "asc" } } }, orderBy: { updatedAt: "desc" } }),
     prisma.announcement.findMany({ orderBy: { createdAt: "desc" } }),
     prisma.badge.findMany({ orderBy: { createdAt: "desc" } }),
+    prisma.trainingSetting.findUnique({ where: { id: "singleton" } }),
     prisma.trainingAuditLog.findMany({ orderBy: { createdAt: "desc" }, take: 20 }),
   ]);
 
@@ -143,6 +145,8 @@ export async function getAcademyDashboard() {
     learningPaths,
     announcements,
     badges,
+    settings,
+    auditLogs: recentActivity,
     topCourses: courses
       .map((course) => ({
         id: course.id,
@@ -243,6 +247,12 @@ export async function runAcademyAction(body: Record<string, any>, actor: Actor) 
     await audit(actor, `academy.course.${action.replace("_course", "")}`, course.id, { status });
     return course;
   }
+  if (action === "publish_course" || action === "unpublish_course") {
+    const status = action === "publish_course" ? TrainingCourseStatus.PUBLISHED : TrainingCourseStatus.DRAFT;
+    const course = await prisma.trainingCourse.update({ where: { id: String(body.courseId) }, data: { status } });
+    await audit(actor, `academy.course.${action.replace("_course", "")}`, course.id, { status });
+    return course;
+  }
   if (action === "create_document") {
     const document = await prisma.documentLibrary.create({ data: documentInput(body.document ?? {}, actor.id) });
     await audit(actor, "academy.document.create", document.id, { title: document.title, fileType: document.fileType });
@@ -289,9 +299,29 @@ export async function runAcademyAction(body: Record<string, any>, actor: Actor) 
     await audit(actor, "academy.video.create", video.id, { title: video.title });
     return video;
   }
+  if (action === "update_video") {
+    const video = await prisma.videoLibrary.update({ where: { id: String(body.videoId) }, data: videoInput(body.video ?? {}) });
+    await audit(actor, "academy.video.update", video.id, { title: video.title });
+    return video;
+  }
+  if (action === "archive_video" || action === "restore_video" || action === "delete_video") {
+    const video = await prisma.videoLibrary.update({ where: { id: String(body.videoId) }, data: { active: action !== "archive_video" && action !== "delete_video" } });
+    await audit(actor, `academy.video.${action.replace("_video", "")}`, video.id, { active: video.active });
+    return video;
+  }
   if (action === "create_lesson") {
     const lesson = await prisma.trainingLesson.create({ data: lessonInput(body.lesson ?? {}) });
     await audit(actor, "academy.lesson.create", lesson.id, { title: lesson.title });
+    return lesson;
+  }
+  if (action === "update_lesson") {
+    const lesson = await prisma.trainingLesson.update({ where: { id: String(body.lessonId) }, data: lessonInput(body.lesson ?? {}) });
+    await audit(actor, "academy.lesson.update", lesson.id, { title: lesson.title });
+    return lesson;
+  }
+  if (action === "delete_lesson") {
+    const lesson = await prisma.trainingLesson.delete({ where: { id: String(body.lessonId) } });
+    await audit(actor, "academy.lesson.delete", lesson.id, { title: lesson.title });
     return lesson;
   }
   if (action === "create_quiz") {
@@ -306,6 +336,19 @@ export async function runAcademyAction(body: Record<string, any>, actor: Actor) 
       },
     });
     await audit(actor, "academy.quiz.create", quiz.id, { title: quiz.title });
+    return quiz;
+  }
+  if (action === "update_quiz") {
+    const quiz = await prisma.quiz.update({
+      where: { id: String(body.quizId) },
+      data: quizInput(body.quiz ?? {}),
+    });
+    await audit(actor, "academy.quiz.update", quiz.id, { title: quiz.title });
+    return quiz;
+  }
+  if (action === "archive_quiz" || action === "restore_quiz" || action === "delete_quiz") {
+    const quiz = await prisma.quiz.update({ where: { id: String(body.quizId) }, data: { active: action === "restore_quiz" } });
+    await audit(actor, `academy.quiz.${action.replace("_quiz", "")}`, quiz.id, { active: quiz.active });
     return quiz;
   }
   if (action === "create_question") {
@@ -349,6 +392,16 @@ export async function runAcademyAction(body: Record<string, any>, actor: Actor) 
     await audit(actor, "academy.exam.create", exam.id, { title: exam.title });
     return exam;
   }
+  if (action === "update_exam") {
+    const exam = await prisma.finalExam.update({ where: { id: String(body.examId) }, data: examInput(body.exam ?? {}) });
+    await audit(actor, "academy.exam.update", exam.id, { title: exam.title });
+    return exam;
+  }
+  if (action === "archive_exam" || action === "restore_exam" || action === "delete_exam") {
+    const exam = await prisma.finalExam.update({ where: { id: String(body.examId) }, data: { active: action === "restore_exam" } });
+    await audit(actor, `academy.exam.${action.replace("_exam", "")}`, exam.id, { active: exam.active });
+    return exam;
+  }
   if (action === "create_assignment") {
     const assignment = await prisma.assignment.create({
       data: {
@@ -360,6 +413,16 @@ export async function runAcademyAction(body: Record<string, any>, actor: Actor) 
       },
     });
     await audit(actor, "academy.assignment.create", assignment.id, { title: assignment.title });
+    return assignment;
+  }
+  if (action === "update_assignment") {
+    const assignment = await prisma.assignment.update({ where: { id: String(body.assignmentId) }, data: assignmentInput(body.assignment ?? {}) });
+    await audit(actor, "academy.assignment.update", assignment.id, { title: assignment.title });
+    return assignment;
+  }
+  if (action === "archive_assignment" || action === "restore_assignment" || action === "delete_assignment") {
+    const assignment = await prisma.assignment.update({ where: { id: String(body.assignmentId) }, data: { active: action === "restore_assignment" } });
+    await audit(actor, `academy.assignment.${action.replace("_assignment", "")}`, assignment.id, { active: assignment.active });
     return assignment;
   }
   if (action === "create_learning_path") {
@@ -376,6 +439,62 @@ export async function runAcademyAction(body: Record<string, any>, actor: Actor) 
     });
     await audit(actor, "academy.path.create", path.id, { title: path.title });
     return path;
+  }
+  if (action === "update_learning_path") {
+    const path = await prisma.learningPath.update({
+      where: { id: String(body.pathId) },
+      data: learningPathInput(body.path ?? {}),
+    });
+    await audit(actor, "academy.path.update", path.id, { title: path.title });
+    return path;
+  }
+  if (action === "archive_learning_path" || action === "restore_learning_path" || action === "delete_learning_path") {
+    const path = await prisma.learningPath.update({ where: { id: String(body.pathId) }, data: { status: action === "restore_learning_path" ? "PUBLISHED" : "ARCHIVED" } });
+    await audit(actor, `academy.path.${action.replace("_learning_path", "")}`, path.id, { status: path.status });
+    return path;
+  }
+  if (action === "create_announcement") {
+    const announcement = await prisma.announcement.create({ data: announcementInput(body.announcement ?? {}) });
+    await audit(actor, "academy.announcement.create", announcement.id, { title: announcement.title });
+    await notifyAgents("ACADEMY_ANNOUNCEMENT", announcement.title, announcement.body);
+    return announcement;
+  }
+  if (action === "update_announcement") {
+    const announcement = await prisma.announcement.update({ where: { id: String(body.announcementId) }, data: announcementInput(body.announcement ?? {}) });
+    await audit(actor, "academy.announcement.update", announcement.id, { title: announcement.title });
+    return announcement;
+  }
+  if (action === "archive_announcement" || action === "restore_announcement" || action === "delete_announcement") {
+    const announcement = await prisma.announcement.update({
+      where: { id: String(body.announcementId) },
+      data: { expiresAt: action === "restore_announcement" ? null : new Date(), publishedAt: action === "restore_announcement" ? new Date() : undefined },
+    });
+    await audit(actor, `academy.announcement.${action.replace("_announcement", "")}`, announcement.id, { title: announcement.title });
+    return announcement;
+  }
+  if (action === "create_badge") {
+    const badge = await prisma.badge.create({ data: badgeInput(body.badge ?? {}) });
+    await audit(actor, "academy.badge.create", badge.id, { name: badge.name });
+    return badge;
+  }
+  if (action === "update_badge") {
+    const badge = await prisma.badge.update({ where: { id: String(body.badgeId) }, data: badgeInput(body.badge ?? {}) });
+    await audit(actor, "academy.badge.update", badge.id, { name: badge.name });
+    return badge;
+  }
+  if (action === "archive_badge" || action === "restore_badge" || action === "delete_badge") {
+    const badge = await prisma.badge.update({ where: { id: String(body.badgeId) }, data: { active: action === "restore_badge" } });
+    await audit(actor, `academy.badge.${action.replace("_badge", "")}`, badge.id, { active: badge.active });
+    return badge;
+  }
+  if (action === "update_settings") {
+    const settings = await prisma.trainingSetting.upsert({
+      where: { id: "singleton" },
+      create: { id: "singleton", payload: (body.settings ?? {}) as Prisma.InputJsonObject },
+      update: { payload: (body.settings ?? {}) as Prisma.InputJsonObject },
+    });
+    await audit(actor, "academy.settings.update", settings.id, {});
+    return settings;
   }
   return null;
 }
@@ -493,6 +612,76 @@ function videoInput(input: Record<string, any>): Prisma.VideoLibraryCreateInput 
     captionsUrl: stringOrNull(input.captionsUrl),
     downloadable: Boolean(input.downloadable),
     tags: arrayOfStrings(input.tags),
+  };
+}
+
+function quizInput(input: Record<string, any>): Prisma.QuizUncheckedUpdateInput {
+  return {
+    courseId: stringOrNull(input.courseId),
+    title: required(input.title, "Quiz title"),
+    description: stringOrNull(input.description),
+    passingPercentage: numberOr(input.passingPercentage, 80),
+    randomise: Boolean(input.randomise),
+    timeLimitMinutes: optionalNumber(input.timeLimitMinutes),
+    active: input.active === undefined ? undefined : Boolean(input.active),
+  };
+}
+
+function examInput(input: Record<string, any>): Prisma.FinalExamUncheckedUpdateInput {
+  return {
+    courseId: input.courseId ? String(input.courseId) : undefined,
+    title: required(input.title, "Exam title"),
+    durationMinutes: numberOr(input.durationMinutes, 60),
+    passingScore: numberOr(input.passingScore, 80),
+    randomQuestions: input.randomQuestions !== false,
+    questionPools: input.questionPools as Prisma.InputJsonValue,
+    attemptLimit: numberOr(input.attemptLimit, 2),
+    browserLock: Boolean(input.browserLock),
+    autoSubmit: input.autoSubmit !== false,
+    retakeRules: input.retakeRules as Prisma.InputJsonValue,
+    reviewEnabled: input.reviewEnabled !== false,
+    manualGrading: Boolean(input.manualGrading),
+    active: input.active === undefined ? undefined : Boolean(input.active),
+  };
+}
+
+function assignmentInput(input: Record<string, any>): Prisma.AssignmentUncheckedUpdateInput {
+  return {
+    courseId: stringOrNull(input.courseId),
+    title: required(input.title, "Assignment title"),
+    description: required(input.description, "Assignment description"),
+    dueDays: optionalNumber(input.dueDays),
+    points: numberOr(input.points, 100),
+    active: input.active === undefined ? undefined : Boolean(input.active),
+  };
+}
+
+function learningPathInput(input: Record<string, any>): Prisma.LearningPathUpdateInput {
+  return {
+    title: required(input.title, "Path title"),
+    description: stringOrNull(input.description),
+    status: String(input.status ?? "DRAFT"),
+    badgeTitle: stringOrNull(input.badgeTitle),
+  };
+}
+
+function announcementInput(input: Record<string, any>): Prisma.AnnouncementCreateInput {
+  return {
+    title: required(input.title, "Announcement title"),
+    body: required(input.body, "Announcement body"),
+    audience: String(input.audience ?? "ALL"),
+    publishedAt: input.publishedAt === false ? null : new Date(),
+    expiresAt: input.expiresAt ? new Date(input.expiresAt) : null,
+  };
+}
+
+function badgeInput(input: Record<string, any>): Prisma.BadgeCreateInput {
+  return {
+    name: required(input.name, "Badge name"),
+    description: stringOrNull(input.description),
+    iconUrl: stringOrNull(input.iconUrl),
+    xp: numberOr(input.xp, 0),
+    active: input.active !== false,
   };
 }
 
