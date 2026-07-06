@@ -822,7 +822,24 @@ async function main() {
   await seedVerifiedTenancy(firstListing, landlord, tinashe);
   await seedPropertyManagementRequest(landlord);
   await seedHolidayBooking(firstListing, tinashe, landlord);
-  await seedAgentApplication(userRows.get("blessing@harareprime.co.zw"));
+  await seedAgentApplication(userRows.get("blessing@harareprime.co.zw"), {
+    id: "app_seed_blessing",
+    photoUrl: "/images/roommates/portrait-blessing.jpg",
+    title: "Senior letting agent",
+    yearsExperience: 5,
+  });
+  await seedAgentApplication(userRows.get("tendai.sithole@homelinkzim.co.zw"), {
+    id: "app_seed_tendai",
+    photoUrl: "/images/roommates/portrait-tendai.jpg",
+    title: "Sales consultant",
+    yearsExperience: 4,
+  });
+  await seedAgentApplication(userRows.get("harare.prime.estates@homelinkzim.co.zw"), {
+    id: "app_seed_harare_prime",
+    photoUrl: "/images/roommates/portrait-member.jpg",
+    title: "Agency desk",
+    yearsExperience: 8,
+  });
   const review = await prisma.review.findFirst({
     where: { authorId: seeker.id, listingId: firstListing.id, target: "listing", metadata: { path: ["seedKey"], equals: "review-avondale-cottage" } },
   });
@@ -925,9 +942,10 @@ async function seedHolidayBooking(listing, guest, owner) {
   });
 }
 
-async function seedAgentApplication(agent) {
+async function seedAgentApplication(agent, profile) {
+  if (!agent) return;
   const payload = {
-    id: "app_seed_blessing",
+    id: profile.id,
     userId: agent.id,
     status: "APPROVED",
     personal: {
@@ -938,8 +956,18 @@ async function seedAgentApplication(agent) {
     },
     professional: {
       city: "Harare",
-      yearsExperience: 5,
+      province: "Harare",
+      yearsExperience: profile.yearsExperience,
       agencyName: "Harare Prime Estates",
+      areasCovered: ["Avondale", "Borrowdale", "Mount Pleasant"],
+      languages: ["English", "Shona"],
+      specialisations: ["Rentals", "Sales", "Property management"],
+      propertyTypes: ["House", "Flat", "Room"],
+    },
+    documents: {
+      profilePictureUrl: profile.photoUrl,
+      idDocumentUrl: `/uploads/agents/${profile.id}-id.pdf`,
+      licenceUrl: `/uploads/agents/${profile.id}-licence.pdf`,
     },
     declarationAccepted: true,
     termsAccepted: true,

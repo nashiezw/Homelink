@@ -1,7 +1,6 @@
 import { Prisma, Role } from "@prisma/client";
 import { listListings } from "@/lib/api/listing-service";
 import { getMainPrisma, isPostgresStoreEnabled } from "@/lib/db/main-prisma";
-import { isStrictProductionMode } from "@/lib/production/runtime";
 import { createDefaultHomepageCms } from "@/lib/homepage/cms-defaults";
 import type { HomepageCmsConfig } from "@/lib/homepage/cms-types";
 import type { HomepageData, HomeFeaturedAgent, HomePropertyType, HomeTrustMetric } from "@/lib/homepage/types";
@@ -176,19 +175,26 @@ function resolvePostgresFeaturedAgents(
   cms: HomepageCmsConfig,
   agents: Awaited<ReturnType<typeof getPostgresAgentRows>>,
 ): HomeFeaturedAgent[] {
-  const toAgent = (agent: (typeof agents)[number]): HomeFeaturedAgent => ({
-    id: agent.id,
-    name: agent.name,
-    slug: slugify(agent.name),
-    level: "Verified",
-    averageRating: 4.9,
-    ratingCount: 0,
-    yearsExperience: 2,
-    province: agent.listings[0]?.city ?? "Zimbabwe",
-    responseTime: "Under 2 hours",
-    listingsManaged: agent.listings.filter((listing) => listing.status === "ACTIVE").length,
-    verified: true,
-  });
+  const toAgent = (agent: (typeof agents)[number]): HomeFeaturedAgent => {
+    const payload = readObject(agent.application?.payload);
+    const documents = readObject(payload.documents);
+    const professional = readObject(payload.professional);
+    const photoUrl = stringValue(documents.profilePictureUrl) ?? fallbackAgentPhoto(agent.name);
+    return {
+      id: agent.id,
+      name: agent.name,
+      slug: slugify(agent.name),
+      photoUrl,
+      level: agent.identityStatus === "VERIFIED" ? "Verified" : "Standard",
+      averageRating: 4.9,
+      ratingCount: 0,
+      yearsExperience: numberValue(professional.yearsExperience, 2),
+      province: stringValue(professional.province) ?? agent.listings[0]?.city ?? "Zimbabwe",
+      responseTime: "Under 2 hours",
+      listingsManaged: agent.listings.filter((listing) => listing.status === "ACTIVE").length,
+      verified: agent.identityStatus === "VERIFIED",
+    };
+  };
 
   if (cms.featuredAgentProfileIds.length > 0) {
     return cms.featuredAgentProfileIds
@@ -301,7 +307,6 @@ async function getPostgresHomepageData(): Promise<HomepageData> {
 
 async function getPostgresHomepageCms(): Promise<HomepageCmsConfig> {
   const defaults = createDefaultHomepageCms();
-  if (isStrictProductionMode()) return defaults;
   const snapshot = await getMainPrisma().appStoreSnapshot
     .findUnique({
       where: { id: "singleton" },
@@ -339,16 +344,28 @@ function readSnapshotHomepageCms(payload: unknown): Partial<HomepageCmsConfig> |
 }
 
 async function getPostgresAgentRows() {
-  return getMainPrisma().user.findMany({
-    where: { roles: { has: Role.AGENT } },
-    select: {
-      id: true,
-      name: true,
-      listings: { select: { id: true, city: true, status: true } },
-    },
-    orderBy: { name: "asc" },
-    take: 12,
-  });
+  const prisma = getMainPrisma();
+  const [agents, applications] = await Promise.all([
+    prisma.user.findMany({
+      where: { roles: { has: Role.AGENT } },
+      select: {
+        id: true,
+        name: true,
+        identityStatus: true,
+        listings: { select: { id: true, city: true, status: true } },
+      },
+      orderBy: { name: "asc" },
+      take: 12,
+    }),
+    prisma.agentApplicationRecord.findMany({
+      select: { userId: true, payload: true },
+    }),
+  ]);
+  const applicationByUserId = new Map(applications.map((application) => [application.userId, application]));
+  return agents.map((agent) => ({
+    ...agent,
+    application: applicationByUserId.get(agent.id) ?? null,
+  }));
 }
 
 async function listHomepageListingsFromPostgres(): Promise<HomepageListing[]> {
@@ -465,4 +482,24 @@ function listingSlug(id: string, title: string) {
   const suffix = id.replace(/[^a-zA-Z0-9]/g, "").slice(0, 8).toLowerCase();
   const base = slugify(title) || "listing";
   return suffix ? `${base}-${suffix}` : base;
+}
+
+function readObject(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
+}
+
+function stringValue(value: unknown) {
+  return typeof value === "string" && value.trim() ? value : undefined;
+}
+
+function numberValue(value: unknown, fallback: number) {
+  const number = Number(value);
+  return Number.isFinite(number) && number > 0 ? number : fallback;
+}
+
+function fallbackAgentPhoto(name: string) {
+  const slug = slugify(name);
+  if (slug.includes("blessing")) return "/images/roommates/portrait-blessing.jpg";
+  if (slug.includes("tendai")) return "/images/roommates/portrait-tendai.jpg";
+  return "/images/roommates/portrait-member.jpg";
 }

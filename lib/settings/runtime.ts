@@ -11,8 +11,9 @@ export function getRuntimePlatformSettings(): PlatformSettings {
 }
 
 export async function getHydratedRuntimePlatformSettings(): Promise<PlatformSettings> {
-  if (process.env.HOMELINK_STRICT_PRODUCTION === "true" && isPostgresStoreEnabled()) {
-    return defaultPlatformSettings;
+  if (isPostgresStoreEnabled()) {
+    const { getPostgresPlatformSettings } = await import("@/lib/admin/postgres-admin-config");
+    return getPostgresPlatformSettings();
   }
   return (await getHydratedStore()).getPlatformSettings();
 }
