@@ -73,6 +73,24 @@ export async function getPublicRoommateProfileFromPostgres(userId: string) {
   };
 }
 
+export async function listPublicRoommateProfilesFromPostgres(limit = 12) {
+  const profiles = await getMainPrisma().roommateProfile.findMany({
+    where: {
+      active: true,
+      user: { accountStatus: "ACTIVE" },
+    },
+    include: { user: true },
+    orderBy: { updatedAt: "desc" },
+    take: limit,
+  });
+  return profiles.map((profile) => ({
+    userId: profile.userId,
+    name: profile.user.name,
+    city: preferredCity(profile.preferredLocations),
+    profile: toProfile(profile),
+  }));
+}
+
 async function refreshMatches(userId: string) {
   const source = await getMainPrisma().roommateProfile.findUnique({ where: { userId } });
   if (!source) return;
@@ -98,6 +116,12 @@ async function refreshMatches(userId: string) {
     }),
     skipDuplicates: true,
   });
+}
+
+function preferredCity(locations: string[]) {
+  const first = locations[0] ?? "";
+  const parts = first.split(",").map((part) => part.trim()).filter(Boolean);
+  return parts.at(-1) || parts[0] || undefined;
 }
 
 function toProfile(row: {

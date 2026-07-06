@@ -41,6 +41,37 @@ import type { Listing } from "@/lib/types";
 import type { RoommateMatch, RoommateProfile } from "@/lib/store/types";
 import { cn, formatPrice } from "@/lib/utils";
 
+type RoommateCardPerson = {
+  id: string;
+  name: string;
+  city: string;
+  suburb: string;
+  budgetMin: number;
+  budgetMax: number;
+  gender: string;
+  age: number;
+  occupation: string;
+  lifestyle: string;
+  availableFrom: string;
+  verified: boolean;
+  lookingFor: "room" | "roommate" | "either";
+  tags: string[];
+  smoking: boolean;
+  pets: boolean;
+  languages: string[];
+  compatibility: number;
+  interests: string[];
+  avatarUrl?: string;
+  coverPhoto?: string;
+};
+
+type PublicRoommateProfileSummary = {
+  userId: string;
+  name: string;
+  city?: string;
+  profile: RoommateProfile & Record<string, unknown>;
+};
+
 const AUDIENCE_ICONS = { search: Search, home: Home, users: Users } as const;
 const STEP_ICONS = [UserPlus, Search, MessageCircle, Calendar, Key] as const;
 
@@ -432,7 +463,7 @@ function SeekerChip({
   person,
   onChat,
 }: {
-  person: (typeof recommendedRoommates)[number];
+  person: RoommateCardPerson;
   onChat: () => void;
 }) {
   const avatarUrl = "avatarUrl" in person ? person.avatarUrl : undefined;
@@ -501,6 +532,8 @@ export function RoommatesPageClient() {
   const { user, showToast } = useApp();
   const [matches, setMatches] = useState<RoommateMatch[]>([]);
   const [amenities, setAmenities] = useState<string[]>([]);
+  const [postgresRooms, setPostgresRooms] = useState<Listing[]>([]);
+  const [postgresSeekers, setPostgresSeekers] = useState<RoommateCardPerson[]>([]);
   const [shareIntent, setShareIntent] = useState<RoomShareIntent>("seeking");
   const [sharePanel, setSharePanel] = useState<RoomSharePanelState>(defaultRoomSharePanel);
   const [shareSubmitting, setShareSubmitting] = useState(false);
@@ -524,14 +557,34 @@ export function RoommatesPageClient() {
     });
   }, [user, matches.length]);
 
-  const rooms = featuredListings
+  useEffect(() => {
+    void apiFetch<Listing[]>("/api/v1/listings?intent=rent").then((result) => {
+      if (Array.isArray(result.data) && result.data.length) {
+        setPostgresRooms(result.data.filter((listing) => ["room", "flat", "cottage"].includes(listing.type)));
+      }
+    });
+    void apiFetch<{ profiles: PublicRoommateProfileSummary[] }>("/api/v1/roommates/profiles?limit=8").then((result) => {
+      const people = result.data?.profiles?.map(toRoommateCardPerson).filter(Boolean) as RoommateCardPerson[] | undefined;
+      if (people?.length) setPostgresSeekers(people);
+    });
+  }, []);
+
+  const fallbackRooms = featuredListings
     .filter((l) => l.intent === "rent" && ["room", "flat", "cottage"].includes(l.type))
     .sort((a, b) => b.trustScore - a.trustScore);
+  const rooms = (postgresRooms.length ? postgresRooms : fallbackRooms).sort((a, b) => b.trustScore - a.trustScore);
 
   const [spotlight, ...restRooms] = rooms;
   const sideRooms = restRooms.slice(0, 2);
   const scrollRooms = restRooms.slice(2, 8);
-  const topSeekers = recommendedRoommates.slice(0, 6);
+  const fallbackSeekers = recommendedRoommates.map((person) => ({
+    ...person,
+    tags: [...person.tags],
+    languages: [...person.languages],
+    interests: [...person.interests],
+    lookingFor: person.lookingFor as RoommateCardPerson["lookingFor"],
+  }));
+  const topSeekers = (postgresSeekers.length ? postgresSeekers : fallbackSeekers).slice(0, 6);
   const featuredSeeker = topSeekers[0];
   const otherSeekers = topSeekers.slice(1, 4);
   const moreSeekers = topSeekers.slice(4);
@@ -944,13 +997,13 @@ function SocialSeekerCard({
   onChat,
   onInvite,
 }: {
-  person: (typeof recommendedRoommates)[number];
+  person: RoommateCardPerson;
   featured?: boolean;
   onChat: () => void;
   onInvite: () => void;
 }) {
   const avatarUrl = "avatarUrl" in person ? person.avatarUrl : undefined;
-  const coverPhoto = "coverPhoto" in person ? person.coverPhoto : roommateMedia.shared;
+  const coverPhoto = person.coverPhoto || roommateMedia.shared;
 
   return (
     <article className={cn(
@@ -1023,4 +1076,62 @@ function SocialSeekerCard({
 
 function Tag({ children }: { children: ReactNode }) {
   return <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-800">{children}</span>;
+}
+
+function toRoommateCardPerson(summary: PublicRoommateProfileSummary): RoommateCardPerson | null {
+  const profile = summary.profile;
+  if (!profile?.active) return null;
+  const preferredLocations = Array.isArray(profile.preferredLocations) ? profile.preferredLocations.map(String) : [];
+  const [suburb, cityFromLocation] = splitLocation(preferredLocations[0]);
+  const name = summary.name || stringValue(profile.name) || "HomeLink member";
+  const occupation = stringValue(profile.occupation) || "HomeLink member";
+  const lifestyle = stringValue(profile.lifestyle) || "compatible";
+  const languages = stringArray(profile.languages, ["English"]);
+  const tags = stringArray(profile.tags, [
+    profile.smoking ? "Smoker" : "Non-smoker",
+    profile.pets ? "Pets ok" : "No pets",
+    lifestyle,
+  ]).slice(0, 5);
+  return {
+    id: summary.userId,
+    name,
+    city: summary.city || cityFromLocation || "Zimbabwe",
+    suburb: suburb || cityFromLocation || "Zimbabwe",
+    budgetMin: Number(profile.budgetMin) || 100,
+    budgetMax: Number(profile.budgetMax) || 300,
+    gender: stringValue(profile.gender) || stringValue(profile.genderPreference) || "Any",
+    age: Number(profile.age) || 25,
+    occupation,
+    lifestyle,
+    availableFrom: stringValue(profile.availableFrom) || "Available now",
+    verified: true,
+    lookingFor: normalizeLookingFor(profile.lookingFor),
+    tags,
+    smoking: Boolean(profile.smoking),
+    pets: Boolean(profile.pets),
+    languages,
+    compatibility: Number(profile.compatibility) || 90,
+    interests: stringArray(profile.interests, tags).slice(0, 4),
+    avatarUrl: stringValue(profile.avatarUrl),
+    coverPhoto: stringValue(profile.coverPhoto) || roommateMedia.shared,
+  };
+}
+
+function normalizeLookingFor(value: unknown): RoommateCardPerson["lookingFor"] {
+  return value === "roommate" || value === "either" || value === "room" ? value : "room";
+}
+
+function splitLocation(location?: string) {
+  if (!location) return ["", ""] as const;
+  const parts = location.split(",").map((part) => part.trim()).filter(Boolean);
+  if (parts.length >= 2) return [parts[0], parts.at(-1) ?? ""] as const;
+  return [parts[0] ?? "", ""] as const;
+}
+
+function stringValue(value: unknown) {
+  return typeof value === "string" && value.trim() ? value.trim() : undefined;
+}
+
+function stringArray(value: unknown, fallback: string[]) {
+  return Array.isArray(value) && value.length ? value.map(String).filter(Boolean) : fallback;
 }

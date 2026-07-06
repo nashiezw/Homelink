@@ -44,6 +44,7 @@ export function AgentManagementHub() {
   const { showToast } = useApp();
   const [data, setData] = useState<AdminAgentData | null>(null);
   const [rules, setRules] = useState<CommissionRule[]>([]);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [subTab, setSubTab] = useState<"overview" | "applications" | "leads" | "commissions" | "territories" | "documents" | "branches" | "settings">("overview");
   const [feedback, setFeedback] = useState<{
     title: string;
@@ -93,7 +94,10 @@ export function AgentManagementHub() {
     const result = await apiFetch<AdminAgentData>("/api/v1/admin/agents");
     if (result.data) {
       setData(result.data);
-      setRules(result.data.settings.commissionRules);
+      setRules(result.data.settings?.commissionRules ?? []);
+      setLoadError(null);
+    } else if (result.error) {
+      setLoadError(result.error.message);
     }
   }, []);
 
@@ -255,6 +259,22 @@ export function AgentManagementHub() {
           },
         }),
     });
+  }
+
+  if (!data && loadError) {
+    return (
+      <div className="rounded-3xl border border-rose-500/30 bg-rose-500/10 p-5 text-sm text-rose-100">
+        <p className="font-semibold">Agent management could not load.</p>
+        <p className="mt-1 text-rose-100/75">{loadError}</p>
+        <button
+          type="button"
+          onClick={() => void load()}
+          className="mt-4 rounded-xl border border-rose-300/40 px-4 py-2 font-semibold text-white hover:bg-rose-400/10"
+        >
+          Retry
+        </button>
+      </div>
+    );
   }
 
   if (!data) return <p className="text-slate-400">Loading agent management...</p>;
