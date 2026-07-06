@@ -13,6 +13,7 @@ import {
 import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { AgentManagementHub } from "@/components/admin/agent-management-hub";
+import { AgentAcademyHub } from "@/components/admin/agent-academy-hub";
 import { BookingsAdminHub } from "@/components/admin/bookings-admin-hub";
 import { EnquiryCrmHub } from "@/components/admin/enquiry-crm-hub";
 import { ExecutiveDashboard } from "@/components/admin/executive-dashboard";
@@ -279,6 +280,8 @@ export function AdminControlCenter() {
         </Panel>
       )}
 
+      {tab === "academy" && <AgentAcademyHub />}
+
       {tab === "property-management" && (
         <Panel title="Property management CRM">
           <PropertyManagementHub />
@@ -312,6 +315,7 @@ const tabDescriptions: Record<AdminTab, string> = {
   enquiries: "Full enquiry CRM - assign agents, track pipeline, merge duplicates, and configure routing.",
   landlords: "Verify landlords, manage agencies, and control premium tiers.",
   agents: "Recruit agents, approve applications, pay commissions, and manage territories.",
+  academy: "Standalone enterprise LMS for HomeLink agent training, certification, documents, videos, live learning, and analytics.",
   "property-management": "Full property management request workflow from intake to completion.",
   "holiday-homes": "Manage holiday listings, seasonal settings, host reviews, and featured placement.",
   bookings: "End-to-end booking operations: enquiries, approvals, calendar view, guest details, and status tracking.",

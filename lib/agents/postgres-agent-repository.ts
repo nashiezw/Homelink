@@ -311,7 +311,7 @@ function toPublicAgentProfile(
     level: agentLevel(yearsExperience),
     status: user.accountStatus === "SUSPENDED" ? "SUSPENDED" : "ACTIVE",
     biography: `${user.name} is a verified HomeLink Zimbabwe agent serving ${areas.join(", ")}.`,
-    photoUrl: stringValue(readObject(application).photoUrl),
+    photoUrl: application?.documents.profilePictureUrl ?? fallbackAgentPhoto(user.name),
     areasServed: areas,
     languages: professional?.languages?.length ? professional.languages : ["English", "Shona"],
     specialisations: professional?.specialisations?.length ? professional.specialisations : ["Residential rentals", "Property sales", "Client viewings"],
@@ -321,7 +321,7 @@ function toPublicAgentProfile(
     permissions: DEFAULT_AGENT_PERMISSIONS,
     territoryIds: [],
     trainingCompleted,
-    certificateUrl: trainingCompleted ? "/resources/agents/certificates/verified-agent-certificate.md" : undefined,
+    certificateUrl: trainingCompleted ? "/dashboard/admin?tab=academy" : undefined,
     averageRating: 0,
     ratingCount: 0,
     publicSlug: slugify(user.name || user.email || user.id),
@@ -388,4 +388,11 @@ function listingSlug(id: string, title: string) {
   const suffix = id.replace(/[^a-zA-Z0-9]/g, "").slice(0, 8).toLowerCase();
   const base = slugify(title) || "listing";
   return suffix ? `${base}-${suffix}` : base;
+}
+
+function fallbackAgentPhoto(name: string) {
+  const slug = slugify(name);
+  if (slug.includes("blessing")) return "/images/roommates/portrait-blessing.jpg";
+  if (slug.includes("tendai")) return "/images/roommates/portrait-tendai.jpg";
+  return "/images/roommates/portrait-member.jpg";
 }

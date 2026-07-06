@@ -480,10 +480,10 @@ function certificateTitleForTrack(track: AgentTrainingTrack) {
 }
 
 function certificateUrlForTrack(track: AgentTrainingTrack) {
-  if (track === "VERIFIED_AGENT") return "/resources/agents/certificates/verified-agent-certificate.md";
-  if (track === "SENIOR_AGENT") return "/resources/agents/certificates/senior-agent-certificate.md";
-  if (track === "PROPERTY_MANAGER") return "/resources/agents/certificates/property-manager-certificate.md";
-  return "/resources/agents/certificates/beginner-agent-certificate.md";
+  if (track === "VERIFIED_AGENT") return "/dashboard/admin?tab=academy";
+  if (track === "SENIOR_AGENT") return "/dashboard/admin?tab=academy";
+  if (track === "PROPERTY_MANAGER") return "/dashboard/admin?tab=academy";
+  return "/dashboard/admin?tab=academy";
 }
 
 function readResourceType(value: unknown): "PDF" | "DOC" | "CHECKLIST" | "TEMPLATE" | "LINK" {

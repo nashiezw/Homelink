@@ -6,23 +6,30 @@ import {
   Bell,
   CalendarCheck,
   Activity,
+  Award,
   Brain,
   Briefcase,
   Building2,
+  BookOpen,
+  ClipboardCheck,
   Command,
   CreditCard,
   FileText,
+  FolderOpen,
   Headphones,
   Home,
   LayoutDashboard,
+  GraduationCap,
   Megaphone,
   Menu,
   MessageSquare,
+  PlayCircle,
   Search,
   Settings,
   Shield,
   ShieldAlert,
   ShieldCheck,
+  Trophy,
   Users,
   Wrench,
   X,
@@ -44,6 +51,7 @@ export type AdminTab =
   | "support"
   | "landlords"
   | "agents"
+  | "academy"
   | "property-management"
   | "holiday-homes"
   | "bookings"
@@ -74,6 +82,7 @@ type NavItem = {
   label: string;
   icon: typeof LayoutDashboard;
   badgeKey?: keyof AdminSummary;
+  academyView?: string;
 };
 
 const NAV_GROUPS: Array<{ label: string; items: NavItem[] }> = [
@@ -83,6 +92,27 @@ const NAV_GROUPS: Array<{ label: string; items: NavItem[] }> = [
       { id: "overview", label: "Command Center", icon: LayoutDashboard },
       { id: "enquiries", label: "Enquiry CRM", icon: MessageSquare },
       { id: "reports", label: "Reports", icon: FileText },
+    ],
+  },
+  {
+    label: "HomeLink Agent Academy",
+    items: [
+      { id: "academy", label: "Dashboard", icon: GraduationCap, academyView: "Dashboard" },
+      { id: "academy", label: "Courses", icon: BookOpen, academyView: "Courses" },
+      { id: "academy", label: "Lessons", icon: FileText, academyView: "Lessons" },
+      { id: "academy", label: "Learning Paths", icon: FolderOpen, academyView: "Learning Paths" },
+      { id: "academy", label: "Quizzes", icon: ShieldCheck, academyView: "Quizzes" },
+      { id: "academy", label: "Assignments", icon: ClipboardCheck, academyView: "Assignments" },
+      { id: "academy", label: "Final Exams", icon: GraduationCap, academyView: "Final Exams" },
+      { id: "academy", label: "Certificates", icon: Award, academyView: "Certificates" },
+      { id: "academy", label: "Documents Library", icon: FileText, academyView: "Documents Library" },
+      { id: "academy", label: "Video Library", icon: PlayCircle, academyView: "Video Library" },
+      { id: "academy", label: "Announcements", icon: Megaphone, academyView: "Announcements" },
+      { id: "academy", label: "Discussion Board", icon: MessageSquare, academyView: "Discussion Board" },
+      { id: "academy", label: "Leaderboard", icon: Trophy, academyView: "Leaderboard" },
+      { id: "academy", label: "Badges", icon: Award, academyView: "Badges" },
+      { id: "academy", label: "Training Analytics", icon: Activity, academyView: "Analytics" },
+      { id: "academy", label: "Training Settings", icon: Settings, academyView: "Settings" },
     ],
   },
   {
@@ -134,6 +164,7 @@ const TAB_LABELS: Record<AdminTab, string> = {
   support: "Support CRM",
   landlords: "Landlords & Agents",
   agents: "Agent Management",
+  academy: "HomeLink Agent Academy",
   "property-management": "Property Requests",
   "holiday-homes": "Holiday Homes",
   bookings: "Bookings & Reservations",
@@ -177,6 +208,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
   const searchParams = useSearchParams();
   const tab = (searchParams.get("tab") ?? "overview") as AdminTab;
   const activeTab = VALID_TABS.has(tab) ? tab : "overview";
+  const activeAcademyView = searchParams.get("academyView") ?? "Dashboard";
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -186,8 +218,14 @@ export function AdminShell({ children }: { children: ReactNode }) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
 
   const navigate = useCallback(
-    (id: AdminTab) => {
-      router.push(`${pathname}?tab=${id}`);
+    (item: NavItem | AdminTab) => {
+      const id = typeof item === "string" ? item : item.id;
+      const next = new URLSearchParams();
+      next.set("tab", id);
+      if (typeof item !== "string" && item.academyView) {
+        next.set("academyView", item.academyView);
+      }
+      router.push(`${pathname}?${next.toString()}`);
       setPaletteOpen(false);
       setMobileOpen(false);
     },
@@ -281,11 +319,11 @@ export function AdminShell({ children }: { children: ReactNode }) {
             <p className="mb-2 px-3 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-600">{group.label}</p>
             {group.items.map((item) => (
               <NavButton
-                key={item.id}
+                key={`${item.id}-${item.academyView ?? item.label}`}
                 item={item}
-                active={activeTab === item.id}
+                active={activeTab === item.id && (item.id !== "academy" || item.academyView === activeAcademyView)}
                 badge={item.badgeKey && summary ? summary[item.badgeKey] : 0}
-                onClick={() => navigate(item.id)}
+                onClick={() => navigate(item)}
               />
             ))}
           </div>
@@ -461,9 +499,9 @@ export function AdminShell({ children }: { children: ReactNode }) {
             <div className="max-h-80 overflow-y-auto p-2">
               {filteredNav.map((item) => (
                 <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => navigate(item.id)}
+                key={`${item.id}-${item.academyView ?? item.label}`}
+                type="button"
+                onClick={() => navigate(item)}
                   className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm text-slate-300 hover:bg-white/5"
                 >
                   <item.icon className="size-4 text-cyan-400" />

@@ -776,3 +776,723 @@ model AppStoreSnapshot {
   payload   Json
   updatedAt DateTime @updatedAt
 }
+
+enum TrainingCourseStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum TrainingVisibility {
+  INTERNAL_ONLY
+  PUBLIC
+  BRANCH_SPECIFIC
+  ROLE_BASED
+}
+
+enum TrainingDifficulty {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+  EXPERT
+}
+
+enum TrainingResourceType {
+  PDF
+  DOCX
+  XLSX
+  PPTX
+  IMAGE
+  VIDEO
+  AUDIO
+  ZIP
+  LINK
+}
+
+enum TrainingQuestionType {
+  MULTIPLE_CHOICE
+  MULTIPLE_ANSWER
+  TRUE_FALSE
+  FILL_BLANK
+  MATCHING
+  ORDERING
+  IMAGE
+  VIDEO
+  SCENARIO
+  ESSAY
+  DRAG_DROP
+  HOTSPOT
+}
+
+enum TrainingAttemptStatus {
+  IN_PROGRESS
+  SUBMITTED
+  PASSED
+  FAILED
+  GRADED
+}
+
+enum AssignmentSubmissionStatus {
+  SUBMITTED
+  APPROVED
+  REJECTED
+  RESUBMISSION_REQUESTED
+  GRADED
+}
+
+model TrainingCategory {
+  id          String           @id @default(cuid())
+  name        String
+  slug        String           @unique
+  description String?
+  parentId    String?
+  sortOrder   Int              @default(0)
+  active      Boolean          @default(true)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  courses     TrainingCourse[]
+
+  @@map("training_categories")
+}
+
+model TrainingCourse {
+  id                String                 @id @default(cuid())
+  title             String
+  slug              String                 @unique
+  thumbnailUrl      String?
+  bannerUrl         String?
+  description       String
+  categoryId        String?
+  tags              String[]               @default([])
+  difficulty        TrainingDifficulty     @default(BEGINNER)
+  durationMinutes   Int                    @default(0)
+  instructor        String?
+  prerequisites     String[]               @default([])
+  passingPercentage Int                    @default(80)
+  estimatedHours    Decimal                @default(0) @db.Decimal(6, 2)
+  certificateEnabled Boolean               @default(false)
+  expiresAfterDays  Int?
+  version           Int                    @default(1)
+  language          String                 @default("English")
+  status            TrainingCourseStatus   @default(DRAFT)
+  featured          Boolean                @default(false)
+  visibility        TrainingVisibility     @default(INTERNAL_ONLY)
+  branchIds         String[]               @default([])
+  roleNames         String[]               @default([])
+  createdById       String?
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+  category          TrainingCategory?      @relation(fields: [categoryId], references: [id])
+  modules           TrainingModule[]
+  enrolments        CourseEnrolment[]
+  progress          CourseProgress[]
+  quizzes           Quiz[]
+  finalExams        FinalExam[]
+  assignments       Assignment[]
+  certificateIssues CertificateIssue[]
+  discussions       DiscussionThread[]
+  pathCourses       PathCourse[]
+
+  @@index([status])
+  @@index([categoryId])
+  @@index([featured])
+  @@map("training_courses")
+}
+
+model TrainingModule {
+  id          String            @id @default(cuid())
+  courseId    String
+  title       String
+  description String?
+  sortOrder   Int               @default(0)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  course      TrainingCourse    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  sections    TrainingSection[]
+
+  @@index([courseId, sortOrder])
+  @@map("training_modules")
+}
+
+model TrainingSection {
+  id          String           @id @default(cuid())
+  moduleId    String
+  title       String
+  description String?
+  sortOrder   Int              @default(0)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  module      TrainingModule   @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  lessons     TrainingLesson[]
+
+  @@index([moduleId, sortOrder])
+  @@map("training_sections")
+}
+
+model TrainingLesson {
+  id                       String             @id @default(cuid())
+  sectionId                String
+  title                    String
+  summary                  String?
+  richText                 String             @default("")
+  videoUrl                 String?
+  embeddedVideoUrl         String?
+  pdfUrl                   String?
+  audioUrl                 String?
+  mapEmbedUrl              String?
+  estimatedMinutes         Int                @default(0)
+  completionRequirement    String             @default("VIEW")
+  sortOrder                Int                @default(0)
+  commentsEnabled          Boolean            @default(true)
+  bookmarksEnabled         Boolean            @default(true)
+  createdAt                DateTime           @default(now())
+  updatedAt                DateTime           @updatedAt
+  section                  TrainingSection    @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  lessonVideos             LessonVideo[]
+  lessonDocuments          LessonDocument[]
+  lessonResources          LessonResource[]
+  lessonDownloads          LessonDownload[]
+  progress                 LessonProgress[]
+
+  @@index([sectionId, sortOrder])
+  @@map("training_lessons")
+}
+
+model LessonVideo {
+  id             String               @id @default(cuid())
+  lessonId       String
+  title          String
+  url            String
+  provider       String               @default("UPLOAD")
+  durationSeconds Int                 @default(0)
+  captionsUrl    String?
+  downloadable   Boolean             @default(false)
+  createdAt      DateTime            @default(now())
+  lesson         TrainingLesson      @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@index([lessonId])
+  @@map("lesson_videos")
+}
+
+model LessonDocument {
+  id         String               @id @default(cuid())
+  lessonId   String
+  documentId String
+  sortOrder  Int                  @default(0)
+  createdAt  DateTime             @default(now())
+  lesson     TrainingLesson       @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  document   DocumentLibrary      @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@unique([lessonId, documentId])
+  @@map("lesson_documents")
+}
+
+model LessonResource {
+  id        String               @id @default(cuid())
+  lessonId  String
+  title     String
+  body      String
+  type      String
+  sortOrder Int                  @default(0)
+  createdAt DateTime             @default(now())
+  lesson    TrainingLesson       @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@index([lessonId])
+  @@map("lesson_resources")
+}
+
+model LessonDownload {
+  id        String               @id @default(cuid())
+  lessonId  String
+  title     String
+  url       String
+  type      TrainingResourceType
+  createdAt DateTime             @default(now())
+  lesson    TrainingLesson       @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@index([lessonId])
+  @@map("lesson_downloads")
+}
+
+model Quiz {
+  id                String        @id @default(cuid())
+  courseId          String?
+  title             String
+  description       String?
+  passingPercentage Int           @default(80)
+  randomise         Boolean       @default(false)
+  timeLimitMinutes  Int?
+  active            Boolean       @default(true)
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  course            TrainingCourse? @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  questions         QuizQuestion[]
+  attempts          QuizAttempt[]
+
+  @@index([courseId])
+  @@map("quizzes")
+}
+
+model QuizQuestion {
+  id                String               @id @default(cuid())
+  quizId            String?
+  bankId            String?
+  type              TrainingQuestionType
+  prompt            String
+  points            Int                  @default(1)
+  explanation       String?
+  correctAnswer     Json
+  incorrectFeedback String?
+  hints             String[]             @default([])
+  difficulty        TrainingDifficulty   @default(BEGINNER)
+  randomise         Boolean              @default(false)
+  mediaUrl          String?
+  attachments       Json?
+  categories        String[]             @default([])
+  tags              String[]             @default([])
+  sortOrder         Int                  @default(0)
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+  quiz              Quiz?                @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  bank              QuestionBank?        @relation(fields: [bankId], references: [id])
+  answers           QuizAnswer[]
+
+  @@index([quizId])
+  @@index([bankId])
+  @@map("quiz_questions")
+}
+
+model QuizAnswer {
+  id          String       @id @default(cuid())
+  questionId  String
+  label       String
+  value       String
+  isCorrect   Boolean      @default(false)
+  feedback    String?
+  sortOrder   Int          @default(0)
+  createdAt   DateTime     @default(now())
+  question    QuizQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@index([questionId])
+  @@map("quiz_answers")
+}
+
+model QuestionBank {
+  id          String         @id @default(cuid())
+  name        String
+  description String?
+  category    String?
+  tags        String[]       @default([])
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  questions   QuizQuestion[]
+
+  @@map("question_bank")
+}
+
+model QuizAttempt {
+  id          String                @id @default(cuid())
+  quizId      String
+  agentId     String
+  status      TrainingAttemptStatus @default(IN_PROGRESS)
+  score       Decimal               @default(0) @db.Decimal(6, 2)
+  answers     Json
+  startedAt   DateTime              @default(now())
+  submittedAt DateTime?
+  gradedAt    DateTime?
+  quiz        Quiz                  @relation(fields: [quizId], references: [id], onDelete: Cascade)
+
+  @@index([quizId])
+  @@index([agentId])
+  @@map("quiz_attempts")
+}
+
+model FinalExam {
+  id                String        @id @default(cuid())
+  courseId          String
+  title             String
+  durationMinutes   Int           @default(60)
+  passingScore      Int           @default(80)
+  randomQuestions   Boolean       @default(true)
+  questionPools     Json?
+  attemptLimit      Int           @default(2)
+  browserLock       Boolean       @default(false)
+  autoSubmit        Boolean       @default(true)
+  retakeRules       Json?
+  reviewEnabled     Boolean       @default(true)
+  manualGrading     Boolean       @default(false)
+  active            Boolean       @default(true)
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  course            TrainingCourse @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  attempts          ExamAttempt[]
+
+  @@index([courseId])
+  @@map("final_exams")
+}
+
+model ExamAttempt {
+  id          String                @id @default(cuid())
+  examId      String
+  agentId     String
+  status      TrainingAttemptStatus @default(IN_PROGRESS)
+  score       Decimal               @default(0) @db.Decimal(6, 2)
+  answers     Json
+  startedAt   DateTime              @default(now())
+  submittedAt DateTime?
+  gradedAt    DateTime?
+  exam        FinalExam             @relation(fields: [examId], references: [id], onDelete: Cascade)
+
+  @@index([examId])
+  @@index([agentId])
+  @@map("exam_attempts")
+}
+
+model Assignment {
+  id          String                 @id @default(cuid())
+  courseId    String?
+  title       String
+  description String
+  dueDays     Int?
+  points      Int                    @default(100)
+  active      Boolean                @default(true)
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+  course      TrainingCourse?        @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  submissions AssignmentSubmission[]
+
+  @@index([courseId])
+  @@map("assignments")
+}
+
+model AssignmentSubmission {
+  id           String                     @id @default(cuid())
+  assignmentId String
+  agentId      String
+  status       AssignmentSubmissionStatus @default(SUBMITTED)
+  notes        String?
+  fileUrls     String[]                   @default([])
+  grade        Decimal?                   @db.Decimal(6, 2)
+  reviewerId   String?
+  reviewerNote String?
+  submittedAt  DateTime                   @default(now())
+  reviewedAt   DateTime?
+  assignment   Assignment                 @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+
+  @@index([assignmentId])
+  @@index([agentId])
+  @@map("assignment_submissions")
+}
+
+model CourseEnrolment {
+  id         String         @id @default(cuid())
+  courseId   String
+  agentId    String
+  status     String         @default("ACTIVE")
+  enrolledAt DateTime       @default(now())
+  dueAt      DateTime?
+  course     TrainingCourse @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([courseId, agentId])
+  @@index([agentId])
+  @@map("course_enrolments")
+}
+
+model LessonProgress {
+  id               String          @id @default(cuid())
+  lessonId         String
+  agentId          String
+  status           String          @default("NOT_STARTED")
+  percentComplete  Int             @default(0)
+  readingSeconds   Int             @default(0)
+  completedAt      DateTime?
+  lastViewedAt     DateTime        @default(now())
+  lesson           TrainingLesson  @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@unique([lessonId, agentId])
+  @@index([agentId])
+  @@map("lesson_progress")
+}
+
+model CourseProgress {
+  id              String         @id @default(cuid())
+  courseId        String
+  agentId         String
+  status          String         @default("NOT_STARTED")
+  percentComplete Int            @default(0)
+  averageScore    Decimal        @default(0) @db.Decimal(6, 2)
+  learningMinutes Int            @default(0)
+  completedAt     DateTime?
+  updatedAt       DateTime       @updatedAt
+  course          TrainingCourse @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([courseId, agentId])
+  @@index([agentId])
+  @@map("course_progress")
+}
+
+model LearningPath {
+  id          String       @id @default(cuid())
+  title       String
+  description String?
+  status      String       @default("DRAFT")
+  badgeTitle  String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  courses     PathCourse[]
+
+  @@map("learning_paths")
+}
+
+model PathCourse {
+  id        String         @id @default(cuid())
+  pathId    String
+  courseId  String
+  sortOrder Int            @default(0)
+  required  Boolean        @default(true)
+  path      LearningPath   @relation(fields: [pathId], references: [id], onDelete: Cascade)
+  course    TrainingCourse @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([pathId, courseId])
+  @@map("path_courses")
+}
+
+model Certificate {
+  id          String              @id @default(cuid())
+  title       String
+  description String?
+  active      Boolean             @default(true)
+  createdAt   DateTime            @default(now())
+
+  @@map("certificates")
+}
+
+model CertificateTemplate {
+  id            String             @id @default(cuid())
+  name          String
+  backgroundUrl String?
+  logoUrl       String?
+  signatureUrl  String?
+  templateJson  Json
+  active        Boolean            @default(true)
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+  issues        CertificateIssue[]
+
+  @@map("certificate_templates")
+}
+
+model CertificateIssue {
+  id                String              @id @default(cuid())
+  certificateNumber String              @unique
+  courseId          String?
+  agentId           String
+  templateId        String?
+  qrCodeUrl         String?
+  pdfUrl            String?
+  status            String              @default("ACTIVE")
+  issuedAt          DateTime            @default(now())
+  expiresAt         DateTime?
+  revokedAt         DateTime?
+  course            TrainingCourse?     @relation(fields: [courseId], references: [id])
+  template          CertificateTemplate? @relation(fields: [templateId], references: [id])
+
+  @@index([agentId])
+  @@index([courseId])
+  @@map("certificate_issues")
+}
+
+model DocumentCategory {
+  id          String            @id @default(cuid())
+  name        String
+  slug        String            @unique
+  description String?
+  sortOrder   Int               @default(0)
+  createdAt   DateTime          @default(now())
+  documents   DocumentLibrary[]
+
+  @@map("document_categories")
+}
+
+model DocumentLibrary {
+  id                 String                 @id @default(cuid())
+  categoryId         String?
+  title              String
+  description        String?
+  fileUrl            String
+  fileName           String
+  fileType           TrainingResourceType
+  fileSizeBytes      Int                    @default(0)
+  version            Int                    @default(1)
+  tags               String[]               @default([])
+  permissions        String[]               @default(["ADMIN", "AGENT"])
+  searchableText     String                 @default("")
+  downloadable       Boolean                @default(true)
+  previewable        Boolean                @default(true)
+  replacedById       String?
+  active             Boolean                @default(true)
+  createdById        String?
+  createdAt          DateTime               @default(now())
+  updatedAt          DateTime               @updatedAt
+  category           DocumentCategory?      @relation(fields: [categoryId], references: [id])
+  lessonDocuments    LessonDocument[]
+
+  @@index([categoryId])
+  @@index([fileType])
+  @@index([active])
+  @@map("document_library")
+}
+
+model VideoLibrary {
+  id              String          @id @default(cuid())
+  title           String
+  description     String?
+  category        String
+  videoUrl        String
+  thumbnailUrl    String?
+  durationSeconds Int             @default(0)
+  captionsUrl     String?
+  downloadable    Boolean         @default(false)
+  tags            String[]        @default([])
+  active          Boolean         @default(true)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  progress        VideoProgress[]
+
+  @@index([category])
+  @@map("video_library")
+}
+
+model VideoProgress {
+  id              String       @id @default(cuid())
+  videoId         String
+  agentId         String
+  watchedSeconds  Int          @default(0)
+  percentComplete Int          @default(0)
+  playbackSpeed   Decimal      @default(1) @db.Decimal(4, 2)
+  bookmarks       Json?
+  notes           String?
+  lastWatchedAt   DateTime     @default(now())
+  video           VideoLibrary @relation(fields: [videoId], references: [id], onDelete: Cascade)
+
+  @@unique([videoId, agentId])
+  @@map("video_progress")
+}
+
+model DiscussionThread {
+  id        String            @id @default(cuid())
+  courseId  String?
+  title     String
+  authorId  String
+  pinned    Boolean           @default(false)
+  locked    Boolean           @default(false)
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+  course    TrainingCourse?   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  posts     DiscussionPost[]
+
+  @@index([courseId])
+  @@map("discussion_threads")
+}
+
+model DiscussionPost {
+  id          String           @id @default(cuid())
+  threadId    String
+  authorId    String
+  body        String
+  imageUrls   String[]         @default([])
+  reactions   Json?
+  mentions    String[]         @default([])
+  bookmarkedBy String[]        @default([])
+  moderated   Boolean          @default(false)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  thread      DiscussionThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+
+  @@index([threadId])
+  @@map("discussion_posts")
+}
+
+model Announcement {
+  id          String   @id @default(cuid())
+  title       String
+  body        String
+  audience    String   @default("ALL")
+  publishedAt DateTime?
+  expiresAt   DateTime?
+  createdAt   DateTime @default(now())
+
+  @@map("announcements")
+}
+
+model TrainingNotification {
+  id        String   @id @default(cuid())
+  userId    String
+  eventType String
+  channel   String
+  subject   String
+  body      String
+  status    String   @default("QUEUED")
+  createdAt DateTime @default(now())
+  sentAt    DateTime?
+
+  @@index([userId])
+  @@map("notifications")
+}
+
+model Badge {
+  id          String       @id @default(cuid())
+  name        String
+  description String?
+  iconUrl     String?
+  xp          Int          @default(0)
+  active      Boolean      @default(true)
+  createdAt   DateTime     @default(now())
+  agents      AgentBadge[]
+
+  @@map("badges")
+}
+
+model AgentBadge {
+  id        String   @id @default(cuid())
+  badgeId   String
+  agentId   String
+  awardedAt DateTime @default(now())
+  badge     Badge    @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+
+  @@unique([badgeId, agentId])
+  @@map("agent_badges")
+}
+
+model Leaderboard {
+  id        String   @id @default(cuid())
+  agentId   String
+  scope     String
+  points    Int      @default(0)
+  rank      Int      @default(0)
+  period    String
+  updatedAt DateTime @updatedAt
+
+  @@unique([agentId, scope, period])
+  @@map("leaderboards")
+}
+
+model TrainingSetting {
+  id        String   @id @default("singleton")
+  payload   Json
+  updatedAt DateTime @updatedAt
+
+  @@map("training_settings")
+}
+
+model TrainingAuditLog {
+  id        String   @id @default(cuid())
+  actorId   String?
+  action    String
+  target    String
+  metadata  Json
+  createdAt DateTime @default(now())
+
+  @@index([actorId])
+  @@map("audit_logs")
+}

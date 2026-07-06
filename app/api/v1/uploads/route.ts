@@ -32,7 +32,9 @@ export async function POST(request: Request) {
 
   const imageMatch = dataUrl.match(/^data:image\/(\w+);base64,(.+)$/);
   const videoMatch = kind === "video" ? dataUrl.match(/^data:video\/(\w+);base64,(.+)$/) : null;
-  const pdfMatch = kind === "document" ? dataUrl.match(/^data:application\/pdf;base64,(.+)$/) : null;
+  const documentMatch = kind === "document"
+    ? dataUrl.match(/^data:([\w.+-]+\/[\w.+-]+|application\/vnd\.[\w.+-]+|application\/x-zip-compressed|application\/zip);base64,(.+)$/)
+    : null;
 
   let ext: string;
   let base64: string;
@@ -40,30 +42,30 @@ export async function POST(request: Request) {
   if (videoMatch) {
     ext = videoMatch[1] === "quicktime" ? "mov" : videoMatch[1];
     base64 = videoMatch[2];
-  } else if (pdfMatch) {
-    ext = "pdf";
-    base64 = pdfMatch[1];
+  } else if (documentMatch) {
+    ext = extensionForMime(documentMatch[1]);
+    base64 = documentMatch[2];
   } else if (imageMatch) {
     ext = imageMatch[1] === "jpeg" ? "jpg" : imageMatch[1];
     base64 = imageMatch[2];
   } else {
-    return problem(400, "INVALID_MEDIA", "Provide a valid image, video, or PDF data URL.");
+    return problem(400, "INVALID_MEDIA", "Provide a valid image, video, PDF, DOCX, XLSX, PPTX, audio, or ZIP data URL.");
   }
 
   const buffer = Buffer.from(base64, "base64");
   const maxImageBytes = getUploadLimitsMb() * 1024 * 1024;
-  const maxBytes = videoMatch ? MAX_VIDEO_BYTES : pdfMatch ? 10 * 1024 * 1024 : maxImageBytes;
+  const maxBytes = videoMatch ? MAX_VIDEO_BYTES : documentMatch ? 50 * 1024 * 1024 : maxImageBytes;
 
   if (buffer.length > maxBytes) {
     return problem(
       400,
       "FILE_TOO_LARGE",
-      videoMatch ? "Video must be under 25 MB." : pdfMatch ? "Document must be under 10 MB." : `Image must be under ${getUploadLimitsMb()} MB.`,
+      videoMatch ? "Video must be under 25 MB." : documentMatch ? "Document must be under 50 MB." : `Image must be under ${getUploadLimitsMb()} MB.`,
     );
   }
 
   if (hasCloudinaryConfig()) {
-    const resourceType = videoMatch ? "video" : pdfMatch ? "raw" : "image";
+    const resourceType = videoMatch ? "video" : documentMatch ? "raw" : "image";
     const intent = createCloudinaryUploadIntent({
       folder: `homelink/${folder}`,
       publicIdPrefix: `${folder}/${userId.slice(0, 8)}`,
@@ -112,6 +114,28 @@ export async function POST(request: Request) {
   await writeFile(path.join(dir, filename), buffer);
 
   const url = `/uploads/${folder}/${filename}`;
-  const responseKind = videoMatch ? "video" : pdfMatch ? "document" : "image";
+  const responseKind = videoMatch ? "video" : documentMatch ? "document" : "image";
   return created({ url, filename, size: buffer.length, kind: responseKind });
+}
+
+function extensionForMime(mime: string) {
+  const known: Record<string, string> = {
+    "application/pdf": "pdf",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "xlsx",
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation": "pptx",
+    "application/msword": "doc",
+    "application/vnd.ms-excel": "xls",
+    "application/vnd.ms-powerpoint": "ppt",
+    "application/zip": "zip",
+    "application/x-zip-compressed": "zip",
+    "audio/mpeg": "mp3",
+    "audio/mp4": "m4a",
+    "audio/wav": "wav",
+    "audio/webm": "webm",
+  };
+  if (known[mime]) return known[mime];
+  if (mime.startsWith("image/")) return mime.split("/")[1].replace("jpeg", "jpg");
+  if (mime.startsWith("audio/")) return mime.split("/")[1];
+  return "bin";
 }

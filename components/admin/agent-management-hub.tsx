@@ -307,7 +307,7 @@ export function AgentManagementHub() {
                 id: `resource_${Date.now()}`,
                 title: "New resource",
                 description: "Training resource uploaded or linked by admin.",
-                url: "/resources/agents/homelink-agent-starter-guide.md",
+                url: "/dashboard/admin?tab=academy",
                 type: "PDF",
               },
             ],
