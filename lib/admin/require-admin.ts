@@ -22,7 +22,7 @@ type AdminAuthUser =
 
 type AdminAuthResult = { error: Response; user?: undefined } | { user: AdminAuthUser; error?: undefined };
 
-const ADMIN_ROLES = ["ADMIN", "SUPPORT", "BILLING", "TECH_SUPPORT", "TRUST_SAFETY"];
+const ADMIN_ROLES = ["ADMIN", "SUPER_ADMIN", "ACADEMY_ADMIN", "MODERATOR", "SUPPORT", "BILLING", "TECH_SUPPORT", "TRUST_SAFETY"];
 
 export function requireAdmin(request: Request, permission?: AdminPermission): AdminAuthResult {
   const userId = getSessionUserIdFromRequest(request);
@@ -58,7 +58,7 @@ export async function requireAdminAsync(request: Request, permission?: AdminPerm
   if (!user || !user.roles.some((role) => ADMIN_ROLES.includes(role))) {
     return { error: problem(403, "FORBIDDEN", "Admin access required.") };
   }
-  if (permission && !user.roles.includes("ADMIN")) {
+  if (permission && !user.roles.some((role) => ["ADMIN", "SUPER_ADMIN", "ACADEMY_ADMIN"].includes(role))) {
     return { error: problem(403, "FORBIDDEN", "Admin permission required.") };
   }
   return { user };

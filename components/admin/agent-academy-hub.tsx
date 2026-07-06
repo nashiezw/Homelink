@@ -62,6 +62,24 @@ type AcademyData = {
   learningPaths: Array<{ id: string; title: string; description?: string; status: string; badgeTitle?: string; courses: Array<{ id: string; sortOrder: number; required: boolean; course: AcademyCourse }> }>;
   announcements: Array<{ id: string; title: string; body: string; audience: string; publishedAt?: string; expiresAt?: string; createdAt: string }>;
   badges: Array<{ id: string; name: string; description?: string; xp: number; active: boolean }>;
+  publicLearnerApplications: Array<{
+    id: string;
+    status: string;
+    learnerType: string;
+    fullName: string;
+    email: string;
+    phone?: string;
+    organisation?: string;
+    amount: number;
+    currency: string;
+    proofUrl?: string;
+    adminNote?: string;
+    createdAt: string;
+    updatedAt: string;
+    course: { id: string; title: string };
+    learner: { id: string; name: string; email: string; phone?: string; roles: string[] };
+    payment: { id: string; status: string; proofStatus?: string; proofUrl?: string } | null;
+  }>;
   settings?: { id: string; payload: Record<string, unknown>; updatedAt: string } | null;
   auditLogs: Array<{ id: string; actorId?: string; action: string; target: string; createdAt: string }>;
   topCourses: Array<{ id: string; title: string; completions: number; enrolments: number }>;
@@ -108,6 +126,10 @@ type AcademyCourse = {
   estimatedHours: string | number;
   certificateEnabled: boolean;
   expiresAfterDays?: number;
+  price: string | number;
+  currency: string;
+  registrationOpen: boolean;
+  accessDurationDays: number;
   version: number;
   language: string;
   status: "DRAFT" | "PUBLISHED" | "ARCHIVED";
@@ -160,6 +182,7 @@ const academyTabs = [
   "Assignments",
   "Final Exams",
   "Certificates",
+  "Public Learners",
   "Learning Paths",
   "Announcements",
   "Discussion Board",
@@ -263,6 +286,9 @@ export function AgentAcademyHub() {
             <AdminStatPill label="Downloads" value={data.metrics.downloads} />
             <AdminStatPill label="Video Watch %" value={`${data.metrics.videoWatchPercent}%`} />
             <AdminStatPill label="Overdue Assignments" value={data.overdueAssignments} tone={data.overdueAssignments ? "warning" : "default"} />
+            <AdminStatPill label="Public Learners" value={data.metrics.publicLearners} tone="info" />
+            <AdminStatPill label="Pending Public Approvals" value={data.metrics.pendingPublicApprovals} tone={data.metrics.pendingPublicApprovals ? "warning" : "success"} />
+            <AdminStatPill label="Academy Revenue" value={`$${data.metrics.academyRevenue}`} tone="success" />
           </AdminMetricGrid>
 
           <div className="grid gap-4 xl:grid-cols-3">
@@ -377,7 +403,7 @@ export function AgentAcademyHub() {
         </div>
       )}
 
-      {["Lessons", "Quizzes", "Assignments", "Final Exams", "Certificates", "Learning Paths", "Announcements", "Discussion Board", "Leaderboard", "Badges", "Analytics", "Settings"].includes(tab) && (
+      {["Lessons", "Quizzes", "Assignments", "Final Exams", "Certificates", "Public Learners", "Learning Paths", "Announcements", "Discussion Board", "Leaderboard", "Badges", "Analytics", "Settings"].includes(tab) && (
         <FeatureWorkbench
           tab={tab}
           data={data}
@@ -445,6 +471,8 @@ function CourseCell({ course }: { course: AcademyCourse }) {
         {course.featured && <span className="rounded-full bg-cyan-500/10 px-2 py-0.5 text-[10px] font-semibold text-cyan-300">Featured</span>}
         <span className="rounded-full bg-white/5 px-2 py-0.5 text-[10px] text-slate-400">{course.category?.name ?? "Uncategorised"}</span>
         <span className="rounded-full bg-white/5 px-2 py-0.5 text-[10px] text-slate-400">{course.estimatedHours}h</span>
+        <span className="rounded-full bg-white/5 px-2 py-0.5 text-[10px] text-slate-400">{course.currency} {Number(course.price).toFixed(2)}</span>
+        {course.registrationOpen && <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-300">Public registration</span>}
       </div>
     </div>
   );
@@ -548,6 +576,9 @@ function FeatureWorkbench({
   if (tab === "Certificates") {
     return <BuilderList title="Certificate Management" icon={Award} rows={data.certificates.map((c) => ({ id: c.id, title: c.certificateNumber, active: c.status === "ACTIVE", detail: `${c.agentId} - ${new Date(c.issuedAt).toLocaleDateString()}` }))} actionLabel="Issued automatically after completion" />;
   }
+  if (tab === "Public Learners") {
+    return <PublicLearnersPanel applications={data.publicLearnerApplications} action={action} />;
+  }
   if (tab === "Learning Paths") {
     return <BuilderList title="Learning Paths" icon={Library} rows={data.learningPaths.map((path) => ({ id: path.id, title: path.title, active: path.status === "PUBLISHED", detail: `${path.courses.length} course(s) - ${path.badgeTitle ?? "No badge"}` }))} actionLabel="Create Path" onCreate={() => openDrawer("path")} onArchive={(row) => action({ action: row.active === false ? "restore_learning_path" : "archive_learning_path", pathId: row.id }, row.active === false ? "Learning path restored." : "Learning path archived.")} />;
   }
@@ -633,8 +664,67 @@ function OperationalPanel({ tab }: { tab: AcademyTab }) {
   );
 }
 
+function PublicLearnersPanel({
+  applications,
+  action,
+}: {
+  applications: AcademyData["publicLearnerApplications"];
+  action: (body: Record<string, unknown>, success: string) => Promise<unknown>;
+}) {
+  return (
+    <section className="rounded-xl border border-white/10 bg-slate-900/60">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 p-4">
+        <div>
+          <h3 className="font-semibold text-white">Public Learner Registrations</h3>
+          <p className="mt-1 text-sm text-slate-400">People training with HomeLink without becoming agents. Review payment proof and activate course access.</p>
+        </div>
+        <AdminStatusBadge status={`${applications.filter((item) => item.status === "PAYMENT_UPLOADED").length} pending`} variant="warning" />
+      </div>
+      <AdminDataTable
+        rows={applications}
+        columns={[
+          {
+            key: "learner",
+            header: "Learner",
+            render: (row) => (
+              <div>
+                <p className="font-semibold text-white">{row.fullName}</p>
+                <p className="text-xs text-slate-500">{row.email}{row.phone ? ` - ${row.phone}` : ""}</p>
+                {row.organisation && <p className="text-xs text-slate-500">{row.organisation}</p>}
+              </div>
+            ),
+          },
+          { key: "course", header: "Course", render: (row) => <span className="text-sm text-slate-300">{row.course.title}</span> },
+          { key: "amount", header: "Amount", render: (row) => `${row.currency} ${row.amount.toFixed(2)}` },
+          { key: "status", header: "Status", render: (row) => <AdminStatusBadge status={row.status.replace(/_/g, " ")} variant={row.status === "APPROVED" ? "success" : row.status === "REJECTED" ? "danger" : "warning"} /> },
+          {
+            key: "proof",
+            header: "Proof",
+            render: (row) => row.proofUrl ? <a href={row.proofUrl} target="_blank" className="text-sm font-semibold text-emerald-300">Open proof</a> : <span className="text-xs text-slate-500">Not uploaded</span>,
+          },
+          {
+            key: "actions",
+            header: "Actions",
+            render: (row) => (
+              <div className="flex flex-wrap gap-2">
+                <Button disabled={row.status === "APPROVED"} onClick={() => void action({ action: "review_public_learner", applicationId: row.id, status: "APPROVED" }, "Learner approved and course access activated.")}>
+                  Approve
+                </Button>
+                <Button variant="secondary" disabled={row.status === "REJECTED"} onClick={() => void action({ action: "review_public_learner", applicationId: row.id, status: "REJECTED", adminNote: "Payment proof could not be verified. Please upload a clearer proof of payment." }, "Learner registration rejected.")}>
+                  Reject
+                </Button>
+              </div>
+            ),
+          },
+        ]}
+        emptyMessage="No public learner registrations yet."
+      />
+    </section>
+  );
+}
+
 function CourseDrawer({ open, busy, onClose, onSave }: { open: boolean; busy: boolean; onClose: () => void; onSave: (course: Record<string, unknown>) => Promise<unknown> }) {
-  const [course, setCourse] = useState({ title: "", description: "", categoryId: "", difficulty: "BEGINNER", status: "DRAFT", visibility: "INTERNAL_ONLY", instructor: "", estimatedHours: 1, passingPercentage: 80, language: "English", tags: "", featured: false, certificateEnabled: true });
+  const [course, setCourse] = useState({ title: "", description: "", categoryId: "", difficulty: "BEGINNER", status: "DRAFT", visibility: "INTERNAL_ONLY", instructor: "", estimatedHours: 1, passingPercentage: 80, language: "English", tags: "", featured: false, certificateEnabled: true, price: 0, currency: "USD", registrationOpen: false, accessDurationDays: 365 });
   return (
     <AdminDrawer open={open} title="Create Course" description="Unlimited courses with certificates, visibility, prerequisites, versioning, and analytics." onClose={onClose} width="xl">
       <FormGrid>
@@ -646,8 +736,13 @@ function CourseDrawer({ open, busy, onClose, onSave }: { open: boolean; busy: bo
         <SelectInput label="Visibility" value={course.visibility} options={["INTERNAL_ONLY", "PUBLIC", "BRANCH_SPECIFIC", "ROLE_BASED"]} onChange={(visibility) => setCourse({ ...course, visibility })} />
         <TextInput label="Estimated hours" type="number" value={String(course.estimatedHours)} onChange={(estimatedHours) => setCourse({ ...course, estimatedHours: Number(estimatedHours) })} />
         <TextInput label="Passing %" type="number" value={String(course.passingPercentage)} onChange={(passingPercentage) => setCourse({ ...course, passingPercentage: Number(passingPercentage) })} />
+        <TextInput label="Public price" type="number" value={String(course.price)} onChange={(price) => setCourse({ ...course, price: Number(price) })} />
+        <TextInput label="Currency" value={course.currency} onChange={(currency) => setCourse({ ...course, currency })} />
+        <TextInput label="Access duration days" type="number" value={String(course.accessDurationDays)} onChange={(accessDurationDays) => setCourse({ ...course, accessDurationDays: Number(accessDurationDays) })} />
         <TextInput label="Tags" value={course.tags} onChange={(tags) => setCourse({ ...course, tags })} />
         <label className="flex items-center gap-2 text-sm text-slate-300"><input type="checkbox" checked={course.featured} onChange={(e) => setCourse({ ...course, featured: e.target.checked })} /> Featured course</label>
+        <label className="flex items-center gap-2 text-sm text-slate-300"><input type="checkbox" checked={course.registrationOpen} onChange={(e) => setCourse({ ...course, registrationOpen: e.target.checked, visibility: e.target.checked ? "PUBLIC" : course.visibility })} /> Open to public learners</label>
+        <label className="flex items-center gap-2 text-sm text-slate-300"><input type="checkbox" checked={course.certificateEnabled} onChange={(e) => setCourse({ ...course, certificateEnabled: e.target.checked })} /> Certificate enabled</label>
       </FormGrid>
       <DrawerActions busy={busy} onClose={onClose} onSave={() => onSave({ ...course, tags: course.tags })} label="Create course" />
     </AdminDrawer>

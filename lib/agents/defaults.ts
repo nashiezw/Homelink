@@ -184,7 +184,7 @@ export function defaultAgentTrainingModules(): AgentTrainingModule[] {
       certificateTitle: "HomeLink Agent Onboarding",
       certificateUrl: "/dashboard/admin?tab=academy",
       manualSections: [
-        { id: "manual_intro", title: "Manual placeholder", body: "Replace this with the onboarding chapter from the training manual when it is provided." },
+        { id: "manual_intro", title: "HomeLink operating standard", body: "Agents represent HomeLink by protecting client trust, keeping all leads and activity inside the platform, following viewing safety rules, and maintaining accurate records for every interaction." },
       ],
       lessons: [
         {
@@ -233,7 +233,7 @@ export function defaultAgentTrainingModules(): AgentTrainingModule[] {
       certificateTitle: "Listing Quality Specialist",
       certificateUrl: "/dashboard/admin?tab=academy",
       manualSections: [
-        { id: "manual_listing", title: "Manual placeholder", body: "Replace this with the listing standards chapter from the training manual when it is provided." },
+        { id: "manual_listing", title: "Listing standards", body: "Every listing must be verified for owner authority, price, availability, location accuracy, safety notes, and current media before publication. Misleading descriptions, stale photos, and undocumented changes must be corrected before a listing is promoted." },
       ],
       lessons: [
         {

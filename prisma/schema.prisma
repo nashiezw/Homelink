@@ -13,6 +13,11 @@ enum Role {
   AGENT
   AGENCY_ADMIN
   ADMIN
+  SUPER_ADMIN
+  ACADEMY_ADMIN
+  TRAINER
+  PUBLIC_LEARNER
+  MODERATOR
 }
 
 enum ListingIntent {
@@ -141,6 +146,7 @@ model User {
   auditEvents       AuditEvent[]
   sessions          AppSession[]
   agencyMemberships AgencyAgent[]
+  academyApplications AcademyLearnerApplication[]
 }
 
 model Agency {
@@ -546,6 +552,7 @@ model Payment {
   updatedAt   DateTime        @updatedAt
   user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   listing     Listing?        @relation(fields: [listingId], references: [id])
+  academyApplications AcademyLearnerApplication[]
 }
 
 model Notification {
@@ -832,6 +839,15 @@ enum TrainingAttemptStatus {
   GRADED
 }
 
+enum AcademyRegistrationStatus {
+  PENDING_PAYMENT
+  PAYMENT_UPLOADED
+  APPROVED
+  REJECTED
+  EXPIRED
+  REFUNDED
+}
+
 enum AssignmentSubmissionStatus {
   SUBMITTED
   APPROVED
@@ -872,6 +888,10 @@ model TrainingCourse {
   estimatedHours    Decimal                @default(0) @db.Decimal(6, 2)
   certificateEnabled Boolean               @default(false)
   expiresAfterDays  Int?
+  price             Decimal                @default(0) @db.Decimal(12, 2)
+  currency          String                 @default("USD")
+  registrationOpen  Boolean                @default(false)
+  accessDurationDays Int                   @default(365)
   version           Int                    @default(1)
   language          String                 @default("English")
   status            TrainingCourseStatus   @default(DRAFT)
@@ -892,11 +912,46 @@ model TrainingCourse {
   certificateIssues CertificateIssue[]
   discussions       DiscussionThread[]
   pathCourses       PathCourse[]
+  publicApplications AcademyLearnerApplication[]
 
   @@index([status])
   @@index([categoryId])
   @@index([featured])
   @@map("training_courses")
+}
+
+model AcademyLearnerApplication {
+  id             String                    @id @default(cuid())
+  learnerId      String
+  courseId       String
+  paymentId      String?
+  status         AcademyRegistrationStatus @default(PENDING_PAYMENT)
+  learnerType    String                    @default("PUBLIC_LEARNER")
+  fullName       String
+  email          String
+  phone          String?
+  organisation   String?
+  motivation     String?
+  amount         Decimal                   @default(0) @db.Decimal(12, 2)
+  currency       String                    @default("USD")
+  proofUrl       String?
+  adminNote      String?
+  approvedById   String?
+  approvedAt     DateTime?
+  rejectedAt     DateTime?
+  accessStartsAt DateTime?
+  accessEndsAt   DateTime?
+  createdAt      DateTime                  @default(now())
+  updatedAt      DateTime                  @updatedAt
+  learner        User                      @relation(fields: [learnerId], references: [id], onDelete: Cascade)
+  course         TrainingCourse            @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  payment        Payment?                  @relation(fields: [paymentId], references: [id])
+
+  @@unique([learnerId, courseId])
+  @@index([status])
+  @@index([courseId])
+  @@index([paymentId])
+  @@map("academy_learner_applications")
 }
 
 model TrainingModule {

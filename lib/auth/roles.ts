@@ -12,11 +12,12 @@ export function hasAnyRole(user: PublicUser | null, roles: UserRole[]): boolean 
 
 /** Primary dashboard for a signed-in user (used after login / auth redirect). */
 export function getDefaultDashboard(user: PublicUser): string {
-  if (user.roles.includes("ADMIN")) return "/dashboard/admin";
+  if (user.roles.includes("ADMIN") || user.roles.includes("SUPER_ADMIN") || user.roles.includes("ACADEMY_ADMIN")) return "/dashboard/admin";
   if (user.roles.some((role) => ["SUPPORT", "BILLING", "TECH_SUPPORT", "TRUST_SAFETY"].includes(role))) return "/dashboard/admin?tab=support";
   if (user.roles.includes("AGENCY_ADMIN")) return "/dashboard/agency";
   if (user.roles.includes("CONSULTANT")) return "/dashboard/consultant";
   if (user.roles.includes("AGENT")) return "/dashboard/agent";
+  if (user.roles.includes("PUBLIC_LEARNER") || user.roles.includes("TRAINER")) return "/dashboard/academy";
   if (user.roles.includes("LANDLORD")) return "/dashboard/landlord";
   return "/saved";
 }
@@ -62,6 +63,11 @@ export const OWNER_NAV: NavLinkItem[] = [
     hideForRoles: ["AGENT"],
   },
   {
+    label: "Academy",
+    href: "/academy",
+    description: "Register for public HomeLink training",
+  },
+  {
     label: "Property Management",
     href: "/property-management",
     description: "Full-service management for owners",
@@ -73,7 +79,7 @@ export const WORKSPACE_NAV: NavLinkItem[] = [
     label: "Admin Control Center",
     href: "/dashboard/admin",
     description: "Platform operations and moderation",
-    roles: ["ADMIN", "SUPPORT", "BILLING", "TECH_SUPPORT", "TRUST_SAFETY"],
+    roles: ["ADMIN", "SUPER_ADMIN", "ACADEMY_ADMIN", "MODERATOR", "SUPPORT", "BILLING", "TECH_SUPPORT", "TRUST_SAFETY"],
   },
   {
     label: "Agent Dashboard",
@@ -98,6 +104,12 @@ export const WORKSPACE_NAV: NavLinkItem[] = [
     href: "/dashboard/consultant",
     description: "Property management workflow",
     roles: ["CONSULTANT", "ADMIN"],
+  },
+  {
+    label: "Academy Dashboard",
+    href: "/dashboard/academy",
+    description: "Courses, payments, certificates and resources",
+    roles: ["PUBLIC_LEARNER", "TRAINER", "AGENT", "ADMIN", "ACADEMY_ADMIN"],
   },
   {
     label: "Owner Portal",

@@ -10,6 +10,7 @@ import {
 } from "@prisma/client";
 import { getMainPrisma } from "@/lib/db/main-prisma";
 import { ensureOfficialAcademySeed } from "@/lib/academy/official-academy-seed";
+import { reviewPublicLearnerApplication } from "@/lib/academy/public-academy-repository";
 
 export type AcademyDashboard = Awaited<ReturnType<typeof getAcademyDashboard>>;
 
@@ -68,6 +69,8 @@ export async function getAcademyDashboard() {
     badges,
     settings,
     recentActivity,
+    publicLearnerApplications,
+    academyRevenue,
   ] = await Promise.all([
     prisma.trainingCourse.findMany({ include: { category: true }, orderBy: { updatedAt: "desc" } }),
     prisma.trainingLesson.count(),
@@ -92,6 +95,11 @@ export async function getAcademyDashboard() {
     prisma.badge.findMany({ orderBy: { createdAt: "desc" } }),
     prisma.trainingSetting.findUnique({ where: { id: "singleton" } }),
     prisma.trainingAuditLog.findMany({ orderBy: { createdAt: "desc" }, take: 20 }),
+    prisma.academyLearnerApplication.findMany({
+      include: { course: true, payment: true, learner: { select: { id: true, name: true, email: true, phone: true, roles: true } } },
+      orderBy: { updatedAt: "desc" },
+    }),
+    prisma.payment.aggregate({ where: { plan: "academy_course", status: "PAID" }, _sum: { amount: true } }),
   ]);
 
   const activeLearners = new Set([
@@ -133,6 +141,9 @@ export async function getAcademyDashboard() {
       learningHours: Math.round(totalLearningMinutes / 60),
       downloads: documents.filter((document) => document.downloadable).length,
       videoWatchPercent: totalVideoSeconds ? Math.min(100, Math.round(((watchedSeconds._sum.watchedSeconds ?? 0) / totalVideoSeconds) * 100)) : 0,
+      publicLearners: publicLearnerApplications.length,
+      pendingPublicApprovals: publicLearnerApplications.filter((entry) => entry.status === "PAYMENT_UPLOADED").length,
+      academyRevenue: Number(academyRevenue._sum.amount ?? 0),
     },
     courses,
     lessons: lessonRows,
@@ -146,6 +157,24 @@ export async function getAcademyDashboard() {
     announcements,
     badges,
     settings,
+    publicLearnerApplications: publicLearnerApplications.map((entry) => ({
+      id: entry.id,
+      status: entry.status,
+      learnerType: entry.learnerType,
+      fullName: entry.fullName,
+      email: entry.email,
+      phone: entry.phone,
+      organisation: entry.organisation,
+      amount: Number(entry.amount),
+      currency: entry.currency,
+      proofUrl: entry.proofUrl ?? entry.payment?.proofUrl,
+      adminNote: entry.adminNote,
+      createdAt: entry.createdAt.toISOString(),
+      updatedAt: entry.updatedAt.toISOString(),
+      course: { id: entry.course.id, title: entry.course.title },
+      learner: entry.learner,
+      payment: entry.payment ? { id: entry.payment.id, status: entry.payment.status, proofStatus: entry.payment.proofStatus, proofUrl: entry.payment.proofUrl } : null,
+    })),
     auditLogs: recentActivity,
     topCourses: courses
       .map((course) => ({
@@ -496,6 +525,14 @@ export async function runAcademyAction(body: Record<string, any>, actor: Actor) 
     await audit(actor, "academy.settings.update", settings.id, {});
     return settings;
   }
+  if (action === "review_public_learner") {
+    return reviewPublicLearnerApplication({
+      applicationId: String(body.applicationId),
+      actorId: actor.id,
+      status: body.status === "REJECTED" ? "REJECTED" : body.status === "REFUNDED" ? "REFUNDED" : body.status === "EXPIRED" ? "EXPIRED" : "APPROVED",
+      adminNote: typeof body.adminNote === "string" ? body.adminNote : undefined,
+    });
+  }
   return null;
 }
 
@@ -548,6 +585,10 @@ function courseInput(input: Record<string, any>, actorId: string, update = false
     estimatedHours: decimalOr(input.estimatedHours, 0),
     certificateEnabled: Boolean(input.certificateEnabled),
     expiresAfterDays: optionalNumber(input.expiresAfterDays),
+    price: decimalOr(input.price, 0),
+    currency: String(input.currency ?? "USD"),
+    registrationOpen: Boolean(input.registrationOpen),
+    accessDurationDays: numberOr(input.accessDurationDays, 365),
     version: update ? undefined : numberOr(input.version, 1),
     language: String(input.language ?? "English"),
     status: enumValue(TrainingCourseStatus, input.status, TrainingCourseStatus.DRAFT),
