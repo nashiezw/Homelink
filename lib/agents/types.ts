@@ -351,6 +351,37 @@ export type AgentTrainingModule = {
   durationMinutes: number;
   required: boolean;
   order: number;
+  lessons?: AgentTrainingLesson[];
+  quiz?: AgentTrainingQuiz;
+  resources?: AgentTrainingResource[];
+  certificateTitle?: string;
+};
+
+export type AgentTrainingLesson = {
+  id: string;
+  title: string;
+  summary: string;
+  durationMinutes: number;
+  keyPoints: string[];
+};
+
+export type AgentTrainingQuiz = {
+  passMark: number;
+  questions: AgentTrainingQuestion[];
+};
+
+export type AgentTrainingQuestion = {
+  id: string;
+  prompt: string;
+  options: string[];
+};
+
+export type AgentTrainingResource = {
+  id: string;
+  title: string;
+  description: string;
+  url: string;
+  type: "PDF" | "DOC" | "CHECKLIST" | "TEMPLATE" | "LINK";
 };
 
 export type AgentTrainingProgress = {
@@ -359,7 +390,10 @@ export type AgentTrainingProgress = {
   moduleId: string;
   status: "NOT_STARTED" | "IN_PROGRESS" | "COMPLETED";
   score?: number;
+  passed?: boolean;
+  submittedAnswers?: Record<string, string>;
   completedAt?: string;
+  certificateUrl?: string;
 };
 
 export type AgentRating = {

@@ -6,6 +6,8 @@ import {
   BadgeCheck,
   Briefcase,
   CheckCircle2,
+  Download,
+  FileText,
   GraduationCap,
   Star,
   TrendingUp,
@@ -65,6 +67,7 @@ export function AgentDashboardClient() {
   const [data, setData] = useState<AgentData | null>(null);
   const [application, setApplication] = useState<{ status: string } | null>(null);
   const [closingLead, setClosingLead] = useState<AgentLead | null>(null);
+  const [trainingAnswers, setTrainingAnswers] = useState<Record<string, Record<string, string>>>({});
 
   const load = useCallback(async () => {
     const [me, app] = await Promise.all([
@@ -88,12 +91,18 @@ export function AgentDashboardClient() {
     void load();
   }
 
-  async function completeTraining(moduleId: string) {
-    await apiFetch("/api/v1/agents/training", {
+  async function completeTraining(module: AgentTrainingModule) {
+    const response = await apiFetch<AgentTrainingProgress>("/api/v1/agents/training", {
       method: "POST",
-      body: JSON.stringify({ moduleId, score: 100 }),
+      body: JSON.stringify({ moduleId: module.id, score: module.quiz ? undefined : 100, answers: trainingAnswers[module.id] ?? {} }),
     });
-    showToast("Training module completed.");
+    if (response.data?.status === "COMPLETED") {
+      showToast(`Training module completed${response.data.score !== undefined ? ` with ${response.data.score}%` : ""}.`);
+    } else if (response.data?.score !== undefined) {
+      showToast(`Score ${response.data.score}%. Review the module and try again.`);
+    } else {
+      showToast("Training progress saved.");
+    }
     void load();
   }
 
@@ -290,19 +299,90 @@ export function AgentDashboardClient() {
       {tab === "Training" && (
         <div className="grid gap-4">
           {training.modules.map((module) => {
-            const done = training.progress.some((p) => p.moduleId === module.id && p.status === "COMPLETED");
+            const progress = training.progress.find((p) => p.moduleId === module.id);
+            const done = progress?.status === "COMPLETED";
+            const selectedAnswers = trainingAnswers[module.id] ?? {};
+            const quizReady = !module.quiz || module.quiz.questions.every((question) => selectedAnswers[question.id]);
             return (
-              <article key={module.id} className="premium-card flex items-center justify-between gap-4 rounded-xl p-5">
-                <div>
-                  <p className="font-semibold">{module.title}</p>
-                  <p className="text-sm text-slate-600">{module.description}</p>
+              <article key={module.id} className="premium-card rounded-xl p-5">
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="font-semibold">{module.title}</p>
+                      {module.required && <span className="rounded-full bg-emerald-100 px-2 py-1 text-xs font-semibold text-emerald-800">Required</span>}
+                      <span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-700">{module.durationMinutes} min</span>
+                    </div>
+                    <p className="mt-1 text-sm text-slate-600">{module.description}</p>
+                    {progress?.score !== undefined && (
+                      <p className="mt-2 text-sm font-semibold text-slate-700">Score: {progress.score}% {progress.passed === false ? "(retry needed)" : ""}</p>
+                    )}
+                  </div>
+                  {done ? (
+                    <span className="text-sm font-medium text-emerald-700">Completed</span>
+                  ) : (
+                    <Button onClick={() => void completeTraining(module)} disabled={!quizReady}>
+                      <GraduationCap className="size-4" /> {module.quiz ? "Submit quiz" : "Complete"}
+                    </Button>
+                  )}
                 </div>
-                {done ? (
-                  <span className="text-sm font-medium text-emerald-700">Completed</span>
-                ) : (
-                  <Button onClick={() => void completeTraining(module.id)}>
-                    <GraduationCap className="size-4" /> Complete
-                  </Button>
+
+                {!!module.lessons?.length && (
+                  <div className="mt-4 grid gap-3 md:grid-cols-2">
+                    {module.lessons.map((lesson) => (
+                      <div key={lesson.id} className="rounded-lg border border-slate-200 bg-white/70 p-3 text-sm dark:border-slate-700 dark:bg-slate-900/40">
+                        <p className="font-semibold">{lesson.title}</p>
+                        <p className="mt-1 text-slate-600 dark:text-slate-300">{lesson.summary}</p>
+                        <ul className="mt-2 list-disc space-y-1 pl-4 text-xs text-slate-500">
+                          {lesson.keyPoints.map((point) => <li key={point}>{point}</li>)}
+                        </ul>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {!!module.quiz?.questions.length && !done && (
+                  <div className="mt-4 space-y-3">
+                    {module.quiz.questions.map((question) => (
+                      <fieldset key={question.id} className="rounded-lg border border-slate-200 p-3 dark:border-slate-700">
+                        <legend className="px-1 text-sm font-semibold">{question.prompt}</legend>
+                        <div className="mt-2 grid gap-2">
+                          {question.options.map((option) => (
+                            <label key={option} className="flex items-center gap-2 rounded-lg bg-slate-50 px-3 py-2 text-sm dark:bg-slate-900/50">
+                              <input
+                                type="radio"
+                                name={`${module.id}-${question.id}`}
+                                checked={selectedAnswers[question.id] === option}
+                                onChange={() =>
+                                  setTrainingAnswers((current) => ({
+                                    ...current,
+                                    [module.id]: { ...(current[module.id] ?? {}), [question.id]: option },
+                                  }))
+                                }
+                              />
+                              {option}
+                            </label>
+                          ))}
+                        </div>
+                      </fieldset>
+                    ))}
+                    <p className="text-xs text-slate-500">Pass mark: {module.quiz.passMark}%.</p>
+                  </div>
+                )}
+
+                {!!module.resources?.length && (
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {module.resources.map((resource) => (
+                      <a
+                        key={resource.id}
+                        href={resource.url}
+                        download
+                        className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-50 dark:border-slate-700"
+                      >
+                        {resource.type === "LINK" ? <FileText className="size-4" /> : <Download className="size-4" />}
+                        {resource.title}
+                      </a>
+                    ))}
+                  </div>
                 )}
               </article>
             );

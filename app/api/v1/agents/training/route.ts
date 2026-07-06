@@ -15,7 +15,7 @@ export async function POST(request: Request) {
   if (shouldUsePostgresAgents()) {
     if (!body.moduleId) return problem(400, "INVALID_MODULE", "Training module is required.");
     try {
-      return created(await completePostgresAgentTraining(userId, body.moduleId, body.score));
+      return created(await completePostgresAgentTraining(userId, body.moduleId, { score: body.score, answers: body.answers }));
     } catch {
       return problem(404, "MODULE_NOT_FOUND", "Training module was not found.");
     }
