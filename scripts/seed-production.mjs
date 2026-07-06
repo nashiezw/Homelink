@@ -3,8 +3,8 @@ import { PrismaClient, Role, VerificationStatus } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
-const standardPassword = requireSeedPassword("SEED_STANDARD_PASSWORD");
-const adminPassword = requireSeedPassword("SEED_ADMIN_PASSWORD");
+const standardPassword = optionalSeedPassword("SEED_STANDARD_PASSWORD");
+const adminPassword = optionalSeedPassword("SEED_ADMIN_PASSWORD");
 
 const users = [
   { email: "admin@homelinkzim.co.zw", name: "HomeLink Admin", phone: "+263780000001", roles: [Role.ADMIN, Role.SEEKER], password: adminPassword },
@@ -493,13 +493,14 @@ async function main() {
 
   const userRows = new Map();
   for (const user of users) {
+    const passwordHash = user.password ? hashPassword(user.password) : undefined;
     const row = await prisma.user.upsert({
       where: { email: user.email },
       update: {
         name: user.name,
         phone: user.phone,
         roles: user.roles,
-        passwordHash: hashPassword(user.password),
+        ...(passwordHash ? { passwordHash } : {}),
         accountStatus: "ACTIVE",
         identityStatus: VerificationStatus.VERIFIED,
       },
@@ -509,7 +510,7 @@ async function main() {
         name: user.name,
         phone: user.phone,
         roles: user.roles,
-        passwordHash: hashPassword(user.password),
+        passwordHash: passwordHash ?? hashPassword(generatedSeedPassword(user.email)),
         accountStatus: "ACTIVE",
         identityStatus: VerificationStatus.VERIFIED,
         phoneVerifiedAt: new Date(),
@@ -1102,12 +1103,20 @@ function hashPassword(password) {
   return `scrypt$${salt}$${hash}`;
 }
 
-function requireSeedPassword(name) {
+function optionalSeedPassword(name) {
   const value = process.env[name];
-  if (!value || value.length < 16) {
+  if (!value) {
+    console.warn(`${name} is not set. Existing user passwords will not be changed; newly-created demo users will receive a secure random password.`);
+    return undefined;
+  }
+  if (value.length < 16) {
     throw new Error(`${name} must be set to a private value at least 16 characters long before seeding production.`);
   }
   return value;
+}
+
+function generatedSeedPassword(email) {
+  return `seed:${email}:${crypto.randomBytes(32).toString("hex")}`;
 }
 
 function isPostgres(value = "") {
