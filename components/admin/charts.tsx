@@ -37,30 +37,53 @@ export function DonutChart({
   colors?: string[];
 }) {
   const total = data.reduce((sum, d) => sum + d.value, 0) || 1;
+  const radius = 42;
+  const circumference = 2 * Math.PI * radius;
   let offset = 0;
   const segments = data.map((point, index) => {
     const pct = (point.value / total) * 100;
-    const segment = { ...point, pct, offset, color: colors[index % colors.length] };
+    const segment = {
+      ...point,
+      pct,
+      dash: (pct / 100) * circumference,
+      offset: (offset / 100) * circumference,
+      color: colors[index % colors.length],
+    };
     offset += pct;
     return segment;
   });
 
-  const gradient = segments
-    .map((s) => `${s.color} ${s.offset}% ${s.offset + s.pct}%`)
-    .join(", ");
-
   return (
-    <div className="flex flex-col items-center gap-4 sm:flex-row sm:gap-6">
-      <div
-        className="size-28 rounded-full sm:size-32"
-        style={{ background: `conic-gradient(${gradient})` }}
-      />
-      <div className="grid w-full gap-2 text-sm sm:w-auto">
+    <div className="grid gap-4 sm:grid-cols-[8.5rem_minmax(0,1fr)] sm:items-center">
+      <div className="relative mx-auto flex h-32 w-32 shrink-0 items-center justify-center">
+        <svg viewBox="0 0 120 120" className="h-full w-full -rotate-90" role="img" aria-label={`Chart total ${total}`}>
+          <circle cx="60" cy="60" r={radius} fill="none" stroke="rgba(148,163,184,0.12)" strokeWidth="20" />
+          {segments.map((s) => (
+            <circle
+              key={s.label}
+              cx="60"
+              cy="60"
+              r={radius}
+              fill="none"
+              stroke={s.color}
+              strokeWidth="20"
+              strokeLinecap={segments.length === 1 ? "round" : "butt"}
+              strokeDasharray={`${s.dash} ${circumference - s.dash}`}
+              strokeDashoffset={-s.offset}
+            />
+          ))}
+        </svg>
+        <div className="absolute inset-0 flex flex-col items-center justify-center rounded-full text-center">
+          <span className="text-2xl font-bold leading-none text-white">{total}</span>
+          <span className="mt-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">total</span>
+        </div>
+      </div>
+      <div className="grid min-w-0 gap-2 text-sm">
         {segments.map((s) => (
-          <div key={s.label} className="flex items-center gap-2">
-            <span className="size-2.5 rounded-full" style={{ background: s.color }} />
-            <span className="text-slate-300">{s.label}</span>
-            <span className="ml-auto font-semibold text-white">{s.value}%</span>
+          <div key={s.label} className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2">
+            <span className="size-2.5 rounded-full shadow-[0_0_12px_currentColor]" style={{ background: s.color, color: s.color }} />
+            <span className="truncate text-slate-300">{s.label}</span>
+            <span className="font-semibold text-white">{Math.round(s.pct)}%</span>
           </div>
         ))}
       </div>
