@@ -9,6 +9,7 @@ import {
   TrainingVisibility,
 } from "@prisma/client";
 import { getMainPrisma } from "@/lib/db/main-prisma";
+import { ensureOfficialAcademySeed } from "@/lib/academy/official-academy-seed";
 
 export type AcademyDashboard = Awaited<ReturnType<typeof getAcademyDashboard>>;
 
@@ -44,10 +45,12 @@ type Actor = { id: string; name: string };
 
 export async function getAcademyDashboard() {
   await ensureAcademyDefaults();
+  await ensureOfficialAcademySeed();
   const prisma = getMainPrisma();
   const [
     courses,
-    lessons,
+    lessonCount,
+    lessonRows,
     documents,
     videos,
     quizzes,
@@ -60,10 +63,17 @@ export async function getAcademyDashboard() {
     quizAttempts,
     examAttempts,
     assignmentSubmissions,
+    learningPaths,
+    announcements,
+    badges,
     recentActivity,
   ] = await Promise.all([
     prisma.trainingCourse.findMany({ include: { category: true }, orderBy: { updatedAt: "desc" } }),
     prisma.trainingLesson.count(),
+    prisma.trainingLesson.findMany({
+      include: { section: { include: { module: { include: { course: true } } } } },
+      orderBy: [{ sortOrder: "asc" }, { updatedAt: "desc" }],
+    }),
     prisma.documentLibrary.findMany({ include: { category: true }, orderBy: [{ sortOrder: "asc" }, { updatedAt: "desc" }] }),
     prisma.videoLibrary.findMany({ orderBy: { updatedAt: "desc" } }),
     prisma.quiz.findMany({ include: { attempts: true }, orderBy: { updatedAt: "desc" } }),
@@ -76,6 +86,9 @@ export async function getAcademyDashboard() {
     prisma.quizAttempt.findMany({ orderBy: { startedAt: "desc" } }),
     prisma.examAttempt.findMany({ orderBy: { startedAt: "desc" } }),
     prisma.assignmentSubmission.findMany({ orderBy: { submittedAt: "desc" } }),
+    prisma.learningPath.findMany({ include: { courses: { include: { course: true }, orderBy: { sortOrder: "asc" } } }, orderBy: { updatedAt: "desc" } }),
+    prisma.announcement.findMany({ orderBy: { createdAt: "desc" } }),
+    prisma.badge.findMany({ orderBy: { createdAt: "desc" } }),
     prisma.trainingAuditLog.findMany({ orderBy: { createdAt: "desc" }, take: 20 }),
   ]);
 
@@ -104,7 +117,7 @@ export async function getAcademyDashboard() {
       publishedCourses: courses.filter((course) => course.status === TrainingCourseStatus.PUBLISHED).length,
       draftCourses: courses.filter((course) => course.status === TrainingCourseStatus.DRAFT).length,
       archivedCourses: courses.filter((course) => course.status === TrainingCourseStatus.ARCHIVED).length,
-      totalLessons: lessons,
+      totalLessons: lessonCount,
       videosUploaded: videos.length,
       pdfResources: documents.filter((document) => document.fileType === TrainingResourceType.PDF).length,
       quizzes: quizzes.length,
@@ -120,12 +133,16 @@ export async function getAcademyDashboard() {
       videoWatchPercent: totalVideoSeconds ? Math.min(100, Math.round(((watchedSeconds._sum.watchedSeconds ?? 0) / totalVideoSeconds) * 100)) : 0,
     },
     courses,
+    lessons: lessonRows,
     documents,
     videos,
     quizzes,
     assignments,
     exams,
     certificates,
+    learningPaths,
+    announcements,
+    badges,
     topCourses: courses
       .map((course) => ({
         id: course.id,

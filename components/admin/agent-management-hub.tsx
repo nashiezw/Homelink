@@ -3,7 +3,7 @@
 /* eslint-disable @next/next/no-img-element -- admin previews render arbitrary uploaded document/image URLs */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { AgentAdminAnalytics, AgentApplication, AgentCommission, AgentLead, AgentProfile, AgentSystemSettings, AgentTerritory, AgentTrainingModule, CommissionRule } from "@/lib/agents/types";
+import type { AgentAdminAnalytics, AgentApplication, AgentCommission, AgentLead, AgentProfile, AgentSystemSettings, AgentTerritory, CommissionRule } from "@/lib/agents/types";
 import { TerritoryEditor } from "@/components/admin/agent-territory-editor";
 import { useApp } from "@/components/providers/app-provider";
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,7 @@ import { AdminActionDialog, type AdminDialogConfig } from "@/components/admin/ac
 import { AdminKpiCard } from "@/components/admin/kpi-card";
 import { AdminTabStrip } from "@/components/admin/ui/admin-ui";
 import { BarChart, MetricRow } from "@/components/admin/charts";
-import { Download, Eye, GraduationCap, Users, Wallet, FileText, ShieldCheck } from "lucide-react";
+import { Eye, Users, Wallet, FileText, ShieldCheck } from "lucide-react";
 
 type AdminAgentData = {
   analytics: AgentAdminAnalytics;
@@ -23,7 +23,6 @@ type AdminAgentData = {
   commissions: AgentCommission[];
   territories: AgentTerritory[];
   settings: AgentSystemSettings;
-  trainingModules?: AgentTrainingModule[];
   trainingProgress?: Array<{ id: string; agentId: string; moduleId: string; status: string; score?: number; passed?: boolean; attemptCount?: number; expiresAt?: string }>;
   documents?: AgentDocumentRow[];
   branches?: Array<{ id: string; name: string; city: string; province: string; managerName: string; agentCount: number; active: boolean }>;
@@ -46,9 +45,8 @@ export function AgentManagementHub() {
   const { showToast } = useApp();
   const [data, setData] = useState<AdminAgentData | null>(null);
   const [rules, setRules] = useState<CommissionRule[]>([]);
-  const [trainingModules, setTrainingModules] = useState<AgentTrainingModule[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [subTab, setSubTab] = useState<"overview" | "applications" | "leads" | "commissions" | "territories" | "documents" | "branches" | "training" | "settings">("overview");
+  const [subTab, setSubTab] = useState<"overview" | "applications" | "leads" | "commissions" | "territories" | "documents" | "branches" | "settings">("overview");
   const [feedback, setFeedback] = useState<{
     title: string;
     message: string;
@@ -98,7 +96,6 @@ export function AgentManagementHub() {
     if (result.data) {
       setData(result.data);
       setRules(result.data.settings?.commissionRules ?? []);
-      setTrainingModules(result.data.trainingModules ?? []);
       setLoadError(null);
     } else if (result.error) {
       setLoadError(result.error.message);
@@ -281,41 +278,6 @@ export function AgentManagementHub() {
     );
   }
 
-  function updateTrainingModule(moduleId: string, updates: Partial<AgentTrainingModule>) {
-    setTrainingModules((current) => current.map((module) => (module.id === moduleId ? { ...module, ...updates } : module)));
-  }
-
-  function updateTrainingResource(moduleId: string, index: number, updates: Partial<NonNullable<AgentTrainingModule["resources"]>[number]>) {
-    setTrainingModules((current) =>
-      current.map((module) => {
-        if (module.id !== moduleId) return module;
-        const resources = [...(module.resources ?? [])];
-        resources[index] = { ...resources[index], ...updates };
-        return { ...module, resources };
-      }),
-    );
-  }
-
-  function addTrainingResource(moduleId: string) {
-    setTrainingModules((current) =>
-      current.map((module) => module.id === moduleId
-        ? {
-            ...module,
-            resources: [
-              ...(module.resources ?? []),
-              {
-                id: `resource_${Date.now()}`,
-                title: "New resource",
-                description: "Training resource uploaded or linked by admin.",
-                url: "/dashboard/admin?tab=academy",
-                type: "PDF",
-              },
-            ],
-          }
-        : module),
-    );
-  }
-
   if (!data) return <p className="text-slate-400">Loading agent management...</p>;
 
   const { analytics, applications, profiles, leads, commissions, territories } = data;
@@ -368,7 +330,7 @@ export function AgentManagementHub() {
       <AdminTabStrip
         active={subTab}
         onChange={(id) => setSubTab(id as typeof subTab)}
-        tabs={["overview", "applications", "leads", "commissions", "territories", "documents", "branches", "training", "settings"].map((id) => ({
+        tabs={["overview", "applications", "leads", "commissions", "territories", "documents", "branches", "settings"].map((id) => ({
           id,
           label: id[0].toUpperCase() + id.slice(1),
         }))}
@@ -637,91 +599,6 @@ export function AgentManagementHub() {
             ))}
           </div>
         </section>
-      )}
-
-      {subTab === "training" && (
-        <div className="space-y-5">
-          <div className="grid gap-4 md:grid-cols-4">
-            <AdminKpiCard label="Training modules" value={data.analytics.training?.totalModules ?? trainingModules.length} icon={GraduationCap} tone="default" />
-            <AdminKpiCard label="Agents trained" value={data.analytics.training?.agentsTrained ?? 0} icon={ShieldCheck} tone="success" />
-            <AdminKpiCard label="Average score" value={`${data.analytics.training?.averageScore ?? 0}%`} icon={FileText} tone="default" />
-            <AdminKpiCard label="Incomplete agents" value={data.analytics.training?.incompleteAgents ?? 0} icon={Users} tone="warning" />
-          </div>
-          {!!data.analytics.training?.trackCompletion?.length && (
-            <div className="rounded-xl border border-white/10 bg-slate-900/60 p-5">
-              <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-400">Track completion</h3>
-              <div className="mt-4 grid gap-3 md:grid-cols-2">
-                {data.analytics.training.trackCompletion.map((track) => (
-                  <div key={track.track} className="rounded-lg border border-white/10 bg-slate-950/60 p-4">
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="font-semibold text-white">{track.track.replace(/_/g, " ")}</p>
-                      <span className="text-sm font-semibold text-emerald-300">{track.percent}%</span>
-                    </div>
-                    <p className="mt-1 text-sm text-slate-400">{track.completedAgents} of {track.totalAgents} agents certified.</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-          {trainingModules.map((module) => (
-            <section key={module.id} className="rounded-xl border border-white/10 bg-slate-900/60 p-5">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <p className="text-lg font-semibold text-white">{module.title}</p>
-                  <p className="mt-1 text-sm text-slate-400">{module.description}</p>
-                </div>
-                <Button onClick={() => void adminAction({ action: "update_training_module", module })}>Save module</Button>
-              </div>
-              <div className="mt-4 grid gap-3 md:grid-cols-4">
-                <label className="text-sm text-slate-300">
-                  Track
-                  <select value={module.track} onChange={(e) => updateTrainingModule(module.id, { track: e.target.value as AgentTrainingModule["track"] })} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2">
-                    {["BEGINNER", "VERIFIED_AGENT", "SENIOR_AGENT", "PROPERTY_MANAGER"].map((track) => <option key={track} value={track}>{track.replace(/_/g, " ")}</option>)}
-                  </select>
-                </label>
-                <label className="text-sm text-slate-300">
-                  Level
-                  <select value={module.level} onChange={(e) => updateTrainingModule(module.id, { level: e.target.value as AgentTrainingModule["level"] })} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2">
-                    {["BEGINNER", "INTERMEDIATE", "ADVANCED"].map((level) => <option key={level} value={level}>{level}</option>)}
-                  </select>
-                </label>
-                <label className="text-sm text-slate-300">
-                  Expiry days
-                  <input type="number" value={module.expiresAfterDays ?? 0} onChange={(e) => updateTrainingModule(module.id, { expiresAfterDays: Number(e.target.value) || undefined })} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2" />
-                </label>
-                <div className="flex items-end gap-4 text-sm text-slate-300">
-                  <label className="flex items-center gap-2 pb-3"><input type="checkbox" checked={module.required} onChange={(e) => updateTrainingModule(module.id, { required: e.target.checked })} /> Required</label>
-                  <label className="flex items-center gap-2 pb-3"><input type="checkbox" checked={module.active !== false} onChange={(e) => updateTrainingModule(module.id, { active: e.target.checked })} /> Active</label>
-                </div>
-              </div>
-              <label className="mt-3 block text-sm text-slate-300">
-                Resource / manual URL
-                <input value={module.contentUrl ?? ""} onChange={(e) => updateTrainingModule(module.id, { contentUrl: e.target.value })} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2" />
-              </label>
-              <label className="mt-3 block text-sm text-slate-300">
-                Certificate URL
-                <input value={module.certificateUrl ?? ""} onChange={(e) => updateTrainingModule(module.id, { certificateUrl: e.target.value })} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2" />
-              </label>
-              <div className="mt-4 rounded-lg border border-white/10 bg-slate-950/50 p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <h4 className="text-sm font-semibold uppercase tracking-wider text-slate-400">Downloadable resources</h4>
-                  <Button variant="secondary" onClick={() => addTrainingResource(module.id)}>Add resource</Button>
-                </div>
-                <div className="mt-3 space-y-3">
-                  {(module.resources ?? []).map((resource, index) => (
-                    <div key={resource.id} className="grid gap-2 md:grid-cols-3">
-                      <input aria-label="Resource title" value={resource.title} onChange={(e) => updateTrainingResource(module.id, index, { title: e.target.value })} className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm" />
-                      <input aria-label="Resource URL" value={resource.url} onChange={(e) => updateTrainingResource(module.id, index, { url: e.target.value })} className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm" />
-                      <a href={resource.url} download className="inline-flex items-center justify-center gap-2 rounded-lg border border-white/10 px-3 py-2 text-sm font-semibold text-cyan-300">
-                        <Download className="size-4" /> Test download
-                      </a>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </section>
-          ))}
-        </div>
       )}
 
       {subTab === "settings" && (

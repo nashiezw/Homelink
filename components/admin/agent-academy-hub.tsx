@@ -52,12 +52,16 @@ import type { LucideIcon } from "lucide-react";
 type AcademyData = {
   metrics: Record<string, number>;
   courses: AcademyCourse[];
+  lessons: AcademyLesson[];
   documents: AcademyDocument[];
   videos: AcademyVideo[];
   quizzes: Array<{ id: string; title: string; passingPercentage: number; active: boolean }>;
   assignments: Array<{ id: string; title: string; points: number; active: boolean }>;
   exams: Array<{ id: string; title: string; durationMinutes: number; passingScore: number; active: boolean }>;
   certificates: Array<{ id: string; certificateNumber: string; agentId: string; status: string; issuedAt: string; expiresAt?: string }>;
+  learningPaths: Array<{ id: string; title: string; description?: string; status: string; badgeTitle?: string; courses: Array<{ id: string; sortOrder: number; required: boolean; course: AcademyCourse }> }>;
+  announcements: Array<{ id: string; title: string; body: string; audience: string; publishedAt?: string; expiresAt?: string; createdAt: string }>;
+  badges: Array<{ id: string; name: string; description?: string; xp: number; active: boolean }>;
   topCourses: Array<{ id: string; title: string; completions: number; enrolments: number }>;
   mostDifficultCourse?: { title: string; average: number };
   mostFailedQuiz?: { title: string; failed: number; attempts: number };
@@ -68,6 +72,23 @@ type AcademyData = {
   upcomingExpiringCertificates: Array<{ id: string; certificateNumber: string; agentId: string; expiresAt?: string }>;
   overdueAssignments: number;
   recentActivity: Array<{ id: string; actorId?: string; action: string; target: string; createdAt: string }>;
+};
+
+type AcademyLesson = {
+  id: string;
+  title: string;
+  summary?: string;
+  estimatedMinutes: number;
+  completionRequirement: string;
+  sortOrder: number;
+  updatedAt: string;
+  section?: {
+    title: string;
+    module?: {
+      title: string;
+      course?: { id: string; title: string };
+    };
+  };
 };
 
 type AcademyCourse = {
@@ -479,10 +500,34 @@ function DocumentCell({ document }: { document: AcademyDocument }) {
 }
 
 function FeatureWorkbench({ tab, data, openDrawer }: { tab: AcademyTab; data: AcademyData; openDrawer: (drawer: "quiz" | "exam" | "assignment" | null) => void }) {
+  if (tab === "Lessons") {
+    return (
+      <BuilderList
+        title="Lesson Builder"
+        icon={BookOpen}
+        rows={data.lessons.map((lesson) => ({
+          id: lesson.id,
+          title: lesson.title,
+          active: true,
+          detail: `${lesson.section?.module?.title ?? "Academy module"} - ${lesson.estimatedMinutes} min - ${lesson.completionRequirement}`,
+        }))}
+        actionLabel="Managed inside course structure"
+      />
+    );
+  }
   if (tab === "Quizzes") return <BuilderList title="Quiz Builder" icon={ClipboardCheck} rows={data.quizzes} actionLabel="Create Quiz" onCreate={() => openDrawer("quiz")} />;
   if (tab === "Assignments") return <BuilderList title="Assignments" icon={ClipboardCheck} rows={data.assignments} actionLabel="Create Assignment" onCreate={() => openDrawer("assignment")} />;
   if (tab === "Final Exams") return <BuilderList title="Final Examination System" icon={GraduationCap} rows={data.exams} actionLabel="Create Exam" onCreate={() => openDrawer("exam")} />;
   if (tab === "Certificates") return <BuilderList title="Certificate Management" icon={Award} rows={data.certificates.map((c) => ({ id: c.id, title: c.certificateNumber, active: c.status === "ACTIVE" }))} actionLabel="Auto Generated" />;
+  if (tab === "Learning Paths") {
+    return <BuilderList title="Learning Paths" icon={Library} rows={data.learningPaths.map((path) => ({ id: path.id, title: path.title, active: path.status === "PUBLISHED", detail: `${path.courses.length} course(s) - ${path.badgeTitle ?? "No badge"}` }))} actionLabel="Structured programmes" />;
+  }
+  if (tab === "Announcements") {
+    return <BuilderList title="Announcements" icon={Megaphone} rows={data.announcements.map((announcement) => ({ id: announcement.id, title: announcement.title, active: Boolean(announcement.publishedAt), detail: `${announcement.audience} - ${announcement.body}` }))} actionLabel="Published updates" />;
+  }
+  if (tab === "Badges") {
+    return <BuilderList title="Badges and Achievements" icon={BadgeCheck} rows={data.badges.map((badge) => ({ id: badge.id, title: badge.name, active: badge.active, detail: `${badge.xp} XP - ${badge.description ?? ""}` }))} actionLabel="Automatic awards" />;
+  }
   if (tab === "Analytics") {
     return (
       <div className="grid gap-4 xl:grid-cols-2">
@@ -519,6 +564,7 @@ function BuilderList({ title, icon: Icon, rows, actionLabel, onCreate }: { title
         rows={rows}
         columns={[
           { key: "title", header: "Title", render: (row) => <span className="font-semibold text-white">{row.title}</span> },
+          { key: "detail", header: "Detail", render: (row) => <span className="text-sm text-slate-400">{String(row.detail ?? "")}</span> },
           { key: "state", header: "State", render: (row) => <AdminStatusBadge status={row.active === false ? "Hidden" : "Active"} variant={row.active === false ? "muted" : "success"} /> },
         ]}
         emptyMessage="No records yet."

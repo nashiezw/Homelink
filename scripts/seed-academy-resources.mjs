@@ -7,6 +7,8 @@ const root = process.cwd();
 const manifestPath = path.join(root, "public", "uploads", "academy", "academy-resources-manifest.json");
 
 const COURSE_ID = "academy-course-official-real-estate-agent-training";
+const LEARNING_PATH_ID = "academy-path-new-agent-programme";
+const CERTIFICATE_TEMPLATE_ID = "academy-certificate-certified-homelink-agent";
 
 const courseModules = [
   {
@@ -77,6 +79,42 @@ const courseModules = [
       "Performance trackers and quick reference guides",
     ],
   },
+];
+
+const quizSeeds = [
+  {
+    id: "academy-quiz-foundations",
+    title: "Chapter 1 Foundations Knowledge Check",
+    description: "Checks professional duties, ethics, terminology and customer-service expectations from the manual.",
+    questions: [
+      ["What is the agent's first responsibility when working with a new client?", ["Understand the client's needs and document them accurately.", "Push the highest commission property first.", "Avoid written records until the deal is closed.", "Only communicate through social media."], 0],
+      ["Which behaviour best reflects HomeLink professional conduct?", ["Transparent communication and accurate property information.", "Withholding defects until after viewing.", "Changing offer terms verbally.", "Letting clients sign incomplete forms."], 0],
+    ],
+  },
+  {
+    id: "academy-quiz-listings-marketing",
+    title: "Chapter 2 Listings and Marketing Knowledge Check",
+    description: "Assesses listing capture, appraisals, photography and marketing workflow.",
+    questions: [
+      ["Before publishing a property listing, what must be completed?", ["Listing details, owner authority, photos and compliance checks.", "Only a WhatsApp message from the owner.", "A buyer registration form.", "A commission invoice only."], 0],
+      ["What is the purpose of a viewing feedback form?", ["To record buyer or tenant reactions and guide follow-up.", "To replace an offer to purchase.", "To register a landlord.", "To calculate mileage only."], 0],
+    ],
+  },
+  {
+    id: "academy-quiz-compliance",
+    title: "Chapter 4 Documentation and Compliance Knowledge Check",
+    description: "Assesses document handling, confidentiality, file completeness and compliance.",
+    questions: [
+      ["Why should every client file be checked before submission?", ["To confirm required documents are complete, accurate and traceable.", "To reduce the number of forms agents use.", "To avoid audit logs.", "To delay the transaction."], 0],
+      ["Which item should be treated as confidential?", ["Client identity, contact, financial and agreement details.", "Only public listing photos.", "Generic marketing slogans.", "Published branch names."], 0],
+    ],
+  },
+];
+
+const assignments = [
+  ["academy-assignment-property-inspection", "Practical Property Inspection Upload", "Inspect a property, complete the branded inspection checklist, upload property photos and submit notes for admin review."],
+  ["academy-assignment-viewing-record", "Viewing Record and Client Follow-Up", "Record a viewing, complete the viewing register and feedback form, then submit the follow-up plan."],
+  ["academy-assignment-listing-file", "Complete Listing File Submission", "Prepare a listing file using the listing form, file checklist, marketing checklist and compliance checklist."],
 ];
 
 function slugify(value) {
@@ -237,14 +275,156 @@ async function seedCourse(manifest) {
   }
 }
 
+async function seedAssessments() {
+  for (const quiz of quizSeeds) {
+    await prisma.quiz.upsert({
+      where: { id: quiz.id },
+      create: { id: quiz.id, courseId: COURSE_ID, title: quiz.title, description: quiz.description, passingPercentage: 80, randomise: true, timeLimitMinutes: 20, active: true },
+      update: { courseId: COURSE_ID, title: quiz.title, description: quiz.description, passingPercentage: 80, randomise: true, timeLimitMinutes: 20, active: true },
+    });
+    await prisma.quizQuestion.deleteMany({ where: { quizId: quiz.id } });
+    for (const [questionIndex, [prompt, answers, correct]] of quiz.questions.entries()) {
+      await prisma.quizQuestion.create({
+        data: {
+          quizId: quiz.id,
+          type: "MULTIPLE_CHOICE",
+          prompt,
+          points: 5,
+          explanation: "This question is aligned to the official HomeLink Zimbabwe Real Estate Agent Training Manual.",
+          correctAnswer: { value: String(correct) },
+          incorrectFeedback: "Review the related manual section and supporting resource before retaking this quiz.",
+          hints: ["Check the official manual and the linked resource forms."],
+          difficulty: "BEGINNER",
+          randomise: false,
+          categories: ["Official Manual"],
+          tags: ["manual", "knowledge-check"],
+          sortOrder: questionIndex,
+          answers: {
+            create: answers.map((answer, answerIndex) => ({
+              label: answer,
+              value: String(answerIndex),
+              isCorrect: answerIndex === correct,
+              feedback: answerIndex === correct ? "Correct." : "Not quite. Revisit the manual section.",
+              sortOrder: answerIndex,
+            })),
+          },
+        },
+      });
+    }
+  }
+
+  for (const [id, title, description] of assignments) {
+    await prisma.assignment.upsert({
+      where: { id },
+      create: { id, courseId: COURSE_ID, title, description, dueDays: 14, points: 100, active: true },
+      update: { courseId: COURSE_ID, title, description, dueDays: 14, points: 100, active: true },
+    });
+  }
+
+  await prisma.finalExam.upsert({
+    where: { id: "academy-final-exam-certified-homelink-agent" },
+    create: {
+      id: "academy-final-exam-certified-homelink-agent",
+      courseId: COURSE_ID,
+      title: "Certified HomeLink Agent Final Examination",
+      durationMinutes: 90,
+      passingScore: 80,
+      randomQuestions: true,
+      questionPools: { quizzes: quizSeeds.map((quiz) => quiz.id), minimumQuestions: 6 },
+      attemptLimit: 2,
+      browserLock: false,
+      autoSubmit: true,
+      retakeRules: { waitHours: 24, maxAttempts: 2 },
+      reviewEnabled: true,
+      manualGrading: false,
+      active: true,
+    },
+    update: {
+      courseId: COURSE_ID,
+      title: "Certified HomeLink Agent Final Examination",
+      durationMinutes: 90,
+      passingScore: 80,
+      questionPools: { quizzes: quizSeeds.map((quiz) => quiz.id), minimumQuestions: 6 },
+      active: true,
+    },
+  });
+}
+
+async function seedProgrammeRecords() {
+  await prisma.learningPath.upsert({
+    where: { id: LEARNING_PATH_ID },
+    create: {
+      id: LEARNING_PATH_ID,
+      title: "New Agent Programme",
+      description: "Structured HomeLink onboarding path from foundations through legal compliance, sales, property management and certification.",
+      status: "PUBLISHED",
+      badgeTitle: "Certified HomeLink Agent",
+    },
+    update: {
+      title: "New Agent Programme",
+      description: "Structured HomeLink onboarding path from foundations through legal compliance, sales, property management and certification.",
+      status: "PUBLISHED",
+      badgeTitle: "Certified HomeLink Agent",
+    },
+  });
+  await prisma.pathCourse.upsert({
+    where: { pathId_courseId: { pathId: LEARNING_PATH_ID, courseId: COURSE_ID } },
+    create: { pathId: LEARNING_PATH_ID, courseId: COURSE_ID, sortOrder: 0, required: true },
+    update: { sortOrder: 0, required: true },
+  });
+  await prisma.certificateTemplate.upsert({
+    where: { id: CERTIFICATE_TEMPLATE_ID },
+    create: {
+      id: CERTIFICATE_TEMPLATE_ID,
+      name: "Certified HomeLink Agent Certificate",
+      logoUrl: "/brand/homelink-full-lockup.png",
+      templateJson: { certificateNumberPrefix: "HLA", title: "Certified HomeLink Agent", qrVerification: true, expiryDays: 365, colours: { primary: "#008b68", accent: "#c6a15b" } },
+      active: true,
+    },
+    update: {
+      name: "Certified HomeLink Agent Certificate",
+      logoUrl: "/brand/homelink-full-lockup.png",
+      templateJson: { certificateNumberPrefix: "HLA", title: "Certified HomeLink Agent", qrVerification: true, expiryDays: 365, colours: { primary: "#008b68", accent: "#c6a15b" } },
+      active: true,
+    },
+  });
+  await prisma.announcement.upsert({
+    where: { id: "academy-announcement-official-manual-live" },
+    create: {
+      id: "academy-announcement-official-manual-live",
+      title: "Official HomeLink Agent Academy is live",
+      body: "The official HomeLink Zimbabwe Real Estate Agent Training Manual, course sequence and downloadable resources are now available.",
+      audience: "AGENTS",
+      publishedAt: new Date(),
+    },
+    update: {
+      title: "Official HomeLink Agent Academy is live",
+      body: "The official HomeLink Zimbabwe Real Estate Agent Training Manual, course sequence and downloadable resources are now available.",
+      audience: "AGENTS",
+      publishedAt: new Date(),
+    },
+  });
+  await prisma.badge.upsert({
+    where: { id: "academy-badge-certified-homelink-agent" },
+    create: { id: "academy-badge-certified-homelink-agent", name: "Certified HomeLink Agent", description: "Awarded after completing the official Academy course and final examination.", xp: 1000, active: true },
+    update: { name: "Certified HomeLink Agent", description: "Awarded after completing the official Academy course and final examination.", xp: 1000, active: true },
+  });
+}
+
 async function main() {
   const manifest = JSON.parse(await fs.readFile(manifestPath, "utf8"));
   await seedDocuments(manifest);
   await seedCourse(manifest);
+  await seedAssessments();
+  await seedProgrammeRecords();
   const counts = {
     academyDocuments: await prisma.documentLibrary.count({ where: { id: { startsWith: "academy-doc-" } } }),
     courseModules: await prisma.trainingModule.count({ where: { courseId: COURSE_ID } }),
     courseLessons: await prisma.trainingLesson.count({ where: { section: { module: { courseId: COURSE_ID } } } }),
+    quizzes: await prisma.quiz.count({ where: { courseId: COURSE_ID } }),
+    assignments: await prisma.assignment.count({ where: { courseId: COURSE_ID } }),
+    finalExams: await prisma.finalExam.count({ where: { courseId: COURSE_ID } }),
+    learningPaths: await prisma.learningPath.count({ where: { id: LEARNING_PATH_ID } }),
   };
   console.log(JSON.stringify(counts, null, 2));
 }
