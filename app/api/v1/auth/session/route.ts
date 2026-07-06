@@ -3,6 +3,7 @@ import { hashPassword, verifyPassword } from "@/lib/auth/password";
 import { getClientIp, checkRateLimit } from "@/lib/api/request-meta";
 import {
   clearSessionCookieHeader,
+  getSignedSessionFromRequest,
   getSessionUserIdFromRequest,
   sessionCookieHeader,
 } from "@/lib/auth/session";
@@ -10,10 +11,14 @@ import { getRegistrationPolicy, getRateLimitPerMinute, getSessionTimeoutSeconds 
 import { ok, problem } from "@/lib/api/response";
 import {
   createPostgresUser,
+  createPostgresSession,
   getPostgresPublicUserById,
   getPostgresUserByEmail,
+  recordPostgresAuditEvent,
   recordPostgresLogin,
+  revokePostgresSession,
   shouldUsePostgresAuth,
+  touchPostgresSession,
   toPublicPostgresUser,
 } from "@/lib/auth/postgres-auth";
 import { getMainPrisma } from "@/lib/db/main-prisma";
@@ -59,6 +64,8 @@ export async function POST(request: Request) {
         phone: body.phone,
       });
       const sessionId = `session_${crypto.randomUUID()}`;
+      const sessionMaxAge = getSessionTimeoutSeconds();
+      await createPostgresSession(user.id, sessionId, sessionMaxAge);
       return new NextResponse(
         JSON.stringify({
           data: toPublicPostgresUser(user),
@@ -68,7 +75,7 @@ export async function POST(request: Request) {
           status: 201,
           headers: {
             "Content-Type": "application/json",
-            "Set-Cookie": sessionCookieHeader(sessionId, getSessionTimeoutSeconds(), user.id),
+            "Set-Cookie": sessionCookieHeader(sessionId, sessionMaxAge, user.id),
           },
         },
       );
@@ -104,12 +111,29 @@ export async function POST(request: Request) {
     const passwordMatches = Boolean(user?.passwordHash && verifyPassword(password, user.passwordHash));
     const envSeedMatches = user ? seedPasswordMatches(user.email, password) : false;
     if (!user?.passwordHash || (!passwordMatches && !envSeedMatches)) {
+      await recordPostgresAuditEvent({
+        action: "AUTH_LOGIN_FAIL",
+        target: email.trim().toLowerCase() || "unknown",
+        metadata: { reason: "INVALID_CREDENTIALS", ip: getClientIp(request) },
+      });
       return problem(401, "INVALID_CREDENTIALS", "Email or password is incorrect.");
     }
     if (user.accountStatus === "SUSPENDED") {
+      await recordPostgresAuditEvent({
+        actorId: user.id,
+        action: "AUTH_LOGIN_BLOCKED",
+        target: user.id,
+        metadata: { reason: "ACCOUNT_SUSPENDED", ip: getClientIp(request) },
+      });
       return problem(403, "ACCOUNT_SUSPENDED", "Your account has been suspended. Contact support.");
     }
     if (user.accountStatus === "BLOCKED") {
+      await recordPostgresAuditEvent({
+        actorId: user.id,
+        action: "AUTH_LOGIN_BLOCKED",
+        target: user.id,
+        metadata: { reason: "ACCOUNT_BLOCKED", ip: getClientIp(request) },
+      });
       return problem(403, "ACCOUNT_BLOCKED", "Your account has been blocked.");
     }
     if (!passwordMatches && envSeedMatches) {
@@ -123,6 +147,8 @@ export async function POST(request: Request) {
       return problem(401, "UNAUTHORIZED", "Session is no longer valid.");
     }
     const sessionId = `session_${crypto.randomUUID()}`;
+    const sessionMaxAge = getSessionTimeoutSeconds();
+    await createPostgresSession(user.id, sessionId, sessionMaxAge);
     return new NextResponse(
       JSON.stringify({
         data: toPublicPostgresUser(updated),
@@ -132,7 +158,7 @@ export async function POST(request: Request) {
         status: 200,
         headers: {
           "Content-Type": "application/json",
-          "Set-Cookie": sessionCookieHeader(sessionId, getSessionTimeoutSeconds(), user.id),
+          "Set-Cookie": sessionCookieHeader(sessionId, sessionMaxAge, user.id),
         },
       },
     );
@@ -180,10 +206,17 @@ function seedPasswordMatches(email: string, password: string) {
 }
 
 export async function DELETE(request: Request) {
-  const cookie = request.headers.get("cookie") ?? "";
-  const match = cookie.match(/homelink_session=([^;]+)/);
-  if (match && !shouldUsePostgresAuth()) {
-    getStore().deleteSession(match[1]);
+  if (shouldUsePostgresAuth()) {
+    const session = getSignedSessionFromRequest(request);
+    if (session) {
+      await revokePostgresSession(session.sessionId, session.userId);
+    }
+  } else {
+    const cookie = request.headers.get("cookie") ?? "";
+    const match = cookie.match(/homelink_session=([^;]+)/);
+    if (match) {
+      getStore().deleteSession(match[1]);
+    }
   }
   return new NextResponse(
     JSON.stringify({ data: { signedOut: true }, meta: { requestId: crypto.randomUUID() } }),
@@ -203,6 +236,10 @@ export async function GET(request: Request) {
     return problem(401, "UNAUTHORIZED", "Sign in to continue.");
   }
   if (shouldUsePostgresAuth()) {
+    const session = getSignedSessionFromRequest(request);
+    if (session) {
+      await touchPostgresSession(session.sessionId);
+    }
     const user = await getPostgresPublicUserById(userId);
     if (!user) {
       return problem(401, "UNAUTHORIZED", "Session is no longer valid.");

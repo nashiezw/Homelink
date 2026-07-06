@@ -187,7 +187,7 @@ export function SystemOpsHub({ mode }: { mode: "system" | "ai" | "security" }) {
             <MetricRow label="Suspended users" value={data.security.suspendedUsers} />
             <MetricRow label="Security events (audit)" value={data.security.failedSecurityEvents} />
             <MetricRow label="Admin accounts" value={data.security.adminAccounts} />
-            <MetricRow label="Staff 2FA coverage" value={data.security.twoFactorCoverage} />
+            <MetricRow label="Verified admin coverage" value={data.security.twoFactorCoverage} />
             <MetricRow label="Webhook failures" value={data.security.webhookFailures} />
           </section>
         </div>

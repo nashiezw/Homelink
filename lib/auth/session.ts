@@ -50,14 +50,25 @@ function signedSessionValue(sessionId: string, userId: string) {
   return `${signedSessionPrefix}${payload}.${sign(payload)}`;
 }
 
-function userIdFromSignedSession(value: string) {
+export type SignedSessionPayload = {
+  sessionId: string;
+  userId: string;
+  createdAt?: number;
+};
+
+export function parseSignedSessionValue(value: string): SignedSessionPayload | null {
   if (!value.startsWith(signedSessionPrefix)) return null;
   const token = value.slice(signedSessionPrefix.length);
   const [payload, signature] = token.split(".");
   if (!payload || !signature || !verifySignature(payload, signature)) return null;
   try {
-    const parsed = JSON.parse(base64UrlDecode(payload)) as { userId?: unknown };
-    return typeof parsed.userId === "string" ? parsed.userId : null;
+    const parsed = JSON.parse(base64UrlDecode(payload)) as { sessionId?: unknown; userId?: unknown; createdAt?: unknown };
+    if (typeof parsed.sessionId !== "string" || typeof parsed.userId !== "string") return null;
+    return {
+      sessionId: parsed.sessionId,
+      userId: parsed.userId,
+      createdAt: typeof parsed.createdAt === "number" ? parsed.createdAt : undefined,
+    };
   } catch {
     return null;
   }
@@ -70,12 +81,19 @@ export function getSessionUserIdFromRequest(request: Request) {
     return null;
   }
   const cookieValue = decodeURIComponent(match[1]);
-  const signedUserId = userIdFromSignedSession(cookieValue);
-  if (signedUserId) return signedUserId;
+  const signedSession = parseSignedSessionValue(cookieValue);
+  if (signedSession) return signedSession.userId;
   if (isPostgresStoreEnabled()) return null;
 
   const session = getStore().getSession(cookieValue);
   return session?.userId ?? null;
+}
+
+export function getSignedSessionFromRequest(request: Request) {
+  const cookie = request.headers.get("cookie") ?? "";
+  const match = cookie.match(new RegExp(`${SESSION_COOKIE}=([^;]+)`));
+  if (!match) return null;
+  return parseSignedSessionValue(decodeURIComponent(match[1]));
 }
 
 export function sessionCookieHeader(sessionId: string, maxAgeSeconds = 604800, userId?: string) {

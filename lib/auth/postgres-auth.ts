@@ -1,4 +1,4 @@
-import { Role, VerificationStatus, type Prisma } from "@prisma/client";
+import { Prisma, Role, VerificationStatus } from "@prisma/client";
 import { getMainPrisma, isPostgresStoreEnabled } from "@/lib/db/main-prisma";
 import { ensureCoreProductionSchema, isMissingSchemaError } from "@/lib/db/production-schema";
 
@@ -72,6 +72,78 @@ export async function recordPostgresLogin(userId: string) {
   return getPostgresPublicUserById(userId);
 }
 
+export async function createPostgresSession(userId: string, sessionId: string, maxAgeSeconds: number) {
+  await ensureCoreProductionSchema();
+  const expiresAt = new Date(Date.now() + maxAgeSeconds * 1000);
+  await getMainPrisma().appSession.create({
+    data: {
+      id: sessionId,
+      userId,
+      expiresAt,
+    },
+  });
+  await recordPostgresAuditEvent({
+    actorId: userId,
+    action: "AUTH_LOGIN_SUCCESS",
+    target: userId,
+    metadata: { sessionId },
+  });
+}
+
+export async function revokePostgresSession(sessionId: string, userId?: string) {
+  await ensureCoreProductionSchema();
+  const row = await getMainPrisma().appSession
+    .update({
+      where: { id: sessionId },
+      data: { revokedAt: new Date(), lastSeenAt: new Date() },
+    })
+    .catch((error: unknown) => {
+      if (isMissingSchemaError(error) || isRecordNotFoundError(error)) return null;
+      throw error;
+    });
+  if (row) {
+    await recordPostgresAuditEvent({
+      actorId: userId ?? row.userId,
+      action: "AUTH_LOGOUT",
+      target: userId ?? row.userId,
+      metadata: { sessionId },
+    });
+  }
+}
+
+export async function touchPostgresSession(sessionId: string) {
+  await ensureCoreProductionSchema();
+  await getMainPrisma().appSession
+    .update({
+      where: { id: sessionId },
+      data: { lastSeenAt: new Date() },
+    })
+    .catch((error: unknown) => {
+      if (!isMissingSchemaError(error) && !isRecordNotFoundError(error)) throw error;
+    });
+}
+
+export async function recordPostgresAuditEvent(input: {
+  actorId?: string | null;
+  action: string;
+  target: string;
+  metadata?: Prisma.InputJsonValue;
+}) {
+  await ensureCoreProductionSchema();
+  await getMainPrisma().auditEvent
+    .create({
+      data: {
+        actorId: input.actorId ?? null,
+        action: input.action,
+        target: input.target,
+        metadata: input.metadata ?? {},
+      },
+    })
+    .catch((error: unknown) => {
+      if (!isMissingSchemaError(error)) throw error;
+    });
+}
+
 export async function getPostgresUserCounts(userId: string) {
   await ensureCoreProductionSchema();
   const prisma = getMainPrisma();
@@ -97,4 +169,8 @@ export function toPublicPostgresUser(user: PublicPostgresUserRow) {
     },
     createdAt: user.createdAt.toISOString(),
   };
+}
+
+function isRecordNotFoundError(error: unknown) {
+  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025";
 }

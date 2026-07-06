@@ -314,18 +314,27 @@ export async function getPostgresSystemHealth(): Promise<SystemHealth> {
 }
 
 export async function getPostgresSecuritySnapshot() {
-  const [users, audit] = await Promise.all([
-    getMainPrisma().user.findMany({ select: { roles: true, accountStatus: true } }),
+  const now = new Date();
+  const [users, audit, activeSessions] = await Promise.all([
+    getMainPrisma().user.findMany({ select: { roles: true, accountStatus: true, emailVerifiedAt: true, phoneVerifiedAt: true } }),
     getMainPrisma().auditEvent.findMany({ orderBy: { createdAt: "desc" }, take: 100 }),
+    getMainPrisma().appSession.count({
+      where: {
+        expiresAt: { gt: now },
+        revokedAt: null,
+      },
+    }),
   ]);
+  const admins = users.filter((user) => user.roles.includes("ADMIN"));
+  const verifiedAdmins = admins.filter((user) => user.emailVerifiedAt || user.phoneVerifiedAt).length;
   return {
-    activeSessions: 0,
+    activeSessions,
     blockedUsers: users.filter((user) => user.accountStatus === "BLOCKED").length,
     suspendedUsers: users.filter((user) => user.accountStatus === "SUSPENDED").length,
     failedSecurityEvents: audit.filter((event) => event.action.includes("FAIL") || event.action.includes("BLOCK")).length,
-    adminAccounts: users.filter((user) => user.roles.includes("ADMIN")).length,
-    twoFactorCoverage: "0%",
-    webhookFailures: 0,
+    adminAccounts: admins.length,
+    twoFactorCoverage: admins.length ? `${Math.round((verifiedAdmins / admins.length) * 100)}%` : "0%",
+    webhookFailures: audit.filter((event) => event.action.includes("WEBHOOK") && event.action.includes("FAIL")).length,
   };
 }
 

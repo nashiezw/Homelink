@@ -139,6 +139,7 @@ model User {
   notifications     Notification[]
   payments          Payment[]
   auditEvents       AuditEvent[]
+  sessions          AppSession[]
   agencyMemberships AgencyAgent[]
 }
 
@@ -563,6 +564,20 @@ model AuditEvent {
   metadata  Json
   createdAt DateTime @default(now())
   actor     User?    @relation(fields: [actorId], references: [id])
+}
+
+model AppSession {
+  id         String    @id
+  userId     String
+  createdAt  DateTime  @default(now())
+  expiresAt  DateTime
+  lastSeenAt DateTime  @default(now())
+  revokedAt  DateTime?
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@index([revokedAt])
 }
 
 model LegalPageRecord {
