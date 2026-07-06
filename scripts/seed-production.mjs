@@ -6,6 +6,26 @@ const prisma = new PrismaClient();
 const standardPassword = optionalSeedPassword("SEED_STANDARD_PASSWORD");
 const adminPassword = optionalSeedPassword("SEED_ADMIN_PASSWORD");
 
+const AREA_COORDINATES = {
+  "avondale, harare": { latitude: -17.8007, longitude: 31.0335 },
+  "hillside, bulawayo": { latitude: -20.1783, longitude: 28.6069 },
+  "senga, gweru": { latitude: -19.4825, longitude: 29.8304 },
+  "chinotimba, victoria falls": { latitude: -17.9316, longitude: 25.8242 },
+  "murambi, mutare": { latitude: -18.9833, longitude: 32.65 },
+  "cbd, harare": { latitude: -17.8292, longitude: 31.0522 },
+  "newtown, kwekwe": { latitude: -18.9245, longitude: 29.8149 },
+  "belvedere, harare": { latitude: -17.8335, longitude: 31.0028 },
+  "borrowdale, harare": { latitude: -17.7615, longitude: 31.0893 },
+  "mount pleasant, harare": { latitude: -17.7817, longitude: 31.0533 },
+  "cbd, bulawayo": { latitude: -20.1561, longitude: 28.5887 },
+  "kumalo, bulawayo": { latitude: -20.1352, longitude: 28.6026 },
+  "ridgemont, gweru": { latitude: -19.4568, longitude: 29.8181 },
+  "chikanga, mutare": { latitude: -18.9957, longitude: 32.6225 },
+  "msasa park, kwekwe": { latitude: -18.9194, longitude: 29.8297 },
+  "seke unit a, chitungwiza": { latitude: -18.0058, longitude: 31.0706 },
+  "avondale west, harare": { latitude: -17.7984, longitude: 31.0148 },
+};
+
 const users = [
   { email: "admin@homelinkzim.co.zw", name: "HomeLink Admin", phone: "+263780000001", roles: [Role.ADMIN, Role.SEEKER], password: adminPassword },
   { id: "user_seeker_tinashe", email: "tinashe.dube@homelinkzim.co.zw", name: "Tinashe Dube", phone: "+263770000000", roles: [Role.SEEKER, Role.LANDLORD], password: process.env.SEED_TINASHE_PASSWORD ?? standardPassword },
@@ -562,6 +582,7 @@ async function main() {
 
   for (const seed of listings) {
     const owner = userRows.get(seed.ownerEmail);
+    const coordinates = listingCoordinates(seed);
     await reconcileSeedListingSlug(seed);
     const listing = await prisma.listing.upsert({
       where: { slug: seed.slug },
@@ -577,6 +598,8 @@ async function main() {
         suburb: seed.suburb,
         bedrooms: seed.bedrooms,
         bathrooms: seed.bathrooms,
+        latitude: coordinates.latitude,
+        longitude: coordinates.longitude,
         propertyOwnerName: owner.name,
         propertyOwnerEmail: owner.email,
         propertyOwnerPhone: owner.phone,
@@ -597,8 +620,8 @@ async function main() {
         suburb: seed.suburb,
         bedrooms: seed.bedrooms,
         bathrooms: seed.bathrooms,
-        latitude: -17.8292,
-        longitude: 31.0522,
+        latitude: coordinates.latitude,
+        longitude: coordinates.longitude,
         propertyOwnerName: owner.name,
         propertyOwnerEmail: owner.email,
         propertyOwnerPhone: owner.phone,
@@ -1095,6 +1118,11 @@ function roommateProfileData(profile) {
       moderationStatus: "active",
     },
   };
+}
+
+function listingCoordinates(seed) {
+  const key = `${seed.suburb}, ${seed.city}`.toLowerCase();
+  return AREA_COORDINATES[key] ?? { latitude: -17.8292, longitude: 31.0522 };
 }
 
 function hashPassword(password) {
