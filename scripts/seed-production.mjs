@@ -32,11 +32,14 @@ const agentTrainingModules = [
     title: "HomeLink Agent Onboarding",
     description: "How HomeLink works, what agents are responsible for, and how trust is protected on the marketplace.",
     type: "VIDEO",
+    track: "BEGINNER",
+    level: "BEGINNER",
     contentUrl: "/resources/agents/homelink-agent-starter-guide.md",
     durationMinutes: 35,
     required: true,
     order: 1,
     certificateTitle: "HomeLink Agent Onboarding",
+    certificateUrl: "/resources/agents/certificates/beginner-agent-certificate.md",
     lessons: [
       { id: "intro_marketplace", title: "Marketplace role", summary: "Understand how agents support renters, buyers, landlords, owners, and property managers.", durationMinutes: 8, keyPoints: ["Protect user trust", "Keep records in HomeLink", "Do not bypass platform safety workflows"] },
       { id: "intro_conduct", title: "Professional conduct", summary: "Communication, punctuality, viewing etiquette, and client confidentiality standards.", durationMinutes: 12, keyPoints: ["Respond promptly", "Use respectful language", "Keep personal data private"] },
@@ -51,11 +54,14 @@ const agentTrainingModules = [
     title: "Listing Quality, Verification and Media",
     description: "How to inspect a property, collect accurate details, upload useful media, and avoid misleading listings.",
     type: "DOCUMENT",
+    track: "BEGINNER",
+    level: "BEGINNER",
     contentUrl: "/resources/agents/listing-quality-checklist.md",
     durationMinutes: 45,
     required: true,
     order: 2,
     certificateTitle: "Listing Quality Specialist",
+    certificateUrl: "/resources/agents/certificates/beginner-agent-certificate.md",
     lessons: [
       { id: "listing_verify", title: "Verify before publishing", summary: "Check ownership or authority, price, availability, viewing access, and safety basics.", durationMinutes: 15, keyPoints: ["Confirm landlord/owner authority", "Confirm availability date", "Record water, power, parking, and security notes"] },
       { id: "listing_media", title: "Photo and video standards", summary: "Capture clear, current, well-lit media that shows the actual property condition.", durationMinutes: 15, keyPoints: ["Use recent photos", "Show every key room", "Avoid misleading crops or filters"] },
@@ -71,11 +77,14 @@ const agentTrainingModules = [
     title: "Lead Handling and Tenant Protection",
     description: "How to respond to leads, schedule safe viewings, prevent fraud, and record deal outcomes.",
     type: "QUIZ",
+    track: "VERIFIED_AGENT",
+    level: "INTERMEDIATE",
     contentUrl: "/resources/agents/lead-handling-playbook.md",
     durationMinutes: 40,
     required: true,
     order: 3,
     certificateTitle: "Lead Handling Certified",
+    certificateUrl: "/resources/agents/certificates/verified-agent-certificate.md",
     lessons: [
       { id: "lead_sla", title: "Lead response standards", summary: "Prioritise fresh leads, confirm user needs, and update the CRM status quickly.", durationMinutes: 10, keyPoints: ["Respond fast", "Keep conversations in HomeLink", "Update status after every action"] },
       { id: "lead_viewings", title: "Safe viewing workflow", summary: "Use confirmed times, verified contacts, and clear viewing instructions.", durationMinutes: 12, keyPoints: ["Confirm identity", "Never pressure deposits before due diligence", "Record viewing results"] },
@@ -107,11 +116,15 @@ const agentTrainingModules = [
     title: "Compliance, Ethics and Documentation",
     description: "Client privacy, fair treatment, record keeping, verification, and professional boundaries.",
     type: "ASSIGNMENT",
+    track: "VERIFIED_AGENT",
+    level: "INTERMEDIATE",
     contentUrl: "/resources/agents/compliance-ethics-handbook.md",
     durationMinutes: 50,
     required: true,
     order: 4,
     certificateTitle: "Compliance and Ethics",
+    certificateUrl: "/resources/agents/certificates/verified-agent-certificate.md",
+    expiresAfterDays: 365,
     lessons: [
       { id: "compliance_privacy", title: "Privacy and personal data", summary: "Handle IDs, phone numbers, documents, and addresses only for legitimate HomeLink workflows.", durationMinutes: 15, keyPoints: ["Do not leak user data", "Use approved upload flows", "Share only what is needed"] },
       { id: "compliance_fairness", title: "Fair treatment", summary: "Avoid discriminatory screening and communicate requirements transparently.", durationMinutes: 15, keyPoints: ["Apply rules consistently", "Avoid discriminatory language", "Document objective criteria"] },
@@ -126,10 +139,14 @@ const agentTrainingModules = [
     title: "Property Management Operations",
     description: "How agents coordinate maintenance, inspections, owner requests, quotes, invoices, and service records.",
     type: "DOCUMENT",
+    track: "PROPERTY_MANAGER",
+    level: "ADVANCED",
     contentUrl: "/resources/agents/property-management-operations.md",
     durationMinutes: 35,
     required: false,
     order: 5,
+    certificateTitle: "Property Manager Track",
+    certificateUrl: "/resources/agents/certificates/property-manager-certificate.md",
     lessons: [
       { id: "pm_intake", title: "Request intake", summary: "Capture owner, property, priority, photos, and access notes before assigning work.", durationMinutes: 12, keyPoints: ["Clarify scope", "Collect evidence", "Set expectations"] },
       { id: "pm_delivery", title: "Quotes, invoices and completion", summary: "Coordinate quotations, owner approvals, invoices, and completion records.", durationMinutes: 23, keyPoints: ["Use written approvals", "Attach documents", "Close work with proof"] },
@@ -143,10 +160,14 @@ const agentTrainingModules = [
     title: "Commissions, Reviews and Agent Growth",
     description: "Understand commission splits, ratings, public profiles, client follow-up, and growth tiers.",
     type: "DOCUMENT",
+    track: "SENIOR_AGENT",
+    level: "ADVANCED",
     contentUrl: "/resources/agents/commission-and-growth-guide.md",
     durationMinutes: 30,
     required: false,
     order: 6,
+    certificateTitle: "Senior Agent Growth Track",
+    certificateUrl: "/resources/agents/certificates/senior-agent-certificate.md",
     lessons: [
       { id: "growth_commissions", title: "Commission rules", summary: "Know the difference between HomeLink-sourced, agent-sourced, referral, and recurring commissions.", durationMinutes: 15, keyPoints: ["Check rule snapshots", "Close leads properly", "Keep payment records clean"] },
       { id: "growth_reviews", title: "Reviews and trust", summary: "Use excellent service and complete records to improve your public reputation.", durationMinutes: 15, keyPoints: ["Ask for honest reviews", "Resolve issues quickly", "Keep your profile current"] },
@@ -1176,39 +1197,42 @@ async function seedAgentTrainingProgress(agentRows) {
   for (const agent of agents) {
     for (const trainingModule of agentTrainingModules) {
       const score = scoreByModule[trainingModule.id] ?? 100;
+      const payload = agentTrainingProgressPayload(trainingModule, score, now, trainingModule.id === "train_leads" ? answerKey : {});
       await prisma.agentTrainingProgressRecord.upsert({
         where: { agentId_moduleId: { agentId: agent.id, moduleId: trainingModule.id } },
         update: {
           status: "COMPLETED",
-          payload: {
-            moduleTitle: trainingModule.title,
-            score,
-            passed: true,
-            passMark: trainingModule.quiz?.passMark ?? 100,
-            submittedAnswers: trainingModule.id === "train_leads" ? answerKey : {},
-            completedAt: now,
-            certificateUrl: "/uploads/agents/training-certificate.pdf",
-            seeded: true,
-          },
+          payload,
         },
         create: {
           agentId: agent.id,
           moduleId: trainingModule.id,
           status: "COMPLETED",
-          payload: {
-            moduleTitle: trainingModule.title,
-            score,
-            passed: true,
-            passMark: trainingModule.quiz?.passMark ?? 100,
-            submittedAnswers: trainingModule.id === "train_leads" ? answerKey : {},
-            completedAt: now,
-            certificateUrl: "/uploads/agents/training-certificate.pdf",
-            seeded: true,
-          },
+          payload,
         },
       });
     }
   }
+}
+
+function agentTrainingProgressPayload(trainingModule, score, completedAt, submittedAnswers) {
+  const expiresAt = trainingModule.expiresAfterDays
+    ? new Date(new Date(completedAt).getTime() + trainingModule.expiresAfterDays * 86400000).toISOString()
+    : undefined;
+  return {
+    moduleTitle: trainingModule.title,
+    track: trainingModule.track,
+    certificateTitle: trainingModule.certificateTitle,
+    score,
+    passed: true,
+    passMark: trainingModule.quiz?.passMark ?? 100,
+    attemptCount: 1,
+    submittedAnswers,
+    completedAt,
+    ...(expiresAt ? { expiresAt } : {}),
+    certificateUrl: trainingModule.certificateUrl,
+    seeded: true,
+  };
 }
 
 async function seedVerifiedTenancy(listing, landlord, tenant) {

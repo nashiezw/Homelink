@@ -175,11 +175,17 @@ export function defaultAgentTrainingModules(): AgentTrainingModule[] {
       title: "HomeLink Agent Onboarding",
       description: "How HomeLink works, what agents are responsible for, and how trust is protected on the marketplace.",
       type: "VIDEO",
+      track: "BEGINNER",
+      level: "BEGINNER",
       contentUrl: "/resources/agents/homelink-agent-starter-guide.md",
       durationMinutes: 35,
       required: true,
       order: 1,
       certificateTitle: "HomeLink Agent Onboarding",
+      certificateUrl: "/resources/agents/certificates/beginner-agent-certificate.md",
+      manualSections: [
+        { id: "manual_intro", title: "Manual placeholder", body: "Replace this with the onboarding chapter from the training manual when it is provided." },
+      ],
       lessons: [
         {
           id: "intro_marketplace",
@@ -218,11 +224,17 @@ export function defaultAgentTrainingModules(): AgentTrainingModule[] {
       title: "Listing Quality, Verification and Media",
       description: "How to inspect a property, collect accurate details, upload useful media, and avoid misleading listings.",
       type: "DOCUMENT",
+      track: "BEGINNER",
+      level: "BEGINNER",
       contentUrl: "/resources/agents/listing-quality-checklist.md",
       durationMinutes: 45,
       required: true,
       order: 2,
       certificateTitle: "Listing Quality Specialist",
+      certificateUrl: "/resources/agents/certificates/beginner-agent-certificate.md",
+      manualSections: [
+        { id: "manual_listing", title: "Manual placeholder", body: "Replace this with the listing standards chapter from the training manual when it is provided." },
+      ],
       lessons: [
         {
           id: "listing_verify",
@@ -268,11 +280,14 @@ export function defaultAgentTrainingModules(): AgentTrainingModule[] {
       title: "Lead Handling and Tenant Protection",
       description: "How to respond to leads, schedule safe viewings, prevent fraud, and record deal outcomes.",
       type: "QUIZ",
+      track: "VERIFIED_AGENT",
+      level: "INTERMEDIATE",
       contentUrl: "/resources/agents/lead-handling-playbook.md",
       durationMinutes: 40,
       required: true,
       order: 3,
       certificateTitle: "Lead Handling Certified",
+      certificateUrl: "/resources/agents/certificates/verified-agent-certificate.md",
       lessons: [
         {
           id: "lead_sla",
@@ -341,11 +356,15 @@ export function defaultAgentTrainingModules(): AgentTrainingModule[] {
       title: "Compliance, Ethics and Documentation",
       description: "Client privacy, fair treatment, record keeping, verification, and professional boundaries.",
       type: "ASSIGNMENT",
+      track: "VERIFIED_AGENT",
+      level: "INTERMEDIATE",
       contentUrl: "/resources/agents/compliance-ethics-handbook.md",
       durationMinutes: 50,
       required: true,
       order: 4,
       certificateTitle: "Compliance and Ethics",
+      certificateUrl: "/resources/agents/certificates/verified-agent-certificate.md",
+      expiresAfterDays: 365,
       lessons: [
         {
           id: "compliance_privacy",
@@ -384,10 +403,14 @@ export function defaultAgentTrainingModules(): AgentTrainingModule[] {
       title: "Property Management Operations",
       description: "How agents coordinate maintenance, inspections, owner requests, quotes, invoices, and service records.",
       type: "DOCUMENT",
+      track: "PROPERTY_MANAGER",
+      level: "ADVANCED",
       contentUrl: "/resources/agents/property-management-operations.md",
       durationMinutes: 35,
       required: false,
       order: 5,
+      certificateTitle: "Property Manager Track",
+      certificateUrl: "/resources/agents/certificates/property-manager-certificate.md",
       lessons: [
         {
           id: "pm_intake",
@@ -419,10 +442,14 @@ export function defaultAgentTrainingModules(): AgentTrainingModule[] {
       title: "Commissions, Reviews and Agent Growth",
       description: "Understand commission splits, ratings, public profiles, client follow-up, and growth tiers.",
       type: "DOCUMENT",
+      track: "SENIOR_AGENT",
+      level: "ADVANCED",
       contentUrl: "/resources/agents/commission-and-growth-guide.md",
       durationMinutes: 30,
       required: false,
       order: 6,
+      certificateTitle: "Senior Agent Growth Track",
+      certificateUrl: "/resources/agents/certificates/senior-agent-certificate.md",
       lessons: [
         {
           id: "growth_commissions",

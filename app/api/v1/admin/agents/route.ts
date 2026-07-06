@@ -14,6 +14,7 @@ import type {
   AgentLead,
   AgentProfile,
   AgentSystemSettings,
+  AgentTrainingModule,
   CommissionRule,
   LeadStatus,
   LeadSource,
@@ -21,9 +22,11 @@ import type {
 import { ok, problem, created } from "@/lib/api/response";
 import { getMainPrisma, isPostgresStoreEnabled } from "@/lib/db/main-prisma";
 import {
+  getPostgresAgentTrainingAnalytics,
   getPostgresAgentSettings,
   hasCompletedRequiredTraining,
   listPostgresAgentTrainingModules,
+  savePostgresAgentTrainingModule,
   savePostgresAgentSettings,
 } from "@/lib/agents/postgres-training-repository";
 import { getStore } from "@/lib/store/app-store";
@@ -234,11 +237,15 @@ async function getPostgresAgentAdminData() {
   );
   const agentLeads = leads.map(toAgentLead);
   const agentCommissions = commissions.map(toAgentCommission);
+  const trainingAnalytics = await getPostgresAgentTrainingAnalytics(agents.map((agent) => agent.id));
   const settings = {
     ...persistedSettings,
     commissionRules: buildAgentSettings(rules).commissionRules,
   };
-  const analytics = buildAgentAnalytics(agentProfiles, agentApplications, agentLeads, agentCommissions);
+  const analytics = {
+    ...buildAgentAnalytics(agentProfiles, agentApplications, agentLeads, agentCommissions),
+    training: trainingAnalytics,
+  };
 
   return {
     analytics,
@@ -251,6 +258,8 @@ async function getPostgresAgentAdminData() {
     commissions: agentCommissions,
     territories: [],
     settings,
+    trainingModules,
+    trainingProgress: trainingProgress.map(toAgentTrainingProgressSummary),
     documents: [],
     branches: [],
   };
@@ -259,6 +268,7 @@ async function getPostgresAgentAdminData() {
 async function runPostgresAgentAction(body: Record<string, any>, actor: { id: string; name: string }) {
   const prisma = getMainPrisma();
   if (body.action === "update_settings") return savePostgresAgentSettings(body.settings ?? createDefaultAgentSettings());
+  if (body.action === "update_training_module") return savePostgresAgentTrainingModule(body.module as AgentTrainingModule);
   if (body.action === "update_commission_rules") return savePostgresCommissionRules(body.rules ?? DEFAULT_COMMISSION_RULES, actor, body.reason);
   if (body.action === "update_application_status") return updatePostgresAgentApplicationStatus(body.applicationId, body.status, actor, body.note);
   if (body.action === "approve_application") {
@@ -681,6 +691,21 @@ function toAgentCommission(row: any): AgentCommission {
   };
 }
 
+function toAgentTrainingProgressSummary(row: any) {
+  const payload = objectPayload(row.payload);
+  return {
+    id: row.id,
+    agentId: row.agentId,
+    moduleId: row.moduleId,
+    status: row.status,
+    score: numberValue(payload.score),
+    passed: typeof payload.passed === "boolean" ? payload.passed : undefined,
+    attemptCount: numberValue(payload.attemptCount),
+    completedAt: stringValue(payload.completedAt) ?? row.updatedAt?.toISOString?.(),
+    expiresAt: stringValue(payload.expiresAt),
+  };
+}
+
 function buildAgentAnalytics(profiles: AgentProfile[], applications: AgentApplication[], leads: AgentLead[], commissions: AgentCommission[]) {
   const closed = leads.filter((lead) => lead.status === "CLOSED_WON");
   const paid = commissions.filter((commission) => commission.paymentStatus === "PAID" || commission.status === "PAID");
@@ -740,6 +765,11 @@ function objectPayload(value: unknown): Record<string, any> {
 
 function stringValue(value: unknown) {
   return typeof value === "string" && value.trim() ? value : undefined;
+}
+
+function numberValue(value: unknown) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : undefined;
 }
 
 function normalizeApplicationStatus(value: string): AgentApplicationStatus {

@@ -3,6 +3,7 @@ import { ok, problem, created } from "@/lib/api/response";
 import { shouldUsePostgresAgents } from "@/lib/agents/postgres-agent-repository";
 import {
   completePostgresAgentTraining,
+  getPostgresAgentTrainingCertificates,
   listPostgresAgentTrainingModules,
   listPostgresAgentTrainingProgress,
 } from "@/lib/agents/postgres-training-repository";
@@ -28,11 +29,12 @@ export async function GET(request: Request) {
   const userId = getSessionUserIdFromRequest(request);
   if (!userId) return problem(401, "UNAUTHORIZED", "Sign in required.");
   if (shouldUsePostgresAgents()) {
-    const [modules, progress] = await Promise.all([
+    const [modules, progress, certificates] = await Promise.all([
       listPostgresAgentTrainingModules(),
       listPostgresAgentTrainingProgress(userId),
+      getPostgresAgentTrainingCertificates(userId),
     ]);
-    return ok({ modules, progress });
+    return ok({ modules, progress, certificates });
   }
   const store = getStore();
   return ok({

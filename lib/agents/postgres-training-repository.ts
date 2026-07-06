@@ -1,6 +1,13 @@
 import { Prisma, type AgentTrainingModuleRecord, type AgentTrainingProgressRecord } from "@prisma/client";
 import { createDefaultAgentSettings, defaultAgentTrainingModules } from "@/lib/agents/defaults";
-import type { AgentSystemSettings, AgentTrainingModule, AgentTrainingProgress } from "@/lib/agents/types";
+import type {
+  AgentSystemSettings,
+  AgentTrainingAnalytics,
+  AgentTrainingModule,
+  AgentTrainingProgress,
+  AgentTrainingTrack,
+  AgentTrainingTrackCertificate,
+} from "@/lib/agents/types";
 import { getMainPrisma } from "@/lib/db/main-prisma";
 
 const SNAPSHOT_ID = "singleton";
@@ -36,6 +43,37 @@ export async function listPostgresAgentTrainingModules(): Promise<AgentTrainingM
   return rows.map(toTrainingModule);
 }
 
+export async function savePostgresAgentTrainingModule(module: AgentTrainingModule): Promise<AgentTrainingModule> {
+  const payload = toTrainingModulePayload(module);
+  const row = await getMainPrisma().agentTrainingModuleRecord.upsert({
+    where: { id: module.id },
+    update: {
+      title: module.title,
+      description: module.description,
+      type: module.type,
+      contentUrl: module.contentUrl ?? null,
+      durationMinutes: module.durationMinutes,
+      required: module.required,
+      order: module.order,
+      active: module.active ?? true,
+      payload,
+    },
+    create: {
+      id: module.id,
+      title: module.title,
+      description: module.description,
+      type: module.type,
+      contentUrl: module.contentUrl ?? null,
+      durationMinutes: module.durationMinutes,
+      required: module.required,
+      order: module.order,
+      active: module.active ?? true,
+      payload,
+    },
+  });
+  return toTrainingModule(row);
+}
+
 export async function listPostgresAgentTrainingProgress(agentId: string): Promise<AgentTrainingProgress[]> {
   const rows = await getMainPrisma().agentTrainingProgressRecord.findMany({
     where: { agentId },
@@ -46,23 +84,35 @@ export async function listPostgresAgentTrainingProgress(agentId: string): Promis
 
 export async function completePostgresAgentTraining(agentId: string, moduleId: string, input: TrainingCompletionInput = {}): Promise<AgentTrainingProgress> {
   await ensureDefaultTrainingModules();
-  const trainingModule = await getMainPrisma().agentTrainingModuleRecord.findUnique({ where: { id: moduleId } });
+  const prisma = getMainPrisma();
+  const [trainingModule, existing] = await Promise.all([
+    prisma.agentTrainingModuleRecord.findUnique({ where: { id: moduleId } }),
+    prisma.agentTrainingProgressRecord.findUnique({ where: { agentId_moduleId: { agentId, moduleId } } }).catch(() => null),
+  ]);
   if (!trainingModule || !trainingModule.active) {
     throw new Error("Training module not found.");
   }
   const modulePayload = readObject(trainingModule.payload);
   const result = scoreTrainingModule(modulePayload, input);
-  const now = new Date().toISOString();
+  const completedAt = new Date();
+  const completedAtIso = completedAt.toISOString();
+  const expiresAfterDays = numberValue(modulePayload.expiresAfterDays);
+  const expiresAt = result.passed && expiresAfterDays ? new Date(completedAt.getTime() + expiresAfterDays * 86400000).toISOString() : undefined;
+  const attemptCount = (numberValue(readObject(existing?.payload).attemptCount) ?? 0) + 1;
   const payload: Prisma.InputJsonObject = {
     moduleTitle: trainingModule.title,
-    completedAt: now,
+    track: stringValue(modulePayload.track) ?? "BEGINNER",
+    certificateTitle: stringValue(modulePayload.certificateTitle) ?? trainingModule.title,
+    completedAt: completedAtIso,
+    ...(expiresAt ? { expiresAt } : {}),
     score: result.score,
     passed: result.passed,
     passMark: result.passMark,
-    certificateUrl: result.passed ? "/uploads/agents/training-certificate.pdf" : null,
+    attemptCount,
+    certificateUrl: result.passed ? stringValue(modulePayload.certificateUrl) ?? certificateUrlForTrack(readTrack(modulePayload.track)) : null,
     ...(Object.keys(result.answers).length ? { submittedAnswers: result.answers } : {}),
   };
-  const row = await getMainPrisma().agentTrainingProgressRecord.upsert({
+  const row = await prisma.agentTrainingProgressRecord.upsert({
     where: { agentId_moduleId: { agentId, moduleId } },
     update: {
       status: result.passed ? "COMPLETED" : "IN_PROGRESS",
@@ -88,8 +138,53 @@ export async function hasCompletedRequiredTraining(agentId: string) {
   const required = modules.filter((module) => module.required);
   if (!required.length) return true;
   return required.every((module) =>
-    progress.some((entry) => entry.moduleId === module.id && entry.status === "COMPLETED"),
+    progress.some((entry) => entry.moduleId === module.id && entry.status === "COMPLETED" && !isExpired(entry.expiresAt)),
   );
+}
+
+export async function getPostgresAgentTrainingCertificates(agentId: string): Promise<AgentTrainingTrackCertificate[]> {
+  const [modules, progress] = await Promise.all([
+    listPostgresAgentTrainingModules(),
+    listPostgresAgentTrainingProgress(agentId),
+  ]);
+  return buildTrackCertificates(modules, progress);
+}
+
+export async function getPostgresAgentTrainingAnalytics(agentIds: string[]): Promise<AgentTrainingAnalytics> {
+  const [modules, rows] = await Promise.all([
+    listPostgresAgentTrainingModules(),
+    getMainPrisma().agentTrainingProgressRecord.findMany(),
+  ]);
+  const progress = rows.map(toTrainingProgress);
+  const completed = progress.filter((entry) => entry.status === "COMPLETED" && !isExpired(entry.expiresAt));
+  const scored = progress.filter((entry) => Number.isFinite(entry.score));
+  const required = modules.filter((module) => module.required);
+  const incompleteAgents = agentIds.filter((agentId) =>
+    required.some((module) => !progress.some((entry) => entry.agentId === agentId && entry.moduleId === module.id && entry.status === "COMPLETED" && !isExpired(entry.expiresAt))),
+  ).length;
+  const tracks = uniqueTracks(modules);
+  return {
+    totalModules: modules.length,
+    requiredModules: required.length,
+    activeModules: modules.filter((module) => module.active !== false).length,
+    agentsTrained: new Set(completed.map((entry) => entry.agentId)).size,
+    averageScore: scored.length ? Math.round(scored.reduce((sum, entry) => sum + (entry.score ?? 0), 0) / scored.length) : 0,
+    failedAttempts: progress.filter((entry) => entry.passed === false || entry.status === "IN_PROGRESS").reduce((sum, entry) => sum + Math.max(1, entry.attemptCount ?? 1), 0),
+    incompleteAgents,
+    expiredCompletions: progress.filter((entry) => entry.status === "COMPLETED" && isExpired(entry.expiresAt)).length,
+    trackCompletion: tracks.map((track) => {
+      const trackModules = modules.filter((module) => module.track === track);
+      const completedAgents = agentIds.filter((agentId) =>
+        trackModules.every((module) => progress.some((entry) => entry.agentId === agentId && entry.moduleId === module.id && entry.status === "COMPLETED" && !isExpired(entry.expiresAt))),
+      ).length;
+      return {
+        track,
+        completedAgents,
+        totalAgents: agentIds.length,
+        percent: agentIds.length ? Math.round((completedAgents / agentIds.length) * 100) : 0,
+      };
+    }),
+  };
 }
 
 export async function ensureDefaultTrainingModules() {
@@ -134,14 +229,20 @@ function toTrainingModule(row: AgentTrainingModuleRecord): AgentTrainingModule {
     title: row.title,
     description: row.description,
     type: isTrainingType(row.type) ? row.type : "DOCUMENT",
+    track: readTrack(payload.track),
+    level: readLevel(payload.level),
     contentUrl: row.contentUrl ?? undefined,
     durationMinutes: row.durationMinutes,
     required: row.required,
+    active: row.active,
     order: row.order,
     lessons: readLessons(payload.lessons),
     quiz: readQuiz(payload.quiz),
     resources: readResources(payload.resources),
     certificateTitle: stringValue(payload.certificateTitle),
+    certificateUrl: stringValue(payload.certificateUrl),
+    expiresAfterDays: numberValue(payload.expiresAfterDays),
+    manualSections: readManualSections(payload.manualSections),
   };
 }
 
@@ -154,9 +255,13 @@ function toTrainingProgress(row: AgentTrainingProgressRecord): AgentTrainingProg
     status: row.status === "IN_PROGRESS" || row.status === "COMPLETED" ? row.status : "NOT_STARTED",
     score: numberValue(payload.score),
     passed: booleanValue(payload.passed),
+    attemptCount: numberValue(payload.attemptCount),
     submittedAnswers: readStringRecord(payload.submittedAnswers),
     completedAt: stringValue(payload.completedAt) ?? row.updatedAt.toISOString(),
+    expiresAt: stringValue(payload.expiresAt),
     certificateUrl: stringValue(payload.certificateUrl),
+    certificateTitle: stringValue(payload.certificateTitle),
+    track: readTrack(payload.track),
   };
 }
 
@@ -207,14 +312,20 @@ function toTrainingModulePayload(module: AgentTrainingModule): Prisma.InputJsonO
     title: module.title,
     description: module.description,
     type: module.type,
+    track: module.track,
+    level: module.level,
     ...(module.contentUrl ? { contentUrl: module.contentUrl } : {}),
     durationMinutes: module.durationMinutes,
     required: module.required,
+    active: module.active ?? true,
     order: module.order,
     ...(module.certificateTitle ? { certificateTitle: module.certificateTitle } : {}),
+    ...(module.certificateUrl ? { certificateUrl: module.certificateUrl } : {}),
+    ...(module.expiresAfterDays ? { expiresAfterDays: module.expiresAfterDays } : {}),
     lessons: module.lessons ?? [],
     ...(module.quiz ? { quiz: module.quiz, answerKey: defaultAnswerKey(module.id) } : {}),
     resources: module.resources ?? [],
+    manualSections: module.manualSections ?? [],
   };
 }
 
@@ -288,6 +399,41 @@ function readResources(value: unknown) {
   }).filter((resource) => resource.id && resource.title && resource.url);
 }
 
+function readManualSections(value: unknown) {
+  if (!Array.isArray(value)) return undefined;
+  return value.map((section) => {
+    const item = readObject(section);
+    return {
+      id: stringValue(item.id) ?? "",
+      title: stringValue(item.title) ?? "",
+      body: stringValue(item.body) ?? "",
+    };
+  }).filter((section) => section.id && section.title);
+}
+
+function buildTrackCertificates(modules: AgentTrainingModule[], progress: AgentTrainingProgress[]): AgentTrainingTrackCertificate[] {
+  return uniqueTracks(modules).map((track) => {
+    const trackModules = modules.filter((module) => module.track === track);
+    const matching = trackModules.map((module) => progress.find((entry) => entry.moduleId === module.id && entry.status === "COMPLETED" && !isExpired(entry.expiresAt)));
+    const completed = matching.every(Boolean) && trackModules.length > 0;
+    const completedDates = matching.map((entry) => entry?.completedAt).filter((value): value is string => Boolean(value));
+    const expiryDates = matching.map((entry) => entry?.expiresAt).filter((value): value is string => Boolean(value)).sort();
+    return {
+      track,
+      title: certificateTitleForTrack(track),
+      completed,
+      completedAt: completedDates.sort().at(-1),
+      expiresAt: expiryDates[0],
+      certificateUrl: completed ? certificateUrlForTrack(track) : undefined,
+      requiredModuleIds: trackModules.map((module) => module.id),
+    };
+  });
+}
+
+function uniqueTracks(modules: AgentTrainingModule[]) {
+  return Array.from(new Set(modules.map((module) => module.track))).sort();
+}
+
 function readObject(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
 }
@@ -312,6 +458,32 @@ function numberValue(value: unknown) {
 
 function booleanValue(value: unknown) {
   return typeof value === "boolean" ? value : undefined;
+}
+
+function isExpired(value?: string) {
+  return Boolean(value && new Date(value).getTime() < Date.now());
+}
+
+function readTrack(value: unknown): AgentTrainingTrack {
+  return value === "VERIFIED_AGENT" || value === "SENIOR_AGENT" || value === "PROPERTY_MANAGER" ? value : "BEGINNER";
+}
+
+function readLevel(value: unknown) {
+  return value === "INTERMEDIATE" || value === "ADVANCED" ? value : "BEGINNER";
+}
+
+function certificateTitleForTrack(track: AgentTrainingTrack) {
+  if (track === "VERIFIED_AGENT") return "Verified HomeLink Agent Certificate";
+  if (track === "SENIOR_AGENT") return "Senior HomeLink Agent Certificate";
+  if (track === "PROPERTY_MANAGER") return "HomeLink Property Manager Certificate";
+  return "Beginner HomeLink Agent Certificate";
+}
+
+function certificateUrlForTrack(track: AgentTrainingTrack) {
+  if (track === "VERIFIED_AGENT") return "/resources/agents/certificates/verified-agent-certificate.md";
+  if (track === "SENIOR_AGENT") return "/resources/agents/certificates/senior-agent-certificate.md";
+  if (track === "PROPERTY_MANAGER") return "/resources/agents/certificates/property-manager-certificate.md";
+  return "/resources/agents/certificates/beginner-agent-certificate.md";
 }
 
 function readResourceType(value: unknown): "PDF" | "DOC" | "CHECKLIST" | "TEMPLATE" | "LINK" {

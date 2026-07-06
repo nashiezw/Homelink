@@ -347,14 +347,30 @@ export type AgentTrainingModule = {
   title: string;
   description: string;
   type: "VIDEO" | "DOCUMENT" | "QUIZ" | "ASSIGNMENT";
+  track: AgentTrainingTrack;
+  level: AgentTrainingLevel;
   contentUrl?: string;
   durationMinutes: number;
   required: boolean;
+  active?: boolean;
   order: number;
   lessons?: AgentTrainingLesson[];
   quiz?: AgentTrainingQuiz;
   resources?: AgentTrainingResource[];
   certificateTitle?: string;
+  certificateUrl?: string;
+  expiresAfterDays?: number;
+  manualSections?: AgentTrainingManualSection[];
+};
+
+export type AgentTrainingTrack = "BEGINNER" | "VERIFIED_AGENT" | "SENIOR_AGENT" | "PROPERTY_MANAGER";
+
+export type AgentTrainingLevel = "BEGINNER" | "INTERMEDIATE" | "ADVANCED";
+
+export type AgentTrainingManualSection = {
+  id: string;
+  title: string;
+  body: string;
 };
 
 export type AgentTrainingLesson = {
@@ -391,9 +407,35 @@ export type AgentTrainingProgress = {
   status: "NOT_STARTED" | "IN_PROGRESS" | "COMPLETED";
   score?: number;
   passed?: boolean;
+  attemptCount?: number;
   submittedAnswers?: Record<string, string>;
   completedAt?: string;
+  expiresAt?: string;
   certificateUrl?: string;
+  certificateTitle?: string;
+  track?: AgentTrainingTrack;
+};
+
+export type AgentTrainingTrackCertificate = {
+  track: AgentTrainingTrack;
+  title: string;
+  completed: boolean;
+  completedAt?: string;
+  expiresAt?: string;
+  certificateUrl?: string;
+  requiredModuleIds: string[];
+};
+
+export type AgentTrainingAnalytics = {
+  totalModules: number;
+  requiredModules: number;
+  activeModules: number;
+  agentsTrained: number;
+  averageScore: number;
+  failedAttempts: number;
+  incompleteAgents: number;
+  expiredCompletions: number;
+  trackCompletion: Array<{ track: AgentTrainingTrack; completedAgents: number; totalAgents: number; percent: number }>;
 };
 
 export type AgentRating = {
@@ -531,4 +573,5 @@ export type AgentAdminAnalytics = {
   leadSourceStats: Array<{ leadSource: LeadSource; leads: number; closed: number; revenue: number }>;
   leadConversionRate: number;
   provincePerformance: Array<{ province: string; leads: number; closed: number }>;
+  training?: AgentTrainingAnalytics;
 };

@@ -30,6 +30,7 @@ import type {
   AgentTask,
   AgentTrainingModule,
   AgentTrainingProgress,
+  AgentTrainingTrackCertificate,
   AgentWalletEntry,
 } from "@/lib/agents/types";
 
@@ -38,7 +39,7 @@ type AgentData = {
   stats: AgentDashboardStats;
   leads: AgentLead[];
   commissions: AgentCommission[];
-  training: { modules: AgentTrainingModule[]; progress: AgentTrainingProgress[] };
+  training: { modules: AgentTrainingModule[]; progress: AgentTrainingProgress[]; certificates?: AgentTrainingTrackCertificate[] };
   appointments: AgentAppointment[];
   tasks: AgentTask[];
   wallet: AgentWalletEntry[];
@@ -298,9 +299,35 @@ export function AgentDashboardClient() {
 
       {tab === "Training" && (
         <div className="grid gap-4">
+          {!!training.certificates?.length && (
+            <div className="premium-card rounded-xl p-5">
+              <p className="font-semibold">Track certificates</p>
+              <div className="mt-3 grid gap-3 md:grid-cols-2">
+                {training.certificates.map((certificate) => (
+                  <div key={certificate.track} className="rounded-lg border border-slate-200 bg-white/70 p-3 text-sm dark:border-slate-700 dark:bg-slate-900/40">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="font-semibold">{certificate.title}</p>
+                        <p className="text-xs text-slate-500">{certificate.track.replace(/_/g, " ")}</p>
+                        {certificate.expiresAt && <p className="mt-1 text-xs text-amber-700">Expires {new Date(certificate.expiresAt).toLocaleDateString()}</p>}
+                      </div>
+                      {certificate.completed && certificate.certificateUrl ? (
+                        <a href={certificate.certificateUrl} download className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700">
+                          <Download className="size-3" /> Certificate
+                        </a>
+                      ) : (
+                        <span className="text-xs font-semibold text-slate-500">In progress</span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           {training.modules.map((module) => {
             const progress = training.progress.find((p) => p.moduleId === module.id);
             const done = progress?.status === "COMPLETED";
+            const expired = progress?.expiresAt ? new Date(progress.expiresAt).getTime() < Date.now() : false;
             const selectedAnswers = trainingAnswers[module.id] ?? {};
             const quizReady = !module.quiz || module.quiz.questions.every((question) => selectedAnswers[question.id]);
             return (
@@ -310,18 +337,28 @@ export function AgentDashboardClient() {
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="font-semibold">{module.title}</p>
                       {module.required && <span className="rounded-full bg-emerald-100 px-2 py-1 text-xs font-semibold text-emerald-800">Required</span>}
+                      <span className="rounded-full bg-cyan-100 px-2 py-1 text-xs font-semibold text-cyan-800">{module.track.replace(/_/g, " ")}</span>
+                      <span className="rounded-full bg-purple-100 px-2 py-1 text-xs font-semibold text-purple-800">{module.level.toLowerCase()}</span>
                       <span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-700">{module.durationMinutes} min</span>
                     </div>
                     <p className="mt-1 text-sm text-slate-600">{module.description}</p>
                     {progress?.score !== undefined && (
-                      <p className="mt-2 text-sm font-semibold text-slate-700">Score: {progress.score}% {progress.passed === false ? "(retry needed)" : ""}</p>
+                      <p className="mt-2 text-sm font-semibold text-slate-700">
+                        Score: {progress.score}% {progress.passed === false ? "(retry needed)" : ""} {progress.attemptCount ? `- attempt ${progress.attemptCount}` : ""}
+                      </p>
+                    )}
+                    {expired && (
+                      <p className="mt-1 text-sm font-semibold text-amber-700">Expired - retake required.</p>
+                    )}
+                    {progress?.expiresAt && !expired && (
+                      <p className="mt-1 text-xs text-slate-500">Valid until {new Date(progress.expiresAt).toLocaleDateString()}.</p>
                     )}
                   </div>
-                  {done ? (
+                  {done && !expired ? (
                     <span className="text-sm font-medium text-emerald-700">Completed</span>
                   ) : (
                     <Button onClick={() => void completeTraining(module)} disabled={!quizReady}>
-                      <GraduationCap className="size-4" /> {module.quiz ? "Submit quiz" : "Complete"}
+                      <GraduationCap className="size-4" /> {progress?.passed === false || expired ? "Retake" : module.quiz ? "Submit quiz" : "Complete"}
                     </Button>
                   )}
                 </div>

@@ -3,7 +3,7 @@ import { hashPassword } from "@/lib/auth/password";
 import { getMainPrisma, isPostgresStoreEnabled } from "@/lib/db/main-prisma";
 import { listAdminListingsFromPostgres } from "@/lib/listings/postgres-listing-repository";
 import {
-  getPostgresAgentSettings,
+  getPostgresAgentTrainingCertificates,
   hasCompletedRequiredTraining,
   listPostgresAgentTrainingModules,
   listPostgresAgentTrainingProgress,
@@ -20,20 +20,17 @@ export async function getAgentDashboardFromPostgres(userId: string) {
     include: { agencyMemberships: { include: { agency: true } } },
   });
   if (!user || !user.roles.includes(Role.AGENT)) return null;
-  const [leads, commissions, listings, notifications, trainingModules, trainingProgress, agentSettings] = await Promise.all([
+  const [leads, commissions, listings, notifications, trainingModules, trainingProgress, trainingCertificates] = await Promise.all([
     prisma.agentLeadRecord.findMany({ where: { assignedAgentId: userId }, orderBy: { createdAt: "desc" }, take: 100 }),
     prisma.agentCommissionRecord.findMany({ where: { agentId: userId }, orderBy: { createdAt: "desc" }, take: 100 }),
     listAdminListingsFromPostgres({ includeDeleted: false }),
     prisma.notification.findMany({ where: { userId }, orderBy: { createdAt: "desc" }, take: 20 }),
     listPostgresAgentTrainingModules(),
     listPostgresAgentTrainingProgress(userId),
-    getPostgresAgentSettings(),
+    getPostgresAgentTrainingCertificates(userId),
   ]);
   const agentListings = listings.filter((listing) => listing.ownerId === userId);
-  const requiredTraining = trainingModules.filter((module) => module.required);
-  const trainingCompleted = !agentSettings.approvalWorkflow.trainingRequired || requiredTraining.every((module) =>
-    trainingProgress.some((progress) => progress.moduleId === module.id && progress.status === "COMPLETED"),
-  );
+  const trainingCompleted = await hasCompletedRequiredTraining(userId);
   return {
     profile: {
       userId: user.id,
@@ -44,7 +41,7 @@ export async function getAgentDashboardFromPostgres(userId: string) {
       status: user.accountStatus === "ACTIVE" ? "ACTIVE" : "SUSPENDED",
       agencyId: user.agencyMemberships[0]?.agencyId,
       trainingCompleted,
-      certificateUrl: trainingCompleted ? "/uploads/agents/training-certificate.pdf" : undefined,
+      certificateUrl: trainingCertificates.find((certificate) => certificate.completed)?.certificateUrl,
     },
     stats: {
       activeListings: agentListings.filter((l) => l.status === "ACTIVE").length,
@@ -54,7 +51,7 @@ export async function getAgentDashboardFromPostgres(userId: string) {
     },
     leads,
     commissions: commissions.map(commissionRow),
-    training: { modules: trainingModules, progress: trainingProgress },
+    training: { modules: trainingModules, progress: trainingProgress, certificates: trainingCertificates },
     appointments: [],
     tasks: [],
     wallet: [],
