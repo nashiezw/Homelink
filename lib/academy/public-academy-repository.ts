@@ -80,7 +80,11 @@ export async function getLearnerAcademyDashboard(learnerId: string) {
   const prisma = getMainPrisma();
   const [applications, notifications, documents, announcements, certificates, courseProgressRows] = await Promise.all([
     prisma.academyLearnerApplication.findMany({
-      where: { learnerId },
+      where: {
+        learnerId,
+        courseId: { in: PROGRAMME_COURSE_IDS },
+        course: { status: TrainingCourseStatus.PUBLISHED },
+      },
       include: {
         course: {
           include: {

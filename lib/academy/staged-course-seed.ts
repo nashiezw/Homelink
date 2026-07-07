@@ -460,6 +460,18 @@ async function migrateLegacyEnrollments(prisma: ReturnType<typeof getMainPrisma>
       update: { status: "ACTIVE", dueAt: legacy.accessEndsAt },
     });
   }
+
+  await prisma.academyLearnerApplication.updateMany({
+    where: { courseId: LEGACY_COURSE_ID },
+    data: {
+      status: "EXPIRED",
+      adminNote: "Superseded by the HomeLink Agent Foundations programme. Your access continues on the new staged certification path.",
+    },
+  });
+  await prisma.courseEnrolment.updateMany({
+    where: { courseId: LEGACY_COURSE_ID },
+    data: { status: "ARCHIVED" },
+  });
 }
 
 /** Primary lesson PDF — first branded resource only; never the full manual. */

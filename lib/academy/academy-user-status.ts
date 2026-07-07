@@ -13,7 +13,11 @@ export async function getAcademyUserStatus(userId: string) {
   const prisma = getMainPrisma();
   const [applications, activeEnrolments] = await Promise.all([
     prisma.academyLearnerApplication.findMany({
-      where: { learnerId: userId },
+      where: {
+        learnerId: userId,
+        courseId: { in: PROGRAMME_COURSE_IDS },
+        course: { status: "PUBLISHED" },
+      },
       include: { course: { select: { id: true, title: true, slug: true } }, payment: { select: { id: true } } },
       orderBy: { updatedAt: "desc" },
     }),
