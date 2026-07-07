@@ -360,15 +360,14 @@ async function seedCourse(prisma: ReturnType<typeof getMainPrisma>, manifest: Ac
               lessons: {
                 create: module.lessons.map((lesson, lessonIndex) => {
                   const resourceTitles = resourcesByGroup[lesson] ?? [];
+                  const lessonContent = getLessonContent(lesson, module.title);
                   return {
                     title: lesson,
-                    summary: resourceTitles.length
-                      ? `Use the Training Resources library downloads: ${resourceTitles.join(", ")}.`
-                      : "Study this lesson in sequence with the official manual and complete the related practical work.",
-                    richText: resourceTitles.length
-                      ? `<p>This lesson is supported by the following downloadable resources: ${resourceTitles.join(", ")}.</p>`
-                      : "<p>This lesson follows the official HomeLink Zimbabwe Real Estate Agent Training Manual.</p>",
-                    estimatedMinutes: 30,
+                    summary: lessonContent.summary,
+                    richText: lessonContent.richText,
+                    videoUrl: lessonContent.videoUrl,
+                    pdfUrl: lessonContent.pdfUrl,
+                    estimatedMinutes: lessonContent.estimatedMinutes,
                     completionRequirement: "VIEW",
                     sortOrder: lessonIndex,
                     lessonDownloads: {
@@ -583,4 +582,174 @@ function officialCoursePayload(categoryId: string) {
 
 function slugify(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "academy";
+}
+
+function getLessonContent(lessonTitle: string, moduleTitle: string) {
+  const lessonMap: Record<string, { summary: string; richText: string; videoUrl?: string; pdfUrl?: string; estimatedMinutes: number }> = {
+    "Welcome to HomeLink Zimbabwe": {
+      summary: "Introduction to the HomeLink Zimbabwe platform and your journey as a real estate professional.",
+      richText: `<h2>Welcome to HomeLink Zimbabwe</h2>
+        <p>This lesson introduces you to HomeLink Zimbabwe, the leading property platform connecting buyers, sellers, landlords, and tenants across the country. You will learn about our mission, values, and the opportunities available to certified agents.</p>
+        <h3>What You'll Learn</h3>
+        <ul>
+          <li>HomeLink Zimbabwe's history and market position</li>
+          <li>The benefits of becoming a certified HomeLink agent</li>
+          <li>Overview of the agent portal and tools</li>
+          <li>Success stories from top-performing agents</li>
+        </ul>
+        <h3>Key Takeaways</h3>
+        <p>By the end of this lesson, you'll understand why HomeLink is the preferred choice for property professionals in Zimbabwe and how to leverage our platform for your success.</p>`,
+      estimatedMinutes: 25,
+    },
+    "How to use this manual": {
+      summary: "Guide to navigating and effectively using the HomeLink training manual.",
+      richText: `<h2>How to Use This Training Manual</h2>
+        <p>This manual is your comprehensive guide to becoming a successful real estate agent with HomeLink Zimbabwe. Each chapter builds upon the previous one, so we recommend studying in sequence.</p>
+        <h3>Manual Structure</h3>
+        <ul>
+          <li><strong>Foundations:</strong> Real estate basics and professional ethics</li>
+          <li><strong>Operations:</strong> Daily workflows and business generation</li>
+          <li><strong>Compliance:</strong> Legal requirements and documentation</li>
+          <li><strong>Excellence:</strong> Building a sustainable career</li>
+        </ul>
+        <h3>Study Tips</h3>
+        <p>Take notes, complete the knowledge checks, and apply what you learn in practical scenarios. The manual includes downloadable templates and checklists to support your daily work.</p>`,
+      estimatedMinutes: 20,
+    },
+    "Your journey to becoming a professional real estate agent": {
+      summary: "Overview of the certification path and career opportunities with HomeLink.",
+      richText: `<h2>Your Journey to Professional Excellence</h2>
+        <p>Becoming a certified HomeLink agent opens doors to a rewarding career in Zimbabwe's dynamic real estate market. This lesson outlines your path from trainee to certified professional.</p>
+        <h3>Certification Path</h3>
+        <ol>
+          <li>Complete all course modules and lessons</li>
+          <li>Pass knowledge checks with 80% or higher</li>
+          <li>Submit practical assignments for review</li>
+          <li>Pass the final certification examination</li>
+          <li>Receive your HomeLink Agent Certificate</li>
+        </ol>
+        <h3>Career Opportunities</h3>
+        <p>Certified agents access exclusive listings, commission structures, marketing support, and ongoing professional development. Join our network of successful property professionals.</p>`,
+      estimatedMinutes: 30,
+    },
+    "Understanding the real estate industry": {
+      summary: "Comprehensive overview of the Zimbabwe real estate market landscape.",
+      richText: `<h2>Understanding the Real Estate Industry</h2>
+        <p>The Zimbabwe real estate market offers significant opportunities for trained professionals. This lesson provides market insights, trends, and the role of agents in property transactions.</p>
+        <h3>Market Overview</h3>
+        <ul>
+          <li>Current market conditions and trends in Zimbabwe</li>
+          <li>Key property sectors: residential, commercial, industrial</li>
+          <li>Urban vs rural market dynamics</li>
+          <li>Impact of economic factors on property values</li>
+          <li>Understanding property cycles and market timing</li>
+        </ul>
+        <h3>The Agent's Role</h3>
+        <p>Real estate agents facilitate property transactions, provide market expertise, negotiate deals, and ensure legal compliance. Your role is critical in connecting buyers and sellers while protecting all parties' interests.</p>
+        <h3>Key Market Players</h3>
+        <ul>
+          <li>Property owners and investors</li>
+          <li>Real estate agents and agencies</li>
+          <li>Property developers</li>
+          <li>Legal professionals and conveyancers</li>
+          <li>Financial institutions and mortgage lenders</li>
+        </ul>
+        <h3>Market Trends in Zimbabwe</h3>
+        <p>The Zimbabwean property market has unique characteristics influenced by economic policies, urbanization rates, and foreign investment patterns. Understanding these trends helps you provide better advice to clients.</p>`,
+      estimatedMinutes: 45,
+    },
+    "Role, duties and responsibilities of a professional agent": {
+      summary: "Detailed explanation of what it means to be a professional real estate agent.",
+      richText: `<h2>Role, Duties and Responsibilities</h2>
+        <p>Professional real estate agents have specific duties and ethical obligations. This lesson defines your responsibilities to clients, the industry, and the public.</p>
+        <h3>Core Responsibilities</h3>
+        <ul>
+          <li>Property valuation and market analysis</li>
+          <li>Marketing and advertising properties</li>
+          <li>Conducting property viewings</li>
+          <li>Negotiating offers and closing deals</li>
+          <li>Maintaining accurate records</li>
+        </ul>
+        <h3>Fiduciary Duties</h3>
+        <p>As an agent, you owe fiduciary duties to your clients including loyalty, confidentiality, full disclosure, and reasonable care. Understanding these duties is essential for professional practice.</p>`,
+      estimatedMinutes: 40,
+    },
+    "Professional ethics, conduct and customer service": {
+      summary: "Ethical standards and customer service excellence for real estate agents.",
+      richText: `<h2>Professional Ethics and Customer Service</h2>
+        <p>Ethical conduct is the foundation of a successful real estate career. This lesson covers professional standards, ethical dilemmas, and delivering exceptional customer service.</p>
+        <h3>Ethical Principles</h3>
+        <ul>
+          <li>Honesty and integrity in all dealings</li>
+          <li>Fair treatment of all parties</li>
+          <li>Confidentiality of client information</li>
+          <li>Disclosure of material facts</li>
+          <li>Avoidance of conflicts of interest</li>
+          <li>Professional competence and continuous improvement</li>
+        </ul>
+        <h3>Customer Service Excellence</h3>
+        <p>Build lasting relationships through responsive communication, market expertise, and going above and beyond for your clients. Happy clients become repeat customers and referrals.</p>
+        <h3>Handling Ethical Dilemmas</h3>
+        <ul>
+          <li>Identify potential conflicts early</li>
+          <li>Consult with supervisors or legal counsel when uncertain</li>
+          <li>Document all decisions and communications</li>
+          <li>Prioritize client interests while maintaining fairness</li>
+          <li>Know when to decline representation</li>
+        </ul>
+        <h3>Building Trust</h3>
+        <p>Trust is earned through consistent ethical behavior, transparency, and delivering on promises. Your reputation is your most valuable asset in real estate.</p>`,
+      estimatedMinutes: 35,
+    },
+    "Essential real estate terminology": {
+      summary: "Key terms and vocabulary used in the Zimbabwe real estate industry.",
+      richText: `<h2>Essential Real Estate Terminology</h2>
+        <p>Master the language of real estate to communicate professionally with clients, colleagues, and legal professionals. This lesson covers essential terminology.</p>
+        <h3>Property Terms</h3>
+        <ul>
+          <li><strong>Freehold:</strong> Complete ownership of property and land</li>
+          <li><strong>Leasehold:</strong> Rights to occupy property for a specified period</li>
+          <li><strong>Sectional Title:</strong> Ownership of a unit in a complex</li>
+          <li><strong>Stand:</strong> A plot of land for development</li>
+        </ul>
+        <h3>Transaction Terms</li>
+        <ul>
+          <li><strong>Offer to Purchase:</strong> Formal written offer to buy property</li>
+          <li><strong>Deed of Sale:</strong> Legal transfer document</li>
+          <li><strong>Conveyancing:</strong> Legal process of property transfer</li>
+          <li><strong>Bond:</strong> Mortgage loan secured by property</li>
+        </ul>`,
+      estimatedMinutes: 30,
+    },
+    "Chapter 1 knowledge check and practical assessment": {
+      summary: "Assessment of your understanding of real estate foundations.",
+      richText: `<h2>Chapter 1 Knowledge Check</h2>
+        <p>This assessment tests your understanding of the foundational concepts covered in Chapter 1. Complete the knowledge check and practical assessment to demonstrate your competency.</p>
+        <h3>Assessment Components</h3>
+        <ul>
+          <li>Multiple choice questions on industry knowledge</li>
+          <li>Scenario-based ethical dilemmas</li>
+          <li>Terminology matching exercise</li>
+          <li>Practical case study analysis</li>
+        </ul>
+        <h3>Passing Score</h3>
+        <p>You must achieve 80% or higher to proceed to the next chapter. Review the lessons and retake the assessment if needed.</p>`,
+      estimatedMinutes: 30,
+    },
+  };
+
+  // Default content for lessons not specifically defined
+  return lessonMap[lessonTitle] || {
+    summary: `Study this lesson in the ${moduleTitle} module to advance your real estate knowledge and skills.`,
+    richText: `<h2>${lessonTitle}</h2>
+      <p>This lesson is part of the <strong>${moduleTitle}</strong> module. Study the content carefully and complete any associated assessments.</p>
+      <h3>Learning Objectives</h3>
+      <ul>
+        <li>Understand the key concepts of ${lessonTitle}</li>
+        <li>Apply this knowledge in practical scenarios</li>
+        <li>Complete the knowledge check for this lesson</li>
+      </ul>
+      <p>Refer to the official HomeLink Zimbabwe Real Estate Agent Training Manual for detailed information and supporting resources.</p>`,
+    estimatedMinutes: 30,
+  };
 }

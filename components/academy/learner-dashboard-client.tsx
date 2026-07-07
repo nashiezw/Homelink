@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Award, Bell, BookOpen, CheckCircle2, Download, FileText, Loader2, Upload } from "lucide-react";
+import { Award, Bell, BookOpen, CheckCircle2, Download, FileText, Loader2, Upload, Clock, TrendingUp, Users, Zap } from "lucide-react";
 import { PageShell } from "@/components/layout/page-shell";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { Button } from "@/components/ui/button";
 import { useApp } from "@/components/providers/app-provider";
 import { apiFetch } from "@/lib/api/client";
+import { LessonViewer } from "@/components/academy/lesson-viewer";
 
 type LearnerDashboard = {
   metrics: Record<string, number>;
@@ -37,6 +38,7 @@ export function LearnerDashboardClient() {
   const { user, showToast } = useApp();
   const [data, setData] = useState<LearnerDashboard | null>(null);
   const [busyPaymentId, setBusyPaymentId] = useState<string | null>(null);
+  const [viewingCourse, setViewingCourse] = useState<{ course: any; lessonId?: string } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const paymentRef = useRef<string>("");
 
@@ -85,78 +87,187 @@ export function LearnerDashboardClient() {
     );
   }
 
+  if (viewingCourse) {
+    return (
+      <LessonViewer
+        course={viewingCourse.course}
+        initialLessonId={viewingCourse.lessonId}
+        onBack={() => setViewingCourse(null)}
+        onCompleteLesson={(lessonId) => {
+          showToast("Lesson marked as complete!");
+          void load();
+        }}
+      />
+    );
+  }
+
   if (!data) {
     return <PageShell eyebrow="Academy" title="Learner dashboard" description="Loading your training workspace..."><div className="h-24 animate-pulse rounded-xl bg-slate-100 dark:bg-slate-800" /></PageShell>;
   }
 
   return (
     <PageShell
-      eyebrow="Academy learner"
-      title={`Welcome, ${user.name}`}
-      description="Your public learning dashboard for courses, payment approval, resources, announcements, and certificates."
-      actions={<Link href="/academy"><Button variant="secondary">Browse courses</Button></Link>}
+      eyebrow="My Learning Dashboard"
+      title={`Welcome back, ${user.name}`}
+      description="Track your progress, access course materials, and manage your Academy journey."
+      actions={<Link href="/academy"><Button variant="secondary"><BookOpen className="size-4 mr-2" /> Browse Courses</Button></Link>}
     >
+      {/* Stats Overview */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Active courses" value={String(data.metrics.enrolledCourses)} icon={BookOpen} helper="Approved enrolments" />
-        <StatCard label="Pending approvals" value={String(data.metrics.pendingApprovals)} icon={Upload} helper="Payment/proof workflow" />
-        <StatCard label="Certificates" value={String(data.metrics.certificates)} icon={Award} helper="Available after completion" />
-        <StatCard label="Resources" value={String(data.metrics.downloads)} icon={Download} helper="Download library" />
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-950">
+          <div className="flex items-center gap-3">
+            <div className="rounded-xl bg-emerald-100 p-3 dark:bg-emerald-900/30">
+              <BookOpen className="size-6 text-emerald-600 dark:text-emerald-400" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold">{data.metrics.enrolledCourses}</p>
+              <p className="text-sm text-slate-600 dark:text-slate-400">Active Courses</p>
+            </div>
+          </div>
+        </div>
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-950">
+          <div className="flex items-center gap-3">
+            <div className="rounded-xl bg-amber-100 p-3 dark:bg-amber-900/30">
+              <Clock className="size-6 text-amber-600 dark:text-amber-400" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold">{data.metrics.pendingApprovals}</p>
+              <p className="text-sm text-slate-600 dark:text-slate-400">Pending Approvals</p>
+            </div>
+          </div>
+        </div>
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-950">
+          <div className="flex items-center gap-3">
+            <div className="rounded-xl bg-purple-100 p-3 dark:bg-purple-900/30">
+              <Award className="size-6 text-purple-600 dark:text-purple-400" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold">{data.metrics.certificates}</p>
+              <p className="text-sm text-slate-600 dark:text-slate-400">Certificates</p>
+            </div>
+          </div>
+        </div>
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-950">
+          <div className="flex items-center gap-3">
+            <div className="rounded-xl bg-blue-100 p-3 dark:bg-blue-900/30">
+              <Download className="size-6 text-blue-600 dark:text-blue-400" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold">{data.metrics.downloads}</p>
+              <p className="text-sm text-slate-600 dark:text-slate-400">Resources</p>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <div className="mt-6 grid gap-5 xl:grid-cols-[minmax(0,1.3fr)_minmax(20rem,0.7fr)]">
+      <div className="mt-8 grid gap-6 xl:grid-cols-[minmax(0,1.3fr)_minmax(20rem,0.7fr)]">
         <section className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-2xl font-bold">My Courses</h2>
+          </div>
           {data.applications.map((application) => (
-            <article key={application.id} className="premium-card rounded-xl p-5">
+            <article key={application.id} className="rounded-2xl border-2 border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-950">
               <div className="flex flex-wrap items-start justify-between gap-4">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wider text-emerald-700">{application.status.replace(/_/g, " ")}</p>
-                  <h2 className="mt-1 text-xl font-semibold">{application.course.title}</h2>
-                  <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">{application.course.description}</p>
-                  {application.adminNote && <p className="mt-2 text-sm font-medium text-amber-700">{application.adminNote}</p>}
-                  {application.accessEndsAt && <p className="mt-2 text-xs text-slate-500">Access until {new Date(application.accessEndsAt).toLocaleDateString()}</p>}
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                      application.status === "APPROVED" 
+                        ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300" 
+                        : application.status === "PENDING_PAYMENT" || application.status === "PAYMENT_UPLOADED"
+                        ? "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300"
+                        : "bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300"
+                    }`}>
+                      {application.status.replace(/_/g, " ")}
+                    </span>
+                  </div>
+                  <h3 className="text-xl font-bold mb-2">{application.course.title}</h3>
+                  <p className="text-slate-600 dark:text-slate-400 leading-relaxed">{application.course.description}</p>
+                  {application.adminNote && (
+                    <div className="mt-3 rounded-lg bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-900/20 dark:text-amber-200">
+                      <p className="font-semibold">Admin Note:</p>
+                      <p>{application.adminNote}</p>
+                    </div>
+                  )}
+                  {application.accessEndsAt && (
+                    <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+                      <Clock className="inline size-4 mr-1" />
+                      Access until {new Date(application.accessEndsAt).toLocaleDateString()}
+                    </p>
+                  )}
                 </div>
                 <div className="text-right">
-                  <p className="text-lg font-bold">{application.currency} {application.amount.toFixed(2)}</p>
-                  <p className="text-xs text-slate-500">{application.payment?.method?.replace(/_/g, " ") ?? "Manual payment"}</p>
+                  <p className="text-2xl font-bold text-emerald-600">{application.currency} {application.amount.toFixed(2)}</p>
+                  <p className="text-sm text-slate-500">{application.payment?.method?.replace(/_/g, " ") ?? "Manual payment"}</p>
                 </div>
               </div>
+              
               {application.status !== "APPROVED" && application.payment && (
-                <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
-                  <p className="font-semibold">Payment approval required</p>
-                  <p className="mt-1">Upload proof of payment. An Academy admin can approve or reject the registration from the admin dashboard.</p>
-                  <Button
-                    className="mt-3"
-                    disabled={busyPaymentId === application.payment.id}
-                    onClick={() => {
-                      paymentRef.current = application.payment?.id ?? "";
-                      fileRef.current?.click();
-                    }}
-                  >
-                    {busyPaymentId === application.payment.id ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />} Upload proof
-                  </Button>
+                <div className="mt-6 rounded-xl border-2 border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50 p-5 dark:border-amber-800 dark:from-amber-900/20 dark:to-orange-900/20">
+                  <div className="flex items-start gap-3">
+                    <div className="rounded-lg bg-amber-100 p-2 dark:bg-amber-900/30">
+                      <Upload className="size-5 text-amber-600 dark:text-amber-400" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-semibold text-amber-900 dark:text-amber-100">Payment approval required</p>
+                      <p className="mt-1 text-sm text-amber-800 dark:text-amber-200">Upload proof of payment. An Academy admin will review and approve your registration.</p>
+                      <Button
+                        className="mt-3"
+                        disabled={busyPaymentId === application.payment.id}
+                        onClick={() => {
+                          paymentRef.current = application.payment?.id ?? "";
+                          fileRef.current?.click();
+                        }}
+                      >
+                        {busyPaymentId === application.payment.id ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4 mr-2" />} Upload Proof
+                      </Button>
+                    </div>
+                  </div>
                 </div>
               )}
+              
               {application.status === "APPROVED" && (
-                <div className="mt-4 grid gap-3">
+                <div className="mt-6 space-y-4">
+                  <div className="flex items-center gap-2 text-emerald-600">
+                    <CheckCircle2 className="size-5" />
+                    <span className="font-semibold">Course Access Active</span>
+                  </div>
                   {application.course.modules.map((module) => (
-                    <div key={module.id} className="rounded-lg border border-slate-200 p-4 dark:border-slate-700">
-                      <p className="font-semibold">{module.title}</p>
-                      <div className="mt-3 grid gap-2 md:grid-cols-2">
+                    <div key={module.id} className="rounded-xl border border-slate-200 bg-slate-50 p-5 dark:border-slate-800 dark:bg-slate-900/50">
+                      <h4 className="font-bold mb-4 flex items-center gap-2">
+                        <BookOpen className="size-5 text-emerald-500" />
+                        {module.title}
+                      </h4>
+                      <div className="grid gap-3 md:grid-cols-2">
                         {module.lessons.map((lesson) => (
-                          <div key={lesson.id} className="rounded-lg bg-slate-50 p-3 text-sm dark:bg-slate-900">
+                          <button
+                            key={lesson.id}
+                            onClick={() => setViewingCourse({ course: application.course, lessonId: lesson.id })}
+                            className="rounded-lg border border-slate-200 bg-white p-4 text-left hover:border-emerald-400 hover:shadow-md transition-all dark:border-slate-700 dark:bg-slate-900 dark:hover:border-emerald-700"
+                          >
                             <div className="flex items-start justify-between gap-3">
-                              <div>
+                              <div className="flex-1">
                                 <p className="font-semibold">{lesson.title}</p>
-                                <p className="text-xs text-slate-500">{lesson.estimatedMinutes} minutes</p>
+                                <p className="mt-1 text-xs text-slate-500 flex items-center gap-1">
+                                  <Clock className="size-3" />
+                                  {lesson.estimatedMinutes} minutes
+                                </p>
                               </div>
-                              <CheckCircle2 className="size-4 text-emerald-600" />
+                              <CheckCircle2 className="size-5 text-emerald-500 flex-shrink-0" />
                             </div>
-                            <p className="mt-2 text-xs text-slate-600 dark:text-slate-300">{lesson.summary}</p>
-                            <div className="mt-2 flex flex-wrap gap-2">
-                              {lesson.videoUrl && <a href={lesson.videoUrl} className="text-xs font-semibold text-emerald-700">Watch video</a>}
-                              {lesson.pdfUrl && <a href={lesson.pdfUrl} className="text-xs font-semibold text-emerald-700">Open PDF</a>}
+                            <p className="mt-2 text-sm text-slate-600 dark:text-slate-400 line-clamp-2">{lesson.summary}</p>
+                            <div className="mt-3 flex flex-wrap gap-2">
+                              {lesson.videoUrl && (
+                                <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600">
+                                  <Zap className="size-3" /> Video
+                                </span>
+                              )}
+                              {lesson.pdfUrl && (
+                                <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600">
+                                  <FileText className="size-3" /> PDF
+                                </span>
+                              )}
                             </div>
-                          </div>
+                          </button>
                         ))}
                       </div>
                     </div>
@@ -166,30 +277,60 @@ export function LearnerDashboardClient() {
             </article>
           ))}
           {!data.applications.length && (
-            <div className="premium-card rounded-xl p-8 text-center">
-              <p className="font-semibold">No Academy registrations yet</p>
-              <Link href="/academy" className="mt-3 inline-flex text-emerald-700 font-semibold hover:underline">Browse public learner courses</Link>
+            <div className="rounded-2xl border-2 border-dashed border-slate-300 p-12 text-center dark:border-slate-700">
+              <BookOpen className="size-12 mx-auto text-slate-400 mb-4" />
+              <p className="text-lg font-semibold text-slate-600 dark:text-slate-400">No courses yet</p>
+              <p className="text-sm text-slate-500 mt-2 mb-4">Start your learning journey by enrolling in a course.</p>
+              <Link href="/academy" className="inline-flex items-center gap-2 text-emerald-600 font-semibold hover:text-emerald-700">
+                <Zap className="size-4" /> Browse Available Courses
+              </Link>
             </div>
           )}
         </section>
 
         <aside className="space-y-4">
-          <Panel title="Downloads" icon={Download}>
-            {data.documents.map((document) => (
-              <a key={document.id} href={document.downloadUrl} className="flex items-start gap-3 rounded-lg border border-slate-200 p-3 text-sm dark:border-slate-700">
-                <FileText className="mt-0.5 size-4 text-emerald-600" />
-                <span><span className="block font-semibold">{document.title}</span><span className="text-xs text-slate-500">{document.category ?? document.fileType}</span></span>
-              </a>
-            ))}
-          </Panel>
-          <Panel title="Announcements" icon={Bell}>
-            {data.announcements.map((announcement) => (
-              <div key={announcement.id} className="rounded-lg bg-slate-50 p-3 text-sm dark:bg-slate-900">
-                <p className="font-semibold">{announcement.title}</p>
-                <p className="mt-1 text-xs text-slate-500">{announcement.body}</p>
+          <div className="rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-950">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="rounded-xl bg-blue-100 p-2 dark:bg-blue-900/30">
+                <Download className="size-5 text-blue-600 dark:text-blue-400" />
               </div>
-            ))}
-          </Panel>
+              <h3 className="text-lg font-bold">Downloads</h3>
+            </div>
+            <div className="space-y-2">
+              {data.documents.map((document) => (
+                <a key={document.id} href={document.downloadUrl} className="flex items-start gap-3 rounded-xl border border-slate-200 p-3 text-sm hover:border-emerald-300 hover:bg-emerald-50 dark:border-slate-700 dark:hover:border-emerald-700 dark:hover:bg-emerald-900/20 transition-colors">
+                  <FileText className="mt-0.5 size-4 text-emerald-600 flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold truncate">{document.title}</p>
+                    <p className="text-xs text-slate-500">{document.category ?? document.fileType}</p>
+                  </div>
+                </a>
+              ))}
+              {!data.documents.length && (
+                <p className="text-sm text-slate-500 text-center py-4">No downloads available</p>
+              )}
+            </div>
+          </div>
+          
+          <div className="rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-950">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="rounded-xl bg-purple-100 p-2 dark:bg-purple-900/30">
+                <Bell className="size-5 text-purple-600 dark:text-purple-400" />
+              </div>
+              <h3 className="text-lg font-bold">Announcements</h3>
+            </div>
+            <div className="space-y-3">
+              {data.announcements.map((announcement) => (
+                <div key={announcement.id} className="rounded-xl bg-gradient-to-r from-purple-50 to-pink-50 p-4 text-sm dark:from-purple-900/20 dark:to-pink-900/20">
+                  <p className="font-semibold">{announcement.title}</p>
+                  <p className="mt-1 text-slate-600 dark:text-slate-400 line-clamp-2">{announcement.body}</p>
+                </div>
+              ))}
+              {!data.announcements.length && (
+                <p className="text-sm text-slate-500 text-center py-4">No announcements</p>
+              )}
+            </div>
+          </div>
         </aside>
       </div>
 

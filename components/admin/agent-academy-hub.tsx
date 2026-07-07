@@ -112,6 +112,15 @@ type AcademyLesson = {
       course?: { id: string; title: string };
     };
   };
+  lessonVideos?: Array<{ id: string; title: string; provider: string; durationSeconds: number; downloadable: boolean }>;
+  lessonDocuments?: Array<{ id: string; documentId: string; sortOrder: number }>;
+  lessonResources?: Array<{ id: string; title: string; body: string; type: string; sortOrder: number }>;
+  lessonDownloads?: Array<{ id: string; title: string; url: string; type: string }>;
+  richText?: string;
+  videoUrl?: string | null;
+  embeddedVideoUrl?: string | null;
+  pdfUrl?: string | null;
+  audioUrl?: string | null;
 };
 
 type AcademyCourse = {
@@ -181,6 +190,7 @@ const academyTabs = [
   "Dashboard",
   "Courses",
   "Lessons",
+  "Lesson Content",
   "Training Resources",
   "Video Library",
   "Quizzes",
@@ -217,11 +227,13 @@ export function AgentAcademyHub() {
   const [tab, setTab] = useState<AcademyTab>("Dashboard");
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
-  const [drawer, setDrawer] = useState<"course" | "document" | "video" | "quiz" | "exam" | "assignment" | "path" | "announcement" | "badge" | null>(null);
+  const [drawer, setDrawer] = useState<"course" | "document" | "video" | "quiz" | "exam" | "assignment" | "path" | "announcement" | "badge" | "lesson" | "module" | null>(null);
   const [busy, setBusy] = useState(false);
   const [previewDocument, setPreviewDocument] = useState<AcademyDocument | null>(null);
   const [selectedCourse, setSelectedCourse] = useState<AcademyCourse | null>(null);
   const [viewCourse, setViewCourse] = useState<AcademyCourse | null>(null);
+  const [selectedLesson, setSelectedLesson] = useState<AcademyLesson | null>(null);
+  const [selectedModule, setSelectedModule] = useState<{ id: string; courseId: string; title: string; description?: string; sortOrder: number } | null>(null);
   const load = useCallback(async () => {
     const result = await apiFetch<AcademyData>("/api/v1/admin/academy");
     if (result.data) setData(result.data);
@@ -423,6 +435,10 @@ export function AgentAcademyHub() {
           data={data}
           openDrawer={(next) => setDrawer(next)}
           action={action}
+          query={query}
+          setQuery={setQuery}
+          setSelectedLesson={setSelectedLesson}
+          setDrawer={setDrawer}
         />
       )}
 
@@ -441,6 +457,12 @@ export function AgentAcademyHub() {
       <LearningPathDrawer open={drawer === "path"} busy={busy} courses={data.courses} onClose={() => setDrawer(null)} onSave={(path) => action({ action: "create_learning_path", path }, "Learning path created.")} />
       <AnnouncementDrawer open={drawer === "announcement"} busy={busy} onClose={() => setDrawer(null)} onSave={(announcement) => action({ action: "create_announcement", announcement }, "Announcement published.")} />
       <BadgeDrawer open={drawer === "badge"} busy={busy} onClose={() => setDrawer(null)} onSave={(badge) => action({ action: "create_badge", badge }, "Badge created.")} />
+      <LessonDrawer open={drawer === "lesson"} busy={busy} lesson={selectedLesson} courses={data.courses} onClose={() => { setDrawer(null); setSelectedLesson(null); }} onSave={(lesson) => selectedLesson
+        ? action({ action: "update_lesson", lessonId: selectedLesson.id, lesson }, "Lesson updated.")
+        : action({ action: "create_lesson", lesson }, "Lesson created.")} />
+      <ModuleDrawer open={drawer === "module"} busy={busy} module={selectedModule} courses={data.courses} onClose={() => { setDrawer(null); setSelectedModule(null); }} onSave={(module) => selectedModule
+        ? action({ action: "update_module", moduleId: selectedModule.id, module }, "Module updated.")
+        : action({ action: "create_module", module }, "Module created.")} />
       {previewDocument && <DocumentPreview document={previewDocument} onClose={() => setPreviewDocument(null)} />}
       {viewCourse && <CoursePreview course={viewCourse} onClose={() => setViewCourse(null)} />}
     </div>
@@ -567,26 +589,61 @@ function FeatureWorkbench({
   data,
   openDrawer,
   action,
+  query,
+  setQuery,
+  setSelectedLesson,
+  setDrawer,
 }: {
   tab: AcademyTab;
   data: AcademyData;
   openDrawer: (drawer: "quiz" | "exam" | "assignment" | "path" | "announcement" | "badge" | null) => void;
   action: (body: Record<string, unknown>, success: string) => Promise<unknown>;
+  query: string;
+  setQuery: (query: string) => void;
+  setSelectedLesson: (lesson: AcademyLesson | null) => void;
+  setDrawer: (drawer: "course" | "document" | "video" | "quiz" | "exam" | "assignment" | "path" | "announcement" | "badge" | "lesson" | "module" | null) => void;
 }) {
   if (tab === "Lessons") {
     return (
-      <BuilderList
-        title="Lesson Builder"
-        icon={BookOpen}
-        rows={data.lessons.map((lesson) => ({
-          id: lesson.id,
-          title: lesson.title,
-          active: true,
-          detail: `${lesson.section?.module?.title ?? "Academy module"} - ${lesson.estimatedMinutes} min - ${lesson.completionRequirement}`,
-        }))}
-        actionLabel="Managed inside course structure"
-      />
+      <div className="space-y-4">
+        <AdminFilterBar>
+          <AdminSearchInput value={query} onChange={setQuery} placeholder="Search lessons, modules, courses..." className="lg:flex-1" />
+          <Button onClick={() => { setSelectedLesson(null); setDrawer("lesson"); }}><Plus className="size-4" /> New Lesson</Button>
+          <Button onClick={() => { setDrawer("module"); }} variant="secondary"><Plus className="size-4" /> New Module</Button>
+        </AdminFilterBar>
+        <AdminDataTable
+          rows={data.lessons.filter((lesson) => !query || `${lesson.title} ${lesson.section?.module?.title ?? ""} ${lesson.section?.module?.course?.title ?? ""}`.toLowerCase().includes(query.toLowerCase()))}
+          columns={[
+            { key: "lesson", header: "Lesson", render: (lesson) => (
+              <div>
+                <p className="font-semibold text-white">{lesson.title}</p>
+                <p className="mt-1 text-xs text-slate-500">{lesson.section?.module?.course?.title ?? "No course"} → {lesson.section?.module?.title ?? "No module"}</p>
+              </div>
+            )},
+            { key: "detail", header: "Details", render: (lesson) => `${lesson.estimatedMinutes} min • ${lesson.completionRequirement}` },
+            { key: "updated", header: "Updated", render: (lesson) => new Date(lesson.updatedAt).toLocaleDateString() },
+            {
+              key: "actions",
+              header: "Actions",
+              render: (lesson) => (
+                <div className="flex flex-wrap gap-2">
+                  <IconAction label="Edit" icon={Pencil} onClick={() => { setSelectedLesson(lesson); setDrawer("lesson"); }} />
+                  <IconAction label="Delete" icon={Trash2} onClick={() => {
+                    if (window.confirm(`Delete lesson "${lesson.title}"? This cannot be undone.`)) {
+                      void action({ action: "delete_lesson", lessonId: lesson.id }, "Lesson deleted.");
+                    }
+                  }} />
+                </div>
+              ),
+            },
+          ]}
+          emptyMessage="No lessons found. Create lessons inside course modules."
+        />
+      </div>
     );
+  }
+  if (tab === "Lesson Content") {
+    return <LessonContentManager lessons={data.lessons} documents={data.documents} action={action} />;
   }
   if (tab === "Quizzes") {
     return <BuilderList title="Quiz Builder" icon={ClipboardCheck} rows={data.quizzes.map((quiz) => ({ ...quiz, detail: `${quiz.passingPercentage}% pass mark` }))} actionLabel="Create Quiz" onCreate={() => openDrawer("quiz")} onArchive={(row) => action({ action: row.active === false ? "restore_quiz" : "archive_quiz", quizId: row.id }, row.active === false ? "Quiz restored." : "Quiz archived.")} />;
@@ -980,6 +1037,60 @@ function BadgeDrawer({ open, busy, onClose, onSave }: { open: boolean; busy: boo
   );
 }
 
+function LessonDrawer({ open, busy, lesson: editingLesson, courses, onClose, onSave }: { open: boolean; busy: boolean; lesson?: AcademyLesson | null; courses: AcademyCourse[]; onClose: () => void; onSave: (lesson: Record<string, unknown>) => Promise<unknown> }) {
+  const [lesson, setLesson] = useState({
+    title: editingLesson?.title ?? "",
+    summary: editingLesson?.summary ?? "",
+    richText: editingLesson?.richText ?? "",
+    videoUrl: editingLesson?.videoUrl ?? "",
+    embeddedVideoUrl: editingLesson?.embeddedVideoUrl ?? "",
+    pdfUrl: editingLesson?.pdfUrl ?? "",
+    audioUrl: editingLesson?.audioUrl ?? "",
+    estimatedMinutes: editingLesson?.estimatedMinutes ?? 30,
+    completionRequirement: editingLesson?.completionRequirement ?? "VIEW",
+    sortOrder: editingLesson?.sortOrder ?? 0,
+  });
+  const editing = Boolean(editingLesson);
+  return (
+    <AdminDrawer open={open} title={editing ? "Edit Lesson" : "Create Lesson"} description="Create and edit Academy lessons with rich text, video, PDF, audio, and completion requirements." onClose={onClose} width="xl">
+      <FormGrid>
+        <TextInput label="Lesson title" value={lesson.title} onChange={(title) => setLesson({ ...lesson, title })} className="sm:col-span-2" />
+        <TextArea label="Summary" value={lesson.summary} onChange={(summary) => setLesson({ ...lesson, summary })} className="sm:col-span-2" />
+        <TextArea label="Rich content (HTML)" value={lesson.richText} onChange={(richText) => setLesson({ ...lesson, richText })} className="sm:col-span-2" rows={6} />
+        <TextInput label="Video URL" value={lesson.videoUrl} onChange={(videoUrl) => setLesson({ ...lesson, videoUrl })} className="sm:col-span-2" />
+        <TextInput label="Embedded video URL (YouTube/Vimeo)" value={lesson.embeddedVideoUrl} onChange={(embeddedVideoUrl) => setLesson({ ...lesson, embeddedVideoUrl })} className="sm:col-span-2" />
+        <TextInput label="PDF URL" value={lesson.pdfUrl} onChange={(pdfUrl) => setLesson({ ...lesson, pdfUrl })} />
+        <TextInput label="Audio URL" value={lesson.audioUrl} onChange={(audioUrl) => setLesson({ ...lesson, audioUrl })} />
+        <TextInput label="Estimated minutes" type="number" value={String(lesson.estimatedMinutes)} onChange={(estimatedMinutes) => setLesson({ ...lesson, estimatedMinutes: Number(estimatedMinutes) })} />
+        <SelectInput label="Completion requirement" value={lesson.completionRequirement} options={["VIEW", "COMPLETE_QUIZ", "SUBMIT_ASSIGNMENT"]} onChange={(completionRequirement) => setLesson({ ...lesson, completionRequirement })} />
+        <TextInput label="Sort order" type="number" value={String(lesson.sortOrder)} onChange={(sortOrder) => setLesson({ ...lesson, sortOrder: Number(sortOrder) })} />
+      </FormGrid>
+      <DrawerActions busy={busy} disabled={!lesson.title.trim()} onClose={onClose} onSave={() => onSave(lesson)} label={editing ? "Save lesson" : "Create lesson"} />
+    </AdminDrawer>
+  );
+}
+
+function ModuleDrawer({ open, busy, module: editingModule, courses, onClose, onSave }: { open: boolean; busy: boolean; module?: { id: string; courseId: string; title: string; description?: string; sortOrder: number } | null; courses: AcademyCourse[]; onClose: () => void; onSave: (module: Record<string, unknown>) => Promise<unknown> }) {
+  const [moduleData, setModuleData] = useState({
+    courseId: editingModule?.courseId ?? "",
+    title: editingModule?.title ?? "",
+    description: editingModule?.description ?? "",
+    sortOrder: editingModule?.sortOrder ?? 0,
+  });
+  const editing = Boolean(editingModule);
+  return (
+    <AdminDrawer open={open} title={editing ? "Edit Module" : "Create Module"} description="Create and edit course modules to organize your lessons." onClose={onClose} width="lg">
+      <FormGrid>
+        <SelectInput label="Course" value={moduleData.courseId} options={["", ...courses.map((c) => c.id)]} labels={Object.fromEntries(courses.map((c) => [c.id, c.title]))} onChange={(courseId) => setModuleData({ ...moduleData, courseId })} className="sm:col-span-2" />
+        <TextInput label="Module title" value={moduleData.title} onChange={(title) => setModuleData({ ...moduleData, title })} className="sm:col-span-2" />
+        <TextArea label="Description" value={moduleData.description} onChange={(description) => setModuleData({ ...moduleData, description })} className="sm:col-span-2" />
+        <TextInput label="Sort order" type="number" value={String(moduleData.sortOrder)} onChange={(sortOrder) => setModuleData({ ...moduleData, sortOrder: Number(sortOrder) })} />
+      </FormGrid>
+      <DrawerActions busy={busy} disabled={!moduleData.title.trim() || !moduleData.courseId} onClose={onClose} onSave={() => onSave(moduleData)} label={editing ? "Save module" : "Create module"} />
+    </AdminDrawer>
+  );
+}
+
 function AcademySettingsPanel({ settings, auditLogs, onSave }: { settings: Record<string, unknown>; auditLogs: AcademyData["auditLogs"]; onSave: (settings: Record<string, unknown>) => Promise<unknown> }) {
   const [draft, setDraft] = useState({
     academyName: String(settings.academyName ?? "HomeLink Agent Academy"),
@@ -1061,8 +1172,8 @@ function TextInput({ label, value, onChange, type = "text", className }: { label
   return <label className={cn("text-sm text-slate-300", className)}>{label}<input type={type} value={value} onChange={(event) => onChange(event.target.value)} className="mt-1 w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-white outline-none focus:border-emerald-500/40" /></label>;
 }
 
-function TextArea({ label, value, onChange, className }: { label: string; value: string; onChange: (value: string) => void; className?: string }) {
-  return <label className={cn("text-sm text-slate-300", className)}>{label}<textarea value={value} onChange={(event) => onChange(event.target.value)} rows={4} className="mt-1 w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-white outline-none focus:border-emerald-500/40" /></label>;
+function TextArea({ label, value, onChange, className, rows = 4 }: { label: string; value: string; onChange: (value: string) => void; className?: string; rows?: number }) {
+  return <label className={cn("text-sm text-slate-300", className)}>{label}<textarea value={value} onChange={(event) => onChange(event.target.value)} rows={rows} className="mt-1 w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-white outline-none focus:border-emerald-500/40" /></label>;
 }
 
 function SelectInput({ label, value, options, labels = {}, onChange, className }: { label: string; value: string; options: readonly string[]; labels?: Record<string, string>; onChange: (value: string) => void; className?: string }) {
@@ -1097,4 +1208,238 @@ function detectDocumentType(fileName: string, mime: string) {
   if (mime.startsWith("video/")) return "VIDEO";
   if (mime.startsWith("audio/")) return "AUDIO";
   return "PDF";
+}
+
+function LessonContentManager({ lessons, documents, action }: { lessons: AcademyLesson[]; documents: AcademyDocument[]; action: (body: Record<string, unknown>, success: string) => Promise<unknown> }) {
+  const [selectedLessonId, setSelectedLessonId] = useState("");
+  const [contentTab, setContentTab] = useState<"videos" | "documents" | "resources" | "downloads">("videos");
+  const [busy, setBusy] = useState(false);
+  const [drawer, setDrawer] = useState<"video" | "resource" | "download" | "document" | null>(null);
+  const [selectedItem, setSelectedItem] = useState<any>(null);
+
+  const selectedLesson = lessons.find((l) => l.id === selectedLessonId);
+
+  return (
+    <div className="space-y-4">
+      <AdminFilterBar>
+        <SelectInput
+          label="Select Lesson"
+          value={selectedLessonId}
+          options={["", ...lessons.map((l) => l.id)]}
+          labels={Object.fromEntries(lessons.map((l) => [l.id, `${l.title} (${l.section?.module?.course?.title ?? "No course"})`]))}
+          onChange={setSelectedLessonId}
+          className="lg:flex-1"
+        />
+        {selectedLesson && (
+          <div className="flex gap-2">
+            <Button variant={contentTab === "videos" ? "primary" : "secondary"} onClick={() => setContentTab("videos")}>Videos</Button>
+            <Button variant={contentTab === "documents" ? "primary" : "secondary"} onClick={() => setContentTab("documents")}>Documents</Button>
+            <Button variant={contentTab === "resources" ? "primary" : "secondary"} onClick={() => setContentTab("resources")}>Resources</Button>
+            <Button variant={contentTab === "downloads" ? "primary" : "secondary"} onClick={() => setContentTab("downloads")}>Downloads</Button>
+          </div>
+        )}
+      </AdminFilterBar>
+
+      {!selectedLesson && (
+        <AdminEmptyState icon={BookOpen} title="Select a lesson" description="Choose a lesson above to manage its content (videos, documents, resources, and downloads)." />
+      )}
+
+      {selectedLesson && contentTab === "videos" && (
+        <div className="space-y-4">
+          <div className="flex justify-end">
+            <Button onClick={() => { setSelectedItem(null); setDrawer("video"); }}><Plus className="size-4" /> Add Video</Button>
+          </div>
+          <AdminDataTable
+            rows={selectedLesson.lessonVideos ?? []}
+            columns={[
+              { key: "title", header: "Video", render: (video: any) => <p className="font-semibold text-white">{video.title}</p> },
+              { key: "provider", header: "Provider", render: (video: any) => video.provider },
+              { key: "duration", header: "Duration", render: (video: any) => `${Math.round(video.durationSeconds / 60)} min` },
+              {
+                key: "actions",
+                header: "Actions",
+                render: (video: any) => (
+                  <div className="flex gap-2">
+                    <IconAction label="Edit" icon={Pencil} onClick={() => { setSelectedItem(video); setDrawer("video"); }} />
+                    <IconAction label="Delete" icon={Trash2} onClick={() => {
+                      if (window.confirm(`Delete video "${video.title}"?`)) {
+                        void action({ action: "delete_lesson_video", videoId: video.id }, "Video deleted.");
+                      }
+                    }} />
+                  </div>
+                ),
+              },
+            ]}
+            emptyMessage="No videos added to this lesson yet."
+          />
+        </div>
+      )}
+
+      {selectedLesson && contentTab === "documents" && (
+        <div className="space-y-4">
+          <div className="flex justify-end">
+            <Button onClick={() => { setSelectedItem(null); setDrawer("document"); }}><Plus className="size-4" /> Link Document</Button>
+          </div>
+          <AdminDataTable
+            rows={selectedLesson.lessonDocuments ?? []}
+            columns={[
+              { key: "document", header: "Document", render: (link: any) => {
+                const doc = documents.find((d) => d.id === link.documentId);
+                return <p className="font-semibold text-white">{doc?.title ?? "Unknown"}</p>;
+              }},
+              { key: "type", header: "Type", render: (link: any) => {
+                const doc = documents.find((d) => d.id === link.documentId);
+                return <AdminStatusBadge status={doc?.fileType ?? "PDF"} variant="info" />;
+              }},
+              {
+                key: "actions",
+                header: "Actions",
+                render: (link: any) => (
+                  <IconAction label="Remove" icon={Trash2} onClick={() => {
+                    if (window.confirm("Remove this document link?")) {
+                      void action({ action: "remove_lesson_document", linkId: link.id }, "Document removed.");
+                    }
+                  }} />
+                ),
+              },
+            ]}
+            emptyMessage="No documents linked to this lesson yet."
+          />
+        </div>
+      )}
+
+      {selectedLesson && contentTab === "resources" && (
+        <div className="space-y-4">
+          <div className="flex justify-end">
+            <Button onClick={() => { setSelectedItem(null); setDrawer("resource"); }}><Plus className="size-4" /> Add Resource</Button>
+          </div>
+          <AdminDataTable
+            rows={selectedLesson.lessonResources ?? []}
+            columns={[
+              { key: "title", header: "Resource", render: (resource: any) => <p className="font-semibold text-white">{resource.title}</p> },
+              { key: "type", header: "Type", render: (resource: any) => resource.type },
+              { key: "body", header: "Content", render: (resource: any) => <p className="text-xs text-slate-400 line-clamp-2">{resource.body}</p> },
+              {
+                key: "actions",
+                header: "Actions",
+                render: (resource: any) => (
+                  <div className="flex gap-2">
+                    <IconAction label="Edit" icon={Pencil} onClick={() => { setSelectedItem(resource); setDrawer("resource"); }} />
+                    <IconAction label="Delete" icon={Trash2} onClick={() => {
+                      if (window.confirm(`Delete resource "${resource.title}"?`)) {
+                        void action({ action: "delete_lesson_resource", resourceId: resource.id }, "Resource deleted.");
+                      }
+                    }} />
+                  </div>
+                ),
+              },
+            ]}
+            emptyMessage="No resources added to this lesson yet."
+          />
+        </div>
+      )}
+
+      {selectedLesson && contentTab === "downloads" && (
+        <div className="space-y-4">
+          <div className="flex justify-end">
+            <Button onClick={() => { setSelectedItem(null); setDrawer("download"); }}><Plus className="size-4" /> Add Download</Button>
+          </div>
+          <AdminDataTable
+            rows={selectedLesson.lessonDownloads ?? []}
+            columns={[
+              { key: "title", header: "Download", render: (download: any) => <p className="font-semibold text-white">{download.title}</p> },
+              { key: "type", header: "Type", render: (download: any) => <AdminStatusBadge status={download.type} variant="info" /> },
+              {
+                key: "actions",
+                header: "Actions",
+                render: (download: any) => (
+                  <div className="flex gap-2">
+                    <IconAction label="Edit" icon={Pencil} onClick={() => { setSelectedItem(download); setDrawer("download"); }} />
+                    <IconAction label="Delete" icon={Trash2} onClick={() => {
+                      if (window.confirm(`Delete download "${download.title}"?`)) {
+                        void action({ action: "delete_lesson_download", downloadId: download.id }, "Download deleted.");
+                      }
+                    }} />
+                  </div>
+                ),
+              },
+            ]}
+            emptyMessage="No downloads added to this lesson yet."
+          />
+        </div>
+      )}
+
+      <LessonVideoDrawer open={drawer === "video"} busy={busy} lessonId={selectedLessonId} video={selectedItem} onClose={() => { setDrawer(null); setSelectedItem(null); }} onSave={(video) => action(selectedItem ? { action: "update_lesson_video", videoId: selectedItem.id, video } : { action: "add_lesson_video", video }, selectedItem ? "Video updated." : "Video added.")} />
+      <LessonResourceDrawer open={drawer === "resource"} busy={busy} lessonId={selectedLessonId} resource={selectedItem} onClose={() => { setDrawer(null); setSelectedItem(null); }} onSave={(resource) => action(selectedItem ? { action: "update_lesson_resource", resourceId: selectedItem.id, resource } : { action: "add_lesson_resource", resource }, selectedItem ? "Resource updated." : "Resource added.")} />
+      <LessonDownloadDrawer open={drawer === "download"} busy={busy} lessonId={selectedLessonId} download={selectedItem} onClose={() => { setDrawer(null); setSelectedItem(null); }} onSave={(download) => action(selectedItem ? { action: "update_lesson_download", downloadId: selectedItem.id, download } : { action: "add_lesson_download", download }, selectedItem ? "Download updated." : "Download added.")} />
+    </div>
+  );
+}
+
+function LessonVideoDrawer({ open, busy, lessonId, video, onClose, onSave }: { open: boolean; busy: boolean; lessonId: string; video?: any; onClose: () => void; onSave: (video: Record<string, unknown>) => Promise<unknown> }) {
+  const [form, setForm] = useState({
+    title: video?.title ?? "",
+    url: video?.url ?? "",
+    provider: video?.provider ?? "UPLOAD",
+    durationSeconds: video?.durationSeconds ?? 0,
+    captionsUrl: video?.captionsUrl ?? "",
+    downloadable: video?.downloadable ?? false,
+  });
+  const editing = Boolean(video);
+  return (
+    <AdminDrawer open={open} title={editing ? "Edit Video" : "Add Video"} description="Add or edit lesson video content." onClose={onClose} width="lg">
+      <FormGrid>
+        <TextInput label="Video title" value={form.title} onChange={(title) => setForm({ ...form, title })} className="sm:col-span-2" />
+        <TextInput label="Video URL" value={form.url} onChange={(url) => setForm({ ...form, url })} className="sm:col-span-2" />
+        <SelectInput label="Provider" value={form.provider} options={["UPLOAD", "YOUTUBE", "VIMEO", "EXTERNAL"]} onChange={(provider) => setForm({ ...form, provider })} />
+        <TextInput label="Duration (seconds)" type="number" value={String(form.durationSeconds)} onChange={(durationSeconds) => setForm({ ...form, durationSeconds: Number(durationSeconds) })} />
+        <TextInput label="Captions URL" value={form.captionsUrl} onChange={(captionsUrl) => setForm({ ...form, captionsUrl })} />
+        <label className="flex items-center gap-2 text-sm text-slate-300">
+          <input type="checkbox" checked={form.downloadable} onChange={(e) => setForm({ ...form, downloadable: e.target.checked })} />
+          Downloadable
+        </label>
+      </FormGrid>
+      <DrawerActions busy={busy} disabled={!form.title.trim() || !form.url.trim()} onClose={onClose} onSave={() => onSave({ ...form, lessonId })} label={editing ? "Update video" : "Add video"} />
+    </AdminDrawer>
+  );
+}
+
+function LessonResourceDrawer({ open, busy, lessonId, resource, onClose, onSave }: { open: boolean; busy: boolean; lessonId: string; resource?: any; onClose: () => void; onSave: (resource: Record<string, unknown>) => Promise<unknown> }) {
+  const [form, setForm] = useState({
+    title: resource?.title ?? "",
+    body: resource?.body ?? "",
+    type: resource?.type ?? "TEXT",
+    sortOrder: resource?.sortOrder ?? 0,
+  });
+  const editing = Boolean(resource);
+  return (
+    <AdminDrawer open={open} title={editing ? "Edit Resource" : "Add Resource"} description="Add or edit lesson resources (text, links, etc.)." onClose={onClose} width="lg">
+      <FormGrid>
+        <TextInput label="Resource title" value={form.title} onChange={(title) => setForm({ ...form, title })} className="sm:col-span-2" />
+        <TextArea label="Resource content" value={form.body} onChange={(body) => setForm({ ...form, body })} className="sm:col-span-2" />
+        <SelectInput label="Resource type" value={form.type} options={["TEXT", "LINK", "CODE", "QUOTE"]} onChange={(type) => setForm({ ...form, type })} />
+        <TextInput label="Sort order" type="number" value={String(form.sortOrder)} onChange={(sortOrder) => setForm({ ...form, sortOrder: Number(sortOrder) })} />
+      </FormGrid>
+      <DrawerActions busy={busy} disabled={!form.title.trim()} onClose={onClose} onSave={() => onSave({ ...form, lessonId })} label={editing ? "Update resource" : "Add resource"} />
+    </AdminDrawer>
+  );
+}
+
+function LessonDownloadDrawer({ open, busy, lessonId, download, onClose, onSave }: { open: boolean; busy: boolean; lessonId: string; download?: any; onClose: () => void; onSave: (download: Record<string, unknown>) => Promise<unknown> }) {
+  const [form, setForm] = useState({
+    title: download?.title ?? "",
+    url: download?.url ?? "",
+    type: download?.type ?? "PDF",
+  });
+  const editing = Boolean(download);
+  return (
+    <AdminDrawer open={open} title={editing ? "Edit Download" : "Add Download"} description="Add or edit lesson downloadable files." onClose={onClose} width="lg">
+      <FormGrid>
+        <TextInput label="Download title" value={form.title} onChange={(title) => setForm({ ...form, title })} className="sm:col-span-2" />
+        <TextInput label="Download URL" value={form.url} onChange={(url) => setForm({ ...form, url })} className="sm:col-span-2" />
+        <SelectInput label="File type" value={form.type} options={["PDF", "DOCX", "XLSX", "PPTX", "IMAGE", "VIDEO", "AUDIO", "ZIP"]} onChange={(type) => setForm({ ...form, type })} />
+      </FormGrid>
+      <DrawerActions busy={busy} disabled={!form.title.trim() || !form.url.trim()} onClose={onClose} onSave={() => onSave({ ...form, lessonId })} label={editing ? "Update download" : "Add download"} />
+    </AdminDrawer>
+  );
 }

@@ -75,7 +75,13 @@ export async function getAcademyDashboard() {
     prisma.trainingCourse.findMany({ include: { category: true }, orderBy: { updatedAt: "desc" } }),
     prisma.trainingLesson.count(),
     prisma.trainingLesson.findMany({
-      include: { section: { include: { module: { include: { course: true } } } } },
+      include: {
+        section: { include: { module: { include: { course: true } } } },
+        lessonVideos: true,
+        lessonDocuments: { include: { document: true } },
+        lessonResources: true,
+        lessonDownloads: true,
+      },
       orderBy: [{ sortOrder: "asc" }, { updatedAt: "desc" }],
     }),
     prisma.documentLibrary.findMany({ include: { category: true }, orderBy: [{ sortOrder: "asc" }, { updatedAt: "desc" }] }),
@@ -357,6 +363,154 @@ export async function runAcademyAction(body: Record<string, any>, actor: Actor) 
     const lesson = await prisma.trainingLesson.delete({ where: { id: String(body.lessonId) } });
     await audit(actor, "academy.lesson.delete", lesson.id, { title: lesson.title });
     return lesson;
+  }
+  if (action === "add_lesson_video") {
+    const video = await prisma.lessonVideo.create({
+      data: {
+        lessonId: String(body.video?.lessonId),
+        title: required(body.video?.title, "Video title"),
+        url: required(body.video?.url, "Video URL"),
+        provider: String(body.video?.provider ?? "UPLOAD"),
+        durationSeconds: numberOr(body.video?.durationSeconds, 0),
+        captionsUrl: stringOrNull(body.video?.captionsUrl),
+        downloadable: Boolean(body.video?.downloadable),
+      },
+    });
+    await audit(actor, "academy.lesson_video.create", video.id, { title: video.title });
+    return video;
+  }
+  if (action === "update_lesson_video") {
+    const video = await prisma.lessonVideo.update({
+      where: { id: String(body.videoId) },
+      data: {
+        title: body.video?.title,
+        url: body.video?.url,
+        provider: body.video?.provider,
+        durationSeconds: body.video?.durationSeconds,
+        captionsUrl: body.video?.captionsUrl,
+        downloadable: body.video?.downloadable,
+      },
+    });
+    await audit(actor, "academy.lesson_video.update", video.id, { title: video.title });
+    return video;
+  }
+  if (action === "delete_lesson_video") {
+    const video = await prisma.lessonVideo.delete({ where: { id: String(body.videoId) } });
+    await audit(actor, "academy.lesson_video.delete", video.id, { title: video.title });
+    return video;
+  }
+  if (action === "add_lesson_document") {
+    const link = await prisma.lessonDocument.create({
+      data: {
+        lessonId: String(body.link?.lessonId),
+        documentId: required(body.link?.documentId, "Document ID"),
+        sortOrder: numberOr(body.link?.sortOrder, 0),
+      },
+    });
+    await audit(actor, "academy.lesson_document.create", link.id, { lessonId: link.lessonId });
+    return link;
+  }
+  if (action === "remove_lesson_document") {
+    const link = await prisma.lessonDocument.delete({ where: { id: String(body.linkId) } });
+    await audit(actor, "academy.lesson_document.delete", link.id, { lessonId: link.lessonId });
+    return link;
+  }
+  if (action === "add_lesson_resource") {
+    const resource = await prisma.lessonResource.create({
+      data: {
+        lessonId: String(body.resource?.lessonId),
+        title: required(body.resource?.title, "Resource title"),
+        body: required(body.resource?.body, "Resource content"),
+        type: String(body.resource?.type ?? "TEXT"),
+        sortOrder: numberOr(body.resource?.sortOrder, 0),
+      },
+    });
+    await audit(actor, "academy.lesson_resource.create", resource.id, { title: resource.title });
+    return resource;
+  }
+  if (action === "update_lesson_resource") {
+    const resource = await prisma.lessonResource.update({
+      where: { id: String(body.resourceId) },
+      data: {
+        title: body.resource?.title,
+        body: body.resource?.body,
+        type: body.resource?.type,
+        sortOrder: body.resource?.sortOrder,
+      },
+    });
+    await audit(actor, "academy.lesson_resource.update", resource.id, { title: resource.title });
+    return resource;
+  }
+  if (action === "delete_lesson_resource") {
+    const resource = await prisma.lessonResource.delete({ where: { id: String(body.resourceId) } });
+    await audit(actor, "academy.lesson_resource.delete", resource.id, { title: resource.title });
+    return resource;
+  }
+  if (action === "add_lesson_download") {
+    const download = await prisma.lessonDownload.create({
+      data: {
+        lessonId: String(body.download?.lessonId),
+        title: required(body.download?.title, "Download title"),
+        url: required(body.download?.url, "Download URL"),
+        type: enumValue(TrainingResourceType, body.download?.type, TrainingResourceType.PDF),
+      },
+    });
+    await audit(actor, "academy.lesson_download.create", download.id, { title: download.title });
+    return download;
+  }
+  if (action === "update_lesson_download") {
+    const download = await prisma.lessonDownload.update({
+      where: { id: String(body.downloadId) },
+      data: {
+        title: body.download?.title,
+        url: body.download?.url,
+        type: body.download?.type ? enumValue(TrainingResourceType, body.download.type, TrainingResourceType.PDF) : undefined,
+      },
+    });
+    await audit(actor, "academy.lesson_download.update", download.id, { title: download.title });
+    return download;
+  }
+  if (action === "delete_lesson_download") {
+    const download = await prisma.lessonDownload.delete({ where: { id: String(body.downloadId) } });
+    await audit(actor, "academy.lesson_download.delete", download.id, { title: download.title });
+    return download;
+  }
+  if (action === "create_module") {
+    const module = await prisma.trainingModule.create({
+      data: {
+        courseId: String(body.module?.courseId),
+        title: required(body.module?.title, "Module title"),
+        description: stringOrNull(body.module?.description),
+        sortOrder: numberOr(body.module?.sortOrder, 0),
+      }
+    });
+    // Create default section
+    await prisma.trainingSection.create({
+      data: {
+        moduleId: module.id,
+        title: "Default Section",
+        sortOrder: 0,
+      }
+    });
+    await audit(actor, "academy.module.create", module.id, { title: module.title });
+    return module;
+  }
+  if (action === "update_module") {
+    const module = await prisma.trainingModule.update({
+      where: { id: String(body.moduleId) },
+      data: {
+        title: body.module?.title,
+        description: body.module?.description,
+        sortOrder: body.module?.sortOrder,
+      }
+    });
+    await audit(actor, "academy.module.update", module.id, { title: module.title });
+    return module;
+  }
+  if (action === "delete_module") {
+    const module = await prisma.trainingModule.delete({ where: { id: String(body.moduleId) } });
+    await audit(actor, "academy.module.delete", module.id, { title: module.title });
+    return module;
   }
   if (action === "create_quiz") {
     const quiz = await prisma.quiz.create({
@@ -735,7 +889,7 @@ function badgeInput(input: Record<string, any>): Prisma.BadgeCreateInput {
 
 function lessonInput(input: Record<string, any>): Prisma.TrainingLessonUncheckedCreateInput {
   return {
-    sectionId: required(input.sectionId, "Section"),
+    sectionId: input.sectionId || undefined,
     title: required(input.title, "Lesson title"),
     summary: stringOrNull(input.summary),
     richText: String(input.richText ?? ""),
