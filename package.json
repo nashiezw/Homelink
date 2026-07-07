@@ -22,6 +22,7 @@
     "db:seed:production": "node scripts/seed-production.mjs",
     "db:seed:agent-training": "node scripts/seed-agent-training.mjs",
     "db:seed:academy-resources": "node scripts/seed-academy-resources.mjs",
+    "db:seed:manual-course": "node scripts/seed-manual-course.mjs",
     "smoke": "node scripts/smoke-test.mjs",
     "verify": "npm run typecheck && npm run build && node scripts/smoke-test.mjs",
     "postinstall": "prisma generate --schema prisma/settings.prisma && prisma generate --schema prisma/schema.prisma",

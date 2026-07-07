@@ -1,13 +1,31 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Award, BookOpen, CheckCircle2, Clock, CreditCard, GraduationCap, Loader2, ShieldCheck, Upload, Star, TrendingUp, Users, Zap } from "lucide-react";
+import {
+  Award,
+  BookOpen,
+  CheckCircle2,
+  Clock,
+  CreditCard,
+  GraduationCap,
+  Loader2,
+  PlayCircle,
+  Settings,
+  ShieldCheck,
+  Star,
+  TrendingUp,
+  Upload,
+  Users,
+  Zap,
+} from "lucide-react";
 import { AuthForm } from "@/components/auth/auth-form";
 import { PageShell } from "@/components/layout/page-shell";
 import { Button } from "@/components/ui/button";
 import { useApp } from "@/components/providers/app-provider";
 import { apiFetch } from "@/lib/api/client";
+import type { CourseRegistrationSummary } from "@/lib/academy/academy-user-status";
 
 type PublicCourse = {
   id: string;
@@ -29,10 +47,32 @@ type PublicCourse = {
   modules: Array<{ id: string; title: string; lessons: Array<{ id: string; title: string; estimatedMinutes: number }> }>;
 };
 
+type AcademyStatus = {
+  hasActiveAccess: boolean;
+  hasLearnerActivity: boolean;
+  activeEnrolments: Array<{ courseId: string; courseTitle: string; slug: string | null }>;
+  pendingApplications: Array<{ courseId: string; courseTitle: string; status: string; paymentId: string | null }>;
+  registrationsByCourseId: Record<string, CourseRegistrationSummary>;
+  primaryCourseId: string | null;
+};
+
+function courseRegistrationState(status: AcademyStatus | null, courseId: string) {
+  const registration = status?.registrationsByCourseId[courseId];
+  if (!registration) return "NOT_REGISTERED" as const;
+  if (registration.status === "APPROVED") return "APPROVED" as const;
+  if (registration.status === "PENDING_PAYMENT" || registration.status === "PAYMENT_UPLOADED") return "PENDING" as const;
+  return "NOT_REGISTERED" as const;
+}
+
 export function PublicAcademyPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const browseMode = searchParams.get("browse") === "1";
   const { user, showToast } = useApp();
   const [courses, setCourses] = useState<PublicCourse[]>([]);
   const [academySettings, setAcademySettings] = useState<{ academyName?: string; paymentInstructions?: string } | null>(null);
+  const [academyStatus, setAcademyStatus] = useState<AcademyStatus | null>(null);
+  const [statusLoaded, setStatusLoaded] = useState(false);
   const [selectedId, setSelectedId] = useState("");
   const [busy, setBusy] = useState(false);
   const [form, setForm] = useState({
@@ -43,34 +83,45 @@ export function PublicAcademyPage() {
     registrationIntent: "TRAINING_ONLY" as "TRAINING_ONLY" | "AGENT_TRAINING",
   });
 
+  const isAdmin = user?.roles?.some((role) => ["ADMIN", "SUPER_ADMIN", "ACADEMY_ADMIN"].includes(role)) ?? false;
+  const isAgent = user?.roles?.includes("AGENT") ?? false;
+
   const load = useCallback(async () => {
     const [coursesResult, settingsResult] = await Promise.all([
       apiFetch<PublicCourse[]>("/api/v1/academy/courses"),
       apiFetch<{ academyName: string; paymentInstructions: string }>("/api/v1/academy/settings"),
     ]);
+    const statusResult = user ? await apiFetch<AcademyStatus>("/api/v1/academy/status") : null;
+
     if (coursesResult.data) {
       setCourses(coursesResult.data);
-      setSelectedId((current) => current || coursesResult.data[0]?.id || "");
+      setSelectedId((current) => current || coursesResult.data![0]?.id || "");
     }
     if (settingsResult.data) setAcademySettings(settingsResult.data);
-  }, []);
+    if (statusResult?.data) setAcademyStatus(statusResult.data);
+    setStatusLoaded(true);
+  }, [user]);
 
   useEffect(() => {
     void load();
   }, [load]);
 
+  useEffect(() => {
+    if (!user || !statusLoaded || !academyStatus?.hasLearnerActivity || browseMode) return;
+    router.replace("/dashboard/academy");
+  }, [user, statusLoaded, academyStatus, browseMode, router]);
+
   const selected = useMemo(() => courses.find((course) => course.id === selectedId), [courses, selectedId]);
-  const isAgent = user?.roles?.includes("AGENT") ?? false;
+  const selectedRegistration = selected ? courseRegistrationState(academyStatus, selected.id) : "NOT_REGISTERED";
+
   const displayPrice = useMemo(() => {
     if (!selected) return null;
-    if (isAgent && form.registrationIntent === "AGENT_TRAINING") {
-      return selected.agentPrice;
-    }
+    if (isAgent && form.registrationIntent === "AGENT_TRAINING") return selected.agentPrice;
     return selected.publicPrice;
   }, [selected, isAgent, form.registrationIntent]);
 
   async function register() {
-    if (!selected) return;
+    if (!selected || selectedRegistration !== "NOT_REGISTERED") return;
     setBusy(true);
     const result = await apiFetch<{ id: string; paymentId?: string; status: string }>("/api/v1/academy/register", {
       method: "POST",
@@ -90,31 +141,89 @@ export function PublicAcademyPage() {
       showToast(result.error.message, "error");
       return;
     }
-    showToast(result.data.status === "APPROVED" ? "Your Academy access is active." : "Registration saved. Upload proof of payment from your learner dashboard.");
+    const approved = result.data.status === "APPROVED";
+    const pending = result.data.status === "PENDING_PAYMENT" || result.data.status === "PAYMENT_UPLOADED";
+    if (approved) {
+      showToast("Your course access is active.");
+      router.push(`/dashboard/academy/${selected.id}`);
+      return;
+    }
+    if (pending) {
+      showToast("You already registered for this course. Upload payment proof from your dashboard.");
+      router.push("/dashboard/academy");
+      return;
+    }
+    showToast("Registration saved.");
+    router.push("/dashboard/academy");
   }
+
+  if (user && (!statusLoaded || (academyStatus?.hasLearnerActivity && !browseMode))) {
+    return (
+      <PageShell eyebrow={academySettings?.academyName ?? "HomeLink Academy"} title="Loading your Academy..." description="">
+        <div className="h-32 animate-pulse rounded-xl bg-slate-100 dark:bg-slate-800" />
+      </PageShell>
+    );
+  }
+
+  const pageActions = user ? (
+    <div className="flex flex-wrap gap-2">
+      {academyStatus?.hasActiveAccess && (
+        <Link href="/dashboard/academy">
+          <Button><PlayCircle className="size-4 mr-2" /> Continue Learning</Button>
+        </Link>
+      )}
+      {isAdmin && (
+        <Link href="/dashboard/admin?tab=academy">
+          <Button variant="secondary"><Settings className="size-4 mr-2" /> Manage Academy</Button>
+        </Link>
+      )}
+      {!academyStatus?.hasActiveAccess && (
+        <Link href="/dashboard/academy">
+          <Button variant="secondary">My Dashboard</Button>
+        </Link>
+      )}
+    </div>
+  ) : undefined;
 
   return (
     <PageShell
       eyebrow={academySettings?.academyName ?? "HomeLink Academy"}
-      title="Professional Property Training"
-      description="Master real estate with Zimbabwe's leading property platform. Train with HomeLink as a public learner — no agent application required."
+      title={browseMode && academyStatus?.hasActiveAccess ? "Browse More Courses" : "Professional Property Training"}
+      description={
+        browseMode && academyStatus?.hasActiveAccess
+          ? "You already have active course access. Browse additional courses or return to your learning dashboard."
+          : "Master real estate with Zimbabwe's leading property platform. Train with HomeLink as a public learner — no agent application required."
+      }
       highlights={[
         { value: String(courses.length), label: "Available Courses" },
         { value: "Certified", label: "Training" },
         { value: "Expert", label: "Instructors" },
       ]}
-      actions={user ? <Link href="/dashboard/academy"><Button variant="secondary">My Dashboard</Button></Link> : undefined}
+      actions={pageActions}
     >
-      {/* Hero Section */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-600 via-emerald-700 to-teal-800 p-8 md:p-12 text-white">
+      {browseMode && academyStatus?.hasActiveAccess && (
+        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900 dark:border-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-100">
+          <p className="font-semibold">You are already enrolled.</p>
+          <p className="mt-1">Return to your dashboard to continue lessons, or enrol in another course below.</p>
+          <Link href="/dashboard/academy" className="mt-3 inline-flex font-semibold text-emerald-700 hover:underline dark:text-emerald-300">
+            Go to My Learning Dashboard →
+          </Link>
+        </div>
+      )}
+
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-600 via-emerald-700 to-teal-800 p-8 md:p-12 text-white mt-6">
         <div className="relative z-10">
           <div className="flex items-center gap-2 mb-4">
             <GraduationCap className="size-8" />
             <span className="text-lg font-semibold">HomeLink Academy</span>
           </div>
-          <h1 className="text-3xl md:text-4xl font-bold mb-4">Train with HomeLink Academy</h1>
+          <h1 className="text-3xl md:text-4xl font-bold mb-4">
+            {user && academyStatus?.hasActiveAccess ? "Expand Your Training" : "Train with HomeLink Academy"}
+          </h1>
           <p className="text-lg text-emerald-100 mb-6 max-w-2xl">
-            Learn from industry experts, gain practical skills, and earn your certification. You do not need to become a HomeLink agent to register — choose training-only enrolment and access your courses from your learner dashboard.
+            {user && academyStatus?.hasActiveAccess
+              ? "Browse the course catalog, track progress from your dashboard, and pick up where you left off."
+              : "Learn from industry experts, gain practical skills, and earn your certification. Training-only enrolment is available — you do not need to become a HomeLink agent."}
           </p>
           <div className="flex flex-wrap gap-4">
             <div className="flex items-center gap-2 bg-white/10 rounded-lg px-4 py-2">
@@ -135,216 +244,345 @@ export function PublicAcademyPage() {
         <div className="absolute bottom-0 left-0 w-64 h-64 bg-emerald-400/10 rounded-full translate-y-1/2 -translate-x-1/2 blur-3xl" />
       </div>
 
-      {/* Stats Section */}
       <div className="grid gap-4 md:grid-cols-4 mt-8">
-        <div className="rounded-xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-950">
-          <div className="flex items-center gap-3">
-            <div className="rounded-lg bg-emerald-100 p-3 dark:bg-emerald-900/30">
-              <BookOpen className="size-6 text-emerald-600 dark:text-emerald-400" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold">{courses.reduce((sum, c) => sum + c.lessonCount, 0)}</p>
-              <p className="text-sm text-slate-600 dark:text-slate-400">Total Lessons</p>
-            </div>
-          </div>
-        </div>
-        <div className="rounded-xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-950">
-          <div className="flex items-center gap-3">
-            <div className="rounded-lg bg-amber-100 p-3 dark:bg-amber-900/30">
-              <Award className="size-6 text-amber-600 dark:text-amber-400" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold">{courses.filter(c => c.certificateEnabled).length}</p>
-              <p className="text-sm text-slate-600 dark:text-slate-400">Certified Courses</p>
-            </div>
-          </div>
-        </div>
-        <div className="rounded-xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-950">
-          <div className="flex items-center gap-3">
-            <div className="rounded-lg bg-blue-100 p-3 dark:bg-blue-900/30">
-              <Clock className="size-6 text-blue-600 dark:text-blue-400" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold">{courses.reduce((sum, c) => sum + (c.estimatedHours || Math.round(c.durationMinutes / 60)), 0)}h</p>
-              <p className="text-sm text-slate-600 dark:text-slate-400">Learning Hours</p>
-            </div>
-          </div>
-        </div>
-        <div className="rounded-xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-950">
-          <div className="flex items-center gap-3">
-            <div className="rounded-lg bg-purple-100 p-3 dark:bg-purple-900/30">
-              <TrendingUp className="size-6 text-purple-600 dark:text-purple-400" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold">{courses.length ? `${Math.round(courses.reduce((sum, c) => sum + c.lessonCount, 0) / Math.max(courses.length, 1))}+` : "0"}</p>
-              <p className="text-sm text-slate-600 dark:text-slate-400">Avg Lessons / Course</p>
-            </div>
-          </div>
-        </div>
+        <StatCard icon={BookOpen} value={String(courses.reduce((sum, c) => sum + c.lessonCount, 0))} label="Total Lessons" color="emerald" />
+        <StatCard icon={Award} value={String(courses.filter((c) => c.certificateEnabled).length)} label="Certified Courses" color="amber" />
+        <StatCard icon={Clock} value={`${courses.reduce((sum, c) => sum + (c.estimatedHours || Math.round(c.durationMinutes / 60)), 0)}h`} label="Learning Hours" color="blue" />
+        <StatCard icon={TrendingUp} value={courses.length ? `${Math.round(courses.reduce((sum, c) => sum + c.lessonCount, 0) / Math.max(courses.length, 1))}+` : "0"} label="Avg Lessons / Course" color="purple" />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(22rem,0.65fr)] mt-8">
         <section className="grid gap-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-bold">Available Courses</h2>
-            <div className="flex gap-2">
-              <Button variant={selectedId === "" ? "primary" : "secondary"} onClick={() => setSelectedId("")}>All</Button>
-            </div>
-          </div>
-          {courses.map((course) => (
-            <article key={course.id} className={`group relative overflow-hidden rounded-2xl border-2 transition-all duration-300 ${selectedId === course.id ? "border-emerald-500 shadow-xl shadow-emerald-500/30" : "border-slate-200 hover:border-emerald-400 hover:shadow-lg dark:border-slate-800"}`}>
-              {course.featured && (
-                <div className="absolute top-0 right-0 bg-gradient-to-l from-amber-400 to-orange-500 px-4 py-1 text-xs font-bold text-white">
-                  <Star className="inline size-3 mr-1" /> Featured
-                </div>
-              )}
-              <div className="p-6">
-                <div className="flex flex-wrap items-start justify-between gap-4">
-                  <div className="flex-1">
-                    <div className="flex flex-wrap items-center gap-2 mb-3">
-                      <span className="rounded-full bg-gradient-to-r from-emerald-500 to-emerald-600 px-3 py-1 text-xs font-semibold text-white shadow-md shadow-emerald-500/30">{course.category}</span>
-                      <span className="rounded-full bg-gradient-to-r from-blue-500 to-blue-600 px-3 py-1 text-xs font-semibold text-white shadow-md shadow-blue-500/30">{course.difficulty}</span>
-                      {course.certificateEnabled && <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 flex items-center gap-1"><Award className="size-3" /> Certificate</span>}
-                    </div>
-                    <h3 className="text-2xl font-bold mb-2 group-hover:text-emerald-600 transition-colors">{course.title}</h3>
-                    <p className="text-slate-600 dark:text-slate-400 leading-relaxed">{course.description}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-3xl font-bold text-emerald-600">
-                      {course.publicPrice ? `${course.currency} ${course.publicPrice.toFixed(2)}` : "Free"}
-                    </p>
-                    {course.agentPrice < course.publicPrice && (
-                      <p className="text-xs text-emerald-600 font-medium">Agents: {course.currency} {course.agentPrice.toFixed(2)}</p>
-                    )}
-                    <p className="text-sm text-slate-500">{course.accessDurationDays} days access</p>
-                  </div>
-                </div>
-                <div className="mt-6 grid gap-3 sm:grid-cols-3">
-                  <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400">
-                    <BookOpen className="size-5 text-emerald-500" />
-                    <span className="font-medium">{course.lessonCount} lessons</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400">
-                    <Clock className="size-5 text-emerald-500" />
-                    <span className="font-medium">{course.estimatedHours || Math.round(course.durationMinutes / 60)} hours</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400">
-                    <GraduationCap className="size-5 text-emerald-500" />
-                    <span className="font-medium">{course.instructor || "HomeLink trainers"}</span>
-                  </div>
-                </div>
-                {!!course.modules.length && (
-                  <div className="mt-6">
-                    <p className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">Course Modules</p>
-                    <div className="grid gap-2 md:grid-cols-2">
-                      {course.modules.slice(0, 4).map((module) => (
-                        <div key={module.id} className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm dark:border-slate-800 dark:bg-slate-900/50">
-                          <p className="font-semibold text-slate-900 dark:text-white">{module.title}</p>
-                          <p className="mt-1 text-xs text-slate-500">{module.lessons.length} lessons</p>
-                        </div>
-                      ))}
-                    </div>
+          <h2 className="text-2xl font-bold">Available Courses</h2>
+          {courses.map((course) => {
+            const registration = courseRegistrationState(academyStatus, course.id);
+            return (
+              <article
+                key={course.id}
+                className={`group relative overflow-hidden rounded-2xl border-2 transition-all duration-300 ${
+                  selectedId === course.id ? "border-emerald-500 shadow-xl shadow-emerald-500/30" : "border-slate-200 hover:border-emerald-400 hover:shadow-lg dark:border-slate-800"
+                }`}
+              >
+                {course.featured && (
+                  <div className="absolute top-0 right-0 bg-gradient-to-l from-amber-400 to-orange-500 px-4 py-1 text-xs font-bold text-white">
+                    <Star className="inline size-3 mr-1" /> Featured
                   </div>
                 )}
-                <Button className="mt-6 w-full" variant={selectedId === course.id ? "primary" : "secondary"} onClick={() => setSelectedId(course.id)}>
-                  {selectedId === course.id ? <><CheckCircle2 className="size-4 mr-2" /> Selected</> : <><Zap className="size-4 mr-2" /> Enroll Now</>}
-                </Button>
-              </div>
-            </article>
-          ))}
-          {!courses.length && <div className="rounded-2xl border-2 border-dashed border-slate-300 p-12 text-center dark:border-slate-700">
-            <BookOpen className="size-12 mx-auto text-slate-400 mb-4" />
-            <p className="text-lg font-semibold text-slate-600 dark:text-slate-400">No courses available</p>
-            <p className="text-sm text-slate-500 mt-2">Check back soon for new training opportunities.</p>
-          </div>}
+                {registration === "APPROVED" && (
+                  <div className="absolute top-0 left-0 bg-emerald-600 px-4 py-1 text-xs font-bold text-white rounded-br-xl">
+                    Enrolled
+                  </div>
+                )}
+                <div className="p-6">
+                  <CourseCardHeader course={course} />
+                  {!!course.modules.length && <CourseModulesPreview modules={course.modules} />}
+                  <CourseActionButton
+                    courseId={course.id}
+                    registration={registration}
+                    selected={selectedId === course.id}
+                    onSelect={() => setSelectedId(course.id)}
+                  />
+                </div>
+              </article>
+            );
+          })}
+          {!courses.length && (
+            <div className="rounded-2xl border-2 border-dashed border-slate-300 p-12 text-center dark:border-slate-700">
+              <BookOpen className="size-12 mx-auto text-slate-400 mb-4" />
+              <p className="text-lg font-semibold text-slate-600 dark:text-slate-400">No courses available</p>
+              <p className="text-sm text-slate-500 mt-2">Check back soon for new training opportunities.</p>
+            </div>
+          )}
         </section>
 
         <aside className="h-fit">
-          <div className="sticky top-4 space-y-4">
-            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-lg dark:border-slate-800 dark:bg-slate-950">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="rounded-xl bg-emerald-100 p-3 dark:bg-emerald-900/30">
-                  <ShieldCheck className="size-6 text-emerald-600 dark:text-emerald-400" />
-                </div>
-                <div>
-                  <h2 className="text-xl font-bold">Get Started</h2>
-                  <p className="text-sm text-slate-600 dark:text-slate-400">Register in minutes</p>
-                </div>
-              </div>
-              {!user ? (
-                <div className="space-y-4">
-                  <AuthForm initialMode="register" showBrand={false} redirectTo={null} />
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <div className="rounded-xl bg-gradient-to-r from-emerald-50 to-teal-50 p-4 text-sm dark:from-emerald-900/20 dark:to-teal-900/20">
-                    <p className="font-semibold text-emerald-900 dark:text-emerald-100">Welcome back!</p>
-                    <p className="text-emerald-700 dark:text-emerald-300 mt-1">Signed in as <span className="font-medium">{user.email}</span></p>
-                  </div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-                    Select Course
-                    <select value={selectedId} onChange={(event) => setSelectedId(event.target.value)} className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-900 focus:ring-2 focus:ring-emerald-500">
-                      <option value="">Choose a course...</option>
-                      {courses.map((course) => <option key={course.id} value={course.id}>{course.title}</option>)}
-                    </select>
-                  </label>
-                  <TextInput label="Phone Number" value={form.phone} onChange={(phone) => setForm({ ...form, phone })} />
-                  <TextInput label="Organization (Optional)" value={form.organisation} onChange={(organisation) => setForm({ ...form, organisation })} />
-                  {academySettings?.paymentInstructions && (
-                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-300">
-                      <p className="font-semibold mb-1">Payment instructions</p>
-                      <p>{academySettings.paymentInstructions}</p>
-                    </div>
-                  )}
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-                    Registration type
-                    <select
-                      value={form.registrationIntent}
-                      onChange={(event) => setForm({ ...form, registrationIntent: event.target.value as "TRAINING_ONLY" | "AGENT_TRAINING" })}
-                      className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-900 focus:ring-2 focus:ring-emerald-500"
-                    >
-                      <option value="TRAINING_ONLY">Training only — I am not applying to become a HomeLink agent</option>
-                      {isAgent && <option value="AGENT_TRAINING">Agent training — I am a HomeLink agent</option>}
-                    </select>
-                  </label>
-                  {form.registrationIntent === "TRAINING_ONLY" && (
-                    <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900 dark:border-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-200">
-                      You will get a learner account and course access only. This registration does not make you a HomeLink agent.
-                    </div>
-                  )}
-                  {selected && displayPrice !== null && (
-                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm dark:border-slate-700 dark:bg-slate-900/50">
-                      <p className="font-semibold">Course fee</p>
-                      <p className="text-2xl font-bold text-emerald-600 mt-1">
-                        {displayPrice > 0 ? `${selected.currency} ${displayPrice.toFixed(2)}` : "Free"}
-                      </p>
-                    </div>
-                  )}
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-                    Payment Method
-                    <select value={form.paymentMethod} onChange={(event) => setForm({ ...form, paymentMethod: event.target.value })} className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-900 focus:ring-2 focus:ring-emerald-500">
-                      <option value="bank_transfer">Bank Transfer</option>
-                      <option value="zipit">ZIPIT</option>
-                      <option value="cash">Cash Deposit</option>
-                    </select>
-                  </label>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-                    Tell us about yourself
-                    <textarea value={form.motivation} onChange={(event) => setForm({ ...form, motivation: event.target.value })} rows={4} placeholder="Why do you want to take this course?" className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-900 focus:ring-2 focus:ring-emerald-500" />
-                  </label>
-                  <Button className="w-full" disabled={!selected || busy} onClick={() => void register()}>
-                    {busy ? <Loader2 className="size-4 animate-spin" /> : <CreditCard className="size-4" />} Complete Registration
-                  </Button>
-                  <Link href="/dashboard/academy" className="flex items-center justify-center gap-2 text-sm font-semibold text-emerald-600 hover:text-emerald-700">
-                    <Upload className="size-4" /> Already registered? Upload proof
-                  </Link>
-                </div>
-              )}
-            </div>
+          <div className="sticky top-4">
+            <AcademySidePanel
+              user={user}
+              selected={selected}
+              selectedRegistration={selectedRegistration}
+              academySettings={academySettings}
+              academyStatus={academyStatus}
+              isAdmin={isAdmin}
+              isAgent={isAgent}
+              form={form}
+              setForm={setForm}
+              displayPrice={displayPrice}
+              busy={busy}
+              onRegister={() => void register()}
+              courses={courses}
+              selectedId={selectedId}
+              onSelectCourse={setSelectedId}
+            />
           </div>
         </aside>
       </div>
     </PageShell>
+  );
+}
+
+function StatCard({
+  icon: Icon,
+  value,
+  label,
+  color,
+}: {
+  icon: typeof BookOpen;
+  value: string;
+  label: string;
+  color: "emerald" | "amber" | "blue" | "purple";
+}) {
+  const colors = {
+    emerald: "bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400",
+    amber: "bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400",
+    blue: "bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400",
+    purple: "bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400",
+  };
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-950">
+      <div className="flex items-center gap-3">
+        <div className={`rounded-lg p-3 ${colors[color]}`}>
+          <Icon className="size-6" />
+        </div>
+        <div>
+          <p className="text-2xl font-bold">{value}</p>
+          <p className="text-sm text-slate-600 dark:text-slate-400">{label}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CourseCardHeader({ course }: { course: PublicCourse }) {
+  return (
+    <>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="flex-1">
+          <div className="flex flex-wrap items-center gap-2 mb-3">
+            <span className="rounded-full bg-gradient-to-r from-emerald-500 to-emerald-600 px-3 py-1 text-xs font-semibold text-white">{course.category}</span>
+            <span className="rounded-full bg-gradient-to-r from-blue-500 to-blue-600 px-3 py-1 text-xs font-semibold text-white">{course.difficulty}</span>
+            {course.certificateEnabled && (
+              <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 flex items-center gap-1">
+                <Award className="size-3" /> Certificate
+              </span>
+            )}
+          </div>
+          <h3 className="text-2xl font-bold mb-2 group-hover:text-emerald-600 transition-colors">{course.title}</h3>
+          <p className="text-slate-600 dark:text-slate-400 leading-relaxed">{course.description}</p>
+        </div>
+        <div className="text-right">
+          <p className="text-3xl font-bold text-emerald-600">{course.publicPrice ? `${course.currency} ${course.publicPrice.toFixed(2)}` : "Free"}</p>
+          {course.agentPrice < course.publicPrice && <p className="text-xs text-emerald-600 font-medium">Agents: {course.currency} {course.agentPrice.toFixed(2)}</p>}
+          <p className="text-sm text-slate-500">{course.accessDurationDays} days access</p>
+        </div>
+      </div>
+      <div className="mt-6 grid gap-3 sm:grid-cols-3">
+        <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400"><BookOpen className="size-5 text-emerald-500" /><span className="font-medium">{course.lessonCount} lessons</span></div>
+        <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400"><Clock className="size-5 text-emerald-500" /><span className="font-medium">{course.estimatedHours || Math.round(course.durationMinutes / 60)} hours</span></div>
+        <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400"><GraduationCap className="size-5 text-emerald-500" /><span className="font-medium">{course.instructor || "HomeLink trainers"}</span></div>
+      </div>
+    </>
+  );
+}
+
+function CourseModulesPreview({ modules }: { modules: PublicCourse["modules"] }) {
+  return (
+    <div className="mt-6">
+      <p className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">Course Modules</p>
+      <div className="grid gap-2 md:grid-cols-2">
+        {modules.slice(0, 4).map((module) => (
+          <div key={module.id} className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm dark:border-slate-800 dark:bg-slate-900/50">
+            <p className="font-semibold text-slate-900 dark:text-white">{module.title}</p>
+            <p className="mt-1 text-xs text-slate-500">{module.lessons.length} lessons</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function CourseActionButton({
+  courseId,
+  registration,
+  selected,
+  onSelect,
+}: {
+  courseId: string;
+  registration: ReturnType<typeof courseRegistrationState>;
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  if (registration === "APPROVED") {
+    return (
+      <Link href={`/dashboard/academy/${courseId}`} className="mt-6 block">
+        <Button className="w-full"><PlayCircle className="size-4 mr-2" /> Continue Course</Button>
+      </Link>
+    );
+  }
+  if (registration === "PENDING") {
+    return (
+      <Link href="/dashboard/academy" className="mt-6 block">
+        <Button className="w-full" variant="secondary"><Upload className="size-4 mr-2" /> Complete Payment</Button>
+      </Link>
+    );
+  }
+  return (
+    <Button className="mt-6 w-full" variant={selected ? "primary" : "secondary"} onClick={onSelect}>
+      {selected ? <><CheckCircle2 className="size-4 mr-2" /> Selected</> : <><Zap className="size-4 mr-2" /> Enroll Now</>}
+    </Button>
+  );
+}
+
+function AcademySidePanel({
+  user,
+  selected,
+  selectedRegistration,
+  academySettings,
+  academyStatus,
+  isAdmin,
+  isAgent,
+  form,
+  setForm,
+  displayPrice,
+  busy,
+  onRegister,
+  courses,
+  selectedId,
+  onSelectCourse,
+}: {
+  user: ReturnType<typeof useApp>["user"];
+  selected?: PublicCourse;
+  selectedRegistration: ReturnType<typeof courseRegistrationState>;
+  academySettings: { academyName?: string; paymentInstructions?: string } | null;
+  academyStatus: AcademyStatus | null;
+  isAdmin: boolean;
+  isAgent: boolean;
+  form: { phone: string; organisation: string; motivation: string; paymentMethod: string; registrationIntent: "TRAINING_ONLY" | "AGENT_TRAINING" };
+  setForm: React.Dispatch<React.SetStateAction<typeof form>>;
+  displayPrice: number | null;
+  busy: boolean;
+  onRegister: () => void;
+  courses: PublicCourse[];
+  selectedId: string;
+  onSelectCourse: (id: string) => void;
+}) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-lg dark:border-slate-800 dark:bg-slate-950">
+      <div className="flex items-center gap-3 mb-6">
+        <div className="rounded-xl bg-emerald-100 p-3 dark:bg-emerald-900/30">
+          <ShieldCheck className="size-6 text-emerald-600 dark:text-emerald-400" />
+        </div>
+        <div>
+          <h2 className="text-xl font-bold">
+            {!user ? "Get Started" : selectedRegistration === "APPROVED" ? "Your Course" : selectedRegistration === "PENDING" ? "Payment Pending" : "Enrol in a Course"}
+          </h2>
+          <p className="text-sm text-slate-600 dark:text-slate-400">
+            {!user ? "Create an account to enrol" : selectedRegistration === "APPROVED" ? "Continue where you left off" : selectedRegistration === "PENDING" ? "Finish payment to unlock access" : "Complete registration for a new course"}
+          </p>
+        </div>
+      </div>
+
+      {!user ? (
+        <AuthForm initialMode="register" showBrand={false} redirectTo={null} />
+      ) : (
+        <div className="space-y-4">
+          <div className="rounded-xl bg-gradient-to-r from-emerald-50 to-teal-50 p-4 text-sm dark:from-emerald-900/20 dark:to-teal-900/20">
+            <p className="font-semibold text-emerald-900 dark:text-emerald-100">Signed in as {user.email}</p>
+            {academyStatus?.hasActiveAccess && (
+              <p className="text-emerald-700 dark:text-emerald-300 mt-1">You have active course access.</p>
+            )}
+          </div>
+
+          {isAdmin && (
+            <Link href="/dashboard/admin?tab=academy">
+              <Button variant="secondary" className="w-full"><Settings className="size-4 mr-2" /> Manage Academy (Admin)</Button>
+            </Link>
+          )}
+
+          {academyStatus?.hasActiveAccess && (
+            <Link href="/dashboard/academy">
+              <Button className="w-full"><PlayCircle className="size-4 mr-2" /> Go to Learning Dashboard</Button>
+            </Link>
+          )}
+
+          {selectedRegistration === "APPROVED" && selected && (
+            <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm dark:border-emerald-800 dark:bg-emerald-900/20">
+              <p className="font-semibold text-emerald-900 dark:text-emerald-100">You are enrolled in this course</p>
+              <p className="mt-1 text-emerald-800 dark:text-emerald-200">Open the course to view modules, lessons, materials, and quizzes.</p>
+              <Link href={`/dashboard/academy/${selected.id}`} className="mt-4 block">
+                <Button className="w-full"><PlayCircle className="size-4 mr-2" /> Continue {selected.title}</Button>
+              </Link>
+            </div>
+          )}
+
+          {selectedRegistration === "PENDING" && selected && (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm dark:border-amber-800 dark:bg-amber-900/20">
+              <p className="font-semibold text-amber-900 dark:text-amber-100">Payment approval pending</p>
+              <p className="mt-1 text-amber-800 dark:text-amber-200">Upload proof of payment from your learner dashboard. An admin will activate your access.</p>
+              <Link href="/dashboard/academy" className="mt-4 block">
+                <Button className="w-full" variant="secondary"><Upload className="size-4 mr-2" /> Upload Payment Proof</Button>
+              </Link>
+            </div>
+          )}
+
+          {selectedRegistration === "NOT_REGISTERED" && (
+            <>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+                Select Course
+                <select value={selectedId} onChange={(event) => onSelectCourse(event.target.value)} className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-900 focus:ring-2 focus:ring-emerald-500">
+                  <option value="">Choose a course...</option>
+                  {courses.map((course) => {
+                    const state = courseRegistrationState(academyStatus, course.id);
+                    const suffix = state === "APPROVED" ? " (Enrolled)" : state === "PENDING" ? " (Pending)" : "";
+                    return <option key={course.id} value={course.id}>{course.title}{suffix}</option>;
+                  })}
+                </select>
+              </label>
+              <TextInput label="Phone Number" value={form.phone} onChange={(phone) => setForm({ ...form, phone })} />
+              <TextInput label="Organization (Optional)" value={form.organisation} onChange={(organisation) => setForm({ ...form, organisation })} />
+              {academySettings?.paymentInstructions && (
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-300">
+                  <p className="font-semibold mb-1">Payment instructions</p>
+                  <p>{academySettings.paymentInstructions}</p>
+                </div>
+              )}
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+                Registration type
+                <select
+                  value={form.registrationIntent}
+                  onChange={(event) => setForm({ ...form, registrationIntent: event.target.value as "TRAINING_ONLY" | "AGENT_TRAINING" })}
+                  className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-900 focus:ring-2 focus:ring-emerald-500"
+                >
+                  <option value="TRAINING_ONLY">Training only — I am not applying to become a HomeLink agent</option>
+                  {isAgent && <option value="AGENT_TRAINING">Agent training — I am a HomeLink agent</option>}
+                </select>
+              </label>
+              {selected && displayPrice !== null && (
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm dark:border-slate-700 dark:bg-slate-900/50">
+                  <p className="font-semibold">Course fee</p>
+                  <p className="text-2xl font-bold text-emerald-600 mt-1">{displayPrice > 0 ? `${selected.currency} ${displayPrice.toFixed(2)}` : "Free"}</p>
+                </div>
+              )}
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+                Payment Method
+                <select value={form.paymentMethod} onChange={(event) => setForm({ ...form, paymentMethod: event.target.value })} className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-900 focus:ring-2 focus:ring-emerald-500">
+                  <option value="bank_transfer">Bank Transfer</option>
+                  <option value="zipit">ZIPIT</option>
+                  <option value="cash">Cash Deposit</option>
+                </select>
+              </label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+                Tell us about yourself
+                <textarea value={form.motivation} onChange={(event) => setForm({ ...form, motivation: event.target.value })} rows={4} placeholder="Why do you want to take this course?" className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-900 focus:ring-2 focus:ring-emerald-500" />
+              </label>
+              <Button className="w-full" disabled={!selected || busy} onClick={onRegister}>
+                {busy ? <Loader2 className="size-4 animate-spin" /> : <CreditCard className="size-4" />} Complete Registration
+              </Button>
+            </>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 

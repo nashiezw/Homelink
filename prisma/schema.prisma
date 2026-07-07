@@ -874,15 +874,28 @@ model TrainingCategory {
 model TrainingCourse {
   id                String                 @id @default(cuid())
   title             String
+  subtitle          String?
   slug              String                 @unique
   thumbnailUrl      String?
   bannerUrl         String?
   description       String
+  shortDescription  String?
   categoryId        String?
   tags              String[]               @default([])
   difficulty        TrainingDifficulty     @default(BEGINNER)
   durationMinutes   Int                    @default(0)
   instructor        String?
+  coInstructors     String[]               @default([])
+  learningOutcomes  String[]               @default([])
+  targetAudience    String?
+  introVideoUrl     String?
+  previewVideoUrl   String?
+  welcomeVideoUrl   String?
+  seoTitle          String?
+  seoDescription    String?
+  enrollmentType    String                 @default("OPEN")
+  capacity          Int?
+  discountPrice     Decimal?               @db.Decimal(12, 2)
   prerequisites     String[]               @default([])
   passingPercentage Int                    @default(80)
   estimatedHours    Decimal                @default(0) @db.Decimal(6, 2)
@@ -957,15 +970,19 @@ model AcademyLearnerApplication {
 }
 
 model TrainingModule {
-  id          String            @id @default(cuid())
-  courseId    String
-  title       String
-  description String?
-  sortOrder   Int               @default(0)
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
-  course      TrainingCourse    @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  sections    TrainingSection[]
+  id               String            @id @default(cuid())
+  courseId         String
+  title            String
+  description      String?
+  objectives       String[]          @default([])
+  estimatedMinutes Int               @default(0)
+  sortOrder        Int               @default(0)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  course           TrainingCourse    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  sections         TrainingSection[]
+  quizzes          Quiz[]
+  assignments      Assignment[]
 
   @@index([courseId, sortOrder])
   @@map("training_modules")
@@ -992,6 +1009,12 @@ model TrainingLesson {
   title                    String
   summary                  String?
   richText                 String             @default("")
+  transcript               String?
+  lessonNotes              String?
+  objectives               String[]           @default([])
+  discussionPrompt         String?
+  checklist                Json?
+  reflectionQuestions      Json?
   videoUrl                 String?
   embeddedVideoUrl         String?
   pdfUrl                   String?
@@ -1010,6 +1033,8 @@ model TrainingLesson {
   lessonResources          LessonResource[]
   lessonDownloads          LessonDownload[]
   progress                 LessonProgress[]
+  quizzes                  Quiz[]
+  assignments              Assignment[]
 
   @@index([sectionId, sortOrder])
   @@map("training_lessons")
@@ -1072,21 +1097,27 @@ model LessonDownload {
 }
 
 model Quiz {
-  id                String        @id @default(cuid())
+  id                String          @id @default(cuid())
   courseId          String?
+  moduleId          String?
+  lessonId          String?
   title             String
   description       String?
-  passingPercentage Int           @default(80)
-  randomise         Boolean       @default(false)
+  passingPercentage Int             @default(80)
+  randomise         Boolean         @default(false)
   timeLimitMinutes  Int?
-  active            Boolean       @default(true)
-  createdAt         DateTime      @default(now())
-  updatedAt         DateTime      @updatedAt
+  active            Boolean         @default(true)
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
   course            TrainingCourse? @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  module            TrainingModule? @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  lesson            TrainingLesson? @relation(fields: [lessonId], references: [id], onDelete: Cascade)
   questions         QuizQuestion[]
   attempts          QuizAttempt[]
 
   @@index([courseId])
+  @@index([moduleId])
+  @@index([lessonId])
   @@map("quizzes")
 }
 
@@ -1208,6 +1239,8 @@ model ExamAttempt {
 model Assignment {
   id          String                 @id @default(cuid())
   courseId    String?
+  moduleId    String?
+  lessonId    String?
   title       String
   description String
   dueDays     Int?
@@ -1216,9 +1249,13 @@ model Assignment {
   createdAt   DateTime               @default(now())
   updatedAt   DateTime               @updatedAt
   course      TrainingCourse?        @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  module      TrainingModule?        @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  lesson      TrainingLesson?        @relation(fields: [lessonId], references: [id], onDelete: Cascade)
   submissions AssignmentSubmission[]
 
   @@index([courseId])
+  @@index([moduleId])
+  @@index([lessonId])
   @@map("assignments")
 }
 

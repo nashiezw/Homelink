@@ -5,6 +5,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { ChevronDown, Heart, Menu, Moon, Sun, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { HomeLinkLogoLink } from "@/components/brand/homelink-logo";
+import { useAcademyDestination } from "@/components/academy/use-academy-destination";
 import { useApp } from "@/components/providers/app-provider";
 import { usePlatformConfig } from "@/components/providers/platform-config-provider";
 import { AccountHubLink, UserMenu, canListProperty } from "@/components/layout/user-menu";
@@ -15,7 +16,7 @@ const exploreNavBase = [
   { label: "Rent", href: "/search?intent=rent", feature: null },
   { label: "Buy", href: "/search?intent=buy", feature: null },
   { label: "Roommates", href: "/roommates", feature: "roommateMatching" as const },
-  { label: "Academy", href: "/academy", feature: null },
+  { label: "Academy", href: "/academy", feature: null, smartAcademy: true },
   { label: "Holidays", href: "/search?type=holiday_home", title: "Holiday Homes", feature: null },
   { label: "Land", href: "/search?type=land", feature: null },
   { label: "Commercial", href: "/search?type=commercial", feature: null },
@@ -34,6 +35,7 @@ function useNavActive() {
       if (pathname !== path) {
         if (path === "/roommates" && pathname.startsWith("/roommates")) return true;
         if (path === "/become-agent" && pathname.startsWith("/become-agent")) return true;
+        if (path === "/academy" && pathname.startsWith("/dashboard/academy")) return true;
         return false;
       }
       if (!queryString) return true;
@@ -80,8 +82,11 @@ function NavLink({
 
 export function SiteHeader() {
   const { user, signOut, favourites, compareIds } = useApp();
+  const { href: academyHref } = useAcademyDestination();
   const { config: _config, isFeatureEnabled } = usePlatformConfig();
-  const exploreNav = exploreNavBase.filter((item) => !item.feature || isFeatureEnabled(item.feature));
+  const exploreNav = exploreNavBase
+    .filter((item) => !item.feature || isFeatureEnabled(item.feature))
+    .map((item) => (item.smartAcademy ? { ...item, href: academyHref } : item));
   const isNavActive = useNavActive();
   const [menuOpen, setMenuOpen] = useState(false);
   const [ownersOpen, setOwnersOpen] = useState(false);

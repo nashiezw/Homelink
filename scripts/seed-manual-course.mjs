@@ -1,26 +1,13 @@
-﻿import { Prisma } from "@prisma/client";
+import { PrismaClient } from "@prisma/client";
 import { readFile } from "fs/promises";
 import path from "path";
-import { getMainPrisma } from "@/lib/db/main-prisma";
-import { seedManualCourseStructure } from "@/lib/academy/manual-course-seed";
 
+const prisma = new PrismaClient();
 const COURSE_ID = "academy-course-official-real-estate-agent-training";
-const CERTIFICATE_TEMPLATE_ID = "academy-certificate-certified-homelink-agent";
+const DATA_PATH = path.join(process.cwd(), "lib", "academy", "data", "homelink-agent-course.json");
+const MANIFEST_PATH = path.join(process.cwd(), "public", "uploads", "academy", "academy-resources-manifest.json");
 const LEARNING_PATH_ID = "academy-path-new-agent-programme";
-
-type AcademyResourceManifestItem = {
-  title: string;
-  description: string;
-  category: string;
-  sourceCategory?: string;
-  fileUrl: string;
-  fileName: string;
-  fileType: string;
-  fileSizeBytes: number;
-  version?: number;
-  tags?: string[];
-  sortOrder?: number;
-};
+const CERTIFICATE_TEMPLATE_ID = "academy-certificate-certified-homelink-agent";
 
 const quizSeeds = [
   {
@@ -103,51 +90,190 @@ const assignments = [
   },
 ];
 
-export async function ensureOfficialAcademySeed() {
-  const prisma = getMainPrisma();
-  const [courseCount, documentCount, quizCount, assignmentCount, examCount] = await Promise.all([
-    prisma.trainingCourse.count(),
-    prisma.documentLibrary.count(),
-    prisma.quiz.count(),
-    prisma.assignment.count(),
-    prisma.finalExam.count(),
-  ]);
-
-  const manifest = await loadManifest();
-  if (!documentCount) await seedDocuments(prisma, manifest);
-  await seedManualCourseStructure({ forceRebuild: courseCount === 0 });
-  if (!quizCount || !assignmentCount || !examCount) await seedAssessments(prisma);
-  await seedLearningPath(prisma);
-  await seedCertificateTemplate(prisma);
-  await seedEngagementRecords(prisma);
+function slugify(value) {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "lesson";
 }
 
-export async function seedOfficialAcademyResources() {
-  const prisma = getMainPrisma();
-  const manifest = await loadManifest();
-  await seedDocuments(prisma, manifest);
-  const manual = await seedManualCourseStructure({ forceRebuild: true });
-  await seedAssessments(prisma);
-  await seedLearningPath(prisma);
-  await seedCertificateTemplate(prisma);
-  await seedEngagementRecords(prisma);
-  return {
-    ...manual,
-    academyDocuments: await prisma.documentLibrary.count({ where: { id: { startsWith: "academy-doc-" } } }),
-    quizzes: await prisma.quiz.count({ where: { courseId: COURSE_ID } }),
-    assignments: await prisma.assignment.count({ where: { courseId: COURSE_ID } }),
-    finalExams: await prisma.finalExam.count({ where: { courseId: COURSE_ID } }),
-    learningPaths: await prisma.learningPath.count({ where: { id: LEARNING_PATH_ID } }),
+function isLowQualityLesson(lesson) {
+  const dots = (lesson.summary.match(/\.{4,}/g) ?? []).length;
+  return dots >= 2 || (lesson.richText.includes("Personal Goal Planner") && lesson.title === "Why This Manual Was Developed");
+}
+
+function normalizeModuleTitle(title) {
+  const map = {
+    INTRODUCTION: "Introduction to the HomeLink Zimbabwe Standard",
+    "Chapter 1": "Chapter 1: Foundations of Real Estate",
+    "Chapter 2": "Chapter 2: Prospecting, Listings and Property Marketing",
+    "Chapter 3": "Chapter 3: Working with Clients",
+    "Chapter 4": "Chapter 4: Documentation, Legal Awareness and Compliance",
+    "Chapter 5": "Chapter 5: Becoming a Top-Performing Agent",
   };
+  for (const [key, value] of Object.entries(map)) {
+    if (title.toUpperCase().startsWith(key.toUpperCase())) return value;
+  }
+  if (title.toUpperCase().includes("RESOURCE")) return "Professional Agent Resource Kit";
+  return title.replace(/\s+/g, " ").trim();
 }
 
-async function loadManifest(): Promise<AcademyResourceManifestItem[]> {
-  const manifestPath = path.join(process.cwd(), "public", "uploads", "academy", "academy-resources-manifest.json");
-  return JSON.parse(await readFile(manifestPath, "utf8")) as AcademyResourceManifestItem[];
+function consolidateModules(modules) {
+  const merged = new Map();
+  for (const courseModule of modules) {
+    const title = normalizeModuleTitle(courseModule.title);
+    const existing = merged.get(title);
+    const lessons = courseModule.lessons.filter((lesson) => !isLowQualityLesson(lesson));
+    if (!lessons.length) continue;
+    if (!existing) {
+      merged.set(title, { ...courseModule, title, lessons: [...lessons] });
+      continue;
+    }
+    existing.lessons.push(...lessons);
+    existing.estimatedMinutes += courseModule.estimatedMinutes;
+  }
+  return [...merged.values()];
 }
 
-async function seedDocuments(prisma: ReturnType<typeof getMainPrisma>, manifest: AcademyResourceManifestItem[]) {
-  const manualCategory = await ensureDocumentCategory(prisma, "Training Manuals", 0);
+async function seedManualCourseStructure(forceRebuild = true) {
+  const raw = JSON.parse(await readFile(DATA_PATH, "utf8"));
+  const data = { ...raw, modules: consolidateModules(raw.modules) };
+
+  const category = await prisma.trainingCategory.upsert({
+    where: { slug: "new-agent-programme" },
+    create: { name: "New Agent Programme", slug: "new-agent-programme", description: "Official HomeLink Zimbabwe agent certification.", sortOrder: 0 },
+    update: { name: "New Agent Programme", active: true },
+  });
+
+  const c = data.course;
+  await prisma.trainingCourse.upsert({
+    where: { id: COURSE_ID },
+    create: {
+      id: COURSE_ID,
+      title: c.title,
+      subtitle: c.subtitle,
+      slug: c.slug,
+      shortDescription: c.shortDescription,
+      description: c.description,
+      categoryId: category.id,
+      instructor: c.instructor ?? "HomeLink Zimbabwe",
+      coInstructors: c.coInstructors ?? [],
+      learningOutcomes: c.learningOutcomes ?? [],
+      targetAudience: c.targetAudience,
+      tags: c.tags ?? [],
+      difficulty: "BEGINNER",
+      durationMinutes: (c.estimatedHours ?? 40) * 60,
+      estimatedHours: c.estimatedHours ?? 40,
+      language: c.language ?? "English",
+      passingPercentage: 80,
+      certificateEnabled: true,
+      price: 75,
+      publicPrice: 75,
+      agentPrice: 0,
+      currency: "USD",
+      registrationOpen: true,
+      accessDurationDays: 365,
+      status: "PUBLISHED",
+      featured: true,
+      visibility: "PUBLIC",
+      roleNames: ["AGENT", "ADMIN", "PUBLIC_LEARNER"],
+      thumbnailUrl: "/brand/homelink-full-lockup.png",
+      bannerUrl: "/uploads/academy/homelink-zimbabwe-real-estate-agent-training-manual.pdf",
+      enrollmentType: "OPEN",
+    },
+    update: {
+      title: c.title,
+      subtitle: c.subtitle,
+      shortDescription: c.shortDescription,
+      description: c.description,
+      coInstructors: c.coInstructors ?? [],
+      learningOutcomes: c.learningOutcomes ?? [],
+      targetAudience: c.targetAudience,
+      estimatedHours: c.estimatedHours ?? 40,
+      durationMinutes: (c.estimatedHours ?? 40) * 60,
+      status: "PUBLISHED",
+      featured: true,
+      registrationOpen: true,
+      updatedAt: new Date(),
+    },
+  });
+
+  const existingLessons = await prisma.trainingLesson.count({ where: { section: { module: { courseId: COURSE_ID } } } });
+  if (existingLessons > 50 && !forceRebuild) {
+    return { rebuilt: false, lessonCount: existingLessons, moduleCount: await prisma.trainingModule.count({ where: { courseId: COURSE_ID } }) };
+  }
+
+  await prisma.trainingModule.deleteMany({ where: { courseId: COURSE_ID } });
+
+  let lessonIndex = 0;
+  for (const [moduleIndex, module] of data.modules.entries()) {
+    await prisma.trainingModule.create({
+      data: {
+        courseId: COURSE_ID,
+        title: module.title,
+        description: module.description,
+        objectives: module.objectives,
+        estimatedMinutes: module.estimatedMinutes,
+        sortOrder: moduleIndex,
+        sections: {
+          create: [{
+            title: module.title,
+            description: "Lessons extracted from the official HomeLink training manual.",
+            sortOrder: 0,
+            lessons: {
+              create: module.lessons.map((lesson, sortOrder) => {
+                lessonIndex += 1;
+                const id = `manual-lesson-${lessonIndex}-${slugify(lesson.title).slice(0, 40)}`;
+                return {
+                  id,
+                  title: lesson.title,
+                  summary: lesson.summary,
+                  richText: lesson.richText,
+                  transcript: lesson.transcript ?? null,
+                  lessonNotes: lesson.lessonNotes ?? null,
+                  objectives: lesson.objectives,
+                  discussionPrompt: lesson.discussionPrompt ?? null,
+                  checklist: lesson.checklist ?? undefined,
+                  reflectionQuestions: lesson.reflectionQuestions ?? undefined,
+                  pdfUrl: "/uploads/academy/homelink-zimbabwe-real-estate-agent-training-manual.pdf",
+                  estimatedMinutes: lesson.estimatedMinutes,
+                  completionRequirement: lesson.title.toLowerCase().includes("knowledge check") ? "QUIZ" : "VIEW",
+                  sortOrder,
+                  lessonResources: {
+                    create: (lesson.resources ?? []).map((resource, index) => ({
+                      title: resource.title,
+                      body: resource.body,
+                      type: resource.type,
+                      sortOrder: index,
+                    })),
+                  },
+                  lessonDownloads: {
+                    create: (lesson.downloads ?? []).map((download) => ({
+                      title: download.title,
+                      url: download.url,
+                      type: download.type,
+                    })),
+                  },
+                };
+              }),
+            },
+          }],
+        },
+      },
+    });
+  }
+
+  return { rebuilt: true, lessonCount: lessonIndex, moduleCount: data.modules.length };
+}
+
+async function ensureDocumentCategory(name, sortOrder) {
+  return prisma.documentCategory.upsert({
+    where: { slug: slugify(name) },
+    create: { name, slug: slugify(name), description: `${name} used by HomeLink Agent Academy.`, sortOrder },
+    update: { name, description: `${name} used by HomeLink Agent Academy.`, sortOrder },
+  });
+}
+
+async function seedDocuments() {
+  const manifest = JSON.parse(await readFile(MANIFEST_PATH, "utf8"));
+  const manualCategory = await ensureDocumentCategory("Training Manuals", 0);
   await prisma.documentLibrary.upsert({
     where: { id: "academy-doc-official-training-manual" },
     create: {
@@ -171,27 +297,23 @@ async function seedDocuments(prisma: ReturnType<typeof getMainPrisma>, manifest:
     },
     update: {
       categoryId: manualCategory.id,
-      title: "HomeLink Zimbabwe Real Estate Agent Training Manual",
-      description: "Official downloadable PDF manual for HomeLink Zimbabwe agent onboarding, training and certification.",
       fileUrl: "/uploads/academy/homelink-zimbabwe-real-estate-agent-training-manual.pdf",
       downloadable: true,
       previewable: true,
       visible: true,
       active: true,
-      sortOrder: 0,
     },
   });
 
   const categoryNames = [...new Set(manifest.map((item) => item.category))];
-  const categories = new Map<string, { id: string }>();
+  const categories = new Map();
   for (const [index, name] of categoryNames.entries()) {
-    categories.set(name, await ensureDocumentCategory(prisma, name, index + 1));
+    categories.set(name, await ensureDocumentCategory(name, index + 1));
   }
 
   for (const item of manifest) {
     const category = categories.get(item.category);
     const id = `academy-doc-${slugify(item.title)}`;
-    const searchableText = `${item.title} ${item.description} ${item.category} ${(item.tags ?? []).join(" ")}`;
     await prisma.documentLibrary.upsert({
       where: { id },
       create: {
@@ -201,12 +323,12 @@ async function seedDocuments(prisma: ReturnType<typeof getMainPrisma>, manifest:
         description: item.description,
         fileUrl: item.fileUrl,
         fileName: item.fileName,
-        fileType: item.fileType as any,
+        fileType: item.fileType,
         fileSizeBytes: item.fileSizeBytes,
         version: item.version ?? 1,
         tags: item.tags ?? [],
         permissions: ["ADMIN", "AGENT", "PUBLIC_LEARNER"],
-        searchableText,
+        searchableText: `${item.title} ${item.description} ${item.category} ${(item.tags ?? []).join(" ")}`,
         downloadable: true,
         previewable: true,
         visible: true,
@@ -214,33 +336,21 @@ async function seedDocuments(prisma: ReturnType<typeof getMainPrisma>, manifest:
         active: true,
       },
       update: {
-        categoryId: category?.id,
         title: item.title,
         description: item.description,
         fileUrl: item.fileUrl,
-        fileName: item.fileName,
-        fileType: item.fileType as any,
-        fileSizeBytes: item.fileSizeBytes,
-        version: item.version ?? 1,
-        tags: item.tags ?? [],
-        permissions: ["ADMIN", "AGENT", "PUBLIC_LEARNER"],
-        searchableText,
-        downloadable: true,
-        previewable: true,
-        visible: true,
-        sortOrder: item.sortOrder ?? 0,
         active: true,
       },
     });
   }
 }
 
-async function seedAssessments(prisma: ReturnType<typeof getMainPrisma>) {
+async function seedAssessments() {
   for (const quiz of quizSeeds) {
     await prisma.quiz.upsert({
       where: { id: quiz.id },
       create: { id: quiz.id, courseId: COURSE_ID, title: quiz.title, description: quiz.description, passingPercentage: 80, randomise: true, timeLimitMinutes: 20, active: true },
-      update: { courseId: COURSE_ID, title: quiz.title, description: quiz.description, passingPercentage: 80, randomise: true, timeLimitMinutes: 20, active: true },
+      update: { courseId: COURSE_ID, title: quiz.title, description: quiz.description, passingPercentage: 80, active: true },
     });
     await prisma.quizQuestion.deleteMany({ where: { quizId: quiz.id } });
     for (const [index, question] of quiz.questions.entries()) {
@@ -252,10 +362,9 @@ async function seedAssessments(prisma: ReturnType<typeof getMainPrisma>) {
           points: 5,
           explanation: question.explanation,
           correctAnswer: { value: String(question.correct) },
-          incorrectFeedback: "Review the related manual section and supporting resource before retaking this quiz.",
-          hints: ["Check the official manual and the linked resource forms."],
+          incorrectFeedback: "Review the related manual section before retaking this quiz.",
+          hints: ["Check the official manual and linked resources."],
           difficulty: "BEGINNER",
-          randomise: false,
           categories: ["Official Manual"],
           tags: ["manual", "knowledge-check"],
           sortOrder: index,
@@ -290,7 +399,7 @@ async function seedAssessments(prisma: ReturnType<typeof getMainPrisma>) {
       durationMinutes: 90,
       passingScore: 80,
       randomQuestions: true,
-      questionPools: { quizzes: quizSeeds.map((quiz) => quiz.id), minimumQuestions: 6 },
+      questionPools: { quizzes: quizSeeds.map((q) => q.id), minimumQuestions: 6 },
       attemptLimit: 2,
       browserLock: false,
       autoSubmit: true,
@@ -302,15 +411,13 @@ async function seedAssessments(prisma: ReturnType<typeof getMainPrisma>) {
     update: {
       courseId: COURSE_ID,
       title: "Certified HomeLink Agent Final Examination",
-      durationMinutes: 90,
-      passingScore: 80,
-      questionPools: { quizzes: quizSeeds.map((quiz) => quiz.id), minimumQuestions: 6 },
+      questionPools: { quizzes: quizSeeds.map((q) => q.id), minimumQuestions: 6 },
       active: true,
     },
   });
 }
 
-async function seedLearningPath(prisma: ReturnType<typeof getMainPrisma>) {
+async function seedLearningPathAndCertificate() {
   await prisma.learningPath.upsert({
     where: { id: LEARNING_PATH_ID },
     create: {
@@ -320,83 +427,48 @@ async function seedLearningPath(prisma: ReturnType<typeof getMainPrisma>) {
       status: "PUBLISHED",
       badgeTitle: "Certified HomeLink Agent",
     },
-    update: {
-      title: "New Agent Programme",
-      description: "Structured HomeLink onboarding path from foundations through legal compliance, sales, property management and certification.",
-      status: "PUBLISHED",
-      badgeTitle: "Certified HomeLink Agent",
-    },
+    update: { status: "PUBLISHED" },
   });
   await prisma.pathCourse.upsert({
     where: { pathId_courseId: { pathId: LEARNING_PATH_ID, courseId: COURSE_ID } },
     create: { pathId: LEARNING_PATH_ID, courseId: COURSE_ID, sortOrder: 0, required: true },
     update: { sortOrder: 0, required: true },
   });
-}
-
-async function seedCertificateTemplate(prisma: ReturnType<typeof getMainPrisma>) {
   await prisma.certificateTemplate.upsert({
     where: { id: CERTIFICATE_TEMPLATE_ID },
     create: {
       id: CERTIFICATE_TEMPLATE_ID,
       name: "Certified HomeLink Agent Certificate",
       logoUrl: "/brand/homelink-full-lockup.png",
-      templateJson: {
-        certificateNumberPrefix: "HLA",
-        title: "Certified HomeLink Agent",
-        qrVerification: true,
-        expiryDays: 365,
-        colours: { primary: "#008b68", accent: "#c6a15b" },
-      } as Prisma.InputJsonObject,
+      templateJson: { certificateNumberPrefix: "HLA", title: "Certified HomeLink Agent", qrVerification: true, expiryDays: 365, colours: { primary: "#008b68", accent: "#c6a15b" } },
       active: true,
     },
-    update: {
-      name: "Certified HomeLink Agent Certificate",
-      logoUrl: "/brand/homelink-full-lockup.png",
-      templateJson: {
-        certificateNumberPrefix: "HLA",
-        title: "Certified HomeLink Agent",
-        qrVerification: true,
-        expiryDays: 365,
-        colours: { primary: "#008b68", accent: "#c6a15b" },
-      } as Prisma.InputJsonObject,
-      active: true,
-    },
+    update: { active: true },
   });
 }
 
-async function seedEngagementRecords(prisma: ReturnType<typeof getMainPrisma>) {
-  await prisma.announcement.upsert({
-    where: { id: "academy-announcement-official-manual-live" },
-    create: {
-      id: "academy-announcement-official-manual-live",
-      title: "Official HomeLink Agent Academy is live",
-      body: "The official HomeLink Zimbabwe Real Estate Agent Training Manual, course sequence and downloadable resources are now available.",
-      audience: "AGENTS",
-      publishedAt: new Date(),
-    },
-    update: {
-      title: "Official HomeLink Agent Academy is live",
-      body: "The official HomeLink Zimbabwe Real Estate Agent Training Manual, course sequence and downloadable resources are now available.",
-      audience: "AGENTS",
-      publishedAt: new Date(),
-    },
-  });
-  await prisma.badge.upsert({
-    where: { id: "academy-badge-certified-homelink-agent" },
-    create: { id: "academy-badge-certified-homelink-agent", name: "Certified HomeLink Agent", description: "Awarded after completing the official Academy course and final examination.", xp: 1000, active: true },
-    update: { name: "Certified HomeLink Agent", description: "Awarded after completing the official Academy course and final examination.", xp: 1000, active: true },
-  });
+async function main() {
+  console.log("Seeding complete HomeLink Agent Training course from manual...");
+  const manual = await seedManualCourseStructure(true);
+  console.log("Manual course:", manual);
+  await seedDocuments();
+  await seedAssessments();
+  await seedLearningPathAndCertificate();
+  const stats = {
+    ...manual,
+    academyDocuments: await prisma.documentLibrary.count({ where: { id: { startsWith: "academy-doc-" } } }),
+    quizzes: await prisma.quiz.count({ where: { courseId: COURSE_ID } }),
+    assignments: await prisma.assignment.count({ where: { courseId: COURSE_ID } }),
+    finalExams: await prisma.finalExam.count({ where: { courseId: COURSE_ID } }),
+  };
+  console.log("Assessments & resources:", stats);
 }
 
-async function ensureDocumentCategory(prisma: ReturnType<typeof getMainPrisma>, name: string, sortOrder: number) {
-  return prisma.documentCategory.upsert({
-    where: { slug: slugify(name) },
-    create: { name, slug: slugify(name), description: `${name} used by HomeLink Agent Academy.`, sortOrder },
-    update: { name, description: `${name} used by HomeLink Agent Academy.`, sortOrder },
+main()
+  .catch((error) => {
+    console.error(error);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
   });
-}
-
-function slugify(value: string) {
-  return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "academy";
-}

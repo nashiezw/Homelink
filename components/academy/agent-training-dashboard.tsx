@@ -233,7 +233,7 @@ export function AgentTrainingDashboard() {
               <BookOpen className="size-12 mx-auto text-slate-400 mb-4" />
               <p className="text-lg font-semibold text-slate-600 dark:text-slate-400">No training courses assigned</p>
               <p className="text-sm text-slate-500 mt-2 mb-4">Contact your manager to get enrolled in training courses.</p>
-              <Link href="/academy" className="inline-flex items-center gap-2 text-emerald-600 font-semibold hover:text-emerald-700">
+              <Link href="/academy?browse=1" className="inline-flex items-center gap-2 text-emerald-600 font-semibold hover:text-emerald-700">
                 <Zap className="size-4" /> Browse Available Courses
               </Link>
             </div>

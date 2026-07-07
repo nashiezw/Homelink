@@ -91,7 +91,7 @@ export function LearnerDashboardClient() {
   if (!user) {
     return (
       <PageShell eyebrow="Academy" title="Sign in required" description="Create a learner account or sign in to access your Academy dashboard.">
-        <Link href="/academy" className="text-emerald-700 font-semibold hover:underline">Open public Academy registration</Link>
+        <Link href="/auth?next=/dashboard/academy" className="text-emerald-700 font-semibold hover:underline">Sign in to access your courses</Link>
       </PageShell>
     );
   }
@@ -105,7 +105,7 @@ export function LearnerDashboardClient() {
       eyebrow={data.settings?.academyName ?? "My Learning Dashboard"}
       title={`Welcome back, ${user.name}`}
       description="Track your progress, access course materials, and manage your Academy journey."
-      actions={<Link href="/academy"><Button variant="secondary"><BookOpen className="size-4 mr-2" /> Browse Courses</Button></Link>}
+      actions={<Link href="/academy?browse=1"><Button variant="secondary"><BookOpen className="size-4 mr-2" /> Browse Courses</Button></Link>}
     >
       {/* Stats Overview */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -247,7 +247,7 @@ export function LearnerDashboardClient() {
               <BookOpen className="size-12 mx-auto text-slate-400 mb-4" />
               <p className="text-lg font-semibold text-slate-600 dark:text-slate-400">No courses yet</p>
               <p className="text-sm text-slate-500 mt-2 mb-4">Start your learning journey by enrolling in a course.</p>
-              <Link href="/academy" className="inline-flex items-center gap-2 text-emerald-600 font-semibold hover:text-emerald-700">
+              <Link href="/academy?browse=1" className="inline-flex items-center gap-2 text-emerald-600 font-semibold hover:text-emerald-700">
                 <Zap className="size-4" /> Browse Available Courses
               </Link>
             </div>

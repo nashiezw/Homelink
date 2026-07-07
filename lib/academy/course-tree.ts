@@ -41,6 +41,12 @@ export function mapLessonForLearner(
     title: string;
     summary: string | null;
     richText: string;
+    transcript?: string | null;
+    lessonNotes?: string | null;
+    objectives?: string[];
+    discussionPrompt?: string | null;
+    checklist?: unknown;
+    reflectionQuestions?: unknown;
     videoUrl: string | null;
     embeddedVideoUrl: string | null;
     pdfUrl: string | null;
@@ -60,6 +66,10 @@ export function mapLessonForLearner(
     title: lesson.title,
     summary: lesson.summary,
     richText: lesson.richText,
+    transcript: lesson.transcript,
+    lessonNotes: lesson.lessonNotes,
+    objectives: lesson.objectives ?? [],
+    discussionPrompt: lesson.discussionPrompt,
     videoUrl: lesson.videoUrl,
     embeddedVideoUrl: lesson.embeddedVideoUrl,
     pdfUrl: lesson.pdfUrl,

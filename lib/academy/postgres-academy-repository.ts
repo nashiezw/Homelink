@@ -384,7 +384,17 @@ export async function runAcademyAction(body: Record<string, any>, actor: Actor) 
       moduleId: lessonPayload.moduleId,
       courseId: lessonPayload.courseId,
     });
-    const lesson = await prisma.trainingLesson.create({ data: { ...lessonInput({ ...lessonPayload, sectionId }), sectionId } });
+    const lesson = await prisma.trainingLesson.create({
+      data: {
+        sectionId,
+        title: required(lessonPayload.title, "Lesson title"),
+        summary: stringOrNull(lessonPayload.summary),
+        richText: String(lessonPayload.richText ?? ""),
+        estimatedMinutes: numberOr(lessonPayload.estimatedMinutes, 30),
+        completionRequirement: String(lessonPayload.completionRequirement ?? "VIEW"),
+        sortOrder: numberOr(lessonPayload.sortOrder, 0),
+      },
+    });
     await audit(actor, "academy.lesson.create", lesson.id, { title: lesson.title, courseId: lessonPayload.courseId });
     return lesson;
   }
@@ -572,6 +582,100 @@ export async function runAcademyAction(body: Record<string, any>, actor: Actor) 
     await audit(actor, "academy.module.delete", trainingModule.id, { title: trainingModule.title });
     return trainingModule;
   }
+  if (action === "reorder_modules") {
+    const ids = arrayOfStrings(body.moduleIds);
+    await prisma.$transaction(ids.map((id, sortOrder) => prisma.trainingModule.update({ where: { id }, data: { sortOrder } })));
+    await audit(actor, "academy.module.reorder", String(body.courseId), { count: ids.length });
+    return { reordered: ids.length };
+  }
+  if (action === "reorder_lessons") {
+    const ids = arrayOfStrings(body.lessonIds);
+    await prisma.$transaction(ids.map((id, sortOrder) => prisma.trainingLesson.update({ where: { id }, data: { sortOrder } })));
+    await audit(actor, "academy.lesson.reorder", String(body.sectionId), { count: ids.length });
+    return { reordered: ids.length };
+  }
+  if (action === "duplicate_module") {
+    const source = await prisma.trainingModule.findUnique({
+      where: { id: String(body.moduleId) },
+      include: { sections: { include: { lessons: { include: { lessonVideos: true, lessonResources: true, lessonDownloads: true } } } } },
+    });
+    if (!source) return null;
+    const copy = await prisma.trainingModule.create({
+      data: {
+        courseId: source.courseId,
+        title: `${source.title} (Copy)`,
+        description: source.description,
+        objectives: source.objectives,
+        estimatedMinutes: source.estimatedMinutes,
+        sortOrder: source.sortOrder + 1,
+        sections: {
+          create: source.sections.map((section) => ({
+            title: section.title,
+            description: section.description,
+            sortOrder: section.sortOrder,
+            lessons: {
+              create: section.lessons.map((lesson) => ({
+                title: lesson.title,
+                summary: lesson.summary,
+                richText: lesson.richText,
+                transcript: lesson.transcript,
+                lessonNotes: lesson.lessonNotes,
+                objectives: lesson.objectives,
+                discussionPrompt: lesson.discussionPrompt,
+                checklist: lesson.checklist ?? undefined,
+                reflectionQuestions: lesson.reflectionQuestions ?? undefined,
+                videoUrl: lesson.videoUrl,
+                embeddedVideoUrl: lesson.embeddedVideoUrl,
+                pdfUrl: lesson.pdfUrl,
+                audioUrl: lesson.audioUrl,
+                estimatedMinutes: lesson.estimatedMinutes,
+                completionRequirement: lesson.completionRequirement,
+                sortOrder: lesson.sortOrder,
+                lessonVideos: { create: lesson.lessonVideos.map((v) => ({ title: v.title, url: v.url, provider: v.provider, durationSeconds: v.durationSeconds })) },
+                lessonResources: { create: lesson.lessonResources.map((r) => ({ title: r.title, body: r.body, type: r.type, sortOrder: r.sortOrder })) },
+                lessonDownloads: { create: lesson.lessonDownloads.map((d) => ({ title: d.title, url: d.url, type: d.type })) },
+              })),
+            },
+          })),
+        },
+      },
+    });
+    await audit(actor, "academy.module.duplicate", copy.id, { sourceId: source.id });
+    return copy;
+  }
+  if (action === "duplicate_lesson") {
+    const source = await prisma.trainingLesson.findUnique({
+      where: { id: String(body.lessonId) },
+      include: { lessonVideos: true, lessonResources: true, lessonDownloads: true },
+    });
+    if (!source) return null;
+    const copy = await prisma.trainingLesson.create({
+      data: {
+        sectionId: source.sectionId,
+        title: `${source.title} (Copy)`,
+        summary: source.summary,
+        richText: source.richText,
+        transcript: source.transcript,
+        lessonNotes: source.lessonNotes,
+        objectives: source.objectives,
+        discussionPrompt: source.discussionPrompt,
+        checklist: source.checklist ?? undefined,
+        reflectionQuestions: source.reflectionQuestions ?? undefined,
+        videoUrl: source.videoUrl,
+        embeddedVideoUrl: source.embeddedVideoUrl,
+        pdfUrl: source.pdfUrl,
+        audioUrl: source.audioUrl,
+        estimatedMinutes: source.estimatedMinutes,
+        completionRequirement: source.completionRequirement,
+        sortOrder: source.sortOrder + 1,
+        lessonVideos: { create: source.lessonVideos.map((v) => ({ title: v.title, url: v.url, provider: v.provider, durationSeconds: v.durationSeconds })) },
+        lessonResources: { create: source.lessonResources.map((r) => ({ title: r.title, body: r.body, type: r.type, sortOrder: r.sortOrder })) },
+        lessonDownloads: { create: source.lessonDownloads.map((d) => ({ title: d.title, url: d.url, type: d.type })) },
+      },
+    });
+    await audit(actor, "academy.lesson.duplicate", copy.id, { sourceId: source.id });
+    return copy;
+  }
   if (action === "create_quiz") {
     const quiz = await prisma.quiz.create({
       data: {
@@ -600,6 +704,8 @@ export async function runAcademyAction(body: Record<string, any>, actor: Actor) 
     return quiz;
   }
   if (action === "create_question") {
+    const answers = Array.isArray(body.question?.answers) ? body.question.answers : [];
+    const correctIndex = numberOr(body.question?.correctIndex, 0);
     const question = await prisma.quizQuestion.create({
       data: {
         quizId: stringOrNull(body.question?.quizId),
@@ -607,7 +713,7 @@ export async function runAcademyAction(body: Record<string, any>, actor: Actor) 
         prompt: required(body.question?.prompt, "Question prompt"),
         points: numberOr(body.question?.points, 1),
         explanation: stringOrNull(body.question?.explanation),
-        correctAnswer: (body.question?.correctAnswer ?? {}) as Prisma.InputJsonValue,
+        correctAnswer: { value: String(correctIndex) },
         incorrectFeedback: stringOrNull(body.question?.incorrectFeedback),
         hints: arrayOfStrings(body.question?.hints),
         difficulty: enumValue(TrainingDifficulty, body.question?.difficulty, TrainingDifficulty.BEGINNER),
@@ -615,6 +721,15 @@ export async function runAcademyAction(body: Record<string, any>, actor: Actor) 
         attachments: body.question?.attachments as Prisma.InputJsonValue,
         categories: arrayOfStrings(body.question?.categories),
         tags: arrayOfStrings(body.question?.tags),
+        answers: answers.length ? {
+          create: answers.map((answer: string, answerIndex: number) => ({
+            label: String(answer),
+            value: String(answerIndex),
+            isCorrect: answerIndex === correctIndex,
+            feedback: answerIndex === correctIndex ? "Correct." : "Incorrect.",
+            sortOrder: answerIndex,
+          })),
+        } : undefined,
       },
     });
     await audit(actor, "academy.question.create", question.id, { quizId: question.quizId });
@@ -790,6 +905,10 @@ export async function getAdminCourseTree(courseId: string) {
           title: lesson.title,
           summary: lesson.summary,
           richText: lesson.richText,
+          transcript: lesson.transcript,
+          lessonNotes: lesson.lessonNotes,
+          objectives: lesson.objectives,
+          discussionPrompt: lesson.discussionPrompt,
           estimatedMinutes: lesson.estimatedMinutes,
           completionRequirement: lesson.completionRequirement,
           sortOrder: lesson.sortOrder,
@@ -859,15 +978,28 @@ export async function ensureAcademyDefaults() {
 function courseInput(input: Record<string, any>, actorId: string, update = false): Prisma.TrainingCourseUncheckedCreateInput & Prisma.TrainingCourseUncheckedUpdateInput {
   return {
     title: required(input.title, "Course title"),
+    subtitle: stringOrNull(input.subtitle),
     slug: input.slug ? slugify(input.slug) : slugify(input.title),
     thumbnailUrl: stringOrNull(input.thumbnailUrl),
     bannerUrl: stringOrNull(input.bannerUrl),
     description: String(input.description ?? ""),
+    shortDescription: stringOrNull(input.shortDescription),
     categoryId: stringOrNull(input.categoryId),
     tags: arrayOfStrings(input.tags),
     difficulty: enumValue(TrainingDifficulty, input.difficulty, TrainingDifficulty.BEGINNER),
     durationMinutes: numberOr(input.durationMinutes, 0),
     instructor: stringOrNull(input.instructor),
+    coInstructors: arrayOfStrings(input.coInstructors),
+    learningOutcomes: arrayOfStrings(input.learningOutcomes),
+    targetAudience: stringOrNull(input.targetAudience),
+    introVideoUrl: stringOrNull(input.introVideoUrl),
+    previewVideoUrl: stringOrNull(input.previewVideoUrl),
+    welcomeVideoUrl: stringOrNull(input.welcomeVideoUrl),
+    seoTitle: stringOrNull(input.seoTitle),
+    seoDescription: stringOrNull(input.seoDescription),
+    enrollmentType: String(input.enrollmentType ?? "OPEN"),
+    capacity: optionalNumber(input.capacity),
+    discountPrice: input.discountPrice != null ? decimalOr(input.discountPrice, 0) : undefined,
     prerequisites: arrayOfStrings(input.prerequisites),
     passingPercentage: numberOr(input.passingPercentage, 80),
     estimatedHours: decimalOr(input.estimatedHours, 0),
@@ -1016,21 +1148,27 @@ function badgeInput(input: Record<string, any>): Prisma.BadgeCreateInput {
   };
 }
 
-function lessonInput(input: Record<string, any>): Prisma.TrainingLessonUncheckedCreateInput {
-  return {
-    sectionId: input.sectionId || undefined,
-    title: required(input.title, "Lesson title"),
-    summary: stringOrNull(input.summary),
-    richText: String(input.richText ?? ""),
-    videoUrl: stringOrNull(input.videoUrl),
-    embeddedVideoUrl: stringOrNull(input.embeddedVideoUrl),
-    pdfUrl: stringOrNull(input.pdfUrl),
-    audioUrl: stringOrNull(input.audioUrl),
-    mapEmbedUrl: stringOrNull(input.mapEmbedUrl),
-    estimatedMinutes: numberOr(input.estimatedMinutes, 0),
-    completionRequirement: String(input.completionRequirement ?? "VIEW"),
-    sortOrder: numberOr(input.sortOrder, 0),
-  };
+function lessonInput(input: Record<string, any>): Prisma.TrainingLessonUpdateInput {
+  const data: Prisma.TrainingLessonUpdateInput = {};
+  if (input.sectionId) data.section = { connect: { id: String(input.sectionId) } };
+  if (input.title !== undefined) data.title = required(input.title, "Lesson title");
+  if (input.summary !== undefined) data.summary = stringOrNull(input.summary);
+  if (input.richText !== undefined) data.richText = String(input.richText);
+  if (input.transcript !== undefined) data.transcript = stringOrNull(input.transcript);
+  if (input.lessonNotes !== undefined) data.lessonNotes = stringOrNull(input.lessonNotes);
+  if (input.objectives !== undefined) data.objectives = arrayOfStrings(input.objectives);
+  if (input.discussionPrompt !== undefined) data.discussionPrompt = stringOrNull(input.discussionPrompt);
+  if (input.checklist !== undefined) data.checklist = input.checklist;
+  if (input.reflectionQuestions !== undefined) data.reflectionQuestions = input.reflectionQuestions;
+  if (input.videoUrl !== undefined) data.videoUrl = stringOrNull(input.videoUrl);
+  if (input.embeddedVideoUrl !== undefined) data.embeddedVideoUrl = stringOrNull(input.embeddedVideoUrl);
+  if (input.pdfUrl !== undefined) data.pdfUrl = stringOrNull(input.pdfUrl);
+  if (input.audioUrl !== undefined) data.audioUrl = stringOrNull(input.audioUrl);
+  if (input.mapEmbedUrl !== undefined) data.mapEmbedUrl = stringOrNull(input.mapEmbedUrl);
+  if (input.estimatedMinutes !== undefined) data.estimatedMinutes = numberOr(input.estimatedMinutes, 0);
+  if (input.completionRequirement !== undefined) data.completionRequirement = String(input.completionRequirement);
+  if (input.sortOrder !== undefined) data.sortOrder = numberOr(input.sortOrder, 0);
+  return data;
 }
 
 async function notifyAgents(eventType: string, subject: string, body: string) {

@@ -18,6 +18,8 @@ import { useApp } from "@/components/providers/app-provider";
 import { apiFetch } from "@/lib/api/client";
 import { LessonViewer } from "@/components/academy/lesson-viewer";
 import { QuizPanel } from "@/components/academy/quiz-panel";
+import { ExamPanel } from "@/components/academy/exam-panel";
+import { AssignmentPanel } from "@/components/academy/assignment-panel";
 
 type CourseDetail = {
   settings: { academyName: string; primaryColour: string };
@@ -75,6 +77,8 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
   const [tab, setTab] = useState<Tab>("curriculum");
   const [viewingLessonId, setViewingLessonId] = useState<string | null>(null);
   const [activeQuizId, setActiveQuizId] = useState<string | null>(null);
+  const [activeExamId, setActiveExamId] = useState<string | null>(null);
+  const [activeAssignmentId, setActiveAssignmentId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const result = await apiFetch<CourseDetail>(`/api/v1/academy/courses/${courseId}`);
@@ -89,7 +93,7 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
   if (!user) {
     return (
       <PageShell eyebrow="Academy" title="Sign in required" description="Sign in to access your course.">
-        <Link href="/academy" className="text-emerald-600 font-semibold">Browse Academy courses</Link>
+        <Link href="/dashboard/academy" className="text-emerald-600 font-semibold">Back to My Dashboard</Link>
       </PageShell>
     );
   }
@@ -129,11 +133,37 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
     );
   }
 
+  if (activeAssignmentId) {
+    const assignment = data.assessments.assignments.find((a) => a.id === activeAssignmentId);
+    return (
+      <PageShell eyebrow={data.settings.academyName} title={assignment?.title ?? "Assignment"} description="Submit your practical work for review.">
+        <AssignmentPanel
+          assignmentId={activeAssignmentId}
+          title={assignment?.title ?? "Assignment"}
+          description={assignment?.description ?? ""}
+          points={assignment?.points ?? 100}
+          submitted={assignment?.submitted ?? false}
+          status={assignment?.status ?? null}
+          onBack={() => { setActiveAssignmentId(null); void load(); }}
+        />
+      </PageShell>
+    );
+  }
+
   if (activeQuizId) {
     const quiz = data.assessments.quizzes.find((q) => q.id === activeQuizId);
     return (
       <PageShell eyebrow={data.settings.academyName} title={quiz?.title ?? "Quiz"} description="Complete the quiz to track your progress.">
         <QuizPanel quizId={activeQuizId} passingPercentage={quiz?.passingPercentage ?? 80} onBack={() => { setActiveQuizId(null); void load(); }} />
+      </PageShell>
+    );
+  }
+
+  if (activeExamId) {
+    const exam = data.assessments.exams.find((e) => e.id === activeExamId);
+    return (
+      <PageShell eyebrow={data.settings.academyName} title={exam?.title ?? "Final Exam"} description="Complete the final examination to earn certification.">
+        <ExamPanel examId={activeExamId} passingScore={exam?.passingScore ?? 80} onBack={() => { setActiveExamId(null); void load(); }} />
       </PageShell>
     );
   }
@@ -242,6 +272,9 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
                 <p className="font-semibold">{assignment.title}</p>
                 <p className="text-sm text-slate-600 mt-1">{assignment.description}</p>
                 <p className="text-xs text-slate-500 mt-2">{assignment.points} points · {assignment.submitted ? assignment.status : "Not submitted"}</p>
+                <Button className="mt-3" variant="secondary" onClick={() => setActiveAssignmentId(assignment.id)}>
+                  {assignment.submitted ? "View Submission" : "Submit Assignment"}
+                </Button>
               </div>
             ))}
           </AssessmentSection>
@@ -250,6 +283,7 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
               <div key={exam.id} className="rounded-xl border border-slate-200 p-4 dark:border-slate-700">
                 <p className="font-semibold">{exam.title}</p>
                 <p className="text-xs text-slate-500 mt-1">{exam.durationMinutes} min · {exam.passingScore}% pass · {exam.attemptLimit} attempts</p>
+                <Button className="mt-3" onClick={() => setActiveExamId(exam.id)}>Take Final Exam</Button>
               </div>
             ))}
           </AssessmentSection>
