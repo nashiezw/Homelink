@@ -4,6 +4,7 @@ import { getMainPrisma } from "@/lib/db/main-prisma";
 import { ACADEMY_FULL_MANUAL_URL } from "@/lib/academy/academy-constants";
 import { ACADEMY_PROGRAMME_COURSES, LEGACY_COURSE_ID } from "@/lib/academy/academy-programme";
 import { lessonHandoutUrl } from "@/lib/academy/lesson-handouts";
+import { toAcademyFileDownloadUrl } from "@/lib/academy/academy-files";
 
 const MANIFEST_PATH = path.join(process.cwd(), "public", "uploads", "academy", "academy-resources-manifest.json");
 
@@ -400,7 +401,7 @@ function downloadsForTitles(map: Map<string, ManifestItem>, titles: string[] = [
   return titles.flatMap((title) => {
     const item = map.get(title);
     if (!item) return [];
-    return [{ title: item.title, url: item.fileUrl, type: "PDF" as const }];
+    return [{ title: item.title, url: toAcademyFileDownloadUrl(item.fileUrl), type: "PDF" as const }];
   });
 }
 

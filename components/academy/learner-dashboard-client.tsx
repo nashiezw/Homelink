@@ -72,7 +72,30 @@ type LearnerDashboard = {
     payment: { id: string; status: string; proofStatus?: string; proofUrl?: string; method?: string } | null;
     course: { id: string; title: string; slug?: string; description: string; certificateEnabled: boolean };
   }>;
-  documents: Array<{ id: string; title: string; description?: string; fileType: string; category?: string; downloadUrl: string }>;
+  activeCourseId?: string | null;
+  activeCourseToolkit?: {
+    courseId: string;
+    courseTitle: string;
+    theme: { label: string; accent: string; gradient: string; sidebar: string; chip: string } | null;
+    itemCount: number;
+    groups: Array<{
+      category: string;
+      description: string;
+      items: Array<{ id: string; title: string; description: string; fileUrl: string }>;
+    }>;
+  } | null;
+  courseToolkits?: Array<{
+    courseId: string;
+    courseTitle: string;
+    theme: { label: string; accent: string; gradient: string; sidebar: string; chip: string } | null;
+    itemCount: number;
+    groups: Array<{
+      category: string;
+      description: string;
+      items: Array<{ id: string; title: string; description: string; fileUrl: string }>;
+    }>;
+  }>;
+  referenceManual?: { title: string; description: string; downloadUrl: string } | null;
   announcements: Array<{ id: string; title: string; body: string; createdAt: string }>;
 };
 
@@ -137,6 +160,8 @@ export function LearnerDashboardClient() {
   }
 
   const approvedCourse = data.applications.find((a) => a.status === "APPROVED");
+  const toolkitItems = (data.activeCourseToolkit?.groups ?? []).flatMap((group) => group.items);
+  const toolkitPreview = toolkitItems.slice(0, 6);
 
   return (
     <PageShell
@@ -337,13 +362,43 @@ export function LearnerDashboardClient() {
             </SidebarCard>
           )}
 
-          <SidebarCard title="Downloads" icon={Download}>
-            {data.documents.slice(0, 6).map((doc) => (
-              <a key={doc.id} href={doc.downloadUrl} className="flex gap-3 rounded-xl p-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-900">
-                <FileText className="size-4 shrink-0 text-emerald-600 mt-0.5" />
-                <span className="line-clamp-2 font-medium">{doc.title}</span>
+          <SidebarCard title="Field Toolkit" icon={Download}>
+            {data.activeCourseToolkit ? (
+              <>
+                <div className="mb-3 rounded-xl border border-emerald-100 bg-emerald-50/60 p-3 dark:border-emerald-900/40 dark:bg-emerald-950/20">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">
+                    {data.activeCourseToolkit.theme?.label ?? "Your programme"}
+                  </p>
+                  <p className="mt-0.5 text-sm font-bold line-clamp-2">{data.activeCourseToolkit.courseTitle}</p>
+                  <p className="mt-1 text-xs text-slate-500">{data.activeCourseToolkit.itemCount} branded resources for this stage</p>
+                </div>
+                {toolkitPreview.map((item) => (
+                  <a key={item.id} href={item.fileUrl} target="_blank" rel="noopener noreferrer" className="flex gap-3 rounded-xl p-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-900">
+                    <FileText className="size-4 shrink-0 text-emerald-600 mt-0.5" />
+                    <span className="line-clamp-2 font-medium">{item.title}</span>
+                  </a>
+                ))}
+                {data.activeCourseToolkit.itemCount > toolkitPreview.length && (
+                  <Link
+                    href={`/dashboard/academy/${data.activeCourseToolkit.courseId}?tab=toolkit`}
+                    className="block pt-1 text-xs font-semibold text-emerald-600 hover:underline"
+                  >
+                    View all {data.activeCourseToolkit.itemCount} toolkit resources →
+                  </Link>
+                )}
+              </>
+            ) : (
+              <p className="text-sm text-slate-500">Enrol in a programme to unlock your stage-specific field toolkit.</p>
+            )}
+            {data.referenceManual && (
+              <a href={data.referenceManual.downloadUrl} target="_blank" rel="noopener noreferrer" className="mt-3 flex gap-3 rounded-xl border border-dashed border-slate-200 p-2 text-sm hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-900">
+                <FileText className="size-4 shrink-0 text-slate-500 mt-0.5" />
+                <span>
+                  <span className="block font-medium">{data.referenceManual.title}</span>
+                  <span className="text-xs text-slate-500">Full manual reference</span>
+                </span>
               </a>
-            ))}
+            )}
           </SidebarCard>
 
           <SidebarCard title="Announcements" icon={Bell}>

@@ -1,5 +1,6 @@
 import { getMainPrisma } from "@/lib/db/main-prisma";
 import { isFullTrainingManualUrl } from "@/lib/academy/academy-constants";
+import { toAcademyFileDownloadUrl } from "@/lib/academy/academy-files";
 
 const lessonInclude = {
   lessonVideos: true,
@@ -74,7 +75,7 @@ export function mapLessonForLearner(
     discussionPrompt: lesson.discussionPrompt,
     videoUrl: lesson.videoUrl,
     embeddedVideoUrl: lesson.embeddedVideoUrl,
-    pdfUrl: lesson.pdfUrl && !isFullTrainingManualUrl(lesson.pdfUrl) ? lesson.pdfUrl : null,
+    pdfUrl: lesson.pdfUrl && !isFullTrainingManualUrl(lesson.pdfUrl) ? toAcademyFileDownloadUrl(lesson.pdfUrl) : null,
     audioUrl: lesson.audioUrl,
     estimatedMinutes: lesson.estimatedMinutes,
     completionRequirement: lesson.completionRequirement,
@@ -90,40 +91,48 @@ export function mapLessonForLearner(
       downloadUrl: `/api/v1/academy/documents/${d.document.id}/download`,
     })),
     lessonResources: lesson.lessonResources.map((r) => ({ id: r.id, title: r.title, body: r.body, type: r.type, sortOrder: r.sortOrder })),
-    lessonDownloads: lesson.lessonDownloads.map((d) => ({ id: d.id, title: d.title, url: d.url, type: d.type })),
+    lessonDownloads: lesson.lessonDownloads.map((d) => ({
+      id: d.id,
+      title: d.title,
+      url: toAcademyFileDownloadUrl(d.url),
+      type: d.type,
+    })),
   };
 }
 
 export function flattenCourseMaterials(course: NonNullable<Awaited<ReturnType<typeof fetchCourseTree>>>) {
-  const materials: Array<{ id: string; title: string; level: "lesson" | "module" | "course"; location: string; fileType: string; downloadUrl: string }> = [];
+  const materials: Array<{
+    id: string;
+    title: string;
+    subtitle: string;
+    summary: string;
+    moduleTitle: string;
+    lessonTitle: string;
+    estimatedMinutes: number;
+    level: "lesson";
+    location: string;
+    fileType: string;
+    downloadUrl: string;
+    viewUrl: string;
+  }> = [];
 
   for (const courseModule of course.modules) {
     for (const section of courseModule.sections) {
       for (const lesson of section.lessons) {
         if (lesson.pdfUrl && !isFullTrainingManualUrl(lesson.pdfUrl)) {
           materials.push({
-            id: `pdf-${lesson.id}`,
-            title: `${lesson.title} — Lesson Handout`,
+            id: `notes-${lesson.id}`,
+            title: lesson.title,
+            subtitle: "Lesson Notes PDF",
+            summary: lesson.summary ?? "",
+            moduleTitle: courseModule.title,
+            lessonTitle: lesson.title,
+            estimatedMinutes: lesson.estimatedMinutes,
             level: "lesson",
             location: `${courseModule.title} › ${lesson.title}`,
             fileType: "PDF",
-            downloadUrl: lesson.pdfUrl,
-          });
-        }
-        const seenUrls = new Set<string>([lesson.pdfUrl].filter(Boolean) as string[]);
-        for (const download of lesson.lessonDownloads) {
-          if (seenUrls.has(download.url)) continue;
-          seenUrls.add(download.url);
-          materials.push({ id: download.id, title: download.title, level: "lesson", location: `${courseModule.title} › ${lesson.title}`, fileType: download.type, downloadUrl: download.url });
-        }
-        for (const doc of lesson.lessonDocuments) {
-          materials.push({
-            id: doc.document.id,
-            title: doc.document.title,
-            level: "lesson",
-            location: `${courseModule.title} › ${lesson.title}`,
-            fileType: doc.document.fileType,
-            downloadUrl: `/api/v1/academy/documents/${doc.document.id}/download`,
+            downloadUrl: toAcademyFileDownloadUrl(lesson.pdfUrl),
+            viewUrl: `${toAcademyFileDownloadUrl(lesson.pdfUrl)}?inline=1`,
           });
         }
       }

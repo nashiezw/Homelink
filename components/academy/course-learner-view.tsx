@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { Children, useCallback, useEffect, useState } from "react";
 import {
   Award,
@@ -32,6 +33,8 @@ type CourseDetail = {
     badgeName: string;
     certificateTitle: string;
     subtitle?: string;
+    assessmentSummary?: string;
+    includes?: string[];
   } | null;
   toolkit?: Array<{ category: string; description: string; items: Array<{ id: string; title: string; description: string; fileUrl: string }> }>;
   course: {
@@ -73,19 +76,27 @@ type CourseDetail = {
     }>;
   };
   assessments: {
-    quizzes: Array<{ id: string; title: string; description?: string | null; passingPercentage: number; questionCount: number; bestScore: number | null; passed: boolean }>;
-    assignments: Array<{ id: string; title: string; description: string; points: number; submitted: boolean; status: string | null }>;
-    exams: Array<{ id: string; title: string; durationMinutes: number; passingScore: number; attemptLimit: number }>;
+    summary?: string | null;
+    badgeName?: string | null;
+    totals?: { quizzes: number; quizzesPassed: number; assignments: number; assignmentsSubmitted: number; exams: number };
+    certificateCheckpoint?: { title: string; description: string } | null;
+    quizzes: Array<{ id: string; title: string; description?: string | null; moduleTitle?: string | null; sortOrder?: number; passingPercentage: number; timeLimitMinutes?: number | null; questionCount: number; bestScore: number | null; passed: boolean }>;
+    assignments: Array<{ id: string; title: string; description: string; moduleTitle?: string | null; sortOrder?: number; points: number; dueDays?: number | null; submitted: boolean; status: string | null }>;
+    exams: Array<{ id: string; title: string; description?: string | null; durationMinutes: number; passingScore: number; attemptLimit: number }>;
   };
-  materials: Array<{ id: string; title: string; level: string; location: string; fileType: string; downloadUrl: string }>;
+  materials: Array<{ id: string; title: string; subtitle: string; summary: string; moduleTitle: string; lessonTitle: string; estimatedMinutes: number; location: string; fileType: string; downloadUrl: string; viewUrl: string }>;
 };
 
 type Tab = "curriculum" | "toolkit" | "materials" | "assessments" | "discussions" | "progress";
 
+const VALID_TABS: Tab[] = ["curriculum", "toolkit", "materials", "assessments", "discussions", "progress"];
+
 export function CourseLearnerView({ courseId }: { courseId: string }) {
+  const searchParams = useSearchParams();
+  const initialTab = searchParams.get("tab");
   const { user, showToast } = useApp();
   const [data, setData] = useState<CourseDetail | null>(null);
-  const [tab, setTab] = useState<Tab>("curriculum");
+  const [tab, setTab] = useState<Tab>(() => (VALID_TABS.includes(initialTab as Tab) ? (initialTab as Tab) : "curriculum"));
   const [viewingLessonId, setViewingLessonId] = useState<string | null>(null);
   const [activeQuizId, setActiveQuizId] = useState<string | null>(null);
   const [activeExamId, setActiveExamId] = useState<string | null>(null);
@@ -242,7 +253,7 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
             style={tab === item ? { backgroundColor: accent } : undefined}
             onClick={() => setTab(item)}
           >
-            {item}
+            {item === "materials" ? "Lesson Notes" : item === "toolkit" ? "Toolkit" : item}
           </Button>
         ))}
       </div>
@@ -285,68 +296,165 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
         <div className="mt-6 space-y-4">
           <div className="rounded-2xl border p-5" style={{ borderColor: `${accent}33`, background: `linear-gradient(135deg, ${accent}10, transparent)` }}>
             <h3 className="text-lg font-bold">HomeLink Field Toolkit</h3>
-            <p className="mt-1 text-sm text-slate-600">Print-ready branded PDFs for this programme level — forms, checklists, planners, scripts, and flowcharts from the official manual.</p>
+            <p className="mt-1 text-sm text-slate-600">Print-ready branded forms, checklists, planners, scripts, and flowcharts for this programme — the same professional PDFs used in the field.</p>
           </div>
           <ToolkitGrid groups={data.toolkit ?? []} accent={accent} />
         </div>
       )}
 
       {tab === "materials" && (
-        <div className="mt-6 space-y-4">
-          <p className="text-sm text-slate-600 dark:text-slate-400">
-            Branded HomeLink forms, checklists, and planners from your lessons. The complete training manual is available separately in the Academy resource library.
-          </p>
-          <div className="grid gap-3 md:grid-cols-2">
-          {data.materials.map((material) => (
-            <a key={material.id} href={material.downloadUrl} target="_blank" rel="noopener noreferrer" className="group flex items-start gap-3 rounded-2xl border border-emerald-200/70 bg-gradient-to-br from-white to-emerald-50/30 p-4 transition hover:-translate-y-0.5 hover:border-emerald-400 hover:shadow-card-hover dark:border-emerald-900/40 dark:from-slate-950 dark:to-emerald-950/20">
-              <div className="rounded-lg bg-white p-1.5 shadow-sm ring-1 ring-emerald-100 dark:bg-slate-900">
-                <HomeLinkBrand variant="icon" iconOnly className="scale-[0.65]" />
+        <div className="mt-6 space-y-5">
+          <div className="rounded-2xl border border-sky-200/70 bg-gradient-to-br from-sky-50/80 to-white p-5 dark:border-sky-900/40 dark:from-sky-950/30 dark:to-slate-950">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <h3 className="text-lg font-bold">Lesson Notes — Downloadable PDFs</h3>
+                <p className="mt-1 max-w-2xl text-sm text-slate-600 dark:text-slate-400">
+                  {data.materials.length} branded HomeLink study guides — each PDF includes the HomeLink logo, lesson overview, key takeaways, in-depth notes, field application steps, and reflection questions.
+                </p>
               </div>
-              <div className="min-w-0 flex-1">
-                <p className="font-semibold group-hover:text-emerald-700 dark:group-hover:text-emerald-300">{material.title}</p>
-                <p className="text-xs text-slate-500">{material.location} · {material.fileType}</p>
-              </div>
-              <Download className="size-4 shrink-0 text-emerald-600 opacity-70 group-hover:opacity-100" />
-            </a>
-          ))}
-          {!data.materials.length && <p className="text-slate-500">No materials attached yet.</p>}
+              <span className="rounded-full bg-sky-100 px-3 py-1 text-xs font-bold text-sky-800 dark:bg-sky-900/40 dark:text-sky-200">
+                {data.materials.length} PDFs ready
+              </span>
+            </div>
           </div>
+          {Object.entries(
+            data.materials.reduce<Record<string, typeof data.materials>>((groups, material) => {
+              const list = groups[material.moduleTitle] ?? [];
+              list.push(material);
+              groups[material.moduleTitle] = list;
+              return groups;
+            }, {}),
+          ).map(([moduleTitle, items]) => (
+            <div key={moduleTitle} className="space-y-3">
+              <h4 className="text-sm font-bold uppercase tracking-wide text-slate-500">{moduleTitle}</h4>
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                {items.map((material) => (
+                  <div
+                    key={material.id}
+                    className="group flex flex-col overflow-hidden rounded-2xl border border-sky-200/70 bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-sky-400 hover:shadow-card-hover dark:border-sky-900/40 dark:bg-slate-950"
+                  >
+                    <div className="border-b border-sky-100 bg-gradient-to-r from-sky-600 to-emerald-600 px-4 py-3 dark:border-sky-900">
+                      <div className="flex items-center justify-between gap-2">
+                        <HomeLinkBrand variant="icon" iconOnly className="scale-[0.55] brightness-0 invert" />
+                        <span className="rounded bg-white/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">PDF</span>
+                      </div>
+                      <p className="mt-2 line-clamp-2 text-sm font-bold text-white">{material.title}</p>
+                    </div>
+                    <div className="flex flex-1 flex-col p-4">
+                      <p className="flex-1 text-xs leading-relaxed text-slate-600 line-clamp-3 dark:text-slate-400">{material.summary || "Branded lesson study guide with overview, takeaways, and field application."}</p>
+                      <p className="mt-3 text-xs font-medium text-slate-500">{material.estimatedMinutes} min read</p>
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        <a
+                          href={material.viewUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-sky-200 bg-white px-4 py-2.5 text-sm font-semibold text-sky-700 transition hover:bg-sky-50 dark:border-sky-800 dark:bg-slate-900 dark:text-sky-300"
+                        >
+                          View PDF
+                        </a>
+                        <a
+                          href={material.downloadUrl}
+                          download
+                          className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-sky-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-sky-700"
+                        >
+                          <Download className="size-4" />
+                          Download
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+          {!data.materials.length && <p className="text-slate-500">Lesson notes PDFs appear for every lesson in this programme.</p>}
         </div>
       )}
 
       {tab === "assessments" && (
-        <div className="mt-6 grid gap-4 lg:grid-cols-3">
-          <AssessmentSection title="Quizzes" icon={ShieldCheck} empty="No quizzes for this course.">
-            {data.assessments.quizzes.map((quiz) => (
-              <div key={quiz.id} className="rounded-xl border border-slate-200 p-4 dark:border-slate-700">
-                <p className="font-semibold">{quiz.title}</p>
-                <p className="text-xs text-slate-500 mt-1">{quiz.questionCount} questions · {quiz.passingPercentage}% to pass</p>
-                {quiz.bestScore !== null && <p className="text-sm mt-2">Best score: {quiz.bestScore}% {quiz.passed ? "✓ Passed" : ""}</p>}
-                <Button className="mt-3" onClick={() => setActiveQuizId(quiz.id)}>Take Quiz</Button>
-              </div>
-            ))}
-          </AssessmentSection>
-          <AssessmentSection title="Assignments" icon={ClipboardCheck} empty="No assignments.">
-            {data.assessments.assignments.map((assignment) => (
-              <div key={assignment.id} className="rounded-xl border border-slate-200 p-4 dark:border-slate-700">
-                <p className="font-semibold">{assignment.title}</p>
-                <p className="text-sm text-slate-600 mt-1">{assignment.description}</p>
-                <p className="text-xs text-slate-500 mt-2">{assignment.points} points · {assignment.submitted ? assignment.status : "Not submitted"}</p>
-                <Button className="mt-3" variant="secondary" onClick={() => setActiveAssignmentId(assignment.id)}>
-                  {assignment.submitted ? "View Submission" : "Submit Assignment"}
-                </Button>
-              </div>
-            ))}
-          </AssessmentSection>
-          <AssessmentSection title="Final Exams" icon={GraduationCap} empty="No final exam.">
-            {data.assessments.exams.map((exam) => (
-              <div key={exam.id} className="rounded-xl border border-slate-200 p-4 dark:border-slate-700">
-                <p className="font-semibold">{exam.title}</p>
-                <p className="text-xs text-slate-500 mt-1">{exam.durationMinutes} min · {exam.passingScore}% pass · {exam.attemptLimit} attempts</p>
-                <Button className="mt-3" onClick={() => setActiveExamId(exam.id)}>Take Final Exam</Button>
-              </div>
-            ))}
-          </AssessmentSection>
+        <div className="mt-6 space-y-6">
+          {(data.assessments.summary || data.programme?.badgeName) && (
+            <div className="rounded-2xl border border-emerald-200/70 bg-gradient-to-br from-emerald-50/80 to-white p-5 dark:border-emerald-900/40 dark:from-emerald-950/30 dark:to-slate-950">
+              <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">Certification requirements</p>
+              {data.assessments.summary && <p className="mt-2 text-sm text-slate-700 dark:text-slate-300">{data.assessments.summary}</p>}
+              {data.programme?.badgeName && (
+                <p className="mt-2 text-xs text-slate-500">Earn the <span className="font-semibold text-slate-700 dark:text-slate-200">{data.programme.badgeName}</span> badge by completing all checkpoints below.</p>
+              )}
+            </div>
+          )}
+
+          {data.assessments.totals && (
+            <div className="grid gap-3 sm:grid-cols-3">
+              <AssessmentStat label="Module Quizzes" value={`${data.assessments.totals.quizzesPassed}/${data.assessments.totals.quizzes} passed`} accent={accent} />
+              <AssessmentStat label="Assignments" value={`${data.assessments.totals.assignmentsSubmitted}/${data.assessments.totals.assignments} submitted`} accent={accent} />
+              <AssessmentStat label="Final Exam" value={data.assessments.totals.exams ? "1 capstone exam" : "Certificate checkpoint"} accent={accent} />
+            </div>
+          )}
+
+          <div className="grid gap-6 xl:grid-cols-3">
+            <AssessmentSection title={`Module Quizzes (${data.assessments.quizzes.length})`} icon={ShieldCheck} empty="Module quizzes load with your programme enrolment.">
+              {data.assessments.quizzes.map((quiz) => (
+                <div key={quiz.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-950">
+                  {quiz.moduleTitle && (
+                    <p className="mb-2 text-[10px] font-bold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">{quiz.moduleTitle}</p>
+                  )}
+                  <p className="font-semibold">{quiz.title}</p>
+                  {quiz.description && <p className="text-sm text-slate-600 mt-1 line-clamp-3">{quiz.description}</p>}
+                  <p className="text-xs text-slate-500 mt-2">{quiz.questionCount} questions · {quiz.passingPercentage}% to pass{quiz.timeLimitMinutes ? ` · ${quiz.timeLimitMinutes} min` : ""}</p>
+                  {quiz.bestScore !== null && (
+                    <p className={cn("text-sm mt-2 font-medium", quiz.passed ? "text-emerald-600" : "text-amber-600")}>
+                      Best score: {quiz.bestScore}% {quiz.passed ? "✓ Passed" : "— retake available"}
+                    </p>
+                  )}
+                  <Button className="mt-3 w-full sm:w-auto" onClick={() => setActiveQuizId(quiz.id)}>{quiz.passed ? "Retake Quiz" : "Take Quiz"}</Button>
+                </div>
+              ))}
+            </AssessmentSection>
+
+            <AssessmentSection title={`Practical Assignments (${data.assessments.assignments.length})`} icon={ClipboardCheck} empty="Practical assignments are tied to each module in this programme.">
+              {data.assessments.assignments.map((assignment) => (
+                <div key={assignment.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-950">
+                  {assignment.moduleTitle && (
+                    <p className="mb-2 text-[10px] font-bold uppercase tracking-wide text-sky-700 dark:text-sky-300">{assignment.moduleTitle}</p>
+                  )}
+                  <p className="font-semibold">{assignment.title}</p>
+                  <p className="text-sm text-slate-600 mt-1 line-clamp-4">{assignment.description}</p>
+                  <p className="text-xs text-slate-500 mt-2">{assignment.points} points{assignment.dueDays ? ` · due within ${assignment.dueDays} days` : ""}</p>
+                  <p className={cn("text-xs mt-1 font-semibold", assignment.submitted ? "text-emerald-600" : "text-slate-500")}>
+                    {assignment.submitted ? `Submitted · ${assignment.status}` : "Not submitted yet"}
+                  </p>
+                  <Button className="mt-3 w-full sm:w-auto" variant="secondary" onClick={() => setActiveAssignmentId(assignment.id)}>
+                    {assignment.submitted ? "View Submission" : "Submit Assignment"}
+                  </Button>
+                </div>
+              ))}
+            </AssessmentSection>
+
+            <AssessmentSection title={data.assessments.exams.length ? "Final Examination" : "Certificate Checkpoint"} icon={GraduationCap} empty="">
+              {data.assessments.exams.map((exam) => (
+                <div key={exam.id} className="rounded-xl border border-amber-200 bg-gradient-to-br from-amber-50 to-white p-4 shadow-sm dark:border-amber-900/40 dark:from-amber-950/20 dark:to-slate-950">
+                  <p className="text-[10px] font-bold uppercase tracking-wide text-amber-700 dark:text-amber-300">Capstone</p>
+                  <p className="font-semibold mt-1">{exam.title}</p>
+                  {exam.description && <p className="text-sm text-slate-600 mt-1">{exam.description}</p>}
+                  <p className="text-xs text-slate-500 mt-2">{exam.durationMinutes} min · {exam.passingScore}% pass · {exam.attemptLimit} attempts</p>
+                  <Button className="mt-3 w-full sm:w-auto" onClick={() => setActiveExamId(exam.id)}>Take Final Exam</Button>
+                </div>
+              ))}
+              {data.assessments.certificateCheckpoint && (
+                <div className="rounded-xl border border-dashed border-emerald-300 bg-emerald-50/50 p-4 dark:border-emerald-800 dark:bg-emerald-950/20">
+                  <p className="font-semibold text-emerald-800 dark:text-emerald-200">{data.assessments.certificateCheckpoint.title}</p>
+                  <p className="text-sm text-slate-600 mt-2 dark:text-slate-300">{data.assessments.certificateCheckpoint.description}</p>
+                  {data.programme?.includes && (
+                    <ul className="mt-3 space-y-1.5 text-xs text-slate-600 dark:text-slate-400">
+                      {data.programme.includes.filter((item) => /quiz|assignment|checkpoint|certificate/i.test(item)).slice(0, 4).map((item) => (
+                        <li key={item} className="flex gap-2"><CheckCircle2 className="size-3.5 shrink-0 text-emerald-500 mt-0.5" />{item}</li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+            </AssessmentSection>
+          </div>
         </div>
       )}
 
@@ -364,6 +472,15 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
         </div>
       )}
     </PageShell>
+  );
+}
+
+function AssessmentStat({ label, value, accent }: { label: string; value: string; accent: string }) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950">
+      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</p>
+      <p className="mt-1 text-lg font-bold" style={{ color: accent }}>{value}</p>
+    </div>
   );
 }
 

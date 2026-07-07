@@ -21,6 +21,7 @@ import { HomeLinkBrand } from "@/components/brand/homelink-logo";
 import { Button } from "@/components/ui/button";
 import { AcademyProse } from "@/components/academy/academy-prose";
 import { isFullTrainingManualUrl } from "@/lib/academy/academy-constants";
+import { toAcademyFileDownloadUrl } from "@/lib/academy/academy-files";
 import { cn } from "@/lib/utils";
 
 type Lesson = {
@@ -90,7 +91,8 @@ export function LessonViewer({
   const stageLabel = courseTheme?.label ?? extractStageLabel(currentLesson.moduleName);
   const heroGradient = courseTheme?.gradient ?? "from-emerald-600 via-emerald-700 to-teal-800";
   const sidebarGradient = courseTheme?.sidebar ?? "from-emerald-50 via-white to-teal-50/60";
-  const lessonResources = useMemo(() => collectBrandedResources(currentLesson), [currentLesson]);
+  const lessonNotes = useMemo(() => collectLessonNotes(currentLesson), [currentLesson]);
+  const fieldForms = useMemo(() => collectFieldForms(currentLesson), [currentLesson]);
 
   if (!currentLesson) {
     return (
@@ -280,19 +282,34 @@ export function LessonViewer({
               </section>
             )}
 
-            {/* Branded downloads */}
-            {!!lessonResources.length && (
+            {/* Lesson notes PDF */}
+            {!!lessonNotes.length && (
               <section className="mt-10">
-                <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
-                  <div>
-                    <h3 className="flex items-center gap-2 text-lg font-bold">
-                      <Download className="size-5 text-emerald-600" /> HomeLink resource kit
-                    </h3>
-                    <p className="mt-1 text-sm text-slate-500">Print-ready branded PDFs for this lesson — not the full training manual.</p>
-                  </div>
+                <div className="mb-4">
+                  <h3 className="flex items-center gap-2 text-lg font-bold">
+                    <FileText className="size-5 text-sky-600" /> Lesson Notes
+                  </h3>
+                  <p className="mt-1 text-sm text-slate-500">Branded PDF study guide for this lesson — overview, takeaways, and field application.</p>
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2">
-                  {lessonResources.map((resource) => (
+                  {lessonNotes.map((resource) => (
+                    <DownloadCard key={resource.id} href={resource.url} title={resource.title} subtitle={resource.subtitle} />
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* Field forms */}
+            {!!fieldForms.length && (
+              <section className="mt-10">
+                <div className="mb-4">
+                  <h3 className="flex items-center gap-2 text-lg font-bold">
+                    <Download className="size-5 text-emerald-600" /> Field Forms & Tools
+                  </h3>
+                  <p className="mt-1 text-sm text-slate-500">Print-ready HomeLink forms and checklists — also available under the Toolkit tab.</p>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {fieldForms.map((resource) => (
                     <DownloadCard key={resource.id} href={resource.url} title={resource.title} subtitle={resource.subtitle} />
                   ))}
                 </div>
@@ -387,24 +404,33 @@ function extractStageLabel(moduleName: string) {
   return match?.[1] ?? null;
 }
 
-function collectBrandedResources(lesson: Lesson) {
+function collectLessonNotes(lesson: Lesson) {
+  if (!lesson.pdfUrl || isFullTrainingManualUrl(lesson.pdfUrl)) return [];
+  const url = toAcademyFileDownloadUrl(lesson.pdfUrl.startsWith("/api/") ? lesson.pdfUrl : lesson.pdfUrl);
+  return [{
+    id: `pdf-${lesson.id}`,
+    url,
+    viewUrl: `${url}${url.includes("?") ? "&" : "?"}inline=1`,
+    title: `${lesson.title} — Lesson Notes`,
+    subtitle: "HomeLink branded study guide · Print or save",
+  }];
+}
+
+function collectFieldForms(lesson: Lesson) {
   const seen = new Set<string>();
-  const items: Array<{ id: string; url: string; title: string; subtitle: string }> = [];
+  const items: Array<{ id: string; url: string; viewUrl: string; title: string; subtitle: string }> = [];
 
-  const add = (id: string, url: string, title: string, subtitle: string) => {
-    if (!url || isFullTrainingManualUrl(url) || seen.has(url)) return;
-    seen.add(url);
-    items.push({ id, url, title, subtitle });
-  };
-
-  if (lesson.pdfUrl && !isFullTrainingManualUrl(lesson.pdfUrl)) {
-    add(`pdf-${lesson.id}`, lesson.pdfUrl, `${lesson.title} — Lesson Handout`, "HomeLink Academy training guide · Print-ready PDF");
-  }
   for (const download of lesson.lessonDownloads ?? []) {
-    add(download.id, download.url, download.title, "HomeLink branded field tool · Print-ready PDF");
-  }
-  for (const doc of lesson.lessonDocuments ?? []) {
-    add(doc.id, doc.downloadUrl, doc.title, `${doc.fileType} · HomeLink Academy`);
+    if (!download.url || isFullTrainingManualUrl(download.url) || seen.has(download.url)) continue;
+    seen.add(download.url);
+    const url = toAcademyFileDownloadUrl(download.url);
+    items.push({
+      id: download.id,
+      url,
+      viewUrl: `${url}${url.includes("?") ? "&" : "?"}inline=1`,
+      title: download.title,
+      subtitle: "HomeLink field form · Print-ready PDF",
+    });
   }
 
   return items;

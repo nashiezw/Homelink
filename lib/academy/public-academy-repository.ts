@@ -2,9 +2,11 @@ import { AcademyRegistrationStatus, PaymentProvider, PaymentStatus, Role, Traini
 import { getMainPrisma } from "@/lib/db/main-prisma";
 import { calculateCourseProgress, getCompletedLessonIds } from "@/lib/academy/academy-progress";
 import { canAccessProgrammeCourse, getProgrammeProgressSummary } from "@/lib/academy/academy-completion";
+import { assessmentMetaForAssignment, assessmentMetaForQuiz } from "@/lib/academy/academy-assessments";
 import { getProgrammeCourse, LEGACY_COURSE_ID, PROGRAMME_COURSE_IDS } from "@/lib/academy/academy-programme";
-import { getToolkitGroupsForCourse, programmeMetaForCourse } from "@/lib/academy/academy-toolkits";
+import { getEnrolledCourseToolkits, getToolkitGroupsForCourse, programmeMetaForCourse } from "@/lib/academy/academy-toolkits";
 import { fetchCourseTree, flattenCourseMaterials, mapLessonForLearner } from "@/lib/academy/course-tree";
+import { toAcademyFileDownloadUrl } from "@/lib/academy/academy-files";
 
 export type AcademyRegistrationIntent = "TRAINING_ONLY" | "AGENT_TRAINING";
 
@@ -78,7 +80,7 @@ export async function listPublicAcademyCourses() {
 
 export async function getLearnerAcademyDashboard(learnerId: string) {
   const prisma = getMainPrisma();
-  const [applications, notifications, documents, announcements, certificates, courseProgressRows] = await Promise.all([
+  const [applications, notifications, announcements, certificates, courseProgressRows] = await Promise.all([
     prisma.academyLearnerApplication.findMany({
       where: {
         learnerId,
@@ -112,12 +114,6 @@ export async function getLearnerAcademyDashboard(learnerId: string) {
       orderBy: { updatedAt: "desc" },
     }),
     prisma.trainingNotification.findMany({ where: { userId: learnerId }, orderBy: { createdAt: "desc" }, take: 10 }),
-    prisma.documentLibrary.findMany({
-      where: { active: true, visible: true, permissions: { hasSome: ["PUBLIC_LEARNER", "LEARNER", "AGENT", "ADMIN"] } },
-      include: { category: true },
-      orderBy: [{ sortOrder: "asc" }, { updatedAt: "desc" }],
-      take: 12,
-    }),
     prisma.announcement.findMany({
       where: {
         AND: [
@@ -206,6 +202,12 @@ export async function getLearnerAcademyDashboard(learnerId: string) {
   const settingsPayload = settings as Record<string, unknown>;
   const brandingPayload = (settingsPayload.branding ?? {}) as Record<string, unknown>;
 
+  const approvedCourseIds = approved.map((entry) => entry.course.id);
+  const courseToolkits = await getEnrolledCourseToolkits(approvedCourseIds);
+  const activeCourseId = continueLearning?.courseId ?? approvedCourseIds[0] ?? null;
+  const activeCourseToolkit = courseToolkits.find((toolkit) => toolkit.courseId === activeCourseId) ?? courseToolkits[0] ?? null;
+  const toolkitDownloadCount = courseToolkits.reduce((sum, toolkit) => sum + toolkit.itemCount, 0);
+
   return {
     settings: {
       ...settings,
@@ -215,7 +217,7 @@ export async function getLearnerAcademyDashboard(learnerId: string) {
       enrolledCourses: approved.length,
       pendingApprovals: programmeApplications.filter((entry) => entry.status === AcademyRegistrationStatus.PENDING_PAYMENT || entry.status === AcademyRegistrationStatus.PAYMENT_UPLOADED).length,
       certificates: certificates.length,
-      downloads: documents.length,
+      downloads: toolkitDownloadCount,
       totalLessons,
       progress: overallProgress,
       completedLessons: completedLessonTotal,
@@ -248,6 +250,14 @@ export async function getLearnerAcademyDashboard(learnerId: string) {
       downloadUrl: certificate.pdfUrl ?? `/dashboard/academy/certificate/${certificate.id}`,
     })),
     programmeCourses: await getProgrammeProgressSummary(learnerId),
+    activeCourseId,
+    activeCourseToolkit,
+    courseToolkits,
+    referenceManual: {
+      title: "Complete Training Manual (Reference)",
+      description: "Full HomeLink manual for deep reference — use lesson handouts and field toolkits for daily work.",
+      downloadUrl: toAcademyFileDownloadUrl("/uploads/academy/homelink-zimbabwe-real-estate-agent-training-manual.pdf"),
+    },
     applications: await Promise.all(programmeApplications.map(async (entry) => {
       const completedIds = entry.status === AcademyRegistrationStatus.APPROVED
         ? await getCompletedLessonIds(learnerId, entry.course.id)
@@ -310,14 +320,6 @@ export async function getLearnerAcademyDashboard(learnerId: string) {
         })),
       },
     };
-    })),
-    documents: documents.map((document) => ({
-      id: document.id,
-      title: document.title,
-      description: document.description,
-      fileType: document.fileType,
-      category: document.category?.name,
-      downloadUrl: `/api/v1/academy/documents/${document.id}/download`,
     })),
     announcements,
     notifications,
@@ -589,7 +591,14 @@ export async function getLearnerCourseDetail(learnerId: string, courseId: string
   return {
     settings,
     programme: programme
-      ? { theme: programme.theme, badgeName: programme.badgeName, certificateTitle: programme.certificateTitle, subtitle: programme.subtitle }
+      ? {
+          theme: programme.theme,
+          badgeName: programme.badgeName,
+          certificateTitle: programme.certificateTitle,
+          subtitle: programme.subtitle,
+          assessmentSummary: programme.assessmentSummary,
+          includes: programme.includes,
+        }
       : null,
     toolkit,
     course: {
@@ -618,32 +627,70 @@ export async function getLearnerCourseDetail(learnerId: string, courseId: string
       })),
     },
     assessments: {
-      quizzes: course.quizzes.map((quiz) => ({
-        id: quiz.id,
-        title: quiz.title,
-        description: quiz.description,
-        passingPercentage: quiz.passingPercentage,
-        timeLimitMinutes: quiz.timeLimitMinutes,
-        questionCount: quiz.questions.length,
-        bestScore: bestQuizScores.get(quiz.id) ?? null,
-        passed: (bestQuizScores.get(quiz.id) ?? 0) >= quiz.passingPercentage,
-      })),
-      assignments: course.assignments.map((assignment) => ({
-        id: assignment.id,
-        title: assignment.title,
-        description: assignment.description,
-        points: assignment.points,
-        dueDays: assignment.dueDays,
-        submitted: assignmentSubmissions.some((s) => s.assignmentId === assignment.id),
-        status: assignmentSubmissions.find((s) => s.assignmentId === assignment.id)?.status ?? null,
-      })),
-      exams: course.finalExams.map((exam) => ({
-        id: exam.id,
-        title: exam.title,
-        durationMinutes: exam.durationMinutes,
-        passingScore: exam.passingScore,
-        attemptLimit: exam.attemptLimit,
-      })),
+      summary: programme?.assessmentSummary ?? null,
+      badgeName: programme?.badgeName ?? null,
+      totals: {
+        quizzes: programme?.quizIds.length ?? 0,
+        quizzesPassed: course.quizzes.filter(
+          (quiz) => programme?.quizIds.includes(quiz.id) && (bestQuizScores.get(quiz.id) ?? 0) >= quiz.passingPercentage,
+        ).length,
+        assignments: programme?.assignmentIds.length ?? 0,
+        assignmentsSubmitted: course.assignments.filter(
+          (assignment) => programme?.assignmentIds.includes(assignment.id) && assignmentSubmissions.some((s) => s.assignmentId === assignment.id),
+        ).length,
+        exams: programme?.requiresFinalExam ? course.finalExams.length : 0,
+      },
+      quizzes: course.quizzes
+        .filter((quiz) => !programme?.quizIds.length || programme.quizIds.includes(quiz.id))
+        .map((quiz) => {
+          const meta = assessmentMetaForQuiz(quiz.id);
+          return {
+            id: quiz.id,
+            title: quiz.title,
+            description: quiz.description,
+            moduleTitle: meta?.moduleTitle ?? null,
+            sortOrder: meta?.sortOrder ?? 0,
+            passingPercentage: quiz.passingPercentage,
+            timeLimitMinutes: quiz.timeLimitMinutes,
+            questionCount: quiz.questions.length,
+            bestScore: bestQuizScores.get(quiz.id) ?? null,
+            passed: (bestQuizScores.get(quiz.id) ?? 0) >= quiz.passingPercentage,
+          };
+        })
+        .sort((a, b) => a.sortOrder - b.sortOrder),
+      assignments: course.assignments
+        .filter((assignment) => !programme?.assignmentIds.length || programme.assignmentIds.includes(assignment.id))
+        .map((assignment) => {
+          const meta = assessmentMetaForAssignment(assignment.id);
+          return {
+            id: assignment.id,
+            title: assignment.title,
+            description: assignment.description,
+            moduleTitle: meta?.moduleTitle ?? null,
+            sortOrder: meta?.sortOrder ?? 0,
+            points: assignment.points,
+            dueDays: assignment.dueDays,
+            submitted: assignmentSubmissions.some((s) => s.assignmentId === assignment.id),
+            status: assignmentSubmissions.find((s) => s.assignmentId === assignment.id)?.status ?? null,
+          };
+        })
+        .sort((a, b) => a.sortOrder - b.sortOrder),
+      exams: programme?.requiresFinalExam
+        ? course.finalExams.map((exam) => ({
+            id: exam.id,
+            title: exam.title,
+            description: "Capstone examination covering Foundations, Listing & Client Mastery, and Professional Certification.",
+            durationMinutes: exam.durationMinutes,
+            passingScore: exam.passingScore,
+            attemptLimit: exam.attemptLimit,
+          }))
+        : [],
+      certificateCheckpoint: programme?.requiresFinalExam
+        ? null
+        : {
+            title: "Programme Certificate Checkpoint",
+            description: `Pass all ${programme?.quizIds.length ?? 0} module quizzes and submit all ${programme?.assignmentIds.length ?? 0} assignments to unlock your ${programme?.certificateTitle ?? "programme certificate"}.`,
+          },
     },
     materials: flattenCourseMaterials(course),
     application: application

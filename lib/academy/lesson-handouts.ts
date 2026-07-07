@@ -1,4 +1,5 @@
 import { ACADEMY_PROGRAMME_COURSES } from "@/lib/academy/academy-programme";
+import { academyFileDownloadUrl } from "@/lib/academy/academy-files";
 
 export type LessonHandoutSeed = {
   slug: string;
@@ -22,7 +23,7 @@ export function lessonHandoutSlug(courseId: string, lessonTitle: string) {
 }
 
 export function lessonHandoutUrl(courseId: string, lessonTitle: string) {
-  return `/uploads/academy/lessons/${lessonHandoutSlug(courseId, lessonTitle)}.pdf`;
+  return academyFileDownloadUrl(`lessons/${lessonHandoutSlug(courseId, lessonTitle)}.pdf`);
 }
 
 /** All staged lessons — used to generate branded lesson handout PDFs. */

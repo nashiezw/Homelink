@@ -1,7 +1,8 @@
 import { readFile } from "fs/promises";
 import path from "path";
-import { ACADEMY_PROGRAMME_COURSES, getProgrammeCourse, type AcademyProgrammeCourse } from "@/lib/academy/academy-programme";
+import { ACADEMY_PROGRAMME_COURSES, getProgrammeCourse, PROGRAMME_COURSE_IDS, type AcademyProgrammeCourse } from "@/lib/academy/academy-programme";
 import { isFullTrainingManualUrl } from "@/lib/academy/academy-constants";
+import { toAcademyFileDownloadUrl } from "@/lib/academy/academy-files";
 
 export type ToolkitItem = {
   id: string;
@@ -127,7 +128,7 @@ export async function getToolkitGroupsForCourse(courseId: string, options?: { cu
       title: row.title,
       description: row.description,
       category: row.category,
-      fileUrl: row.fileUrl,
+      fileUrl: toAcademyFileDownloadUrl(row.fileUrl),
       fileName: row.fileName,
     }));
 
@@ -149,6 +150,20 @@ export function programmeMetaForCourse(courseId: string): AcademyProgrammeCourse
   return getProgrammeCourse(courseId);
 }
 
-export function isProgrammeCourseId(courseId: string) {
-  return ACADEMY_PROGRAMME_COURSES.some((course) => course.id === courseId);
+export async function getEnrolledCourseToolkits(courseIds: string[]) {
+  const ordered = PROGRAMME_COURSE_IDS.filter((id) => courseIds.includes(id));
+  return Promise.all(
+    ordered.map(async (courseId) => {
+      const meta = getProgrammeCourse(courseId);
+      const groups = await getToolkitGroupsForCourse(courseId, { cumulative: false });
+      const itemCount = groups.reduce((sum, group) => sum + group.items.length, 0);
+      return {
+        courseId,
+        courseTitle: meta?.title ?? courseId,
+        theme: meta?.theme ?? null,
+        itemCount,
+        groups,
+      };
+    }),
+  );
 }

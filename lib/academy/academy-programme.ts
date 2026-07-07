@@ -59,8 +59,14 @@ export const ACADEMY_PROGRAMME_COURSES: AcademyProgrammeCourse[] = [
     badgeXp: 250,
     certificateTitle: "HomeLink Certified Agent — Foundations",
     certificatePrefix: "HLF",
-    quizIds: ["academy-quiz-foundations"],
-    assignmentIds: [],
+    quizIds: [
+      "academy-quiz-beginner-orientation",
+      "academy-quiz-foundations",
+    ],
+    assignmentIds: [
+      "academy-assignment-goal-planner",
+      "academy-assignment-foundations-standards",
+    ],
     requiresFinalExam: false,
     prerequisiteCourseId: null,
     theme: {
@@ -78,12 +84,13 @@ export const ACADEMY_PROGRAMME_COURSES: AcademyProgrammeCourse[] = [
       "Pass the Foundations knowledge check and earn your first HomeLink certificate",
     ],
     includes: [
-      "8 guided lessons with practical field exercises",
+      "8 guided lessons across 2 modules",
       "8 print-ready toolkit PDFs (planners, client forms, workflow guides)",
-      "Foundations knowledge check quiz",
+      "2 module checkpoint quizzes (Orientation + Foundations)",
+      "2 practical assignments (Goal Planner + Professional Standards)",
       "HomeLink Foundations Graduate badge + downloadable certificate",
     ],
-    assessmentSummary: "Complete all lessons and pass the Foundations knowledge check (80% pass mark).",
+    assessmentSummary: "Complete all lessons, pass both module quizzes (80% pass mark), and submit both practical assignments to earn your Foundations certificate.",
   },
   {
     id: "academy-course-intermediate",
@@ -104,8 +111,15 @@ export const ACADEMY_PROGRAMME_COURSES: AcademyProgrammeCourse[] = [
     badgeXp: 500,
     certificateTitle: "HomeLink Certified Agent — Listing & Client Mastery",
     certificatePrefix: "HLM",
-    quizIds: ["academy-quiz-listings-marketing"],
-    assignmentIds: ["academy-assignment-listing-file", "academy-assignment-viewing-record"],
+    quizIds: [
+      "academy-quiz-intermediate-listings",
+      "academy-quiz-intermediate-clients",
+    ],
+    assignmentIds: [
+      "academy-assignment-prospecting-log",
+      "academy-assignment-listing-file",
+      "academy-assignment-viewing-record",
+    ],
     requiresFinalExam: false,
     prerequisiteCourseId: "academy-course-beginner",
     theme: {
@@ -124,13 +138,13 @@ export const ACADEMY_PROGRAMME_COURSES: AcademyProgrammeCourse[] = [
       "Submit practical listing and viewing assignments for trainer review",
     ],
     includes: [
-      "10 in-depth lessons across listings and client service modules",
+      "10 in-depth lessons across 2 modules",
       "24 branded field tools — forms, scripts, checklists, and marketing templates",
-      "Listings & marketing knowledge check",
-      "Listing file + viewing record practical assignments",
+      "2 module checkpoint quizzes (Listings & Marketing + Client Service)",
+      "3 practical assignments (Prospecting Log, Listing File, Viewing Record)",
       "Listing & Client Specialist badge + downloadable certificate",
     ],
-    assessmentSummary: "Complete all lessons, pass the listings knowledge check, and submit both practical assignments.",
+    assessmentSummary: "Complete all lessons, pass both module quizzes, and submit all three practical assignments to earn your Listing & Client Mastery certificate.",
   },
   {
     id: "academy-course-advanced-professional",
@@ -151,8 +165,16 @@ export const ACADEMY_PROGRAMME_COURSES: AcademyProgrammeCourse[] = [
     badgeXp: 1000,
     certificateTitle: "HomeLink Certified Professional Agent",
     certificatePrefix: "HLP",
-    quizIds: ["academy-quiz-compliance"],
-    assignmentIds: ["academy-assignment-property-inspection"],
+    quizIds: [
+      "academy-quiz-compliance",
+      "academy-quiz-advanced-performance",
+      "academy-quiz-professional-toolkit",
+    ],
+    assignmentIds: [
+      "academy-assignment-compliance-file",
+      "academy-assignment-property-inspection",
+      "academy-assignment-performance-review",
+    ],
     requiresFinalExam: true,
     prerequisiteCourseId: "academy-course-intermediate",
     theme: {
@@ -171,13 +193,14 @@ export const ACADEMY_PROGRAMME_COURSES: AcademyProgrammeCourse[] = [
       "Pass compliance assessments and the Certified Professional Agent final examination",
     ],
     includes: [
-      "15 advanced lessons covering compliance, performance, and the full toolkit",
+      "15 advanced lessons across 3 modules",
       "Complete professional resource kit — all branded forms, flowcharts, and trackers",
-      "Compliance knowledge check + property inspection assignment",
+      "3 module checkpoint quizzes (Compliance, Performance, Toolkit Mastery)",
+      "3 practical assignments (Compliance File, Inspection, Performance Review)",
       "Certified HomeLink Agent final examination",
       "HomeLink Certified Professional Agent badge + full certification",
     ],
-    assessmentSummary: "Complete all lessons, pass compliance quiz and inspection assignment, then pass the final examination.",
+    assessmentSummary: "Complete all lessons, pass all three module quizzes, submit all three assignments, then pass the final examination to earn full professional certification.",
   },
 ];
 
