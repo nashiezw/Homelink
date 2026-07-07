@@ -11,26 +11,32 @@ import {
   CreditCard,
   GraduationCap,
   Loader2,
+  Lock,
   PlayCircle,
   Settings,
   ShieldCheck,
-  Star,
   TrendingUp,
   Upload,
   Users,
   Zap,
 } from "lucide-react";
 import { AuthForm } from "@/components/auth/auth-form";
+import { AcademyAccordion, ToolkitGrid } from "@/components/academy/academy-accordion";
+import { HomeLinkBrand } from "@/components/brand/homelink-logo";
 import { PageShell } from "@/components/layout/page-shell";
 import { Button } from "@/components/ui/button";
 import { useApp } from "@/components/providers/app-provider";
 import { apiFetch } from "@/lib/api/client";
 import type { CourseRegistrationSummary } from "@/lib/academy/academy-user-status";
 
+import { cn } from "@/lib/utils";
+
 type PublicCourse = {
   id: string;
   title: string;
+  subtitle?: string;
   description: string;
+  shortDescription?: string;
   category: string;
   difficulty: string;
   estimatedHours: number;
@@ -43,8 +49,18 @@ type PublicCourse = {
   accessDurationDays: number;
   certificateEnabled: boolean;
   featured: boolean;
+  sortOrder?: number;
+  prerequisiteCourseId?: string | null;
+  toolkitCount?: number;
+  badgeName?: string | null;
+  certificateTitle?: string | null;
+  learningOutcomes?: string[];
+  includes?: string[];
+  assessmentSummary?: string | null;
+  theme?: { label: string; accent: string; gradient: string; chip: string } | null;
+  toolkitPreview?: Array<{ category: string; description: string; items: Array<{ id: string; title: string; description: string; fileUrl: string }> }>;
   lessonCount: number;
-  modules: Array<{ id: string; title: string; lessons: Array<{ id: string; title: string; estimatedMinutes: number }> }>;
+  modules: Array<{ id: string; title: string; description?: string | null; lessons: Array<{ id: string; title: string; estimatedMinutes: number }> }>;
 };
 
 type AcademyStatus = {
@@ -195,9 +211,9 @@ export function PublicAcademyPage() {
           : "Master real estate with Zimbabwe's leading property platform. Train with HomeLink as a public learner — no agent application required."
       }
       highlights={[
-        { value: String(courses.length), label: "Available Courses" },
-        { value: "Certified", label: "Training" },
-        { value: "Expert", label: "Instructors" },
+        { value: "3", label: "Programme Levels" },
+        { value: "Certified", label: "Each Stage" },
+        { value: "50+", label: "Toolkit PDFs" },
       ]}
       actions={pageActions}
     >
@@ -245,41 +261,147 @@ export function PublicAcademyPage() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-4 mt-8">
-        <StatCard icon={BookOpen} value={String(courses.reduce((sum, c) => sum + c.lessonCount, 0))} label="Total Lessons" color="emerald" />
-        <StatCard icon={Award} value={String(courses.filter((c) => c.certificateEnabled).length)} label="Certified Courses" color="amber" />
-        <StatCard icon={Clock} value={`${courses.reduce((sum, c) => sum + (c.estimatedHours || Math.round(c.durationMinutes / 60)), 0)}h`} label="Learning Hours" color="blue" />
-        <StatCard icon={TrendingUp} value={courses.length ? `${Math.round(courses.reduce((sum, c) => sum + c.lessonCount, 0) / Math.max(courses.length, 1))}+` : "0"} label="Avg Lessons / Course" color="purple" />
+        <StatCard icon={BookOpen} value={String(courses.reduce((sum, c) => sum + c.lessonCount, 0))} label="Programme Lessons" color="emerald" />
+        <StatCard icon={Award} value="3" label="Certification Levels" color="amber" />
+        <StatCard icon={Clock} value={`${courses.reduce((sum, c) => sum + (c.estimatedHours || Math.round(c.durationMinutes / 60)), 0)}h`} label="Guided Learning" color="blue" />
+        <StatCard icon={TrendingUp} value={String(courses.reduce((sum, c) => sum + (c.toolkitCount ?? 0), 0))} label="Toolkit Downloads" color="purple" />
       </div>
 
+      <section className="mt-10 rounded-3xl border border-slate-200 bg-white p-6 shadow-soft dark:border-slate-800 dark:bg-slate-950 sm:p-8">
+        <h2 className="text-2xl font-bold">Your certification pathway</h2>
+        <p className="mt-2 max-w-3xl text-slate-600">Three focused programmes — Foundations, Listing & Client Mastery, and Professional Certification. Complete each level, pass assessments, and unlock badges plus downloadable HomeLink certificates.</p>
+        <div className="mt-6 grid gap-4 md:grid-cols-3">
+          {courses.map((course) => (
+            <div key={course.id} className="rounded-2xl border p-5 transition hover:shadow-md" style={{ borderColor: `${course.theme?.accent ?? "#008b68"}44` }}>
+              <p className="text-xs font-bold uppercase tracking-wider" style={{ color: course.theme?.accent }}>{course.theme?.label}</p>
+              <p className="mt-2 font-bold leading-snug">{course.title}</p>
+              <p className="mt-1 text-sm text-slate-500">{course.lessonCount} lessons · {course.toolkitCount ?? 0} toolkit PDFs</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(22rem,0.65fr)] mt-8">
-        <section className="grid gap-4">
-          <h2 className="text-2xl font-bold">Available Courses</h2>
-          {courses.map((course) => {
+        <section className="grid gap-6">
+          <h2 className="text-2xl font-bold">Programme Catalog</h2>
+          {courses.map((course, index) => {
             const registration = courseRegistrationState(academyStatus, course.id);
+            const accent = course.theme?.accent ?? "#008b68";
+            const locked = course.prerequisiteCourseId && courseRegistrationState(academyStatus, course.prerequisiteCourseId) !== "APPROVED" && registration !== "APPROVED";
             return (
               <article
                 key={course.id}
-                className={`group relative overflow-hidden rounded-2xl border-2 transition-all duration-300 ${
-                  selectedId === course.id ? "border-emerald-500 shadow-xl shadow-emerald-500/30" : "border-slate-200 hover:border-emerald-400 hover:shadow-lg dark:border-slate-800"
-                }`}
+                className={cn(
+                  "relative overflow-hidden rounded-3xl border-2 bg-white transition-all duration-300 dark:bg-slate-950",
+                  selectedId === course.id ? "shadow-xl" : "border-slate-200 hover:shadow-lg dark:border-slate-800",
+                )}
+                style={selectedId === course.id ? { borderColor: accent, boxShadow: `0 20px 50px ${accent}22` } : undefined}
               >
-                {course.featured && (
-                  <div className="absolute top-0 right-0 bg-gradient-to-l from-amber-400 to-orange-500 px-4 py-1 text-xs font-bold text-white">
-                    <Star className="inline size-3 mr-1" /> Featured
-                  </div>
-                )}
+                <div className={cn("h-2 bg-gradient-to-r", course.theme?.gradient ?? "from-emerald-500 to-teal-600")} />
                 {registration === "APPROVED" && (
-                  <div className="absolute top-0 left-0 bg-emerald-600 px-4 py-1 text-xs font-bold text-white rounded-br-xl">
-                    Enrolled
+                  <div className="absolute top-4 right-4 rounded-full bg-emerald-600 px-3 py-1 text-xs font-bold text-white">Enrolled</div>
+                )}
+                {locked && (
+                  <div className="absolute top-4 right-4 inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+                    <Lock className="size-3" /> Complete previous programme
                   </div>
                 )}
-                <div className="p-6">
-                  <CourseCardHeader course={course} />
-                  {!!course.modules.length && <CourseModulesPreview modules={course.modules} />}
+                <div className="p-6 sm:p-8">
+                  <div className="flex flex-wrap items-start gap-4">
+                    <div className="rounded-2xl bg-white p-2 shadow ring-1 ring-slate-100">
+                      <HomeLinkBrand variant="icon" iconOnly />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap gap-2 mb-2">
+                        <span className={cn("rounded-full px-3 py-1 text-xs font-semibold", course.theme?.chip ?? "bg-emerald-100 text-emerald-800")}>{course.theme?.label}</span>
+                        {course.certificateEnabled && (
+                          <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800 flex items-center gap-1"><Award className="size-3" /> Certificate</span>
+                        )}
+                      </div>
+                      <h3 className="text-2xl font-bold">{course.title}</h3>
+                      <p className="mt-1 text-sm font-medium" style={{ color: accent }}>{course.subtitle}</p>
+                      <p className="mt-3 text-slate-600 leading-relaxed">{course.shortDescription ?? course.description}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-3xl font-bold" style={{ color: accent }}>{course.publicPrice ? `${course.currency} ${course.publicPrice.toFixed(2)}` : "Free"}</p>
+                      <p className="text-xs text-slate-500">{course.accessDurationDays} days access</p>
+                    </div>
+                  </div>
+
+                  <div className="mt-6 grid gap-3 sm:grid-cols-3">
+                    <div className="rounded-xl bg-slate-50 p-3 text-sm dark:bg-slate-900"><BookOpen className="size-4 mb-1" style={{ color: accent }} /><span className="font-semibold">{course.lessonCount} lessons</span></div>
+                    <div className="rounded-xl bg-slate-50 p-3 text-sm dark:bg-slate-900"><Clock className="size-4 mb-1" style={{ color: accent }} /><span className="font-semibold">{course.estimatedHours || Math.round(course.durationMinutes / 60)} hours</span></div>
+                    <div className="rounded-xl bg-slate-50 p-3 text-sm dark:bg-slate-900"><ShieldCheck className="size-4 mb-1" style={{ color: accent }} /><span className="font-semibold">{course.toolkitCount ?? 0} toolkit PDFs</span></div>
+                  </div>
+
+                  <div className="mt-6 space-y-4">
+                    <AcademyAccordion
+                      accent={accent}
+                      items={[
+                        {
+                          id: `${course.id}-outcomes`,
+                          title: "What you will achieve",
+                          subtitle: "Learning outcomes for this programme",
+                          meta: `${course.learningOutcomes?.length ?? 0} outcomes`,
+                          content: (
+                            <ul className="space-y-2 text-sm text-slate-600">
+                              {(course.learningOutcomes ?? []).map((outcome) => (
+                                <li key={outcome} className="flex gap-2"><CheckCircle2 className="size-4 shrink-0 mt-0.5" style={{ color: accent }} />{outcome}</li>
+                              ))}
+                            </ul>
+                          ),
+                        },
+                        {
+                          id: `${course.id}-includes`,
+                          title: "What's included",
+                          subtitle: course.assessmentSummary ?? "Lessons, toolkits, assessments, and certification",
+                          meta: course.badgeName ?? "Certificate",
+                          content: (
+                            <ul className="space-y-2 text-sm text-slate-600">
+                              {(course.includes ?? []).map((item) => (
+                                <li key={item} className="flex gap-2"><Award className="size-4 shrink-0 mt-0.5 text-amber-600" />{item}</li>
+                              ))}
+                            </ul>
+                          ),
+                        },
+                        {
+                          id: `${course.id}-curriculum`,
+                          title: "Curriculum modules",
+                          subtitle: "Expand to preview what you will learn",
+                          meta: `${course.modules.length} modules`,
+                          defaultOpen: index === 0,
+                          content: (
+                            <div className="space-y-3">
+                              {course.modules.map((module) => (
+                                <div key={module.id} className="rounded-xl border border-slate-200 p-3 dark:border-slate-700">
+                                  <p className="font-semibold">{module.title}</p>
+                                  <p className="mt-1 text-xs text-slate-500">{module.lessons.length} lessons · {module.lessons.reduce((n, l) => n + l.estimatedMinutes, 0)} min</p>
+                                  <ul className="mt-2 space-y-1 text-sm text-slate-600">
+                                    {module.lessons.slice(0, 4).map((lesson) => <li key={lesson.id}>• {lesson.title}</li>)}
+                                    {module.lessons.length > 4 && <li className="text-xs text-slate-400">+ {module.lessons.length - 4} more lessons</li>}
+                                  </ul>
+                                </div>
+                              ))}
+                            </div>
+                          ),
+                        },
+                        {
+                          id: `${course.id}-toolkit`,
+                          title: "Field toolkit included",
+                          subtitle: "HomeLink-branded print-ready PDFs for this level",
+                          meta: `${course.toolkitCount ?? 0} downloads`,
+                          content: <ToolkitGrid groups={course.toolkitPreview ?? []} accent={accent} />,
+                        },
+                      ]}
+                    />
+                  </div>
+
                   <CourseActionButton
                     courseId={course.id}
                     registration={registration}
                     selected={selectedId === course.id}
+                    locked={!!locked}
+                    accent={accent}
                     onSelect={() => setSelectedId(course.id)}
                   />
                 </div>
@@ -353,69 +475,25 @@ function StatCard({
   );
 }
 
-function CourseCardHeader({ course }: { course: PublicCourse }) {
-  return (
-    <>
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="flex-1">
-          <div className="flex flex-wrap items-center gap-2 mb-3">
-            <span className="rounded-full bg-gradient-to-r from-emerald-500 to-emerald-600 px-3 py-1 text-xs font-semibold text-white">{course.category}</span>
-            <span className="rounded-full bg-gradient-to-r from-blue-500 to-blue-600 px-3 py-1 text-xs font-semibold text-white">{course.difficulty}</span>
-            {course.certificateEnabled && (
-              <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 flex items-center gap-1">
-                <Award className="size-3" /> Certificate
-              </span>
-            )}
-          </div>
-          <h3 className="text-2xl font-bold mb-2 group-hover:text-emerald-600 transition-colors">{course.title}</h3>
-          <p className="text-slate-600 dark:text-slate-400 leading-relaxed">{course.description}</p>
-        </div>
-        <div className="text-right">
-          <p className="text-3xl font-bold text-emerald-600">{course.publicPrice ? `${course.currency} ${course.publicPrice.toFixed(2)}` : "Free"}</p>
-          {course.agentPrice < course.publicPrice && <p className="text-xs text-emerald-600 font-medium">Agents: {course.currency} {course.agentPrice.toFixed(2)}</p>}
-          <p className="text-sm text-slate-500">{course.accessDurationDays} days access</p>
-        </div>
-      </div>
-      <div className="mt-6 grid gap-3 sm:grid-cols-3">
-        <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400"><BookOpen className="size-5 text-emerald-500" /><span className="font-medium">{course.lessonCount} lessons</span></div>
-        <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400"><Clock className="size-5 text-emerald-500" /><span className="font-medium">{course.estimatedHours || Math.round(course.durationMinutes / 60)} hours</span></div>
-        <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400"><GraduationCap className="size-5 text-emerald-500" /><span className="font-medium">{course.instructor || "HomeLink trainers"}</span></div>
-      </div>
-    </>
-  );
-}
-
-function CourseModulesPreview({ modules }: { modules: PublicCourse["modules"] }) {
-  return (
-    <div className="mt-6">
-      <p className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">Course Modules</p>
-      <div className="grid gap-2 md:grid-cols-2">
-        {modules.slice(0, 4).map((module) => (
-          <div key={module.id} className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm dark:border-slate-800 dark:bg-slate-900/50">
-            <p className="font-semibold text-slate-900 dark:text-white">{module.title}</p>
-            <p className="mt-1 text-xs text-slate-500">{module.lessons.length} lessons</p>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 function CourseActionButton({
   courseId,
   registration,
   selected,
+  locked,
+  accent = "#008b68",
   onSelect,
 }: {
   courseId: string;
   registration: ReturnType<typeof courseRegistrationState>;
   selected: boolean;
+  locked?: boolean;
+  accent?: string;
   onSelect: () => void;
 }) {
   if (registration === "APPROVED") {
     return (
       <Link href={`/dashboard/academy/${courseId}`} className="mt-6 block">
-        <Button className="w-full"><PlayCircle className="size-4 mr-2" /> Continue Course</Button>
+        <Button className="w-full" style={{ backgroundColor: accent }}><PlayCircle className="size-4 mr-2" /> Continue Programme</Button>
       </Link>
     );
   }
@@ -426,9 +504,16 @@ function CourseActionButton({
       </Link>
     );
   }
+  if (locked) {
+    return (
+      <Button className="mt-6 w-full" variant="secondary" disabled>
+        <Lock className="size-4 mr-2" /> Complete previous programme first
+      </Button>
+    );
+  }
   return (
-    <Button className="mt-6 w-full" variant={selected ? "primary" : "secondary"} onClick={onSelect}>
-      {selected ? <><CheckCircle2 className="size-4 mr-2" /> Selected</> : <><Zap className="size-4 mr-2" /> Enroll Now</>}
+    <Button className="mt-6 w-full" variant={selected ? "primary" : "secondary"} style={selected ? { backgroundColor: accent } : undefined} onClick={onSelect}>
+      {selected ? <><CheckCircle2 className="size-4 mr-2" /> Selected for enrolment</> : <><Zap className="size-4 mr-2" /> Select Programme</>}
     </Button>
   );
 }
@@ -466,8 +551,14 @@ function AcademySidePanel({
   selectedId: string;
   onSelectCourse: (id: string) => void;
 }) {
+  const accent = selected?.theme?.accent ?? "#008b68";
+
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-lg dark:border-slate-800 dark:bg-slate-950">
+    <div className="space-y-4">
+      {selected && (
+        <ProgrammeEnrolmentPreview course={selected} accent={accent} />
+      )}
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-lg dark:border-slate-800 dark:bg-slate-950">
       <div className="flex items-center gap-3 mb-6">
         <div className="rounded-xl bg-emerald-100 p-3 dark:bg-emerald-900/30">
           <ShieldCheck className="size-6 text-emerald-600 dark:text-emerald-400" />
@@ -582,6 +673,56 @@ function AcademySidePanel({
           )}
         </div>
       )}
+      </div>
+    </div>
+  );
+}
+
+function ProgrammeEnrolmentPreview({ course, accent }: { course: PublicCourse; accent: string }) {
+  return (
+    <div className="overflow-hidden rounded-2xl border-2 bg-white shadow-lg dark:bg-slate-950" style={{ borderColor: `${accent}44` }}>
+      <div className={cn("h-2 bg-gradient-to-r", course.theme?.gradient ?? "from-emerald-500 to-teal-600")} />
+      <div className="p-5">
+        <span className={cn("inline-flex rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide", course.theme?.chip ?? "bg-emerald-100 text-emerald-800")}>
+          {course.theme?.label}
+        </span>
+        <h3 className="mt-3 text-xl font-bold leading-snug">{course.title}</h3>
+        <p className="mt-1 text-sm font-medium" style={{ color: accent }}>{course.subtitle}</p>
+        <p className="mt-3 text-sm leading-relaxed text-slate-600">{course.description}</p>
+        <div className="mt-4 grid grid-cols-3 gap-2 text-center text-xs">
+          <div className="rounded-xl bg-slate-50 p-2 dark:bg-slate-900"><BookOpen className="mx-auto size-4 mb-1" style={{ color: accent }} /><span className="font-semibold">{course.lessonCount} lessons</span></div>
+          <div className="rounded-xl bg-slate-50 p-2 dark:bg-slate-900"><Clock className="mx-auto size-4 mb-1" style={{ color: accent }} /><span className="font-semibold">{course.estimatedHours || Math.round(course.durationMinutes / 60)}h</span></div>
+          <div className="rounded-xl bg-slate-50 p-2 dark:bg-slate-900"><ShieldCheck className="mx-auto size-4 mb-1" style={{ color: accent }} /><span className="font-semibold">{course.toolkitCount ?? 0} PDFs</span></div>
+        </div>
+        {course.badgeName && (
+          <p className="mt-4 flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-medium" style={{ borderColor: `${accent}33`, color: accent }}>
+            <Award className="size-4" /> Earn: {course.badgeName}
+          </p>
+        )}
+        <div className="mt-4">
+          <AcademyAccordion
+            accent={accent}
+            items={[
+              {
+                id: `${course.id}-side-curriculum`,
+                title: "Curriculum preview",
+                subtitle: `${course.modules.length} modules · expand to view`,
+                defaultOpen: false,
+                content: (
+                  <div className="space-y-2">
+                    {course.modules.map((module) => (
+                      <div key={module.id} className="rounded-lg border border-slate-200 p-3 text-sm dark:border-slate-700">
+                        <p className="font-semibold">{module.title}</p>
+                        <p className="mt-1 text-xs text-slate-500">{module.lessons.length} lessons</p>
+                      </div>
+                    ))}
+                  </div>
+                ),
+              },
+            ]}
+          />
+        </div>
+      </div>
     </div>
   );
 }

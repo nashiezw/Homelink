@@ -2,11 +2,10 @@
 import { readFile } from "fs/promises";
 import path from "path";
 import { getMainPrisma } from "@/lib/db/main-prisma";
-import { seedManualCourseStructure } from "@/lib/academy/manual-course-seed";
+import { ACADEMY_PROGRAMME_COURSES, LEARNING_PATH_ID } from "@/lib/academy/academy-programme";
+import { seedStagedCourseStructure } from "@/lib/academy/staged-course-seed";
 
-const COURSE_ID = "academy-course-official-real-estate-agent-training";
 const CERTIFICATE_TEMPLATE_ID = "academy-certificate-certified-homelink-agent";
-const LEARNING_PATH_ID = "academy-path-new-agent-programme";
 
 type AcademyResourceManifestItem = {
   title: string;
@@ -115,18 +114,20 @@ export async function ensureOfficialAcademySeed() {
 
   const manifest = await loadManifest();
   if (!documentCount) await seedDocuments(prisma, manifest);
-  await seedManualCourseStructure({ forceRebuild: courseCount === 0 });
+  await seedStagedCourseStructure({ forceRebuild: courseCount === 0 });
   if (!quizCount || !assignmentCount || !examCount) await seedAssessments(prisma);
   await seedLearningPath(prisma);
   await seedCertificateTemplate(prisma);
   await seedEngagementRecords(prisma);
 }
 
-export async function seedOfficialAcademyResources() {
+export async function seedOfficialAcademyResources(options?: { skipCourseRebuild?: boolean }) {
   const prisma = getMainPrisma();
   const manifest = await loadManifest();
   await seedDocuments(prisma, manifest);
-  const manual = await seedManualCourseStructure({ forceRebuild: true });
+  const manual = options?.skipCourseRebuild
+    ? { rebuilt: false, lessonCount: await prisma.trainingLesson.count({ where: { section: { module: { courseId: { in: ACADEMY_PROGRAMME_COURSES.map((c) => c.id) } } } } }) }
+    : await seedStagedCourseStructure({ forceRebuild: true });
   await seedAssessments(prisma);
   await seedLearningPath(prisma);
   await seedCertificateTemplate(prisma);
@@ -134,9 +135,9 @@ export async function seedOfficialAcademyResources() {
   return {
     ...manual,
     academyDocuments: await prisma.documentLibrary.count({ where: { id: { startsWith: "academy-doc-" } } }),
-    quizzes: await prisma.quiz.count({ where: { courseId: COURSE_ID } }),
-    assignments: await prisma.assignment.count({ where: { courseId: COURSE_ID } }),
-    finalExams: await prisma.finalExam.count({ where: { courseId: COURSE_ID } }),
+    quizzes: await prisma.quiz.count(),
+    assignments: await prisma.assignment.count(),
+    finalExams: await prisma.finalExam.count(),
     learningPaths: await prisma.learningPath.count({ where: { id: LEARNING_PATH_ID } }),
   };
 }
@@ -236,11 +237,23 @@ async function seedDocuments(prisma: ReturnType<typeof getMainPrisma>, manifest:
 }
 
 async function seedAssessments(prisma: ReturnType<typeof getMainPrisma>) {
+  const quizCourseMap: Record<string, string> = {
+    "academy-quiz-foundations": "academy-course-beginner",
+    "academy-quiz-listings-marketing": "academy-course-intermediate",
+    "academy-quiz-compliance": "academy-course-advanced-professional",
+  };
+  const assignmentCourseMap: Record<string, string> = {
+    "academy-assignment-property-inspection": "academy-course-advanced-professional",
+    "academy-assignment-viewing-record": "academy-course-intermediate",
+    "academy-assignment-listing-file": "academy-course-intermediate",
+  };
+
   for (const quiz of quizSeeds) {
+    const courseId = quizCourseMap[quiz.id] ?? ACADEMY_PROGRAMME_COURSES[0].id;
     await prisma.quiz.upsert({
       where: { id: quiz.id },
-      create: { id: quiz.id, courseId: COURSE_ID, title: quiz.title, description: quiz.description, passingPercentage: 80, randomise: true, timeLimitMinutes: 20, active: true },
-      update: { courseId: COURSE_ID, title: quiz.title, description: quiz.description, passingPercentage: 80, randomise: true, timeLimitMinutes: 20, active: true },
+      create: { id: quiz.id, courseId, title: quiz.title, description: quiz.description, passingPercentage: 80, randomise: true, timeLimitMinutes: 20, active: true },
+      update: { courseId, title: quiz.title, description: quiz.description, passingPercentage: 80, randomise: true, timeLimitMinutes: 20, active: true },
     });
     await prisma.quizQuestion.deleteMany({ where: { quizId: quiz.id } });
     for (const [index, question] of quiz.questions.entries()) {
@@ -274,18 +287,20 @@ async function seedAssessments(prisma: ReturnType<typeof getMainPrisma>) {
   }
 
   for (const assignment of assignments) {
+    const courseId = assignmentCourseMap[assignment.id] ?? ACADEMY_PROGRAMME_COURSES[1].id;
     await prisma.assignment.upsert({
       where: { id: assignment.id },
-      create: { ...assignment, courseId: COURSE_ID, dueDays: 14, active: true },
-      update: { title: assignment.title, description: assignment.description, points: assignment.points, dueDays: 14, active: true },
+      create: { ...assignment, courseId, dueDays: 14, active: true },
+      update: { courseId, title: assignment.title, description: assignment.description, points: assignment.points, dueDays: 14, active: true },
     });
   }
 
+  const advancedCourseId = "academy-course-advanced-professional";
   await prisma.finalExam.upsert({
     where: { id: "academy-final-exam-certified-homelink-agent" },
     create: {
       id: "academy-final-exam-certified-homelink-agent",
-      courseId: COURSE_ID,
+      courseId: advancedCourseId,
       title: "Certified HomeLink Agent Final Examination",
       durationMinutes: 90,
       passingScore: 80,
@@ -300,7 +315,7 @@ async function seedAssessments(prisma: ReturnType<typeof getMainPrisma>) {
       active: true,
     },
     update: {
-      courseId: COURSE_ID,
+      courseId: advancedCourseId,
       title: "Certified HomeLink Agent Final Examination",
       durationMinutes: 90,
       passingScore: 80,
@@ -315,23 +330,25 @@ async function seedLearningPath(prisma: ReturnType<typeof getMainPrisma>) {
     where: { id: LEARNING_PATH_ID },
     create: {
       id: LEARNING_PATH_ID,
-      title: "New Agent Programme",
-      description: "Structured HomeLink onboarding path from foundations through legal compliance, sales, property management and certification.",
+      title: "HomeLink Agent Certification Path",
+      description: "Three progressive courses: Beginner, Intermediate, and Advanced & Professional — each with its own badge and certificate.",
       status: "PUBLISHED",
-      badgeTitle: "Certified HomeLink Agent",
+      badgeTitle: "HomeLink Certified Agent",
     },
     update: {
-      title: "New Agent Programme",
-      description: "Structured HomeLink onboarding path from foundations through legal compliance, sales, property management and certification.",
+      title: "HomeLink Agent Certification Path",
+      description: "Three progressive courses: Beginner, Intermediate, and Advanced & Professional.",
       status: "PUBLISHED",
-      badgeTitle: "Certified HomeLink Agent",
+      badgeTitle: "HomeLink Certified Agent",
     },
   });
-  await prisma.pathCourse.upsert({
-    where: { pathId_courseId: { pathId: LEARNING_PATH_ID, courseId: COURSE_ID } },
-    create: { pathId: LEARNING_PATH_ID, courseId: COURSE_ID, sortOrder: 0, required: true },
-    update: { sortOrder: 0, required: true },
-  });
+  for (const course of ACADEMY_PROGRAMME_COURSES) {
+    await prisma.pathCourse.upsert({
+      where: { pathId_courseId: { pathId: LEARNING_PATH_ID, courseId: course.id } },
+      create: { pathId: LEARNING_PATH_ID, courseId: course.id, sortOrder: course.sortOrder, required: true },
+      update: { sortOrder: course.sortOrder, required: true },
+    });
+  }
 }
 
 async function seedCertificateTemplate(prisma: ReturnType<typeof getMainPrisma>) {
@@ -382,10 +399,28 @@ async function seedEngagementRecords(prisma: ReturnType<typeof getMainPrisma>) {
       publishedAt: new Date(),
     },
   });
+  for (const course of ACADEMY_PROGRAMME_COURSES) {
+    await prisma.badge.upsert({
+      where: { id: course.badgeId },
+      create: {
+        id: course.badgeId,
+        name: course.badgeName,
+        description: course.badgeDescription,
+        xp: course.badgeXp,
+        active: true,
+      },
+      update: {
+        name: course.badgeName,
+        description: course.badgeDescription,
+        xp: course.badgeXp,
+        active: true,
+      },
+    });
+  }
   await prisma.badge.upsert({
     where: { id: "academy-badge-certified-homelink-agent" },
-    create: { id: "academy-badge-certified-homelink-agent", name: "Certified HomeLink Agent", description: "Awarded after completing the official Academy course and final examination.", xp: 1000, active: true },
-    update: { name: "Certified HomeLink Agent", description: "Awarded after completing the official Academy course and final examination.", xp: 1000, active: true },
+    create: { id: "academy-badge-certified-homelink-agent", name: "Certified HomeLink Agent", description: "Completed all three Academy courses and earned full certification.", xp: 1500, active: true },
+    update: { name: "Certified HomeLink Agent", description: "Completed all three Academy courses and earned full certification.", xp: 1500, active: true },
   });
 }
 

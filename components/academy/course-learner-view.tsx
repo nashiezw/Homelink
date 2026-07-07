@@ -8,10 +8,11 @@ import {
   CheckCircle2,
   ClipboardCheck,
   Download,
-  FileText,
   GraduationCap,
   ShieldCheck,
+  Sparkles,
 } from "lucide-react";
+import { HomeLinkBrand } from "@/components/brand/homelink-logo";
 import { PageShell } from "@/components/layout/page-shell";
 import { Button } from "@/components/ui/button";
 import { useApp } from "@/components/providers/app-provider";
@@ -21,10 +22,18 @@ import { QuizPanel } from "@/components/academy/quiz-panel";
 import { ExamPanel } from "@/components/academy/exam-panel";
 import { AssignmentPanel } from "@/components/academy/assignment-panel";
 import { DiscussionPanel } from "@/components/academy/discussion-panel";
+import { AcademyAccordion, ToolkitGrid } from "@/components/academy/academy-accordion";
 import { cn } from "@/lib/utils";
 
 type CourseDetail = {
   settings: { academyName: string; primaryColour: string };
+  programme?: {
+    theme: { label: string; accent: string; gradient: string; sidebar: string; chip: string };
+    badgeName: string;
+    certificateTitle: string;
+    subtitle?: string;
+  } | null;
+  toolkit?: Array<{ category: string; description: string; items: Array<{ id: string; title: string; description: string; fileUrl: string }> }>;
   course: {
     id: string;
     title: string;
@@ -71,7 +80,7 @@ type CourseDetail = {
   materials: Array<{ id: string; title: string; level: string; location: string; fileType: string; downloadUrl: string }>;
 };
 
-type Tab = "curriculum" | "materials" | "assessments" | "discussions" | "progress";
+type Tab = "curriculum" | "toolkit" | "materials" | "assessments" | "discussions" | "progress";
 
 export function CourseLearnerView({ courseId }: { courseId: string }) {
   const { user, showToast } = useApp();
@@ -106,6 +115,8 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
 
   if (viewingLessonId) {
     const primaryColour = data.settings.primaryColour ?? "#008b68";
+    const theme = data.programme?.theme;
+    const accent = theme?.accent ?? primaryColour;
     const courseForViewer = {
       id: data.course.id,
       title: data.course.title,
@@ -124,7 +135,8 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
       <LessonViewer
         course={courseForViewer}
         initialLessonId={viewingLessonId}
-        primaryColour={primaryColour}
+        primaryColour={accent}
+        courseTheme={theme}
         onBack={() => setViewingLessonId(null)}
         onToggleBookmark={async (lessonId, bookmarked) => {
           await apiFetch("/api/v1/academy/bookmarks", { method: "POST", body: JSON.stringify({ lessonId, bookmarked }) });
@@ -178,6 +190,10 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
 
   const primaryColour = data.settings.primaryColour ?? "#008b68";
 
+  const theme = data.programme?.theme;
+  const accent = theme?.accent ?? primaryColour;
+  const heroGradient = theme?.gradient ?? "from-emerald-600 via-emerald-700 to-teal-800";
+
   return (
     <PageShell
       eyebrow={data.settings.academyName}
@@ -187,19 +203,29 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
         <Link href="/dashboard/academy"><Button variant="secondary">My Dashboard</Button></Link>
       }
     >
-      <div className="overflow-hidden rounded-3xl border border-slate-200 bg-gradient-to-br from-white to-slate-50 p-6 shadow-soft dark:border-slate-800 dark:from-slate-950 dark:to-slate-900 sm:p-8">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="text-sm font-medium text-slate-500">{data.course.instructor ?? "HomeLink trainers"}</p>
-            <p className="mt-3 text-3xl font-bold" style={{ color: primaryColour }}>{data.course.progress}%</p>
-            <p className="text-sm text-slate-500">Course completion</p>
+      <div className={cn("relative overflow-hidden rounded-3xl bg-gradient-to-br p-6 text-white shadow-hero sm:p-8", heroGradient)}>
+        <div className="pointer-events-none absolute -right-10 -top-10 size-48 rounded-full bg-white/10 blur-3xl" />
+        <div className="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex items-start gap-4">
+            <div className="rounded-2xl bg-white/95 p-2 shadow-lg ring-1 ring-white/40">
+              <HomeLinkBrand variant="icon" iconOnly />
+            </div>
+            <div>
+              <p className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-white/90">
+                <Sparkles className="size-3.5" /> {theme?.label ?? data.settings.academyName}
+              </p>
+              <p className="mt-2 text-sm text-emerald-100/90">{data.course.instructor ?? "HomeLink trainers"}</p>
+              <p className="mt-1 text-lg font-medium text-white/95">{data.programme?.certificateTitle ?? "HomeLink Agent Certification"}</p>
+            </div>
           </div>
-          <div className="w-full sm:max-w-xs">
-            <div className="h-3 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
-              <div className="h-full rounded-full transition-all duration-700" style={{ width: `${data.course.progress}%`, backgroundColor: primaryColour }} />
+          <div className="w-full rounded-2xl bg-white/10 p-5 backdrop-blur-sm lg:max-w-xs">
+            <p className="text-4xl font-bold">{data.course.progress}%</p>
+            <p className="text-sm text-emerald-100">Course completion</p>
+            <div className="mt-4 h-2.5 overflow-hidden rounded-full bg-white/20">
+              <div className="h-full rounded-full bg-white transition-all duration-700" style={{ width: `${data.course.progress}%` }} />
             </div>
             {data.course.certificateEnabled && (
-              <p className="mt-3 flex items-center gap-2 text-sm font-medium text-amber-700 dark:text-amber-300">
+              <p className="mt-3 flex items-center gap-2 text-sm font-medium text-amber-200">
                 <Award className="size-4" /> Certificate on completion
               </p>
             )}
@@ -208,12 +234,12 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
       </div>
 
       <div className="mt-6 flex gap-2 overflow-x-auto pb-1 scrollbar-none">
-        {(["curriculum", "materials", "assessments", "discussions", "progress"] as Tab[]).map((item) => (
+        {(["curriculum", "toolkit", "materials", "assessments", "discussions", "progress"] as Tab[]).map((item) => (
           <Button
             key={item}
             variant={tab === item ? "primary" : "secondary"}
             className={cn("shrink-0 capitalize", tab === item && "shadow-soft")}
-            style={tab === item ? { backgroundColor: primaryColour } : undefined}
+            style={tab === item ? { backgroundColor: accent } : undefined}
             onClick={() => setTab(item)}
           >
             {item}
@@ -222,57 +248,69 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
       </div>
 
       {tab === "curriculum" && (
-        <div className="mt-6 space-y-5">
-          {data.course.modules.map((module) => (
-            <section key={module.id} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-soft dark:border-slate-800 dark:bg-slate-950">
-              <div className="border-b border-slate-100 bg-slate-50/80 px-5 py-4 dark:border-slate-800 dark:bg-slate-900/50 sm:px-6">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <h3 className="text-lg font-bold flex items-center gap-2"><BookOpen className="size-5" style={{ color: primaryColour }} /> {module.title}</h3>
-                  <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-600 shadow-sm dark:bg-slate-800 dark:text-slate-300">{module.completedCount}/{module.lessonCount} complete</span>
+        <div className="mt-6">
+          <AcademyAccordion
+            accent={accent}
+            items={data.course.modules.map((module, index) => ({
+              id: module.id,
+              title: module.title,
+              subtitle: module.description ?? undefined,
+              meta: `${module.completedCount}/${module.lessonCount} complete`,
+              defaultOpen: index === 0,
+              content: (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {module.sections.flatMap((section) => section.lessons).map((lesson) => (
+                    <button
+                      key={lesson.id}
+                      type="button"
+                      onClick={() => setViewingLessonId(lesson.id)}
+                      className="group rounded-xl border border-slate-200 bg-white p-4 text-left transition-all hover:-translate-y-0.5 hover:shadow-md dark:border-slate-700 dark:bg-slate-900/30"
+                      style={{ borderColor: `${accent}22` }}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="font-semibold leading-snug group-hover:text-emerald-700 dark:group-hover:text-emerald-300">{lesson.title}</p>
+                        <CheckCircle2 className={cn("size-5 shrink-0", lesson.completed ? "text-emerald-500" : "text-slate-200 dark:text-slate-700")} />
+                      </div>
+                      <p className="mt-2 text-xs text-slate-500">{lesson.estimatedMinutes} min · {lesson.completionRequirement.replace(/_/g, " ")}</p>
+                    </button>
+                  ))}
                 </div>
-                {module.description && <p className="mt-2 text-sm leading-relaxed text-slate-500">{module.description as string}</p>}
-              </div>
-              <div className="p-4 sm:p-5">
-                {module.sections.map((section) => (
-                  <div key={section.id} className="mb-4 last:mb-0">
-                    {module.sections.length > 1 && <p className="mb-3 text-xs font-bold uppercase tracking-wider text-slate-400">{section.title}</p>}
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      {section.lessons.map((lesson) => (
-                        <button
-                          key={lesson.id}
-                          type="button"
-                          onClick={() => setViewingLessonId(lesson.id)}
-                          className="group rounded-xl border border-slate-200 bg-white p-4 text-left transition-all hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-card-hover dark:border-slate-700 dark:bg-slate-900/30"
-                        >
-                          <div className="flex items-start justify-between gap-2">
-                            <p className="font-semibold leading-snug group-hover:text-emerald-700 dark:group-hover:text-emerald-300">{lesson.title}</p>
-                            <CheckCircle2 className={cn("size-5 shrink-0", lesson.completed ? "text-emerald-500" : "text-slate-200 dark:text-slate-700")} />
-                          </div>
-                          <p className="mt-2 text-xs text-slate-500">{lesson.estimatedMinutes} min · {lesson.completionRequirement.replace(/_/g, " ")}</p>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
-          ))}
+              ),
+            }))}
+          />
+        </div>
+      )}
+
+      {tab === "toolkit" && (
+        <div className="mt-6 space-y-4">
+          <div className="rounded-2xl border p-5" style={{ borderColor: `${accent}33`, background: `linear-gradient(135deg, ${accent}10, transparent)` }}>
+            <h3 className="text-lg font-bold">HomeLink Field Toolkit</h3>
+            <p className="mt-1 text-sm text-slate-600">Print-ready branded PDFs for this programme level — forms, checklists, planners, scripts, and flowcharts from the official manual.</p>
+          </div>
+          <ToolkitGrid groups={data.toolkit ?? []} accent={accent} />
         </div>
       )}
 
       {tab === "materials" && (
-        <div className="mt-6 grid gap-3 md:grid-cols-2">
+        <div className="mt-6 space-y-4">
+          <p className="text-sm text-slate-600 dark:text-slate-400">
+            Branded HomeLink forms, checklists, and planners from your lessons. The complete training manual is available separately in the Academy resource library.
+          </p>
+          <div className="grid gap-3 md:grid-cols-2">
           {data.materials.map((material) => (
-            <a key={material.id} href={material.downloadUrl} target="_blank" rel="noopener noreferrer" className="flex items-start gap-3 rounded-xl border border-slate-200 p-4 hover:border-emerald-400 dark:border-slate-700">
-              <FileText className="size-5 text-emerald-600 mt-0.5" />
-              <div>
-                <p className="font-semibold">{material.title}</p>
+            <a key={material.id} href={material.downloadUrl} target="_blank" rel="noopener noreferrer" className="group flex items-start gap-3 rounded-2xl border border-emerald-200/70 bg-gradient-to-br from-white to-emerald-50/30 p-4 transition hover:-translate-y-0.5 hover:border-emerald-400 hover:shadow-card-hover dark:border-emerald-900/40 dark:from-slate-950 dark:to-emerald-950/20">
+              <div className="rounded-lg bg-white p-1.5 shadow-sm ring-1 ring-emerald-100 dark:bg-slate-900">
+                <HomeLinkBrand variant="icon" iconOnly className="scale-[0.65]" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="font-semibold group-hover:text-emerald-700 dark:group-hover:text-emerald-300">{material.title}</p>
                 <p className="text-xs text-slate-500">{material.location} · {material.fileType}</p>
               </div>
-              <Download className="size-4 ml-auto text-slate-400" />
+              <Download className="size-4 shrink-0 text-emerald-600 opacity-70 group-hover:opacity-100" />
             </a>
           ))}
           {!data.materials.length && <p className="text-slate-500">No materials attached yet.</p>}
+          </div>
         </div>
       )}
 

@@ -1,6 +1,7 @@
 import { TrainingAttemptStatus } from "@prisma/client";
 import { getSessionUserIdFromRequest } from "@/lib/auth/session";
 import { ok, problem } from "@/lib/api/response";
+import { tryCompleteCourseCertification } from "@/lib/academy/academy-progress";
 import { getMainPrisma } from "@/lib/db/main-prisma";
 
 export const dynamic = "force-dynamic";
@@ -60,14 +61,6 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       },
     });
 
-    if (passed) {
-      await prisma.courseProgress.upsert({
-        where: { courseId_agentId: { courseId: exam.courseId, agentId: userId } },
-        create: { courseId: exam.courseId, agentId: userId, status: "COMPLETED", percentComplete: 100, completedAt: new Date() },
-        update: { status: "COMPLETED", percentComplete: 100, completedAt: new Date() },
-      });
-    }
-
     await prisma.trainingNotification.create({
       data: {
         userId,
@@ -77,6 +70,10 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
         body: `You scored ${score}% on ${exam.title}.`,
       },
     });
+
+    if (passed) {
+      await tryCompleteCourseCertification(userId, exam.courseId);
+    }
 
     return ok({ attemptId: attempt.id, score, passed, passingScore: exam.passingScore });
   } catch (error) {

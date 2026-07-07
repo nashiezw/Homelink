@@ -1,4 +1,5 @@
 import { getMainPrisma } from "@/lib/db/main-prisma";
+import { isFullTrainingManualUrl } from "@/lib/academy/academy-constants";
 
 const lessonInclude = {
   lessonVideos: true,
@@ -73,7 +74,7 @@ export function mapLessonForLearner(
     discussionPrompt: lesson.discussionPrompt,
     videoUrl: lesson.videoUrl,
     embeddedVideoUrl: lesson.embeddedVideoUrl,
-    pdfUrl: lesson.pdfUrl,
+    pdfUrl: lesson.pdfUrl && !isFullTrainingManualUrl(lesson.pdfUrl) ? lesson.pdfUrl : null,
     audioUrl: lesson.audioUrl,
     estimatedMinutes: lesson.estimatedMinutes,
     completionRequirement: lesson.completionRequirement,
@@ -99,7 +100,7 @@ export function flattenCourseMaterials(course: NonNullable<Awaited<ReturnType<ty
   for (const courseModule of course.modules) {
     for (const section of courseModule.sections) {
       for (const lesson of section.lessons) {
-        if (lesson.pdfUrl) {
+        if (lesson.pdfUrl && !isFullTrainingManualUrl(lesson.pdfUrl)) {
           materials.push({ id: `pdf-${lesson.id}`, title: `${lesson.title} PDF`, level: "lesson", location: `${courseModule.title} › ${lesson.title}`, fileType: "PDF", downloadUrl: lesson.pdfUrl });
         }
         for (const doc of lesson.lessonDocuments) {

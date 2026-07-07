@@ -2,6 +2,7 @@ import { TrainingAttemptStatus } from "@prisma/client";
 import { getSessionUserIdFromRequest } from "@/lib/auth/session";
 import { ok, problem } from "@/lib/api/response";
 import { getMainPrisma } from "@/lib/db/main-prisma";
+import { tryCompleteCourseCertification } from "@/lib/academy/academy-progress";
 
 export const dynamic = "force-dynamic";
 
@@ -56,6 +57,10 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
         body: `You scored ${score}% on ${quiz.title}.`,
       },
     });
+
+    if (passed && quiz.courseId) {
+      await tryCompleteCourseCertification(userId, quiz.courseId);
+    }
 
     return ok({ attemptId: attempt.id, score, passed, passingScore: quiz.passingPercentage });
   } catch (error) {

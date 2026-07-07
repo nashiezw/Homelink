@@ -7,18 +7,20 @@ import {
   BookOpen,
   Bookmark,
   CheckCircle2,
-  ChevronDown,
   Clock,
   Download,
   FileText,
   List,
   MessageSquare,
   Play,
+  Sparkles,
   StickyNote,
   X,
 } from "lucide-react";
+import { HomeLinkBrand } from "@/components/brand/homelink-logo";
 import { Button } from "@/components/ui/button";
 import { AcademyProse } from "@/components/academy/academy-prose";
+import { isFullTrainingManualUrl } from "@/lib/academy/academy-constants";
 import { cn } from "@/lib/utils";
 
 type Lesson = {
@@ -47,6 +49,14 @@ type Lesson = {
 type Module = { id: string; title: string; lessons: Lesson[] };
 type Course = { id: string; title: string; modules: Module[] };
 
+type CourseTheme = {
+  label: string;
+  accent: string;
+  gradient: string;
+  sidebar: string;
+  chip: string;
+};
+
 export function LessonViewer({
   course,
   initialLessonId,
@@ -54,6 +64,7 @@ export function LessonViewer({
   onCompleteLesson,
   onToggleBookmark,
   primaryColour = "#008b68",
+  courseTheme,
 }: {
   course: Course;
   initialLessonId?: string;
@@ -61,6 +72,7 @@ export function LessonViewer({
   onCompleteLesson?: (lessonId: string) => void;
   onToggleBookmark?: (lessonId: string, bookmarked: boolean) => void;
   primaryColour?: string;
+  courseTheme?: CourseTheme;
 }) {
   const [currentLessonId, setCurrentLessonId] = useState(initialLessonId || course.modules[0]?.lessons[0]?.id || "");
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -74,6 +86,11 @@ export function LessonViewer({
   const previousLesson = allLessons[currentIndex - 1];
   const nextLesson = allLessons[currentIndex + 1];
   const progressPercent = allLessons.length ? Math.round(((currentIndex + 1) / allLessons.length) * 100) : 0;
+  const accent = courseTheme?.accent ?? primaryColour;
+  const stageLabel = courseTheme?.label ?? extractStageLabel(currentLesson.moduleName);
+  const heroGradient = courseTheme?.gradient ?? "from-emerald-600 via-emerald-700 to-teal-800";
+  const sidebarGradient = courseTheme?.sidebar ?? "from-emerald-50 via-white to-teal-50/60";
+  const lessonResources = useMemo(() => collectBrandedResources(currentLesson), [currentLesson]);
 
   if (!currentLesson) {
     return (
@@ -86,16 +103,15 @@ export function LessonViewer({
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-mist via-white to-slate-50 dark:from-ink dark:via-slate-950 dark:to-slate-950">
-      {/* Mobile-first sticky header */}
-      <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/90 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-950/90">
+    <div className={cn("min-h-screen bg-gradient-to-br", sidebarGradient, "dark:from-ink dark:via-slate-950 dark:to-slate-950")}>
+      <header className="sticky top-0 z-40 border-b border-white/20 bg-white/85 backdrop-blur-xl shadow-sm dark:border-slate-800 dark:bg-slate-950/90">
         <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 py-3 sm:px-6">
           <Button variant="ghost" className="shrink-0 px-2" onClick={onBack}>
             <ArrowLeft className="size-4" />
             <span className="hidden sm:inline ml-2">Course</span>
           </Button>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-xs font-medium text-emerald-700 dark:text-emerald-400">{course.title}</p>
+            <p className="truncate text-xs font-medium" style={{ color: accent }}>{course.title}</p>
             <h1 className="truncate text-sm font-bold sm:text-base">{currentLesson.title}</h1>
           </div>
           <div className="flex shrink-0 items-center gap-1">
@@ -109,19 +125,20 @@ export function LessonViewer({
             </Button>
           </div>
         </div>
-        <div className="h-1 bg-slate-100 dark:bg-slate-800">
-          <div className="h-full transition-all duration-500" style={{ width: `${progressPercent}%`, backgroundColor: primaryColour }} />
+          <div className="h-1.5 bg-white/50 dark:bg-slate-800">
+          <div className="h-full transition-all duration-500 shadow-sm" style={{ width: `${progressPercent}%`, backgroundColor: accent }} />
         </div>
       </header>
 
       <div className="mx-auto flex max-w-7xl flex-col lg:flex-row">
         {/* Desktop sidebar */}
-        <aside className="hidden w-full shrink-0 border-r border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950 lg:block lg:w-80 xl:w-96">
+        <aside className={cn("hidden w-full shrink-0 border-r border-white/40 bg-gradient-to-b lg:block lg:w-80 xl:w-96", sidebarGradient)}>
           <SidebarContent
             course={course}
             currentLessonId={currentLessonId}
             onSelect={(id) => setCurrentLessonId(id)}
-            primaryColour={primaryColour}
+            accent={accent}
+            chipClass={courseTheme?.chip}
           />
         </aside>
 
@@ -129,7 +146,7 @@ export function LessonViewer({
         {sidebarOpen && (
           <div className="fixed inset-0 z-50 lg:hidden">
             <button type="button" className="absolute inset-0 bg-black/50" onClick={() => setSidebarOpen(false)} aria-label="Close menu" />
-            <div className="absolute inset-y-0 left-0 w-[min(100%,20rem)] bg-white shadow-hero dark:bg-slate-950">
+            <div className={cn("absolute inset-y-0 left-0 w-[min(100%,20rem)] shadow-hero bg-gradient-to-b", sidebarGradient)}>
               <div className="flex items-center justify-between border-b border-slate-200 p-4 dark:border-slate-800">
                 <p className="font-bold">Course content</p>
                 <Button variant="ghost" className="px-2" onClick={() => setSidebarOpen(false)}><X className="size-4" /></Button>
@@ -138,7 +155,8 @@ export function LessonViewer({
                 course={course}
                 currentLessonId={currentLessonId}
                 onSelect={(id) => { setCurrentLessonId(id); setSidebarOpen(false); }}
-                primaryColour={primaryColour}
+                accent={accent}
+                chipClass={courseTheme?.chip}
               />
             </div>
           </div>
@@ -147,27 +165,42 @@ export function LessonViewer({
         {/* Main reading column */}
         <main className="min-w-0 flex-1 px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-10">
           <div className="mx-auto max-w-3xl">
-            {/* Hero meta */}
-            <div className="mb-8 flex flex-wrap items-center gap-3 text-sm text-slate-500">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 dark:bg-slate-800">
-                <Clock className="size-3.5" /> {currentLesson.estimatedMinutes} min read
-              </span>
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 dark:bg-slate-800">
-                Lesson {currentIndex + 1} of {allLessons.length}
-              </span>
-              {currentLesson.completed && (
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-3 py-1 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200">
-                  <CheckCircle2 className="size-3.5" /> Completed
-                </span>
-              )}
+            {/* Branded lesson hero */}
+            <div className={cn("relative overflow-hidden rounded-3xl bg-gradient-to-br p-6 text-white shadow-hero sm:p-8", heroGradient)}>
+              <div className="pointer-events-none absolute -right-8 -top-8 size-40 rounded-full bg-white/10 blur-2xl" />
+              <div className="pointer-events-none absolute -bottom-10 left-1/3 size-32 rounded-full bg-teal-300/20 blur-2xl" />
+              <div className="relative z-10">
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                  <div className="rounded-2xl bg-white/95 p-2 shadow-lg ring-1 ring-white/40">
+                    <HomeLinkBrand variant="icon" iconOnly />
+                  </div>
+                  {stageLabel && (
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold uppercase tracking-wider backdrop-blur-sm">
+                      <Sparkles className="size-3.5" /> {stageLabel}
+                    </span>
+                  )}
+                </div>
+                <h2 className="mt-5 text-2xl font-bold tracking-tight sm:text-3xl lg:text-4xl">{currentLesson.title}</h2>
+                <p className="mt-2 text-sm font-medium text-emerald-100/90">{currentLesson.moduleName.replace(/^\[[^\]]+\]\s*/, "")}</p>
+                <div className="mt-5 flex flex-wrap items-center gap-3 text-sm text-emerald-50/90">
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 backdrop-blur-sm">
+                    <Clock className="size-3.5" /> {currentLesson.estimatedMinutes} min
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 backdrop-blur-sm">
+                    Lesson {currentIndex + 1} of {allLessons.length}
+                  </span>
+                  {currentLesson.completed && (
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-white/20 px-3 py-1 font-medium">
+                      <CheckCircle2 className="size-3.5" /> Completed
+                    </span>
+                  )}
+                </div>
+              </div>
             </div>
 
-            <h2 className="text-2xl font-bold tracking-tight text-ink sm:text-3xl lg:text-4xl dark:text-white">{currentLesson.title}</h2>
-            <p className="mt-2 text-sm font-medium text-emerald-700 dark:text-emerald-400">{currentLesson.moduleName}</p>
-
             {currentLesson.summary && (
-              <div className="mt-6 rounded-2xl border border-emerald-200/60 bg-gradient-to-br from-emerald-50 to-teal-50/50 p-5 shadow-soft dark:border-emerald-900/40 dark:from-emerald-950/40 dark:to-teal-950/20">
-                <p className="text-base leading-relaxed text-emerald-900 dark:text-emerald-100">{currentLesson.summary.split(/\n/)[0]}</p>
+              <div className="mt-6 rounded-2xl border bg-white/80 p-5 shadow-soft backdrop-blur-sm" style={{ borderColor: `${accent}44` }}>
+                <p className="text-base leading-relaxed text-slate-700">{currentLesson.summary.split(/\n/)[0]}</p>
               </div>
             )}
 
@@ -247,19 +280,20 @@ export function LessonViewer({
               </section>
             )}
 
-            {/* Downloads */}
-            {(currentLesson.pdfUrl || currentLesson.lessonDownloads?.length || currentLesson.lessonDocuments?.length) && (
+            {/* Branded downloads */}
+            {!!lessonResources.length && (
               <section className="mt-10">
-                <h3 className="mb-4 flex items-center gap-2 text-lg font-bold"><Download className="size-5 text-emerald-600" /> Downloads & resources</h3>
+                <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+                  <div>
+                    <h3 className="flex items-center gap-2 text-lg font-bold">
+                      <Download className="size-5 text-emerald-600" /> HomeLink resource kit
+                    </h3>
+                    <p className="mt-1 text-sm text-slate-500">Print-ready branded PDFs for this lesson — not the full training manual.</p>
+                  </div>
+                </div>
                 <div className="grid gap-3 sm:grid-cols-2">
-                  {currentLesson.pdfUrl && (
-                    <DownloadCard href={currentLesson.pdfUrl} title="Lesson PDF" subtitle="Official manual reference" />
-                  )}
-                  {currentLesson.lessonDocuments?.map((doc) => (
-                    <DownloadCard key={doc.id} href={doc.downloadUrl} title={doc.title} subtitle={doc.fileType} />
-                  ))}
-                  {currentLesson.lessonDownloads?.map((d) => (
-                    <DownloadCard key={d.id} href={d.url} title={d.title} subtitle={d.type} />
+                  {lessonResources.map((resource) => (
+                    <DownloadCard key={resource.id} href={resource.url} title={resource.title} subtitle={resource.subtitle} />
                   ))}
                 </div>
               </section>
@@ -280,12 +314,12 @@ export function LessonViewer({
                   </Button>
                 )}
                 {nextLesson ? (
-                  <Button className="w-full sm:w-auto" style={{ backgroundColor: primaryColour }} onClick={() => setCurrentLessonId(nextLesson.id)}>
+                  <Button className="w-full sm:w-auto" style={{ backgroundColor: accent }} onClick={() => setCurrentLessonId(nextLesson.id)}>
                     <span className="truncate">Next: {nextLesson.title}</span>
                     <ArrowRight className="size-4 ml-2 shrink-0" />
                   </Button>
                 ) : (
-                  <Button onClick={onBack} style={{ backgroundColor: primaryColour }}>
+                  <Button onClick={onBack} style={{ backgroundColor: accent }}>
                     <CheckCircle2 className="size-4 mr-2" /> Finish course
                   </Button>
                 )}
@@ -302,18 +336,23 @@ function SidebarContent({
   course,
   currentLessonId,
   onSelect,
-  primaryColour,
+  accent,
+  chipClass,
 }: {
   course: Course;
   currentLessonId: string;
   onSelect: (id: string) => void;
-  primaryColour: string;
+  accent: string;
+  chipClass?: string;
 }) {
   return (
     <div className="max-h-[calc(100vh-4rem)] overflow-y-auto p-4">
+      <div className={cn("mb-4 rounded-2xl px-4 py-3 text-sm font-semibold shadow-sm", chipClass ?? "bg-emerald-100 text-emerald-900")}>
+        {course.title}
+      </div>
       {course.modules.map((module) => (
         <div key={module.id} className="mb-6">
-          <p className="mb-2 px-2 text-xs font-bold uppercase tracking-wider text-slate-500">{module.title}</p>
+          <p className="mb-2 px-2 text-xs font-bold uppercase tracking-wider" style={{ color: accent }}>{module.title}</p>
           <div className="space-y-1">
             {module.lessons.map((lesson) => (
               <button
@@ -323,10 +362,10 @@ function SidebarContent({
                 className={cn(
                   "flex w-full items-start gap-2 rounded-xl px-3 py-2.5 text-left text-sm transition-all",
                   lesson.id === currentLessonId
-                    ? "bg-emerald-50 font-semibold text-emerald-900 shadow-sm dark:bg-emerald-900/30 dark:text-emerald-100"
-                    : "text-slate-600 hover:bg-slate-50 dark:text-slate-400 dark:hover:bg-slate-900",
+                    ? "bg-white font-semibold text-slate-900 shadow-md ring-1 ring-black/5"
+                    : "bg-white/60 text-slate-700 hover:bg-white hover:shadow-sm",
                 )}
-                style={lesson.id === currentLessonId ? { borderLeft: `3px solid ${primaryColour}` } : undefined}
+                style={lesson.id === currentLessonId ? { borderLeft: `4px solid ${accent}` } : undefined}
               >
                 {lesson.completed ? (
                   <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-500" />
@@ -343,22 +382,54 @@ function SidebarContent({
   );
 }
 
+function extractStageLabel(moduleName: string) {
+  const match = moduleName.match(/^\[([^\]]+)\]/);
+  return match?.[1] ?? null;
+}
+
+function collectBrandedResources(lesson: Lesson) {
+  const seen = new Set<string>();
+  const items: Array<{ id: string; url: string; title: string; subtitle: string }> = [];
+
+  const add = (id: string, url: string, title: string, subtitle: string) => {
+    if (!url || isFullTrainingManualUrl(url) || seen.has(url)) return;
+    seen.add(url);
+    items.push({ id, url, title, subtitle });
+  };
+
+  if (lesson.pdfUrl && !isFullTrainingManualUrl(lesson.pdfUrl)) {
+    add(`pdf-${lesson.id}`, lesson.pdfUrl, "Lesson resource", "HomeLink branded · Print-ready PDF");
+  }
+  for (const doc of lesson.lessonDocuments ?? []) {
+    add(doc.id, doc.downloadUrl, doc.title, `${doc.fileType} · HomeLink Academy`);
+  }
+  for (const download of lesson.lessonDownloads ?? []) {
+    add(download.id, download.url, download.title, "HomeLink branded · Print-ready PDF");
+  }
+
+  return items;
+}
+
 function DownloadCard({ href, title, subtitle }: { href: string; title: string; subtitle: string }) {
   return (
     <a
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className="group flex items-center gap-4 rounded-xl border border-slate-200 bg-white p-4 transition-all hover:border-emerald-300 hover:shadow-soft dark:border-slate-800 dark:bg-slate-900 dark:hover:border-emerald-700"
+      className="group relative overflow-hidden rounded-2xl border border-emerald-200/70 bg-gradient-to-br from-white to-emerald-50/40 p-4 transition-all hover:-translate-y-0.5 hover:border-emerald-400 hover:shadow-card-hover dark:border-emerald-900/40 dark:from-slate-950 dark:to-emerald-950/20 dark:hover:border-emerald-700"
     >
-      <div className="rounded-xl bg-emerald-50 p-3 group-hover:bg-emerald-100 dark:bg-emerald-900/30">
-        <FileText className="size-5 text-emerald-600" />
+      <div className="flex items-center gap-4">
+        <div className="rounded-xl bg-white p-2 shadow-sm ring-1 ring-emerald-100 group-hover:ring-emerald-200 dark:bg-slate-900 dark:ring-emerald-900/60">
+          <HomeLinkBrand variant="icon" iconOnly className="scale-75" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="font-semibold truncate text-ink dark:text-white">{title}</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400">{subtitle}</p>
+        </div>
+        <div className="rounded-full bg-emerald-100 p-2 text-emerald-700 transition group-hover:bg-emerald-600 group-hover:text-white dark:bg-emerald-900/40 dark:text-emerald-300">
+          <FileText className="size-4" />
+        </div>
       </div>
-      <div className="min-w-0">
-        <p className="font-semibold truncate">{title}</p>
-        <p className="text-xs text-slate-500">{subtitle}</p>
-      </div>
-      <ChevronDown className="ml-auto size-4 -rotate-90 text-slate-400" />
     </a>
   );
 }

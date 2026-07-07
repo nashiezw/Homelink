@@ -5,17 +5,22 @@ export function formatLessonContent(input: {
   summary?: string | null;
   title?: string;
 }): string {
+  const rich = (input.richText ?? "").trim();
+  if (rich && (rich.match(/<p/gi)?.length ?? 0) >= 2) {
+    return rich;
+  }
+
   const transcript = cleanPlainText(input.transcript);
-  const rich = stripHtml(input.richText ?? "");
+  const richPlain = stripHtml(rich);
   const summary = cleanPlainText(input.summary);
 
   const richLooksBad =
-    !rich ||
-    rich.length < 40 ||
-    (rich.match(/\.{4,}/g)?.length ?? 0) >= 2 ||
-    (rich.split(/\.\s+/).length <= 2 && rich.length > 400);
+    !richPlain ||
+    richPlain.length < 40 ||
+    (richPlain.match(/\.{4,}/g)?.length ?? 0) >= 2 ||
+    (richPlain.split(/\.\s+/).length <= 2 && richPlain.length > 400);
 
-  const source = richLooksBad && transcript.length > rich.length ? transcript : rich || transcript || summary;
+  const source = richLooksBad && transcript.length > richPlain.length ? transcript : richPlain || transcript || summary;
   if (!source) return "";
 
   return plainTextToHtml(source);

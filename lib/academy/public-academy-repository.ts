@@ -1,6 +1,9 @@
 import { AcademyRegistrationStatus, PaymentProvider, PaymentStatus, Role, TrainingCourseStatus, TrainingVisibility, type Prisma } from "@prisma/client";
 import { getMainPrisma } from "@/lib/db/main-prisma";
 import { calculateCourseProgress, getCompletedLessonIds } from "@/lib/academy/academy-progress";
+import { canAccessProgrammeCourse, getProgrammeProgressSummary } from "@/lib/academy/academy-completion";
+import { getProgrammeCourse, LEGACY_COURSE_ID, PROGRAMME_COURSE_IDS } from "@/lib/academy/academy-programme";
+import { getToolkitGroupsForCourse, programmeMetaForCourse } from "@/lib/academy/academy-toolkits";
 import { fetchCourseTree, flattenCourseMaterials, mapLessonForLearner } from "@/lib/academy/course-tree";
 
 export type AcademyRegistrationIntent = "TRAINING_ONLY" | "AGENT_TRAINING";
@@ -13,6 +16,7 @@ function resolveCoursePrice(course: { publicPrice: Prisma.Decimal; agentPrice: P
 export async function listPublicAcademyCourses() {
   const courses = await getMainPrisma().trainingCourse.findMany({
     where: {
+      id: { in: PROGRAMME_COURSE_IDS },
       status: TrainingCourseStatus.PUBLISHED,
       visibility: { in: [TrainingVisibility.PUBLIC, TrainingVisibility.ROLE_BASED] },
       registrationOpen: true,
@@ -21,32 +25,55 @@ export async function listPublicAcademyCourses() {
       category: true,
       modules: { include: { sections: { include: { lessons: true }, orderBy: { sortOrder: "asc" } } }, orderBy: { sortOrder: "asc" } },
     },
-    orderBy: [{ featured: "desc" }, { updatedAt: "desc" }],
   });
-  return courses.map((course) => ({
-    id: course.id,
-    title: course.title,
-    slug: course.slug,
-    description: course.description,
-    category: course.category?.name ?? "Academy",
-    difficulty: course.difficulty,
-    estimatedHours: Number(course.estimatedHours),
-    durationMinutes: course.durationMinutes,
-    instructor: course.instructor,
-    price: Number(course.publicPrice || course.price),
-    publicPrice: Number(course.publicPrice || course.price),
-    agentPrice: Number(course.agentPrice),
-    currency: course.currency,
-    accessDurationDays: course.accessDurationDays,
-    certificateEnabled: course.certificateEnabled,
-    featured: course.featured,
-    lessonCount: course.modules.reduce((sum, module) => sum + module.sections.reduce((count, section) => count + section.lessons.length, 0), 0),
-    modules: course.modules.map((module) => ({
-      id: module.id,
-      title: module.title,
-      lessons: module.sections.flatMap((section) => section.lessons.map((lesson) => ({ id: lesson.id, title: lesson.title, estimatedMinutes: lesson.estimatedMinutes }))),
-    })),
-  }));
+
+  const ordered = PROGRAMME_COURSE_IDS
+    .map((id) => courses.find((course) => course.id === id))
+    .filter(Boolean);
+
+  return Promise.all(ordered.map(async (course) => {
+    if (!course) return null;
+    const meta = programmeMetaForCourse(course.id);
+    const toolkit = await getToolkitGroupsForCourse(course.id, { preview: true });
+    const toolkitCount = toolkit.reduce((sum, group) => sum + group.items.length, 0);
+    return {
+      id: course.id,
+      title: meta?.title ?? course.title,
+      subtitle: meta?.subtitle ?? course.subtitle,
+      slug: course.slug,
+      description: meta?.description ?? course.description,
+      shortDescription: meta?.shortDescription ?? course.shortDescription,
+      category: course.category?.name ?? "HomeLink Agent Academy",
+      difficulty: course.difficulty,
+      estimatedHours: Number(course.estimatedHours),
+      durationMinutes: course.durationMinutes,
+      instructor: course.instructor,
+      price: Number(course.publicPrice || course.price),
+      publicPrice: Number(course.publicPrice || course.price),
+      agentPrice: Number(course.agentPrice),
+      currency: course.currency,
+      accessDurationDays: course.accessDurationDays,
+      certificateEnabled: course.certificateEnabled,
+      featured: course.featured,
+      sortOrder: meta?.sortOrder ?? 0,
+      theme: meta?.theme ?? null,
+      prerequisiteCourseId: meta?.prerequisiteCourseId ?? null,
+      badgeName: meta?.badgeName ?? null,
+      certificateTitle: meta?.certificateTitle ?? null,
+      learningOutcomes: meta?.learningOutcomes ?? [],
+      includes: meta?.includes ?? [],
+      assessmentSummary: meta?.assessmentSummary ?? null,
+      toolkitCount,
+      toolkitPreview: toolkit,
+      lessonCount: course.modules.reduce((sum, module) => sum + module.sections.reduce((count, section) => count + section.lessons.length, 0), 0),
+      modules: course.modules.map((module) => ({
+        id: module.id,
+        title: module.title,
+        description: module.description,
+        lessons: module.sections.flatMap((section) => section.lessons.map((lesson) => ({ id: lesson.id, title: lesson.title, estimatedMinutes: lesson.estimatedMinutes }))),
+      })),
+    };
+  })).then((rows) => rows.filter(Boolean));
 }
 
 export async function getLearnerAcademyDashboard(learnerId: string) {
@@ -105,7 +132,10 @@ export async function getLearnerAcademyDashboard(learnerId: string) {
     prisma.courseProgress.findMany({ where: { agentId: learnerId } }),
   ]);
 
-  const approved = applications.filter((entry) => entry.status === AcademyRegistrationStatus.APPROVED);
+  const programmeApplications = applications.filter(
+    (entry) => entry.courseId !== LEGACY_COURSE_ID && PROGRAMME_COURSE_IDS.includes(entry.courseId),
+  );
+  const approved = programmeApplications.filter((entry) => entry.status === AcademyRegistrationStatus.APPROVED);
   const totalLessons = approved.reduce((sum, entry) => sum + countLessons(entry.course), 0);
   const completedLessons = await Promise.all(
     approved.map(async (entry) => {
@@ -141,15 +171,33 @@ export async function getLearnerAcademyDashboard(learnerId: string) {
   });
   const streak = computeLearningStreak(activityDates.map((row) => row.completedAt ?? row.lastViewedAt));
 
-  const continueLearning = recentProgress[0]
-    ? {
-        lessonId: recentProgress[0].lessonId,
-        lessonTitle: recentProgress[0].lesson.title,
-        courseId: recentProgress[0].lesson.section.module.courseId,
-        courseTitle: recentProgress[0].lesson.section.module.course.title,
-        lastViewedAt: recentProgress[0].lastViewedAt.toISOString(),
-      }
-    : null;
+  const continueLearning = (() => {
+    const recent = recentProgress.find(
+      (row) =>
+        row.lesson.section.module.courseId !== LEGACY_COURSE_ID &&
+        PROGRAMME_COURSE_IDS.includes(row.lesson.section.module.courseId),
+    ) ?? recentProgress[0];
+    if (!recent) return null;
+    const courseId = recent.lesson.section.module.courseId;
+    if (courseId === LEGACY_COURSE_ID || !PROGRAMME_COURSE_IDS.includes(courseId)) {
+      const fallback = approved[0];
+      if (!fallback) return null;
+      return {
+        lessonId: "",
+        lessonTitle: "Continue your programme",
+        courseId: fallback.course.id,
+        courseTitle: getProgrammeCourse(fallback.course.id)?.title ?? fallback.course.title,
+        lastViewedAt: new Date().toISOString(),
+      };
+    }
+    return {
+      lessonId: recent.lessonId,
+      lessonTitle: recent.lesson.title,
+      courseId,
+      courseTitle: getProgrammeCourse(courseId)?.title ?? recent.lesson.section.module.course.title,
+      lastViewedAt: recent.lastViewedAt.toISOString(),
+    };
+  })();
 
   const settingsPayload = settings as Record<string, unknown>;
   const brandingPayload = (settingsPayload.branding ?? {}) as Record<string, unknown>;
@@ -161,7 +209,7 @@ export async function getLearnerAcademyDashboard(learnerId: string) {
     },
     metrics: {
       enrolledCourses: approved.length,
-      pendingApprovals: applications.filter((entry) => entry.status === AcademyRegistrationStatus.PENDING_PAYMENT || entry.status === AcademyRegistrationStatus.PAYMENT_UPLOADED).length,
+      pendingApprovals: programmeApplications.filter((entry) => entry.status === AcademyRegistrationStatus.PENDING_PAYMENT || entry.status === AcademyRegistrationStatus.PAYMENT_UPLOADED).length,
       certificates: certificates.length,
       downloads: documents.length,
       totalLessons,
@@ -193,8 +241,10 @@ export async function getLearnerAcademyDashboard(learnerId: string) {
       issuedAt: certificate.issuedAt.toISOString(),
       expiresAt: certificate.expiresAt?.toISOString() ?? null,
       verifyUrl: certificate.qrCodeUrl ?? `/api/v1/academy/certificates/verify/${encodeURIComponent(certificate.certificateNumber)}`,
+      downloadUrl: certificate.pdfUrl ?? `/dashboard/academy/certificate/${certificate.id}`,
     })),
-    applications: await Promise.all(applications.map(async (entry) => {
+    programmeCourses: await getProgrammeProgressSummary(learnerId),
+    applications: await Promise.all(programmeApplications.map(async (entry) => {
       const completedIds = entry.status === AcademyRegistrationStatus.APPROVED
         ? await getCompletedLessonIds(learnerId, entry.course.id)
         : new Set<string>();
@@ -221,7 +271,7 @@ export async function getLearnerAcademyDashboard(learnerId: string) {
       } : null,
       course: {
         id: entry.course.id,
-        title: entry.course.title,
+        title: getProgrammeCourse(entry.course.id)?.title ?? entry.course.title,
         slug: entry.course.slug,
         description: entry.course.description,
         certificateEnabled: entry.course.certificateEnabled,
@@ -490,7 +540,13 @@ export async function getAcademySettingsPublic() {
 }
 
 export async function getLearnerCourseDetail(learnerId: string, courseId: string) {
+  if (courseId === LEGACY_COURSE_ID || !PROGRAMME_COURSE_IDS.includes(courseId)) {
+    return "NOT_FOUND" as const;
+  }
   const prisma = getMainPrisma();
+  const access = await canAccessProgrammeCourse(learnerId, courseId);
+  if (!access.allowed) return "PREREQUISITE_NOT_MET" as const;
+
   const enrolment = await prisma.courseEnrolment.findUnique({
     where: { courseId_agentId: { courseId, agentId: learnerId } },
   });
@@ -523,8 +579,15 @@ export async function getLearnerCourseDetail(learnerId: string, courseId: string
     if (score > current) bestQuizScores.set(attempt.quizId, score);
   }
 
+  const programme = getProgrammeCourse(courseId);
+  const toolkit = await getToolkitGroupsForCourse(courseId, { cumulative: true });
+
   return {
     settings,
+    programme: programme
+      ? { theme: programme.theme, badgeName: programme.badgeName, certificateTitle: programme.certificateTitle, subtitle: programme.subtitle }
+      : null,
+    toolkit,
     course: {
       id: course.id,
       title: course.title,

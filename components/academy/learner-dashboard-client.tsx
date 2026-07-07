@@ -11,6 +11,7 @@ import {
   FileText,
   Flame,
   Loader2,
+  Lock,
   Play,
   Sparkles,
   TrendingUp,
@@ -36,6 +37,19 @@ type LearnerDashboard = {
   } | null;
   badges?: Array<{ id: string; name: string; description?: string | null; xp: number; awardedAt: string }>;
   bookmarks?: Array<{ lessonId: string; title: string; courseId: string; courseTitle: string }>;
+  programmeCourses?: Array<{
+    id: string;
+    title: string;
+    subtitle: string;
+    theme: { label: string; accent: string; gradient: string; sidebar: string; chip: string };
+    sortOrder: number;
+    unlocked: boolean;
+    progress: number;
+    completed: boolean;
+    badgeEarned: boolean;
+    badgeName: string;
+    certificate: { id: string; certificateNumber: string; downloadUrl: string } | null;
+  }>;
   certificates: Array<{
     id: string;
     certificateNumber: string;
@@ -43,6 +57,7 @@ type LearnerDashboard = {
     issuedAt: string;
     expiresAt?: string | null;
     verifyUrl: string;
+    downloadUrl?: string;
   }>;
   applications: Array<{
     id: string;
@@ -149,7 +164,7 @@ export function LearnerDashboardClient() {
             </div>
             <Link href={`/dashboard/academy/${data.continueLearning.courseId}`}>
               <Button className="w-full sm:w-auto shadow-soft px-6 py-3 text-base" style={{ backgroundColor: primary }}>
-                <Play className="size-5 mr-2" /> Resume lesson
+                <Play className="size-5 mr-2" /> {data.continueLearning.lessonId ? "Resume lesson" : "Open programme"}
               </Button>
             </Link>
           </div>
@@ -164,6 +179,54 @@ export function LearnerDashboardClient() {
         <StatCard icon={Sparkles} label="XP earned" value={String(data.metrics.xp ?? 0)} accent="#8b5cf6" />
         <StatCard icon={Award} label="Certificates" value={String(data.metrics.certificates)} accent="#6366f1" />
       </div>
+
+      {!!data.programmeCourses?.length && (
+        <section className="mt-8">
+          <h2 className="text-xl font-bold sm:text-2xl">Certification pathway</h2>
+          <p className="mt-1 text-sm text-slate-600">Foundations → Listing & Client Mastery → Professional Certification. Earn a badge and downloadable certificate after each programme.</p>
+          <div className="mt-5 grid gap-4 lg:grid-cols-3">
+            {data.programmeCourses.map((course) => (
+              <article
+                key={course.id}
+                className={cn(
+                  "relative overflow-hidden rounded-3xl border p-5 shadow-soft transition hover:-translate-y-0.5",
+                  course.unlocked ? "bg-white" : "bg-slate-50 opacity-90",
+                )}
+                style={{ borderColor: `${course.theme.accent}33` }}
+              >
+                <div className="absolute inset-x-0 top-0 h-1.5" style={{ backgroundColor: course.theme.accent }} />
+                <div className="pt-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <span className={cn("rounded-full border px-3 py-1 text-xs font-bold uppercase tracking-wide", course.theme.chip)}>{course.theme.label}</span>
+                    {!course.unlocked && <Lock className="size-4 text-slate-400" />}
+                    {course.badgeEarned && <Sparkles className="size-4" style={{ color: course.theme.accent }} />}
+                  </div>
+                  <h3 className="mt-3 text-lg font-bold leading-snug">{course.title}</h3>
+                  <p className="mt-1 text-sm text-slate-500">{course.subtitle}</p>
+                  <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-100">
+                    <div className="h-full rounded-full transition-all" style={{ width: `${course.progress}%`, backgroundColor: course.theme.accent }} />
+                  </div>
+                  <p className="mt-2 text-xs text-slate-500">{course.progress}% complete · {course.badgeName}</p>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {course.unlocked ? (
+                      <Link href={`/dashboard/academy/${course.id}`}>
+                        <Button className="text-sm px-3 py-2" style={{ backgroundColor: course.theme.accent }}>{course.completed ? "Review course" : "Continue"}</Button>
+                      </Link>
+                    ) : (
+                      <Button className="text-sm px-3 py-2" variant="secondary" disabled>Locked</Button>
+                    )}
+                    {course.certificate && (
+                      <Link href={course.certificate.downloadUrl}>
+                        <Button className="text-sm px-3 py-2" variant="secondary"><Download className="size-3.5 mr-1.5" /> Certificate</Button>
+                      </Link>
+                    )}
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
 
       <div className="mt-8 grid gap-6 xl:grid-cols-[minmax(0,1.4fr)_minmax(18rem,0.6fr)]">
         <section className="space-y-5">
@@ -261,7 +324,14 @@ export function LearnerDashboardClient() {
               {data.certificates.map((c) => (
                 <div key={c.id} className="rounded-xl border border-slate-100 p-3 text-sm dark:border-slate-800">
                   <p className="font-semibold">{c.courseTitle}</p>
-                  <a href={c.verifyUrl} className="mt-1 inline-block text-xs font-semibold text-emerald-600 hover:underline">Verify</a>
+                  <div className="mt-2 flex flex-wrap gap-3">
+                    {c.downloadUrl && (
+                      <Link href={c.downloadUrl} className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600 hover:underline">
+                        <Download className="size-3" /> Download
+                      </Link>
+                    )}
+                    <a href={c.verifyUrl} className="text-xs font-semibold text-slate-500 hover:underline">Verify</a>
+                  </div>
                 </div>
               ))}
             </SidebarCard>

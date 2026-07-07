@@ -1,4 +1,6 @@
 import { getMainPrisma } from "@/lib/db/main-prisma";
+import { awardProgrammeBadge, hasPassedCourseAssessments } from "@/lib/academy/academy-completion";
+import { getProgrammeCourse } from "@/lib/academy/academy-programme";
 
 type CourseWithLessons = {
   id: string;
@@ -120,7 +122,7 @@ export async function completeLessonForLearner(learnerId: string, lessonId: stri
   });
 
   if (courseCompleted && course.certificateEnabled) {
-    await issueCertificateIfMissing(learnerId, course.id);
+    await tryCompleteCourseCertification(learnerId, course.id);
   }
 
   await prisma.trainingNotification.create({
@@ -159,16 +161,16 @@ export async function issueCertificateIfMissing(learnerId: string, courseId: str
 
   const settingsPayload = (settingsRow?.payload ?? {}) as Record<string, unknown>;
   const templateJson = (template?.templateJson ?? {}) as Record<string, unknown>;
-  const prefix = typeof settingsPayload.certificatePrefix === "string"
-    ? settingsPayload.certificatePrefix
-    : typeof templateJson.certificateNumberPrefix === "string"
-      ? templateJson.certificateNumberPrefix
-      : "HLA";
+  const programme = getProgrammeCourse(courseId);
+  const prefix = programme?.certificatePrefix
+    ?? (typeof settingsPayload.certificatePrefix === "string" ? settingsPayload.certificatePrefix : null)
+    ?? (typeof templateJson.certificateNumberPrefix === "string" ? templateJson.certificateNumberPrefix : null)
+    ?? "HLA";
   const expiryDays = typeof templateJson.expiryDays === "number" ? templateJson.expiryDays : 365;
   const certificateNumber = `${prefix}-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
   const expiresAt = new Date(Date.now() + expiryDays * 86400000);
 
-  return prisma.certificateIssue.create({
+  const issue = await prisma.certificateIssue.create({
     data: {
       certificateNumber,
       courseId,
@@ -180,6 +182,35 @@ export async function issueCertificateIfMissing(learnerId: string, courseId: str
       qrCodeUrl: `/api/v1/academy/certificates/verify/${encodeURIComponent(certificateNumber)}`,
     },
   });
+  await prisma.certificateIssue.update({
+    where: { id: issue.id },
+    data: { pdfUrl: `/dashboard/academy/certificate/${issue.id}` },
+  });
+  return { ...issue, pdfUrl: `/dashboard/academy/certificate/${issue.id}` };
+}
+
+export async function tryCompleteCourseCertification(learnerId: string, courseId: string) {
+  const prisma = getMainPrisma();
+  const course = await prisma.trainingCourse.findUnique({
+    where: { id: courseId },
+    include: {
+      modules: {
+        include: { sections: { include: { lessons: { select: { id: true, estimatedMinutes: true } } } } },
+      },
+    },
+  });
+  if (!course?.certificateEnabled) return null;
+
+  const completedIds = await getCompletedLessonIds(learnerId, courseId);
+  const { percentComplete } = calculateCourseProgress(course, completedIds);
+  if (percentComplete < 100) return null;
+
+  const assessmentsPassed = await hasPassedCourseAssessments(learnerId, courseId);
+  if (!assessmentsPassed) return null;
+
+  const certificate = await issueCertificateIfMissing(learnerId, courseId);
+  await awardProgrammeBadge(learnerId, courseId);
+  return certificate;
 }
 
 export function calculateCourseProgress(

@@ -1,5 +1,6 @@
 import { AcademyRegistrationStatus } from "@prisma/client";
 import { getMainPrisma } from "@/lib/db/main-prisma";
+import { LEGACY_COURSE_ID, PROGRAMME_COURSE_IDS } from "@/lib/academy/academy-programme";
 
 export type CourseRegistrationSummary = {
   courseId: string;
@@ -22,16 +23,23 @@ export async function getAcademyUserStatus(userId: string) {
     }),
   ]);
 
-  const activeEnrolmentIds = new Set(activeEnrolments.map((entry) => entry.courseId));
-  const approved = applications.filter((entry) => entry.status === AcademyRegistrationStatus.APPROVED);
-  const pending = applications.filter(
+  const programmeApplications = applications.filter(
+    (entry) => entry.courseId !== LEGACY_COURSE_ID && PROGRAMME_COURSE_IDS.includes(entry.courseId),
+  );
+  const activeEnrolmentIds = new Set(
+    activeEnrolments
+      .map((entry) => entry.courseId)
+      .filter((courseId) => courseId !== LEGACY_COURSE_ID && PROGRAMME_COURSE_IDS.includes(courseId)),
+  );
+  const approved = programmeApplications.filter((entry) => entry.status === AcademyRegistrationStatus.APPROVED);
+  const pending = programmeApplications.filter(
     (entry) =>
       entry.status === AcademyRegistrationStatus.PENDING_PAYMENT ||
       entry.status === AcademyRegistrationStatus.PAYMENT_UPLOADED,
   );
 
   const registrationsByCourseId = Object.fromEntries(
-    applications.map((entry) => [
+    programmeApplications.map((entry) => [
       entry.courseId,
       {
         courseId: entry.courseId,
@@ -43,7 +51,7 @@ export async function getAcademyUserStatus(userId: string) {
   );
 
   const hasActiveAccess = approved.length > 0 || activeEnrolmentIds.size > 0;
-  const hasLearnerActivity = applications.length > 0 || activeEnrolmentIds.size > 0;
+  const hasLearnerActivity = programmeApplications.length > 0 || activeEnrolmentIds.size > 0;
   const primaryApproved = approved[0];
 
   return {
