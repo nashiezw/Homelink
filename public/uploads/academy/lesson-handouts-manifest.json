@@ -1,0 +1,632 @@
+[
+  {
+    "slug": "academy-course-beginner-welcome-to-homelink-zimbabwe",
+    "courseId": "academy-course-beginner",
+    "courseTitle": "HomeLink Agent Foundations",
+    "moduleTitle": "Introduction to the HomeLink Zimbabwe Standard",
+    "title": "Welcome to HomeLink Zimbabwe",
+    "summary": "Your official entry into the HomeLink agent community and Zimbabwe's premium property marketplace.",
+    "richText": "<p>Welcome to HomeLink Zimbabwe — a marketplace built on trust, verified listings, and professional agent standards. As an agent, you represent both your clients and the HomeLink brand in every conversation, viewing, and transaction.</p><p>This programme is structured in stages: <strong>Beginner</strong>, <strong>Intermediate</strong>, and <strong>Advanced</strong>, so you build confidence step by step rather than trying to absorb everything at once.</p><p>Complete each lesson in order, download the branded tools provided, and apply them in the field before moving to the next stage.</p>",
+    "objectives": [
+      "Explain HomeLink's role in Zimbabwe property",
+      "Describe the staged training pathway",
+      "Commit to professional conduct standards"
+    ],
+    "estimatedMinutes": 20,
+    "resourceTitles": []
+  },
+  {
+    "slug": "academy-course-beginner-how-to-use-this-academy",
+    "courseId": "academy-course-beginner",
+    "courseTitle": "HomeLink Agent Foundations",
+    "moduleTitle": "Introduction to the HomeLink Zimbabwe Standard",
+    "title": "How to use this Academy",
+    "summary": "How to progress through modules, use branded downloads, and track your certification path.",
+    "richText": "<p>Each lesson includes reading material, practical downloads, and checkpoints. Branded PDFs in this Academy are print-ready HomeLink resources — forms, checklists, and planners — not generic placeholders.</p><p>Use <strong>Continue learning</strong> on your dashboard to resume where you left off. Bookmark lessons you want to revisit. The full training manual is available once in the Resource Library for reference — individual lessons link only to the tools you need for that topic.</p><p>Quizzes and assignments appear at stage checkpoints. Pass marks and certificates are tracked in your learner dashboard.</p>",
+    "objectives": [
+      "Navigate the learner dashboard",
+      "Use lesson downloads correctly",
+      "Understand quiz and certificate requirements"
+    ],
+    "estimatedMinutes": 15,
+    "resourceTitles": [
+      "Agent Daily Workflow"
+    ]
+  },
+  {
+    "slug": "academy-course-beginner-your-journey-to-becoming-a-professional-agent",
+    "courseId": "academy-course-beginner",
+    "courseTitle": "HomeLink Agent Foundations",
+    "moduleTitle": "Introduction to the HomeLink Zimbabwe Standard",
+    "title": "Your journey to becoming a professional agent",
+    "summary": "Set goals and routines for a sustainable, ethical real estate career with HomeLink.",
+    "richText": "<p>Top agents combine daily discipline with client care. Your journey starts with honest communication, accurate records, and consistent follow-through — not shortcuts.</p><p>Use the Personal Goal Planner to define income targets, skill milestones, and weekly activity goals. Review progress weekly and adjust based on real pipeline data.</p><p>HomeLink expects every agent to protect client confidentiality, represent properties accurately, and escalate issues through proper channels.</p>",
+    "objectives": [
+      "Set 90-day professional goals",
+      "Adopt weekly review habits",
+      "Identify your first skill priorities"
+    ],
+    "estimatedMinutes": 25,
+    "resourceTitles": [
+      "Personal Goal Planner",
+      "Weekly Performance Review"
+    ]
+  },
+  {
+    "slug": "academy-course-beginner-understanding-the-real-estate-industry",
+    "courseId": "academy-course-beginner",
+    "courseTitle": "HomeLink Agent Foundations",
+    "moduleTitle": "Foundations of Real Estate",
+    "title": "Understanding the real estate industry",
+    "summary": "How sales, lettings, and property management work in Zimbabwe's market context.",
+    "richText": "<p>Real estate in Zimbabwe spans residential sales, rentals, commercial property, and land. Agents connect owners, buyers, tenants, and landlords while managing documentation, viewings, and negotiations.</p><p>Success depends on market knowledge, reliable data, and professional networks — not pressure tactics. HomeLink gives you a verified platform; your job is to add local expertise and trustworthy service.</p>",
+    "objectives": [
+      "Describe key market segments",
+      "Explain the agent's place in a transaction",
+      "Identify HomeLink's marketplace advantages"
+    ],
+    "estimatedMinutes": 30,
+    "resourceTitles": []
+  },
+  {
+    "slug": "academy-course-beginner-role-duties-and-responsibilities-of-a-professional-agent",
+    "courseId": "academy-course-beginner",
+    "courseTitle": "HomeLink Agent Foundations",
+    "moduleTitle": "Foundations of Real Estate",
+    "title": "Role, duties and responsibilities of a professional agent",
+    "summary": "What clients and HomeLink expect from you every day.",
+    "richText": "<p>Your duties include accurate listing information, timely communication, safe viewings, proper documentation, and transparent fee discussions. You must never misrepresent availability, price, or property condition.</p><p>Document every material conversation and keep client files complete. When in doubt, ask a senior agent or HomeLink admin before proceeding.</p>",
+    "objectives": [
+      "List core agent duties",
+      "Document client interactions properly",
+      "Recognise when to escalate"
+    ],
+    "estimatedMinutes": 35,
+    "resourceTitles": [
+      "Client Information Sheet"
+    ]
+  },
+  {
+    "slug": "academy-course-beginner-professional-ethics-conduct-and-customer-service",
+    "courseId": "academy-course-beginner",
+    "courseTitle": "HomeLink Agent Foundations",
+    "moduleTitle": "Foundations of Real Estate",
+    "title": "Professional ethics, conduct and customer service",
+    "summary": "Ethical standards that protect clients, HomeLink, and your reputation.",
+    "richText": "<p>Ethical conduct means honesty, confidentiality, fair dealing, and respect — especially under pressure. Never share one client's details with another without consent. Never guarantee outcomes you cannot control.</p><p>Customer service on HomeLink is responsive, clear, and solution-focused. Acknowledge messages promptly, confirm appointments in writing, and follow up after every viewing.</p>",
+    "objectives": [
+      "Apply HomeLink ethics checklist",
+      "Handle confidential information safely",
+      "Deliver consistent client communication"
+    ],
+    "estimatedMinutes": 30,
+    "resourceTitles": []
+  },
+  {
+    "slug": "academy-course-beginner-essential-real-estate-terminology",
+    "courseId": "academy-course-beginner",
+    "courseTitle": "HomeLink Agent Foundations",
+    "moduleTitle": "Foundations of Real Estate",
+    "title": "Essential real estate terminology",
+    "summary": "Key terms for sales, lettings, offers, and compliance conversations.",
+    "richText": "<p>Fluency in industry language builds client confidence. Know the difference between mandate types, deposit vs. bond, lease vs. licence, and sole vs. open mandate.</p><p>When explaining terms to clients, use plain language first, then confirm understanding. Keep a personal glossary and add local practice notes as you gain experience.</p>",
+    "objectives": [
+      "Define 15+ core terms accurately",
+      "Explain terms clearly to clients",
+      "Avoid common terminology mistakes"
+    ],
+    "estimatedMinutes": 25,
+    "resourceTitles": []
+  },
+  {
+    "slug": "academy-course-beginner-chapter-1-knowledge-check-and-practical-assessment",
+    "courseId": "academy-course-beginner",
+    "courseTitle": "HomeLink Agent Foundations",
+    "moduleTitle": "Foundations of Real Estate",
+    "title": "Chapter 1 knowledge check and practical assessment",
+    "summary": "Consolidate foundations and complete the Chapter 1 quiz.",
+    "richText": "<p>Review modules one and two before attempting the knowledge check. Focus on duties, ethics, terminology, and client communication scenarios.</p><p>After passing the quiz, complete any pending downloads and note areas for field practice with your mentor or branch lead.</p>",
+    "objectives": [
+      "Pass the Chapter 1 knowledge check",
+      "Identify gaps for field practice",
+      "Prepare for Intermediate stage"
+    ],
+    "estimatedMinutes": 40,
+    "resourceTitles": []
+  },
+  {
+    "slug": "academy-course-intermediate-prospecting-and-daily-business-generation",
+    "courseId": "academy-course-intermediate",
+    "courseTitle": "HomeLink Listing & Client Mastery",
+    "moduleTitle": "Prospecting, Listings and Property Marketing",
+    "title": "Prospecting and daily business generation",
+    "summary": "Build a predictable pipeline with structured daily activity.",
+    "richText": "<p>Prospecting is disciplined outreach: calls, follow-ups, referrals, and community visibility. Plan targets daily and log every lead in your tracker.</p><p>Use the Daily Activity Planner and Lead Tracking Sheet to stay accountable. Consistency beats occasional bursts of activity.</p>",
+    "objectives": [
+      "Plan daily prospecting blocks",
+      "Log leads systematically",
+      "Measure weekly activity KPIs"
+    ],
+    "estimatedMinutes": 35,
+    "resourceTitles": [
+      "Daily Activity Planner",
+      "Lead Tracking Sheet",
+      "Cold Calling Scripts",
+      "Telephone Scripts"
+    ]
+  },
+  {
+    "slug": "academy-course-intermediate-winning-listings-and-conducting-property-appraisals",
+    "courseId": "academy-course-intermediate",
+    "courseTitle": "HomeLink Listing & Client Mastery",
+    "moduleTitle": "Prospecting, Listings and Property Marketing",
+    "title": "Winning listings and conducting property appraisals",
+    "summary": "Present professionally, appraise accurately, and secure mandates.",
+    "richText": "<p>Listing presentations should demonstrate market knowledge, marketing plan, and HomeLink's reach. Appraisals must be evidence-based — comparable sales, condition, location, and demand.</p><p>Complete the Property Appraisal Form on every serious listing appointment and attach photos where possible.</p>",
+    "objectives": [
+      "Structure a listing presentation",
+      "Complete appraisal documentation",
+      "Handle common vendor objections"
+    ],
+    "estimatedMinutes": 40,
+    "resourceTitles": [
+      "Property Appraisal Form",
+      "Listing Agreement Template",
+      "Objection Handling Guide"
+    ]
+  },
+  {
+    "slug": "academy-course-intermediate-collecting-accurate-listing-information",
+    "courseId": "academy-course-intermediate",
+    "courseTitle": "HomeLink Listing & Client Mastery",
+    "moduleTitle": "Prospecting, Listings and Property Marketing",
+    "title": "Collecting accurate listing information",
+    "summary": "Capture complete, verified property details before publishing.",
+    "richText": "<p>Incomplete listings damage trust and waste buyer time. Verify ownership authority, pricing, availability, keys/access, utilities, and material defects before go-live.</p><p>Use the Property Listing Form and File Checklist together — nothing goes to market until both are satisfied.</p>",
+    "objectives": [
+      "Verify listing authority and facts",
+      "Complete listing forms accurately",
+      "Apply file checklist before submission"
+    ],
+    "estimatedMinutes": 35,
+    "resourceTitles": [
+      "Property Listing Form",
+      "File Checklist",
+      "Property Inspection Checklist"
+    ]
+  },
+  {
+    "slug": "academy-course-intermediate-property-photography-descriptions-and-marketing-channels",
+    "courseId": "academy-course-intermediate",
+    "courseTitle": "HomeLink Listing & Client Mastery",
+    "moduleTitle": "Prospecting, Listings and Property Marketing",
+    "title": "Property photography, descriptions and marketing channels",
+    "summary": "Present properties at a premium standard across HomeLink and social channels.",
+    "richText": "<p>Photography should be bright, straight, and honest — no misleading angles. Descriptions must highlight features without exaggeration.</p><p>Follow the Property Photography and Marketing checklists. Use WhatsApp and social templates for consistent HomeLink-branded outreach.</p>",
+    "objectives": [
+      "Apply photography standards",
+      "Write accurate descriptions",
+      "Execute multi-channel marketing"
+    ],
+    "estimatedMinutes": 40,
+    "resourceTitles": [
+      "Property Photography Checklist",
+      "Property Marketing Checklist",
+      "Property Description Template",
+      "WhatsApp Marketing Templates",
+      "Social Media Content Planner"
+    ]
+  },
+  {
+    "slug": "academy-course-intermediate-chapter-2-knowledge-check-and-practical-assessment",
+    "courseId": "academy-course-intermediate",
+    "courseTitle": "HomeLink Listing & Client Mastery",
+    "moduleTitle": "Prospecting, Listings and Property Marketing",
+    "title": "Chapter 2 knowledge check and practical assessment",
+    "summary": "Validate listings and marketing competency before client-work modules.",
+    "richText": "<p>Complete the Chapter 2 quiz and submit the listing file assignment using your branded forms. Your submission should include a completed listing form, inspection checklist, and marketing checklist.</p>",
+    "objectives": [
+      "Pass Chapter 2 knowledge check",
+      "Submit listing file assignment",
+      "Demonstrate marketing workflow"
+    ],
+    "estimatedMinutes": 45,
+    "resourceTitles": [
+      "Listing Tracker",
+      "Compliance Checklist"
+    ]
+  },
+  {
+    "slug": "academy-course-intermediate-qualifying-buyers-and-tenants",
+    "courseId": "academy-course-intermediate",
+    "courseTitle": "HomeLink Listing & Client Mastery",
+    "moduleTitle": "Working with Clients",
+    "title": "Qualifying buyers and tenants",
+    "summary": "Match clients to suitable properties with proper registration and needs analysis.",
+    "richText": "<p>Qualification protects everyone: budget, timeline, location, must-haves, and authority to proceed. Use registration forms for every serious enquiry.</p><p>Buyer and tenant needs analysis forms structure your discovery conversation and feed better property matches.</p>",
+    "objectives": [
+      "Complete buyer/tenant registration",
+      "Run needs analysis interviews",
+      "Filter unsuitable enquiries early"
+    ],
+    "estimatedMinutes": 35,
+    "resourceTitles": [
+      "Buyer Registration Form",
+      "Tenant Registration Form",
+      "Buyer Needs Analysis Form",
+      "Tenant Needs Analysis Form"
+    ]
+  },
+  {
+    "slug": "academy-course-intermediate-matching-clients-with-the-right-property",
+    "courseId": "academy-course-intermediate",
+    "courseTitle": "HomeLink Listing & Client Mastery",
+    "moduleTitle": "Working with Clients",
+    "title": "Matching clients with the right property",
+    "summary": "Shortlist ethically and explain fit clearly.",
+    "richText": "<p>Present no more than a focused shortlist aligned to documented needs. Explain trade-offs honestly — location vs. budget, condition vs. price.</p><p>Log every match and client reaction in your follow-up register for accountability and better recommendations next time.</p>",
+    "objectives": [
+      "Build evidence-based shortlists",
+      "Document client preferences",
+      "Manage expectations transparently"
+    ],
+    "estimatedMinutes": 30,
+    "resourceTitles": [
+      "Client Follow-Up Register",
+      "Email Templates"
+    ]
+  },
+  {
+    "slug": "academy-course-intermediate-managing-property-viewings",
+    "courseId": "academy-course-intermediate",
+    "courseTitle": "HomeLink Listing & Client Mastery",
+    "moduleTitle": "Working with Clients",
+    "title": "Managing property viewings",
+    "summary": "Safe, punctual, professional viewings with full records.",
+    "richText": "<p>Confirm viewings in writing, arrive early, respect the property, and never rush clients. Safety first: verify identity where required and follow HomeLink viewing guidelines.</p><p>Every viewing goes in the Property Viewing Register; feedback captured on the Viewing Feedback Form drives next steps.</p>",
+    "objectives": [
+      "Run viewings to HomeLink standard",
+      "Complete viewing register entries",
+      "Capture structured feedback"
+    ],
+    "estimatedMinutes": 35,
+    "resourceTitles": [
+      "Property Viewing Register",
+      "Viewing Feedback Form",
+      "Open House Checklist",
+      "Appointment Schedule"
+    ]
+  },
+  {
+    "slug": "academy-course-intermediate-understanding-and-presenting-offers",
+    "courseId": "academy-course-intermediate",
+    "courseTitle": "HomeLink Listing & Client Mastery",
+    "moduleTitle": "Working with Clients",
+    "title": "Understanding and presenting offers",
+    "summary": "Guide clients through offers, rentals applications, and next steps.",
+    "richText": "<p>Present offers clearly: price, conditions, timelines, and contingencies. Never pressure clients. Ensure rental applications and offer documents are complete before submission.</p><p>Use official templates and escalate legal questions to qualified professionals.</p>",
+    "objectives": [
+      "Explain offer components clearly",
+      "Use correct application templates",
+      "Maintain neutral professional guidance"
+    ],
+    "estimatedMinutes": 35,
+    "resourceTitles": [
+      "Offer to Purchase Template",
+      "Rental Application Form"
+    ]
+  },
+  {
+    "slug": "academy-course-intermediate-chapter-3-client-service-simulation",
+    "courseId": "academy-course-intermediate",
+    "courseTitle": "HomeLink Listing & Client Mastery",
+    "moduleTitle": "Working with Clients",
+    "title": "Chapter 3 client service simulation",
+    "summary": "Apply client workflows in a practical assignment.",
+    "richText": "<p>Submit a viewing record assignment: viewing register entry, feedback form, and written follow-up plan for a real or practice scenario.</p><p>This checkpoint confirms you can execute the full client journey before advancing to compliance modules.</p>",
+    "objectives": [
+      "Complete viewing record assignment",
+      "Demonstrate follow-up planning",
+      "Ready for Advanced stage"
+    ],
+    "estimatedMinutes": 45,
+    "resourceTitles": []
+  },
+  {
+    "slug": "academy-course-advanced-professional-why-documentation-matters",
+    "courseId": "academy-course-advanced-professional",
+    "courseTitle": "HomeLink Professional Certification",
+    "moduleTitle": "Documentation, Legal Awareness and Compliance",
+    "title": "Why documentation matters",
+    "summary": "Documentation protects clients, agents, and HomeLink from dispute and loss.",
+    "richText": "<p>Verbal agreements fail under pressure. Written, signed, dated records create clarity and audit trails. Treat every file as if it will be reviewed tomorrow.</p>",
+    "objectives": [
+      "Explain documentation risks",
+      "Adopt file-first habits",
+      "Use checklists consistently"
+    ],
+    "estimatedMinutes": 25,
+    "resourceTitles": []
+  },
+  {
+    "slug": "academy-course-advanced-professional-common-documents-used-by-real-estate-agents",
+    "courseId": "academy-course-advanced-professional",
+    "courseTitle": "HomeLink Professional Certification",
+    "moduleTitle": "Documentation, Legal Awareness and Compliance",
+    "title": "Common documents used by real estate agents",
+    "summary": "Know which form applies to each transaction stage.",
+    "richText": "<p>From registration forms to mandates, inspection reports, applications, and compliance submissions — each document has a purpose. Keep master copies in your resource kit and complete them fully before upload to HomeLink or branch records.</p>",
+    "objectives": [
+      "Match documents to transaction stages",
+      "Access the correct branded templates",
+      "Avoid incomplete submissions"
+    ],
+    "estimatedMinutes": 30,
+    "resourceTitles": [
+      "Document Submission Checklist",
+      "Seller Information Form",
+      "Landlord Registration Form"
+    ]
+  },
+  {
+    "slug": "academy-course-advanced-professional-completing-documents-accurately",
+    "courseId": "academy-course-advanced-professional",
+    "courseTitle": "HomeLink Professional Certification",
+    "moduleTitle": "Documentation, Legal Awareness and Compliance",
+    "title": "Completing documents accurately",
+    "summary": "Accuracy, legibility, and consistency on every form.",
+    "richText": "<p>Illegible or inconsistent data causes delays and disputes. Double-check names, IDs, amounts, dates, and signatures. Use the Document Submission Checklist before any file leaves your desk.</p>",
+    "objectives": [
+      "Apply accuracy standards",
+      "Complete submission checklist",
+      "Review files before handover"
+    ],
+    "estimatedMinutes": 30,
+    "resourceTitles": [
+      "Document Submission Checklist",
+      "File Checklist"
+    ]
+  },
+  {
+    "slug": "academy-course-advanced-professional-understanding-contracts-and-confidentiality",
+    "courseId": "academy-course-advanced-professional",
+    "courseTitle": "HomeLink Professional Certification",
+    "moduleTitle": "Documentation, Legal Awareness and Compliance",
+    "title": "Understanding contracts and confidentiality",
+    "summary": "Confidentiality, mandate terms, and when to seek legal advice.",
+    "richText": "<p>You are not a lawyer — but you must understand mandate basics, confidentiality duties, and referral boundaries. Never advise on legal interpretation; escalate to qualified professionals.</p><p>Client financial and identity data stays confidential unless disclosure is legally required or authorised.</p>",
+    "objectives": [
+      "Protect confidential client data",
+      "Recognise legal referral boundaries",
+      "Explain mandate basics accurately"
+    ],
+    "estimatedMinutes": 35,
+    "resourceTitles": []
+  },
+  {
+    "slug": "academy-course-advanced-professional-chapter-4-compliance-assessment",
+    "courseId": "academy-course-advanced-professional",
+    "courseTitle": "HomeLink Professional Certification",
+    "moduleTitle": "Documentation, Legal Awareness and Compliance",
+    "title": "Chapter 4 compliance assessment",
+    "summary": "Compliance quiz and file review checkpoint.",
+    "richText": "<p>Pass the Chapter 4 knowledge check and review your sample client file against the File and Compliance checklists. Fix any gaps before proceeding to performance modules.</p>",
+    "objectives": [
+      "Pass compliance knowledge check",
+      "Audit a sample client file",
+      "Correct documentation gaps"
+    ],
+    "estimatedMinutes": 40,
+    "resourceTitles": [
+      "Compliance Checklist"
+    ]
+  },
+  {
+    "slug": "academy-course-advanced-professional-building-a-successful-real-estate-career",
+    "courseId": "academy-course-advanced-professional",
+    "courseTitle": "HomeLink Professional Certification",
+    "moduleTitle": "Becoming a Top-Performing Agent",
+    "title": "Building a successful real estate career",
+    "summary": "Long-term career design: specialisation, reputation, and continuous learning.",
+    "richText": "<p>Sustainable careers combine skill, reputation, and systems. Choose niches where you can excel — rentals, sales, commercial — and deepen expertise rather than chasing every lead.</p>",
+    "objectives": [
+      "Define your career niche",
+      "Plan continuous learning",
+      "Build referral networks"
+    ],
+    "estimatedMinutes": 30,
+    "resourceTitles": []
+  },
+  {
+    "slug": "academy-course-advanced-professional-daily-weekly-and-monthly-success-routines",
+    "courseId": "academy-course-advanced-professional",
+    "courseTitle": "HomeLink Professional Certification",
+    "moduleTitle": "Becoming a Top-Performing Agent",
+    "title": "Daily, weekly and monthly success routines",
+    "summary": "Planners and workflows that top agents use consistently.",
+    "richText": "<p>Structure beats motivation. Use the Daily Activity Planner each morning, Weekly Planner for priorities, and Monthly KPI Tracker for results review.</p><p>The Agent Daily Workflow flowchart gives a visual checklist for high-productivity days.</p>",
+    "objectives": [
+      "Implement daily planning ritual",
+      "Run weekly performance reviews",
+      "Track monthly KPIs"
+    ],
+    "estimatedMinutes": 35,
+    "resourceTitles": [
+      "Daily Activity Planner",
+      "Weekly Planner",
+      "Monthly Planner",
+      "Agent Daily Workflow",
+      "Monthly KPI Tracker"
+    ]
+  },
+  {
+    "slug": "academy-course-advanced-professional-tracking-pipeline-and-performance",
+    "courseId": "academy-course-advanced-professional",
+    "courseTitle": "HomeLink Professional Certification",
+    "moduleTitle": "Becoming a Top-Performing Agent",
+    "title": "Tracking pipeline and performance",
+    "summary": "Measure what matters: leads, viewings, listings, and closed deals.",
+    "richText": "<p>Pipeline visibility prevents feast-or-famine cycles. Update your Listing Tracker, Closed Deals Register, and Sales Performance Tracker weekly.</p><p>Commission calculations should be understood early — use the Commission Calculation Worksheet for transparency with clients and personal forecasting.</p>",
+    "objectives": [
+      "Maintain live pipeline data",
+      "Review conversion metrics",
+      "Forecast commission accurately"
+    ],
+    "estimatedMinutes": 35,
+    "resourceTitles": [
+      "Listing Tracker",
+      "Closed Deals Register",
+      "Sales Performance Tracker",
+      "Commission Calculation Worksheet",
+      "Expense Tracker",
+      "Mileage Log"
+    ]
+  },
+  {
+    "slug": "academy-course-advanced-professional-professional-reputation-and-long-term-growth",
+    "courseId": "academy-course-advanced-professional",
+    "courseTitle": "HomeLink Professional Certification",
+    "moduleTitle": "Becoming a Top-Performing Agent",
+    "title": "Professional reputation and long-term growth",
+    "summary": "Reviews, referrals, and brand building on HomeLink.",
+    "richText": "<p>Your reputation is your most valuable asset. Deliver on promises, respond professionally to complaints, and ask satisfied clients for reviews through proper HomeLink channels.</p><p>Personal branding should align with HomeLink standards — professional photos, consistent messaging, no misleading claims.</p>",
+    "objectives": [
+      "Grow reviews ethically",
+      "Build referral habits",
+      "Align personal brand with HomeLink"
+    ],
+    "estimatedMinutes": 30,
+    "resourceTitles": []
+  },
+  {
+    "slug": "academy-course-advanced-professional-final-competency-checklist",
+    "courseId": "academy-course-advanced-professional",
+    "courseTitle": "HomeLink Professional Certification",
+    "moduleTitle": "Becoming a Top-Performing Agent",
+    "title": "Final competency checklist",
+    "summary": "Confirm readiness for the Certified HomeLink Agent final examination.",
+    "richText": "<p>Before the final exam, verify you have completed all stage lessons, downloaded and used key branded tools, passed module quizzes, and submitted practical assignments.</p><p>The full training manual remains in the Resource Library for deep reference — your certification is based on this staged programme and assessments.</p>",
+    "objectives": [
+      "Complete competency checklist",
+      "Schedule final examination",
+      "Identify final revision areas"
+    ],
+    "estimatedMinutes": 30,
+    "resourceTitles": [
+      "Weekly Performance Review"
+    ]
+  },
+  {
+    "slug": "academy-course-advanced-professional-client-document-forms",
+    "courseId": "academy-course-advanced-professional",
+    "courseTitle": "HomeLink Professional Certification",
+    "moduleTitle": "Professional Agent Resource Kit",
+    "title": "Client document forms",
+    "summary": "Print-ready buyer, seller, tenant, and landlord forms with HomeLink branding.",
+    "richText": "<p>These A4 forms are recreated for HomeLink agents — use them on every qualified client engagement. Download, print or fill digitally, and store copies in the client file.</p>",
+    "objectives": [
+      "Download all client registration forms",
+      "Use correct form per client type",
+      "File completed forms properly"
+    ],
+    "estimatedMinutes": 20,
+    "resourceTitles": [
+      "Seller Information Form",
+      "Buyer Registration Form",
+      "Tenant Registration Form",
+      "Landlord Registration Form",
+      "Client Information Sheet"
+    ]
+  },
+  {
+    "slug": "academy-course-advanced-professional-operations-planners-and-registers",
+    "courseId": "academy-course-advanced-professional",
+    "courseTitle": "HomeLink Professional Certification",
+    "moduleTitle": "Professional Agent Resource Kit",
+    "title": "Operations planners and registers",
+    "summary": "Daily planners, viewing registers, and appointment tools.",
+    "richText": "<p>Operational excellence runs on simple registers. Keep viewing, follow-up, and appointment records current — they protect you in disputes and improve conversion.</p><p><strong>Practical exercise:</strong> Set up your weekly planner template today. Block prospecting, follow-up, and admin time before adding client appointments.</p><p>Review every open enquiry in your Client Follow-Up Register each Friday and schedule next actions before the week ends.</p>",
+    "objectives": [
+      "Set up operational templates",
+      "Maintain viewing and follow-up registers",
+      "Plan appointments systematically"
+    ],
+    "estimatedMinutes": 20,
+    "resourceTitles": [
+      "Daily Activity Planner",
+      "Weekly Planner",
+      "Monthly Planner",
+      "Appointment Schedule",
+      "Property Viewing Register",
+      "Client Follow-Up Register"
+    ]
+  },
+  {
+    "slug": "academy-course-advanced-professional-marketing-templates-and-scripts",
+    "courseId": "academy-course-advanced-professional",
+    "courseTitle": "HomeLink Professional Certification",
+    "moduleTitle": "Professional Agent Resource Kit",
+    "title": "Marketing templates and scripts",
+    "summary": "WhatsApp, social, email, and telephone scripts aligned to HomeLink.",
+    "richText": "<p>Consistent messaging builds brand trust. Adapt templates to each client but keep tone professional and compliant with HomeLink marketing rules.</p><p><strong>Practical exercise:</strong> Customise the WhatsApp introduction template for three property types you list most often. Save versions in your toolkit folder.</p><p>Never promise outcomes in scripts — focus on clarity, next steps, and permission to follow up.</p>",
+    "objectives": [
+      "Use WhatsApp and social templates",
+      "Apply telephone and cold-call scripts",
+      "Plan campaigns with content planner"
+    ],
+    "estimatedMinutes": 25,
+    "resourceTitles": [
+      "WhatsApp Marketing Templates",
+      "Social Media Content Planner",
+      "Email Templates",
+      "Telephone Scripts",
+      "Cold Calling Scripts"
+    ]
+  },
+  {
+    "slug": "academy-course-advanced-professional-administration-and-compliance-tools",
+    "courseId": "academy-course-advanced-professional",
+    "courseTitle": "HomeLink Professional Certification",
+    "moduleTitle": "Professional Agent Resource Kit",
+    "title": "Administration and compliance tools",
+    "summary": "Checklists for files, compliance, inspections, and submissions.",
+    "richText": "<p>Run every listing and client file through the File, Compliance, and Document Submission checklists before handover. These tools prevent the most common compliance failures.</p><p><strong>Practical exercise:</strong> Audit one recent file against all three checklists. Document gaps and corrective actions with dates.</p><p>Inspection and open-house checklists protect you when access, safety, or neighbour issues arise.</p>",
+    "objectives": [
+      "Apply file and compliance checklists",
+      "Use inspection and open-house tools",
+      "Submit complete document packs"
+    ],
+    "estimatedMinutes": 25,
+    "resourceTitles": [
+      "File Checklist",
+      "Compliance Checklist",
+      "Document Submission Checklist",
+      "Property Inspection Checklist",
+      "Open House Checklist"
+    ]
+  },
+  {
+    "slug": "academy-course-advanced-professional-performance-trackers-and-quick-reference-guides",
+    "courseId": "academy-course-advanced-professional",
+    "courseTitle": "HomeLink Professional Certification",
+    "moduleTitle": "Professional Agent Resource Kit",
+    "title": "Performance trackers and quick reference guides",
+    "summary": "KPI trackers, journey flowcharts, and process guides.",
+    "richText": "<p>Flowcharts for buyer, seller, landlord, rental, and sales journeys give you and clients a shared mental model. Pin them in your workspace and refer to them during complex transactions.</p><p>The complete manual PDF is available separately in the Academy Resource Library for deep reading — these lesson tools are what you use in the field every day.</p>",
+    "objectives": [
+      "Use KPI and performance trackers",
+      "Apply journey flowcharts in client meetings",
+      "Keep quick references accessible"
+    ],
+    "estimatedMinutes": 25,
+    "resourceTitles": [
+      "Monthly KPI Tracker",
+      "Sales Performance Tracker",
+      "Buyer Journey Flowchart",
+      "Seller Journey Flowchart",
+      "Landlord Journey Flowchart",
+      "Property Selling Process Flowchart",
+      "Property Rental Process Flowchart"
+    ]
+  }
+]

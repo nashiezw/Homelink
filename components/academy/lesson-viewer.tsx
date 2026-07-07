@@ -398,13 +398,13 @@ function collectBrandedResources(lesson: Lesson) {
   };
 
   if (lesson.pdfUrl && !isFullTrainingManualUrl(lesson.pdfUrl)) {
-    add(`pdf-${lesson.id}`, lesson.pdfUrl, "Lesson resource", "HomeLink branded · Print-ready PDF");
+    add(`pdf-${lesson.id}`, lesson.pdfUrl, `${lesson.title} — Lesson Handout`, "HomeLink Academy training guide · Print-ready PDF");
+  }
+  for (const download of lesson.lessonDownloads ?? []) {
+    add(download.id, download.url, download.title, "HomeLink branded field tool · Print-ready PDF");
   }
   for (const doc of lesson.lessonDocuments ?? []) {
     add(doc.id, doc.downloadUrl, doc.title, `${doc.fileType} · HomeLink Academy`);
-  }
-  for (const download of lesson.lessonDownloads ?? []) {
-    add(download.id, download.url, download.title, "HomeLink branded · Print-ready PDF");
   }
 
   return items;

@@ -3,6 +3,7 @@ import path from "path";
 import { getMainPrisma } from "@/lib/db/main-prisma";
 import { ACADEMY_FULL_MANUAL_URL } from "@/lib/academy/academy-constants";
 import { ACADEMY_PROGRAMME_COURSES, LEGACY_COURSE_ID } from "@/lib/academy/academy-programme";
+import { lessonHandoutUrl } from "@/lib/academy/lesson-handouts";
 
 const MANIFEST_PATH = path.join(process.cwd(), "public", "uploads", "academy", "academy-resources-manifest.json");
 
@@ -35,7 +36,7 @@ type ModuleSeed = {
   lessons: LessonSeed[];
 };
 
-const modules: ModuleSeed[] = [
+export const modules: ModuleSeed[] = [
   {
     title: "Introduction to the HomeLink Zimbabwe Standard",
     stage: "Beginner",
@@ -474,12 +475,6 @@ async function migrateLegacyEnrollments(prisma: ReturnType<typeof getMainPrisma>
   });
 }
 
-/** Primary lesson PDF — first branded resource only; never the full manual. */
-function primaryPdfUrl(map: Map<string, ManifestItem>, titles: string[] = []) {
-  const first = titles[0] ? map.get(titles[0]) : null;
-  return first?.fileUrl ?? null;
-}
-
 export async function seedStagedCourseStructure(options?: { forceRebuild?: boolean }) {
   const prisma = getMainPrisma();
   await archiveLegacyCourse(prisma);
@@ -590,7 +585,7 @@ export async function seedStagedCourseStructure(options?: { forceRebuild?: boole
                   globalLessonIndex += 1;
                   const resourceTitles = lesson.resourceTitles ?? [];
                   const downloads = downloadsForTitles(manifestMap, resourceTitles);
-                  const pdfUrl = primaryPdfUrl(manifestMap, resourceTitles);
+                  const pdfUrl = lessonHandoutUrl(programmeCourse.id, lesson.title);
                   return {
                     id: `${programmeCourse.id}-lesson-${globalLessonIndex}-${slugify(lesson.title).slice(0, 28)}`,
                     title: lesson.title,

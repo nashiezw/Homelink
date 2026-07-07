@@ -101,7 +101,20 @@ export function flattenCourseMaterials(course: NonNullable<Awaited<ReturnType<ty
     for (const section of courseModule.sections) {
       for (const lesson of section.lessons) {
         if (lesson.pdfUrl && !isFullTrainingManualUrl(lesson.pdfUrl)) {
-          materials.push({ id: `pdf-${lesson.id}`, title: `${lesson.title} PDF`, level: "lesson", location: `${courseModule.title} › ${lesson.title}`, fileType: "PDF", downloadUrl: lesson.pdfUrl });
+          materials.push({
+            id: `pdf-${lesson.id}`,
+            title: `${lesson.title} — Lesson Handout`,
+            level: "lesson",
+            location: `${courseModule.title} › ${lesson.title}`,
+            fileType: "PDF",
+            downloadUrl: lesson.pdfUrl,
+          });
+        }
+        const seenUrls = new Set<string>([lesson.pdfUrl].filter(Boolean) as string[]);
+        for (const download of lesson.lessonDownloads) {
+          if (seenUrls.has(download.url)) continue;
+          seenUrls.add(download.url);
+          materials.push({ id: download.id, title: download.title, level: "lesson", location: `${courseModule.title} › ${lesson.title}`, fileType: download.type, downloadUrl: download.url });
         }
         for (const doc of lesson.lessonDocuments) {
           materials.push({
@@ -112,9 +125,6 @@ export function flattenCourseMaterials(course: NonNullable<Awaited<ReturnType<ty
             fileType: doc.document.fileType,
             downloadUrl: `/api/v1/academy/documents/${doc.document.id}/download`,
           });
-        }
-        for (const download of lesson.lessonDownloads) {
-          materials.push({ id: download.id, title: download.title, level: "lesson", location: `${courseModule.title} › ${lesson.title}`, fileType: download.type, downloadUrl: download.url });
         }
       }
     }
