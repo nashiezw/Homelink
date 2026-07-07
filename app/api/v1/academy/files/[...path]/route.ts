@@ -1,7 +1,5 @@
-import { readFile, stat } from "fs/promises";
-import { NextResponse } from "next/server";
-import path from "path";
-import { isAllowedAcademyFilePath, resolveAcademyFilePath } from "@/lib/academy/academy-files";
+import { isAllowedAcademyFilePath } from "@/lib/academy/academy-files";
+import { serveAcademyPdf } from "@/lib/academy/academy-files-server";
 import { problem } from "@/lib/api/response";
 
 export const dynamic = "force-dynamic";
@@ -14,32 +12,10 @@ export async function GET(request: Request, context: { params: Promise<{ path: s
     return problem(404, "FILE_NOT_FOUND", "This Academy file is not available.");
   }
 
-  const absolutePath = resolveAcademyFilePath(relativePath);
-  if (!absolutePath) {
-    return problem(404, "FILE_NOT_FOUND", "This Academy file is not available.");
-  }
+  const url = new URL(request.url);
+  const inline = url.searchParams.get("inline") === "1";
+  const served = await serveAcademyPdf(request, relativePath, { inline });
+  if (served) return served;
 
-  try {
-    const fileStat = await stat(absolutePath);
-    if (!fileStat.isFile()) {
-      return problem(404, "FILE_NOT_FOUND", "This Academy file is not available.");
-    }
-
-    const buffer = await readFile(absolutePath);
-    const fileName = path.basename(absolutePath);
-    const url = new URL(request.url);
-    const inline = url.searchParams.get("inline") === "1";
-
-    return new NextResponse(buffer, {
-      status: 200,
-      headers: {
-        "Content-Type": "application/pdf",
-        "Content-Length": String(buffer.length),
-        "Content-Disposition": `${inline ? "inline" : "attachment"}; filename="${fileName}"`,
-        "Cache-Control": "public, max-age=86400, immutable",
-      },
-    });
-  } catch {
-    return problem(404, "FILE_NOT_FOUND", "This Academy file could not be loaded. Run the Academy seed to regenerate resources.");
-  }
+  return problem(404, "FILE_NOT_FOUND", "This Academy file could not be loaded. Run the Academy seed to regenerate resources.");
 }

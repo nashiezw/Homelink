@@ -1,35 +1,10 @@
 import { NextResponse } from "next/server";
-import { readFile, stat } from "fs/promises";
-import path from "path";
+import { academyRelativePathFromUrl, toAcademyFileDownloadUrl } from "@/lib/academy/academy-files";
+import { serveAcademyPdf } from "@/lib/academy/academy-files-server";
 import { problem } from "@/lib/api/response";
-import { resolveAcademyFilePath, toAcademyFileDownloadUrl } from "@/lib/academy/academy-files";
 import { getMainPrisma } from "@/lib/db/main-prisma";
 
 export const dynamic = "force-dynamic";
-
-async function streamAcademyPdf(fileUrl: string, fileName: string, inline: boolean) {
-  const relativePath = fileUrl.startsWith("/uploads/academy/")
-    ? fileUrl.slice("/uploads/academy/".length)
-    : fileUrl.replace("/api/v1/academy/files/", "");
-  const absolutePath = resolveAcademyFilePath(relativePath);
-  if (!absolutePath) return null;
-  try {
-    const fileStat = await stat(absolutePath);
-    if (!fileStat.isFile()) return null;
-    const buffer = await readFile(absolutePath);
-    return new NextResponse(buffer, {
-      status: 200,
-      headers: {
-        "Content-Type": "application/pdf",
-        "Content-Length": String(buffer.length),
-        "Content-Disposition": `${inline ? "inline" : "attachment"}; filename="${fileName || path.basename(absolutePath)}"`,
-        "Cache-Control": "public, max-age=86400, immutable",
-      },
-    });
-  } catch {
-    return null;
-  }
-}
 
 export async function GET(request: Request, context: { params: Promise<{ id: string }> }) {
   const { id } = await context.params;
@@ -50,8 +25,14 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
 
   const url = new URL(request.url);
   const inline = url.searchParams.get("inline") === "1";
-  const streamed = await streamAcademyPdf(document.fileUrl, document.fileName, inline);
-  if (streamed) return streamed;
+  const relativePath = academyRelativePathFromUrl(document.fileUrl);
+  if (relativePath) {
+    const served = await serveAcademyPdf(request, relativePath, {
+      inline,
+      fileName: document.fileName,
+    });
+    if (served) return served;
+  }
 
   return NextResponse.redirect(new URL(toAcademyFileDownloadUrl(document.fileUrl), request.url));
 }

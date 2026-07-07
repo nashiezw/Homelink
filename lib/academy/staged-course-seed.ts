@@ -3,8 +3,7 @@ import path from "path";
 import { getMainPrisma } from "@/lib/db/main-prisma";
 import { ACADEMY_FULL_MANUAL_URL } from "@/lib/academy/academy-constants";
 import { ACADEMY_PROGRAMME_COURSES, LEGACY_COURSE_ID } from "@/lib/academy/academy-programme";
-import { lessonHandoutUrl } from "@/lib/academy/lesson-handouts";
-import { toAcademyFileDownloadUrl } from "@/lib/academy/academy-files";
+import { lessonHandoutStoragePath } from "@/lib/academy/lesson-handouts";
 
 const MANIFEST_PATH = path.join(process.cwd(), "public", "uploads", "academy", "academy-resources-manifest.json");
 
@@ -401,7 +400,7 @@ function downloadsForTitles(map: Map<string, ManifestItem>, titles: string[] = [
   return titles.flatMap((title) => {
     const item = map.get(title);
     if (!item) return [];
-    return [{ title: item.title, url: toAcademyFileDownloadUrl(item.fileUrl), type: "PDF" as const }];
+    return [{ title: item.title, url: item.fileUrl, type: "PDF" as const }];
   });
 }
 
@@ -586,7 +585,7 @@ export async function seedStagedCourseStructure(options?: { forceRebuild?: boole
                   globalLessonIndex += 1;
                   const resourceTitles = lesson.resourceTitles ?? [];
                   const downloads = downloadsForTitles(manifestMap, resourceTitles);
-                  const pdfUrl = lessonHandoutUrl(programmeCourse.id, lesson.title);
+                  const pdfUrl = lessonHandoutStoragePath(programmeCourse.id, lesson.title);
                   return {
                     id: `${programmeCourse.id}-lesson-${globalLessonIndex}-${slugify(lesson.title).slice(0, 28)}`,
                     title: lesson.title,

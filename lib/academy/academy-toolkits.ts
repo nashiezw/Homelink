@@ -1,6 +1,5 @@
-import { readFile } from "fs/promises";
-import path from "path";
 import { ACADEMY_PROGRAMME_COURSES, getProgrammeCourse, PROGRAMME_COURSE_IDS, type AcademyProgrammeCourse } from "@/lib/academy/academy-programme";
+import manifestData from "@/public/uploads/academy/academy-resources-manifest.json";
 import { isFullTrainingManualUrl } from "@/lib/academy/academy-constants";
 import { toAcademyFileDownloadUrl } from "@/lib/academy/academy-files";
 
@@ -99,9 +98,7 @@ export const TOOLKIT_TITLES_BY_COURSE: Record<string, string[]> = {
 let manifestCache: ManifestRow[] | null = null;
 
 export async function loadAcademyManifest() {
-  if (manifestCache) return manifestCache;
-  const manifestPath = path.join(process.cwd(), "public", "uploads", "academy", "academy-resources-manifest.json");
-  manifestCache = JSON.parse(await readFile(manifestPath, "utf8")) as ManifestRow[];
+  if (!manifestCache) manifestCache = manifestData as ManifestRow[];
   return manifestCache;
 }
 

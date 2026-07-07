@@ -22,6 +22,12 @@ export function lessonHandoutSlug(courseId: string, lessonTitle: string) {
   return slugify(`${courseId}-${lessonTitle}`).slice(0, 96);
 }
 
+/** Canonical storage path in the database. */
+export function lessonHandoutStoragePath(courseId: string, lessonTitle: string) {
+  return `/uploads/academy/lessons/${lessonHandoutSlug(courseId, lessonTitle)}.pdf`;
+}
+
+/** Client-facing download URL (API route — works on Vercel and standalone). */
 export function lessonHandoutUrl(courseId: string, lessonTitle: string) {
   return academyFileDownloadUrl(`lessons/${lessonHandoutSlug(courseId, lessonTitle)}.pdf`);
 }
@@ -43,14 +49,14 @@ export function buildLessonHandoutManifest(
 ) {
   const items: LessonHandoutSeed[] = [];
   for (const programmeCourse of ACADEMY_PROGRAMME_COURSES) {
-    const courseModules = modules.filter((module) => programmeCourse.moduleStages.includes(module.stage as never));
-    for (const module of courseModules) {
-      for (const lesson of module.lessons) {
+    const courseModules = modules.filter((entry) => programmeCourse.moduleStages.includes(entry.stage as never));
+    for (const courseModule of courseModules) {
+      for (const lesson of courseModule.lessons) {
         items.push({
           slug: lessonHandoutSlug(programmeCourse.id, lesson.title),
           courseId: programmeCourse.id,
           courseTitle: programmeCourse.title,
-          moduleTitle: module.title,
+          moduleTitle: courseModule.title,
           title: lesson.title,
           summary: lesson.summary,
           richText: lesson.richText,

@@ -8,7 +8,7 @@ import {
   ACADEMY_FINAL_EXAM,
   ACADEMY_QUIZ_SEEDS,
 } from "@/lib/academy/academy-assessments";
-import { verifyAcademyAssets } from "@/lib/academy/academy-files";
+import { verifyAcademyAssets } from "@/lib/academy/academy-files-server";
 import { seedStagedCourseStructure } from "@/lib/academy/staged-course-seed";
 
 const CERTIFICATE_TEMPLATE_ID = "academy-certificate-certified-homelink-agent";
@@ -181,8 +181,8 @@ async function seedDocuments(prisma: ReturnType<typeof getMainPrisma>, manifest:
 }
 
 async function resolveModuleId(prisma: ReturnType<typeof getMainPrisma>, courseId: string, moduleTitle: string) {
-  const module = await prisma.trainingModule.findFirst({ where: { courseId, title: moduleTitle } });
-  return module?.id ?? null;
+  const courseModule = await prisma.trainingModule.findFirst({ where: { courseId, title: moduleTitle } });
+  return courseModule?.id ?? null;
 }
 
 async function seedAssessments(prisma: ReturnType<typeof getMainPrisma>) {

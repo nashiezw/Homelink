@@ -301,7 +301,7 @@ export async function getLearnerAcademyDashboard(learnerId: string) {
             completionRequirement: lesson.completionRequirement,
             videoUrl: lesson.videoUrl,
             embeddedVideoUrl: lesson.embeddedVideoUrl,
-            pdfUrl: lesson.pdfUrl,
+            pdfUrl: lesson.pdfUrl ? toAcademyFileDownloadUrl(lesson.pdfUrl) : null,
             audioUrl: lesson.audioUrl,
             completed: completedIds.has(lesson.id),
             lessonVideos: lesson.lessonVideos.map((video) => ({
@@ -313,7 +313,7 @@ export async function getLearnerAcademyDashboard(learnerId: string) {
             lessonDownloads: lesson.lessonDownloads.map((download) => ({
               id: download.id,
               title: download.title,
-              url: download.url,
+              url: toAcademyFileDownloadUrl(download.url),
               type: download.type,
             })),
           }))),
