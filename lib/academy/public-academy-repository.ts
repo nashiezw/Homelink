@@ -1,5 +1,13 @@
 import { AcademyRegistrationStatus, PaymentProvider, PaymentStatus, Role, TrainingCourseStatus, TrainingVisibility, type Prisma } from "@prisma/client";
 import { getMainPrisma } from "@/lib/db/main-prisma";
+import { calculateCourseProgress, getCompletedLessonIds } from "@/lib/academy/academy-progress";
+
+export type AcademyRegistrationIntent = "TRAINING_ONLY" | "AGENT_TRAINING";
+
+function resolveCoursePrice(course: { publicPrice: Prisma.Decimal; agentPrice: Prisma.Decimal; price: Prisma.Decimal }, intent: AcademyRegistrationIntent) {
+  if (intent === "AGENT_TRAINING") return course.agentPrice ?? course.price;
+  return course.publicPrice || course.price;
+}
 
 export async function listPublicAcademyCourses() {
   const courses = await getMainPrisma().trainingCourse.findMany({
@@ -42,11 +50,31 @@ export async function listPublicAcademyCourses() {
 
 export async function getLearnerAcademyDashboard(learnerId: string) {
   const prisma = getMainPrisma();
-  const [applications, notifications, documents, announcements] = await Promise.all([
+  const [applications, notifications, documents, announcements, certificates, courseProgressRows] = await Promise.all([
     prisma.academyLearnerApplication.findMany({
       where: { learnerId },
       include: {
-        course: { include: { modules: { include: { sections: { include: { lessons: true } } } } } },
+        course: {
+          include: {
+            modules: {
+              include: {
+                sections: {
+                  include: {
+                    lessons: {
+                      include: {
+                        lessonVideos: true,
+                        lessonDownloads: true,
+                      },
+                      orderBy: { sortOrder: "asc" },
+                    },
+                  },
+                  orderBy: { sortOrder: "asc" },
+                },
+              },
+              orderBy: { sortOrder: "asc" },
+            },
+          },
+        },
         payment: true,
       },
       orderBy: { updatedAt: "desc" },
@@ -68,28 +96,61 @@ export async function getLearnerAcademyDashboard(learnerId: string) {
       orderBy: { createdAt: "desc" },
       take: 8,
     }),
+    prisma.certificateIssue.findMany({
+      where: { agentId: learnerId, status: "ACTIVE" },
+      include: { course: true },
+      orderBy: { issuedAt: "desc" },
+    }),
+    prisma.courseProgress.findMany({ where: { agentId: learnerId } }),
   ]);
 
   const approved = applications.filter((entry) => entry.status === AcademyRegistrationStatus.APPROVED);
   const totalLessons = approved.reduce((sum, entry) => sum + countLessons(entry.course), 0);
+  const completedLessons = await Promise.all(
+    approved.map(async (entry) => {
+      const completedIds = await getCompletedLessonIds(learnerId, entry.course.id);
+      return completedIds.size;
+    })
+  );
+  const completedLessonTotal = completedLessons.reduce((sum, count) => sum + count, 0);
+  const overallProgress = totalLessons ? Math.round((completedLessonTotal / totalLessons) * 100) : 0;
+
   return {
     metrics: {
       enrolledCourses: approved.length,
       pendingApprovals: applications.filter((entry) => entry.status === AcademyRegistrationStatus.PENDING_PAYMENT || entry.status === AcademyRegistrationStatus.PAYMENT_UPLOADED).length,
-      certificates: approved.filter((entry) => entry.course.certificateEnabled).length,
+      certificates: certificates.length,
       downloads: documents.length,
       totalLessons,
-      progress: totalLessons ? 0 : 0,
+      progress: overallProgress,
+      completedLessons: completedLessonTotal,
     },
-    applications: applications.map((entry) => ({
+    certificates: certificates.map((certificate) => ({
+      id: certificate.id,
+      certificateNumber: certificate.certificateNumber,
+      courseTitle: certificate.course?.title ?? "Academy Course",
+      issuedAt: certificate.issuedAt.toISOString(),
+      expiresAt: certificate.expiresAt?.toISOString() ?? null,
+      verifyUrl: certificate.qrCodeUrl ?? `/api/v1/academy/certificates/verify/${encodeURIComponent(certificate.certificateNumber)}`,
+    })),
+    applications: await Promise.all(applications.map(async (entry) => {
+      const completedIds = entry.status === AcademyRegistrationStatus.APPROVED
+        ? await getCompletedLessonIds(learnerId, entry.course.id)
+        : new Set<string>();
+      const progress = calculateCourseProgress(entry.course, completedIds);
+      const courseProgress = courseProgressRows.find((row) => row.courseId === entry.course.id);
+
+      return {
       id: entry.id,
       status: entry.status,
+      learnerType: entry.learnerType,
       amount: Number(entry.amount),
       currency: entry.currency,
       proofUrl: entry.proofUrl,
       accessStartsAt: entry.accessStartsAt?.toISOString(),
       accessEndsAt: entry.accessEndsAt?.toISOString(),
       adminNote: entry.adminNote,
+      progress: courseProgress?.percentComplete ?? progress.percentComplete,
       payment: entry.payment ? {
         id: entry.payment.id,
         status: entry.payment.status,
@@ -109,12 +170,30 @@ export async function getLearnerAcademyDashboard(learnerId: string) {
             id: lesson.id,
             title: lesson.title,
             summary: lesson.summary,
+            richText: lesson.richText,
             estimatedMinutes: lesson.estimatedMinutes,
-            videoUrl: lesson.videoUrl ?? lesson.embeddedVideoUrl,
+            completionRequirement: lesson.completionRequirement,
+            videoUrl: lesson.videoUrl,
+            embeddedVideoUrl: lesson.embeddedVideoUrl,
             pdfUrl: lesson.pdfUrl,
+            audioUrl: lesson.audioUrl,
+            completed: completedIds.has(lesson.id),
+            lessonVideos: lesson.lessonVideos.map((video) => ({
+              id: video.id,
+              title: video.title,
+              url: video.url,
+              provider: video.provider,
+            })),
+            lessonDownloads: lesson.lessonDownloads.map((download) => ({
+              id: download.id,
+              title: download.title,
+              url: download.url,
+              type: download.type,
+            })),
           }))),
         })),
       },
+    };
     })),
     documents: documents.map((document) => ({
       id: document.id,
@@ -138,12 +217,20 @@ export async function registerPublicLearner(input: {
   organisation?: string;
   motivation?: string;
   paymentMethod?: string;
+  registrationIntent?: AcademyRegistrationIntent;
+  isAgent?: boolean;
 }) {
   const prisma = getMainPrisma();
   const course = await prisma.trainingCourse.findFirst({
     where: { id: input.courseId, status: TrainingCourseStatus.PUBLISHED, registrationOpen: true },
   });
   if (!course) return "COURSE_NOT_AVAILABLE" as const;
+
+  const intent: AcademyRegistrationIntent =
+    input.registrationIntent ??
+    (input.isAgent ? "AGENT_TRAINING" : "TRAINING_ONLY");
+  const learnerType = intent === "AGENT_TRAINING" ? "AGENT" : "PUBLIC_LEARNER";
+  const payableAmount = resolveCoursePrice(course, intent);
 
   const existing = await prisma.academyLearnerApplication.findUnique({
     where: { learnerId_courseId: { learnerId: input.learnerId, courseId: input.courseId } },
@@ -155,19 +242,18 @@ export async function registerPublicLearner(input: {
     data: {
       userId: input.learnerId,
       provider: PaymentProvider.PAYNOW,
-      status: Number(course.publicPrice || course.price) > 0 ? PaymentStatus.PENDING : PaymentStatus.PAID,
-      amount: course.publicPrice || course.price,
+      status: Number(payableAmount) > 0 ? PaymentStatus.PENDING : PaymentStatus.PAID,
+      amount: payableAmount,
       currency: course.currency,
       description: `${course.title} Academy enrolment`,
       plan: "academy_course",
       method: input.paymentMethod || "bank_transfer",
-      manual: Number(course.price) > 0,
-      proofStatus: Number(course.price) > 0 ? "REQUESTED" : "NONE",
-      metadata: { courseId: course.id, learnerType: "PUBLIC_LEARNER", referenceNumber: `HLA-${Date.now()}` } as Prisma.InputJsonObject,
+      manual: Number(payableAmount) > 0,
+      proofStatus: Number(payableAmount) > 0 ? "REQUESTED" : "NONE",
+      metadata: { courseId: course.id, learnerType, registrationIntent: intent, referenceNumber: `HLA-${Date.now()}` } as Prisma.InputJsonObject,
     },
   });
   const now = new Date();
-  const payableAmount = course.publicPrice || course.price;
   const isFree = Number(payableAmount) <= 0;
   const accessEndsAt = new Date(now.getTime() + course.accessDurationDays * 86400000);
   const application = await prisma.academyLearnerApplication.create({
@@ -175,6 +261,7 @@ export async function registerPublicLearner(input: {
       learnerId: input.learnerId,
       courseId: course.id,
       paymentId: payment.id,
+      learnerType,
       status: isFree ? AcademyRegistrationStatus.APPROVED : AcademyRegistrationStatus.PENDING_PAYMENT,
       fullName: input.fullName,
       email: input.email.trim().toLowerCase(),
@@ -189,8 +276,14 @@ export async function registerPublicLearner(input: {
   });
 
   const user = await prisma.user.findUnique({ where: { id: input.learnerId }, select: { roles: true } });
-  if (user && !user.roles.includes(Role.PUBLIC_LEARNER)) {
-    await prisma.user.update({ where: { id: input.learnerId }, data: { roles: [...user.roles, Role.PUBLIC_LEARNER] } });
+  if (user) {
+    const rolesToAdd: Role[] = [];
+    if (intent === "TRAINING_ONLY" && !user.roles.includes(Role.PUBLIC_LEARNER)) {
+      rolesToAdd.push(Role.PUBLIC_LEARNER);
+    }
+    if (rolesToAdd.length) {
+      await prisma.user.update({ where: { id: input.learnerId }, data: { roles: [...user.roles, ...rolesToAdd] } });
+    }
   }
   await prisma.trainingNotification.create({
     data: {
@@ -198,7 +291,11 @@ export async function registerPublicLearner(input: {
       eventType: "ACADEMY_REGISTRATION",
       channel: "IN_APP",
       subject: isFree ? "Academy access activated" : "Academy payment pending",
-      body: isFree ? `${course.title} is active in your learner dashboard.` : `Upload proof of payment for ${course.title} so an admin can activate your access.`,
+      body: isFree
+        ? `${course.title} is active in your learner dashboard.`
+        : intent === "TRAINING_ONLY"
+          ? `Upload proof of payment for ${course.title}. You do not need to become a HomeLink agent to complete this training.`
+          : `Upload proof of payment for ${course.title} so an admin can activate your access.`,
     },
   });
   if (isFree) {

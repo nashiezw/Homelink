@@ -1,7 +1,6 @@
 import { requireAdminAsync } from "@/lib/admin/require-admin";
 import { ok, problem } from "@/lib/api/response";
 import { getMainPrisma } from "@/lib/db/main-prisma";
-import { Prisma } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 
@@ -53,7 +52,6 @@ export async function POST(request: Request) {
         issuedAt: new Date(),
         expiresAt: body.expiresAt ? new Date(body.expiresAt) : null,
         status: "ACTIVE",
-        metadata: (body.metadata || {}) as Prisma.InputJsonValue,
       }
     });
     

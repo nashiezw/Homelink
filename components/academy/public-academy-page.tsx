@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import { Award, BookOpen, CheckCircle2, Clock, CreditCard, GraduationCap, Loader2, ShieldCheck, Upload, Star, TrendingUp, Users, Zap } from "lucide-react";
 import { AuthForm } from "@/components/auth/auth-form";
 import { PageShell } from "@/components/layout/page-shell";
@@ -32,11 +31,16 @@ type PublicCourse = {
 
 export function PublicAcademyPage() {
   const { user, showToast } = useApp();
-  const router = useRouter();
   const [courses, setCourses] = useState<PublicCourse[]>([]);
   const [selectedId, setSelectedId] = useState("");
   const [busy, setBusy] = useState(false);
-  const [form, setForm] = useState({ phone: "", organisation: "", motivation: "", paymentMethod: "bank_transfer" });
+  const [form, setForm] = useState({
+    phone: "",
+    organisation: "",
+    motivation: "",
+    paymentMethod: "bank_transfer",
+    registrationIntent: "TRAINING_ONLY" as "TRAINING_ONLY" | "AGENT_TRAINING",
+  });
 
   const load = useCallback(async () => {
     const result = await apiFetch<PublicCourse[]>("/api/v1/academy/courses");
@@ -51,6 +55,14 @@ export function PublicAcademyPage() {
   }, [load]);
 
   const selected = useMemo(() => courses.find((course) => course.id === selectedId), [courses, selectedId]);
+  const isAgent = user?.roles?.includes("AGENT") ?? false;
+  const displayPrice = useMemo(() => {
+    if (!selected) return null;
+    if (isAgent && form.registrationIntent === "AGENT_TRAINING") {
+      return selected.agentPrice;
+    }
+    return selected.publicPrice;
+  }, [selected, isAgent, form.registrationIntent]);
 
   async function register() {
     if (!selected) return;
@@ -65,6 +77,7 @@ export function PublicAcademyPage() {
         organisation: form.organisation,
         motivation: form.motivation,
         paymentMethod: form.paymentMethod,
+        registrationIntent: form.registrationIntent,
       }),
     });
     setBusy(false);
@@ -79,7 +92,7 @@ export function PublicAcademyPage() {
     <PageShell
       eyebrow="HomeLink Academy"
       title="Professional Property Training"
-      description="Master real estate with Zimbabwe's leading property platform. Comprehensive courses for aspiring agents and public learners."
+      description="Master real estate with Zimbabwe's leading property platform. Train with HomeLink as a public learner — no agent application required."
       highlights={[
         { value: String(courses.length), label: "Available Courses" },
         { value: "Certified", label: "Training" },
@@ -94,9 +107,9 @@ export function PublicAcademyPage() {
             <GraduationCap className="size-8" />
             <span className="text-lg font-semibold">HomeLink Academy</span>
           </div>
-          <h1 className="text-3xl md:text-4xl font-bold mb-4">Become a Certified Real Estate Professional</h1>
+          <h1 className="text-3xl md:text-4xl font-bold mb-4">Train with HomeLink Academy</h1>
           <p className="text-lg text-emerald-100 mb-6 max-w-2xl">
-            Join Zimbabwe's premier property training program. Learn from industry experts, gain practical skills, and earn your certification.
+            Learn from industry experts, gain practical skills, and earn your certification. You do not need to become a HomeLink agent to register — choose training-only enrolment and access your courses from your learner dashboard.
           </p>
           <div className="flex flex-wrap gap-4">
             <div className="flex items-center gap-2 bg-white/10 rounded-lg px-4 py-2">
@@ -158,8 +171,8 @@ export function PublicAcademyPage() {
               <TrendingUp className="size-6 text-purple-600 dark:text-purple-400" />
             </div>
             <div>
-              <p className="text-2xl font-bold">100%</p>
-              <p className="text-sm text-slate-600 dark:text-slate-400">Practical Skills</p>
+              <p className="text-2xl font-bold">{courses.length ? `${Math.round(courses.reduce((sum, c) => sum + c.lessonCount, 0) / Math.max(courses.length, 1))}+` : "0"}</p>
+              <p className="text-sm text-slate-600 dark:text-slate-400">Avg Lessons / Course</p>
             </div>
           </div>
         </div>
@@ -192,7 +205,12 @@ export function PublicAcademyPage() {
                     <p className="text-slate-600 dark:text-slate-400 leading-relaxed">{course.description}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-3xl font-bold text-emerald-600">{course.publicPrice ? `${course.currency} ${course.publicPrice.toFixed(2)}` : "Free"}</p>
+                    <p className="text-3xl font-bold text-emerald-600">
+                      {course.publicPrice ? `${course.currency} ${course.publicPrice.toFixed(2)}` : "Free"}
+                    </p>
+                    {course.agentPrice < course.publicPrice && (
+                      <p className="text-xs text-emerald-600 font-medium">Agents: {course.currency} {course.agentPrice.toFixed(2)}</p>
+                    )}
                     <p className="text-sm text-slate-500">{course.accessDurationDays} days access</p>
                   </div>
                 </div>
@@ -268,6 +286,30 @@ export function PublicAcademyPage() {
                   <TextInput label="Phone Number" value={form.phone} onChange={(phone) => setForm({ ...form, phone })} />
                   <TextInput label="Organization (Optional)" value={form.organisation} onChange={(organisation) => setForm({ ...form, organisation })} />
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+                    Registration type
+                    <select
+                      value={form.registrationIntent}
+                      onChange={(event) => setForm({ ...form, registrationIntent: event.target.value as "TRAINING_ONLY" | "AGENT_TRAINING" })}
+                      className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-900 focus:ring-2 focus:ring-emerald-500"
+                    >
+                      <option value="TRAINING_ONLY">Training only — I am not applying to become a HomeLink agent</option>
+                      {isAgent && <option value="AGENT_TRAINING">Agent training — I am a HomeLink agent</option>}
+                    </select>
+                  </label>
+                  {form.registrationIntent === "TRAINING_ONLY" && (
+                    <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900 dark:border-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-200">
+                      You will get a learner account and course access only. This registration does not make you a HomeLink agent.
+                    </div>
+                  )}
+                  {selected && displayPrice !== null && (
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm dark:border-slate-700 dark:bg-slate-900/50">
+                      <p className="font-semibold">Course fee</p>
+                      <p className="text-2xl font-bold text-emerald-600 mt-1">
+                        {displayPrice > 0 ? `${selected.currency} ${displayPrice.toFixed(2)}` : "Free"}
+                      </p>
+                    </div>
+                  )}
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
                     Payment Method
                     <select value={form.paymentMethod} onChange={(event) => setForm({ ...form, paymentMethod: event.target.value })} className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-900 focus:ring-2 focus:ring-emerald-500">
                       <option value="bank_transfer">Bank Transfer</option>
@@ -293,10 +335,6 @@ export function PublicAcademyPage() {
       </div>
     </PageShell>
   );
-}
-
-function InfoPill({ icon: Icon, label }: { icon: typeof Award; label: string }) {
-  return <div className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-600 dark:border-slate-700 dark:text-slate-300"><Icon className="size-4 text-emerald-600" />{label}</div>;
 }
 
 function TextInput({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {

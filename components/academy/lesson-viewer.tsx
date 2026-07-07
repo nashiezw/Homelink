@@ -86,10 +86,10 @@ export function LessonViewer({ course, initialLessonId, onBack, onCompleteLesson
         </div>
       </header>
 
-      <div className="flex">
+      <div className="flex flex-col lg:flex-row">
         {/* Sidebar - Lesson Navigation */}
         {sidebarOpen && (
-          <aside className="hidden w-80 flex-shrink-0 border-r border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950 lg:block">
+          <aside className="w-full flex-shrink-0 border-b border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950 lg:w-80 lg:border-b-0 lg:border-r">
             <h2 className="mb-4 text-sm font-semibold text-slate-900 dark:text-white">Course Content</h2>
             <div className="space-y-4">
               {course.modules.map((module) => (
@@ -167,7 +167,11 @@ export function LessonViewer({ course, initialLessonId, onBack, onCompleteLesson
               )}
 
               <div className="prose prose-slate max-w-none dark:prose-invert">
-                <div dangerouslySetInnerHTML={{ __html: currentLesson.richText }} />
+                {currentLesson.richText ? (
+                  <div dangerouslySetInnerHTML={{ __html: currentLesson.richText }} />
+                ) : (
+                  <p className="text-slate-600 dark:text-slate-400">This lesson has no written content yet. Review the video or downloads above.</p>
+                )}
               </div>
             </div>
 

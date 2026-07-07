@@ -97,6 +97,8 @@ const NAV_GROUPS: Array<{ label: string; items: NavItem[] }> = [
   {
     label: "HomeLink Agent Academy",
     items: [
+      { id: "academy", label: "Public Learners", icon: Users, academyView: "Public Learners" },
+      { id: "academy", label: "Lesson Content", icon: FileText, academyView: "Lesson Content" },
       { id: "academy", label: "Dashboard", icon: GraduationCap, academyView: "Dashboard" },
       { id: "academy", label: "Courses", icon: BookOpen, academyView: "Courses" },
       { id: "academy", label: "Lessons", icon: FileText, academyView: "Lessons" },
@@ -590,4 +592,5 @@ function NavButton({
     </button>
   );
 }
+
 

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { BookOpen, CheckCircle2, Clock, Download, Award, TrendingUp, Users, Zap, Target, Calendar } from "lucide-react";
+import { BookOpen, CheckCircle2, Clock, Download, Award, Target, Calendar, Zap, Users } from "lucide-react";
 import { PageShell } from "@/components/layout/page-shell";
 import { Button } from "@/components/ui/button";
 import { useApp } from "@/components/providers/app-provider";
@@ -84,14 +84,12 @@ export function AgentTrainingDashboard() {
     );
   }
 
-  const selectedCourseData = data.assignedCourses.find(c => c.id === selectedCourse);
-
   return (
     <PageShell
       eyebrow="Agent Training"
       title={`Welcome, ${user?.name}`}
       description="Track your training progress, access courses, and achieve certification."
-      actions={<Link href="/academy"><Button variant="secondary"><BookOpen className="size-4 mr-2" /> Browse Academy Courses</Button></Link>}
+      actions={<Link href="/dashboard/academy"><Button variant="secondary"><BookOpen className="size-4 mr-2" /> Open Course Viewer</Button></Link>}
     >
       {/* Stats Overview */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

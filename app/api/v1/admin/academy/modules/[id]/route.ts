@@ -13,7 +13,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   const prisma = getMainPrisma();
   
   try {
-    const module = await prisma.trainingModule.update({
+    const trainingModule = await prisma.trainingModule.update({
       where: { id },
       data: {
         title: body.title,
@@ -21,7 +21,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
         sortOrder: body.sortOrder,
       }
     });
-    return ok(module);
+    return ok(trainingModule);
   } catch (error) {
     console.error("Failed to update module", error);
     return problem(500, "MODULE_UPDATE_FAILED", "Module could not be updated.");

@@ -95,6 +95,8 @@ type AcademyData = {
   upcomingExpiringCertificates: Array<{ id: string; certificateNumber: string; agentId: string; expiresAt?: string }>;
   overdueAssignments: number;
   recentActivity: Array<{ id: string; actorId?: string; action: string; target: string; createdAt: string }>;
+  discussionThreads?: Array<{ id: string; title: string; courseTitle: string; posts: number; status: string; updatedAt: string }>;
+  leaderboard?: Array<{ id: string; agentId: string; badgeName: string; xp: number; awardedAt: string }>;
 };
 
 type AcademyLesson = {
@@ -234,6 +236,7 @@ export function AgentAcademyHub() {
   const [viewCourse, setViewCourse] = useState<AcademyCourse | null>(null);
   const [selectedLesson, setSelectedLesson] = useState<AcademyLesson | null>(null);
   const [selectedModule, setSelectedModule] = useState<{ id: string; courseId: string; title: string; description?: string; sortOrder: number } | null>(null);
+  const [analytics, setAnalytics] = useState<Record<string, unknown> | null>(null);
   const load = useCallback(async () => {
     const result = await apiFetch<AcademyData>("/api/v1/admin/academy");
     if (result.data) setData(result.data);
@@ -243,6 +246,13 @@ export function AgentAcademyHub() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    if (tab !== "Analytics") return;
+    void apiFetch<Record<string, unknown>>("/api/v1/admin/academy/analytics").then((result) => {
+      if (result.data) setAnalytics(result.data);
+    });
+  }, [tab]);
 
   useEffect(() => {
     const requested = searchParams.get("academyView");
@@ -433,6 +443,7 @@ export function AgentAcademyHub() {
         <FeatureWorkbench
           tab={tab}
           data={data}
+          analytics={analytics}
           openDrawer={(next) => setDrawer(next)}
           action={action}
           query={query}
@@ -587,6 +598,7 @@ function DocumentCell({ document }: { document: AcademyDocument }) {
 function FeatureWorkbench({
   tab,
   data,
+  analytics,
   openDrawer,
   action,
   query,
@@ -596,6 +608,7 @@ function FeatureWorkbench({
 }: {
   tab: AcademyTab;
   data: AcademyData;
+  analytics: Record<string, unknown> | null;
   openDrawer: (drawer: "quiz" | "exam" | "assignment" | "path" | "announcement" | "badge" | null) => void;
   action: (body: Record<string, unknown>, success: string) => Promise<unknown>;
   query: string;
@@ -669,9 +682,52 @@ function FeatureWorkbench({
   if (tab === "Badges") {
     return <BuilderList title="Badges and Achievements" icon={BadgeCheck} rows={data.badges.map((badge) => ({ id: badge.id, title: badge.name, active: badge.active, detail: `${badge.xp} XP - ${badge.description ?? ""}` }))} actionLabel="Create Badge" onCreate={() => openDrawer("badge")} onArchive={(row) => action({ action: row.active === false ? "restore_badge" : "archive_badge", badgeId: row.id }, row.active === false ? "Badge restored." : "Badge archived.")} />;
   }
+  if (tab === "Discussion Board") {
+    return (
+      <BuilderList
+        title="Discussion Board"
+        icon={Users}
+        rows={(data.discussionThreads ?? []).map((thread) => ({
+          id: thread.id,
+          title: thread.title,
+          active: thread.status !== "LOCKED",
+          detail: `${thread.courseTitle} - ${thread.posts} posts - ${thread.status}`,
+        }))}
+        actionLabel="Threads are created by learners and moderators"
+      />
+    );
+  }
+  if (tab === "Leaderboard") {
+    return (
+      <BuilderList
+        title="Leaderboard"
+        icon={Trophy}
+        rows={(data.leaderboard ?? []).map((entry) => ({
+          id: entry.id,
+          title: entry.badgeName,
+          active: true,
+          detail: `${entry.agentId} - ${entry.xp} XP - ${new Date(entry.awardedAt).toLocaleDateString()}`,
+        }))}
+        actionLabel="Badges and XP drive leaderboard rankings"
+      />
+    );
+  }
   if (tab === "Analytics") {
+    const revenue = analytics?.revenue as { total?: number; count?: number } | undefined;
     return (
       <div className="grid gap-4 xl:grid-cols-2">
+        <ActivityPanel title="Revenue & Registrations" icon={BarChart3}>
+          <MetricRow label="Academy revenue" value={`USD ${Number(revenue?.total ?? data.metrics.academyRevenue ?? 0).toFixed(2)}`} />
+          <MetricRow label="Paid registrations" value={String(revenue?.count ?? 0)} />
+          <MetricRow label="Total registrations" value={String(analytics?.registrations ?? data.metrics.publicLearners ?? 0)} />
+          <MetricRow label="Active learners (7d)" value={String(analytics?.activeLearners ?? data.metrics.activeLearners ?? 0)} />
+        </ActivityPanel>
+        <ActivityPanel title="Completion & Certificates" icon={Trophy}>
+          <MetricRow label="Course completions" value={String(analytics?.completions ?? 0)} />
+          <MetricRow label="Certificates issued" value={String(analytics?.certificates ?? data.metrics.certificatesIssued ?? 0)} />
+          <MetricRow label="Completion rate" value={`${data.metrics.completionRate ?? 0}%`} />
+          <MetricRow label="Average score" value={`${data.metrics.averageScore ?? 0}%`} />
+        </ActivityPanel>
         <ActivityPanel title="Most Active Agents" icon={Trophy}>{data.mostActiveAgents.map((item) => <MetricRow key={item.agentId} label={item.agentId} value={item.actions} />)}</ActivityPanel>
         <ActivityPanel title="Agents Needing Attention" icon={Users}>{data.agentsNeedingAttention.map((item) => <MetricRow key={item.id} label={item.agentId} value={`${item.percentComplete}%`} />)}</ActivityPanel>
       </div>
@@ -776,6 +832,7 @@ function PublicLearnersPanel({
             ),
           },
           { key: "course", header: "Course", render: (row) => <span className="text-sm text-slate-300">{row.course.title}</span> },
+          { key: "type", header: "Type", render: (row) => <AdminStatusBadge status={row.learnerType === "PUBLIC_LEARNER" ? "Training only" : "Agent training"} variant={row.learnerType === "PUBLIC_LEARNER" ? "info" : "success"} /> },
           { key: "amount", header: "Amount", render: (row) => `${row.currency} ${row.amount.toFixed(2)}` },
           { key: "status", header: "Status", render: (row) => <AdminStatusBadge status={row.status.replace(/_/g, " ")} variant={row.status === "APPROVED" ? "success" : row.status === "REJECTED" ? "danger" : "warning"} /> },
           {
@@ -1037,7 +1094,7 @@ function BadgeDrawer({ open, busy, onClose, onSave }: { open: boolean; busy: boo
   );
 }
 
-function LessonDrawer({ open, busy, lesson: editingLesson, courses, onClose, onSave }: { open: boolean; busy: boolean; lesson?: AcademyLesson | null; courses: AcademyCourse[]; onClose: () => void; onSave: (lesson: Record<string, unknown>) => Promise<unknown> }) {
+function LessonDrawer({ open, busy, lesson: editingLesson, courses: _courses, onClose, onSave }: { open: boolean; busy: boolean; lesson?: AcademyLesson | null; courses: AcademyCourse[]; onClose: () => void; onSave: (lesson: Record<string, unknown>) => Promise<unknown> }) {
   const [lesson, setLesson] = useState({
     title: editingLesson?.title ?? "",
     summary: editingLesson?.summary ?? "",
@@ -1213,9 +1270,9 @@ function detectDocumentType(fileName: string, mime: string) {
 function LessonContentManager({ lessons, documents, action }: { lessons: AcademyLesson[]; documents: AcademyDocument[]; action: (body: Record<string, unknown>, success: string) => Promise<unknown> }) {
   const [selectedLessonId, setSelectedLessonId] = useState("");
   const [contentTab, setContentTab] = useState<"videos" | "documents" | "resources" | "downloads">("videos");
-  const [busy, setBusy] = useState(false);
   const [drawer, setDrawer] = useState<"video" | "resource" | "download" | "document" | null>(null);
   const [selectedItem, setSelectedItem] = useState<any>(null);
+  const busy = false;
 
   const selectedLesson = lessons.find((l) => l.id === selectedLessonId);
 

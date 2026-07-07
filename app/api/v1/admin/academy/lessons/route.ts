@@ -86,7 +86,7 @@ export async function POST(request: Request) {
       });
       sectionId = section.id;
     } else if (!sectionId && body.courseId) {
-      const module = await prisma.trainingModule.create({
+      const trainingModule = await prisma.trainingModule.create({
         data: {
           courseId: body.courseId,
           title: body.moduleTitle || "Default Module",
@@ -95,7 +95,7 @@ export async function POST(request: Request) {
       });
       const section = await prisma.trainingSection.create({
         data: {
-          moduleId: module.id,
+          moduleId: trainingModule.id,
           title: body.sectionTitle || "Default Section",
           sortOrder: 0,
         }

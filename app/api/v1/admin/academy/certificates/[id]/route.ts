@@ -19,8 +19,6 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
         status: body.status,
         expiresAt: body.expiresAt ? new Date(body.expiresAt) : undefined,
         revokedAt: body.status === "REVOKED" ? new Date() : undefined,
-        revokedById: body.status === "REVOKED" ? auth.user.id : undefined,
-        metadata: body.metadata,
       }
     });
     return ok(certificate);

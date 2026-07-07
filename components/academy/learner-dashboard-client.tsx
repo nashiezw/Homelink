@@ -2,9 +2,8 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Award, Bell, BookOpen, CheckCircle2, Download, FileText, Loader2, Upload, Clock, TrendingUp, Users, Zap } from "lucide-react";
+import { Award, Bell, BookOpen, CheckCircle2, Download, FileText, Loader2, Upload, Clock, TrendingUp, Zap } from "lucide-react";
 import { PageShell } from "@/components/layout/page-shell";
-import { StatCard } from "@/components/dashboard/stat-card";
 import { Button } from "@/components/ui/button";
 import { useApp } from "@/components/providers/app-provider";
 import { apiFetch } from "@/lib/api/client";
@@ -12,9 +11,19 @@ import { LessonViewer } from "@/components/academy/lesson-viewer";
 
 type LearnerDashboard = {
   metrics: Record<string, number>;
+  certificates: Array<{
+    id: string;
+    certificateNumber: string;
+    courseTitle: string;
+    issuedAt: string;
+    expiresAt?: string | null;
+    verifyUrl: string;
+  }>;
   applications: Array<{
     id: string;
     status: string;
+    learnerType?: string;
+    progress?: number;
     amount: number;
     currency: string;
     proofUrl?: string;
@@ -26,7 +35,7 @@ type LearnerDashboard = {
       title: string;
       description: string;
       certificateEnabled: boolean;
-      modules: Array<{ id: string; title: string; lessons: Array<{ id: string; title: string; summary?: string; estimatedMinutes: number; videoUrl?: string; pdfUrl?: string }> }>;
+      modules: Array<{ id: string; title: string; lessons: Array<{ id: string; title: string; summary?: string; richText?: string; estimatedMinutes: number; completionRequirement?: string; videoUrl?: string; embeddedVideoUrl?: string; pdfUrl?: string; completed?: boolean; lessonVideos?: Array<{ id: string; title: string; url: string; provider: string }>; lessonDownloads?: Array<{ id: string; title: string; url: string; type: string }> }> }>;
     };
   }>;
   documents: Array<{ id: string; title: string; description?: string; fileType: string; category?: string; downloadUrl: string }>;
@@ -93,9 +102,17 @@ export function LearnerDashboardClient() {
         course={viewingCourse.course}
         initialLessonId={viewingCourse.lessonId}
         onBack={() => setViewingCourse(null)}
-        onCompleteLesson={(lessonId) => {
-          showToast("Lesson marked as complete!");
-          void load();
+        onCompleteLesson={async (lessonId) => {
+          const result = await apiFetch<{ courseCompleted?: boolean }>("/api/v1/academy/progress", {
+            method: "POST",
+            body: JSON.stringify({ lessonId }),
+          });
+          if (result.error) {
+            showToast(result.error.message, "error");
+            return;
+          }
+          showToast(result.data?.courseCompleted ? "Course completed! Certificate issued if eligible." : "Lesson marked as complete!");
+          await load();
         }}
       />
     );
@@ -149,12 +166,12 @@ export function LearnerDashboardClient() {
         </div>
         <div className="rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-950">
           <div className="flex items-center gap-3">
-            <div className="rounded-xl bg-blue-100 p-3 dark:bg-blue-900/30">
-              <Download className="size-6 text-blue-600 dark:text-blue-400" />
+            <div className="rounded-xl bg-emerald-100 p-3 dark:bg-emerald-900/30">
+              <TrendingUp className="size-6 text-emerald-600 dark:text-emerald-400" />
             </div>
             <div>
-              <p className="text-2xl font-bold">{data.metrics.downloads}</p>
-              <p className="text-sm text-slate-600 dark:text-slate-400">Resources</p>
+              <p className="text-2xl font-bold">{data.metrics.progress ?? 0}%</p>
+              <p className="text-sm text-slate-600 dark:text-slate-400">Overall Progress</p>
             </div>
           </div>
         </div>
@@ -181,6 +198,17 @@ export function LearnerDashboardClient() {
                     </span>
                   </div>
                   <h3 className="text-xl font-bold mb-2">{application.course.title}</h3>
+                  {application.status === "APPROVED" && (
+                    <div className="mb-3">
+                      <div className="flex items-center justify-between text-sm mb-1">
+                        <span className="text-slate-600 dark:text-slate-400">Progress</span>
+                        <span className="font-semibold text-emerald-600">{application.progress ?? 0}%</span>
+                      </div>
+                      <div className="h-2 rounded-full bg-slate-200 dark:bg-slate-800">
+                        <div className="h-2 rounded-full bg-emerald-500 transition-all" style={{ width: `${application.progress ?? 0}%` }} />
+                      </div>
+                    </div>
+                  )}
                   <p className="text-slate-600 dark:text-slate-400 leading-relaxed">{application.course.description}</p>
                   {application.adminNote && (
                     <div className="mt-3 rounded-lg bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-900/20 dark:text-amber-200">
@@ -252,7 +280,7 @@ export function LearnerDashboardClient() {
                                   {lesson.estimatedMinutes} minutes
                                 </p>
                               </div>
-                              <CheckCircle2 className="size-5 text-emerald-500 flex-shrink-0" />
+                              <CheckCircle2 className={`size-5 flex-shrink-0 ${lesson.completed ? "text-emerald-500" : "text-slate-300"}`} />
                             </div>
                             <p className="mt-2 text-sm text-slate-600 dark:text-slate-400 line-clamp-2">{lesson.summary}</p>
                             <div className="mt-3 flex flex-wrap gap-2">
@@ -289,6 +317,25 @@ export function LearnerDashboardClient() {
         </section>
 
         <aside className="space-y-4">
+          {!!data.certificates?.length && (
+            <div className="rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-950">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="rounded-xl bg-purple-100 p-2 dark:bg-purple-900/30">
+                  <Award className="size-5 text-purple-600 dark:text-purple-400" />
+                </div>
+                <h3 className="text-lg font-bold">My Certificates</h3>
+              </div>
+              <div className="space-y-2">
+                {data.certificates.map((certificate) => (
+                  <div key={certificate.id} className="rounded-xl border border-slate-200 p-3 text-sm dark:border-slate-700">
+                    <p className="font-semibold">{certificate.courseTitle}</p>
+                    <p className="text-xs text-slate-500 mt-1">{certificate.certificateNumber}</p>
+                    <a href={certificate.verifyUrl} className="mt-2 inline-flex text-xs font-semibold text-emerald-600 hover:underline">Verify certificate</a>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           <div className="rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-950">
             <div className="flex items-center gap-3 mb-4">
               <div className="rounded-xl bg-blue-100 p-2 dark:bg-blue-900/30">
@@ -336,15 +383,6 @@ export function LearnerDashboardClient() {
 
       <input ref={fileRef} type="file" accept=".pdf,.png,.jpg,.jpeg,.webp" className="hidden" onChange={(event) => void upload(event.target.files)} />
     </PageShell>
-  );
-}
-
-function Panel({ title, icon: Icon, children }: { title: string; icon: typeof Bell; children: React.ReactNode }) {
-  return (
-    <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950">
-      <div className="mb-3 flex items-center gap-2"><Icon className="size-4 text-emerald-600" /><h2 className="font-semibold">{title}</h2></div>
-      <div className="space-y-2">{children}</div>
-    </section>
   );
 }
 

@@ -42,7 +42,7 @@ export async function POST(request: Request) {
     const body = await request.json();
     const prisma = getMainPrisma();
     
-    const module = await prisma.trainingModule.create({
+    const trainingModule = await prisma.trainingModule.create({
       data: {
         courseId: body.courseId,
         title: body.title,
@@ -54,13 +54,13 @@ export async function POST(request: Request) {
     // Create default section
     await prisma.trainingSection.create({
       data: {
-        moduleId: module.id,
+        moduleId: trainingModule.id,
         title: "Default Section",
         sortOrder: 0,
       }
     });
     
-    return ok(module);
+    return ok(trainingModule);
   } catch (error) {
     console.error("Failed to create module", error);
     return problem(500, "MODULE_CREATE_FAILED", "Module could not be created.");

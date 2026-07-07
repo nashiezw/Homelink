@@ -18,6 +18,12 @@ export async function POST(request: Request) {
     : getStore().getUserById(userId);
   if (!user) return problem(401, "UNAUTHORIZED", "Your session is no longer valid.");
 
+  const registrationIntent =
+    body.registrationIntent === "AGENT_TRAINING" || body.registrationIntent === "TRAINING_ONLY"
+      ? body.registrationIntent
+      : undefined;
+  const isAgent = user.roles?.includes("AGENT") ?? false;
+
   const result = await registerPublicLearner({
     learnerId: userId,
     courseId,
@@ -27,6 +33,8 @@ export async function POST(request: Request) {
     organisation: typeof body.organisation === "string" ? body.organisation : undefined,
     motivation: typeof body.motivation === "string" ? body.motivation : undefined,
     paymentMethod: typeof body.paymentMethod === "string" ? body.paymentMethod : undefined,
+    registrationIntent,
+    isAgent,
   });
   if (result === "COURSE_NOT_AVAILABLE") {
     return problem(404, "COURSE_NOT_AVAILABLE", "This course is not currently open for public registration.");

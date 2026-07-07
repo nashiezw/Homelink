@@ -89,22 +89,27 @@ export async function GET(request: Request) {
       }),
     ]);
     
+    const lessonProgress = await prisma.lessonProgress.findMany({
+      where: { agentId: userId, status: "COMPLETED" },
+      select: { lessonId: true, lesson: { select: { section: { select: { module: { select: { courseId: true } } } } } } },
+    });
+    const completedLessonIds = new Set(lessonProgress.map((row) => row.lessonId));
+    
     // Calculate stats
     const totalLessons = enrolments.reduce((sum, enrolment) => {
-      return sum + enrolment.course.modules.reduce((moduleSum: number, module: any) => {
-        return moduleSum + module.sections.reduce((sectionSum: number, section: any) => {
+      return sum + enrolment.course.modules.reduce((moduleSum: number, module: { sections: Array<{ lessons: unknown[] }> }) => {
+        return moduleSum + module.sections.reduce((sectionSum: number, section: { lessons: unknown[] }) => {
           return sectionSum + section.lessons.length;
         }, 0);
       }, 0);
     }, 0);
     
-    const completedLessons = progress.filter(p => p.status === "COMPLETED").length;
+    const completedLessons = lessonProgress.length;
     const completedCourses = progress.filter(p => p.status === "COMPLETED").length;
     const totalLearningMinutes = progress.reduce((sum, p) => sum + p.learningMinutes, 0);
     
     const assignedCourses = enrolments.map(enrolment => {
       const courseProgress = progress.find(p => p.courseId === enrolment.courseId);
-      const completedLessonIds = new Set<string>();
       
       return {
         id: enrolment.course.id,
@@ -112,11 +117,11 @@ export async function GET(request: Request) {
         description: enrolment.course.description,
         progress: courseProgress?.percentComplete || 0,
         status: courseProgress?.status || "NOT_STARTED",
-        modules: enrolment.course.modules.map((module: any) => ({
+        modules: enrolment.course.modules.map((module: { id: string; title: string; sections: Array<{ lessons: Array<{ id: string; title: string; estimatedMinutes: number }> }> }) => ({
           id: module.id,
           title: module.title,
-          lessons: module.sections.flatMap((section: any) => 
-            section.lessons.map((lesson: any) => ({
+          lessons: module.sections.flatMap((section) => 
+            section.lessons.map((lesson) => ({
               id: lesson.id,
               title: lesson.title,
               completed: completedLessonIds.has(lesson.id),

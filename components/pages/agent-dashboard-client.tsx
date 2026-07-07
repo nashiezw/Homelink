@@ -299,6 +299,20 @@ export function AgentDashboardClient() {
 
       {tab === "Training" && (
         <div className="grid gap-4">
+          <div className="premium-card rounded-xl p-5 flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <p className="font-semibold">HomeLink Agent Academy LMS</p>
+              <p className="mt-1 text-sm text-slate-600">Access assigned courses, lessons, certificates, and downloadable resources.</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Link href="/dashboard/agent/training" className="inline-flex items-center rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">
+                Open Training Dashboard
+              </Link>
+              <Link href="/academy" className="inline-flex items-center rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-50 dark:border-slate-700">
+                Enrol in Courses
+              </Link>
+            </div>
+          </div>
           {!!training.certificates?.length && (
             <div className="premium-card rounded-xl p-5">
               <p className="font-semibold">Track certificates</p>

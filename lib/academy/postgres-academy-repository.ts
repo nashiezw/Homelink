@@ -71,6 +71,8 @@ export async function getAcademyDashboard() {
     recentActivity,
     publicLearnerApplications,
     academyRevenue,
+    discussionThreads,
+    agentBadges,
   ] = await Promise.all([
     prisma.trainingCourse.findMany({ include: { category: true }, orderBy: { updatedAt: "desc" } }),
     prisma.trainingLesson.count(),
@@ -106,6 +108,16 @@ export async function getAcademyDashboard() {
       orderBy: { updatedAt: "desc" },
     }),
     prisma.payment.aggregate({ where: { plan: "academy_course", status: "PAID" }, _sum: { amount: true } }),
+    prisma.discussionThread.findMany({
+      include: { posts: true, course: { select: { id: true, title: true } } },
+      orderBy: { updatedAt: "desc" },
+      take: 50,
+    }),
+    prisma.agentBadge.findMany({
+      include: { badge: true },
+      orderBy: { awardedAt: "desc" },
+      take: 50,
+    }),
   ]);
 
   const activeLearners = new Set([
@@ -209,6 +221,21 @@ export async function getAcademyDashboard() {
       .slice(0, 8),
     overdueAssignments: assignmentSubmissions.filter((submission) => submission.status === AssignmentSubmissionStatus.RESUBMISSION_REQUESTED).length,
     recentActivity,
+    discussionThreads: discussionThreads.map((thread) => ({
+      id: thread.id,
+      title: thread.title,
+      courseTitle: thread.course?.title ?? "General",
+      posts: thread.posts.length,
+      status: thread.locked ? "LOCKED" : thread.pinned ? "PINNED" : "OPEN",
+      updatedAt: thread.updatedAt.toISOString(),
+    })),
+    leaderboard: agentBadges.map((entry) => ({
+      id: entry.id,
+      agentId: entry.agentId,
+      badgeName: entry.badge.name,
+      xp: entry.badge.xp,
+      awardedAt: entry.awardedAt.toISOString(),
+    })),
   };
 }
 
@@ -476,7 +503,7 @@ export async function runAcademyAction(body: Record<string, any>, actor: Actor) 
     return download;
   }
   if (action === "create_module") {
-    const module = await prisma.trainingModule.create({
+    const trainingModule = await prisma.trainingModule.create({
       data: {
         courseId: String(body.module?.courseId),
         title: required(body.module?.title, "Module title"),
@@ -487,16 +514,16 @@ export async function runAcademyAction(body: Record<string, any>, actor: Actor) 
     // Create default section
     await prisma.trainingSection.create({
       data: {
-        moduleId: module.id,
+        moduleId: trainingModule.id,
         title: "Default Section",
         sortOrder: 0,
       }
     });
-    await audit(actor, "academy.module.create", module.id, { title: module.title });
-    return module;
+    await audit(actor, "academy.module.create", trainingModule.id, { title: trainingModule.title });
+    return trainingModule;
   }
   if (action === "update_module") {
-    const module = await prisma.trainingModule.update({
+    const trainingModule = await prisma.trainingModule.update({
       where: { id: String(body.moduleId) },
       data: {
         title: body.module?.title,
@@ -504,13 +531,13 @@ export async function runAcademyAction(body: Record<string, any>, actor: Actor) 
         sortOrder: body.module?.sortOrder,
       }
     });
-    await audit(actor, "academy.module.update", module.id, { title: module.title });
-    return module;
+    await audit(actor, "academy.module.update", trainingModule.id, { title: trainingModule.title });
+    return trainingModule;
   }
   if (action === "delete_module") {
-    const module = await prisma.trainingModule.delete({ where: { id: String(body.moduleId) } });
-    await audit(actor, "academy.module.delete", module.id, { title: module.title });
-    return module;
+    const trainingModule = await prisma.trainingModule.delete({ where: { id: String(body.moduleId) } });
+    await audit(actor, "academy.module.delete", trainingModule.id, { title: trainingModule.title });
+    return trainingModule;
   }
   if (action === "create_quiz") {
     const quiz = await prisma.quiz.create({
