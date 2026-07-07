@@ -20,6 +20,8 @@ import { LessonViewer } from "@/components/academy/lesson-viewer";
 import { QuizPanel } from "@/components/academy/quiz-panel";
 import { ExamPanel } from "@/components/academy/exam-panel";
 import { AssignmentPanel } from "@/components/academy/assignment-panel";
+import { DiscussionPanel } from "@/components/academy/discussion-panel";
+import { cn } from "@/lib/utils";
 
 type CourseDetail = {
   settings: { academyName: string; primaryColour: string };
@@ -69,7 +71,7 @@ type CourseDetail = {
   materials: Array<{ id: string; title: string; level: string; location: string; fileType: string; downloadUrl: string }>;
 };
 
-type Tab = "curriculum" | "materials" | "assessments" | "progress";
+type Tab = "curriculum" | "materials" | "assessments" | "discussions" | "progress";
 
 export function CourseLearnerView({ courseId }: { courseId: string }) {
   const { user, showToast } = useApp();
@@ -103,6 +105,7 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
   }
 
   if (viewingLessonId) {
+    const primaryColour = data.settings.primaryColour ?? "#008b68";
     const courseForViewer = {
       id: data.course.id,
       title: data.course.title,
@@ -121,7 +124,12 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
       <LessonViewer
         course={courseForViewer}
         initialLessonId={viewingLessonId}
+        primaryColour={primaryColour}
         onBack={() => setViewingLessonId(null)}
+        onToggleBookmark={async (lessonId, bookmarked) => {
+          await apiFetch("/api/v1/academy/bookmarks", { method: "POST", body: JSON.stringify({ lessonId, bookmarked }) });
+          await load();
+        }}
         onCompleteLesson={async (lessonId) => {
           const result = await apiFetch<{ courseCompleted?: boolean }>("/api/v1/academy/progress", { method: "POST", body: JSON.stringify({ lessonId }) });
           if (result.error) { showToast(result.error.message, "error"); return; }
@@ -168,6 +176,8 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
     );
   }
 
+  const primaryColour = data.settings.primaryColour ?? "#008b68";
+
   return (
     <PageShell
       eyebrow={data.settings.academyName}
@@ -177,62 +187,74 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
         <Link href="/dashboard/academy"><Button variant="secondary">My Dashboard</Button></Link>
       }
     >
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-950">
-        <div className="flex flex-wrap items-center justify-between gap-4">
+      <div className="overflow-hidden rounded-3xl border border-slate-200 bg-gradient-to-br from-white to-slate-50 p-6 shadow-soft dark:border-slate-800 dark:from-slate-950 dark:to-slate-900 sm:p-8">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-sm text-slate-500">{data.course.instructor ?? "HomeLink trainers"}</p>
-            <div className="mt-2 flex items-center gap-2">
-              <div className="h-2 flex-1 min-w-[200px] max-w-md rounded-full bg-slate-200 dark:bg-slate-800">
-                <div className="h-2 rounded-full bg-emerald-500 transition-all" style={{ width: `${data.course.progress}%` }} />
-              </div>
-              <span className="text-sm font-semibold text-emerald-600">{data.course.progress}%</span>
-            </div>
+            <p className="text-sm font-medium text-slate-500">{data.course.instructor ?? "HomeLink trainers"}</p>
+            <p className="mt-3 text-3xl font-bold" style={{ color: primaryColour }}>{data.course.progress}%</p>
+            <p className="text-sm text-slate-500">Course completion</p>
           </div>
-          {data.course.certificateEnabled && (
-            <div className="flex items-center gap-2 text-sm text-amber-700 dark:text-amber-300">
-              <Award className="size-4" /> Certificate on completion
+          <div className="w-full sm:max-w-xs">
+            <div className="h-3 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
+              <div className="h-full rounded-full transition-all duration-700" style={{ width: `${data.course.progress}%`, backgroundColor: primaryColour }} />
             </div>
-          )}
+            {data.course.certificateEnabled && (
+              <p className="mt-3 flex items-center gap-2 text-sm font-medium text-amber-700 dark:text-amber-300">
+                <Award className="size-4" /> Certificate on completion
+              </p>
+            )}
+          </div>
         </div>
       </div>
 
-      <div className="mt-6 flex flex-wrap gap-2">
-        {(["curriculum", "materials", "assessments", "progress"] as Tab[]).map((item) => (
-          <Button key={item} variant={tab === item ? "primary" : "secondary"} onClick={() => setTab(item)}>
-            {item.charAt(0).toUpperCase() + item.slice(1)}
+      <div className="mt-6 flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+        {(["curriculum", "materials", "assessments", "discussions", "progress"] as Tab[]).map((item) => (
+          <Button
+            key={item}
+            variant={tab === item ? "primary" : "secondary"}
+            className={cn("shrink-0 capitalize", tab === item && "shadow-soft")}
+            style={tab === item ? { backgroundColor: primaryColour } : undefined}
+            onClick={() => setTab(item)}
+          >
+            {item}
           </Button>
         ))}
       </div>
 
       {tab === "curriculum" && (
-        <div className="mt-6 space-y-4">
+        <div className="mt-6 space-y-5">
           {data.course.modules.map((module) => (
-            <section key={module.id} className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-950">
-              <div className="flex items-center justify-between gap-3 mb-4">
-                <h3 className="text-lg font-bold flex items-center gap-2"><BookOpen className="size-5 text-emerald-500" /> {module.title}</h3>
-                <span className="text-sm text-slate-500">{module.completedCount}/{module.lessonCount} complete</span>
-              </div>
-              {module.sections.map((section) => (
-                <div key={section.id} className="mb-4">
-                  {module.sections.length > 1 && <p className="text-xs font-semibold uppercase text-slate-500 mb-2">{section.title}</p>}
-                  <div className="grid gap-2 md:grid-cols-2">
-                    {section.lessons.map((lesson) => (
-                      <button
-                        key={lesson.id}
-                        type="button"
-                        onClick={() => setViewingLessonId(lesson.id)}
-                        className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-left hover:border-emerald-400 dark:border-slate-700 dark:bg-slate-900/50"
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <p className="font-semibold">{lesson.title}</p>
-                          <CheckCircle2 className={`size-5 ${lesson.completed ? "text-emerald-500" : "text-slate-300"}`} />
-                        </div>
-                        <p className="mt-1 text-xs text-slate-500">{lesson.estimatedMinutes} min</p>
-                      </button>
-                    ))}
-                  </div>
+            <section key={module.id} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-soft dark:border-slate-800 dark:bg-slate-950">
+              <div className="border-b border-slate-100 bg-slate-50/80 px-5 py-4 dark:border-slate-800 dark:bg-slate-900/50 sm:px-6">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <h3 className="text-lg font-bold flex items-center gap-2"><BookOpen className="size-5" style={{ color: primaryColour }} /> {module.title}</h3>
+                  <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-600 shadow-sm dark:bg-slate-800 dark:text-slate-300">{module.completedCount}/{module.lessonCount} complete</span>
                 </div>
-              ))}
+                {module.description && <p className="mt-2 text-sm leading-relaxed text-slate-500">{module.description as string}</p>}
+              </div>
+              <div className="p-4 sm:p-5">
+                {module.sections.map((section) => (
+                  <div key={section.id} className="mb-4 last:mb-0">
+                    {module.sections.length > 1 && <p className="mb-3 text-xs font-bold uppercase tracking-wider text-slate-400">{section.title}</p>}
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      {section.lessons.map((lesson) => (
+                        <button
+                          key={lesson.id}
+                          type="button"
+                          onClick={() => setViewingLessonId(lesson.id)}
+                          className="group rounded-xl border border-slate-200 bg-white p-4 text-left transition-all hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-card-hover dark:border-slate-700 dark:bg-slate-900/30"
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <p className="font-semibold leading-snug group-hover:text-emerald-700 dark:group-hover:text-emerald-300">{lesson.title}</p>
+                            <CheckCircle2 className={cn("size-5 shrink-0", lesson.completed ? "text-emerald-500" : "text-slate-200 dark:text-slate-700")} />
+                          </div>
+                          <p className="mt-2 text-xs text-slate-500">{lesson.estimatedMinutes} min · {lesson.completionRequirement.replace(/_/g, " ")}</p>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </section>
           ))}
         </div>
@@ -287,6 +309,12 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
               </div>
             ))}
           </AssessmentSection>
+        </div>
+      )}
+
+      {tab === "discussions" && (
+        <div className="mt-6">
+          <DiscussionPanel courseId={courseId} />
         </div>
       )}
 

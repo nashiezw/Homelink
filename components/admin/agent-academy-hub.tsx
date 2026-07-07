@@ -47,10 +47,10 @@ import {
   AdminSelect,
   AdminStatPill,
   AdminStatusBadge,
-  AdminTabStrip,
 } from "@/components/admin/ui/admin-ui";
 import { BarChart, MetricRow } from "@/components/admin/charts";
 import { CourseWorkspace } from "@/components/admin/academy/course-workspace";
+import { AcademyHubNav, resolveAcademyNav, type AcademyPrimaryTab } from "@/components/admin/academy/academy-hub-nav";
 import { cn } from "@/lib/utils";
 import type { LucideIcon } from "lucide-react";
 
@@ -193,20 +193,15 @@ type AcademyVideo = {
 const academyTabs = [
   "Dashboard",
   "Courses",
-  "Lessons",
-  "Lesson Content",
+  "Public Learners",
+  "Certificates",
   "Training Resources",
   "Video Library",
-  "Quizzes",
-  "Assignments",
-  "Final Exams",
-  "Certificates",
-  "Public Learners",
   "Learning Paths",
+  "Badges",
+  "Leaderboard",
   "Announcements",
   "Discussion Board",
-  "Leaderboard",
-  "Badges",
   "Analytics",
   "Settings",
 ] as const;
@@ -215,7 +210,6 @@ type AcademyTab = (typeof academyTabs)[number];
 
 const documentTypes = ["PDF", "DOCX", "XLSX", "PPTX", "IMAGE", "VIDEO", "AUDIO", "ZIP"] as const;
 const featureTiles: Array<[AcademyTab, LucideIcon, string]> = [
-  ["Lessons", BookOpen, "Visual lesson builder with rich text, media, downloads, comments, bookmarks, and progress tracking."],
   ["Learning Paths", Library, "Programme sequencing for multi-course certification journeys."],
   ["Announcements", Megaphone, "Publish targeted Academy updates to agents and branches."],
   ["Discussion Board", Users, "Course discussion threads, replies, reactions, mentions, bookmarks, and moderation."],
@@ -228,6 +222,7 @@ export function AgentAcademyHub() {
   const { showToast } = useApp();
   const searchParams = useSearchParams();
   const [data, setData] = useState<AcademyData | null>(null);
+  const [primaryTab, setPrimaryTab] = useState<AcademyPrimaryTab>("Overview");
   const [tab, setTab] = useState<AcademyTab>("Dashboard");
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
@@ -259,8 +254,12 @@ export function AgentAcademyHub() {
 
   useEffect(() => {
     const requested = searchParams.get("academyView");
-    if (requested && academyTabs.includes(requested as AcademyTab)) {
-      setTab(requested as AcademyTab);
+    if (requested) {
+      const resolved = resolveAcademyNav(requested);
+      setPrimaryTab(resolved.primary);
+      if (academyTabs.includes(resolved.sub as AcademyTab)) {
+        setTab(resolved.sub as AcademyTab);
+      }
     }
   }, [searchParams]);
 
@@ -293,7 +292,12 @@ export function AgentAcademyHub() {
 
   return (
     <div className="space-y-5">
-      <AdminTabStrip tabs={academyTabs.map((item) => ({ id: item, label: item }))} active={tab} onChange={(id) => setTab(id as AcademyTab)} />
+      <AcademyHubNav
+        primary={primaryTab}
+        sub={tab}
+        onPrimaryChange={setPrimaryTab}
+        onSubChange={(id) => setTab(id as AcademyTab)}
+      />
 
       {tab === "Dashboard" && (
         <div className="space-y-5">
@@ -455,7 +459,7 @@ export function AgentAcademyHub() {
         </div>
       )}
 
-      {["Lessons", "Lesson Content", "Quizzes", "Assignments", "Final Exams", "Certificates", "Public Learners", "Learning Paths", "Announcements", "Discussion Board", "Leaderboard", "Badges", "Analytics", "Settings"].includes(tab) && (
+      {["Certificates", "Public Learners", "Learning Paths", "Announcements", "Discussion Board", "Leaderboard", "Badges", "Analytics", "Settings"].includes(tab) && (
         <FeatureWorkbench
           tab={tab}
           data={data}
@@ -617,10 +621,10 @@ function FeatureWorkbench({
   analytics,
   openDrawer,
   action,
-  query,
-  setQuery,
-  setSelectedLesson,
-  setDrawer,
+  query: _query,
+  setQuery: _setQuery,
+  setSelectedLesson: _setSelectedLesson,
+  setDrawer: _setDrawer,
 }: {
   tab: AcademyTab;
   data: AcademyData;
@@ -632,57 +636,6 @@ function FeatureWorkbench({
   setSelectedLesson: (lesson: AcademyLesson | null) => void;
   setDrawer: (drawer: "course" | "document" | "video" | "quiz" | "exam" | "assignment" | "path" | "announcement" | "badge" | "lesson" | "module" | null) => void;
 }) {
-  if (tab === "Lessons") {
-    return (
-      <div className="space-y-4">
-        <AdminFilterBar>
-          <AdminSearchInput value={query} onChange={setQuery} placeholder="Search lessons, modules, courses..." className="lg:flex-1" />
-          <Button onClick={() => { setSelectedLesson(null); setDrawer("lesson"); }}><Plus className="size-4" /> New Lesson</Button>
-          <Button onClick={() => { setDrawer("module"); }} variant="secondary"><Plus className="size-4" /> New Module</Button>
-        </AdminFilterBar>
-        <AdminDataTable
-          rows={data.lessons.filter((lesson) => !query || `${lesson.title} ${lesson.section?.module?.title ?? ""} ${lesson.section?.module?.course?.title ?? ""}`.toLowerCase().includes(query.toLowerCase()))}
-          columns={[
-            { key: "lesson", header: "Lesson", render: (lesson) => (
-              <div>
-                <p className="font-semibold text-white">{lesson.title}</p>
-                <p className="mt-1 text-xs text-slate-500">{lesson.section?.module?.course?.title ?? "No course"} → {lesson.section?.module?.title ?? "No module"}</p>
-              </div>
-            )},
-            { key: "detail", header: "Details", render: (lesson) => `${lesson.estimatedMinutes} min • ${lesson.completionRequirement}` },
-            { key: "updated", header: "Updated", render: (lesson) => new Date(lesson.updatedAt).toLocaleDateString() },
-            {
-              key: "actions",
-              header: "Actions",
-              render: (lesson) => (
-                <div className="flex flex-wrap gap-2">
-                  <IconAction label="Edit" icon={Pencil} onClick={() => { setSelectedLesson(lesson); setDrawer("lesson"); }} />
-                  <IconAction label="Delete" icon={Trash2} onClick={() => {
-                    if (window.confirm(`Delete lesson "${lesson.title}"? This cannot be undone.`)) {
-                      void action({ action: "delete_lesson", lessonId: lesson.id }, "Lesson deleted.");
-                    }
-                  }} />
-                </div>
-              ),
-            },
-          ]}
-          emptyMessage="No lessons found. Create lessons inside course modules."
-        />
-      </div>
-    );
-  }
-  if (tab === "Lesson Content") {
-    return <LessonContentManager lessons={data.lessons} documents={data.documents} action={action} />;
-  }
-  if (tab === "Quizzes") {
-    return <BuilderList title="Quiz Builder" icon={ClipboardCheck} rows={data.quizzes.map((quiz) => ({ ...quiz, detail: `${quiz.passingPercentage}% pass mark` }))} actionLabel="Create Quiz" onCreate={() => openDrawer("quiz")} onArchive={(row) => action({ action: row.active === false ? "restore_quiz" : "archive_quiz", quizId: row.id }, row.active === false ? "Quiz restored." : "Quiz archived.")} />;
-  }
-  if (tab === "Assignments") {
-    return <BuilderList title="Assignments" icon={ClipboardCheck} rows={data.assignments.map((assignment) => ({ ...assignment, detail: `${assignment.points} points` }))} actionLabel="Create Assignment" onCreate={() => openDrawer("assignment")} onArchive={(row) => action({ action: row.active === false ? "restore_assignment" : "archive_assignment", assignmentId: row.id }, row.active === false ? "Assignment restored." : "Assignment archived.")} />;
-  }
-  if (tab === "Final Exams") {
-    return <BuilderList title="Final Examination System" icon={GraduationCap} rows={data.exams.map((exam) => ({ ...exam, detail: `${exam.durationMinutes} min - ${exam.passingScore}% pass` }))} actionLabel="Create Exam" onCreate={() => openDrawer("exam")} onArchive={(row) => action({ action: row.active === false ? "restore_exam" : "archive_exam", examId: row.id }, row.active === false ? "Exam restored." : "Exam archived.")} />;
-  }
   if (tab === "Certificates") {
     return <BuilderList title="Certificate Management" icon={Award} rows={data.certificates.map((c) => ({ id: c.id, title: c.certificateNumber, active: c.status === "ACTIVE", detail: `${c.agentId} - ${new Date(c.issuedAt).toLocaleDateString()}` }))} actionLabel="Issued automatically after completion" />;
   }
@@ -700,17 +653,32 @@ function FeatureWorkbench({
   }
   if (tab === "Discussion Board") {
     return (
-      <BuilderList
-        title="Discussion Board"
-        icon={Users}
-        rows={(data.discussionThreads ?? []).map((thread) => ({
-          id: thread.id,
-          title: thread.title,
-          active: thread.status !== "LOCKED",
-          detail: `${thread.courseTitle} - ${thread.posts} posts - ${thread.status}`,
-        }))}
-        actionLabel="Threads are created by learners and moderators"
-      />
+      <div className="space-y-4">
+        <BuilderList
+          title="Discussion Board"
+          icon={Users}
+          rows={(data.discussionThreads ?? []).map((thread) => ({
+            id: thread.id,
+            title: thread.title,
+            active: thread.status !== "LOCKED",
+            detail: `${thread.courseTitle} - ${thread.posts} posts - ${thread.status}`,
+          }))}
+          actionLabel="Moderate threads"
+        />
+        <div className="rounded-xl border border-white/10 p-4">
+          <p className="text-sm text-slate-400 mb-3">Quick moderation — select a thread ID from the list above.</p>
+          <div className="flex flex-wrap gap-2">
+            {(data.discussionThreads ?? []).slice(0, 6).map((thread) => (
+              <div key={thread.id} className="flex flex-wrap items-center gap-2 rounded-lg bg-slate-900/60 px-3 py-2 text-xs">
+                <span className="text-white font-medium truncate max-w-[160px]">{thread.title}</span>
+                <button type="button" className="text-emerald-400 hover:underline" onClick={() => void action({ action: "pin_thread", threadId: thread.id }, "Thread pinned.")}>Pin</button>
+                <button type="button" className="text-amber-400 hover:underline" onClick={() => void action({ action: "lock_thread", threadId: thread.id }, "Thread locked.")}>Lock</button>
+                <button type="button" className="text-red-400 hover:underline" onClick={() => void action({ action: "delete_thread", threadId: thread.id }, "Thread deleted.")}>Delete</button>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
     );
   }
   if (tab === "Leaderboard") {
@@ -1182,6 +1150,14 @@ function AcademySettingsPanel({ settings, auditLogs, onSave }: { settings: Recor
     requirePaymentProof: enrolmentSettings.requirePaymentProof !== false,
     autoIssueCertificate: completionRules.autoIssueCertificate !== false,
     requireAllLessons: completionRules.requireAllLessons !== false,
+    emailFromName: String((settings.emailSettings as Record<string, unknown>)?.fromName ?? "HomeLink Academy"),
+    emailWelcomeSubject: String((settings.emailSettings as Record<string, unknown>)?.welcomeSubject ?? "Welcome to HomeLink Academy"),
+    emailCertificateSubject: String((settings.emailSettings as Record<string, unknown>)?.certificateSubject ?? "Your certificate is ready"),
+    notifyQuizResults: (settings.notificationSettings as Record<string, unknown>)?.quizResults !== false,
+    notifyAssignmentReview: (settings.notificationSettings as Record<string, unknown>)?.assignmentReview !== false,
+    notifyCourseUpdates: (settings.notificationSettings as Record<string, unknown>)?.courseUpdates !== false,
+    gradingScale: String((settings.gradingSettings as Record<string, unknown>)?.scale ?? "percentage"),
+    allowManualGrading: (settings.gradingSettings as Record<string, unknown>)?.allowManualGrading !== false,
     dashboardWelcome: String((settings.branding as Record<string, unknown>)?.dashboardWelcome ?? "Continue your professional training journey."),
   });
   return (
@@ -1206,6 +1182,9 @@ function AcademySettingsPanel({ settings, auditLogs, onSave }: { settings: Recor
                 quizSettings: { defaultPassMark: Number(draft.defaultPassMark) || 80, maxAttempts: Number(draft.maxQuizAttempts) || 3, showResults: true },
                 enrolmentSettings: { allowTrainingOnly: draft.allowTrainingOnly, allowAgentTraining: true, requirePaymentProof: draft.requirePaymentProof },
                 completionRules: { requireAllLessons: draft.requireAllLessons, requireFinalExam: false, autoIssueCertificate: draft.autoIssueCertificate },
+                emailSettings: { fromName: draft.emailFromName, welcomeSubject: draft.emailWelcomeSubject, certificateSubject: draft.emailCertificateSubject },
+                notificationSettings: { quizResults: draft.notifyQuizResults, assignmentReview: draft.notifyAssignmentReview, courseUpdates: draft.notifyCourseUpdates },
+                gradingSettings: { scale: draft.gradingScale, allowManualGrading: draft.allowManualGrading },
                 branding: { ...(settings.branding as object), dashboardWelcome: draft.dashboardWelcome, logoUrl: "/brand/homelink-full-lockup.png" },
               })
             }
@@ -1247,6 +1226,21 @@ function AcademySettingsPanel({ settings, auditLogs, onSave }: { settings: Recor
           <div className="mt-3 flex flex-wrap gap-4 text-sm text-slate-300">
             <label className="flex items-center gap-2"><input type="checkbox" checked={draft.autoIssueCertificate} onChange={(e) => setDraft({ ...draft, autoIssueCertificate: e.target.checked })} /> Auto-issue certificate on course completion</label>
             <label className="flex items-center gap-2"><input type="checkbox" checked={draft.requireAllLessons} onChange={(e) => setDraft({ ...draft, requireAllLessons: e.target.checked })} /> Require all lessons before completion</label>
+          </div>
+        </div>
+        <div>
+          <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-emerald-300">Emails & Notifications</p>
+          <FormGrid>
+            <TextInput label="Email sender name" value={draft.emailFromName} onChange={(emailFromName) => setDraft({ ...draft, emailFromName })} />
+            <TextInput label="Welcome email subject" value={draft.emailWelcomeSubject} onChange={(emailWelcomeSubject) => setDraft({ ...draft, emailWelcomeSubject })} />
+            <TextInput label="Certificate email subject" value={draft.emailCertificateSubject} onChange={(emailCertificateSubject) => setDraft({ ...draft, emailCertificateSubject })} />
+            <TextInput label="Grading scale" value={draft.gradingScale} onChange={(gradingScale) => setDraft({ ...draft, gradingScale })} />
+          </FormGrid>
+          <div className="mt-3 flex flex-wrap gap-4 text-sm text-slate-300">
+            <label className="flex items-center gap-2"><input type="checkbox" checked={draft.notifyQuizResults} onChange={(e) => setDraft({ ...draft, notifyQuizResults: e.target.checked })} /> Notify learners of quiz results</label>
+            <label className="flex items-center gap-2"><input type="checkbox" checked={draft.notifyAssignmentReview} onChange={(e) => setDraft({ ...draft, notifyAssignmentReview: e.target.checked })} /> Notify on assignment review</label>
+            <label className="flex items-center gap-2"><input type="checkbox" checked={draft.notifyCourseUpdates} onChange={(e) => setDraft({ ...draft, notifyCourseUpdates: e.target.checked })} /> Notify on course updates</label>
+            <label className="flex items-center gap-2"><input type="checkbox" checked={draft.allowManualGrading} onChange={(e) => setDraft({ ...draft, allowManualGrading: e.target.checked })} /> Allow manual assignment grading</label>
           </div>
         </div>
       </section>
@@ -1324,7 +1318,7 @@ function detectDocumentType(fileName: string, mime: string) {
   return "PDF";
 }
 
-function LessonContentManager({ lessons, documents, action }: { lessons: AcademyLesson[]; documents: AcademyDocument[]; action: (body: Record<string, unknown>, success: string) => Promise<unknown> }) {
+export function LessonContentManager({ lessons, documents, action }: { lessons: AcademyLesson[]; documents: AcademyDocument[]; action: (body: Record<string, unknown>, success: string) => Promise<unknown> }) {
   const [selectedLessonId, setSelectedLessonId] = useState("");
   const [contentTab, setContentTab] = useState<"videos" | "documents" | "resources" | "downloads">("videos");
   const [drawer, setDrawer] = useState<"video" | "resource" | "download" | "document" | null>(null);

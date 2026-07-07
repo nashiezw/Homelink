@@ -850,6 +850,35 @@ export async function runAcademyAction(body: Record<string, any>, actor: Actor) 
     await audit(actor, `academy.badge.${action.replace("_badge", "")}`, badge.id, { active: badge.active });
     return badge;
   }
+  if (action === "get_course_audit_log") {
+    const logs = await prisma.trainingAuditLog.findMany({ orderBy: { createdAt: "desc" }, take: 120 });
+    const courseId = String(body.courseId ?? "");
+    return logs
+      .filter((log) => JSON.stringify(log.metadata).includes(courseId) || log.target === courseId || log.action.includes("course"))
+      .slice(0, 30)
+      .map((log) => ({ id: log.id, action: log.action, createdAt: log.createdAt.toISOString() }));
+  }
+  if (action === "lock_thread" || action === "unlock_thread") {
+    const thread = await prisma.discussionThread.update({
+      where: { id: String(body.threadId) },
+      data: { locked: action === "lock_thread" },
+    });
+    await audit(actor, `academy.thread.${action.replace("_thread", "")}`, thread.id, { locked: thread.locked });
+    return thread;
+  }
+  if (action === "pin_thread" || action === "unpin_thread") {
+    const thread = await prisma.discussionThread.update({
+      where: { id: String(body.threadId) },
+      data: { pinned: action === "pin_thread" },
+    });
+    await audit(actor, `academy.thread.${action.replace("_thread", "")}`, thread.id, { pinned: thread.pinned });
+    return thread;
+  }
+  if (action === "delete_thread") {
+    const thread = await prisma.discussionThread.delete({ where: { id: String(body.threadId) } });
+    await audit(actor, "academy.thread.delete", thread.id, { title: thread.title });
+    return thread;
+  }
   if (action === "update_settings") {
     const settings = await prisma.trainingSetting.upsert({
       where: { id: "singleton" },

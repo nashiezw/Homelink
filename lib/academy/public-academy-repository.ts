@@ -117,8 +117,48 @@ export async function getLearnerAcademyDashboard(learnerId: string) {
   const overallProgress = totalLessons ? Math.round((completedLessonTotal / totalLessons) * 100) : 0;
   const settings = await getAcademySettingsPublic();
 
+  const [agentBadges, bookmarkRows, recentProgress] = await Promise.all([
+    prisma.agentBadge.findMany({ where: { agentId: learnerId }, include: { badge: true }, orderBy: { awardedAt: "desc" } }),
+    prisma.lessonProgress.findMany({
+      where: { agentId: learnerId, status: "BOOKMARKED" },
+      include: { lesson: { include: { section: { include: { module: { include: { course: true } } } } } } },
+      orderBy: { lastViewedAt: "desc" },
+      take: 12,
+    }),
+    prisma.lessonProgress.findMany({
+      where: { agentId: learnerId },
+      include: { lesson: { include: { section: { include: { module: { include: { course: true } } } } } } },
+      orderBy: { lastViewedAt: "desc" },
+      take: 1,
+    }),
+  ]);
+
+  const activityDates = await prisma.lessonProgress.findMany({
+    where: { agentId: learnerId },
+    select: { lastViewedAt: true, completedAt: true },
+    orderBy: { lastViewedAt: "desc" },
+    take: 60,
+  });
+  const streak = computeLearningStreak(activityDates.map((row) => row.completedAt ?? row.lastViewedAt));
+
+  const continueLearning = recentProgress[0]
+    ? {
+        lessonId: recentProgress[0].lessonId,
+        lessonTitle: recentProgress[0].lesson.title,
+        courseId: recentProgress[0].lesson.section.module.courseId,
+        courseTitle: recentProgress[0].lesson.section.module.course.title,
+        lastViewedAt: recentProgress[0].lastViewedAt.toISOString(),
+      }
+    : null;
+
+  const settingsPayload = settings as Record<string, unknown>;
+  const brandingPayload = (settingsPayload.branding ?? {}) as Record<string, unknown>;
+
   return {
-    settings,
+    settings: {
+      ...settings,
+      dashboardWelcome: String(brandingPayload.dashboardWelcome ?? "Continue your professional training journey."),
+    },
     metrics: {
       enrolledCourses: approved.length,
       pendingApprovals: applications.filter((entry) => entry.status === AcademyRegistrationStatus.PENDING_PAYMENT || entry.status === AcademyRegistrationStatus.PAYMENT_UPLOADED).length,
@@ -127,7 +167,25 @@ export async function getLearnerAcademyDashboard(learnerId: string) {
       totalLessons,
       progress: overallProgress,
       completedLessons: completedLessonTotal,
+      streak,
+      badges: agentBadges.length,
+      xp: agentBadges.reduce((sum, entry) => sum + entry.badge.xp, 0),
     },
+    streak,
+    continueLearning,
+    badges: agentBadges.map((entry) => ({
+      id: entry.badge.id,
+      name: entry.badge.name,
+      description: entry.badge.description,
+      xp: entry.badge.xp,
+      awardedAt: entry.awardedAt.toISOString(),
+    })),
+    bookmarks: bookmarkRows.map((entry) => ({
+      lessonId: entry.lessonId,
+      title: entry.lesson.title,
+      courseId: entry.lesson.section.module.courseId,
+      courseTitle: entry.lesson.section.module.course.title,
+    })),
     certificates: certificates.map((certificate) => ({
       id: certificate.id,
       certificateNumber: certificate.certificateNumber,
@@ -393,6 +451,27 @@ function countLessons(course: { modules: Array<{ sections: Array<{ lessons: unkn
   return course.modules.reduce((sum, module) => sum + module.sections.reduce((count, section) => count + section.lessons.length, 0), 0);
 }
 
+function computeLearningStreak(dates: Date[]) {
+  if (!dates.length) return 0;
+  const dayKeys = new Set(dates.map((date) => date.toISOString().slice(0, 10)));
+  let streak = 0;
+  const cursor = new Date();
+  for (;;) {
+    const key = cursor.toISOString().slice(0, 10);
+    if (dayKeys.has(key)) {
+      streak += 1;
+      cursor.setDate(cursor.getDate() - 1);
+    } else if (streak === 0) {
+      cursor.setDate(cursor.getDate() - 1);
+      if (Math.abs(Date.now() - cursor.getTime()) > 86400000 * 2) break;
+    } else {
+      break;
+    }
+    if (streak > 365) break;
+  }
+  return streak;
+}
+
 export async function getAcademySettingsPublic() {
   const settings = await getMainPrisma().trainingSetting.findUnique({ where: { id: "singleton" } });
   const payload = (settings?.payload ?? {}) as Record<string, unknown>;
@@ -429,11 +508,13 @@ export async function getLearnerCourseDetail(learnerId: string, courseId: string
   const progress = calculateCourseProgress(course, completedIds);
   const courseProgress = await prisma.courseProgress.findUnique({ where: { courseId_agentId: { courseId, agentId: learnerId } } });
 
-  const [quizAttempts, assignmentSubmissions, settings] = await Promise.all([
+  const [quizAttempts, assignmentSubmissions, settings, bookmarkRows] = await Promise.all([
     prisma.quizAttempt.findMany({ where: { agentId: learnerId, quiz: { courseId } }, orderBy: { startedAt: "desc" } }),
     prisma.assignmentSubmission.findMany({ where: { agentId: learnerId, assignment: { courseId } }, orderBy: { submittedAt: "desc" } }),
     getAcademySettingsPublic(),
+    prisma.lessonProgress.findMany({ where: { agentId: learnerId, status: "BOOKMARKED" }, select: { lessonId: true } }),
   ]);
+  const bookmarkIds = new Set(bookmarkRows.map((row) => row.lessonId));
 
   const bestQuizScores = new Map<string, number>();
   for (const attempt of quizAttempts) {
@@ -463,7 +544,7 @@ export async function getLearnerCourseDetail(learnerId: string, courseId: string
           id: section.id,
           title: section.title,
           sortOrder: section.sortOrder,
-          lessons: section.lessons.map((lesson) => mapLessonForLearner(lesson, completedIds)),
+          lessons: section.lessons.map((lesson) => mapLessonForLearner(lesson, completedIds, bookmarkIds)),
         })),
         lessonCount: module.sections.reduce((sum, s) => sum + s.lessons.length, 0),
         completedCount: module.sections.reduce((sum, s) => sum + s.lessons.filter((l) => completedIds.has(l.id)).length, 0),

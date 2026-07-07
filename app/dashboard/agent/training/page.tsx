@@ -1,10 +1,5 @@
-import { AgentTrainingDashboard } from "@/components/academy/agent-training-dashboard";
-import { RequireRole } from "@/components/auth/require-role";
+import { redirect } from "next/navigation";
 
 export default function AgentTrainingPage() {
-  return (
-    <RequireRole roles={["AGENT", "ADMIN"]}>
-      <AgentTrainingDashboard />
-    </RequireRole>
-  );
+  redirect("/dashboard/academy");
 }

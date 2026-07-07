@@ -2,15 +2,40 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Award, Bell, BookOpen, Download, FileText, Loader2, Upload, Clock, TrendingUp, Zap } from "lucide-react";
+import {
+  Award,
+  Bell,
+  Bookmark,
+  BookOpen,
+  Download,
+  FileText,
+  Flame,
+  Loader2,
+  Play,
+  Sparkles,
+  TrendingUp,
+  Upload,
+  Zap,
+} from "lucide-react";
 import { PageShell } from "@/components/layout/page-shell";
 import { Button } from "@/components/ui/button";
 import { useApp } from "@/components/providers/app-provider";
 import { apiFetch } from "@/lib/api/client";
+import { cn } from "@/lib/utils";
 
 type LearnerDashboard = {
-  settings?: { academyName: string; primaryColour?: string };
+  settings?: { academyName: string; primaryColour?: string; dashboardWelcome?: string };
   metrics: Record<string, number>;
+  streak?: number;
+  continueLearning?: {
+    lessonId: string;
+    lessonTitle: string;
+    courseId: string;
+    courseTitle: string;
+    lastViewedAt: string;
+  } | null;
+  badges?: Array<{ id: string; name: string; description?: string | null; xp: number; awardedAt: string }>;
+  bookmarks?: Array<{ lessonId: string; title: string; courseId: string; courseTitle: string }>;
   certificates: Array<{
     id: string;
     certificateNumber: string;
@@ -30,18 +55,10 @@ type LearnerDashboard = {
     accessEndsAt?: string;
     adminNote?: string;
     payment: { id: string; status: string; proofStatus?: string; proofUrl?: string; method?: string } | null;
-    course: {
-      id: string;
-      title: string;
-      slug?: string;
-      description: string;
-      certificateEnabled: boolean;
-      modules: Array<{ id: string; title: string; lessons: Array<{ id: string; title: string; summary?: string; richText?: string; estimatedMinutes: number; completionRequirement?: string; videoUrl?: string; embeddedVideoUrl?: string; pdfUrl?: string; completed?: boolean; lessonVideos?: Array<{ id: string; title: string; url: string; provider: string }>; lessonDownloads?: Array<{ id: string; title: string; url: string; type: string }> }> }>;
-    };
+    course: { id: string; title: string; slug?: string; description: string; certificateEnabled: boolean };
   }>;
   documents: Array<{ id: string; title: string; description?: string; fileType: string; category?: string; downloadUrl: string }>;
   announcements: Array<{ id: string; title: string; body: string; createdAt: string }>;
-  notifications: Array<{ id: string; subject: string; body: string; createdAt: string }>;
 };
 
 export function LearnerDashboardClient() {
@@ -50,15 +67,14 @@ export function LearnerDashboardClient() {
   const [busyPaymentId, setBusyPaymentId] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const paymentRef = useRef<string>("");
+  const primary = data?.settings?.primaryColour ?? "#008b68";
 
   const load = useCallback(async () => {
     const result = await apiFetch<LearnerDashboard>("/api/v1/academy/me");
     if (result.data) setData(result.data);
   }, []);
 
-  useEffect(() => {
-    void load();
-  }, [load]);
+  useEffect(() => { void load(); }, [load]);
 
   async function upload(files: FileList | null) {
     const file = files?.[0];
@@ -80,10 +96,7 @@ export function LearnerDashboardClient() {
       body: JSON.stringify({ proofUrl: uploaded.data.url }),
     });
     setBusyPaymentId(null);
-    if (proof.error) {
-      showToast(proof.error.message, "error");
-      return;
-    }
+    if (proof.error) { showToast(proof.error.message, "error"); return; }
     showToast("Proof uploaded. Academy admin approval is now pending.");
     await load();
   }
@@ -91,236 +104,232 @@ export function LearnerDashboardClient() {
   if (!user) {
     return (
       <PageShell eyebrow="Academy" title="Sign in required" description="Create a learner account or sign in to access your Academy dashboard.">
-        <Link href="/auth?next=/dashboard/academy" className="text-emerald-700 font-semibold hover:underline">Sign in to access your courses</Link>
+        <Link href="/auth?next=/dashboard/academy" className="font-semibold text-emerald-700 hover:underline">Sign in to access your courses</Link>
       </PageShell>
     );
   }
 
   if (!data) {
-    return <PageShell eyebrow="Academy" title="Learner dashboard" description="Loading your training workspace..."><div className="h-24 animate-pulse rounded-xl bg-slate-100 dark:bg-slate-800" /></PageShell>;
+    return (
+      <PageShell eyebrow="Academy" title="Learner dashboard" description="Loading your training workspace...">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="h-28 animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800" />
+          ))}
+        </div>
+      </PageShell>
+    );
   }
+
+  const approvedCourse = data.applications.find((a) => a.status === "APPROVED");
 
   return (
     <PageShell
-      eyebrow={data.settings?.academyName ?? "My Learning Dashboard"}
-      title={`Welcome back, ${user.name}`}
-      description="Track your progress, access course materials, and manage your Academy journey."
-      actions={<Link href="/academy?browse=1"><Button variant="secondary"><BookOpen className="size-4 mr-2" /> Browse Courses</Button></Link>}
+      eyebrow={data.settings?.academyName ?? "HomeLink Academy"}
+      title={`Welcome back, ${user.name.split(" ")[0]}`}
+      description={data.settings?.dashboardWelcome ?? "Track your progress, access course materials, and manage your Academy journey."}
+      actions={
+        <Link href="/academy?browse=1">
+          <Button variant="secondary"><BookOpen className="size-4 mr-2" /> Browse Courses</Button>
+        </Link>
+      }
     >
-      {/* Stats Overview */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-950">
-          <div className="flex items-center gap-3">
-            <div className="rounded-xl bg-emerald-100 p-3 dark:bg-emerald-900/30">
-              <BookOpen className="size-6 text-emerald-600 dark:text-emerald-400" />
+      {/* Hero continue learning */}
+      {data.continueLearning && approvedCourse && (
+        <section
+          className="relative overflow-hidden rounded-3xl border border-emerald-200/60 p-6 sm:p-8 shadow-glow dark:border-emerald-900/50"
+          style={{ background: `linear-gradient(135deg, ${primary}15 0%, transparent 60%)` }}
+        >
+          <div className="absolute -right-8 -top-8 size-40 rounded-full opacity-20 blur-3xl" style={{ backgroundColor: primary }} />
+          <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+            <div className="max-w-xl">
+              <p className="text-xs font-bold uppercase tracking-widest text-emerald-700 dark:text-emerald-400">Continue learning</p>
+              <h2 className="mt-2 text-2xl font-bold tracking-tight sm:text-3xl">{data.continueLearning.lessonTitle}</h2>
+              <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">{data.continueLearning.courseTitle}</p>
             </div>
-            <div>
-              <p className="text-2xl font-bold">{data.metrics.enrolledCourses}</p>
-              <p className="text-sm text-slate-600 dark:text-slate-400">Active Courses</p>
-            </div>
+            <Link href={`/dashboard/academy/${data.continueLearning.courseId}`}>
+              <Button className="w-full sm:w-auto shadow-soft px-6 py-3 text-base" style={{ backgroundColor: primary }}>
+                <Play className="size-5 mr-2" /> Resume lesson
+              </Button>
+            </Link>
           </div>
-        </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-950">
-          <div className="flex items-center gap-3">
-            <div className="rounded-xl bg-amber-100 p-3 dark:bg-amber-900/30">
-              <Clock className="size-6 text-amber-600 dark:text-amber-400" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold">{data.metrics.pendingApprovals}</p>
-              <p className="text-sm text-slate-600 dark:text-slate-400">Pending Approvals</p>
-            </div>
-          </div>
-        </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-950">
-          <div className="flex items-center gap-3">
-            <div className="rounded-xl bg-purple-100 p-3 dark:bg-purple-900/30">
-              <Award className="size-6 text-purple-600 dark:text-purple-400" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold">{data.metrics.certificates}</p>
-              <p className="text-sm text-slate-600 dark:text-slate-400">Certificates</p>
-            </div>
-          </div>
-        </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-950">
-          <div className="flex items-center gap-3">
-            <div className="rounded-xl bg-emerald-100 p-3 dark:bg-emerald-900/30">
-              <TrendingUp className="size-6 text-emerald-600 dark:text-emerald-400" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold">{data.metrics.progress ?? 0}%</p>
-              <p className="text-sm text-slate-600 dark:text-slate-400">Overall Progress</p>
-            </div>
-          </div>
-        </div>
+        </section>
+      )}
+
+      {/* Stats grid */}
+      <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+        <StatCard icon={TrendingUp} label="Overall progress" value={`${data.metrics.progress ?? 0}%`} accent={primary} />
+        <StatCard icon={Flame} label="Learning streak" value={`${data.streak ?? 0} days`} accent="#f59e0b" highlight />
+        <StatCard icon={BookOpen} label="Active courses" value={String(data.metrics.enrolledCourses)} accent={primary} />
+        <StatCard icon={Sparkles} label="XP earned" value={String(data.metrics.xp ?? 0)} accent="#8b5cf6" />
+        <StatCard icon={Award} label="Certificates" value={String(data.metrics.certificates)} accent="#6366f1" />
       </div>
 
-      <div className="mt-8 grid gap-6 xl:grid-cols-[minmax(0,1.3fr)_minmax(20rem,0.7fr)]">
-        <section className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-bold">My Courses</h2>
-          </div>
+      <div className="mt-8 grid gap-6 xl:grid-cols-[minmax(0,1.4fr)_minmax(18rem,0.6fr)]">
+        <section className="space-y-5">
+          <h2 className="text-xl font-bold sm:text-2xl">My courses</h2>
           {data.applications.map((application) => (
-            <article key={application.id} className="rounded-2xl border-2 border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-950">
-              <div className="flex flex-wrap items-start justify-between gap-4">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-3">
-                    <span className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                      application.status === "APPROVED" 
-                        ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300" 
-                        : application.status === "PENDING_PAYMENT" || application.status === "PAYMENT_UPLOADED"
-                        ? "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300"
-                        : "bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300"
-                    }`}>
-                      {application.status.replace(/_/g, " ")}
-                    </span>
+            <article key={application.id} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-soft dark:border-slate-800 dark:bg-slate-950">
+              <div className="border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white px-5 py-4 dark:border-slate-800 dark:from-slate-900 dark:to-slate-950 sm:px-6">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <StatusPill status={application.status} />
+                    <h3 className="mt-2 text-lg font-bold sm:text-xl">{application.course.title}</h3>
                   </div>
-                  <h3 className="text-xl font-bold mb-2">{application.course.title}</h3>
-                  {application.status === "APPROVED" && (
-                    <div className="mb-3">
-                      <div className="flex items-center justify-between text-sm mb-1">
-                        <span className="text-slate-600 dark:text-slate-400">Progress</span>
-                        <span className="font-semibold text-emerald-600">{application.progress ?? 0}%</span>
-                      </div>
-                      <div className="h-2 rounded-full bg-slate-200 dark:bg-slate-800">
-                        <div className="h-2 rounded-full bg-emerald-500 transition-all" style={{ width: `${application.progress ?? 0}%` }} />
-                      </div>
-                    </div>
-                  )}
-                  <p className="text-slate-600 dark:text-slate-400 leading-relaxed">{application.course.description}</p>
-                  {application.adminNote && (
-                    <div className="mt-3 rounded-lg bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-900/20 dark:text-amber-200">
-                      <p className="font-semibold">Admin Note:</p>
-                      <p>{application.adminNote}</p>
-                    </div>
-                  )}
-                  {application.accessEndsAt && (
-                    <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-                      <Clock className="inline size-4 mr-1" />
-                      Access until {new Date(application.accessEndsAt).toLocaleDateString()}
-                    </p>
-                  )}
-                </div>
-                <div className="text-right">
-                  <p className="text-2xl font-bold text-emerald-600">{application.currency} {application.amount.toFixed(2)}</p>
-                  <p className="text-sm text-slate-500">{application.payment?.method?.replace(/_/g, " ") ?? "Manual payment"}</p>
+                  <p className="text-lg font-bold" style={{ color: primary }}>{application.currency} {application.amount.toFixed(2)}</p>
                 </div>
               </div>
-              
-              {application.status !== "APPROVED" && application.payment && (
-                <div className="mt-6 rounded-xl border-2 border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50 p-5 dark:border-amber-800 dark:from-amber-900/20 dark:to-orange-900/20">
-                  <div className="flex items-start gap-3">
-                    <div className="rounded-lg bg-amber-100 p-2 dark:bg-amber-900/30">
-                      <Upload className="size-5 text-amber-600 dark:text-amber-400" />
+              <div className="p-5 sm:p-6">
+                {application.status === "APPROVED" && (
+                  <div className="mb-4">
+                    <div className="mb-1 flex justify-between text-sm">
+                      <span className="text-slate-500">Course progress</span>
+                      <span className="font-semibold">{application.progress ?? 0}%</span>
                     </div>
-                    <div className="flex-1">
-                      <p className="font-semibold text-amber-900 dark:text-amber-100">Payment approval required</p>
-                      <p className="mt-1 text-sm text-amber-800 dark:text-amber-200">Upload proof of payment. An Academy admin will review and approve your registration.</p>
-                      <Button
-                        className="mt-3"
-                        disabled={busyPaymentId === application.payment.id}
-                        onClick={() => {
-                          paymentRef.current = application.payment?.id ?? "";
-                          fileRef.current?.click();
-                        }}
-                      >
-                        {busyPaymentId === application.payment.id ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4 mr-2" />} Upload Proof
-                      </Button>
+                    <div className="h-2.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+                      <div className="h-full rounded-full transition-all duration-700" style={{ width: `${application.progress ?? 0}%`, backgroundColor: primary }} />
                     </div>
                   </div>
-                </div>
-              )}
-              
-              {application.status === "APPROVED" && (
-                <div className="mt-6">
-                  <Link href={`/dashboard/academy/${application.course.id}`}>
-                    <Button className="w-full sm:w-auto">
-                      <BookOpen className="size-4 mr-2" /> Open Course — Modules, Lessons, Materials & Quizzes
+                )}
+                <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-400 line-clamp-3">{application.course.description}</p>
+
+                {application.status !== "APPROVED" && application.payment && (
+                  <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50/80 p-4 dark:border-amber-900/50 dark:bg-amber-950/20">
+                    <p className="font-semibold text-amber-900 dark:text-amber-100">Payment approval required</p>
+                    <p className="mt-1 text-sm text-amber-800/90 dark:text-amber-200/90">Upload proof of payment for admin review.</p>
+                    <Button className="mt-3" disabled={busyPaymentId === application.payment.id} onClick={() => { paymentRef.current = application.payment?.id ?? ""; fileRef.current?.click(); }}>
+                      {busyPaymentId === application.payment.id ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4 mr-2" />} Upload proof
+                    </Button>
+                  </div>
+                )}
+
+                {application.status === "APPROVED" && (
+                  <Link href={`/dashboard/academy/${application.course.id}`} className="mt-5 block">
+                    <Button className="w-full sm:w-auto" style={{ backgroundColor: primary }}>
+                      <BookOpen className="size-4 mr-2" /> Open course
                     </Button>
                   </Link>
-                </div>
-              )}
+                )}
+              </div>
             </article>
           ))}
           {!data.applications.length && (
-            <div className="rounded-2xl border-2 border-dashed border-slate-300 p-12 text-center dark:border-slate-700">
-              <BookOpen className="size-12 mx-auto text-slate-400 mb-4" />
-              <p className="text-lg font-semibold text-slate-600 dark:text-slate-400">No courses yet</p>
-              <p className="text-sm text-slate-500 mt-2 mb-4">Start your learning journey by enrolling in a course.</p>
-              <Link href="/academy?browse=1" className="inline-flex items-center gap-2 text-emerald-600 font-semibold hover:text-emerald-700">
-                <Zap className="size-4" /> Browse Available Courses
+            <div className="rounded-2xl border-2 border-dashed border-slate-200 p-12 text-center dark:border-slate-700">
+              <BookOpen className="mx-auto size-12 text-slate-300" />
+              <p className="mt-4 text-lg font-semibold">No courses yet</p>
+              <Link href="/academy?browse=1" className="mt-4 inline-flex items-center gap-2 font-semibold text-emerald-600">
+                <Zap className="size-4" /> Browse courses
               </Link>
             </div>
           )}
         </section>
 
-        <aside className="space-y-4">
-          {!!data.certificates?.length && (
-            <div className="rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-950">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="rounded-xl bg-purple-100 p-2 dark:bg-purple-900/30">
-                  <Award className="size-5 text-purple-600 dark:text-purple-400" />
-                </div>
-                <h3 className="text-lg font-bold">My Certificates</h3>
-              </div>
+        <aside className="space-y-5">
+          {!!data.badges?.length && (
+            <SidebarCard title="Achievements" icon={Award}>
               <div className="space-y-2">
-                {data.certificates.map((certificate) => (
-                  <div key={certificate.id} className="rounded-xl border border-slate-200 p-3 text-sm dark:border-slate-700">
-                    <p className="font-semibold">{certificate.courseTitle}</p>
-                    <p className="text-xs text-slate-500 mt-1">{certificate.certificateNumber}</p>
-                    <a href={certificate.verifyUrl} className="mt-2 inline-flex text-xs font-semibold text-emerald-600 hover:underline">Verify certificate</a>
+                {data.badges.map((badge) => (
+                  <div key={badge.id} className="flex items-start gap-3 rounded-xl border border-slate-100 p-3 dark:border-slate-800">
+                    <div className="rounded-lg bg-purple-100 p-2 dark:bg-purple-900/40">
+                      <Sparkles className="size-4 text-purple-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold">{badge.name}</p>
+                      <p className="text-xs text-slate-500">{badge.xp} XP</p>
+                    </div>
                   </div>
                 ))}
               </div>
-            </div>
+            </SidebarCard>
           )}
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-950">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="rounded-xl bg-blue-100 p-2 dark:bg-blue-900/30">
-                <Download className="size-5 text-blue-600 dark:text-blue-400" />
+
+          {!!data.bookmarks?.length && (
+            <SidebarCard title="Bookmarks" icon={Bookmark}>
+              <div className="space-y-2">
+                {data.bookmarks.map((item) => (
+                  <Link key={item.lessonId} href={`/dashboard/academy/${item.courseId}`} className="block rounded-xl border border-slate-100 p-3 text-sm transition-colors hover:border-emerald-200 hover:bg-emerald-50/50 dark:border-slate-800 dark:hover:border-emerald-900">
+                    <p className="font-semibold line-clamp-1">{item.title}</p>
+                    <p className="text-xs text-slate-500 mt-0.5">{item.courseTitle}</p>
+                  </Link>
+                ))}
               </div>
-              <h3 className="text-lg font-bold">Downloads</h3>
-            </div>
-            <div className="space-y-2">
-              {data.documents.map((document) => (
-                <a key={document.id} href={document.downloadUrl} className="flex items-start gap-3 rounded-xl border border-slate-200 p-3 text-sm hover:border-emerald-300 hover:bg-emerald-50 dark:border-slate-700 dark:hover:border-emerald-700 dark:hover:bg-emerald-900/20 transition-colors">
-                  <FileText className="mt-0.5 size-4 text-emerald-600 flex-shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold truncate">{document.title}</p>
-                    <p className="text-xs text-slate-500">{document.category ?? document.fileType}</p>
-                  </div>
-                </a>
-              ))}
-              {!data.documents.length && (
-                <p className="text-sm text-slate-500 text-center py-4">No downloads available</p>
-              )}
-            </div>
-          </div>
-          
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-950">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="rounded-xl bg-purple-100 p-2 dark:bg-purple-900/30">
-                <Bell className="size-5 text-purple-600 dark:text-purple-400" />
-              </div>
-              <h3 className="text-lg font-bold">Announcements</h3>
-            </div>
-            <div className="space-y-3">
-              {data.announcements.map((announcement) => (
-                <div key={announcement.id} className="rounded-xl bg-gradient-to-r from-purple-50 to-pink-50 p-4 text-sm dark:from-purple-900/20 dark:to-pink-900/20">
-                  <p className="font-semibold">{announcement.title}</p>
-                  <p className="mt-1 text-slate-600 dark:text-slate-400 line-clamp-2">{announcement.body}</p>
+            </SidebarCard>
+          )}
+
+          {!!data.certificates.length && (
+            <SidebarCard title="Certificates" icon={Award}>
+              {data.certificates.map((c) => (
+                <div key={c.id} className="rounded-xl border border-slate-100 p-3 text-sm dark:border-slate-800">
+                  <p className="font-semibold">{c.courseTitle}</p>
+                  <a href={c.verifyUrl} className="mt-1 inline-block text-xs font-semibold text-emerald-600 hover:underline">Verify</a>
                 </div>
               ))}
-              {!data.announcements.length && (
-                <p className="text-sm text-slate-500 text-center py-4">No announcements</p>
-              )}
-            </div>
-          </div>
+            </SidebarCard>
+          )}
+
+          <SidebarCard title="Downloads" icon={Download}>
+            {data.documents.slice(0, 6).map((doc) => (
+              <a key={doc.id} href={doc.downloadUrl} className="flex gap-3 rounded-xl p-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-900">
+                <FileText className="size-4 shrink-0 text-emerald-600 mt-0.5" />
+                <span className="line-clamp-2 font-medium">{doc.title}</span>
+              </a>
+            ))}
+          </SidebarCard>
+
+          <SidebarCard title="Announcements" icon={Bell}>
+            {data.announcements.slice(0, 4).map((a) => (
+              <div key={a.id} className="rounded-xl bg-slate-50 p-3 text-sm dark:bg-slate-900/50">
+                <p className="font-semibold">{a.title}</p>
+                <p className="mt-1 line-clamp-2 text-slate-500">{a.body}</p>
+              </div>
+            ))}
+          </SidebarCard>
         </aside>
       </div>
 
-      <input ref={fileRef} type="file" accept=".pdf,.png,.jpg,.jpeg,.webp" className="hidden" onChange={(event) => void upload(event.target.files)} />
+      <input ref={fileRef} type="file" accept=".pdf,.png,.jpg,.jpeg,.webp" className="hidden" onChange={(e) => void upload(e.target.files)} />
     </PageShell>
+  );
+}
+
+function StatCard({ icon: Icon, label, value, accent, highlight }: { icon: typeof BookOpen; label: string; value: string; accent: string; highlight?: boolean }) {
+  return (
+    <div className={cn("rounded-2xl border bg-white p-5 shadow-soft dark:bg-slate-950", highlight ? "border-amber-200 dark:border-amber-900/50" : "border-slate-200 dark:border-slate-800")}>
+      <div className="flex items-center gap-3">
+        <div className="rounded-xl p-2.5" style={{ backgroundColor: `${accent}18` }}>
+          <Icon className="size-5" style={{ color: accent }} />
+        </div>
+        <div>
+          <p className="text-2xl font-bold tracking-tight">{value}</p>
+          <p className="text-xs font-medium text-slate-500">{label}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SidebarCard({ title, icon: Icon, children }: { title: string; icon: typeof BookOpen; children: React.ReactNode }) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-soft dark:border-slate-800 dark:bg-slate-950">
+      <div className="mb-4 flex items-center gap-2">
+        <Icon className="size-5 text-emerald-600" />
+        <h3 className="font-bold">{title}</h3>
+      </div>
+      <div className="space-y-2">{children}</div>
+    </div>
+  );
+}
+
+function StatusPill({ status }: { status: string }) {
+  const styles: Record<string, string> = {
+    APPROVED: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200",
+    PENDING_PAYMENT: "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200",
+    PAYMENT_UPLOADED: "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200",
+  };
+  return (
+    <span className={cn("inline-flex rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide", styles[status] ?? "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300")}>
+      {status.replace(/_/g, " ")}
+    </span>
   );
 }
 

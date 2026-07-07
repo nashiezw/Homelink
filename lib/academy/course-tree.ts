@@ -59,7 +59,8 @@ export function mapLessonForLearner(
     lessonResources: Array<{ id: string; title: string; body: string; type: string; sortOrder: number }>;
     lessonDownloads: Array<{ id: string; title: string; url: string; type: string }>;
   },
-  completedIds: Set<string>
+  completedIds: Set<string>,
+  bookmarkIds: Set<string> = new Set(),
 ) {
   return {
     id: lesson.id,
@@ -78,6 +79,7 @@ export function mapLessonForLearner(
     completionRequirement: lesson.completionRequirement,
     sortOrder: lesson.sortOrder,
     completed: completedIds.has(lesson.id),
+    bookmarked: bookmarkIds.has(lesson.id),
     lessonVideos: lesson.lessonVideos.map((v) => ({ id: v.id, title: v.title, url: v.url, provider: v.provider, durationSeconds: v.durationSeconds })),
     lessonDocuments: lesson.lessonDocuments.map((d) => ({
       id: d.document.id,

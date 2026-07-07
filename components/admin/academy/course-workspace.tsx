@@ -7,10 +7,12 @@ import {
   Copy,
   Eye,
   GripVertical,
+  History,
   Loader2,
   Pencil,
   Plus,
   Trash2,
+  Undo2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api/client";
@@ -81,6 +83,8 @@ export function CourseWorkspace({
   const [lessonDraft, setLessonDraft] = useState<Partial<LessonNode>>({});
   const [selectedQuizId, setSelectedQuizId] = useState<string | null>(null);
   const [questionDraft, setQuestionDraft] = useState({ prompt: "", answers: ["", "", "", ""], correctIndex: 0, explanation: "" });
+  const [undoStack, setUndoStack] = useState<Array<{ label: string; body: Record<string, unknown> }>>([]);
+  const [auditLogs, setAuditLogs] = useState<Array<{ id: string; action: string; createdAt: string }>>([]);
 
   const load = useCallback(async () => {
     const result = await apiFetch<CourseTree>(`/api/v1/admin/academy/courses/${courseId}`);
@@ -114,13 +118,27 @@ export function CourseWorkspace({
     }
   }, [selectedLessonId, selectedLesson]);
 
-  async function run(body: Record<string, unknown>, success: string) {
+  async function run(body: Record<string, unknown>, success: string, undo?: { label: string; body: Record<string, unknown> }) {
     setBusy(true);
     await action(body, success);
+    if (undo) setUndoStack((stack) => [...stack.slice(-9), undo]);
     await load();
     await onRefresh();
     setBusy(false);
   }
+
+  async function loadAuditLogs() {
+    const result = await apiFetch<Array<{ id: string; action: string; createdAt: string }>>("/api/v1/admin/academy", {
+      method: "PATCH",
+      body: JSON.stringify({ action: "get_course_audit_log", courseId }),
+    });
+    if (Array.isArray(result.data)) setAuditLogs(result.data);
+  }
+
+  useEffect(() => {
+    if (step === "Publish") void loadAuditLogs();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, courseId]);
 
   async function reorderModules(fromId: string, toId: string) {
     if (!tree || fromId === toId) return;
@@ -160,6 +178,12 @@ export function CourseWorkspace({
         </div>
         <div className="flex flex-wrap gap-2">
           <Button variant="secondary" onClick={onClose}>Close</Button>
+          <Button variant="secondary" disabled={!undoStack.length || busy} onClick={() => {
+            const last = undoStack[undoStack.length - 1];
+            if (!last) return;
+            setUndoStack((stack) => stack.slice(0, -1));
+            void run(last.body, `Undid: ${last.label}`);
+          }}><Undo2 className="size-4 mr-2" /> Undo</Button>
           <Button variant="secondary" onClick={() => window.open(`/dashboard/academy/${courseId}`, "_blank")}><Eye className="size-4 mr-2" /> Preview</Button>
         </div>
       </div>
@@ -231,6 +255,25 @@ export function CourseWorkspace({
                       <p className="text-xs text-slate-500">{lesson.estimatedMinutes} min · {lesson.completionRequirement}</p>
                     </button>
                     <Button variant="secondary" onClick={() => setSelectedLessonId(lesson.id)}><Pencil className="size-4" /></Button>
+                    <select
+                      className="rounded-lg border border-white/10 bg-slate-900 px-2 py-1 text-xs text-white max-w-[120px]"
+                      defaultValue=""
+                      onChange={(e) => {
+                        const sectionId = e.target.value;
+                        if (!sectionId || sectionId === section.id) return;
+                        void run(
+                          { action: "update_lesson", lessonId: lesson.id, lesson: { sectionId } },
+                          "Lesson moved to another module.",
+                          { label: "move lesson", body: { action: "update_lesson", lessonId: lesson.id, lesson: { sectionId: section.id } } },
+                        );
+                        e.target.value = "";
+                      }}
+                    >
+                      <option value="">Move to…</option>
+                      {tree.modules.flatMap((m) => m.sections.map((s) => (
+                        <option key={s.id} value={s.id}>{m.title.slice(0, 24)}</option>
+                      )))}
+                    </select>
                     <Button variant="secondary" onClick={() => void run({ action: "duplicate_lesson", lessonId: lesson.id }, "Lesson duplicated.")}><Copy className="size-4" /></Button>
                     <Button variant="secondary" onClick={() => void run({ action: "delete_lesson", lessonId: lesson.id }, "Lesson deleted.")}><Trash2 className="size-4" /></Button>
                   </div>
@@ -331,19 +374,33 @@ export function CourseWorkspace({
       )}
 
       {step === "Publish" && (
-        <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-6">
-          <h3 className="text-lg font-bold text-white">Ready to publish?</h3>
-          <ul className="mt-4 space-y-2 text-sm text-emerald-100">
-            <li>✓ {tree.stats.moduleCount} modules configured</li>
-            <li>✓ {tree.stats.lessonCount} lessons with content</li>
-            <li>✓ {tree.stats.quizCount} quizzes · {tree.stats.assignmentCount} assignments · {tree.stats.examCount} exams</li>
-          </ul>
-          <div className="mt-6 flex gap-3">
-            {tree.status === "PUBLISHED" ? (
-              <Button variant="secondary" onClick={() => void run({ action: "unpublish_course", courseId }, "Course unpublished.")}>Unpublish</Button>
-            ) : (
-              <Button onClick={() => void run({ action: "publish_course", courseId }, "Course published.")}><CheckCircle2 className="size-4 mr-2" /> Publish Course</Button>
-            )}
+        <div className="grid gap-6 lg:grid-cols-2">
+          <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-6">
+            <h3 className="text-lg font-bold text-white">Ready to publish?</h3>
+            <ul className="mt-4 space-y-2 text-sm text-emerald-100">
+              <li>✓ {tree.stats.moduleCount} modules configured</li>
+              <li>✓ {tree.stats.lessonCount} lessons with content</li>
+              <li>✓ {tree.stats.quizCount} quizzes · {tree.stats.assignmentCount} assignments · {tree.stats.examCount} exams</li>
+            </ul>
+            <div className="mt-6 flex gap-3">
+              {tree.status === "PUBLISHED" ? (
+                <Button variant="secondary" onClick={() => void run({ action: "unpublish_course", courseId }, "Course unpublished.")}>Unpublish</Button>
+              ) : (
+                <Button onClick={() => void run({ action: "publish_course", courseId }, "Course published.")}><CheckCircle2 className="size-4 mr-2" /> Publish Course</Button>
+              )}
+            </div>
+          </div>
+          <div className="rounded-xl border border-white/10 p-4">
+            <h4 className="font-semibold text-white flex items-center gap-2 mb-3"><History className="size-4" /> Version history</h4>
+            <ul className="max-h-64 space-y-2 overflow-y-auto text-sm text-slate-400">
+              {auditLogs.map((log) => (
+                <li key={log.id} className="rounded-lg bg-slate-900/60 px-3 py-2">
+                  <p className="text-white">{log.action.replace("academy.", "").replace(/\./g, " ")}</p>
+                  <p className="text-xs">{new Date(log.createdAt).toLocaleString()}</p>
+                </li>
+              ))}
+              {!auditLogs.length && <li className="text-slate-500">No audit entries yet. Changes will appear here.</li>}
+            </ul>
           </div>
         </div>
       )}
