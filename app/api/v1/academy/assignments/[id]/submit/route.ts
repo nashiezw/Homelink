@@ -18,7 +18,12 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     const prisma = getMainPrisma();
     const assignment = await prisma.assignment.findUnique({ where: { id: assignmentId } });
     if (!assignment || assignment.active === false) return problem(404, "ASSIGNMENT_NOT_FOUND", "Assignment not found.");
-
+    if (assignment.courseId) {
+      const enrolment = await prisma.courseEnrolment.findUnique({
+        where: { courseId_agentId: { courseId: assignment.courseId, agentId: userId } },
+      });
+      if (!enrolment || enrolment.status !== "ACTIVE") return problem(403, "NOT_ENROLLED", "Enrol in this course to submit assignments.");
+    }
     const submission = await prisma.assignmentSubmission.create({
       data: {
         assignmentId,

@@ -11,6 +11,7 @@ import {
 import { getMainPrisma } from "@/lib/db/main-prisma";
 import { ensureOfficialAcademySeed } from "@/lib/academy/official-academy-seed";
 import { reviewPublicLearnerApplication } from "@/lib/academy/public-academy-repository";
+import { fetchCourseTree, resolveLessonSectionId } from "@/lib/academy/course-tree";
 
 export type AcademyDashboard = Awaited<ReturnType<typeof getAcademyDashboard>>;
 
@@ -377,8 +378,14 @@ export async function runAcademyAction(body: Record<string, any>, actor: Actor) 
     return video;
   }
   if (action === "create_lesson") {
-    const lesson = await prisma.trainingLesson.create({ data: lessonInput(body.lesson ?? {}) });
-    await audit(actor, "academy.lesson.create", lesson.id, { title: lesson.title });
+    const lessonPayload = body.lesson ?? {};
+    const sectionId = await resolveLessonSectionId({
+      sectionId: lessonPayload.sectionId,
+      moduleId: lessonPayload.moduleId,
+      courseId: lessonPayload.courseId,
+    });
+    const lesson = await prisma.trainingLesson.create({ data: { ...lessonInput({ ...lessonPayload, sectionId }), sectionId } });
+    await audit(actor, "academy.lesson.create", lesson.id, { title: lesson.title, courseId: lessonPayload.courseId });
     return lesson;
   }
   if (action === "update_lesson") {
@@ -511,16 +518,42 @@ export async function runAcademyAction(body: Record<string, any>, actor: Actor) 
         sortOrder: numberOr(body.module?.sortOrder, 0),
       }
     });
-    // Create default section
     await prisma.trainingSection.create({
       data: {
         moduleId: trainingModule.id,
-        title: "Default Section",
+        title: String(body.module?.sectionTitle ?? "Section 1"),
         sortOrder: 0,
       }
     });
     await audit(actor, "academy.module.create", trainingModule.id, { title: trainingModule.title });
     return trainingModule;
+  }
+  if (action === "create_section") {
+    const section = await prisma.trainingSection.create({
+      data: {
+        moduleId: String(body.section?.moduleId),
+        title: required(body.section?.title, "Section title"),
+        sortOrder: numberOr(body.section?.sortOrder, 0),
+      },
+    });
+    await audit(actor, "academy.section.create", section.id, { title: section.title });
+    return section;
+  }
+  if (action === "update_section") {
+    const section = await prisma.trainingSection.update({
+      where: { id: String(body.sectionId) },
+      data: {
+        title: body.section?.title,
+        sortOrder: body.section?.sortOrder,
+      },
+    });
+    await audit(actor, "academy.section.update", section.id, { title: section.title });
+    return section;
+  }
+  if (action === "delete_section") {
+    const section = await prisma.trainingSection.delete({ where: { id: String(body.sectionId) } });
+    await audit(actor, "academy.section.delete", section.id, { title: section.title });
+    return section;
   }
   if (action === "update_module") {
     const trainingModule = await prisma.trainingModule.update({
@@ -722,6 +755,66 @@ export async function runAcademyAction(body: Record<string, any>, actor: Actor) 
   return null;
 }
 
+export async function getAdminCourseTree(courseId: string) {
+  const course = await fetchCourseTree(courseId);
+  if (!course) return null;
+  return {
+    id: course.id,
+    title: course.title,
+    slug: course.slug,
+    description: course.description,
+    status: course.status,
+    visibility: course.visibility,
+    instructor: course.instructor,
+    difficulty: course.difficulty,
+    passingPercentage: course.passingPercentage,
+    certificateEnabled: course.certificateEnabled,
+    registrationOpen: course.registrationOpen,
+    publicPrice: Number(course.publicPrice),
+    agentPrice: Number(course.agentPrice),
+    currency: course.currency,
+    accessDurationDays: course.accessDurationDays,
+    featured: course.featured,
+    category: course.category,
+    modules: course.modules.map((module) => ({
+      id: module.id,
+      title: module.title,
+      description: module.description,
+      sortOrder: module.sortOrder,
+      sections: module.sections.map((section) => ({
+        id: section.id,
+        title: section.title,
+        sortOrder: section.sortOrder,
+        lessons: section.lessons.map((lesson) => ({
+          id: lesson.id,
+          title: lesson.title,
+          summary: lesson.summary,
+          richText: lesson.richText,
+          estimatedMinutes: lesson.estimatedMinutes,
+          completionRequirement: lesson.completionRequirement,
+          sortOrder: lesson.sortOrder,
+          videoUrl: lesson.videoUrl,
+          pdfUrl: lesson.pdfUrl,
+          lessonVideos: lesson.lessonVideos,
+          lessonDocuments: lesson.lessonDocuments.map((d) => ({ id: d.id, documentId: d.documentId, title: d.document.title })),
+          lessonResources: lesson.lessonResources,
+          lessonDownloads: lesson.lessonDownloads,
+        })),
+      })),
+    })),
+    quizzes: course.quizzes,
+    assignments: course.assignments,
+    exams: course.finalExams,
+    stats: {
+      moduleCount: course.modules.length,
+      lessonCount: course.modules.reduce((sum, m) => sum + m.sections.reduce((s, sec) => s + sec.lessons.length, 0), 0),
+      quizCount: course.quizzes.length,
+      assignmentCount: course.assignments.length,
+      examCount: course.finalExams.length,
+    },
+  };
+}
+
 export async function ensureAcademyDefaults() {
   const prisma = getMainPrisma();
   await prisma.$transaction([
@@ -744,9 +837,18 @@ export async function ensureAcademyDefaults() {
       create: {
         id: "singleton",
         payload: {
+          academyName: "HomeLink Agent Academy",
           certificatePrefix: "HLA",
+          primaryColour: "#008b68",
+          accentColour: "#c6a15b",
+          paymentInstructions: "Pay via bank transfer, ZIPIT, or cash deposit. Upload your proof of payment from your learner dashboard for admin approval.",
+          accessDurationDays: 365,
           notifications: ["EMAIL", "IN_APP", "PUSH"],
           supportedFormats: ["PDF", "DOCX", "XLSX", "PPTX", "IMAGE", "VIDEO", "AUDIO", "ZIP"],
+          quizSettings: { defaultPassMark: 80, maxAttempts: 3, showResults: true, randomiseByDefault: false },
+          enrolmentSettings: { allowTrainingOnly: true, allowAgentTraining: true, requirePaymentProof: true },
+          completionRules: { requireAllLessons: true, requireFinalExam: false, autoIssueCertificate: true },
+          branding: { logoUrl: "/brand/homelink-full-lockup.png", dashboardWelcome: "Continue your professional training journey." },
         },
       },
       update: {},

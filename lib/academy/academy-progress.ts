@@ -150,14 +150,20 @@ export async function issueCertificateIfMissing(learnerId: string, courseId: str
   });
   if (existing) return existing;
 
-  const [course, template] = await Promise.all([
+  const [course, template, settingsRow] = await Promise.all([
     prisma.trainingCourse.findUnique({ where: { id: courseId } }),
     prisma.certificateTemplate.findFirst({ where: { active: true }, orderBy: { updatedAt: "desc" } }),
+    prisma.trainingSetting.findUnique({ where: { id: "singleton" } }),
   ]);
   if (!course) return null;
 
+  const settingsPayload = (settingsRow?.payload ?? {}) as Record<string, unknown>;
   const templateJson = (template?.templateJson ?? {}) as Record<string, unknown>;
-  const prefix = typeof templateJson.certificateNumberPrefix === "string" ? templateJson.certificateNumberPrefix : "HLA";
+  const prefix = typeof settingsPayload.certificatePrefix === "string"
+    ? settingsPayload.certificatePrefix
+    : typeof templateJson.certificateNumberPrefix === "string"
+      ? templateJson.certificateNumberPrefix
+      : "HLA";
   const expiryDays = typeof templateJson.expiryDays === "number" ? templateJson.expiryDays : 365;
   const certificateNumber = `${prefix}-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
   const expiresAt = new Date(Date.now() + expiryDays * 86400000);

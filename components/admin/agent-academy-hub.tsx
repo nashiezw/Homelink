@@ -19,6 +19,7 @@ import {
   Film,
   GraduationCap,
   Library,
+  Layers,
   Loader2,
   Megaphone,
   Pencil,
@@ -49,6 +50,7 @@ import {
   AdminTabStrip,
 } from "@/components/admin/ui/admin-ui";
 import { BarChart, MetricRow } from "@/components/admin/charts";
+import { CourseWorkspace } from "@/components/admin/academy/course-workspace";
 import { cn } from "@/lib/utils";
 import type { LucideIcon } from "lucide-react";
 
@@ -233,6 +235,7 @@ export function AgentAcademyHub() {
   const [busy, setBusy] = useState(false);
   const [previewDocument, setPreviewDocument] = useState<AcademyDocument | null>(null);
   const [selectedCourse, setSelectedCourse] = useState<AcademyCourse | null>(null);
+  const [buildingCourseId, setBuildingCourseId] = useState<string | null>(null);
   const [viewCourse, setViewCourse] = useState<AcademyCourse | null>(null);
   const [selectedLesson, setSelectedLesson] = useState<AcademyLesson | null>(null);
   const [selectedModule, setSelectedModule] = useState<{ id: string; courseId: string; title: string; description?: string; sortOrder: number } | null>(null);
@@ -354,6 +357,16 @@ export function AgentAcademyHub() {
 
       {tab === "Courses" && (
         <div className="space-y-4">
+          {buildingCourseId ? (
+            <CourseWorkspace
+              courseId={buildingCourseId}
+              courseTitle={data.courses.find((c) => c.id === buildingCourseId)?.title ?? "Course"}
+              onClose={() => setBuildingCourseId(null)}
+              action={action}
+              onRefresh={load}
+            />
+          ) : (
+            <>
           <AdminFilterBar>
             <AdminSearchInput value={query} onChange={setQuery} placeholder="Search courses, tags, instructors..." className="lg:flex-1" />
             <AdminSelect value={statusFilter} onChange={setStatusFilter} options={["ALL", "DRAFT", "PUBLISHED", "ARCHIVED"].map((value) => ({ value, label: value.replace("_", " ") }))} />
@@ -372,6 +385,7 @@ export function AgentAcademyHub() {
                 header: "Actions",
                 render: (course) => (
                   <div className="flex flex-wrap gap-2">
+                    <IconAction label="Build" icon={Layers} onClick={() => setBuildingCourseId(course.id)} />
                     <IconAction label="View" icon={Eye} onClick={() => setViewCourse(course)} />
                     <IconAction label="Edit" icon={Pencil} onClick={() => { setSelectedCourse(course); setDrawer("course"); }} />
                     <IconAction label="Duplicate" icon={Copy} onClick={() => void action({ action: "duplicate_course", courseId: course.id }, "Course duplicated.")} />
@@ -396,6 +410,8 @@ export function AgentAcademyHub() {
             ]}
             emptyMessage="No Academy courses match your filters."
           />
+            </>
+          )}
         </div>
       )}
 
@@ -1149,6 +1165,9 @@ function ModuleDrawer({ open, busy, module: editingModule, courses, onClose, onS
 }
 
 function AcademySettingsPanel({ settings, auditLogs, onSave }: { settings: Record<string, unknown>; auditLogs: AcademyData["auditLogs"]; onSave: (settings: Record<string, unknown>) => Promise<unknown> }) {
+  const quizSettings = (settings.quizSettings ?? {}) as Record<string, unknown>;
+  const enrolmentSettings = (settings.enrolmentSettings ?? {}) as Record<string, unknown>;
+  const completionRules = (settings.completionRules ?? {}) as Record<string, unknown>;
   const [draft, setDraft] = useState({
     academyName: String(settings.academyName ?? "HomeLink Agent Academy"),
     certificatePrefix: String(settings.certificatePrefix ?? "HLA"),
@@ -1157,14 +1176,21 @@ function AcademySettingsPanel({ settings, auditLogs, onSave }: { settings: Recor
     paymentInstructions: String(settings.paymentInstructions ?? "Upload proof of payment for admin approval before course activation."),
     accessDurationDays: String(settings.accessDurationDays ?? "365"),
     supportedFormats: Array.isArray(settings.supportedFormats) ? (settings.supportedFormats as string[]).join(", ") : "PDF, DOCX, XLSX, PPTX, IMAGE, VIDEO, AUDIO, ZIP",
+    defaultPassMark: String(quizSettings.defaultPassMark ?? "80"),
+    maxQuizAttempts: String(quizSettings.maxAttempts ?? "3"),
+    allowTrainingOnly: enrolmentSettings.allowTrainingOnly !== false,
+    requirePaymentProof: enrolmentSettings.requirePaymentProof !== false,
+    autoIssueCertificate: completionRules.autoIssueCertificate !== false,
+    requireAllLessons: completionRules.requireAllLessons !== false,
+    dashboardWelcome: String((settings.branding as Record<string, unknown>)?.dashboardWelcome ?? "Continue your professional training journey."),
   });
   return (
     <div className="grid gap-4 xl:grid-cols-3">
-      <section className="rounded-xl border border-white/10 bg-slate-900/60 p-5 xl:col-span-2">
-        <div className="mb-4 flex items-center justify-between gap-3">
+      <section className="rounded-xl border border-white/10 bg-slate-900/60 p-5 xl:col-span-2 space-y-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h3 className="font-semibold text-white">Academy Settings</h3>
-            <p className="mt-1 text-sm text-slate-400">Branding, certificates, payments, access rules, document formats, and operational defaults.</p>
+            <h3 className="font-semibold text-white">Academy LMS Settings</h3>
+            <p className="mt-1 text-sm text-slate-400">General, branding, payments, certificates, quizzes, enrolment, and completion rules.</p>
           </div>
           <Button
             onClick={() =>
@@ -1177,21 +1203,52 @@ function AcademySettingsPanel({ settings, auditLogs, onSave }: { settings: Recor
                 paymentInstructions: draft.paymentInstructions,
                 accessDurationDays: Number(draft.accessDurationDays) || 365,
                 supportedFormats: draft.supportedFormats.split(",").map((item) => item.trim()).filter(Boolean),
+                quizSettings: { defaultPassMark: Number(draft.defaultPassMark) || 80, maxAttempts: Number(draft.maxQuizAttempts) || 3, showResults: true },
+                enrolmentSettings: { allowTrainingOnly: draft.allowTrainingOnly, allowAgentTraining: true, requirePaymentProof: draft.requirePaymentProof },
+                completionRules: { requireAllLessons: draft.requireAllLessons, requireFinalExam: false, autoIssueCertificate: draft.autoIssueCertificate },
+                branding: { ...(settings.branding as object), dashboardWelcome: draft.dashboardWelcome, logoUrl: "/brand/homelink-full-lockup.png" },
               })
             }
           >
-            <CheckCircle2 className="size-4" /> Save Settings
+            <CheckCircle2 className="size-4" /> Save All Settings
           </Button>
         </div>
-        <FormGrid>
-          <TextInput label="Academy name" value={draft.academyName} onChange={(academyName) => setDraft({ ...draft, academyName })} />
-          <TextInput label="Certificate prefix" value={draft.certificatePrefix} onChange={(certificatePrefix) => setDraft({ ...draft, certificatePrefix })} />
-          <TextInput label="Primary colour" value={draft.primaryColour} onChange={(primaryColour) => setDraft({ ...draft, primaryColour })} />
-          <TextInput label="Accent colour" value={draft.accentColour} onChange={(accentColour) => setDraft({ ...draft, accentColour })} />
-          <TextInput label="Access duration days" type="number" value={draft.accessDurationDays} onChange={(accessDurationDays) => setDraft({ ...draft, accessDurationDays })} />
-          <TextInput label="Supported formats" value={draft.supportedFormats} onChange={(supportedFormats) => setDraft({ ...draft, supportedFormats })} />
-          <TextArea label="Payment instructions" value={draft.paymentInstructions} onChange={(paymentInstructions) => setDraft({ ...draft, paymentInstructions })} className="sm:col-span-2" />
-        </FormGrid>
+        <div>
+          <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-emerald-300">General & Branding</p>
+          <FormGrid>
+            <TextInput label="Academy name" value={draft.academyName} onChange={(academyName) => setDraft({ ...draft, academyName })} />
+            <TextInput label="Dashboard welcome message" value={draft.dashboardWelcome} onChange={(dashboardWelcome) => setDraft({ ...draft, dashboardWelcome })} />
+            <TextInput label="Primary colour" value={draft.primaryColour} onChange={(primaryColour) => setDraft({ ...draft, primaryColour })} />
+            <TextInput label="Accent colour" value={draft.accentColour} onChange={(accentColour) => setDraft({ ...draft, accentColour })} />
+          </FormGrid>
+        </div>
+        <div>
+          <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-emerald-300">Certificates & Access</p>
+          <FormGrid>
+            <TextInput label="Certificate prefix" value={draft.certificatePrefix} onChange={(certificatePrefix) => setDraft({ ...draft, certificatePrefix })} />
+            <TextInput label="Default access duration (days)" type="number" value={draft.accessDurationDays} onChange={(accessDurationDays) => setDraft({ ...draft, accessDurationDays })} />
+            <TextInput label="Supported upload formats" value={draft.supportedFormats} onChange={(supportedFormats) => setDraft({ ...draft, supportedFormats })} className="sm:col-span-2" />
+          </FormGrid>
+        </div>
+        <div>
+          <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-emerald-300">Payments & Enrolment</p>
+          <TextArea label="Payment instructions (shown to learners)" value={draft.paymentInstructions} onChange={(paymentInstructions) => setDraft({ ...draft, paymentInstructions })} className="sm:col-span-2" />
+          <div className="mt-3 flex flex-wrap gap-4 text-sm text-slate-300">
+            <label className="flex items-center gap-2"><input type="checkbox" checked={draft.allowTrainingOnly} onChange={(e) => setDraft({ ...draft, allowTrainingOnly: e.target.checked })} /> Allow training-only registration (non-agents)</label>
+            <label className="flex items-center gap-2"><input type="checkbox" checked={draft.requirePaymentProof} onChange={(e) => setDraft({ ...draft, requirePaymentProof: e.target.checked })} /> Require payment proof upload</label>
+          </div>
+        </div>
+        <div>
+          <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-emerald-300">Quizzes & Completion</p>
+          <FormGrid>
+            <TextInput label="Default pass mark (%)" type="number" value={draft.defaultPassMark} onChange={(defaultPassMark) => setDraft({ ...draft, defaultPassMark })} />
+            <TextInput label="Max quiz attempts" type="number" value={draft.maxQuizAttempts} onChange={(maxQuizAttempts) => setDraft({ ...draft, maxQuizAttempts })} />
+          </FormGrid>
+          <div className="mt-3 flex flex-wrap gap-4 text-sm text-slate-300">
+            <label className="flex items-center gap-2"><input type="checkbox" checked={draft.autoIssueCertificate} onChange={(e) => setDraft({ ...draft, autoIssueCertificate: e.target.checked })} /> Auto-issue certificate on course completion</label>
+            <label className="flex items-center gap-2"><input type="checkbox" checked={draft.requireAllLessons} onChange={(e) => setDraft({ ...draft, requireAllLessons: e.target.checked })} /> Require all lessons before completion</label>
+          </div>
+        </div>
       </section>
       <ActivityPanel title="Audit Log" icon={Settings}>
         {auditLogs.slice(0, 12).map((entry) => (

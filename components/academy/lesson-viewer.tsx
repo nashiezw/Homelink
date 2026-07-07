@@ -18,6 +18,9 @@ type Lesson = {
   completionRequirement: string;
   lessonVideos?: Array<{ id: string; title: string; url: string; provider: string }>;
   lessonDownloads?: Array<{ id: string; title: string; url: string; type: string }>;
+  lessonDocuments?: Array<{ id: string; title: string; fileType: string; downloadUrl: string }>;
+  lessonResources?: Array<{ id: string; title: string; body: string; type: string }>;
+  completed?: boolean;
 };
 
 type Module = {
@@ -176,24 +179,22 @@ export function LessonViewer({ course, initialLessonId, onBack, onCompleteLesson
             </div>
 
             {/* Downloads Section */}
-            {(currentLesson.pdfUrl || currentLesson.lessonDownloads?.length) && (
+            {(currentLesson.pdfUrl || currentLesson.lessonDownloads?.length || currentLesson.lessonDocuments?.length) && (
               <div className="mb-8 rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-950">
-                <h3 className="mb-4 text-lg font-bold flex items-center gap-2"><Download className="size-5" /> Downloads</h3>
+                <h3 className="mb-4 text-lg font-bold flex items-center gap-2"><Download className="size-5" /> Materials & Downloads</h3>
                 <div className="grid gap-3 sm:grid-cols-2">
                   {currentLesson.pdfUrl && (
-                    <a
-                      href={currentLesson.pdfUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-3 rounded-xl border border-slate-200 p-4 hover:border-emerald-400 hover:bg-emerald-50 dark:border-slate-800 dark:hover:border-emerald-700 dark:hover:bg-emerald-900/20 transition-colors"
-                    >
+                    <a href={currentLesson.pdfUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 rounded-xl border border-slate-200 p-4 hover:border-emerald-400 dark:border-slate-800">
                       <FileText className="size-5 text-red-500" />
-                      <div>
-                        <p className="font-semibold">Lesson PDF</p>
-                        <p className="text-xs text-slate-500">Download lesson materials</p>
-                      </div>
+                      <div><p className="font-semibold">Lesson PDF</p><p className="text-xs text-slate-500">Download lesson materials</p></div>
                     </a>
                   )}
+                  {currentLesson.lessonDocuments?.map((doc) => (
+                    <a key={doc.id} href={doc.downloadUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 rounded-xl border border-slate-200 p-4 hover:border-emerald-400 dark:border-slate-800">
+                      <FileText className="size-5 text-emerald-600" />
+                      <div><p className="font-semibold">{doc.title}</p><p className="text-xs text-slate-500">{doc.fileType}</p></div>
+                    </a>
+                  ))}
                   {currentLesson.lessonDownloads?.map((download) => (
                     <a
                       key={download.id}

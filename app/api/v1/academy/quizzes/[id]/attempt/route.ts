@@ -20,7 +20,12 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       include: { questions: { include: { answers: true } } },
     });
     if (!quiz || quiz.active === false) return problem(404, "QUIZ_NOT_FOUND", "Quiz not found.");
-
+    if (quiz.courseId) {
+      const enrolment = await prisma.courseEnrolment.findUnique({
+        where: { courseId_agentId: { courseId: quiz.courseId, agentId: userId } },
+      });
+      if (!enrolment || enrolment.status !== "ACTIVE") return problem(403, "NOT_ENROLLED", "Enrol in this course to take the quiz.");
+    }
     let correct = 0;
     for (const question of quiz.questions) {
       const selected = answers[question.id];

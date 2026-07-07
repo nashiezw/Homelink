@@ -32,6 +32,7 @@ type PublicCourse = {
 export function PublicAcademyPage() {
   const { user, showToast } = useApp();
   const [courses, setCourses] = useState<PublicCourse[]>([]);
+  const [academySettings, setAcademySettings] = useState<{ academyName?: string; paymentInstructions?: string } | null>(null);
   const [selectedId, setSelectedId] = useState("");
   const [busy, setBusy] = useState(false);
   const [form, setForm] = useState({
@@ -43,11 +44,15 @@ export function PublicAcademyPage() {
   });
 
   const load = useCallback(async () => {
-    const result = await apiFetch<PublicCourse[]>("/api/v1/academy/courses");
-    if (result.data) {
-      setCourses(result.data);
-      setSelectedId((current) => current || result.data[0]?.id || "");
+    const [coursesResult, settingsResult] = await Promise.all([
+      apiFetch<PublicCourse[]>("/api/v1/academy/courses"),
+      apiFetch<{ academyName: string; paymentInstructions: string }>("/api/v1/academy/settings"),
+    ]);
+    if (coursesResult.data) {
+      setCourses(coursesResult.data);
+      setSelectedId((current) => current || coursesResult.data[0]?.id || "");
     }
+    if (settingsResult.data) setAcademySettings(settingsResult.data);
   }, []);
 
   useEffect(() => {
@@ -90,7 +95,7 @@ export function PublicAcademyPage() {
 
   return (
     <PageShell
-      eyebrow="HomeLink Academy"
+      eyebrow={academySettings?.academyName ?? "HomeLink Academy"}
       title="Professional Property Training"
       description="Master real estate with Zimbabwe's leading property platform. Train with HomeLink as a public learner — no agent application required."
       highlights={[
@@ -285,6 +290,12 @@ export function PublicAcademyPage() {
                   </label>
                   <TextInput label="Phone Number" value={form.phone} onChange={(phone) => setForm({ ...form, phone })} />
                   <TextInput label="Organization (Optional)" value={form.organisation} onChange={(organisation) => setForm({ ...form, organisation })} />
+                  {academySettings?.paymentInstructions && (
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-300">
+                      <p className="font-semibold mb-1">Payment instructions</p>
+                      <p>{academySettings.paymentInstructions}</p>
+                    </div>
+                  )}
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
                     Registration type
                     <select

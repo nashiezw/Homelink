@@ -1,6 +1,7 @@
 import { AcademyRegistrationStatus, PaymentProvider, PaymentStatus, Role, TrainingCourseStatus, TrainingVisibility, type Prisma } from "@prisma/client";
 import { getMainPrisma } from "@/lib/db/main-prisma";
 import { calculateCourseProgress, getCompletedLessonIds } from "@/lib/academy/academy-progress";
+import { fetchCourseTree, flattenCourseMaterials, mapLessonForLearner } from "@/lib/academy/course-tree";
 
 export type AcademyRegistrationIntent = "TRAINING_ONLY" | "AGENT_TRAINING";
 
@@ -114,8 +115,10 @@ export async function getLearnerAcademyDashboard(learnerId: string) {
   );
   const completedLessonTotal = completedLessons.reduce((sum, count) => sum + count, 0);
   const overallProgress = totalLessons ? Math.round((completedLessonTotal / totalLessons) * 100) : 0;
+  const settings = await getAcademySettingsPublic();
 
   return {
+    settings,
     metrics: {
       enrolledCourses: approved.length,
       pendingApprovals: applications.filter((entry) => entry.status === AcademyRegistrationStatus.PENDING_PAYMENT || entry.status === AcademyRegistrationStatus.PAYMENT_UPLOADED).length,
@@ -161,6 +164,7 @@ export async function getLearnerAcademyDashboard(learnerId: string) {
       course: {
         id: entry.course.id,
         title: entry.course.title,
+        slug: entry.course.slug,
         description: entry.course.description,
         certificateEnabled: entry.course.certificateEnabled,
         modules: entry.course.modules.map((module) => ({
@@ -387,4 +391,119 @@ export async function reviewPublicLearnerApplication(input: {
 
 function countLessons(course: { modules: Array<{ sections: Array<{ lessons: unknown[] }> }> }) {
   return course.modules.reduce((sum, module) => sum + module.sections.reduce((count, section) => count + section.lessons.length, 0), 0);
+}
+
+export async function getAcademySettingsPublic() {
+  const settings = await getMainPrisma().trainingSetting.findUnique({ where: { id: "singleton" } });
+  const payload = (settings?.payload ?? {}) as Record<string, unknown>;
+  return {
+    academyName: String(payload.academyName ?? "HomeLink Academy"),
+    certificatePrefix: String(payload.certificatePrefix ?? "HLA"),
+    primaryColour: String(payload.primaryColour ?? "#008b68"),
+    accentColour: String(payload.accentColour ?? "#c6a15b"),
+    paymentInstructions: String(payload.paymentInstructions ?? "Upload proof of payment for admin approval before course activation."),
+    accessDurationDays: Number(payload.accessDurationDays ?? 365),
+    supportedFormats: Array.isArray(payload.supportedFormats) ? payload.supportedFormats : ["PDF", "DOCX", "VIDEO"],
+    quizSettings: (payload.quizSettings ?? { defaultPassMark: 80, maxAttempts: 3, showResults: true }) as Record<string, unknown>,
+    enrolmentSettings: (payload.enrolmentSettings ?? { allowTrainingOnly: true, requirePaymentProof: true }) as Record<string, unknown>,
+    completionRules: (payload.completionRules ?? { requireAllLessons: true, requireFinalExam: false }) as Record<string, unknown>,
+  };
+}
+
+export async function getLearnerCourseDetail(learnerId: string, courseId: string) {
+  const prisma = getMainPrisma();
+  const enrolment = await prisma.courseEnrolment.findUnique({
+    where: { courseId_agentId: { courseId, agentId: learnerId } },
+  });
+  const application = await prisma.academyLearnerApplication.findUnique({
+    where: { learnerId_courseId: { learnerId, courseId } },
+  });
+  if (!enrolment || enrolment.status !== "ACTIVE") {
+    if (application?.status !== AcademyRegistrationStatus.APPROVED) return "NOT_ENROLLED" as const;
+  }
+
+  const course = await fetchCourseTree(courseId);
+  if (!course) return "NOT_FOUND" as const;
+
+  const completedIds = await getCompletedLessonIds(learnerId, courseId);
+  const progress = calculateCourseProgress(course, completedIds);
+  const courseProgress = await prisma.courseProgress.findUnique({ where: { courseId_agentId: { courseId, agentId: learnerId } } });
+
+  const [quizAttempts, assignmentSubmissions, settings] = await Promise.all([
+    prisma.quizAttempt.findMany({ where: { agentId: learnerId, quiz: { courseId } }, orderBy: { startedAt: "desc" } }),
+    prisma.assignmentSubmission.findMany({ where: { agentId: learnerId, assignment: { courseId } }, orderBy: { submittedAt: "desc" } }),
+    getAcademySettingsPublic(),
+  ]);
+
+  const bestQuizScores = new Map<string, number>();
+  for (const attempt of quizAttempts) {
+    const score = Number(attempt.score);
+    const current = bestQuizScores.get(attempt.quizId) ?? 0;
+    if (score > current) bestQuizScores.set(attempt.quizId, score);
+  }
+
+  return {
+    settings,
+    course: {
+      id: course.id,
+      title: course.title,
+      slug: course.slug,
+      description: course.description,
+      instructor: course.instructor,
+      certificateEnabled: course.certificateEnabled,
+      passingPercentage: course.passingPercentage,
+      progress: courseProgress?.percentComplete ?? progress.percentComplete,
+      status: courseProgress?.status ?? "NOT_STARTED",
+      modules: course.modules.map((module) => ({
+        id: module.id,
+        title: module.title,
+        description: module.description,
+        sortOrder: module.sortOrder,
+        sections: module.sections.map((section) => ({
+          id: section.id,
+          title: section.title,
+          sortOrder: section.sortOrder,
+          lessons: section.lessons.map((lesson) => mapLessonForLearner(lesson, completedIds)),
+        })),
+        lessonCount: module.sections.reduce((sum, s) => sum + s.lessons.length, 0),
+        completedCount: module.sections.reduce((sum, s) => sum + s.lessons.filter((l) => completedIds.has(l.id)).length, 0),
+      })),
+    },
+    assessments: {
+      quizzes: course.quizzes.map((quiz) => ({
+        id: quiz.id,
+        title: quiz.title,
+        description: quiz.description,
+        passingPercentage: quiz.passingPercentage,
+        timeLimitMinutes: quiz.timeLimitMinutes,
+        questionCount: quiz.questions.length,
+        bestScore: bestQuizScores.get(quiz.id) ?? null,
+        passed: (bestQuizScores.get(quiz.id) ?? 0) >= quiz.passingPercentage,
+      })),
+      assignments: course.assignments.map((assignment) => ({
+        id: assignment.id,
+        title: assignment.title,
+        description: assignment.description,
+        points: assignment.points,
+        dueDays: assignment.dueDays,
+        submitted: assignmentSubmissions.some((s) => s.assignmentId === assignment.id),
+        status: assignmentSubmissions.find((s) => s.assignmentId === assignment.id)?.status ?? null,
+      })),
+      exams: course.finalExams.map((exam) => ({
+        id: exam.id,
+        title: exam.title,
+        durationMinutes: exam.durationMinutes,
+        passingScore: exam.passingScore,
+        attemptLimit: exam.attemptLimit,
+      })),
+    },
+    materials: flattenCourseMaterials(course),
+    application: application
+      ? {
+          id: application.id,
+          status: application.status,
+          accessEndsAt: application.accessEndsAt?.toISOString() ?? null,
+        }
+      : null,
+  };
 }

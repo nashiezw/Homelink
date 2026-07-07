@@ -2,14 +2,14 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Award, Bell, BookOpen, CheckCircle2, Download, FileText, Loader2, Upload, Clock, TrendingUp, Zap } from "lucide-react";
+import { Award, Bell, BookOpen, Download, FileText, Loader2, Upload, Clock, TrendingUp, Zap } from "lucide-react";
 import { PageShell } from "@/components/layout/page-shell";
 import { Button } from "@/components/ui/button";
 import { useApp } from "@/components/providers/app-provider";
 import { apiFetch } from "@/lib/api/client";
-import { LessonViewer } from "@/components/academy/lesson-viewer";
 
 type LearnerDashboard = {
+  settings?: { academyName: string; primaryColour?: string };
   metrics: Record<string, number>;
   certificates: Array<{
     id: string;
@@ -33,6 +33,7 @@ type LearnerDashboard = {
     course: {
       id: string;
       title: string;
+      slug?: string;
       description: string;
       certificateEnabled: boolean;
       modules: Array<{ id: string; title: string; lessons: Array<{ id: string; title: string; summary?: string; richText?: string; estimatedMinutes: number; completionRequirement?: string; videoUrl?: string; embeddedVideoUrl?: string; pdfUrl?: string; completed?: boolean; lessonVideos?: Array<{ id: string; title: string; url: string; provider: string }>; lessonDownloads?: Array<{ id: string; title: string; url: string; type: string }> }> }>;
@@ -47,7 +48,6 @@ export function LearnerDashboardClient() {
   const { user, showToast } = useApp();
   const [data, setData] = useState<LearnerDashboard | null>(null);
   const [busyPaymentId, setBusyPaymentId] = useState<string | null>(null);
-  const [viewingCourse, setViewingCourse] = useState<{ course: any; lessonId?: string } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const paymentRef = useRef<string>("");
 
@@ -96,35 +96,13 @@ export function LearnerDashboardClient() {
     );
   }
 
-  if (viewingCourse) {
-    return (
-      <LessonViewer
-        course={viewingCourse.course}
-        initialLessonId={viewingCourse.lessonId}
-        onBack={() => setViewingCourse(null)}
-        onCompleteLesson={async (lessonId) => {
-          const result = await apiFetch<{ courseCompleted?: boolean }>("/api/v1/academy/progress", {
-            method: "POST",
-            body: JSON.stringify({ lessonId }),
-          });
-          if (result.error) {
-            showToast(result.error.message, "error");
-            return;
-          }
-          showToast(result.data?.courseCompleted ? "Course completed! Certificate issued if eligible." : "Lesson marked as complete!");
-          await load();
-        }}
-      />
-    );
-  }
-
   if (!data) {
     return <PageShell eyebrow="Academy" title="Learner dashboard" description="Loading your training workspace..."><div className="h-24 animate-pulse rounded-xl bg-slate-100 dark:bg-slate-800" /></PageShell>;
   }
 
   return (
     <PageShell
-      eyebrow="My Learning Dashboard"
+      eyebrow={data.settings?.academyName ?? "My Learning Dashboard"}
       title={`Welcome back, ${user.name}`}
       description="Track your progress, access course materials, and manage your Academy journey."
       actions={<Link href="/academy"><Button variant="secondary"><BookOpen className="size-4 mr-2" /> Browse Courses</Button></Link>}
@@ -254,52 +232,12 @@ export function LearnerDashboardClient() {
               )}
               
               {application.status === "APPROVED" && (
-                <div className="mt-6 space-y-4">
-                  <div className="flex items-center gap-2 text-emerald-600">
-                    <CheckCircle2 className="size-5" />
-                    <span className="font-semibold">Course Access Active</span>
-                  </div>
-                  {application.course.modules.map((module) => (
-                    <div key={module.id} className="rounded-xl border border-slate-200 bg-slate-50 p-5 dark:border-slate-800 dark:bg-slate-900/50">
-                      <h4 className="font-bold mb-4 flex items-center gap-2">
-                        <BookOpen className="size-5 text-emerald-500" />
-                        {module.title}
-                      </h4>
-                      <div className="grid gap-3 md:grid-cols-2">
-                        {module.lessons.map((lesson) => (
-                          <button
-                            key={lesson.id}
-                            onClick={() => setViewingCourse({ course: application.course, lessonId: lesson.id })}
-                            className="rounded-lg border border-slate-200 bg-white p-4 text-left hover:border-emerald-400 hover:shadow-md transition-all dark:border-slate-700 dark:bg-slate-900 dark:hover:border-emerald-700"
-                          >
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="flex-1">
-                                <p className="font-semibold">{lesson.title}</p>
-                                <p className="mt-1 text-xs text-slate-500 flex items-center gap-1">
-                                  <Clock className="size-3" />
-                                  {lesson.estimatedMinutes} minutes
-                                </p>
-                              </div>
-                              <CheckCircle2 className={`size-5 flex-shrink-0 ${lesson.completed ? "text-emerald-500" : "text-slate-300"}`} />
-                            </div>
-                            <p className="mt-2 text-sm text-slate-600 dark:text-slate-400 line-clamp-2">{lesson.summary}</p>
-                            <div className="mt-3 flex flex-wrap gap-2">
-                              {lesson.videoUrl && (
-                                <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600">
-                                  <Zap className="size-3" /> Video
-                                </span>
-                              )}
-                              {lesson.pdfUrl && (
-                                <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600">
-                                  <FileText className="size-3" /> PDF
-                                </span>
-                              )}
-                            </div>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
+                <div className="mt-6">
+                  <Link href={`/dashboard/academy/${application.course.id}`}>
+                    <Button className="w-full sm:w-auto">
+                      <BookOpen className="size-4 mr-2" /> Open Course — Modules, Lessons, Materials & Quizzes
+                    </Button>
+                  </Link>
                 </div>
               )}
             </article>
