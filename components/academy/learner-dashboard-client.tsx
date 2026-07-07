@@ -169,8 +169,8 @@ export function LearnerDashboardClient() {
       title={`Welcome back, ${user.name.split(" ")[0]}`}
       description={data.settings?.dashboardWelcome ?? "Track your progress, access course materials, and manage your Academy journey."}
       actions={
-        <Link href="/academy?browse=1">
-          <Button variant="secondary"><BookOpen className="size-4 mr-2" /> Browse Courses</Button>
+        <Link href="/academy?browse=1" className="w-full sm:w-auto">
+          <Button variant="secondary" className="w-full"><BookOpen className="size-4 mr-2" /> Browse Courses</Button>
         </Link>
       }
     >
@@ -187,8 +187,8 @@ export function LearnerDashboardClient() {
               <h2 className="mt-2 text-2xl font-bold tracking-tight sm:text-3xl">{data.continueLearning.lessonTitle}</h2>
               <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">{data.continueLearning.courseTitle}</p>
             </div>
-            <Link href={`/dashboard/academy/${data.continueLearning.courseId}`}>
-              <Button className="w-full sm:w-auto shadow-soft px-6 py-3 text-base" style={{ backgroundColor: primary }}>
+            <Link href={`/dashboard/academy/${data.continueLearning.courseId}`} className="w-full lg:w-auto">
+              <Button className="w-full shadow-soft px-6 py-3 text-base lg:w-auto" style={{ backgroundColor: primary }}>
                 <Play className="size-5 mr-2" /> {data.continueLearning.lessonId ? "Resume lesson" : "Open programme"}
               </Button>
             </Link>
@@ -209,7 +209,7 @@ export function LearnerDashboardClient() {
         <section className="mt-8">
           <h2 className="text-xl font-bold sm:text-2xl">Certification pathway</h2>
           <p className="mt-1 text-sm text-slate-600">Foundations → Listing & Client Mastery → Professional Certification. Earn a badge and downloadable certificate after each programme.</p>
-          <div className="mt-5 grid gap-4 lg:grid-cols-3">
+          <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {data.programmeCourses.map((course) => (
               <article
                 key={course.id}
@@ -232,17 +232,17 @@ export function LearnerDashboardClient() {
                     <div className="h-full rounded-full transition-all" style={{ width: `${course.progress}%`, backgroundColor: course.theme.accent }} />
                   </div>
                   <p className="mt-2 text-xs text-slate-500">{course.progress}% complete · {course.badgeName}</p>
-                  <div className="mt-4 flex flex-wrap gap-2">
+                  <div className="mt-4 flex flex-col gap-2">
                     {course.unlocked ? (
-                      <Link href={`/dashboard/academy/${course.id}`}>
-                        <Button className="text-sm px-3 py-2" style={{ backgroundColor: course.theme.accent }}>{course.completed ? "Review course" : "Continue"}</Button>
+                      <Link href={`/dashboard/academy/${course.id}`} className="w-full">
+                        <Button className="w-full text-sm px-3 py-2.5" style={{ backgroundColor: course.theme.accent }}>{course.completed ? "Review course" : "Continue"}</Button>
                       </Link>
                     ) : (
-                      <Button className="text-sm px-3 py-2" variant="secondary" disabled>Locked</Button>
+                      <Button className="w-full text-sm px-3 py-2.5" variant="secondary" disabled>Locked</Button>
                     )}
                     {course.certificate && (
-                      <Link href={course.certificate.downloadUrl}>
-                        <Button className="text-sm px-3 py-2" variant="secondary"><Download className="size-3.5 mr-1.5" /> Certificate</Button>
+                      <Link href={course.certificate.downloadUrl} className="w-full">
+                        <Button className="w-full text-sm px-3 py-2.5" variant="secondary"><Download className="size-3.5 mr-1.5" /> Certificate</Button>
                       </Link>
                     )}
                   </div>
@@ -285,15 +285,15 @@ export function LearnerDashboardClient() {
                   <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50/80 p-4 dark:border-amber-900/50 dark:bg-amber-950/20">
                     <p className="font-semibold text-amber-900 dark:text-amber-100">Payment approval required</p>
                     <p className="mt-1 text-sm text-amber-800/90 dark:text-amber-200/90">Upload proof of payment for admin review.</p>
-                    <Button className="mt-3" disabled={busyPaymentId === application.payment.id} onClick={() => { paymentRef.current = application.payment?.id ?? ""; fileRef.current?.click(); }}>
+                    <Button className="mt-3 w-full" disabled={busyPaymentId === application.payment.id} onClick={() => { paymentRef.current = application.payment?.id ?? ""; fileRef.current?.click(); }}>
                       {busyPaymentId === application.payment.id ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4 mr-2" />} Upload proof
                     </Button>
                   </div>
                 )}
 
                 {application.status === "APPROVED" && (
-                  <Link href={`/dashboard/academy/${application.course.id}`} className="mt-5 block">
-                    <Button className="w-full sm:w-auto" style={{ backgroundColor: primary }}>
+                  <Link href={`/dashboard/academy/${application.course.id}`} className="mt-5 block w-full">
+                    <Button className="w-full" style={{ backgroundColor: primary }}>
                       <BookOpen className="size-4 mr-2" /> Open course
                     </Button>
                   </Link>

@@ -336,7 +336,7 @@ export function LessonViewer({
                     <ArrowRight className="size-4 ml-2 shrink-0" />
                   </Button>
                 ) : (
-                  <Button onClick={onBack} style={{ backgroundColor: accent }}>
+                  <Button className="w-full sm:w-auto" onClick={onBack} style={{ backgroundColor: accent }}>
                     <CheckCircle2 className="size-4 mr-2" /> Finish course
                   </Button>
                 )}
@@ -364,7 +364,7 @@ function SidebarContent({
 }) {
   return (
     <div className="max-h-[calc(100vh-4rem)] overflow-y-auto p-4">
-      <div className={cn("mb-4 rounded-2xl px-4 py-3 text-sm font-semibold shadow-sm", chipClass ?? "bg-emerald-100 text-emerald-900")}>
+      <div className={cn("mb-4 rounded-2xl px-4 py-3 text-sm font-semibold leading-snug shadow-sm break-words", chipClass ?? "bg-emerald-100 text-emerald-900")}>
         {course.title}
       </div>
       {course.modules.map((module) => (

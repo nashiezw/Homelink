@@ -25,12 +25,12 @@ export function AcademyAccordion({
           className="group overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm open:shadow-md dark:border-slate-800 dark:bg-slate-950"
           open={item.defaultOpen}
         >
-          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 marker:content-none">
-            <div className="min-w-0">
-              <p className="font-semibold text-slate-900 dark:text-white">{item.title}</p>
-              {item.subtitle && <p className="mt-1 text-sm text-slate-500">{item.subtitle}</p>}
+          <summary className="flex cursor-pointer list-none flex-col gap-3 px-4 py-4 marker:content-none sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:px-5">
+            <div className="min-w-0 flex-1">
+              <p className="text-base font-semibold leading-snug text-slate-900 dark:text-white">{item.title}</p>
+              {item.subtitle && <p className="mt-1 text-sm leading-relaxed text-slate-500">{item.subtitle}</p>}
             </div>
-            <div className="flex shrink-0 items-center gap-3">
+            <div className="flex shrink-0 items-center justify-between gap-3 sm:justify-end">
               {item.meta && (
                 <span className="rounded-full px-3 py-1 text-xs font-semibold" style={{ backgroundColor: `${accent}18`, color: accent }}>
                   {item.meta}
@@ -39,7 +39,7 @@ export function AcademyAccordion({
               <ChevronDown className="size-5 text-slate-400 transition group-open:rotate-180" />
             </div>
           </summary>
-          <div className="border-t border-slate-100 px-5 py-4 dark:border-slate-800">{item.content}</div>
+          <div className="border-t border-slate-100 px-4 py-4 dark:border-slate-800 sm:px-5">{item.content}</div>
         </details>
       ))}
     </div>
@@ -75,7 +75,7 @@ export function ToolkitGrid({
                 target="_blank"
                 rel="noopener noreferrer"
                 className={cn(
-                  "rounded-xl border p-3 transition hover:-translate-y-0.5 hover:shadow-md",
+                  "rounded-xl border p-3 transition hover:-translate-y-0.5 hover:shadow-md min-h-[4.5rem]",
                 )}
                 style={{ borderColor: `${accent}33` }}
               >

@@ -211,22 +211,24 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
       title={data.course.title}
       description={data.course.description}
       actions={
-        <Link href="/dashboard/academy"><Button variant="secondary">My Dashboard</Button></Link>
+        <Link href="/dashboard/academy" className="w-full sm:w-auto">
+          <Button variant="secondary" className="w-full sm:w-auto">My Dashboard</Button>
+        </Link>
       }
     >
       <div className={cn("relative overflow-hidden rounded-3xl bg-gradient-to-br p-6 text-white shadow-hero sm:p-8", heroGradient)}>
         <div className="pointer-events-none absolute -right-10 -top-10 size-48 rounded-full bg-white/10 blur-3xl" />
-        <div className="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex items-start gap-4">
-            <div className="rounded-2xl bg-white/95 p-2 shadow-lg ring-1 ring-white/40">
+        <div className="relative z-10 flex flex-col gap-6">
+          <div className="flex items-start gap-3 sm:gap-4">
+            <div className="shrink-0 rounded-2xl bg-white/95 p-2 shadow-lg ring-1 ring-white/40">
               <HomeLinkBrand variant="icon" iconOnly />
             </div>
-            <div>
+            <div className="min-w-0 flex-1">
               <p className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-white/90">
-                <Sparkles className="size-3.5" /> {theme?.label ?? data.settings.academyName}
+                <Sparkles className="size-3.5 shrink-0" /> {theme?.label ?? data.settings.academyName}
               </p>
               <p className="mt-2 text-sm text-emerald-100/90">{data.course.instructor ?? "HomeLink trainers"}</p>
-              <p className="mt-1 text-lg font-medium text-white/95">{data.programme?.certificateTitle ?? "HomeLink Agent Certification"}</p>
+              <p className="mt-1 text-base font-medium leading-snug text-white/95 sm:text-lg">{data.programme?.certificateTitle ?? "HomeLink Agent Certification"}</p>
             </div>
           </div>
           <div className="w-full rounded-2xl bg-white/10 p-5 backdrop-blur-sm lg:max-w-xs">
@@ -244,12 +246,12 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
         </div>
       </div>
 
-      <div className="mt-6 flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+      <div className="mt-6 grid grid-cols-2 gap-2 sm:flex sm:gap-2 sm:overflow-x-auto sm:pb-1 scrollbar-none">
         {(["curriculum", "toolkit", "materials", "assessments", "discussions", "progress"] as Tab[]).map((item) => (
           <Button
             key={item}
             variant={tab === item ? "primary" : "secondary"}
-            className={cn("shrink-0 capitalize", tab === item && "shadow-soft")}
+            className={cn("w-full capitalize sm:w-auto sm:shrink-0", tab === item && "shadow-soft")}
             style={tab === item ? { backgroundColor: accent } : undefined}
             onClick={() => setTab(item)}
           >
@@ -343,19 +345,19 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
                     <div className="flex flex-1 flex-col p-4">
                       <p className="flex-1 text-xs leading-relaxed text-slate-600 line-clamp-3 dark:text-slate-400">{material.summary || "Branded lesson study guide with overview, takeaways, and field application."}</p>
                       <p className="mt-3 text-xs font-medium text-slate-500">{material.estimatedMinutes} min read</p>
-                      <div className="mt-4 flex flex-wrap gap-2">
+                      <div className="mt-4 flex flex-col gap-2 sm:flex-row">
                         <a
                           href={material.viewUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-sky-200 bg-white px-4 py-2.5 text-sm font-semibold text-sky-700 transition hover:bg-sky-50 dark:border-sky-800 dark:bg-slate-900 dark:text-sky-300"
+                          className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-sky-200 bg-white px-4 py-3 text-sm font-semibold text-sky-700 transition hover:bg-sky-50 dark:border-sky-800 dark:bg-slate-900 dark:text-sky-300 sm:flex-1 sm:py-2.5"
                         >
                           View PDF
                         </a>
                         <a
                           href={material.downloadUrl}
                           download
-                          className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-sky-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-sky-700"
+                          className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-sky-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-sky-700 sm:flex-1 sm:py-2.5"
                         >
                           <Download className="size-4" />
                           Download
@@ -406,7 +408,7 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
                       Best score: {quiz.bestScore}% {quiz.passed ? "✓ Passed" : "— retake available"}
                     </p>
                   )}
-                  <Button className="mt-3 w-full sm:w-auto" onClick={() => setActiveQuizId(quiz.id)}>{quiz.passed ? "Retake Quiz" : "Take Quiz"}</Button>
+                  <Button className="mt-3 w-full" onClick={() => setActiveQuizId(quiz.id)}>{quiz.passed ? "Retake Quiz" : "Take Quiz"}</Button>
                 </div>
               ))}
             </AssessmentSection>
@@ -423,7 +425,7 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
                   <p className={cn("text-xs mt-1 font-semibold", assignment.submitted ? "text-emerald-600" : "text-slate-500")}>
                     {assignment.submitted ? `Submitted · ${assignment.status}` : "Not submitted yet"}
                   </p>
-                  <Button className="mt-3 w-full sm:w-auto" variant="secondary" onClick={() => setActiveAssignmentId(assignment.id)}>
+                  <Button className="mt-3 w-full" variant="secondary" onClick={() => setActiveAssignmentId(assignment.id)}>
                     {assignment.submitted ? "View Submission" : "Submit Assignment"}
                   </Button>
                 </div>
@@ -437,7 +439,7 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
                   <p className="font-semibold mt-1">{exam.title}</p>
                   {exam.description && <p className="text-sm text-slate-600 mt-1">{exam.description}</p>}
                   <p className="text-xs text-slate-500 mt-2">{exam.durationMinutes} min · {exam.passingScore}% pass · {exam.attemptLimit} attempts</p>
-                  <Button className="mt-3 w-full sm:w-auto" onClick={() => setActiveExamId(exam.id)}>Take Final Exam</Button>
+                  <Button className="mt-3 w-full" onClick={() => setActiveExamId(exam.id)}>Take Final Exam</Button>
                 </div>
               ))}
               {data.assessments.certificateCheckpoint && (

@@ -43,7 +43,7 @@ export function PageShell({
             )}
           </div>
           {actions && (
-            <div className="w-full max-w-xs min-w-0 sm:w-auto sm:max-w-none sm:shrink-0">
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:max-w-none sm:shrink-0 [&_a]:block [&_a]:w-full sm:[&_a]:inline-block sm:[&_a]:w-auto [&_button]:w-full sm:[&_button]:w-auto">
               {actions}
             </div>
           )}
