@@ -1,9 +1,11 @@
 /**
  * End-to-end API + page smoke test. Run: node scripts/smoke-test.mjs
  * Requires server on BASE_URL (default http://localhost:3000).
+ * Set SMOKE_PUBLIC_ONLY=1 to skip authenticated flows (for production health checks).
  */
 
 const BASE = process.env.BASE_URL ?? "http://localhost:3000";
+const PUBLIC_ONLY = process.env.SMOKE_PUBLIC_ONLY === "1" || process.env.SMOKE_PUBLIC_ONLY === "true";
 const STANDARD_PASSWORD = process.env.SEED_STANDARD_PASSWORD ?? "HomeLink2026!";
 const TINASHE_PASSWORD = process.env.SEED_TINASHE_PASSWORD ?? STANDARD_PASSWORD;
 const LANDLORD_PASSWORD = process.env.SEED_LANDLORD_PASSWORD ?? "HomeLinkOwner2026!";
@@ -110,6 +112,48 @@ async function main() {
   r = await req("/api/v1/listings");
   assert("GET listings", r.ok && Array.isArray(r.data?.data));
 
+  // Public APIs (no auth)
+  r = await req("/api/v1/property-management/requests/public", {
+    method: "POST",
+    body: JSON.stringify({
+      fullName: "Smoke Tester",
+      phone: "+263770000001",
+      email: "smoke@test.co.zw",
+      location: "Borrowdale, Harare",
+      services: ["manage"],
+      propertyType: "house",
+    }),
+  });
+  assert("POST PM public request", r.ok, JSON.stringify(r.data?.error));
+
+  r = await req("/api/v1/roommates/profiles/user_seeker_tinashe");
+  const history = r.data?.data?.residenceHistory ?? [];
+  assert(
+    "Public profile hides full address",
+    r.ok && history.length > 0 && history.every((h) => !h.fullAddress),
+    JSON.stringify(r.data?.error),
+  );
+
+  r = await req("/api/v1/search/ai", {
+    method: "POST",
+    body: JSON.stringify({ query: "room under 200 in Harare" }),
+  });
+  assert("POST AI search", r.ok);
+
+  r = await req("/api/v1/payments/config");
+  assert("GET payments config", r.ok);
+
+  r = await req("/api/v1/agents/public/blessing-muzenda");
+  assert("GET public agent profile API", r.ok && r.data?.data?.profile, JSON.stringify(r.data?.error));
+  if (r.data?.data?.user) {
+    assert("Public agent hides personal phone", !r.data.data.user.phone, "phone leaked in API");
+  }
+
+  if (PUBLIC_ONLY) {
+    console.log(`\n${passed} passed, ${failed} failed (public-only mode)\n`);
+    process.exit(failed > 0 ? 1 : 0);
+  }
+
   // Landlord flow
   r = await login("landlord@homelinkzim.co.zw", LANDLORD_PASSWORD);
   assert("POST login landlord", r.ok);
@@ -127,6 +171,12 @@ async function main() {
       bathrooms: 1,
       description: "Automated smoke test listing",
       amenities: ["Wi-Fi"],
+      image: "https://res.cloudinary.com/demo/image/upload/sample.jpg",
+      images: ["https://res.cloudinary.com/demo/image/upload/sample.jpg"],
+      ownerAgreementAccepted: true,
+      ownerAgreementSignerName: "Smoke Test Landlord",
+      ownerAgreementVersion: "2026-01",
+      ownerAgreementSignedAt: new Date().toISOString(),
     }),
   });
   const listingId = r.data?.data?.id;
@@ -148,21 +198,6 @@ async function main() {
 
   r = await req("/api/v1/users/lookup?email=tinashe.dube@homelinkzim.co.zw");
   assert("GET user lookup", r.ok && r.data?.data?.id === "user_seeker_tinashe");
-
-  // PM public
-  cookie = "";
-  r = await req("/api/v1/property-management/requests/public", {
-    method: "POST",
-    body: JSON.stringify({
-      fullName: "Smoke Tester",
-      phone: "+263770000001",
-      email: "smoke@test.co.zw",
-      location: "Borrowdale, Harare",
-      services: ["manage"],
-      propertyType: "house",
-    }),
-  });
-  assert("POST PM public request", r.ok, JSON.stringify(r.data?.error));
 
   // Demo user — tenancies
   r = await login("tinashe.dube@homelinkzim.co.zw", TINASHE_PASSWORD);
@@ -261,16 +296,7 @@ async function main() {
   });
   assert("POST sign lease", r.ok || r.status === 403, JSON.stringify(r.data?.error));
 
-  // Roommates
-  cookie = "";
-  r = await req("/api/v1/roommates/profiles/user_seeker_tinashe");
-  const history = r.data?.data?.residenceHistory ?? [];
-  assert(
-    "Public profile hides full address",
-    r.ok && history.length > 0 && history.every((h) => !h.fullAddress),
-    JSON.stringify(r.data?.error),
-  );
-
+  // Roommates (authenticated)
   r = await login("tinashe.dube@homelinkzim.co.zw", TINASHE_PASSWORD);
   r = await req("/api/v1/roommates/profile");
   assert("GET roommate profile", r.ok, JSON.stringify(r.data?.error));
@@ -295,15 +321,6 @@ async function main() {
   });
   assert("POST roommate matches", r.ok, JSON.stringify(r.data?.error));
 
-  r = await req("/api/v1/search/ai", {
-    method: "POST",
-    body: JSON.stringify({ query: "room under 200 in Harare" }),
-  });
-  assert("POST AI search", r.ok);
-
-  r = await req("/api/v1/payments/config");
-  assert("GET payments config", r.ok);
-
   r = await req("/api/v1/messages");
   assert("GET messages", r.ok);
 
@@ -319,6 +336,15 @@ async function main() {
 
   r = await req("/api/v1/admin/agents");
   assert("GET admin agents hub", r.ok && Array.isArray(r.data?.data?.territories));
+
+  r = await req("/api/v1/admin/agents/activity");
+  assert("GET admin agent activity", r.ok && Array.isArray(r.data?.data?.rows));
+
+  r = await req("/api/v1/admin/listings?status=PENDING_REVIEW");
+  assert("GET admin listings queue", r.ok && Array.isArray(r.data?.data?.listings));
+
+  r = await req("/api/v1/enquiries");
+  assert("GET agent enquiries CRM", r.ok || r.status === 403, JSON.stringify(r.data?.error));
 
   const territoryId = `terranean_${Date.now()}`;
   r = await req("/api/v1/admin/agents", {
@@ -376,7 +402,8 @@ async function main() {
   r = await req("/api/v1/agents/me");
   assert("GET agent me", r.ok && r.data?.data?.profile, JSON.stringify(r.data?.error));
 
-  const openLead = r.data?.data?.leads?.find((l) => l.status !== "CLOSED_WON");
+  const agentProfile = (await req("/api/v1/agents/public/blessing-muzenda")).data?.data;
+  const openLead = agentProfile?.leads?.find((l) => l.status !== "CLOSED_WON");
   if (openLead) {
     r = await req("/api/v1/agents/leads", {
       method: "POST",

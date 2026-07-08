@@ -31,6 +31,25 @@ CLOUDINARY_API_KEY=""
 CLOUDINARY_API_SECRET=""
 ```
 
+## Email (transactional)
+
+```text
+SMTP_HOST=""
+SMTP_USER=""
+SMTP_PASS=""
+SMTP_FROM="HomeLink <noreply@homelinkzim.co.zw>"
+```
+
+Or use Resend:
+
+```text
+SMTP_HOST="smtp.resend.com"
+SMTP_USER="resend"
+SMTP_PASS=""
+RESEND_API_KEY=""
+RESEND_FROM="HomeLink <noreply@homelinkzim.co.zw>"
+```
+
 ## Payments
 
 Enable only the gateways you have configured.
@@ -53,3 +72,12 @@ SEED_LANDLORD_PASSWORD=""
 SEED_ADMIN_PASSWORD=""
 SEED_CONSULTANT_PASSWORD=""
 ```
+
+## Vercel launch checklist
+
+1. Set all required variables above in the Vercel project (Production environment).
+2. Run `npx prisma migrate deploy` against production `DATABASE_URL` after each deploy that adds migrations.
+3. Run `npm run db:seed:production` once on a fresh database, then rotate all `SEED_*` passwords.
+4. Confirm `HOMELINK_STRICT_PRODUCTION=true` and `NEXT_PUBLIC_APP_URL=https://homelinkzim.co.zw`.
+5. Run `npm run check:production` locally with production env values loaded to validate configuration.
+6. After deploy, verify Admin → Properties, Agents → Activity, and Academy checkout show live payment details.
