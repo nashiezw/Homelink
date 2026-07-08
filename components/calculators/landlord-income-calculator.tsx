@@ -6,6 +6,7 @@ import { AnimatedCurrency } from "@/components/calculators/animated-currency";
 import {
   CalculatorCard,
   CalculatorField,
+  CalculatorInsights,
   CalculatorPanelHeader,
   CalculatorResetButton,
   CalculatorResultRow,
@@ -13,6 +14,7 @@ import {
 } from "@/components/calculators/calculator-ui";
 import { formatCalculatorCurrency } from "@/lib/calculators/format";
 import { calculateLandlordIncome, parseCalculatorNumber } from "@/lib/calculators/formulas";
+import { landlordIncomeInsights } from "@/lib/calculators/insights";
 
 const DEFAULTS = {
   monthlyRent: "800",
@@ -41,8 +43,11 @@ export function LandlordIncomeCalculator({ embedded }: { embedded?: boolean }) {
     [monthlyRent, managementFeePercent, otherExpenses],
   );
 
+  const insights = useMemo(() => landlordIncomeInsights(result), [result]);
+
   const body = (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,0.9fr)] lg:gap-8">
+    <div className="space-y-5">
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,0.9fr)] lg:gap-8">
       <div className="grid gap-4 sm:grid-cols-2">
         <CalculatorField id="landlord-rent" label="Monthly Rent" suffix="USD" value={monthlyRent} onChange={setMonthlyRent} required />
         <CalculatorField id="landlord-fee" label="Property Management Fee" suffix="%" value={managementFeePercent} onChange={setManagementFeePercent} />
@@ -59,6 +64,9 @@ export function LandlordIncomeCalculator({ embedded }: { embedded?: boolean }) {
         <CalculatorResultRow label="Management Fee" value={<AnimatedCurrency value={result.managementFee} format={formatCalculatorCurrency} />} />
         <CalculatorResultRow label="Other Expenses" value={<AnimatedCurrency value={result.otherExpenses} format={formatCalculatorCurrency} />} />
       </CalculatorSummary>
+      </div>
+
+      <CalculatorInsights insights={insights} />
     </div>
   );
 

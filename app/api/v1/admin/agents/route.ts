@@ -3,8 +3,12 @@ import {
   createDefaultAgentSettings,
   DEFAULT_AGENT_PERMISSIONS,
   DEFAULT_COMMISSION_RULES,
+  emptyApplicationDocumentChecklist,
+  emptyApplicationInterviewAssessment,
   emptyApplicationPersonal,
   emptyApplicationProfessional,
+  emptyApplicationReadiness,
+  emptyApplicationRecruitment,
 } from "@/lib/agents/defaults";
 import type {
   AgentApplication,
@@ -534,6 +538,10 @@ function toAgentApplication(row: {
     status: normalizeApplicationStatus(row.status),
     personal: { ...emptyApplicationPersonal(), ...objectPayload(payload.personal) },
     professional: { ...emptyApplicationProfessional(), ...objectPayload(payload.professional) },
+    recruitment: { ...emptyApplicationRecruitment(), ...objectPayload(payload.recruitment) },
+    readiness: { ...emptyApplicationReadiness(), ...objectPayload(payload.readiness) },
+    documentChecklist: { ...emptyApplicationDocumentChecklist(), ...objectPayload(payload.documentChecklist) },
+    interviewAssessment: { ...emptyApplicationInterviewAssessment(), ...objectPayload(payload.interviewAssessment) },
     documents: objectPayload(payload.documents),
     banking: {
       bank: "",

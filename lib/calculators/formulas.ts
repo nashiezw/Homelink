@@ -16,6 +16,9 @@ export type RentalAffordabilityResult = {
   recommendedMaxRent: number;
   rentPerPerson: number | null;
   remainingAfterRent: number;
+  disposableIncome: number;
+  rentShareOfDisposable: number;
+  monthlySavingsFromSharing: number;
   rating: AffordabilityRating;
   ratingLabel: string;
 };
@@ -67,14 +70,22 @@ export function calculateRentalAffordability(input: {
   const rentPercent = clampPercent(input.rentPercent);
 
   const recommendedMaxRent = (monthlyIncome * rentPercent) / 100;
-  const remainingAfterRent = monthlyIncome - otherExpenses - recommendedMaxRent;
+  const disposableIncome = Math.max(0, monthlyIncome - otherExpenses);
+  const remainingAfterRent = disposableIncome - recommendedMaxRent;
   const rentPerPerson = sharingCount > 1 ? recommendedMaxRent / sharingCount : null;
-  const rating = affordabilityRating(rentPercent);
+  const monthlySavingsFromSharing =
+    sharingCount > 1 && rentPerPerson !== null ? Math.max(0, recommendedMaxRent - rentPerPerson) : 0;
+  const rentShareOfDisposable =
+    disposableIncome > 0 ? recommendedMaxRent / disposableIncome : recommendedMaxRent > 0 ? 1 : 0;
+  const rating = affordabilityRating(rentShareOfDisposable, remainingAfterRent);
 
   return {
     recommendedMaxRent,
     rentPerPerson,
     remainingAfterRent,
+    disposableIncome,
+    rentShareOfDisposable,
+    monthlySavingsFromSharing,
     rating,
     ratingLabel: affordabilityLabel(rating),
   };
@@ -115,10 +126,11 @@ export function calculateLandlordIncome(input: {
   };
 }
 
-function affordabilityRating(rentPercent: number): AffordabilityRating {
-  if (rentPercent <= 25) return "excellent";
-  if (rentPercent <= 30) return "comfortable";
-  if (rentPercent <= 40) return "stretching";
+function affordabilityRating(rentShareOfDisposable: number, remainingAfterRent: number): AffordabilityRating {
+  if (remainingAfterRent < 0) return "not_recommended";
+  if (rentShareOfDisposable <= 0.25) return "excellent";
+  if (rentShareOfDisposable <= 0.3) return "comfortable";
+  if (rentShareOfDisposable <= 0.4) return "stretching";
   return "not_recommended";
 }
 

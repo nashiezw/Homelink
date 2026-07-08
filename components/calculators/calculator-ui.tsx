@@ -2,6 +2,8 @@
 
 import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
+import type { CalculatorInsight } from "@/lib/calculators/insights";
+import { insightToneClass } from "@/lib/calculators/insights";
 import { cn } from "@/lib/utils";
 
 type CalculatorCardProps = {
@@ -213,5 +215,25 @@ export function CalculatorPresetButton({
     >
       {children}
     </button>
+  );
+}
+
+export function CalculatorInsights({ insights }: { insights: CalculatorInsight[] }) {
+  if (!insights.length) return null;
+
+  return (
+    <div className="mt-5 space-y-2">
+      <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">Smart tips</p>
+      <ul className="space-y-2">
+        {insights.map((insight, index) => (
+          <li
+            key={`${insight.tone}-${index}`}
+            className={cn("rounded-xl border px-4 py-3 text-sm leading-relaxed", insightToneClass(insight.tone))}
+          >
+            {insight.message}
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }

@@ -10,8 +10,25 @@ import { ImageUploader } from "@/components/ui/image-uploader";
 import { apiFetch } from "@/lib/api/client";
 import type { AgentApplication } from "@/lib/agents/types";
 import { HOMELINK_AGENT_CONTRACT } from "@/lib/agents/agent-contract";
+import {
+  emptyApplicationDocumentChecklist,
+  emptyApplicationInterviewAssessment,
+  emptyApplicationReadiness,
+  emptyApplicationRecruitment,
+} from "@/lib/agents/defaults";
 
-const STEPS = ["Personal", "Professional", "Documents", "Banking", "References", "Agent agreement", "Declaration"];
+const STEPS = [
+  "Personal",
+  "Recruitment",
+  "Professional",
+  "Readiness",
+  "Documents",
+  "Banking",
+  "References",
+  "Office review",
+  "Agent agreement",
+  "Declaration",
+];
 
 const fieldClass =
   "mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/15 dark:border-slate-600 dark:bg-slate-900";
@@ -71,7 +88,9 @@ export function AgentApplicationWizard() {
             <ul className="mt-4 grid gap-3 text-sm text-slate-600 dark:text-slate-300">
               {[
                 "Personal details and contact information",
+                "Recruitment source, preferred branch, and territory",
                 "Professional experience and service areas",
+                "Digital readiness, transport, and availability",
                 "ID, licence, and proof-of-address documents",
                 "Banking details for commission payouts",
                 "Two professional references",
@@ -99,6 +118,7 @@ export function AgentApplicationWizard() {
     return <p className="p-8 text-center text-slate-500">Loading application...</p>;
   }
 
+  const app = normalizeApplication(application);
   const statusLabel = application.status.replace(/_/g, " ");
 
   return (
@@ -139,11 +159,11 @@ export function AgentApplicationWizard() {
                 {label}
                 <input
                   type={type}
-                  value={(application.personal as Record<string, string>)[key] ?? ""}
+                  value={(app.personal as Record<string, string>)[key] ?? ""}
                   onChange={(e) =>
                     setApplication({
-                      ...application,
-                      personal: { ...application.personal, [key]: e.target.value },
+                      ...app,
+                      personal: { ...app.personal, [key]: e.target.value },
                     })
                   }
                   className={fieldClass}
@@ -153,9 +173,9 @@ export function AgentApplicationWizard() {
             <label className="block text-sm font-medium sm:col-span-2">
               Residential address
               <input
-                value={application.personal.residentialAddress}
+                value={app.personal.residentialAddress}
                 onChange={(e) =>
-                  setApplication({ ...application, personal: { ...application.personal, residentialAddress: e.target.value } })
+                  setApplication({ ...app, personal: { ...app.personal, residentialAddress: e.target.value } })
                 }
                 className={fieldClass}
               />
@@ -165,16 +185,56 @@ export function AgentApplicationWizard() {
 
         {step === 1 && (
           <div className="grid gap-4 sm:grid-cols-2">
+            {[
+              ["heardAbout", "How did you hear about HomeLink?"],
+              ["referredBy", "Referred by / recruiter name"],
+              ["preferredCity", "Preferred city"],
+              ["preferredBranch", "Preferred branch / office"],
+              ["availability", "Availability"],
+              ["transportAccess", "Transport access"],
+            ].map(([key, label]) => (
+              <label key={key} className="block text-sm font-medium">
+                {label}
+                <input
+                  value={(app.recruitment as unknown as Record<string, string>)[key] ?? ""}
+                  onChange={(e) =>
+                    setApplication({ ...app, recruitment: { ...app.recruitment, [key]: e.target.value } })
+                  }
+                  className={fieldClass}
+                />
+              </label>
+            ))}
+            <label className="block text-sm font-medium sm:col-span-2">
+              Preferred suburbs or service areas (comma separated)
+              <input
+                value={app.recruitment.preferredSuburbs.join(", ")}
+                onChange={(e) =>
+                  setApplication({
+                    ...app,
+                    recruitment: {
+                      ...app.recruitment,
+                      preferredSuburbs: e.target.value.split(",").map((s) => s.trim()).filter(Boolean),
+                    },
+                  })
+                }
+                className={fieldClass}
+              />
+            </label>
+          </div>
+        )}
+
+        {step === 2 && (
+          <div className="grid gap-4 sm:grid-cols-2">
             <label className="block text-sm font-medium">
               Years of experience
               <input
                 type="number"
                 min={0}
-                value={application.professional.yearsExperience}
+                value={app.professional.yearsExperience}
                 onChange={(e) =>
                   setApplication({
-                    ...application,
-                    professional: { ...application.professional, yearsExperience: Number(e.target.value) },
+                    ...app,
+                    professional: { ...app.professional, yearsExperience: Number(e.target.value) },
                   })
                 }
                 className={fieldClass}
@@ -183,9 +243,9 @@ export function AgentApplicationWizard() {
             <label className="block text-sm font-medium">
               Province
               <input
-                value={application.professional.province}
+                value={app.professional.province}
                 onChange={(e) =>
-                  setApplication({ ...application, professional: { ...application.professional, province: e.target.value } })
+                  setApplication({ ...app, professional: { ...app.professional, province: e.target.value } })
                 }
                 className={fieldClass}
               />
@@ -193,9 +253,9 @@ export function AgentApplicationWizard() {
             <label className="block text-sm font-medium">
               City
               <input
-                value={application.professional.city}
+                value={app.professional.city}
                 onChange={(e) =>
-                  setApplication({ ...application, professional: { ...application.professional, city: e.target.value } })
+                  setApplication({ ...app, professional: { ...app.professional, city: e.target.value } })
                 }
                 className={fieldClass}
               />
@@ -203,12 +263,12 @@ export function AgentApplicationWizard() {
             <label className="block text-sm font-medium">
               Areas covered (comma separated)
               <input
-                value={application.professional.areasCovered.join(", ")}
+                value={app.professional.areasCovered.join(", ")}
                 onChange={(e) =>
                   setApplication({
-                    ...application,
+                    ...app,
                     professional: {
-                      ...application.professional,
+                      ...app.professional,
                       areasCovered: e.target.value.split(",").map((s) => s.trim()).filter(Boolean),
                     },
                   })
@@ -219,12 +279,12 @@ export function AgentApplicationWizard() {
             <label className="block text-sm font-medium sm:col-span-2">
               Languages (comma separated)
               <input
-                value={application.professional.languages.join(", ")}
+                value={app.professional.languages.join(", ")}
                 onChange={(e) =>
                   setApplication({
-                    ...application,
+                    ...app,
                     professional: {
-                      ...application.professional,
+                      ...app.professional,
                       languages: e.target.value.split(",").map((s) => s.trim()).filter(Boolean),
                     },
                   })
@@ -235,11 +295,11 @@ export function AgentApplicationWizard() {
             <label className="flex items-center gap-2 text-sm">
               <input
                 type="checkbox"
-                checked={application.professional.hasDriversLicence}
+                checked={app.professional.hasDriversLicence}
                 onChange={(e) =>
                   setApplication({
-                    ...application,
-                    professional: { ...application.professional, hasDriversLicence: e.target.checked },
+                    ...app,
+                    professional: { ...app.professional, hasDriversLicence: e.target.checked },
                   })
                 }
               />
@@ -248,11 +308,11 @@ export function AgentApplicationWizard() {
             <label className="flex items-center gap-2 text-sm">
               <input
                 type="checkbox"
-                checked={application.professional.hasOwnVehicle}
+                checked={app.professional.hasOwnVehicle}
                 onChange={(e) =>
                   setApplication({
-                    ...application,
-                    professional: { ...application.professional, hasOwnVehicle: e.target.checked },
+                    ...app,
+                    professional: { ...app.professional, hasOwnVehicle: e.target.checked },
                   })
                 }
               />
@@ -261,17 +321,82 @@ export function AgentApplicationWizard() {
           </div>
         )}
 
-        {step === 2 && (
+        {step === 3 && (
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="block text-sm font-medium sm:col-span-2">
+              Education / qualifications / certificates
+              <textarea
+                value={app.readiness.education}
+                onChange={(e) => setApplication({ ...app, readiness: { ...app.readiness, education: e.target.value } })}
+                rows={3}
+                className={fieldClass}
+              />
+            </label>
+            <label className="block text-sm font-medium sm:col-span-2">
+              Real estate, sales, or customer-service experience
+              <textarea
+                value={app.readiness.salesExperience}
+                onChange={(e) => setApplication({ ...app, readiness: { ...app.readiness, salesExperience: e.target.value } })}
+                rows={3}
+                className={fieldClass}
+              />
+            </label>
+            {[
+              ["smartphoneAccess", "Smartphone access"],
+              ["laptopAccess", "Laptop access"],
+              ["internetAccess", "Reliable internet access"],
+            ].map(([key, label]) => (
+              <label key={key} className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={Boolean((app.readiness as unknown as Record<string, boolean>)[key])}
+                  onChange={(e) => setApplication({ ...app, readiness: { ...app.readiness, [key]: e.target.checked } })}
+                />
+                {label}
+              </label>
+            ))}
+            <label className="block text-sm font-medium sm:col-span-2">
+              Social media / digital marketing capability
+              <input
+                value={app.readiness.digitalMarketingCapability}
+                onChange={(e) =>
+                  setApplication({ ...app, readiness: { ...app.readiness, digitalMarketingCapability: e.target.value } })
+                }
+                className={fieldClass}
+              />
+            </label>
+            <label className="block text-sm font-medium">
+              Key strengths for agent work
+              <textarea
+                value={app.readiness.keyStrengths}
+                onChange={(e) => setApplication({ ...app, readiness: { ...app.readiness, keyStrengths: e.target.value } })}
+                rows={3}
+                className={fieldClass}
+              />
+            </label>
+            <label className="block text-sm font-medium">
+              Training needs identified
+              <textarea
+                value={app.readiness.trainingNeeds}
+                onChange={(e) => setApplication({ ...app, readiness: { ...app.readiness, trainingNeeds: e.target.value } })}
+                rows={3}
+                className={fieldClass}
+              />
+            </label>
+          </div>
+        )}
+
+        {step === 4 && (
           <div className="grid gap-6">
             <ImageUploader
               label="Profile picture"
               folder="agents"
               max={1}
-              value={application.documents.profilePictureUrl ? [application.documents.profilePictureUrl] : []}
+              value={app.documents.profilePictureUrl ? [app.documents.profilePictureUrl] : []}
               onChange={(urls) =>
                 setApplication({
-                  ...application,
-                  documents: { ...application.documents, profilePictureUrl: urls[0] },
+                  ...app,
+                  documents: { ...app.documents, profilePictureUrl: urls[0] },
                 })
               }
             />
@@ -279,24 +404,56 @@ export function AgentApplicationWizard() {
               label="National ID"
               folder="agents"
               max={1}
-              value={application.documents.nationalIdUrl ? [application.documents.nationalIdUrl] : []}
+              value={app.documents.nationalIdUrl ? [app.documents.nationalIdUrl] : []}
               onChange={(urls) =>
-                setApplication({ ...application, documents: { ...application.documents, nationalIdUrl: urls[0] } })
+                setApplication({ ...app, documents: { ...app.documents, nationalIdUrl: urls[0] } })
               }
             />
             <ImageUploader
               label="CV"
               folder="agents"
               max={1}
-              value={application.documents.cvUrl ? [application.documents.cvUrl] : []}
+              value={app.documents.cvUrl ? [app.documents.cvUrl] : []}
               onChange={(urls) =>
-                setApplication({ ...application, documents: { ...application.documents, cvUrl: urls[0] } })
+                setApplication({ ...app, documents: { ...app.documents, cvUrl: urls[0] } })
               }
             />
+            <div>
+              <h3 className="text-sm font-semibold text-ink dark:text-white">Document checklist</h3>
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                {[
+                  ["nationalIdCopy", "Copy of National ID / Passport"],
+                  ["proofOfResidence", "Proof of residence"],
+                  ["cv", "Updated CV / profile"],
+                  ["passportPhoto", "Passport-size photo"],
+                  ["policeClearance", "Police clearance / affidavit if required"],
+                  ["certificates", "Academic or training certificates"],
+                  ["driversLicence", "Driver's licence copy if applicable"],
+                  ["bankDetails", "Bank details for approved agent file"],
+                  ["codeOfConduct", "Signed code of conduct"],
+                  ["confidentialityUndertaking", "Signed confidentiality undertaking"],
+                ].map(([key, label]) => (
+                  <label key={key} className="flex items-start gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={Boolean((app.documentChecklist as unknown as Record<string, boolean>)[key])}
+                      onChange={(e) =>
+                        setApplication({
+                          ...app,
+                          documentChecklist: { ...app.documentChecklist, [key]: e.target.checked },
+                        })
+                      }
+                      className="mt-1"
+                    />
+                    {label}
+                  </label>
+                ))}
+              </div>
+            </div>
           </div>
         )}
 
-        {step === 3 && (
+        {step === 5 && (
           <div className="grid gap-4 sm:grid-cols-2">
             {[
               ["bank", "Bank"],
@@ -310,9 +467,9 @@ export function AgentApplicationWizard() {
               <label key={key} className="block text-sm font-medium">
                 {label}
                 <input
-                  value={(application.banking as Record<string, string>)[key] ?? ""}
+                  value={(app.banking as Record<string, string>)[key] ?? ""}
                   onChange={(e) =>
-                    setApplication({ ...application, banking: { ...application.banking, [key]: e.target.value } })
+                    setApplication({ ...app, banking: { ...app.banking, [key]: e.target.value } })
                   }
                   className={fieldClass}
                 />
@@ -321,16 +478,16 @@ export function AgentApplicationWizard() {
           </div>
         )}
 
-        {step === 4 && (
+        {step === 6 && (
           <div className="grid gap-4">
             <label className="block text-sm font-medium">
               Emergency contact name
               <input
-                value={application.emergencyContact.name}
+                value={app.emergencyContact.name}
                 onChange={(e) =>
                   setApplication({
-                    ...application,
-                    emergencyContact: { ...application.emergencyContact, name: e.target.value },
+                    ...app,
+                    emergencyContact: { ...app.emergencyContact, name: e.target.value },
                   })
                 }
                 className={fieldClass}
@@ -339,11 +496,11 @@ export function AgentApplicationWizard() {
             <label className="block text-sm font-medium">
               Emergency contact phone
               <input
-                value={application.emergencyContact.phone}
+                value={app.emergencyContact.phone}
                 onChange={(e) =>
                   setApplication({
-                    ...application,
-                    emergencyContact: { ...application.emergencyContact, phone: e.target.value },
+                    ...app,
+                    emergencyContact: { ...app.emergencyContact, phone: e.target.value },
                   })
                 }
                 className={fieldClass}
@@ -352,7 +509,86 @@ export function AgentApplicationWizard() {
           </div>
         )}
 
-        {step === 5 && (
+        {step === 7 && (
+          <div className="grid gap-4 sm:grid-cols-2">
+            <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 sm:col-span-2 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-100">
+              These fields match the office-use section of the manual paper form. Applicants can leave them blank unless
+              a HomeLink recruiter completes the application with them.
+            </p>
+            {[
+              ["applicationRef", "Application reference"],
+              ["branchOffice", "Branch / office"],
+              ["recruitingOfficer", "Recruiting officer"],
+            ].map(([key, label]) => (
+              <label key={key} className="block text-sm font-medium">
+                {label}
+                <input
+                  value={(app.recruitment as unknown as Record<string, string>)[key] ?? ""}
+                  onChange={(e) => setApplication({ ...app, recruitment: { ...app.recruitment, [key]: e.target.value } })}
+                  className={fieldClass}
+                />
+              </label>
+            ))}
+            {[
+              ["presentationScore", "Professional presentation and communication"],
+              ["clientServiceScore", "Sales mindset and client-service attitude"],
+              ["marketKnowledgeScore", "Local market knowledge"],
+              ["complianceScore", "Documentation and compliance awareness"],
+              ["digitalReadinessScore", "Digital readiness"],
+              ["territoryFitScore", "Availability, transport and territory fit"],
+            ].map(([key, label]) => (
+              <label key={key} className="block text-sm font-medium">
+                {label} score / 5
+                <input
+                  type="number"
+                  min={0}
+                  max={5}
+                  value={Number((app.interviewAssessment as unknown as Record<string, number>)[key] ?? 0)}
+                  onChange={(e) =>
+                    setApplication({
+                      ...app,
+                      interviewAssessment: { ...app.interviewAssessment, [key]: Number(e.target.value) },
+                    })
+                  }
+                  className={fieldClass}
+                />
+              </label>
+            ))}
+            {[
+              ["decision", "Decision: approved / pending / declined"],
+              ["approvedRole", "Approved role or level"],
+              ["assignedTeamLeader", "Assigned branch / team leader"],
+              ["commissionNotes", "Commission or incentive notes"],
+              ["trainingCourseAssigned", "Training course assigned"],
+              ["inductionDate", "Start date / induction date", "date"],
+            ].map(([key, label, type = "text"]) => (
+              <label key={key} className="block text-sm font-medium">
+                {label}
+                <input
+                  type={type}
+                  value={(app.interviewAssessment as unknown as Record<string, string>)[key] ?? ""}
+                  onChange={(e) =>
+                    setApplication({ ...app, interviewAssessment: { ...app.interviewAssessment, [key]: e.target.value } })
+                  }
+                  className={fieldClass}
+                />
+              </label>
+            ))}
+            <label className="block text-sm font-medium sm:col-span-2">
+              Interview notes / admin notes
+              <textarea
+                value={app.interviewAssessment.notes}
+                onChange={(e) =>
+                  setApplication({ ...app, interviewAssessment: { ...app.interviewAssessment, notes: e.target.value } })
+                }
+                rows={4}
+                className={fieldClass}
+              />
+            </label>
+          </div>
+        )}
+
+        {step === 8 && (
           <div className="grid gap-4">
             <div className="max-h-72 overflow-y-auto rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm leading-relaxed whitespace-pre-wrap dark:border-slate-700 dark:bg-slate-900">
               {HOMELINK_AGENT_CONTRACT}
@@ -360,8 +596,8 @@ export function AgentApplicationWizard() {
             <label className="flex items-start gap-2 text-sm">
               <input
                 type="checkbox"
-                checked={application.agentContractAccepted}
-                onChange={(e) => setApplication({ ...application, agentContractAccepted: e.target.checked })}
+                checked={app.agentContractAccepted}
+                onChange={(e) => setApplication({ ...app, agentContractAccepted: e.target.checked })}
                 className="mt-1"
               />
               I have read and accept the HomeLink Independent Agent Agreement. I understand that clients, viewings, and
@@ -370,7 +606,7 @@ export function AgentApplicationWizard() {
           </div>
         )}
 
-        {step === 6 && (
+        {step === 9 && (
           <div className="grid gap-3 text-sm">
             {[
               ["declarationAccepted", "I declare that all information provided is true and accurate."],
@@ -380,8 +616,8 @@ export function AgentApplicationWizard() {
               <label key={key} className="flex items-start gap-2">
                 <input
                   type="checkbox"
-                  checked={Boolean((application as unknown as Record<string, boolean>)[key])}
-                  onChange={(e) => setApplication({ ...application, [key]: e.target.checked })}
+                  checked={Boolean((app as unknown as Record<string, boolean>)[key])}
+                  onChange={(e) => setApplication({ ...app, [key]: e.target.checked })}
                   className="mt-1"
                 />
                 {label}
@@ -390,8 +626,8 @@ export function AgentApplicationWizard() {
             <label className="mt-4 block text-sm font-medium">
               Electronic signature (type your full name)
               <input
-                value={application.signatureDataUrl ?? ""}
-                onChange={(e) => setApplication({ ...application, signatureDataUrl: e.target.value })}
+                value={app.signatureDataUrl ?? ""}
+                onChange={(e) => setApplication({ ...app, signatureDataUrl: e.target.value })}
                 className={fieldClass}
               />
             </label>
@@ -406,7 +642,7 @@ export function AgentApplicationWizard() {
           )}
           <Button
             type="button"
-            onClick={() => void save(application).then(() => (step < STEPS.length - 1 ? setStep((s) => s + 1) : submit()))}
+            onClick={() => void save(app).then(() => (step < STEPS.length - 1 ? setStep((s) => s + 1) : submit()))}
             disabled={saving}
           >
             {step < STEPS.length - 1 ? (saving ? "Saving..." : "Save & continue") : saving ? "Submitting..." : "Submit application"}
@@ -415,4 +651,14 @@ export function AgentApplicationWizard() {
       </div>
     </PageShell>
   );
+}
+
+function normalizeApplication(application: AgentApplication): AgentApplication {
+  return {
+    ...application,
+    recruitment: { ...emptyApplicationRecruitment(), ...application.recruitment },
+    readiness: { ...emptyApplicationReadiness(), ...application.readiness },
+    documentChecklist: { ...emptyApplicationDocumentChecklist(), ...application.documentChecklist },
+    interviewAssessment: { ...emptyApplicationInterviewAssessment(), ...application.interviewAssessment },
+  };
 }

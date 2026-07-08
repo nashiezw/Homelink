@@ -6,6 +6,7 @@ import { AnimatedCurrency } from "@/components/calculators/animated-currency";
 import {
   CalculatorCard,
   CalculatorField,
+  CalculatorInsights,
   CalculatorPanelHeader,
   CalculatorPresetButton,
   CalculatorResetButton,
@@ -14,6 +15,7 @@ import {
 } from "@/components/calculators/calculator-ui";
 import { formatCalculatorCurrency } from "@/lib/calculators/format";
 import { calculateAgentCommission, parseCalculatorNumber } from "@/lib/calculators/formulas";
+import { agentCommissionInsights } from "@/lib/calculators/insights";
 
 const DEFAULTS = {
   totalCommission: "1000",
@@ -51,8 +53,11 @@ export function AgentCommissionCalculator({ embedded }: { embedded?: boolean }) 
     [totalCommission, agentPercent],
   );
 
+  const insights = useMemo(() => agentCommissionInsights(result), [result]);
+
   const body = (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,0.9fr)] lg:gap-8">
+    <div className="space-y-5">
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,0.9fr)] lg:gap-8">
       <div className="space-y-4">
         <CalculatorField id="commission-total" label="Total Commission Earned" suffix="USD" value={totalCommission} onChange={setTotalCommission} required />
         <div>
@@ -85,6 +90,9 @@ export function AgentCommissionCalculator({ embedded }: { embedded?: boolean }) 
         <CalculatorResultRow label="Agent Earnings" value={<AnimatedCurrency value={result.agentEarnings} format={(value) => formatCalculatorCurrency(value, 2)} />} />
         <CalculatorResultRow label="HomeLink Earnings" value={<AnimatedCurrency value={result.homeLinkEarnings} format={(value) => formatCalculatorCurrency(value, 2)} />} />
       </CalculatorSummary>
+      </div>
+
+      <CalculatorInsights insights={insights} />
     </div>
   );
 

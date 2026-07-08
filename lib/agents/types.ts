@@ -111,6 +111,59 @@ export type AgentProfessionalInfo = {
   specialisations: string[];
 };
 
+export type AgentRecruitmentInfo = {
+  applicationRef: string;
+  branchOffice: string;
+  recruitingOfficer: string;
+  heardAbout: string;
+  referredBy: string;
+  preferredCity: string;
+  preferredBranch: string;
+  preferredSuburbs: string[];
+  availability: string;
+  transportAccess: string;
+};
+
+export type AgentReadinessInfo = {
+  education: string;
+  salesExperience: string;
+  smartphoneAccess: boolean;
+  laptopAccess: boolean;
+  internetAccess: boolean;
+  digitalMarketingCapability: string;
+  keyStrengths: string;
+  trainingNeeds: string;
+};
+
+export type AgentDocumentChecklist = {
+  nationalIdCopy: boolean;
+  proofOfResidence: boolean;
+  cv: boolean;
+  passportPhoto: boolean;
+  policeClearance: boolean;
+  certificates: boolean;
+  driversLicence: boolean;
+  bankDetails: boolean;
+  codeOfConduct: boolean;
+  confidentialityUndertaking: boolean;
+};
+
+export type AgentInterviewAssessment = {
+  presentationScore: number;
+  clientServiceScore: number;
+  marketKnowledgeScore: number;
+  complianceScore: number;
+  digitalReadinessScore: number;
+  territoryFitScore: number;
+  notes: string;
+  decision: string;
+  approvedRole: string;
+  assignedTeamLeader: string;
+  commissionNotes: string;
+  trainingCourseAssigned: string;
+  inductionDate: string;
+};
+
 export type AgentDocuments = {
   nationalIdUrl?: string;
   cvUrl?: string;
@@ -144,6 +197,10 @@ export type AgentApplication = {
   status: AgentApplicationStatus;
   personal: AgentPersonalInfo;
   professional: AgentProfessionalInfo;
+  recruitment: AgentRecruitmentInfo;
+  readiness: AgentReadinessInfo;
+  documentChecklist: AgentDocumentChecklist;
+  interviewAssessment: AgentInterviewAssessment;
   documents: AgentDocuments;
   banking: AgentBanking;
   references: AgentReference[];

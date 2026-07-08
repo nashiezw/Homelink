@@ -8,7 +8,13 @@ import {
   listListingsFromPostgres,
   toPublicPostgresListing,
 } from "@/lib/listings/postgres-listing-repository";
-import { DEFAULT_AGENT_PERMISSIONS } from "@/lib/agents/defaults";
+import {
+  DEFAULT_AGENT_PERMISSIONS,
+  emptyApplicationDocumentChecklist,
+  emptyApplicationInterviewAssessment,
+  emptyApplicationReadiness,
+  emptyApplicationRecruitment,
+} from "@/lib/agents/defaults";
 import {
   getPostgresAgentTrainingCertificates,
   hasCompletedRequiredTraining,
@@ -276,6 +282,10 @@ function toPublicAgentApplication(row: { id: string; userId: string; status: str
       specialisations: stringArray(professional.specialisations),
       propertyTypes: stringArray(professional.propertyTypes),
     },
+    recruitment: { ...emptyApplicationRecruitment(), ...readObject(payload.recruitment) },
+    readiness: { ...emptyApplicationReadiness(), ...readObject(payload.readiness) },
+    documentChecklist: { ...emptyApplicationDocumentChecklist(), ...readObject(payload.documentChecklist) },
+    interviewAssessment: { ...emptyApplicationInterviewAssessment(), ...readObject(payload.interviewAssessment) },
     documents: readObject(payload.documents),
     banking: {
       bank: "",

@@ -6,6 +6,7 @@ import { AnimatedCurrency } from "@/components/calculators/animated-currency";
 import {
   CalculatorCard,
   CalculatorField,
+  CalculatorInsights,
   CalculatorPanelHeader,
   CalculatorResetButton,
   CalculatorResultRow,
@@ -13,6 +14,7 @@ import {
 } from "@/components/calculators/calculator-ui";
 import { formatCalculatorCurrency } from "@/lib/calculators/format";
 import { calculateMoveInCost, parseCalculatorNumber } from "@/lib/calculators/formulas";
+import { moveInCostInsights } from "@/lib/calculators/insights";
 
 const DEFAULTS = {
   monthlyRent: "350",
@@ -59,8 +61,11 @@ export function MoveInCostCalculator({ embedded }: { embedded?: boolean }) {
     [monthlyRent, deposit, agentFee, movingCosts],
   );
 
+  const insights = useMemo(() => moveInCostInsights(result), [result]);
+
   const body = (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,0.9fr)] lg:gap-8">
+    <div className="space-y-5">
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,0.9fr)] lg:gap-8">
       <div className="grid gap-4 sm:grid-cols-2">
         <CalculatorField
           id="move-in-rent"
@@ -123,6 +128,9 @@ export function MoveInCostCalculator({ embedded }: { embedded?: boolean }) {
           value={<AnimatedCurrency value={result.movingCosts} format={formatCalculatorCurrency} />}
         />
       </CalculatorSummary>
+      </div>
+
+      <CalculatorInsights insights={insights} />
     </div>
   );
 

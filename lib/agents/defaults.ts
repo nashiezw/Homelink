@@ -569,3 +569,64 @@ export function emptyApplicationProfessional() {
     specialisations: [] as string[],
   };
 }
+
+export function emptyApplicationRecruitment() {
+  return {
+    applicationRef: "",
+    branchOffice: "",
+    recruitingOfficer: "",
+    heardAbout: "",
+    referredBy: "",
+    preferredCity: "",
+    preferredBranch: "",
+    preferredSuburbs: [] as string[],
+    availability: "",
+    transportAccess: "",
+  };
+}
+
+export function emptyApplicationReadiness() {
+  return {
+    education: "",
+    salesExperience: "",
+    smartphoneAccess: false,
+    laptopAccess: false,
+    internetAccess: false,
+    digitalMarketingCapability: "",
+    keyStrengths: "",
+    trainingNeeds: "",
+  };
+}
+
+export function emptyApplicationDocumentChecklist() {
+  return {
+    nationalIdCopy: false,
+    proofOfResidence: false,
+    cv: false,
+    passportPhoto: false,
+    policeClearance: false,
+    certificates: false,
+    driversLicence: false,
+    bankDetails: false,
+    codeOfConduct: false,
+    confidentialityUndertaking: false,
+  };
+}
+
+export function emptyApplicationInterviewAssessment() {
+  return {
+    presentationScore: 0,
+    clientServiceScore: 0,
+    marketKnowledgeScore: 0,
+    complianceScore: 0,
+    digitalReadinessScore: 0,
+    territoryFitScore: 0,
+    notes: "",
+    decision: "",
+    approvedRole: "",
+    assignedTeamLeader: "",
+    commissionNotes: "",
+    trainingCourseAssigned: "",
+    inductionDate: "",
+  };
+}

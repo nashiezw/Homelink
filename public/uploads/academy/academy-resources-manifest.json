@@ -947,5 +947,25 @@
     "version": 1,
     "fileSizeBytes": 69963,
     "manualPage": 324
+  },
+  {
+    "title": "Manual Agent Registration Form",
+    "description": "Branded A4 office-use form for recruiting, screening and onboarding prospective HomeLink agents.",
+    "category": "Agent Templates",
+    "sourceCategory": "Recruitment",
+    "fileName": "manual-agent-registration-form.pdf",
+    "fileUrl": "/uploads/academy/resources/manual-agent-registration-form.pdf",
+    "fileType": "PDF",
+    "tags": [
+      "recruitment",
+      "agent onboarding",
+      "agent academy",
+      "print-ready",
+      "office use"
+    ],
+    "sortOrder": 51,
+    "version": 1,
+    "fileSizeBytes": 71720,
+    "manualPage": null
   }
 ]
