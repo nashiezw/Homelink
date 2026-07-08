@@ -550,6 +550,8 @@ function toAgentApplication(row: {
     declarationAccepted: Boolean(payload.declarationAccepted ?? true),
     termsAccepted: Boolean(payload.termsAccepted ?? true),
     privacyAccepted: Boolean(payload.privacyAccepted ?? true),
+    agentContractAccepted: Boolean(payload.agentContractAccepted),
+    agentContractSignedAt: stringValue(payload.agentContractSignedAt),
     signatureDataUrl: stringValue(payload.signatureDataUrl),
     adminNotes: Array.isArray(payload.adminNotes) ? payload.adminNotes as AgentApplication["adminNotes"] : [],
     interviewAt: stringValue(payload.interviewAt),

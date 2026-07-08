@@ -151,6 +151,8 @@ export type AgentApplication = {
   declarationAccepted: boolean;
   termsAccepted: boolean;
   privacyAccepted: boolean;
+  agentContractAccepted: boolean;
+  agentContractSignedAt?: string;
   signatureDataUrl?: string;
   adminNotes: AgentAdminNote[];
   interviewAt?: string;

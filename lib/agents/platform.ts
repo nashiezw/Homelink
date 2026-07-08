@@ -405,6 +405,7 @@ export function createApplicationDraft(userId?: string, email = ""): AgentApplic
     declarationAccepted: false,
     termsAccepted: false,
     privacyAccepted: false,
+    agentContractAccepted: false,
     adminNotes: [],
     createdAt: now,
     updatedAt: now,

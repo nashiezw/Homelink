@@ -10,7 +10,6 @@ import {
   Mail,
   MapPin,
   MessageCircle,
-  Phone,
   Star,
   Target,
 } from "lucide-react";
@@ -18,14 +17,16 @@ import Link from "next/link";
 import { useEffect, useState, type ReactNode } from "react";
 import { AgentAvatar } from "@/components/agents/agent-avatar";
 import { ListingCard } from "@/components/listings/listing-card";
+import { usePlatformConfig } from "@/components/providers/platform-config-provider";
 import { apiFetch } from "@/lib/api/client";
 import type { AgentLevel, AgentProfile, AgentRating, AgentTerritory } from "@/lib/agents/types";
 import type { Listing } from "@/lib/types";
+import { getWhatsAppHref } from "@/lib/settings/contact";
 import { cn } from "@/lib/utils";
 
 type PublicAgentData = {
   profile: AgentProfile;
-  user: { name: string; city?: string; phone?: string; email?: string } | null;
+  user: { name: string; city?: string; email?: string } | null;
   agency: {
     id: string;
     name: string;
@@ -92,6 +93,7 @@ function RatingBar({ label, value }: { label: string; value: number }) {
 }
 
 export function PublicAgentProfile({ slug }: { slug: string }) {
+  const { config } = usePlatformConfig();
   const [data, setData] = useState<PublicAgentData | null>(null);
   const [notFound, setNotFound] = useState(false);
 
@@ -141,6 +143,10 @@ export function PublicAgentProfile({ slug }: { slug: string }) {
   const areasServed = safeStringArray(profile.areasServed, [user?.city ?? "Zimbabwe"]);
   const responseTime = averageRating >= 4.8 ? "Under 1 hour" : "Under 2 hours";
   const levelStyle = LEVEL_STYLES[level];
+  const whatsappHref = config?.contact?.whatsappNumber
+    ? getWhatsAppHref(config.contact)
+    : null;
+  const contactHref = `/contact?agent=${encodeURIComponent(slug)}`;
 
   const avgBreakdown =
     ratings.length > 0
@@ -221,31 +227,27 @@ export function PublicAgentProfile({ slug }: { slug: string }) {
               </div>
 
               <div className="flex w-full shrink-0 flex-col gap-2 lg:w-52">
-                {user?.phone && (
+                {whatsappHref && (
                   <a
-                    href={`https://wa.me/${user.phone.replace(/\D/g, "")}`}
+                    href={whatsappHref}
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="inline-flex h-11 items-center justify-center rounded-xl bg-[#25D366] px-5 text-sm font-semibold text-white shadow-sm transition hover:brightness-105"
                   >
                     <MessageCircle className="mr-2 size-4" />
-                    WhatsApp
+                    WhatsApp HomeLink
                   </a>
                 )}
                 <Link
-                  href="/contact"
+                  href={contactHref}
                   className="inline-flex h-11 items-center justify-center rounded-xl bg-emerald-700 px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-800"
                 >
                   <Calendar className="mr-2 size-4" />
-                  Book appointment
+                  Enquire via HomeLink
                 </Link>
-                {user?.phone && (
-                  <a
-                    href={`tel:${user.phone}`}
-                    className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 text-sm font-medium text-slate-700 transition hover:border-emerald-200 hover:bg-emerald-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
-                  >
-                    <Phone className="size-4" />
-                    Call
-                  </a>
-                )}
+                <p className="text-center text-xs text-slate-500 dark:text-slate-400">
+                  Contact is routed through HomeLink to protect clients and agents.
+                </p>
               </div>
             </div>
 
@@ -326,9 +328,15 @@ export function PublicAgentProfile({ slug }: { slug: string }) {
           <aside className="space-y-5 lg:sticky lg:top-6">
             <SidebarCard title="Contact">
               <ul className="space-y-3 text-sm">
-                {user?.phone && (
-                  <ContactRow icon={<Phone className="size-4" />} href={`tel:${user.phone}`} label={user.phone} />
+                {whatsappHref && (
+                  <ContactRow
+                    icon={<MessageCircle className="size-4" />}
+                    href={whatsappHref}
+                    label="WhatsApp HomeLink"
+                    external
+                  />
                 )}
+                <ContactRow icon={<Calendar className="size-4" />} href={contactHref} label="Send an enquiry" />
                 {user?.email && (
                   <ContactRow icon={<Mail className="size-4" />} href={`mailto:${user.email}`} label={user.email} />
                 )}
@@ -419,15 +427,19 @@ function ContactRow({
   icon,
   href,
   label,
+  external,
 }: {
   icon: ReactNode;
   href: string;
   label: string;
+  external?: boolean;
 }) {
   return (
     <li>
       <a
         href={href}
+        target={external ? "_blank" : undefined}
+        rel={external ? "noopener noreferrer" : undefined}
         className="flex items-center gap-2.5 text-slate-700 transition hover:text-emerald-700 dark:text-slate-200 dark:hover:text-emerald-400"
       >
         <span className="shrink-0 text-emerald-600">{icon}</span>

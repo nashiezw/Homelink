@@ -9,8 +9,9 @@ import { Button } from "@/components/ui/button";
 import { ImageUploader } from "@/components/ui/image-uploader";
 import { apiFetch } from "@/lib/api/client";
 import type { AgentApplication } from "@/lib/agents/types";
+import { HOMELINK_AGENT_CONTRACT } from "@/lib/agents/agent-contract";
 
-const STEPS = ["Personal", "Professional", "Documents", "Banking", "References", "Declaration"];
+const STEPS = ["Personal", "Professional", "Documents", "Banking", "References", "Agent agreement", "Declaration"];
 
 const fieldClass =
   "mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/15 dark:border-slate-600 dark:bg-slate-900";
@@ -74,6 +75,7 @@ export function AgentApplicationWizard() {
                 "ID, licence, and proof-of-address documents",
                 "Banking details for commission payouts",
                 "Two professional references",
+                "Signed HomeLink agent agreement",
               ].map((item) => (
                 <li key={item} className="flex gap-2">
                   <span className="font-semibold text-emerald-700">•</span>
@@ -351,6 +353,24 @@ export function AgentApplicationWizard() {
         )}
 
         {step === 5 && (
+          <div className="grid gap-4">
+            <div className="max-h-72 overflow-y-auto rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm leading-relaxed whitespace-pre-wrap dark:border-slate-700 dark:bg-slate-900">
+              {HOMELINK_AGENT_CONTRACT}
+            </div>
+            <label className="flex items-start gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={application.agentContractAccepted}
+                onChange={(e) => setApplication({ ...application, agentContractAccepted: e.target.checked })}
+                className="mt-1"
+              />
+              I have read and accept the HomeLink Independent Agent Agreement. I understand that clients, viewings, and
+              payments must remain on the platform.
+            </label>
+          </div>
+        )}
+
+        {step === 6 && (
           <div className="grid gap-3 text-sm">
             {[
               ["declarationAccepted", "I declare that all information provided is true and accurate."],

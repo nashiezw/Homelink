@@ -27,7 +27,6 @@ export async function GET(_request: Request, context: RouteContext) {
       ? {
           name: user.name,
           city: user.city,
-          phone: user.phone,
           email: user.email,
         }
       : null,

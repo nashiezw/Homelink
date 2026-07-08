@@ -2324,8 +2324,9 @@ class AppStore {
     outcome: "COMPLETED" | "NO_SHOW" | "RESCHEDULED" | "CANCELLED",
     feedback: string,
     actor: { id: string; name: string },
+    extras?: { followUpDate?: string; clientInterested?: boolean },
   ) {
-    const enquiry = EnquiryPlatform.completeViewing(this.state, id, viewingId, outcome, feedback, actor);
+    const enquiry = EnquiryPlatform.completeViewing(this.state, id, viewingId, outcome, feedback, actor, extras);
     this.touch();
     return enquiry;
   }

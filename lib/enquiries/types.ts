@@ -78,12 +78,15 @@ export type EnquiryNote = {
 
 export type EnquiryViewing = {
   id: string;
+  referenceNumber: string;
   scheduledAt: string;
   location: string;
   agentId?: string;
   agentName?: string;
   outcome?: "COMPLETED" | "NO_SHOW" | "RESCHEDULED" | "CANCELLED";
   feedback?: string;
+  followUpDate?: string;
+  clientInterested?: boolean;
   createdAt: string;
   completedAt?: string;
 };

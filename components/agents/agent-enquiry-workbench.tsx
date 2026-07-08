@@ -25,6 +25,8 @@ export function AgentEnquiryWorkbench() {
   const [selected, setSelected] = useState<PropertyEnquiry | null>(null);
   const [viewingDate, setViewingDate] = useState("");
   const [note, setNote] = useState("");
+  const [viewingFeedback, setViewingFeedback] = useState("");
+  const [clientInterested, setClientInterested] = useState(true);
 
   const load = useCallback(async () => {
     const result = await apiFetch<{ enquiries: PropertyEnquiry[] }>("/api/v1/enquiries");
@@ -104,6 +106,7 @@ export function AgentEnquiryWorkbench() {
           </label>
           <Button
             className="mt-2 w-full"
+            disabled={!viewingDate}
             onClick={() =>
               void patch(selected.id, {
                 action: "schedule_viewing",
@@ -115,6 +118,58 @@ export function AgentEnquiryWorkbench() {
             <Calendar className="size-4" />
             Schedule
           </Button>
+
+          {selected.viewings.length > 0 && (
+            <div className="mt-4 space-y-2">
+              <p className="text-sm font-medium">Scheduled viewings</p>
+              {selected.viewings.map((viewing) => (
+                <div key={viewing.id} className="rounded-lg border border-slate-200 p-3 text-sm">
+                  <p className="font-semibold text-emerald-700">{viewing.referenceNumber}</p>
+                  <p className="text-slate-600">{new Date(viewing.scheduledAt).toLocaleString()}</p>
+                  <p className="text-slate-500">{viewing.location}</p>
+                  {viewing.completedAt ? (
+                    <p className="mt-1 text-xs text-slate-500">Completed · {viewing.outcome}</p>
+                  ) : (
+                    <>
+                      <label className="mt-2 block text-xs font-medium">
+                        Completion notes
+                        <textarea
+                          rows={2}
+                          value={viewingFeedback}
+                          onChange={(e) => setViewingFeedback(e.target.value)}
+                          className="mt-1 w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm"
+                        />
+                      </label>
+                      <label className="mt-2 flex items-center gap-2 text-xs">
+                        <input
+                          type="checkbox"
+                          checked={clientInterested}
+                          onChange={(e) => setClientInterested(e.target.checked)}
+                        />
+                        Client is interested
+                      </label>
+                      <Button
+                        className="mt-2 w-full"
+                        variant="secondary"
+                        onClick={() =>
+                          void patch(selected.id, {
+                            action: "complete_viewing",
+                            viewingId: viewing.id,
+                            outcome: "COMPLETED",
+                            feedback: viewingFeedback || "Viewing completed",
+                            clientInterested,
+                          })
+                        }
+                      >
+                        <CheckCircle2 className="size-4" />
+                        Complete {viewing.referenceNumber}
+                      </Button>
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
 
           <label className="mt-4 block text-sm font-medium">
             Internal note
@@ -135,24 +190,6 @@ export function AgentEnquiryWorkbench() {
           >
             Save note
           </Button>
-
-          {selected.viewings[0] && (
-            <Button
-              className="mt-3 w-full"
-              variant="secondary"
-              onClick={() =>
-                void patch(selected.id, {
-                  action: "complete_viewing",
-                  viewingId: selected.viewings[0].id,
-                  outcome: "COMPLETED",
-                  feedback: "Viewing completed successfully",
-                })
-              }
-            >
-              <CheckCircle2 className="size-4" />
-              Mark viewing complete
-            </Button>
-          )}
         </aside>
       )}
     </div>

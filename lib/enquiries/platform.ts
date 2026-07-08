@@ -14,6 +14,7 @@ import {
   type EnquiryViewing,
   type PropertyEnquiry,
 } from "@/lib/enquiries/types";
+import { collectViewingReferenceNumbers, generateViewingReference } from "@/lib/enquiries/viewing-reference";
 import type { Listing } from "@/lib/types";
 import type { StoreUser } from "@/lib/store/types";
 
@@ -72,11 +73,23 @@ function normalizeLegacy(enquiry: PropertyEnquiry): PropertyEnquiry {
   if ((enquiry.status as string) === "SENT") {
     return { ...enquiry, status: "NEW" };
   }
+  const viewings = (() => {
+    const refs: string[] = [];
+    return (enquiry.viewings ?? []).map((viewing) => {
+      if (viewing.referenceNumber) {
+        refs.push(viewing.referenceNumber);
+        return viewing;
+      }
+      const referenceNumber = generateViewingReference(refs);
+      refs.push(referenceNumber);
+      return { ...viewing, referenceNumber };
+    });
+  })();
   return {
     ...enquiry,
     notes: enquiry.notes ?? [],
     activities: enquiry.activities ?? [],
-    viewings: enquiry.viewings ?? [],
+    viewings,
     offers: enquiry.offers ?? [],
     documents: enquiry.documents ?? [],
     tags: enquiry.tags ?? [],
@@ -519,21 +532,33 @@ export const EnquiryPlatform = {
   scheduleViewing(
     state: EnquiryStoreSlice,
     id: string,
-    viewing: Omit<EnquiryViewing, "id" | "createdAt">,
+    viewing: Omit<EnquiryViewing, "id" | "referenceNumber" | "createdAt">,
     actor: { id: string; name: string },
   ) {
     const enquiry = state.enquiries.find((e) => e.id === id);
     if (!enquiry) throw new Error("ENQUIRY_NOT_FOUND");
     const normalized = normalizeLegacy(enquiry);
-    const entry: EnquiryViewing = { ...viewing, id: `enqview_${crypto.randomUUID()}`, createdAt: now() };
+    const referenceNumber = generateViewingReference(collectViewingReferenceNumbers(state.enquiries));
+    const entry: EnquiryViewing = {
+      ...viewing,
+      referenceNumber,
+      id: `enqview_${crypto.randomUUID()}`,
+      createdAt: now(),
+    };
     normalized.viewings.unshift(entry);
     normalized.status = "VIEWING_SCHEDULED";
     normalized.updatedAt = now();
     normalized.activities.unshift(
-      activity("VIEWING_SCHEDULED", actor.id, actor.name, `Viewing scheduled for ${viewing.scheduledAt}`, {
-        toStatus: "VIEWING_SCHEDULED",
-        metadata: { viewingId: entry.id },
-      }),
+      activity(
+        "VIEWING_SCHEDULED",
+        actor.id,
+        actor.name,
+        `Viewing ${referenceNumber} scheduled for ${viewing.scheduledAt}`,
+        {
+          toStatus: "VIEWING_SCHEDULED",
+          metadata: { viewingId: entry.id, referenceNumber },
+        },
+      ),
     );
     Object.assign(enquiry, normalized);
     return normalized;
@@ -546,6 +571,7 @@ export const EnquiryPlatform = {
     outcome: EnquiryViewing["outcome"],
     feedback: string,
     actor: { id: string; name: string },
+    extras?: { followUpDate?: string; clientInterested?: boolean },
   ) {
     const enquiry = state.enquiries.find((e) => e.id === id);
     if (!enquiry) throw new Error("ENQUIRY_NOT_FOUND");
@@ -555,12 +581,26 @@ export const EnquiryPlatform = {
     viewing.outcome = outcome;
     viewing.feedback = feedback;
     viewing.completedAt = now();
-    normalized.status = outcome === "COMPLETED" ? "VIEWING_COMPLETED" : "FOLLOW_UP_REQUIRED";
+    if (extras?.followUpDate) viewing.followUpDate = extras.followUpDate;
+    if (typeof extras?.clientInterested === "boolean") viewing.clientInterested = extras.clientInterested;
+    normalized.status =
+      outcome === "COMPLETED" && extras?.clientInterested === false
+        ? "FOLLOW_UP_REQUIRED"
+        : outcome === "COMPLETED"
+          ? "VIEWING_COMPLETED"
+          : "FOLLOW_UP_REQUIRED";
     normalized.updatedAt = now();
     normalized.activities.unshift(
-      activity("VIEWING_COMPLETED", actor.id, actor.name, feedback || `Viewing ${outcome?.toLowerCase()}`, {
-        toStatus: normalized.status,
-      }),
+      activity(
+        "VIEWING_COMPLETED",
+        actor.id,
+        actor.name,
+        feedback || `Viewing ${viewing.referenceNumber ?? viewingId} ${outcome?.toLowerCase()}`,
+        {
+          toStatus: normalized.status,
+          metadata: { viewingId, referenceNumber: viewing.referenceNumber },
+        },
+      ),
     );
     Object.assign(enquiry, normalized);
     return normalized;

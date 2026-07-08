@@ -310,6 +310,23 @@ export function EnquiryCrmHub() {
                   <EnquiryStatusBadge status={selected.status} />
                 </div>
 
+                {selected.viewings.length > 0 && (
+                  <div className="mt-4 space-y-2">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Viewings</p>
+                    {selected.viewings.map((viewing) => (
+                      <div key={viewing.id} className="rounded-lg bg-slate-950/50 px-3 py-2 text-sm">
+                        <p className="font-medium text-emerald-300">{viewing.referenceNumber}</p>
+                        <p className="text-slate-400">{new Date(viewing.scheduledAt).toLocaleString()}</p>
+                        {viewing.completedAt && (
+                          <p className="text-xs text-slate-500">
+                            {viewing.outcome} · {viewing.feedback || "No feedback"}
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
                 <label className="mt-4 block text-sm text-slate-400">
                   Assign agent
                   <select

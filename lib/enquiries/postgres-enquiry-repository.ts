@@ -8,6 +8,7 @@ import type {
   EnquiryStatus,
   PropertyEnquiry,
 } from "@/lib/enquiries/types";
+import { collectViewingReferenceNumbers, generateViewingReference } from "@/lib/enquiries/viewing-reference";
 
 type Actor = { id: string; name: string };
 type EnquiryRow = {
@@ -160,6 +161,87 @@ export async function assignEnquiryAgentInPostgres(id: string, agentId: string, 
     actorId: actor.id,
     actorName: actor.name,
     message: `Assigned to ${enquiry.assignedAgentName}.`,
+    createdAt: now,
+  });
+  await saveEnquiry(enquiry);
+  return enquiry;
+}
+
+export async function listAllEnquiriesFromPostgres() {
+  assertPostgres();
+  const rows = await getMainPrisma().propertyEnquiryRecord.findMany({
+    orderBy: { createdAt: "desc" },
+    take: 5000,
+  });
+  return rows.map(enquiryFromRow);
+}
+
+export async function scheduleViewingInPostgres(
+  id: string,
+  viewing: { scheduledAt: string; location: string; agentId?: string; agentName?: string },
+  actor: Actor,
+) {
+  const allEnquiries = await listAllEnquiriesFromPostgres();
+  const enquiry = allEnquiries.find((row) => row.id === id);
+  if (!enquiry) return null;
+  const referenceNumber = generateViewingReference(collectViewingReferenceNumbers(allEnquiries));
+  const now = new Date().toISOString();
+  const entry = {
+    id: `enqview_${crypto.randomUUID()}`,
+    referenceNumber,
+    ...viewing,
+    createdAt: now,
+  };
+  enquiry.viewings.unshift(entry);
+  enquiry.status = "VIEWING_SCHEDULED";
+  enquiry.updatedAt = now;
+  enquiry.activities.unshift({
+    id: `act_${crypto.randomUUID()}`,
+    type: "VIEWING_SCHEDULED",
+    actorId: actor.id,
+    actorName: actor.name,
+    message: `Viewing ${referenceNumber} scheduled for ${viewing.scheduledAt}`,
+    toStatus: "VIEWING_SCHEDULED",
+    metadata: { viewingId: entry.id, referenceNumber },
+    createdAt: now,
+  });
+  await saveEnquiry(enquiry);
+  return enquiry;
+}
+
+export async function completeViewingInPostgres(
+  id: string,
+  viewingId: string,
+  outcome: "COMPLETED" | "NO_SHOW" | "RESCHEDULED" | "CANCELLED",
+  feedback: string,
+  actor: Actor,
+  extras?: { followUpDate?: string; clientInterested?: boolean },
+) {
+  const enquiry = await getEnquiryFromPostgres(id);
+  if (!enquiry) return null;
+  const viewing = enquiry.viewings.find((row) => row.id === viewingId);
+  if (!viewing) throw new Error("VIEWING_NOT_FOUND");
+  const now = new Date().toISOString();
+  viewing.outcome = outcome;
+  viewing.feedback = feedback;
+  viewing.completedAt = now;
+  if (extras?.followUpDate) viewing.followUpDate = extras.followUpDate;
+  if (typeof extras?.clientInterested === "boolean") viewing.clientInterested = extras.clientInterested;
+  enquiry.status =
+    outcome === "COMPLETED" && extras?.clientInterested === false
+      ? "FOLLOW_UP_REQUIRED"
+      : outcome === "COMPLETED"
+        ? "VIEWING_COMPLETED"
+        : "FOLLOW_UP_REQUIRED";
+  enquiry.updatedAt = now;
+  enquiry.activities.unshift({
+    id: `act_${crypto.randomUUID()}`,
+    type: "VIEWING_COMPLETED",
+    actorId: actor.id,
+    actorName: actor.name,
+    message: feedback || `Viewing ${viewing.referenceNumber} ${outcome.toLowerCase()}`,
+    toStatus: enquiry.status,
+    metadata: { viewingId, referenceNumber: viewing.referenceNumber },
     createdAt: now,
   });
   await saveEnquiry(enquiry);

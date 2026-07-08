@@ -14,6 +14,7 @@ import { AdminKpiCard } from "@/components/admin/kpi-card";
 import { AdminTabStrip } from "@/components/admin/ui/admin-ui";
 import { BarChart, MetricRow } from "@/components/admin/charts";
 import { Eye, Users, Wallet, FileText, ShieldCheck } from "lucide-react";
+import { AgentActivityPanel } from "@/components/admin/agent-activity-panel";
 
 type AdminAgentData = {
   analytics: AgentAdminAnalytics;
@@ -46,7 +47,7 @@ export function AgentManagementHub() {
   const [data, setData] = useState<AdminAgentData | null>(null);
   const [rules, setRules] = useState<CommissionRule[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [subTab, setSubTab] = useState<"overview" | "applications" | "leads" | "commissions" | "territories" | "documents" | "branches" | "settings">("overview");
+  const [subTab, setSubTab] = useState<"overview" | "activity" | "applications" | "leads" | "commissions" | "territories" | "documents" | "branches" | "settings">("overview");
   const [feedback, setFeedback] = useState<{
     title: string;
     message: string;
@@ -330,9 +331,9 @@ export function AgentManagementHub() {
       <AdminTabStrip
         active={subTab}
         onChange={(id) => setSubTab(id as typeof subTab)}
-        tabs={["overview", "applications", "leads", "commissions", "territories", "documents", "branches", "settings"].map((id) => ({
+        tabs={["overview", "activity", "applications", "leads", "commissions", "territories", "documents", "branches", "settings"].map((id) => ({
           id,
-          label: id[0].toUpperCase() + id.slice(1),
+          label: id === "activity" ? "Activity" : id[0].toUpperCase() + id.slice(1),
         }))}
       />
 
@@ -383,6 +384,8 @@ export function AgentManagementHub() {
         </>
       )}
 
+      {subTab === "activity" && <AgentActivityPanel />}
+
       {subTab === "applications" && (
         <div className="grid gap-4">
           {applications.map((app) => (
@@ -392,6 +395,12 @@ export function AgentManagementHub() {
                   <p className="font-semibold text-white">{app.personal.fullName || "Unnamed applicant"}</p>
                   <p className="text-sm text-slate-400">{app.personal.email} - {app.status.replace(/_/g, " ")}</p>
                   <p className="text-sm text-slate-500">{app.professional.city}, {app.professional.province}</p>
+                  {app.agentContractAccepted && (
+                    <p className="mt-1 text-xs text-emerald-400">
+                      Agent agreement signed
+                      {app.agentContractSignedAt ? ` · ${new Date(app.agentContractSignedAt).toLocaleDateString()}` : ""}
+                    </p>
+                  )}
                 </div>
                 <div className="grid gap-2 sm:flex sm:flex-wrap">
                   <Button onClick={() => void adminAction({ action: "update_application_status", applicationId: app.id, status: "PENDING_REVIEW" })}>Review</Button>

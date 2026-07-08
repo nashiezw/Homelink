@@ -5,8 +5,10 @@ import {
   addEnquiryNoteInPostgres,
   assignEnquiryAgentInPostgres,
   canAccessPostgresEnquiry,
+  completeViewingInPostgres,
   getEnquiryActor,
   getEnquiryFromPostgres,
+  scheduleViewingInPostgres,
   shouldUsePostgresEnquiries,
   updateEnquiryStatusInPostgres,
 } from "@/lib/enquiries/postgres-enquiry-repository";
@@ -85,6 +87,35 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
               internal: Boolean(body.internal),
             }),
           });
+        case "schedule_viewing":
+          if (!body.scheduledAt) return problem(400, "INVALID", "scheduledAt is required.");
+          return ok({
+            enquiry: await scheduleViewingInPostgres(
+              id,
+              {
+                scheduledAt: body.scheduledAt,
+                location: body.location ?? enquiry.listingTitle,
+                agentId: body.agentId ?? userId,
+                agentName: actor.name,
+              },
+              actor,
+            ),
+          });
+        case "complete_viewing":
+          if (!body.viewingId) return problem(400, "INVALID", "viewingId is required.");
+          return ok({
+            enquiry: await completeViewingInPostgres(
+              id,
+              body.viewingId,
+              body.outcome ?? "COMPLETED",
+              body.feedback ?? "",
+              actor,
+              {
+                followUpDate: body.followUpDate,
+                clientInterested: body.clientInterested,
+              },
+            ),
+          });
         default:
           if (body.status) {
             return ok({ enquiry: await updateEnquiryStatusInPostgres(id, body.status as EnquiryStatus, actor, body.reason) });
@@ -151,6 +182,10 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
             body.outcome,
             body.feedback ?? "",
             actor,
+            {
+              followUpDate: body.followUpDate,
+              clientInterested: body.clientInterested,
+            },
           ),
         });
       case "submit_offer":
