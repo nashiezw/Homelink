@@ -22,11 +22,13 @@ import {
 } from "lucide-react";
 import { AuthForm } from "@/components/auth/auth-form";
 import { AcademyAccordion, ToolkitGrid } from "@/components/academy/academy-accordion";
+import { AcademyPaymentDetails } from "@/components/academy/academy-payment-details";
 import { HomeLinkBrand } from "@/components/brand/homelink-logo";
 import { PageShell } from "@/components/layout/page-shell";
 import { Button } from "@/components/ui/button";
 import { useApp } from "@/components/providers/app-provider";
 import { apiFetch } from "@/lib/api/client";
+import type { PublicPaymentConfig } from "@/lib/payments/public-payment-config";
 import type { CourseRegistrationSummary } from "@/lib/academy/academy-user-status";
 
 import { cn } from "@/lib/utils";
@@ -87,6 +89,7 @@ export function PublicAcademyPage() {
   const { user, showToast } = useApp();
   const [courses, setCourses] = useState<PublicCourse[]>([]);
   const [academySettings, setAcademySettings] = useState<{ academyName?: string; paymentInstructions?: string } | null>(null);
+  const [paymentConfig, setPaymentConfig] = useState<PublicPaymentConfig | null>(null);
   const [academyStatus, setAcademyStatus] = useState<AcademyStatus | null>(null);
   const [statusLoaded, setStatusLoaded] = useState(false);
   const [selectedId, setSelectedId] = useState("");
@@ -103,9 +106,10 @@ export function PublicAcademyPage() {
   const isAgent = user?.roles?.includes("AGENT") ?? false;
 
   const load = useCallback(async () => {
-    const [coursesResult, settingsResult] = await Promise.all([
+    const [coursesResult, settingsResult, paymentConfigResult] = await Promise.all([
       apiFetch<PublicCourse[]>("/api/v1/academy/courses"),
       apiFetch<{ academyName: string; paymentInstructions: string }>("/api/v1/academy/settings"),
+      apiFetch<PublicPaymentConfig & { plans?: unknown[]; gateways?: unknown[] }>("/api/v1/payments/config"),
     ]);
     const statusResult = user ? await apiFetch<AcademyStatus>("/api/v1/academy/status") : null;
 
@@ -114,6 +118,16 @@ export function PublicAcademyPage() {
       setSelectedId((current) => current || coursesResult.data![0]?.id || "");
     }
     if (settingsResult.data) setAcademySettings(settingsResult.data);
+    if (paymentConfigResult.data) {
+      setPaymentConfig({
+        currency: paymentConfigResult.data.currency,
+        bankDetails: paymentConfigResult.data.bankDetails,
+        manualMethods: paymentConfigResult.data.manualMethods,
+      });
+      if (paymentConfigResult.data.manualMethods[0]?.id) {
+        setForm((current) => ({ ...current, paymentMethod: paymentConfigResult.data!.manualMethods[0]!.id }));
+      }
+    }
     if (statusResult?.data) setAcademyStatus(statusResult.data);
     setStatusLoaded(true);
   }, [user]);
@@ -428,6 +442,7 @@ export function PublicAcademyPage() {
               selected={selected}
               selectedRegistration={selectedRegistration}
               academySettings={academySettings}
+              paymentConfig={paymentConfig}
               academyStatus={academyStatus}
               isAdmin={isAdmin}
               isAgent={isAgent}
@@ -527,6 +542,7 @@ function AcademySidePanel({
   selected,
   selectedRegistration,
   academySettings,
+  paymentConfig,
   academyStatus,
   isAdmin,
   isAgent,
@@ -543,6 +559,7 @@ function AcademySidePanel({
   selected?: PublicCourse;
   selectedRegistration: ReturnType<typeof courseRegistrationState>;
   academySettings: { academyName?: string; paymentInstructions?: string } | null;
+  paymentConfig: PublicPaymentConfig | null;
   academyStatus: AcademyStatus | null;
   isAdmin: boolean;
   isAgent: boolean;
@@ -635,12 +652,6 @@ function AcademySidePanel({
               </label>
               <TextInput label="Phone Number" value={form.phone} onChange={(phone) => setForm({ ...form, phone })} />
               <TextInput label="Organization (Optional)" value={form.organisation} onChange={(organisation) => setForm({ ...form, organisation })} />
-              {academySettings?.paymentInstructions && (
-                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-300">
-                  <p className="font-semibold mb-1">Payment instructions</p>
-                  <p>{academySettings.paymentInstructions}</p>
-                </div>
-              )}
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
                 Registration type
                 <select
@@ -661,11 +672,24 @@ function AcademySidePanel({
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
                 Payment Method
                 <select value={form.paymentMethod} onChange={(event) => setForm({ ...form, paymentMethod: event.target.value })} className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-900 focus:ring-2 focus:ring-emerald-500">
-                  <option value="bank_transfer">Bank Transfer</option>
-                  <option value="zipit">ZIPIT</option>
-                  <option value="cash">Cash Deposit</option>
+                  {(paymentConfig?.manualMethods.length ? paymentConfig.manualMethods : [
+                    { id: "bank_transfer", label: "Bank Transfer" },
+                    { id: "zipit", label: "ZIPIT" },
+                    { id: "cash", label: "Cash Deposit" },
+                  ]).map((method) => (
+                    <option key={method.id} value={method.id}>{method.label}</option>
+                  ))}
                 </select>
               </label>
+              {selected && displayPrice !== null && displayPrice > 0 && (
+                <AcademyPaymentDetails
+                  config={paymentConfig}
+                  paymentMethod={form.paymentMethod}
+                  amount={displayPrice}
+                  currency={selected.currency}
+                  extraInstructions={academySettings?.paymentInstructions}
+                />
+              )}
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
                 Tell us about yourself
                 <textarea value={form.motivation} onChange={(event) => setForm({ ...form, motivation: event.target.value })} rows={4} placeholder="Why do you want to take this course?" className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-900 focus:ring-2 focus:ring-emerald-500" />

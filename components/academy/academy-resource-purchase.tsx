@@ -7,16 +7,17 @@ import {
   FileText,
   Loader2,
   Lock,
-  ShieldCheck,
   Upload,
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { AcademyPaymentDetails } from "@/components/academy/academy-payment-details";
 import { apiFetch } from "@/lib/api/client";
+import type { PublicPaymentConfig } from "@/lib/payments/public-payment-config";
 import { cn } from "@/lib/utils";
 import type { ToolkitAccessState } from "@/components/academy/academy-accordion";
 
-const PAYMENT_METHODS = [
+const FALLBACK_PAYMENT_METHODS = [
   { value: "bank_transfer", label: "Bank Transfer" },
   { value: "zipit", label: "ZIPIT" },
   { value: "cash", label: "Cash Deposit" },
@@ -65,6 +66,7 @@ export function AcademyResourcePurchaseModal({
 }: AcademyResourcePurchaseModalProps) {
   const [paymentMethod, setPaymentMethod] = useState("bank_transfer");
   const [busy, setBusy] = useState(false);
+  const [paymentConfig, setPaymentConfig] = useState<PublicPaymentConfig | null>(null);
   const [localAccess, setLocalAccess] = useState(access);
   const fileRef = useRef<HTMLInputElement>(null);
   const paymentIdRef = useRef<string>("");
@@ -73,10 +75,27 @@ export function AcademyResourcePurchaseModal({
     if (open) {
       setLocalAccess(access);
       paymentIdRef.current = access.paymentId ?? "";
+      void apiFetch<PublicPaymentConfig>("/api/v1/payments/config").then((result) => {
+        if (result.data) {
+          setPaymentConfig({
+            currency: result.data.currency,
+            bankDetails: result.data.bankDetails,
+            manualMethods: result.data.manualMethods,
+          });
+          if (result.data.manualMethods[0]?.id) {
+            setPaymentMethod(result.data.manualMethods[0].id);
+          }
+        }
+      });
     }
   }, [open, access]);
 
   if (!open) return null;
+
+  const paymentMethods =
+    paymentConfig?.manualMethods.length
+      ? paymentConfig.manualMethods.map((method) => ({ value: method.id, label: method.label }))
+      : FALLBACK_PAYMENT_METHODS.map((method) => ({ value: method.value, label: method.label }));
 
   const current = localAccess;
   const showCheckout = !current.unlocked && !current.paymentId;
@@ -216,14 +235,13 @@ export function AcademyResourcePurchaseModal({
 
               {showCheckout && current.salesEnabled && (
                 <>
-                  {paymentInstructions && (
-                    <section className="rounded-xl border border-slate-200 bg-white p-4 text-sm dark:border-slate-700 dark:bg-slate-900/50">
-                      <p className="mb-1 flex items-center gap-2 font-semibold text-slate-900 dark:text-white">
-                        <ShieldCheck className="size-4 text-emerald-600" /> Payment instructions
-                      </p>
-                      <p className="leading-relaxed text-slate-600 dark:text-slate-400">{paymentInstructions}</p>
-                    </section>
-                  )}
+                  <AcademyPaymentDetails
+                    config={paymentConfig}
+                    paymentMethod={paymentMethod}
+                    amount={current.price}
+                    currency={current.currency}
+                    extraInstructions={paymentInstructions}
+                  />
 
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
                     Payment method
@@ -232,7 +250,7 @@ export function AcademyResourcePurchaseModal({
                       onChange={(event) => setPaymentMethod(event.target.value)}
                       className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-900 focus:ring-2 focus:ring-emerald-500"
                     >
-                      {PAYMENT_METHODS.map((method) => (
+                      {paymentMethods.map((method) => (
                         <option key={method.value} value={method.value}>{method.label}</option>
                       ))}
                     </select>
@@ -256,25 +274,35 @@ export function AcademyResourcePurchaseModal({
               )}
 
               {showProofStep && current.paymentId && (
-                <section className="rounded-xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-900/40 dark:bg-amber-950/20">
-                  <p className="font-semibold text-amber-900 dark:text-amber-100">Step 2 — Upload payment proof</p>
-                  <p className="mt-1 text-sm text-amber-800 dark:text-amber-200">
-                    Pay {priceLabel} via {PAYMENT_METHODS.find((m) => m.value === paymentMethod)?.label ?? "your selected method"}, then upload a screenshot or receipt.
-                  </p>
-                  {current.adminNote && (
-                    <p className="mt-2 rounded-lg bg-white/70 p-2 text-xs text-amber-900 dark:bg-slate-950/40 dark:text-amber-100">{current.adminNote}</p>
-                  )}
-                  <Button
-                    className="mt-4 w-full"
-                    variant="secondary"
-                    disabled={busy}
-                    onClick={() => {
-                      paymentIdRef.current = current.paymentId ?? "";
-                      fileRef.current?.click();
-                    }}
-                  >
-                    {busy ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4 mr-2" />} Upload proof of payment
-                  </Button>
+                <section className="space-y-4">
+                  <AcademyPaymentDetails
+                    config={paymentConfig}
+                    paymentMethod={paymentMethod}
+                    amount={current.price}
+                    currency={current.currency}
+                    extraInstructions={paymentInstructions}
+                    variant="proof"
+                  />
+                  <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-900/40 dark:bg-amber-950/20">
+                    <p className="font-semibold text-amber-900 dark:text-amber-100">Step 2 — Upload payment proof</p>
+                    <p className="mt-1 text-sm text-amber-800 dark:text-amber-200">
+                      After paying {priceLabel}, upload a screenshot or receipt so HomeLink can verify your payment.
+                    </p>
+                    {current.adminNote && (
+                      <p className="mt-2 rounded-lg bg-white/70 p-2 text-xs text-amber-900 dark:bg-slate-950/40 dark:text-amber-100">{current.adminNote}</p>
+                    )}
+                    <Button
+                      className="mt-4 w-full"
+                      variant="secondary"
+                      disabled={busy}
+                      onClick={() => {
+                        paymentIdRef.current = current.paymentId ?? "";
+                        fileRef.current?.click();
+                      }}
+                    >
+                      {busy ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4 mr-2" />} Upload proof of payment
+                    </Button>
+                  </div>
                 </section>
               )}
                 </>

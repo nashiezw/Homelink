@@ -1,11 +1,13 @@
 import { getPlanPrice, PLAN_DEFINITIONS } from "@/lib/payments/plans";
 import { ok } from "@/lib/api/response";
-import { getProductionPaymentSettings, shouldUsePostgresPayments } from "@/lib/payments/postgres-payment-repository";
+import { getPostgresPaymentSettings } from "@/lib/admin/postgres-admin-config";
+import { shouldUsePostgresPayments } from "@/lib/payments/postgres-payment-repository";
+import type { PaymentSettings } from "@/lib/settings/types";
 import { getStore } from "@/lib/store/app-store";
 
-export function GET() {
+export async function GET() {
   if (shouldUsePostgresPayments()) {
-    const settings = getProductionPaymentSettings();
+    const settings = await getPostgresPaymentSettings();
     return ok(paymentConfig(settings));
   }
   const store = getStore();
@@ -13,7 +15,7 @@ export function GET() {
   return ok(paymentConfig(settings));
 }
 
-function paymentConfig(settings: ReturnType<typeof getProductionPaymentSettings>) {
+function paymentConfig(settings: PaymentSettings) {
   return {
     plans: PLAN_DEFINITIONS.map((p) => ({
       id: p.id,
