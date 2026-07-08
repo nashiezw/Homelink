@@ -45,7 +45,7 @@ export function AdminKpiCard({ label, value, change, icon: Icon, tone = "default
         compact && "p-4",
       )}
     >
-      <div className="pointer-events-none absolute -right-6 -top-6 size-24 rounded-full bg-white/[0.03] blur-2xl" />
+      <div className="pointer-events-none absolute -right-6 -top-6 hidden size-24 rounded-full bg-white/[0.03] blur-2xl lg:block" />
       <div className="relative flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">{label}</p>

@@ -405,7 +405,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
                     )}
                   </button>
                   {notificationsOpen && (
-                    <div className="absolute right-0 top-12 z-50 w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-white/10 bg-slate-950 shadow-2xl shadow-black/50">
+                    <div className="absolute right-0 top-12 z-50 w-[min(22rem,calc(100dvw-2rem))] overflow-hidden rounded-2xl border border-white/10 bg-slate-950 shadow-2xl shadow-black/50">
                       <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
                         <div>
                           <p className="text-sm font-bold text-white">Notifications</p>

@@ -241,39 +241,37 @@ export function PublicAcademyPage() {
         </div>
       )}
 
-      <div className="academy-dark-hero relative mt-6 overflow-hidden rounded-xl p-5 text-white shadow-hero sm:p-8 md:p-12">
-        <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(255,255,255,0.08)_1px,transparent_1px),linear-gradient(180deg,rgba(255,255,255,0.06)_1px,transparent_1px)] bg-[size:36px_36px]" />
-        <div className="relative z-10">
-          <div className="flex items-center gap-2 mb-4">
-            <GraduationCap className="size-7 sm:size-8 shrink-0" />
-            <span className="text-base font-semibold sm:text-lg">HomeLink Academy</span>
-          </div>
-          <h1 className="text-2xl font-bold mb-4 leading-tight sm:text-3xl md:text-4xl">
-            {user && academyStatus?.hasActiveAccess ? "Expand Your Training" : "Train with HomeLink Academy"}
-          </h1>
-          <p className="text-base text-emerald-100 mb-6 max-w-2xl leading-relaxed sm:text-lg">
-            {user && academyStatus?.hasActiveAccess
-              ? "Browse the course catalog, track progress from your dashboard, and pick up where you left off."
-              : "Learn from industry experts, gain practical skills, and earn your certification. Training-only enrolment is available — you do not need to become a HomeLink agent."}
-          </p>
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:flex sm:flex-wrap sm:gap-3">
-            <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/10 px-4 py-2.5 backdrop-blur">
-              <BookOpen className="size-5 shrink-0" />
-              <span className="font-medium text-sm sm:text-base">Interactive Lessons</span>
+      <section className="academy-panel isolate rounded-xl p-6 sm:p-8">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <div className="mb-3 flex items-center gap-2 text-emerald-700 dark:text-emerald-300">
+              <GraduationCap className="size-6 shrink-0 sm:size-7" />
+              <span className="text-sm font-semibold sm:text-base">Why train with HomeLink</span>
             </div>
-            <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/10 px-4 py-2.5 backdrop-blur">
-              <Award className="size-5 shrink-0" />
-              <span className="font-medium text-sm sm:text-base">Certified Completion</span>
-            </div>
-            <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/10 px-4 py-2.5 backdrop-blur sm:col-span-1">
-              <Users className="size-5 shrink-0" />
-              <span className="font-medium text-sm sm:text-base">Expert Support</span>
-            </div>
+            <p className="max-w-2xl text-sm leading-relaxed text-slate-600 dark:text-slate-300 sm:text-base">
+              {user && academyStatus?.hasActiveAccess
+                ? "Browse the course catalog, track progress from your dashboard, and pick up where you left off."
+                : "Learn from industry experts, gain practical skills, and earn your certification. Training-only enrolment is available — you do not need to become a HomeLink agent."}
+            </p>
           </div>
         </div>
-      </div>
+        <div className="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-3">
+          <div className="flex items-center gap-2 rounded-lg border border-emerald-200/80 bg-emerald-50 px-4 py-2.5 dark:border-emerald-800/60 dark:bg-emerald-950/40">
+            <BookOpen className="size-5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+            <span className="text-sm font-medium text-slate-800 dark:text-slate-100 sm:text-base">Interactive Lessons</span>
+          </div>
+          <div className="flex items-center gap-2 rounded-lg border border-emerald-200/80 bg-emerald-50 px-4 py-2.5 dark:border-emerald-800/60 dark:bg-emerald-950/40">
+            <Award className="size-5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+            <span className="text-sm font-medium text-slate-800 dark:text-slate-100 sm:text-base">Certified Completion</span>
+          </div>
+          <div className="flex items-center gap-2 rounded-lg border border-emerald-200/80 bg-emerald-50 px-4 py-2.5 dark:border-emerald-800/60 dark:bg-emerald-950/40">
+            <Users className="size-5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+            <span className="text-sm font-medium text-slate-800 dark:text-slate-100 sm:text-base">Expert Support</span>
+          </div>
+        </div>
+      </section>
 
-      <div className="grid grid-cols-2 gap-3 mt-8 md:grid-cols-4 md:gap-4">
+      <div className="relative isolate mt-8 grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
         <StatCard icon={BookOpen} value={String(courses.reduce((sum, c) => sum + c.lessonCount, 0))} label="Programme Lessons" color="emerald" />
         <StatCard icon={Award} value="3" label="Certification Levels" color="amber" />
         <StatCard icon={Clock} value={`${courses.reduce((sum, c) => sum + (c.estimatedHours || Math.round(c.durationMinutes / 60)), 0)}h`} label="Guided Learning" color="blue" />

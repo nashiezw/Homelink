@@ -219,7 +219,7 @@ export function LearnerDashboardClient() {
           className="academy-panel relative overflow-hidden rounded-xl p-6 sm:p-8"
           style={{ background: `linear-gradient(135deg, ${primary}15 0%, transparent 60%)` }}
         >
-          <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(16,32,36,0.04)_1px,transparent_1px),linear-gradient(180deg,rgba(16,32,36,0.03)_1px,transparent_1px)] bg-[size:34px_34px]" />
+          <div className="absolute inset-0 hidden bg-[linear-gradient(90deg,rgba(16,32,36,0.04)_1px,transparent_1px),linear-gradient(180deg,rgba(16,32,36,0.03)_1px,transparent_1px)] bg-[size:34px_34px] lg:block" />
           <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
             <div className="max-w-xl">
               <p className="text-xs font-bold uppercase tracking-widest text-emerald-700 dark:text-emerald-400">Continue learning</p>

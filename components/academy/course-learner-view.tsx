@@ -233,7 +233,7 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
       }
     >
       <div className={cn("relative overflow-hidden rounded-xl bg-gradient-to-br p-6 text-white shadow-hero sm:p-8", heroGradient)}>
-        <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(255,255,255,0.08)_1px,transparent_1px),linear-gradient(180deg,rgba(255,255,255,0.06)_1px,transparent_1px)] bg-[size:34px_34px]" />
+        <div className="absolute inset-0 hidden bg-[linear-gradient(90deg,rgba(255,255,255,0.08)_1px,transparent_1px),linear-gradient(180deg,rgba(255,255,255,0.06)_1px,transparent_1px)] bg-[size:34px_34px] lg:block" />
         <div className="relative z-10 flex flex-col gap-6">
           <div className="flex items-start gap-3 sm:gap-4">
             <div className="shrink-0 rounded-2xl bg-white/95 p-2 shadow-lg ring-1 ring-white/40">
@@ -247,7 +247,7 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
               <p className="mt-1 text-base font-medium leading-snug text-white/95 sm:text-lg">{data.programme?.certificateTitle ?? "HomeLink Agent Certification"}</p>
             </div>
           </div>
-          <div className="w-full rounded-lg border border-white/10 bg-white/10 p-5 backdrop-blur-sm lg:max-w-xs">
+          <div className="w-full rounded-lg border border-white/20 bg-white/15 p-5 lg:max-w-xs lg:border-white/10 lg:bg-white/10 lg:backdrop-blur-sm">
             <p className="text-4xl font-bold">{data.course.progress}%</p>
             <p className="text-sm text-emerald-100">Course completion</p>
             <div className="mt-4 h-2.5 overflow-hidden rounded-full bg-white/20">

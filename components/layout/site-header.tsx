@@ -148,8 +148,8 @@ export function SiteHeader() {
       className={cn(
         "sticky top-0 z-50 border-b bg-white transition-[box-shadow,border-color,background-color] duration-200 dark:bg-slate-950",
         scrolled
-          ? "border-slate-200/80 bg-white/90 shadow-[0_8px_32px_-8px_rgba(15,23,42,0.12)] backdrop-blur-xl dark:border-slate-800 dark:bg-slate-950/90"
-          : "border-transparent bg-white/80 backdrop-blur-md dark:bg-slate-950/80",
+          ? "border-slate-200/80 bg-white shadow-[0_8px_32px_-8px_rgba(15,23,42,0.12)] dark:border-slate-800 dark:bg-slate-950 lg:bg-white/90 lg:backdrop-blur-xl lg:dark:bg-slate-950/90"
+          : "border-transparent bg-white dark:bg-slate-950 lg:bg-white/80 lg:backdrop-blur-md lg:dark:bg-slate-950/80",
       )}
     >
       <div className="mx-auto flex h-16 max-w-[90rem] items-center gap-3 px-4 sm:px-6 lg:px-8 xl:gap-4 xl:px-10">
