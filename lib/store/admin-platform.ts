@@ -1,4 +1,5 @@
 import { getPlanDefinition } from "@/lib/payments/plans";
+import { listingHasOwnerAgreement, ListingApprovalError } from "@/lib/listings/owner-contract";
 import { defaultPaymentSettings, defaultPlatformSettings } from "@/lib/settings/defaults";
 import { syncGeoToFlatLists } from "@/lib/settings/geo";
 import { mergePaymentSettings, mergePlatformSettings } from "@/lib/settings/merge";
@@ -752,6 +753,9 @@ export function rejectVerification(state: AdminPlatformState, id: string, actor:
 export function adminApproveListing(state: AdminPlatformState, listingId: string, actor: Actor) {
   const listing = state.listings.find((l) => l.id === listingId);
   if (!listing) return null;
+  if (!listingHasOwnerAgreement(listing)) {
+    throw new ListingApprovalError("Owner must sign the HomeLink listing agreement before this listing can go live.");
+  }
   listing.status = "ACTIVE";
   audit(state, {
     actorId: actor.id,

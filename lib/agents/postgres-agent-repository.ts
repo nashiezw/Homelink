@@ -1,6 +1,8 @@
 import { Role } from "@prisma/client";
 import { hashPassword } from "@/lib/auth/password";
 import { getMainPrisma, isPostgresStoreEnabled } from "@/lib/db/main-prisma";
+import { openFollowUpTasksForAgent } from "@/lib/enquiries/follow-up-tasks";
+import { listEnquiriesFromPostgres } from "@/lib/enquiries/postgres-enquiry-repository";
 import {
   listAdminListingsFromPostgres,
   listListingsFromPostgres,
@@ -26,7 +28,7 @@ export async function getAgentDashboardFromPostgres(userId: string) {
     include: { agencyMemberships: { include: { agency: true } } },
   });
   if (!user || !user.roles.includes(Role.AGENT)) return null;
-  const [leads, commissions, listings, notifications, trainingModules, trainingProgress, trainingCertificates] = await Promise.all([
+  const [leads, commissions, listings, notifications, trainingModules, trainingProgress, trainingCertificates, enquiries] = await Promise.all([
     prisma.agentLeadRecord.findMany({ where: { assignedAgentId: userId }, orderBy: { createdAt: "desc" }, take: 100 }),
     prisma.agentCommissionRecord.findMany({ where: { agentId: userId }, orderBy: { createdAt: "desc" }, take: 100 }),
     listAdminListingsFromPostgres({ includeDeleted: false }),
@@ -34,8 +36,10 @@ export async function getAgentDashboardFromPostgres(userId: string) {
     listPostgresAgentTrainingModules(),
     listPostgresAgentTrainingProgress(userId),
     getPostgresAgentTrainingCertificates(userId),
+    listEnquiriesFromPostgres({ userId, roles: ["AGENT"] }),
   ]);
   const agentListings = listings.filter((listing) => listing.ownerId === userId);
+  const followUpTasks = openFollowUpTasksForAgent(enquiries, userId);
   const trainingCompleted = await hasCompletedRequiredTraining(userId);
   return {
     profile: {
@@ -54,12 +58,13 @@ export async function getAgentDashboardFromPostgres(userId: string) {
       leads: leads.length,
       commissions: commissions.length,
       commissionValue: commissions.reduce((sum, row) => sum + Number(row.netAgentAmount), 0),
+      openTasks: followUpTasks.length,
     },
     leads,
     commissions: commissions.map(commissionRow),
     training: { modules: trainingModules, progress: trainingProgress, certificates: trainingCertificates },
     appointments: [],
-    tasks: [],
+    tasks: followUpTasks,
     wallet: [],
     ratings: [],
     notifications,

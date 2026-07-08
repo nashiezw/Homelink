@@ -297,6 +297,10 @@ export type ListingRecord = Listing & {
   propertyOwnerPhone?: string;
   duplicateOwnerReviewStatus?: "NOT_REQUIRED" | "PENDING_ADMIN_REVIEW" | "CLEARED" | "DUPLICATE_BLOCKED";
   duplicateOwnerMatchId?: string;
+  ownerAgreementAccepted?: boolean;
+  ownerAgreementSignedAt?: string;
+  ownerAgreementSignerName?: string;
+  ownerAgreementVersion?: string;
   featured?: boolean;
   featuredUntil?: string;
   adminNotes?: string;

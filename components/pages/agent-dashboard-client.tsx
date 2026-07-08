@@ -451,10 +451,14 @@ export function AgentDashboardClient() {
           ))}
           {!appointments.length && <p className="text-sm text-slate-500">No appointments scheduled.</p>}
           {tasks.map((t) => (
-            <div key={t.id} className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm">
-              Task: {t.title} · {t.status}
+            <div key={t.id} className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm dark:border-amber-900 dark:bg-amber-950/30">
+              <p className="font-semibold text-amber-900 dark:text-amber-100">{t.title}</p>
+              {t.referenceNumber && <p className="text-xs text-amber-800 dark:text-amber-200">{t.referenceNumber}</p>}
+              {t.dueAt && <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">Due {new Date(t.dueAt).toLocaleString()}</p>}
+              <p className="mt-1 text-xs uppercase tracking-wide text-amber-700 dark:text-amber-300">{t.status}</p>
             </div>
           ))}
+          {!appointments.length && !tasks.length && <p className="text-sm text-slate-500">No appointments or follow-up tasks scheduled.</p>}
         </div>
       )}
 

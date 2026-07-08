@@ -9,6 +9,7 @@ import {
   summarizeListingsFromPostgres,
   transferListingInPostgres,
 } from "@/lib/listings/postgres-listing-repository";
+import { ListingApprovalError } from "@/lib/listings/owner-contract";
 import { getStore } from "@/lib/store/app-store";
 
 export const dynamic = "force-dynamic";
@@ -88,9 +89,16 @@ export async function PATCH(request: Request) {
       return ok({ results });
     }
     if (!listingId) return problem(400, "INVALID_INPUT", "listingId or listingIds required.");
-    const listing = await adminListingActionInPostgres(listingId, action, body.updates, { reason, days });
-    if (!listing) return problem(400, "UNKNOWN_ACTION", `Unknown or unsupported action: ${action}`);
-    return ok({ listing });
+    try {
+      const listing = await adminListingActionInPostgres(listingId, action, body.updates, { reason, days });
+      if (!listing) return problem(400, "UNKNOWN_ACTION", `Unknown or unsupported action: ${action}`);
+      return ok({ listing });
+    } catch (error) {
+      if (error instanceof ListingApprovalError) {
+        return problem(400, "OWNER_AGREEMENT_REQUIRED", error.message);
+      }
+      throw error;
+    }
   }
 
   if (listingIds?.length) {
@@ -102,8 +110,16 @@ export async function PATCH(request: Request) {
   if (!listingId) return problem(400, "INVALID_INPUT", "listingId or listingIds required.");
 
   switch (action) {
-    case "approve":
-      return ok({ listing: getStore().adminApproveListing(listingId, actor) });
+    case "approve": {
+      try {
+        return ok({ listing: getStore().adminApproveListing(listingId, actor) });
+      } catch (error) {
+        if (error instanceof ListingApprovalError) {
+          return problem(400, "OWNER_AGREEMENT_REQUIRED", error.message);
+        }
+        throw error;
+      }
+    }
     case "reject":
       return ok({ listing: getStore().adminRejectListing(listingId, actor, reason) });
     case "delete":

@@ -478,6 +478,9 @@ export type AgentTask = {
   status: "OPEN" | "DONE";
   priority: "LOW" | "MEDIUM" | "HIGH";
   createdAt: string;
+  enquiryId?: string;
+  viewingId?: string;
+  referenceNumber?: string;
 };
 
 export type AgentWalletEntry = {

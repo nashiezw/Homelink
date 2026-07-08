@@ -26,6 +26,7 @@ export function AgentEnquiryWorkbench() {
   const [viewingDate, setViewingDate] = useState("");
   const [note, setNote] = useState("");
   const [viewingFeedback, setViewingFeedback] = useState("");
+  const [followUpDate, setFollowUpDate] = useState("");
   const [clientInterested, setClientInterested] = useState(true);
 
   const load = useCallback(async () => {
@@ -132,6 +133,15 @@ export function AgentEnquiryWorkbench() {
                   ) : (
                     <>
                       <label className="mt-2 block text-xs font-medium">
+                        Follow-up date (optional)
+                        <input
+                          type="datetime-local"
+                          value={followUpDate}
+                          onChange={(e) => setFollowUpDate(e.target.value)}
+                          className="mt-1 h-9 w-full rounded-lg border border-slate-200 px-2 text-sm"
+                        />
+                      </label>
+                      <label className="mt-2 block text-xs font-medium">
                         Completion notes
                         <textarea
                           rows={2}
@@ -158,6 +168,7 @@ export function AgentEnquiryWorkbench() {
                             outcome: "COMPLETED",
                             feedback: viewingFeedback || "Viewing completed",
                             clientInterested,
+                            followUpDate: followUpDate || undefined,
                           })
                         }
                       >
@@ -165,6 +176,30 @@ export function AgentEnquiryWorkbench() {
                         Complete {viewing.referenceNumber}
                       </Button>
                     </>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {(selected.followUpTasks?.length ?? 0) > 0 && (
+            <div className="mt-4 space-y-2">
+              <p className="text-sm font-medium">Follow-up tasks</p>
+              {selected.followUpTasks.map((task) => (
+                <div key={task.id} className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm">
+                  <p className="font-semibold text-amber-900">{task.referenceNumber}</p>
+                  <p className="text-amber-800">{task.title}</p>
+                  <p className="text-xs text-amber-700">Due {new Date(task.dueAt).toLocaleString()}</p>
+                  {task.status === "OPEN" ? (
+                    <Button
+                      className="mt-2 w-full"
+                      variant="secondary"
+                      onClick={() => void patch(selected.id, { action: "complete_follow_up", taskId: task.id })}
+                    >
+                      Mark follow-up done
+                    </Button>
+                  ) : (
+                    <p className="mt-1 text-xs text-emerald-700">Completed</p>
                   )}
                 </div>
               ))}

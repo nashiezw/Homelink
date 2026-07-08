@@ -14,6 +14,7 @@ import {
   type EnquiryViewing,
   type PropertyEnquiry,
 } from "@/lib/enquiries/types";
+import { createFollowUpTaskForViewing, defaultFollowUpDueAt } from "@/lib/enquiries/follow-up-tasks";
 import { collectViewingReferenceNumbers, generateViewingReference } from "@/lib/enquiries/viewing-reference";
 import type { Listing } from "@/lib/types";
 import type { StoreUser } from "@/lib/store/types";
@@ -90,6 +91,7 @@ function normalizeLegacy(enquiry: PropertyEnquiry): PropertyEnquiry {
     notes: enquiry.notes ?? [],
     activities: enquiry.activities ?? [],
     viewings,
+    followUpTasks: enquiry.followUpTasks ?? [],
     offers: enquiry.offers ?? [],
     documents: enquiry.documents ?? [],
     tags: enquiry.tags ?? [],
@@ -266,6 +268,7 @@ export const EnquiryPlatform = {
         }),
       ],
       viewings: [],
+      followUpTasks: [],
       offers: [],
       documents: [],
       commissionRecorded: false,
@@ -404,6 +407,7 @@ export const EnquiryPlatform = {
         }),
       ],
       viewings: [],
+      followUpTasks: [],
       offers: [],
       documents: [],
       commissionRecorded: false,
@@ -571,7 +575,7 @@ export const EnquiryPlatform = {
     outcome: EnquiryViewing["outcome"],
     feedback: string,
     actor: { id: string; name: string },
-    extras?: { followUpDate?: string; clientInterested?: boolean },
+    extras?: { followUpDate?: string; clientInterested?: boolean; followUpReminderHours?: number },
   ) {
     const enquiry = state.enquiries.find((e) => e.id === id);
     if (!enquiry) throw new Error("ENQUIRY_NOT_FOUND");
@@ -581,7 +585,8 @@ export const EnquiryPlatform = {
     viewing.outcome = outcome;
     viewing.feedback = feedback;
     viewing.completedAt = now();
-    if (extras?.followUpDate) viewing.followUpDate = extras.followUpDate;
+    const dueAt = defaultFollowUpDueAt(extras?.followUpReminderHours ?? 24, extras?.followUpDate ?? viewing.followUpDate);
+    viewing.followUpDate = dueAt;
     if (typeof extras?.clientInterested === "boolean") viewing.clientInterested = extras.clientInterested;
     normalized.status =
       outcome === "COMPLETED" && extras?.clientInterested === false
@@ -590,6 +595,10 @@ export const EnquiryPlatform = {
           ? "VIEWING_COMPLETED"
           : "FOLLOW_UP_REQUIRED";
     normalized.updatedAt = now();
+    const alreadyHasTask = normalized.followUpTasks.some((task) => task.viewingId === viewingId && task.status === "OPEN");
+    if (!alreadyHasTask && (outcome === "COMPLETED" || normalized.status === "FOLLOW_UP_REQUIRED")) {
+      normalized.followUpTasks.unshift(createFollowUpTaskForViewing(normalized, viewing, dueAt));
+    }
     normalized.activities.unshift(
       activity(
         "VIEWING_COMPLETED",
@@ -601,6 +610,27 @@ export const EnquiryPlatform = {
           metadata: { viewingId, referenceNumber: viewing.referenceNumber },
         },
       ),
+    );
+    Object.assign(enquiry, normalized);
+    return normalized;
+  },
+
+  completeFollowUpTask(
+    state: EnquiryStoreSlice,
+    id: string,
+    taskId: string,
+    actor: { id: string; name: string },
+  ) {
+    const enquiry = state.enquiries.find((e) => e.id === id);
+    if (!enquiry) throw new Error("ENQUIRY_NOT_FOUND");
+    const normalized = normalizeLegacy(enquiry);
+    const task = normalized.followUpTasks.find((row) => row.id === taskId);
+    if (!task) throw new Error("FOLLOW_UP_TASK_NOT_FOUND");
+    task.status = "DONE";
+    task.completedAt = now();
+    normalized.updatedAt = now();
+    normalized.activities.unshift(
+      activity("NOTE_ADDED", actor.id, actor.name, `Follow-up completed for ${task.referenceNumber}.`),
     );
     Object.assign(enquiry, normalized);
     return normalized;

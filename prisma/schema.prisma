@@ -224,6 +224,10 @@ model Listing {
   propertyOwnerPhone         String?
   duplicateOwnerReviewStatus LeadOwnershipReviewStatus @default(NOT_REQUIRED)
   duplicateOwnerMatchId      String?
+  ownerAgreementAccepted     Boolean                   @default(false)
+  ownerAgreementSignedAt     DateTime?
+  ownerAgreementSignerName   String?
+  ownerAgreementVersion      String?
   createdAt                  DateTime                  @default(now())
   updatedAt                  DateTime                  @updatedAt
   owner                      User                      @relation(fields: [ownerId], references: [id])

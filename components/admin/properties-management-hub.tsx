@@ -46,6 +46,9 @@ type AdminListing = {
   ownerId: string;
   ownerName: string;
   ownerEmail?: string;
+  ownerAgreementAccepted?: boolean;
+  ownerAgreementSignerName?: string;
+  ownerAgreementSignedAt?: string;
 };
 
 type ListingsResponse = {
@@ -378,6 +381,17 @@ export function PropertiesManagementHub() {
                 <h3 className="text-lg font-semibold text-white">{selectedListing.title}</h3>
                 <p className="text-slate-400">{selectedListing.suburb}, {selectedListing.city}</p>
                 <StatusBadge status={selectedListing.status} />
+                {selectedListing.ownerAgreementAccepted ? (
+                  <p className="mt-2 text-xs text-emerald-300">
+                    Owner agreement signed
+                    {selectedListing.ownerAgreementSignerName ? ` by ${selectedListing.ownerAgreementSignerName}` : ""}
+                    {selectedListing.ownerAgreementSignedAt
+                      ? ` · ${new Date(selectedListing.ownerAgreementSignedAt).toLocaleDateString()}`
+                      : ""}
+                  </p>
+                ) : (
+                  <p className="mt-2 text-xs text-amber-300">Owner agreement not signed — approval will be blocked.</p>
+                )}
               </div>
               <div className="grid grid-cols-2 gap-2 text-xs">
                 <div className="rounded bg-slate-950/50 p-2"><p className="text-slate-500">Owner</p><p className="text-white">{selectedListing.ownerName}</p></div>

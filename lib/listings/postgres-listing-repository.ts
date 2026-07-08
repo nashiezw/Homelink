@@ -6,6 +6,11 @@ import {
   Role as DbRole,
   Prisma,
 } from "@prisma/client";
+import {
+  listingHasOwnerAgreement,
+  ListingApprovalError,
+  OWNER_LISTING_AGREEMENT_VERSION,
+} from "@/lib/listings/owner-contract";
 import { getMainPrisma, isPostgresStoreEnabled } from "@/lib/db/main-prisma";
 import { getStore } from "@/lib/store/app-store";
 import { isStrictProductionMode } from "@/lib/production/runtime";
@@ -170,6 +175,10 @@ export async function createListingInPostgres(input: ListingInput, ownerId: stri
         propertyOwnerPhone: input.propertyOwnerPhone ?? input.phone ?? owner.phone,
         duplicateOwnerReviewStatus: duplicateOwner ? "PENDING_ADMIN_REVIEW" : "NOT_REQUIRED",
         duplicateOwnerMatchId: duplicateOwner?.id,
+        ownerAgreementAccepted: Boolean(input.ownerAgreementAccepted),
+        ownerAgreementSignedAt: input.ownerAgreementAccepted ? new Date(input.ownerAgreementSignedAt ?? new Date().toISOString()) : null,
+        ownerAgreementSignerName: input.ownerAgreementSignerName ?? null,
+        ownerAgreementVersion: input.ownerAgreementAccepted ? (input.ownerAgreementVersion ?? OWNER_LISTING_AGREEMENT_VERSION) : null,
       },
       include: LISTING_INCLUDE,
     });
@@ -368,6 +377,9 @@ export async function listAdminListingsFromPostgres(filters: {
     ownerId: l.ownerId,
     ownerName: l.landlordName,
     ownerEmail: undefined,
+    ownerAgreementAccepted: l.ownerAgreementAccepted ?? false,
+    ownerAgreementSignerName: l.ownerAgreementSignerName,
+    ownerAgreementSignedAt: l.ownerAgreementSignedAt,
     createdAt: l.availableFrom,
   }));
 }
@@ -410,6 +422,13 @@ export async function adminListingActionInPostgres(
   if (action === "feature") return updateListingInPostgres(listingId, { featured: true, featuredUntil: addDays(options.days ?? 7) });
   if (action === "unfeature") return updateListingInPostgres(listingId, { featured: false, featuredUntil: "" });
   if (action === "edit") return updateListingInPostgres(listingId, updates);
+  if (action === "approve") {
+    const current = await getListingFromPostgres(listingId);
+    if (!current) return null;
+    if (!listingHasOwnerAgreement(current)) {
+      throw new ListingApprovalError("Owner must sign the HomeLink listing agreement before this listing can go live.");
+    }
+  }
   if (statusUpdates[action]) {
     return updateListingInPostgres(listingId, {
       status: statusUpdates[action],
@@ -559,6 +578,11 @@ function toListingRecord(row: PrismaListingRow | SafeListingRow): ListingRecord 
     propertyOwnerPhone: "propertyOwnerPhone" in row ? row.propertyOwnerPhone ?? undefined : undefined,
     duplicateOwnerReviewStatus: "duplicateOwnerReviewStatus" in row ? row.duplicateOwnerReviewStatus as ListingRecord["duplicateOwnerReviewStatus"] : "NOT_REQUIRED",
     duplicateOwnerMatchId: "duplicateOwnerMatchId" in row ? row.duplicateOwnerMatchId ?? undefined : undefined,
+    ownerAgreementAccepted: "ownerAgreementAccepted" in row ? row.ownerAgreementAccepted : false,
+    ownerAgreementSignedAt:
+      "ownerAgreementSignedAt" in row && row.ownerAgreementSignedAt ? row.ownerAgreementSignedAt.toISOString() : undefined,
+    ownerAgreementSignerName: "ownerAgreementSignerName" in row ? row.ownerAgreementSignerName ?? undefined : undefined,
+    ownerAgreementVersion: "ownerAgreementVersion" in row ? row.ownerAgreementVersion ?? undefined : undefined,
     adminNotes: "adminNotes" in row ? row.adminNotes ?? undefined : undefined,
   };
 }

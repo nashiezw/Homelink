@@ -1673,6 +1673,10 @@ class AppStore {
       propertyOwnerPhone: input.propertyOwnerPhone ?? input.phone ?? owner?.phone,
       duplicateOwnerReviewStatus: duplicateOwner ? "PENDING_ADMIN_REVIEW" : "NOT_REQUIRED",
       duplicateOwnerMatchId: duplicateOwner?.id,
+      ownerAgreementAccepted: Boolean(input.ownerAgreementAccepted),
+      ownerAgreementSignedAt: input.ownerAgreementAccepted ? (input.ownerAgreementSignedAt ?? new Date().toISOString()) : undefined,
+      ownerAgreementSignerName: input.ownerAgreementSignerName,
+      ownerAgreementVersion: input.ownerAgreementAccepted ? input.ownerAgreementVersion : undefined,
     };
     this.state.listings.unshift(listing);
     this.state.reviewQueue.unshift({
@@ -2324,9 +2328,34 @@ class AppStore {
     outcome: "COMPLETED" | "NO_SHOW" | "RESCHEDULED" | "CANCELLED",
     feedback: string,
     actor: { id: string; name: string },
-    extras?: { followUpDate?: string; clientInterested?: boolean },
+    extras?: { followUpDate?: string; clientInterested?: boolean; followUpReminderHours?: number },
   ) {
     const enquiry = EnquiryPlatform.completeViewing(this.state, id, viewingId, outcome, feedback, actor, extras);
+    const openTask = enquiry.followUpTasks.find((task) => task.viewingId === viewingId && task.status === "OPEN");
+    if (openTask && enquiry.assignedAgentId) {
+      AgentPlatform.addAgentTask(this.state.agents, {
+        agentId: enquiry.assignedAgentId,
+        title: openTask.title,
+        dueAt: openTask.dueAt,
+        priority: "HIGH",
+        enquiryId: enquiry.id,
+        viewingId: openTask.viewingId,
+        referenceNumber: openTask.referenceNumber,
+      });
+    }
+    this.touch();
+    return enquiry;
+  }
+
+  completeEnquiryFollowUpTask(id: string, taskId: string, actor: { id: string; name: string }) {
+    const enquiry = EnquiryPlatform.completeFollowUpTask(this.state, id, taskId, actor);
+    const task = enquiry.followUpTasks.find((row) => row.id === taskId);
+    if (task && enquiry.assignedAgentId) {
+      const agentTask = this.state.agents.tasks.find(
+        (row) => row.enquiryId === enquiry.id && row.viewingId === task.viewingId && row.status === "OPEN",
+      );
+      if (agentTask) agentTask.status = "DONE";
+    }
     this.touch();
     return enquiry;
   }
@@ -3027,6 +3056,9 @@ class AppStore {
         ownerId: l.ownerId,
         ownerName: owner?.name ?? "Unknown",
         ownerEmail: owner?.email,
+        ownerAgreementAccepted: l.ownerAgreementAccepted ?? false,
+        ownerAgreementSignerName: l.ownerAgreementSignerName,
+        ownerAgreementSignedAt: l.ownerAgreementSignedAt,
         createdAt: l.availableFrom,
       };
     });

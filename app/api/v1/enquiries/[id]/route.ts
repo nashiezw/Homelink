@@ -5,6 +5,7 @@ import {
   addEnquiryNoteInPostgres,
   assignEnquiryAgentInPostgres,
   canAccessPostgresEnquiry,
+  completeFollowUpTaskInPostgres,
   completeViewingInPostgres,
   getEnquiryActor,
   getEnquiryFromPostgres,
@@ -12,6 +13,7 @@ import {
   shouldUsePostgresEnquiries,
   updateEnquiryStatusInPostgres,
 } from "@/lib/enquiries/postgres-enquiry-repository";
+import { defaultPlatformSettings } from "@/lib/settings/defaults";
 import { getStore } from "@/lib/store/app-store";
 
 function actorFromRequest(request: Request, userId: string) {
@@ -113,9 +115,13 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
               {
                 followUpDate: body.followUpDate,
                 clientInterested: body.clientInterested,
+                followUpReminderHours: defaultPlatformSettings.enquiries.followUpReminderHours,
               },
             ),
           });
+        case "complete_follow_up":
+          if (!body.taskId) return problem(400, "INVALID", "taskId is required.");
+          return ok({ enquiry: await completeFollowUpTaskInPostgres(id, body.taskId, actor) });
         default:
           if (body.status) {
             return ok({ enquiry: await updateEnquiryStatusInPostgres(id, body.status as EnquiryStatus, actor, body.reason) });
@@ -185,9 +191,12 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
             {
               followUpDate: body.followUpDate,
               clientInterested: body.clientInterested,
+              followUpReminderHours: store.getPlatformSettings().enquiries.followUpReminderHours,
             },
           ),
         });
+      case "complete_follow_up":
+        return ok({ enquiry: store.completeEnquiryFollowUpTask(id, body.taskId, actor) });
       case "submit_offer":
         return ok({
           enquiry: store.submitEnquiryOffer(

@@ -15,6 +15,10 @@ import { getAmenityOptions, getPropertyTypeOptions } from "@/lib/listings/taxono
 import type { HolidayHomeDetails } from "@/lib/holiday-homes/types";
 import { HOUSEHOLD_OPTIONS, householdOccupants, type HouseholdType, type MaritalStatus } from "@/lib/roommates/types";
 import type { ListingIntent, PropertyType } from "@/lib/types";
+import {
+  HOMELINK_OWNER_LISTING_AGREEMENT,
+  OWNER_LISTING_AGREEMENT_VERSION,
+} from "@/lib/listings/owner-contract";
 const fieldClass =
   "mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/15 dark:border-slate-600 dark:bg-slate-900";
 const checkboxClass = "size-4 rounded border-slate-300 text-emerald-700 focus:ring-emerald-600";
@@ -80,6 +84,8 @@ export function CreateListingForm({ onSuccess }: CreateListingFormProps) {
     propertyOwnerName: "",
     propertyOwnerEmail: "",
     propertyOwnerPhone: "",
+    ownerAgreementAccepted: false,
+    ownerAgreementSignerName: "",
   });
 
   useEffect(() => {
@@ -90,6 +96,15 @@ export function CreateListingForm({ onSuccess }: CreateListingFormProps) {
       return { ...current, province: initial.province, city: initial.city, suburb: initial.suburb };
     });
   }, [config?.geo]);
+
+  useEffect(() => {
+    if (!user || isAgent) return;
+    setForm((current) =>
+      current.ownerAgreementSignerName
+        ? current
+        : { ...current, ownerAgreementSignerName: user.name, ownerAgreementAccepted: current.ownerAgreementAccepted },
+    );
+  }, [user, isAgent]);
 
   function toggleAmenity(label: string) {
     setAmenities((current) =>
@@ -124,6 +139,8 @@ export function CreateListingForm({ onSuccess }: CreateListingFormProps) {
     if (form.type === "room" && Number(form.maxOccupants) < householdOccupants(form.acceptedHouseholdType)) {
       return "Max occupants must fit the household size you accept.";
     }
+    if (!form.ownerAgreementAccepted) return "The property owner must accept the HomeLink listing agreement.";
+    if (!form.ownerAgreementSignerName.trim()) return "Enter the property owner's full name as electronic signature.";
     return "";
   }
 
@@ -164,6 +181,10 @@ export function CreateListingForm({ onSuccess }: CreateListingFormProps) {
       propertyOwnerName: form.propertyOwnerName.trim() || undefined,
       propertyOwnerEmail: form.propertyOwnerEmail.trim() || undefined,
       propertyOwnerPhone: form.propertyOwnerPhone.trim() || undefined,
+      ownerAgreementAccepted: form.ownerAgreementAccepted,
+      ownerAgreementSignerName: form.ownerAgreementSignerName.trim(),
+      ownerAgreementVersion: OWNER_LISTING_AGREEMENT_VERSION,
+      ownerAgreementSignedAt: new Date().toISOString(),
       listingDetails: {
         priceBasis: isHoliday ? "nightly" : form.intent === "buy" ? "total" : "monthly",
         depositAmount: Number(form.depositAmount) || undefined,
@@ -481,6 +502,42 @@ export function CreateListingForm({ onSuccess }: CreateListingFormProps) {
           ))}
         </div>
       </div>
+
+      <section className="rounded-xl border border-emerald-100 bg-emerald-50/60 p-4 dark:border-emerald-900/50 dark:bg-emerald-950/20">
+        <p className="text-sm font-semibold text-ink">Property owner agreement</p>
+        <p className="mt-1 text-xs text-slate-600 dark:text-slate-300">
+          {isAgent
+            ? "The property owner must authorise HomeLink to market this property and route all client contact and payments through the platform."
+            : "By signing, you authorise HomeLink to market this property and route enquiries, viewings, and payments through the platform."}
+        </p>
+        <div className="mt-3 max-h-56 overflow-y-auto rounded-lg border border-slate-200 bg-white p-4 text-sm leading-relaxed whitespace-pre-wrap dark:border-slate-700 dark:bg-slate-900">
+          {HOMELINK_OWNER_LISTING_AGREEMENT}
+        </div>
+        <label className="mt-3 flex items-start gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={form.ownerAgreementAccepted}
+            onChange={(e) => setForm({ ...form, ownerAgreementAccepted: e.target.checked })}
+            className={checkboxClass}
+          />
+          I confirm the property owner accepts the HomeLink listing agreement.
+        </label>
+        <label className="mt-3 block text-sm font-medium">
+          Owner electronic signature (full legal name)
+          <input
+            value={form.ownerAgreementSignerName}
+            onChange={(e) =>
+              setForm({
+                ...form,
+                ownerAgreementSignerName: e.target.value,
+                propertyOwnerName: isAgent ? form.propertyOwnerName : e.target.value,
+              })
+            }
+            placeholder={isAgent ? form.propertyOwnerName || "Property owner full name" : user?.name ?? "Your full name"}
+            className={fieldClass}
+          />
+        </label>
+      </section>
 
       <div className="flex flex-wrap gap-3 pt-2">
         <Button type="submit" disabled={submitting}>

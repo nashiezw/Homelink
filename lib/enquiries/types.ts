@@ -76,6 +76,18 @@ export type EnquiryNote = {
   createdAt: string;
 };
 
+export type EnquiryFollowUpTask = {
+  id: string;
+  viewingId: string;
+  referenceNumber: string;
+  title: string;
+  description?: string;
+  dueAt: string;
+  status: "OPEN" | "DONE" | "CANCELLED";
+  createdAt: string;
+  completedAt?: string;
+};
+
 export type EnquiryViewing = {
   id: string;
   referenceNumber: string;
@@ -149,6 +161,7 @@ export type PropertyEnquiry = {
   notes: EnquiryNote[];
   activities: EnquiryActivity[];
   viewings: EnquiryViewing[];
+  followUpTasks: EnquiryFollowUpTask[];
   offers: EnquiryOffer[];
   documents: EnquiryDocument[];
   commissionRecorded: boolean;

@@ -19,6 +19,7 @@ import type {
   AgentProfile,
   AgentRating,
   AgentSystemSettings,
+  AgentTask,
   CommissionRule,
   CommissionStatus,
   CommissionType,
@@ -1047,6 +1048,27 @@ export function completeTrainingModule(state: AgentPlatformState, agentId: strin
     profile.updatedAt = new Date().toISOString();
   }
   return progress;
+}
+
+export function addAgentTask(
+  state: AgentPlatformState,
+  input: Omit<AgentTask, "id" | "createdAt" | "status"> & { status?: AgentTask["status"] },
+) {
+  const task: AgentTask = {
+    id: `task_${crypto.randomUUID()}`,
+    status: input.status ?? "OPEN",
+    createdAt: new Date().toISOString(),
+    ...input,
+  };
+  state.tasks.unshift(task);
+  return task;
+}
+
+export function completeAgentTask(state: AgentPlatformState, taskId: string, agentId: string) {
+  const task = state.tasks.find((row) => row.id === taskId && row.agentId === agentId);
+  if (!task) return null;
+  task.status = "DONE";
+  return task;
 }
 
 export function getAgentDashboardStats(

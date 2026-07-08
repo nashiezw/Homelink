@@ -8,6 +8,7 @@ import type {
   EnquiryStatus,
   PropertyEnquiry,
 } from "@/lib/enquiries/types";
+import { createFollowUpTaskForViewing, defaultFollowUpDueAt } from "@/lib/enquiries/follow-up-tasks";
 import { collectViewingReferenceNumbers, generateViewingReference } from "@/lib/enquiries/viewing-reference";
 
 type Actor = { id: string; name: string };
@@ -77,6 +78,7 @@ export async function createEnquiryInPostgres(input: CreateEnquiryInput) {
       },
     ],
     viewings: [],
+    followUpTasks: [],
     offers: [],
     documents: [],
     commissionRecorded: false,
@@ -215,7 +217,7 @@ export async function completeViewingInPostgres(
   outcome: "COMPLETED" | "NO_SHOW" | "RESCHEDULED" | "CANCELLED",
   feedback: string,
   actor: Actor,
-  extras?: { followUpDate?: string; clientInterested?: boolean },
+  extras?: { followUpDate?: string; clientInterested?: boolean; followUpReminderHours?: number },
 ) {
   const enquiry = await getEnquiryFromPostgres(id);
   if (!enquiry) return null;
@@ -225,7 +227,8 @@ export async function completeViewingInPostgres(
   viewing.outcome = outcome;
   viewing.feedback = feedback;
   viewing.completedAt = now;
-  if (extras?.followUpDate) viewing.followUpDate = extras.followUpDate;
+  const dueAt = defaultFollowUpDueAt(extras?.followUpReminderHours ?? 24, extras?.followUpDate ?? viewing.followUpDate);
+  viewing.followUpDate = dueAt;
   if (typeof extras?.clientInterested === "boolean") viewing.clientInterested = extras.clientInterested;
   enquiry.status =
     outcome === "COMPLETED" && extras?.clientInterested === false
@@ -234,6 +237,10 @@ export async function completeViewingInPostgres(
         ? "VIEWING_COMPLETED"
         : "FOLLOW_UP_REQUIRED";
   enquiry.updatedAt = now;
+  const alreadyHasTask = enquiry.followUpTasks.some((task) => task.viewingId === viewingId && task.status === "OPEN");
+  if (!alreadyHasTask && (outcome === "COMPLETED" || enquiry.status === "FOLLOW_UP_REQUIRED")) {
+    enquiry.followUpTasks.unshift(createFollowUpTaskForViewing(enquiry, viewing, dueAt));
+  }
   enquiry.activities.unshift({
     id: `act_${crypto.randomUUID()}`,
     type: "VIEWING_COMPLETED",
@@ -272,6 +279,27 @@ export async function addEnquiryNoteInPostgres(
     createdAt: now,
   });
   enquiry.updatedAt = now;
+  await saveEnquiry(enquiry);
+  return enquiry;
+}
+
+export async function completeFollowUpTaskInPostgres(id: string, taskId: string, actor: Actor) {
+  const enquiry = await getEnquiryFromPostgres(id);
+  if (!enquiry) return null;
+  const task = enquiry.followUpTasks.find((row) => row.id === taskId);
+  if (!task) throw new Error("FOLLOW_UP_TASK_NOT_FOUND");
+  const now = new Date().toISOString();
+  task.status = "DONE";
+  task.completedAt = now;
+  enquiry.updatedAt = now;
+  enquiry.activities.unshift({
+    id: `act_${crypto.randomUUID()}`,
+    type: "NOTE_ADDED",
+    actorId: actor.id,
+    actorName: actor.name,
+    message: `Follow-up completed for ${task.referenceNumber}.`,
+    createdAt: now,
+  });
   await saveEnquiry(enquiry);
   return enquiry;
 }
@@ -345,6 +373,7 @@ async function saveEnquiry(enquiry: PropertyEnquiry) {
 }
 
 function enquiryFromRow(row: EnquiryRow) {
+  const payload = row.payload as Omit<PropertyEnquiry, "id" | "subjectType" | "listingId" | "seekerId" | "ownerId" | "status" | "enquiryType" | "createdAt" | "updatedAt">;
   return {
     id: row.id,
     subjectType: row.subjectType as PropertyEnquiry["subjectType"],
@@ -358,7 +387,9 @@ function enquiryFromRow(row: EnquiryRow) {
     assignedAgentId: row.assignedAgentId ?? undefined,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
-    ...(row.payload as Omit<PropertyEnquiry, "id" | "subjectType" | "listingId" | "seekerId" | "ownerId" | "status" | "enquiryType" | "createdAt" | "updatedAt">),
+    ...payload,
+    viewings: payload.viewings ?? [],
+    followUpTasks: payload.followUpTasks ?? [],
   };
 }
 

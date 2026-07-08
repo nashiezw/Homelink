@@ -50,6 +50,11 @@ export function buildAgentActivitySummary(
       if (now - updatedAt > followUpMs) row.overdueFollowUps += 1;
     }
 
+    for (const task of enquiry.followUpTasks ?? []) {
+      if (task.status !== "OPEN") continue;
+      if (new Date(task.dueAt).getTime() < now) row.overdueFollowUps += 1;
+    }
+
     for (const viewing of enquiry.viewings ?? []) {
       if (viewing.completedAt) continue;
       row.pendingViewings += 1;
