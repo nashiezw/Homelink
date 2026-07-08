@@ -63,7 +63,6 @@ export function ToolkitGrid({
   accent = "#008b68",
   access,
   onPurchase,
-  onUploadProof,
   purchaseBusy = false,
   preview = false,
 }: {
@@ -71,7 +70,6 @@ export function ToolkitGrid({
   preview?: boolean;
   access?: ToolkitAccessState;
   onPurchase?: () => void;
-  onUploadProof?: () => void;
   purchaseBusy?: boolean;
   groups: Array<{
     category: string;
@@ -112,16 +110,9 @@ export function ToolkitGrid({
             </div>
             {!preview && onPurchase && access?.salesEnabled && access.status !== "APPROVED" && (
               <div className="flex flex-wrap gap-2">
-                {(!access.status || access.status === "PENDING_PAYMENT" || access.status === "REJECTED") && (
-                  <Button onClick={onPurchase} disabled={purchaseBusy} style={{ backgroundColor: accent }}>
-                    Purchase toolkit
-                  </Button>
-                )}
-                {access.paymentId && access.status !== "APPROVED" && onUploadProof && (
-                  <Button variant="secondary" onClick={onUploadProof} disabled={purchaseBusy}>
-                    Upload proof
-                  </Button>
-                )}
+                <Button onClick={onPurchase} disabled={purchaseBusy} style={{ backgroundColor: accent }}>
+                  {access.paymentId ? "Continue checkout" : "Buy toolkit — open checkout"}
+                </Button>
               </div>
             )}
           </div>

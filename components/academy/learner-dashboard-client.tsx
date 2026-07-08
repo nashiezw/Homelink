@@ -23,9 +23,15 @@ import { Button } from "@/components/ui/button";
 import { useApp } from "@/components/providers/app-provider";
 import { apiFetch } from "@/lib/api/client";
 import { cn } from "@/lib/utils";
+import {
+  AcademyResourcePurchaseModal,
+  buildManualProduct,
+  buildToolkitProduct,
+} from "@/components/academy/academy-resource-purchase";
+import type { ToolkitAccessState } from "@/components/academy/academy-accordion";
 
 type LearnerDashboard = {
-  settings?: { academyName: string; primaryColour?: string; dashboardWelcome?: string };
+  settings?: { academyName: string; primaryColour?: string; dashboardWelcome?: string; paymentInstructions?: string };
   metrics: Record<string, number>;
   streak?: number;
   continueLearning?: {
@@ -135,7 +141,7 @@ export function LearnerDashboardClient() {
   const { user, showToast } = useApp();
   const [data, setData] = useState<LearnerDashboard | null>(null);
   const [busyPaymentId, setBusyPaymentId] = useState<string | null>(null);
-  const [busyResource, setBusyResource] = useState(false);
+  const [checkout, setCheckout] = useState<"toolkit" | "manual" | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const paymentRef = useRef<string>("");
   const primary = data?.settings?.primaryColour ?? "#008b68";
@@ -146,21 +152,6 @@ export function LearnerDashboardClient() {
   }, []);
 
   useEffect(() => { void load(); }, [load]);
-
-  async function purchaseManual() {
-    setBusyResource(true);
-    const result = await apiFetch("/api/v1/academy/resources/register", {
-      method: "POST",
-      body: JSON.stringify({ resourceKind: "TRAINING_MANUAL" }),
-    });
-    setBusyResource(false);
-    if (result.error) {
-      showToast(result.error.message, "error");
-      return;
-    }
-    showToast("Training manual purchase started. Upload proof of payment if required.");
-    await load();
-  }
 
   async function upload(files: FileList | null) {
     const file = files?.[0];
@@ -438,39 +429,10 @@ export function LearnerDashboardClient() {
                     <p className="font-semibold text-amber-900 dark:text-amber-200">
                       Toolkit locked — {data.activeCourseToolkit.access.currency} {data.activeCourseToolkit.access.price.toFixed(2)}
                     </p>
-                    <div className="flex flex-wrap gap-2">
-                      <Button
-                        disabled={busyResource}
-                        onClick={() => {
-                          setBusyResource(true);
-                          void apiFetch("/api/v1/academy/resources/register", {
-                            method: "POST",
-                            body: JSON.stringify({ resourceKind: "COURSE_TOOLKIT", courseId: data.activeCourseToolkit!.courseId }),
-                          }).then(async (result) => {
-                            setBusyResource(false);
-                            if (result.error) showToast(result.error.message, "error");
-                            else {
-                              showToast("Toolkit purchase started.");
-                              await load();
-                            }
-                          });
-                        }}
-                      >
-                        Purchase toolkit
-                      </Button>
-                      {data.activeCourseToolkit.access.paymentId && (
-                        <Button
-                          variant="secondary"
-                          disabled={busyPaymentId === data.activeCourseToolkit.access.paymentId}
-                          onClick={() => {
-                            paymentRef.current = data.activeCourseToolkit!.access!.paymentId!;
-                            fileRef.current?.click();
-                          }}
-                        >
-                          Upload proof
-                        </Button>
-                      )}
-                    </div>
+                    <p className="text-slate-600 dark:text-slate-400">Review what is included, choose a payment method, and upload proof in checkout.</p>
+                    <Button className="w-full" onClick={() => setCheckout("toolkit")}>
+                      {data.activeCourseToolkit.access.paymentId ? "Continue checkout" : "Buy toolkit — open checkout"}
+                    </Button>
                   </div>
                 )}
                 {data.activeCourseToolkit.itemCount > toolkitPreview.length && (
@@ -501,24 +463,15 @@ export function LearnerDashboardClient() {
                       <Lock className="size-4 shrink-0 text-slate-400 mt-0.5" />
                       <div className="flex-1">
                         <span className="block font-medium">{data.referenceManual.title}</span>
-                        <span className="text-xs text-slate-500">Purchase and admin approval required</span>
+                        <span className="text-xs text-slate-500">
+                          {data.referenceManual.access
+                            ? `${data.referenceManual.access.currency} ${data.referenceManual.access.price.toFixed(2)} — checkout required`
+                            : "Purchase and admin approval required"}
+                        </span>
                         {data.referenceManual.access && (
-                          <div className="mt-2 flex flex-wrap gap-2">
-                            <Button disabled={busyResource} onClick={() => void purchaseManual()}>
-                              Purchase manual
-                            </Button>
-                            {data.referenceManual.access.paymentId && (
-                              <Button
-                                variant="secondary"
-                                onClick={() => {
-                                  paymentRef.current = data.referenceManual!.access!.paymentId!;
-                                  fileRef.current?.click();
-                                }}
-                              >
-                                Upload proof
-                              </Button>
-                            )}
-                          </div>
+                          <Button className="mt-2 w-full" variant="secondary" onClick={() => setCheckout("manual")}>
+                            {data.referenceManual.access.paymentId ? "Continue checkout" : "Buy manual — open checkout"}
+                          </Button>
                         )}
                       </div>
                     </>
@@ -540,6 +493,37 @@ export function LearnerDashboardClient() {
       </div>
 
       <input ref={fileRef} type="file" accept=".pdf,.png,.jpg,.jpeg,.webp" className="hidden" onChange={(e) => void upload(e.target.files)} />
+
+      {checkout === "toolkit" && data.activeCourseToolkit?.access && (
+        <AcademyResourcePurchaseModal
+          open
+          onClose={() => setCheckout(null)}
+          onComplete={load}
+          product={buildToolkitProduct({
+            courseId: data.activeCourseToolkit.courseId,
+            courseTitle: data.activeCourseToolkit.courseTitle,
+            itemCount: data.activeCourseToolkit.itemCount,
+            groups: data.activeCourseToolkit.groups,
+          })}
+          access={data.activeCourseToolkit.access as ToolkitAccessState}
+          paymentInstructions={data.settings?.paymentInstructions}
+          accent={data.activeCourseToolkit.theme?.accent ?? primary}
+          showToast={showToast}
+        />
+      )}
+
+      {checkout === "manual" && data.referenceManual?.access && (
+        <AcademyResourcePurchaseModal
+          open
+          onClose={() => setCheckout(null)}
+          onComplete={load}
+          product={buildManualProduct()}
+          access={data.referenceManual.access as ToolkitAccessState}
+          paymentInstructions={data.settings?.paymentInstructions}
+          accent={primary}
+          showToast={showToast}
+        />
+      )}
     </PageShell>
   );
 }

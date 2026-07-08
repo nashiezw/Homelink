@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Children, useCallback, useEffect, useRef, useState } from "react";
+import { Children, useCallback, useEffect, useState } from "react";
 import {
   Award,
   BookOpen,
@@ -24,10 +24,15 @@ import { ExamPanel } from "@/components/academy/exam-panel";
 import { AssignmentPanel } from "@/components/academy/assignment-panel";
 import { DiscussionPanel } from "@/components/academy/discussion-panel";
 import { AcademyAccordion, ToolkitGrid } from "@/components/academy/academy-accordion";
+import {
+  AcademyResourcePurchaseModal,
+  buildToolkitProduct,
+} from "@/components/academy/academy-resource-purchase";
+import type { ToolkitAccessState } from "@/components/academy/academy-accordion";
 import { cn } from "@/lib/utils";
 
 type CourseDetail = {
-  settings: { academyName: string; primaryColour: string };
+  settings: { academyName: string; primaryColour: string; paymentInstructions?: string };
   programme?: {
     theme: { label: string; accent: string; gradient: string; sidebar: string; chip: string };
     badgeName: string;
@@ -108,9 +113,7 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
   const [data, setData] = useState<CourseDetail | null>(null);
   const [tab, setTab] = useState<Tab>(() => (VALID_TABS.includes(initialTab as Tab) ? (initialTab as Tab) : "curriculum"));
   const [viewingLessonId, setViewingLessonId] = useState<string | null>(null);
-  const [busyResource, setBusyResource] = useState(false);
-  const fileRef = useRef<HTMLInputElement>(null);
-  const resourcePaymentRef = useRef<string>("");
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [activeQuizId, setActiveQuizId] = useState<string | null>(null);
   const [activeExamId, setActiveExamId] = useState<string | null>(null);
   const [activeAssignmentId, setActiveAssignmentId] = useState<string | null>(null);
@@ -124,49 +127,6 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
   useEffect(() => {
     void load();
   }, [load]);
-
-  async function purchaseToolkit() {
-    setBusyResource(true);
-    const result = await apiFetch("/api/v1/academy/resources/register", {
-      method: "POST",
-      body: JSON.stringify({ resourceKind: "COURSE_TOOLKIT", courseId }),
-    });
-    setBusyResource(false);
-    if (result.error) {
-      showToast(result.error.message, "error");
-      return;
-    }
-    showToast("Toolkit purchase started. Upload proof of payment if required.");
-    await load();
-  }
-
-  async function uploadResourceProof(files: FileList | null) {
-    const file = files?.[0];
-    const paymentId = resourcePaymentRef.current;
-    if (!file || !paymentId) return;
-    setBusyResource(true);
-    const dataUrl = await readFile(file);
-    const uploaded = await apiFetch<{ url: string }>("/api/v1/uploads", {
-      method: "POST",
-      body: JSON.stringify({ dataUrl, kind: "document", folder: "academy-payments" }),
-    });
-    if (uploaded.error || !uploaded.data) {
-      setBusyResource(false);
-      showToast(uploaded.error?.message ?? "Proof upload failed.", "error");
-      return;
-    }
-    const proof = await apiFetch(`/api/v1/payments/${paymentId}/proof`, {
-      method: "POST",
-      body: JSON.stringify({ proofUrl: uploaded.data.url }),
-    });
-    setBusyResource(false);
-    if (proof.error) {
-      showToast(proof.error.message, "error");
-      return;
-    }
-    showToast("Proof uploaded. Admin approval is pending.");
-    await load();
-  }
 
   if (!user) {
     return (
@@ -360,16 +320,25 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
             groups={data.toolkit ?? []}
             accent={accent}
             access={data.toolkitAccess}
-            onPurchase={() => void purchaseToolkit()}
-            purchaseBusy={busyResource}
-            onUploadProof={() => {
-              if (data.toolkitAccess?.paymentId) {
-                resourcePaymentRef.current = data.toolkitAccess.paymentId;
-                fileRef.current?.click();
-              }
-            }}
+            onPurchase={() => setCheckoutOpen(true)}
           />
-          <input ref={fileRef} type="file" accept=".pdf,.png,.jpg,.jpeg,.webp" className="hidden" onChange={(e) => void uploadResourceProof(e.target.files)} />
+          {data.toolkitAccess && (
+            <AcademyResourcePurchaseModal
+              open={checkoutOpen}
+              onClose={() => setCheckoutOpen(false)}
+              onComplete={load}
+              product={buildToolkitProduct({
+                courseId: data.course.id,
+                courseTitle: data.course.title,
+                itemCount: (data.toolkit ?? []).reduce((sum, group) => sum + group.items.length, 0),
+                groups: data.toolkit,
+              })}
+              access={data.toolkitAccess as ToolkitAccessState}
+              paymentInstructions={data.settings.paymentInstructions}
+              accent={accent}
+              showToast={showToast}
+            />
+          )}
         </div>
       )}
 
@@ -562,13 +531,4 @@ function AssessmentSection({ title, icon: Icon, empty, children }: { title: stri
       <div className="space-y-3">{Children.count(children) === 0 ? <p className="text-sm text-slate-500">{empty}</p> : children}</div>
     </section>
   );
-}
-
-function readFile(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result));
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
 }
