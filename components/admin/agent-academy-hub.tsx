@@ -81,7 +81,27 @@ type AcademyData = {
     adminNote?: string;
     createdAt: string;
     updatedAt: string;
+    productType?: "COURSE_ENROLMENT";
     course: { id: string; title: string };
+    learner: { id: string; name: string; email: string; phone?: string; roles: string[] };
+    payment: { id: string; status: string; proofStatus?: string; proofUrl?: string } | null;
+  }>;
+  resourceAccessApplications?: Array<{
+    id: string;
+    status: string;
+    learnerType: string;
+    resourceKind: string;
+    fullName: string;
+    email: string;
+    phone?: string;
+    amount: number;
+    currency: string;
+    proofUrl?: string;
+    adminNote?: string;
+    createdAt: string;
+    updatedAt: string;
+    productType: "RESOURCE_ACCESS";
+    course: { id: string; title: string } | null;
     learner: { id: string; name: string; email: string; phone?: string; roles: string[] };
     payment: { id: string; status: string; proofStatus?: string; proofUrl?: string } | null;
   }>;
@@ -145,6 +165,9 @@ type AcademyCourse = {
   price: string | number;
   publicPrice: string | number;
   agentPrice: string | number;
+  toolkitPublicPrice?: string | number;
+  toolkitAgentPrice?: string | number;
+  toolkitSalesEnabled?: boolean;
   currency: string;
   registrationOpen: boolean;
   accessDurationDays: number;
@@ -640,7 +663,7 @@ function FeatureWorkbench({
     return <BuilderList title="Certificate Management" icon={Award} rows={data.certificates.map((c) => ({ id: c.id, title: c.certificateNumber, active: c.status === "ACTIVE", detail: `${c.agentId} - ${new Date(c.issuedAt).toLocaleDateString()}` }))} actionLabel="Issued automatically after completion" />;
   }
   if (tab === "Public Learners") {
-    return <PublicLearnersPanel applications={data.publicLearnerApplications} action={action} />;
+    return <PublicLearnersPanel applications={data.publicLearnerApplications} resourceApplications={data.resourceAccessApplications ?? []} action={action} />;
   }
   if (tab === "Learning Paths") {
     return <BuilderList title="Learning Paths" icon={Library} rows={data.learningPaths.map((path) => ({ id: path.id, title: path.title, active: path.status === "PUBLISHED", detail: `${path.courses.length} course(s) - ${path.badgeTitle ?? "No badge"}` }))} actionLabel="Create Path" onCreate={() => openDrawer("path")} onArchive={(row) => action({ action: row.active === false ? "restore_learning_path" : "archive_learning_path", pathId: row.id }, row.active === false ? "Learning path restored." : "Learning path archived.")} />;
@@ -787,22 +810,65 @@ function OperationalPanel({ tab }: { tab: AcademyTab }) {
 
 function PublicLearnersPanel({
   applications,
+  resourceApplications,
   action,
 }: {
   applications: AcademyData["publicLearnerApplications"];
+  resourceApplications: NonNullable<AcademyData["resourceAccessApplications"]>;
   action: (body: Record<string, unknown>, success: string) => Promise<unknown>;
 }) {
+  const pendingCount =
+    applications.filter((item) => item.status === "PAYMENT_UPLOADED").length +
+    resourceApplications.filter((item) => item.status === "PAYMENT_UPLOADED").length;
+
+  const resourceRows = resourceApplications.map((row) => ({
+    id: row.id,
+    status: row.status,
+    learnerType: row.learnerType,
+    fullName: row.fullName,
+    email: row.email,
+    phone: row.phone,
+    amount: row.amount,
+    currency: row.currency,
+    proofUrl: row.proofUrl,
+    adminNote: row.adminNote,
+    productLabel:
+      row.resourceKind === "TRAINING_MANUAL"
+        ? "Training manual"
+        : `${row.course?.title ?? "Course"} toolkit`,
+    reviewAction: "review_resource_access" as const,
+    reviewIdKey: "accessId" as const,
+  }));
+
+  const enrolmentRows = applications.map((row) => ({
+    id: row.id,
+    status: row.status,
+    learnerType: row.learnerType,
+    fullName: row.fullName,
+    email: row.email,
+    phone: row.phone,
+    amount: row.amount,
+    currency: row.currency,
+    proofUrl: row.proofUrl,
+    adminNote: row.adminNote,
+    productLabel: row.course.title,
+    reviewAction: "review_public_learner" as const,
+    reviewIdKey: "applicationId" as const,
+  }));
+
+  const rows = [...enrolmentRows, ...resourceRows];
+
   return (
     <section className="rounded-xl border border-white/10 bg-slate-900/60">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 p-4">
         <div>
-          <h3 className="font-semibold text-white">Public Learner Registrations</h3>
-          <p className="mt-1 text-sm text-slate-400">People training with HomeLink without becoming agents. Review payment proof and activate course access.</p>
+          <h3 className="font-semibold text-white">Learner Registrations & Resource Access</h3>
+          <p className="mt-1 text-sm text-slate-400">Review course enrolments, field toolkit purchases, and training manual access.</p>
         </div>
-        <AdminStatusBadge status={`${applications.filter((item) => item.status === "PAYMENT_UPLOADED").length} pending`} variant="warning" />
+        <AdminStatusBadge status={`${pendingCount} pending`} variant="warning" />
       </div>
       <AdminDataTable
-        rows={applications}
+        rows={rows}
         columns={[
           {
             key: "learner",
@@ -811,11 +877,10 @@ function PublicLearnersPanel({
               <div>
                 <p className="font-semibold text-white">{row.fullName}</p>
                 <p className="text-xs text-slate-500">{row.email}{row.phone ? ` - ${row.phone}` : ""}</p>
-                {row.organisation && <p className="text-xs text-slate-500">{row.organisation}</p>}
               </div>
             ),
           },
-          { key: "course", header: "Course", render: (row) => <span className="text-sm text-slate-300">{row.course.title}</span> },
+          { key: "product", header: "Product", render: (row) => <span className="text-sm text-slate-300">{row.productLabel}</span> },
           { key: "type", header: "Type", render: (row) => <AdminStatusBadge status={row.learnerType === "PUBLIC_LEARNER" ? "Training only" : "Agent training"} variant={row.learnerType === "PUBLIC_LEARNER" ? "info" : "success"} /> },
           { key: "amount", header: "Amount", render: (row) => `${row.currency} ${row.amount.toFixed(2)}` },
           { key: "status", header: "Status", render: (row) => <AdminStatusBadge status={row.status.replace(/_/g, " ")} variant={row.status === "APPROVED" ? "success" : row.status === "REJECTED" ? "danger" : "warning"} /> },
@@ -829,17 +894,17 @@ function PublicLearnersPanel({
             header: "Actions",
             render: (row) => (
               <div className="flex flex-wrap gap-2">
-                <Button disabled={row.status === "APPROVED"} onClick={() => void action({ action: "review_public_learner", applicationId: row.id, status: "APPROVED" }, "Learner approved and course access activated.")}>
+                <Button disabled={row.status === "APPROVED"} onClick={() => void action({ action: row.reviewAction, [row.reviewIdKey]: row.id, status: "APPROVED" }, "Access approved.")}>
                   Approve
                 </Button>
-                <Button variant="secondary" disabled={row.status === "REJECTED"} onClick={() => void action({ action: "review_public_learner", applicationId: row.id, status: "REJECTED", adminNote: "Payment proof could not be verified. Please upload a clearer proof of payment." }, "Learner registration rejected.")}>
+                <Button variant="secondary" disabled={row.status === "REJECTED"} onClick={() => void action({ action: row.reviewAction, [row.reviewIdKey]: row.id, status: "REJECTED", adminNote: "Payment proof could not be verified. Please upload a clearer proof of payment." }, "Registration rejected.")}>
                   Reject
                 </Button>
               </div>
             ),
           },
         ]}
-        emptyMessage="No public learner registrations yet."
+        emptyMessage="No learner registrations or resource access requests yet."
       />
     </section>
   );
@@ -895,6 +960,9 @@ function courseFormDefaults(course?: AcademyCourse | null) {
     price: Number(course?.price ?? course?.publicPrice ?? 0),
     publicPrice: Number(course?.publicPrice ?? course?.price ?? 0),
     agentPrice: Number(course?.agentPrice ?? 0),
+    toolkitPublicPrice: Number(course?.toolkitPublicPrice ?? 15),
+    toolkitAgentPrice: Number(course?.toolkitAgentPrice ?? 0),
+    toolkitSalesEnabled: course?.toolkitSalesEnabled !== false,
     currency: course?.currency ?? "USD",
     registrationOpen: Boolean(course?.registrationOpen),
     accessDurationDays: Number(course?.accessDurationDays ?? 365),
@@ -921,7 +989,10 @@ function CourseDrawer({ open, busy, course: editingCourse, onClose, onSave }: { 
         <TextInput label="Legacy/default price" type="number" value={String(course.price)} onChange={(price) => setCourse({ ...course, price: Number(price), publicPrice: course.publicPrice || Number(price) })} />
         <TextInput label="Public learner price" type="number" value={String(course.publicPrice)} onChange={(publicPrice) => setCourse({ ...course, publicPrice: Number(publicPrice), price: Number(publicPrice) })} />
         <TextInput label="Agent price" type="number" value={String(course.agentPrice)} onChange={(agentPrice) => setCourse({ ...course, agentPrice: Number(agentPrice) })} />
+        <TextInput label="Toolkit public price" type="number" value={String(course.toolkitPublicPrice)} onChange={(toolkitPublicPrice) => setCourse({ ...course, toolkitPublicPrice: Number(toolkitPublicPrice) })} />
+        <TextInput label="Toolkit agent price" type="number" value={String(course.toolkitAgentPrice)} onChange={(toolkitAgentPrice) => setCourse({ ...course, toolkitAgentPrice: Number(toolkitAgentPrice) })} />
         <TextInput label="Currency" value={course.currency} onChange={(currency) => setCourse({ ...course, currency })} />
+        <label className="flex items-center gap-2 text-sm text-slate-300 sm:col-span-2"><input type="checkbox" checked={course.toolkitSalesEnabled} onChange={(e) => setCourse({ ...course, toolkitSalesEnabled: e.target.checked })} /> Field toolkit sales enabled (locked until purchased)</label>
         <TextInput label="Access duration days" type="number" value={String(course.accessDurationDays)} onChange={(accessDurationDays) => setCourse({ ...course, accessDurationDays: Number(accessDurationDays) })} />
         <TextInput label="Tags" value={course.tags} onChange={(tags) => setCourse({ ...course, tags })} />
         <label className="flex items-center gap-2 text-sm text-slate-300"><input type="checkbox" checked={course.featured} onChange={(e) => setCourse({ ...course, featured: e.target.checked })} /> Featured course</label>
@@ -1136,6 +1207,7 @@ function AcademySettingsPanel({ settings, auditLogs, onSave }: { settings: Recor
   const quizSettings = (settings.quizSettings ?? {}) as Record<string, unknown>;
   const enrolmentSettings = (settings.enrolmentSettings ?? {}) as Record<string, unknown>;
   const completionRules = (settings.completionRules ?? {}) as Record<string, unknown>;
+  const resourceAccess = (settings.resourceAccess ?? {}) as Record<string, unknown>;
   const [draft, setDraft] = useState({
     academyName: String(settings.academyName ?? "HomeLink Agent Academy"),
     certificatePrefix: String(settings.certificatePrefix ?? "HLA"),
@@ -1159,6 +1231,9 @@ function AcademySettingsPanel({ settings, auditLogs, onSave }: { settings: Recor
     gradingScale: String((settings.gradingSettings as Record<string, unknown>)?.scale ?? "percentage"),
     allowManualGrading: (settings.gradingSettings as Record<string, unknown>)?.allowManualGrading !== false,
     dashboardWelcome: String((settings.branding as Record<string, unknown>)?.dashboardWelcome ?? "Continue your professional training journey."),
+    manualPublicPrice: String(resourceAccess.manualPublicPrice ?? "35"),
+    manualAgentPrice: String(resourceAccess.manualAgentPrice ?? "15"),
+    manualSalesEnabled: resourceAccess.manualSalesEnabled !== false,
   });
   return (
     <div className="grid gap-4 xl:grid-cols-3">
@@ -1186,6 +1261,11 @@ function AcademySettingsPanel({ settings, auditLogs, onSave }: { settings: Recor
                 notificationSettings: { quizResults: draft.notifyQuizResults, assignmentReview: draft.notifyAssignmentReview, courseUpdates: draft.notifyCourseUpdates },
                 gradingSettings: { scale: draft.gradingScale, allowManualGrading: draft.allowManualGrading },
                 branding: { ...(settings.branding as object), dashboardWelcome: draft.dashboardWelcome, logoUrl: "/brand/homelink-full-lockup.png" },
+                resourceAccess: {
+                  manualPublicPrice: Number(draft.manualPublicPrice) || 35,
+                  manualAgentPrice: Number(draft.manualAgentPrice) || 15,
+                  manualSalesEnabled: draft.manualSalesEnabled,
+                },
               })
             }
           >
@@ -1207,6 +1287,14 @@ function AcademySettingsPanel({ settings, auditLogs, onSave }: { settings: Recor
             <TextInput label="Certificate prefix" value={draft.certificatePrefix} onChange={(certificatePrefix) => setDraft({ ...draft, certificatePrefix })} />
             <TextInput label="Default access duration (days)" type="number" value={draft.accessDurationDays} onChange={(accessDurationDays) => setDraft({ ...draft, accessDurationDays })} />
             <TextInput label="Supported upload formats" value={draft.supportedFormats} onChange={(supportedFormats) => setDraft({ ...draft, supportedFormats })} className="sm:col-span-2" />
+          </FormGrid>
+        </div>
+        <div>
+          <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-emerald-300">Training Manual Access</p>
+          <FormGrid>
+            <TextInput label="Manual public price" type="number" value={draft.manualPublicPrice} onChange={(manualPublicPrice) => setDraft({ ...draft, manualPublicPrice })} />
+            <TextInput label="Manual agent price" type="number" value={draft.manualAgentPrice} onChange={(manualAgentPrice) => setDraft({ ...draft, manualAgentPrice })} />
+            <label className="flex items-center gap-2 text-sm text-slate-300 sm:col-span-2"><input type="checkbox" checked={draft.manualSalesEnabled} onChange={(e) => setDraft({ ...draft, manualSalesEnabled: e.target.checked })} /> Training manual sales enabled (locked until purchased)</label>
           </FormGrid>
         </div>
         <div>

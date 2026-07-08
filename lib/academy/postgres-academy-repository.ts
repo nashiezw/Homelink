@@ -11,6 +11,7 @@ import {
 import { getMainPrisma } from "@/lib/db/main-prisma";
 import { ensureOfficialAcademySeed } from "@/lib/academy/official-academy-seed";
 import { reviewPublicLearnerApplication } from "@/lib/academy/public-academy-repository";
+import { reviewResourceAccessApplication } from "@/lib/academy/academy-resource-access";
 import { fetchCourseTree, resolveLessonSectionId } from "@/lib/academy/course-tree";
 
 export type AcademyDashboard = Awaited<ReturnType<typeof getAcademyDashboard>>;
@@ -71,6 +72,7 @@ export async function getAcademyDashboard() {
     settings,
     recentActivity,
     publicLearnerApplications,
+    resourceAccessApplications,
     academyRevenue,
     discussionThreads,
     agentBadges,
@@ -105,6 +107,10 @@ export async function getAcademyDashboard() {
     prisma.trainingSetting.findUnique({ where: { id: "singleton" } }),
     prisma.trainingAuditLog.findMany({ orderBy: { createdAt: "desc" }, take: 20 }),
     prisma.academyLearnerApplication.findMany({
+      include: { course: true, payment: true, learner: { select: { id: true, name: true, email: true, phone: true, roles: true } } },
+      orderBy: { updatedAt: "desc" },
+    }),
+    prisma.academyResourceAccess.findMany({
       include: { course: true, payment: true, learner: { select: { id: true, name: true, email: true, phone: true, roles: true } } },
       orderBy: { updatedAt: "desc" },
     }),
@@ -161,7 +167,8 @@ export async function getAcademyDashboard() {
       downloads: documents.filter((document) => document.downloadable).length,
       videoWatchPercent: totalVideoSeconds ? Math.min(100, Math.round(((watchedSeconds._sum.watchedSeconds ?? 0) / totalVideoSeconds) * 100)) : 0,
       publicLearners: publicLearnerApplications.length,
-      pendingPublicApprovals: publicLearnerApplications.filter((entry) => entry.status === "PAYMENT_UPLOADED").length,
+      pendingPublicApprovals: publicLearnerApplications.filter((entry) => entry.status === "PAYMENT_UPLOADED").length
+        + resourceAccessApplications.filter((entry) => entry.status === "PAYMENT_UPLOADED").length,
       academyRevenue: Number(academyRevenue._sum.amount ?? 0),
     },
     courses,
@@ -193,6 +200,26 @@ export async function getAcademyDashboard() {
       course: { id: entry.course.id, title: entry.course.title },
       learner: entry.learner,
       payment: entry.payment ? { id: entry.payment.id, status: entry.payment.status, proofStatus: entry.payment.proofStatus, proofUrl: entry.payment.proofUrl } : null,
+      productType: "COURSE_ENROLMENT" as const,
+    })),
+    resourceAccessApplications: resourceAccessApplications.map((entry) => ({
+      id: entry.id,
+      status: entry.status,
+      learnerType: entry.learnerType,
+      resourceKind: entry.resourceKind,
+      fullName: entry.fullName,
+      email: entry.email,
+      phone: entry.phone,
+      amount: Number(entry.amount),
+      currency: entry.currency,
+      proofUrl: entry.proofUrl ?? entry.payment?.proofUrl,
+      adminNote: entry.adminNote,
+      createdAt: entry.createdAt.toISOString(),
+      updatedAt: entry.updatedAt.toISOString(),
+      course: entry.course ? { id: entry.course.id, title: entry.course.title } : null,
+      learner: entry.learner,
+      payment: entry.payment ? { id: entry.payment.id, status: entry.payment.status, proofStatus: entry.payment.proofStatus, proofUrl: entry.payment.proofUrl } : null,
+      productType: "RESOURCE_ACCESS" as const,
     })),
     auditLogs: recentActivity,
     topCourses: courses
@@ -896,6 +923,14 @@ export async function runAcademyAction(body: Record<string, any>, actor: Actor) 
       adminNote: typeof body.adminNote === "string" ? body.adminNote : undefined,
     });
   }
+  if (action === "review_resource_access") {
+    return reviewResourceAccessApplication({
+      accessId: String(body.accessId),
+      actorId: actor.id,
+      status: body.status === "REJECTED" ? "REJECTED" : body.status === "REFUNDED" ? "REFUNDED" : body.status === "EXPIRED" ? "EXPIRED" : "APPROVED",
+      adminNote: typeof body.adminNote === "string" ? body.adminNote : undefined,
+    });
+  }
   return null;
 }
 
@@ -916,6 +951,9 @@ export async function getAdminCourseTree(courseId: string) {
     registrationOpen: course.registrationOpen,
     publicPrice: Number(course.publicPrice),
     agentPrice: Number(course.agentPrice),
+    toolkitPublicPrice: Number(course.toolkitPublicPrice),
+    toolkitAgentPrice: Number(course.toolkitAgentPrice),
+    toolkitSalesEnabled: course.toolkitSalesEnabled,
     currency: course.currency,
     accessDurationDays: course.accessDurationDays,
     featured: course.featured,
@@ -1037,6 +1075,9 @@ function courseInput(input: Record<string, any>, actorId: string, update = false
     price: decimalOr(input.price, 0),
     publicPrice: decimalOr(input.publicPrice ?? input.price, 0),
     agentPrice: decimalOr(input.agentPrice, 0),
+    toolkitPublicPrice: decimalOr(input.toolkitPublicPrice, 15),
+    toolkitAgentPrice: decimalOr(input.toolkitAgentPrice, 0),
+    toolkitSalesEnabled: input.toolkitSalesEnabled !== false,
     currency: String(input.currency ?? "USD"),
     registrationOpen: Boolean(input.registrationOpen),
     accessDurationDays: numberOr(input.accessDurationDays, 365),

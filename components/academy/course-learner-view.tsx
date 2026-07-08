@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Children, useCallback, useEffect, useState } from "react";
+import { Children, useCallback, useEffect, useRef, useState } from "react";
 import {
   Award,
   BookOpen,
@@ -36,7 +36,17 @@ type CourseDetail = {
     assessmentSummary?: string;
     includes?: string[];
   } | null;
-  toolkit?: Array<{ category: string; description: string; items: Array<{ id: string; title: string; description: string; fileUrl: string }> }>;
+  toolkit?: Array<{ category: string; description: string; items: Array<{ id: string; title: string; description: string; fileUrl?: string; locked?: boolean }> }>;
+  toolkitAccess?: {
+    unlocked: boolean;
+    salesEnabled: boolean;
+    price: number;
+    currency: string;
+    status: string | null;
+    paymentId: string | null;
+    proofUrl?: string | null;
+    adminNote?: string | null;
+  };
   course: {
     id: string;
     title: string;
@@ -98,6 +108,9 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
   const [data, setData] = useState<CourseDetail | null>(null);
   const [tab, setTab] = useState<Tab>(() => (VALID_TABS.includes(initialTab as Tab) ? (initialTab as Tab) : "curriculum"));
   const [viewingLessonId, setViewingLessonId] = useState<string | null>(null);
+  const [busyResource, setBusyResource] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const resourcePaymentRef = useRef<string>("");
   const [activeQuizId, setActiveQuizId] = useState<string | null>(null);
   const [activeExamId, setActiveExamId] = useState<string | null>(null);
   const [activeAssignmentId, setActiveAssignmentId] = useState<string | null>(null);
@@ -111,6 +124,49 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
   useEffect(() => {
     void load();
   }, [load]);
+
+  async function purchaseToolkit() {
+    setBusyResource(true);
+    const result = await apiFetch("/api/v1/academy/resources/register", {
+      method: "POST",
+      body: JSON.stringify({ resourceKind: "COURSE_TOOLKIT", courseId }),
+    });
+    setBusyResource(false);
+    if (result.error) {
+      showToast(result.error.message, "error");
+      return;
+    }
+    showToast("Toolkit purchase started. Upload proof of payment if required.");
+    await load();
+  }
+
+  async function uploadResourceProof(files: FileList | null) {
+    const file = files?.[0];
+    const paymentId = resourcePaymentRef.current;
+    if (!file || !paymentId) return;
+    setBusyResource(true);
+    const dataUrl = await readFile(file);
+    const uploaded = await apiFetch<{ url: string }>("/api/v1/uploads", {
+      method: "POST",
+      body: JSON.stringify({ dataUrl, kind: "document", folder: "academy-payments" }),
+    });
+    if (uploaded.error || !uploaded.data) {
+      setBusyResource(false);
+      showToast(uploaded.error?.message ?? "Proof upload failed.", "error");
+      return;
+    }
+    const proof = await apiFetch(`/api/v1/payments/${paymentId}/proof`, {
+      method: "POST",
+      body: JSON.stringify({ proofUrl: uploaded.data.url }),
+    });
+    setBusyResource(false);
+    if (proof.error) {
+      showToast(proof.error.message, "error");
+      return;
+    }
+    showToast("Proof uploaded. Admin approval is pending.");
+    await load();
+  }
 
   if (!user) {
     return (
@@ -216,8 +272,8 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
         </Link>
       }
     >
-      <div className={cn("relative overflow-hidden rounded-3xl bg-gradient-to-br p-6 text-white shadow-hero sm:p-8", heroGradient)}>
-        <div className="pointer-events-none absolute -right-10 -top-10 size-48 rounded-full bg-white/10 blur-3xl" />
+      <div className={cn("relative overflow-hidden rounded-xl bg-gradient-to-br p-6 text-white shadow-hero sm:p-8", heroGradient)}>
+        <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(255,255,255,0.08)_1px,transparent_1px),linear-gradient(180deg,rgba(255,255,255,0.06)_1px,transparent_1px)] bg-[size:34px_34px]" />
         <div className="relative z-10 flex flex-col gap-6">
           <div className="flex items-start gap-3 sm:gap-4">
             <div className="shrink-0 rounded-2xl bg-white/95 p-2 shadow-lg ring-1 ring-white/40">
@@ -231,7 +287,7 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
               <p className="mt-1 text-base font-medium leading-snug text-white/95 sm:text-lg">{data.programme?.certificateTitle ?? "HomeLink Agent Certification"}</p>
             </div>
           </div>
-          <div className="w-full rounded-2xl bg-white/10 p-5 backdrop-blur-sm lg:max-w-xs">
+          <div className="w-full rounded-lg border border-white/10 bg-white/10 p-5 backdrop-blur-sm lg:max-w-xs">
             <p className="text-4xl font-bold">{data.course.progress}%</p>
             <p className="text-sm text-emerald-100">Course completion</p>
             <div className="mt-4 h-2.5 overflow-hidden rounded-full bg-white/20">
@@ -277,7 +333,7 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
                       key={lesson.id}
                       type="button"
                       onClick={() => setViewingLessonId(lesson.id)}
-                      className="group rounded-xl border border-slate-200 bg-white p-4 text-left transition-all hover:-translate-y-0.5 hover:shadow-md dark:border-slate-700 dark:bg-slate-900/30"
+                      className="academy-card group rounded-lg p-4 text-left"
                       style={{ borderColor: `${accent}22` }}
                     >
                       <div className="flex items-start justify-between gap-2">
@@ -296,17 +352,30 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
 
       {tab === "toolkit" && (
         <div className="mt-6 space-y-4">
-          <div className="rounded-2xl border p-5" style={{ borderColor: `${accent}33`, background: `linear-gradient(135deg, ${accent}10, transparent)` }}>
+          <div className="academy-panel rounded-xl p-5" style={{ borderColor: `${accent}33`, background: `linear-gradient(135deg, ${accent}10, transparent)` }}>
             <h3 className="text-lg font-bold">HomeLink Field Toolkit</h3>
             <p className="mt-1 text-sm text-slate-600">Print-ready branded forms, checklists, planners, scripts, and flowcharts for this programme — the same professional PDFs used in the field.</p>
           </div>
-          <ToolkitGrid groups={data.toolkit ?? []} accent={accent} />
+          <ToolkitGrid
+            groups={data.toolkit ?? []}
+            accent={accent}
+            access={data.toolkitAccess}
+            onPurchase={() => void purchaseToolkit()}
+            purchaseBusy={busyResource}
+            onUploadProof={() => {
+              if (data.toolkitAccess?.paymentId) {
+                resourcePaymentRef.current = data.toolkitAccess.paymentId;
+                fileRef.current?.click();
+              }
+            }}
+          />
+          <input ref={fileRef} type="file" accept=".pdf,.png,.jpg,.jpeg,.webp" className="hidden" onChange={(e) => void uploadResourceProof(e.target.files)} />
         </div>
       )}
 
       {tab === "materials" && (
         <div className="mt-6 space-y-5">
-          <div className="rounded-2xl border border-sky-200/70 bg-gradient-to-br from-sky-50/80 to-white p-5 dark:border-sky-900/40 dark:from-sky-950/30 dark:to-slate-950">
+          <div className="academy-panel rounded-xl p-5 dark:border-sky-900/40 dark:from-sky-950/30 dark:to-slate-950">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
                 <h3 className="text-lg font-bold">Lesson Notes — Downloadable PDFs</h3>
@@ -333,7 +402,7 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
                 {items.map((material) => (
                   <div
                     key={material.id}
-                    className="group flex flex-col overflow-hidden rounded-2xl border border-sky-200/70 bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-sky-400 hover:shadow-card-hover dark:border-sky-900/40 dark:bg-slate-950"
+                    className="academy-card group flex flex-col overflow-hidden rounded-xl border-sky-200/70 dark:border-sky-900/40"
                   >
                     <div className="border-b border-sky-100 bg-gradient-to-r from-sky-600 to-emerald-600 px-4 py-3 dark:border-sky-900">
                       <div className="flex items-center justify-between gap-2">
@@ -376,7 +445,7 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
       {tab === "assessments" && (
         <div className="mt-6 space-y-6">
           {(data.assessments.summary || data.programme?.badgeName) && (
-            <div className="rounded-2xl border border-emerald-200/70 bg-gradient-to-br from-emerald-50/80 to-white p-5 dark:border-emerald-900/40 dark:from-emerald-950/30 dark:to-slate-950">
+            <div className="academy-panel rounded-xl p-5 dark:border-emerald-900/40 dark:from-emerald-950/30 dark:to-slate-950">
               <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">Certification requirements</p>
               {data.assessments.summary && <p className="mt-2 text-sm text-slate-700 dark:text-slate-300">{data.assessments.summary}</p>}
               {data.programme?.badgeName && (
@@ -467,7 +536,7 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
       )}
 
       {tab === "progress" && (
-        <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-950">
+        <div className="academy-panel mt-6 rounded-xl p-6">
           <p className="text-3xl font-bold text-emerald-600">{data.course.progress}%</p>
           <p className="text-slate-600 mt-1">Course completion · Status: {data.course.status.replace(/_/g, " ")}</p>
           <p className="text-sm text-slate-500 mt-4">Pass mark: {data.course.passingPercentage}% · Complete all lessons{data.course.certificateEnabled ? " to earn your certificate" : ""}.</p>
@@ -479,7 +548,7 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
 
 function AssessmentStat({ label, value, accent }: { label: string; value: string; accent: string }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950">
+    <div className="academy-card rounded-xl p-4">
       <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</p>
       <p className="mt-1 text-lg font-bold" style={{ color: accent }}>{value}</p>
     </div>
@@ -493,4 +562,13 @@ function AssessmentSection({ title, icon: Icon, empty, children }: { title: stri
       <div className="space-y-3">{Children.count(children) === 0 ? <p className="text-sm text-slate-500">{empty}</p> : children}</div>
     </section>
   );
+}
+
+function readFile(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
 }

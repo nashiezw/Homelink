@@ -5,6 +5,12 @@ import { canAccessProgrammeCourse, getProgrammeProgressSummary } from "@/lib/aca
 import { assessmentMetaForAssignment, assessmentMetaForQuiz } from "@/lib/academy/academy-assessments";
 import { getProgrammeCourse, LEGACY_COURSE_ID, PROGRAMME_COURSE_IDS } from "@/lib/academy/academy-programme";
 import { getEnrolledCourseToolkits, getToolkitGroupsForCourse, programmeMetaForCourse } from "@/lib/academy/academy-toolkits";
+import {
+  getManualAccessView,
+  getToolkitAccessView,
+  maskToolkitGroups,
+  previewToolkitGroups,
+} from "@/lib/academy/academy-resource-access";
 import { fetchCourseTree, flattenCourseMaterials, mapLessonForLearner } from "@/lib/academy/course-tree";
 import { toAcademyFileDownloadUrl } from "@/lib/academy/academy-files";
 
@@ -66,7 +72,7 @@ export async function listPublicAcademyCourses() {
       includes: meta?.includes ?? [],
       assessmentSummary: meta?.assessmentSummary ?? null,
       toolkitCount,
-      toolkitPreview: toolkit,
+      toolkitPreview: previewToolkitGroups(toolkit),
       lessonCount: course.modules.reduce((sum, module) => sum + module.sections.reduce((count, section) => count + section.lessons.length, 0), 0),
       modules: course.modules.map((module) => ({
         id: module.id,
@@ -78,9 +84,10 @@ export async function listPublicAcademyCourses() {
   })).then((rows) => rows.filter(Boolean));
 }
 
-export async function getLearnerAcademyDashboard(learnerId: string) {
+export async function getLearnerAcademyDashboard(learnerId: string, options?: { isAgent?: boolean }) {
   const prisma = getMainPrisma();
-  const [applications, notifications, announcements, certificates, courseProgressRows] = await Promise.all([
+  const isAgent = Boolean(options?.isAgent);
+  const [applications, notifications, announcements, certificates, courseProgressRows, resourceAccessRows] = await Promise.all([
     prisma.academyLearnerApplication.findMany({
       where: {
         learnerId,
@@ -130,6 +137,11 @@ export async function getLearnerAcademyDashboard(learnerId: string) {
       orderBy: { issuedAt: "desc" },
     }),
     prisma.courseProgress.findMany({ where: { agentId: learnerId } }),
+    prisma.academyResourceAccess.findMany({
+      where: { learnerId },
+      include: { course: true, payment: true },
+      orderBy: { updatedAt: "desc" },
+    }),
   ]);
 
   const programmeApplications = applications.filter(
@@ -203,9 +215,20 @@ export async function getLearnerAcademyDashboard(learnerId: string) {
   const brandingPayload = (settingsPayload.branding ?? {}) as Record<string, unknown>;
 
   const approvedCourseIds = approved.map((entry) => entry.course.id);
-  const courseToolkits = await getEnrolledCourseToolkits(approvedCourseIds);
+  const courseToolkitsRaw = await getEnrolledCourseToolkits(approvedCourseIds);
+  const courseToolkits = await Promise.all(
+    courseToolkitsRaw.map(async (entry) => {
+      const access = await getToolkitAccessView(learnerId, entry.courseId, isAgent);
+      return {
+        ...entry,
+        access,
+        groups: maskToolkitGroups(entry.groups, access),
+      };
+    }),
+  );
   const activeCourseId = continueLearning?.courseId ?? approvedCourseIds[0] ?? null;
   const activeCourseToolkit = courseToolkits.find((toolkit) => toolkit.courseId === activeCourseId) ?? courseToolkits[0] ?? null;
+  const manualAccess = await getManualAccessView(learnerId, isAgent);
   const toolkitDownloadCount = courseToolkits.reduce((sum, toolkit) => sum + toolkit.itemCount, 0);
 
   return {
@@ -255,9 +278,24 @@ export async function getLearnerAcademyDashboard(learnerId: string) {
     courseToolkits,
     referenceManual: {
       title: "Complete Training Manual (Reference)",
-      description: "Full HomeLink manual for deep reference — use lesson handouts and field toolkits for daily work.",
-      downloadUrl: toAcademyFileDownloadUrl("/uploads/academy/homelink-zimbabwe-real-estate-agent-training-manual.pdf"),
+      description: "Full HomeLink manual for deep reference — purchase and admin approval required before download.",
+      downloadUrl: manualAccess.unlocked
+        ? toAcademyFileDownloadUrl("/uploads/academy/homelink-zimbabwe-real-estate-agent-training-manual.pdf")
+        : null,
+      access: manualAccess,
     },
+    resourceAccess: resourceAccessRows.map((entry) => ({
+      id: entry.id,
+      resourceKind: entry.resourceKind,
+      resourceKey: entry.resourceKey,
+      status: entry.status,
+      amount: Number(entry.amount),
+      currency: entry.currency,
+      proofUrl: entry.proofUrl,
+      adminNote: entry.adminNote,
+      course: entry.course ? { id: entry.course.id, title: entry.course.title } : null,
+      payment: entry.payment ? { id: entry.payment.id, status: entry.payment.status, proofStatus: entry.payment.proofStatus } : null,
+    })),
     applications: await Promise.all(programmeApplications.map(async (entry) => {
       const completedIds = entry.status === AcademyRegistrationStatus.APPROVED
         ? await getCompletedLessonIds(learnerId, entry.course.id)
@@ -545,7 +583,7 @@ export async function getAcademySettingsPublic() {
   };
 }
 
-export async function getLearnerCourseDetail(learnerId: string, courseId: string) {
+export async function getLearnerCourseDetail(learnerId: string, courseId: string, options?: { isAgent?: boolean }) {
   if (courseId === LEGACY_COURSE_ID || !PROGRAMME_COURSE_IDS.includes(courseId)) {
     return "NOT_FOUND" as const;
   }
@@ -586,7 +624,9 @@ export async function getLearnerCourseDetail(learnerId: string, courseId: string
   }
 
   const programme = getProgrammeCourse(courseId);
-  const toolkit = await getToolkitGroupsForCourse(courseId, { cumulative: true });
+  const toolkitRaw = await getToolkitGroupsForCourse(courseId, { cumulative: true });
+  const toolkitAccess = await getToolkitAccessView(learnerId, courseId, Boolean(options?.isAgent));
+  const toolkit = maskToolkitGroups(toolkitRaw, toolkitAccess);
 
   return {
     settings,
@@ -601,6 +641,7 @@ export async function getLearnerCourseDetail(learnerId: string, courseId: string
         }
       : null,
     toolkit,
+    toolkitAccess,
     course: {
       id: course.id,
       title: course.title,

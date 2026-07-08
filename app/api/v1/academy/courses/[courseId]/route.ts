@@ -1,6 +1,8 @@
 import { getSessionUserIdFromRequest } from "@/lib/auth/session";
 import { ok, problem } from "@/lib/api/response";
 import { getLearnerCourseDetail } from "@/lib/academy/public-academy-repository";
+import { getPostgresPublicUserById, shouldUsePostgresAuth } from "@/lib/auth/postgres-auth";
+import { getStore } from "@/lib/store/app-store";
 
 export const dynamic = "force-dynamic";
 
@@ -11,8 +13,12 @@ export async function GET(request: Request, context: { params: Promise<{ courseI
   const { courseId } = await context.params;
   if (!courseId) return problem(400, "COURSE_REQUIRED", "Course id is required.");
 
+  const user = shouldUsePostgresAuth()
+    ? await getPostgresPublicUserById(userId)
+    : getStore().getUserById(userId);
+
   try {
-    const result = await getLearnerCourseDetail(userId, courseId);
+    const result = await getLearnerCourseDetail(userId, courseId, { isAgent: user?.roles?.includes("AGENT") ?? false });
     if (result === "NOT_ENROLLED") return problem(403, "NOT_ENROLLED", "You do not have access to this course.");
     if (result === "PREREQUISITE_NOT_MET") return problem(403, "PREREQUISITE_NOT_MET", "Complete the previous course and earn its certificate before starting this one.");
     if (result === "NOT_FOUND") return problem(404, "NOT_FOUND", "Course not found.");

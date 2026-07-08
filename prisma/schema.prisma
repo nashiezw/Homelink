@@ -147,6 +147,7 @@ model User {
   sessions          AppSession[]
   agencyMemberships AgencyAgent[]
   academyApplications AcademyLearnerApplication[]
+  academyResourceAccess AcademyResourceAccess[]
 }
 
 model Agency {
@@ -553,6 +554,7 @@ model Payment {
   user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   listing     Listing?        @relation(fields: [listingId], references: [id])
   academyApplications AcademyLearnerApplication[]
+  academyResourceAccess AcademyResourceAccess[]
 }
 
 model Notification {
@@ -928,6 +930,10 @@ model TrainingCourse {
   discussions       DiscussionThread[]
   pathCourses       PathCourse[]
   publicApplications AcademyLearnerApplication[]
+  resourceAccess     AcademyResourceAccess[]
+  toolkitPublicPrice Decimal                @default(15) @db.Decimal(12, 2)
+  toolkitAgentPrice  Decimal                @default(0) @db.Decimal(12, 2)
+  toolkitSalesEnabled Boolean               @default(true)
 
   @@index([status])
   @@index([categoryId])
@@ -967,6 +973,45 @@ model AcademyLearnerApplication {
   @@index([courseId])
   @@index([paymentId])
   @@map("academy_learner_applications")
+}
+
+enum AcademyResourceKind {
+  COURSE_TOOLKIT
+  TRAINING_MANUAL
+}
+
+model AcademyResourceAccess {
+  id             String                    @id @default(cuid())
+  learnerId      String
+  resourceKind   AcademyResourceKind
+  resourceKey    String
+  courseId       String?
+  status         AcademyRegistrationStatus @default(PENDING_PAYMENT)
+  paymentId      String?
+  learnerType    String                    @default("PUBLIC_LEARNER")
+  fullName       String
+  email          String
+  phone          String?
+  amount         Decimal                   @default(0) @db.Decimal(12, 2)
+  currency       String                    @default("USD")
+  proofUrl       String?
+  adminNote      String?
+  approvedById   String?
+  approvedAt     DateTime?
+  rejectedAt     DateTime?
+  accessStartsAt DateTime?
+  accessEndsAt   DateTime?
+  createdAt      DateTime                  @default(now())
+  updatedAt      DateTime                  @updatedAt
+  learner        User                      @relation(fields: [learnerId], references: [id], onDelete: Cascade)
+  course         TrainingCourse?           @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  payment        Payment?                  @relation(fields: [paymentId], references: [id])
+
+  @@unique([learnerId, resourceKey])
+  @@index([status])
+  @@index([courseId])
+  @@index([paymentId])
+  @@map("academy_resource_access")
 }
 
 model TrainingModule {

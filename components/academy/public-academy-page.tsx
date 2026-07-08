@@ -227,7 +227,8 @@ export function PublicAcademyPage() {
         </div>
       )}
 
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-600 via-emerald-700 to-teal-800 p-5 text-white sm:p-8 md:p-12 mt-6">
+      <div className="academy-dark-hero relative mt-6 overflow-hidden rounded-xl p-5 text-white shadow-hero sm:p-8 md:p-12">
+        <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(255,255,255,0.08)_1px,transparent_1px),linear-gradient(180deg,rgba(255,255,255,0.06)_1px,transparent_1px)] bg-[size:36px_36px]" />
         <div className="relative z-10">
           <div className="flex items-center gap-2 mb-4">
             <GraduationCap className="size-7 sm:size-8 shrink-0" />
@@ -242,22 +243,20 @@ export function PublicAcademyPage() {
               : "Learn from industry experts, gain practical skills, and earn your certification. Training-only enrolment is available — you do not need to become a HomeLink agent."}
           </p>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:flex sm:flex-wrap sm:gap-3">
-            <div className="flex items-center gap-2 rounded-lg bg-white/10 px-4 py-2.5">
+            <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/10 px-4 py-2.5 backdrop-blur">
               <BookOpen className="size-5 shrink-0" />
               <span className="font-medium text-sm sm:text-base">Interactive Lessons</span>
             </div>
-            <div className="flex items-center gap-2 rounded-lg bg-white/10 px-4 py-2.5">
+            <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/10 px-4 py-2.5 backdrop-blur">
               <Award className="size-5 shrink-0" />
               <span className="font-medium text-sm sm:text-base">Certified Completion</span>
             </div>
-            <div className="flex items-center gap-2 rounded-lg bg-white/10 px-4 py-2.5 sm:col-span-1">
+            <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/10 px-4 py-2.5 backdrop-blur sm:col-span-1">
               <Users className="size-5 shrink-0" />
               <span className="font-medium text-sm sm:text-base">Expert Support</span>
             </div>
           </div>
         </div>
-        <div className="absolute top-0 right-0 w-96 h-96 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl" />
-        <div className="absolute bottom-0 left-0 w-64 h-64 bg-emerald-400/10 rounded-full translate-y-1/2 -translate-x-1/2 blur-3xl" />
       </div>
 
       <div className="grid grid-cols-2 gap-3 mt-8 md:grid-cols-4 md:gap-4">
@@ -267,12 +266,12 @@ export function PublicAcademyPage() {
         <StatCard icon={TrendingUp} value={String(courses.reduce((sum, c) => sum + (c.toolkitCount ?? 0), 0))} label="Toolkit Downloads" color="purple" />
       </div>
 
-      <section className="mt-10 rounded-3xl border border-slate-200 bg-white p-6 shadow-soft dark:border-slate-800 dark:bg-slate-950 sm:p-8">
+      <section className="academy-panel mt-10 rounded-xl p-6 sm:p-8">
         <h2 className="text-2xl font-bold">Your certification pathway</h2>
         <p className="mt-2 max-w-3xl text-slate-600">Three focused programmes — Foundations, Listing & Client Mastery, and Professional Certification. Complete each level, pass assessments, and unlock badges plus downloadable HomeLink certificates.</p>
         <div className="mt-6 grid gap-3 sm:grid-cols-2 md:grid-cols-3">
           {courses.map((course) => (
-            <div key={course.id} className="rounded-2xl border p-4 sm:p-5 transition hover:shadow-md" style={{ borderColor: `${course.theme?.accent ?? "#008b68"}44` }}>
+            <div key={course.id} className="academy-card rounded-xl p-4 sm:p-5" style={{ borderColor: `${course.theme?.accent ?? "#008b68"}44` }}>
               <p className="text-xs font-bold uppercase tracking-wider" style={{ color: course.theme?.accent }}>{course.theme?.label}</p>
               <p className="mt-2 text-base font-bold leading-snug sm:text-lg">{course.title}</p>
               <p className="mt-2 text-sm text-slate-500">{course.lessonCount} lessons · {course.toolkitCount ?? 0} toolkit PDFs</p>
@@ -292,7 +291,7 @@ export function PublicAcademyPage() {
               <article
                 key={course.id}
                 className={cn(
-                  "relative overflow-hidden rounded-3xl border-2 bg-white transition-all duration-300 dark:bg-slate-950",
+                  "academy-card relative overflow-hidden rounded-xl border-2 transition-all duration-300",
                   selectedId === course.id ? "shadow-xl" : "border-slate-200 hover:shadow-lg dark:border-slate-800",
                 )}
                 style={selectedId === course.id ? { borderColor: accent, boxShadow: `0 20px 50px ${accent}22` } : undefined}
@@ -324,7 +323,7 @@ export function PublicAcademyPage() {
                         <p className="mt-3 text-sm text-slate-600 leading-relaxed sm:text-base">{course.shortDescription ?? course.description}</p>
                       </div>
                     </div>
-                    <div className="flex items-center justify-between gap-4 rounded-xl border border-slate-100 bg-slate-50 px-4 py-3 sm:border-0 sm:bg-transparent sm:px-0 sm:py-0 dark:border-slate-800 dark:bg-slate-900/40 sm:dark:bg-transparent">
+                    <div className="flex items-center justify-between gap-4 rounded-lg border border-slate-100 bg-slate-50 px-4 py-3 sm:border-0 sm:bg-transparent sm:px-0 sm:py-0 dark:border-slate-800 dark:bg-slate-900/40 sm:dark:bg-transparent">
                       <p className="text-xs font-medium uppercase tracking-wide text-slate-500 sm:hidden">Programme fee</p>
                       <div className="text-right sm:ml-auto">
                         <p className="text-2xl font-bold sm:text-3xl" style={{ color: accent }}>{course.publicPrice ? `${course.currency} ${course.publicPrice.toFixed(2)}` : "Free"}</p>
@@ -334,9 +333,9 @@ export function PublicAcademyPage() {
                   </div>
 
                   <div className="mt-6 grid gap-3 sm:grid-cols-3">
-                    <div className="rounded-xl bg-slate-50 p-3 text-sm dark:bg-slate-900"><BookOpen className="size-4 mb-1" style={{ color: accent }} /><span className="font-semibold">{course.lessonCount} lessons</span></div>
-                    <div className="rounded-xl bg-slate-50 p-3 text-sm dark:bg-slate-900"><Clock className="size-4 mb-1" style={{ color: accent }} /><span className="font-semibold">{course.estimatedHours || Math.round(course.durationMinutes / 60)} hours</span></div>
-                    <div className="rounded-xl bg-slate-50 p-3 text-sm dark:bg-slate-900"><ShieldCheck className="size-4 mb-1" style={{ color: accent }} /><span className="font-semibold">{course.toolkitCount ?? 0} toolkit PDFs</span></div>
+                    <div className="rounded-lg bg-slate-50 p-3 text-sm dark:bg-slate-900"><BookOpen className="size-4 mb-1" style={{ color: accent }} /><span className="font-semibold">{course.lessonCount} lessons</span></div>
+                    <div className="rounded-lg bg-slate-50 p-3 text-sm dark:bg-slate-900"><Clock className="size-4 mb-1" style={{ color: accent }} /><span className="font-semibold">{course.estimatedHours || Math.round(course.durationMinutes / 60)} hours</span></div>
+                    <div className="rounded-lg bg-slate-50 p-3 text-sm dark:bg-slate-900"><ShieldCheck className="size-4 mb-1" style={{ color: accent }} /><span className="font-semibold">{course.toolkitCount ?? 0} toolkit PDFs</span></div>
                   </div>
 
                   <div className="mt-6 space-y-4">
@@ -378,7 +377,7 @@ export function PublicAcademyPage() {
                           content: (
                             <div className="space-y-3">
                               {course.modules.map((module) => (
-                                <div key={module.id} className="rounded-xl border border-slate-200 p-3 dark:border-slate-700">
+                                <div key={module.id} className="rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-950">
                                   <p className="font-semibold">{module.title}</p>
                                   <p className="mt-1 text-xs text-slate-500">{module.lessons.length} lessons · {module.lessons.reduce((n, l) => n + l.estimatedMinutes, 0)} min</p>
                                   <ul className="mt-2 space-y-1 text-sm text-slate-600">
@@ -395,7 +394,7 @@ export function PublicAcademyPage() {
                           title: "Field toolkit included",
                           subtitle: "HomeLink-branded print-ready PDFs for this level",
                           meta: `${course.toolkitCount ?? 0} downloads`,
-                          content: <ToolkitGrid groups={course.toolkitPreview ?? []} accent={accent} />,
+                          content: <ToolkitGrid groups={course.toolkitPreview ?? []} accent={accent} preview />,
                         },
                       ]}
                     />
@@ -466,7 +465,7 @@ function StatCard({
     purple: "bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400",
   };
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950 sm:p-6">
+    <div className="academy-card rounded-xl p-4 sm:p-6">
       <div className="flex items-center gap-3">
         <div className={`shrink-0 rounded-lg p-2.5 sm:p-3 ${colors[color]}`}>
           <Icon className="size-5 sm:size-6" />
@@ -563,7 +562,7 @@ function AcademySidePanel({
       {selected && (
         <ProgrammeEnrolmentPreview course={selected} accent={accent} />
       )}
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-lg dark:border-slate-800 dark:bg-slate-950">
+      <div className="academy-panel rounded-xl p-6">
       <div className="flex items-center gap-3 mb-6">
         <div className="rounded-xl bg-emerald-100 p-3 dark:bg-emerald-900/30">
           <ShieldCheck className="size-6 text-emerald-600 dark:text-emerald-400" />
@@ -582,7 +581,7 @@ function AcademySidePanel({
         <AuthForm initialMode="register" showBrand={false} redirectTo={null} />
       ) : (
         <div className="space-y-4">
-          <div className="rounded-xl bg-gradient-to-r from-emerald-50 to-teal-50 p-4 text-sm dark:from-emerald-900/20 dark:to-teal-900/20">
+          <div className="rounded-lg border border-emerald-100 bg-gradient-to-r from-emerald-50 to-teal-50 p-4 text-sm dark:border-emerald-900/40 dark:from-emerald-900/20 dark:to-teal-900/20">
             <p className="font-semibold text-emerald-900 dark:text-emerald-100">Signed in as {user.email}</p>
             {academyStatus?.hasActiveAccess && (
               <p className="text-emerald-700 dark:text-emerald-300 mt-1">You have active course access.</p>
@@ -685,7 +684,7 @@ function AcademySidePanel({
 
 function ProgrammeEnrolmentPreview({ course, accent }: { course: PublicCourse; accent: string }) {
   return (
-    <div className="overflow-hidden rounded-2xl border-2 bg-white shadow-lg dark:bg-slate-950" style={{ borderColor: `${accent}44` }}>
+    <div className="academy-panel overflow-hidden rounded-xl border-2" style={{ borderColor: `${accent}44` }}>
       <div className={cn("h-2 bg-gradient-to-r", course.theme?.gradient ?? "from-emerald-500 to-teal-600")} />
       <div className="p-5">
         <span className={cn("inline-flex rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide", course.theme?.chip ?? "bg-emerald-100 text-emerald-800")}>
@@ -695,9 +694,9 @@ function ProgrammeEnrolmentPreview({ course, accent }: { course: PublicCourse; a
         <p className="mt-1 text-sm font-medium" style={{ color: accent }}>{course.subtitle}</p>
         <p className="mt-3 text-sm leading-relaxed text-slate-600">{course.description}</p>
         <div className="mt-4 grid grid-cols-1 gap-2 text-center text-xs sm:grid-cols-3 sm:gap-2">
-          <div className="rounded-xl bg-slate-50 p-3 dark:bg-slate-900"><BookOpen className="mx-auto size-4 mb-1" style={{ color: accent }} /><span className="font-semibold leading-snug">{course.lessonCount} lessons</span></div>
-          <div className="rounded-xl bg-slate-50 p-3 dark:bg-slate-900"><Clock className="mx-auto size-4 mb-1" style={{ color: accent }} /><span className="font-semibold leading-snug">{course.estimatedHours || Math.round(course.durationMinutes / 60)}h guided</span></div>
-          <div className="rounded-xl bg-slate-50 p-3 dark:bg-slate-900"><ShieldCheck className="mx-auto size-4 mb-1" style={{ color: accent }} /><span className="font-semibold leading-snug">{course.toolkitCount ?? 0} toolkit PDFs</span></div>
+          <div className="rounded-lg bg-slate-50 p-3 dark:bg-slate-900"><BookOpen className="mx-auto size-4 mb-1" style={{ color: accent }} /><span className="font-semibold leading-snug">{course.lessonCount} lessons</span></div>
+          <div className="rounded-lg bg-slate-50 p-3 dark:bg-slate-900"><Clock className="mx-auto size-4 mb-1" style={{ color: accent }} /><span className="font-semibold leading-snug">{course.estimatedHours || Math.round(course.durationMinutes / 60)}h guided</span></div>
+          <div className="rounded-lg bg-slate-50 p-3 dark:bg-slate-900"><ShieldCheck className="mx-auto size-4 mb-1" style={{ color: accent }} /><span className="font-semibold leading-snug">{course.toolkitCount ?? 0} toolkit PDFs</span></div>
         </div>
         {course.badgeName && (
           <p className="mt-4 flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-medium" style={{ borderColor: `${accent}33`, color: accent }}>

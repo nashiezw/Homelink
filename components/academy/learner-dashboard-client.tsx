@@ -78,10 +78,18 @@ type LearnerDashboard = {
     courseTitle: string;
     theme: { label: string; accent: string; gradient: string; sidebar: string; chip: string } | null;
     itemCount: number;
+    access?: {
+      unlocked: boolean;
+      salesEnabled: boolean;
+      price: number;
+      currency: string;
+      status: string | null;
+      paymentId: string | null;
+    };
     groups: Array<{
       category: string;
       description: string;
-      items: Array<{ id: string; title: string; description: string; fileUrl: string }>;
+      items: Array<{ id: string; title: string; description: string; fileUrl?: string; locked?: boolean }>;
     }>;
   } | null;
   courseToolkits?: Array<{
@@ -95,7 +103,31 @@ type LearnerDashboard = {
       items: Array<{ id: string; title: string; description: string; fileUrl: string }>;
     }>;
   }>;
-  referenceManual?: { title: string; description: string; downloadUrl: string } | null;
+  referenceManual?: {
+    title: string;
+    description: string;
+    downloadUrl: string | null;
+    access?: {
+      unlocked: boolean;
+      salesEnabled: boolean;
+      price: number;
+      currency: string;
+      status: string | null;
+      paymentId: string | null;
+      proofUrl?: string | null;
+      adminNote?: string | null;
+    };
+  } | null;
+  resourceAccess?: Array<{
+    id: string;
+    resourceKind: string;
+    status: string;
+    amount: number;
+    currency: string;
+    proofUrl?: string | null;
+    course: { id: string; title: string } | null;
+    payment: { id: string; status: string; proofStatus?: string } | null;
+  }>;
   announcements: Array<{ id: string; title: string; body: string; createdAt: string }>;
 };
 
@@ -103,6 +135,7 @@ export function LearnerDashboardClient() {
   const { user, showToast } = useApp();
   const [data, setData] = useState<LearnerDashboard | null>(null);
   const [busyPaymentId, setBusyPaymentId] = useState<string | null>(null);
+  const [busyResource, setBusyResource] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const paymentRef = useRef<string>("");
   const primary = data?.settings?.primaryColour ?? "#008b68";
@@ -113,6 +146,21 @@ export function LearnerDashboardClient() {
   }, []);
 
   useEffect(() => { void load(); }, [load]);
+
+  async function purchaseManual() {
+    setBusyResource(true);
+    const result = await apiFetch("/api/v1/academy/resources/register", {
+      method: "POST",
+      body: JSON.stringify({ resourceKind: "TRAINING_MANUAL" }),
+    });
+    setBusyResource(false);
+    if (result.error) {
+      showToast(result.error.message, "error");
+      return;
+    }
+    showToast("Training manual purchase started. Upload proof of payment if required.");
+    await load();
+  }
 
   async function upload(files: FileList | null) {
     const file = files?.[0];
@@ -177,10 +225,10 @@ export function LearnerDashboardClient() {
       {/* Hero continue learning */}
       {data.continueLearning && approvedCourse && (
         <section
-          className="relative overflow-hidden rounded-3xl border border-emerald-200/60 p-6 sm:p-8 shadow-glow dark:border-emerald-900/50"
+          className="academy-panel relative overflow-hidden rounded-xl p-6 sm:p-8"
           style={{ background: `linear-gradient(135deg, ${primary}15 0%, transparent 60%)` }}
         >
-          <div className="absolute -right-8 -top-8 size-40 rounded-full opacity-20 blur-3xl" style={{ backgroundColor: primary }} />
+          <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(16,32,36,0.04)_1px,transparent_1px),linear-gradient(180deg,rgba(16,32,36,0.03)_1px,transparent_1px)] bg-[size:34px_34px]" />
           <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
             <div className="max-w-xl">
               <p className="text-xs font-bold uppercase tracking-widest text-emerald-700 dark:text-emerald-400">Continue learning</p>
@@ -214,7 +262,7 @@ export function LearnerDashboardClient() {
               <article
                 key={course.id}
                 className={cn(
-                  "relative overflow-hidden rounded-3xl border p-5 shadow-soft transition hover:-translate-y-0.5",
+                  "academy-card relative overflow-hidden rounded-xl p-5",
                   course.unlocked ? "bg-white" : "bg-slate-50 opacity-90",
                 )}
                 style={{ borderColor: `${course.theme.accent}33` }}
@@ -257,7 +305,7 @@ export function LearnerDashboardClient() {
         <section className="space-y-5">
           <h2 className="text-xl font-bold sm:text-2xl">My courses</h2>
           {data.applications.map((application) => (
-            <article key={application.id} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-soft dark:border-slate-800 dark:bg-slate-950">
+            <article key={application.id} className="academy-card overflow-hidden rounded-xl">
               <div className="border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white px-5 py-4 dark:border-slate-800 dark:from-slate-900 dark:to-slate-950 sm:px-6">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
@@ -372,12 +420,59 @@ export function LearnerDashboardClient() {
                   <p className="mt-0.5 text-sm font-bold line-clamp-2">{data.activeCourseToolkit.courseTitle}</p>
                   <p className="mt-1 text-xs text-slate-500">{data.activeCourseToolkit.itemCount} branded resources for this stage</p>
                 </div>
-                {toolkitPreview.map((item) => (
-                  <a key={item.id} href={item.fileUrl} target="_blank" rel="noopener noreferrer" className="flex gap-3 rounded-xl p-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-900">
-                    <FileText className="size-4 shrink-0 text-emerald-600 mt-0.5" />
-                    <span className="line-clamp-2 font-medium">{item.title}</span>
-                  </a>
-                ))}
+                {toolkitPreview.map((item) =>
+                  item.fileUrl && data.activeCourseToolkit?.access?.unlocked ? (
+                    <a key={item.id} href={item.fileUrl} target="_blank" rel="noopener noreferrer" className="flex gap-3 rounded-xl p-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-900">
+                      <FileText className="size-4 shrink-0 text-emerald-600 mt-0.5" />
+                      <span className="line-clamp-2 font-medium">{item.title}</span>
+                    </a>
+                  ) : (
+                    <div key={item.id} className="flex gap-3 rounded-xl p-2 text-sm text-slate-500">
+                      <Lock className="size-4 shrink-0 mt-0.5" />
+                      <span className="line-clamp-2 font-medium">{item.title}</span>
+                    </div>
+                  ),
+                )}
+                {data.activeCourseToolkit.access && !data.activeCourseToolkit.access.unlocked && (
+                  <div className="mt-2 space-y-2 rounded-xl border border-amber-200/80 bg-amber-50/70 p-3 text-xs dark:border-amber-900/40 dark:bg-amber-950/20">
+                    <p className="font-semibold text-amber-900 dark:text-amber-200">
+                      Toolkit locked — {data.activeCourseToolkit.access.currency} {data.activeCourseToolkit.access.price.toFixed(2)}
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        disabled={busyResource}
+                        onClick={() => {
+                          setBusyResource(true);
+                          void apiFetch("/api/v1/academy/resources/register", {
+                            method: "POST",
+                            body: JSON.stringify({ resourceKind: "COURSE_TOOLKIT", courseId: data.activeCourseToolkit!.courseId }),
+                          }).then(async (result) => {
+                            setBusyResource(false);
+                            if (result.error) showToast(result.error.message, "error");
+                            else {
+                              showToast("Toolkit purchase started.");
+                              await load();
+                            }
+                          });
+                        }}
+                      >
+                        Purchase toolkit
+                      </Button>
+                      {data.activeCourseToolkit.access.paymentId && (
+                        <Button
+                          variant="secondary"
+                          disabled={busyPaymentId === data.activeCourseToolkit.access.paymentId}
+                          onClick={() => {
+                            paymentRef.current = data.activeCourseToolkit!.access!.paymentId!;
+                            fileRef.current?.click();
+                          }}
+                        >
+                          Upload proof
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                )}
                 {data.activeCourseToolkit.itemCount > toolkitPreview.length && (
                   <Link
                     href={`/dashboard/academy/${data.activeCourseToolkit.courseId}?tab=toolkit`}
@@ -391,13 +486,45 @@ export function LearnerDashboardClient() {
               <p className="text-sm text-slate-500">Enrol in a programme to unlock your stage-specific field toolkit.</p>
             )}
             {data.referenceManual && (
-              <a href={data.referenceManual.downloadUrl} target="_blank" rel="noopener noreferrer" className="mt-3 flex gap-3 rounded-xl border border-dashed border-slate-200 p-2 text-sm hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-900">
-                <FileText className="size-4 shrink-0 text-slate-500 mt-0.5" />
-                <span>
-                  <span className="block font-medium">{data.referenceManual.title}</span>
-                  <span className="text-xs text-slate-500">Full manual reference</span>
-                </span>
-              </a>
+              <div className="mt-3 rounded-xl border border-dashed border-slate-200 p-3 text-sm dark:border-slate-700">
+                <div className="flex gap-3">
+                  {data.referenceManual.access?.unlocked && data.referenceManual.downloadUrl ? (
+                    <a href={data.referenceManual.downloadUrl} target="_blank" rel="noopener noreferrer" className="flex gap-3 hover:opacity-80">
+                      <FileText className="size-4 shrink-0 text-emerald-600 mt-0.5" />
+                      <span>
+                        <span className="block font-medium">{data.referenceManual.title}</span>
+                        <span className="text-xs text-slate-500">Full manual reference</span>
+                      </span>
+                    </a>
+                  ) : (
+                    <>
+                      <Lock className="size-4 shrink-0 text-slate-400 mt-0.5" />
+                      <div className="flex-1">
+                        <span className="block font-medium">{data.referenceManual.title}</span>
+                        <span className="text-xs text-slate-500">Purchase and admin approval required</span>
+                        {data.referenceManual.access && (
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            <Button disabled={busyResource} onClick={() => void purchaseManual()}>
+                              Purchase manual
+                            </Button>
+                            {data.referenceManual.access.paymentId && (
+                              <Button
+                                variant="secondary"
+                                onClick={() => {
+                                  paymentRef.current = data.referenceManual!.access!.paymentId!;
+                                  fileRef.current?.click();
+                                }}
+                              >
+                                Upload proof
+                              </Button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
             )}
           </SidebarCard>
 
@@ -419,7 +546,7 @@ export function LearnerDashboardClient() {
 
 function StatCard({ icon: Icon, label, value, accent, highlight }: { icon: typeof BookOpen; label: string; value: string; accent: string; highlight?: boolean }) {
   return (
-    <div className={cn("rounded-2xl border bg-white p-5 shadow-soft dark:bg-slate-950", highlight ? "border-amber-200 dark:border-amber-900/50" : "border-slate-200 dark:border-slate-800")}>
+    <div className={cn("academy-card rounded-xl p-5", highlight ? "border-amber-200 dark:border-amber-900/50" : "")}>
       <div className="flex items-center gap-3">
         <div className="rounded-xl p-2.5" style={{ backgroundColor: `${accent}18` }}>
           <Icon className="size-5" style={{ color: accent }} />
@@ -435,7 +562,7 @@ function StatCard({ icon: Icon, label, value, accent, highlight }: { icon: typeo
 
 function SidebarCard({ title, icon: Icon, children }: { title: string; icon: typeof BookOpen; children: React.ReactNode }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-soft dark:border-slate-800 dark:bg-slate-950">
+    <div className="academy-panel rounded-xl p-5">
       <div className="mb-4 flex items-center gap-2">
         <Icon className="size-5 text-emerald-600" />
         <h3 className="font-bold">{title}</h3>

@@ -1,6 +1,7 @@
 import { getSessionUserIdFromRequest } from "@/lib/auth/session";
 import { ok, problem } from "@/lib/api/response";
 import { shouldUsePostgresPayments, uploadPaymentProofInPostgres } from "@/lib/payments/postgres-payment-repository";
+import { attachResourceAccessProof } from "@/lib/academy/academy-resource-access";
 import { attachAcademyPaymentProof } from "@/lib/academy/public-academy-repository";
 import { getStore } from "@/lib/store/app-store";
 
@@ -20,7 +21,11 @@ export async function POST(request: Request, context: RouteContext) {
     if (academyProof && academyProof !== "FORBIDDEN" && academyProof !== "NOT_ACADEMY_PAYMENT") {
       return ok({ application: academyProof });
     }
-    if (academyProof === "FORBIDDEN") return problem(403, "FORBIDDEN", "You can only upload proof for your own payment.");
+    const resourceProof = await attachResourceAccessProof(id, userId, proofUrl);
+    if (resourceProof && resourceProof !== "FORBIDDEN" && resourceProof !== "NOT_RESOURCE_PAYMENT") {
+      return ok({ resourceAccess: resourceProof });
+    }
+    if (academyProof === "FORBIDDEN" || resourceProof === "FORBIDDEN") return problem(403, "FORBIDDEN", "You can only upload proof for your own payment.");
     const updated = await uploadPaymentProofInPostgres(id, userId, proofUrl);
     if (!updated) return problem(404, "NOT_FOUND", "Payment not found.");
     if (updated === "FORBIDDEN") return problem(403, "FORBIDDEN", "You can only upload proof for your own payment.");
