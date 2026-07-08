@@ -17,6 +17,7 @@ const groups = [
       ["Land", "/search?type=land"],
       ["Roommates", "/roommates"],
       ["Compare", "/compare"],
+      ["Calculators", "/calculators"],
     ],
   },
   {

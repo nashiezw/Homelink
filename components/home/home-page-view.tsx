@@ -1,3 +1,4 @@
+import { CalculatorsSection } from "@/components/home/calculators-section";
 import { BecomeAgentPromo } from "@/components/home/become-agent-promo";
 import { BrowsePropertyTypes } from "@/components/home/browse-property-types";
 import { FeaturedAgentsSection } from "@/components/home/featured-agents-section";
@@ -25,6 +26,7 @@ export function HomePageView({ data }: HomePageViewProps) {
       <FeaturedPropertiesSection listings={data.featuredListings} />
       <LocalSearchSection listings={data.mapListings} />
       <BrowsePropertyTypes types={data.propertyTypes} />
+      <CalculatorsSection />
       <HomeBannerStrip banners={data.content.banners} placement="mid" />
       <MarketplaceSafetySection />
       <PropertyManagementSection />

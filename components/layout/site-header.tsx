@@ -17,6 +17,7 @@ const exploreNavBase = [
   { label: "Buy", href: "/search?intent=buy", feature: null },
   { label: "Roommates", href: "/roommates", feature: "roommateMatching" as const },
   { label: "Academy", href: "/academy", feature: null, smartAcademy: true },
+  { label: "Calculators", href: "/calculators", feature: null },
   { label: "Holidays", href: "/search?type=holiday_home", title: "Holiday Homes", feature: null },
   { label: "Land", href: "/search?type=land", feature: null },
   { label: "Commercial", href: "/search?type=commercial", feature: null },
@@ -36,6 +37,7 @@ function useNavActive() {
         if (path === "/roommates" && pathname.startsWith("/roommates")) return true;
         if (path === "/become-agent" && pathname.startsWith("/become-agent")) return true;
         if (path === "/academy" && pathname.startsWith("/dashboard/academy")) return true;
+        if (path === "/calculators" && pathname.startsWith("/calculators")) return true;
         return false;
       }
       if (!queryString) return true;

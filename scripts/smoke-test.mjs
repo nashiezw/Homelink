@@ -99,6 +99,7 @@ async function main() {
     "/report-listing",
     "/careers",
     "/contact",
+    "/calculators",
     "/terms",
     "/safety",
     "/listings/harare-avondale-cottage",
