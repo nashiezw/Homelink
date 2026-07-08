@@ -155,6 +155,42 @@ export function CalculatorResetButton({ onClick }: { onClick: () => void }) {
   );
 }
 
+type CalculatorPanelHeaderProps = {
+  icon: LucideIcon;
+  title: string;
+  description: string;
+  audience?: string;
+  actions?: ReactNode;
+};
+
+export function CalculatorPanelHeader({
+  icon: Icon,
+  title,
+  description,
+  audience,
+  actions,
+}: CalculatorPanelHeaderProps) {
+  return (
+    <div className="flex flex-col gap-4 border-b border-slate-100 px-5 py-5 dark:border-slate-800 sm:flex-row sm:items-start sm:justify-between sm:px-6">
+      <div className="flex min-w-0 items-start gap-4">
+        <span className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white shadow-md">
+          <Icon className="size-6" aria-hidden="true" />
+        </span>
+        <div className="min-w-0">
+          {audience && (
+            <p className="text-xs font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
+              {audience}
+            </p>
+          )}
+          <h2 className="mt-1 text-xl font-bold text-ink dark:text-white sm:text-2xl">{title}</h2>
+          <p className="mt-1 text-sm leading-relaxed text-slate-600 dark:text-slate-300">{description}</p>
+        </div>
+      </div>
+      {actions}
+    </div>
+  );
+}
+
 export function CalculatorPresetButton({
   active,
   onClick,

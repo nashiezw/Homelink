@@ -6,6 +6,7 @@ import { AnimatedCurrency } from "@/components/calculators/animated-currency";
 import {
   CalculatorCard,
   CalculatorField,
+  CalculatorPanelHeader,
   CalculatorResetButton,
   CalculatorResultRow,
   CalculatorSummary,
@@ -28,7 +29,7 @@ const ratingStyles = {
   not_recommended: "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200",
 };
 
-export function RentalAffordabilityCalculator() {
+export function RentalAffordabilityCalculator({ embedded }: { embedded?: boolean }) {
   const [monthlyIncome, setMonthlyIncome] = useState(DEFAULTS.monthlyIncome);
   const [otherExpenses, setOtherExpenses] = useState(DEFAULTS.otherExpenses);
   const [sharingCount, setSharingCount] = useState(DEFAULTS.sharingCount);
@@ -52,88 +53,56 @@ export function RentalAffordabilityCalculator() {
     [monthlyIncome, otherExpenses, sharingCount, rentPercent],
   );
 
-  return (
-    <CalculatorCard
-      id="rental-affordability"
-      icon={Wallet}
-      title="Rental Affordability Calculator"
-      description="Estimate the maximum rent you can comfortably afford based on income, expenses, and your target rent share."
-      audience="Renters"
-      actions={<CalculatorResetButton onClick={reset} />}
-    >
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,0.9fr)] lg:gap-8">
-        <div className="grid gap-4 sm:grid-cols-2">
-          <CalculatorField
-            id="afford-income"
-            label="Monthly Income"
-            suffix="USD"
-            value={monthlyIncome}
-            onChange={setMonthlyIncome}
-            required
-          />
-          <CalculatorField
-            id="afford-expenses"
-            label="Other Monthly Expenses"
-            suffix="USD"
-            value={otherExpenses}
-            onChange={setOtherExpenses}
-          />
-          <CalculatorField
-            id="afford-sharing"
-            label="People Sharing Rent"
-            hint="Optional — leave as 1 if renting alone"
-            value={sharingCount}
-            onChange={setSharingCount}
-            inputMode="numeric"
-          />
-          <CalculatorField
-            id="afford-percent"
-            label="Income for Rent"
-            hint="Default 30%"
-            suffix="%"
-            value={rentPercent}
-            onChange={setRentPercent}
-          />
-        </div>
-
-        <CalculatorSummary
-          title="Recommendation"
-          highlight={
-            <div className="space-y-4">
-              <CalculatorResultRow
-                label="Recommended Maximum Rent"
-                value={
-                  <AnimatedCurrency value={result.recommendedMaxRent} format={formatCalculatorCurrency} />
-                }
-                emphasis
-              />
-              <div
-                className={cn(
-                  "rounded-xl px-4 py-3 text-center text-sm font-semibold",
-                  ratingStyles[result.rating],
-                )}
-                role="status"
-                aria-live="polite"
-              >
-                {result.ratingLabel}
-              </div>
-            </div>
-          }
-        >
-          {result.rentPerPerson !== null && (
-            <CalculatorResultRow
-              label="Rent Per Person"
-              value={<AnimatedCurrency value={result.rentPerPerson} format={formatCalculatorCurrency} />}
-            />
-          )}
-          <CalculatorResultRow
-            label="Remaining Monthly Income After Rent"
-            value={
-              <AnimatedCurrency value={result.remainingAfterRent} format={formatCalculatorCurrency} />
-            }
-          />
-        </CalculatorSummary>
+  const body = (
+    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,0.9fr)] lg:gap-8">
+      <div className="grid gap-4 sm:grid-cols-2">
+        <CalculatorField id="afford-income" label="Monthly Income" suffix="USD" value={monthlyIncome} onChange={setMonthlyIncome} required />
+        <CalculatorField id="afford-expenses" label="Other Monthly Expenses" suffix="USD" value={otherExpenses} onChange={setOtherExpenses} />
+        <CalculatorField id="afford-sharing" label="People Sharing Rent" hint="Optional — leave as 1 if renting alone" value={sharingCount} onChange={setSharingCount} inputMode="numeric" />
+        <CalculatorField id="afford-percent" label="Income for Rent" hint="Default 30%" suffix="%" value={rentPercent} onChange={setRentPercent} />
       </div>
+
+      <CalculatorSummary
+        title="Recommendation"
+        highlight={
+          <div className="space-y-4">
+            <CalculatorResultRow
+              label="Recommended Maximum Rent"
+              value={<AnimatedCurrency value={result.recommendedMaxRent} format={formatCalculatorCurrency} />}
+              emphasis
+            />
+            <div className={cn("rounded-xl px-4 py-3 text-center text-sm font-semibold", ratingStyles[result.rating])} role="status" aria-live="polite">
+              {result.ratingLabel}
+            </div>
+          </div>
+        }
+      >
+        {result.rentPerPerson !== null && (
+          <CalculatorResultRow label="Rent Per Person" value={<AnimatedCurrency value={result.rentPerPerson} format={formatCalculatorCurrency} />} />
+        )}
+        <CalculatorResultRow label="Remaining Monthly Income After Rent" value={<AnimatedCurrency value={result.remainingAfterRent} format={formatCalculatorCurrency} />} />
+      </CalculatorSummary>
+    </div>
+  );
+
+  if (embedded) {
+    return (
+      <>
+        <CalculatorPanelHeader
+          icon={Wallet}
+          title="Rental Affordability Calculator"
+          description="Estimate the maximum rent you can comfortably afford based on income, expenses, and your target rent share."
+          audience="Renters"
+          actions={<CalculatorResetButton onClick={reset} />}
+        />
+        <div className="p-5 sm:p-6">{body}</div>
+      </>
+    );
+  }
+
+  return (
+    <CalculatorCard id="rental-affordability" icon={Wallet} title="Rental Affordability Calculator" description="Estimate the maximum rent you can comfortably afford based on income, expenses, and your target rent share." audience="Renters" actions={<CalculatorResetButton onClick={reset} />}>
+      {body}
     </CalculatorCard>
   );
 }
