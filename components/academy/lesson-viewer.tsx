@@ -168,9 +168,8 @@ export function LessonViewer({
         <main className="min-w-0 flex-1 px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-10">
           <div className="mx-auto max-w-3xl">
             {/* Branded lesson hero */}
-            <div className={cn("relative overflow-hidden rounded-3xl bg-gradient-to-br p-6 text-white shadow-hero sm:p-8", heroGradient)}>
-              <div className="pointer-events-none absolute -right-8 -top-8 size-40 rounded-full bg-white/10 blur-2xl" />
-              <div className="pointer-events-none absolute -bottom-10 left-1/3 size-32 rounded-full bg-teal-300/20 blur-2xl" />
+            <div className={cn("relative overflow-hidden rounded-xl bg-gradient-to-br p-6 text-white shadow-hero sm:p-8", heroGradient)}>
+              <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(255,255,255,0.08)_1px,transparent_1px),linear-gradient(180deg,rgba(255,255,255,0.06)_1px,transparent_1px)] bg-[size:34px_34px]" />
               <div className="relative z-10">
                 <div className="flex flex-wrap items-center justify-between gap-4">
                   <div className="rounded-2xl bg-white/95 p-2 shadow-lg ring-1 ring-white/40">
@@ -247,7 +246,7 @@ export function LessonViewer({
             )}
 
             {/* Reading material — premium typography */}
-            <section className="mt-10 rounded-2xl border border-slate-200 bg-white p-6 shadow-soft sm:p-8 lg:p-10 dark:border-slate-800 dark:bg-slate-950">
+            <section className="academy-panel mt-10 rounded-xl p-6 sm:p-8 lg:p-10">
               <div className="mb-6 flex items-center gap-2 border-b border-slate-100 pb-4 dark:border-slate-800">
                 <BookOpen className="size-5 text-emerald-600" />
                 <h3 className="text-lg font-bold">Reading material</h3>
@@ -262,7 +261,7 @@ export function LessonViewer({
 
             {/* Lesson notes */}
             {currentLesson.lessonNotes && (
-              <section className="mt-8 rounded-2xl border border-amber-200/60 bg-amber-50/50 p-6 dark:border-amber-900/40 dark:bg-amber-950/20">
+              <section className="mt-8 rounded-xl border border-amber-200/60 bg-amber-50/50 p-6 dark:border-amber-900/40 dark:bg-amber-950/20">
                 <div className="flex items-center gap-2 mb-3">
                   <StickyNote className="size-5 text-amber-600" />
                   <h3 className="font-bold text-amber-900 dark:text-amber-100">Instructor notes</h3>
@@ -273,7 +272,7 @@ export function LessonViewer({
 
             {/* Discussion prompt */}
             {currentLesson.discussionPrompt && (
-              <section className="mt-8 rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-950">
+              <section className="academy-panel mt-8 rounded-xl p-6">
                 <div className="flex items-center gap-2 mb-3">
                   <MessageSquare className="size-5 text-emerald-600" />
                   <h3 className="font-bold">Reflect & discuss</h3>
@@ -319,7 +318,7 @@ export function LessonViewer({
             {/* Footer nav */}
             <div className="mt-12 flex flex-col gap-3 border-t border-slate-200 pt-8 sm:flex-row sm:items-center sm:justify-between dark:border-slate-800">
               {previousLesson ? (
-                <Button variant="secondary" className="w-full sm:w-auto justify-start" onClick={() => setCurrentLessonId(previousLesson.id)}>
+                <Button variant="secondary" className="w-full justify-start sm:w-auto" onClick={() => setCurrentLessonId(previousLesson.id)}>
                   <ArrowLeft className="size-4 mr-2 shrink-0" />
                   <span className="truncate">Previous: {previousLesson.title}</span>
                 </Button>
@@ -442,7 +441,7 @@ function DownloadCard({ href, title, subtitle }: { href: string; title: string; 
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className="group relative overflow-hidden rounded-2xl border border-emerald-200/70 bg-gradient-to-br from-white to-emerald-50/40 p-4 transition-all hover:-translate-y-0.5 hover:border-emerald-400 hover:shadow-card-hover dark:border-emerald-900/40 dark:from-slate-950 dark:to-emerald-950/20 dark:hover:border-emerald-700"
+      className="academy-card group relative overflow-hidden rounded-xl border-emerald-200/70 p-4 dark:border-emerald-900/40 dark:hover:border-emerald-700"
     >
       <div className="flex items-center gap-4">
         <div className="rounded-xl bg-white p-2 shadow-sm ring-1 ring-emerald-100 group-hover:ring-emerald-200 dark:bg-slate-900 dark:ring-emerald-900/60">

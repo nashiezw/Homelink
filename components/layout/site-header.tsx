@@ -257,7 +257,7 @@ export function SiteHeader() {
 
       {/* Mobile / tablet drawer */}
       <div
-        className={cn("fixed inset-0 z-[100] h-[100dvh] xl:hidden", menuOpen ? "pointer-events-auto" : "pointer-events-none")}
+        className={cn("fixed inset-0 z-[100] h-[100dvh] xl:hidden", menuOpen ? "pointer-events-auto" : "hidden pointer-events-none")}
         aria-hidden={!menuOpen}
       >
         <div

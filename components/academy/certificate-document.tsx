@@ -45,11 +45,12 @@ export function CertificateDocument({
       </div>
 
       <article
-        className="relative overflow-hidden rounded-[2rem] border-8 border-double bg-white shadow-hero print:rounded-none print:border-[6px] print:shadow-none"
+        className="relative overflow-hidden rounded-xl border-8 border-double bg-white shadow-hero print:rounded-none print:border-[6px] print:shadow-none"
         style={{ borderColor: `${accent}55` }}
       >
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(198,161,91,0.18),transparent_42%),radial-gradient(circle_at_bottom_left,rgba(0,139,104,0.16),transparent_40%)]" />
-        <div className="absolute inset-4 rounded-[1.5rem] border border-amber-200/70 print:inset-3" />
+        <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(198,161,91,0.14),transparent_38%),linear-gradient(180deg,rgba(16,185,129,0.08),transparent_52%)]" />
+        <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(16,32,36,0.04)_1px,transparent_1px),linear-gradient(180deg,rgba(16,32,36,0.03)_1px,transparent_1px)] bg-[size:42px_42px]" />
+        <div className="absolute inset-4 rounded-lg border border-amber-200/70 print:inset-3" />
 
         <div className="relative px-8 py-10 sm:px-12 sm:py-14">
           <div className="flex flex-wrap items-start justify-between gap-6">

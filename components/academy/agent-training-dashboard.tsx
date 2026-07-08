@@ -93,7 +93,7 @@ export function AgentTrainingDashboard() {
     >
       {/* Stats Overview */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-950">
+        <div className="academy-card rounded-xl p-6">
           <div className="flex items-center gap-3">
             <div className="rounded-xl bg-emerald-100 p-3 dark:bg-emerald-900/30">
               <BookOpen className="size-6 text-emerald-600 dark:text-emerald-400" />
@@ -104,7 +104,7 @@ export function AgentTrainingDashboard() {
             </div>
           </div>
         </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-950">
+        <div className="academy-card rounded-xl p-6">
           <div className="flex items-center gap-3">
             <div className="rounded-xl bg-blue-100 p-3 dark:bg-blue-900/30">
               <CheckCircle2 className="size-6 text-blue-600 dark:text-blue-400" />
@@ -115,7 +115,7 @@ export function AgentTrainingDashboard() {
             </div>
           </div>
         </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-950">
+        <div className="academy-card rounded-xl p-6">
           <div className="flex items-center gap-3">
             <div className="rounded-xl bg-purple-100 p-3 dark:bg-purple-900/30">
               <Award className="size-6 text-purple-600 dark:text-purple-400" />
@@ -126,7 +126,7 @@ export function AgentTrainingDashboard() {
             </div>
           </div>
         </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-950">
+        <div className="academy-card rounded-xl p-6">
           <div className="flex items-center gap-3">
             <div className="rounded-xl bg-amber-100 p-3 dark:bg-amber-900/30">
               <Clock className="size-6 text-amber-600 dark:text-amber-400" />
@@ -146,7 +146,7 @@ export function AgentTrainingDashboard() {
           </div>
           
           {data.assignedCourses.map((course) => (
-            <article key={course.id} className="rounded-2xl border-2 border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-950">
+            <article key={course.id} className="academy-card rounded-xl border-2 p-6">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-3">
@@ -242,7 +242,7 @@ export function AgentTrainingDashboard() {
 
         <aside className="space-y-4">
           {/* Tasks */}
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-950">
+          <div className="academy-panel rounded-xl p-6">
             <div className="flex items-center gap-3 mb-4">
               <div className="rounded-xl bg-orange-100 p-2 dark:bg-orange-900/30">
                 <Target className="size-5 text-orange-600 dark:text-orange-400" />
@@ -279,7 +279,7 @@ export function AgentTrainingDashboard() {
           </div>
 
           {/* Resources */}
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-950">
+          <div className="academy-panel rounded-xl p-6">
             <div className="flex items-center gap-3 mb-4">
               <div className="rounded-xl bg-blue-100 p-2 dark:bg-blue-900/30">
                 <Download className="size-5 text-blue-600 dark:text-blue-400" />
@@ -303,7 +303,7 @@ export function AgentTrainingDashboard() {
           </div>
 
           {/* Announcements */}
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-950">
+          <div className="academy-panel rounded-xl p-6">
             <div className="flex items-center gap-3 mb-4">
               <div className="rounded-xl bg-purple-100 p-2 dark:bg-purple-900/30">
                 <Users className="size-5 text-purple-600 dark:text-purple-400" />
