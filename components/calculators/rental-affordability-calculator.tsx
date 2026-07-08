@@ -8,7 +8,6 @@ import {
   CalculatorField,
   CalculatorInsights,
   CalculatorPanelHeader,
-  CalculatorPresetButton,
   CalculatorResetButton,
   CalculatorResultRow,
   CalculatorSummary,
@@ -59,15 +58,7 @@ export function RentalAffordabilityCalculator({ embedded }: { embedded?: boolean
         <CalculatorField id="afford-income" label="Monthly Income" suffix="USD" value={monthlyIncome} onChange={setMonthlyIncome} required />
         <CalculatorField id="afford-expenses" label="Other Monthly Expenses" suffix="USD" value={otherExpenses} onChange={setOtherExpenses} />
         <CalculatorField id="afford-sharing" label="People Sharing Rent" hint="Optional - leave as 1 if renting alone" value={sharingCount} onChange={setSharingCount} inputMode="numeric" />
-        <div className="sm:col-span-2">
-          <CalculatorField id="afford-percent" label="Income for Rent" hint="Try 25-30% for a safer budget, 35-40% only with strong savings." suffix="%" value={rentPercent} onChange={setRentPercent} />
-          <div className="mt-3 flex flex-wrap gap-2">
-            <CalculatorPresetButton active={rentPercent === "25"} onClick={() => setRentPercent("25")}>25% Safe</CalculatorPresetButton>
-            <CalculatorPresetButton active={rentPercent === "30"} onClick={() => setRentPercent("30")}>30% Healthy</CalculatorPresetButton>
-            <CalculatorPresetButton active={rentPercent === "35"} onClick={() => setRentPercent("35")}>35% Careful</CalculatorPresetButton>
-            <CalculatorPresetButton active={rentPercent === "40"} onClick={() => setRentPercent("40")}>40% High</CalculatorPresetButton>
-          </div>
-        </div>
+        <CalculatorField id="afford-percent" label="Income for Rent" hint="Default 30%" suffix="%" value={rentPercent} onChange={setRentPercent} />
       </div>
 
       <CalculatorSummary
@@ -80,8 +71,7 @@ export function RentalAffordabilityCalculator({ embedded }: { embedded?: boolean
               emphasis
             />
             <div className={cn("rounded-xl px-4 py-3 text-center text-sm font-semibold", affordabilityRatingStyles(result.rating))} role="status" aria-live="polite">
-              <span className="block">{result.ratingLabel}</span>
-              <span className="mt-1 block text-xs font-medium leading-relaxed">{result.ratingDescription}</span>
+              {result.ratingLabel}
             </div>
           </div>
         }
@@ -98,11 +88,7 @@ export function RentalAffordabilityCalculator({ embedded }: { embedded?: boolean
           </>
         )}
         <CalculatorResultRow label="Remaining Monthly Income After Rent" value={<AnimatedCurrency value={result.remainingAfterRent} format={formatCalculatorCurrency} />} />
-        <CalculatorResultRow label="Rent Share of Gross Income" value={formatCalculatorPercent(result.grossRentShare * 100, 0)} />
-        <CalculatorResultRow label="Disposable Income Before Rent" value={<AnimatedCurrency value={result.disposableIncome} format={formatCalculatorCurrency} />} />
-        <CalculatorResultRow label="Rent Share of Disposable Income" value={formatCalculatorPercent(result.rentShareOfDisposable * 100, 0)} />
-        <CalculatorResultRow label="Safer 25% Rent Target" value={<AnimatedCurrency value={result.safestRentTarget} format={formatCalculatorCurrency} />} />
-        <CalculatorResultRow label="Healthy 30% Rent Ceiling" value={<AnimatedCurrency value={result.conservativeRentTarget} format={formatCalculatorCurrency} />} />
+        <CalculatorResultRow label="Rent Share of Income" value={formatCalculatorPercent(result.grossRentShare * 100, 0)} />
       </CalculatorSummary>
       </div>
 

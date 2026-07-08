@@ -74,68 +74,57 @@ export function rentalAffordabilityInsights(
   if (result.grossRentShare <= 0.25) {
     tips.push({
       tone: "positive",
-      message: `${grossPercent} of gross income is excellent. You should have room for savings, investing, transport, utilities, and other living costs.`,
+      message: `${grossPercent} of income is excellent. You should still have room for savings and everyday costs.`,
     });
   } else if (result.grossRentShare <= 0.3) {
     tips.push({
       tone: "positive",
-      message: `${grossPercent} of gross income is healthy and sustainable for most renters, provided your other monthly expenses stay controlled.`,
+      message: `${grossPercent} of income is healthy and sustainable for most renters.`,
     });
   } else if (result.grossRentShare <= 0.35) {
     tips.push({
       tone: "tip",
-      message: `${grossPercent} of gross income is acceptable, but budget carefully. Keep a written plan for transport, food, data, utilities, and savings.`,
+      message: `${grossPercent} of income is acceptable, but keep a careful monthly budget.`,
     });
   } else if (result.grossRentShare <= 0.4) {
     tips.push({
       tone: "warning",
-      message: `${grossPercent} of gross income is high. You may feel financially stretched if you have debt, car costs, school fees, or dependants.`,
+      message: `${grossPercent} of income is high. A cheaper area or shared rental may feel safer month to month.`,
     });
   } else {
     tips.push({
       tone: "warning",
-      message: `${grossPercent} of gross income is generally not recommended unless you have very few other expenses or unusually strong cash reserves.`,
-    });
-  }
-
-  if (result.recommendedMaxRent > result.conservativeRentTarget) {
-    tips.push({
-      tone: "tip",
-      message: `A stronger search ceiling is around ${formatCalculatorCurrency(result.conservativeRentTarget)}/month. That keeps rent near 30% of gross income.`,
+      message: `${grossPercent} of income is generally not recommended unless your other expenses are very low.`,
     });
   }
 
   if (sharingCount > 1 && result.rentPerPerson !== null && result.monthlySavingsFromSharing > 0) {
     tips.push({
       tone: "positive",
-      message: `Sharing with ${sharingCount} people could reduce your personal rent to ${formatCalculatorCurrency(result.rentPerPerson)}/month - about ${formatCalculatorCurrency(result.monthlySavingsFromSharing)} less than paying the full budget alone.`,
-    });
-    tips.push({
-      tone: "tip",
-      message: "Splitting rent often frees cash for transport, groceries, and savings. Browse verified roommate profiles on HomeLink to find a compatible match.",
+      message: `Sharing could bring your portion to ${formatCalculatorCurrency(result.rentPerPerson)}/month.`,
     });
   } else if (sharingCount === 1) {
     tips.push({
       tone: "tip",
-      message: "Adding a roommate can lower your personal rent share and improve monthly savings. Try the Roommates section if you are open to sharing.",
+      message: "Open to sharing? A roommate can lower your monthly rent pressure.",
     });
   }
 
-  if (result.rentShareOfDisposable <= 0.25 && result.remainingAfterRent > 0) {
+  if (result.rentShareOfDisposable <= 0.25 && result.remainingAfterRent > 0 && tips.length < 3) {
     tips.push({
       tone: "positive",
-      message: `You would keep about ${formatCalculatorCurrency(result.remainingAfterRent)}/month after rent and expenses - a healthy buffer for emergencies.`,
+      message: `You would keep about ${formatCalculatorCurrency(result.remainingAfterRent)}/month after rent and expenses.`,
     });
   }
 
-  if (result.rentShareOfDisposable > 0.35 && result.rentShareOfDisposable <= 0.45) {
+  if (result.rentShareOfDisposable > 0.35 && result.rentShareOfDisposable <= 0.45 && tips.length < 3) {
     tips.push({
       tone: "warning",
       message: "Rent would take a large share of your leftover income. A cheaper area or shared rental could improve flexibility.",
     });
   }
 
-  if (result.disposableIncome > 0 && result.remainingAfterRent < result.disposableIncome * 0.15) {
+  if (result.disposableIncome > 0 && result.remainingAfterRent < result.disposableIncome * 0.15 && tips.length < 3) {
     tips.push({
       tone: "warning",
       message: "Your post-rent buffer is thin. Leave space for transport, utilities, data, and small repairs before committing.",
