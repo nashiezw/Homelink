@@ -12,16 +12,21 @@ import { AccountHubLink, UserMenu, canListProperty } from "@/components/layout/u
 import { ACCOUNT_NAV, OWNER_NAV, filterNavForUser } from "@/lib/auth/roles";
 import { cn } from "@/lib/utils";
 
-const exploreNavBase = [
+const exploreNavPrimary = [
   { label: "Rent", href: "/search?intent=rent", feature: null },
   { label: "Buy", href: "/search?intent=buy", feature: null },
   { label: "Roommates", href: "/roommates", feature: "roommateMatching" as const },
   { label: "Academy", href: "/academy", feature: null, smartAcademy: true },
-  { label: "Calculators", href: "/calculators", feature: null },
-  { label: "Holidays", href: "/search?type=holiday_home", title: "Holiday Homes", feature: null },
-  { label: "Land", href: "/search?type=land", feature: null },
-  { label: "Commercial", href: "/search?type=commercial", feature: null },
-];
+] as const;
+
+const exploreNavMore = [
+  { label: "Calculators", href: "/calculators", feature: null, description: "Move-in costs, rent budgets, commissions" },
+  { label: "Holiday Homes", href: "/search?type=holiday_home", feature: null, description: "Short-stay and holiday rentals" },
+  { label: "Land", href: "/search?type=land", feature: null, description: "Plots and development land" },
+  { label: "Commercial", href: "/search?type=commercial", feature: null, description: "Offices, retail, and business space" },
+] as const;
+
+const exploreNavBase = [...exploreNavPrimary, ...exploreNavMore.map(({ description: _d, ...item }) => item)];
 
 const iconButtonClass =
   "relative inline-flex size-10 shrink-0 items-center justify-center rounded-[10px] text-slate-600 transition-all duration-200 hover:bg-slate-100 hover:text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white";
@@ -88,17 +93,24 @@ export function SiteHeader() {
   const { config: _config, isFeatureEnabled } = usePlatformConfig();
   const exploreNav = exploreNavBase
     .filter((item) => !item.feature || isFeatureEnabled(item.feature))
-    .map((item) => (item.smartAcademy ? { ...item, href: academyHref } : item));
+    .map((item) => ("smartAcademy" in item && item.smartAcademy ? { ...item, href: academyHref } : item));
+  const primaryNav = exploreNavPrimary
+    .filter((item) => !item.feature || isFeatureEnabled(item.feature))
+    .map((item) => ("smartAcademy" in item && item.smartAcademy ? { ...item, href: academyHref } : item));
+  const moreNav = exploreNavMore.filter((item) => !item.feature || isFeatureEnabled(item.feature));
   const isNavActive = useNavActive();
   const [menuOpen, setMenuOpen] = useState(false);
   const [ownersOpen, setOwnersOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
   const [dark, setDark] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const moreDropdownRef = useRef<HTMLDivElement>(null);
 
   const ownerLinks = filterNavForUser(OWNER_NAV, user);
   const accountLinks = filterNavForUser(ACCOUNT_NAV, user);
   const ownersActive = ownerLinks.some((item) => isNavActive(item.href));
+  const moreActive = moreNav.some((item) => isNavActive(item.href));
   const listHref = canListProperty(user)
     ? "/dashboard/landlord/new"
     : `/auth?next=${encodeURIComponent("/dashboard/landlord/new")}`;
@@ -123,6 +135,9 @@ export function SiteHeader() {
     function onClickOutside(e: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
         setOwnersOpen(false);
+      }
+      if (moreDropdownRef.current && !moreDropdownRef.current.contains(e.target as Node)) {
+        setMoreOpen(false);
       }
     }
     document.addEventListener("mousedown", onClickOutside);
@@ -154,24 +169,66 @@ export function SiteHeader() {
           : "border-transparent bg-white dark:bg-slate-950 lg:bg-white/80 lg:backdrop-blur-md lg:dark:bg-slate-950/80",
       )}
     >
-      <div className="mx-auto flex h-16 max-w-[90rem] items-center gap-3 px-4 sm:px-6 lg:px-8 xl:gap-4 xl:px-10">
-        <HomeLinkLogoLink variant="nav" className="shrink-0" />
+      <div className="mx-auto flex h-16 max-w-[90rem] items-center gap-2 px-4 sm:gap-3 sm:px-6 lg:px-8 xl:gap-4 xl:px-10">
+        <HomeLinkLogoLink variant="nav" className="relative z-10 shrink-0" />
 
-        {/* Primary navigation — xl+ only to avoid crowding/overlap */}
+        {/* Primary navigation — xl+ only; overflow links live under More */}
         <nav
-          className="hidden min-w-0 flex-1 items-center justify-center gap-0.5 overflow-visible xl:flex"
+          className="hidden min-w-0 flex-1 items-center justify-center gap-0.5 xl:flex"
           aria-label="Main navigation"
         >
-          {exploreNav.map((item) => (
-            <NavLink
-              key={item.href}
-              href={item.href}
-              active={isNavActive(item.href)}
-              title={"title" in item ? item.title : undefined}
-            >
+          {primaryNav.map((item) => (
+            <NavLink key={item.href} href={item.href} active={isNavActive(item.href)}>
               {item.label}
             </NavLink>
           ))}
+
+          {moreNav.length > 0 && (
+            <div className="relative shrink-0" ref={moreDropdownRef}>
+              <button
+                type="button"
+                aria-expanded={moreOpen}
+                aria-haspopup="true"
+                onClick={() => {
+                  setMoreOpen((open) => !open);
+                  setOwnersOpen(false);
+                }}
+                className={cn(
+                  "inline-flex h-10 shrink-0 items-center gap-1 whitespace-nowrap rounded-[10px] px-2.5 text-sm font-medium transition-all duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600",
+                  moreActive || moreOpen
+                    ? "bg-emerald-50 font-semibold text-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-300"
+                    : "text-slate-700 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-200 dark:hover:bg-slate-800/80",
+                )}
+              >
+                More
+                <ChevronDown className={cn("size-4 transition-transform duration-200", moreOpen && "rotate-180")} />
+              </button>
+              {moreOpen && (
+                <div
+                  className="absolute left-1/2 top-[calc(100%+0.5rem)] z-50 w-72 -translate-x-1/2 rounded-xl border border-slate-200/80 bg-white p-2 shadow-[0_16px_40px_-12px_rgba(15,23,42,0.18)] dark:border-slate-700 dark:bg-slate-900"
+                  role="menu"
+                >
+                  {moreNav.map((item) => (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      role="menuitem"
+                      onClick={() => setMoreOpen(false)}
+                      className={cn(
+                        "block rounded-lg px-3 py-2.5 transition-colors duration-200 hover:bg-emerald-50 dark:hover:bg-slate-800",
+                        isNavActive(item.href) && "bg-emerald-50 dark:bg-emerald-950/40",
+                      )}
+                    >
+                      <p className="text-sm font-semibold text-ink dark:text-white">{item.label}</p>
+                      {"description" in item && item.description && (
+                        <p className="text-xs text-slate-500 dark:text-slate-400">{item.description}</p>
+                      )}
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           {ownerLinks.length > 0 && (
             <div className="relative shrink-0" ref={dropdownRef}>
@@ -179,7 +236,10 @@ export function SiteHeader() {
                 type="button"
                 aria-expanded={ownersOpen}
                 aria-haspopup="true"
-                onClick={() => setOwnersOpen((o) => !o)}
+                onClick={() => {
+                  setOwnersOpen((open) => !open);
+                  setMoreOpen(false);
+                }}
                 className={cn(
                   "inline-flex h-10 shrink-0 items-center gap-1 whitespace-nowrap rounded-[10px] px-2.5 text-sm font-medium transition-all duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600",
                   ownersActive || ownersOpen
@@ -285,18 +345,33 @@ export function SiteHeader() {
 
           <nav className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-white px-3 py-4 dark:bg-slate-950" aria-label="Mobile navigation">
             <div className="grid gap-0.5">
-              {exploreNav.map((item) => (
-                <NavLink
-                  key={item.href}
-                  href={item.href}
-                  active={isNavActive(item.href)}
-                  onClick={() => setMenuOpen(false)}
-                  title={"title" in item ? item.title : undefined}
-                >
-                  {"title" in item && item.title ? item.title : item.label}
+              {primaryNav.map((item) => (
+                <NavLink key={item.href} href={item.href} active={isNavActive(item.href)} onClick={() => setMenuOpen(false)}>
+                  {item.label}
                 </NavLink>
               ))}
             </div>
+
+            {moreNav.length > 0 && (
+              <>
+                <p className="mb-2 mt-5 px-2.5 text-xs font-semibold uppercase tracking-wider text-slate-400">More</p>
+                <div className="grid gap-0.5">
+                  {moreNav.map((item) => (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      onClick={() => setMenuOpen(false)}
+                      className={cn(
+                        "rounded-[10px] px-2.5 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-200",
+                        isNavActive(item.href) && "bg-emerald-50 font-semibold text-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-300",
+                      )}
+                    >
+                      {item.label}
+                    </Link>
+                  ))}
+                </div>
+              </>
+            )}
 
             {ownerLinks.length > 0 && (
               <>
