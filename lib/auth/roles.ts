@@ -63,11 +63,6 @@ export const OWNER_NAV: NavLinkItem[] = [
     hideForRoles: ["AGENT"],
   },
   {
-    label: "Academy",
-    href: "/academy",
-    description: "Register for public HomeLink training",
-  },
-  {
     label: "Property Management",
     href: "/property-management",
     description: "Full-service management for owners",
