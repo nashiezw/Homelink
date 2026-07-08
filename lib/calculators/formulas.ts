@@ -1,6 +1,8 @@
 export type AffordabilityRating =
   | "excellent"
-  | "comfortable"
+  | "healthy"
+  | "acceptable"
+  | "high"
   | "stretching"
   | "not_recommended";
 
@@ -17,10 +19,14 @@ export type RentalAffordabilityResult = {
   rentPerPerson: number | null;
   remainingAfterRent: number;
   disposableIncome: number;
+  grossRentShare: number;
   rentShareOfDisposable: number;
   monthlySavingsFromSharing: number;
   rating: AffordabilityRating;
   ratingLabel: string;
+  ratingDescription: string;
+  safestRentTarget: number;
+  conservativeRentTarget: number;
 };
 
 export type AgentCommissionResult = {
@@ -75,19 +81,25 @@ export function calculateRentalAffordability(input: {
   const rentPerPerson = sharingCount > 1 ? recommendedMaxRent / sharingCount : null;
   const monthlySavingsFromSharing =
     sharingCount > 1 && rentPerPerson !== null ? Math.max(0, recommendedMaxRent - rentPerPerson) : 0;
+  const grossRentShare = monthlyIncome > 0 ? recommendedMaxRent / monthlyIncome : recommendedMaxRent > 0 ? 1 : 0;
   const rentShareOfDisposable =
     disposableIncome > 0 ? recommendedMaxRent / disposableIncome : recommendedMaxRent > 0 ? 1 : 0;
-  const rating = affordabilityRating(rentShareOfDisposable, remainingAfterRent);
+  const rating = affordabilityRating(grossRentShare, remainingAfterRent);
+  const ratingText = affordabilityText(rating);
 
   return {
     recommendedMaxRent,
     rentPerPerson,
     remainingAfterRent,
     disposableIncome,
+    grossRentShare,
     rentShareOfDisposable,
     monthlySavingsFromSharing,
     rating,
-    ratingLabel: affordabilityLabel(rating),
+    ratingLabel: ratingText.label,
+    ratingDescription: ratingText.description,
+    safestRentTarget: monthlyIncome * 0.25,
+    conservativeRentTarget: monthlyIncome * 0.3,
   };
 }
 
@@ -126,24 +138,47 @@ export function calculateLandlordIncome(input: {
   };
 }
 
-function affordabilityRating(rentShareOfDisposable: number, remainingAfterRent: number): AffordabilityRating {
+function affordabilityRating(grossRentShare: number, remainingAfterRent: number): AffordabilityRating {
   if (remainingAfterRent < 0) return "not_recommended";
-  if (rentShareOfDisposable <= 0.25) return "excellent";
-  if (rentShareOfDisposable <= 0.3) return "comfortable";
-  if (rentShareOfDisposable <= 0.4) return "stretching";
+  if (grossRentShare <= 0.25) return "excellent";
+  if (grossRentShare <= 0.3) return "healthy";
+  if (grossRentShare <= 0.35) return "acceptable";
+  if (grossRentShare <= 0.4) return "high";
   return "not_recommended";
 }
 
-function affordabilityLabel(rating: AffordabilityRating): string {
+function affordabilityText(rating: AffordabilityRating): { label: string; description: string } {
   switch (rating) {
     case "excellent":
-      return "Excellent Budget";
-    case "comfortable":
-      return "Comfortable";
+      return {
+        label: "Excellent",
+        description: "20-25% of gross income. Plenty of room for savings, investing, transport, and other expenses.",
+      };
+    case "healthy":
+      return {
+        label: "Healthy",
+        description: "25-30% of gross income. Sustainable for most renters when other expenses are controlled.",
+      };
+    case "acceptable":
+      return {
+        label: "Acceptable",
+        description: "30-35% of gross income. Workable, but you will need a careful monthly budget.",
+      };
+    case "high":
+      return {
+        label: "High",
+        description: "35-40% of gross income. You may feel stretched, especially with debt, car costs, or dependants.",
+      };
     case "stretching":
-      return "Stretching Your Budget";
+      return {
+        label: "Stretching Your Budget",
+        description: "Your rent target is putting pressure on the rest of your budget.",
+      };
     case "not_recommended":
-      return "Not Recommended";
+      return {
+        label: "Not Recommended",
+        description: "Over 40% of gross income, or your expenses leave no monthly buffer after rent.",
+      };
   }
 }
 

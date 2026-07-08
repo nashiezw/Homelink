@@ -62,6 +62,7 @@ export function MoveInCostCalculator({ embedded }: { embedded?: boolean }) {
   );
 
   const insights = useMemo(() => moveInCostInsights(result), [result]);
+  const upfrontMonths = result.monthlyRent > 0 ? result.totalRequired / result.monthlyRent : 0;
 
   const body = (
     <div className="space-y-5">
@@ -127,6 +128,9 @@ export function MoveInCostCalculator({ embedded }: { embedded?: boolean }) {
           label="Moving Costs"
           value={<AnimatedCurrency value={result.movingCosts} format={formatCalculatorCurrency} />}
         />
+        {upfrontMonths > 0 && (
+          <CalculatorResultRow label="Upfront Cost in Rent Months" value={`${upfrontMonths.toFixed(1)}x`} />
+        )}
       </CalculatorSummary>
       </div>
 

@@ -1,6 +1,5 @@
 import { spawnSync } from "node:child_process";
 import path from "node:path";
-import { pathToFileURL } from "node:url";
 import { seedStagedCourseStructure } from "../lib/academy/staged-course-seed.ts";
 import { seedOfficialAcademyResources } from "../lib/academy/official-academy-seed.ts";
 

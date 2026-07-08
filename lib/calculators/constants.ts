@@ -35,7 +35,7 @@ export const CALCULATORS: CalculatorMeta[] = [
   {
     id: "rental-affordability",
     title: "Rental Affordability",
-    description: "Find a comfortable maximum rent based on your income and expenses.",
+    description: "Rate rent against smart gross-income bands, expenses, and monthly breathing room.",
     icon: Wallet,
     audience: "Renters",
   },

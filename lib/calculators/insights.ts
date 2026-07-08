@@ -5,7 +5,7 @@ import type {
   MoveInCostResult,
   RentalAffordabilityResult,
 } from "@/lib/calculators/formulas";
-import { formatCalculatorCurrency } from "@/lib/calculators/format";
+import { formatCalculatorCurrency, formatCalculatorPercent } from "@/lib/calculators/format";
 
 export type CalculatorInsight = {
   tone: "tip" | "positive" | "warning";
@@ -45,6 +45,13 @@ export function moveInCostInsights(result: MoveInCostResult): CalculatorInsight[
     });
   }
 
+  if (monthsUpfront < 2.2) {
+    tips.push({
+      tone: "positive",
+      message: "Your upfront requirement is close to a lean move-in budget. Keep receipts and confirm refundable deposit terms in writing.",
+    });
+  }
+
   return tips;
 }
 
@@ -53,6 +60,7 @@ export function rentalAffordabilityInsights(
   sharingCount: number,
 ): CalculatorInsight[] {
   const tips: CalculatorInsight[] = [];
+  const grossPercent = formatCalculatorPercent(result.grossRentShare * 100, 0);
 
   if (result.remainingAfterRent < 0) {
     tips.push({
@@ -63,10 +71,44 @@ export function rentalAffordabilityInsights(
     return tips;
   }
 
+  if (result.grossRentShare <= 0.25) {
+    tips.push({
+      tone: "positive",
+      message: `${grossPercent} of gross income is excellent. You should have room for savings, investing, transport, utilities, and other living costs.`,
+    });
+  } else if (result.grossRentShare <= 0.3) {
+    tips.push({
+      tone: "positive",
+      message: `${grossPercent} of gross income is healthy and sustainable for most renters, provided your other monthly expenses stay controlled.`,
+    });
+  } else if (result.grossRentShare <= 0.35) {
+    tips.push({
+      tone: "tip",
+      message: `${grossPercent} of gross income is acceptable, but budget carefully. Keep a written plan for transport, food, data, utilities, and savings.`,
+    });
+  } else if (result.grossRentShare <= 0.4) {
+    tips.push({
+      tone: "warning",
+      message: `${grossPercent} of gross income is high. You may feel financially stretched if you have debt, car costs, school fees, or dependants.`,
+    });
+  } else {
+    tips.push({
+      tone: "warning",
+      message: `${grossPercent} of gross income is generally not recommended unless you have very few other expenses or unusually strong cash reserves.`,
+    });
+  }
+
+  if (result.recommendedMaxRent > result.conservativeRentTarget) {
+    tips.push({
+      tone: "tip",
+      message: `A stronger search ceiling is around ${formatCalculatorCurrency(result.conservativeRentTarget)}/month. That keeps rent near 30% of gross income.`,
+    });
+  }
+
   if (sharingCount > 1 && result.rentPerPerson !== null && result.monthlySavingsFromSharing > 0) {
     tips.push({
       tone: "positive",
-      message: `Sharing with ${sharingCount} people could reduce your personal rent to ${formatCalculatorCurrency(result.rentPerPerson)}/month — about ${formatCalculatorCurrency(result.monthlySavingsFromSharing)} less than paying the full budget alone.`,
+      message: `Sharing with ${sharingCount} people could reduce your personal rent to ${formatCalculatorCurrency(result.rentPerPerson)}/month - about ${formatCalculatorCurrency(result.monthlySavingsFromSharing)} less than paying the full budget alone.`,
     });
     tips.push({
       tone: "tip",
@@ -82,7 +124,7 @@ export function rentalAffordabilityInsights(
   if (result.rentShareOfDisposable <= 0.25 && result.remainingAfterRent > 0) {
     tips.push({
       tone: "positive",
-      message: `You would keep about ${formatCalculatorCurrency(result.remainingAfterRent)}/month after rent and expenses — a healthy buffer for emergencies.`,
+      message: `You would keep about ${formatCalculatorCurrency(result.remainingAfterRent)}/month after rent and expenses - a healthy buffer for emergencies.`,
     });
   }
 
@@ -90,6 +132,13 @@ export function rentalAffordabilityInsights(
     tips.push({
       tone: "warning",
       message: "Rent would take a large share of your leftover income. A cheaper area or shared rental could improve flexibility.",
+    });
+  }
+
+  if (result.disposableIncome > 0 && result.remainingAfterRent < result.disposableIncome * 0.15) {
+    tips.push({
+      tone: "warning",
+      message: "Your post-rent buffer is thin. Leave space for transport, utilities, data, and small repairs before committing.",
     });
   }
 
@@ -102,7 +151,7 @@ export function agentCommissionInsights(result: AgentCommissionResult): Calculat
   if (result.agentPercent >= 60) {
     tips.push({
       tone: "positive",
-      message: "This split favours the agent — typical for agents who source and close the deal themselves on HomeLink.",
+      message: "This split favours the agent - typical for agents who source and close the deal themselves on HomeLink.",
     });
   } else if (result.agentPercent <= 40) {
     tips.push({
@@ -140,7 +189,7 @@ export function landlordIncomeInsights(result: LandlordIncomeResult): Calculator
   if (netMargin >= 75) {
     tips.push({
       tone: "positive",
-      message: `You retain about ${netMargin.toFixed(0)}% of gross rent after fees — a strong margin for reinvestment or reserves.`,
+      message: `You retain about ${netMargin.toFixed(0)}% of gross rent after fees - a strong margin for reinvestment or reserves.`,
     });
   }
 
@@ -176,8 +225,11 @@ export function affordabilityRatingStyles(rating: AffordabilityRating): string {
   switch (rating) {
     case "excellent":
       return "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200";
-    case "comfortable":
+    case "healthy":
       return "bg-cyan-100 text-cyan-900 dark:bg-cyan-900/40 dark:text-cyan-100";
+    case "acceptable":
+      return "bg-blue-100 text-blue-900 dark:bg-blue-900/40 dark:text-blue-100";
+    case "high":
     case "stretching":
       return "bg-amber-100 text-amber-900 dark:bg-amber-900/40 dark:text-amber-100";
     case "not_recommended":

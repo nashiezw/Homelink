@@ -1,6 +1,6 @@
 "use client";
 
-import type { LucideIcon } from "lucide-react";
+import { RotateCcw, type LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import type { CalculatorInsight } from "@/lib/calculators/insights";
 import { insightToneClass } from "@/lib/calculators/insights";
@@ -92,7 +92,10 @@ export function CalculatorField({
           value={value}
           onChange={(event) => onChange(event.target.value)}
           aria-required={required}
-          className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-base font-medium text-ink shadow-sm transition focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+          className={cn(
+            "w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-base font-medium text-ink shadow-sm transition focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-950 dark:text-white",
+            suffix ? "pr-16" : "",
+          )}
         />
         {suffix && (
           <span className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-sm font-medium text-slate-400">
@@ -134,11 +137,11 @@ type CalculatorResultRowProps = {
 
 export function CalculatorResultRow({ label, value, emphasis }: CalculatorResultRowProps) {
   return (
-    <div className="flex items-center justify-between gap-4">
-      <span className={cn("text-sm", emphasis ? "font-semibold text-ink dark:text-white" : "text-slate-600 dark:text-slate-300")}>
+    <div className="flex items-start justify-between gap-4">
+      <span className={cn("min-w-0 text-sm leading-relaxed", emphasis ? "font-semibold text-ink dark:text-white" : "text-slate-600 dark:text-slate-300")}>
         {label}
       </span>
-      <span className={cn("text-right text-sm font-semibold tabular-nums", emphasis ? "text-lg text-emerald-700 dark:text-emerald-300" : "text-ink dark:text-white")}>
+      <span className={cn("shrink-0 text-right text-sm font-semibold tabular-nums", emphasis ? "text-lg text-emerald-700 dark:text-emerald-300" : "text-ink dark:text-white")}>
         {value}
       </span>
     </div>
@@ -150,8 +153,9 @@ export function CalculatorResetButton({ onClick }: { onClick: () => void }) {
     <button
       type="button"
       onClick={onClick}
-      className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-800 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-emerald-800 dark:hover:bg-emerald-950/40"
+      className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-800 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-emerald-800 dark:hover:bg-emerald-950/40"
     >
+      <RotateCcw className="size-4" aria-hidden="true" />
       Reset
     </button>
   );

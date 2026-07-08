@@ -12,7 +12,7 @@ import {
   CalculatorResultRow,
   CalculatorSummary,
 } from "@/components/calculators/calculator-ui";
-import { formatCalculatorCurrency } from "@/lib/calculators/format";
+import { formatCalculatorCurrency, formatCalculatorPercent } from "@/lib/calculators/format";
 import { calculateLandlordIncome, parseCalculatorNumber } from "@/lib/calculators/formulas";
 import { landlordIncomeInsights } from "@/lib/calculators/insights";
 
@@ -44,6 +44,7 @@ export function LandlordIncomeCalculator({ embedded }: { embedded?: boolean }) {
   );
 
   const insights = useMemo(() => landlordIncomeInsights(result), [result]);
+  const netMargin = result.grossRentalIncome > 0 ? (result.netMonthlyIncome / result.grossRentalIncome) * 100 : 0;
 
   const body = (
     <div className="space-y-5">
@@ -51,7 +52,7 @@ export function LandlordIncomeCalculator({ embedded }: { embedded?: boolean }) {
       <div className="grid gap-4 sm:grid-cols-2">
         <CalculatorField id="landlord-rent" label="Monthly Rent" suffix="USD" value={monthlyRent} onChange={setMonthlyRent} required />
         <CalculatorField id="landlord-fee" label="Property Management Fee" suffix="%" value={managementFeePercent} onChange={setManagementFeePercent} />
-        <CalculatorField id="landlord-expenses" label="Other Monthly Expenses" hint="Optional — repairs, levies, insurance" suffix="USD" value={otherExpenses} onChange={setOtherExpenses} />
+        <CalculatorField id="landlord-expenses" label="Other Monthly Expenses" hint="Optional - repairs, levies, insurance" suffix="USD" value={otherExpenses} onChange={setOtherExpenses} />
       </div>
 
       <CalculatorSummary
@@ -63,6 +64,7 @@ export function LandlordIncomeCalculator({ embedded }: { embedded?: boolean }) {
         <CalculatorResultRow label="Gross Rental Income" value={<AnimatedCurrency value={result.grossRentalIncome} format={formatCalculatorCurrency} />} />
         <CalculatorResultRow label="Management Fee" value={<AnimatedCurrency value={result.managementFee} format={formatCalculatorCurrency} />} />
         <CalculatorResultRow label="Other Expenses" value={<AnimatedCurrency value={result.otherExpenses} format={formatCalculatorCurrency} />} />
+        <CalculatorResultRow label="Net Income Margin" value={formatCalculatorPercent(netMargin, 0)} />
       </CalculatorSummary>
       </div>
 

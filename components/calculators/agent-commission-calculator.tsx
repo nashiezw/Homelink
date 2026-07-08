@@ -13,7 +13,7 @@ import {
   CalculatorResultRow,
   CalculatorSummary,
 } from "@/components/calculators/calculator-ui";
-import { formatCalculatorCurrency } from "@/lib/calculators/format";
+import { formatCalculatorCurrency, formatCalculatorPercent } from "@/lib/calculators/format";
 import { calculateAgentCommission, parseCalculatorNumber } from "@/lib/calculators/formulas";
 import { agentCommissionInsights } from "@/lib/calculators/insights";
 
@@ -89,6 +89,8 @@ export function AgentCommissionCalculator({ embedded }: { embedded?: boolean }) 
       >
         <CalculatorResultRow label="Agent Earnings" value={<AnimatedCurrency value={result.agentEarnings} format={(value) => formatCalculatorCurrency(value, 2)} />} />
         <CalculatorResultRow label="HomeLink Earnings" value={<AnimatedCurrency value={result.homeLinkEarnings} format={(value) => formatCalculatorCurrency(value, 2)} />} />
+        <CalculatorResultRow label="Agent Split" value={formatCalculatorPercent(result.agentPercent, 0)} />
+        <CalculatorResultRow label="HomeLink Split" value={formatCalculatorPercent(result.homeLinkPercent, 0)} />
       </CalculatorSummary>
       </div>
 
