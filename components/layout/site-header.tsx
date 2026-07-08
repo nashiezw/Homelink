@@ -26,8 +26,6 @@ const exploreNavMore = [
   { label: "Commercial", href: "/search?type=commercial", feature: null, description: "Offices, retail, and business space" },
 ] as const;
 
-const exploreNavBase = [...exploreNavPrimary, ...exploreNavMore.map(({ description: _d, ...item }) => item)];
-
 const iconButtonClass =
   "relative inline-flex size-10 shrink-0 items-center justify-center rounded-[10px] text-slate-600 transition-all duration-200 hover:bg-slate-100 hover:text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white";
 
@@ -91,9 +89,6 @@ export function SiteHeader() {
   const { user, signOut, favourites, compareIds } = useApp();
   const { href: academyHref } = useAcademyDestination();
   const { config: _config, isFeatureEnabled } = usePlatformConfig();
-  const exploreNav = exploreNavBase
-    .filter((item) => !item.feature || isFeatureEnabled(item.feature))
-    .map((item) => ("smartAcademy" in item && item.smartAcademy ? { ...item, href: academyHref } : item));
   const primaryNav = exploreNavPrimary
     .filter((item) => !item.feature || isFeatureEnabled(item.feature))
     .map((item) => ("smartAcademy" in item && item.smartAcademy ? { ...item, href: academyHref } : item));
