@@ -38,7 +38,12 @@ export async function POST(request: Request) {
 
   switch (action) {
     case "approve_listing":
-      return ok({ listing: store.adminApproveListing(targetId, actor) });
+      return ok({
+        listing: store.adminApproveListing(targetId, actor, {
+          bypassOwnerAgreement: true,
+          bypassReason: params.reason ?? "Admin override",
+        }),
+      });
     case "reject_listing":
       return ok({ listing: store.adminRejectListing(targetId, actor, params.reason) });
     case "edit_listing":
@@ -72,7 +77,12 @@ export async function POST(request: Request) {
     case "refund_payment":
       return ok({ payment: store.refundPayment(targetId, actor, params.reason) });
     case "activate_listing":
-      return ok({ listing: store.adminApproveListing(targetId, actor) });
+      return ok({
+        listing: store.adminApproveListing(targetId, actor, {
+          bypassOwnerAgreement: true,
+          bypassReason: params.reason ?? "Admin override",
+        }),
+      });
     case "delete_listing":
       return ok({ listing: store.adminDeleteListing(targetId, actor, params.reason) });
     case "archive_listing":

@@ -301,6 +301,11 @@ export type ListingRecord = Listing & {
   ownerAgreementSignedAt?: string;
   ownerAgreementSignerName?: string;
   ownerAgreementVersion?: string;
+  ownerAgreementBypassedAt?: string;
+  ownerAgreementBypassedById?: string;
+  ownerAgreementBypassedByName?: string;
+  ownerAgreementBypassedByEmail?: string;
+  ownerAgreementBypassReason?: string;
   featured?: boolean;
   featuredUntil?: string;
   adminNotes?: string;

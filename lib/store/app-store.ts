@@ -2990,8 +2990,12 @@ class AppStore {
     return this.persistResult(AdminPlatform.rejectVerification(this.adminState(), id, actor, reason));
   }
 
-  adminApproveListing(listingId: string, actor: { id: string; name: string }) {
-    return this.persistResult(AdminPlatform.adminApproveListing(this.adminState(), listingId, actor));
+  adminApproveListing(
+    listingId: string,
+    actor: { id: string; name: string; email?: string },
+    options?: { bypassOwnerAgreement?: boolean; bypassReason?: string },
+  ) {
+    return this.persistResult(AdminPlatform.adminApproveListing(this.adminState(), listingId, actor, options));
   }
 
   adminRejectListing(listingId: string, actor: { id: string; name: string }, reason?: string) {
@@ -3059,6 +3063,10 @@ class AppStore {
         ownerAgreementAccepted: l.ownerAgreementAccepted ?? false,
         ownerAgreementSignerName: l.ownerAgreementSignerName,
         ownerAgreementSignedAt: l.ownerAgreementSignedAt,
+        ownerAgreementBypassedAt: l.ownerAgreementBypassedAt,
+        ownerAgreementBypassedByName: l.ownerAgreementBypassedByName,
+        ownerAgreementBypassedByEmail: l.ownerAgreementBypassedByEmail,
+        ownerAgreementBypassReason: l.ownerAgreementBypassReason,
         createdAt: l.availableFrom,
       };
     });

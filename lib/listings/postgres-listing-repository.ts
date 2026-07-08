@@ -7,11 +7,13 @@ import {
   Prisma,
 } from "@prisma/client";
 import {
+  buildOwnerAgreementBypassRecord,
   listingHasOwnerAgreement,
   ListingApprovalError,
   OWNER_LISTING_AGREEMENT_VERSION,
 } from "@/lib/listings/owner-contract";
 import { getMainPrisma, isPostgresStoreEnabled } from "@/lib/db/main-prisma";
+import { recordPostgresAuditEvent } from "@/lib/auth/postgres-auth";
 import { getStore } from "@/lib/store/app-store";
 import { isStrictProductionMode } from "@/lib/production/runtime";
 import type { ListingRecord, StoreUser } from "@/lib/store/types";
@@ -343,6 +345,19 @@ export async function updateListingInPostgres(id: string, updates: ListingInput)
         ...(updates.propertyOwnerName !== undefined ? { propertyOwnerName: updates.propertyOwnerName } : {}),
         ...(updates.propertyOwnerEmail !== undefined ? { propertyOwnerEmail: updates.propertyOwnerEmail?.trim().toLowerCase() } : {}),
         ...(updates.propertyOwnerPhone !== undefined ? { propertyOwnerPhone: updates.propertyOwnerPhone } : {}),
+        ...(updates.ownerAgreementAccepted !== undefined ? { ownerAgreementAccepted: updates.ownerAgreementAccepted } : {}),
+        ...(updates.ownerAgreementSignedAt !== undefined
+          ? { ownerAgreementSignedAt: parseDate(updates.ownerAgreementSignedAt) }
+          : {}),
+        ...(updates.ownerAgreementSignerName !== undefined ? { ownerAgreementSignerName: updates.ownerAgreementSignerName } : {}),
+        ...(updates.ownerAgreementVersion !== undefined ? { ownerAgreementVersion: updates.ownerAgreementVersion } : {}),
+        ...(updates.ownerAgreementBypassedAt !== undefined
+          ? { ownerAgreementBypassedAt: parseDate(updates.ownerAgreementBypassedAt) }
+          : {}),
+        ...(updates.ownerAgreementBypassedById !== undefined ? { ownerAgreementBypassedById: updates.ownerAgreementBypassedById } : {}),
+        ...(updates.ownerAgreementBypassedByName !== undefined ? { ownerAgreementBypassedByName: updates.ownerAgreementBypassedByName } : {}),
+        ...(updates.ownerAgreementBypassedByEmail !== undefined ? { ownerAgreementBypassedByEmail: updates.ownerAgreementBypassedByEmail } : {}),
+        ...(updates.ownerAgreementBypassReason !== undefined ? { ownerAgreementBypassReason: updates.ownerAgreementBypassReason } : {}),
       },
     });
     return tx.listing.findUniqueOrThrow({ where: { id }, include: LISTING_INCLUDE });
@@ -380,6 +395,10 @@ export async function listAdminListingsFromPostgres(filters: {
     ownerAgreementAccepted: l.ownerAgreementAccepted ?? false,
     ownerAgreementSignerName: l.ownerAgreementSignerName,
     ownerAgreementSignedAt: l.ownerAgreementSignedAt,
+    ownerAgreementBypassedAt: l.ownerAgreementBypassedAt,
+    ownerAgreementBypassedByName: l.ownerAgreementBypassedByName,
+    ownerAgreementBypassedByEmail: l.ownerAgreementBypassedByEmail,
+    ownerAgreementBypassReason: l.ownerAgreementBypassReason,
     createdAt: l.availableFrom,
   }));
 }
@@ -408,7 +427,13 @@ export async function adminListingActionInPostgres(
   listingId: string,
   action: string,
   updates: ListingInput = {},
-  options: { reason?: string; days?: number } = {},
+  options: {
+    reason?: string;
+    days?: number;
+    actor?: { id: string; name: string; email: string };
+    bypassOwnerAgreement?: boolean;
+    bypassReason?: string;
+  } = {},
 ) {
   const statusUpdates: Record<string, ListingRecord["status"]> = {
     approve: "ACTIVE",
@@ -425,9 +450,35 @@ export async function adminListingActionInPostgres(
   if (action === "approve") {
     const current = await getListingFromPostgres(listingId);
     if (!current) return null;
+    const bypassReason = options.bypassReason?.trim() ?? "";
+    let bypassRecord: ReturnType<typeof buildOwnerAgreementBypassRecord> | undefined;
     if (!listingHasOwnerAgreement(current)) {
-      throw new ListingApprovalError("Owner must sign the HomeLink listing agreement before this listing can go live.");
+      if (!options.bypassOwnerAgreement || !bypassReason || !options.actor) {
+        throw new ListingApprovalError("Owner must sign the HomeLink listing agreement before this listing can go live.");
+      }
+      bypassRecord = buildOwnerAgreementBypassRecord({
+        bypassOwnerAgreement: true,
+        bypassReason,
+        actor: options.actor,
+      });
+      await recordPostgresAuditEvent({
+        actorId: options.actor.id,
+        action: "APPROVE_LISTING_BYPASS_OWNER_AGREEMENT",
+        target: listingId,
+        metadata: {
+          bypassOwnerAgreement: true,
+          bypassReason,
+          adminName: options.actor.name,
+          adminEmail: options.actor.email,
+          listingTitle: current.title,
+        },
+      });
     }
+    return updateListingInPostgres(listingId, {
+      status: "ACTIVE",
+      ...(options.reason ? { adminNotes: options.reason } : {}),
+      ...bypassRecord,
+    });
   }
   if (statusUpdates[action]) {
     return updateListingInPostgres(listingId, {
@@ -583,6 +634,18 @@ function toListingRecord(row: PrismaListingRow | SafeListingRow): ListingRecord 
       "ownerAgreementSignedAt" in row && row.ownerAgreementSignedAt ? row.ownerAgreementSignedAt.toISOString() : undefined,
     ownerAgreementSignerName: "ownerAgreementSignerName" in row ? row.ownerAgreementSignerName ?? undefined : undefined,
     ownerAgreementVersion: "ownerAgreementVersion" in row ? row.ownerAgreementVersion ?? undefined : undefined,
+    ownerAgreementBypassedAt:
+      "ownerAgreementBypassedAt" in row && row.ownerAgreementBypassedAt instanceof Date
+        ? row.ownerAgreementBypassedAt.toISOString()
+        : undefined,
+    ownerAgreementBypassedById:
+      "ownerAgreementBypassedById" in row ? (row.ownerAgreementBypassedById as string | null) ?? undefined : undefined,
+    ownerAgreementBypassedByName:
+      "ownerAgreementBypassedByName" in row ? (row.ownerAgreementBypassedByName as string | null) ?? undefined : undefined,
+    ownerAgreementBypassedByEmail:
+      "ownerAgreementBypassedByEmail" in row ? (row.ownerAgreementBypassedByEmail as string | null) ?? undefined : undefined,
+    ownerAgreementBypassReason:
+      "ownerAgreementBypassReason" in row ? (row.ownerAgreementBypassReason as string | null) ?? undefined : undefined,
     adminNotes: "adminNotes" in row ? row.adminNotes ?? undefined : undefined,
   };
 }

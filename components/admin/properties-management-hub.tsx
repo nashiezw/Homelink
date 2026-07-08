@@ -49,6 +49,10 @@ type AdminListing = {
   ownerAgreementAccepted?: boolean;
   ownerAgreementSignerName?: string;
   ownerAgreementSignedAt?: string;
+  ownerAgreementBypassedAt?: string;
+  ownerAgreementBypassedByName?: string;
+  ownerAgreementBypassedByEmail?: string;
+  ownerAgreementBypassReason?: string;
 };
 
 type ListingsResponse = {
@@ -125,7 +129,23 @@ export function PropertiesManagementHub() {
       });
       return;
     }
+    if (action === "approve" && extra?.bypassOwnerAgreement) {
+      setDialog({
+        title: "Bypass owner agreement",
+        message: "This listing does not have a signed owner agreement. Your name and email will be recorded in the audit trail.",
+        tone: "warning",
+        confirmLabel: "Approve with bypass",
+        fields: [{ name: "bypassReason", label: "Reason for bypass", type: "textarea", required: true }],
+        onConfirm: (values) =>
+          applyListingAction("approve", ids, { ...extra, bypassReason: values.bypassReason }),
+      });
+      return;
+    }
     await applyListingAction(action, ids, extra);
+  }
+
+  function approveWithBypass(listingId: string) {
+    void listingAction("approve", listingId, { bypassOwnerAgreement: true });
   }
 
   async function applyListingAction(action: string, ids: string[], extra?: Record<string, unknown>) {
@@ -389,8 +409,19 @@ export function PropertiesManagementHub() {
                       ? ` · ${new Date(selectedListing.ownerAgreementSignedAt).toLocaleDateString()}`
                       : ""}
                   </p>
+                ) : selectedListing.ownerAgreementBypassedAt ? (
+                  <p className="mt-2 text-xs text-amber-300">
+                    Agreement bypassed by {selectedListing.ownerAgreementBypassedByName ?? "Admin"}
+                    {selectedListing.ownerAgreementBypassedByEmail ? ` (${selectedListing.ownerAgreementBypassedByEmail})` : ""}
+                    {selectedListing.ownerAgreementBypassedAt
+                      ? ` · ${new Date(selectedListing.ownerAgreementBypassedAt).toLocaleString()}`
+                      : ""}
+                    {selectedListing.ownerAgreementBypassReason ? (
+                      <span className="mt-1 block text-slate-400">Reason: {selectedListing.ownerAgreementBypassReason}</span>
+                    ) : null}
+                  </p>
                 ) : (
-                  <p className="mt-2 text-xs text-amber-300">Owner agreement not signed — approval will be blocked.</p>
+                  <p className="mt-2 text-xs text-amber-300">Owner agreement not signed — use Approve with bypass if needed.</p>
                 )}
               </div>
               <div className="grid grid-cols-2 gap-2 text-xs">
@@ -401,7 +432,13 @@ export function PropertiesManagementHub() {
               </div>
               <div className="flex flex-wrap gap-1">
                 {selectedListing.status !== "ACTIVE" && (
-                  <Button onClick={() => void listingAction("approve", selectedListing.id)}>Approve</Button>
+                  selectedListing.ownerAgreementAccepted ? (
+                    <Button onClick={() => void listingAction("approve", selectedListing.id)}>Approve</Button>
+                  ) : (
+                    <Button variant="secondary" onClick={() => approveWithBypass(selectedListing.id)}>
+                      Approve with bypass
+                    </Button>
+                  )
                 )}
                 {selectedListing.status === "ACTIVE" && (
                   <>

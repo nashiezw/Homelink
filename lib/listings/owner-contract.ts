@@ -37,3 +37,19 @@ export class ListingApprovalError extends Error {
     this.name = "ListingApprovalError";
   }
 }
+
+export type OwnerAgreementBypassInput = {
+  bypassOwnerAgreement: boolean;
+  bypassReason: string;
+  actor: { id: string; name: string; email: string };
+};
+
+export function buildOwnerAgreementBypassRecord(input: OwnerAgreementBypassInput) {
+  return {
+    ownerAgreementBypassedAt: new Date().toISOString(),
+    ownerAgreementBypassedById: input.actor.id,
+    ownerAgreementBypassedByName: input.actor.name,
+    ownerAgreementBypassedByEmail: input.actor.email,
+    ownerAgreementBypassReason: input.bypassReason.trim(),
+  };
+}

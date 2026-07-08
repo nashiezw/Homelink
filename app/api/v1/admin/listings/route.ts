@@ -60,14 +60,16 @@ export async function PATCH(request: Request) {
   if (!auth.user) return problem(401, "UNAUTHORIZED", "Admin required.");
 
   const body = await request.json();
-  const actor = { id: auth.user.id, name: auth.user.name };
-  const { listingId, listingIds, action, reason, days, newOwnerId } = body as {
+  const actor = { id: auth.user.id, name: auth.user.name, email: auth.user.email ?? "" };
+  const { listingId, listingIds, action, reason, days, newOwnerId, bypassOwnerAgreement, bypassReason } = body as {
     listingId?: string;
     listingIds?: string[];
     action: string;
     reason?: string;
     days?: number;
     newOwnerId?: string;
+    bypassOwnerAgreement?: boolean;
+    bypassReason?: string;
   };
 
   if (!action) return problem(400, "INVALID_INPUT", "action is required.");
@@ -83,14 +85,28 @@ export async function PATCH(request: Request) {
       const results = await Promise.all(
         listingIds.map(async (id) => ({
           id,
-          ok: Boolean(await adminListingActionInPostgres(id, action, body.updates, { reason, days })),
+          ok: Boolean(
+            await adminListingActionInPostgres(id, action, body.updates, {
+              reason,
+              days,
+              actor,
+              bypassOwnerAgreement,
+              bypassReason,
+            }),
+          ),
         })),
       );
       return ok({ results });
     }
     if (!listingId) return problem(400, "INVALID_INPUT", "listingId or listingIds required.");
     try {
-      const listing = await adminListingActionInPostgres(listingId, action, body.updates, { reason, days });
+      const listing = await adminListingActionInPostgres(listingId, action, body.updates, {
+        reason,
+        days,
+        actor,
+        bypassOwnerAgreement,
+        bypassReason,
+      });
       if (!listing) return problem(400, "UNKNOWN_ACTION", `Unknown or unsupported action: ${action}`);
       return ok({ listing });
     } catch (error) {
@@ -112,7 +128,9 @@ export async function PATCH(request: Request) {
   switch (action) {
     case "approve": {
       try {
-        return ok({ listing: getStore().adminApproveListing(listingId, actor) });
+        return ok({
+          listing: getStore().adminApproveListing(listingId, actor, { bypassOwnerAgreement, bypassReason }),
+        });
       } catch (error) {
         if (error instanceof ListingApprovalError) {
           return problem(400, "OWNER_AGREEMENT_REQUIRED", error.message);
@@ -156,5 +174,5 @@ async function requireListingsAdmin(request: Request) {
   if (!user?.roles.includes("ADMIN")) {
     return { error: problem(403, "FORBIDDEN", "Admin access required.") };
   }
-  return { user: { id: user.id, name: user.name, roles: user.roles }, error: undefined };
+  return { user: { id: user.id, name: user.name, email: user.email, roles: user.roles }, error: undefined };
 }

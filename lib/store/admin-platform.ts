@@ -1,5 +1,5 @@
 import { getPlanDefinition } from "@/lib/payments/plans";
-import { listingHasOwnerAgreement, ListingApprovalError } from "@/lib/listings/owner-contract";
+import { buildOwnerAgreementBypassRecord, listingHasOwnerAgreement, ListingApprovalError } from "@/lib/listings/owner-contract";
 import { defaultPaymentSettings, defaultPlatformSettings } from "@/lib/settings/defaults";
 import { syncGeoToFlatLists } from "@/lib/settings/geo";
 import { mergePaymentSettings, mergePlatformSettings } from "@/lib/settings/merge";
@@ -750,20 +750,45 @@ export function rejectVerification(state: AdminPlatformState, id: string, actor:
   return req;
 }
 
-export function adminApproveListing(state: AdminPlatformState, listingId: string, actor: Actor) {
+export function adminApproveListing(
+  state: AdminPlatformState,
+  listingId: string,
+  actor: Actor & { email?: string },
+  options?: { bypassOwnerAgreement?: boolean; bypassReason?: string },
+) {
   const listing = state.listings.find((l) => l.id === listingId);
   if (!listing) return null;
+  const bypassRequested = Boolean(options?.bypassOwnerAgreement);
+  const bypassReason = options?.bypassReason?.trim() ?? "";
+  let bypassApplied = false;
   if (!listingHasOwnerAgreement(listing)) {
-    throw new ListingApprovalError("Owner must sign the HomeLink listing agreement before this listing can go live.");
+    if (!bypassRequested || !bypassReason) {
+      throw new ListingApprovalError("Owner must sign the HomeLink listing agreement before this listing can go live.");
+    }
+    bypassApplied = true;
+    Object.assign(
+      listing,
+      buildOwnerAgreementBypassRecord({
+        bypassOwnerAgreement: true,
+        bypassReason,
+        actor: { id: actor.id, name: actor.name, email: actor.email ?? "unknown@homelink.local" },
+      }),
+    );
   }
   listing.status = "ACTIVE";
   audit(state, {
     actorId: actor.id,
     actorName: actor.name,
-    action: "APPROVE_LISTING",
+    action: bypassApplied ? "APPROVE_LISTING_BYPASS_OWNER_AGREEMENT" : "APPROVE_LISTING",
     target: listingId,
     targetType: "LISTING",
-    metadata: {},
+    metadata: bypassApplied
+      ? {
+          bypassOwnerAgreement: true,
+          bypassReason,
+          adminEmail: actor.email,
+        }
+      : {},
     ip: "127.0.0.1",
   });
   return listing;
