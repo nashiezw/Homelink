@@ -78,8 +78,8 @@ export function RentalAffordabilityCalculator({ embedded }: { embedded?: boolean
 
   const body = (
     <div className="space-y-5">
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,0.9fr)] lg:gap-8">
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(20rem,0.86fr)] lg:gap-8">
+      <div className="grid gap-5 sm:grid-cols-2">
         <CalculatorField id="afford-income" label="Monthly Income" suffix="USD" value={monthlyIncome} onChange={setMonthlyIncome} required />
         <CalculatorField id="afford-expenses" label="Other Monthly Expenses" suffix="USD" value={otherExpenses} onChange={setOtherExpenses} />
         <CalculatorField id="afford-sharing" label="People Sharing Rent" hint="Optional - leave as 1 if renting alone" value={sharingCount} onChange={setSharingCount} inputMode="numeric" />

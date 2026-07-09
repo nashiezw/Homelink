@@ -56,13 +56,13 @@ export function CalculatorTabbedPanel({ initialId, syncHash = true }: Calculator
   const ActiveView = CALCULATOR_VIEWS[activeId];
 
   return (
-    <div className="premium-card overflow-hidden rounded-2xl bg-white dark:bg-slate-900">
+    <div className="overflow-hidden rounded-[1.35rem] border border-emerald-100 bg-white shadow-[0_24px_70px_rgba(15,23,42,0.08)] dark:border-emerald-900/40 dark:bg-slate-900">
       <div
         role="tablist"
         aria-label="Calculator types"
-        className="overflow-x-auto border-b border-slate-100 bg-slate-50/80 dark:border-slate-800 dark:bg-slate-900/80"
+        className="overflow-x-auto border-b border-slate-100 bg-white px-3 py-3 dark:border-slate-800 dark:bg-slate-900"
       >
-        <div className="flex min-w-max gap-1 p-2 sm:gap-2 sm:p-3">
+        <div className="flex min-w-max gap-2">
           {CALCULATORS.map((item) => {
             const Icon = item.icon;
             const selected = activeId === item.id;
@@ -76,10 +76,10 @@ export function CalculatorTabbedPanel({ initialId, syncHash = true }: Calculator
                 aria-controls={`panel-${item.id}`}
                 onClick={() => selectTab(item.id)}
                 className={cn(
-                  "inline-flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold transition sm:px-4",
+                  "inline-flex h-10 items-center gap-2 rounded-xl px-3 text-sm font-semibold transition sm:px-4",
                   selected
-                    ? "bg-emerald-700 text-white shadow-sm"
-                    : "text-slate-600 hover:bg-white hover:text-emerald-800 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-emerald-200",
+                    ? "bg-emerald-700 text-white shadow-[0_10px_24px_rgba(4,120,87,0.22)]"
+                    : "border border-transparent bg-slate-50 text-slate-600 hover:border-emerald-100 hover:bg-emerald-50 hover:text-emerald-800 dark:bg-slate-950 dark:text-slate-300 dark:hover:border-emerald-900 dark:hover:bg-emerald-950/40 dark:hover:text-emerald-200",
                 )}
               >
                 <Icon className="size-4 shrink-0" aria-hidden="true" />

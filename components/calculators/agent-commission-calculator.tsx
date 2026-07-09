@@ -57,8 +57,8 @@ export function AgentCommissionCalculator({ embedded }: { embedded?: boolean }) 
 
   const body = (
     <div className="space-y-5">
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,0.9fr)] lg:gap-8">
-      <div className="space-y-4">
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(20rem,0.86fr)] lg:gap-8">
+      <div className="space-y-5">
         <CalculatorField id="commission-total" label="Total Commission Earned" suffix="USD" value={totalCommission} onChange={setTotalCommission} required />
         <div>
           <p className="text-sm font-semibold text-ink dark:text-slate-100">Commission Split</p>
@@ -74,7 +74,7 @@ export function AgentCommissionCalculator({ embedded }: { embedded?: boolean }) 
           <label htmlFor="commission-homelink" className="block">
             <span className="text-sm font-semibold text-ink dark:text-slate-100">HomeLink Share</span>
             <div className="relative mt-2">
-              <input id="commission-homelink" type="text" readOnly value={String(result.homeLinkPercent)} className="w-full cursor-default rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-base font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200" />
+              <input id="commission-homelink" type="text" readOnly value={String(result.homeLinkPercent)} className="h-12 w-full cursor-default rounded-xl border border-slate-200 bg-slate-50 px-4 text-base font-semibold text-slate-700 shadow-[0_8px_22px_rgba(15,23,42,0.05)] dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200" />
               <span className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-sm font-medium text-slate-400">%</span>
             </div>
           </label>

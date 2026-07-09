@@ -48,8 +48,8 @@ export function LandlordIncomeCalculator({ embedded }: { embedded?: boolean }) {
 
   const body = (
     <div className="space-y-5">
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,0.9fr)] lg:gap-8">
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(20rem,0.86fr)] lg:gap-8">
+      <div className="grid gap-5 sm:grid-cols-2">
         <CalculatorField id="landlord-rent" label="Monthly Rent" suffix="USD" value={monthlyRent} onChange={setMonthlyRent} required />
         <CalculatorField id="landlord-fee" label="Property Management Fee" suffix="%" value={managementFeePercent} onChange={setManagementFeePercent} />
         <CalculatorField id="landlord-expenses" label="Other Monthly Expenses" hint="Optional - repairs, levies, insurance" suffix="USD" value={otherExpenses} onChange={setOtherExpenses} />
