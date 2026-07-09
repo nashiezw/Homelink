@@ -7,6 +7,7 @@ import {
   shouldUsePostgresListings,
   toPublicPostgresListing,
 } from "@/lib/listings/postgres-listing-repository";
+import { isPublicListingStatus } from "@/lib/listings/status";
 import { getStore } from "@/lib/store/app-store";
 
 export async function GET(request: Request) {
@@ -15,7 +16,7 @@ export async function GET(request: Request) {
     const query = parseListingQuery(searchParams);
     const listings = shouldUsePostgresListings()
       ? (await listListingsFromPostgres())
-          .filter((listing) => listing.status === "ACTIVE")
+          .filter((listing) => isPublicListingStatus(listing.status))
           .map(toPublicPostgresListing)
           .filter((listing) => matchesListing(listing, query))
       : listListings(query);

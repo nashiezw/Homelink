@@ -1,5 +1,6 @@
 import type { TenantPreferences } from "@/lib/roommates/types";
 import type { HolidayHomeDetails } from "@/lib/holiday-homes/types";
+import type { ListingWorkflowStatus } from "@/lib/listings/status";
 
 export type ListingIntent = "rent" | "buy";
 
@@ -65,6 +66,7 @@ export type Listing = {
   };
   latitude?: number;
   longitude?: number;
+  status?: ListingWorkflowStatus;
 };
 
 export type CityMarket = {

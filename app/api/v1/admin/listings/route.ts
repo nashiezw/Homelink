@@ -36,6 +36,7 @@ export async function GET(request: Request) {
         return {
           total: all.filter((l) => l.status !== "DELETED").length,
           active: all.filter((l) => l.status === "ACTIVE").length,
+          viewing: all.filter((l) => l.status === "VIEWING_IN_PROGRESS").length,
           pending: all.filter((l) => l.status === "PENDING_REVIEW").length,
           rejected: all.filter((l) => l.status === "REJECTED").length,
           archived: all.filter((l) => l.status === "ARCHIVED").length,
@@ -140,6 +141,15 @@ export async function PATCH(request: Request) {
     }
     case "reject":
       return ok({ listing: getStore().adminRejectListing(listingId, actor, reason) });
+    case "mark_available":
+      return ok({ listing: getStore().adminSetListingStatus(listingId, "ACTIVE", actor, reason) });
+    case "mark_viewing":
+      return ok({ listing: getStore().adminSetListingStatus(listingId, "VIEWING_IN_PROGRESS", actor, reason) });
+    case "mark_let":
+    case "mark_rented":
+      return ok({ listing: getStore().adminSetListingStatus(listingId, "RENTED", actor, reason) });
+    case "mark_sold":
+      return ok({ listing: getStore().adminSetListingStatus(listingId, "SOLD", actor, reason) });
     case "delete":
       return ok({ listing: getStore().adminDeleteListing(listingId, actor, reason) });
     case "archive":

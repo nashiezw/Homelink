@@ -6,6 +6,7 @@ import { EnquiryPanel } from "@/components/enquiries/enquiry-panel";
 import { useApp } from "@/components/providers/app-provider";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api/client";
+import { listingStatusMeta } from "@/lib/listings/status";
 import type { Listing } from "@/lib/types";
 
 type ListingDetailActionsProps = {
@@ -16,6 +17,8 @@ export function ListingDetailActions({ listing }: ListingDetailActionsProps) {
   const { toggleFavourite, toggleCompare, isFavourite, isCompared, showToast } = useApp();
   const [reportOpen, setReportOpen] = useState(false);
   const [reportReason, setReportReason] = useState("stale");
+  const status = listingStatusMeta(listing);
+  const unavailable = status.key === "let" || status.key === "sold" || status.key === "off_market";
 
   async function shareListing() {
     const url = window.location.href;
@@ -71,7 +74,19 @@ export function ListingDetailActions({ listing }: ListingDetailActionsProps) {
         </Button>
       </div>
 
-      <EnquiryPanel listing={listing} className="mt-5" />
+      {status.key === "viewing" ? (
+        <div className="mt-5 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
+          A viewing is already in progress. You can still enquire, but confirm with HomeLink before travelling or paying.
+        </div>
+      ) : null}
+
+      {unavailable ? (
+        <div className="mt-5 rounded-lg border border-red-200 bg-red-50 p-4 text-sm leading-6 text-red-900">
+          This listing is marked {status.shortLabel.toLowerCase()}, so new enquiries are closed to prevent wasted calls and viewings.
+        </div>
+      ) : (
+        <EnquiryPanel listing={listing} className="mt-5" />
+      )}
 
       {reportOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">

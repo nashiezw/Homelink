@@ -2,6 +2,7 @@ import { getStore, toPublicListing } from "@/lib/store/app-store";
 import type { Listing, PropertyType } from "@/lib/types";
 import type { GenderPreference, HouseholdType, MaritalStatus } from "@/lib/roommates/types";
 import { householdOccupants } from "@/lib/roommates/types";
+import { isPublicListingStatus } from "@/lib/listings/status";
 
 export type ListingQuery = {
   location?: string;
@@ -35,7 +36,7 @@ export type ListingQuery = {
 export function listListings(query: ListingQuery = {}) {
   const listings = getStore()
     .listListings()
-    .filter((listing) => listing.status === "ACTIVE" || listing.status === "PENDING_REVIEW")
+    .filter((listing) => isPublicListingStatus(listing.status))
     .map(toPublicListing);
   return listings.filter((listing) => matchesListing(listing, query));
 }
@@ -45,7 +46,7 @@ export function getListing(id: string, options: { incrementViews?: boolean } = {
   if (!listing) {
     return undefined;
   }
-  if (options.incrementViews && (listing.status === "ACTIVE" || listing.status === "PENDING_REVIEW")) {
+  if (options.incrementViews && isPublicListingStatus(listing.status)) {
     getStore().incrementListingMetric(id, "views");
   }
   return toPublicListing(listing);

@@ -16,6 +16,9 @@ import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useApp } from "@/components/providers/app-provider";
 import { apiFetch } from "@/lib/api/client";
+import { ListingStatusBadge } from "@/components/listings/listing-status-badge";
+import { LISTING_WORKFLOW_STATUSES, listingStatusMetaFromValues } from "@/lib/listings/status";
+import type { ListingWorkflowStatus } from "@/lib/listings/status";
 import { AdminActionFeedback } from "@/components/admin/action-feedback";
 import { AdminActionDialog, type AdminDialogConfig } from "@/components/admin/action-dialog";
 import { AdminKpiCard } from "@/components/admin/kpi-card";
@@ -60,7 +63,7 @@ type ListingsResponse = {
   summary: Record<string, number>;
 };
 
-const STATUSES = ["", "ACTIVE", "PENDING_REVIEW", "REJECTED", "ARCHIVED", "DRAFT", "EXPIRED", "RENTED", "SOLD", "DELETED"];
+const STATUSES = ["", ...LISTING_WORKFLOW_STATUSES];
 const TYPES = ["", "room", "house", "flat", "cottage", "commercial", "land", "holiday_home"];
 const INTENTS = ["", "rent", "buy"];
 
@@ -144,6 +147,27 @@ export function PropertiesManagementHub() {
     await applyListingAction(action, ids, extra);
   }
 
+  async function setListingWorkflowStatus(nextStatus: ListingWorkflowStatus, listingId?: string) {
+    const actionByStatus: Record<ListingWorkflowStatus, string | null> = {
+      DRAFT: null,
+      PENDING_REVIEW: null,
+      ACTIVE: "mark_available",
+      VIEWING_IN_PROGRESS: "mark_viewing",
+      RENTED: "mark_let",
+      SOLD: "mark_sold",
+      EXPIRED: null,
+      REJECTED: "reject",
+      ARCHIVED: "archive",
+      DELETED: "delete",
+    };
+    const action = actionByStatus[nextStatus];
+    if (!action) {
+      showToast("That status is managed by the listing workflow.", "error");
+      return;
+    }
+    await listingAction(action, listingId);
+  }
+
   function approveWithBypass(listingId: string) {
     void listingAction("approve", listingId, { bypassOwnerAgreement: true });
   }
@@ -214,6 +238,7 @@ export function PropertiesManagementHub() {
       {data?.summary && (
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-6">
           <AdminKpiCard label="Total live" value={data.summary.active} icon={CheckCircle2} tone="success" compact />
+          <AdminKpiCard label="Viewing now" value={data.summary.viewing ?? 0} icon={RefreshCw} tone="warning" compact />
           <AdminKpiCard label="Pending approval" value={data.summary.pending} icon={XCircle} tone="warning" compact />
           <AdminKpiCard label="Featured" value={data.summary.featured} icon={Star} compact />
           <AdminKpiCard label="Holiday homes" value={data.summary.holiday ?? 0} icon={Star} compact />
@@ -241,6 +266,9 @@ export function PropertiesManagementHub() {
           { id: "all", label: "All", count: data?.summary?.total },
           { id: "PENDING_REVIEW", label: "Pending", count: data?.summary?.pending },
           { id: "ACTIVE", label: "Live", count: data?.summary?.active },
+          { id: "VIEWING_IN_PROGRESS", label: "Viewing", count: data?.summary?.viewing },
+          { id: "RENTED", label: "Let", count: data?.summary?.rented },
+          { id: "SOLD", label: "Sold", count: data?.summary?.sold },
           { id: "DRAFT", label: "Drafts", count: data?.summary?.draft },
           { id: "REJECTED", label: "Rejected", count: data?.summary?.rejected },
           { id: "EXPIRED", label: "Expired", count: data?.summary?.expired },
@@ -269,6 +297,10 @@ export function PropertiesManagementHub() {
           <span className="text-sm font-medium text-cyan-200">{selected.size} listings selected</span>
           <div className="grid gap-2 sm:flex sm:flex-wrap">
             <Button onClick={() => void listingAction("approve")}><CheckCircle2 className="size-4" /> Approve</Button>
+            <Button variant="secondary" onClick={() => void listingAction("mark_available")}><CheckCircle2 className="size-4" /> Available</Button>
+            <Button variant="secondary" onClick={() => void listingAction("mark_viewing")}><RefreshCw className="size-4" /> Viewing</Button>
+            <Button variant="secondary" onClick={() => void listingAction("mark_let")}><XCircle className="size-4" /> Let</Button>
+            <Button variant="secondary" onClick={() => void listingAction("mark_sold")}><CheckCircle2 className="size-4" /> Sold</Button>
             <Button variant="secondary" onClick={() => void listingAction("reject")}><XCircle className="size-4" /> Reject</Button>
             <Button variant="secondary" onClick={() => void listingAction("verify")}><ShieldCheck className="size-4" /> Verify</Button>
             <Button variant="secondary" onClick={() => void listingAction("feature", undefined, { days: 14 })}><Star className="size-4" /> Feature</Button>
@@ -315,7 +347,7 @@ export function PropertiesManagementHub() {
                           {listing.suburb}, {listing.city}
                         </p>
                       </div>
-                      <StatusBadge status={listing.status} />
+                      <ListingStatusBadge status={listing.status} intent={listing.intent} compact />
                     </div>
 
                     <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
@@ -381,7 +413,7 @@ export function PropertiesManagementHub() {
                       </div>
                     </td>
                     <td className="px-3 py-3 text-slate-300">{listing.type}</td>
-                    <td className="px-3 py-3"><StatusBadge status={listing.status} /></td>
+                    <td className="px-3 py-3"><ListingStatusBadge status={listing.status} intent={listing.intent} compact /></td>
                     <td className="px-3 py-3 text-xs text-slate-400">{listing.ownerName}</td>
                     <td className="px-3 py-3 text-xs text-slate-500">{listing.views}v - {listing.enquiries}e</td>
                   </tr>
@@ -400,7 +432,7 @@ export function PropertiesManagementHub() {
               <div>
                 <h3 className="text-lg font-semibold text-white">{selectedListing.title}</h3>
                 <p className="text-slate-400">{selectedListing.suburb}, {selectedListing.city}</p>
-                <StatusBadge status={selectedListing.status} />
+                <ListingStatusBadge status={selectedListing.status} intent={selectedListing.intent} className="mt-2" />
                 {selectedListing.ownerAgreementAccepted ? (
                   <p className="mt-2 text-xs text-emerald-300">
                     Owner agreement signed
@@ -429,6 +461,24 @@ export function PropertiesManagementHub() {
                 <div className="rounded bg-slate-950/50 p-2"><p className="text-slate-500">Price</p><p className="text-white">${selectedListing.price}</p></div>
                 <div className="rounded bg-slate-950/50 p-2"><p className="text-slate-500">Views</p><p className="text-white">{selectedListing.views}</p></div>
                 <div className="rounded bg-slate-950/50 p-2"><p className="text-slate-500">Enquiries</p><p className="text-white">{selectedListing.enquiries}</p></div>
+              </div>
+              <div>
+                <p className="mb-2 text-xs font-semibold uppercase text-slate-500">Availability status</p>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {(["ACTIVE", "VIEWING_IN_PROGRESS", "RENTED", "SOLD"] as ListingWorkflowStatus[]).map((nextStatus) => {
+                    const meta = listingStatusMetaFromValues(nextStatus, selectedListing.intent);
+                    return (
+                      <Button
+                        key={nextStatus}
+                        variant={selectedListing.status === nextStatus ? "primary" : "secondary"}
+                        className="justify-start"
+                        onClick={() => void setListingWorkflowStatus(nextStatus, selectedListing.id)}
+                      >
+                        {meta.shortLabel}
+                      </Button>
+                    );
+                  })}
+                </div>
               </div>
               <div className="flex flex-wrap gap-1">
                 {selectedListing.status !== "ACTIVE" && (
@@ -487,15 +537,3 @@ export function PropertiesManagementHub() {
   );
 }
 
-function StatusBadge({ status }: { status: string }) {
-  const colors: Record<string, string> = {
-    ACTIVE: "bg-emerald-500/20 text-emerald-300",
-    PENDING_REVIEW: "bg-amber-500/20 text-amber-300",
-    REJECTED: "bg-red-500/20 text-red-300",
-    ARCHIVED: "bg-slate-500/20 text-slate-300",
-    DELETED: "bg-red-900/30 text-red-400",
-    RENTED: "bg-purple-500/20 text-purple-300",
-    SOLD: "bg-blue-500/20 text-blue-300",
-  };
-  return <span className={`inline-block rounded-full px-2 py-0.5 text-xs ${colors[status] ?? "bg-white/10 text-slate-300"}`}>{status}</span>;
-}

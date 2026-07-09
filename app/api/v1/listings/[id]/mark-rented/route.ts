@@ -6,6 +6,8 @@ import {
   updateListingInPostgres,
 } from "@/lib/listings/postgres-listing-repository";
 import { getStore } from "@/lib/store/app-store";
+import { LISTING_WORKFLOW_STATUSES } from "@/lib/listings/status";
+import type { ListingWorkflowStatus } from "@/lib/listings/status";
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const userId = getSessionUserIdFromRequest(request);
@@ -39,6 +41,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     return problem(403, "FORBIDDEN", "You can only update your own listings.");
   }
   const updates = await request.json();
+  if (updates?.status && !LISTING_WORKFLOW_STATUSES.includes(updates.status as ListingWorkflowStatus)) {
+    return problem(400, "INVALID_STATUS", "Choose a supported listing status.");
+  }
   if (shouldUsePostgresListings()) {
     return ok(await updateListingInPostgres(id, updates));
   }

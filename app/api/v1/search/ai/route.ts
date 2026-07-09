@@ -7,6 +7,7 @@ import {
   shouldUsePostgresListings,
   toPublicPostgresListing,
 } from "@/lib/listings/postgres-listing-repository";
+import { isPublicListingStatus } from "@/lib/listings/status";
 
 export async function POST(request: Request) {
   if (!isAiSearchEnabled()) {
@@ -22,7 +23,7 @@ export async function POST(request: Request) {
   const parsed = parseNaturalLanguageSearch(query);
   const matches = shouldUsePostgresListings()
     ? (await listListingsFromPostgres())
-        .filter((listing) => listing.status === "ACTIVE")
+        .filter((listing) => isPublicListingStatus(listing.status))
         .map(toPublicPostgresListing)
         .filter((listing) => matchesListing(listing, parsed))
     : listListings(parsed);

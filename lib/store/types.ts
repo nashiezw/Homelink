@@ -286,7 +286,7 @@ export type UserSubscription = {
 
 export type ListingRecord = Listing & {
   ownerId: string;
-  status: "DRAFT" | "PENDING_REVIEW" | "ACTIVE" | "RENTED" | "SOLD" | "EXPIRED" | "REJECTED" | "ARCHIVED" | "DELETED";
+  status: "DRAFT" | "PENDING_REVIEW" | "ACTIVE" | "VIEWING_IN_PROGRESS" | "RENTED" | "SOLD" | "EXPIRED" | "REJECTED" | "ARCHIVED" | "DELETED";
   latitude: number;
   longitude: number;
   leadSource?: "HOMELINK" | "AGENT";

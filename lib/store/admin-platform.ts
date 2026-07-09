@@ -827,6 +827,32 @@ export function adminEditListing(state: AdminPlatformState, listingId: string, u
   return state.listings[index];
 }
 
+export function adminSetListingStatus(
+  state: AdminPlatformState,
+  listingId: string,
+  status: ListingRecord["status"],
+  actor: Actor,
+  reason?: string,
+) {
+  const listing = state.listings.find((l) => l.id === listingId);
+  if (!listing) return null;
+  const previous = listing.status;
+  listing.status = status;
+  if (reason) listing.adminNotes = reason;
+  if (status === "RENTED") listing.availableFrom = "Let";
+  if (status === "ACTIVE" && listing.availableFrom.toLowerCase() === "let") listing.availableFrom = "Available now";
+  audit(state, {
+    actorId: actor.id,
+    actorName: actor.name,
+    action: "SET_LISTING_STATUS",
+    target: listingId,
+    targetType: "LISTING",
+    metadata: { from: previous, to: status, reason },
+    ip: "127.0.0.1",
+  });
+  return listing;
+}
+
 export function transferListingOwnership(
   state: AdminPlatformState,
   listingId: string,

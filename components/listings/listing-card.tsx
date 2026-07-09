@@ -2,6 +2,7 @@ import { BadgeCheck, Bath, BedDouble, MapPin, Users } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { ListingCardActions } from "@/components/listings/listing-card-actions";
+import { ListingStatusBadge } from "@/components/listings/listing-status-badge";
 import type { Listing } from "@/lib/types";
 import { formatNightlyPrice, formatPrice } from "@/lib/utils";
 
@@ -26,11 +27,12 @@ export function ListingCard({ listing }: ListingCardProps) {
           sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
         />
         {listing.verified && (
-          <span className="absolute left-3 top-3 inline-flex items-center gap-1 rounded-full bg-emerald-700 px-3 py-1 text-xs font-semibold text-white">
+          <span className="absolute left-3 top-3 inline-flex items-center gap-1 rounded-full bg-emerald-700 px-3 py-1 text-xs font-semibold text-white shadow-sm">
             <BadgeCheck className="size-3.5" aria-hidden="true" />
             Verified
           </span>
         )}
+        <ListingStatusBadge listing={listing} className="absolute right-3 top-3 max-w-[calc(100%-1.5rem)] bg-white/95 backdrop-blur" />
           <span className="absolute bottom-3 left-3 rounded-full bg-white/92 px-3 py-1 text-xs font-semibold text-emerald-800 shadow-sm backdrop-blur">
           {listing.trustScore}% trust score
         </span>

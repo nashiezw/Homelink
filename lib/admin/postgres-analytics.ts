@@ -554,6 +554,7 @@ export async function getPostgresLandlordAnalytics(userId: string) {
       city: listing.city,
       suburb: listing.suburb,
       status: listing.status,
+      intent: listing.intent.toLowerCase(),
       price: Number(listing.price),
       views: listing.views,
       saves: listing._count.favourites,

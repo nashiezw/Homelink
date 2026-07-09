@@ -10,6 +10,7 @@ import { renderNotificationTemplate } from "@/lib/settings/runtime";
 import { matchRoommates, matchRooms } from "@/lib/roommates/matching";
 import { hashPassword } from "@/lib/auth/password";
 import { getPlanPrice } from "@/lib/payments/plans";
+import { isPublicListingStatus } from "@/lib/listings/status";
 import * as AdminPlatform from "@/lib/store/admin-platform";
 import * as PMStore from "@/lib/store/property-management-store";
 import type { SubmitPMRequestInput } from "@/lib/property-management/types";
@@ -2120,7 +2121,7 @@ class AppStore {
       },
       residenceHistory: [],
       listings: this.state.listings
-        .filter((l) => l.ownerId === userId && (l.status === "ACTIVE" || l.status === "PENDING_REVIEW"))
+        .filter((l) => l.ownerId === userId && isPublicListingStatus(l.status))
         .map(toPublicListing),
     };
   }
@@ -2637,7 +2638,7 @@ class AppStore {
 
     if (profile.lookingFor === "room") {
       const listings = this.listListings()
-        .filter((l) => l.status === "ACTIVE" || l.status === "PENDING_REVIEW")
+        .filter((l) => isPublicListingStatus(l.status))
         .map(toPublicListing);
       return matchRooms(listings, profile);
     }
@@ -2789,6 +2790,7 @@ class AppStore {
         title: listing.title,
         suburb: listing.suburb,
         city: listing.city,
+        intent: listing.intent,
         type: listing.type,
         views: listing.views,
         saves: listing.saves,
@@ -3006,6 +3008,15 @@ class AppStore {
     return this.persistResult(AdminPlatform.adminEditListing(this.adminState(), listingId, updates, actor));
   }
 
+  adminSetListingStatus(
+    listingId: string,
+    status: ListingRecord["status"],
+    actor: { id: string; name: string },
+    reason?: string,
+  ) {
+    return this.persistResult(AdminPlatform.adminSetListingStatus(this.adminState(), listingId, status, actor, reason));
+  }
+
   transferListingOwnership(listingId: string, newOwnerId: string, actor: { id: string; name: string }) {
     return this.persistResult(AdminPlatform.transferListingOwnership(this.adminState(), listingId, newOwnerId, actor));
   }
@@ -3104,6 +3115,19 @@ class AppStore {
       switch (action) {
         case "approve":
           result = this.adminApproveListing(id, actor);
+          break;
+        case "mark_available":
+          result = this.adminSetListingStatus(id, "ACTIVE", actor, params?.reason);
+          break;
+        case "mark_viewing":
+          result = this.adminSetListingStatus(id, "VIEWING_IN_PROGRESS", actor, params?.reason);
+          break;
+        case "mark_let":
+        case "mark_rented":
+          result = this.adminSetListingStatus(id, "RENTED", actor, params?.reason);
+          break;
+        case "mark_sold":
+          result = this.adminSetListingStatus(id, "SOLD", actor, params?.reason);
           break;
         case "reject":
           result = this.adminRejectListing(id, actor, params?.reason);
@@ -4503,7 +4527,7 @@ export function toPublicListing(listing: ListingRecord) {
     ...defaultPlatformSettings.enquiries,
     ...store.getPlatformSettings().enquiries,
   };
-  const { ownerId: _ownerId, status: _status, latitude, longitude, phone, whatsapp, ...publicListing } = listing;
+  const { ownerId: _ownerId, latitude, longitude, phone, whatsapp, ...publicListing } = listing;
   const contact = settings.showPublicContactDetails ? { phone, whatsapp } : { phone: "", whatsapp: "" };
   return { ...publicListing, ...contact, latitude, longitude };
 }

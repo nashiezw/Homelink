@@ -7,9 +7,11 @@ import { LandlordEnquiryInbox } from "@/components/landlord/enquiry-inbox";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { PageShell } from "@/components/layout/page-shell";
 import { MarkRentedModal } from "@/components/listings/mark-rented-modal";
+import { ListingStatusBadge } from "@/components/listings/listing-status-badge";
 import { useApp } from "@/components/providers/app-provider";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api/client";
+import type { ListingWorkflowStatus } from "@/lib/listings/status";
 
 type Analytics = {
   totals: { listings: number; views: number; saves: number; enquiries: number };
@@ -23,6 +25,7 @@ type Analytics = {
     saves: number;
     enquiries: number;
     status: string;
+    intent?: string;
     type?: string;
   }>;
 };
@@ -71,6 +74,20 @@ export function LandlordDashboardClient() {
       suburb: listing.suburb,
       city: listing.city,
     });
+  }
+
+  async function updateListingStatus(listingId: string, status: ListingWorkflowStatus) {
+    const availableFrom = status === "ACTIVE" ? "Available now" : status === "RENTED" ? "Let" : status === "SOLD" ? "Sold" : undefined;
+    const result = await apiFetch(`/api/v1/listings/${listingId}/mark-rented`, {
+      method: "PATCH",
+      body: JSON.stringify({ status, ...(availableFrom ? { availableFrom } : {}) }),
+    });
+    if (result.error) {
+      showToast(result.error.message, "error");
+      return;
+    }
+    showToast("Listing status updated.");
+    await loadAnalytics();
   }
 
   return (
@@ -138,9 +155,7 @@ export function LandlordDashboardClient() {
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="font-semibold text-ink dark:text-white">{listing.title}</p>
-                      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                        {listing.status}
-                      </span>
+                      <ListingStatusBadge status={listing.status} intent={listing.intent} compact />
                     </div>
                     <p className="mt-1 text-sm text-slate-500">{listing.suburb}, {listing.city}</p>
                   </div>
@@ -164,10 +179,28 @@ export function LandlordDashboardClient() {
                       <ExternalLink className="size-3.5" />
                       View
                     </Link>
-                    {listing.status !== "RENTED" && (
-                      <Button variant="secondary" className="h-9" onClick={() => void markRented(listing.id)}>
-                        Mark rented
+                    {listing.status !== "ACTIVE" && (
+                      <Button variant="secondary" className="h-9" onClick={() => void updateListingStatus(listing.id, "ACTIVE")}>
+                        Available
                       </Button>
+                    )}
+                    {listing.status !== "VIEWING_IN_PROGRESS" && listing.status !== "RENTED" && listing.intent !== "buy" && (
+                      <Button variant="secondary" className="h-9" onClick={() => void updateListingStatus(listing.id, "VIEWING_IN_PROGRESS")}>
+                        Viewing
+                      </Button>
+                    )}
+                    {listing.intent === "buy" ? (
+                      listing.status !== "SOLD" && (
+                        <Button variant="secondary" className="h-9" onClick={() => void updateListingStatus(listing.id, "SOLD")}>
+                          Mark sold
+                        </Button>
+                      )
+                    ) : (
+                      listing.status !== "RENTED" && (
+                        <Button variant="secondary" className="h-9" onClick={() => void markRented(listing.id)}>
+                          Mark let
+                        </Button>
+                      )
                     )}
                   </div>
                 </div>

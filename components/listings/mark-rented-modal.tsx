@@ -51,7 +51,7 @@ export function MarkRentedModal({
     setBusy(false);
 
     if (result.data) {
-      showToast("Listing marked rented — tenant must confirm in Tenancies.");
+      showToast("Listing marked let — tenant must confirm in Tenancies.");
       onSuccess();
       onClose();
     } else {
@@ -65,7 +65,7 @@ export function MarkRentedModal({
         onSubmit={(e) => void submit(e)}
         className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl dark:bg-slate-900"
       >
-        <h3 className="text-lg font-semibold text-ink dark:text-white">Mark as rented</h3>
+        <h3 className="text-lg font-semibold text-ink dark:text-white">Mark as let</h3>
         <p className="mt-1 text-sm text-slate-500">
           Creates an <strong>unverified</strong> stay record for {listingTitle}. Both parties must confirm.
           For verified history, use Pay via HomeLink or Sign lease on the listing page.
@@ -97,7 +97,7 @@ export function MarkRentedModal({
             Cancel
           </Button>
           <Button type="submit" disabled={busy}>
-            {busy ? "Saving..." : "Mark rented"}
+            {busy ? "Saving..." : "Mark let"}
           </Button>
         </div>
       </form>

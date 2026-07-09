@@ -12,6 +12,7 @@ import { AgentRatingPrompt } from "@/components/agents/agent-rating-prompt";
 import { HolidayBookingForm } from "@/components/holiday-homes/holiday-booking-form";
 import { HolidayHomeDetailSections } from "@/components/holiday-homes/holiday-home-detail-sections";
 import { ListingDetailActions } from "@/components/listings/listing-detail-actions";
+import { ListingStatusBadge } from "@/components/listings/listing-status-badge";
 import { MediaGallery } from "@/components/listings/media-gallery";
 import { TenancyActions } from "@/components/tenancies/tenancy-actions";
 import { PropertyMap } from "@/components/maps/property-map";
@@ -71,6 +72,7 @@ export function ListingDetailView({
             <p className="text-3xl font-semibold text-emerald-700">
               {isHoliday ? formatNightlyPrice(listing.holidayHome!.nightlyRate) : formatPrice(listing.price)}
             </p>
+            <ListingStatusBadge listing={listing} />
             {listing.verified && (
               <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-3 py-1 text-sm font-semibold text-emerald-800">
                 <BadgeCheck className="size-4" aria-hidden="true" />
@@ -173,6 +175,12 @@ export function ListingDetailView({
           )}
           <AgentRatingPrompt listingId={listing.id} />
           {!isHoliday ? <TenancyActions listing={listing} landlordUserId={landlordUserId} /> : null}
+          <div className="rounded-lg bg-emerald-50 p-4 dark:bg-emerald-950/30">
+            <p className="text-sm font-semibold text-emerald-900 dark:text-emerald-100">Before you travel</p>
+            <p className="mt-1 text-sm leading-6 text-emerald-900/80 dark:text-emerald-100/80">
+              HomeLink shows live availability so you do not arrive only to hear "Yatorwa." Always check the status before paying or viewing.
+            </p>
+          </div>
           <div className="rounded-lg bg-emerald-50 p-4 dark:bg-emerald-950/30">
             <p className="text-sm font-semibold text-emerald-900 dark:text-emerald-100">Why this listing stands out</p>
             <p className="mt-1 text-sm leading-6 text-emerald-900/80 dark:text-emerald-100/80">{listing.highlight}</p>

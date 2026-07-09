@@ -5,6 +5,7 @@ import { createDefaultHomepageCms } from "@/lib/homepage/cms-defaults";
 import type { HomepageCmsConfig } from "@/lib/homepage/cms-types";
 import type { HomepageData, HomeFeaturedAgent, HomePropertyType, HomeTrustMetric } from "@/lib/homepage/types";
 import { getStore, toPublicListing } from "@/lib/store/app-store";
+import { isPublicListingStatus } from "@/lib/listings/status";
 import type { Listing, ListingIntent, PropertyType } from "@/lib/types";
 
 type HomepageListing = Listing & { featured?: boolean };
@@ -16,6 +17,7 @@ const HOMEPAGE_LISTING_SELECT = {
   suburb: true,
   price: true,
   intent: true,
+  status: true,
   propertyType: true,
   bedrooms: true,
   bathrooms: true,
@@ -370,7 +372,7 @@ async function getPostgresAgentRows() {
 
 async function listHomepageListingsFromPostgres(): Promise<HomepageListing[]> {
   const rows = await getMainPrisma().listing.findMany({
-    where: { status: { in: ["ACTIVE", "PENDING_REVIEW"] } },
+    where: { status: { in: ["ACTIVE", "VIEWING_IN_PROGRESS"] as never } },
     select: HOMEPAGE_LISTING_SELECT,
     orderBy: { createdAt: "desc" },
   });
@@ -414,6 +416,7 @@ function toHomepageListing(row: HomepageListingRow): HomepageListing {
     highlight: row.verifiedAt ? "Verified listing" : "New listing",
     latitude: Number(row.latitude ?? -17.8292),
     longitude: Number(row.longitude ?? 31.0522),
+    status: isPublicListingStatus(row.status) ? row.status as never : undefined,
   };
 }
 
@@ -468,7 +471,7 @@ export async function getHomepageSeo() {
 export function getFeaturedListingsFromStore(limit = 6) {
   return getStore()
     .listListings()
-    .filter((l) => l.status === "ACTIVE" || l.status === "PENDING_REVIEW")
+    .filter((l) => isPublicListingStatus(l.status))
     .sort((a, b) => b.trustScore - a.trustScore)
     .slice(0, limit)
     .map(toPublicListing);

@@ -19,6 +19,8 @@ import { isStrictProductionMode } from "@/lib/production/runtime";
 import type { ListingRecord, StoreUser } from "@/lib/store/types";
 import type { Listing, ListingIntent as PublicListingIntent, PropertyType } from "@/lib/types";
 
+const DB_VIEWING_IN_PROGRESS = "VIEWING_IN_PROGRESS" as DbListingStatus;
+
 const LISTING_INCLUDE = {
   owner: true,
   media: { orderBy: { sortOrder: "asc" as const } },
@@ -91,6 +93,7 @@ const STATUS_TO_DB: Record<string, DbListingStatus> = {
   DRAFT: DbListingStatus.DRAFT,
   PENDING_REVIEW: DbListingStatus.PENDING_REVIEW,
   ACTIVE: DbListingStatus.ACTIVE,
+  VIEWING_IN_PROGRESS: DB_VIEWING_IN_PROGRESS,
   RENTED: DbListingStatus.RENTED,
   SOLD: DbListingStatus.SOLD,
   SUSPENDED: DbListingStatus.SUSPENDED,
@@ -104,6 +107,7 @@ const DB_STATUS_TO_APP: Record<string, ListingRecord["status"]> = {
   [DbListingStatus.DRAFT]: "DRAFT",
   [DbListingStatus.PENDING_REVIEW]: "PENDING_REVIEW",
   [DbListingStatus.ACTIVE]: "ACTIVE",
+  VIEWING_IN_PROGRESS: "VIEWING_IN_PROGRESS",
   [DbListingStatus.RENTED]: "RENTED",
   [DbListingStatus.SOLD]: "SOLD",
   [DbListingStatus.SUSPENDED]: "ARCHIVED",
@@ -409,6 +413,7 @@ export async function summarizeListingsFromPostgres() {
     total: all.filter((l) => l.status !== "DELETED").length,
     active: all.filter((l) => l.status === "ACTIVE").length,
     pending: all.filter((l) => l.status === "PENDING_REVIEW").length,
+    viewing: all.filter((l) => l.status === "VIEWING_IN_PROGRESS").length,
     rejected: all.filter((l) => l.status === "REJECTED").length,
     archived: all.filter((l) => l.status === "ARCHIVED").length,
     deleted: all.filter((l) => l.status === "DELETED").length,
@@ -437,6 +442,11 @@ export async function adminListingActionInPostgres(
 ) {
   const statusUpdates: Record<string, ListingRecord["status"]> = {
     approve: "ACTIVE",
+    mark_available: "ACTIVE",
+    mark_viewing: "VIEWING_IN_PROGRESS",
+    mark_let: "RENTED",
+    mark_rented: "RENTED",
+    mark_sold: "SOLD",
     reject: "REJECTED",
     archive: "ARCHIVED",
     restore: "ACTIVE",
@@ -481,8 +491,11 @@ export async function adminListingActionInPostgres(
     });
   }
   if (statusUpdates[action]) {
+    const nextStatus = statusUpdates[action];
     return updateListingInPostgres(listingId, {
-      status: statusUpdates[action],
+      status: nextStatus,
+      ...(nextStatus === "RENTED" ? { availableFrom: "Let" } : {}),
+      ...(nextStatus === "ACTIVE" ? { availableFrom: "Available now" } : {}),
       ...(options.reason ? { adminNotes: options.reason } : {}),
     });
   }
@@ -522,7 +535,7 @@ export async function addListingMediaInPostgres(listingId: string, userId: strin
 }
 
 export function toPublicPostgresListing(listing: ListingRecord): Listing {
-  const { ownerId: _ownerId, status: _status, phone: _phone, whatsapp: _whatsapp, ...publicListing } = listing;
+  const { ownerId: _ownerId, phone: _phone, whatsapp: _whatsapp, ...publicListing } = listing;
   return { ...publicListing, phone: "", whatsapp: "" };
 }
 
