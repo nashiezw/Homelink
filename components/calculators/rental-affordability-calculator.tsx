@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Wallet } from "lucide-react";
+import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
+import { Search, Users, Wallet } from "lucide-react";
 import { AnimatedCurrency } from "@/components/calculators/animated-currency";
 import {
   CalculatorCard,
@@ -15,6 +16,7 @@ import {
 import { formatCalculatorCurrency, formatCalculatorPercent } from "@/lib/calculators/format";
 import { calculateRentalAffordability, parseCalculatorInteger, parseCalculatorNumber } from "@/lib/calculators/formulas";
 import { affordabilityRatingStyles, rentalAffordabilityInsights } from "@/lib/calculators/insights";
+import { affordabilityBudgetParam, writeRentalAffordabilityMemory } from "@/lib/calculators/affordability-memory";
 import { cn } from "@/lib/utils";
 
 const DEFAULTS = {
@@ -50,6 +52,29 @@ export function RentalAffordabilityCalculator({ embedded }: { embedded?: boolean
 
   const sharing = parseCalculatorInteger(sharingCount, 1);
   const insights = useMemo(() => rentalAffordabilityInsights(result, sharing), [result, sharing]);
+  const maxRentParam = affordabilityBudgetParam({
+    recommendedMaxRent: result.recommendedMaxRent,
+    remainingAfterRent: result.remainingAfterRent,
+    grossRentShare: result.grossRentShare,
+    rentPercent: parseCalculatorNumber(rentPercent),
+    sharingCount: sharing,
+    rating: result.rating,
+    ratingLabel: result.ratingLabel,
+    savedAt: new Date().toISOString(),
+  });
+
+  useEffect(() => {
+    writeRentalAffordabilityMemory({
+      recommendedMaxRent: result.recommendedMaxRent,
+      remainingAfterRent: result.remainingAfterRent,
+      grossRentShare: result.grossRentShare,
+      rentPercent: parseCalculatorNumber(rentPercent),
+      sharingCount: sharing,
+      rating: result.rating,
+      ratingLabel: result.ratingLabel,
+      savedAt: new Date().toISOString(),
+    });
+  }, [result, rentPercent, sharing]);
 
   const body = (
     <div className="space-y-5">
@@ -93,6 +118,25 @@ export function RentalAffordabilityCalculator({ embedded }: { embedded?: boolean
       </div>
 
       <CalculatorInsights insights={insights} />
+
+      {maxRentParam && (
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Link
+            href={`/search?intent=rent&type=room&maxPrice=${maxRentParam}&calculatorBudget=1`}
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-emerald-500"
+          >
+            <Search className="size-4" aria-hidden="true" />
+            Search rooms
+          </Link>
+          <Link
+            href={`/roommates?budgetMax=${maxRentParam}&source=calculator`}
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-800 transition hover:border-emerald-200 hover:bg-emerald-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+          >
+            <Users className="size-4" aria-hidden="true" />
+            Find roommates
+          </Link>
+        </div>
+      )}
     </div>
   );
 

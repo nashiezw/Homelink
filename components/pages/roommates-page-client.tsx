@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import {
   defaultRoomSharePanel,
@@ -28,6 +28,11 @@ import {
 } from "@/components/roommates/match-preferences-form";
 import { useApp } from "@/components/providers/app-provider";
 import { apiFetch } from "@/lib/api/client";
+import {
+  affordabilityBudgetParam,
+  readRentalAffordabilityMemory,
+  type RentalAffordabilityMemory,
+} from "@/lib/calculators/affordability-memory";
 import { featuredListings } from "@/lib/listings";
 import {
   audiencePaths,
@@ -529,6 +534,7 @@ function TestimonialCard({ story }: { story: (typeof successStories)[number] }) 
 
 export function RoommatesPageClient() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, showToast } = useApp();
   const [matches, setMatches] = useState<RoommateMatch[]>([]);
   const [amenities, setAmenities] = useState<string[]>([]);
@@ -537,6 +543,8 @@ export function RoommatesPageClient() {
   const [shareIntent, setShareIntent] = useState<RoomShareIntent>("seeking");
   const [sharePanel, setSharePanel] = useState<RoomSharePanelState>(defaultRoomSharePanel);
   const [shareSubmitting, setShareSubmitting] = useState(false);
+  const [calculatorBudget, setCalculatorBudget] = useState<RentalAffordabilityMemory | null>(null);
+  const [calculatorBudgetApplied, setCalculatorBudgetApplied] = useState(false);
 
   function scrollToRoomShareWizard(intent?: RoomShareIntent) {
     if (intent) setShareIntent(intent);
@@ -568,6 +576,29 @@ export function RoommatesPageClient() {
       if (people?.length) setPostgresSeekers(people);
     });
   }, []);
+
+  useEffect(() => {
+    if (calculatorBudgetApplied) return;
+    const memory = readRentalAffordabilityMemory();
+    const budgetFromUrl = searchParams.get("budgetMax");
+    const maxBudget = budgetFromUrl || affordabilityBudgetParam(memory);
+    if (memory) setCalculatorBudget(memory);
+    if (!maxBudget) {
+      setCalculatorBudgetApplied(true);
+      return;
+    }
+
+    setShareIntent("seeking");
+    setSharePanel((current) => ({
+      ...current,
+      budgetMax: maxBudget,
+      budgetMin: current.budgetMin || "80",
+    }));
+    setCalculatorBudgetApplied(true);
+    if (searchParams.get("source") === "calculator") {
+      setTimeout(() => scrollToRoomShareWizard("seeking"), 150);
+    }
+  }, [calculatorBudgetApplied, searchParams]);
 
   const fallbackRooms = featuredListings
     .filter((l) => l.intent === "rent" && ["room", "flat", "cottage"].includes(l.type))
@@ -707,6 +738,11 @@ export function RoommatesPageClient() {
               onSubmit={runRoomShareSubmit}
               submitting={shareSubmitting}
             />
+            {calculatorBudget && shareIntent === "seeking" && (
+              <p className="mt-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-900">
+                Using your calculator budget: US${Math.round(calculatorBudget.recommendedMaxRent)}/month · {calculatorBudget.ratingLabel}
+              </p>
+            )}
           </div>
         </div>
       </section>

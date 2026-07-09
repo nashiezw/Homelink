@@ -9,6 +9,11 @@ import { PropertyMap } from "@/components/maps/property-map";
 import { useApp } from "@/components/providers/app-provider";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api/client";
+import {
+  affordabilityBudgetParam,
+  readRentalAffordabilityMemory,
+  type RentalAffordabilityMemory,
+} from "@/lib/calculators/affordability-memory";
 import type { Listing } from "@/lib/types";
 
 const smartFilters = [
@@ -150,12 +155,14 @@ export function SearchPageClient() {
   const [aiOpen, setAiOpen] = useState(false);
   const [aiQuery, setAiQuery] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
+  const [calculatorBudget, setCalculatorBudget] = useState<RentalAffordabilityMemory | null>(null);
   const [nearby, setNearby] = useState<{
     cbdDistanceKm: number | null;
     places: Array<{ type: string; name: string; distanceKm: number }>;
   } | null>(null);
 
   const queryString = searchParams.toString();
+  const rememberedBudget = affordabilityBudgetParam(calculatorBudget);
 
   useEffect(() => {
     void (async () => {
@@ -177,6 +184,17 @@ export function SearchPageClient() {
       }
     })();
   }, [queryString, searchParams]);
+
+  useEffect(() => {
+    const memory = readRentalAffordabilityMemory();
+    setCalculatorBudget(memory);
+    if (!memory || searchParams.get("maxPrice")) return;
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("maxPrice", affordabilityBudgetParam(memory));
+    if (!params.get("intent")) params.set("intent", "rent");
+    params.set("calculatorBudget", "memory");
+    router.replace(`/search?${params.toString()}`);
+  }, [queryString, router, searchParams]);
 
   const activeFilters = useMemo(() => smartFilters.filter((filter) => {
     if (filter.key === "amenities") {
@@ -307,7 +325,8 @@ export function SearchPageClient() {
               <span className="text-xs font-semibold uppercase tracking-normal text-slate-500">Max budget</span>
               <input
                 name="maxPrice"
-                defaultValue={searchParams.get("maxPrice") ?? "1500"}
+                key={`budget-${searchParams.get("maxPrice") ?? rememberedBudget ?? "1500"}`}
+                defaultValue={searchParams.get("maxPrice") ?? rememberedBudget ?? "1500"}
                 className="bg-transparent text-slate-800 outline-none dark:text-slate-100"
                 inputMode="numeric"
               />
@@ -343,6 +362,13 @@ export function SearchPageClient() {
               Filter
             </Button>
           </form>
+
+          {calculatorBudget && (
+            <div className="mt-3 rounded-lg border border-emerald-300/25 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-50">
+              Using your calculator budget: <span className="font-bold">US${Math.round(calculatorBudget.recommendedMaxRent)}/month</span>
+              <span className="text-emerald-100/80"> · {calculatorBudget.ratingLabel}</span>
+            </div>
+          )}
 
           <div className="mt-4 flex max-w-xs flex-wrap gap-2 sm:max-w-none">
             {smartFilters.map((filter) => (

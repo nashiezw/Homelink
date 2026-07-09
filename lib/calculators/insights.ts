@@ -61,6 +61,9 @@ export function rentalAffordabilityInsights(
 ): CalculatorInsight[] {
   const tips: CalculatorInsight[] = [];
   const grossPercent = formatCalculatorPercent(result.grossRentShare * 100, 0);
+  const hasThinBuffer =
+    result.disposableIncome > 0 && result.remainingAfterRent < result.disposableIncome * 0.2;
+  const wouldBenefitFromSharing = result.grossRentShare > 0.35 || hasThinBuffer;
 
   if (result.remainingAfterRent < 0) {
     tips.push({
@@ -103,28 +106,28 @@ export function rentalAffordabilityInsights(
       tone: "positive",
       message: `Sharing could bring your portion to ${formatCalculatorCurrency(result.rentPerPerson)}/month.`,
     });
-  } else if (sharingCount === 1) {
+  } else if (sharingCount === 1 && wouldBenefitFromSharing) {
     tips.push({
       tone: "tip",
       message: "Open to sharing? A roommate can lower your monthly rent pressure.",
     });
   }
 
-  if (result.rentShareOfDisposable <= 0.25 && result.remainingAfterRent > 0 && tips.length < 3) {
+  if (result.remainingAfterRent > 0 && !hasThinBuffer && tips.length < 3) {
     tips.push({
       tone: "positive",
       message: `You would keep about ${formatCalculatorCurrency(result.remainingAfterRent)}/month after rent and expenses.`,
     });
   }
 
-  if (result.rentShareOfDisposable > 0.35 && result.rentShareOfDisposable <= 0.45 && tips.length < 3) {
+  if (result.grossRentShare > 0.3 && result.rentShareOfDisposable > 0.45 && tips.length < 3) {
     tips.push({
       tone: "warning",
       message: "Rent would take a large share of your leftover income. A cheaper area or shared rental could improve flexibility.",
     });
   }
 
-  if (result.disposableIncome > 0 && result.remainingAfterRent < result.disposableIncome * 0.15 && tips.length < 3) {
+  if (hasThinBuffer && tips.length < 3) {
     tips.push({
       tone: "warning",
       message: "Your post-rent buffer is thin. Leave space for transport, utilities, data, and small repairs before committing.",
