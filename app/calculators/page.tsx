@@ -5,6 +5,9 @@ export const metadata: Metadata = {
   title: "Property Calculators | HomeLink Zimbabwe",
   description:
     "Free property calculators for move-in costs, rental affordability, agent commission splits, and landlord rental income on HomeLink Zimbabwe.",
+  alternates: {
+    canonical: "/calculators",
+  },
 };
 
 export default function CalculatorsPage() {

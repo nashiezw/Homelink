@@ -28,6 +28,9 @@ export const metadata: Metadata = {
   title: "About HomeLink Zimbabwe | Built from a Real Housing Struggle",
   description:
     "Learn why HomeLink Zimbabwe was built by people who understand fake listings, unanswered calls, wasted viewings, and the need for a property platform people can trust.",
+  alternates: {
+    canonical: "/about",
+  },
 };
 
 const storyBeats = [
@@ -177,12 +180,11 @@ export default function AboutPage() {
         <div className="absolute inset-0">
           <Image
             src="/images/homelink-hero.png"
-            alt=""
+            alt="HomeLink Zimbabwe property search experience"
             fill
             priority
             className="scale-105 object-cover opacity-55 motion-reduce:scale-100"
             sizes="100vw"
-            aria-hidden="true"
           />
           <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(2,12,21,0.92)_0%,rgba(9,32,42,0.82)_45%,rgba(9,32,42,0.48)_100%)]" />
           <div className="hero-mesh absolute inset-0 opacity-80" />
@@ -554,7 +556,7 @@ export default function AboutPage() {
       <section className="px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
         <FadeIn>
           <div className="relative mx-auto max-w-7xl overflow-hidden rounded-3xl bg-ink text-white shadow-hero">
-            <Image src="/images/property-management-dusk.png" alt="" fill className="object-cover opacity-35" sizes="100vw" aria-hidden="true" />
+            <Image src="/images/property-management-dusk.png" alt="Managed HomeLink property at dusk" fill className="object-cover opacity-35" sizes="100vw" />
             <div className="absolute inset-0 bg-[linear-gradient(120deg,rgba(6,78,59,0.94),rgba(15,23,42,0.9))]" />
             <div className="hero-mesh absolute inset-0 opacity-50" />
             <div className="relative grid gap-8 px-6 py-10 sm:px-10 lg:grid-cols-[1fr_auto] lg:items-center lg:px-12 lg:py-12">

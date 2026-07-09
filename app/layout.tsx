@@ -31,9 +31,6 @@ export const metadata: Metadata = {
     "roommate matching Zimbabwe",
     "verified property listings",
   ],
-  alternates: {
-    canonical: "/",
-  },
   icons: {
     icon: [
       { url: "/brand/homelink-icon.png", sizes: "32x32", type: "image/png" },

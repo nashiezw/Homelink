@@ -1,5 +1,15 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import { RoommatesPageClient } from "@/components/pages/roommates-page-client";
+
+export const metadata: Metadata = {
+  title: "Find Rooms and Roommates in Zimbabwe | HomeLink",
+  description:
+    "Find rooms to rent, compatible roommates, shared homes, and verified room listings across Zimbabwe with HomeLink.",
+  alternates: {
+    canonical: "/roommates",
+  },
+};
 
 export default function RoommatesPage() {
   return (

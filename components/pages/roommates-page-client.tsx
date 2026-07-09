@@ -119,7 +119,7 @@ function AvatarStack({ urls, size = 36 }: { urls: readonly string[]; size?: numb
         <Image
           key={url}
           src={url}
-          alt=""
+          alt={`HomeLink roommate member ${i + 1}`}
           width={size}
           height={size}
           className="rounded-full border-2 border-white/90 object-cover shadow-sm"
@@ -145,7 +145,7 @@ function HeroPhotoCollage() {
             i === 2 && "absolute left-[18%] bottom-0 z-30 h-[13rem] w-[55%] rotate-1",
           )}
         >
-          <Image src={src} alt="" fill className="object-cover" sizes="30vw" />
+          <Image src={src} alt={`Shared room and roommate lifestyle photo ${i + 1}`} fill className="object-cover" sizes="30vw" />
           <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
         </div>
       ))}
@@ -505,7 +505,7 @@ function TestimonialCard({ story }: { story: (typeof successStories)[number] }) 
   return (
     <blockquote className="group flex h-full flex-col overflow-hidden rounded-[1.5rem] bg-white shadow-[0_16px_50px_rgba(16,32,36,0.08)] ring-1 ring-slate-200/80 transition hover:-translate-y-1 hover:shadow-[0_24px_60px_rgba(16,185,129,0.12)]">
       <div className="relative aspect-[16/10] overflow-hidden">
-        <Image src={story.coverPhoto} alt="" fill className="object-cover transition duration-500 group-hover:scale-105" sizes="33vw" />
+        <Image src={story.coverPhoto} alt={`${story.name} roommate success story`} fill className="object-cover transition duration-500 group-hover:scale-105" sizes="33vw" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
         <div className="absolute bottom-4 left-4 flex items-center gap-3">
           <Image src={story.avatarUrl} alt={story.name} width={48} height={48} className="size-12 rounded-full object-cover ring-2 ring-white" />

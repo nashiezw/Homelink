@@ -1,6 +1,16 @@
+import type { Metadata } from "next";
 import { BadgeCheck, Building2, Phone, ShieldCheck, UserCheck } from "lucide-react";
 import Link from "next/link";
 import { PageShell } from "@/components/layout/page-shell";
+
+export const metadata: Metadata = {
+  title: "Verification | HomeLink Zimbabwe",
+  description:
+    "See how HomeLink Zimbabwe verifies people, listings, and tenancies to reduce fake listings and protect property seekers.",
+  alternates: {
+    canonical: "/verification",
+  },
+};
 
 const checks = [
   {

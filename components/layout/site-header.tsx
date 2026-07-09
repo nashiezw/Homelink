@@ -321,9 +321,10 @@ export function SiteHeader() {
       </div>
 
       {/* Mobile / tablet drawer */}
+      {menuOpen && (
       <div
-        className={cn("fixed inset-0 z-[100] h-[100dvh] xl:hidden", menuOpen ? "pointer-events-auto" : "hidden pointer-events-none")}
-        aria-hidden={!menuOpen}
+        className="fixed inset-0 z-[100] h-[100dvh] xl:hidden"
+        aria-hidden={false}
       >
         <div
           className={cn(
@@ -440,6 +441,7 @@ export function SiteHeader() {
           </nav>
         </div>
       </div>
+      )}
     </header>
   );
 }

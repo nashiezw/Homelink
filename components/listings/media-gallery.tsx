@@ -64,7 +64,7 @@ export function MediaGallery({ images, title }: MediaGalleryProps) {
                   index === active ? "ring-emerald-600" : "ring-transparent opacity-80 hover:opacity-100"
                 }`}
               >
-                <Image src={src} alt="" fill className="object-cover" sizes="80px" />
+                <Image src={src} alt={`${title} photo ${index + 1}`} fill className="object-cover" sizes="80px" />
               </button>
             ))}
           </div>

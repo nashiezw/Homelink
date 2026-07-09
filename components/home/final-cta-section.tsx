@@ -16,11 +16,10 @@ export function FinalCtaSection({ content, imageUrl = "/images/roommates/room-sh
         <div className="relative mx-auto max-w-7xl overflow-hidden rounded-3xl bg-ink text-white shadow-hero">
           <Image
             src={imageUrl}
-            alt=""
+            alt="HomeLink room sharing and property search support"
             fill
             className="object-cover opacity-35"
             sizes="100vw"
-            aria-hidden="true"
           />
           <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(6,78,59,0.92),rgba(15,23,42,0.88))]" />
           <div className="hero-mesh absolute inset-0 opacity-50" />

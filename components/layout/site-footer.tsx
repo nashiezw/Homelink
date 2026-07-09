@@ -12,12 +12,12 @@ const groups = [
     items: [
       ["Rent rooms", "/search?intent=rent&type=room"],
       ["Buy property", "/search?intent=buy"],
-      ["Commercial", "/search?type=commercial"],
-      ["Holiday Homes", "/search?type=holiday_home"],
-      ["Land", "/search?type=land"],
-      ["Roommates", "/roommates"],
+      ["Commercial property", "/search?type=commercial"],
+      ["Holiday stays", "/search?type=holiday_home"],
+      ["Development land", "/search?type=land"],
+      ["Roommate matching", "/roommates"],
       ["Compare", "/compare"],
-      ["Calculators", "/calculators"],
+      ["Property calculators", "/calculators"],
     ],
   },
   {

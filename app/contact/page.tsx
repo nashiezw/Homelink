@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { Clock3, Mail, MessageCircle, Phone, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { PageShell } from "@/components/layout/page-shell";
@@ -5,6 +6,15 @@ import { getMailtoHref, getTelHref, getWhatsAppHref } from "@/lib/settings/conta
 import { getHydratedRuntimePlatformSettings } from "@/lib/settings/runtime";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "Contact HomeLink Zimbabwe | Property Support",
+  description:
+    "Contact HomeLink Zimbabwe for listing support, property management, verification, account access, and marketplace safety.",
+  alternates: {
+    canonical: "/contact",
+  },
+};
 
 const paths = [
   ["Property owners", "Request management support", "/property-management"],
