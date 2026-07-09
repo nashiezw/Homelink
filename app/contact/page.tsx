@@ -90,6 +90,7 @@ export default async function ContactPage() {
             <Link
               key={audience}
               href={href}
+              rel={href.includes("?") ? "nofollow" : undefined}
               className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-md dark:border-slate-700 dark:bg-slate-900"
             >
               <p className="text-sm font-semibold uppercase text-emerald-700 dark:text-emerald-300">{audience}</p>

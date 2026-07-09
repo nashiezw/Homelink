@@ -31,6 +31,7 @@ export function CalculatorsPageClient() {
           <div className="flex flex-col gap-2 sm:flex-row">
             <Link
               href="/search?intent=rent"
+              rel="nofollow"
               className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-5 text-sm font-semibold text-white shadow-md transition hover:-translate-y-0.5 hover:bg-emerald-500"
             >
               Search rentals

@@ -117,6 +117,7 @@ function QuickLink({ href, label, icon: Icon }: { href: string; label: string; i
   return (
     <Link
       href={href}
+      rel={href.includes("?") ? "nofollow" : undefined}
       className="inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-emerald-200 bg-white px-4 text-sm font-bold text-emerald-900 shadow-sm transition hover:-translate-y-0.5 hover:bg-emerald-50"
     >
       <Icon className="size-4" aria-hidden="true" />

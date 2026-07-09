@@ -14,16 +14,17 @@ type HomeLinkIconProps = {
 
 /** Official HomeLink house mark — gradient H/L icon from brand artwork */
 export function HomeLinkIcon({ className, title }: HomeLinkIconProps) {
+  const alt = title ?? "HomeLink Zimbabwe";
   return (
     <Image
       src={HOMELINK_ICON_SRC}
-      alt={title ?? ""}
+      alt={alt}
       width={1024}
       height={1024}
       priority={false}
       decoding="async"
       className={cn("block shrink-0 object-contain", className)}
-      aria-hidden={!title}
+      aria-hidden={title ? undefined : true}
       role={title ? "img" : undefined}
     />
   );

@@ -56,6 +56,7 @@ export function BrowsePropertyTypes({ types }: BrowsePropertyTypesProps) {
                 <Link
                   key={item.id}
                   href={item.href}
+                  rel={item.href.includes("?") ? "nofollow" : undefined}
                   className="group flex items-center gap-3 rounded-xl border border-slate-200/90 bg-white px-3.5 py-3 shadow-sm transition duration-300 hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-card-hover dark:border-slate-800 dark:bg-slate-900 dark:hover:border-emerald-800"
                 >
                   <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-50 to-cyan-50 text-emerald-700 ring-1 ring-emerald-100 transition group-hover:from-emerald-600 group-hover:to-teal-600 group-hover:text-white dark:from-emerald-950 dark:to-slate-900 dark:ring-emerald-900">

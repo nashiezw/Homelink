@@ -161,6 +161,7 @@ function PrimaryCta({ href, children }: { href: string; children: React.ReactNod
   return (
     <Link
       href={href}
+      rel={href.includes("?") ? "nofollow" : undefined}
       className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-emerald-500 px-6 text-sm font-semibold text-white shadow-lg transition hover:-translate-y-0.5 hover:bg-emerald-400"
     >
       {children}
@@ -569,6 +570,7 @@ export default function AboutPage() {
               <div className="flex flex-col gap-3 sm:flex-row lg:justify-end">
                 <Link
                   href="/search?intent=rent"
+                  rel="nofollow"
                   className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-white px-6 text-sm font-semibold text-emerald-900 shadow-lg transition hover:-translate-y-0.5 hover:bg-emerald-50"
                 >
                   Find a Home

@@ -415,7 +415,7 @@ function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number) {
 function MapPinCluster({ cluster }: { cluster?: { label: string; href: string; location: string; distanceLabel: string | null } }) {
   if (!cluster) return null;
   return (
-    <Link href={cluster.href} aria-label={`View listings in ${cluster.location}`} title={cluster.distanceLabel ?? cluster.location} className="group/pin relative block -translate-x-1/2 -translate-y-full">
+    <Link href={cluster.href} rel={cluster.href.includes("?") ? "nofollow" : undefined} aria-label={`View listings in ${cluster.location}`} title={cluster.distanceLabel ?? cluster.location} className="group/pin relative block -translate-x-1/2 -translate-y-full">
       <span className="map-pin-pulse absolute left-1/2 top-1/2 size-10 -translate-x-1/2 -translate-y-1/2 rounded-full bg-emerald-400/50" />
       <span className="relative flex size-9 items-center justify-center rounded-full bg-gradient-to-br from-emerald-300 to-emerald-600 shadow-lg shadow-emerald-900/50 ring-2 ring-white transition group-hover/pin:scale-110">
         <MapPin className="size-4 fill-white text-white" />

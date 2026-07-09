@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { getHomepageData, getHomepageSeo } from "@/lib/homepage/data";
 import { HomePageView } from "@/components/home/home-page-view";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 300;
 
 export async function generateMetadata(): Promise<Metadata> {
   const seo = await getHomepageSeo();

@@ -29,6 +29,10 @@ const exploreNavMore = [
 const iconButtonClass =
   "relative inline-flex size-10 shrink-0 items-center justify-center rounded-[10px] text-slate-600 transition-all duration-200 hover:bg-slate-100 hover:text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white";
 
+function internalRel(href: string) {
+  return href.includes("?") ? "nofollow" : undefined;
+}
+
 function useNavActive() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -72,6 +76,7 @@ function NavLink({
       href={href}
       onClick={onClick}
       title={title}
+      rel={internalRel(href)}
       aria-current={active ? "page" : undefined}
       className={cn(
         "relative inline-flex h-10 shrink-0 items-center whitespace-nowrap rounded-[10px] px-2.5 text-sm font-medium tracking-tight transition-all duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600",
@@ -209,6 +214,7 @@ export function SiteHeader() {
                       href={item.href}
                       role="menuitem"
                       onClick={() => setMoreOpen(false)}
+                      rel={internalRel(item.href)}
                       className={cn(
                         "block rounded-lg px-3 py-2.5 transition-colors duration-200 hover:bg-emerald-50 dark:hover:bg-slate-800",
                         isNavActive(item.href) && "bg-emerald-50 dark:bg-emerald-950/40",
@@ -256,6 +262,7 @@ export function SiteHeader() {
                       href={item.href}
                       role="menuitem"
                       onClick={() => setOwnersOpen(false)}
+                      rel={internalRel(item.href)}
                       className="block rounded-lg px-3 py-2.5 transition-colors duration-200 hover:bg-emerald-50 dark:hover:bg-slate-800"
                     >
                       <p className="text-sm font-semibold text-ink dark:text-white">{item.label}</p>
@@ -295,6 +302,7 @@ export function SiteHeader() {
 
           <Link
             href={listHref}
+            rel={internalRel(listHref)}
             className="hidden h-10 items-center justify-center rounded-[10px] bg-gradient-to-b from-emerald-600 to-emerald-700 px-4 text-sm font-bold text-white shadow-[0_4px_16px_-2px_rgba(5,150,105,0.45)] transition-all duration-200 hover:-translate-y-0.5 hover:from-emerald-500 hover:to-emerald-600 sm:inline-flex"
           >
             List property
@@ -356,6 +364,7 @@ export function SiteHeader() {
                       key={item.href}
                       href={item.href}
                       onClick={() => setMenuOpen(false)}
+                      rel={internalRel(item.href)}
                       className={cn(
                         "rounded-[10px] px-2.5 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-200",
                         isNavActive(item.href) && "bg-emerald-50 font-semibold text-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-300",
@@ -377,6 +386,7 @@ export function SiteHeader() {
                       key={item.label}
                       href={item.href}
                       onClick={() => setMenuOpen(false)}
+                      rel={internalRel(item.href)}
                       className="rounded-[10px] px-2.5 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-200"
                     >
                       {item.label}
@@ -394,6 +404,7 @@ export function SiteHeader() {
                     key={item.href}
                     href={item.href}
                     onClick={() => setMenuOpen(false)}
+                    rel={internalRel(item.href)}
                     className="rounded-[10px] px-2.5 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-200"
                   >
                     {item.label}
@@ -421,6 +432,7 @@ export function SiteHeader() {
             <Link
               href={listHref}
               onClick={() => setMenuOpen(false)}
+              rel={internalRel(listHref)}
               className="mt-5 flex h-11 w-full shrink-0 items-center justify-center rounded-[10px] bg-gradient-to-b from-emerald-600 to-emerald-700 text-sm font-bold text-white"
             >
               List property

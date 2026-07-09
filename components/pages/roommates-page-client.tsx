@@ -175,6 +175,7 @@ function LocationMarquee() {
           <Link
             key={`${loc.name}-${i}`}
             href={`/search?intent=rent&type=room&suburb=${encodeURIComponent(loc.name)}`}
+            rel="nofollow"
             className="group relative flex w-[20rem] shrink-0 overflow-hidden rounded-[1.35rem] border border-white/12 bg-white/[0.06] p-3 transition duration-300 hover:-translate-y-1 hover:border-emerald-400/50 hover:bg-white/10"
           >
             <div className="relative h-24 w-28 shrink-0 overflow-hidden rounded-2xl ring-1 ring-white/10">
@@ -785,7 +786,7 @@ export function RoommatesPageClient() {
                 accent="now"
                 subtitle="Hand-picked verified listings with real photos, cleaner pricing, and room details that are easy to scan."
                 action={(
-                  <Link href="/search?type=room&intent=rent" className="inline-flex h-11 items-center gap-2 rounded-2xl bg-emerald-600 px-5 text-sm font-bold text-white shadow-lg transition hover:-translate-y-0.5 hover:bg-emerald-700">
+                  <Link href="/search?type=room&intent=rent" rel="nofollow" className="inline-flex h-11 items-center gap-2 rounded-2xl bg-emerald-600 px-5 text-sm font-bold text-white shadow-lg transition hover:-translate-y-0.5 hover:bg-emerald-700">
                     View all rooms <ArrowRight className="size-4" />
                   </Link>
                 )}

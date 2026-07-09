@@ -19,9 +19,29 @@ const inter = localFont({
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? "https://homelinkzim.co.zw"),
+  applicationName: "HomeLink Zimbabwe",
   title: "HomeLink Zimbabwe | Find Your Next Home with Confidence",
   description:
     "Verified rooms, houses, flats, cottages, commercial property, land, and roommate matching across Zimbabwe.",
+  keywords: [
+    "HomeLink Zimbabwe",
+    "Zimbabwe property",
+    "houses for rent Zimbabwe",
+    "rooms to rent Harare",
+    "roommate matching Zimbabwe",
+    "verified property listings",
+  ],
+  alternates: {
+    canonical: "/",
+  },
+  icons: {
+    icon: [
+      { url: "/brand/homelink-icon.png", sizes: "32x32", type: "image/png" },
+      { url: "/brand/homelink-icon.png", sizes: "192x192", type: "image/png" },
+    ],
+    apple: [{ url: "/brand/homelink-icon.png", sizes: "180x180", type: "image/png" }],
+  },
+  manifest: "/site.webmanifest",
   openGraph: {
     title: "HomeLink Zimbabwe | Find Your Next Home with Confidence",
     description:
@@ -38,6 +58,10 @@ export const metadata: Metadata = {
     description:
       "Verified rooms, houses, flats, cottages, commercial property, land, and roommate matching across Zimbabwe.",
     images: ["/brand/homelink-full-lockup.png"],
+  },
+  robots: {
+    index: true,
+    follow: true,
   },
 };
 

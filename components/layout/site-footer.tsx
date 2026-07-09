@@ -48,10 +48,20 @@ const groups = [
       ["Terms", "/terms"],
       ["Privacy", "/privacy"],
       ["Messages", "/messages"],
-      ["My enquiries", "/enquiries"],
+      ["Enquiry inbox", "/enquiries"],
     ],
   },
 ];
+
+const shareLinks = [
+  ["Facebook", "https://www.facebook.com/sharer/sharer.php?u=https%3A%2F%2Fhomelinkzim.co.zw"],
+  ["LinkedIn", "https://www.linkedin.com/shareArticle?mini=true&url=https%3A%2F%2Fhomelinkzim.co.zw"],
+  ["WhatsApp", "https://wa.me/?text=Find%20verified%20property%20on%20HomeLink%20Zimbabwe%3A%20https%3A%2F%2Fhomelinkzim.co.zw"],
+] as const;
+
+function internalRel(href: string) {
+  return href.includes("?") ? "nofollow" : undefined;
+}
 
 export function SiteFooter() {
   const { config } = usePlatformConfig();
@@ -85,6 +95,22 @@ export function SiteFooter() {
               </a>
             </div>
           )}
+          <div className="mt-5">
+            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Share HomeLink</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {shareLinks.map(([label, href]) => (
+                <a
+                  key={label}
+                  href={href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="rounded-full border border-white/10 px-3 py-1.5 text-xs font-semibold text-slate-300 transition hover:border-emerald-300/50 hover:text-emerald-300"
+                >
+                  {label}
+                </a>
+              ))}
+            </div>
+          </div>
           <Link
             href="/dashboard/landlord/new"
             className="hover-lift mt-6 inline-flex h-11 items-center justify-center rounded-lg bg-emerald-600 px-5 text-sm font-semibold text-white shadow-lg shadow-emerald-950/30 transition hover:bg-emerald-500"
@@ -101,6 +127,7 @@ export function SiteFooter() {
                   <Link
                     key={label}
                     href={href}
+                    rel={internalRel(href)}
                     className="transition hover:translate-x-0.5 hover:text-emerald-300"
                   >
                     {label}
