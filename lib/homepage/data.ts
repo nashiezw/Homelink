@@ -372,11 +372,11 @@ async function getPostgresAgentRows() {
 
 async function listHomepageListingsFromPostgres(): Promise<HomepageListing[]> {
   const rows = await getMainPrisma().listing.findMany({
-    where: { status: { in: ["ACTIVE", "VIEWING_IN_PROGRESS"] as never } },
+    where: { status: { not: "DELETED" } },
     select: HOMEPAGE_LISTING_SELECT,
     orderBy: { createdAt: "desc" },
   });
-  return rows.map(toHomepageListing);
+  return rows.filter((row) => isPublicListingStatus(row.status)).map(toHomepageListing);
 }
 
 function toHomepageListing(row: HomepageListingRow): HomepageListing {
