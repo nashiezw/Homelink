@@ -30,7 +30,8 @@ export async function createPaymentInPostgres(
   const amount = input.plan === "tenancy_payment"
     ? Number(input.amount) || getPlanPrice(input.plan, settings.fees)
     : getPlanPrice(input.plan, settings.fees);
-  const isManual = ["bank_transfer", "cash", "zipit"].includes(input.provider);
+  const manualMethod = settings.manualMethods.find((method) => method.id === input.provider && method.enabled);
+  const isManual = Boolean(manualMethod) || ["bank_transfer", "cash", "zipit"].includes(input.provider);
   const row = await getMainPrisma().payment.create({
     data: {
       userId,

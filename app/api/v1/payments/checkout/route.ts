@@ -1,4 +1,5 @@
 import { getPlanPrice } from "@/lib/payments/plans";
+import { buildCheckoutRedirectUrl } from "@/lib/payments/tenancy-checkout";
 import { getSessionUserIdFromRequest } from "@/lib/auth/session";
 import { created, ok, problem } from "@/lib/api/response";
 import { requireStrictProductionConfig } from "@/lib/production/runtime";
@@ -49,15 +50,23 @@ export async function POST(request: Request) {
       const completed = await completePaymentInPostgres(payment.id);
       return created({
         ...completed,
-        redirectUrl: body.listingId
-          ? `/payments?status=success&id=${payment.id}&listingId=${body.listingId}`
-          : `/payments?status=success&id=${payment.id}`,
+        redirectUrl: buildCheckoutRedirectUrl({
+          plan: body.plan,
+          listingId: body.listingId,
+          paymentId: payment.id,
+          status: "success",
+        }),
       });
     }
     if (isManual) {
       return created({
         ...payment,
-        redirectUrl: `/payments?status=pending&id=${payment.id}${body.listingId ? `&listingId=${body.listingId}` : ""}`,
+        redirectUrl: buildCheckoutRedirectUrl({
+          plan: body.plan,
+          listingId: body.listingId,
+          paymentId: payment.id,
+          status: "pending",
+        }),
         message: "Upload proof of payment or pay using bank details provided.",
         bankDetails: settings.bankDetails,
         manualMethod,
@@ -65,7 +74,13 @@ export async function POST(request: Request) {
     }
     return created({
       ...payment,
-      redirectUrl: gateway?.successUrl ?? `/payments?status=pending&id=${payment.id}${body.listingId ? `&listingId=${body.listingId}` : ""}`,
+      redirectUrl: buildCheckoutRedirectUrl({
+        plan: body.plan,
+        listingId: body.listingId,
+        paymentId: payment.id,
+        status: "pending",
+        gatewaySuccessUrl: gateway?.successUrl,
+      }),
       message: "Redirecting to payment gateway...",
     });
   }
@@ -104,7 +119,12 @@ export async function POST(request: Request) {
     return created({
       ...payment,
       status: payment.status,
-      redirectUrl: `/payments?status=pending&id=${payment.id}${body.listingId ? `&listingId=${body.listingId}` : ""}`,
+      redirectUrl: buildCheckoutRedirectUrl({
+        plan: body.plan,
+        listingId: body.listingId,
+        paymentId: payment.id,
+        status: "pending",
+      }),
       message: "Upload proof of payment or pay using bank details provided.",
       bankDetails: settings.bankDetails,
       manualMethod,
@@ -122,17 +142,26 @@ export async function POST(request: Request) {
     return created({
       ...completed,
       redirectUrl:
-        body.plan === "tenancy_payment"
-          ? `/dashboard/tenancies?checkout=success&payment=${payment.id}&listingId=${body.listingId ?? ""}`
-          : body.listingId
-            ? `/payments?status=success&id=${payment.id}&listingId=${body.listingId}`
-            : `/payments?status=success&id=${payment.id}`,
+        body.plan === "tenancy_payment" && body.listingId
+          ? `/dashboard/tenancies?checkout=success&payment=${payment.id}&listingId=${body.listingId}`
+          : buildCheckoutRedirectUrl({
+              plan: body.plan,
+              listingId: body.listingId,
+              paymentId: payment.id,
+              status: "success",
+            }),
     });
   }
 
   return created({
     ...payment,
-    redirectUrl: gateway?.successUrl ?? `/payments?status=pending&id=${payment.id}${body.listingId ? `&listingId=${body.listingId}` : ""}`,
+    redirectUrl: buildCheckoutRedirectUrl({
+      plan: body.plan,
+      listingId: body.listingId,
+      paymentId: payment.id,
+      status: "pending",
+      gatewaySuccessUrl: gateway?.successUrl,
+    }),
     message: "Redirecting to payment gateway...",
   });
 }

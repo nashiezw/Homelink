@@ -174,8 +174,10 @@ export function ListingDetailView({
           ) : (
             <ListingDetailActions listing={listing} />
           )}
+          {!isHoliday && listing.intent === "rent" ? (
+            <TenancyActions listing={listing} landlordUserId={landlordUserId} />
+          ) : null}
           <AgentRatingPrompt listingId={listing.id} />
-          {!isHoliday ? <TenancyActions listing={listing} landlordUserId={landlordUserId} /> : null}
           <div className="rounded-lg bg-emerald-50 p-4 dark:bg-emerald-950/30">
             <p className="text-sm font-semibold text-emerald-900 dark:text-emerald-100">Before you travel</p>
             <p className="mt-1 text-sm leading-6 text-emerald-900/80 dark:text-emerald-100/80">
