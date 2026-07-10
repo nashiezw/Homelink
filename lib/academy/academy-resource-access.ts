@@ -27,6 +27,8 @@ export type ResourceAccessView = {
   status: AcademyRegistrationStatus | null;
   accessId: string | null;
   paymentId: string | null;
+  paymentMethod: string | null;
+  referenceNumber: string | null;
   proofUrl: string | null;
   adminNote: string | null;
 };
@@ -133,7 +135,7 @@ export async function getToolkitAccessView(learnerId: string, courseId: string, 
     }),
   ]);
   if (!course) {
-    return { unlocked: false, salesEnabled: false, price: 0, currency: "USD", status: null, accessId: null, paymentId: null, proofUrl: null, adminNote: null };
+    return { unlocked: false, salesEnabled: false, price: 0, currency: "USD", status: null, accessId: null, paymentId: null, paymentMethod: null, referenceNumber: null, proofUrl: null, adminNote: null };
   }
   const pricing = resolveToolkitPrice(course, isAgent);
   const unlocked = access?.status === AcademyRegistrationStatus.APPROVED;
@@ -145,6 +147,8 @@ export async function getToolkitAccessView(learnerId: string, courseId: string, 
     status: access?.status ?? null,
     accessId: access?.id ?? null,
     paymentId: access?.paymentId ?? null,
+    paymentMethod: access?.payment?.method ?? null,
+    referenceNumber: paymentReference(access?.payment?.metadata),
     proofUrl: access?.proofUrl ?? access?.payment?.proofUrl ?? null,
     adminNote: access?.adminNote ?? null,
   };
@@ -169,9 +173,16 @@ export async function getManualAccessView(learnerId: string, isAgent: boolean): 
     status: access?.status ?? null,
     accessId: access?.id ?? null,
     paymentId: access?.paymentId ?? null,
+    paymentMethod: access?.payment?.method ?? null,
+    referenceNumber: paymentReference(access?.payment?.metadata),
     proofUrl: access?.proofUrl ?? access?.payment?.proofUrl ?? null,
     adminNote: access?.adminNote ?? null,
   };
+}
+
+function paymentReference(metadata: Prisma.JsonValue | null | undefined) {
+  const value = (metadata ?? {}) as Record<string, unknown>;
+  return typeof value.referenceNumber === "string" ? value.referenceNumber : null;
 }
 
 export function maskToolkitGroups(groups: ToolkitGroup[], access: ResourceAccessView) {

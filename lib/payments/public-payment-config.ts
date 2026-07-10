@@ -10,8 +10,8 @@ export type PublicPaymentConfig = {
 };
 
 export function resolveManualMethod(config: PublicPaymentConfig | null | undefined, methodId: string) {
-  if (!config) return null;
-  return config.manualMethods.find((method) => method.id === methodId) ?? config.manualMethods[0] ?? null;
+  if (!config || !methodId) return null;
+  return config.manualMethods.find((method) => method.id === methodId) ?? null;
 }
 
 export function formatBankDetailLabel(key: string) {

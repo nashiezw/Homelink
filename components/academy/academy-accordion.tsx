@@ -54,6 +54,8 @@ export type ToolkitAccessState = {
   currency: string;
   status: string | null;
   paymentId: string | null;
+  paymentMethod?: string | null;
+  referenceNumber?: string | null;
   proofUrl?: string | null;
   adminNote?: string | null;
 };

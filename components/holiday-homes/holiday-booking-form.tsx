@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+import { Lock } from "lucide-react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Calendar, Users } from "lucide-react";
@@ -45,6 +47,28 @@ export function HolidayBookingForm({ listingId, listingTitle, holidayHome }: Hol
     } else {
       showToast(result.error?.message ?? "Could not send enquiry.", "error");
     }
+  }
+
+  if (!user) {
+    return (
+      <div className="space-y-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+        <div>
+          <p className="text-2xl font-semibold text-emerald-700">{formatNightlyPrice(holidayHome.nightlyRate)}</p>
+          <p className="mt-1 text-xs text-slate-500">
+            Min {holidayHome.minimumStay} nights · Up to {holidayHome.maximumGuests} guests
+          </p>
+        </div>
+        <p className="text-sm leading-6 text-slate-600 dark:text-slate-400">
+          Sign in to request availability. A HomeLink consultant will confirm dates before you travel.
+        </p>
+        <Link href={`/auth?next=/listings/${listingId}`} className="block">
+          <Button className="w-full">
+            <Lock className="mr-2 size-4" />
+            Sign in to request availability
+          </Button>
+        </Link>
+      </div>
+    );
   }
 
   return (

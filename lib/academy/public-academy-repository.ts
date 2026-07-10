@@ -320,6 +320,9 @@ export async function getLearnerAcademyDashboard(learnerId: string, options?: { 
         proofStatus: entry.payment.proofStatus,
         proofUrl: entry.payment.proofUrl,
         method: entry.payment.method,
+        referenceNumber: typeof ((entry.payment.metadata ?? {}) as Record<string, unknown>).referenceNumber === "string"
+          ? String(((entry.payment.metadata ?? {}) as Record<string, unknown>).referenceNumber)
+          : null,
       } : null,
       course: {
         id: entry.course.id,

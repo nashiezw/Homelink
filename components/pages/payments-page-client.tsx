@@ -12,6 +12,7 @@ import {
   Home,
   Landmark,
   Loader2,
+  Lock,
   ReceiptText,
   ShieldCheck,
   Smartphone,
@@ -192,9 +193,13 @@ export function PaymentsPageClient() {
       <PaymentTrustStrip />
 
       {activeTab === "history" ? (
-        <PaymentHistory payments={payments} currency={currency} onSelect={(id) => {
-          window.location.href = `/payments?id=${id}`;
-        }} />
+        !user ? (
+          <GuestPaymentsGate variant="history" />
+        ) : (
+          <PaymentHistory payments={payments} currency={currency} onSelect={(id) => {
+            window.location.href = `/payments?id=${id}`;
+          }} />
+        )
       ) : selectedPayment ? (
         <ActivePaymentPanel
           payment={selectedPayment}
@@ -205,6 +210,8 @@ export function PaymentsPageClient() {
           onProofUploaded={refreshPayments}
           showToast={showToast}
         />
+      ) : !user ? (
+        <GuestPaymentsGate />
       ) : (
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
           <div className="space-y-6">
@@ -371,13 +378,12 @@ export function PaymentsPageClient() {
             </div>
 
             {selectedPlan && (
-              <AcademyPaymentDetails
-                config={config}
-                paymentMethod={paymentMethod}
-                amount={selectedPlan.price}
-                currency={currency}
-                extraInstructions="Use your HomeLink payment reference in the transfer narration. You will upload proof on the next screen."
-              />
+              <div className="rounded-lg border border-dashed border-slate-200 p-4 text-xs text-slate-500 dark:border-slate-700">
+                <p className="font-semibold text-slate-700 dark:text-slate-300">After you create payment</p>
+                <p className="mt-1 leading-relaxed">
+                  HomeLink issues your reference and bank details on the next screen. You then pay and upload proof for finance review.
+                </p>
+              </div>
             )}
 
             <Button className="w-full py-3" disabled={checkoutBusy || !selectedPlan} onClick={() => void startCheckout()}>
@@ -538,6 +544,26 @@ function PaymentHistory({
           );
         })}
       </div>
+    </div>
+  );
+}
+
+function GuestPaymentsGate({ variant = "checkout" }: { variant?: "checkout" | "history" }) {
+  const isHistory = variant === "history";
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-8 text-center shadow-sm dark:border-slate-700 dark:bg-slate-900">
+      <Lock className="mx-auto size-10 text-emerald-700" />
+      <h2 className="mt-4 text-xl font-bold text-ink dark:text-white">
+        {isHistory ? "Sign in to view payment history" : "Sign in to pay for HomeLink services"}
+      </h2>
+      <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-600 dark:text-slate-400">
+        {isHistory
+          ? "Your platform fee payments and proof status are linked to your HomeLink account."
+          : "Listing boosts, subscriptions, and marketing payments require a HomeLink account so finance can issue your reference and track proof."}
+      </p>
+      <Link href="/auth?next=/payments" className="mt-6 inline-flex">
+        <Button className="h-10 px-6">Sign in to continue</Button>
+      </Link>
     </div>
   );
 }

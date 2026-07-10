@@ -680,13 +680,9 @@ function AcademySidePanel({
                 </select>
               </label>
               {selected && displayPrice !== null && displayPrice > 0 && (
-                <AcademyPaymentDetails
-                  config={paymentConfig}
-                  paymentMethod={form.paymentMethod}
-                  amount={displayPrice}
-                  currency={selected.currency}
-                  extraInstructions={academySettings?.paymentInstructions}
-                />
+                <div className="rounded-xl border border-dashed border-slate-200 p-4 text-sm text-slate-600 dark:border-slate-700 dark:text-slate-400">
+                  Payment instructions and your unique reference are issued immediately after you submit registration.
+                </div>
               )}
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
                 Tell us about yourself

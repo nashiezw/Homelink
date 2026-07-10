@@ -1,17 +1,17 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   CheckCircle2,
   CreditCard,
   FileText,
   Loader2,
   Lock,
-  Upload,
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AcademyPaymentDetails } from "@/components/academy/academy-payment-details";
+import { PaymentProofUpload } from "@/components/payments/payment-proof-upload";
 import { apiFetch } from "@/lib/api/client";
 import type { PublicPaymentConfig } from "@/lib/payments/public-payment-config";
 import { cn } from "@/lib/utils";
@@ -42,17 +42,8 @@ type AcademyResourcePurchaseModalProps = {
   access: ToolkitAccessState;
   paymentInstructions?: string;
   accent?: string;
-  showToast: (message: string, tone?: "error" | "success") => void;
+  showToast: (message: string, tone?: "error" | "success" | "info") => void;
 };
-
-function readFile(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result));
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
 
 export function AcademyResourcePurchaseModal({
   open,
@@ -68,13 +59,10 @@ export function AcademyResourcePurchaseModal({
   const [busy, setBusy] = useState(false);
   const [paymentConfig, setPaymentConfig] = useState<PublicPaymentConfig | null>(null);
   const [localAccess, setLocalAccess] = useState(access);
-  const fileRef = useRef<HTMLInputElement>(null);
-  const paymentIdRef = useRef<string>("");
 
   useEffect(() => {
     if (open) {
       setLocalAccess(access);
-      paymentIdRef.current = access.paymentId ?? "";
       void apiFetch<PublicPaymentConfig>("/api/v1/payments/config").then((result) => {
         if (result.data) {
           setPaymentConfig({
@@ -129,39 +117,10 @@ export function AcademyResourcePurchaseModal({
         ...current,
         status: row.status,
         paymentId: row.paymentId ?? current.paymentId,
+        paymentMethod,
       });
-      paymentIdRef.current = row.paymentId ?? "";
     }
     showToast(Number(current.price) > 0 ? "Order created. Complete payment and upload your proof below." : "Access activated.");
-    await onComplete();
-  }
-
-  async function uploadProof(files: FileList | null) {
-    const file = files?.[0];
-    const paymentId = paymentIdRef.current || current.paymentId;
-    if (!file || !paymentId) return;
-    setBusy(true);
-    const dataUrl = await readFile(file);
-    const uploaded = await apiFetch<{ url: string }>("/api/v1/uploads", {
-      method: "POST",
-      body: JSON.stringify({ dataUrl, kind: "document", folder: "academy-payments" }),
-    });
-    if (uploaded.error || !uploaded.data) {
-      setBusy(false);
-      showToast(uploaded.error?.message ?? "Proof upload failed.", "error");
-      return;
-    }
-    const proof = await apiFetch(`/api/v1/payments/${paymentId}/proof`, {
-      method: "POST",
-      body: JSON.stringify({ proofUrl: uploaded.data.url }),
-    });
-    setBusy(false);
-    if (proof.error) {
-      showToast(proof.error.message, "error");
-      return;
-    }
-    setLocalAccess({ ...current, status: "PAYMENT_UPLOADED", paymentId });
-    showToast("Proof uploaded. Admin approval is pending.");
     await onComplete();
   }
 
@@ -235,14 +194,6 @@ export function AcademyResourcePurchaseModal({
 
               {showCheckout && current.salesEnabled && (
                 <>
-                  <AcademyPaymentDetails
-                    config={paymentConfig}
-                    paymentMethod={paymentMethod}
-                    amount={current.price}
-                    currency={current.currency}
-                    extraInstructions={paymentInstructions}
-                  />
-
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
                     Payment method
                     <select
@@ -259,9 +210,9 @@ export function AcademyResourcePurchaseModal({
                   <div className="rounded-xl border border-dashed border-slate-200 p-4 text-xs text-slate-500 dark:border-slate-700">
                     <p className="font-semibold text-slate-700 dark:text-slate-300">How checkout works</p>
                     <ol className="mt-2 list-decimal space-y-1 pl-4">
-                      <li>Review your order and choose a payment method</li>
-                      <li>Pay using the instructions above</li>
-                      <li>Upload proof of payment in the next step</li>
+                      <li>Choose a payment method and create your order</li>
+                      <li>Receive bank details and your payment reference</li>
+                      <li>Pay and upload proof of payment</li>
                       <li>Admin verifies payment and unlocks downloads</li>
                     </ol>
                   </div>
@@ -277,7 +228,7 @@ export function AcademyResourcePurchaseModal({
                 <section className="space-y-4">
                   <AcademyPaymentDetails
                     config={paymentConfig}
-                    paymentMethod={paymentMethod}
+                    paymentMethod={current.paymentMethod ?? paymentMethod}
                     amount={current.price}
                     currency={current.currency}
                     extraInstructions={paymentInstructions}
@@ -291,17 +242,16 @@ export function AcademyResourcePurchaseModal({
                     {current.adminNote && (
                       <p className="mt-2 rounded-lg bg-white/70 p-2 text-xs text-amber-900 dark:bg-slate-950/40 dark:text-amber-100">{current.adminNote}</p>
                     )}
-                    <Button
+                    <PaymentProofUpload
                       className="mt-4 w-full"
-                      variant="secondary"
-                      disabled={busy}
-                      onClick={() => {
-                        paymentIdRef.current = current.paymentId ?? "";
-                        fileRef.current?.click();
+                      paymentId={current.paymentId}
+                      onUploaded={async () => {
+                        setLocalAccess({ ...current, status: "PAYMENT_UPLOADED", paymentId: current.paymentId });
+                        showToast("Proof uploaded. Admin approval is pending.");
+                        await onComplete();
                       }}
-                    >
-                      {busy ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4 mr-2" />} Upload proof of payment
-                    </Button>
+                      showToast={showToast}
+                    />
                   </div>
                 </section>
               )}
@@ -317,8 +267,6 @@ export function AcademyResourcePurchaseModal({
             </div>
           )}
         </div>
-
-        <input ref={fileRef} type="file" accept=".pdf,.png,.jpg,.jpeg,.webp" className="hidden" onChange={(e) => void uploadProof(e.target.files)} />
       </div>
     </div>
   );

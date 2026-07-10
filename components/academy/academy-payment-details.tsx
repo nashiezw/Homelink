@@ -10,6 +10,7 @@ export function AcademyPaymentDetails({
   currency,
   extraInstructions,
   variant = "default",
+  title = "Payment instructions",
 }: {
   config: PublicPaymentConfig | null;
   paymentMethod: string;
@@ -17,6 +18,7 @@ export function AcademyPaymentDetails({
   currency: string;
   extraInstructions?: string;
   variant?: "default" | "proof";
+  title?: string;
 }) {
   const method = resolveManualMethod(config, paymentMethod);
   const bankDetails = config?.bankDetails;
@@ -31,7 +33,7 @@ export function AcademyPaymentDetails({
   return (
     <section className={shellClass}>
       <p className="mb-2 flex items-center gap-2 font-semibold text-slate-900 dark:text-white">
-        <ShieldCheck className="size-4 text-emerald-600" /> HomeLink payment details
+        <ShieldCheck className="size-4 text-emerald-600" /> {title}
       </p>
       <div className="rounded-lg bg-emerald-50/80 px-3 py-2 text-emerald-950 dark:bg-emerald-950/30 dark:text-emerald-100">
         <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">Amount to pay</p>
@@ -66,6 +68,10 @@ export function AcademyPaymentDetails({
         <p className="mt-3 rounded-lg border border-dashed border-slate-200 p-3 text-xs leading-relaxed text-slate-600 dark:border-slate-700 dark:text-slate-400">
           {extraInstructions}
         </p>
+      )}
+
+      {!method && config && (
+        <p className="mt-3 text-xs text-amber-700 dark:text-amber-300">Payment method details are unavailable. Contact support@homelinkzim.co.zw.</p>
       )}
 
       {!config && (

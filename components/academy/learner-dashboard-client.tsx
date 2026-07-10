@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   Award,
   Bell,
@@ -15,7 +15,6 @@ import {
   Play,
   Sparkles,
   TrendingUp,
-  Upload,
   Zap,
 } from "lucide-react";
 import { PageShell } from "@/components/layout/page-shell";
@@ -28,7 +27,10 @@ import {
   buildManualProduct,
   buildToolkitProduct,
 } from "@/components/academy/academy-resource-purchase";
+import { AcademyPaymentDetails } from "@/components/academy/academy-payment-details";
 import type { ToolkitAccessState } from "@/components/academy/academy-accordion";
+import { PaymentProofUpload } from "@/components/payments/payment-proof-upload";
+import type { PublicPaymentConfig } from "@/lib/payments/public-payment-config";
 
 type LearnerDashboard = {
   settings?: { academyName: string; primaryColour?: string; dashboardWelcome?: string; paymentInstructions?: string };
@@ -75,7 +77,7 @@ type LearnerDashboard = {
     proofUrl?: string;
     accessEndsAt?: string;
     adminNote?: string;
-    payment: { id: string; status: string; proofStatus?: string; proofUrl?: string; method?: string } | null;
+    payment: { id: string; status: string; proofStatus?: string; proofUrl?: string; method?: string; referenceNumber?: string | null } | null;
     course: { id: string; title: string; slug?: string; description: string; certificateEnabled: boolean };
   }>;
   activeCourseId?: string | null;
@@ -140,10 +142,8 @@ type LearnerDashboard = {
 export function LearnerDashboardClient() {
   const { user, showToast } = useApp();
   const [data, setData] = useState<LearnerDashboard | null>(null);
-  const [busyPaymentId, setBusyPaymentId] = useState<string | null>(null);
+  const [paymentConfig, setPaymentConfig] = useState<PublicPaymentConfig | null>(null);
   const [checkout, setCheckout] = useState<"toolkit" | "manual" | null>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
-  const paymentRef = useRef<string>("");
   const primary = data?.settings?.primaryColour ?? "#008b68";
 
   const load = useCallback(async () => {
@@ -153,30 +153,17 @@ export function LearnerDashboardClient() {
 
   useEffect(() => { void load(); }, [load]);
 
-  async function upload(files: FileList | null) {
-    const file = files?.[0];
-    const paymentId = paymentRef.current;
-    if (!file || !paymentId) return;
-    setBusyPaymentId(paymentId);
-    const dataUrl = await readFile(file);
-    const uploaded = await apiFetch<{ url: string }>("/api/v1/uploads", {
-      method: "POST",
-      body: JSON.stringify({ dataUrl, kind: "document", folder: "academy-payments" }),
+  useEffect(() => {
+    void apiFetch<PublicPaymentConfig>("/api/v1/payments/config").then((result) => {
+      if (result.data) {
+        setPaymentConfig({
+          currency: result.data.currency,
+          bankDetails: result.data.bankDetails,
+          manualMethods: result.data.manualMethods,
+        });
+      }
     });
-    if (uploaded.error || !uploaded.data) {
-      setBusyPaymentId(null);
-      showToast(uploaded.error?.message ?? "Proof upload failed.", "error");
-      return;
-    }
-    const proof = await apiFetch(`/api/v1/payments/${paymentId}/proof`, {
-      method: "POST",
-      body: JSON.stringify({ proofUrl: uploaded.data.url }),
-    });
-    setBusyPaymentId(null);
-    if (proof.error) { showToast(proof.error.message, "error"); return; }
-    showToast("Proof uploaded. Academy admin approval is now pending.");
-    await load();
-  }
+  }, []);
 
   if (!user) {
     return (
@@ -321,12 +308,29 @@ export function LearnerDashboardClient() {
                 <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-400 line-clamp-3">{application.course.description}</p>
 
                 {application.status !== "APPROVED" && application.payment && (
-                  <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50/80 p-4 dark:border-amber-900/50 dark:bg-amber-950/20">
+                  <div className="mt-5 space-y-4 rounded-xl border border-amber-200 bg-amber-50/80 p-4 dark:border-amber-900/50 dark:bg-amber-950/20">
                     <p className="font-semibold text-amber-900 dark:text-amber-100">Payment approval required</p>
-                    <p className="mt-1 text-sm text-amber-800/90 dark:text-amber-200/90">Upload proof of payment for admin review.</p>
-                    <Button className="mt-3 w-full" disabled={busyPaymentId === application.payment.id} onClick={() => { paymentRef.current = application.payment?.id ?? ""; fileRef.current?.click(); }}>
-                      {busyPaymentId === application.payment.id ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4 mr-2" />} Upload proof
-                    </Button>
+                    <p className="text-sm text-amber-800/90 dark:text-amber-200/90">
+                      Pay {application.currency} {application.amount.toFixed(2)} using the details below, then upload proof for admin review.
+                    </p>
+                    <AcademyPaymentDetails
+                      config={paymentConfig}
+                      paymentMethod={application.payment.method ?? "bank_transfer"}
+                      amount={application.amount}
+                      currency={application.currency}
+                      extraInstructions={
+                        application.payment.referenceNumber
+                          ? `Include reference ${application.payment.referenceNumber} in your transfer narration.`
+                          : undefined
+                      }
+                      variant="proof"
+                    />
+                    <PaymentProofUpload
+                      paymentId={application.payment.id}
+                      onUploaded={() => void load()}
+                      showToast={showToast}
+                      className="w-full"
+                    />
                   </div>
                 )}
 
@@ -492,8 +496,6 @@ export function LearnerDashboardClient() {
         </aside>
       </div>
 
-      <input ref={fileRef} type="file" accept=".pdf,.png,.jpg,.jpeg,.webp" className="hidden" onChange={(e) => void upload(e.target.files)} />
-
       {checkout === "toolkit" && data.activeCourseToolkit?.access && (
         <AcademyResourcePurchaseModal
           open
@@ -567,13 +569,4 @@ function StatusPill({ status }: { status: string }) {
       {status.replace(/_/g, " ")}
     </span>
   );
-}
-
-function readFile(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result));
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
 }

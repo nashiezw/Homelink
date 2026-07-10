@@ -135,6 +135,12 @@ export function TenancyPaymentModal({
     }
 
     if (result.data) {
+      const redirectUrl = result.data.redirectUrl ?? "";
+      const isGatewayRedirect = redirectUrl && !redirectUrl.includes("tenancyPayment=");
+      if (isGatewayRedirect) {
+        window.location.href = redirectUrl;
+        return;
+      }
       onPaymentCreated(result.data);
       showToast(result.data.message ?? "Payment created. Pay using the details below, then upload proof.", "success");
     }
@@ -191,6 +197,7 @@ export function TenancyPaymentModal({
                 paymentMethod={activePayment.method}
                 amount={activePayment.amount}
                 currency={activePayment.currency || currency}
+                title="Tenancy payment instructions"
                 extraInstructions={`Include reference ${activePayment.referenceNumber ?? activePayment.id} in your transfer narration.`}
                 variant="proof"
               />
@@ -241,8 +248,8 @@ export function TenancyPaymentModal({
               </Field>
 
               <div className="flex flex-wrap gap-2">
-                <QuickAmountButton label="Monthly rent" value={listing.price} onSelect={setAmount} />
-                {depositAmount ? <QuickAmountButton label="Deposit" value={depositAmount} onSelect={setAmount} /> : null}
+                <QuickAmountButton label="Monthly rent" value={listing.price} currency={currency} onSelect={setAmount} />
+                {depositAmount ? <QuickAmountButton label="Deposit" value={depositAmount} currency={currency} onSelect={setAmount} /> : null}
               </div>
 
               {manualMethods.length > 0 && (
@@ -252,12 +259,15 @@ export function TenancyPaymentModal({
                 <MethodSelect title="Pay online" methods={onlineMethods} value={paymentMethod} onChange={setPaymentMethod} />
               )}
 
-              <AcademyPaymentDetails
-                config={paymentConfig}
-                paymentMethod={paymentMethod}
-                amount={parsedAmount}
-                currency={currency}
-              />
+              <div className="rounded-xl border border-dashed border-slate-200 p-4 text-xs text-slate-500 dark:border-slate-700">
+                <p className="font-semibold text-slate-700 dark:text-slate-300">What happens next</p>
+                <ol className="mt-2 list-decimal space-y-1 pl-4">
+                  <li>Confirm amount and payment method</li>
+                  <li>Receive your HomeLink reference and bank details</li>
+                  <li>Pay and upload proof of payment</li>
+                  <li>Finance verifies and activates your tenancy record</li>
+                </ol>
+              </div>
 
               <Button className="w-full py-3" disabled={busy || paymentMethods.length === 0} onClick={() => void createTenancyPayment()}>
                 {busy ? <Loader2 className="size-4 animate-spin" /> : <CreditCard className="mr-2 size-4" />}
@@ -320,10 +330,12 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
 function QuickAmountButton({
   label,
   value,
+  currency,
   onSelect,
 }: {
   label: string;
   value: number;
+  currency: string;
   onSelect: (value: string) => void;
 }) {
   return (
@@ -332,7 +344,7 @@ function QuickAmountButton({
       onClick={() => onSelect(String(value))}
       className="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 transition hover:border-emerald-300 hover:text-emerald-700 dark:border-slate-700 dark:text-slate-300"
     >
-      {label}: ${value}
+      {label}: {currency} {value}
     </button>
   );
 }
