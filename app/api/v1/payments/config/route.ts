@@ -28,6 +28,7 @@ function paymentConfig(settings: PaymentSettings) {
     gateways: settings.gateways.map((g) => ({ id: g.id, label: g.label, enabled: g.enabled, sandbox: g.sandbox })),
     manualMethods: settings.manualMethods.filter((method) => method.enabled),
     currency: settings.currency,
+    exchangeRateUsdToZwl: settings.exchangeRateUsdToZwl,
     bankDetails: settings.bankDetails,
     sandboxMode: settings.sandboxMode,
   };

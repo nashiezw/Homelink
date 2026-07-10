@@ -12,7 +12,7 @@ type RouteContext = { params: Promise<{ gateway: string }> };
 export async function POST(request: Request, context: RouteContext) {
   const { gateway } = await context.params;
   if (shouldUsePostgresPayments()) {
-    const settings = getProductionPaymentSettings();
+    const settings = await getProductionPaymentSettings();
     const gw = settings.gateways.find((g) => g.id === gateway);
     if (!gw?.enabled) {
       return ok({ received: false, reason: "gateway_disabled" });

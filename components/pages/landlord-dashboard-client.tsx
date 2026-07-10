@@ -210,8 +210,8 @@ export function LandlordDashboardClient() {
             <p className="mt-3 text-sm leading-6 text-cyan-50">
               Featured placement and stronger verification help high-intent seekers notice the right homes faster.
             </p>
-            <Link href="/payments" className="mt-5 inline-flex">
-              <Button>View plans</Button>
+            <Link href="/payments?plan=featured_listing" className="mt-5 inline-flex">
+              <Button>Boost a listing</Button>
             </Link>
           </div>
           <div className="grid gap-px bg-white/10">

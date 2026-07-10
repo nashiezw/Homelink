@@ -21,7 +21,7 @@ export async function POST(request: Request) {
   }
 
   if (shouldUsePostgresPayments()) {
-    const settings = getProductionPaymentSettings();
+    const settings = await getProductionPaymentSettings();
     const gateway = settings.gateways.find((g) => g.id === body.provider);
     const manualMethod = settings.manualMethods.find((method) => method.id === body.provider && method.enabled);
     if (!gateway?.enabled && !manualMethod) {

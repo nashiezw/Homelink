@@ -1,5 +1,5 @@
 import { PaymentProvider, PaymentStatus, type Prisma } from "@prisma/client";
-import { defaultPaymentSettings } from "@/lib/settings/defaults";
+import { getPostgresPaymentSettings } from "@/lib/admin/postgres-admin-config";
 import { getPlanPrice } from "@/lib/payments/plans";
 import { getMainPrisma, isPostgresStoreEnabled } from "@/lib/db/main-prisma";
 import type { PaymentSettings } from "@/lib/settings/types";
@@ -10,8 +10,8 @@ export function shouldUsePostgresPayments() {
   return isPostgresStoreEnabled();
 }
 
-export function getProductionPaymentSettings(): PaymentSettings {
-  return defaultPaymentSettings;
+export async function getProductionPaymentSettings(): Promise<PaymentSettings> {
+  return getPostgresPaymentSettings();
 }
 
 export async function createPaymentInPostgres(
@@ -26,7 +26,7 @@ export async function createPaymentInPostgres(
     method?: string;
   },
 ) {
-  const settings = getProductionPaymentSettings();
+  const settings = await getProductionPaymentSettings();
   const amount = input.plan === "tenancy_payment"
     ? Number(input.amount) || getPlanPrice(input.plan, settings.fees)
     : getPlanPrice(input.plan, settings.fees);
