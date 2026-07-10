@@ -2,6 +2,7 @@
 
 import {
   ArrowRight,
+  Banknote,
   Building2,
   CheckCircle2,
   Clock3,
@@ -9,7 +10,9 @@ import {
   GraduationCap,
   History,
   Home,
+  Landmark,
   Loader2,
+  ReceiptText,
   ShieldCheck,
   Smartphone,
   Sparkles,
@@ -116,6 +119,7 @@ export function PaymentsPageClient() {
   const selectedPayment = payments.find((payment) => payment.id === selectedPaymentId);
   const currency = config?.currency ?? "USD";
   const groupPlans = getPlansForGroup(checkoutPlans, planGroup);
+  const selectedGroup = PAYMENT_PLAN_GROUPS.find((group) => group.id === planGroup) ?? PAYMENT_PLAN_GROUPS[0];
   const zwlHint = selectedPlan ? formatZwlEquivalent(selectedPlan.price, config?.exchangeRateUsdToZwl) : null;
   const showProofStep =
     selectedPayment &&
@@ -155,12 +159,12 @@ export function PaymentsPageClient() {
   return (
     <PageShell
       eyebrow="Payments"
-      title="Pay for HomeLink Zimbabwe services"
-      description="Listings, subscriptions, and marketing on homelinkzim.co.zw — priced in USD with CBZ bank transfer, ZIPIT, cash, and online gateways when enabled."
+      title="Secure HomeLink payments"
+      description="Pay for listing upgrades, subscriptions, and marketing with a clear reference, Zimbabwe-friendly payment methods, and finance review before activation."
       highlights={[
         { label: "Currency", value: currency },
-        { label: "Primary methods", value: "CBZ · ZIPIT · Cash" },
-        { label: "Proof review", value: "Finance team" },
+        { label: "Primary methods", value: "CBZ / ZIPIT / Cash" },
+        { label: "Proof review", value: "Finance verified" },
       ]}
     >
       {statusParam && !selectedPaymentId && <StatusBanner status={statusParam} />}
@@ -184,6 +188,8 @@ export function PaymentsPageClient() {
           )}
         </TabButton>
       </div>
+
+      <PaymentTrustStrip />
 
       {activeTab === "history" ? (
         <PaymentHistory payments={payments} currency={currency} onSelect={(id) => {
@@ -209,16 +215,23 @@ export function PaymentsPageClient() {
                   Checkout linked to {contextListing.title}
                 </p>
                 <p className="mt-1 text-sm text-emerald-800 dark:text-emerald-200">
-                  {contextListing.suburb}, {contextListing.city} — your upgrade applies to this listing after payment approval.
+                  {contextListing.suburb}, {contextListing.city} - your upgrade applies to this listing after payment approval.
                 </p>
               </div>
             )}
 
-            <section className="overflow-hidden rounded-[1.35rem] border border-emerald-100 bg-white shadow-[0_24px_70px_rgba(15,23,42,0.08)] dark:border-emerald-900/40 dark:bg-slate-900">
-              <div className="border-b border-slate-100 px-4 py-3 dark:border-slate-800">
-                <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-400">
-                  What are you paying for?
+            <section className="overflow-hidden rounded-lg border border-emerald-100 bg-white shadow-[0_24px_70px_rgba(15,23,42,0.08)] dark:border-emerald-900/40 dark:bg-slate-900">
+              <div className="border-b border-slate-100 bg-slate-50/80 px-5 py-4 dark:border-slate-800 dark:bg-slate-950/40">
+                <p className="text-xs font-semibold uppercase tracking-normal text-emerald-700 dark:text-emerald-400">
+                  Select service
                 </p>
+                <div className="mt-1 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+                  <div>
+                    <h2 className="text-xl font-bold text-ink dark:text-white">{selectedGroup.label}</h2>
+                    <p className="mt-1 max-w-2xl text-sm text-slate-600 dark:text-slate-400">{selectedGroup.description}</p>
+                  </div>
+                  <p className="text-xs font-semibold text-slate-500">{groupPlans.length} option{groupPlans.length === 1 ? "" : "s"}</p>
+                </div>
                 <div className="mt-3 flex flex-wrap gap-2">
                   {PAYMENT_PLAN_GROUPS.map((group) => (
                     <button
@@ -230,7 +243,7 @@ export function PaymentsPageClient() {
                         if (first) setSelectedPlanId(first.id);
                       }}
                       className={cn(
-                        "rounded-xl px-3 py-2 text-sm font-semibold transition",
+                        "rounded-lg px-3 py-2 text-sm font-semibold transition",
                         planGroup === group.id
                           ? "bg-emerald-700 text-white"
                           : "bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700",
@@ -249,17 +262,29 @@ export function PaymentsPageClient() {
                     type="button"
                     onClick={() => setSelectedPlanId(plan.id)}
                     className={cn(
-                      "rounded-xl border p-4 text-left transition",
+                      "min-h-[190px] rounded-lg border p-4 text-left transition hover:-translate-y-0.5 hover:shadow-md",
                       selectedPlanId === plan.id
-                        ? "border-emerald-600 bg-emerald-50/70 ring-2 ring-emerald-600/20 dark:border-emerald-500 dark:bg-emerald-950/20"
+                        ? "border-emerald-600 bg-emerald-50/80 ring-2 ring-emerald-600/20 dark:border-emerald-500 dark:bg-emerald-950/20"
                         : "border-slate-200 bg-white hover:border-emerald-200 dark:border-slate-700 dark:bg-slate-900/50",
                     )}
                   >
-                    <p className="font-semibold text-ink dark:text-white">{plan.name}</p>
-                    <p className="mt-1 text-2xl font-bold text-emerald-700 dark:text-emerald-300">
-                      {formatPaymentAmount(currency, plan.price)}
-                    </p>
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="font-semibold text-ink dark:text-white">{plan.name}</p>
+                        <p className="mt-1 text-2xl font-bold text-emerald-700 dark:text-emerald-300">
+                          {formatPaymentAmount(currency, plan.price)}
+                        </p>
+                      </div>
+                      {selectedPlanId === plan.id && <CheckCircle2 className="size-5 shrink-0 text-emerald-700" />}
+                    </div>
                     <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">{plan.description}</p>
+                    <div className="mt-4 flex flex-wrap gap-1.5">
+                      {plan.features.slice(0, 2).map((feature) => (
+                        <span key={feature} className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                          {feature}
+                        </span>
+                      ))}
+                    </div>
                   </button>
                 ))}
               </div>
@@ -299,12 +324,16 @@ export function PaymentsPageClient() {
               </div>
             )}
 
-            <div className="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-900/50">
-              <p className="mb-3 text-sm font-semibold text-ink dark:text-white">Payment method</p>
+            <div className="rounded-lg border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-900/50">
+              <p className="mb-1 flex items-center gap-2 text-sm font-semibold text-ink dark:text-white">
+                <Banknote className="size-4 text-emerald-700" />
+                Payment method
+              </p>
+              <p className="mb-4 text-xs text-slate-500">Choose how you will pay for this HomeLink service.</p>
 
               {manualMethods.length > 0 && (
                 <MethodGroup
-                  title="Zimbabwe — manual"
+                  title="Zimbabwe - manual"
                   hint="CBZ, ZIPIT, or cash. Upload proof after paying."
                   icon={Smartphone}
                 >
@@ -353,11 +382,11 @@ export function PaymentsPageClient() {
 
             <Button className="w-full py-3" disabled={checkoutBusy || !selectedPlan} onClick={() => void startCheckout()}>
               {checkoutBusy ? <Loader2 className="size-4 animate-spin" /> : <ShieldCheck className="mr-2 size-4" />}
-              {selectedPlan ? `Create payment — ${formatPaymentAmount(currency, selectedPlan.price)}` : "Select a plan"}
+              {selectedPlan ? `Create payment - ${formatPaymentAmount(currency, selectedPlan.price)}` : "Select a plan"}
             </Button>
 
             <p className="text-center text-xs text-slate-500">
-              Step 1: create payment · Step 2: pay · Step 3: upload proof · Step 4: finance approval
+              Step 1: create payment / Step 2: pay / Step 3: upload proof / Step 4: finance approval
             </p>
           </aside>
         </div>
@@ -398,7 +427,7 @@ function ActivePaymentPanel({
           <h2 className="mt-2 text-2xl font-bold text-ink dark:text-white">{planLabel(payment.plan)}</h2>
           {listing && (
             <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-              {listing.title} — {listing.suburb}, {listing.city}
+              {listing.title} - {listing.suburb}, {listing.city}
             </p>
           )}
 
@@ -419,7 +448,7 @@ function ActivePaymentPanel({
 
           {showProofStep && (
             <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-900/40 dark:bg-amber-950/20">
-              <p className="font-semibold text-amber-900 dark:text-amber-100">Step 2 — Upload payment proof</p>
+              <p className="font-semibold text-amber-900 dark:text-amber-100">Step 2 - Upload payment proof</p>
               <p className="mt-1 text-sm text-amber-800 dark:text-amber-200">
                 Pay {formatPaymentAmount(payment.currency, payment.amount)} using reference <strong>{reference}</strong>, then upload your receipt or screenshot.
               </p>
@@ -488,7 +517,7 @@ function PaymentHistory({
               <div>
                 <p className="font-semibold text-ink dark:text-white">{planLabel(payment.plan)}</p>
                 <p className="mt-1 text-sm text-slate-500">
-                  {formatPaymentAmount(payment.currency || currency, payment.amount)} ·{" "}
+                  {formatPaymentAmount(payment.currency || currency, payment.amount)} /{" "}
                   {new Date(payment.createdAt).toLocaleDateString("en-ZW", {
                     day: "numeric",
                     month: "short",
@@ -513,13 +542,47 @@ function PaymentHistory({
   );
 }
 
+function PaymentTrustStrip() {
+  const items = [
+    {
+      icon: ReceiptText,
+      label: "Unique payment reference",
+      body: "Every checkout creates a traceable HomeLink reference for finance review.",
+    },
+    {
+      icon: Landmark,
+      label: "Zimbabwe payment rails",
+      body: "CBZ, ZIPIT, cash deposit, and online gateways when configured.",
+    },
+    {
+      icon: ShieldCheck,
+      label: "Activation after verification",
+      body: "Services activate after payment or proof is confirmed by HomeLink.",
+    },
+  ];
+
+  return (
+    <div className="mb-6 grid gap-3 md:grid-cols-3">
+      {items.map((item) => (
+        <div key={item.label} className="rounded-lg border border-emerald-100 bg-white p-4 shadow-sm dark:border-emerald-900/40 dark:bg-slate-900/70">
+          <p className="flex items-center gap-2 text-sm font-bold text-ink dark:text-white">
+            <item.icon className="size-4 text-emerald-700 dark:text-emerald-300" />
+            {item.label}
+          </p>
+          <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-400">{item.body}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function RelatedPaymentsInfo() {
   return (
     <div className="grid gap-4 md:grid-cols-2">
       <InfoCard
         icon={Building2}
         title="Rent & deposit"
-        body="First-month rent and deposits are paid on the property listing page — not here. That creates a verified tenancy record for landlords and tenants."
+        body="First-month rent and deposits are paid on the property listing page - not here. That creates a verified tenancy record for landlords and tenants."
         href="/rent"
         linkLabel="Browse rentals"
       />

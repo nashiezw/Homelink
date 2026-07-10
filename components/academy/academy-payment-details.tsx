@@ -21,6 +21,7 @@ export function AcademyPaymentDetails({
   const method = resolveManualMethod(config, paymentMethod);
   const bankDetails = config?.bankDetails;
   const priceLabel = amount > 0 ? `${currency} ${amount.toFixed(2)}` : "Free";
+  const methodHasBankDetails = Boolean(method?.accountNumber && method?.bankName);
 
   const shellClass =
     variant === "proof"
@@ -52,7 +53,7 @@ export function AcademyPaymentDetails({
         </div>
       )}
 
-      {bankDetails && (
+      {bankDetails && !methodHasBankDetails && (
         <div className="mt-3 space-y-1 rounded-lg border border-slate-100 bg-slate-50/80 p-3 dark:border-slate-800 dark:bg-slate-900/40">
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Official HomeLink bank account</p>
           {Object.entries(bankDetails).map(([key, value]) =>
