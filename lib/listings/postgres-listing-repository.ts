@@ -16,6 +16,7 @@ import { getMainPrisma, isPostgresStoreEnabled } from "@/lib/db/main-prisma";
 import { recordPostgresAuditEvent } from "@/lib/auth/postgres-auth";
 import { getStore } from "@/lib/store/app-store";
 import { isStrictProductionMode } from "@/lib/production/runtime";
+import { isAllowedAvailabilityStatus } from "@/lib/listings/status";
 import type { ListingRecord, StoreUser } from "@/lib/store/types";
 import type { Listing, ListingIntent as PublicListingIntent, PropertyType } from "@/lib/types";
 
@@ -298,6 +299,12 @@ export async function updateListingInPostgres(id: string, updates: ListingInput)
   const prisma = getMainPrisma();
   const existing = await getListingRow(id);
   if (!existing) return null;
+  if (updates.status === "VIEWING_IN_PROGRESS") {
+    await ensureViewingStatusEnumValue();
+  }
+  if (updates.status && !isAllowedAvailabilityStatus(existing.intent.toLowerCase(), updates.status) && ["ACTIVE", "VIEWING_IN_PROGRESS", "RENTED", "SOLD"].includes(updates.status)) {
+    return null;
+  }
   const type = updates.type ?? PROPERTY_TYPE_FROM_DB[existing.propertyType] ?? "room";
   const images = updates.images ?? (updates.image ? [updates.image] : undefined);
   const videos = updates.videos;
@@ -492,6 +499,8 @@ export async function adminListingActionInPostgres(
   }
   if (statusUpdates[action]) {
     const nextStatus = statusUpdates[action];
+    const current = await getListingFromPostgres(listingId);
+    if (!current || !isAllowedAvailabilityStatus(current.intent, nextStatus)) return null;
     return updateListingInPostgres(listingId, {
       status: nextStatus,
       ...(nextStatus === "RENTED" ? { availableFrom: "Let" } : {}),
@@ -762,6 +771,10 @@ function assertPostgresConfigured() {
   if (!isPostgresStoreEnabled()) {
     throw new Error("DATABASE_URL must point to PostgreSQL for production listing persistence.");
   }
+}
+
+async function ensureViewingStatusEnumValue() {
+  await getMainPrisma().$executeRawUnsafe(`ALTER TYPE "ListingStatus" ADD VALUE IF NOT EXISTS 'VIEWING_IN_PROGRESS'`);
 }
 
 function isMissingColumnError(error: unknown) {

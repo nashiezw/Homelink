@@ -11,6 +11,7 @@ import { ListingStatusBadge } from "@/components/listings/listing-status-badge";
 import { useApp } from "@/components/providers/app-provider";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api/client";
+import { listingAvailabilityOptions, listingStatusMetaFromValues } from "@/lib/listings/status";
 import type { ListingWorkflowStatus } from "@/lib/listings/status";
 
 type Analytics = {
@@ -179,29 +180,22 @@ export function LandlordDashboardClient() {
                       <ExternalLink className="size-3.5" />
                       View
                     </Link>
-                    {listing.status !== "ACTIVE" && (
-                      <Button variant="secondary" className="h-9" onClick={() => void updateListingStatus(listing.id, "ACTIVE")}>
-                        Available
-                      </Button>
-                    )}
-                    {listing.status !== "VIEWING_IN_PROGRESS" && listing.status !== "RENTED" && listing.intent !== "buy" && (
-                      <Button variant="secondary" className="h-9" onClick={() => void updateListingStatus(listing.id, "VIEWING_IN_PROGRESS")}>
-                        Viewing
-                      </Button>
-                    )}
-                    {listing.intent === "buy" ? (
-                      listing.status !== "SOLD" && (
-                        <Button variant="secondary" className="h-9" onClick={() => void updateListingStatus(listing.id, "SOLD")}>
-                          Mark sold
+                    {listingAvailabilityOptions(listing.intent).map((nextStatus) => {
+                      if (listing.status === nextStatus) return null;
+                      if (nextStatus === "RENTED") {
+                        return (
+                          <Button key={nextStatus} variant="secondary" className="h-9" onClick={() => void markRented(listing.id)}>
+                            Mark let
+                          </Button>
+                        );
+                      }
+                      const meta = listingStatusMetaFromValues(nextStatus, listing.intent);
+                      return (
+                        <Button key={nextStatus} variant="secondary" className="h-9" onClick={() => void updateListingStatus(listing.id, nextStatus)}>
+                          {nextStatus === "SOLD" ? "Mark sold" : meta.shortLabel}
                         </Button>
-                      )
-                    ) : (
-                      listing.status !== "RENTED" && (
-                        <Button variant="secondary" className="h-9" onClick={() => void markRented(listing.id)}>
-                          Mark let
-                        </Button>
-                      )
-                    )}
+                      );
+                    })}
                   </div>
                 </div>
               ))}

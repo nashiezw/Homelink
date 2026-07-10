@@ -1,6 +1,7 @@
 import { Prisma, Role } from "@prisma/client";
 import { listListings } from "@/lib/api/listing-service";
 import { getMainPrisma, isPostgresStoreEnabled } from "@/lib/db/main-prisma";
+import { ensureCoreProductionSchema } from "@/lib/db/production-schema";
 import { createDefaultHomepageCms } from "@/lib/homepage/cms-defaults";
 import type { HomepageCmsConfig } from "@/lib/homepage/cms-types";
 import type { HomepageData, HomeFeaturedAgent, HomePropertyType, HomeTrustMetric } from "@/lib/homepage/types";
@@ -263,6 +264,7 @@ function getLocalHomepageData(): HomepageData {
 
 async function getPostgresHomepageData(): Promise<HomepageData> {
   const prisma = getMainPrisma();
+  await ensureCoreProductionSchema();
   const cms = await getPostgresHomepageCms();
   const [postgresListings, activeAgents, roommateProfileCount, seekerCount, reviewAggregate] = await Promise.all([
     listHomepageListingsFromPostgres(),

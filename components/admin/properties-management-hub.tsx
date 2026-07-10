@@ -17,7 +17,7 @@ import { Button } from "@/components/ui/button";
 import { useApp } from "@/components/providers/app-provider";
 import { apiFetch } from "@/lib/api/client";
 import { ListingStatusBadge } from "@/components/listings/listing-status-badge";
-import { LISTING_WORKFLOW_STATUSES, listingStatusMetaFromValues } from "@/lib/listings/status";
+import { LISTING_WORKFLOW_STATUSES, listingAvailabilityOptions, listingStatusMetaFromValues } from "@/lib/listings/status";
 import type { ListingWorkflowStatus } from "@/lib/listings/status";
 import { AdminActionFeedback } from "@/components/admin/action-feedback";
 import { AdminActionDialog, type AdminDialogConfig } from "@/components/admin/action-dialog";
@@ -299,8 +299,6 @@ export function PropertiesManagementHub() {
             <Button onClick={() => void listingAction("approve")}><CheckCircle2 className="size-4" /> Approve</Button>
             <Button variant="secondary" onClick={() => void listingAction("mark_available")}><CheckCircle2 className="size-4" /> Available</Button>
             <Button variant="secondary" onClick={() => void listingAction("mark_viewing")}><RefreshCw className="size-4" /> Viewing</Button>
-            <Button variant="secondary" onClick={() => void listingAction("mark_let")}><XCircle className="size-4" /> Let</Button>
-            <Button variant="secondary" onClick={() => void listingAction("mark_sold")}><CheckCircle2 className="size-4" /> Sold</Button>
             <Button variant="secondary" onClick={() => void listingAction("reject")}><XCircle className="size-4" /> Reject</Button>
             <Button variant="secondary" onClick={() => void listingAction("verify")}><ShieldCheck className="size-4" /> Verify</Button>
             <Button variant="secondary" onClick={() => void listingAction("feature", undefined, { days: 14 })}><Star className="size-4" /> Feature</Button>
@@ -465,7 +463,7 @@ export function PropertiesManagementHub() {
               <div>
                 <p className="mb-2 text-xs font-semibold uppercase text-slate-500">Availability status</p>
                 <div className="grid gap-2 sm:grid-cols-2">
-                  {(["ACTIVE", "VIEWING_IN_PROGRESS", "RENTED", "SOLD"] as ListingWorkflowStatus[]).map((nextStatus) => {
+                  {listingAvailabilityOptions(selectedListing.intent).map((nextStatus) => {
                     const meta = listingStatusMetaFromValues(nextStatus, selectedListing.intent);
                     return (
                       <Button

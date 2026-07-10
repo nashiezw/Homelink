@@ -48,13 +48,25 @@ export function isPublicListingStatus(status?: string) {
   return status === "ACTIVE" || status === "VIEWING_IN_PROGRESS";
 }
 
+export function listingAvailabilityOptions(intent?: ListingIntent | string): ListingWorkflowStatus[] {
+  const normalizedIntent = intent?.toLowerCase();
+  return normalizedIntent === "buy"
+    ? ["ACTIVE", "VIEWING_IN_PROGRESS", "SOLD"]
+    : ["ACTIVE", "VIEWING_IN_PROGRESS", "RENTED"];
+}
+
+export function isAllowedAvailabilityStatus(intent: ListingIntent | string | undefined, status: string) {
+  return listingAvailabilityOptions(intent).includes(status as ListingWorkflowStatus);
+}
+
 export function listingStatusMeta(input: Pick<Listing, "intent"> & { status?: string }): ListingStatusMeta {
   return listingStatusMetaFromValues(input.status, input.intent);
 }
 
 export function listingStatusMetaFromValues(status?: string, intent?: ListingIntent | string): ListingStatusMeta {
   const normalizedStatus = status ?? "ACTIVE";
-  if (intent === "buy" && normalizedStatus === "ACTIVE") {
+  const normalizedIntent = intent?.toLowerCase();
+  if (normalizedIntent === "buy" && normalizedStatus === "ACTIVE") {
     return {
       key: "for_sale",
       label: "FOR SALE",

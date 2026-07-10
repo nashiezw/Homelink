@@ -1,5 +1,6 @@
 import { getPlanDefinition } from "@/lib/payments/plans";
 import { buildOwnerAgreementBypassRecord, listingHasOwnerAgreement, ListingApprovalError } from "@/lib/listings/owner-contract";
+import { isAllowedAvailabilityStatus } from "@/lib/listings/status";
 import { defaultPaymentSettings, defaultPlatformSettings } from "@/lib/settings/defaults";
 import { syncGeoToFlatLists } from "@/lib/settings/geo";
 import { mergePaymentSettings, mergePlatformSettings } from "@/lib/settings/merge";
@@ -836,6 +837,9 @@ export function adminSetListingStatus(
 ) {
   const listing = state.listings.find((l) => l.id === listingId);
   if (!listing) return null;
+  if (!isAllowedAvailabilityStatus(listing.intent, status) && ["ACTIVE", "VIEWING_IN_PROGRESS", "RENTED", "SOLD"].includes(status)) {
+    return null;
+  }
   const previous = listing.status;
   listing.status = status;
   if (reason) listing.adminNotes = reason;

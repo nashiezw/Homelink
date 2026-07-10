@@ -9,7 +9,7 @@ import {
   toPublicPostgresListing,
   updateListingInPostgres,
 } from "@/lib/listings/postgres-listing-repository";
-import { LISTING_WORKFLOW_STATUSES } from "@/lib/listings/status";
+import { LISTING_WORKFLOW_STATUSES, isAllowedAvailabilityStatus } from "@/lib/listings/status";
 import type { ListingWorkflowStatus } from "@/lib/listings/status";
 import { getStore } from "@/lib/store/app-store";
 
@@ -57,6 +57,9 @@ export async function PATCH(request: Request, { params }: RouteContext) {
   const updates = await request.json();
   if (updates?.status && !LISTING_WORKFLOW_STATUSES.includes(updates.status as ListingWorkflowStatus)) {
     return problem(400, "INVALID_STATUS", "Choose a supported listing status.");
+  }
+  if (updates?.status && !isAllowedAvailabilityStatus(listing.intent, updates.status)) {
+    return problem(400, "INVALID_STATUS", "That status does not match this listing intent.");
   }
   const updated = shouldUsePostgresListings()
     ? await updateListingInPostgres(id, updates)
