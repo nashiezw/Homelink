@@ -117,7 +117,7 @@ function buildMarketLens(
   const topArea = mostCommon(listings.map((listing) => compactJoin([listing.suburb, listing.city]) || listing.city));
   const topAmenity = mostCommon(listings.flatMap((listing) => listing.amenities));
   const verifiedCount = listings.filter((listing) => listing.verified || listing.landlordVerified).length;
-  const availableNow = listings.filter((listing) => listing.availableFrom.toLowerCase() === "available now").length;
+  const availableNow = listings.filter((listing) => listing.status === "ACTIVE" && listing.availableFrom.toLowerCase() === "available now").length;
   const nearbyMentions = [...new Set(listings.flatMap((listing) => listing.nearby).filter(Boolean))].slice(0, 3);
   const cbdDistances = listings.map((listing) => listing.distanceToCbdKm).filter((value) => Number.isFinite(value) && value > 0);
 

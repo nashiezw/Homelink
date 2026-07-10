@@ -16,6 +16,7 @@ import { ListingStatusBadge } from "@/components/listings/listing-status-badge";
 import { MediaGallery } from "@/components/listings/media-gallery";
 import { TenancyActions } from "@/components/tenancies/tenancy-actions";
 import { PropertyMap } from "@/components/maps/property-map";
+import { listingAvailabilityDisplay } from "@/lib/listings/status";
 import { formatNightlyPrice, formatPrice } from "@/lib/utils";
 import type { Listing } from "@/lib/types";
 
@@ -80,7 +81,7 @@ export function ListingDetailView({
               </span>
             )}
             <span className="rounded-full bg-slate-100 px-3 py-1 text-sm text-slate-700 dark:bg-slate-800 dark:text-slate-200">
-              {listing.availableFrom}
+              {listingAvailabilityDisplay(listing)}
             </span>
             <span className="inline-flex items-center gap-1 rounded-full bg-cyan-50 px-3 py-1 text-sm font-semibold text-ocean">
               <Sparkles className="size-4" aria-hidden="true" />

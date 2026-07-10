@@ -59,6 +59,13 @@ export function isAllowedAvailabilityStatus(intent: ListingIntent | string | und
   return listingAvailabilityOptions(intent).includes(status as ListingWorkflowStatus);
 }
 
+export function listingAvailabilityDisplay(listing: Pick<Listing, "availableFrom" | "intent"> & { status?: string }) {
+  const meta = listingStatusMetaFromValues(listing.status, listing.intent);
+  if (meta.key === "available") return listing.availableFrom || "Available now";
+  if (meta.key === "for_sale") return listing.availableFrom || "For sale now";
+  return meta.shortLabel;
+}
+
 export function listingStatusMeta(input: Pick<Listing, "intent"> & { status?: string }): ListingStatusMeta {
   return listingStatusMetaFromValues(input.status, input.intent);
 }

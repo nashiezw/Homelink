@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ListingCardActions } from "@/components/listings/listing-card-actions";
 import { ListingStatusBadge } from "@/components/listings/listing-status-badge";
+import { listingAvailabilityDisplay } from "@/lib/listings/status";
 import type { Listing } from "@/lib/types";
 import { formatNightlyPrice, formatPrice } from "@/lib/utils";
 
@@ -77,7 +78,7 @@ export function ListingCard({ listing }: ListingCardProps) {
               {listing.bathrooms} bath
             </span>
           ) : null}
-          <span>{listing.availableFrom}</span>
+          <span>{listingAvailabilityDisplay(listing)}</span>
         </div>
         <div className="mt-4 flex flex-wrap gap-2">
           {listing.amenities.slice(0, 3).map((amenity) => (
