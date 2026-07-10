@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api/client";
 import {
   affordabilityBudgetParam,
+  clearRentalAffordabilityMemory,
   readRentalAffordabilityMemory,
   type RentalAffordabilityMemory,
 } from "@/lib/calculators/affordability-memory";
@@ -162,7 +163,10 @@ export function SearchPageClient() {
   } | null>(null);
 
   const queryString = searchParams.toString();
-  const rememberedBudget = affordabilityBudgetParam(calculatorBudget);
+  const intent = searchParams.get("intent");
+  const usesRentalBudgetMemory = intent !== "buy";
+  const rememberedBudget = usesRentalBudgetMemory ? affordabilityBudgetParam(calculatorBudget) : "";
+  const displayedBudget = searchParams.get("maxPrice") ?? rememberedBudget ?? (intent === "buy" ? "" : "1500");
 
   useEffect(() => {
     void (async () => {
@@ -188,13 +192,35 @@ export function SearchPageClient() {
   useEffect(() => {
     const memory = readRentalAffordabilityMemory();
     setCalculatorBudget(memory);
-    if (!memory || searchParams.get("maxPrice")) return;
+    const memoryBudget = affordabilityBudgetParam(memory);
+    if (
+      searchParams.get("intent") === "buy" &&
+      (searchParams.get("calculatorBudget") || (memoryBudget && searchParams.get("maxPrice") === memoryBudget))
+    ) {
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete("calculatorBudget");
+      params.delete("maxPrice");
+      router.replace(`/search?${params.toString()}`);
+      return;
+    }
+    if (!memory || searchParams.get("maxPrice") || searchParams.get("intent") === "buy") return;
     const params = new URLSearchParams(searchParams.toString());
     params.set("maxPrice", affordabilityBudgetParam(memory));
     if (!params.get("intent")) params.set("intent", "rent");
     params.set("calculatorBudget", "memory");
     router.replace(`/search?${params.toString()}`);
   }, [queryString, router, searchParams]);
+
+  function clearCalculatorBudget() {
+    clearRentalAffordabilityMemory();
+    setCalculatorBudget(null);
+    const params = new URLSearchParams(searchParams.toString());
+    if (params.get("calculatorBudget")) {
+      params.delete("calculatorBudget");
+      params.delete("maxPrice");
+      router.replace(`/search?${params.toString()}`);
+    }
+  }
 
   const activeFilters = useMemo(() => smartFilters.filter((filter) => {
     if (filter.key === "amenities") {
@@ -305,6 +331,8 @@ export function SearchPageClient() {
               const maxPrice = String(data.get("maxPrice") ?? "");
               if (maxPrice) {
                 params.set("maxPrice", maxPrice);
+              } else {
+                params.delete("maxPrice");
               }
               router.push(`/search?${params.toString()}`);
             }}
@@ -325,10 +353,11 @@ export function SearchPageClient() {
               <span className="text-xs font-semibold uppercase tracking-normal text-slate-500">Max budget</span>
               <input
                 name="maxPrice"
-                key={`budget-${searchParams.get("maxPrice") ?? rememberedBudget ?? "1500"}`}
-                defaultValue={searchParams.get("maxPrice") ?? rememberedBudget ?? "1500"}
+                key={`budget-${displayedBudget || "empty"}`}
+                defaultValue={displayedBudget}
                 className="bg-transparent text-slate-800 outline-none dark:text-slate-100"
                 inputMode="numeric"
+                placeholder={intent === "buy" ? "No limit" : "1500"}
               />
             </label>
             <label className="grid gap-1 rounded-lg border border-slate-200 bg-white px-3 py-2 transition focus-within:border-emerald-400 focus-within:ring-2 focus-within:ring-emerald-500/15 dark:border-slate-700 dark:bg-slate-950/60">
@@ -363,11 +392,17 @@ export function SearchPageClient() {
             </Button>
           </form>
 
-          {calculatorBudget && (
-            <div className="mt-3 rounded-lg border border-emerald-300/25 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-50">
+          {calculatorBudget && usesRentalBudgetMemory && (
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-emerald-300/25 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-50">
               Using your calculator budget: <span className="font-bold">US${Math.round(calculatorBudget.recommendedMaxRent)}/month</span>
               <span className="text-emerald-100/80"> · {calculatorBudget.ratingLabel}</span>
             </div>
+          )}
+
+          {calculatorBudget && usesRentalBudgetMemory && (
+            <button type="button" className="mt-2 text-sm font-semibold text-emerald-100 underline-offset-4 hover:underline" onClick={clearCalculatorBudget}>
+              Clear calculator budget
+            </button>
           )}
 
           <div className="mt-4 flex max-w-xs flex-wrap gap-2 sm:max-w-none">

@@ -40,6 +40,11 @@ export function writeRentalAffordabilityMemory(memory: RentalAffordabilityMemory
   window.localStorage.setItem(AFFORDABILITY_MEMORY_KEY, JSON.stringify(memory));
 }
 
+export function clearRentalAffordabilityMemory() {
+  if (typeof window === "undefined") return;
+  window.localStorage.removeItem(AFFORDABILITY_MEMORY_KEY);
+}
+
 export function affordabilityBudgetParam(memory: RentalAffordabilityMemory | null): string {
   if (!memory) return "";
   return String(Math.max(1, Math.round(memory.recommendedMaxRent)));
