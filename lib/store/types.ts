@@ -300,6 +300,7 @@ export type ListingRecord = Listing & {
   ownerAgreementAccepted?: boolean;
   ownerAgreementSignedAt?: string;
   ownerAgreementSignerName?: string;
+  ownerAgreementSignatureImage?: string;
   ownerAgreementVersion?: string;
   ownerAgreementBypassedAt?: string;
   ownerAgreementBypassedById?: string;

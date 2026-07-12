@@ -8,23 +8,26 @@ import {
 } from "@prisma/client";
 import {
   buildOwnerAgreementBypassRecord,
+  HOMELINK_OWNER_LISTING_AGREEMENT,
   listingHasOwnerAgreement,
   ListingApprovalError,
   OWNER_LISTING_AGREEMENT_VERSION,
 } from "@/lib/listings/owner-contract";
 import { getMainPrisma, isPostgresStoreEnabled } from "@/lib/db/main-prisma";
 import { recordPostgresAuditEvent } from "@/lib/auth/postgres-auth";
+import { createSignedAgreement } from "@/lib/signatures/postgres-signature-repository";
 import { getStore } from "@/lib/store/app-store";
 import { isStrictProductionMode } from "@/lib/production/runtime";
 import { isAllowedAvailabilityStatus } from "@/lib/listings/status";
 import type { ListingRecord, StoreUser } from "@/lib/store/types";
-import type { Listing, ListingIntent as PublicListingIntent, PropertyType } from "@/lib/types";
+import type { Listing, ListingIntent as PublicListingIntent, ListingVirtualTour, PropertyType } from "@/lib/types";
 
 const DB_VIEWING_IN_PROGRESS = "VIEWING_IN_PROGRESS" as DbListingStatus;
 
 const LISTING_INCLUDE = {
   owner: true,
   media: { orderBy: { sortOrder: "asc" as const } },
+  virtualTour: { include: { scenes: { orderBy: { sortOrder: "asc" as const } } } },
   _count: { select: { favourites: true, enquiries: true, reports: true } },
 } satisfies Prisma.ListingInclude;
 
@@ -213,6 +216,22 @@ export async function createListingInPostgres(input: ListingInput, ownerId: stri
 
     return tx.listing.findUniqueOrThrow({ where: { id: listing.id }, include: LISTING_INCLUDE });
   });
+
+  if (input.ownerAgreementAccepted) {
+    await createSignedAgreement({
+      subjectType: "LISTING_OWNER_AGREEMENT",
+      subjectId: created.id,
+      listingId: created.id,
+      title: "HomeLink Zimbabwe Property Owner Listing Agreement",
+      signerUserId: ownerId,
+      signerName: input.ownerAgreementSignerName ?? input.propertyOwnerName ?? owner.name,
+      signerEmail: input.propertyOwnerEmail ?? owner.email,
+      signerRole: "PROPERTY_OWNER",
+      signatureText: input.ownerAgreementSignerName ?? input.propertyOwnerName ?? owner.name,
+      agreementText: HOMELINK_OWNER_LISTING_AGREEMENT,
+      signatureImageDataUrl: input.ownerAgreementSignatureImage,
+    }).catch(() => null);
+  }
 
   return toListingRecord(created);
 }
@@ -410,6 +429,10 @@ export async function listAdminListingsFromPostgres(filters: {
     ownerAgreementBypassedByName: l.ownerAgreementBypassedByName,
     ownerAgreementBypassedByEmail: l.ownerAgreementBypassedByEmail,
     ownerAgreementBypassReason: l.ownerAgreementBypassReason,
+    virtualTour: l.virtualTour,
+    virtualTourStatus: l.virtualTour?.status,
+    virtualTourSceneCount: l.virtualTour?.scenes.length ?? 0,
+    virtualTourVerified: Boolean(l.virtualTour?.adminVerifiedAt),
     createdAt: l.availableFrom,
   }));
 }
@@ -432,6 +455,7 @@ export async function summarizeListingsFromPostgres() {
     sold: all.filter((l) => l.status === "SOLD").length,
     holiday: all.filter((l) => l.type === "holiday_home").length,
     commercial: all.filter((l) => l.type === "commercial").length,
+    virtualTours: all.filter((l) => l.virtualTour?.status === "PUBLISHED").length,
   };
 }
 
@@ -461,6 +485,9 @@ export async function adminListingActionInPostgres(
   };
   if (action === "verify") return updateListingInPostgres(listingId, { verified: true });
   if (action === "unverify") return updateListingInPostgres(listingId, { verified: false });
+  if (action === "save_virtual_tour") {
+    return saveListingVirtualTourInPostgres(listingId, updates.virtualTour, options.actor);
+  }
   if (action === "feature") return updateListingInPostgres(listingId, { featured: true, featuredUntil: addDays(options.days ?? 7) });
   if (action === "unfeature") return updateListingInPostgres(listingId, { featured: false, featuredUntil: "" });
   if (action === "edit") return updateListingInPostgres(listingId, updates);
@@ -509,6 +536,77 @@ export async function adminListingActionInPostgres(
     });
   }
   return null;
+}
+
+export async function saveListingVirtualTourInPostgres(
+  listingId: string,
+  virtualTour: ListingVirtualTour | undefined,
+  actor?: { id: string; name: string; email: string },
+) {
+  assertPostgresConfigured();
+  const existing = await getListingRow(listingId);
+  if (!existing) return null;
+  const input = normalizeVirtualTourInput(virtualTour);
+  const prisma = getMainPrisma();
+
+  await prisma.$transaction(async (tx) => {
+    const previous = await tx.listingVirtualTour.findUnique({ where: { listingId }, select: { id: true } });
+    if (!input) {
+      if (previous) await tx.listingVirtualTour.delete({ where: { id: previous.id } });
+      return;
+    }
+
+    const sceneData = input.scenes.map((scene, index) => ({
+      id: scene.id,
+      title: scene.title,
+      imageUrl: scene.imageUrl,
+      sortOrder: index,
+      hotspots: scene.hotspots?.length ? scene.hotspots : Prisma.JsonNull,
+    }));
+
+    if (previous) {
+      await tx.virtualTourScene.deleteMany({ where: { tourId: previous.id } });
+      await tx.listingVirtualTour.update({
+        where: { id: previous.id },
+        data: {
+          title: input.title,
+          status: input.status,
+          provider: input.provider,
+          externalUrl: input.externalUrl ?? null,
+          coverSceneId: input.coverSceneId ?? null,
+          adminVerifiedAt: input.adminVerifiedAt ? new Date(input.adminVerifiedAt) : null,
+          scenes: { create: sceneData },
+        },
+      });
+    } else {
+      await tx.listingVirtualTour.create({
+        data: {
+          listingId,
+          title: input.title,
+          status: input.status,
+          provider: input.provider,
+          externalUrl: input.externalUrl ?? null,
+          coverSceneId: input.coverSceneId ?? null,
+          adminVerifiedAt: input.adminVerifiedAt ? new Date(input.adminVerifiedAt) : null,
+          scenes: { create: sceneData },
+        },
+      });
+    }
+  });
+
+  if (actor) {
+    await recordPostgresAuditEvent({
+      actorId: actor.id,
+      action: "SAVE_LISTING_VIRTUAL_TOUR",
+      target: listingId,
+      metadata: {
+        status: input?.status ?? "REMOVED",
+        sceneCount: input?.scenes.length ?? 0,
+      },
+    });
+  }
+
+  return getListingFromPostgres(listingId);
 }
 
 export async function transferListingInPostgres(listingId: string, newOwnerId: string) {
@@ -669,6 +767,59 @@ function toListingRecord(row: PrismaListingRow | SafeListingRow): ListingRecord 
     ownerAgreementBypassReason:
       "ownerAgreementBypassReason" in row ? (row.ownerAgreementBypassReason as string | null) ?? undefined : undefined,
     adminNotes: "adminNotes" in row ? row.adminNotes ?? undefined : undefined,
+    virtualTour: "virtualTour" in row ? toListingVirtualTour(row.virtualTour) : undefined,
+  };
+}
+
+function normalizeVirtualTourInput(input?: ListingVirtualTour): ListingVirtualTour | null {
+  if (!input) return null;
+  const provider = input.provider === "EXTERNAL" ? "EXTERNAL" : "INTERNAL";
+  const scenes = (input.scenes ?? [])
+    .filter((scene) => scene.title?.trim() && scene.imageUrl?.trim())
+    .map((scene, index) => ({
+      id: scene.id?.trim() || `scene_${crypto.randomUUID()}`,
+      title: scene.title.trim(),
+      imageUrl: scene.imageUrl.trim(),
+      sortOrder: index,
+      hotspots: scene.hotspots ?? [],
+    }));
+  const externalUrl = input.externalUrl?.trim();
+  if (provider === "INTERNAL" && !scenes.length) return null;
+  if (provider === "EXTERNAL" && !externalUrl) return null;
+  const status = input.status === "PUBLISHED" || input.status === "HIDDEN" ? input.status : "DRAFT";
+  return {
+    id: input.id,
+    title: input.title?.trim() || "Virtual tour",
+    status,
+    provider,
+    externalUrl: provider === "EXTERNAL" ? externalUrl : undefined,
+    coverSceneId: input.coverSceneId || scenes[0]?.id,
+    adminVerifiedAt: input.adminVerifiedAt,
+    scenes,
+  };
+}
+
+function toListingVirtualTour(
+  tour: PrismaListingRow["virtualTour"] | null | undefined,
+): ListingVirtualTour | undefined {
+  if (!tour) return undefined;
+  return {
+    id: tour.id,
+    title: tour.title,
+    status: tour.status === "PUBLISHED" || tour.status === "HIDDEN" ? tour.status : "DRAFT",
+    provider: tour.provider === "EXTERNAL" ? "EXTERNAL" : "INTERNAL",
+    externalUrl: tour.externalUrl ?? undefined,
+    coverSceneId: tour.coverSceneId ?? undefined,
+    adminVerifiedAt: tour.adminVerifiedAt?.toISOString(),
+    scenes: tour.scenes.map((scene) => ({
+      id: scene.id,
+      title: scene.title,
+      imageUrl: scene.imageUrl,
+      sortOrder: scene.sortOrder,
+      hotspots: Array.isArray(scene.hotspots)
+        ? (scene.hotspots as ListingVirtualTour["scenes"][number]["hotspots"])
+        : [],
+    })),
   };
 }
 

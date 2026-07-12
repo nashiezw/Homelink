@@ -13,7 +13,9 @@ import { HolidayBookingForm } from "@/components/holiday-homes/holiday-booking-f
 import { HolidayHomeDetailSections } from "@/components/holiday-homes/holiday-home-detail-sections";
 import { ListingDetailActions } from "@/components/listings/listing-detail-actions";
 import { ListingStatusBadge } from "@/components/listings/listing-status-badge";
+import { MarketInsightPanel } from "@/components/listings/market-insight-panel";
 import { MediaGallery } from "@/components/listings/media-gallery";
+import { VirtualTourViewer } from "@/components/listings/virtual-tour-viewer";
 import { TenancyActions } from "@/components/tenancies/tenancy-actions";
 import { PropertyMap } from "@/components/maps/property-map";
 import { listingAvailabilityDisplay } from "@/lib/listings/status";
@@ -41,6 +43,7 @@ export function ListingDetailView({
   holidayReviewSummary = null,
 }: ListingDetailViewProps) {
   const videos = listing.videos ?? [];
+  const virtualTour = listing.virtualTour?.status === "PUBLISHED" ? listing.virtualTour : null;
   const isHoliday = listing.type === "holiday_home" && listing.holidayHome;
   const detailRows = buildDetailRows(listing);
 
@@ -119,7 +122,7 @@ export function ListingDetailView({
             <section>
               <h2 className="text-xl font-semibold">Amenities</h2>
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                {listing.amenities.map((amenity) => (
+            {listing.amenities.map((amenity) => (
                   <div key={amenity} className="flex items-center gap-3">
                     <ShieldCheck className="size-5 text-emerald-700" aria-hidden="true" />
                     <span>{amenity}</span>
@@ -127,6 +130,10 @@ export function ListingDetailView({
                 ))}
               </div>
             </section>
+
+            {virtualTour && <VirtualTourViewer tour={virtualTour} listingId={listing.id} listingTitle={listing.title} />}
+
+            <MarketInsightPanel listing={listing} />
 
             {videos.length > 0 && (
               <section>

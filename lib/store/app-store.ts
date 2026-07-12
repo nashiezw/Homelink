@@ -3078,6 +3078,10 @@ class AppStore {
         ownerAgreementBypassedByName: l.ownerAgreementBypassedByName,
         ownerAgreementBypassedByEmail: l.ownerAgreementBypassedByEmail,
         ownerAgreementBypassReason: l.ownerAgreementBypassReason,
+        virtualTour: l.virtualTour,
+        virtualTourStatus: l.virtualTour?.status,
+        virtualTourSceneCount: l.virtualTour?.scenes.length ?? 0,
+        virtualTourVerified: Boolean(l.virtualTour?.adminVerifiedAt),
         createdAt: l.availableFrom,
       };
     });

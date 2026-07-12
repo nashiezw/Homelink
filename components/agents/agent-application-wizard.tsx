@@ -18,16 +18,11 @@ import {
 } from "@/lib/agents/defaults";
 
 const STEPS = [
-  "Personal",
-  "Recruitment",
-  "Professional",
-  "Readiness",
+  "Profile",
+  "Experience",
   "Documents",
-  "Banking",
-  "References",
-  "Office review",
-  "Agent agreement",
-  "Declaration",
+  "Agreement",
+  "Submit",
 ];
 
 const fieldClass =

@@ -15,6 +15,10 @@
 | Messaging | Working | `/messages`, `/api/v1/messages` |
 | Payments checkout | Working | `/payments`, `POST /api/v1/payments/checkout` |
 | Enquiries + reports | Working | `POST /api/v1/enquiries`, `POST /api/v1/reports` |
+| Durable viewing appointments | Working | `/api/v1/appointments` |
+| Digital signatures + signed PDFs | Working | `/api/v1/signatures`, `/api/v1/signatures/[id]/download` |
+| AI market insights | Working | `/api/v1/market-insights`, listing insight panels |
+| Virtual tour analytics + hotspots | Working | `/api/v1/virtual-tours/events`, listing virtual tour viewer |
 | Landlord dashboard | Working | `/dashboard/landlord` |
 | Admin dashboard | Working | `/dashboard/admin` |
 | Maps (OpenStreetMap) | Working | `/api/v1/maps/nearby`, map embed |

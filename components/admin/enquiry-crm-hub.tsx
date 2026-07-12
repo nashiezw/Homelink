@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import {
+  CalendarClock,
   Clock,
   Download,
   Filter,
@@ -15,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { AdminKpiCard } from "@/components/admin/kpi-card";
 import { ENQUIRY_STATUS_LABELS, ENQUIRY_TYPE_LABELS } from "@/lib/enquiries/labels";
 import type { EnquiryAnalytics, EnquirySettings, EnquiryStatus, PropertyEnquiry } from "@/lib/enquiries/types";
+import type { ViewingAppointment } from "@/lib/types";
 import { apiFetch } from "@/lib/api/client";
 import { AdminActionFeedback } from "@/components/admin/action-feedback";
 import { AdminActionDialog, type AdminDialogConfig } from "@/components/admin/action-dialog";
@@ -58,6 +60,7 @@ export function EnquiryCrmHub() {
     details?: Array<{ label: string; value: string | number | undefined }>;
   } | null>(null);
   const [dialog, setDialog] = useState<AdminDialogConfig | null>(null);
+  const [appointments, setAppointments] = useState<ViewingAppointment[]>([]);
 
   const load = useCallback(async () => {
     const params = new URLSearchParams();
@@ -65,6 +68,8 @@ export function EnquiryCrmHub() {
     if (q) params.set("q", q);
     const result = await apiFetch<AdminEnquiryData>(`/api/v1/admin/enquiries?${params}`);
     if (result.data) setData(result.data);
+    const appointmentResult = await apiFetch<{ appointments: ViewingAppointment[] }>("/api/v1/appointments");
+    if (appointmentResult.data) setAppointments(appointmentResult.data.appointments);
   }, [filter, q]);
 
   useEffect(() => {
@@ -218,6 +223,7 @@ export function EnquiryCrmHub() {
             <AdminKpiCard label="Total enquiries" value={data.analytics.total} icon={Search} />
             <AdminKpiCard label="New" value={data.analytics.newCount} icon={Filter} tone="warning" />
             <AdminKpiCard label="Active pipeline" value={data.analytics.activeCount} icon={Clock} />
+            <AdminKpiCard label="Viewing bookings" value={appointments.length} icon={CalendarClock} />
             <AdminKpiCard label="Conversion" value={`${data.analytics.conversionRate}%`} icon={UserCheck} />
           </div>
 
@@ -324,6 +330,22 @@ export function EnquiryCrmHub() {
                         )}
                       </div>
                     ))}
+                  </div>
+                )}
+
+                {appointments.filter((item) => item.listingId === selected.listingId || item.enquiryId === selected.id).length > 0 && (
+                  <div className="mt-4 space-y-2">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Durable appointment bookings</p>
+                    {appointments
+                      .filter((item) => item.listingId === selected.listingId || item.enquiryId === selected.id)
+                      .slice(0, 5)
+                      .map((appointment) => (
+                        <div key={appointment.id} className="rounded-lg bg-cyan-950/30 px-3 py-2 text-sm">
+                          <p className="font-medium text-cyan-200">{appointment.referenceNumber}</p>
+                          <p className="text-slate-400">{new Date(appointment.startAt).toLocaleString()} - {appointment.status}</p>
+                          <p className="text-xs text-slate-500">{appointment.seekerName}</p>
+                        </div>
+                      ))}
                   </div>
                 )}
 

@@ -49,6 +49,7 @@ export async function GET(request: Request) {
           sold: all.filter((l) => l.status === "SOLD").length,
           holiday: all.filter((l) => l.type === "holiday_home").length,
           commercial: all.filter((l) => l.type === "commercial").length,
+          virtualTours: all.filter((l) => l.virtualTour?.status === "PUBLISHED").length,
         };
       })();
 
@@ -164,6 +165,10 @@ export async function PATCH(request: Request) {
       return ok({ listing: getStore().adminSetListingVerified(listingId, true, actor) });
     case "unverify":
       return ok({ listing: getStore().adminSetListingVerified(listingId, false, actor) });
+    case "save_virtual_tour": {
+      const updates = (body as { updates?: Record<string, unknown> }).updates ?? {};
+      return ok({ listing: getStore().adminEditListing(listingId, updates, actor) });
+    }
     case "transfer":
       if (!newOwnerId) return problem(400, "INVALID_INPUT", "newOwnerId required.");
       return ok({ listing: getStore().transferListingOwnership(listingId, newOwnerId, actor) });

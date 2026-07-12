@@ -22,7 +22,6 @@ import {
 } from "lucide-react";
 import { AuthForm } from "@/components/auth/auth-form";
 import { AcademyAccordion, ToolkitGrid } from "@/components/academy/academy-accordion";
-import { AcademyPaymentDetails } from "@/components/academy/academy-payment-details";
 import { HomeLinkBrand } from "@/components/brand/homelink-logo";
 import { PageShell } from "@/components/layout/page-shell";
 import { Button } from "@/components/ui/button";
@@ -439,7 +438,6 @@ export function PublicAcademyPage() {
               user={user}
               selected={selected}
               selectedRegistration={selectedRegistration}
-              academySettings={academySettings}
               paymentConfig={paymentConfig}
               academyStatus={academyStatus}
               isAdmin={isAdmin}
@@ -539,7 +537,6 @@ function AcademySidePanel({
   user,
   selected,
   selectedRegistration,
-  academySettings,
   paymentConfig,
   academyStatus,
   isAdmin,
@@ -556,7 +553,6 @@ function AcademySidePanel({
   user: ReturnType<typeof useApp>["user"];
   selected?: PublicCourse;
   selectedRegistration: ReturnType<typeof courseRegistrationState>;
-  academySettings: { academyName?: string; paymentInstructions?: string } | null;
   paymentConfig: PublicPaymentConfig | null;
   academyStatus: AcademyStatus | null;
   isAdmin: boolean;

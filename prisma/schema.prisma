@@ -244,8 +244,12 @@ model Listing {
   reviews                    Review[]
   reports                    Report[]
   payments                   Payment[]
+  viewingAppointments        ViewingAppointment[]
+  signedAgreements           SignedAgreement[]
+  marketInsightSnapshots     MarketInsightSnapshot[]
   neighbourhood              Neighbourhood?            @relation(fields: [neighbourhoodId], references: [id])
   neighbourhoodId            String?
+  virtualTour                ListingVirtualTour?
 
   @@index([city, suburb])
   @@index([intent, propertyType, status])
@@ -265,6 +269,136 @@ model ListingMedia {
   sortOrder Int      @default(0)
   createdAt DateTime @default(now())
   listing   Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+}
+
+model ListingVirtualTour {
+  id              String             @id @default(cuid())
+  listingId       String             @unique
+  title           String
+  status          String             @default("DRAFT")
+  provider        String             @default("INTERNAL")
+  externalUrl     String?
+  coverSceneId    String?
+  adminVerifiedAt DateTime?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  listing         Listing            @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  scenes          VirtualTourScene[]
+  events          VirtualTourEvent[]
+
+  @@index([status])
+}
+
+model VirtualTourScene {
+  id        String             @id @default(cuid())
+  tourId    String
+  title     String
+  imageUrl  String
+  sortOrder Int                @default(0)
+  hotspots  Json?
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+  tour      ListingVirtualTour @relation(fields: [tourId], references: [id], onDelete: Cascade)
+
+  @@index([tourId, sortOrder])
+}
+
+model VirtualTourEvent {
+  id        String             @id @default(cuid())
+  tourId    String
+  listingId String
+  sceneId   String?
+  eventType String
+  metadata  Json?
+  createdAt DateTime           @default(now())
+  tour      ListingVirtualTour @relation(fields: [tourId], references: [id], onDelete: Cascade)
+
+  @@index([tourId, createdAt])
+  @@index([listingId, createdAt])
+  @@index([eventType])
+}
+
+model ViewingAppointment {
+  id              String   @id @default(cuid())
+  referenceNumber String   @unique
+  listingId       String
+  enquiryId       String?
+  seekerId        String?
+  seekerName      String
+  seekerEmail     String?
+  seekerPhone     String?
+  agentId         String?
+  agentName       String?
+  startAt         DateTime
+  endAt           DateTime
+  status          String   @default("REQUESTED")
+  location        String
+  notes           String?
+  reminderAt      DateTime?
+  confirmedAt     DateTime?
+  rescheduledAt   DateTime?
+  cancelledAt     DateTime?
+  completedAt     DateTime?
+  auditTrail      Json?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  listing         Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@index([listingId, startAt])
+  @@index([enquiryId])
+  @@index([agentId, startAt])
+  @@index([status])
+}
+
+model SignedAgreement {
+  id             String   @id @default(cuid())
+  subjectType    String
+  subjectId      String
+  listingId      String?
+  title          String
+  signerUserId   String?
+  signerName     String
+  signerEmail    String?
+  signerRole     String
+  signatureText  String
+  agreementText  String
+  contentHash    String
+  pdfBase64      String
+  ipAddress      String?
+  userAgent      String?
+  metadata       Json?
+  signedAt       DateTime @default(now())
+  createdAt      DateTime @default(now())
+  listing        Listing? @relation(fields: [listingId], references: [id])
+
+  @@index([subjectType, subjectId])
+  @@index([listingId])
+  @@index([signerUserId])
+  @@index([signedAt])
+}
+
+model MarketInsightSnapshot {
+  id                   String   @id @default(cuid())
+  city                 String
+  suburb               String
+  propertyType         String
+  intent               String   @default("rent")
+  listingId            String?
+  sampleSize           Int      @default(0)
+  medianPrice          Decimal  @default(0) @db.Decimal(12, 2)
+  averagePrice         Decimal  @default(0) @db.Decimal(12, 2)
+  recommendedPriceMin  Decimal  @default(0) @db.Decimal(12, 2)
+  recommendedPriceMax  Decimal  @default(0) @db.Decimal(12, 2)
+  demandScore          Int      @default(0)
+  vacancyRisk          String   @default("UNKNOWN")
+  comparableListingIds String[] @default([])
+  payload              Json?
+  createdAt            DateTime @default(now())
+  listing              Listing? @relation(fields: [listingId], references: [id])
+
+  @@index([city, suburb, propertyType])
+  @@index([listingId])
+  @@index([createdAt])
 }
 
 model Favourite {

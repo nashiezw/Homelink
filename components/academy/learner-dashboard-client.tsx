@@ -10,7 +10,6 @@ import {
   Download,
   FileText,
   Flame,
-  Loader2,
   Lock,
   Play,
   Sparkles,

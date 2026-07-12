@@ -16,6 +16,7 @@ import { AgentManagementHub } from "@/components/admin/agent-management-hub";
 import { AgentAcademyHub } from "@/components/admin/agent-academy-hub";
 import { BookingsAdminHub } from "@/components/admin/bookings-admin-hub";
 import { EnquiryCrmHub } from "@/components/admin/enquiry-crm-hub";
+import { EnterprisePropTechHub } from "@/components/admin/enterprise-proptech-hub";
 import { ExecutiveDashboard } from "@/components/admin/executive-dashboard";
 import { AdminPageHeader, AdminPanel, AdminLoadingSkeleton } from "@/components/admin/ui/admin-ui";
 import { ContentModerationHub } from "@/components/admin/content-moderation-hub";
@@ -236,6 +237,12 @@ export function AdminControlCenter() {
 
       {tab === "enquiries" && <EnquiryCrmHub />}
 
+      {tab === "proptech" && (
+        <Panel title="Enterprise PropTech operations">
+          <EnterprisePropTechHub />
+        </Panel>
+      )}
+
       {tab === "payments" && (
         <>
           {data.payments && (
@@ -313,6 +320,7 @@ const tabDescriptions: Record<AdminTab, string> = {
   moderation: "Resolve tenancy disputes and content moderation items from reports and review queue.",
   support: "Manage customer support tickets with assignment, escalation, and resolution.",
   enquiries: "Full enquiry CRM - assign agents, track pipeline, merge duplicates, and configure routing.",
+  proptech: "Appointment booking, signed documents, AI market intelligence, virtual tour analytics, and notification operations in one enterprise dashboard.",
   landlords: "Verify landlords, manage agencies, and control premium tiers.",
   agents: "Recruit agents, approve applications, pay commissions, and manage territories.",
   academy: "Standalone enterprise LMS for HomeLink agent training, certification, documents, videos, live learning, and analytics.",

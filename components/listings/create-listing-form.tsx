@@ -7,6 +7,7 @@ import { usePlatformConfig } from "@/components/providers/platform-config-provid
 import { Button } from "@/components/ui/button";
 import { ImageUploader } from "@/components/ui/image-uploader";
 import { VideoUploader } from "@/components/ui/video-uploader";
+import { VisualSignaturePad } from "@/components/signatures/visual-signature-pad";
 import { apiFetch } from "@/lib/api/client";
 import { AvailabilityField } from "@/components/listings/availability-field";
 import { HolidayHomeFields } from "@/components/holiday-homes/holiday-home-fields";
@@ -39,6 +40,7 @@ export function CreateListingForm({ onSuccess }: CreateListingFormProps) {
   const [images, setImages] = useState<string[]>([]);
   const [videos, setVideos] = useState<string[]>([]);
   const [amenities, setAmenities] = useState<string[]>([]);
+  const [ownerSignatureImage, setOwnerSignatureImage] = useState("");
   const [holidayHome, setHolidayHome] = useState<Partial<HolidayHomeDetails>>({
     minimumStay: 2,
     maximumGuests: 4,
@@ -141,6 +143,7 @@ export function CreateListingForm({ onSuccess }: CreateListingFormProps) {
     }
     if (!form.ownerAgreementAccepted) return "The property owner must accept the HomeLink listing agreement.";
     if (!form.ownerAgreementSignerName.trim()) return "Enter the property owner's full name as electronic signature.";
+    if (!ownerSignatureImage) return "Draw the property owner's visual signature.";
     return "";
   }
 
@@ -185,6 +188,7 @@ export function CreateListingForm({ onSuccess }: CreateListingFormProps) {
       ownerAgreementSignerName: form.ownerAgreementSignerName.trim(),
       ownerAgreementVersion: OWNER_LISTING_AGREEMENT_VERSION,
       ownerAgreementSignedAt: new Date().toISOString(),
+      ownerAgreementSignatureImage: ownerSignatureImage,
       listingDetails: {
         priceBasis: isHoliday ? "nightly" : form.intent === "buy" ? "total" : "monthly",
         depositAmount: Number(form.depositAmount) || undefined,
@@ -537,6 +541,10 @@ export function CreateListingForm({ onSuccess }: CreateListingFormProps) {
             className={fieldClass}
           />
         </label>
+        <div className="mt-3">
+          <p className="mb-2 text-sm font-medium">Owner visual signature</p>
+          <VisualSignaturePad value={ownerSignatureImage} onChange={setOwnerSignatureImage} />
+        </div>
       </section>
 
       <div className="flex flex-wrap gap-3 pt-2">

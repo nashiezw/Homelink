@@ -64,7 +64,8 @@ export type AdminTab =
   | "security"
   | "reports"
   | "enquiries"
-  | "roommates";
+  | "roommates"
+  | "proptech";
 
 type AdminSummary = {
   pendingListings: number;
@@ -91,6 +92,7 @@ const NAV_GROUPS: Array<{ label: string; items: NavItem[] }> = [
     items: [
       { id: "overview", label: "Command Center", icon: LayoutDashboard },
       { id: "enquiries", label: "Enquiry CRM", icon: MessageSquare },
+      { id: "proptech", label: "PropTech Suite", icon: Brain },
       { id: "reports", label: "Reports", icon: FileText },
     ],
   },
@@ -180,6 +182,7 @@ const TAB_LABELS: Record<AdminTab, string> = {
   reports: "Reports & Exports",
   enquiries: "Enquiry CRM",
   roommates: "Roommate Seekers",
+  proptech: "PropTech Suite",
 };
 
 export function getAdminTabLabel(tab: AdminTab) {
@@ -196,7 +199,7 @@ function findNavGroup(tab: AdminTab) {
 function allowedTabsForRoles(roles: string[]): Set<AdminTab> | null {
   if (roles.includes("ADMIN")) return null;
   const tabs = new Set<AdminTab>();
-  if (roles.includes("SUPPORT")) ["overview", "support", "enquiries", "reports"].forEach((tab) => tabs.add(tab as AdminTab));
+  if (roles.includes("SUPPORT")) ["overview", "support", "enquiries", "proptech", "reports"].forEach((tab) => tabs.add(tab as AdminTab));
   if (roles.includes("BILLING")) ["overview", "support", "payments", "reports"].forEach((tab) => tabs.add(tab as AdminTab));
   if (roles.includes("TECH_SUPPORT")) ["overview", "support", "system", "security", "reports"].forEach((tab) => tabs.add(tab as AdminTab));
   if (roles.includes("TRUST_SAFETY")) ["overview", "support", "verification", "moderation", "users", "reports"].forEach((tab) => tabs.add(tab as AdminTab));
@@ -592,5 +595,4 @@ function NavButton({
     </button>
   );
 }
-
 

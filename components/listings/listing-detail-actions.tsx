@@ -3,6 +3,7 @@
 import { Flag, Heart, Scale, Share2 } from "lucide-react";
 import { useState } from "react";
 import { EnquiryPanel } from "@/components/enquiries/enquiry-panel";
+import { AppointmentBookingPanel } from "@/components/listings/appointment-booking-panel";
 import { useApp } from "@/components/providers/app-provider";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api/client";
@@ -85,7 +86,10 @@ export function ListingDetailActions({ listing }: ListingDetailActionsProps) {
           This listing is marked {status.shortLabel.toLowerCase()}, so new enquiries are closed to prevent wasted calls and viewings.
         </div>
       ) : (
-        <EnquiryPanel listing={listing} className="mt-5" />
+        <>
+          <EnquiryPanel listing={listing} className="mt-5" />
+          <AppointmentBookingPanel listing={listing} />
+        </>
       )}
 
       {reportOpen && (

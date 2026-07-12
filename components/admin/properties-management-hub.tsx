@@ -3,22 +3,30 @@
 import {
   Archive,
   CheckCircle2,
+  Compass,
   ExternalLink,
+  Eye,
+  EyeOff,
+  ImagePlus,
+  Plus,
   RefreshCw,
+  Save,
   Search,
   ShieldCheck,
   Star,
   Trash2,
+  Upload,
   XCircle,
 } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useApp } from "@/components/providers/app-provider";
 import { apiFetch } from "@/lib/api/client";
 import { ListingStatusBadge } from "@/components/listings/listing-status-badge";
 import { LISTING_WORKFLOW_STATUSES, listingAvailabilityOptions, listingStatusMetaFromValues } from "@/lib/listings/status";
 import type { ListingWorkflowStatus } from "@/lib/listings/status";
+import type { ListingVirtualTour, VirtualTourScene } from "@/lib/types";
 import { AdminActionFeedback } from "@/components/admin/action-feedback";
 import { AdminActionDialog, type AdminDialogConfig } from "@/components/admin/action-dialog";
 import { AdminKpiCard } from "@/components/admin/kpi-card";
@@ -56,6 +64,10 @@ type AdminListing = {
   ownerAgreementBypassedByName?: string;
   ownerAgreementBypassedByEmail?: string;
   ownerAgreementBypassReason?: string;
+  virtualTour?: ListingVirtualTour;
+  virtualTourStatus?: string;
+  virtualTourSceneCount?: number;
+  virtualTourVerified?: boolean;
 };
 
 type ListingsResponse = {
@@ -202,6 +214,34 @@ export function PropertiesManagementHub() {
     void load();
   }
 
+  async function saveVirtualTour(listingId: string, virtualTour: ListingVirtualTour) {
+    const result = await apiFetch("/api/v1/admin/listings", {
+      method: "PATCH",
+      body: JSON.stringify({
+        listingId,
+        action: "save_virtual_tour",
+        updates: { virtualTour },
+      }),
+    });
+    if (result.error) {
+      showToast(result.error.message, "error");
+      return;
+    }
+    showToast("Virtual tour saved.");
+    setSelectedListing((current) =>
+      current?.id === listingId
+        ? {
+            ...current,
+            virtualTour,
+            virtualTourStatus: virtualTour.status,
+            virtualTourSceneCount: virtualTour.scenes.length,
+            virtualTourVerified: Boolean(virtualTour.adminVerifiedAt),
+          }
+        : current,
+    );
+    void load();
+  }
+
   function toggleSelect(id: string) {
     setSelected((current) => {
       const next = new Set(current);
@@ -242,6 +282,7 @@ export function PropertiesManagementHub() {
           <AdminKpiCard label="Pending approval" value={data.summary.pending} icon={XCircle} tone="warning" compact />
           <AdminKpiCard label="Featured" value={data.summary.featured} icon={Star} compact />
           <AdminKpiCard label="Holiday homes" value={data.summary.holiday ?? 0} icon={Star} compact />
+          <AdminKpiCard label="Virtual tours" value={data.summary.virtualTours ?? 0} icon={Compass} compact />
           <AdminKpiCard label="Unverified live" value={data.summary.unverified} icon={ShieldCheck} tone="warning" compact />
           <AdminKpiCard label="Drafts" value={data.summary.draft ?? 0} icon={Archive} compact />
         </div>
@@ -370,6 +411,7 @@ export function PropertiesManagementHub() {
                     <div className="mt-3 flex flex-wrap gap-1.5">
                       {listing.verified && <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 text-[11px] font-medium text-emerald-300">Verified</span>}
                       {listing.featured && <span className="rounded-full bg-amber-500/20 px-2 py-0.5 text-[11px] font-medium text-amber-300">Featured</span>}
+                      {listing.virtualTourStatus && <span className="rounded-full bg-cyan-500/20 px-2 py-0.5 text-[11px] font-medium text-cyan-300">Tour {listing.virtualTourStatus.toLowerCase()}</span>}
                       <span className="rounded-full bg-white/[0.06] px-2 py-0.5 text-[11px] font-medium capitalize text-slate-300">{listing.intent}</span>
                     </div>
                   </div>
@@ -408,6 +450,7 @@ export function PropertiesManagementHub() {
                       <div className="mt-1 flex gap-1">
                         {listing.verified && <span className="rounded bg-emerald-500/20 px-1.5 text-xs text-emerald-300">Verified</span>}
                         {listing.featured && <span className="rounded bg-amber-500/20 px-1.5 text-xs text-amber-300">Featured</span>}
+                        {listing.virtualTourStatus && <span className="rounded bg-cyan-500/20 px-1.5 text-xs text-cyan-300">Tour {listing.virtualTourStatus.toLowerCase()}</span>}
                       </div>
                     </td>
                     <td className="px-3 py-3 text-slate-300">{listing.type}</td>
@@ -511,6 +554,11 @@ export function PropertiesManagementHub() {
               <Link href={`/listings/${selectedListing.slug ?? selectedListing.id}`} target="_blank" className="inline-flex items-center gap-1 text-cyan-400 hover:underline">
                 <ExternalLink className="size-3.5" /> View public page
               </Link>
+              <VirtualTourManager
+                listing={selectedListing}
+                onSave={(virtualTour) => saveVirtualTour(selectedListing.id, virtualTour)}
+                showToast={showToast}
+              />
               <div className="border-t border-white/[0.06] pt-4">
                 <p className="mb-2 text-xs font-semibold uppercase text-slate-500">Transfer ownership</p>
                 <input
@@ -535,3 +583,320 @@ export function PropertiesManagementHub() {
   );
 }
 
+function VirtualTourManager({
+  listing,
+  onSave,
+  showToast,
+}: {
+  listing: AdminListing;
+  onSave: (virtualTour: ListingVirtualTour) => Promise<void> | void;
+  showToast: (message: string, tone?: "success" | "error" | "info") => void;
+}) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [draft, setDraft] = useState<ListingVirtualTour>(() => buildTourDraft(listing));
+
+  useEffect(() => {
+    setDraft(buildTourDraft(listing));
+  }, [listing]);
+
+  const canPublish = draft.provider === "EXTERNAL" ? Boolean(draft.externalUrl?.trim()) : draft.scenes.length > 0;
+
+  function updateScene(id: string, updates: Partial<VirtualTourScene>) {
+    setDraft((current) => ({
+      ...current,
+      scenes: current.scenes.map((scene) => (scene.id === id ? { ...scene, ...updates } : scene)),
+    }));
+  }
+
+  function addScene(url = "") {
+    const id = `scene_${crypto.randomUUID()}`;
+    setDraft((current) => ({
+      ...current,
+      provider: "INTERNAL",
+      coverSceneId: current.coverSceneId ?? id,
+      scenes: [
+        ...current.scenes,
+        {
+          id,
+          title: `Scene ${current.scenes.length + 1}`,
+          imageUrl: url,
+          sortOrder: current.scenes.length,
+          hotspots: [],
+        },
+      ],
+    }));
+  }
+
+  function removeScene(id: string) {
+    setDraft((current) => {
+      const scenes = current.scenes.filter((scene) => scene.id !== id).map((scene, index) => ({ ...scene, sortOrder: index }));
+      return {
+        ...current,
+        scenes,
+        coverSceneId: current.coverSceneId === id ? scenes[0]?.id : current.coverSceneId,
+      };
+    });
+  }
+
+  function moveScene(id: string, direction: -1 | 1) {
+    setDraft((current) => {
+      const scenes = [...current.scenes];
+      const index = scenes.findIndex((scene) => scene.id === id);
+      const nextIndex = index + direction;
+      if (index < 0 || nextIndex < 0 || nextIndex >= scenes.length) return current;
+      [scenes[index], scenes[nextIndex]] = [scenes[nextIndex], scenes[index]];
+      return { ...current, scenes: scenes.map((scene, sortOrder) => ({ ...scene, sortOrder })) };
+    });
+  }
+
+  async function handleUpload(files: FileList | null) {
+    if (!files?.length) return;
+    setUploading(true);
+    for (const file of Array.from(files)) {
+      if (!file.type.startsWith("image/")) {
+        showToast("Only image files can be added to a virtual tour.", "error");
+        continue;
+      }
+      if (file.size > 8 * 1024 * 1024) {
+        showToast(`${file.name} is too large. Use an image under 8 MB.`, "error");
+        continue;
+      }
+      const dataUrl = await readFile(file);
+      const result = await apiFetch<{ url: string }>("/api/v1/uploads", {
+        method: "POST",
+        body: JSON.stringify({ dataUrl, folder: "listings/virtual-tours" }),
+      });
+      if (result.data?.url) addScene(result.data.url);
+      else showToast(result.error?.message ?? "Upload failed.", "error");
+    }
+    setUploading(false);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
+
+  async function save() {
+    if (!canPublish && draft.status === "PUBLISHED") {
+      showToast("Add at least one scene or external tour URL before publishing.", "error");
+      return;
+    }
+    setSaving(true);
+    await onSave({
+      ...draft,
+      status: canPublish ? draft.status : "DRAFT",
+      scenes: draft.scenes.map((scene, sortOrder) => ({ ...scene, sortOrder })),
+    });
+    setSaving(false);
+  }
+
+  return (
+    <div className="border-t border-white/[0.06] pt-4">
+      <div className="mb-3 flex items-start justify-between gap-3">
+        <div>
+          <p className="flex items-center gap-2 text-xs font-semibold uppercase text-slate-500">
+            <Compass className="size-4 text-cyan-300" />
+            Virtual tour
+          </p>
+          <p className="mt-1 text-xs leading-5 text-slate-400">
+            {draft.scenes.length} scene{draft.scenes.length === 1 ? "" : "s"} - {draft.status.toLowerCase()}
+            {draft.adminVerifiedAt ? " - admin verified" : ""}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={save}
+          disabled={saving}
+          className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-emerald-500 disabled:opacity-60"
+        >
+          <Save className="size-3.5" />
+          {saving ? "Saving" : "Save"}
+        </button>
+      </div>
+
+      <div className="grid gap-2 sm:grid-cols-3">
+        {(["DRAFT", "PUBLISHED", "HIDDEN"] as const).map((status) => (
+          <button
+            key={status}
+            type="button"
+            onClick={() => setDraft((current) => ({ ...current, status }))}
+            className={`rounded-lg border px-3 py-2 text-xs font-semibold transition ${
+              draft.status === status
+                ? "border-emerald-400/40 bg-emerald-500/15 text-emerald-200"
+                : "border-white/10 bg-slate-950/60 text-slate-300 hover:bg-white/[0.04]"
+            }`}
+          >
+            {status.replace("_", " ")}
+          </button>
+        ))}
+      </div>
+
+      <div className="mt-3 grid gap-2 sm:grid-cols-2">
+        <button
+          type="button"
+          onClick={() => setDraft((current) => ({ ...current, provider: "INTERNAL" }))}
+          className={`inline-flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold ${
+            draft.provider === "INTERNAL" ? "border-cyan-400/40 bg-cyan-500/15 text-cyan-200" : "border-white/10 bg-slate-950/60 text-slate-300"
+          }`}
+        >
+          <ImagePlus className="size-3.5" />
+          Scene tour
+        </button>
+        <button
+          type="button"
+          onClick={() => setDraft((current) => ({ ...current, provider: "EXTERNAL" }))}
+          className={`inline-flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold ${
+            draft.provider === "EXTERNAL" ? "border-cyan-400/40 bg-cyan-500/15 text-cyan-200" : "border-white/10 bg-slate-950/60 text-slate-300"
+          }`}
+        >
+          <ExternalLink className="size-3.5" />
+          External link
+        </button>
+      </div>
+
+      <input
+        value={draft.title}
+        onChange={(e) => setDraft((current) => ({ ...current, title: e.target.value }))}
+        placeholder="Tour title"
+        className="mt-3 w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white placeholder:text-slate-600"
+      />
+
+      {draft.provider === "EXTERNAL" ? (
+        <input
+          value={draft.externalUrl ?? ""}
+          onChange={(e) => setDraft((current) => ({ ...current, externalUrl: e.target.value }))}
+          placeholder="https://matterport.com/... or hosted tour URL"
+          className="mt-2 w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white placeholder:text-slate-600"
+        />
+      ) : (
+        <div className="mt-3 space-y-3">
+          <div className="grid gap-2 sm:flex sm:flex-wrap">
+            <button
+              type="button"
+              onClick={() => addScene()}
+              className="inline-flex items-center justify-center gap-2 rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-xs font-semibold text-slate-200 hover:bg-white/[0.04]"
+            >
+              <Plus className="size-3.5" />
+              Add scene
+            </button>
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              className="inline-flex items-center justify-center gap-2 rounded-lg border border-cyan-500/25 bg-cyan-500/10 px-3 py-2 text-xs font-semibold text-cyan-200 hover:bg-cyan-500/15 disabled:opacity-60"
+            >
+              <Upload className="size-3.5" />
+              {uploading ? "Uploading" : "Upload panoramas"}
+            </button>
+          </div>
+
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            multiple
+            className="hidden"
+            onChange={(e) => void handleUpload(e.target.files)}
+          />
+
+          {draft.scenes.map((scene, index) => (
+            <div key={scene.id} className="rounded-xl border border-white/[0.07] bg-slate-950/50 p-3">
+              <div className="flex gap-3">
+                <div className="relative h-20 w-24 shrink-0 overflow-hidden rounded-lg bg-slate-900">
+                  {scene.imageUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={scene.imageUrl} alt="" className="h-full w-full object-cover" />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center text-slate-600">
+                      <ImagePlus className="size-5" />
+                    </div>
+                  )}
+                </div>
+                <div className="min-w-0 flex-1 space-y-2">
+                  <input
+                    value={scene.title}
+                    onChange={(e) => updateScene(scene.id, { title: e.target.value })}
+                    className="w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white"
+                  />
+                  <input
+                    value={scene.imageUrl}
+                    onChange={(e) => updateScene(scene.id, { imageUrl: e.target.value })}
+                    placeholder="Scene image URL"
+                    className="w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-xs text-white placeholder:text-slate-600"
+                  />
+                </div>
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => setDraft((current) => ({ ...current, coverSceneId: scene.id }))}
+                  className={`rounded-lg px-2.5 py-1.5 text-xs font-semibold ${
+                    draft.coverSceneId === scene.id ? "bg-emerald-500/20 text-emerald-200" : "bg-white/[0.05] text-slate-300"
+                  }`}
+                >
+                  Cover
+                </button>
+                <button type="button" onClick={() => moveScene(scene.id, -1)} disabled={index === 0} className="rounded-lg bg-white/[0.05] px-2.5 py-1.5 text-xs text-slate-300 disabled:opacity-40">
+                  Up
+                </button>
+                <button type="button" onClick={() => moveScene(scene.id, 1)} disabled={index === draft.scenes.length - 1} className="rounded-lg bg-white/[0.05] px-2.5 py-1.5 text-xs text-slate-300 disabled:opacity-40">
+                  Down
+                </button>
+                <button type="button" onClick={() => removeScene(scene.id)} className="ml-auto inline-flex items-center gap-1 rounded-lg bg-red-500/10 px-2.5 py-1.5 text-xs font-semibold text-red-300">
+                  <Trash2 className="size-3.5" />
+                  Remove
+                </button>
+              </div>
+            </div>
+          ))}
+
+          {!draft.scenes.length && (
+            <div className="rounded-xl border border-dashed border-white/10 bg-slate-950/40 p-5 text-center">
+              <Compass className="mx-auto size-7 text-slate-500" />
+              <p className="mt-2 text-sm font-semibold text-white">No scenes yet</p>
+              <p className="mt-1 text-xs text-slate-500">Upload 360 room photos or paste image URLs to create the public tour.</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      <button
+        type="button"
+        onClick={() =>
+          setDraft((current) => ({
+            ...current,
+            adminVerifiedAt: current.adminVerifiedAt ? undefined : new Date().toISOString(),
+          }))
+        }
+        className={`mt-3 inline-flex w-full items-center justify-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold ${
+          draft.adminVerifiedAt
+            ? "border-emerald-400/30 bg-emerald-500/10 text-emerald-200"
+            : "border-white/10 bg-slate-950/60 text-slate-300"
+        }`}
+      >
+        {draft.adminVerifiedAt ? <Eye className="size-3.5" /> : <EyeOff className="size-3.5" />}
+        {draft.adminVerifiedAt ? "Admin verified" : "Mark admin verified"}
+      </button>
+    </div>
+  );
+}
+
+function buildTourDraft(listing: AdminListing): ListingVirtualTour {
+  return {
+    title: listing.virtualTour?.title ?? `${listing.title} virtual tour`,
+    status: listing.virtualTour?.status ?? "DRAFT",
+    provider: listing.virtualTour?.provider ?? "INTERNAL",
+    externalUrl: listing.virtualTour?.externalUrl,
+    coverSceneId: listing.virtualTour?.coverSceneId,
+    adminVerifiedAt: listing.virtualTour?.adminVerifiedAt,
+    scenes: listing.virtualTour?.scenes ?? [],
+  };
+}
+
+function readFile(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
