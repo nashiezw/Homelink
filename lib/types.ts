@@ -84,6 +84,7 @@ export type MarketInsight = {
   intent: ListingIntent;
   listingId?: string;
   sampleSize: number;
+  strongMatches?: number;
   medianPrice: number;
   averagePrice: number;
   recommendedPriceMin: number;
@@ -91,9 +92,18 @@ export type MarketInsight = {
   demandScore: number;
   vacancyRisk: "LOW" | "MEDIUM" | "HIGH" | "UNKNOWN";
   confidenceScore?: number;
+  dataQuality?: "high" | "moderate" | "limited";
   priceTrend?: Array<{ period: string; medianPrice: number; sampleSize: number }>;
   comparableListingIds: string[];
+  listingPrice?: number;
+  priceVsMedianPct?: number;
+  priceAssessment?: "below_market" | "fair" | "above_market";
+  priceLabel?: string;
+  suburbEnquiryRate?: number;
+  avgDaysOnMarket?: number;
+  summary?: string;
   notes: string[];
+  aiGenerated?: boolean;
   createdAt?: string;
 };
 
