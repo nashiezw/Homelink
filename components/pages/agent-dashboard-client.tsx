@@ -153,7 +153,7 @@ export function AgentDashboardClient() {
     );
   }
 
-  const { profile, stats, leads, commissions, training, appointments, tasks, wallet, ratings } = data;
+  const { profile, stats, leads, commissions, training, wallet, ratings } = data;
 
   return (
     <PageShell
