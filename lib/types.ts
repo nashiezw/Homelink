@@ -101,7 +101,7 @@ export type MarketInsight = {
   priceLabel?: string;
   suburbEnquiryRate?: number;
   avgDaysOnMarket?: number;
-  comparableScope?: "suburb" | "city";
+  comparableScope?: "suburb" | "city" | "regional";
   summary?: string;
   notes: string[];
   aiGenerated?: boolean;

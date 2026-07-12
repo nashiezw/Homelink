@@ -75,6 +75,11 @@ export function MarketInsightPanel({ listing }: { listing: Listing }) {
                 City-wide comparables
               </Badge>
             )}
+            {insight.comparableScope === "regional" && insight.sampleSize > 0 && (
+              <Badge className="border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-100">
+                Regional benchmark
+              </Badge>
+            )}
           </div>
         </div>
       </div>
@@ -94,27 +99,29 @@ export function MarketInsightPanel({ listing }: { listing: Listing }) {
           <Metric label="Confidence" value={`${insight.confidenceScore ?? 0}/100`} />
         </div>
 
-        {insight.listingPrice && insight.priceVsMedianPct !== undefined && hasMarketData && (
+        {insight.listingPrice && (
           <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-4 dark:border-slate-700 dark:bg-slate-950/40">
             <p className="text-xs font-bold uppercase tracking-wide text-slate-500">This listing</p>
             <p className="mt-1 text-sm font-semibold text-ink dark:text-white">
               {formatPrice(insight.listingPrice)}
-              <span
-                className={cn(
-                  "ml-2 rounded-full px-2 py-0.5 text-xs font-bold uppercase",
-                  insight.priceAssessment === "below_market"
-                    ? "bg-emerald-100 text-emerald-800"
+              {hasMarketData && insight.priceVsMedianPct !== undefined && (
+                <span
+                  className={cn(
+                    "ml-2 rounded-full px-2 py-0.5 text-xs font-bold uppercase",
+                    insight.priceAssessment === "below_market"
+                      ? "bg-emerald-100 text-emerald-800"
+                      : insight.priceAssessment === "above_market"
+                        ? "bg-amber-100 text-amber-800"
+                        : "bg-slate-200 text-slate-700",
+                  )}
+                >
+                  {insight.priceAssessment === "below_market"
+                    ? `${Math.abs(insight.priceVsMedianPct)}% below median`
                     : insight.priceAssessment === "above_market"
-                      ? "bg-amber-100 text-amber-800"
-                      : "bg-slate-200 text-slate-700",
-                )}
-              >
-                {insight.priceAssessment === "below_market"
-                  ? `${Math.abs(insight.priceVsMedianPct)}% below median`
-                  : insight.priceAssessment === "above_market"
-                    ? `${insight.priceVsMedianPct}% above median`
-                    : "Near median"}
-              </span>
+                      ? `${insight.priceVsMedianPct}% above median`
+                      : "Near median"}
+                </span>
+              )}
             </p>
           </div>
         )}

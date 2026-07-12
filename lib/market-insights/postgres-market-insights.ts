@@ -58,8 +58,9 @@ export async function computeMarketInsight(input: {
   const intent = (input.intent ?? sourceListing?.intent.toLowerCase() ?? "rent") as ListingIntent;
   const sourcePrice = sourceListing ? Number(sourceListing.price) : undefined;
 
-  let comparableScope: "suburb" | "city" = "suburb";
+  let comparableScope: "suburb" | "city" | "regional" = "suburb";
   let listings = await fetchComparableListings(prisma, {
+    scope: "suburb",
     city,
     suburb,
     propertyType,
@@ -71,7 +72,32 @@ export async function computeMarketInsight(input: {
   if (!listings.length) {
     comparableScope = "city";
     listings = await fetchComparableListings(prisma, {
+      scope: "city",
       city,
+      propertyType,
+      intent,
+      sourceListingId: sourceListing?.id,
+      sourcePrice,
+    });
+  }
+
+  if (!listings.length) {
+    comparableScope = "city";
+    listings = await fetchComparableListings(prisma, {
+      scope: "city",
+      city,
+      propertyType,
+      intent,
+      sourceListingId: sourceListing?.id,
+      sourcePrice,
+      relaxPriceBand: true,
+    });
+  }
+
+  if (!listings.length) {
+    comparableScope = "regional";
+    listings = await fetchComparableListings(prisma, {
+      scope: "regional",
       propertyType,
       intent,
       sourceListingId: sourceListing?.id,
@@ -240,18 +266,38 @@ async function getCachedInsight(listingId: string, listingUpdatedAt: Date) {
 async function fetchComparableListings(
   prisma: ReturnType<typeof getMainPrisma>,
   input: {
-    city: string;
+    scope: "suburb" | "city" | "regional";
+    city?: string;
     suburb?: string;
     propertyType: string;
     intent: ListingIntent;
     sourceListingId?: string;
     sourcePrice?: number;
+    relaxPriceBand?: boolean;
   },
 ) {
+  const priceBand =
+    input.sourcePrice && !input.relaxPriceBand
+      ? {
+          gte: Math.max(
+            1,
+            Math.round(input.sourcePrice * (input.scope === "regional" ? 0.45 : 0.55)),
+          ),
+          lte: Math.round(input.sourcePrice * (input.scope === "regional" ? 2.2 : 1.65)),
+        }
+      : input.sourcePrice && input.relaxPriceBand
+        ? {
+            gte: Math.max(1, Math.round(input.sourcePrice * 0.35)),
+            lte: Math.round(input.sourcePrice * 2.5),
+          }
+        : undefined;
+
   return prisma.listing.findMany({
     where: {
-      city: { equals: input.city, mode: "insensitive" },
-      ...(input.suburb ? { suburb: { equals: input.suburb, mode: "insensitive" } } : {}),
+      ...(input.scope !== "regional" && input.city
+        ? { city: { equals: input.city, mode: "insensitive" } }
+        : {}),
+      ...(input.scope === "suburb" && input.suburb ? { suburb: { equals: input.suburb, mode: "insensitive" } } : {}),
       propertyType: input.propertyType.toUpperCase() as never,
       intent: input.intent.toUpperCase() as never,
       status: {
@@ -261,14 +307,7 @@ async function fetchComparableListings(
             : (["ACTIVE", "VIEWING_IN_PROGRESS", "RENTED"] as never),
       },
       ...(input.sourceListingId ? { id: { not: input.sourceListingId } } : {}),
-      ...(input.sourcePrice
-        ? {
-            price: {
-              gte: Math.max(1, Math.round(input.sourcePrice * 0.55)),
-              lte: Math.round(input.sourcePrice * 1.65),
-            },
-          }
-        : {}),
+      ...(priceBand ? { price: priceBand } : {}),
     },
     select: {
       id: true,

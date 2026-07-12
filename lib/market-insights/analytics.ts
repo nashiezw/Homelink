@@ -32,7 +32,7 @@ export type MarketAnalyticsInput = {
   solarBackup?: boolean;
   borehole?: boolean;
   createdAt?: Date;
-  comparableScope?: "suburb" | "city";
+  comparableScope?: "suburb" | "city" | "regional";
 };
 
 export type MarketAnalyticsResult = {
@@ -54,7 +54,7 @@ export type MarketAnalyticsResult = {
   priceLabel: string;
   suburbEnquiryRate: number;
   avgDaysOnMarket: number;
-  comparableScope: "suburb" | "city";
+  comparableScope: "suburb" | "city" | "regional";
 };
 
 export function scoreComparable(

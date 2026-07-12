@@ -1,7 +1,7 @@
 import { getHydratedRuntimePlatformSettings } from "@/lib/settings/runtime";
 import type { MarketAnalyticsResult } from "@/lib/market-insights/analytics";
 
-export const INSIGHT_ENGINE_VERSION = 3;
+export const INSIGHT_ENGINE_VERSION = 4;
 
 export type InsightNarrativeContext = MarketAnalyticsResult & {
   city: string;
@@ -115,6 +115,10 @@ export function buildDeterministicNarrative(context: InsightNarrativeContext): I
 
   if (context.sampleSize === 0) {
     notes.push("No comparable listings in this area yet — median and band will populate once similar properties are listed on HomeLink.");
+  } else if (context.comparableScope === "regional") {
+    notes.push(
+      `Limited local data in ${context.suburb} — benchmarking against ${context.sampleSize} similar ${context.intent === "buy" ? "sale" : "rental"} listing${context.sampleSize === 1 ? "" : "s"} across HomeLink.`,
+    );
   } else if (context.dataQuality === "limited" || context.sampleSize < 3) {
     notes.push(
       context.comparableScope === "city"
@@ -135,8 +139,12 @@ export function buildDeterministicNarrative(context: InsightNarrativeContext): I
     } else {
       notes.push("Current pricing is broadly in line with the local median for similar properties.");
     }
-  } else {
+  } else if (context.sampleSize > 0) {
     notes.push(`Recommended band: US$${context.recommendedPriceMin.toLocaleString()} – US$${context.recommendedPriceMax.toLocaleString()}.`);
+  } else if (context.listingPrice) {
+    notes.push(
+      `Listed at US$${context.listingPrice.toLocaleString()} — local market band will appear once comparable ${context.intent === "buy" ? "sales" : "rentals"} are active in ${context.city}.`,
+    );
   }
 
   if (context.demandScore >= 68) {
@@ -152,7 +160,9 @@ export function buildDeterministicNarrative(context: InsightNarrativeContext): I
   const summary =
     context.sampleSize === 0
       ? `Not enough comparable listings in ${context.suburb} yet to estimate market pricing.`
-      : context.listingPrice && context.priceAssessment
+      : context.comparableScope === "regional"
+        ? `Regional benchmark from ${context.sampleSize} similar listings — limited local data in ${context.suburb}.`
+        : context.listingPrice && context.priceAssessment
       ? context.priceAssessment === "fair"
         ? `Pricing looks market-aligned in ${context.suburb} with ${context.confidenceScore}/100 confidence.`
         : context.priceAssessment === "below_market"
