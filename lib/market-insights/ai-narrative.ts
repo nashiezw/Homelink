@@ -1,5 +1,7 @@
-import { getRuntimePlatformSettings } from "@/lib/settings/runtime";
+import { getHydratedRuntimePlatformSettings } from "@/lib/settings/runtime";
 import type { MarketAnalyticsResult } from "@/lib/market-insights/analytics";
+
+export const INSIGHT_ENGINE_VERSION = 2;
 
 export type InsightNarrativeContext = MarketAnalyticsResult & {
   city: string;
@@ -25,9 +27,15 @@ export async function generateMarketInsightNarrative(context: InsightNarrativeCo
 }
 
 async function tryLlmNarrative(apiKey: string, context: InsightNarrativeContext): Promise<InsightNarrative | null> {
-  const settings = getRuntimePlatformSettings();
-  const model = settings.ai.modelName || "gpt-4o-mini";
-  const maxTokens = Math.min(settings.ai.maxTokens ?? 900, 900);
+  let model = process.env.OPENAI_MODEL || process.env.HOMELINK_AI_MODEL || "gpt-4o-mini";
+  let maxTokens = 900;
+  try {
+    const settings = await getHydratedRuntimePlatformSettings();
+    model = settings.ai.modelName || model;
+    maxTokens = Math.min(settings.ai.maxTokens ?? maxTokens, maxTokens);
+  } catch {
+    // Use env defaults when platform settings are unavailable in serverless runtime.
+  }
 
   const payload = {
     market: {
@@ -55,12 +63,15 @@ async function tryLlmNarrative(apiKey: string, context: InsightNarrativeContext)
   };
 
   try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 12_000);
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
       },
+      signal: controller.signal,
       body: JSON.stringify({
         model,
         max_tokens: maxTokens,
@@ -79,6 +90,7 @@ async function tryLlmNarrative(apiKey: string, context: InsightNarrativeContext)
         ],
       }),
     });
+    clearTimeout(timeout);
 
     if (!response.ok) return null;
     const data = (await response.json()) as {

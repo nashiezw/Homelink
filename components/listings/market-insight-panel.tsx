@@ -13,7 +13,9 @@ export function MarketInsightPanel({ listing }: { listing: Listing }) {
 
   useEffect(() => {
     setLoading(true);
-    void apiFetch<{ insight: MarketInsight }>(`/api/v1/market-insights?listingId=${encodeURIComponent(listing.id)}`).then((result) => {
+    void apiFetch<{ insight: MarketInsight }>(
+      `/api/v1/market-insights?listingId=${encodeURIComponent(listing.id)}`,
+    ).then((result) => {
       if (result.data?.insight) setInsight(result.data.insight);
       setLoading(false);
     });

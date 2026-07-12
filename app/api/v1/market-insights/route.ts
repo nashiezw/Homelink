@@ -20,12 +20,19 @@ export async function GET(request: Request) {
   const ip = getClientIp(request);
   const rate = checkRateLimit(`market-insights:${ip}`, 20);
   if (!rate.allowed) return problem(429, "RATE_LIMITED", `Too many insight requests. Try again in ${rate.retryAfterSec}s.`);
-  const insight = await computeMarketInsight({
-    city: searchParams.get("city") ?? undefined,
-    suburb: searchParams.get("suburb") ?? undefined,
-    propertyType: searchParams.get("propertyType") ?? undefined,
-    intent: (searchParams.get("intent") as "rent" | "buy" | null) ?? undefined,
-    listingId: searchParams.get("listingId") ?? undefined,
-  });
-  return ok({ insight });
+  try {
+    const insight = await computeMarketInsight({
+      city: searchParams.get("city") ?? undefined,
+      suburb: searchParams.get("suburb") ?? undefined,
+      propertyType: searchParams.get("propertyType") ?? undefined,
+      intent: (searchParams.get("intent") as "rent" | "buy" | null) ?? undefined,
+      listingId: searchParams.get("listingId") ?? undefined,
+      forceRefresh: searchParams.get("refresh") === "true",
+    });
+    return ok({ insight });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Market insight failed.";
+    console.error("[market-insights]", message);
+    return problem(500, "MARKET_INSIGHT_FAILED", message);
+  }
 }

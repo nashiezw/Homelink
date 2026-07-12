@@ -5,7 +5,7 @@ import {
   scoreComparable,
   type ComparableListing,
 } from "@/lib/market-insights/analytics";
-import { generateMarketInsightNarrative } from "@/lib/market-insights/ai-narrative";
+import { generateMarketInsightNarrative, INSIGHT_ENGINE_VERSION } from "@/lib/market-insights/ai-narrative";
 import type { ListingIntent, MarketInsight } from "@/lib/types";
 
 const CACHE_TTL_MS = 6 * 60 * 60 * 1000;
@@ -20,6 +20,7 @@ export async function computeMarketInsight(input: {
   propertyType?: string;
   intent?: "rent" | "buy";
   listingId?: string;
+  forceRefresh?: boolean;
 }) {
   const prisma = getMainPrisma();
   const sourceListing = input.listingId
@@ -46,7 +47,7 @@ export async function computeMarketInsight(input: {
       })
     : null;
 
-  if (input.listingId && sourceListing) {
+  if (input.listingId && sourceListing && !input.forceRefresh) {
     const cached = await getCachedInsight(input.listingId, sourceListing.updatedAt);
     if (cached) return cached;
   }
@@ -210,6 +211,7 @@ export async function computeMarketInsight(input: {
       vacancyRisk: insight.vacancyRisk,
       comparableListingIds: insight.comparableListingIds,
       payload: {
+        insightVersion: INSIGHT_ENGINE_VERSION,
         notes: insight.notes,
         confidenceScore: insight.confidenceScore,
         priceTrend: insight.priceTrend,
@@ -245,7 +247,8 @@ async function getCachedInsight(listingId: string, listingUpdatedAt: Date) {
     orderBy: { createdAt: "desc" },
   });
   if (!row) return null;
-  const payload = (row.payload ?? {}) as { listingUpdatedAt?: string };
+  const payload = (row.payload ?? {}) as { listingUpdatedAt?: string; insightVersion?: number };
+  if (payload.insightVersion !== INSIGHT_ENGINE_VERSION) return null;
   if (payload.listingUpdatedAt && payload.listingUpdatedAt !== listingUpdatedAt.toISOString()) return null;
   return snapshotToInsight(row);
 }
