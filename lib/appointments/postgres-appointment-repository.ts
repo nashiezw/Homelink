@@ -2,6 +2,7 @@ import type { Prisma } from "@prisma/client";
 import { getMainPrisma, isPostgresStoreEnabled } from "@/lib/db/main-prisma";
 import { getListingFromPostgres } from "@/lib/listings/postgres-listing-repository";
 import type { ViewingAppointment, ViewingAppointmentStatus } from "@/lib/types";
+import { buildViewingSlots } from "@/lib/appointments/slot-utils";
 
 type AppointmentInput = {
   listingId: string;
@@ -143,17 +144,9 @@ export async function updateViewingAppointment(
 }
 
 export async function appointmentSlotsForListing(listingId: string) {
-  const base = new Date();
-  base.setHours(9, 0, 0, 0);
   const booked = await listViewingAppointments({ listingId, from: new Date().toISOString() });
-  const bookedTimes = new Set(booked.filter((item) => item.status !== "CANCELLED").map((item) => item.startAt.slice(0, 16)));
-  return Array.from({ length: 10 }).map((_, index) => {
-    const slot = new Date(base);
-    slot.setDate(base.getDate() + Math.floor(index / 2) + 1);
-    slot.setHours(index % 2 === 0 ? 10 : 14, 0, 0, 0);
-    const iso = slot.toISOString();
-    return { startAt: iso, available: !bookedTimes.has(iso.slice(0, 16)) };
-  });
+  const bookedStartAts = booked.filter((item) => item.status !== "CANCELLED").map((item) => item.startAt);
+  return buildViewingSlots(bookedStartAts);
 }
 
 function parseDate(value: string) {
