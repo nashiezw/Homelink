@@ -21,6 +21,7 @@ import { isStrictProductionMode } from "@/lib/production/runtime";
 import { isAllowedAvailabilityStatus } from "@/lib/listings/status";
 import type { ListingRecord, StoreUser } from "@/lib/store/types";
 import type { Listing, ListingIntent as PublicListingIntent, ListingVirtualTour, PropertyType } from "@/lib/types";
+import { resolvePublicImageUrl } from "@/lib/media/resolve-public-image";
 
 const DB_VIEWING_IN_PROGRESS = "VIEWING_IN_PROGRESS" as DbListingStatus;
 
@@ -814,7 +815,7 @@ function toListingVirtualTour(
     scenes: tour.scenes.map((scene) => ({
       id: scene.id,
       title: scene.title,
-      imageUrl: scene.imageUrl,
+      imageUrl: resolvePublicImageUrl(scene.imageUrl) ?? scene.imageUrl,
       sortOrder: scene.sortOrder,
       hotspots: Array.isArray(scene.hotspots)
         ? (scene.hotspots as ListingVirtualTour["scenes"][number]["hotspots"])

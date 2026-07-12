@@ -131,7 +131,14 @@ export function ListingDetailView({
               </div>
             </section>
 
-            {virtualTour && <VirtualTourViewer tour={virtualTour} listingId={listing.id} listingTitle={listing.title} />}
+            {virtualTour && (
+              <VirtualTourViewer
+                tour={virtualTour}
+                listingId={listing.id}
+                listingTitle={listing.title}
+                listingImage={listing.image}
+              />
+            )}
 
             <MarketInsightPanel listing={listing} />
 

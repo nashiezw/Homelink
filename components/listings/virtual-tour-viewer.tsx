@@ -13,15 +13,17 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { apiFetch } from "@/lib/api/client";
 import type { ListingVirtualTour } from "@/lib/types";
+import { virtualTourImageFallbacks } from "@/lib/media/resolve-public-image";
 import { cn } from "@/lib/utils";
 
 type VirtualTourViewerProps = {
   tour: ListingVirtualTour;
   listingId: string;
   listingTitle: string;
+  listingImage?: string;
 };
 
-export function VirtualTourViewer({ tour, listingId, listingTitle }: VirtualTourViewerProps) {
+export function VirtualTourViewer({ tour, listingId, listingTitle, listingImage }: VirtualTourViewerProps) {
   const scenes = useMemo(() => [...tour.scenes].sort((a, b) => a.sortOrder - b.sortOrder), [tour.scenes]);
   const initialScene = scenes.find((scene) => scene.id === tour.coverSceneId) ?? scenes[0];
   const [activeSceneId, setActiveSceneId] = useState(initialScene?.id);
@@ -142,7 +144,9 @@ export function VirtualTourViewer({ tour, listingId, listingTitle }: VirtualTour
         scenes={scenes}
         pan={pan}
         imageReady={imageReady}
+        listingImage={listingImage}
         onImageReady={() => setImageReady(true)}
+        onImageReset={() => setImageReady(false)}
         onPan={setPan}
         onScene={goToScene}
         onHotspot={(targetSceneId) => {
@@ -182,8 +186,10 @@ export function VirtualTourViewer({ tour, listingId, listingTitle }: VirtualTour
               scenes={scenes}
               pan={pan}
               imageReady={imageReady}
-              onImageReady={() => setImageReady(true)}
-              onPan={setPan}
+              listingImage={listingImage}
+        onImageReady={() => setImageReady(true)}
+        onImageReset={() => setImageReady(false)}
+        onPan={setPan}
               onScene={goToScene}
               onHotspot={(targetSceneId) => {
                 if (targetSceneId) goToScene(targetSceneId, "HOTSPOT_CLICK", { targetSceneId });
@@ -205,7 +211,9 @@ function TourStage({
   scenes,
   pan,
   imageReady,
+  listingImage,
   onImageReady,
+  onImageReset,
   onPan,
   onScene,
   onHotspot,
@@ -218,7 +226,9 @@ function TourStage({
   scenes: ListingVirtualTour["scenes"];
   pan: number;
   imageReady: boolean;
+  listingImage?: string;
   onImageReady: () => void;
+  onImageReset: () => void;
   onPan: (value: number) => void;
   onScene: (id: string) => void;
   onHotspot: (targetSceneId?: string) => void;
@@ -228,6 +238,23 @@ function TourStage({
   immersive?: boolean;
 }) {
   const dragRef = useRef<{ active: boolean; startX: number; startPan: number } | null>(null);
+  const fallbackChain = useMemo(
+    () => virtualTourImageFallbacks(scene.imageUrl, listingImage),
+    [scene.imageUrl, listingImage],
+  );
+  const [imageIndex, setImageIndex] = useState(0);
+  const [imageFailed, setImageFailed] = useState(false);
+  const imageSrc = fallbackChain[imageIndex];
+
+  useEffect(() => {
+    setImageIndex(0);
+    setImageFailed(false);
+    onImageReset();
+  }, [scene.id, scene.imageUrl, listingImage, onImageReset]);
+
+  useEffect(() => {
+    if (imageIndex > 0) onImageReset();
+  }, [imageIndex, onImageReset]);
 
   const bindPan = useCallback(
     (clientX: number) => {
@@ -262,20 +289,37 @@ function TourStage({
           onPan(Math.max(20, Math.min(80, pan + event.deltaY * 0.04)));
         }}
       >
-        {!imageReady && <div className="absolute inset-0 animate-pulse bg-slate-800" />}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          key={scene.id}
-          src={scene.imageUrl}
-          alt={scene.title}
-          draggable={false}
-          onLoad={onImageReady}
-          className={cn(
-            "absolute inset-y-0 left-1/2 h-full max-w-none select-none object-cover transition-opacity duration-500",
-            imageReady ? "opacity-100" : "opacity-0",
-          )}
-          style={{ width: "180%", transform: `translateX(-${pan}%)` }}
-        />
+        {!imageReady && !imageFailed && <div className="absolute inset-0 animate-pulse bg-slate-800" />}
+        {imageFailed && (
+          <div className="absolute inset-0 flex items-center justify-center bg-slate-900 px-6 text-center">
+            <p className="text-sm text-slate-300">Tour image unavailable. Re-upload this scene in admin.</p>
+          </div>
+        )}
+        {imageSrc && !imageFailed && (
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              key={`${scene.id}:${imageSrc}`}
+              src={imageSrc}
+              alt={scene.title}
+              draggable={false}
+              onLoad={onImageReady}
+              onError={() => {
+                const nextIndex = imageIndex + 1;
+                if (nextIndex < fallbackChain.length) {
+                  setImageIndex(nextIndex);
+                  return;
+                }
+                setImageFailed(true);
+              }}
+              className={cn(
+                "absolute inset-y-0 left-1/2 h-full max-w-none select-none object-cover transition-opacity duration-500",
+                imageReady ? "opacity-100" : "opacity-0",
+              )}
+              style={{ width: "180%", transform: `translateX(-${pan}%)` }}
+            />
+          </>
+        )}
 
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-black/30" />
 
@@ -360,7 +404,7 @@ function TourStage({
                 )}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={item.imageUrl} alt="" className="h-full w-full object-cover" />
+                <img src={virtualTourImageFallbacks(item.imageUrl, listingImage)[0]} alt="" className="h-full w-full object-cover" />
                 <span className="absolute inset-x-0 bottom-0 truncate bg-gradient-to-t from-black/80 to-transparent px-2 pb-1.5 pt-6 text-left text-[11px] font-semibold text-white">
                   {item.title}
                 </span>
