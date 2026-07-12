@@ -18,15 +18,90 @@ export type InsightNarrative = {
 };
 
 export async function generateMarketInsightNarrative(context: InsightNarrativeContext): Promise<InsightNarrative> {
+  const keySource = process.env.OPENAI_API_KEY
+    ? "OPENAI_API_KEY"
+    : process.env.HOMELINK_OPENAI_API_KEY
+      ? "HOMELINK_OPENAI_API_KEY"
+      : null;
   const apiKey = process.env.OPENAI_API_KEY || process.env.HOMELINK_OPENAI_API_KEY;
-  if (apiKey) {
-    const llm = await tryLlmNarrative(apiKey, context);
-    if (llm) return llm;
+
+  if (!apiKey) {
+    logLlmEvent("fallback", {
+      reason: "missing_api_key",
+      message: "No OPENAI_API_KEY or HOMELINK_OPENAI_API_KEY in server environment.",
+      suburb: context.suburb,
+      city: context.city,
+    });
+    return buildDeterministicNarrative(context);
   }
+
+  const llm = await tryLlmNarrative(apiKey, keySource!, context);
+  if (llm) return llm;
+
+  logLlmEvent("fallback", {
+    reason: "llm_unavailable",
+    message: "OpenAI call failed or returned invalid output — using analytics summary.",
+    keySource,
+    suburb: context.suburb,
+    city: context.city,
+  });
   return buildDeterministicNarrative(context);
 }
 
-async function tryLlmNarrative(apiKey: string, context: InsightNarrativeContext): Promise<InsightNarrative | null> {
+type OpenAiErrorBody = {
+  error?: {
+    message?: string;
+    type?: string;
+    code?: string | null;
+  };
+};
+
+function logLlmEvent(
+  level: "success" | "fallback" | "error",
+  details: Record<string, string | number | boolean | null | undefined>,
+) {
+  const payload = { scope: "market-insights:llm", ...details };
+  if (level === "error") {
+    console.error("[market-insights:llm]", payload);
+    return;
+  }
+  console.warn("[market-insights:llm]", payload);
+}
+
+function classifyOpenAiFailure(status: number, body: OpenAiErrorBody) {
+  const type = body.error?.type ?? "";
+  const code = body.error?.code ?? "";
+  const message = body.error?.message ?? "Unknown OpenAI error";
+
+  if (status === 401 || type === "invalid_api_key" || code === "invalid_api_key") {
+    return { reason: "invalid_api_key", message: "API key rejected by OpenAI. Check the key value and redeploy." };
+  }
+  if (
+    status === 402 ||
+    status === 429 && (type === "insufficient_quota" || code === "insufficient_quota" || /quota|billing|credit/i.test(message))
+  ) {
+    return {
+      reason: "insufficient_quota",
+      message: "OpenAI quota or billing issue. Add payment method or credits in the OpenAI dashboard.",
+    };
+  }
+  if (status === 429 || type === "rate_limit_exceeded" || code === "rate_limit_exceeded") {
+    return { reason: "rate_limited", message: "OpenAI rate limit hit. Retry later or reduce request volume." };
+  }
+  if (status === 403) {
+    return { reason: "forbidden", message: "OpenAI rejected the request (403). Check project access and model permissions." };
+  }
+  if (status === 404) {
+    return { reason: "model_not_found", message: "Configured OpenAI model was not found for this API key." };
+  }
+  return { reason: "openai_http_error", message };
+}
+
+async function tryLlmNarrative(
+  apiKey: string,
+  keySource: string,
+  context: InsightNarrativeContext,
+): Promise<InsightNarrative | null> {
   let model = process.env.OPENAI_MODEL || process.env.HOMELINK_AI_MODEL || "gpt-4o-mini";
   let maxTokens = 900;
   try {
@@ -35,6 +110,11 @@ async function tryLlmNarrative(apiKey: string, context: InsightNarrativeContext)
     maxTokens = Math.min(settings.ai.maxTokens ?? maxTokens, maxTokens);
   } catch {
     // Use env defaults when platform settings are unavailable in serverless runtime.
+    logLlmEvent("fallback", {
+      reason: "settings_unavailable",
+      message: "Platform AI settings unavailable — using env model defaults.",
+      keySource,
+    });
   }
 
   const payload = {
@@ -92,20 +172,93 @@ async function tryLlmNarrative(apiKey: string, context: InsightNarrativeContext)
     });
     clearTimeout(timeout);
 
-    if (!response.ok) return null;
+    if (!response.ok) {
+      let body: OpenAiErrorBody = {};
+      try {
+        body = (await response.json()) as OpenAiErrorBody;
+      } catch {
+        body = {};
+      }
+      const failure = classifyOpenAiFailure(response.status, body);
+      logLlmEvent("error", {
+        reason: failure.reason,
+        message: failure.message,
+        httpStatus: response.status,
+        openAiType: body.error?.type,
+        openAiCode: body.error?.code,
+        model,
+        keySource,
+        suburb: context.suburb,
+        city: context.city,
+      });
+      return null;
+    }
+
     const data = (await response.json()) as {
       choices?: Array<{ message?: { content?: string } }>;
     };
     const content = data.choices?.[0]?.message?.content;
-    if (!content) return null;
-    const parsed = JSON.parse(content) as { summary?: string; notes?: string[] };
-    if (!parsed.summary || !Array.isArray(parsed.notes) || !parsed.notes.length) return null;
+    if (!content) {
+      logLlmEvent("error", {
+        reason: "empty_response",
+        message: "OpenAI returned no message content.",
+        model,
+        keySource,
+      });
+      return null;
+    }
+
+    let parsed: { summary?: string; notes?: string[] };
+    try {
+      parsed = JSON.parse(content) as { summary?: string; notes?: string[] };
+    } catch {
+      logLlmEvent("error", {
+        reason: "invalid_json",
+        message: "OpenAI response was not valid JSON.",
+        model,
+        keySource,
+      });
+      return null;
+    }
+
+    if (!parsed.summary || !Array.isArray(parsed.notes) || !parsed.notes.length) {
+      logLlmEvent("error", {
+        reason: "invalid_shape",
+        message: "OpenAI JSON missing summary or notes.",
+        model,
+        keySource,
+      });
+      return null;
+    }
+
+    logLlmEvent("success", {
+      reason: "ok",
+      message: "LLM summary generated.",
+      model,
+      keySource,
+      suburb: context.suburb,
+      city: context.city,
+    });
+
     return {
       summary: parsed.summary.trim(),
       notes: parsed.notes.map((note) => note.trim()).filter(Boolean).slice(0, 4),
       aiGenerated: true,
     };
-  } catch {
+  } catch (error) {
+    const aborted = error instanceof Error && error.name === "AbortError";
+    logLlmEvent("error", {
+      reason: aborted ? "timeout" : "network_error",
+      message: aborted
+        ? "OpenAI request timed out after 12s."
+        : error instanceof Error
+          ? error.message
+          : "Unknown network error calling OpenAI.",
+      model,
+      keySource,
+      suburb: context.suburb,
+      city: context.city,
+    });
     return null;
   }
 }
