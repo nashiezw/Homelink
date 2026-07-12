@@ -16,7 +16,10 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const listingId = searchParams.get("listingId") ?? undefined;
   const slots = searchParams.get("slots") === "true";
-  if (slots && listingId) return ok({ slots: await appointmentSlotsForListing(listingId) });
+  if (slots && listingId) {
+    const payload = await appointmentSlotsForListing(listingId);
+    return ok(payload);
+  }
 
   const userId = getSessionUserIdFromRequest(request);
   if (!userId) return problem(401, "UNAUTHORIZED", "Sign in to view appointments.");

@@ -70,6 +70,7 @@ export function EnterprisePropTechHub() {
   const [active, setActive] = useState("appointments");
   const [loading, setLoading] = useState(true);
   const [reminderState, setReminderState] = useState<string>("");
+  const [busyId, setBusyId] = useState<string | null>(null);
 
   async function load() {
     setLoading(true);
@@ -86,6 +87,16 @@ export function EnterprisePropTechHub() {
     setReminderState("Checking due reminders...");
     const result = await apiFetch<{ queued: number; checked: number }>("/api/v1/notifications/reminders", { method: "POST" });
     setReminderState(result.data ? `Queued ${result.data.queued} reminder notifications from ${result.data.checked} due appointments.` : "Reminder job could not run.");
+    await load();
+  }
+
+  async function confirmAppointment(id: string) {
+    setBusyId(id);
+    await apiFetch(`/api/v1/appointments/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ status: "CONFIRMED" }),
+    });
+    setBusyId(null);
     await load();
   }
 
@@ -127,7 +138,7 @@ export function EnterprisePropTechHub() {
       {active === "appointments" && (
         <AdminPanel
           title="Appointments calendar"
-          description="Durable PostgreSQL bookings with conflict-aware slots, status, reminders, and calendar exports."
+          description="Request-to-confirm viewings with agent availability, conflict-aware slots, and calendar exports."
           action={
             <button type="button" onClick={() => void load()} className="inline-flex items-center gap-2 rounded-lg border border-white/10 px-3 py-2 text-sm text-slate-200 hover:bg-white/5">
               <RefreshCw className="size-4" /> Refresh
@@ -162,7 +173,24 @@ export function EnterprisePropTechHub() {
               { key: "listing", header: "Listing", render: (row) => <span>{row.listingTitle}</span> },
               { key: "client", header: "Client", render: (row) => <span>{row.seekerName}</span> },
               { key: "time", header: "Time", render: (row) => <span>{new Date(row.startAt).toLocaleString()}</span> },
-              { key: "status", header: "Status", render: (row) => <AdminStatusBadge status={row.status} variant={row.status === "CANCELLED" ? "danger" : "info"} /> },
+              { key: "status", header: "Status", render: (row) => <AdminStatusBadge status={row.status} variant={row.status === "CANCELLED" ? "danger" : row.status === "CONFIRMED" ? "success" : "info"} /> },
+              {
+                key: "actions",
+                header: "Actions",
+                render: (row) =>
+                  row.status === "REQUESTED" || row.status === "RESCHEDULED" ? (
+                    <button
+                      type="button"
+                      disabled={busyId === row.id}
+                      onClick={() => void confirmAppointment(row.id)}
+                      className="rounded-lg bg-emerald-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-emerald-500 disabled:opacity-50"
+                    >
+                      Confirm
+                    </button>
+                  ) : (
+                    <span className="text-xs text-slate-500">—</span>
+                  ),
+              },
               { key: "export", header: "Calendar", render: (row) => <a href={`/api/v1/appointments/${row.id}/ics`} className="text-emerald-300 hover:text-emerald-200">ICS</a> },
             ]}
           />

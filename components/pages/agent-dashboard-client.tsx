@@ -18,6 +18,8 @@ import { StatCard } from "@/components/dashboard/stat-card";
 import { useApp } from "@/components/providers/app-provider";
 import { Button } from "@/components/ui/button";
 import { AgentEnquiryWorkbench } from "@/components/agents/agent-enquiry-workbench";
+import { AgentViewingAvailabilityPanel } from "@/components/agents/agent-viewing-availability-panel";
+import { AgentViewingRequestsPanel } from "@/components/agents/agent-viewing-requests-panel";
 import { CloseLeadModal } from "@/components/agents/close-lead-modal";
 import { apiFetch } from "@/lib/api/client";
 import type {
@@ -442,23 +444,9 @@ export function AgentDashboardClient() {
       )}
 
       {tab === "Calendar" && (
-        <div className="grid gap-3">
-          {appointments.map((a) => (
-            <div key={a.id} className="premium-card rounded-xl p-4">
-              <p className="font-semibold">{a.title}</p>
-              <p className="text-sm text-slate-600">{new Date(a.startsAt).toLocaleString()} · {a.location}</p>
-            </div>
-          ))}
-          {!appointments.length && <p className="text-sm text-slate-500">No appointments scheduled.</p>}
-          {tasks.map((t) => (
-            <div key={t.id} className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm dark:border-amber-900 dark:bg-amber-950/30">
-              <p className="font-semibold text-amber-900 dark:text-amber-100">{t.title}</p>
-              {t.referenceNumber && <p className="text-xs text-amber-800 dark:text-amber-200">{t.referenceNumber}</p>}
-              {t.dueAt && <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">Due {new Date(t.dueAt).toLocaleString()}</p>}
-              <p className="mt-1 text-xs uppercase tracking-wide text-amber-700 dark:text-amber-300">{t.status}</p>
-            </div>
-          ))}
-          {!appointments.length && !tasks.length && <p className="text-sm text-slate-500">No appointments or follow-up tasks scheduled.</p>}
+        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+          <AgentViewingRequestsPanel showToast={showToast} />
+          <AgentViewingAvailabilityPanel showToast={showToast} />
         </div>
       )}
 

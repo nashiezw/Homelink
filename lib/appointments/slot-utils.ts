@@ -1,7 +1,7 @@
-export const VIEWING_TIMEZONE = "Africa/Harare";
+import type { ViewingAvailabilityConfig } from "@/lib/appointments/availability-types";
+import { VIEWING_TIMEZONE } from "@/lib/appointments/availability-types";
 
-const SLOT_HOURS = [9, 11, 14, 16] as const;
-const SLOT_DAYS = 7;
+export { VIEWING_TIMEZONE };
 
 export type AppointmentSlot = {
   startAt: string;
@@ -67,16 +67,26 @@ function addHarareDays(parts: HarareDateParts, days: number): HarareDateParts {
   return harareDateParts(cursor);
 }
 
-export function buildViewingSlots(bookedStartAts: string[]): AppointmentSlot[] {
+function harareWeekday(parts: HarareDateParts): number {
+  const cursor = new Date(Date.UTC(parts.year, parts.month - 1, parts.day, 12, 0, 0));
+  const day = cursor.getUTCDay();
+  return day === 0 ? 7 : day;
+}
+
+export function buildViewingSlots(config: ViewingAvailabilityConfig, bookedStartAts: string[]): AppointmentSlot[] {
   const booked = new Set(bookedStartAts.map(slotKey));
   const today = harareDateParts(new Date());
+  const blocked = new Set(config.blockedDates);
   const slots: AppointmentSlot[] = [];
 
-  for (let dayOffset = 1; dayOffset <= SLOT_DAYS; dayOffset += 1) {
+  for (let dayOffset = 1; dayOffset <= config.horizonDays; dayOffset += 1) {
     const dayParts = addHarareDays(today, dayOffset);
-    for (const hour of SLOT_HOURS) {
+    const dayKey = `${dayParts.year}-${String(dayParts.month).padStart(2, "0")}-${String(dayParts.day).padStart(2, "0")}`;
+    if (blocked.has(dayKey)) continue;
+    if (!config.workingDays.includes(harareWeekday(dayParts))) continue;
+
+    for (const hour of config.slotHours) {
       const startAt = harareLocalToIso(dayParts, hour);
-      const dayKey = `${dayParts.year}-${String(dayParts.month).padStart(2, "0")}-${String(dayParts.day).padStart(2, "0")}`;
       const dayLabel = formatDayLabel(startAt);
       const timeLabel = formatTimeLabel(startAt);
       slots.push({

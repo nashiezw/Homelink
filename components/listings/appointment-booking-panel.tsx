@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarClock, CheckCircle2, Clock3, MapPin } from "lucide-react";
+import { CalendarClock, CheckCircle2, Clock3, MapPin, ShieldCheck } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useApp } from "@/components/providers/app-provider";
 import { Button } from "@/components/ui/button";
@@ -9,9 +9,17 @@ import { groupSlotsByDay, type AppointmentSlot } from "@/lib/appointments/slot-u
 import type { Listing, ViewingAppointment } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
+type SlotMeta = {
+  requiresConfirmation: boolean;
+  agentName?: string;
+  configuredBy: "agent" | "platform-default";
+  timezone: string;
+};
+
 export function AppointmentBookingPanel({ listing }: { listing: Listing }) {
   const { user, showToast } = useApp();
   const [slots, setSlots] = useState<AppointmentSlot[]>([]);
+  const [meta, setMeta] = useState<SlotMeta | null>(null);
   const [selectedDay, setSelectedDay] = useState("");
   const [selected, setSelected] = useState("");
   const [name, setName] = useState(user?.name ?? "");
@@ -25,9 +33,10 @@ export function AppointmentBookingPanel({ listing }: { listing: Listing }) {
   const selectedSlot = slots.find((slot) => slot.startAt === selected);
 
   useEffect(() => {
-    void apiFetch<{ slots: AppointmentSlot[] }>(`/api/v1/appointments?slots=true&listingId=${encodeURIComponent(listing.id)}`).then((result) => {
+    void apiFetch<{ slots: AppointmentSlot[]; meta: SlotMeta }>(`/api/v1/appointments?slots=true&listingId=${encodeURIComponent(listing.id)}`).then((result) => {
       if (!result.data) return;
       setSlots(result.data.slots);
+      setMeta(result.data.meta);
       const firstAvailable = result.data.slots.find((slot) => slot.available);
       if (firstAvailable) {
         setSelected(firstAvailable.startAt);
@@ -60,7 +69,7 @@ export function AppointmentBookingPanel({ listing }: { listing: Listing }) {
     setSaving(false);
     if (result.data?.appointment) {
       setAppointment(result.data.appointment);
-      showToast(`Viewing requested: ${result.data.appointment.referenceNumber}`);
+      showToast("Preferred viewing time submitted. The agent will confirm shortly.");
     } else {
       showToast(result.error?.message ?? "Could not book viewing.", "error");
     }
@@ -94,10 +103,16 @@ export function AppointmentBookingPanel({ listing }: { listing: Listing }) {
             <CalendarClock className="size-5" />
           </span>
           <div>
-            <p className="font-semibold text-ink dark:text-white">Book a property viewing</p>
+            <p className="font-semibold text-ink dark:text-white">Request a property viewing</p>
             <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
-              Pick a day and time in Harare (CAT). HomeLink confirms with the agent before your visit.
+              Choose your preferred day and time. {meta?.agentName ? `${meta.agentName} will` : "The assigned agent will"} confirm before your visit.
             </p>
+            {meta?.configuredBy === "agent" && (
+              <p className="mt-2 flex items-center gap-1 text-xs font-medium text-emerald-700">
+                <ShieldCheck className="size-3.5" />
+                Times based on this agent&apos;s availability
+              </p>
+            )}
           </div>
         </div>
       </div>
@@ -107,7 +122,7 @@ export function AppointmentBookingPanel({ listing }: { listing: Listing }) {
           <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-4 text-sm text-emerald-950 dark:border-emerald-900/50 dark:bg-emerald-950/20 dark:text-emerald-100">
             <p className="flex items-center gap-2 font-semibold">
               <CheckCircle2 className="size-4" />
-              {appointment.referenceNumber} · {appointment.status.toLowerCase()}
+              {appointment.referenceNumber} · {appointment.status === "CONFIRMED" ? "Confirmed" : "Awaiting agent confirmation"}
             </p>
             <p className="mt-1 flex items-center gap-2 text-emerald-900/90 dark:text-emerald-100/90">
               <Clock3 className="size-4" />
@@ -193,8 +208,11 @@ export function AppointmentBookingPanel({ listing }: { listing: Listing }) {
 
             <Button className="h-11 w-full" onClick={() => void book()} disabled={saving || !selected || !selectedSlot?.available}>
               <CalendarClock className="size-4" />
-              {saving ? "Booking..." : "Request viewing"}
+              {saving ? "Submitting..." : "Request preferred time"}
             </Button>
+            <p className="text-center text-xs text-slate-500">
+              This is a request, not a confirmed appointment. The agent may contact you to adjust the time.
+            </p>
           </>
         )}
       </div>

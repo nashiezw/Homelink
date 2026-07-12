@@ -2,7 +2,8 @@ import type { Prisma } from "@prisma/client";
 import { getMainPrisma, isPostgresStoreEnabled } from "@/lib/db/main-prisma";
 import { getListingFromPostgres } from "@/lib/listings/postgres-listing-repository";
 import type { ViewingAppointment, ViewingAppointmentStatus } from "@/lib/types";
-import { buildViewingSlots } from "@/lib/appointments/slot-utils";
+import { buildViewingSlots, VIEWING_TIMEZONE } from "@/lib/appointments/slot-utils";
+import { getAvailabilityForListing } from "@/lib/appointments/availability-repository";
 
 type AppointmentInput = {
   listingId: string;
@@ -61,6 +62,11 @@ export async function createViewingAppointment(input: AppointmentInput, actor?: 
   const startAt = parseDate(input.startAt);
   const endAt = new Date(startAt.getTime() + 45 * 60 * 1000);
   const agentId = input.agentId ?? listing.assignedAgentId;
+  let agentName = input.agentName;
+  if (agentId && !agentName) {
+    const agent = await getMainPrisma().user.findUnique({ where: { id: agentId }, select: { name: true } });
+    agentName = agent?.name;
+  }
   const conflict = await getMainPrisma().viewingAppointment.findFirst({
     where: {
       status: { in: ["REQUESTED", "CONFIRMED", "RESCHEDULED"] },
@@ -85,7 +91,7 @@ export async function createViewingAppointment(input: AppointmentInput, actor?: 
       seekerEmail: input.seekerEmail,
       seekerPhone: input.seekerPhone,
       agentId,
-      agentName: input.agentName,
+      agentName,
       startAt,
       endAt,
       location: `${listing.suburb}, ${listing.city}`,
@@ -140,13 +146,43 @@ export async function updateViewingAppointment(
       auditTrail: appendAudit(existing.auditTrail, status, actor, { startAt: nextStart.toISOString() }),
     },
   });
-  return toAppointment(row);
+  const appointment = toAppointment(row);
+  const listing = await getListingFromPostgres(existing.listingId);
+  if (update.status && update.status !== existing.status) {
+    await queueStatusNotifications(appointment, listing?.title ?? "Property", update.status).catch(() => undefined);
+  }
+  return appointment;
 }
 
 export async function appointmentSlotsForListing(listingId: string) {
-  const booked = await listViewingAppointments({ listingId, from: new Date().toISOString() });
-  const bookedStartAts = booked.filter((item) => item.status !== "CANCELLED").map((item) => item.startAt);
-  return buildViewingSlots(bookedStartAts);
+  const listing = await getListingFromPostgres(listingId);
+  const availability = await getAvailabilityForListing(listing?.assignedAgentId);
+  const booked = await listViewingAppointments({
+    listingId,
+    agentId: listing?.assignedAgentId ?? undefined,
+    from: new Date().toISOString(),
+  });
+  const bookedStartAts = booked
+    .filter((item) => item.status !== "CANCELLED")
+    .map((item) => item.startAt);
+  const slots = buildViewingSlots(availability, bookedStartAts);
+  let agentName: string | undefined;
+  if (listing?.assignedAgentId) {
+    const agent = await getMainPrisma().user.findUnique({
+      where: { id: listing.assignedAgentId },
+      select: { name: true },
+    });
+    agentName = agent?.name;
+  }
+  return {
+    slots,
+    meta: {
+      requiresConfirmation: true,
+      agentName,
+      configuredBy: availability.configured ? "agent" as const : "platform-default" as const,
+      timezone: availability.timezone,
+    },
+  };
 }
 
 function parseDate(value: string) {
@@ -220,23 +256,64 @@ function toAppointment(row: {
 }
 
 async function queueAppointmentNotifications(appointment: ViewingAppointment, listingTitle: string) {
+  const when = formatHarareDateTime(appointment.startAt);
   const notifications = [
     appointment.seekerId
       ? {
           userId: appointment.seekerId,
           channel: "EMAIL" as const,
-          subject: `Viewing requested: ${appointment.referenceNumber}`,
-          body: `Your viewing for ${listingTitle} is requested for ${new Date(appointment.startAt).toLocaleString()}.`,
+          subject: `Viewing request submitted: ${appointment.referenceNumber}`,
+          body: `Your preferred viewing time for ${listingTitle} is ${when}. The assigned agent will confirm availability shortly.`,
         }
       : null,
     appointment.agentId
       ? {
           userId: appointment.agentId,
           channel: "EMAIL" as const,
-          subject: `New viewing booking: ${appointment.referenceNumber}`,
-          body: `${appointment.seekerName} requested a viewing for ${listingTitle} at ${new Date(appointment.startAt).toLocaleString()}.`,
+          subject: `Confirm viewing request: ${appointment.referenceNumber}`,
+          body: `${appointment.seekerName} requested a viewing for ${listingTitle} at ${when}. Please confirm or reschedule from your agent dashboard.`,
         }
       : null,
   ].filter((item): item is NonNullable<typeof item> => Boolean(item));
   if (notifications.length) await getMainPrisma().notification.createMany({ data: notifications });
+}
+
+async function queueStatusNotifications(
+  appointment: ViewingAppointment,
+  listingTitle: string,
+  status: ViewingAppointmentStatus,
+) {
+  const when = formatHarareDateTime(appointment.startAt);
+  if (status === "CONFIRMED" && appointment.seekerId) {
+    await getMainPrisma().notification.create({
+      data: {
+        userId: appointment.seekerId,
+        channel: "EMAIL",
+        subject: `Viewing confirmed: ${appointment.referenceNumber}`,
+        body: `Your viewing for ${listingTitle} is confirmed for ${when}.`,
+      },
+    });
+  }
+  if (status === "CANCELLED" && appointment.seekerId) {
+    await getMainPrisma().notification.create({
+      data: {
+        userId: appointment.seekerId,
+        channel: "EMAIL",
+        subject: `Viewing cancelled: ${appointment.referenceNumber}`,
+        body: `Your viewing request for ${listingTitle} on ${when} was cancelled. You can request another preferred time.`,
+      },
+    });
+  }
+}
+
+function formatHarareDateTime(iso: string) {
+  return new Intl.DateTimeFormat("en-ZW", {
+    timeZone: VIEWING_TIMEZONE,
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  }).format(new Date(iso));
 }

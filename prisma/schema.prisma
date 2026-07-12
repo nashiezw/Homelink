@@ -149,6 +149,7 @@ model User {
   agencyMemberships AgencyAgent[]
   academyApplications AcademyLearnerApplication[]
   academyResourceAccess AcademyResourceAccess[]
+  viewingAvailability   AgentViewingAvailability?
 }
 
 model Agency {
@@ -348,6 +349,13 @@ model ViewingAppointment {
   @@index([enquiryId])
   @@index([agentId, startAt])
   @@index([status])
+}
+
+model AgentViewingAvailability {
+  agentId   String   @id
+  schedule  Json
+  updatedAt DateTime @updatedAt
+  agent     User     @relation(fields: [agentId], references: [id], onDelete: Cascade)
 }
 
 model SignedAgreement {
