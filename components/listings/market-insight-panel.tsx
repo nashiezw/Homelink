@@ -36,6 +36,8 @@ export function MarketInsightPanel({ listing }: { listing: Listing }) {
 
   if (!insight) return null;
 
+  const hasMarketData = insight.sampleSize > 0;
+
   const qualityTone =
     insight.dataQuality === "high"
       ? "text-emerald-700 bg-emerald-50 border-emerald-200 dark:bg-emerald-950/30 dark:border-emerald-900/40 dark:text-emerald-200"
@@ -58,10 +60,19 @@ export function MarketInsightPanel({ listing }: { listing: Listing }) {
           </div>
           <div className="flex flex-wrap gap-2">
             <Badge className={qualityTone}>{insight.dataQuality ?? "limited"} evidence</Badge>
-            {insight.aiGenerated && (
+            {insight.aiGenerated ? (
               <Badge className="border-violet-200 bg-violet-50 text-violet-800 dark:border-violet-900/40 dark:bg-violet-950/30 dark:text-violet-200">
                 <Sparkles className="mr-1 size-3.5" />
                 LLM summary
+              </Badge>
+            ) : (
+              <Badge className="border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-950/40 dark:text-slate-200">
+                Analytics summary
+              </Badge>
+            )}
+            {insight.comparableScope === "city" && insight.sampleSize > 0 && (
+              <Badge className="border-sky-200 bg-sky-50 text-sky-800 dark:border-sky-900/40 dark:bg-sky-950/30 dark:text-sky-200">
+                City-wide comparables
               </Badge>
             )}
           </div>
@@ -70,16 +81,20 @@ export function MarketInsightPanel({ listing }: { listing: Listing }) {
 
       <div className="space-y-4 p-5">
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <Metric label={insight.priceLabel ?? "Median price"} value={formatPrice(insight.medianPrice)} />
+          <Metric label={insight.priceLabel ?? "Median price"} value={hasMarketData ? formatPrice(insight.medianPrice) : "Not enough data"} />
           <Metric
             label="Suggested band"
-            value={`${formatPrice(insight.recommendedPriceMin)} - ${formatPrice(insight.recommendedPriceMax)}`}
+            value={
+              hasMarketData
+                ? `${formatPrice(insight.recommendedPriceMin)} - ${formatPrice(insight.recommendedPriceMax)}`
+                : "Not enough data"
+            }
           />
           <Metric label="Demand score" value={`${insight.demandScore}/100`} />
           <Metric label="Confidence" value={`${insight.confidenceScore ?? 0}/100`} />
         </div>
 
-        {insight.listingPrice && insight.priceVsMedianPct !== undefined && (
+        {insight.listingPrice && insight.priceVsMedianPct !== undefined && hasMarketData && (
           <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-4 dark:border-slate-700 dark:bg-slate-950/40">
             <p className="text-xs font-bold uppercase tracking-wide text-slate-500">This listing</p>
             <p className="mt-1 text-sm font-semibold text-ink dark:text-white">

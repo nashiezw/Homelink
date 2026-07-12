@@ -1,7 +1,7 @@
 import { getHydratedRuntimePlatformSettings } from "@/lib/settings/runtime";
 import type { MarketAnalyticsResult } from "@/lib/market-insights/analytics";
 
-export const INSIGHT_ENGINE_VERSION = 2;
+export const INSIGHT_ENGINE_VERSION = 3;
 
 export type InsightNarrativeContext = MarketAnalyticsResult & {
   city: string;
@@ -113,8 +113,14 @@ async function tryLlmNarrative(apiKey: string, context: InsightNarrativeContext)
 export function buildDeterministicNarrative(context: InsightNarrativeContext): InsightNarrative {
   const notes: string[] = [];
 
-  if (context.dataQuality === "limited" || context.sampleSize < 3) {
-    notes.push("Limited comparable activity in this pocket — treat this as directional guidance until more similar listings are live on HomeLink.");
+  if (context.sampleSize === 0) {
+    notes.push("No comparable listings in this area yet — median and band will populate once similar properties are listed on HomeLink.");
+  } else if (context.dataQuality === "limited" || context.sampleSize < 3) {
+    notes.push(
+      context.comparableScope === "city"
+        ? `Limited suburb-level data — using ${context.sampleSize} comparable listing${context.sampleSize === 1 ? "" : "s"} across ${context.city} until more appear in ${context.suburb}.`
+        : "Limited comparable activity in this pocket — treat this as directional guidance until more similar listings are live on HomeLink.",
+    );
   } else if (context.dataQuality === "high") {
     notes.push(`Strong comparable set (${context.sampleSize} listings, ${context.strongMatches} close matches) supports this estimate.`);
   } else {
@@ -144,7 +150,9 @@ export function buildDeterministicNarrative(context: InsightNarrativeContext): I
   notes.push(`Confidence ${context.confidenceScore}/100 based on sample depth, match quality, and price consistency.`);
 
   const summary =
-    context.listingPrice && context.priceAssessment
+    context.sampleSize === 0
+      ? `Not enough comparable listings in ${context.suburb} yet to estimate market pricing.`
+      : context.listingPrice && context.priceAssessment
       ? context.priceAssessment === "fair"
         ? `Pricing looks market-aligned in ${context.suburb} with ${context.confidenceScore}/100 confidence.`
         : context.priceAssessment === "below_market"

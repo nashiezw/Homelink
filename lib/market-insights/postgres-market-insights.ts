@@ -58,45 +58,26 @@ export async function computeMarketInsight(input: {
   const intent = (input.intent ?? sourceListing?.intent.toLowerCase() ?? "rent") as ListingIntent;
   const sourcePrice = sourceListing ? Number(sourceListing.price) : undefined;
 
-  const listings = await prisma.listing.findMany({
-    where: {
-      city: { equals: city, mode: "insensitive" },
-      suburb: { equals: suburb, mode: "insensitive" },
-      propertyType: propertyType.toUpperCase() as never,
-      intent: intent.toUpperCase() as never,
-      status: {
-        in:
-          intent === "buy"
-            ? (["ACTIVE", "VIEWING_IN_PROGRESS", "SOLD"] as never)
-            : (["ACTIVE", "VIEWING_IN_PROGRESS", "RENTED"] as never),
-      },
-      ...(sourceListing ? { id: { not: sourceListing.id } } : {}),
-      ...(sourcePrice
-        ? {
-            price: {
-              gte: Math.max(1, Math.round(sourcePrice * 0.55)),
-              lte: Math.round(sourcePrice * 1.65),
-            },
-          }
-        : {}),
-    },
-    select: {
-      id: true,
-      price: true,
-      bedrooms: true,
-      bathrooms: true,
-      furnished: true,
-      parking: true,
-      wifi: true,
-      solarBackup: true,
-      borehole: true,
-      createdAt: true,
-      views: true,
-      _count: { select: { enquiries: true, favourites: true } },
-    },
-    orderBy: { createdAt: "desc" },
-    take: 120,
+  let comparableScope: "suburb" | "city" = "suburb";
+  let listings = await fetchComparableListings(prisma, {
+    city,
+    suburb,
+    propertyType,
+    intent,
+    sourceListingId: sourceListing?.id,
+    sourcePrice,
   });
+
+  if (!listings.length) {
+    comparableScope = "city";
+    listings = await fetchComparableListings(prisma, {
+      city,
+      propertyType,
+      intent,
+      sourceListingId: sourceListing?.id,
+      sourcePrice,
+    });
+  }
 
   const sourceProfile = {
     bedrooms: sourceListing?.bedrooms ?? 0,
@@ -155,6 +136,7 @@ export async function computeMarketInsight(input: {
     solarBackup: sourceListing?.solarBackup,
     borehole: sourceListing?.borehole,
     createdAt: sourceListing?.createdAt,
+    comparableScope,
   });
 
   const narrative = await generateMarketInsightNarrative({
@@ -190,6 +172,7 @@ export async function computeMarketInsight(input: {
     priceLabel: analytics.priceLabel,
     suburbEnquiryRate: analytics.suburbEnquiryRate,
     avgDaysOnMarket: analytics.avgDaysOnMarket,
+    comparableScope: analytics.comparableScope,
     summary: narrative.summary,
     notes: narrative.notes,
     aiGenerated: narrative.aiGenerated,
@@ -225,6 +208,7 @@ export async function computeMarketInsight(input: {
         priceLabel: insight.priceLabel,
         suburbEnquiryRate: insight.suburbEnquiryRate,
         avgDaysOnMarket: insight.avgDaysOnMarket,
+        comparableScope: insight.comparableScope,
         listingUpdatedAt: sourceListing?.updatedAt.toISOString(),
       } as Prisma.InputJsonObject,
     },
@@ -251,6 +235,58 @@ async function getCachedInsight(listingId: string, listingUpdatedAt: Date) {
   if (payload.insightVersion !== INSIGHT_ENGINE_VERSION) return null;
   if (payload.listingUpdatedAt && payload.listingUpdatedAt !== listingUpdatedAt.toISOString()) return null;
   return snapshotToInsight(row);
+}
+
+async function fetchComparableListings(
+  prisma: ReturnType<typeof getMainPrisma>,
+  input: {
+    city: string;
+    suburb?: string;
+    propertyType: string;
+    intent: ListingIntent;
+    sourceListingId?: string;
+    sourcePrice?: number;
+  },
+) {
+  return prisma.listing.findMany({
+    where: {
+      city: { equals: input.city, mode: "insensitive" },
+      ...(input.suburb ? { suburb: { equals: input.suburb, mode: "insensitive" } } : {}),
+      propertyType: input.propertyType.toUpperCase() as never,
+      intent: input.intent.toUpperCase() as never,
+      status: {
+        in:
+          input.intent === "buy"
+            ? (["ACTIVE", "VIEWING_IN_PROGRESS", "SOLD"] as never)
+            : (["ACTIVE", "VIEWING_IN_PROGRESS", "RENTED"] as never),
+      },
+      ...(input.sourceListingId ? { id: { not: input.sourceListingId } } : {}),
+      ...(input.sourcePrice
+        ? {
+            price: {
+              gte: Math.max(1, Math.round(input.sourcePrice * 0.55)),
+              lte: Math.round(input.sourcePrice * 1.65),
+            },
+          }
+        : {}),
+    },
+    select: {
+      id: true,
+      price: true,
+      bedrooms: true,
+      bathrooms: true,
+      furnished: true,
+      parking: true,
+      wifi: true,
+      solarBackup: true,
+      borehole: true,
+      createdAt: true,
+      views: true,
+      _count: { select: { enquiries: true, favourites: true } },
+    },
+    orderBy: { createdAt: "desc" },
+    take: 120,
+  });
 }
 
 function snapshotToInsight(row: {
@@ -285,6 +321,7 @@ function snapshotToInsight(row: {
     priceLabel?: string;
     suburbEnquiryRate?: number;
     avgDaysOnMarket?: number;
+    comparableScope?: MarketInsight["comparableScope"];
   };
 
   return {
@@ -312,6 +349,7 @@ function snapshotToInsight(row: {
     priceLabel: payload.priceLabel ?? "Median rent",
     suburbEnquiryRate: payload.suburbEnquiryRate,
     avgDaysOnMarket: payload.avgDaysOnMarket,
+    comparableScope: payload.comparableScope,
     summary: payload.summary,
     notes: payload.notes ?? [],
     aiGenerated: payload.aiGenerated ?? false,

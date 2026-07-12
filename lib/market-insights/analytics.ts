@@ -32,6 +32,7 @@ export type MarketAnalyticsInput = {
   solarBackup?: boolean;
   borehole?: boolean;
   createdAt?: Date;
+  comparableScope?: "suburb" | "city";
 };
 
 export type MarketAnalyticsResult = {
@@ -53,6 +54,7 @@ export type MarketAnalyticsResult = {
   priceLabel: string;
   suburbEnquiryRate: number;
   avgDaysOnMarket: number;
+  comparableScope: "suburb" | "city";
 };
 
 export function scoreComparable(
@@ -91,13 +93,14 @@ export function buildMarketAnalytics(
   input: MarketAnalyticsInput,
 ): MarketAnalyticsResult {
   const prices = comparables.map((item) => item.price).filter((price) => price > 0).sort((a, b) => a - b);
+  const hasComparables = prices.length > 0;
   const strongMatches = comparables.filter((item) => item.matchScore >= 70).length;
-  const median = prices.length ? percentile(prices, 50) : input.listingPrice ?? 0;
-  const average = prices.length ? Math.round(prices.reduce((sum, price) => sum + price, 0) / prices.length) : median;
+  const median = hasComparables ? percentile(prices, 50) : 0;
+  const average = hasComparables ? Math.round(prices.reduce((sum, price) => sum + price, 0) / prices.length) : 0;
   const spread = prices.length > 1 ? coefficientOfVariation(prices) : 0;
 
-  const recommendedPriceMin = prices.length >= 4 ? Math.round(percentile(prices, 25)) : Math.round(median * 0.92);
-  const recommendedPriceMax = prices.length >= 4 ? Math.round(percentile(prices, 75)) : Math.round(median * 1.08);
+  const recommendedPriceMin = prices.length >= 4 ? Math.round(percentile(prices, 25)) : hasComparables ? Math.round(median * 0.92) : 0;
+  const recommendedPriceMax = prices.length >= 4 ? Math.round(percentile(prices, 75)) : hasComparables ? Math.round(median * 1.08) : 0;
 
   const engagementPerListing =
     comparables.reduce((sum, item) => sum + item.views + item.enquiries * 14 + item.favourites * 6, 0) /
@@ -177,6 +180,7 @@ export function buildMarketAnalytics(
     priceLabel,
     suburbEnquiryRate: Number(enquiryRate.toFixed(2)),
     avgDaysOnMarket,
+    comparableScope: input.comparableScope ?? "suburb",
   };
 }
 
