@@ -46,7 +46,7 @@ export function ListingDetailActions({ listing }: ListingDetailActionsProps) {
 
   return (
     <>
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2 [&_button]:min-h-11 [&_button]:flex-1 sm:[&_button]:flex-none">
         <Button variant="secondary" onClick={shareListing}>
           <Share2 className="size-4" aria-hidden="true" />
           Share

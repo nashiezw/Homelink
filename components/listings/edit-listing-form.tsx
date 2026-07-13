@@ -162,7 +162,7 @@ export function EditListingForm() {
   }
 
   return (
-    <form onSubmit={(e) => void submit(e)} className="space-y-5 rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+    <form onSubmit={(e) => void submit(e)} className="max-w-full space-y-5 rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6 dark:border-slate-700 dark:bg-slate-900">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-lg font-semibold">Edit listing</h2>
         <Link href={`/listings/${id}`} className="text-sm font-medium text-emerald-700 hover:underline">

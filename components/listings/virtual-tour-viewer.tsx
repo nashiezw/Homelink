@@ -380,7 +380,7 @@ function TourStage({
           <div className="absolute inset-x-3 top-3 z-10 rounded-xl border border-emerald-200 bg-white px-3 py-2.5 text-sm text-emerald-950 shadow-sm sm:inset-x-4 sm:max-w-sm">
             <p className="font-semibold">Tour photos not uploaded yet</p>
             <p className="mt-1 text-xs leading-5 text-emerald-900/80">
-              Showing a property illustration until real room photos or panoramas are added.
+              Showing a property illustration until real room photos or panoramas are added in Admin → Properties → Virtual tour.
             </p>
           </div>
         )}
@@ -421,8 +421,8 @@ function TourStage({
               onHotspot(hotspot.targetSceneId);
               if (hotspot.targetSceneId) onScene(hotspot.targetSceneId);
             }}
-            className="absolute z-10 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white/80 bg-emerald-600 px-3 py-2 text-xs font-bold text-white shadow-lg"
-            style={{ left: `${hotspot.x}%`, top: `${hotspot.y}%` }}
+            className="absolute z-10 max-w-[40%] -translate-x-1/2 -translate-y-1/2 truncate rounded-full border-2 border-white/80 bg-emerald-600 px-2.5 py-1.5 text-[11px] font-bold text-white shadow-lg sm:max-w-none sm:px-3 sm:py-2 sm:text-xs"
+            style={{ left: `${Math.min(90, Math.max(10, hotspot.x))}%`, top: `${Math.min(85, Math.max(15, hotspot.y))}%` }}
           >
             {hotspot.label}
           </button>

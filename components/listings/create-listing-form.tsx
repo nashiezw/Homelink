@@ -254,7 +254,7 @@ export function CreateListingForm({ onSuccess }: CreateListingFormProps) {
   }
 
   return (
-    <form onSubmit={(e) => void submit(e)} className="space-y-5 rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+    <form onSubmit={(e) => void submit(e)} className="max-w-full space-y-5 rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6 dark:border-slate-700 dark:bg-slate-900">
       <div>
         <h2 className="text-lg font-semibold text-ink">Listing details</h2>
         <p className="mt-1 text-sm text-slate-500">

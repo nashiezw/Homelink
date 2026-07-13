@@ -69,14 +69,14 @@ export function EnquiryPanel({ listing, className }: EnquiryPanelProps) {
   }
 
   return (
-    <div className={cn("rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900", className)}>
+    <div className={cn("max-w-full rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5 dark:border-slate-700 dark:bg-slate-900", className)}>
       <div className="flex items-start gap-3">
         <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700">
           <MessageSquare className="size-5" />
         </div>
-        <div>
+        <div className="min-w-0">
           <p className="font-semibold text-ink dark:text-white">Enquire through HomeLink</p>
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-1 text-sm leading-6 text-slate-500">
             {managed
               ? "A verified HomeLink property consultant will manage your enquiry professionally."
               : "Submit your enquiry and we will connect you with the right team."}

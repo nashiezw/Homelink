@@ -72,10 +72,10 @@ export function ListingDetailView({
         <MediaGallery images={galleryImages} title={listing.title} />
       </section>
 
-      <section className="mx-auto grid max-w-7xl gap-6 px-4 pb-14 sm:gap-8 sm:px-6 md:grid-cols-[minmax(0,1fr)_300px] lg:grid-cols-[minmax(0,1fr)_340px] lg:px-8">
+      <section className="mx-auto grid max-w-7xl gap-6 px-4 pb-14 sm:gap-8 sm:px-6 md:grid-cols-[minmax(0,1fr)_minmax(260px,300px)] lg:grid-cols-[minmax(0,1fr)_minmax(280px,340px)] lg:px-8">
         <div className="order-2 min-w-0 max-w-full md:order-1">
           <div className="surface-panel flex flex-wrap items-center gap-2 rounded-lg p-4 sm:gap-3 sm:p-5">
-            <p className="text-2xl font-semibold text-emerald-700 sm:text-3xl">
+            <p className="min-w-0 break-words text-2xl font-semibold text-emerald-700 sm:text-3xl">
               {isHoliday ? formatNightlyPrice(listing.holidayHome!.nightlyRate) : formatPrice(listing.price)}
             </p>
             <ListingStatusBadge listing={listing} />
@@ -101,7 +101,7 @@ export function ListingDetailView({
 
             <section>
               <h2 className="text-xl font-semibold">Description</h2>
-              <p className="mt-3 max-w-3xl leading-7 text-slate-600 dark:text-slate-300">{listing.description}</p>
+              <p className="mt-3 max-w-3xl break-words leading-7 text-slate-600 dark:text-slate-300">{listing.description}</p>
             </section>
 
             {detailRows.length > 0 && (
@@ -109,12 +109,12 @@ export function ListingDetailView({
                 <h2 className="text-xl font-semibold">Key listing details</h2>
                 <div className="mt-4 grid gap-3 sm:grid-cols-2">
                   {detailRows.map((row) => (
-                    <div key={`${row.label}-${row.value}`} className="surface-panel rounded-lg p-4">
+                    <div key={`${row.label}-${row.value}`} className="surface-panel min-w-0 rounded-lg p-4">
                       <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500">
-                        <row.icon className="size-4 text-emerald-700" />
+                        <row.icon className="size-4 shrink-0 text-emerald-700" />
                         {row.label}
                       </p>
-                      <p className="mt-1 font-semibold text-ink dark:text-white">{row.value}</p>
+                      <p className="mt-1 break-words font-semibold text-ink dark:text-white">{row.value}</p>
                     </div>
                   ))}
                 </div>
@@ -125,9 +125,9 @@ export function ListingDetailView({
               <h2 className="text-xl font-semibold">Amenities</h2>
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
             {listing.amenities.map((amenity) => (
-                  <div key={amenity} className="flex items-center gap-3">
+                  <div key={amenity} className="flex min-w-0 items-center gap-3">
                     <ShieldCheck className="size-5 shrink-0 text-emerald-700" aria-hidden="true" />
-                    <span>{amenity}</span>
+                    <span className="min-w-0 break-words">{amenity}</span>
                   </div>
                 ))}
               </div>

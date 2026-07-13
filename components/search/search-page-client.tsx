@@ -298,14 +298,14 @@ export function SearchPageClient() {
         <div className="absolute inset-0 bg-gradient-to-r from-ink via-ink/85 to-ink/45" />
         <div className="relative mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
           <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
-            <div className="w-full max-w-xs min-w-0 sm:max-w-2xl lg:max-w-none">
+            <div className="min-w-0 w-full max-w-full sm:max-w-2xl lg:max-w-none">
               <p className="inline-flex rounded-full border border-emerald-300/25 bg-emerald-400/10 px-3 py-1 text-xs font-semibold uppercase tracking-normal text-emerald-100">
                 Search
               </p>
-              <h1 className="mt-4 text-3xl font-semibold tracking-normal sm:text-4xl">
+              <h1 className="mt-4 break-words text-2xl font-semibold tracking-normal sm:text-3xl md:text-4xl">
                 Fresh property matches across Zimbabwe
               </h1>
-              <p className="mt-3 max-w-2xl text-slate-200">
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-200 sm:text-base">
                 Combine city, suburb, budget, amenities, and map context. AI search turns natural language into structured filters.
               </p>
             </div>
@@ -316,7 +316,7 @@ export function SearchPageClient() {
           </div>
 
           <form
-            className="surface-panel mt-6 grid w-full gap-3 rounded-lg p-3 sm:grid-cols-2 lg:grid-cols-[1.3fr_1fr_1fr_auto]"
+            className="surface-panel mt-6 grid w-full max-w-full gap-3 rounded-lg p-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_minmax(0,1fr)_auto]"
             onSubmit={(event) => {
               event.preventDefault();
               const data = new FormData(event.currentTarget);
@@ -405,13 +405,13 @@ export function SearchPageClient() {
             </button>
           )}
 
-          <div className="mt-4 flex w-full flex-wrap gap-2">
+          <div className="-mx-1 mt-4 flex w-[calc(100%+0.5rem)] gap-2 overflow-x-auto px-1 pb-1 sm:mx-0 sm:w-full sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0">
             {smartFilters.map((filter) => (
               <button
                 type="button"
                 key={filter.label}
                 onClick={() => toggleFilter(filter)}
-                className={`rounded-full border px-3 py-1.5 text-sm ${
+                className={`shrink-0 rounded-full border px-3 py-1.5 text-sm ${
                   activeFilters.some((item) => item.label === filter.label)
                     ? "border-emerald-300 bg-emerald-400/20 text-emerald-50"
                     : "border-white/20 bg-white/90 text-slate-700 hover:border-emerald-300 hover:bg-emerald-50"
@@ -459,14 +459,14 @@ export function SearchPageClient() {
         </div>
       </section>
 
-      <section className="mx-auto grid max-w-7xl gap-6 px-4 py-8 sm:px-6 md:grid-cols-[minmax(0,1fr)_280px] lg:grid-cols-[minmax(0,1fr)_320px] lg:px-8">
-        <div className="order-2 min-w-0 md:order-1">
+      <section className="mx-auto grid max-w-7xl gap-6 px-4 py-6 sm:px-6 sm:py-8 md:grid-cols-[minmax(0,1fr)_minmax(240px,280px)] lg:grid-cols-[minmax(0,1fr)_minmax(260px,320px)] lg:px-8">
+        <div className="order-2 min-w-0 max-w-full md:order-1">
           <div className="surface-panel flex flex-col justify-between gap-3 rounded-lg p-4 sm:flex-row sm:items-center">
             <p className="text-sm text-slate-600 dark:text-slate-300">
               Showing <span className="font-semibold text-ink dark:text-white">{listings.length}</span> listings
               {loading ? " (loading...)" : ""}
             </p>
-            <Button variant="secondary" onClick={() => setMapOpen((open) => !open)}>
+            <Button variant="secondary" className="w-full sm:w-auto" onClick={() => setMapOpen((open) => !open)}>
               <MapIcon className="size-4" aria-hidden="true" />
               {mapOpen ? "Hide map" : "Map view"}
             </Button>
@@ -486,14 +486,14 @@ export function SearchPageClient() {
           </div>
         </div>
 
-        <aside className="order-1 h-fit overflow-hidden rounded-lg border border-cyan-700/30 bg-gradient-to-br from-ocean via-[#0f5364] to-ink text-white shadow-soft md:order-2 md:sticky md:top-24">
-          <div className="border-b border-white/10 p-5">
+        <aside className="order-1 h-fit max-w-full overflow-hidden rounded-lg border border-cyan-700/30 bg-gradient-to-br from-ocean via-[#0f5364] to-ink text-white shadow-soft md:order-2 md:sticky md:top-24">
+          <div className="border-b border-white/10 p-4 sm:p-5">
             <p className="text-sm font-semibold uppercase tracking-normal text-cyan-100">Search intelligence</p>
-            <p className="mt-2 text-2xl font-semibold">
+            <p className="mt-2 break-words text-xl font-semibold sm:text-2xl">
               {marketLens.headline}
             </p>
           </div>
-          <div className="p-5">
+          <div className="p-4 sm:p-5">
             <p className="font-semibold">What matches this client</p>
             <p className="mt-2 text-sm leading-6 text-cyan-50">
               {marketLens.intro}
@@ -501,17 +501,17 @@ export function SearchPageClient() {
             <div className="mt-5 grid gap-3">
               {marketLens.rows.map((item) => (
                 <div key={item.label} className="rounded-md bg-white/12 px-3 py-3 text-sm">
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="min-w-0 text-cyan-50">{item.label}</span>
-                    <span className="max-w-[52%] text-right font-semibold text-white">{item.value}</span>
+                  <div className="flex items-start justify-between gap-3">
+                    <span className="min-w-0 shrink text-cyan-50">{item.label}</span>
+                    <span className="min-w-0 max-w-[58%] break-words text-right font-semibold text-white">{item.value}</span>
                   </div>
                 </div>
               ))}
               {nearby?.places.slice(0, 3).map((item) => (
                 <div key={`${item.type}-${item.name}`} className="rounded-md bg-white/8 px-3 py-3 text-sm">
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="min-w-0 text-cyan-50">{item.name}</span>
-                    <span className="font-semibold text-cyan-100">{item.distanceKm} km</span>
+                  <div className="flex items-start justify-between gap-3">
+                    <span className="min-w-0 break-words text-cyan-50">{item.name}</span>
+                    <span className="shrink-0 font-semibold text-cyan-100">{item.distanceKm} km</span>
                   </div>
                 </div>
               ))}

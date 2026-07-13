@@ -25,7 +25,7 @@ export function MarketInsightPanel({ listing }: { listing: Listing }) {
     return (
       <section className="animate-pulse rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
         <div className="h-6 w-48 rounded bg-slate-200 dark:bg-slate-800" />
-        <div className="mt-4 grid gap-3 sm:grid-cols-4">
+        <div className="mt-4 grid gap-3 grid-cols-2">
           {Array.from({ length: 4 }).map((_, index) => (
             <div key={index} className="h-16 rounded-lg bg-slate-100 dark:bg-slate-800" />
           ))}
@@ -46,15 +46,15 @@ export function MarketInsightPanel({ listing }: { listing: Listing }) {
         : "text-slate-700 bg-slate-50 border-slate-200 dark:bg-slate-950/40 dark:border-slate-700 dark:text-slate-200";
 
   return (
-    <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
-      <div className="border-b border-slate-100 px-5 py-4 dark:border-slate-800">
+    <section className="max-w-full overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <div className="border-b border-slate-100 px-4 py-4 dark:border-slate-800 sm:px-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <h2 className="flex items-center gap-2 text-xl font-semibold text-ink dark:text-white">
-              {insight.aiGenerated ? <BrainCircuit className="size-5 text-emerald-700" /> : <BarChart3 className="size-5 text-emerald-700" />}
-              AI market insight
+          <div className="min-w-0">
+            <h2 className="flex min-w-0 items-start gap-2 text-lg font-semibold text-ink sm:text-xl dark:text-white">
+              {insight.aiGenerated ? <BrainCircuit className="mt-0.5 size-5 shrink-0 text-emerald-700" /> : <BarChart3 className="mt-0.5 size-5 shrink-0 text-emerald-700" />}
+              <span className="min-w-0 break-words">AI market insight</span>
             </h2>
-            <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+            <p className="mt-1 break-words text-sm text-slate-600 dark:text-slate-300">
               {insight.summary ?? `Comparable analysis for ${insight.suburb}, ${insight.city}.`}
             </p>
           </div>
@@ -84,8 +84,8 @@ export function MarketInsightPanel({ listing }: { listing: Listing }) {
         </div>
       </div>
 
-      <div className="space-y-4 p-5">
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="space-y-4 p-4 sm:p-5">
+        <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
           <Metric label={insight.priceLabel ?? "Median price"} value={hasMarketData ? formatPrice(insight.medianPrice) : "Not enough data"} />
           <Metric
             label="Suggested band"
@@ -167,9 +167,9 @@ export function MarketInsightPanel({ listing }: { listing: Listing }) {
 
 function Metric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-950/40">
+    <div className="min-w-0 rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-950/40">
       <p className="text-xs font-bold uppercase tracking-wider text-slate-500">{label}</p>
-      <p className="mt-1 text-sm font-semibold text-ink dark:text-white">{value}</p>
+      <p className="mt-1 break-words text-sm font-semibold text-ink dark:text-white">{value}</p>
     </div>
   );
 }

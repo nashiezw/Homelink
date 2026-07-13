@@ -27,7 +27,7 @@ export function HolidayHomeDetailSections({ listing, reviewSummary }: HolidayHom
 
   return (
     <>
-      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <section className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <Stat label="Nightly rate" value={formatNightlyPrice(hh.nightlyRate)} />
         <Stat label="Minimum stay" value={`${hh.minimumStay} nights`} />
         <Stat label="Max guests" value={String(hh.maximumGuests)} />
@@ -105,9 +105,9 @@ export function HolidayHomeDetailSections({ listing, reviewSummary }: HolidayHom
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
+    <div className="min-w-0 rounded-xl border border-slate-200 bg-white p-3 sm:p-4 dark:border-slate-700 dark:bg-slate-900">
       <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</p>
-      <p className="mt-1 text-sm font-semibold text-slate-950 dark:text-white">{value}</p>
+      <p className="mt-1 break-words text-sm font-semibold text-slate-950 dark:text-white">{value}</p>
     </div>
   );
 }
