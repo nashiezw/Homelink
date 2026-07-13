@@ -594,6 +594,18 @@ textarea {
     -webkit-backdrop-filter: none !important;
   }
 
+  /*
+   * Without shadows, faint borders (e.g. white/70) make cards look like one sheet.
+   * A solid slate edge is GPU-safe and restores separation on mobile.
+   */
+  .gpu-card {
+    border-color: rgba(203, 213, 225, 0.95) !important;
+  }
+
+  .dark .gpu-card {
+    border-color: rgba(51, 65, 85, 0.95) !important;
+  }
+
   .hover-lift:hover,
   .premium-card:hover,
   .academy-card:hover,
