@@ -1,6 +1,5 @@
 import { Suspense } from "react";
 import { PublicAcademyPage } from "@/components/academy/public-academy-page";
-import "./academy-page.css";
 
 export const dynamic = "force-dynamic";
 

@@ -23,7 +23,7 @@ export function AcademyAccordion({
       {items.map((item) => (
         <details
           key={item.id}
-          className="academy-card group overflow-hidden rounded-xl max-md:open:shadow-none md:open:shadow-md"
+          className="academy-card group overflow-hidden rounded-xl open:shadow-md"
           open={item.defaultOpen}
         >
           <summary className="flex cursor-pointer list-none flex-col gap-3 px-4 py-4 marker:content-none sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:px-5">
@@ -40,7 +40,7 @@ export function AcademyAccordion({
               <ChevronDown className="size-5 text-slate-400 transition group-open:rotate-180" />
             </div>
           </summary>
-          <div className="border-t border-slate-100 bg-white px-4 py-4 dark:border-slate-800 dark:bg-slate-950 md:bg-white/55 md:dark:bg-slate-950/35 sm:px-5">{item.content}</div>
+          <div className="border-t border-slate-100 bg-white/55 px-4 py-4 dark:border-slate-800 dark:bg-slate-950/35 sm:px-5">{item.content}</div>
         </details>
       ))}
     </div>
@@ -129,12 +129,12 @@ export function ToolkitGrid({
           meta: `${group.items.length} PDFs`,
           defaultOpen: index === 0,
           content: (
-            <div className="grid w-full grid-cols-1 gap-2 md:grid-cols-2">
+            <div className="grid gap-2 sm:grid-cols-2">
               {group.items.map((item) =>
                 locked || item.locked || !item.fileUrl ? (
                   <div
                     key={item.id}
-                    className={cn("rounded-lg border p-3 max-md:min-h-0 bg-slate-50/80 dark:bg-slate-900/40")}
+                    className={cn("rounded-lg border p-3 min-h-[4.5rem] bg-slate-50/80 dark:bg-slate-900/40")}
                     style={{ borderColor: `${accent}22` }}
                   >
                     <div className="flex items-start gap-2">
@@ -151,7 +151,7 @@ export function ToolkitGrid({
                     href={item.fileUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className={cn("rounded-lg border p-3 max-md:min-h-0 bg-white transition md:hover:-translate-y-0.5 md:hover:shadow-md dark:bg-slate-950")}
+                    className={cn("rounded-lg border p-3 transition hover:-translate-y-0.5 hover:shadow-md min-h-[4.5rem] bg-white dark:bg-slate-950")}
                     style={{ borderColor: `${accent}33` }}
                   >
                     <p className="font-semibold text-sm">{item.title}</p>

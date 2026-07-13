@@ -23,7 +23,7 @@ import {
 import { AuthForm } from "@/components/auth/auth-form";
 import { AcademyAccordion, ToolkitGrid } from "@/components/academy/academy-accordion";
 import { HomeLinkBrand } from "@/components/brand/homelink-logo";
-import { AcademyPublicShell } from "@/components/academy/academy-public-shell";
+import { PageShell } from "@/components/layout/page-shell";
 import { Button } from "@/components/ui/button";
 import { useApp } from "@/components/providers/app-provider";
 import { apiFetch } from "@/lib/api/client";
@@ -79,10 +79,6 @@ function courseRegistrationState(status: AcademyStatus | null, courseId: string)
   if (registration.status === "APPROVED") return "APPROVED" as const;
   if (registration.status === "PENDING_PAYMENT" || registration.status === "PAYMENT_UPLOADED") return "PENDING" as const;
   return "NOT_REGISTERED" as const;
-}
-
-function truncateLabel(value: string, max = 52) {
-  return value.length > max ? `${value.slice(0, max - 1)}…` : value;
 }
 
 export function PublicAcademyPage() {
@@ -192,9 +188,9 @@ export function PublicAcademyPage() {
 
   if (user && (!statusLoaded || (academyStatus?.hasLearnerActivity && !browseMode))) {
     return (
-      <AcademyPublicShell eyebrow={academySettings?.academyName ?? "HomeLink Academy"} title="Loading your Academy..." description="">
+      <PageShell eyebrow={academySettings?.academyName ?? "HomeLink Academy"} title="Loading your Academy..." description="">
         <div className="h-32 animate-pulse rounded-xl bg-slate-100 dark:bg-slate-800" />
-      </AcademyPublicShell>
+      </PageShell>
     );
   }
 
@@ -219,7 +215,7 @@ export function PublicAcademyPage() {
   ) : undefined;
 
   return (
-    <AcademyPublicShell
+    <PageShell
       eyebrow={academySettings?.academyName ?? "HomeLink Academy"}
       title={browseMode && academyStatus?.hasActiveAccess ? "Browse More Courses" : "Professional Property Training"}
       description={
@@ -244,7 +240,7 @@ export function PublicAcademyPage() {
         </div>
       )}
 
-      <section className="academy-panel rounded-xl p-6 sm:p-8">
+      <section className="academy-panel isolate rounded-xl p-6 sm:p-8">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
             <div className="mb-3 flex items-center gap-2 text-emerald-700 dark:text-emerald-300">
@@ -259,22 +255,22 @@ export function PublicAcademyPage() {
           </div>
         </div>
         <div className="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-3">
-          <div className="flex min-w-0 items-center gap-2 rounded-lg border border-emerald-200/80 bg-emerald-50 px-4 py-2.5 dark:border-emerald-800/60 dark:bg-emerald-950/40">
+          <div className="flex items-center gap-2 rounded-lg border border-emerald-200/80 bg-emerald-50 px-4 py-2.5 dark:border-emerald-800/60 dark:bg-emerald-950/40">
             <BookOpen className="size-5 shrink-0 text-emerald-600 dark:text-emerald-400" />
-            <span className="min-w-0 text-sm font-medium text-slate-800 dark:text-slate-100 sm:text-base">Interactive Lessons</span>
+            <span className="text-sm font-medium text-slate-800 dark:text-slate-100 sm:text-base">Interactive Lessons</span>
           </div>
-          <div className="flex min-w-0 items-center gap-2 rounded-lg border border-emerald-200/80 bg-emerald-50 px-4 py-2.5 dark:border-emerald-800/60 dark:bg-emerald-950/40">
+          <div className="flex items-center gap-2 rounded-lg border border-emerald-200/80 bg-emerald-50 px-4 py-2.5 dark:border-emerald-800/60 dark:bg-emerald-950/40">
             <Award className="size-5 shrink-0 text-emerald-600 dark:text-emerald-400" />
-            <span className="min-w-0 text-sm font-medium text-slate-800 dark:text-slate-100 sm:text-base">Certified Completion</span>
+            <span className="text-sm font-medium text-slate-800 dark:text-slate-100 sm:text-base">Certified Completion</span>
           </div>
-          <div className="flex min-w-0 items-center gap-2 rounded-lg border border-emerald-200/80 bg-emerald-50 px-4 py-2.5 dark:border-emerald-800/60 dark:bg-emerald-950/40">
+          <div className="flex items-center gap-2 rounded-lg border border-emerald-200/80 bg-emerald-50 px-4 py-2.5 dark:border-emerald-800/60 dark:bg-emerald-950/40">
             <Users className="size-5 shrink-0 text-emerald-600 dark:text-emerald-400" />
-            <span className="min-w-0 text-sm font-medium text-slate-800 dark:text-slate-100 sm:text-base">Expert Support</span>
+            <span className="text-sm font-medium text-slate-800 dark:text-slate-100 sm:text-base">Expert Support</span>
           </div>
         </div>
       </section>
 
-      <div className="academy-public-stat-grid mt-8 grid min-w-0 grid-cols-1 gap-3 min-[420px]:grid-cols-2 md:grid-cols-4 md:gap-4">
+      <div className="relative isolate mt-8 grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
         <StatCard icon={BookOpen} value={String(courses.reduce((sum, c) => sum + c.lessonCount, 0))} label="Programme Lessons" color="emerald" />
         <StatCard icon={Award} value="3" label="Certification Levels" color="amber" />
         <StatCard icon={Clock} value={`${courses.reduce((sum, c) => sum + (c.estimatedHours || Math.round(c.durationMinutes / 60)), 0)}h`} label="Guided Learning" color="blue" />
@@ -284,7 +280,7 @@ export function PublicAcademyPage() {
       <section className="academy-panel mt-10 rounded-xl p-6 sm:p-8">
         <h2 className="text-2xl font-bold">Your certification pathway</h2>
         <p className="mt-2 max-w-3xl text-slate-600">Three focused programmes — Foundations, Listing & Client Mastery, and Professional Certification. Complete each level, pass assessments, and unlock badges plus downloadable HomeLink certificates.</p>
-        <div className="academy-public-course-grid mt-6 grid min-w-0 gap-3 sm:grid-cols-2 md:grid-cols-3">
+        <div className="mt-6 grid gap-3 sm:grid-cols-2 md:grid-cols-3">
           {courses.map((course) => (
             <div key={course.id} className="academy-card rounded-xl p-4 sm:p-5" style={{ borderColor: `${course.theme?.accent ?? "#008b68"}44` }}>
               <p className="text-xs font-bold uppercase tracking-wider" style={{ color: course.theme?.accent }}>{course.theme?.label}</p>
@@ -295,8 +291,8 @@ export function PublicAcademyPage() {
         </div>
       </section>
 
-      <div className="academy-public-layout mt-8 flex min-w-0 flex-col gap-8 md:grid md:grid-cols-[minmax(0,1.35fr)_minmax(18rem,0.65fr)] md:gap-6">
-        <section className="academy-public-catalog order-2 grid min-w-0 gap-6 md:order-none">
+      <div className="mt-8 flex flex-col gap-8 lg:grid lg:grid-cols-[minmax(0,1.35fr)_minmax(18rem,0.65fr)] lg:gap-6">
+        <section className="grid min-w-0 gap-6 order-2 lg:order-none">
           <h2 className="text-xl font-bold sm:text-2xl">Programme Catalog</h2>
           {courses.map((course, index) => {
             const registration = courseRegistrationState(academyStatus, course.id);
@@ -306,17 +302,17 @@ export function PublicAcademyPage() {
               <article
                 key={course.id}
                 className={cn(
-                  "academy-card relative min-w-0 max-w-full overflow-hidden rounded-xl border-2 transition-all duration-300",
+                  "academy-card relative overflow-hidden rounded-xl border-2 transition-all duration-300",
                   selectedId === course.id ? "shadow-xl" : "border-slate-200 hover:shadow-lg dark:border-slate-800",
                 )}
-                style={selectedId === course.id ? { borderColor: accent } : undefined}
+                style={selectedId === course.id ? { borderColor: accent, boxShadow: `0 20px 50px ${accent}22` } : undefined}
               >
                 <div className={cn("h-2 bg-gradient-to-r", course.theme?.gradient ?? "from-emerald-500 to-teal-600")} />
                 {registration === "APPROVED" && (
-                  <div className="absolute top-4 left-4 right-4 max-w-[calc(100%-2rem)] rounded-full bg-emerald-600 px-3 py-1 text-center text-xs font-bold text-white sm:left-auto sm:right-4 sm:max-w-[12rem]">Enrolled</div>
+                  <div className="absolute top-4 right-4 left-4 sm:left-auto sm:max-w-[12rem] rounded-full bg-emerald-600 px-3 py-1 text-center text-xs font-bold text-white">Enrolled</div>
                 )}
                 {locked && (
-                  <div className="absolute top-4 left-4 right-4 inline-flex max-w-[calc(100%-2rem)] items-center justify-center gap-1 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600 sm:left-auto sm:right-4 sm:max-w-[14rem]">
+                  <div className="absolute top-4 right-4 left-4 sm:left-auto sm:max-w-[14rem] inline-flex items-center justify-center gap-1 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
                     <Lock className="size-3 shrink-0" /> Complete previous programme
                   </div>
                 )}
@@ -333,9 +329,9 @@ export function PublicAcademyPage() {
                             <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800 inline-flex items-center gap-1"><Award className="size-3 shrink-0" /> Certificate</span>
                           )}
                         </div>
-                        <h3 className="break-words text-xl font-bold leading-snug sm:text-2xl">{course.title}</h3>
-                        <p className="mt-1 break-words text-sm font-medium leading-relaxed" style={{ color: accent }}>{course.subtitle}</p>
-                        <p className="mt-3 break-words text-sm leading-relaxed text-slate-600 sm:text-base">{course.shortDescription ?? course.description}</p>
+                        <h3 className="text-xl font-bold leading-snug sm:text-2xl">{course.title}</h3>
+                        <p className="mt-1 text-sm font-medium leading-relaxed" style={{ color: accent }}>{course.subtitle}</p>
+                        <p className="mt-3 text-sm text-slate-600 leading-relaxed sm:text-base">{course.shortDescription ?? course.description}</p>
                       </div>
                     </div>
                     <div className="flex items-center justify-between gap-4 rounded-lg border border-slate-100 bg-slate-50 px-4 py-3 sm:border-0 sm:bg-transparent sm:px-0 sm:py-0 dark:border-slate-800 dark:bg-slate-900/40 sm:dark:bg-transparent">
@@ -436,8 +432,8 @@ export function PublicAcademyPage() {
           )}
         </section>
 
-        <aside className="academy-public-side-panel order-1 min-w-0 max-w-full md:order-none md:h-fit">
-          <div className="md:sticky md:top-4">
+        <aside className="order-1 lg:order-none lg:h-fit">
+          <div className="lg:sticky lg:top-4">
             <AcademySidePanel
               user={user}
               selected={selected}
@@ -458,7 +454,7 @@ export function PublicAcademyPage() {
           </div>
         </aside>
       </div>
-    </AcademyPublicShell>
+    </PageShell>
   );
 }
 
@@ -480,14 +476,14 @@ function StatCard({
     purple: "bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400",
   };
   return (
-    <div className="academy-card min-w-0 max-w-full rounded-xl p-4 sm:p-6">
-      <div className="flex min-w-0 items-center gap-3">
+    <div className="academy-card rounded-xl p-4 sm:p-6">
+      <div className="flex items-center gap-3">
         <div className={`shrink-0 rounded-lg p-2.5 sm:p-3 ${colors[color]}`}>
           <Icon className="size-5 sm:size-6" />
         </div>
         <div className="min-w-0">
           <p className="text-xl font-bold sm:text-2xl">{value}</p>
-          <p className="break-words text-xs text-slate-600 dark:text-slate-400 sm:text-sm">{label}</p>
+          <p className="text-xs text-slate-600 dark:text-slate-400 sm:text-sm">{label}</p>
         </div>
       </div>
     </div>
@@ -577,7 +573,7 @@ function AcademySidePanel({
       {selected && (
         <ProgrammeEnrolmentPreview course={selected} accent={accent} />
       )}
-      <div className="academy-panel min-w-0 max-w-full rounded-xl p-6">
+      <div className="academy-panel rounded-xl p-6">
       <div className="flex items-center gap-3 mb-6">
         <div className="rounded-xl bg-emerald-100 p-3 dark:bg-emerald-900/30">
           <ShieldCheck className="size-6 text-emerald-600 dark:text-emerald-400" />
@@ -593,9 +589,7 @@ function AcademySidePanel({
       </div>
 
       {!user ? (
-        <div className="min-w-0 max-w-full">
-          <AuthForm initialMode="register" showBrand={false} redirectTo={null} />
-        </div>
+        <AuthForm initialMode="register" showBrand={false} redirectTo={null} />
       ) : (
         <div className="space-y-4">
           <div className="rounded-lg border border-emerald-100 bg-gradient-to-r from-emerald-50 to-teal-50 p-4 text-sm dark:border-emerald-900/40 dark:from-emerald-900/20 dark:to-teal-900/20">
@@ -639,27 +633,27 @@ function AcademySidePanel({
 
           {selectedRegistration === "NOT_REGISTERED" && (
             <>
-              <label className="block min-w-0 text-sm font-medium text-slate-700 dark:text-slate-300">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
                 Select Course
-                <select value={selectedId} onChange={(event) => onSelectCourse(event.target.value)} className="mt-2 w-full min-w-0 max-w-full rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-900 focus:ring-2 focus:ring-emerald-500">
+                <select value={selectedId} onChange={(event) => onSelectCourse(event.target.value)} className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-900 focus:ring-2 focus:ring-emerald-500">
                   <option value="">Choose a course...</option>
                   {courses.map((course) => {
                     const state = courseRegistrationState(academyStatus, course.id);
                     const suffix = state === "APPROVED" ? " (Enrolled)" : state === "PENDING" ? " (Pending)" : "";
-                    return <option key={course.id} value={course.id}>{truncateLabel(`${course.title}${suffix}`)}</option>;
+                    return <option key={course.id} value={course.id}>{course.title}{suffix}</option>;
                   })}
                 </select>
               </label>
               <TextInput label="Phone Number" value={form.phone} onChange={(phone) => setForm({ ...form, phone })} />
               <TextInput label="Organization (Optional)" value={form.organisation} onChange={(organisation) => setForm({ ...form, organisation })} />
-              <label className="block min-w-0 text-sm font-medium text-slate-700 dark:text-slate-300">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
                 Registration type
                 <select
                   value={form.registrationIntent}
                   onChange={(event) => setForm({ ...form, registrationIntent: event.target.value as "TRAINING_ONLY" | "AGENT_TRAINING" })}
-                  className="mt-2 w-full min-w-0 max-w-full rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-900 focus:ring-2 focus:ring-emerald-500"
+                  className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-900 focus:ring-2 focus:ring-emerald-500"
                 >
-                  <option value="TRAINING_ONLY">Training only (not an agent application)</option>
+                  <option value="TRAINING_ONLY">Training only — I am not applying to become a HomeLink agent</option>
                   {isAgent && <option value="AGENT_TRAINING">Agent training — I am a HomeLink agent</option>}
                 </select>
               </label>
@@ -669,9 +663,9 @@ function AcademySidePanel({
                   <p className="text-2xl font-bold text-emerald-600 mt-1">{displayPrice > 0 ? `${selected.currency} ${displayPrice.toFixed(2)}` : "Free"}</p>
                 </div>
               )}
-              <label className="block min-w-0 text-sm font-medium text-slate-700 dark:text-slate-300">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
                 Payment Method
-                <select value={form.paymentMethod} onChange={(event) => setForm({ ...form, paymentMethod: event.target.value })} className="mt-2 w-full min-w-0 max-w-full rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-900 focus:ring-2 focus:ring-emerald-500">
+                <select value={form.paymentMethod} onChange={(event) => setForm({ ...form, paymentMethod: event.target.value })} className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-900 focus:ring-2 focus:ring-emerald-500">
                   {(paymentConfig?.manualMethods.length ? paymentConfig.manualMethods : [
                     { id: "bank_transfer", label: "Bank Transfer" },
                     { id: "zipit", label: "ZIPIT" },
@@ -710,9 +704,9 @@ function ProgrammeEnrolmentPreview({ course, accent }: { course: PublicCourse; a
         <span className={cn("inline-flex rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide", course.theme?.chip ?? "bg-emerald-100 text-emerald-800")}>
           {course.theme?.label}
         </span>
-        <h3 className="mt-3 break-words text-xl font-bold leading-snug">{course.title}</h3>
-        <p className="mt-1 break-words text-sm font-medium" style={{ color: accent }}>{course.subtitle}</p>
-        <p className="mt-3 break-words text-sm leading-relaxed text-slate-600">{course.description}</p>
+        <h3 className="mt-3 text-xl font-bold leading-snug">{course.title}</h3>
+        <p className="mt-1 text-sm font-medium" style={{ color: accent }}>{course.subtitle}</p>
+        <p className="mt-3 text-sm leading-relaxed text-slate-600">{course.description}</p>
         <div className="mt-4 grid grid-cols-1 gap-2 text-center text-xs sm:grid-cols-3 sm:gap-2">
           <div className="rounded-lg bg-slate-50 p-3 dark:bg-slate-900"><BookOpen className="mx-auto size-4 mb-1" style={{ color: accent }} /><span className="font-semibold leading-snug">{course.lessonCount} lessons</span></div>
           <div className="rounded-lg bg-slate-50 p-3 dark:bg-slate-900"><Clock className="mx-auto size-4 mb-1" style={{ color: accent }} /><span className="font-semibold leading-snug">{course.estimatedHours || Math.round(course.durationMinutes / 60)}h guided</span></div>
@@ -753,9 +747,9 @@ function ProgrammeEnrolmentPreview({ course, accent }: { course: PublicCourse; a
 
 function TextInput({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
   return (
-    <label className="block min-w-0 text-sm font-medium text-slate-700 dark:text-slate-200">
+    <label className="block text-sm font-medium text-slate-700 dark:text-slate-200">
       {label}
-      <input value={value} onChange={(event) => onChange(event.target.value)} className="mt-1 w-full min-w-0 max-w-full rounded-lg border border-slate-200 bg-white px-3 py-2 dark:border-slate-700 dark:bg-slate-900" />
+      <input value={value} onChange={(event) => onChange(event.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 dark:border-slate-700 dark:bg-slate-900" />
     </label>
   );
 }
