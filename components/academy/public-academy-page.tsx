@@ -255,22 +255,22 @@ export function PublicAcademyPage() {
           </div>
         </div>
         <div className="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-3">
-          <div className="flex items-center gap-2 rounded-lg border border-emerald-200/80 bg-emerald-50 px-4 py-2.5 dark:border-emerald-800/60 dark:bg-emerald-950/40">
+          <div className="flex min-w-0 items-center gap-2 rounded-lg border border-emerald-200/80 bg-emerald-50 px-4 py-2.5 dark:border-emerald-800/60 dark:bg-emerald-950/40">
             <BookOpen className="size-5 shrink-0 text-emerald-600 dark:text-emerald-400" />
-            <span className="text-sm font-medium text-slate-800 dark:text-slate-100 sm:text-base">Interactive Lessons</span>
+            <span className="min-w-0 text-sm font-medium text-slate-800 dark:text-slate-100 sm:text-base">Interactive Lessons</span>
           </div>
-          <div className="flex items-center gap-2 rounded-lg border border-emerald-200/80 bg-emerald-50 px-4 py-2.5 dark:border-emerald-800/60 dark:bg-emerald-950/40">
+          <div className="flex min-w-0 items-center gap-2 rounded-lg border border-emerald-200/80 bg-emerald-50 px-4 py-2.5 dark:border-emerald-800/60 dark:bg-emerald-950/40">
             <Award className="size-5 shrink-0 text-emerald-600 dark:text-emerald-400" />
-            <span className="text-sm font-medium text-slate-800 dark:text-slate-100 sm:text-base">Certified Completion</span>
+            <span className="min-w-0 text-sm font-medium text-slate-800 dark:text-slate-100 sm:text-base">Certified Completion</span>
           </div>
-          <div className="flex items-center gap-2 rounded-lg border border-emerald-200/80 bg-emerald-50 px-4 py-2.5 dark:border-emerald-800/60 dark:bg-emerald-950/40">
+          <div className="flex min-w-0 items-center gap-2 rounded-lg border border-emerald-200/80 bg-emerald-50 px-4 py-2.5 dark:border-emerald-800/60 dark:bg-emerald-950/40">
             <Users className="size-5 shrink-0 text-emerald-600 dark:text-emerald-400" />
-            <span className="text-sm font-medium text-slate-800 dark:text-slate-100 sm:text-base">Expert Support</span>
+            <span className="min-w-0 text-sm font-medium text-slate-800 dark:text-slate-100 sm:text-base">Expert Support</span>
           </div>
         </div>
       </section>
 
-      <div className="mt-8 grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
+      <div className="mt-8 grid min-w-0 grid-cols-2 gap-3 max-md:[&>*]:min-w-0 md:grid-cols-4 md:gap-4">
         <StatCard icon={BookOpen} value={String(courses.reduce((sum, c) => sum + c.lessonCount, 0))} label="Programme Lessons" color="emerald" />
         <StatCard icon={Award} value="3" label="Certification Levels" color="amber" />
         <StatCard icon={Clock} value={`${courses.reduce((sum, c) => sum + (c.estimatedHours || Math.round(c.durationMinutes / 60)), 0)}h`} label="Guided Learning" color="blue" />
@@ -291,8 +291,8 @@ export function PublicAcademyPage() {
         </div>
       </section>
 
-      <div className="mt-8 flex flex-col gap-8 lg:grid lg:grid-cols-[minmax(0,1.35fr)_minmax(18rem,0.65fr)] lg:gap-6">
-        <section className="grid min-w-0 gap-6 order-2 lg:order-none">
+      <div className="mt-8 flex min-w-0 flex-col gap-8 max-md:overflow-x-clip lg:grid lg:grid-cols-[minmax(0,1.35fr)_minmax(18rem,0.65fr)] lg:gap-6">
+        <section className="order-2 grid min-w-0 gap-6 lg:order-none">
           <h2 className="text-xl font-bold sm:text-2xl">Programme Catalog</h2>
           {courses.map((course, index) => {
             const registration = courseRegistrationState(academyStatus, course.id);
@@ -302,7 +302,7 @@ export function PublicAcademyPage() {
               <article
                 key={course.id}
                 className={cn(
-                  "academy-card relative overflow-hidden rounded-xl border-2 transition-[border-color,box-shadow] duration-300",
+                  "academy-card relative min-w-0 max-w-full overflow-hidden rounded-xl border-2 transition-all duration-300",
                   selectedId === course.id ? "shadow-xl" : "border-slate-200 hover:shadow-lg dark:border-slate-800",
                 )}
                 style={selectedId === course.id ? { borderColor: accent, boxShadow: `0 20px 50px ${accent}22` } : undefined}
@@ -432,7 +432,7 @@ export function PublicAcademyPage() {
           )}
         </section>
 
-        <aside className="order-1 lg:order-none lg:h-fit">
+        <aside className="order-1 min-w-0 max-w-full lg:order-none lg:h-fit">
           <div className="lg:sticky lg:top-4">
             <AcademySidePanel
               user={user}
@@ -476,14 +476,14 @@ function StatCard({
     purple: "bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400",
   };
   return (
-    <div className="academy-card rounded-xl p-4 sm:p-6">
-      <div className="flex items-center gap-3">
+    <div className="academy-card min-w-0 max-w-full rounded-xl p-4 sm:p-6">
+      <div className="flex min-w-0 items-center gap-3">
         <div className={`shrink-0 rounded-lg p-2.5 sm:p-3 ${colors[color]}`}>
           <Icon className="size-5 sm:size-6" />
         </div>
         <div className="min-w-0">
           <p className="text-xl font-bold sm:text-2xl">{value}</p>
-          <p className="text-xs text-slate-600 dark:text-slate-400 sm:text-sm">{label}</p>
+          <p className="break-words text-xs text-slate-600 dark:text-slate-400 sm:text-sm">{label}</p>
         </div>
       </div>
     </div>
@@ -573,7 +573,7 @@ function AcademySidePanel({
       {selected && (
         <ProgrammeEnrolmentPreview course={selected} accent={accent} />
       )}
-      <div className="academy-panel rounded-xl p-6">
+      <div className="academy-panel min-w-0 max-w-full rounded-xl p-6">
       <div className="flex items-center gap-3 mb-6">
         <div className="rounded-xl bg-emerald-100 p-3 dark:bg-emerald-900/30">
           <ShieldCheck className="size-6 text-emerald-600 dark:text-emerald-400" />
@@ -633,9 +633,9 @@ function AcademySidePanel({
 
           {selectedRegistration === "NOT_REGISTERED" && (
             <>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+              <label className="block min-w-0 text-sm font-medium text-slate-700 dark:text-slate-300">
                 Select Course
-                <select value={selectedId} onChange={(event) => onSelectCourse(event.target.value)} className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-900 focus:ring-2 focus:ring-emerald-500">
+                <select value={selectedId} onChange={(event) => onSelectCourse(event.target.value)} className="mt-2 w-full min-w-0 max-w-full rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-900 focus:ring-2 focus:ring-emerald-500">
                   <option value="">Choose a course...</option>
                   {courses.map((course) => {
                     const state = courseRegistrationState(academyStatus, course.id);
@@ -646,14 +646,14 @@ function AcademySidePanel({
               </label>
               <TextInput label="Phone Number" value={form.phone} onChange={(phone) => setForm({ ...form, phone })} />
               <TextInput label="Organization (Optional)" value={form.organisation} onChange={(organisation) => setForm({ ...form, organisation })} />
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+              <label className="block min-w-0 text-sm font-medium text-slate-700 dark:text-slate-300">
                 Registration type
                 <select
                   value={form.registrationIntent}
                   onChange={(event) => setForm({ ...form, registrationIntent: event.target.value as "TRAINING_ONLY" | "AGENT_TRAINING" })}
-                  className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-900 focus:ring-2 focus:ring-emerald-500"
+                  className="mt-2 w-full min-w-0 max-w-full rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-900 focus:ring-2 focus:ring-emerald-500"
                 >
-                  <option value="TRAINING_ONLY">Training only — I am not applying to become a HomeLink agent</option>
+                  <option value="TRAINING_ONLY">Training only (not an agent application)</option>
                   {isAgent && <option value="AGENT_TRAINING">Agent training — I am a HomeLink agent</option>}
                 </select>
               </label>
@@ -663,9 +663,9 @@ function AcademySidePanel({
                   <p className="text-2xl font-bold text-emerald-600 mt-1">{displayPrice > 0 ? `${selected.currency} ${displayPrice.toFixed(2)}` : "Free"}</p>
                 </div>
               )}
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+              <label className="block min-w-0 text-sm font-medium text-slate-700 dark:text-slate-300">
                 Payment Method
-                <select value={form.paymentMethod} onChange={(event) => setForm({ ...form, paymentMethod: event.target.value })} className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-900 focus:ring-2 focus:ring-emerald-500">
+                <select value={form.paymentMethod} onChange={(event) => setForm({ ...form, paymentMethod: event.target.value })} className="mt-2 w-full min-w-0 max-w-full rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-900 focus:ring-2 focus:ring-emerald-500">
                   {(paymentConfig?.manualMethods.length ? paymentConfig.manualMethods : [
                     { id: "bank_transfer", label: "Bank Transfer" },
                     { id: "zipit", label: "ZIPIT" },

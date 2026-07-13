@@ -15,12 +15,14 @@
   color: #f1f5f9;
 }
 
-* {
-  box-sizing: border-box;
+*::before,
+*::after {
+  box-sizing: inherit;
 }
 
 html {
   scroll-behavior: smooth;
+  box-sizing: border-box;
   max-width: 100%;
   overflow-x: hidden;
 }
@@ -30,19 +32,12 @@ body {
   max-width: 100%;
   overflow-x: hidden;
   min-height: 100vh;
-  background: #f8fafc;
-  text-rendering: auto;
+  background:
+    radial-gradient(circle at 8% 0%, rgba(16, 185, 129, 0.07), transparent 28rem),
+    radial-gradient(circle at 92% 8%, rgba(14, 165, 233, 0.05), transparent 24rem),
+    linear-gradient(180deg, #ffffff 0%, #f8fafc 42%, #f4f8f7 100%);
+  text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
-}
-
-@media (min-width: 1024px) {
-  body {
-    background:
-      radial-gradient(circle at 8% 0%, rgba(16, 185, 129, 0.07), transparent 28rem),
-      radial-gradient(circle at 92% 8%, rgba(14, 165, 233, 0.05), transparent 24rem),
-      linear-gradient(180deg, #ffffff 0%, #f8fafc 42%, #f4f8f7 100%);
-    text-rendering: optimizeLegibility;
-  }
 }
 
 button,
@@ -66,16 +61,9 @@ textarea {
 @layer components {
   .surface-panel {
     border: 1px solid rgba(203, 213, 225, 0.75);
-    background: #ffffff;
-    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
-  }
-
-  @media (min-width: 1024px) {
-    .surface-panel {
-      background: rgba(255, 255, 255, 0.94);
-      box-shadow: 0 20px 60px rgba(15, 23, 42, 0.08);
-      backdrop-filter: blur(20px);
-    }
+    background: rgba(255, 255, 255, 0.94);
+    box-shadow: 0 20px 60px rgba(15, 23, 42, 0.08);
+    backdrop-filter: blur(20px);
   }
 
   .dark .surface-panel {
@@ -85,27 +73,17 @@ textarea {
 
   .premium-card {
     border: 1px solid rgba(203, 213, 225, 0.8);
-    background: #ffffff;
-    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
+    background: linear-gradient(165deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 250, 252, 0.94) 100%);
+    box-shadow: 0 16px 50px rgba(15, 23, 42, 0.06);
     transition:
+      transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
       box-shadow 0.35s cubic-bezier(0.22, 1, 0.36, 1),
       border-color 0.25s ease;
   }
 
-  @media (min-width: 1024px) {
-    .premium-card {
-      background: linear-gradient(165deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 250, 252, 0.94) 100%);
-      box-shadow: 0 16px 50px rgba(15, 23, 42, 0.06);
-      transition:
-        transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
-        box-shadow 0.35s cubic-bezier(0.22, 1, 0.36, 1),
-        border-color 0.25s ease;
-    }
-
-    .premium-card:hover {
-      border-color: rgba(16, 185, 129, 0.28);
-      box-shadow: 0 24px 64px rgba(16, 185, 129, 0.1);
-    }
+  .premium-card:hover {
+    border-color: rgba(16, 185, 129, 0.28);
+    box-shadow: 0 24px 64px rgba(16, 185, 129, 0.1);
   }
 
   .dark .premium-card {
@@ -114,19 +92,13 @@ textarea {
   }
 
   .hover-lift {
-    transition: box-shadow 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+    transition:
+      transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+      box-shadow 0.35s cubic-bezier(0.22, 1, 0.36, 1);
   }
 
-  @media (min-width: 1024px) {
-    .hover-lift {
-      transition:
-        transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
-        box-shadow 0.35s cubic-bezier(0.22, 1, 0.36, 1);
-    }
-
-    .hover-lift:hover {
-      transform: translateY(-4px);
-    }
+  .hover-lift:hover {
+    transform: translateY(-4px);
   }
 
   .section-eyebrow {
@@ -216,15 +188,8 @@ textarea {
 
   .academy-panel {
     border: 1px solid rgba(203, 213, 225, 0.82);
-    background: #ffffff;
-    box-shadow: 0 6px 18px rgba(16, 32, 36, 0.06);
-  }
-
-  @media (min-width: 1024px) {
-    .academy-panel {
-      background: rgba(255, 255, 255, 0.96);
-      box-shadow: 0 18px 58px rgba(16, 32, 36, 0.08);
-    }
+    background: rgba(255, 255, 255, 0.96);
+    box-shadow: 0 18px 58px rgba(16, 32, 36, 0.08);
   }
 
   .dark .academy-panel {
@@ -234,18 +199,11 @@ textarea {
 
   .academy-card {
     border: 1px solid rgba(203, 213, 225, 0.78);
-    background: #ffffff;
-    box-shadow: 0 4px 14px rgba(16, 32, 36, 0.05);
+    background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+    box-shadow: 0 12px 36px rgba(16, 32, 36, 0.055);
     transition:
       box-shadow 0.25s ease,
       border-color 0.25s ease;
-  }
-
-  @media (min-width: 1024px) {
-    .academy-card {
-      background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
-      box-shadow: 0 12px 36px rgba(16, 32, 36, 0.055);
-    }
   }
 
   @media (hover: hover) and (min-width: 1024px) {
@@ -266,6 +224,27 @@ textarea {
   .dark .academy-card {
     border-color: rgba(51, 65, 85, 0.92);
     background: linear-gradient(180deg, rgba(15, 23, 42, 0.96) 0%, rgba(2, 6, 23, 0.92) 100%);
+  }
+
+  @media (max-width: 767px) {
+    .academy-shell {
+      min-width: 0;
+      overflow-x: clip;
+    }
+
+    .academy-panel,
+    .academy-card {
+      max-width: 100%;
+      min-width: 0;
+    }
+
+    .academy-panel {
+      box-shadow: 0 10px 32px rgba(16, 32, 36, 0.06);
+    }
+
+    .academy-card {
+      box-shadow: 0 8px 24px rgba(16, 32, 36, 0.05);
+    }
   }
 
   .academy-dark-hero {
