@@ -240,7 +240,8 @@ export function PublicAcademyPage() {
         </div>
       )}
 
-      <section className="academy-panel rounded-xl p-6 sm:p-8">
+      <div className="academy-page w-full max-w-full min-w-0">
+      <section className="academy-panel w-full max-w-full rounded-xl p-6 sm:p-8">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
             <div className="mb-3 flex items-center gap-2 text-emerald-700 dark:text-emerald-300">
@@ -270,19 +271,19 @@ export function PublicAcademyPage() {
         </div>
       </section>
 
-      <div className="mt-8 grid min-w-0 grid-cols-2 gap-3 max-md:[&>*]:min-w-0 md:grid-cols-4 md:gap-4">
+      <div className="mt-8 grid w-full min-w-0 max-w-full grid-cols-1 gap-3 max-md:[&>*]:min-w-0 min-[360px]:grid-cols-2 md:grid-cols-4 md:gap-4">
         <StatCard icon={BookOpen} value={String(courses.reduce((sum, c) => sum + c.lessonCount, 0))} label="Programme Lessons" color="emerald" />
         <StatCard icon={Award} value="3" label="Certification Levels" color="amber" />
         <StatCard icon={Clock} value={`${courses.reduce((sum, c) => sum + (c.estimatedHours || Math.round(c.durationMinutes / 60)), 0)}h`} label="Guided Learning" color="blue" />
         <StatCard icon={TrendingUp} value={String(courses.reduce((sum, c) => sum + (c.toolkitCount ?? 0), 0))} label="Toolkit Downloads" color="purple" />
       </div>
 
-      <section className="academy-panel mt-10 rounded-xl p-6 sm:p-8">
+      <section className="academy-panel mt-10 w-full max-w-full rounded-xl p-6 sm:p-8">
         <h2 className="text-2xl font-bold">Your certification pathway</h2>
         <p className="mt-2 max-w-3xl text-slate-600">Three focused programmes — Foundations, Listing & Client Mastery, and Professional Certification. Complete each level, pass assessments, and unlock badges plus downloadable HomeLink certificates.</p>
-        <div className="mt-6 grid gap-3 sm:grid-cols-2 md:grid-cols-3">
+        <div className="mt-6 grid w-full grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
           {courses.map((course) => (
-            <div key={course.id} className="academy-card rounded-xl p-4 sm:p-5" style={{ borderColor: `${course.theme?.accent ?? "#008b68"}44` }}>
+            <div key={course.id} className="academy-card w-full max-w-full rounded-xl p-4 sm:p-5" style={{ borderColor: `${course.theme?.accent ?? "#008b68"}44` }}>
               <p className="text-xs font-bold uppercase tracking-wider" style={{ color: course.theme?.accent }}>{course.theme?.label}</p>
               <p className="mt-2 text-base font-bold leading-snug sm:text-lg">{course.title}</p>
               <p className="mt-2 text-sm text-slate-500">{course.lessonCount} lessons · {course.toolkitCount ?? 0} toolkit PDFs</p>
@@ -291,7 +292,7 @@ export function PublicAcademyPage() {
         </div>
       </section>
 
-      <div className="mt-8 flex min-w-0 flex-col gap-8 max-md:overflow-x-clip lg:grid lg:grid-cols-[minmax(0,1.35fr)_minmax(18rem,0.65fr)] lg:gap-6">
+      <div className="mt-8 flex w-full min-w-0 max-w-full flex-col gap-8 max-md:overflow-x-clip lg:grid lg:grid-cols-[minmax(0,1.35fr)_minmax(18rem,0.65fr)] lg:gap-6">
         <section className="order-2 grid min-w-0 gap-6 lg:order-none">
           <h2 className="text-xl font-bold sm:text-2xl">Programme Catalog</h2>
           {courses.map((course, index) => {
@@ -302,10 +303,10 @@ export function PublicAcademyPage() {
               <article
                 key={course.id}
                 className={cn(
-                  "academy-card relative min-w-0 max-w-full overflow-hidden rounded-xl border-2 transition-all duration-300",
-                  selectedId === course.id ? "shadow-xl" : "border-slate-200 hover:shadow-lg dark:border-slate-800",
+                  "academy-card relative min-w-0 max-w-full overflow-hidden rounded-xl border-2 transition-[border-color,box-shadow] duration-300",
+                  selectedId === course.id ? "md:shadow-xl" : "border-slate-200 md:hover:shadow-lg dark:border-slate-800",
                 )}
-                style={selectedId === course.id ? { borderColor: accent, boxShadow: `0 20px 50px ${accent}22` } : undefined}
+                style={selectedId === course.id ? { borderColor: accent } : undefined}
               >
                 <div className={cn("h-2 bg-gradient-to-r", course.theme?.gradient ?? "from-emerald-500 to-teal-600")} />
                 {registration === "APPROVED" && (
@@ -343,7 +344,7 @@ export function PublicAcademyPage() {
                     </div>
                   </div>
 
-                  <div className="mt-6 grid gap-3 sm:grid-cols-3">
+                  <div className="mt-6 grid w-full grid-cols-1 gap-3 md:grid-cols-3">
                     <div className="rounded-lg bg-slate-50 p-3 text-sm dark:bg-slate-900"><BookOpen className="size-4 mb-1" style={{ color: accent }} /><span className="font-semibold">{course.lessonCount} lessons</span></div>
                     <div className="rounded-lg bg-slate-50 p-3 text-sm dark:bg-slate-900"><Clock className="size-4 mb-1" style={{ color: accent }} /><span className="font-semibold">{course.estimatedHours || Math.round(course.durationMinutes / 60)} hours</span></div>
                     <div className="rounded-lg bg-slate-50 p-3 text-sm dark:bg-slate-900"><ShieldCheck className="size-4 mb-1" style={{ color: accent }} /><span className="font-semibold">{course.toolkitCount ?? 0} toolkit PDFs</span></div>
@@ -453,6 +454,7 @@ export function PublicAcademyPage() {
             />
           </div>
         </aside>
+      </div>
       </div>
     </PageShell>
   );
@@ -707,7 +709,7 @@ function ProgrammeEnrolmentPreview({ course, accent }: { course: PublicCourse; a
         <h3 className="mt-3 text-xl font-bold leading-snug">{course.title}</h3>
         <p className="mt-1 text-sm font-medium" style={{ color: accent }}>{course.subtitle}</p>
         <p className="mt-3 text-sm leading-relaxed text-slate-600">{course.description}</p>
-        <div className="mt-4 grid grid-cols-1 gap-2 text-center text-xs sm:grid-cols-3 sm:gap-2">
+        <div className="mt-4 grid w-full grid-cols-1 gap-2 text-center text-xs md:grid-cols-3 md:gap-2">
           <div className="rounded-lg bg-slate-50 p-3 dark:bg-slate-900"><BookOpen className="mx-auto size-4 mb-1" style={{ color: accent }} /><span className="font-semibold leading-snug">{course.lessonCount} lessons</span></div>
           <div className="rounded-lg bg-slate-50 p-3 dark:bg-slate-900"><Clock className="mx-auto size-4 mb-1" style={{ color: accent }} /><span className="font-semibold leading-snug">{course.estimatedHours || Math.round(course.durationMinutes / 60)}h guided</span></div>
           <div className="rounded-lg bg-slate-50 p-3 dark:bg-slate-900"><ShieldCheck className="mx-auto size-4 mb-1" style={{ color: accent }} /><span className="font-semibold leading-snug">{course.toolkitCount ?? 0} toolkit PDFs</span></div>

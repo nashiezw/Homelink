@@ -4,6 +4,7 @@
 import { chromium, devices } from "playwright";
 
 const url = process.argv[2] ?? "http://localhost:3000/academy";
+const widths = [320, 360, 375, 390, 412, 768];
 
 const diagnostic = `() => {
   const vw = document.documentElement.clientWidth;
@@ -18,14 +19,21 @@ const diagnostic = `() => {
       vw,
     }))
     .sort((a, b) => b.right - a.right)
-    .slice(0, 40);
+    .slice(0, 20);
 }`;
 
 const browser = await chromium.launch({ headless: true });
 const context = await browser.newContext({ ...devices["iPhone 12"] });
 const page = await context.newPage();
-await page.goto(url, { waitUntil: "networkidle", timeout: 120_000 });
-await page.waitForTimeout(1500);
-const results = await page.evaluate(diagnostic);
-console.log(JSON.stringify({ url, viewport: "iPhone 12", count: results.length, results }, null, 2));
+
+const results = [];
+for (const width of widths) {
+  await page.setViewportSize({ width, height: 800 });
+  await page.goto(url, { waitUntil: "networkidle", timeout: 120_000 });
+  await page.waitForTimeout(800);
+  const offenders = await page.evaluate(diagnostic);
+  results.push({ width, count: offenders.length, offenders });
+}
+
+console.log(JSON.stringify({ url, results }, null, 2));
 await browser.close();
