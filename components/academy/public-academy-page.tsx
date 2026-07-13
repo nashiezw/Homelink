@@ -240,7 +240,7 @@ export function PublicAcademyPage() {
         </div>
       )}
 
-      <section className="academy-panel isolate rounded-xl p-6 sm:p-8">
+      <section className="academy-panel rounded-xl p-6 sm:p-8">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
             <div className="mb-3 flex items-center gap-2 text-emerald-700 dark:text-emerald-300">
@@ -270,7 +270,7 @@ export function PublicAcademyPage() {
         </div>
       </section>
 
-      <div className="relative isolate mt-8 grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
+      <div className="mt-8 grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
         <StatCard icon={BookOpen} value={String(courses.reduce((sum, c) => sum + c.lessonCount, 0))} label="Programme Lessons" color="emerald" />
         <StatCard icon={Award} value="3" label="Certification Levels" color="amber" />
         <StatCard icon={Clock} value={`${courses.reduce((sum, c) => sum + (c.estimatedHours || Math.round(c.durationMinutes / 60)), 0)}h`} label="Guided Learning" color="blue" />
@@ -302,7 +302,7 @@ export function PublicAcademyPage() {
               <article
                 key={course.id}
                 className={cn(
-                  "academy-card relative overflow-hidden rounded-xl border-2 transition-all duration-300",
+                  "academy-card relative overflow-hidden rounded-xl border-2 transition-[border-color,box-shadow] duration-300",
                   selectedId === course.id ? "shadow-xl" : "border-slate-200 hover:shadow-lg dark:border-slate-800",
                 )}
                 style={selectedId === course.id ? { borderColor: accent, boxShadow: `0 20px 50px ${accent}22` } : undefined}
