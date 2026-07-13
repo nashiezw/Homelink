@@ -23,7 +23,7 @@ export function AcademyAccordion({
       {items.map((item) => (
         <details
           key={item.id}
-          className="academy-card group overflow-hidden rounded-xl open:shadow-md"
+          className="academy-card gpu-card group rounded-xl open:shadow-md"
           open={item.defaultOpen}
         >
           <summary className="flex cursor-pointer list-none flex-col gap-3 px-4 py-4 marker:content-none sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:px-5">
@@ -40,7 +40,7 @@ export function AcademyAccordion({
               <ChevronDown className="size-5 text-slate-400 transition group-open:rotate-180" />
             </div>
           </summary>
-          <div className="border-t border-slate-100 bg-white/55 px-4 py-4 dark:border-slate-800 dark:bg-slate-950/35 sm:px-5">{item.content}</div>
+          <div className="border-t border-slate-100 bg-white px-4 py-4 dark:border-slate-800 dark:bg-slate-950 sm:px-5">{item.content}</div>
         </details>
       ))}
     </div>

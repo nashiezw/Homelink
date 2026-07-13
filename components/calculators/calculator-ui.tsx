@@ -31,11 +31,11 @@ export function CalculatorCard({
     <article
       id={id}
       className={cn(
-        "scroll-mt-28 overflow-hidden rounded-[1.35rem] border border-emerald-100 bg-white shadow-[0_24px_70px_rgba(15,23,42,0.08)] dark:border-emerald-900/40 dark:bg-slate-900",
+        "gpu-card scroll-mt-28 rounded-[20px] border border-emerald-100 bg-white shadow-[0_24px_70px_rgba(15,23,42,0.08)] dark:border-emerald-900/40 dark:bg-slate-900",
         className,
       )}
     >
-      <div className="border-b border-slate-100 bg-gradient-to-br from-white via-emerald-50/70 to-cyan-50/60 px-5 py-6 dark:border-slate-800 dark:from-slate-900 dark:via-emerald-950/20 dark:to-slate-900 sm:px-6">
+      <div className="rounded-t-[20px] border-b border-slate-100 bg-gradient-to-br from-white via-emerald-50/70 to-cyan-50/60 px-5 py-6 dark:border-slate-800 dark:from-slate-900 dark:via-emerald-950/20 dark:to-slate-900 sm:px-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex min-w-0 items-start gap-4">
             <span className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white shadow-[0_14px_28px_rgba(4,120,87,0.22)]">
@@ -118,7 +118,7 @@ export function CalculatorSummary({ title, children, highlight, className }: Cal
   return (
     <div
       className={cn(
-        "relative overflow-hidden rounded-3xl border border-emerald-200/80 bg-gradient-to-br from-emerald-50 via-white to-cyan-50/70 p-5 shadow-[0_18px_45px_rgba(16,185,129,0.10)] dark:border-emerald-900/50 dark:from-emerald-950/40 dark:via-slate-900 dark:to-slate-900",
+        "gpu-card relative rounded-3xl border border-emerald-200/80 bg-gradient-to-br from-emerald-50 via-white to-cyan-50/70 p-5 shadow-[0_18px_45px_rgba(16,185,129,0.10)] dark:border-emerald-900/50 dark:from-emerald-950/40 dark:via-slate-900 dark:to-slate-900",
         className,
       )}
     >

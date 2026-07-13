@@ -36,7 +36,7 @@ export function TrustMetricsSection({ metrics }: TrustMetricsSectionProps) {
           return (
             <div
               key={metric.id}
-              className="hover-lift rounded-2xl border border-white/70 bg-white/95 p-4 shadow-hero backdrop-blur-xl dark:border-slate-800 dark:bg-slate-900/95"
+              className="gpu-card hover-lift rounded-2xl border border-white/70 bg-white p-4 shadow-hero dark:border-slate-800 dark:bg-slate-900 md:bg-white/95 md:backdrop-blur-xl dark:md:bg-slate-900/95"
             >
               <span className="flex size-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-50 to-cyan-50 text-emerald-700 ring-1 ring-emerald-100 dark:from-emerald-950 dark:to-slate-900 dark:ring-emerald-900">
                 <Icon className="size-4" aria-hidden="true" />

@@ -128,8 +128,8 @@ function FeaturedHeroCard({ listing }: { listing: Listing }) {
 function ListingCard({ listing, compact }: { listing: Listing; compact?: boolean }) {
   const href = `/listings/${listing.slug ?? listing.id}`;
   return (
-    <article className="group hover-lift overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:border-emerald-200 hover:shadow-card-hover dark:border-slate-700 dark:bg-slate-900">
-      <div className={`relative overflow-hidden ${compact ? "h-44" : "h-52"}`}>
+    <article className="gpu-card group hover-lift rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:border-emerald-200 hover:shadow-card-hover dark:border-slate-700 dark:bg-slate-900">
+      <div className={`relative overflow-hidden rounded-t-2xl ${compact ? "h-44" : "h-52"}`}>
         <Image
           src={listing.image}
           alt={listing.title}

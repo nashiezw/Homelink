@@ -95,8 +95,8 @@ export function PropertyManagementHeroCard() {
   if (success) {
     return (
       <div className="hero-pm-card hero-pm-float relative w-full max-w-md">
-        <div className="overflow-hidden rounded-3xl border border-white/50 bg-white/90 shadow-2xl shadow-emerald-900/15 backdrop-blur-xl dark:bg-slate-900/90">
-          <div className="h-1.5 bg-gradient-to-r from-emerald-500 via-teal-400 to-cyan-400" />
+        <div className="gpu-card rounded-3xl border border-white/50 bg-white shadow-2xl shadow-emerald-900/15 dark:bg-slate-900 md:bg-white/90 md:backdrop-blur-xl dark:md:bg-slate-900/90">
+          <div className="h-2 rounded-t-3xl bg-gradient-to-r from-emerald-500 via-teal-400 to-cyan-400" />
           <div className="p-7">
             <div className="mx-auto flex size-16 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-100 to-teal-50 text-emerald-700 shadow-inner">
               <CheckCircle2 className="size-8" />
@@ -159,8 +159,8 @@ export function PropertyManagementHeroCard() {
       <MapPin className="pointer-events-none absolute -left-1 top-1/3 size-5 text-emerald-500/35 animate-pulse" />
       <Sparkles className="pointer-events-none absolute right-3 top-10 size-4 text-amber-400/50" />
 
-      <div className="relative overflow-hidden rounded-3xl border border-white/60 bg-white/90 shadow-2xl shadow-emerald-900/20 backdrop-blur-xl transition hover:shadow-emerald-900/25 dark:border-white/10 dark:bg-slate-900/90">
-        <div className="h-1.5 bg-gradient-to-r from-emerald-600 via-teal-500 to-cyan-400" />
+      <div className="gpu-card relative rounded-3xl border border-white/60 bg-white shadow-2xl shadow-emerald-900/20 transition hover:shadow-emerald-900/25 dark:border-white/10 dark:bg-slate-900 md:bg-white/90 md:backdrop-blur-xl dark:md:bg-slate-900/90">
+        <div className="h-2 rounded-t-3xl bg-gradient-to-r from-emerald-600 via-teal-500 to-cyan-400" />
 
         <div className="p-5 sm:p-6">
           <div className="flex items-start gap-3">

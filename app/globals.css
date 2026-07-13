@@ -57,6 +57,26 @@ textarea {
 }
 
 @layer components {
+  /*
+   * Mobile GPU isolation for rounded white cards/stat boxes.
+   * Prevents horizontal scan-line / tearing artifacts on mobile browsers.
+   * Do not add overflow:hidden here — it can worsen the glitch.
+   */
+  .gpu-card,
+  .surface-panel,
+  .premium-card,
+  .academy-panel,
+  .academy-card,
+  .rm-room-card {
+    transform: translate3d(0, 0, 0);
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    background-clip: padding-box;
+    -webkit-background-clip: padding-box;
+    will-change: transform;
+    contain: layout style;
+  }
+
   .surface-panel {
     border: 1px solid rgba(203, 213, 225, 0.75);
     background: rgba(255, 255, 255, 0.94);
@@ -82,6 +102,7 @@ textarea {
   .premium-card:hover {
     border-color: rgba(16, 185, 129, 0.28);
     box-shadow: 0 24px 64px rgba(16, 185, 129, 0.1);
+    transform: translate3d(0, 0, 0);
   }
 
   .dark .premium-card {
@@ -96,7 +117,7 @@ textarea {
   }
 
   .hover-lift:hover {
-    transform: translateY(-4px);
+    transform: translate3d(0, -4px, 0);
   }
 
   .section-eyebrow {
@@ -105,7 +126,7 @@ textarea {
     border-radius: 999px;
     border: 1px solid rgba(16, 185, 129, 0.2);
     background: linear-gradient(180deg, rgba(236, 253, 245, 0.95), rgba(209, 250, 229, 0.7));
-    padding: 0.3rem 0.75rem;
+    padding: 5px 12px;
     font-size: 0.7rem;
     font-weight: 700;
     letter-spacing: 0.1em;
@@ -213,7 +234,7 @@ textarea {
     }
 
     .academy-card:hover {
-      transform: translateY(-2px);
+      transform: translate3d(0, -2px, 0);
       border-color: rgba(16, 185, 129, 0.34);
       box-shadow: 0 22px 56px rgba(16, 185, 129, 0.11);
     }
@@ -246,11 +267,11 @@ textarea {
   .rm-light-eyebrow {
     display: inline-flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 8px;
     border-radius: 9999px;
     border: 1px solid rgba(16, 185, 129, 0.25);
     background: rgba(16, 185, 129, 0.08);
-    padding: 0.45rem 1rem;
+    padding: 7px 16px;
     font-size: 0.75rem;
     font-weight: 700;
     letter-spacing: 0.12em;
@@ -311,8 +332,7 @@ textarea {
   }
 
   .rm-room-card {
-    border-radius: 1.25rem;
-    overflow: hidden;
+    border-radius: 20px;
     background: #fff;
     box-shadow:
       0 1px 2px rgba(16, 32, 36, 0.04),
@@ -323,7 +343,7 @@ textarea {
   }
 
   .rm-room-card:hover {
-    transform: translateY(-5px);
+    transform: translate3d(0, -5px, 0);
     box-shadow:
       0 2px 4px rgba(16, 32, 36, 0.04),
       0 22px 52px rgba(16, 185, 129, 0.16);
@@ -418,11 +438,11 @@ textarea {
   .rm-eyebrow {
     display: inline-flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 8px;
     border-radius: 9999px;
     border: 1px solid rgba(16, 185, 129, 0.35);
     background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(255, 255, 255, 0.05));
-    padding: 0.45rem 1rem;
+    padding: 7px 16px;
     font-size: 0.75rem;
     font-weight: 700;
     letter-spacing: 0.12em;
@@ -547,5 +567,38 @@ textarea {
   .map-pin-pulse,
   .map-pin-float {
     animation: none;
+  }
+}
+
+/*
+ * Primary mobile scan-line trigger: box-shadow + backdrop-filter on
+ * rounded white cards. Strip both at phone/tablet widths.
+ * !important beats Tailwind utility / arbitrary shadow classes.
+ */
+@media (max-width: 768px) {
+  .gpu-card,
+  .surface-panel,
+  .premium-card,
+  .premium-card:hover,
+  .academy-panel,
+  .academy-card,
+  .academy-card:hover,
+  .rm-room-card,
+  .rm-room-card:hover,
+  .rm-glass,
+  .rm-glass-dark,
+  .rm-glass-panel,
+  .rm-card-glow {
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  .hover-lift:hover,
+  .premium-card:hover,
+  .academy-card:hover,
+  .rm-room-card:hover,
+  .gpu-card:hover {
+    transform: translate3d(0, 0, 0) !important;
   }
 }

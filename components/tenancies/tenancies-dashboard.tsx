@@ -218,7 +218,7 @@ function TenancyCard({
 }) {
   const r = item.record;
   return (
-    <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+    <article className="gpu-card rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="flex items-center gap-1 font-semibold text-ink">

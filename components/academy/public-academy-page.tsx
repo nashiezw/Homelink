@@ -476,7 +476,7 @@ function StatCard({
     purple: "bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400",
   };
   return (
-    <div className="academy-card rounded-xl p-4 sm:p-6">
+    <div className="academy-card gpu-card rounded-xl p-4 sm:p-6">
       <div className="flex items-center gap-3">
         <div className={`shrink-0 rounded-lg p-2.5 sm:p-3 ${colors[color]}`}>
           <Icon className="size-5 sm:size-6" />

@@ -246,7 +246,7 @@ function TenancyActionsInner({ listing, landlordUserId }: TenancyActionsProps) {
 
 function CompactShell({ children, loading = false }: { children?: ReactNode; loading?: boolean }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+    <div className="gpu-card rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
       {loading ? (
         <div className="flex items-center gap-2 text-sm text-slate-500">
           <Loader2 className="size-4 animate-spin" />

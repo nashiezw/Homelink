@@ -227,8 +227,8 @@ export function PaymentsPageClient() {
               </div>
             )}
 
-            <section className="overflow-hidden rounded-lg border border-emerald-100 bg-white shadow-[0_24px_70px_rgba(15,23,42,0.08)] dark:border-emerald-900/40 dark:bg-slate-900">
-              <div className="border-b border-slate-100 bg-slate-50/80 px-5 py-4 dark:border-slate-800 dark:bg-slate-950/40">
+            <section className="gpu-card rounded-lg border border-emerald-100 bg-white shadow-[0_24px_70px_rgba(15,23,42,0.08)] dark:border-emerald-900/40 dark:bg-slate-900">
+              <div className="rounded-t-lg border-b border-slate-100 bg-slate-50 px-5 py-4 dark:border-slate-800 dark:bg-slate-950">
                 <p className="text-xs font-semibold uppercase tracking-normal text-emerald-700 dark:text-emerald-400">
                   Select service
                 </p>
@@ -551,7 +551,7 @@ function PaymentHistory({
 function GuestPaymentsGate({ variant = "checkout" }: { variant?: "checkout" | "history" }) {
   const isHistory = variant === "history";
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-8 text-center shadow-sm dark:border-slate-700 dark:bg-slate-900">
+    <div className="gpu-card rounded-xl border border-slate-200 bg-white p-8 text-center shadow-sm dark:border-slate-700 dark:bg-slate-900">
       <Lock className="mx-auto size-10 text-emerald-700" />
       <h2 className="mt-4 text-xl font-bold text-ink dark:text-white">
         {isHistory ? "Sign in to view payment history" : "Sign in to pay for HomeLink services"}
@@ -590,7 +590,7 @@ function PaymentTrustStrip() {
   return (
     <div className="mb-6 grid gap-3 md:grid-cols-3">
       {items.map((item) => (
-        <div key={item.label} className="rounded-lg border border-emerald-100 bg-white p-4 shadow-sm dark:border-emerald-900/40 dark:bg-slate-900/70">
+        <div key={item.label} className="gpu-card rounded-lg border border-emerald-100 bg-white p-4 shadow-sm dark:border-emerald-900/40 dark:bg-slate-900">
           <p className="flex items-center gap-2 text-sm font-bold text-ink dark:text-white">
             <item.icon className="size-4 text-emerald-700 dark:text-emerald-300" />
             {item.label}

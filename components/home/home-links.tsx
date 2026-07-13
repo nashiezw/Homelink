@@ -50,7 +50,7 @@ export function CategoryGrid() {
             type="button"
             key={category}
             onClick={() => router.push(categoryRoutes[category] ?? "/search")}
-            className="group relative flex min-h-[9.5rem] flex-col justify-between overflow-hidden rounded-2xl border border-slate-200/90 bg-white p-5 text-left shadow-sm transition duration-300 hover:-translate-y-1 hover:border-emerald-200 hover:shadow-glow dark:border-slate-800 dark:bg-slate-900 dark:hover:border-emerald-800"
+            className="gpu-card group relative flex min-h-[152px] flex-col justify-between rounded-2xl border border-slate-200/90 bg-white p-5 text-left shadow-sm transition duration-300 hover:-translate-y-1 hover:border-emerald-200 hover:shadow-glow dark:border-slate-800 dark:bg-slate-900 dark:hover:border-emerald-800"
           >
             <span className="relative flex size-12 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-50 to-cyan-50 text-emerald-700 ring-1 ring-emerald-100/80 transition duration-300 group-hover:from-emerald-600 group-hover:to-teal-600 group-hover:text-white group-hover:ring-emerald-500/30 dark:from-emerald-950 dark:to-slate-900 dark:ring-emerald-900">
               <Icon className="size-5" aria-hidden="true" />

@@ -18,8 +18,8 @@ export function ListingCard({ listing }: ListingCardProps) {
   const href = `/listings/${listing.slug ?? listing.id}`;
 
   return (
-    <article className="group overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:border-emerald-200 hover:shadow-soft dark:border-slate-700 dark:bg-slate-900">
-      <div className="relative aspect-[4/3] overflow-hidden">
+    <article className="gpu-card group rounded-lg border border-slate-200 bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:border-emerald-200 hover:shadow-soft dark:border-slate-700 dark:bg-slate-900">
+      <div className="relative aspect-[4/3] overflow-hidden rounded-t-lg">
         <Image
           src={listing.image}
           alt={listing.title}

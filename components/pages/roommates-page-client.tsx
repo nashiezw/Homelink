@@ -370,12 +370,12 @@ function RoomListingCard({
   return (
     <article
       className={cn(
-        "group flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-[0_8px_30px_rgba(16,32,36,0.06)] transition duration-300 hover:-translate-y-1 hover:border-emerald-200 hover:shadow-[0_16px_40px_rgba(16,185,129,0.12)]",
+        "gpu-card group flex h-full flex-col rounded-2xl border border-slate-200/90 bg-white shadow-[0_8px_30px_rgba(16,32,36,0.06)] transition duration-300 hover:-translate-y-1 hover:border-emerald-200 hover:shadow-[0_16px_40px_rgba(16,185,129,0.12)]",
         size === "stacked" && "lg:h-auto",
         size === "compact" && "w-[17rem] shrink-0 sm:w-[19rem]",
       )}
     >
-      <div className={cn("relative shrink-0 overflow-hidden", imageHeights[size])}>
+      <div className={cn("relative shrink-0 overflow-hidden rounded-t-2xl", imageHeights[size])}>
         <Link href={listingHref} className="block size-full">
           <Image
             src={listing.image}

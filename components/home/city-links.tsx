@@ -11,7 +11,7 @@ export function CityLinks() {
           key={city}
           href={`/search?city=${encodeURIComponent(city)}`}
           rel="nofollow"
-          className="group flex flex-col justify-center rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-md dark:border-slate-700 dark:bg-slate-900 dark:hover:border-emerald-700"
+          className="gpu-card group flex flex-col justify-center rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-md dark:border-slate-700 dark:bg-slate-900 dark:hover:border-emerald-700"
         >
           <div className="flex items-center justify-between gap-3">
             <p className="font-semibold text-slate-950 dark:text-white">{city}</p>

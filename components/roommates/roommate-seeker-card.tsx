@@ -92,7 +92,7 @@ export function RoommateSeekerCard({
   }
 
   return (
-    <article className="group hover-lift overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-[0_8px_30px_rgba(16,32,36,0.05)] transition-all duration-300 hover:border-emerald-200/80 hover:shadow-[0_20px_50px_rgba(16,185,129,0.1)] dark:border-slate-700 dark:bg-slate-900">
+    <article className="gpu-card group hover-lift rounded-3xl border border-slate-200/80 bg-white shadow-[0_8px_30px_rgba(16,32,36,0.05)] transition-all duration-300 hover:border-emerald-200/80 hover:shadow-[0_20px_50px_rgba(16,185,129,0.1)] dark:border-slate-700 dark:bg-slate-900">
       <div className="flex flex-col gap-6 p-6 sm:flex-row sm:items-center sm:p-8">
         <div className="flex shrink-0 flex-col items-center gap-3 sm:items-start">
           <AgentAvatar name={name} size="xl" verified={verified} />

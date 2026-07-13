@@ -84,7 +84,7 @@ export function BecomeAgentPromo({ content }: BecomeAgentPromoProps) {
   return (
     <FadeIn>
       <section aria-label="Become a HomeLink agent" className="px-4 py-14 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-7xl overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-soft dark:border-slate-800 dark:bg-slate-900">
+        <div className="gpu-card mx-auto max-w-7xl rounded-2xl border border-slate-200/80 bg-white shadow-soft dark:border-slate-800 dark:bg-slate-900">
           <div className="grid lg:grid-cols-2">
             <div className="flex flex-col justify-center p-6 sm:p-8 lg:p-9">
               <p className="section-eyebrow">{content.eyebrow}</p>
