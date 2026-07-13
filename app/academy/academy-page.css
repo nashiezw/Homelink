@@ -1,0 +1,51 @@
+/* Academy public page only — mobile overflow containment */
+.academy-public-page {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: clip;
+}
+
+@media (max-width: 767px) {
+  .academy-public-page .academy-public-hero,
+  .academy-public-page .academy-public-content {
+    overflow-x: clip;
+    max-width: 100%;
+  }
+
+  .academy-public-page select {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .academy-public-page img,
+  .academy-public-page video,
+  .academy-public-page iframe,
+  .academy-public-page embed {
+    max-width: 100%;
+    height: auto;
+  }
+
+  .academy-public-page table {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+  }
+
+  .academy-public-page .academy-public-stat-grid > *,
+  .academy-public-page .academy-public-course-grid > *,
+  .academy-public-page .academy-public-catalog > *,
+  .academy-public-page .academy-public-side-panel > * {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .academy-public-page .academy-public-catalog article {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .academy-public-page .academy-public-catalog article > .absolute {
+    max-width: calc(100% - 2rem);
+  }
+}
