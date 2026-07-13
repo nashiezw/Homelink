@@ -316,7 +316,7 @@ export function SearchPageClient() {
           </div>
 
           <form
-            className="surface-panel mt-6 grid w-full gap-3 rounded-lg p-3 lg:grid-cols-[1.3fr_1fr_1fr_auto]"
+            className="surface-panel mt-6 grid w-full gap-3 rounded-lg p-3 sm:grid-cols-2 lg:grid-cols-[1.3fr_1fr_1fr_auto]"
             onSubmit={(event) => {
               event.preventDefault();
               const data = new FormData(event.currentTarget);
@@ -386,7 +386,7 @@ export function SearchPageClient() {
                 <option value="holiday_home">Holiday Home</option>
               </select>
             </label>
-            <Button type="submit" className="h-full min-h-14">
+            <Button type="submit" className="h-full min-h-12 sm:col-span-2 sm:min-h-14 lg:col-span-1">
               <SlidersHorizontal className="size-4" aria-hidden="true" />
               Filter
             </Button>
@@ -405,7 +405,7 @@ export function SearchPageClient() {
             </button>
           )}
 
-          <div className="mt-4 flex max-w-xs flex-wrap gap-2 sm:max-w-none">
+          <div className="mt-4 flex w-full flex-wrap gap-2">
             {smartFilters.map((filter) => (
               <button
                 type="button"
@@ -459,8 +459,8 @@ export function SearchPageClient() {
         </div>
       </section>
 
-      <section className="mx-auto grid max-w-7xl gap-6 px-4 py-8 sm:px-6 lg:grid-cols-[1fr_360px] lg:px-8">
-        <div>
+      <section className="mx-auto grid max-w-7xl gap-6 px-4 py-8 sm:px-6 md:grid-cols-[minmax(0,1fr)_280px] lg:grid-cols-[minmax(0,1fr)_320px] lg:px-8">
+        <div className="order-2 min-w-0 md:order-1">
           <div className="surface-panel flex flex-col justify-between gap-3 rounded-lg p-4 sm:flex-row sm:items-center">
             <p className="text-sm text-slate-600 dark:text-slate-300">
               Showing <span className="font-semibold text-ink dark:text-white">{listings.length}</span> listings
@@ -476,17 +476,17 @@ export function SearchPageClient() {
               <PropertyMap listings={listings} />
             </div>
           )}
-          <div className="mt-5 grid gap-6 md:grid-cols-2">
+          <div className="mt-5 grid gap-4 sm:grid-cols-2 sm:gap-6">
             {listings.map((listing) => (
               <ListingCard key={listing.id} listing={listing} />
             ))}
             {!loading && listings.length === 0 && (
-              <p className="text-slate-600 dark:text-slate-300">No listings match your filters. Try widening your search.</p>
+              <p className="text-slate-600 dark:text-slate-300 sm:col-span-2">No listings match your filters. Try widening your search.</p>
             )}
           </div>
         </div>
 
-        <aside className="h-fit overflow-hidden rounded-lg border border-cyan-700/30 bg-gradient-to-br from-ocean via-[#0f5364] to-ink text-white shadow-soft lg:sticky lg:top-24">
+        <aside className="order-1 h-fit overflow-hidden rounded-lg border border-cyan-700/30 bg-gradient-to-br from-ocean via-[#0f5364] to-ink text-white shadow-soft md:order-2 md:sticky md:top-24">
           <div className="border-b border-white/10 p-5">
             <p className="text-sm font-semibold uppercase tracking-normal text-cyan-100">Search intelligence</p>
             <p className="mt-2 text-2xl font-semibold">

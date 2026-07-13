@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { Scale } from "lucide-react";
 import { PageShell } from "@/components/layout/page-shell";
 import { useApp } from "@/components/providers/app-provider";
@@ -40,32 +41,64 @@ export function ComparePageClient() {
           </p>
         </div>
       ) : (
-        <div className="overflow-x-auto">
-          <div className="surface-panel overflow-hidden rounded-lg">
-            <div className="grid min-w-[760px] grid-cols-4 border-b border-slate-200 bg-gradient-to-r from-emerald-50 to-slate-50 dark:border-slate-700 dark:from-slate-800 dark:to-slate-900">
-              <div className="p-4 font-semibold">
-                <Scale className="mb-2 size-5 text-emerald-700" aria-hidden="true" />
-                Criteria
-              </div>
-              {listings.map((listing) => (
-                <div key={listing.id} className="border-l border-slate-200 p-4 dark:border-slate-700">
-                  <p className="font-semibold">{listing.title}</p>
-                  <p className="mt-1 text-sm text-slate-500">{listing.suburb}, {listing.city}</p>
+        <>
+          <div className="grid gap-4 md:hidden">
+            {listings.map((listing) => (
+              <article key={listing.id} className="gpu-card rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
+                <Link href={`/listings/${listing.slug ?? listing.id}`} className="font-semibold text-ink hover:text-emerald-800 dark:text-white">
+                  {listing.title}
+                </Link>
+                <p className="mt-1 text-sm text-slate-500">
+                  {listing.suburb}, {listing.city}
+                </p>
+                <dl className="mt-4 space-y-3">
+                  {rows.map((row) => (
+                    <div key={row} className="flex items-start justify-between gap-3 border-t border-slate-100 pt-3 text-sm dark:border-slate-800">
+                      <dt className="font-semibold text-slate-500">{row}</dt>
+                      <dd className="max-w-[60%] text-right text-slate-800 dark:text-slate-200">{valueFor(row, listing)}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </article>
+            ))}
+          </div>
+
+          <div className="hidden overflow-x-auto md:block">
+            <div className="surface-panel overflow-hidden rounded-lg">
+              <div
+                className="grid border-b border-slate-200 bg-gradient-to-r from-emerald-50 to-slate-50 dark:border-slate-700 dark:from-slate-800 dark:to-slate-900"
+                style={{ gridTemplateColumns: `minmax(140px,1fr) repeat(${listings.length}, minmax(160px,1fr))` }}
+              >
+                <div className="p-4 font-semibold">
+                  <Scale className="mb-2 size-5 text-emerald-700" aria-hidden="true" />
+                  Criteria
                 </div>
-              ))}
-            </div>
-            {rows.map((row) => (
-              <div key={row} className="grid min-w-[760px] grid-cols-4 border-b border-slate-200 last:border-b-0 dark:border-slate-700">
-                <div className="bg-slate-50 p-4 text-sm font-semibold dark:bg-slate-800">{row}</div>
                 {listings.map((listing) => (
-                  <div key={`${listing.id}-${row}`} className="border-l border-slate-200 p-4 text-sm text-slate-700 dark:border-slate-700 dark:text-slate-200">
-                    {valueFor(row, listing)}
+                  <div key={listing.id} className="border-l border-slate-200 p-4 dark:border-slate-700">
+                    <p className="font-semibold">{listing.title}</p>
+                    <p className="mt-1 text-sm text-slate-500">
+                      {listing.suburb}, {listing.city}
+                    </p>
                   </div>
                 ))}
               </div>
-            ))}
+              {rows.map((row) => (
+                <div
+                  key={row}
+                  className="grid border-b border-slate-200 last:border-b-0 dark:border-slate-700"
+                  style={{ gridTemplateColumns: `minmax(140px,1fr) repeat(${listings.length}, minmax(160px,1fr))` }}
+                >
+                  <div className="bg-slate-50 p-4 text-sm font-semibold dark:bg-slate-800">{row}</div>
+                  {listings.map((listing) => (
+                    <div key={`${listing.id}-${row}`} className="border-l border-slate-200 p-4 text-sm text-slate-700 dark:border-slate-700 dark:text-slate-200">
+                      {valueFor(row, listing)}
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
+        </>
       )}
     </PageShell>
   );

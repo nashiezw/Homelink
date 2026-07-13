@@ -16,12 +16,29 @@ const ROOMMATE_PHOTO_TO_LISTING_SVG: Record<string, string> = {
   "/images/roommates/photo-lodge-vicfalls.jpg": "/images/roommates/listing-lodge-vicfalls.svg",
 };
 
-const GENERIC_LISTING_FALLBACK = "/images/roommates/listing-flat-avondale-west.svg";
+/** Prefer the green cottage art over the blue flat SVG as a last-resort fallback. */
+const GENERIC_LISTING_FALLBACK = "/images/roommates/listing-cottage-avondale.svg";
 
 export function resolvePublicImageUrl(url?: string | null): string | undefined {
   if (!url?.trim()) return undefined;
   const trimmed = url.trim();
   return ROOMMATE_PHOTO_TO_LISTING_SVG[trimmed] ?? trimmed;
+}
+
+export function resolveListingImages(urls: string[]): string[] {
+  return urls
+    .map((url) => resolvePublicImageUrl(url))
+    .filter((url): url is string => Boolean(url));
+}
+
+export function isListingPlaceholderArt(url?: string | null): boolean {
+  if (!url) return false;
+  return /\/images\/roommates\/listing-.*\.svg$/i.test(url) || url in ROOMMATE_PHOTO_TO_LISTING_SVG;
+}
+
+export function isSvgImageUrl(url?: string | null): boolean {
+  if (!url) return false;
+  return /\.svg($|\?)/i.test(url);
 }
 
 export function virtualTourImageFallbacks(sceneUrl: string | undefined, listingImage?: string) {

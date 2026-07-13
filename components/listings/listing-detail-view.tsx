@@ -48,20 +48,22 @@ export function ListingDetailView({
   const detailRows = buildDetailRows(listing);
 
   return (
-    <main className="bg-mist dark:bg-slate-950">
-      <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+    <main className="max-w-full overflow-x-hidden bg-mist dark:bg-slate-950">
+      <section className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
         <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
-          <div>
-            <p className="flex items-center gap-2 text-sm font-medium text-emerald-700">
-              <MapPin className="size-4" aria-hidden="true" />
-              {listing.suburb}, {listing.city}
+          <div className="min-w-0 max-w-full">
+            <p className="flex flex-wrap items-center gap-2 text-sm font-medium text-emerald-700">
+              <MapPin className="size-4 shrink-0" aria-hidden="true" />
+              <span className="min-w-0 break-words">
+                {listing.suburb}, {listing.city}
+              </span>
               {isHoliday && listing.holidayHome?.destination ? (
                 <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs text-emerald-800">
                   {listing.holidayHome.destination}
                 </span>
               ) : null}
             </p>
-            <h1 className="mt-2 max-w-3xl text-3xl font-semibold tracking-normal text-ink dark:text-white">
+            <h1 className="mt-2 max-w-3xl break-words text-2xl font-semibold tracking-normal text-ink sm:text-3xl dark:text-white">
               {listing.title}
             </h1>
           </div>
@@ -70,10 +72,10 @@ export function ListingDetailView({
         <MediaGallery images={galleryImages} title={listing.title} />
       </section>
 
-      <section className="mx-auto grid max-w-7xl gap-8 px-4 pb-14 sm:px-6 lg:grid-cols-[1fr_380px] lg:px-8">
-        <div>
-          <div className="surface-panel flex flex-wrap items-center gap-3 rounded-lg p-5">
-            <p className="text-3xl font-semibold text-emerald-700">
+      <section className="mx-auto grid max-w-7xl gap-6 px-4 pb-14 sm:gap-8 sm:px-6 md:grid-cols-[minmax(0,1fr)_300px] lg:grid-cols-[minmax(0,1fr)_340px] lg:px-8">
+        <div className="order-2 min-w-0 max-w-full md:order-1">
+          <div className="surface-panel flex flex-wrap items-center gap-2 rounded-lg p-4 sm:gap-3 sm:p-5">
+            <p className="text-2xl font-semibold text-emerald-700 sm:text-3xl">
               {isHoliday ? formatNightlyPrice(listing.holidayHome!.nightlyRate) : formatPrice(listing.price)}
             </p>
             <ListingStatusBadge listing={listing} />
@@ -124,7 +126,7 @@ export function ListingDetailView({
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
             {listing.amenities.map((amenity) => (
                   <div key={amenity} className="flex items-center gap-3">
-                    <ShieldCheck className="size-5 text-emerald-700" aria-hidden="true" />
+                    <ShieldCheck className="size-5 shrink-0 text-emerald-700" aria-hidden="true" />
                     <span>{amenity}</span>
                   </div>
                 ))}
@@ -161,7 +163,7 @@ export function ListingDetailView({
 
             <section>
               <h2 className="text-xl font-semibold">Location intelligence</h2>
-              <div className="surface-panel mt-4 rounded-lg p-5">
+              <div className="surface-panel mt-4 rounded-lg p-4 sm:p-5">
                 <p className="font-medium">{listing.distanceToCbdKm} km estimated distance to CBD</p>
                 <div className="mt-3 flex flex-wrap gap-2">
                   {listing.nearby.map((place) => (
@@ -178,7 +180,7 @@ export function ListingDetailView({
           </div>
         </div>
 
-        <aside className="surface-panel h-fit space-y-5 rounded-lg p-5 lg:sticky lg:top-24">
+        <aside className="surface-panel order-1 h-fit space-y-5 rounded-lg p-4 sm:p-5 md:order-2 md:sticky md:top-24">
           {isHoliday ? (
             <HolidayBookingForm
               listingId={listing.id}

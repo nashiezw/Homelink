@@ -702,10 +702,14 @@ async function getSafeListingRow(id: string): Promise<SafeListingRow | null> {
 }
 
 function toListingRecord(row: PrismaListingRow | SafeListingRow): ListingRecord {
-  const images = row.media.filter((m) => m.mediaType === "image").map((m) => m.url);
+  const images = row.media
+    .filter((m) => m.mediaType === "image")
+    .map((m) => resolvePublicImageUrl(m.url) ?? m.url)
+    .filter(Boolean);
   const videos = row.media.filter((m) => m.mediaType === "video").map((m) => m.url);
   const type = PROPERTY_TYPE_FROM_DB[row.propertyType] ?? "room";
   const amenities = amenitiesFromRow(row);
+  const fallbackImage = resolvePublicImageUrl(fallbackListingImage(type)) ?? fallbackListingImage(type);
   return {
     id: row.id,
     slug: "slug" in row && row.slug ? row.slug : listingSlug(row.id, row.title),
@@ -718,8 +722,8 @@ function toListingRecord(row: PrismaListingRow | SafeListingRow): ListingRecord 
     type,
     bedrooms: row.bedrooms,
     bathrooms: row.bathrooms,
-    image: images[0] ?? fallbackListingImage(type),
-    images: images.length ? images : [fallbackListingImage(type)],
+    image: images[0] ?? fallbackImage,
+    images: images.length ? images : [fallbackImage],
     videos,
     verified: Boolean(row.verifiedAt),
     featured: "featured" in row ? row.featured : false,

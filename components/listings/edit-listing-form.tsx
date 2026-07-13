@@ -185,7 +185,7 @@ export function EditListingForm() {
         onChange={({ province, city, suburb }) => setForm({ ...form, province, city, suburb })}
       />
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
         <label className="block text-sm font-medium">
           Listing type
           <select

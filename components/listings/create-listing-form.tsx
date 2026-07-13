@@ -324,7 +324,7 @@ export function CreateListingForm({ onSuccess }: CreateListingFormProps) {
         onChange={({ province, city, suburb }) => setForm({ ...form, province, city, suburb })}
       />
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
         <label className="block text-sm font-medium">
           Listing type *
           <select
@@ -376,7 +376,7 @@ export function CreateListingForm({ onSuccess }: CreateListingFormProps) {
       ) : null}
 
       {form.type !== "land" && form.type !== "room" && (
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
           {form.type !== "commercial" && (
             <label className="block text-sm font-medium">
               Bedrooms
@@ -465,7 +465,7 @@ export function CreateListingForm({ onSuccess }: CreateListingFormProps) {
       {form.intent === "rent" && form.type !== "holiday_home" && (
         <section className="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-950/40">
           <p className="text-sm font-semibold text-ink">Rental terms and house rules</p>
-          <div className="mt-3 grid gap-4 sm:grid-cols-3">
+          <div className="mt-3 grid gap-4 sm:grid-cols-2 md:grid-cols-3">
             <label className="block text-sm font-medium">Deposit (USD)<input type="number" min={0} value={form.depositAmount} onChange={(e) => setForm({ ...form, depositAmount: e.target.value })} className={fieldClass} /></label>
             <label className="block text-sm font-medium">Minimum lease<select value={form.leaseTerm} onChange={(e) => setForm({ ...form, leaseTerm: e.target.value })} className={fieldClass}><option>Month to month</option><option>3 months</option><option>6 months</option><option>12 months</option></select></label>
             <label className="flex items-center gap-2 text-sm font-medium sm:pt-8"><input type="checkbox" className={checkboxClass} checked={form.utilitiesIncluded} onChange={(e) => setForm({ ...form, utilitiesIncluded: e.target.checked })} /> Utilities included</label>

@@ -14,7 +14,7 @@ export function ListingCardActions({ listingId }: ListingCardActionsProps) {
     <button
       type="button"
       onClick={() => void toggleFavourite(listingId)}
-      className={`absolute right-3 top-3 flex size-10 items-center justify-center rounded-md shadow-sm ${
+      className={`absolute bottom-3 right-3 flex size-10 items-center justify-center rounded-md shadow-sm ${
         isFavourite(listingId)
           ? "bg-emerald-700 text-white"
           : "bg-white/90 text-slate-700"
