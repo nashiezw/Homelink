@@ -46,6 +46,42 @@ export function ListingDetailView({
   const virtualTour = listing.virtualTour?.status === "PUBLISHED" ? listing.virtualTour : null;
   const isHoliday = listing.type === "holiday_home" && listing.holidayHome;
   const detailRows = buildDetailRows(listing);
+  const renderActionPanel = () => (
+    <>
+      {isHoliday ? (
+        <HolidayBookingForm
+          listingId={listing.id}
+          listingTitle={listing.title}
+          holidayHome={listing.holidayHome!}
+        />
+      ) : (
+        <ListingDetailActions listing={listing} />
+      )}
+      {!isHoliday && listing.intent === "rent" ? (
+        <TenancyActions listing={listing} landlordUserId={landlordUserId} />
+      ) : null}
+      <AgentRatingPrompt listingId={listing.id} />
+      {isHoliday ? (
+        <div className="rounded-lg bg-emerald-50 p-4 dark:bg-emerald-950/30">
+          <p className="text-sm font-semibold text-emerald-900 dark:text-emerald-100">Before you travel</p>
+          <p className="mt-1 text-sm leading-6 text-emerald-900/80 dark:text-emerald-100/80">
+            HomeLink shows live availability so you do not arrive only to hear &quot;Yatorwa.&quot; Always confirm dates with your consultant before paying.
+          </p>
+        </div>
+      ) : (
+        <div className="rounded-lg bg-emerald-50 p-4 dark:bg-emerald-950/30">
+          <p className="text-sm font-semibold text-emerald-900 dark:text-emerald-100">Before you pay or view</p>
+          <p className="mt-1 text-sm leading-6 text-emerald-900/80 dark:text-emerald-100/80">
+            HomeLink shows live availability so you do not waste a trip. Enquire first, then pay rent or deposit through HomeLink after you agree.
+          </p>
+        </div>
+      )}
+      <div className="rounded-lg bg-emerald-50 p-4 dark:bg-emerald-950/30">
+        <p className="text-sm font-semibold text-emerald-900 dark:text-emerald-100">Why this listing stands out</p>
+        <p className="mt-1 text-sm leading-6 text-emerald-900/80 dark:text-emerald-100/80">{listing.highlight}</p>
+      </div>
+    </>
+  );
 
   return (
     <main className="max-w-full overflow-x-hidden bg-mist dark:bg-slate-950">
@@ -73,25 +109,31 @@ export function ListingDetailView({
       </section>
 
       <section className="mx-auto grid max-w-7xl gap-6 px-4 pb-14 sm:gap-8 sm:px-6 md:grid-cols-[minmax(0,1fr)_minmax(260px,300px)] lg:grid-cols-[minmax(0,1fr)_minmax(280px,340px)] lg:px-8">
-        <div className="order-2 min-w-0 max-w-full md:order-1">
-          <div className="surface-panel flex flex-wrap items-center gap-2 rounded-lg p-4 sm:gap-3 sm:p-5">
-            <p className="min-w-0 break-words text-2xl font-semibold text-emerald-700 sm:text-3xl">
+        <div className="min-w-0 max-w-full">
+          <div className="surface-panel grid gap-3 rounded-lg p-4 sm:flex sm:flex-wrap sm:items-center sm:gap-3 sm:p-5">
+            <p className="min-w-0 break-words text-2xl font-semibold leading-tight text-emerald-700 sm:text-3xl">
               {isHoliday ? formatNightlyPrice(listing.holidayHome!.nightlyRate) : formatPrice(listing.price)}
             </p>
-            <ListingStatusBadge listing={listing} />
-            {listing.verified && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-3 py-1 text-sm font-semibold text-emerald-800">
-                <BadgeCheck className="size-4" aria-hidden="true" />
-                Property verified
+            <div className="flex min-w-0 flex-wrap gap-2">
+              <ListingStatusBadge listing={listing} />
+              {listing.verified && (
+                <span className="inline-flex max-w-full items-center gap-1 rounded-full bg-emerald-50 px-3 py-1 text-sm font-semibold text-emerald-800">
+                  <BadgeCheck className="size-4 shrink-0" aria-hidden="true" />
+                  <span className="truncate">Property verified</span>
+                </span>
+              )}
+              <span className="max-w-full truncate rounded-full bg-slate-100 px-3 py-1 text-sm text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                {listingAvailabilityDisplay(listing)}
               </span>
-            )}
-            <span className="rounded-full bg-slate-100 px-3 py-1 text-sm text-slate-700 dark:bg-slate-800 dark:text-slate-200">
-              {listingAvailabilityDisplay(listing)}
-            </span>
-            <span className="inline-flex items-center gap-1 rounded-full bg-cyan-50 px-3 py-1 text-sm font-semibold text-ocean">
-              <Sparkles className="size-4" aria-hidden="true" />
-              {listing.trustScore}% trust score
-            </span>
+              <span className="inline-flex max-w-full items-center gap-1 rounded-full bg-cyan-50 px-3 py-1 text-sm font-semibold text-ocean">
+                <Sparkles className="size-4 shrink-0" aria-hidden="true" />
+                <span className="truncate">{listing.trustScore}% trust score</span>
+              </span>
+            </div>
+          </div>
+
+          <div className="surface-panel mt-4 space-y-4 rounded-lg p-3 sm:p-4 md:hidden">
+            {renderActionPanel()}
           </div>
 
           <div className="grid gap-8 py-8">
@@ -180,39 +222,8 @@ export function ListingDetailView({
           </div>
         </div>
 
-        <aside className="surface-panel order-1 h-fit space-y-4 rounded-lg p-3 sm:space-y-5 sm:p-5 md:order-2 md:sticky md:top-24">
-          {isHoliday ? (
-            <HolidayBookingForm
-              listingId={listing.id}
-              listingTitle={listing.title}
-              holidayHome={listing.holidayHome!}
-            />
-          ) : (
-            <ListingDetailActions listing={listing} />
-          )}
-          {!isHoliday && listing.intent === "rent" ? (
-            <TenancyActions listing={listing} landlordUserId={landlordUserId} />
-          ) : null}
-          <AgentRatingPrompt listingId={listing.id} />
-          {isHoliday ? (
-            <div className="rounded-lg bg-emerald-50 p-4 dark:bg-emerald-950/30">
-              <p className="text-sm font-semibold text-emerald-900 dark:text-emerald-100">Before you travel</p>
-              <p className="mt-1 text-sm leading-6 text-emerald-900/80 dark:text-emerald-100/80">
-                HomeLink shows live availability so you do not arrive only to hear &quot;Yatorwa.&quot; Always confirm dates with your consultant before paying.
-              </p>
-            </div>
-          ) : (
-            <div className="rounded-lg bg-emerald-50 p-4 dark:bg-emerald-950/30">
-              <p className="text-sm font-semibold text-emerald-900 dark:text-emerald-100">Before you pay or view</p>
-              <p className="mt-1 text-sm leading-6 text-emerald-900/80 dark:text-emerald-100/80">
-                HomeLink shows live availability so you do not waste a trip. Enquire first, then pay rent or deposit through HomeLink after you agree.
-              </p>
-            </div>
-          )}
-          <div className="rounded-lg bg-emerald-50 p-4 dark:bg-emerald-950/30">
-            <p className="text-sm font-semibold text-emerald-900 dark:text-emerald-100">Why this listing stands out</p>
-            <p className="mt-1 text-sm leading-6 text-emerald-900/80 dark:text-emerald-100/80">{listing.highlight}</p>
-          </div>
+        <aside className="surface-panel hidden h-fit space-y-5 rounded-lg p-5 md:sticky md:top-24 md:block">
+          {renderActionPanel()}
         </aside>
       </section>
     </main>

@@ -64,7 +64,7 @@ export function MediaGallery({ images, title }: MediaGalleryProps) {
             "relative block w-full overflow-hidden rounded-xl ring-1 ring-slate-200/70 dark:ring-slate-800",
             mainIsPlaceholder
               ? "aspect-[4/3] bg-emerald-50 sm:aspect-[16/10] dark:bg-emerald-950/30"
-              : "aspect-[4/3] max-h-[70vh] bg-slate-100 shadow-soft sm:aspect-[16/10] dark:bg-slate-900",
+              : "aspect-[4/3] max-h-[58vh] bg-slate-100 shadow-soft sm:aspect-[16/10] sm:max-h-[70vh] dark:bg-slate-900",
           )}
         >
           <Image
@@ -86,8 +86,9 @@ export function MediaGallery({ images, title }: MediaGalleryProps) {
             </span>
           ) : null}
           {unique.length > 1 && (
-            <span className="absolute bottom-3 right-3 rounded-full bg-black/60 px-3 py-1 text-xs font-medium text-white">
-              {active + 1} / {unique.length} · Tap to enlarge
+            <span className="absolute bottom-3 right-3 max-w-[calc(100%-1.5rem)] rounded-full bg-black/65 px-3 py-1 text-xs font-medium text-white">
+              <span className="sm:hidden">{active + 1} / {unique.length}</span>
+              <span className="hidden sm:inline">{active + 1} / {unique.length} - Tap to enlarge</span>
             </span>
           )}
         </button>

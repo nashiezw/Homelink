@@ -296,7 +296,7 @@ export function SearchPageClient() {
           sizes="100vw"
         />
         <div className="absolute inset-0 bg-gradient-to-r from-ink via-ink/85 to-ink/45" />
-        <div className="relative mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+        <div className="relative mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
           <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
             <div className="min-w-0 w-full max-w-full sm:max-w-2xl lg:max-w-none">
               <p className="inline-flex rounded-full border border-emerald-300/25 bg-emerald-400/10 px-3 py-1 text-xs font-semibold uppercase tracking-normal text-emerald-100">
@@ -306,10 +306,10 @@ export function SearchPageClient() {
                 Fresh property matches across Zimbabwe
               </h1>
               <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-200 sm:text-base">
-                Combine city, suburb, budget, amenities, and map context. AI search turns natural language into structured filters.
+                Combine city, suburb, budget, amenities, and map context.
               </p>
             </div>
-            <Button className="w-full sm:w-auto" onClick={() => setAiOpen(true)}>
+            <Button className="w-full sm:w-auto lg:shrink-0" onClick={() => setAiOpen(true)}>
               <Sparkles className="size-4" aria-hidden="true" />
               Try AI search
             </Button>
@@ -394,8 +394,10 @@ export function SearchPageClient() {
 
           {calculatorBudget && usesRentalBudgetMemory && (
             <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-emerald-300/25 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-50">
-              Using your calculator budget: <span className="font-bold">US${Math.round(calculatorBudget.recommendedMaxRent)}/month</span>
-              <span className="text-emerald-100/80"> · {calculatorBudget.ratingLabel}</span>
+              <span>
+                Using your calculator budget: <span className="font-bold">US${Math.round(calculatorBudget.recommendedMaxRent)}/month</span>
+              </span>
+              <span className="text-emerald-100/80">{calculatorBudget.ratingLabel}</span>
             </div>
           )}
 
@@ -405,13 +407,13 @@ export function SearchPageClient() {
             </button>
           )}
 
-          <div className="-mx-1 mt-4 flex w-[calc(100%+0.5rem)] gap-2 overflow-x-auto px-1 pb-1 sm:mx-0 sm:w-full sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0">
+          <div className="-mx-1 mt-4 flex w-[calc(100%+0.5rem)] snap-x snap-mandatory gap-2 overflow-x-auto px-1 pb-1 sm:mx-0 sm:w-full sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0">
             {smartFilters.map((filter) => (
               <button
                 type="button"
                 key={filter.label}
                 onClick={() => toggleFilter(filter)}
-                className={`shrink-0 rounded-full border px-3 py-1.5 text-sm ${
+                className={`shrink-0 snap-start rounded-full border px-3 py-1.5 text-sm ${
                   activeFilters.some((item) => item.label === filter.label)
                     ? "border-emerald-300 bg-emerald-400/20 text-emerald-50"
                     : "border-white/20 bg-white/90 text-slate-700 hover:border-emerald-300 hover:bg-emerald-50"
@@ -459,8 +461,8 @@ export function SearchPageClient() {
         </div>
       </section>
 
-      <section className="mx-auto grid max-w-7xl gap-6 px-4 py-6 sm:px-6 sm:py-8 md:grid-cols-[minmax(0,1fr)_minmax(240px,280px)] lg:grid-cols-[minmax(0,1fr)_minmax(260px,320px)] lg:px-8">
-        <div className="order-2 min-w-0 max-w-full md:order-1">
+      <section className="mx-auto grid max-w-7xl gap-6 px-4 py-5 sm:px-6 sm:py-8 lg:grid-cols-[minmax(0,1fr)_minmax(260px,320px)] lg:px-8">
+        <div className="min-w-0 max-w-full">
           <div className="surface-panel flex flex-col justify-between gap-3 rounded-lg p-4 sm:flex-row sm:items-center">
             <p className="text-sm text-slate-600 dark:text-slate-300">
               Showing <span className="font-semibold text-ink dark:text-white">{listings.length}</span> listings
@@ -476,7 +478,7 @@ export function SearchPageClient() {
               <PropertyMap listings={listings} />
             </div>
           )}
-          <div className="mt-5 grid gap-4 sm:grid-cols-2 sm:gap-6">
+          <div className="mt-5 grid gap-4 sm:grid-cols-2 sm:gap-5 xl:gap-6">
             {listings.map((listing) => (
               <ListingCard key={listing.id} listing={listing} />
             ))}
@@ -486,7 +488,7 @@ export function SearchPageClient() {
           </div>
         </div>
 
-        <aside className="order-1 h-fit max-w-full overflow-hidden rounded-lg border border-cyan-700/30 bg-gradient-to-br from-ocean via-[#0f5364] to-ink text-white shadow-soft md:order-2 md:sticky md:top-24">
+        <aside className="h-fit max-w-full overflow-hidden rounded-lg border border-cyan-700/30 bg-gradient-to-br from-ocean via-[#0f5364] to-ink text-white shadow-soft lg:sticky lg:top-24">
           <div className="border-b border-white/10 p-4 sm:p-5">
             <p className="text-sm font-semibold uppercase tracking-normal text-cyan-100">Search intelligence</p>
             <p className="mt-2 break-words text-xl font-semibold sm:text-2xl">

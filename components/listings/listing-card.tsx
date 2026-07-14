@@ -22,10 +22,10 @@ export function ListingCard({ listing }: ListingCardProps) {
   const isPlaceholder = isListingPlaceholderArt(imageSrc) || isSvgImageUrl(imageSrc);
 
   return (
-    <article className="gpu-card group rounded-lg border border-slate-200 bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:border-emerald-200 hover:shadow-soft dark:border-slate-700 dark:bg-slate-900">
+    <article className="gpu-card group overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:border-emerald-200 hover:shadow-soft dark:border-slate-700 dark:bg-slate-900">
       <div
         className={cn(
-          "relative aspect-[4/3] overflow-hidden rounded-t-lg",
+          "relative aspect-[4/3] overflow-hidden",
           isPlaceholder ? "bg-emerald-50 dark:bg-emerald-950/30" : "bg-slate-100 dark:bg-slate-800",
         )}
       >
@@ -60,8 +60,8 @@ export function ListingCard({ listing }: ListingCardProps) {
         <ListingCardActions listingId={listing.id} />
       </div>
       <div className="p-4 sm:p-5">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0 flex-1">
+        <div className="grid gap-3 sm:flex sm:items-start sm:justify-between">
+          <div className="min-w-0">
             <p className="flex items-center gap-1 truncate text-sm text-slate-500">
               <MapPin className="size-3.5 shrink-0" aria-hidden="true" />
               <span className="truncate">
@@ -75,32 +75,32 @@ export function ListingCard({ listing }: ListingCardProps) {
             </Link>
             <p className="mt-1 line-clamp-2 text-sm text-slate-600 dark:text-slate-300">{listing.highlight}</p>
           </div>
-          <p className="shrink-0 rounded-full bg-emerald-50 px-2.5 py-1 text-sm font-semibold text-emerald-700">
+          <p className="w-fit max-w-full break-words rounded-full bg-emerald-50 px-2.5 py-1 text-sm font-semibold text-emerald-700 sm:shrink-0 sm:text-right">
             {listing.type === "holiday_home"
               ? formatNightlyPrice(listing.holidayHome?.nightlyRate ?? listing.price)
               : formatPrice(listing.price)}
           </p>
         </div>
-        <div className="mt-4 flex flex-wrap gap-3 text-sm text-slate-600 sm:gap-4 dark:text-slate-300">
+        <div className="mt-4 grid grid-cols-2 gap-2 text-sm text-slate-600 min-[380px]:flex min-[380px]:flex-wrap min-[380px]:gap-3 sm:gap-4 dark:text-slate-300">
           {isRoom ? (
-            <span className="inline-flex items-center gap-1">
+            <span className="inline-flex min-w-0 items-center gap-1">
               <Users className="size-4" aria-hidden="true" />
-              Up to {listing.tenantPreferences?.maxOccupants ?? 1}
+              <span className="truncate">Up to {listing.tenantPreferences?.maxOccupants ?? 1}</span>
             </span>
           ) : null}
           {!isRoom && !isLand && !isCommercial ? (
-            <span className="inline-flex items-center gap-1">
+            <span className="inline-flex min-w-0 items-center gap-1">
               <BedDouble className="size-4" aria-hidden="true" />
-              {listing.bedrooms} bed
+              <span className="truncate">{listing.bedrooms} bed</span>
             </span>
           ) : null}
           {!isRoom && !isLand ? (
-            <span className="inline-flex items-center gap-1">
+            <span className="inline-flex min-w-0 items-center gap-1">
               <Bath className="size-4" aria-hidden="true" />
-              {listing.bathrooms} bath
+              <span className="truncate">{listing.bathrooms} bath</span>
             </span>
           ) : null}
-          <span>{listingAvailabilityDisplay(listing)}</span>
+          <span className="min-w-0 truncate">{listingAvailabilityDisplay(listing)}</span>
         </div>
         <div className="mt-4 flex flex-wrap gap-2">
           {listing.amenities.slice(0, 3).map((amenity) => (
