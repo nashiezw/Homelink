@@ -46,55 +46,56 @@ export function ListingDetailActions({ listing }: ListingDetailActionsProps) {
 
   return (
     <>
-      <div className="flex flex-wrap gap-2 [&_button]:min-h-11 [&_button]:flex-1 sm:[&_button]:flex-none">
-        <Button variant="secondary" onClick={shareListing}>
-          <Share2 className="size-4" aria-hidden="true" />
+      <div className="grid grid-cols-2 gap-2">
+        <Button variant="secondary" className="w-full" onClick={shareListing}>
+          <Share2 className="size-4 shrink-0" aria-hidden="true" />
           Share
         </Button>
         <Button
           variant="secondary"
+          className={`w-full ${isFavourite(listing.id) ? "border-emerald-300 bg-emerald-50" : ""}`}
           onClick={() => void toggleFavourite(listing.id)}
-          className={isFavourite(listing.id) ? "border-emerald-300 bg-emerald-50" : ""}
         >
-          <Heart className="size-4" aria-hidden="true" />
+          <Heart className="size-4 shrink-0" aria-hidden="true" />
           {isFavourite(listing.id) ? "Saved" : "Save"}
         </Button>
         <Button
           variant="secondary"
+          className="w-full"
           onClick={() => {
             toggleCompare(listing.id);
             showToast(isCompared(listing.id) ? "Removed from compare." : "Added to compare (max 3).");
           }}
         >
-          <Scale className="size-4" aria-hidden="true" />
+          <Scale className="size-4 shrink-0" aria-hidden="true" />
           Compare
         </Button>
-        <Button variant="secondary" onClick={() => setReportOpen(true)}>
-          <Flag className="size-4" aria-hidden="true" />
+        <Button variant="secondary" className="w-full" onClick={() => setReportOpen(true)}>
+          <Flag className="size-4 shrink-0" aria-hidden="true" />
           Report
         </Button>
       </div>
 
       {status.key === "viewing" ? (
-        <div className="mt-5 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
+        <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm leading-6 text-amber-900 sm:mt-5 sm:p-4">
           A viewing is already in progress. You can still enquire, but confirm with HomeLink before travelling or paying.
         </div>
       ) : null}
 
       {unavailable ? (
-        <div className="mt-5 rounded-lg border border-red-200 bg-red-50 p-4 text-sm leading-6 text-red-900">
+        <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm leading-6 text-red-900 sm:mt-5 sm:p-4">
           This listing is marked {status.shortLabel.toLowerCase()}, so new enquiries are closed to prevent wasted calls and viewings.
         </div>
       ) : (
         <>
-          <EnquiryPanel listing={listing} className="mt-5" />
+          <EnquiryPanel listing={listing} className="mt-4 sm:mt-5" />
           <AppointmentBookingPanel listing={listing} />
         </>
       )}
 
       {reportOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-md rounded-lg bg-white p-5 shadow-soft dark:bg-slate-900">
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-4">
+          <div className="w-full max-w-md rounded-t-2xl bg-white p-5 shadow-soft sm:rounded-lg dark:bg-slate-900">
             <h3 className="font-semibold">Report listing</h3>
             <select
               className="mt-4 h-11 w-full rounded-md border border-slate-200 px-3 dark:border-slate-700 dark:bg-slate-950"
@@ -106,9 +107,9 @@ export function ListingDetailActions({ listing }: ListingDetailActionsProps) {
               <option value="stale">Stale / unavailable</option>
               <option value="scam">Scam</option>
             </select>
-            <div className="mt-4 flex gap-2">
-              <Button className="flex-1" onClick={() => void submitReport()}>Submit report</Button>
-              <Button variant="secondary" className="flex-1" onClick={() => setReportOpen(false)}>Cancel</Button>
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              <Button className="w-full" onClick={() => void submitReport()}>Submit</Button>
+              <Button variant="secondary" className="w-full" onClick={() => setReportOpen(false)}>Cancel</Button>
             </div>
           </div>
         </div>

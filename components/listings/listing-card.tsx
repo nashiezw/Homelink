@@ -3,10 +3,11 @@ import Image from "next/image";
 import Link from "next/link";
 import { ListingCardActions } from "@/components/listings/listing-card-actions";
 import { ListingStatusBadge } from "@/components/listings/listing-status-badge";
-import { isSvgImageUrl, resolvePublicImageUrl } from "@/lib/media/resolve-public-image";
+import { isListingPlaceholderArt, isSvgImageUrl, resolvePublicImageUrl } from "@/lib/media/resolve-public-image";
 import { listingAvailabilityDisplay } from "@/lib/listings/status";
 import type { Listing } from "@/lib/types";
 import { formatNightlyPrice, formatPrice } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 
 type ListingCardProps = {
   listing: Listing;
@@ -18,16 +19,25 @@ export function ListingCard({ listing }: ListingCardProps) {
   const isCommercial = listing.type === "commercial";
   const href = `/listings/${listing.slug ?? listing.id}`;
   const imageSrc = resolvePublicImageUrl(listing.image) ?? listing.image;
+  const isPlaceholder = isListingPlaceholderArt(imageSrc) || isSvgImageUrl(imageSrc);
 
   return (
     <article className="gpu-card group rounded-lg border border-slate-200 bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:border-emerald-200 hover:shadow-soft dark:border-slate-700 dark:bg-slate-900">
-      <div className="relative aspect-[4/3] overflow-hidden rounded-t-lg">
+      <div
+        className={cn(
+          "relative aspect-[4/3] overflow-hidden rounded-t-lg",
+          isPlaceholder ? "bg-emerald-50 dark:bg-emerald-950/30" : "bg-slate-100 dark:bg-slate-800",
+        )}
+      >
         <Image
           src={imageSrc}
           alt={listing.title}
           fill
           unoptimized={isSvgImageUrl(imageSrc)}
-          className="object-cover transition duration-500 group-hover:scale-[1.03]"
+          className={cn(
+            "transition duration-500",
+            isPlaceholder ? "object-contain p-4" : "object-cover group-hover:scale-[1.03]",
+          )}
           sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
         />
         {listing.verified && (

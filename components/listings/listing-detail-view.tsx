@@ -180,7 +180,7 @@ export function ListingDetailView({
           </div>
         </div>
 
-        <aside className="surface-panel order-1 h-fit space-y-5 rounded-lg p-4 sm:p-5 md:order-2 md:sticky md:top-24">
+        <aside className="surface-panel order-1 h-fit space-y-4 rounded-lg p-3 sm:space-y-5 sm:p-5 md:order-2 md:sticky md:top-24">
           {isHoliday ? (
             <HolidayBookingForm
               listingId={listing.id}

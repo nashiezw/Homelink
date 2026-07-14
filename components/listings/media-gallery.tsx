@@ -1,9 +1,10 @@
 "use client";
 
-import { ChevronLeft, ChevronRight, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, ImageOff, X } from "lucide-react";
 import Image from "next/image";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { isSvgImageUrl, resolvePublicImageUrl } from "@/lib/media/resolve-public-image";
+import { isListingPlaceholderArt, isSvgImageUrl, resolvePublicImageUrl } from "@/lib/media/resolve-public-image";
+import { cn } from "@/lib/utils";
 
 type MediaGalleryProps = {
   images: string[];
@@ -37,18 +38,34 @@ export function MediaGallery({ images, title }: MediaGalleryProps) {
     return () => window.removeEventListener("keydown", onKey);
   }, [lightbox, go]);
 
-  if (unique.length === 0) return null;
+  if (unique.length === 0) {
+    return (
+      <div className="mt-6 flex aspect-[4/3] w-full flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-6 text-center sm:aspect-[16/10] dark:border-slate-700 dark:bg-slate-900">
+        <ImageOff className="size-8 text-slate-400" />
+        <div>
+          <p className="font-semibold text-ink dark:text-white">Photos coming soon</p>
+          <p className="mt-1 text-sm text-slate-500">The advertiser has not uploaded property photos yet.</p>
+        </div>
+      </div>
+    );
+  }
 
   const main = unique[active] ?? unique[0];
   const thumbs = unique.slice(0, 8);
+  const mainIsPlaceholder = isListingPlaceholderArt(main) || isSvgImageUrl(main);
 
   return (
     <>
-      <div className="mt-6 space-y-3">
+      <div className="mt-5 space-y-3 sm:mt-6">
         <button
           type="button"
           onClick={() => setLightbox(true)}
-          className="relative block w-full aspect-[4/3] max-h-[70vh] overflow-hidden rounded-xl shadow-soft ring-1 ring-slate-200/70 sm:aspect-[16/10] dark:ring-slate-800"
+          className={cn(
+            "relative block w-full overflow-hidden rounded-xl ring-1 ring-slate-200/70 dark:ring-slate-800",
+            mainIsPlaceholder
+              ? "aspect-[4/3] bg-emerald-50 sm:aspect-[16/10] dark:bg-emerald-950/30"
+              : "aspect-[4/3] max-h-[70vh] bg-slate-100 shadow-soft sm:aspect-[16/10] dark:bg-slate-900",
+          )}
         >
           <Image
             src={main}
@@ -56,9 +73,18 @@ export function MediaGallery({ images, title }: MediaGalleryProps) {
             fill
             priority
             unoptimized={isSvgImageUrl(main)}
-            className="object-cover transition hover:scale-[1.02]"
+            className={cn(
+              "transition",
+              mainIsPlaceholder ? "object-contain p-4 sm:p-8" : "object-cover hover:scale-[1.02]",
+            )}
             sizes="(min-width: 1024px) 70vw, 100vw"
           />
+          {mainIsPlaceholder ? (
+            <span className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full bg-white/95 px-3 py-1.5 text-xs font-semibold text-emerald-800 shadow-sm ring-1 ring-emerald-100">
+              <ImageOff className="size-3.5" />
+              Photos pending
+            </span>
+          ) : null}
           {unique.length > 1 && (
             <span className="absolute bottom-3 right-3 rounded-full bg-black/60 px-3 py-1 text-xs font-medium text-white">
               {active + 1} / {unique.length} · Tap to enlarge
@@ -67,22 +93,23 @@ export function MediaGallery({ images, title }: MediaGalleryProps) {
         </button>
 
         {unique.length > 1 && (
-          <div className="flex snap-x snap-mandatory gap-2 overflow-x-auto pb-1">
+          <div className="-mx-1 flex snap-x snap-mandatory gap-2 overflow-x-auto px-1 pb-1">
             {thumbs.map((src, index) => (
               <button
                 key={src}
                 type="button"
                 onClick={() => setActive(index)}
-                className={`relative size-16 shrink-0 snap-start overflow-hidden rounded-lg ring-2 transition sm:size-20 ${
-                  index === active ? "ring-emerald-600" : "ring-transparent opacity-80 hover:opacity-100"
-                }`}
+                className={cn(
+                  "relative size-16 shrink-0 snap-start overflow-hidden rounded-lg bg-slate-100 ring-2 transition sm:size-20 dark:bg-slate-900",
+                  index === active ? "ring-emerald-600" : "ring-transparent opacity-80 hover:opacity-100",
+                )}
               >
                 <Image
                   src={src}
                   alt={`${title} photo ${index + 1}`}
                   fill
                   unoptimized={isSvgImageUrl(src)}
-                  className="object-cover"
+                  className={isListingPlaceholderArt(src) || isSvgImageUrl(src) ? "object-contain p-1" : "object-cover"}
                   sizes="80px"
                 />
               </button>
@@ -98,7 +125,7 @@ export function MediaGallery({ images, title }: MediaGalleryProps) {
         >
           <button
             type="button"
-            className="absolute right-3 top-3 flex size-10 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 sm:right-4 sm:top-4"
+            className="absolute right-3 top-3 flex size-11 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 sm:right-4 sm:top-4"
             onClick={() => setLightbox(false)}
             aria-label="Close"
           >

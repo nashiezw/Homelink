@@ -96,16 +96,16 @@ export function AppointmentBookingPanel({ listing }: { listing: Listing }) {
   }
 
   return (
-    <div className="mt-5 max-w-full overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
-      <div className="border-b border-slate-100 bg-slate-50 px-4 py-4 dark:border-slate-800 dark:bg-slate-950 sm:px-5">
+    <div className="mt-4 max-w-full overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 sm:mt-5">
+      <div className="border-b border-slate-100 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-950 sm:px-5 sm:py-4">
         <div className="flex items-start gap-3">
-          <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200">
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-800 sm:size-11 dark:bg-emerald-900/40 dark:text-emerald-200">
             <CalendarClock className="size-5" />
           </span>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <p className="font-semibold text-ink dark:text-white">Request a property viewing</p>
-            <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">
-              Choose your preferred day and time. {meta?.agentName ? `${meta.agentName} will` : "The assigned agent will"} confirm before your visit.
+            <p className="mt-1 text-sm leading-5 text-slate-600 sm:leading-6 dark:text-slate-300">
+              Pick a preferred day and time. {meta?.agentName ? `${meta.agentName} will` : "The agent will"} confirm before your visit.
             </p>
             {meta?.configuredBy === "agent" && (
               <p className="mt-2 flex items-center gap-1 text-xs font-medium text-emerald-700">
@@ -117,9 +117,9 @@ export function AppointmentBookingPanel({ listing }: { listing: Listing }) {
         </div>
       </div>
 
-      <div className="space-y-4 p-4 sm:p-5">
+      <div className="space-y-4 p-4">
         {appointment ? (
-          <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-4 text-sm text-emerald-950 dark:border-emerald-900/50 dark:bg-emerald-950/20 dark:text-emerald-100">
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-3 text-sm text-emerald-950 sm:p-4 dark:border-emerald-900/50 dark:bg-emerald-950/20 dark:text-emerald-100">
             <p className="flex items-center gap-2 font-semibold">
               <CheckCircle2 className="size-4" />
               {appointment.referenceNumber} · {appointment.status === "CONFIRMED" ? "Confirmed" : "Awaiting agent confirmation"}
@@ -206,8 +206,8 @@ export function AppointmentBookingPanel({ listing }: { listing: Listing }) {
               </p>
             )}
 
-            <Button className="h-11 w-full" onClick={() => void book()} disabled={saving || !selected || !selectedSlot?.available}>
-              <CalendarClock className="size-4" />
+            <Button className="h-12 w-full sm:h-11" onClick={() => void book()} disabled={saving || !selected || !selectedSlot?.available}>
+              <CalendarClock className="size-4 shrink-0" />
               {saving ? "Submitting..." : "Request preferred time"}
             </Button>
             <p className="text-center text-xs text-slate-500">
