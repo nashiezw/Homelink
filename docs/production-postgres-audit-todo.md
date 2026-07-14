@@ -40,6 +40,9 @@ Status key: `[x]` complete, `[~]` partially complete, `[ ]` still required.
 - [x] Holiday bookings/reviews use durable Prisma-backed records in production.
 - [~] Agent applications/training/ratings: applications, training progress, agency membership, and admin agency actions now have durable Prisma-backed records; rating eligibility still relies on lead/commission records.
 - [x] Payments and proof workflows: checkout, list, proof upload, callback, webhook, and config use Prisma/default durable settings in production.
+- [x] Uploads: strict production requires Cloudinary and blocks local filesystem fallback.
+- [x] Academy progress: lesson and course progress writes use Prisma `LessonProgress` and `CourseProgress`.
+- [x] Admin actions: production user verification/status/role changes, warnings, broadcasts, and audit events use Prisma; support tickets and generic moderation actions fail closed until durable models exist.
 - [~] Admin analytics/audit dashboards use Postgres for core users/listings/enquiries/payments/reports/tenancy disputes plus landlord/agency hub data; some rich aggregate widgets still use snapshot-derived data.
 - [~] Homepage/CMS/settings use Postgres for listings/agents/settings where implemented; CMS snapshot data remains for editable marketing content.
 
@@ -66,6 +69,7 @@ Status key: `[x]` complete, `[~]` partially complete, `[ ]` still required.
 - [x] `/api/v1/admin/users`, `/api/v1/admin/users/[id]`, and `/api/v1/users/lookup` use Prisma in production.
 - [x] `/api/v1/admin/landlords` and `/api/v1/admin/agencies` use Prisma in production, including agency verify/reject/suspend/activate/delete/feature/update actions.
 - [x] `/api/v1/holiday-homes/reviews` uses Prisma `Review` rows with metadata in production.
+- [x] `/api/v1/admin/actions` uses Prisma in production for durable user/admin actions and returns explicit `501` responses for legacy-only ticket/moderation actions.
 - [x] Remaining legacy-store `app/api` routes are blocked by the strict production store guard instead of silently writing to memory.
 
 ## Production readiness
@@ -75,6 +79,7 @@ Status key: `[x]` complete, `[~]` partially complete, `[ ]` still required.
 - [x] Prisma schema supports durable holiday review metadata.
 - [x] Prisma schema supports durable admin agency fields: city, account status, subscription tier, revenue, and lead conversion.
 - [x] Build no longer fails by trying to prerender dynamic Postgres listing pages.
+- [x] `npm run check:persistence` proves launch-critical flows are wired to Postgres/durable media or fail closed.
 - [x] Apply schema changes to the production database before deploy. Production Neon was repaired and Prisma migration history is up to date.
 - [ ] Configure Cloudinary production credentials.
 - [ ] Configure transactional email credentials.
@@ -89,6 +94,7 @@ Status key: `[x]` complete, `[~]` partially complete, `[ ]` still required.
 - [x] `npm.cmd run lint` completed successfully.
 - [x] `npm.cmd exec prisma validate -- --schema prisma/schema.prisma` completed successfully.
 - [x] `npm.cmd run build` completed successfully.
+- [x] `npm.cmd run check:persistence` completed successfully.
 - [~] `npm.cmd run check:production` runs but fails until production Cloudinary, email, session secret, and non-file settings configuration are set in Vercel.
 - [x] Run database migration against the target Postgres database.
 - [x] Run `npm.cmd run db:audit:production` against the target Postgres database.
