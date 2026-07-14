@@ -255,8 +255,8 @@ function TourStage({
   const [imageIndex, setImageIndex] = useState(0);
   const [imageFailed, setImageFailed] = useState(false);
   const [imageReady, setImageReady] = useState(false);
-  const imageSrc = fallbackChain[imageIndex];
-  const isPlaceholder = isListingPlaceholderArt(imageSrc) || isSvgImageUrl(imageSrc);
+  const imageSrc = fallbackChain[Math.min(imageIndex, fallbackChain.length - 1)] ?? fallbackChain[0];
+  const isPlaceholder = Boolean(imageSrc && (isListingPlaceholderArt(imageSrc) || isSvgImageUrl(imageSrc)));
 
   useEffect(() => {
     setImageIndex(0);
@@ -264,16 +264,24 @@ function TourStage({
     setImageReady(false);
   }, [scene.id, scene.imageUrl, listingImage]);
 
+  // Mark ready from cache. Do NOT reset ready in a separate imageIndex effect —
+  // that races cached onLoad and leaves a blank/dark tour stage.
   useEffect(() => {
-    setImageReady(false);
-  }, [imageIndex]);
+    if (imageFailed || !imageSrc) return;
 
-  useEffect(() => {
-    const img = imgRef.current;
-    if (!img || imageFailed) return;
-    if (img.complete && img.naturalWidth > 0) {
-      setImageReady(true);
-    }
+    let cancelled = false;
+    const frame = window.requestAnimationFrame(() => {
+      const img = imgRef.current;
+      if (cancelled || !img) return;
+      if (img.complete && img.naturalWidth > 0) {
+        setImageReady(true);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+      window.cancelAnimationFrame(frame);
+    };
   }, [imageSrc, imageFailed, imageIndex]);
 
   // Never leave users on a blank dark stage if the network hangs.
@@ -282,11 +290,12 @@ function TourStage({
     const timer = window.setTimeout(() => {
       const nextIndex = imageIndex + 1;
       if (nextIndex < fallbackChain.length) {
+        setImageReady(false);
         setImageIndex(nextIndex);
         return;
       }
       setImageFailed(true);
-    }, 5000);
+    }, 4000);
     return () => window.clearTimeout(timer);
   }, [imageReady, imageFailed, imageSrc, imageIndex, fallbackChain.length]);
 
@@ -299,11 +308,22 @@ function TourStage({
     [onPan, isPlaceholder],
   );
 
+  function advanceFallback() {
+    const nextIndex = imageIndex + 1;
+    if (nextIndex < fallbackChain.length) {
+      setImageReady(false);
+      setImageIndex(nextIndex);
+      return;
+    }
+    setImageFailed(true);
+  }
+
   return (
     <div className="min-w-0 max-w-full">
       <div
         className={cn(
-          "group relative max-w-full touch-pan-y overflow-hidden bg-emerald-950",
+          "group relative max-w-full touch-pan-y overflow-hidden",
+          isPlaceholder ? "bg-emerald-50 dark:bg-emerald-950/40" : "bg-slate-900",
           immersive ? "mx-auto h-[min(70vh,720px)] w-full max-w-6xl rounded-2xl" : "aspect-[4/3] w-full sm:aspect-[16/10]",
         )}
         onPointerDown={(event) => {
@@ -325,7 +345,7 @@ function TourStage({
         }}
       >
         {!imageReady && !imageFailed && (
-          <div className="absolute inset-0 flex items-center justify-center bg-slate-900">
+          <div className="absolute inset-0 flex items-center justify-center bg-slate-900/80">
             <div className="size-10 animate-spin rounded-full border-2 border-emerald-400 border-t-transparent" />
           </div>
         )}
@@ -348,24 +368,16 @@ function TourStage({
             alt={scene.title}
             draggable={false}
             onLoad={() => setImageReady(true)}
-            onError={() => {
-              const nextIndex = imageIndex + 1;
-              if (nextIndex < fallbackChain.length) {
-                setImageIndex(nextIndex);
-                return;
-              }
-              setImageFailed(true);
-            }}
+            onError={advanceFallback}
             className={cn(
               "absolute inset-0 h-full w-full select-none transition-opacity duration-300",
-              isPlaceholder ? "object-contain bg-emerald-50 p-4 sm:p-8" : "object-cover",
+              isPlaceholder ? "object-contain p-4 sm:p-8" : "object-cover",
               imageReady ? "opacity-100" : "opacity-0",
             )}
             style={
               isPlaceholder
                 ? undefined
                 : {
-                    // Keep the image fully covering the stage; pan by shifting background-like position.
                     objectPosition: `${pan}% 50%`,
                   }
             }
@@ -380,7 +392,7 @@ function TourStage({
           <div className="absolute inset-x-3 top-3 z-10 rounded-xl border border-emerald-200 bg-white px-3 py-2.5 text-sm text-emerald-950 shadow-sm sm:inset-x-4 sm:max-w-sm">
             <p className="font-semibold">Tour photos not uploaded yet</p>
             <p className="mt-1 text-xs leading-5 text-emerald-900/80">
-              Showing a property illustration until real room photos or panoramas are added in Admin → Properties → Virtual tour.
+              Showing a property illustration until real room photos are added in Admin → Properties → Virtual tour.
             </p>
           </div>
         )}
@@ -456,27 +468,31 @@ function TourStage({
         <div className="border-t border-slate-100 px-4 py-3 dark:border-slate-800">
           <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Rooms</p>
           <div className="flex snap-x snap-mandatory gap-2 overflow-x-auto pb-1">
-            {scenes.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => onScene(item.id)}
-                className={cn(
-                  "relative h-20 w-28 shrink-0 snap-start overflow-hidden rounded-xl ring-2 transition sm:w-32",
-                  item.id === scene.id ? "ring-emerald-600" : "ring-transparent opacity-75",
-                )}
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={virtualTourImageFallbacks(item.imageUrl, listingImage)[0]}
-                  alt=""
-                  className="h-full w-full object-cover"
-                />
-                <span className="absolute inset-x-0 bottom-0 truncate bg-gradient-to-t from-black/80 to-transparent px-2 pb-1.5 pt-6 text-left text-[11px] font-semibold text-white">
-                  {item.title}
-                </span>
-              </button>
-            ))}
+            {scenes.map((item) => {
+              const thumbSrc = virtualTourImageFallbacks(item.imageUrl, listingImage)[0];
+              const thumbPlaceholder = Boolean(thumbSrc && (isListingPlaceholderArt(thumbSrc) || isSvgImageUrl(thumbSrc)));
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => onScene(item.id)}
+                  className={cn(
+                    "relative h-20 w-28 shrink-0 snap-start overflow-hidden rounded-xl bg-emerald-50 ring-2 transition sm:w-32 dark:bg-emerald-950/40",
+                    item.id === scene.id ? "ring-emerald-600" : "ring-transparent opacity-75",
+                  )}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={thumbSrc}
+                    alt=""
+                    className={cn("h-full w-full", thumbPlaceholder ? "object-contain p-1" : "object-cover")}
+                  />
+                  <span className="absolute inset-x-0 bottom-0 truncate bg-gradient-to-t from-black/80 to-transparent px-2 pb-1.5 pt-6 text-left text-[11px] font-semibold text-white">
+                    {item.title}
+                  </span>
+                </button>
+              );
+            })}
           </div>
         </div>
       )}

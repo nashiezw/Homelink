@@ -789,6 +789,12 @@ async function main() {
       await prisma.listingMedia.create({
         data: { listingId: listing.id, url: seed.image, publicId, mediaType: "image", sortOrder: 0 },
       });
+    } else if (media.url !== seed.image) {
+      // Keep cover in sync with seed so wrong/stale images (e.g. Borrowdale art on Avondale) get corrected.
+      await prisma.listingMedia.update({
+        where: { id: media.id },
+        data: { url: seed.image, mediaType: "image", sortOrder: 0 },
+      });
     }
   }
 

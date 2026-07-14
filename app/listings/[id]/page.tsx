@@ -36,11 +36,12 @@ export default async function ListingDetailPage({ params }: ListingDetailPagePro
     notFound();
   }
 
-  const galleryImages = shouldUsePostgresListings()
-    ? (listing.images?.length ? listing.images : [listing.image]).filter(Boolean)
-    : (
-        listing.images?.length ? listing.images : [listing.image, ...latestListings.filter((item) => item.id !== id).map((item) => item.image)]
-      ).filter(Boolean) as string[];
+  // Always lead with this listing's cover — never pad with other listings' photos.
+  const galleryImages = [
+    ...new Set(
+      [listing.image, ...(listing.images ?? [])].filter((src): src is string => Boolean(src?.trim())),
+    ),
+  ];
 
   const ownerId = shouldUsePostgresListings() ? listingRecord?.ownerId : getStore().getListing(id)?.ownerId;
   const holidayReviewSummary =

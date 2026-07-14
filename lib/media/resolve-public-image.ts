@@ -1,4 +1,7 @@
-/** Maps seeded JPG paths that are not shipped in /public to bundled SVG listing art. */
+/**
+ * SVG stand-ins for seeded roommate JPGs — only used when a photo fails to load.
+ * Prefer real JPGs everywhere so homepage cards and listing detail stay in sync.
+ */
 const ROOMMATE_PHOTO_TO_LISTING_SVG: Record<string, string> = {
   "/images/roommates/photo-cottage-avondale.jpg": "/images/roommates/listing-cottage-avondale.svg",
   "/images/roommates/photo-bedroom-senga.jpg": "/images/roommates/listing-room-senga.svg",
@@ -16,13 +19,27 @@ const ROOMMATE_PHOTO_TO_LISTING_SVG: Record<string, string> = {
   "/images/roommates/photo-lodge-vicfalls.jpg": "/images/roommates/listing-lodge-vicfalls.svg",
 };
 
+const LISTING_SVG_TO_ROOMMATE_PHOTO: Record<string, string> = Object.fromEntries(
+  Object.entries(ROOMMATE_PHOTO_TO_LISTING_SVG).map(([photo, svg]) => [svg, photo]),
+);
+
 /** Neutral last-resort art when a listing has no usable image. */
 const GENERIC_LISTING_FALLBACK = "/images/roommates/listing-cottage-avondale.svg";
 
+/**
+ * Prefer real cover photos. If a stored URL is listing SVG art with a known JPG,
+ * upgrade back to that JPG so detail/tour match the homepage card.
+ */
 export function resolvePublicImageUrl(url?: string | null): string | undefined {
   if (!url?.trim()) return undefined;
   const trimmed = url.trim();
-  return ROOMMATE_PHOTO_TO_LISTING_SVG[trimmed] ?? trimmed;
+  return LISTING_SVG_TO_ROOMMATE_PHOTO[trimmed] ?? trimmed;
+}
+
+export function listingPhotoSvgFallback(url?: string | null): string | undefined {
+  if (!url?.trim()) return undefined;
+  const trimmed = url.trim();
+  return ROOMMATE_PHOTO_TO_LISTING_SVG[trimmed] ?? (isListingPlaceholderArt(trimmed) ? trimmed : undefined);
 }
 
 export function resolveListingImages(urls: string[]): string[] {
@@ -33,7 +50,7 @@ export function resolveListingImages(urls: string[]): string[] {
 
 export function isListingPlaceholderArt(url?: string | null): boolean {
   if (!url) return false;
-  return /\/images\/roommates\/listing-.*\.svg$/i.test(url) || url in ROOMMATE_PHOTO_TO_LISTING_SVG;
+  return /\/images\/roommates\/listing-.*\.svg$/i.test(url);
 }
 
 export function isSvgImageUrl(url?: string | null): boolean {
@@ -42,10 +59,19 @@ export function isSvgImageUrl(url?: string | null): boolean {
 }
 
 export function virtualTourImageFallbacks(sceneUrl: string | undefined, listingImage?: string) {
+  const rawScene = sceneUrl?.trim();
+  const rawCover = listingImage?.trim();
+  const cover = resolvePublicImageUrl(rawCover) ?? rawCover;
+  const scene = resolvePublicImageUrl(rawScene) ?? rawScene;
+  // Judge placeholder from the stored URL before upgrading SVG → JPG.
+  const sceneWasArt = !rawScene || isListingPlaceholderArt(rawScene) || isSvgImageUrl(rawScene);
+
   const chain = [
-    resolvePublicImageUrl(sceneUrl),
-    resolvePublicImageUrl(listingImage),
+    ...(sceneWasArt ? [cover, scene] : [scene, cover]),
+    listingPhotoSvgFallback(cover),
+    listingPhotoSvgFallback(rawScene),
     GENERIC_LISTING_FALLBACK,
   ].filter((value, index, all): value is string => Boolean(value) && all.indexOf(value) === index);
+
   return chain.length ? chain : [GENERIC_LISTING_FALLBACK];
 }

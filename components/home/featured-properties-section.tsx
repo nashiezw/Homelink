@@ -2,6 +2,7 @@ import { ArrowRight, BadgeCheck, Bath, BedDouble, MapPin, Users } from "lucide-r
 import Image from "next/image";
 import Link from "next/link";
 import { FadeIn } from "@/components/ui/fade-in";
+import { isSvgImageUrl, resolvePublicImageUrl } from "@/lib/media/resolve-public-image";
 import type { Listing } from "@/lib/types";
 import { formatNightlyPrice, formatPrice } from "@/lib/utils";
 
@@ -55,13 +56,15 @@ function FeaturedHeroCard({ listing }: { listing: Listing }) {
   const isLand = listing.type === "land";
   const isCommercial = listing.type === "commercial";
   const href = `/listings/${listing.slug ?? listing.id}`;
+  const imageSrc = resolvePublicImageUrl(listing.image) ?? listing.image;
 
   return (
     <article className="group hover-lift relative min-h-[28rem] overflow-hidden rounded-2xl border border-slate-200 bg-ink shadow-hero dark:border-slate-700 sm:min-h-[32rem]">
       <Image
-        src={listing.image}
+        src={imageSrc}
         alt={listing.title}
         fill
+        unoptimized={isSvgImageUrl(imageSrc)}
         className="object-cover transition duration-700 group-hover:scale-[1.04]"
         sizes="(min-width: 1024px) 58vw, 100vw"
       />
@@ -127,13 +130,15 @@ function FeaturedHeroCard({ listing }: { listing: Listing }) {
 
 function ListingCard({ listing, compact }: { listing: Listing; compact?: boolean }) {
   const href = `/listings/${listing.slug ?? listing.id}`;
+  const imageSrc = resolvePublicImageUrl(listing.image) ?? listing.image;
   return (
     <article className="gpu-card group hover-lift rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:border-emerald-200 hover:shadow-card-hover dark:border-slate-700 dark:bg-slate-900">
       <div className={`relative overflow-hidden rounded-t-2xl ${compact ? "h-44" : "h-52"}`}>
         <Image
-          src={listing.image}
+          src={imageSrc}
           alt={listing.title}
           fill
+          unoptimized={isSvgImageUrl(imageSrc)}
           className="object-cover transition duration-500 group-hover:scale-[1.05]"
           sizes="(min-width: 1024px) 28vw, 50vw"
         />

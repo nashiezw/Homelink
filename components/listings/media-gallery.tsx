@@ -3,7 +3,12 @@
 import { ChevronLeft, ChevronRight, ImageOff, X } from "lucide-react";
 import Image from "next/image";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { isListingPlaceholderArt, isSvgImageUrl, resolvePublicImageUrl } from "@/lib/media/resolve-public-image";
+import {
+  isListingPlaceholderArt,
+  isSvgImageUrl,
+  listingPhotoSvgFallback,
+  resolvePublicImageUrl,
+} from "@/lib/media/resolve-public-image";
 import { cn } from "@/lib/utils";
 
 type MediaGalleryProps = {
@@ -19,6 +24,7 @@ export function MediaGallery({ images, title }: MediaGalleryProps) {
   );
   const [active, setActive] = useState(0);
   const [lightbox, setLightbox] = useState(false);
+  const [failedMains, setFailedMains] = useState<Record<string, string>>({});
 
   const go = useCallback(
     (delta: number) => {
@@ -51,8 +57,9 @@ export function MediaGallery({ images, title }: MediaGalleryProps) {
   }
 
   const main = unique[active] ?? unique[0];
+  const mainSrc = failedMains[main] ?? main;
   const thumbs = unique.slice(0, 8);
-  const mainIsPlaceholder = isListingPlaceholderArt(main) || isSvgImageUrl(main);
+  const mainIsPlaceholder = isListingPlaceholderArt(mainSrc) || isSvgImageUrl(mainSrc);
 
   return (
     <>
@@ -68,11 +75,17 @@ export function MediaGallery({ images, title }: MediaGalleryProps) {
           )}
         >
           <Image
-            src={main}
+            src={mainSrc}
             alt={title}
             fill
             priority
-            unoptimized={isSvgImageUrl(main)}
+            unoptimized={isSvgImageUrl(mainSrc)}
+            onError={() => {
+              const fallback = listingPhotoSvgFallback(main);
+              if (fallback && failedMains[main] !== fallback) {
+                setFailedMains((prev) => ({ ...prev, [main]: fallback }));
+              }
+            }}
             className={cn(
               "transition",
               mainIsPlaceholder ? "object-contain p-4 sm:p-8" : "object-cover hover:scale-[1.02]",
@@ -161,10 +174,10 @@ export function MediaGallery({ images, title }: MediaGalleryProps) {
           <div className="relative max-h-[85vh] w-full max-w-5xl" onClick={(e) => e.stopPropagation()}>
             <div className="relative aspect-[4/3] w-full sm:aspect-[16/10]">
               <Image
-                src={unique[active]}
+                src={mainSrc}
                 alt={title}
                 fill
-                unoptimized={isSvgImageUrl(unique[active])}
+                unoptimized={isSvgImageUrl(mainSrc)}
                 className="object-contain"
                 sizes="90vw"
               />
