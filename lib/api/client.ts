@@ -8,12 +8,13 @@ export type ApiEnvelope<T> = {
 };
 
 export async function apiFetch<T>(path: string, init?: RequestInit): Promise<ApiEnvelope<T>> {
+  const method = (init?.method ?? "GET").toUpperCase();
+  const headers = new Headers(init?.headers);
+  if (!headers.has("Content-Type")) headers.set("Content-Type", "application/json");
+  if (!["GET", "HEAD", "OPTIONS"].includes(method)) headers.set("X-HomeLink-CSRF", "1");
   const response = await fetch(path, {
     ...init,
-    headers: {
-      "Content-Type": "application/json",
-      ...init?.headers,
-    },
+    headers,
     credentials: "include",
   });
   const contentType = response.headers.get("content-type") ?? "";

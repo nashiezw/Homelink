@@ -5,8 +5,8 @@ import { Building2, Home, Hotel, Map, Palmtree, Trees, UsersRound, Warehouse } f
 import { propertyCategories } from "@/lib/listings";
 
 const categoryRoutes: Record<string, string> = {
-  Rooms: "/search?type=room",
-  Houses: "/search?type=house",
+  Rooms: "/rooms/avondale",
+  Houses: "/rent/harare",
   Flats: "/search?type=flat",
   Cottages: "/search?type=cottage",
   Commercial: "/search?type=commercial",

@@ -40,6 +40,7 @@ import {
   type PaymentConfigResponse,
   type PaymentPlanGroupId,
 } from "@/lib/payments/payments-page";
+import { paymentStatusDisplay } from "@/lib/payments/status-display";
 import type { Payment } from "@/lib/store/types";
 import type { Listing } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -418,12 +419,12 @@ function ActivePaymentPanel({
   onProofUploaded: () => void;
   showToast: (message: string, tone?: "error" | "success" | "info") => void;
 }) {
-  const tone = paymentStatusTone(statusParam || payment.status);
   const reference = payment.referenceNumber ?? payment.id;
+  const display = paymentStatusDisplay(payment);
 
   return (
     <div className="space-y-6">
-      <StatusBanner status={statusParam || payment.status} reference={reference} />
+      <StatusBanner status={statusParam || payment.status} reference={reference} payment={payment} />
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
         <section className="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-900/50">
@@ -439,18 +440,23 @@ function ActivePaymentPanel({
 
           <div className="mt-5 grid gap-3 sm:grid-cols-3">
             <Metric label="Amount" value={formatPaymentAmount(payment.currency || config?.currency || "USD", payment.amount)} />
-            <Metric label="Status" value={payment.status.replace(/_/g, " ")} />
+            <Metric label="Status" value={display.label} />
             <Metric label="Reference" value={reference} highlight />
           </div>
 
-          {tone === "success" && (
-            <div className="mt-5 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm dark:border-emerald-900/40 dark:bg-emerald-950/20">
-              <p className="font-semibold text-emerald-900 dark:text-emerald-100">Payment recorded</p>
-              <p className="mt-1 text-emerald-800 dark:text-emerald-200">
-                HomeLink has received your payment. Listing upgrades and subscriptions activate after finance confirmation.
-              </p>
-            </div>
-          )}
+          <div
+            className={cn(
+              "mt-5 rounded-xl border p-4 text-sm",
+              display.tone === "success" && "border-emerald-200 bg-emerald-50 dark:border-emerald-900/40 dark:bg-emerald-950/20",
+              display.tone === "pending" && "border-amber-200 bg-amber-50 dark:border-amber-900/40 dark:bg-amber-950/20",
+              display.tone === "error" && "border-rose-200 bg-rose-50 dark:border-rose-900/40 dark:bg-rose-950/20",
+              display.tone === "neutral" && "border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900/40",
+            )}
+          >
+            <p className="font-semibold text-ink dark:text-white">{display.title}</p>
+            <p className="mt-1 text-slate-600 dark:text-slate-400">{display.description}</p>
+            {display.action && <p className="mt-2 font-medium text-ink dark:text-white">{display.action}</p>}
+          </div>
 
           {showProofStep && (
             <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-900/40 dark:bg-amber-950/20">
@@ -517,7 +523,7 @@ function PaymentHistory({
     <div className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900/50">
       <div className="divide-y divide-slate-100 dark:divide-slate-800">
         {payments.map((payment) => {
-          const tone = paymentStatusTone(payment.status);
+          const display = paymentStatusDisplay(payment);
           return (
             <div key={payment.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
@@ -535,7 +541,7 @@ function PaymentHistory({
                 </p>
               </div>
               <div className="flex items-center gap-3">
-                <StatusPill tone={tone} label={payment.status.replace(/_/g, " ")} />
+                <StatusPill tone={display.tone} label={display.label} />
                 <Button variant="secondary" className="h-9" onClick={() => onSelect(payment.id)}>
                   View
                 </Button>
@@ -637,14 +643,15 @@ function TenancyNotice() {
   );
 }
 
-function StatusBanner({ status, reference }: { status: string; reference?: string }) {
-  const tone = paymentStatusTone(status);
-  const copy =
-    tone === "success"
+function StatusBanner({ status, reference, payment }: { status: string; reference?: string; payment?: Payment }) {
+  const display = payment ? paymentStatusDisplay(payment) : null;
+  const tone = display?.tone ?? paymentStatusTone(status);
+  const copy = display?.description ??
+    (tone === "success"
       ? "Payment received. Finance will confirm and activate your service."
       : tone === "error"
         ? "Payment could not be completed. Try again or contact support@homelinkzim.co.zw."
-        : "Payment created. Pay using the details below and upload your proof.";
+        : "Payment created. Pay using the details below and upload your proof.");
 
   return (
     <div
@@ -658,9 +665,10 @@ function StatusBanner({ status, reference }: { status: string; reference?: strin
     >
       <p className="flex items-center gap-2 font-semibold text-ink dark:text-white">
         {tone === "success" ? <CheckCircle2 className="size-5 text-emerald-600" /> : <Clock3 className="size-5 text-amber-600" />}
-        {status.replace(/_/g, " ")}
+        {display?.label ?? status.replace(/_/g, " ")}
       </p>
       <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">{copy}</p>
+      {display?.action && <p className="mt-2 text-sm font-medium text-ink dark:text-white">{display.action}</p>}
       {reference && (
         <p className="mt-2 text-sm font-medium text-ink dark:text-white">
           Reference: <span className="font-mono">{reference}</span>

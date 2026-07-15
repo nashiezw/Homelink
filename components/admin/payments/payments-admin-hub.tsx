@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { AdminActionFeedback } from "@/components/admin/action-feedback";
 import { AdminActionDialog, type AdminDialogConfig } from "@/components/admin/action-dialog";
 import { PLAN_DEFINITIONS } from "@/lib/payments/plans";
+import { paymentStatusDisplay, type PaymentStatusTone } from "@/lib/payments/status-display";
 import type { Chargeback, EscrowHold } from "@/lib/admin/enterprise-types";
 import type { Payment } from "@/lib/store/types";
 import type { PaymentHealth, PaymentSettings } from "@/lib/settings/types";
@@ -302,7 +303,7 @@ export function PaymentsAdminHub() {
                       <p className="shrink-0 text-sm font-bold text-emerald-400">${p.amount}</p>
                     </div>
                     <div className="mt-3 flex flex-wrap items-center gap-2">
-                      <StatusPill status={p.status} />
+                      <StatusPill payment={p} />
                       <span className="rounded-full bg-white/[0.06] px-2 py-0.5 text-[11px] font-medium text-slate-300">
                         {p.method.replace(/_/g, " ")}
                       </span>
@@ -325,7 +326,7 @@ export function PaymentsAdminHub() {
                       <tr key={p.id} onClick={() => setSelected(p)} className={`cursor-pointer border-b border-white/5 hover:bg-white/5 ${selected?.id === p.id ? "bg-emerald-500/10" : ""}`}>
                         <td className="px-3 py-2"><p className="text-white">{p.plan}</p><p className="text-xs text-slate-500">{p.userName}</p></td>
                         <td className="px-3 py-2 text-emerald-400">${p.amount}</td>
-                        <td className="px-3 py-2"><StatusPill status={p.status} /></td>
+                        <td className="px-3 py-2"><StatusPill payment={p} /></td>
                       </tr>
                     ))}
                   </tbody>
@@ -338,11 +339,12 @@ export function PaymentsAdminHub() {
               ) : (
                 <div className="space-y-3 text-sm">
                   <p className="text-2xl font-bold text-emerald-400">${selected.amount}</p>
-                  <StatusPill status={selected.status} />
+                  <StatusPill payment={selected} />
                   <div className="rounded-lg border border-white/10 bg-slate-950/50 p-3 text-xs text-slate-400">
                     <p>Method: <span className="text-slate-200">{selected.method.replace(/_/g, " ")}</span></p>
                     <p>Reference: <span className="text-slate-200">{selected.referenceNumber ?? "Not supplied"}</span></p>
-                    <p>Proof: <span className="text-slate-200">{selected.proofStatus ?? "Not required"}</span></p>
+                    <p>Payment state: <span className="text-slate-200">{paymentStatusDisplay(selected).description}</span></p>
+                    <p>Proof: <span className="text-slate-200">{selected.proofStatus ? paymentStatusDisplay({ ...selected, status: selected.status }).label : "Not required"}</span></p>
                     {selected.proofUrl && (
                       <a href={selected.proofUrl} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex items-center gap-1 text-cyan-300 hover:underline">
                         <ExternalLink className="size-3" /> Open proof
@@ -456,15 +458,15 @@ function PaymentsLoadError({ message, onRetry }: { message: string; onRetry: () 
   );
 }
 
-function StatusPill({ status }: { status: string }) {
-  const colors: Record<string, string> = {
-    PAID: "bg-emerald-500/20 text-emerald-300",
-    PENDING: "bg-amber-500/20 text-amber-300",
-    MANUAL_REVIEW: "bg-cyan-500/20 text-cyan-300",
-    FAILED: "bg-red-500/20 text-red-300",
-    REFUNDED: "bg-slate-500/20 text-slate-300",
+function StatusPill({ payment }: { payment: Payment }) {
+  const display = paymentStatusDisplay(payment);
+  const colors: Record<PaymentStatusTone, string> = {
+    success: "bg-emerald-500/20 text-emerald-300",
+    pending: "bg-amber-500/20 text-amber-300",
+    error: "bg-red-500/20 text-red-300",
+    neutral: "bg-slate-500/20 text-slate-300",
   };
-  return <span className={`inline-block rounded-full px-2 py-0.5 text-xs ${colors[status] ?? "bg-white/10 text-slate-300"}`}>{status}</span>;
+  return <span className={`inline-block rounded-full px-2 py-0.5 text-xs ${colors[display.tone]}`}>{display.label}</span>;
 }
 
 function buildPaymentReceiptHtml(payment: Payment) {

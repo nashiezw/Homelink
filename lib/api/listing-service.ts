@@ -33,12 +33,50 @@ export type ListingQuery = {
   checkIn?: string;
 };
 
+export type ListingPagination = {
+  limit: number;
+  cursor?: string;
+};
+
+export type ListingSort = "newest" | "price_asc" | "price_desc" | "verified";
+
+export const DEFAULT_LISTINGS_LIMIT = 24;
+export const MAX_LISTINGS_LIMIT = 60;
+
 export function listListings(query: ListingQuery = {}) {
   const listings = getStore()
     .listListings()
     .filter((listing) => isPublicListingStatus(listing.status))
     .map(toPublicListing);
   return listings.filter((listing) => matchesListing(listing, query));
+}
+
+export function paginateListings<T extends { id: string }>(
+  listings: T[],
+  pagination: ListingPagination,
+) {
+  const offset = pagination.cursor ? decodeOffsetCursor(pagination.cursor) : 0;
+  const safeOffset = Math.max(0, Math.min(offset, listings.length));
+  const page = listings.slice(safeOffset, safeOffset + pagination.limit);
+  const nextOffset = safeOffset + page.length;
+  return {
+    items: page,
+    nextCursor: nextOffset < listings.length ? encodeOffsetCursor(nextOffset) : null,
+    hasMore: nextOffset < listings.length,
+  };
+}
+
+export function sortListings<T extends Listing>(listings: T[], sort: ListingSort) {
+  return [...listings].sort((a, b) => {
+    if (sort === "price_asc") return a.price - b.price || a.title.localeCompare(b.title);
+    if (sort === "price_desc") return b.price - a.price || a.title.localeCompare(b.title);
+    if (sort === "verified") {
+      const aVerified = Number(Boolean(a.verified || a.landlordVerified));
+      const bVerified = Number(Boolean(b.verified || b.landlordVerified));
+      return bVerified - aVerified || a.title.localeCompare(b.title);
+    }
+    return 0;
+  });
 }
 
 export function getListing(id: string, options: { incrementViews?: boolean } = {}) {
@@ -200,6 +238,18 @@ export function parseListingQuery(searchParams: URLSearchParams): ListingQuery {
   };
 }
 
+export function parseListingPagination(searchParams: URLSearchParams): ListingPagination {
+  return {
+    limit: clampLimit(searchParams.get("limit")),
+    cursor: optional(searchParams.get("cursor")),
+  };
+}
+
+export function parseListingSort(searchParams: URLSearchParams): ListingSort {
+  const value = searchParams.get("sort");
+  return value === "price_asc" || value === "price_desc" || value === "verified" ? value : "newest";
+}
+
 function optional(value: string | null) {
   return value?.trim() || undefined;
 }
@@ -211,6 +261,25 @@ function numberParam(value: string | null) {
 
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function clampLimit(value: string | null) {
+  const parsed = numberParam(value);
+  if (!parsed) return DEFAULT_LISTINGS_LIMIT;
+  return Math.min(Math.max(Math.floor(parsed), 1), MAX_LISTINGS_LIMIT);
+}
+
+function encodeOffsetCursor(offset: number) {
+  return Buffer.from(JSON.stringify({ offset }), "utf8").toString("base64url");
+}
+
+function decodeOffsetCursor(cursor: string) {
+  try {
+    const parsed = JSON.parse(Buffer.from(cursor, "base64url").toString("utf8")) as { offset?: unknown };
+    return typeof parsed.offset === "number" && Number.isFinite(parsed.offset) ? Math.max(0, Math.floor(parsed.offset)) : 0;
+  } catch {
+    return 0;
+  }
 }
 
 function booleanParam(value: string | null) {

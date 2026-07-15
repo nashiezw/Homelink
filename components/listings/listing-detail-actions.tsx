@@ -1,6 +1,6 @@
 "use client";
 
-import { Flag, Heart, Scale, Share2 } from "lucide-react";
+import { Flag, Heart, Loader2, MessageCircle, Phone, Scale, Share2 } from "lucide-react";
 import { useState } from "react";
 import { EnquiryPanel } from "@/components/enquiries/enquiry-panel";
 import { AppointmentBookingPanel } from "@/components/listings/appointment-booking-panel";
@@ -18,6 +18,8 @@ export function ListingDetailActions({ listing }: ListingDetailActionsProps) {
   const { toggleFavourite, toggleCompare, isFavourite, isCompared, showToast } = useApp();
   const [reportOpen, setReportOpen] = useState(false);
   const [reportReason, setReportReason] = useState("stale");
+  const [contactReveal, setContactReveal] = useState<{ phone?: string; whatsapp?: string }>({});
+  const [contactBusy, setContactBusy] = useState<"phone" | "whatsapp" | null>(null);
   const status = listingStatusMeta(listing);
   const unavailable = status.key === "let" || status.key === "sold" || status.key === "off_market";
 
@@ -42,6 +44,33 @@ export function ListingDetailActions({ listing }: ListingDetailActionsProps) {
     });
     setReportOpen(false);
     showToast("Report submitted. Our team will review it.");
+  }
+
+  async function revealContact(channel: "phone" | "whatsapp") {
+    const existing = contactReveal[channel];
+    if (existing) {
+      openContact(channel, existing);
+      return;
+    }
+
+    setContactBusy(channel);
+    const result = await apiFetch<{ channel: "phone" | "whatsapp"; contact: string; enquiryId: string }>(
+      `/api/v1/listings/${listing.id}/contact-intent`,
+      {
+        method: "POST",
+        body: JSON.stringify({ channel }),
+      },
+    );
+    setContactBusy(null);
+
+    if (result.error || !result.data?.contact) {
+      showToast(result.error?.message ?? "Contact details are not available for this listing.", "error");
+      return;
+    }
+
+    setContactReveal((current) => ({ ...current, [channel]: result.data!.contact }));
+    showToast("Contact intent logged. HomeLink can now track this lead.", "success");
+    openContact(channel, result.data.contact);
   }
 
   return (
@@ -89,6 +118,12 @@ export function ListingDetailActions({ listing }: ListingDetailActionsProps) {
       ) : (
         <>
           <EnquiryPanel listing={listing} className="mt-4 sm:mt-5" />
+          <ContactIntentPanel
+            phone={contactReveal.phone}
+            whatsapp={contactReveal.whatsapp}
+            busy={contactBusy}
+            onReveal={(channel) => void revealContact(channel)}
+          />
           <AppointmentBookingPanel listing={listing} />
         </>
       )}
@@ -116,4 +151,43 @@ export function ListingDetailActions({ listing }: ListingDetailActionsProps) {
       )}
     </>
   );
+}
+
+function ContactIntentPanel({
+  phone,
+  whatsapp,
+  busy,
+  onReveal,
+}: {
+  phone?: string;
+  whatsapp?: string;
+  busy: "phone" | "whatsapp" | null;
+  onReveal: (channel: "phone" | "whatsapp") => void;
+}) {
+  return (
+    <div className="mt-4 rounded-lg border border-emerald-100 bg-emerald-50/70 p-3 sm:mt-5 sm:p-4 dark:border-emerald-900/40 dark:bg-emerald-950/20">
+      <p className="text-sm font-semibold text-emerald-950 dark:text-emerald-100">Contact details are protected</p>
+      <p className="mt-1 text-sm leading-6 text-emerald-900 dark:text-emerald-200">
+        Reveal phone or WhatsApp when you are ready to contact the owner. HomeLink logs the intent as an enquiry for safer follow-up.
+      </p>
+      <div className="mt-3 grid gap-2 sm:grid-cols-2">
+        <Button variant="secondary" className="w-full" disabled={busy !== null} onClick={() => onReveal("phone")}>
+          {busy === "phone" ? <Loader2 className="size-4 animate-spin" /> : <Phone className="size-4 shrink-0" />}
+          {phone ? phone : "Reveal phone"}
+        </Button>
+        <Button variant="secondary" className="w-full" disabled={busy !== null} onClick={() => onReveal("whatsapp")}>
+          {busy === "whatsapp" ? <Loader2 className="size-4 animate-spin" /> : <MessageCircle className="size-4 shrink-0" />}
+          {whatsapp ? whatsapp : "Open WhatsApp"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function openContact(channel: "phone" | "whatsapp", contact: string) {
+  const normalized = contact.replace(/[^\d+]/g, "");
+  const href = channel === "whatsapp"
+    ? `https://wa.me/${normalized.replace(/^\+/, "")}`
+    : `tel:${normalized}`;
+  window.open(href, channel === "whatsapp" ? "_blank" : "_self", "noopener,noreferrer");
 }

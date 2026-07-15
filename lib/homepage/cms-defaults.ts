@@ -68,9 +68,9 @@ export function createDefaultHomepageCms(): HomepageCmsConfig {
       { id: "rating", label: "Average rating", enabled: true, mode: "live", decimals: 1, suffix: "★" },
     ],
     propertyTypes: [
-      { id: "houses", label: "Houses", href: "/search?type=house", enabled: true, mode: "live", listingTypes: ["house"] },
+      { id: "houses", label: "Houses", href: "/rent/harare", enabled: true, mode: "live", listingTypes: ["house"] },
       { id: "apartments", label: "Apartments", href: "/search?type=flat", enabled: true, mode: "live", listingTypes: ["flat"] },
-      { id: "rooms", label: "Rooms", href: "/search?type=room", enabled: true, mode: "live", listingTypes: ["room"] },
+      { id: "rooms", label: "Rooms", href: "/rooms/avondale", enabled: true, mode: "live", listingTypes: ["room"] },
       { id: "cottages", label: "Cottages", href: "/search?type=cottage", enabled: true, mode: "live", listingTypes: ["cottage"] },
       { id: "land", label: "Land", href: "/search?type=land", enabled: true, mode: "live", listingTypes: ["land"] },
       { id: "commercial", label: "Commercial", href: "/search?type=commercial", enabled: true, mode: "live", listingTypes: ["commercial"] },

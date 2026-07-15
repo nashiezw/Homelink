@@ -1,6 +1,6 @@
 "use client";
 
-import { Map as MapIcon, Search, SlidersHorizontal, Sparkles, X } from "lucide-react";
+import { Bell, CheckCircle2, Map as MapIcon, Search, SlidersHorizontal, Sparkles, X } from "lucide-react";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -35,6 +35,13 @@ const holidayFilters = [
   { label: "Swimming pool", key: "pool" },
   { label: "Wi-Fi", key: "wifi" },
   { label: "Pet friendly", key: "petFriendly" },
+];
+
+const sortOptions = [
+  { value: "newest", label: "Newest first" },
+  { value: "verified", label: "Verified first" },
+  { value: "price_asc", label: "Price: low to high" },
+  { value: "price_desc", label: "Price: high to low" },
 ];
 
 const propertyTypeLabels: Record<string, { singular: string; plural: string }> = {
@@ -72,6 +79,48 @@ function mostCommon(items: string[]) {
 
 function compactJoin(items: string[]) {
   return items.filter(Boolean).join(", ");
+}
+
+function paramsToRecord(params: URLSearchParams) {
+  const record: Record<string, string | string[]> = {};
+  params.forEach((value, key) => {
+    const existing = record[key];
+    if (existing === undefined) record[key] = value;
+    else if (Array.isArray(existing)) existing.push(value);
+    else record[key] = [existing, value];
+  });
+  return record;
+}
+
+function applyParsedFilters(params: URLSearchParams, parsed: Record<string, unknown>) {
+  const next = new URLSearchParams(params.toString());
+  next.delete("cursor");
+  for (const key of [
+    "location",
+    "city",
+    "suburb",
+    "intent",
+    "type",
+    "minPrice",
+    "maxPrice",
+    "bedrooms",
+    "bathrooms",
+    "availableNow",
+    "verifiedOnly",
+  ]) {
+    const value = parsed[key];
+    if (typeof value === "string" && value.trim()) next.set(key, value.trim());
+    else if (typeof value === "number" && Number.isFinite(value)) next.set(key, String(value));
+    else if (value === true) next.set(key, "true");
+  }
+  next.delete("amenities");
+  const amenities = parsed.amenities;
+  if (Array.isArray(amenities)) {
+    amenities.filter((value): value is string => typeof value === "string" && Boolean(value.trim())).forEach((value) => {
+      next.append("amenities", value);
+    });
+  }
+  return next;
 }
 
 function buildMarketLens(
@@ -146,33 +195,60 @@ function buildMarketLens(
   };
 }
 
-export function SearchPageClient() {
-  const searchParams = useSearchParams();
+type SearchPageClientProps = {
+  initialSearchParams?: Record<string, string>;
+};
+
+const EMPTY_INITIAL_SEARCH_PARAMS: Record<string, string> = {};
+
+export function SearchPageClient({ initialSearchParams = EMPTY_INITIAL_SEARCH_PARAMS }: SearchPageClientProps) {
+  const urlSearchParams = useSearchParams();
   const router = useRouter();
-  const { showToast } = useApp();
+  const { showToast, user } = useApp();
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [mapOpen, setMapOpen] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
   const [aiQuery, setAiQuery] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
+  const [savingSearch, setSavingSearch] = useState(false);
   const [calculatorBudget, setCalculatorBudget] = useState<RentalAffordabilityMemory | null>(null);
   const [nearby, setNearby] = useState<{
     cbdDistanceKm: number | null;
     places: Array<{ type: string; name: string; distanceKm: number }>;
   } | null>(null);
 
+  const searchParams = useMemo(() => {
+    const merged = new URLSearchParams(initialSearchParams);
+    urlSearchParams.forEach((value, key) => {
+      merged.set(key, value);
+    });
+    return merged;
+  }, [initialSearchParams, urlSearchParams]);
+
   const queryString = searchParams.toString();
   const intent = searchParams.get("intent");
   const usesRentalBudgetMemory = intent !== "buy";
   const rememberedBudget = usesRentalBudgetMemory ? affordabilityBudgetParam(calculatorBudget) : "";
   const displayedBudget = searchParams.get("maxPrice") ?? rememberedBudget ?? (intent === "buy" ? "" : "1500");
+  const sort = searchParams.get("sort") ?? "newest";
+  const verifiedOnly = searchParams.get("verifiedOnly") === "true";
+  const searchLabel = compactJoin([
+    searchParams.get("type") ? propertyTypeLabels[searchParams.get("type") ?? ""]?.plural ?? "properties" : "properties",
+    searchParams.get("suburb") ?? searchParams.get("city") ?? searchParams.get("location") ?? "Zimbabwe",
+    searchParams.get("maxPrice") ? `under ${money(Number(searchParams.get("maxPrice")))}` : "",
+  ]);
 
   useEffect(() => {
     void (async () => {
       setLoading(true);
-      const result = await apiFetch<Listing[]>(`/api/v1/listings?${queryString}`);
+      const params = new URLSearchParams(queryString);
+      if (!params.get("limit")) params.set("limit", "24");
+      const result = await apiFetch<Listing[]>(`/api/v1/listings?${params.toString()}`);
       setListings(result.data ?? []);
+      setNextCursor(typeof result.meta?.nextCursor === "string" ? result.meta.nextCursor : null);
       setLoading(false);
 
       const city = searchParams.get("city");
@@ -188,6 +264,54 @@ export function SearchPageClient() {
       }
     })();
   }, [queryString, searchParams]);
+
+  async function loadMoreListings() {
+    if (!nextCursor || loadingMore) return;
+    setLoadingMore(true);
+    const params = new URLSearchParams(queryString);
+    params.set("cursor", nextCursor);
+    if (!params.get("limit")) params.set("limit", "24");
+    const result = await apiFetch<Listing[]>(`/api/v1/listings?${params.toString()}`);
+    setListings((current) => [...current, ...(result.data ?? [])]);
+    setNextCursor(typeof result.meta?.nextCursor === "string" ? result.meta.nextCursor : null);
+    setLoadingMore(false);
+  }
+
+  async function saveCurrentSearch() {
+    if (!user) {
+      showToast("Sign in to save this search and get alerts.", "info");
+      return;
+    }
+    setSavingSearch(true);
+    const filters = new URLSearchParams(searchParams.toString());
+    filters.delete("cursor");
+    const result = await apiFetch("/api/v1/saved-searches", {
+      method: "POST",
+      body: JSON.stringify({
+        name: searchLabel,
+        channels: ["email"],
+        filters: paramsToRecord(filters),
+      }),
+    });
+    setSavingSearch(false);
+    if (result.error) showToast(result.error.message ?? "Search alert could not be saved.", "error");
+    else showToast("Search alert saved.");
+  }
+
+  function updateSort(value: string) {
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("cursor");
+    if (value === "newest") params.delete("sort");
+    else params.set("sort", value);
+    router.push(`/search?${params.toString()}`);
+  }
+
+  function clearOneFilter(key: string) {
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete(key);
+    params.delete("cursor");
+    router.push(`/search?${params.toString()}`);
+  }
 
   useEffect(() => {
     const memory = readRentalAffordabilityMemory();
@@ -236,6 +360,7 @@ export function SearchPageClient() {
 
   function toggleFilter(filter: (typeof smartFilters)[number]) {
     const params = new URLSearchParams(searchParams.toString());
+    params.delete("cursor");
     if (filter.key === "amenities") {
       const current = params.getAll("amenities");
       if (current.includes(filter.value)) {
@@ -254,6 +379,7 @@ export function SearchPageClient() {
 
   function toggleHolidayFilter(key: string) {
     const params = new URLSearchParams(searchParams.toString());
+    params.delete("cursor");
     if (params.get(key) === "true") {
       params.delete(key);
     } else {
@@ -276,9 +402,11 @@ export function SearchPageClient() {
     });
     setAiLoading(false);
     if (result.data?.matches) {
-      setListings(result.data.matches);
+      const params = applyParsedFilters(searchParams, result.data.parsed);
+      params.set("ai", aiQuery.trim());
+      router.push(`/search?${params.toString()}`);
       setAiOpen(false);
-      showToast(`AI found ${result.data.matches.length} matching listings.`);
+      showToast(`AI applied filters for ${result.data.matches.length} matching listings.`);
     } else {
       showToast(result.error?.message ?? "AI search failed.", "error");
     }
@@ -322,6 +450,7 @@ export function SearchPageClient() {
               const data = new FormData(event.currentTarget);
               const params = new URLSearchParams(searchParams.toString());
               const location = String(data.get("location") ?? "");
+              params.delete("cursor");
               params.delete("location");
               params.delete("city");
               params.delete("suburb");
@@ -419,10 +548,22 @@ export function SearchPageClient() {
                     : "border-white/20 bg-white/90 text-slate-700 hover:border-emerald-300 hover:bg-emerald-50"
                 }`}
               >
+                {filter.key === "verifiedOnly" && activeFilters.some((item) => item.label === filter.label) ? (
+                  <CheckCircle2 className="mr-1 inline size-3.5" aria-hidden="true" />
+                ) : null}
                 {filter.label}
               </button>
             ))}
           </div>
+
+          {verifiedOnly && (
+            <div className="mt-3 flex flex-col gap-2 rounded-lg border border-emerald-300/25 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-50 sm:flex-row sm:items-center sm:justify-between">
+              <span>Verified only is active. Results are limited to listings or landlords with completed HomeLink verification.</span>
+              <button type="button" className="font-semibold underline-offset-4 hover:underline" onClick={() => clearOneFilter("verifiedOnly")}>
+                Show all trusted listings
+              </button>
+            </div>
+          )}
 
           {searchParams.get("type") === "holiday_home" ? (
             <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -450,6 +591,7 @@ export function SearchPageClient() {
                   className="w-12 bg-transparent outline-none"
                   onBlur={(e) => {
                     const params = new URLSearchParams(searchParams.toString());
+                    params.delete("cursor");
                     if (e.target.value) params.set("minGuests", e.target.value);
                     else params.delete("minGuests");
                     router.push(`/search?${params.toString()}`);
@@ -463,15 +605,33 @@ export function SearchPageClient() {
 
       <section className="mx-auto grid max-w-7xl gap-6 px-4 py-5 sm:px-6 sm:py-8 lg:grid-cols-[minmax(0,1fr)_minmax(260px,320px)] lg:px-8">
         <div className="min-w-0 max-w-full">
-          <div className="surface-panel flex flex-col justify-between gap-3 rounded-lg p-4 sm:flex-row sm:items-center">
+          <div className="surface-panel flex flex-col justify-between gap-3 rounded-lg p-4 xl:flex-row xl:items-center">
             <p className="text-sm text-slate-600 dark:text-slate-300">
               Showing <span className="font-semibold text-ink dark:text-white">{listings.length}</span> listings
               {loading ? " (loading...)" : ""}
             </p>
-            <Button variant="secondary" className="w-full sm:w-auto" onClick={() => setMapOpen((open) => !open)}>
-              <MapIcon className="size-4" aria-hidden="true" />
-              {mapOpen ? "Hide map" : "Map view"}
-            </Button>
+            <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto_auto] xl:min-w-[520px]">
+              <label className="flex min-w-0 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950">
+                <span className="shrink-0 font-semibold text-slate-600 dark:text-slate-300">Sort</span>
+                <select
+                  value={sort}
+                  onChange={(event) => updateSort(event.target.value)}
+                  className="min-w-0 flex-1 bg-transparent text-slate-900 outline-none dark:text-white"
+                >
+                  {sortOptions.map((option) => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
+                </select>
+              </label>
+              <Button variant="secondary" className="w-full sm:w-auto" onClick={() => void saveCurrentSearch()} disabled={savingSearch}>
+                <Bell className="size-4" aria-hidden="true" />
+                {savingSearch ? "Saving..." : "Save alert"}
+              </Button>
+              <Button variant="secondary" className="w-full sm:w-auto" onClick={() => setMapOpen((open) => !open)}>
+                <MapIcon className="size-4" aria-hidden="true" />
+                {mapOpen ? "Hide map" : "Map view"}
+              </Button>
+            </div>
           </div>
           {mapOpen && listings[0] && (
             <div className="mt-5 overflow-hidden rounded-lg border border-slate-200 dark:border-slate-700">
@@ -483,9 +643,37 @@ export function SearchPageClient() {
               <ListingCard key={listing.id} listing={listing} />
             ))}
             {!loading && listings.length === 0 && (
-              <p className="text-slate-600 dark:text-slate-300 sm:col-span-2">No listings match your filters. Try widening your search.</p>
+              <div className="surface-panel rounded-lg p-5 sm:col-span-2">
+                <p className="text-lg font-semibold text-ink dark:text-white">No exact matches yet</p>
+                <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
+                  We could not find active listings for {searchLabel}. Try widening the area, lifting the budget, or turning off verified-only filtering.
+                </p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {verifiedOnly && (
+                    <Button variant="secondary" onClick={() => clearOneFilter("verifiedOnly")}>
+                      Show unverified too
+                    </Button>
+                  )}
+                  {searchParams.get("maxPrice") && (
+                    <Button variant="secondary" onClick={() => clearOneFilter("maxPrice")}>
+                      Remove budget cap
+                    </Button>
+                  )}
+                  <Button onClick={() => void saveCurrentSearch()} disabled={savingSearch}>
+                    <Bell className="size-4" aria-hidden="true" />
+                    {user ? "Alert me when matches appear" : "Sign in for alerts"}
+                  </Button>
+                </div>
+              </div>
             )}
           </div>
+          {nextCursor && (
+            <div className="mt-6 flex justify-center">
+              <Button variant="secondary" onClick={loadMoreListings} disabled={loadingMore}>
+                {loadingMore ? "Loading..." : "Load more listings"}
+              </Button>
+            </div>
+          )}
         </div>
 
         <aside className="h-fit max-w-full overflow-hidden rounded-lg border border-cyan-700/30 bg-gradient-to-br from-ocean via-[#0f5364] to-ink text-white shadow-soft lg:sticky lg:top-24">

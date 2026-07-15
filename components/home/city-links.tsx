@@ -3,14 +3,17 @@ import Link from "next/link";
 
 const CITIES = ["Harare", "Bulawayo", "Gweru", "Mutare", "Kwekwe"];
 
+function citySlug(city: string) {
+  return city.toLowerCase().replace(/\s+/g, "-");
+}
+
 export function CityLinks() {
   return (
     <div className="grid h-full grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-rows-3">
       {CITIES.map((city) => (
         <Link
           key={city}
-          href={`/search?city=${encodeURIComponent(city)}`}
-          rel="nofollow"
+          href={`/rent/${citySlug(city)}`}
           className="gpu-card group flex flex-col justify-center rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-md dark:border-slate-700 dark:bg-slate-900 dark:hover:border-emerald-700"
         >
           <div className="flex items-center justify-between gap-3">
@@ -20,7 +23,7 @@ export function CityLinks() {
               aria-hidden="true"
             />
           </div>
-          <p className="mt-1 text-sm text-slate-500">Browse listings in {city}</p>
+          <p className="mt-1 text-sm text-slate-500">Browse rentals in {city}</p>
         </Link>
       ))}
       <Link

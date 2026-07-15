@@ -22,6 +22,7 @@ import { isAllowedAvailabilityStatus } from "@/lib/listings/status";
 import type { ListingRecord, StoreUser } from "@/lib/store/types";
 import type { Listing, ListingIntent as PublicListingIntent, ListingVirtualTour, PropertyType } from "@/lib/types";
 import { resolvePublicImageUrl } from "@/lib/media/resolve-public-image";
+import type { ListingPagination, ListingQuery, ListingSort } from "@/lib/api/listing-service";
 
 const DB_VIEWING_IN_PROGRESS = "VIEWING_IN_PROGRESS" as DbListingStatus;
 
@@ -64,6 +65,7 @@ const SAFE_LISTING_SELECT = {
   garden: true,
   swimmingPool: true,
   availableFrom: true,
+  createdAt: true,
   verifiedAt: true,
   owner: { select: { name: true, phone: true, identityStatus: true } },
   media: {
@@ -275,6 +277,180 @@ export async function listListingsFromPostgres(query: {
     });
   });
   return rows.map(toListingRecord);
+}
+
+function publicListingWhere(
+  query: ListingQuery,
+  cursor: (DecodedListingCursor & { price?: number; verifiedAt?: Date | null }) | null,
+  sort: ListingSort,
+) {
+  const and: Prisma.ListingWhereInput[] = [
+    { status: { in: [DbListingStatus.ACTIVE, DB_VIEWING_IN_PROGRESS] } },
+  ];
+
+  if (query.intent) and.push({ intent: normalizeIntent(query.intent) });
+  if (query.type && query.type !== "holiday_home") and.push({ propertyType: PROPERTY_TYPE_TO_DB[query.type] });
+  if (query.city) and.push({ city: { contains: query.city, mode: "insensitive" } });
+  if (query.suburb) and.push({ suburb: { contains: query.suburb, mode: "insensitive" } });
+  if (query.minPrice) and.push({ price: { gte: query.minPrice } });
+  if (query.maxPrice) and.push({ price: { lte: query.maxPrice } });
+  if (query.bedrooms) and.push({ bedrooms: { gte: query.bedrooms } });
+  if (query.bathrooms) and.push({ bathrooms: { gte: query.bathrooms } });
+  if (query.verifiedOnly) and.push({ verifiedAt: { not: null } });
+  if (query.availableNow) and.push({ OR: [{ availableFrom: null }, { availableFrom: { lte: new Date() } }] });
+
+  if (query.location) {
+    const tokens = query.location.split(/\s+/).map((token) => token.trim()).filter(Boolean);
+    for (const token of tokens) {
+      and.push({
+        OR: [
+          { city: { contains: token, mode: "insensitive" } },
+          { suburb: { contains: token, mode: "insensitive" } },
+          { title: { contains: token, mode: "insensitive" } },
+          { description: { contains: token, mode: "insensitive" } },
+        ],
+      });
+    }
+  }
+
+  const amenityFilters = amenityWhere(query.amenities);
+  if (amenityFilters.length) and.push(...amenityFilters);
+
+  if (query.pool) and.push({ swimmingPool: true });
+  if (query.wifi) and.push({ wifi: true });
+  if (query.petFriendly) and.push({ petFriendly: true });
+
+  if (cursor) {
+    and.push(cursorWhere(cursor, sort));
+  }
+
+  return { AND: and } satisfies Prisma.ListingWhereInput;
+}
+
+function cursorWhere(
+  cursor: DecodedListingCursor & { price?: number; verifiedAt?: Date | null },
+  sort: ListingSort,
+): Prisma.ListingWhereInput {
+  const createdTieBreak = [
+    { createdAt: { lt: cursor.createdAt } },
+    { createdAt: cursor.createdAt, id: { lt: cursor.id } },
+  ];
+  if ((sort === "price_asc" || sort === "price_desc") && typeof cursor.price === "number") {
+    return {
+      OR: [
+        { price: sort === "price_asc" ? { gt: cursor.price } : { lt: cursor.price } },
+        { price: cursor.price, OR: createdTieBreak },
+      ],
+    };
+  }
+  if (sort === "verified") {
+    if (cursor.verifiedAt) {
+      return {
+        OR: [
+          { verifiedAt: { lt: cursor.verifiedAt } },
+          { verifiedAt: null },
+          { verifiedAt: cursor.verifiedAt, OR: createdTieBreak },
+        ],
+      };
+    }
+    return { verifiedAt: null, OR: createdTieBreak };
+  }
+  return { OR: createdTieBreak };
+}
+
+function amenityWhere(amenities?: string[]) {
+  if (!amenities?.length) return [];
+  const filters: Prisma.ListingWhereInput[] = [];
+  for (const amenity of amenities) {
+    const normalized = amenity.toLowerCase();
+    const flag = AMENITY_FLAGS.find(([, pattern]) => pattern.test(normalized))?.[0];
+    if (flag) filters.push({ [flag]: true } as Prisma.ListingWhereInput);
+  }
+  return filters;
+}
+
+type DecodedListingCursor = { createdAt: Date; id: string };
+
+function listingOrderBy(sort: ListingSort) {
+  if (sort === "price_asc") return [{ price: "asc" as const }, { createdAt: "desc" as const }, { id: "desc" as const }];
+  if (sort === "price_desc") return [{ price: "desc" as const }, { createdAt: "desc" as const }, { id: "desc" as const }];
+  if (sort === "verified") return [{ verifiedAt: { sort: "desc" as const, nulls: "last" as const } }, { createdAt: "desc" as const }, { id: "desc" as const }];
+  return [{ createdAt: "desc" as const }, { id: "desc" as const }];
+}
+
+function encodeListingCursor(row: PrismaListingRow | SafeListingRow, sort: ListingSort) {
+  const payload: Record<string, string | number | null> = {
+    sort,
+    createdAt: row.createdAt.toISOString(),
+    id: row.id,
+  };
+  if (sort === "price_asc" || sort === "price_desc") payload.price = Number(row.price);
+  if (sort === "verified") payload.verifiedAt = row.verifiedAt?.toISOString() ?? null;
+  return Buffer.from(JSON.stringify(payload), "utf8").toString("base64url");
+}
+
+function decodeListingCursor(cursor: string | undefined, sort: ListingSort): (DecodedListingCursor & { price?: number; verifiedAt?: Date | null }) | null {
+  if (!cursor) return null;
+  try {
+    const parsed = JSON.parse(Buffer.from(cursor, "base64url").toString("utf8")) as {
+      sort?: unknown;
+      createdAt?: unknown;
+      id?: unknown;
+      price?: unknown;
+      verifiedAt?: unknown;
+    };
+    if (parsed.sort !== sort) return null;
+    if (typeof parsed.createdAt !== "string" || typeof parsed.id !== "string") return null;
+    const createdAt = new Date(parsed.createdAt);
+    if (Number.isNaN(createdAt.getTime())) return null;
+    return {
+      createdAt,
+      id: parsed.id,
+      price: typeof parsed.price === "number" && Number.isFinite(parsed.price) ? parsed.price : undefined,
+      verifiedAt: typeof parsed.verifiedAt === "string" ? new Date(parsed.verifiedAt) : null,
+    };
+  } catch {
+    return null;
+  }
+}
+
+export async function listPublicListingsPageFromPostgres(
+  query: ListingQuery,
+  pagination: ListingPagination,
+  sort: ListingSort = "newest",
+) {
+  assertPostgresConfigured();
+  const prisma = getMainPrisma();
+  const cursor = decodeListingCursor(pagination.cursor, sort);
+  const where = publicListingWhere(query, cursor, sort);
+  const take = pagination.limit + 1;
+  const orderBy = listingOrderBy(sort);
+
+  const rows = await prisma.listing.findMany({
+    where,
+    orderBy,
+    take,
+    include: LISTING_INCLUDE,
+  }).catch(async (error: unknown) => {
+    if (!isMissingColumnError(error)) throw error;
+    return prisma.listing.findMany({
+      where,
+      orderBy,
+      take,
+      select: SAFE_LISTING_SELECT,
+    });
+  });
+
+  const pageRows = rows.slice(0, pagination.limit);
+  const last = pageRows.at(-1);
+
+  return {
+    listings: pageRows.map(toListingRecord),
+    nextCursor: rows.length > pagination.limit && last && "createdAt" in last
+      ? encodeListingCursor(last, sort)
+      : null,
+    hasMore: rows.length > pagination.limit,
+  };
 }
 
 export async function getListingFromPostgres(id: string) {

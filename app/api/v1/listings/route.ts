@@ -1,9 +1,18 @@
-import { listListings, matchesListing, parseListingQuery } from "@/lib/api/listing-service";
+import type { Listing } from "@/lib/types";
+import {
+  listListings,
+  matchesListing,
+  paginateListings,
+  parseListingPagination,
+  parseListingQuery,
+  parseListingSort,
+  sortListings,
+} from "@/lib/api/listing-service";
 import { created, ok, problem } from "@/lib/api/response";
 import { getSessionUserIdFromRequest } from "@/lib/auth/session";
 import {
   createListingInPostgres,
-  listListingsFromPostgres,
+  listPublicListingsPageFromPostgres,
   shouldUsePostgresListings,
   toPublicPostgresListing,
 } from "@/lib/listings/postgres-listing-repository";
@@ -14,16 +23,46 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const query = parseListingQuery(searchParams);
-    const listings = shouldUsePostgresListings()
-      ? (await listListingsFromPostgres())
+    const pagination = parseListingPagination(searchParams);
+    const sort = parseListingSort(searchParams);
+
+    if (shouldUsePostgresListings()) {
+      const listings: Listing[] = [];
+      let cursor = pagination.cursor;
+      let nextCursor: string | null = null;
+      let hasMore = false;
+
+      for (let pageCount = 0; pageCount < 10 && listings.length < pagination.limit; pageCount += 1) {
+        const remaining = pagination.limit - listings.length;
+        const page = await listPublicListingsPageFromPostgres(query, { limit: remaining, cursor }, sort);
+        const matched = page.listings
           .filter((listing) => isPublicListingStatus(listing.status))
           .map(toPublicPostgresListing)
-          .filter((listing) => matchesListing(listing, query))
-      : listListings(query);
+          .filter((listing) => matchesListing(listing, query));
+        listings.push(...matched);
+        nextCursor = page.nextCursor;
+        hasMore = page.hasMore;
+        if (!page.nextCursor) break;
+        cursor = page.nextCursor;
+      }
 
-    return ok(listings, {
-      count: listings.length,
-      nextCursor: null,
+      return ok(listings, {
+        count: listings.length,
+        limit: pagination.limit,
+        sort,
+        nextCursor,
+        hasMore,
+      });
+    }
+
+    const page = paginateListings(sortListings(listListings(query), sort), pagination);
+
+    return ok(page.items, {
+      count: page.items.length,
+      limit: pagination.limit,
+      sort,
+      nextCursor: page.nextCursor,
+      hasMore: page.hasMore,
     });
   } catch (error) {
     console.error("Failed to list listings", error);

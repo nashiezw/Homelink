@@ -1,6 +1,7 @@
 import type { PlanDefinition } from "@/lib/payments/plans";
 import { PLAN_DEFINITIONS } from "@/lib/payments/plans";
 import type { PublicPaymentConfig } from "@/lib/payments/public-payment-config";
+export { paymentStatusTone } from "@/lib/payments/status-display";
 
 export type PaymentPlanGroupId = "listings" | "subscriptions" | "marketing";
 
@@ -137,15 +138,6 @@ export function formatZwlEquivalent(amount: number, exchangeRateUsdToZwl?: numbe
 export function planLabel(planId: string) {
   const plan = PLAN_DEFINITIONS.find((item) => item.id === planId);
   return plan?.name ?? planId.replace(/_/g, " ");
-}
-
-export function paymentStatusTone(status: string) {
-  if (status === "PAID" || status === "success") return "success" as const;
-  if (status === "FAILED" || status === "failed") return "error" as const;
-  if (status === "PENDING" || status === "AWAITING_PROOF" || status === "MANUAL_REVIEW" || status === "pending") {
-    return "pending" as const;
-  }
-  return "neutral" as const;
 }
 
 export function getPlanDefinition(planId: string): PlanDefinition | undefined {

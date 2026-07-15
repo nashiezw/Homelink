@@ -60,7 +60,7 @@ export function PaymentProofUpload({
       return;
     }
 
-    showToast("Proof uploaded. HomeLink finance will review it.", "success");
+    showToast("Proof uploaded. Status is now pending finance verification.", "success");
     onUploaded();
   }
 
