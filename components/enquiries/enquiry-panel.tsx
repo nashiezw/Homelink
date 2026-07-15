@@ -1,12 +1,11 @@
 "use client";
 
-import { MessageSquare, Phone, Send, User, X } from "lucide-react";
+import { MessageSquare, Send, User, X } from "lucide-react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useApp } from "@/components/providers/app-provider";
-import { usePlatformConfig } from "@/components/providers/platform-config-provider";
 import { Button } from "@/components/ui/button";
-import { enquiryActionsForListing, ENQUIRY_TYPE_LABELS } from "@/lib/enquiries/labels";
+import { ENQUIRY_TYPE_LABELS } from "@/lib/enquiries/labels";
 import type { EnquiryType } from "@/lib/enquiries/types";
 import { trackEvent } from "@/lib/analytics/client";
 import { apiFetch } from "@/lib/api/client";
@@ -18,12 +17,16 @@ type EnquiryPanelProps = {
   className?: string;
 };
 
+const PUBLIC_ENQUIRY_ACTIONS: Array<{ type: EnquiryType; label: string; primary?: boolean }> = [
+  { type: "REQUEST_VIEWING", label: "Request a Viewing", primary: true },
+  { type: "ASK_QUESTION", label: "Ask About This Property" },
+  { type: "TALK_TO_CONSULTANT", label: "Speak to a HomeLink Consultant" },
+];
+
 export function EnquiryPanel({ listing, className }: EnquiryPanelProps) {
   const { user, showToast } = useApp();
-  const { config } = usePlatformConfig();
   const router = useRouter();
-  const actions = enquiryActionsForListing(listing.type, listing.intent);
-  const [enquiryType, setEnquiryType] = useState<EnquiryType>(actions.find((a) => a.primary)?.type ?? actions[0].type);
+  const [enquiryType, setEnquiryType] = useState<EnquiryType>(PUBLIC_ENQUIRY_ACTIONS[0].type);
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [name, setName] = useState(user?.name ?? "");
@@ -33,11 +36,18 @@ export function EnquiryPanel({ listing, className }: EnquiryPanelProps) {
   const [preferredDate, setPreferredDate] = useState("");
   const [preferredTime, setPreferredTime] = useState("");
 
-  const managed = config?.enquiries?.requireManagedEnquiries !== false;
-  const showContact = config?.enquiries?.showPublicContactDetails === true;
+  const selectedAction = PUBLIC_ENQUIRY_ACTIONS.find((action) => action.type === enquiryType) ?? PUBLIC_ENQUIRY_ACTIONS[0];
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    if (!name.trim()) {
+      showToast("Please add your name.", "error");
+      return;
+    }
+    if (!phone.trim()) {
+      showToast("Please add your phone number so a HomeLink consultant can contact you.", "error");
+      return;
+    }
     if (!message.trim() && !preferredDate) {
       showToast("Please add a message or preferred date.", "error");
       return;
@@ -49,9 +59,9 @@ export function EnquiryPanel({ listing, className }: EnquiryPanelProps) {
       body: JSON.stringify({
         listingId: listing.id,
         enquiryType,
-        name,
-        email,
-        phone,
+        name: name.trim(),
+        email: email.trim(),
+        phone: phone.trim(),
         message: message || ENQUIRY_TYPE_LABELS[enquiryType],
         preferredDate: preferredDate || undefined,
         preferredTime: preferredTime || undefined,
@@ -77,17 +87,15 @@ export function EnquiryPanel({ listing, className }: EnquiryPanelProps) {
           <MessageSquare className="size-5" />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="font-semibold text-ink dark:text-white">Enquire through HomeLink</p>
+          <p className="font-semibold text-ink dark:text-white">Contact this property through HomeLink</p>
           <p className="mt-1 text-sm leading-5 text-slate-500 sm:leading-6">
-            {managed
-              ? "A HomeLink consultant will handle your enquiry."
-              : "Submit your enquiry and we will connect you with the right team."}
+            Send your enquiry or request a viewing. A HomeLink consultant will contact you and coordinate with the property owner or agent.
           </p>
         </div>
       </div>
 
       <div className="mt-4 grid gap-2">
-        {actions.map((action) => (
+        {PUBLIC_ENQUIRY_ACTIONS.map((action) => (
           <Button
             key={action.type}
             variant={action.primary ? "primary" : "secondary"}
@@ -107,18 +115,9 @@ export function EnquiryPanel({ listing, className }: EnquiryPanelProps) {
         <p className="font-semibold">Listed by {listing.landlordName}</p>
         <p className="mt-1 leading-5 text-emerald-800/80 dark:text-emerald-200/80">
           {listing.landlordVerified ? "Verified advertiser. " : ""}
-          Contact details are managed by HomeLink.
+          HomeLink handles enquiries and viewing coordination.
         </p>
       </div>
-
-      {showContact && listing.phone ? (
-        <div className="mt-3 flex gap-2">
-          <a href={`tel:${listing.phone}`} className="text-sm font-medium text-emerald-700 hover:underline">
-            <Phone className="mr-1 inline size-3.5" />
-            Call
-          </a>
-        </div>
-      ) : null}
 
       {open && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 sm:items-center sm:p-4">
@@ -128,7 +127,7 @@ export function EnquiryPanel({ listing, className }: EnquiryPanelProps) {
           >
             <div className="flex items-start justify-between gap-3 border-b border-slate-100 px-4 py-4 sm:px-5 dark:border-slate-800">
               <div className="min-w-0">
-                <h3 className="text-lg font-semibold">{ENQUIRY_TYPE_LABELS[enquiryType]}</h3>
+                <h3 className="text-lg font-semibold">{selectedAction.label}</h3>
                 <p className="mt-1 line-clamp-2 text-sm text-slate-500">{listing.title}</p>
               </div>
               <button
@@ -142,36 +141,33 @@ export function EnquiryPanel({ listing, className }: EnquiryPanelProps) {
             </div>
 
             <div className="flex-1 space-y-3 overflow-y-auto px-4 py-4 sm:px-5">
-              {!user && (
-                <>
-                  <label className="block text-sm font-medium">
-                    Your name
-                    <input
-                      required
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      className="mt-1 h-12 w-full rounded-lg border border-slate-200 px-3 dark:border-slate-600 dark:bg-slate-950"
-                    />
-                  </label>
-                  <label className="block text-sm font-medium">
-                    Email
-                    <input
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="mt-1 h-12 w-full rounded-lg border border-slate-200 px-3 dark:border-slate-600 dark:bg-slate-950"
-                    />
-                  </label>
-                  <label className="block text-sm font-medium">
-                    Phone
-                    <input
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      className="mt-1 h-12 w-full rounded-lg border border-slate-200 px-3 dark:border-slate-600 dark:bg-slate-950"
-                    />
-                  </label>
-                </>
-              )}
+              <label className="block text-sm font-medium">
+                Your name
+                <input
+                  required
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="mt-1 h-12 w-full rounded-lg border border-slate-200 px-3 dark:border-slate-600 dark:bg-slate-950"
+                />
+              </label>
+              <label className="block text-sm font-medium">
+                Phone
+                <input
+                  required
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  className="mt-1 h-12 w-full rounded-lg border border-slate-200 px-3 dark:border-slate-600 dark:bg-slate-950"
+                />
+              </label>
+              <label className="block text-sm font-medium">
+                Email
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="mt-1 h-12 w-full rounded-lg border border-slate-200 px-3 dark:border-slate-600 dark:bg-slate-950"
+                />
+              </label>
 
               {(enquiryType === "REQUEST_VIEWING" ||
                 enquiryType === "SCHEDULE_VIEWING" ||

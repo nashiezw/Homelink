@@ -47,7 +47,7 @@ export function toPublicPlatformConfig(settings: PlatformSettings): PublicPlatfo
     },
     enquiries: {
       requireManagedEnquiries: settings.enquiries.requireManagedEnquiries,
-      showPublicContactDetails: settings.enquiries.showPublicContactDetails,
+      showPublicContactDetails: false,
       viewingWorkflowEnabled: settings.enquiries.viewingWorkflowEnabled,
       bookingWorkflowEnabled: settings.enquiries.bookingWorkflowEnabled,
     },

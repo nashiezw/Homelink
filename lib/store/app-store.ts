@@ -4526,12 +4526,15 @@ export async function getHydratedStore() {
 }
 
 export function toPublicListing(listing: ListingRecord) {
-  const store = getStore();
-  const settings = {
-    ...defaultPlatformSettings.enquiries,
-    ...store.getPlatformSettings().enquiries,
-  };
-  const { ownerId: _ownerId, latitude, longitude, phone, whatsapp, ...publicListing } = listing;
-  const contact = settings.showPublicContactDetails ? { phone, whatsapp } : { phone: "", whatsapp: "" };
-  return { ...publicListing, ...contact, latitude, longitude };
+  const {
+    ownerId: _ownerId,
+    latitude,
+    longitude,
+    phone: _phone,
+    whatsapp: _whatsapp,
+    propertyOwnerEmail: _propertyOwnerEmail,
+    propertyOwnerPhone: _propertyOwnerPhone,
+    ...publicListing
+  } = listing;
+  return { ...publicListing, phone: "", whatsapp: "", latitude, longitude };
 }

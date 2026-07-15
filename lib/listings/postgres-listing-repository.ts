@@ -819,7 +819,14 @@ export async function addListingMediaInPostgres(listingId: string, userId: strin
 }
 
 export function toPublicPostgresListing(listing: ListingRecord): Listing {
-  const { ownerId: _ownerId, phone: _phone, whatsapp: _whatsapp, ...publicListing } = listing;
+  const {
+    ownerId: _ownerId,
+    phone: _phone,
+    whatsapp: _whatsapp,
+    propertyOwnerEmail: _propertyOwnerEmail,
+    propertyOwnerPhone: _propertyOwnerPhone,
+    ...publicListing
+  } = listing;
   return { ...publicListing, phone: "", whatsapp: "" };
 }
 

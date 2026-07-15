@@ -19,6 +19,9 @@ export async function POST(request: Request) {
   if (!body.listingId) {
     return problem(400, "INVALID_ENQUIRY", "listingId is required.");
   }
+  if (!String(body.phone ?? "").trim()) {
+    return problem(400, "INVALID_ENQUIRY", "Phone number is required so HomeLink can contact the client.");
+  }
 
   if (shouldUsePostgresEnquiries()) {
     const listing = await getListingFromPostgres(body.listingId);
@@ -26,13 +29,17 @@ export async function POST(request: Request) {
       return problem(404, "LISTING_NOT_FOUND", "Listing could not be found.");
     }
     const actor = userId ? await getEnquiryActor(userId) : null;
+    const seekerName = actor?.name ?? String(body.name ?? "").trim();
+    if (!seekerName) {
+      return problem(400, "INVALID_ENQUIRY", "Client name is required.");
+    }
     const enquiryType = (body.enquiryType as EnquiryType) ?? defaultEnquiryType(listing.type, listing.intent);
     const input: CreateEnquiryInput = {
       listingId: body.listingId,
       seekerId: userId ?? "guest",
-      seekerName: actor?.name ?? body.name ?? "Guest",
+      seekerName,
       seekerEmail: body.email,
-      seekerPhone: body.phone,
+      seekerPhone: String(body.phone).trim(),
       enquiryType,
       message: body.message ?? "",
       preferredDate: body.preferredDate,
@@ -58,14 +65,18 @@ export async function POST(request: Request) {
   }
 
   const user = userId ? store.getUserById(userId) : null;
+  const seekerName = user?.name ?? String(body.name ?? "").trim();
+  if (!seekerName) {
+    return problem(400, "INVALID_ENQUIRY", "Client name is required.");
+  }
   const enquiryType = (body.enquiryType as EnquiryType) ?? defaultEnquiryType(listing.type, listing.intent);
 
   const input: CreateEnquiryInput = {
     listingId: body.listingId,
     seekerId: user?.id ?? "guest",
-    seekerName: user?.name ?? body.name ?? "Guest",
+    seekerName,
     seekerEmail: body.email ?? user?.email,
-    seekerPhone: body.phone ?? user?.phone,
+    seekerPhone: String(body.phone).trim(),
     enquiryType,
     message: body.message ?? "",
     preferredDate: body.preferredDate,

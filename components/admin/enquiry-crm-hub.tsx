@@ -155,7 +155,6 @@ export function EnquiryCrmHub() {
             {(
               [
                 ["requireManagedEnquiries", "Require HomeLink-managed enquiries"],
-                ["showPublicContactDetails", "Show public contact details on listings"],
                 ["autoAssignAgents", "Auto-assign agents"],
                 ["notifyAdminOnNewEnquiry", "Notify admin on new enquiry"],
                 ["notifyOwnerOnNewEnquiry", "Notify owner on new enquiry"],
@@ -308,7 +307,22 @@ export function EnquiryCrmHub() {
                     <span className="text-slate-500">Customer:</span> {selected.seekerName}
                   </p>
                   <p className="text-slate-300">
+                    <span className="text-slate-500">Phone:</span> {selected.seekerPhone || "Not supplied"}
+                  </p>
+                  <p className="text-slate-300">
                     <span className="text-slate-500">Property:</span> {selected.listingTitle}
+                  </p>
+                  <p className="break-all text-slate-300">
+                    <span className="text-slate-500">Property ID:</span> {selected.listingId}
+                  </p>
+                  <p className="text-slate-300">
+                    <span className="text-slate-500">Enquiry type:</span> {ENQUIRY_TYPE_LABELS[selected.enquiryType]}
+                  </p>
+                  <p className="text-slate-300">
+                    <span className="text-slate-500">Date:</span> {new Date(selected.createdAt).toLocaleString()}
+                  </p>
+                  <p className="text-slate-300">
+                    <span className="text-slate-500">Status:</span> {ENQUIRY_STATUS_LABELS[selected.status]}
                   </p>
                   <p className="text-slate-300">
                     <span className="text-slate-500">Owner:</span> {selected.ownerName}
