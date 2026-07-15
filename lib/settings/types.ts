@@ -108,6 +108,8 @@ export type AdminPermission =
   | "platform:write"
   | "payments:read"
   | "payments:write"
+  | "enquiries:read"
+  | "enquiries:write"
   | "users:write"
   | "marketing:write"
   | "security:read"

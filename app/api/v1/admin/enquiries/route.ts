@@ -1,5 +1,5 @@
-import { getSessionUserIdFromRequest } from "@/lib/auth/session";
 import { ok, problem } from "@/lib/api/response";
+import { requireAdminAsync } from "@/lib/admin/require-admin";
 import { getMainPrisma } from "@/lib/db/main-prisma";
 import {
   addEnquiryNoteInPostgres,
@@ -14,12 +14,10 @@ import type { EnquiryStatus } from "@/lib/enquiries/types";
 import { getStore } from "@/lib/store/app-store";
 
 export async function GET(request: Request) {
-  const userId = getSessionUserIdFromRequest(request);
-  if (!userId) return problem(401, "UNAUTHORIZED", "Admin access required.");
+  const auth = await requireAdminAsync(request, "enquiries:read");
+  if ("error" in auth && auth.error) return auth.error;
+  const userId = auth.user.id;
   if (shouldUsePostgresEnquiries()) {
-    const actor = await getEnquiryActor(userId);
-    if (!actor?.roles.includes("ADMIN")) return problem(403, "FORBIDDEN", "Admin only.");
-
     const url = new URL(request.url);
     const status = url.searchParams.get("status");
     const q = url.searchParams.get("q") ?? undefined;
@@ -43,8 +41,6 @@ export async function GET(request: Request) {
     });
   }
   const store = getStore();
-  const user = store.getUserById(userId);
-  if (!user?.roles.includes("ADMIN")) return problem(403, "FORBIDDEN", "Admin only.");
 
   const url = new URL(request.url);
   const status = url.searchParams.get("status");
@@ -73,11 +69,12 @@ export async function GET(request: Request) {
 }
 
 export async function PATCH(request: Request) {
-  const userId = getSessionUserIdFromRequest(request);
-  if (!userId) return problem(401, "UNAUTHORIZED", "Admin access required.");
+  const auth = await requireAdminAsync(request, "enquiries:write");
+  if ("error" in auth && auth.error) return auth.error;
+  const userId = auth.user.id;
   if (shouldUsePostgresEnquiries()) {
     const actor = await getEnquiryActor(userId);
-    if (!actor?.roles.includes("ADMIN")) return problem(403, "FORBIDDEN", "Admin only.");
+    if (!actor) return problem(403, "FORBIDDEN", "Admin access required.");
     const body = await request.json();
     if (body.action === "update_settings") {
       return problem(501, "SETTINGS_NOT_MIGRATED", "Enquiry settings must be migrated to durable settings storage before production edits.");
@@ -112,7 +109,7 @@ export async function PATCH(request: Request) {
   }
   const store = getStore();
   const user = store.getUserById(userId);
-  if (!user?.roles.includes("ADMIN")) return problem(403, "FORBIDDEN", "Admin only.");
+  if (!user) return problem(403, "FORBIDDEN", "Admin access required.");
 
   const body = await request.json();
   const actor = { id: userId, name: user.name };

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { ImageUploader } from "@/components/ui/image-uploader";
 import { VideoUploader } from "@/components/ui/video-uploader";
 import { VisualSignaturePad } from "@/components/signatures/visual-signature-pad";
+import { trackEvent } from "@/lib/analytics/client";
 import { apiFetch } from "@/lib/api/client";
 import { AvailabilityField } from "@/components/listings/availability-field";
 import { HolidayHomeFields } from "@/components/holiday-homes/holiday-home-fields";
@@ -239,6 +240,7 @@ export function CreateListingForm({ onSuccess }: CreateListingFormProps) {
       }
 
       if (result.data?.id) {
+        trackEvent("listing_submitted", result.data.id, { type: form.type, intent: form.intent });
         showToast("Listing submitted for review!");
         onSuccess?.(result.data.id);
         router.push(`/listings/${result.data.slug ?? result.data.id}`);

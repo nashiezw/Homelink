@@ -20,6 +20,12 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     alternates: {
       canonical: `/rooms/${suburb.slug}`,
     },
+    openGraph: {
+      title: `Rooms to Rent in ${suburb.name}`,
+      description: `Verified rooms, shared accommodation, and affordable rentals in ${suburb.name}.`,
+      url: `/rooms/${suburb.slug}`,
+      type: "website",
+    },
   };
 }
 

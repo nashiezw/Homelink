@@ -26,11 +26,13 @@ const failures = [];
 const warnings = [];
 
 if (process.env.HOMELINK_STRICT_PRODUCTION !== "true") {
-  warnings.push("Set HOMELINK_STRICT_PRODUCTION=true for the final launch environment.");
+  failures.push("Set HOMELINK_STRICT_PRODUCTION=true for the final launch environment.");
 }
 
 if (!has("HOMELINK_SESSION_SECRET")) {
-  warnings.push("Set HOMELINK_SESSION_SECRET to a long random value so login cookies remain stable across deploys.");
+  failures.push("Set HOMELINK_SESSION_SECRET to a long random value so login cookies remain stable across deploys.");
+} else if (process.env.HOMELINK_SESSION_SECRET.length < 32) {
+  failures.push("HOMELINK_SESSION_SECRET must be at least 32 characters.");
 }
 
 if (!has("NEXT_PUBLIC_APP_URL") || isLocalUrl(process.env.NEXT_PUBLIC_APP_URL)) {
@@ -47,6 +49,9 @@ if (process.env.HOMELINK_STRICT_PRODUCTION === "true" && process.env.SETTINGS_DA
 
 for (const name of ["CLOUDINARY_CLOUD_NAME", "CLOUDINARY_API_KEY", "CLOUDINARY_API_SECRET"]) {
   if (!has(name)) failures.push(`${name} is required for durable production media uploads.`);
+}
+if (!has("HOMELINK_UPLOAD_SCAN_URL")) {
+  failures.push("HOMELINK_UPLOAD_SCAN_URL is required so production uploads are antivirus/content scanned.");
 }
 
 const smtpPassConfigured = has("SMTP_PASS") || has("SMTP_PASSWORD") || has("RESEND_API_KEY");

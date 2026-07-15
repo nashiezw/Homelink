@@ -13,6 +13,8 @@ This checklist tracks the remaining launch gates for taking HomeLink public.
 - [x] Verify payment webhooks before mutating payment state in live/strict production.
 - [x] Prevent sandbox auto-completion when strict production is enabled.
 - [x] Add production configuration checks for required secrets and unsafe defaults.
+- [x] Fail production session signing unless `HOMELINK_SESSION_SECRET` is present and strong.
+- [x] Make strict production and upload scanning mandatory in the production env check.
 - [x] Keep smoke tests passing against the standalone production build.
 
 ## Infrastructure Gates
@@ -33,5 +35,7 @@ This checklist tracks the remaining launch gates for taking HomeLink public.
 - [ ] Verify admin RBAC assignments for real operators.
 - [ ] Confirm backup and restore process for database and uploaded media.
 - [ ] Confirm monitoring for API errors, auth failures, upload failures, payment failures, and webhook failures.
+- [ ] Run a restore drill: recover the database plus uploaded media into a temporary environment and verify listings, payments, enquiries, and gallery files still line up.
+- [ ] Keep [observability-runbook.md](./observability-runbook.md), [backup-restore-drill.md](./backup-restore-drill.md), and [mobile-launch-scan.md](./mobile-launch-scan.md) with launch evidence.
 - [ ] Run `npm run check:production` against final production environment variables.
 - [ ] Run a final smoke test on the deployed URL.

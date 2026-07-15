@@ -8,6 +8,7 @@ import { ListingCard } from "@/components/listings/listing-card";
 import { PropertyMap } from "@/components/maps/property-map";
 import { useApp } from "@/components/providers/app-provider";
 import { Button } from "@/components/ui/button";
+import { trackEvent } from "@/lib/analytics/client";
 import { apiFetch } from "@/lib/api/client";
 import {
   affordabilityBudgetParam,
@@ -303,6 +304,7 @@ export function SearchPageClient({ initialSearchParams = EMPTY_INITIAL_SEARCH_PA
     params.delete("cursor");
     if (value === "newest") params.delete("sort");
     else params.set("sort", value);
+    trackEvent("filter_changed", "search", { filter: "sort", value });
     router.push(`/search?${params.toString()}`);
   }
 
@@ -374,6 +376,7 @@ export function SearchPageClient({ initialSearchParams = EMPTY_INITIAL_SEARCH_PA
     } else {
       params.set(filter.key, filter.value);
     }
+    trackEvent("filter_changed", "search", { filter: filter.key, value: filter.value });
     router.push(`/search?${params.toString()}`);
   }
 
@@ -385,6 +388,7 @@ export function SearchPageClient({ initialSearchParams = EMPTY_INITIAL_SEARCH_PA
     } else {
       params.set(key, "true");
     }
+    trackEvent("filter_changed", "search", { filter: key, value: params.get(key) === "true" });
     router.push(`/search?${params.toString()}`);
   }
 
@@ -405,6 +409,7 @@ export function SearchPageClient({ initialSearchParams = EMPTY_INITIAL_SEARCH_PA
       const params = applyParsedFilters(searchParams, result.data.parsed);
       params.set("ai", aiQuery.trim());
       router.push(`/search?${params.toString()}`);
+      trackEvent("search_submitted", "ai_search", { query: aiQuery.slice(0, 80), matches: result.data.matches.length });
       setAiOpen(false);
       showToast(`AI applied filters for ${result.data.matches.length} matching listings.`);
     } else {
@@ -463,6 +468,11 @@ export function SearchPageClient({ initialSearchParams = EMPTY_INITIAL_SEARCH_PA
               } else {
                 params.delete("maxPrice");
               }
+              trackEvent("search_submitted", "search_form", {
+                location: location.trim(),
+                maxPrice,
+                intent: intent ?? "",
+              });
               router.push(`/search?${params.toString()}`);
             }}
           >
@@ -502,6 +512,7 @@ export function SearchPageClient({ initialSearchParams = EMPTY_INITIAL_SEARCH_PA
                   } else {
                     params.delete("type");
                   }
+                  trackEvent("filter_changed", "search", { filter: "type", value: event.target.value || "any" });
                   router.push(`/search?${params.toString()}`);
                 }}
               >

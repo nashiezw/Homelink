@@ -20,6 +20,12 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     alternates: {
       canonical: `/property-for-sale/${city.slug}`,
     },
+    openGraph: {
+      title: `Property for Sale in ${city.name}`,
+      description: `Verified houses, flats, land, and commercial property for sale in ${city.name}.`,
+      url: `/property-for-sale/${city.slug}`,
+      type: "website",
+    },
   };
 }
 

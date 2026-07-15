@@ -9,14 +9,16 @@ import {
   listingPhotoSvgFallback,
   resolvePublicImageUrl,
 } from "@/lib/media/resolve-public-image";
+import { trackEvent } from "@/lib/analytics/client";
 import { cn } from "@/lib/utils";
 
 type MediaGalleryProps = {
   images: string[];
   title: string;
+  listingId?: string;
 };
 
-export function MediaGallery({ images, title }: MediaGalleryProps) {
+export function MediaGallery({ images, title, listingId }: MediaGalleryProps) {
   const unique = useMemo(
     () =>
       [...new Set(images.map((src) => resolvePublicImageUrl(src) ?? src).filter(Boolean))],
@@ -66,7 +68,10 @@ export function MediaGallery({ images, title }: MediaGalleryProps) {
       <div className="mt-5 space-y-3 sm:mt-6">
         <button
           type="button"
-          onClick={() => setLightbox(true)}
+          onClick={() => {
+            if (listingId) trackEvent("gallery_opened", listingId, { imageCount: unique.length });
+            setLightbox(true);
+          }}
           className={cn(
             "relative block w-full overflow-hidden rounded-xl ring-1 ring-slate-200/70 dark:ring-slate-800",
             mainIsPlaceholder

@@ -26,6 +26,7 @@ import { PageShell } from "@/components/layout/page-shell";
 import { PaymentProofUpload } from "@/components/payments/payment-proof-upload";
 import { useApp } from "@/components/providers/app-provider";
 import { Button } from "@/components/ui/button";
+import { trackEvent } from "@/lib/analytics/client";
 import { apiFetch } from "@/lib/api/client";
 import {
   buildCheckoutPlans,
@@ -137,6 +138,7 @@ export function PaymentsPageClient() {
     if (!selectedPlan) return;
 
     setCheckoutBusy(true);
+    trackEvent("payment_started", selectedPlan.id, { method: paymentMethod, listingId: listingId || "" });
     const result = await apiFetch<{ redirectUrl: string; message?: string }>("/api/v1/payments/checkout", {
       method: "POST",
       body: JSON.stringify({

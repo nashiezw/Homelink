@@ -1,14 +1,10 @@
-"use client";
+import { LearnerCoursePageClient } from "@/components/academy/learner-course-page-client";
+import { requireServerRole } from "@/lib/auth/server-session";
 
-import { use } from "react";
-import { CourseLearnerView } from "@/components/academy/course-learner-view";
-import { RequireRole } from "@/components/auth/require-role";
-
-export default function LearnerCoursePage({ params }: { params: Promise<{ courseId: string }> }) {
-  const { courseId } = use(params);
-  return (
-    <RequireRole roles={["PUBLIC_LEARNER", "TRAINER", "AGENT", "ADMIN", "ACADEMY_ADMIN"]}>
-      <CourseLearnerView courseId={courseId} />
-    </RequireRole>
-  );
+export default async function LearnerCoursePage({ params }: { params: Promise<{ courseId: string }> }) {
+  const { courseId } = await params;
+  await requireServerRole(["PUBLIC_LEARNER", "TRAINER", "AGENT", "ADMIN", "ACADEMY_ADMIN"], {
+    next: `/dashboard/academy/${courseId}`,
+  });
+  return <LearnerCoursePageClient courseId={courseId} />;
 }

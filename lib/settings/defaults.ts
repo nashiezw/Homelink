@@ -256,7 +256,7 @@ export const defaultPlatformSettings: PlatformSettings = {
       viewer: {
         label: "Viewer",
         description: "Read-only platform configuration.",
-        permissions: ["platform:read", "security:read", "payments:read"],
+        permissions: ["platform:read", "security:read", "payments:read", "enquiries:read"],
       },
       finance: {
         label: "Finance",
@@ -276,7 +276,7 @@ export const defaultPlatformSettings: PlatformSettings = {
       technical_support: {
         label: "Technical Support",
         description: "Handle technical tickets and system health triage.",
-        permissions: ["platform:read", "security:read"],
+        permissions: ["platform:read", "security:read", "enquiries:read", "enquiries:write"],
       },
       trust_safety: {
         label: "Trust & Safety",
@@ -301,6 +301,8 @@ export const defaultPlatformSettings: PlatformSettings = {
           "platform:write",
           "payments:read",
           "payments:write",
+          "enquiries:read",
+          "enquiries:write",
           "users:write",
           "marketing:write",
           "security:read",

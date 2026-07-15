@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { PageShell } from "@/components/layout/page-shell";
 import { EditListingForm } from "@/components/listings/edit-listing-form";
+import { requireServerRole } from "@/lib/auth/server-session";
 
-export default function EditListingPage() {
+export default async function EditListingPage() {
+  await requireServerRole(["LANDLORD", "AGENT", "AGENCY_ADMIN", "ADMIN"], { next: "/dashboard/landlord" });
   return (
     <PageShell
       eyebrow="Listing studio"

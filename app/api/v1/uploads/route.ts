@@ -5,6 +5,7 @@ import { createCloudinaryUploadIntent, hasCloudinaryConfig } from "@/lib/integra
 import { requireStrictProductionConfig } from "@/lib/production/runtime";
 import { getUploadLimitsMb } from "@/lib/settings/runtime";
 import { created, problem } from "@/lib/api/response";
+import { scanUpload, sniffUpload, validateUploadDataUrl, type UploadKind } from "@/lib/uploads/security";
 
 export const dynamic = "force-dynamic";
 
@@ -27,45 +28,32 @@ export async function POST(request: Request) {
 
   const body = await request.json();
   const dataUrl = typeof body.dataUrl === "string" ? body.dataUrl : "";
-  const kind = body.kind === "video" ? "video" : body.kind === "document" ? "document" : "image";
+  const kind: UploadKind = body.kind === "video" ? "video" : body.kind === "document" ? "document" : body.kind === "audio" ? "audio" : "image";
   const folder = typeof body.folder === "string" ? body.folder.replace(/[^a-z0-9_-]/gi, "") : "general";
 
-  const imageMatch = dataUrl.match(/^data:image\/(\w+);base64,(.+)$/);
-  const videoMatch = kind === "video" ? dataUrl.match(/^data:video\/(\w+);base64,(.+)$/) : null;
-  const documentMatch = kind === "document"
-    ? dataUrl.match(/^data:([\w.+-]+\/[\w.+-]+|application\/vnd\.[\w.+-]+|application\/x-zip-compressed|application\/zip);base64,(.+)$/)
-    : null;
+  const validation = validateUploadDataUrl(dataUrl, kind, folder);
+  if ("error" in validation) return problem(400, "INVALID_MEDIA", validation.error);
 
-  let ext: string;
-  let base64: string;
-
-  if (videoMatch) {
-    ext = videoMatch[1] === "quicktime" ? "mov" : videoMatch[1];
-    base64 = videoMatch[2];
-  } else if (documentMatch) {
-    ext = extensionForMime(documentMatch[1]);
-    base64 = documentMatch[2];
-  } else if (imageMatch) {
-    ext = imageMatch[1] === "jpeg" ? "jpg" : imageMatch[1];
-    base64 = imageMatch[2];
-  } else {
-    return problem(400, "INVALID_MEDIA", "Provide a valid image, video, PDF, DOCX, XLSX, PPTX, audio, or ZIP data URL.");
-  }
-
-  const buffer = Buffer.from(base64, "base64");
+  const buffer = Buffer.from(validation.base64, "base64");
   const maxImageBytes = getUploadLimitsMb() * 1024 * 1024;
-  const maxBytes = videoMatch ? MAX_VIDEO_BYTES : documentMatch ? 50 * 1024 * 1024 : maxImageBytes;
+  const maxBytes = validation.kind === "video" ? MAX_VIDEO_BYTES : validation.kind === "document" ? 25 * 1024 * 1024 : validation.kind === "audio" ? 15 * 1024 * 1024 : maxImageBytes;
 
   if (buffer.length > maxBytes) {
     return problem(
       400,
       "FILE_TOO_LARGE",
-      videoMatch ? "Video must be under 25 MB." : documentMatch ? "Document must be under 50 MB." : `Image must be under ${getUploadLimitsMb()} MB.`,
+      validation.kind === "video" ? "Video must be under 25 MB." : validation.kind === "document" ? "Document must be under 25 MB." : validation.kind === "audio" ? "Audio must be under 15 MB." : `Image must be under ${getUploadLimitsMb()} MB.`,
     );
   }
 
+  const sniffed = sniffUpload(buffer, validation.mime);
+  if (!sniffed.ok) return problem(400, "MEDIA_SIGNATURE_MISMATCH", sniffed.reason);
+
+  const scanned = await scanUpload(buffer, validation.mime);
+  if (!scanned.ok) return problem(503, "UPLOAD_SCAN_FAILED", scanned.reason);
+
   if (hasCloudinaryConfig()) {
-    const resourceType = videoMatch ? "video" : documentMatch ? "raw" : "image";
+    const resourceType = validation.kind === "video" ? "video" : validation.kind === "document" || validation.kind === "audio" ? "raw" : "image";
     const intent = createCloudinaryUploadIntent({
       folder: `homelink/${folder}`,
       publicIdPrefix: `${folder}/${userId.slice(0, 8)}`,
@@ -80,7 +68,7 @@ export async function POST(request: Request) {
     for (const [key, value] of Object.entries(intent.fields)) {
       form.append(key, String(value));
     }
-    form.append("file", new Blob([buffer]), `upload.${ext}`);
+    form.append("file", new Blob([buffer]), `upload.${validation.ext}`);
 
     const upload = await fetch(intent.uploadUrl, { method: "POST", body: form });
     const cloudinary = (await upload.json()) as CloudinaryUploadResponse;
@@ -95,7 +83,7 @@ export async function POST(request: Request) {
 
     return created({
       url: cloudinary.secure_url,
-      filename: cloudinary.public_id ?? `upload.${ext}`,
+      filename: cloudinary.public_id ?? `upload.${validation.ext}`,
       size: cloudinary.bytes ?? buffer.length,
       kind: cloudinary.resource_type ?? resourceType,
       format: cloudinary.format,
@@ -110,32 +98,9 @@ export async function POST(request: Request) {
   const dir = path.join(process.cwd(), "public", "uploads", folder);
   await mkdir(dir, { recursive: true });
 
-  const filename = `${userId.slice(0, 8)}_${Date.now()}.${ext}`;
+  const filename = `${userId.slice(0, 8)}_${Date.now()}.${validation.ext}`;
   await writeFile(path.join(dir, filename), buffer);
 
   const url = `/uploads/${folder}/${filename}`;
-  const responseKind = videoMatch ? "video" : documentMatch ? "document" : "image";
-  return created({ url, filename, size: buffer.length, kind: responseKind });
-}
-
-function extensionForMime(mime: string) {
-  const known: Record<string, string> = {
-    "application/pdf": "pdf",
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
-    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "xlsx",
-    "application/vnd.openxmlformats-officedocument.presentationml.presentation": "pptx",
-    "application/msword": "doc",
-    "application/vnd.ms-excel": "xls",
-    "application/vnd.ms-powerpoint": "ppt",
-    "application/zip": "zip",
-    "application/x-zip-compressed": "zip",
-    "audio/mpeg": "mp3",
-    "audio/mp4": "m4a",
-    "audio/wav": "wav",
-    "audio/webm": "webm",
-  };
-  if (known[mime]) return known[mime];
-  if (mime.startsWith("image/")) return mime.split("/")[1].replace("jpeg", "jpg");
-  if (mime.startsWith("audio/")) return mime.split("/")[1];
-  return "bin";
+  return created({ url, filename, size: buffer.length, kind: validation.kind });
 }

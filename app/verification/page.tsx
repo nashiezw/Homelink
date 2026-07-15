@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { BadgeCheck, Building2, Phone, ShieldCheck, UserCheck } from "lucide-react";
+import { BadgeCheck, Building2, FileSignature, Phone, ShieldCheck, UserCheck, WalletCards } from "lucide-react";
 import Link from "next/link";
 import { PageShell } from "@/components/layout/page-shell";
 
@@ -14,24 +14,49 @@ export const metadata: Metadata = {
 
 const checks = [
   {
-    title: "Landlord & agent identity",
-    body: "Phone, email, and profile checks help seekers know who they are contacting before they pay or visit.",
+    title: "Identity checked",
+    body: "Landlords, agents, and operators are checked against account, phone, email, and profile signals before trust badges are shown.",
     icon: UserCheck,
   },
   {
-    title: "Listing freshness",
-    body: "Stale, duplicate, and suspicious listings are flagged through automated checks and community reports.",
-    icon: ShieldCheck,
-  },
-  {
-    title: "Property signals",
-    body: "Verified badges, suburb context, and clear availability help you compare options with confidence.",
+    title: "Property checked",
+    body: "HomeLink reviews listing details, photos, duplicate signals, suburb consistency, and suspicious pricing before promoting a listing as verified.",
     icon: Building2,
   },
   {
-    title: "Tenancy records",
-    body: "Verified stays through payment or lease on HomeLink build trusted reference history for both parties.",
+    title: "Availability checked",
+    body: "Availability status is reviewed through owner updates, user reports, and expiry checks so stale listings can be paused or marked off market.",
     icon: BadgeCheck,
+  },
+  {
+    title: "Owner agreement signed",
+    body: "Where HomeLink manages a property or lead, the owner or authorised agent must agree to listing, contact, and viewing terms.",
+    icon: FileSignature,
+  },
+  {
+    title: "Payment safety",
+    body: "Payment states stay explicit: pending proof, verified, rejected, refunded, failed webhook, or manual transfer pending.",
+    icon: WalletCards,
+  },
+  {
+    title: "Report process",
+    body: "Every listing can be reported. Trust and safety reviews stale, fake, duplicate, scam, and unavailable reports before action is taken.",
+    icon: ShieldCheck,
+  },
+];
+
+const meaning = [
+  {
+    title: "Verified is not a guarantee",
+    body: "It means HomeLink has checked the available signals and will keep the record accountable. Seekers should still confirm viewing details and never pay outside the agreed process.",
+  },
+  {
+    title: "Verified can be removed",
+    body: "Bad reports, stale availability, rejected documents, or owner disputes can remove a badge and trigger admin review.",
+  },
+  {
+    title: "Verification leaves an audit trail",
+    body: "Admin actions, reports, payment proof, and listing updates are logged so HomeLink can investigate disputes.",
   },
 ];
 
@@ -63,7 +88,7 @@ export default function VerificationPage() {
         </Link>
       }
     >
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {checks.map(({ title, body, icon: Icon }) => (
           <article key={title} className="premium-card rounded-lg p-5">
             <span className="flex size-11 items-center justify-center rounded-md bg-emerald-50 text-emerald-700">
@@ -111,6 +136,18 @@ export default function VerificationPage() {
             </Link>
           </div>
         </aside>
+      </section>
+
+      <section className="mt-10 rounded-lg border border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-slate-900">
+        <h2 className="text-xl font-semibold text-ink dark:text-white">What the badge means</h2>
+        <div className="mt-4 grid gap-4 md:grid-cols-3">
+          {meaning.map((item) => (
+            <article key={item.title} className="rounded-lg bg-slate-50 p-4 dark:bg-slate-950/60">
+              <h3 className="font-semibold text-ink dark:text-white">{item.title}</h3>
+              <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">{item.body}</p>
+            </article>
+          ))}
+        </div>
       </section>
     </PageShell>
   );

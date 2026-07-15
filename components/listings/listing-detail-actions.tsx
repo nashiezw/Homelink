@@ -6,6 +6,7 @@ import { EnquiryPanel } from "@/components/enquiries/enquiry-panel";
 import { AppointmentBookingPanel } from "@/components/listings/appointment-booking-panel";
 import { useApp } from "@/components/providers/app-provider";
 import { Button } from "@/components/ui/button";
+import { trackEvent } from "@/lib/analytics/client";
 import { apiFetch } from "@/lib/api/client";
 import { listingStatusMeta } from "@/lib/listings/status";
 import type { Listing } from "@/lib/types";
@@ -69,6 +70,7 @@ export function ListingDetailActions({ listing }: ListingDetailActionsProps) {
     }
 
     setContactReveal((current) => ({ ...current, [channel]: result.data!.contact }));
+    trackEvent(channel === "whatsapp" ? "whatsapp_click" : "enquiry_started", listing.id, { enquiryId: result.data.enquiryId });
     showToast("Contact intent logged. HomeLink can now track this lead.", "success");
     openContact(channel, result.data.contact);
   }
@@ -83,7 +85,10 @@ export function ListingDetailActions({ listing }: ListingDetailActionsProps) {
         <Button
           variant="secondary"
           className={`w-full ${isFavourite(listing.id) ? "border-emerald-300 bg-emerald-50" : ""}`}
-          onClick={() => void toggleFavourite(listing.id)}
+          onClick={() => {
+            trackEvent("saved_listing", listing.id, { source: "listing_detail" });
+            void toggleFavourite(listing.id);
+          }}
         >
           <Heart className="size-4 shrink-0" aria-hidden="true" />
           {isFavourite(listing.id) ? "Saved" : "Save"}

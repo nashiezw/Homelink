@@ -8,35 +8,30 @@ import { getMailtoHref, getTelHref, getWhatsAppHref } from "@/lib/settings/conta
 
 const groups = [
   {
-    title: "Marketplace",
+    title: "Find a home",
     items: [
-      ["Rent rooms", "/search?intent=rent&type=room"],
-      ["Buy property", "/search?intent=buy"],
-      ["Commercial property", "/search?type=commercial"],
-      ["Holiday stays", "/search?type=holiday_home"],
-      ["Development land", "/search?type=land"],
+      ["Rent in Harare", "/rent/harare"],
+      ["Rooms in Avondale", "/rooms/avondale"],
+      ["Buy in Bulawayo", "/property-for-sale/bulawayo"],
       ["Roommate matching", "/roommates"],
-      ["Compare", "/compare"],
-      ["Property calculators", "/calculators"],
     ],
   },
   {
-    title: "Trust",
+    title: "List/manage property",
     items: [
-      ["Verification", "/verification"],
-      ["Report listing", "/report-listing"],
+      ["List property", "/dashboard/landlord/new"],
+      ["Landlord dashboard", "/dashboard/landlord"],
+      ["Property management", "/property-management"],
+      ["Agent academy", "/academy"],
+    ],
+  },
+  {
+    title: "Trust & support",
+    items: [
+      ["What verified means", "/verification"],
       ["Safety centre", "/safety"],
-      ["Reviews", "/search?verifiedOnly=true"],
-      ["Saved alerts", "/saved"],
-      ["My enquiries", "/enquiries"],
-    ],
-  },
-  {
-    title: "Agents",
-    items: [
-      ["Become an Agent", "/become-agent"],
-      ["Agent dashboard", "/dashboard/agent"],
-      ["Apply now", "/become-agent/apply"],
+      ["Report listing", "/report-listing"],
+      ["Contact support", "/contact"],
     ],
   },
   {
@@ -44,11 +39,8 @@ const groups = [
     items: [
       ["About", "/about"],
       ["Careers", "/careers"],
-      ["Contact", "/contact"],
       ["Terms", "/terms"],
       ["Privacy", "/privacy"],
-      ["Messages", "/messages"],
-      ["Enquiry inbox", "/enquiries"],
     ],
   },
 ];

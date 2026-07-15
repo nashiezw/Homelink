@@ -8,6 +8,7 @@ import { usePlatformConfig } from "@/components/providers/platform-config-provid
 import { Button } from "@/components/ui/button";
 import { enquiryActionsForListing, ENQUIRY_TYPE_LABELS } from "@/lib/enquiries/labels";
 import type { EnquiryType } from "@/lib/enquiries/types";
+import { trackEvent } from "@/lib/analytics/client";
 import { apiFetch } from "@/lib/api/client";
 import type { Listing } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -59,6 +60,7 @@ export function EnquiryPanel({ listing, className }: EnquiryPanelProps) {
     setSubmitting(false);
 
     if (result.data) {
+      trackEvent("enquiry_completed", listing.id, { enquiryId: result.data.id, enquiryType });
       setOpen(false);
       setMessage("");
       showToast("Your enquiry has been sent to HomeLink. A property consultant will contact you shortly.");
@@ -92,6 +94,7 @@ export function EnquiryPanel({ listing, className }: EnquiryPanelProps) {
             className="h-12 w-full justify-center px-3 text-sm sm:h-11"
             onClick={() => {
               setEnquiryType(action.type);
+              trackEvent("enquiry_started", listing.id, { enquiryType: action.type });
               setOpen(true);
             }}
           >

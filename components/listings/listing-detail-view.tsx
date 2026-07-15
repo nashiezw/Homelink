@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import {
   BadgeCheck,
   MapPin,
@@ -18,6 +19,7 @@ import { MediaGallery } from "@/components/listings/media-gallery";
 import { VirtualTourViewer } from "@/components/listings/virtual-tour-viewer";
 import { TenancyActions } from "@/components/tenancies/tenancy-actions";
 import { PropertyMap } from "@/components/maps/property-map";
+import { trackEvent } from "@/lib/analytics/client";
 import { listingAvailabilityDisplay } from "@/lib/listings/status";
 import { formatNightlyPrice, formatPrice } from "@/lib/utils";
 import type { Listing } from "@/lib/types";
@@ -46,6 +48,10 @@ export function ListingDetailView({
   const virtualTour = listing.virtualTour?.status === "PUBLISHED" ? listing.virtualTour : null;
   const isHoliday = listing.type === "holiday_home" && listing.holidayHome;
   const detailRows = buildDetailRows(listing);
+
+  useEffect(() => {
+    trackEvent("listing_viewed", listing.id, { type: listing.type, intent: listing.intent });
+  }, [listing.id, listing.intent, listing.type]);
   const renderActionPanel = () => (
     <>
       {isHoliday ? (
@@ -105,7 +111,7 @@ export function ListingDetailView({
           </div>
         </div>
 
-        <MediaGallery images={galleryImages} title={listing.title} />
+        <MediaGallery images={galleryImages} title={listing.title} listingId={listing.id} />
       </section>
 
       <section className="mx-auto grid max-w-7xl gap-6 px-4 pb-14 sm:gap-8 sm:px-6 md:grid-cols-[minmax(0,1fr)_minmax(260px,300px)] lg:grid-cols-[minmax(0,1fr)_minmax(280px,340px)] lg:px-8">

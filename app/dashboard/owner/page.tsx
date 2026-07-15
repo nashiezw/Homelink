@@ -2,10 +2,12 @@ import Link from "next/link";
 import { RequireRole } from "@/components/auth/require-role";
 import { PageShell } from "@/components/layout/page-shell";
 import { OwnerPortal } from "@/components/property-management/owner-portal";
+import { requireServerRole } from "@/lib/auth/server-session";
 
 export const dynamic = "force-dynamic";
 
-export default function OwnerDashboardPage() {
+export default async function OwnerDashboardPage() {
+  await requireServerRole([], { anySignedIn: true, next: "/dashboard/owner" });
   return (
     <RequireRole roles={[]} anySignedIn>
       <PageShell

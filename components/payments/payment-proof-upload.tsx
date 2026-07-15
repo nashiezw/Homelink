@@ -3,6 +3,7 @@
 import { Loader2, Upload } from "lucide-react";
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { trackEvent } from "@/lib/analytics/client";
 import { apiFetch } from "@/lib/api/client";
 
 function readFile(file: File): Promise<string> {
@@ -45,6 +46,7 @@ export function PaymentProofUpload({
 
     if (uploaded.error || !uploaded.data) {
       setBusy(false);
+      trackEvent("upload_failed", paymentId, { stage: "storage", reason: uploaded.error?.code ?? "unknown" });
       showToast(uploaded.error?.message ?? "Proof upload failed.", "error");
       return;
     }
@@ -56,6 +58,7 @@ export function PaymentProofUpload({
     setBusy(false);
 
     if (proof.error) {
+      trackEvent("upload_failed", paymentId, { stage: "proof_submit", reason: proof.error.code ?? "unknown" });
       showToast(proof.error.message ?? "Could not submit proof.", "error");
       return;
     }

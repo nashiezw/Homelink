@@ -2,8 +2,10 @@ import Link from "next/link";
 import { RequireRole } from "@/components/auth/require-role";
 import { PageShell } from "@/components/layout/page-shell";
 import { TenanciesDashboard } from "@/components/tenancies/tenancies-dashboard";
+import { requireServerRole } from "@/lib/auth/server-session";
 
-export default function TenanciesPage() {
+export default async function TenanciesPage() {
+  await requireServerRole([], { anySignedIn: true, next: "/dashboard/tenancies" });
   return (
     <RequireRole roles={[]} anySignedIn>
       <PageShell

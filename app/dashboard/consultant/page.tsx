@@ -2,10 +2,12 @@ import Link from "next/link";
 import { RequireRole } from "@/components/auth/require-role";
 import { PageShell } from "@/components/layout/page-shell";
 import { ConsultantDashboard } from "@/components/property-management/consultant-dashboard";
+import { requireServerRole } from "@/lib/auth/server-session";
 
 export const dynamic = "force-dynamic";
 
-export default function ConsultantDashboardPage() {
+export default async function ConsultantDashboardPage() {
+  await requireServerRole(["CONSULTANT", "ADMIN"], { next: "/dashboard/consultant" });
   return (
     <RequireRole roles={["CONSULTANT", "ADMIN"]}>
       <PageShell

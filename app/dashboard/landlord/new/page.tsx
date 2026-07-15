@@ -2,8 +2,10 @@ import Link from "next/link";
 import { RequireRole } from "@/components/auth/require-role";
 import { CreateListingForm } from "@/components/listings/create-listing-form";
 import { PageShell } from "@/components/layout/page-shell";
+import { requireServerRole } from "@/lib/auth/server-session";
 
-export default function NewListingPage() {
+export default async function NewListingPage() {
+  await requireServerRole(["LANDLORD", "AGENT", "AGENCY_ADMIN", "ADMIN"], { next: "/dashboard/landlord/new" });
   return (
     <RequireRole roles={["LANDLORD", "AGENT", "AGENCY_ADMIN", "ADMIN"]}>
       <PageShell

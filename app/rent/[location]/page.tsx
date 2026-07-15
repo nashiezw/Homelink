@@ -20,6 +20,12 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     alternates: {
       canonical: `/rent/${city.slug}`,
     },
+    openGraph: {
+      title: `Property to Rent in ${city.name}`,
+      description: `Verified rental listings in ${city.name}, Zimbabwe on HomeLink.`,
+      url: `/rent/${city.slug}`,
+      type: "website",
+    },
   };
 }
 
