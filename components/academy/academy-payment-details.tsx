@@ -1,6 +1,7 @@
 "use client";
 
 import { ShieldCheck } from "lucide-react";
+import { usePlatformConfig } from "@/components/providers/platform-config-provider";
 import { formatBankDetailLabel, resolveManualMethod, type PublicPaymentConfig } from "@/lib/payments/public-payment-config";
 
 export function AcademyPaymentDetails({
@@ -20,10 +21,13 @@ export function AcademyPaymentDetails({
   variant?: "default" | "proof";
   title?: string;
 }) {
+  const { config: platformConfig } = usePlatformConfig();
   const method = resolveManualMethod(config, paymentMethod);
   const bankDetails = config?.bankDetails;
   const priceLabel = amount > 0 ? `${currency} ${amount.toFixed(2)}` : "Free";
   const methodHasBankDetails = Boolean(method?.accountNumber && method?.bankName);
+  const supportEmail = platformConfig?.contact.supportEmail?.trim() ?? "";
+  const supportLabel = supportEmail || "HouseLink support";
 
   const shellClass =
     variant === "proof"
@@ -71,7 +75,7 @@ export function AcademyPaymentDetails({
       )}
 
       {!method && config && (
-        <p className="mt-3 text-xs text-amber-700 dark:text-amber-300">Payment method details are unavailable. Contact support@houselinkzim.co.zw.</p>
+        <p className="mt-3 text-xs text-amber-700 dark:text-amber-300">Payment method details are unavailable. Contact {supportLabel}.</p>
       )}
 
       {!config && (

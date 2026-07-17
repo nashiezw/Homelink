@@ -81,6 +81,11 @@ function internalRel(href: string) {
 export function SiteFooter() {
   const { config } = usePlatformConfig();
   const contact = config?.contact ?? null;
+  const supportEmail = contact?.supportEmail?.trim() ?? "";
+  const phoneNumber = contact?.phoneNumber?.trim() ?? "";
+  const phoneLabel = contact?.phoneLabel?.trim() || phoneNumber;
+  const whatsappNumber = contact?.whatsappNumber?.trim() ?? "";
+  const whatsappLabel = contact?.whatsappLabel?.trim() || whatsappNumber;
 
   return (
     <footer className="relative border-t border-slate-800 bg-ink text-white">
@@ -98,31 +103,37 @@ export function SiteFooter() {
               Zimbabwe-focused search.
             </p>
 
-            {contact && (
+            {contact && (supportEmail || phoneNumber || whatsappNumber) && (
               <div className="mt-5 flex flex-wrap gap-x-5 gap-y-2.5 text-sm text-slate-300">
-                <a
-                  href={getMailtoHref(contact.supportEmail)}
-                  className="inline-flex items-center gap-2 transition hover:text-emerald-300"
-                >
-                  <Mail className="size-4" />
-                  {contact.supportEmail}
-                </a>
-                <a
-                  href={getTelHref(contact)}
-                  className="inline-flex items-center gap-2 transition hover:text-emerald-300"
-                >
-                  <Phone className="size-4" />
-                  {contact.phoneLabel || contact.phoneNumber}
-                </a>
-                <a
-                  href={getWhatsAppHref(contact)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 transition hover:text-emerald-300"
-                >
-                  <MessageCircle className="size-4" />
-                  WhatsApp {contact.whatsappLabel || contact.whatsappNumber}
-                </a>
+                {supportEmail && (
+                  <a
+                    href={getMailtoHref(supportEmail)}
+                    className="inline-flex items-center gap-2 transition hover:text-emerald-300"
+                  >
+                    <Mail className="size-4" />
+                    {supportEmail}
+                  </a>
+                )}
+                {phoneNumber && (
+                  <a
+                    href={getTelHref(contact)}
+                    className="inline-flex items-center gap-2 transition hover:text-emerald-300"
+                  >
+                    <Phone className="size-4" />
+                    {phoneLabel}
+                  </a>
+                )}
+                {whatsappNumber && (
+                  <a
+                    href={getWhatsAppHref(contact)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 transition hover:text-emerald-300"
+                  >
+                    <MessageCircle className="size-4" />
+                    WhatsApp {whatsappLabel}
+                  </a>
+                )}
               </div>
             )}
           </div>

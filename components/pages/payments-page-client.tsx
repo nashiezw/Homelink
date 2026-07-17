@@ -25,6 +25,7 @@ import { AcademyPaymentDetails } from "@/components/academy/academy-payment-deta
 import { PageShell } from "@/components/layout/page-shell";
 import { PaymentProofUpload } from "@/components/payments/payment-proof-upload";
 import { useApp } from "@/components/providers/app-provider";
+import { usePlatformConfig } from "@/components/providers/platform-config-provider";
 import { Button } from "@/components/ui/button";
 import { trackEvent } from "@/lib/analytics/client";
 import { apiFetch } from "@/lib/api/client";
@@ -50,6 +51,7 @@ type PageTab = "checkout" | "history";
 
 export function PaymentsPageClient() {
   const { user, showToast } = useApp();
+  const { config: platformConfig } = usePlatformConfig();
   const searchParams = useSearchParams();
   const [config, setConfig] = useState<PaymentConfigResponse | null>(null);
   const [payments, setPayments] = useState<Payment[]>([]);
@@ -69,6 +71,8 @@ export function PaymentsPageClient() {
   const paymentMethods = useMemo(() => resolvePaymentMethods(config), [config]);
   const manualMethods = paymentMethods.filter((method) => method.kind === "manual");
   const onlineMethods = paymentMethods.filter((method) => method.kind === "online");
+  const supportEmail = platformConfig?.contact.supportEmail?.trim() ?? "";
+  const supportLabel = supportEmail || "HouseLink support";
 
   const refreshPayments = useCallback(() => {
     if (!user) return;
@@ -171,7 +175,7 @@ export function PaymentsPageClient() {
         { label: "Proof review", value: "Finance verified" },
       ]}
     >
-      {statusParam && !selectedPaymentId && <StatusBanner status={statusParam} />}
+      {statusParam && !selectedPaymentId && <StatusBanner status={statusParam} supportLabel={supportLabel} />}
 
       {planParam === "tenancy_payment" && (
         <TenancyNotice />
@@ -212,6 +216,7 @@ export function PaymentsPageClient() {
           showProofStep={Boolean(showProofStep)}
           onProofUploaded={refreshPayments}
           showToast={showToast}
+          supportLabel={supportLabel}
         />
       ) : !user ? (
         <GuestPaymentsGate />
@@ -375,7 +380,7 @@ export function PaymentsPageClient() {
 
               {paymentMethods.length === 0 && (
                 <p className="text-sm text-amber-700 dark:text-amber-300">
-                  Payment methods are loading. Contact support@houselinkzim.co.zw if this persists.
+                  Payment methods are loading. Contact {supportLabel} if this persists.
                 </p>
               )}
             </div>
@@ -412,6 +417,7 @@ function ActivePaymentPanel({
   showProofStep,
   onProofUploaded,
   showToast,
+  supportLabel,
 }: {
   payment: Payment;
   config: PaymentConfigResponse | null;
@@ -420,13 +426,14 @@ function ActivePaymentPanel({
   showProofStep: boolean;
   onProofUploaded: () => void;
   showToast: (message: string, tone?: "error" | "success" | "info") => void;
+  supportLabel: string;
 }) {
   const reference = payment.referenceNumber ?? payment.id;
   const display = paymentStatusDisplay(payment);
 
   return (
     <div className="space-y-6">
-      <StatusBanner status={statusParam || payment.status} reference={reference} payment={payment} />
+      <StatusBanner status={statusParam || payment.status} reference={reference} payment={payment} supportLabel={supportLabel} />
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
         <section className="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-900/50">
@@ -645,14 +652,14 @@ function TenancyNotice() {
   );
 }
 
-function StatusBanner({ status, reference, payment }: { status: string; reference?: string; payment?: Payment }) {
+function StatusBanner({ status, reference, payment, supportLabel }: { status: string; reference?: string; payment?: Payment; supportLabel: string }) {
   const display = payment ? paymentStatusDisplay(payment) : null;
   const tone = display?.tone ?? paymentStatusTone(status);
   const copy = display?.description ??
     (tone === "success"
       ? "Payment received. Finance will confirm and activate your service."
       : tone === "error"
-        ? "Payment could not be completed. Try again or contact support@houselinkzim.co.zw."
+        ? `Payment could not be completed. Try again or contact ${supportLabel}.`
         : "Payment created. Pay using the details below and upload your proof.");
 
   return (
