@@ -8,30 +8,49 @@ import { getMailtoHref, getTelHref, getWhatsAppHref } from "@/lib/settings/conta
 
 const groups = [
   {
-    title: "Find a home",
+    title: "Explore",
     items: [
+      ["Search properties", "/search"],
       ["Rent in Harare", "/rent/harare"],
       ["Rooms in Avondale", "/rooms/avondale"],
       ["Buy in Bulawayo", "/property-for-sale/bulawayo"],
-      ["Roommate matching", "/roommates"],
     ],
   },
   {
-    title: "List/manage property",
+    title: "Services",
+    items: [
+      ["Roommate matching", "/roommates"],
+      ["Property management", "/property-management"],
+      ["Compare homes", "/compare"],
+      ["Calculators", "/calculators"],
+    ],
+  },
+  {
+    title: "List & manage",
     items: [
       ["List property", "/dashboard/landlord/new"],
       ["Landlord dashboard", "/dashboard/landlord"],
-      ["Property management", "/property-management"],
+      ["Become an agent", "/become-agent"],
       ["Agent academy", "/academy"],
     ],
   },
   {
-    title: "Trust & support",
+    title: "Support",
     items: [
+      ["Contact", "/contact"],
       ["What verified means", "/verification"],
       ["Safety centre", "/safety"],
       ["Report listing", "/report-listing"],
-      ["Contact support", "/contact"],
+    ],
+  },
+  {
+    title: "Your account",
+    items: [
+      ["Sign in", "/auth"],
+      ["Saved homes", "/saved"],
+      ["My enquiries", "/enquiries"],
+      ["Messages", "/messages"],
+      ["Payments", "/payments"],
     ],
   },
   {
@@ -41,15 +60,6 @@ const groups = [
       ["Careers", "/careers"],
       ["Terms", "/terms"],
       ["Privacy", "/privacy"],
-    ],
-  },
-  {
-    title: "Tools",
-    items: [
-      ["Calculators", "/calculators"],
-      ["Compare homes", "/compare"],
-      ["Saved homes", "/saved"],
-      ["Payments", "/payments"],
     ],
   },
 ];
@@ -67,28 +77,15 @@ function internalRel(href: string) {
   return href.includes("?") ? "nofollow" : undefined;
 }
 
-function normalizeRebrandText(value: string) {
-  return value
-    .replace(/HomeLink/g, "HouseLink")
-    .replace(/homelink/g, "houselink")
-    .replace(/HOMELINK/g, "HOUSELINK");
-}
-
 export function SiteFooter() {
   const { config } = usePlatformConfig();
-  const contact = config?.contact
-    ? {
-        ...config.contact,
-        supportEmail: normalizeRebrandText(config.contact.supportEmail),
-        careersEmail: normalizeRebrandText(config.contact.careersEmail),
-      }
-    : null;
+  const contact = config?.contact ?? null;
 
   return (
     <footer className="relative border-t border-slate-800 bg-ink text-white">
       <div className="section-divider absolute inset-x-0 top-0 opacity-60" />
 
-      <div className="mx-auto grid max-w-7xl items-start gap-8 px-4 py-10 sm:px-6 lg:grid-cols-[minmax(280px,0.95fr)_minmax(0,2.25fr)_minmax(220px,0.75fr)] lg:px-8">
+      <div className="mx-auto grid max-w-7xl items-start gap-8 px-4 py-10 sm:px-6 lg:grid-cols-[minmax(280px,0.9fr)_minmax(0,2.3fr)_minmax(230px,0.8fr)] lg:px-8">
         <div className="max-w-sm">
           <div className="flex items-center">
             <HouseLinkBrand variant="footer" />
@@ -128,7 +125,7 @@ export function SiteFooter() {
           )}
         </div>
 
-        <div className="grid gap-x-7 gap-y-8 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
+        <div className="grid gap-x-8 gap-y-8 sm:grid-cols-2 md:grid-cols-3">
           {groups.map((group) => (
             <div key={group.title} className="min-w-0">
               <p className="text-sm font-semibold tracking-wide text-white">{group.title}</p>
