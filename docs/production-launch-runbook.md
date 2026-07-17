@@ -1,11 +1,11 @@
-# HomeLink Production Launch Runbook
+# HouseLink Production Launch Runbook
 
 This guide is written for someone who has never launched a web platform before. Follow it in order. Do not skip ahead.
 
 Current launch status:
 
-- Domain bought: `homelinkzim.co.zw`
-- Production website URL: `https://homelinkzim.co.zw`
+- Domain bought: `houselinkzim.co.zw`
+- Production website URL: `https://houselinkzim.co.zw`
 - Hosting: Vercel deployment appears reachable
 - Next thing to do: rotate the Neon password, update Vercel environment variables, configure Cloudinary/SMTP, and redeploy production
 
@@ -43,8 +43,8 @@ Goal: make sure the domain and final URL are clear before you buy/configure host
 You already have:
 
 ```text
-Domain: homelinkzim.co.zw
-Production URL: https://homelinkzim.co.zw
+Domain: houselinkzim.co.zw
+Production URL: https://houselinkzim.co.zw
 ```
 
 Do this now:
@@ -52,7 +52,7 @@ Do this now:
 1. Open the website where you bought the domain.
    - This may be your registrar, hosting company, or local `.co.zw` domain provider.
 2. Log in.
-3. Find the page for your domain: `homelinkzim.co.zw`.
+3. Find the page for your domain: `houselinkzim.co.zw`.
 4. Look for a menu named one of these:
    - **DNS**
    - **DNS Records**
@@ -79,7 +79,7 @@ You will fill those values inside Vercel, not inside the repo.
 Tell Codex:
 
 ```text
-Step 0 done: I can log in where I bought homelinkzim.co.zw, and I found the DNS area.
+Step 0 done: I can log in where I bought houselinkzim.co.zw, and I found the DNS area.
 ```
 
 ## Step 1: Create Your Hosting Account On Vercel
@@ -90,14 +90,14 @@ Recommended choice: **Vercel**.
 
 Why:
 
-- HomeLink is a Next.js website.
+- HouseLink is a Next.js website.
 - Vercel supports Next.js directly.
-- Vercel gives you a temporary URL first, then you connect `homelinkzim.co.zw`.
+- Vercel gives you a temporary URL first, then you connect `houselinkzim.co.zw`.
 - You do not need to buy old-style shared hosting for this app.
 
 What you need before starting:
 
-- A GitHub account that contains the HomeLink code repository.
+- A GitHub account that contains the HouseLink code repository.
 - Access to the email address you will use for Vercel.
 - Your domain registrar tab open from Step 0.
 
@@ -141,15 +141,15 @@ You do:
 
 1. In Vercel, click **Add New...**.
 2. Click **Project**.
-3. Find the HomeLink GitHub repository.
+3. Find the HouseLink GitHub repository.
 4. If you do not see it:
    - Click **Import Git Repository** or **Adjust GitHub App Permissions**.
-   - Choose the GitHub account that owns the HomeLink repo.
-   - Allow Vercel to access the HomeLink repo.
+   - Choose the GitHub account that owns the HouseLink repo.
+   - Allow Vercel to access the HouseLink repo.
    - Return to Vercel and refresh the repo list.
-5. Click **Import** beside the HomeLink repository.
+5. Click **Import** beside the HouseLink repository.
 6. When Vercel asks for project settings, enter:
-   - Project Name: `homelink-zimbabwe`
+   - Project Name: `houselink-zimbabwe`
    - Framework Preset: **Next.js**
    - Build Command: `npm run build`
    - Install Command: `npm install`
@@ -176,7 +176,7 @@ Check these first:
 2. Confirm the root `package.json` in GitHub contains:
 
 ```text
-"name": "homelink-zimbabwe"
+"name": "houselink-zimbabwe"
 "version": "0.1.0"
 ```
 
@@ -202,7 +202,7 @@ This usually means Vercel is deploying the wrong folder or using the wrong frame
 
 Do this:
 
-1. In Vercel, open the HomeLink project.
+1. In Vercel, open the HouseLink project.
 2. Click **Settings**.
 3. Click **General**.
 4. Find **Root Directory**.
@@ -248,13 +248,13 @@ What you should see after deploy:
 - Vercel will give you a temporary URL like:
 
 ```text
-https://homelink-zimbabwe.vercel.app
+https://houselink-zimbabwe.vercel.app
 ```
 
 That temporary URL is only for testing. The real public URL will still be:
 
 ```text
-https://homelinkzim.co.zw
+https://houselinkzim.co.zw
 ```
 
 Tell Codex:
@@ -269,7 +269,7 @@ Goal: make production mode fail closed instead of using local/sandbox defaults.
 
 You do:
 
-1. In Vercel, open your HomeLink project.
+1. In Vercel, open your HouseLink project.
 2. Click **Settings**.
 3. Click **Environment Variables**.
 4. Add these variables one by one.
@@ -282,12 +282,12 @@ You do:
 Enter:
 
 ```text
-NEXT_PUBLIC_APP_URL=https://homelinkzim.co.zw
-HOMELINK_STRICT_PRODUCTION=true
-HOMELINK_SESSION_SECRET=generate a long random value
+NEXT_PUBLIC_APP_URL=https://houselinkzim.co.zw
+HOUSELINK_STRICT_PRODUCTION=true
+HOUSELINK_SESSION_SECRET=generate a long random value
 ```
 
-For `HOMELINK_SESSION_SECRET`:
+For `HOUSELINK_SESSION_SECRET`:
 
 1. Open a password manager or random password generator.
 2. Generate a random value at least 32 characters long.
@@ -299,24 +299,24 @@ What each value means:
 
 ```text
 NEXT_PUBLIC_APP_URL
-This tells HomeLink what its real public website URL is.
+This tells HouseLink what its real public website URL is.
 
-HOMELINK_STRICT_PRODUCTION
+HOUSELINK_STRICT_PRODUCTION
 This blocks unsafe local/demo behavior in production.
 
-HOMELINK_SESSION_SECRET
+HOUSELINK_SESSION_SECRET
 This signs login cookies so refreshes and serverless restarts do not log users out.
 
 ```
 
 Do not enter Cloudinary, database, payment, or auth values yet unless you already have them.
 
-Do not add `SETTINGS_DATABASE_URL` in Vercel for production. It is a local development SQLite setting only. In strict production, HomeLink stores platform/payment settings inside the main Postgres-backed app snapshot through `DATABASE_URL`.
+Do not add `SETTINGS_DATABASE_URL` in Vercel for production. It is a local development SQLite setting only. In strict production, HouseLink stores platform/payment settings inside the main Postgres-backed app snapshot through `DATABASE_URL`.
 
 Tell Codex:
 
 ```text
-Step 3 done: I added NEXT_PUBLIC_APP_URL and HOMELINK_STRICT_PRODUCTION in Vercel.
+Step 3 done: I added NEXT_PUBLIC_APP_URL and HOUSELINK_STRICT_PRODUCTION in Vercel.
 ```
 
 ## Step 4: Create The Production PostgreSQL Database
@@ -332,31 +332,31 @@ You do:
 1. Go to https://neon.tech.
 2. Click **Sign Up** or **Log In**.
 3. Click **New Project**.
-4. Project name: `homelink-production`
-5. Database name: `homelink`
+4. Project name: `houselink-production`
+5. Database name: `houselink`
 6. Region: choose the closest available region to Zimbabwe/Southern Africa.
 7. Click **Create Project**.
 8. On the project dashboard, find **Connection string**.
 9. Choose:
    - Branch: `main`
-   - Database: `homelink`
+   - Database: `houselink`
    - Role/user: default owner role
 10. Copy the connection string. It should look like:
 
 ```text
-postgresql://username:password@host.neon.tech/homelink?sslmode=require
+postgresql://username:password@host.neon.tech/houselink?sslmode=require
 ```
 
 Now add it to Vercel:
 
 1. Go back to Vercel.
-2. Open HomeLink project.
+2. Open HouseLink project.
 3. Click **Settings**.
 4. Click **Environment Variables**.
 5. Add:
 
 ```text
-DATABASE_URL=postgresql://username:password@host.neon.tech/homelink?sslmode=require
+DATABASE_URL=postgresql://username:password@host.neon.tech/houselink?sslmode=require
 ```
 
 6. Environment: **Production**
@@ -402,7 +402,7 @@ You do:
    - Cloud name
    - API key
    - API secret
-6. Go to Vercel -> HomeLink project -> **Settings** -> **Environment Variables**.
+6. Go to Vercel -> HouseLink project -> **Settings** -> **Environment Variables**.
 7. Add:
 
 ```text
@@ -429,9 +429,9 @@ Codex does:
 
 Goal: online payment webhooks cannot be faked.
 
-Launch decision: **skip Stripe for now**. HomeLink will launch with manual payments only. Do not add `STRIPE_SECRET_KEY` or `STRIPE_WEBHOOK_SECRET` until the Stripe account is approved and you are ready to accept live online payments.
+Launch decision: **skip Stripe for now**. HouseLink will launch with manual payments only. Do not add `STRIPE_SECRET_KEY` or `STRIPE_WEBHOOK_SECRET` until the Stripe account is approved and you are ready to accept live online payments.
 
-For this launch, confirm in the HomeLink admin payment settings:
+For this launch, confirm in the HouseLink admin payment settings:
 
 ```text
 Stripe enabled: off
@@ -471,7 +471,7 @@ STRIPE_SECRET_KEY=sk_live_...
 11. Endpoint URL:
 
 ```text
-https://homelinkzim.co.zw/api/v1/payments/webhooks/stripe
+https://houselinkzim.co.zw/api/v1/payments/webhooks/stripe
 ```
 
 12. Select payment/checkout events you will use.
@@ -500,9 +500,9 @@ Codex does:
 
 Goal: enable Zimbabwe payment flow only when real Paynow credentials are ready.
 
-Launch decision: **skip Paynow for now**. HomeLink will launch with manual payments only. Do not add `PAYNOW_INTEGRATION_ID` or `PAYNOW_INTEGRATION_KEY` until the Paynow merchant integration is ready.
+Launch decision: **skip Paynow for now**. HouseLink will launch with manual payments only. Do not add `PAYNOW_INTEGRATION_ID` or `PAYNOW_INTEGRATION_KEY` until the Paynow merchant integration is ready.
 
-For this launch, confirm in the HomeLink admin payment settings:
+For this launch, confirm in the HouseLink admin payment settings:
 
 ```text
 Paynow enabled: off
@@ -521,20 +521,20 @@ Future Paynow setup:
 You do:
 
 1. Log in to your Paynow merchant dashboard.
-2. Create or open the HomeLink integration.
+2. Create or open the HouseLink integration.
 3. Copy:
    - Integration ID
    - Integration key
 4. In the Paynow dashboard, set the result/webhook URL if Paynow asks for one:
 
 ```text
-https://homelinkzim.co.zw/api/v1/payments/webhooks/paynow
+https://houselinkzim.co.zw/api/v1/payments/webhooks/paynow
 ```
 
 5. Set the return/callback URL if Paynow asks for one:
 
 ```text
-https://homelinkzim.co.zw/api/v1/payments/callback/paynow
+https://houselinkzim.co.zw/api/v1/payments/callback/paynow
 ```
 
 6. Add these in Vercel:
@@ -552,7 +552,7 @@ I added Paynow integration ID and key in Vercel.
 
 Codex does:
 
-1. Confirms the HomeLink gateway settings match the configured provider.
+1. Confirms the HouseLink gateway settings match the configured provider.
 2. Keeps Paynow disabled if credentials are not ready.
 
 ## Step 8: Choose Production Auth
@@ -610,8 +610,8 @@ Current launch choice:
 
 ```text
 Email provider: SMTP provider chosen by owner
-Sending domain: homelinkzim.co.zw
-Recommended sender: noreply@homelinkzim.co.zw or support@homelinkzim.co.zw
+Sending domain: houselinkzim.co.zw
+Recommended sender: noreply@houselinkzim.co.zw or support@houselinkzim.co.zw
 ```
 
 You do:
@@ -625,7 +625,7 @@ You do:
    - SMTP password
 4. Do not paste the SMTP password into chat, Git, screenshots, or docs.
 
-Now enter the values in HomeLink:
+Now enter the values in HouseLink:
 
 1. Open the latest Vercel temporary URL or production URL.
 2. Sign in as an admin.
@@ -662,7 +662,7 @@ smtpHost = smtp.resend.com
 smtpPort = 587
 smtpUser = resend
 smtpPass = your Resend API key
-smtpFrom = a sender address on your verified Resend domain, for example support@homelinkzim.co.zw
+smtpFrom = a sender address on your verified Resend domain, for example support@houselinkzim.co.zw
 ```
 
 If the test fails:
@@ -690,7 +690,7 @@ Goal: no known demo password works in production.
 You do:
 
 1. Generate five strong passwords in a password manager.
-2. In Vercel -> HomeLink -> **Settings** -> **Environment Variables**, add:
+2. In Vercel -> HouseLink -> **Settings** -> **Environment Variables**, add:
 
 ```text
 SEED_STANDARD_PASSWORD=strong_unique_value
@@ -722,17 +722,17 @@ Do this only after:
 
 - Vercel project exists.
 - At least one Vercel deployment says **Ready**.
-- You can log in to the place where you bought `homelinkzim.co.zw`.
+- You can log in to the place where you bought `houselinkzim.co.zw`.
 
 You do:
 
-1. In Vercel, open HomeLink project.
+1. In Vercel, open HouseLink project.
 2. Click **Settings**.
 3. Click **Domains**.
 4. In the domain box, type:
 
 ```text
-homelinkzim.co.zw
+houselinkzim.co.zw
 ```
 
 5. Click **Add**.
@@ -759,7 +759,7 @@ Important: use the exact values Vercel shows on your screen. If Vercel shows dif
 Now add the DNS records where you bought the domain:
 
 1. Open your domain registrar tab.
-2. Open the domain: `homelinkzim.co.zw`.
+2. Open the domain: `houselinkzim.co.zw`.
 3. Click **DNS**, **DNS Records**, **Manage DNS**, or **Zone Editor**.
 4. Look for existing records with:
    - Host/name: `@`
@@ -774,8 +774,8 @@ Now add the DNS records where you bought the domain:
 
 What success looks like:
 
-- In Vercel, `homelinkzim.co.zw` shows **Valid Configuration**, **Verified**, or a green check.
-- Visiting `https://homelinkzim.co.zw` opens the HomeLink website.
+- In Vercel, `houselinkzim.co.zw` shows **Valid Configuration**, **Verified**, or a green check.
+- Visiting `https://houselinkzim.co.zw` opens the HouseLink website.
 - The browser shows a lock icon, meaning HTTPS/SSL is active.
 
 If Vercel says DNS is not ready yet, wait. DNS can take minutes or hours.
@@ -790,7 +790,7 @@ If it still fails after several hours:
 Tell Codex:
 
 ```text
-Step 11 done: homelinkzim.co.zw is added in Vercel and DNS is verified.
+Step 11 done: houselinkzim.co.zw is added in Vercel and DNS is verified.
 ```
 
 ## Step 12: Set Up Monitoring And Backups
@@ -799,7 +799,7 @@ Goal: know when the platform breaks and be able to recover data.
 
 You do:
 
-1. In Vercel, open HomeLink project.
+1. In Vercel, open HouseLink project.
 2. Click **Logs** and confirm you can see requests/errors.
 3. In Neon, open your project.
 4. Find backup/restore settings for your plan.
@@ -817,7 +817,7 @@ Goal: force Vercel to deploy with all environment variables.
 
 You do:
 
-1. In Vercel, open HomeLink project.
+1. In Vercel, open HouseLink project.
 2. Click **Deployments**.
 3. Open the latest deployment.
 4. Click the three-dot menu.
@@ -864,7 +864,7 @@ npm.cmd run check:production
 2. Smoke test the live URL:
 
 ```powershell
-$env:BASE_URL="https://homelinkzim.co.zw"
+$env:BASE_URL="https://houselinkzim.co.zw"
 node scripts\smoke-test.mjs
 ```
 
@@ -887,10 +887,10 @@ Launch only when all of these pass.
 Copy and paste one of these messages as you complete each step:
 
 ```text
-Step 0 done: I can log in where I bought homelinkzim.co.zw, and I found the DNS area.
+Step 0 done: I can log in where I bought houselinkzim.co.zw, and I found the DNS area.
 Step 1 done: my Vercel account is created.
 Step 2 done: Vercel project is created and I have a temporary Vercel URL.
-Step 3 done: I added NEXT_PUBLIC_APP_URL and HOMELINK_STRICT_PRODUCTION in Vercel.
+Step 3 done: I added NEXT_PUBLIC_APP_URL and HOUSELINK_STRICT_PRODUCTION in Vercel.
 Step 4 done: Neon database is created and DATABASE_URL is set.
 Step 5 done: Cloudinary variables are set.
 Step 6 done: Stripe variables and webhook are set.
@@ -898,7 +898,7 @@ Step 7 done: Paynow variables are set, or Paynow is disabled for launch.
 Step 8 done: Clerk production keys are set, or local auth is accepted for beta.
 Step 9 done: SMTP is configured and test email passed.
 Step 10 done: seed passwords are rotated.
-Step 11 done: homelinkzim.co.zw is added in Vercel and DNS is verified.
+Step 11 done: houselinkzim.co.zw is added in Vercel and DNS is verified.
 Step 12 done: logs/backups/monitoring are confirmed.
 Step 13 done: production redeploy is ready.
 Run final checks.

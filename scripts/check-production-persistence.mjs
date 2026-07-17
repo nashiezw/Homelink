@@ -71,7 +71,7 @@ const checks = [
     flow: "legacy store guard",
     files: ["lib/store/app-store.ts"],
     requireAny: ["Legacy in-memory AppStore is disabled in strict production"],
-    requireAll: ["HOMELINK_ALLOW_LEGACY_STORE", "HOMELINK_STRICT_PRODUCTION"],
+    requireAll: ["HOUSELINK_ALLOW_LEGACY_STORE", "HOUSELINK_STRICT_PRODUCTION"],
   },
 ];
 

@@ -1,12 +1,12 @@
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-import { HomeLinkIcon, HL_GREEN, HL_NAVY } from "@/components/brand/homelink-icon";
+import { HouseLinkIcon, HL_GREEN, HL_NAVY } from "@/components/brand/houselink-icon";
 
-export { HomeLinkIcon, HL_GREEN, HL_NAVY, HOMELINK_ICON_SRC } from "@/components/brand/homelink-icon";
+export { HouseLinkIcon, HL_GREEN, HL_NAVY, HOUSELINK_ICON_SRC } from "@/components/brand/houselink-icon";
 
 type BrandVariant = "nav" | "header" | "footer" | "auth" | "icon";
 
-type HomeLinkBrandProps = {
+type HouseLinkBrandProps = {
   className?: string;
   variant?: BrandVariant;
   iconOnly?: boolean;
@@ -42,12 +42,12 @@ function NavWordmark({ className }: { className?: string }) {
   );
 }
 
-/** Icon + HomeLink — original nav lockup, sized for visibility */
+/** Icon + HouseLink — original nav lockup, sized for visibility */
 function NavLockup({ className }: { className?: string }) {
   return (
     <span className={cn("inline-flex items-center gap-2.5 md:gap-3", className)}>
       <span className="relative inline-flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-white/95 p-1 shadow-[0_2px_14px_rgba(0,0,0,0.14)] ring-1 ring-slate-200/80 dark:ring-white/15 md:h-14 md:w-14">
-        <HomeLinkIcon className={iconSizes.nav} title="HomeLink" />
+        <HouseLinkIcon className={iconSizes.nav} title="HouseLink" />
       </span>
       <NavWordmark />
     </span>
@@ -63,9 +63,9 @@ function FooterIconMark({ className }: { className?: string }) {
         className,
       )}
     >
-      <HomeLinkIcon
+      <HouseLinkIcon
         className="h-12 w-12 scale-[1.12] object-contain sm:h-14 sm:w-14"
-        title="HomeLink"
+        title="HouseLink"
       />
     </span>
   );
@@ -107,16 +107,16 @@ function FullWordmark({ variant }: { variant: "footer" | "auth" }) {
   );
 }
 
-export function HomeLinkBrand({ className, variant = "nav", iconOnly = false }: HomeLinkBrandProps) {
+export function HouseLinkBrand({ className, variant = "nav", iconOnly = false }: HouseLinkBrandProps) {
   if (iconOnly) {
-    return <HomeLinkIcon className={cn(iconSizes[variant], className)} title="HomeLink" />;
+    return <HouseLinkIcon className={cn(iconSizes[variant], className)} title="HouseLink" />;
   }
 
   const isNav = variant === "nav" || variant === "header";
 
   if (isNav) {
     return (
-      <span data-brand="homelink-nav" className={cn("inline-flex shrink-0 items-center", className)}>
+      <span data-brand="houselink-nav" className={cn("inline-flex shrink-0 items-center", className)}>
         <NavLockup />
       </span>
     );
@@ -125,7 +125,7 @@ export function HomeLinkBrand({ className, variant = "nav", iconOnly = false }: 
   if (variant === "footer") {
     return (
       <span
-        data-brand="homelink-footer"
+        data-brand="houselink-footer"
         className={cn("inline-flex shrink-0 items-center gap-3 sm:gap-4", className)}
       >
         <FooterIconMark />
@@ -137,17 +137,17 @@ export function HomeLinkBrand({ className, variant = "nav", iconOnly = false }: 
 
   return (
     <span
-      data-brand="homelink-full"
+      data-brand="houselink-full"
       className={cn("inline-flex shrink-0 items-center gap-3 sm:gap-4", className)}
     >
-      <HomeLinkIcon className={iconSizes[variant]} title="HomeLink" />
+      <HouseLinkIcon className={iconSizes[variant]} title="HouseLink" />
       <span className="w-px shrink-0 self-stretch bg-[#1a3560]/20 dark:bg-slate-600" aria-hidden />
       <FullWordmark variant="auth" />
     </span>
   );
 }
 
-export function HomeLinkLogoLink({
+export function HouseLinkLogoLink({
   className,
   variant = "nav",
   onClick,
@@ -166,22 +166,22 @@ export function HomeLinkLogoLink({
         "inline-flex shrink-0 items-center rounded-[10px] py-1 outline-none transition-opacity duration-200 hover:opacity-90 focus-visible:ring-2 focus-visible:ring-emerald-600/40 focus-visible:ring-offset-2",
         className,
       )}
-      aria-label="HomeLink Zimbabwe — home"
+      aria-label="HouseLink Zimbabwe — home"
     >
       {isNav ? (
         <>
-          <HomeLinkBrand variant="nav" />
-          <span className="sr-only">HomeLink Zimbabwe</span>
+          <HouseLinkBrand variant="nav" />
+          <span className="sr-only">HouseLink Zimbabwe</span>
         </>
       ) : (
-        <HomeLinkBrand variant={variant} />
+        <HouseLinkBrand variant={variant} />
       )}
     </Link>
   );
 }
 
-/** @deprecated Use HomeLinkBrand */
-export function HomeLinkLogo({
+/** @deprecated Use HouseLinkBrand */
+export function HouseLinkLogo({
   className,
   variant = "header",
 }: {
@@ -192,5 +192,5 @@ export function HomeLinkLogo({
 }) {
   const mapped: BrandVariant =
     variant === "large" ? "footer" : variant === "default" ? "auth" : "nav";
-  return <HomeLinkBrand className={className} variant={mapped} />;
+  return <HouseLinkBrand className={className} variant={mapped} />;
 }

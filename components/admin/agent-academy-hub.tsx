@@ -1209,7 +1209,7 @@ function AcademySettingsPanel({ settings, auditLogs, onSave }: { settings: Recor
   const completionRules = (settings.completionRules ?? {}) as Record<string, unknown>;
   const resourceAccess = (settings.resourceAccess ?? {}) as Record<string, unknown>;
   const [draft, setDraft] = useState({
-    academyName: String(settings.academyName ?? "HomeLink Agent Academy"),
+    academyName: String(settings.academyName ?? "HouseLink Agent Academy"),
     certificatePrefix: String(settings.certificatePrefix ?? "HLA"),
     primaryColour: String(settings.primaryColour ?? "#008b68"),
     accentColour: String(settings.accentColour ?? "#c6a15b"),
@@ -1222,8 +1222,8 @@ function AcademySettingsPanel({ settings, auditLogs, onSave }: { settings: Recor
     requirePaymentProof: enrolmentSettings.requirePaymentProof !== false,
     autoIssueCertificate: completionRules.autoIssueCertificate !== false,
     requireAllLessons: completionRules.requireAllLessons !== false,
-    emailFromName: String((settings.emailSettings as Record<string, unknown>)?.fromName ?? "HomeLink Academy"),
-    emailWelcomeSubject: String((settings.emailSettings as Record<string, unknown>)?.welcomeSubject ?? "Welcome to HomeLink Academy"),
+    emailFromName: String((settings.emailSettings as Record<string, unknown>)?.fromName ?? "HouseLink Academy"),
+    emailWelcomeSubject: String((settings.emailSettings as Record<string, unknown>)?.welcomeSubject ?? "Welcome to HouseLink Academy"),
     emailCertificateSubject: String((settings.emailSettings as Record<string, unknown>)?.certificateSubject ?? "Your certificate is ready"),
     notifyQuizResults: (settings.notificationSettings as Record<string, unknown>)?.quizResults !== false,
     notifyAssignmentReview: (settings.notificationSettings as Record<string, unknown>)?.assignmentReview !== false,
@@ -1260,7 +1260,7 @@ function AcademySettingsPanel({ settings, auditLogs, onSave }: { settings: Recor
                 emailSettings: { fromName: draft.emailFromName, welcomeSubject: draft.emailWelcomeSubject, certificateSubject: draft.emailCertificateSubject },
                 notificationSettings: { quizResults: draft.notifyQuizResults, assignmentReview: draft.notifyAssignmentReview, courseUpdates: draft.notifyCourseUpdates },
                 gradingSettings: { scale: draft.gradingScale, allowManualGrading: draft.allowManualGrading },
-                branding: { ...(settings.branding as object), dashboardWelcome: draft.dashboardWelcome, logoUrl: "/brand/homelink-full-lockup.png" },
+                branding: { ...(settings.branding as object), dashboardWelcome: draft.dashboardWelcome, logoUrl: "/brand/houselink-full-lockup.png" },
                 resourceAccess: {
                   manualPublicPrice: Number(draft.manualPublicPrice) || 35,
                   manualAgentPrice: Number(draft.manualAgentPrice) || 15,

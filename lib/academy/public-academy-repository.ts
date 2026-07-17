@@ -51,7 +51,7 @@ export async function listPublicAcademyCourses() {
       slug: course.slug,
       description: meta?.description ?? course.description,
       shortDescription: meta?.shortDescription ?? course.shortDescription,
-      category: course.category?.name ?? "HomeLink Agent Academy",
+      category: course.category?.name ?? "HouseLink Agent Academy",
       difficulty: course.difficulty,
       estimatedHours: Number(course.estimatedHours),
       durationMinutes: course.durationMinutes,
@@ -278,9 +278,9 @@ export async function getLearnerAcademyDashboard(learnerId: string, options?: { 
     courseToolkits,
     referenceManual: {
       title: "Complete Training Manual (Reference)",
-      description: "Full HomeLink manual for deep reference — purchase and admin approval required before download.",
+      description: "Full HouseLink manual for deep reference — purchase and admin approval required before download.",
       downloadUrl: manualAccess.unlocked
-        ? toAcademyFileDownloadUrl("/uploads/academy/homelink-zimbabwe-real-estate-agent-training-manual.pdf")
+        ? toAcademyFileDownloadUrl("/uploads/academy/houselink-zimbabwe-real-estate-agent-training-manual.pdf")
         : null,
       access: manualAccess,
     },
@@ -453,7 +453,7 @@ export async function registerPublicLearner(input: {
       body: isFree
         ? `${course.title} is active in your learner dashboard.`
         : intent === "TRAINING_ONLY"
-          ? `Upload proof of payment for ${course.title}. You do not need to become a HomeLink agent to complete this training.`
+          ? `Upload proof of payment for ${course.title}. You do not need to become a HouseLink agent to complete this training.`
           : `Upload proof of payment for ${course.title} so an admin can activate your access.`,
     },
   });
@@ -573,7 +573,7 @@ export async function getAcademySettingsPublic() {
   const settings = await getMainPrisma().trainingSetting.findUnique({ where: { id: "singleton" } });
   const payload = (settings?.payload ?? {}) as Record<string, unknown>;
   return {
-    academyName: String(payload.academyName ?? "HomeLink Academy"),
+    academyName: String(payload.academyName ?? "HouseLink Academy"),
     certificatePrefix: String(payload.certificatePrefix ?? "HLA"),
     primaryColour: String(payload.primaryColour ?? "#008b68"),
     accentColour: String(payload.accentColour ?? "#c6a15b"),

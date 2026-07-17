@@ -1,6 +1,6 @@
 # Database Schema Design
 
-HomeLink Zimbabwe uses PostgreSQL as the system of record. Prisma ORM (`prisma/schema.prisma`) is the single source of truth for models, relations, and migrations.
+HouseLink Zimbabwe uses PostgreSQL as the system of record. Prisma ORM (`prisma/schema.prisma`) is the single source of truth for models, relations, and migrations.
 
 ## Design Principles
 

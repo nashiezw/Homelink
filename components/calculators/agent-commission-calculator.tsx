@@ -64,17 +64,17 @@ export function AgentCommissionCalculator({ embedded }: { embedded?: boolean }) 
           <p className="text-sm font-semibold text-ink dark:text-slate-100">Commission Split</p>
           <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">Choose a preset or enter a custom agent share.</p>
           <div className="mt-3 flex flex-wrap gap-2">
-            <CalculatorPresetButton active={preset === "60-40"} onClick={() => applyPreset("60-40", "60")}>60% Agent / 40% HomeLink</CalculatorPresetButton>
-            <CalculatorPresetButton active={preset === "40-60"} onClick={() => applyPreset("40-60", "40")}>40% Agent / 60% HomeLink</CalculatorPresetButton>
+            <CalculatorPresetButton active={preset === "60-40"} onClick={() => applyPreset("60-40", "60")}>60% Agent / 40% HouseLink</CalculatorPresetButton>
+            <CalculatorPresetButton active={preset === "40-60"} onClick={() => applyPreset("40-60", "40")}>40% Agent / 60% HouseLink</CalculatorPresetButton>
             <CalculatorPresetButton active={preset === "custom"} onClick={() => setPreset("custom")}>Custom Split</CalculatorPresetButton>
           </div>
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <CalculatorField id="commission-agent" label="Agent Share" suffix="%" value={agentPercent} onChange={handleAgentPercentChange} />
-          <label htmlFor="commission-homelink" className="block">
-            <span className="text-sm font-semibold text-ink dark:text-slate-100">HomeLink Share</span>
+          <label htmlFor="commission-houselink" className="block">
+            <span className="text-sm font-semibold text-ink dark:text-slate-100">HouseLink Share</span>
             <div className="relative mt-2">
-              <input id="commission-homelink" type="text" readOnly value={String(result.homeLinkPercent)} className="h-12 w-full cursor-default rounded-xl border border-slate-200 bg-slate-50 px-4 text-base font-semibold text-slate-700 shadow-[0_8px_22px_rgba(15,23,42,0.05)] dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200" />
+              <input id="commission-houselink" type="text" readOnly value={String(result.houseLinkPercent)} className="h-12 w-full cursor-default rounded-xl border border-slate-200 bg-slate-50 px-4 text-base font-semibold text-slate-700 shadow-[0_8px_22px_rgba(15,23,42,0.05)] dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200" />
               <span className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-sm font-medium text-slate-400">%</span>
             </div>
           </label>
@@ -88,9 +88,9 @@ export function AgentCommissionCalculator({ embedded }: { embedded?: boolean }) 
         }
       >
         <CalculatorResultRow label="Agent Earnings" value={<AnimatedCurrency value={result.agentEarnings} format={(value) => formatCalculatorCurrency(value, 2)} />} />
-        <CalculatorResultRow label="HomeLink Earnings" value={<AnimatedCurrency value={result.homeLinkEarnings} format={(value) => formatCalculatorCurrency(value, 2)} />} />
+        <CalculatorResultRow label="HouseLink Earnings" value={<AnimatedCurrency value={result.houseLinkEarnings} format={(value) => formatCalculatorCurrency(value, 2)} />} />
         <CalculatorResultRow label="Agent Split" value={formatCalculatorPercent(result.agentPercent, 0)} />
-        <CalculatorResultRow label="HomeLink Split" value={formatCalculatorPercent(result.homeLinkPercent, 0)} />
+        <CalculatorResultRow label="HouseLink Split" value={formatCalculatorPercent(result.houseLinkPercent, 0)} />
       </CalculatorSummary>
       </div>
 
@@ -101,14 +101,14 @@ export function AgentCommissionCalculator({ embedded }: { embedded?: boolean }) 
   if (embedded) {
     return (
       <>
-        <CalculatorPanelHeader icon={HandCoins} title="Agent Commission Calculator" description="Calculate commission splits between HomeLink agents and the platform." audience="Agents" actions={<CalculatorResetButton onClick={reset} />} />
+        <CalculatorPanelHeader icon={HandCoins} title="Agent Commission Calculator" description="Calculate commission splits between HouseLink agents and the platform." audience="Agents" actions={<CalculatorResetButton onClick={reset} />} />
         <div className="p-5 sm:p-6">{body}</div>
       </>
     );
   }
 
   return (
-    <CalculatorCard id="agent-commission" icon={HandCoins} title="Agent Commission Calculator" description="Calculate commission splits between HomeLink agents and the platform." audience="Agents" actions={<CalculatorResetButton onClick={reset} />}>
+    <CalculatorCard id="agent-commission" icon={HandCoins} title="Agent Commission Calculator" description="Calculate commission splits between HouseLink agents and the platform." audience="Agents" actions={<CalculatorResetButton onClick={reset} />}>
       {body}
     </CalculatorCard>
   );

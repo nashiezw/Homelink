@@ -6,15 +6,15 @@
 
 const BASE = process.env.BASE_URL ?? "http://localhost:3000";
 const PUBLIC_ONLY = process.env.SMOKE_PUBLIC_ONLY === "1" || process.env.SMOKE_PUBLIC_ONLY === "true";
-const STANDARD_PASSWORD = process.env.SEED_STANDARD_PASSWORD ?? "HomeLink2026!";
+const STANDARD_PASSWORD = process.env.SEED_STANDARD_PASSWORD ?? "HouseLink2026!";
 const TINASHE_PASSWORD = process.env.SEED_TINASHE_PASSWORD ?? STANDARD_PASSWORD;
-const LANDLORD_PASSWORD = process.env.SEED_LANDLORD_PASSWORD ?? "HomeLinkOwner2026!";
-const ADMIN_PASSWORD = process.env.SEED_ADMIN_PASSWORD ?? "HomeLinkAdmin2026!";
+const LANDLORD_PASSWORD = process.env.SEED_LANDLORD_PASSWORD ?? "HouseLinkOwner2026!";
+const ADMIN_PASSWORD = process.env.SEED_ADMIN_PASSWORD ?? "HouseLinkAdmin2026!";
 const LOGIN_FALLBACKS = {
-  "admin@homelinkzim.co.zw": ["admin1234"],
-  "landlord@homelinkzim.co.zw": ["landlord1234"],
-  "demo@homelinkzim.co.zw": ["demo1234"],
-  "tinashe.dube@homelinkzim.co.zw": ["demo1234"],
+  "admin@houselinkzim.co.zw": ["admin1234"],
+  "landlord@houselinkzim.co.zw": ["landlord1234"],
+  "demo@houselinkzim.co.zw": ["demo1234"],
+  "tinashe.dube@houselinkzim.co.zw": ["demo1234"],
   "blessing@harareprime.co.zw": ["demo1234"],
 };
 
@@ -72,14 +72,14 @@ async function login(email, password) {
 }
 
 async function main() {
-  console.log(`\nHomeLink smoke test → ${BASE}\n`);
+  console.log(`\nHouseLink smoke test → ${BASE}\n`);
 
   // Static assets
-  let r = await fetch(`${BASE}/brand/homelink-icon.png`);
+  let r = await fetch(`${BASE}/brand/houselink-icon.png`);
   assert("Brand icon asset served", r.ok && (r.headers.get("content-type") ?? "").includes("image"));
-  r = await fetch(`${BASE}/brand/homelink-nav-lockup.png`);
+  r = await fetch(`${BASE}/brand/houselink-nav-lockup.png`);
   assert("Nav logo asset served", r.ok && (r.headers.get("content-type") ?? "").includes("image"));
-  r = await fetch(`${BASE}/brand/homelink-full-lockup.png`);
+  r = await fetch(`${BASE}/brand/houselink-full-lockup.png`);
   assert("Full logo asset served", r.ok && (r.headers.get("content-type") ?? "").includes("image"));
 
   // Key pages
@@ -156,7 +156,7 @@ async function main() {
   }
 
   // Landlord flow
-  r = await login("landlord@homelinkzim.co.zw", LANDLORD_PASSWORD);
+  r = await login("landlord@houselinkzim.co.zw", LANDLORD_PASSWORD);
   assert("POST login landlord", r.ok);
 
   r = await req("/api/v1/listings", {
@@ -197,11 +197,11 @@ async function main() {
     assert("POST mark-rented with tenant", r.ok, JSON.stringify(r.data?.error));
   }
 
-  r = await req("/api/v1/users/lookup?email=tinashe.dube@homelinkzim.co.zw");
+  r = await req("/api/v1/users/lookup?email=tinashe.dube@houselinkzim.co.zw");
   assert("GET user lookup", r.ok && r.data?.data?.id === "user_seeker_tinashe");
 
   // Demo user — tenancies
-  r = await login("tinashe.dube@homelinkzim.co.zw", TINASHE_PASSWORD);
+  r = await login("tinashe.dube@houselinkzim.co.zw", TINASHE_PASSWORD);
   assert("POST login seeker", r.ok);
 
   r = await req("/api/v1/tenancies");
@@ -245,13 +245,13 @@ async function main() {
     const disputeId = r.data?.data?.dispute?.id;
     if (disputeId) {
       cookie = "";
-      r = await login("admin@homelinkzim.co.zw", ADMIN_PASSWORD);
+      r = await login("admin@houselinkzim.co.zw", ADMIN_PASSWORD);
       r = await req(`/api/v1/admin/tenancy-disputes/${disputeId}`, {
         method: "PATCH",
         body: JSON.stringify({ resolution: "upheld", adminNote: "Smoke test resolved" }),
       });
       assert("PATCH resolve dispute", r.ok, JSON.stringify(r.data?.error));
-      r = await login("tinashe.dube@homelinkzim.co.zw", TINASHE_PASSWORD);
+      r = await login("tinashe.dube@houselinkzim.co.zw", TINASHE_PASSWORD);
     }
   }
 
@@ -298,7 +298,7 @@ async function main() {
   assert("POST sign lease", r.ok || r.status === 403, JSON.stringify(r.data?.error));
 
   // Roommates (authenticated)
-  r = await login("tinashe.dube@homelinkzim.co.zw", TINASHE_PASSWORD);
+  r = await login("tinashe.dube@houselinkzim.co.zw", TINASHE_PASSWORD);
   r = await req("/api/v1/roommates/profile");
   assert("GET roommate profile", r.ok, JSON.stringify(r.data?.error));
 
@@ -326,7 +326,7 @@ async function main() {
   assert("GET messages", r.ok);
 
   // Admin
-  r = await login("admin@homelinkzim.co.zw", ADMIN_PASSWORD);
+  r = await login("admin@houselinkzim.co.zw", ADMIN_PASSWORD);
   assert("POST login admin", r.ok);
 
   r = await req("/api/v1/admin/control-center");
@@ -373,7 +373,7 @@ async function main() {
   assert("PATCH delete territory", r.ok, JSON.stringify(r.data?.error));
 
   // Agent ratings (demo user on completed deal listing)
-  r = await login("tinashe.dube@homelinkzim.co.zw", TINASHE_PASSWORD);
+  r = await login("tinashe.dube@houselinkzim.co.zw", TINASHE_PASSWORD);
   r = await req("/api/v1/agents/ratings?listingId=harare-avondale-cottage");
   const rateableDeal = r.data?.data;
   const alreadyRated = r.ok && rateableDeal === null;

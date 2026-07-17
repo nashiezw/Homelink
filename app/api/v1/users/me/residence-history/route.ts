@@ -36,7 +36,7 @@ export async function POST(request: Request) {
       startDate: String(body.startDate ?? new Date().toISOString().slice(0, 10)),
       endDate: body.endDate ? String(body.endDate) : undefined,
       visibility: body.visibility ?? "public",
-      notes: body.notes ? String(body.notes) : "Self-reported - not verified until payment or lease on HomeLink",
+      notes: body.notes ? String(body.notes) : "Self-reported - not verified until payment or lease on HouseLink",
     });
     return created({ record });
   }
@@ -48,7 +48,7 @@ export async function POST(request: Request) {
     startDate: String(body.startDate ?? new Date().toISOString().slice(0, 10)),
     endDate: body.endDate ? String(body.endDate) : undefined,
     visibility: body.visibility ?? "public",
-    notes: body.notes ? String(body.notes) : "Self-reported — not verified until payment or lease on HomeLink",
+    notes: body.notes ? String(body.notes) : "Self-reported — not verified until payment or lease on HouseLink",
   });
 
   return created({ record: getStore().sanitizeResidenceForViewer(record, userId) });

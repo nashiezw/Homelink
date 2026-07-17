@@ -464,7 +464,7 @@ export const featuredListings: Listing[] = [
     saves: 41,
     enquiries: 20,
     trustScore: 74,
-    highlight: "Lowest price on HomeLink",
+    highlight: "Lowest price on HouseLink",
     tenantPreferences: {
       acceptedHouseholdTypes: ["single"],
       acceptedMaritalStatuses: ["single"],

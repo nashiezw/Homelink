@@ -1,5 +1,5 @@
 export function isStrictProductionMode() {
-  return process.env.HOMELINK_STRICT_PRODUCTION === "true";
+  return process.env.HOUSELINK_STRICT_PRODUCTION === "true";
 }
 
 export function isLocalAppUrl() {

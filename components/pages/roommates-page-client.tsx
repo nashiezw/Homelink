@@ -100,10 +100,10 @@ const matchingFilters = [
 ] as const;
 
 const trustPillars = [
-  { title: "Verified members", body: "Identity, phone, and profile checks before people can build trust on HomeLink." },
-  { title: "HomeLink assisted viewings", body: "Schedule viewings with better guidance so payments never happen blindly." },
+  { title: "Verified members", body: "Identity, phone, and profile checks before people can build trust on HouseLink." },
+  { title: "HouseLink assisted viewings", body: "Schedule viewings with better guidance so payments never happen blindly." },
   { title: "Fraud protection", body: "Report suspicious users, block bad actors, and get support before money changes hands." },
-  { title: "Secure messaging", body: "Keep early conversations inside HomeLink until both sides are comfortable." },
+  { title: "Secure messaging", body: "Keep early conversations inside HouseLink until both sides are comfortable." },
 ] as const;
 
 /* --- Hero-only (keep exactly as loved) --- */
@@ -119,7 +119,7 @@ function AvatarStack({ urls, size = 36 }: { urls: readonly string[]; size?: numb
         <Image
           key={url}
           src={url}
-          alt={`HomeLink roommate member ${i + 1}`}
+          alt={`HouseLink roommate member ${i + 1}`}
           width={size}
           height={size}
           className="rounded-full border-2 border-white/90 object-cover shadow-sm"
@@ -527,7 +527,7 @@ function TestimonialCard({ story }: { story: (typeof successStories)[number] }) 
           <span className="rounded-xl bg-slate-50 p-3 text-slate-600"><b className="block text-ink">{story.outcome}</b>Result</span>
         </div>
         <p className="mt-3 flex-1 text-sm leading-relaxed text-slate-600">&ldquo;{story.quote}&rdquo;</p>
-        <p className="mt-4 text-sm font-bold text-emerald-700">Safe match completed through HomeLink</p>
+        <p className="mt-4 text-sm font-bold text-emerald-700">Safe match completed through HouseLink</p>
       </div>
     </blockquote>
   );
@@ -818,7 +818,7 @@ export function RoommatesPageClient() {
               eyebrow="Smart matching"
               title="Find people who fit"
               accent="your life"
-              subtitle="HomeLink combines roommate preferences, budget, lifestyle and location signals so matching feels closer to a trusted introduction than a cold listing."
+              subtitle="HouseLink combines roommate preferences, budget, lifestyle and location signals so matching feels closer to a trusted introduction than a cold listing."
             />
             <div className="mt-6 flex gap-2 overflow-x-auto pb-2 [scrollbar-width:thin]">
               {matchingFilters.map((filter, i) => (
@@ -942,7 +942,7 @@ export function RoommatesPageClient() {
                   Built for safer shared living.
                 </h2>
                 <p className="mt-4 text-base leading-relaxed text-white/70">
-                  Room sharing needs more than pretty listings. HomeLink puts verification, assisted viewings, secure messaging and support around the full journey.
+                  Room sharing needs more than pretty listings. HouseLink puts verification, assisted viewings, secure messaging and support around the full journey.
                 </p>
                 <div className="mt-6 grid grid-cols-3 gap-3">
                   {[
@@ -1005,7 +1005,7 @@ export function RoommatesPageClient() {
                   Find your perfect <span className="bg-gradient-to-r from-emerald-300 to-teal-200 bg-clip-text text-transparent">roommate today.</span>
                 </h2>
                 <p className="mt-4 max-w-2xl text-base leading-relaxed text-emerald-50/90">
-                  Thousands of verified Zimbabweans are already finding trusted roommates and quality accommodation through HomeLink.
+                  Thousands of verified Zimbabweans are already finding trusted roommates and quality accommodation through HouseLink.
                 </p>
                 <div className="mt-8 flex flex-wrap justify-center gap-3">
                   <button type="button" onClick={() => scrollToRoomShareWizard("seeking")} className="inline-flex h-12 items-center gap-2 rounded-2xl bg-white px-6 text-base font-bold text-emerald-900 shadow-lg transition hover:-translate-y-0.5">
@@ -1120,8 +1120,8 @@ function toRoommateCardPerson(summary: PublicRoommateProfileSummary): RoommateCa
   if (!profile?.active) return null;
   const preferredLocations = Array.isArray(profile.preferredLocations) ? profile.preferredLocations.map(String) : [];
   const [suburb, cityFromLocation] = splitLocation(preferredLocations[0]);
-  const name = summary.name || stringValue(profile.name) || "HomeLink member";
-  const occupation = stringValue(profile.occupation) || "HomeLink member";
+  const name = summary.name || stringValue(profile.name) || "HouseLink member";
+  const occupation = stringValue(profile.occupation) || "HouseLink member";
   const lifestyle = stringValue(profile.lifestyle) || "compatible";
   const languages = stringArray(profile.languages, ["English"]);
   const tags = stringArray(profile.tags, [

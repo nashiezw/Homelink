@@ -58,7 +58,7 @@ export function MarketplaceSafetySection() {
             <p className="section-eyebrow">Marketplace safety</p>
             <h2 className="section-title">Built to reduce fake, stale, and duplicate listings</h2>
             <p className="section-copy">
-              HomeLink treats trust as product infrastructure — not a badge you add after launch.
+              HouseLink treats trust as product infrastructure — not a badge you add after launch.
             </p>
           </div>
 

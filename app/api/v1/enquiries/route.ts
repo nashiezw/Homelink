@@ -20,7 +20,7 @@ export async function POST(request: Request) {
     return problem(400, "INVALID_ENQUIRY", "listingId is required.");
   }
   if (!String(body.phone ?? "").trim()) {
-    return problem(400, "INVALID_ENQUIRY", "Phone number is required so HomeLink can contact the client.");
+    return problem(400, "INVALID_ENQUIRY", "Phone number is required so HouseLink can contact the client.");
   }
 
   if (shouldUsePostgresEnquiries()) {

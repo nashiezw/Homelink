@@ -132,7 +132,7 @@ export function PaymentsPageClient() {
 
   async function startCheckout() {
     if (!user) {
-      showToast("Sign in to pay for HomeLink services.", "info");
+      showToast("Sign in to pay for HouseLink services.", "info");
       return;
     }
     if (!selectedPlan) return;
@@ -163,7 +163,7 @@ export function PaymentsPageClient() {
   return (
     <PageShell
       eyebrow="Payments"
-      title="Secure HomeLink payments"
+      title="Secure HouseLink payments"
       description="Pay for listing upgrades, subscriptions, and marketing with a clear reference, Zimbabwe-friendly payment methods, and finance review before activation."
       highlights={[
         { label: "Currency", value: currency },
@@ -339,7 +339,7 @@ export function PaymentsPageClient() {
                 <Banknote className="size-4 text-emerald-700" />
                 Payment method
               </p>
-              <p className="mb-4 text-xs text-slate-500">Choose how you will pay for this HomeLink service.</p>
+              <p className="mb-4 text-xs text-slate-500">Choose how you will pay for this HouseLink service.</p>
 
               {manualMethods.length > 0 && (
                 <MethodGroup
@@ -375,7 +375,7 @@ export function PaymentsPageClient() {
 
               {paymentMethods.length === 0 && (
                 <p className="text-sm text-amber-700 dark:text-amber-300">
-                  Payment methods are loading. Contact support@homelinkzim.co.zw if this persists.
+                  Payment methods are loading. Contact support@houselinkzim.co.zw if this persists.
                 </p>
               )}
             </div>
@@ -384,7 +384,7 @@ export function PaymentsPageClient() {
               <div className="rounded-lg border border-dashed border-slate-200 p-4 text-xs text-slate-500 dark:border-slate-700">
                 <p className="font-semibold text-slate-700 dark:text-slate-300">After you create payment</p>
                 <p className="mt-1 leading-relaxed">
-                  HomeLink issues your reference and bank details on the next screen. You then pay and upload proof for finance review.
+                  HouseLink issues your reference and bank details on the next screen. You then pay and upload proof for finance review.
                 </p>
               </div>
             )}
@@ -481,7 +481,7 @@ function ActivePaymentPanel({
               <p className="mt-1 text-slate-600 dark:text-slate-400">
                 {payment.proofStatus === "VERIFIED"
                   ? "Finance verified your payment."
-                  : "Waiting for HomeLink finance to verify your proof."}
+                  : "Waiting for HouseLink finance to verify your proof."}
               </p>
             </div>
           ) : null}
@@ -515,7 +515,7 @@ function PaymentHistory({
         <History className="mx-auto size-8 text-slate-400" />
         <p className="mt-3 font-semibold text-ink dark:text-white">No payments yet</p>
         <p className="mt-1 text-sm text-slate-500">
-          Listing fees, featured boosts, and subscriptions you pay through HomeLink appear here.
+          Listing fees, featured boosts, and subscriptions you pay through HouseLink appear here.
         </p>
       </div>
     );
@@ -562,12 +562,12 @@ function GuestPaymentsGate({ variant = "checkout" }: { variant?: "checkout" | "h
     <div className="gpu-card rounded-xl border border-slate-200 bg-white p-8 text-center shadow-sm dark:border-slate-700 dark:bg-slate-900">
       <Lock className="mx-auto size-10 text-emerald-700" />
       <h2 className="mt-4 text-xl font-bold text-ink dark:text-white">
-        {isHistory ? "Sign in to view payment history" : "Sign in to pay for HomeLink services"}
+        {isHistory ? "Sign in to view payment history" : "Sign in to pay for HouseLink services"}
       </h2>
       <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-600 dark:text-slate-400">
         {isHistory
-          ? "Your platform fee payments and proof status are linked to your HomeLink account."
-          : "Listing boosts, subscriptions, and marketing payments require a HomeLink account so finance can issue your reference and track proof."}
+          ? "Your platform fee payments and proof status are linked to your HouseLink account."
+          : "Listing boosts, subscriptions, and marketing payments require a HouseLink account so finance can issue your reference and track proof."}
       </p>
       <Link href="/auth?next=/payments" className="mt-6 inline-flex">
         <Button className="h-10 px-6">Sign in to continue</Button>
@@ -581,7 +581,7 @@ function PaymentTrustStrip() {
     {
       icon: ReceiptText,
       label: "Unique payment reference",
-      body: "Every checkout creates a traceable HomeLink reference for finance review.",
+      body: "Every checkout creates a traceable HouseLink reference for finance review.",
     },
     {
       icon: Landmark,
@@ -591,7 +591,7 @@ function PaymentTrustStrip() {
     {
       icon: ShieldCheck,
       label: "Activation after verification",
-      body: "Services activate after payment or proof is confirmed by HomeLink.",
+      body: "Services activate after payment or proof is confirmed by HouseLink.",
     },
   ];
 
@@ -636,7 +636,7 @@ function TenancyNotice() {
     <div className="mb-6 rounded-xl border border-sky-200 bg-sky-50 p-4 dark:border-sky-900/40 dark:bg-sky-950/20">
       <p className="font-semibold text-sky-900 dark:text-sky-100">Rent payments happen on the listing</p>
       <p className="mt-1 text-sm text-sky-800 dark:text-sky-200">
-        To pay rent or a deposit, open the property on HomeLink and use the tenancy payment option there. This page is for listing fees, boosts, and subscriptions.
+        To pay rent or a deposit, open the property on HouseLink and use the tenancy payment option there. This page is for listing fees, boosts, and subscriptions.
       </p>
       <Link href="/rent" className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-sky-800 dark:text-sky-200">
         Find a rental <ArrowRight className="size-4" />
@@ -652,7 +652,7 @@ function StatusBanner({ status, reference, payment }: { status: string; referenc
     (tone === "success"
       ? "Payment received. Finance will confirm and activate your service."
       : tone === "error"
-        ? "Payment could not be completed. Try again or contact support@homelinkzim.co.zw."
+        ? "Payment could not be completed. Try again or contact support@houselinkzim.co.zw."
         : "Payment created. Pay using the details below and upload your proof.");
 
   return (

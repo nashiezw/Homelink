@@ -1,14 +1,14 @@
 # CSRF Strategy
 
-HomeLink uses signed, HttpOnly, `SameSite=Lax` session cookies. State-changing API routes also have a centralized CSRF boundary in `middleware.ts`.
+HouseLink uses signed, HttpOnly, `SameSite=Lax` session cookies. State-changing API routes also have a centralized CSRF boundary in `middleware.ts`.
 
 The middleware applies to `POST`, `PATCH`, `PUT`, and `DELETE` under `/api/v1/*`.
 
 ## What Is Enforced
 
 - Cross-site Fetch Metadata (`Sec-Fetch-Site: cross-site` or `none`) is rejected.
-- `Origin` and `Referer`, when present, must match the request origin, `NEXT_PUBLIC_APP_URL`, or a comma-separated value in `HOMELINK_ALLOWED_ORIGINS`.
-- Cookie-authenticated mutations must include `X-HomeLink-CSRF: 1`.
+- `Origin` and `Referer`, when present, must match the request origin, `NEXT_PUBLIC_APP_URL`, or a comma-separated value in `HOUSELINK_ALLOWED_ORIGINS`.
+- Cookie-authenticated mutations must include `X-HouseLink-CSRF: 1`.
 - `apiFetch()` automatically sends that header for unsafe methods.
 
 ## Exemptions

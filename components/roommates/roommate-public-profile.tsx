@@ -399,7 +399,7 @@ export function RoommatePublicProfile({ userId }: { userId: string }) {
               <section>
                 <h2 className="text-xl font-semibold text-slate-950 dark:text-white">Stay history</h2>
                 <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-                  Verified residence records on HomeLink
+                  Verified residence records on HouseLink
                 </p>
 
                 <div className="mt-5 grid gap-4 sm:grid-cols-2">
@@ -424,7 +424,7 @@ export function RoommatePublicProfile({ userId }: { userId: string }) {
                 </li>
                 <li className="flex items-center gap-2.5 text-slate-700 dark:text-slate-200">
                   <Clock3 className="size-4 shrink-0 text-emerald-600" />
-                  Message securely via HomeLink
+                  Message securely via HouseLink
                 </li>
               </ul>
             </SidebarCard>

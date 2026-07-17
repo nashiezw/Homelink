@@ -86,7 +86,7 @@ async function getRateableAgentDealFromPostgres(customerId: string, listingId: s
 
   return {
     agentId: lead.assignedAgentId,
-    agentName: agent?.name ?? lead.assignedAgentName ?? "HomeLink Agent",
+    agentName: agent?.name ?? lead.assignedAgentName ?? "HouseLink Agent",
     agentSlug: slugify(agent?.name ?? lead.assignedAgentName ?? lead.assignedAgentId),
     dealRef,
     listingId: lead.listingId ?? undefined,

@@ -12,7 +12,7 @@ type RouteContext = { params: Promise<{ id: string }> };
 
 function validateSubmission(application: AgentApplication) {
   if (!application.agentContractAccepted) {
-    return "Sign the HomeLink agent agreement before submitting.";
+    return "Sign the HouseLink agent agreement before submitting.";
   }
   if (!application.declarationAccepted || !application.termsAccepted || !application.privacyAccepted) {
     return "Accept all declarations before submitting.";

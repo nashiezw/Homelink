@@ -84,13 +84,13 @@ export async function testCloudinaryConfig(
   }
 
   const timestamp = Math.floor(Date.now() / 1000);
-  const publicId = `homelink_admin_health_${timestamp}`;
-  const folder = "homelink/system-tests";
+  const publicId = `houselink_admin_health_${timestamp}`;
+  const folder = "houselink/system-tests";
   const uploadParams = { folder, public_id: publicId, timestamp };
   const uploadUrl = `https://api.cloudinary.com/v1_1/${cloudName}/raw/upload`;
   const form = new FormData();
 
-  form.set("file", new Blob([`HomeLink Cloudinary health test ${new Date().toISOString()}`], { type: "text/plain" }), `${publicId}.txt`);
+  form.set("file", new Blob([`HouseLink Cloudinary health test ${new Date().toISOString()}`], { type: "text/plain" }), `${publicId}.txt`);
   form.set("folder", folder);
   form.set("public_id", publicId);
   form.set("timestamp", String(timestamp));

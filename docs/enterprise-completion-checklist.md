@@ -1,4 +1,4 @@
-# HomeLink Enterprise PropTech Completion Checklist
+# HouseLink Enterprise PropTech Completion Checklist
 
 ## Appointment Booking
 - [x] Durable PostgreSQL appointments
@@ -8,7 +8,7 @@
 - [x] Admin CRM visibility
 - [x] Admin day/week calendar dashboard
 - [x] ICS calendar export for Google/Outlook-compatible import
-- [x] Reminder records queued through HomeLink notifications
+- [x] Reminder records queued through HouseLink notifications
 - [ ] External Google Calendar sync
 - [ ] External Outlook Calendar sync
 

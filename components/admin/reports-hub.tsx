@@ -73,7 +73,7 @@ export function ReportsHub() {
         const objectUrl = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = objectUrl;
-        a.download = `homelink-${type}-report.csv`;
+        a.download = `houselink-${type}-report.csv`;
         a.click();
         URL.revokeObjectURL(objectUrl);
       } else {
@@ -83,7 +83,7 @@ export function ReportsHub() {
         const objectUrl = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = objectUrl;
-        a.download = `homelink-${type}-report.json`;
+        a.download = `houselink-${type}-report.json`;
         a.click();
         URL.revokeObjectURL(objectUrl);
       }

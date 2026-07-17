@@ -17,7 +17,7 @@ import {
   StickyNote,
   X,
 } from "lucide-react";
-import { HomeLinkBrand } from "@/components/brand/homelink-logo";
+import { HouseLinkBrand } from "@/components/brand/houselink-logo";
 import { Button } from "@/components/ui/button";
 import { AcademyProse } from "@/components/academy/academy-prose";
 import { isFullTrainingManualUrl } from "@/lib/academy/academy-constants";
@@ -173,7 +173,7 @@ export function LessonViewer({
               <div className="relative z-10">
                 <div className="flex flex-wrap items-center justify-between gap-4">
                   <div className="rounded-2xl bg-white/95 p-2 shadow-lg ring-1 ring-white/40">
-                    <HomeLinkBrand variant="icon" iconOnly />
+                    <HouseLinkBrand variant="icon" iconOnly />
                   </div>
                   {stageLabel && (
                     <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold uppercase tracking-wider backdrop-blur-sm">
@@ -305,7 +305,7 @@ export function LessonViewer({
                   <h3 className="flex items-center gap-2 text-lg font-bold">
                     <Download className="size-5 text-emerald-600" /> Field Forms & Tools
                   </h3>
-                  <p className="mt-1 text-sm text-slate-500">Print-ready HomeLink forms and checklists — also available under the Toolkit tab.</p>
+                  <p className="mt-1 text-sm text-slate-500">Print-ready HouseLink forms and checklists — also available under the Toolkit tab.</p>
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2">
                   {fieldForms.map((resource) => (
@@ -411,7 +411,7 @@ function collectLessonNotes(lesson: Lesson) {
     url,
     viewUrl: `${url}${url.includes("?") ? "&" : "?"}inline=1`,
     title: `${lesson.title} — Lesson Notes`,
-    subtitle: "HomeLink branded study guide · Print or save",
+    subtitle: "HouseLink branded study guide · Print or save",
   }];
 }
 
@@ -428,7 +428,7 @@ function collectFieldForms(lesson: Lesson) {
       url,
       viewUrl: `${url}${url.includes("?") ? "&" : "?"}inline=1`,
       title: download.title,
-      subtitle: "HomeLink field form · Print-ready PDF",
+      subtitle: "HouseLink field form · Print-ready PDF",
     });
   }
 
@@ -445,7 +445,7 @@ function DownloadCard({ href, title, subtitle }: { href: string; title: string; 
     >
       <div className="flex items-center gap-4">
         <div className="rounded-xl bg-white p-2 shadow-sm ring-1 ring-emerald-100 group-hover:ring-emerald-200 dark:bg-slate-900 dark:ring-emerald-900/60">
-          <HomeLinkBrand variant="icon" iconOnly className="scale-75" />
+          <HouseLinkBrand variant="icon" iconOnly className="scale-75" />
         </div>
         <div className="min-w-0 flex-1">
           <p className="font-semibold truncate text-ink dark:text-white">{title}</p>

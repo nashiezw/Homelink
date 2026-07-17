@@ -74,7 +74,7 @@ export function seedAdminPlatformState(): Pick<
         status: "OPEN",
         team: "Technical Support",
         assignee: "Technical Support",
-        customerEmail: "tinashe.dube@homelinkzim.co.zw",
+        customerEmail: "tinashe.dube@houselinkzim.co.zw",
         body: "Upload fails after selecting 5 images.",
         createdAt: daysAgo(1),
         updatedAt: daysAgo(1),
@@ -89,7 +89,7 @@ export function seedAdminPlatformState(): Pick<
         status: "PENDING",
         team: "Trust & Safety",
         assignee: "Trust & Safety",
-        customerEmail: "farai.dube@homelinkzim.co.zw",
+        customerEmail: "farai.dube@houselinkzim.co.zw",
         body: "Requesting review of suspension.",
         createdAt: daysAgo(2),
         updatedAt: daysAgo(1),
@@ -764,7 +764,7 @@ export function adminApproveListing(
   let bypassApplied = false;
   if (!listingHasOwnerAgreement(listing)) {
     if (!bypassRequested || !bypassReason) {
-      throw new ListingApprovalError("Owner must sign the HomeLink listing agreement before this listing can go live.");
+      throw new ListingApprovalError("Owner must sign the HouseLink listing agreement before this listing can go live.");
     }
     bypassApplied = true;
     Object.assign(
@@ -772,7 +772,7 @@ export function adminApproveListing(
       buildOwnerAgreementBypassRecord({
         bypassOwnerAgreement: true,
         bypassReason,
-        actor: { id: actor.id, name: actor.name, email: actor.email ?? "unknown@homelink.local" },
+        actor: { id: actor.id, name: actor.name, email: actor.email ?? "unknown@houselink.local" },
       }),
     );
   }

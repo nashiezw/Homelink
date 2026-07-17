@@ -13,7 +13,7 @@
   <text x="410" y="192" font-family="Arial" font-size="20" font-weight="700" fill="#0f172a">Connection Details</text>
   <text x="410" y="235" font-family="Arial" font-size="15" fill="#475569">Database</text>
   <rect x="410" y="248" width="180" height="36" rx="6" fill="#f8fafc" stroke="#94a3b8"/>
-  <text x="426" y="272" font-family="Arial" font-size="14" fill="#0f172a">homelink</text>
+  <text x="426" y="272" font-family="Arial" font-size="14" fill="#0f172a">houselink</text>
   <text x="410" y="322" font-family="Arial" font-size="15" fill="#475569">Connection string</text>
   <rect x="410" y="336" width="330" height="38" rx="6" fill="#f8fafc" stroke="#94a3b8"/>
   <text x="424" y="360" font-family="Arial" font-size="13" fill="#0f172a">postgresql://user:pass@host/db?sslmode=require</text>

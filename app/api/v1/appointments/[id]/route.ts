@@ -45,7 +45,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         startAt: body.startAt,
         notes: body.notes,
       },
-      { id: userId, name: user?.name ?? "HomeLink user" },
+      { id: userId, name: user?.name ?? "HouseLink user" },
     );
   } catch (error) {
     const message = error instanceof Error ? error.message : "";

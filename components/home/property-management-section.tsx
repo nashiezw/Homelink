@@ -39,7 +39,7 @@ export function PropertyManagementSection() {
               Turn property ownership into passive income
             </h2>
             <p className="mt-4 max-w-xl text-base leading-7 text-slate-300">
-              HomeLink markets your property, finds quality tenants, manages inspections, coordinates
+              HouseLink markets your property, finds quality tenants, manages inspections, coordinates
               maintenance, collects rent, and gives you complete visibility from one dashboard.
             </p>
 

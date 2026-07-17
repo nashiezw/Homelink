@@ -27,7 +27,7 @@ export function moveInCostInsights(result: MoveInCostResult): CalculatorInsight[
   if (result.deposit > result.monthlyRent * 1.05) {
     tips.push({
       tone: "tip",
-      message: "Your deposit is above one month's rent. Ask whether a single-month deposit is negotiable on HomeLink listings.",
+      message: "Your deposit is above one month's rent. Ask whether a single-month deposit is negotiable on HouseLink listings.",
     });
   }
 
@@ -69,7 +69,7 @@ export function rentalAffordabilityInsights(
     tips.push({
       tone: "warning",
       message:
-        "Your rent target and other expenses exceed your income. Lower your rent percentage, cut expenses, or consider sharing on HomeLink Roommates.",
+        "Your rent target and other expenses exceed your income. Lower your rent percentage, cut expenses, or consider sharing on HouseLink Roommates.",
     });
     return tips;
   }
@@ -143,20 +143,20 @@ export function agentCommissionInsights(result: AgentCommissionResult): Calculat
   if (result.agentPercent >= 60) {
     tips.push({
       tone: "positive",
-      message: "This split favours the agent - typical for agents who source and close the deal themselves on HomeLink.",
+      message: "This split favours the agent - typical for agents who source and close the deal themselves on HouseLink.",
     });
   } else if (result.agentPercent <= 40) {
     tips.push({
       tone: "tip",
-      message: "A lower agent share often applies when HomeLink generates the lead or provides heavy platform support. Confirm the split before closing.",
+      message: "A lower agent share often applies when HouseLink generates the lead or provides heavy platform support. Confirm the split before closing.",
     });
   }
 
-  if (result.agentEarnings > 0 && result.homeLinkEarnings > 0) {
+  if (result.agentEarnings > 0 && result.houseLinkEarnings > 0) {
     const agentShare = Math.round((result.agentEarnings / result.totalCommission) * 100);
     tips.push({
       tone: "tip",
-      message: `On this deal you keep ${agentShare}% (${formatCalculatorCurrency(result.agentEarnings, 2)}) and HomeLink retains ${100 - agentShare}% for platform, verification, and marketing.`,
+      message: `On this deal you keep ${agentShare}% (${formatCalculatorCurrency(result.agentEarnings, 2)}) and HouseLink retains ${100 - agentShare}% for platform, verification, and marketing.`,
     });
   }
 
@@ -188,7 +188,7 @@ export function landlordIncomeInsights(result: LandlordIncomeResult): Calculator
   if (result.managementFee > result.grossRentalIncome * 0.15) {
     tips.push({
       tone: "tip",
-      message: "Management fees above 15% add up quickly. Compare self-management vs HomeLink Property Management for your portfolio size.",
+      message: "Management fees above 15% add up quickly. Compare self-management vs HouseLink Property Management for your portfolio size.",
     });
   }
 

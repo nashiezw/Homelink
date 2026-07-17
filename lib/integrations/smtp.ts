@@ -49,11 +49,11 @@ function escapeHtml(value: string) {
 }
 
 function getAppUrl() {
-  return (process.env.NEXT_PUBLIC_APP_URL?.trim() || "https://homelinkzim.co.zw").replace(/\/+$/, "");
+  return (process.env.NEXT_PUBLIC_APP_URL?.trim() || "https://houselinkzim.co.zw").replace(/\/+$/, "");
 }
 
 function getLogoUrl() {
-  return `${getAppUrl()}/brand/homelink-full-lockup.png`;
+  return `${getAppUrl()}/brand/houselink-full-lockup.png`;
 }
 
 function textToHtml(body: string) {
@@ -61,7 +61,7 @@ function textToHtml(body: string) {
     .split(/\n{2,}/)
     .map((block) => block.trim())
     .filter(Boolean);
-  if (!blocks.length) return "<p style=\"margin:0;color:#334155;line-height:1.65;\">You have a new HomeLink update.</p>";
+  if (!blocks.length) return "<p style=\"margin:0;color:#334155;line-height:1.65;\">You have a new HouseLink update.</p>";
   return blocks
     .map((block) => {
       const lines = escapeHtml(block).split(/\n/);
@@ -95,7 +95,7 @@ function buildHtmlEmail(input: { subject: string; body: string; preheader: strin
             <tr>
               <td style="padding:0 0 18px;">
                 <a href="${appUrl}" style="display:inline-block;text-decoration:none;">
-                  <img src="${logoUrl}" width="168" alt="HomeLink Zimbabwe" style="display:block;width:168px;max-width:60%;height:auto;border:0;">
+                  <img src="${logoUrl}" width="168" alt="HouseLink Zimbabwe" style="display:block;width:168px;max-width:60%;height:auto;border:0;">
                 </a>
               </td>
             </tr>
@@ -117,7 +117,7 @@ function buildHtmlEmail(input: { subject: string; body: string; preheader: strin
                   </tr>
                   <tr>
                     <td style="padding:4px 28px 30px;">
-                      <a href="${appUrl}" style="display:inline-block;border-radius:8px;background:#047857;padding:11px 16px;color:#ffffff;font-size:14px;font-weight:700;text-decoration:none;">Open HomeLink</a>
+                      <a href="${appUrl}" style="display:inline-block;border-radius:8px;background:#047857;padding:11px 16px;color:#ffffff;font-size:14px;font-weight:700;text-decoration:none;">Open HouseLink</a>
                     </td>
                   </tr>
                 </table>
@@ -125,8 +125,8 @@ function buildHtmlEmail(input: { subject: string; body: string; preheader: strin
             </tr>
             <tr>
               <td style="padding:18px 4px 0;color:#64748b;font-size:12px;line-height:1.6;">
-                <p style="margin:0 0 6px;">HomeLink Zimbabwe</p>
-                <p style="margin:0;">This email was sent by HomeLink. If you were not expecting it, you can safely ignore it.</p>
+                <p style="margin:0 0 6px;">HouseLink Zimbabwe</p>
+                <p style="margin:0;">This email was sent by HouseLink. If you were not expecting it, you can safely ignore it.</p>
               </td>
             </tr>
           </table>
@@ -222,8 +222,8 @@ export async function sendSmtpTestEmail(
   return sendSmtpPlainEmail(
     integrations,
     to,
-    "HomeLink SMTP test",
-    `Your HomeLink email integration is configured and ready.\n\nThis test confirms that the platform can connect to the configured SMTP provider and submit a branded email.\n\nSent at ${new Date().toISOString()}`,
+    "HouseLink SMTP test",
+    `Your HouseLink email integration is configured and ready.\n\nThis test confirms that the platform can connect to the configured SMTP provider and submit a branded email.\n\nSent at ${new Date().toISOString()}`,
   );
 }
 
@@ -241,7 +241,7 @@ export async function sendSmtpPlainEmail(
   if (!isEmail(from)) {
     return {
       ok: false,
-      message: "Configure smtpFrom with a verified sender email address, for example support@homelinkzim.co.zw.",
+      message: "Configure smtpFrom with a verified sender email address, for example support@houselinkzim.co.zw.",
     };
   }
 
@@ -266,7 +266,7 @@ export async function sendSmtpPlainEmail(
     await readResponse(socket).catch((error) => {
       throw new SmtpStageError("greeting", error instanceof Error ? error.message : "SMTP greeting failed");
     });
-    await sendCommand(socket, "EHLO homelinkzim.co.zw", "ehlo");
+    await sendCommand(socket, "EHLO houselinkzim.co.zw", "ehlo");
 
     if (port !== 465) {
       await sendCommand(socket, "STARTTLS", "starttls");
@@ -275,7 +275,7 @@ export async function sendSmtpPlainEmail(
         const secure = tlsConnect({ socket: plain, servername: smtpHost }, () => resolve(secure));
         secure.on("error", reject);
       });
-      await sendCommand(socket, "EHLO homelinkzim.co.zw", "ehlo");
+      await sendCommand(socket, "EHLO houselinkzim.co.zw", "ehlo");
     }
 
     const token = Buffer.from(`\0${smtpUser}\0${smtpPass}`).toString("base64");
@@ -283,14 +283,14 @@ export async function sendSmtpPlainEmail(
     await sendCommand(socket, `MAIL FROM:<${from}>`, "mail-from");
     await sendCommand(socket, `RCPT TO:<${to}>`, "rcpt-to");
     await sendCommand(socket, "DATA", "data");
-    const boundary = `homelink-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    const boundary = `houselink-${Date.now()}-${Math.random().toString(16).slice(2)}`;
     const html = buildHtmlEmail({
       subject,
       body,
       preheader: body.split(/\r?\n/).find((line) => line.trim())?.trim() || subject,
     });
     const message = [
-      `From: HomeLink Zimbabwe <${from}>`,
+      `From: HouseLink Zimbabwe <${from}>`,
       `To: ${to}`,
       `Subject: ${encodeHeader(subject)}`,
       "MIME-Version: 1.0",

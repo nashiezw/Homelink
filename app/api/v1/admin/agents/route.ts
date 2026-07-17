@@ -374,7 +374,7 @@ async function savePostgresCommissionRules(rules: CommissionRule[], actor: { id:
           scope: rule.scope ?? "DEFAULT",
           priority: rule.priority ?? 100,
           ratePercent: rule.ratePercent,
-          homelinkSplitPercent: rule.homelinkSplitPercent,
+          houselinkSplitPercent: rule.houselinkSplitPercent,
           agentSplitPercent: rule.agentSplitPercent,
           minAmount: rule.minAmount,
           maxAmount: rule.maxAmount,
@@ -390,7 +390,7 @@ async function savePostgresCommissionRules(rules: CommissionRule[], actor: { id:
           scope: rule.scope ?? "DEFAULT",
           priority: rule.priority ?? 100,
           ratePercent: rule.ratePercent,
-          homelinkSplitPercent: rule.homelinkSplitPercent,
+          houselinkSplitPercent: rule.houselinkSplitPercent,
           agentSplitPercent: rule.agentSplitPercent,
           minAmount: rule.minAmount,
           maxAmount: rule.maxAmount,
@@ -477,7 +477,7 @@ function buildAgentSettings(rows: Array<{
   promotionCode: string | null;
   priority: number;
   ratePercent: Prisma.Decimal;
-  homelinkSplitPercent: Prisma.Decimal;
+  houselinkSplitPercent: Prisma.Decimal;
   agentSplitPercent: Prisma.Decimal;
   minAmount: Prisma.Decimal;
   maxAmount: Prisma.Decimal;
@@ -509,7 +509,7 @@ function buildAgentSettings(rows: Array<{
     startsAt: row.startsAt?.toISOString(),
     endsAt: row.endsAt?.toISOString(),
     ratePercent: Number(row.ratePercent),
-    homelinkSplitPercent: Number(row.homelinkSplitPercent),
+    houselinkSplitPercent: Number(row.houselinkSplitPercent),
     agentSplitPercent: Number(row.agentSplitPercent),
     minAmount: Number(row.minAmount),
     maxAmount: Number(row.maxAmount),
@@ -599,10 +599,10 @@ function toAgentProfile(
     applicationId: application?.id ?? `agent_application_${user.id}`,
     agentNumber: `HLZ-AG-${String(index + 1).padStart(4, "0")}`,
     agentIdCode: `AG-${user.id.replace(/[^a-zA-Z0-9]/g, "").slice(-8).toUpperCase()}`,
-    qrCodeData: `homelink-agent:${user.id}`,
+    qrCodeData: `houselink-agent:${user.id}`,
     level: completedDeals >= 15 ? "GOLD" : completedDeals >= 5 ? "SILVER" : "BRONZE",
     status: user.accountStatus === "SUSPENDED" ? "SUSPENDED" : "ACTIVE",
-    biography: `${user.name} is a HomeLink Zimbabwe agent.`,
+    biography: `${user.name} is a HouseLink Zimbabwe agent.`,
     photoUrl: undefined,
     areasServed: professional.areasCovered.length ? professional.areasCovered : [professional.city || "Harare"],
     languages: professional.languages.length ? professional.languages : ["English", "Shona"],
@@ -686,7 +686,7 @@ function toAgentCommission(row: any): AgentCommission {
     paymentStatus: row.paymentStatus,
     reason: row.reason ?? undefined,
     grossAmount: Number(row.grossAmount),
-    homelinkAmount: Number(row.homelinkAmount),
+    houselinkAmount: Number(row.houselinkAmount),
     agentAmount: Number(row.agentAmount),
     taxAmount: Number(row.taxAmount),
     netAgentAmount: Number(row.netAgentAmount),
@@ -738,18 +738,18 @@ function buildAgentAnalytics(profiles: AgentProfile[], applications: AgentApplic
     totalSales: commissions.filter((commission) => commission.type === "SALE").length,
     totalRentals: commissions.filter((commission) => commission.type === "RENTAL").length,
     totalRevenue: sum(commissions, "grossAmount"),
-    totalCompanyCommission: sum(commissions, "homelinkAmount"),
+    totalCompanyCommission: sum(commissions, "houselinkAmount"),
     totalAgentCommission: sum(commissions, "agentAmount"),
     commissionAwaitingApproval: pending.length,
     commissionAlreadyPaid: paid.length,
     outstandingCommission: sum([...pending, ...approved], "netAgentAmount"),
-    homelinkGeneratedRevenue: sum(commissions.filter((commission) => commission.leadSource === "HOMELINK"), "grossAmount"),
+    houselinkGeneratedRevenue: sum(commissions.filter((commission) => commission.leadSource === "HOUSELINK"), "grossAmount"),
     agentGeneratedRevenue: sum(commissions.filter((commission) => commission.leadSource === "AGENT"), "grossAmount"),
     totalCommissionPaid: sum(paid, "netAgentAmount"),
     topAgents: profiles.slice(0, 5).map((profile) => ({ id: profile.userId, name: profile.publicSlug, deals: profile.completedDeals, revenue: 0, rating: profile.averageRating })),
     topCities: Array.from(cityStats.values()).slice(0, 5),
     topBranches: [],
-    leadSourceStats: (["HOMELINK", "AGENT"] as LeadSource[]).map((leadSource) => ({
+    leadSourceStats: (["HOUSELINK", "AGENT"] as LeadSource[]).map((leadSource) => ({
       leadSource,
       leads: leads.filter((lead) => lead.leadSource === leadSource).length,
       closed: closed.filter((lead) => lead.leadSource === leadSource).length,
@@ -792,7 +792,7 @@ function normalizeLeadStatus(value: string): LeadStatus {
   return (allowed.has(value) ? value : "NEW") as LeadStatus;
 }
 
-function sum(items: AgentCommission[], key: keyof Pick<AgentCommission, "grossAmount" | "homelinkAmount" | "agentAmount" | "netAgentAmount">) {
+function sum(items: AgentCommission[], key: keyof Pick<AgentCommission, "grossAmount" | "houselinkAmount" | "agentAmount" | "netAgentAmount">) {
   return items.reduce((total, item) => total + Number(item[key] ?? 0), 0);
 }
 

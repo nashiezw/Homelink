@@ -15,14 +15,14 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const { location } = await params;
   const city = resolveCity(location);
   return {
-    title: `Property to Rent in ${city.name} | HomeLink Zimbabwe`,
-    description: `Browse rooms, flats, cottages, houses, and commercial rentals in ${city.name}, Zimbabwe on HomeLink.`,
+    title: `Property to Rent in ${city.name} | HouseLink Zimbabwe`,
+    description: `Browse rooms, flats, cottages, houses, and commercial rentals in ${city.name}, Zimbabwe on HouseLink.`,
     alternates: {
       canonical: `/rent/${city.slug}`,
     },
     openGraph: {
       title: `Property to Rent in ${city.name}`,
-      description: `Verified rental listings in ${city.name}, Zimbabwe on HomeLink.`,
+      description: `Verified rental listings in ${city.name}, Zimbabwe on HouseLink.`,
       url: `/rent/${city.slug}`,
       type: "website",
     },

@@ -15,7 +15,7 @@ const safetyCards = [
   },
   {
     title: "Use trusted channels",
-    body: "Keep enquiries, messages, and property-management requests inside traceable HomeLink workflows where possible.",
+    body: "Keep enquiries, messages, and property-management requests inside traceable HouseLink workflows where possible.",
     icon: LockKeyhole,
   },
   {
@@ -31,7 +31,7 @@ const checklist = [
   "Check listing freshness, photos, price, suburb, and availability.",
   "Avoid cash transfers without a clear written agreement.",
   "Save messages and receipts for reference.",
-  "Use HomeLink support for suspicious or unsafe interactions.",
+  "Use HouseLink support for suspicious or unsafe interactions.",
 ];
 
 export default function SafetyPage() {
@@ -39,7 +39,7 @@ export default function SafetyPage() {
     <PageShell
       eyebrow="Safety centre"
       title="Move with confidence, not pressure."
-      description="HomeLink is designed around verified listings, safer contact, reporting loops, and practical checks that help seekers and owners avoid bad property experiences."
+      description="HouseLink is designed around verified listings, safer contact, reporting loops, and practical checks that help seekers and owners avoid bad property experiences."
       highlights={[
         { value: "Verify", label: "identity and property" },
         { value: "Report", label: "fake or stale listings" },

@@ -31,7 +31,7 @@ export function LandlordEnquiryInbox() {
       <div className="rounded-lg border border-dashed border-slate-200 p-8 text-center dark:border-slate-700">
         <p className="font-medium text-ink dark:text-white">No enquiries yet</p>
         <p className="mt-1 text-sm text-slate-500">
-          When seekers enquire on your listings, they appear here. HomeLink agents manage the customer journey.
+          When seekers enquire on your listings, they appear here. HouseLink agents manage the customer journey.
         </p>
       </div>
     );

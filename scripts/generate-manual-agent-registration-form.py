@@ -16,7 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 OUT_DIR = ROOT / "public" / "uploads" / "academy"
 RESOURCE_DIR = OUT_DIR / "resources"
 MANIFEST = OUT_DIR / "academy-resources-manifest.json"
-LOGO = ROOT / "public" / "brand" / "homelink-full-lockup.png"
+LOGO = ROOT / "public" / "brand" / "houselink-full-lockup.png"
 OUTPUT = RESOURCE_DIR / "manual-agent-registration-form.pdf"
 FILE_URL = "/uploads/academy/resources/manual-agent-registration-form.pdf"
 
@@ -110,7 +110,7 @@ def header_footer(canvas, doc, title: str):
     canvas.rect(0, height - 14 * mm, width, 3 * mm, fill=1, stroke=0)
     canvas.setFillColor(colors.white)
     canvas.setFont("Helvetica-Bold", 8)
-    canvas.drawString(18 * mm, height - 9.5 * mm, "HomeLink Zimbabwe Agent Recruitment")
+    canvas.drawString(18 * mm, height - 9.5 * mm, "HouseLink Zimbabwe Agent Recruitment")
     canvas.setFillColor(SLATE)
     canvas.setFont("Helvetica", 7)
     canvas.drawCentredString(
@@ -213,11 +213,11 @@ def signature_table() -> Table:
         [para("Applicant declaration", s["white"]), para("Office approval", s["white"])],
         [
             para(
-                "I confirm that the information supplied is true and complete. I understand that HomeLink may verify my identity, references, qualifications and suitability before onboarding.",
+                "I confirm that the information supplied is true and complete. I understand that HouseLink may verify my identity, references, qualifications and suitability before onboarding.",
                 s["small"],
             ),
             para(
-                "Recruitment decision must be completed by an authorised HomeLink manager before the applicant may represent HomeLink or receive leads.",
+                "Recruitment decision must be completed by an authorised HouseLink manager before the applicant may represent HouseLink or receive leads.",
                 s["small"],
             ),
         ],
@@ -252,7 +252,7 @@ def hero_block() -> Table:
         [
             para("Manual Agent Registration Form", s["title"]),
             para(
-                "Office recruitment form for screening, approving and onboarding prospective HomeLink agents.",
+                "Office recruitment form for screening, approving and onboarding prospective HouseLink agents.",
                 s["subtitle"],
             ),
         ]
@@ -314,7 +314,7 @@ def build_pdf():
         para("Recruitment Source and Territory", s["section"]),
         field_table(
             [
-                "How did the applicant hear about HomeLink?",
+                "How did the applicant hear about HouseLink?",
                 "Referred by / recruiter name",
                 "Preferred city / branch",
                 "Preferred suburbs or service areas",
@@ -370,7 +370,7 @@ def build_pdf():
         signature_table(),
         Spacer(1, 4 * mm),
         para(
-            "Confidentiality Notice: This form is for authorised HomeLink Zimbabwe recruitment and onboarding use only. Store completed forms securely in the official agent file.",
+            "Confidentiality Notice: This form is for authorised HouseLink Zimbabwe recruitment and onboarding use only. Store completed forms securely in the official agent file.",
             s["footer"],
         ),
     ]
@@ -383,7 +383,7 @@ def update_manifest():
     manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
     row = {
         "title": "Manual Agent Registration Form",
-        "description": "Branded A4 office-use form for recruiting, screening and onboarding prospective HomeLink agents.",
+        "description": "Branded A4 office-use form for recruiting, screening and onboarding prospective HouseLink agents.",
         "category": "Agent Templates",
         "sourceCategory": "Recruitment",
         "fileName": OUTPUT.name,

@@ -25,9 +25,9 @@ import {
 import { FadeIn } from "@/components/ui/fade-in";
 
 export const metadata: Metadata = {
-  title: "About HomeLink Zimbabwe | Built from a Real Housing Struggle",
+  title: "About HouseLink Zimbabwe | Built from a Real Housing Struggle",
   description:
-    "Learn why HomeLink Zimbabwe was built by people who understand fake listings, unanswered calls, wasted viewings, and the need for a property platform people can trust.",
+    "Learn why HouseLink Zimbabwe was built by people who understand fake listings, unanswered calls, wasted viewings, and the need for a property platform people can trust.",
   alternates: {
     canonical: "/about",
   },
@@ -56,7 +56,7 @@ const proofCards = [
   {
     label: "Born from experience",
     value: "We have lived it",
-    body: "HomeLink began with the same unanswered calls, uncertainty, and wasted trips many Zimbabweans know too well.",
+    body: "HouseLink began with the same unanswered calls, uncertainty, and wasted trips many Zimbabweans know too well.",
     icon: HeartHandshake,
   },
   {
@@ -76,27 +76,27 @@ const proofCards = [
 const founders = [
   {
     name: "Tinashe Ndudzo",
-    role: "Co-Founder, HomeLink",
+    role: "Co-Founder, HouseLink",
     venture: "Founder of DreamBig",
     initials: "TN",
     image: "/images/founders/tinashe-ndudzo.jpg",
-    imageAlt: "Tinashe Ndudzo, Co-Founder of HomeLink",
+    imageAlt: "Tinashe Ndudzo, Co-Founder of HouseLink",
     objectPosition: "50% 34%",
     origin: "Masvingo to Cape Town to Kwekwe",
     body:
-      "Born and raised in Masvingo, Tinashe later stayed in Cape Town, South Africa, before settling in Kwekwe. Moving between cities taught him how quickly accommodation can become stressful when information is unclear and people are hard to trust. As an entrepreneur and founder of DreamBig, he wanted HomeLink to solve a problem he had personally felt, not just create another place to browse listings.",
+      "Born and raised in Masvingo, Tinashe later stayed in Cape Town, South Africa, before settling in Kwekwe. Moving between cities taught him how quickly accommodation can become stressful when information is unclear and people are hard to trust. As an entrepreneur and founder of DreamBig, he wanted HouseLink to solve a problem he had personally felt, not just create another place to browse listings.",
   },
   {
     name: "Wadzanai Tigere",
-    role: "Co-Founder, HomeLink",
+    role: "Co-Founder, HouseLink",
     venture: "Founder of Dream & Rise",
     initials: "WT",
     image: "/images/founders/wadzanai-tigere.jpeg",
-    imageAlt: "Wadzanai Tigere, Co-Founder of HomeLink",
+    imageAlt: "Wadzanai Tigere, Co-Founder of HouseLink",
     objectPosition: "50% 24%",
     origin: "Kwekwe to South Africa to Kwekwe",
     body:
-      "Born and raised in Kwekwe, Wadzanai later stayed in South Africa before returning to Kwekwe. Her own housing experiences, together with her work through Dream & Rise and other ventures, shaped a simple belief: finding a place to live should not leave people feeling exposed, confused, or alone. HomeLink is part of her commitment to a safer and more human property experience.",
+      "Born and raised in Kwekwe, Wadzanai later stayed in South Africa before returning to Kwekwe. Her own housing experiences, together with her work through Dream & Rise and other ventures, shaped a simple belief: finding a place to live should not leave people feeling exposed, confused, or alone. HouseLink is part of her commitment to a safer and more human property experience.",
   },
 ];
 
@@ -179,8 +179,8 @@ export default function AboutPage() {
       <section className="relative overflow-hidden bg-ink px-4 py-16 text-white sm:px-6 lg:px-8 lg:py-24">
         <div className="absolute inset-0">
           <Image
-            src="/images/homelink-hero.png"
-            alt="HomeLink Zimbabwe property search experience"
+            src="/images/houselink-hero.png"
+            alt="HouseLink Zimbabwe property search experience"
             fill
             priority
             className="scale-105 object-cover opacity-55 motion-reduce:scale-100"
@@ -198,13 +198,13 @@ export default function AboutPage() {
             <div>
               <p className="inline-flex max-w-full items-center gap-2 rounded-full border border-emerald-300/25 bg-white/10 px-3 py-1.5 text-sm font-semibold text-emerald-50 shadow-sm backdrop-blur">
                 <ShieldCheck className="size-4 shrink-0 text-emerald-300" aria-hidden="true" />
-                About HomeLink Zimbabwe
+                About HouseLink Zimbabwe
               </p>
               <h1 className="mt-7 max-w-4xl text-4xl font-semibold leading-[1.05] tracking-tight text-white sm:text-6xl lg:text-[4.25rem]">
                 For everyone who has searched for a home and wondered <span className="text-gradient-emerald">who to trust</span>
               </h1>
               <p className="mt-6 max-w-2xl text-base leading-8 text-slate-100 sm:text-lg">
-                Fake listings, unanswered calls, wasted transport, dishonest agents, and confusing adverts have made property search stressful for too many Zimbabweans. HomeLink was built so finding a home, roommate, tenant, buyer, seller, or trusted agent can feel safer and clearer.
+                Fake listings, unanswered calls, wasted transport, dishonest agents, and confusing adverts have made property search stressful for too many Zimbabweans. HouseLink was built so finding a home, roommate, tenant, buyer, seller, or trusted agent can feel safer and clearer.
               </p>
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                 <PrimaryCta href="/search?intent=rent">Explore Properties</PrimaryCta>
@@ -243,7 +243,7 @@ export default function AboutPage() {
                   <div className="relative h-44 overflow-hidden rounded-2xl">
                     <Image
                       src="/images/kwekwe-flat.png"
-                      alt="A Kwekwe property listing on HomeLink"
+                      alt="A Kwekwe property listing on HouseLink"
                       fill
                       className="object-cover"
                       sizes="24vw"
@@ -297,7 +297,7 @@ export default function AboutPage() {
             <SectionIntro
               eyebrow="Our story"
               title="It started with a search that should have been simple."
-              copy="Before HomeLink was a platform, it was a real frustration. The founders knew what it felt like to call, wait, travel, ask around, and still not know whether the listing or the person behind it could be trusted."
+              copy="Before HouseLink was a platform, it was a real frustration. The founders knew what it felt like to call, wait, travel, ask around, and still not know whether the listing or the person behind it could be trusted."
             />
             <div className="mt-8 overflow-hidden rounded-3xl border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-cyan-50 shadow-soft dark:border-emerald-900/40 dark:from-emerald-950/35 dark:via-slate-900 dark:to-slate-950">
               <div className="p-5 sm:p-6">
@@ -364,8 +364,8 @@ export default function AboutPage() {
           <FadeIn>
             <SectionIntro
               eyebrow="Founder story"
-              title="The people behind HomeLink know the problem personally."
-              copy="Tinashe Ndudzo and Wadzanai Tigere did not build HomeLink from a distance. They built it after seeing how much stress, money, and trust Zimbabweans lose when the property journey is unclear."
+              title="The people behind HouseLink know the problem personally."
+              copy="Tinashe Ndudzo and Wadzanai Tigere did not build HouseLink from a distance. They built it after seeing how much stress, money, and trust Zimbabweans lose when the property journey is unclear."
               centered
             />
           </FadeIn>
@@ -389,7 +389,7 @@ export default function AboutPage() {
                           <div className="mx-auto flex size-28 items-center justify-center rounded-[1.5rem] border border-white/15 bg-white/10 text-4xl font-black text-white shadow-xl backdrop-blur">
                             {founder.initials}
                           </div>
-                          <p className="mt-5 text-xs font-bold uppercase tracking-[0.2em] text-emerald-200">HomeLink Zimbabwe</p>
+                          <p className="mt-5 text-xs font-bold uppercase tracking-[0.2em] text-emerald-200">HouseLink Zimbabwe</p>
                         </div>
                       </div>
                     )}
@@ -436,7 +436,7 @@ export default function AboutPage() {
             <SectionIntro
               eyebrow="The problem we saw"
               title="Too many people had accepted stress as part of the process."
-              copy="When fake posts, vague adverts, missed calls, and unreliable contacts become normal, people start moving with fear instead of confidence. HomeLink exists to change that."
+              copy="When fake posts, vague adverts, missed calls, and unreliable contacts become normal, people start moving with fear instead of confidence. HouseLink exists to change that."
               centered
             />
           </FadeIn>
@@ -463,14 +463,14 @@ export default function AboutPage() {
         <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
           <FadeIn>
             <SectionIntro
-              eyebrow="What HomeLink does"
+              eyebrow="What HouseLink does"
               title="So we built a clearer way to move forward."
-              copy="HomeLink brings the most important parts of the property journey into one place, so renters, buyers, roommates, landlords, agents, sellers, and owners can make better decisions with less guesswork."
+              copy="HouseLink brings the most important parts of the property journey into one place, so renters, buyers, roommates, landlords, agents, sellers, and owners can make better decisions with less guesswork."
             />
             <div className="group relative mt-8 overflow-hidden rounded-[1.65rem] shadow-hero">
               <Image
                 src="/images/bulawayo-family-house.png"
-                alt="A warm Zimbabwean family home listed on HomeLink"
+                alt="A warm Zimbabwean family home listed on HouseLink"
                 width={900}
                 height={640}
                 className="h-auto w-full object-cover"
@@ -504,7 +504,7 @@ export default function AboutPage() {
             <SectionIntro
               eyebrow="Mission, vision, values"
               title="Trust is the reason. Technology is how we serve it."
-              copy="A property platform only matters if people feel safer using it. That is why HomeLink keeps coming back to transparency, local knowledge, and human support."
+              copy="A property platform only matters if people feel safer using it. That is why HouseLink keeps coming back to transparency, local knowledge, and human support."
               centered
             />
           </FadeIn>
@@ -527,12 +527,12 @@ export default function AboutPage() {
       <section className="bg-ink px-4 py-16 text-white sm:px-6 lg:px-8 lg:py-24">
         <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[1fr_0.9fr] lg:items-center">
           <FadeIn>
-            <p className="section-eyebrow section-eyebrow-on-dark">Why HomeLink is different</p>
+            <p className="section-eyebrow section-eyebrow-on-dark">Why HouseLink is different</p>
             <h2 className="mt-4 max-w-3xl text-3xl font-semibold leading-tight tracking-tight sm:text-4xl lg:text-5xl">
               We are not only organizing listings. We are helping rebuild trust.
             </h2>
             <p className="mt-5 max-w-2xl text-base leading-8 text-slate-300">
-              HomeLink is built by people who understand what it feels like to search without certainty. The work is bigger than property cards. It is about saving time, reducing wasted costs, improving communication, and helping Zimbabweans know who they are dealing with.
+              HouseLink is built by people who understand what it feels like to search without certainty. The work is bigger than property cards. It is about saving time, reducing wasted costs, improving communication, and helping Zimbabweans know who they are dealing with.
             </p>
           </FadeIn>
           <FadeIn delay={120}>
@@ -556,7 +556,7 @@ export default function AboutPage() {
       <section className="px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
         <FadeIn>
           <div className="relative mx-auto max-w-7xl overflow-hidden rounded-3xl bg-ink text-white shadow-hero">
-            <Image src="/images/property-management-dusk.png" alt="Managed HomeLink property at dusk" fill className="object-cover opacity-35" sizes="100vw" />
+            <Image src="/images/property-management-dusk.png" alt="Managed HouseLink property at dusk" fill className="object-cover opacity-35" sizes="100vw" />
             <div className="absolute inset-0 bg-[linear-gradient(120deg,rgba(6,78,59,0.94),rgba(15,23,42,0.9))]" />
             <div className="hero-mesh absolute inset-0 opacity-50" />
             <div className="relative grid gap-8 px-6 py-10 sm:px-10 lg:grid-cols-[1fr_auto] lg:items-center lg:px-12 lg:py-12">

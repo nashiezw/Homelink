@@ -2,7 +2,7 @@ import { getStore } from "@/lib/store/app-store";
 import { isPostgresStoreEnabled } from "@/lib/db/main-prisma";
 import { createHmac, timingSafeEqual } from "crypto";
 
-export const SESSION_COOKIE = "homelink_session";
+export const SESSION_COOKIE = "houselink_session";
 const secureCookie = process.env.NODE_ENV === "production" ? "; Secure" : "";
 const signedSessionPrefix = "v2.";
 const MIN_PRODUCTION_SECRET_LENGTH = 32;
@@ -13,13 +13,13 @@ function getSessionSecret() {
 
 function getSessionSecretCandidates() {
   if (process.env.NODE_ENV === "production") {
-    const primary = process.env.HOMELINK_SESSION_SECRET;
+    const primary = process.env.HOUSELINK_SESSION_SECRET;
     if (!isStrongSessionSecret(primary)) {
       throw new Error(
-        `HOMELINK_SESSION_SECRET must be set to at least ${MIN_PRODUCTION_SECRET_LENGTH} characters in production.`,
+        `HOUSELINK_SESSION_SECRET must be set to at least ${MIN_PRODUCTION_SECRET_LENGTH} characters in production.`,
       );
     }
-    const previous = process.env.HOMELINK_PREVIOUS_SESSION_SECRETS
+    const previous = process.env.HOUSELINK_PREVIOUS_SESSION_SECRETS
       ?.split(",")
       .map((value) => value.trim())
       .filter(isStrongSessionSecret) ?? [];
@@ -27,16 +27,16 @@ function getSessionSecretCandidates() {
   }
 
   const candidates = [
-    process.env.HOMELINK_SESSION_SECRET,
+    process.env.HOUSELINK_SESSION_SECRET,
     process.env.AUTH_SECRET,
     process.env.NEXTAUTH_SECRET,
-    "homelink-local-session-secret",
+    "houselink-local-session-secret",
   ].filter((value): value is string => Boolean(value));
   return [...new Set(candidates)];
 }
 
 function isStrongSessionSecret(value: string | undefined): value is string {
-  return Boolean(value && value.length >= MIN_PRODUCTION_SECRET_LENGTH && value !== "homelink-local-session-secret");
+  return Boolean(value && value.length >= MIN_PRODUCTION_SECRET_LENGTH && value !== "houselink-local-session-secret");
 }
 
 function signWithSecret(value: string, secret: string) {

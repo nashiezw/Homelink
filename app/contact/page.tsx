@@ -8,9 +8,9 @@ import { getHydratedRuntimePlatformSettings } from "@/lib/settings/runtime";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Contact HomeLink Zimbabwe | Property Support",
+  title: "Contact HouseLink Zimbabwe | Property Support",
   description:
-    "Contact HomeLink Zimbabwe for listing support, property management, verification, account access, and marketplace safety.",
+    "Contact HouseLink Zimbabwe for listing support, property management, verification, account access, and marketplace safety.",
   alternates: {
     canonical: "/contact",
   },
@@ -35,7 +35,7 @@ export default async function ContactPage() {
     },
     {
       title: "Phone support",
-      detail: "Speak to the HomeLink team when an enquiry needs a human voice.",
+      detail: "Speak to the HouseLink team when an enquiry needs a human voice.",
       href: getTelHref(contact),
       label: contact.phoneLabel || contact.phoneNumber,
       icon: Phone,
@@ -52,7 +52,7 @@ export default async function ContactPage() {
   return (
     <PageShell
       eyebrow="Contact"
-      title="Get the right HomeLink help without waiting in the wrong queue."
+      title="Get the right HouseLink help without waiting in the wrong queue."
       description="Reach us for listing support, property management, verification, account access, and marketplace safety."
       highlights={[
         { value: "24h", label: "target response" },

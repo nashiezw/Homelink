@@ -89,7 +89,7 @@ enum NotificationStatus {
 }
 
 enum LeadSource {
-  HOMELINK
+  HOUSELINK
   AGENT
 }
 
@@ -218,7 +218,7 @@ model Listing {
   views                      Int                       @default(0)
   adminNotes                 String?
   expiresAt                  DateTime?
-  leadSource                 LeadSource                @default(HOMELINK)
+  leadSource                 LeadSource                @default(HOUSELINK)
   leadCreatedById            String?
   assignedAgentId            String?
   propertyOwnerName          String?
@@ -775,7 +775,7 @@ model AgentLeadRecord {
   id                         String                    @id @default(cuid())
   listingId                  String?
   listingTitle               String?
-  leadSource                 LeadSource                @default(HOMELINK)
+  leadSource                 LeadSource                @default(HOUSELINK)
   acquisitionChannel         String?
   createdById                String?
   createdByName              String?
@@ -824,7 +824,7 @@ model AgentCommissionRule {
   promotionCode        String?
   priority             Int                     @default(100)
   ratePercent          Decimal                 @db.Decimal(5, 2)
-  homelinkSplitPercent Decimal                 @db.Decimal(5, 2)
+  houselinkSplitPercent Decimal                 @db.Decimal(5, 2)
   agentSplitPercent    Decimal                 @db.Decimal(5, 2)
   minAmount            Decimal                 @default(0) @db.Decimal(12, 2)
   maxAmount            Decimal                 @default(0) @db.Decimal(12, 2)
@@ -860,12 +860,12 @@ model AgentCommissionRecord {
   status              AgentCommissionStatus @default(PENDING)
   paymentStatus       AgentCommissionStatus @default(PENDING)
   dealRef             String
-  leadSource          LeadSource            @default(HOMELINK)
+  leadSource          LeadSource            @default(HOUSELINK)
   commissionRuleId    String?
   commissionRuleLabel String?
   commissionPercent   Decimal               @db.Decimal(5, 2)
   grossAmount         Decimal               @db.Decimal(12, 2)
-  homelinkAmount      Decimal               @db.Decimal(12, 2)
+  houselinkAmount      Decimal               @db.Decimal(12, 2)
   agentAmount         Decimal               @db.Decimal(12, 2)
   taxAmount           Decimal               @db.Decimal(12, 2)
   netAgentAmount      Decimal               @db.Decimal(12, 2)

@@ -82,7 +82,7 @@ export function ListingDetailActions({ listing }: ListingDetailActionsProps) {
 
       {status.key === "viewing" ? (
         <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm leading-6 text-amber-900 sm:mt-5 sm:p-4">
-          A viewing is already in progress. You can still enquire, but confirm with HomeLink before travelling or paying.
+          A viewing is already in progress. You can still enquire, but confirm with HouseLink before travelling or paying.
         </div>
       ) : null}
 
@@ -104,7 +104,7 @@ export function ListingDetailActions({ listing }: ListingDetailActionsProps) {
               <div>
                 <h3 className="text-lg font-semibold text-ink dark:text-white">Report listing</h3>
                 <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                  Tell HomeLink what needs review. We will check the listing before taking action.
+                  Tell HouseLink what needs review. We will check the listing before taking action.
                 </p>
               </div>
               <button

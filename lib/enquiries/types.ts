@@ -31,7 +31,7 @@ export type EnquiryType =
   | "BOOK_HOLIDAY"
   | "CHECK_AVAILABILITY"
   | "REQUEST_ROOM_VIEWING"
-  | "CONTACT_HOMELINK"
+  | "CONTACT_HOUSELINK"
   | "ROOMMATE_MATCH";
 
 export type EnquirySubjectType = "LISTING" | "ROOMMATE" | "HOLIDAY";

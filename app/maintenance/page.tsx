@@ -9,7 +9,7 @@ export default function MaintenancePage() {
       </div>
       <h1 className="text-3xl font-semibold tracking-tight">Scheduled maintenance</h1>
       <p className="mt-3 max-w-lg text-sm leading-6 text-slate-400">
-        HomeLink is temporarily unavailable while we improve the platform. Please check back shortly.
+        HouseLink is temporarily unavailable while we improve the platform. Please check back shortly.
       </p>
       <Link
         href="/dashboard/admin?tab=settings"

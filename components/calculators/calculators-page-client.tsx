@@ -25,7 +25,7 @@ export function CalculatorsPageClient() {
             <p className="text-xs font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">Next step</p>
             <h2 className="mt-2 text-xl font-bold text-ink dark:text-white">Ready to search properties?</h2>
             <p className="mt-2 max-w-2xl text-sm text-slate-600 dark:text-slate-300">
-              Use your budget on HomeLink search, connect with verified agents, or list a property when you are ready.
+              Use your budget on HouseLink search, connect with verified agents, or list a property when you are ready.
             </p>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row">

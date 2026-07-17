@@ -13,7 +13,7 @@ let queuedSnapshot: SerializedStoreSnapshot | null = null;
 let persistInFlight: Promise<void> | null = null;
 
 function isStrictProduction() {
-  return process.env.HOMELINK_STRICT_PRODUCTION === "true";
+  return process.env.HOUSELINK_STRICT_PRODUCTION === "true";
 }
 
 export async function loadPersistedStore(version: number): Promise<StoreState | null> {

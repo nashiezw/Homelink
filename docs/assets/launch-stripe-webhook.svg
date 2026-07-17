@@ -12,7 +12,7 @@
   <text x="392" y="204" font-family="Arial" font-size="20" font-weight="700" fill="#0f172a">Add endpoint</text>
   <text x="392" y="246" font-family="Arial" font-size="15" fill="#475569">Endpoint URL</text>
   <rect x="392" y="260" width="410" height="38" rx="6" fill="#f8fafc" stroke="#94a3b8"/>
-  <text x="406" y="284" font-family="Arial" font-size="13" fill="#0f172a">https://homelinkzim.co.zw/api/v1/payments/webhooks/stripe</text>
+  <text x="406" y="284" font-family="Arial" font-size="13" fill="#0f172a">https://houselinkzim.co.zw/api/v1/payments/webhooks/stripe</text>
   <text x="392" y="334" font-family="Arial" font-size="15" fill="#475569">Events</text>
   <rect x="392" y="348" width="220" height="34" rx="6" fill="#f8fafc" stroke="#94a3b8"/>
   <text x="408" y="370" font-family="Arial" font-size="14" fill="#0f172a">checkout/payment events</text>

@@ -35,7 +35,7 @@ import {
   X,
 } from "lucide-react";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
-import { HomeLinkLogoLink } from "@/components/brand/homelink-logo";
+import { HouseLinkLogoLink } from "@/components/brand/houselink-logo";
 import { useApp } from "@/components/providers/app-provider";
 import { apiFetch } from "@/lib/api/client";
 import { cn } from "@/lib/utils";
@@ -97,7 +97,7 @@ const NAV_GROUPS: Array<{ label: string; items: NavItem[] }> = [
     ],
   },
   {
-    label: "HomeLink Agent Academy",
+    label: "HouseLink Agent Academy",
     items: [
       { id: "academy", label: "Public Learners", icon: Users, academyView: "Public Learners" },
       { id: "academy", label: "Lesson Content", icon: FileText, academyView: "Lesson Content" },
@@ -168,7 +168,7 @@ const TAB_LABELS: Record<AdminTab, string> = {
   support: "Support CRM",
   landlords: "Landlords & Agents",
   agents: "Agent Management",
-  academy: "HomeLink Agent Academy",
+  academy: "HouseLink Agent Academy",
   "property-management": "Property Requests",
   "holiday-homes": "Holiday Homes",
   bookings: "Bookings & Reservations",
@@ -311,7 +311,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
   const sidebar = (
     <>
       <div className="border-b border-white/[0.06] p-5">
-        <HomeLinkLogoLink variant="nav" className="mb-4" />
+        <HouseLinkLogoLink variant="nav" className="mb-4" />
         <div className="rounded-xl border border-emerald-500/20 bg-gradient-to-br from-emerald-500/10 to-cyan-500/5 p-3">
           <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-400/90">Enterprise</p>
           <h1 className="mt-1 text-base font-bold text-white">Control Centre</h1>

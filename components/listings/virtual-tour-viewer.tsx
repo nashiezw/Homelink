@@ -147,7 +147,7 @@ export function VirtualTourViewer({ tour, listingId, listingTitle, listingImage 
       {tour.adminVerifiedAt && (
         <p className="flex items-center gap-1 border-t border-slate-100 px-4 py-3 text-sm font-medium text-emerald-700 sm:px-5 dark:border-slate-800">
           <ShieldCheck className="size-4 shrink-0" />
-          Reviewed by HomeLink admin
+          Reviewed by HouseLink admin
         </p>
       )}
 
@@ -212,7 +212,7 @@ function TourHeader({
         {verified && (
           <p className="mt-2 flex items-center gap-1 text-sm font-medium text-emerald-700">
             <ShieldCheck className="size-4" />
-            Verified by HomeLink
+            Verified by HouseLink
           </p>
         )}
       </div>

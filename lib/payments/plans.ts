@@ -26,7 +26,7 @@ export const PLAN_DEFINITIONS: PlanDefinition[] = [
   {
     id: "tenancy_payment",
     name: "Rent / Deposit",
-    description: "First month rent or deposit via HomeLink — creates a verified tenancy record",
+    description: "First month rent or deposit via HouseLink — creates a verified tenancy record",
     priceKey: "custom",
     fixedPrice: 0,
     durationDays: 0,

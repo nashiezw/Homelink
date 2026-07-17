@@ -237,7 +237,7 @@ export function AcademyResourcePurchaseModal({
                   <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-900/40 dark:bg-amber-950/20">
                     <p className="font-semibold text-amber-900 dark:text-amber-100">Step 2 — Upload payment proof</p>
                     <p className="mt-1 text-sm text-amber-800 dark:text-amber-200">
-                      After paying {priceLabel}, upload a screenshot or receipt so HomeLink can verify your payment.
+                      After paying {priceLabel}, upload a screenshot or receipt so HouseLink can verify your payment.
                     </p>
                     {current.adminNote && (
                       <p className="mt-2 rounded-lg bg-white/70 p-2 text-xs text-amber-900 dark:bg-slate-950/40 dark:text-amber-100">{current.adminNote}</p>
@@ -263,7 +263,7 @@ export function AcademyResourcePurchaseModal({
           {!unlocked && !current.salesEnabled && (
             <div className="rounded-xl border border-slate-200 p-4 text-sm text-slate-500">
               <Lock className="mb-2 size-5" />
-              This resource is not currently available for purchase. Contact HomeLink Academy support.
+              This resource is not currently available for purchase. Contact HouseLink Academy support.
             </div>
           )}
         </div>
@@ -284,7 +284,7 @@ export function buildToolkitProduct(input: {
     courseId: input.courseId,
     title: `${input.courseTitle} Field Toolkit`,
     subtitle: "Print-ready branded PDFs for daily field work",
-    description: "Unlock the complete HomeLink field toolkit for this programme — forms, checklists, planners, scripts, and flowcharts used by professional agents in Zimbabwe.",
+    description: "Unlock the complete HouseLink field toolkit for this programme — forms, checklists, planners, scripts, and flowcharts used by professional agents in Zimbabwe.",
     itemCount: input.itemCount,
     categories,
     includes: [
@@ -300,8 +300,8 @@ export function buildManualProduct(): ResourcePurchaseProduct {
   return {
     kind: "TRAINING_MANUAL",
     title: "Complete Training Manual",
-    subtitle: "Full HomeLink reference library",
-    description: "The complete HomeLink Zimbabwe real estate agent training manual — your authoritative reference for procedures, compliance, client management, and professional standards.",
+    subtitle: "Full HouseLink reference library",
+    description: "The complete HouseLink Zimbabwe real estate agent training manual — your authoritative reference for procedures, compliance, client management, and professional standards.",
     includes: [
       "Full training manual PDF (comprehensive reference)",
       "Deep-dive guidance beyond daily lesson notes",

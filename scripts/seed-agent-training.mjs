@@ -5,8 +5,8 @@ const prisma = new PrismaClient();
 const agentTrainingModules = [
   {
     id: "train_intro",
-    title: "HomeLink Agent Onboarding",
-    description: "How HomeLink works, what agents are responsible for, and how trust is protected on the marketplace.",
+    title: "HouseLink Agent Onboarding",
+    description: "How HouseLink works, what agents are responsible for, and how trust is protected on the marketplace.",
     type: "VIDEO",
     track: "BEGINNER",
     level: "BEGINNER",
@@ -14,14 +14,14 @@ const agentTrainingModules = [
     durationMinutes: 35,
     required: true,
     order: 1,
-    certificateTitle: "HomeLink Agent Onboarding",
+    certificateTitle: "HouseLink Agent Onboarding",
     certificateUrl: "/dashboard/admin?tab=academy",
     lessons: [
-      { id: "intro_marketplace", title: "Marketplace role", summary: "Understand how agents support renters, buyers, landlords, owners, and property managers.", durationMinutes: 8, keyPoints: ["Protect user trust", "Keep records in HomeLink", "Do not bypass platform safety workflows"] },
+      { id: "intro_marketplace", title: "Marketplace role", summary: "Understand how agents support renters, buyers, landlords, owners, and property managers.", durationMinutes: 8, keyPoints: ["Protect user trust", "Keep records in HouseLink", "Do not bypass platform safety workflows"] },
       { id: "intro_conduct", title: "Professional conduct", summary: "Communication, punctuality, viewing etiquette, and client confidentiality standards.", durationMinutes: 12, keyPoints: ["Respond promptly", "Use respectful language", "Keep personal data private"] },
       { id: "intro_tools", title: "Agent dashboard basics", summary: "Use leads, listings, commissions, training, and reviews from the dashboard.", durationMinutes: 15, keyPoints: ["Update lead statuses", "Log all viewings", "Track commissions and ratings"] },
     ],
-    resources: [{ id: "agent_starter_guide", title: "Agent starter guide", description: "A quick operating guide for new HomeLink agents.", url: "/dashboard/admin?tab=academy", type: "PDF" }],
+    resources: [{ id: "agent_starter_guide", title: "Agent starter guide", description: "A quick operating guide for new HouseLink agents.", url: "/dashboard/admin?tab=academy", type: "PDF" }],
   },
   {
     id: "train_listings",
@@ -60,7 +60,7 @@ const agentTrainingModules = [
     certificateTitle: "Lead Handling Certified",
     certificateUrl: "/dashboard/admin?tab=academy",
     lessons: [
-      { id: "lead_sla", title: "Lead response standards", summary: "Prioritise fresh leads, confirm user needs, and update the CRM status quickly.", durationMinutes: 10, keyPoints: ["Respond fast", "Keep conversations in HomeLink", "Update status after every action"] },
+      { id: "lead_sla", title: "Lead response standards", summary: "Prioritise fresh leads, confirm user needs, and update the CRM status quickly.", durationMinutes: 10, keyPoints: ["Respond fast", "Keep conversations in HouseLink", "Update status after every action"] },
       { id: "lead_viewings", title: "Safe viewing workflow", summary: "Use confirmed times, verified contacts, and clear viewing instructions.", durationMinutes: 12, keyPoints: ["Confirm identity", "Never pressure deposits before due diligence", "Record viewing results"] },
       { id: "lead_fraud", title: "Fraud and scam prevention", summary: "Spot red flags and escalate suspicious listings, payments, or user behaviour.", durationMinutes: 18, keyPoints: ["Check payment destination", "Escalate suspicious urgency", "Never hide platform records"] },
     ],
@@ -68,7 +68,7 @@ const agentTrainingModules = [
       passMark: 80,
       questions: [
         { id: "lead_q1", prompt: "A renter asks to pay a deposit before viewing. What should the agent do first?", options: ["Encourage immediate payment", "Confirm property details and safe due diligence first", "Move the chat off-platform", "Ignore the lead"] },
-        { id: "lead_q2", prompt: "Where should important lead updates be recorded?", options: ["Only in a personal notebook", "Only on WhatsApp", "Inside the HomeLink lead workflow", "After the deal closes only"] },
+        { id: "lead_q2", prompt: "Where should important lead updates be recorded?", options: ["Only in a personal notebook", "Only on WhatsApp", "Inside the HouseLink lead workflow", "After the deal closes only"] },
         { id: "lead_q3", prompt: "What is a clear fraud warning sign?", options: ["A user asks for viewing times", "A landlord provides documents", "Pressure to send money urgently to an unverified account", "A tenant asks about Wi-Fi"] },
         { id: "lead_q4", prompt: "After a viewing, what should the agent update?", options: ["Nothing until payment", "Lead status, notes, next step, and outcome", "Only the commission page", "Only the public listing title"] },
         { id: "lead_q5", prompt: "What should an agent do if a listing looks duplicated or misleading?", options: ["Publish it anyway", "Escalate or flag it for review", "Delete user messages", "Ask for cash to fix it"] },
@@ -76,7 +76,7 @@ const agentTrainingModules = [
     },
     answerKey: {
       lead_q1: "Confirm property details and safe due diligence first",
-      lead_q2: "Inside the HomeLink lead workflow",
+      lead_q2: "Inside the HouseLink lead workflow",
       lead_q3: "Pressure to send money urgently to an unverified account",
       lead_q4: "Lead status, notes, next step, and outcome",
       lead_q5: "Escalate or flag it for review",
@@ -98,7 +98,7 @@ const agentTrainingModules = [
     certificateUrl: "/dashboard/admin?tab=academy",
     expiresAfterDays: 365,
     lessons: [
-      { id: "compliance_privacy", title: "Privacy and personal data", summary: "Handle IDs, phone numbers, documents, and addresses only for legitimate HomeLink workflows.", durationMinutes: 15, keyPoints: ["Do not leak user data", "Use approved upload flows", "Share only what is needed"] },
+      { id: "compliance_privacy", title: "Privacy and personal data", summary: "Handle IDs, phone numbers, documents, and addresses only for legitimate HouseLink workflows.", durationMinutes: 15, keyPoints: ["Do not leak user data", "Use approved upload flows", "Share only what is needed"] },
       { id: "compliance_fairness", title: "Fair treatment", summary: "Avoid discriminatory screening and communicate requirements transparently.", durationMinutes: 15, keyPoints: ["Apply rules consistently", "Avoid discriminatory language", "Document objective criteria"] },
       { id: "compliance_records", title: "Documentation and escalation", summary: "Keep verification, agreements, proof of payment, and disputes traceable.", durationMinutes: 20, keyPoints: ["Record decisions", "Escalate safety issues", "Keep agreements and receipts attached"] },
     ],
@@ -137,7 +137,7 @@ const agentTrainingModules = [
     certificateTitle: "Senior Agent Growth Track",
     certificateUrl: "/dashboard/admin?tab=academy",
     lessons: [
-      { id: "growth_commissions", title: "Commission rules", summary: "Know the difference between HomeLink-sourced, agent-sourced, referral, and recurring commissions.", durationMinutes: 15, keyPoints: ["Check rule snapshots", "Close leads properly", "Keep payment records clean"] },
+      { id: "growth_commissions", title: "Commission rules", summary: "Know the difference between HouseLink-sourced, agent-sourced, referral, and recurring commissions.", durationMinutes: 15, keyPoints: ["Check rule snapshots", "Close leads properly", "Keep payment records clean"] },
       { id: "growth_reviews", title: "Reviews and trust", summary: "Use excellent service and complete records to improve your public reputation.", durationMinutes: 15, keyPoints: ["Ask for honest reviews", "Resolve issues quickly", "Keep your profile current"] },
     ],
     resources: [{ id: "commission_growth", title: "Commission and growth guide", description: "Guide to earning, reviews, profile quality, and progression.", url: "/dashboard/admin?tab=academy", type: "PDF" }],
@@ -186,7 +186,7 @@ async function main() {
   const demoAgents = await prisma.user.findMany({
     where: {
       email: {
-        in: ["blessing@harareprime.co.zw", "tendai.sithole@homelinkzim.co.zw", "harare.prime.estates@homelinkzim.co.zw"],
+        in: ["blessing@harareprime.co.zw", "tendai.sithole@houselinkzim.co.zw", "harare.prime.estates@houselinkzim.co.zw"],
       },
     },
     select: { id: true, email: true, name: true },

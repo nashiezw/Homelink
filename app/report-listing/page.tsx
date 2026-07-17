@@ -130,7 +130,7 @@ export default function ReportListingPage() {
     <PageShell
       eyebrow="Report listing"
       title="Help us remove fake, stale, or abusive listings."
-      description="Reports go straight to the HomeLink review queue. Include the listing link or ID and as much detail as you can."
+      description="Reports go straight to the HouseLink review queue. Include the listing link or ID and as much detail as you can."
       highlights={[
         { value: "<24h", label: "typical review time" },
         { value: "Free", label: "for all users" },

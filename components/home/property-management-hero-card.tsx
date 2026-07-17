@@ -106,7 +106,7 @@ export function PropertyManagementHeroCard() {
               Reference <span className="font-semibold text-emerald-700">{success.requestNumber}</span>
             </p>
             <p className="mt-1 text-center text-sm text-slate-500">
-              A HomeLink Property Consultant will contact you shortly.
+              A HouseLink Property Consultant will contact you shortly.
             </p>
             <div className="mt-6 space-y-3">
               {[
@@ -169,7 +169,7 @@ export function PropertyManagementHeroCard() {
             </span>
             <div>
               <h2 className="text-lg font-bold leading-tight text-ink dark:text-white sm:text-xl">
-                Let HomeLink Manage Your Property
+                Let HouseLink Manage Your Property
               </h2>
               <p className="mt-1 text-sm leading-snug text-slate-600 dark:text-slate-300">
                 Expert consultants for selling, renting &amp; managing across Zimbabwe.

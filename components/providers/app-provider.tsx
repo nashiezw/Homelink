@@ -37,7 +37,7 @@ type AppContextValue = {
 };
 
 const AppContext = createContext<AppContextValue | null>(null);
-const COMPARE_KEY = "homelink_compare";
+const COMPARE_KEY = "houselink_compare";
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<PublicUser | null>(null);

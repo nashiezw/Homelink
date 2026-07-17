@@ -1,6 +1,6 @@
 # Observability Runbook
 
-HomeLink production should emit enough signal to answer: who failed, where, and what money/media/listing record was affected.
+HouseLink production should emit enough signal to answer: who failed, where, and what money/media/listing record was affected.
 
 ## Request IDs
 

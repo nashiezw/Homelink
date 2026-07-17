@@ -4,7 +4,7 @@ Base path: `/api/v1`
 
 ## Authentication
 
-- `POST /auth/session` - exchange provider token for HomeLink session context.
+- `POST /auth/session` - exchange provider token for HouseLink session context.
 - `GET /auth/me` - current user, roles, verification state, saved counts.
 
 ## Listings
@@ -139,7 +139,7 @@ Authorization: Bearer <provider_jwt>
 Or for web sessions after exchange:
 
 ```
-Authorization: Bearer <homelink_session_token>
+Authorization: Bearer <houselink_session_token>
 ```
 
 ## Pagination

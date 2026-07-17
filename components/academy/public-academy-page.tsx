@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import { AuthForm } from "@/components/auth/auth-form";
 import { AcademyAccordion, ToolkitGrid } from "@/components/academy/academy-accordion";
-import { HomeLinkBrand } from "@/components/brand/homelink-logo";
+import { HouseLinkBrand } from "@/components/brand/houselink-logo";
 import { PageShell } from "@/components/layout/page-shell";
 import { Button } from "@/components/ui/button";
 import { useApp } from "@/components/providers/app-provider";
@@ -188,7 +188,7 @@ export function PublicAcademyPage() {
 
   if (user && (!statusLoaded || (academyStatus?.hasLearnerActivity && !browseMode))) {
     return (
-      <PageShell eyebrow={academySettings?.academyName ?? "HomeLink Academy"} title="Loading your Academy..." description="">
+      <PageShell eyebrow={academySettings?.academyName ?? "HouseLink Academy"} title="Loading your Academy..." description="">
         <div className="h-32 animate-pulse rounded-xl bg-slate-100 dark:bg-slate-800" />
       </PageShell>
     );
@@ -216,12 +216,12 @@ export function PublicAcademyPage() {
 
   return (
     <PageShell
-      eyebrow={academySettings?.academyName ?? "HomeLink Academy"}
+      eyebrow={academySettings?.academyName ?? "HouseLink Academy"}
       title={browseMode && academyStatus?.hasActiveAccess ? "Browse More Courses" : "Professional Property Training"}
       description={
         browseMode && academyStatus?.hasActiveAccess
           ? "You already have active course access. Browse additional courses or return to your learning dashboard."
-          : "Master real estate with Zimbabwe's leading property platform. Train with HomeLink as a public learner — no agent application required."
+          : "Master real estate with Zimbabwe's leading property platform. Train with HouseLink as a public learner — no agent application required."
       }
       highlights={[
         { value: "3", label: "Programme Levels" },
@@ -245,12 +245,12 @@ export function PublicAcademyPage() {
           <div className="min-w-0">
             <div className="mb-3 flex items-center gap-2 text-emerald-700 dark:text-emerald-300">
               <GraduationCap className="size-6 shrink-0 sm:size-7" />
-              <span className="text-sm font-semibold sm:text-base">Why train with HomeLink</span>
+              <span className="text-sm font-semibold sm:text-base">Why train with HouseLink</span>
             </div>
             <p className="max-w-2xl text-sm leading-relaxed text-slate-600 dark:text-slate-300 sm:text-base">
               {user && academyStatus?.hasActiveAccess
                 ? "Browse the course catalog, track progress from your dashboard, and pick up where you left off."
-                : "Learn from industry experts, gain practical skills, and earn your certification. Training-only enrolment is available — you do not need to become a HomeLink agent."}
+                : "Learn from industry experts, gain practical skills, and earn your certification. Training-only enrolment is available — you do not need to become a HouseLink agent."}
             </p>
           </div>
         </div>
@@ -279,7 +279,7 @@ export function PublicAcademyPage() {
 
       <section className="academy-panel mt-10 rounded-xl p-6 sm:p-8">
         <h2 className="text-2xl font-bold">Your certification pathway</h2>
-        <p className="mt-2 max-w-3xl text-slate-600">Three focused programmes — Foundations, Listing & Client Mastery, and Professional Certification. Complete each level, pass assessments, and unlock badges plus downloadable HomeLink certificates.</p>
+        <p className="mt-2 max-w-3xl text-slate-600">Three focused programmes — Foundations, Listing & Client Mastery, and Professional Certification. Complete each level, pass assessments, and unlock badges plus downloadable HouseLink certificates.</p>
         <div className="mt-6 grid gap-3 sm:grid-cols-2 md:grid-cols-3">
           {courses.map((course) => (
             <div key={course.id} className="academy-card rounded-xl p-4 sm:p-5" style={{ borderColor: `${course.theme?.accent ?? "#008b68"}44` }}>
@@ -320,7 +320,7 @@ export function PublicAcademyPage() {
                   <div className="flex flex-col gap-5">
                     <div className="flex items-start gap-3 sm:gap-4">
                       <div className="shrink-0 rounded-2xl bg-white p-2 shadow ring-1 ring-slate-100">
-                        <HomeLinkBrand variant="icon" iconOnly />
+                        <HouseLinkBrand variant="icon" iconOnly />
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap gap-2 mb-2">
@@ -403,7 +403,7 @@ export function PublicAcademyPage() {
                         {
                           id: `${course.id}-toolkit`,
                           title: "Field toolkit included",
-                          subtitle: "HomeLink-branded print-ready PDFs for this level",
+                          subtitle: "HouseLink-branded print-ready PDFs for this level",
                           meta: `${course.toolkitCount ?? 0} downloads`,
                           content: <ToolkitGrid groups={course.toolkitPreview ?? []} accent={accent} preview />,
                         },
@@ -653,8 +653,8 @@ function AcademySidePanel({
                   onChange={(event) => setForm({ ...form, registrationIntent: event.target.value as "TRAINING_ONLY" | "AGENT_TRAINING" })}
                   className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-900 focus:ring-2 focus:ring-emerald-500"
                 >
-                  <option value="TRAINING_ONLY">Training only — I am not applying to become a HomeLink agent</option>
-                  {isAgent && <option value="AGENT_TRAINING">Agent training — I am a HomeLink agent</option>}
+                  <option value="TRAINING_ONLY">Training only — I am not applying to become a HouseLink agent</option>
+                  {isAgent && <option value="AGENT_TRAINING">Agent training — I am a HouseLink agent</option>}
                 </select>
               </label>
               {selected && displayPrice !== null && (

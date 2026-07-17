@@ -25,8 +25,8 @@ ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_SOURCE = Path(r"D:\New folder\Desktop\Real Estate Business\REAL ESTATE AGENT TRAINING MANUAL.pdf")
 OUT_DIR = ROOT / "public" / "uploads" / "academy"
 RESOURCE_DIR = OUT_DIR / "resources"
-LOGO = ROOT / "public" / "brand" / "homelink-full-lockup.png"
-MANUAL_URL = "/uploads/academy/homelink-zimbabwe-real-estate-agent-training-manual.pdf"
+LOGO = ROOT / "public" / "brand" / "houselink-full-lockup.png"
+MANUAL_URL = "/uploads/academy/houselink-zimbabwe-real-estate-agent-training-manual.pdf"
 
 GREEN = colors.HexColor("#047857")
 EMERALD = colors.HexColor("#10B981")
@@ -141,7 +141,7 @@ SPECIFIC_FIELDS = {
     "Cold Calling Scripts": ["Prospect type", "Introduction", "Permission question", "Qualification questions", "Appointment ask", "Follow-up plan"],
     "Email Templates": ["Email purpose", "Subject line", "Opening", "Body message", "Attachments", "Call to action"],
     "Objection Handling Guide": ["Objection", "Client concern", "Professional response", "Evidence required", "Follow-up action", "Outcome"],
-    "Commission Calculation Worksheet": ["Transaction value", "Commission rate", "Gross commission", "HomeLink share", "Agent share", "Approval signature"],
+    "Commission Calculation Worksheet": ["Transaction value", "Commission rate", "Gross commission", "HouseLink share", "Agent share", "Approval signature"],
     "Expense Tracker": ["Expense date", "Supplier", "Category", "Amount", "Receipt attached", "Approval status"],
     "Mileage Log": ["Travel date", "Start location", "Destination", "Purpose", "Kilometres", "Client / property reference"],
     "File Checklist": ["Client documents", "Property documents", "Agreement documents", "Marketing records", "Communication records", "Completion records"],
@@ -231,7 +231,7 @@ def header_footer(canvas, doc, title: str):
     canvas.rect(0, 286 * mm, 210 * mm, 11 * mm, fill=1, stroke=0)
     canvas.setFillColor(colors.white)
     canvas.setFont("Helvetica-Bold", 8)
-    canvas.drawString(18 * mm, 289.5 * mm, "HomeLink Zimbabwe Agent Academy")
+    canvas.drawString(18 * mm, 289.5 * mm, "HouseLink Zimbabwe Agent Academy")
     canvas.setFillColor(colors.HexColor("#64748B"))
     canvas.setFont("Helvetica", 7)
     canvas.drawCentredString(105 * mm, 9 * mm, f"{title} • Version 1.0 • Generated {date.today().isoformat()} • Page {doc.page}")
@@ -250,7 +250,7 @@ def make_resource_pdf(title: str, category: str, manual_page: int, output: Path)
     story.append(para(title, s["title"]))
     story.append(para(f"<b>Category:</b> {category} &nbsp;&nbsp; <b>Manual reference:</b> page {manual_page} &nbsp;&nbsp; <b>Format:</b> A4 print-ready PDF", s["subtitle"]))
     story.append(Spacer(1, 3 * mm))
-    purpose = f"This professional HomeLink Zimbabwe template is recreated from the official Real Estate Agent Training Manual. Complete all applicable fields accurately, obtain required signatures where applicable, and file the completed document according to company procedures."
+    purpose = f"This professional HouseLink Zimbabwe template is recreated from the official Real Estate Agent Training Manual. Complete all applicable fields accurately, obtain required signatures where applicable, and file the completed document according to company procedures."
     story.append(para("Purpose", s["section"]))
     story.append(para(purpose, s["body"]))
     story.append(para("Document Control", s["section"]))
@@ -261,11 +261,11 @@ def make_resource_pdf(title: str, category: str, manual_page: int, output: Path)
     story.append(para("Role-Specific Details", s["section"]))
     story.append(field_table(SPECIFIC_FIELDS.get(title, []), s["body"]))
     story.append(para("Completion Checklist", s["section"]))
-    story.append(checkbox_table(["All required fields completed", "Supporting documents attached where applicable", "Client has reviewed the information", "Agent has checked accuracy", "Document filed in the correct HomeLink record"], s["body"]))
+    story.append(checkbox_table(["All required fields completed", "Supporting documents attached where applicable", "Client has reviewed the information", "Agent has checked accuracy", "Document filed in the correct HouseLink record"], s["body"]))
     story.append(para("Office Use Only", s["section"]))
     story.append(field_table(["Reviewed By", "Review Date", "Approval / Outcome", "Comments", "Final Filing Location"], s["body"]))
     story.append(Spacer(1, 6 * mm))
-    story.append(para("Confidentiality Notice: This document is intended for authorised HomeLink Zimbabwe real estate training and operational use only.", s["footer"]))
+    story.append(para("Confidentiality Notice: This document is intended for authorised HouseLink Zimbabwe real estate training and operational use only.", s["footer"]))
     doc.build(story, onFirstPage=lambda c, d: header_footer(c, d, title), onLaterPages=lambda c, d: header_footer(c, d, title))
 
 
@@ -280,12 +280,12 @@ def main():
         raise SystemExit(f"Manual PDF not found: {source}")
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     RESOURCE_DIR.mkdir(parents=True, exist_ok=True)
-    manual_target = OUT_DIR / "homelink-zimbabwe-real-estate-agent-training-manual.pdf"
+    manual_target = OUT_DIR / "houselink-zimbabwe-real-estate-agent-training-manual.pdf"
     make_manual_cover(source, manual_target)
     manifest = [
         {
-            "title": "HomeLink Zimbabwe Real Estate Agent Training Manual",
-            "description": "Official complete HomeLink Zimbabwe real estate sales and letting agent training manual.",
+            "title": "HouseLink Zimbabwe Real Estate Agent Training Manual",
+            "description": "Official complete HouseLink Zimbabwe real estate sales and letting agent training manual.",
             "category": "Training Manuals",
             "fileName": manual_target.name,
             "fileUrl": MANUAL_URL,
@@ -305,7 +305,7 @@ def main():
         manifest.append(
             {
                 "title": title,
-                "description": f"Branded A4 print-ready {title.lower()} recreated from the official HomeLink Zimbabwe training manual.",
+                "description": f"Branded A4 print-ready {title.lower()} recreated from the official HouseLink Zimbabwe training manual.",
                 "category": library_category,
                 "sourceCategory": category,
                 "fileName": output.name,

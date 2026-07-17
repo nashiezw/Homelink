@@ -59,7 +59,7 @@ export const OWNER_NAV: NavLinkItem[] = [
   {
     label: "Become an Agent",
     href: "/become-agent",
-    description: "Join HomeLink as a verified agent",
+    description: "Join HouseLink as a verified agent",
     hideForRoles: ["AGENT"],
   },
   {

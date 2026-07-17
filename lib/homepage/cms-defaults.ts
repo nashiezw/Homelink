@@ -13,7 +13,7 @@ export function createDefaultHomepageCms(): HomepageCmsConfig {
       badges: ["Verified landlords", "Fresh listings", "Solar and borehole filters"],
       primaryCta: { label: "Search properties", href: "/search" },
       secondaryCta: { label: "List your property", href: "/dashboard/landlord" },
-      imageUrl: "/images/homelink-hero.png",
+      imageUrl: "/images/houselink-hero.png",
     },
     finalCta: {
       eyebrow: "Get started",
@@ -29,17 +29,17 @@ export function createDefaultHomepageCms(): HomepageCmsConfig {
     },
     agentPromo: {
       enabled: true,
-      eyebrow: "Become a HomeLink agent",
+      eyebrow: "Become a HouseLink agent",
       title: "Grow your real estate career with Zimbabwe's verified network",
       description:
-        "Quality leads, professional tools, training, and transparent commissions — built for agents who want to grow with HomeLink.",
-      primaryCta: { label: "Apply to become a HomeLink agent", href: "/become-agent/apply" },
+        "Quality leads, professional tools, training, and transparent commissions — built for agents who want to grow with HouseLink.",
+      primaryCta: { label: "Apply to become a HouseLink agent", href: "/become-agent/apply" },
       secondaryCta: { label: "Learn more", href: "/become-agent" },
     },
     banners: [
       {
         id: "banner_holiday",
-        title: "Holiday homes now on HomeLink",
+        title: "Holiday homes now on HouseLink",
         description: "Discover verified short-stay properties across Zimbabwe.",
         href: "/search?type=holiday_home",
         ctaLabel: "Browse holiday homes",
@@ -81,10 +81,10 @@ export function createDefaultHomepageCms(): HomepageCmsConfig {
     featuredAgentProfileIds: [],
     testimonials: defaultHomepageTestimonials.map((t) => ({ ...t, published: true })),
     seo: {
-      title: "HomeLink Zimbabwe | Find Your Next Home with Confidence",
+      title: "HouseLink Zimbabwe | Find Your Next Home with Confidence",
       description:
         "Verified rooms, houses, flats, cottages, commercial property, land, and roommate matching across Zimbabwe.",
-      ogImage: "/images/homelink-hero.png",
+      ogImage: "/images/houselink-hero.png",
     },
     pages: [
       { id: "home", label: "Homepage", path: "/", status: "published" },

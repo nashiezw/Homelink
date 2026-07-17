@@ -4,9 +4,9 @@ import Link from "next/link";
 import { PageShell } from "@/components/layout/page-shell";
 
 export const metadata: Metadata = {
-  title: "Verification | HomeLink Zimbabwe",
+  title: "Verification | HouseLink Zimbabwe",
   description:
-    "See how HomeLink Zimbabwe verifies people, listings, and tenancies to reduce fake listings and protect property seekers.",
+    "See how HouseLink Zimbabwe verifies people, listings, and tenancies to reduce fake listings and protect property seekers.",
   alternates: {
     canonical: "/verification",
   },
@@ -20,7 +20,7 @@ const checks = [
   },
   {
     title: "Property checked",
-    body: "HomeLink reviews listing details, photos, duplicate signals, suburb consistency, and suspicious pricing before promoting a listing as verified.",
+    body: "HouseLink reviews listing details, photos, duplicate signals, suburb consistency, and suspicious pricing before promoting a listing as verified.",
     icon: Building2,
   },
   {
@@ -30,7 +30,7 @@ const checks = [
   },
   {
     title: "Owner agreement signed",
-    body: "Where HomeLink manages a property or lead, the owner or authorised agent must agree to listing, contact, and viewing terms.",
+    body: "Where HouseLink manages a property or lead, the owner or authorised agent must agree to listing, contact, and viewing terms.",
     icon: FileSignature,
   },
   {
@@ -48,7 +48,7 @@ const checks = [
 const meaning = [
   {
     title: "Verified is not a guarantee",
-    body: "It means HomeLink has checked the available signals and will keep the record accountable. Seekers should still confirm viewing details and never pay outside the agreed process.",
+    body: "It means HouseLink has checked the available signals and will keep the record accountable. Seekers should still confirm viewing details and never pay outside the agreed process.",
   },
   {
     title: "Verified can be removed",
@@ -56,7 +56,7 @@ const meaning = [
   },
   {
     title: "Verification leaves an audit trail",
-    body: "Admin actions, reports, payment proof, and listing updates are logged so HomeLink can investigate disputes.",
+    body: "Admin actions, reports, payment proof, and listing updates are logged so HouseLink can investigate disputes.",
   },
 ];
 
@@ -71,7 +71,7 @@ export default function VerificationPage() {
   return (
     <PageShell
       eyebrow="Verification"
-      title="How HomeLink verifies people, listings, and tenancies."
+      title="How HouseLink verifies people, listings, and tenancies."
       description="Verification is not a badge for decoration — it is how we reduce fake listings, protect seekers, and give serious owners a trusted marketplace."
       highlights={[
         { value: "92%", label: "verified contacts" },

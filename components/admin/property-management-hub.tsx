@@ -864,7 +864,7 @@ function downloadPreviewPdf(preview: PreviewItem, request: PropertyManagementReq
   const url = URL.createObjectURL(new Blob([pdf], { type: "application/pdf" }));
   const link = document.createElement("a");
   link.href = url;
-  link.download = `${title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${request?.requestNumber ?? "homelink"}.pdf`;
+  link.download = `${title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${request?.requestNumber ?? "houselink"}.pdf`;
   document.body.appendChild(link);
   link.click();
   link.remove();
@@ -873,7 +873,7 @@ function downloadPreviewPdf(preview: PreviewItem, request: PropertyManagementReq
 
 function buildPreviewPdfLines(preview: PreviewItem, request: PropertyManagementRequest | null) {
   const lines = [
-    "HomeLink Property Management",
+    "HouseLink Property Management",
     previewTitle(preview),
     request ? `Request: ${request.requestNumber}` : "",
     request ? `Owner: ${request.ownerName}` : "",
@@ -908,7 +908,7 @@ function buildPreviewPdfLines(preview: PreviewItem, request: PropertyManagementR
 }
 
 function createBrandedPdf(title: string, lines: string[], request: PropertyManagementRequest | null) {
-  const bodyLines = lines.filter((line) => !["HomeLink Property Management", title].includes(line));
+  const bodyLines = lines.filter((line) => !["HouseLink Property Management", title].includes(line));
   const content = [
     "q",
     fill(0.965, 0.985, 0.975),
@@ -918,7 +918,7 @@ function createBrandedPdf(title: string, lines: string[], request: PropertyManag
     fill(0, 0.64, 0.47),
     "48 728 34 34 re f",
     text(59, 740, 18, "H", "F2", [1, 1, 1]),
-    text(94, 748, 20, "HomeLink", "F2", [1, 1, 1]),
+    text(94, 748, 20, "HouseLink", "F2", [1, 1, 1]),
     text(95, 730, 9, "Zimbabwe Property Management", "F1", [0.7, 0.95, 0.86]),
     text(430, 748, 11, request?.requestNumber ?? "Generated document", "F2", [0.85, 1, 0.94]),
     text(430, 731, 9, new Date().toLocaleString(), "F1", [0.68, 0.86, 0.8]),
@@ -929,7 +929,7 @@ function createBrandedPdf(title: string, lines: string[], request: PropertyManag
     "38 562 536 112 re B",
     text(58, 640, 11, "DOCUMENT", "F2", [0, 0.52, 0.4]),
     text(58, 610, 25, title, "F2", [0.02, 0.11, 0.15]),
-    text(58, 586, 10, "Generated from the HomeLink admin workflow and saved to the property management request.", "F1", [0.32, 0.42, 0.5]),
+    text(58, 586, 10, "Generated from the HouseLink admin workflow and saved to the property management request.", "F1", [0.32, 0.42, 0.5]),
     fill(0.9, 0.99, 0.95),
     "454 612 82 28 re f",
     text(472, 622, 10, "Official PDF", "F2", [0, 0.48, 0.36]),
@@ -953,7 +953,7 @@ function createBrandedPdf(title: string, lines: string[], request: PropertyManag
 
     fill(0.02, 0.17, 0.15),
     "38 42 536 26 re f",
-    text(56, 51, 8, "HomeLink Zimbabwe - real property workflows, verified records, and tracked owner communication.", "F1", [0.78, 0.95, 0.88]),
+    text(56, 51, 8, "HouseLink Zimbabwe - real property workflows, verified records, and tracked owner communication.", "F1", [0.78, 0.95, 0.88]),
   ].join("\n");
   const objects = [
     "<< /Type /Catalog /Pages 2 0 R >>",

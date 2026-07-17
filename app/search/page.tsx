@@ -20,14 +20,14 @@ export async function generateMetadata({ searchParams }: SearchPageProps): Promi
   ].filter(Boolean).join(" ");
 
   return {
-    title: `${capitalize(category)} | HomeLink Zimbabwe`,
-    description: `Search ${category} on HomeLink Zimbabwe with filters for price, suburb, amenities, verification, and availability.`,
+    title: `${capitalize(category)} | HouseLink Zimbabwe`,
+    description: `Search ${category} on HouseLink Zimbabwe with filters for price, suburb, amenities, verification, and availability.`,
     alternates: {
       canonical: "/search",
     },
     openGraph: {
-      title: `${capitalize(category)} | HomeLink Zimbabwe`,
-      description: `Find ${category} with HomeLink Zimbabwe.`,
+      title: `${capitalize(category)} | HouseLink Zimbabwe`,
+      description: `Find ${category} with HouseLink Zimbabwe.`,
       url: "/search",
       type: "website",
     },

@@ -22,7 +22,7 @@ export async function GET(request: Request) {
       roles: ["ADMIN"],
     });
     const csv = enquiriesToCsv(enquiries);
-    const filename = `homelink-enquiries-${new Date().toISOString().slice(0, 10)}.csv`;
+    const filename = `houselink-enquiries-${new Date().toISOString().slice(0, 10)}.csv`;
 
     return new Response(csv, {
       headers: {
@@ -38,7 +38,7 @@ export async function GET(request: Request) {
     q,
   });
   const csv = enquiriesToCsv(enquiries);
-  const filename = `homelink-enquiries-${new Date().toISOString().slice(0, 10)}.csv`;
+  const filename = `houselink-enquiries-${new Date().toISOString().slice(0, 10)}.csv`;
 
   return new Response(csv, {
     headers: {

@@ -19,7 +19,7 @@ export async function GET(request: Request) {
       .slice(0, limit)
       .map((profile) => ({
         userId: profile.userId,
-        name: getStore().getUserById(profile.userId)?.name ?? "HomeLink member",
+        name: getStore().getUserById(profile.userId)?.name ?? "HouseLink member",
         city: Array.isArray(profile.preferredLocations) ? profile.preferredLocations[0] : undefined,
         profile,
       }));

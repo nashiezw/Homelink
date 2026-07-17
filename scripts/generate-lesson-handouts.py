@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate branded HomeLink lesson notes PDFs from lesson-handouts-manifest.json."""
+"""Generate branded HouseLink lesson notes PDFs from lesson-handouts-manifest.json."""
 
 from __future__ import annotations
 
@@ -27,7 +27,7 @@ from reportlab.platypus import (
 ROOT = Path(__file__).resolve().parents[1]
 MANIFEST = ROOT / "public" / "uploads" / "academy" / "lesson-handouts-manifest.json"
 OUT_DIR = ROOT / "public" / "uploads" / "academy" / "lessons"
-LOGO = ROOT / "public" / "brand" / "homelink-full-lockup.png"
+LOGO = ROOT / "public" / "brand" / "houselink-full-lockup.png"
 
 GREEN = colors.HexColor("#047857")
 EMERALD = colors.HexColor("#10B981")
@@ -280,7 +280,7 @@ def professional_tip(title: str) -> str:
         if key in lowered:
             return tip
     return (
-        "The best HomeLink agents translate training into consistent field habits. "
+        "The best HouseLink agents translate training into consistent field habits. "
         "Read this note, use the linked forms, then practise one action before your next lesson."
     )
 
@@ -291,7 +291,7 @@ def header_footer(canvas, doc, title: str):
     canvas.rect(0, 286 * mm, 210 * mm, 11 * mm, fill=1, stroke=0)
     canvas.setFillColor(colors.white)
     canvas.setFont("Helvetica-Bold", 8)
-    canvas.drawString(18 * mm, 289.5 * mm, "HomeLink Zimbabwe Agent Academy")
+    canvas.drawString(18 * mm, 289.5 * mm, "HouseLink Zimbabwe Agent Academy")
     canvas.setFillColor(EMERALD)
     canvas.setFont("Helvetica-Bold", 7)
     canvas.drawRightString(192 * mm, 289.5 * mm, "Lesson Notes")
@@ -350,7 +350,7 @@ def make_lesson_handout(item: dict, output: Path):
     story.append(para("Apply in the Field", s["section"]))
     apply_steps = objectives[:4] if objectives else [
         "Review this lesson note before your next client interaction.",
-        "Download and complete the linked HomeLink forms from the Toolkit tab.",
+        "Download and complete the linked HouseLink forms from the Toolkit tab.",
         "Discuss any gaps with your mentor or branch lead.",
     ]
     story.append(checklist_table([f"Practise: {step}" for step in apply_steps], s["body"]))
@@ -370,7 +370,7 @@ def make_lesson_handout(item: dict, output: Path):
         story.append(para("Related Field Toolkit", s["section"]))
         story.append(
             para(
-                "These branded HomeLink forms support this lesson — download them from the <b>Toolkit</b> tab in your course:",
+                "These branded HouseLink forms support this lesson — download them from the <b>Toolkit</b> tab in your course:",
                 s["body"],
             )
         )
@@ -380,8 +380,8 @@ def make_lesson_handout(item: dict, output: Path):
     story.append(Spacer(1, 6 * mm))
     story.append(
         para(
-            "HomeLink Zimbabwe Agent Academy — confidential lesson notes for enrolled learners. "
-            "Apply this guidance professionally and in line with HomeLink standards.",
+            "HouseLink Zimbabwe Agent Academy — confidential lesson notes for enrolled learners. "
+            "Apply this guidance professionally and in line with HouseLink standards.",
             s["footer"],
         )
     )

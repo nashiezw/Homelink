@@ -25,14 +25,14 @@ loadDotenv();
 const failures = [];
 const warnings = [];
 
-if (process.env.HOMELINK_STRICT_PRODUCTION !== "true") {
-  failures.push("Set HOMELINK_STRICT_PRODUCTION=true for the final launch environment.");
+if (process.env.HOUSELINK_STRICT_PRODUCTION !== "true") {
+  failures.push("Set HOUSELINK_STRICT_PRODUCTION=true for the final launch environment.");
 }
 
-if (!has("HOMELINK_SESSION_SECRET")) {
-  failures.push("Set HOMELINK_SESSION_SECRET to a long random value so login cookies remain stable across deploys.");
-} else if (process.env.HOMELINK_SESSION_SECRET.length < 32) {
-  failures.push("HOMELINK_SESSION_SECRET must be at least 32 characters.");
+if (!has("HOUSELINK_SESSION_SECRET")) {
+  failures.push("Set HOUSELINK_SESSION_SECRET to a long random value so login cookies remain stable across deploys.");
+} else if (process.env.HOUSELINK_SESSION_SECRET.length < 32) {
+  failures.push("HOUSELINK_SESSION_SECRET must be at least 32 characters.");
 }
 
 if (!has("NEXT_PUBLIC_APP_URL") || isLocalUrl(process.env.NEXT_PUBLIC_APP_URL)) {
@@ -43,15 +43,15 @@ if (!process.env.DATABASE_URL?.startsWith("postgres")) {
   failures.push("DATABASE_URL must point to production PostgreSQL.");
 }
 
-if (process.env.HOMELINK_STRICT_PRODUCTION === "true" && process.env.SETTINGS_DATABASE_URL?.startsWith("file:")) {
+if (process.env.HOUSELINK_STRICT_PRODUCTION === "true" && process.env.SETTINGS_DATABASE_URL?.startsWith("file:")) {
   failures.push("SETTINGS_DATABASE_URL must not point to file: storage in strict production.");
 }
 
 for (const name of ["CLOUDINARY_CLOUD_NAME", "CLOUDINARY_API_KEY", "CLOUDINARY_API_SECRET"]) {
   if (!has(name)) failures.push(`${name} is required for durable production media uploads.`);
 }
-if (!has("HOMELINK_UPLOAD_SCAN_URL")) {
-  failures.push("HOMELINK_UPLOAD_SCAN_URL is required so production uploads are antivirus/content scanned.");
+if (!has("HOUSELINK_UPLOAD_SCAN_URL")) {
+  failures.push("HOUSELINK_UPLOAD_SCAN_URL is required so production uploads are antivirus/content scanned.");
 }
 
 const smtpPassConfigured = has("SMTP_PASS") || has("SMTP_PASSWORD") || has("RESEND_API_KEY");
@@ -76,11 +76,11 @@ for (const name of gatewaySecrets) {
 }
 
 const seedPasswords = [
-  ["SEED_STANDARD_PASSWORD", "HomeLink2026!"],
-  ["SEED_TINASHE_PASSWORD", "HomeLink2026!"],
-  ["SEED_LANDLORD_PASSWORD", "HomeLinkOwner2026!"],
-  ["SEED_ADMIN_PASSWORD", "HomeLinkAdmin2026!"],
-  ["SEED_CONSULTANT_PASSWORD", "HomeLinkConsultant2026!"],
+  ["SEED_STANDARD_PASSWORD", "HouseLink2026!"],
+  ["SEED_TINASHE_PASSWORD", "HouseLink2026!"],
+  ["SEED_LANDLORD_PASSWORD", "HouseLinkOwner2026!"],
+  ["SEED_ADMIN_PASSWORD", "HouseLinkAdmin2026!"],
+  ["SEED_CONSULTANT_PASSWORD", "HouseLinkConsultant2026!"],
 ];
 for (const [name, unsafe] of seedPasswords) {
   if (process.env[name] === unsafe) failures.push(`${name} must be rotated from the default value.`);

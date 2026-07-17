@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { Award, Download, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { HomeLinkBrand } from "@/components/brand/homelink-logo";
+import { HouseLinkBrand } from "@/components/brand/houselink-logo";
 
 export type CertificateDocumentProps = {
   learnerName: string;
@@ -27,7 +27,7 @@ export function CertificateDocument({
   expiresAt,
   verifyUrl,
   accent = "#008b68",
-  signatureName = "HomeLink Zimbabwe Academy",
+  signatureName = "HouseLink Zimbabwe Academy",
   signatureTitle = "Director of Training & Certification",
 }: CertificateDocumentProps) {
   const issuedLabel = new Date(issuedAt).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
@@ -36,7 +36,7 @@ export function CertificateDocument({
     <div className="mx-auto max-w-5xl px-4 py-8 print:px-0 print:py-0">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3 print:hidden">
         <div>
-          <p className="text-sm font-semibold text-emerald-700">HomeLink digital certificate</p>
+          <p className="text-sm font-semibold text-emerald-700">HouseLink digital certificate</p>
           <h1 className="text-2xl font-bold">{certificateTitle}</h1>
         </div>
         <Button onClick={() => window.print()} style={{ backgroundColor: accent }}>
@@ -55,7 +55,7 @@ export function CertificateDocument({
         <div className="relative px-8 py-10 sm:px-12 sm:py-14">
           <div className="flex flex-wrap items-start justify-between gap-6">
             <div className="rounded-2xl bg-white p-3 shadow-lg ring-1 ring-slate-200">
-              <HomeLinkBrand variant="auth" iconOnly={false} />
+              <HouseLinkBrand variant="auth" iconOnly={false} />
             </div>
             <div className="text-right">
               <p className="text-xs font-bold uppercase tracking-[0.35em] text-slate-500">Certificate of Achievement</p>
@@ -65,7 +65,7 @@ export function CertificateDocument({
 
           <div className="mt-10 text-center">
             <div className="mx-auto mb-6 inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold text-white" style={{ backgroundColor: accent }}>
-              <Award className="size-4" /> Official HomeLink Certification
+              <Award className="size-4" /> Official HouseLink Certification
             </div>
             <p className="text-sm uppercase tracking-[0.35em] text-slate-500">This certifies that</p>
             <h2 className="mt-4 text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl">{learnerName}</h2>
@@ -97,13 +97,13 @@ export function CertificateDocument({
               </div>
               <p className="mt-2 text-sm text-slate-500">{signatureTitle}</p>
               <div className="mt-4 flex items-center gap-3 sm:justify-end">
-                <Image src="/brand/homelink-full-lockup.png" alt="HomeLink" width={120} height={40} className="h-8 w-auto opacity-80" />
+                <Image src="/brand/houselink-full-lockup.png" alt="HouseLink" width={120} height={40} className="h-8 w-auto opacity-80" />
               </div>
             </div>
           </div>
 
           <p className="mt-10 text-center text-xs text-slate-500 print:mt-8">
-            Verify this certificate at {typeof window !== "undefined" ? window.location.origin : "https://homelink.co.zw"}{verifyUrl.replace(/^https?:\/\/[^/]+/, "")}
+            Verify this certificate at {typeof window !== "undefined" ? window.location.origin : "https://houselink.co.zw"}{verifyUrl.replace(/^https?:\/\/[^/]+/, "")}
           </p>
         </div>
       </article>

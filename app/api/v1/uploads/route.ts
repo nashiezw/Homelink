@@ -55,7 +55,7 @@ export async function POST(request: Request) {
   if (hasCloudinaryConfig()) {
     const resourceType = validation.kind === "video" ? "video" : validation.kind === "document" || validation.kind === "audio" ? "raw" : "image";
     const intent = createCloudinaryUploadIntent({
-      folder: `homelink/${folder}`,
+      folder: `houselink/${folder}`,
       publicIdPrefix: `${folder}/${userId.slice(0, 8)}`,
       resourceType,
     });

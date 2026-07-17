@@ -45,7 +45,7 @@ export async function createSignedAgreement(input: SignatureInput) {
       userAgent: input.userAgent,
       signedAt,
       metadata: {
-        generatedBy: "HomeLink Zimbabwe",
+        generatedBy: "HouseLink Zimbabwe",
         signatureMethod: input.signatureImageDataUrl ? "ELECTRONIC_DRAWN_AND_TYPED_SIGNATURE" : "ELECTRONIC_TYPED_SIGNATURE",
         visualSignatureCaptured: Boolean(input.signatureImageDataUrl),
         visualSignatureSha256: input.signatureImageDataUrl
@@ -77,7 +77,7 @@ export async function listSignedAgreements(filters: { subjectType?: string; subj
 
 function createSignedAgreementPdfBase64(input: SignatureInput & { contentHash: string; signedAt: Date }) {
   const lines = [
-    "HomeLink Zimbabwe Signed Agreement",
+    "HouseLink Zimbabwe Signed Agreement",
     input.title,
     "",
     `Signer: ${input.signerName}`,

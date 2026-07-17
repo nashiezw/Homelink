@@ -190,7 +190,7 @@ export function LearnerDashboardClient() {
 
   return (
     <PageShell
-      eyebrow={data.settings?.academyName ?? "HomeLink Academy"}
+      eyebrow={data.settings?.academyName ?? "HouseLink Academy"}
       title={`Welcome back, ${user.name.split(" ")[0]}`}
       description={data.settings?.dashboardWelcome ?? "Track your progress, access course materials, and manage your Academy journey."}
       actions={

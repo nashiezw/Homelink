@@ -154,7 +154,7 @@ export function EnquiryCrmHub() {
           <div className="mt-4 grid gap-4 md:grid-cols-2">
             {(
               [
-                ["requireManagedEnquiries", "Require HomeLink-managed enquiries"],
+                ["requireManagedEnquiries", "Require HouseLink-managed enquiries"],
                 ["autoAssignAgents", "Auto-assign agents"],
                 ["notifyAdminOnNewEnquiry", "Notify admin on new enquiry"],
                 ["notifyOwnerOnNewEnquiry", "Notify owner on new enquiry"],

@@ -1,6 +1,6 @@
 # Design System
 
-HomeLink Zimbabwe should feel **premium, modern, trustworthy, and simple** - inspired by Airbnb, Property24, Zillow, and Booking.com, localized for Zimbabwe.
+HouseLink Zimbabwe should feel **premium, modern, trustworthy, and simple** - inspired by Airbnb, Property24, Zillow, and Booking.com, localized for Zimbabwe.
 
 ## Brand
 

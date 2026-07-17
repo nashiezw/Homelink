@@ -13,7 +13,7 @@ import {
   ShieldCheck,
   Sparkles,
 } from "lucide-react";
-import { HomeLinkBrand } from "@/components/brand/homelink-logo";
+import { HouseLinkBrand } from "@/components/brand/houselink-logo";
 import { PageShell } from "@/components/layout/page-shell";
 import { Button } from "@/components/ui/button";
 import { useApp } from "@/components/providers/app-provider";
@@ -237,14 +237,14 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
         <div className="relative z-10 flex flex-col gap-6">
           <div className="flex items-start gap-3 sm:gap-4">
             <div className="shrink-0 rounded-2xl bg-white/95 p-2 shadow-lg ring-1 ring-white/40">
-              <HomeLinkBrand variant="icon" iconOnly />
+              <HouseLinkBrand variant="icon" iconOnly />
             </div>
             <div className="min-w-0 flex-1">
               <p className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-white/90">
                 <Sparkles className="size-3.5 shrink-0" /> {theme?.label ?? data.settings.academyName}
               </p>
-              <p className="mt-2 text-sm text-emerald-100/90">{data.course.instructor ?? "HomeLink trainers"}</p>
-              <p className="mt-1 text-base font-medium leading-snug text-white/95 sm:text-lg">{data.programme?.certificateTitle ?? "HomeLink Agent Certification"}</p>
+              <p className="mt-2 text-sm text-emerald-100/90">{data.course.instructor ?? "HouseLink trainers"}</p>
+              <p className="mt-1 text-base font-medium leading-snug text-white/95 sm:text-lg">{data.programme?.certificateTitle ?? "HouseLink Agent Certification"}</p>
             </div>
           </div>
           <div className="w-full rounded-lg border border-white/20 bg-white/15 p-5 lg:max-w-xs lg:border-white/10 lg:bg-white/10 lg:backdrop-blur-sm">
@@ -313,7 +313,7 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
       {tab === "toolkit" && (
         <div className="mt-6 space-y-4">
           <div className="academy-panel rounded-xl p-5" style={{ borderColor: `${accent}33`, background: `linear-gradient(135deg, ${accent}10, transparent)` }}>
-            <h3 className="text-lg font-bold">HomeLink Field Toolkit</h3>
+            <h3 className="text-lg font-bold">HouseLink Field Toolkit</h3>
             <p className="mt-1 text-sm text-slate-600">Print-ready branded forms, checklists, planners, scripts, and flowcharts for this programme — the same professional PDFs used in the field.</p>
           </div>
           <ToolkitGrid
@@ -349,7 +349,7 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
               <div>
                 <h3 className="text-lg font-bold">Lesson Notes — Downloadable PDFs</h3>
                 <p className="mt-1 max-w-2xl text-sm text-slate-600 dark:text-slate-400">
-                  {data.materials.length} branded HomeLink study guides — each PDF includes the HomeLink logo, lesson overview, key takeaways, in-depth notes, field application steps, and reflection questions.
+                  {data.materials.length} branded HouseLink study guides — each PDF includes the HouseLink logo, lesson overview, key takeaways, in-depth notes, field application steps, and reflection questions.
                 </p>
               </div>
               <span className="rounded-full bg-sky-100 px-3 py-1 text-xs font-bold text-sky-800 dark:bg-sky-900/40 dark:text-sky-200">
@@ -375,7 +375,7 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
                   >
                     <div className="border-b border-sky-100 bg-gradient-to-r from-sky-600 to-emerald-600 px-4 py-3 dark:border-sky-900">
                       <div className="flex items-center justify-between gap-2">
-                        <HomeLinkBrand variant="icon" iconOnly className="scale-[0.55] brightness-0 invert" />
+                        <HouseLinkBrand variant="icon" iconOnly className="scale-[0.55] brightness-0 invert" />
                         <span className="rounded bg-white/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">PDF</span>
                       </div>
                       <p className="mt-2 line-clamp-2 text-sm font-bold text-white">{material.title}</p>

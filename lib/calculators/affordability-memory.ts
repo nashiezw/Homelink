@@ -1,6 +1,6 @@
 import type { AffordabilityRating } from "@/lib/calculators/formulas";
 
-export const AFFORDABILITY_MEMORY_KEY = "homelink:rental-affordability";
+export const AFFORDABILITY_MEMORY_KEY = "houselink:rental-affordability";
 
 export type RentalAffordabilityMemory = {
   recommendedMaxRent: number;

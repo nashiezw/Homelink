@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 
-const siteUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://homelinkzim.co.zw";
+const siteUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://houselinkzim.co.zw";
 
 export default function robots(): MetadataRoute.Robots {
   return {

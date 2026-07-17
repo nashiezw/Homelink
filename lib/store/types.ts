@@ -289,7 +289,7 @@ export type ListingRecord = Listing & {
   status: "DRAFT" | "PENDING_REVIEW" | "ACTIVE" | "VIEWING_IN_PROGRESS" | "RENTED" | "SOLD" | "EXPIRED" | "REJECTED" | "ARCHIVED" | "DELETED";
   latitude: number;
   longitude: number;
-  leadSource?: "HOMELINK" | "AGENT";
+  leadSource?: "HOUSELINK" | "AGENT";
   leadCreatedById?: string;
   assignedAgentId?: string;
   propertyOwnerName?: string;

@@ -63,7 +63,7 @@ export function HolidayBookingForm({ listingId, listingTitle, holidayHome }: Hol
     setSubmitting(false);
 
     if (result.data?.enquiry) {
-      showToast("Booking enquiry sent! A HomeLink consultant will confirm availability.");
+      showToast("Booking enquiry sent! A HouseLink consultant will confirm availability.");
       setMessage("");
     } else {
       showToast(result.error?.message ?? "Could not send enquiry.", "error");
@@ -89,7 +89,7 @@ export function HolidayBookingForm({ listingId, listingTitle, holidayHome }: Hol
         <div className="space-y-4 p-5">{priceHeader}</div>
         <div className="border-t border-slate-100 bg-slate-50/80 px-5 py-4 dark:border-slate-800 dark:bg-slate-950/40">
           <p className="text-sm leading-6 text-slate-600 dark:text-slate-300">
-            Sign in to check dates and request availability. A HomeLink consultant confirms before you travel.
+            Sign in to check dates and request availability. A HouseLink consultant confirms before you travel.
           </p>
           <Link href={`/auth?next=/listings/${listingId}`} className="mt-4 block">
             <Button className="h-11 w-full">
@@ -207,7 +207,7 @@ export function HolidayBookingForm({ listingId, listingTitle, holidayHome }: Hol
             rows={3}
             value={message}
             onChange={(e) => setMessage(e.target.value)}
-            placeholder={`Tell HomeLink about your stay at ${listingTitle}...`}
+            placeholder={`Tell HouseLink about your stay at ${listingTitle}...`}
             className="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm dark:border-slate-700 dark:bg-slate-950"
           />
         </label>
@@ -218,7 +218,7 @@ export function HolidayBookingForm({ listingId, listingTitle, holidayHome }: Hol
           {submitting ? "Sending..." : "Request availability"}
         </Button>
         <p className="mt-3 text-center text-xs text-slate-500">
-          You won&apos;t be charged yet. HomeLink confirms dates and payment separately.
+          You won&apos;t be charged yet. HouseLink confirms dates and payment separately.
         </p>
       </div>
     </form>

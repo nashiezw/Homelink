@@ -42,7 +42,7 @@ export const CALCULATORS: CalculatorMeta[] = [
   {
     id: "agent-commission",
     title: "Agent Commission",
-    description: "Split commission between agent earnings and HomeLink platform share.",
+    description: "Split commission between agent earnings and HouseLink platform share.",
     icon: HandCoins,
     audience: "Agents",
   },

@@ -42,7 +42,7 @@ export function MyEnquiriesPageClient() {
           <Link href="/auth?next=/enquiries" className="font-semibold underline">
             Sign in
           </Link>{" "}
-          to view enquiries managed by HomeLink consultants.
+          to view enquiries managed by HouseLink consultants.
         </div>
       </PageShell>
     );
@@ -51,7 +51,7 @@ export function MyEnquiriesPageClient() {
   return (
     <PageShell
       eyebrow="My enquiries"
-      title="Your HomeLink enquiries"
+      title="Your HouseLink enquiries"
       description="Every enquiry is professionally managed by our property consultants — from first contact to viewing, offer, and completion."
       actions={
         <Link href="/messages">
@@ -67,7 +67,7 @@ export function MyEnquiriesPageClient() {
       ) : enquiries.length === 0 ? (
         <div className="rounded-xl border border-dashed border-slate-200 p-10 text-center dark:border-slate-700">
           <p className="font-semibold text-ink dark:text-white">No enquiries yet</p>
-          <p className="mt-2 text-sm text-slate-500">Browse properties or roommate profiles and submit an enquiry through HomeLink.</p>
+          <p className="mt-2 text-sm text-slate-500">Browse properties or roommate profiles and submit an enquiry through HouseLink.</p>
           <div className="mt-6 flex flex-wrap justify-center gap-3">
             <Link href="/search"><Button>Browse properties</Button></Link>
             <Link href="/roommates"><Button variant="secondary">Find roommates</Button></Link>

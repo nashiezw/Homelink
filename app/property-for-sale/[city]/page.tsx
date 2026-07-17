@@ -15,8 +15,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const { city: citySlug } = await params;
   const city = resolveCity(citySlug);
   return {
-    title: `Property for Sale in ${city.name} | HomeLink Zimbabwe`,
-    description: `Browse houses, flats, land, and commercial property for sale in ${city.name}, Zimbabwe on HomeLink.`,
+    title: `Property for Sale in ${city.name} | HouseLink Zimbabwe`,
+    description: `Browse houses, flats, land, and commercial property for sale in ${city.name}, Zimbabwe on HouseLink.`,
     alternates: {
       canonical: `/property-for-sale/${city.slug}`,
     },

@@ -8,8 +8,8 @@ type PageProps = {
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { userId } = await params;
   return {
-    title: "Roommate profile - HomeLink",
-    description: `View roommate seeker profile on HomeLink Zimbabwe - ${userId}`,
+    title: "Roommate profile - HouseLink",
+    description: `View roommate seeker profile on HouseLink Zimbabwe - ${userId}`,
   };
 }
 

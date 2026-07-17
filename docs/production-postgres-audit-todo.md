@@ -1,4 +1,4 @@
-# HomeLink Production Postgres Audit Todo
+# HouseLink Production Postgres Audit Todo
 
 Status key: `[x]` complete, `[~]` partially complete, `[ ]` still required.
 
@@ -19,9 +19,9 @@ Status key: `[x]` complete, `[~]` partially complete, `[ ]` still required.
 
 - [x] Removed the production crash caused by `markDirty()` throwing before store hydration.
 - [x] Deferred legacy snapshot persistence while hydration is pending instead of failing requests.
-- [x] Legacy `AppStore` is blocked in strict production unless `HOMELINK_ALLOW_LEGACY_STORE=true` is explicitly set.
+- [x] Legacy `AppStore` is blocked in strict production unless `HOUSELINK_ALLOW_LEGACY_STORE=true` is explicitly set.
 - [~] Legacy `AppStore` still exists for demo/local functionality and a shrinking set of admin-only workflows outside strict production.
-- [x] Production writes cannot silently persist only to server memory when `HOMELINK_STRICT_PRODUCTION=true`.
+- [x] Production writes cannot silently persist only to server memory when `HOUSELINK_STRICT_PRODUCTION=true`.
 
 ## Database-first domains
 
@@ -83,8 +83,8 @@ Status key: `[x]` complete, `[~]` partially complete, `[ ]` still required.
 - [x] Apply schema changes to the production database before deploy. Production Neon was repaired and Prisma migration history is up to date.
 - [ ] Configure Cloudinary production credentials.
 - [ ] Configure transactional email credentials.
-- [ ] Set `HOMELINK_STRICT_PRODUCTION=true`.
-- [ ] Set a stable long `HOMELINK_SESSION_SECRET`.
+- [ ] Set `HOUSELINK_STRICT_PRODUCTION=true`.
+- [ ] Set a stable long `HOUSELINK_SESSION_SECRET`.
 - [ ] Configure payment gateway credentials or keep payment gateways disabled.
 
 ## Final verification

@@ -49,12 +49,12 @@ export type CommissionCalculationContext = {
 };
 
 function normalizeLeadSource(source?: LeadSource | string): LeadSource {
-  return source === "AGENT" ? "AGENT" : "HOMELINK";
+  return source === "AGENT" ? "AGENT" : "HOUSELINK";
 }
 
 function inferLeadSourceFromLegacy(source?: string): LeadSource {
   const normalized = (source ?? "").toUpperCase();
-  return normalized.includes("AGENT") ? "AGENT" : "HOMELINK";
+  return normalized.includes("AGENT") ? "AGENT" : "HOUSELINK";
 }
 
 function scopePriority(scope?: CommissionRule["scope"]) {
@@ -101,7 +101,7 @@ function ruleScore(rule: CommissionRule, context: CommissionCalculationContext) 
 
 export function ensureCommissionRuleCoverage(state: AgentPlatformState) {
   const required = DEFAULT_COMMISSION_RULES.filter((rule) =>
-    ["SALE", "RENTAL", "MANAGEMENT"].includes(rule.type) && (rule.leadSource === "HOMELINK" || rule.leadSource === "AGENT"),
+    ["SALE", "RENTAL", "MANAGEMENT"].includes(rule.type) && (rule.leadSource === "HOUSELINK" || rule.leadSource === "AGENT"),
   );
   for (const rule of required) {
     const exists = state.settings.commissionRules.some(
@@ -240,7 +240,7 @@ export function seedAgentPlatform(
       listingTitle: "Verified garden cottage near Avondale shops",
       clientUserId: "user_seeker_tinashe",
       clientName: "Tinashe Dube",
-      clientEmail: "tinashe.dube@homelinkzim.co.zw",
+      clientEmail: "tinashe.dube@houselinkzim.co.zw",
       clientType: "TENANT",
       source: "LISTING_ENQUIRY",
       status: "CLOSED_WON",
@@ -249,7 +249,7 @@ export function seedAgentPlatform(
       city: "Harare",
       suburb: "Avondale",
       province: "Harare",
-      notes: "Rental completed via HomeLink — please rate your agent.",
+      notes: "Rental completed via HouseLink — please rate your agent.",
       dealRef: "deal_seed_rating",
       closedAt: new Date(Date.now() - 3 * 86400000).toISOString(),
       ratingSubmitted: false,
@@ -276,12 +276,12 @@ export function seedAgentPlatform(
   if (blessing) {
     state.commissions.push(
       createCommissionRecord(state, blessing.id, blessing.name, "RENTAL", 450, "deal_rent_001", "harare-avondale-cottage", "APPROVED", {
-        leadSource: "HOMELINK",
+        leadSource: "HOUSELINK",
         agentId: blessing.id,
         listingId: "harare-avondale-cottage",
       }),
       createCommissionRecord(state, blessing.id, blessing.name, "SALE", 1200, "deal_sale_001", undefined, "PENDING", {
-        leadSource: "HOMELINK",
+        leadSource: "HOUSELINK",
         agentId: blessing.id,
       }),
     );
@@ -371,12 +371,12 @@ function buildProfileFromUser(
     applicationId: `app_${user.id}`,
     agentNumber,
     agentIdCode: `HL-${agentNumber}`,
-    qrCodeData: `https://homelinkzim.co.zw/agents/${slug}`,
+    qrCodeData: `https://houselinkzim.co.zw/agents/${slug}`,
     level,
     status: "ACTIVE",
     biography:
       overrides.biography ??
-      `${user.name} is a verified HomeLink agent helping clients across ${user.city ?? "Zimbabwe"}.`,
+      `${user.name} is a verified HouseLink agent helping clients across ${user.city ?? "Zimbabwe"}.`,
     areasServed: overrides.areasServed ?? [user.city ?? "Harare"],
     languages: overrides.languages ?? ["English", "Shona"],
     specialisations: overrides.specialisations ?? ["Residential rentals", "Family homes"],
@@ -507,10 +507,10 @@ export function approveApplication(
     applicationId: app.id,
     agentNumber,
     agentIdCode: `HL-${agentNumber}`,
-    qrCodeData: `https://homelinkzim.co.zw/agents/${slug}`,
+    qrCodeData: `https://houselinkzim.co.zw/agents/${slug}`,
     level: "BRONZE",
     status: "ACTIVE",
-    biography: `${app.personal.fullName} is a verified HomeLink agent serving ${app.professional.city || "Zimbabwe"}.`,
+    biography: `${app.personal.fullName} is a verified HouseLink agent serving ${app.professional.city || "Zimbabwe"}.`,
     photoUrl: app.documents.profilePictureUrl,
     areasServed: app.professional.areasCovered.length ? app.professional.areasCovered : [app.professional.city],
     languages: app.professional.languages,
@@ -561,12 +561,12 @@ export function calculateCommission(
   type: CommissionType,
   dealAmount: number,
   context: CommissionCalculationContext = {},
-): { gross: number; homelink: number; agent: number; tax: number; netAgent: number; rule: CommissionRule; leadSource: LeadSource } {
+): { gross: number; houselink: number; agent: number; tax: number; netAgent: number; rule: CommissionRule; leadSource: LeadSource } {
   const rule = resolveCommissionRule(state, type, context);
   if (!rule) {
     return {
       gross: 0,
-      homelink: 0,
+      houselink: 0,
       agent: 0,
       tax: 0,
       netAgent: 0,
@@ -577,10 +577,10 @@ export function calculateCommission(
   let gross = (dealAmount * rule.ratePercent) / 100;
   gross = Math.max(rule.minAmount, Math.min(rule.maxAmount, gross));
   const agent = (gross * rule.agentSplitPercent) / 100;
-  const homelink = (gross * rule.homelinkSplitPercent) / 100;
+  const houselink = (gross * rule.houselinkSplitPercent) / 100;
   const tax = (agent * rule.vatPercent) / 100;
   const netAgent = agent - tax;
-  return { gross, homelink, agent, tax, netAgent, rule, leadSource: normalizeLeadSource(context.leadSource) };
+  return { gross, houselink, agent, tax, netAgent, rule, leadSource: normalizeLeadSource(context.leadSource) };
 }
 
 export function createCommissionRecord(
@@ -613,17 +613,17 @@ export function createCommissionRecord(
     reason:
       calc.rule?.reason ??
       (calc.leadSource === "AGENT"
-        ? "Agent-sourced lead: the agent acquired the client and HomeLink provided platform support."
-        : "HomeLink-sourced lead: HomeLink generated the enquiry and assigned an agent to close it."),
+        ? "Agent-sourced lead: the agent acquired the client and HouseLink provided platform support."
+        : "HouseLink-sourced lead: HouseLink generated the enquiry and assigned an agent to close it."),
     grossAmount: calc.gross,
-    homelinkAmount: calc.homelink,
+    houselinkAmount: calc.houselink,
     agentAmount: calc.agent,
     taxAmount: calc.tax,
     netAgentAmount: calc.netAgent,
     currency: "USD",
     ruleSnapshot: {
       ratePercent: calc.rule.ratePercent,
-      homelinkSplitPercent: calc.rule.homelinkSplitPercent,
+      houselinkSplitPercent: calc.rule.houselinkSplitPercent,
       agentSplitPercent: calc.rule.agentSplitPercent,
       vatPercent: calc.rule.vatPercent,
       leadSource: calc.leadSource,
@@ -636,10 +636,10 @@ export function createCommissionRecord(
       {
         id: `audit_${crypto.randomUUID()}`,
         changedById: "system",
-        changedByName: "HomeLink System",
+        changedByName: "HouseLink System",
         changedAt: createdAt,
         action: "CREATED",
-        newHomelinkSplitPercent: calc.rule.homelinkSplitPercent,
+        newHomelinkSplitPercent: calc.rule.houselinkSplitPercent,
         newAgentSplitPercent: calc.rule.agentSplitPercent,
         reason: "Commission calculated automatically from the active commission rule.",
       },
@@ -668,30 +668,30 @@ export function normalizeCommissionRecord(state: AgentPlatformState, commission:
     !commission.ruleSnapshot.ruleLabel ||
     commission.ruleSnapshot.leadSource !== leadSource ||
     (rule.leadSource === leadSource &&
-      (commission.ruleSnapshot.homelinkSplitPercent !== rule.homelinkSplitPercent ||
+      (commission.ruleSnapshot.houselinkSplitPercent !== rule.houselinkSplitPercent ||
         commission.ruleSnapshot.agentSplitPercent !== rule.agentSplitPercent));
 
   if (!isLegacyOrWrongRule) return commission;
 
   const agentAmount = (commission.grossAmount * rule.agentSplitPercent) / 100;
-  const homelinkAmount = (commission.grossAmount * rule.homelinkSplitPercent) / 100;
+  const houselinkAmount = (commission.grossAmount * rule.houselinkSplitPercent) / 100;
   const taxAmount = (agentAmount * rule.vatPercent) / 100;
   commission.leadSource = leadSource;
   commission.commissionRuleId = rule.id;
   commission.commissionRuleLabel = rule.label;
   commission.commissionPercent = rule.ratePercent;
-  commission.homelinkAmount = homelinkAmount;
+  commission.houselinkAmount = houselinkAmount;
   commission.agentAmount = agentAmount;
   commission.taxAmount = taxAmount;
   commission.netAgentAmount = agentAmount - taxAmount;
   commission.reason =
     rule.reason ??
-    (leadSource === "HOMELINK"
-      ? "HomeLink generated the lead; HomeLink receives the company share and the assigned agent receives the agent share."
-      : "The agent generated the lead; the agent receives the larger share while HomeLink provides platform support.");
+    (leadSource === "HOUSELINK"
+      ? "HouseLink generated the lead; HouseLink receives the company share and the assigned agent receives the agent share."
+      : "The agent generated the lead; the agent receives the larger share while HouseLink provides platform support.");
   commission.ruleSnapshot = {
     ratePercent: rule.ratePercent,
-    homelinkSplitPercent: rule.homelinkSplitPercent,
+    houselinkSplitPercent: rule.houselinkSplitPercent,
     agentSplitPercent: rule.agentSplitPercent,
     vatPercent: rule.vatPercent,
     leadSource,
@@ -724,7 +724,7 @@ export function assignLead(
       {
         id: `audit_${crypto.randomUUID()}`,
         changedById: leadInput.createdById ?? "system",
-        changedByName: leadInput.createdByName ?? "HomeLink System",
+        changedByName: leadInput.createdByName ?? "HouseLink System",
         changedAt: now,
         newLeadSource: leadSource,
         reason: "Initial lead ownership recorded.",
@@ -1011,7 +1011,7 @@ export function findRateableDeal(
   const user = getUser(lead.assignedAgentId);
   return {
     agentId: lead.assignedAgentId,
-    agentName: user?.name ?? lead.assignedAgentName ?? "HomeLink Agent",
+    agentName: user?.name ?? lead.assignedAgentName ?? "HouseLink Agent",
     agentSlug: profile?.publicSlug ?? lead.assignedAgentId,
     dealRef: lead.dealRef,
     listingId: lead.listingId,
@@ -1101,7 +1101,7 @@ export function getAgentDashboardStats(
     listingsCount,
     totalListings: listingsCount,
     activeListings,
-    homelinkLeads: leads.filter((l) => (l.leadSource ?? inferLeadSourceFromLegacy(l.source)) === "HOMELINK").length,
+    houselinkLeads: leads.filter((l) => (l.leadSource ?? inferLeadSourceFromLegacy(l.source)) === "HOUSELINK").length,
     agentLeads: leads.filter((l) => (l.leadSource ?? inferLeadSourceFromLegacy(l.source)) === "AGENT").length,
     closedDeals: leads.filter((l) => l.status === "CLOSED_WON").length,
     pendingDeals: leads.filter((l) => ["NEW", "ASSIGNED", "CONTACTED", "VIEWING_BOOKED", "NEGOTIATION"].includes(l.status)).length,
@@ -1126,7 +1126,7 @@ export function getAgentAdminAnalytics(state: AgentPlatformState, getUserName: (
   const profiles = state.profiles;
   const commissions = state.commissions;
   const closedLeads = state.leads.filter((l) => l.status === "CLOSED_WON");
-  const companyCommission = commissions.reduce((s, c) => s + c.homelinkAmount, 0);
+  const companyCommission = commissions.reduce((s, c) => s + c.houselinkAmount, 0);
   const agentCommission = commissions.reduce((s, c) => s + c.netAgentAmount, 0);
 
   const provinceMap = new Map<string, { leads: number; closed: number }>();
@@ -1143,14 +1143,14 @@ export function getAgentAdminAnalytics(state: AgentPlatformState, getUserName: (
     const cityRow = cityMap.get(cityKey) ?? { leads: 0, closed: 0, revenue: 0 };
     cityRow.leads += 1;
     if (lead.status === "CLOSED_WON") cityRow.closed += 1;
-    cityRow.revenue += commissions.filter((c) => c.leadId === lead.id || c.listingId === lead.listingId).reduce((s, c) => s + c.homelinkAmount, 0);
+    cityRow.revenue += commissions.filter((c) => c.leadId === lead.id || c.listingId === lead.listingId).reduce((s, c) => s + c.houselinkAmount, 0);
     cityMap.set(cityKey, cityRow);
 
     const source = lead.leadSource ?? inferLeadSourceFromLegacy(lead.source);
     const sourceRow = leadSourceMap.get(source) ?? { leads: 0, closed: 0, revenue: 0 };
     sourceRow.leads += 1;
     if (lead.status === "CLOSED_WON") sourceRow.closed += 1;
-    sourceRow.revenue += commissions.filter((c) => c.leadId === lead.id || c.listingId === lead.listingId).reduce((s, c) => s + c.homelinkAmount, 0);
+    sourceRow.revenue += commissions.filter((c) => c.leadId === lead.id || c.listingId === lead.listingId).reduce((s, c) => s + c.houselinkAmount, 0);
     leadSourceMap.set(source, sourceRow);
   }
 
@@ -1162,14 +1162,14 @@ export function getAgentAdminAnalytics(state: AgentPlatformState, getUserName: (
     suspendedAgents: profiles.filter((p) => p.status === "SUSPENDED").length,
     totalSales: commissions.filter((c) => c.type === "SALE").length,
     totalRentals: commissions.filter((c) => c.type === "RENTAL").length,
-    totalRevenue: commissions.reduce((s, c) => s + c.homelinkAmount, 0),
+    totalRevenue: commissions.reduce((s, c) => s + c.houselinkAmount, 0),
     totalCompanyCommission: companyCommission,
     totalAgentCommission: agentCommission,
     commissionAwaitingApproval: commissions.filter((c) => c.status === "PENDING").reduce((s, c) => s + c.netAgentAmount, 0),
     commissionAlreadyPaid: commissions.filter((c) => c.status === "PAID").reduce((s, c) => s + c.netAgentAmount, 0),
     outstandingCommission: commissions.filter((c) => c.status === "PENDING" || c.status === "APPROVED").reduce((s, c) => s + c.netAgentAmount, 0),
-    homelinkGeneratedRevenue: commissions.filter((c) => c.leadSource === "HOMELINK").reduce((s, c) => s + c.homelinkAmount, 0),
-    agentGeneratedRevenue: commissions.filter((c) => c.leadSource === "AGENT").reduce((s, c) => s + c.homelinkAmount, 0),
+    houselinkGeneratedRevenue: commissions.filter((c) => c.leadSource === "HOUSELINK").reduce((s, c) => s + c.houselinkAmount, 0),
+    agentGeneratedRevenue: commissions.filter((c) => c.leadSource === "AGENT").reduce((s, c) => s + c.houselinkAmount, 0),
     totalCommissionPaid: commissions.filter((c) => c.status === "PAID").reduce((s, c) => s + c.netAgentAmount, 0),
     topAgents: [...profiles]
       .sort((a, b) => b.completedDeals - a.completedDeals)

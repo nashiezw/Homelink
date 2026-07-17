@@ -51,7 +51,7 @@ export function RoommateEnquiryPanel({ roommateUserId, roommateName, lookingFor 
     if (result.data) {
       setOpen(false);
       setMessage("");
-      showToast("Enquiry sent to HomeLink. A consultant will qualify and coordinate next steps.");
+      showToast("Enquiry sent to HouseLink. A consultant will qualify and coordinate next steps.");
       if (user) router.push("/enquiries");
     } else {
       showToast(result.error?.message ?? "Could not submit enquiry.", "error");
@@ -65,7 +65,7 @@ export function RoommateEnquiryPanel({ roommateUserId, roommateName, lookingFor 
         {primaryLabel}
       </Button>
       <p className="mt-2 text-center text-xs text-slate-500">
-        Managed by HomeLink — no direct contact details shared
+        Managed by HouseLink — no direct contact details shared
       </p>
 
       {open && (
@@ -74,7 +74,7 @@ export function RoommateEnquiryPanel({ roommateUserId, roommateName, lookingFor 
             onSubmit={(e) => void submit(e)}
             className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl dark:bg-slate-900"
           >
-            <h3 className="text-lg font-semibold">Contact via HomeLink</h3>
+            <h3 className="text-lg font-semibold">Contact via HouseLink</h3>
             <p className="mt-1 text-sm text-slate-500">
               Enquire about {roommateName}. A property consultant will manage the process.
             </p>

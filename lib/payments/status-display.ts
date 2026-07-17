@@ -21,7 +21,7 @@ export function paymentStatusDisplay(payment: PaymentStatusInput): PaymentStatus
     return {
       label: "Failed webhook",
       title: "Gateway update failed",
-      description: "HomeLink did not receive a trusted payment confirmation from the gateway. Finance must review this before activation.",
+      description: "HouseLink did not receive a trusted payment confirmation from the gateway. Finance must review this before activation.",
       tone: "error",
       action: "Contact support with your payment reference.",
     };
@@ -31,7 +31,7 @@ export function paymentStatusDisplay(payment: PaymentStatusInput): PaymentStatus
     return {
       label: "Refunded",
       title: "Payment refunded",
-      description: "HomeLink has marked this payment as refunded. The related service is not active from this payment.",
+      description: "HouseLink has marked this payment as refunded. The related service is not active from this payment.",
       tone: "neutral",
     };
   }
@@ -51,7 +51,7 @@ export function paymentStatusDisplay(payment: PaymentStatusInput): PaymentStatus
       title: payment.proofStatus === "REJECTED" ? "Proof rejected" : "Payment failed",
       description: payment.proofStatus === "REJECTED"
         ? "Finance could not verify the uploaded proof. Upload a clearer receipt or contact support before paying again."
-        : "The payment did not complete. No HomeLink service has been activated from this attempt.",
+        : "The payment did not complete. No HouseLink service has been activated from this attempt.",
       tone: "error",
       action: payment.proofStatus === "REJECTED" ? "Upload new proof or contact support." : "Create a new payment when you are ready.",
     };
@@ -61,7 +61,7 @@ export function paymentStatusDisplay(payment: PaymentStatusInput): PaymentStatus
     return {
       label: "Verified",
       title: "Payment verified",
-      description: "HomeLink finance has verified this payment. The related service can now be activated.",
+      description: "HouseLink finance has verified this payment. The related service can now be activated.",
       tone: "success",
     };
   }
@@ -70,7 +70,7 @@ export function paymentStatusDisplay(payment: PaymentStatusInput): PaymentStatus
     return {
       label: "Pending proof review",
       title: "Proof under review",
-      description: "Your proof was uploaded successfully. Finance still needs to verify that money reached HomeLink.",
+      description: "Your proof was uploaded successfully. Finance still needs to verify that money reached HouseLink.",
       tone: "pending",
       action: "Keep your receipt until finance confirms.",
     };
@@ -80,7 +80,7 @@ export function paymentStatusDisplay(payment: PaymentStatusInput): PaymentStatus
     return {
       label: "Pending proof",
       title: "Pending proof upload",
-      description: "A manual transfer has been created, but HomeLink has not received proof yet.",
+      description: "A manual transfer has been created, but HouseLink has not received proof yet.",
       tone: "pending",
       action: "Pay using the reference, then upload proof.",
     };
@@ -90,7 +90,7 @@ export function paymentStatusDisplay(payment: PaymentStatusInput): PaymentStatus
     return {
       label: "Manual transfer pending",
       title: "Manual transfer pending",
-      description: "HomeLink is waiting for the transfer and proof before finance can verify this payment.",
+      description: "HouseLink is waiting for the transfer and proof before finance can verify this payment.",
       tone: "pending",
       action: "Use the reference in your transfer narration.",
     };
@@ -100,7 +100,7 @@ export function paymentStatusDisplay(payment: PaymentStatusInput): PaymentStatus
     return {
       label: payment.status === "MANUAL_REVIEW" ? "Manual review" : "Pending",
       title: payment.status === "MANUAL_REVIEW" ? "Manual review required" : "Payment pending",
-      description: "This payment is not verified yet. Do not assume money moved until HomeLink confirms it.",
+      description: "This payment is not verified yet. Do not assume money moved until HouseLink confirms it.",
       tone: "pending",
     };
   }
@@ -108,7 +108,7 @@ export function paymentStatusDisplay(payment: PaymentStatusInput): PaymentStatus
   return {
     label: String(payment.status).replace(/_/g, " "),
     title: String(payment.status).replace(/_/g, " "),
-    description: "HomeLink has recorded this payment state. Contact support if it does not match your receipt.",
+    description: "HouseLink has recorded this payment state. Contact support if it does not match your receipt.",
     tone: "neutral",
   };
 }

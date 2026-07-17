@@ -85,7 +85,7 @@ function pageTone(page: LegalPage) {
       eyebrow: "Privacy & data",
       promiseTitle: "Your data should make the platform safer, not noisier.",
       promiseCopy:
-        "HomeLink uses information to power matching, search, verification, support, and marketplace safety across Zimbabwe.",
+        "HouseLink uses information to power matching, search, verification, support, and marketplace safety across Zimbabwe.",
       principles: privacyPrinciples,
       primaryHref: "/contact",
       primaryLabel: "Ask a privacy question",
@@ -96,7 +96,7 @@ function pageTone(page: LegalPage) {
     eyebrow: "Terms & trust",
     promiseTitle: "Clear rules for a safer property marketplace.",
     promiseCopy:
-      "These terms set expectations for seekers, landlords, agents, roommates, owners, consultants, and admins using HomeLink.",
+      "These terms set expectations for seekers, landlords, agents, roommates, owners, consultants, and admins using HouseLink.",
     principles: termsPrinciples,
     primaryHref: "/safety",
     primaryLabel: "Review safety tips",
@@ -109,12 +109,12 @@ export function LegalPageView({ page, fallbackTitle }: LegalPageViewProps) {
       <PageShell
         eyebrow="Legal"
         title={`${fallbackTitle} is being updated.`}
-        description="This page is currently unavailable while the HomeLink team reviews the latest copy."
+        description="This page is currently unavailable while the HouseLink team reviews the latest copy."
         highlights={[{ value: "Draft", label: "status" }]}
       >
         <div className="surface-panel rounded-lg p-6">
           <p className="text-sm leading-6 text-slate-600 dark:text-slate-300">
-            Please contact HomeLink support if you need the current policy details.
+            Please contact HouseLink support if you need the current policy details.
           </p>
           <Link href="/contact" className="mt-4 inline-flex text-sm font-semibold text-emerald-700 hover:underline">
             Contact support
@@ -193,7 +193,7 @@ export function LegalPageView({ page, fallbackTitle }: LegalPageViewProps) {
           <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-5 dark:border-emerald-900 dark:bg-emerald-950/30">
             <p className="text-sm font-semibold text-emerald-950 dark:text-emerald-100">Need help with this page?</p>
             <p className="mt-2 text-sm leading-6 text-emerald-900/75 dark:text-emerald-100/75">
-              Contact HomeLink support for safety reports, data questions, takedown requests, or account help.
+              Contact HouseLink support for safety reports, data questions, takedown requests, or account help.
             </p>
             <Link href="/contact" className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-emerald-800 hover:underline dark:text-emerald-200">
               Contact support
@@ -236,7 +236,7 @@ export function LegalPageView({ page, fallbackTitle }: LegalPageViewProps) {
               {[
                 { label: "Marketplace", value: "Listings, agents, rooms, and property management" },
                 { label: "Trust", value: "Verification, reports, moderation, and safety reviews" },
-                { label: "Support", value: "Questions handled through HomeLink support" },
+                { label: "Support", value: "Questions handled through HouseLink support" },
               ].map((item) => (
                 <div key={item.label} className="bg-white p-5 dark:bg-slate-900">
                   <p className="text-sm font-semibold text-ink dark:text-white">{item.label}</p>

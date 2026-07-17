@@ -31,7 +31,7 @@ export const defaultHomepageTestimonials: HomeTestimonial[] = [
     photoInitial: "N",
     photoUrl: "/images/roommates/portrait-chipo.jpg",
     rating: 5,
-    quote: "HomeLink made enquiries feel organised instead of chaotic. We filled our Hillside rental in under two weeks.",
+    quote: "HouseLink made enquiries feel organised instead of chaotic. We filled our Hillside rental in under two weeks.",
     propertyTitle: "Family home in Hillside",
     location: "Bulawayo",
     transactionType: "Rental",

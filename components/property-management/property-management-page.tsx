@@ -299,7 +299,7 @@ export function PropertyManagementPage() {
               className="mt-3 inline-flex items-center justify-center gap-2 text-sm font-semibold text-emerald-700 hover:text-emerald-800"
             >
               <Phone className="size-4" />
-              {contact?.phoneLabel ?? "Call HomeLink"}
+              {contact?.phoneLabel ?? "Call HouseLink"}
             </a>
           </div>
         </div>

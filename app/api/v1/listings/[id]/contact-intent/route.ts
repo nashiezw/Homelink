@@ -4,6 +4,6 @@ export async function POST() {
   return problem(
     410,
     "CONTACT_DETAILS_DISABLED",
-    "Public owner contact details are no longer available. Please submit an enquiry through HomeLink.",
+    "Public owner contact details are no longer available. Please submit an enquiry through HouseLink.",
   );
 }

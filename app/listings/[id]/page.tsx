@@ -35,12 +35,12 @@ export async function generateMetadata({ params }: ListingDetailPageProps): Prom
 
   if (!listing) {
     return {
-      title: "Listing not found | HomeLink Zimbabwe",
+      title: "Listing not found | HouseLink Zimbabwe",
     };
   }
 
   const canonical = `/listings/${listing.slug ?? listing.id}`;
-  const title = `${listing.title} in ${listing.suburb}, ${listing.city} | HomeLink Zimbabwe`;
+  const title = `${listing.title} in ${listing.suburb}, ${listing.city} | HouseLink Zimbabwe`;
   const description = `${listing.bedrooms} bed, ${listing.bathrooms} bath ${listing.type.replace(/_/g, " ")} ${listing.intent === "buy" ? "for sale" : "to rent"} in ${listing.suburb}, ${listing.city} for ${listing.currency} ${listing.price}.`;
 
   return {
@@ -96,7 +96,7 @@ export default async function ListingDetailPage({ params }: ListingDetailPagePro
     "@type": "RealEstateListing",
     name: listing.title,
     description: listing.description,
-    url: `${process.env.NEXT_PUBLIC_APP_URL ?? "https://homelinkzim.co.zw"}/listings/${listing.slug ?? listing.id}`,
+    url: `${process.env.NEXT_PUBLIC_APP_URL ?? "https://houselinkzim.co.zw"}/listings/${listing.slug ?? listing.id}`,
     image: galleryImages,
     datePosted: listing.availableFrom,
     address: {

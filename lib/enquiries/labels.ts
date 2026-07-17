@@ -6,13 +6,13 @@ export const ENQUIRY_TYPE_LABELS: Record<EnquiryType, string> = {
   SCHEDULE_VIEWING: "Schedule viewing",
   BOOK_INSPECTION: "Book inspection",
   ENQUIRE_PROPERTY: "Enquire about property",
-  TALK_TO_CONSULTANT: "Talk to a HomeLink consultant",
+  TALK_TO_CONSULTANT: "Talk to a HouseLink consultant",
   REQUEST_INFO: "Request more information",
   ASK_QUESTION: "Ask a question",
   BOOK_HOLIDAY: "Book holiday home",
   CHECK_AVAILABILITY: "Check availability",
   REQUEST_ROOM_VIEWING: "Request room viewing",
-  CONTACT_HOMELINK: "Contact HomeLink",
+  CONTACT_HOUSELINK: "Contact HouseLink",
   ROOMMATE_MATCH: "Roommate enquiry",
 };
 
@@ -44,7 +44,7 @@ export function enquiryActionsForListing(
   if (type === "holiday_home") {
     return [
       { type: "CHECK_AVAILABILITY", label: "Check availability", primary: true },
-      { type: "BOOK_HOLIDAY", label: "Book through HomeLink" },
+      { type: "BOOK_HOLIDAY", label: "Book through HouseLink" },
       { type: "TALK_TO_CONSULTANT", label: "Talk to a consultant" },
     ];
   }
@@ -52,7 +52,7 @@ export function enquiryActionsForListing(
     return [
       { type: "REQUEST_ROOM_VIEWING", label: "Request room viewing", primary: true },
       { type: "ENQUIRE_PROPERTY", label: "Enquire about this room" },
-      { type: "TALK_TO_CONSULTANT", label: "Talk to a HomeLink consultant" },
+      { type: "TALK_TO_CONSULTANT", label: "Talk to a HouseLink consultant" },
     ];
   }
   if (intent === "buy") {
@@ -77,5 +77,5 @@ export function enquiryActionsForListing(
 }
 
 export function defaultEnquiryType(type: PropertyType | string, intent: ListingIntent | string): EnquiryType {
-  return enquiryActionsForListing(type, intent).find((a) => a.primary)?.type ?? "CONTACT_HOMELINK";
+  return enquiryActionsForListing(type, intent).find((a) => a.primary)?.type ?? "CONTACT_HOUSELINK";
 }

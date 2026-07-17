@@ -112,7 +112,7 @@ export const pmPricingPlans = [
 export const pmTestimonials = [
   {
     id: "t1",
-    quote: "HomeLink found great tenants within two weeks. Rent has been on time every month.",
+    quote: "HouseLink found great tenants within two weeks. Rent has been on time every month.",
     name: "Tendai M.",
     location: "Harare",
     image: "/images/roommates/portrait-tendai.jpg",
@@ -153,7 +153,7 @@ export const pmFaqs = [
   {
     question: "How quickly can you find tenants?",
     answer:
-      "Most properties receive qualified applicants within 7-14 days depending on location, price, and property condition. We market across HomeLink and partner channels.",
+      "Most properties receive qualified applicants within 7-14 days depending on location, price, and property condition. We market across HouseLink and partner channels.",
   },
   {
     question: "Do I need to be in Zimbabwe?",

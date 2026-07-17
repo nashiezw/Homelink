@@ -138,7 +138,7 @@ export async function POST(request: Request) {
     case "broadcast_notification": {
       const result = broadcastPlatformNotification(store, {
         channel: channel ?? "IN_APP",
-        subject: subject ?? "HomeLink announcement",
+        subject: subject ?? "HouseLink announcement",
         body: notifBody ?? "",
         audience: (body as { audience?: BroadcastAudience }).audience ?? "all",
         userIds: (body as { userIds?: string[] }).userIds,
@@ -253,7 +253,7 @@ async function handlePostgresAdminAction(input: {
         data: recipients.map((recipient) => ({
           userId: recipient.id,
           channel,
-          subject: input.subject ?? "HomeLink announcement",
+          subject: input.subject ?? "HouseLink announcement",
           body: input.notifBody ?? "",
         })),
       });

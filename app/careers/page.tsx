@@ -40,7 +40,7 @@ export default async function CareersPage() {
     <PageShell
       eyebrow="Careers"
       title="Build the trusted property marketplace Zimbabwe deserves."
-      description="HomeLink is growing across search, verification, property management, and tenancy tooling. If you care about trust and great product craft, we want to hear from you."
+      description="HouseLink is growing across search, verification, property management, and tenancy tooling. If you care about trust and great product craft, we want to hear from you."
       highlights={[
         { value: "3", label: "open roles" },
         { value: "Hybrid", label: "work model" },
@@ -48,7 +48,7 @@ export default async function CareersPage() {
       ]}
       actions={
         <Link
-          href={getMailtoHref(contact.careersEmail, "HomeLink careers enquiry")}
+          href={getMailtoHref(contact.careersEmail, "HouseLink careers enquiry")}
           className="inline-flex h-11 w-full items-center justify-center rounded-lg bg-white px-5 text-sm font-semibold text-ink shadow-lg shadow-black/10 transition hover:bg-emerald-50 sm:w-auto"
         >
           Email {contact.careersEmail}
@@ -97,7 +97,7 @@ export default async function CareersPage() {
         <Link href="/contact" className="font-semibold text-emerald-700 hover:underline">
           Contact us
         </Link>{" "}
-        with your CV and what you&apos;d like to build at HomeLink.
+        with your CV and what you&apos;d like to build at HouseLink.
       </p>
     </PageShell>
   );

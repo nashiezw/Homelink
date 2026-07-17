@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { ImageUploader } from "@/components/ui/image-uploader";
 import { apiFetch } from "@/lib/api/client";
 import type { AgentApplication } from "@/lib/agents/types";
-import { HOMELINK_AGENT_CONTRACT } from "@/lib/agents/agent-contract";
+import { HOUSELINK_AGENT_CONTRACT } from "@/lib/agents/agent-contract";
 import {
   emptyApplicationDocumentChecklist,
   emptyApplicationInterviewAssessment,
@@ -75,7 +75,7 @@ export function AgentApplicationWizard() {
       <PageShell
         eyebrow="Agent application"
         title="Start your agent application"
-        description="Create a free HomeLink account or sign in to save your progress and submit for review."
+        description="Create a free HouseLink account or sign in to save your progress and submit for review."
       >
         <div className="grid gap-8 lg:grid-cols-[1fr_420px] lg:items-start">
           <div className="premium-card rounded-xl p-6">
@@ -89,7 +89,7 @@ export function AgentApplicationWizard() {
                 "ID, licence, and proof-of-address documents",
                 "Banking details for commission payouts",
                 "Two professional references",
-                "Signed HomeLink agent agreement",
+                "Signed HouseLink agent agreement",
               ].map((item) => (
                 <li key={item} className="flex gap-2">
                   <span className="font-semibold text-emerald-700">•</span>
@@ -98,7 +98,7 @@ export function AgentApplicationWizard() {
               ))}
             </ul>
             <p className="mt-5 text-sm text-slate-500">
-              New to HomeLink? Choose <strong>Create account</strong> on the right — your application starts automatically after registration.
+              New to HouseLink? Choose <strong>Create account</strong> on the right — your application starts automatically after registration.
             </p>
           </div>
           <Suspense fallback={<div className="surface-panel h-64 rounded-lg p-5">Loading...</div>}>
@@ -119,7 +119,7 @@ export function AgentApplicationWizard() {
   return (
     <PageShell
       eyebrow="Agent application"
-      title="HomeLink agent application"
+      title="HouseLink agent application"
       description={`Complete all steps and submit for review. Current status: ${statusLabel}`}
     >
       <div className="mb-6 flex flex-wrap gap-2">
@@ -181,7 +181,7 @@ export function AgentApplicationWizard() {
         {step === 1 && (
           <div className="grid gap-4 sm:grid-cols-2">
             {[
-              ["heardAbout", "How did you hear about HomeLink?"],
+              ["heardAbout", "How did you hear about HouseLink?"],
               ["referredBy", "Referred by / recruiter name"],
               ["preferredCity", "Preferred city"],
               ["preferredBranch", "Preferred branch / office"],
@@ -508,7 +508,7 @@ export function AgentApplicationWizard() {
           <div className="grid gap-4 sm:grid-cols-2">
             <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 sm:col-span-2 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-100">
               These fields match the office-use section of the manual paper form. Applicants can leave them blank unless
-              a HomeLink recruiter completes the application with them.
+              a HouseLink recruiter completes the application with them.
             </p>
             {[
               ["applicationRef", "Application reference"],
@@ -586,7 +586,7 @@ export function AgentApplicationWizard() {
         {step === 8 && (
           <div className="grid gap-4">
             <div className="max-h-72 overflow-y-auto rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm leading-relaxed whitespace-pre-wrap dark:border-slate-700 dark:bg-slate-900">
-              {HOMELINK_AGENT_CONTRACT}
+              {HOUSELINK_AGENT_CONTRACT}
             </div>
             <label className="flex items-start gap-2 text-sm">
               <input
@@ -595,7 +595,7 @@ export function AgentApplicationWizard() {
                 onChange={(e) => setApplication({ ...app, agentContractAccepted: e.target.checked })}
                 className="mt-1"
               />
-              I have read and accept the HomeLink Independent Agent Agreement. I understand that clients, viewings, and
+              I have read and accept the HouseLink Independent Agent Agreement. I understand that clients, viewings, and
               payments must remain on the platform.
             </label>
           </div>
@@ -605,7 +605,7 @@ export function AgentApplicationWizard() {
           <div className="grid gap-3 text-sm">
             {[
               ["declarationAccepted", "I declare that all information provided is true and accurate."],
-              ["termsAccepted", "I accept the HomeLink Agent Terms and Conditions."],
+              ["termsAccepted", "I accept the HouseLink Agent Terms and Conditions."],
               ["privacyAccepted", "I accept the Privacy Policy."],
             ].map(([key, label]) => (
               <label key={key} className="flex items-start gap-2">

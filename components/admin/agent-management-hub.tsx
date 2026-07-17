@@ -60,7 +60,7 @@ export function AgentManagementHub() {
     () =>
       DEFAULT_COMMISSION_TYPES.map((type) => ({
         type,
-        homelink: rules.find((rule) => rule.type === type && rule.scope === "DEFAULT" && rule.leadSource === "HOMELINK"),
+        houselink: rules.find((rule) => rule.type === type && rule.scope === "DEFAULT" && rule.leadSource === "HOUSELINK"),
         agent: rules.find((rule) => rule.type === type && rule.scope === "DEFAULT" && rule.leadSource === "AGENT"),
       })),
     [rules],
@@ -72,7 +72,7 @@ export function AgentManagementHub() {
           !(
             DEFAULT_COMMISSION_TYPES.includes(rule.type as (typeof DEFAULT_COMMISSION_TYPES)[number]) &&
             rule.scope === "DEFAULT" &&
-            (rule.leadSource === "HOMELINK" || rule.leadSource === "AGENT")
+            (rule.leadSource === "HOUSELINK" || rule.leadSource === "AGENT")
           ),
       ),
     [rules],
@@ -82,13 +82,13 @@ export function AgentManagementHub() {
     setRules((current) => current.map((rule) => (rule.id === ruleId ? { ...rule, ...updates } : rule)));
   }
 
-  function updateRuleSplit(ruleId: string, owner: "HOMELINK" | "AGENT", value: number) {
+  function updateRuleSplit(ruleId: string, owner: "HOUSELINK" | "AGENT", value: number) {
     const bounded = Math.max(0, Math.min(100, Number.isFinite(value) ? value : 0));
     updateRule(
       ruleId,
-      owner === "HOMELINK"
-        ? { homelinkSplitPercent: bounded, agentSplitPercent: 100 - bounded }
-        : { agentSplitPercent: bounded, homelinkSplitPercent: 100 - bounded },
+      owner === "HOUSELINK"
+        ? { houselinkSplitPercent: bounded, agentSplitPercent: 100 - bounded }
+        : { agentSplitPercent: bounded, houselinkSplitPercent: 100 - bounded },
     );
   }
 
@@ -161,7 +161,7 @@ export function AgentManagementHub() {
             { label: "Cash", value: "cash" },
           ],
         },
-        { name: "sourceAccount", label: "HomeLink paying account", required: true, placeholder: "e.g. CBZ operating account" },
+        { name: "sourceAccount", label: "HouseLink paying account", required: true, placeholder: "e.g. CBZ operating account" },
         { name: "destinationAccount", label: "Agent destination account", required: true, placeholder: "Bank/mobile wallet/account number" },
         { name: "reference", label: "Payment reference", required: true, placeholder: "Bank ref, transaction id, or receipt number" },
         { name: "note", label: "Finance note", type: "textarea", placeholder: "Optional payout note" },
@@ -439,14 +439,14 @@ export function AgentManagementHub() {
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div>
                   <p className="font-semibold text-white">{c.agentName}</p>
-                  <p className="text-xs text-slate-500">{c.type} / {c.leadSource ?? "HOMELINK"}</p>
+                  <p className="text-xs text-slate-500">{c.type} / {c.leadSource ?? "HOUSELINK"}</p>
                 </div>
                 <span className="rounded-full bg-white/[0.06] px-2 py-0.5 text-[11px] font-semibold text-slate-300">{c.status}</span>
               </div>
               <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
                 <div className="rounded-lg bg-white/[0.04] px-2 py-1.5">
-                  <p className="text-slate-500">HomeLink share</p>
-                  <p className="font-medium text-slate-200">${c.homelinkAmount.toFixed(2)}</p>
+                  <p className="text-slate-500">HouseLink share</p>
+                  <p className="font-medium text-slate-200">${c.houselinkAmount.toFixed(2)}</p>
                 </div>
                 <div className="rounded-lg bg-white/[0.04] px-2 py-1.5">
                   <p className="text-slate-500">Agent gross</p>
@@ -458,7 +458,7 @@ export function AgentManagementHub() {
                 </div>
                 <div className="rounded-lg bg-white/[0.04] px-2 py-1.5">
                   <p className="text-slate-500">Split</p>
-                  <p className="font-medium text-slate-200">{c.ruleSnapshot.homelinkSplitPercent}% / {c.ruleSnapshot.agentSplitPercent}%</p>
+                  <p className="font-medium text-slate-200">{c.ruleSnapshot.houselinkSplitPercent}% / {c.ruleSnapshot.agentSplitPercent}%</p>
                 </div>
               </div>
               <p className="mt-2 text-xs text-slate-400">{c.commissionRuleLabel ?? c.ruleSnapshot.ruleLabel ?? "Configured commission rule"}</p>
@@ -495,7 +495,7 @@ export function AgentManagementHub() {
                 <th className="px-4 py-3 text-left">Type</th>
                 <th className="px-4 py-3 text-left">Source</th>
                 <th className="px-4 py-3 text-left">Rule & split</th>
-                <th className="px-4 py-3 text-left">HomeLink share</th>
+                <th className="px-4 py-3 text-left">HouseLink share</th>
                 <th className="px-4 py-3 text-left">Agent gross</th>
                 <th className="px-4 py-3 text-left">Agent net payout</th>
                 <th className="px-4 py-3 text-left">Status</th>
@@ -507,12 +507,12 @@ export function AgentManagementHub() {
                 <tr key={`${c.id}-${index}`} className="border-t border-white/10">
                   <td className="px-4 py-3">{c.agentName}</td>
                   <td className="px-4 py-3">{c.type}</td>
-                  <td className="px-4 py-3">{c.leadSource ?? "HOMELINK"}</td>
+                  <td className="px-4 py-3">{c.leadSource ?? "HOUSELINK"}</td>
                   <td className="px-4 py-3">
                     <p>{c.commissionRuleLabel ?? c.ruleSnapshot.ruleLabel ?? "Configured commission rule"}</p>
-                    <p className="text-xs text-slate-500">HomeLink {c.ruleSnapshot.homelinkSplitPercent}% / Agent {c.ruleSnapshot.agentSplitPercent}%</p>
+                    <p className="text-xs text-slate-500">HouseLink {c.ruleSnapshot.houselinkSplitPercent}% / Agent {c.ruleSnapshot.agentSplitPercent}%</p>
                   </td>
-                  <td className="px-4 py-3">${c.homelinkAmount.toFixed(2)}</td>
+                  <td className="px-4 py-3">${c.houselinkAmount.toFixed(2)}</td>
                   <td className="px-4 py-3">${c.agentAmount.toFixed(2)}</td>
                   <td className="px-4 py-3">${c.netAgentAmount.toFixed(2)}</td>
                   <td className="px-4 py-3">
@@ -617,33 +617,33 @@ export function AgentManagementHub() {
               <div>
                 <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-400">Default lead-source commission splits</h3>
                 <p className="mt-1 text-sm text-slate-400">
-                  Separate settings for HomeLink-generated leads and Agent-generated leads. Changing one side never changes the other.
+                  Separate settings for HouseLink-generated leads and Agent-generated leads. Changing one side never changes the other.
                 </p>
               </div>
-              <Button onClick={() => void adminAction({ action: "update_commission_rules", rules, reason: "Admin updated separate HomeLink and Agent lead commission settings." })}>
+              <Button onClick={() => void adminAction({ action: "update_commission_rules", rules, reason: "Admin updated separate HouseLink and Agent lead commission settings." })}>
                 Save commission rules
               </Button>
             </div>
             <div className="mt-5 space-y-4">
-              {defaultRuleGroups.map(({ type, homelink, agent }) => (
+              {defaultRuleGroups.map(({ type, houselink, agent }) => (
                 <div key={type} className="rounded-xl border border-white/10 bg-slate-950/60 p-4">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <p className="font-semibold text-white">{type.replace(/_/g, " ")}</p>
                     <span className="rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-300">Source-specific defaults</span>
                   </div>
                   <div className="mt-4 grid gap-4 lg:grid-cols-2">
-                    {homelink ? (
+                    {houselink ? (
                       <SourceRuleEditor
-                        title="HomeLink generated lead"
-                        description="HomeLink generated the client, so this rule controls the HomeLink-led split only."
-                        rule={homelink}
-                        primaryOwner="HOMELINK"
-                        onRateChange={(value) => updateRule(homelink.id, { ratePercent: value })}
-                        onSplitChange={(owner, value) => updateRuleSplit(homelink.id, owner, value)}
-                        onActiveChange={(active) => updateRule(homelink.id, { active })}
+                        title="HouseLink generated lead"
+                        description="HouseLink generated the client, so this rule controls the HouseLink-led split only."
+                        rule={houselink}
+                        primaryOwner="HOUSELINK"
+                        onRateChange={(value) => updateRule(houselink.id, { ratePercent: value })}
+                        onSplitChange={(owner, value) => updateRuleSplit(houselink.id, owner, value)}
+                        onActiveChange={(active) => updateRule(houselink.id, { active })}
                       />
                     ) : (
-                      <MissingRuleNotice label={`${type} HomeLink lead rule`} />
+                      <MissingRuleNotice label={`${type} HouseLink lead rule`} />
                     )}
                     {agent ? (
                       <SourceRuleEditor
@@ -680,8 +680,8 @@ export function AgentManagementHub() {
                       <input type="number" value={rule.ratePercent} onChange={(e) => updateRule(rule.id, { ratePercent: Number(e.target.value) })} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2" />
                     </label>
                     <label className="text-sm">
-                      HomeLink split %
-                      <input type="number" value={rule.homelinkSplitPercent} onChange={(e) => updateRuleSplit(rule.id, "HOMELINK", Number(e.target.value))} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2" />
+                      HouseLink split %
+                      <input type="number" value={rule.houselinkSplitPercent} onChange={(e) => updateRuleSplit(rule.id, "HOUSELINK", Number(e.target.value))} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2" />
                     </label>
                     <label className="text-sm">
                       Agent split %
@@ -757,13 +757,13 @@ function SourceRuleEditor({
   title: string;
   description: string;
   rule: CommissionRule;
-  primaryOwner: "HOMELINK" | "AGENT";
+  primaryOwner: "HOUSELINK" | "AGENT";
   onRateChange: (value: number) => void;
-  onSplitChange: (owner: "HOMELINK" | "AGENT", value: number) => void;
+  onSplitChange: (owner: "HOUSELINK" | "AGENT", value: number) => void;
   onActiveChange: (active: boolean) => void;
 }) {
   return (
-    <div className={`rounded-lg border p-4 ${primaryOwner === "HOMELINK" ? "border-emerald-400/30 bg-emerald-500/5" : "border-cyan-400/30 bg-cyan-500/5"}`}>
+    <div className={`rounded-lg border p-4 ${primaryOwner === "HOUSELINK" ? "border-emerald-400/30 bg-emerald-500/5" : "border-cyan-400/30 bg-cyan-500/5"}`}>
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <p className="font-semibold text-white">{title}</p>
@@ -785,13 +785,13 @@ function SourceRuleEditor({
           />
         </label>
         <label className="text-sm text-slate-300">
-          HomeLink share %
+          HouseLink share %
           <input
             type="number"
             min={0}
             max={100}
-            value={rule.homelinkSplitPercent}
-            onChange={(e) => onSplitChange("HOMELINK", Number(e.target.value))}
+            value={rule.houselinkSplitPercent}
+            onChange={(e) => onSplitChange("HOUSELINK", Number(e.target.value))}
             className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
           />
         </label>
@@ -809,7 +809,7 @@ function SourceRuleEditor({
       </div>
       <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
         <p className="text-xs text-slate-400">
-          Saved as: {rule.label} - HomeLink {rule.homelinkSplitPercent}% / Agent {rule.agentSplitPercent}%
+          Saved as: {rule.label} - HouseLink {rule.houselinkSplitPercent}% / Agent {rule.agentSplitPercent}%
         </p>
         <label className="flex items-center gap-2 text-sm text-slate-300">
           <input
@@ -845,10 +845,10 @@ function LeadRow({
   const [status, setStatus] = useState(lead.status);
   const [notes, setNotes] = useState(lead.notes ?? "");
   const [agentUserId, setAgentUserId] = useState(lead.assignedAgentId ?? "");
-  const [leadSource, setLeadSource] = useState(lead.leadSource ?? "HOMELINK");
+  const [leadSource, setLeadSource] = useState(lead.leadSource ?? "HOUSELINK");
   const assignmentChanged = Boolean(agentUserId) && agentUserId !== (lead.assignedAgentId ?? "");
   const statusChanged = status !== lead.status || notes !== (lead.notes ?? "");
-  const ownershipChanged = leadSource !== (lead.leadSource ?? "HOMELINK") || assignmentChanged;
+  const ownershipChanged = leadSource !== (lead.leadSource ?? "HOUSELINK") || assignmentChanged;
 
   return (
     <article className="rounded-xl border border-white/10 bg-slate-900/60 p-5">
@@ -856,7 +856,7 @@ function LeadRow({
         <div>
           <p className="font-semibold text-white">{lead.clientName}</p>
           <p className="text-sm text-slate-400">
-            {lead.listingTitle ?? "General enquiry"} - {lead.clientType} - {lead.leadSource ?? "HOMELINK"} lead
+            {lead.listingTitle ?? "General enquiry"} - {lead.clientType} - {lead.leadSource ?? "HOUSELINK"} lead
           </p>
           {lead.duplicateOwnerReview?.status === "PENDING_ADMIN_REVIEW" && (
             <p className="mt-1 text-xs font-semibold text-amber-300">Possible duplicate owner - admin review required</p>
@@ -889,10 +889,10 @@ function LeadRow({
           Lead source
           <select
             value={leadSource}
-            onChange={(e) => setLeadSource(e.target.value as "HOMELINK" | "AGENT")}
+            onChange={(e) => setLeadSource(e.target.value as "HOUSELINK" | "AGENT")}
             className="mt-1 w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-white"
           >
-            <option value="HOMELINK">HomeLink</option>
+            <option value="HOUSELINK">HouseLink</option>
             <option value="AGENT">Agent</option>
           </select>
         </label>

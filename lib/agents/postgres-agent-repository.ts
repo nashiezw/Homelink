@@ -111,7 +111,7 @@ export async function closeAgentLeadInPostgres(leadId: string, agentId: string, 
         dealRef: `deal_${crypto.randomUUID()}`,
         commissionPercent: 5,
         grossAmount,
-        homelinkAmount: grossAmount - agentAmount,
+        houselinkAmount: grossAmount - agentAmount,
         agentAmount,
         taxAmount: 0,
         netAgentAmount: agentAmount,
@@ -324,10 +324,10 @@ function toPublicAgentProfile(
     applicationId: application?.id ?? `agent_application_${user.id}`,
     agentNumber: `HLZ-AG-${user.id.replace(/[^a-zA-Z0-9]/g, "").slice(-6).toUpperCase()}`,
     agentIdCode: `AG-${user.id.replace(/[^a-zA-Z0-9]/g, "").slice(-8).toUpperCase()}`,
-    qrCodeData: `homelink-agent:${user.id}`,
+    qrCodeData: `houselink-agent:${user.id}`,
     level: agentLevel(yearsExperience),
     status: user.accountStatus === "SUSPENDED" ? "SUSPENDED" : "ACTIVE",
-    biography: `${user.name} is a verified HomeLink Zimbabwe agent serving ${areas.join(", ")}.`,
+    biography: `${user.name} is a verified HouseLink Zimbabwe agent serving ${areas.join(", ")}.`,
     photoUrl: application?.documents.profilePictureUrl ?? fallbackAgentPhoto(user.name),
     areasServed: areas,
     languages: professional?.languages?.length ? professional.languages : ["English", "Shona"],
@@ -362,7 +362,7 @@ function commissionRow(row: {
   paymentStatus: string;
   dealRef: string;
   grossAmount: unknown;
-  homelinkAmount: unknown;
+  houselinkAmount: unknown;
   agentAmount: unknown;
   taxAmount: unknown;
   netAgentAmount: unknown;
@@ -372,7 +372,7 @@ function commissionRow(row: {
   return {
     ...row,
     grossAmount: Number(row.grossAmount),
-    homelinkAmount: Number(row.homelinkAmount),
+    houselinkAmount: Number(row.houselinkAmount),
     agentAmount: Number(row.agentAmount),
     taxAmount: Number(row.taxAmount),
     netAgentAmount: Number(row.netAgentAmount),

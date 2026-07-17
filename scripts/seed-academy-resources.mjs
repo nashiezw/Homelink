@@ -8,13 +8,13 @@ const manifestPath = path.join(root, "public", "uploads", "academy", "academy-re
 
 const COURSE_ID = "academy-course-official-real-estate-agent-training";
 const LEARNING_PATH_ID = "academy-path-new-agent-programme";
-const CERTIFICATE_TEMPLATE_ID = "academy-certificate-certified-homelink-agent";
+const CERTIFICATE_TEMPLATE_ID = "academy-certificate-certified-houselink-agent";
 
 const courseModules = [
   {
-    title: "Introduction to the HomeLink Zimbabwe Standard",
+    title: "Introduction to the HouseLink Zimbabwe Standard",
     lessons: [
-      "Welcome to HomeLink Zimbabwe",
+      "Welcome to HouseLink Zimbabwe",
       "How to use this manual",
       "Your journey to becoming a professional real estate agent",
     ],
@@ -88,7 +88,7 @@ const quizSeeds = [
     description: "Checks professional duties, ethics, terminology and customer-service expectations from the manual.",
     questions: [
       ["What is the agent's first responsibility when working with a new client?", ["Understand the client's needs and document them accurately.", "Push the highest commission property first.", "Avoid written records until the deal is closed.", "Only communicate through social media."], 0],
-      ["Which behaviour best reflects HomeLink professional conduct?", ["Transparent communication and accurate property information.", "Withholding defects until after viewing.", "Changing offer terms verbally.", "Letting clients sign incomplete forms."], 0],
+      ["Which behaviour best reflects HouseLink professional conduct?", ["Transparent communication and accurate property information.", "Withholding defects until after viewing.", "Changing offer terms verbally.", "Letting clients sign incomplete forms."], 0],
     ],
   },
   {
@@ -131,7 +131,7 @@ function categoryDescription(category) {
     "Assessments": "Performance reviews, KPI trackers, goal planners and competency tools.",
     "Reference Guides": "Quick reference process flowcharts and daily workflow guides.",
   };
-  return descriptions[category] ?? `${category} used by HomeLink Agent Academy.`;
+  return descriptions[category] ?? `${category} used by HouseLink Agent Academy.`;
 }
 
 async function ensureCategory(name, sortOrder) {
@@ -197,21 +197,21 @@ async function seedDocuments(manifest) {
 async function seedCourse(manifest) {
   const trainingCategory = await prisma.trainingCategory.upsert({
     where: { slug: "new-agent-programme" },
-    create: { name: "New Agent Programme", slug: "new-agent-programme", description: "Official HomeLink Zimbabwe onboarding and professional agent training.", sortOrder: 0 },
-    update: { name: "New Agent Programme", description: "Official HomeLink Zimbabwe onboarding and professional agent training.", active: true, sortOrder: 0 },
+    create: { name: "New Agent Programme", slug: "new-agent-programme", description: "Official HouseLink Zimbabwe onboarding and professional agent training.", sortOrder: 0 },
+    update: { name: "New Agent Programme", description: "Official HouseLink Zimbabwe onboarding and professional agent training.", active: true, sortOrder: 0 },
   });
   await prisma.trainingCourse.upsert({
     where: { id: COURSE_ID },
     create: {
       id: COURSE_ID,
-      title: "HomeLink Zimbabwe Real Estate Agent Training",
-      slug: "homelink-zimbabwe-real-estate-agent-training",
-      description: "Digital course aligned to the official HomeLink Zimbabwe Real Estate Agent Training Manual.",
+      title: "HouseLink Zimbabwe Real Estate Agent Training",
+      slug: "houselink-zimbabwe-real-estate-agent-training",
+      description: "Digital course aligned to the official HouseLink Zimbabwe Real Estate Agent Training Manual.",
       categoryId: trainingCategory.id,
       tags: ["manual", "onboarding", "real estate", "sales", "lettings", "property management"],
       difficulty: "BEGINNER",
       durationMinutes: 960,
-      instructor: "HomeLink Zimbabwe",
+      instructor: "HouseLink Zimbabwe",
       passingPercentage: 80,
       estimatedHours: 16,
       certificateEnabled: true,
@@ -230,7 +230,7 @@ async function seedCourse(manifest) {
       roleNames: ["AGENT", "ADMIN", "PUBLIC_LEARNER"],
     },
     update: {
-      description: "Digital course aligned to the official HomeLink Zimbabwe Real Estate Agent Training Manual.",
+      description: "Digital course aligned to the official HouseLink Zimbabwe Real Estate Agent Training Manual.",
       categoryId: trainingCategory.id,
       tags: ["manual", "onboarding", "real estate", "sales", "lettings", "property management"],
       status: "PUBLISHED",
@@ -275,7 +275,7 @@ async function seedCourse(manifest) {
                     : "Study this lesson in sequence with the official manual and complete the related practical work.",
                   richText: resourcesByGroup[lesson]
                     ? `<p>This lesson is supported by the following downloadable resources: ${resourcesByGroup[lesson].join(", ")}.</p>`
-                    : "<p>This lesson follows the official HomeLink Zimbabwe Real Estate Agent Training Manual.</p>",
+                    : "<p>This lesson follows the official HouseLink Zimbabwe Real Estate Agent Training Manual.</p>",
                   estimatedMinutes: 30,
                   completionRequirement: "VIEW",
                   sortOrder: lessonIndex,
@@ -304,7 +304,7 @@ async function seedAssessments() {
           type: "MULTIPLE_CHOICE",
           prompt,
           points: 5,
-          explanation: "This question is aligned to the official HomeLink Zimbabwe Real Estate Agent Training Manual.",
+          explanation: "This question is aligned to the official HouseLink Zimbabwe Real Estate Agent Training Manual.",
           correctAnswer: { value: String(correct) },
           incorrectFeedback: "Review the related manual section and supporting resource before retaking this quiz.",
           hints: ["Check the official manual and the linked resource forms."],
@@ -336,11 +336,11 @@ async function seedAssessments() {
   }
 
   await prisma.finalExam.upsert({
-    where: { id: "academy-final-exam-certified-homelink-agent" },
+    where: { id: "academy-final-exam-certified-houselink-agent" },
     create: {
-      id: "academy-final-exam-certified-homelink-agent",
+      id: "academy-final-exam-certified-houselink-agent",
       courseId: COURSE_ID,
-      title: "Certified HomeLink Agent Final Examination",
+      title: "Certified HouseLink Agent Final Examination",
       durationMinutes: 90,
       passingScore: 80,
       randomQuestions: true,
@@ -355,7 +355,7 @@ async function seedAssessments() {
     },
     update: {
       courseId: COURSE_ID,
-      title: "Certified HomeLink Agent Final Examination",
+      title: "Certified HouseLink Agent Final Examination",
       durationMinutes: 90,
       passingScore: 80,
       questionPools: { quizzes: quizSeeds.map((quiz) => quiz.id), minimumQuestions: 6 },
@@ -370,15 +370,15 @@ async function seedProgrammeRecords() {
     create: {
       id: LEARNING_PATH_ID,
       title: "New Agent Programme",
-      description: "Structured HomeLink onboarding path from foundations through legal compliance, sales, property management and certification.",
+      description: "Structured HouseLink onboarding path from foundations through legal compliance, sales, property management and certification.",
       status: "PUBLISHED",
-      badgeTitle: "Certified HomeLink Agent",
+      badgeTitle: "Certified HouseLink Agent",
     },
     update: {
       title: "New Agent Programme",
-      description: "Structured HomeLink onboarding path from foundations through legal compliance, sales, property management and certification.",
+      description: "Structured HouseLink onboarding path from foundations through legal compliance, sales, property management and certification.",
       status: "PUBLISHED",
-      badgeTitle: "Certified HomeLink Agent",
+      badgeTitle: "Certified HouseLink Agent",
     },
   });
   await prisma.pathCourse.upsert({
@@ -390,15 +390,15 @@ async function seedProgrammeRecords() {
     where: { id: CERTIFICATE_TEMPLATE_ID },
     create: {
       id: CERTIFICATE_TEMPLATE_ID,
-      name: "Certified HomeLink Agent Certificate",
-      logoUrl: "/brand/homelink-full-lockup.png",
-      templateJson: { certificateNumberPrefix: "HLA", title: "Certified HomeLink Agent", qrVerification: true, expiryDays: 365, colours: { primary: "#008b68", accent: "#c6a15b" } },
+      name: "Certified HouseLink Agent Certificate",
+      logoUrl: "/brand/houselink-full-lockup.png",
+      templateJson: { certificateNumberPrefix: "HLA", title: "Certified HouseLink Agent", qrVerification: true, expiryDays: 365, colours: { primary: "#008b68", accent: "#c6a15b" } },
       active: true,
     },
     update: {
-      name: "Certified HomeLink Agent Certificate",
-      logoUrl: "/brand/homelink-full-lockup.png",
-      templateJson: { certificateNumberPrefix: "HLA", title: "Certified HomeLink Agent", qrVerification: true, expiryDays: 365, colours: { primary: "#008b68", accent: "#c6a15b" } },
+      name: "Certified HouseLink Agent Certificate",
+      logoUrl: "/brand/houselink-full-lockup.png",
+      templateJson: { certificateNumberPrefix: "HLA", title: "Certified HouseLink Agent", qrVerification: true, expiryDays: 365, colours: { primary: "#008b68", accent: "#c6a15b" } },
       active: true,
     },
   });
@@ -406,22 +406,22 @@ async function seedProgrammeRecords() {
     where: { id: "academy-announcement-official-manual-live" },
     create: {
       id: "academy-announcement-official-manual-live",
-      title: "Official HomeLink Agent Academy is live",
-      body: "The official HomeLink Zimbabwe Real Estate Agent Training Manual, course sequence and downloadable resources are now available.",
+      title: "Official HouseLink Agent Academy is live",
+      body: "The official HouseLink Zimbabwe Real Estate Agent Training Manual, course sequence and downloadable resources are now available.",
       audience: "AGENTS",
       publishedAt: new Date(),
     },
     update: {
-      title: "Official HomeLink Agent Academy is live",
-      body: "The official HomeLink Zimbabwe Real Estate Agent Training Manual, course sequence and downloadable resources are now available.",
+      title: "Official HouseLink Agent Academy is live",
+      body: "The official HouseLink Zimbabwe Real Estate Agent Training Manual, course sequence and downloadable resources are now available.",
       audience: "AGENTS",
       publishedAt: new Date(),
     },
   });
   await prisma.badge.upsert({
-    where: { id: "academy-badge-certified-homelink-agent" },
-    create: { id: "academy-badge-certified-homelink-agent", name: "Certified HomeLink Agent", description: "Awarded after completing the official Academy course and final examination.", xp: 1000, active: true },
-    update: { name: "Certified HomeLink Agent", description: "Awarded after completing the official Academy course and final examination.", xp: 1000, active: true },
+    where: { id: "academy-badge-certified-houselink-agent" },
+    create: { id: "academy-badge-certified-houselink-agent", name: "Certified HouseLink Agent", description: "Awarded after completing the official Academy course and final examination.", xp: 1000, active: true },
+    update: { name: "Certified HouseLink Agent", description: "Awarded after completing the official Academy course and final examination.", xp: 1000, active: true },
   });
 }
 

@@ -22,7 +22,7 @@ const benefits = [
   { icon: Users, title: "Qualified buyer leads", body: "Receive matched buyer and tenant enquiries automatically." },
   { icon: Wallet, title: "Attractive commissions", body: "Transparent splits with downloadable statements." },
   { icon: Briefcase, title: "Manage your listings", body: "Create, edit, and promote properties from one dashboard." },
-  { icon: ShieldCheck, title: "Verified HomeLink badge", body: "Stand out with trusted branding and a public profile." },
+  { icon: ShieldCheck, title: "Verified HouseLink badge", body: "Stand out with trusted branding and a public profile." },
   { icon: BarChart3, title: "Analytics dashboard", body: "Track leads, conversions, revenue, and performance." },
   { icon: GraduationCap, title: "Ongoing training", body: "Videos, documents, quizzes, and certification." },
   { icon: MapPin, title: "Nationwide exposure", body: "Reach seekers across Zimbabwe with territory-based leads." },
@@ -42,7 +42,7 @@ export function BecomeAgentLanding() {
   return (
     <PageShell
       eyebrow="Become an Agent"
-      title="Become a HomeLink Agent"
+      title="Become a HouseLink Agent"
       description="Join Zimbabwe's trusted property platform and grow your real estate career with powerful technology, verified branding, quality leads, and attractive commissions."
       highlights={[
         { value: "500+", label: "Active agents" },
@@ -64,12 +64,12 @@ export function BecomeAgentLanding() {
       }
     >
       <div>
-        <p className="text-sm font-semibold uppercase tracking-wide text-emerald-700">Why HomeLink</p>
+        <p className="text-sm font-semibold uppercase tracking-wide text-emerald-700">Why HouseLink</p>
         <h2 className="mt-2 text-2xl font-semibold text-ink dark:text-white sm:text-3xl">
           Everything you need to grow a modern real estate business.
         </h2>
         <p className="mt-3 max-w-3xl text-slate-600 dark:text-slate-300">
-          From verified branding to lead distribution, commissions, contracts, and analytics — HomeLink gives agents
+          From verified branding to lead distribution, commissions, contracts, and analytics — HouseLink gives agents
           enterprise-grade tools.
         </p>
       </div>
@@ -109,7 +109,7 @@ export function BecomeAgentLanding() {
       <section className="mt-14 rounded-2xl bg-gradient-to-br from-emerald-700 to-ocean p-8 text-white shadow-soft lg:p-10">
         <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr] lg:items-center">
           <div>
-            <h2 className="text-3xl font-semibold">Ready to represent HomeLink?</h2>
+            <h2 className="text-3xl font-semibold">Ready to represent HouseLink?</h2>
             <p className="mt-3 max-w-xl text-emerald-50">
               Complete the online application, upload your documents, and track your approval status from your agent dashboard.
             </p>

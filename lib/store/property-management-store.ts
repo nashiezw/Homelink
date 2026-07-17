@@ -114,7 +114,7 @@ export function submitRequest(
   state: PMStoreState,
   input: SubmitPMRequestInput,
   notify: NotifyFn,
-  systemActor: Actor = { id: "system", name: "HomeLink System", ip: "127.0.0.1" },
+  systemActor: Actor = { id: "system", name: "HouseLink System", ip: "127.0.0.1" },
 ) {
   state.pmRequestCounter += 1;
   const requestNumber = generateRequestNumber(state.pmRequestCounter);
@@ -186,7 +186,7 @@ export function submitRequest(
 
   notify(input.ownerId, [
     { channel: "email", subject: `Property Management Request ${requestNumber}`, body: `Your request has been received. Status: ${request.status}.` },
-    { channel: "sms", subject: "PM Request received", body: `HomeLink: Request ${requestNumber} submitted successfully.` },
+    { channel: "sms", subject: "PM Request received", body: `HouseLink: Request ${requestNumber} submitted successfully.` },
     { channel: "whatsapp", subject: "PM Request", body: `Your property management request ${requestNumber} is being processed.` },
   ]);
 
@@ -423,7 +423,7 @@ export function generateAgreement(state: PMStoreState, requestId: string, type: 
     id: `pmag_${crypto.randomUUID()}`,
     type,
     title,
-    content: `Agreement for ${request.propertyAddress}, ${request.city}. Service: ${request.serviceType}. Parties: ${request.ownerName} and HomeLink Zimbabwe.`,
+    content: `Agreement for ${request.propertyAddress}, ${request.city}. Service: ${request.serviceType}. Parties: ${request.ownerName} and HouseLink Zimbabwe.`,
     status: "SENT",
     createdAt: now(),
   };

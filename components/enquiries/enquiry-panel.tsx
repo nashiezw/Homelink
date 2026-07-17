@@ -20,7 +20,7 @@ type EnquiryPanelProps = {
 const PUBLIC_ENQUIRY_ACTIONS: Array<{ type: EnquiryType; label: string; primary?: boolean }> = [
   { type: "REQUEST_VIEWING", label: "Request a Viewing", primary: true },
   { type: "ASK_QUESTION", label: "Ask About This Property" },
-  { type: "TALK_TO_CONSULTANT", label: "Speak to a HomeLink Consultant" },
+  { type: "TALK_TO_CONSULTANT", label: "Speak to a HouseLink Consultant" },
 ];
 
 export function EnquiryPanel({ listing, className }: EnquiryPanelProps) {
@@ -45,7 +45,7 @@ export function EnquiryPanel({ listing, className }: EnquiryPanelProps) {
       return;
     }
     if (!phone.trim()) {
-      showToast("Please add your phone number so a HomeLink consultant can contact you.", "error");
+      showToast("Please add your phone number so a HouseLink consultant can contact you.", "error");
       return;
     }
     if (!message.trim() && !preferredDate) {
@@ -73,7 +73,7 @@ export function EnquiryPanel({ listing, className }: EnquiryPanelProps) {
       trackEvent("enquiry_completed", listing.id, { enquiryId: result.data.id, enquiryType });
       setOpen(false);
       setMessage("");
-      showToast("Your enquiry has been sent to HomeLink. A property consultant will contact you shortly.");
+      showToast("Your enquiry has been sent to HouseLink. A property consultant will contact you shortly.");
       if (user) router.push("/messages");
     } else {
       showToast(result.error?.message ?? "Could not submit enquiry.", "error");
@@ -87,9 +87,9 @@ export function EnquiryPanel({ listing, className }: EnquiryPanelProps) {
           <MessageSquare className="size-5" />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="font-semibold text-ink dark:text-white">Contact this property through HomeLink</p>
+          <p className="font-semibold text-ink dark:text-white">Contact this property through HouseLink</p>
           <p className="mt-1 text-sm leading-5 text-slate-500 sm:leading-6">
-            Send your enquiry or request a viewing. A HomeLink consultant will contact you and coordinate with the property owner or agent.
+            Send your enquiry or request a viewing. A HouseLink consultant will contact you and coordinate with the property owner or agent.
           </p>
         </div>
       </div>
@@ -115,7 +115,7 @@ export function EnquiryPanel({ listing, className }: EnquiryPanelProps) {
         <p className="font-semibold">Listed by {listing.landlordName}</p>
         <p className="mt-1 leading-5 text-emerald-800/80 dark:text-emerald-200/80">
           {listing.landlordVerified ? "Verified advertiser. " : ""}
-          HomeLink handles enquiries and viewing coordination.
+          HouseLink handles enquiries and viewing coordination.
         </p>
       </div>
 
@@ -208,7 +208,7 @@ export function EnquiryPanel({ listing, className }: EnquiryPanelProps) {
 
               <p className="flex items-start gap-1.5 text-xs leading-5 text-slate-500">
                 <User className="mt-0.5 size-3.5 shrink-0" />
-                Your enquiry enters the HomeLink CRM and is assigned to a property consultant.
+                Your enquiry enters the HouseLink CRM and is assigned to a property consultant.
               </p>
             </div>
 

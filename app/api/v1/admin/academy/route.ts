@@ -10,8 +10,8 @@ export async function GET(request: Request) {
   try {
     return ok(await getAcademyDashboard());
   } catch (error) {
-    console.error("Failed to load HomeLink Agent Academy", error);
-    return problem(500, "ACADEMY_READ_FAILED", "HomeLink Agent Academy data could not be loaded.");
+    console.error("Failed to load HouseLink Agent Academy", error);
+    return problem(500, "ACADEMY_READ_FAILED", "HouseLink Agent Academy data could not be loaded.");
   }
 }
 
@@ -24,7 +24,7 @@ export async function PATCH(request: Request) {
     if (!result) return problem(400, "INVALID_ACADEMY_ACTION", "Unknown Academy action.");
     return ok(result);
   } catch (error) {
-    console.error("Failed to update HomeLink Agent Academy", error);
+    console.error("Failed to update HouseLink Agent Academy", error);
     return problem(500, "ACADEMY_WRITE_FAILED", error instanceof Error ? error.message : "Academy update could not be saved.");
   }
 }

@@ -17,7 +17,7 @@ if (handouts.status !== 0) {
 }
 
 async function main() {
-  console.log("Seeding staged HomeLink Certified Agent Programme...");
+  console.log("Seeding staged HouseLink Certified Agent Programme...");
   const result = await seedStagedCourseStructure({ forceRebuild: true });
   console.log("Staged course:", result);
   const stats = await seedOfficialAcademyResources({ skipCourseRebuild: true });

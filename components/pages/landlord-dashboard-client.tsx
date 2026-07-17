@@ -122,7 +122,7 @@ export function LandlordDashboardClient() {
       <div className="grid gap-4 md:grid-cols-4">
         <StatCard label="Active listings" value={String(analytics?.totals.listings ?? 0)} helper="Visible to seekers" icon={Home} />
         <StatCard label="Views" value={String(analytics?.totals.views ?? 0)} helper="Last 30 days" icon={Eye} />
-        <StatCard label="Enquiries" value={String(analytics?.totals.enquiries ?? 0)} helper="HomeLink-managed leads" icon={MessageSquare} />
+        <StatCard label="Enquiries" value={String(analytics?.totals.enquiries ?? 0)} helper="HouseLink-managed leads" icon={MessageSquare} />
         <StatCard label="Saved" value={String(analytics?.totals.saves ?? 0)} helper="Shortlisted" icon={TrendingUp} />
       </div>
 
@@ -231,7 +231,7 @@ export function LandlordDashboardClient() {
             <h2 className="font-semibold text-ink dark:text-white">Property enquiries</h2>
           </div>
           <p className="mt-1 text-sm text-slate-500">
-            Enquiries routed through HomeLink. Respond via messages; your assigned agent facilitates viewings.
+            Enquiries routed through HouseLink. Respond via messages; your assigned agent facilitates viewings.
           </p>
         </div>
         <div className="p-5">

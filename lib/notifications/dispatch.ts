@@ -33,7 +33,7 @@ export async function dispatchEnquiryCreatedNotifications(
   const subject = `New enquiry: ${enquiry.listingTitle}`;
   const body =
     renderNotificationTemplate("email", "enquiry_created", vars) ??
-    `A new ${vars.enquiryType} enquiry was submitted on HomeLink.\n\nProperty: ${enquiry.listingTitle}\nCustomer: ${enquiry.seekerName}\nMessage: ${enquiry.message}\n\nEnquiry ID: ${enquiry.id}`;
+    `A new ${vars.enquiryType} enquiry was submitted on HouseLink.\n\nProperty: ${enquiry.listingTitle}\nCustomer: ${enquiry.seekerName}\nMessage: ${enquiry.message}\n\nEnquiry ID: ${enquiry.id}`;
 
   const recipients = new Set<string>();
   if (settings.enquiries.notifyAdminOnNewEnquiry) {

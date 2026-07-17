@@ -59,7 +59,7 @@ export const roommateSteps = [
   {
     step: 1,
     title: "Choose your path",
-    body: "Tell HomeLink if you need a room, have a room, or want a roommate.",
+    body: "Tell HouseLink if you need a room, have a room, or want a roommate.",
     icon: "profile" as const,
   },
   {
@@ -272,7 +272,7 @@ export const successStories = [
     name: "Rudo M.",
     role: "Young professional",
     city: "Harare",
-    quote: "HomeLink made it easy to compare rooms in Avondale. I messaged the landlord securely before viewing.",
+    quote: "HouseLink made it easy to compare rooms in Avondale. I messaged the landlord securely before viewing.",
     outcome: "Found a quiet room in 5 days",
     avatarUrl: roommatePortraits.rudo,
     coverPhoto: testimonialPhotos[1],

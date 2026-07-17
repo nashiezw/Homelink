@@ -2,7 +2,7 @@
 
 import { Mail, MessageCircle, Phone } from "lucide-react";
 import Link from "next/link";
-import { HomeLinkBrand } from "@/components/brand/homelink-logo";
+import { HouseLinkBrand } from "@/components/brand/houselink-logo";
 import { usePlatformConfig } from "@/components/providers/platform-config-provider";
 import { getMailtoHref, getTelHref, getWhatsAppHref } from "@/lib/settings/contact";
 
@@ -46,9 +46,9 @@ const groups = [
 ];
 
 const shareLinks = [
-  ["Facebook", "https://www.facebook.com/sharer/sharer.php?u=https%3A%2F%2Fhomelinkzim.co.zw"],
-  ["LinkedIn", "https://www.linkedin.com/shareArticle?mini=true&url=https%3A%2F%2Fhomelinkzim.co.zw"],
-  ["WhatsApp", "https://wa.me/?text=Find%20verified%20property%20on%20HomeLink%20Zimbabwe%3A%20https%3A%2F%2Fhomelinkzim.co.zw"],
+  ["Facebook", "https://www.facebook.com/sharer/sharer.php?u=https%3A%2F%2Fhouselinkzim.co.zw"],
+  ["LinkedIn", "https://www.linkedin.com/shareArticle?mini=true&url=https%3A%2F%2Fhouselinkzim.co.zw"],
+  ["WhatsApp", "https://wa.me/?text=Find%20verified%20property%20on%20HouseLink%20Zimbabwe%3A%20https%3A%2F%2Fhouselinkzim.co.zw"],
 ] as const;
 
 function internalRel(href: string) {
@@ -65,7 +65,7 @@ export function SiteFooter() {
       <div className="mx-auto grid max-w-7xl gap-10 px-4 py-14 sm:px-6 md:grid-cols-[1.4fr_2fr] lg:px-8">
         <div>
           <div className="flex items-center">
-            <HomeLinkBrand variant="footer" />
+            <HouseLinkBrand variant="footer" />
           </div>
           <p className="mt-4 max-w-sm text-sm leading-7 text-slate-300">
             Find your next home with confidence through verified listings,
@@ -88,7 +88,7 @@ export function SiteFooter() {
             </div>
           )}
           <div className="mt-5">
-            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Share HomeLink</p>
+            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Share HouseLink</p>
             <div className="mt-2 flex flex-wrap gap-2">
               {shareLinks.map(([label, href]) => (
                 <a
@@ -131,7 +131,7 @@ export function SiteFooter() {
         </div>
       </div>
       <div className="border-t border-white/10 py-5 text-center text-xs text-slate-500">
-        © {new Date().getFullYear()} HomeLink Zimbabwe. Verified property marketplace.
+        © {new Date().getFullYear()} HouseLink Zimbabwe. Verified property marketplace.
       </div>
     </footer>
   );

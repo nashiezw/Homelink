@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { ChevronDown, Heart, Menu, Moon, Sun, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { HomeLinkLogoLink } from "@/components/brand/homelink-logo";
+import { HouseLinkLogoLink } from "@/components/brand/houselink-logo";
 import { useAcademyDestination } from "@/components/academy/use-academy-destination";
 import { useApp } from "@/components/providers/app-provider";
 import { usePlatformConfig } from "@/components/providers/platform-config-provider";
@@ -116,7 +116,7 @@ export function SiteHeader() {
     : `/auth?next=${encodeURIComponent("/dashboard/landlord/new")}`;
 
   useEffect(() => {
-    const stored = window.localStorage.getItem("homelink_theme");
+    const stored = window.localStorage.getItem("houselink_theme");
     const prefersDark = stored === "dark";
     setDark(prefersDark);
     document.documentElement.classList.toggle("dark", prefersDark);
@@ -157,7 +157,7 @@ export function SiteHeader() {
     const next = !dark;
     setDark(next);
     document.documentElement.classList.toggle("dark", next);
-    window.localStorage.setItem("homelink_theme", next ? "dark" : "light");
+    window.localStorage.setItem("houselink_theme", next ? "dark" : "light");
   }
 
   return (
@@ -170,7 +170,7 @@ export function SiteHeader() {
       )}
     >
       <div className="mx-auto flex h-16 max-w-[90rem] items-center gap-2 px-4 sm:gap-3 sm:px-6 lg:px-8 xl:gap-4 xl:px-10">
-        <HomeLinkLogoLink variant="nav" className="relative z-10 shrink-0" />
+        <HouseLinkLogoLink variant="nav" className="relative z-10 shrink-0" />
 
         {/* Primary navigation — xl+ only; overflow links live under More */}
         <nav
@@ -341,7 +341,7 @@ export function SiteHeader() {
           onClick={(e) => e.stopPropagation()}
         >
           <div className="flex h-16 shrink-0 items-center justify-between border-b border-slate-100 px-4 dark:border-slate-800">
-            <HomeLinkLogoLink variant="nav" onClick={() => setMenuOpen(false)} />
+            <HouseLinkLogoLink variant="nav" onClick={() => setMenuOpen(false)} />
             <button type="button" className={iconButtonClass} aria-label="Close menu" onClick={() => setMenuOpen(false)}>
               <X className="size-5" />
             </button>

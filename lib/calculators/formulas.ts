@@ -32,9 +32,9 @@ export type RentalAffordabilityResult = {
 export type AgentCommissionResult = {
   totalCommission: number;
   agentPercent: number;
-  homeLinkPercent: number;
+  houseLinkPercent: number;
   agentEarnings: number;
-  homeLinkEarnings: number;
+  houseLinkEarnings: number;
 };
 
 export type LandlordIncomeResult = {
@@ -109,14 +109,14 @@ export function calculateAgentCommission(input: {
 }): AgentCommissionResult {
   const totalCommission = clampNonNegative(input.totalCommission);
   const agentPercent = clampPercent(input.agentPercent);
-  const homeLinkPercent = 100 - agentPercent;
+  const houseLinkPercent = 100 - agentPercent;
 
   return {
     totalCommission,
     agentPercent,
-    homeLinkPercent,
+    houseLinkPercent,
     agentEarnings: (totalCommission * agentPercent) / 100,
-    homeLinkEarnings: (totalCommission * homeLinkPercent) / 100,
+    houseLinkEarnings: (totalCommission * houseLinkPercent) / 100,
   };
 }
 

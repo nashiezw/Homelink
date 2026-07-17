@@ -1,4 +1,4 @@
-/** Module-aligned quizzes and assignments for HomeLink Agent Academy programmes. */
+/** Module-aligned quizzes and assignments for HouseLink Agent Academy programmes. */
 
 export type AcademyQuizSeed = {
   id: string;
@@ -35,14 +35,14 @@ export const ACADEMY_QUIZ_SEEDS: AcademyQuizSeed[] = [
   {
     id: "academy-quiz-beginner-orientation",
     courseId: "academy-course-beginner",
-    moduleTitle: "Introduction to the HomeLink Zimbabwe Standard",
-    title: "HomeLink Orientation Checkpoint",
-    description: "Confirms you understand the Academy pathway, HomeLink standards, and how to use lesson notes and field toolkits.",
+    moduleTitle: "Introduction to the HouseLink Zimbabwe Standard",
+    title: "HouseLink Orientation Checkpoint",
+    description: "Confirms you understand the Academy pathway, HouseLink standards, and how to use lesson notes and field toolkits.",
     sortOrder: 0,
     timeLimitMinutes: 15,
     questions: [
       q(
-        "What is the primary purpose of the HomeLink Agent Academy staged programmes?",
+        "What is the primary purpose of the HouseLink Agent Academy staged programmes?",
         [
           "Build professional competence step-by-step with practical tools and checkpoints.",
           "Replace all field mentoring with self-study only.",
@@ -72,7 +72,7 @@ export const ACADEMY_QUIZ_SEEDS: AcademyQuizSeed[] = [
           "Only read the manual appendix.",
         ],
         0,
-        "Each lesson connects study material to field-ready HomeLink resources.",
+        "Each lesson connects study material to field-ready HouseLink resources.",
       ),
       q(
         "Which habit best supports a sustainable agent career?",
@@ -103,7 +103,7 @@ export const ACADEMY_QUIZ_SEEDS: AcademyQuizSeed[] = [
         "Professional needs analysis and accurate records come first.",
       ),
       q(
-        "Which behaviour best reflects HomeLink professional conduct?",
+        "Which behaviour best reflects HouseLink professional conduct?",
         ["Transparent communication and accurate property information.", "Withholding defects until after viewing.", "Changing offer terms verbally.", "Letting clients sign incomplete forms."],
         0,
         "Ethical conduct requires honesty, clarity, and proper documentation.",
@@ -156,7 +156,7 @@ export const ACADEMY_QUIZ_SEEDS: AcademyQuizSeed[] = [
         "Exclusive mandates clarify marketing responsibility with clear terms.",
       ),
       q(
-        "Why is property photography quality critical on HomeLink?",
+        "Why is property photography quality critical on HouseLink?",
         ["Online photos create the first impression and drive viewing enquiries.", "Photos replace the need for descriptions.", "Only luxury properties need photos.", "Photos are optional for rentals."],
         0,
         "First impressions online determine whether buyers book viewings.",
@@ -223,7 +223,7 @@ export const ACADEMY_QUIZ_SEEDS: AcademyQuizSeed[] = [
         "Why should every client file be checked before submission?",
         ["To confirm required documents are complete, accurate and traceable.", "To reduce the number of forms agents use.", "To avoid audit logs.", "To delay the transaction."],
         0,
-        "Complete files protect the client, agent, and HomeLink from avoidable risk.",
+        "Complete files protect the client, agent, and HouseLink from avoidable risk.",
       ),
       q(
         "Which item should be treated as confidential?",
@@ -291,7 +291,7 @@ export const ACADEMY_QUIZ_SEEDS: AcademyQuizSeed[] = [
     courseId: "academy-course-advanced-professional",
     moduleTitle: "Professional Agent Resource Kit",
     title: "Professional Toolkit Mastery Check",
-    description: "Confirms you know when and how to apply key forms, flowcharts, and trackers from the complete HomeLink kit.",
+    description: "Confirms you know when and how to apply key forms, flowcharts, and trackers from the complete HouseLink kit.",
     sortOrder: 2,
     timeLimitMinutes: 20,
     questions: [
@@ -327,7 +327,7 @@ export const ACADEMY_ASSIGNMENT_SEEDS: AcademyAssignmentSeed[] = [
   {
     id: "academy-assignment-goal-planner",
     courseId: "academy-course-beginner",
-    moduleTitle: "Introduction to the HomeLink Zimbabwe Standard",
+    moduleTitle: "Introduction to the HouseLink Zimbabwe Standard",
     title: "Personal Goal Planner Submission",
     description: "Complete the Personal Goal Planner with 90-day income, skill, and activity targets. Submit a photo or PDF showing your written goals and first weekly review notes.",
     points: 50,
@@ -407,9 +407,9 @@ export const ACADEMY_ASSIGNMENT_SEEDS: AcademyAssignmentSeed[] = [
 ];
 
 export const ACADEMY_FINAL_EXAM = {
-  id: "academy-final-exam-certified-homelink-agent",
+  id: "academy-final-exam-certified-houselink-agent",
   courseId: "academy-course-advanced-professional",
-  title: "Certified HomeLink Agent Final Examination",
+  title: "Certified HouseLink Agent Final Examination",
   description: "Capstone examination drawing from all three programmes — Foundations, Listing & Client Mastery, and Professional Certification.",
   durationMinutes: 90,
   passingScore: 80,

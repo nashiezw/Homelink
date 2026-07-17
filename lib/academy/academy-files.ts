@@ -2,7 +2,7 @@
 const ALLOWED_PATTERNS = [
   /^lessons\/[a-z0-9-]+\.pdf$/i,
   /^resources\/[a-z0-9-]+\.pdf$/i,
-  /^homelink-zimbabwe-real-estate-agent-training-manual\.pdf$/i,
+  /^houselink-zimbabwe-real-estate-agent-training-manual\.pdf$/i,
 ];
 
 export function isAllowedAcademyFilePath(relativePath: string) {

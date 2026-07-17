@@ -1,6 +1,6 @@
 # Backup And Restore Drill
 
-Backups are not real until HomeLink can restore both database records and uploaded media into a working temporary environment.
+Backups are not real until HouseLink can restore both database records and uploaded media into a working temporary environment.
 
 ## Assets
 

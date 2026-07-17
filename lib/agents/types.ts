@@ -35,16 +35,16 @@ export type LeadStatus =
 export type CommissionType = "SALE" | "RENTAL" | "MANAGEMENT" | "REFERRAL" | "BONUS" | "RECURRING";
 
 export type CommissionStatus = "PENDING" | "APPROVED" | "PAID" | "CANCELLED" | "DISPUTED";
-export type LeadSource = "HOMELINK" | "AGENT";
+export type LeadSource = "HOUSELINK" | "AGENT";
 export type LeadAcquisitionChannel =
-  | "HOMELINK_WEBSITE"
-  | "HOMELINK_MOBILE_APP"
-  | "HOMELINK_SOCIAL_MEDIA"
-  | "HOMELINK_FACEBOOK"
-  | "HOMELINK_MARKETING_CAMPAIGN"
-  | "HOMELINK_ADVERTISING"
-  | "HOMELINK_PARTNERSHIP"
-  | "HOMELINK_REFERRAL"
+  | "HOUSELINK_WEBSITE"
+  | "HOUSELINK_MOBILE_APP"
+  | "HOUSELINK_SOCIAL_MEDIA"
+  | "HOUSELINK_FACEBOOK"
+  | "HOUSELINK_MARKETING_CAMPAIGN"
+  | "HOUSELINK_ADVERTISING"
+  | "HOUSELINK_PARTNERSHIP"
+  | "HOUSELINK_REFERRAL"
   | "WALK_IN"
   | "COMPANY_ENQUIRY"
   | "AGENT_NETWORK"
@@ -337,7 +337,7 @@ export type AgentCommission = {
   paymentStatus?: CommissionStatus;
   reason?: string;
   grossAmount: number;
-  homelinkAmount: number;
+  houselinkAmount: number;
   agentAmount: number;
   taxAmount: number;
   netAgentAmount: number;
@@ -363,7 +363,7 @@ export type AgentCommissionPayout = {
 
 export type CommissionRuleSnapshot = {
   ratePercent: number;
-  homelinkSplitPercent: number;
+  houselinkSplitPercent: number;
   agentSplitPercent: number;
   vatPercent: number;
   leadSource?: LeadSource;
@@ -390,7 +390,7 @@ export type CommissionRule = {
   startsAt?: string;
   endsAt?: string;
   ratePercent: number;
-  homelinkSplitPercent: number;
+  houselinkSplitPercent: number;
   agentSplitPercent: number;
   minAmount: number;
   maxAmount: number;
@@ -598,7 +598,7 @@ export type AgentDashboardStats = {
   listingsCount: number;
   totalListings: number;
   activeListings: number;
-  homelinkLeads: number;
+  houselinkLeads: number;
   agentLeads: number;
   closedDeals: number;
   pendingDeals: number;
@@ -626,7 +626,7 @@ export type AgentAdminAnalytics = {
   commissionAwaitingApproval: number;
   commissionAlreadyPaid: number;
   outstandingCommission: number;
-  homelinkGeneratedRevenue: number;
+  houselinkGeneratedRevenue: number;
   agentGeneratedRevenue: number;
   totalCommissionPaid: number;
   topAgents: Array<{ id: string; name: string; deals: number; revenue: number; rating: number }>;

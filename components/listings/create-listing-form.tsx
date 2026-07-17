@@ -18,7 +18,7 @@ import type { HolidayHomeDetails } from "@/lib/holiday-homes/types";
 import { HOUSEHOLD_OPTIONS, householdOccupants, type HouseholdType, type MaritalStatus } from "@/lib/roommates/types";
 import type { ListingIntent, PropertyType } from "@/lib/types";
 import {
-  HOMELINK_OWNER_LISTING_AGREEMENT,
+  HOUSELINK_OWNER_LISTING_AGREEMENT,
   OWNER_LISTING_AGREEMENT_VERSION,
 } from "@/lib/listings/owner-contract";
 const fieldClass =
@@ -83,7 +83,7 @@ export function CreateListingForm({ onSuccess }: CreateListingFormProps) {
     waterSource: "",
     powerAvailable: false,
     commercialUse: "",
-    leadSource: "HOMELINK" as "HOMELINK" | "AGENT",
+    leadSource: "HOUSELINK" as "HOUSELINK" | "AGENT",
     propertyOwnerName: "",
     propertyOwnerEmail: "",
     propertyOwnerPhone: "",
@@ -142,7 +142,7 @@ export function CreateListingForm({ onSuccess }: CreateListingFormProps) {
     if (form.type === "room" && Number(form.maxOccupants) < householdOccupants(form.acceptedHouseholdType)) {
       return "Max occupants must fit the household size you accept.";
     }
-    if (!form.ownerAgreementAccepted) return "The property owner must accept the HomeLink listing agreement.";
+    if (!form.ownerAgreementAccepted) return "The property owner must accept the HouseLink listing agreement.";
     if (!form.ownerAgreementSignerName.trim()) return "Enter the property owner's full name as electronic signature.";
     if (!ownerSignatureImage) return "Draw the property owner's visual signature.";
     return "";
@@ -273,7 +273,7 @@ export function CreateListingForm({ onSuccess }: CreateListingFormProps) {
             <div>
               <p className="text-sm font-semibold text-ink">Lead ownership</p>
               <p className="mt-1 text-xs text-slate-600 dark:text-slate-300">
-                Choose who generated this owner relationship. Agent-sourced owners are checked against HomeLink records before ownership is confirmed.
+                Choose who generated this owner relationship. Agent-sourced owners are checked against HouseLink records before ownership is confirmed.
               </p>
             </div>
             <span className="rounded-full bg-white px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-emerald-700 shadow-sm dark:bg-slate-900">
@@ -285,10 +285,10 @@ export function CreateListingForm({ onSuccess }: CreateListingFormProps) {
               Lead source *
               <select
                 value={form.leadSource}
-                onChange={(e) => setForm({ ...form, leadSource: e.target.value as "HOMELINK" | "AGENT" })}
+                onChange={(e) => setForm({ ...form, leadSource: e.target.value as "HOUSELINK" | "AGENT" })}
                 className={fieldClass}
               >
-                <option value="HOMELINK">HomeLink generated lead</option>
+                <option value="HOUSELINK">HouseLink generated lead</option>
                 <option value="AGENT">Agent generated lead</option>
               </select>
             </label>
@@ -513,11 +513,11 @@ export function CreateListingForm({ onSuccess }: CreateListingFormProps) {
         <p className="text-sm font-semibold text-ink">Property owner agreement</p>
         <p className="mt-1 text-xs text-slate-600 dark:text-slate-300">
           {isAgent
-            ? "The property owner must authorise HomeLink to market this property and route all client contact and payments through the platform."
-            : "By signing, you authorise HomeLink to market this property and route enquiries, viewings, and payments through the platform."}
+            ? "The property owner must authorise HouseLink to market this property and route all client contact and payments through the platform."
+            : "By signing, you authorise HouseLink to market this property and route enquiries, viewings, and payments through the platform."}
         </p>
         <div className="mt-3 max-h-56 overflow-y-auto rounded-lg border border-slate-200 bg-white p-4 text-sm leading-relaxed whitespace-pre-wrap dark:border-slate-700 dark:bg-slate-900">
-          {HOMELINK_OWNER_LISTING_AGREEMENT}
+          {HOUSELINK_OWNER_LISTING_AGREEMENT}
         </div>
         <label className="mt-3 flex items-start gap-2 text-sm">
           <input
@@ -526,7 +526,7 @@ export function CreateListingForm({ onSuccess }: CreateListingFormProps) {
             onChange={(e) => setForm({ ...form, ownerAgreementAccepted: e.target.checked })}
             className={checkboxClass}
           />
-          I confirm the property owner accepts the HomeLink listing agreement.
+          I confirm the property owner accepts the HouseLink listing agreement.
         </label>
         <label className="mt-3 block text-sm font-medium">
           Owner electronic signature (full legal name)

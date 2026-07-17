@@ -5,14 +5,14 @@ import { PublicAcademyPage } from "@/components/academy/public-academy-page";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "HomeLink Academy | Real Estate Training in Zimbabwe",
+  title: "HouseLink Academy | Real Estate Training in Zimbabwe",
   description:
-    "Study HomeLink Academy courses for Zimbabwe property agents, landlords, and operators. Track lessons, quizzes, assignments, certificates, and payment proof.",
+    "Study HouseLink Academy courses for Zimbabwe property agents, landlords, and operators. Track lessons, quizzes, assignments, certificates, and payment proof.",
   alternates: {
     canonical: "/academy",
   },
   openGraph: {
-    title: "HomeLink Academy",
+    title: "HouseLink Academy",
     description: "Zimbabwe-focused real estate training, certificates, and agent resources.",
     url: "/academy",
     type: "website",

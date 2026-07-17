@@ -16,8 +16,8 @@ if (!existsSync(middlewarePath)) {
     "payments\\/callback",
     "sec-fetch-site",
     "CSRF_HEADER_REQUIRED",
-    "x-homelink-csrf",
-    "homelink_session",
+    "x-houselink-csrf",
+    "houselink_session",
   ]) {
     if (!middleware.includes(token)) issues.push(`middleware.ts missing ${JSON.stringify(token)}`);
   }
@@ -27,7 +27,7 @@ if (!existsSync(apiClientPath)) {
   issues.push("lib/api/client.ts is required for browser API requests.");
 } else {
   const apiClient = readFileSync(apiClientPath, "utf8");
-  for (const token of ["X-HomeLink-CSRF", "new Headers", "GET\", \"HEAD\", \"OPTIONS"]) {
+  for (const token of ["X-HouseLink-CSRF", "new Headers", "GET\", \"HEAD\", \"OPTIONS"]) {
     if (!apiClient.includes(token)) issues.push(`apiFetch missing ${JSON.stringify(token)}`);
   }
 }

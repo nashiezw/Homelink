@@ -8,7 +8,7 @@ import {
 } from "@prisma/client";
 import {
   buildOwnerAgreementBypassRecord,
-  HOMELINK_OWNER_LISTING_AGREEMENT,
+  HOUSELINK_OWNER_LISTING_AGREEMENT,
   listingHasOwnerAgreement,
   ListingApprovalError,
   OWNER_LISTING_AGREEMENT_VERSION,
@@ -225,13 +225,13 @@ export async function createListingInPostgres(input: ListingInput, ownerId: stri
       subjectType: "LISTING_OWNER_AGREEMENT",
       subjectId: created.id,
       listingId: created.id,
-      title: "HomeLink Zimbabwe Property Owner Listing Agreement",
+      title: "HouseLink Zimbabwe Property Owner Listing Agreement",
       signerUserId: ownerId,
       signerName: input.ownerAgreementSignerName ?? input.propertyOwnerName ?? owner.name,
       signerEmail: input.propertyOwnerEmail ?? owner.email,
       signerRole: "PROPERTY_OWNER",
       signatureText: input.ownerAgreementSignerName ?? input.propertyOwnerName ?? owner.name,
-      agreementText: HOMELINK_OWNER_LISTING_AGREEMENT,
+      agreementText: HOUSELINK_OWNER_LISTING_AGREEMENT,
       signatureImageDataUrl: input.ownerAgreementSignatureImage,
     }).catch(() => null);
   }
@@ -675,7 +675,7 @@ export async function adminListingActionInPostgres(
     let bypassRecord: ReturnType<typeof buildOwnerAgreementBypassRecord> | undefined;
     if (!listingHasOwnerAgreement(current)) {
       if (!options.bypassOwnerAgreement || !bypassReason || !options.actor) {
-        throw new ListingApprovalError("Owner must sign the HomeLink listing agreement before this listing can go live.");
+        throw new ListingApprovalError("Owner must sign the HouseLink listing agreement before this listing can go live.");
       }
       bypassRecord = buildOwnerAgreementBypassRecord({
         bypassOwnerAgreement: true,
@@ -929,7 +929,7 @@ function toListingRecord(row: PrismaListingRow | SafeListingRow): ListingRecord 
     status: DB_STATUS_TO_APP[row.status] ?? "PENDING_REVIEW",
     latitude: Number(row.latitude ?? -17.8292),
     longitude: Number(row.longitude ?? 31.0522),
-    leadSource: "leadSource" in row ? (row.leadSource as "HOMELINK" | "AGENT") : "HOMELINK",
+    leadSource: "leadSource" in row ? (row.leadSource as "HOUSELINK" | "AGENT") : "HOUSELINK",
     leadCreatedById: "leadCreatedById" in row ? row.leadCreatedById ?? undefined : undefined,
     assignedAgentId: "assignedAgentId" in row ? row.assignedAgentId ?? undefined : undefined,
     propertyOwnerName: "propertyOwnerName" in row ? row.propertyOwnerName ?? undefined : undefined,
@@ -1052,7 +1052,7 @@ function normalizeIntent(value?: string) {
 }
 
 function normalizeLeadSource(value?: string) {
-  return value === "AGENT" ? DbLeadSource.AGENT : DbLeadSource.HOMELINK;
+  return value === "AGENT" ? DbLeadSource.AGENT : DbLeadSource.HOUSELINK;
 }
 
 function normalizeRoles(user: StoreUser) {

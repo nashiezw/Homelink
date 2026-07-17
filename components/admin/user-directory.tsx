@@ -66,7 +66,7 @@ export function UserDirectory() {
   const [bulkSelected, setBulkSelected] = useState<Set<string>>(new Set());
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [notifyOpen, setNotifyOpen] = useState(false);
-  const [notifySubject, setNotifySubject] = useState("Message from HomeLink");
+  const [notifySubject, setNotifySubject] = useState("Message from HouseLink");
   const [notifyBody, setNotifyBody] = useState("");
   const [dialog, setDialog] = useState<AdminDialogConfig | null>(null);
 
@@ -200,7 +200,7 @@ export function UserDirectory() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "homelink-users.csv";
+    a.download = "houselink-users.csv";
     a.click();
     URL.revokeObjectURL(url);
     showToast("User export downloaded.");
@@ -214,7 +214,7 @@ export function UserDirectory() {
       body: JSON.stringify({
         action: "broadcast_notification",
         subject: notifySubject,
-        body: notifyBody || "Important update from the HomeLink team.",
+        body: notifyBody || "Important update from the HouseLink team.",
         userIds: ids,
       }),
     });

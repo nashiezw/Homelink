@@ -30,7 +30,7 @@ export function MarkRentedModal({
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!tenantEmail.trim()) {
-      showToast("Enter your tenant's HomeLink email.", "error");
+      showToast("Enter your tenant's HouseLink email.", "error");
       return;
     }
 
@@ -39,7 +39,7 @@ export function MarkRentedModal({
       `/api/v1/users/lookup?email=${encodeURIComponent(tenantEmail.trim())}`,
     );
     if (!lookup.data?.id) {
-      showToast("Tenant not found — they need a HomeLink account.", "error");
+      showToast("Tenant not found — they need a HouseLink account.", "error");
       setBusy(false);
       return;
     }
@@ -68,7 +68,7 @@ export function MarkRentedModal({
         <h3 className="text-lg font-semibold text-ink dark:text-white">Mark as let</h3>
         <p className="mt-1 text-sm text-slate-500">
           Creates an <strong>unverified</strong> stay record for {listingTitle}. Both parties must confirm.
-          For verified history, use Pay via HomeLink or Sign lease on the listing page.
+          For verified history, use Pay via HouseLink or Sign lease on the listing page.
         </p>
 
         <label className="mt-4 block text-sm font-medium text-slate-700 dark:text-slate-300">

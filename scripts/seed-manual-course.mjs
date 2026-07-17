@@ -4,10 +4,10 @@ import path from "path";
 
 const prisma = new PrismaClient();
 const COURSE_ID = "academy-course-official-real-estate-agent-training";
-const DATA_PATH = path.join(process.cwd(), "lib", "academy", "data", "homelink-agent-course.json");
+const DATA_PATH = path.join(process.cwd(), "lib", "academy", "data", "houselink-agent-course.json");
 const MANIFEST_PATH = path.join(process.cwd(), "public", "uploads", "academy", "academy-resources-manifest.json");
 const LEARNING_PATH_ID = "academy-path-new-agent-programme";
-const CERTIFICATE_TEMPLATE_ID = "academy-certificate-certified-homelink-agent";
+const CERTIFICATE_TEMPLATE_ID = "academy-certificate-certified-houselink-agent";
 
 const quizSeeds = [
   {
@@ -22,7 +22,7 @@ const quizSeeds = [
         explanation: "The manual centres the agent role on professional needs analysis, accurate records and reliable guidance.",
       },
       {
-        prompt: "Which behaviour best reflects HomeLink professional conduct?",
+        prompt: "Which behaviour best reflects HouseLink professional conduct?",
         answers: ["Transparent communication and accurate property information.", "Withholding defects until after viewing.", "Changing offer terms verbally.", "Letting clients sign incomplete forms."],
         correct: 0,
         explanation: "Ethical conduct requires honesty, clarity, proper documentation and client care.",
@@ -57,7 +57,7 @@ const quizSeeds = [
         prompt: "Why should every client file be checked before submission?",
         answers: ["To confirm required documents are complete, accurate and traceable.", "To reduce the number of forms agents use.", "To avoid audit logs.", "To delay the transaction."],
         correct: 0,
-        explanation: "Complete, accurate files protect the client, agent and HomeLink from avoidable risk.",
+        explanation: "Complete, accurate files protect the client, agent and HouseLink from avoidable risk.",
       },
       {
         prompt: "Which item should be treated as confidential?",
@@ -101,7 +101,7 @@ function isLowQualityLesson(lesson) {
 
 function normalizeModuleTitle(title) {
   const map = {
-    INTRODUCTION: "Introduction to the HomeLink Zimbabwe Standard",
+    INTRODUCTION: "Introduction to the HouseLink Zimbabwe Standard",
     "Chapter 1": "Chapter 1: Foundations of Real Estate",
     "Chapter 2": "Chapter 2: Prospecting, Listings and Property Marketing",
     "Chapter 3": "Chapter 3: Working with Clients",
@@ -138,7 +138,7 @@ async function seedManualCourseStructure(forceRebuild = true) {
 
   const category = await prisma.trainingCategory.upsert({
     where: { slug: "new-agent-programme" },
-    create: { name: "New Agent Programme", slug: "new-agent-programme", description: "Official HomeLink Zimbabwe agent certification.", sortOrder: 0 },
+    create: { name: "New Agent Programme", slug: "new-agent-programme", description: "Official HouseLink Zimbabwe agent certification.", sortOrder: 0 },
     update: { name: "New Agent Programme", active: true },
   });
 
@@ -153,7 +153,7 @@ async function seedManualCourseStructure(forceRebuild = true) {
       shortDescription: c.shortDescription,
       description: c.description,
       categoryId: category.id,
-      instructor: c.instructor ?? "HomeLink Zimbabwe",
+      instructor: c.instructor ?? "HouseLink Zimbabwe",
       coInstructors: c.coInstructors ?? [],
       learningOutcomes: c.learningOutcomes ?? [],
       targetAudience: c.targetAudience,
@@ -174,8 +174,8 @@ async function seedManualCourseStructure(forceRebuild = true) {
       featured: true,
       visibility: "PUBLIC",
       roleNames: ["AGENT", "ADMIN", "PUBLIC_LEARNER"],
-      thumbnailUrl: "/brand/homelink-full-lockup.png",
-      bannerUrl: "/uploads/academy/homelink-zimbabwe-real-estate-agent-training-manual.pdf",
+      thumbnailUrl: "/brand/houselink-full-lockup.png",
+      bannerUrl: "/uploads/academy/houselink-zimbabwe-real-estate-agent-training-manual.pdf",
       enrollmentType: "OPEN",
     },
     update: {
@@ -215,7 +215,7 @@ async function seedManualCourseStructure(forceRebuild = true) {
         sections: {
           create: [{
             title: module.title,
-            description: "Lessons extracted from the official HomeLink training manual.",
+            description: "Lessons extracted from the official HouseLink training manual.",
             sortOrder: 0,
             lessons: {
               create: module.lessons.map((lesson, sortOrder) => {
@@ -232,7 +232,7 @@ async function seedManualCourseStructure(forceRebuild = true) {
                   discussionPrompt: lesson.discussionPrompt ?? null,
                   checklist: lesson.checklist ?? undefined,
                   reflectionQuestions: lesson.reflectionQuestions ?? undefined,
-                  pdfUrl: "/uploads/academy/homelink-zimbabwe-real-estate-agent-training-manual.pdf",
+                  pdfUrl: "/uploads/academy/houselink-zimbabwe-real-estate-agent-training-manual.pdf",
                   estimatedMinutes: lesson.estimatedMinutes,
                   completionRequirement: lesson.title.toLowerCase().includes("knowledge check") ? "QUIZ" : "VIEW",
                   sortOrder,
@@ -266,8 +266,8 @@ async function seedManualCourseStructure(forceRebuild = true) {
 async function ensureDocumentCategory(name, sortOrder) {
   return prisma.documentCategory.upsert({
     where: { slug: slugify(name) },
-    create: { name, slug: slugify(name), description: `${name} used by HomeLink Agent Academy.`, sortOrder },
-    update: { name, description: `${name} used by HomeLink Agent Academy.`, sortOrder },
+    create: { name, slug: slugify(name), description: `${name} used by HouseLink Agent Academy.`, sortOrder },
+    update: { name, description: `${name} used by HouseLink Agent Academy.`, sortOrder },
   });
 }
 
@@ -279,16 +279,16 @@ async function seedDocuments() {
     create: {
       id: "academy-doc-official-training-manual",
       categoryId: manualCategory.id,
-      title: "HomeLink Zimbabwe Real Estate Agent Training Manual",
-      description: "Official downloadable PDF manual for HomeLink Zimbabwe agent onboarding, training and certification.",
-      fileUrl: "/uploads/academy/homelink-zimbabwe-real-estate-agent-training-manual.pdf",
-      fileName: "homelink-zimbabwe-real-estate-agent-training-manual.pdf",
+      title: "HouseLink Zimbabwe Real Estate Agent Training Manual",
+      description: "Official downloadable PDF manual for HouseLink Zimbabwe agent onboarding, training and certification.",
+      fileUrl: "/uploads/academy/houselink-zimbabwe-real-estate-agent-training-manual.pdf",
+      fileName: "houselink-zimbabwe-real-estate-agent-training-manual.pdf",
       fileType: "PDF",
       fileSizeBytes: 1959643,
       version: 1,
       tags: ["manual", "training", "official", "agent academy"],
       permissions: ["ADMIN", "AGENT", "PUBLIC_LEARNER"],
-      searchableText: "HomeLink Zimbabwe Real Estate Agent Training Manual official onboarding training certification",
+      searchableText: "HouseLink Zimbabwe Real Estate Agent Training Manual official onboarding training certification",
       downloadable: true,
       previewable: true,
       visible: true,
@@ -297,7 +297,7 @@ async function seedDocuments() {
     },
     update: {
       categoryId: manualCategory.id,
-      fileUrl: "/uploads/academy/homelink-zimbabwe-real-estate-agent-training-manual.pdf",
+      fileUrl: "/uploads/academy/houselink-zimbabwe-real-estate-agent-training-manual.pdf",
       downloadable: true,
       previewable: true,
       visible: true,
@@ -391,11 +391,11 @@ async function seedAssessments() {
   }
 
   await prisma.finalExam.upsert({
-    where: { id: "academy-final-exam-certified-homelink-agent" },
+    where: { id: "academy-final-exam-certified-houselink-agent" },
     create: {
-      id: "academy-final-exam-certified-homelink-agent",
+      id: "academy-final-exam-certified-houselink-agent",
       courseId: COURSE_ID,
-      title: "Certified HomeLink Agent Final Examination",
+      title: "Certified HouseLink Agent Final Examination",
       durationMinutes: 90,
       passingScore: 80,
       randomQuestions: true,
@@ -410,7 +410,7 @@ async function seedAssessments() {
     },
     update: {
       courseId: COURSE_ID,
-      title: "Certified HomeLink Agent Final Examination",
+      title: "Certified HouseLink Agent Final Examination",
       questionPools: { quizzes: quizSeeds.map((q) => q.id), minimumQuestions: 6 },
       active: true,
     },
@@ -423,9 +423,9 @@ async function seedLearningPathAndCertificate() {
     create: {
       id: LEARNING_PATH_ID,
       title: "New Agent Programme",
-      description: "Structured HomeLink onboarding path from foundations through legal compliance, sales, property management and certification.",
+      description: "Structured HouseLink onboarding path from foundations through legal compliance, sales, property management and certification.",
       status: "PUBLISHED",
-      badgeTitle: "Certified HomeLink Agent",
+      badgeTitle: "Certified HouseLink Agent",
     },
     update: { status: "PUBLISHED" },
   });
@@ -438,9 +438,9 @@ async function seedLearningPathAndCertificate() {
     where: { id: CERTIFICATE_TEMPLATE_ID },
     create: {
       id: CERTIFICATE_TEMPLATE_ID,
-      name: "Certified HomeLink Agent Certificate",
-      logoUrl: "/brand/homelink-full-lockup.png",
-      templateJson: { certificateNumberPrefix: "HLA", title: "Certified HomeLink Agent", qrVerification: true, expiryDays: 365, colours: { primary: "#008b68", accent: "#c6a15b" } },
+      name: "Certified HouseLink Agent Certificate",
+      logoUrl: "/brand/houselink-full-lockup.png",
+      templateJson: { certificateNumberPrefix: "HLA", title: "Certified HouseLink Agent", qrVerification: true, expiryDays: 365, colours: { primary: "#008b68", accent: "#c6a15b" } },
       active: true,
     },
     update: { active: true },
@@ -448,7 +448,7 @@ async function seedLearningPathAndCertificate() {
 }
 
 async function main() {
-  console.log("Seeding complete HomeLink Agent Training course from manual...");
+  console.log("Seeding complete HouseLink Agent Training course from manual...");
   const manual = await seedManualCourseStructure(true);
   console.log("Manual course:", manual);
   await seedDocuments();

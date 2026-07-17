@@ -105,7 +105,7 @@ function normalizeLegacy(enquiry: PropertyEnquiry): PropertyEnquiry {
     listingIntent: enquiry.listingIntent ?? "rent",
     ownerId: enquiry.ownerId ?? "",
     ownerName: enquiry.ownerName ?? "",
-    enquiryType: enquiry.enquiryType ?? "CONTACT_HOMELINK",
+    enquiryType: enquiry.enquiryType ?? "CONTACT_HOUSELINK",
     updatedAt: enquiry.updatedAt ?? enquiry.createdAt,
   };
 }
@@ -278,7 +278,7 @@ export const EnquiryPlatform = {
 
     if (assignedAgentId) {
       enquiry.activities.push(
-        activity("ASSIGNED", "system", "HomeLink", `Assigned to ${assignedAgentName ?? assignedAgentId}`, {
+        activity("ASSIGNED", "system", "HouseLink", `Assigned to ${assignedAgentName ?? assignedAgentId}`, {
           metadata: { agentId: assignedAgentId, leadId: agentLeadId },
         }),
       );
@@ -291,7 +291,7 @@ export const EnquiryPlatform = {
       listingTitle: listing.title,
       seekerName: input.seekerName,
       enquiryType: input.enquiryType,
-      platformName: "HomeLink",
+      platformName: "HouseLink",
     };
 
     if (settings.notifyAgentOnAssignment && assignedAgentId) {
@@ -305,7 +305,7 @@ export const EnquiryPlatform = {
       deps.createNotification(ownerId, {
         channel: "IN_APP",
         subject: "New property enquiry",
-        body: deps.renderTemplate("new_enquiry_owner", templateVars) ?? `${input.seekerName} enquired about ${listing.title}. A HomeLink agent will manage this lead.`,
+        body: deps.renderTemplate("new_enquiry_owner", templateVars) ?? `${input.seekerName} enquired about ${listing.title}. A HouseLink agent will manage this lead.`,
       });
     }
     if (settings.notifyAdminOnNewEnquiry) {
@@ -417,7 +417,7 @@ export const EnquiryPlatform = {
 
     if (assignedAgentId) {
       enquiry.activities.push(
-        activity("ASSIGNED", "system", "HomeLink", `Assigned to ${assignedAgentName ?? assignedAgentId}`),
+        activity("ASSIGNED", "system", "HouseLink", `Assigned to ${assignedAgentName ?? assignedAgentId}`),
       );
     }
 
@@ -427,7 +427,7 @@ export const EnquiryPlatform = {
       deps.createNotification(input.roommateUserId, {
         channel: "IN_APP",
         subject: "New roommate enquiry",
-        body: `${input.seekerName} enquired about your roommate profile via HomeLink.`,
+        body: `${input.seekerName} enquired about your roommate profile via HouseLink.`,
       });
     }
     if (settings.notifyAgentOnAssignment && assignedAgentId) {

@@ -91,6 +91,6 @@ export const TENANCY_STATUS_LABELS: Record<TenancyStatus, string> = {
 
 export const VERIFICATION_SOURCE_LABELS: Record<VerificationSource, string> = {
   manual: "Manual entry (unverified)",
-  payment: "Payment via HomeLink",
-  lease: "Lease signed on HomeLink",
+  payment: "Payment via HouseLink",
+  lease: "Lease signed on HouseLink",
 };

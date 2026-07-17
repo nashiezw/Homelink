@@ -140,7 +140,7 @@ export function AgentDashboardClient() {
     return (
       <PageShell
         eyebrow="Agent"
-        title="Become a HomeLink agent"
+        title="Become a HouseLink agent"
         description="You don't have an active agent profile yet."
         actions={
           <Link href="/become-agent/apply">
@@ -200,7 +200,7 @@ export function AgentDashboardClient() {
             <StatCard label="Open tasks" value={String(stats.openTasks)} icon={CheckCircle2} helper="Follow-ups" />
           </div>
           <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <StatCard label="HomeLink leads" value={String(stats.homelinkLeads)} icon={TrendingUp} helper="Company generated" />
+            <StatCard label="HouseLink leads" value={String(stats.houselinkLeads)} icon={TrendingUp} helper="Company generated" />
             <StatCard label="Agent leads" value={String(stats.agentLeads)} icon={BadgeCheck} helper="Personally sourced" />
             <StatCard label="Pending commission" value={`$${stats.pendingCommissionAmount.toFixed(0)}`} icon={Wallet} helper={`${stats.pendingCommissions} awaiting action`} />
             <StatCard label="Paid commission" value={`$${stats.paidCommissionAmount.toFixed(0)}`} icon={CheckCircle2} helper={`${stats.leadConversionRate}% conversion`} />
@@ -211,7 +211,7 @@ export function AgentDashboardClient() {
               <p className="mt-2 text-sm text-slate-600">Agent ID: {profile.agentNumber}</p>
               <p className="text-sm text-slate-600">QR: {profile.qrCodeData}</p>
               <p className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-emerald-700">
-                <BadgeCheck className="size-4" /> Verified HomeLink badge active
+                <BadgeCheck className="size-4" /> Verified HouseLink badge active
               </p>
             </section>
             <section className="premium-card rounded-xl p-5">
@@ -272,7 +272,7 @@ export function AgentDashboardClient() {
                 <th className="px-4 py-3 text-left">Lead source</th>
                 <th className="px-4 py-3 text-left">Rule & split</th>
                 <th className="px-4 py-3 text-left">Deal</th>
-                <th className="px-4 py-3 text-left">HomeLink share</th>
+                <th className="px-4 py-3 text-left">HouseLink share</th>
                 <th className="px-4 py-3 text-left">Agent gross</th>
                 <th className="px-4 py-3 text-left">Agent net payout</th>
                 <th className="px-4 py-3 text-left">Status</th>
@@ -282,13 +282,13 @@ export function AgentDashboardClient() {
               {commissions.map((c) => (
                 <tr key={c.id} className="border-t border-slate-200 dark:border-slate-700">
                   <td className="px-4 py-3">{c.type}</td>
-                  <td className="px-4 py-3">{c.leadSource ?? "HOMELINK"}</td>
+                  <td className="px-4 py-3">{c.leadSource ?? "HOUSELINK"}</td>
                   <td className="px-4 py-3">
                     <p>{c.commissionRuleLabel ?? c.ruleSnapshot.ruleLabel ?? "Configured commission rule"}</p>
-                    <p className="text-xs text-slate-500">HomeLink {c.ruleSnapshot.homelinkSplitPercent}% / Agent {c.ruleSnapshot.agentSplitPercent}%</p>
+                    <p className="text-xs text-slate-500">HouseLink {c.ruleSnapshot.houselinkSplitPercent}% / Agent {c.ruleSnapshot.agentSplitPercent}%</p>
                   </td>
                   <td className="px-4 py-3">{c.dealRef}</td>
-                  <td className="px-4 py-3">${c.homelinkAmount.toFixed(2)}</td>
+                  <td className="px-4 py-3">${c.houselinkAmount.toFixed(2)}</td>
                   <td className="px-4 py-3">${c.agentAmount.toFixed(2)}</td>
                   <td className="px-4 py-3">${c.netAgentAmount.toFixed(2)}</td>
                   <td className="px-4 py-3">{c.status}</td>
@@ -303,7 +303,7 @@ export function AgentDashboardClient() {
         <div className="grid gap-4">
           <div className="premium-card rounded-xl p-5 flex flex-wrap items-center justify-between gap-4">
             <div>
-              <p className="font-semibold">HomeLink Agent Academy LMS</p>
+              <p className="font-semibold">HouseLink Agent Academy LMS</p>
               <p className="mt-1 text-sm text-slate-600">Access assigned courses, lessons, certificates, and downloadable resources.</p>
             </div>
             <div className="flex flex-wrap gap-2">

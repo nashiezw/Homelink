@@ -71,14 +71,14 @@ export function ListingDetailView({
         <div className="rounded-lg bg-emerald-50 p-4 dark:bg-emerald-950/30">
           <p className="text-sm font-semibold text-emerald-900 dark:text-emerald-100">Before you travel</p>
           <p className="mt-1 text-sm leading-6 text-emerald-900/80 dark:text-emerald-100/80">
-            HomeLink shows live availability so you do not arrive only to hear &quot;Yatorwa.&quot; Always confirm dates with your consultant before paying.
+            HouseLink shows live availability so you do not arrive only to hear &quot;Yatorwa.&quot; Always confirm dates with your consultant before paying.
           </p>
         </div>
       ) : (
         <div className="rounded-lg bg-emerald-50 p-4 dark:bg-emerald-950/30">
           <p className="text-sm font-semibold text-emerald-900 dark:text-emerald-100">Before you pay or view</p>
           <p className="mt-1 text-sm leading-6 text-emerald-900/80 dark:text-emerald-100/80">
-            HomeLink shows live availability so you do not waste a trip. Enquire first, then pay rent or deposit through HomeLink after you agree.
+            HouseLink shows live availability so you do not waste a trip. Enquire first, then pay rent or deposit through HouseLink after you agree.
           </p>
         </div>
       )}

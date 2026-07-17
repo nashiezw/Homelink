@@ -22,7 +22,7 @@ export const dynamic = "force-dynamic";
 function hasDedicatedSettingsPersistence() {
   const url = process.env.SETTINGS_DATABASE_URL ?? "";
   if (!url) return false;
-  if (process.env.HOMELINK_STRICT_PRODUCTION === "true" && url.startsWith("file:")) return false;
+  if (process.env.HOUSELINK_STRICT_PRODUCTION === "true" && url.startsWith("file:")) return false;
   return true;
 }
 
@@ -102,7 +102,7 @@ export async function PATCH(request: Request) {
         ? mergePlatformSecrets(mergePlatformSettings(settings, incomingPlatformSettings), settings)
         : settings;
       if (body.test.type === "smtp") {
-        const recipient = body.test.email?.trim() || actorEmail || "admin@homelinkzim.co.zw";
+        const recipient = body.test.email?.trim() || actorEmail || "admin@houselinkzim.co.zw";
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipient)) {
           return ok({ ok: false, message: "Enter a valid recipient email address for the SMTP test." });
         }

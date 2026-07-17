@@ -20,15 +20,15 @@ export type InsightNarrative = {
 export async function generateMarketInsightNarrative(context: InsightNarrativeContext): Promise<InsightNarrative> {
   const keySource = process.env.OPENAI_API_KEY
     ? "OPENAI_API_KEY"
-    : process.env.HOMELINK_OPENAI_API_KEY
-      ? "HOMELINK_OPENAI_API_KEY"
+    : process.env.HOUSELINK_OPENAI_API_KEY
+      ? "HOUSELINK_OPENAI_API_KEY"
       : null;
-  const apiKey = process.env.OPENAI_API_KEY || process.env.HOMELINK_OPENAI_API_KEY;
+  const apiKey = process.env.OPENAI_API_KEY || process.env.HOUSELINK_OPENAI_API_KEY;
 
   if (!apiKey) {
     logLlmEvent("fallback", {
       reason: "missing_api_key",
-      message: "No OPENAI_API_KEY or HOMELINK_OPENAI_API_KEY in server environment.",
+      message: "No OPENAI_API_KEY or HOUSELINK_OPENAI_API_KEY in server environment.",
       suburb: context.suburb,
       city: context.city,
     });
@@ -102,7 +102,7 @@ async function tryLlmNarrative(
   keySource: string,
   context: InsightNarrativeContext,
 ): Promise<InsightNarrative | null> {
-  let model = process.env.OPENAI_MODEL || process.env.HOMELINK_AI_MODEL || "gpt-4o-mini";
+  let model = process.env.OPENAI_MODEL || process.env.HOUSELINK_AI_MODEL || "gpt-4o-mini";
   let maxTokens = 900;
   try {
     const settings = await getHydratedRuntimePlatformSettings();
@@ -161,7 +161,7 @@ async function tryLlmNarrative(
           {
             role: "system",
             content:
-              "You are HomeLink Zimbabwe's property market analyst. Use only the JSON facts provided. Be concise, practical, and honest about low confidence or limited sample size. Never invent comparables or prices. Return JSON: {\"summary\":\"one sentence\",\"notes\":[\"bullet 1\",\"bullet 2\",\"bullet 3\"]}. Max 4 notes. USD only.",
+              "You are HouseLink Zimbabwe's property market analyst. Use only the JSON facts provided. Be concise, practical, and honest about low confidence or limited sample size. Never invent comparables or prices. Return JSON: {\"summary\":\"one sentence\",\"notes\":[\"bullet 1\",\"bullet 2\",\"bullet 3\"]}. Max 4 notes. USD only.",
           },
           {
             role: "user",
@@ -267,16 +267,16 @@ export function buildDeterministicNarrative(context: InsightNarrativeContext): I
   const notes: string[] = [];
 
   if (context.sampleSize === 0) {
-    notes.push("No comparable listings in this area yet — median and band will populate once similar properties are listed on HomeLink.");
+    notes.push("No comparable listings in this area yet — median and band will populate once similar properties are listed on HouseLink.");
   } else if (context.comparableScope === "regional") {
     notes.push(
-      `Limited local data in ${context.suburb} — benchmarking against ${context.sampleSize} similar ${context.intent === "buy" ? "sale" : "rental"} listing${context.sampleSize === 1 ? "" : "s"} across HomeLink.`,
+      `Limited local data in ${context.suburb} — benchmarking against ${context.sampleSize} similar ${context.intent === "buy" ? "sale" : "rental"} listing${context.sampleSize === 1 ? "" : "s"} across HouseLink.`,
     );
   } else if (context.dataQuality === "limited" || context.sampleSize < 3) {
     notes.push(
       context.comparableScope === "city"
         ? `Limited suburb-level data — using ${context.sampleSize} comparable listing${context.sampleSize === 1 ? "" : "s"} across ${context.city} until more appear in ${context.suburb}.`
-        : "Limited comparable activity in this pocket — treat this as directional guidance until more similar listings are live on HomeLink.",
+        : "Limited comparable activity in this pocket — treat this as directional guidance until more similar listings are live on HouseLink.",
     );
   } else if (context.dataQuality === "high") {
     notes.push(`Strong comparable set (${context.sampleSize} listings, ${context.strongMatches} close matches) supports this estimate.`);
@@ -321,7 +321,7 @@ export function buildDeterministicNarrative(context: InsightNarrativeContext): I
         : context.priceAssessment === "below_market"
           ? `Competitively priced for ${context.suburb}; demand score ${context.demandScore}/100.`
           : `Premium-priced versus local median in ${context.suburb}; demand score ${context.demandScore}/100.`
-      : `HomeLink estimates ${context.suburb} ${context.intent === "buy" ? "sale" : "rental"} pricing from ${context.sampleSize} comparable listings.`;
+      : `HouseLink estimates ${context.suburb} ${context.intent === "buy" ? "sale" : "rental"} pricing from ${context.sampleSize} comparable listings.`;
 
   return { summary, notes: notes.slice(0, 4), aiGenerated: false };
 }

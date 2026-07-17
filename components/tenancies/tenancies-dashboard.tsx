@@ -117,7 +117,7 @@ export function TenanciesDashboard() {
       <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-5 text-sm text-emerald-900">
         <p className="font-semibold">How verified stays work</p>
         <ul className="mt-2 list-inside list-disc space-y-1 text-emerald-800">
-          <li>Only payment or lease through HomeLink can create a <strong>verified</strong> record.</li>
+          <li>Only payment or lease through HouseLink can create a <strong>verified</strong> record.</li>
           <li>Both landlord and tenant must <strong>confirm</strong> before it shows as verified.</li>
           <li>Public profiles show <strong>suburb + city only</strong> until both agree to share the full address.</li>
           <li>Manual entries stay visible but are marked <strong>unverified</strong>.</li>
@@ -146,7 +146,7 @@ export function TenanciesDashboard() {
         <h2 className="text-lg font-bold text-ink">All stay records</h2>
         {tenancies.length === 0 ? (
           <p className="mt-3 text-sm text-slate-500">
-            No tenancy records yet. Pay rent via HomeLink, sign a lease, or mark a listing as rented with your tenant.
+            No tenancy records yet. Pay rent via HouseLink, sign a lease, or mark a listing as rented with your tenant.
           </p>
         ) : (
           <div className="mt-3 space-y-3">

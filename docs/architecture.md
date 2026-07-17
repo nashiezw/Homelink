@@ -1,8 +1,8 @@
-# HomeLink Zimbabwe Architecture
+# HouseLink Zimbabwe Architecture
 
 ## Product Direction
 
-HomeLink Zimbabwe is a website-first property marketplace designed to become
+HouseLink Zimbabwe is a website-first property marketplace designed to become
 Android and iOS apps without changing the core backend. The public web app,
 landlord dashboard, estate agent dashboard, and admin dashboard should all
 consume the same REST API.
@@ -78,7 +78,7 @@ scaffold in `apps/api`, and shared domain contracts in `packages/domain`.
 
 ## Trust And Safety
 
-Fake and stale listings are core product risks. HomeLink should prioritize:
+Fake and stale listings are core product risks. HouseLink should prioritize:
 
 - Phone, email, and identity verification.
 - Landlord and estate agent verification badges.
@@ -158,7 +158,7 @@ flowchart TB
 
 1. User signs in via Clerk/Firebase on `/auth`.
 2. Client receives provider JWT; exchanges via `POST /api/v1/auth/session`.
-3. Backend verifies token, upserts `User` record, returns HomeLink session context.
+3. Backend verifies token, upserts `User` record, returns HouseLink session context.
 4. Protected routes check role (`LANDLORD`, `AGENT`, `ADMIN`) at service layer.
 5. Mobile apps use the identical token exchange - no web-only cookies required.
 

@@ -15,7 +15,7 @@ export function HomeHero({ hero }: HomeHeroProps) {
       <div className="absolute inset-0">
         <Image
           src={hero.imageUrl}
-          alt="HomeLink Zimbabwe property marketplace"
+          alt="HouseLink Zimbabwe property marketplace"
           fill
           priority
           className="object-cover scale-105 motion-reduce:scale-100"

@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-const SESSION_COOKIE = "homelink_session";
-const CSRF_HEADER = "x-homelink-csrf";
+const SESSION_COOKIE = "houselink_session";
+const CSRF_HEADER = "x-houselink-csrf";
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 const CSRF_EXEMPT_PATHS = [
   /^\/api\/v1\/payments\/webhooks\/[^/]+$/,
@@ -50,7 +50,7 @@ export function middleware(request: NextRequest) {
   }
 
   if (!hasTrustedOrigin(request)) {
-    return csrfProblem("CSRF_ORIGIN_MISMATCH", "State-changing requests must come from the HomeLink origin.", requestId);
+    return csrfProblem("CSRF_ORIGIN_MISMATCH", "State-changing requests must come from the HouseLink origin.", requestId);
   }
 
   if (request.cookies.has(SESSION_COOKIE) && request.headers.get(CSRF_HEADER) !== "1") {
@@ -75,7 +75,7 @@ function hasTrustedOrigin(request: NextRequest) {
   const allowed = new Set([
     request.nextUrl.origin,
     process.env.NEXT_PUBLIC_APP_URL,
-    ...(process.env.HOMELINK_ALLOWED_ORIGINS?.split(",") ?? []),
+    ...(process.env.HOUSELINK_ALLOWED_ORIGINS?.split(",") ?? []),
   ].filter((value): value is string => Boolean(value)).map(originOf));
 
   return candidates.every((candidate) => allowed.has(originOf(candidate)));

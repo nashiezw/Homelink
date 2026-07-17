@@ -15,8 +15,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const { suburb: suburbSlug } = await params;
   const suburb = resolveSuburb(suburbSlug);
   return {
-    title: `Rooms to Rent in ${suburb.name} | HomeLink Zimbabwe`,
-    description: `Find rooms, shared accommodation, cottages, and affordable rentals in ${suburb.name} on HomeLink Zimbabwe.`,
+    title: `Rooms to Rent in ${suburb.name} | HouseLink Zimbabwe`,
+    description: `Find rooms, shared accommodation, cottages, and affordable rentals in ${suburb.name} on HouseLink Zimbabwe.`,
     alternates: {
       canonical: `/rooms/${suburb.slug}`,
     },

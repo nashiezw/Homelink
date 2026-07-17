@@ -15,7 +15,7 @@ export const PAYMENT_PLAN_GROUPS: PaymentPlanGroup[] = [
   {
     id: "listings",
     label: "Listings",
-    description: "Publish and boost property listings on HomeLink Zimbabwe.",
+    description: "Publish and boost property listings on HouseLink Zimbabwe.",
   },
   {
     id: "subscriptions",

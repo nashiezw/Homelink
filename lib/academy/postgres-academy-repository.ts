@@ -276,7 +276,7 @@ export async function runAcademyAction(body: Record<string, any>, actor: Actor) 
       data: courseInput(body.course ?? {}, actor.id),
     });
     await audit(actor, "academy.course.create", course.id, { title: course.title });
-    await notifyAgents("NEW_COURSE_PUBLISHED", "New Academy course created", `${course.title} is ready in HomeLink Agent Academy.`);
+    await notifyAgents("NEW_COURSE_PUBLISHED", "New Academy course created", `${course.title} is ready in HouseLink Agent Academy.`);
     return course;
   }
   if (action === "update_course") {
@@ -1023,7 +1023,7 @@ export async function ensureAcademyDefaults() {
       create: {
         id: "singleton",
         payload: {
-          academyName: "HomeLink Agent Academy",
+          academyName: "HouseLink Agent Academy",
           certificatePrefix: "HLA",
           primaryColour: "#008b68",
           accentColour: "#c6a15b",
@@ -1034,7 +1034,7 @@ export async function ensureAcademyDefaults() {
           quizSettings: { defaultPassMark: 80, maxAttempts: 3, showResults: true, randomiseByDefault: false },
           enrolmentSettings: { allowTrainingOnly: true, allowAgentTraining: true, requirePaymentProof: true },
           completionRules: { requireAllLessons: true, requireFinalExam: false, autoIssueCertificate: true },
-          branding: { logoUrl: "/brand/homelink-full-lockup.png", dashboardWelcome: "Continue your professional training journey." },
+          branding: { logoUrl: "/brand/houselink-full-lockup.png", dashboardWelcome: "Continue your professional training journey." },
         },
       },
       update: {},

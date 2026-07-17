@@ -25,12 +25,12 @@ export async function GET(request: Request, context: { params: Promise<{ issueId
     id: issue.id,
     certificateNumber: issue.certificateNumber,
     courseId: issue.courseId,
-    courseTitle: issue.course?.title ?? "HomeLink Academy Course",
-    certificateTitle: programme?.certificateTitle ?? "Certified HomeLink Agent",
+    courseTitle: issue.course?.title ?? "HouseLink Academy Course",
+    certificateTitle: programme?.certificateTitle ?? "Certified HouseLink Agent",
     issuedAt: issue.issuedAt.toISOString(),
     expiresAt: issue.expiresAt?.toISOString() ?? null,
     verifyUrl: issue.qrCodeUrl ?? `/api/v1/academy/certificates/verify/${encodeURIComponent(issue.certificateNumber)}`,
-    learnerName: user?.name ?? "HomeLink Learner",
+    learnerName: user?.name ?? "HouseLink Learner",
     accent: programme?.theme.accent ?? "#008b68",
   });
 }

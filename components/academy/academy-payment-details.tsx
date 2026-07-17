@@ -57,7 +57,7 @@ export function AcademyPaymentDetails({
 
       {bankDetails && !methodHasBankDetails && (
         <div className="mt-3 space-y-1 rounded-lg border border-slate-100 bg-slate-50/80 p-3 dark:border-slate-800 dark:bg-slate-900/40">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Official HomeLink bank account</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Official HouseLink bank account</p>
           {Object.entries(bankDetails).map(([key, value]) =>
             value ? <DetailRow key={key} label={formatBankDetailLabel(key)} value={String(value)} /> : null,
           )}
@@ -71,11 +71,11 @@ export function AcademyPaymentDetails({
       )}
 
       {!method && config && (
-        <p className="mt-3 text-xs text-amber-700 dark:text-amber-300">Payment method details are unavailable. Contact support@homelinkzim.co.zw.</p>
+        <p className="mt-3 text-xs text-amber-700 dark:text-amber-300">Payment method details are unavailable. Contact support@houselinkzim.co.zw.</p>
       )}
 
       {!config && (
-        <p className="mt-3 text-xs text-amber-700 dark:text-amber-300">Payment details are loading. If this persists, contact HomeLink support.</p>
+        <p className="mt-3 text-xs text-amber-700 dark:text-amber-300">Payment details are loading. If this persists, contact HouseLink support.</p>
       )}
     </section>
   );

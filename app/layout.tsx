@@ -18,13 +18,13 @@ const inter = localFont({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? "https://homelinkzim.co.zw"),
-  applicationName: "HomeLink Zimbabwe",
-  title: "HomeLink Zimbabwe | Find Your Next Home with Confidence",
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? "https://houselinkzim.co.zw"),
+  applicationName: "HouseLink Zimbabwe",
+  title: "HouseLink Zimbabwe | Find Your Next Home with Confidence",
   description:
     "Verified rooms, houses, flats, cottages, commercial property, land, and roommate matching across Zimbabwe.",
   keywords: [
-    "HomeLink Zimbabwe",
+    "HouseLink Zimbabwe",
     "Zimbabwe property",
     "houses for rent Zimbabwe",
     "rooms to rent Harare",
@@ -33,28 +33,28 @@ export const metadata: Metadata = {
   ],
   icons: {
     icon: [
-      { url: "/brand/homelink-icon.png", sizes: "32x32", type: "image/png" },
-      { url: "/brand/homelink-icon.png", sizes: "192x192", type: "image/png" },
+      { url: "/brand/houselink-icon.png", sizes: "32x32", type: "image/png" },
+      { url: "/brand/houselink-icon.png", sizes: "192x192", type: "image/png" },
     ],
-    apple: [{ url: "/brand/homelink-icon.png", sizes: "180x180", type: "image/png" }],
+    apple: [{ url: "/brand/houselink-icon.png", sizes: "180x180", type: "image/png" }],
   },
   manifest: "/site.webmanifest",
   openGraph: {
-    title: "HomeLink Zimbabwe | Find Your Next Home with Confidence",
+    title: "HouseLink Zimbabwe | Find Your Next Home with Confidence",
     description:
       "Verified rooms, houses, flats, cottages, commercial property, land, and roommate matching across Zimbabwe.",
     url: "/",
-    siteName: "HomeLink Zimbabwe",
-    images: [{ url: "/brand/homelink-full-lockup.png", width: 1200, height: 630, alt: "HomeLink Zimbabwe" }],
+    siteName: "HouseLink Zimbabwe",
+    images: [{ url: "/brand/houselink-full-lockup.png", width: 1200, height: 630, alt: "HouseLink Zimbabwe" }],
     locale: "en_ZW",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "HomeLink Zimbabwe | Find Your Next Home with Confidence",
+    title: "HouseLink Zimbabwe | Find Your Next Home with Confidence",
     description:
       "Verified rooms, houses, flats, cottages, commercial property, land, and roommate matching across Zimbabwe.",
-    images: ["/brand/homelink-full-lockup.png"],
+    images: ["/brand/houselink-full-lockup.png"],
   },
   robots: {
     index: true,

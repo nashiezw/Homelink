@@ -197,9 +197,9 @@ export async function POST(request: Request) {
 function seedPasswordMatches(email: string, password: string) {
   const normalized = email.trim().toLowerCase();
   const candidates = [
-    normalized === "admin@homelinkzim.co.zw" ? process.env.SEED_ADMIN_PASSWORD : "",
-    normalized === "landlord@homelinkzim.co.zw" ? process.env.SEED_LANDLORD_PASSWORD : "",
-    normalized === "tinashe.dube@homelinkzim.co.zw" ? process.env.SEED_TINASHE_PASSWORD : "",
+    normalized === "admin@houselinkzim.co.zw" ? process.env.SEED_ADMIN_PASSWORD : "",
+    normalized === "landlord@houselinkzim.co.zw" ? process.env.SEED_LANDLORD_PASSWORD : "",
+    normalized === "tinashe.dube@houselinkzim.co.zw" ? process.env.SEED_TINASHE_PASSWORD : "",
     process.env.SEED_STANDARD_PASSWORD,
   ].filter((value): value is string => Boolean(value));
   return candidates.some((candidate) => candidate === password);
@@ -213,7 +213,7 @@ export async function DELETE(request: Request) {
     }
   } else {
     const cookie = request.headers.get("cookie") ?? "";
-    const match = cookie.match(/homelink_session=([^;]+)/);
+    const match = cookie.match(/houselink_session=([^;]+)/);
     if (match) {
       getStore().deleteSession(match[1]);
     }

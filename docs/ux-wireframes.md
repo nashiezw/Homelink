@@ -133,7 +133,7 @@ flowchart LR
 +------------------------------------------------------------------+
 |  Popular Cities: Harare | Bulawayo | Gweru | Mutare | Kwekwe    |
 +------------------------------------------------------------------+
-|  Why HomeLink | Testimonials | Map preview | Footer              |
+|  Why HouseLink | Testimonials | Map preview | Footer              |
 +------------------------------------------------------------------+
 ```
 

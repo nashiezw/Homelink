@@ -28,7 +28,7 @@ type ManifestRow = {
 };
 
 const CATEGORY_BLURBS: Record<string, string> = {
-  "Property Forms": "Print-ready client, listing and viewing forms with HomeLink branding.",
+  "Property Forms": "Print-ready client, listing and viewing forms with HouseLink branding.",
   "Agent Templates": "Daily planners, registers and operational templates for field use.",
   "Marketing Resources": "Checklists, scripts and campaign tools for professional marketing.",
   "Compliance Documents": "File, compliance and submission checklists for audit-ready records.",
@@ -138,7 +138,7 @@ export async function getToolkitGroupsForCourse(courseId: string, options?: { cu
 
   return [...grouped.entries()].map(([category, groupItems]) => ({
     category,
-    description: CATEGORY_BLURBS[category] ?? "HomeLink branded print-ready resources.",
+    description: CATEGORY_BLURBS[category] ?? "HouseLink branded print-ready resources.",
     items: groupItems,
   }));
 }

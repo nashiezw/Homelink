@@ -142,14 +142,14 @@ function baseUser(
   };
 }
 
-function seedPassword(envKey: string, localFallback = "HomeLink2026!") {
+function seedPassword(envKey: string, localFallback = "HouseLink2026!") {
   return process.env[envKey] ?? localFallback;
 }
 
 function createInitialStore() {
   const primarySeekerUser = baseUser({
     id: "user_seeker_tinashe",
-    email: "tinashe.dube@homelinkzim.co.zw",
+    email: "tinashe.dube@houselinkzim.co.zw",
     passwordHash: hashPassword(seedPassword("SEED_TINASHE_PASSWORD")),
     name: "Tinashe Dube",
     phone: "+263770000000",
@@ -165,8 +165,8 @@ function createInitialStore() {
 
   const landlordUser = baseUser({
     id: "user_landlord",
-    email: "landlord@homelinkzim.co.zw",
-    passwordHash: hashPassword(seedPassword("SEED_LANDLORD_PASSWORD", "HomeLinkOwner2026!")),
+    email: "landlord@houselinkzim.co.zw",
+    passwordHash: hashPassword(seedPassword("SEED_LANDLORD_PASSWORD", "HouseLinkOwner2026!")),
     name: "Tariro Moyo",
     phone: "+263771234567",
     city: "Harare",
@@ -184,9 +184,9 @@ function createInitialStore() {
 
   const adminUser = baseUser({
     id: "user_admin",
-    email: "admin@homelinkzim.co.zw",
-    passwordHash: hashPassword(seedPassword("SEED_ADMIN_PASSWORD", "HomeLinkAdmin2026!")),
-    name: "HomeLink Admin",
+    email: "admin@houselinkzim.co.zw",
+    passwordHash: hashPassword(seedPassword("SEED_ADMIN_PASSWORD", "HouseLinkAdmin2026!")),
+    name: "HouseLink Admin",
     phone: "+263770000001",
     city: "Harare",
     roles: ["ADMIN", "SEEKER"],
@@ -368,8 +368,8 @@ function createInitialStore() {
     }),
     baseUser({
       id: "user_consultant_sarah",
-      email: "sarah.consultant@homelinkzim.co.zw",
-      passwordHash: hashPassword(seedPassword("SEED_CONSULTANT_PASSWORD", "HomeLinkConsultant2026!")),
+      email: "sarah.consultant@houselinkzim.co.zw",
+      passwordHash: hashPassword(seedPassword("SEED_CONSULTANT_PASSWORD", "HouseLinkConsultant2026!")),
       name: "Sarah Chigwada",
       phone: "+263771111111",
       city: "Harare",
@@ -380,8 +380,8 @@ function createInitialStore() {
     }),
     baseUser({
       id: "user_consultant_john",
-      email: "john.consultant@homelinkzim.co.zw",
-      passwordHash: hashPassword(seedPassword("SEED_CONSULTANT_PASSWORD", "HomeLinkConsultant2026!")),
+      email: "john.consultant@houselinkzim.co.zw",
+      passwordHash: hashPassword(seedPassword("SEED_CONSULTANT_PASSWORD", "HouseLinkConsultant2026!")),
       name: "John Mafukidze",
       phone: "+263772222222",
       city: "Bulawayo",
@@ -727,7 +727,7 @@ function backfillSeedFixtures(state: ReturnType<typeof createInitialStore>) {
         verificationSource: "payment",
         paymentId: "pay_seed_tenancy",
         startDate: daysAgo(90).slice(0, 10),
-        notes: "Verified via HomeLink rent payment",
+        notes: "Verified via HouseLink rent payment",
       });
       landlordRec.userConfirmed = true;
       landlordRec.userConfirmedAt = confirmedAt;
@@ -758,7 +758,7 @@ function backfillSeedFixtures(state: ReturnType<typeof createInitialStore>) {
       listingTitle: "Verified garden cottage near Avondale shops",
       clientUserId: "user_seeker_tinashe",
       clientName: "Tinashe Dube",
-      clientEmail: "tinashe.dube@homelinkzim.co.zw",
+      clientEmail: "tinashe.dube@houselinkzim.co.zw",
       clientType: "TENANT",
       source: "LISTING_ENQUIRY",
       status: "CLOSED_WON",
@@ -767,7 +767,7 @@ function backfillSeedFixtures(state: ReturnType<typeof createInitialStore>) {
       city: "Harare",
       suburb: "Avondale",
       province: "Harare",
-      notes: "Rental completed via HomeLink - please rate your agent.",
+      notes: "Rental completed via HouseLink - please rate your agent.",
       dealRef: "deal_seed_rating",
       closedAt: daysAgo(3),
       ratingSubmitted: false,
@@ -781,7 +781,7 @@ function backfillSeedUsers(state: ReturnType<typeof createInitialStore>) {
   const users: StoreUser[] = [
     baseUser({
       id: "user_seeker_tinashe",
-      email: "tinashe.dube@homelinkzim.co.zw",
+      email: "tinashe.dube@houselinkzim.co.zw",
       passwordHash: hashPassword(seedPassword("SEED_TINASHE_PASSWORD")),
       name: "Tinashe Dube",
       phone: "+263770000000",
@@ -792,7 +792,7 @@ function backfillSeedUsers(state: ReturnType<typeof createInitialStore>) {
     }),
     baseUser({
       id: "user_seeker_rudo",
-      email: "rudo.moyo@homelinkzim.co.zw",
+      email: "rudo.moyo@houselinkzim.co.zw",
       passwordHash: hashPassword(seedPassword("SEED_STANDARD_PASSWORD")),
       name: "Rudo M.",
       phone: "+263772000101",
@@ -803,7 +803,7 @@ function backfillSeedUsers(state: ReturnType<typeof createInitialStore>) {
     }),
     baseUser({
       id: "user_seeker_taku",
-      email: "taku.moyo@homelinkzim.co.zw",
+      email: "taku.moyo@houselinkzim.co.zw",
       passwordHash: hashPassword(seedPassword("SEED_STANDARD_PASSWORD")),
       name: "Taku N.",
       phone: "+263772000102",
@@ -814,7 +814,7 @@ function backfillSeedUsers(state: ReturnType<typeof createInitialStore>) {
     }),
     baseUser({
       id: "user_seeker_noma",
-      email: "noma.ncube@homelinkzim.co.zw",
+      email: "noma.ncube@houselinkzim.co.zw",
       passwordHash: hashPassword(seedPassword("SEED_STANDARD_PASSWORD")),
       name: "Noma S.",
       phone: "+263772000103",
@@ -825,7 +825,7 @@ function backfillSeedUsers(state: ReturnType<typeof createInitialStore>) {
     }),
     baseUser({
       id: "user_seeker_farai",
-      email: "farai.chigwedere@homelinkzim.co.zw",
+      email: "farai.chigwedere@houselinkzim.co.zw",
       passwordHash: hashPassword(seedPassword("SEED_STANDARD_PASSWORD")),
       name: "Farai T.",
       phone: "+263772000104",
@@ -836,7 +836,7 @@ function backfillSeedUsers(state: ReturnType<typeof createInitialStore>) {
     }),
     baseUser({
       id: "user_seeker_chipo",
-      email: "chipo.dube@homelinkzim.co.zw",
+      email: "chipo.dube@houselinkzim.co.zw",
       passwordHash: hashPassword(seedPassword("SEED_STANDARD_PASSWORD")),
       name: "Chipo D.",
       phone: "+263772000105",
@@ -847,7 +847,7 @@ function backfillSeedUsers(state: ReturnType<typeof createInitialStore>) {
     }),
     baseUser({
       id: "user_seeker_grace",
-      email: "grace.moyo@homelinkzim.co.zw",
+      email: "grace.moyo@houselinkzim.co.zw",
       passwordHash: hashPassword(seedPassword("SEED_STANDARD_PASSWORD")),
       name: "Grace M.",
       phone: "+263772000106",
@@ -881,7 +881,7 @@ function seedDemoPMRequest(state: ReturnType<typeof createInitialStore>) {
     {
       ownerId: "user_landlord",
       ownerName: "Tariro Moyo",
-      ownerEmail: "landlord@homelinkzim.co.zw",
+      ownerEmail: "landlord@houselinkzim.co.zw",
       ownerPhone: "+263771234567",
       propertyAddress: "12 Acacia Drive, Avondale",
       city: "Harare",
@@ -898,7 +898,7 @@ function seedDemoPMRequest(state: ReturnType<typeof createInitialStore>) {
   if (result.request) {
     PMStore.assignConsultant(pmState, result.request.id, "user_consultant_sarah", {
       id: "user_admin",
-      name: "HomeLink Admin",
+      name: "HouseLink Admin",
     });
     PMStore.setStatus(pmState, result.request.id, "IN_PROGRESS", { id: "user_consultant_sarah", name: "Sarah Chigwada" });
   }
@@ -917,7 +917,7 @@ function seedDemoHolidayBooking(state: ReturnType<typeof createInitialStore>) {
     listing,
     guestUserId: "user_seeker_tinashe",
     guestName: "Tinashe Dube",
-    guestEmail: "tinashe.dube@homelinkzim.co.zw",
+    guestEmail: "tinashe.dube@houselinkzim.co.zw",
     guestPhone: "+263770000000",
     checkIn,
     checkOut,
@@ -1130,7 +1130,7 @@ function seedVerifiedTenancies(state: ReturnType<typeof createInitialStore>) {
     verificationSource: "payment",
     paymentId: "pay_seed_tenancy",
     startDate: daysAgo(90).slice(0, 10),
-    notes: "Verified via HomeLink rent payment",
+    notes: "Verified via HouseLink rent payment",
   });
   landlordRec.userConfirmed = true;
   landlordRec.userConfirmedAt = confirmedAt;
@@ -1196,16 +1196,16 @@ class AppStore {
   }
 
   markDirty() {
-    if (isStrictProduction() && !globalStore.__homelinkStoreHydrated) {
-      globalStore.__homelinkStorePersistPending = true;
+    if (isStrictProduction() && !globalStore.__houselinkStoreHydrated) {
+      globalStore.__houselinkStorePersistPending = true;
       return;
     }
     scheduleStorePersist(this.state, STORE_VERSION);
   }
 
   async flushPersistence() {
-    if (isStrictProduction() && !globalStore.__homelinkStoreHydrated) {
-      await globalStore.__homelinkStoreHydratePromise;
+    if (isStrictProduction() && !globalStore.__houselinkStoreHydrated) {
+      await globalStore.__houselinkStoreHydratePromise;
     }
     await persistStoreState(this.state, STORE_VERSION);
   }
@@ -1616,7 +1616,7 @@ class AppStore {
       : input.holidayHome;
     const nightlyRate = holidayHome?.nightlyRate ?? input.price ?? 0;
     const isAgent = Boolean(owner?.roles?.includes("AGENT"));
-    const leadSource = isAgent ? ((input.leadSource as "HOMELINK" | "AGENT" | undefined) ?? "HOMELINK") : (input.leadSource as "HOMELINK" | "AGENT" | undefined);
+    const leadSource = isAgent ? ((input.leadSource as "HOUSELINK" | "AGENT" | undefined) ?? "HOUSELINK") : (input.leadSource as "HOUSELINK" | "AGENT" | undefined);
     const ownerEmail = input.propertyOwnerEmail?.trim().toLowerCase();
     const ownerPhone = input.propertyOwnerPhone?.trim();
     const duplicateOwner = leadSource === "AGENT"
@@ -1689,8 +1689,8 @@ class AppStore {
       targetId: listing.id,
       targetType: "LISTING",
       details: [
-        { label: "Lead source", value: listing.leadSource ?? "HOMELINK" },
-        { label: "Assigned agent", value: listing.assignedAgentId ? owner?.name ?? listing.assignedAgentId : "HomeLink" },
+        { label: "Lead source", value: listing.leadSource ?? "HOUSELINK" },
+        { label: "Assigned agent", value: listing.assignedAgentId ? owner?.name ?? listing.assignedAgentId : "HouseLink" },
         { label: "Owner", value: listing.propertyOwnerName ?? listing.landlordName },
         ...(duplicateOwner ? [{ label: "Owner match", value: `${duplicateOwner.title} (${duplicateOwner.id})` }] : []),
       ],
@@ -1705,9 +1705,9 @@ class AppStore {
         clientEmail: listing.propertyOwnerEmail,
         clientPhone: listing.propertyOwnerPhone,
         clientType: "LANDLORD",
-        source: leadSource === "AGENT" ? "AGENT_PROSPECTING" : "HOMELINK_WEBSITE",
-        leadSource: leadSource ?? "HOMELINK",
-        acquisitionChannel: leadSource === "AGENT" ? "AGENT_PROSPECTING" : "HOMELINK_WEBSITE",
+        source: leadSource === "AGENT" ? "AGENT_PROSPECTING" : "HOUSELINK_WEBSITE",
+        leadSource: leadSource ?? "HOUSELINK",
+        acquisitionChannel: leadSource === "AGENT" ? "AGENT_PROSPECTING" : "HOUSELINK_WEBSITE",
         status: duplicateOwner ? "NEW" : "ASSIGNED",
         createdById: ownerId,
         createdByName: owner?.name,
@@ -1720,7 +1720,7 @@ class AppStore {
         duplicateOwnerReview: {
           status: duplicateOwner ? "PENDING_ADMIN_REVIEW" : "NOT_REQUIRED",
           matchedListingId: duplicateOwner?.id,
-          reason: duplicateOwner ? "Possible existing HomeLink owner. Admin review required before ownership is confirmed." : undefined,
+          reason: duplicateOwner ? "Possible existing HouseLink owner. Admin review required before ownership is confirmed." : undefined,
         },
         city: listing.city,
         suburb: listing.suburb,
@@ -1957,7 +1957,7 @@ class AppStore {
       tenantRole: listing.type === "room" ? "roommate" : "tenant",
       verificationSource: "payment",
       paymentId: payment.id,
-      notes: `Rent/deposit paid via HomeLink (${payment.receiptNumber ?? payment.id})`,
+      notes: `Rent/deposit paid via HouseLink (${payment.receiptNumber ?? payment.id})`,
     });
     const tenantRecord = result.tenantRecord;
     tenantRecord.userConfirmed = true;
@@ -1991,7 +1991,7 @@ class AppStore {
       verificationSource: "lease",
       leaseSignedAt,
       startDate: input.startDate,
-      notes: "Lease signed digitally on HomeLink",
+      notes: "Lease signed digitally on HouseLink",
     });
     this.confirmTenancy(result.tenancyId, input.signedByUserId);
     this.notifyTenancyParties(input.tenantUserId, input.landlordUserId, listing.title);
@@ -2001,7 +2001,7 @@ class AppStore {
   notifyTenancyParties(tenantUserId: string, landlordUserId: string, propertyTitle: string) {
     const msg = {
       channel: "email" as const,
-      subject: "Confirm your tenancy on HomeLink",
+      subject: "Confirm your tenancy on HouseLink",
       body: `Please confirm your stay at "${propertyTitle}" so it can appear on your verified history.`,
     };
     this.createNotification(tenantUserId, msg);
@@ -3375,10 +3375,10 @@ class AppStore {
         rows: this.state.agents.commissions.map((c) => ({
           id: c.id,
           agent: c.agentName,
-          leadSource: c.leadSource ?? "HOMELINK",
+          leadSource: c.leadSource ?? "HOUSELINK",
           rule: c.commissionRuleLabel ?? c.ruleSnapshot.ruleLabel,
-          split: `HomeLink ${c.ruleSnapshot.homelinkSplitPercent}% / Agent ${c.ruleSnapshot.agentSplitPercent}%`,
-          homelinkShare: c.homelinkAmount,
+          split: `HouseLink ${c.ruleSnapshot.houselinkSplitPercent}% / Agent ${c.ruleSnapshot.agentSplitPercent}%`,
+          houselinkShare: c.houselinkAmount,
           agentGross: c.agentAmount,
           agentNetPayout: c.netAgentAmount,
           status: c.status,
@@ -3560,7 +3560,7 @@ class AppStore {
       {
         channel: "email",
         subject: `${found.title} - ${r.requestNumber}`,
-        body: `${actor.name} sent ${found.title} for ${r.propertyAddress}. Please sign in to HomeLink to review the document and download the PDF.`,
+        body: `${actor.name} sent ${found.title} for ${r.propertyAddress}. Please sign in to HouseLink to review the document and download the PDF.`,
       },
     ]);
     PMStore.addNote(this.pmState(), requestId, {
@@ -3767,13 +3767,13 @@ class AppStore {
           reason,
           oldRules: previous.map((rule) => ({
             id: rule.id,
-            homelinkSplitPercent: rule.homelinkSplitPercent,
+            houselinkSplitPercent: rule.houselinkSplitPercent,
             agentSplitPercent: rule.agentSplitPercent,
             active: rule.active,
           })),
           newRules: rules.map((rule) => ({
             id: rule.id,
-            homelinkSplitPercent: rule.homelinkSplitPercent,
+            houselinkSplitPercent: rule.houselinkSplitPercent,
             agentSplitPercent: rule.agentSplitPercent,
             active: rule.active,
           })),
@@ -3920,7 +3920,7 @@ class AppStore {
       this.createNotification(commission.agentId, {
         channel: "IN_APP",
         subject: "Commission recorded",
-        body: `${this.state.agents.settings.notificationTemplates.commission_created} Rule: ${commission.commissionRuleLabel ?? "Configured commission rule"}. Split: HomeLink ${commission.ruleSnapshot.homelinkSplitPercent}% / Agent ${commission.ruleSnapshot.agentSplitPercent}%.`,
+        body: `${this.state.agents.settings.notificationTemplates.commission_created} Rule: ${commission.commissionRuleLabel ?? "Configured commission rule"}. Split: HouseLink ${commission.ruleSnapshot.houselinkSplitPercent}% / Agent ${commission.ruleSnapshot.agentSplitPercent}%.`,
       });
       this.createNotification(commission.agentId, {
         channel: "IN_APP",
@@ -4437,7 +4437,7 @@ class AppStore {
     this.createNotification(user.id, {
       channel: "IN_APP",
       subject: "Agency account created",
-      body: `${agency.name} invited you to HomeLink. Sign in with your temporary setup password and update your profile.`,
+      body: `${agency.name} invited you to HouseLink. Sign in with your temporary setup password and update your profile.`,
     });
 
     return { user: this.publicUser(user), temporaryPassword };
@@ -4446,19 +4446,19 @@ class AppStore {
 
 const STORE_VERSION = 18;
 const globalStore = globalThis as typeof globalThis & {
-  __homelinkStore?: AppStore;
-  __homelinkStoreVersion?: number;
+  __houselinkStore?: AppStore;
+  __houselinkStoreVersion?: number;
   __settingsHydrateStarted?: boolean;
   __settingsHydratePromise?: Promise<void>;
   __storeHydrateStarted?: boolean;
-  __homelinkStoreHydrated?: boolean;
-  __homelinkStorePersistPending?: boolean;
-  __homelinkStoreHydratePromise?: Promise<void>;
-  __homelinkLegacyStoreWarningShown?: boolean;
+  __houselinkStoreHydrated?: boolean;
+  __houselinkStorePersistPending?: boolean;
+  __houselinkStoreHydratePromise?: Promise<void>;
+  __houselinkLegacyStoreWarningShown?: boolean;
 };
 
 function isStrictProduction() {
-  return process.env.HOMELINK_STRICT_PRODUCTION === "true";
+  return process.env.HOUSELINK_STRICT_PRODUCTION === "true";
 }
 
 function isPostgresBackedRuntime() {
@@ -4468,40 +4468,40 @@ function isPostgresBackedRuntime() {
 export function getStore() {
   if (
     isStrictProduction() &&
-    process.env.HOMELINK_ALLOW_LEGACY_STORE !== "true" &&
+    process.env.HOUSELINK_ALLOW_LEGACY_STORE !== "true" &&
     isPostgresBackedRuntime()
   ) {
     throw new Error(
       "Legacy in-memory AppStore is disabled in strict production. Route must use typed Postgres persistence.",
     );
   }
-  if (!globalStore.__homelinkStore || globalStore.__homelinkStoreVersion !== STORE_VERSION) {
+  if (!globalStore.__houselinkStore || globalStore.__houselinkStoreVersion !== STORE_VERSION) {
     const synced = loadPersistedStoreSync(STORE_VERSION);
-    globalStore.__homelinkStore = synced
+    globalStore.__houselinkStore = synced
       ? new AppStore(synced as StoreState)
       : new AppStore();
-    globalStore.__homelinkStoreVersion = STORE_VERSION;
+    globalStore.__houselinkStoreVersion = STORE_VERSION;
     globalStore.__settingsHydrateStarted = false;
     globalStore.__settingsHydratePromise = undefined;
     globalStore.__storeHydrateStarted = false;
-    globalStore.__homelinkStoreHydrated = Boolean(synced);
-    globalStore.__homelinkStorePersistPending = false;
-    globalStore.__homelinkStoreHydratePromise = undefined;
+    globalStore.__houselinkStoreHydrated = Boolean(synced);
+    globalStore.__houselinkStorePersistPending = false;
+    globalStore.__houselinkStoreHydratePromise = undefined;
 
     if (!synced && !isStrictProduction()) {
-      void persistStoreState(globalStore.__homelinkStore.snapshotState(), STORE_VERSION);
+      void persistStoreState(globalStore.__houselinkStore.snapshotState(), STORE_VERSION);
     }
   }
   if (!isStrictProduction() && !globalStore.__storeHydrateStarted) {
     globalStore.__storeHydrateStarted = true;
-    globalStore.__homelinkStoreHydratePromise = loadPersistedStore(STORE_VERSION).then((loaded) => {
-      if (loaded && globalStore.__homelinkStore && globalStore.__homelinkStoreVersion === STORE_VERSION) {
-        globalStore.__homelinkStore.hydratePersistedState(loaded);
+    globalStore.__houselinkStoreHydratePromise = loadPersistedStore(STORE_VERSION).then((loaded) => {
+      if (loaded && globalStore.__houselinkStore && globalStore.__houselinkStoreVersion === STORE_VERSION) {
+        globalStore.__houselinkStore.hydratePersistedState(loaded);
       }
-      globalStore.__homelinkStoreHydrated = true;
-      if (globalStore.__homelinkStorePersistPending && globalStore.__homelinkStore) {
-        globalStore.__homelinkStorePersistPending = false;
-        scheduleStorePersist(globalStore.__homelinkStore.snapshotState(), STORE_VERSION);
+      globalStore.__houselinkStoreHydrated = true;
+      if (globalStore.__houselinkStorePersistPending && globalStore.__houselinkStore) {
+        globalStore.__houselinkStorePersistPending = false;
+        scheduleStorePersist(globalStore.__houselinkStore.snapshotState(), STORE_VERSION);
       }
     });
   }
@@ -4509,18 +4509,18 @@ export function getStore() {
     globalStore.__settingsHydrateStarted = true;
     globalStore.__settingsHydratePromise = import("@/lib/settings/persist").then(({ loadPersistedSettings }) =>
       loadPersistedSettings().then((persisted) => {
-        if (persisted && globalStore.__homelinkStore) {
-          globalStore.__homelinkStore.applyPersistedSettings(persisted);
+        if (persisted && globalStore.__houselinkStore) {
+          globalStore.__houselinkStore.applyPersistedSettings(persisted);
         }
       }),
     );
   }
-  return globalStore.__homelinkStore;
+  return globalStore.__houselinkStore;
 }
 
 export async function getHydratedStore() {
   const store = getStore();
-  await globalStore.__homelinkStoreHydratePromise;
+  await globalStore.__houselinkStoreHydratePromise;
   await globalStore.__settingsHydratePromise;
   return store;
 }

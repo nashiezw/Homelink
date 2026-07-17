@@ -92,7 +92,7 @@ export function TenancyPaymentModal({
 
   async function createTenancyPayment() {
     if (!landlordUserId) {
-      showToast("This listing is not linked to a landlord account yet. Contact HomeLink support.", "error");
+      showToast("This listing is not linked to a landlord account yet. Contact HouseLink support.", "error");
       return;
     }
     if (!paymentMethod) {
@@ -109,7 +109,7 @@ export function TenancyPaymentModal({
     if (isLandlord) {
       const id = await lookupTenant();
       if (!id) {
-        showToast("Tenant email not found on HomeLink.", "error");
+        showToast("Tenant email not found on HouseLink.", "error");
         setBusy(false);
         return;
       }
@@ -174,7 +174,7 @@ export function TenancyPaymentModal({
 
         <div className="space-y-5 px-5 py-5">
           {paymentComplete ? (
-            <StatusCard tone="success" title="Payment recorded" body="HomeLink finance will confirm your tenancy record.">
+            <StatusCard tone="success" title="Payment recorded" body="HouseLink finance will confirm your tenancy record.">
               <Link href="/dashboard/tenancies">
                 <Button variant="secondary" className="mt-3">Open Tenancies</Button>
               </Link>
@@ -217,7 +217,7 @@ export function TenancyPaymentModal({
               />
 
               {isLandlord && (
-                <Field label="Tenant email on HomeLink">
+                <Field label="Tenant email on HouseLink">
                   <input
                     type="email"
                     placeholder="tenant@example.com"
@@ -263,7 +263,7 @@ export function TenancyPaymentModal({
                 <p className="font-semibold text-slate-700 dark:text-slate-300">What happens next</p>
                 <ol className="mt-2 list-decimal space-y-1 pl-4">
                   <li>Confirm amount and payment method</li>
-                  <li>Receive your HomeLink reference and bank details</li>
+                  <li>Receive your HouseLink reference and bank details</li>
                   <li>Pay and upload proof of payment</li>
                   <li>Finance verifies and activates your tenancy record</li>
                 </ol>

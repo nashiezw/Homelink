@@ -111,7 +111,7 @@ export async function canDownloadAcademyPath(input: {
 }) {
   if (isAcademyAdminRole(input.roles)) return true;
 
-  if (isFullTrainingManualUrl(`/uploads/academy/${input.relativePath}`) || input.relativePath.includes("homelink-zimbabwe-real-estate-agent-training-manual.pdf")) {
+  if (isFullTrainingManualUrl(`/uploads/academy/${input.relativePath}`) || input.relativePath.includes("houselink-zimbabwe-real-estate-agent-training-manual.pdf")) {
     if (!input.userId) return false;
     const approved = await getApprovedResourceKeys(input.userId);
     return approved.has(ACADEMY_MANUAL_RESOURCE_KEY);
@@ -303,7 +303,7 @@ export async function registerResourceAccess(input: {
       status: payableAmount > 0 ? PaymentStatus.PENDING : PaymentStatus.PAID,
       amount: payableAmount,
       currency: pricing.currency,
-      description: "HomeLink complete training manual",
+      description: "HouseLink complete training manual",
       plan: "academy_resource",
       method: input.paymentMethod || "bank_transfer",
       manual: payableAmount > 0,
@@ -342,7 +342,7 @@ export async function registerResourceAccess(input: {
       channel: "IN_APP",
       subject: isFree ? "Training manual unlocked" : "Training manual payment pending",
       body: isFree
-        ? "The complete HomeLink training manual is now available to download."
+        ? "The complete HouseLink training manual is now available to download."
         : "Upload proof of payment to unlock the complete training manual.",
     },
   });

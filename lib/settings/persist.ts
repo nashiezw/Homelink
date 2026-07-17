@@ -26,7 +26,7 @@ function defaults(): PersistedSettings {
 }
 
 function isStrictProduction() {
-  return process.env.HOMELINK_STRICT_PRODUCTION === "true";
+  return process.env.HOUSELINK_STRICT_PRODUCTION === "true";
 }
 
 function isSettingsDatabaseEnabled() {

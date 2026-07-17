@@ -130,13 +130,13 @@ export function PublicAgentProfile({ slug }: { slug: string }) {
   const territories = Array.isArray(data.territories) ? data.territories : [];
   const listings = Array.isArray(data.listings) ? data.listings : [];
   const ratings = Array.isArray(data.ratings) ? data.ratings : [];
-  const name = user?.name ?? "HomeLink Agent";
+  const name = user?.name ?? "HouseLink Agent";
   const averageRating = Number.isFinite(Number(profile.averageRating)) ? Number(profile.averageRating) : 0;
   const ratingCount = Number.isFinite(Number(profile.ratingCount)) ? Number(profile.ratingCount) : 0;
   const yearsExperience = Number.isFinite(Number(profile.yearsExperience)) ? Number(profile.yearsExperience) : 0;
   const completedDeals = Number.isFinite(Number(profile.completedDeals)) ? Number(profile.completedDeals) : 0;
   const level = profile.level && LEVEL_STYLES[profile.level] ? profile.level : "BRONZE";
-  const biography = profile.biography || `${name} is a verified HomeLink Zimbabwe agent.`;
+  const biography = profile.biography || `${name} is a verified HouseLink Zimbabwe agent.`;
   const specialisations = safeStringArray(profile.specialisations, ["Residential rentals", "Property sales"]);
   const languages = safeStringArray(profile.languages, ["English"]);
   const propertyTypes = safeStringArray(profile.propertyTypes, ["house", "flat"]);
@@ -235,7 +235,7 @@ export function PublicAgentProfile({ slug }: { slug: string }) {
                     className="inline-flex h-11 items-center justify-center rounded-xl bg-[#25D366] px-5 text-sm font-semibold text-white shadow-sm transition hover:brightness-105"
                   >
                     <MessageCircle className="mr-2 size-4" />
-                    WhatsApp HomeLink
+                    WhatsApp HouseLink
                   </a>
                 )}
                 <Link
@@ -243,10 +243,10 @@ export function PublicAgentProfile({ slug }: { slug: string }) {
                   className="inline-flex h-11 items-center justify-center rounded-xl bg-emerald-700 px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-800"
                 >
                   <Calendar className="mr-2 size-4" />
-                  Enquire via HomeLink
+                  Enquire via HouseLink
                 </Link>
                 <p className="text-center text-xs text-slate-500 dark:text-slate-400">
-                  Contact is routed through HomeLink to protect clients and agents.
+                  Contact is routed through HouseLink to protect clients and agents.
                 </p>
               </div>
             </div>
@@ -304,7 +304,7 @@ export function PublicAgentProfile({ slug }: { slug: string }) {
               <section>
                 <h2 className="text-xl font-semibold text-slate-950 dark:text-white">What clients say</h2>
                 <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-                  Verified reviews from completed deals on HomeLink
+                  Verified reviews from completed deals on HouseLink
                 </p>
 
                 {avgBreakdown && (
@@ -332,7 +332,7 @@ export function PublicAgentProfile({ slug }: { slug: string }) {
                   <ContactRow
                     icon={<MessageCircle className="size-4" />}
                     href={whatsappHref}
-                    label="WhatsApp HomeLink"
+                    label="WhatsApp HouseLink"
                     external
                   />
                 )}
@@ -392,7 +392,7 @@ export function PublicAgentProfile({ slug }: { slug: string }) {
                 <CredRow label="Performance tier" value={level} />
                 <CredRow
                   label="Training"
-                  value={profile.trainingCompleted ? "HomeLink certified" : "In progress"}
+                  value={profile.trainingCompleted ? "HouseLink certified" : "In progress"}
                   highlight={profile.trainingCompleted}
                 />
                 <CredRow label="Total ratings" value={String(ratingCount)} />

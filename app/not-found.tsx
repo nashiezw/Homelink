@@ -9,7 +9,7 @@ import type { Listing } from "@/lib/types";
 import { formatPrice } from "@/lib/utils";
 
 export const metadata = {
-  title: "Page not found | HomeLink",
+  title: "Page not found | HouseLink",
   robots: { index: false, follow: true },
 };
 
@@ -22,14 +22,14 @@ export default async function NotFoundPage() {
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_15%,rgba(16,185,129,0.14),transparent_32%),radial-gradient(circle_at_80%_20%,rgba(14,116,144,0.12),transparent_30%)]" />
         <div className="relative mx-auto grid min-h-[78vh] max-w-7xl gap-10 px-4 py-16 sm:px-6 lg:grid-cols-[1.05fr_0.95fr] lg:items-center lg:px-8">
           <div>
-            <p className="text-sm font-bold uppercase tracking-[0.22em] text-emerald-700">HomeLink Zimbabwe</p>
+            <p className="text-sm font-bold uppercase tracking-[0.22em] text-emerald-700">HouseLink Zimbabwe</p>
             <h1 className="mt-5 text-7xl font-black tracking-normal text-slate-950 sm:text-8xl lg:text-9xl">404</h1>
             <h2 className="mt-4 max-w-2xl text-3xl font-bold tracking-normal text-slate-900 sm:text-5xl">
               This property page has moved, expired, or never made it onto the market.
             </h2>
             <p className="mt-5 max-w-xl text-base leading-7 text-slate-600">
               The link may be incorrect, the listing may have been removed, or the page may now live at a new address.
-              Search HomeLink and we will get you back to verified properties quickly.
+              Search HouseLink and we will get you back to verified properties quickly.
             </p>
 
             <form action="/search" className="mt-8 flex max-w-2xl flex-col gap-3 rounded-xl border border-slate-200 bg-white p-2 shadow-sm sm:flex-row">
@@ -60,8 +60,8 @@ export default async function NotFoundPage() {
 
           <div className="relative min-h-[28rem] overflow-hidden rounded-2xl border border-emerald-100 bg-slate-950 shadow-2xl">
             <Image
-              src="/images/homelink-hero.png"
-              alt="HomeLink property search"
+              src="/images/houselink-hero.png"
+              alt="HouseLink property search"
               fill
               priority
               className="object-cover opacity-90"

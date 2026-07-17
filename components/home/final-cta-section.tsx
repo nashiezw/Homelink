@@ -16,7 +16,7 @@ export function FinalCtaSection({ content, imageUrl = "/images/roommates/room-sh
         <div className="relative mx-auto max-w-7xl overflow-hidden rounded-3xl bg-ink text-white shadow-hero">
           <Image
             src={imageUrl}
-            alt="HomeLink room sharing and property search support"
+            alt="HouseLink room sharing and property search support"
             fill
             className="object-cover opacity-35"
             sizes="100vw"

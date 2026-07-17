@@ -77,7 +77,7 @@ export function sniffUpload(buffer: Buffer, mime: string): { ok: true } | { ok: 
 }
 
 export async function scanUpload(buffer: Buffer, mime: string): Promise<{ ok: true } | { ok: false; reason: string }> {
-  const scannerUrl = process.env.HOMELINK_UPLOAD_SCAN_URL;
+  const scannerUrl = process.env.HOUSELINK_UPLOAD_SCAN_URL;
   if (!scannerUrl) {
     return requireStrictProductionConfig()
       ? { ok: false, reason: "Upload antivirus scanner is required in strict production." }
@@ -88,7 +88,7 @@ export async function scanUpload(buffer: Buffer, mime: string): Promise<{ ok: tr
     method: "POST",
     headers: {
       "Content-Type": mime,
-      "X-HomeLink-Upload-Scan": "1",
+      "X-HouseLink-Upload-Scan": "1",
     },
     body: new Uint8Array(buffer),
   }).catch((error: unknown) => ({ ok: false, statusText: error instanceof Error ? error.message : "Scanner unavailable" }));

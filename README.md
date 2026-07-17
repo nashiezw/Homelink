@@ -1,8 +1,8 @@
-# HomeLink Zimbabwe
+# HouseLink Zimbabwe
 
 Find Your Next Home with Confidence.
 
-HomeLink Zimbabwe is a website-first property marketplace for verified rooms,
+HouseLink Zimbabwe is a website-first property marketplace for verified rooms,
 houses, flats, cottages, commercial spaces, land, and roommate matching.
 
 ## Current Milestone

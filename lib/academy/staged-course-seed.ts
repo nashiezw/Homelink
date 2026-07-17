@@ -38,25 +38,25 @@ type ModuleSeed = {
 
 export const modules: ModuleSeed[] = [
   {
-    title: "Introduction to the HomeLink Zimbabwe Standard",
+    title: "Introduction to the HouseLink Zimbabwe Standard",
     stage: "Beginner",
-    description: "Orientation to HomeLink, professional expectations, and how to use the Academy programme.",
-    objectives: ["Understand HomeLink's mission and your role", "Navigate the Academy and resource kit", "Set professional development goals"],
+    description: "Orientation to HouseLink, professional expectations, and how to use the Academy programme.",
+    objectives: ["Understand HouseLink's mission and your role", "Navigate the Academy and resource kit", "Set professional development goals"],
     lessons: [
       {
-        title: "Welcome to HomeLink Zimbabwe",
+        title: "Welcome to HouseLink Zimbabwe",
         stage: "Beginner",
-        summary: "Your official entry into the HomeLink agent community and Zimbabwe's premium property marketplace.",
-        richText: `<p>Welcome to HomeLink Zimbabwe — a marketplace built on trust, verified listings, and professional agent standards. As an agent, you represent both your clients and the HomeLink brand in every conversation, viewing, and transaction.</p><p>This programme is structured in stages: <strong>Beginner</strong>, <strong>Intermediate</strong>, and <strong>Advanced</strong>, so you build confidence step by step rather than trying to absorb everything at once.</p><p>Complete each lesson in order, download the branded tools provided, and apply them in the field before moving to the next stage.</p>`,
-        objectives: ["Explain HomeLink's role in Zimbabwe property", "Describe the staged training pathway", "Commit to professional conduct standards"],
+        summary: "Your official entry into the HouseLink agent community and Zimbabwe's premium property marketplace.",
+        richText: `<p>Welcome to HouseLink Zimbabwe — a marketplace built on trust, verified listings, and professional agent standards. As an agent, you represent both your clients and the HouseLink brand in every conversation, viewing, and transaction.</p><p>This programme is structured in stages: <strong>Beginner</strong>, <strong>Intermediate</strong>, and <strong>Advanced</strong>, so you build confidence step by step rather than trying to absorb everything at once.</p><p>Complete each lesson in order, download the branded tools provided, and apply them in the field before moving to the next stage.</p>`,
+        objectives: ["Explain HouseLink's role in Zimbabwe property", "Describe the staged training pathway", "Commit to professional conduct standards"],
         estimatedMinutes: 20,
-        discussionPrompt: "What motivated you to join HomeLink, and what does professional success look like for you in the next 90 days?",
+        discussionPrompt: "What motivated you to join HouseLink, and what does professional success look like for you in the next 90 days?",
       },
       {
         title: "How to use this Academy",
         stage: "Beginner",
         summary: "How to progress through modules, use branded downloads, and track your certification path.",
-        richText: `<p>Each lesson includes reading material, practical downloads, and checkpoints. Branded PDFs in this Academy are print-ready HomeLink resources — forms, checklists, and planners — not generic placeholders.</p><p>Use <strong>Continue learning</strong> on your dashboard to resume where you left off. Bookmark lessons you want to revisit. The full training manual is available once in the Resource Library for reference — individual lessons link only to the tools you need for that topic.</p><p>Quizzes and assignments appear at stage checkpoints. Pass marks and certificates are tracked in your learner dashboard.</p>`,
+        richText: `<p>Each lesson includes reading material, practical downloads, and checkpoints. Branded PDFs in this Academy are print-ready HouseLink resources — forms, checklists, and planners — not generic placeholders.</p><p>Use <strong>Continue learning</strong> on your dashboard to resume where you left off. Bookmark lessons you want to revisit. The full training manual is available once in the Resource Library for reference — individual lessons link only to the tools you need for that topic.</p><p>Quizzes and assignments appear at stage checkpoints. Pass marks and certificates are tracked in your learner dashboard.</p>`,
         objectives: ["Navigate the learner dashboard", "Use lesson downloads correctly", "Understand quiz and certificate requirements"],
         estimatedMinutes: 15,
         resourceTitles: ["Agent Daily Workflow"],
@@ -64,8 +64,8 @@ export const modules: ModuleSeed[] = [
       {
         title: "Your journey to becoming a professional agent",
         stage: "Beginner",
-        summary: "Set goals and routines for a sustainable, ethical real estate career with HomeLink.",
-        richText: `<p>Top agents combine daily discipline with client care. Your journey starts with honest communication, accurate records, and consistent follow-through — not shortcuts.</p><p>Use the Personal Goal Planner to define income targets, skill milestones, and weekly activity goals. Review progress weekly and adjust based on real pipeline data.</p><p>HomeLink expects every agent to protect client confidentiality, represent properties accurately, and escalate issues through proper channels.</p>`,
+        summary: "Set goals and routines for a sustainable, ethical real estate career with HouseLink.",
+        richText: `<p>Top agents combine daily discipline with client care. Your journey starts with honest communication, accurate records, and consistent follow-through — not shortcuts.</p><p>Use the Personal Goal Planner to define income targets, skill milestones, and weekly activity goals. Review progress weekly and adjust based on real pipeline data.</p><p>HouseLink expects every agent to protect client confidentiality, represent properties accurately, and escalate issues through proper channels.</p>`,
         objectives: ["Set 90-day professional goals", "Adopt weekly review habits", "Identify your first skill priorities"],
         estimatedMinutes: 25,
         resourceTitles: ["Personal Goal Planner", "Weekly Performance Review"],
@@ -76,21 +76,21 @@ export const modules: ModuleSeed[] = [
     title: "Foundations of Real Estate",
     stage: "Beginner",
     description: "Industry basics, agent duties, ethics, terminology, and your first knowledge checkpoint.",
-    objectives: ["Master core real estate concepts", "Apply HomeLink ethics in daily work", "Pass the foundations knowledge check"],
+    objectives: ["Master core real estate concepts", "Apply HouseLink ethics in daily work", "Pass the foundations knowledge check"],
     lessons: [
       {
         title: "Understanding the real estate industry",
         stage: "Beginner",
         summary: "How sales, lettings, and property management work in Zimbabwe's market context.",
-        richText: `<p>Real estate in Zimbabwe spans residential sales, rentals, commercial property, and land. Agents connect owners, buyers, tenants, and landlords while managing documentation, viewings, and negotiations.</p><p>Success depends on market knowledge, reliable data, and professional networks — not pressure tactics. HomeLink gives you a verified platform; your job is to add local expertise and trustworthy service.</p>`,
-        objectives: ["Describe key market segments", "Explain the agent's place in a transaction", "Identify HomeLink's marketplace advantages"],
+        richText: `<p>Real estate in Zimbabwe spans residential sales, rentals, commercial property, and land. Agents connect owners, buyers, tenants, and landlords while managing documentation, viewings, and negotiations.</p><p>Success depends on market knowledge, reliable data, and professional networks — not pressure tactics. HouseLink gives you a verified platform; your job is to add local expertise and trustworthy service.</p>`,
+        objectives: ["Describe key market segments", "Explain the agent's place in a transaction", "Identify HouseLink's marketplace advantages"],
         estimatedMinutes: 30,
       },
       {
         title: "Role, duties and responsibilities of a professional agent",
         stage: "Beginner",
-        summary: "What clients and HomeLink expect from you every day.",
-        richText: `<p>Your duties include accurate listing information, timely communication, safe viewings, proper documentation, and transparent fee discussions. You must never misrepresent availability, price, or property condition.</p><p>Document every material conversation and keep client files complete. When in doubt, ask a senior agent or HomeLink admin before proceeding.</p>`,
+        summary: "What clients and HouseLink expect from you every day.",
+        richText: `<p>Your duties include accurate listing information, timely communication, safe viewings, proper documentation, and transparent fee discussions. You must never misrepresent availability, price, or property condition.</p><p>Document every material conversation and keep client files complete. When in doubt, ask a senior agent or HouseLink admin before proceeding.</p>`,
         objectives: ["List core agent duties", "Document client interactions properly", "Recognise when to escalate"],
         estimatedMinutes: 35,
         resourceTitles: ["Client Information Sheet"],
@@ -98,9 +98,9 @@ export const modules: ModuleSeed[] = [
       {
         title: "Professional ethics, conduct and customer service",
         stage: "Beginner",
-        summary: "Ethical standards that protect clients, HomeLink, and your reputation.",
-        richText: `<p>Ethical conduct means honesty, confidentiality, fair dealing, and respect — especially under pressure. Never share one client's details with another without consent. Never guarantee outcomes you cannot control.</p><p>Customer service on HomeLink is responsive, clear, and solution-focused. Acknowledge messages promptly, confirm appointments in writing, and follow up after every viewing.</p>`,
-        objectives: ["Apply HomeLink ethics checklist", "Handle confidential information safely", "Deliver consistent client communication"],
+        summary: "Ethical standards that protect clients, HouseLink, and your reputation.",
+        richText: `<p>Ethical conduct means honesty, confidentiality, fair dealing, and respect — especially under pressure. Never share one client's details with another without consent. Never guarantee outcomes you cannot control.</p><p>Customer service on HouseLink is responsive, clear, and solution-focused. Acknowledge messages promptly, confirm appointments in writing, and follow up after every viewing.</p>`,
+        objectives: ["Apply HouseLink ethics checklist", "Handle confidential information safely", "Deliver consistent client communication"],
         estimatedMinutes: 30,
       },
       {
@@ -126,7 +126,7 @@ export const modules: ModuleSeed[] = [
     title: "Prospecting, Listings and Property Marketing",
     stage: "Intermediate",
     description: "Generate business, win listings, capture quality data, and market properties professionally.",
-    objectives: ["Run a daily prospecting routine", "Publish compliant listings", "Use HomeLink marketing tools"],
+    objectives: ["Run a daily prospecting routine", "Publish compliant listings", "Use HouseLink marketing tools"],
     lessons: [
       {
         title: "Prospecting and daily business generation",
@@ -141,7 +141,7 @@ export const modules: ModuleSeed[] = [
         title: "Winning listings and conducting property appraisals",
         stage: "Intermediate",
         summary: "Present professionally, appraise accurately, and secure mandates.",
-        richText: `<p>Listing presentations should demonstrate market knowledge, marketing plan, and HomeLink's reach. Appraisals must be evidence-based — comparable sales, condition, location, and demand.</p><p>Complete the Property Appraisal Form on every serious listing appointment and attach photos where possible.</p>`,
+        richText: `<p>Listing presentations should demonstrate market knowledge, marketing plan, and HouseLink's reach. Appraisals must be evidence-based — comparable sales, condition, location, and demand.</p><p>Complete the Property Appraisal Form on every serious listing appointment and attach photos where possible.</p>`,
         objectives: ["Structure a listing presentation", "Complete appraisal documentation", "Handle common vendor objections"],
         estimatedMinutes: 40,
         resourceTitles: ["Property Appraisal Form", "Listing Agreement Template", "Objection Handling Guide"],
@@ -158,8 +158,8 @@ export const modules: ModuleSeed[] = [
       {
         title: "Property photography, descriptions and marketing channels",
         stage: "Intermediate",
-        summary: "Present properties at a premium standard across HomeLink and social channels.",
-        richText: `<p>Photography should be bright, straight, and honest — no misleading angles. Descriptions must highlight features without exaggeration.</p><p>Follow the Property Photography and Marketing checklists. Use WhatsApp and social templates for consistent HomeLink-branded outreach.</p>`,
+        summary: "Present properties at a premium standard across HouseLink and social channels.",
+        richText: `<p>Photography should be bright, straight, and honest — no misleading angles. Descriptions must highlight features without exaggeration.</p><p>Follow the Property Photography and Marketing checklists. Use WhatsApp and social templates for consistent HouseLink-branded outreach.</p>`,
         objectives: ["Apply photography standards", "Write accurate descriptions", "Execute multi-channel marketing"],
         estimatedMinutes: 40,
         resourceTitles: ["Property Photography Checklist", "Property Marketing Checklist", "Property Description Template", "WhatsApp Marketing Templates", "Social Media Content Planner"],
@@ -204,8 +204,8 @@ export const modules: ModuleSeed[] = [
         title: "Managing property viewings",
         stage: "Intermediate",
         summary: "Safe, punctual, professional viewings with full records.",
-        richText: `<p>Confirm viewings in writing, arrive early, respect the property, and never rush clients. Safety first: verify identity where required and follow HomeLink viewing guidelines.</p><p>Every viewing goes in the Property Viewing Register; feedback captured on the Viewing Feedback Form drives next steps.</p>`,
-        objectives: ["Run viewings to HomeLink standard", "Complete viewing register entries", "Capture structured feedback"],
+        richText: `<p>Confirm viewings in writing, arrive early, respect the property, and never rush clients. Safety first: verify identity where required and follow HouseLink viewing guidelines.</p><p>Every viewing goes in the Property Viewing Register; feedback captured on the Viewing Feedback Form drives next steps.</p>`,
+        objectives: ["Run viewings to HouseLink standard", "Complete viewing register entries", "Capture structured feedback"],
         estimatedMinutes: 35,
         resourceTitles: ["Property Viewing Register", "Viewing Feedback Form", "Open House Checklist", "Appointment Schedule"],
       },
@@ -232,13 +232,13 @@ export const modules: ModuleSeed[] = [
   {
     title: "Documentation, Legal Awareness and Compliance",
     stage: "Advanced",
-    description: "Handle documents, contracts, and confidentiality to HomeLink standard.",
+    description: "Handle documents, contracts, and confidentiality to HouseLink standard.",
     objectives: ["Maintain complete client files", "Apply compliance checklists", "Protect confidential data"],
     lessons: [
       {
         title: "Why documentation matters",
         stage: "Advanced",
-        summary: "Documentation protects clients, agents, and HomeLink from dispute and loss.",
+        summary: "Documentation protects clients, agents, and HouseLink from dispute and loss.",
         richText: `<p>Verbal agreements fail under pressure. Written, signed, dated records create clarity and audit trails. Treat every file as if it will be reviewed tomorrow.</p>`,
         objectives: ["Explain documentation risks", "Adopt file-first habits", "Use checklists consistently"],
         estimatedMinutes: 25,
@@ -247,7 +247,7 @@ export const modules: ModuleSeed[] = [
         title: "Common documents used by real estate agents",
         stage: "Advanced",
         summary: "Know which form applies to each transaction stage.",
-        richText: `<p>From registration forms to mandates, inspection reports, applications, and compliance submissions — each document has a purpose. Keep master copies in your resource kit and complete them fully before upload to HomeLink or branch records.</p>`,
+        richText: `<p>From registration forms to mandates, inspection reports, applications, and compliance submissions — each document has a purpose. Keep master copies in your resource kit and complete them fully before upload to HouseLink or branch records.</p>`,
         objectives: ["Match documents to transaction stages", "Access the correct branded templates", "Avoid incomplete submissions"],
         estimatedMinutes: 30,
         resourceTitles: ["Document Submission Checklist", "Seller Information Form", "Landlord Registration Form"],
@@ -316,15 +316,15 @@ export const modules: ModuleSeed[] = [
       {
         title: "Professional reputation and long-term growth",
         stage: "Advanced",
-        summary: "Reviews, referrals, and brand building on HomeLink.",
-        richText: `<p>Your reputation is your most valuable asset. Deliver on promises, respond professionally to complaints, and ask satisfied clients for reviews through proper HomeLink channels.</p><p>Personal branding should align with HomeLink standards — professional photos, consistent messaging, no misleading claims.</p>`,
-        objectives: ["Grow reviews ethically", "Build referral habits", "Align personal brand with HomeLink"],
+        summary: "Reviews, referrals, and brand building on HouseLink.",
+        richText: `<p>Your reputation is your most valuable asset. Deliver on promises, respond professionally to complaints, and ask satisfied clients for reviews through proper HouseLink channels.</p><p>Personal branding should align with HouseLink standards — professional photos, consistent messaging, no misleading claims.</p>`,
+        objectives: ["Grow reviews ethically", "Build referral habits", "Align personal brand with HouseLink"],
         estimatedMinutes: 30,
       },
       {
         title: "Final competency checklist",
         stage: "Advanced",
-        summary: "Confirm readiness for the Certified HomeLink Agent final examination.",
+        summary: "Confirm readiness for the Certified HouseLink Agent final examination.",
         richText: `<p>Before the final exam, verify you have completed all stage lessons, downloaded and used key branded tools, passed module quizzes, and submitted practical assignments.</p><p>The full training manual remains in the Resource Library for deep reference — your certification is based on this staged programme and assessments.</p>`,
         objectives: ["Complete competency checklist", "Schedule final examination", "Identify final revision areas"],
         estimatedMinutes: 30,
@@ -336,14 +336,14 @@ export const modules: ModuleSeed[] = [
   {
     title: "Professional Agent Resource Kit",
     stage: "Professional Kit",
-    description: "HomeLink-branded print-ready forms, planners, flowcharts, and templates — your field toolkit.",
+    description: "HouseLink-branded print-ready forms, planners, flowcharts, and templates — your field toolkit.",
     objectives: ["Access all branded Academy downloads", "Know which tool to use when", "Keep a complete digital field kit"],
     lessons: [
       {
         title: "Client document forms",
         stage: "Professional Kit",
-        summary: "Print-ready buyer, seller, tenant, and landlord forms with HomeLink branding.",
-        richText: `<p>These A4 forms are recreated for HomeLink agents — use them on every qualified client engagement. Download, print or fill digitally, and store copies in the client file.</p>`,
+        summary: "Print-ready buyer, seller, tenant, and landlord forms with HouseLink branding.",
+        richText: `<p>These A4 forms are recreated for HouseLink agents — use them on every qualified client engagement. Download, print or fill digitally, and store copies in the client file.</p>`,
         objectives: ["Download all client registration forms", "Use correct form per client type", "File completed forms properly"],
         estimatedMinutes: 20,
         resourceTitles: ["Seller Information Form", "Buyer Registration Form", "Tenant Registration Form", "Landlord Registration Form", "Client Information Sheet"],
@@ -360,8 +360,8 @@ export const modules: ModuleSeed[] = [
       {
         title: "Marketing templates and scripts",
         stage: "Professional Kit",
-        summary: "WhatsApp, social, email, and telephone scripts aligned to HomeLink.",
-        richText: `<p>Consistent messaging builds brand trust. Adapt templates to each client but keep tone professional and compliant with HomeLink marketing rules.</p><p><strong>Practical exercise:</strong> Customise the WhatsApp introduction template for three property types you list most often. Save versions in your toolkit folder.</p><p>Never promise outcomes in scripts — focus on clarity, next steps, and permission to follow up.</p>`,
+        summary: "WhatsApp, social, email, and telephone scripts aligned to HouseLink.",
+        richText: `<p>Consistent messaging builds brand trust. Adapt templates to each client but keep tone professional and compliant with HouseLink marketing rules.</p><p><strong>Practical exercise:</strong> Customise the WhatsApp introduction template for three property types you list most often. Save versions in your toolkit folder.</p><p>Never promise outcomes in scripts — focus on clarity, next steps, and permission to follow up.</p>`,
         objectives: ["Use WhatsApp and social templates", "Apply telephone and cold-call scripts", "Plan campaigns with content planner"],
         estimatedMinutes: 25,
         resourceTitles: ["WhatsApp Marketing Templates", "Social Media Content Planner", "Email Templates", "Telephone Scripts", "Cold Calling Scripts"],
@@ -413,7 +413,7 @@ async function archiveLegacyCourse(prisma: ReturnType<typeof getMainPrisma>) {
         status: "ARCHIVED",
         registrationOpen: false,
         featured: false,
-        title: "HomeLink Zimbabwe Real Estate Agent Training (Legacy)",
+        title: "HouseLink Zimbabwe Real Estate Agent Training (Legacy)",
         updatedAt: new Date(),
       },
     })
@@ -466,7 +466,7 @@ async function migrateLegacyEnrollments(prisma: ReturnType<typeof getMainPrisma>
     where: { courseId: LEGACY_COURSE_ID },
     data: {
       status: "EXPIRED",
-      adminNote: "Superseded by the HomeLink Agent Foundations programme. Your access continues on the new staged certification path.",
+      adminNote: "Superseded by the HouseLink Agent Foundations programme. Your access continues on the new staged certification path.",
     },
   });
   await prisma.courseEnrolment.updateMany({
@@ -485,8 +485,8 @@ export async function seedStagedCourseStructure(options?: { forceRebuild?: boole
 
   const category = await prisma.trainingCategory.upsert({
     where: { slug: "new-agent-programme" },
-    create: { name: "New Agent Programme", slug: "new-agent-programme", description: "Three-course HomeLink agent certification — Beginner, Intermediate, Advanced.", sortOrder: 0 },
-    update: { name: "New Agent Programme", description: "Three-course HomeLink agent certification.", active: true },
+    create: { name: "New Agent Programme", slug: "new-agent-programme", description: "Three-course HouseLink agent certification — Beginner, Intermediate, Advanced.", sortOrder: 0 },
+    update: { name: "New Agent Programme", description: "Three-course HouseLink agent certification.", active: true },
   });
 
   const totalExisting = await prisma.trainingLesson.count({
@@ -517,13 +517,13 @@ export async function seedStagedCourseStructure(options?: { forceRebuild?: boole
         shortDescription: programmeCourse.shortDescription,
         description: programmeCourse.description,
         categoryId: category.id,
-        instructor: "HomeLink Zimbabwe Academy",
-        coInstructors: ["HomeLink Training Team"],
+        instructor: "HouseLink Zimbabwe Academy",
+        coInstructors: ["HouseLink Training Team"],
         learningOutcomes: programmeCourse.learningOutcomes,
         targetAudience: programmeCourse.sortOrder === 0
-          ? "New HomeLink agents and public learners starting certification"
+          ? "New HouseLink agents and public learners starting certification"
           : `Agents who completed ${ACADEMY_PROGRAMME_COURSES[programmeCourse.sortOrder - 1]?.title ?? "the previous programme"}`,
-        tags: [programmeCourse.theme.label.toLowerCase(), "homelink", "certification", "agent"],
+        tags: [programmeCourse.theme.label.toLowerCase(), "houselink", "certification", "agent"],
         difficulty: programmeCourse.difficulty,
         durationMinutes: lessonCount * 30,
         estimatedHours: Math.max(1, Math.ceil((lessonCount * 30) / 60)),
@@ -540,8 +540,8 @@ export async function seedStagedCourseStructure(options?: { forceRebuild?: boole
         featured: programmeCourse.featured,
         visibility: "PUBLIC",
         roleNames: ["AGENT", "ADMIN", "PUBLIC_LEARNER"],
-        thumbnailUrl: "/brand/homelink-full-lockup.png",
-        bannerUrl: "/brand/homelink-full-lockup.png",
+        thumbnailUrl: "/brand/houselink-full-lockup.png",
+        bannerUrl: "/brand/houselink-full-lockup.png",
         enrollmentType: "OPEN",
       },
       update: {
@@ -604,7 +604,7 @@ export async function seedStagedCourseStructure(options?: { forceRebuild?: boole
                             const item = manifestMap.get(title);
                             return {
                               title: item?.title ?? title,
-                              body: item?.description ?? "HomeLink branded print-ready resource.",
+                              body: item?.description ?? "HouseLink branded print-ready resource.",
                               type: "PDF",
                               sortOrder: index,
                             };

@@ -1,7 +1,7 @@
 import type { PaymentGatewayConfig, PaymentSettings, PlatformSettings } from "@/lib/settings/types";
 import { buildDefaultGeo } from "@/lib/settings/geo";
 
-const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://homelinkzim.co.zw";
+const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://houselinkzim.co.zw";
 
 function env(name: string) {
   return process.env[name]?.trim() ?? "";
@@ -76,7 +76,7 @@ export const defaultPaymentSettings: PaymentSettings = {
   },
   bankDetails: {
     bankName: "CBZ Bank",
-    accountName: "HomeLink Zimbabwe Pvt Ltd",
+    accountName: "HouseLink Zimbabwe Pvt Ltd",
     accountNumber: "1234567890",
     branch: "Harare Main",
     swiftCode: "COBZZWHX",
@@ -89,10 +89,10 @@ export const defaultPaymentSettings: PaymentSettings = {
       enabled: true,
       requiresProof: true,
       bankName: "CBZ Bank",
-      accountName: "HomeLink Zimbabwe Pvt Ltd",
+      accountName: "HouseLink Zimbabwe Pvt Ltd",
       accountNumber: "1234567890",
       branch: "Harare Main",
-      instructions: "Use your HomeLink payment reference as the bank transfer reference, then upload the proof of payment.",
+      instructions: "Use your HouseLink payment reference as the bank transfer reference, then upload the proof of payment.",
     },
     {
       id: "zipit",
@@ -100,18 +100,18 @@ export const defaultPaymentSettings: PaymentSettings = {
       type: "bank",
       enabled: true,
       requiresProof: true,
-      accountName: "HomeLink Zimbabwe Pvt Ltd",
+      accountName: "HouseLink Zimbabwe Pvt Ltd",
       accountNumber: "1234567890",
       bankName: "CBZ Bank",
-      instructions: "Send ZIPIT using your HomeLink payment reference and upload the confirmation receipt.",
+      instructions: "Send ZIPIT using your HouseLink payment reference and upload the confirmation receipt.",
     },
     {
       id: "cash",
-      label: "Cash at HomeLink office",
+      label: "Cash at HouseLink office",
       type: "cash",
       enabled: true,
       requiresProof: true,
-      instructions: "Pay at a HomeLink office and upload or provide the receipt number for finance approval.",
+      instructions: "Pay at a HouseLink office and upload or provide the receipt number for finance approval.",
     },
   ],
   gateways: [
@@ -191,7 +191,7 @@ export const defaultPaymentSettings: PaymentSettings = {
 };
 
 export const defaultPlatformSettings: PlatformSettings = {
-  platformName: "HomeLink Zimbabwe",
+  platformName: "HouseLink Zimbabwe",
   logoUrl: "/logo.svg",
   primaryColor: "#059669",
   secondaryColor: "#0891b2",
@@ -229,13 +229,13 @@ export const defaultPlatformSettings: PlatformSettings = {
     savedSearches: true,
   },
   seo: {
-    title: "HomeLink Zimbabwe - Find Rooms, Houses & Land",
+    title: "HouseLink Zimbabwe - Find Rooms, Houses & Land",
     description: "Zimbabwe's property marketplace for rooms, houses, flats, land, and roommate matching.",
     keywords: "property, zimbabwe, rent, harare, bulawayo, rooms",
   },
   contact: {
-    supportEmail: "support@homelinkzim.co.zw",
-    careersEmail: "careers@homelinkzim.co.zw",
+    supportEmail: "support@houselinkzim.co.zw",
+    careersEmail: "careers@houselinkzim.co.zw",
     phoneNumber: "+263771234567",
     phoneLabel: "+263 77 123 4567",
     whatsappNumber: "+263771234567",
@@ -330,7 +330,7 @@ export const defaultPlatformSettings: PlatformSettings = {
     smtpPort: envNumber("SMTP_PORT", 587),
     smtpUser: env("SMTP_USER") || (env("RESEND_API_KEY") ? "resend" : ""),
     smtpPass: env("SMTP_PASS") || env("SMTP_PASSWORD") || env("RESEND_API_KEY"),
-    smtpFrom: env("SMTP_FROM") || env("EMAIL_FROM") || env("RESEND_FROM") || env("FROM_EMAIL") || "support@homelinkzim.co.zw",
+    smtpFrom: env("SMTP_FROM") || env("EMAIL_FROM") || env("RESEND_FROM") || env("FROM_EMAIL") || "support@houselinkzim.co.zw",
     analyticsId: env("NEXT_PUBLIC_ANALYTICS_ID"),
     cdnUrl: env("NEXT_PUBLIC_CDN_URL"),
   },
@@ -350,14 +350,14 @@ export const defaultPlatformSettings: PlatformSettings = {
       enquiry_created: "New {{enquiryType}} enquiry on {{listingTitle}} from {{seekerName}}. Reference: {{enquiryId}}.",
     },
     smsTemplates: {
-      otp: "Your HomeLink code is {{code}}",
+      otp: "Your HouseLink code is {{code}}",
       enquiry: "New enquiry on {{listing}}",
       enquiry_created: "New {{enquiryType}} enquiry on {{listingTitle}} from {{seekerName}}. Reference: {{enquiryId}}.",
     },
     whatsappTemplates: {
       enquiry: "Hi {{name}}, you have a new enquiry on {{listing}}.",
       new_enquiry_assigned: "New enquiry on {{listingTitle}} from {{seekerName}}.",
-      new_enquiry_owner: "{{seekerName}} enquired about {{listingTitle}}. Your HomeLink agent will manage this lead.",
+      new_enquiry_owner: "{{seekerName}} enquired about {{listingTitle}}. Your HouseLink agent will manage this lead.",
     },
   },
   enquiries: {

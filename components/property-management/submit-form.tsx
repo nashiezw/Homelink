@@ -56,7 +56,7 @@ export function PropertyManagementForm() {
   return (
     <PageShell
       eyebrow="Property Management"
-      title="Let HomeLink manage your property"
+      title="Let HouseLink manage your property"
       description="Submit your property for professional management. Our AI will match you with the best consultant in your area."
     >
       <form onSubmit={(e) => void submit(e)} className="mx-auto max-w-2xl space-y-4 rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-900">

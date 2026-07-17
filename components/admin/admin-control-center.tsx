@@ -134,7 +134,7 @@ export function AdminControlCenter() {
   return (
     <div className="space-y-6 sm:space-y-8">
       <AdminPageHeader
-        eyebrow="HomeLink Zimbabwe - Enterprise Control Centre"
+        eyebrow="HouseLink Zimbabwe - Enterprise Control Centre"
         title={getAdminTabLabel(tab)}
         description={tabDescriptions[tab]}
       />
@@ -323,7 +323,7 @@ const tabDescriptions: Record<AdminTab, string> = {
   proptech: "Appointment booking, signed documents, AI market intelligence, virtual tour analytics, and notification operations in one enterprise dashboard.",
   landlords: "Verify landlords, manage agencies, and control premium tiers.",
   agents: "Recruit agents, approve applications, pay commissions, and manage territories.",
-  academy: "Standalone enterprise LMS for HomeLink agent training, certification, documents, videos, live learning, and analytics.",
+  academy: "Standalone enterprise LMS for HouseLink agent training, certification, documents, videos, live learning, and analytics.",
   "property-management": "Full property management request workflow from intake to completion.",
   "holiday-homes": "Manage holiday listings, seasonal settings, host reviews, and featured placement.",
   bookings: "End-to-end booking operations: enquiries, approvals, calendar view, guest details, and status tracking.",

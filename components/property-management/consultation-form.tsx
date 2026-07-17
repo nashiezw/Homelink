@@ -91,7 +91,7 @@ export function ConsultationForm({ id, className, onSuccess }: ConsultationFormP
           Reference <span className="font-semibold text-emerald-700">{success}</span>
         </p>
         <p className="mt-1 text-center text-sm text-slate-500">
-          A HomeLink consultant will contact you within 24 hours.
+          A HouseLink consultant will contact you within 24 hours.
         </p>
         <div className="mt-6 space-y-2">
           {user ? (

@@ -31,7 +31,7 @@ export async function POST(request: Request, { params }: RouteContext) {
 
   const body = await request.json();
   const mediaType = body.mediaType === "video" ? "video" : body.mediaType === "document" ? "document" : "image";
-  const folder = `homelink/listings/${id}`;
+  const folder = `houselink/listings/${id}`;
   const cloudinary = createCloudinaryUploadIntent({
     folder,
     publicIdPrefix: `${id}/${userId.slice(0, 8)}`,

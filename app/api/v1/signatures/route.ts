@@ -43,7 +43,7 @@ export async function POST(request: Request) {
     subjectType: String(body.subjectType),
     subjectId: String(body.subjectId),
     listingId: body.listingId,
-    title: String(body.title ?? "HomeLink agreement"),
+    title: String(body.title ?? "HouseLink agreement"),
     signerUserId: userId ?? body.signerUserId,
     signerName: String(body.signerName),
     signerEmail: body.signerEmail,

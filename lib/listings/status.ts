@@ -98,7 +98,7 @@ export function listingStatusMetaFromValues(status?: string, intent?: ListingInt
         label: "VIEWING IN PROGRESS",
         shortLabel: "Viewing in progress",
         tone: "yellow",
-        description: "A serious viewing is underway. Ask HomeLink before travelling or paying.",
+        description: "A serious viewing is underway. Ask HouseLink before travelling or paying.",
       };
     case "RENTED":
       return {

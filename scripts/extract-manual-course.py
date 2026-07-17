@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Extract HomeLink Agent Training Manual into LMS course JSON."""
+"""Extract HouseLink Agent Training Manual into LMS course JSON."""
 
 from __future__ import annotations
 
@@ -12,8 +12,8 @@ import pypdf
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_PDF = Path(r"D:\New folder\Desktop\Real Estate Business\REAL ESTATE AGENT TRAINING MANUAL.pdf")
-FALLBACK_PDF = ROOT / "public" / "uploads" / "academy" / "homelink-zimbabwe-real-estate-agent-training-manual.pdf"
-OUT_PATH = ROOT / "lib" / "academy" / "data" / "homelink-agent-course.json"
+FALLBACK_PDF = ROOT / "public" / "uploads" / "academy" / "houselink-zimbabwe-real-estate-agent-training-manual.pdf"
+OUT_PATH = ROOT / "lib" / "academy" / "data" / "houselink-agent-course.json"
 
 SKIP_TITLES = {
     "contents", "disclaimer", "professional standards", "publisher", "page",
@@ -101,7 +101,7 @@ def build_structure(entries: list[dict]) -> list[dict]:
         if module_title:
             current = {
                 "title": module_title,
-                "description": f"Official HomeLink Zimbabwe training module: {module_title}.",
+                "description": f"Official HouseLink Zimbabwe training module: {module_title}.",
                 "objectives": [],
                 "lessons": [],
             }
@@ -113,8 +113,8 @@ def build_structure(entries: list[dict]) -> list[dict]:
             continue
         if current is None:
             current = {
-                "title": "Introduction to the HomeLink Zimbabwe Standard",
-                "description": "Welcome, orientation and professional standards for HomeLink agents.",
+                "title": "Introduction to the HouseLink Zimbabwe Standard",
+                "description": "Welcome, orientation and professional standards for HouseLink agents.",
                 "objectives": [],
                 "lessons": [],
             }
@@ -189,7 +189,7 @@ def extract_lesson_content(reader: pypdf.PdfReader, start_page: int, end_page: i
         html_parts.append(f"<p>{html.escape(para.replace(chr(10), ' '))}</p>")
 
     rich = "\n".join(html_parts) if html_parts else f"<p>{html.escape(plain[:4000])}</p>"
-    summary = paragraphs[0][:280] + ("..." if len(paragraphs[0]) > 280 else "") if paragraphs else "Official HomeLink training lesson content."
+    summary = paragraphs[0][:280] + ("..." if len(paragraphs[0]) > 280 else "") if paragraphs else "Official HouseLink training lesson content."
 
     return {
         "summary": summary,
@@ -227,10 +227,10 @@ def enrich_modules(reader: pypdf.PdfReader, modules: list[dict]) -> list[dict]:
                 "startPage": start,
                 **content,
                 "resources": [
-                    {"title": "Official Training Manual (PDF)", "body": "Download the complete HomeLink Zimbabwe Real Estate Agent Training Manual.", "type": "PDF"},
+                    {"title": "Official Training Manual (PDF)", "body": "Download the complete HouseLink Zimbabwe Real Estate Agent Training Manual.", "type": "PDF"},
                 ],
                 "downloads": [
-                    {"title": "HomeLink Agent Training Manual", "url": "/uploads/academy/homelink-zimbabwe-real-estate-agent-training-manual.pdf", "type": "PDF"},
+                    {"title": "HouseLink Agent Training Manual", "url": "/uploads/academy/houselink-zimbabwe-real-estate-agent-training-manual.pdf", "type": "PDF"},
                 ],
             })
         if lessons:
@@ -255,24 +255,24 @@ def main() -> None:
     payload = {
         "course": {
             "id": "academy-course-official-real-estate-agent-training",
-            "title": "HomeLink Zimbabwe Real Estate Agent Training",
+            "title": "HouseLink Zimbabwe Real Estate Agent Training",
             "subtitle": "Complete Professional Certification Programme",
-            "slug": "homelink-zimbabwe-real-estate-agent-training",
-            "shortDescription": "Production-ready agent training aligned to the official HomeLink Zimbabwe Real Estate Agent Training Manual.",
-            "description": "The definitive HomeLink Zimbabwe certification programme covering foundations, prospecting, client service, compliance, performance excellence and the complete professional resource kit.",
-            "instructor": "HomeLink Zimbabwe Academy",
-            "coInstructors": ["HomeLink Training Team"],
+            "slug": "houselink-zimbabwe-real-estate-agent-training",
+            "shortDescription": "Production-ready agent training aligned to the official HouseLink Zimbabwe Real Estate Agent Training Manual.",
+            "description": "The definitive HouseLink Zimbabwe certification programme covering foundations, prospecting, client service, compliance, performance excellence and the complete professional resource kit.",
+            "instructor": "HouseLink Zimbabwe Academy",
+            "coInstructors": ["HouseLink Training Team"],
             "learningOutcomes": [
-                "Apply HomeLink professional standards in every client interaction",
+                "Apply HouseLink professional standards in every client interaction",
                 "Execute prospecting, listings and marketing workflows",
                 "Qualify buyers and tenants and manage viewings professionally",
                 "Complete documentation and compliance files accurately",
                 "Build a sustainable high-performance real estate career",
             ],
-            "targetAudience": "New and existing HomeLink agents, public learners pursuing professional property training",
+            "targetAudience": "New and existing HouseLink agents, public learners pursuing professional property training",
             "estimatedHours": 40,
             "language": "English",
-            "tags": ["real estate", "zimbabwe", "agent training", "homelink", "certification"],
+            "tags": ["real estate", "zimbabwe", "agent training", "houselink", "certification"],
         },
         "modules": modules,
         "meta": {"sourcePdf": str(pdf_path), "pageCount": len(reader.pages), "lessonCount": total_lessons, "moduleCount": len(modules)},

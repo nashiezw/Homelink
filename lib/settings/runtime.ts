@@ -4,7 +4,7 @@ import { isPostgresStoreEnabled } from "@/lib/db/main-prisma";
 import { getHydratedStore, getStore } from "@/lib/store/app-store";
 
 export function getRuntimePlatformSettings(): PlatformSettings {
-  if (process.env.HOMELINK_STRICT_PRODUCTION === "true" && isPostgresStoreEnabled()) {
+  if (process.env.HOUSELINK_STRICT_PRODUCTION === "true" && isPostgresStoreEnabled()) {
     return defaultPlatformSettings;
   }
   return getStore().getPlatformSettings();

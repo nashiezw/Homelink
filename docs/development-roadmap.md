@@ -1,6 +1,6 @@
 # Development Roadmap
 
-Phased delivery plan for HomeLink Zimbabwe. Each phase produces a shippable increment.
+Phased delivery plan for HouseLink Zimbabwe. Each phase produces a shippable increment.
 
 ## Phase 1 - Design (Steps 1-4) [CURRENT]
 
@@ -65,7 +65,7 @@ Phased delivery plan for HomeLink Zimbabwe. Each phase produces a shippable incr
 ## Repository Layout (Target)
 
 ```text
-HomeLink/
+HouseLink/
   app/                    # Next.js App Router (website + BFF routes)
   components/             # React UI components
   lib/                    # Client utilities, API clients

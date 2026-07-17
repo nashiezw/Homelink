@@ -47,7 +47,7 @@ function verifyStripeSignature(rawBody: string, signatureHeader: string | null, 
 
 function verifyGenericSignature(request: Request, rawBody: string, secret: string) {
   const signature =
-    request.headers.get("x-homelink-signature") ??
+    request.headers.get("x-houselink-signature") ??
     request.headers.get("x-paynow-signature") ??
     request.headers.get("x-webhook-signature");
   return Boolean(signature && constantTimeEqual(sign(secret, rawBody), signature));

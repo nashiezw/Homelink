@@ -4,7 +4,7 @@ import path from "path";
 import { getMainPrisma } from "@/lib/db/main-prisma";
 
 const COURSE_ID = "academy-course-official-real-estate-agent-training";
-const DATA_PATH = path.join(process.cwd(), "lib", "academy", "data", "homelink-agent-course.json");
+const DATA_PATH = path.join(process.cwd(), "lib", "academy", "data", "houselink-agent-course.json");
 
 type ManualLesson = {
   title: string;
@@ -59,7 +59,7 @@ function isLowQualityLesson(lesson: ManualLesson) {
 
 function normalizeModuleTitle(title: string) {
   const map: Record<string, string> = {
-    INTRODUCTION: "Introduction to the HomeLink Zimbabwe Standard",
+    INTRODUCTION: "Introduction to the HouseLink Zimbabwe Standard",
     "Chapter 1": "Chapter 1: Foundations of Real Estate",
     "Chapter 2": "Chapter 2: Prospecting, Listings and Property Marketing",
     "Chapter 3": "Chapter 3: Working with Clients",
@@ -100,7 +100,7 @@ export async function seedManualCourseStructure(options?: { forceRebuild?: boole
   const data = await loadManualCourseData();
   const category = await prisma.trainingCategory.upsert({
     where: { slug: "new-agent-programme" },
-    create: { name: "New Agent Programme", slug: "new-agent-programme", description: "Official HomeLink Zimbabwe agent certification.", sortOrder: 0 },
+    create: { name: "New Agent Programme", slug: "new-agent-programme", description: "Official HouseLink Zimbabwe agent certification.", sortOrder: 0 },
     update: { name: "New Agent Programme", active: true },
   });
 
@@ -115,7 +115,7 @@ export async function seedManualCourseStructure(options?: { forceRebuild?: boole
       shortDescription: c.shortDescription,
       description: c.description,
       categoryId: category.id,
-      instructor: c.instructor ?? "HomeLink Zimbabwe",
+      instructor: c.instructor ?? "HouseLink Zimbabwe",
       coInstructors: c.coInstructors ?? [],
       learningOutcomes: c.learningOutcomes ?? [],
       targetAudience: c.targetAudience,
@@ -136,8 +136,8 @@ export async function seedManualCourseStructure(options?: { forceRebuild?: boole
       featured: true,
       visibility: "PUBLIC",
       roleNames: ["AGENT", "ADMIN", "PUBLIC_LEARNER"],
-      thumbnailUrl: "/brand/homelink-full-lockup.png",
-      bannerUrl: "/uploads/academy/homelink-zimbabwe-real-estate-agent-training-manual.pdf",
+      thumbnailUrl: "/brand/houselink-full-lockup.png",
+      bannerUrl: "/uploads/academy/houselink-zimbabwe-real-estate-agent-training-manual.pdf",
       introVideoUrl: null,
       previewVideoUrl: null,
       welcomeVideoUrl: null,
@@ -180,7 +180,7 @@ export async function seedManualCourseStructure(options?: { forceRebuild?: boole
         sections: {
           create: [{
             title: module.title,
-            description: "Lessons extracted from the official HomeLink training manual.",
+            description: "Lessons extracted from the official HouseLink training manual.",
             sortOrder: 0,
             lessons: {
               create: module.lessons.map((lesson, sortOrder) => {
@@ -197,7 +197,7 @@ export async function seedManualCourseStructure(options?: { forceRebuild?: boole
                   discussionPrompt: lesson.discussionPrompt ?? null,
                   checklist: lesson.checklist ? (lesson.checklist as unknown as Prisma.InputJsonValue) : undefined,
                   reflectionQuestions: lesson.reflectionQuestions ? (lesson.reflectionQuestions as unknown as Prisma.InputJsonValue) : undefined,
-                  pdfUrl: "/uploads/academy/homelink-zimbabwe-real-estate-agent-training-manual.pdf",
+                  pdfUrl: "/uploads/academy/houselink-zimbabwe-real-estate-agent-training-manual.pdf",
                   estimatedMinutes: lesson.estimatedMinutes,
                   completionRequirement: lesson.title.toLowerCase().includes("knowledge check") ? "QUIZ" : "VIEW",
                   sortOrder,

@@ -1,7 +1,7 @@
 import type { MetadataRoute } from "next";
 import { PROPERTY_CITY_LANDING_PAGES, ROOM_SUBURB_LANDING_PAGES } from "@/lib/seo/property-landing-pages";
 
-const siteUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://homelinkzim.co.zw";
+const siteUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://houselinkzim.co.zw";
 
 const routes = [
   { path: "/", priority: 1 },

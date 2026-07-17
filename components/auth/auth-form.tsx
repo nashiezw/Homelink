@@ -5,7 +5,7 @@ import { useState, type FormEvent } from "react";
 import { BadgeCheck } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { getDefaultDashboard } from "@/lib/auth/roles";
-import { HomeLinkBrand } from "@/components/brand/homelink-logo";
+import { HouseLinkBrand } from "@/components/brand/houselink-logo";
 import { useApp } from "@/components/providers/app-provider";
 import { Button } from "@/components/ui/button";
 
@@ -53,7 +53,7 @@ export function AuthForm({
     <form className="surface-panel h-fit rounded-lg p-5" onSubmit={onSubmit}>
       {showBrand && (
         <div className="flex justify-center pb-2">
-          <HomeLinkBrand variant="auth" className="justify-center" />
+          <HouseLinkBrand variant="auth" className="justify-center" />
         </div>
       )}
       <div className="flex items-center gap-2 text-emerald-700">
@@ -61,7 +61,7 @@ export function AuthForm({
         <p className="font-semibold">{mode === "login" ? "Sign in" : "Create account"}</p>
       </div>
       <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-        Use your HomeLink account email and password. New users can create an account in under a minute.
+        Use your HouseLink account email and password. New users can create an account in under a minute.
       </p>
       {mode === "register" && (
         <label className="mt-5 grid gap-2 text-sm font-medium">

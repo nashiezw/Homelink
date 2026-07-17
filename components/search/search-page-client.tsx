@@ -569,7 +569,7 @@ export function SearchPageClient({ initialSearchParams = EMPTY_INITIAL_SEARCH_PA
 
           {verifiedOnly && (
             <div className="mt-3 flex flex-col gap-2 rounded-lg border border-emerald-300/25 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-50 sm:flex-row sm:items-center sm:justify-between">
-              <span>Verified only is active. Results are limited to listings or landlords with completed HomeLink verification.</span>
+              <span>Verified only is active. Results are limited to listings or landlords with completed HouseLink verification.</span>
               <button type="button" className="font-semibold underline-offset-4 hover:underline" onClick={() => clearOneFilter("verifiedOnly")}>
                 Show all trusted listings
               </button>

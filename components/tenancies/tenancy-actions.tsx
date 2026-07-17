@@ -118,7 +118,7 @@ function TenancyActionsInner({ listing, landlordUserId }: TenancyActionsProps) {
       <CompactShell>
         <CompactHeader
           title="Pay rent or deposit"
-          description="Sign in after your viewing to pay through HomeLink and create a verified tenancy record."
+          description="Sign in after your viewing to pay through HouseLink and create a verified tenancy record."
         />
         <Link href={`/auth?next=${encodeURIComponent(returnPath)}`} className="mt-4 block">
           <Button className="h-10 w-full">
@@ -165,7 +165,7 @@ function TenancyActionsInner({ listing, landlordUserId }: TenancyActionsProps) {
       <CompactShell>
         <CompactHeader
           title="Verified tenancy payment"
-          description="Pay through HomeLink (CBZ, ZIPIT, cash). Both parties confirm in Tenancies."
+          description="Pay through HouseLink (CBZ, ZIPIT, cash). Both parties confirm in Tenancies."
         />
 
         <div className="mt-4 rounded-xl border border-slate-100 bg-slate-50/80 px-3 py-2.5 dark:border-slate-800 dark:bg-slate-900/40">

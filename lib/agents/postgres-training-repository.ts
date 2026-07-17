@@ -347,7 +347,7 @@ function defaultAnswerKey(moduleId: string): Record<string, string> {
   if (moduleId !== "train_leads") return {};
   return {
     lead_q1: "Confirm property details and safe due diligence first",
-    lead_q2: "Inside the HomeLink lead workflow",
+    lead_q2: "Inside the HouseLink lead workflow",
     lead_q3: "Pressure to send money urgently to an unverified account",
     lead_q4: "Lead status, notes, next step, and outcome",
     lead_q5: "Escalate or flag it for review",
@@ -473,10 +473,10 @@ function readLevel(value: unknown) {
 }
 
 function certificateTitleForTrack(track: AgentTrainingTrack) {
-  if (track === "VERIFIED_AGENT") return "Verified HomeLink Agent Certificate";
-  if (track === "SENIOR_AGENT") return "Senior HomeLink Agent Certificate";
-  if (track === "PROPERTY_MANAGER") return "HomeLink Property Manager Certificate";
-  return "Beginner HomeLink Agent Certificate";
+  if (track === "VERIFIED_AGENT") return "Verified HouseLink Agent Certificate";
+  if (track === "SENIOR_AGENT") return "Senior HouseLink Agent Certificate";
+  if (track === "PROPERTY_MANAGER") return "HouseLink Property Manager Certificate";
+  return "Beginner HouseLink Agent Certificate";
 }
 
 function certificateUrlForTrack(track: AgentTrainingTrack) {
