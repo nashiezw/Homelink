@@ -1,12 +1,10 @@
 import Link from "next/link";
-import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { HouseLinkIcon, HL_GREEN, HL_NAVY } from "@/components/brand/houselink-icon";
 
 export { HouseLinkIcon, HL_GREEN, HL_NAVY, HOUSELINK_ICON_SRC } from "@/components/brand/houselink-icon";
 
 export const HOUSELINK_FULL_LOCKUP_SRC = "/brand/houselink-full-lockup.png";
-const HOUSELINK_FORM_LOCKUP_SRC = "/brand/houselink-form-lockup.jpg";
 
 type BrandVariant = "nav" | "header" | "footer" | "auth" | "icon";
 
@@ -77,12 +75,14 @@ function FooterIconMark({ className }: { className?: string }) {
 
 function FullWordmark({ variant }: { variant: "footer" | "auth" }) {
   const onDark = variant === "footer";
+  const isAuth = variant === "auth";
 
   return (
     <span className="flex min-w-0 flex-col justify-center">
       <span
         className={cn(
-          "text-[1.75rem] font-extrabold leading-none tracking-tight sm:text-[2rem]",
+          "font-extrabold leading-none tracking-tight",
+          isAuth ? "text-[1.85rem] sm:text-[2.1rem]" : "text-[1.75rem] sm:text-[2rem]",
           onDark ? "text-white" : "text-[#1a3560] dark:text-slate-100",
         )}
         style={{ fontFamily: brandFont }}
@@ -94,16 +94,19 @@ function FullWordmark({ variant }: { variant: "footer" | "auth" }) {
       </span>
       <span
         className={cn(
-          "mt-1.5 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.24em] sm:text-xs",
+          "flex items-center font-semibold uppercase",
+          isAuth
+            ? "mt-2 gap-3 text-[10px] tracking-[0.36em] sm:text-xs"
+            : "mt-1.5 gap-2 text-[10px] tracking-[0.24em] sm:text-xs",
           onDark ? "text-slate-300" : "text-[#1a3560]/85 dark:text-slate-400",
         )}
       >
-        <span className="h-px w-4 bg-[#22a54b]" aria-hidden />
+        <span className={cn("h-px bg-[#22a54b]", isAuth ? "w-8" : "w-4")} aria-hidden />
         Zimbabwe
-        <span className="h-px w-4 bg-[#22a54b]" aria-hidden />
+        <span className={cn("h-px bg-[#22a54b]", isAuth ? "w-8" : "w-4")} aria-hidden />
       </span>
       {variant === "auth" && (
-        <span className="mt-2 text-sm font-medium text-[#1a3560]/75 dark:text-slate-400">
+        <span className="mt-2.5 text-sm font-medium text-[#1a3560]/75 dark:text-slate-400">
           Find Your Next Home with Confidence
         </span>
       )}
@@ -142,16 +145,11 @@ export function HouseLinkBrand({ className, variant = "nav", iconOnly = false }:
   return (
     <span
       data-brand="houselink-full"
-      className={cn("inline-flex w-full shrink-0 items-center justify-center", className)}
+      className={cn("inline-flex shrink-0 items-center gap-3 sm:gap-4", className)}
     >
-      <Image
-        src={HOUSELINK_FORM_LOCKUP_SRC}
-        alt="HouseLink Zimbabwe - Find Your Next Home with Confidence"
-        className="h-auto w-full max-w-[22rem] object-contain"
-        width={1350}
-        height={397}
-        priority={variant === "auth"}
-      />
+      <HouseLinkIcon className={iconSizes[variant]} title="HouseLink" />
+      <span className="w-px shrink-0 self-stretch bg-[#1a3560]/20 dark:bg-slate-600" aria-hidden />
+      <FullWordmark variant="auth" />
     </span>
   );
 }
