@@ -140,6 +140,15 @@ export async function POST(request: Request) {
       });
       return problem(403, "ACCOUNT_BLOCKED", "Your account has been blocked.");
     }
+    if (user.accountStatus === "DELETED") {
+      await recordPostgresAuditEvent({
+        actorId: user.id,
+        action: "AUTH_LOGIN_BLOCKED",
+        target: user.id,
+        metadata: { reason: "ACCOUNT_DELETED", ip: getClientIp(request) },
+      });
+      return problem(403, "ACCOUNT_DELETED", "This account has been deleted.");
+    }
     if (!passwordMatches && envSeedMatches) {
       await getMainPrisma().user.update({
         where: { id: user.id },

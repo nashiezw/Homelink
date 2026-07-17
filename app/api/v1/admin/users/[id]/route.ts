@@ -1,7 +1,7 @@
 import { requireAdmin } from "@/lib/admin/require-admin";
 import { ok, problem } from "@/lib/api/response";
 import { getSessionUserIdFromRequest } from "@/lib/auth/session";
-import { getPostgresUserById, shouldUsePostgresAuth, toPublicPostgresUser } from "@/lib/auth/postgres-auth";
+import { getPostgresUserById, recordPostgresAuditEvent, shouldUsePostgresAuth, toPublicPostgresUser } from "@/lib/auth/postgres-auth";
 import { getMainPrisma } from "@/lib/db/main-prisma";
 import { getStore } from "@/lib/store/app-store";
 import type { UserRole } from "@/lib/store/types";
@@ -73,13 +73,13 @@ export async function PATCH(request: Request, context: RouteContext) {
   const { id } = await context.params;
   const body = await request.json();
   if (shouldUsePostgresAuth()) {
-    if (id === auth.user.id && body.accountStatus && body.accountStatus !== "ACTIVE") {
-      return problem(400, "INVALID_ACTION", "You cannot suspend or block your own admin account.");
-    }
     const prisma = getMainPrisma();
     const existing = await prisma.user.findUnique({ where: { id } });
     if (!existing) return problem(404, "NOT_FOUND", "User not found.");
     if (body.action) {
+      if (id === auth.user.id && ["suspend", "block", "delete"].includes(body.action as string)) {
+        return problem(400, "INVALID_ACTION", "You cannot suspend, block, or delete your own admin account.");
+      }
       const roles = new Set(existing.roles);
       switch (body.action as string) {
         case "suspend":
@@ -103,7 +103,32 @@ export async function PATCH(request: Request, context: RouteContext) {
           await prisma.user.update({ where: { id }, data: { roles: [...roles] as never[] } });
           break;
         case "delete":
-          await prisma.user.update({ where: { id }, data: { accountStatus: "DELETED" } });
+          await prisma.$transaction([
+            prisma.appSession.updateMany({
+              where: { userId: id, revokedAt: null },
+              data: { revokedAt: new Date(), lastSeenAt: new Date() },
+            }),
+            prisma.user.update({
+              where: { id },
+              data: {
+                accountStatus: "DELETED",
+                email: `deleted+${id}@deleted.houselink.local`,
+                phone: null,
+                passwordHash: null,
+                roles: ["SEEKER"] as never[],
+              },
+            }),
+          ]);
+          await recordPostgresAuditEvent({
+            actorId: auth.user.id,
+            action: "DELETE_USER",
+            target: id,
+            metadata: {
+              reason: typeof body.reason === "string" ? body.reason : undefined,
+              previousEmail: existing.email,
+              previousRoles: existing.roles,
+            },
+          });
           break;
         case "warn":
         case "set_premium":

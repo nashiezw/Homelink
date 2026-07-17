@@ -661,25 +661,31 @@ function RbacEditor({
         <h3 className="mb-3 text-sm font-semibold uppercase text-slate-400">Roles</h3>
         <div className="grid gap-3 lg:grid-cols-2">
           {roles.map(([key, role]) => (
-            <div key={key} className="rounded-lg border border-white/10 bg-slate-950/50 p-3">
+            <div key={key} className="rounded-xl border border-white/10 bg-slate-950/50 p-3">
               <p className="font-medium text-white">{role.label}</p>
               <p className="text-xs text-slate-500">{role.description}</p>
-              <p className="mt-2 text-xs text-cyan-300">{role.permissions.join(", ")}</p>
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                {role.permissions.map((permission) => (
+                  <span key={permission} className="rounded-full border border-cyan-500/15 bg-cyan-500/10 px-2 py-1 text-[11px] font-medium leading-none text-cyan-200">
+                    {permission}
+                  </span>
+                ))}
+              </div>
             </div>
           ))}
         </div>
       </section>
       <section>
         <h3 className="mb-3 text-sm font-semibold uppercase text-slate-400">Admin assignments</h3>
-        <div className="mb-4 rounded-xl border border-cyan-500/20 bg-slate-950/60 p-4">
-          <div className="flex flex-wrap items-end gap-3">
-            <label className="min-w-0 flex-1 sm:min-w-[240px]">
+        <div className="mb-4 rounded-xl border border-cyan-500/20 bg-slate-950/60 p-3 sm:p-4">
+          <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] lg:grid-cols-[minmax(0,1fr)_auto_auto] lg:items-end">
+            <label className="min-w-0">
               <span className="mb-1 block text-xs font-semibold uppercase text-slate-500">Add admin user</span>
               <select
                 value={newAdminId}
                 onChange={(event) => setNewAdminId(event.target.value)}
                 disabled={!canManageAccess || promotingAdmin || eligibleUsers.length === 0}
-                className="w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white disabled:opacity-60"
+                className="min-h-11 w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white disabled:opacity-60"
               >
                 <option value="">{eligibleUsers.length ? "Select an active user" : "No active non-admin users"}</option>
                 {eligibleUsers.map((user) => (
@@ -689,7 +695,7 @@ function RbacEditor({
                 ))}
               </select>
             </label>
-            <label className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-300">
+            <label className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-300">
               <input
                 type="checkbox"
                 checked={makeSuperAdmin}
@@ -699,6 +705,7 @@ function RbacEditor({
               Make Super Admin
             </label>
             <Button
+              className="w-full lg:w-auto"
               onClick={() => void onPromoteUser(newAdminId, makeSuperAdmin)}
               disabled={!canManageAccess || !newAdminId || promotingAdmin}
             >
@@ -713,12 +720,12 @@ function RbacEditor({
           {admins.map((admin) => {
             const assigned = settings.rbac.userRoleKeys[admin.id] ?? [];
             return (
-              <div key={admin.id} className="rounded-lg border border-white/10 p-3">
+              <div key={admin.id} className="rounded-xl border border-white/10 bg-slate-950/35 p-3">
                 <p className="font-medium text-white">{admin.name}</p>
                 <p className="text-xs text-slate-500">{admin.email}</p>
-                <div className="mt-2 grid gap-2 sm:flex sm:flex-wrap">
+                <div className="mt-3 grid gap-2 sm:grid-cols-2">
                   {roles.map(([key, role]) => (
-                    <label key={key} className="inline-flex items-center gap-1 rounded-full bg-white/5 px-2 py-1 text-xs text-slate-300">
+                    <label key={key} className="flex min-h-10 items-center gap-2 rounded-lg border border-white/[0.06] bg-white/[0.04] px-3 py-2 text-xs text-slate-300">
                       <input
                         type="checkbox"
                         checked={assigned.includes(key)}

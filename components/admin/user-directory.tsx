@@ -9,6 +9,7 @@ import {
   Mail,
   MessageSquare,
   Search,
+  Trash2,
   UserCog,
   UserX,
   Wallet,
@@ -106,7 +107,7 @@ export function UserDirectory() {
   }
 
   async function runAction(userId: string, action: string, extra?: Record<string, unknown>) {
-    const result = await apiFetch(`/api/v1/admin/users/${userId}`, {
+    const result = await apiFetch<{ user: PublicAdminUser }>(`/api/v1/admin/users/${userId}`, {
       method: "PATCH",
       body: JSON.stringify({ action, ...extra }),
     });
@@ -115,6 +116,9 @@ export function UserDirectory() {
       return;
     }
     showToast(`User ${action.replace(/_/g, " ")} applied.`);
+    if (result.data?.user && selected?.id === userId) {
+      setSelected(result.data.user);
+    }
     void load();
     if (selected?.id === userId) void loadDetail(userId);
   }
@@ -410,9 +414,11 @@ export function UserDirectory() {
                 </div>
                 <div className="space-y-2">
                   <p className="text-xs font-semibold uppercase text-slate-500">Admin actions</p>
-                  <div className="grid gap-2 sm:flex sm:flex-wrap">
+                  <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
                     {selected.accountStatus !== "ACTIVE" && (
-                      <Button onClick={() => void runAction(selected.id, "activate")}>Activate</Button>
+                      <Button className="col-span-2 sm:col-span-1" onClick={() => void runAction(selected.id, "activate")}>
+                        Activate
+                      </Button>
                     )}
                     {selected.accountStatus === "ACTIVE" && (
                       <>
@@ -433,6 +439,16 @@ export function UserDirectory() {
                     <Button variant="secondary" onClick={() => requestUserAction("terminate_sessions", "Force logout", { reasonRequired: false })}>
                       Force logout
                     </Button>
+                    {selected.accountStatus !== "DELETED" && (
+                      <Button
+                        variant="secondary"
+                        className="col-span-2 border-red-500/40 bg-red-950/70 text-red-100 hover:border-red-400 hover:bg-red-900/80 sm:col-span-1"
+                        onClick={() => requestUserAction("delete", "Delete user", { danger: true })}
+                      >
+                        <Trash2 className="size-4" />
+                        Delete user
+                      </Button>
+                    )}
                   </div>
                 </div>
                 <div className="space-y-2">

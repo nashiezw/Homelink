@@ -45,7 +45,7 @@ export function AdminPanel({
   return (
     <section
       className={cn(
-        "gpu-card overflow-hidden rounded-2xl border border-white/[0.08] bg-slate-950 shadow-[0_1px_0_0_rgba(255,255,255,0.04)_inset] lg:bg-gradient-to-b lg:from-slate-900/90 lg:to-slate-950/90",
+        "overflow-hidden rounded-2xl border border-white/[0.08] bg-slate-950 shadow-[0_1px_0_0_rgba(255,255,255,0.04)_inset] lg:bg-gradient-to-b lg:from-slate-900/90 lg:to-slate-950/90",
         className,
       )}
     >

@@ -1104,7 +1104,13 @@ export function rejectAgency(state: AdminPlatformState, agencyId: string, actor:
 export function deleteUser(state: AdminPlatformState, userId: string, actor: Actor, reason?: string) {
   const user = state.users.get(userId);
   if (!user) return null;
+  const previousEmail = user.email;
+  const previousRoles = [...user.roles];
   user.accountStatus = "DELETED";
+  user.email = `deleted+${userId}@deleted.houselink.local`;
+  user.phone = undefined;
+  user.passwordHash = "";
+  user.roles = ["SEEKER"];
   terminateUserSessions(state, userId, actor);
   audit(state, {
     actorId: actor.id,
@@ -1112,7 +1118,7 @@ export function deleteUser(state: AdminPlatformState, userId: string, actor: Act
     action: "DELETE_USER",
     target: userId,
     targetType: "USER",
-    metadata: { reason },
+    metadata: { reason, previousEmail, previousRoles },
     ip: "127.0.0.1",
   });
   return user;
