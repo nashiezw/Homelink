@@ -639,7 +639,7 @@ export function createCommissionRecord(
         changedByName: "HouseLink System",
         changedAt: createdAt,
         action: "CREATED",
-        newHomelinkSplitPercent: calc.rule.houselinkSplitPercent,
+        newHouselinkSplitPercent: calc.rule.houselinkSplitPercent,
         newAgentSplitPercent: calc.rule.agentSplitPercent,
         reason: "Commission calculated automatically from the active commission rule.",
       },

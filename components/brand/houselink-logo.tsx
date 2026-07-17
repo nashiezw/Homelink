@@ -22,7 +22,7 @@ const iconSizes: Record<BrandVariant, string> = {
   icon: "h-10 w-10",
 };
 
-/** Nav wordmark: Home (navy) + Link (green) */
+/** Nav wordmark: House (navy) + Link (green) */
 function NavWordmark({ className }: { className?: string }) {
   return (
     <span
@@ -33,7 +33,7 @@ function NavWordmark({ className }: { className?: string }) {
       style={{ fontFamily: brandFont }}
     >
       <span style={{ color: HL_NAVY }} className="dark:text-slate-100">
-        Home
+        House
       </span>
       <span style={{ color: HL_GREEN }} className="dark:text-emerald-400">
         Link
@@ -84,7 +84,7 @@ function FullWordmark({ variant }: { variant: "footer" | "auth" }) {
         style={{ fontFamily: brandFont }}
       >
         <span style={{ color: onDark ? undefined : HL_NAVY }} className={onDark ? "text-white" : ""}>
-          Home
+          House
         </span>
         <span style={{ color: HL_GREEN }}>Link</span>
       </span>

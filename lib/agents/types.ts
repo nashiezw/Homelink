@@ -78,8 +78,8 @@ export type CommissionAuditEntry = {
   changedByName: string;
   changedAt: string;
   action: "CREATED" | "PENDING" | "APPROVED" | "PAID" | "CANCELLED" | "DISPUTED" | "RULE_CHANGED" | "OWNERSHIP_CHANGED";
-  oldHomelinkSplitPercent?: number;
-  newHomelinkSplitPercent?: number;
+  oldHouselinkSplitPercent?: number;
+  newHouselinkSplitPercent?: number;
   oldAgentSplitPercent?: number;
   newAgentSplitPercent?: number;
   reason: string;
