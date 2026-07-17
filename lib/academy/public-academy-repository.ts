@@ -13,7 +13,7 @@ import {
 } from "@/lib/academy/academy-resource-access";
 import { fetchCourseTree, flattenCourseMaterials, mapLessonForLearner } from "@/lib/academy/course-tree";
 import { toAcademyFileDownloadUrl } from "@/lib/academy/academy-files";
-import { repairLegacyBrandingInPostgres } from "@/lib/brand/rebrand";
+import { repairLegacyBrandingInPostgres, replaceLegacyBrandingText } from "@/lib/brand/rebrand";
 import { lessonHandoutStoragePath } from "@/lib/academy/lesson-handouts";
 
 export type AcademyRegistrationIntent = "TRAINING_ONLY" | "AGENT_TRAINING";
@@ -335,12 +335,12 @@ export async function getLearnerAcademyDashboard(learnerId: string, options?: { 
         certificateEnabled: entry.course.certificateEnabled,
         modules: entry.course.modules.map((module) => ({
           id: module.id,
-          title: module.title,
+          title: replaceLegacyBrandingText(module.title),
           lessons: module.sections.flatMap((section) => section.lessons.map((lesson) => ({
             id: lesson.id,
-            title: lesson.title,
-            summary: lesson.summary,
-            richText: lesson.richText,
+            title: replaceLegacyBrandingText(lesson.title),
+            summary: lesson.summary ? replaceLegacyBrandingText(lesson.summary) : lesson.summary,
+            richText: replaceLegacyBrandingText(lesson.richText),
             estimatedMinutes: lesson.estimatedMinutes,
             completionRequirement: lesson.completionRequirement,
             videoUrl: lesson.videoUrl,
@@ -350,13 +350,13 @@ export async function getLearnerAcademyDashboard(learnerId: string, options?: { 
             completed: completedIds.has(lesson.id),
             lessonVideos: lesson.lessonVideos.map((video) => ({
               id: video.id,
-              title: video.title,
+              title: replaceLegacyBrandingText(video.title),
               url: video.url,
               provider: video.provider,
             })),
             lessonDownloads: lesson.lessonDownloads.map((download) => ({
               id: download.id,
-              title: download.title,
+              title: replaceLegacyBrandingText(download.title),
               url: toAcademyFileDownloadUrl(download.url),
               type: download.type,
             })),

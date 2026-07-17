@@ -106,28 +106,35 @@ export function LessonViewer({
 
   return (
     <div className={cn("min-h-screen bg-gradient-to-br", sidebarGradient, "dark:from-ink dark:via-slate-950 dark:to-slate-950")}>
-      <header className="sticky top-0 z-40 border-b border-white/20 bg-white/90 shadow-sm backdrop-blur-xl dark:border-slate-800 dark:bg-slate-950/90">
-        <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 py-3.5 sm:px-6">
-          <Button variant="ghost" className="h-10 shrink-0 rounded-full px-3" onClick={onBack}>
+      <header className="sticky top-0 z-40 border-b border-slate-200/70 bg-white/95 shadow-sm backdrop-blur-xl dark:border-slate-800 dark:bg-slate-950/90">
+        <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 py-3 sm:px-6">
+          <Button variant="ghost" className="h-10 shrink-0 rounded-full border border-slate-200 bg-white px-3 text-slate-700 shadow-sm hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200" onClick={onBack}>
             <ArrowLeft className="size-4" />
-            <span className="ml-2 hidden sm:inline">Course</span>
+            <span className="ml-2 hidden text-sm font-semibold sm:inline">Course</span>
           </Button>
+          <div className="hidden h-9 w-px bg-slate-200 dark:bg-slate-800 sm:block" />
           <div className="min-w-0 flex-1">
-            <p className="truncate text-[11px] font-bold uppercase tracking-wide" style={{ color: accent }}>{course.title}</p>
-            <h1 className="mt-0.5 truncate text-sm font-semibold leading-5 text-slate-950 sm:text-base dark:text-white">{currentLesson.title}</h1>
+            <div className="flex min-w-0 items-center gap-2">
+              <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: accent }} />
+              <p className="truncate text-[11px] font-extrabold uppercase tracking-wide" style={{ color: accent }}>{course.title}</p>
+            </div>
+            <h1 className="mt-1 truncate text-[15px] font-bold leading-5 text-slate-950 sm:text-base dark:text-white">{currentLesson.title}</h1>
           </div>
-          <div className="flex shrink-0 items-center gap-1">
+          <div className="flex shrink-0 items-center gap-1.5">
+            <span className="hidden rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-bold text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 sm:inline-flex">
+              Lesson {currentIndex + 1}/{allLessons.length}
+            </span>
             {onToggleBookmark && (
-              <Button variant="ghost" className="px-2" onClick={() => onToggleBookmark(currentLesson.id, !currentLesson.bookmarked)} aria-label="Bookmark">
+              <Button variant="ghost" className="h-10 rounded-full px-2.5" onClick={() => onToggleBookmark(currentLesson.id, !currentLesson.bookmarked)} aria-label="Bookmark">
                 <Bookmark className={cn("size-4", currentLesson.bookmarked && "fill-amber-400 text-amber-500")} />
               </Button>
             )}
-            <Button variant="ghost" className="px-2 lg:hidden" onClick={() => setSidebarOpen(true)}>
+            <Button variant="ghost" className="h-10 rounded-full px-2.5 lg:hidden" onClick={() => setSidebarOpen(true)}>
               <List className="size-4" />
             </Button>
           </div>
         </div>
-          <div className="h-1.5 bg-white/50 dark:bg-slate-800">
+        <div className="h-1 bg-slate-100 dark:bg-slate-800">
           <div className="h-full transition-all duration-500 shadow-sm" style={{ width: `${progressPercent}%`, backgroundColor: accent }} />
         </div>
       </header>

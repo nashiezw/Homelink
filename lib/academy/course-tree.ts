@@ -1,6 +1,7 @@
 import { getMainPrisma } from "@/lib/db/main-prisma";
 import { isFullTrainingManualUrl } from "@/lib/academy/academy-constants";
 import { toAcademyFileDownloadUrl } from "@/lib/academy/academy-files";
+import { replaceLegacyBrandingInValue, replaceLegacyBrandingText } from "@/lib/brand/rebrand";
 
 const lessonInclude = {
   lessonVideos: true,
@@ -66,13 +67,13 @@ export function mapLessonForLearner(
 ) {
   return {
     id: lesson.id,
-    title: lesson.title,
-    summary: lesson.summary,
-    richText: lesson.richText,
-    transcript: lesson.transcript,
-    lessonNotes: lesson.lessonNotes,
-    objectives: lesson.objectives ?? [],
-    discussionPrompt: lesson.discussionPrompt,
+    title: replaceLegacyBrandingText(lesson.title),
+    summary: lesson.summary ? replaceLegacyBrandingText(lesson.summary) : lesson.summary,
+    richText: replaceLegacyBrandingText(lesson.richText),
+    transcript: lesson.transcript ? replaceLegacyBrandingText(lesson.transcript) : lesson.transcript,
+    lessonNotes: lesson.lessonNotes ? replaceLegacyBrandingText(lesson.lessonNotes) : lesson.lessonNotes,
+    objectives: replaceLegacyBrandingInValue(lesson.objectives ?? []),
+    discussionPrompt: lesson.discussionPrompt ? replaceLegacyBrandingText(lesson.discussionPrompt) : lesson.discussionPrompt,
     videoUrl: lesson.videoUrl,
     embeddedVideoUrl: lesson.embeddedVideoUrl,
     pdfUrl: lesson.pdfUrl && !isFullTrainingManualUrl(lesson.pdfUrl) ? toAcademyFileDownloadUrl(lesson.pdfUrl) : null,
@@ -82,18 +83,18 @@ export function mapLessonForLearner(
     sortOrder: lesson.sortOrder,
     completed: completedIds.has(lesson.id),
     bookmarked: bookmarkIds.has(lesson.id),
-    lessonVideos: lesson.lessonVideos.map((v) => ({ id: v.id, title: v.title, url: v.url, provider: v.provider, durationSeconds: v.durationSeconds })),
+    lessonVideos: lesson.lessonVideos.map((v) => ({ id: v.id, title: replaceLegacyBrandingText(v.title), url: v.url, provider: v.provider, durationSeconds: v.durationSeconds })),
     lessonDocuments: lesson.lessonDocuments.map((d) => ({
       id: d.document.id,
-      title: d.document.title,
+      title: replaceLegacyBrandingText(d.document.title),
       fileType: d.document.fileType,
-      category: d.document.category?.name,
+      category: d.document.category?.name ? replaceLegacyBrandingText(d.document.category.name) : d.document.category?.name,
       downloadUrl: `/api/v1/academy/documents/${d.document.id}/download`,
     })),
-    lessonResources: lesson.lessonResources.map((r) => ({ id: r.id, title: r.title, body: r.body, type: r.type, sortOrder: r.sortOrder })),
+    lessonResources: lesson.lessonResources.map((r) => ({ id: r.id, title: replaceLegacyBrandingText(r.title), body: replaceLegacyBrandingText(r.body), type: r.type, sortOrder: r.sortOrder })),
     lessonDownloads: lesson.lessonDownloads.map((d) => ({
       id: d.id,
-      title: d.title,
+      title: replaceLegacyBrandingText(d.title),
       url: toAcademyFileDownloadUrl(d.url),
       type: d.type,
     })),
