@@ -189,9 +189,9 @@ export function LearnerDashboardClient() {
   const approvedCourse = data.applications.find((a) => a.status === "APPROVED");
   const toolkitItems = (data.activeCourseToolkit?.groups ?? []).flatMap((group) => group.items);
   const toolkitPreview = toolkitItems.slice(0, 6);
-  const applicationCourseIds = new Set(data.applications.map((application) => application.course.id));
-  const programmeMyCourses = (data.programmeCourses ?? []).filter((course) => course.unlocked && !applicationCourseIds.has(course.id));
-  const activeCourseCount = Math.max(data.metrics.enrolledCourses ?? 0, programmeMyCourses.length);
+  const applicationByCourseId = new Map(data.applications.map((application) => [application.course.id, application]));
+  const approvedCourseIds = new Set(data.applications.filter((application) => application.status === "APPROVED").map((application) => application.course.id));
+  const activeCourseCount = approvedCourseIds.size;
 
   function toggleProgrammeDetails(courseId: string) {
     setExpandedProgrammeIds((current) => {
@@ -251,6 +251,9 @@ export function LearnerDashboardClient() {
           <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {data.programmeCourses.map((course) => {
               const expanded = expandedProgrammeIds.has(course.id);
+              const application = applicationByCourseId.get(course.id);
+              const hasCourseAccess = approvedCourseIds.has(course.id);
+              const hasPendingApplication = Boolean(application && application.status !== "APPROVED");
               return (
               <article
                 key={course.id}
@@ -303,9 +306,17 @@ export function LearnerDashboardClient() {
                     </div>
                   )}
                   <div className="mt-4 flex flex-col gap-2">
-                    {course.unlocked ? (
+                    {hasCourseAccess ? (
                       <Link href={`/dashboard/academy/${course.id}`} className="w-full">
                         <Button className="w-full text-sm px-3 py-2.5" style={{ backgroundColor: course.theme.accent }}>{course.completed ? "Review course" : "Continue"}</Button>
+                      </Link>
+                    ) : hasPendingApplication ? (
+                      <Link href="/dashboard/academy" className="w-full">
+                        <Button className="w-full text-sm px-3 py-2.5" variant="secondary">Complete payment</Button>
+                      </Link>
+                    ) : course.unlocked ? (
+                      <Link href="/academy" className="w-full">
+                        <Button className="w-full text-sm px-3 py-2.5" variant="secondary">Apply for access</Button>
                       </Link>
                     ) : (
                       <Button className="w-full text-sm px-3 py-2.5" variant="secondary" disabled>Locked</Button>
@@ -389,39 +400,7 @@ export function LearnerDashboardClient() {
               </div>
             </article>
           ))}
-          {programmeMyCourses.map((course) => (
-            <article key={course.id} className="academy-card overflow-hidden rounded-xl">
-              <div className="border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white px-5 py-4 dark:border-slate-800 dark:from-slate-900 dark:to-slate-950 sm:px-6">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <span className={cn("inline-flex rounded-full border px-3 py-1 text-xs font-bold uppercase tracking-wide", course.theme.chip)}>
-                      {course.theme.label}
-                    </span>
-                    <h3 className="mt-2 text-lg font-bold sm:text-xl">{course.title}</h3>
-                  </div>
-                  <p className="text-sm font-semibold text-slate-500">{course.completed ? "Completed" : `${course.progress}% complete`}</p>
-                </div>
-              </div>
-              <div className="p-5 sm:p-6">
-                <div className="mb-4">
-                  <div className="mb-1 flex justify-between text-sm">
-                    <span className="text-slate-500">Programme progress</span>
-                    <span className="font-semibold">{course.progress}%</span>
-                  </div>
-                  <div className="h-2.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
-                    <div className="h-full rounded-full transition-all duration-700" style={{ width: `${course.progress}%`, backgroundColor: course.theme.accent }} />
-                  </div>
-                </div>
-                <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-400">{course.subtitle}</p>
-                <Link href={`/dashboard/academy/${course.id}`} className="mt-5 block w-full">
-                  <Button className="w-full" style={{ backgroundColor: course.theme.accent }}>
-                    <BookOpen className="size-4 mr-2" /> {course.completed ? "Review course" : "Continue course"}
-                  </Button>
-                </Link>
-              </div>
-            </article>
-          ))}
-          {!data.applications.length && !programmeMyCourses.length && (
+          {!data.applications.length && (
             <div className="rounded-2xl border-2 border-dashed border-slate-200 p-12 text-center dark:border-slate-700">
               <BookOpen className="mx-auto size-12 text-slate-300" />
               <p className="mt-4 text-lg font-semibold">No courses yet</p>
