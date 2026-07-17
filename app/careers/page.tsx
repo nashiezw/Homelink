@@ -1,4 +1,4 @@
-import { Briefcase, Globe2, HeartHandshake, MapPin, Sparkles } from "lucide-react";
+import { Briefcase, Globe2, HeartHandshake, Mail, MapPin, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { PageShell } from "@/components/layout/page-shell";
 import { getMailtoHref } from "@/lib/settings/contact";
@@ -36,6 +36,8 @@ const perks = [
 
 export default async function CareersPage() {
   const { contact } = await getHydratedRuntimePlatformSettings();
+  const careersEmail = contact.careersEmail.trim();
+  const careersHref = careersEmail ? getMailtoHref(careersEmail, "HouseLink careers enquiry") : "/contact";
   return (
     <PageShell
       eyebrow="Careers"
@@ -48,10 +50,18 @@ export default async function CareersPage() {
       ]}
       actions={
         <Link
-          href={getMailtoHref(contact.careersEmail, "HouseLink careers enquiry")}
-          className="inline-flex h-11 w-full items-center justify-center rounded-lg bg-white px-5 text-sm font-semibold text-ink shadow-lg shadow-black/10 transition hover:bg-emerald-50 sm:w-auto"
+          href={careersHref}
+          className="group inline-flex min-h-12 w-full items-center justify-center gap-3 rounded-lg border border-white/15 bg-white px-4 py-2.5 text-left text-ink shadow-lg shadow-black/10 transition hover:-translate-y-0.5 hover:bg-emerald-50 sm:w-auto sm:min-w-[240px] sm:justify-start"
         >
-          Email {contact.careersEmail}
+          <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-emerald-100 text-emerald-700 transition group-hover:bg-emerald-200">
+            <Mail className="size-4" aria-hidden="true" />
+          </span>
+          <span className="min-w-0">
+            <span className="block text-sm font-semibold leading-5">Email careers</span>
+            <span className="block truncate text-xs font-medium leading-4 text-slate-500">
+              {careersEmail || "Contact HouseLink"}
+            </span>
+          </span>
         </Link>
       }
     >
@@ -80,7 +90,7 @@ export default async function CareersPage() {
                   </p>
                 </div>
                 <Link
-                  href={getMailtoHref(contact.careersEmail, `Application: ${role.title}`)}
+                  href={careersEmail ? getMailtoHref(careersEmail, `Application: ${role.title}`) : "/contact"}
                   className="inline-flex h-9 items-center rounded-lg bg-emerald-600 px-4 text-sm font-semibold text-white hover:bg-emerald-500"
                 >
                   Apply
