@@ -14,15 +14,16 @@ const groups = [
       ["Rent in Harare", "/rent/harare"],
       ["Rooms in Avondale", "/rooms/avondale"],
       ["Buy in Bulawayo", "/property-for-sale/bulawayo"],
+      ["Roommate matching", "/roommates"],
     ],
   },
   {
     title: "Services",
     items: [
-      ["Roommate matching", "/roommates"],
       ["Property management", "/property-management"],
       ["Compare homes", "/compare"],
       ["Calculators", "/calculators"],
+      ["Verification", "/verification"],
     ],
   },
   {
@@ -35,22 +36,22 @@ const groups = [
     ],
   },
   {
-    title: "Support",
-    items: [
-      ["Contact", "/contact"],
-      ["What verified means", "/verification"],
-      ["Safety centre", "/safety"],
-      ["Report listing", "/report-listing"],
-    ],
-  },
-  {
-    title: "Your account",
+    title: "Account",
     items: [
       ["Sign in", "/auth"],
       ["Saved homes", "/saved"],
       ["My enquiries", "/enquiries"],
       ["Messages", "/messages"],
       ["Payments", "/payments"],
+    ],
+  },
+  {
+    title: "Support",
+    items: [
+      ["Contact", "/contact"],
+      ["Safety centre", "/safety"],
+      ["Report listing", "/report-listing"],
+      ["Maintenance", "/maintenance"],
     ],
   },
   {
@@ -85,73 +86,53 @@ export function SiteFooter() {
     <footer className="relative border-t border-slate-800 bg-ink text-white">
       <div className="section-divider absolute inset-x-0 top-0 opacity-60" />
 
-      <div className="mx-auto grid max-w-7xl items-start gap-8 px-4 py-10 sm:px-6 lg:grid-cols-[minmax(280px,0.9fr)_minmax(0,2.3fr)_minmax(230px,0.8fr)] lg:px-8">
-        <div className="max-w-sm">
-          <div className="flex items-center">
-            <HouseLinkBrand variant="footer" />
+      <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+        <div className="grid items-start gap-8 lg:grid-cols-[minmax(320px,0.9fr)_minmax(0,1.1fr)]">
+          <div className="max-w-xl">
+            <div className="flex items-center">
+              <HouseLinkBrand variant="footer" />
+            </div>
+
+            <p className="mt-4 max-w-lg text-sm leading-7 text-slate-300">
+              Find your next home with confidence through verified listings, clear comparison tools, and
+              Zimbabwe-focused search.
+            </p>
+
+            {contact && (
+              <div className="mt-5 flex flex-wrap gap-x-5 gap-y-2.5 text-sm text-slate-300">
+                <a
+                  href={getMailtoHref(contact.supportEmail)}
+                  className="inline-flex items-center gap-2 transition hover:text-emerald-300"
+                >
+                  <Mail className="size-4" />
+                  {contact.supportEmail}
+                </a>
+                <a
+                  href={getTelHref(contact)}
+                  className="inline-flex items-center gap-2 transition hover:text-emerald-300"
+                >
+                  <Phone className="size-4" />
+                  {contact.phoneLabel || contact.phoneNumber}
+                </a>
+                <a
+                  href={getWhatsAppHref(contact)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 transition hover:text-emerald-300"
+                >
+                  <MessageCircle className="size-4" />
+                  WhatsApp {contact.whatsappLabel || contact.whatsappNumber}
+                </a>
+              </div>
+            )}
           </div>
 
-          <p className="mt-4 text-sm leading-7 text-slate-300">
-            Find your next home with confidence through verified listings, clear comparison tools, and
-            Zimbabwe-focused search.
-          </p>
-
-          {contact && (
-            <div className="mt-5 grid gap-2.5 text-sm text-slate-300">
-              <a
-                href={getMailtoHref(contact.supportEmail)}
-                className="inline-flex items-center gap-2 transition hover:text-emerald-300"
-              >
-                <Mail className="size-4" />
-                {contact.supportEmail}
-              </a>
-              <a
-                href={getTelHref(contact)}
-                className="inline-flex items-center gap-2 transition hover:text-emerald-300"
-              >
-                <Phone className="size-4" />
-                {contact.phoneLabel || contact.phoneNumber}
-              </a>
-              <a
-                href={getWhatsAppHref(contact)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 transition hover:text-emerald-300"
-              >
-                <MessageCircle className="size-4" />
-                WhatsApp {contact.whatsappLabel || contact.whatsappNumber}
-              </a>
-            </div>
-          )}
-        </div>
-
-        <div className="grid gap-x-8 gap-y-8 sm:grid-cols-2 md:grid-cols-3">
-          {groups.map((group) => (
-            <div key={group.title} className="min-w-0">
-              <p className="text-sm font-semibold tracking-wide text-white">{group.title}</p>
-              <div className="mt-4 grid gap-2.5 text-sm text-slate-400">
-                {group.items.map(([label, href]) => (
-                  <Link
-                    key={label}
-                    href={href}
-                    rel={internalRel(href)}
-                    className="transition hover:translate-x-0.5 hover:text-emerald-300"
-                  >
-                    {label}
-                  </Link>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div className="grid gap-5 lg:justify-items-end">
-          <div className="w-full max-w-xs lg:text-right">
+          <div className="rounded-lg border border-white/10 bg-white/[0.03] p-5 lg:justify-self-end">
             <p className="text-sm font-semibold text-white">Ready to move?</p>
-            <p className="mt-2 text-sm leading-6 text-slate-400">
+            <p className="mt-2 max-w-md text-sm leading-6 text-slate-400">
               Add a listing, compare homes, or contact support from one place.
             </p>
-            <div className="mt-4 flex flex-wrap gap-2 lg:justify-end">
+            <div className="mt-4 flex flex-wrap gap-2">
               <Link
                 href="/dashboard/landlord/new"
                 className="hover-lift inline-flex h-11 items-center justify-center rounded-lg bg-emerald-600 px-5 text-sm font-semibold text-white shadow-lg shadow-emerald-950/30 transition hover:bg-emerald-500"
@@ -166,10 +147,32 @@ export function SiteFooter() {
               </Link>
             </div>
           </div>
+        </div>
 
-          <div className="w-full max-w-xs lg:text-right">
+        <div className="mt-10 border-t border-white/10 pt-8">
+          <div className="grid gap-x-8 gap-y-8 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
+            {groups.map((group) => (
+              <div key={group.title} className="min-w-0">
+                <p className="text-sm font-semibold tracking-wide text-white">{group.title}</p>
+                <div className="mt-4 grid gap-2.5 text-sm text-slate-400">
+                  {group.items.map(([label, href]) => (
+                    <Link
+                      key={label}
+                      href={href}
+                      rel={internalRel(href)}
+                      className="transition hover:translate-x-0.5 hover:text-emerald-300"
+                    >
+                      {label}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-8 flex flex-col gap-3 border-t border-white/10 pt-5 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Share HouseLink</p>
-            <div className="mt-2 flex flex-wrap gap-2 lg:justify-end">
+            <div className="flex flex-wrap gap-2">
               {shareLinks.map(([label, href]) => (
                 <a
                   key={label}
