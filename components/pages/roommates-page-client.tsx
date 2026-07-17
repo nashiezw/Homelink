@@ -186,14 +186,14 @@ function LocationMarquee({ highlights }: { highlights: SuburbHighlight[] }) {
             key={`${loc.name}-${i}`}
             href={`/search?intent=rent&type=room&suburb=${encodeURIComponent(loc.name)}`}
             rel="nofollow"
-            className="group relative flex w-[20rem] shrink-0 gap-3 overflow-hidden rounded-[1.35rem] border border-white/12 bg-white/[0.06] p-3 transition duration-300 hover:-translate-y-1 hover:border-emerald-400/50 hover:bg-white/10 sm:w-[21rem]"
+            className="group relative flex w-[21.75rem] shrink-0 gap-4 overflow-hidden rounded-[1.35rem] border border-white/12 bg-white/[0.06] p-3.5 transition duration-300 hover:-translate-y-1 hover:border-emerald-400/50 hover:bg-white/10 sm:w-[22.5rem] sm:p-4"
           >
-            <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-2xl ring-1 ring-white/10 sm:w-28">
-              <Image src={loc.photo} alt={loc.name} fill className="object-cover transition duration-500 group-hover:scale-110" sizes="(min-width: 640px) 112px, 96px" />
+            <div className="relative h-24 w-[6.5rem] shrink-0 overflow-hidden rounded-2xl ring-1 ring-white/10 sm:w-28">
+              <Image src={loc.photo} alt={loc.name} fill className="object-cover transition duration-500 group-hover:scale-110" sizes="(min-width: 640px) 112px, 104px" />
             </div>
-            <div className="min-w-0 flex-1 py-1">
-              <p className="truncate text-lg font-black text-white">{loc.name}</p>
-              <div className="mt-2 grid grid-cols-[minmax(2.75rem,1fr)_minmax(2.75rem,1fr)_minmax(4.65rem,auto)] gap-1.5 text-center">
+            <div className="min-w-0 flex-1 py-0.5">
+              <p className="truncate text-[17px] font-extrabold leading-5 text-white">{loc.name}</p>
+              <div className="mt-3 grid grid-cols-[minmax(2.8rem,1fr)_minmax(2.8rem,1fr)_minmax(4.8rem,auto)] gap-2 text-center">
                 <span className="min-w-0 rounded-lg bg-white/8 px-1.5 py-1">
                   <b className="block text-sm text-white">{loc.rooms}</b>
                   <span className="text-[10px] text-white/50">rooms</span>
@@ -202,12 +202,12 @@ function LocationMarquee({ highlights }: { highlights: SuburbHighlight[] }) {
                   <b className="block text-sm text-white">{loc.roommates}</b>
                   <span className="text-[10px] text-white/50">people</span>
                 </span>
-                <span className="min-w-[4.65rem] rounded-lg bg-emerald-400/15 px-1.5 py-1">
+                <span className="min-w-[4.8rem] rounded-lg bg-emerald-400/15 px-1.5 py-1">
                   <b className="block whitespace-nowrap text-[13px] leading-5 text-emerald-200">{loc.average}</b>
                   <span className="text-[10px] text-emerald-100/60">avg</span>
                 </span>
               </div>
-              <p className="mt-2 inline-flex items-center gap-1 text-xs font-bold text-emerald-300">Browse suburb <ArrowRight className="size-3" /></p>
+              <p className="mt-3 inline-flex items-center gap-1 text-xs font-bold text-emerald-300">Browse suburb <ArrowRight className="size-3" /></p>
             </div>
           </Link>
         ))}
