@@ -9,6 +9,7 @@ import {
   toPublicPostgresListing,
 } from "@/lib/listings/postgres-listing-repository";
 import { getHolidayHomeReviewSummaryFromPostgres } from "@/lib/holiday-homes/postgres-review-repository";
+import { getCanonicalSiteUrl } from "@/lib/seo/site-url";
 import { getStore } from "@/lib/store/app-store";
 
 type ListingDetailPageProps = {
@@ -96,7 +97,7 @@ export default async function ListingDetailPage({ params }: ListingDetailPagePro
     "@type": "RealEstateListing",
     name: listing.title,
     description: listing.description,
-    url: `${process.env.NEXT_PUBLIC_APP_URL ?? "https://houselink.co.zw"}/listings/${listing.slug ?? listing.id}`,
+    url: `${getCanonicalSiteUrl()}/listings/${listing.slug ?? listing.id}`,
     image: galleryImages,
     datePosted: listing.availableFrom,
     address: {

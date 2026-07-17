@@ -4,7 +4,14 @@ import { AppProvider } from "@/components/providers/app-provider";
 import { PlatformConfigProvider } from "@/components/providers/platform-config-provider";
 import { ChromeGate } from "@/components/layout/chrome-gate";
 import { ToastBanner } from "@/components/ui/toast-banner";
+import { getCanonicalSiteUrl } from "@/lib/seo/site-url";
 import "./globals.css";
+
+const siteUrl = getCanonicalSiteUrl();
+const siteName = "HouseLink Zimbabwe";
+const siteDescription =
+  "Verified rooms, houses, flats, cottages, commercial property, land, and roommate matching across Zimbabwe.";
+const ogImage = "/brand/houselink-full-lockup.png";
 
 const inter = localFont({
   src: [
@@ -18,11 +25,10 @@ const inter = localFont({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? "https://houselink.co.zw"),
-  applicationName: "HouseLink Zimbabwe",
+  metadataBase: new URL(siteUrl),
+  applicationName: siteName,
   title: "HouseLink Zimbabwe | Find Your Next Home with Confidence",
-  description:
-    "Verified rooms, houses, flats, cottages, commercial property, land, and roommate matching across Zimbabwe.",
+  description: siteDescription,
   keywords: [
     "HouseLink Zimbabwe",
     "Zimbabwe property",
@@ -31,6 +37,9 @@ export const metadata: Metadata = {
     "roommate matching Zimbabwe",
     "verified property listings",
   ],
+  alternates: {
+    canonical: "/",
+  },
   icons: {
     icon: [
       { url: "/brand/houselink-icon.png", sizes: "32x32", type: "image/png" },
@@ -41,20 +50,21 @@ export const metadata: Metadata = {
   manifest: "/site.webmanifest",
   openGraph: {
     title: "HouseLink Zimbabwe | Find Your Next Home with Confidence",
-    description:
-      "Verified rooms, houses, flats, cottages, commercial property, land, and roommate matching across Zimbabwe.",
+    description: siteDescription,
     url: "/",
-    siteName: "HouseLink Zimbabwe",
-    images: [{ url: "/brand/houselink-full-lockup.png", width: 1200, height: 630, alt: "HouseLink Zimbabwe" }],
+    siteName,
+    images: [{ url: ogImage, width: 1200, height: 630, alt: siteName }],
     locale: "en_ZW",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
     title: "HouseLink Zimbabwe | Find Your Next Home with Confidence",
-    description:
-      "Verified rooms, houses, flats, cottages, commercial property, land, and roommate matching across Zimbabwe.",
-    images: ["/brand/houselink-full-lockup.png"],
+    description: siteDescription,
+    images: [ogImage],
+  },
+  verification: {
+    google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION,
   },
   robots: {
     index: true,
@@ -72,9 +82,41 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Organization",
+        "@id": `${siteUrl}/#organization`,
+        name: siteName,
+        alternateName: "HouseLink",
+        url: siteUrl,
+        logo: `${siteUrl}/brand/houselink-full-lockup.png`,
+        image: `${siteUrl}/brand/houselink-full-lockup.png`,
+        sameAs: [siteUrl],
+      },
+      {
+        "@type": "WebSite",
+        "@id": `${siteUrl}/#website`,
+        name: siteName,
+        url: siteUrl,
+        publisher: { "@id": `${siteUrl}/#organization` },
+        potentialAction: {
+          "@type": "SearchAction",
+          target: `${siteUrl}/search?q={search_term_string}`,
+          "query-input": "required name=search_term_string",
+        },
+      },
+    ],
+  };
+
   return (
     <html lang="en" suppressHydrationWarning className={inter.variable}>
       <body className="bg-white font-sans text-ink antialiased dark:bg-slate-950 dark:text-slate-100">
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData).replace(/</g, "\\u003c") }}
+        />
         <PlatformConfigProvider>
           <AppProvider>
             <ChromeGate>{children}</ChromeGate>

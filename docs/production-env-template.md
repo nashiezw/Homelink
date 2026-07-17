@@ -6,6 +6,7 @@ Do not commit real secret values. Use this as a worksheet while filling your hos
 
 ```text
 NEXT_PUBLIC_APP_URL="https://houselink.co.zw"
+NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION="" # Optional: Google Search Console HTML tag content value
 HOUSELINK_STRICT_PRODUCTION="true"
 HOUSELINK_SESSION_SECRET="" # 32+ random chars, do not reuse any database/API secret
 DATABASE_URL="postgresql://..."
