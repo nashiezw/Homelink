@@ -8,6 +8,7 @@ import {
   Bookmark,
   BookOpen,
   ChevronDown,
+  CheckCircle2,
   Download,
   FileText,
   Flame,
@@ -364,11 +365,42 @@ export function LearnerDashboardClient() {
                 <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-400 line-clamp-3">{application.course.description}</p>
 
                 {application.status !== "APPROVED" && application.payment && (
-                  <div className="mt-5 space-y-4 rounded-xl border border-amber-200 bg-amber-50/80 p-4 dark:border-amber-900/50 dark:bg-amber-950/20">
-                    <p className="font-semibold text-amber-900 dark:text-amber-100">Payment approval required</p>
-                    <p className="text-sm text-amber-800/90 dark:text-amber-200/90">
-                      Pay {application.currency} {application.amount.toFixed(2)} using the details below, then upload proof for admin review.
-                    </p>
+                  <div
+                    className={cn(
+                      "mt-5 space-y-4 rounded-xl border p-4",
+                      isProofSubmitted(application)
+                        ? "border-emerald-200 bg-emerald-50/80 dark:border-emerald-900/50 dark:bg-emerald-950/20"
+                        : "border-amber-200 bg-amber-50/80 dark:border-amber-900/50 dark:bg-amber-950/20",
+                    )}
+                  >
+                    {isProofSubmitted(application) ? (
+                      <div className="flex gap-3">
+                        <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-emerald-700 dark:text-emerald-300" />
+                        <div>
+                          <p className="font-semibold text-emerald-950 dark:text-emerald-100">Proof uploaded</p>
+                          <p className="mt-1 text-sm text-emerald-900/80 dark:text-emerald-200/90">
+                            Your payment proof was received. HouseLink will confirm the payment and activate this course after review.
+                          </p>
+                          {getApplicationProofUrl(application) ? (
+                            <a
+                              href={getApplicationProofUrl(application)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="mt-2 inline-flex text-sm font-semibold text-emerald-700 hover:underline dark:text-emerald-300"
+                            >
+                              View uploaded proof
+                            </a>
+                          ) : null}
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <p className="font-semibold text-amber-900 dark:text-amber-100">Payment approval required</p>
+                        <p className="text-sm text-amber-800/90 dark:text-amber-200/90">
+                          Pay {application.currency} {application.amount.toFixed(2)} using the details below, then upload proof for admin review.
+                        </p>
+                      </>
+                    )}
                     <AcademyPaymentDetails
                       config={paymentConfig}
                       paymentMethod={application.payment.method ?? "bank_transfer"}
@@ -381,12 +413,14 @@ export function LearnerDashboardClient() {
                       }
                       variant="proof"
                     />
-                    <PaymentProofUpload
-                      paymentId={application.payment.id}
-                      onUploaded={() => void load()}
-                      showToast={showToast}
-                      className="w-full"
-                    />
+                    {!isProofSubmitted(application) && (
+                      <PaymentProofUpload
+                        paymentId={application.payment.id}
+                        onUploaded={() => void load()}
+                        showToast={showToast}
+                        className="w-full"
+                      />
+                    )}
                   </div>
                 )}
 
@@ -625,4 +659,17 @@ function StatusPill({ status }: { status: string }) {
       {status.replace(/_/g, " ")}
     </span>
   );
+}
+
+function isProofSubmitted(application: LearnerDashboard["applications"][number]) {
+  return Boolean(
+    application.proofUrl ||
+    application.payment?.proofUrl ||
+    application.payment?.proofStatus === "UPLOADED" ||
+    application.status === "PAYMENT_UPLOADED",
+  );
+}
+
+function getApplicationProofUrl(application: LearnerDashboard["applications"][number]) {
+  return application.proofUrl ?? application.payment?.proofUrl ?? undefined;
 }
