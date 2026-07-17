@@ -38,18 +38,22 @@ const steps = [
   "Earn Commission",
 ];
 
-export function BecomeAgentLanding() {
+type AgentHighlight = {
+  label: string;
+  value: string;
+};
+
+type BecomeAgentLandingProps = {
+  highlights: AgentHighlight[];
+};
+
+export function BecomeAgentLanding({ highlights }: BecomeAgentLandingProps) {
   return (
     <PageShell
       eyebrow="Become an Agent"
       title="Become a HouseLink Agent"
       description="Join Zimbabwe's trusted property platform and grow your real estate career with powerful technology, verified branding, quality leads, and attractive commissions."
-      highlights={[
-        { value: "500+", label: "Active agents" },
-        { value: "18k+", label: "Listings" },
-        { value: "92%", label: "Verified contacts" },
-        { value: "24h", label: "Lead response SLA" },
-      ]}
+      highlights={highlights}
       actions={
         <div className="flex w-full flex-col gap-3 sm:w-auto">
           <Link href="/become-agent/apply">
