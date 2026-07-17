@@ -5,6 +5,8 @@ import {
   clearSessionCookieHeader,
   getSignedSessionFromRequest,
   getSessionUserIdFromRequest,
+  hasUsableSessionSecret,
+  isSessionSecretConfigurationError,
   sessionCookieHeader,
 } from "@/lib/auth/session";
 import { getRegistrationPolicy, getRateLimitPerMinute, getSessionTimeoutSeconds } from "@/lib/settings/runtime";
@@ -25,6 +27,8 @@ import { getMainPrisma } from "@/lib/db/main-prisma";
 import { getStore } from "@/lib/store/app-store";
 
 export async function POST(request: Request) {
+  if (!hasUsableSessionSecret()) return sessionSecretProblem();
+
   const policy = getRegistrationPolicy();
   const rate = checkRateLimit(`auth:${getClientIp(request)}`, getRateLimitPerMinute());
   if (!rate.allowed) {
@@ -206,17 +210,22 @@ function seedPasswordMatches(email: string, password: string) {
 }
 
 export async function DELETE(request: Request) {
-  if (shouldUsePostgresAuth()) {
-    const session = getSignedSessionFromRequest(request);
-    if (session) {
-      await revokePostgresSession(session.sessionId, session.userId);
+  try {
+    if (shouldUsePostgresAuth()) {
+      const session = getSignedSessionFromRequest(request);
+      if (session) {
+        await revokePostgresSession(session.sessionId, session.userId);
+      }
+    } else {
+      const cookie = request.headers.get("cookie") ?? "";
+      const match = cookie.match(/houselink_session=([^;]+)/);
+      if (match) {
+        getStore().deleteSession(match[1]);
+      }
     }
-  } else {
-    const cookie = request.headers.get("cookie") ?? "";
-    const match = cookie.match(/houselink_session=([^;]+)/);
-    if (match) {
-      getStore().deleteSession(match[1]);
-    }
+  } catch (error) {
+    if (isSessionSecretConfigurationError(error)) return sessionSecretProblem();
+    throw error;
   }
   return new NextResponse(
     JSON.stringify({ data: { signedOut: true }, meta: { requestId: crypto.randomUUID() } }),
@@ -231,7 +240,13 @@ export async function DELETE(request: Request) {
 }
 
 export async function GET(request: Request) {
-  const userId = getSessionUserIdFromRequest(request);
+  let userId: string | null;
+  try {
+    userId = getSessionUserIdFromRequest(request);
+  } catch (error) {
+    if (isSessionSecretConfigurationError(error)) return sessionSecretProblem();
+    throw error;
+  }
   if (!userId) {
     return problem(401, "UNAUTHORIZED", "Sign in to continue.");
   }
@@ -251,4 +266,12 @@ export async function GET(request: Request) {
     return problem(401, "UNAUTHORIZED", "Session is no longer valid.");
   }
   return ok(getStore().publicUser(user));
+}
+
+function sessionSecretProblem() {
+  return problem(
+    503,
+    "AUTH_CONFIGURATION_ERROR",
+    "Authentication is not configured. Set HOUSELINK_SESSION_SECRET, AUTH_SECRET, or NEXTAUTH_SECRET to a 32+ character value.",
+  );
 }

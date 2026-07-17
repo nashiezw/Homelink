@@ -16,6 +16,10 @@ function has(name) {
   return Boolean(process.env[name]?.trim());
 }
 
+function sessionSecret() {
+  return process.env.HOUSELINK_SESSION_SECRET || process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET || "";
+}
+
 function isLocalUrl(value) {
   return !value || value.includes("localhost") || value.includes("127.0.0.1");
 }
@@ -29,10 +33,11 @@ if (process.env.HOUSELINK_STRICT_PRODUCTION !== "true") {
   failures.push("Set HOUSELINK_STRICT_PRODUCTION=true for the final launch environment.");
 }
 
-if (!has("HOUSELINK_SESSION_SECRET")) {
-  failures.push("Set HOUSELINK_SESSION_SECRET to a long random value so login cookies remain stable across deploys.");
-} else if (process.env.HOUSELINK_SESSION_SECRET.length < 32) {
-  failures.push("HOUSELINK_SESSION_SECRET must be at least 32 characters.");
+const configuredSessionSecret = sessionSecret();
+if (!configuredSessionSecret) {
+  failures.push("Set HOUSELINK_SESSION_SECRET, AUTH_SECRET, or NEXTAUTH_SECRET to a long random value so login cookies remain stable across deploys.");
+} else if (configuredSessionSecret.length < 32) {
+  failures.push("The configured session secret must be at least 32 characters.");
 }
 
 if (!has("NEXT_PUBLIC_APP_URL") || isLocalUrl(process.env.NEXT_PUBLIC_APP_URL)) {

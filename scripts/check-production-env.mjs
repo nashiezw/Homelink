@@ -1,6 +1,5 @@
 const required = [
   "DATABASE_URL",
-  "HOUSELINK_SESSION_SECRET",
   "HOUSELINK_STRICT_PRODUCTION",
   "NEXT_PUBLIC_APP_URL",
   "CLOUDINARY_CLOUD_NAME",
@@ -11,9 +10,12 @@ const required = [
 
 const missing = required.filter((name) => !process.env[name]);
 const weak = [];
+const sessionSecret = process.env.HOUSELINK_SESSION_SECRET || process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET || "";
 
-if (process.env.HOUSELINK_SESSION_SECRET && process.env.HOUSELINK_SESSION_SECRET.length < 32) {
-  weak.push("HOUSELINK_SESSION_SECRET must be at least 32 characters.");
+if (!sessionSecret) {
+  missing.push("HOUSELINK_SESSION_SECRET, AUTH_SECRET, or NEXTAUTH_SECRET");
+} else if (sessionSecret.length < 32) {
+  weak.push("The configured session secret must be at least 32 characters.");
 }
 
 if (process.env.HOUSELINK_STRICT_PRODUCTION !== "true") {

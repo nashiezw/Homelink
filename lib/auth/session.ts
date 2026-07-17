@@ -7,17 +7,40 @@ const secureCookie = process.env.NODE_ENV === "production" ? "; Secure" : "";
 const signedSessionPrefix = "v2.";
 const MIN_PRODUCTION_SECRET_LENGTH = 32;
 
+export class SessionSecretConfigurationError extends Error {
+  constructor() {
+    super(`A 32+ character session secret must be configured in production.`);
+    this.name = "SessionSecretConfigurationError";
+  }
+}
+
+export function isSessionSecretConfigurationError(error: unknown): error is SessionSecretConfigurationError {
+  return error instanceof SessionSecretConfigurationError;
+}
+
+export function hasUsableSessionSecret() {
+  try {
+    getSessionSecret();
+    return true;
+  } catch (error) {
+    if (isSessionSecretConfigurationError(error)) return false;
+    throw error;
+  }
+}
+
 function getSessionSecret() {
   return getSessionSecretCandidates()[0];
 }
 
 function getSessionSecretCandidates() {
   if (process.env.NODE_ENV === "production") {
-    const primary = process.env.HOUSELINK_SESSION_SECRET;
+    const primary = [
+      process.env.HOUSELINK_SESSION_SECRET,
+      process.env.AUTH_SECRET,
+      process.env.NEXTAUTH_SECRET,
+    ].find(isStrongSessionSecret);
     if (!isStrongSessionSecret(primary)) {
-      throw new Error(
-        `HOUSELINK_SESSION_SECRET must be set to at least ${MIN_PRODUCTION_SECRET_LENGTH} characters in production.`,
-      );
+      throw new SessionSecretConfigurationError();
     }
     const previous = process.env.HOUSELINK_PREVIOUS_SESSION_SECRETS
       ?.split(",")
