@@ -192,7 +192,7 @@ export const defaultPaymentSettings: PaymentSettings = {
 
 export const defaultPlatformSettings: PlatformSettings = {
   platformName: "HouseLink Zimbabwe",
-  logoUrl: "/logo.svg",
+  logoUrl: "/brand/houselink-full-lockup.png",
   primaryColor: "#059669",
   secondaryColor: "#0891b2",
   theme: "system",
