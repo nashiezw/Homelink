@@ -96,7 +96,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       try {
         const currentUser = await refreshUser();
         if (currentUser) {
-          await refreshFavourites();
+          void refreshFavourites();
         } else {
           setFavourites([]);
         }
