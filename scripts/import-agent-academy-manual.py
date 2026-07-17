@@ -248,7 +248,7 @@ def make_resource_pdf(title: str, category: str, manual_page: int, output: Path)
         story.append(img)
     story.append(Spacer(1, 5 * mm))
     story.append(para(title, s["title"]))
-    story.append(para(f"<b>Category:</b> {category} &nbsp;&nbsp; <b>Manual reference:</b> page {manual_page} &nbsp;&nbsp; <b>Format:</b> A4 print-ready PDF", s["subtitle"]))
+    story.append(para(f"Category: {category} | Manual reference: page {manual_page} | Format: A4 print-ready PDF", s["subtitle"]))
     story.append(Spacer(1, 3 * mm))
     purpose = f"This professional HouseLink Zimbabwe template is recreated from the official Real Estate Agent Training Manual. Complete all applicable fields accurately, obtain required signatures where applicable, and file the completed document according to company procedures."
     story.append(para("Purpose", s["section"]))

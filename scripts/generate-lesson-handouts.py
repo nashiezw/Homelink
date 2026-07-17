@@ -157,9 +157,10 @@ def html_to_blocks(rich_html: str, style: ParagraphStyle, section_style: Paragra
 
 
 def hero_banner(title: str, course_title: str, module_title: str, minutes: int, s: dict) -> Table:
+    meta = f"Programme: {course_title} | Module: {module_title} | Study time: {minutes} min"
     rows = [
         [para(title, s["title"])],
-        [para(f"<b>Programme:</b> {course_title} &nbsp;&nbsp;|&nbsp;&nbsp; <b>Module:</b> {module_title} &nbsp;&nbsp;|&nbsp;&nbsp; <b>Study time:</b> {minutes} min", s["heroMeta"])],
+        [para(meta, s["heroMeta"])],
     ]
     table = Table(rows, colWidths=[174 * mm])
     table.setStyle(
@@ -342,7 +343,7 @@ def make_lesson_handout(item: dict, output: Path):
     story.append(PageBreak())
 
     story.append(para("Lesson Guide", s["section"]))
-    story.append(para(f"In-depth notes for <b>{item['title']}</b> — study, annotate, and revisit before client meetings.", s["subtitle"]))
+    story.append(para(f"In-depth notes for {item['title']} - study, annotate, and revisit before client meetings.", s["subtitle"]))
     story.append(Spacer(1, 3 * mm))
     story.extend(html_to_blocks(item["richText"], s["body"], s["section"]))
 
@@ -370,7 +371,7 @@ def make_lesson_handout(item: dict, output: Path):
         story.append(para("Related Field Toolkit", s["section"]))
         story.append(
             para(
-                "These branded HouseLink forms support this lesson — download them from the <b>Toolkit</b> tab in your course:",
+                "These branded HouseLink forms support this lesson - download them from the Toolkit tab in your course:",
                 s["body"],
             )
         )
