@@ -14,6 +14,7 @@ import {
 import { fetchCourseTree, flattenCourseMaterials, mapLessonForLearner } from "@/lib/academy/course-tree";
 import { toAcademyFileDownloadUrl } from "@/lib/academy/academy-files";
 import { repairLegacyBrandingInPostgres } from "@/lib/brand/rebrand";
+import { lessonHandoutStoragePath } from "@/lib/academy/lesson-handouts";
 
 export type AcademyRegistrationIntent = "TRAINING_ONLY" | "AGENT_TRAINING";
 
@@ -369,6 +370,26 @@ export async function getLearnerAcademyDashboard(learnerId: string, options?: { 
   };
 }
 
+async function syncLessonHandoutUrls(courseId: string) {
+  const prisma = getMainPrisma();
+  const lessons = await prisma.trainingLesson.findMany({
+    where: { section: { module: { courseId } } },
+    select: { id: true, title: true, pdfUrl: true },
+  });
+  const updates = lessons
+    .map((lesson) => ({ ...lesson, expectedPdfUrl: lessonHandoutStoragePath(courseId, lesson.title) }))
+    .filter((lesson) => lesson.pdfUrl !== lesson.expectedPdfUrl);
+  if (!updates.length) return;
+  await prisma.$transaction(
+    updates.map((lesson) =>
+      prisma.trainingLesson.update({
+        where: { id: lesson.id },
+        data: { pdfUrl: lesson.expectedPdfUrl },
+      }),
+    ),
+  );
+}
+
 export async function registerPublicLearner(input: {
   learnerId: string;
   courseId: string;
@@ -607,6 +628,7 @@ export async function getLearnerCourseDetail(learnerId: string, courseId: string
     if (application?.status !== AcademyRegistrationStatus.APPROVED) return "NOT_ENROLLED" as const;
   }
 
+  await syncLessonHandoutUrls(courseId);
   const course = await fetchCourseTree(courseId);
   if (!course) return "NOT_FOUND" as const;
 
