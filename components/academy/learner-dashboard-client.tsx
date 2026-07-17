@@ -7,6 +7,7 @@ import {
   Bell,
   Bookmark,
   BookOpen,
+  ChevronDown,
   Download,
   FileText,
   Flame,
@@ -143,6 +144,7 @@ export function LearnerDashboardClient() {
   const [data, setData] = useState<LearnerDashboard | null>(null);
   const [paymentConfig, setPaymentConfig] = useState<PublicPaymentConfig | null>(null);
   const [checkout, setCheckout] = useState<"toolkit" | "manual" | null>(null);
+  const [expandedProgrammeIds, setExpandedProgrammeIds] = useState<Set<string>>(new Set());
   const primary = data?.settings?.primaryColour ?? "#008b68";
 
   const load = useCallback(async () => {
@@ -187,6 +189,18 @@ export function LearnerDashboardClient() {
   const approvedCourse = data.applications.find((a) => a.status === "APPROVED");
   const toolkitItems = (data.activeCourseToolkit?.groups ?? []).flatMap((group) => group.items);
   const toolkitPreview = toolkitItems.slice(0, 6);
+  const applicationCourseIds = new Set(data.applications.map((application) => application.course.id));
+  const programmeMyCourses = (data.programmeCourses ?? []).filter((course) => course.unlocked && !applicationCourseIds.has(course.id));
+  const activeCourseCount = Math.max(data.metrics.enrolledCourses ?? 0, programmeMyCourses.length);
+
+  function toggleProgrammeDetails(courseId: string) {
+    setExpandedProgrammeIds((current) => {
+      const next = new Set(current);
+      if (next.has(courseId)) next.delete(courseId);
+      else next.add(courseId);
+      return next;
+    });
+  }
 
   return (
     <PageShell
@@ -225,7 +239,7 @@ export function LearnerDashboardClient() {
       <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         <StatCard icon={TrendingUp} label="Overall progress" value={`${data.metrics.progress ?? 0}%`} accent={primary} />
         <StatCard icon={Flame} label="Learning streak" value={`${data.streak ?? 0} days`} accent="#f59e0b" highlight />
-        <StatCard icon={BookOpen} label="Active courses" value={String(data.metrics.enrolledCourses)} accent={primary} />
+        <StatCard icon={BookOpen} label="Active courses" value={String(activeCourseCount)} accent={primary} />
         <StatCard icon={Sparkles} label="XP earned" value={String(data.metrics.xp ?? 0)} accent="#8b5cf6" />
         <StatCard icon={Award} label="Certificates" value={String(data.metrics.certificates)} accent="#6366f1" />
       </div>
@@ -235,7 +249,9 @@ export function LearnerDashboardClient() {
           <h2 className="text-xl font-bold sm:text-2xl">Certification pathway</h2>
           <p className="mt-1 text-sm text-slate-600">Foundations → Listing & Client Mastery → Professional Certification. Earn a badge and downloadable certificate after each programme.</p>
           <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {data.programmeCourses.map((course) => (
+            {data.programmeCourses.map((course) => {
+              const expanded = expandedProgrammeIds.has(course.id);
+              return (
               <article
                 key={course.id}
                 className={cn(
@@ -257,6 +273,35 @@ export function LearnerDashboardClient() {
                     <div className="h-full rounded-full transition-all" style={{ width: `${course.progress}%`, backgroundColor: course.theme.accent }} />
                   </div>
                   <p className="mt-2 text-xs text-slate-500">{course.progress}% complete · {course.badgeName}</p>
+                  <button
+                    type="button"
+                    onClick={() => toggleProgrammeDetails(course.id)}
+                    className="mt-4 flex w-full items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-left text-xs font-bold text-slate-700 transition hover:border-emerald-200 hover:bg-emerald-50"
+                    aria-expanded={expanded}
+                  >
+                    Programme details
+                    <ChevronDown className={cn("size-4 transition-transform", expanded && "rotate-180")} />
+                  </button>
+                  {expanded && (
+                    <div className="mt-3 space-y-2 rounded-lg border border-slate-100 bg-white p-3 text-sm text-slate-600">
+                      <div className="flex items-center justify-between gap-3">
+                        <span>Access</span>
+                        <span className="font-semibold text-slate-800">{course.unlocked ? "Unlocked" : "Locked"}</span>
+                      </div>
+                      <div className="flex items-center justify-between gap-3">
+                        <span>Progress</span>
+                        <span className="font-semibold text-slate-800">{course.progress}%</span>
+                      </div>
+                      <div className="flex items-center justify-between gap-3">
+                        <span>Badge</span>
+                        <span className="text-right font-semibold text-slate-800">{course.badgeEarned ? "Earned" : course.badgeName}</span>
+                      </div>
+                      <div className="flex items-center justify-between gap-3">
+                        <span>Certificate</span>
+                        <span className="font-semibold text-slate-800">{course.certificate ? course.certificate.certificateNumber : "Not issued yet"}</span>
+                      </div>
+                    </div>
+                  )}
                   <div className="mt-4 flex flex-col gap-2">
                     {course.unlocked ? (
                       <Link href={`/dashboard/academy/${course.id}`} className="w-full">
@@ -273,7 +318,8 @@ export function LearnerDashboardClient() {
                   </div>
                 </div>
               </article>
-            ))}
+              );
+            })}
           </div>
         </section>
       )}
@@ -343,7 +389,39 @@ export function LearnerDashboardClient() {
               </div>
             </article>
           ))}
-          {!data.applications.length && (
+          {programmeMyCourses.map((course) => (
+            <article key={course.id} className="academy-card overflow-hidden rounded-xl">
+              <div className="border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white px-5 py-4 dark:border-slate-800 dark:from-slate-900 dark:to-slate-950 sm:px-6">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <span className={cn("inline-flex rounded-full border px-3 py-1 text-xs font-bold uppercase tracking-wide", course.theme.chip)}>
+                      {course.theme.label}
+                    </span>
+                    <h3 className="mt-2 text-lg font-bold sm:text-xl">{course.title}</h3>
+                  </div>
+                  <p className="text-sm font-semibold text-slate-500">{course.completed ? "Completed" : `${course.progress}% complete`}</p>
+                </div>
+              </div>
+              <div className="p-5 sm:p-6">
+                <div className="mb-4">
+                  <div className="mb-1 flex justify-between text-sm">
+                    <span className="text-slate-500">Programme progress</span>
+                    <span className="font-semibold">{course.progress}%</span>
+                  </div>
+                  <div className="h-2.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+                    <div className="h-full rounded-full transition-all duration-700" style={{ width: `${course.progress}%`, backgroundColor: course.theme.accent }} />
+                  </div>
+                </div>
+                <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-400">{course.subtitle}</p>
+                <Link href={`/dashboard/academy/${course.id}`} className="mt-5 block w-full">
+                  <Button className="w-full" style={{ backgroundColor: course.theme.accent }}>
+                    <BookOpen className="size-4 mr-2" /> {course.completed ? "Review course" : "Continue course"}
+                  </Button>
+                </Link>
+              </div>
+            </article>
+          ))}
+          {!data.applications.length && !programmeMyCourses.length && (
             <div className="rounded-2xl border-2 border-dashed border-slate-200 p-12 text-center dark:border-slate-700">
               <BookOpen className="mx-auto size-12 text-slate-300" />
               <p className="mt-4 text-lg font-semibold">No courses yet</p>

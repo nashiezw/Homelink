@@ -80,12 +80,22 @@ type PublicRoommateProfileSummary = {
 const AUDIENCE_ICONS = { search: Search, home: Home, users: Users } as const;
 const STEP_ICONS = [UserPlus, Search, MessageCircle, Calendar, Key] as const;
 
-const suburbHighlights = [
-  { name: "Avondale", rooms: 38, roommates: 64, average: "US$280", photo: "/images/roommates/cover-testimonial-rudo.jpg" },
-  { name: "Senga", rooms: 22, roommates: 47, average: "US$145", photo: "/images/gweru-room-courtyard.png" },
-  { name: "Hillside", rooms: 19, roommates: 31, average: "US$240", photo: "/images/bulawayo-family-house.png" },
-  { name: "Newtown", rooms: 16, roommates: 28, average: "US$210", photo: "/images/kwekwe-flat.png" },
-] as const;
+type SuburbHighlight = {
+  name: string;
+  rooms: number;
+  roommates: number;
+  average: string;
+  photo: string;
+};
+
+const suburbHighlightPhotos: Record<string, string> = {
+  avondale: "/images/roommates/cover-testimonial-rudo.jpg",
+  senga: "/images/gweru-room-courtyard.png",
+  hillside: "/images/bulawayo-family-house.png",
+  newtown: "/images/kwekwe-flat.png",
+};
+
+const defaultSuburbNames = ["Avondale", "Senga", "Hillside", "Newtown"];
 
 const matchingFilters = [
   "Recommended for you",
@@ -130,7 +140,7 @@ function AvatarStack({ urls, size = 36 }: { urls: readonly string[]; size?: numb
   );
 }
 
-function HeroPhotoCollage() {
+function HeroPhotoCollage({ roomCount, profileCount }: { roomCount: number; profileCount: number }) {
   return (
     <div className="rm-photo-stack relative mx-auto h-[22rem] w-full max-w-md lg:mx-0 lg:h-[26rem] lg:max-w-none">
       <div className="rm-glow-orb absolute -right-8 top-8 size-48 bg-emerald-400/40" />
@@ -151,14 +161,14 @@ function HeroPhotoCollage() {
       ))}
       <div className="absolute -bottom-2 left-1/2 z-40 -translate-x-1/2 rounded-2xl rm-glass-dark px-5 py-3 shadow-xl">
         <p className="text-center text-xs font-bold uppercase tracking-wider text-emerald-200">Live now</p>
-        <p className="text-center text-lg font-black text-white">47 rooms · 186 matches this week</p>
+        <p className="text-center text-lg font-black text-white">{roomCount} rooms · {profileCount} profiles</p>
       </div>
     </div>
   );
 }
 
-function LocationMarquee() {
-  const items = [...suburbHighlights, ...suburbHighlights];
+function LocationMarquee({ highlights }: { highlights: SuburbHighlight[] }) {
+  const items = [...highlights, ...highlights];
   return (
     <section className="overflow-hidden border-y border-emerald-900/20 bg-[#071018] py-6 lg:py-7">
       <div className="rm-shell mb-4">
@@ -620,6 +630,11 @@ export function RoommatesPageClient() {
   const featuredSeeker = topSeekers[0];
   const otherSeekers = topSeekers.slice(1, 4);
   const moreSeekers = topSeekers.slice(4);
+  const liveRoomCount = postgresRooms.length;
+  const liveProfileCount = postgresSeekers.length;
+  const suburbHighlights = buildSuburbHighlights(postgresRooms, postgresSeekers);
+  const activeCities = Array.from(new Set(postgresSeekers.map((person) => person.city).filter(Boolean))).slice(0, 3);
+  const heroLocationLine = activeCities.length ? activeCities.join(" · ") : "Zimbabwe";
 
   function runRoomShareSubmit() {
     if (shareIntent === "seeking") {
@@ -699,8 +714,10 @@ export function RoommatesPageClient() {
                 <div className="mt-6 flex flex-wrap items-center gap-4">
                   <AvatarStack urls={heroMemberStack} />
                   <div>
-                    <p className="text-base font-bold text-white">18,000+ members</p>
-                    <p className="text-sm text-white/65">Harare · Bulawayo · Gweru</p>
+                    <p className="text-base font-bold text-white">
+                      {liveProfileCount} active {liveProfileCount === 1 ? "profile" : "profiles"}
+                    </p>
+                    <p className="text-sm text-white/65">{heroLocationLine}</p>
                   </div>
                 </div>
 
@@ -717,7 +734,7 @@ export function RoommatesPageClient() {
                 </div>
               </div>
               <div className="col-span-12 hidden sm:block lg:col-span-6 rm-rise rm-rise-delay-2">
-                <HeroPhotoCollage />
+                <HeroPhotoCollage roomCount={liveRoomCount} profileCount={liveProfileCount} />
               </div>
             </div>
           </div>
@@ -748,7 +765,7 @@ export function RoommatesPageClient() {
         </div>
       </section>
 
-      <LocationMarquee />
+      <LocationMarquee highlights={suburbHighlights} />
 
       {/* ═══ Light editorial body — one cohesive story ═══ */}
       <div className="rm-light-surface">
@@ -999,13 +1016,15 @@ export function RoommatesPageClient() {
               <div className="relative flex min-h-[22rem] flex-col items-center justify-center px-8 py-14 text-center">
                 <div className="mb-5 flex items-center gap-3 rounded-full rm-glass-dark px-4 py-2">
                   <AvatarStack urls={heroMemberStack.slice(0, 4)} size={32} />
-                  <span className="text-sm font-semibold text-white">Join 18,000+ members</span>
+                  <span className="text-sm font-semibold text-white">
+                    Join {liveProfileCount} active {liveProfileCount === 1 ? "profile" : "profiles"}
+                  </span>
                 </div>
                 <h2 className="max-w-2xl text-[clamp(2rem,4vw,3rem)] font-black leading-tight text-white">
                   Find your perfect <span className="bg-gradient-to-r from-emerald-300 to-teal-200 bg-clip-text text-transparent">roommate today.</span>
                 </h2>
                 <p className="mt-4 max-w-2xl text-base leading-relaxed text-emerald-50/90">
-                  Thousands of verified Zimbabweans are already finding trusted roommates and quality accommodation through HouseLink.
+                  Verified Zimbabweans are finding trusted roommates and quality accommodation through HouseLink.
                 </p>
                 <div className="mt-8 flex flex-wrap justify-center gap-3">
                   <button type="button" onClick={() => scrollToRoomShareWizard("seeking")} className="inline-flex h-12 items-center gap-2 rounded-2xl bg-white px-6 text-base font-bold text-emerald-900 shadow-lg transition hover:-translate-y-0.5">
@@ -1163,6 +1182,45 @@ function splitLocation(location?: string) {
   const parts = location.split(",").map((part) => part.trim()).filter(Boolean);
   if (parts.length >= 2) return [parts[0], parts.at(-1) ?? ""] as const;
   return [parts[0] ?? "", ""] as const;
+}
+
+function buildSuburbHighlights(rooms: Listing[], seekers: RoommateCardPerson[]): SuburbHighlight[] {
+  const rows = new Map<string, { name: string; rooms: Listing[]; roommates: number }>();
+
+  function ensure(name: string) {
+    const key = name.trim().toLowerCase();
+    if (!rows.has(key)) rows.set(key, { name: name.trim(), rooms: [], roommates: 0 });
+    return rows.get(key)!;
+  }
+
+  defaultSuburbNames.forEach((name) => ensure(name));
+  rooms.forEach((room) => {
+    const name = room.suburb || room.city;
+    if (!name) return;
+    ensure(name).rooms.push(room);
+  });
+  seekers.forEach((person) => {
+    const name = person.suburb || person.city;
+    if (!name) return;
+    ensure(name).roommates += 1;
+  });
+
+  return Array.from(rows.values())
+    .sort((a, b) => (b.rooms.length + b.roommates) - (a.rooms.length + a.roommates))
+    .slice(0, 4)
+    .map((row) => {
+      const average = row.rooms.length
+        ? `US$${Math.round(row.rooms.reduce((sum, room) => sum + room.price, 0) / row.rooms.length)}`
+        : "New";
+      const photoKey = row.name.toLowerCase();
+      return {
+        name: row.name,
+        rooms: row.rooms.length,
+        roommates: row.roommates,
+        average,
+        photo: suburbHighlightPhotos[photoKey] ?? row.rooms[0]?.image ?? "/images/roommates/cover-testimonial-rudo.jpg",
+      };
+    });
 }
 
 function stringValue(value: unknown) {
