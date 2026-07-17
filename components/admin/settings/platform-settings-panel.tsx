@@ -7,9 +7,9 @@ import { Button } from "@/components/ui/button";
 import { useApp } from "@/components/providers/app-provider";
 import { apiFetch } from "@/lib/api/client";
 import { syncGeoToFlatLists } from "@/lib/settings/geo";
-import type { GeoCity, GeoProvince, PlatformSettings } from "@/lib/settings/types";
+import type { CareerRole, GeoCity, GeoProvince, PlatformSettings } from "@/lib/settings/types";
 
-type SettingsTab = "general" | "contact" | "locations" | "integrations" | "notifications" | "legal" | "rbac" | "features" | "security";
+type SettingsTab = "general" | "contact" | "careers" | "locations" | "integrations" | "notifications" | "legal" | "rbac" | "features" | "security";
 
 type AdminUser = { id: string; name: string; email: string };
 type AdminMe = { permissions: string[]; roles: string[] };
@@ -137,6 +137,7 @@ export function PlatformSettingsPanel({ defaultTab = "general" }: { defaultTab?:
   const tabs: Array<{ id: SettingsTab; label: string }> = [
     { id: "general", label: "General" },
     { id: "contact", label: "Contact" },
+    { id: "careers", label: "Careers" },
     { id: "locations", label: "Locations" },
     { id: "integrations", label: "Integrations" },
     { id: "notifications", label: "Notifications" },
@@ -255,6 +256,13 @@ export function PlatformSettingsPanel({ defaultTab = "general" }: { defaultTab?:
             className="sm:col-span-2"
           />
         </div>
+      )}
+
+      {tab === "careers" && (
+        <CareersEditor
+          roles={settings.careers.roles}
+          onChange={(roles) => setSettings({ ...settings, careers: { ...settings.careers, roles } })}
+        />
       )}
 
       {tab === "locations" && (
@@ -427,6 +435,92 @@ function mergeSavedSettingsForForm(serverSettings: PlatformSettings, submittedSe
 
 function isMaskedSecret(value: string) {
   return value.length > 0 && !/[A-Za-z0-9]/.test(value);
+}
+
+function CareersEditor({ roles, onChange }: { roles: CareerRole[]; onChange: (roles: CareerRole[]) => void }) {
+  function updateRole(id: string, patch: Partial<CareerRole>) {
+    onChange(roles.map((role) => (role.id === id ? { ...role, ...patch } : role)));
+  }
+
+  function addRole() {
+    onChange([
+      ...roles,
+      {
+        id: `career_${Date.now()}`,
+        title: "New role",
+        location: "Harare / remote",
+        type: "Full-time",
+        body: "Describe the role, responsibilities, and ideal candidate.",
+        published: false,
+      },
+    ]);
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="rounded-xl border border-cyan-500/20 bg-slate-950/60 p-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm font-semibold text-white">Careers page roles</p>
+            <p className="mt-1 text-sm text-slate-400">
+              Add, edit, publish, or remove roles shown on the public Careers page.
+            </p>
+          </div>
+          <Button variant="secondary" onClick={addRole}>
+            <Plus className="size-4" /> Add role
+          </Button>
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        {roles.map((role) => (
+          <article key={role.id} className="rounded-xl border border-white/10 bg-slate-950/50 p-4">
+            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm font-semibold text-white">{role.title || "Untitled role"}</p>
+                <p className="mt-1 text-xs text-slate-500">{role.published ? "Published on careers page" : "Hidden from careers page"}</p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <label className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-300">
+                  <input
+                    type="checkbox"
+                    checked={role.published}
+                    onChange={(event) => updateRole(role.id, { published: event.target.checked })}
+                  />
+                  Published
+                </label>
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-2 rounded-lg border border-red-500/30 px-3 py-2 text-sm font-semibold text-red-200 transition hover:bg-red-500/10"
+                  onClick={() => onChange(roles.filter((item) => item.id !== role.id))}
+                >
+                  <Trash2 className="size-4" /> Delete
+                </button>
+              </div>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Input label="Role title" value={role.title} onChange={(title) => updateRole(role.id, { title })} />
+              <Input label="Employment type" value={role.type} onChange={(type) => updateRole(role.id, { type })} />
+              <Input label="Location" value={role.location} onChange={(location) => updateRole(role.id, { location })} />
+              <Input label="Internal ID" value={role.id} onChange={(id) => updateRole(role.id, { id: id.trim() || role.id })} />
+              <TextArea
+                label="Role description"
+                value={role.body}
+                onChange={(body) => updateRole(role.id, { body })}
+                className="sm:col-span-2"
+              />
+            </div>
+          </article>
+        ))}
+        {!roles.length && (
+          <div className="rounded-xl border border-dashed border-white/15 p-6 text-center text-sm text-slate-400">
+            No roles yet. Add a role to publish jobs on the Careers page.
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
 
 function GeoEditor({

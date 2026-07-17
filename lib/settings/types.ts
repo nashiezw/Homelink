@@ -103,6 +103,19 @@ export type ContactSettings = {
   supportHours: string;
 };
 
+export type CareerRole = {
+  id: string;
+  title: string;
+  location: string;
+  type: string;
+  body: string;
+  published: boolean;
+};
+
+export type CareersSettings = {
+  roles: CareerRole[];
+};
+
 export type AdminPermission =
   | "platform:read"
   | "platform:write"
@@ -162,6 +175,7 @@ export type PlatformSettings = {
     keywords: string;
   };
   contact: ContactSettings;
+  careers: CareersSettings;
   legal: LegalSettings;
   rbac: AdminRbacSettings;
   integrations: {

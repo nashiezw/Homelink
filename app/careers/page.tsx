@@ -6,27 +6,6 @@ import { getHydratedRuntimePlatformSettings } from "@/lib/settings/runtime";
 
 export const dynamic = "force-dynamic";
 
-const roles = [
-  {
-    title: "Customer support specialist",
-    location: "Harare / remote",
-    type: "Full-time",
-    body: "Help seekers and landlords get unstuck — verification questions, listing issues, and account access.",
-  },
-  {
-    title: "Property operations associate",
-    location: "Harare",
-    type: "Full-time",
-    body: "Support property management workflows, owner onboarding, and consultant coordination.",
-  },
-  {
-    title: "Frontend engineer",
-    location: "Remote (Zimbabwe-friendly)",
-    type: "Full-time",
-    body: "Build premium marketplace experiences — search, listings, tenancies, and trust tooling.",
-  },
-];
-
 const perks = [
   { label: "Mission-led work", icon: HeartHandshake },
   { label: "Remote-friendly roles", icon: Globe2 },
@@ -35,16 +14,18 @@ const perks = [
 ];
 
 export default async function CareersPage() {
-  const { contact } = await getHydratedRuntimePlatformSettings();
+  const { contact, careers } = await getHydratedRuntimePlatformSettings();
+  const roles = careers.roles.filter((role) => role.published);
   const careersEmail = contact.careersEmail.trim();
   const careersHref = careersEmail ? getMailtoHref(careersEmail, "HouseLink careers enquiry") : "/contact";
+
   return (
     <PageShell
       eyebrow="Careers"
       title="Build the trusted property marketplace Zimbabwe deserves."
       description="HouseLink is growing across search, verification, property management, and tenancy tooling. If you care about trust and great product craft, we want to hear from you."
       highlights={[
-        { value: "3", label: "open roles" },
+        { value: String(roles.length), label: "open roles" },
         { value: "Hybrid", label: "work model" },
         { value: "ZW", label: "focused mission" },
       ]}
@@ -81,12 +62,12 @@ export default async function CareersPage() {
         </div>
         <div className="mt-4 grid gap-4">
           {roles.map((role) => (
-            <article key={role.title} className="premium-card rounded-lg p-5">
+            <article key={role.id} className="premium-card rounded-lg p-5">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <h3 className="text-lg font-semibold text-ink dark:text-white">{role.title}</h3>
                   <p className="mt-1 text-sm text-slate-500">
-                    {role.location} · {role.type}
+                    {role.location} - {role.type}
                   </p>
                 </div>
                 <Link
@@ -99,6 +80,14 @@ export default async function CareersPage() {
               <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">{role.body}</p>
             </article>
           ))}
+          {!roles.length && (
+            <article className="premium-card rounded-lg p-5">
+              <p className="font-semibold text-ink dark:text-white">No open roles right now</p>
+              <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
+                Send your CV through the contact page and we will keep it on file for future opportunities.
+              </p>
+            </article>
+          )}
         </div>
       </section>
 

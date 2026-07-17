@@ -243,6 +243,34 @@ export const defaultPlatformSettings: PlatformSettings = {
     officeAddress: "",
     supportHours: "",
   },
+  careers: {
+    roles: [
+      {
+        id: "customer-support-specialist",
+        title: "Customer support specialist",
+        location: "Harare / remote",
+        type: "Full-time",
+        body: "Help seekers and landlords get unstuck - verification questions, listing issues, and account access.",
+        published: true,
+      },
+      {
+        id: "property-operations-associate",
+        title: "Property operations associate",
+        location: "Harare",
+        type: "Full-time",
+        body: "Support property management workflows, owner onboarding, and consultant coordination.",
+        published: true,
+      },
+      {
+        id: "frontend-engineer",
+        title: "Frontend engineer",
+        location: "Remote (Zimbabwe-friendly)",
+        type: "Full-time",
+        body: "Build premium marketplace experiences - search, listings, tenancies, and trust tooling.",
+        published: true,
+      },
+    ],
+  },
   legal: {
     termsVersion: "2026.1",
     privacyVersion: "2026.1",
