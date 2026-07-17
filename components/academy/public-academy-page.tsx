@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Award,
   BookOpen,
+  ChevronDown,
   CheckCircle2,
   Clock,
   CreditCard,
@@ -294,7 +295,7 @@ export function PublicAcademyPage() {
       <div className="mt-8 flex flex-col gap-8 lg:grid lg:grid-cols-[minmax(0,1.35fr)_minmax(18rem,0.65fr)] lg:gap-6">
         <section className="grid min-w-0 gap-6 order-2 lg:order-none">
           <h2 className="text-xl font-bold sm:text-2xl">Programme Catalog</h2>
-          {courses.map((course, index) => {
+          {courses.map((course) => {
             const registration = courseRegistrationState(academyStatus, course.id);
             const accent = course.theme?.accent ?? "#008b68";
             const locked = course.prerequisiteCourseId && courseRegistrationState(academyStatus, course.prerequisiteCourseId) !== "APPROVED" && registration !== "APPROVED";
@@ -349,8 +350,21 @@ export function PublicAcademyPage() {
                     <div className="rounded-lg bg-slate-50 p-3 text-sm dark:bg-slate-900"><ShieldCheck className="size-4 mb-1" style={{ color: accent }} /><span className="font-semibold">{course.toolkitCount ?? 0} toolkit PDFs</span></div>
                   </div>
 
-                  <div className="mt-6 space-y-4">
-                    <AcademyAccordion
+                  <details className="academy-card group mt-6 rounded-xl border border-slate-200 bg-white/70 dark:border-slate-800 dark:bg-slate-950/60">
+                    <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-4 marker:content-none sm:px-5">
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-slate-900 dark:text-white">Programme details</p>
+                        <p className="mt-1 text-xs text-slate-500">Outcomes, inclusions, curriculum modules, and toolkit preview</p>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-2">
+                        <span className="rounded-full px-3 py-1 text-xs font-semibold" style={{ backgroundColor: `${accent}18`, color: accent }}>
+                          Expand
+                        </span>
+                        <ChevronDown className="size-5 text-slate-400 transition group-open:rotate-180" />
+                      </div>
+                    </summary>
+                    <div className="border-t border-slate-100 p-4 dark:border-slate-800 sm:p-5">
+                      <AcademyAccordion
                       accent={accent}
                       items={[
                         {
@@ -384,7 +398,6 @@ export function PublicAcademyPage() {
                           title: "Curriculum modules",
                           subtitle: "Expand to preview what you will learn",
                           meta: `${course.modules.length} modules`,
-                          defaultOpen: index === 0,
                           content: (
                             <div className="space-y-3">
                               {course.modules.map((module) => (
@@ -409,7 +422,8 @@ export function PublicAcademyPage() {
                         },
                       ]}
                     />
-                  </div>
+                    </div>
+                  </details>
 
                   <CourseActionButton
                     courseId={course.id}
