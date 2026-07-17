@@ -78,11 +78,13 @@ function FullWordmark({ variant }: { variant: "footer" | "auth" }) {
   const isAuth = variant === "auth";
 
   return (
-    <span className={cn("flex min-w-0 flex-col justify-center", isAuth && "w-[13rem] sm:w-[14.15rem]")}>
+    <span className={cn("flex min-w-0 flex-col justify-center", isAuth && "w-[16.25rem] sm:w-[17.5rem]")}>
       <span
         className={cn(
           "font-extrabold leading-none tracking-[-0.015em]",
-          isAuth ? "text-[2rem] sm:text-[2.2rem]" : "text-[1.75rem] sm:text-[2rem]",
+          isAuth
+            ? "inline-block origin-left scale-x-[1.28] text-[2rem] sm:scale-x-[1.3] sm:text-[2.2rem]"
+            : "text-[1.75rem] sm:text-[2rem]",
           onDark ? "text-white" : "text-[#1a3560] dark:text-slate-100",
         )}
         style={{ fontFamily: brandFont }}
@@ -96,17 +98,17 @@ function FullWordmark({ variant }: { variant: "footer" | "auth" }) {
         className={cn(
           "flex items-center font-semibold uppercase",
           isAuth
-            ? "mt-2 w-full justify-between text-[9px] tracking-[0.4em] sm:text-[10px]"
+            ? "mt-2 w-full justify-between text-[10px] tracking-[0.42em] sm:text-[11px]"
             : "mt-1.5 gap-2 text-[10px] tracking-[0.24em] sm:text-xs",
           onDark ? "text-slate-300" : "text-[#1a3560]/85 dark:text-slate-400",
         )}
       >
-        <span className={cn("h-px bg-[#22a54b]", isAuth ? "w-[2.15rem]" : "w-4")} aria-hidden />
+        <span className={cn("h-px bg-[#22a54b]", isAuth ? "w-[2.9rem]" : "w-4")} aria-hidden />
         Zimbabwe
-        <span className={cn("h-px bg-[#22a54b]", isAuth ? "w-[2.15rem]" : "w-4")} aria-hidden />
+        <span className={cn("h-px bg-[#22a54b]", isAuth ? "w-[2.9rem]" : "w-4")} aria-hidden />
       </span>
       {variant === "auth" && (
-        <span className="mt-2.5 block w-full whitespace-nowrap text-[12px] font-medium leading-none text-[#1a3560]/75 dark:text-slate-400 sm:text-[13px]">
+        <span className="mt-2.5 block w-full whitespace-nowrap text-[14px] font-medium leading-none text-[#1a3560]/75 dark:text-slate-400 sm:text-[15px]">
           Find Your Next Home with Confidence
         </span>
       )}

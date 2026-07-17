@@ -52,8 +52,8 @@ export function AuthForm({
   return (
     <form className="surface-panel h-fit rounded-lg p-5" onSubmit={onSubmit}>
       {showBrand && (
-        <div className="flex justify-center pb-2">
-          <HouseLinkBrand variant="auth" className="justify-center" />
+        <div className="flex justify-start pb-2">
+          <HouseLinkBrand variant="auth" />
         </div>
       )}
       <div className="flex items-center gap-2 text-emerald-700">
