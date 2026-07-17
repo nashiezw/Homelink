@@ -632,6 +632,10 @@ export function RoommatesPageClient() {
   const moreSeekers = topSeekers.slice(4);
   const liveRoomCount = postgresRooms.length;
   const liveProfileCount = postgresSeekers.length;
+  const liveRoommateStats = [
+    { value: formatCompactCount(liveRoomCount), label: liveRoomCount === 1 ? "room" : "rooms" },
+    { value: formatCompactCount(liveProfileCount), label: liveProfileCount === 1 ? "profile" : "profiles" },
+  ];
   const suburbHighlights = buildSuburbHighlights(postgresRooms, postgresSeekers);
   const activeCities = Array.from(new Set(postgresSeekers.map((person) => person.city).filter(Boolean))).slice(0, 3);
   const heroLocationLine = activeCities.length ? activeCities.join(" · ") : "Zimbabwe";
@@ -755,6 +759,7 @@ export function RoommatesPageClient() {
               onToggleAmenity={(l) => setAmenities((c) => (c.includes(l) ? c.filter((x) => x !== l) : [...c, l]))}
               onSubmit={runRoomShareSubmit}
               submitting={shareSubmitting}
+              liveStats={liveRoommateStats}
             />
             {calculatorBudget && shareIntent === "seeking" && (
               <p className="mt-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-900">
@@ -909,8 +914,8 @@ export function RoommatesPageClient() {
                     <div className="mt-5 grid grid-cols-3 gap-2">
                       {[
                         ["5", "steps"],
-                        ["24h", "support"],
-                        ["92%", "success"],
+                        ["Verified", "checks"],
+                        ["Secure", "chat"],
                       ].map(([value, label]) => (
                         <span key={label} className="rounded-2xl bg-white/12 p-3 backdrop-blur-sm">
                           <b className="block text-xl">{value}</b>
@@ -963,9 +968,9 @@ export function RoommatesPageClient() {
                 </p>
                 <div className="mt-6 grid grid-cols-3 gap-3">
                   {[
-                    ["92%", "match success"],
-                    ["24/7", "support"],
-                    ["18K+", "members"],
+                    [formatCompactCount(liveRoomCount), liveRoomCount === 1 ? "live room" : "live rooms"],
+                    [formatCompactCount(liveProfileCount), liveProfileCount === 1 ? "visible profile" : "visible profiles"],
+                    ["Verified", "safety checks"],
                   ].map(([value, label]) => (
                     <div key={label} className="rounded-2xl border border-white/10 bg-white/5 p-4">
                       <p className="text-2xl font-black text-emerald-300">{value}</p>
@@ -1175,6 +1180,10 @@ function toRoommateCardPerson(summary: PublicRoommateProfileSummary): RoommateCa
 
 function normalizeLookingFor(value: unknown): RoommateCardPerson["lookingFor"] {
   return value === "roommate" || value === "either" || value === "room" ? value : "room";
+}
+
+function formatCompactCount(value: number) {
+  return new Intl.NumberFormat("en-US", { notation: value >= 1000 ? "compact" : "standard", maximumFractionDigits: 1 }).format(value);
 }
 
 function splitLocation(location?: string) {

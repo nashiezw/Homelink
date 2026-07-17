@@ -95,6 +95,7 @@ type RoomShareWizardProps = {
   onSubmit: () => void;
   submitting?: boolean;
   variant?: "card" | "band";
+  liveStats?: Array<{ label: string; value: string }>;
 };
 
 const fieldClass =
@@ -137,6 +138,7 @@ export function RoomShareWizard({
   onSubmit,
   submitting,
   variant = "card",
+  liveStats = [],
 }: RoomShareWizardProps) {
   const [step, setStep] = useState(0);
   const [error, setError] = useState("");
@@ -291,14 +293,12 @@ export function RoomShareWizard({
           </p>
           {variant === "band" && (
             <div className="mt-4 flex gap-2 lg:mt-0 lg:shrink-0">
-              <span className="rounded-2xl bg-emerald-50 px-4 py-2 text-center ring-1 ring-emerald-100">
-                <b className="block text-sm text-emerald-800">186</b>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">matches</span>
-              </span>
-              <span className="rounded-2xl bg-emerald-50 px-4 py-2 text-center ring-1 ring-emerald-100">
-                <b className="block text-sm text-emerald-800">92%</b>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">success</span>
-              </span>
+              {(liveStats.length ? liveStats : [{ value: "Live", label: "rooms" }, { value: "Verified", label: "profiles" }]).map((stat) => (
+                <span key={stat.label} className="rounded-2xl bg-emerald-50 px-4 py-2 text-center ring-1 ring-emerald-100">
+                  <b className="block text-sm text-emerald-800">{stat.value}</b>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">{stat.label}</span>
+                </span>
+              ))}
             </div>
           )}
         </div>

@@ -98,10 +98,10 @@ export const trustFeatures = [
 ] as const;
 
 export const communityActivity = [
-  { label: "Rooms filled today", value: "47", trend: "+12%" },
-  { label: "New listings", value: "23", trend: "Live" },
-  { label: "Matches this week", value: "186", trend: "+8%" },
-  { label: "Active seekers", value: "312", trend: "Now" },
+  { label: "Rooms", value: "Live", trend: "From listings" },
+  { label: "Profiles", value: "Live", trend: "From users" },
+  { label: "Matches", value: "Calculated", trend: "When available" },
+  { label: "Safety checks", value: "Verified", trend: "HouseLink" },
 ] as const;
 
 export const trendingLocations = [
@@ -253,9 +253,9 @@ export const recommendedRoommates = [
 ] as const;
 
 export const roommateStats = [
-  { label: "Successful matches", value: "92%" },
-  { label: "Happy members", value: "18K+" },
-  { label: "Support", value: "24/7" },
+  { label: "Verified profiles", value: "Live" },
+  { label: "Room listings", value: "Live" },
+  { label: "Support", value: "Guided" },
 ] as const;
 
 export const successStories = [
@@ -282,7 +282,7 @@ export const successStories = [
     role: "Hybrid worker",
     city: "Bulawayo",
     quote: "The trust badges and verified profiles gave me confidence. My roommate and I matched on lifestyle too.",
-    outcome: "92% compatibility match",
+    outcome: "Lifestyle compatibility match",
     avatarUrl: roommatePortraits.blessing,
     coverPhoto: testimonialPhotos[2],
   },
