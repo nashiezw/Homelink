@@ -49,7 +49,7 @@ function escapeHtml(value: string) {
 }
 
 function getAppUrl() {
-  return (process.env.NEXT_PUBLIC_APP_URL?.trim() || "https://houselinkzim.co.zw").replace(/\/+$/, "");
+  return (process.env.NEXT_PUBLIC_APP_URL?.trim() || "https://houselink.co.zw").replace(/\/+$/, "");
 }
 
 function getLogoUrl() {
@@ -241,7 +241,7 @@ export async function sendSmtpPlainEmail(
   if (!isEmail(from)) {
     return {
       ok: false,
-      message: "Configure smtpFrom with a verified sender email address, for example support@houselinkzim.co.zw.",
+      message: "Configure smtpFrom with a verified sender email address, for example support@houselink.co.zw.",
     };
   }
 
@@ -266,7 +266,7 @@ export async function sendSmtpPlainEmail(
     await readResponse(socket).catch((error) => {
       throw new SmtpStageError("greeting", error instanceof Error ? error.message : "SMTP greeting failed");
     });
-    await sendCommand(socket, "EHLO houselinkzim.co.zw", "ehlo");
+    await sendCommand(socket, "EHLO houselink.co.zw", "ehlo");
 
     if (port !== 465) {
       await sendCommand(socket, "STARTTLS", "starttls");
@@ -275,7 +275,7 @@ export async function sendSmtpPlainEmail(
         const secure = tlsConnect({ socket: plain, servername: smtpHost }, () => resolve(secure));
         secure.on("error", reject);
       });
-      await sendCommand(socket, "EHLO houselinkzim.co.zw", "ehlo");
+      await sendCommand(socket, "EHLO houselink.co.zw", "ehlo");
     }
 
     const token = Buffer.from(`\0${smtpUser}\0${smtpPass}`).toString("base64");

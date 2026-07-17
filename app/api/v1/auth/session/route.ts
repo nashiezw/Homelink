@@ -200,10 +200,11 @@ export async function POST(request: Request) {
 
 function seedPasswordMatches(email: string, password: string) {
   const normalized = email.trim().toLowerCase();
+  const localPart = normalized.split("@")[0] ?? "";
   const candidates = [
-    normalized === "admin@houselinkzim.co.zw" ? process.env.SEED_ADMIN_PASSWORD : "",
-    normalized === "landlord@houselinkzim.co.zw" ? process.env.SEED_LANDLORD_PASSWORD : "",
-    normalized === "tinashe.dube@houselinkzim.co.zw" ? process.env.SEED_TINASHE_PASSWORD : "",
+    localPart === "admin" ? process.env.SEED_ADMIN_PASSWORD : "",
+    localPart === "landlord" ? process.env.SEED_LANDLORD_PASSWORD : "",
+    localPart === "tinashe.dube" ? process.env.SEED_TINASHE_PASSWORD : "",
     process.env.SEED_STANDARD_PASSWORD,
   ].filter((value): value is string => Boolean(value));
   return candidates.some((candidate) => candidate === password);

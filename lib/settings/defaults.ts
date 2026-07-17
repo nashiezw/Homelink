@@ -1,7 +1,7 @@
 import type { PaymentGatewayConfig, PaymentSettings, PlatformSettings } from "@/lib/settings/types";
 import { buildDefaultGeo } from "@/lib/settings/geo";
 
-const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://houselinkzim.co.zw";
+const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://houselink.co.zw";
 
 function env(name: string) {
   return process.env[name]?.trim() ?? "";
@@ -330,7 +330,7 @@ export const defaultPlatformSettings: PlatformSettings = {
     smtpPort: envNumber("SMTP_PORT", 587),
     smtpUser: env("SMTP_USER") || (env("RESEND_API_KEY") ? "resend" : ""),
     smtpPass: env("SMTP_PASS") || env("SMTP_PASSWORD") || env("RESEND_API_KEY"),
-    smtpFrom: env("SMTP_FROM") || env("EMAIL_FROM") || env("RESEND_FROM") || env("FROM_EMAIL") || "support@houselinkzim.co.zw",
+    smtpFrom: env("SMTP_FROM") || env("EMAIL_FROM") || env("RESEND_FROM") || env("FROM_EMAIL") || "support@houselink.co.zw",
     analyticsId: env("NEXT_PUBLIC_ANALYTICS_ID"),
     cdnUrl: env("NEXT_PUBLIC_CDN_URL"),
   },

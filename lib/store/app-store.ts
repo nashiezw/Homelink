@@ -149,7 +149,7 @@ function seedPassword(envKey: string, localFallback = "HouseLink2026!") {
 function createInitialStore() {
   const primarySeekerUser = baseUser({
     id: "user_seeker_tinashe",
-    email: "tinashe.dube@houselinkzim.co.zw",
+    email: "tinashe.dube@houselink.co.zw",
     passwordHash: hashPassword(seedPassword("SEED_TINASHE_PASSWORD")),
     name: "Tinashe Dube",
     phone: "+263770000000",
@@ -165,7 +165,7 @@ function createInitialStore() {
 
   const landlordUser = baseUser({
     id: "user_landlord",
-    email: "landlord@houselinkzim.co.zw",
+    email: "landlord@houselink.co.zw",
     passwordHash: hashPassword(seedPassword("SEED_LANDLORD_PASSWORD", "HouseLinkOwner2026!")),
     name: "Tariro Moyo",
     phone: "+263771234567",
@@ -184,7 +184,7 @@ function createInitialStore() {
 
   const adminUser = baseUser({
     id: "user_admin",
-    email: "admin@houselinkzim.co.zw",
+    email: "admin@houselink.co.zw",
     passwordHash: hashPassword(seedPassword("SEED_ADMIN_PASSWORD", "HouseLinkAdmin2026!")),
     name: "HouseLink Admin",
     phone: "+263770000001",
@@ -368,7 +368,7 @@ function createInitialStore() {
     }),
     baseUser({
       id: "user_consultant_sarah",
-      email: "sarah.consultant@houselinkzim.co.zw",
+      email: "sarah.consultant@houselink.co.zw",
       passwordHash: hashPassword(seedPassword("SEED_CONSULTANT_PASSWORD", "HouseLinkConsultant2026!")),
       name: "Sarah Chigwada",
       phone: "+263771111111",
@@ -380,7 +380,7 @@ function createInitialStore() {
     }),
     baseUser({
       id: "user_consultant_john",
-      email: "john.consultant@houselinkzim.co.zw",
+      email: "john.consultant@houselink.co.zw",
       passwordHash: hashPassword(seedPassword("SEED_CONSULTANT_PASSWORD", "HouseLinkConsultant2026!")),
       name: "John Mafukidze",
       phone: "+263772222222",
@@ -758,7 +758,7 @@ function backfillSeedFixtures(state: ReturnType<typeof createInitialStore>) {
       listingTitle: "Verified garden cottage near Avondale shops",
       clientUserId: "user_seeker_tinashe",
       clientName: "Tinashe Dube",
-      clientEmail: "tinashe.dube@houselinkzim.co.zw",
+      clientEmail: "tinashe.dube@houselink.co.zw",
       clientType: "TENANT",
       source: "LISTING_ENQUIRY",
       status: "CLOSED_WON",
@@ -781,7 +781,7 @@ function backfillSeedUsers(state: ReturnType<typeof createInitialStore>) {
   const users: StoreUser[] = [
     baseUser({
       id: "user_seeker_tinashe",
-      email: "tinashe.dube@houselinkzim.co.zw",
+      email: "tinashe.dube@houselink.co.zw",
       passwordHash: hashPassword(seedPassword("SEED_TINASHE_PASSWORD")),
       name: "Tinashe Dube",
       phone: "+263770000000",
@@ -792,7 +792,7 @@ function backfillSeedUsers(state: ReturnType<typeof createInitialStore>) {
     }),
     baseUser({
       id: "user_seeker_rudo",
-      email: "rudo.moyo@houselinkzim.co.zw",
+      email: "rudo.moyo@houselink.co.zw",
       passwordHash: hashPassword(seedPassword("SEED_STANDARD_PASSWORD")),
       name: "Rudo M.",
       phone: "+263772000101",
@@ -803,7 +803,7 @@ function backfillSeedUsers(state: ReturnType<typeof createInitialStore>) {
     }),
     baseUser({
       id: "user_seeker_taku",
-      email: "taku.moyo@houselinkzim.co.zw",
+      email: "taku.moyo@houselink.co.zw",
       passwordHash: hashPassword(seedPassword("SEED_STANDARD_PASSWORD")),
       name: "Taku N.",
       phone: "+263772000102",
@@ -814,7 +814,7 @@ function backfillSeedUsers(state: ReturnType<typeof createInitialStore>) {
     }),
     baseUser({
       id: "user_seeker_noma",
-      email: "noma.ncube@houselinkzim.co.zw",
+      email: "noma.ncube@houselink.co.zw",
       passwordHash: hashPassword(seedPassword("SEED_STANDARD_PASSWORD")),
       name: "Noma S.",
       phone: "+263772000103",
@@ -825,7 +825,7 @@ function backfillSeedUsers(state: ReturnType<typeof createInitialStore>) {
     }),
     baseUser({
       id: "user_seeker_farai",
-      email: "farai.chigwedere@houselinkzim.co.zw",
+      email: "farai.chigwedere@houselink.co.zw",
       passwordHash: hashPassword(seedPassword("SEED_STANDARD_PASSWORD")),
       name: "Farai T.",
       phone: "+263772000104",
@@ -836,7 +836,7 @@ function backfillSeedUsers(state: ReturnType<typeof createInitialStore>) {
     }),
     baseUser({
       id: "user_seeker_chipo",
-      email: "chipo.dube@houselinkzim.co.zw",
+      email: "chipo.dube@houselink.co.zw",
       passwordHash: hashPassword(seedPassword("SEED_STANDARD_PASSWORD")),
       name: "Chipo D.",
       phone: "+263772000105",
@@ -847,7 +847,7 @@ function backfillSeedUsers(state: ReturnType<typeof createInitialStore>) {
     }),
     baseUser({
       id: "user_seeker_grace",
-      email: "grace.moyo@houselinkzim.co.zw",
+      email: "grace.moyo@houselink.co.zw",
       passwordHash: hashPassword(seedPassword("SEED_STANDARD_PASSWORD")),
       name: "Grace M.",
       phone: "+263772000106",
@@ -881,7 +881,7 @@ function seedDemoPMRequest(state: ReturnType<typeof createInitialStore>) {
     {
       ownerId: "user_landlord",
       ownerName: "Tariro Moyo",
-      ownerEmail: "landlord@houselinkzim.co.zw",
+      ownerEmail: "landlord@houselink.co.zw",
       ownerPhone: "+263771234567",
       propertyAddress: "12 Acacia Drive, Avondale",
       city: "Harare",
@@ -917,7 +917,7 @@ function seedDemoHolidayBooking(state: ReturnType<typeof createInitialStore>) {
     listing,
     guestUserId: "user_seeker_tinashe",
     guestName: "Tinashe Dube",
-    guestEmail: "tinashe.dube@houselinkzim.co.zw",
+    guestEmail: "tinashe.dube@houselink.co.zw",
     guestPhone: "+263770000000",
     checkIn,
     checkOut,

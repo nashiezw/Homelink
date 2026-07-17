@@ -66,11 +66,11 @@ const groups = [
 ];
 
 const shareLinks = [
-  ["Facebook", "https://www.facebook.com/sharer/sharer.php?u=https%3A%2F%2Fhouselinkzim.co.zw"],
-  ["LinkedIn", "https://www.linkedin.com/shareArticle?mini=true&url=https%3A%2F%2Fhouselinkzim.co.zw"],
+  ["Facebook", "https://www.facebook.com/sharer/sharer.php?u=https%3A%2F%2Fhouselink.co.zw"],
+  ["LinkedIn", "https://www.linkedin.com/shareArticle?mini=true&url=https%3A%2F%2Fhouselink.co.zw"],
   [
     "WhatsApp",
-    "https://wa.me/?text=Find%20verified%20property%20on%20HouseLink%20Zimbabwe%3A%20https%3A%2F%2Fhouselinkzim.co.zw",
+    "https://wa.me/?text=Find%20verified%20property%20on%20HouseLink%20Zimbabwe%3A%20https%3A%2F%2Fhouselink.co.zw",
   ],
 ] as const;
 
@@ -203,7 +203,7 @@ export function SiteFooter() {
       <div className="border-t border-white/10">
         <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-5 text-xs text-slate-500 sm:px-6 md:flex-row md:items-center md:justify-between lg:px-8">
           <p>&copy; {new Date().getFullYear()} HouseLink Zimbabwe. Verified property marketplace.</p>
-          <p>houselinkzim.co.zw</p>
+          <p>houselink.co.zw</p>
         </div>
       </div>
     </footer>

@@ -96,7 +96,7 @@ export default async function ListingDetailPage({ params }: ListingDetailPagePro
     "@type": "RealEstateListing",
     name: listing.title,
     description: listing.description,
-    url: `${process.env.NEXT_PUBLIC_APP_URL ?? "https://houselinkzim.co.zw"}/listings/${listing.slug ?? listing.id}`,
+    url: `${process.env.NEXT_PUBLIC_APP_URL ?? "https://houselink.co.zw"}/listings/${listing.slug ?? listing.id}`,
     image: galleryImages,
     datePosted: listing.availableFrom,
     address: {

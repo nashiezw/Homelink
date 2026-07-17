@@ -4,8 +4,8 @@ This guide is written for someone who has never launched a web platform before. 
 
 Current launch status:
 
-- Domain bought: `houselinkzim.co.zw`
-- Production website URL: `https://houselinkzim.co.zw`
+- Domain bought: `houselink.co.zw`
+- Production website URL: `https://houselink.co.zw`
 - Hosting: Vercel deployment appears reachable
 - Next thing to do: rotate the Neon password, update Vercel environment variables, configure Cloudinary/SMTP, and redeploy production
 
@@ -43,8 +43,8 @@ Goal: make sure the domain and final URL are clear before you buy/configure host
 You already have:
 
 ```text
-Domain: houselinkzim.co.zw
-Production URL: https://houselinkzim.co.zw
+Domain: houselink.co.zw
+Production URL: https://houselink.co.zw
 ```
 
 Do this now:
@@ -52,7 +52,7 @@ Do this now:
 1. Open the website where you bought the domain.
    - This may be your registrar, hosting company, or local `.co.zw` domain provider.
 2. Log in.
-3. Find the page for your domain: `houselinkzim.co.zw`.
+3. Find the page for your domain: `houselink.co.zw`.
 4. Look for a menu named one of these:
    - **DNS**
    - **DNS Records**
@@ -79,7 +79,7 @@ You will fill those values inside Vercel, not inside the repo.
 Tell Codex:
 
 ```text
-Step 0 done: I can log in where I bought houselinkzim.co.zw, and I found the DNS area.
+Step 0 done: I can log in where I bought houselink.co.zw, and I found the DNS area.
 ```
 
 ## Step 1: Create Your Hosting Account On Vercel
@@ -92,7 +92,7 @@ Why:
 
 - HouseLink is a Next.js website.
 - Vercel supports Next.js directly.
-- Vercel gives you a temporary URL first, then you connect `houselinkzim.co.zw`.
+- Vercel gives you a temporary URL first, then you connect `houselink.co.zw`.
 - You do not need to buy old-style shared hosting for this app.
 
 What you need before starting:
@@ -254,7 +254,7 @@ https://houselink-zimbabwe.vercel.app
 That temporary URL is only for testing. The real public URL will still be:
 
 ```text
-https://houselinkzim.co.zw
+https://houselink.co.zw
 ```
 
 Tell Codex:
@@ -282,7 +282,7 @@ You do:
 Enter:
 
 ```text
-NEXT_PUBLIC_APP_URL=https://houselinkzim.co.zw
+NEXT_PUBLIC_APP_URL=https://houselink.co.zw
 HOUSELINK_STRICT_PRODUCTION=true
 HOUSELINK_SESSION_SECRET=generate a long random value
 ```
@@ -471,7 +471,7 @@ STRIPE_SECRET_KEY=sk_live_...
 11. Endpoint URL:
 
 ```text
-https://houselinkzim.co.zw/api/v1/payments/webhooks/stripe
+https://houselink.co.zw/api/v1/payments/webhooks/stripe
 ```
 
 12. Select payment/checkout events you will use.
@@ -528,13 +528,13 @@ You do:
 4. In the Paynow dashboard, set the result/webhook URL if Paynow asks for one:
 
 ```text
-https://houselinkzim.co.zw/api/v1/payments/webhooks/paynow
+https://houselink.co.zw/api/v1/payments/webhooks/paynow
 ```
 
 5. Set the return/callback URL if Paynow asks for one:
 
 ```text
-https://houselinkzim.co.zw/api/v1/payments/callback/paynow
+https://houselink.co.zw/api/v1/payments/callback/paynow
 ```
 
 6. Add these in Vercel:
@@ -610,8 +610,8 @@ Current launch choice:
 
 ```text
 Email provider: SMTP provider chosen by owner
-Sending domain: houselinkzim.co.zw
-Recommended sender: noreply@houselinkzim.co.zw or support@houselinkzim.co.zw
+Sending domain: houselink.co.zw
+Recommended sender: noreply@houselink.co.zw or support@houselink.co.zw
 ```
 
 You do:
@@ -662,7 +662,7 @@ smtpHost = smtp.resend.com
 smtpPort = 587
 smtpUser = resend
 smtpPass = your Resend API key
-smtpFrom = a sender address on your verified Resend domain, for example support@houselinkzim.co.zw
+smtpFrom = a sender address on your verified Resend domain, for example support@houselink.co.zw
 ```
 
 If the test fails:
@@ -722,7 +722,7 @@ Do this only after:
 
 - Vercel project exists.
 - At least one Vercel deployment says **Ready**.
-- You can log in to the place where you bought `houselinkzim.co.zw`.
+- You can log in to the place where you bought `houselink.co.zw`.
 
 You do:
 
@@ -732,7 +732,7 @@ You do:
 4. In the domain box, type:
 
 ```text
-houselinkzim.co.zw
+houselink.co.zw
 ```
 
 5. Click **Add**.
@@ -759,7 +759,7 @@ Important: use the exact values Vercel shows on your screen. If Vercel shows dif
 Now add the DNS records where you bought the domain:
 
 1. Open your domain registrar tab.
-2. Open the domain: `houselinkzim.co.zw`.
+2. Open the domain: `houselink.co.zw`.
 3. Click **DNS**, **DNS Records**, **Manage DNS**, or **Zone Editor**.
 4. Look for existing records with:
    - Host/name: `@`
@@ -774,8 +774,8 @@ Now add the DNS records where you bought the domain:
 
 What success looks like:
 
-- In Vercel, `houselinkzim.co.zw` shows **Valid Configuration**, **Verified**, or a green check.
-- Visiting `https://houselinkzim.co.zw` opens the HouseLink website.
+- In Vercel, `houselink.co.zw` shows **Valid Configuration**, **Verified**, or a green check.
+- Visiting `https://houselink.co.zw` opens the HouseLink website.
 - The browser shows a lock icon, meaning HTTPS/SSL is active.
 
 If Vercel says DNS is not ready yet, wait. DNS can take minutes or hours.
@@ -790,7 +790,7 @@ If it still fails after several hours:
 Tell Codex:
 
 ```text
-Step 11 done: houselinkzim.co.zw is added in Vercel and DNS is verified.
+Step 11 done: houselink.co.zw is added in Vercel and DNS is verified.
 ```
 
 ## Step 12: Set Up Monitoring And Backups
@@ -864,7 +864,7 @@ npm.cmd run check:production
 2. Smoke test the live URL:
 
 ```powershell
-$env:BASE_URL="https://houselinkzim.co.zw"
+$env:BASE_URL="https://houselink.co.zw"
 node scripts\smoke-test.mjs
 ```
 
@@ -887,7 +887,7 @@ Launch only when all of these pass.
 Copy and paste one of these messages as you complete each step:
 
 ```text
-Step 0 done: I can log in where I bought houselinkzim.co.zw, and I found the DNS area.
+Step 0 done: I can log in where I bought houselink.co.zw, and I found the DNS area.
 Step 1 done: my Vercel account is created.
 Step 2 done: Vercel project is created and I have a temporary Vercel URL.
 Step 3 done: I added NEXT_PUBLIC_APP_URL and HOUSELINK_STRICT_PRODUCTION in Vercel.
@@ -898,7 +898,7 @@ Step 7 done: Paynow variables are set, or Paynow is disabled for launch.
 Step 8 done: Clerk production keys are set, or local auth is accepted for beta.
 Step 9 done: SMTP is configured and test email passed.
 Step 10 done: seed passwords are rotated.
-Step 11 done: houselinkzim.co.zw is added in Vercel and DNS is verified.
+Step 11 done: houselink.co.zw is added in Vercel and DNS is verified.
 Step 12 done: logs/backups/monitoring are confirmed.
 Step 13 done: production redeploy is ready.
 Run final checks.

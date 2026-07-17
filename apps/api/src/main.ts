@@ -9,7 +9,7 @@ async function bootstrap() {
 
   app.setGlobalPrefix("api/v1");
   app.enableCors({
-      origin: config.get<string>("WEB_ORIGIN") ?? "https://houselinkzim.co.zw",
+      origin: config.get<string>("WEB_ORIGIN") ?? "https://houselink.co.zw",
     credentials: true,
   });
   app.useGlobalPipes(

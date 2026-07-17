@@ -103,7 +103,7 @@ async function applyCoreProductionSchema() {
 
 async function ensureBootstrapAdmin() {
   const prisma = getMainPrisma();
-  const email = "admin@houselinkzim.co.zw";
+  const email = "admin@houselink.co.zw";
   const passwordHash = hashPassword(process.env.SEED_ADMIN_PASSWORD || "HouseLinkAdmin2026!");
   const existing = await prisma.user.findUnique({ where: { email } });
   if (!existing) {

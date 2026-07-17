@@ -46,7 +46,7 @@ export async function POST(request: Request) {
   if (sessionUserId) {
     if (shouldUsePostgresPM()) {
       ownerId = sessionUserId;
-      ownerEmail = body.email?.trim() || `user+${sessionUserId}@houselinkzim.co.zw`;
+      ownerEmail = body.email?.trim() || `user+${sessionUserId}@houselink.co.zw`;
       ownerName = fullName;
     } else {
       const store = getStore();
@@ -58,7 +58,7 @@ export async function POST(request: Request) {
     }
   } else {
     ownerId = `guest_${crypto.randomUUID()}`;
-    ownerEmail = body.email?.trim() || `guest+${phone.replace(/\D/g, "")}@houselinkzim.co.zw`;
+    ownerEmail = body.email?.trim() || `guest+${phone.replace(/\D/g, "")}@houselink.co.zw`;
     ownerName = fullName;
   }
 

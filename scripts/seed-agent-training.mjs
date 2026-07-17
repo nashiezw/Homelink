@@ -186,7 +186,7 @@ async function main() {
   const demoAgents = await prisma.user.findMany({
     where: {
       email: {
-        in: ["blessing@harareprime.co.zw", "tendai.sithole@houselinkzim.co.zw", "harare.prime.estates@houselinkzim.co.zw"],
+        in: ["blessing@harareprime.co.zw", "tendai.sithole@houselink.co.zw", "harare.prime.estates@houselink.co.zw"],
       },
     },
     select: { id: true, email: true, name: true },

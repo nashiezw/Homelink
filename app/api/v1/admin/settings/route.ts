@@ -102,7 +102,7 @@ export async function PATCH(request: Request) {
         ? mergePlatformSecrets(mergePlatformSettings(settings, incomingPlatformSettings), settings)
         : settings;
       if (body.test.type === "smtp") {
-        const recipient = body.test.email?.trim() || actorEmail || "admin@houselinkzim.co.zw";
+        const recipient = body.test.email?.trim() || actorEmail || "admin@houselink.co.zw";
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipient)) {
           return ok({ ok: false, message: "Enter a valid recipient email address for the SMTP test." });
         }

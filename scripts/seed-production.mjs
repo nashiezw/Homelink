@@ -179,37 +179,37 @@ const agentTrainingModules = [
 ];
 
 const users = [
-  { email: "admin@houselinkzim.co.zw", name: "HouseLink Admin", phone: "+263780000001", roles: [Role.ADMIN, Role.SEEKER], password: adminPassword },
-  { id: "user_seeker_tinashe", email: "tinashe.dube@houselinkzim.co.zw", name: "Tinashe Dube", phone: "+263770000000", roles: [Role.SEEKER, Role.LANDLORD], password: process.env.SEED_TINASHE_PASSWORD ?? standardPassword },
-  { id: "user_landlord", email: "landlord@houselinkzim.co.zw", name: "Tariro Moyo", phone: "+263771234568", roles: [Role.LANDLORD, Role.SEEKER], password: process.env.SEED_LANDLORD_PASSWORD ?? standardPassword },
+  { email: "admin@houselink.co.zw", name: "HouseLink Admin", phone: "+263780000001", roles: [Role.ADMIN, Role.SEEKER], password: adminPassword },
+  { id: "user_seeker_tinashe", email: "tinashe.dube@houselink.co.zw", name: "Tinashe Dube", phone: "+263770000000", roles: [Role.SEEKER, Role.LANDLORD], password: process.env.SEED_TINASHE_PASSWORD ?? standardPassword },
+  { id: "user_landlord", email: "landlord@houselink.co.zw", name: "Tariro Moyo", phone: "+263771234568", roles: [Role.LANDLORD, Role.SEEKER], password: process.env.SEED_LANDLORD_PASSWORD ?? standardPassword },
   { id: "user_agent_blessing", email: "blessing@harareprime.co.zw", name: "Blessing Muzenda", phone: "+263775678901", roles: [Role.AGENT, Role.SEEKER], password: standardPassword },
-  { email: "tariro.moyo@houselinkzim.co.zw", name: "Tariro Moyo", phone: "+263771234567", roles: [Role.LANDLORD, Role.SEEKER], password: standardPassword },
-  { email: "tendai.sithole@houselinkzim.co.zw", name: "Tendai Sithole", phone: "+263772220001", roles: [Role.AGENT, Role.SEEKER], password: standardPassword },
-  { email: "rudo.ncube@houselinkzim.co.zw", name: "Rudo Ncube", phone: "+263773330002", roles: [Role.SEEKER], password: standardPassword },
-  { email: "memory.chikanda@houselinkzim.co.zw", name: "Memory Chikanda", phone: "+263719002214", roles: [Role.LANDLORD, Role.SEEKER], password: standardPassword },
-  { email: "ndlovu.property.group@houselinkzim.co.zw", name: "Ndlovu Property Group", phone: "+263785552101", roles: [Role.LANDLORD, Role.SEEKER], password: standardPassword },
-  { email: "eastern.highlands.realty@houselinkzim.co.zw", name: "Eastern Highlands Realty", phone: "+263778883410", roles: [Role.LANDLORD, Role.SEEKER], password: standardPassword },
-  { email: "harare.prime.estates@houselinkzim.co.zw", name: "Harare Prime Estates", phone: "+263242123456", roles: [Role.LANDLORD, Role.AGENT, Role.SEEKER], password: standardPassword },
+  { email: "tariro.moyo@houselink.co.zw", name: "Tariro Moyo", phone: "+263771234567", roles: [Role.LANDLORD, Role.SEEKER], password: standardPassword },
+  { email: "tendai.sithole@houselink.co.zw", name: "Tendai Sithole", phone: "+263772220001", roles: [Role.AGENT, Role.SEEKER], password: standardPassword },
+  { email: "rudo.ncube@houselink.co.zw", name: "Rudo Ncube", phone: "+263773330002", roles: [Role.SEEKER], password: standardPassword },
+  { email: "memory.chikanda@houselink.co.zw", name: "Memory Chikanda", phone: "+263719002214", roles: [Role.LANDLORD, Role.SEEKER], password: standardPassword },
+  { email: "ndlovu.property.group@houselink.co.zw", name: "Ndlovu Property Group", phone: "+263785552101", roles: [Role.LANDLORD, Role.SEEKER], password: standardPassword },
+  { email: "eastern.highlands.realty@houselink.co.zw", name: "Eastern Highlands Realty", phone: "+263778883410", roles: [Role.LANDLORD, Role.SEEKER], password: standardPassword },
+  { email: "harare.prime.estates@houselink.co.zw", name: "Harare Prime Estates", phone: "+263242123456", roles: [Role.LANDLORD, Role.AGENT, Role.SEEKER], password: standardPassword },
   { id: "user_seeker_rudo", email: "rudo.m@example.co.zw", name: "Rudo M.", phone: "+263771000001", roles: [Role.SEEKER], password: standardPassword },
   { id: "user_seeker_taku", email: "taku.n@example.co.zw", name: "Taku N.", phone: "+263771000002", roles: [Role.SEEKER], password: standardPassword },
   { id: "user_seeker_noma", email: "noma.s@example.co.zw", name: "Noma S.", phone: "+263771000003", roles: [Role.SEEKER], password: standardPassword },
   { id: "user_seeker_chipo", email: "chipo.d@example.co.zw", name: "Chipo D.", phone: "+263771000005", roles: [Role.SEEKER], password: standardPassword },
   { id: "user_seeker_farai", email: "farai.m@example.co.zw", name: "Farai T.", phone: "+263771000004", roles: [Role.SEEKER], password: standardPassword },
   { id: "user_seeker_grace", email: "grace.m@example.co.zw", name: "Grace M.", phone: "+263771000006", roles: [Role.SEEKER], password: standardPassword },
-  { email: "kumalo.properties@houselinkzim.co.zw", name: "Kumalo Properties", phone: "+263784403300", roles: [Role.LANDLORD, Role.SEEKER], password: standardPassword },
-  { email: "patience.dube@houselinkzim.co.zw", name: "Patience Dube", phone: "+263772108891", roles: [Role.LANDLORD, Role.SEEKER], password: standardPassword },
-  { email: "borrowdale.estates@houselinkzim.co.zw", name: "Borrowdale Estates", phone: "+263773304412", roles: [Role.LANDLORD, Role.SEEKER], password: standardPassword },
-  { email: "mrs.chigwada@houselinkzim.co.zw", name: "Mrs. Chigwada", phone: "+263775512200", roles: [Role.LANDLORD, Role.SEEKER], password: standardPassword },
-  { email: "sipho.ndlovu@houselinkzim.co.zw", name: "Sipho Ndlovu", phone: "+263782201100", roles: [Role.LANDLORD, Role.SEEKER], password: standardPassword },
-  { email: "cnyathi@houselinkzim.co.zw", name: "C. Nyathi", phone: "+263774401209", roles: [Role.LANDLORD, Role.SEEKER], password: standardPassword },
-  { email: "tendai.mukwena@houselinkzim.co.zw", name: "Tendai Mukwena", phone: "+263778809900", roles: [Role.LANDLORD, Role.SEEKER], password: standardPassword },
-  { email: "mrs.moyo@houselinkzim.co.zw", name: "Mrs. Moyo", phone: "+263771123344", roles: [Role.LANDLORD, Role.SEEKER], password: standardPassword },
+  { email: "kumalo.properties@houselink.co.zw", name: "Kumalo Properties", phone: "+263784403300", roles: [Role.LANDLORD, Role.SEEKER], password: standardPassword },
+  { email: "patience.dube@houselink.co.zw", name: "Patience Dube", phone: "+263772108891", roles: [Role.LANDLORD, Role.SEEKER], password: standardPassword },
+  { email: "borrowdale.estates@houselink.co.zw", name: "Borrowdale Estates", phone: "+263773304412", roles: [Role.LANDLORD, Role.SEEKER], password: standardPassword },
+  { email: "mrs.chigwada@houselink.co.zw", name: "Mrs. Chigwada", phone: "+263775512200", roles: [Role.LANDLORD, Role.SEEKER], password: standardPassword },
+  { email: "sipho.ndlovu@houselink.co.zw", name: "Sipho Ndlovu", phone: "+263782201100", roles: [Role.LANDLORD, Role.SEEKER], password: standardPassword },
+  { email: "cnyathi@houselink.co.zw", name: "C. Nyathi", phone: "+263774401209", roles: [Role.LANDLORD, Role.SEEKER], password: standardPassword },
+  { email: "tendai.mukwena@houselink.co.zw", name: "Tendai Mukwena", phone: "+263778809900", roles: [Role.LANDLORD, Role.SEEKER], password: standardPassword },
+  { email: "mrs.moyo@houselink.co.zw", name: "Mrs. Moyo", phone: "+263771123344", roles: [Role.LANDLORD, Role.SEEKER], password: standardPassword },
 ];
 
 const listings = [
   {
     slug: "harare-avondale-cottage",
-    ownerEmail: "landlord@houselinkzim.co.zw",
+    ownerEmail: "landlord@houselink.co.zw",
     title: "Verified garden cottage near Avondale shops",
     description: "A quiet one-bedroom garden cottage with reliable water, solar backup, secure parking, and fast access to Avondale shops.",
     propertyType: "COTTAGE",
@@ -225,7 +225,7 @@ const listings = [
   },
   {
     slug: "bulawayo-hillside-house",
-    ownerEmail: "ndlovu.property.group@houselinkzim.co.zw",
+    ownerEmail: "ndlovu.property.group@houselink.co.zw",
     title: "Family home with borehole in Hillside",
     description: "A spacious family home with a private garden, borehole, perimeter security, and room for remote work or study.",
     propertyType: "HOUSE",
@@ -241,7 +241,7 @@ const listings = [
   },
   {
     slug: "gweru-senga-room",
-    ownerEmail: "memory.chikanda@houselinkzim.co.zw",
+    ownerEmail: "memory.chikanda@houselink.co.zw",
     title: "Student-friendly room close to MSU transport",
     description: "A clean room suited to students and young professionals, close to transport routes and shared amenities.",
     propertyType: "ROOM",
@@ -257,7 +257,7 @@ const listings = [
   },
   {
     slug: "victoria-falls-riverside-lodge",
-    ownerEmail: "tariro.moyo@houselinkzim.co.zw",
+    ownerEmail: "tariro.moyo@houselink.co.zw",
     title: "Riverside holiday lodge near Victoria Falls",
     description: "A premium holiday lodge with Zambezi views, private garden, pool access, and concierge support for Victoria Falls adventures.",
     propertyType: "COTTAGE",
@@ -273,7 +273,7 @@ const listings = [
   },
   {
     slug: "mutare-murambi-land",
-    ownerEmail: "eastern.highlands.realty@houselinkzim.co.zw",
+    ownerEmail: "eastern.highlands.realty@houselink.co.zw",
     title: "Residential stand with mountain views",
     description: "A residential stand in a growing pocket of Murambi with documented ownership and nearby utility access.",
     propertyType: "LAND",
@@ -289,7 +289,7 @@ const listings = [
   },
   {
     slug: "harare-cbd-office-suite",
-    ownerEmail: "harare.prime.estates@houselinkzim.co.zw",
+    ownerEmail: "harare.prime.estates@houselink.co.zw",
     title: "Ground-floor office suite in Harare CBD",
     description: "A professional ground-floor commercial suite with reception area, open-plan workspace, kitchenette, and dedicated parking in the heart of Harare CBD.",
     propertyType: "COMMERCIAL",
@@ -305,7 +305,7 @@ const listings = [
   },
   {
     slug: "kwekwe-cbd-flat",
-    ownerEmail: "cnyathi@houselinkzim.co.zw",
+    ownerEmail: "cnyathi@houselink.co.zw",
     title: "Compact flat within walking distance of Kwekwe CBD",
     description: "A practical two-bedroom flat for tenants who need quick CBD access, reliable water storage, and controlled parking.",
     propertyType: "FLAT",
@@ -321,7 +321,7 @@ const listings = [
   },
   {
     slug: "harare-belvedere-room",
-    ownerEmail: "patience.dube@houselinkzim.co.zw",
+    ownerEmail: "patience.dube@houselink.co.zw",
     title: "Furnished room in Belvedere - Wi-Fi included",
     description: "Bright furnished room in a quiet Belvedere home, ideal for nurses and young professionals on shift work.",
     propertyType: "ROOM",
@@ -337,7 +337,7 @@ const listings = [
   },
   {
     slug: "harare-borrowdale-flat-share",
-    ownerEmail: "borrowdale.estates@houselinkzim.co.zw",
+    ownerEmail: "borrowdale.estates@houselink.co.zw",
     title: "Shared flat in Borrowdale - 2 rooms available",
     description: "Modern flat share in a secure Borrowdale complex with two private rooms and shared living space.",
     propertyType: "FLAT",
@@ -353,7 +353,7 @@ const listings = [
   },
   {
     slug: "harare-mount-pleasant-room",
-    ownerEmail: "mrs.chigwada@houselinkzim.co.zw",
+    ownerEmail: "mrs.chigwada@houselink.co.zw",
     title: "Quiet room near Mount Pleasant shops",
     description: "Spacious room in a family home near UZ and Mount Pleasant shops - quiet household preferred.",
     propertyType: "ROOM",
@@ -369,7 +369,7 @@ const listings = [
   },
   {
     slug: "bulawayo-cbd-room",
-    ownerEmail: "sipho.ndlovu@houselinkzim.co.zw",
+    ownerEmail: "sipho.ndlovu@houselink.co.zw",
     title: "Affordable CBD room - walking distance to work",
     description: "Budget-friendly room in Bulawayo CBD for workers and students who need central access.",
     propertyType: "ROOM",
@@ -385,7 +385,7 @@ const listings = [
   },
   {
     slug: "bulawayo-kumalo-cottage",
-    ownerEmail: "kumalo.properties@houselinkzim.co.zw",
+    ownerEmail: "kumalo.properties@houselink.co.zw",
     title: "Garden cottage in Kumalo - private entrance",
     description: "Self-contained garden cottage with private entrance in upscale Kumalo - ideal for professionals.",
     propertyType: "COTTAGE",
@@ -401,7 +401,7 @@ const listings = [
   },
   {
     slug: "gweru-ridgemont-room",
-    ownerEmail: "memory.chikanda@houselinkzim.co.zw",
+    ownerEmail: "memory.chikanda@houselink.co.zw",
     title: "Room in Ridgemont - close to Gweru CBD",
     description: "Clean room in Ridgemont with shared kitchen - popular with MSU students and interns.",
     propertyType: "ROOM",
@@ -417,7 +417,7 @@ const listings = [
   },
   {
     slug: "mutare-chikanga-room",
-    ownerEmail: "tendai.mukwena@houselinkzim.co.zw",
+    ownerEmail: "tendai.mukwena@houselink.co.zw",
     title: "Budget room in Chikanga - shared amenities",
     description: "Affordable room in Chikanga for interns and young workers starting out in Mutare.",
     propertyType: "ROOM",
@@ -433,7 +433,7 @@ const listings = [
   },
   {
     slug: "kwekwe-msasa-room",
-    ownerEmail: "cnyathi@houselinkzim.co.zw",
+    ownerEmail: "cnyathi@houselink.co.zw",
     title: "Student room near Kwekwe industrial sites",
     description: "Low-cost room in Msasa Park - popular with apprentices and industrial workers.",
     propertyType: "ROOM",
@@ -449,7 +449,7 @@ const listings = [
   },
   {
     slug: "chitungwiza-seke-room",
-    ownerEmail: "mrs.moyo@houselinkzim.co.zw",
+    ownerEmail: "mrs.moyo@houselink.co.zw",
     title: "Room in Seke - Harare commuter belt",
     description: "Very affordable room in Seke with kombi links to Harare CBD - ideal for budget seekers.",
     propertyType: "ROOM",
@@ -465,7 +465,7 @@ const listings = [
   },
   {
     slug: "harare-avondale-flat-share",
-    ownerEmail: "tariro.moyo@houselinkzim.co.zw",
+    ownerEmail: "tariro.moyo@houselink.co.zw",
     title: "House share flat - Avondale West",
     description: "Three-bedroom flat share in Avondale West - one room available for a compatible housemate.",
     propertyType: "FLAT",
@@ -719,7 +719,7 @@ async function main() {
       leadConversion: 42,
     },
   });
-  for (const email of ["blessing@harareprime.co.zw", "tendai.sithole@houselinkzim.co.zw"]) {
+  for (const email of ["blessing@harareprime.co.zw", "tendai.sithole@houselink.co.zw"]) {
     const agent = userRows.get(email);
     await prisma.agencyAgent.upsert({
       where: { agencyId_userId: { agencyId: hararePrimeAgency.id, userId: agent.id } },
@@ -798,9 +798,9 @@ async function main() {
     }
   }
 
-  const seeker = userRows.get("rudo.ncube@houselinkzim.co.zw");
-  const tinashe = userRows.get("tinashe.dube@houselinkzim.co.zw");
-  const landlord = userRows.get("landlord@houselinkzim.co.zw");
+  const seeker = userRows.get("rudo.ncube@houselink.co.zw");
+  const tinashe = userRows.get("tinashe.dube@houselink.co.zw");
+  const landlord = userRows.get("landlord@houselink.co.zw");
   await prisma.roommateProfile.upsert({
     where: { userId: tinashe.id },
     update: {
@@ -908,7 +908,7 @@ async function main() {
     });
   }
 
-  const agent = userRows.get("tendai.sithole@houselinkzim.co.zw");
+  const agent = userRows.get("tendai.sithole@houselink.co.zw");
   await prisma.agentLeadRecord.upsert({
     where: { id: "seed-agent-lead-victoria-falls" },
     update: {
@@ -986,13 +986,13 @@ async function main() {
     title: "Senior letting agent",
     yearsExperience: 5,
   });
-  await seedAgentApplication(userRows.get("tendai.sithole@houselinkzim.co.zw"), {
+  await seedAgentApplication(userRows.get("tendai.sithole@houselink.co.zw"), {
     id: "app_seed_tendai",
     photoUrl: "/images/roommates/portrait-tendai.jpg",
     title: "Sales consultant",
     yearsExperience: 4,
   });
-  await seedAgentApplication(userRows.get("harare.prime.estates@houselinkzim.co.zw"), {
+  await seedAgentApplication(userRows.get("harare.prime.estates@houselink.co.zw"), {
     id: "app_seed_harare_prime",
     photoUrl: "/images/roommates/portrait-member.jpg",
     title: "Agency desk",
@@ -1001,8 +1001,8 @@ async function main() {
   await seedAgentTrainingModules();
   await seedAgentTrainingProgress([
     userRows.get("blessing@harareprime.co.zw"),
-    userRows.get("tendai.sithole@houselinkzim.co.zw"),
-    userRows.get("harare.prime.estates@houselinkzim.co.zw"),
+    userRows.get("tendai.sithole@houselink.co.zw"),
+    userRows.get("harare.prime.estates@houselink.co.zw"),
   ]);
   const review = await prisma.review.findFirst({
     where: { authorId: seeker.id, listingId: firstListing.id, target: "listing", metadata: { path: ["seedKey"], equals: "review-avondale-cottage" } },

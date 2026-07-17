@@ -18,7 +18,7 @@ const inter = localFont({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? "https://houselinkzim.co.zw"),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? "https://houselink.co.zw"),
   applicationName: "HouseLink Zimbabwe",
   title: "HouseLink Zimbabwe | Find Your Next Home with Confidence",
   description:

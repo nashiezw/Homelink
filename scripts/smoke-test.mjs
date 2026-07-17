@@ -11,10 +11,10 @@ const TINASHE_PASSWORD = process.env.SEED_TINASHE_PASSWORD ?? STANDARD_PASSWORD;
 const LANDLORD_PASSWORD = process.env.SEED_LANDLORD_PASSWORD ?? "HouseLinkOwner2026!";
 const ADMIN_PASSWORD = process.env.SEED_ADMIN_PASSWORD ?? "HouseLinkAdmin2026!";
 const LOGIN_FALLBACKS = {
-  "admin@houselinkzim.co.zw": ["admin1234"],
-  "landlord@houselinkzim.co.zw": ["landlord1234"],
-  "demo@houselinkzim.co.zw": ["demo1234"],
-  "tinashe.dube@houselinkzim.co.zw": ["demo1234"],
+  "admin@houselink.co.zw": ["admin1234"],
+  "landlord@houselink.co.zw": ["landlord1234"],
+  "demo@houselink.co.zw": ["demo1234"],
+  "tinashe.dube@houselink.co.zw": ["demo1234"],
   "blessing@harareprime.co.zw": ["demo1234"],
 };
 
@@ -156,7 +156,7 @@ async function main() {
   }
 
   // Landlord flow
-  r = await login("landlord@houselinkzim.co.zw", LANDLORD_PASSWORD);
+  r = await login("landlord@houselink.co.zw", LANDLORD_PASSWORD);
   assert("POST login landlord", r.ok);
 
   r = await req("/api/v1/listings", {
@@ -197,11 +197,11 @@ async function main() {
     assert("POST mark-rented with tenant", r.ok, JSON.stringify(r.data?.error));
   }
 
-  r = await req("/api/v1/users/lookup?email=tinashe.dube@houselinkzim.co.zw");
+  r = await req("/api/v1/users/lookup?email=tinashe.dube@houselink.co.zw");
   assert("GET user lookup", r.ok && r.data?.data?.id === "user_seeker_tinashe");
 
   // Demo user — tenancies
-  r = await login("tinashe.dube@houselinkzim.co.zw", TINASHE_PASSWORD);
+  r = await login("tinashe.dube@houselink.co.zw", TINASHE_PASSWORD);
   assert("POST login seeker", r.ok);
 
   r = await req("/api/v1/tenancies");
@@ -245,13 +245,13 @@ async function main() {
     const disputeId = r.data?.data?.dispute?.id;
     if (disputeId) {
       cookie = "";
-      r = await login("admin@houselinkzim.co.zw", ADMIN_PASSWORD);
+      r = await login("admin@houselink.co.zw", ADMIN_PASSWORD);
       r = await req(`/api/v1/admin/tenancy-disputes/${disputeId}`, {
         method: "PATCH",
         body: JSON.stringify({ resolution: "upheld", adminNote: "Smoke test resolved" }),
       });
       assert("PATCH resolve dispute", r.ok, JSON.stringify(r.data?.error));
-      r = await login("tinashe.dube@houselinkzim.co.zw", TINASHE_PASSWORD);
+      r = await login("tinashe.dube@houselink.co.zw", TINASHE_PASSWORD);
     }
   }
 
@@ -298,7 +298,7 @@ async function main() {
   assert("POST sign lease", r.ok || r.status === 403, JSON.stringify(r.data?.error));
 
   // Roommates (authenticated)
-  r = await login("tinashe.dube@houselinkzim.co.zw", TINASHE_PASSWORD);
+  r = await login("tinashe.dube@houselink.co.zw", TINASHE_PASSWORD);
   r = await req("/api/v1/roommates/profile");
   assert("GET roommate profile", r.ok, JSON.stringify(r.data?.error));
 
@@ -326,7 +326,7 @@ async function main() {
   assert("GET messages", r.ok);
 
   // Admin
-  r = await login("admin@houselinkzim.co.zw", ADMIN_PASSWORD);
+  r = await login("admin@houselink.co.zw", ADMIN_PASSWORD);
   assert("POST login admin", r.ok);
 
   r = await req("/api/v1/admin/control-center");
@@ -373,7 +373,7 @@ async function main() {
   assert("PATCH delete territory", r.ok, JSON.stringify(r.data?.error));
 
   // Agent ratings (demo user on completed deal listing)
-  r = await login("tinashe.dube@houselinkzim.co.zw", TINASHE_PASSWORD);
+  r = await login("tinashe.dube@houselink.co.zw", TINASHE_PASSWORD);
   r = await req("/api/v1/agents/ratings?listingId=harare-avondale-cottage");
   const rateableDeal = r.data?.data;
   const alreadyRated = r.ok && rateableDeal === null;
