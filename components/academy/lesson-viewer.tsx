@@ -106,15 +106,15 @@ export function LessonViewer({
 
   return (
     <div className={cn("min-h-screen bg-gradient-to-br", sidebarGradient, "dark:from-ink dark:via-slate-950 dark:to-slate-950")}>
-      <header className="sticky top-0 z-40 border-b border-white/20 bg-white/85 backdrop-blur-xl shadow-sm dark:border-slate-800 dark:bg-slate-950/90">
-        <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 py-3 sm:px-6">
-          <Button variant="ghost" className="shrink-0 px-2" onClick={onBack}>
+      <header className="sticky top-0 z-40 border-b border-white/20 bg-white/90 shadow-sm backdrop-blur-xl dark:border-slate-800 dark:bg-slate-950/90">
+        <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 py-3.5 sm:px-6">
+          <Button variant="ghost" className="h-10 shrink-0 rounded-full px-3" onClick={onBack}>
             <ArrowLeft className="size-4" />
-            <span className="hidden sm:inline ml-2">Course</span>
+            <span className="ml-2 hidden sm:inline">Course</span>
           </Button>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-xs font-medium" style={{ color: accent }}>{course.title}</p>
-            <h1 className="truncate text-sm font-bold sm:text-base">{currentLesson.title}</h1>
+            <p className="truncate text-[11px] font-bold uppercase tracking-wide" style={{ color: accent }}>{course.title}</p>
+            <h1 className="mt-0.5 truncate text-sm font-semibold leading-5 text-slate-950 sm:text-base dark:text-white">{currentLesson.title}</h1>
           </div>
           <div className="flex shrink-0 items-center gap-1">
             {onToggleBookmark && (
@@ -148,9 +148,12 @@ export function LessonViewer({
         {sidebarOpen && (
           <div className="fixed inset-0 z-50 lg:hidden">
             <button type="button" className="absolute inset-0 bg-black/50" onClick={() => setSidebarOpen(false)} aria-label="Close menu" />
-            <div className={cn("absolute inset-y-0 left-0 w-[min(100%,20rem)] shadow-hero bg-gradient-to-b", sidebarGradient)}>
-              <div className="flex items-center justify-between border-b border-slate-200 p-4 dark:border-slate-800">
-                <p className="font-bold">Course content</p>
+            <div className={cn("absolute inset-y-0 left-0 w-[min(100%,22rem)] bg-gradient-to-b shadow-hero", sidebarGradient)}>
+              <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3.5 dark:border-slate-800">
+                <div>
+                  <p className="text-sm font-bold text-slate-950 dark:text-white">Course content</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">{allLessons.length} lessons</p>
+                </div>
                 <Button variant="ghost" className="px-2" onClick={() => setSidebarOpen(false)}><X className="size-4" /></Button>
               </div>
               <SidebarContent
@@ -361,34 +364,51 @@ function SidebarContent({
   accent: string;
   chipClass?: string;
 }) {
+  const lessonCount = course.modules.reduce((sum, module) => sum + module.lessons.length, 0);
+  const completedCount = course.modules.reduce((sum, module) => sum + module.lessons.filter((lesson) => lesson.completed).length, 0);
+
   return (
-    <div className="max-h-[calc(100vh-4rem)] overflow-y-auto p-4">
-      <div className={cn("mb-4 rounded-2xl px-4 py-3 text-sm font-semibold leading-snug shadow-sm break-words", chipClass ?? "bg-emerald-100 text-emerald-900")}>
-        {course.title}
+    <div className="max-h-[calc(100vh-4rem)] overflow-y-auto px-3 py-4 sm:px-4">
+      <div className="mb-5 rounded-2xl border border-white/70 bg-white/75 p-4 shadow-sm backdrop-blur dark:border-slate-800 dark:bg-slate-950/70">
+        <div className={cn("mb-3 inline-flex max-w-full rounded-full px-3 py-1 text-xs font-bold leading-snug", chipClass ?? "bg-emerald-100 text-emerald-900")}>
+          <span className="truncate">{course.title}</span>
+        </div>
+        <div className="flex items-end justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Progress</p>
+            <p className="mt-1 text-sm font-semibold text-slate-900 dark:text-white">{completedCount} of {lessonCount} lessons</p>
+          </div>
+          <span className="rounded-full bg-slate-950 px-3 py-1 text-xs font-bold text-white dark:bg-white dark:text-slate-950">
+            {lessonCount ? Math.round((completedCount / lessonCount) * 100) : 0}%
+          </span>
+        </div>
       </div>
       {course.modules.map((module) => (
-        <div key={module.id} className="mb-6">
-          <p className="mb-2 px-2 text-xs font-bold uppercase tracking-wider" style={{ color: accent }}>{module.title}</p>
-          <div className="space-y-1">
+        <div key={module.id} className="mb-7">
+          <p className="mb-2.5 px-1 text-[11px] font-extrabold uppercase leading-4 tracking-wide" style={{ color: accent }}>{module.title}</p>
+          <div className="space-y-2">
             {module.lessons.map((lesson) => (
               <button
                 key={lesson.id}
                 type="button"
-                onClick={() => onSelect(lesson.id)}
+                onClick={(event) => {
+                  event.currentTarget.blur();
+                  onSelect(lesson.id);
+                }}
                 className={cn(
-                  "flex w-full items-start gap-2 rounded-xl px-3 py-2.5 text-left text-sm transition-all",
+                  "group relative flex w-full items-start gap-3 rounded-2xl border px-3.5 py-3 text-left text-sm outline-none transition-all focus-visible:ring-2 focus-visible:ring-offset-2",
                   lesson.id === currentLessonId
-                    ? "bg-white font-semibold text-slate-900 shadow-md ring-1 ring-black/5"
-                    : "bg-white/60 text-slate-700 hover:bg-white hover:shadow-sm",
+                    ? "border-white bg-white font-semibold text-slate-950 shadow-sm ring-1 ring-emerald-900/10 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                    : "border-white/70 bg-white/55 text-slate-700 hover:border-white hover:bg-white hover:shadow-sm dark:border-slate-800/70 dark:bg-slate-900/40 dark:text-slate-300 dark:hover:bg-slate-900",
                 )}
-                style={lesson.id === currentLessonId ? { borderLeft: `4px solid ${accent}` } : undefined}
+                style={lesson.id === currentLessonId ? { boxShadow: `inset 3px 0 0 ${accent}, 0 10px 24px rgba(15, 23, 42, 0.08)` } : undefined}
               >
                 {lesson.completed ? (
                   <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-500" />
                 ) : (
-                  <BookOpen className="mt-0.5 size-4 shrink-0 opacity-50" />
+                  <BookOpen className={cn("mt-0.5 size-4 shrink-0", lesson.id === currentLessonId ? "text-slate-700 dark:text-slate-200" : "text-slate-400 group-hover:text-slate-600")} />
                 )}
-                <span className="line-clamp-2 leading-snug">{lesson.title}</span>
+                <span className="line-clamp-2 min-w-0 leading-5">{lesson.title}</span>
               </button>
             ))}
           </div>
