@@ -13,6 +13,7 @@ import {
 } from "@/lib/academy/academy-resource-access";
 import { fetchCourseTree, flattenCourseMaterials, mapLessonForLearner } from "@/lib/academy/course-tree";
 import { toAcademyFileDownloadUrl } from "@/lib/academy/academy-files";
+import { repairLegacyBrandingInPostgres } from "@/lib/brand/rebrand";
 
 export type AcademyRegistrationIntent = "TRAINING_ONLY" | "AGENT_TRAINING";
 
@@ -22,6 +23,7 @@ function resolveCoursePrice(course: { publicPrice: Prisma.Decimal; agentPrice: P
 }
 
 export async function listPublicAcademyCourses() {
+  await repairLegacyBrandingInPostgres();
   const courses = await getMainPrisma().trainingCourse.findMany({
     where: {
       id: { in: PROGRAMME_COURSE_IDS },
@@ -587,6 +589,7 @@ export async function getAcademySettingsPublic() {
 }
 
 export async function getLearnerCourseDetail(learnerId: string, courseId: string, options?: { isAgent?: boolean }) {
+  await repairLegacyBrandingInPostgres();
   if (courseId === LEGACY_COURSE_ID || !PROGRAMME_COURSE_IDS.includes(courseId)) {
     return "NOT_FOUND" as const;
   }
@@ -647,9 +650,9 @@ export async function getLearnerCourseDetail(learnerId: string, courseId: string
     toolkitAccess,
     course: {
       id: course.id,
-      title: course.title,
+      title: programme?.title ?? course.title,
       slug: course.slug,
-      description: course.description,
+      description: programme?.description ?? course.description,
       instructor: course.instructor,
       certificateEnabled: course.certificateEnabled,
       passingPercentage: course.passingPercentage,

@@ -10,6 +10,7 @@ import {
 } from "@/lib/academy/academy-assessments";
 import { verifyAcademyAssets } from "@/lib/academy/academy-files-server";
 import { seedStagedCourseStructure } from "@/lib/academy/staged-course-seed";
+import { repairLegacyBrandingInPostgres } from "@/lib/brand/rebrand";
 
 const CERTIFICATE_TEMPLATE_ID = "academy-certificate-certified-houselink-agent";
 
@@ -44,6 +45,7 @@ export async function ensureOfficialAcademySeed() {
   await seedLearningPath(prisma);
   await seedCertificateTemplate(prisma);
   await seedEngagementRecords(prisma);
+  await repairLegacyBrandingInPostgres();
 }
 
 export async function seedOfficialAcademyResources(options?: { skipCourseRebuild?: boolean }) {
