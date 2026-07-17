@@ -1,12 +1,10 @@
 import Link from "next/link";
-import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { HouseLinkIcon, HL_GREEN, HL_NAVY } from "@/components/brand/houselink-icon";
 
 export { HouseLinkIcon, HL_GREEN, HL_NAVY, HOUSELINK_ICON_SRC } from "@/components/brand/houselink-icon";
 
 export const HOUSELINK_FULL_LOCKUP_SRC = "/brand/houselink-full-lockup.png";
-const HOUSELINK_UI_LOCKUP_SRC = "/brand/houselink-nav-lockup.png";
 
 type BrandVariant = "nav" | "header" | "footer" | "auth" | "icon";
 
@@ -24,10 +22,6 @@ const iconSizes: Record<BrandVariant, string> = {
   footer: "h-14 w-14 sm:h-16 sm:w-16",
   auth: "h-[4.5rem] w-[4.5rem] sm:h-20 sm:w-20",
   icon: "h-10 w-10",
-};
-
-const fullLockupSizes: Record<"auth", string> = {
-  auth: "h-auto w-full max-w-[19rem]",
 };
 
 /** Nav wordmark: House (navy) + Link (green) */
@@ -146,15 +140,11 @@ export function HouseLinkBrand({ className, variant = "nav", iconOnly = false }:
   return (
     <span
       data-brand="houselink-full"
-      className={cn("inline-flex w-full shrink-0 items-center justify-center", className)}
+      className={cn("inline-flex shrink-0 items-center gap-3 sm:gap-4", className)}
     >
-      <Image
-        src={HOUSELINK_UI_LOCKUP_SRC}
-        alt="HouseLink Zimbabwe - Find Your Next Home with Confidence"
-        className={cn(fullLockupSizes.auth, "object-contain")}
-        width={360}
-        height={90}
-      />
+      <HouseLinkIcon className={iconSizes[variant]} title="HouseLink" />
+      <span className="w-px shrink-0 self-stretch bg-[#1a3560]/20 dark:bg-slate-600" aria-hidden />
+      <FullWordmark variant="auth" />
     </span>
   );
 }
