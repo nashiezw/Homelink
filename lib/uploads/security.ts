@@ -37,13 +37,18 @@ const ALLOWED_BY_KIND: Record<UploadKind, Record<string, string[]>> = {
 };
 
 const DOCUMENT_FOLDERS = new Set(["payments", "academy", "verification", "property-management", "leases"]);
+const PAYMENT_PROOF_IMAGE_MIMES = new Set(["image/jpeg", "image/png", "image/webp"]);
 
 export function validateUploadDataUrl(dataUrl: string, requestedKind: UploadKind, folder: string): UploadValidation | { error: string } {
   const match = dataUrl.match(DATA_URL);
   if (!match) return { error: "Provide a valid base64 data URL." };
 
   const mime = match[1].toLowerCase();
-  const allowed = ALLOWED_BY_KIND[requestedKind][mime];
+  const allowed = ALLOWED_BY_KIND[requestedKind][mime] ?? (
+    requestedKind === "document" && folder === "payments" && PAYMENT_PROOF_IMAGE_MIMES.has(mime)
+      ? ALLOWED_BY_KIND.image[mime]
+      : undefined
+  );
   if (!allowed) return { error: `${mime} is not allowed for ${requestedKind} uploads.` };
   if (requestedKind === "document" && !DOCUMENT_FOLDERS.has(folder)) {
     return { error: "Document uploads are only allowed for approved payment, academy, verification, lease, or property-management scopes." };
