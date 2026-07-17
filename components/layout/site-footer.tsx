@@ -43,76 +43,94 @@ const groups = [
       ["Privacy", "/privacy"],
     ],
   },
+  {
+    title: "Tools",
+    items: [
+      ["Calculators", "/calculators"],
+      ["Compare homes", "/compare"],
+      ["Saved homes", "/saved"],
+      ["Payments", "/payments"],
+    ],
+  },
 ];
 
 const shareLinks = [
   ["Facebook", "https://www.facebook.com/sharer/sharer.php?u=https%3A%2F%2Fhouselinkzim.co.zw"],
   ["LinkedIn", "https://www.linkedin.com/shareArticle?mini=true&url=https%3A%2F%2Fhouselinkzim.co.zw"],
-  ["WhatsApp", "https://wa.me/?text=Find%20verified%20property%20on%20HouseLink%20Zimbabwe%3A%20https%3A%2F%2Fhouselinkzim.co.zw"],
+  [
+    "WhatsApp",
+    "https://wa.me/?text=Find%20verified%20property%20on%20HouseLink%20Zimbabwe%3A%20https%3A%2F%2Fhouselinkzim.co.zw",
+  ],
 ] as const;
 
 function internalRel(href: string) {
   return href.includes("?") ? "nofollow" : undefined;
 }
 
+function normalizeRebrandText(value: string) {
+  return value
+    .replace(/HomeLink/g, "HouseLink")
+    .replace(/homelink/g, "houselink")
+    .replace(/HOMELINK/g, "HOUSELINK");
+}
+
 export function SiteFooter() {
   const { config } = usePlatformConfig();
-  const contact = config?.contact;
+  const contact = config?.contact
+    ? {
+        ...config.contact,
+        supportEmail: normalizeRebrandText(config.contact.supportEmail),
+        careersEmail: normalizeRebrandText(config.contact.careersEmail),
+      }
+    : null;
 
   return (
     <footer className="relative border-t border-slate-800 bg-ink text-white">
       <div className="section-divider absolute inset-x-0 top-0 opacity-60" />
-      <div className="mx-auto grid max-w-7xl gap-10 px-4 py-14 sm:px-6 md:grid-cols-[1.4fr_2fr] lg:px-8">
-        <div>
+
+      <div className="mx-auto grid max-w-7xl items-start gap-8 px-4 py-10 sm:px-6 lg:grid-cols-[minmax(280px,0.95fr)_minmax(0,2.25fr)_minmax(220px,0.75fr)] lg:px-8">
+        <div className="max-w-sm">
           <div className="flex items-center">
             <HouseLinkBrand variant="footer" />
           </div>
-          <p className="mt-4 max-w-sm text-sm leading-7 text-slate-300">
-            Find your next home with confidence through verified listings,
-            clear comparison tools, and Zimbabwe-focused search.
+
+          <p className="mt-4 text-sm leading-7 text-slate-300">
+            Find your next home with confidence through verified listings, clear comparison tools, and
+            Zimbabwe-focused search.
           </p>
+
           {contact && (
-            <div className="mt-5 grid gap-2 text-sm text-slate-300">
-              <a href={getMailtoHref(contact.supportEmail)} className="inline-flex items-center gap-2 transition hover:text-emerald-300">
+            <div className="mt-5 grid gap-2.5 text-sm text-slate-300">
+              <a
+                href={getMailtoHref(contact.supportEmail)}
+                className="inline-flex items-center gap-2 transition hover:text-emerald-300"
+              >
                 <Mail className="size-4" />
                 {contact.supportEmail}
               </a>
-              <a href={getTelHref(contact)} className="inline-flex items-center gap-2 transition hover:text-emerald-300">
+              <a
+                href={getTelHref(contact)}
+                className="inline-flex items-center gap-2 transition hover:text-emerald-300"
+              >
                 <Phone className="size-4" />
                 {contact.phoneLabel || contact.phoneNumber}
               </a>
-              <a href={getWhatsAppHref(contact)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 transition hover:text-emerald-300">
+              <a
+                href={getWhatsAppHref(contact)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 transition hover:text-emerald-300"
+              >
                 <MessageCircle className="size-4" />
                 WhatsApp {contact.whatsappLabel || contact.whatsappNumber}
               </a>
             </div>
           )}
-          <div className="mt-5">
-            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Share HouseLink</p>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {shareLinks.map(([label, href]) => (
-                <a
-                  key={label}
-                  href={href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="rounded-full border border-white/10 px-3 py-1.5 text-xs font-semibold text-slate-300 transition hover:border-emerald-300/50 hover:text-emerald-300"
-                >
-                  {label}
-                </a>
-              ))}
-            </div>
-          </div>
-          <Link
-            href="/dashboard/landlord/new"
-            className="hover-lift mt-6 inline-flex h-11 items-center justify-center rounded-lg bg-emerald-600 px-5 text-sm font-semibold text-white shadow-lg shadow-emerald-950/30 transition hover:bg-emerald-500"
-          >
-            List your property
-          </Link>
         </div>
-        <div className="grid gap-8 sm:grid-cols-2 md:grid-cols-4">
+
+        <div className="grid gap-x-7 gap-y-8 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
           {groups.map((group) => (
-            <div key={group.title}>
+            <div key={group.title} className="min-w-0">
               <p className="text-sm font-semibold tracking-wide text-white">{group.title}</p>
               <div className="mt-4 grid gap-2.5 text-sm text-slate-400">
                 {group.items.map(([label, href]) => (
@@ -129,9 +147,53 @@ export function SiteFooter() {
             </div>
           ))}
         </div>
+
+        <div className="grid gap-5 lg:justify-items-end">
+          <div className="w-full max-w-xs lg:text-right">
+            <p className="text-sm font-semibold text-white">Ready to move?</p>
+            <p className="mt-2 text-sm leading-6 text-slate-400">
+              Add a listing, compare homes, or contact support from one place.
+            </p>
+            <div className="mt-4 flex flex-wrap gap-2 lg:justify-end">
+              <Link
+                href="/dashboard/landlord/new"
+                className="hover-lift inline-flex h-11 items-center justify-center rounded-lg bg-emerald-600 px-5 text-sm font-semibold text-white shadow-lg shadow-emerald-950/30 transition hover:bg-emerald-500"
+              >
+                List your property
+              </Link>
+              <Link
+                href="/contact"
+                className="inline-flex h-11 items-center justify-center rounded-lg border border-white/10 px-4 text-sm font-semibold text-slate-200 transition hover:border-emerald-300/50 hover:text-emerald-300"
+              >
+                Contact support
+              </Link>
+            </div>
+          </div>
+
+          <div className="w-full max-w-xs lg:text-right">
+            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Share HouseLink</p>
+            <div className="mt-2 flex flex-wrap gap-2 lg:justify-end">
+              {shareLinks.map(([label, href]) => (
+                <a
+                  key={label}
+                  href={href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="rounded-full border border-white/10 px-3 py-1.5 text-xs font-semibold text-slate-300 transition hover:border-emerald-300/50 hover:text-emerald-300"
+                >
+                  {label}
+                </a>
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
-      <div className="border-t border-white/10 py-5 text-center text-xs text-slate-500">
-        © {new Date().getFullYear()} HouseLink Zimbabwe. Verified property marketplace.
+
+      <div className="border-t border-white/10">
+        <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-5 text-xs text-slate-500 sm:px-6 md:flex-row md:items-center md:justify-between lg:px-8">
+          <p>&copy; {new Date().getFullYear()} HouseLink Zimbabwe. Verified property marketplace.</p>
+          <p>houselinkzim.co.zw</p>
+        </div>
       </div>
     </footer>
   );
