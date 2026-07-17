@@ -1,11 +1,12 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import { mkdir, readFile, writeFile } from "fs/promises";
 import path from "path";
+import { getWritableDataDir } from "@/lib/production/writable-data-dir";
 import { defaultPaymentSettings, defaultPlatformSettings, getPlatformIntegrationEnvOverrides } from "@/lib/settings/defaults";
 import { mergePaymentSettings, mergePlatformSettings } from "@/lib/settings/merge";
 import type { PaymentSettings, PlatformSettings } from "@/lib/settings/types";
 
-const DATA_DIR = path.join(process.cwd(), ".data");
+const DATA_DIR = getWritableDataDir();
 const SETTINGS_FILE = path.join(DATA_DIR, "platform-settings.json");
 
 export type PersistedSettings = {

@@ -2,10 +2,11 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import { mkdir, readFile, writeFile } from "fs/promises";
 import path from "path";
 import { isPostgresStoreEnabled, getMainPrisma } from "@/lib/db/main-prisma";
+import { getWritableDataDir } from "@/lib/production/writable-data-dir";
 import { deserializeStoreState, serializeStoreState, type SerializedStoreSnapshot } from "@/lib/store/serialize";
 import type { StoreState } from "@/lib/store/app-store";
 
-const DATA_DIR = path.join(process.cwd(), ".data");
+const DATA_DIR = getWritableDataDir();
 const STORE_FILE = path.join(DATA_DIR, "app-store.json");
 
 let persistTimer: ReturnType<typeof setTimeout> | null = null;
