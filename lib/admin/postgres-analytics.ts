@@ -1,4 +1,5 @@
 import {
+  AcademyRegistrationStatus,
   ListingStatus,
   PaymentStatus,
   PropertyType,
@@ -32,6 +33,8 @@ export type AdminSummary = {
   openPmRequests: number;
   flaggedReports: number;
   pendingRoommates: number;
+  pendingAcademyApprovals: number;
+  pendingPaymentProofs: number;
 };
 
 const PROVINCE_MAP: Record<string, string> = {
@@ -67,6 +70,9 @@ export async function getPostgresAdminSummary(): Promise<AdminSummary> {
     pendingRoommates,
     pendingAgents,
     openPmRequests,
+    pendingAcademyApplications,
+    pendingResourceAccess,
+    pendingPaymentProofs,
   ] = await Promise.all([
     prisma.listing.count({ where: { status: ListingStatus.PENDING_REVIEW } }),
     prisma.userDocument.count({ where: { status: VerificationStatus.PENDING } }),
@@ -74,7 +80,11 @@ export async function getPostgresAdminSummary(): Promise<AdminSummary> {
     prisma.roommateProfile.count({ where: { active: false } }),
     prisma.user.count({ where: { roles: { has: Role.AGENT }, identityStatus: VerificationStatus.PENDING } }),
     prisma.propertyEnquiryRecord.count({ where: { subjectType: "PROPERTY_MANAGEMENT", status: { notIn: ["COMPLETED", "CLOSED", "CANCELLED"] } } }),
+    prisma.academyLearnerApplication.count({ where: { status: AcademyRegistrationStatus.PAYMENT_UPLOADED } }),
+    prisma.academyResourceAccess.count({ where: { status: AcademyRegistrationStatus.PAYMENT_UPLOADED } }),
+    prisma.payment.count({ where: { proofStatus: "UPLOADED", status: { not: PaymentStatus.PAID } } }),
   ]);
+  const pendingAcademyApprovals = pendingAcademyApplications + pendingResourceAccess;
 
   return {
     pendingListings,
@@ -85,6 +95,8 @@ export async function getPostgresAdminSummary(): Promise<AdminSummary> {
     openPmRequests,
     flaggedReports,
     pendingRoommates,
+    pendingAcademyApprovals,
+    pendingPaymentProofs,
   };
 }
 
@@ -136,7 +148,7 @@ export async function getPostgresAdminOverview(): Promise<AdminOverview> {
       online: 0,
       registrationsToday,
     },
-    alerts: summary.pendingListings + summary.openTickets + summary.pendingVerification + summary.flaggedReports,
+    alerts: summary.pendingListings + summary.openTickets + summary.pendingVerification + summary.flaggedReports + summary.pendingAcademyApprovals,
     systemHealth: "healthy",
   };
 }

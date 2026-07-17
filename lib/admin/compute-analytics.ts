@@ -29,6 +29,8 @@ export type AdminSummary = {
   openPmRequests: number;
   flaggedReports: number;
   pendingRoommates: number;
+  pendingAcademyApprovals: number;
+  pendingPaymentProofs: number;
 };
 
 export function computeAdminSummary(): AdminSummary {
@@ -47,6 +49,8 @@ export function computeAdminSummary(): AdminSummary {
       store.listPMRequests({ status: "PENDING_ASSIGNMENT" }).length,
     flaggedReports: analytics.totals.openReports,
     pendingRoommates: store.getRoommateAdminAnalytics().pending,
+    pendingAcademyApprovals: 0,
+    pendingPaymentProofs: store.listAllPayments().filter((payment) => payment.proofStatus === "UPLOADED" && payment.status !== "PAID").length,
   };
 }
 
@@ -104,7 +108,7 @@ export function computeAdminOverview(): AdminOverview {
       online: Math.min(store.listAllSessions().length, users.length),
       registrationsToday: registrationsToday || users.length > 0 ? Math.max(registrationsToday, 0) : 0,
     },
-    alerts: computeAdminSummary().pendingListings + computeAdminSummary().openTickets + computeAdminSummary().pendingVerification,
+    alerts: computeAdminSummary().pendingListings + computeAdminSummary().openTickets + computeAdminSummary().pendingVerification + computeAdminSummary().pendingAcademyApprovals,
     systemHealth: paymentsDegraded ? "degraded" : "healthy",
   };
 }

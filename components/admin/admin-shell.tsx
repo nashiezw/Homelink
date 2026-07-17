@@ -76,6 +76,8 @@ type AdminSummary = {
   openPmRequests: number;
   flaggedReports: number;
   pendingRoommates: number;
+  pendingAcademyApprovals: number;
+  pendingPaymentProofs: number;
 };
 
 type NavItem = {
@@ -99,7 +101,7 @@ const NAV_GROUPS: Array<{ label: string; items: NavItem[] }> = [
   {
     label: "HouseLink Agent Academy",
     items: [
-      { id: "academy", label: "Public Learners", icon: Users, academyView: "Public Learners" },
+      { id: "academy", label: "Public Learners", icon: Users, badgeKey: "pendingAcademyApprovals", academyView: "Public Learners" },
       { id: "academy", label: "Lesson Content", icon: FileText, academyView: "Lesson Content" },
       { id: "academy", label: "Dashboard", icon: GraduationCap, academyView: "Dashboard" },
       { id: "academy", label: "Courses", icon: BookOpen, academyView: "Courses" },
@@ -143,7 +145,7 @@ const NAV_GROUPS: Array<{ label: string; items: NavItem[] }> = [
     items: [
       { id: "moderation", label: "Moderation", icon: Shield, badgeKey: "flaggedReports" as const },
       { id: "support", label: "Support CRM", icon: Headphones, badgeKey: "openTickets" as const },
-      { id: "payments", label: "Payments", icon: CreditCard },
+      { id: "payments", label: "Payments", icon: CreditCard, badgeKey: "pendingPaymentProofs" },
     ],
   },
   {
@@ -307,6 +309,14 @@ export function AdminShell({ children }: { children: ReactNode }) {
     ...group,
     items: group.items.filter((item) => !allowedTabs || allowedTabs.has(item.id)),
   })).filter((group) => group.items.length > 0);
+  const notificationCount = summary
+    ? summary.pendingListings +
+      summary.openTickets +
+      summary.pendingVerification +
+      summary.openPmRequests +
+      summary.pendingAcademyApprovals +
+      summary.pendingPaymentProofs
+    : 0;
 
   const sidebar = (
     <>
@@ -364,6 +374,8 @@ export function AdminShell({ children }: { children: ReactNode }) {
                 <ExecutivePill label="Verifications" value={summary.pendingVerification} />
                 <ExecutivePill label="Agents pending" value={summary.pendingAgents} />
                 <ExecutivePill label="PM requests" value={summary.openPmRequests} />
+                <ExecutivePill label="Academy approvals" value={summary.pendingAcademyApprovals} tone="warning" />
+                <ExecutivePill label="Payment proofs" value={summary.pendingPaymentProofs} tone="warning" />
                 <ExecutivePill label="Flagged reports" value={summary.flaggedReports} tone="danger" />
               </div>
             </div>
@@ -401,9 +413,9 @@ export function AdminShell({ children }: { children: ReactNode }) {
                     aria-expanded={notificationsOpen}
                   >
                     <Bell className="size-4" />
-                    {summary && summary.pendingListings + summary.openTickets + summary.pendingVerification + summary.openPmRequests > 0 && (
+                    {notificationCount > 0 && (
                       <span className="absolute -right-0.5 -top-0.5 flex size-4 items-center justify-center rounded-full bg-amber-500 text-[9px] font-bold text-black">
-                        {Math.min(9, summary.pendingListings + summary.openTickets + summary.pendingVerification + summary.openPmRequests)}
+                        {Math.min(9, notificationCount)}
                       </span>
                     )}
                   </button>
@@ -424,6 +436,8 @@ export function AdminShell({ children }: { children: ReactNode }) {
                           <NotificationShortcut label="Tickets" value={summary.openTickets} onClick={() => navigate("support")} />
                           <NotificationShortcut label="Verifications" value={summary.pendingVerification} onClick={() => navigate("verification")} />
                           <NotificationShortcut label="PM requests" value={summary.openPmRequests} onClick={() => navigate("property-management")} />
+                          <NotificationShortcut label="Academy" value={summary.pendingAcademyApprovals} onClick={() => navigate({ id: "academy", label: "Public Learners", icon: Users, academyView: "Public Learners" })} />
+                          <NotificationShortcut label="Payments" value={summary.pendingPaymentProofs} onClick={() => navigate("payments")} />
                         </div>
                       )}
                       <div className="max-h-80 overflow-y-auto p-2">
@@ -595,4 +609,3 @@ function NavButton({
     </button>
   );
 }
-

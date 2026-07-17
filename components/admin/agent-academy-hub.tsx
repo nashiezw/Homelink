@@ -309,6 +309,11 @@ export function AgentAcademyHub() {
     });
   }, [data?.courses, query, statusFilter]);
 
+  function openTab(nextTab: AcademyTab) {
+    setTab(nextTab);
+    setPrimaryTab(resolveAcademyNav(nextTab).primary);
+  }
+
   if (!data) {
     return <div className="space-y-3">{Array.from({ length: 8 }).map((_, index) => <div key={index} className="h-16 animate-pulse rounded-xl bg-white/5" />)}</div>;
   }
@@ -325,29 +330,29 @@ export function AgentAcademyHub() {
       {tab === "Dashboard" && (
         <div className="space-y-5">
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-6">
-            <ExecutiveTile label="Total Courses" value={data.metrics.totalCourses} icon={GraduationCap} />
-            <ExecutiveTile label="Published" value={data.metrics.publishedCourses} icon={CheckCircle2} tone="success" />
-            <ExecutiveTile label="Draft" value={data.metrics.draftCourses} icon={FileText} tone="warning" />
-            <ExecutiveTile label="Lessons" value={data.metrics.totalLessons} icon={BookOpen} />
-            <ExecutiveTile label="Active Learners" value={data.metrics.activeLearners} icon={Users} tone="success" />
-            <ExecutiveTile label="Completion" value={`${data.metrics.completionRate}%`} icon={BadgeCheck} tone="info" />
+            <ExecutiveTile label="Total Courses" value={data.metrics.totalCourses} icon={GraduationCap} onClick={() => openTab("Courses")} />
+            <ExecutiveTile label="Published" value={data.metrics.publishedCourses} icon={CheckCircle2} tone="success" onClick={() => openTab("Courses")} />
+            <ExecutiveTile label="Draft" value={data.metrics.draftCourses} icon={FileText} tone="warning" onClick={() => openTab("Courses")} />
+            <ExecutiveTile label="Lessons" value={data.metrics.totalLessons} icon={BookOpen} onClick={() => openTab("Courses")} />
+            <ExecutiveTile label="Active Learners" value={data.metrics.activeLearners} icon={Users} tone="success" onClick={() => openTab("Public Learners")} />
+            <ExecutiveTile label="Completion" value={`${data.metrics.completionRate}%`} icon={BadgeCheck} tone="info" onClick={() => openTab("Analytics")} />
           </div>
           <AdminMetricGrid cols={6}>
-            <AdminStatPill label="Videos Uploaded" value={data.metrics.videosUploaded} />
-            <AdminStatPill label="PDF Resources" value={data.metrics.pdfResources} />
-            <AdminStatPill label="Quizzes" value={data.metrics.quizzes} />
-            <AdminStatPill label="Assignments" value={data.metrics.assignments} />
-            <AdminStatPill label="Exams" value={data.metrics.exams} />
-            <AdminStatPill label="Certificates Issued" value={data.metrics.certificatesIssued} tone="success" />
-            <AdminStatPill label="Inactive Learners" value={data.metrics.inactiveLearners} tone="warning" />
-            <AdminStatPill label="Average Score" value={`${data.metrics.averageScore}%`} tone="info" />
-            <AdminStatPill label="Learning Hours" value={data.metrics.learningHours} />
-            <AdminStatPill label="Downloads" value={data.metrics.downloads} />
-            <AdminStatPill label="Video Watch %" value={`${data.metrics.videoWatchPercent}%`} />
-            <AdminStatPill label="Overdue Assignments" value={data.overdueAssignments} tone={data.overdueAssignments ? "warning" : "default"} />
-            <AdminStatPill label="Public Learners" value={data.metrics.publicLearners} tone="info" />
-            <AdminStatPill label="Pending Public Approvals" value={data.metrics.pendingPublicApprovals} tone={data.metrics.pendingPublicApprovals ? "warning" : "success"} />
-            <AdminStatPill label="Academy Revenue" value={`$${data.metrics.academyRevenue}`} tone="success" />
+            <ClickableStatPill label="Videos Uploaded" value={data.metrics.videosUploaded} onClick={() => openTab("Video Library")} />
+            <ClickableStatPill label="PDF Resources" value={data.metrics.pdfResources} onClick={() => openTab("Training Resources")} />
+            <ClickableStatPill label="Quizzes" value={data.metrics.quizzes} onClick={() => openTab("Courses")} />
+            <ClickableStatPill label="Assignments" value={data.metrics.assignments} onClick={() => openTab("Analytics")} />
+            <ClickableStatPill label="Exams" value={data.metrics.exams} onClick={() => openTab("Courses")} />
+            <ClickableStatPill label="Certificates Issued" value={data.metrics.certificatesIssued} tone="success" onClick={() => openTab("Certificates")} />
+            <ClickableStatPill label="Inactive Learners" value={data.metrics.inactiveLearners} tone="warning" onClick={() => openTab("Analytics")} />
+            <ClickableStatPill label="Average Score" value={`${data.metrics.averageScore}%`} tone="info" onClick={() => openTab("Analytics")} />
+            <ClickableStatPill label="Learning Hours" value={data.metrics.learningHours} onClick={() => openTab("Analytics")} />
+            <ClickableStatPill label="Downloads" value={data.metrics.downloads} onClick={() => openTab("Training Resources")} />
+            <ClickableStatPill label="Video Watch %" value={`${data.metrics.videoWatchPercent}%`} onClick={() => openTab("Analytics")} />
+            <ClickableStatPill label="Overdue Assignments" value={data.overdueAssignments} tone={data.overdueAssignments ? "warning" : "default"} onClick={() => openTab("Analytics")} />
+            <ClickableStatPill label="Public Learners" value={data.metrics.publicLearners} tone="info" onClick={() => openTab("Public Learners")} />
+            <ClickableStatPill label="Pending Public Approvals" value={data.metrics.pendingPublicApprovals} tone={data.metrics.pendingPublicApprovals ? "warning" : "success"} onClick={() => openTab("Public Learners")} />
+            <ClickableStatPill label="Academy Revenue" value={`$${data.metrics.academyRevenue}`} tone="success" onClick={() => openTab("Analytics")} />
           </AdminMetricGrid>
 
           <div className="grid gap-4 xl:grid-cols-3">
@@ -523,19 +528,61 @@ export function AgentAcademyHub() {
   );
 }
 
-function ExecutiveTile({ label, value, icon: Icon, tone = "default" }: { label: string; value: string | number; icon: typeof GraduationCap; tone?: "default" | "success" | "warning" | "info" }) {
+function ExecutiveTile({
+  label,
+  value,
+  icon: Icon,
+  tone = "default",
+  onClick,
+}: {
+  label: string;
+  value: string | number;
+  icon: typeof GraduationCap;
+  tone?: "default" | "success" | "warning" | "info";
+  onClick?: () => void;
+}) {
   const styles = {
     default: "border-white/10 bg-slate-900/70 text-slate-100",
     success: "border-emerald-500/25 bg-emerald-500/10 text-emerald-100",
     warning: "border-amber-500/25 bg-amber-500/10 text-amber-100",
     info: "border-cyan-500/25 bg-cyan-500/10 text-cyan-100",
   };
-  return (
-    <div className={cn("rounded-xl border p-4", styles[tone])}>
+  const content = (
+    <>
       <Icon className="size-5 opacity-80" />
       <p className="mt-4 text-2xl font-bold tabular-nums">{value}</p>
       <p className="mt-1 text-xs font-semibold uppercase tracking-wider opacity-70">{label}</p>
+    </>
+  );
+  if (onClick) {
+    return (
+      <button type="button" onClick={onClick} className={cn("rounded-xl border p-4 text-left transition hover:-translate-y-0.5 hover:border-emerald-400/60 focus:outline-none focus:ring-2 focus:ring-emerald-400/60", styles[tone])}>
+        {content}
+      </button>
+    );
+  }
+  return (
+    <div className={cn("rounded-xl border p-4", styles[tone])}>
+      {content}
     </div>
+  );
+}
+
+function ClickableStatPill({
+  label,
+  value,
+  tone = "default",
+  onClick,
+}: {
+  label: string;
+  value: string | number;
+  tone?: "default" | "success" | "warning" | "danger" | "info";
+  onClick: () => void;
+}) {
+  return (
+    <button type="button" onClick={onClick} className="rounded-xl text-left transition hover:-translate-y-0.5 hover:ring-2 hover:ring-emerald-400/50 focus:outline-none focus:ring-2 focus:ring-emerald-400/60">
+      <AdminStatPill label={label} value={value} tone={tone} />
+    </button>
   );
 }
 
