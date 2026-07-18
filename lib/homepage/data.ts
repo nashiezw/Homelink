@@ -93,11 +93,42 @@ function resolvePropertyTypes(
       return {
         id: t.id,
         label: t.label,
-        href: t.href,
+        href: cleanPublicHref(t.href),
         comingSoon: t.comingSoon,
         count,
       };
     });
+}
+
+function cleanPublicHref(href: string) {
+  if (href === "/search?intent=rent") return "/rent/harare";
+  if (href === "/search?intent=buy") return "/property-for-sale/bulawayo";
+  if (href.startsWith("/search?type=")) return "/search";
+  if (href.startsWith("/search?")) return "/search";
+  if (href.startsWith("/academy?browse=")) return "/academy";
+  return href;
+}
+
+function cleanHomepageCmsLinks(cms: HomepageCmsConfig): HomepageCmsConfig {
+  return {
+    ...cms,
+    hero: {
+      ...cms.hero,
+      primaryCta: { ...cms.hero.primaryCta, href: cleanPublicHref(cms.hero.primaryCta.href) },
+      secondaryCta: { ...cms.hero.secondaryCta, href: cleanPublicHref(cms.hero.secondaryCta.href) },
+    },
+    finalCta: {
+      ...cms.finalCta,
+      actions: cms.finalCta.actions.map((action) => ({ ...action, href: cleanPublicHref(action.href) })),
+    },
+    agentPromo: {
+      ...cms.agentPromo,
+      primaryCta: { ...cms.agentPromo.primaryCta, href: cleanPublicHref(cms.agentPromo.primaryCta.href) },
+      secondaryCta: { ...cms.agentPromo.secondaryCta, href: cleanPublicHref(cms.agentPromo.secondaryCta.href) },
+    },
+    banners: cms.banners.map((banner) => ({ ...banner, href: cleanPublicHref(banner.href) })),
+    propertyTypes: cms.propertyTypes.map((type) => ({ ...type, href: cleanPublicHref(type.href) })),
+  };
 }
 
 function takeWithUniqueImages<T extends { id: string; image: string }>(items: T[], limit: number) {
@@ -220,7 +251,7 @@ export async function getHomepageData(): Promise<HomepageData> {
 
 function getLocalHomepageData(): HomepageData {
   const store = getStore();
-  const cms = store.getHomepageCms();
+  const cms = cleanHomepageCmsLinks(store.getHomepageCms());
   const listings = listListings({ verifiedOnly: false });
   const verifiedListings = listings.filter((l) => l.verified);
   const activeAgents = store.listAgentProfiles().filter((p) => p.status === "ACTIVE");
@@ -265,7 +296,7 @@ function getLocalHomepageData(): HomepageData {
 async function getPostgresHomepageData(): Promise<HomepageData> {
   const prisma = getMainPrisma();
   await ensureCoreProductionSchema();
-  const cms = await getPostgresHomepageCms();
+  const cms = cleanHomepageCmsLinks(await getPostgresHomepageCms());
   const [postgresListings, activeAgents, roommateProfileCount, seekerCount, reviewAggregate] = await Promise.all([
     listHomepageListingsFromPostgres(),
     getPostgresAgentRows(),

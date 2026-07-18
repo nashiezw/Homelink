@@ -184,8 +184,7 @@ function LocationMarquee({ highlights }: { highlights: SuburbHighlight[] }) {
         {items.map((loc, i) => (
           <Link
             key={`${loc.name}-${i}`}
-            href={`/search?intent=rent&type=room&suburb=${encodeURIComponent(loc.name)}`}
-            rel="nofollow"
+            href={`/rooms/${encodeURIComponent(loc.name.toLowerCase().replace(/\s+/g, "-"))}`}
             className="group relative flex w-[21.75rem] shrink-0 gap-4 overflow-hidden rounded-[1.35rem] border border-white/12 bg-white/[0.06] p-3.5 transition duration-300 hover:-translate-y-1 hover:border-emerald-400/50 hover:bg-white/10 sm:w-[22.5rem] sm:p-4"
           >
             <div className="relative h-24 w-[6.5rem] shrink-0 overflow-hidden rounded-2xl ring-1 ring-white/10 sm:w-28">
@@ -812,7 +811,7 @@ export function RoommatesPageClient() {
                 accent="now"
                 subtitle="Hand-picked verified listings with real photos, cleaner pricing, and room details that are easy to scan."
                 action={(
-                  <Link href="/search?type=room&intent=rent" rel="nofollow" className="inline-flex h-11 items-center gap-2 rounded-2xl bg-emerald-600 px-5 text-sm font-bold text-white shadow-lg transition hover:-translate-y-0.5 hover:bg-emerald-700">
+                  <Link href="/rooms/avondale" className="inline-flex h-11 items-center gap-2 rounded-2xl bg-emerald-600 px-5 text-sm font-bold text-white shadow-lg transition hover:-translate-y-0.5 hover:bg-emerald-700">
                     View all rooms <ArrowRight className="size-4" />
                   </Link>
                 )}

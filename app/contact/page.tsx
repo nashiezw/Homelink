@@ -19,7 +19,7 @@ export const metadata: Metadata = {
 const paths = [
   ["Property owners", "Request management support", "/property-management"],
   ["Landlords", "Manage listings and enquiries", "/dashboard/landlord"],
-  ["Seekers", "Browse verified homes", "/search?intent=rent"],
+  ["Seekers", "Browse verified homes", "/rent/harare"],
   ["Roommates", "Find rooms and compatible people", "/roommates"],
 ];
 

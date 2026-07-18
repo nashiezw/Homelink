@@ -175,7 +175,7 @@ export function ExecutiveDashboard({
             <MetricRow label="Flagged reports" value={summary.flaggedReports} />
             {bookingStats && <MetricRow label="Pending bookings" value={bookingStats.pending} />}
           </div>
-          <Link href="/dashboard/admin?tab=system" rel="nofollow" className="mt-4 inline-flex items-center gap-1 text-xs font-medium text-cyan-400 hover:underline">
+          <Link href="/dashboard/admin/system" className="mt-4 inline-flex items-center gap-1 text-xs font-medium text-cyan-400 hover:underline">
             System health details <ArrowUpRight className="size-3" />
           </Link>
         </AdminPanel>
@@ -190,7 +190,7 @@ export function ExecutiveDashboard({
           ) : (
             <p className="text-sm text-slate-500">Agent analytics loading...</p>
           )}
-          <Link href="/dashboard/admin?tab=agents" rel="nofollow" className="mt-4 inline-flex items-center gap-1 text-xs font-medium text-cyan-400 hover:underline">
+          <Link href="/dashboard/admin/agents" className="mt-4 inline-flex items-center gap-1 text-xs font-medium text-cyan-400 hover:underline">
             Agent management <ArrowUpRight className="size-3" />
           </Link>
         </AdminPanel>
@@ -236,7 +236,7 @@ export function ExecutiveDashboard({
               ))
             )}
           </div>
-          <Link href="/dashboard/admin?tab=security" rel="nofollow" className="mt-4 inline-flex items-center gap-1 text-xs font-medium text-cyan-400 hover:underline">
+          <Link href="/dashboard/admin/security" className="mt-4 inline-flex items-center gap-1 text-xs font-medium text-cyan-400 hover:underline">
             Full audit log <ArrowUpRight className="size-3" />
           </Link>
         </AdminPanel>
@@ -251,37 +251,37 @@ function CommandQuickActions({ summary }: { summary: AdminSummary }) {
       icon: ShieldCheck,
       label: "Verification queue",
       description: `${summary.pendingVerification} pending`,
-      href: "/dashboard/admin?tab=verification",
+      href: "/dashboard/admin/verification",
     },
     {
       icon: Home,
       label: "Listing approvals",
       description: `${summary.pendingListings} awaiting review`,
-      href: "/dashboard/admin?tab=properties",
+      href: "/dashboard/admin/properties",
     },
     {
       icon: Wallet,
       label: "Payments & escrow",
       description: "Ledger, refunds, payouts",
-      href: "/dashboard/admin?tab=payments",
+      href: "/dashboard/admin/payments",
     },
     {
       icon: Users,
       label: "User directory",
       description: "Roles, suspend, audit trail",
-      href: "/dashboard/admin?tab=users",
+      href: "/dashboard/admin/users",
     },
     {
       icon: Megaphone,
       label: "Marketing & CMS",
       description: "Homepage, campaigns, SEO",
-      href: "/dashboard/admin?tab=marketing",
+      href: "/dashboard/admin/marketing",
     },
     {
       icon: Zap,
       label: "Reports & exports",
       description: "Revenue, users, compliance",
-      href: "/dashboard/admin?tab=reports",
+      href: "/dashboard/admin/reports",
     },
   ];
 

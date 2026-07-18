@@ -11,7 +11,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { AgentManagementHub } from "@/components/admin/agent-management-hub";
 import { AgentAcademyHub } from "@/components/admin/agent-academy-hub";
 import { BookingsAdminHub } from "@/components/admin/bookings-admin-hub";
@@ -90,8 +90,10 @@ function Panel({ title, children, className }: { title: string; children: React.
 }
 
 export function AdminControlCenter() {
+  const pathname = usePathname();
   const searchParams = useSearchParams();
-  const tab = (searchParams.get("tab") ?? "overview") as AdminTab;
+  const pathTab = pathname.match(/^\/dashboard\/admin\/([^/]+)/)?.[1] as AdminTab | undefined;
+  const tab = (pathTab ?? searchParams.get("tab") ?? "overview") as AdminTab;
   const [data, setData] = useState<ControlCenterData>({});
   const [loading, setLoading] = useState(true);
 

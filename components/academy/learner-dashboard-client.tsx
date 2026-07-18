@@ -209,7 +209,7 @@ export function LearnerDashboardClient() {
       title={`Welcome back, ${user.name.split(" ")[0]}`}
       description={data.settings?.dashboardWelcome ?? "Track your progress, access course materials, and manage your Academy journey."}
       actions={
-        <Link href="/academy?browse=1" rel="nofollow" className="w-full sm:w-auto">
+        <Link href="/academy" className="w-full sm:w-auto">
           <Button variant="secondary" className="w-full"><BookOpen className="size-4 mr-2" /> Browse Courses</Button>
         </Link>
       }
@@ -438,7 +438,7 @@ export function LearnerDashboardClient() {
             <div className="rounded-2xl border-2 border-dashed border-slate-200 p-12 text-center dark:border-slate-700">
               <BookOpen className="mx-auto size-12 text-slate-300" />
               <p className="mt-4 text-lg font-semibold">No courses yet</p>
-              <Link href="/academy?browse=1" rel="nofollow" className="mt-4 inline-flex items-center gap-2 font-semibold text-emerald-600">
+              <Link href="/academy" className="mt-4 inline-flex items-center gap-2 font-semibold text-emerald-600">
                 <Zap className="size-4" /> Browse courses
               </Link>
             </div>

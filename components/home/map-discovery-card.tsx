@@ -280,11 +280,19 @@ function listingMatchesLayer(listing: Listing, matcher: RegExp) {
 }
 
 function buildSearchHref(location: string | undefined, layer: string) {
-  const params = new URLSearchParams();
-  if (location) params.set("location", location);
-  if (layer !== "all") params.set("nearby", layer);
-  const query = params.toString();
-  return query ? `/search?${query}` : "/search";
+  if (!location || layer !== "all") return "/search";
+  return `/rent/${locationSlug(location)}`;
+}
+
+function locationSlug(location: string) {
+  return encodeURIComponent(
+    location
+      .split(",")[0]
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, ""),
+  );
 }
 
 function buildMapAreaSummary(listings: Listing[], userPosition: UserPosition | null, layer: string) {
@@ -327,7 +335,7 @@ function buildMapClusters(
     return {
       label: `${group.length} ${group.length === 1 ? "home" : "homes"}`,
       location,
-      href: `/search?location=${encodeURIComponent(location)}`,
+      href: `/rent/${locationSlug(location)}`,
       distanceLabel: distanceKm === null ? null : `${distanceKm.toFixed(1)} km`,
     };
   });

@@ -7,11 +7,11 @@ import { propertyCategories } from "@/lib/listings";
 const categoryRoutes: Record<string, string> = {
   Rooms: "/rooms/avondale",
   Houses: "/rent/harare",
-  Flats: "/search?type=flat",
-  Cottages: "/search?type=cottage",
-  Commercial: "/search?type=commercial",
-  Land: "/search?type=land",
-  "Holiday Homes": "/search?type=holiday_home",
+  Flats: "/search",
+  Cottages: "/search",
+  Commercial: "/search",
+  Land: "/search",
+  "Holiday Homes": "/search",
   Roommates: "/roommates",
 };
 

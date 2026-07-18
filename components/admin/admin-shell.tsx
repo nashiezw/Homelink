@@ -213,7 +213,8 @@ export function AdminShell({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const tab = (searchParams.get("tab") ?? "overview") as AdminTab;
+  const pathTab = pathname.match(/^\/dashboard\/admin\/([^/]+)/)?.[1] as AdminTab | undefined;
+  const tab = (pathTab ?? searchParams.get("tab") ?? "overview") as AdminTab;
   const activeTab = VALID_TABS.has(tab) ? tab : "overview";
   const activeAcademyView = searchParams.get("academyView") ?? "Dashboard";
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -232,11 +233,13 @@ export function AdminShell({ children }: { children: ReactNode }) {
       if (typeof item !== "string" && item.academyView) {
         next.set("academyView", item.academyView);
       }
-      router.push(`${pathname}?${next.toString()}`);
+      const tabPath = id === "overview" ? "/dashboard/admin" : `/dashboard/admin/${id}`;
+      const academyView = typeof item !== "string" && item.academyView ? `?${next.toString()}` : "";
+      router.push(`${tabPath}${academyView}`);
       setPaletteOpen(false);
       setMobileOpen(false);
     },
-    [pathname, router],
+    [router],
   );
 
   useEffect(() => {
@@ -396,7 +399,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
                   <div className="hidden sm:block">
                     <AdminBreadcrumb
                       items={[
-                        { label: "Admin", href: "/dashboard/admin?tab=overview" },
+                        { label: "Admin", href: "/dashboard/admin" },
                         { label: findNavGroup(activeTab)?.label ?? "Platform", href: undefined },
                         { label: getAdminTabLabel(activeTab) },
                       ]}

@@ -135,7 +135,7 @@ export function LandlordDashboardClient() {
                 Keep stale listings moving and promote homes with strong enquiry intent.
               </p>
             </div>
-            <Link href="/search?verifiedOnly=true" rel="nofollow" className="text-sm font-semibold text-emerald-700 hover:underline">
+            <Link href="/search" className="text-sm font-semibold text-emerald-700 hover:underline">
               See marketplace
             </Link>
           </div>
@@ -210,7 +210,7 @@ export function LandlordDashboardClient() {
             <p className="mt-3 text-sm leading-6 text-cyan-50">
               Featured placement and stronger verification help high-intent seekers notice the right homes faster.
             </p>
-            <Link href="/payments?plan=featured_listing" rel="nofollow" className="mt-5 inline-flex">
+            <Link href="/payments" className="mt-5 inline-flex">
               <Button>Boost a listing</Button>
             </Link>
           </div>

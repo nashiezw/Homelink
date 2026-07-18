@@ -110,7 +110,7 @@ export function SystemOpsHub({ mode }: { mode: "system" | "ai" | "security" }) {
               <Brain className="size-4" />
               AI controls
             </h3>
-            <Link href="/dashboard/admin?tab=settings" rel="nofollow" className="inline-flex items-center gap-1 text-xs text-cyan-300 hover:underline">
+            <Link href="/dashboard/admin/settings" className="inline-flex items-center gap-1 text-xs text-cyan-300 hover:underline">
               Platform settings <ExternalLink className="size-3" />
             </Link>
           </div>
@@ -151,7 +151,7 @@ export function SystemOpsHub({ mode }: { mode: "system" | "ai" | "security" }) {
                 <Shield className="size-4" />
                 Security policies
               </h3>
-              <Link href="/dashboard/admin?tab=settings" rel="nofollow" className="inline-flex items-center gap-1 text-xs text-cyan-300 hover:underline">
+              <Link href="/dashboard/admin/settings" className="inline-flex items-center gap-1 text-xs text-cyan-300 hover:underline">
                 Platform settings <ExternalLink className="size-3" />
               </Link>
             </div>

@@ -12,8 +12,7 @@ export default function MaintenancePage() {
         HouseLink is temporarily unavailable while we improve the platform. Please check back shortly.
       </p>
       <Link
-        href="/dashboard/admin?tab=settings"
-        rel="nofollow"
+        href="/dashboard/admin/settings"
         className="mt-8 inline-flex h-11 items-center rounded-lg bg-emerald-700 px-5 text-sm font-semibold text-white hover:bg-emerald-600"
       >
         Admin access

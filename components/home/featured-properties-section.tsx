@@ -172,7 +172,7 @@ function ListingCard({ listing, compact }: { listing: Listing; compact?: boolean
           href={href}
           className="mt-4 inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-slate-200 px-4 text-sm font-semibold text-slate-900 transition hover:border-emerald-200 hover:bg-emerald-50 dark:border-slate-700 dark:text-slate-100"
         >
-          View details
+          View {listing.suburb}
           <ArrowRight className="size-4" aria-hidden="true" />
         </Link>
       </div>

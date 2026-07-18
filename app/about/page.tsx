@@ -207,7 +207,7 @@ export default function AboutPage() {
                 Fake listings, unanswered calls, wasted transport, dishonest agents, and confusing adverts have made property search stressful for too many Zimbabweans. HouseLink was built so finding a home, roommate, tenant, buyer, seller, or trusted agent can feel safer and clearer.
               </p>
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-                <PrimaryCta href="/search?intent=rent">Explore Properties</PrimaryCta>
+                <PrimaryCta href="/rent/harare">Explore Properties</PrimaryCta>
                 <Link
                   href="/dashboard/landlord/new"
                   className="inline-flex h-12 items-center justify-center gap-2 rounded-xl border border-white/25 bg-white/10 px-6 text-sm font-semibold text-white backdrop-blur transition hover:bg-white/15"
@@ -571,8 +571,7 @@ export default function AboutPage() {
               </div>
               <div className="flex flex-col gap-3 sm:flex-row lg:justify-end">
                 <Link
-                  href="/search?intent=rent"
-                  rel="nofollow"
+                  href="/rent/harare"
                   className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-white px-6 text-sm font-semibold text-emerald-900 shadow-lg transition hover:-translate-y-0.5 hover:bg-emerald-50"
                 >
                   Find a Home

@@ -54,7 +54,7 @@ export default async function NotFoundPage() {
               <QuickLink href="/search" label="Browse Properties" icon={MapPin} />
               <QuickLink href="/contact" label="Contact Support" icon={ArrowRight} />
               <QuickLink href="/roommates" label="Find a Roommate" icon={Users} />
-              <QuickLink href="/search?type=holiday_home" label="Holiday Homes" icon={Umbrella} />
+              <QuickLink href="/search" label="Holiday Homes" icon={Umbrella} />
             </div>
           </div>
 

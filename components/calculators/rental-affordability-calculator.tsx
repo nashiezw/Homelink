@@ -122,16 +122,14 @@ export function RentalAffordabilityCalculator({ embedded }: { embedded?: boolean
       {maxRentParam && (
         <div className="flex flex-col gap-2 sm:flex-row">
           <Link
-            href={`/search?intent=rent&type=room&maxPrice=${maxRentParam}&calculatorBudget=1`}
-            rel="nofollow"
+            href="/rooms/avondale"
             className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-emerald-500"
           >
             <Search className="size-4" aria-hidden="true" />
             Search rooms
           </Link>
           <Link
-            href={`/roommates?budgetMax=${maxRentParam}&source=calculator`}
-            rel="nofollow"
+            href="/roommates"
             className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-800 transition hover:border-emerald-200 hover:bg-emerald-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
           >
             <Users className="size-4" aria-hidden="true" />

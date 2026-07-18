@@ -13,17 +13,17 @@ import { ACCOUNT_NAV, OWNER_NAV, filterNavForUser } from "@/lib/auth/roles";
 import { cn } from "@/lib/utils";
 
 const exploreNavPrimary = [
-  { label: "Rent", href: "/search?intent=rent", feature: null },
-  { label: "Buy", href: "/search?intent=buy", feature: null },
+  { label: "Rent", href: "/rent/harare", feature: null },
+  { label: "Buy", href: "/property-for-sale/bulawayo", feature: null },
   { label: "Roommates", href: "/roommates", feature: "roommateMatching" as const },
   { label: "Academy", href: "/academy", feature: null, smartAcademy: true },
 ] as const;
 
 const exploreNavMore = [
   { label: "Calculators", href: "/calculators", feature: null, description: "Move-in costs, rent budgets, commissions" },
-  { label: "Holiday Homes", href: "/search?type=holiday_home", feature: null, description: "Short-stay and holiday rentals" },
-  { label: "Land", href: "/search?type=land", feature: null, description: "Plots and development land" },
-  { label: "Commercial", href: "/search?type=commercial", feature: null, description: "Offices, retail, and business space" },
+  { label: "Holiday Homes", href: "/search", feature: null, description: "Short-stay and holiday rentals" },
+  { label: "Land", href: "/search", feature: null, description: "Plots and development land" },
+  { label: "Commercial", href: "/search", feature: null, description: "Offices, retail, and business space" },
 ] as const;
 
 const iconButtonClass =
