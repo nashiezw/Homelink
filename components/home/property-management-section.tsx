@@ -22,7 +22,7 @@ export function PropertyManagementSection() {
         <div className="relative mx-auto grid max-w-7xl gap-10 px-4 sm:px-6 lg:grid-cols-2 lg:items-center lg:px-8">
           <div className="relative min-h-[22rem] overflow-hidden rounded-2xl shadow-hero sm:min-h-[28rem] lg:order-2">
             <Image
-              src="/images/property-management-dusk.png"
+              src="/images/property-management-dusk.webp"
               alt="Premium managed property exterior at dusk"
               fill
               className="object-cover transition duration-700 hover:scale-[1.03]"

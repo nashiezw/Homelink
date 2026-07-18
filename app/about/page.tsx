@@ -179,7 +179,7 @@ export default function AboutPage() {
       <section className="relative overflow-hidden bg-ink px-4 py-16 text-white sm:px-6 lg:px-8 lg:py-24">
         <div className="absolute inset-0">
           <Image
-            src="/images/houselink-hero.png"
+            src="/images/houselink-hero.webp"
             alt="HouseLink Zimbabwe property search experience"
             fill
             priority
@@ -242,7 +242,7 @@ export default function AboutPage() {
                 <div className="absolute bottom-0 left-0 w-[66%] rounded-[1.35rem] border border-white/15 bg-white/10 p-4 shadow-hero backdrop-blur-xl">
                   <div className="relative h-44 overflow-hidden rounded-2xl">
                     <Image
-                      src="/images/kwekwe-flat.png"
+                      src="/images/kwekwe-flat.webp"
                       alt="A Kwekwe property listing on HouseLink"
                       fill
                       className="object-cover"
@@ -469,7 +469,7 @@ export default function AboutPage() {
             />
             <div className="group relative mt-8 overflow-hidden rounded-[1.65rem] shadow-hero">
               <Image
-                src="/images/bulawayo-family-house.png"
+                src="/images/bulawayo-family-house.webp"
                 alt="A warm Zimbabwean family home listed on HouseLink"
                 width={900}
                 height={640}
@@ -556,7 +556,7 @@ export default function AboutPage() {
       <section className="px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
         <FadeIn>
           <div className="relative mx-auto max-w-7xl overflow-hidden rounded-3xl bg-ink text-white shadow-hero">
-            <Image src="/images/property-management-dusk.png" alt="Managed HouseLink property at dusk" fill className="object-cover opacity-35" sizes="100vw" />
+            <Image src="/images/property-management-dusk.webp" alt="Managed HouseLink property at dusk" fill className="object-cover opacity-35" sizes="100vw" />
             <div className="absolute inset-0 bg-[linear-gradient(120deg,rgba(6,78,59,0.94),rgba(15,23,42,0.9))]" />
             <div className="hero-mesh absolute inset-0 opacity-50" />
             <div className="relative grid gap-8 px-6 py-10 sm:px-10 lg:grid-cols-[1fr_auto] lg:items-center lg:px-12 lg:py-12">

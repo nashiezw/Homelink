@@ -112,6 +112,10 @@ export default function RootLayout({
 
   return (
     <html lang="en" suppressHydrationWarning className={inter.variable}>
+      <head>
+        <link rel="preconnect" href={siteUrl} />
+        <link rel="dns-prefetch" href={siteUrl} />
+      </head>
       <body className="bg-white font-sans text-ink antialiased dark:bg-slate-950 dark:text-slate-100">
         <script
           type="application/ld+json"

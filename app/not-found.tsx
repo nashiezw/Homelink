@@ -60,7 +60,7 @@ export default async function NotFoundPage() {
 
           <div className="relative min-h-[28rem] overflow-hidden rounded-2xl border border-emerald-100 bg-slate-950 shadow-2xl">
             <Image
-              src="/images/houselink-hero.png"
+              src="/images/houselink-hero.webp"
               alt="HouseLink property search"
               fill
               priority

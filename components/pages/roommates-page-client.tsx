@@ -90,9 +90,9 @@ type SuburbHighlight = {
 
 const suburbHighlightPhotos: Record<string, string> = {
   avondale: "/images/roommates/cover-testimonial-rudo.jpg",
-  senga: "/images/gweru-room-courtyard.png",
-  hillside: "/images/bulawayo-family-house.png",
-  newtown: "/images/kwekwe-flat.png",
+  senga: "/images/gweru-room-courtyard.webp",
+  hillside: "/images/bulawayo-family-house.webp",
+  newtown: "/images/kwekwe-flat.webp",
 };
 
 const defaultSuburbNames = ["Avondale", "Senga", "Hillside", "Newtown"];

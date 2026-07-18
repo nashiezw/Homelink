@@ -50,7 +50,7 @@ export const featuredListings: Listing[] = [
     type: "house",
     bedrooms: 4,
     bathrooms: 2,
-    image: "/images/bulawayo-family-house.png",
+    image: "/images/bulawayo-family-house.webp",
     verified: true,
     availableFrom: "1 July 2026",
     amenities: ["Borehole", "Security wall", "Garden", "Pets allowed"],

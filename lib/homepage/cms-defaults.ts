@@ -6,14 +6,14 @@ export function createDefaultHomepageCms(): HomepageCmsConfig {
     published: true,
     hero: {
       eyebrow: "Verified homes, rooms, land, and agents across Zimbabwe",
-      title: "Find Your Next Home with",
+      title: "HouseLink Zimbabwe property search with",
       titleHighlight: "Confidence.",
       description:
-        "A polished, trust-first marketplace for fresh rentals, homes for sale, land, commercial spaces, and compatible roommates across Zimbabwe.",
+        "Search verified HouseLink Zimbabwe property listings for fresh rentals, homes for sale, land, commercial spaces, and compatible roommates.",
       badges: ["Verified landlords", "Fresh listings", "Solar and borehole filters"],
       primaryCta: { label: "Start property search", href: "/search" },
       secondaryCta: { label: "Open landlord dashboard", href: "/dashboard/landlord" },
-      imageUrl: "/images/houselink-hero.png",
+      imageUrl: "/images/houselink-hero.webp",
     },
     finalCta: {
       eyebrow: "Get started",
@@ -84,7 +84,7 @@ export function createDefaultHomepageCms(): HomepageCmsConfig {
       title: "HouseLink Zimbabwe | Find Your Next Home with Confidence",
       description:
         "Verified rooms, houses, flats, cottages, commercial property, land, and roommate matching across Zimbabwe.",
-      ogImage: "/images/houselink-hero.png",
+      ogImage: "/images/houselink-hero.webp",
     },
     pages: [
       { id: "home", label: "Homepage", path: "/", status: "published" },

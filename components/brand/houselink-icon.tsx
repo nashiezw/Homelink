@@ -19,8 +19,8 @@ export function HouseLinkIcon({ className, title }: HouseLinkIconProps) {
     <Image
       src={HOUSELINK_ICON_SRC}
       alt={alt}
-      width={1024}
-      height={1024}
+      width={128}
+      height={128}
       priority={false}
       decoding="async"
       className={cn("block shrink-0 object-contain", className)}

@@ -97,7 +97,7 @@ export function CertificateDocument({
               </div>
               <p className="mt-2 text-sm text-slate-500">{signatureTitle}</p>
               <div className="mt-4 flex items-center gap-3 sm:justify-end">
-                <Image src="/brand/houselink-full-lockup.png" alt="HouseLink" width={120} height={40} className="h-8 w-auto opacity-80" />
+                <Image src="/brand/houselink-full-lockup.png" alt="HouseLink" width={152} height={80} className="h-8 w-auto opacity-80" />
               </div>
             </div>
           </div>

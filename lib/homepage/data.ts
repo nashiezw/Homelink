@@ -109,6 +109,18 @@ function cleanPublicHref(href: string) {
   return href;
 }
 
+function cleanPublicImageUrl(url: string) {
+  const optimizedStaticImages: Record<string, string> = {
+    "/images/houselink-hero.png": "/images/houselink-hero.webp",
+    "/images/property-management-dusk.png": "/images/property-management-dusk.webp",
+    "/images/bulawayo-family-house.png": "/images/bulawayo-family-house.webp",
+    "/images/gweru-room-courtyard.png": "/images/gweru-room-courtyard.webp",
+    "/images/kwekwe-flat.png": "/images/kwekwe-flat.webp",
+    "/images/roommates-hero.png": "/images/roommates-hero.webp",
+  };
+  return optimizedStaticImages[url] ?? url;
+}
+
 function cleanPublicLinkLabel(label: string, href: string) {
   const normalizedHref = cleanPublicHref(href);
   const normalizedLabel = label.trim().toLowerCase();
@@ -140,8 +152,13 @@ function cleanHomepageCmsLinks(cms: HomepageCmsConfig): HomepageCmsConfig {
     ...cms,
     hero: {
       ...cms.hero,
+      imageUrl: cleanPublicImageUrl(cms.hero.imageUrl),
       primaryCta: cleanPublicLink(cms.hero.primaryCta),
       secondaryCta: cleanPublicLink(cms.hero.secondaryCta),
+    },
+    seo: {
+      ...cms.seo,
+      ogImage: cms.seo.ogImage ? cleanPublicImageUrl(cms.seo.ogImage) : cms.seo.ogImage,
     },
     finalCta: {
       ...cms.finalCta,

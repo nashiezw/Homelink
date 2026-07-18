@@ -40,7 +40,7 @@ export function PropertyManagementPage() {
       {/* Hero */}
       <section className="relative min-h-[36rem] overflow-hidden lg:min-h-[40rem]">
         <Image
-          src="/images/property-management-dusk.png"
+          src="/images/property-management-dusk.webp"
           alt="Luxury property at dusk"
           fill
           priority
