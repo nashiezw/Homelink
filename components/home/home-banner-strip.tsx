@@ -38,7 +38,7 @@ export function HomeBannerStrip({ banners, placement }: HomeBannerStripProps) {
               <Link
                 href={banner.href}
                 rel={banner.href.includes("?") ? "nofollow" : undefined}
-                className="inline-flex h-10 shrink-0 items-center gap-2 rounded-lg bg-emerald-700 px-4 text-sm font-semibold text-white transition hover:bg-emerald-600"
+                className="inline-flex min-h-10 w-full shrink-0 items-center justify-center gap-2 rounded-lg bg-emerald-700 px-4 py-2 text-center text-sm font-semibold text-white transition hover:bg-emerald-600 sm:w-auto"
               >
                 {banner.ctaLabel}
                 <ArrowRight className="size-4" />

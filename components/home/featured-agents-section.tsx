@@ -38,7 +38,7 @@ export function FeaturedAgentsSection({ agents }: FeaturedAgentsSectionProps) {
             </p>
             <Link
               href="/become-agent"
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-900 shadow-sm transition hover:border-emerald-200 hover:bg-emerald-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+              className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-center text-sm font-semibold text-slate-900 shadow-sm transition hover:border-emerald-200 hover:bg-emerald-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 sm:w-auto"
             >
               Agent programme
               <ArrowRight className="size-4" aria-hidden="true" />
@@ -120,7 +120,7 @@ function AgentRow({ agent }: { agent: HomeFeaturedAgent }) {
 
       <Link
         href={`/agents/${agent.slug}`}
-        className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-lg bg-emerald-700 px-5 text-sm font-semibold text-white transition hover:bg-emerald-800 sm:ml-2"
+        className="inline-flex min-h-10 w-full shrink-0 items-center justify-center gap-2 rounded-lg bg-emerald-700 px-5 py-2 text-center text-sm font-semibold text-white transition hover:bg-emerald-800 sm:ml-2 sm:w-auto"
       >
         View profile
         <ArrowRight className="size-4" aria-hidden="true" />

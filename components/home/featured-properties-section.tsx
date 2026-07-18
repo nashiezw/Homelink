@@ -30,7 +30,7 @@ export function FeaturedPropertiesSection({ listings }: FeaturedPropertiesSectio
             </div>
             <Link
               href="/search"
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-emerald-700 px-5 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-emerald-800"
+              className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-emerald-700 px-5 py-2.5 text-center text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-emerald-800 sm:w-auto"
             >
               Browse all listings
               <ArrowRight className="size-4" aria-hidden="true" />
@@ -117,7 +117,7 @@ function FeaturedHeroCard({ listing }: { listing: Listing }) {
           </div>
           <Link
             href={href}
-            className="mt-5 inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-white px-5 text-sm font-semibold text-emerald-800 transition hover:bg-emerald-50"
+            className="mt-5 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-white px-5 py-2.5 text-center text-sm font-semibold text-emerald-800 transition hover:bg-emerald-50 sm:w-auto"
           >
             View property
             <ArrowRight className="size-4" aria-hidden="true" />
@@ -170,7 +170,7 @@ function ListingCard({ listing, compact }: { listing: Listing; compact?: boolean
         </p>
         <Link
           href={href}
-          className="mt-4 inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-slate-200 px-4 text-sm font-semibold text-slate-900 transition hover:border-emerald-200 hover:bg-emerald-50 dark:border-slate-700 dark:text-slate-100"
+          className="mt-4 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-lg border border-slate-200 px-4 py-2 text-center text-sm font-semibold text-slate-900 transition hover:border-emerald-200 hover:bg-emerald-50 dark:border-slate-700 dark:text-slate-100 sm:w-auto"
         >
           View {listing.suburb}
           <ArrowRight className="size-4" aria-hidden="true" />

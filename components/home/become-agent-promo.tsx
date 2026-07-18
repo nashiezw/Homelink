@@ -103,17 +103,17 @@ export function BecomeAgentPromo({ content }: BecomeAgentPromoProps) {
                   </li>
                 ))}
               </ul>
-              <div className="mt-6 flex flex-wrap gap-3">
+              <div className="mt-6 grid w-full gap-3 sm:flex sm:flex-wrap">
                 <Link
                   href={content.primaryCta.href}
-                  className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-emerald-700 px-6 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-600"
+                  className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-emerald-700 px-6 py-2.5 text-center text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-600 sm:w-auto"
                 >
                   {content.primaryCta.label}
                   <ArrowRight className="size-4" aria-hidden="true" />
                 </Link>
                 <Link
                   href={content.secondaryCta.href}
-                  className="inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-slate-200 px-5 text-sm font-semibold text-slate-800 transition hover:border-emerald-200 hover:bg-emerald-50 dark:border-slate-700 dark:text-slate-100"
+                  className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-slate-200 px-5 py-2.5 text-center text-sm font-semibold text-slate-800 transition hover:border-emerald-200 hover:bg-emerald-50 dark:border-slate-700 dark:text-slate-100 sm:w-auto"
                 >
                   {content.secondaryCta.label}
                 </Link>

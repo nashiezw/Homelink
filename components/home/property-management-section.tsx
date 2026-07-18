@@ -52,17 +52,17 @@ export function PropertyManagementSection() {
               ))}
             </ul>
 
-            <div className="mt-9 flex flex-wrap gap-3">
+            <div className="mt-9 grid w-full gap-3 sm:flex sm:flex-wrap">
               <Link
                 href="/property-management#consultation"
-                className="inline-flex h-12 items-center justify-center gap-2 rounded-lg bg-emerald-500 px-6 text-sm font-semibold text-white shadow-lg transition hover:-translate-y-0.5 hover:bg-emerald-400"
+                className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-lg bg-emerald-500 px-6 py-3 text-center text-sm font-semibold text-white shadow-lg transition hover:-translate-y-0.5 hover:bg-emerald-400 sm:w-auto"
               >
                 Request property management
                 <ArrowRight className="size-4" aria-hidden="true" />
               </Link>
               <Link
                 href="/property-management"
-                className="inline-flex h-12 items-center justify-center gap-2 rounded-lg border border-white/20 bg-white/10 px-6 text-sm font-semibold text-white backdrop-blur transition hover:bg-white/15"
+                className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-lg border border-white/20 bg-white/10 px-6 py-3 text-center text-sm font-semibold text-white backdrop-blur transition hover:bg-white/15 sm:w-auto"
               >
                 Talk to an expert
               </Link>

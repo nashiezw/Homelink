@@ -43,7 +43,7 @@ export function BrowsePropertyTypes({ types }: BrowsePropertyTypesProps) {
             </div>
             <Link
               href="/search"
-              className="inline-flex h-10 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-900 shadow-sm transition hover:border-emerald-200 hover:bg-emerald-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+              className="inline-flex min-h-10 w-full shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white px-4 py-2 text-center text-sm font-semibold text-slate-900 shadow-sm transition hover:border-emerald-200 hover:bg-emerald-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 sm:w-auto"
             >
               View all properties
             </Link>
