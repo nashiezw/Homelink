@@ -91,7 +91,7 @@ export function HolidayBookingForm({ listingId, listingTitle, holidayHome }: Hol
           <p className="text-sm leading-6 text-slate-600 dark:text-slate-300">
             Sign in to check dates and request availability. A HouseLink consultant confirms before you travel.
           </p>
-          <Link href={`/auth?next=/listings/${listingId}`} className="mt-4 block">
+          <Link href={`/auth?next=/listings/${listingId}`} rel="nofollow" className="mt-4 block">
             <Button className="h-11 w-full">
               <Lock className="mr-2 size-4" />
               Sign in to request availability

@@ -87,7 +87,7 @@ export function AgencyDashboardClient() {
   if (!user) {
     return (
       <PageShell eyebrow="Agency dashboard" title="Sign in required" description="Sign in with your agency admin account.">
-        <Link href="/auth?next=/dashboard/agency" className="font-semibold text-emerald-700 hover:underline">
+        <Link href="/auth?next=/dashboard/agency" rel="nofollow" className="font-semibold text-emerald-700 hover:underline">
           Sign in to continue
         </Link>
       </PageShell>

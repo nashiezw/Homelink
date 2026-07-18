@@ -120,7 +120,7 @@ function TenancyActionsInner({ listing, landlordUserId }: TenancyActionsProps) {
           title="Pay rent or deposit"
           description="Sign in after your viewing to pay through HouseLink and create a verified tenancy record."
         />
-        <Link href={`/auth?next=${encodeURIComponent(returnPath)}`} className="mt-4 block">
+        <Link href={`/auth?next=${encodeURIComponent(returnPath)}`} rel="nofollow" className="mt-4 block">
           <Button className="h-10 w-full">
             <Lock className="mr-2 size-4" />
             Sign in to pay

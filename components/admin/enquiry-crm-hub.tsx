@@ -257,6 +257,7 @@ export function EnquiryCrmHub() {
                 ...(filter !== "ALL" ? { status: filter } : {}),
                 ...(q ? { q } : {}),
               }).toString()}`}
+              rel="nofollow"
               className="inline-flex h-10 items-center gap-2 rounded-lg border border-white/10 bg-slate-800 px-4 text-sm font-medium text-white hover:bg-slate-700"
             >
               <Download className="size-4" />

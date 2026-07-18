@@ -167,7 +167,7 @@ export function RoommateProfileEditor() {
         <UserRound className="mx-auto size-12 text-emerald-600" />
         <h2 className="mt-4 text-xl font-bold text-ink">Your roommate profile</h2>
         <p className="mt-2 text-slate-600">Sign in to create and edit your profile, upload photos, and get matches.</p>
-        <Link href="/auth?next=/roommates/profile" className="mt-6 inline-block">
+        <Link href="/auth?next=/roommates/profile" rel="nofollow" className="mt-6 inline-block">
           <Button>Sign in</Button>
         </Link>
       </div>

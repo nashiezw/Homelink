@@ -39,7 +39,7 @@ export function MyEnquiriesPageClient() {
     return (
       <PageShell eyebrow="My enquiries" title="Track your property enquiries" description="Sign in to see enquiry status and messages.">
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-6 text-sm text-amber-900">
-          <Link href="/auth?next=/enquiries" className="font-semibold underline">
+          <Link href="/auth?next=/enquiries" rel="nofollow" className="font-semibold underline">
             Sign in
           </Link>{" "}
           to view enquiries managed by HouseLink consultants.

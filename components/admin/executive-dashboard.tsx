@@ -175,7 +175,7 @@ export function ExecutiveDashboard({
             <MetricRow label="Flagged reports" value={summary.flaggedReports} />
             {bookingStats && <MetricRow label="Pending bookings" value={bookingStats.pending} />}
           </div>
-          <Link href="/dashboard/admin?tab=system" className="mt-4 inline-flex items-center gap-1 text-xs font-medium text-cyan-400 hover:underline">
+          <Link href="/dashboard/admin?tab=system" rel="nofollow" className="mt-4 inline-flex items-center gap-1 text-xs font-medium text-cyan-400 hover:underline">
             System health details <ArrowUpRight className="size-3" />
           </Link>
         </AdminPanel>
@@ -190,7 +190,7 @@ export function ExecutiveDashboard({
           ) : (
             <p className="text-sm text-slate-500">Agent analytics loading...</p>
           )}
-          <Link href="/dashboard/admin?tab=agents" className="mt-4 inline-flex items-center gap-1 text-xs font-medium text-cyan-400 hover:underline">
+          <Link href="/dashboard/admin?tab=agents" rel="nofollow" className="mt-4 inline-flex items-center gap-1 text-xs font-medium text-cyan-400 hover:underline">
             Agent management <ArrowUpRight className="size-3" />
           </Link>
         </AdminPanel>
@@ -236,7 +236,7 @@ export function ExecutiveDashboard({
               ))
             )}
           </div>
-          <Link href="/dashboard/admin?tab=security" className="mt-4 inline-flex items-center gap-1 text-xs font-medium text-cyan-400 hover:underline">
+          <Link href="/dashboard/admin?tab=security" rel="nofollow" className="mt-4 inline-flex items-center gap-1 text-xs font-medium text-cyan-400 hover:underline">
             Full audit log <ArrowUpRight className="size-3" />
           </Link>
         </AdminPanel>
@@ -296,6 +296,7 @@ function CommandQuickActions({ summary }: { summary: AdminSummary }) {
           <Link
             key={href}
             href={href}
+            rel={href.includes("?") ? "nofollow" : undefined}
             className="relative isolate grid min-h-[4rem] w-full grid-cols-[2.5rem_minmax(0,1fr)] items-center gap-3 rounded-xl border border-white/[0.08] bg-[#0b1424] px-3 py-2.5 text-left transition hover:border-emerald-500/30 hover:bg-[#0d1a2d] focus:outline-none focus:ring-2 focus:ring-emerald-500/30 sm:min-h-[4.25rem] sm:grid-cols-[2.75rem_minmax(0,1fr)]"
           >
             <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500/12 text-emerald-300 sm:size-11">

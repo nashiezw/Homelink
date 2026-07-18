@@ -576,7 +576,7 @@ function GuestPaymentsGate({ variant = "checkout" }: { variant?: "checkout" | "h
           ? "Your platform fee payments and proof status are linked to your HouseLink account."
           : "Listing boosts, subscriptions, and marketing payments require a HouseLink account so finance can issue your reference and track proof."}
       </p>
-      <Link href="/auth?next=/payments" className="mt-6 inline-flex">
+      <Link href="/auth?next=/payments" rel="nofollow" className="mt-6 inline-flex">
         <Button className="h-10 px-6">Sign in to continue</Button>
       </Link>
     </div>

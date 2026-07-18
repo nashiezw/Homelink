@@ -157,13 +157,13 @@ export function PlatformSettingsPanel({ defaultTab = "general" }: { defaultTab?:
           </p>
         </div>
         <div className="grid gap-2 sm:flex sm:flex-wrap sm:justify-end">
-          <Link href="/dashboard/admin?tab=ai" className="inline-flex items-center gap-1 rounded-lg bg-white/10 px-3 py-2 text-sm text-white hover:bg-white/15">
+          <Link href="/dashboard/admin?tab=ai" rel="nofollow" className="inline-flex items-center gap-1 rounded-lg bg-white/10 px-3 py-2 text-sm text-white hover:bg-white/15">
             AI Control <ExternalLink className="size-3.5" />
           </Link>
-          <Link href="/dashboard/admin?tab=security" className="inline-flex items-center gap-1 rounded-lg bg-white/10 px-3 py-2 text-sm text-white hover:bg-white/15">
+          <Link href="/dashboard/admin?tab=security" rel="nofollow" className="inline-flex items-center gap-1 rounded-lg bg-white/10 px-3 py-2 text-sm text-white hover:bg-white/15">
             Security & Audit <ExternalLink className="size-3.5" />
           </Link>
-          <Link href="/dashboard/admin?tab=payments" className="inline-flex items-center gap-1 rounded-lg bg-white/10 px-3 py-2 text-sm text-white hover:bg-white/15">
+          <Link href="/dashboard/admin?tab=payments" rel="nofollow" className="inline-flex items-center gap-1 rounded-lg bg-white/10 px-3 py-2 text-sm text-white hover:bg-white/15">
             Payments <ExternalLink className="size-3.5" />
           </Link>
         </div>

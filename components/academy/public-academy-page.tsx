@@ -203,7 +203,7 @@ export function PublicAcademyPage() {
         </Link>
       )}
       {isAdmin && (
-        <Link href="/dashboard/admin?tab=academy" className="w-full sm:w-auto">
+        <Link href="/dashboard/admin?tab=academy" rel="nofollow" className="w-full sm:w-auto">
           <Button variant="secondary" className="w-full"><Settings className="size-4 mr-2" /> Manage Academy</Button>
         </Link>
       )}
@@ -614,7 +614,7 @@ function AcademySidePanel({
           </div>
 
           {isAdmin && (
-            <Link href="/dashboard/admin?tab=academy" className="block w-full">
+            <Link href="/dashboard/admin?tab=academy" rel="nofollow" className="block w-full">
               <Button variant="secondary" className="w-full"><Settings className="size-4 mr-2" /> Manage Academy (Admin)</Button>
             </Link>
           )}

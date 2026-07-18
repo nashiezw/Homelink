@@ -99,7 +99,7 @@ export function TenanciesDashboard() {
     return (
       <div className="rounded-xl border bg-white p-10 text-center">
         <p className="text-slate-600">Sign in to manage tenancy confirmations and verified stay history.</p>
-        <Link href="/auth?next=/dashboard/tenancies" className="mt-4 inline-block">
+        <Link href="/auth?next=/dashboard/tenancies" rel="nofollow" className="mt-4 inline-block">
           <Button>Sign in</Button>
         </Link>
       </div>
