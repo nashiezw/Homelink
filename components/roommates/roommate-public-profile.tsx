@@ -8,7 +8,6 @@ import {
   Clock3,
   Home,
   MapPin,
-  MessageCircle,
   Share2,
   ShieldCheck,
   Sparkles,
@@ -278,15 +277,7 @@ export function RoommatePublicProfile({ userId }: { userId: string }) {
                     lookingFor={profile.lookingFor}
                   />
                 )}
-                {!isSelf && user ? (
-                  <Link
-                    href="/messages"
-                    className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 text-sm font-medium text-slate-700 transition hover:border-emerald-200 hover:bg-emerald-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
-                  >
-                    <MessageCircle className="size-4" />
-                    Messages
-                  </Link>
-                ) : !user ? (
+                {!isSelf && !user ? (
                   <Link
                     href="/auth"
                     className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 text-sm font-medium text-slate-700 transition hover:border-emerald-200 hover:bg-emerald-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
@@ -424,7 +415,7 @@ export function RoommatePublicProfile({ userId }: { userId: string }) {
                 </li>
                 <li className="flex items-center gap-2.5 text-slate-700 dark:text-slate-200">
                   <Clock3 className="size-4 shrink-0 text-emerald-600" />
-                  Message securely via HouseLink
+                  Introductions are routed through HouseLink
                 </li>
               </ul>
             </SidebarCard>

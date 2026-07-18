@@ -14,22 +14,22 @@ type KpiCardProps = {
 
 const toneStyles = {
   default: {
-    card: "from-cyan-500/[0.12] via-slate-900/80 to-slate-950/90 border-cyan-500/15",
+    card: "border-cyan-500/15 bg-slate-950 lg:bg-gradient-to-br lg:from-cyan-500/[0.12] lg:via-slate-900/80 lg:to-slate-950/90",
     icon: "bg-cyan-500/15 text-cyan-300",
     change: "text-cyan-400/90",
   },
   warning: {
-    card: "from-amber-500/[0.12] via-slate-900/80 to-slate-950/90 border-amber-500/15",
+    card: "border-amber-500/15 bg-slate-950 lg:bg-gradient-to-br lg:from-amber-500/[0.12] lg:via-slate-900/80 lg:to-slate-950/90",
     icon: "bg-amber-500/15 text-amber-300",
     change: "text-amber-400/90",
   },
   danger: {
-    card: "from-red-500/[0.12] via-slate-900/80 to-slate-950/90 border-red-500/15",
+    card: "border-red-500/15 bg-slate-950 lg:bg-gradient-to-br lg:from-red-500/[0.12] lg:via-slate-900/80 lg:to-slate-950/90",
     icon: "bg-red-500/15 text-red-300",
     change: "text-red-400/90",
   },
   success: {
-    card: "from-emerald-500/[0.12] via-slate-900/80 to-slate-950/90 border-emerald-500/15",
+    card: "border-emerald-500/15 bg-slate-950 lg:bg-gradient-to-br lg:from-emerald-500/[0.12] lg:via-slate-900/80 lg:to-slate-950/90",
     icon: "bg-emerald-500/15 text-emerald-300",
     change: "text-emerald-400/90",
   },
@@ -40,7 +40,7 @@ export function AdminKpiCard({ label, value, change, icon: Icon, tone = "default
   return (
     <div
       className={cn(
-        "relative rounded-2xl border bg-gradient-to-br p-4 shadow-[0_1px_0_0_rgba(255,255,255,0.04)_inset] sm:p-5",
+        "relative isolate overflow-hidden rounded-2xl border p-4 shadow-[0_1px_0_0_rgba(255,255,255,0.04)_inset] sm:p-5",
         s.card,
         compact && "p-4",
       )}

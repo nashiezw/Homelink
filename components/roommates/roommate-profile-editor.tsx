@@ -439,8 +439,8 @@ export function RoommateProfileEditor() {
 
         <ResidenceHistoryPanel />
 
-        <Link href="/messages">
-          <Button variant="secondary" className="w-full">Message matches</Button>
+        <Link href="/roommates">
+          <Button variant="secondary" className="w-full">Browse HouseLink introductions</Button>
         </Link>
       </aside>
     </div>

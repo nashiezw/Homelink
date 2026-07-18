@@ -505,7 +505,7 @@ function SeekerChip({
         onClick={(e) => { e.preventDefault(); onChat(); }}
         className="shrink-0 rounded-lg bg-emerald-700 px-3 py-2 text-xs font-bold text-white opacity-0 transition group-hover:opacity-100"
       >
-        Chat
+        Intro
       </button>
     </Link>
   );
@@ -675,10 +675,14 @@ export function RoommatesPageClient() {
   function requireAuth(path: string) {
     if (!user) {
       showToast("Sign in to continue.", "info");
-      router.push("/auth");
+      router.push(`/auth?next=${encodeURIComponent(path)}`);
       return;
     }
     router.push(path);
+  }
+
+  function openRoommateIntroduction(personId: string) {
+    requireAuth(`/roommates/people/${personId}`);
   }
 
   return (
@@ -880,11 +884,16 @@ export function RoommatesPageClient() {
                     </Link>
                   </div>
                   {featuredSeeker && (
-                    <SocialSeekerCard person={featuredSeeker} featured onChat={() => requireAuth("/messages")} onInvite={() => requireAuth("/messages")} />
+                    <SocialSeekerCard
+                      person={featuredSeeker}
+                      featured
+                      onChat={() => openRoommateIntroduction(featuredSeeker.id)}
+                      onInvite={() => openRoommateIntroduction(featuredSeeker.id)}
+                    />
                   )}
                   <div className="grid gap-3 sm:grid-cols-3">
                     {otherSeekers.map((person) => (
-                      <SeekerChip key={person.id} person={person} onChat={() => requireAuth("/messages")} />
+                      <SeekerChip key={person.id} person={person} onChat={() => openRoommateIntroduction(person.id)} />
                     ))}
                   </div>
                 </div>
@@ -893,7 +902,12 @@ export function RoommatesPageClient() {
             {moreSeekers.length > 0 && (
               <div className="mt-5 grid gap-4 md:grid-cols-2">
                 {moreSeekers.map((person) => (
-                  <SocialSeekerCard key={person.id} person={person} onChat={() => requireAuth("/messages")} onInvite={() => requireAuth("/messages")} />
+                  <SocialSeekerCard
+                    key={person.id}
+                    person={person}
+                    onChat={() => openRoommateIntroduction(person.id)}
+                    onInvite={() => openRoommateIntroduction(person.id)}
+                  />
                 ))}
               </div>
             )}
@@ -1124,7 +1138,7 @@ function SocialSeekerCard({
             <UserPlus className="size-3.5" /> Intro
           </button>
           <button type="button" onClick={onChat} className="inline-flex h-9 items-center justify-center gap-1 rounded-xl border border-emerald-200 bg-emerald-50 text-xs font-bold text-emerald-800 hover:bg-emerald-100">
-            <MessageCircle className="size-3.5" /> Contact
+            <MessageCircle className="size-3.5" /> HouseLink
           </button>
           <button type="button" className="inline-flex h-9 items-center justify-center gap-1 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-700 hover:border-rose-200 hover:text-rose-600">
             <Heart className="size-3.5" /> Save
