@@ -1,10 +1,12 @@
 import Link from "next/link";
+import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { HouseLinkIcon, HL_GREEN, HL_NAVY } from "@/components/brand/houselink-icon";
 
 export { HouseLinkIcon, HL_GREEN, HL_NAVY, HOUSELINK_ICON_SRC } from "@/components/brand/houselink-icon";
 
 export const HOUSELINK_FULL_LOCKUP_SRC = "/brand/houselink-full-lockup.png";
+export const HOUSELINK_AUTH_LOCKUP_SRC = "/brand/houselink-auth-lockup.png";
 
 type BrandVariant = "nav" | "header" | "footer" | "auth" | "icon";
 
@@ -140,6 +142,25 @@ export function HouseLinkBrand({ className, variant = "nav", iconOnly = false }:
         <FooterIconMark />
         <span className="w-px shrink-0 self-stretch bg-slate-600" aria-hidden />
         <FullWordmark variant="footer" />
+      </span>
+    );
+  }
+
+  if (variant === "auth") {
+    return (
+      <span
+        data-brand="houselink-auth"
+        className={cn("block w-full max-w-[28rem] shrink-0", className)}
+      >
+        <Image
+          src={HOUSELINK_AUTH_LOCKUP_SRC}
+          alt="HouseLink Zimbabwe - Find Your Next Home with Confidence"
+          width={886}
+          height={271}
+          priority
+          sizes="(max-width: 640px) calc(100vw - 2.5rem), 28rem"
+          className="h-auto w-full object-contain"
+        />
       </span>
     );
   }
