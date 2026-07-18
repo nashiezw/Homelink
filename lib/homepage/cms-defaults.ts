@@ -11,8 +11,8 @@ export function createDefaultHomepageCms(): HomepageCmsConfig {
       description:
         "A polished, trust-first marketplace for fresh rentals, homes for sale, land, commercial spaces, and compatible roommates across Zimbabwe.",
       badges: ["Verified landlords", "Fresh listings", "Solar and borehole filters"],
-      primaryCta: { label: "Search properties", href: "/search" },
-      secondaryCta: { label: "List your property", href: "/dashboard/landlord" },
+      primaryCta: { label: "Start property search", href: "/search" },
+      secondaryCta: { label: "Open landlord dashboard", href: "/dashboard/landlord" },
       imageUrl: "/images/houselink-hero.png",
     },
     finalCta: {
@@ -21,8 +21,8 @@ export function createDefaultHomepageCms(): HomepageCmsConfig {
       description:
         "Search verified listings, list your property, request management, or join Zimbabwe's agent network.",
       actions: [
-        { label: "Search properties", href: "/search", primary: true },
-        { label: "List your property", href: "/dashboard/landlord" },
+        { label: "Explore HouseLink listings", href: "/search", primary: true },
+        { label: "Submit a property listing", href: "/dashboard/landlord" },
         { label: "Request property management", href: "/property-management#consultation" },
         { label: "Become an agent", href: "/become-agent/apply" },
       ],
@@ -34,7 +34,7 @@ export function createDefaultHomepageCms(): HomepageCmsConfig {
       description:
         "Quality leads, professional tools, training, and transparent commissions — built for agents who want to grow with HouseLink.",
       primaryCta: { label: "Apply to become a HouseLink agent", href: "/become-agent/apply" },
-      secondaryCta: { label: "Learn more", href: "/become-agent" },
+      secondaryCta: { label: "Learn about HouseLink agents", href: "/become-agent" },
     },
     banners: [
       {

@@ -117,7 +117,7 @@ export function LegalPageView({ page, fallbackTitle }: LegalPageViewProps) {
             Please contact HouseLink support if you need the current policy details.
           </p>
           <Link href="/contact" className="mt-4 inline-flex text-sm font-semibold text-emerald-700 hover:underline">
-            Contact support
+            Contact policy support
           </Link>
         </div>
       </PageShell>
@@ -196,7 +196,7 @@ export function LegalPageView({ page, fallbackTitle }: LegalPageViewProps) {
               Contact HouseLink support for safety reports, data questions, takedown requests, or account help.
             </p>
             <Link href="/contact" className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-emerald-800 hover:underline dark:text-emerald-200">
-              Contact support
+              Contact legal support
               <ArrowRight className="size-4" aria-hidden="true" />
             </Link>
           </div>

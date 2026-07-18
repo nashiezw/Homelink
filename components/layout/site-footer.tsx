@@ -10,7 +10,7 @@ const groups = [
   {
     title: "Explore",
     items: [
-      ["Search properties", "/search"],
+      ["Search HouseLink properties", "/search"],
       ["Rent in Harare", "/rent/harare"],
       ["Rooms in Avondale", "/rooms/avondale"],
       ["Buy in Bulawayo", "/property-for-sale/bulawayo"],
@@ -29,7 +29,7 @@ const groups = [
   {
     title: "List & manage",
     items: [
-      ["List property", "/dashboard/landlord/new"],
+      ["Create property listing", "/dashboard/landlord/new"],
       ["Landlord dashboard", "/dashboard/landlord"],
       ["Become an agent", "/become-agent"],
       ["Agent academy", "/academy"],
@@ -148,13 +148,13 @@ export function SiteFooter() {
                 href="/dashboard/landlord/new"
                 className="hover-lift inline-flex h-11 items-center justify-center rounded-lg bg-emerald-600 px-5 text-sm font-semibold text-white shadow-lg shadow-emerald-950/30 transition hover:bg-emerald-500"
               >
-                List your property
+                Submit your property listing
               </Link>
               <Link
                 href="/contact"
                 className="inline-flex h-11 items-center justify-center rounded-lg border border-white/10 px-4 text-sm font-semibold text-slate-200 transition hover:border-emerald-300/50 hover:text-emerald-300"
               >
-                Contact support
+                Contact HouseLink support
               </Link>
             </div>
           </div>

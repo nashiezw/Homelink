@@ -50,7 +50,7 @@ export default function SafetyPage() {
           href="/contact"
           className="inline-flex h-11 w-full items-center justify-center rounded-lg bg-white px-5 text-sm font-semibold text-ink shadow-lg shadow-black/10 transition hover:bg-emerald-50 sm:w-auto"
         >
-          Contact support
+          Contact safety support
         </Link>
       }
     >

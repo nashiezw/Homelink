@@ -69,7 +69,7 @@ export function MyEnquiriesPageClient() {
           <p className="font-semibold text-ink dark:text-white">No enquiries yet</p>
           <p className="mt-2 text-sm text-slate-500">Browse properties or roommate profiles and submit an enquiry through HouseLink.</p>
           <div className="mt-6 flex flex-wrap justify-center gap-3">
-            <Link href="/search"><Button>Browse properties</Button></Link>
+            <Link href="/search"><Button>Browse HouseLink properties</Button></Link>
             <Link href="/roommates"><Button variant="secondary">Find roommates</Button></Link>
           </div>
         </div>

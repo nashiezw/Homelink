@@ -109,24 +109,54 @@ function cleanPublicHref(href: string) {
   return href;
 }
 
+function cleanPublicLinkLabel(label: string, href: string) {
+  const normalizedHref = cleanPublicHref(href);
+  const normalizedLabel = label.trim().toLowerCase();
+  if (normalizedHref === "/search" && ["search properties", "browse properties", "view all properties"].includes(normalizedLabel)) {
+    return "Explore HouseLink listings";
+  }
+  if (
+    ["/dashboard/landlord", "/dashboard/landlord/new"].includes(normalizedHref) &&
+    ["list property", "list your property", "add a listing"].includes(normalizedLabel)
+  ) {
+    return "Submit a property listing";
+  }
+  if (normalizedHref === "/become-agent" && normalizedLabel === "learn more") {
+    return "Learn about HouseLink agents";
+  }
+  if (normalizedHref === "/contact" && ["contact support", "contact"].includes(normalizedLabel)) {
+    return "Contact HouseLink support";
+  }
+  return label;
+}
+
+function cleanPublicLink<T extends { label: string; href: string }>(link: T): T {
+  const href = cleanPublicHref(link.href);
+  return { ...link, href, label: cleanPublicLinkLabel(link.label, href) };
+}
+
 function cleanHomepageCmsLinks(cms: HomepageCmsConfig): HomepageCmsConfig {
   return {
     ...cms,
     hero: {
       ...cms.hero,
-      primaryCta: { ...cms.hero.primaryCta, href: cleanPublicHref(cms.hero.primaryCta.href) },
-      secondaryCta: { ...cms.hero.secondaryCta, href: cleanPublicHref(cms.hero.secondaryCta.href) },
+      primaryCta: cleanPublicLink(cms.hero.primaryCta),
+      secondaryCta: cleanPublicLink(cms.hero.secondaryCta),
     },
     finalCta: {
       ...cms.finalCta,
-      actions: cms.finalCta.actions.map((action) => ({ ...action, href: cleanPublicHref(action.href) })),
+      actions: cms.finalCta.actions.map((action) => cleanPublicLink(action)),
     },
     agentPromo: {
       ...cms.agentPromo,
-      primaryCta: { ...cms.agentPromo.primaryCta, href: cleanPublicHref(cms.agentPromo.primaryCta.href) },
-      secondaryCta: { ...cms.agentPromo.secondaryCta, href: cleanPublicHref(cms.agentPromo.secondaryCta.href) },
+      primaryCta: cleanPublicLink(cms.agentPromo.primaryCta),
+      secondaryCta: cleanPublicLink(cms.agentPromo.secondaryCta),
     },
-    banners: cms.banners.map((banner) => ({ ...banner, href: cleanPublicHref(banner.href) })),
+    banners: cms.banners.map((banner) => ({
+      ...banner,
+      href: cleanPublicHref(banner.href),
+      ctaLabel: cleanPublicLinkLabel(banner.ctaLabel, banner.href),
+    })),
     propertyTypes: cms.propertyTypes.map((type) => ({ ...type, href: cleanPublicHref(type.href) })),
   };
 }

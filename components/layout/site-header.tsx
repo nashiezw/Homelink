@@ -305,7 +305,7 @@ export function SiteHeader() {
             rel={internalRel(listHref)}
             className="hidden h-10 items-center justify-center rounded-[10px] bg-gradient-to-b from-emerald-600 to-emerald-700 px-4 text-sm font-bold text-white shadow-[0_4px_16px_-2px_rgba(5,150,105,0.45)] transition-all duration-200 hover:-translate-y-0.5 hover:from-emerald-500 hover:to-emerald-600 sm:inline-flex"
           >
-            List property
+            Add property listing
           </Link>
 
           <button
@@ -436,7 +436,7 @@ export function SiteHeader() {
               rel={internalRel(listHref)}
               className="mt-5 flex h-11 w-full shrink-0 items-center justify-center rounded-[10px] bg-gradient-to-b from-emerald-600 to-emerald-700 text-sm font-bold text-white"
             >
-              List property
+              Start a property listing
             </Link>
           </nav>
         </div>

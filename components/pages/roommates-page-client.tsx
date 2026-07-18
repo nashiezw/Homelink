@@ -367,7 +367,7 @@ function RoomListingCard({
               href={listingHref}
               className="ml-auto inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-white px-4 text-sm font-black text-emerald-900 transition hover:bg-emerald-50"
             >
-              View details
+              View {listing.suburb} room details
               <ArrowRight className="size-4" />
             </Link>
           </div>
@@ -453,7 +453,7 @@ function RoomListingCard({
           href={listingHref}
           className="mt-4 inline-flex h-10 w-fit items-center justify-center gap-2 rounded-lg border border-slate-200 px-4 text-sm font-semibold text-ink transition hover:border-emerald-200 hover:bg-emerald-50"
         >
-          View details
+          View {listing.suburb} room details
           <ArrowRight className="size-4" />
         </Link>
       </div>

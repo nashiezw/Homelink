@@ -132,7 +132,7 @@ export default function VerificationPage() {
               href="/contact"
               className="inline-flex h-10 items-center rounded-lg border border-slate-200 px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200"
             >
-              Contact support
+              Contact verification support
             </Link>
           </div>
         </aside>

@@ -171,7 +171,7 @@ export function AgentDashboardClient() {
             <Button variant="secondary">Public profile</Button>
           </Link>
           <Link href="/dashboard/landlord/new">
-            <Button>List property</Button>
+            <Button>Create agent listing</Button>
           </Link>
         </div>
       }
