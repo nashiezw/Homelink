@@ -59,11 +59,6 @@ export function BecomeAgentLanding({ highlights }: BecomeAgentLandingProps) {
           <Link href="/become-agent/apply">
             <Button className="h-12 w-full px-6 text-base sm:w-auto">Start application</Button>
           </Link>
-          <Link href="/agents/blessing-muzenda">
-            <Button variant="secondary" className="h-12 w-full border-white/20 bg-white/10 text-white hover:bg-white/20 sm:w-auto">
-              View agent profile
-            </Button>
-          </Link>
         </div>
       }
     >
