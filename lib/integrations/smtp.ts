@@ -49,7 +49,7 @@ function escapeHtml(value: string) {
 }
 
 function getAppUrl() {
-  return (process.env.NEXT_PUBLIC_APP_URL?.trim() || "https://houselink.co.zw").replace(/\/+$/, "");
+  return (process.env.NEXT_PUBLIC_APP_URL?.trim() || "https://www.houselink.co.zw").replace(/\/+$/, "");
 }
 
 function getLogoUrl() {

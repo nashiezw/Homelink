@@ -5,7 +5,7 @@ Do not commit real secret values. Use this as a worksheet while filling your hos
 ## Required Core
 
 ```text
-NEXT_PUBLIC_APP_URL="https://houselink.co.zw"
+NEXT_PUBLIC_APP_URL="https://www.houselink.co.zw"
 NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION="" # Optional: Google Search Console HTML tag content value
 HOUSELINK_STRICT_PRODUCTION="true"
 HOUSELINK_SESSION_SECRET="" # 32+ random chars, do not reuse any database/API secret
@@ -84,6 +84,6 @@ SEED_CONSULTANT_PASSWORD=""
 1. Set all required variables above in the Vercel project (Production environment).
 2. Run `npx prisma migrate deploy` against production `DATABASE_URL` after each deploy that adds migrations.
 3. Run `npm run db:seed:production` once on a fresh database, then rotate all `SEED_*` passwords.
-4. Confirm `HOUSELINK_STRICT_PRODUCTION=true`, `HOUSELINK_SESSION_SECRET` is a unique 32+ character secret, and `NEXT_PUBLIC_APP_URL=https://houselink.co.zw`.
+4. Confirm `HOUSELINK_STRICT_PRODUCTION=true`, `HOUSELINK_SESSION_SECRET` is a unique 32+ character secret, and `NEXT_PUBLIC_APP_URL=https://www.houselink.co.zw`.
 5. Run `npm run check:production` locally with production env values loaded to validate configuration.
 6. After deploy, verify Admin → Properties, Agents → Activity, and Academy checkout show live payment details.

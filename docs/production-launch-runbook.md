@@ -5,7 +5,7 @@ This guide is written for someone who has never launched a web platform before. 
 Current launch status:
 
 - Domain bought: `houselink.co.zw`
-- Production website URL: `https://houselink.co.zw`
+- Production website URL: `https://www.houselink.co.zw`
 - Hosting: Vercel deployment appears reachable
 - Next thing to do: rotate the Neon password, update Vercel environment variables, configure Cloudinary/SMTP, and redeploy production
 
@@ -44,7 +44,7 @@ You already have:
 
 ```text
 Domain: houselink.co.zw
-Production URL: https://houselink.co.zw
+Production URL: https://www.houselink.co.zw
 ```
 
 Do this now:
@@ -254,7 +254,7 @@ https://houselink-zimbabwe.vercel.app
 That temporary URL is only for testing. The real public URL will still be:
 
 ```text
-https://houselink.co.zw
+https://www.houselink.co.zw
 ```
 
 Tell Codex:
@@ -282,7 +282,7 @@ You do:
 Enter:
 
 ```text
-NEXT_PUBLIC_APP_URL=https://houselink.co.zw
+NEXT_PUBLIC_APP_URL=https://www.houselink.co.zw
 HOUSELINK_STRICT_PRODUCTION=true
 HOUSELINK_SESSION_SECRET=generate a long random value
 ```
@@ -471,7 +471,7 @@ STRIPE_SECRET_KEY=sk_live_...
 11. Endpoint URL:
 
 ```text
-https://houselink.co.zw/api/v1/payments/webhooks/stripe
+https://www.houselink.co.zw/api/v1/payments/webhooks/stripe
 ```
 
 12. Select payment/checkout events you will use.
@@ -528,13 +528,13 @@ You do:
 4. In the Paynow dashboard, set the result/webhook URL if Paynow asks for one:
 
 ```text
-https://houselink.co.zw/api/v1/payments/webhooks/paynow
+https://www.houselink.co.zw/api/v1/payments/webhooks/paynow
 ```
 
 5. Set the return/callback URL if Paynow asks for one:
 
 ```text
-https://houselink.co.zw/api/v1/payments/callback/paynow
+https://www.houselink.co.zw/api/v1/payments/callback/paynow
 ```
 
 6. Add these in Vercel:
@@ -775,7 +775,7 @@ Now add the DNS records where you bought the domain:
 What success looks like:
 
 - In Vercel, `houselink.co.zw` shows **Valid Configuration**, **Verified**, or a green check.
-- Visiting `https://houselink.co.zw` opens the HouseLink website.
+- Visiting `https://www.houselink.co.zw` opens the HouseLink website.
 - The browser shows a lock icon, meaning HTTPS/SSL is active.
 
 If Vercel says DNS is not ready yet, wait. DNS can take minutes or hours.
@@ -864,7 +864,7 @@ npm.cmd run check:production
 2. Smoke test the live URL:
 
 ```powershell
-$env:BASE_URL="https://houselink.co.zw"
+$env:BASE_URL="https://www.houselink.co.zw"
 node scripts\smoke-test.mjs
 ```
 

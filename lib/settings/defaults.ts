@@ -1,7 +1,7 @@
 import type { PaymentGatewayConfig, PaymentSettings, PlatformSettings } from "@/lib/settings/types";
 import { buildDefaultGeo } from "@/lib/settings/geo";
 
-const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://houselink.co.zw";
+const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://www.houselink.co.zw";
 
 function env(name: string) {
   return process.env[name]?.trim() ?? "";

@@ -6,20 +6,26 @@ const nextConfig: NextConfig = {
     return [
       {
         source: "/:path*",
+        has: [{ type: "host", value: "houselink.co.zw" }],
+        destination: "https://www.houselink.co.zw/:path*",
+        permanent: true,
+      },
+      {
+        source: "/:path*",
         has: [{ type: "host", value: "homelinkzim.co.zw" }],
-        destination: "https://houselink.co.zw/:path*",
+        destination: "https://www.houselink.co.zw/:path*",
         permanent: true,
       },
       {
         source: "/:path*",
         has: [{ type: "host", value: "www.homelinkzim.co.zw" }],
-        destination: "https://houselink.co.zw/:path*",
+        destination: "https://www.houselink.co.zw/:path*",
         permanent: true,
       },
       {
         source: "/:path*",
         has: [{ type: "host", value: "homelink-zimbabwe-7lplsgomb-homelink1.vercel.app" }],
-        destination: "https://houselink.co.zw/:path*",
+        destination: "https://www.houselink.co.zw/:path*",
         permanent: true,
       },
     ];

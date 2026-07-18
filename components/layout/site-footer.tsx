@@ -66,11 +66,11 @@ const groups = [
 ];
 
 const shareLinks = [
-  ["Facebook", "https://www.facebook.com/sharer/sharer.php?u=https%3A%2F%2Fhouselink.co.zw"],
-  ["LinkedIn", "https://www.linkedin.com/shareArticle?mini=true&url=https%3A%2F%2Fhouselink.co.zw"],
+  ["Facebook", "https://www.facebook.com/sharer/sharer.php?u=https%3A%2F%2Fwww.houselink.co.zw"],
+  ["LinkedIn", "https://www.linkedin.com/shareArticle?mini=true&url=https%3A%2F%2Fwww.houselink.co.zw"],
   [
     "WhatsApp",
-    "https://wa.me/?text=Find%20verified%20property%20on%20HouseLink%20Zimbabwe%3A%20https%3A%2F%2Fhouselink.co.zw",
+    "https://wa.me/?text=Find%20verified%20property%20on%20HouseLink%20Zimbabwe%3A%20https%3A%2F%2Fwww.houselink.co.zw",
   ],
 ] as const;
 

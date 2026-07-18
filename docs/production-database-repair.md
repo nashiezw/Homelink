@@ -35,7 +35,7 @@ Set these variables in Vercel Production before redeploying:
 ```text
 DATABASE_URL=your Postgres connection string
 HOUSELINK_STRICT_PRODUCTION=true
-NEXT_PUBLIC_APP_URL=https://houselink.co.zw
+NEXT_PUBLIC_APP_URL=https://www.houselink.co.zw
 HOUSELINK_SESSION_SECRET=long random secret
 SEED_STANDARD_PASSWORD=strong private password
 SEED_ADMIN_PASSWORD=strong private admin password

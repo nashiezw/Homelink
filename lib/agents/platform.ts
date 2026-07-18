@@ -371,7 +371,7 @@ function buildProfileFromUser(
     applicationId: `app_${user.id}`,
     agentNumber,
     agentIdCode: `HL-${agentNumber}`,
-    qrCodeData: `https://houselink.co.zw/agents/${slug}`,
+    qrCodeData: `https://www.houselink.co.zw/agents/${slug}`,
     level,
     status: "ACTIVE",
     biography:
@@ -507,7 +507,7 @@ export function approveApplication(
     applicationId: app.id,
     agentNumber,
     agentIdCode: `HL-${agentNumber}`,
-    qrCodeData: `https://houselink.co.zw/agents/${slug}`,
+    qrCodeData: `https://www.houselink.co.zw/agents/${slug}`,
     level: "BRONZE",
     status: "ACTIVE",
     biography: `${app.personal.fullName} is a verified HouseLink agent serving ${app.professional.city || "Zimbabwe"}.`,

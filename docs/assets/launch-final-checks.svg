@@ -7,7 +7,7 @@
   <rect x="92" y="210" width="776" height="58" rx="10" fill="#14532d" stroke="#22c55e"/>
   <text x="120" y="246" font-family="Arial" font-size="18" fill="#bbf7d0">npm run build</text>
   <rect x="92" y="288" width="776" height="58" rx="10" fill="#581c87" stroke="#a855f7"/>
-  <text x="120" y="324" font-family="Arial" font-size="18" fill="#e9d5ff">BASE_URL=https://houselink.co.zw node scripts/smoke-test.mjs</text>
+  <text x="120" y="324" font-family="Arial" font-size="18" fill="#e9d5ff">BASE_URL=https://www.houselink.co.zw node scripts/smoke-test.mjs</text>
   <rect x="92" y="366" width="776" height="58" rx="10" fill="#713f12" stroke="#f59e0b"/>
   <text x="120" y="402" font-family="Arial" font-size="18" fill="#fde68a">Manually test sign in, search, enquiry, upload, checkout, admin</text>
 </svg>

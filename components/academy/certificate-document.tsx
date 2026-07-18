@@ -103,7 +103,7 @@ export function CertificateDocument({
           </div>
 
           <p className="mt-10 text-center text-xs text-slate-500 print:mt-8">
-            Verify this certificate at {typeof window !== "undefined" ? window.location.origin : "https://houselink.co.zw"}{verifyUrl.replace(/^https?:\/\/[^/]+/, "")}
+            Verify this certificate at {typeof window !== "undefined" ? window.location.origin : "https://www.houselink.co.zw"}{verifyUrl.replace(/^https?:\/\/[^/]+/, "")}
           </p>
         </div>
       </article>

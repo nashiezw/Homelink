@@ -1,5 +1,6 @@
-const CANONICAL_SITE_URL = "https://houselink.co.zw";
+const CANONICAL_SITE_URL = "https://www.houselink.co.zw";
 const OLD_HOSTS = new Set([
+  "houselink.co.zw",
   "homelinkzim.co.zw",
   "www.homelinkzim.co.zw",
   "homelink-zimbabwe-7lplsgomb-homelink1.vercel.app",
