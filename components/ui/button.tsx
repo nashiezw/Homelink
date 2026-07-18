@@ -17,7 +17,7 @@ export function Button({
   return (
     <button
       className={cn(
-        "inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-center text-sm font-semibold leading-tight transition duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 disabled:cursor-not-allowed disabled:opacity-60 sm:px-4",
+        "inline-flex min-h-11 max-w-full items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-center text-sm font-semibold leading-tight whitespace-normal transition duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 disabled:cursor-not-allowed disabled:opacity-60 sm:px-4",
         variant === "primary" &&
           "bg-gradient-to-r from-emerald-700 to-teal-700 text-white shadow-md shadow-emerald-950/15 hover:-translate-y-0.5 hover:from-emerald-600 hover:to-teal-600 hover:shadow-lg",
         variant === "secondary" &&

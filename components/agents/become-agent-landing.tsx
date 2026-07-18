@@ -68,7 +68,7 @@ export function BecomeAgentLanding({ highlights }: BecomeAgentLandingProps) {
           Everything you need to grow a modern real estate business.
         </h2>
         <p className="mt-3 max-w-3xl text-slate-600 dark:text-slate-300">
-          From verified branding to lead distribution, commissions, contracts, and analytics — HouseLink gives agents
+          From verified branding to lead distribution, commissions, contracts, and analytics - HouseLink gives agents
           enterprise-grade tools.
         </p>
       </div>
@@ -105,7 +105,7 @@ export function BecomeAgentLanding({ highlights }: BecomeAgentLandingProps) {
         </div>
       </section>
 
-      <section className="mt-14 rounded-2xl bg-gradient-to-br from-emerald-700 to-ocean p-8 text-white shadow-soft lg:p-10">
+      <section className="mt-14 rounded-2xl bg-gradient-to-br from-emerald-700 to-ocean p-5 text-white shadow-soft sm:p-8 lg:p-10">
         <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr] lg:items-center">
           <div>
             <h2 className="text-3xl font-semibold">Ready to represent HouseLink?</h2>
@@ -121,8 +121,8 @@ export function BecomeAgentLanding({ highlights }: BecomeAgentLandingProps) {
               ))}
             </ul>
           </div>
-          <div className="flex flex-col gap-3">
-            <Link href="/become-agent/apply" className="inline-flex h-12 items-center justify-center rounded-lg bg-white px-6 font-semibold text-ink hover:bg-emerald-50">
+          <div className="flex min-w-0 flex-col gap-3">
+            <Link href="/become-agent/apply" className="inline-flex min-h-12 w-full items-center justify-center rounded-lg bg-white px-6 py-3 text-center font-semibold text-ink hover:bg-emerald-50 sm:w-auto">
               Apply now
               <TrendingUp className="ml-2 size-4" />
             </Link>

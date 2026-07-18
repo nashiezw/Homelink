@@ -56,6 +56,20 @@ textarea {
   min-width: 0;
 }
 
+img,
+video {
+  max-width: 100%;
+  height: auto;
+}
+
+button,
+a,
+input,
+select,
+textarea {
+  max-width: 100%;
+}
+
 @layer components {
   /*
    * Mobile GPU isolation for rounded white cards/stat boxes.
@@ -612,5 +626,28 @@ textarea {
   .rm-room-card:hover,
   .gpu-card:hover {
     transform: translate3d(0, 0, 0) !important;
+  }
+
+  .gpu-card,
+  .surface-panel,
+  .premium-card,
+  .academy-panel,
+  .academy-card,
+  .rm-room-card {
+    transform: none !important;
+    contain: paint !important;
+    will-change: auto !important;
+  }
+
+  .admin-mobile-safe {
+    transform: none !important;
+    contain: paint !important;
+    background-image: none !important;
+    box-shadow: none !important;
+    will-change: auto !important;
+  }
+
+  .admin-mobile-safe:hover {
+    transform: none !important;
   }
 }

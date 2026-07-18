@@ -185,13 +185,13 @@ function LocationMarquee({ highlights }: { highlights: SuburbHighlight[] }) {
           <Link
             key={`${loc.name}-${i}`}
             href={`/rooms/${encodeURIComponent(loc.name.toLowerCase().replace(/\s+/g, "-"))}`}
-            className="group relative flex w-[21.75rem] shrink-0 gap-4 overflow-hidden rounded-[1.35rem] border border-white/12 bg-white/[0.06] p-3.5 transition duration-300 hover:-translate-y-1 hover:border-emerald-400/50 hover:bg-white/10 sm:w-[22.5rem] sm:p-4"
+            className="group relative flex w-[calc(100vw-2rem)] max-w-[21.75rem] shrink-0 gap-3 overflow-hidden rounded-[1.35rem] border border-white/12 bg-white/[0.06] p-3 transition duration-300 hover:-translate-y-1 hover:border-emerald-400/50 hover:bg-white/10 sm:w-[22.5rem] sm:max-w-none sm:gap-4 sm:p-4"
           >
             <div className="relative h-24 w-[6.5rem] shrink-0 overflow-hidden rounded-2xl ring-1 ring-white/10 sm:w-28">
               <Image src={loc.photo} alt={loc.name} fill className="object-cover transition duration-500 group-hover:scale-110" sizes="(min-width: 640px) 112px, 104px" />
             </div>
             <div className="min-w-0 flex-1 py-0.5">
-              <p className="truncate text-[17px] font-extrabold leading-5 text-white">{loc.name}</p>
+              <p className="break-words text-[16px] font-extrabold leading-5 text-white sm:text-[17px]">{loc.name}</p>
               <div className="mt-3 grid grid-cols-[minmax(2.8rem,1fr)_minmax(2.8rem,1fr)_minmax(4.8rem,auto)] gap-2 text-center">
                 <span className="min-w-0 rounded-lg bg-white/8 px-1.5 py-1">
                   <b className="block text-sm text-white">{loc.rooms}</b>
@@ -1082,9 +1082,9 @@ function SocialSeekerCard({
   return (
     <article className={cn(
       "group overflow-hidden rounded-2xl bg-[#fafaf9] ring-1 ring-slate-200/80 transition hover:-translate-y-0.5 hover:shadow-lg",
-      featured ? "flex flex-col lg:flex-row" : "grid grid-cols-[9.25rem_1fr] sm:grid-cols-[12rem_1fr]",
+      featured ? "flex flex-col lg:flex-row" : "flex flex-col sm:grid sm:grid-cols-[12rem_minmax(0,1fr)]",
     )}>
-      <div className={cn("relative overflow-hidden", featured ? "aspect-[16/10] lg:aspect-auto lg:min-h-[14rem] lg:w-1/2" : "min-h-[14rem]")}>
+      <div className={cn("relative overflow-hidden", featured ? "aspect-[16/10] lg:aspect-auto lg:min-h-[14rem] lg:w-1/2" : "min-h-[12rem] sm:min-h-[14rem]")}>
         <Image src={coverPhoto} alt={`${person.name} lifestyle`} fill className="object-cover transition duration-500 group-hover:scale-105" sizes="33vw" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
         <span className="absolute right-2 top-2 rounded-full bg-emerald-600 px-2.5 py-1 text-[11px] font-bold text-white">{person.compatibility}% match</span>

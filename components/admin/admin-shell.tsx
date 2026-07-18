@@ -368,7 +368,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
           {sidebar}
         </aside>
 
-        <div className="flex min-w-0 flex-1 flex-col">
+        <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
           {summary && (
             <div className="hidden border-b border-white/[0.06] bg-slate-950/50 px-4 py-2 lg:block lg:px-8">
               <div className="grid gap-2 sm:flex sm:flex-wrap">
@@ -484,14 +484,14 @@ export function AdminShell({ children }: { children: ReactNode }) {
             </div>
           </header>
 
-          <main className="flex-1 px-4 py-5 sm:px-5 lg:p-8 xl:p-10">{children}</main>
+          <main className="min-w-0 flex-1 overflow-hidden px-4 py-5 sm:px-5 lg:p-8 xl:p-10">{children}</main>
         </div>
       </div>
 
       {mobileOpen && (
         <div className="fixed inset-0 z-50 flex lg:hidden">
           <div className="absolute inset-0 bg-black/60" onClick={() => setMobileOpen(false)} />
-          <aside className="relative flex h-full w-72 flex-col bg-slate-950 shadow-2xl">
+          <aside className="relative flex h-full w-[min(18rem,calc(100dvw-1rem))] flex-col bg-slate-950 shadow-2xl">
             <button
               type="button"
               className="absolute right-3 top-3 rounded-lg p-2 text-slate-400"

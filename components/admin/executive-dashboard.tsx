@@ -286,7 +286,7 @@ function CommandQuickActions({ summary }: { summary: AdminSummary }) {
   ];
 
   return (
-    <section className="rounded-2xl border border-white/[0.08] bg-[#07111f] p-3 shadow-[0_1px_0_0_rgba(255,255,255,0.04)_inset] sm:p-4">
+    <section className="admin-mobile-safe min-w-0 rounded-2xl border border-white/[0.08] bg-[#07111f] p-3 shadow-[0_1px_0_0_rgba(255,255,255,0.04)_inset] sm:p-4">
       <div className="mb-3 px-1">
         <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-300">Command quick actions</h2>
         <p className="mt-1 text-xs text-slate-500">High-priority operational workflows</p>
@@ -297,14 +297,14 @@ function CommandQuickActions({ summary }: { summary: AdminSummary }) {
             key={href}
             href={href}
             rel={href.includes("?") ? "nofollow" : undefined}
-            className="relative isolate grid min-h-[4rem] w-full grid-cols-[2.5rem_minmax(0,1fr)] items-center gap-3 rounded-xl border border-white/[0.08] bg-[#0b1424] px-3 py-2.5 text-left transition hover:border-emerald-500/30 hover:bg-[#0d1a2d] focus:outline-none focus:ring-2 focus:ring-emerald-500/30 sm:min-h-[4.25rem] sm:grid-cols-[2.75rem_minmax(0,1fr)]"
+            className="admin-mobile-safe relative isolate grid min-h-[4rem] w-full min-w-0 grid-cols-[2.5rem_minmax(0,1fr)] items-center gap-3 rounded-xl border border-white/[0.08] bg-[#0b1424] px-3 py-2.5 text-left transition hover:border-emerald-500/30 hover:bg-[#0d1a2d] focus:outline-none focus:ring-2 focus:ring-emerald-500/30 sm:min-h-[4.25rem] sm:grid-cols-[2.75rem_minmax(0,1fr)]"
           >
             <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500/12 text-emerald-300 sm:size-11">
               <Icon className="size-5" aria-hidden="true" />
             </span>
             <span className="min-w-0">
-              <span className="block text-sm font-semibold leading-5 text-white sm:text-base">{label}</span>
-              <span className="mt-1 block text-xs leading-4 text-slate-500 sm:text-sm">{description}</span>
+              <span className="block break-words text-sm font-semibold leading-5 text-white sm:text-base">{label}</span>
+              <span className="mt-1 block break-words text-xs leading-4 text-slate-500 sm:text-sm">{description}</span>
             </span>
           </Link>
         ))}

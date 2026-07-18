@@ -16,7 +16,7 @@ export function AdminPageHeader({
   actions?: ReactNode;
 }) {
   return (
-    <div className="flex flex-col gap-4 border-b border-white/[0.06] pb-5 sm:pb-6 lg:flex-row lg:items-end lg:justify-between">
+    <div className="flex min-w-0 flex-col gap-4 border-b border-white/[0.06] pb-5 sm:pb-6 lg:flex-row lg:items-end lg:justify-between">
       <div className="min-w-0">
         {eyebrow && (
           <p className="max-w-full break-words text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-400/90 sm:text-xs sm:tracking-[0.2em]">{eyebrow}</p>
@@ -24,7 +24,7 @@ export function AdminPageHeader({
         <h1 className="mt-1 break-words text-[1.65rem] font-bold leading-tight tracking-tight text-white sm:text-3xl">{title}</h1>
         {description && <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400 sm:leading-relaxed">{description}</p>}
       </div>
-      {actions && <div className="flex w-full flex-wrap gap-2 sm:w-auto sm:shrink-0">{actions}</div>}
+      {actions && <div className="grid w-full min-w-0 gap-2 sm:flex sm:w-auto sm:shrink-0 sm:flex-wrap">{actions}</div>}
     </div>
   );
 }
@@ -45,18 +45,18 @@ export function AdminPanel({
   return (
     <section
       className={cn(
-        "overflow-hidden rounded-2xl border border-white/[0.08] bg-slate-950 shadow-[0_1px_0_0_rgba(255,255,255,0.04)_inset] lg:bg-gradient-to-b lg:from-slate-900/90 lg:to-slate-950/90",
+        "admin-mobile-safe min-w-0 overflow-hidden rounded-2xl border border-white/[0.08] bg-slate-950 shadow-[0_1px_0_0_rgba(255,255,255,0.04)_inset] lg:bg-gradient-to-b lg:from-slate-900/90 lg:to-slate-950/90",
         className,
       )}
     >
-      <div className="flex flex-col gap-3 border-b border-white/[0.06] px-4 py-4 sm:flex-row sm:items-start sm:justify-between sm:px-6">
+      <div className="flex min-w-0 flex-col gap-3 border-b border-white/[0.06] px-4 py-4 sm:flex-row sm:items-start sm:justify-between sm:px-6">
         <div className="min-w-0">
           <h2 className="break-words text-sm font-semibold uppercase tracking-wider text-slate-300">{title}</h2>
           {description && <p className="mt-1 text-xs text-slate-500">{description}</p>}
         </div>
-        {action}
+        {action && <div className="min-w-0 shrink-0">{action}</div>}
       </div>
-      <div className="p-3 sm:p-6">{children}</div>
+      <div className="min-w-0 p-3 sm:p-6">{children}</div>
     </section>
   );
 }
@@ -78,9 +78,9 @@ export function AdminStatPill({
     info: "border-cyan-500/20 bg-cyan-500/10 text-cyan-200",
   };
   return (
-    <div className={cn("rounded-xl border px-3 py-2.5 sm:px-4 sm:py-3", tones[tone])}>
-      <p className="text-[10px] font-semibold uppercase tracking-wider opacity-70">{label}</p>
-      <p className="mt-1 text-lg font-bold tabular-nums sm:text-xl">{value}</p>
+    <div className={cn("admin-mobile-safe min-w-0 rounded-xl border px-3 py-2.5 sm:px-4 sm:py-3", tones[tone])}>
+      <p className="break-words text-[10px] font-semibold uppercase tracking-wider opacity-70">{label}</p>
+      <p className="mt-1 break-words text-lg font-bold tabular-nums sm:text-xl">{value}</p>
     </div>
   );
 }
