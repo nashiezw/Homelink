@@ -6,7 +6,7 @@ export function createDefaultHomepageCms(): HomepageCmsConfig {
     published: true,
     hero: {
       eyebrow: "Verified homes, rooms, land, and agents across Zimbabwe",
-      title: "HouseLink Zimbabwe property search with",
+      title: "Find Your Next Home with",
       titleHighlight: "Confidence.",
       description:
         "Search verified HouseLink Zimbabwe property listings for fresh rentals, homes for sale, land, commercial spaces, and compatible roommates.",

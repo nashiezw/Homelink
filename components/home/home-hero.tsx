@@ -39,10 +39,6 @@ export function HomeHero({ hero }: HomeHeroProps) {
           <h1 className="animate-fade-up mt-7 max-w-4xl text-4xl font-semibold leading-[1.05] tracking-tight text-white motion-reduce:animate-none sm:text-6xl lg:text-[4.25rem] [animation-delay:80ms]">
             {hero.title}{" "}
             <span className="text-gradient-emerald">{hero.titleHighlight}</span>
-            <span className="sr-only">
-              {" "}
-              HouseLink Zimbabwe property marketplace for verified homes, rooms, rentals, land, and agents.
-            </span>
           </h1>
           <p className="animate-fade-up mt-6 max-w-2xl text-base leading-8 text-slate-100 motion-reduce:animate-none sm:text-lg [animation-delay:160ms]">
             {hero.description}
