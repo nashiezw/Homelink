@@ -235,7 +235,7 @@ export async function getPublicAgentFromPostgres(slug: string) {
   const activeListings = listings.filter((listing) => listing.ownerId === user.id).map(toPublicPostgresListing);
   return {
     profile: toPublicAgentProfile(user, application, trainingCompleted),
-    user: { name: user.name, email: user.email },
+    user: { name: user.name },
     agency: user.agencyMemberships[0]?.agency
       ? {
           id: user.agencyMemberships[0].agency.id,

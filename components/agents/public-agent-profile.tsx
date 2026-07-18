@@ -7,7 +7,6 @@ import {
   Calendar,
   Clock3,
   Globe2,
-  Mail,
   MapPin,
   MessageCircle,
   Star,
@@ -26,7 +25,7 @@ import { cn } from "@/lib/utils";
 
 type PublicAgentData = {
   profile: AgentProfile;
-  user: { name: string; city?: string; email?: string } | null;
+  user: { name: string; city?: string } | null;
   agency: {
     id: string;
     name: string;
@@ -337,9 +336,6 @@ export function PublicAgentProfile({ slug }: { slug: string }) {
                   />
                 )}
                 <ContactRow icon={<Calendar className="size-4" />} href={contactHref} label="Send an enquiry" />
-                {user?.email && (
-                  <ContactRow icon={<Mail className="size-4" />} href={`mailto:${user.email}`} label={user.email} />
-                )}
                 {user?.city && (
                   <li className="flex items-center gap-2.5 text-slate-700 dark:text-slate-200">
                     <MapPin className="size-4 shrink-0 text-emerald-600" />
