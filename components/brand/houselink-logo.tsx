@@ -20,7 +20,7 @@ const iconSizes: Record<BrandVariant, string> = {
   nav: "h-10 w-10 md:h-12 md:w-12",
   header: "h-10 w-10 md:h-12 md:w-12",
   footer: "h-14 w-14 sm:h-16 sm:w-16",
-  auth: "h-[4.4rem] w-[4.4rem] sm:h-[4.8rem] sm:w-[4.8rem]",
+  auth: "h-[5.1rem] w-[5.1rem] sm:h-[5.45rem] sm:w-[5.45rem]",
   icon: "h-10 w-10",
 };
 
@@ -78,12 +78,12 @@ function FullWordmark({ variant }: { variant: "footer" | "auth" }) {
   const isAuth = variant === "auth";
 
   return (
-    <span className={cn("flex min-w-0 flex-col justify-center", isAuth && "w-[15.2rem] sm:w-[16.25rem]")}>
+    <span className={cn("flex min-w-0 flex-col justify-center", isAuth && "w-[18.25rem] sm:w-[19.5rem]")}>
       <span
         className={cn(
           "font-extrabold leading-none tracking-normal",
           isAuth
-            ? "inline-block origin-left scale-x-[1.13] text-[2.2rem] sm:scale-x-[1.15] sm:text-[2.35rem]"
+            ? "inline-block origin-left text-[2.75rem] sm:text-[3rem]"
             : "text-[1.75rem] sm:text-[2rem]",
           onDark ? "text-white" : "text-[#1a3560] dark:text-slate-100",
         )}
@@ -98,17 +98,17 @@ function FullWordmark({ variant }: { variant: "footer" | "auth" }) {
         className={cn(
           "flex items-center font-semibold uppercase",
           isAuth
-            ? "mt-1.5 w-full justify-between text-[10px] tracking-[0.36em] sm:text-[11px]"
+            ? "mt-2 w-full justify-between text-[11px] tracking-[0.42em] sm:text-xs"
             : "mt-1.5 gap-2 text-[10px] tracking-[0.24em] sm:text-xs",
           onDark ? "text-slate-300" : "text-[#1a3560]/85 dark:text-slate-400",
         )}
       >
-        <span className={cn("h-px bg-[#22a54b]", isAuth ? "w-[2.45rem]" : "w-4")} aria-hidden />
+        <span className={cn("h-px bg-[#22a54b]", isAuth ? "w-[3.3rem]" : "w-4")} aria-hidden />
         Zimbabwe
-        <span className={cn("h-px bg-[#22a54b]", isAuth ? "w-[2.45rem]" : "w-4")} aria-hidden />
+        <span className={cn("h-px bg-[#22a54b]", isAuth ? "w-[3.3rem]" : "w-4")} aria-hidden />
       </span>
       {variant === "auth" && (
-        <span className="mt-2 block w-full whitespace-nowrap text-[13px] font-medium leading-none text-[#1a3560]/75 dark:text-slate-400 sm:text-[14px]">
+        <span className="mt-2 block w-full whitespace-nowrap text-[14px] font-medium leading-none text-[#1a3560]/75 dark:text-slate-400 sm:text-[15px]">
           Find Your Next Home with Confidence
         </span>
       )}
@@ -147,10 +147,10 @@ export function HouseLinkBrand({ className, variant = "nav", iconOnly = false }:
   return (
     <span
       data-brand="houselink-full"
-      className={cn("inline-flex max-w-full shrink-0 items-center gap-3 overflow-hidden sm:gap-4", className)}
+      className={cn("inline-flex max-w-full shrink-0 items-center gap-4 overflow-hidden sm:gap-5", className)}
     >
       <HouseLinkIcon className={iconSizes[variant]} title="HouseLink" />
-      <span className="h-[5rem] w-px shrink-0 bg-[#1a3560]/20 dark:bg-slate-600 sm:h-[5.4rem]" aria-hidden />
+      <span className="h-[5.45rem] w-px shrink-0 bg-[#1a3560]/20 dark:bg-slate-600 sm:h-[5.85rem]" aria-hidden />
       <FullWordmark variant="auth" />
     </span>
   );
