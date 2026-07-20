@@ -588,7 +588,7 @@ export function RoomShareWizard({
                       type="button"
                       onClick={() => onToggleAmenity(filter)}
                       className={cn(
-                        "rounded-full border px-2.5 py-1 text-xs font-semibold transition",
+                        "min-h-9 rounded-full border px-3 py-1.5 text-xs font-semibold transition",
                         amenities.includes(filter)
                           ? "border-emerald-400 bg-emerald-50 text-emerald-800"
                           : "border-slate-200 text-slate-600 hover:border-emerald-200",

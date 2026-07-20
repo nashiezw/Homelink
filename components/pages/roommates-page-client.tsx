@@ -365,10 +365,11 @@ function RoomListingCard({
             ))}
             <Link
               href={listingHref}
-              className="ml-auto inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-white px-4 text-sm font-black text-emerald-900 transition hover:bg-emerald-50"
+              className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-white px-4 text-sm font-black leading-none text-emerald-900 transition hover:bg-emerald-50 sm:ml-auto sm:w-auto"
             >
-              View {listing.suburb} room details
-              <ArrowRight className="size-4" />
+              <span className="sm:hidden">View room</span>
+              <span className="hidden sm:inline">View {listing.suburb} room details</span>
+              <ArrowRight className="size-4 shrink-0" />
             </Link>
           </div>
         </div>
@@ -451,10 +452,11 @@ function RoomListingCard({
 
         <Link
           href={listingHref}
-          className="mt-4 inline-flex h-10 w-fit items-center justify-center gap-2 rounded-lg border border-slate-200 px-4 text-sm font-semibold text-ink transition hover:border-emerald-200 hover:bg-emerald-50"
+          className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-slate-200 px-4 text-sm font-semibold leading-none text-ink transition hover:border-emerald-200 hover:bg-emerald-50 sm:w-fit"
         >
-          View {listing.suburb} room details
-          <ArrowRight className="size-4" />
+          <span className="sm:hidden">View room</span>
+          <span className="hidden sm:inline">View {listing.suburb} room details</span>
+          <ArrowRight className="size-4 shrink-0" />
         </Link>
       </div>
     </article>
@@ -502,7 +504,7 @@ function SeekerChip({
       <button
         type="button"
         onClick={(e) => { e.preventDefault(); onChat(); }}
-        className="shrink-0 rounded-lg bg-emerald-700 px-3 py-2 text-xs font-bold text-white opacity-0 transition group-hover:opacity-100"
+        className="shrink-0 rounded-lg bg-emerald-700 px-3 py-2 text-xs font-bold text-white transition hover:bg-emerald-800 sm:opacity-0 sm:group-hover:opacity-100"
       >
         Intro
       </button>
@@ -708,7 +710,7 @@ export function RoommatesPageClient() {
                 <RmEyebrow>
                   <Users className="size-4 text-emerald-300" /> Room sharing in Zimbabwe
                 </RmEyebrow>
-                <h1 className="rm-text-shadow mt-6 text-[clamp(2.75rem,6.5vw,5rem)] font-black leading-[0.98] tracking-tight text-white">
+                <h1 className="rm-text-shadow mt-6 text-[clamp(2.35rem,11vw,5rem)] font-black leading-[1.02] tracking-tight text-white sm:leading-[0.98]">
                   Your next room
                   <span className="mt-2 block bg-gradient-to-r from-emerald-300 via-teal-200 to-emerald-400 bg-clip-text text-transparent">
                     or your next roommate.
@@ -728,15 +730,15 @@ export function RoommatesPageClient() {
                   </div>
                 </div>
 
-                <div className="mt-8 flex flex-wrap gap-3">
-                  <button type="button" onClick={() => scrollToRoomShareWizard("seeking")} className="inline-flex h-12 items-center gap-2 rounded-2xl bg-white px-6 text-base font-bold text-emerald-900 shadow-[0_12px_40px_rgba(0,0,0,0.4)] transition hover:-translate-y-0.5 hover:bg-emerald-50">
-                    <Search className="size-4" /> Find a room
+                <div className="mt-8 grid w-full gap-3 min-[430px]:grid-cols-2 sm:flex sm:w-auto sm:flex-wrap">
+                  <button type="button" onClick={() => scrollToRoomShareWizard("seeking")} className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-white px-5 text-sm font-bold leading-none text-emerald-900 shadow-[0_12px_40px_rgba(0,0,0,0.4)] transition hover:-translate-y-0.5 hover:bg-emerald-50 sm:w-auto sm:rounded-2xl sm:text-base">
+                    <Search className="size-4 shrink-0" /> Find a room
                   </button>
-                  <button type="button" onClick={() => scrollToRoomShareWizard("posting")} className="inline-flex h-12 items-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 px-6 text-base font-bold text-white shadow-[0_12px_40px_rgba(16,185,129,0.45)] transition hover:-translate-y-0.5">
-                    <Home className="size-4" /> Post a room
+                  <button type="button" onClick={() => scrollToRoomShareWizard("posting")} className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 px-5 text-sm font-bold leading-none text-white shadow-[0_12px_40px_rgba(16,185,129,0.45)] transition hover:-translate-y-0.5 sm:w-auto sm:rounded-2xl sm:text-base">
+                    <Home className="size-4 shrink-0" /> Post a room
                   </button>
-                  <Link href={user ? "/roommates/profile" : "/auth"} className="inline-flex h-12 items-center gap-2 rounded-2xl border border-white/25 bg-white/10 px-6 text-base font-bold text-white backdrop-blur-md transition hover:bg-white/15">
-                    <Users className="size-4" /> Find a roommate
+                  <Link href={user ? "/roommates/profile" : "/auth"} className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-white/25 bg-white/10 px-5 text-sm font-bold leading-none text-white backdrop-blur-md transition hover:bg-white/15 min-[430px]:col-span-2 sm:w-auto sm:rounded-2xl sm:text-base">
+                    <Users className="size-4 shrink-0" /> Find a roommate
                   </Link>
                 </div>
               </div>
@@ -851,7 +853,7 @@ export function RoommatesPageClient() {
                   key={filter}
                   type="button"
                   className={cn(
-                    "shrink-0 rounded-full border px-4 py-2 text-sm font-bold transition hover:-translate-y-0.5",
+                    "min-h-10 shrink-0 whitespace-nowrap rounded-full border px-4 py-2 text-sm font-bold transition hover:-translate-y-0.5",
                     i === 0 ? "border-emerald-700 bg-emerald-700 text-white shadow-md" : "border-slate-200 bg-white text-slate-600 hover:border-emerald-200 hover:text-emerald-800",
                   )}
                 >
@@ -878,8 +880,8 @@ export function RoommatesPageClient() {
                 <div className="col-span-12 flex flex-col gap-4 p-5 sm:p-6 lg:col-span-7">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <p className="text-sm text-slate-600">Lifestyle, budget, language, move-in date, and compatibility — matched for you.</p>
-                    <Link href="/roommates/profile" className="inline-flex h-10 items-center gap-2 rounded-xl bg-emerald-600 px-4 text-sm font-bold text-white hover:bg-emerald-700">
-                      Create profile <ArrowRight className="size-4" />
+                    <Link href="/roommates/profile" className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 text-sm font-bold leading-none text-white hover:bg-emerald-700 sm:w-auto">
+                      Create profile <ArrowRight className="size-4 shrink-0" />
                     </Link>
                   </div>
                   {featuredSeeker && (
@@ -979,7 +981,7 @@ export function RoommatesPageClient() {
                 <p className="mt-4 text-base leading-relaxed text-white/70">
                   Room sharing needs more than pretty listings. HouseLink puts verification, assisted viewings, secure messaging and support around the full journey.
                 </p>
-                <div className="mt-6 grid grid-cols-3 gap-3">
+                <div className="mt-6 grid gap-3 min-[430px]:grid-cols-3">
                   {[
                     [formatCompactCount(liveRoomCount), liveRoomCount === 1 ? "live room" : "live rooms"],
                     [formatCompactCount(liveProfileCount), liveProfileCount === 1 ? "visible profile" : "visible profiles"],
@@ -1044,15 +1046,15 @@ export function RoommatesPageClient() {
                 <p className="mt-4 max-w-2xl text-base leading-relaxed text-emerald-50/90">
                   Verified Zimbabweans are finding trusted roommates and quality accommodation through HouseLink.
                 </p>
-                <div className="mt-8 flex flex-wrap justify-center gap-3">
-                  <button type="button" onClick={() => scrollToRoomShareWizard("seeking")} className="inline-flex h-12 items-center gap-2 rounded-2xl bg-white px-6 text-base font-bold text-emerald-900 shadow-lg transition hover:-translate-y-0.5">
-                    <Search className="size-4" /> Find a room
+                <div className="mt-8 grid w-full max-w-md gap-3 min-[430px]:grid-cols-2 sm:flex sm:max-w-none sm:flex-wrap sm:justify-center">
+                  <button type="button" onClick={() => scrollToRoomShareWizard("seeking")} className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-white px-5 text-sm font-bold leading-none text-emerald-900 shadow-lg transition hover:-translate-y-0.5 sm:w-auto sm:rounded-2xl sm:text-base">
+                    <Search className="size-4 shrink-0" /> Find a room
                   </button>
-                  <button type="button" onClick={() => scrollToRoomShareWizard("posting")} className="inline-flex h-12 items-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 px-6 text-base font-bold text-white shadow-lg transition hover:-translate-y-0.5">
-                    <Home className="size-4" /> Post a room
+                  <button type="button" onClick={() => scrollToRoomShareWizard("posting")} className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 px-5 text-sm font-bold leading-none text-white shadow-lg transition hover:-translate-y-0.5 sm:w-auto sm:rounded-2xl sm:text-base">
+                    <Home className="size-4 shrink-0" /> Post a room
                   </button>
-                  <Link href={user ? "/roommates/profile" : "/auth"} className="inline-flex h-12 items-center gap-2 rounded-2xl border border-white/30 bg-white/10 px-6 text-base font-bold text-white backdrop-blur-md transition hover:bg-white/15">
-                    <Users className="size-4" /> Find a roommate
+                  <Link href={user ? "/roommates/profile" : "/auth"} className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-white/30 bg-white/10 px-5 text-sm font-bold leading-none text-white backdrop-blur-md transition hover:bg-white/15 min-[430px]:col-span-2 sm:w-auto sm:rounded-2xl sm:text-base">
+                    <Users className="size-4 shrink-0" /> Find a roommate
                   </Link>
                 </div>
               </div>
@@ -1129,18 +1131,18 @@ function SocialSeekerCard({
           <Tag><Calendar className="mr-1 inline size-3" />{person.availableFrom}</Tag>
           {featured && person.interests.slice(0, 2).map((interest) => <Tag key={interest}>{interest}</Tag>)}
         </div>
-        <div className="mt-auto grid grid-cols-2 gap-2 pt-3 sm:grid-cols-4">
-          <Link href={`/roommates/people/${person.id}`} className="inline-flex h-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-xs font-bold text-ink hover:border-emerald-300">
+        <div className="mt-auto grid grid-cols-2 gap-2 pt-4 sm:grid-cols-4">
+          <Link href={`/roommates/people/${person.id}`} className="inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold leading-none text-ink hover:border-emerald-300">
             Profile
           </Link>
-          <button type="button" onClick={onInvite} className="inline-flex h-9 items-center justify-center gap-1 rounded-xl bg-emerald-600 text-xs font-bold text-white hover:bg-emerald-700">
-            <UserPlus className="size-3.5" /> Intro
+          <button type="button" onClick={onInvite} className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl bg-emerald-600 px-3 text-xs font-bold leading-none text-white hover:bg-emerald-700">
+            <UserPlus className="size-3.5 shrink-0" /> Intro
           </button>
-          <button type="button" onClick={onChat} className="inline-flex h-9 items-center justify-center gap-1 rounded-xl border border-emerald-200 bg-emerald-50 text-xs font-bold text-emerald-800 hover:bg-emerald-100">
-            <MessageCircle className="size-3.5" /> HouseLink
+          <button type="button" onClick={onChat} className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3 text-xs font-bold leading-none text-emerald-800 hover:bg-emerald-100">
+            <MessageCircle className="size-3.5 shrink-0" /> Enquire
           </button>
-          <button type="button" className="inline-flex h-9 items-center justify-center gap-1 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-700 hover:border-rose-200 hover:text-rose-600">
-            <Heart className="size-3.5" /> Save
+          <button type="button" className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold leading-none text-slate-700 hover:border-rose-200 hover:text-rose-600">
+            <Heart className="size-3.5 shrink-0" /> Save
           </button>
         </div>
       </div>
