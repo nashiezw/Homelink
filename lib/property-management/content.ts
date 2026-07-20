@@ -18,10 +18,10 @@ export const pmHeroTrustItems = [
 ] as const;
 
 export const pmHeroStats = [
-  { value: "2,998+", label: "Properties managed" },
-  { value: "92%", label: "Tenant retention rate" },
-  { value: "24h", label: "Issue response time" },
-  { value: "$15M+", label: "Rent secured monthly" },
+  { value: "Tenant screening", label: "References and suitability checks" },
+  { value: "Owner approval", label: "You choose before we place tenants" },
+  { value: "Maintenance coordination", label: "Repair updates handled through HouseLink" },
+  { value: "Monthly reporting", label: "Clear rent and expense summaries" },
 ] as const;
 
 export const pmServices: Array<{ icon: LucideIcon; title: string; body: string }> = [

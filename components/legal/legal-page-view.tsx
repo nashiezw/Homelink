@@ -138,19 +138,20 @@ export function LegalPageView({ page, fallbackTitle }: LegalPageViewProps) {
         { value: `${sections.length}`, label: "clear sections" },
       ]}
       actions={
-        <div className="grid gap-2">
+        <div className="grid w-full gap-3 sm:w-auto sm:min-w-56">
           <Link
             href={tone.primaryHref}
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-white px-5 text-sm font-semibold text-ink shadow-lg shadow-black/10 transition hover:bg-emerald-50"
+            className="inline-flex min-h-12 items-center justify-between gap-3 rounded-lg bg-white px-5 text-sm font-semibold leading-none text-ink shadow-lg shadow-black/10 transition hover:bg-emerald-50 sm:min-h-11"
           >
-            {tone.primaryLabel}
-            <ArrowRight className="size-4" aria-hidden="true" />
+            <span>{tone.primaryLabel}</span>
+            <ArrowRight className="size-4 shrink-0" aria-hidden="true" />
           </Link>
           <Link
             href={page.id === "privacy" ? "/terms" : "/privacy"}
-            className="inline-flex h-11 items-center justify-center rounded-lg border border-white/15 bg-white/10 px-5 text-sm font-semibold text-white backdrop-blur transition hover:bg-white/15"
+            className="inline-flex min-h-12 items-center justify-between gap-3 rounded-lg border border-white/25 bg-white/15 px-5 text-sm font-semibold leading-none text-white backdrop-blur transition hover:bg-white/20 sm:min-h-11"
           >
-            {page.id === "privacy" ? "View terms" : "View privacy"}
+            <span>{page.id === "privacy" ? "View terms" : "View privacy"}</span>
+            <ArrowRight className="size-4 shrink-0" aria-hidden="true" />
           </Link>
         </div>
       }

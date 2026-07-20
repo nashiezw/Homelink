@@ -82,11 +82,11 @@ export function PropertyManagementPage() {
           </div>
 
           {/* Stats bar */}
-          <div className="mt-10 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-white/10 bg-white/10 backdrop-blur-md sm:grid-cols-4">
+          <div className="mt-10 grid gap-px overflow-hidden rounded-xl border border-white/10 bg-white/10 backdrop-blur-md sm:grid-cols-2 lg:grid-cols-4">
             {pmHeroStats.map((stat) => (
-              <div key={stat.label} className="bg-ink/40 px-4 py-4 text-center sm:px-6">
-                <p className="text-xl font-bold text-white sm:text-2xl">{stat.value}</p>
-                <p className="mt-1 text-[11px] text-slate-300 sm:text-xs">{stat.label}</p>
+              <div key={stat.value} className="bg-ink/45 px-4 py-4 text-left sm:px-5">
+                <p className="text-sm font-bold leading-snug text-white sm:text-base">{stat.value}</p>
+                <p className="mt-1.5 text-xs leading-relaxed text-slate-300">{stat.label}</p>
               </div>
             ))}
           </div>
