@@ -7,7 +7,8 @@ import { mergePaymentSettings, mergePlatformSettings } from "@/lib/settings/merg
 import type { PaymentSettings, PlatformSettings } from "@/lib/settings/types";
 import { redactPaymentSettingsForAdmin } from "@/lib/settings/redact";
 
-const SNAPSHOT_ID = "singleton";
+const LEGACY_SNAPSHOT_ID = "singleton";
+const SETTINGS_SNAPSHOT_ID = "platform-settings";
 const SNAPSHOT_VERSION = 1;
 
 type SnapshotPayload = {
@@ -17,7 +18,7 @@ type SnapshotPayload = {
 };
 
 export async function getPostgresPlatformSettings() {
-  const payload = await readSnapshotPayload();
+  const payload = await readSettingsSnapshotPayload();
   const settings = mergePlatformSettings(defaultPlatformSettings, payload.platformSettings ?? {});
   return {
     ...settings,
@@ -29,21 +30,21 @@ export async function getPostgresPlatformSettings() {
 }
 
 export async function getPostgresPaymentSettings() {
-  const payload = await readSnapshotPayload();
+  const payload = await readSettingsSnapshotPayload();
   return mergePaymentSettings(defaultPaymentSettings, payload.paymentSettings ?? {});
 }
 
 export async function savePostgresPlatformSettings(settings: Partial<PlatformSettings>) {
   const current = await getPostgresPlatformSettings();
   const merged = mergePlatformSettings(current, settings);
-  await patchSnapshotPayload({ platformSettings: merged });
+  await patchSettingsSnapshotPayload({ platformSettings: merged });
   return merged;
 }
 
 export async function savePostgresPaymentSettings(settings: Partial<PaymentSettings>) {
   const current = await getPostgresPaymentSettings();
   const merged = mergePaymentSettings(current, settings);
-  await patchSnapshotPayload({ paymentSettings: merged });
+  await patchSettingsSnapshotPayload({ paymentSettings: merged });
   return merged;
 }
 
@@ -416,28 +417,75 @@ export async function updatePostgresRoommateProfile(userId: string, action: stri
 
 async function getPostgresHomepageCms(): Promise<HomepageCmsConfig> {
   const defaults = createDefaultHomepageCms();
-  const payload = await readSnapshotPayload();
+  const payload = await readLegacySnapshotPayload();
   return mergeHomepageCms(defaults, payload.homepage?.cms ?? {});
 }
 
-async function readSnapshotPayload(): Promise<SnapshotPayload> {
+async function readLegacySnapshotPayload(): Promise<SnapshotPayload> {
   const row = await getMainPrisma().appStoreSnapshot.findUnique({
-    where: { id: SNAPSHOT_ID },
+    where: { id: LEGACY_SNAPSHOT_ID },
+    select: { payload: true },
+  }).catch(() => null);
+  return jsonObject(row?.payload) as SnapshotPayload;
+}
+
+async function readSettingsSnapshotPayload(): Promise<SnapshotPayload> {
+  const prisma = getMainPrisma();
+  const dedicated = await prisma.appStoreSnapshot.findUnique({
+    where: { id: SETTINGS_SNAPSHOT_ID },
+    select: { payload: true },
+  }).catch(() => null);
+  const dedicatedPayload = jsonObject(dedicated?.payload) as SnapshotPayload;
+  const legacyPayload = await readLegacySnapshotPayload();
+  const mergedPayload = compactSnapshotPayload({
+    platformSettings: dedicatedPayload.platformSettings ?? legacyPayload.platformSettings,
+    paymentSettings: dedicatedPayload.paymentSettings ?? legacyPayload.paymentSettings,
+  });
+
+  if (
+    (!dedicatedPayload.platformSettings && legacyPayload.platformSettings) ||
+    (!dedicatedPayload.paymentSettings && legacyPayload.paymentSettings)
+  ) {
+    await patchSettingsSnapshotPayload(mergedPayload).catch(() => null);
+  }
+  return mergedPayload;
+}
+
+async function patchSettingsSnapshotPayload(patch: SnapshotPayload) {
+  const current = await readSettingsSnapshotPayloadWithoutMigration();
+  const payload = compactSnapshotPayload({
+    ...current,
+    ...patch,
+  });
+  await getMainPrisma().appStoreSnapshot.upsert({
+    where: { id: SETTINGS_SNAPSHOT_ID },
+    create: { id: SETTINGS_SNAPSHOT_ID, version: SNAPSHOT_VERSION, payload: payload as Prisma.InputJsonObject },
+    update: { payload: payload as Prisma.InputJsonObject, version: SNAPSHOT_VERSION },
+  });
+}
+
+function compactSnapshotPayload(payload: SnapshotPayload): SnapshotPayload {
+  return Object.fromEntries(Object.entries(payload).filter(([, value]) => value !== undefined)) as SnapshotPayload;
+}
+
+async function readSettingsSnapshotPayloadWithoutMigration(): Promise<SnapshotPayload> {
+  const row = await getMainPrisma().appStoreSnapshot.findUnique({
+    where: { id: SETTINGS_SNAPSHOT_ID },
     select: { payload: true },
   }).catch(() => null);
   return jsonObject(row?.payload) as SnapshotPayload;
 }
 
 async function patchSnapshotPayload(patch: SnapshotPayload) {
-  const current = await readSnapshotPayload();
+  const current = await readLegacySnapshotPayload();
   const payload = {
     ...current,
     ...patch,
     homepage: patch.homepage ? { ...(current.homepage ?? {}), ...patch.homepage } : current.homepage,
   };
   await getMainPrisma().appStoreSnapshot.upsert({
-    where: { id: SNAPSHOT_ID },
-    create: { id: SNAPSHOT_ID, version: SNAPSHOT_VERSION, payload: payload as Prisma.InputJsonObject },
+    where: { id: LEGACY_SNAPSHOT_ID },
+    create: { id: LEGACY_SNAPSHOT_ID, version: SNAPSHOT_VERSION, payload: payload as Prisma.InputJsonObject },
     update: { payload: payload as Prisma.InputJsonObject, version: SNAPSHOT_VERSION },
   });
 }

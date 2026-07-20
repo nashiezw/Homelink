@@ -8,6 +8,8 @@ import type { StoreState } from "@/lib/store/app-store";
 
 const DATA_DIR = getWritableDataDir();
 const STORE_FILE = path.join(DATA_DIR, "app-store.json");
+const STORE_SNAPSHOT_ID = "legacy-app-store";
+const LEGACY_SHARED_SNAPSHOT_ID = "singleton";
 
 let persistTimer: ReturnType<typeof setTimeout> | null = null;
 let queuedSnapshot: SerializedStoreSnapshot | null = null;
@@ -95,8 +97,11 @@ async function loadFromPostgres(version: number): Promise<StoreState | null> {
   if (!isPostgresStoreEnabled()) return null;
   try {
     const prisma = getMainPrisma();
-    const row = await prisma.appStoreSnapshot.findUnique({ where: { id: "singleton" } });
+    const row =
+      await prisma.appStoreSnapshot.findUnique({ where: { id: STORE_SNAPSHOT_ID } }) ??
+      await prisma.appStoreSnapshot.findUnique({ where: { id: LEGACY_SHARED_SNAPSHOT_ID } });
     if (!row) return null;
+    if (!isSerializedStorePayload(row.payload)) return null;
     if (row.version !== version) {
       console.warn("Loading persisted store snapshot from a previous version.", {
         storedVersion: row.version,
@@ -121,9 +126,9 @@ async function saveToPostgres(snapshot: SerializedStoreSnapshot) {
   try {
     const prisma = getMainPrisma();
     await prisma.appStoreSnapshot.upsert({
-      where: { id: "singleton" },
+      where: { id: STORE_SNAPSHOT_ID },
       create: {
-        id: "singleton",
+        id: STORE_SNAPSHOT_ID,
         version: snapshot.version,
         payload: snapshot.state as object,
       },
@@ -136,6 +141,15 @@ async function saveToPostgres(snapshot: SerializedStoreSnapshot) {
   } catch (error) {
     if (isStrictProduction()) throw error;
   }
+}
+
+function isSerializedStorePayload(payload: unknown) {
+  return Boolean(
+    payload &&
+      typeof payload === "object" &&
+      !Array.isArray(payload) &&
+      ("users" in payload || "listings" in payload || "agencies" in payload),
+  );
 }
 
 async function loadFromFile(version: number): Promise<StoreState | null> {
