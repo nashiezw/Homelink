@@ -161,11 +161,11 @@ export function SiteFooter() {
         </div>
 
         <div className="mt-8 border-t border-white/10 pt-6 sm:mt-10 sm:pt-8">
-          <div className="grid grid-cols-2 gap-x-4 gap-y-7 sm:gap-x-8 sm:gap-y-8 md:grid-cols-3 lg:grid-cols-6">
+          <div className="grid gap-x-8 gap-y-8 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
             {groups.map((group) => (
               <div key={group.title} className="min-w-0">
                 <p className="text-sm font-semibold tracking-wide text-white">{group.title}</p>
-                <div className="mt-3 grid gap-2 text-sm text-slate-400 sm:mt-4 sm:gap-2.5">
+                <div className="mt-4 grid gap-2.5 text-sm text-slate-400">
                   {group.items.map(([label, href]) => (
                     <Link
                       key={label}
