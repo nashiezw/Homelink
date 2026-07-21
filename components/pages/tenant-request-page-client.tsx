@@ -83,7 +83,41 @@ export function TenantRequestPageClient() {
   const [created, setCreated] = useState<TenantRequestRecord | null>(null);
 
   const typeOptions = form.intent === "buy" ? buyTypes : rentTypes;
-  const featureOptions = useMemo(() => (form.intent === "buy" ? buyMustHaves : rentMustHaves), [form.intent]);
+  const isBuying = form.intent === "buy";
+  const isLand = form.propertyType === "land";
+  const isCommercial = form.propertyType === "commercial";
+  const isRoom = form.propertyType === "room" || form.propertyType === "room-share";
+  const isResidential = !isLand && !isCommercial;
+  const needsBedrooms = isResidential && !isRoom;
+  const needsBathrooms = isResidential && !isRoom;
+  const needsEnsuite = form.intent === "rent" && isResidential;
+  const needsOccupants = form.intent === "rent" && isResidential && !isRoom;
+  const needsLeaseLength = form.intent === "rent" && !isLand;
+  const budgetLabel = isBuying ? "Purchase budget" : "Monthly budget";
+  const areaPlaceholder = isLand
+    ? "Cowdray Park stands, Burnside plots, preferred area"
+    : isCommercial
+      ? "CBD, Belmont, Kelvin, Avondale, preferred business area"
+      : isRoom
+        ? "Pumula South, Nkulumane 12, close to transport"
+        : "Pumula South, Nkulumane 12";
+  const notesPlaceholder = isBuying
+    ? isLand
+      ? "Example: Looking to buy a residential stand with title deeds. Budget..."
+      : isCommercial
+        ? "Example: Looking to buy a shop, office, or warehouse with good access. Budget..."
+        : "Example: Looking to buy a 4-bedroom house in Bulawayo with title deeds. Budget..."
+    : isCommercial
+      ? "Example: Looking for a shop or office around CBD/Belmont. Budget..."
+      : isRoom
+        ? "Example: Looking for a room around Nkulumane, preferably ensuite and close to transport. Budget..."
+        : "Example: Looking for a 3-bedroom house with ensuite around Pumula South or Nkulumane 12. Budget...";
+  const featureOptions = useMemo(() => {
+    if (form.intent === "buy" && isLand) return ["Title deeds", "Serviced stand", "Ready to build", "Road access", "Water nearby", "ZESA nearby", "Corner stand", "Subdivision potential"];
+    if (isCommercial) return ["Main road access", "Parking", "High foot traffic", "Secure entrance", "Loading bay", "Office space", "Zoning approved", "Near transport"];
+    if (isRoom) return ["Ensuite", "Own entrance", "Walled and gated", "Parking", "Close to transport", "Bills included", "Furnished", "Shared kitchen"];
+    return form.intent === "buy" ? buyMustHaves : rentMustHaves;
+  }, [form.intent, isCommercial, isLand, isRoom]);
 
   useEffect(() => {
     const intent = new URLSearchParams(window.location.search).get("intent");
@@ -101,13 +135,78 @@ export function TenantRequestPageClient() {
     setForm((current) => ({ ...current, [key]: value }));
   }
 
+  function setPropertyType(propertyType: string) {
+    setForm((current) => {
+      const next: FormState = { ...current, propertyType };
+      const nextIsLand = propertyType === "land";
+      const nextIsCommercial = propertyType === "commercial";
+      const nextIsRoom = propertyType === "room" || propertyType === "room-share";
+
+      if (nextIsLand || nextIsCommercial || nextIsRoom) {
+        next.bedrooms = nextIsRoom ? "1" : "";
+        next.bathrooms = "";
+        next.adults = "";
+        next.children = "";
+      } else if (!next.bedrooms) {
+        next.bedrooms = current.intent === "rent" ? "3" : "";
+      }
+
+      if (nextIsLand || nextIsCommercial) {
+        next.ensuite = "not_needed";
+      } else if (current.intent === "rent" && next.ensuite === "not_needed") {
+        next.ensuite = "preferred";
+      }
+
+      if (nextIsLand) {
+        next.leaseLength = "";
+      } else if (current.intent === "rent" && !next.leaseLength) {
+        next.leaseLength = "12 months";
+      }
+
+      if (current.intent === "buy" && nextIsLand) {
+        next.mustHaves = ["Title deeds"];
+      } else if (nextIsCommercial) {
+        next.mustHaves = ["Main road access"];
+      } else if (nextIsRoom) {
+        next.mustHaves = ["Ensuite"];
+      } else {
+        next.mustHaves = current.intent === "buy" ? ["Title deeds"] : ["Ensuite"];
+      }
+
+      return next;
+    });
+  }
+
   function setIntent(intent: "rent" | "buy") {
     setForm((current) => ({
       ...current,
       intent,
       propertyType: intent === "buy" && ["room", "room-share"].includes(current.propertyType) ? "house" : current.propertyType,
+      bedrooms: intent === "buy" && ["land", "commercial"].includes(current.propertyType) ? "" : current.bedrooms || (intent === "rent" ? "3" : ""),
+      bathrooms: intent === "buy" && ["land", "commercial"].includes(current.propertyType) ? "" : current.bathrooms,
+      ensuite: intent === "buy" || ["land", "commercial"].includes(current.propertyType) ? "not_needed" : "preferred",
+      adults: intent === "buy" ? "" : current.adults,
+      children: intent === "buy" ? "" : current.children,
+      moveInDate: intent === "buy" ? "" : current.moveInDate,
+      leaseLength: intent === "buy" ? "" : current.leaseLength || "12 months",
       mustHaves: intent === "buy" ? ["Title deeds"] : ["Ensuite"],
     }));
+  }
+
+  function buildPayload() {
+    return {
+      ...form,
+      bedrooms: needsBedrooms ? form.bedrooms : isRoom ? "1" : "",
+      bathrooms: needsBathrooms ? form.bathrooms : "",
+      ensuite: needsEnsuite ? form.ensuite : "not_needed",
+      adults: needsOccupants ? form.adults : "",
+      children: needsOccupants ? form.children : "",
+      leaseLength: needsLeaseLength ? form.leaseLength : "",
+      moveInDate: form.intent === "rent" ? form.moveInDate : "",
+      purchaseReadiness: form.intent === "buy" ? form.purchaseReadiness : "",
+      timeline: form.intent === "buy" ? form.timeline : "",
+      clientType: form.intent === "buy" ? form.clientType : "individual",
+    };
   }
 
   function toggleMustHave(item: string) {
@@ -125,7 +224,7 @@ export function TenantRequestPageClient() {
     setError("");
     const result = await apiFetch<{ request: TenantRequestRecord }>("/api/v1/property-requests", {
       method: "POST",
-      body: JSON.stringify(form),
+      body: JSON.stringify(buildPayload()),
     });
     setSubmitting(false);
     if (result.error) {
@@ -222,7 +321,7 @@ export function TenantRequestPageClient() {
                   <button
                     key={value}
                     type="button"
-                    onClick={() => update("propertyType", value)}
+                    onClick={() => setPropertyType(value)}
                     className={`min-h-11 rounded-lg border px-3 text-sm font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 ${
                       form.propertyType === value
                         ? "border-emerald-600 bg-emerald-700 text-white shadow-md shadow-emerald-950/15 dark:border-emerald-500 dark:bg-emerald-600"
@@ -235,28 +334,30 @@ export function TenantRequestPageClient() {
               </div>
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-4">
-              <TextInput label="Bedrooms" type="number" value={form.bedrooms} onChange={(value) => update("bedrooms", value)} />
-              <TextInput label="Bathrooms" type="number" value={form.bathrooms} onChange={(value) => update("bathrooms", value)} />
-              <TextInput label="Min budget" type="number" value={form.minBudget} onChange={(value) => update("minBudget", value)} />
-              <TextInput label="Max budget" type="number" value={form.maxBudget} onChange={(value) => update("maxBudget", value)} required />
+            <div className={`grid gap-4 ${needsBedrooms || needsBathrooms ? "sm:grid-cols-4" : "sm:grid-cols-2"}`}>
+              {needsBedrooms && <TextInput label="Bedrooms" type="number" value={form.bedrooms} onChange={(value) => update("bedrooms", value)} />}
+              {needsBathrooms && <TextInput label="Bathrooms" type="number" value={form.bathrooms} onChange={(value) => update("bathrooms", value)} />}
+              <TextInput label={`Minimum ${budgetLabel.toLowerCase()}`} type="number" value={form.minBudget} onChange={(value) => update("minBudget", value)} />
+              <TextInput label={`Maximum ${budgetLabel.toLowerCase()}`} type="number" value={form.maxBudget} onChange={(value) => update("maxBudget", value)} required />
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
-              <TextArea label="Preferred areas" value={form.preferredAreas} onChange={(value) => update("preferredAreas", value)} placeholder="Pumula South, Nkulumane 12" required />
+              <TextArea label={isLand ? "Preferred land / stand areas" : isCommercial ? "Preferred commercial areas" : "Preferred areas"} value={form.preferredAreas} onChange={(value) => update("preferredAreas", value)} placeholder={areaPlaceholder} required />
               <TextArea label="Alternative areas" value={form.alternativeAreas} onChange={(value) => update("alternativeAreas", value)} placeholder="Nearby suburbs or second choices" />
             </div>
 
             {form.intent === "rent" ? (
-              <div className="grid gap-4 sm:grid-cols-4">
-                <SelectInput label="Ensuite" value={form.ensuite} onChange={(value) => update("ensuite", value as FormState["ensuite"])} options={[
-                  ["required", "Required"],
-                  ["preferred", "Preferred"],
-                  ["not_needed", "Not needed"],
-                ]} />
-                <TextInput label="Lease length" value={form.leaseLength} onChange={(value) => update("leaseLength", value)} />
-                <TextInput label="Adults" type="number" value={form.adults} onChange={(value) => update("adults", value)} />
-                <TextInput label="Children" type="number" value={form.children} onChange={(value) => update("children", value)} />
+              <div className={`grid gap-4 ${needsOccupants ? "sm:grid-cols-4" : "sm:grid-cols-2"}`}>
+                {needsEnsuite && (
+                  <SelectInput label={isRoom ? "Ensuite / bathroom" : "Ensuite"} value={form.ensuite} onChange={(value) => update("ensuite", value as FormState["ensuite"])} options={[
+                    ["required", "Required"],
+                    ["preferred", "Preferred"],
+                    ["not_needed", "Not needed"],
+                  ]} />
+                )}
+                {needsLeaseLength && <TextInput label={isCommercial ? "Lease term" : "Lease length"} value={form.leaseLength} onChange={(value) => update("leaseLength", value)} />}
+                {needsOccupants && <TextInput label="Adults" type="number" value={form.adults} onChange={(value) => update("adults", value)} />}
+                {needsOccupants && <TextInput label="Children" type="number" value={form.children} onChange={(value) => update("children", value)} />}
               </div>
             ) : (
               <div className="grid gap-4 sm:grid-cols-2">
@@ -280,7 +381,7 @@ export function TenantRequestPageClient() {
               label="Extra notes"
               value={form.notes}
               onChange={(value) => update("notes", value)}
-              placeholder={form.intent === "buy" ? "Example: Looking to buy a 4-bedroom house in Bulawayo with title deeds. Budget..." : "Example: Looking for a 3-bedroom house with ensuite around Pumula South or Nkulumane 12. Budget..."}
+              placeholder={notesPlaceholder}
             />
           </section>
 
