@@ -163,11 +163,18 @@ export function TenantRequestPageClient() {
           </div>
         </section>
       ) : (
-        <form onSubmit={submit} className="grid gap-6 lg:grid-cols-[1fr_360px]">
-          <section className="space-y-5 rounded-lg border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-            <div className="flex items-center gap-2 border-b border-slate-100 pb-4 dark:border-slate-800">
-              <Home className="size-5 text-emerald-700" />
-              <h2 className="font-semibold text-ink dark:text-white">Client and property details</h2>
+        <form onSubmit={submit} className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
+          <section className="premium-card space-y-5 rounded-lg p-5 sm:p-6">
+            <div className="flex items-start gap-3 border-b border-slate-100 pb-5 dark:border-slate-800">
+              <span className="grid size-11 shrink-0 place-items-center rounded-md bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-200">
+                <Home className="size-5" />
+              </span>
+              <div className="min-w-0">
+                <h2 className="font-semibold text-ink dark:text-white">Client and property details</h2>
+                <p className="mt-1 text-sm leading-6 text-slate-500 dark:text-slate-400">
+                  The clearer the request, the better the matches HouseLink can shortlist.
+                </p>
+              </div>
             </div>
 
             <div>
@@ -178,10 +185,10 @@ export function TenantRequestPageClient() {
                     key={intent}
                     type="button"
                     onClick={() => setIntent(intent)}
-                    className={`min-h-11 rounded-lg border px-3 text-sm font-semibold capitalize transition ${
+                    className={`min-h-11 rounded-lg border px-3 text-sm font-semibold capitalize transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 ${
                       form.intent === intent
-                        ? "border-emerald-600 bg-emerald-50 text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-100"
-                        : "border-slate-200 bg-white text-slate-700 hover:border-emerald-300 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200"
+                        ? "border-emerald-600 bg-emerald-700 text-white shadow-md shadow-emerald-950/15 dark:border-emerald-500 dark:bg-emerald-600"
+                        : "border-slate-200 bg-white text-slate-700 shadow-sm hover:border-emerald-300 hover:bg-emerald-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:bg-slate-900"
                     }`}
                   >
                     {intent}
@@ -216,10 +223,10 @@ export function TenantRequestPageClient() {
                     key={value}
                     type="button"
                     onClick={() => update("propertyType", value)}
-                    className={`min-h-11 rounded-lg border px-3 text-sm font-semibold transition ${
+                    className={`min-h-11 rounded-lg border px-3 text-sm font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 ${
                       form.propertyType === value
-                        ? "border-emerald-600 bg-emerald-50 text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-100"
-                        : "border-slate-200 bg-white text-slate-700 hover:border-emerald-300 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200"
+                        ? "border-emerald-600 bg-emerald-700 text-white shadow-md shadow-emerald-950/15 dark:border-emerald-500 dark:bg-emerald-600"
+                        : "border-slate-200 bg-white text-slate-700 shadow-sm hover:border-emerald-300 hover:bg-emerald-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:bg-slate-900"
                     }`}
                   >
                     {label}
@@ -277,8 +284,10 @@ export function TenantRequestPageClient() {
             />
           </section>
 
-          <aside className="space-y-5">
-            <section className="rounded-lg border border-emerald-200 bg-emerald-50 p-5 text-emerald-950 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-50">
+          <aside className="space-y-5 lg:sticky lg:top-24 lg:self-start">
+            <section className="overflow-hidden rounded-lg border border-emerald-200 bg-white shadow-sm dark:border-emerald-900/50 dark:bg-slate-900">
+              <div className="h-1.5 bg-gradient-to-r from-emerald-600 via-teal-500 to-sky-500" />
+              <div className="p-5 text-emerald-950 dark:text-emerald-50">
               <div className="flex items-center gap-2">
                 <ShieldCheck className="size-5" />
                 <h2 className="font-semibold">How HouseLink uses this</h2>
@@ -287,16 +296,17 @@ export function TenantRequestPageClient() {
                 <p>We save your request, compare it with current listings, and notify you when there is a close fit.</p>
                 <p>Admins can also review matches and contact you manually by WhatsApp or phone.</p>
               </div>
+              </div>
             </section>
 
-            <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <section className="premium-card rounded-lg p-5">
               <div className="flex items-center gap-2">
                 <SlidersHorizontal className="size-5 text-emerald-700" />
                 <h2 className="font-semibold text-ink dark:text-white">Must-have features</h2>
               </div>
               <div className="mt-4 space-y-2">
                 {featureOptions.map((item) => (
-                  <label key={item} className="flex min-h-10 items-center gap-3 rounded-lg border border-slate-200 px-3 text-sm dark:border-slate-700">
+                  <label key={item} className="flex min-h-10 items-center gap-3 rounded-lg border border-slate-200 bg-white px-3 text-sm transition hover:border-emerald-300 hover:bg-emerald-50/60 dark:border-slate-700 dark:bg-slate-950 dark:hover:bg-slate-900">
                     <input type="checkbox" checked={form.mustHaves.includes(item)} onChange={() => toggleMustHave(item)} className="size-4 accent-emerald-700" />
                     {item}
                   </label>
@@ -306,7 +316,7 @@ export function TenantRequestPageClient() {
 
             {error && <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>}
 
-            <label className="flex items-start gap-3 rounded-lg border border-slate-200 bg-white p-4 text-sm leading-6 text-slate-600 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+            <label className="flex items-start gap-3 rounded-lg border border-slate-200 bg-white p-4 text-sm leading-6 text-slate-600 shadow-sm transition hover:border-emerald-200 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
               <input required type="checkbox" className="mt-1 size-4 shrink-0 accent-emerald-700" />
               I agree that HouseLink Zimbabwe may store this request and contact me about matching properties.
             </label>
