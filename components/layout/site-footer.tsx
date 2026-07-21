@@ -1,6 +1,6 @@
 "use client";
 
-import { Mail, MessageCircle, Phone } from "lucide-react";
+import { ArrowRight, Mail, MessageCircle, Phone, PlusCircle } from "lucide-react";
 import Link from "next/link";
 import { HouseLinkBrand } from "@/components/brand/houselink-logo";
 import { usePlatformConfig } from "@/components/providers/platform-config-provider";
@@ -139,29 +139,47 @@ export function SiteFooter() {
             )}
           </div>
 
-          <div className="min-w-0 rounded-lg border border-white/10 bg-white/[0.03] p-4 sm:p-5 lg:justify-self-end">
-            <p className="text-sm font-semibold text-white">Ready to move?</p>
-            <p className="mt-2 max-w-md text-sm leading-6 text-slate-400">
-              Add a listing, send your property request, compare homes, or contact support from one place.
-            </p>
-            <div className="mt-4 grid gap-2 sm:flex sm:flex-wrap">
+          <div className="min-w-0 rounded-lg border border-white/10 bg-white/[0.035] p-4 shadow-lg shadow-black/10 sm:p-5 lg:max-w-xl lg:justify-self-end">
+            <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-white">Tell us what you need</p>
+                <p className="mt-2 max-w-md text-sm leading-6 text-slate-400">
+                  Send your budget, area, and must-haves so HouseLink can match you with the right place.
+                </p>
+              </div>
               <Link
                 href="/property-request"
-                className="hover-lift inline-flex min-h-11 w-full items-center justify-center rounded-lg bg-white px-5 py-2.5 text-center text-sm font-semibold text-emerald-800 shadow-lg shadow-black/20 transition hover:bg-emerald-50 sm:w-auto"
+                className="hover-lift inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-white px-5 py-2.5 text-center text-sm font-semibold text-emerald-800 shadow-lg shadow-black/20 transition hover:bg-emerald-50 sm:w-auto sm:min-w-44"
               >
-                Tell us what you need
+                Property request
+                <ArrowRight className="size-4" />
               </Link>
+            </div>
+
+            <div className="mt-4 grid gap-2 border-t border-white/10 pt-4 sm:grid-cols-2">
               <Link
                 href="/dashboard/landlord/new"
-                className="hover-lift inline-flex min-h-11 w-full items-center justify-center rounded-lg bg-emerald-600 px-5 py-2.5 text-center text-sm font-semibold text-white shadow-lg shadow-emerald-950/30 transition hover:bg-emerald-500 sm:w-auto"
+                className="group inline-flex min-h-12 items-center gap-3 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2.5 text-left transition hover:border-emerald-300/50 hover:bg-white/[0.07]"
               >
-                Submit your property listing
+                <span className="grid size-9 shrink-0 place-items-center rounded-md bg-emerald-500/15 text-emerald-300 transition group-hover:bg-emerald-400/20">
+                  <PlusCircle className="size-4" />
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-sm font-semibold leading-5 text-white">List a property</span>
+                  <span className="block text-xs leading-5 text-slate-500">For owners and agents</span>
+                </span>
               </Link>
               <Link
                 href="/contact"
-                className="inline-flex min-h-11 w-full items-center justify-center rounded-lg border border-white/10 px-4 py-2.5 text-center text-sm font-semibold text-slate-200 transition hover:border-emerald-300/50 hover:text-emerald-300 sm:w-auto"
+                className="group inline-flex min-h-12 items-center gap-3 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2.5 text-left transition hover:border-sky-300/50 hover:bg-white/[0.07]"
               >
-                Contact HouseLink support
+                <span className="grid size-9 shrink-0 place-items-center rounded-md bg-sky-500/15 text-sky-300 transition group-hover:bg-sky-400/20">
+                  <MessageCircle className="size-4" />
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-sm font-semibold leading-5 text-white">Contact support</span>
+                  <span className="block text-xs leading-5 text-slate-500">Talk to HouseLink</span>
+                </span>
               </Link>
             </div>
           </div>
