@@ -1,5 +1,6 @@
 "use client";
 
+import { Check, ChevronLeft, ChevronRight } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { AuthForm } from "@/components/auth/auth-form";
@@ -18,15 +19,20 @@ import {
 } from "@/lib/agents/defaults";
 
 const STEPS = [
-  "Profile",
-  "Experience",
-  "Documents",
-  "Agreement",
-  "Submit",
+  { title: "Profile", description: "Your identity and contact details" },
+  { title: "Recruitment", description: "How you found HouseLink and where you want to work" },
+  { title: "Experience", description: "Your property, sales, and service background" },
+  { title: "Readiness", description: "Training, tools, strengths, and support needs" },
+  { title: "Documents", description: "Upload profile, ID, CV, and required checks" },
+  { title: "Banking", description: "Commission payout and mobile money details" },
+  { title: "Emergency", description: "Backup contact details for your file" },
+  { title: "Office review", description: "Internal recruitment and interview notes" },
+  { title: "Agreement", description: "HouseLink independent agent agreement" },
+  { title: "Submit", description: "Declarations, signature, and final submission" },
 ];
 
 const fieldClass =
-  "mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/15 dark:border-slate-600 dark:bg-slate-900";
+  "mt-2 min-h-12 w-full rounded-lg border border-slate-200 bg-white px-3.5 py-3 text-base outline-none transition placeholder:text-slate-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/15 sm:text-sm dark:border-slate-600 dark:bg-slate-900 dark:text-white";
 
 export function AgentApplicationWizard() {
   const router = useRouter();
@@ -115,6 +121,8 @@ export function AgentApplicationWizard() {
 
   const app = normalizeApplication(application);
   const statusLabel = application.status.replace(/_/g, " ");
+  const currentStep = STEPS[step];
+  const progress = Math.round(((step + 1) / STEPS.length) * 100);
 
   return (
     <PageShell
@@ -122,22 +130,49 @@ export function AgentApplicationWizard() {
       title="HouseLink agent application"
       description={`Complete all steps and submit for review. Current status: ${statusLabel}`}
     >
-      <div className="mb-6 flex flex-wrap gap-2">
-        {STEPS.map((label, index) => (
-          <button
-            key={label}
-            type="button"
-            onClick={() => setStep(index)}
-            className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
-              step === index ? "bg-emerald-600 text-white" : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300"
-            }`}
-          >
-            {index + 1}. {label}
-          </button>
-        ))}
+      <div className="mb-5 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div className="border-b border-slate-100 p-4 sm:p-5 dark:border-slate-800">
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0">
+              <p className="text-xs font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
+                Step {step + 1} of {STEPS.length}
+              </p>
+              <h2 className="mt-1 text-xl font-semibold text-ink dark:text-white">{currentStep.title}</h2>
+              <p className="mt-1 text-sm leading-6 text-slate-500 dark:text-slate-400">{currentStep.description}</p>
+            </div>
+            <div className="hidden shrink-0 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-sm font-semibold text-emerald-800 sm:block dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200">
+              {progress}%
+            </div>
+          </div>
+          <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+            <div className="h-full rounded-full bg-gradient-to-r from-emerald-600 to-teal-500 transition-all" style={{ width: `${progress}%` }} />
+          </div>
+        </div>
+
+        <div className="flex gap-2 overflow-x-auto px-4 py-3 sm:px-5">
+          {STEPS.map((item, index) => (
+            <button
+              key={item.title}
+              type="button"
+              onClick={() => setStep(index)}
+              className={`inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg border px-3 text-sm font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 ${
+                step === index
+                  ? "border-emerald-600 bg-emerald-700 text-white shadow-md shadow-emerald-950/15"
+                  : index < step
+                    ? "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200"
+                    : "border-slate-200 bg-slate-50 text-slate-600 hover:border-emerald-300 hover:bg-white dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300"
+              }`}
+            >
+              <span className="grid size-6 place-items-center rounded-md bg-white/80 text-xs text-emerald-800 dark:bg-white/10 dark:text-white">
+                {index < step ? <Check className="size-3.5" /> : index + 1}
+              </span>
+              {item.title}
+            </button>
+          ))}
+        </div>
       </div>
 
-      <div className="premium-card rounded-xl p-6">
+      <div className="premium-card rounded-lg p-4 text-slate-700 sm:p-6 dark:text-slate-200 [&_label]:text-slate-700 dark:[&_label]:text-slate-200">
         {step === 0 && (
           <div className="grid gap-4 sm:grid-cols-2">
             {[
@@ -629,9 +664,10 @@ export function AgentApplicationWizard() {
           </div>
         )}
 
-        <div className="mt-8 flex flex-wrap gap-3">
+        <div className="mt-8 grid gap-3 border-t border-slate-100 pt-5 sm:flex sm:flex-wrap sm:items-center sm:justify-between dark:border-slate-800">
           {step > 0 && (
-            <Button type="button" variant="secondary" onClick={() => setStep((s) => s - 1)}>
+            <Button type="button" variant="secondary" onClick={() => setStep((s) => s - 1)} className="w-full sm:w-auto">
+              <ChevronLeft className="size-4" />
               Back
             </Button>
           )}
@@ -639,8 +675,10 @@ export function AgentApplicationWizard() {
             type="button"
             onClick={() => void save(app).then(() => (step < STEPS.length - 1 ? setStep((s) => s + 1) : submit()))}
             disabled={saving}
+            className={`w-full sm:w-auto ${step === 0 ? "sm:ml-auto" : ""}`}
           >
             {step < STEPS.length - 1 ? (saving ? "Saving..." : "Save & continue") : saving ? "Submitting..." : "Submit application"}
+            {step < STEPS.length - 1 && <ChevronRight className="size-4" />}
           </Button>
         </div>
       </div>
