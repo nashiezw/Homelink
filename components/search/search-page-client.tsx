@@ -2,10 +2,12 @@
 
 import { Bell, CheckCircle2, Map as MapIcon, Search, SlidersHorizontal, Sparkles, X } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { ListingCard } from "@/components/listings/listing-card";
 import { PropertyMap } from "@/components/maps/property-map";
+import { PropertyRequestCta } from "@/components/property-requests/property-request-cta";
 import { useApp } from "@/components/providers/app-provider";
 import { Button } from "@/components/ui/button";
 import { trackEvent } from "@/lib/analytics/client";
@@ -611,6 +613,8 @@ export function SearchPageClient({ initialSearchParams = EMPTY_INITIAL_SEARCH_PA
               </label>
             </div>
           ) : null}
+
+          <PropertyRequestCta compact intent={intent === "buy" ? "buy" : "rent"} />
         </div>
       </section>
 
@@ -674,6 +678,9 @@ export function SearchPageClient({ initialSearchParams = EMPTY_INITIAL_SEARCH_PA
                     <Bell className="size-4" aria-hidden="true" />
                     {user ? "Alert me when matches appear" : "Sign in for alerts"}
                   </Button>
+                  <Link href="/property-request">
+                    <Button variant="secondary">Send request to HouseLink</Button>
+                  </Link>
                 </div>
               </div>
             )}

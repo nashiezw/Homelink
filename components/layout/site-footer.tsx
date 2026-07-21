@@ -11,6 +11,7 @@ const groups = [
     title: "Explore",
     items: [
       ["Search HouseLink properties", "/search"],
+      ["Send property request", "/property-request"],
       ["Rent in Harare", "/rent/harare"],
       ["Rooms in Avondale", "/rooms/avondale"],
       ["Buy in Bulawayo", "/property-for-sale/bulawayo"],
@@ -141,9 +142,15 @@ export function SiteFooter() {
           <div className="min-w-0 rounded-lg border border-white/10 bg-white/[0.03] p-4 sm:p-5 lg:justify-self-end">
             <p className="text-sm font-semibold text-white">Ready to move?</p>
             <p className="mt-2 max-w-md text-sm leading-6 text-slate-400">
-              Add a listing, compare homes, or contact support from one place.
+              Add a listing, send your property request, compare homes, or contact support from one place.
             </p>
             <div className="mt-4 grid gap-2 sm:flex sm:flex-wrap">
+              <Link
+                href="/property-request"
+                className="hover-lift inline-flex min-h-11 w-full items-center justify-center rounded-lg bg-white px-5 py-2.5 text-center text-sm font-semibold text-emerald-800 shadow-lg shadow-black/20 transition hover:bg-emerald-50 sm:w-auto"
+              >
+                Tell us what you need
+              </Link>
               <Link
                 href="/dashboard/landlord/new"
                 className="hover-lift inline-flex min-h-11 w-full items-center justify-center rounded-lg bg-emerald-600 px-5 py-2.5 text-center text-sm font-semibold text-white shadow-lg shadow-emerald-950/30 transition hover:bg-emerald-500 sm:w-auto"

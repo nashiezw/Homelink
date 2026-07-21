@@ -588,6 +588,27 @@
     "manualPage": 305
   },
   {
+    "title": "Tenant Rental Request Form",
+    "description": "Branded manual form for tenants to record house, room, area, budget and move-in requirements before HouseLink starts matching rentals.",
+    "category": "Property Forms",
+    "sourceCategory": "Tenant Requirements",
+    "fileName": "tenant-rental-request-form.pdf",
+    "fileUrl": "/uploads/academy/resources/tenant-rental-request-form.pdf",
+    "fileType": "PDF",
+    "tags": [
+      "tenant",
+      "rental",
+      "requirements",
+      "whatsapp",
+      "print-ready",
+      "manual form"
+    ],
+    "sortOrder": 30,
+    "version": 1,
+    "fileSizeBytes": 295953,
+    "manualPage": null
+  },
+  {
     "title": "Objection Handling Guide",
     "description": "Branded A4 print-ready objection handling guide recreated from the official HouseLink Zimbabwe training manual.",
     "category": "Marketing Resources",

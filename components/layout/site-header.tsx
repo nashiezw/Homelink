@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 const exploreNavPrimary = [
   { label: "Rent", href: "/rent/harare", feature: null },
   { label: "Buy", href: "/property-for-sale/bulawayo", feature: null },
+  { label: "Request", href: "/property-request", feature: null },
   { label: "Roommates", href: "/roommates", feature: "roommateMatching" as const },
   { label: "Academy", href: "/academy", feature: null, smartAcademy: true },
 ] as const;

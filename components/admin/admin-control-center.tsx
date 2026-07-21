@@ -29,6 +29,7 @@ import { PropertiesManagementHub } from "@/components/admin/properties-managemen
 import { PropertyManagementHub } from "@/components/admin/property-management-hub";
 import { SupportCrmHub } from "@/components/admin/support-crm-hub";
 import { SystemOpsHub } from "@/components/admin/system-ops-hub";
+import { TenantRequestsHub } from "@/components/admin/tenant-requests-hub";
 import { UserDirectory } from "@/components/admin/user-directory";
 import { LandlordAgentHub } from "@/components/admin/landlord-agent-hub";
 import { PaymentSettingsPanel } from "@/components/admin/settings/payment-settings-panel";
@@ -237,6 +238,8 @@ export function AdminControlCenter() {
 
       {tab === "support" && <SupportCrmHub />}
 
+      {(tab === "tenant-requests" || tab === "property-requests") && <TenantRequestsHub />}
+
       {tab === "enquiries" && <EnquiryCrmHub />}
 
       {tab === "proptech" && (
@@ -316,6 +319,8 @@ export function AdminControlCenter() {
 
 const tabDescriptions: Record<AdminTab, string> = {
   overview: "Executive command centre - revenue, growth, bookings, agents, and live platform intelligence.",
+  "tenant-requests": "Capture renter and buyer requirements, review matching listings, and notify clients when HouseLink has a close fit.",
+  "property-requests": "Capture renter and buyer requirements, review matching listings, and notify clients when HouseLink has a close fit.",
   users: "Search accounts, manage roles, suspend users, and review growth analytics.",
   properties: "Analyse listing quality and run bulk approve, verify, feature, archive, or delete actions.",
   verification: "Review landlord, agency, and identity verification submissions.",

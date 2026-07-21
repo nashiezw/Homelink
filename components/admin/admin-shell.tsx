@@ -44,6 +44,8 @@ import type { Notification } from "@/lib/store/types";
 
 export type AdminTab =
   | "overview"
+  | "tenant-requests"
+  | "property-requests"
   | "users"
   | "properties"
   | "verification"
@@ -93,6 +95,7 @@ const NAV_GROUPS: Array<{ label: string; items: NavItem[] }> = [
     label: "Operations",
     items: [
       { id: "overview", label: "Command Center", icon: LayoutDashboard },
+      { id: "property-requests", label: "Property Requests", icon: Bell },
       { id: "enquiries", label: "Enquiry CRM", icon: MessageSquare },
       { id: "proptech", label: "PropTech Suite", icon: Brain },
       { id: "reports", label: "Reports", icon: FileText },
@@ -163,6 +166,8 @@ const NAV_GROUPS: Array<{ label: string; items: NavItem[] }> = [
 
 const TAB_LABELS: Record<AdminTab, string> = {
   overview: "Command Center",
+  "tenant-requests": "Property Requests",
+  "property-requests": "Property Requests",
   users: "Users & Directory",
   properties: "Listings Hub",
   verification: "Verification Queue",
@@ -201,7 +206,7 @@ function findNavGroup(tab: AdminTab) {
 function allowedTabsForRoles(roles: string[]): Set<AdminTab> | null {
   if (roles.includes("ADMIN")) return null;
   const tabs = new Set<AdminTab>();
-  if (roles.includes("SUPPORT")) ["overview", "support", "enquiries", "proptech", "reports"].forEach((tab) => tabs.add(tab as AdminTab));
+  if (roles.includes("SUPPORT")) ["overview", "support", "property-requests", "tenant-requests", "enquiries", "proptech", "reports"].forEach((tab) => tabs.add(tab as AdminTab));
   if (roles.includes("BILLING")) ["overview", "support", "payments", "reports"].forEach((tab) => tabs.add(tab as AdminTab));
   if (roles.includes("TECH_SUPPORT")) ["overview", "support", "system", "security", "reports"].forEach((tab) => tabs.add(tab as AdminTab));
   if (roles.includes("TRUST_SAFETY")) ["overview", "support", "verification", "moderation", "users", "reports"].forEach((tab) => tabs.add(tab as AdminTab));

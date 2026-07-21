@@ -17,6 +17,7 @@ import { getMainPrisma, isPostgresStoreEnabled } from "@/lib/db/main-prisma";
 import { recordPostgresAuditEvent } from "@/lib/auth/postgres-auth";
 import { createSignedAgreement } from "@/lib/signatures/postgres-signature-repository";
 import { getStore } from "@/lib/store/app-store";
+import { matchActiveTenantRequestsForListing } from "@/lib/tenant-requests/repository";
 import { isStrictProductionMode } from "@/lib/production/runtime";
 import { isAllowedAvailabilityStatus } from "@/lib/listings/status";
 import type { ListingRecord, StoreUser } from "@/lib/store/types";
@@ -236,7 +237,11 @@ export async function createListingInPostgres(input: ListingInput, ownerId: stri
     }).catch(() => null);
   }
 
-  return toListingRecord(created);
+  const listing = toListingRecord(created);
+  if (listing.status === "ACTIVE") {
+    await matchActiveTenantRequestsForListing(listing).catch(() => []);
+  }
+  return listing;
 }
 
 export async function listListingsFromPostgres(query: {
@@ -570,7 +575,11 @@ export async function updateListingInPostgres(id: string, updates: ListingInput)
     return tx.listing.findUniqueOrThrow({ where: { id }, include: LISTING_INCLUDE });
   });
 
-  return toListingRecord(updated);
+  const listing = toListingRecord(updated);
+  if (listing.status === "ACTIVE" || listing.status === "VIEWING_IN_PROGRESS") {
+    await matchActiveTenantRequestsForListing(listing).catch(() => []);
+  }
+  return listing;
 }
 
 export async function listAdminListingsFromPostgres(filters: {

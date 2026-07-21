@@ -18,6 +18,7 @@ import { StatCard } from "@/components/dashboard/stat-card";
 import { useApp } from "@/components/providers/app-provider";
 import { Button } from "@/components/ui/button";
 import { AgentEnquiryWorkbench } from "@/components/agents/agent-enquiry-workbench";
+import { AgentPropertyRequestsPanel } from "@/components/agents/agent-property-requests-panel";
 import { AgentViewingAvailabilityPanel } from "@/components/agents/agent-viewing-availability-panel";
 import { AgentViewingRequestsPanel } from "@/components/agents/agent-viewing-requests-panel";
 import { CloseLeadModal } from "@/components/agents/close-lead-modal";
@@ -51,6 +52,7 @@ type AgentData = {
 const TABS = [
   "Dashboard",
   "Enquiries",
+  "Property Requests",
   "Leads",
   "Listings",
   "Commissions",
@@ -224,6 +226,8 @@ export function AgentDashboardClient() {
       )}
 
       {tab === "Enquiries" && <AgentEnquiryWorkbench />}
+
+      {tab === "Property Requests" && <AgentPropertyRequestsPanel />}
 
       {tab === "Leads" && (
         <div className="grid gap-4">
