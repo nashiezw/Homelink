@@ -13,6 +13,7 @@ const rentTypes = [
   ["flat", "Flat"],
   ["room", "Room"],
   ["room-share", "Room share"],
+  ["holiday_home", "Holiday home"],
   ["commercial", "Commercial"],
 ];
 
@@ -27,6 +28,7 @@ const buyTypes = [
 
 const rentMustHaves = ["Ensuite", "Walled and gated", "Borehole", "Solar backup", "Parking", "Pet friendly", "Close to transport", "Close to schools"];
 const buyMustHaves = ["Title deeds", "Walled and gated", "Borehole", "Solar backup", "Main road access", "Near schools", "Subdivision potential", "Ready to transfer"];
+const holidayMustHaves = ["Self-catering", "Furnished", "WiFi", "Swimming pool", "Secure parking", "Generator / solar backup", "Cleaning service", "Family friendly"];
 
 type FormState = {
   intent: "rent" | "buy";
@@ -43,6 +45,7 @@ type FormState = {
   maxBudget: string;
   minBudget: string;
   moveInDate: string;
+  checkOutDate: string;
   leaseLength: string;
   purchaseReadiness: string;
   timeline: string;
@@ -67,6 +70,7 @@ const initialForm: FormState = {
   maxBudget: "",
   minBudget: "",
   moveInDate: "",
+  checkOutDate: "",
   leaseLength: "12 months",
   purchaseReadiness: "cash_ready",
   timeline: "ready_now",
@@ -87,17 +91,20 @@ export function TenantRequestPageClient() {
   const isLand = form.propertyType === "land";
   const isCommercial = form.propertyType === "commercial";
   const isRoom = form.propertyType === "room" || form.propertyType === "room-share";
+  const isHoliday = form.propertyType === "holiday_home";
   const isResidential = !isLand && !isCommercial;
   const needsBedrooms = isResidential && !isRoom;
   const needsBathrooms = isResidential && !isRoom;
-  const needsEnsuite = form.intent === "rent" && isResidential;
+  const needsEnsuite = form.intent === "rent" && isResidential && !isHoliday;
   const needsOccupants = form.intent === "rent" && isResidential && !isRoom;
-  const needsLeaseLength = form.intent === "rent" && !isLand;
-  const budgetLabel = isBuying ? "Purchase budget" : "Monthly budget";
+  const needsLeaseLength = form.intent === "rent" && !isLand && !isHoliday;
+  const budgetLabel = isBuying ? "Purchase budget" : isHoliday ? "Nightly budget" : "Monthly budget";
   const areaPlaceholder = isLand
     ? "Cowdray Park stands, Burnside plots, preferred area"
     : isCommercial
       ? "CBD, Belmont, Kelvin, Avondale, preferred business area"
+      : isHoliday
+        ? "Victoria Falls, Kariba, Nyanga, preferred holiday area"
       : isRoom
         ? "Pumula South, Nkulumane 12, close to transport"
         : "Pumula South, Nkulumane 12";
@@ -109,15 +116,18 @@ export function TenantRequestPageClient() {
         : "Example: Looking to buy a 4-bedroom house in Bulawayo with title deeds. Budget..."
     : isCommercial
       ? "Example: Looking for a shop or office around CBD/Belmont. Budget..."
+      : isHoliday
+        ? "Example: Looking for a furnished holiday home in Victoria Falls for a family trip. Dates, guests, budget..."
       : isRoom
         ? "Example: Looking for a room around Nkulumane, preferably ensuite and close to transport. Budget..."
         : "Example: Looking for a 3-bedroom house with ensuite around Pumula South or Nkulumane 12. Budget...";
   const featureOptions = useMemo(() => {
     if (form.intent === "buy" && isLand) return ["Title deeds", "Serviced stand", "Ready to build", "Road access", "Water nearby", "ZESA nearby", "Corner stand", "Subdivision potential"];
     if (isCommercial) return ["Main road access", "Parking", "High foot traffic", "Secure entrance", "Loading bay", "Office space", "Zoning approved", "Near transport"];
+    if (isHoliday) return holidayMustHaves;
     if (isRoom) return ["Ensuite", "Own entrance", "Walled and gated", "Parking", "Close to transport", "Bills included", "Furnished", "Shared kitchen"];
     return form.intent === "buy" ? buyMustHaves : rentMustHaves;
-  }, [form.intent, isCommercial, isLand, isRoom]);
+  }, [form.intent, isCommercial, isHoliday, isLand, isRoom]);
 
   useEffect(() => {
     const intent = new URLSearchParams(window.location.search).get("intent");
@@ -125,7 +135,7 @@ export function TenantRequestPageClient() {
       setForm((current) => ({
         ...current,
         intent,
-        propertyType: intent === "buy" && ["room", "room-share"].includes(current.propertyType) ? "house" : current.propertyType,
+        propertyType: intent === "buy" && ["room", "room-share", "holiday_home"].includes(current.propertyType) ? "house" : current.propertyType,
         mustHaves: intent === "buy" ? ["Title deeds"] : ["Ensuite"],
       }));
     }
@@ -141,6 +151,7 @@ export function TenantRequestPageClient() {
       const nextIsLand = propertyType === "land";
       const nextIsCommercial = propertyType === "commercial";
       const nextIsRoom = propertyType === "room" || propertyType === "room-share";
+      const nextIsHoliday = propertyType === "holiday_home";
 
       if (nextIsLand || nextIsCommercial || nextIsRoom) {
         next.bedrooms = nextIsRoom ? "1" : "";
@@ -151,13 +162,13 @@ export function TenantRequestPageClient() {
         next.bedrooms = current.intent === "rent" ? "3" : "";
       }
 
-      if (nextIsLand || nextIsCommercial) {
+      if (nextIsLand || nextIsCommercial || nextIsHoliday) {
         next.ensuite = "not_needed";
       } else if (current.intent === "rent" && next.ensuite === "not_needed") {
         next.ensuite = "preferred";
       }
 
-      if (nextIsLand) {
+      if (nextIsLand || nextIsHoliday) {
         next.leaseLength = "";
       } else if (current.intent === "rent" && !next.leaseLength) {
         next.leaseLength = "12 months";
@@ -167,6 +178,8 @@ export function TenantRequestPageClient() {
         next.mustHaves = ["Title deeds"];
       } else if (nextIsCommercial) {
         next.mustHaves = ["Main road access"];
+      } else if (nextIsHoliday) {
+        next.mustHaves = ["Self-catering", "Furnished"];
       } else if (nextIsRoom) {
         next.mustHaves = ["Ensuite"];
       } else {
@@ -181,13 +194,14 @@ export function TenantRequestPageClient() {
     setForm((current) => ({
       ...current,
       intent,
-      propertyType: intent === "buy" && ["room", "room-share"].includes(current.propertyType) ? "house" : current.propertyType,
-      bedrooms: intent === "buy" && ["land", "commercial"].includes(current.propertyType) ? "" : current.bedrooms || (intent === "rent" ? "3" : ""),
-      bathrooms: intent === "buy" && ["land", "commercial"].includes(current.propertyType) ? "" : current.bathrooms,
-      ensuite: intent === "buy" || ["land", "commercial"].includes(current.propertyType) ? "not_needed" : "preferred",
+      propertyType: intent === "buy" && ["room", "room-share", "holiday_home"].includes(current.propertyType) ? "house" : current.propertyType,
+      bedrooms: intent === "buy" && ["land", "commercial", "holiday_home"].includes(current.propertyType) ? "" : current.bedrooms || (intent === "rent" ? "3" : ""),
+      bathrooms: intent === "buy" && ["land", "commercial", "holiday_home"].includes(current.propertyType) ? "" : current.bathrooms,
+      ensuite: intent === "buy" || ["land", "commercial", "holiday_home"].includes(current.propertyType) ? "not_needed" : "preferred",
       adults: intent === "buy" ? "" : current.adults,
       children: intent === "buy" ? "" : current.children,
       moveInDate: intent === "buy" ? "" : current.moveInDate,
+      checkOutDate: intent === "buy" ? "" : current.checkOutDate,
       leaseLength: intent === "buy" ? "" : current.leaseLength || "12 months",
       mustHaves: intent === "buy" ? ["Title deeds"] : ["Ensuite"],
     }));
@@ -203,6 +217,7 @@ export function TenantRequestPageClient() {
       children: needsOccupants ? form.children : "",
       leaseLength: needsLeaseLength ? form.leaseLength : "",
       moveInDate: form.intent === "rent" ? form.moveInDate : "",
+      checkOutDate: isHoliday ? form.checkOutDate : "",
       purchaseReadiness: form.intent === "buy" ? form.purchaseReadiness : "",
       timeline: form.intent === "buy" ? form.timeline : "",
       clientType: form.intent === "buy" ? form.clientType : "individual",
@@ -300,7 +315,12 @@ export function TenantRequestPageClient() {
               <TextInput label="Full name" value={form.name} onChange={(value) => update("name", value)} required />
               <TextInput label="WhatsApp / phone" value={form.phone} onChange={(value) => update("phone", value)} required />
               <TextInput label="Email" type="email" value={form.email} onChange={(value) => update("email", value)} />
-              {form.intent === "rent" ? (
+              {form.intent === "rent" && isHoliday ? (
+                <>
+                  <TextInput label="Check-in date" type="date" value={form.moveInDate} onChange={(value) => update("moveInDate", value)} />
+                  <TextInput label="Check-out date" type="date" value={form.checkOutDate} onChange={(value) => update("checkOutDate", value)} />
+                </>
+              ) : form.intent === "rent" ? (
                 <TextInput label="Move-in date" type="date" value={form.moveInDate} onChange={(value) => update("moveInDate", value)} />
               ) : (
                 <SelectInput label="Buying as" value={form.clientType} onChange={(value) => update("clientType", value)} options={[
@@ -342,7 +362,7 @@ export function TenantRequestPageClient() {
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
-              <TextArea label={isLand ? "Preferred land / stand areas" : isCommercial ? "Preferred commercial areas" : "Preferred areas"} value={form.preferredAreas} onChange={(value) => update("preferredAreas", value)} placeholder={areaPlaceholder} required />
+              <TextArea label={isLand ? "Preferred land / stand areas" : isCommercial ? "Preferred commercial areas" : isHoliday ? "Preferred holiday areas" : "Preferred areas"} value={form.preferredAreas} onChange={(value) => update("preferredAreas", value)} placeholder={areaPlaceholder} required />
               <TextArea label="Alternative areas" value={form.alternativeAreas} onChange={(value) => update("alternativeAreas", value)} placeholder="Nearby suburbs or second choices" />
             </div>
 
@@ -356,8 +376,8 @@ export function TenantRequestPageClient() {
                   ]} />
                 )}
                 {needsLeaseLength && <TextInput label={isCommercial ? "Lease term" : "Lease length"} value={form.leaseLength} onChange={(value) => update("leaseLength", value)} />}
-                {needsOccupants && <TextInput label="Adults" type="number" value={form.adults} onChange={(value) => update("adults", value)} />}
-                {needsOccupants && <TextInput label="Children" type="number" value={form.children} onChange={(value) => update("children", value)} />}
+                {needsOccupants && <TextInput label={isHoliday ? "Adult guests" : "Adults"} type="number" value={form.adults} onChange={(value) => update("adults", value)} />}
+                {needsOccupants && <TextInput label={isHoliday ? "Child guests" : "Children"} type="number" value={form.children} onChange={(value) => update("children", value)} />}
               </div>
             ) : (
               <div className="grid gap-4 sm:grid-cols-2">

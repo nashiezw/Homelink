@@ -127,7 +127,7 @@ export function TenantRequestsHub() {
                   <Status status={request.status} />
                 </div>
                 <p className="mt-3 text-sm text-slate-300">
-                  {request.intent === "buy" ? "Buy" : "Rent"} - {request.bedrooms ?? "Any"} bed {request.propertyType} in {[...request.preferredAreas, ...request.alternativeAreas].join(", ")}
+                  {request.intent === "buy" ? "Buy" : request.propertyType === "holiday_home" ? "Holiday stay" : "Rent"} - {request.bedrooms ?? "Any"} bed {formatPropertyType(request.propertyType)} in {[...request.preferredAreas, ...request.alternativeAreas].join(", ")}
                 </p>
                 <p className="mt-1 text-xs text-slate-500">Budget: {request.maxBudget ? `$${request.maxBudget}` : "Not set"} - {request.matches.length} matches</p>
                 <p className="mt-1 text-xs text-slate-500">Assigned: {request.assignedAgentName ?? "Unassigned"} - Expires {new Date(request.expiresAt).toLocaleDateString()}</p>
@@ -158,10 +158,13 @@ export function TenantRequestsHub() {
           </div>
 
           <div className="mt-5 grid gap-4 md:grid-cols-3">
-            <Detail label="Intent" value={selected.intent === "buy" ? "Buying" : "Renting"} />
-            <Detail label="Property" value={`${selected.bedrooms ?? "Any"} bed ${selected.propertyType}`} />
+            <Detail label="Intent" value={selected.intent === "buy" ? "Buying" : selected.propertyType === "holiday_home" ? "Holiday stay" : "Renting"} />
+            <Detail label="Property" value={`${selected.bedrooms ?? "Any"} bed ${formatPropertyType(selected.propertyType)}`} />
             <Detail label="Budget" value={selected.maxBudget ? `$${selected.maxBudget}` : "Not set"} />
-            <Detail label={selected.intent === "buy" ? "Timeline" : "Move-in"} value={selected.intent === "buy" ? labelize(selected.timeline ?? "flexible") : selected.moveInDate ?? "Flexible"} />
+            <Detail
+              label={selected.intent === "buy" ? "Timeline" : selected.propertyType === "holiday_home" ? "Stay dates" : "Move-in"}
+              value={selected.intent === "buy" ? labelize(selected.timeline ?? "flexible") : selected.propertyType === "holiday_home" ? [selected.moveInDate, selected.checkOutDate].filter(Boolean).join(" to ") || "Flexible" : selected.moveInDate ?? "Flexible"}
+            />
             <Detail label="Areas" value={[...selected.preferredAreas, ...selected.alternativeAreas].join(", ")} className="md:col-span-2" />
             <Detail label="Features" value={[selected.intent === "rent" && selected.ensuite !== "not_needed" ? `${selected.ensuite} ensuite` : "", ...selected.mustHaves].filter(Boolean).join(", ") || "None"} />
             {selected.intent === "buy" && <Detail label="Readiness" value={labelize(selected.purchaseReadiness ?? "not specified")} />}
@@ -304,6 +307,10 @@ function MatchLabel({ label }: { label: string }) {
 
 function labelize(value: string) {
   return value.replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function formatPropertyType(value: string) {
+  return value === "holiday_home" ? "holiday home" : value.replace(/-/g, " ");
 }
 
 function phoneToWhatsApp(value: string) {

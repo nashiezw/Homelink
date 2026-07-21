@@ -76,7 +76,7 @@ export function AgentPropertyRequestsPanel() {
               <span className="rounded-full bg-cyan-100 px-2.5 py-1 text-[11px] font-semibold text-cyan-800 dark:bg-cyan-500/15 dark:text-cyan-200">{request.status}</span>
             </div>
             <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-              {request.intent === "buy" ? "Buy" : "Rent"} - {request.bedrooms ?? "Any"} bed {request.propertyType}
+              {request.intent === "buy" ? "Buy" : request.propertyType === "holiday_home" ? "Holiday stay" : "Rent"} - {request.bedrooms ?? "Any"} bed {formatPropertyType(request.propertyType)}
             </p>
             <p className="mt-1 text-xs text-slate-500">{request.matches.length} matches - expires {new Date(request.expiresAt).toLocaleDateString()}</p>
           </button>
@@ -164,6 +164,10 @@ function Detail({ label, value }: { label: string; value: string }) {
 
 function labelize(value: string) {
   return value.replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function formatPropertyType(value: string) {
+  return value === "holiday_home" ? "holiday home" : value.replace(/-/g, " ");
 }
 
 function phoneToWhatsApp(value: string) {

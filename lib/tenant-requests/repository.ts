@@ -38,6 +38,7 @@ export function normalizeTenantRequestInput(body: Record<string, unknown>): Tena
     minBudget: positiveNumber(body.minBudget),
     maxBudget: positiveNumber(body.maxBudget),
     moveInDate: clean(body.moveInDate) || undefined,
+    checkOutDate: clean(body.checkOutDate) || undefined,
     leaseLength: clean(body.leaseLength) || undefined,
     purchaseReadiness: normalizePurchaseReadiness(body.purchaseReadiness),
     timeline: normalizeTimeline(body.timeline),
@@ -251,23 +252,24 @@ export async function notifyTenantRequestManually(id: string, listingIds: string
 
 export function buildTenantRequestWhatsAppMessage(request: TenantRequestRecord, listingIds?: string[]) {
   const matches = (listingIds?.length ? request.matches.filter((match) => listingIds.includes(match.listingId)) : request.matches).slice(0, 3);
+  const requestLabel = requestKindLabel(request);
   if (!matches.length) {
-    return `Hi ${request.name}, this is HouseLink Zimbabwe. We have recorded your ${request.intent === "buy" ? "buying" : "rental"} request and will contact you when we have a close match.`;
+    return `Hi ${request.name}, this is HouseLink Zimbabwe. We have recorded your ${requestLabel} request and will contact you when we have a close match.`;
   }
   const lines = matches.map((match, index) => {
     const link = match.slug ? ` https://www.houselink.co.zw/listings/${match.slug}` : "";
     return `${index + 1}. ${match.listingTitle}, ${match.suburb} - $${match.price}.${link}`;
   });
-  return `Hi ${request.name}, HouseLink found ${matches.length === 1 ? "a property" : "properties"} close to your ${request.intent === "buy" ? "buying" : "rental"} request:\n\n${lines.join("\n")}\n\nWould you like us to arrange viewing details?`;
+  return `Hi ${request.name}, HouseLink found ${matches.length === 1 ? "a property" : "properties"} close to your ${requestLabel} request:\n\n${lines.join("\n")}\n\nWould you like us to arrange viewing details?`;
 }
 
 export function buildStillLookingWhatsAppMessage(request: TenantRequestRecord) {
   const areas = [...request.preferredAreas, ...request.alternativeAreas].slice(0, 3).join(", ") || "your preferred area";
-  return `Hi ${request.name}, this is HouseLink Zimbabwe. Are you still looking to ${request.intent === "buy" ? "buy" : "rent"} ${request.propertyType === "other" ? "a property" : `a ${request.propertyType}`} around ${areas}? Reply YES if we should keep matching you, or send updated area/budget details.`;
+  return `Hi ${request.name}, this is HouseLink Zimbabwe. Are you still looking for ${request.propertyType === "holiday_home" ? "a holiday home" : request.intent === "buy" ? "a property to buy" : request.propertyType === "other" ? "a property to rent" : `a ${request.propertyType} to rent`} around ${areas}? Reply YES if we should keep matching you, or send updated area/budget details.`;
 }
 
 export function buildRequestReceivedMessage(request: TenantRequestRecord) {
-  return `Hi ${request.name}, HouseLink has received your ${request.intent === "buy" ? "buying" : "rental"} request. We will match your area, budget, and must-haves with suitable listings and contact you when there is a close fit. Reference: ${request.id}`;
+  return `Hi ${request.name}, HouseLink has received your ${requestKindLabel(request)} request. We will match your area, budget, and must-haves with suitable listings and contact you when there is a close fit. Reference: ${request.id}`;
 }
 
 export async function matchActiveTenantRequestsForListing(listing: Listing) {
@@ -400,7 +402,7 @@ async function notifyTenantRequestMatches(request: TenantRequestRecord, matches:
     .map((match) => `- ${match.listingTitle}, ${match.suburb}: $${match.price} (${match.reasons.join(", ")})`)
     .join("\n");
   const subject = mode === "manual" ? "HouseLink property matches selected for you" : "HouseLink found a property match for your request";
-  const body = `Hi ${request.name},\n\nHouseLink found listing matches for your ${request.intent === "buy" ? "buying" : "rental"} request:\n\n${top}\n\nReply to HouseLink on WhatsApp or email to arrange viewing details.`;
+  const body = `Hi ${request.name},\n\nHouseLink found listing matches for your ${requestKindLabel(request)} request:\n\n${top}\n\nReply to HouseLink on WhatsApp or email to arrange viewing details.`;
   await sendSmtpPlainEmail(integrations, request.email, subject, body);
 }
 
@@ -483,7 +485,7 @@ function tenantRequestPayload(id: string, input: TenantRequestInput, seekerId: s
       {
         id: `act_${crypto.randomUUID()}`,
         type: "CREATED",
-        message: `${input.intent === "buy" ? "Buyer" : "Tenant rental"} request submitted.`,
+        message: `${input.propertyType === "holiday_home" ? "Holiday home" : input.intent === "buy" ? "Buyer" : "Tenant rental"} request submitted.`,
         createdAt: now,
       },
     ],
@@ -516,8 +518,13 @@ function normalize(value: string) {
 }
 
 function normalizePropertyType(value: unknown): TenantRequestInput["propertyType"] {
-  const allowed = ["house", "cottage", "flat", "room", "room-share", "land", "commercial", "other"] as const;
+  const allowed = ["house", "cottage", "flat", "room", "room-share", "land", "commercial", "holiday_home", "other"] as const;
   return allowed.includes(value as TenantRequestInput["propertyType"]) ? (value as TenantRequestInput["propertyType"]) : "house";
+}
+
+function requestKindLabel(request: TenantRequestRecord) {
+  if (request.propertyType === "holiday_home") return "holiday home";
+  return request.intent === "buy" ? "buying" : "rental";
 }
 
 function normalizeClientType(value: unknown): TenantRequestInput["clientType"] {

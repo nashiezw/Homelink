@@ -8,7 +8,7 @@ export type TenantRequestInput = {
   phone: string;
   email?: string;
   clientType?: "individual" | "family" | "company" | "investor" | "diaspora" | "other";
-  propertyType: "house" | "cottage" | "flat" | "room" | "room-share" | "land" | "commercial" | "other";
+  propertyType: "house" | "cottage" | "flat" | "room" | "room-share" | "land" | "commercial" | "holiday_home" | "other";
   bedrooms?: number;
   bathrooms?: number;
   ensuite: "required" | "preferred" | "not_needed";
@@ -17,6 +17,7 @@ export type TenantRequestInput = {
   maxBudget?: number;
   minBudget?: number;
   moveInDate?: string;
+  checkOutDate?: string;
   leaseLength?: string;
   purchaseReadiness?: "cash_ready" | "mortgage" | "payment_plan" | "still_browsing" | "other";
   timeline?: "ready_now" | "one_to_three_months" | "three_to_six_months" | "flexible";
