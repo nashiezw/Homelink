@@ -67,6 +67,12 @@ const paths = [
   },
 ];
 
+const campusChecks = [
+  ["Budget fit", "rent, deposit, and bills"],
+  ["Route check", "campus and transport access"],
+  ["Viewing ready", "rules and essentials confirmed"],
+];
+
 const comparisonRows = [
   ["Location", "Campus, transport routes, suburb safety, and walking distance."],
   ["Living rules", "Gender policy, curfew, visitor policy, capacity, and quiet hours."],
@@ -106,7 +112,8 @@ export default function StudentAccommodationPage() {
               <span className="truncate">Student accommodation on HouseLink</span>
             </div>
             <h1 className="mt-6 max-w-4xl text-4xl font-semibold leading-[1.05] tracking-normal text-white sm:text-6xl lg:text-[4.15rem]">
-              Find a student room close to campus, rules, budget, and real life.
+              Campus-close rooms for{" "}
+              <span className="text-gradient-emerald">study, safety, and real life.</span>
             </h1>
             <p className="mt-5 max-w-2xl text-base leading-7 text-slate-100 sm:text-lg sm:leading-8">
               Search boarding houses, rooms, and shared accommodation by campus area, monthly budget, gender policy, WiFi, meals, transport access, and viewing readiness.
@@ -165,13 +172,9 @@ export default function StudentAccommodationPage() {
                 </div>
 
                 <div className="mt-4 grid gap-3 border-t border-slate-200 pt-4 sm:grid-cols-3 dark:border-slate-800">
-                  {[
-                    ["$180", "common starter budget"],
-                    ["15 min", "target campus route"],
-                    ["4 checks", "before viewing"],
-                  ].map(([value, label]) => (
+                  {campusChecks.map(([value, label]) => (
                     <div key={label} className="rounded-lg bg-slate-50 p-3 dark:bg-slate-900">
-                      <p className="text-lg font-semibold text-slate-950 dark:text-white">{value}</p>
+                      <p className="text-sm font-semibold text-slate-950 dark:text-white">{value}</p>
                       <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">{label}</p>
                     </div>
                   ))}
