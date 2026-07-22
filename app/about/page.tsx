@@ -215,7 +215,10 @@ export default function AboutPage() {
                   List Your Property
                 </Link>
               </div>
-              <div className="mt-8 flex flex-wrap gap-2">
+              <p className="mt-5 text-sm font-medium text-emerald-100/90 sm:hidden">
+                Verified listings / Trusted agents / Rooms and homes
+              </p>
+              <div className="mt-8 hidden flex-wrap gap-2 sm:flex">
                 {["Verified listings", "Trusted agents", "Rooms and homes"].map((item) => (
                   <span key={item} className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-sm font-medium text-white backdrop-blur">
                     <CheckCircle2 className="size-3.5 shrink-0 text-emerald-300" aria-hidden="true" />

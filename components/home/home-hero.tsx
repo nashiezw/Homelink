@@ -43,7 +43,10 @@ export function HomeHero({ hero }: HomeHeroProps) {
           <p className="animate-fade-up mt-5 max-w-2xl text-base leading-7 text-slate-100 motion-reduce:animate-none sm:mt-6 sm:text-lg sm:leading-8 [animation-delay:160ms]">
             {hero.description}
           </p>
-          <div className="animate-fade-up mt-5 flex flex-wrap gap-2 motion-reduce:animate-none sm:mt-6 [animation-delay:120ms]">
+          <p className="animate-fade-up mt-4 text-sm font-medium text-emerald-100/90 motion-reduce:animate-none sm:hidden [animation-delay:120ms]">
+            {hero.badges.join(" / ")}
+          </p>
+          <div className="animate-fade-up mt-5 hidden flex-wrap gap-2 motion-reduce:animate-none sm:mt-6 sm:flex [animation-delay:120ms]">
             {hero.badges.map((item) => (
               <span
                 key={item}

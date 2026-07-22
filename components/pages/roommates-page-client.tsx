@@ -720,7 +720,11 @@ export function RoommatesPageClient() {
                   Zimbabwe&apos;s most trusted room-sharing platform — real photos, verified profiles, and matches that actually fit your lifestyle.
                 </p>
 
-                <div className="mt-6 flex flex-wrap items-center gap-4">
+                <p className="mt-4 text-sm font-semibold text-emerald-100/90 sm:hidden">
+                  {liveProfileCount} active {liveProfileCount === 1 ? "profile" : "profiles"} / {heroLocationLine}
+                </p>
+
+                <div className="mt-6 hidden flex-wrap items-center gap-4 sm:flex">
                   <AvatarStack urls={heroMemberStack} />
                   <div>
                     <p className="text-base font-bold text-white">
