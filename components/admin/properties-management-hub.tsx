@@ -80,12 +80,12 @@ const STATUSES = ["", ...LISTING_WORKFLOW_STATUSES];
 const TYPES = ["", "room", "boarding_house", "house", "flat", "cottage", "commercial", "land", "holiday_home"];
 const INTENTS = ["", "rent", "buy"];
 
-export function PropertiesManagementHub() {
+export function PropertiesManagementHub({ initialType = "" }: { initialType?: string } = {}) {
   const { showToast } = useApp();
   const [data, setData] = useState<ListingsResponse | null>(null);
   const [q, setQ] = useState("");
   const [status, setStatus] = useState("");
-  const [type, setType] = useState("");
+  const [type, setType] = useState(initialType);
   const [intent, setIntent] = useState("");
   const [includeDeleted, setIncludeDeleted] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -338,6 +338,28 @@ export function PropertiesManagementHub() {
         </label>
         <Button variant="secondary" onClick={() => void load()}><RefreshCw className="size-4" /></Button>
       </AdminFilterBar>
+
+      {initialType === "boarding_house" && (
+        <div className="flex flex-wrap gap-2">
+          {["NUST", "UZ", "MSU", "WiFi", "Study area", "Meals included", "Bills included"].map((term) => (
+            <button
+              key={term}
+              type="button"
+              onClick={() => setQ(term)}
+              className="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-xs font-semibold text-slate-300 transition hover:border-emerald-400/40 hover:text-emerald-200"
+            >
+              {term}
+            </button>
+          ))}
+          <button
+            type="button"
+            onClick={() => setQ("")}
+            className="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-xs font-semibold text-slate-500 transition hover:text-slate-200"
+          >
+            Clear
+          </button>
+        </div>
+      )}
 
       {selected.size > 0 && (
         <AdminToolbar>

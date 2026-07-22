@@ -29,6 +29,7 @@ import { PropertiesManagementHub } from "@/components/admin/properties-managemen
 import { PropertyManagementHub } from "@/components/admin/property-management-hub";
 import { SupportCrmHub } from "@/components/admin/support-crm-hub";
 import { SystemOpsHub } from "@/components/admin/system-ops-hub";
+import { StudentAccommodationAdminHub } from "@/components/admin/student-accommodation-admin-hub";
 import { TenantRequestsHub } from "@/components/admin/tenant-requests-hub";
 import { UserDirectory } from "@/components/admin/user-directory";
 import { LandlordAgentHub } from "@/components/admin/landlord-agent-hub";
@@ -219,6 +220,8 @@ export function AdminControlCenter() {
         </>
       )}
 
+      {tab === "student-accommodation" && <StudentAccommodationAdminHub />}
+
       {tab === "verification" && (
         <Panel title="Verification queue">
           <VerificationQueue items={data.verification ?? []} onRefresh={() => void load()} />
@@ -323,6 +326,7 @@ const tabDescriptions: Record<AdminTab, string> = {
   "property-requests": "Capture renter and buyer requirements, review matching listings, and notify clients when HouseLink has a close fit.",
   users: "Search accounts, manage roles, suspend users, and review growth analytics.",
   properties: "Analyse listing quality and run bulk approve, verify, feature, archive, or delete actions.",
+  "student-accommodation": "Manage boarding-house listings, campus-focused searches, and student accommodation requests.",
   verification: "Review landlord, agency, and identity verification submissions.",
   moderation: "Resolve tenancy disputes and content moderation items from reports and review queue.",
   support: "Manage customer support tickets with assignment, escalation, and resolution.",

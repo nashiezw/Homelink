@@ -12,6 +12,7 @@ const groups = [
     items: [
       ["Search HouseLink properties", "/search"],
       ["Send property request", "/property-request"],
+      ["Student accommodation", "/student-accommodation"],
       ["Rent in Harare", "/rent/harare"],
       ["Rooms in Avondale", "/rooms/avondale"],
       ["Buy in Bulawayo", "/property-for-sale/bulawayo"],

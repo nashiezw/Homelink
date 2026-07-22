@@ -17,6 +17,7 @@ const exploreNavPrimary = [
   { label: "Buy", href: "/property-for-sale/bulawayo", feature: null },
   { label: "Request", href: "/property-request", feature: null },
   { label: "Roommates", href: "/roommates", feature: "roommateMatching" as const },
+  { label: "Students", href: "/student-accommodation", feature: null },
   { label: "Academy", href: "/academy", feature: null, smartAcademy: true },
 ] as const;
 
@@ -43,6 +44,7 @@ function useNavActive() {
       const [path, queryString] = href.split("?");
       if (pathname !== path) {
         if (path === "/roommates" && pathname.startsWith("/roommates")) return true;
+        if (path === "/student-accommodation" && pathname.startsWith("/student-accommodation")) return true;
         if (path === "/become-agent" && pathname.startsWith("/become-agent")) return true;
         if (path === "/academy" && pathname.startsWith("/dashboard/academy")) return true;
         if (path === "/calculators" && pathname.startsWith("/calculators")) return true;

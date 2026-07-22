@@ -48,6 +48,7 @@ export type AdminTab =
   | "property-requests"
   | "users"
   | "properties"
+  | "student-accommodation"
   | "verification"
   | "moderation"
   | "support"
@@ -138,6 +139,7 @@ const NAV_GROUPS: Array<{ label: string; items: NavItem[] }> = [
     label: "Properties",
     items: [
       { id: "properties", label: "Listings Hub", icon: Home, badgeKey: "pendingListings" as const },
+      { id: "student-accommodation", label: "Student Accommodation", icon: BookOpen },
       { id: "property-management", label: "Management Requests", icon: Building2, badgeKey: "openPmRequests" as const },
       { id: "holiday-homes", label: "Holiday Homes", icon: Building2 },
       { id: "bookings", label: "Bookings", icon: CalendarCheck },
@@ -170,6 +172,7 @@ const TAB_LABELS: Record<AdminTab, string> = {
   "property-requests": "Client Property Requests",
   users: "Users & Directory",
   properties: "Listings Hub",
+  "student-accommodation": "Student Accommodation",
   verification: "Verification Queue",
   moderation: "Moderation Center",
   support: "Support CRM",
@@ -206,7 +209,7 @@ function findNavGroup(tab: AdminTab) {
 function allowedTabsForRoles(roles: string[]): Set<AdminTab> | null {
   if (roles.includes("ADMIN")) return null;
   const tabs = new Set<AdminTab>();
-  if (roles.includes("SUPPORT")) ["overview", "support", "property-requests", "tenant-requests", "enquiries", "proptech", "reports"].forEach((tab) => tabs.add(tab as AdminTab));
+  if (roles.includes("SUPPORT")) ["overview", "support", "property-requests", "tenant-requests", "student-accommodation", "enquiries", "proptech", "reports"].forEach((tab) => tabs.add(tab as AdminTab));
   if (roles.includes("BILLING")) ["overview", "support", "payments", "reports"].forEach((tab) => tabs.add(tab as AdminTab));
   if (roles.includes("TECH_SUPPORT")) ["overview", "support", "system", "security", "reports"].forEach((tab) => tabs.add(tab as AdminTab));
   if (roles.includes("TRUST_SAFETY")) ["overview", "support", "verification", "moderation", "users", "reports"].forEach((tab) => tabs.add(tab as AdminTab));

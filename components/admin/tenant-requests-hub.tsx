@@ -22,7 +22,7 @@ type ResponseShape = {
   };
 };
 
-export function TenantRequestsHub() {
+export function TenantRequestsHub({ propertyTypeFilter = "" }: { propertyTypeFilter?: string } = {}) {
   const [requests, setRequests] = useState<TenantRequestRecord[]>([]);
   const [analytics, setAnalytics] = useState<ResponseShape["analytics"] | null>(null);
   const [selectedId, setSelectedId] = useState<string>("");
@@ -33,8 +33,24 @@ export function TenantRequestsHub() {
   const [agents, setAgents] = useState<ResponseShape["agents"]>([]);
   const [whatsappMessage, setWhatsappMessage] = useState("");
   const [dialog, setDialog] = useState<AdminDialogConfig | null>(null);
+  const [statusFilter, setStatusFilter] = useState("");
+  const [requesterFilter, setRequesterFilter] = useState("");
+  const [mustHaveFilter, setMustHaveFilter] = useState("");
 
-  const selected = useMemo(() => requests.find((request) => request.id === selectedId) ?? requests[0], [requests, selectedId]);
+  const visibleRequests = useMemo(
+    () => requests.filter((request) => {
+      if (propertyTypeFilter && request.propertyType !== propertyTypeFilter) return false;
+      if (statusFilter && request.status !== statusFilter) return false;
+      if (requesterFilter && request.clientType !== requesterFilter) return false;
+      if (mustHaveFilter) {
+        const haystack = [request.notes ?? "", ...request.mustHaves, ...request.preferredAreas, ...request.alternativeAreas].join(" ").toLowerCase();
+        if (!haystack.includes(mustHaveFilter.toLowerCase())) return false;
+      }
+      return true;
+    }),
+    [mustHaveFilter, propertyTypeFilter, requesterFilter, requests, statusFilter],
+  );
+  const selected = useMemo(() => visibleRequests.find((request) => request.id === selectedId) ?? visibleRequests[0], [selectedId, visibleRequests]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -43,10 +59,13 @@ export function TenantRequestsHub() {
       setRequests(result.data.requests);
       setAnalytics(result.data.analytics);
       setAgents(result.data.agents);
-      if (!selectedId && result.data.requests[0]) setSelectedId(result.data.requests[0].id);
+      const nextVisible = propertyTypeFilter
+        ? result.data.requests.filter((request) => request.propertyType === propertyTypeFilter)
+        : result.data.requests;
+      if (!selectedId && nextVisible[0]) setSelectedId(nextVisible[0].id);
     }
     setLoading(false);
-  }, [query, selectedId]);
+  }, [propertyTypeFilter, query, selectedId]);
 
   useEffect(() => {
     void load();
@@ -123,14 +142,45 @@ export function TenantRequestsHub() {
           </label>
           <Button type="submit" variant="secondary">Search</Button>
         </form>
+        <Button type="button" variant="secondary" onClick={() => exportRequestsCsv(visibleRequests)} disabled={!visibleRequests.length}>
+          Export CSV
+        </Button>
+        {propertyTypeFilter === "boarding_house" && (
+          <div className="grid gap-2 sm:grid-cols-3">
+            <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} className="min-h-11 rounded-lg border border-white/10 bg-slate-950 px-3 text-sm text-white">
+              <option value="">All statuses</option>
+              <option value="NEW">New</option>
+              <option value="MATCHED">Matched</option>
+              <option value="CONTACTED">Contacted</option>
+              <option value="CLOSED">Closed</option>
+              <option value="EXPIRED">Expired</option>
+            </select>
+            <select value={requesterFilter} onChange={(event) => setRequesterFilter(event.target.value)} className="min-h-11 rounded-lg border border-white/10 bg-slate-950 px-3 text-sm text-white">
+              <option value="">All requesters</option>
+              <option value="student">Student</option>
+              <option value="guardian">Parent / guardian</option>
+              <option value="school_admin">School admin</option>
+              <option value="individual">Individual</option>
+            </select>
+            <select value={mustHaveFilter} onChange={(event) => setMustHaveFilter(event.target.value)} className="min-h-11 rounded-lg border border-white/10 bg-slate-950 px-3 text-sm text-white">
+              <option value="">All student needs</option>
+              <option value="Near campus">Near campus</option>
+              <option value="WiFi">WiFi</option>
+              <option value="Study area">Study area</option>
+              <option value="Bills included">Bills included</option>
+              <option value="Meals included">Meals included</option>
+              <option value="Shared kitchen">Shared kitchen</option>
+            </select>
+          </div>
+        )}
 
         <div className="max-h-[650px] space-y-2 overflow-y-auto pr-1">
           {loading ? (
             <p className="rounded-lg border border-white/10 bg-slate-950 p-4 text-sm text-slate-400">Loading property requests...</p>
-          ) : requests.length === 0 ? (
+          ) : visibleRequests.length === 0 ? (
             <p className="rounded-lg border border-white/10 bg-slate-950 p-4 text-sm text-slate-400">No property requests yet.</p>
           ) : (
-            requests.map((request) => (
+            visibleRequests.map((request) => (
               <button
                 key={request.id}
                 type="button"
@@ -337,6 +387,34 @@ function formatPropertyType(value: string) {
   if (value === "holiday_home") return "holiday home";
   if (value === "boarding_house") return "boarding house";
   return value.replace(/[-_]/g, " ");
+}
+
+function exportRequestsCsv(requests: TenantRequestRecord[]) {
+  const headers = ["Reference", "Name", "Phone", "Email", "Requester", "Status", "Budget", "Areas", "Must haves", "Created"];
+  const rows = requests.map((request) => [
+    request.id,
+    request.name,
+    request.phone,
+    request.email ?? "",
+    labelize(request.clientType ?? "individual"),
+    request.status,
+    request.maxBudget ? `$${request.maxBudget}` : "",
+    [...request.preferredAreas, ...request.alternativeAreas].join("; "),
+    request.mustHaves.join("; "),
+    new Date(request.createdAt).toISOString(),
+  ]);
+  const csv = [headers, ...rows].map((row) => row.map(csvCell).join(",")).join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `houselink-student-accommodation-requests-${new Date().toISOString().slice(0, 10)}.csv`;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+function csvCell(value: string) {
+  return `"${value.replace(/"/g, '""')}"`;
 }
 
 function phoneToWhatsApp(value: string) {

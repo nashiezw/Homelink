@@ -446,7 +446,12 @@ export function CreateListingForm({ onSuccess }: CreateListingFormProps) {
 
       {(form.type === "room" || form.type === "boarding_house") && (
         <section className="rounded-xl border border-emerald-100 bg-emerald-50/60 p-4 dark:border-emerald-900/50 dark:bg-emerald-950/20">
-          <p className="text-sm font-semibold text-ink">Room-sharing fit</p>
+          <p className="text-sm font-semibold text-ink">{form.type === "boarding_house" ? "Student accommodation details" : "Room-sharing fit"}</p>
+          {form.type === "boarding_house" && (
+            <p className="mt-1 text-xs leading-5 text-slate-600 dark:text-slate-300">
+              Strong boarding listings mention the nearby school or campus, room capacity, gender policy, WiFi, meals, study space, bills, transport access, security, and house rules.
+            </p>
+          )}
           <div className="mt-3 grid gap-4 sm:grid-cols-2">
             <label className="block text-sm font-medium">
               Household size accepted
