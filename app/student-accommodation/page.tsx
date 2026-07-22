@@ -60,6 +60,12 @@ export default function StudentAccommodationPage() {
             >
               Request student accommodation
             </Link>
+            <Link
+              href="/dashboard/landlord/new"
+              className="inline-flex min-h-11 items-center justify-center rounded-lg border border-white/25 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-800 shadow-lg shadow-black/10 transition hover:bg-emerald-50"
+            >
+              List boarding house
+            </Link>
           </div>
         </div>
       </section>
@@ -113,6 +119,12 @@ export default function StudentAccommodationPage() {
               className="mt-4 inline-flex min-h-10 w-full items-center justify-center rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 dark:bg-white dark:text-slate-950"
             >
               Explore student room shares
+            </Link>
+            <Link
+              href="/dashboard/landlord/new"
+              className="mt-3 inline-flex min-h-10 w-full items-center justify-center rounded-lg border border-emerald-300 bg-white px-4 py-2 text-sm font-semibold text-emerald-800 transition hover:border-emerald-500 hover:bg-emerald-50 dark:border-emerald-800 dark:bg-slate-950 dark:text-emerald-200"
+            >
+              Add a student accommodation listing
             </Link>
           </div>
         </div>

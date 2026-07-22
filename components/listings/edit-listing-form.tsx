@@ -47,10 +47,15 @@ export function EditListingForm() {
     availableFrom: "",
     genderPreference: "any",
     schoolNearby: "",
+    campusDistance: "",
     boardingGenderPolicy: "any",
     mealsIncluded: false,
     studyArea: false,
     billsIncluded: false,
+    transportAccess: "",
+    securityFeatures: "",
+    curfew: "",
+    houseRules: "",
   });
 
   useEffect(() => {
@@ -75,10 +80,15 @@ export function EditListingForm() {
           availableFrom: listing.availableFrom,
           genderPreference: listing.tenantPreferences?.genderPreference ?? "any",
           schoolNearby: listing.listingDetails?.schoolNearby ?? "",
+          campusDistance: listing.listingDetails?.campusDistance ?? "",
           boardingGenderPolicy: listing.listingDetails?.boardingGenderPolicy ?? "any",
           mealsIncluded: Boolean(listing.listingDetails?.mealsIncluded || listing.description.match(/\bmeals included\b/i)),
           studyArea: Boolean(listing.listingDetails?.studyArea || listing.description.match(/\bstudy area\b/i)),
           billsIncluded: Boolean(listing.listingDetails?.billsIncluded || listing.description.match(/\bbills included\b/i)),
+          transportAccess: listing.listingDetails?.transportAccess ?? "",
+          securityFeatures: listing.listingDetails?.securityFeatures ?? "",
+          curfew: listing.listingDetails?.curfew ?? "",
+          houseRules: listing.listingDetails?.houseRules ?? "",
         });
         setImages(listing.images?.length ? listing.images : listing.image ? [listing.image] : []);
         setVideos(listing.videos ?? []);
@@ -144,10 +154,15 @@ export function EditListingForm() {
       listingDetails: isBoardingHouse
         ? {
             schoolNearby: form.schoolNearby.trim() || undefined,
+            campusDistance: form.campusDistance.trim() || undefined,
             boardingGenderPolicy: form.boardingGenderPolicy,
             mealsIncluded: form.mealsIncluded,
             studyArea: form.studyArea,
             billsIncluded: form.billsIncluded,
+            transportAccess: form.transportAccess.trim() || undefined,
+            securityFeatures: form.securityFeatures.trim() || undefined,
+            curfew: form.curfew.trim() || undefined,
+            houseRules: form.houseRules.trim() || undefined,
           }
         : undefined,
     };
@@ -317,6 +332,10 @@ export function EditListingForm() {
                   <input value={form.schoolNearby} onChange={(e) => setForm({ ...form, schoolNearby: e.target.value })} placeholder="NUST, UZ, MSU, local school..." className={fieldClass} />
                 </label>
                 <label className="block text-sm font-medium">
+                  Distance or travel time to campus
+                  <input value={form.campusDistance} onChange={(e) => setForm({ ...form, campusDistance: e.target.value })} placeholder="10 min walk, 2 km, one kombi..." className={fieldClass} />
+                </label>
+                <label className="block text-sm font-medium">
                   Boarding policy
                   <select value={form.boardingGenderPolicy} onChange={(e) => setForm({ ...form, boardingGenderPolicy: e.target.value })} className={fieldClass}>
                     <option value="any">Open to all students</option>
@@ -328,6 +347,22 @@ export function EditListingForm() {
                 <label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" checked={form.mealsIncluded} onChange={(e) => setForm({ ...form, mealsIncluded: e.target.checked })} /> Meals included</label>
                 <label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" checked={form.studyArea} onChange={(e) => setForm({ ...form, studyArea: e.target.checked })} /> Study area available</label>
                 <label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" checked={form.billsIncluded} onChange={(e) => setForm({ ...form, billsIncluded: e.target.checked })} /> Bills included</label>
+                <label className="block text-sm font-medium">
+                  Transport access
+                  <input value={form.transportAccess} onChange={(e) => setForm({ ...form, transportAccess: e.target.value })} placeholder="Kombi route, school shuttle, walking distance..." className={fieldClass} />
+                </label>
+                <label className="block text-sm font-medium">
+                  Security features
+                  <input value={form.securityFeatures} onChange={(e) => setForm({ ...form, securityFeatures: e.target.value })} placeholder="Walled, gate, caretaker, lighting..." className={fieldClass} />
+                </label>
+                <label className="block text-sm font-medium">
+                  Curfew
+                  <input value={form.curfew} onChange={(e) => setForm({ ...form, curfew: e.target.value })} placeholder="No curfew, 9pm, flexible with notice..." className={fieldClass} />
+                </label>
+                <label className="block text-sm font-medium sm:col-span-2">
+                  House rules
+                  <input value={form.houseRules} onChange={(e) => setForm({ ...form, houseRules: e.target.value })} placeholder="Visitors, noise, chores, alcohol, laundry, study hours..." className={fieldClass} />
+                </label>
               </>
             )}
           </div>
@@ -368,33 +403,49 @@ export function EditListingForm() {
 
 function boardingDetailsSummary(form: {
   schoolNearby: string;
+  campusDistance: string;
   boardingGenderPolicy: string;
   mealsIncluded: boolean;
   studyArea: boolean;
   billsIncluded: boolean;
+  transportAccess: string;
+  securityFeatures: string;
+  curfew: string;
+  houseRules: string;
 }) {
   const details = ["Student accommodation / boarding house."];
   if (form.schoolNearby.trim()) details.push(`Near: ${form.schoolNearby.trim()}.`);
+  if (form.campusDistance.trim()) details.push(`Campus access: ${form.campusDistance.trim()}.`);
   if (form.boardingGenderPolicy !== "any") details.push(`Boarding policy: ${form.boardingGenderPolicy.replace(/_/g, " ")}.`);
   if (form.mealsIncluded) details.push("Meals included.");
   if (form.studyArea) details.push("Study area available.");
   if (form.billsIncluded) details.push("Bills included.");
+  if (form.transportAccess.trim()) details.push(`Transport: ${form.transportAccess.trim()}.`);
+  if (form.securityFeatures.trim()) details.push(`Security: ${form.securityFeatures.trim()}.`);
+  if (form.curfew.trim()) details.push(`Curfew: ${form.curfew.trim()}.`);
+  if (form.houseRules.trim()) details.push(`House rules: ${form.houseRules.trim()}.`);
   return details.join(" ");
 }
 
 function boardingAmenities(form: {
   schoolNearby: string;
+  campusDistance: string;
   mealsIncluded: boolean;
   studyArea: boolean;
   billsIncluded: boolean;
+  transportAccess: string;
+  securityFeatures: string;
 }) {
   return [
     "Student accommodation",
     "Boarding house",
     form.schoolNearby.trim() ? "Near campus" : "",
+    form.campusDistance.trim() ? "Campus access" : "",
     form.mealsIncluded ? "Meals included" : "",
     form.studyArea ? "Study area" : "",
     form.billsIncluded ? "Bills included" : "",
+    form.transportAccess.trim() ? "Transport access" : "",
+    form.securityFeatures.trim() ? "Security" : "",
   ].filter(Boolean);
 }
 

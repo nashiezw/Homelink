@@ -1,6 +1,6 @@
 "use client";
 
-import { BellRing, CheckCircle2, RefreshCw, Search, Trash2 } from "lucide-react";
+import { BarChart3, BellRing, CheckCircle2, RefreshCw, Search, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AdminActionDialog, type AdminDialogConfig } from "@/components/admin/action-dialog";
 import { Button } from "@/components/ui/button";
@@ -51,6 +51,22 @@ export function TenantRequestsHub({ propertyTypeFilter = "" }: { propertyTypeFil
     [mustHaveFilter, propertyTypeFilter, requesterFilter, requests, statusFilter],
   );
   const selected = useMemo(() => visibleRequests.find((request) => request.id === selectedId) ?? visibleRequests[0], [selectedId, visibleRequests]);
+  const scopedRequests = propertyTypeFilter ? requests.filter((request) => request.propertyType === propertyTypeFilter) : requests;
+  const scopedAnalytics = useMemo(
+    () => ({
+      total: scopedRequests.length,
+      rentCount: scopedRequests.filter((item) => item.intent === "rent").length,
+      buyCount: scopedRequests.filter((item) => item.intent === "buy").length,
+      matchedCount: scopedRequests.filter((item) => item.matches.length > 0).length,
+      expiringSoonCount: scopedRequests.filter((item) => {
+        const days = (new Date(item.expiresAt).getTime() - Date.now()) / 86_400_000;
+        return item.status !== "CLOSED" && item.status !== "CANCELLED" && days >= 0 && days <= 7;
+      }).length,
+      expiredCount: scopedRequests.filter((item) => item.status === "EXPIRED").length,
+    }),
+    [scopedRequests],
+  );
+  const studentDemand = useMemo(() => buildStudentDemandInsights(scopedRequests), [scopedRequests]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -117,12 +133,12 @@ export function TenantRequestsHub({ propertyTypeFilter = "" }: { propertyTypeFil
       <AdminActionDialog config={dialog} onClose={() => setDialog(null)} />
       <aside className="space-y-4">
         <div className="grid grid-cols-2 gap-3">
-          <Metric label="Requests" value={analytics?.total ?? 0} />
-          <Metric label="Matched" value={analytics?.matchedCount ?? 0} />
-          <Metric label="Rent" value={analytics?.rentCount ?? 0} />
-          <Metric label="Buy" value={analytics?.buyCount ?? 0} />
-          <Metric label="Expiring" value={analytics?.expiringSoonCount ?? 0} />
-          <Metric label="Expired" value={analytics?.expiredCount ?? 0} />
+          <Metric label="Requests" value={propertyTypeFilter ? scopedAnalytics.total : analytics?.total ?? 0} />
+          <Metric label="Matched" value={propertyTypeFilter ? scopedAnalytics.matchedCount : analytics?.matchedCount ?? 0} />
+          <Metric label="Rent" value={propertyTypeFilter ? scopedAnalytics.rentCount : analytics?.rentCount ?? 0} />
+          <Metric label="Buy" value={propertyTypeFilter ? scopedAnalytics.buyCount : analytics?.buyCount ?? 0} />
+          <Metric label="Expiring" value={propertyTypeFilter ? scopedAnalytics.expiringSoonCount : analytics?.expiringSoonCount ?? 0} />
+          <Metric label="Expired" value={propertyTypeFilter ? scopedAnalytics.expiredCount : analytics?.expiredCount ?? 0} />
         </div>
         <form
           onSubmit={(event) => {
@@ -146,32 +162,35 @@ export function TenantRequestsHub({ propertyTypeFilter = "" }: { propertyTypeFil
           Export CSV
         </Button>
         {propertyTypeFilter === "boarding_house" && (
-          <div className="grid gap-2 sm:grid-cols-3">
-            <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} className="min-h-11 rounded-lg border border-white/10 bg-slate-950 px-3 text-sm text-white">
-              <option value="">All statuses</option>
-              <option value="NEW">New</option>
-              <option value="MATCHED">Matched</option>
-              <option value="CONTACTED">Contacted</option>
-              <option value="CLOSED">Closed</option>
-              <option value="EXPIRED">Expired</option>
-            </select>
-            <select value={requesterFilter} onChange={(event) => setRequesterFilter(event.target.value)} className="min-h-11 rounded-lg border border-white/10 bg-slate-950 px-3 text-sm text-white">
-              <option value="">All requesters</option>
-              <option value="student">Student</option>
-              <option value="guardian">Parent / guardian</option>
-              <option value="school_admin">School admin</option>
-              <option value="individual">Individual</option>
-            </select>
-            <select value={mustHaveFilter} onChange={(event) => setMustHaveFilter(event.target.value)} className="min-h-11 rounded-lg border border-white/10 bg-slate-950 px-3 text-sm text-white">
-              <option value="">All student needs</option>
-              <option value="Near campus">Near campus</option>
-              <option value="WiFi">WiFi</option>
-              <option value="Study area">Study area</option>
-              <option value="Bills included">Bills included</option>
-              <option value="Meals included">Meals included</option>
-              <option value="Shared kitchen">Shared kitchen</option>
-            </select>
-          </div>
+          <>
+            <div className="grid gap-2 sm:grid-cols-3">
+              <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} className="min-h-11 rounded-lg border border-white/10 bg-slate-950 px-3 text-sm text-white">
+                <option value="">All statuses</option>
+                <option value="NEW">New</option>
+                <option value="MATCHED">Matched</option>
+                <option value="CONTACTED">Contacted</option>
+                <option value="CLOSED">Closed</option>
+                <option value="EXPIRED">Expired</option>
+              </select>
+              <select value={requesterFilter} onChange={(event) => setRequesterFilter(event.target.value)} className="min-h-11 rounded-lg border border-white/10 bg-slate-950 px-3 text-sm text-white">
+                <option value="">All requesters</option>
+                <option value="student">Student</option>
+                <option value="guardian">Parent / guardian</option>
+                <option value="school_admin">School admin</option>
+                <option value="individual">Individual</option>
+              </select>
+              <select value={mustHaveFilter} onChange={(event) => setMustHaveFilter(event.target.value)} className="min-h-11 rounded-lg border border-white/10 bg-slate-950 px-3 text-sm text-white">
+                <option value="">All student needs</option>
+                <option value="Near campus">Near campus</option>
+                <option value="WiFi">WiFi</option>
+                <option value="Study area">Study area</option>
+                <option value="Bills included">Bills included</option>
+                <option value="Meals included">Meals included</option>
+                <option value="Shared kitchen">Shared kitchen</option>
+              </select>
+            </div>
+            <StudentDemandPanel insights={studentDemand} />
+          </>
         )}
 
         <div className="max-h-[650px] space-y-2 overflow-y-auto pr-1">
@@ -356,6 +375,32 @@ function Metric({ label, value }: { label: string; value: number }) {
   );
 }
 
+function StudentDemandPanel({ insights }: { insights: ReturnType<typeof buildStudentDemandInsights> }) {
+  return (
+    <div className="rounded-lg border border-emerald-400/20 bg-emerald-500/10 p-3">
+      <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-emerald-200">
+        <BarChart3 className="size-4" aria-hidden="true" />
+        Student demand
+      </p>
+      <div className="mt-3 grid gap-2">
+        <InsightRow label="Top areas" value={insights.areas} />
+        <InsightRow label="Requester mix" value={insights.requesters} />
+        <InsightRow label="Common needs" value={insights.needs} />
+        <InsightRow label="Typical budget" value={insights.budget} />
+      </div>
+    </div>
+  );
+}
+
+function InsightRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border border-white/10 bg-slate-950 p-2.5">
+      <p className="text-[11px] uppercase tracking-wider text-slate-500">{label}</p>
+      <p className="mt-1 text-xs font-semibold leading-5 text-slate-200">{value || "Not enough data yet"}</p>
+    </div>
+  );
+}
+
 function Detail({ label, value, className }: { label: string; value: string; className?: string }) {
   return (
     <div className={`rounded-lg border border-white/10 bg-slate-900 p-3 ${className ?? ""}`}>
@@ -411,6 +456,29 @@ function exportRequestsCsv(requests: TenantRequestRecord[]) {
   link.download = `houselink-student-accommodation-requests-${new Date().toISOString().slice(0, 10)}.csv`;
   link.click();
   URL.revokeObjectURL(url);
+}
+
+function buildStudentDemandInsights(requests: TenantRequestRecord[]) {
+  const budgets = requests.map((request) => request.maxBudget).filter((value): value is number => Boolean(value));
+  const medianBudget = budgets.length ? budgets.sort((a, b) => a - b)[Math.floor(budgets.length / 2)] : null;
+  return {
+    areas: topValues(requests.flatMap((request) => [...request.preferredAreas, ...request.alternativeAreas]), 3),
+    requesters: topValues(requests.map((request) => labelize(request.clientType ?? "individual")), 3),
+    needs: topValues(requests.flatMap((request) => request.mustHaves), 4),
+    budget: medianBudget ? `$${medianBudget} median max budget` : "",
+  };
+}
+
+function topValues(values: string[], limit: number) {
+  const counts = new Map<string, number>();
+  values.map((value) => value.trim()).filter(Boolean).forEach((value) => {
+    counts.set(value, (counts.get(value) ?? 0) + 1);
+  });
+  return [...counts.entries()]
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .slice(0, limit)
+    .map(([value, count]) => `${value} (${count})`)
+    .join(", ");
 }
 
 function csvCell(value: string) {

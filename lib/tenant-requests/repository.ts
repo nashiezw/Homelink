@@ -274,11 +274,17 @@ export function buildTenantRequestWhatsAppMessage(request: TenantRequestRecord, 
     const link = match.slug ? ` https://www.houselink.co.zw/listings/${match.slug}` : "";
     return `${index + 1}. ${match.listingTitle}, ${match.suburb} - $${match.price}.${link}`;
   });
+  if (request.propertyType === "boarding_house") {
+    return `Hi ${request.name}, HouseLink found ${matches.length === 1 ? "a student accommodation option" : "student accommodation options"} close to your request:\n\n${lines.join("\n")}\n\nWe can help confirm campus access, room capacity, gender policy, bills, meals, WiFi, and viewing details before you decide.`;
+  }
   return `Hi ${request.name}, HouseLink found ${matches.length === 1 ? "a property" : "properties"} close to your ${requestLabel} request:\n\n${lines.join("\n")}\n\nWould you like us to arrange viewing details?`;
 }
 
 export function buildStillLookingWhatsAppMessage(request: TenantRequestRecord) {
   const areas = [...request.preferredAreas, ...request.alternativeAreas].slice(0, 3).join(", ") || "your preferred area";
+  if (request.propertyType === "boarding_house") {
+    return `Hi ${request.name}, this is HouseLink Zimbabwe. Are you still looking for student accommodation around ${areas}? Reply YES to keep matching, or send your updated campus, budget, gender policy, WiFi, meals, or transport needs.`;
+  }
   return `Hi ${request.name}, this is HouseLink Zimbabwe. Are you still looking for ${requestSearchLabel(request)} around ${areas}? Reply YES if we should keep matching you, or send updated area/budget details.`;
 }
 
@@ -336,7 +342,20 @@ function scoreListingForTenantRequest(request: TenantRequestRecord, listing: Lis
   let score = 0;
   const reasons: string[] = [];
   const areas = [...request.preferredAreas, ...request.alternativeAreas].map(normalize);
-  const listingArea = normalize(`${listing.suburb} ${listing.city} ${listing.title}`);
+  const boardingDetails = listing.listingDetails
+    ? [
+        listing.listingDetails.schoolNearby,
+        listing.listingDetails.campusDistance,
+        listing.listingDetails.boardingGenderPolicy,
+        listing.listingDetails.transportAccess,
+        listing.listingDetails.securityFeatures,
+        listing.listingDetails.curfew,
+        listing.listingDetails.houseRules,
+      ]
+        .filter(Boolean)
+        .join(" ")
+    : "";
+  const listingArea = normalize(`${listing.suburb} ${listing.city} ${listing.title} ${boardingDetails}`);
 
   if (areas.some((area) => area && listingArea.includes(area))) {
     score += 35;
@@ -353,6 +372,10 @@ function scoreListingForTenantRequest(request: TenantRequestRecord, listing: Lis
   if (request.propertyType === "boarding_house" && (listing.type === "boarding_house" || listing.type === "room")) {
     score += listing.type === "boarding_house" ? 22 : 14;
     reasons.push(listing.type === "boarding_house" ? "Boarding house" : "Room suitable for students");
+    if (listing.listingDetails?.schoolNearby) {
+      score += 6;
+      reasons.push(`Near ${listing.listingDetails.schoolNearby}`);
+    }
   }
   if (request.bedrooms && listing.bedrooms >= request.bedrooms) {
     score += 16;
@@ -374,7 +397,11 @@ function scoreListingForTenantRequest(request: TenantRequestRecord, listing: Lis
     }
   }
 
-  const amenities = listing.amenities.map(normalize);
+  const amenities = [
+    ...listing.amenities,
+    boardingDetails,
+    listing.description,
+  ].map(normalize);
   for (const mustHave of request.mustHaves) {
     const wanted = normalize(mustHave);
     if (!wanted) continue;

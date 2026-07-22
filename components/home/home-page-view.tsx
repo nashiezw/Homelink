@@ -9,6 +9,7 @@ import { LocalSearchSection } from "@/components/home/local-search-section";
 import { MarketplaceSafetySection } from "@/components/home/marketplace-safety-section";
 import { PropertyManagementSection } from "@/components/home/property-management-section";
 import { PropertyRequestCta } from "@/components/property-requests/property-request-cta";
+import { StudentAccommodationSection } from "@/components/home/student-accommodation-section";
 import { TestimonialsSection } from "@/components/home/testimonials-section";
 import { TrustMetricsSection } from "@/components/home/trust-metrics-section";
 import type { HomepageData } from "@/lib/homepage/types";
@@ -25,6 +26,7 @@ export function HomePageView({ data }: HomePageViewProps) {
       <TrustMetricsSection metrics={data.trustMetrics} />
       <FeaturedPropertiesSection listings={data.featuredListings} />
       <PropertyRequestCta />
+      <StudentAccommodationSection />
       <LocalSearchSection listings={data.mapListings} />
       <BrowsePropertyTypes types={data.propertyTypes} />
       <HomeBannerStrip banners={data.content.banners} placement="mid" />

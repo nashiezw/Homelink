@@ -150,10 +150,15 @@ export type Listing = {
     sharedBathroom?: boolean;
     kitchenAccess?: boolean;
     schoolNearby?: string;
+    campusDistance?: string;
     boardingGenderPolicy?: string;
     mealsIncluded?: boolean;
     studyArea?: boolean;
     billsIncluded?: boolean;
+    transportAccess?: string;
+    securityFeatures?: string;
+    curfew?: string;
+    houseRules?: string;
     childrenAllowed?: boolean;
     smokingAllowed?: boolean;
     petsAllowed?: boolean;

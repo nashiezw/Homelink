@@ -276,6 +276,9 @@ function buildDetailRows(listing: Listing) {
     if (details?.schoolNearby) {
       rows.push({ label: "Nearby school or campus", value: details.schoolNearby, icon: MapPin });
     }
+    if (details?.campusDistance) {
+      rows.push({ label: "Campus access", value: details.campusDistance, icon: MapPin });
+    }
     if (details?.boardingGenderPolicy && details.boardingGenderPolicy !== "any") {
       rows.push({ label: "Boarding policy", value: details.boardingGenderPolicy.replace(/_/g, " "), icon: Users });
     }
@@ -287,6 +290,18 @@ function buildDetailRows(listing: Listing) {
     }
     if (typeof details?.billsIncluded === "boolean") {
       rows.push({ label: "Bills included", value: yesNo(details.billsIncluded), icon: ShieldCheck });
+    }
+    if (details?.transportAccess) {
+      rows.push({ label: "Transport access", value: details.transportAccess, icon: MapPin });
+    }
+    if (details?.securityFeatures) {
+      rows.push({ label: "Security", value: details.securityFeatures, icon: ShieldCheck });
+    }
+    if (details?.curfew) {
+      rows.push({ label: "Curfew", value: details.curfew, icon: ShieldCheck });
+    }
+    if (details?.houseRules) {
+      rows.push({ label: "House rules", value: details.houseRules, icon: ShieldCheck });
     }
     if (listing.tenantPreferences.genderPreference && listing.tenantPreferences.genderPreference !== "any") {
       rows.push({ label: "Preferred tenant gender", value: listing.tenantPreferences.genderPreference, icon: Users });
