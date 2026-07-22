@@ -279,7 +279,7 @@ export function buildTenantRequestWhatsAppMessage(request: TenantRequestRecord, 
 
 export function buildStillLookingWhatsAppMessage(request: TenantRequestRecord) {
   const areas = [...request.preferredAreas, ...request.alternativeAreas].slice(0, 3).join(", ") || "your preferred area";
-  return `Hi ${request.name}, this is HouseLink Zimbabwe. Are you still looking for ${request.propertyType === "holiday_home" ? "a holiday home" : request.intent === "buy" ? "a property to buy" : request.propertyType === "other" ? "a property to rent" : `a ${request.propertyType} to rent`} around ${areas}? Reply YES if we should keep matching you, or send updated area/budget details.`;
+  return `Hi ${request.name}, this is HouseLink Zimbabwe. Are you still looking for ${requestSearchLabel(request)} around ${areas}? Reply YES if we should keep matching you, or send updated area/budget details.`;
 }
 
 export function buildRequestReceivedMessage(request: TenantRequestRecord) {
@@ -342,13 +342,17 @@ function scoreListingForTenantRequest(request: TenantRequestRecord, listing: Lis
     score += 35;
     reasons.push(`Area match: ${listing.suburb}`);
   }
-  if (request.propertyType !== "other" && request.propertyType !== "room-share" && listing.type === request.propertyType) {
+  if (request.propertyType !== "other" && request.propertyType !== "room-share" && request.propertyType !== "boarding_house" && listing.type === request.propertyType) {
     score += 18;
     reasons.push(`Property type: ${listing.type}`);
   }
   if (request.propertyType === "room-share" && listing.type === "room") {
     score += 18;
     reasons.push("Room/shared option");
+  }
+  if (request.propertyType === "boarding_house" && (listing.type === "boarding_house" || listing.type === "room")) {
+    score += listing.type === "boarding_house" ? 22 : 14;
+    reasons.push(listing.type === "boarding_house" ? "Boarding house" : "Room suitable for students");
   }
   if (request.bedrooms && listing.bedrooms >= request.bedrooms) {
     score += 16;
@@ -503,7 +507,7 @@ function tenantRequestPayload(id: string, input: TenantRequestInput, seekerId: s
       {
         id: `act_${crypto.randomUUID()}`,
         type: "CREATED",
-        message: `${input.propertyType === "holiday_home" ? "Holiday home" : input.intent === "buy" ? "Buyer" : "Tenant rental"} request submitted.`,
+        message: `${input.propertyType === "holiday_home" ? "Holiday home" : input.propertyType === "boarding_house" ? "Student accommodation" : input.intent === "buy" ? "Buyer" : "Tenant rental"} request submitted.`,
         createdAt: now,
       },
     ],
@@ -513,7 +517,7 @@ function tenantRequestPayload(id: string, input: TenantRequestInput, seekerId: s
 }
 
 function createTenantRequestReference(input: TenantRequestInput) {
-  const kind = input.propertyType === "holiday_home" ? "STAY" : input.intent === "buy" ? "BUY" : "RENT";
+  const kind = input.propertyType === "holiday_home" ? "STAY" : input.propertyType === "boarding_house" ? "STUD" : input.intent === "buy" ? "BUY" : "RENT";
   const date = new Date();
   const ymd = [
     date.getFullYear(),
@@ -548,13 +552,22 @@ function normalize(value: string) {
 }
 
 function normalizePropertyType(value: unknown): TenantRequestInput["propertyType"] {
-  const allowed = ["house", "cottage", "flat", "room", "room-share", "land", "commercial", "holiday_home", "other"] as const;
+  const allowed = ["house", "cottage", "flat", "room", "room-share", "boarding_house", "land", "commercial", "holiday_home", "other"] as const;
   return allowed.includes(value as TenantRequestInput["propertyType"]) ? (value as TenantRequestInput["propertyType"]) : "house";
 }
 
 function requestKindLabel(request: TenantRequestRecord) {
   if (request.propertyType === "holiday_home") return "holiday home";
+  if (request.propertyType === "boarding_house") return "student accommodation";
   return request.intent === "buy" ? "buying" : "rental";
+}
+
+function requestSearchLabel(request: TenantRequestRecord) {
+  if (request.propertyType === "holiday_home") return "a holiday home";
+  if (request.propertyType === "boarding_house") return "student accommodation or a boarding house";
+  if (request.intent === "buy") return "a property to buy";
+  if (request.propertyType === "other") return "a property to rent";
+  return `a ${request.propertyType.replace(/[-_]/g, " ")} to rent`;
 }
 
 function normalizeClientType(value: unknown): TenantRequestInput["clientType"] {

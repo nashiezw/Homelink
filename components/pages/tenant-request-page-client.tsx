@@ -13,6 +13,7 @@ const rentTypes = [
   ["flat", "Flat"],
   ["room", "Room"],
   ["room-share", "Room share"],
+  ["boarding_house", "Boarding house"],
   ["holiday_home", "Holiday home"],
   ["commercial", "Commercial"],
 ];
@@ -29,6 +30,7 @@ const buyTypes = [
 const rentMustHaves = ["Ensuite", "Walled and gated", "Borehole", "Solar backup", "Parking", "Pet friendly", "Close to transport", "Close to schools"];
 const buyMustHaves = ["Title deeds", "Walled and gated", "Borehole", "Solar backup", "Main road access", "Near schools", "Subdivision potential", "Ready to transfer"];
 const holidayMustHaves = ["Self-catering", "Furnished", "WiFi", "Swimming pool", "Secure parking", "Generator / solar backup", "Cleaning service", "Family friendly"];
+const boardingMustHaves = ["Near campus", "WiFi", "Study area", "Bills included", "Shared kitchen", "Secure boarding", "Furnished", "Close to transport"];
 
 type FormState = {
   intent: "rent" | "buy";
@@ -90,7 +92,8 @@ export function TenantRequestPageClient() {
   const isBuying = form.intent === "buy";
   const isLand = form.propertyType === "land";
   const isCommercial = form.propertyType === "commercial";
-  const isRoom = form.propertyType === "room" || form.propertyType === "room-share";
+  const isBoardingHouse = form.propertyType === "boarding_house";
+  const isRoom = form.propertyType === "room" || form.propertyType === "room-share" || isBoardingHouse;
   const isHoliday = form.propertyType === "holiday_home";
   const isResidential = !isLand && !isCommercial;
   const needsBedrooms = isResidential && !isRoom;
@@ -105,6 +108,8 @@ export function TenantRequestPageClient() {
       ? "CBD, Belmont, Kelvin, Avondale, preferred business area"
       : isHoliday
         ? "Victoria Falls, Kariba, Nyanga, preferred holiday area"
+      : isBoardingHouse
+        ? "Near NUST, UZ, MSU, college, campus, preferred area"
       : isRoom
         ? "Pumula South, Nkulumane 12, close to transport"
         : "Pumula South, Nkulumane 12";
@@ -118,6 +123,8 @@ export function TenantRequestPageClient() {
       ? "Example: Looking for a shop or office around CBD/Belmont. Budget..."
       : isHoliday
         ? "Example: Looking for a furnished holiday home in Victoria Falls for a family trip. Dates, guests, budget..."
+      : isBoardingHouse
+        ? "Example: Looking for student accommodation near campus with WiFi, shared kitchen, and secure boarding. Budget..."
       : isRoom
         ? "Example: Looking for a room around Nkulumane, preferably ensuite and close to transport. Budget..."
         : "Example: Looking for a 3-bedroom house with ensuite around Pumula South or Nkulumane 12. Budget...";
@@ -125,19 +132,25 @@ export function TenantRequestPageClient() {
     if (form.intent === "buy" && isLand) return ["Title deeds", "Serviced stand", "Ready to build", "Road access", "Water nearby", "ZESA nearby", "Corner stand", "Subdivision potential"];
     if (isCommercial) return ["Main road access", "Parking", "High foot traffic", "Secure entrance", "Loading bay", "Office space", "Zoning approved", "Near transport"];
     if (isHoliday) return holidayMustHaves;
+    if (isBoardingHouse) return boardingMustHaves;
     if (isRoom) return ["Ensuite", "Own entrance", "Walled and gated", "Parking", "Close to transport", "Bills included", "Furnished", "Shared kitchen"];
     return form.intent === "buy" ? buyMustHaves : rentMustHaves;
-  }, [form.intent, isCommercial, isHoliday, isLand, isRoom]);
+  }, [form.intent, isBoardingHouse, isCommercial, isHoliday, isLand, isRoom]);
 
   useEffect(() => {
-    const intent = new URLSearchParams(window.location.search).get("intent");
+    const params = new URLSearchParams(window.location.search);
+    const intent = params.get("intent");
+    const type = params.get("type");
     if (intent === "buy" || intent === "rent") {
       setForm((current) => ({
         ...current,
         intent,
-        propertyType: intent === "buy" && ["room", "room-share", "holiday_home"].includes(current.propertyType) ? "house" : current.propertyType,
+        propertyType: intent === "buy" && ["room", "room-share", "boarding_house", "holiday_home"].includes(current.propertyType) ? "house" : current.propertyType,
         mustHaves: intent === "buy" ? ["Title deeds"] : ["Ensuite"],
       }));
+    }
+    if (type && rentTypes.some(([value]) => value === type)) {
+      setPropertyType(type);
     }
   }, []);
 
@@ -150,7 +163,8 @@ export function TenantRequestPageClient() {
       const next: FormState = { ...current, propertyType };
       const nextIsLand = propertyType === "land";
       const nextIsCommercial = propertyType === "commercial";
-      const nextIsRoom = propertyType === "room" || propertyType === "room-share";
+      const nextIsBoardingHouse = propertyType === "boarding_house";
+      const nextIsRoom = propertyType === "room" || propertyType === "room-share" || nextIsBoardingHouse;
       const nextIsHoliday = propertyType === "holiday_home";
 
       if (nextIsLand || nextIsCommercial || nextIsRoom) {
@@ -180,6 +194,8 @@ export function TenantRequestPageClient() {
         next.mustHaves = ["Main road access"];
       } else if (nextIsHoliday) {
         next.mustHaves = ["Self-catering", "Furnished"];
+      } else if (nextIsBoardingHouse) {
+        next.mustHaves = ["Near campus", "WiFi"];
       } else if (nextIsRoom) {
         next.mustHaves = ["Ensuite"];
       } else {
@@ -194,7 +210,7 @@ export function TenantRequestPageClient() {
     setForm((current) => ({
       ...current,
       intent,
-      propertyType: intent === "buy" && ["room", "room-share", "holiday_home"].includes(current.propertyType) ? "house" : current.propertyType,
+      propertyType: intent === "buy" && ["room", "room-share", "boarding_house", "holiday_home"].includes(current.propertyType) ? "house" : current.propertyType,
       bedrooms: intent === "buy" && ["land", "commercial", "holiday_home"].includes(current.propertyType) ? "" : current.bedrooms || (intent === "rent" ? "3" : ""),
       bathrooms: intent === "buy" && ["land", "commercial", "holiday_home"].includes(current.propertyType) ? "" : current.bathrooms,
       ensuite: intent === "buy" || ["land", "commercial", "holiday_home"].includes(current.propertyType) ? "not_needed" : "preferred",

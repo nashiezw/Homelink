@@ -85,6 +85,7 @@ const listingCoordinates: Record<string, { lat: number; lng: number }> = {
 function fallbackListingImage(type?: PropertyType) {
   switch (type) {
     case "room":
+    case "boarding_house":
       return roommateMedia.room;
     case "flat":
       return roommateMedia.flat2;

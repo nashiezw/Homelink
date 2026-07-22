@@ -49,6 +49,7 @@ const sortOptions = [
 
 const propertyTypeLabels: Record<string, { singular: string; plural: string }> = {
   room: { singular: "room", plural: "rooms" },
+  boarding_house: { singular: "boarding house", plural: "boarding houses" },
   flat: { singular: "flat", plural: "flats" },
   house: { singular: "house", plural: "houses" },
   cottage: { singular: "cottage", plural: "cottages" },
@@ -520,6 +521,7 @@ export function SearchPageClient({ initialSearchParams = EMPTY_INITIAL_SEARCH_PA
               >
                 <option value="">Any type</option>
                 <option value="room">Room</option>
+                <option value="boarding_house">Boarding House</option>
                 <option value="flat">Flat</option>
                 <option value="house">House</option>
                 <option value="cottage">Cottage</option>

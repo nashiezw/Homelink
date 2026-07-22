@@ -8,7 +8,7 @@ export type TenantRequestInput = {
   phone: string;
   email?: string;
   clientType?: "individual" | "family" | "company" | "investor" | "diaspora" | "other";
-  propertyType: "house" | "cottage" | "flat" | "room" | "room-share" | "land" | "commercial" | "holiday_home" | "other";
+  propertyType: "house" | "cottage" | "flat" | "room" | "room-share" | "boarding_house" | "land" | "commercial" | "holiday_home" | "other";
   bedrooms?: number;
   bathrooms?: number;
   ensuite: "required" | "preferred" | "not_needed";

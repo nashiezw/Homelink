@@ -1,4 +1,5 @@
 import {
+  BookOpen,
   Building2,
   Home,
   Hotel,
@@ -17,6 +18,7 @@ const ICONS: Record<string, LucideIcon> = {
   houses: Home,
   apartments: Building2,
   rooms: Hotel,
+  boarding: BookOpen,
   cottages: Trees,
   land: Map,
   commercial: Warehouse,

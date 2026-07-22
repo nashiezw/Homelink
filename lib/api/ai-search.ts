@@ -4,6 +4,7 @@ import type { PropertyType } from "@/lib/types";
 const knownCities = ["harare", "bulawayo", "gweru", "kwekwe", "mutare"];
 const propertyTypes: PropertyType[] = [
   "room",
+  "boarding_house",
   "house",
   "flat",
   "cottage",
@@ -36,6 +37,9 @@ export function parseNaturalLanguageSearch(query: string): ListingQuery & {
   let type = propertyTypes.find((candidate) => normalized.includes(candidate.replace("_", " ")));
   if (normalized.includes("holiday") || normalized.includes("vacation") || normalized.includes("getaway")) {
     type = "holiday_home";
+  }
+  if (normalized.match(/\b(boarding|student|campus|university|college|school|hostel|dorm)\b/)) {
+    type = "boarding_house";
   }
   const suburb = normalized.includes("cbd")
     ? normalized.includes("kwekwe")

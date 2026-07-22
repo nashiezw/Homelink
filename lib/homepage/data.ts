@@ -535,6 +535,7 @@ function fallbackHomepageListingImage(type?: PropertyType) {
   if (type === "land") return "/images/roommates/photo-land-mutare.jpg";
   if (type === "commercial") return "/images/roommates/photo-office-harare.jpg";
   if (type === "holiday_home") return "/images/roommates/photo-lodge-vicfalls.jpg";
+  if (type === "boarding_house") return "/images/roommates/room-share-hero-photo.jpg";
   return "/images/roommates/photo-cottage-avondale.jpg";
 }
 

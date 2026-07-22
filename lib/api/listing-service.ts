@@ -291,7 +291,7 @@ function intent(value: string | null) {
 }
 
 function propertyType(value: string | null): PropertyType | undefined {
-  const allowed = ["room", "house", "flat", "cottage", "commercial", "land", "holiday_home"];
+  const allowed = ["room", "boarding_house", "house", "flat", "cottage", "commercial", "land", "holiday_home"];
   return allowed.includes(value ?? "") ? (value as PropertyType) : undefined;
 }
 

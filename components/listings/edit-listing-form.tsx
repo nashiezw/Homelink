@@ -46,6 +46,11 @@ export function EditListingForm() {
     description: "",
     availableFrom: "",
     genderPreference: "any",
+    schoolNearby: "",
+    boardingGenderPolicy: "any",
+    mealsIncluded: false,
+    studyArea: false,
+    billsIncluded: false,
   });
 
   useEffect(() => {
@@ -69,6 +74,11 @@ export function EditListingForm() {
           description: listing.description,
           availableFrom: listing.availableFrom,
           genderPreference: listing.tenantPreferences?.genderPreference ?? "any",
+          schoolNearby: listing.listingDetails?.schoolNearby ?? "",
+          boardingGenderPolicy: listing.listingDetails?.boardingGenderPolicy ?? "any",
+          mealsIncluded: Boolean(listing.listingDetails?.mealsIncluded || listing.description.match(/\bmeals included\b/i)),
+          studyArea: Boolean(listing.listingDetails?.studyArea || listing.description.match(/\bstudy area\b/i)),
+          billsIncluded: Boolean(listing.listingDetails?.billsIncluded || listing.description.match(/\bbills included\b/i)),
         });
         setImages(listing.images?.length ? listing.images : listing.image ? [listing.image] : []);
         setVideos(listing.videos ?? []);
@@ -90,9 +100,9 @@ export function EditListingForm() {
     setForm((current) => ({
       ...current,
       type,
-      intent: type === "holiday_home" || type === "room" ? "rent" : current.intent,
-      bedrooms: type === "room" || type === "land" || type === "commercial" ? "0" : current.bedrooms || "1",
-      bathrooms: type === "room" || type === "land" ? "0" : current.bathrooms || "1",
+      intent: type === "holiday_home" || type === "room" || type === "boarding_house" ? "rent" : current.intent,
+      bedrooms: type === "room" || type === "boarding_house" || type === "land" || type === "commercial" ? "0" : current.bedrooms || "1",
+      bathrooms: type === "room" || type === "boarding_house" || type === "land" ? "0" : current.bathrooms || "1",
     }));
   }
 
@@ -105,7 +115,16 @@ export function EditListingForm() {
     setSaving(true);
 
     const isHoliday = form.type === "holiday_home";
+    const isBoardingHouse = form.type === "boarding_house";
     const nightlyRate = isHoliday ? Number(holidayHome.nightlyRate ?? form.price) : Number(form.price);
+    const description = form.description.trim();
+    const boardingSummary = boardingDetailsSummary(form);
+    const publicDescription = isBoardingHouse
+      ? [stripBoardingSummary(description), boardingSummary].filter(Boolean).join("\n\n")
+      : description;
+    const submittedAmenities = isBoardingHouse
+      ? [...new Set([...amenities, ...boardingAmenities(form)])]
+      : amenities;
 
     const payload: Record<string, unknown> = {
       title: form.title.trim(),
@@ -114,14 +133,23 @@ export function EditListingForm() {
       price: nightlyRate,
       type: form.type,
       intent: isHoliday ? "rent" : form.intent,
-      bedrooms: ["room", "land", "commercial"].includes(form.type) ? 0 : Number(form.bedrooms) || 0,
-      bathrooms: ["room", "land"].includes(form.type) ? 0 : Number(form.bathrooms) || 0,
-      description: form.description.trim(),
+      bedrooms: ["room", "boarding_house", "land", "commercial"].includes(form.type) ? 0 : Number(form.bedrooms) || 0,
+      bathrooms: ["room", "boarding_house", "land"].includes(form.type) ? 0 : Number(form.bathrooms) || 0,
+      description: publicDescription,
       availableFrom: form.availableFrom,
-      amenities,
+      amenities: submittedAmenities,
       images,
       image: images[0],
       videos,
+      listingDetails: isBoardingHouse
+        ? {
+            schoolNearby: form.schoolNearby.trim() || undefined,
+            boardingGenderPolicy: form.boardingGenderPolicy,
+            mealsIncluded: form.mealsIncluded,
+            studyArea: form.studyArea,
+            billsIncluded: form.billsIncluded,
+          }
+        : undefined,
     };
 
     if (isHoliday) {
@@ -132,7 +160,7 @@ export function EditListingForm() {
       };
     }
 
-    if (form.type === "room") {
+    if (form.type === "room" || form.type === "boarding_house") {
       payload.tenantPreferences = {
         genderPreference: form.genderPreference,
         maxOccupants: 1,
@@ -236,7 +264,7 @@ export function EditListingForm() {
         <HolidayHomeFields value={holidayHome} onChange={setHolidayHome} />
       ) : null}
 
-      {form.type !== "land" && form.type !== "commercial" && form.type !== "room" && (
+      {form.type !== "land" && form.type !== "commercial" && form.type !== "room" && form.type !== "boarding_house" && (
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="block text-sm font-medium">
             Bedrooms
@@ -267,19 +295,43 @@ export function EditListingForm() {
         onChange={(availableFrom) => setForm({ ...form, availableFrom })}
       />
 
-      {form.type === "room" && (
-        <label className="block text-sm font-medium">
-          Preferred tenant gender
-          <select
-            value={form.genderPreference}
-            onChange={(e) => setForm({ ...form, genderPreference: e.target.value })}
-            className={fieldClass}
-          >
-            <option value="any">Any</option>
-            <option value="female">Female only</option>
-            <option value="male">Male only</option>
-          </select>
-        </label>
+      {(form.type === "room" || form.type === "boarding_house") && (
+        <section className="rounded-xl border border-emerald-100 bg-emerald-50/60 p-4 dark:border-emerald-900/50 dark:bg-emerald-950/20">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="block text-sm font-medium">
+              Preferred tenant gender
+              <select
+                value={form.genderPreference}
+                onChange={(e) => setForm({ ...form, genderPreference: e.target.value })}
+                className={fieldClass}
+              >
+                <option value="any">Any</option>
+                <option value="female">Female only</option>
+                <option value="male">Male only</option>
+              </select>
+            </label>
+            {form.type === "boarding_house" && (
+              <>
+                <label className="block text-sm font-medium">
+                  School, college, or campus nearby
+                  <input value={form.schoolNearby} onChange={(e) => setForm({ ...form, schoolNearby: e.target.value })} placeholder="NUST, UZ, MSU, local school..." className={fieldClass} />
+                </label>
+                <label className="block text-sm font-medium">
+                  Boarding policy
+                  <select value={form.boardingGenderPolicy} onChange={(e) => setForm({ ...form, boardingGenderPolicy: e.target.value })} className={fieldClass}>
+                    <option value="any">Open to all students</option>
+                    <option value="female">Female students only</option>
+                    <option value="male">Male students only</option>
+                    <option value="separate_wings">Separate male and female wings</option>
+                  </select>
+                </label>
+                <label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" checked={form.mealsIncluded} onChange={(e) => setForm({ ...form, mealsIncluded: e.target.checked })} /> Meals included</label>
+                <label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" checked={form.studyArea} onChange={(e) => setForm({ ...form, studyArea: e.target.checked })} /> Study area available</label>
+                <label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" checked={form.billsIncluded} onChange={(e) => setForm({ ...form, billsIncluded: e.target.checked })} /> Bills included</label>
+              </>
+            )}
+          </div>
+        </section>
       )}
 
       <label className="block text-sm font-medium">
@@ -312,4 +364,43 @@ export function EditListingForm() {
       </div>
     </form>
   );
+}
+
+function boardingDetailsSummary(form: {
+  schoolNearby: string;
+  boardingGenderPolicy: string;
+  mealsIncluded: boolean;
+  studyArea: boolean;
+  billsIncluded: boolean;
+}) {
+  const details = ["Student accommodation / boarding house."];
+  if (form.schoolNearby.trim()) details.push(`Near: ${form.schoolNearby.trim()}.`);
+  if (form.boardingGenderPolicy !== "any") details.push(`Boarding policy: ${form.boardingGenderPolicy.replace(/_/g, " ")}.`);
+  if (form.mealsIncluded) details.push("Meals included.");
+  if (form.studyArea) details.push("Study area available.");
+  if (form.billsIncluded) details.push("Bills included.");
+  return details.join(" ");
+}
+
+function boardingAmenities(form: {
+  schoolNearby: string;
+  mealsIncluded: boolean;
+  studyArea: boolean;
+  billsIncluded: boolean;
+}) {
+  return [
+    "Student accommodation",
+    "Boarding house",
+    form.schoolNearby.trim() ? "Near campus" : "",
+    form.mealsIncluded ? "Meals included" : "",
+    form.studyArea ? "Study area" : "",
+    form.billsIncluded ? "Bills included" : "",
+  ].filter(Boolean);
+}
+
+function stripBoardingSummary(description: string) {
+  return description
+    .replace(/\n\nStudent accommodation \/ boarding house\.[\s\S]*$/i, "")
+    .replace(/Student accommodation \/ boarding house\.[\s\S]*$/i, "")
+    .trim();
 }

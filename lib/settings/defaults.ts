@@ -216,7 +216,7 @@ export const defaultPlatformSettings: PlatformSettings = {
   cities: ["Harare", "Bulawayo", "Gweru", "Mutare", "Kwekwe", "Masvingo", "Chitungwiza", "Victoria Falls"],
   suburbs: ["Avondale", "Borrowdale", "CBD", "Greendale", "Hillside", "Senga", "Murambi"],
   geo: buildDefaultGeo(),
-  propertyTypes: ["room", "cottage", "flat", "house", "land", "commercial", "holiday_home"],
+  propertyTypes: ["room", "boarding_house", "cottage", "flat", "house", "land", "commercial", "holiday_home"],
   amenities: ["wifi", "parking", "security", "borehole", "solar", "furnished", "ensuite", "garden"],
   featureFlags: {
     aiSearch: true,

@@ -72,6 +72,11 @@ export function CreateListingForm({ onSuccess }: CreateListingFormProps) {
     utilitiesIncluded: false,
     sharedBathroom: true,
     kitchenAccess: true,
+    schoolNearby: "",
+    boardingGenderPolicy: "any",
+    mealsIncluded: false,
+    studyArea: false,
+    billsIncluded: false,
     childrenAllowed: false,
     smokingAllowed: false,
     petsAllowed: false,
@@ -119,9 +124,9 @@ export function CreateListingForm({ onSuccess }: CreateListingFormProps) {
     setForm((current) => ({
       ...current,
       type,
-      intent: type === "holiday_home" || type === "room" ? "rent" : current.intent,
-      bedrooms: type === "room" || type === "land" || type === "commercial" ? "0" : current.bedrooms || "1",
-      bathrooms: type === "room" || type === "land" ? "0" : current.bathrooms || "1",
+      intent: type === "holiday_home" || type === "room" || type === "boarding_house" ? "rent" : current.intent,
+      bedrooms: type === "room" || type === "boarding_house" || type === "land" || type === "commercial" ? "0" : current.bedrooms || "1",
+      bathrooms: type === "room" || type === "boarding_house" || type === "land" ? "0" : current.bathrooms || "1",
       availableFrom: type === "land" && current.intent === "buy" ? "Available now" : current.availableFrom,
     }));
   }
@@ -139,7 +144,7 @@ export function CreateListingForm({ onSuccess }: CreateListingFormProps) {
     if (!Number(form.price) && form.type !== "holiday_home") return "Add a valid price.";
     if (form.type === "land" && !form.landSizeSqm.trim()) return "Add the land size in square metres.";
     if (form.type === "commercial" && !form.floorAreaSqm.trim()) return "Add the floor area for the commercial space.";
-    if (form.type === "room" && Number(form.maxOccupants) < householdOccupants(form.acceptedHouseholdType)) {
+    if ((form.type === "room" || form.type === "boarding_house") && Number(form.maxOccupants) < householdOccupants(form.acceptedHouseholdType)) {
       return "Max occupants must fit the household size you accept.";
     }
     if (!form.ownerAgreementAccepted) return "The property owner must accept the HouseLink listing agreement.";
@@ -164,7 +169,16 @@ export function CreateListingForm({ onSuccess }: CreateListingFormProps) {
 
     setSubmitting(true);
     const isHoliday = form.type === "holiday_home";
+    const isBoardingHouse = form.type === "boarding_house";
     const nightlyRate = isHoliday ? Number(holidayHome.nightlyRate ?? form.price) : Number(form.price);
+    const description = form.description.trim();
+    const boardingSummary = boardingDetailsSummary(form);
+    const publicDescription = isBoardingHouse
+      ? [description, boardingSummary].filter(Boolean).join("\n\n")
+      : description;
+    const submittedAmenities = isBoardingHouse
+      ? [...new Set([...amenities, ...boardingAmenities(form)])]
+      : amenities;
 
     const payload: Record<string, unknown> = {
       title: form.title.trim(),
@@ -173,11 +187,11 @@ export function CreateListingForm({ onSuccess }: CreateListingFormProps) {
       price: nightlyRate,
       type: form.type,
       intent: isHoliday ? "rent" : form.intent,
-      bedrooms: ["room", "land", "commercial"].includes(form.type) ? 0 : Number(form.bedrooms) || 1,
-      bathrooms: ["room", "land"].includes(form.type) ? 0 : Number(form.bathrooms) || 1,
-      description: form.description.trim(),
+      bedrooms: ["room", "boarding_house", "land", "commercial"].includes(form.type) ? 0 : Number(form.bedrooms) || 1,
+      bathrooms: ["room", "boarding_house", "land"].includes(form.type) ? 0 : Number(form.bathrooms) || 1,
+      description: publicDescription,
       availableFrom: form.availableFrom.trim() || "Available now",
-      amenities,
+      amenities: submittedAmenities,
       images: images.length ? images : undefined,
       image: images[0],
       videos: videos.length ? videos : undefined,
@@ -195,8 +209,13 @@ export function CreateListingForm({ onSuccess }: CreateListingFormProps) {
         depositAmount: Number(form.depositAmount) || undefined,
         leaseTerm: form.intent === "rent" ? form.leaseTerm : undefined,
         utilitiesIncluded: form.utilitiesIncluded,
-        sharedBathroom: form.type === "room" ? form.sharedBathroom : undefined,
-        kitchenAccess: form.type === "room" ? form.kitchenAccess : undefined,
+        sharedBathroom: form.type === "room" || form.type === "boarding_house" ? form.sharedBathroom : undefined,
+        kitchenAccess: form.type === "room" || form.type === "boarding_house" ? form.kitchenAccess : undefined,
+        schoolNearby: isBoardingHouse ? form.schoolNearby.trim() || undefined : undefined,
+        boardingGenderPolicy: isBoardingHouse ? form.boardingGenderPolicy : undefined,
+        mealsIncluded: isBoardingHouse ? form.mealsIncluded : undefined,
+        studyArea: isBoardingHouse ? form.studyArea : undefined,
+        billsIncluded: isBoardingHouse ? form.billsIncluded : undefined,
         childrenAllowed: form.childrenAllowed,
         smokingAllowed: form.smokingAllowed,
         petsAllowed: form.petsAllowed,
@@ -219,7 +238,7 @@ export function CreateListingForm({ onSuccess }: CreateListingFormProps) {
       };
     }
 
-    if (form.type === "room") {
+    if (form.type === "room" || form.type === "boarding_house") {
       payload.tenantPreferences = {
         genderPreference: form.acceptedHouseholdType === "single" ? form.genderPreference : "any",
         maxOccupants: Number(form.maxOccupants) || householdOccupants(form.acceptedHouseholdType),
@@ -377,7 +396,7 @@ export function CreateListingForm({ onSuccess }: CreateListingFormProps) {
         <HolidayHomeFields value={holidayHome} onChange={setHolidayHome} />
       ) : null}
 
-      {form.type !== "land" && form.type !== "room" && (
+      {form.type !== "land" && form.type !== "room" && form.type !== "boarding_house" && (
         <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
           {form.type !== "commercial" && (
             <label className="block text-sm font-medium">
@@ -425,7 +444,7 @@ export function CreateListingForm({ onSuccess }: CreateListingFormProps) {
         onChange={(availableFrom) => setForm({ ...form, availableFrom })}
       />
 
-      {form.type === "room" && (
+      {(form.type === "room" || form.type === "boarding_house") && (
         <section className="rounded-xl border border-emerald-100 bg-emerald-50/60 p-4 dark:border-emerald-900/50 dark:bg-emerald-950/20">
           <p className="text-sm font-semibold text-ink">Room-sharing fit</p>
           <div className="mt-3 grid gap-4 sm:grid-cols-2">
@@ -461,6 +480,26 @@ export function CreateListingForm({ onSuccess }: CreateListingFormProps) {
             <label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" className={checkboxClass} checked={form.sharedBathroom} onChange={(e) => setForm({ ...form, sharedBathroom: e.target.checked })} /> Shared bathroom</label>
             <label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" className={checkboxClass} checked={form.kitchenAccess} onChange={(e) => setForm({ ...form, kitchenAccess: e.target.checked })} /> Kitchen access</label>
           </div>
+          {form.type === "boarding_house" && (
+            <div className="mt-4 grid gap-4 border-t border-emerald-200 pt-4 dark:border-emerald-900 sm:grid-cols-2">
+              <label className="block text-sm font-medium">
+                School, college, or campus nearby
+                <input value={form.schoolNearby} onChange={(e) => setForm({ ...form, schoolNearby: e.target.value })} placeholder="NUST, UZ, MSU, local school..." className={fieldClass} />
+              </label>
+              <label className="block text-sm font-medium">
+                Boarding policy
+                <select value={form.boardingGenderPolicy} onChange={(e) => setForm({ ...form, boardingGenderPolicy: e.target.value })} className={fieldClass}>
+                  <option value="any">Open to all students</option>
+                  <option value="female">Female students only</option>
+                  <option value="male">Male students only</option>
+                  <option value="separate_wings">Separate male and female wings</option>
+                </select>
+              </label>
+              <label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" className={checkboxClass} checked={form.mealsIncluded} onChange={(e) => setForm({ ...form, mealsIncluded: e.target.checked })} /> Meals included</label>
+              <label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" className={checkboxClass} checked={form.studyArea} onChange={(e) => setForm({ ...form, studyArea: e.target.checked })} /> Study area available</label>
+              <label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" className={checkboxClass} checked={form.billsIncluded} onChange={(e) => setForm({ ...form, billsIncluded: e.target.checked, utilitiesIncluded: e.target.checked || form.utilitiesIncluded })} /> Bills included</label>
+            </div>
+          )}
         </section>
       )}
 
@@ -559,4 +598,36 @@ export function CreateListingForm({ onSuccess }: CreateListingFormProps) {
       </div>
     </form>
   );
+}
+
+function boardingDetailsSummary(form: {
+  schoolNearby: string;
+  boardingGenderPolicy: string;
+  mealsIncluded: boolean;
+  studyArea: boolean;
+  billsIncluded: boolean;
+}) {
+  const details = ["Student accommodation / boarding house."];
+  if (form.schoolNearby.trim()) details.push(`Near: ${form.schoolNearby.trim()}.`);
+  if (form.boardingGenderPolicy !== "any") details.push(`Boarding policy: ${form.boardingGenderPolicy.replace(/_/g, " ")}.`);
+  if (form.mealsIncluded) details.push("Meals included.");
+  if (form.studyArea) details.push("Study area available.");
+  if (form.billsIncluded) details.push("Bills included.");
+  return details.join(" ");
+}
+
+function boardingAmenities(form: {
+  schoolNearby: string;
+  mealsIncluded: boolean;
+  studyArea: boolean;
+  billsIncluded: boolean;
+}) {
+  return [
+    "Student accommodation",
+    "Boarding house",
+    form.schoolNearby.trim() ? "Near campus" : "",
+    form.mealsIncluded ? "Meals included" : "",
+    form.studyArea ? "Study area" : "",
+    form.billsIncluded ? "Bills included" : "",
+  ].filter(Boolean);
 }

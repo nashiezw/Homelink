@@ -244,11 +244,11 @@ function buildDetailRows(listing: Listing) {
   const details = listing.listingDetails;
   const rows: Array<{ label: string; value: string; icon: typeof Ruler }> = [];
 
-  if (!["land", "commercial", "room"].includes(listing.type)) {
+  if (!["land", "commercial", "room", "boarding_house"].includes(listing.type)) {
     rows.push({ label: "Bedrooms", value: String(listing.bedrooms), icon: Ruler });
   }
 
-  if (!["land", "room"].includes(listing.type)) {
+  if (!["land", "room", "boarding_house"].includes(listing.type)) {
     rows.push({ label: "Bathrooms", value: String(listing.bathrooms), icon: Ruler });
   }
 
@@ -272,6 +272,21 @@ function buildDetailRows(listing: Listing) {
     }
     if (typeof details?.kitchenAccess === "boolean") {
       rows.push({ label: "Kitchen access", value: yesNo(details.kitchenAccess), icon: ShieldCheck });
+    }
+    if (details?.schoolNearby) {
+      rows.push({ label: "Nearby school or campus", value: details.schoolNearby, icon: MapPin });
+    }
+    if (details?.boardingGenderPolicy && details.boardingGenderPolicy !== "any") {
+      rows.push({ label: "Boarding policy", value: details.boardingGenderPolicy.replace(/_/g, " "), icon: Users });
+    }
+    if (typeof details?.mealsIncluded === "boolean") {
+      rows.push({ label: "Meals included", value: yesNo(details.mealsIncluded), icon: ShieldCheck });
+    }
+    if (typeof details?.studyArea === "boolean") {
+      rows.push({ label: "Study area", value: yesNo(details.studyArea), icon: ShieldCheck });
+    }
+    if (typeof details?.billsIncluded === "boolean") {
+      rows.push({ label: "Bills included", value: yesNo(details.billsIncluded), icon: ShieldCheck });
     }
     if (listing.tenantPreferences.genderPreference && listing.tenantPreferences.genderPreference !== "any") {
       rows.push({ label: "Preferred tenant gender", value: listing.tenantPreferences.genderPreference, icon: Users });

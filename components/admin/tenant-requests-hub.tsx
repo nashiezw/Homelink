@@ -334,7 +334,9 @@ function labelize(value: string) {
 }
 
 function formatPropertyType(value: string) {
-  return value === "holiday_home" ? "holiday home" : value.replace(/-/g, " ");
+  if (value === "holiday_home") return "holiday home";
+  if (value === "boarding_house") return "boarding house";
+  return value.replace(/[-_]/g, " ");
 }
 
 function phoneToWhatsApp(value: string) {

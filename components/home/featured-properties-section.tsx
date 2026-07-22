@@ -52,7 +52,7 @@ export function FeaturedPropertiesSection({ listings }: FeaturedPropertiesSectio
 }
 
 function FeaturedHeroCard({ listing }: { listing: Listing }) {
-  const isRoom = listing.type === "room";
+  const isRoom = listing.type === "room" || listing.type === "boarding_house";
   const isLand = listing.type === "land";
   const isCommercial = listing.type === "commercial";
   const href = `/listings/${listing.slug ?? listing.id}`;

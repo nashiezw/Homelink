@@ -71,6 +71,7 @@ export function createDefaultHomepageCms(): HomepageCmsConfig {
       { id: "houses", label: "Houses", href: "/rent/harare", enabled: true, mode: "live", listingTypes: ["house"] },
       { id: "apartments", label: "Apartments", href: "/search", enabled: true, mode: "live", listingTypes: ["flat"] },
       { id: "rooms", label: "Rooms", href: "/rooms/avondale", enabled: true, mode: "live", listingTypes: ["room"] },
+      { id: "boarding", label: "Boarding Houses", href: "/student-accommodation", enabled: true, mode: "live", listingTypes: ["boarding_house"] },
       { id: "cottages", label: "Cottages", href: "/search", enabled: true, mode: "live", listingTypes: ["cottage"] },
       { id: "land", label: "Land", href: "/search", enabled: true, mode: "live", listingTypes: ["land"] },
       { id: "commercial", label: "Commercial", href: "/search", enabled: true, mode: "live", listingTypes: ["commercial"] },

@@ -6,6 +6,7 @@ export type ListingIntent = "rent" | "buy";
 
 export type PropertyType =
   | "room"
+  | "boarding_house"
   | "house"
   | "flat"
   | "cottage"
@@ -148,6 +149,11 @@ export type Listing = {
     utilitiesIncluded?: boolean;
     sharedBathroom?: boolean;
     kitchenAccess?: boolean;
+    schoolNearby?: string;
+    boardingGenderPolicy?: string;
+    mealsIncluded?: boolean;
+    studyArea?: boolean;
+    billsIncluded?: boolean;
     childrenAllowed?: boolean;
     smokingAllowed?: boolean;
     petsAllowed?: boolean;

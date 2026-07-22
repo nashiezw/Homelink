@@ -80,6 +80,7 @@ type SafeListingRow = Prisma.ListingGetPayload<{ select: typeof SAFE_LISTING_SEL
 
 const PROPERTY_TYPE_TO_DB: Record<PropertyType, DbPropertyType> = {
   room: DbPropertyType.ROOM,
+  boarding_house: DbPropertyType.ROOM,
   house: DbPropertyType.HOUSE,
   flat: DbPropertyType.FLAT,
   cottage: DbPropertyType.COTTAGE,
@@ -256,7 +257,7 @@ export async function listListingsFromPostgres(query: {
   const where = {
     ...(query.status && STATUS_TO_DB[query.status] ? { status: STATUS_TO_DB[query.status] } : {}),
     ...(!query.status && !query.includeDeleted ? { status: { not: DbListingStatus.DELETED } } : {}),
-    ...(query.type ? { propertyType: PROPERTY_TYPE_TO_DB[query.type as PropertyType] } : {}),
+    ...(query.type ? adminPropertyTypeWhere(query.type as PropertyType) : {}),
     ...(query.intent ? { intent: normalizeIntent(query.intent) } : {}),
     ...(query.q
       ? {
@@ -294,7 +295,7 @@ function publicListingWhere(
   ];
 
   if (query.intent) and.push({ intent: normalizeIntent(query.intent) });
-  if (query.type && query.type !== "holiday_home") and.push({ propertyType: PROPERTY_TYPE_TO_DB[query.type] });
+  if (query.type && query.type !== "holiday_home") and.push(publicPropertyTypeWhere(query.type));
   if (query.city) and.push({ city: { contains: query.city, mode: "insensitive" } });
   if (query.suburb) and.push({ suburb: { contains: query.suburb, mode: "insensitive" } });
   if (query.minPrice) and.push({ price: { gte: query.minPrice } });
@@ -899,8 +900,8 @@ function toListingRecord(row: PrismaListingRow | SafeListingRow): ListingRecord 
     .map((m) => resolvePublicImageUrl(m.url) ?? m.url)
     .filter(Boolean);
   const videos = row.media.filter((m) => m.mediaType === "video").map((m) => m.url);
-  const type = PROPERTY_TYPE_FROM_DB[row.propertyType] ?? "room";
   const amenities = amenitiesFromRow(row);
+  const type = publicTypeFromRow(row, amenities);
   const fallbackImage = resolvePublicImageUrl(fallbackListingImage(type)) ?? fallbackListingImage(type);
   return {
     id: row.id,
@@ -1048,6 +1049,52 @@ function amenitiesFromRow(row: PrismaListingRow | SafeListingRow) {
   return AMENITY_FLAGS.filter(([field]) => Boolean(row[field])).map(([field]) => labels[field]);
 }
 
+function publicTypeFromRow(row: PrismaListingRow | SafeListingRow, amenities: string[]): PropertyType {
+  const baseType = PROPERTY_TYPE_FROM_DB[row.propertyType] ?? "room";
+  if (baseType !== "room") return baseType;
+  return isBoardingHouseText(`${row.title} ${row.description} ${amenities.join(" ")}`) ? "boarding_house" : "room";
+}
+
+function adminPropertyTypeWhere(type: PropertyType): Prisma.ListingWhereInput {
+  if (type === "boarding_house") return boardingHouseWhere();
+  return { propertyType: PROPERTY_TYPE_TO_DB[type] };
+}
+
+function publicPropertyTypeWhere(type: PropertyType): Prisma.ListingWhereInput {
+  if (type === "boarding_house") return boardingHouseWhere();
+  return { propertyType: PROPERTY_TYPE_TO_DB[type] };
+}
+
+function boardingHouseWhere(): Prisma.ListingWhereInput {
+  return {
+    propertyType: DbPropertyType.ROOM,
+    OR: BOARDING_HOUSE_KEYWORDS.flatMap((keyword) => [
+      { title: { contains: keyword, mode: "insensitive" as const } },
+      { description: { contains: keyword, mode: "insensitive" as const } },
+      { suburb: { contains: keyword, mode: "insensitive" as const } },
+    ]),
+  };
+}
+
+const BOARDING_HOUSE_KEYWORDS = [
+  "boarding",
+  "student",
+  "campus",
+  "university",
+  "college",
+  "school",
+  "hostel",
+  "dorm",
+  "msu",
+  "uz",
+  "nust",
+];
+
+function isBoardingHouseText(value: string) {
+  const normalized = value.toLowerCase();
+  return BOARDING_HOUSE_KEYWORDS.some((keyword) => normalized.includes(keyword));
+}
+
 function normalizeMedia(images?: string[], image?: string) {
   return [...new Set([...(images ?? []), image].filter((url): url is string => Boolean(url?.trim())))];
 }
@@ -1112,6 +1159,7 @@ function fallbackListingImage(type?: PropertyType) {
   if (type === "land") return "/images/roommates/photo-land-mutare.jpg";
   if (type === "commercial") return "/images/roommates/photo-office-harare.jpg";
   if (type === "holiday_home") return "/images/roommates/photo-lodge-vicfalls.jpg";
+  if (type === "boarding_house") return "/images/roommates/room-share-hero-photo.jpg";
   return "/images/roommates/photo-cottage-avondale.jpg";
 }
 

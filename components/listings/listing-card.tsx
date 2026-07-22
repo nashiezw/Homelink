@@ -14,7 +14,7 @@ type ListingCardProps = {
 };
 
 export function ListingCard({ listing }: ListingCardProps) {
-  const isRoom = listing.type === "room";
+  const isRoom = listing.type === "room" || listing.type === "boarding_house";
   const isLand = listing.type === "land";
   const isCommercial = listing.type === "commercial";
   const href = `/listings/${listing.slug ?? listing.id}`;

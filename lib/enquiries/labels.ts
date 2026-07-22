@@ -48,10 +48,10 @@ export function enquiryActionsForListing(
       { type: "TALK_TO_CONSULTANT", label: "Talk to a consultant" },
     ];
   }
-  if (type === "room") {
+  if (type === "room" || type === "boarding_house") {
     return [
-      { type: "REQUEST_ROOM_VIEWING", label: "Request room viewing", primary: true },
-      { type: "ENQUIRE_PROPERTY", label: "Enquire about this room" },
+      { type: "REQUEST_ROOM_VIEWING", label: type === "boarding_house" ? "Request boarding viewing" : "Request room viewing", primary: true },
+      { type: "ENQUIRE_PROPERTY", label: type === "boarding_house" ? "Enquire about student accommodation" : "Enquire about this room" },
       { type: "TALK_TO_CONSULTANT", label: "Talk to a HouseLink consultant" },
     ];
   }

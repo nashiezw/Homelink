@@ -380,7 +380,7 @@ export function MarketingCmsHub() {
         <Section title="Browse property types grid">
           <div className="space-y-3">
             {cms.propertyTypes.map((type, index) => (
-              <div key={type.id} className="grid gap-3 rounded-lg bg-slate-950/50 p-4 sm:grid-cols-4">
+              <div key={type.id} className="grid gap-3 rounded-lg bg-slate-950/50 p-4 sm:grid-cols-6">
                 <label className="flex items-center gap-2 text-sm text-white">
                   <input
                     type="checkbox"
@@ -396,6 +396,16 @@ export function MarketingCmsHub() {
                 <input className="rounded border border-white/10 bg-slate-900 px-2 py-1.5 text-sm text-white" value={type.label} onChange={(e) => {
                   const propertyTypes = [...cms.propertyTypes];
                   propertyTypes[index] = { ...type, label: e.target.value };
+                  setCms({ ...cms, propertyTypes });
+                }} />
+                <input className="rounded border border-white/10 bg-slate-900 px-2 py-1.5 text-sm text-white" value={type.href} onChange={(e) => {
+                  const propertyTypes = [...cms.propertyTypes];
+                  propertyTypes[index] = { ...type, href: e.target.value };
+                  setCms({ ...cms, propertyTypes });
+                }} />
+                <input className="rounded border border-white/10 bg-slate-900 px-2 py-1.5 text-sm text-white" value={(type.listingTypes ?? []).join(", ")} onChange={(e) => {
+                  const propertyTypes = [...cms.propertyTypes];
+                  propertyTypes[index] = { ...type, listingTypes: e.target.value.split(",").map((item) => item.trim()).filter(Boolean) };
                   setCms({ ...cms, propertyTypes });
                 }} />
                 <select className="rounded border border-white/10 bg-slate-900 px-2 py-1.5 text-sm text-white" value={type.mode} onChange={(e) => {

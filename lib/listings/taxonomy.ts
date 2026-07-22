@@ -3,6 +3,7 @@ import type { PropertyType } from "@/lib/types";
 
 const PROPERTY_LABELS: Record<string, string> = {
   room: "Room",
+  boarding_house: "Boarding House / Student Accommodation",
   house: "House",
   flat: "Flat / Apartment",
   cottage: "Cottage",
@@ -14,7 +15,7 @@ const PROPERTY_LABELS: Record<string, string> = {
 export function getPropertyTypeOptions(config: PublicPlatformConfig | null): Array<{ value: PropertyType; label: string }> {
   const types = config?.propertyTypes?.length
     ? config.propertyTypes
-    : ["room", "house", "flat", "cottage", "holiday_home", "commercial", "land"];
+    : ["room", "boarding_house", "house", "flat", "cottage", "holiday_home", "commercial", "land"];
   return types
     .filter((t): t is PropertyType => t in PROPERTY_LABELS || true)
     .map((value) => ({

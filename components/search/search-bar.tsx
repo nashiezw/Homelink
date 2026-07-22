@@ -18,6 +18,7 @@ const quickFilters = [
 const PROPERTY_TYPES: Array<{ value: "" | PropertyType; label: string }> = [
   { value: "", label: "All" },
   { value: "room", label: "Room" },
+  { value: "boarding_house", label: "Boarding house" },
   { value: "house", label: "House" },
   { value: "flat", label: "Apartment" },
   { value: "cottage", label: "Cottage" },

@@ -76,7 +76,7 @@ type ListingsResponse = {
 };
 
 const STATUSES = ["", ...LISTING_WORKFLOW_STATUSES];
-const TYPES = ["", "room", "house", "flat", "cottage", "commercial", "land", "holiday_home"];
+const TYPES = ["", "room", "boarding_house", "house", "flat", "cottage", "commercial", "land", "holiday_home"];
 const INTENTS = ["", "rent", "buy"];
 
 export function PropertiesManagementHub() {
@@ -392,7 +392,7 @@ export function PropertiesManagementHub() {
                     <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
                       <div className="rounded-lg bg-white/[0.04] px-2 py-1.5">
                         <p className="text-slate-500">Type</p>
-                        <p className="font-medium capitalize text-slate-200">{listing.type}</p>
+                        <p className="font-medium capitalize text-slate-200">{formatPropertyType(listing.type)}</p>
                       </div>
                       <div className="rounded-lg bg-white/[0.04] px-2 py-1.5">
                         <p className="text-slate-500">Price</p>
@@ -453,7 +453,7 @@ export function PropertiesManagementHub() {
                         {listing.virtualTourStatus && <span className="rounded bg-cyan-500/20 px-1.5 text-xs text-cyan-300">Tour {listing.virtualTourStatus.toLowerCase()}</span>}
                       </div>
                     </td>
-                    <td className="px-3 py-3 text-slate-300">{listing.type}</td>
+                    <td className="px-3 py-3 text-slate-300">{formatPropertyType(listing.type)}</td>
                     <td className="px-3 py-3"><ListingStatusBadge status={listing.status} intent={listing.intent} compact /></td>
                     <td className="px-3 py-3 text-xs text-slate-400">{listing.ownerName}</td>
                     <td className="px-3 py-3 text-xs text-slate-500">{listing.views}v - {listing.enquiries}e</td>
@@ -899,4 +899,10 @@ function readFile(file: File): Promise<string> {
     reader.onerror = reject;
     reader.readAsDataURL(file);
   });
+}
+
+function formatPropertyType(value: string) {
+  if (value === "holiday_home") return "holiday home";
+  if (value === "boarding_house") return "boarding house";
+  return value.replace(/[-_]/g, " ");
 }
