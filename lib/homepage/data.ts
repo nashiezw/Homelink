@@ -292,7 +292,12 @@ function resolvePostgresFeaturedAgents(
 }
 
 export async function getHomepageData(): Promise<HomepageData> {
-  if (isPostgresStoreEnabled()) return getPostgresHomepageData();
+  if (isPostgresStoreEnabled()) {
+    return getPostgresHomepageData().catch((error: unknown) => {
+      console.error("Postgres homepage unavailable; using local homepage fallback.", error);
+      return getLocalHomepageData();
+    });
+  }
   return getLocalHomepageData();
 }
 

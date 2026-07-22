@@ -3208,6 +3208,18 @@ class AppStore {
         case "verify":
           result = this.adminSetListingVerified(id, true, actor);
           break;
+        case "mark_boarding_house":
+          result = this.adminEditListing(
+            id,
+            {
+              type: "boarding_house",
+              intent: "rent",
+              bedrooms: 0,
+              bathrooms: 0,
+            },
+            actor,
+          );
+          break;
         default:
           break;
       }

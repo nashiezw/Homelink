@@ -20,9 +20,9 @@ const features = [
 ];
 
 const popularSearches = [
-  ["Near NUST", "/search?type=boarding_house&intent=rent&location=NUST"],
-  ["Near UZ", "/search?type=boarding_house&intent=rent&location=UZ"],
-  ["Near MSU", "/search?type=boarding_house&intent=rent&location=MSU"],
+  ["Near NUST", "/boarding-houses/nust"],
+  ["Near UZ", "/boarding-houses/uz"],
+  ["Near MSU", "/boarding-houses/msu"],
   ["Boarding under $200", "/search?type=boarding_house&intent=rent&maxPrice=200"],
 ];
 

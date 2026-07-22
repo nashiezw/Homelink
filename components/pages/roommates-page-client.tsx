@@ -651,7 +651,7 @@ export function RoommatesPageClient() {
         if (parts[1]) params.set("suburb", parts[1]);
       }
       params.set("intent", "rent");
-      params.set("type", sharePanel.roomType);
+      params.set("type", sharePanel.lifestyle === "student" ? "boarding_house" : sharePanel.roomType);
       if (sharePanel.budgetMin) params.set("minPrice", sharePanel.budgetMin);
       if (sharePanel.budgetMax) params.set("maxPrice", sharePanel.budgetMax);
       if (sharePanel.genderPreference !== "any") params.set("gender", sharePanel.genderPreference);

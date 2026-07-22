@@ -2,6 +2,7 @@
 
 import {
   Archive,
+  BookOpen,
   CheckCircle2,
   Compass,
   ExternalLink,
@@ -282,6 +283,7 @@ export function PropertiesManagementHub() {
           <AdminKpiCard label="Pending approval" value={data.summary.pending} icon={XCircle} tone="warning" compact />
           <AdminKpiCard label="Featured" value={data.summary.featured} icon={Star} compact />
           <AdminKpiCard label="Holiday homes" value={data.summary.holiday ?? 0} icon={Star} compact />
+          <AdminKpiCard label="Boarding houses" value={data.summary.boarding ?? 0} icon={BookOpen} compact />
           <AdminKpiCard label="Virtual tours" value={data.summary.virtualTours ?? 0} icon={Compass} compact />
           <AdminKpiCard label="Unverified live" value={data.summary.unverified} icon={ShieldCheck} tone="warning" compact />
           <AdminKpiCard label="Drafts" value={data.summary.draft ?? 0} icon={Archive} compact />
@@ -298,9 +300,12 @@ export function PropertiesManagementHub() {
           } else if (id === "holiday") {
             setType("holiday_home");
             setStatus("");
+          } else if (id === "boarding") {
+            setType("boarding_house");
+            setStatus("");
           } else {
             setStatus(id);
-            if (id !== "holiday_home") setType(type === "holiday_home" && id !== "all" ? "" : type);
+            if (id !== "holiday_home") setType(["holiday_home", "boarding_house"].includes(type) && id !== "all" ? "" : type);
           }
         }}
         tabs={[
@@ -315,6 +320,7 @@ export function PropertiesManagementHub() {
           { id: "EXPIRED", label: "Expired", count: data?.summary?.expired },
           { id: "featured", label: "Featured", count: data?.summary?.featured },
           { id: "holiday", label: "Holiday", count: data?.summary?.holiday },
+          { id: "boarding", label: "Boarding", count: data?.summary?.boarding },
         ]}
       />
 
@@ -342,6 +348,7 @@ export function PropertiesManagementHub() {
             <Button variant="secondary" onClick={() => void listingAction("mark_viewing")}><RefreshCw className="size-4" /> Viewing</Button>
             <Button variant="secondary" onClick={() => void listingAction("reject")}><XCircle className="size-4" /> Reject</Button>
             <Button variant="secondary" onClick={() => void listingAction("verify")}><ShieldCheck className="size-4" /> Verify</Button>
+            <Button variant="secondary" onClick={() => void listingAction("mark_boarding_house")}><BookOpen className="size-4" /> Boarding</Button>
             <Button variant="secondary" onClick={() => void listingAction("feature", undefined, { days: 14 })}><Star className="size-4" /> Feature</Button>
             <Button variant="secondary" onClick={() => void listingAction("archive")}><Archive className="size-4" /> Archive</Button>
             <Button variant="secondary" onClick={() => void listingAction("delete")}><Trash2 className="size-4" /> Delete</Button>

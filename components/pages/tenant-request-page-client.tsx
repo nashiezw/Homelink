@@ -196,6 +196,7 @@ export function TenantRequestPageClient() {
         next.mustHaves = ["Self-catering", "Furnished"];
       } else if (nextIsBoardingHouse) {
         next.mustHaves = ["Near campus", "WiFi"];
+        next.clientType = current.clientType === "individual" ? "student" : current.clientType;
       } else if (nextIsRoom) {
         next.mustHaves = ["Ensuite"];
       } else {
@@ -236,7 +237,7 @@ export function TenantRequestPageClient() {
       checkOutDate: isHoliday ? form.checkOutDate : "",
       purchaseReadiness: form.intent === "buy" ? form.purchaseReadiness : "",
       timeline: form.intent === "buy" ? form.timeline : "",
-      clientType: form.intent === "buy" ? form.clientType : "individual",
+      clientType: form.intent === "buy" || form.propertyType === "boarding_house" ? form.clientType : "individual",
     };
   }
 
@@ -335,6 +336,17 @@ export function TenantRequestPageClient() {
                 <>
                   <TextInput label="Check-in date" type="date" value={form.moveInDate} onChange={(value) => update("moveInDate", value)} />
                   <TextInput label="Check-out date" type="date" value={form.checkOutDate} onChange={(value) => update("checkOutDate", value)} />
+                </>
+              ) : form.intent === "rent" && isBoardingHouse ? (
+                <>
+                  <TextInput label="Move-in date" type="date" value={form.moveInDate} onChange={(value) => update("moveInDate", value)} />
+                  <SelectInput label="Requesting as" value={form.clientType} onChange={(value) => update("clientType", value)} options={[
+                    ["student", "Student"],
+                    ["guardian", "Parent / guardian"],
+                    ["school_admin", "School admin"],
+                    ["individual", "Individual"],
+                    ["other", "Other"],
+                  ]} />
                 </>
               ) : form.intent === "rent" ? (
                 <TextInput label="Move-in date" type="date" value={form.moveInDate} onChange={(value) => update("moveInDate", value)} />

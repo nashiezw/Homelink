@@ -14,6 +14,7 @@ import {
   OWNER_LISTING_AGREEMENT_VERSION,
 } from "@/lib/listings/owner-contract";
 import { getMainPrisma, isPostgresStoreEnabled } from "@/lib/db/main-prisma";
+import { ensureCoreProductionSchema } from "@/lib/db/production-schema";
 import { recordPostgresAuditEvent } from "@/lib/auth/postgres-auth";
 import { createSignedAgreement } from "@/lib/signatures/postgres-signature-repository";
 import { getStore } from "@/lib/store/app-store";
@@ -80,7 +81,7 @@ type SafeListingRow = Prisma.ListingGetPayload<{ select: typeof SAFE_LISTING_SEL
 
 const PROPERTY_TYPE_TO_DB: Record<PropertyType, DbPropertyType> = {
   room: DbPropertyType.ROOM,
-  boarding_house: DbPropertyType.ROOM,
+  boarding_house: DbPropertyType.BOARDING_HOUSE,
   house: DbPropertyType.HOUSE,
   flat: DbPropertyType.FLAT,
   cottage: DbPropertyType.COTTAGE,
@@ -91,6 +92,7 @@ const PROPERTY_TYPE_TO_DB: Record<PropertyType, DbPropertyType> = {
 
 const PROPERTY_TYPE_FROM_DB: Record<string, PropertyType> = {
   [DbPropertyType.ROOM]: "room",
+  [DbPropertyType.BOARDING_HOUSE]: "boarding_house",
   [DbPropertyType.HOUSE]: "house",
   [DbPropertyType.FLAT]: "flat",
   [DbPropertyType.COTTAGE]: "cottage",
@@ -147,6 +149,7 @@ export function shouldUsePostgresListings() {
 
 export async function createListingInPostgres(input: ListingInput, ownerId: string) {
   assertPostgresConfigured();
+  await ensureCoreProductionSchema();
   const prisma = getMainPrisma();
   const owner = await ensureUserInPostgres(ownerId);
   const isHoliday = input.type === "holiday_home";
@@ -253,6 +256,7 @@ export async function listListingsFromPostgres(query: {
   includeDeleted?: boolean;
 } = {}) {
   assertPostgresConfigured();
+  await ensureCoreProductionSchema();
   const prisma = getMainPrisma();
   const where = {
     ...(query.status && STATUS_TO_DB[query.status] ? { status: STATUS_TO_DB[query.status] } : {}),
@@ -426,6 +430,7 @@ export async function listPublicListingsPageFromPostgres(
   sort: ListingSort = "newest",
 ) {
   assertPostgresConfigured();
+  await ensureCoreProductionSchema();
   const prisma = getMainPrisma();
   const cursor = decodeListingCursor(pagination.cursor, sort);
   const where = publicListingWhere(query, cursor, sort);
@@ -498,6 +503,7 @@ export async function incrementListingViewsInPostgres(id: string) {
 
 export async function updateListingInPostgres(id: string, updates: ListingInput) {
   assertPostgresConfigured();
+  await ensureCoreProductionSchema();
   const prisma = getMainPrisma();
   const existing = await getListingRow(id);
   if (!existing) return null;
@@ -641,6 +647,7 @@ export async function summarizeListingsFromPostgres() {
     rented: all.filter((l) => l.status === "RENTED").length,
     sold: all.filter((l) => l.status === "SOLD").length,
     holiday: all.filter((l) => l.type === "holiday_home").length,
+    boarding: all.filter((l) => l.type === "boarding_house").length,
     commercial: all.filter((l) => l.type === "commercial").length,
     virtualTours: all.filter((l) => l.virtualTour?.status === "PUBLISHED").length,
   };
@@ -672,6 +679,20 @@ export async function adminListingActionInPostgres(
   };
   if (action === "verify") return updateListingInPostgres(listingId, { verified: true });
   if (action === "unverify") return updateListingInPostgres(listingId, { verified: false });
+  if (action === "mark_boarding_house") {
+    const current = await getListingFromPostgres(listingId);
+    const description = current?.description ?? "";
+    const nextDescription = isBoardingHouseText(description)
+      ? description
+      : [description, "Student accommodation / boarding house."].filter(Boolean).join("\n\n");
+    return updateListingInPostgres(listingId, {
+      type: "boarding_house",
+      intent: "rent",
+      bedrooms: 0,
+      bathrooms: 0,
+      description: nextDescription,
+    });
+  }
   if (action === "save_virtual_tour") {
     return saveListingVirtualTourInPostgres(listingId, updates.virtualTour, options.actor);
   }
@@ -1067,12 +1088,17 @@ function publicPropertyTypeWhere(type: PropertyType): Prisma.ListingWhereInput {
 
 function boardingHouseWhere(): Prisma.ListingWhereInput {
   return {
-    propertyType: DbPropertyType.ROOM,
-    OR: BOARDING_HOUSE_KEYWORDS.flatMap((keyword) => [
-      { title: { contains: keyword, mode: "insensitive" as const } },
-      { description: { contains: keyword, mode: "insensitive" as const } },
-      { suburb: { contains: keyword, mode: "insensitive" as const } },
-    ]),
+    OR: [
+      { propertyType: DbPropertyType.BOARDING_HOUSE },
+      {
+        propertyType: DbPropertyType.ROOM,
+        OR: BOARDING_HOUSE_KEYWORDS.flatMap((keyword) => [
+          { title: { contains: keyword, mode: "insensitive" as const } },
+          { description: { contains: keyword, mode: "insensitive" as const } },
+          { suburb: { contains: keyword, mode: "insensitive" as const } },
+        ]),
+      },
+    ],
   };
 }
 

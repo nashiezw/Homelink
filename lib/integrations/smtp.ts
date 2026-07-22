@@ -1,5 +1,6 @@
 import { connect as netConnect, type Socket } from "node:net";
 import { connect as tlsConnect, type TLSSocket } from "node:tls";
+import { requireStrictProductionConfig } from "@/lib/production/runtime";
 import type { PlatformSettings } from "@/lib/settings/types";
 
 type SmtpResult = { ok: boolean; message: string };
@@ -152,6 +153,18 @@ function resolveSender(integrations: PlatformSettings["integrations"]) {
   return configuredFrom || envFrom || (isEmail(integrations.smtpUser) ? integrations.smtpUser.trim() : "");
 }
 
+function allowSelfSignedSmtpCertificate() {
+  if (requireStrictProductionConfig() || process.env.NODE_ENV === "production") return false;
+  return process.env.SMTP_ALLOW_SELF_SIGNED !== "false";
+}
+
+function tlsOptions(host: string) {
+  return {
+    servername: host,
+    rejectUnauthorized: !allowSelfSignedSmtpCertificate(),
+  };
+}
+
 async function readResponse(socket: Socket | TLSSocket): Promise<string> {
   return new Promise((resolve, reject) => {
     let response = "";
@@ -251,7 +264,7 @@ export async function sendSmtpPlainEmail(
   try {
     if (port === 465) {
       socket = await new Promise<TLSSocket>((resolve, reject) => {
-        const s = tlsConnect({ host: smtpHost, port, servername: smtpHost }, () => resolve(s));
+        const s = tlsConnect({ host: smtpHost, port, ...tlsOptions(smtpHost) }, () => resolve(s));
         s.setTimeout(12_000, () => reject(new SmtpStageError("connect", "SMTPS connection timed out")));
         s.on("error", reject);
       });
@@ -272,7 +285,7 @@ export async function sendSmtpPlainEmail(
       await sendCommand(socket, "STARTTLS", "starttls");
       const plain = socket as Socket;
       socket = await new Promise<TLSSocket>((resolve, reject) => {
-        const secure = tlsConnect({ socket: plain, servername: smtpHost }, () => resolve(secure));
+        const secure = tlsConnect({ socket: plain, ...tlsOptions(smtpHost) }, () => resolve(secure));
         secure.on("error", reject);
       });
       await sendCommand(socket, "EHLO houselink.co.zw", "ehlo");
@@ -328,7 +341,11 @@ export async function sendSmtpPlainEmail(
       stage === "mail-from"
         ? " Resend rejected the sender; set smtpFrom/SMTP_FROM to a sender on a verified Resend domain."
         : "";
-    return { ok: false, message: `SMTP test failed${stage ? ` at ${stage}` : ""}: ${detail}.${senderHint}` };
+    const tlsHint =
+      detail.toLowerCase().includes("self-signed")
+        ? " Fix the SMTP certificate chain, or set SMTP_ALLOW_SELF_SIGNED=true only for local smoke tests."
+        : "";
+    return { ok: false, message: `SMTP test failed${stage ? ` at ${stage}` : ""}: ${detail}.${senderHint}${tlsHint}` };
   } finally {
     socket?.end();
   }

@@ -27,6 +27,7 @@ enum ListingIntent {
 
 enum PropertyType {
   ROOM
+  BOARDING_HOUSE
   HOUSE
   FLAT
   COTTAGE

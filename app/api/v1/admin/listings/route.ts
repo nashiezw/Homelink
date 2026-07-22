@@ -48,6 +48,7 @@ export async function GET(request: Request) {
           rented: all.filter((l) => l.status === "RENTED").length,
           sold: all.filter((l) => l.status === "SOLD").length,
           holiday: all.filter((l) => l.type === "holiday_home").length,
+          boarding: all.filter((l) => l.type === "boarding_house").length,
           commercial: all.filter((l) => l.type === "commercial").length,
           virtualTours: all.filter((l) => l.virtualTour?.status === "PUBLISHED").length,
         };
@@ -165,6 +166,22 @@ export async function PATCH(request: Request) {
       return ok({ listing: getStore().adminSetListingVerified(listingId, true, actor) });
     case "unverify":
       return ok({ listing: getStore().adminSetListingVerified(listingId, false, actor) });
+    case "mark_boarding_house": {
+      const existing = getStore().listListings().find((listing) => listing.id === listingId);
+      return ok({
+        listing: getStore().adminEditListing(
+          listingId,
+          {
+            type: "boarding_house",
+            intent: "rent",
+            bedrooms: 0,
+            bathrooms: 0,
+            description: appendBoardingHouseSummary(existing?.description ?? ""),
+          },
+          actor,
+        ),
+      });
+    }
     case "save_virtual_tour": {
       const updates = (body as { updates?: Record<string, unknown> }).updates ?? {};
       return ok({ listing: getStore().adminEditListing(listingId, updates, actor) });
@@ -179,6 +196,12 @@ export async function PATCH(request: Request) {
     default:
       return problem(400, "UNKNOWN_ACTION", `Unknown action: ${action}`);
   }
+}
+
+function appendBoardingHouseSummary(description: string) {
+  return /\b(boarding|student|campus|university|college|school|hostel|dorm)\b/i.test(description)
+    ? description
+    : [description, "Student accommodation / boarding house."].filter(Boolean).join("\n\n");
 }
 
 async function requireListingsAdmin(request: Request) {

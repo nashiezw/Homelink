@@ -571,7 +571,7 @@ function requestSearchLabel(request: TenantRequestRecord) {
 }
 
 function normalizeClientType(value: unknown): TenantRequestInput["clientType"] {
-  const allowed = ["individual", "family", "company", "investor", "diaspora", "other"] as const;
+  const allowed = ["individual", "student", "guardian", "school_admin", "family", "company", "investor", "diaspora", "other"] as const;
   return allowed.includes(value as NonNullable<TenantRequestInput["clientType"]>) ? (value as TenantRequestInput["clientType"]) : undefined;
 }
 

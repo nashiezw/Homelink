@@ -7,7 +7,7 @@ export type TenantRequestInput = {
   name: string;
   phone: string;
   email?: string;
-  clientType?: "individual" | "family" | "company" | "investor" | "diaspora" | "other";
+  clientType?: "individual" | "student" | "guardian" | "school_admin" | "family" | "company" | "investor" | "diaspora" | "other";
   propertyType: "house" | "cottage" | "flat" | "room" | "room-share" | "boarding_house" | "land" | "commercial" | "holiday_home" | "other";
   bedrooms?: number;
   bathrooms?: number;
