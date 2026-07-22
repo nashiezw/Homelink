@@ -138,7 +138,7 @@ export function LegalPageView({ page, fallbackTitle }: LegalPageViewProps) {
         { value: `${sections.length}`, label: "clear sections" },
       ]}
       actions={
-        <div className="grid w-full gap-3 sm:w-auto sm:min-w-56">
+        <div className="flex flex-wrap gap-2 sm:grid sm:w-auto sm:min-w-56 sm:gap-3">
           <Link
             href={tone.primaryHref}
             className="inline-flex min-h-12 items-center justify-between gap-3 rounded-lg bg-white px-5 text-sm font-semibold leading-none text-ink shadow-lg shadow-black/10 transition hover:bg-emerald-50 sm:min-h-11"

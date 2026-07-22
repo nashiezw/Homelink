@@ -44,7 +44,7 @@ export function PageShell({
             )}
           </div>
           {actions && (
-            <div className="flex w-full flex-col gap-2 sm:w-auto sm:max-w-none sm:shrink-0 [&_a]:block [&_a]:w-full sm:[&_a]:inline-block sm:[&_a]:w-auto [&_button]:w-full sm:[&_button]:w-auto">
+            <div className="flex w-full flex-wrap gap-2 sm:w-auto sm:max-w-none sm:shrink-0 [&_a]:inline-flex [&_a]:min-h-10 [&_a]:w-auto [&_a]:items-center [&_a]:justify-center [&_a]:rounded-full [&_a]:px-4 [&_a]:py-2 [&_a]:shadow-none sm:[&_a]:min-h-11 sm:[&_a]:rounded-lg sm:[&_a]:px-5 sm:[&_a]:shadow-lg [&_button]:w-auto [&_button]:rounded-full sm:[&_button]:w-auto sm:[&_button]:rounded-lg">
               {actions}
             </div>
           )}
