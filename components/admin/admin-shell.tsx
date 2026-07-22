@@ -95,7 +95,7 @@ const NAV_GROUPS: Array<{ label: string; items: NavItem[] }> = [
     label: "Operations",
     items: [
       { id: "overview", label: "Command Center", icon: LayoutDashboard },
-      { id: "property-requests", label: "Property Requests", icon: Bell },
+      { id: "property-requests", label: "Client Property Requests", icon: Bell },
       { id: "enquiries", label: "Enquiry CRM", icon: MessageSquare },
       { id: "proptech", label: "PropTech Suite", icon: Brain },
       { id: "reports", label: "Reports", icon: FileText },
@@ -138,7 +138,7 @@ const NAV_GROUPS: Array<{ label: string; items: NavItem[] }> = [
     label: "Properties",
     items: [
       { id: "properties", label: "Listings Hub", icon: Home, badgeKey: "pendingListings" as const },
-      { id: "property-management", label: "Property Requests", icon: Building2, badgeKey: "openPmRequests" as const },
+      { id: "property-management", label: "Management Requests", icon: Building2, badgeKey: "openPmRequests" as const },
       { id: "holiday-homes", label: "Holiday Homes", icon: Building2 },
       { id: "bookings", label: "Bookings", icon: CalendarCheck },
     ],
@@ -166,8 +166,8 @@ const NAV_GROUPS: Array<{ label: string; items: NavItem[] }> = [
 
 const TAB_LABELS: Record<AdminTab, string> = {
   overview: "Command Center",
-  "tenant-requests": "Property Requests",
-  "property-requests": "Property Requests",
+  "tenant-requests": "Client Property Requests",
+  "property-requests": "Client Property Requests",
   users: "Users & Directory",
   properties: "Listings Hub",
   verification: "Verification Queue",
@@ -176,7 +176,7 @@ const TAB_LABELS: Record<AdminTab, string> = {
   landlords: "Landlords & Agents",
   agents: "Agent Management",
   academy: "HouseLink Agent Academy",
-  "property-management": "Property Requests",
+  "property-management": "Management Requests",
   "holiday-homes": "Holiday Homes",
   bookings: "Bookings & Reservations",
   payments: "Payments",

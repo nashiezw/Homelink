@@ -5,6 +5,7 @@ import {
   assignTenantRequestAgent,
   buildStillLookingWhatsAppMessage,
   buildTenantRequestWhatsAppMessage,
+  deleteTenantRequest,
   extendTenantRequest,
   listTenantRequests,
   listPropertyRequestAgents,
@@ -63,6 +64,11 @@ export async function PATCH(request: Request) {
         return ok({ request: await addTenantRequestNote(requestId, String(body.body), actor) });
       case "notify":
         return ok({ request: await notifyTenantRequestManually(requestId, Array.isArray(body.listingIds) ? body.listingIds : [], actor) });
+      case "delete": {
+        const deleted = await deleteTenantRequest(requestId);
+        if (!deleted) return problem(404, "NOT_FOUND", "Property request could not be found.");
+        return ok({ deleted: true, requestId });
+      }
       case "whatsapp_template": {
         const request = (await listTenantRequests()).find((item) => item.id === requestId);
         if (!request) return problem(404, "NOT_FOUND", "Property request could not be found.");

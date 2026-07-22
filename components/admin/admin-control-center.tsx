@@ -295,7 +295,7 @@ export function AdminControlCenter() {
       {tab === "academy" && <AgentAcademyHub />}
 
       {tab === "property-management" && (
-        <Panel title="Property management CRM">
+        <Panel title="Management request CRM">
           <PropertyManagementHub />
         </Panel>
       )}
@@ -331,7 +331,7 @@ const tabDescriptions: Record<AdminTab, string> = {
   landlords: "Verify landlords, manage agencies, and control premium tiers.",
   agents: "Recruit agents, approve applications, pay commissions, and manage territories.",
   academy: "Standalone enterprise LMS for HouseLink agent training, certification, documents, videos, live learning, and analytics.",
-  "property-management": "Full property management request workflow from intake to completion.",
+  "property-management": "Owner management request workflow from intake to completion.",
   "holiday-homes": "Manage holiday listings, seasonal settings, host reviews, and featured placement.",
   bookings: "End-to-end booking operations: enquiries, approvals, calendar view, guest details, and status tracking.",
   payments: "Revenue dashboard, ledger, manual payments, refunds, escrow-style reviews, and gateway health.",

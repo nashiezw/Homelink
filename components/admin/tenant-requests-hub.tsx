@@ -1,7 +1,8 @@
 "use client";
 
-import { BellRing, CheckCircle2, RefreshCw, Search } from "lucide-react";
+import { BellRing, CheckCircle2, RefreshCw, Search, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { AdminActionDialog, type AdminDialogConfig } from "@/components/admin/action-dialog";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api/client";
 import type { TenantRequestRecord } from "@/lib/tenant-requests/types";
@@ -31,6 +32,7 @@ export function TenantRequestsHub() {
   const [note, setNote] = useState("");
   const [agents, setAgents] = useState<ResponseShape["agents"]>([]);
   const [whatsappMessage, setWhatsappMessage] = useState("");
+  const [dialog, setDialog] = useState<AdminDialogConfig | null>(null);
 
   const selected = useMemo(() => requests.find((request) => request.id === selectedId) ?? requests[0], [requests, selectedId]);
 
@@ -60,7 +62,24 @@ export function TenantRequestsHub() {
     if (result.data?.request) {
       setRequests((current) => current.map((request) => (request.id === result.data?.request.id ? result.data.request : request)));
     }
+    if (body.action === "delete" && !result.error) {
+      setRequests((current) => current.filter((request) => request.id !== selected.id));
+      setSelectedId("");
+      setWhatsappMessage("");
+    }
     setBusy(false);
+  }
+
+  function confirmDelete() {
+    if (!selected) return;
+    setDialog({
+      title: "Delete property request",
+      message: `Permanently delete ${selected.id} for ${selected.name}. It will be removed from the admin queue and database.`,
+      tone: "danger",
+      confirmLabel: "Delete request",
+      fields: [{ name: "reason", label: "Admin reason", type: "textarea", required: true }],
+      onConfirm: () => action({ action: "delete" }),
+    });
   }
 
   async function loadWhatsappTemplate(actionName: "whatsapp_template" | "still_looking_template" = "whatsapp_template") {
@@ -76,6 +95,7 @@ export function TenantRequestsHub() {
 
   return (
     <div className="grid gap-5 lg:grid-cols-[360px_1fr]">
+      <AdminActionDialog config={dialog} onClose={() => setDialog(null)} />
       <aside className="space-y-4">
         <div className="grid grid-cols-2 gap-3">
           <Metric label="Requests" value={analytics?.total ?? 0} />
@@ -232,7 +252,11 @@ export function TenantRequestsHub() {
             >
               Add note
             </Button>
-            <Button variant="secondary" disabled={busy} onClick={() => action({ action: "status", status: "CLOSED" })}>Close request</Button>
+              <Button variant="secondary" disabled={busy} onClick={() => action({ action: "status", status: "CLOSED" })}>Close request</Button>
+            <Button variant="secondary" disabled={busy} onClick={confirmDelete}>
+              <Trash2 className="size-4" />
+              Delete request
+            </Button>
           </div>
 
           <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto_auto]">

@@ -49,7 +49,7 @@ type UserDetail = {
 
 const ROLES: Array<UserRole | "ALL"> = ["ALL", "SEEKER", "LANDLORD", "AGENT", "CONSULTANT", "AGENCY_ADMIN", "SUPPORT", "BILLING", "TECH_SUPPORT", "TRUST_SAFETY", "ADMIN"];
 const ASSIGNABLE_ROLES: UserRole[] = ["SEEKER", "LANDLORD", "AGENT", "CONSULTANT", "AGENCY_ADMIN", "SUPPORT", "BILLING", "TECH_SUPPORT", "TRUST_SAFETY", "ADMIN"];
-const STATUSES: Array<AccountStatus | "ALL"> = ["ALL", "ACTIVE", "SUSPENDED", "BLOCKED", "DELETED"];
+const STATUSES: Array<AccountStatus | "ALL"> = ["ALL", "ACTIVE", "SUSPENDED", "BLOCKED"];
 const PAGE_SIZE = 12;
 
 export function UserDirectory() {
@@ -107,7 +107,7 @@ export function UserDirectory() {
   }
 
   async function runAction(userId: string, action: string, extra?: Record<string, unknown>) {
-    const result = await apiFetch<{ user: PublicAdminUser }>(`/api/v1/admin/users/${userId}`, {
+    const result = await apiFetch<{ user?: PublicAdminUser; deleted?: boolean }>(`/api/v1/admin/users/${userId}`, {
       method: "PATCH",
       body: JSON.stringify({ action, ...extra }),
     });
@@ -116,6 +116,18 @@ export function UserDirectory() {
       return;
     }
     showToast(`User ${action.replace(/_/g, " ")} applied.`);
+    if (result.data?.deleted) {
+      setDrawerOpen(false);
+      setSelected(null);
+      setDetail(null);
+      setBulkSelected((current) => {
+        const next = new Set(current);
+        next.delete(userId);
+        return next;
+      });
+      void load();
+      return;
+    }
     if (result.data?.user && selected?.id === userId) {
       setSelected(result.data.user);
     }

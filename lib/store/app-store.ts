@@ -14,6 +14,7 @@ import { isPublicListingStatus } from "@/lib/listings/status";
 import * as AdminPlatform from "@/lib/store/admin-platform";
 import * as PMStore from "@/lib/store/property-management-store";
 import type { SubmitPMRequestInput } from "@/lib/property-management/types";
+import type { TenantRequestRecord } from "@/lib/tenant-requests/types";
 import type { ResidenceRecord, TenancyDispute, TenancyReference } from "@/lib/residence/types";
 import {
   applyAddressConsent,
@@ -538,6 +539,7 @@ function createInitialStore() {
       },
     ] as SavedSearch[],
     enquiries: [] as Enquiry[],
+    tenantRequests: [] as TenantRequestRecord[],
     reports: [] as Report[],
     conversations: [
       {
@@ -649,6 +651,7 @@ function migrateStoreState(state: ReturnType<typeof createInitialStore>) {
     sessions: state.sessions ?? base.sessions,
     favourites: state.favourites ?? base.favourites,
     roommateProfiles: state.roommateProfiles ?? base.roommateProfiles,
+    tenantRequests: state.tenantRequests ?? base.tenantRequests,
     userCredits: state.userCredits ?? base.userCredits,
     userSubscriptions: state.userSubscriptions ?? base.userSubscriptions,
   };
@@ -1370,6 +1373,9 @@ class AppStore {
 
   listUsers(filters?: { role?: UserRole | "ALL"; status?: AccountStatus | "ALL"; q?: string }) {
     let users = [...this.state.users.values()];
+    if (!filters?.status || filters.status === "ALL") {
+      users = users.filter((u) => u.accountStatus !== "DELETED");
+    }
     if (filters?.role && filters.role !== "ALL") {
       users = users.filter((u) => u.roles.includes(filters.role as UserRole));
     }
@@ -2409,6 +2415,56 @@ class AppStore {
 
   getEnquiriesForAgent(agentId: string) {
     return EnquiryPlatform.list(this.state.enquiries, { assignedAgentId: agentId });
+  }
+
+  saveTenantRequest(request: TenantRequestRecord) {
+    const index = this.state.tenantRequests.findIndex((item) => item.id === request.id);
+    if (index >= 0) {
+      this.state.tenantRequests[index] = request;
+    } else {
+      this.state.tenantRequests.unshift(request);
+    }
+    this.touch();
+    return request;
+  }
+
+  listTenantRequests(q?: string) {
+    const requests = [...this.state.tenantRequests].sort(
+      (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
+    );
+    const needle = q?.toLowerCase().trim();
+    if (!needle) return requests;
+    return requests.filter((request) =>
+      [
+        request.id,
+        request.name,
+        request.phone,
+        request.email,
+        request.intent,
+        request.clientType,
+        request.propertyType,
+        request.purchaseReadiness,
+        request.preferredAreas.join(" "),
+        request.alternativeAreas.join(" "),
+        request.notes,
+      ]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(needle)),
+    );
+  }
+
+  getTenantRequest(id: string) {
+    return this.state.tenantRequests.find((request) => request.id === id) ?? null;
+  }
+
+  deleteTenantRequest(id: string) {
+    const before = this.state.tenantRequests.length;
+    this.state.tenantRequests = this.state.tenantRequests.filter((request) => request.id !== id);
+    if (this.state.tenantRequests.length !== before) {
+      this.touch();
+      return true;
+    }
+    return false;
   }
 
   createReport(input: {

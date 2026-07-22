@@ -18,11 +18,13 @@ export async function GET(request: Request) {
   const role = (searchParams.get("role") ?? "ALL") as UserRole | "ALL";
   const status = (searchParams.get("status") ?? "ALL") as AccountStatus | "ALL";
   const q = searchParams.get("q") ?? undefined;
+  const includeDeleted = searchParams.get("includeDeleted") === "true";
 
   if (shouldUsePostgresAuth()) {
     const prisma = getMainPrisma();
     const users = await prisma.user.findMany({
       where: {
+        ...(!includeDeleted && status === "ALL" ? { accountStatus: { not: "DELETED" } } : {}),
         ...(role !== "ALL" ? { roles: { has: role as never } } : {}),
         ...(status !== "ALL" ? { accountStatus: status } : {}),
         ...(q
@@ -38,16 +40,17 @@ export async function GET(request: Request) {
       orderBy: { createdAt: "desc" },
     });
     const all = await prisma.user.findMany({ select: { roles: true, accountStatus: true } });
+    const visible = includeDeleted ? all : all.filter((u) => u.accountStatus !== "DELETED");
     return ok({
       users: users.map(toPublicPostgresUser),
       totals: {
-        all: all.length,
-        active: all.filter((u) => u.accountStatus === "ACTIVE").length,
-        suspended: all.filter((u) => u.accountStatus === "SUSPENDED").length,
-        blocked: all.filter((u) => u.accountStatus === "BLOCKED").length,
-        landlords: all.filter((u) => u.roles.includes("LANDLORD")).length,
-        agents: all.filter((u) => u.roles.includes("AGENT")).length,
-        seekers: all.filter((u) => u.roles.includes("SEEKER")).length,
+        all: visible.length,
+        active: visible.filter((u) => u.accountStatus === "ACTIVE").length,
+        suspended: visible.filter((u) => u.accountStatus === "SUSPENDED").length,
+        blocked: visible.filter((u) => u.accountStatus === "BLOCKED").length,
+        landlords: visible.filter((u) => u.roles.includes("LANDLORD")).length,
+        agents: visible.filter((u) => u.roles.includes("AGENT")).length,
+        seekers: visible.filter((u) => u.roles.includes("SEEKER")).length,
         premium: 0,
       },
     });
@@ -55,11 +58,12 @@ export async function GET(request: Request) {
 
   const store = getStore();
   const users = store.listUsers({ role, status, q });
+  const visibleUsers = store.listUsers();
 
   return ok({
     users,
     totals: {
-      all: store.listUsers().length,
+      all: visibleUsers.length,
       active: store.listUsers({ status: "ACTIVE" }).length,
       suspended: store.listUsers({ status: "SUSPENDED" }).length,
       blocked: store.listUsers({ status: "BLOCKED" }).length,

@@ -1106,12 +1106,8 @@ export function deleteUser(state: AdminPlatformState, userId: string, actor: Act
   if (!user) return null;
   const previousEmail = user.email;
   const previousRoles = [...user.roles];
-  user.accountStatus = "DELETED";
-  user.email = `deleted+${userId}@deleted.houselink.local`;
-  user.phone = undefined;
-  user.passwordHash = "";
-  user.roles = ["SEEKER"];
   terminateUserSessions(state, userId, actor);
+  state.users.delete(userId);
   audit(state, {
     actorId: actor.id,
     actorName: actor.name,
@@ -1121,7 +1117,7 @@ export function deleteUser(state: AdminPlatformState, userId: string, actor: Act
     metadata: { reason, previousEmail, previousRoles },
     ip: "127.0.0.1",
   });
-  return user;
+  return { ...user, accountStatus: "DELETED" as const };
 }
 
 export function terminateUserSessions(state: AdminPlatformState, userId: string, actor: Actor) {

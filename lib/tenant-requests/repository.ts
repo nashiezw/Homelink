@@ -61,13 +61,13 @@ export function validateTenantRequest(input: TenantRequestInput) {
 export async function createTenantRequest(input: TenantRequestInput, seekerId = "guest") {
   if (!isPostgresStoreEnabled()) {
     const listings = getStore().listListings().filter(isMatchableListing);
-    const request = tenantRequestPayload(`tenant_req_${crypto.randomUUID()}`, input, seekerId);
+    const request = tenantRequestPayload(createTenantRequestReference(input), input, seekerId);
     request.matches = scoreListingsForTenantRequest(request, listings);
     request.status = request.matches.length ? "MATCHED" : "NEW";
-    return request;
+    return getStore().saveTenantRequest(request);
   }
 
-  const request = tenantRequestPayload(`tenant_req_${crypto.randomUUID()}`, input, seekerId);
+  const request = tenantRequestPayload(createTenantRequestReference(input), input, seekerId);
   request.matches = await listCurrentMatches(request);
   request.status = request.matches.length ? "MATCHED" : "NEW";
   if (request.matches.length) {
@@ -85,7 +85,7 @@ export async function createTenantRequest(input: TenantRequestInput, seekerId = 
 }
 
 export async function listTenantRequests(q?: string) {
-  if (!isPostgresStoreEnabled()) return [] as TenantRequestRecord[];
+  if (!isPostgresStoreEnabled()) return getStore().listTenantRequests(q);
   const rows = await getMainPrisma().propertyEnquiryRecord.findMany({
     where: { subjectType: { in: [SUBJECT_TYPE, LEGACY_SUBJECT_TYPE] } },
     orderBy: { updatedAt: "desc" },
@@ -114,7 +114,11 @@ export async function listTenantRequests(q?: string) {
 }
 
 export async function listPropertyRequestAgents() {
-  if (!isPostgresStoreEnabled()) return [] as Array<{ id: string; name: string; email: string }>;
+  if (!isPostgresStoreEnabled()) {
+    return getStore()
+      .listUsers({ role: "AGENT" })
+      .map((agent) => ({ id: agent.id, name: agent.name, email: agent.email }));
+  }
   return getMainPrisma().user.findMany({
     where: { roles: { has: "AGENT" } },
     select: { id: true, name: true, email: true },
@@ -123,9 +127,17 @@ export async function listPropertyRequestAgents() {
 }
 
 export async function getTenantRequest(id: string) {
-  if (!isPostgresStoreEnabled()) return null;
+  if (!isPostgresStoreEnabled()) return getStore().getTenantRequest(id);
   const row = await getMainPrisma().propertyEnquiryRecord.findFirst({ where: { id, subjectType: { in: [SUBJECT_TYPE, LEGACY_SUBJECT_TYPE] } } });
   return row ? tenantRequestFromRow(row) : null;
+}
+
+export async function deleteTenantRequest(id: string) {
+  if (!isPostgresStoreEnabled()) return getStore().deleteTenantRequest(id);
+  const deleted = await getMainPrisma().propertyEnquiryRecord.deleteMany({
+    where: { id, subjectType: { in: [SUBJECT_TYPE, LEGACY_SUBJECT_TYPE] } },
+  });
+  return deleted.count > 0;
 }
 
 export async function listTenantRequestsForAgent(agentId: string) {
@@ -168,8 +180,10 @@ export async function updateTenantRequestStatus(id: string, status: TenantReques
 
 export async function assignTenantRequestAgent(id: string, agentId: string, actor: { id: string; name: string }) {
   const request = await getTenantRequest(id);
-  if (!request || !isPostgresStoreEnabled()) return null;
-  const agent = await getMainPrisma().user.findUnique({ where: { id: agentId }, select: { name: true } });
+  if (!request) return null;
+  const agent = isPostgresStoreEnabled()
+    ? await getMainPrisma().user.findUnique({ where: { id: agentId }, select: { name: true } })
+    : getStore().getUserById(agentId);
   if (!agent) throw new Error("Agent could not be found.");
   const now = new Date().toISOString();
   request.assignedAgentId = agentId;
@@ -419,6 +433,10 @@ async function notifyTenantRequestReceived(request: TenantRequestRecord) {
 }
 
 async function saveTenantRequest(request: TenantRequestRecord) {
+  if (!isPostgresStoreEnabled()) {
+    getStore().saveTenantRequest(request);
+    return;
+  }
   await getMainPrisma().propertyEnquiryRecord.upsert({
     where: { id: request.id },
     create: {
@@ -492,6 +510,18 @@ function tenantRequestPayload(id: string, input: TenantRequestInput, seekerId: s
     createdAt: now,
     updatedAt: now,
   };
+}
+
+function createTenantRequestReference(input: TenantRequestInput) {
+  const kind = input.propertyType === "holiday_home" ? "STAY" : input.intent === "buy" ? "BUY" : "RENT";
+  const date = new Date();
+  const ymd = [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, "0"),
+    String(date.getDate()).padStart(2, "0"),
+  ].join("");
+  const suffix = Math.random().toString(36).slice(2, 6).toUpperCase();
+  return `HL-${kind}-${ymd}-${suffix}`;
 }
 
 function isMatchableListing(listing: Listing) {

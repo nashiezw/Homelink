@@ -103,22 +103,7 @@ export async function PATCH(request: Request, context: RouteContext) {
           await prisma.user.update({ where: { id }, data: { roles: [...roles] as never[] } });
           break;
         case "delete":
-          await prisma.$transaction([
-            prisma.appSession.updateMany({
-              where: { userId: id, revokedAt: null },
-              data: { revokedAt: new Date(), lastSeenAt: new Date() },
-            }),
-            prisma.user.update({
-              where: { id },
-              data: {
-                accountStatus: "DELETED",
-                email: `deleted+${id}@deleted.houselink.local`,
-                phone: null,
-                passwordHash: null,
-                roles: ["SEEKER"] as never[],
-              },
-            }),
-          ]);
+          await hardDeletePostgresUser(id, auth.user.id);
           await recordPostgresAuditEvent({
             actorId: auth.user.id,
             action: "DELETE_USER",
@@ -129,6 +114,7 @@ export async function PATCH(request: Request, context: RouteContext) {
               previousRoles: existing.roles,
             },
           });
+          return ok({ deleted: true, userId: id });
           break;
         case "warn":
         case "set_premium":
@@ -215,6 +201,7 @@ export async function PATCH(request: Request, context: RouteContext) {
           return problem(400, "INVALID_ACTION", "You cannot delete your own admin account.");
         }
         store.deleteUser(id, actor, body.reason);
+        return ok({ deleted: true, userId: id });
         break;
       case "terminate_sessions":
         store.terminateUserSessions(id, actor);
@@ -242,6 +229,66 @@ export async function PATCH(request: Request, context: RouteContext) {
   }
 
   return ok({ user: store.toPublicAdminUser(updated) });
+}
+
+async function hardDeletePostgresUser(id: string, replacementOwnerId: string) {
+  const prisma = getMainPrisma();
+  await prisma.$transaction(
+    async (tx) => {
+      await tx.appSession.deleteMany({ where: { userId: id } });
+      await tx.auditEvent.updateMany({ where: { actorId: id }, data: { actorId: null } });
+      await tx.report.updateMany({ where: { reporterId: id }, data: { reporterId: null } });
+      await tx.listing.updateMany({
+        where: { ownerId: id },
+        data: {
+          ownerId: replacementOwnerId,
+          status: "DELETED",
+          adminNotes: "Owner account was permanently deleted by admin.",
+        },
+      });
+
+      await tx.propertyEnquiryRecord.deleteMany({
+        where: {
+          OR: [{ seekerId: id }, { ownerId: id }, { assignedAgentId: id }],
+        },
+      });
+      await tx.residenceRecordRow.deleteMany({
+        where: { OR: [{ userId: id }, { counterpartyId: id }] },
+      });
+      await tx.tenancyReferenceRow.deleteMany({ where: { targetUserId: id } });
+      await tx.tenancyDisputeRow.deleteMany({
+        where: {
+          payload: {
+            path: ["reportedByUserId"],
+            equals: id,
+          },
+        },
+      });
+      await tx.propertyManagementRequestRow.deleteMany({
+        where: { OR: [{ ownerId: id }, { consultantId: id }] },
+      });
+      await tx.holidayBookingRecord.deleteMany({
+        where: { OR: [{ guestUserId: id }, { ownerId: id }, { agentId: id }] },
+      });
+      await tx.agentApplicationRecord.deleteMany({ where: { userId: id } });
+      await tx.agentTrainingProgressRecord.deleteMany({ where: { agentId: id } });
+      await tx.academyLearnerApplication.deleteMany({ where: { learnerId: id } });
+      await tx.academyResourceAccess.deleteMany({ where: { learnerId: id } });
+      await tx.courseEnrolment.deleteMany({ where: { agentId: id } });
+      await tx.lessonProgress.deleteMany({ where: { agentId: id } });
+      await tx.courseProgress.deleteMany({ where: { agentId: id } });
+      await tx.quizAttempt.deleteMany({ where: { agentId: id } });
+      await tx.examAttempt.deleteMany({ where: { agentId: id } });
+      await tx.assignmentSubmission.deleteMany({ where: { agentId: id } });
+      await tx.videoProgress.deleteMany({ where: { agentId: id } });
+      await tx.discussionThread.deleteMany({ where: { authorId: id } });
+      await tx.trainingNotification.deleteMany({ where: { userId: id } });
+      await tx.trainingAuditLog.updateMany({ where: { actorId: id }, data: { actorId: null } });
+
+      await tx.user.delete({ where: { id } });
+    },
+    { timeout: 20_000 },
+  );
 }
 
 async function requireUserPatchAdmin(request: Request) {
