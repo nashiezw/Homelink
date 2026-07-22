@@ -119,7 +119,7 @@ export default function StudentAccommodationPage() {
               Search boarding houses, rooms, and shared accommodation by campus area, monthly budget, gender policy, WiFi, meals, transport access, and viewing readiness.
             </p>
 
-            <div className="mt-5 flex flex-wrap gap-2">
+            <div className="mt-5 hidden flex-wrap gap-2 sm:flex">
               {trustBadges.map((item) => (
                 <span key={item} className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-sm font-medium text-white backdrop-blur">
                   <CheckCircle2 className="size-3.5 text-emerald-300" aria-hidden="true" />
@@ -145,7 +145,7 @@ export default function StudentAccommodationPage() {
             </div>
           </div>
 
-          <div className="lg:flex lg:justify-end">
+          <div className="hidden lg:flex lg:justify-end">
             <div className="w-full max-w-xl rounded-lg border border-white/15 bg-white/10 p-3 text-white shadow-2xl backdrop-blur-xl">
               <div className="rounded-lg bg-white p-4 text-slate-950 shadow-sm dark:bg-slate-950 dark:text-white">
                 <div className="flex items-start justify-between gap-4">
