@@ -115,7 +115,7 @@ function BlogBlockView({ block, priority, postId, listings }: { block: BlogBlock
           <div className="p-4">
             <p className="text-xs font-bold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">Live property card</p>
             <p className="mt-2 font-semibold text-ink dark:text-white">{listing.title}</p>
-            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{listing.suburb}, {listing.city} · {listing.bedrooms} bed · {listing.propertyType.replace(/_/g, " ").toLowerCase()}</p>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{listing.suburb}, {listing.city} | {listing.bedrooms} bed | {listing.propertyType.replace(/_/g, " ").toLowerCase()}</p>
             <p className="mt-3 font-semibold text-emerald-700 dark:text-emerald-300">{listing.currency} {Number(listing.price).toLocaleString()}</p>
           </div>
         </Link>

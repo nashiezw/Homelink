@@ -17,6 +17,8 @@ export type BlogBlock =
   | { type: "dynamicProperty"; listingId: string }
   | { type: "cta"; variant: "whatsapp" | "search" | "rent" | "sale" | "list-property" | "roommate" | "moving" | "agent"; title?: string; text?: string };
 
+type PublicBlogPostRecord = Prisma.BlogPostGetPayload<{ include: { category: true; author: true; tags: true } }>;
+
 export const BLOG_LAYOUTS = [
   { id: "STANDARD_ARTICLE", label: "Standard Article", description: "Balanced editorial layout for advice, explainers, and evergreen resources." },
   { id: "PROPERTY_GUIDE", label: "Property Guide", description: "Structured guide with practical CTAs, section cards, and stronger internal linking." },
@@ -45,6 +47,7 @@ const STARTER_ARTICLES = [
     tags: ["renting", "tenants", "search safety"],
     excerpt: "A practical guide to searching for rentals, comparing areas, checking listings, and avoiding wasted viewings in Zimbabwe.",
     focusKeyword: "house to rent in Zimbabwe",
+    image: "/images/bulawayo-family-house.webp",
     layout: BlogArticleLayout.PROPERTY_GUIDE,
     blocks: [
       { type: "heading", level: 2, text: "Start with budget, area, and timing" },
@@ -62,6 +65,7 @@ const STARTER_ARTICLES = [
     tags: ["tenant safety", "deposit", "verification"],
     excerpt: "Use this checklist before paying a rental deposit, signing an agreement, or trusting a listing you found online.",
     focusKeyword: "tenant safety checklist",
+    image: "/images/houselink-hero.webp",
     layout: BlogArticleLayout.LIST_ARTICLE,
     blocks: [
       { type: "heading", level: 2, text: "Verify the property and person" },
@@ -79,6 +83,7 @@ const STARTER_ARTICLES = [
     tags: ["landlords", "listing quality", "property marketing"],
     excerpt: "Better photos, honest details, and clear terms help landlords attract serious tenants and reduce unnecessary calls.",
     focusKeyword: "better property listings",
+    image: "/images/property-management-dusk.webp",
     layout: BlogArticleLayout.STANDARD_ARTICLE,
     blocks: [
       { type: "heading", level: 2, text: "Use clear photos and honest details" },
@@ -95,6 +100,7 @@ const STARTER_ARTICLES = [
     tags: ["buying property", "buyers", "due diligence"],
     excerpt: "A buyer-focused checklist covering location, documents, pricing, viewings, and decision-making before committing to a property.",
     focusKeyword: "buying property in Zimbabwe",
+    image: "/images/kwekwe-flat.webp",
     layout: BlogArticleLayout.PROPERTY_GUIDE,
     blocks: [
       { type: "heading", level: 2, text: "Understand the property and location" },
@@ -111,6 +117,7 @@ const STARTER_ARTICLES = [
     tags: ["selling property", "sellers", "home preparation"],
     excerpt: "Simple steps sellers can take to improve presentation, reduce buyer uncertainty, and make the sale process smoother.",
     focusKeyword: "sell property in Zimbabwe",
+    image: "/images/bulawayo-family-house.webp",
     layout: BlogArticleLayout.STANDARD_ARTICLE,
     blocks: [
       { type: "heading", level: 2, text: "Make the first impression count" },
@@ -127,6 +134,7 @@ const STARTER_ARTICLES = [
     tags: ["student accommodation", "boarding houses", "parents"],
     excerpt: "A practical checklist for comparing boarding houses and student rooms near campus routes and learning environments.",
     focusKeyword: "student accommodation Zimbabwe",
+    image: "/images/gweru-room-courtyard.webp",
     layout: BlogArticleLayout.LIST_ARTICLE,
     blocks: [
       { type: "heading", level: 2, text: "Compare more than price" },
@@ -142,6 +150,7 @@ const STARTER_ARTICLES = [
     tags: ["moving", "relocation", "checklist"],
     excerpt: "Plan packing, transport, timing, helpers, documents, and handover before moving to a new home.",
     focusKeyword: "moving house in Zimbabwe",
+    image: "/images/roommates-hero.webp",
     layout: BlogArticleLayout.PROPERTY_GUIDE,
     blocks: [
       { type: "heading", level: 2, text: "Plan the move before the truck arrives" },
@@ -157,6 +166,7 @@ const STARTER_ARTICLES = [
     tags: ["verification", "marketplace safety", "HouseLink"],
     excerpt: "HouseLink's verification and reporting workflows help reduce uncertainty for seekers, landlords, agents, and property owners.",
     focusKeyword: "property verification Zimbabwe",
+    image: "/images/houselink-hero.webp",
     layout: BlogArticleLayout.NEWS_ANNOUNCEMENT,
     blocks: [
       { type: "heading", level: 2, text: "Property search needs trust" },
@@ -204,7 +214,19 @@ export async function ensureBlogDefaults(actorId?: string) {
     const category = categoryByName.get(article.category);
     if (!category || !author) continue;
     const existing = await prisma.blogPost.findUnique({ where: { slug: article.slug } });
-    if (existing) continue;
+    if (existing) {
+      if (!existing.featuredImageUrl || existing.featuredImageUrl === "/images/houselink-hero.webp") {
+        await prisma.blogPost.update({
+          where: { id: existing.id },
+          data: {
+            featuredImageUrl: article.image,
+            featuredImageAlt: article.title,
+            socialImageUrl: article.image,
+          },
+        });
+      }
+      continue;
+    }
     const articleTags = [...article.tags];
     const articleBlocks = article.blocks.map((block) => ({ ...block })) as BlogBlock[];
     const tagIds = await resolveTags(articleTags);
@@ -218,9 +240,9 @@ export async function ensureBlogDefaults(actorId?: string) {
         layout: article.layout,
         categoryId: category.id,
         authorId: author.id,
-        featuredImageUrl: "/images/houselink-hero.webp",
+        featuredImageUrl: article.image,
         featuredImageAlt: article.title,
-        socialImageUrl: "/images/houselink-hero.webp",
+        socialImageUrl: article.image,
         contentBlocks: articleBlocks as Prisma.InputJsonValue,
         contentText,
         seoTitle: `${article.title} | HouseLink Zimbabwe`,
@@ -287,9 +309,11 @@ export async function getPublicBlogPost(slug: string, incrementView = false) {
   const post = await prisma.blogPost.findFirst({ where: { ...publicWhere({}), slug }, include: blogIncludes() });
   if (!post) return null;
   if (incrementView) {
-    await prisma.blogPost.update({ where: { id: post.id }, data: { viewCount: { increment: 1 } } });
+    await prisma.blogPost.update({ where: { id: post.id }, data: { viewCount: { increment: 1 } } }).catch((error) => {
+      console.error("Blog view count update failed", { slug, error });
+    });
   }
-  const [related, neighbours, relatedListings, authorArticleCount] = await Promise.all([
+  const [related, neighbours, authorArticleCount] = await Promise.all([
     prisma.blogPost.findMany({
       where: {
         ...publicWhere({}),
@@ -301,23 +325,35 @@ export async function getPublicBlogPost(slug: string, incrementView = false) {
       take: 3,
     }),
     prisma.blogPost.findMany({ where: publicWhere({}), select: { title: true, slug: true, publishedAt: true }, orderBy: [{ publishedAt: "desc" }] }),
-    prisma.listing.findMany({
-      where: {
-        status: "ACTIVE",
-        OR: [
-          { city: { contains: post.category?.name?.split(" ")[0] ?? "", mode: "insensitive" } },
-          { title: { contains: post.focusKeyword ?? post.category?.name ?? "", mode: "insensitive" } },
-          { description: { contains: post.focusKeyword ?? post.category?.name ?? "", mode: "insensitive" } },
-        ],
-      },
-      include: { media: { orderBy: { sortOrder: "asc" }, take: 1 } },
-      orderBy: [{ featured: "desc" }, { updatedAt: "desc" }],
-      take: 3,
-    }),
     post.authorId ? prisma.blogPost.count({ where: { ...publicWhere({}), authorId: post.authorId } }) : Promise.resolve(0),
   ]);
+  const relatedListings = await getRelatedListingsForBlogPost(post).catch((error) => {
+    console.error("Blog related listings failed", { slug, error });
+    return [];
+  });
   const index = neighbours.findIndex((item) => item.slug === post.slug);
   return { post, related, relatedListings, authorArticleCount, relatedCategories: post.category ? [post.category] : [], previous: neighbours[index + 1] ?? null, next: index > 0 ? neighbours[index - 1] : null };
+}
+
+async function getRelatedListingsForBlogPost(post: PublicBlogPostRecord) {
+  const prisma = getMainPrisma();
+  const terms = [post.focusKeyword, post.category?.name, post.title.split(":")[0]]
+    .map((value) => String(value ?? "").trim())
+    .filter(Boolean);
+  const primaryTerm = terms[0] || "property";
+  return prisma.listing.findMany({
+    where: {
+      status: "ACTIVE",
+      OR: [
+        { city: { contains: post.category?.name?.split(" ")[0] ?? "", mode: "insensitive" } },
+        { title: { contains: primaryTerm, mode: "insensitive" } },
+        { description: { contains: primaryTerm, mode: "insensitive" } },
+      ],
+    },
+    include: { media: { orderBy: { sortOrder: "asc" }, take: 1 } },
+    orderBy: [{ featured: "desc" }, { updatedAt: "desc" }],
+    take: 3,
+  });
 }
 
 export async function getPublicBlogAuthor(slug: string, params: { page?: number; limit?: number }) {

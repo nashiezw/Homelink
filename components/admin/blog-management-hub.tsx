@@ -1,6 +1,6 @@
 "use client";
 
-import { Archive, BarChart3, CheckCircle2, Copy, Edit, Eye, FileText, Plus, Trash2, Upload } from "lucide-react";
+import { Archive, BarChart3, CheckCircle2, Copy, Edit, Eye, FileText, ImagePlus, Plus, Trash2, Upload } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AdminDataTable, AdminDrawer, AdminSearchInput, AdminStatPill, AdminStatusBadge, AdminTabStrip } from "@/components/admin/ui/admin-ui";
@@ -257,16 +257,6 @@ export function BlogManagementHub() {
 
 function ArticleEditor({ post, data, busy, onSave }: { post: BlogPost; data: BlogData; busy: boolean; onSave: (post: BlogPost) => Promise<unknown> }) {
   const [form, setForm] = useState(post);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const { showToast } = useApp();
-  async function upload(files: FileList | null) {
-    const file = files?.[0];
-    if (!file) return;
-    const dataUrl = await readFile(file);
-    const result = await apiFetch<{ url: string; size: number }>("/api/v1/uploads", { method: "POST", body: JSON.stringify({ dataUrl, kind: "image", folder: "blog" }) });
-    if (result.data) setForm({ ...form, featuredImageUrl: result.data.url, socialImageUrl: form.socialImageUrl || result.data.url });
-    else showToast(result.error?.message ?? "Image upload failed.", "error");
-  }
   return (
     <section className="rounded-xl border border-white/10 bg-slate-900/60 p-4 sm:p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -275,8 +265,6 @@ function ArticleEditor({ post, data, busy, onSave }: { post: BlogPost; data: Blo
           <p className="mt-1 text-sm text-slate-400">Content is managed here; article design is controlled by the selected global layout.</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button variant="secondary" onClick={() => inputRef.current?.click()}><Upload className="size-4" /> Upload image</Button>
-          <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={(event) => void upload(event.target.files)} />
           <Button disabled={busy || !form.title.trim() || !form.excerpt.trim()} onClick={() => onSave(form)}><CheckCircle2 className="size-4" /> Save</Button>
         </div>
       </div>
@@ -294,8 +282,7 @@ function ArticleEditor({ post, data, busy, onSave }: { post: BlogPost; data: Blo
           <Select label="Category" value={form.categoryId ?? ""} options={["", ...data.categories.map((category) => category.id)]} labels={Object.fromEntries(data.categories.map((category) => [category.id, category.name]))} onChange={(categoryId) => setForm({ ...form, categoryId })} />
           <Select label="Author" value={form.authorId ?? ""} options={["", ...data.authors.map((author) => author.id)]} labels={Object.fromEntries(data.authors.map((author) => [author.id, author.name]))} onChange={(authorId) => setForm({ ...form, authorId })} />
           <Field label="Tags" value={form.tags.map((tag) => tag.name).join(", ")} onChange={(tags) => setForm({ ...form, tags: tags.split(",").map((name) => ({ id: name.trim(), name: name.trim(), slug: slugify(name), active: true })).filter((tag) => tag.name) })} />
-          <Field label="Featured image URL" value={form.featuredImageUrl ?? ""} onChange={(featuredImageUrl) => setForm({ ...form, featuredImageUrl })} />
-          <Field label="Image alt text" value={form.featuredImageAlt ?? ""} onChange={(featuredImageAlt) => setForm({ ...form, featuredImageAlt })} />
+          <CoverImagePanel form={form} onChange={setForm} />
           <Field label="SEO title" value={form.seoTitle ?? ""} onChange={(seoTitle) => setForm({ ...form, seoTitle })} />
           <Area label="Meta description" value={form.metaDescription ?? ""} onChange={(metaDescription) => setForm({ ...form, metaDescription })} />
           <Field label="Focus keyword" value={form.focusKeyword ?? ""} onChange={(focusKeyword) => setForm({ ...form, focusKeyword })} />
@@ -313,6 +300,90 @@ function ArticleEditor({ post, data, busy, onSave }: { post: BlogPost; data: Blo
           </div>
           <EditorQualityPanel post={form} suggestions={data.suggestions} onInsert={(block) => setForm({ ...form, contentBlocks: [...(form.contentBlocks ?? []), block] })} />
         </aside>
+      </div>
+    </section>
+  );
+}
+
+function CoverImagePanel({ form, onChange }: { form: BlogPost; onChange: (post: BlogPost) => void }) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const { showToast } = useApp();
+  const coverUrl = form.featuredImageUrl?.trim();
+  const socialUrl = form.socialImageUrl?.trim();
+
+  async function upload(files: FileList | null) {
+    const file = files?.[0];
+    if (!file) return;
+    setUploading(true);
+    const dataUrl = await readFile(file);
+    const result = await apiFetch<{ url: string; size: number }>("/api/v1/uploads", { method: "POST", body: JSON.stringify({ dataUrl, kind: "image", folder: "blog" }) });
+    setUploading(false);
+    if (result.data) {
+      onChange({
+        ...form,
+        featuredImageUrl: result.data.url,
+        featuredImageAlt: form.featuredImageAlt || form.title || file.name.replace(/\.[^.]+$/, ""),
+        socialImageUrl: form.socialImageUrl || result.data.url,
+      });
+      showToast("Cover image uploaded.", "success");
+    } else {
+      showToast(result.error?.message ?? "Image upload failed.", "error");
+    }
+  }
+
+  return (
+    <section className="rounded-xl border border-white/10 bg-slate-950/60 p-3">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Cover image</p>
+          <p className="mt-1 text-xs leading-5 text-slate-500">Used on blog cards, article hero, and social sharing.</p>
+        </div>
+        <span className={coverUrl ? "rounded-full bg-emerald-500/15 px-2 py-1 text-xs font-semibold text-emerald-200" : "rounded-full bg-amber-500/15 px-2 py-1 text-xs font-semibold text-amber-200"}>
+          {coverUrl ? "Set" : "Missing"}
+        </span>
+      </div>
+
+      <div className="mt-3 overflow-hidden rounded-lg border border-white/10 bg-slate-900">
+        {coverUrl ? (
+          <div
+            role="img"
+            aria-label={form.featuredImageAlt || form.title || "Blog cover preview"}
+            className="aspect-[16/9] bg-cover bg-center"
+            style={{ backgroundImage: `url("${coverUrl.replace(/"/g, "%22")}")` }}
+          />
+        ) : (
+          <div className="grid aspect-[16/9] place-items-center p-5 text-center">
+            <ImagePlus className="mx-auto size-8 text-slate-600" />
+            <p className="mt-2 text-sm font-semibold text-slate-300">Upload a distinctive article cover</p>
+            <p className="mt-1 text-xs leading-5 text-slate-500">Avoid repeating the same image across multiple articles.</p>
+          </div>
+        )}
+      </div>
+
+      <div className="mt-3 flex flex-wrap gap-2">
+        <Button variant="secondary" disabled={uploading} onClick={() => inputRef.current?.click()}>
+          <Upload className="size-4" />
+          {coverUrl ? "Replace cover" : "Upload cover"}
+        </Button>
+        <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={(event) => void upload(event.target.files)} />
+        {coverUrl ? (
+          <Button variant="secondary" onClick={() => onChange({ ...form, featuredImageUrl: "", socialImageUrl: socialUrl === coverUrl ? "" : form.socialImageUrl })}>
+            <Trash2 className="size-4" />
+            Remove
+          </Button>
+        ) : null}
+      </div>
+
+      <div className="mt-3 space-y-3">
+        <Field label="Cover image URL" value={form.featuredImageUrl ?? ""} onChange={(featuredImageUrl) => onChange({ ...form, featuredImageUrl, socialImageUrl: form.socialImageUrl || featuredImageUrl })} />
+        <Field label="Cover alt text" value={form.featuredImageAlt ?? ""} onChange={(featuredImageAlt) => onChange({ ...form, featuredImageAlt })} />
+        <Field label="Social share image URL" value={form.socialImageUrl ?? ""} onChange={(socialImageUrl) => onChange({ ...form, socialImageUrl })} />
+        {coverUrl && socialUrl !== coverUrl ? (
+          <button type="button" onClick={() => onChange({ ...form, socialImageUrl: coverUrl })} className="text-xs font-semibold text-emerald-300 hover:text-emerald-200">
+            Use cover image for social sharing
+          </button>
+        ) : null}
       </div>
     </section>
   );

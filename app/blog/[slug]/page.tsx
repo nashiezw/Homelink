@@ -81,9 +81,9 @@ export default async function BlogArticlePage({ params }: Props) {
       <ReadingProgress />
       <ImageLightbox />
       <RecentlyViewedTracker article={{ title: post.title, slug: post.slug }} />
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }} />
-      {faqSchema ? <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }} /> : null}
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(schema) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(breadcrumbSchema) }} />
+      {faqSchema ? <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(faqSchema) }} /> : null}
 
       <section className="bg-ink text-white">
         <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
@@ -217,4 +217,8 @@ function AuthorBox({ post, articleCount }: { post: { author?: { name: string; sl
 
 function absoluteUrl(value: string) {
   return value.startsWith("http") ? value : `${siteUrl}${value}`;
+}
+
+function safeJsonLd(value: unknown) {
+  return JSON.stringify(value).replace(/</g, "\\u003c");
 }
