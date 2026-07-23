@@ -21,32 +21,32 @@ export function BlogBlocks({ blocks, layout, postId, listings = [] }: { blocks: 
 function BlogBlockView({ block, priority, postId, listings }: { block: BlogBlock; priority: boolean; postId?: string; listings: DynamicListing[] }) {
   switch (block.type) {
     case "heading": {
-      const className = block.level === 3 ? "mt-9 text-2xl font-semibold tracking-tight text-ink dark:text-white" : "mt-12 text-3xl font-semibold tracking-tight text-ink dark:text-white";
+      const className = block.level === 3 ? "mt-7 text-xl font-semibold tracking-tight text-ink dark:text-white sm:mt-9 sm:text-2xl" : "mt-9 text-2xl font-semibold tracking-tight text-ink dark:text-white sm:mt-12 sm:text-3xl";
       const id = anchorId(block.text);
       return block.level === 3 ? <h3 id={id} className={cn("group scroll-mt-24", className)}>{block.text}<CopyHeadingButton id={id} /></h3> : <h2 id={id} className={cn("group scroll-mt-24", className)}>{block.text}<CopyHeadingButton id={id} /></h2>;
     }
     case "paragraph":
-      return <p className="mt-5 text-base leading-8 text-slate-700 dark:text-slate-300">{block.text}</p>;
+      return <p className="mt-4 text-[15px] leading-7 text-slate-700 dark:text-slate-300 sm:mt-5 sm:text-base sm:leading-8">{block.text}</p>;
     case "list": {
       const Tag = block.ordered ? "ol" : "ul";
       return (
-        <Tag className={cn("mt-5 space-y-2 pl-6 text-base leading-7 text-slate-700 dark:text-slate-300", block.ordered ? "list-decimal" : "list-disc")}>
+        <Tag className={cn("mt-4 space-y-2 pl-5 text-[15px] leading-7 text-slate-700 dark:text-slate-300 sm:mt-5 sm:pl-6 sm:text-base", block.ordered ? "list-decimal" : "list-disc")}>
           {block.items.map((item) => <li key={item}>{item}</li>)}
         </Tag>
       );
     }
     case "image":
       return (
-        <figure className="mt-8 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <figure className="mt-6 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:mt-8">
           <div className="relative aspect-[16/9]">
             <Image src={block.url || "/images/houselink-hero.webp"} alt={block.alt} fill priority={priority} className="cursor-zoom-in object-cover" sizes="(min-width: 1024px) 760px, 100vw" data-blog-lightbox={block.url || "/images/houselink-hero.webp"} />
           </div>
-          {block.caption ? <figcaption className="px-4 py-3 text-sm text-slate-500 dark:text-slate-400">{block.caption}</figcaption> : null}
+          {block.caption ? <figcaption className="px-4 py-3 text-xs text-slate-500 dark:text-slate-400 sm:text-sm">{block.caption}</figcaption> : null}
         </figure>
       );
     case "gallery":
       return (
-        <div className="mt-8 grid gap-3 sm:grid-cols-2">
+        <div className="mt-6 grid gap-3 sm:mt-8 sm:grid-cols-2">
           {block.images.map((image) => (
             <div key={image.url} className="relative aspect-[4/3] overflow-hidden rounded-lg bg-slate-100 dark:bg-slate-900">
               <Image src={image.url || "/images/houselink-hero.webp"} alt={image.alt} fill className="cursor-zoom-in object-cover" sizes="(min-width: 768px) 380px, 100vw" data-blog-lightbox={image.url || "/images/houselink-hero.webp"} />
@@ -58,14 +58,14 @@ function BlogBlockView({ block, priority, postId, listings }: { block: BlogBlock
       return <video src={block.url} controls className="mt-8 aspect-video w-full rounded-lg bg-black" title={block.title} />;
     case "quote":
       return (
-        <blockquote className="mt-8 rounded-lg border-l-4 border-emerald-500 bg-emerald-50 p-5 text-lg font-medium leading-8 text-emerald-950 dark:bg-emerald-950/30 dark:text-emerald-100">
+        <blockquote className="mt-6 rounded-lg border-l-4 border-emerald-500 bg-emerald-50 p-4 text-base font-medium leading-7 text-emerald-950 dark:bg-emerald-950/30 dark:text-emerald-100 sm:mt-8 sm:p-5 sm:text-lg sm:leading-8">
           {block.text}
           {block.cite ? <cite className="mt-3 block text-sm not-italic text-emerald-800 dark:text-emerald-200">{block.cite}</cite> : null}
         </blockquote>
       );
     case "info":
       return (
-        <div className={cn("mt-8 rounded-lg border p-5", block.tone === "warning" ? "border-amber-200 bg-amber-50 text-amber-950 dark:border-amber-900 dark:bg-amber-950/25 dark:text-amber-100" : "border-cyan-200 bg-cyan-50 text-cyan-950 dark:border-cyan-900 dark:bg-cyan-950/25 dark:text-cyan-100")}>
+        <div className={cn("mt-6 rounded-lg border p-4 sm:mt-8 sm:p-5", block.tone === "warning" ? "border-amber-200 bg-amber-50 text-amber-950 dark:border-amber-900 dark:bg-amber-950/25 dark:text-amber-100" : "border-cyan-200 bg-cyan-50 text-cyan-950 dark:border-cyan-900 dark:bg-cyan-950/25 dark:text-cyan-100")}>
           <div className="flex items-start gap-3">
             {block.tone === "warning" ? <AlertTriangle className="mt-1 size-5 shrink-0" /> : <Search className="mt-1 size-5 shrink-0" />}
             <div>
@@ -147,11 +147,11 @@ function BlogCta({ block }: { block: Extract<BlogBlock, { type: "cta" }> }) {
       : { href: "/search", icon: Search, title: "Search current listings", text: "Browse available rentals, homes for sale, rooms, and verified listings.", label: "Search properties" };
   const Icon = config.icon;
   return (
-    <div className="mt-10 rounded-lg bg-ink p-5 text-white shadow-soft">
-      <Icon className="size-6 text-emerald-300" />
-      <p className="mt-3 text-xl font-semibold">{block.title || config.title}</p>
+    <div className="mt-8 rounded-lg bg-ink p-4 text-white shadow-soft sm:mt-10 sm:p-5">
+      <Icon className="size-5 text-emerald-300 sm:size-6" />
+      <p className="mt-3 text-lg font-semibold sm:text-xl">{block.title || config.title}</p>
       <p className="mt-2 text-sm leading-6 text-slate-300">{block.text || config.text}</p>
-      <Link href={config.href} className="mt-4 inline-flex rounded-lg bg-white px-4 py-2 text-sm font-semibold text-ink hover:bg-emerald-50">{config.label}</Link>
+      <Link href={config.href} className="mt-4 inline-flex min-h-10 rounded-lg bg-white px-4 py-2 text-sm font-semibold text-ink hover:bg-emerald-50">{config.label}</Link>
     </div>
   );
 }

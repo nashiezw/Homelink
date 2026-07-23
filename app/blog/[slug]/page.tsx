@@ -87,33 +87,44 @@ export default async function BlogArticlePage({ params }: Props) {
       {faqSchema ? <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(faqSchema) }} /> : null}
 
       <section className="bg-ink text-white">
-        <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-          <nav className="flex flex-wrap gap-2 text-sm text-slate-300" aria-label="Breadcrumb">
+        <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-9 lg:px-8">
+          <nav className="flex flex-wrap gap-2 text-xs text-slate-300 sm:text-sm" aria-label="Breadcrumb">
             <Link href="/" className="hover:text-white">Home</Link>
             <span>/</span>
             <Link href="/blog" className="hover:text-white">Blog</Link>
             {post.category ? <><span>/</span><Link href={`/blog/category/${post.category.slug}`} className="hover:text-white">{post.category.name}</Link></> : null}
           </nav>
-          <div className="mt-8 grid gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-end">
+          <div className="mt-5 grid gap-5 lg:mt-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-end">
             <div>
               {post.category ? <Link href={`/blog/category/${post.category.slug}`} className="inline-flex rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-bold uppercase tracking-wide text-emerald-200">{post.category.name}</Link> : null}
-              <h1 className="mt-4 text-4xl font-semibold leading-tight tracking-normal sm:text-5xl lg:text-6xl">{post.title}</h1>
-              <p className="mt-5 max-w-2xl text-base leading-7 text-slate-300">{post.excerpt}</p>
-              <div className="mt-5 flex flex-wrap gap-3 text-sm text-slate-300">
+              <h1 className="mt-3 text-3xl font-bold leading-tight tracking-normal sm:text-5xl lg:text-6xl">{post.title}</h1>
+              <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-300 sm:text-base">{post.excerpt}</p>
+              <div className="mt-4 flex flex-wrap gap-2 text-xs text-slate-300 sm:gap-3 sm:text-sm">
                 {post.author?.slug ? <Link href={`/blog/author/${post.author.slug}`} className="hover:text-white">{post.author.name}</Link> : <span>{post.author?.name ?? "HouseLink Editorial Team"}</span>}
                 <span>{formatDate(post.publishedAt)}</span>
                 <span>Updated {formatDate(post.updatedAt)}</span>
                 <span>{post.readTimeMinutes} min read</span>
               </div>
             </div>
-            <div className="relative aspect-[16/10] overflow-hidden rounded-lg bg-slate-900 shadow-2xl">
+            <div className="relative aspect-[16/10] overflow-hidden rounded-lg bg-slate-900 shadow-2xl sm:aspect-[16/9]">
               <Image src={post.featuredImageUrl || "/images/houselink-hero.webp"} alt={post.featuredImageAlt || post.title} fill priority className="object-cover" sizes="(min-width: 1024px) 560px, 100vw" />
             </div>
           </div>
         </div>
       </section>
 
-      <section className="mx-auto grid max-w-7xl gap-8 px-4 py-12 sm:px-6 lg:grid-cols-[16rem_minmax(0,48rem)_18rem] lg:px-8">
+      {toc.length ? (
+        <section className="mx-auto px-4 pt-5 sm:px-6 lg:hidden">
+          <details className="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+            <summary className="cursor-pointer text-sm font-bold text-ink dark:text-white">Table of contents</summary>
+            <div className="mt-3 grid gap-2">
+              {toc.map((item) => <a key={item.text} href={`#${anchorId(item.text)}`} className="text-sm text-slate-600 dark:text-slate-300">{item.text}</a>)}
+            </div>
+          </details>
+        </section>
+      ) : null}
+
+      <section className="mx-auto grid max-w-7xl gap-6 px-4 py-7 sm:px-6 sm:py-10 lg:grid-cols-[15rem_minmax(0,48rem)_16rem] lg:gap-8 lg:px-8">
         <aside className="hidden lg:block">
           <div className="sticky top-24 rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
             <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Table of contents</p>
@@ -125,7 +136,7 @@ export default async function BlogArticlePage({ params }: Props) {
 
         <article className="min-w-0">
           <ArticleActions title={post.title} url={url} />
-          <div className="mb-8 flex flex-wrap gap-2">
+          <div className="mb-6 flex flex-wrap gap-2 sm:mb-8">
             <ShareLink href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`} label="Facebook" />
             <ShareLink href={`https://twitter.com/intent/tweet?url=${encodeURIComponent(url)}&text=${encodeURIComponent(post.title)}`} label="X" />
             <ShareLink href={`https://wa.me/?text=${encodeURIComponent(`${post.title} ${url}`)}`} label="WhatsApp" />
@@ -134,7 +145,7 @@ export default async function BlogArticlePage({ params }: Props) {
           <AuthorBox post={post} articleCount={authorArticleCount} />
         </article>
 
-        <aside className="space-y-4">
+        <aside className="hidden space-y-4 lg:block">
           <ArticleCta href="/search" icon={Search} title="Search properties" />
           <ArticleCta href="/dashboard/landlord/new" icon={Home} title="List your property" />
           <ArticleCta href="/contact" icon={MessageCircle} title="Contact HouseLink" />
@@ -142,7 +153,7 @@ export default async function BlogArticlePage({ params }: Props) {
         </aside>
       </section>
 
-      <section className="mx-auto max-w-7xl px-4 pb-14 sm:px-6 lg:px-8">
+      <section className="mx-auto max-w-7xl px-4 pb-10 sm:px-6 lg:px-8">
         <div className="grid gap-3 border-y border-slate-200 py-6 dark:border-slate-800 sm:grid-cols-2">
           {previous ? <Link href={`/blog/${previous.slug}`} className="rounded-lg bg-white p-4 text-sm font-semibold text-ink hover:bg-emerald-50 dark:bg-slate-900 dark:text-white"><ArrowLeft className="mb-2 size-4" /> {previous.title}</Link> : <div />}
           {next ? <Link href={`/blog/${next.slug}`} className="rounded-lg bg-white p-4 text-right text-sm font-semibold text-ink hover:bg-emerald-50 dark:bg-slate-900 dark:text-white"><ArrowRight className="mb-2 ml-auto size-4" /> {next.title}</Link> : <div />}

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useMemo, useState } from "react";
-import { ArrowRight, BookOpen, Building2, CheckCircle2, Columns3, LayoutGrid, List, MessageCircle, Search, Sparkles, TrendingUp, type LucideIcon } from "lucide-react";
+import { ArrowRight, BookOpen, Building2, CheckCircle2, Columns3, LayoutGrid, List, MessageCircle, Search, Sparkles, type LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api/client";
 import { BlogCard } from "@/components/blog/blog-card";
@@ -42,8 +42,8 @@ export function BlogIndexClient({ initialData }: { initialData: BlogIndexData })
   const [data, setData] = useState(initialData);
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("");
-  const [listingLayout, setListingLayout] = useState<ListingLayout>("magazine");
-  const [showSidebar, setShowSidebar] = useState(true);
+  const [listingLayout, setListingLayout] = useState<ListingLayout>("grid");
+  const [showSidebar, setShowSidebar] = useState(false);
   const [loading, setLoading] = useState(false);
   const [suggestions, setSuggestions] = useState<{ articles: Array<{ title: string; slug: string; excerpt: string }>; categories: Array<{ name: string; slug: string }>; tags: Array<{ name: string; slug: string }>; authors: Array<{ name: string; slug: string }> } | null>(null);
 
@@ -75,49 +75,14 @@ export function BlogIndexClient({ initialData }: { initialData: BlogIndexData })
   const activeCategoryName = useMemo(() => data.categories.find((item) => item.slug === category)?.name, [category, data.categories]);
 
   return (
-    <div className="space-y-14">
-      <section className="grid gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(20rem,0.65fr)] lg:items-stretch">
-        {data.featured ? (
-          <EditorialFeature post={data.featured} />
-        ) : (
-          <div className="rounded-lg border border-dashed border-slate-300 bg-white p-8 text-center dark:border-slate-700 dark:bg-slate-900">
-            <p className="font-semibold text-ink dark:text-white">No published articles yet</p>
-            <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Published HouseLink resources will appear here after admin approval.</p>
-          </div>
-        )}
-        <aside className="rounded-lg bg-ink p-5 text-white shadow-hero">
-          <p className="inline-flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-emerald-200">
-            <TrendingUp className="size-4" />
-            Most Popular This Week
-          </p>
-          <div className="mt-4 space-y-3">
-            {data.popular.length ? data.popular.map((post, index) => (
-              <Link key={post.id} href={`/blog/${post.slug}`} className="block rounded-lg border border-white/10 bg-white/5 p-3 transition hover:bg-white/10">
-                <span className="text-xs font-bold text-emerald-200">0{index + 1}</span>
-                <p className="mt-1 text-sm font-semibold leading-5">{post.title}</p>
-                <p className="mt-1 text-xs text-slate-400">{post.category?.name ?? "HouseLink Resources"}</p>
-              </Link>
-            )) : <p className="text-sm text-slate-300">Popular articles will appear once articles are marked popular or receive views.</p>}
-          </div>
-          <div className="mt-5 rounded-lg border border-emerald-300/20 bg-emerald-300/10 p-4">
-            <p className="text-sm font-semibold text-white">Need a property answer now?</p>
-            <p className="mt-1 text-xs leading-5 text-slate-300">Search the resource centre or jump straight into available listings.</p>
-            <Link href="/search" className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-emerald-200">
-              Search listings
-              <ArrowRight className="size-4" />
-            </Link>
-          </div>
-        </aside>
-      </section>
-
-      <section className="rounded-lg border border-emerald-100 bg-white p-4 shadow-soft dark:border-slate-800 dark:bg-slate-900 sm:p-5">
+    <div className="space-y-8 sm:space-y-10">
+      <section className="rounded-lg border border-emerald-100 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-4">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">
               <Sparkles className="size-3.5" />
-              Resource Finder
+              Find articles
             </p>
-            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Search guides, categories, tags, and practical HouseLink content.</p>
           </div>
         </div>
         <div className="grid gap-3 lg:grid-cols-[1fr_auto] lg:items-center">
@@ -152,6 +117,44 @@ export function BlogIndexClient({ initialData }: { initialData: BlogIndexData })
         {activeCategoryName ? <p className="mt-3 text-sm text-slate-500">Filtering by {activeCategoryName}</p> : null}
       </section>
 
+      <section>
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <p className="section-eyebrow">Latest articles</p>
+            <h2 className="mt-2 text-2xl font-bold tracking-normal text-ink dark:text-white sm:text-4xl">Read the latest HouseLink blogs.</h2>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="mr-1 text-sm text-slate-500">{data.total} article{data.total === 1 ? "" : "s"}</p>
+            <LayoutButton active={listingLayout === "grid"} label="Grid" icon={LayoutGrid} onClick={() => setListingLayout("grid")} />
+            <LayoutButton active={listingLayout === "list"} label="List" icon={List} onClick={() => setListingLayout("list")} />
+            <LayoutButton active={listingLayout === "magazine"} label="Feature" icon={Columns3} onClick={() => setListingLayout("magazine")} />
+            <button
+              type="button"
+              onClick={() => setShowSidebar((value) => !value)}
+              className="hidden min-h-10 items-center rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:border-emerald-300 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 sm:inline-flex"
+            >
+              {showSidebar ? "Hide sidebar" : "Show sidebar"}
+            </button>
+          </div>
+        </div>
+        {data.posts.length ? (
+          <div className={showSidebar ? "mt-5 grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem]" : "mt-5"}>
+            <ArticleListing posts={data.posts} layout={listingLayout} />
+            {showSidebar ? <ResourceSidebar categories={data.categories} trendingTopics={data.trendingTopics} popular={data.popular} /> : null}
+          </div>
+        ) : (
+          <div className="mt-5 rounded-lg border border-dashed border-slate-300 bg-white p-8 text-center dark:border-slate-700 dark:bg-slate-900">
+            <p className="font-semibold text-ink dark:text-white">No matching articles found</p>
+            <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Try another keyword or clear the category filter.</p>
+          </div>
+        )}
+        {data.hasMore ? (
+          <div className="mt-7 text-center">
+            <Button variant="secondary" onClick={() => void load(data.page + 1, true)} disabled={loading}>Load More</Button>
+          </div>
+        ) : null}
+      </section>
+
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {data.categories.slice(0, 8).map((item) => (
           <Link key={item.id} href={`/blog/category/${item.slug}`} className="group rounded-lg border border-slate-200 bg-white p-4 shadow-sm transition hover:border-emerald-300 hover:bg-emerald-50 dark:border-slate-800 dark:bg-slate-900 dark:hover:bg-emerald-950/20">
@@ -164,8 +167,7 @@ export function BlogIndexClient({ initialData }: { initialData: BlogIndexData })
         ))}
       </section>
 
-      <ResourceSection title="Editor's Picks" eyebrow="Curated by HouseLink" posts={data.editorsPicks} variant="mosaic" />
-      <ResourceSection title="Recently Updated" eyebrow="Freshly reviewed" posts={data.recentlyUpdated} compact />
+      <ResourceSection title="Editor's Picks" eyebrow="Curated by HouseLink" posts={data.editorsPicks} compact />
 
       <section className="grid gap-5 lg:grid-cols-[0.85fr_1.15fr]">
         <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
@@ -190,44 +192,6 @@ export function BlogIndexClient({ initialData }: { initialData: BlogIndexData })
         </div>
       </section>
 
-      <section>
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <p className="section-eyebrow">Latest articles</p>
-            <h2 className="section-title">A newsroom for the property journey.</h2>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <p className="mr-1 text-sm text-slate-500">{data.total} published article{data.total === 1 ? "" : "s"}</p>
-            <LayoutButton active={listingLayout === "magazine"} label="Magazine" icon={Columns3} onClick={() => setListingLayout("magazine")} />
-            <LayoutButton active={listingLayout === "grid"} label="Grid" icon={LayoutGrid} onClick={() => setListingLayout("grid")} />
-            <LayoutButton active={listingLayout === "list"} label="List" icon={List} onClick={() => setListingLayout("list")} />
-            <button
-              type="button"
-              onClick={() => setShowSidebar((value) => !value)}
-              className="inline-flex min-h-10 items-center rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:border-emerald-300 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200"
-            >
-              {showSidebar ? "Hide sidebar" : "Show sidebar"}
-            </button>
-          </div>
-        </div>
-        {data.posts.length ? (
-          <div className={showSidebar ? "mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_19rem]" : "mt-6"}>
-            <ArticleListing posts={data.posts} layout={listingLayout} />
-            {showSidebar ? <ResourceSidebar categories={data.categories} trendingTopics={data.trendingTopics} popular={data.popular} /> : null}
-          </div>
-        ) : (
-          <div className="mt-6 rounded-lg border border-dashed border-slate-300 bg-white p-8 text-center dark:border-slate-700 dark:bg-slate-900">
-            <p className="font-semibold text-ink dark:text-white">No matching articles found</p>
-            <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Try another keyword or clear the category filter.</p>
-          </div>
-        )}
-        {data.hasMore ? (
-          <div className="mt-7 text-center">
-            <Button variant="secondary" onClick={() => void load(data.page + 1, true)} disabled={loading}>Load More</Button>
-          </div>
-        ) : null}
-      </section>
-
       <section className="grid gap-5 lg:grid-cols-2">
         <ResourceCta icon={Search} title="Find current property listings" text="Search rentals, rooms, boarding houses, homes for sale, and verified property opportunities across Zimbabwe." href="/search" label="Search properties" />
         <ResourceCta icon={Building2} title="Own a property?" text="List your property with HouseLink and reach serious renters, buyers, students, and managed-property clients." href="/dashboard/landlord/new" label="List your property" />
@@ -249,31 +213,6 @@ export function BlogIndexClient({ initialData }: { initialData: BlogIndexData })
   );
 }
 
-function EditorialFeature({ post }: { post: BlogPost }) {
-  return (
-    <Link href={`/blog/${post.slug}`} className="group grid overflow-hidden rounded-lg bg-ink text-white shadow-hero lg:grid-cols-[0.9fr_1.1fr]">
-      <div className="relative min-h-[22rem]">
-        <Image src={post.featuredImageUrl || "/images/houselink-hero.webp"} alt={post.featuredImageAlt || post.title} fill className="object-cover transition duration-700 group-hover:scale-105" sizes="(min-width: 1024px) 520px, 100vw" />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent lg:bg-gradient-to-r" />
-      </div>
-      <div className="flex flex-col justify-between p-5 sm:p-7">
-        <div>
-          <p className="inline-flex rounded-full bg-emerald-300/15 px-3 py-1 text-xs font-bold uppercase tracking-wide text-emerald-200">Lead story</p>
-          <h2 className="mt-5 text-3xl font-black leading-tight tracking-normal sm:text-5xl">{post.title}</h2>
-          <p className="mt-4 max-w-xl text-sm leading-7 text-slate-300 sm:text-base">{post.excerpt}</p>
-        </div>
-        <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-5">
-          <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">{post.category?.name ?? "HouseLink Resources"} | {post.readTimeMinutes} min read</span>
-          <span className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-white px-4 py-2 text-sm font-bold text-ink">
-            Read feature
-            <ArrowRight className="size-4" />
-          </span>
-        </div>
-      </div>
-    </Link>
-  );
-}
-
 function ArticleListing({ posts, layout }: { posts: BlogPost[]; layout: ListingLayout }) {
   if (layout === "list") {
     return (
@@ -291,10 +230,10 @@ function ArticleListing({ posts, layout }: { posts: BlogPost[]; layout: ListingL
   }
   const [lead, ...rest] = posts;
   return (
-    <div className="grid gap-5">
+      <div className="grid gap-4 sm:gap-5">
       {lead ? <BlogCard post={lead} featured /> : null}
       {rest.length ? (
-        <div className="grid gap-5 md:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-2">
           {rest.map((post) => <BlogCard key={post.id} post={post} />)}
         </div>
       ) : null}
@@ -304,16 +243,16 @@ function ArticleListing({ posts, layout }: { posts: BlogPost[]; layout: ListingL
 
 function ListArticleCard({ post }: { post: BlogPost }) {
   return (
-    <Link href={`/blog/${post.slug}`} className="group grid gap-4 rounded-lg border border-slate-200 bg-white p-3 shadow-sm transition hover:border-emerald-300 hover:shadow-soft dark:border-slate-800 dark:bg-slate-900 sm:grid-cols-[11rem_1fr_auto] sm:items-center">
-      <div className="relative aspect-[16/10] overflow-hidden rounded-lg bg-slate-100 dark:bg-slate-800">
+    <Link href={`/blog/${post.slug}`} className="group grid gap-3 rounded-lg border border-slate-200 bg-white p-3 shadow-sm transition hover:border-emerald-300 hover:shadow-soft dark:border-slate-800 dark:bg-slate-900 sm:grid-cols-[9rem_1fr_auto] sm:items-center">
+      <div className="relative aspect-[16/9] overflow-hidden rounded-lg bg-slate-100 dark:bg-slate-800">
         <Image src={post.featuredImageUrl || "/images/houselink-hero.webp"} alt={post.featuredImageAlt || post.title} fill className="object-cover transition duration-500 group-hover:scale-105" sizes="(min-width: 640px) 176px, 100vw" />
       </div>
       <div>
         <p className="text-xs font-bold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">{post.category?.name ?? "HouseLink Resources"}</p>
-        <h3 className="mt-1 text-lg font-semibold leading-tight text-ink group-hover:text-emerald-700 dark:text-white dark:group-hover:text-emerald-300">{post.title}</h3>
+        <h3 className="mt-1 text-base font-semibold leading-tight text-ink group-hover:text-emerald-700 dark:text-white dark:group-hover:text-emerald-300 sm:text-lg">{post.title}</h3>
         <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-600 dark:text-slate-300">{post.excerpt}</p>
       </div>
-      <span className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white sm:self-center">
+      <span className="inline-flex min-h-9 w-fit items-center justify-center gap-2 rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white sm:self-center">
         Read
         <ArrowRight className="size-4" />
       </span>

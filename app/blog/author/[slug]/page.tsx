@@ -31,21 +31,21 @@ export default async function BlogAuthorPage({ params }: Props) {
   return (
     <main className="bg-mist text-slate-950 dark:bg-slate-950 dark:text-white">
       <section className="bg-ink text-white">
-        <div className="mx-auto grid max-w-7xl gap-6 px-4 py-14 sm:px-6 lg:grid-cols-[auto_1fr] lg:px-8">
-          <div className="relative size-24 overflow-hidden rounded-lg bg-white/10">
+        <div className="mx-auto grid max-w-7xl gap-4 px-4 py-8 sm:px-6 sm:py-12 lg:grid-cols-[auto_1fr] lg:px-8">
+          <div className="relative size-16 overflow-hidden rounded-lg bg-white/10 sm:size-24">
             {data.author.avatarUrl ? <Image src={data.author.avatarUrl} alt={data.author.name} fill className="object-cover" /> : null}
           </div>
           <div>
             <p className="section-eyebrow text-emerald-200">HouseLink author</p>
-            <h1 className="mt-3 text-4xl font-semibold tracking-normal sm:text-5xl">{data.author.name}</h1>
+            <h1 className="mt-3 text-3xl font-bold tracking-normal sm:text-5xl">{data.author.name}</h1>
             {data.author.role ? <p className="mt-2 font-semibold text-emerald-100">{data.author.role}</p> : null}
-            <p className="mt-4 max-w-2xl text-slate-300">{data.author.bio ?? "Practical property resources from HouseLink Zimbabwe."}</p>
+            <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-300 sm:text-base">{data.author.bio ?? "Practical property resources from HouseLink Zimbabwe."}</p>
             <p className="mt-4 text-sm text-slate-400">{data.total} published article{data.total === 1 ? "" : "s"}</p>
           </div>
         </div>
       </section>
-      <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+      <section className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-10 lg:px-8">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {data.posts.map((post) => <BlogCard key={post.id} post={post} />)}
         </div>
       </section>
