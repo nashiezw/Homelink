@@ -75,9 +75,9 @@ export function BlogIndexClient({ initialData }: { initialData: BlogIndexData })
   const activeCategoryName = useMemo(() => data.categories.find((item) => item.slug === category)?.name, [category, data.categories]);
 
   return (
-    <div className="space-y-8 sm:space-y-10">
+    <div className="space-y-7 sm:space-y-10">
       <section className="rounded-lg border border-emerald-100 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-4">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">
               <Sparkles className="size-3.5" />
@@ -85,7 +85,7 @@ export function BlogIndexClient({ initialData }: { initialData: BlogIndexData })
             </p>
           </div>
         </div>
-        <div className="grid gap-3 lg:grid-cols-[1fr_auto] lg:items-center">
+        <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center lg:grid-cols-[1fr_auto]">
           <label className="relative block">
             <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
             <input
@@ -94,7 +94,7 @@ export function BlogIndexClient({ initialData }: { initialData: BlogIndexData })
               onKeyDown={(event) => {
                 if (event.key === "Enter") void load(1);
               }}
-              placeholder="Search titles, keywords, tags, categories, and article content"
+              placeholder="Search articles"
               className="min-h-11 w-full rounded-lg border border-slate-200 bg-white pl-10 pr-3 text-sm text-slate-900 outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/15 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
             />
             {suggestions ? (
@@ -106,12 +106,12 @@ export function BlogIndexClient({ initialData }: { initialData: BlogIndexData })
               </div>
             ) : null}
           </label>
-          <div className="flex flex-wrap gap-2">
+          <div className="grid grid-cols-[1fr_auto] gap-2 sm:flex sm:flex-wrap">
             <select value={category} onChange={(event) => setCategory(event.target.value)} className="min-h-11 rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-950 dark:text-white">
               <option value="">All categories</option>
               {data.categories.map((item) => <option key={item.id} value={item.slug}>{item.name}</option>)}
             </select>
-            <Button onClick={() => void load(1)} disabled={loading}>Search</Button>
+            <Button className="px-4" onClick={() => void load(1)} disabled={loading}>Search</Button>
           </div>
         </div>
         {activeCategoryName ? <p className="mt-3 text-sm text-slate-500">Filtering by {activeCategoryName}</p> : null}
@@ -121,10 +121,10 @@ export function BlogIndexClient({ initialData }: { initialData: BlogIndexData })
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <p className="section-eyebrow">Latest articles</p>
-            <h2 className="mt-2 text-2xl font-bold tracking-normal text-ink dark:text-white sm:text-4xl">Read the latest HouseLink blogs.</h2>
+            <h2 className="mt-2 text-2xl font-bold tracking-normal text-ink dark:text-white sm:text-4xl">Latest HouseLink blogs.</h2>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <p className="mr-1 text-sm text-slate-500">{data.total} article{data.total === 1 ? "" : "s"}</p>
+          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+            <p className="mr-auto text-sm text-slate-500 sm:mr-1">{data.total} article{data.total === 1 ? "" : "s"}</p>
             <LayoutButton active={listingLayout === "grid"} label="Grid" icon={LayoutGrid} onClick={() => setListingLayout("grid")} />
             <LayoutButton active={listingLayout === "list"} label="List" icon={List} onClick={() => setListingLayout("list")} />
             <LayoutButton active={listingLayout === "magazine"} label="Feature" icon={Columns3} onClick={() => setListingLayout("magazine")} />
@@ -138,7 +138,7 @@ export function BlogIndexClient({ initialData }: { initialData: BlogIndexData })
           </div>
         </div>
         {data.posts.length ? (
-          <div className={showSidebar ? "mt-5 grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem]" : "mt-5"}>
+          <div className={showSidebar ? "mt-4 grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem] sm:mt-5" : "mt-4 sm:mt-5"}>
             <ArticleListing posts={data.posts} layout={listingLayout} />
             {showSidebar ? <ResourceSidebar categories={data.categories} trendingTopics={data.trendingTopics} popular={data.popular} /> : null}
           </div>
@@ -308,10 +308,10 @@ function LayoutButton({ active, label, icon: Icon, onClick }: { active: boolean;
     <button
       type="button"
       onClick={onClick}
-      className={active ? "inline-flex min-h-10 items-center gap-1.5 rounded-lg bg-ink px-3 py-2 text-xs font-semibold text-white dark:bg-emerald-500 dark:text-ink" : "inline-flex min-h-10 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:border-emerald-300 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200"}
+      className={active ? "inline-flex min-h-9 items-center gap-1.5 rounded-lg bg-ink px-2.5 py-2 text-xs font-semibold text-white dark:bg-emerald-500 dark:text-ink sm:min-h-10 sm:px-3" : "inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-xs font-semibold text-slate-700 hover:border-emerald-300 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 sm:min-h-10 sm:px-3"}
     >
       <Icon className="size-3.5" />
-      {label}
+      <span className="hidden sm:inline">{label}</span>
     </button>
   );
 }
