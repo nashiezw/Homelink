@@ -9,6 +9,7 @@ import { LocalSearchSection } from "@/components/home/local-search-section";
 import { MarketplaceSafetySection } from "@/components/home/marketplace-safety-section";
 import { PropertyManagementSection } from "@/components/home/property-management-section";
 import { PropertyRequestCta } from "@/components/property-requests/property-request-cta";
+import { ResourceCentreSection } from "@/components/home/resource-centre-section";
 import { StudentAccommodationSection } from "@/components/home/student-accommodation-section";
 import { TestimonialsSection } from "@/components/home/testimonials-section";
 import { TrustMetricsSection } from "@/components/home/trust-metrics-section";
@@ -31,6 +32,7 @@ export function HomePageView({ data }: HomePageViewProps) {
       <BrowsePropertyTypes types={data.propertyTypes} />
       <HomeBannerStrip banners={data.content.banners} placement="mid" />
       <MarketplaceSafetySection />
+      <ResourceCentreSection />
       <PropertyManagementSection />
       <FeaturedAgentsSection agents={data.featuredAgents} />
       <BecomeAgentPromo content={data.content.agentPromo} />

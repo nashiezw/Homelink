@@ -62,6 +62,7 @@ export type AdminTab =
   | "settings"
   | "overrides"
   | "marketing"
+  | "blog"
   | "ai"
   | "system"
   | "security"
@@ -159,6 +160,7 @@ const NAV_GROUPS: Array<{ label: string; items: NavItem[] }> = [
       { id: "settings", label: "Platform Settings", icon: Settings },
       { id: "overrides", label: "Admin Overrides", icon: ShieldAlert },
       { id: "marketing", label: "Marketing & CMS", icon: Megaphone },
+      { id: "blog", label: "Blog Management", icon: FileText },
       { id: "ai", label: "AI Control", icon: Brain },
       { id: "system", label: "System Health", icon: Activity },
       { id: "security", label: "Security & Audit", icon: Wrench },
@@ -186,6 +188,7 @@ const TAB_LABELS: Record<AdminTab, string> = {
   settings: "Platform Settings",
   overrides: "Admin Overrides",
   marketing: "Marketing & CMS",
+  blog: "Blog Management",
   ai: "AI Control",
   system: "System Health",
   security: "Security & Audit",

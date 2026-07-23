@@ -15,6 +15,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { AgentManagementHub } from "@/components/admin/agent-management-hub";
 import { AgentAcademyHub } from "@/components/admin/agent-academy-hub";
 import { BookingsAdminHub } from "@/components/admin/bookings-admin-hub";
+import { BlogManagementHub } from "@/components/admin/blog-management-hub";
 import { EnquiryCrmHub } from "@/components/admin/enquiry-crm-hub";
 import { EnterprisePropTechHub } from "@/components/admin/enterprise-proptech-hub";
 import { ExecutiveDashboard } from "@/components/admin/executive-dashboard";
@@ -282,6 +283,7 @@ export function AdminControlCenter() {
       {tab === "ai" && <SystemOpsHub mode="ai" />}
       {tab === "security" && <SystemOpsHub mode="security" />}
       {tab === "marketing" && <MarketingCmsHub />}
+      {tab === "blog" && <BlogManagementHub />}
 
       {tab === "landlords" && (
         <Panel title="Landlords, estate agents & agencies">
@@ -342,6 +344,7 @@ const tabDescriptions: Record<AdminTab, string> = {
   settings: "Brand, locations, integrations, notifications, legal, and admin access roles.",
   overrides: "Emergency super-admin actions with audit trail.",
   marketing: "Full homepage CMS: hero, featured listings/agents, trust metrics, banners, SEO, and campaigns.",
+  blog: "Create, edit, schedule, publish, optimise, and analyse HouseLink property resources.",
   ai: "Control AI search, fraud detection, roommate matching, and duplicate detection.",
   system: "Monitor service health, infrastructure load, and queue depth.",
   security: "Review sessions, blocked accounts, and full audit log.",

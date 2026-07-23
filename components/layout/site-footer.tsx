@@ -11,6 +11,7 @@ const groups = [
     title: "Explore",
     items: [
       ["Search HouseLink properties", "/search"],
+      ["Property Resource Centre", "/blog"],
       ["Send property request", "/property-request"],
       ["Student accommodation", "/student-accommodation"],
       ["Rent in Harare", "/rent/harare"],
@@ -26,6 +27,7 @@ const groups = [
       ["Compare homes", "/compare"],
       ["Calculators", "/calculators"],
       ["Verification", "/verification"],
+      ["Property guides", "/blog"],
     ],
   },
   {
@@ -52,6 +54,7 @@ const groups = [
     items: [
       ["Contact", "/contact"],
       ["Safety centre", "/safety"],
+      ["Resource centre", "/blog"],
       ["Report listing", "/report-listing"],
       ["Maintenance", "/maintenance"],
     ],

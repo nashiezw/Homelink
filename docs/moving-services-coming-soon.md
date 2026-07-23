@@ -321,6 +321,20 @@ Customers could also request moving supplies:
 
 An AI move estimator could ask a few simple questions, such as house size, furniture, and photos, then recommend the right truck and crew size automatically. This would reduce booking errors and improve the customer experience.
 
+## Customer Experience Enhancements
+
+Add these features to make the moving module more useful and competitive:
+
+- Instant price estimates before booking
+- Multiple quotes from different approved drivers
+- Real-time job tracking from driver assignment to completion
+- Optional helpers or loaders
+- Insurance options for higher-value moves
+- Photo uploads of items to be moved
+- Booking history and downloadable invoices
+- Customer and driver ratings
+- In-app chat between the customer and the assigned driver
+
 ## Suggested Rollout
 
 Phase 1: Coming Soon page and lead capture.

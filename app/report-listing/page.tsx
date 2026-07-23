@@ -106,7 +106,7 @@ function ReportListingForm() {
         />
       </label>
 
-      <div className="mt-6 flex flex-wrap gap-3">
+      <div className="mt-6 flex flex-wrap gap-2 sm:gap-3">
         <Button type="submit" disabled={submitting}>
           {submitting ? "Submitting..." : "Submit report"}
         </Button>

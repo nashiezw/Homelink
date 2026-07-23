@@ -89,7 +89,11 @@ export async function getAcademyDashboard() {
       },
       orderBy: [{ sortOrder: "asc" }, { updatedAt: "desc" }],
     }),
-    prisma.documentLibrary.findMany({ include: { category: true }, orderBy: [{ sortOrder: "asc" }, { updatedAt: "desc" }] }),
+    prisma.documentLibrary.findMany({
+      where: { active: true, visible: true },
+      include: { category: true },
+      orderBy: [{ sortOrder: "asc" }, { updatedAt: "desc" }],
+    }),
     prisma.videoLibrary.findMany({ orderBy: { updatedAt: "desc" } }),
     prisma.quiz.findMany({ include: { attempts: true }, orderBy: { updatedAt: "desc" } }),
     prisma.assignment.findMany({ orderBy: { updatedAt: "desc" } }),
@@ -930,6 +934,81 @@ export async function runAcademyAction(body: Record<string, any>, actor: Actor) 
       status: body.status === "REJECTED" ? "REJECTED" : body.status === "REFUNDED" ? "REFUNDED" : body.status === "EXPIRED" ? "EXPIRED" : "APPROVED",
       adminNote: typeof body.adminNote === "string" ? body.adminNote : undefined,
     });
+  }
+  if (action === "delete_public_learner") {
+    const application = await prisma.academyLearnerApplication.findUnique({
+      where: { id: String(body.applicationId) },
+      include: {
+        course: {
+          select: {
+            title: true,
+            modules: {
+              select: {
+                sections: {
+                  select: {
+                    lessons: { select: { id: true } },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+    if (!application) return null;
+    const lessonIds = application.course.modules.flatMap((module) =>
+      module.sections.flatMap((section) => section.lessons.map((lesson) => lesson.id)),
+    );
+    await prisma.$transaction([
+      prisma.academyLearnerApplication.update({ where: { id: application.id }, data: { paymentId: null } }),
+      prisma.courseEnrolment.deleteMany({ where: { courseId: application.courseId, agentId: application.learnerId } }),
+      prisma.courseProgress.deleteMany({ where: { courseId: application.courseId, agentId: application.learnerId } }),
+      ...(lessonIds.length
+        ? [prisma.lessonProgress.deleteMany({ where: { agentId: application.learnerId, lessonId: { in: lessonIds } } })]
+        : []),
+      prisma.academyLearnerApplication.delete({ where: { id: application.id } }),
+      prisma.trainingAuditLog.create({
+        data: {
+          actorId: actor.id,
+          action: "academy.public_learner.delete",
+          target: application.id,
+          metadata: {
+            courseId: application.courseId,
+            courseTitle: application.course.title,
+            learnerId: application.learnerId,
+            status: application.status,
+          } as Prisma.InputJsonObject,
+        },
+      }),
+    ]);
+    return { id: application.id, deleted: true };
+  }
+  if (action === "delete_resource_access") {
+    const access = await prisma.academyResourceAccess.findUnique({
+      where: { id: String(body.accessId) },
+      include: { course: { select: { title: true } } },
+    });
+    if (!access) return null;
+    await prisma.$transaction([
+      prisma.academyResourceAccess.update({ where: { id: access.id }, data: { paymentId: null } }),
+      prisma.academyResourceAccess.delete({ where: { id: access.id } }),
+      prisma.trainingAuditLog.create({
+        data: {
+          actorId: actor.id,
+          action: "academy.resource_access.delete",
+          target: access.id,
+          metadata: {
+            resourceKind: access.resourceKind,
+            resourceKey: access.resourceKey,
+            courseId: access.courseId,
+            courseTitle: access.course?.title,
+            learnerId: access.learnerId,
+            status: access.status,
+          } as Prisma.InputJsonObject,
+        },
+      }),
+    ]);
+    return { id: access.id, deleted: true };
   }
   return null;
 }

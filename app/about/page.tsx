@@ -165,7 +165,7 @@ function PrimaryCta({ href, children }: { href: string; children: React.ReactNod
     <Link
       href={href}
       rel={href.includes("?") ? "nofollow" : undefined}
-      className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-emerald-500 px-6 text-sm font-semibold text-white shadow-lg transition hover:-translate-y-0.5 hover:bg-emerald-400"
+      className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-emerald-500 px-4 py-2.5 text-sm font-semibold text-white shadow-lg transition hover:-translate-y-0.5 hover:bg-emerald-400 sm:h-12 sm:rounded-xl sm:px-6"
     >
       {children}
       <ArrowRight className="size-4" aria-hidden="true" />
@@ -193,31 +193,29 @@ export default function AboutPage() {
         <div className="pointer-events-none absolute -left-24 top-24 size-72 animate-hero-glow rounded-full bg-emerald-500/20 blur-3xl motion-reduce:animate-none" />
         <div className="pointer-events-none absolute right-0 top-1/3 size-96 animate-hero-drift rounded-full bg-cyan-400/10 blur-3xl motion-reduce:animate-none" />
 
-        <div className="relative mx-auto grid min-h-[660px] max-w-7xl items-center gap-10 lg:grid-cols-[1.08fr_0.92fr]">
+        <div className="relative mx-auto grid min-h-[560px] max-w-7xl items-center gap-10 py-10 sm:min-h-[660px] sm:py-0 lg:grid-cols-[1.08fr_0.92fr]">
           <FadeIn>
             <div>
               <p className="inline-flex max-w-full items-center gap-2 rounded-full border border-emerald-300/25 bg-white/10 px-3 py-1.5 text-sm font-semibold text-emerald-50 shadow-sm backdrop-blur">
                 <ShieldCheck className="size-4 shrink-0 text-emerald-300" aria-hidden="true" />
                 About HouseLink Zimbabwe
               </p>
-              <h1 className="mt-7 max-w-4xl text-4xl font-semibold leading-[1.05] tracking-tight text-white sm:text-6xl lg:text-[4.25rem]">
+              <h1 className="mt-5 max-w-4xl text-[2.35rem] font-semibold leading-[1.05] tracking-normal text-white sm:mt-7 sm:text-6xl lg:text-[4.25rem]">
                 For everyone who has searched for a home and wondered <span className="text-gradient-emerald">who to trust</span>
               </h1>
-              <p className="mt-6 max-w-2xl text-base leading-8 text-slate-100 sm:text-lg">
+              <p className="mt-4 max-w-2xl text-sm leading-6 text-slate-100 sm:mt-6 sm:text-lg sm:leading-8">
                 Fake listings, unanswered calls, wasted transport, dishonest agents, and confusing adverts have made property search stressful for too many Zimbabweans. HouseLink was built so finding a home, roommate, tenant, buyer, seller, or trusted agent can feel safer and clearer.
               </p>
-              <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+              <div className="mt-6 flex flex-wrap gap-2 sm:mt-8 sm:gap-3">
                 <PrimaryCta href="/rent/harare">Explore Properties</PrimaryCta>
                 <Link
                   href="/dashboard/landlord/new"
-                  className="inline-flex h-12 items-center justify-center gap-2 rounded-xl border border-white/25 bg-white/10 px-6 text-sm font-semibold text-white backdrop-blur transition hover:bg-white/15"
+                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-white/25 bg-white/10 px-4 py-2.5 text-sm font-semibold text-white backdrop-blur transition hover:bg-white/15 sm:h-12 sm:rounded-xl sm:px-6"
                 >
                   List Your Property
                 </Link>
               </div>
-              <p className="mt-5 text-sm font-medium text-emerald-100/90 sm:hidden">
-                Verified listings / Trusted agents / Rooms and homes
-              </p>
+              <p className="mt-4 text-sm font-medium text-emerald-100/90 sm:hidden">Verified listings, trusted agents, rooms and homes.</p>
               <div className="mt-8 hidden flex-wrap gap-2 sm:flex">
                 {["Verified listings", "Trusted agents", "Rooms and homes"].map((item) => (
                   <span key={item} className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-sm font-medium text-white backdrop-blur">

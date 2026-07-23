@@ -22,6 +22,7 @@ const exploreNavPrimary = [
 ] as const;
 
 const exploreNavMore = [
+  { label: "Resource Centre", href: "/blog", feature: null, description: "Property advice, news, guides, and tools" },
   { label: "Calculators", href: "/calculators", feature: null, description: "Move-in costs, rent budgets, commissions" },
   { label: "Holiday Homes", href: "/search", feature: null, description: "Short-stay and holiday rentals" },
   { label: "Land", href: "/search", feature: null, description: "Plots and development land" },

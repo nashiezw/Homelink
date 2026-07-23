@@ -119,6 +119,21 @@ enum LeadOwnershipReviewStatus {
   DUPLICATE_BLOCKED
 }
 
+enum BlogPostStatus {
+  DRAFT
+  SCHEDULED
+  PUBLISHED
+  UNPUBLISHED
+  ARCHIVED
+}
+
+enum BlogArticleLayout {
+  STANDARD_ARTICLE
+  PROPERTY_GUIDE
+  NEWS_ANNOUNCEMENT
+  LIST_ARTICLE
+}
+
 model User {
   id                String                    @id @default(cuid())
   email             String                    @unique
@@ -151,6 +166,142 @@ model User {
   academyApplications AcademyLearnerApplication[]
   academyResourceAccess AcademyResourceAccess[]
   viewingAvailability   AgentViewingAvailability?
+}
+
+model BlogAuthor {
+  id          String     @id @default(cuid())
+  name        String
+  slug        String     @unique
+  role        String?
+  bio         String?
+  avatarUrl   String?
+  email       String?
+  active      Boolean    @default(true)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  posts       BlogPost[]
+
+  @@map("blog_authors")
+}
+
+model BlogCategory {
+  id              String     @id @default(cuid())
+  name            String
+  slug            String     @unique
+  description     String?
+  imageUrl        String?
+  seoTitle        String?
+  metaDescription String?
+  sortOrder       Int        @default(0)
+  active          Boolean    @default(true)
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+  posts           BlogPost[]
+
+  @@index([active])
+  @@index([sortOrder])
+  @@map("blog_categories")
+}
+
+model BlogTag {
+  id          String     @id @default(cuid())
+  name        String
+  slug        String     @unique
+  description String?
+  active      Boolean    @default(true)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  posts       BlogPost[]
+
+  @@index([active])
+  @@map("blog_tags")
+}
+
+model BlogPost {
+  id                 String            @id @default(cuid())
+  title              String
+  slug               String            @unique
+  excerpt            String
+  status             BlogPostStatus    @default(DRAFT)
+  layout             BlogArticleLayout @default(STANDARD_ARTICLE)
+  categoryId         String?
+  authorId           String?
+  featuredImageUrl   String?
+  featuredImageAlt   String?
+  socialImageUrl     String?
+  contentBlocks      Json
+  contentText        String            @default("")
+  seoTitle           String?
+  metaDescription    String?
+  focusKeyword       String?
+  secondaryKeywords  String[]          @default([])
+  canonicalUrl       String?
+  noIndex            Boolean           @default(false)
+  featured           Boolean           @default(false)
+  popular            Boolean           @default(false)
+  readTimeMinutes    Int               @default(4)
+  viewCount          Int               @default(0)
+  searchVector       String            @default("")
+  scheduledAt        DateTime?
+  publishedAt        DateTime?
+  lastEditedById     String?
+  createdById        String?
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+  archivedAt         DateTime?
+  category           BlogCategory?     @relation(fields: [categoryId], references: [id])
+  author             BlogAuthor?       @relation(fields: [authorId], references: [id])
+  tags               BlogTag[]
+  downloads          BlogDownload[]
+
+  @@index([status])
+  @@index([publishedAt])
+  @@index([featured])
+  @@index([popular])
+  @@index([categoryId])
+  @@map("blog_posts")
+}
+
+model BlogDownload {
+  id        String   @id @default(cuid())
+  postId    String
+  label     String
+  url       String
+  count     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  post      BlogPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, url])
+  @@index([postId])
+  @@map("blog_downloads")
+}
+
+model BlogSearchLog {
+  id        String   @id @default(cuid())
+  query     String
+  category  String?
+  tag       String?
+  author    String?
+  results   Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([query])
+  @@index([createdAt])
+  @@map("blog_search_logs")
+}
+
+model BlogAuditLog {
+  id        String   @id @default(cuid())
+  actorId   String?
+  action    String
+  targetId  String
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  @@index([targetId])
+  @@index([actorId])
+  @@map("blog_audit_logs")
 }
 
 model Agency {

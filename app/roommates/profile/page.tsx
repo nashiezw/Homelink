@@ -16,7 +16,7 @@ export default function RoommateProfilePage() {
       actions={
         <Link
           href="/roommates"
-          className="inline-flex h-11 w-full items-center justify-center rounded-lg bg-white px-5 text-sm font-semibold text-ink shadow-lg shadow-black/10 transition hover:bg-emerald-50 sm:w-auto"
+          className="inline-flex min-h-10 items-center justify-center rounded-lg bg-white px-4 py-2 text-sm font-semibold text-ink shadow-lg shadow-black/10 transition hover:bg-emerald-50 sm:min-h-11 sm:px-5"
         >
           Back to roommates
         </Link>

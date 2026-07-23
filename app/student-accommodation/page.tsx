@@ -89,7 +89,7 @@ const journey = [
 export default function StudentAccommodationPage() {
   return (
     <main className="overflow-hidden bg-white text-slate-950 dark:bg-slate-950 dark:text-white">
-      <section className="relative min-h-[680px] overflow-hidden bg-slate-950">
+      <section className="relative min-h-[560px] overflow-hidden bg-slate-950 sm:min-h-[680px]">
         <div className="absolute inset-0">
           <Image
             src="/images/roommates/cover-student.jpg"
@@ -105,19 +105,21 @@ export default function StudentAccommodationPage() {
           <div className="absolute inset-x-0 bottom-0 h-56 bg-gradient-to-t from-slate-950 via-slate-950/72 to-transparent" />
         </div>
 
-        <div className="relative mx-auto grid min-h-[680px] max-w-7xl items-center gap-10 px-4 pb-16 pt-14 sm:px-6 sm:pb-20 lg:grid-cols-[1.05fr_0.95fr] lg:px-8">
+        <div className="relative mx-auto grid min-h-[560px] max-w-7xl items-center gap-10 px-4 pb-12 pt-10 sm:min-h-[680px] sm:px-6 sm:pb-20 lg:grid-cols-[1.05fr_0.95fr] lg:px-8">
           <div className="min-w-0 text-white">
             <div className="inline-flex max-w-full items-center gap-2 rounded-full border border-emerald-300/25 bg-white/10 px-3 py-1.5 text-sm font-semibold text-emerald-50 shadow-sm backdrop-blur">
               <ShieldCheck className="size-4 shrink-0 text-emerald-300" aria-hidden="true" />
               <span className="truncate">Student accommodation on HouseLink</span>
             </div>
-            <h1 className="mt-6 max-w-4xl text-4xl font-semibold leading-[1.05] tracking-normal text-white sm:text-6xl lg:text-[4.15rem]">
+            <h1 className="mt-5 max-w-4xl text-[2.45rem] font-semibold leading-[1.04] tracking-normal text-white sm:mt-6 sm:text-6xl lg:text-[4.15rem]">
               Campus-close rooms for{" "}
               <span className="text-gradient-emerald">study, safety, and real life.</span>
             </h1>
-            <p className="mt-5 max-w-2xl text-base leading-7 text-slate-100 sm:text-lg sm:leading-8">
+            <p className="mt-4 max-w-2xl text-sm leading-6 text-slate-100 sm:mt-5 sm:text-lg sm:leading-8">
               Search boarding houses, rooms, and shared accommodation by campus area, monthly budget, gender policy, WiFi, meals, transport access, and viewing readiness.
             </p>
+
+            <p className="mt-4 text-sm font-medium text-emerald-100/90 sm:hidden">Campus-first search with verified support</p>
 
             <div className="mt-5 hidden flex-wrap gap-2 sm:flex">
               {trustBadges.map((item) => (
@@ -128,17 +130,17 @@ export default function StudentAccommodationPage() {
               ))}
             </div>
 
-            <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+            <div className="mt-6 flex flex-wrap gap-2 sm:mt-7 sm:gap-3">
               <Link
                 href="/search?type=boarding_house&intent=rent"
-                className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-emerald-500 px-6 text-sm font-semibold text-white shadow-lg transition hover:-translate-y-0.5 hover:bg-emerald-400 sm:w-auto"
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-emerald-500 px-4 py-2.5 text-sm font-semibold text-white shadow-lg transition hover:-translate-y-0.5 hover:bg-emerald-400 sm:h-12 sm:px-6"
               >
                 Browse student listings
                 <ArrowRight className="size-4" aria-hidden="true" />
               </Link>
               <Link
                 href="/property-request?type=boarding_house"
-                className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-lg border border-white/25 bg-white/10 px-6 text-sm font-semibold text-white backdrop-blur transition hover:bg-white/15 sm:w-auto"
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-white/25 bg-white/10 px-4 py-2.5 text-sm font-semibold text-white backdrop-blur transition hover:bg-white/15 sm:h-12 sm:px-6"
               >
                 Request a match
               </Link>

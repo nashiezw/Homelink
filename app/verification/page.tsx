@@ -82,7 +82,7 @@ export default function VerificationPage() {
         <Link
           href="/search"
           rel="nofollow"
-          className="inline-flex h-11 w-full items-center justify-center rounded-lg bg-white px-5 text-sm font-semibold text-ink shadow-lg shadow-black/10 transition hover:bg-emerald-50 sm:w-auto"
+          className="inline-flex min-h-10 items-center justify-center rounded-lg bg-white px-4 py-2 text-sm font-semibold text-ink shadow-lg shadow-black/10 transition hover:bg-emerald-50 sm:min-h-11 sm:px-5"
         >
           Browse verified listings
         </Link>
@@ -121,16 +121,16 @@ export default function VerificationPage() {
           <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
             Our team can help with identity checks, suspicious listings, and verification questions.
           </p>
-          <div className="mt-5 flex flex-wrap gap-3">
+          <div className="mt-5 flex flex-wrap gap-2 sm:gap-3">
             <Link
               href="/report-listing"
-              className="inline-flex h-10 items-center rounded-lg bg-emerald-600 px-4 text-sm font-semibold text-white hover:bg-emerald-500"
+              className="inline-flex min-h-10 items-center rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500"
             >
               Report a listing
             </Link>
             <Link
               href="/contact"
-              className="inline-flex h-10 items-center rounded-lg border border-slate-200 px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200"
+              className="inline-flex min-h-10 items-center rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200"
             >
               Contact verification support
             </Link>

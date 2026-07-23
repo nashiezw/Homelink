@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 import { PROPERTY_CITY_LANDING_PAGES, ROOM_SUBURB_LANDING_PAGES } from "@/lib/seo/property-landing-pages";
 import { getCanonicalSiteUrl } from "@/lib/seo/site-url";
+import { getBlogSitemapEntries } from "@/lib/blog/blog-repository";
 
 const siteUrl = getCanonicalSiteUrl();
 
@@ -11,6 +12,7 @@ const routes = [
   { path: "/calculators", priority: 0.85 },
   { path: "/become-agent", priority: 0.8 },
   { path: "/academy", priority: 0.8 },
+  { path: "/blog", priority: 0.8 },
   { path: "/property-management", priority: 0.75 },
   { path: "/verification", priority: 0.7 },
   { path: "/safety", priority: 0.7 },
@@ -20,8 +22,9 @@ const routes = [
   { path: "/privacy", priority: 0.35 },
 ] as const;
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const lastModified = new Date();
+  const blog = await getBlogSitemapEntries();
 
   const staticRoutes = routes.map((route) => ({
     url: `${siteUrl}${route.path}`,
@@ -45,6 +48,24 @@ export default function sitemap(): MetadataRoute.Sitemap {
       lastModified,
       changeFrequency: "daily" as const,
       priority: route.priority,
+    })),
+    ...blog.categories.map((category) => ({
+      url: `${siteUrl}/blog/category/${category.slug}`,
+      lastModified: category.updatedAt,
+      changeFrequency: "weekly" as const,
+      priority: 0.72,
+    })),
+    ...blog.authors.map((author) => ({
+      url: `${siteUrl}/blog/author/${author.slug}`,
+      lastModified: author.updatedAt,
+      changeFrequency: "weekly" as const,
+      priority: 0.68,
+    })),
+    ...blog.posts.map((post) => ({
+      url: `${siteUrl}/blog/${post.slug}`,
+      lastModified: post.updatedAt,
+      changeFrequency: "weekly" as const,
+      priority: 0.74,
     })),
   ];
 }

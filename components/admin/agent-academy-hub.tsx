@@ -252,6 +252,8 @@ export function AgentAcademyHub() {
   const [drawer, setDrawer] = useState<"course" | "document" | "video" | "quiz" | "exam" | "assignment" | "path" | "announcement" | "badge" | "lesson" | "module" | null>(null);
   const [busy, setBusy] = useState(false);
   const [previewDocument, setPreviewDocument] = useState<AcademyDocument | null>(null);
+  const [selectedDocument, setSelectedDocument] = useState<AcademyDocument | null>(null);
+  const [documentMode, setDocumentMode] = useState<"create" | "edit" | "replace">("create");
   const [selectedCourse, setSelectedCourse] = useState<AcademyCourse | null>(null);
   const [buildingCourseId, setBuildingCourseId] = useState<string | null>(null);
   const [viewCourse, setViewCourse] = useState<AcademyCourse | null>(null);
@@ -450,12 +452,28 @@ export function AgentAcademyHub() {
       {tab === "Training Resources" && (
         <LibraryView
           documents={data.documents}
-          onCreate={() => setDrawer("document")}
+          onCreate={() => {
+            setSelectedDocument(null);
+            setDocumentMode("create");
+            setDrawer("document");
+          }}
           onPreview={setPreviewDocument}
+          onEdit={(document) => {
+            setSelectedDocument(document);
+            setDocumentMode("edit");
+            setDrawer("document");
+          }}
           onReplace={(document) => {
             setPreviewDocument(null);
+            setSelectedDocument(document);
+            setDocumentMode("replace");
             setDrawer("document");
             showToast(`Upload a replacement for ${document.title}. The old version will remain in history.`, "info");
+          }}
+          onDelete={(document) => {
+            if (window.confirm(`Delete ${document.title}? This removes it from the Academy library.`)) {
+              void action({ action: "delete_document", documentId: document.id }, "Document deleted from the library.");
+            }
           }}
         />
       )}
@@ -510,7 +528,26 @@ export function AgentAcademyHub() {
           ? action({ action: "update_course", courseId: selectedCourse.id, course }, "Course updated in PostgreSQL.")
           : action({ action: "create_course", course }, "Course created in PostgreSQL.")}
       />
-      <DocumentDrawer open={drawer === "document"} busy={busy} onClose={() => setDrawer(null)} onSave={(document) => action({ action: "create_document", document }, "Document saved with version control.")} />
+      <DocumentDrawer
+        open={drawer === "document"}
+        busy={busy}
+        document={selectedDocument}
+        mode={documentMode}
+        onClose={() => {
+          setDrawer(null);
+          setSelectedDocument(null);
+          setDocumentMode("create");
+        }}
+        onSave={(document) => {
+          if (documentMode === "edit" && selectedDocument) {
+            return action({ action: "update_document", documentId: selectedDocument.id, document }, "Document details updated.");
+          }
+          if (documentMode === "replace" && selectedDocument) {
+            return action({ action: "replace_document", documentId: selectedDocument.id, document }, "Document replaced with a new version.");
+          }
+          return action({ action: "create_document", document }, "Document saved with version control.");
+        }}
+      />
       <VideoDrawer open={drawer === "video"} busy={busy} onClose={() => setDrawer(null)} onSave={(video) => action({ action: "create_video", video }, "Video added to the Academy library.")} />
       <QuickBuilderDrawer type={drawer} busy={busy} courses={data.courses} onClose={() => setDrawer(null)} onSave={action} />
       <LearningPathDrawer open={drawer === "path"} busy={busy} courses={data.courses} onClose={() => setDrawer(null)} onSave={(path) => action({ action: "create_learning_path", path }, "Learning path created.")} />
@@ -633,7 +670,21 @@ function IconAction({ label, icon: Icon, onClick }: { label: string; icon: typeo
   );
 }
 
-function LibraryView({ documents, onCreate, onPreview, onReplace }: { documents: AcademyDocument[]; onCreate: () => void; onPreview: (document: AcademyDocument) => void; onReplace: (document: AcademyDocument) => void }) {
+function LibraryView({
+  documents,
+  onCreate,
+  onPreview,
+  onEdit,
+  onReplace,
+  onDelete,
+}: {
+  documents: AcademyDocument[];
+  onCreate: () => void;
+  onPreview: (document: AcademyDocument) => void;
+  onEdit: (document: AcademyDocument) => void;
+  onReplace: (document: AcademyDocument) => void;
+  onDelete: (document: AcademyDocument) => void;
+}) {
   const [query, setQuery] = useState("");
   const filtered = documents.filter((document) => `${document.title} ${document.description ?? ""} ${document.tags.join(" ")}`.toLowerCase().includes(query.toLowerCase()));
   return (
@@ -657,10 +708,12 @@ function LibraryView({ documents, onCreate, onPreview, onReplace }: { documents:
             render: (document) => (
               <div className="flex flex-wrap gap-2">
                 <IconAction label="Preview" icon={Search} onClick={() => onPreview(document)} />
-                <a href={`/api/v1/academy/documents/${document.id}/download`} className="inline-flex size-9 items-center justify-center rounded-lg border border-white/10 text-slate-300 hover:border-emerald-500/30 hover:bg-emerald-500/10 hover:text-white" title="Download">
+                <a href={`/api/v1/academy/documents/${document.id}/download`} className="inline-flex size-9 items-center justify-center rounded-lg border border-white/10 text-slate-300 hover:border-emerald-500/30 hover:bg-emerald-500/10 hover:text-white" title="Download" aria-label={`Download ${document.title}`}>
                   <Download className="size-4" />
                 </a>
-                <IconAction label="Replace" icon={Upload} onClick={() => onReplace(document)} />
+                <DocumentTextAction label="Edit" icon={Pencil} onClick={() => onEdit(document)} />
+                <DocumentTextAction label="Replace" icon={Upload} onClick={() => onReplace(document)} />
+                <DocumentTextAction label="Delete" icon={Trash2} tone="danger" onClick={() => onDelete(document)} />
               </div>
             ),
           },
@@ -680,8 +733,33 @@ function DocumentCell({ document }: { document: AcademyDocument }) {
       <div>
         <p className="font-semibold text-white">{document.title}</p>
         <p className="mt-1 line-clamp-1 text-xs text-slate-500">{document.description ?? document.fileName}</p>
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          <span className="rounded-full bg-white/5 px-2 py-0.5 text-[10px] font-semibold text-slate-400">v{document.version}</span>
+          <span className="rounded-full bg-white/5 px-2 py-0.5 text-[10px] font-semibold text-slate-400">{document.downloadCount ?? 0} downloads</span>
+        </div>
       </div>
     </div>
+  );
+}
+
+function DocumentTextAction({ label, icon: Icon, onClick, tone = "default" }: { label: string; icon: LucideIcon; onClick: () => void; tone?: "default" | "danger" }) {
+  return (
+    <button
+      type="button"
+      onClick={(event) => {
+        event.stopPropagation();
+        onClick();
+      }}
+      className={cn(
+        "inline-flex min-h-9 items-center justify-center gap-1.5 rounded-lg border px-2.5 text-xs font-semibold transition sm:px-3",
+        tone === "danger"
+          ? "border-red-500/20 text-red-300 hover:border-red-400/40 hover:bg-red-500/10 hover:text-red-200"
+          : "border-white/10 text-slate-300 hover:border-emerald-500/30 hover:bg-emerald-500/10 hover:text-white",
+      )}
+    >
+      <Icon className="size-3.5" />
+      {label}
+    </button>
   );
 }
 
@@ -879,12 +957,15 @@ function PublicLearnersPanel({
     currency: row.currency,
     proofUrl: row.proofUrl,
     adminNote: row.adminNote,
+    updatedAt: row.updatedAt,
     productLabel:
       row.resourceKind === "TRAINING_MANUAL"
         ? "Training manual"
         : `${row.course?.title ?? "Course"} toolkit`,
     reviewAction: "review_resource_access" as const,
     reviewIdKey: "accessId" as const,
+    deleteAction: "delete_resource_access" as const,
+    deleteIdKey: "accessId" as const,
   }));
 
   const enrolmentRows = applications.map((row) => ({
@@ -898,9 +979,12 @@ function PublicLearnersPanel({
     currency: row.currency,
     proofUrl: row.proofUrl,
     adminNote: row.adminNote,
+    updatedAt: row.updatedAt,
     productLabel: row.course.title,
     reviewAction: "review_public_learner" as const,
     reviewIdKey: "applicationId" as const,
+    deleteAction: "delete_public_learner" as const,
+    deleteIdKey: "applicationId" as const,
   }));
 
   const rows = [...enrolmentRows, ...resourceRows];
@@ -939,16 +1023,38 @@ function PublicLearnersPanel({
           {
             key: "actions",
             header: "Actions",
-            render: (row) => (
-              <div className="flex flex-wrap gap-2">
-                <Button disabled={row.status === "APPROVED"} onClick={() => void action({ action: row.reviewAction, [row.reviewIdKey]: row.id, status: "APPROVED" }, "Access approved.")}>
-                  Approve
-                </Button>
-                <Button variant="secondary" disabled={row.status === "REJECTED"} onClick={() => void action({ action: row.reviewAction, [row.reviewIdKey]: row.id, status: "REJECTED", adminNote: "Payment proof could not be verified. Please upload a clearer proof of payment." }, "Registration rejected.")}>
-                  Reject
-                </Button>
-              </div>
-            ),
+            render: (row) => {
+              const canReview = row.status !== "APPROVED" && row.status !== "REJECTED";
+              return (
+                <div className="flex flex-wrap gap-2">
+                  {canReview ? (
+                    <>
+                      <Button onClick={() => void action({ action: row.reviewAction, [row.reviewIdKey]: row.id, status: "APPROVED" }, "Access approved.")}>
+                        Approve
+                      </Button>
+                      <Button variant="secondary" onClick={() => void action({ action: row.reviewAction, [row.reviewIdKey]: row.id, status: "REJECTED", adminNote: "Payment proof could not be verified. Please upload a clearer proof of payment." }, "Registration rejected.")}>
+                        Reject
+                      </Button>
+                    </>
+                  ) : (
+                    <span className="inline-flex min-h-10 flex-col justify-center rounded-lg border border-white/10 px-3 py-1.5 text-xs font-semibold text-slate-400">
+                      <span>{row.status === "APPROVED" ? "Already approved" : "Rejected"}</span>
+                      <span className="mt-0.5 text-[10px] font-medium text-slate-500">Updated {formatShortDate(row.updatedAt)}</span>
+                    </span>
+                  )}
+                  <Button
+                    variant="secondary"
+                    onClick={() => {
+                      if (!window.confirm(`Delete ${row.fullName}'s ${row.productLabel} record? This removes the registration/access record${row.status === "APPROVED" && row.reviewAction === "review_public_learner" ? " and revokes course access" : ""}.`)) return;
+                      void action({ action: row.deleteAction, [row.deleteIdKey]: row.id }, "Record deleted.");
+                    }}
+                  >
+                    <Trash2 className="size-4" />
+                    Delete
+                  </Button>
+                </div>
+              );
+            },
           },
         ]}
         emptyMessage="No learner registrations or resource access requests yet."
@@ -1051,10 +1157,45 @@ function CourseDrawer({ open, busy, course: editingCourse, onClose, onSave }: { 
   );
 }
 
-function DocumentDrawer({ open, busy, onClose, onSave }: { open: boolean; busy: boolean; onClose: () => void; onSave: (document: Record<string, unknown>) => Promise<unknown> }) {
+function DocumentDrawer({
+  open,
+  busy,
+  document: existingDocument,
+  mode = "create",
+  onClose,
+  onSave,
+}: {
+  open: boolean;
+  busy: boolean;
+  document?: AcademyDocument | null;
+  mode?: "create" | "edit" | "replace";
+  onClose: () => void;
+  onSave: (document: Record<string, unknown>) => Promise<unknown>;
+}) {
   const { showToast } = useApp();
   const inputRef = useRef<HTMLInputElement>(null);
-  const [document, setDocument] = useState({ title: "", description: "", fileUrl: "", fileName: "", fileType: "PDF", tags: "", permissions: "ADMIN,AGENT", fileSizeBytes: 0 });
+  const [form, setForm] = useState({ title: "", description: "", fileUrl: "", fileName: "", fileType: "PDF", tags: "", permissions: "ADMIN,AGENT", fileSizeBytes: 0 });
+  const editing = mode === "edit";
+  const replacing = mode === "replace";
+
+  useEffect(() => {
+    if (!open) return;
+    if (!existingDocument) {
+      setForm({ title: "", description: "", fileUrl: "", fileName: "", fileType: "PDF", tags: "", permissions: "ADMIN,AGENT", fileSizeBytes: 0 });
+      return;
+    }
+    setForm({
+      title: existingDocument.title,
+      description: existingDocument.description ?? "",
+      fileUrl: replacing ? "" : existingDocument.fileUrl,
+      fileName: replacing ? "" : existingDocument.fileName,
+      fileType: existingDocument.fileType,
+      tags: existingDocument.tags.join(", "),
+      permissions: existingDocument.permissions.join(", "),
+      fileSizeBytes: replacing ? 0 : existingDocument.fileSizeBytes,
+    });
+  }, [existingDocument, open, replacing]);
+
   async function upload(files: FileList | null) {
     const file = files?.[0];
     if (!file) return;
@@ -1064,25 +1205,33 @@ function DocumentDrawer({ open, busy, onClose, onSave }: { open: boolean; busy: 
       showToast(result.error?.message ?? "Upload failed.", "error");
       return;
     }
-    setDocument({ ...document, fileUrl: result.data.url, fileName: file.name, fileSizeBytes: result.data.size, title: document.title || file.name.replace(/\.[^.]+$/, ""), fileType: detectDocumentType(file.name, file.type) });
+    setForm({ ...form, fileUrl: result.data.url, fileName: file.name, fileSizeBytes: result.data.size, title: form.title || file.name.replace(/\.[^.]+$/, ""), fileType: detectDocumentType(file.name, file.type) });
   }
+  const drawerTitle = editing ? "Edit Document" : replacing ? "Replace Document" : "Upload Document";
+  const drawerDescription = editing
+    ? "Rename the document, update its description, tags, permissions, and visibility metadata."
+    : replacing
+      ? "Upload a new file for this document. The current document is kept as the previous version."
+      : "PDF, DOCX, XLSX, PPTX, images, video, audio, and ZIP files with preview, download, versioning, search, permissions, and audit log.";
+  const saveLabel = editing ? "Save changes" : replacing ? "Replace document" : "Save document";
+  const saveDisabled = !form.title.trim() || (!editing && !form.fileUrl);
   return (
-    <AdminDrawer open={open} title="Upload Document" description="PDF, DOCX, XLSX, PPTX, images, video, audio, and ZIP files with preview, download, versioning, search, permissions, and audit log." onClose={onClose} width="xl">
+    <AdminDrawer open={open} title={drawerTitle} description={drawerDescription} onClose={onClose} width="xl">
       <div className="mb-4 rounded-xl border border-dashed border-white/15 bg-slate-900/60 p-5 text-center">
         <Upload className="mx-auto size-7 text-emerald-400" />
-        <p className="mt-2 font-semibold text-white">{document.fileName || "Choose an Academy resource"}</p>
+        <p className="mt-2 font-semibold text-white">{form.fileName || (editing ? existingDocument?.fileName : "Choose an Academy resource")}</p>
         <p className="mt-1 text-xs text-slate-500">Supported: {documentTypes.join(", ")}</p>
         <Button className="mt-4" variant="secondary" onClick={() => inputRef.current?.click()}>Select file</Button>
         <input ref={inputRef} type="file" className="hidden" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.png,.jpg,.jpeg,.webp,.gif,.mp4,.webm,.mov,.mp3,.wav,.m4a,.zip" onChange={(event) => void upload(event.target.files)} />
       </div>
       <FormGrid>
-        <TextInput label="Title" value={document.title} onChange={(title) => setDocument({ ...document, title })} />
-        <SelectInput label="File type" value={document.fileType} options={[...documentTypes]} onChange={(fileType) => setDocument({ ...document, fileType })} />
-        <TextArea label="Description" value={document.description} onChange={(description) => setDocument({ ...document, description })} className="sm:col-span-2" />
-        <TextInput label="Tags" value={document.tags} onChange={(tags) => setDocument({ ...document, tags })} />
-        <TextInput label="Permissions" value={document.permissions} onChange={(permissions) => setDocument({ ...document, permissions })} />
+        <TextInput label="Title" value={form.title} onChange={(title) => setForm({ ...form, title })} />
+        <SelectInput label="File type" value={form.fileType} options={[...documentTypes]} onChange={(fileType) => setForm({ ...form, fileType })} />
+        <TextArea label="Description" value={form.description} onChange={(description) => setForm({ ...form, description })} className="sm:col-span-2" />
+        <TextInput label="Tags" value={form.tags} onChange={(tags) => setForm({ ...form, tags })} />
+        <TextInput label="Permissions" value={form.permissions} onChange={(permissions) => setForm({ ...form, permissions })} />
       </FormGrid>
-      <DrawerActions busy={busy} disabled={!document.fileUrl} onClose={onClose} onSave={() => onSave(document)} label="Save document" />
+      <DrawerActions busy={busy} disabled={saveDisabled} onClose={onClose} onSave={() => onSave(form)} label={saveLabel} />
     </AdminDrawer>
   );
 }
@@ -1451,6 +1600,13 @@ function detectDocumentType(fileName: string, mime: string) {
   if (mime.startsWith("video/")) return "VIDEO";
   if (mime.startsWith("audio/")) return "AUDIO";
   return "PDF";
+}
+
+function formatShortDate(value?: string) {
+  if (!value) return "recently";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "recently";
+  return date.toLocaleDateString("en-ZW", { month: "short", day: "numeric" });
 }
 
 export function LessonContentManager({ lessons, documents, action }: { lessons: AcademyLesson[]; documents: AcademyDocument[]; action: (body: Record<string, unknown>, success: string) => Promise<unknown> }) {
