@@ -26,7 +26,8 @@ export default async function BlogPage() {
       <section className="relative min-h-[42vh] overflow-hidden bg-[#071417] text-white sm:min-h-[54vh] lg:min-h-[62vh]">
         <Image src={featured?.featuredImageUrl || "/images/property-management-dusk.webp"} alt={featured?.featuredImageAlt || "HouseLink property resources"} fill priority className="object-cover" sizes="100vw" />
         <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(3,10,16,0.92)_0%,rgba(3,10,16,0.74)_46%,rgba(3,10,16,0.26)_100%)]" />
-        <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-[#f7fbfa] via-[#f7fbfa]/75 to-transparent dark:from-slate-950 dark:via-slate-950/75" />
+        <div className="absolute inset-x-0 bottom-0 h-14 bg-gradient-to-t from-[#f7fbfa] via-[#f7fbfa]/35 to-transparent dark:from-slate-950 dark:via-slate-950/35" />
+        <div className="absolute inset-x-0 bottom-0 h-px bg-white/45 dark:bg-white/10" />
         <div className="relative mx-auto flex min-h-[42vh] max-w-7xl flex-col justify-between px-4 py-4 sm:min-h-[54vh] sm:px-6 sm:py-7 lg:min-h-[62vh] lg:px-8">
           <nav className="flex items-center justify-between gap-4">
             <p className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-black/20 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-emerald-100">
