@@ -6,6 +6,7 @@ import { AlertTriangle, Download, Home, MessageCircle, Search } from "lucide-rea
 import type { BlogBlock } from "@/lib/blog/blog-repository";
 import { cn } from "@/lib/utils";
 import { CopyHeadingButton } from "@/components/blog/article-experience";
+import { anchorId } from "@/lib/blog/anchors";
 
 type DynamicListing = { id: string; slug: string; title: string; city: string; suburb: string; currency: string; price: unknown; bedrooms: number; propertyType: string; media?: Array<{ url: string }> };
 
@@ -153,8 +154,4 @@ function BlogCta({ block }: { block: Extract<BlogBlock, { type: "cta" }> }) {
       <Link href={config.href} className="mt-4 inline-flex rounded-lg bg-white px-4 py-2 text-sm font-semibold text-ink hover:bg-emerald-50">{config.label}</Link>
     </div>
   );
-}
-
-export function anchorId(text: string) {
-  return text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 }

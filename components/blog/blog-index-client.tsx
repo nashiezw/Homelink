@@ -75,15 +75,10 @@ export function BlogIndexClient({ initialData }: { initialData: BlogIndexData })
   const activeCategoryName = useMemo(() => data.categories.find((item) => item.slug === category)?.name, [category, data.categories]);
 
   return (
-    <div className="space-y-12">
-      <section className="grid gap-5 lg:grid-cols-[1.15fr_0.85fr] lg:items-stretch">
+    <div className="space-y-14">
+      <section className="grid gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(20rem,0.65fr)] lg:items-stretch">
         {data.featured ? (
-          <div>
-            <p className="section-eyebrow">Featured article</p>
-            <div className="mt-3">
-              <BlogCard post={data.featured} featured />
-            </div>
-          </div>
+          <EditorialFeature post={data.featured} />
         ) : (
           <div className="rounded-lg border border-dashed border-slate-300 bg-white p-8 text-center dark:border-slate-700 dark:bg-slate-900">
             <p className="font-semibold text-ink dark:text-white">No published articles yet</p>
@@ -169,7 +164,7 @@ export function BlogIndexClient({ initialData }: { initialData: BlogIndexData })
         ))}
       </section>
 
-      <ResourceSection title="Editor's Picks" eyebrow="Curated by HouseLink" posts={data.editorsPicks} />
+      <ResourceSection title="Editor's Picks" eyebrow="Curated by HouseLink" posts={data.editorsPicks} variant="mosaic" />
       <ResourceSection title="Recently Updated" eyebrow="Freshly reviewed" posts={data.recentlyUpdated} compact />
 
       <section className="grid gap-5 lg:grid-cols-[0.85fr_1.15fr]">
@@ -199,7 +194,7 @@ export function BlogIndexClient({ initialData }: { initialData: BlogIndexData })
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <p className="section-eyebrow">Latest articles</p>
-            <h2 className="section-title">Property resources for real decisions.</h2>
+            <h2 className="section-title">A newsroom for the property journey.</h2>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <p className="mr-1 text-sm text-slate-500">{data.total} published article{data.total === 1 ? "" : "s"}</p>
@@ -251,6 +246,31 @@ export function BlogIndexClient({ initialData }: { initialData: BlogIndexData })
         </div>
       </section>
     </div>
+  );
+}
+
+function EditorialFeature({ post }: { post: BlogPost }) {
+  return (
+    <Link href={`/blog/${post.slug}`} className="group grid overflow-hidden rounded-lg bg-ink text-white shadow-hero lg:grid-cols-[0.9fr_1.1fr]">
+      <div className="relative min-h-[22rem]">
+        <Image src={post.featuredImageUrl || "/images/houselink-hero.webp"} alt={post.featuredImageAlt || post.title} fill className="object-cover transition duration-700 group-hover:scale-105" sizes="(min-width: 1024px) 520px, 100vw" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent lg:bg-gradient-to-r" />
+      </div>
+      <div className="flex flex-col justify-between p-5 sm:p-7">
+        <div>
+          <p className="inline-flex rounded-full bg-emerald-300/15 px-3 py-1 text-xs font-bold uppercase tracking-wide text-emerald-200">Lead story</p>
+          <h2 className="mt-5 text-3xl font-black leading-tight tracking-normal sm:text-5xl">{post.title}</h2>
+          <p className="mt-4 max-w-xl text-sm leading-7 text-slate-300 sm:text-base">{post.excerpt}</p>
+        </div>
+        <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-5">
+          <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">{post.category?.name ?? "HouseLink Resources"} | {post.readTimeMinutes} min read</span>
+          <span className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-white px-4 py-2 text-sm font-bold text-ink">
+            Read feature
+            <ArrowRight className="size-4" />
+          </span>
+        </div>
+      </div>
+    </Link>
   );
 }
 
@@ -357,8 +377,23 @@ function LayoutButton({ active, label, icon: Icon, onClick }: { active: boolean;
   );
 }
 
-function ResourceSection({ title, eyebrow, posts, compact = false }: { title: string; eyebrow: string; posts: BlogPost[]; compact?: boolean }) {
+function ResourceSection({ title, eyebrow, posts, compact = false, variant = "grid" }: { title: string; eyebrow: string; posts: BlogPost[]; compact?: boolean; variant?: "grid" | "mosaic" }) {
   if (!posts.length) return null;
+  if (variant === "mosaic") {
+    const [lead, ...rest] = posts;
+    return (
+      <section>
+        <p className="section-eyebrow">{eyebrow}</p>
+        <h2 className="section-title">{title}</h2>
+        <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(20rem,0.72fr)]">
+          {lead ? <BlogCard post={lead} featured /> : null}
+          <div className="grid gap-4">
+            {rest.slice(0, 3).map((post) => <ListArticleCard key={post.id} post={post} />)}
+          </div>
+        </div>
+      </section>
+    );
+  }
   return (
     <section>
       <p className="section-eyebrow">{eyebrow}</p>

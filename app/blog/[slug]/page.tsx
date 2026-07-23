@@ -3,11 +3,12 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ArrowRight, Home, MessageCircle, Search, Share2 } from "lucide-react";
-import { BlogBlocks, anchorId } from "@/components/blog/blog-block-renderer";
+import { BlogBlocks } from "@/components/blog/blog-block-renderer";
 import { BlogCard, formatDate } from "@/components/blog/blog-card";
 import { ArticleActions, ImageLightbox, ReadingProgress, RecentlyViewedArticles, RecentlyViewedTracker } from "@/components/blog/article-experience";
 import { getCanonicalSiteUrl } from "@/lib/seo/site-url";
 import { getPublicBlogPost, type BlogBlock } from "@/lib/blog/blog-repository";
+import { anchorId } from "@/lib/blog/anchors";
 
 type Props = { params: Promise<{ slug: string }> };
 
