@@ -1,4 +1,4 @@
-/** HouseLink Agent Academy — three progressive programmes. */
+/** HouseLink Agent Academy - three progressive programmes. */
 export const LEGACY_COURSE_ID = "academy-course-official-real-estate-agent-training";
 export const LEARNING_PATH_ID = "academy-path-new-agent-programme";
 
@@ -45,7 +45,7 @@ export const ACADEMY_PROGRAMME_COURSES: AcademyProgrammeCourse[] = [
     slug: "houselink-agent-foundations",
     title: "HouseLink Agent Foundations",
     subtitle: "Professional standards, ethics & industry essentials",
-    shortDescription: "Your entry into HouseLink — orientation, conduct, real estate fundamentals, and your starter field toolkit.",
+    shortDescription: "Your entry into HouseLink - orientation, conduct, real estate fundamentals, and your starter field toolkit.",
     description: "A comprehensive foundation programme covering HouseLink standards, professional ethics, Zimbabwe real estate essentials, and daily agent routines. Includes branded planners and your Foundations knowledge certification.",
     difficulty: "BEGINNER",
     moduleStages: ["Beginner"],
@@ -57,7 +57,7 @@ export const ACADEMY_PROGRAMME_COURSES: AcademyProgrammeCourse[] = [
     badgeName: "HouseLink Foundations Graduate",
     badgeDescription: "Completed the Agent Foundations programme and passed the knowledge check.",
     badgeXp: 250,
-    certificateTitle: "HouseLink Certified Agent — Foundations",
+    certificateTitle: "HouseLink Certified Agent - Foundations",
     certificatePrefix: "HLF",
     quizIds: [
       "academy-quiz-beginner-orientation",
@@ -86,13 +86,13 @@ export const ACADEMY_PROGRAMME_COURSES: AcademyProgrammeCourse[] = [
       "Pass the Foundations knowledge check and earn your first HouseLink certificate",
     ],
     includes: [
-      "10 guided lessons across 2 modules",
+      "8 guided training sessions across 2 modules",
       "8 print-ready toolkit PDFs (planners, client forms, workflow guides)",
       "2 module checkpoint quizzes (Orientation + Foundations)",
-      "3 practical assignments (Goal Planner + Professional Standards + Risk Drill)",
+      "3 admin-reviewed practical assignments (Goal Planner + Professional Standards + Risk Drill)",
       "HouseLink Foundations Graduate badge + downloadable certificate",
     ],
-    assessmentSummary: "Complete all lessons, pass both module quizzes (80% pass mark), and submit all three practical assignments to earn your Foundations certificate.",
+    assessmentSummary: "Complete all training sessions, pass both module quizzes (80% pass mark), and submit all three practical assignments for review to earn your Foundations certificate.",
   },
   {
     id: "academy-course-intermediate",
@@ -111,7 +111,7 @@ export const ACADEMY_PROGRAMME_COURSES: AcademyProgrammeCourse[] = [
     badgeName: "HouseLink Listing & Client Specialist",
     badgeDescription: "Completed Listing & Client Mastery and passed practical assessments.",
     badgeXp: 500,
-    certificateTitle: "HouseLink Certified Agent — Listing & Client Mastery",
+    certificateTitle: "HouseLink Certified Agent - Listing & Client Mastery",
     certificatePrefix: "HLM",
     quizIds: [
       "academy-quiz-intermediate-listings",
@@ -145,13 +145,13 @@ export const ACADEMY_PROGRAMME_COURSES: AcademyProgrammeCourse[] = [
       "Submit practical listing, CMA, roleplay, qualification, and viewing assignments for trainer review",
     ],
     includes: [
-      "14 in-depth lessons across 2 modules",
-      "24 branded field tools — forms, scripts, checklists, and marketing templates",
+      "14 in-depth training sessions across 2 modules",
+      "24 branded field tools: forms, scripts, checklists, and marketing templates",
       "2 module checkpoint quizzes (Listings & Marketing + Client Service)",
-      "7 practical assignments including CMA, listing roleplay, qualification, and negotiation simulations",
+      "7 admin-reviewed practical assignments including CMA, listing roleplay, qualification, and negotiation simulations",
       "Listing & Client Specialist badge + downloadable certificate",
     ],
-    assessmentSummary: "Complete all lessons, pass both module quizzes, and submit all seven practical assignments to earn your Listing & Client Mastery certificate.",
+    assessmentSummary: "Complete all training sessions, pass both module quizzes, and submit all seven practical assignments for review to earn your Listing & Client Mastery certificate.",
   },
   {
     id: "academy-course-advanced-professional",
@@ -207,15 +207,15 @@ export const ACADEMY_PROGRAMME_COURSES: AcademyProgrammeCourse[] = [
       "Pass compliance assessments and the Certified Professional Agent final examination",
     ],
     includes: [
-      "22 advanced lessons across 3 modules",
-      "Complete professional resource kit — all branded forms, flowcharts, and trackers",
+      "22 advanced training sessions across 3 modules",
+      "Complete professional resource kit: all branded forms, flowcharts, and trackers",
       "3 module checkpoint quizzes (Compliance, Performance, Toolkit Mastery)",
-      "6 practical assignments including risk review, pipeline coaching, and field portfolio",
+      "6 admin-reviewed practical assignments including risk review, pipeline coaching, and field portfolio",
       "Certified HouseLink Agent final examination (35 questions, 85% pass mark)",
       "Specialisation pathway planning and annual recertification requirements",
       "HouseLink Certified Professional Agent badge + full certification",
     ],
-    assessmentSummary: "Complete all lessons, pass all three module quizzes, earn mentor/admin review on all six assignments, then pass the final examination to earn full professional certification.",
+    assessmentSummary: "Complete all training sessions, pass all three module quizzes, earn mentor/admin review on all six assignments, then pass the final examination to earn full professional certification.",
   },
 ];
 

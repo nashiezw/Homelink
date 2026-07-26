@@ -11,6 +11,7 @@ import {
   Clock,
   CreditCard,
   GraduationCap,
+  ListChecks,
   Loader2,
   Lock,
   PlayCircle,
@@ -75,6 +76,11 @@ type PublicCourse = {
   learningOutcomes?: string[];
   includes?: string[];
   assessmentSummary?: string | null;
+  quizCount?: number;
+  assignmentCount?: number;
+  hasFinalExam?: boolean;
+  portfolioRequired?: boolean;
+  roleplayCount?: number;
   theme?: { label: string; accent: string; gradient: string; chip: string } | null;
   toolkitPreview?: Array<{ category: string; description: string; items: Array<{ id: string; title: string; description: string; fileUrl: string }> }>;
   lessonCount: number;
@@ -238,7 +244,7 @@ export function PublicAcademyPage() {
       description={
         browseMode && academyStatus?.hasActiveAccess
           ? "You already have active course access. Browse additional courses or return to your learning dashboard."
-          : "Master real estate with Zimbabwe's leading property platform. Train with HouseLink as a public learner — no agent application required."
+          : "Master real estate with Zimbabwe's leading property platform. Train with HouseLink as a public learner - no agent application required."
       }
       highlights={[
         { value: "3", label: "Programme Levels" },
@@ -250,9 +256,9 @@ export function PublicAcademyPage() {
       {browseMode && academyStatus?.hasActiveAccess && (
         <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900 dark:border-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-100">
           <p className="font-semibold">You are already enrolled.</p>
-          <p className="mt-1">Return to your dashboard to continue lessons, or enrol in another course below.</p>
+          <p className="mt-1">Return to your dashboard to continue training sessions, or enrol in another course below.</p>
           <Link href="/dashboard/academy" className="mt-3 inline-flex font-semibold text-emerald-700 hover:underline dark:text-emerald-300">
-            Go to My Learning Dashboard →
+            Go to My Learning Dashboard -&gt;
           </Link>
         </div>
       )}
@@ -267,14 +273,14 @@ export function PublicAcademyPage() {
             <p className="max-w-2xl text-sm leading-relaxed text-slate-600 dark:text-slate-300 sm:text-base">
               {user && academyStatus?.hasActiveAccess
                 ? "Browse the course catalog, track progress from your dashboard, and pick up where you left off."
-                : "Learn from industry experts, gain practical skills, and earn your certification. Training-only enrolment is available — you do not need to become a HouseLink agent."}
+                : "Learn from industry experts, gain practical skills, and earn your certification. Training-only enrolment is available - you do not need to become a HouseLink agent."}
             </p>
           </div>
         </div>
         <div className="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-3">
           <div className="flex items-center gap-2 rounded-lg border border-emerald-200/80 bg-emerald-50 px-4 py-2.5 dark:border-emerald-800/60 dark:bg-emerald-950/40">
             <BookOpen className="size-5 shrink-0 text-emerald-600 dark:text-emerald-400" />
-            <span className="text-sm font-medium text-slate-800 dark:text-slate-100 sm:text-base">Scenario Lessons</span>
+            <span className="text-sm font-medium text-slate-800 dark:text-slate-100 sm:text-base">Scenario Training</span>
           </div>
           <div className="flex items-center gap-2 rounded-lg border border-emerald-200/80 bg-emerald-50 px-4 py-2.5 dark:border-emerald-800/60 dark:bg-emerald-950/40">
             <Award className="size-5 shrink-0 text-emerald-600 dark:text-emerald-400" />
@@ -288,21 +294,39 @@ export function PublicAcademyPage() {
       </section>
 
       <div className="relative isolate mt-8 grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
-        <StatCard icon={BookOpen} value={String(courses.reduce((sum, c) => sum + c.lessonCount, 0))} label="Programme Lessons" color="emerald" />
+        <StatCard icon={BookOpen} value={String(courses.reduce((sum, c) => sum + c.lessonCount, 0))} label="Training Sessions" color="emerald" />
         <StatCard icon={Award} value="3" label="Certification Levels" color="amber" />
-        <StatCard icon={Clock} value={`${courses.reduce((sum, c) => sum + (c.estimatedHours || Math.round(c.durationMinutes / 60)), 0)}h`} label="Guided Learning" color="blue" />
-        <StatCard icon={TrendingUp} value={String(courses.reduce((sum, c) => sum + (c.toolkitCount ?? 0), 0))} label="Toolkit Downloads" color="purple" />
+        <StatCard icon={Clock} value={String(courses.reduce((sum, c) => sum + (c.assignmentCount ?? 0), 0))} label="Reviewed Assignments" color="blue" />
+        <StatCard icon={TrendingUp} value={String(courses.reduce((sum, c) => sum + (c.toolkitCount ?? 0), 0))} label="Field Downloads" color="purple" />
       </div>
 
       <section className="academy-panel mt-10 rounded-xl p-6 sm:p-8">
         <h2 className="text-2xl font-bold">Your certification pathway</h2>
-        <p className="mt-2 max-w-3xl text-slate-600">Three focused programmes — Foundations, Listing & Client Mastery, and Professional Certification. Complete each level, pass assessments, and unlock badges plus downloadable HouseLink certificates.</p>
+        <p className="mt-2 max-w-3xl text-slate-600">
+          Three focused programmes with real training sessions, quizzes, reviewed assignments, a field portfolio, final exam, and publicly verified HouseLink certificates.
+        </p>
+        <div className="mt-4 grid gap-2 rounded-xl border border-emerald-100 bg-emerald-50/70 p-4 text-sm text-emerald-950 dark:border-emerald-900/40 dark:bg-emerald-950/20 dark:text-emerald-100 sm:grid-cols-2 lg:grid-cols-4">
+          <PathwayFact value={String(courses.reduce((sum, c) => sum + c.lessonCount, 0))} label="training sessions" />
+          <PathwayFact value={String(courses.reduce((sum, c) => sum + (c.quizCount ?? 0), 0))} label="module quizzes" />
+          <PathwayFact value={String(courses.reduce((sum, c) => sum + (c.assignmentCount ?? 0), 0))} label="reviewed assignments" />
+          <PathwayFact value="Portfolio + exam" label="capstone gate" />
+        </div>
         <div className="mt-6 grid gap-3 sm:grid-cols-2 md:grid-cols-3">
           {courses.map((course) => (
             <div key={course.id} className="academy-card rounded-xl p-4 sm:p-5" style={{ borderColor: `${course.theme?.accent ?? "#008b68"}44` }}>
               <p className="text-xs font-bold uppercase tracking-wider" style={{ color: course.theme?.accent }}>{course.theme?.label}</p>
               <p className="mt-2 text-base font-bold leading-snug sm:text-lg">{course.title}</p>
-              <p className="mt-2 text-sm text-slate-500">{course.lessonCount} lessons · {course.toolkitCount ?? 0} toolkit PDFs</p>
+              <div className="mt-3 grid grid-cols-1 gap-1.5 text-center text-[11px] font-bold sm:grid-cols-3">
+                <span className="rounded-lg bg-slate-100 px-2 py-1 text-slate-700">{course.lessonCount} sessions</span>
+                <span className="rounded-lg bg-slate-100 px-2 py-1 text-slate-700">{course.quizCount ?? 0} quizzes</span>
+                <span className="rounded-lg bg-slate-100 px-2 py-1 text-slate-700">{course.assignmentCount ?? 0} tasks</span>
+              </div>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {course.hasFinalExam && <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-bold text-amber-800">Final exam</span>}
+                {course.portfolioRequired && <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-bold text-emerald-800">Portfolio</span>}
+                {!!course.roleplayCount && <span className="rounded-full bg-sky-100 px-2.5 py-1 text-[11px] font-bold text-sky-800">{course.roleplayCount} roleplays</span>}
+                <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-700">{course.toolkitCount ?? 0} PDFs</span>
+              </div>
             </div>
           ))}
         </div>
@@ -333,11 +357,11 @@ export function PublicAcademyPage() {
         <div className="flex flex-col gap-2">
           <h2 className="text-2xl font-bold">Elite agent standard</h2>
           <p className="max-w-3xl text-sm leading-6 text-slate-600">
-            Certification is designed around evidence of real agent competence: expert lessons, roleplay, field portfolio, mentor review, specialisation, and annual renewal.
+            Certification is designed around evidence of real agent competence: expert training sessions, roleplay, field portfolio, mentor review, specialisation, and annual renewal.
           </p>
         </div>
         <div className="mt-6 grid gap-4 xl:grid-cols-3">
-          <AcademyOpsCard title="Expert video lessons to record" items={EXPERT_VIDEO_LIBRARY_PLAN.map((item) => `${item.role}: ${item.topic}`)} />
+          <AcademyOpsCard title="Expert video sessions to record" items={EXPERT_VIDEO_LIBRARY_PLAN.map((item) => `${item.role}: ${item.topic}`)} />
           <AcademyOpsCard title="Portfolio required before full certification" items={AGENT_PORTFOLIO_REQUIREMENTS.slice(0, 6)} />
           <AcademyOpsCard title="Roleplay assessments" items={ROLEPLAY_ASSESSMENT_SCENARIOS.slice(0, 6)} />
           <AcademyOpsCard title="HouseLink Agent Playbook" items={HOUSELINK_AGENT_PLAYBOOK.slice(0, 6)} />
@@ -399,10 +423,23 @@ export function PublicAcademyPage() {
                     </div>
                   </div>
 
-                  <div className="mt-6 grid gap-3 sm:grid-cols-3">
-                    <div className="rounded-lg bg-slate-50 p-3 text-sm dark:bg-slate-900"><BookOpen className="size-4 mb-1" style={{ color: accent }} /><span className="font-semibold">{course.lessonCount} lessons</span></div>
-                    <div className="rounded-lg bg-slate-50 p-3 text-sm dark:bg-slate-900"><Clock className="size-4 mb-1" style={{ color: accent }} /><span className="font-semibold">{course.estimatedHours || Math.round(course.durationMinutes / 60)} hours</span></div>
-                    <div className="rounded-lg bg-slate-50 p-3 text-sm dark:bg-slate-900"><ShieldCheck className="size-4 mb-1" style={{ color: accent }} /><span className="font-semibold">{course.toolkitCount ?? 0} toolkit PDFs</span></div>
+                  <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                    <CourseMetric icon={BookOpen} value={String(course.lessonCount)} label="training sessions" accent={accent} />
+                    <CourseMetric icon={ListChecks} value={`${course.quizCount ?? 0} quizzes`} label={`${course.assignmentCount ?? 0} reviewed tasks`} accent={accent} />
+                    <CourseMetric icon={Clock} value={`${course.estimatedHours || Math.round(course.durationMinutes / 60)}h`} label="guided learning" accent={accent} />
+                    <CourseMetric icon={ShieldCheck} value={String(course.toolkitCount ?? 0)} label="field toolkit PDFs" accent={accent} />
+                  </div>
+
+                  <div className="mt-4 rounded-xl border p-4 text-sm" style={{ borderColor: `${accent}33`, backgroundColor: `${accent}0f` }}>
+                    <p className="font-bold text-slate-950 dark:text-white">Certification requirements</p>
+                    <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                      {certificationRequirements(course).map((requirement) => (
+                        <div key={requirement} className="flex gap-2 text-slate-600 dark:text-slate-300">
+                          <CheckCircle2 className="mt-0.5 size-4 shrink-0" style={{ color: accent }} />
+                          <span>{requirement}</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
 
                   <details className="academy-card group mt-6 rounded-xl border border-slate-200 bg-white/70 dark:border-slate-800 dark:bg-slate-950/60">
@@ -437,15 +474,25 @@ export function PublicAcademyPage() {
                         },
                         {
                           id: `${course.id}-includes`,
-                          title: "What's included",
-                          subtitle: course.assessmentSummary ?? "Lessons, toolkits, assessments, and certification",
+                          title: "Value and certification requirements",
+                          subtitle: course.assessmentSummary ?? "Sessions, toolkits, assessments, and certification",
                           meta: course.badgeName ?? "Certificate",
                           content: (
-                            <ul className="space-y-2 text-sm text-slate-600">
-                              {(course.includes ?? []).map((item) => (
-                                <li key={item} className="flex gap-2"><Award className="size-4 shrink-0 mt-0.5 text-amber-600" />{item}</li>
-                              ))}
-                            </ul>
+                            <div className="space-y-4">
+                              <ul className="space-y-2 text-sm text-slate-600">
+                                {certificationRequirements(course).map((item) => (
+                                  <li key={item} className="flex gap-2"><CheckCircle2 className="size-4 shrink-0 mt-0.5" style={{ color: accent }} />{item}</li>
+                                ))}
+                              </ul>
+                              <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900">
+                                <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Included value</p>
+                                <ul className="mt-2 space-y-2 text-sm text-slate-600">
+                                  {(course.includes ?? []).map((item) => (
+                                    <li key={item} className="flex gap-2"><Award className="size-4 shrink-0 mt-0.5 text-amber-600" />{item}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                            </div>
                           ),
                         },
                         {
@@ -458,10 +505,9 @@ export function PublicAcademyPage() {
                               {course.modules.map((module) => (
                                 <div key={module.id} className="rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-950">
                                   <p className="font-semibold">{module.title}</p>
-                                  <p className="mt-1 text-xs text-slate-500">{module.lessons.length} lessons · {module.lessons.reduce((n, l) => n + l.estimatedMinutes, 0)} min</p>
+                                  <p className="mt-1 text-xs text-slate-500">{module.lessons.length} training sessions / {module.lessons.reduce((n, l) => n + l.estimatedMinutes, 0)} min</p>
                                   <ul className="mt-2 space-y-1 text-sm text-slate-600">
-                                    {module.lessons.slice(0, 4).map((lesson) => <li key={lesson.id}>• {lesson.title}</li>)}
-                                    {module.lessons.length > 4 && <li className="text-xs text-slate-400">+ {module.lessons.length - 4} more lessons</li>}
+                                    {module.lessons.map((lesson) => <li key={lesson.id} className="flex gap-2"><span style={{ color: accent }}>-</span>{lesson.title}</li>)}
                                   </ul>
                                 </div>
                               ))}
@@ -555,6 +601,35 @@ function StatCard({
           <p className="text-xs text-slate-600 dark:text-slate-400 sm:text-sm">{label}</p>
         </div>
       </div>
+    </div>
+  );
+}
+
+function PathwayFact({ value, label }: { value: string; label: string }) {
+  return (
+    <div>
+      <p className="text-lg font-black">{value}</p>
+      <p className="text-xs font-semibold uppercase tracking-wide opacity-80">{label}</p>
+    </div>
+  );
+}
+
+function CourseMetric({
+  icon: Icon,
+  value,
+  label,
+  accent,
+}: {
+  icon: typeof BookOpen;
+  value: string;
+  label: string;
+  accent: string;
+}) {
+  return (
+    <div className="rounded-lg bg-slate-50 p-3 text-sm dark:bg-slate-900">
+      <Icon className="mb-1 size-4" style={{ color: accent }} />
+      <span className="block font-semibold leading-snug">{value}</span>
+      <span className="block text-xs leading-snug text-slate-500">{label}</span>
     </div>
   );
 }
@@ -683,7 +758,7 @@ function AcademySidePanel({
           {selectedRegistration === "APPROVED" && selected && (
             <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm dark:border-emerald-800 dark:bg-emerald-900/20">
               <p className="font-semibold text-emerald-900 dark:text-emerald-100">You are enrolled in this course</p>
-              <p className="mt-1 text-emerald-800 dark:text-emerald-200">Open the course to view modules, lessons, materials, and quizzes.</p>
+              <p className="mt-1 text-emerald-800 dark:text-emerald-200">Open the course to view modules, training sessions, materials, and quizzes.</p>
               <Link href={`/dashboard/academy/${selected.id}`} className="mt-4 block">
                 <Button className="w-full"><PlayCircle className="size-4 mr-2" /> Continue {selected.title}</Button>
               </Link>
@@ -722,8 +797,8 @@ function AcademySidePanel({
                   onChange={(event) => setForm({ ...form, registrationIntent: event.target.value as "TRAINING_ONLY" | "AGENT_TRAINING" })}
                   className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-900 focus:ring-2 focus:ring-emerald-500"
                 >
-                  <option value="TRAINING_ONLY">Training only — I am not applying to become a HouseLink agent</option>
-                  {isAgent && <option value="AGENT_TRAINING">Agent training — I am a HouseLink agent</option>}
+                  <option value="TRAINING_ONLY">Training only - I am not applying to become a HouseLink agent</option>
+                  {isAgent && <option value="AGENT_TRAINING">Agent training - I am a HouseLink agent</option>}
                 </select>
               </label>
               {selected && displayPrice !== null && (
@@ -781,6 +856,22 @@ function AcademyOpsCard({ title, items, className }: { title: string; items: str
   );
 }
 
+function certificationRequirements(course: PublicCourse) {
+  const quizLabel = course.quizCount === 1 ? "module quiz" : "module quizzes";
+  const taskLabel = course.assignmentCount === 1 ? "reviewed practical task" : "reviewed practical tasks";
+  const simulationLabel = course.roleplayCount === 1 ? "roleplay or simulation assessment" : "roleplay or simulation assessments";
+
+  return [
+    `Complete ${course.lessonCount} training sessions`,
+    course.quizCount ? `Pass ${course.quizCount} ${quizLabel}` : "",
+    course.assignmentCount ? `Submit ${course.assignmentCount} ${taskLabel} for admin review` : "",
+    course.roleplayCount ? `Complete ${course.roleplayCount} ${simulationLabel}` : "",
+    course.portfolioRequired ? "Submit a field portfolio for sign-off" : "",
+    course.hasFinalExam ? "Pass the final professional examination" : "",
+    "Earn a publicly verifiable HouseLink certificate",
+  ].filter(Boolean) as string[];
+}
+
 function ProgrammeEnrolmentPreview({ course, accent }: { course: PublicCourse; accent: string }) {
   return (
     <div className="academy-panel overflow-hidden rounded-xl border-2" style={{ borderColor: `${accent}44` }}>
@@ -792,10 +883,22 @@ function ProgrammeEnrolmentPreview({ course, accent }: { course: PublicCourse; a
         <h3 className="mt-3 text-xl font-bold leading-snug">{course.title}</h3>
         <p className="mt-1 text-sm font-medium" style={{ color: accent }}>{course.subtitle}</p>
         <p className="mt-3 text-sm leading-relaxed text-slate-600">{course.description}</p>
-        <div className="mt-4 grid grid-cols-1 gap-2 text-center text-xs sm:grid-cols-3 sm:gap-2">
-          <div className="rounded-lg bg-slate-50 p-3 dark:bg-slate-900"><BookOpen className="mx-auto size-4 mb-1" style={{ color: accent }} /><span className="font-semibold leading-snug">{course.lessonCount} lessons</span></div>
-          <div className="rounded-lg bg-slate-50 p-3 dark:bg-slate-900"><Clock className="mx-auto size-4 mb-1" style={{ color: accent }} /><span className="font-semibold leading-snug">{course.estimatedHours || Math.round(course.durationMinutes / 60)}h guided</span></div>
-          <div className="rounded-lg bg-slate-50 p-3 dark:bg-slate-900"><ShieldCheck className="mx-auto size-4 mb-1" style={{ color: accent }} /><span className="font-semibold leading-snug">{course.toolkitCount ?? 0} toolkit PDFs</span></div>
+        <div className="mt-4 grid grid-cols-1 gap-2 text-center text-xs sm:grid-cols-2 sm:gap-2">
+          <CourseMetric icon={BookOpen} value={String(course.lessonCount)} label="training sessions" accent={accent} />
+          <CourseMetric icon={ListChecks} value={`${course.quizCount ?? 0} quizzes`} label={`${course.assignmentCount ?? 0} reviewed tasks`} accent={accent} />
+          <CourseMetric icon={Clock} value={`${course.estimatedHours || Math.round(course.durationMinutes / 60)}h`} label="guided learning" accent={accent} />
+          <CourseMetric icon={ShieldCheck} value={String(course.toolkitCount ?? 0)} label="field toolkit PDFs" accent={accent} />
+        </div>
+        <div className="mt-4 rounded-xl border p-3 text-xs" style={{ borderColor: `${accent}33`, backgroundColor: `${accent}0f` }}>
+          <p className="font-bold text-slate-900 dark:text-white">Certification requirements</p>
+          <ul className="mt-2 space-y-1.5 text-left text-slate-600 dark:text-slate-300">
+            {certificationRequirements(course).slice(0, 5).map((requirement) => (
+              <li key={requirement} className="flex gap-2">
+                <CheckCircle2 className="mt-0.5 size-3.5 shrink-0" style={{ color: accent }} />
+                <span>{requirement}</span>
+              </li>
+            ))}
+          </ul>
         </div>
         {course.badgeName && (
           <p className="mt-4 flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-medium" style={{ borderColor: `${accent}33`, color: accent }}>
@@ -809,14 +912,14 @@ function ProgrammeEnrolmentPreview({ course, accent }: { course: PublicCourse; a
               {
                 id: `${course.id}-side-curriculum`,
                 title: "Curriculum preview",
-                subtitle: `${course.modules.length} modules · expand to view`,
+                subtitle: `${course.modules.length} modules / expand to view`,
                 defaultOpen: false,
                 content: (
                   <div className="space-y-2">
                     {course.modules.map((module) => (
                       <div key={module.id} className="rounded-lg border border-slate-200 p-3 text-sm dark:border-slate-700">
                         <p className="font-semibold">{module.title}</p>
-                        <p className="mt-1 text-xs text-slate-500">{module.lessons.length} lessons</p>
+                        <p className="mt-1 text-xs text-slate-500">{module.lessons.length} training sessions</p>
                       </div>
                     ))}
                   </div>
