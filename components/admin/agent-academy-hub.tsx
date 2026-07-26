@@ -1208,6 +1208,25 @@ function assignmentRubricCriteria(title: string) {
   return ["Practical application", "Evidence quality", "Professional judgement", "Clear next steps"];
 }
 
+const lessonDepthResourceTitles = {
+  outcome: "Professional outcome",
+  standard: "HouseLink field standard",
+  mistakes: "Common mistakes to avoid",
+  scenario: "Zimbabwe field scenario",
+  practice: "Practice before you move on",
+} as const;
+
+function lessonDepthFromResources(resources: Array<{ title: string; body: string; type: string }>) {
+  const map = new Map(resources.filter((resource) => resource.type === "LESSON_DEPTH").map((resource) => [resource.title, resource.body]));
+  return {
+    outcome: map.get(lessonDepthResourceTitles.outcome) ?? "",
+    standard: map.get(lessonDepthResourceTitles.standard) ?? "",
+    mistakes: map.get(lessonDepthResourceTitles.mistakes) ?? "",
+    scenario: map.get(lessonDepthResourceTitles.scenario) ?? "",
+    practice: map.get(lessonDepthResourceTitles.practice) ?? "",
+  };
+}
+
 function OperationalPanel({ tab }: { tab: AcademyTab }) {
   const tile = featureTiles.find(([label]) => label === tab);
   const Icon = tile?.[1] ?? Library;
@@ -1643,6 +1662,7 @@ function LessonDrawer({ open, busy, lesson: editingLesson, courses: _courses, on
     title: editingLesson?.title ?? "",
     summary: editingLesson?.summary ?? "",
     richText: editingLesson?.richText ?? "",
+    lessonDepth: lessonDepthFromResources(editingLesson?.lessonResources ?? []),
     videoUrl: editingLesson?.videoUrl ?? "",
     embeddedVideoUrl: editingLesson?.embeddedVideoUrl ?? "",
     pdfUrl: editingLesson?.pdfUrl ?? "",
@@ -1651,6 +1671,22 @@ function LessonDrawer({ open, busy, lesson: editingLesson, courses: _courses, on
     completionRequirement: editingLesson?.completionRequirement ?? "VIEW",
     sortOrder: editingLesson?.sortOrder ?? 0,
   });
+  useEffect(() => {
+    if (!open) return;
+    setLesson({
+      title: editingLesson?.title ?? "",
+      summary: editingLesson?.summary ?? "",
+      richText: editingLesson?.richText ?? "",
+      lessonDepth: lessonDepthFromResources(editingLesson?.lessonResources ?? []),
+      videoUrl: editingLesson?.videoUrl ?? "",
+      embeddedVideoUrl: editingLesson?.embeddedVideoUrl ?? "",
+      pdfUrl: editingLesson?.pdfUrl ?? "",
+      audioUrl: editingLesson?.audioUrl ?? "",
+      estimatedMinutes: editingLesson?.estimatedMinutes ?? 30,
+      completionRequirement: editingLesson?.completionRequirement ?? "VIEW",
+      sortOrder: editingLesson?.sortOrder ?? 0,
+    });
+  }, [editingLesson, open]);
   const editing = Boolean(editingLesson);
   return (
     <AdminDrawer open={open} title={editing ? "Edit Lesson" : "Create Lesson"} description="Create and edit Academy lessons with rich text, video, PDF, audio, and completion requirements." onClose={onClose} width="xl">
@@ -1658,6 +1694,17 @@ function LessonDrawer({ open, busy, lesson: editingLesson, courses: _courses, on
         <TextInput label="Lesson title" value={lesson.title} onChange={(title) => setLesson({ ...lesson, title })} className="sm:col-span-2" />
         <TextArea label="Summary" value={lesson.summary} onChange={(summary) => setLesson({ ...lesson, summary })} className="sm:col-span-2" />
         <TextArea label="Rich content (HTML)" value={lesson.richText} onChange={(richText) => setLesson({ ...lesson, richText })} className="sm:col-span-2" rows={6} />
+        <div className="sm:col-span-2 rounded-xl border border-white/10 bg-slate-900/60 p-4">
+          <p className="text-sm font-semibold text-white">Premium lesson depth</p>
+          <p className="mt-1 text-xs text-slate-400">Optional per-lesson content. Empty fields use smart fallbacks, so every lesson still displays well.</p>
+          <div className="mt-4 grid gap-3">
+            <TextArea label="Professional outcome" value={lesson.lessonDepth.outcome} onChange={(outcome) => setLesson({ ...lesson, lessonDepth: { ...lesson.lessonDepth, outcome } })} rows={3} />
+            <TextArea label="HouseLink field standard (one point per line)" value={lesson.lessonDepth.standard} onChange={(standard) => setLesson({ ...lesson, lessonDepth: { ...lesson.lessonDepth, standard } })} rows={4} />
+            <TextArea label="Common mistakes to avoid (one point per line)" value={lesson.lessonDepth.mistakes} onChange={(mistakes) => setLesson({ ...lesson, lessonDepth: { ...lesson.lessonDepth, mistakes } })} rows={4} />
+            <TextArea label="Zimbabwe field scenario" value={lesson.lessonDepth.scenario} onChange={(scenario) => setLesson({ ...lesson, lessonDepth: { ...lesson.lessonDepth, scenario } })} rows={4} />
+            <TextArea label="Practice before you move on" value={lesson.lessonDepth.practice} onChange={(practice) => setLesson({ ...lesson, lessonDepth: { ...lesson.lessonDepth, practice } })} rows={4} />
+          </div>
+        </div>
         <TextInput label="Video URL" value={lesson.videoUrl} onChange={(videoUrl) => setLesson({ ...lesson, videoUrl })} className="sm:col-span-2" />
         <TextInput label="Embedded video URL (YouTube/Vimeo)" value={lesson.embeddedVideoUrl} onChange={(embeddedVideoUrl) => setLesson({ ...lesson, embeddedVideoUrl })} className="sm:col-span-2" />
         <TextInput label="PDF URL" value={lesson.pdfUrl} onChange={(pdfUrl) => setLesson({ ...lesson, pdfUrl })} />

@@ -458,11 +458,13 @@ export async function runAcademyAction(body: Record<string, any>, actor: Actor) 
         sortOrder: numberOr(lessonPayload.sortOrder, 0),
       },
     });
+    await syncLessonDepthResources(lesson.id, lessonPayload.lessonDepth);
     await audit(actor, "academy.lesson.create", lesson.id, { title: lesson.title, courseId: lessonPayload.courseId });
     return lesson;
   }
   if (action === "update_lesson") {
     const lesson = await prisma.trainingLesson.update({ where: { id: String(body.lessonId) }, data: lessonInput(body.lesson ?? {}) });
+    await syncLessonDepthResources(lesson.id, body.lesson?.lessonDepth);
     await audit(actor, "academy.lesson.update", lesson.id, { title: lesson.title });
     return lesson;
   }
@@ -1396,6 +1398,45 @@ function lessonInput(input: Record<string, any>): Prisma.TrainingLessonUpdateInp
   if (input.completionRequirement !== undefined) data.completionRequirement = String(input.completionRequirement);
   if (input.sortOrder !== undefined) data.sortOrder = numberOr(input.sortOrder, 0);
   return data;
+}
+
+const LESSON_DEPTH_RESOURCE_TYPE = "LESSON_DEPTH";
+const LESSON_DEPTH_FIELDS = [
+  ["outcome", "Professional outcome"],
+  ["standard", "HouseLink field standard"],
+  ["mistakes", "Common mistakes to avoid"],
+  ["scenario", "Zimbabwe field scenario"],
+  ["practice", "Practice before you move on"],
+] as const;
+
+async function syncLessonDepthResources(lessonId: string, input: unknown) {
+  if (!input || typeof input !== "object" || Array.isArray(input)) return;
+  const prisma = getMainPrisma();
+  const existing = await prisma.lessonResource.findMany({ where: { lessonId, type: LESSON_DEPTH_RESOURCE_TYPE } });
+  const existingByTitle = new Map(existing.map((resource) => [resource.title, resource]));
+
+  for (const [key, title] of LESSON_DEPTH_FIELDS) {
+    const raw = (input as Record<string, unknown>)[key];
+    const body = Array.isArray(raw) ? raw.filter((item): item is string => typeof item === "string").join("\n") : typeof raw === "string" ? raw.trim() : "";
+    const current = existingByTitle.get(title);
+    if (!body) {
+      if (current) await prisma.lessonResource.delete({ where: { id: current.id } });
+      continue;
+    }
+    if (current) {
+      await prisma.lessonResource.update({ where: { id: current.id }, data: { body, sortOrder: LESSON_DEPTH_FIELDS.findIndex(([field]) => field === key) } });
+    } else {
+      await prisma.lessonResource.create({
+        data: {
+          lessonId,
+          title,
+          body,
+          type: LESSON_DEPTH_RESOURCE_TYPE,
+          sortOrder: LESSON_DEPTH_FIELDS.findIndex(([field]) => field === key),
+        },
+      });
+    }
+  }
 }
 
 async function notifyAgents(eventType: string, subject: string, body: string) {

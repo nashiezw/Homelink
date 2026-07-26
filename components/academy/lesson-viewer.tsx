@@ -433,10 +433,11 @@ function LessonDepthCard({
 }
 
 function buildLessonDepth(lesson: Lesson) {
+  const editableDepth = editableLessonDepth(lesson);
   const title = lesson.title.toLowerCase();
 
   if (/journey|professional agent|goal|standard/.test(title)) {
-    return {
+    return withEditableDepth({
       outcome:
         "You should be able to explain what separates a trusted property professional from an informal middleman, set a measurable 90-day activity plan, and keep records that a broker, landlord, or client can audit.",
       standard: [
@@ -454,11 +455,11 @@ function buildLessonDepth(lesson: Lesson) {
         "A landlord in Harare asks you to list quickly because another agent already has buyers. A professional response is to confirm mandate details, collect verified property facts, explain realistic pricing, record the landlord's instructions, and only publish when the listing can withstand client questions.",
       practice:
         "Create a one-page 90-day agent plan with weekly prospecting targets, listing quality targets, response-time rules, and the evidence you will keep for every client interaction. Use it as your personal operating standard.",
-    };
+    }, editableDepth);
   }
 
   if (/listing|photo|description|pricing|market/.test(title)) {
-    return {
+    return withEditableDepth({
       outcome:
         "You should be able to turn a property into a listing that is accurate, searchable, visually credible, and useful enough for serious renters or buyers to make a next-step decision.",
       standard: [
@@ -476,11 +477,11 @@ function buildLessonDepth(lesson: Lesson) {
         "A Borrowdale listing has strong demand, but the borehole is seasonal and the cottage is occupied. A strong agent discloses both facts early, adjusts the viewing script, and positions the property for clients who can accept those trade-offs.",
       practice:
         "Rewrite one weak listing into a client-ready version. Include verified facts, a clear price note, five photo requirements, and three questions you would answer before booking a viewing.",
-    };
+    }, editableDepth);
   }
 
   if (/client|lead|enquiry|viewing|negotiation|communication/.test(title)) {
-    return {
+    return withEditableDepth({
       outcome:
         "You should be able to qualify clients respectfully, manage expectations, run safer viewings, and keep momentum without pressuring people into poor decisions.",
       standard: [
@@ -498,11 +499,11 @@ function buildLessonDepth(lesson: Lesson) {
         "A renter wants a same-day viewing and says they can pay immediately. A top agent still confirms identity, budget, documents, viewing logistics, and landlord availability before creating urgency around payment.",
       practice:
         "Write a five-message WhatsApp sequence for a new enquiry: greeting, qualification, recommended options, viewing confirmation, and post-viewing follow-up.",
-    };
+    }, editableDepth);
   }
 
   if (/legal|compliance|ethic|document|mandate|fraud|safety|risk/.test(title)) {
-    return {
+    return withEditableDepth({
       outcome:
         "You should be able to identify documentation risk, protect clients from unsafe transactions, and know when to pause a deal until the right evidence is available.",
       standard: [
@@ -520,10 +521,10 @@ function buildLessonDepth(lesson: Lesson) {
         "A supposed owner asks for deposit payment into a third-party account before viewing. A competent agent pauses the transaction, verifies authority, flags the risk, and protects the client from rushed payment.",
       practice:
         "Build a red-flag checklist for one transaction type you handle often. Include the trigger, evidence needed, escalation route, and client wording you would use.",
-    };
+    }, editableDepth);
   }
 
-  return {
+  return withEditableDepth({
     outcome:
       "You should be able to apply this lesson in a real client conversation, document the evidence, and explain your decision using HouseLink's professional standard.",
     standard: [
@@ -541,7 +542,53 @@ function buildLessonDepth(lesson: Lesson) {
       "A client asks for immediate advice while key facts are still missing. A professional agent slows the decision down, confirms what is known, identifies what must be checked, and gives the client a clear next step.",
     practice:
       "Write a short field note for this lesson: what you would check, what you would say to the client, what proof you would keep, and what would make you escalate.",
+  }, editableDepth);
+}
+
+type LessonDepth = {
+  outcome: string;
+  standard: string[];
+  mistakes: string[];
+  scenario: string;
+  practice: string;
+};
+
+const lessonDepthResourceTitles = {
+  outcome: "Professional outcome",
+  standard: "HouseLink field standard",
+  mistakes: "Common mistakes to avoid",
+  scenario: "Zimbabwe field scenario",
+  practice: "Practice before you move on",
+} as const;
+
+function editableLessonDepth(lesson: Lesson): Partial<LessonDepth> {
+  const resources = new Map(
+    (lesson.lessonResources ?? [])
+      .filter((resource) => resource.type === "LESSON_DEPTH")
+      .map((resource) => [resource.title, resource.body.trim()]),
+  );
+  return {
+    outcome: resources.get(lessonDepthResourceTitles.outcome) || undefined,
+    standard: splitDepthList(resources.get(lessonDepthResourceTitles.standard)),
+    mistakes: splitDepthList(resources.get(lessonDepthResourceTitles.mistakes)),
+    scenario: resources.get(lessonDepthResourceTitles.scenario) || undefined,
+    practice: resources.get(lessonDepthResourceTitles.practice) || undefined,
   };
+}
+
+function withEditableDepth(fallback: LessonDepth, editable: Partial<LessonDepth>): LessonDepth {
+  return {
+    outcome: editable.outcome || fallback.outcome,
+    standard: editable.standard?.length ? editable.standard : fallback.standard,
+    mistakes: editable.mistakes?.length ? editable.mistakes : fallback.mistakes,
+    scenario: editable.scenario || fallback.scenario,
+    practice: editable.practice || fallback.practice,
+  };
+}
+
+function splitDepthList(value?: string) {
+  if (!value) return undefined;
+  return value.split(/\r?\n/).map((item) => item.replace(/^[-*]\s*/, "").trim()).filter(Boolean);
 }
 
 function SidebarContent({

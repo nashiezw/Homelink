@@ -469,9 +469,26 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
                 Practical work must be reviewed and graded before a certificate is issued. The professional portfolio and roleplay evidence show whether you can handle real clients safely.
               </p>
             </div>
-            <div className="mt-4 grid gap-4 lg:grid-cols-2">
-              <EvidenceList title="Portfolio evidence" items={AGENT_PORTFOLIO_REQUIREMENTS} accent={accent} />
-              <EvidenceList title="Roleplay scenarios" items={ROLEPLAY_ASSESSMENT_SCENARIOS} accent={accent} />
+            <div className="mt-4">
+              <AcademyAccordion
+                accent={accent}
+                items={[
+                  {
+                    id: "portfolio-evidence",
+                    title: "Portfolio evidence",
+                    subtitle: "Proof that your daily work is organised, verifiable, and ready for review.",
+                    meta: `${AGENT_PORTFOLIO_REQUIREMENTS.length} items`,
+                    content: <EvidenceChecklist items={AGENT_PORTFOLIO_REQUIREMENTS} accent={accent} />,
+                  },
+                  {
+                    id: "roleplay-scenarios",
+                    title: "Roleplay scenarios",
+                    subtitle: "Client conversations and judgement calls to rehearse before certification.",
+                    meta: `${ROLEPLAY_ASSESSMENT_SCENARIOS.length} scenarios`,
+                    content: <EvidenceChecklist items={ROLEPLAY_ASSESSMENT_SCENARIOS} accent={accent} />,
+                  },
+                ]}
+              />
             </div>
           </section>
 
@@ -693,18 +710,15 @@ function courseRecommendations(data: CourseDetail) {
   ];
 }
 
-function EvidenceList({ title, items, accent }: { title: string; items: string[]; accent: string }) {
+function EvidenceChecklist({ items, accent }: { items: string[]; accent: string }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950">
-      <p className="font-semibold">{title}</p>
-      <ul className="mt-3 space-y-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
-        {items.map((item) => (
-          <li key={item} className="flex gap-2">
-            <CheckCircle2 className="mt-1 size-4 shrink-0" style={{ color: accent }} />
-            {item}
-          </li>
-        ))}
-      </ul>
-    </div>
+    <ul className="space-y-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
+      {items.map((item) => (
+        <li key={item} className="flex gap-2 rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-900/60">
+          <CheckCircle2 className="mt-1 size-4 shrink-0" style={{ color: accent }} />
+          <span>{item}</span>
+        </li>
+      ))}
+    </ul>
   );
 }

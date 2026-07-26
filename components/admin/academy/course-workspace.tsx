@@ -32,6 +32,7 @@ type LessonNode = {
   sortOrder: number;
   videoUrl?: string | null;
   pdfUrl?: string | null;
+  lessonResources?: Array<{ id: string; title: string; body: string; type: string; sortOrder: number }>;
 };
 
 type CourseTree = {
@@ -81,6 +82,7 @@ export function CourseWorkspace({
   const [dragLessonSectionId, setDragLessonSectionId] = useState<string | null>(null);
   const [newModuleTitle, setNewModuleTitle] = useState("");
   const [lessonDraft, setLessonDraft] = useState<Partial<LessonNode>>({});
+  const [lessonDepthDraft, setLessonDepthDraft] = useState(lessonDepthFromResources([]));
   const [selectedQuizId, setSelectedQuizId] = useState<string | null>(null);
   const [questionDraft, setQuestionDraft] = useState({ prompt: "", answers: ["", "", "", ""], correctIndex: 0, explanation: "" });
   const [undoStack, setUndoStack] = useState<Array<{ label: string; body: Record<string, unknown> }>>([]);
@@ -114,6 +116,7 @@ export function CourseWorkspace({
         videoUrl: selectedLesson.videoUrl,
         pdfUrl: selectedLesson.pdfUrl,
       });
+      setLessonDepthDraft(lessonDepthFromResources(selectedLesson.lessonResources ?? []));
       setStep("Lesson Editor");
     }
   }, [selectedLessonId, selectedLesson]);
@@ -306,6 +309,17 @@ export function CourseWorkspace({
               <label className="block text-sm text-slate-300">Reading material (HTML)
                 <textarea value={lessonDraft.richText ?? ""} onChange={(e) => setLessonDraft({ ...lessonDraft, richText: e.target.value })} rows={8} className="mt-1 w-full rounded-lg border border-white/10 bg-slate-900 px-3 py-2 font-mono text-xs text-white" />
               </label>
+              <div className="rounded-xl border border-white/10 bg-slate-900/60 p-4">
+                <p className="text-sm font-semibold text-white">Premium lesson depth</p>
+                <p className="mt-1 text-xs text-slate-400">Make scenario, practice, outcome, standards, and mistakes unique for this lesson. Empty fields keep learner-facing fallbacks.</p>
+                <div className="mt-4 grid gap-3">
+                  <TextareaField label="Professional outcome" value={lessonDepthDraft.outcome} onChange={(outcome) => setLessonDepthDraft({ ...lessonDepthDraft, outcome })} rows={3} />
+                  <TextareaField label="HouseLink field standard (one point per line)" value={lessonDepthDraft.standard} onChange={(standard) => setLessonDepthDraft({ ...lessonDepthDraft, standard })} rows={4} />
+                  <TextareaField label="Common mistakes to avoid (one point per line)" value={lessonDepthDraft.mistakes} onChange={(mistakes) => setLessonDepthDraft({ ...lessonDepthDraft, mistakes })} rows={4} />
+                  <TextareaField label="Zimbabwe field scenario" value={lessonDepthDraft.scenario} onChange={(scenario) => setLessonDepthDraft({ ...lessonDepthDraft, scenario })} rows={4} />
+                  <TextareaField label="Practice before you move on" value={lessonDepthDraft.practice} onChange={(practice) => setLessonDepthDraft({ ...lessonDepthDraft, practice })} rows={4} />
+                </div>
+              </div>
               <label className="block text-sm text-slate-300">Transcript
                 <textarea value={lessonDraft.transcript ?? ""} onChange={(e) => setLessonDraft({ ...lessonDraft, transcript: e.target.value })} rows={4} className="mt-1 w-full rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white" />
               </label>
@@ -317,7 +331,7 @@ export function CourseWorkspace({
                 <Field label="Video URL" value={lessonDraft.videoUrl ?? ""} onChange={(v) => setLessonDraft({ ...lessonDraft, videoUrl: v })} />
                 <Field label="PDF URL" value={lessonDraft.pdfUrl ?? ""} onChange={(v) => setLessonDraft({ ...lessonDraft, pdfUrl: v })} />
               </div>
-              <Button disabled={busy} onClick={() => void run({ action: "update_lesson", lessonId: selectedLesson.id, lesson: lessonDraft }, "Lesson saved.")}>
+              <Button disabled={busy} onClick={() => void run({ action: "update_lesson", lessonId: selectedLesson.id, lesson: { ...lessonDraft, lessonDepth: lessonDepthDraft } }, "Lesson saved.")}>
                 {busy ? <Loader2 className="size-4 animate-spin" /> : <CheckCircle2 className="size-4 mr-2" />} Save Lesson
               </Button>
             </div>
@@ -414,6 +428,33 @@ function Field({ label, value, onChange }: { label: string; value: string; onCha
       <input value={value} onChange={(e) => onChange(e.target.value)} className="mt-1 w-full rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-white" />
     </label>
   );
+}
+
+function TextareaField({ label, value, rows, onChange }: { label: string; value: string; rows: number; onChange: (v: string) => void }) {
+  return (
+    <label className="block text-sm text-slate-300">{label}
+      <textarea value={value} onChange={(event) => onChange(event.target.value)} rows={rows} className="mt-1 w-full rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white" />
+    </label>
+  );
+}
+
+const lessonDepthResourceTitles = {
+  outcome: "Professional outcome",
+  standard: "HouseLink field standard",
+  mistakes: "Common mistakes to avoid",
+  scenario: "Zimbabwe field scenario",
+  practice: "Practice before you move on",
+} as const;
+
+function lessonDepthFromResources(resources: Array<{ title: string; body: string; type: string }>) {
+  const map = new Map(resources.filter((resource) => resource.type === "LESSON_DEPTH").map((resource) => [resource.title, resource.body]));
+  return {
+    outcome: map.get(lessonDepthResourceTitles.outcome) ?? "",
+    standard: map.get(lessonDepthResourceTitles.standard) ?? "",
+    mistakes: map.get(lessonDepthResourceTitles.mistakes) ?? "",
+    scenario: map.get(lessonDepthResourceTitles.scenario) ?? "",
+    practice: map.get(lessonDepthResourceTitles.practice) ?? "",
+  };
 }
 
 function AssessmentCard({ title, items, onAdd }: { title: string; items: string[]; onAdd: () => void }) {
