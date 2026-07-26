@@ -227,7 +227,7 @@ export function PublicAcademyPage() {
       highlights={[
         { value: "3", label: "Programme Levels" },
         { value: "Certified", label: "Each Stage" },
-        { value: "50+", label: "Toolkit PDFs" },
+        { value: "16", label: "Practical Tasks" },
       ]}
       actions={pageActions}
     >
@@ -258,15 +258,15 @@ export function PublicAcademyPage() {
         <div className="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-3">
           <div className="flex items-center gap-2 rounded-lg border border-emerald-200/80 bg-emerald-50 px-4 py-2.5 dark:border-emerald-800/60 dark:bg-emerald-950/40">
             <BookOpen className="size-5 shrink-0 text-emerald-600 dark:text-emerald-400" />
-            <span className="text-sm font-medium text-slate-800 dark:text-slate-100 sm:text-base">Interactive Lessons</span>
+            <span className="text-sm font-medium text-slate-800 dark:text-slate-100 sm:text-base">Scenario Lessons</span>
           </div>
           <div className="flex items-center gap-2 rounded-lg border border-emerald-200/80 bg-emerald-50 px-4 py-2.5 dark:border-emerald-800/60 dark:bg-emerald-950/40">
             <Award className="size-5 shrink-0 text-emerald-600 dark:text-emerald-400" />
-            <span className="text-sm font-medium text-slate-800 dark:text-slate-100 sm:text-base">Certified Completion</span>
+            <span className="text-sm font-medium text-slate-800 dark:text-slate-100 sm:text-base">Rubric Assignments</span>
           </div>
           <div className="flex items-center gap-2 rounded-lg border border-emerald-200/80 bg-emerald-50 px-4 py-2.5 dark:border-emerald-800/60 dark:bg-emerald-950/40">
             <Users className="size-5 shrink-0 text-emerald-600 dark:text-emerald-400" />
-            <span className="text-sm font-medium text-slate-800 dark:text-slate-100 sm:text-base">Expert Support</span>
+            <span className="text-sm font-medium text-slate-800 dark:text-slate-100 sm:text-base">Field Evidence</span>
           </div>
         </div>
       </section>

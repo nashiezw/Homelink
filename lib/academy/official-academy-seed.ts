@@ -280,7 +280,7 @@ async function seedAssessments(prisma: ReturnType<typeof getMainPrisma>) {
       durationMinutes: ACADEMY_FINAL_EXAM.durationMinutes,
       passingScore: ACADEMY_FINAL_EXAM.passingScore,
       randomQuestions: true,
-      questionPools: { quizzes: ACADEMY_QUIZ_SEEDS.map((quiz) => quiz.id), minimumQuestions: 12 },
+      questionPools: { quizzes: ACADEMY_QUIZ_SEEDS.map((quiz) => quiz.id), minimumQuestions: ACADEMY_FINAL_EXAM.minimumQuestions },
       attemptLimit: ACADEMY_FINAL_EXAM.attemptLimit,
       browserLock: false,
       autoSubmit: true,
@@ -294,7 +294,7 @@ async function seedAssessments(prisma: ReturnType<typeof getMainPrisma>) {
       title: ACADEMY_FINAL_EXAM.title,
       durationMinutes: ACADEMY_FINAL_EXAM.durationMinutes,
       passingScore: ACADEMY_FINAL_EXAM.passingScore,
-      questionPools: { quizzes: ACADEMY_QUIZ_SEEDS.map((quiz) => quiz.id), minimumQuestions: 12 },
+      questionPools: { quizzes: ACADEMY_QUIZ_SEEDS.map((quiz) => quiz.id), minimumQuestions: ACADEMY_FINAL_EXAM.minimumQuestions },
       active: true,
     },
   });

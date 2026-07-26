@@ -36,6 +36,12 @@ type ModuleSeed = {
   lessons: LessonSeed[];
 };
 
+function practicalLesson(sections: Array<{ heading: string; body: string }>) {
+  return sections
+    .map((section) => `<p><strong>${section.heading}</strong></p><p>${section.body}</p>`)
+    .join("");
+}
+
 export const modules: ModuleSeed[] = [
   {
     title: "Introduction to the HouseLink Zimbabwe Standard",
@@ -112,6 +118,51 @@ export const modules: ModuleSeed[] = [
         estimatedMinutes: 25,
       },
       {
+        title: "Zimbabwe property law awareness for agents",
+        stage: "Beginner",
+        summary: "Know the legal topics an agent must recognise, explain carefully, and escalate to qualified professionals.",
+        richText: practicalLesson([
+          {
+            heading: "What agents must know",
+            body: "Professional agents do not give legal advice, but they must recognise the legal themes that shape Zimbabwe property transactions: ownership authority, mandate terms, leases, offers, deposits, rates, transfer processes, and client identity records. Your role is to explain process, gather complete information, and refer legal interpretation to qualified professionals.",
+          },
+          {
+            heading: "Risk signals",
+            body: "Pause and escalate when a seller cannot prove authority, a landlord wants cash-only arrangements without records, a deceased estate is involved, signatures are missing, boundaries are disputed, or a client asks you to ignore document gaps. A professional agent protects the transaction before speed.",
+          },
+          {
+            heading: "Field standard",
+            body: "For every serious client, keep a record of who gave instructions, what authority they claimed, what documents were reviewed, and what matters were referred. This habit keeps HouseLink files audit-ready and helps learners understand where an agent's role ends.",
+          },
+        ]),
+        objectives: ["Recognise common legal risk areas", "Explain process without giving legal advice", "Know when to escalate to admin or legal professionals"],
+        estimatedMinutes: 40,
+        resourceTitles: ["Compliance Checklist", "Document Submission Checklist"],
+      },
+      {
+        title: "Verification, trust and scam prevention basics",
+        stage: "Beginner",
+        summary: "Protect clients from false listings, unauthorised instructions, and unsafe transaction shortcuts.",
+        richText: practicalLesson([
+          {
+            heading: "Trust is the product",
+            body: "A property platform becomes valuable when people believe the listings, agents, and process are reliable. Your daily verification habits are part of HouseLink's market reputation.",
+          },
+          {
+            heading: "Minimum verification routine",
+            body: "Confirm the person giving instructions, property access arrangements, price, availability, location, condition, and any known defects before advertising. For rentals, confirm who receives payments and what documentation supports the arrangement. For sales, check owner authority and escalate anything unusual.",
+          },
+          {
+            heading: "Practice drill",
+            body: "Review three sample enquiries or listings. Mark each as ready, incomplete, or high-risk, then write the exact follow-up question you would ask before proceeding.",
+          },
+        ]),
+        objectives: ["Spot incomplete or suspicious listing instructions", "Ask verification questions before publishing", "Protect clients from unsafe shortcuts"],
+        estimatedMinutes: 35,
+        resourceTitles: ["File Checklist", "Compliance Checklist", "Client Information Sheet"],
+        discussionPrompt: "What verification step is most often skipped by new agents, and what could go wrong if it is missed?",
+      },
+      {
         title: "Chapter 1 knowledge check and practical assessment",
         stage: "Beginner",
         summary: "Consolidate foundations and complete the Chapter 1 quiz.",
@@ -147,6 +198,30 @@ export const modules: ModuleSeed[] = [
         resourceTitles: ["Property Appraisal Form", "Listing Agreement Template", "Objection Handling Guide"],
       },
       {
+        title: "Comparative Market Analysis pricing workshop",
+        stage: "Intermediate",
+        summary: "Build a defendable price opinion from comparable listings, location, condition, urgency, and demand.",
+        richText: practicalLesson([
+          {
+            heading: "Why pricing skill matters",
+            body: "Overpricing wins temporary approval but loses time, trust, and buyer attention. Underpricing creates disputes and reputational damage. A top agent explains price with evidence and helps the client choose a strategy, not a guess.",
+          },
+          {
+            heading: "CMA method",
+            body: "Collect at least three comparable properties, adjust for location, land size, improvements, condition, urgency, and features, then write a price range with reasons. Separate facts from assumptions and note where data is weak.",
+          },
+          {
+            heading: "Workshop output",
+            body: "Complete a Property Appraisal Form for a real or practice property. Include comparables, recommended range, listing strategy, likely objections, and the conversation you would have if the owner insists on a higher price.",
+          },
+        ]),
+        objectives: ["Prepare a basic CMA", "Defend a pricing recommendation with evidence", "Handle unrealistic owner price expectations"],
+        estimatedMinutes: 60,
+        completionRequirement: "ASSIGNMENT",
+        resourceTitles: ["Property Appraisal Form", "Objection Handling Guide", "Listing Agreement Template"],
+        discussionPrompt: "How would you explain a lower-than-expected valuation to a seller without damaging trust?",
+      },
+      {
         title: "Collecting accurate listing information",
         stage: "Intermediate",
         summary: "Capture complete, verified property details before publishing.",
@@ -163,6 +238,29 @@ export const modules: ModuleSeed[] = [
         objectives: ["Apply photography standards", "Write accurate descriptions", "Execute multi-channel marketing"],
         estimatedMinutes: 40,
         resourceTitles: ["Property Photography Checklist", "Property Marketing Checklist", "Property Description Template", "WhatsApp Marketing Templates", "Social Media Content Planner"],
+      },
+      {
+        title: "Listing presentation and objection handling simulation",
+        stage: "Intermediate",
+        summary: "Practise the conversation that turns a property owner into a committed, well-informed client.",
+        richText: practicalLesson([
+          {
+            heading: "Presentation structure",
+            body: "Open by confirming the owner's goals, timeline, and concerns. Present market evidence, explain HouseLink's marketing process, agree documentation requirements, then confirm next actions in writing.",
+          },
+          {
+            heading: "Common objections",
+            body: "Expect questions about commission, price, exclusivity, speed, advertising reach, and whether another agent can do it cheaper. Strong agents answer calmly with evidence, process clarity, and service value.",
+          },
+          {
+            heading: "Simulation",
+            body: "Record or script a five-minute listing presentation. Include one price objection, one commission objection, and one document request. Submit the script or roleplay notes with your completed listing file.",
+          },
+        ]),
+        objectives: ["Deliver a structured listing presentation", "Respond to price and commission objections", "Close with documented next steps"],
+        estimatedMinutes: 55,
+        completionRequirement: "ASSIGNMENT",
+        resourceTitles: ["Objection Handling Guide", "Listing Agreement Template", "Property Marketing Checklist"],
       },
       {
         title: "Chapter 2 knowledge check and practical assessment",
@@ -192,6 +290,29 @@ export const modules: ModuleSeed[] = [
         resourceTitles: ["Buyer Registration Form", "Tenant Registration Form", "Buyer Needs Analysis Form", "Tenant Needs Analysis Form"],
       },
       {
+        title: "Buyer and tenant qualification simulation",
+        stage: "Intermediate",
+        summary: "Practise turning a vague enquiry into a documented, qualified client brief.",
+        richText: practicalLesson([
+          {
+            heading: "The problem",
+            body: "Many enquiries begin with incomplete information: 'I need a house in Harare' or 'Do you have rentals?' A professional agent turns that into a qualified brief before arranging viewings.",
+          },
+          {
+            heading: "Qualification script",
+            body: "Confirm budget, preferred suburbs, timing, decision makers, finance or payment readiness, must-haves, deal-breakers, and communication preference. For tenants, ask about move-in date, employer or income evidence, occupants, pets, and lease term.",
+          },
+          {
+            heading: "Simulation output",
+            body: "Complete one buyer needs analysis and one tenant needs analysis from practice conversations. Write the shortlist criteria you would use and which enquiries you would decline or park for later.",
+          },
+        ]),
+        objectives: ["Run structured qualification conversations", "Document buyer and tenant needs", "Decide which enquiries deserve immediate action"],
+        estimatedMinutes: 55,
+        completionRequirement: "ASSIGNMENT",
+        resourceTitles: ["Buyer Needs Analysis Form", "Tenant Needs Analysis Form", "Buyer Registration Form", "Tenant Registration Form"],
+      },
+      {
         title: "Matching clients with the right property",
         stage: "Intermediate",
         summary: "Shortlist ethically and explain fit clearly.",
@@ -217,6 +338,29 @@ export const modules: ModuleSeed[] = [
         objectives: ["Explain offer components clearly", "Use correct application templates", "Maintain neutral professional guidance"],
         estimatedMinutes: 35,
         resourceTitles: ["Offer to Purchase Template", "Rental Application Form"],
+      },
+      {
+        title: "Offer negotiation and counter-offer roleplay",
+        stage: "Intermediate",
+        summary: "Practise presenting offers and counter-offers without pressure, confusion, or undocumented changes.",
+        richText: practicalLesson([
+          {
+            heading: "Negotiation standard",
+            body: "The agent's role is to communicate accurately, keep records, and help each party understand options. Do not create terms verbally or pressure a party into agreement. Every material change must be documented.",
+          },
+          {
+            heading: "Roleplay scenario",
+            body: "A buyer offers below asking price with conditions. The seller counters with a higher price and a shorter acceptance deadline. Prepare the conversation you would have with each side, including risks, deadlines, and next documents.",
+          },
+          {
+            heading: "Evidence required",
+            body: "Submit a short script or notes showing how you present the offer, record the response, confirm the counter-offer, and escalate legal or contractual questions.",
+          },
+        ]),
+        objectives: ["Present offers neutrally", "Document counter-offers and deadlines", "Escalate legal questions at the right moment"],
+        estimatedMinutes: 50,
+        completionRequirement: "ASSIGNMENT",
+        resourceTitles: ["Offer to Purchase Template", "Rental Application Form", "Client Follow-Up Register"],
       },
       {
         title: "Chapter 3 client service simulation",
@@ -262,12 +406,57 @@ export const modules: ModuleSeed[] = [
         resourceTitles: ["Document Submission Checklist", "File Checklist"],
       },
       {
+        title: "Title deed, cession and estate risk flags",
+        stage: "Advanced",
+        summary: "Recognise document situations that require careful escalation before marketing or transacting.",
+        richText: practicalLesson([
+          {
+            heading: "Agent awareness",
+            body: "Agents often encounter title deeds, cession arrangements, deceased estates, company-owned property, family disputes, and missing document chains. You are not expected to solve legal issues, but you must recognise when a file is not ordinary.",
+          },
+          {
+            heading: "Risk flags",
+            body: "Escalate when names do not match, the person instructing is not the owner, an estate executor or company resolution is mentioned, original documents are unavailable, boundaries or rates are disputed, or clients resist written records.",
+          },
+          {
+            heading: "File note practice",
+            body: "For each risk flag, write a short file note: what you observed, what you requested, who you escalated to, and what action is paused until clearance is received.",
+          },
+        ]),
+        objectives: ["Identify high-risk document scenarios", "Create clear escalation file notes", "Pause unsafe transactions before harm is done"],
+        estimatedMinutes: 55,
+        completionRequirement: "ASSIGNMENT",
+        resourceTitles: ["Compliance Checklist", "File Checklist", "Document Submission Checklist"],
+      },
+      {
         title: "Understanding contracts and confidentiality",
         stage: "Advanced",
         summary: "Confidentiality, mandate terms, and when to seek legal advice.",
         richText: `<p>You are not a lawyer — but you must understand mandate basics, confidentiality duties, and referral boundaries. Never advise on legal interpretation; escalate to qualified professionals.</p><p>Client financial and identity data stays confidential unless disclosure is legally required or authorised.</p>`,
         objectives: ["Protect confidential client data", "Recognise legal referral boundaries", "Explain mandate basics accurately"],
         estimatedMinutes: 35,
+      },
+      {
+        title: "Lease, mandate and commission agreement essentials",
+        stage: "Advanced",
+        summary: "Understand the business terms agents must explain clearly before clients sign or proceed.",
+        richText: practicalLesson([
+          {
+            heading: "Commercial clarity",
+            body: "Clients should understand who the agent represents, what service is being provided, how commission is calculated, when payment is due, and what happens if terms change. This must be clear before conflict arises.",
+          },
+          {
+            heading: "Documents to review",
+            body: "For rentals, check lease term, deposit, monthly rent, handover condition, maintenance responsibilities, and payment channels. For sales and listings, check mandate type, marketing period, commission, asking price, and authority to advertise.",
+          },
+          {
+            heading: "Practice output",
+            body: "Prepare a plain-language explanation of commission and mandate terms for a first-time seller, plus a plain-language rental handover explanation for a tenant.",
+          },
+        ]),
+        objectives: ["Explain commercial terms in plain language", "Check lease and mandate basics", "Reduce disputes through early clarity"],
+        estimatedMinutes: 50,
+        resourceTitles: ["Listing Agreement Template", "Commission Calculation Worksheet", "Rental Application Form"],
       },
       {
         title: "Chapter 4 compliance assessment",
@@ -314,12 +503,58 @@ export const modules: ModuleSeed[] = [
         resourceTitles: ["Listing Tracker", "Closed Deals Register", "Sales Performance Tracker", "Commission Calculation Worksheet", "Expense Tracker", "Mileage Log"],
       },
       {
+        title: "Pipeline diagnosis and coaching review",
+        stage: "Advanced",
+        summary: "Use real activity numbers to diagnose weak points and choose the next professional habit to improve.",
+        richText: practicalLesson([
+          {
+            heading: "What top agents review",
+            body: "A pipeline review looks at leads generated, qualified enquiries, listings won, viewings booked, offers received, deals closed, response times, and follow-up gaps. The numbers show which skill needs attention.",
+          },
+          {
+            heading: "Diagnosis examples",
+            body: "Many leads but few viewings may mean qualification or listing quality is weak. Many viewings but few offers may point to pricing, property fit, or follow-up. Many offers but few closures may reveal negotiation or document delays.",
+          },
+          {
+            heading: "Coaching output",
+            body: "Submit one monthly dashboard with a written diagnosis and a 30-day improvement plan. Include one habit to stop, one habit to improve, and one metric to watch weekly.",
+          },
+        ]),
+        objectives: ["Diagnose pipeline weaknesses", "Use KPI data for coaching decisions", "Build a realistic 30-day improvement plan"],
+        estimatedMinutes: 50,
+        completionRequirement: "ASSIGNMENT",
+        resourceTitles: ["Monthly KPI Tracker", "Weekly Performance Review", "Lead Tracking Sheet", "Sales Performance Tracker"],
+      },
+      {
         title: "Professional reputation and long-term growth",
         stage: "Advanced",
         summary: "Reviews, referrals, and brand building on HouseLink.",
         richText: `<p>Your reputation is your most valuable asset. Deliver on promises, respond professionally to complaints, and ask satisfied clients for reviews through proper HouseLink channels.</p><p>Personal branding should align with HouseLink standards — professional photos, consistent messaging, no misleading claims.</p>`,
         objectives: ["Grow reviews ethically", "Build referral habits", "Align personal brand with HouseLink"],
         estimatedMinutes: 30,
+      },
+      {
+        title: "Field apprenticeship evidence portfolio",
+        stage: "Advanced",
+        summary: "Compile proof that you can perform core agent tasks, not only pass knowledge checks.",
+        richText: practicalLesson([
+          {
+            heading: "Portfolio purpose",
+            body: "Certification should prove field readiness. A portfolio gives admin, mentors, and branch leads evidence that you can prospect, qualify, list, market, show, document, and review performance professionally.",
+          },
+          {
+            heading: "Required evidence",
+            body: "Include a prospecting log, one listing file, one client qualification file, one viewing record, one compliance audit, one KPI review, and a short reflection on the most important correction you made during training.",
+          },
+          {
+            heading: "Professional standard",
+            body: "Remove or mask private client details where required. Label each document clearly and make sure every file shows dates, next actions, and supervisor or self-review notes.",
+          },
+        ]),
+        objectives: ["Assemble evidence of field competence", "Protect confidential information in submissions", "Prepare for mentor or admin review"],
+        estimatedMinutes: 75,
+        completionRequirement: "ASSIGNMENT",
+        resourceTitles: ["File Checklist", "Daily Activity Planner", "Property Viewing Register", "Monthly KPI Tracker", "Compliance Checklist"],
       },
       {
         title: "Final competency checklist",
@@ -374,6 +609,28 @@ export const modules: ModuleSeed[] = [
         objectives: ["Apply file and compliance checklists", "Use inspection and open-house tools", "Submit complete document packs"],
         estimatedMinutes: 25,
         resourceTitles: ["File Checklist", "Compliance Checklist", "Document Submission Checklist", "Property Inspection Checklist", "Open House Checklist"],
+      },
+      {
+        title: "Building your live field kit workflow",
+        stage: "Professional Kit",
+        summary: "Set up the exact folder, naming, and review routine that keeps forms usable in real deals.",
+        richText: practicalLesson([
+          {
+            heading: "Toolkit setup",
+            body: "A resource kit only has value when you can use it quickly under client pressure. Create folders for leads, listings, buyers, tenants, landlords, compliance, marketing, and performance. Keep blank templates separate from completed client files.",
+          },
+          {
+            heading: "Naming standard",
+            body: "Use clear names that include date, client or property reference, document type, and status. Example: 2026-07-26-Ms-Moyo-buyer-needs-analysis-draft. Consistent naming reduces lost documents and handover confusion.",
+          },
+          {
+            heading: "Weekly review",
+            body: "Every Friday, check open files against the File Checklist and update next actions. This creates a professional operating rhythm that supports HouseLink admins, clients, and your own pipeline.",
+          },
+        ]),
+        objectives: ["Organise the complete toolkit for field use", "Apply consistent document naming", "Run a weekly open-file review"],
+        estimatedMinutes: 35,
+        resourceTitles: ["File Checklist", "Compliance Checklist", "Client Follow-Up Register", "Weekly Planner"],
       },
       {
         title: "Performance trackers and quick reference guides",
