@@ -2,16 +2,21 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Children, useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   Award,
   BookOpen,
+  ChevronDown,
   CheckCircle2,
   ClipboardCheck,
   Download,
+  FileText,
   GraduationCap,
+  ListChecks,
+  MessageSquareText,
   ShieldCheck,
   Sparkles,
+  Target,
 } from "lucide-react";
 import { HouseLinkBrand } from "@/components/brand/houselink-logo";
 import { PageShell } from "@/components/layout/page-shell";
@@ -244,6 +249,14 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
   const theme = data.programme?.theme;
   const accent = theme?.accent ?? primaryColour;
   const heroGradient = theme?.gradient ?? "from-emerald-600 via-emerald-700 to-teal-800";
+  const tabItems: Array<{ id: Tab; label: string; icon: typeof BookOpen }> = [
+    { id: "curriculum", label: "Curriculum", icon: BookOpen },
+    { id: "toolkit", label: "Toolkit", icon: ClipboardCheck },
+    { id: "materials", label: "Notes", icon: Download },
+    { id: "assessments", label: "Assessments", icon: ShieldCheck },
+    { id: "discussions", label: "Discuss", icon: MessageSquareText },
+    { id: "progress", label: "Progress", icon: GraduationCap },
+  ];
 
   return (
     <PageShell
@@ -286,18 +299,29 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
         </div>
       </div>
 
-      <div className="mt-6 grid grid-cols-2 gap-2 sm:flex sm:gap-2 sm:overflow-x-auto sm:pb-1 scrollbar-none">
-        {(["curriculum", "toolkit", "materials", "assessments", "discussions", "progress"] as Tab[]).map((item) => (
-          <Button
-            key={item}
-            variant={tab === item ? "primary" : "secondary"}
-            className={cn("w-full capitalize sm:w-auto sm:shrink-0", tab === item && "shadow-soft")}
-            style={tab === item ? { backgroundColor: accent } : undefined}
-            onClick={() => setTab(item)}
-          >
-            {item === "materials" ? "Session Notes" : item === "toolkit" ? "Toolkit" : item}
-          </Button>
-        ))}
+      <div className="mt-6 overflow-hidden rounded-xl border border-slate-200 bg-white/90 p-2 shadow-soft dark:border-slate-800 dark:bg-slate-950/80">
+        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+          {tabItems.map((item) => {
+            const Icon = item.icon;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                className={cn(
+                  "inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-lg px-3 text-sm font-bold leading-none transition sm:px-4",
+                  tab === item.id
+                    ? "text-white shadow-md shadow-emerald-950/10"
+                    : "text-slate-600 hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white",
+                )}
+                style={tab === item.id ? { backgroundColor: accent } : undefined}
+                onClick={() => setTab(item.id)}
+              >
+                <Icon className="size-4 shrink-0" />
+                {item.label}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {tab === "curriculum" && (
@@ -436,14 +460,23 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
       )}
 
       {tab === "assessments" && (
-        <div className="mt-6 space-y-6">
+        <div className="mt-6 space-y-5">
           {(data.assessments.summary || data.programme?.badgeName) && (
-            <div className="academy-panel rounded-xl p-5 dark:border-emerald-900/40 dark:from-emerald-950/30 dark:to-slate-950">
-              <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">Certification requirements</p>
-              {data.assessments.summary && <p className="mt-2 text-sm text-slate-700 dark:text-slate-300">{data.assessments.summary}</p>}
-              {data.programme?.badgeName && (
-                <p className="mt-2 text-xs text-slate-500">Earn the <span className="font-semibold text-slate-700 dark:text-slate-200">{data.programme.badgeName}</span> badge by completing all checkpoints below.</p>
-              )}
+            <div className="academy-panel overflow-hidden rounded-xl dark:border-emerald-900/40">
+              <div className="grid gap-0 md:grid-cols-[1fr_15rem]">
+                <div className="p-5 sm:p-6">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-emerald-700 dark:text-emerald-300">Certification pathway</p>
+                  <h2 className="mt-2 text-xl font-bold leading-tight text-slate-950 dark:text-white sm:text-2xl">Prove skill before certification</h2>
+                  {data.assessments.summary && <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600 dark:text-slate-300">{data.assessments.summary}</p>}
+                </div>
+                {data.programme?.badgeName && (
+                  <div className="border-t border-emerald-100 bg-emerald-50/70 p-5 dark:border-emerald-900/50 dark:bg-emerald-950/20 md:border-l md:border-t-0">
+                    <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-emerald-700 dark:text-emerald-300">Earn badge</p>
+                    <p className="mt-2 text-sm font-semibold leading-5 text-slate-900 dark:text-white">{data.programme.badgeName}</p>
+                    <p className="mt-2 text-xs leading-5 text-slate-500 dark:text-slate-400">Complete every checkpoint and submit review-ready evidence.</p>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
@@ -461,10 +494,10 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
 
           <CourseRecommendations recommendations={courseRecommendations(data)} accent={accent} />
 
-          <section className="academy-panel rounded-xl p-5">
+          <section className="academy-panel rounded-xl p-5 sm:p-6">
             <div className="flex flex-col gap-2">
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Mentor/admin sign-off gate</p>
-              <h3 className="text-xl font-bold">Uploads are not enough for certification</h3>
+              <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Mentor/admin sign-off gate</p>
+              <h3 className="text-lg font-bold leading-tight text-slate-950 dark:text-white sm:text-xl">Uploads are reviewed before certification</h3>
               <p className="max-w-3xl text-sm leading-6 text-slate-600 dark:text-slate-300">
                 Practical work must be reviewed and graded before a certificate is issued. The professional portfolio and roleplay evidence show whether you can handle real clients safely.
               </p>
@@ -494,59 +527,79 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
 
           <SimulationPractice accent={accent} />
 
-          <div className="grid gap-6 xl:grid-cols-3">
-            <AssessmentSection title={`Module Quizzes (${data.assessments.quizzes.length})`} icon={ShieldCheck} empty="Module quizzes load with your programme enrolment.">
+          <div className="space-y-3">
+            <AssessmentGroup
+              title="Module quizzes"
+              subtitle="Knowledge checks with shuffled answers and retakes."
+              icon={ShieldCheck}
+              meta={`${data.assessments.quizzes.length} checkpoints`}
+              accent={accent}
+              empty="Module quizzes load with your programme enrolment."
+            >
               {data.assessments.quizzes.map((quiz) => (
-                <div key={quiz.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-950">
-                  {quiz.moduleTitle && (
-                    <p className="mb-2 text-[10px] font-bold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">{quiz.moduleTitle}</p>
-                  )}
-                  <p className="font-semibold">{quiz.title}</p>
-                  {quiz.description && <p className="text-sm text-slate-600 mt-1 line-clamp-3">{quiz.description}</p>}
-                  <p className="text-xs text-slate-500 mt-2">{quiz.questionCount} questions / {quiz.passingPercentage}% to pass{quiz.timeLimitMinutes ? ` / ${quiz.timeLimitMinutes} min` : ""}</p>
-                  {quiz.bestScore !== null && (
-                    <p className={cn("text-sm mt-2 font-medium", quiz.passed ? "text-emerald-600" : "text-amber-600")}>
-                      Best score: {quiz.bestScore}% {quiz.passed ? "Passed" : "- retake available"}
-                    </p>
-                  )}
-                  <Button className="mt-3 w-full" onClick={() => setActiveQuizId(quiz.id)}>{quiz.passed ? "Retake Quiz" : "Take Quiz"}</Button>
-                </div>
+                <AssessmentActionCard
+                  key={quiz.id}
+                  title={quiz.title}
+                  eyebrow={quiz.moduleTitle}
+                  description={quiz.description}
+                  meta={`${quiz.questionCount} questions / ${quiz.passingPercentage}% pass${quiz.timeLimitMinutes ? ` / ${quiz.timeLimitMinutes} min` : ""}`}
+                  status={quiz.bestScore !== null ? `Best score: ${quiz.bestScore}% ${quiz.passed ? "Passed" : "Retake available"}` : "Not attempted yet"}
+                  statusTone={quiz.bestScore !== null && !quiz.passed ? "amber" : quiz.passed ? "emerald" : "slate"}
+                  actionLabel={quiz.passed ? "Retake Quiz" : "Take Quiz"}
+                  onAction={() => setActiveQuizId(quiz.id)}
+                />
               ))}
-            </AssessmentSection>
+            </AssessmentGroup>
 
-            <AssessmentSection title={`Practical Assignments (${data.assessments.assignments.length})`} icon={ClipboardCheck} empty="Practical assignments are tied to each module in this programme.">
+            <AssessmentGroup
+              title="Practical assignments"
+              subtitle="Field tasks that prove documentation, judgement, and client readiness."
+              icon={ClipboardCheck}
+              meta={`${data.assessments.assignments.length} submissions`}
+              accent={accent}
+              empty="Practical assignments are tied to each module in this programme."
+            >
               {data.assessments.assignments.map((assignment) => (
-                <div key={assignment.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-950">
-                  {assignment.moduleTitle && (
-                    <p className="mb-2 text-[10px] font-bold uppercase tracking-wide text-sky-700 dark:text-sky-300">{assignment.moduleTitle}</p>
-                  )}
-                  <p className="font-semibold">{assignment.title}</p>
-                  <p className="text-sm text-slate-600 mt-1 line-clamp-4">{assignment.description}</p>
-                  <p className="text-xs text-slate-500 mt-2">{assignment.points} points{assignment.dueDays ? ` / due within ${assignment.dueDays} days` : ""}</p>
-                  <p className={cn("text-xs mt-1 font-semibold", assignment.submitted ? "text-emerald-600" : "text-slate-500")}>
-                    {assignment.submitted ? `Submitted / ${assignment.status}` : "Not submitted yet"}
-                  </p>
-                  <Button className="mt-3 w-full" variant="secondary" onClick={() => setActiveAssignmentId(assignment.id)}>
-                    {assignment.submitted ? "View Submission" : "Submit Assignment"}
-                  </Button>
-                </div>
+                <AssessmentActionCard
+                  key={assignment.id}
+                  title={assignment.title}
+                  eyebrow={assignment.moduleTitle}
+                  description={assignment.description}
+                  meta={`${assignment.points} points${assignment.dueDays ? ` / due within ${assignment.dueDays} days` : ""}`}
+                  status={assignment.submitted ? `Submitted / ${assignment.status}` : "Not submitted yet"}
+                  statusTone={assignment.submitted ? "emerald" : "slate"}
+                  actionLabel={assignment.submitted ? "View Submission" : "Submit Assignment"}
+                  actionVariant="secondary"
+                  onAction={() => setActiveAssignmentId(assignment.id)}
+                />
               ))}
-            </AssessmentSection>
+            </AssessmentGroup>
 
-            <AssessmentSection title={data.assessments.exams.length ? "Final Examination" : "Certificate Checkpoint"} icon={GraduationCap} empty="">
+            <AssessmentGroup
+              title={data.assessments.exams.length ? "Final examination" : "Certificate checkpoint"}
+              subtitle="The final proof point before certificate release."
+              icon={GraduationCap}
+              meta={data.assessments.exams.length ? `${data.assessments.exams.length} capstone` : "review gate"}
+              accent="#b45309"
+              empty=""
+            >
               {data.assessments.exams.map((exam) => (
-                <div key={exam.id} className="rounded-xl border border-amber-200 bg-gradient-to-br from-amber-50 to-white p-4 shadow-sm dark:border-amber-900/40 dark:from-amber-950/20 dark:to-slate-950">
-                  <p className="text-[10px] font-bold uppercase tracking-wide text-amber-700 dark:text-amber-300">Capstone</p>
-                  <p className="font-semibold mt-1">{exam.title}</p>
-                  {exam.description && <p className="text-sm text-slate-600 mt-1">{exam.description}</p>}
-                  <p className="text-xs text-slate-500 mt-2">{exam.durationMinutes} min / {exam.passingScore}% pass / {exam.attemptLimit} attempts</p>
-                  <Button className="mt-3 w-full" onClick={() => setActiveExamId(exam.id)}>Take Final Exam</Button>
-                </div>
+                <AssessmentActionCard
+                  key={exam.id}
+                  title={exam.title}
+                  eyebrow="Capstone"
+                  description={exam.description}
+                  meta={`${exam.durationMinutes} min / ${exam.passingScore}% pass / ${exam.attemptLimit} attempts`}
+                  status="Final exam opens after the required coursework is complete."
+                  statusTone="amber"
+                  actionLabel="Take Final Exam"
+                  onAction={() => setActiveExamId(exam.id)}
+                />
               ))}
               {data.assessments.certificateCheckpoint && (
                 <div className="rounded-xl border border-dashed border-emerald-300 bg-emerald-50/50 p-4 dark:border-emerald-800 dark:bg-emerald-950/20">
-                  <p className="font-semibold text-emerald-800 dark:text-emerald-200">{data.assessments.certificateCheckpoint.title}</p>
-                  <p className="text-sm text-slate-600 mt-2 dark:text-slate-300">{data.assessments.certificateCheckpoint.description}</p>
+                  <p className="text-sm font-bold text-emerald-800 dark:text-emerald-200">{data.assessments.certificateCheckpoint.title}</p>
+                  <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">{data.assessments.certificateCheckpoint.description}</p>
                   {data.programme?.includes && (
                     <ul className="mt-3 space-y-1.5 text-xs text-slate-600 dark:text-slate-400">
                       {data.programme.includes.filter((item) => /quiz|assignment|checkpoint|certificate/i.test(item)).slice(0, 4).map((item) => (
@@ -556,7 +609,7 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
                   )}
                 </div>
               )}
-            </AssessmentSection>
+            </AssessmentGroup>
           </div>
         </div>
       )}
@@ -580,23 +633,23 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
 
 function AssessmentStat({ label, value, accent }: { label: string; value: string; accent: string }) {
   return (
-    <div className="academy-card rounded-xl p-4">
-      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</p>
-      <p className="mt-1 text-lg font-bold" style={{ color: accent }}>{value}</p>
+    <div className="academy-card rounded-xl p-4 sm:p-5">
+      <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">{label}</p>
+      <p className="mt-1 text-base font-bold leading-snug sm:text-lg" style={{ color: accent }}>{value}</p>
     </div>
   );
 }
 
 function CourseRecommendations({ recommendations, accent }: { recommendations: string[]; accent: string }) {
   return (
-    <section className="academy-panel rounded-xl p-5">
-      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Trainer recommendations</p>
-      <h3 className="mt-1 text-xl font-bold">Best next moves</h3>
-      <div className="mt-4 grid gap-3 md:grid-cols-3">
+    <section className="academy-panel rounded-xl p-5 sm:p-6">
+      <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Trainer recommendations</p>
+      <h3 className="mt-1 text-lg font-bold leading-tight text-slate-950 dark:text-white sm:text-xl">Best next moves</h3>
+      <div className="mt-4 grid gap-3 lg:grid-cols-3">
         {recommendations.map((item, index) => (
-          <div key={item} className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950">
-            <span className="flex size-8 items-center justify-center rounded-full text-sm font-bold text-white" style={{ backgroundColor: accent }}>{index + 1}</span>
-            <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">{item}</p>
+          <div key={item} className="flex gap-3 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950">
+            <span className="flex size-8 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white" style={{ backgroundColor: accent }}>{index + 1}</span>
+            <p className="text-sm leading-6 text-slate-600 dark:text-slate-300">{item}</p>
           </div>
         ))}
       </div>
@@ -613,16 +666,16 @@ function ReadinessPanel({
 }) {
   const statusLabel = readiness.status === "READY" ? "Client-ready" : readiness.status === "DEVELOPING" ? "Developing" : "Needs practice";
   return (
-    <section className="academy-panel rounded-xl p-5">
+    <section className="academy-panel rounded-xl p-5 sm:p-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Agent Readiness Score</p>
-          <h3 className="mt-1 text-xl font-bold">Industry readiness: {statusLabel}</h3>
-          <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">{readiness.mentorSignoffLabel}</p>
+          <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Agent readiness score</p>
+          <h3 className="mt-1 text-lg font-bold leading-tight text-slate-950 dark:text-white sm:text-xl">Industry readiness: {statusLabel}</h3>
+          <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-600 dark:text-slate-400">{readiness.mentorSignoffLabel}</p>
         </div>
-        <div className="shrink-0 rounded-xl px-5 py-4 text-center text-white" style={{ backgroundColor: accent }}>
-          <p className="text-3xl font-bold">{readiness.overall}%</p>
-          <p className="text-xs font-semibold uppercase tracking-wide text-white/80">Overall</p>
+        <div className="flex shrink-0 items-center justify-between gap-4 rounded-xl px-4 py-3 text-white sm:block sm:px-5 sm:py-4 sm:text-center" style={{ backgroundColor: accent }}>
+          <p className="text-2xl font-bold sm:text-3xl">{readiness.overall}%</p>
+          <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-white/80">Overall</p>
         </div>
       </div>
       <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
@@ -630,10 +683,10 @@ function ReadinessPanel({
           <div key={category.id} className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="font-semibold">{category.label}</p>
+                <p className="text-sm font-bold text-slate-900 dark:text-white">{category.label}</p>
                 <p className="mt-1 text-xs leading-relaxed text-slate-500">{category.description}</p>
               </div>
-              <span className="text-lg font-bold" style={{ color: accent }}>{category.score}%</span>
+              <span className="text-base font-bold" style={{ color: accent }}>{category.score}%</span>
             </div>
             <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
               <div className="h-full rounded-full" style={{ width: `${category.score}%`, backgroundColor: accent }} />
@@ -647,20 +700,31 @@ function ReadinessPanel({
 
 function SimulationPractice({ accent }: { accent: string }) {
   return (
-    <section className="academy-panel rounded-xl p-5">
-      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Practical simulations</p>
-      <h3 className="mt-1 text-xl font-bold">Rehearse before client work</h3>
-      <div className="mt-4 space-y-2">
+    <section className="academy-panel rounded-xl p-5 sm:p-6">
+      <div className="flex items-start gap-3">
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-700 ring-1 ring-amber-100 dark:bg-amber-950/30 dark:text-amber-300 dark:ring-amber-900/40">
+          <MessageSquareText className="size-5" />
+        </span>
+        <div>
+          <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Practical simulations</p>
+          <h3 className="mt-1 text-lg font-bold leading-tight text-slate-950 dark:text-white sm:text-xl">Rehearse before client work</h3>
+          <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">Open each scenario, prepare your response, then compare it against the evidence a reviewer would expect.</p>
+        </div>
+      </div>
+      <div className="mt-4 space-y-3">
         {ROLEPLAY_ASSESSMENT_SCENARIOS.slice(0, 4).map((scenario, index) => (
-          <details key={scenario} className="group rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950">
-            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 font-semibold">
-              <span>{scenario}</span>
-              <span className="rounded-full px-2 py-1 text-xs text-white" style={{ backgroundColor: accent }}>Scenario {index + 1}</span>
+          <details key={scenario} className="group rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 marker:content-none">
+              <div className="min-w-0">
+                <p className="text-[11px] font-bold uppercase tracking-[0.16em]" style={{ color: accent }}>Scenario {index + 1}</p>
+                <p className="mt-1 text-sm font-semibold leading-5 text-slate-900 dark:text-white">{scenario}</p>
+              </div>
+              <ChevronDown className="size-5 shrink-0 text-slate-400 transition group-open:rotate-180" />
             </summary>
-            <div className="mt-3 grid gap-2 text-sm leading-6 text-slate-600 dark:text-slate-300 sm:grid-cols-3">
-              <p>Prepare your opening script, client questions, risk checks, and closing summary.</p>
-              <p>Record what evidence you would save in the client file before moving forward.</p>
-              <p>Ask a mentor to score clarity, judgement, documentation, and escalation discipline.</p>
+            <div className="grid gap-3 border-t border-slate-100 px-4 py-4 text-sm leading-6 text-slate-600 dark:border-slate-800 dark:text-slate-300 md:grid-cols-3">
+              <PracticePrompt icon={Target} title="Prepare" body="Opening script, client questions, risk checks, and closing summary." />
+              <PracticePrompt icon={FileText} title="Record" body="Evidence you would save in the client file before moving forward." />
+              <PracticePrompt icon={ListChecks} title="Review" body="Ask a mentor to score clarity, judgement, documentation, and escalation discipline." />
             </div>
           </details>
         ))}
@@ -669,12 +733,107 @@ function SimulationPractice({ accent }: { accent: string }) {
   );
 }
 
-function AssessmentSection({ title, icon: Icon, empty, children }: { title: string; icon: typeof BookOpen; empty: string; children: React.ReactNode }) {
+function PracticePrompt({ icon: Icon, title, body }: { icon: typeof BookOpen; title: string; body: string }) {
   return (
-    <section>
-      <h3 className="font-bold flex items-center gap-2 mb-3"><Icon className="size-5 text-emerald-500" /> {title}</h3>
-      <div className="space-y-3">{Children.count(children) === 0 ? <p className="text-sm text-slate-500">{empty}</p> : children}</div>
-    </section>
+    <div className="rounded-lg bg-slate-50 p-3 dark:bg-slate-900/60">
+      <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.14em] text-slate-500">
+        <Icon className="size-4" />
+        {title}
+      </p>
+      <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">{body}</p>
+    </div>
+  );
+}
+
+function AssessmentGroup({
+  title,
+  subtitle,
+  icon: Icon,
+  meta,
+  accent,
+  empty,
+  children,
+}: {
+  title: string;
+  subtitle: string;
+  icon: typeof BookOpen;
+  meta: string;
+  accent: string;
+  empty: string;
+  children: React.ReactNode;
+}) {
+  const hasContent = Array.isArray(children) ? children.length > 0 : Boolean(children);
+  return (
+    <details className="academy-card group overflow-hidden rounded-xl">
+      <summary className="flex cursor-pointer list-none items-center gap-3 px-4 py-4 marker:content-none sm:px-5">
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-xl" style={{ backgroundColor: `${accent}14`, color: accent }}>
+          <Icon className="size-5" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-base font-bold leading-tight text-slate-950 dark:text-white">{title}</p>
+          <p className="mt-1 line-clamp-2 text-sm leading-5 text-slate-500 dark:text-slate-400">{subtitle}</p>
+        </div>
+        <div className="hidden shrink-0 items-center gap-3 sm:flex">
+          <span className="rounded-full px-3 py-1 text-xs font-bold" style={{ backgroundColor: `${accent}16`, color: accent }}>{meta}</span>
+          <ChevronDown className="size-5 text-slate-400 transition group-open:rotate-180" />
+        </div>
+        <ChevronDown className="size-5 shrink-0 text-slate-400 transition group-open:rotate-180 sm:hidden" />
+      </summary>
+      <div className="border-t border-slate-100 bg-white p-4 dark:border-slate-800 dark:bg-slate-950 sm:p-5">
+        <div className="mb-3 sm:hidden">
+          <span className="rounded-full px-3 py-1 text-xs font-bold" style={{ backgroundColor: `${accent}16`, color: accent }}>{meta}</span>
+        </div>
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {hasContent ? children : <p className="text-sm text-slate-500">{empty}</p>}
+        </div>
+      </div>
+    </details>
+  );
+}
+
+function AssessmentActionCard({
+  title,
+  eyebrow,
+  description,
+  meta,
+  status,
+  statusTone,
+  actionLabel,
+  actionVariant = "primary",
+  onAction,
+}: {
+  title: string;
+  eyebrow?: string | null;
+  description?: string | null;
+  meta: string;
+  status: string;
+  statusTone: "emerald" | "amber" | "slate";
+  actionLabel: string;
+  actionVariant?: "primary" | "secondary";
+  onAction: () => void;
+}) {
+  return (
+    <article className="flex min-h-[13rem] flex-col rounded-xl border border-slate-200 bg-slate-50/70 p-4 dark:border-slate-800 dark:bg-slate-900/50">
+      {eyebrow && <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-emerald-700 dark:text-emerald-300">{eyebrow}</p>}
+      <h4 className="mt-1 text-sm font-bold leading-5 text-slate-950 dark:text-white">{title}</h4>
+      {description && <p className="mt-2 line-clamp-3 text-sm leading-6 text-slate-600 dark:text-slate-300">{description}</p>}
+      <div className="mt-3 space-y-1 text-xs leading-5 text-slate-500 dark:text-slate-400">
+        <p>{meta}</p>
+        <p
+          className={cn(
+            "font-bold",
+            statusTone === "emerald" && "text-emerald-600 dark:text-emerald-300",
+            statusTone === "amber" && "text-amber-600 dark:text-amber-300",
+            statusTone === "slate" && "text-slate-500 dark:text-slate-400",
+          )}
+        >
+          {status}
+        </p>
+      </div>
+      <Button className="mt-auto w-full" variant={actionVariant} onClick={onAction}>
+        {actionLabel}
+      </Button>
+    </article>
   );
 }
 
