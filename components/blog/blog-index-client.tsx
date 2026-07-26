@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useMemo, useState } from "react";
-import { ArrowRight, Columns3, LayoutGrid, List, Search, Sparkles, type LucideIcon } from "lucide-react";
+import { ArrowRight, Columns3, Home, LayoutGrid, List, Search, ShieldCheck, Sparkles, TrendingUp, type LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api/client";
 import { BlogCard } from "@/components/blog/blog-card";
@@ -37,6 +37,22 @@ type BlogPost = {
   category?: { name: string; slug: string } | null;
   author?: { name: string } | null;
 };
+
+const startHereGuides = [
+  { label: "Renters", href: "/blog/how-to-find-a-house-to-rent-in-zimbabwe-without-wasting-time", icon: Search, text: "Budget, viewings, deposits, utilities and warning signs." },
+  { label: "Buyers", href: "/blog/buying-property-in-zimbabwe-questions-to-ask-before-you-commit", icon: Home, text: "Documents, title checks, rates, offers and transfer questions." },
+  { label: "Landlords", href: "/blog/what-landlords-should-check-before-accepting-a-tenant", icon: ShieldCheck, text: "Screening, leases, handover records and tenant expectations." },
+  { label: "Investors", href: "/blog/how-to-evaluate-rental-yield-before-buying-an-investment-property", icon: TrendingUp, text: "Yield, vacancy, services, upgrades and tenant demand." },
+] as const;
+
+const popularQuestions = [
+  { label: "Can a landlord increase rent at any time?", href: "/blog/can-a-landlord-increase-rent-at-any-time-in-zimbabwe" },
+  { label: "Title deed or cession: which is safer?", href: "/blog/title-deed-vs-cession-which-is-safer-for-zimbabwe-property-buyers" },
+  { label: "What if a tenant refuses to move out?", href: "/blog/what-to-do-if-a-tenant-refuses-to-move-out-in-zimbabwe" },
+  { label: "How do I verify an estate agent?", href: "/blog/how-to-verify-an-estate-agent-before-working-with-them" },
+  { label: "What should be in a lease agreement?", href: "/blog/what-should-be-in-a-proper-lease-agreement-in-zimbabwe" },
+  { label: "What are the hidden costs of buying?", href: "/blog/hidden-costs-of-buying-property-in-zimbabwe" },
+] as const;
 
 export function BlogIndexClient({ initialData }: { initialData: BlogIndexData }) {
   const [data, setData] = useState(initialData);
@@ -114,6 +130,43 @@ export function BlogIndexClient({ initialData }: { initialData: BlogIndexData })
           </div>
         </div>
         {activeCategoryName ? <p className="mt-3 text-sm text-slate-500">Filtering by {activeCategoryName}</p> : null}
+      </section>
+
+      <section className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
+        <div>
+          <p className="section-eyebrow">Start here</p>
+          <h2 className="mt-2 text-2xl font-bold tracking-normal text-ink dark:text-white sm:text-3xl">Guides by property decision.</h2>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            {startHereGuides.map((guide) => {
+              const Icon = guide.icon;
+              return (
+                <Link key={guide.href} href={guide.href} className="group rounded-lg border border-slate-200 bg-white p-4 shadow-sm transition hover:border-emerald-300 hover:shadow-soft dark:border-slate-800 dark:bg-slate-900">
+                  <div className="flex items-start gap-3">
+                    <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-200">
+                      <Icon className="size-5" />
+                    </span>
+                    <div>
+                      <p className="font-semibold text-ink group-hover:text-emerald-700 dark:text-white dark:group-hover:text-emerald-300">{guide.label}</p>
+                      <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">{guide.text}</p>
+                    </div>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+        <div>
+          <p className="section-eyebrow">Popular questions</p>
+          <h2 className="mt-2 text-2xl font-bold tracking-normal text-ink dark:text-white sm:text-3xl">Answers people actually need.</h2>
+          <div className="mt-4 grid gap-2">
+            {popularQuestions.map((question) => (
+              <Link key={question.href} href={question.href} className="group flex min-h-12 items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-emerald-300 hover:text-emerald-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:text-emerald-300">
+                <span>{question.label}</span>
+                <ArrowRight className="size-4 shrink-0" />
+              </Link>
+            ))}
+          </div>
+        </div>
       </section>
 
       <section>

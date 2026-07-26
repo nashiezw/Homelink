@@ -50,7 +50,7 @@ export default async function BlogPage() {
                 Practical guides for renting, buying, selling, listing, safety, moving and property decisions in Zimbabwe.
               </p>
               <div className="mt-4 flex flex-wrap gap-2 sm:mt-5 sm:gap-3">
-                <Link href="#latest-resources" className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-emerald-500 px-4 py-2.5 text-sm font-bold text-ink hover:bg-emerald-400">
+                <Link href="/blog#latest-resources" className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-emerald-500 px-4 py-2.5 text-sm font-bold text-ink hover:bg-emerald-400">
                   See latest blogs
                   <ArrowRight className="size-4" />
                 </Link>
