@@ -17,6 +17,10 @@ type VerificationResult = {
     trainingSessions: string | null;
     quizzes: number;
     assignments: number;
+    passedQuizAttempts?: number;
+    reviewedAssignments?: number;
+    finalExamBestScore?: number | null;
+    confidenceSignals?: { confident: number; mixed: number; guessed: number } | null;
     requiresFinalExam: boolean;
     requiresPortfolio: boolean;
     roleplayAssessments: number;
@@ -109,12 +113,20 @@ export function CertificateVerificationClient() {
                   <VerificationFact label="Quizzes" value={String(result.assessmentProof.quizzes)} />
                   <VerificationFact label="Assignments" value={String(result.assessmentProof.assignments)} />
                   <VerificationFact label="Capstone" value={result.assessmentProof.requiresFinalExam ? "Final exam" : "Module gates"} />
+                  <VerificationFact label="Passed attempts" value={String(result.assessmentProof.passedQuizAttempts ?? result.assessmentProof.quizzes)} />
+                  <VerificationFact label="Reviewed work" value={String(result.assessmentProof.reviewedAssignments ?? result.assessmentProof.assignments)} />
+                  <VerificationFact label="Best final score" value={result.assessmentProof.finalExamBestScore === null || result.assessmentProof.finalExamBestScore === undefined ? "N/A" : `${result.assessmentProof.finalExamBestScore}%`} />
                 </div>
                 <div className="mt-3 flex flex-wrap gap-2">
                   {result.assessmentProof.trainingSessions && <VerificationChip value={result.assessmentProof.trainingSessions} />}
                   {result.assessmentProof.requiresPortfolio && <VerificationChip value="Field portfolio required" />}
                   {!!result.assessmentProof.roleplayAssessments && <VerificationChip value={`${result.assessmentProof.roleplayAssessments} roleplay/simulation assessments`} />}
                 </div>
+                {result.assessmentProof.confidenceSignals && (
+                  <p className="mt-3 text-xs leading-5 text-slate-500 dark:text-slate-400">
+                    Confidence record: {result.assessmentProof.confidenceSignals.confident} confident, {result.assessmentProof.confidenceSignals.mixed} mixed, {result.assessmentProof.confidenceSignals.guessed} guessed checkpoint submissions.
+                  </p>
+                )}
               </div>
             )}
             {!!result.skillsAssessed?.length && (

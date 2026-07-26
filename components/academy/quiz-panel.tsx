@@ -43,14 +43,18 @@ export function QuizPanel({
   const [confidence, setConfidence] = useState<"guessed" | "mixed" | "confident" | null>(null);
   const [result, setResult] = useState<QuizResult | null>(null);
   const [busy, setBusy] = useState(false);
+  const [startedAt, setStartedAt] = useState<number | null>(null);
+  const [secondsRemaining, setSecondsRemaining] = useState<number | null>(timeLimitMinutes ? timeLimitMinutes * 60 : null);
 
   const load = useCallback(async () => {
     const detail = await apiFetch<{ questions: QuizQuestion[] }>(`/api/v1/academy/quizzes/${quizId}`);
     if (detail.data?.questions) {
       setQuestions(detail.data.questions);
       setAnswers({});
+      setStartedAt(Date.now());
+      setSecondsRemaining(timeLimitMinutes ? timeLimitMinutes * 60 : null);
     }
-  }, [quizId]);
+  }, [quizId, timeLimitMinutes]);
 
   useEffect(() => {
     void load();
@@ -60,7 +64,11 @@ export function QuizPanel({
     setBusy(true);
     const response = await apiFetch<{ score: number; passed: boolean }>(`/api/v1/academy/quizzes/${quizId}/attempt`, {
       method: "POST",
-      body: JSON.stringify({ answers, confidence }),
+      body: JSON.stringify({
+        answers,
+        confidence,
+        elapsedSeconds: startedAt ? Math.max(0, Math.round((Date.now() - startedAt) / 1000)) : null,
+      }),
     });
     setBusy(false);
     if (response.error) {
@@ -80,6 +88,15 @@ export function QuizPanel({
     await load();
   }
 
+  useEffect(() => {
+    if (!timeLimitMinutes || result || !startedAt) return;
+    const timer = window.setInterval(() => {
+      const elapsed = Math.max(0, Math.round((Date.now() - startedAt) / 1000));
+      setSecondsRemaining(Math.max(0, timeLimitMinutes * 60 - elapsed));
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [result, startedAt, timeLimitMinutes]);
+
   if (result) {
     return (
       <div className="mx-auto max-w-3xl rounded-xl border border-slate-200 bg-white p-6 text-center shadow-sm dark:border-slate-800 dark:bg-slate-950 sm:p-8">
@@ -97,6 +114,13 @@ export function QuizPanel({
               ))}
             </div>
             {result.retakeGuidance && <p className="mt-3 text-xs leading-5 text-amber-900/80 dark:text-amber-100/80">{result.retakeGuidance}</p>}
+            <div className="mt-3 space-y-2">
+              {result.reviewTopics.slice(0, 3).map((topic) => (
+                <p key={topic} className="rounded-lg bg-white px-3 py-2 text-xs leading-5 text-amber-900 shadow-sm dark:bg-slate-900 dark:text-amber-100">
+                  {remediationForTopic(topic)}
+                </p>
+              ))}
+            </div>
           </div>
         )}
         <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-center">
@@ -111,7 +135,7 @@ export function QuizPanel({
     );
   }
 
-  const resolvedQuestionCount = questionCount ?? questions.length;
+  const resolvedQuestionCount = questions.length || questionCount || 0;
   const answeredCount = questions.filter((question) => answers[question.id]).length;
   const canSubmit = questions.length > 0 && answeredCount === questions.length;
 
@@ -133,11 +157,11 @@ export function QuizPanel({
         <div className="mt-4 grid grid-cols-3 gap-2">
           <QuizMeta label="Questions" value={String(resolvedQuestionCount || "-")} />
           <QuizMeta label="Answered" value={`${answeredCount}/${questions.length || resolvedQuestionCount || 0}`} />
-          <QuizMeta label="Pass mark" value={`${passingPercentage}%`} />
+          <QuizMeta label={timeLimitMinutes ? "Time left" : "Pass mark"} value={timeLimitMinutes ? formatSeconds(secondsRemaining ?? timeLimitMinutes * 60) : `${passingPercentage}%`} />
         </div>
         {timeLimitMinutes ? (
-          <p className="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-500 dark:bg-slate-900 dark:text-slate-400">
-            Suggested time: {timeLimitMinutes} minutes
+          <p className={cn("mt-3 rounded-lg px-3 py-2 text-xs font-semibold", secondsRemaining === 0 ? "bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-200" : "bg-slate-50 text-slate-500 dark:bg-slate-900 dark:text-slate-400")}>
+            {secondsRemaining === 0 ? "Time has expired. Retake the checkpoint to submit a fresh timed attempt." : `Timed session: ${timeLimitMinutes} minutes. Submit before the timer reaches zero.`}
           </p>
         ) : null}
       </div>
@@ -224,13 +248,27 @@ export function QuizPanel({
           <Button className="w-full sm:w-auto" variant="secondary" onClick={onBack}>
             <ChevronLeft className="size-4 mr-2" /> Back
           </Button>
-          <Button className="w-full sm:w-auto" disabled={busy || !canSubmit || !confidence} onClick={() => void submit()}>
+          <Button className="w-full sm:w-auto" disabled={busy || !canSubmit || !confidence || secondsRemaining === 0} onClick={() => void submit()}>
             {busy ? <Loader2 className="size-4 animate-spin" /> : "Submit checkpoint"}
           </Button>
         </div>
       </div>
     </div>
   );
+}
+
+function formatSeconds(totalSeconds: number) {
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${String(seconds).padStart(2, "0")}`;
+}
+
+function remediationForTopic(topic: string) {
+  if (/listing|pricing|market|cma|property/i.test(topic)) return `Review listing quality, CMA pricing notes, and the property verification toolkit before retaking: ${topic}.`;
+  if (/client|viewing|offer|follow|qualification|negotiation/i.test(topic)) return `Review client qualification, viewing records, offer presentation, and follow-up scripts: ${topic}.`;
+  if (/compliance|document|authority|confidential|file|legal/i.test(topic)) return `Review compliance checklists, authority verification, confidentiality, and escalation rules: ${topic}.`;
+  if (/pipeline|performance|portfolio|habit|progress/i.test(topic)) return `Review KPI tracking, portfolio evidence, weekly reviews, and daily agent discipline: ${topic}.`;
+  return `Review the lesson notes and toolkit connected to this topic before retaking: ${topic}.`;
 }
 
 function QuizMeta({ label, value }: { label: string; value: string }) {

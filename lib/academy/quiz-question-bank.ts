@@ -80,6 +80,18 @@ const BANK: Record<string, BankSeed[]> = {
       explanation: "Accurate representation protects client trust and reduces disputes.",
     },
     {
+      topic: "Zimbabwe utilities disclosure",
+      prompt: "A rental has reliable solar backup but frequent municipal water cuts and shared borehole access. What should the listing and viewing script do?",
+      answers: [
+        "Disclose the solar, water interruptions, borehole access terms, and any extra costs clearly.",
+        "Mention only the solar backup because it sounds positive.",
+        "Wait for the tenant to discover water issues after moving in.",
+        "Remove all utility details to keep the advert short.",
+      ],
+      correct: 0,
+      explanation: "Utilities affect habitability, affordability, and trust in Zimbabwe rentals.",
+    },
+    {
       topic: "Escalation judgement",
       prompt: "A client asks whether a disputed inheritance property can be sold immediately. What should you do?",
       answers: [
@@ -90,6 +102,18 @@ const BANK: Record<string, BankSeed[]> = {
       ],
       correct: 0,
       explanation: "Agents must recognise legal risk and escalate beyond their role.",
+    },
+    {
+      topic: "Deceased estate risk",
+      prompt: "A family member wants you to sell a deceased estate property but cannot show letters of administration or executor authority. What is safest?",
+      answers: [
+        "Pause marketing and request proper estate authority before taking instructions.",
+        "Advertise because family members usually have authority.",
+        "Take a buyer deposit while documents are being searched for.",
+        "Ask neighbours to confirm who owns the house.",
+      ],
+      correct: 0,
+      explanation: "Estate authority must be verified before marketing or transaction steps.",
     },
   ],
   "academy-quiz-intermediate-listings": [
@@ -104,6 +128,18 @@ const BANK: Record<string, BankSeed[]> = {
       ],
       correct: 0,
       explanation: "Listings must be verified and complete before publication.",
+    },
+    {
+      topic: "Stand verification",
+      prompt: "A seller wants to market an undeveloped stand and says paperwork is 'with council'. What should you verify before advertising?",
+      answers: [
+        "Stand number, allocation/cession/title position, rates or arrears, access, services, and seller authority.",
+        "Only the GPS pin and seller's preferred price.",
+        "Only whether the stand has nice views.",
+        "Nothing until a buyer pays commitment money.",
+      ],
+      correct: 0,
+      explanation: "Stands often carry documentation, servicing, arrears, and authority risks.",
     },
     {
       topic: "Pricing evidence",
@@ -128,6 +164,18 @@ const BANK: Record<string, BankSeed[]> = {
       ],
       correct: 0,
       explanation: "High-quality listing copy helps clients decide with real information.",
+    },
+    {
+      topic: "Hidden costs",
+      prompt: "A buyer is comparing apartments. Which cost information should an agent help clarify early?",
+      answers: [
+        "Levies, rates, arrears, transfer/legal costs, repairs, occupation timing, and utility arrangements.",
+        "Only the asking price.",
+        "Only the number of bedrooms.",
+        "Only the agent's commission.",
+      ],
+      correct: 0,
+      explanation: "Hidden costs can change affordability and buyer decision quality.",
     },
   ],
   "academy-quiz-intermediate-clients": [
@@ -182,6 +230,18 @@ const BANK: Record<string, BankSeed[]> = {
       explanation: "Authority must be verified before marketing or taking transaction steps.",
     },
     {
+      topic: "Cession risk",
+      prompt: "A seller says the property is on cession and the buyer can receive paperwork later. What is the professional response?",
+      answers: [
+        "Pause, verify the cession chain and required approvals, and escalate legal/process questions.",
+        "Treat cession the same as any title deed transfer without checks.",
+        "Ask the buyer to pay first so the seller cooperates.",
+        "Avoid documenting the risk because it may scare the buyer.",
+      ],
+      correct: 0,
+      explanation: "Cession transactions need careful verification and clear escalation.",
+    },
+    {
       topic: "Confidentiality",
       prompt: "A landlord asks for another tenant's ID copy as a sample. What is the correct response?",
       answers: [
@@ -204,6 +264,18 @@ const BANK: Record<string, BankSeed[]> = {
       ],
       correct: 0,
       explanation: "Incomplete documents create audit and transaction risk.",
+    },
+    {
+      topic: "Rates and arrears",
+      prompt: "During a sale file review, municipal rates arrears appear unresolved. What should the agent do?",
+      answers: [
+        "Record the arrears issue, request clearance evidence or payment plan details, and escalate before completion.",
+        "Ignore it because the buyer will inherit all problems.",
+        "Remove the arrears note from the file.",
+        "Tell both parties rates never affect property transactions.",
+      ],
+      correct: 0,
+      explanation: "Rates and arrears can delay or derail a transaction if ignored.",
     },
   ],
   "academy-quiz-advanced-performance": [

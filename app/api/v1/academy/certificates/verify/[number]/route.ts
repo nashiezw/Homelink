@@ -22,6 +22,26 @@ export async function GET(_request: Request, context: { params: Promise<{ number
     if (!certificate) return problem(404, "NOT_FOUND", "Certificate not found.");
     if (certificate.status !== "ACTIVE") return problem(410, "REVOKED", "This certificate is no longer active.");
     const programme = certificate.courseId ? getProgrammeCourse(certificate.courseId) : null;
+    const prisma = getMainPrisma();
+    const [quizAttempts, examAttempts, assignmentSubmissions] = certificate.courseId
+      ? await Promise.all([
+          prisma.quizAttempt.findMany({
+            where: { agentId: certificate.agentId, quiz: { courseId: certificate.courseId } },
+            orderBy: { submittedAt: "desc" },
+          }),
+          prisma.examAttempt.findMany({
+            where: { agentId: certificate.agentId, exam: { courseId: certificate.courseId } },
+            orderBy: { submittedAt: "desc" },
+          }),
+          prisma.assignmentSubmission.findMany({
+            where: { agentId: certificate.agentId, assignment: { courseId: certificate.courseId } },
+            orderBy: { submittedAt: "desc" },
+          }),
+        ])
+      : [[], [], []];
+    const confidenceSignals = quizAttempts
+      .map((attempt) => readAttemptConfidence(attempt.answers))
+      .filter((value): value is string => Boolean(value));
 
     return ok({
       valid: true,
@@ -35,6 +55,16 @@ export async function GET(_request: Request, context: { params: Promise<{ number
             trainingSessions: programme.includes.find((item) => /training sessions/i.test(item)) ?? null,
             quizzes: programme.quizIds.length,
             assignments: programme.assignmentIds.length,
+            passedQuizAttempts: quizAttempts.filter((attempt) => attempt.status === "PASSED").length,
+            reviewedAssignments: assignmentSubmissions.filter((submission) => submission.status === "GRADED").length,
+            finalExamBestScore: examAttempts.length ? Math.max(...examAttempts.map((attempt) => Number(attempt.score))) : null,
+            confidenceSignals: confidenceSignals.length
+              ? {
+                  confident: confidenceSignals.filter((value) => value === "confident").length,
+                  mixed: confidenceSignals.filter((value) => value === "mixed").length,
+                  guessed: confidenceSignals.filter((value) => value === "guessed").length,
+                }
+              : null,
             requiresFinalExam: programme.requiresFinalExam,
             requiresPortfolio: programme.assignmentIds.some((id) => id.includes("portfolio")),
             roleplayAssessments: programme.assignmentIds.filter((id) => id.includes("roleplay") || id.includes("simulation")).length,
@@ -62,4 +92,12 @@ export async function GET(_request: Request, context: { params: Promise<{ number
     console.error("Certificate verification failed", error);
     return problem(500, "VERIFY_FAILED", "Certificate could not be verified.");
   }
+}
+
+function readAttemptConfidence(value: unknown) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const meta = (value as Record<string, unknown>)._meta;
+  if (!meta || typeof meta !== "object" || Array.isArray(meta)) return null;
+  const confidence = (meta as Record<string, unknown>).confidence;
+  return typeof confidence === "string" ? confidence : null;
 }

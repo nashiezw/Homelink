@@ -152,6 +152,7 @@ export async function getAcademyDashboard() {
       attempts: quiz.attempts.length,
     }))
     .sort((a, b) => b.failed - a.failed)[0];
+  const trainerInsights = buildTrainerInsights({ quizzes, quizAttempts, examAttempts, assignmentSubmissions });
   const [certifiedActiveListings, certifiedClosedListings] = await Promise.all([
     certifiedAgentIds.length
       ? prisma.listing.count({ where: { ownerId: { in: certifiedAgentIds }, status: ListingStatus.ACTIVE } })
@@ -271,6 +272,7 @@ export async function getAcademyDashboard() {
       }))
       .sort((a, b) => a.average - b.average)[0],
     mostFailedQuiz: failedQuiz,
+    trainerInsights,
     mostActiveAgents: agentCounts([...lessonProgress.map((entry) => entry.agentId), ...courseProgress.map((entry) => entry.agentId)]).slice(0, 5),
     agentsNeedingAttention: courseProgress.filter((entry) => entry.status !== "COMPLETED" && entry.percentComplete < 35).slice(0, 8),
     recentlyCompletedCourses: completedCourses.slice(0, 8),
@@ -1457,4 +1459,118 @@ function agentCounts(agentIds: string[]) {
   const counts = new Map<string, number>();
   for (const agentId of agentIds) counts.set(agentId, (counts.get(agentId) ?? 0) + 1);
   return Array.from(counts.entries()).map(([agentId, actions]) => ({ agentId, actions })).sort((a, b) => b.actions - a.actions);
+}
+
+function buildTrainerInsights({
+  quizzes,
+  quizAttempts,
+  examAttempts,
+  assignmentSubmissions,
+}: {
+  quizzes: Array<{ id: string; title: string }>;
+  quizAttempts: Array<{
+    id: string;
+    quizId: string;
+    agentId: string;
+    status: TrainingAttemptStatus;
+    score: Prisma.Decimal | number;
+    answers: Prisma.JsonValue;
+    startedAt: Date;
+    submittedAt: Date | null;
+  }>;
+  examAttempts: Array<{
+    id: string;
+    agentId: string;
+    status: TrainingAttemptStatus;
+    score: Prisma.Decimal | number;
+    answers: Prisma.JsonValue;
+    startedAt: Date;
+    submittedAt: Date | null;
+  }>;
+  assignmentSubmissions: Array<{ id: string; assignmentId: string; agentId: string; status: AssignmentSubmissionStatus; grade: Prisma.Decimal | number | null; submittedAt: Date }>;
+}) {
+  const quizTitle = new Map(quizzes.map((quiz) => [quiz.id, quiz.title]));
+  const lowConfidence = quizAttempts
+    .map((attempt) => ({ attempt, meta: attemptMeta(attempt.answers) }))
+    .filter(({ meta }) => meta.confidence === "guessed" || meta.confidence === "mixed")
+    .slice(0, 12)
+    .map(({ attempt, meta }) => ({
+      id: attempt.id,
+      agentId: attempt.agentId,
+      assessmentTitle: quizTitle.get(attempt.quizId) ?? "Quiz",
+      confidence: meta.confidence ?? "unknown",
+      score: Number(attempt.score),
+      submittedAt: attempt.submittedAt?.toISOString() ?? attempt.startedAt.toISOString(),
+    }));
+
+  const failureCounts = new Map<string, { agentId: string; quizTitle: string; failures: number; latestAt: Date }>();
+  for (const attempt of quizAttempts.filter((entry) => entry.status === TrainingAttemptStatus.FAILED)) {
+    const key = `${attempt.agentId}:${attempt.quizId}`;
+    const current = failureCounts.get(key);
+    const latestAt = attempt.submittedAt ?? attempt.startedAt;
+    failureCounts.set(key, {
+      agentId: attempt.agentId,
+      quizTitle: quizTitle.get(attempt.quizId) ?? "Quiz",
+      failures: (current?.failures ?? 0) + 1,
+      latestAt: current && current.latestAt > latestAt ? current.latestAt : latestAt,
+    });
+  }
+
+  const repeatedFailures = Array.from(failureCounts.values())
+    .filter((item) => item.failures >= 2)
+    .sort((a, b) => b.failures - a.failures || b.latestAt.getTime() - a.latestAt.getTime())
+    .slice(0, 12)
+    .map((item) => ({ ...item, latestAt: item.latestAt.toISOString() }));
+
+  const weakTopicCounts = new Map<string, number>();
+  for (const attempt of [...quizAttempts, ...examAttempts]) {
+    for (const topic of attemptMeta(attempt.answers).reviewTopics) weakTopicCounts.set(topic, (weakTopicCounts.get(topic) ?? 0) + 1);
+  }
+
+  const weakTopics = Array.from(weakTopicCounts.entries())
+    .map(([topic, count]) => ({ topic, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 12);
+
+  const rushedAttempts = quizAttempts
+    .filter((attempt) => attempt.submittedAt)
+    .map((attempt) => {
+      const meta = attemptMeta(attempt.answers);
+      return {
+        id: attempt.id,
+        agentId: attempt.agentId,
+        assessmentTitle: quizTitle.get(attempt.quizId) ?? "Quiz",
+        seconds: meta.elapsedSeconds ?? Math.max(0, Math.round(((attempt.submittedAt ?? attempt.startedAt).getTime() - attempt.startedAt.getTime()) / 1000)),
+        score: Number(attempt.score),
+      };
+    })
+    .filter((attempt) => attempt.seconds > 0 && attempt.seconds < 90)
+    .sort((a, b) => a.seconds - b.seconds)
+    .slice(0, 12);
+
+  const practicalRisk = assignmentSubmissions
+    .filter((submission) => submission.status === AssignmentSubmissionStatus.RESUBMISSION_REQUESTED || (submission.grade !== null && Number(submission.grade) < 70))
+    .slice(0, 12)
+    .map((submission) => ({
+      id: submission.id,
+      assignmentId: submission.assignmentId,
+      agentId: submission.agentId,
+      status: submission.status,
+      grade: submission.grade === null ? null : Number(submission.grade),
+      submittedAt: submission.submittedAt.toISOString(),
+    }));
+
+  return { lowConfidence, repeatedFailures, weakTopics, rushedAttempts, practicalRisk };
+}
+
+function attemptMeta(value: Prisma.JsonValue) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return { confidence: null as string | null, elapsedSeconds: null as number | null, reviewTopics: [] as string[] };
+  const meta = (value as Record<string, unknown>)._meta;
+  if (!meta || typeof meta !== "object" || Array.isArray(meta)) return { confidence: null as string | null, elapsedSeconds: null as number | null, reviewTopics: [] as string[] };
+  const record = meta as Record<string, unknown>;
+  return {
+    confidence: typeof record.confidence === "string" ? record.confidence : null,
+    elapsedSeconds: typeof record.elapsedSeconds === "number" && Number.isFinite(record.elapsedSeconds) ? record.elapsedSeconds : null,
+    reviewTopics: Array.isArray(record.reviewTopics) ? record.reviewTopics.filter((item): item is string => typeof item === "string") : [],
+  };
 }

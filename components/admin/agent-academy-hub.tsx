@@ -12,6 +12,7 @@ import {
   CheckCircle2,
   ClipboardCheck,
   Copy,
+  Clock,
   Download,
   Eye,
   FileArchive,
@@ -131,6 +132,13 @@ type AcademyData = {
   topCourses: Array<{ id: string; title: string; completions: number; enrolments: number }>;
   mostDifficultCourse?: { title: string; average: number };
   mostFailedQuiz?: { title: string; failed: number; attempts: number };
+  trainerInsights?: {
+    lowConfidence: Array<{ id: string; agentId: string; assessmentTitle: string; confidence: string; score: number; submittedAt: string }>;
+    repeatedFailures: Array<{ agentId: string; quizTitle: string; failures: number; latestAt: string }>;
+    weakTopics: Array<{ topic: string; count: number }>;
+    rushedAttempts: Array<{ id: string; agentId: string; assessmentTitle: string; seconds: number; score: number }>;
+    practicalRisk: Array<{ id: string; assignmentId: string; agentId: string; status: string; grade: number | null; submittedAt: string }>;
+  };
   mostActiveAgents: Array<{ agentId: string; actions: number }>;
   agentsNeedingAttention: Array<{ id: string; agentId: string; courseId: string; percentComplete: number }>;
   recentlyCompletedCourses: Array<{ id: string; agentId: string; courseId: string; completedAt?: string }>;
@@ -867,6 +875,7 @@ function FeatureWorkbench({
   }
   if (tab === "Analytics") {
     const revenue = analytics?.revenue as { total?: number; count?: number } | undefined;
+    const insights = data.trainerInsights;
     return (
       <div className="grid gap-4 xl:grid-cols-2">
         <ActivityPanel title="Revenue & Registrations" icon={BarChart3}>
@@ -893,6 +902,30 @@ function FeatureWorkbench({
           <MetricRow label="Roleplay scenarios" value={String(ROLEPLAY_ASSESSMENT_SCENARIOS.length)} />
           <MetricRow label="Certificate rule" value="Reviewed assignments only" />
           <MetricRow label="Minimum practical grade" value="70%" />
+        </ActivityPanel>
+        <ActivityPanel title="Trainer Risk Signals" icon={ShieldCheck}>
+          <MetricRow label="Low-confidence attempts" value={String(insights?.lowConfidence.length ?? 0)} />
+          <MetricRow label="Repeated quiz failures" value={String(insights?.repeatedFailures.length ?? 0)} />
+          <MetricRow label="Rushed attempts" value={String(insights?.rushedAttempts.length ?? 0)} />
+          <MetricRow label="Practical work risk" value={String(insights?.practicalRisk.length ?? 0)} />
+        </ActivityPanel>
+        <ActivityPanel title="Weak Topics To Coach" icon={BarChart3}>
+          {insights?.weakTopics.length ? insights.weakTopics.map((item) => <MetricRow key={item.topic} label={item.topic} value={item.count} />) : <p className="text-sm text-slate-400">No weak-topic signals captured yet.</p>}
+        </ActivityPanel>
+        <ActivityPanel title="Learners Needing Coaching" icon={Users}>
+          {insights?.repeatedFailures.length ? insights.repeatedFailures.map((item) => (
+            <MetricRow key={`${item.agentId}-${item.quizTitle}`} label={`${item.agentId.slice(0, 8)} - ${item.quizTitle}`} value={`${item.failures} fails`} />
+          )) : <p className="text-sm text-slate-400">No repeated quiz failures yet.</p>}
+        </ActivityPanel>
+        <ActivityPanel title="Confidence Mismatch" icon={BadgeCheck}>
+          {insights?.lowConfidence.length ? insights.lowConfidence.map((item) => (
+            <MetricRow key={item.id} label={`${item.agentId.slice(0, 8)} - ${item.assessmentTitle}`} value={`${item.confidence}, ${item.score}%`} />
+          )) : <p className="text-sm text-slate-400">No low-confidence submissions yet.</p>}
+        </ActivityPanel>
+        <ActivityPanel title="Rushed Quiz Attempts" icon={Clock}>
+          {insights?.rushedAttempts.length ? insights.rushedAttempts.map((item) => (
+            <MetricRow key={item.id} label={`${item.agentId.slice(0, 8)} - ${item.assessmentTitle}`} value={`${item.seconds}s, ${item.score}%`} />
+          )) : <p className="text-sm text-slate-400">No suspiciously fast quiz attempts yet.</p>}
         </ActivityPanel>
         <ActivityPanel title="Expert Content Pipeline" icon={Film}>
           {EXPERT_VIDEO_LIBRARY_PLAN.map((item) => (
@@ -993,7 +1026,7 @@ function AssignmentReviewQueue({
                   View submitted file
                 </a>
               )}
-              <AssignmentReviewControls submissionId={submission.id} action={action} />
+              <AssignmentReviewControls submissionId={submission.id} assignmentTitle={submission.assignmentTitle} action={action} />
             </div>
           ))}
         </div>
@@ -1004,16 +1037,24 @@ function AssignmentReviewQueue({
 
 function AssignmentReviewControls({
   submissionId,
+  assignmentTitle,
   action,
 }: {
   submissionId: string;
+  assignmentTitle: string;
   action: (body: Record<string, unknown>, success: string) => Promise<unknown>;
 }) {
   const [grade, setGrade] = useState("85");
-  const [reviewerNote, setReviewerNote] = useState("Reviewed against the Academy rubric.");
+  const rubric = assignmentRubricCriteria(assignmentTitle);
+  const [reviewerNote, setReviewerNote] = useState(`Rubric reviewed: ${rubric.join("; ")}.`);
   const gradeNumber = Math.max(0, Math.min(100, Number(grade) || 0));
   return (
     <div className="mt-3 space-y-2">
+      <div className="grid gap-1.5 rounded-lg border border-white/10 bg-slate-900/70 p-2 text-[11px] leading-4 text-slate-300 sm:grid-cols-2">
+        {rubric.map((item) => (
+          <span key={item} className="rounded-md bg-slate-950/60 px-2 py-1">{item}</span>
+        ))}
+      </div>
       <div className="grid gap-2 sm:grid-cols-[5rem_1fr]">
         <input
           value={grade}
@@ -1049,6 +1090,22 @@ function AssignmentReviewControls({
       </div>
     </div>
   );
+}
+
+function assignmentRubricCriteria(title: string) {
+  if (/listing|cma|pricing|property/i.test(title)) {
+    return ["Verified property facts", "Pricing evidence", "Risk notes", "Professional presentation"];
+  }
+  if (/client|viewing|offer|negotiation|qualification/i.test(title)) {
+    return ["Client qualification", "Communication quality", "Documented follow-up", "Risk escalation"];
+  }
+  if (/compliance|document|inspection|file/i.test(title)) {
+    return ["File completeness", "Authority checks", "Confidentiality", "Audit-ready notes"];
+  }
+  if (/portfolio|performance|pipeline|kpi/i.test(title)) {
+    return ["Evidence completeness", "Data quality", "Reflection depth", "Improvement plan"];
+  }
+  return ["Practical application", "Evidence quality", "Professional judgement", "Clear next steps"];
 }
 
 function OperationalPanel({ tab }: { tab: AcademyTab }) {
