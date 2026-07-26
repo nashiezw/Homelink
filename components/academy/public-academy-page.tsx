@@ -267,8 +267,10 @@ export function PublicAcademyPage() {
       description={
         browseMode && academyStatus?.hasActiveAccess
           ? "You already have active course access. Browse additional courses or return to your learning dashboard."
-          : "Master real estate with Zimbabwe's leading property platform. Train with HouseLink as a public learner - no agent application required."
+          : "Practical Zimbabwe property training with certificates, field tools, and reviewed assignments."
       }
+      compactHero
+      heroAside={<AcademyHeroVisual />}
       actions={pageActions}
     >
       {browseMode && academyStatus?.hasActiveAccess && (
@@ -281,7 +283,9 @@ export function PublicAcademyPage() {
         </div>
       )}
 
-      <div className="flex flex-col gap-8 lg:grid lg:grid-cols-[minmax(0,1.35fr)_minmax(18rem,0.65fr)] lg:items-start lg:gap-6">
+      <PathwayStrip />
+
+      <div className="mt-6 flex flex-col gap-8 lg:grid lg:grid-cols-[minmax(0,1.35fr)_minmax(18rem,0.65fr)] lg:items-start lg:gap-6">
         <section className="order-1 grid min-w-0 gap-5 lg:order-none">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
             <div>
@@ -343,6 +347,13 @@ export function PublicAcademyPage() {
                     <CourseMetric icon={ListChecks} value={`${course.quizCount ?? 0}/${course.assignmentCount ?? 0}`} label="quizzes/tasks" accent={accent} />
                     <CourseMetric icon={Clock} value={`${course.estimatedHours || Math.round(course.durationMinutes / 60)}h`} label="guided" accent={accent} />
                     <CourseMetric icon={ShieldCheck} value={String(course.toolkitCount ?? 0)} label="PDF tools" accent={accent} />
+                  </div>
+
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <TrustChip label="Admin reviewed" />
+                    <TrustChip label="Field toolkit" />
+                    {course.hasFinalExam && <TrustChip label="Final exam" tone="amber" />}
+                    {course.portfolioRequired && <TrustChip label="Portfolio" tone="sky" />}
                   </div>
 
                   <details className="group mt-5 rounded-xl border border-slate-200 bg-white/80 dark:border-slate-800 dark:bg-slate-950/70">
@@ -473,7 +484,7 @@ export function PublicAcademyPage() {
         </aside>
       </div>
 
-      <section className="academy-panel mt-10 rounded-xl p-5 sm:p-6">
+      <section className="mt-10 rounded-2xl border border-slate-200 bg-white/70 p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950/60 sm:p-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-xs font-bold uppercase tracking-widest text-emerald-700 dark:text-emerald-300">For serious learners</p>
@@ -536,6 +547,60 @@ export function PublicAcademyPage() {
   );
 }
 
+function AcademyHeroVisual() {
+  return (
+    <div className="relative overflow-hidden rounded-2xl border border-white/15 bg-white/10 p-5 shadow-2xl shadow-emerald-950/20 backdrop-blur">
+      <div className="absolute -right-8 -top-8 h-28 w-28 rounded-full bg-emerald-300/20 blur-2xl" />
+      <div className="relative rounded-xl border border-white/15 bg-white/95 p-4 text-slate-950 shadow-xl">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-widest text-emerald-700">HouseLink Academy</p>
+            <p className="mt-2 text-lg font-black leading-tight">Certified Property Agent Pathway</p>
+          </div>
+          <div className="rounded-full bg-emerald-100 p-2 text-emerald-700">
+            <Award className="size-5" />
+          </div>
+        </div>
+        <div className="mt-5 grid grid-cols-3 gap-2 text-center">
+          <HeroProof value="3" label="levels" />
+          <HeroProof value="16" label="tasks" />
+          <HeroProof value="PDF" label="tools" />
+        </div>
+        <div className="mt-5 flex items-center gap-2 rounded-lg bg-slate-950 px-3 py-2 text-xs font-bold text-white">
+          <ShieldCheck className="size-4 text-emerald-300" />
+          Public certificate verification
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function HeroProof({ value, label }: { value: string; label: string }) {
+  return (
+    <div className="rounded-lg bg-slate-50 px-2 py-2">
+      <p className="text-base font-black text-slate-950">{value}</p>
+      <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500">{label}</p>
+    </div>
+  );
+}
+
+function PathwayStrip() {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white/85 p-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/80">
+      <div className="grid gap-2 sm:grid-cols-3">
+        {["Foundations", "Listing Mastery", "Professional Certification"].map((step, index) => (
+          <div key={step} className="flex items-center gap-3 rounded-xl bg-slate-50 px-3 py-3 dark:bg-slate-900">
+            <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-700 text-xs font-black text-white">
+              {index + 1}
+            </span>
+            <span className="text-sm font-bold text-slate-800 dark:text-slate-100">{step}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function CourseMetric({
   icon: Icon,
   value,
@@ -553,6 +618,20 @@ function CourseMetric({
       <span className="font-bold leading-none text-slate-950 dark:text-white">{value}</span>
       <span className="text-xs font-medium leading-none text-slate-500">{label}</span>
     </div>
+  );
+}
+
+function TrustChip({ label, tone = "emerald" }: { label: string; tone?: "emerald" | "amber" | "sky" }) {
+  const styles = {
+    emerald: "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-200",
+    amber: "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200",
+    sky: "border-sky-200 bg-sky-50 text-sky-800 dark:border-sky-900/60 dark:bg-sky-950/30 dark:text-sky-200",
+  };
+
+  return (
+    <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-bold ${styles[tone]}`}>
+      {label}
+    </span>
   );
 }
 
