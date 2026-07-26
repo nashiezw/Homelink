@@ -734,14 +734,14 @@ export function RoommatesPageClient() {
                   </div>
                 </div>
 
-                <div className="mt-6 flex flex-wrap gap-2 sm:mt-8 sm:gap-3">
-                  <button type="button" onClick={() => scrollToRoomShareWizard("seeking")} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-white px-4 py-2.5 text-sm font-bold leading-none text-emerald-900 shadow-[0_12px_40px_rgba(0,0,0,0.4)] transition hover:-translate-y-0.5 hover:bg-emerald-50 sm:min-h-12 sm:rounded-2xl sm:px-5 sm:text-base">
+                <div className="mt-6 grid grid-cols-2 gap-2 sm:mt-8 sm:flex sm:flex-wrap sm:gap-3">
+                  <button type="button" onClick={() => scrollToRoomShareWizard("seeking")} className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-white px-3 py-2.5 text-sm font-bold leading-none text-emerald-900 shadow-[0_12px_40px_rgba(0,0,0,0.4)] transition hover:-translate-y-0.5 hover:bg-emerald-50 sm:min-h-12 sm:w-auto sm:rounded-2xl sm:px-5 sm:text-base">
                     <Search className="size-4 shrink-0" /> Find a room
                   </button>
-                  <button type="button" onClick={() => scrollToRoomShareWizard("posting")} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-emerald-500 to-teal-500 px-4 py-2.5 text-sm font-bold leading-none text-white shadow-[0_12px_40px_rgba(16,185,129,0.45)] transition hover:-translate-y-0.5 sm:min-h-12 sm:rounded-2xl sm:px-5 sm:text-base">
+                  <button type="button" onClick={() => scrollToRoomShareWizard("posting")} className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-emerald-500 to-teal-500 px-3 py-2.5 text-sm font-bold leading-none text-white shadow-[0_12px_40px_rgba(16,185,129,0.45)] transition hover:-translate-y-0.5 sm:min-h-12 sm:w-auto sm:rounded-2xl sm:px-5 sm:text-base">
                     <Home className="size-4 shrink-0" /> Post a room
                   </button>
-                  <Link href={user ? "/roommates/profile" : "/auth"} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-white/25 bg-white/10 px-4 py-2.5 text-sm font-bold leading-none text-white backdrop-blur-md transition hover:bg-white/15 sm:min-h-12 sm:rounded-2xl sm:px-5 sm:text-base">
+                  <Link href={user ? "/roommates/profile" : "/auth"} className="col-span-2 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-white/25 bg-white/10 px-3 py-2.5 text-sm font-bold leading-none text-white backdrop-blur-md transition hover:bg-white/15 sm:col-span-1 sm:min-h-12 sm:w-auto sm:rounded-2xl sm:px-5 sm:text-base">
                     <Users className="size-4 shrink-0" /> Find a roommate
                   </Link>
                 </div>
@@ -817,7 +817,7 @@ export function RoommatesPageClient() {
                 accent="now"
                 subtitle="Hand-picked verified listings with real photos, cleaner pricing, and room details that are easy to scan."
                 action={(
-                  <Link href="/rooms/avondale" className="inline-flex h-11 items-center gap-2 rounded-2xl bg-emerald-600 px-5 text-sm font-bold text-white shadow-lg transition hover:-translate-y-0.5 hover:bg-emerald-700">
+                  <Link href="/rooms/avondale" className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white shadow-lg transition hover:-translate-y-0.5 hover:bg-emerald-700 sm:w-auto sm:rounded-2xl">
                     View all rooms <ArrowRight className="size-4" />
                   </Link>
                 )}
@@ -1050,14 +1050,14 @@ export function RoommatesPageClient() {
                 <p className="mt-4 max-w-2xl text-base leading-relaxed text-emerald-50/90">
                   Verified Zimbabweans are finding trusted roommates and quality accommodation through HouseLink.
                 </p>
-                <div className="mt-7 flex flex-wrap justify-center gap-2 sm:mt-8 sm:gap-3">
-                  <button type="button" onClick={() => scrollToRoomShareWizard("seeking")} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-white px-4 py-2.5 text-sm font-bold leading-none text-emerald-900 shadow-lg transition hover:-translate-y-0.5 sm:min-h-12 sm:rounded-2xl sm:px-5 sm:text-base">
+                <div className="mx-auto mt-7 grid w-full max-w-lg grid-cols-2 gap-2 sm:mt-8 sm:flex sm:max-w-none sm:flex-wrap sm:justify-center sm:gap-3">
+                  <button type="button" onClick={() => scrollToRoomShareWizard("seeking")} className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-white px-3 py-2.5 text-sm font-bold leading-none text-emerald-900 shadow-lg transition hover:-translate-y-0.5 sm:min-h-12 sm:w-auto sm:rounded-2xl sm:px-5 sm:text-base">
                     <Search className="size-4 shrink-0" /> Find a room
                   </button>
-                  <button type="button" onClick={() => scrollToRoomShareWizard("posting")} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-emerald-500 to-teal-500 px-4 py-2.5 text-sm font-bold leading-none text-white shadow-lg transition hover:-translate-y-0.5 sm:min-h-12 sm:rounded-2xl sm:px-5 sm:text-base">
+                  <button type="button" onClick={() => scrollToRoomShareWizard("posting")} className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-emerald-500 to-teal-500 px-3 py-2.5 text-sm font-bold leading-none text-white shadow-lg transition hover:-translate-y-0.5 sm:min-h-12 sm:w-auto sm:rounded-2xl sm:px-5 sm:text-base">
                     <Home className="size-4 shrink-0" /> Post a room
                   </button>
-                  <Link href={user ? "/roommates/profile" : "/auth"} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-white/30 bg-white/10 px-4 py-2.5 text-sm font-bold leading-none text-white backdrop-blur-md transition hover:bg-white/15 sm:min-h-12 sm:rounded-2xl sm:px-5 sm:text-base">
+                  <Link href={user ? "/roommates/profile" : "/auth"} className="col-span-2 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-white/30 bg-white/10 px-3 py-2.5 text-sm font-bold leading-none text-white backdrop-blur-md transition hover:bg-white/15 sm:col-span-1 sm:min-h-12 sm:w-auto sm:rounded-2xl sm:px-5 sm:text-base">
                     <Users className="size-4 shrink-0" /> Find a roommate
                   </Link>
                 </div>
