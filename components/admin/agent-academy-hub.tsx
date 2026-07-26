@@ -291,7 +291,7 @@ export function AgentAcademyHub() {
   }, [tab]);
 
   useEffect(() => {
-    const requested = searchParams.get("academyView");
+    const requested = searchParams?.get("academyView");
     if (requested) {
       const resolved = resolveAcademyNav(requested);
       setPrimaryTab(resolved.primary);
@@ -873,6 +873,12 @@ function FeatureWorkbench({
           <MetricRow label="Completion rate" value={`${data.metrics.completionRate ?? 0}%`} />
           <MetricRow label="Average score" value={`${data.metrics.averageScore ?? 0}%`} />
         </ActivityPanel>
+        <ActivityPanel title="Graduate Outcomes" icon={Award}>
+          <MetricRow label="Certified agents" value={String(data.metrics.certifiedAgents ?? 0)} />
+          <MetricRow label="Active listings by certified agents" value={String(data.metrics.certifiedActiveListings ?? 0)} />
+          <MetricRow label="Closed listings by certified agents" value={String(data.metrics.certifiedClosedListings ?? 0)} />
+          <MetricRow label="Public credential display" value="Enabled" />
+        </ActivityPanel>
         <AssignmentReviewQueue submissions={data.assignmentSubmissions ?? []} action={action} />
         <ActivityPanel title="Most Active Agents" icon={Trophy}>{data.mostActiveAgents.map((item) => <MetricRow key={item.agentId} label={item.agentId} value={item.actions} />)}</ActivityPanel>
         <ActivityPanel title="Agents Needing Attention" icon={Users}>{data.agentsNeedingAttention.map((item) => <MetricRow key={item.id} label={item.agentId} value={`${item.percentComplete}%`} />)}</ActivityPanel>
@@ -962,27 +968,61 @@ function AssignmentReviewQueue({
                   View submitted file
                 </a>
               )}
-              <div className="mt-3 flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white"
-                  onClick={() => void action({ action: "review_assignment_submission", submissionId: submission.id, review: { status: "APPROVED", grade: 100, reviewerNote: "Approved against the Academy rubric." } }, "Assignment approved.")}
-                >
-                  Approve
-                </button>
-                <button
-                  type="button"
-                  className="rounded-lg bg-slate-800 px-3 py-1.5 text-xs font-semibold text-slate-100"
-                  onClick={() => void action({ action: "review_assignment_submission", submissionId: submission.id, review: { status: "RESUBMISSION_REQUESTED", reviewerNote: "Please resubmit with stronger evidence against the rubric." } }, "Resubmission requested.")}
-                >
-                  Request resubmission
-                </button>
-              </div>
+              <AssignmentReviewControls submissionId={submission.id} action={action} />
             </div>
           ))}
         </div>
       )}
     </ActivityPanel>
+  );
+}
+
+function AssignmentReviewControls({
+  submissionId,
+  action,
+}: {
+  submissionId: string;
+  action: (body: Record<string, unknown>, success: string) => Promise<unknown>;
+}) {
+  const [grade, setGrade] = useState("85");
+  const [reviewerNote, setReviewerNote] = useState("Reviewed against the Academy rubric.");
+  const gradeNumber = Math.max(0, Math.min(100, Number(grade) || 0));
+  return (
+    <div className="mt-3 space-y-2">
+      <div className="grid gap-2 sm:grid-cols-[5rem_1fr]">
+        <input
+          value={grade}
+          onChange={(event) => setGrade(event.target.value)}
+          type="number"
+          min={0}
+          max={100}
+          className="rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-xs text-white"
+          aria-label="Assignment score"
+        />
+        <input
+          value={reviewerNote}
+          onChange={(event) => setReviewerNote(event.target.value)}
+          className="rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-xs text-white"
+          aria-label="Reviewer note"
+        />
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white"
+          onClick={() => void action({ action: "review_assignment_submission", submissionId, review: { status: "GRADED", grade: gradeNumber, reviewerNote } }, "Assignment graded.")}
+        >
+          Grade
+        </button>
+        <button
+          type="button"
+          className="rounded-lg bg-slate-800 px-3 py-1.5 text-xs font-semibold text-slate-100"
+          onClick={() => void action({ action: "review_assignment_submission", submissionId, review: { status: "RESUBMISSION_REQUESTED", reviewerNote } }, "Resubmission requested.")}
+        >
+          Request resubmission
+        </button>
+      </div>
+    </div>
   );
 }
 

@@ -1,5 +1,6 @@
 import {
   AssignmentSubmissionStatus,
+  ListingStatus,
   Prisma,
   TrainingAttemptStatus,
   TrainingCourseStatus,
@@ -136,6 +137,7 @@ export async function getAcademyDashboard() {
     ...lessonProgress.filter((entry) => daysAgo(entry.lastViewedAt) <= 30).map((entry) => entry.agentId),
   ]);
   const enrolledLearners = new Set(enrolments.map((entry) => entry.agentId));
+  const certifiedAgentIds = [...new Set(certificates.filter((certificate) => certificate.status === "ACTIVE").map((certificate) => certificate.agentId))];
   const scoredAttempts = [...quizAttempts, ...examAttempts].filter((attempt) => Number(attempt.score) > 0);
   const completedCourses = courseProgress.filter((entry) => entry.status === "COMPLETED");
   const totalLearningMinutes = courseProgress.reduce((sum, entry) => sum + entry.learningMinutes, 0);
@@ -149,6 +151,14 @@ export async function getAcademyDashboard() {
       attempts: quiz.attempts.length,
     }))
     .sort((a, b) => b.failed - a.failed)[0];
+  const [certifiedActiveListings, certifiedClosedListings] = await Promise.all([
+    certifiedAgentIds.length
+      ? prisma.listing.count({ where: { ownerId: { in: certifiedAgentIds }, status: ListingStatus.ACTIVE } })
+      : 0,
+    certifiedAgentIds.length
+      ? prisma.listing.count({ where: { ownerId: { in: certifiedAgentIds }, status: { in: [ListingStatus.SOLD, ListingStatus.RENTED] } } })
+      : 0,
+  ]);
 
   return {
     metrics: {
@@ -174,6 +184,9 @@ export async function getAcademyDashboard() {
       pendingPublicApprovals: publicLearnerApplications.filter((entry) => entry.status === "PAYMENT_UPLOADED").length
         + resourceAccessApplications.filter((entry) => entry.status === "PAYMENT_UPLOADED").length,
       academyRevenue: Number(academyRevenue._sum.amount ?? 0),
+      certifiedAgents: certifiedAgentIds.length,
+      certifiedActiveListings,
+      certifiedClosedListings,
     },
     courses,
     lessons: lessonRows,

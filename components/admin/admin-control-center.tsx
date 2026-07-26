@@ -95,8 +95,8 @@ function Panel({ title, children, className }: { title: string; children: React.
 export function AdminControlCenter() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const pathTab = pathname.match(/^\/dashboard\/admin\/([^/]+)/)?.[1] as AdminTab | undefined;
-  const tab = (pathTab ?? searchParams.get("tab") ?? "overview") as AdminTab;
+  const pathTab = pathname?.match(/^\/dashboard\/admin\/([^/]+)/)?.[1] as AdminTab | undefined;
+  const tab = (pathTab ?? searchParams?.get("tab") ?? "overview") as AdminTab;
   const [data, setData] = useState<ControlCenterData>({});
   const [loading, setLoading] = useState(true);
 

@@ -115,7 +115,7 @@ const VALID_TABS: Tab[] = ["curriculum", "toolkit", "materials", "assessments", 
 
 export function CourseLearnerView({ courseId }: { courseId: string }) {
   const searchParams = useSearchParams();
-  const initialTab = searchParams.get("tab");
+  const initialTab = searchParams?.get("tab");
   const { user, showToast } = useApp();
   const [data, setData] = useState<CourseDetail | null>(null);
   const [tab, setTab] = useState<Tab>(() => (VALID_TABS.includes(initialTab as Tab) ? (initialTab as Tab) : "curriculum"));

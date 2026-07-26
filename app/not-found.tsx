@@ -13,6 +13,8 @@ export const metadata = {
   robots: { index: false, follow: true },
 };
 
+export const dynamic = "force-dynamic";
+
 export default async function NotFoundPage() {
   const listings = await getRecommendedListings();
 

@@ -21,7 +21,7 @@ const fieldClass =
 
 export function EditListingForm() {
   const params = useParams();
-  const id = String(params.id ?? "");
+  const id = String(params?.id ?? "");
   const router = useRouter();
   const { user, showToast } = useApp();
   const { config } = usePlatformConfig();

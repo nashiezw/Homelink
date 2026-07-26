@@ -31,7 +31,7 @@ export async function GET(request: Request, context: { params: Promise<{ issueId
     badgeName: programme?.badgeName ?? null,
     issuedAt: issue.issuedAt.toISOString(),
     expiresAt: issue.expiresAt?.toISOString() ?? null,
-    verifyUrl: issue.qrCodeUrl ?? `/api/v1/academy/certificates/verify/${encodeURIComponent(issue.certificateNumber)}`,
+    verifyUrl: `/academy/verify?certificate=${encodeURIComponent(issue.certificateNumber)}`,
     learnerName: user?.name ?? "HouseLink Learner",
     accent: programme?.theme.accent ?? "#008b68",
   });

@@ -9,7 +9,7 @@ import { SiteHeader } from "@/components/layout/site-header";
 
 export function ChromeGate({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const isAdmin = pathname.startsWith("/dashboard/admin");
+  const isAdmin = pathname?.startsWith("/dashboard/admin") ?? false;
 
   return (
     <>

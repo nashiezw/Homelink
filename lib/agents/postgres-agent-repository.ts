@@ -261,7 +261,7 @@ export async function getPublicAgentFromPostgres(slug: string) {
         badgeName: programme?.badgeName ?? "HouseLink Academy Graduate",
         certificateNumber: certificate.certificateNumber,
         issuedAt: certificate.issuedAt.toISOString(),
-        verifyUrl: certificate.qrCodeUrl ?? `/api/v1/academy/certificates/verify/${encodeURIComponent(certificate.certificateNumber)}`,
+        verifyUrl: `/academy/verify?certificate=${encodeURIComponent(certificate.certificateNumber)}`,
         accent: programme?.theme.accent ?? "#008b68",
       };
     }),

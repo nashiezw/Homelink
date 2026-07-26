@@ -193,6 +193,7 @@ export function LearnerDashboardClient() {
   const applicationByCourseId = new Map(data.applications.map((application) => [application.course.id, application]));
   const approvedCourseIds = new Set(data.applications.filter((application) => application.status === "APPROVED").map((application) => application.course.id));
   const activeCourseCount = approvedCourseIds.size;
+  const professionalCertificate = data.certificates.find((certificate) => /Professional|HLP|Certified HouseLink Agent/i.test(`${certificate.courseTitle} ${certificate.certificateNumber}`));
 
   function toggleProgrammeDetails(courseId: string) {
     setExpandedProgrammeIds((current) => {
@@ -244,6 +245,28 @@ export function LearnerDashboardClient() {
         <StatCard icon={Sparkles} label="XP earned" value={String(data.metrics.xp ?? 0)} accent="#8b5cf6" />
         <StatCard icon={Award} label="Certificates" value={String(data.metrics.certificates)} accent="#6366f1" />
       </div>
+
+      {professionalCertificate && (
+        <section className="academy-panel mt-6 rounded-xl p-6">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-widest text-emerald-700 dark:text-emerald-300">Post-certification onboarding</p>
+              <h2 className="mt-2 text-xl font-bold">Ready to turn certification into agent work?</h2>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600 dark:text-slate-300">
+                Apply to become a HouseLink agent, complete your public profile, choose territories, upload a professional photo, and keep your verified certificate ready for clients.
+              </p>
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row lg:flex-col">
+              <Link href="/become-agent/apply" className="w-full sm:w-auto lg:w-56">
+                <Button className="w-full" style={{ backgroundColor: primary }}>Apply as Agent</Button>
+              </Link>
+              <Link href={professionalCertificate.downloadUrl ?? `/dashboard/academy/certificate/${professionalCertificate.id}`} className="w-full sm:w-auto lg:w-56">
+                <Button variant="secondary" className="w-full">View Certificate</Button>
+              </Link>
+            </div>
+          </div>
+        </section>
+      )}
 
       {!!data.programmeCourses?.length && (
         <section className="mt-8">

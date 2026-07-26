@@ -42,7 +42,7 @@ function TenancyActionsInner({ listing, landlordUserId }: TenancyActionsProps) {
   const [busy, setBusy] = useState(false);
   const [activePayment, setActivePayment] = useState<Payment | null>(null);
 
-  const activePaymentId = searchParams.get("tenancyPayment") ?? "";
+  const activePaymentId = searchParams?.get("tenancyPayment") ?? "";
 
   const loadActivePayment = useCallback(async (paymentId: string) => {
     if (!user || !paymentId) {

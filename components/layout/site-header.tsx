@@ -44,17 +44,17 @@ function useNavActive() {
     (href: string) => {
       const [path, queryString] = href.split("?");
       if (pathname !== path) {
-        if (path === "/roommates" && pathname.startsWith("/roommates")) return true;
-        if (path === "/student-accommodation" && pathname.startsWith("/student-accommodation")) return true;
-        if (path === "/become-agent" && pathname.startsWith("/become-agent")) return true;
-        if (path === "/academy" && pathname.startsWith("/dashboard/academy")) return true;
-        if (path === "/calculators" && pathname.startsWith("/calculators")) return true;
+        if (path === "/roommates" && pathname?.startsWith("/roommates")) return true;
+        if (path === "/student-accommodation" && pathname?.startsWith("/student-accommodation")) return true;
+        if (path === "/become-agent" && pathname?.startsWith("/become-agent")) return true;
+        if (path === "/academy" && pathname?.startsWith("/dashboard/academy")) return true;
+        if (path === "/calculators" && pathname?.startsWith("/calculators")) return true;
         return false;
       }
       if (!queryString) return true;
       const expected = new URLSearchParams(queryString);
       for (const [key, value] of expected.entries()) {
-        if (searchParams.get(key) !== value) return false;
+        if (searchParams?.get(key) !== value) return false;
       }
       return true;
     },

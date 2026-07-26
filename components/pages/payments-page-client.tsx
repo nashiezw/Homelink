@@ -62,10 +62,10 @@ export function PaymentsPageClient() {
   const [paymentMethod, setPaymentMethod] = useState("bank_transfer");
   const [checkoutBusy, setCheckoutBusy] = useState(false);
 
-  const statusParam = searchParams.get("status") ?? "";
-  const selectedPaymentId = searchParams.get("id") ?? "";
-  const planParam = searchParams.get("plan") ?? "";
-  const listingId = searchParams.get("listingId") ?? "";
+  const statusParam = searchParams?.get("status") ?? "";
+  const selectedPaymentId = searchParams?.get("id") ?? "";
+  const planParam = searchParams?.get("plan") ?? "";
+  const listingId = searchParams?.get("listingId") ?? "";
 
   const checkoutPlans = useMemo(() => buildCheckoutPlans(config?.plans), [config?.plans]);
   const paymentMethods = useMemo(() => resolvePaymentMethods(config), [config]);

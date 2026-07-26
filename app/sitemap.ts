@@ -12,6 +12,7 @@ const routes = [
   { path: "/calculators", priority: 0.85 },
   { path: "/become-agent", priority: 0.8 },
   { path: "/academy", priority: 0.8 },
+  { path: "/academy/verify", priority: 0.72 },
   { path: "/blog", priority: 0.8 },
   { path: "/property-management", priority: 0.75 },
   { path: "/verification", priority: 0.7 },

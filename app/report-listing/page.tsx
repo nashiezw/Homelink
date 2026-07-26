@@ -24,7 +24,7 @@ function ReportListingForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, showToast } = useApp();
-  const [listingId, setListingId] = useState(searchParams.get("listing") ?? "");
+  const [listingId, setListingId] = useState(searchParams?.get("listing") ?? "");
   const [reason, setReason] = useState("stale");
   const [details, setDetails] = useState("");
   const [submitting, setSubmitting] = useState(false);

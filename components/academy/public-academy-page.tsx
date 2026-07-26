@@ -30,6 +30,13 @@ import { useApp } from "@/components/providers/app-provider";
 import { apiFetch } from "@/lib/api/client";
 import type { PublicPaymentConfig } from "@/lib/payments/public-payment-config";
 import type { CourseRegistrationSummary } from "@/lib/academy/academy-user-status";
+import {
+  ACADEMY_LIVE_WORKSHOPS,
+  ACADEMY_MENTOR_PROGRAMME,
+  MARKET_INTELLIGENCE_PLAN,
+  PARTNER_CREDIBILITY_PLAN,
+  TOP_AGENT_PATHWAY,
+} from "@/lib/academy/academy-operations";
 
 import { cn } from "@/lib/utils";
 
@@ -85,7 +92,7 @@ function courseRegistrationState(status: AcademyStatus | null, courseId: string)
 export function PublicAcademyPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const browseMode = searchParams.get("browse") === "1";
+  const browseMode = searchParams?.get("browse") === "1";
   const { user, showToast } = useApp();
   const [courses, setCourses] = useState<PublicCourse[]>([]);
   const [academySettings, setAcademySettings] = useState<{ academyName?: string; paymentInstructions?: string } | null>(null);
@@ -289,6 +296,27 @@ export function PublicAcademyPage() {
               <p className="mt-2 text-sm text-slate-500">{course.lessonCount} lessons · {course.toolkitCount ?? 0} toolkit PDFs</p>
             </div>
           ))}
+        </div>
+      </section>
+
+      <section className="academy-panel mt-10 rounded-xl p-6 sm:p-8">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <h2 className="text-2xl font-bold">Built like a working property school</h2>
+            <p className="mt-2 max-w-3xl text-slate-600">
+              HouseLink Academy combines courses, practice files, mentor review, live workshop themes, certificate verification, and post-certification growth paths.
+            </p>
+          </div>
+          <Link href="/academy/verify" className="inline-flex min-h-10 items-center justify-center rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-800">
+            Verify Certificate
+          </Link>
+        </div>
+        <div className="mt-6 grid gap-4 lg:grid-cols-2">
+          <AcademyOpsCard title="Live workshops" items={ACADEMY_LIVE_WORKSHOPS.map((item) => `${item.cadence}: ${item.title} - ${item.focus}`)} />
+          <AcademyOpsCard title="Mentor programme" items={ACADEMY_MENTOR_PROGRAMME} />
+          <AcademyOpsCard title="Market intelligence" items={MARKET_INTELLIGENCE_PLAN} />
+          <AcademyOpsCard title="Top Agent pathway" items={TOP_AGENT_PATHWAY} />
+          <AcademyOpsCard title="Partner credibility" items={PARTNER_CREDIBILITY_PLAN} className="lg:col-span-2" />
         </div>
       </section>
 
@@ -706,6 +734,22 @@ function AcademySidePanel({
         </div>
       )}
       </div>
+    </div>
+  );
+}
+
+function AcademyOpsCard({ title, items, className }: { title: string; items: string[]; className?: string }) {
+  return (
+    <div className={cn("rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950", className)}>
+      <p className="text-sm font-bold text-slate-950 dark:text-white">{title}</p>
+      <ul className="mt-3 space-y-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
+        {items.map((item) => (
+          <li key={item} className="flex gap-2">
+            <CheckCircle2 className="mt-1 size-4 shrink-0 text-emerald-600" />
+            {item}
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

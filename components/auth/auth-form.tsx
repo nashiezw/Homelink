@@ -23,8 +23,8 @@ export function AuthForm({
 }: AuthFormProps = {}) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const next = redirectTo === undefined ? searchParams.get("next") : redirectTo === null ? null : redirectTo;
-  const modeParam = searchParams.get("mode");
+  const next = redirectTo === undefined ? searchParams?.get("next") : redirectTo === null ? null : redirectTo;
+  const modeParam = searchParams?.get("mode");
   const resolvedInitial =
     initialMode ?? (modeParam === "register" ? "register" : "login");
   const { signIn, register } = useApp();

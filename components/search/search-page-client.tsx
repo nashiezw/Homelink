@@ -226,7 +226,7 @@ export function SearchPageClient({ initialSearchParams = EMPTY_INITIAL_SEARCH_PA
 
   const searchParams = useMemo(() => {
     const merged = new URLSearchParams(initialSearchParams);
-    urlSearchParams.forEach((value, key) => {
+    urlSearchParams?.forEach((value, key) => {
       merged.set(key, value);
     });
     return merged;

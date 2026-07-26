@@ -224,10 +224,10 @@ export function AdminShell({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const pathTab = pathname.match(/^\/dashboard\/admin\/([^/]+)/)?.[1] as AdminTab | undefined;
-  const tab = (pathTab ?? searchParams.get("tab") ?? "overview") as AdminTab;
+  const pathTab = pathname?.match(/^\/dashboard\/admin\/([^/]+)/)?.[1] as AdminTab | undefined;
+  const tab = (pathTab ?? searchParams?.get("tab") ?? "overview") as AdminTab;
   const activeTab = VALID_TABS.has(tab) ? tab : "overview";
-  const activeAcademyView = searchParams.get("academyView") ?? "Dashboard";
+  const activeAcademyView = searchParams?.get("academyView") ?? "Dashboard";
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [query, setQuery] = useState("");

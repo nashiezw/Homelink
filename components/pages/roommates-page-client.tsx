@@ -592,7 +592,7 @@ export function RoommatesPageClient() {
   useEffect(() => {
     if (calculatorBudgetApplied) return;
     const memory = readRentalAffordabilityMemory();
-    const budgetFromUrl = searchParams.get("budgetMax");
+    const budgetFromUrl = searchParams?.get("budgetMax");
     const maxBudget = budgetFromUrl || affordabilityBudgetParam(memory);
     if (memory) setCalculatorBudget(memory);
     if (!maxBudget) {
@@ -607,7 +607,7 @@ export function RoommatesPageClient() {
       budgetMin: current.budgetMin || "80",
     }));
     setCalculatorBudgetApplied(true);
-    if (searchParams.get("source") === "calculator") {
+    if (searchParams?.get("source") === "calculator") {
       setTimeout(() => scrollToRoomShareWizard("seeking"), 150);
     }
   }, [calculatorBudgetApplied, searchParams]);

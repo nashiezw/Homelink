@@ -12,7 +12,7 @@ export function AuthPageGuard({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (loading || !user) return;
-    const next = searchParams.get("next");
+    const next = searchParams?.get("next");
     const destination =
       next && next.startsWith("/") && !next.startsWith("/auth") ? next : getDefaultDashboard(user);
     router.replace(destination);
