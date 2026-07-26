@@ -19,8 +19,8 @@ export default function AcademyCertificateVerificationPage() {
       description="Confirm that a certificate number is active, authentic, and linked to assessed HouseLink property training outcomes."
       highlights={[
         { value: "Active", label: "Credential status" },
-        { value: "Skills", label: "Assessed outcomes" },
-        { value: "Public", label: "Shareable check" },
+        { value: "Proof", label: "Assessment evidence" },
+        { value: "Public", label: "Shareable verification" },
       ]}
     >
       <Suspense fallback={<div className="h-40 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />}>

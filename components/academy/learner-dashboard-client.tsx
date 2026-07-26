@@ -201,6 +201,7 @@ export function LearnerDashboardClient() {
   const approvedCourseIds = new Set(data.applications.filter((application) => application.status === "APPROVED").map((application) => application.course.id));
   const activeCourseCount = approvedCourseIds.size;
   const professionalCertificate = data.certificates.find((certificate) => /Professional|HLP|Certified HouseLink Agent/i.test(`${certificate.courseTitle} ${certificate.certificateNumber}`));
+  const nextActionCards = learnerNextActions(data);
 
   function toggleProgrammeDetails(courseId: string) {
     setExpandedProgrammeIds((current) => {
@@ -253,6 +254,25 @@ export function LearnerDashboardClient() {
         <StatCard icon={Award} label="Certificates" value={String(data.metrics.certificates)} accent="#6366f1" />
       </div>
 
+      {!!nextActionCards.length && (
+        <section className="academy-panel mt-6 rounded-xl p-5">
+          <p className="text-xs font-bold uppercase tracking-widest text-emerald-700 dark:text-emerald-300">What to do next</p>
+          <div className="mt-4 grid gap-3 md:grid-cols-3">
+            {nextActionCards.map((item) => (
+              <div key={item.title} className="rounded-lg border border-slate-200 bg-white p-4 text-sm dark:border-slate-800 dark:bg-slate-950">
+                <p className="font-bold text-slate-950 dark:text-white">{item.title}</p>
+                <p className="mt-1 leading-6 text-slate-600 dark:text-slate-300">{item.body}</p>
+                {item.href && (
+                  <Link href={item.href} className="mt-3 inline-flex text-xs font-bold text-emerald-700 hover:underline dark:text-emerald-300">
+                    Open task
+                  </Link>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
       {professionalCertificate && (
         <section className="academy-panel mt-6 rounded-xl p-6">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -278,7 +298,7 @@ export function LearnerDashboardClient() {
       {!!data.programmeCourses?.length && (
         <section className="mt-8">
           <h2 className="text-xl font-bold sm:text-2xl">Certification pathway</h2>
-          <p className="mt-1 text-sm text-slate-600">Foundations → Listing & Client Mastery → Professional Certification. Earn a badge and downloadable certificate after each programme.</p>
+          <p className="mt-1 text-sm text-slate-600">Foundations -&gt; Listing & Client Mastery -&gt; Professional Certification. Earn a badge and downloadable certificate after each programme.</p>
           <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {data.programmeCourses.map((course) => {
               const expanded = expandedProgrammeIds.has(course.id);
@@ -306,7 +326,7 @@ export function LearnerDashboardClient() {
                   <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-100">
                     <div className="h-full rounded-full transition-all" style={{ width: `${course.progress}%`, backgroundColor: course.theme.accent }} />
                   </div>
-                  <p className="mt-2 text-xs text-slate-500">{course.progress}% complete · {course.badgeName}</p>
+                  <p className="mt-2 text-xs text-slate-500">{course.progress}% complete / {course.badgeName}</p>
                   <button
                     type="button"
                     onClick={() => toggleProgrammeDetails(course.id)}
@@ -568,11 +588,11 @@ export function LearnerDashboardClient() {
                 {data.activeCourseToolkit.access && !data.activeCourseToolkit.access.unlocked && (
                   <div className="mt-2 space-y-2 rounded-xl border border-amber-200/80 bg-amber-50/70 p-3 text-xs dark:border-amber-900/40 dark:bg-amber-950/20">
                     <p className="font-semibold text-amber-900 dark:text-amber-200">
-                      Toolkit locked — {data.activeCourseToolkit.access.currency} {data.activeCourseToolkit.access.price.toFixed(2)}
+                      Toolkit locked - {data.activeCourseToolkit.access.currency} {data.activeCourseToolkit.access.price.toFixed(2)}
                     </p>
                     <p className="text-slate-600 dark:text-slate-400">Review what is included, choose a payment method, and upload proof in checkout.</p>
                     <Button className="w-full" onClick={() => setCheckout("toolkit")}>
-                      {data.activeCourseToolkit.access.paymentId ? "Continue checkout" : "Buy toolkit — open checkout"}
+                      {data.activeCourseToolkit.access.paymentId ? "Continue checkout" : "Buy toolkit - open checkout"}
                     </Button>
                   </div>
                 )}
@@ -582,7 +602,7 @@ export function LearnerDashboardClient() {
                     rel="nofollow"
                     className="block pt-1 text-xs font-semibold text-emerald-600 hover:underline"
                   >
-                    View all {data.activeCourseToolkit.itemCount} toolkit resources →
+                    View all {data.activeCourseToolkit.itemCount} toolkit resources -&gt;
                   </Link>
                 )}
               </>
@@ -607,12 +627,12 @@ export function LearnerDashboardClient() {
                         <span className="block font-medium">{data.referenceManual.title}</span>
                         <span className="text-xs text-slate-500">
                           {data.referenceManual.access
-                            ? `${data.referenceManual.access.currency} ${data.referenceManual.access.price.toFixed(2)} — checkout required`
+                            ? `${data.referenceManual.access.currency} ${data.referenceManual.access.price.toFixed(2)} - checkout required`
                             : "Purchase and admin approval required"}
                         </span>
                         {data.referenceManual.access && (
                           <Button className="mt-2 w-full" variant="secondary" onClick={() => setCheckout("manual")}>
-                            {data.referenceManual.access.paymentId ? "Continue checkout" : "Buy manual — open checkout"}
+                            {data.referenceManual.access.paymentId ? "Continue checkout" : "Buy manual - open checkout"}
                           </Button>
                         )}
                       </div>
@@ -723,6 +743,95 @@ function StatusPill({ status }: { status: string }) {
       {status.replace(/_/g, " ")}
     </span>
   );
+}
+
+function learnerNextActions(data: LearnerDashboard) {
+  const pendingPayment = data.applications.find((application) => application.status !== "APPROVED" && application.payment && !isProofSubmitted(application));
+  const pendingReview = data.applications.find((application) => application.status !== "APPROVED" && isProofSubmitted(application));
+  const activeApplication = data.applications.find((application) => application.status === "APPROVED" && (application.progress ?? 0) < 100);
+  const latestCertificate = data.certificates[0];
+
+  if (pendingPayment) {
+    return [
+      {
+        title: "Finish payment proof",
+        body: `Upload proof for ${pendingPayment.course.title} so HouseLink can approve access.`,
+        href: "/dashboard/academy",
+      },
+      {
+        title: "Preview the pathway",
+        body: "Review the training sessions, assignments, and certification gates while approval is pending.",
+        href: "/academy?browse=1",
+      },
+      {
+        title: "Prepare your field files",
+        body: "Start gathering ID/contact details, market notes, and sample listing evidence for assignments.",
+      },
+    ];
+  }
+
+  if (pendingReview) {
+    return [
+      {
+        title: "Payment under review",
+        body: `Your proof for ${pendingReview.course.title} is with HouseLink admin.`,
+      },
+      {
+        title: "Read the standard",
+        body: "Use the top-agent readiness checklist below to understand what certification will require.",
+      },
+      {
+        title: "Plan study time",
+        body: "Block time for sessions, quizzes, assignments, and field practice before access opens.",
+      },
+    ];
+  }
+
+  if (activeApplication) {
+    return [
+      {
+        title: "Continue training",
+        body: `${activeApplication.course.title} is ${activeApplication.progress ?? 0}% complete.`,
+        href: `/dashboard/academy/${activeApplication.course.id}`,
+      },
+      {
+        title: "Complete assessments",
+        body: "Pass module quizzes and submit practical work for review before certification.",
+        href: `/dashboard/academy/${activeApplication.course.id}?tab=assessments`,
+      },
+      {
+        title: "Use the toolkit",
+        body: "Download the stage-specific forms, scripts, checklists, and trackers while studying.",
+        href: `/dashboard/academy/${activeApplication.course.id}?tab=toolkit`,
+      },
+    ];
+  }
+
+  if (latestCertificate) {
+    return [
+      {
+        title: "Verify your certificate",
+        body: `${latestCertificate.certificateNumber} is ready to share with clients or employers.`,
+        href: latestCertificate.verifyUrl,
+      },
+      {
+        title: "Choose a specialisation",
+        body: "Move from general certification into rentals, sales, commercial, management, land, or diaspora advisory.",
+      },
+      {
+        title: "Keep evidence current",
+        body: "Maintain response speed, listing quality, portfolio samples, and renewal evidence.",
+      },
+    ];
+  }
+
+  return [
+    {
+      title: "Start the pathway",
+      body: "Choose Foundations first, then progress into Listing & Client Mastery and Professional Certification.",
+      href: "/academy",
+    },
+  ];
 }
 
 function isProofSubmitted(application: LearnerDashboard["applications"][number]) {

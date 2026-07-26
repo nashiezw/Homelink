@@ -282,7 +282,7 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
             style={tab === item ? { backgroundColor: accent } : undefined}
             onClick={() => setTab(item)}
           >
-            {item === "materials" ? "Lesson Notes" : item === "toolkit" ? "Toolkit" : item}
+            {item === "materials" ? "Session Notes" : item === "toolkit" ? "Toolkit" : item}
           </Button>
         ))}
       </div>
@@ -311,7 +311,7 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
                         <p className="font-semibold leading-snug group-hover:text-emerald-700 dark:group-hover:text-emerald-300">{lesson.title}</p>
                         <CheckCircle2 className={cn("size-5 shrink-0", lesson.completed ? "text-emerald-500" : "text-slate-200 dark:text-slate-700")} />
                       </div>
-                      <p className="mt-2 text-xs text-slate-500">{lesson.estimatedMinutes} min · {lesson.completionRequirement.replace(/_/g, " ")}</p>
+                      <p className="mt-2 text-xs text-slate-500">{lesson.estimatedMinutes} min / {lesson.completionRequirement.replace(/_/g, " ")}</p>
                     </button>
                   ))}
                 </div>
@@ -325,7 +325,7 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
         <div className="mt-6 space-y-4">
           <div className="academy-panel rounded-xl p-5" style={{ borderColor: `${accent}33`, background: `linear-gradient(135deg, ${accent}10, transparent)` }}>
             <h3 className="text-lg font-bold">HouseLink Field Toolkit</h3>
-            <p className="mt-1 text-sm text-slate-600">Print-ready branded forms, checklists, planners, scripts, and flowcharts for this programme — the same professional PDFs used in the field.</p>
+            <p className="mt-1 text-sm text-slate-600">Print-ready branded forms, checklists, planners, scripts, and flowcharts for this programme - the same professional PDFs used in the field.</p>
           </div>
           <ToolkitGrid
             groups={data.toolkit ?? []}
@@ -358,9 +358,9 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
           <div className="academy-panel rounded-xl p-5 dark:border-sky-900/40 dark:from-sky-950/30 dark:to-slate-950">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
-                <h3 className="text-lg font-bold">Lesson Notes — Downloadable PDFs</h3>
+                <h3 className="text-lg font-bold">Training Session Notes - Downloadable PDFs</h3>
                 <p className="mt-1 max-w-2xl text-sm text-slate-600 dark:text-slate-400">
-                  {data.materials.length} branded HouseLink study guides — each PDF includes the HouseLink logo, lesson overview, key takeaways, in-depth notes, field application steps, and reflection questions.
+                  {data.materials.length} branded HouseLink study guides - each PDF includes the HouseLink logo, session overview, key takeaways, in-depth notes, field application steps, and reflection questions.
                 </p>
               </div>
               <span className="rounded-full bg-sky-100 px-3 py-1 text-xs font-bold text-sky-800 dark:bg-sky-900/40 dark:text-sky-200">
@@ -469,10 +469,10 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
                   )}
                   <p className="font-semibold">{quiz.title}</p>
                   {quiz.description && <p className="text-sm text-slate-600 mt-1 line-clamp-3">{quiz.description}</p>}
-                  <p className="text-xs text-slate-500 mt-2">{quiz.questionCount} questions · {quiz.passingPercentage}% to pass{quiz.timeLimitMinutes ? ` · ${quiz.timeLimitMinutes} min` : ""}</p>
+                  <p className="text-xs text-slate-500 mt-2">{quiz.questionCount} questions / {quiz.passingPercentage}% to pass{quiz.timeLimitMinutes ? ` / ${quiz.timeLimitMinutes} min` : ""}</p>
                   {quiz.bestScore !== null && (
                     <p className={cn("text-sm mt-2 font-medium", quiz.passed ? "text-emerald-600" : "text-amber-600")}>
-                      Best score: {quiz.bestScore}% {quiz.passed ? "✓ Passed" : "— retake available"}
+                      Best score: {quiz.bestScore}% {quiz.passed ? "Passed" : "- retake available"}
                     </p>
                   )}
                   <Button className="mt-3 w-full" onClick={() => setActiveQuizId(quiz.id)}>{quiz.passed ? "Retake Quiz" : "Take Quiz"}</Button>
@@ -488,9 +488,9 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
                   )}
                   <p className="font-semibold">{assignment.title}</p>
                   <p className="text-sm text-slate-600 mt-1 line-clamp-4">{assignment.description}</p>
-                  <p className="text-xs text-slate-500 mt-2">{assignment.points} points{assignment.dueDays ? ` · due within ${assignment.dueDays} days` : ""}</p>
+                  <p className="text-xs text-slate-500 mt-2">{assignment.points} points{assignment.dueDays ? ` / due within ${assignment.dueDays} days` : ""}</p>
                   <p className={cn("text-xs mt-1 font-semibold", assignment.submitted ? "text-emerald-600" : "text-slate-500")}>
-                    {assignment.submitted ? `Submitted · ${assignment.status}` : "Not submitted yet"}
+                    {assignment.submitted ? `Submitted / ${assignment.status}` : "Not submitted yet"}
                   </p>
                   <Button className="mt-3 w-full" variant="secondary" onClick={() => setActiveAssignmentId(assignment.id)}>
                     {assignment.submitted ? "View Submission" : "Submit Assignment"}
@@ -505,7 +505,7 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
                   <p className="text-[10px] font-bold uppercase tracking-wide text-amber-700 dark:text-amber-300">Capstone</p>
                   <p className="font-semibold mt-1">{exam.title}</p>
                   {exam.description && <p className="text-sm text-slate-600 mt-1">{exam.description}</p>}
-                  <p className="text-xs text-slate-500 mt-2">{exam.durationMinutes} min · {exam.passingScore}% pass · {exam.attemptLimit} attempts</p>
+                  <p className="text-xs text-slate-500 mt-2">{exam.durationMinutes} min / {exam.passingScore}% pass / {exam.attemptLimit} attempts</p>
                   <Button className="mt-3 w-full" onClick={() => setActiveExamId(exam.id)}>Take Final Exam</Button>
                 </div>
               ))}
@@ -536,8 +536,8 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
       {tab === "progress" && (
         <div className="academy-panel mt-6 rounded-xl p-6">
           <p className="text-3xl font-bold text-emerald-600">{data.course.progress}%</p>
-          <p className="text-slate-600 mt-1">Course completion · Status: {data.course.status.replace(/_/g, " ")}</p>
-          <p className="text-sm text-slate-500 mt-4">Pass mark: {data.course.passingPercentage}% · Complete all lessons{data.course.certificateEnabled ? " to earn your certificate" : ""}.</p>
+          <p className="text-slate-600 mt-1">Course completion / Status: {data.course.status.replace(/_/g, " ")}</p>
+          <p className="text-sm text-slate-500 mt-4">Pass mark: {data.course.passingPercentage}% / Complete all training sessions{data.course.certificateEnabled ? " to earn your certificate" : ""}.</p>
         </div>
       )}
     </PageShell>

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Award, Loader2, Search, ShieldCheck, XCircle } from "lucide-react";
+import { Award, CheckCircle2, ClipboardCheck, Loader2, Search, ShieldCheck, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api/client";
 
@@ -13,6 +13,19 @@ type VerificationResult = {
   certificateTitle?: string;
   badgeName?: string | null;
   skillsAssessed?: string[];
+  assessmentProof?: {
+    trainingSessions: string | null;
+    quizzes: number;
+    assignments: number;
+    requiresFinalExam: boolean;
+    requiresPortfolio: boolean;
+    roleplayAssessments: number;
+    certificateRequirements: string[];
+  } | null;
+  gradingStandard?: string[];
+  portfolioEvidence?: string[];
+  roleplayEvidence?: string[];
+  graduateProofSignals?: string[];
   issuedAt: string;
   expiresAt?: string | null;
   status: string;
@@ -89,6 +102,21 @@ export function CertificateVerificationClient() {
               <VerificationFact label="Issued" value={new Date(result.issuedAt).toLocaleDateString("en-GB")} />
               <VerificationFact label="Expires" value={result.expiresAt ? new Date(result.expiresAt).toLocaleDateString("en-GB") : "No expiry"} />
             </dl>
+            {result.assessmentProof && (
+              <div className="mt-5 rounded-lg border border-emerald-200 bg-white p-4 dark:border-emerald-900/50 dark:bg-slate-950">
+                <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Verified completion evidence</p>
+                <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                  <VerificationFact label="Quizzes" value={String(result.assessmentProof.quizzes)} />
+                  <VerificationFact label="Assignments" value={String(result.assessmentProof.assignments)} />
+                  <VerificationFact label="Capstone" value={result.assessmentProof.requiresFinalExam ? "Final exam" : "Module gates"} />
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {result.assessmentProof.trainingSessions && <VerificationChip value={result.assessmentProof.trainingSessions} />}
+                  {result.assessmentProof.requiresPortfolio && <VerificationChip value="Field portfolio required" />}
+                  {!!result.assessmentProof.roleplayAssessments && <VerificationChip value={`${result.assessmentProof.roleplayAssessments} roleplay/simulation assessments`} />}
+                </div>
+              </div>
+            )}
             {!!result.skillsAssessed?.length && (
               <div className="mt-5">
                 <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Skills assessed</p>
@@ -97,6 +125,33 @@ export function CertificateVerificationClient() {
                     <p key={skill} className="flex gap-2 text-sm leading-snug text-slate-700 dark:text-slate-200">
                       <Award className="mt-0.5 size-4 shrink-0 text-emerald-600" />
                       {skill}
+                    </p>
+                  ))}
+                </div>
+              </div>
+            )}
+            <div className="mt-5 grid gap-4 lg:grid-cols-2">
+              {!!result.gradingStandard?.length && (
+                <VerificationList title="How work was judged" items={result.gradingStandard} icon="check" />
+              )}
+              {!!result.assessmentProof?.certificateRequirements?.length && (
+                <VerificationList title="Certificate requirements" items={result.assessmentProof.certificateRequirements.slice(0, 6)} icon="award" />
+              )}
+              {!!result.portfolioEvidence?.length && (
+                <VerificationList title="Portfolio evidence expected" items={result.portfolioEvidence} icon="check" />
+              )}
+              {!!result.roleplayEvidence?.length && (
+                <VerificationList title="Roleplay evidence expected" items={result.roleplayEvidence} icon="award" />
+              )}
+            </div>
+            {!!result.graduateProofSignals?.length && (
+              <div className="mt-5 rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950">
+                <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Ongoing graduate proof signals</p>
+                <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                  {result.graduateProofSignals.map((signal) => (
+                    <p key={signal} className="flex gap-2 text-sm leading-snug text-slate-700 dark:text-slate-200">
+                      <ClipboardCheck className="mt-0.5 size-4 shrink-0 text-emerald-600" />
+                      {signal}
                     </p>
                   ))}
                 </div>
@@ -124,6 +179,27 @@ function VerificationFact({ label, value }: { label: string; value: string }) {
     <div className="rounded-lg bg-white p-3 dark:bg-slate-950">
       <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</dt>
       <dd className="mt-1 font-semibold text-slate-950 dark:text-white">{value}</dd>
+    </div>
+  );
+}
+
+function VerificationChip({ value }: { value: string }) {
+  return <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-100">{value}</span>;
+}
+
+function VerificationList({ title, items, icon }: { title: string; items: string[]; icon: "award" | "check" }) {
+  const Icon = icon === "award" ? Award : CheckCircle2;
+  return (
+    <div className="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950">
+      <p className="text-xs font-bold uppercase tracking-wide text-slate-500">{title}</p>
+      <ul className="mt-3 space-y-2">
+        {items.map((item) => (
+          <li key={item} className="flex gap-2 text-sm leading-snug text-slate-700 dark:text-slate-200">
+            <Icon className="mt-0.5 size-4 shrink-0 text-emerald-600" />
+            <span>{item}</span>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

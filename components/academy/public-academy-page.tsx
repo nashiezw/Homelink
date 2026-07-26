@@ -104,6 +104,43 @@ function courseRegistrationState(status: AcademyStatus | null, courseId: string)
   return "NOT_REGISTERED" as const;
 }
 
+const GRADUATE_CAPABILITY_MAP = [
+  "Prospect consistently and qualify leads before spending field time.",
+  "Win listings with authority checks, seller notes, inspection evidence, and a clean marketing file.",
+  "Build a basic CMA using comparable evidence and defend a realistic price range.",
+  "Write property descriptions, organise photos, and publish listings without misleading clients.",
+  "Run buyer, tenant, landlord, and seller conversations with documented next steps.",
+  "Manage viewing safety, feedback, offers, counter-offers, and escalation boundaries.",
+  "Maintain compliant client files and know when to refer legal, finance, or valuation questions.",
+];
+
+const SAMPLE_PUBLIC_ASSIGNMENTS = [
+  "Prospecting log with lead quality notes and follow-up dates.",
+  "Complete listing file with authority notes, inspection checklist, photos, and marketing plan.",
+  "CMA pricing pack with comparables, assumptions, recommended range, and objection response.",
+  "Recorded listing or negotiation roleplay assessed against the HouseLink standard.",
+  "Final field portfolio showing corrected client files, compliance notes, and self-review.",
+];
+
+const ASSESSMENT_GRADING_STANDARD = [
+  "Accuracy of market reasoning, pricing evidence, and property facts.",
+  "Professional communication, tone, follow-up discipline, and client respect.",
+  "Listing quality, documentation completeness, and verification habits.",
+  "Ethical judgement, confidentiality, safety awareness, and escalation decisions.",
+  "Practical readiness: can the learner use the tools correctly in a real client workflow?",
+];
+
+const ACADEMY_VALUE_PROOF = [
+  "Structured sessions instead of random property tips.",
+  "Module quizzes with pass marks.",
+  "Admin-reviewed practical assignments.",
+  "Roleplay and simulation evidence.",
+  "Field-ready branded PDF tools.",
+  "Portfolio and final exam gate for professional certification.",
+  "Public certificate verification.",
+  "Specialisation and annual renewal path.",
+];
+
 export function PublicAcademyPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -329,6 +366,53 @@ export function PublicAcademyPage() {
               </div>
             </div>
           ))}
+        </div>
+      </section>
+
+      <section className="academy-panel mt-10 rounded-xl p-6 sm:p-8">
+        <div className="flex flex-col gap-2">
+          <p className="text-xs font-bold uppercase tracking-widest text-emerald-700 dark:text-emerald-300">Industry-ready capability map</p>
+          <h2 className="text-2xl font-bold">What a serious graduate should be able to do</h2>
+          <p className="max-w-3xl text-sm leading-6 text-slate-600 dark:text-slate-300">
+            The pathway is designed around practical field competence, not passive reading. Learners must show they can handle real property work safely, professionally, and with evidence.
+          </p>
+        </div>
+        <div className="mt-6 grid gap-4 lg:grid-cols-3">
+          <AcademyOpsCard title="Client and listing capability" items={GRADUATE_CAPABILITY_MAP.slice(0, 5)} />
+          <AcademyOpsCard title="Sample assessed assignments" items={SAMPLE_PUBLIC_ASSIGNMENTS} />
+          <AcademyOpsCard title="Admin grading standard" items={ASSESSMENT_GRADING_STANDARD} />
+        </div>
+      </section>
+
+      <section className="academy-panel mt-10 rounded-xl p-6 sm:p-8">
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,0.8fr)]">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-widest text-emerald-700 dark:text-emerald-300">Price-to-value proof</p>
+            <h2 className="mt-2 text-2xl font-bold">What the fee pays for</h2>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600 dark:text-slate-300">
+              Each paid programme combines structured training, reviewed practical work, field-ready PDFs, certificate evidence, and a route into higher-level specialist practice.
+            </p>
+            <div className="mt-5 grid gap-3 sm:grid-cols-2">
+              {ACADEMY_VALUE_PROOF.map((item) => (
+                <div key={item} className="flex gap-2 rounded-lg border border-slate-200 bg-white p-3 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
+                  <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-600" />
+                  <span>{item}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-5 dark:border-amber-900/40 dark:bg-amber-950/20">
+            <p className="text-xs font-bold uppercase tracking-widest text-amber-700 dark:text-amber-300">Future specialisation</p>
+            <h3 className="mt-2 text-lg font-bold">Beyond core certification</h3>
+            <div className="mt-4 space-y-3">
+              {SPECIALISATION_TRACKS.slice(0, 4).map((track) => (
+                <div key={track.title}>
+                  <p className="text-sm font-semibold text-slate-900 dark:text-white">{track.title}</p>
+                  <p className="mt-0.5 text-xs leading-5 text-slate-600 dark:text-slate-300">{track.outcome}</p>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </section>
 

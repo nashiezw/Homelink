@@ -1,6 +1,11 @@
 import { ok, problem } from "@/lib/api/response";
 import { getMainPrisma } from "@/lib/db/main-prisma";
 import { getProgrammeCourse } from "@/lib/academy/academy-programme";
+import {
+  AGENT_PORTFOLIO_REQUIREMENTS,
+  GRADUATE_OUTCOME_SIGNALS,
+  ROLEPLAY_ASSESSMENT_SCENARIOS,
+} from "@/lib/academy/academy-excellence";
 
 export const dynamic = "force-dynamic";
 
@@ -25,6 +30,30 @@ export async function GET(_request: Request, context: { params: Promise<{ number
       certificateTitle: programme?.certificateTitle ?? certificate.course?.title ?? "HouseLink Academy Certificate",
       badgeName: programme?.badgeName ?? null,
       skillsAssessed: programme?.learningOutcomes ?? [],
+      assessmentProof: programme
+        ? {
+            trainingSessions: programme.includes.find((item) => /training sessions/i.test(item)) ?? null,
+            quizzes: programme.quizIds.length,
+            assignments: programme.assignmentIds.length,
+            requiresFinalExam: programme.requiresFinalExam,
+            requiresPortfolio: programme.assignmentIds.some((id) => id.includes("portfolio")),
+            roleplayAssessments: programme.assignmentIds.filter((id) => id.includes("roleplay") || id.includes("simulation")).length,
+            certificateRequirements: [
+              programme.assessmentSummary,
+              ...programme.includes.filter((item) => /quiz|assignment|exam|portfolio|certificate/i.test(item)),
+            ],
+          }
+        : null,
+      gradingStandard: [
+        "Market reasoning and property fact accuracy.",
+        "Professional communication and documented follow-up.",
+        "Listing, client-file, and compliance completeness.",
+        "Ethical judgement, confidentiality, and escalation decisions.",
+        "Practical readiness for real client workflows.",
+      ],
+      portfolioEvidence: AGENT_PORTFOLIO_REQUIREMENTS.slice(0, 5),
+      roleplayEvidence: ROLEPLAY_ASSESSMENT_SCENARIOS.slice(0, 5),
+      graduateProofSignals: GRADUATE_OUTCOME_SIGNALS,
       issuedAt: certificate.issuedAt.toISOString(),
       expiresAt: certificate.expiresAt?.toISOString() ?? null,
       status: certificate.status,
