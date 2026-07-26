@@ -587,8 +587,8 @@ export function CreateListingForm({ onSuccess }: CreateListingFormProps) {
         <p className="text-sm font-semibold text-ink">Property owner agreement</p>
         <p className="mt-1 text-xs text-slate-600 dark:text-slate-300">
           {isAgent
-            ? "The property owner must authorise HouseLink to market this property and route all client contact and payments through the platform."
-            : "By signing, you authorise HouseLink to market this property and route enquiries, viewings, and payments through the platform."}
+            ? "The property owner must authorise HouseLink to market this property and keep client contact and payments through HouseLink."
+            : "By signing, you authorise HouseLink to market this property and manage enquiries, viewings, and payments through HouseLink."}
         </p>
         <div className="mt-3 max-h-56 overflow-y-auto rounded-lg border border-slate-200 bg-white p-4 text-sm leading-relaxed whitespace-pre-wrap dark:border-slate-700 dark:bg-slate-900">
           {HOUSELINK_OWNER_LISTING_AGREEMENT}

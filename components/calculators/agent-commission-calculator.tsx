@@ -101,14 +101,14 @@ export function AgentCommissionCalculator({ embedded }: { embedded?: boolean }) 
   if (embedded) {
     return (
       <>
-        <CalculatorPanelHeader icon={HandCoins} title="Agent Commission Calculator" description="Calculate commission splits between HouseLink agents and the platform." audience="Agents" actions={<CalculatorResetButton onClick={reset} />} />
+        <CalculatorPanelHeader icon={HandCoins} title="Agent Commission Calculator" description="Estimate how commission is shared between the agent and HouseLink." audience="Agents" actions={<CalculatorResetButton onClick={reset} />} />
         <div className="p-5 sm:p-6">{body}</div>
       </>
     );
   }
 
   return (
-    <CalculatorCard id="agent-commission" icon={HandCoins} title="Agent Commission Calculator" description="Calculate commission splits between HouseLink agents and the platform." audience="Agents" actions={<CalculatorResetButton onClick={reset} />}>
+    <CalculatorCard id="agent-commission" icon={HandCoins} title="Agent Commission Calculator" description="Estimate how commission is shared between the agent and HouseLink." audience="Agents" actions={<CalculatorResetButton onClick={reset} />}>
       {body}
     </CalculatorCard>
   );

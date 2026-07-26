@@ -717,7 +717,7 @@ export function RoommatesPageClient() {
                   </span>
                 </h1>
                 <p className="rm-text-shadow mt-4 max-w-xl text-sm leading-6 text-white/90 sm:text-lg sm:leading-8 lg:text-xl">
-                  Zimbabwe&apos;s most trusted room-sharing platform — real photos, verified profiles, and matches that actually fit your lifestyle.
+                  Find rooms and roommates with real photos, verified profiles, and matches that fit your lifestyle.
                 </p>
 
                 <p className="mt-4 text-sm font-semibold text-emerald-100/90 sm:hidden">
@@ -789,7 +789,7 @@ export function RoommatesPageClient() {
             <LightSectionHeader
               eyebrow="Choose your path"
               title="Which one are you?"
-              subtitle="Three journeys. One trusted platform for room sharing in Zimbabwe."
+              subtitle="Three simple ways to find a room, post a room, or meet the right roommate in Zimbabwe."
             />
             <div className="rm-grid mt-8">
               {audiencePaths.map((path, i) => (
@@ -849,7 +849,7 @@ export function RoommatesPageClient() {
               eyebrow="Smart matching"
               title="Find people who fit"
               accent="your life"
-              subtitle="HouseLink combines roommate preferences, budget, lifestyle and location signals so matching feels closer to a trusted introduction than a cold listing."
+              subtitle="HouseLink uses preferences, budget, lifestyle, and location details to make roommate matches feel more personal and less random."
             />
             <div className="mt-6 flex gap-2 overflow-x-auto pb-2 [scrollbar-width:thin]">
               {matchingFilters.map((filter, i) => (
@@ -983,7 +983,7 @@ export function RoommatesPageClient() {
                   Built for safer shared living.
                 </h2>
                 <p className="mt-4 text-base leading-relaxed text-white/70">
-                  Room sharing needs more than pretty listings. HouseLink puts verification, assisted viewings, secure messaging and support around the full journey.
+                  Room sharing needs more than pretty listings. HouseLink adds verification, assisted viewings, secure messaging, and support from search to move-in.
                 </p>
                 <div className="mt-6 grid gap-3 min-[430px]:grid-cols-3">
                   {[

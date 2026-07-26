@@ -113,7 +113,7 @@ const ASSESSMENT_GRADING_STANDARD = [
   "Professional communication, tone, follow-up discipline, and client respect.",
   "Listing quality, documentation completeness, and verification habits.",
   "Ethical judgement, confidentiality, safety awareness, and escalation decisions.",
-  "Practical readiness: can the learner use the tools correctly in a real client workflow?",
+  "Practical readiness: can the learner use the tools correctly with a real client?",
 ];
 
 const ACADEMY_VALUE_PROOF = [
@@ -817,7 +817,7 @@ function AcademySidePanel({
             {!user ? "Get Started" : selectedRegistration === "APPROVED" ? "Your Course" : selectedRegistration === "PENDING" ? "Payment Pending" : "Enrol in a Course"}
           </h2>
           <p className="text-sm text-slate-600 dark:text-slate-400">
-            {!user ? "Create an account to enrol" : selectedRegistration === "APPROVED" ? "Continue where you left off" : selectedRegistration === "PENDING" ? "Finish payment to unlock access" : "Complete registration for a new course"}
+            {!user ? "Create an account to enrol" : selectedRegistration === "APPROVED" ? "Continue where you left off" : selectedRegistration === "PENDING" ? "Finish payment to start learning" : "Complete registration for a new course"}
           </p>
         </div>
       </div>

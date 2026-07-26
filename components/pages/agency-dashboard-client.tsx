@@ -126,7 +126,7 @@ export function AgencyDashboardClient() {
             {data?.agency.city ?? "Your city"} — {data?.totals.views ?? 0} views and {data?.totals.enquiries ?? 0} enquiries across your team.
           </h2>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-cyan-50">
-            Listing quality, agent responsiveness, and verification status are visible in one workflow.
+            See listing quality, agent responsiveness, and verification status in one clear view.
           </p>
           <Link href="/dashboard/landlord/new" className="mt-4 inline-flex text-sm font-semibold text-cyan-100 underline">
             Add agency listing

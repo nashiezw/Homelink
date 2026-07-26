@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: "HouseLink Academy | Real Estate Training in Zimbabwe",
   description:
-    "Study HouseLink Academy courses for Zimbabwe property agents, landlords, and operators. Track training sessions, quizzes, assignments, certificates, and payment proof.",
+    "Study HouseLink Academy courses for Zimbabwe property agents, landlords, and operators, with practical lessons, assessments, certificates, and field tools.",
   alternates: {
     canonical: "/academy",
   },

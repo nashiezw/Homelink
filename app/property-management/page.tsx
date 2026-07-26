@@ -4,7 +4,7 @@ import { PropertyManagementPage } from "@/components/property-management/propert
 export const metadata: Metadata = {
   title: "Property Management in Zimbabwe | HouseLink",
   description:
-    "HouseLink property management helps Zimbabwe owners with tenant sourcing, inspections, maintenance coordination, rent tracking, agreements, and verified owner workflows.",
+    "HouseLink property management helps Zimbabwe owners with tenant sourcing, inspections, maintenance coordination, rent tracking, agreements, and clearer owner updates.",
   alternates: {
     canonical: "/property-management",
   },

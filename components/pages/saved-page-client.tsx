@@ -90,7 +90,7 @@ export function SavedPageClient() {
     >
       {!user && (
         <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 shadow-sm">
-          Sign in to sync favourites and alerts across devices.
+          Sign in to keep your saved listings and alerts available on every device.
         </div>
       )}
       <div className="grid gap-6 lg:grid-cols-[1fr_340px]">

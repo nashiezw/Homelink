@@ -35,7 +35,7 @@ const checks = [
   },
   {
     title: "Payment safety",
-    body: "Payment states stay explicit: pending proof, verified, rejected, refunded, failed webhook, or manual transfer pending.",
+    body: "Payment status is clearly shown, so you know when proof is pending, approved, rejected, or refunded.",
     icon: WalletCards,
   },
   {
@@ -64,7 +64,7 @@ const steps = [
   "Browse listings with the verified filter enabled.",
   "Check the landlord or agent profile and contact details.",
   "Confirm availability, suburb, and viewing arrangements before paying.",
-  "Use in-app messaging and report tools if something looks wrong.",
+  "Use HouseLink messages and reporting tools if something looks wrong.",
 ];
 
 export default function VerificationPage() {
@@ -72,7 +72,7 @@ export default function VerificationPage() {
     <PageShell
       eyebrow="Verification"
       title="How HouseLink verifies people, listings, and tenancies."
-      description="Verification is not a badge for decoration — it is how we reduce fake listings, protect seekers, and give serious owners a trusted marketplace."
+      description="Verification helps reduce fake listings, protect property seekers, and give serious owners a more trusted place to list."
       highlights={[
         { value: "92%", label: "verified contacts" },
         { value: "24h", label: "freshness reviews" },

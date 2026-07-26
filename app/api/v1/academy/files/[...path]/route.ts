@@ -28,7 +28,7 @@ export async function GET(request: Request, context: { params: Promise<{ path: s
     roles: user?.roles,
   });
   if (!allowed) {
-    return problem(403, "ACCESS_DENIED", "Purchase and admin approval are required before downloading this resource.");
+    return problem(403, "ACCESS_DENIED", "Purchase approval is required before downloading this resource.");
   }
 
   const url = new URL(request.url);

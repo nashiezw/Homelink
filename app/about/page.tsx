@@ -62,7 +62,7 @@ const proofCards = [
   {
     label: "Zimbabwe first",
     value: "Built for Zimbabwe",
-    body: "Rooms, rentals, landlords, agents, suburbs, transport costs, and trust all matter in the Zimbabwean property journey.",
+    body: "Rooms, rentals, landlords, agents, suburbs, transport costs, and trust all matter when people are choosing where to live.",
     icon: MapPin,
   },
   {
@@ -130,7 +130,7 @@ const values = [
   },
   {
     title: "Vision",
-    body: "To become the property platform Zimbabwe trusts first, then carry that standard of trust into more African communities.",
+    body: "To become the first name Zimbabwe trusts for property, then carry that standard into more African communities.",
     icon: Sparkles,
   },
   {
@@ -466,7 +466,7 @@ export default function AboutPage() {
             <SectionIntro
               eyebrow="What HouseLink does"
               title="So we built a clearer way to move forward."
-              copy="HouseLink brings the most important parts of the property journey into one place, so renters, buyers, roommates, landlords, agents, sellers, and owners can make better decisions with less guesswork."
+              copy="HouseLink brings search, listing, room sharing, agents, and property support into one place, so people can make better decisions with less guesswork."
             />
             <div className="group relative mt-8 overflow-hidden rounded-[1.65rem] shadow-hero">
               <Image
@@ -479,7 +479,7 @@ export default function AboutPage() {
               <div className="absolute inset-0 bg-gradient-to-t from-ink/70 via-transparent to-transparent opacity-90" />
               <div className="absolute bottom-5 left-5 right-5 rounded-2xl border border-white/15 bg-white/10 p-4 text-white backdrop-blur">
                 <p className="text-xs font-bold uppercase tracking-wider text-emerald-200">From search to settlement</p>
-                <p className="mt-1 text-lg font-semibold">Clearer listings, better contact, and support when the journey gets complicated.</p>
+                <p className="mt-1 text-lg font-semibold">Clearer listings, better contact, and support when property decisions get complicated.</p>
               </div>
             </div>
           </FadeIn>
@@ -505,7 +505,7 @@ export default function AboutPage() {
             <SectionIntro
               eyebrow="Mission, vision, values"
               title="Trust is the reason. Technology is how we serve it."
-              copy="A property platform only matters if people feel safer using it. That is why HouseLink keeps coming back to transparency, local knowledge, and human support."
+              copy="Property technology only matters if people feel safer using it. That is why HouseLink keeps coming back to transparency, local knowledge, and human support."
               centered
             />
           </FadeIn>
@@ -541,8 +541,8 @@ export default function AboutPage() {
               {[
                 "Built from lived experience, not guesswork",
                 "Local property search, room sharing, agents, and management in one place",
-                "Verification, transparency, and clearer communication built into the journey",
-                "A long-term Zimbabwean platform for tenants, landlords, buyers, sellers, and agents",
+                "Verification, transparency, and clearer communication built into the experience",
+                "A long-term Zimbabwean home for tenants, landlords, buyers, sellers, and agents",
               ].map((item) => (
                 <div key={item} className="flex items-start gap-3 rounded-2xl border border-white/10 bg-white/8 p-4 backdrop-blur">
                   <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-emerald-300" aria-hidden="true" />
@@ -567,7 +567,7 @@ export default function AboutPage() {
                   Move forward with people you can trust.
                 </h2>
                 <p className="mt-3 max-w-xl text-base leading-7 text-slate-200">
-                  Find a home, search for a roommate, list property, or connect with trusted people across Zimbabwe's property journey.
+                  Find a home, search for a roommate, list property, or connect with trusted people across Zimbabwe.
                 </p>
               </div>
               <div className="flex flex-col gap-3 sm:flex-row lg:justify-end">

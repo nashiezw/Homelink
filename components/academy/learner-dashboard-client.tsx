@@ -216,7 +216,7 @@ export function LearnerDashboardClient() {
     <PageShell
       eyebrow={data.settings?.academyName ?? "HouseLink Academy"}
       title={`Welcome back, ${user.name.split(" ")[0]}`}
-      description={data.settings?.dashboardWelcome ?? "Track your progress, access course materials, and manage your Academy journey."}
+      description={data.settings?.dashboardWelcome ?? "Track progress, open course materials, and continue your Academy training."}
       actions={
         <Link href="/academy" className="w-full sm:w-auto">
           <Button variant="secondary" className="w-full"><BookOpen className="size-4 mr-2" /> Browse Courses</Button>
@@ -607,7 +607,7 @@ export function LearnerDashboardClient() {
                 )}
               </>
             ) : (
-              <p className="text-sm text-slate-500">Enrol in a programme to unlock your stage-specific field toolkit.</p>
+              <p className="text-sm text-slate-500">Enrol in a programme to access your stage-specific field toolkit.</p>
             )}
             {data.referenceManual && (
               <div className="mt-3 rounded-xl border border-dashed border-slate-200 p-3 text-sm dark:border-slate-700">
@@ -628,7 +628,7 @@ export function LearnerDashboardClient() {
                         <span className="text-xs text-slate-500">
                           {data.referenceManual.access
                             ? `${data.referenceManual.access.currency} ${data.referenceManual.access.price.toFixed(2)} - checkout required`
-                            : "Purchase and admin approval required"}
+                            : "Purchase approval required"}
                         </span>
                         {data.referenceManual.access && (
                           <Button className="mt-2 w-full" variant="secondary" onClick={() => setCheckout("manual")}>
@@ -760,7 +760,7 @@ function learnerNextActions(data: LearnerDashboard) {
       },
       {
         title: "Preview the pathway",
-        body: "Review the training sessions, assignments, and certification gates while approval is pending.",
+        body: "Review the lessons, assignments, and certification requirements while approval is pending.",
         href: "/academy?browse=1",
       },
       {
@@ -774,7 +774,7 @@ function learnerNextActions(data: LearnerDashboard) {
     return [
       {
         title: "Payment under review",
-        body: `Your proof for ${pendingReview.course.title} is with HouseLink admin.`,
+        body: `Your proof for ${pendingReview.course.title} is being reviewed by HouseLink.`,
       },
       {
         title: "Read the standard",
@@ -782,7 +782,7 @@ function learnerNextActions(data: LearnerDashboard) {
       },
       {
         title: "Plan study time",
-        body: "Block time for sessions, quizzes, assignments, and field practice before access opens.",
+        body: "Block time for lessons, quizzes, assignments, and field practice before access opens.",
       },
     ];
   }

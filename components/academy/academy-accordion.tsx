@@ -80,7 +80,7 @@ export function ToolkitGrid({
   }>;
 }) {
   if (!groups.length) {
-    return <p className="text-sm text-slate-500">Toolkit downloads unlock after purchase and admin approval.</p>;
+    return <p className="text-sm text-slate-500">Toolkit downloads are available after purchase approval.</p>;
   }
 
   const locked = preview || (access ? !access.unlocked : false);
@@ -99,10 +99,10 @@ export function ToolkitGrid({
                 {preview
                   ? "Purchase the field toolkit separately after enrolment. Downloads are not available from the public catalogue."
                   : access?.status === "PAYMENT_UPLOADED"
-                    ? "Payment proof uploaded — waiting for admin approval before downloads unlock."
+                    ? "Payment proof uploaded. Downloads will be available after approval."
                     : access?.status === "REJECTED"
                       ? access.adminNote || "Payment could not be verified. Upload a clearer proof or contact support."
-                      : "Purchase this programme toolkit, upload proof of payment, and wait for admin approval."}
+                      : "Purchase this programme toolkit, upload proof of payment, and wait for approval."}
               </p>
               {!preview && access?.salesEnabled && access.price > 0 && (
                 <p className="mt-2 text-sm font-semibold text-slate-800 dark:text-slate-200">

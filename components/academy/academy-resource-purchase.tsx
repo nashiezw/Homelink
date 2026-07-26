@@ -147,7 +147,7 @@ export function AcademyResourcePurchaseModal({
               <p className="flex items-center gap-2 font-semibold text-emerald-900 dark:text-emerald-100">
                 <CheckCircle2 className="size-5" /> Access active
               </p>
-              <p className="mt-1 text-emerald-800 dark:text-emerald-200">Your downloads are unlocked. Close this window and open the resource from your dashboard.</p>
+              <p className="mt-1 text-emerald-800 dark:text-emerald-200">Your downloads are ready. Close this window and open the resource from your dashboard.</p>
             </div>
           ) : proofUploaded ? (
             <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm dark:border-amber-900/40 dark:bg-amber-950/20">
@@ -213,7 +213,7 @@ export function AcademyResourcePurchaseModal({
                       <li>Choose a payment method and create your order</li>
                       <li>Receive bank details and your payment reference</li>
                       <li>Pay and upload proof of payment</li>
-                      <li>Admin verifies payment and unlocks downloads</li>
+                      <li>HouseLink reviews payment and activates downloads</li>
                     </ol>
                   </div>
 
@@ -284,14 +284,14 @@ export function buildToolkitProduct(input: {
     courseId: input.courseId,
     title: `${input.courseTitle} Field Toolkit`,
     subtitle: "Print-ready branded PDFs for daily field work",
-    description: "Unlock the complete HouseLink field toolkit for this programme — forms, checklists, planners, scripts, and flowcharts used by professional agents in Zimbabwe.",
+    description: "Get the complete HouseLink field toolkit for this programme: forms, checklists, planners, scripts, and guides used by professional agents in Zimbabwe.",
     itemCount: input.itemCount,
     categories,
     includes: [
       `${input.itemCount} branded PDF downloads for this programme level`,
       "Client forms, listing documents, and viewing registers",
       "Marketing checklists, scripts, and daily planning tools",
-      "Permanent download access after admin payment approval",
+      "Permanent download access after payment approval",
     ],
   };
 }
@@ -301,12 +301,12 @@ export function buildManualProduct(): ResourcePurchaseProduct {
     kind: "TRAINING_MANUAL",
     title: "Complete Training Manual",
     subtitle: "Full HouseLink reference library",
-    description: "The complete HouseLink Zimbabwe real estate agent training manual — your authoritative reference for procedures, compliance, client management, and professional standards.",
+    description: "The complete HouseLink Zimbabwe real estate agent training manual for procedures, compliance, client management, and professional standards.",
     includes: [
       "Full training manual PDF (comprehensive reference)",
       "Deep-dive guidance beyond daily lesson notes",
-      "Compliance, documentation, and client journey reference",
-      "Permanent download access after admin payment approval",
+      "Compliance, documentation, and client service reference",
+      "Permanent download access after payment approval",
     ],
   };
 }

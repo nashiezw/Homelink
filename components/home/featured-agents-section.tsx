@@ -20,7 +20,7 @@ export function FeaturedAgentsSection({ agents }: FeaturedAgentsSectionProps) {
             <p className="section-eyebrow">Verified professionals</p>
             <h2 className="section-title">Meet our verified property professionals</h2>
             <p className="section-copy">
-              Licensed agents with public profiles, ratings, and territories — pulled live from the platform.
+              Licensed agents with public profiles, ratings, and clear areas of service.
             </p>
           </div>
 

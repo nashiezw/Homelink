@@ -74,7 +74,7 @@ export function MessagesPageClient() {
     <PageShell
       eyebrow="Messages"
       title="Tenant-landlord conversations"
-      description="Messaging centralizes enquiries while preserving WhatsApp and call workflows."
+      description="Keep property conversations organised while still making room for WhatsApp updates and calls when needed."
     >
       {!user ? (
         <div className="premium-card rounded-lg p-8 text-center">

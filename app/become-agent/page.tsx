@@ -49,7 +49,7 @@ async function getAgentHighlights(): Promise<AgentHighlight[]> {
     return [
       { value: "Live", label: "Agent onboarding" },
       { value: "Verified", label: "Profile checks" },
-      { value: "Managed", label: "Listing workflow" },
+      { value: "Guided", label: "Listing support" },
       { value: "Tracked", label: "Applications" },
     ];
   }

@@ -13,11 +13,11 @@ export default async function ConsultantDashboardPage() {
       <PageShell
       eyebrow="Consultant portal"
       title="Move property-management requests forward with clarity."
-      description="Prioritize leads, schedule inspections, generate quotes, log offers, and keep owners informed from one focused operations surface."
+      description="Review owner requests, schedule inspections, prepare quotes, log offers, and keep owners informed from one focused workspace."
       highlights={[
         { value: "Leads", label: "assigned requests" },
         { value: "SLA", label: "deadline awareness" },
-        { value: "Actions", label: "one-click workflow" },
+        { value: "Actions", label: "quick updates" },
       ]}
       actions={
         <Link

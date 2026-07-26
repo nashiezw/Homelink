@@ -49,7 +49,7 @@ export async function GET(_request: Request, context: { params: Promise<{ number
         "Professional communication and documented follow-up.",
         "Listing, client-file, and compliance completeness.",
         "Ethical judgement, confidentiality, and escalation decisions.",
-        "Practical readiness for real client workflows.",
+        "Practical readiness for real client work.",
       ],
       portfolioEvidence: AGENT_PORTFOLIO_REQUIREMENTS.slice(0, 5),
       roleplayEvidence: ROLEPLAY_ASSESSMENT_SCENARIOS.slice(0, 5),

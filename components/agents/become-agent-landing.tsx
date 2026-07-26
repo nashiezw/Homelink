@@ -52,7 +52,7 @@ export function BecomeAgentLanding({ highlights }: BecomeAgentLandingProps) {
     <PageShell
       eyebrow="Become an Agent"
       title="Become a HouseLink Agent"
-      description="Join Zimbabwe's trusted property platform and grow your real estate career with powerful technology, verified branding, quality leads, and attractive commissions."
+      description="Grow your real estate career with HouseLink branding, verified profiles, quality enquiries, practical training, and clear commissions."
       highlights={highlights}
       actions={
         <div className="flex w-full flex-col gap-3 sm:w-auto">
@@ -68,8 +68,7 @@ export function BecomeAgentLanding({ highlights }: BecomeAgentLandingProps) {
           Everything you need to grow a modern real estate business.
         </h2>
         <p className="mt-3 max-w-3xl text-slate-600 dark:text-slate-300">
-          From verified branding to lead distribution, commissions, contracts, and analytics - HouseLink gives agents
-          enterprise-grade tools.
+          From verified branding to enquiries, commissions, contracts, and performance insights, HouseLink helps agents work with more structure and trust.
         </p>
       </div>
 

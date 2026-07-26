@@ -168,7 +168,7 @@ export function PaymentsPageClient() {
     <PageShell
       eyebrow="Payments"
       title="Secure HouseLink payments"
-      description="Pay for listing upgrades, subscriptions, and marketing with a clear reference, Zimbabwe-friendly payment methods, and finance review before activation."
+      description="Pay for HouseLink services with a clear reference, familiar Zimbabwe payment methods, and review before activation."
       highlights={[
         { label: "Currency", value: currency },
         { label: "Primary methods", value: "CBZ / ZIPIT / Cash" },
@@ -230,7 +230,7 @@ export function PaymentsPageClient() {
                   Checkout linked to {contextListing.title}
                 </p>
                 <p className="mt-1 text-sm text-emerald-800 dark:text-emerald-200">
-                  {contextListing.suburb}, {contextListing.city} - your upgrade applies to this listing after payment approval.
+                  {contextListing.suburb}, {contextListing.city} - your upgrade is applied after payment approval.
                 </p>
               </div>
             )}
@@ -389,7 +389,7 @@ export function PaymentsPageClient() {
               <div className="rounded-lg border border-dashed border-slate-200 p-4 text-xs text-slate-500 dark:border-slate-700">
                 <p className="font-semibold text-slate-700 dark:text-slate-300">After you create payment</p>
                 <p className="mt-1 leading-relaxed">
-                  HouseLink issues your reference and bank details on the next screen. You then pay and upload proof for finance review.
+                  HouseLink shows your reference and payment details on the next screen. After paying, upload your proof for review.
                 </p>
               </div>
             )}
@@ -400,7 +400,7 @@ export function PaymentsPageClient() {
             </Button>
 
             <p className="text-center text-xs text-slate-500">
-              Step 1: create payment / Step 2: pay / Step 3: upload proof / Step 4: finance approval
+              Create payment, pay, upload proof, then wait for approval.
             </p>
           </aside>
         </div>
@@ -573,8 +573,8 @@ function GuestPaymentsGate({ variant = "checkout" }: { variant?: "checkout" | "h
       </h2>
       <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-600 dark:text-slate-400">
         {isHistory
-          ? "Your platform fee payments and proof status are linked to your HouseLink account."
-          : "Listing boosts, subscriptions, and marketing payments require a HouseLink account so finance can issue your reference and track proof."}
+          ? "Your HouseLink payments and proof updates are saved to your account."
+          : "Sign in so HouseLink can create your payment reference and keep your proof attached to the right service."}
       </p>
       <Link href="/auth?next=/payments" rel="nofollow" className="mt-6 inline-flex">
         <Button className="h-10 px-6">Sign in to continue</Button>
@@ -630,7 +630,7 @@ function RelatedPaymentsInfo() {
       <InfoCard
         icon={GraduationCap}
         title="Academy courses"
-        body="Course registration and toolkit purchases use the Academy checkout with the same CBZ, ZIPIT, and proof workflow."
+        body="Course registration and toolkit purchases use the Academy checkout with the same CBZ, ZIPIT, and proof review."
         href="/academy"
         linkLabel="Go to Academy"
       />

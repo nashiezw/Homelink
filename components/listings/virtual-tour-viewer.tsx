@@ -147,7 +147,7 @@ export function VirtualTourViewer({ tour, listingId, listingTitle, listingImage 
       {tour.adminVerifiedAt && (
         <p className="flex items-center gap-1 border-t border-slate-100 px-4 py-3 text-sm font-medium text-emerald-700 sm:px-5 dark:border-slate-800">
           <ShieldCheck className="size-4 shrink-0" />
-          Reviewed by HouseLink admin
+          Reviewed by HouseLink
         </p>
       )}
 

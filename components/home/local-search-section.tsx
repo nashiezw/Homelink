@@ -23,7 +23,7 @@ const ADVANTAGES: Array<{ title: string; body: string; icon: LucideIcon }> = [
   },
   {
     title: "Built for Zimbabwe",
-    body: "Alerts, dashboards, and mobile-ready workflows nationwide.",
+    body: "Saved searches, alerts, and mobile-friendly tools for property seekers nationwide.",
     icon: Zap,
   },
 ];
