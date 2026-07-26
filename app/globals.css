@@ -259,6 +259,38 @@ textarea {
     background: linear-gradient(180deg, rgba(15, 23, 42, 0.96) 0%, rgba(2, 6, 23, 0.92) 100%);
   }
 
+  .academy-programme-card {
+    background:
+      radial-gradient(circle at top right, rgba(16, 185, 129, 0.08), transparent 34%),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.96));
+    box-shadow: 0 14px 46px rgba(16, 32, 36, 0.07);
+  }
+
+  .academy-programme-card:hover {
+    transform: translate3d(0, -2px, 0);
+    border-color: rgba(16, 185, 129, 0.34);
+    box-shadow: 0 24px 70px rgba(16, 32, 36, 0.12);
+  }
+
+  .dark .academy-programme-card {
+    background:
+      radial-gradient(circle at top right, rgba(16, 185, 129, 0.14), transparent 34%),
+      linear-gradient(180deg, rgba(15, 23, 42, 0.98), rgba(2, 6, 23, 0.94));
+  }
+
+  .academy-enrolment-preview {
+    background:
+      radial-gradient(circle at top right, rgba(16, 185, 129, 0.1), transparent 38%),
+      rgba(255, 255, 255, 0.96);
+    box-shadow: 0 18px 58px rgba(16, 32, 36, 0.08);
+  }
+
+  .dark .academy-enrolment-preview {
+    background:
+      radial-gradient(circle at top right, rgba(16, 185, 129, 0.14), transparent 38%),
+      rgba(15, 23, 42, 0.92);
+  }
+
   .academy-dark-hero {
     background:
       linear-gradient(135deg, rgba(16, 185, 129, 0.18), transparent 38%),

@@ -16,13 +16,11 @@ import {
   PlayCircle,
   Settings,
   ShieldCheck,
-  TrendingUp,
   Upload,
   Zap,
 } from "lucide-react";
 import { AuthForm } from "@/components/auth/auth-form";
 import { AcademyAccordion, ToolkitGrid } from "@/components/academy/academy-accordion";
-import { HouseLinkBrand } from "@/components/brand/houselink-logo";
 import { PageShell } from "@/components/layout/page-shell";
 import { Button } from "@/components/ui/button";
 import { useApp } from "@/components/providers/app-provider";
@@ -271,11 +269,6 @@ export function PublicAcademyPage() {
           ? "You already have active course access. Browse additional courses or return to your learning dashboard."
           : "Master real estate with Zimbabwe's leading property platform. Train with HouseLink as a public learner - no agent application required."
       }
-      highlights={[
-        { value: "3", label: "Programme Levels" },
-        { value: "Certified", label: "Each Stage" },
-        { value: "16", label: "Practical Tasks" },
-      ]}
       actions={pageActions}
     >
       {browseMode && academyStatus?.hasActiveAccess && (
@@ -288,30 +281,32 @@ export function PublicAcademyPage() {
         </div>
       )}
 
-      <div className="relative isolate mt-6 grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
-        <StatCard icon={BookOpen} value={String(courses.reduce((sum, c) => sum + c.lessonCount, 0))} label="Training Sessions" color="emerald" />
-        <StatCard icon={Award} value="3" label="Certification Levels" color="amber" />
-        <StatCard icon={Clock} value={String(courses.reduce((sum, c) => sum + (c.assignmentCount ?? 0), 0))} label="Reviewed Assignments" color="blue" />
-        <StatCard icon={TrendingUp} value={String(courses.reduce((sum, c) => sum + (c.toolkitCount ?? 0), 0))} label="Field Downloads" color="purple" />
-      </div>
-
-      <div className="mt-8 flex flex-col gap-8 lg:grid lg:grid-cols-[minmax(0,1.35fr)_minmax(18rem,0.65fr)] lg:gap-6">
-        <section className="order-1 grid min-w-0 gap-6 lg:order-none">
-          <h2 className="text-xl font-bold sm:text-2xl">Programme Catalog</h2>
-          {courses.map((course) => {
+      <div className="flex flex-col gap-8 lg:grid lg:grid-cols-[minmax(0,1.35fr)_minmax(18rem,0.65fr)] lg:items-start lg:gap-6">
+        <section className="order-1 grid min-w-0 gap-5 lg:order-none">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-widest text-emerald-700 dark:text-emerald-300">Choose your programme</p>
+              <h2 className="mt-1 text-2xl font-bold tracking-tight text-slate-950 dark:text-white">Certification Pathway</h2>
+            </div>
+            <p className="max-w-md text-sm leading-6 text-slate-600 dark:text-slate-300">
+              Three focused levels. Open a programme for curriculum, requirements, and toolkit details.
+            </p>
+          </div>
+          {courses.map((course, index) => {
             const registration = courseRegistrationState(academyStatus, course.id);
             const accent = course.theme?.accent ?? "#008b68";
             const locked = course.prerequisiteCourseId && courseRegistrationState(academyStatus, course.prerequisiteCourseId) !== "APPROVED" && registration !== "APPROVED";
+            const stageNumber = String(index + 1).padStart(2, "0");
             return (
               <article
                 key={course.id}
                 className={cn(
-                  "academy-card relative overflow-hidden rounded-xl border-2 transition-all duration-300",
-                  selectedId === course.id ? "shadow-xl" : "border-slate-200 hover:shadow-lg dark:border-slate-800",
+                  "academy-programme-card relative overflow-hidden rounded-2xl border transition-all duration-300",
+                  selectedId === course.id ? "shadow-[0_24px_70px_rgba(15,23,42,0.14)]" : "border-slate-200 hover:shadow-[0_18px_48px_rgba(15,23,42,0.10)] dark:border-slate-800",
                 )}
-                style={selectedId === course.id ? { borderColor: accent, boxShadow: `0 20px 50px ${accent}22` } : undefined}
+                style={selectedId === course.id ? { borderColor: accent } : undefined}
               >
-                <div className={cn("h-2 bg-gradient-to-r", course.theme?.gradient ?? "from-emerald-500 to-teal-600")} />
+                <div className={cn("absolute inset-y-0 left-0 hidden w-2 bg-gradient-to-b sm:block", course.theme?.gradient ?? "from-emerald-500 to-teal-600")} />
                 {registration === "APPROVED" && (
                   <div className="absolute top-4 right-4 left-4 sm:left-auto sm:max-w-[12rem] rounded-full bg-emerald-600 px-3 py-1 text-center text-xs font-bold text-white">Enrolled</div>
                 )}
@@ -320,41 +315,37 @@ export function PublicAcademyPage() {
                     <Lock className="size-3 shrink-0" /> Complete previous programme
                   </div>
                 )}
-                <div className="p-4 pt-14 sm:p-6 sm:pt-6 md:p-8">
-                  <div className="flex flex-col gap-5">
-                    <div className="flex items-start gap-3 sm:gap-4">
-                      <div className="shrink-0 rounded-2xl bg-white p-2 shadow ring-1 ring-slate-100">
-                        <HouseLinkBrand variant="icon" iconOnly />
+                <div className="p-5 pt-14 sm:p-6 sm:pl-8 sm:pt-6 md:p-7 md:pl-9">
+                  <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_9.5rem] xl:items-start">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="inline-flex h-8 w-8 items-center justify-center rounded-full text-xs font-black text-white shadow-sm" style={{ backgroundColor: accent }}>
+                          {stageNumber}
+                        </span>
+                        <span className={cn("rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide", course.theme?.chip ?? "bg-emerald-100 text-emerald-800")}>{course.theme?.label}</span>
+                        {course.certificateEnabled && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-800"><Award className="size-3 shrink-0" /> Certificate</span>
+                        )}
                       </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap gap-2 mb-2">
-                          <span className={cn("rounded-full px-3 py-1 text-xs font-semibold", course.theme?.chip ?? "bg-emerald-100 text-emerald-800")}>{course.theme?.label}</span>
-                          {course.certificateEnabled && (
-                            <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800 inline-flex items-center gap-1"><Award className="size-3 shrink-0" /> Certificate</span>
-                          )}
-                        </div>
-                        <h3 className="text-xl font-bold leading-snug sm:text-2xl">{course.title}</h3>
-                        <p className="mt-1 text-sm font-medium leading-relaxed" style={{ color: accent }}>{course.subtitle}</p>
-                        <p className="mt-3 text-sm text-slate-600 leading-relaxed sm:text-base">{course.shortDescription ?? course.description}</p>
-                      </div>
+                      <h3 className="mt-4 text-2xl font-bold leading-tight tracking-tight text-slate-950 dark:text-white">{course.title}</h3>
+                      <p className="mt-1 text-sm font-semibold leading-relaxed" style={{ color: accent }}>{course.subtitle}</p>
+                      <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600 dark:text-slate-300">{course.shortDescription ?? course.description}</p>
                     </div>
-                    <div className="flex items-center justify-between gap-4 rounded-lg border border-slate-100 bg-slate-50 px-4 py-3 sm:border-0 sm:bg-transparent sm:px-0 sm:py-0 dark:border-slate-800 dark:bg-slate-900/40 sm:dark:bg-transparent">
-                      <p className="text-xs font-medium uppercase tracking-wide text-slate-500 sm:hidden">Programme fee</p>
-                      <div className="text-right sm:ml-auto">
-                        <p className="text-2xl font-bold sm:text-3xl" style={{ color: accent }}>{course.publicPrice ? `${course.currency} ${course.publicPrice.toFixed(2)}` : "Free"}</p>
-                        <p className="text-xs text-slate-500">{course.accessDurationDays} days access</p>
-                      </div>
+                    <div className="rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm dark:border-slate-800 dark:bg-slate-950 xl:text-right">
+                      <p className="text-[11px] font-bold uppercase tracking-widest text-slate-500">Programme fee</p>
+                      <p className="mt-1 text-2xl font-black tracking-tight" style={{ color: accent }}>{course.publicPrice ? `${course.currency} ${course.publicPrice.toFixed(2)}` : "Free"}</p>
+                      <p className="mt-1 text-xs font-medium text-slate-500">{course.accessDurationDays} days access</p>
                     </div>
                   </div>
 
-                  <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                    <CourseMetric icon={BookOpen} value={String(course.lessonCount)} label="training sessions" accent={accent} />
-                    <CourseMetric icon={ListChecks} value={`${course.quizCount ?? 0} quizzes`} label={`${course.assignmentCount ?? 0} reviewed tasks`} accent={accent} />
-                    <CourseMetric icon={Clock} value={`${course.estimatedHours || Math.round(course.durationMinutes / 60)}h`} label="guided learning" accent={accent} />
-                    <CourseMetric icon={ShieldCheck} value={String(course.toolkitCount ?? 0)} label="field toolkit PDFs" accent={accent} />
+                  <div className="mt-5 flex flex-wrap gap-2">
+                    <CourseMetric icon={BookOpen} value={String(course.lessonCount)} label="sessions" accent={accent} />
+                    <CourseMetric icon={ListChecks} value={`${course.quizCount ?? 0}/${course.assignmentCount ?? 0}`} label="quizzes/tasks" accent={accent} />
+                    <CourseMetric icon={Clock} value={`${course.estimatedHours || Math.round(course.durationMinutes / 60)}h`} label="guided" accent={accent} />
+                    <CourseMetric icon={ShieldCheck} value={String(course.toolkitCount ?? 0)} label="PDF tools" accent={accent} />
                   </div>
 
-                  <details className="academy-card group mt-6 rounded-xl border border-slate-200 bg-white/70 dark:border-slate-800 dark:bg-slate-950/60">
+                  <details className="group mt-5 rounded-xl border border-slate-200 bg-white/80 dark:border-slate-800 dark:bg-slate-950/70">
                     <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-4 marker:content-none sm:px-5">
                       <div className="min-w-0">
                         <p className="text-sm font-semibold text-slate-900 dark:text-white">Programme details</p>
@@ -544,38 +535,6 @@ export function PublicAcademyPage() {
   );
 }
 
-function StatCard({
-  icon: Icon,
-  value,
-  label,
-  color,
-}: {
-  icon: typeof BookOpen;
-  value: string;
-  label: string;
-  color: "emerald" | "amber" | "blue" | "purple";
-}) {
-  const colors = {
-    emerald: "bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400",
-    amber: "bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400",
-    blue: "bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400",
-    purple: "bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400",
-  };
-  return (
-    <div className="academy-card gpu-card rounded-xl p-4 sm:p-6">
-      <div className="flex items-center gap-3">
-        <div className={`shrink-0 rounded-lg p-2.5 sm:p-3 ${colors[color]}`}>
-          <Icon className="size-5 sm:size-6" />
-        </div>
-        <div className="min-w-0">
-          <p className="text-xl font-bold sm:text-2xl">{value}</p>
-          <p className="text-xs text-slate-600 dark:text-slate-400 sm:text-sm">{label}</p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function CourseMetric({
   icon: Icon,
   value,
@@ -588,10 +547,10 @@ function CourseMetric({
   accent: string;
 }) {
   return (
-    <div className="rounded-lg bg-slate-50 p-3 text-sm dark:bg-slate-900">
-      <Icon className="mb-1 size-4" style={{ color: accent }} />
-      <span className="block font-semibold leading-snug">{value}</span>
-      <span className="block text-xs leading-snug text-slate-500">{label}</span>
+    <div className="inline-flex min-h-10 items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm dark:border-slate-800 dark:bg-slate-950">
+      <Icon className="size-4 shrink-0" style={{ color: accent }} />
+      <span className="font-bold leading-none text-slate-950 dark:text-white">{value}</span>
+      <span className="text-xs font-medium leading-none text-slate-500">{label}</span>
     </div>
   );
 }
@@ -849,34 +808,25 @@ function certificationRequirements(course: PublicCourse) {
 
 function ProgrammeEnrolmentPreview({ course, accent }: { course: PublicCourse; accent: string }) {
   return (
-    <div className="academy-panel overflow-hidden rounded-xl border-2" style={{ borderColor: `${accent}44` }}>
+    <div className="academy-enrolment-preview overflow-hidden rounded-2xl border" style={{ borderColor: `${accent}44` }}>
       <div className={cn("h-2 bg-gradient-to-r", course.theme?.gradient ?? "from-emerald-500 to-teal-600")} />
       <div className="p-5">
-        <span className={cn("inline-flex rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide", course.theme?.chip ?? "bg-emerald-100 text-emerald-800")}>
-          {course.theme?.label}
-        </span>
-        <h3 className="mt-3 text-xl font-bold leading-snug">{course.title}</h3>
+        <div className="flex items-start justify-between gap-3">
+          <span className={cn("inline-flex rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide", course.theme?.chip ?? "bg-emerald-100 text-emerald-800")}>
+            {course.theme?.label}
+          </span>
+          <p className="text-right text-lg font-black" style={{ color: accent }}>{course.publicPrice ? `${course.currency} ${course.publicPrice.toFixed(2)}` : "Free"}</p>
+        </div>
+        <h3 className="mt-4 text-xl font-bold leading-snug">{course.title}</h3>
         <p className="mt-1 text-sm font-medium" style={{ color: accent }}>{course.subtitle}</p>
-        <p className="mt-3 text-sm leading-relaxed text-slate-600">{course.description}</p>
-        <div className="mt-4 grid grid-cols-1 gap-2 text-center text-xs sm:grid-cols-2 sm:gap-2">
+        <div className="mt-4 flex flex-wrap gap-2">
           <CourseMetric icon={BookOpen} value={String(course.lessonCount)} label="training sessions" accent={accent} />
-          <CourseMetric icon={ListChecks} value={`${course.quizCount ?? 0} quizzes`} label={`${course.assignmentCount ?? 0} reviewed tasks`} accent={accent} />
+          <CourseMetric icon={ListChecks} value={`${course.quizCount ?? 0}/${course.assignmentCount ?? 0}`} label="quizzes/tasks" accent={accent} />
           <CourseMetric icon={Clock} value={`${course.estimatedHours || Math.round(course.durationMinutes / 60)}h`} label="guided learning" accent={accent} />
           <CourseMetric icon={ShieldCheck} value={String(course.toolkitCount ?? 0)} label="field toolkit PDFs" accent={accent} />
         </div>
-        <div className="mt-4 rounded-xl border p-3 text-xs" style={{ borderColor: `${accent}33`, backgroundColor: `${accent}0f` }}>
-          <p className="font-bold text-slate-900 dark:text-white">Certification requirements</p>
-          <ul className="mt-2 space-y-1.5 text-left text-slate-600 dark:text-slate-300">
-            {certificationRequirements(course).slice(0, 5).map((requirement) => (
-              <li key={requirement} className="flex gap-2">
-                <CheckCircle2 className="mt-0.5 size-3.5 shrink-0" style={{ color: accent }} />
-                <span>{requirement}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
         {course.badgeName && (
-          <p className="mt-4 flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-medium" style={{ borderColor: `${accent}33`, color: accent }}>
+          <p className="mt-4 flex items-center gap-2 rounded-xl border bg-white/80 px-3 py-2 text-xs font-bold dark:bg-slate-950/80" style={{ borderColor: `${accent}33`, color: accent }}>
             <Award className="size-4" /> Earn: {course.badgeName}
           </p>
         )}
