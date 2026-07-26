@@ -10,7 +10,6 @@ import {
   CheckCircle2,
   Clock,
   CreditCard,
-  GraduationCap,
   ListChecks,
   Loader2,
   Lock,
@@ -19,7 +18,6 @@ import {
   ShieldCheck,
   TrendingUp,
   Upload,
-  Users,
   Zap,
 } from "lucide-react";
 import { AuthForm } from "@/components/auth/auth-form";
@@ -32,18 +30,8 @@ import { apiFetch } from "@/lib/api/client";
 import type { PublicPaymentConfig } from "@/lib/payments/public-payment-config";
 import type { CourseRegistrationSummary } from "@/lib/academy/academy-user-status";
 import {
-  ACADEMY_LIVE_WORKSHOPS,
-  ACADEMY_MENTOR_PROGRAMME,
-  MARKET_INTELLIGENCE_PLAN,
-  PARTNER_CREDIBILITY_PLAN,
-  TOP_AGENT_PATHWAY,
-} from "@/lib/academy/academy-operations";
-import {
   AGENT_PORTFOLIO_REQUIREMENTS,
   EXPERT_VIDEO_LIBRARY_PLAN,
-  GRADUATE_OUTCOME_SIGNALS,
-  HOUSELINK_AGENT_PLAYBOOK,
-  RECERTIFICATION_REQUIREMENTS,
   ROLEPLAY_ASSESSMENT_SCENARIOS,
   SPECIALISATION_TRACKS,
 } from "@/lib/academy/academy-excellence";
@@ -300,163 +288,15 @@ export function PublicAcademyPage() {
         </div>
       )}
 
-      <section className="academy-panel isolate rounded-xl p-6 sm:p-8">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div className="min-w-0">
-            <div className="mb-3 flex items-center gap-2 text-emerald-700 dark:text-emerald-300">
-              <GraduationCap className="size-6 shrink-0 sm:size-7" />
-              <span className="text-sm font-semibold sm:text-base">Why train with HouseLink</span>
-            </div>
-            <p className="max-w-2xl text-sm leading-relaxed text-slate-600 dark:text-slate-300 sm:text-base">
-              {user && academyStatus?.hasActiveAccess
-                ? "Browse the course catalog, track progress from your dashboard, and pick up where you left off."
-                : "Learn from industry experts, gain practical skills, and earn your certification. Training-only enrolment is available - you do not need to become a HouseLink agent."}
-            </p>
-          </div>
-        </div>
-        <div className="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-3">
-          <div className="flex items-center gap-2 rounded-lg border border-emerald-200/80 bg-emerald-50 px-4 py-2.5 dark:border-emerald-800/60 dark:bg-emerald-950/40">
-            <BookOpen className="size-5 shrink-0 text-emerald-600 dark:text-emerald-400" />
-            <span className="text-sm font-medium text-slate-800 dark:text-slate-100 sm:text-base">Scenario Training</span>
-          </div>
-          <div className="flex items-center gap-2 rounded-lg border border-emerald-200/80 bg-emerald-50 px-4 py-2.5 dark:border-emerald-800/60 dark:bg-emerald-950/40">
-            <Award className="size-5 shrink-0 text-emerald-600 dark:text-emerald-400" />
-            <span className="text-sm font-medium text-slate-800 dark:text-slate-100 sm:text-base">Rubric Assignments</span>
-          </div>
-          <div className="flex items-center gap-2 rounded-lg border border-emerald-200/80 bg-emerald-50 px-4 py-2.5 dark:border-emerald-800/60 dark:bg-emerald-950/40">
-            <Users className="size-5 shrink-0 text-emerald-600 dark:text-emerald-400" />
-            <span className="text-sm font-medium text-slate-800 dark:text-slate-100 sm:text-base">Field Evidence</span>
-          </div>
-        </div>
-      </section>
-
-      <div className="relative isolate mt-8 grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
+      <div className="relative isolate mt-6 grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
         <StatCard icon={BookOpen} value={String(courses.reduce((sum, c) => sum + c.lessonCount, 0))} label="Training Sessions" color="emerald" />
         <StatCard icon={Award} value="3" label="Certification Levels" color="amber" />
         <StatCard icon={Clock} value={String(courses.reduce((sum, c) => sum + (c.assignmentCount ?? 0), 0))} label="Reviewed Assignments" color="blue" />
         <StatCard icon={TrendingUp} value={String(courses.reduce((sum, c) => sum + (c.toolkitCount ?? 0), 0))} label="Field Downloads" color="purple" />
       </div>
 
-      <section className="academy-panel mt-10 rounded-xl p-6 sm:p-8">
-        <h2 className="text-2xl font-bold">Your certification pathway</h2>
-        <p className="mt-2 max-w-3xl text-slate-600">
-          Three focused programmes with real training sessions, quizzes, reviewed assignments, a field portfolio, final exam, and publicly verified HouseLink certificates.
-        </p>
-        <div className="mt-4 grid gap-2 rounded-xl border border-emerald-100 bg-emerald-50/70 p-4 text-sm text-emerald-950 dark:border-emerald-900/40 dark:bg-emerald-950/20 dark:text-emerald-100 sm:grid-cols-2 lg:grid-cols-4">
-          <PathwayFact value={String(courses.reduce((sum, c) => sum + c.lessonCount, 0))} label="training sessions" />
-          <PathwayFact value={String(courses.reduce((sum, c) => sum + (c.quizCount ?? 0), 0))} label="module quizzes" />
-          <PathwayFact value={String(courses.reduce((sum, c) => sum + (c.assignmentCount ?? 0), 0))} label="reviewed assignments" />
-          <PathwayFact value="Portfolio + exam" label="capstone gate" />
-        </div>
-        <div className="mt-6 grid gap-3 sm:grid-cols-2 md:grid-cols-3">
-          {courses.map((course) => (
-            <div key={course.id} className="academy-card rounded-xl p-4 sm:p-5" style={{ borderColor: `${course.theme?.accent ?? "#008b68"}44` }}>
-              <p className="text-xs font-bold uppercase tracking-wider" style={{ color: course.theme?.accent }}>{course.theme?.label}</p>
-              <p className="mt-2 text-base font-bold leading-snug sm:text-lg">{course.title}</p>
-              <div className="mt-3 grid grid-cols-1 gap-1.5 text-center text-[11px] font-bold sm:grid-cols-3">
-                <span className="rounded-lg bg-slate-100 px-2 py-1 text-slate-700">{course.lessonCount} sessions</span>
-                <span className="rounded-lg bg-slate-100 px-2 py-1 text-slate-700">{course.quizCount ?? 0} quizzes</span>
-                <span className="rounded-lg bg-slate-100 px-2 py-1 text-slate-700">{course.assignmentCount ?? 0} tasks</span>
-              </div>
-              <div className="mt-2 flex flex-wrap gap-1.5">
-                {course.hasFinalExam && <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-bold text-amber-800">Final exam</span>}
-                {course.portfolioRequired && <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-bold text-emerald-800">Portfolio</span>}
-                {!!course.roleplayCount && <span className="rounded-full bg-sky-100 px-2.5 py-1 text-[11px] font-bold text-sky-800">{course.roleplayCount} roleplays</span>}
-                <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-700">{course.toolkitCount ?? 0} PDFs</span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="academy-panel mt-10 rounded-xl p-6 sm:p-8">
-        <div className="flex flex-col gap-2">
-          <p className="text-xs font-bold uppercase tracking-widest text-emerald-700 dark:text-emerald-300">Industry-ready capability map</p>
-          <h2 className="text-2xl font-bold">What a serious graduate should be able to do</h2>
-          <p className="max-w-3xl text-sm leading-6 text-slate-600 dark:text-slate-300">
-            The pathway is designed around practical field competence, not passive reading. Learners must show they can handle real property work safely, professionally, and with evidence.
-          </p>
-        </div>
-        <div className="mt-6 grid gap-4 lg:grid-cols-3">
-          <AcademyOpsCard title="Client and listing capability" items={GRADUATE_CAPABILITY_MAP.slice(0, 5)} />
-          <AcademyOpsCard title="Sample assessed assignments" items={SAMPLE_PUBLIC_ASSIGNMENTS} />
-          <AcademyOpsCard title="Admin grading standard" items={ASSESSMENT_GRADING_STANDARD} />
-        </div>
-      </section>
-
-      <section className="academy-panel mt-10 rounded-xl p-6 sm:p-8">
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,0.8fr)]">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-widest text-emerald-700 dark:text-emerald-300">Price-to-value proof</p>
-            <h2 className="mt-2 text-2xl font-bold">What the fee pays for</h2>
-            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600 dark:text-slate-300">
-              Each paid programme combines structured training, reviewed practical work, field-ready PDFs, certificate evidence, and a route into higher-level specialist practice.
-            </p>
-            <div className="mt-5 grid gap-3 sm:grid-cols-2">
-              {ACADEMY_VALUE_PROOF.map((item) => (
-                <div key={item} className="flex gap-2 rounded-lg border border-slate-200 bg-white p-3 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
-                  <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-600" />
-                  <span>{item}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-          <div className="rounded-xl border border-amber-200 bg-amber-50 p-5 dark:border-amber-900/40 dark:bg-amber-950/20">
-            <p className="text-xs font-bold uppercase tracking-widest text-amber-700 dark:text-amber-300">Future specialisation</p>
-            <h3 className="mt-2 text-lg font-bold">Beyond core certification</h3>
-            <div className="mt-4 space-y-3">
-              {SPECIALISATION_TRACKS.slice(0, 4).map((track) => (
-                <div key={track.title}>
-                  <p className="text-sm font-semibold text-slate-900 dark:text-white">{track.title}</p>
-                  <p className="mt-0.5 text-xs leading-5 text-slate-600 dark:text-slate-300">{track.outcome}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="academy-panel mt-10 rounded-xl p-6 sm:p-8">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div>
-            <h2 className="text-2xl font-bold">Built like a working property school</h2>
-            <p className="mt-2 max-w-3xl text-slate-600">
-              HouseLink Academy combines courses, practice files, mentor review, live workshop themes, certificate verification, and post-certification growth paths.
-            </p>
-          </div>
-          <Link href="/academy/verify" className="inline-flex min-h-10 items-center justify-center rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-800">
-            Verify Certificate
-          </Link>
-        </div>
-        <div className="mt-6 grid gap-4 lg:grid-cols-2">
-          <AcademyOpsCard title="Live workshops" items={ACADEMY_LIVE_WORKSHOPS.map((item) => `${item.cadence}: ${item.title} - ${item.focus}`)} />
-          <AcademyOpsCard title="Mentor programme" items={ACADEMY_MENTOR_PROGRAMME} />
-          <AcademyOpsCard title="Market intelligence" items={MARKET_INTELLIGENCE_PLAN} />
-          <AcademyOpsCard title="Top Agent pathway" items={TOP_AGENT_PATHWAY} />
-          <AcademyOpsCard title="Partner credibility" items={PARTNER_CREDIBILITY_PLAN} className="lg:col-span-2" />
-        </div>
-      </section>
-
-      <section className="academy-panel mt-10 rounded-xl p-6 sm:p-8">
-        <div className="flex flex-col gap-2">
-          <h2 className="text-2xl font-bold">Elite agent standard</h2>
-          <p className="max-w-3xl text-sm leading-6 text-slate-600">
-            Certification is designed around evidence of real agent competence: expert training sessions, roleplay, field portfolio, mentor review, specialisation, and annual renewal.
-          </p>
-        </div>
-        <div className="mt-6 grid gap-4 xl:grid-cols-3">
-          <AcademyOpsCard title="Expert video sessions to record" items={EXPERT_VIDEO_LIBRARY_PLAN.map((item) => `${item.role}: ${item.topic}`)} />
-          <AcademyOpsCard title="Portfolio required before full certification" items={AGENT_PORTFOLIO_REQUIREMENTS.slice(0, 6)} />
-          <AcademyOpsCard title="Roleplay assessments" items={ROLEPLAY_ASSESSMENT_SCENARIOS.slice(0, 6)} />
-          <AcademyOpsCard title="HouseLink Agent Playbook" items={HOUSELINK_AGENT_PLAYBOOK.slice(0, 6)} />
-          <AcademyOpsCard title="Advanced specialisation tracks" items={SPECIALISATION_TRACKS.map((track) => `${track.title}: ${track.outcome}`)} />
-          <AcademyOpsCard title="Annual recertification" items={RECERTIFICATION_REQUIREMENTS} />
-          <AcademyOpsCard title="Graduate outcome proof" items={GRADUATE_OUTCOME_SIGNALS} className="xl:col-span-3" />
-        </div>
-      </section>
-
       <div className="mt-8 flex flex-col gap-8 lg:grid lg:grid-cols-[minmax(0,1.35fr)_minmax(18rem,0.65fr)] lg:gap-6">
-        <section className="grid min-w-0 gap-6 order-2 lg:order-none">
+        <section className="order-1 grid min-w-0 gap-6 lg:order-none">
           <h2 className="text-xl font-bold sm:text-2xl">Programme Catalog</h2>
           {courses.map((course) => {
             const registration = courseRegistrationState(academyStatus, course.id);
@@ -512,18 +352,6 @@ export function PublicAcademyPage() {
                     <CourseMetric icon={ListChecks} value={`${course.quizCount ?? 0} quizzes`} label={`${course.assignmentCount ?? 0} reviewed tasks`} accent={accent} />
                     <CourseMetric icon={Clock} value={`${course.estimatedHours || Math.round(course.durationMinutes / 60)}h`} label="guided learning" accent={accent} />
                     <CourseMetric icon={ShieldCheck} value={String(course.toolkitCount ?? 0)} label="field toolkit PDFs" accent={accent} />
-                  </div>
-
-                  <div className="mt-4 rounded-xl border p-4 text-sm" style={{ borderColor: `${accent}33`, backgroundColor: `${accent}0f` }}>
-                    <p className="font-bold text-slate-950 dark:text-white">Certification requirements</p>
-                    <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                      {certificationRequirements(course).map((requirement) => (
-                        <div key={requirement} className="flex gap-2 text-slate-600 dark:text-slate-300">
-                          <CheckCircle2 className="mt-0.5 size-4 shrink-0" style={{ color: accent }} />
-                          <span>{requirement}</span>
-                        </div>
-                      ))}
-                    </div>
                   </div>
 
                   <details className="academy-card group mt-6 rounded-xl border border-slate-200 bg-white/70 dark:border-slate-800 dark:bg-slate-950/60">
@@ -631,7 +459,7 @@ export function PublicAcademyPage() {
           )}
         </section>
 
-        <aside className="order-1 lg:order-none lg:h-fit">
+        <aside className="order-2 lg:order-none lg:h-fit">
           <div className="lg:sticky lg:top-4">
             <AcademySidePanel
               user={user}
@@ -653,6 +481,65 @@ export function PublicAcademyPage() {
           </div>
         </aside>
       </div>
+
+      <section className="academy-panel mt-10 rounded-xl p-5 sm:p-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-widest text-emerald-700 dark:text-emerald-300">For serious learners</p>
+            <h2 className="mt-1 text-xl font-bold sm:text-2xl">Explore the HouseLink training standard</h2>
+          </div>
+          <Link href="/academy/verify" className="inline-flex min-h-10 items-center justify-center rounded-lg border border-emerald-200 px-4 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-50 dark:border-emerald-900 dark:text-emerald-300">
+            Verify Certificate
+          </Link>
+        </div>
+        <div className="mt-5">
+          <AcademyAccordion
+            accent="#008b68"
+            items={[
+              {
+                id: "academy-standard-capability",
+                title: "What graduates can do",
+                subtitle: "Client work, listing quality, pricing, viewings, and compliance",
+                meta: `${GRADUATE_CAPABILITY_MAP.length} capabilities`,
+                content: <CompactProofGrid items={GRADUATE_CAPABILITY_MAP} />,
+              },
+              {
+                id: "academy-standard-assessments",
+                title: "Assignments and grading",
+                subtitle: "Examples of practical work and how submissions are judged",
+                meta: `${SAMPLE_PUBLIC_ASSIGNMENTS.length} examples`,
+                content: (
+                  <div className="grid gap-4 lg:grid-cols-2">
+                    <CompactProofList title="Sample assignments" items={SAMPLE_PUBLIC_ASSIGNMENTS} />
+                    <CompactProofList title="Grading standard" items={ASSESSMENT_GRADING_STANDARD} />
+                  </div>
+                ),
+              },
+              {
+                id: "academy-standard-value",
+                title: "What the fee includes",
+                subtitle: "Training, reviewed work, PDFs, certificates, and progression",
+                meta: `${ACADEMY_VALUE_PROOF.length} value points`,
+                content: <CompactProofGrid items={ACADEMY_VALUE_PROOF} />,
+              },
+              {
+                id: "academy-standard-elite",
+                title: "Top agent pathway",
+                subtitle: "Mentor habits, roleplay, portfolio evidence, and specialisation",
+                meta: "Advanced",
+                content: (
+                  <div className="grid gap-4 lg:grid-cols-2">
+                    <CompactProofList title="Expert sessions planned" items={EXPERT_VIDEO_LIBRARY_PLAN.map((item) => `${item.role}: ${item.topic}`)} />
+                    <CompactProofList title="Roleplay assessments" items={ROLEPLAY_ASSESSMENT_SCENARIOS.slice(0, 5)} />
+                    <CompactProofList title="Portfolio evidence" items={AGENT_PORTFOLIO_REQUIREMENTS.slice(0, 5)} />
+                    <CompactProofList title="Specialisation tracks" items={SPECIALISATION_TRACKS.map((track) => `${track.title}: ${track.outcome}`)} />
+                  </div>
+                ),
+              },
+            ]}
+          />
+        </div>
+      </section>
     </PageShell>
   );
 }
@@ -689,15 +576,6 @@ function StatCard({
   );
 }
 
-function PathwayFact({ value, label }: { value: string; label: string }) {
-  return (
-    <div>
-      <p className="text-lg font-black">{value}</p>
-      <p className="text-xs font-semibold uppercase tracking-wide opacity-80">{label}</p>
-    </div>
-  );
-}
-
 function CourseMetric({
   icon: Icon,
   value,
@@ -714,6 +592,35 @@ function CourseMetric({
       <Icon className="mb-1 size-4" style={{ color: accent }} />
       <span className="block font-semibold leading-snug">{value}</span>
       <span className="block text-xs leading-snug text-slate-500">{label}</span>
+    </div>
+  );
+}
+
+function CompactProofGrid({ items }: { items: string[] }) {
+  return (
+    <div className="grid gap-2 sm:grid-cols-2">
+      {items.map((item) => (
+        <div key={item} className="flex gap-2 rounded-lg border border-slate-200 bg-white p-3 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
+          <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-600" />
+          <span>{item}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function CompactProofList({ title, items }: { title: string; items: string[] }) {
+  return (
+    <div className="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950">
+      <p className="text-sm font-bold text-slate-950 dark:text-white">{title}</p>
+      <ul className="mt-3 space-y-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
+        {items.map((item) => (
+          <li key={item} className="flex gap-2">
+            <CheckCircle2 className="mt-1 size-4 shrink-0 text-emerald-600" />
+            <span>{item}</span>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
@@ -920,22 +827,6 @@ function AcademySidePanel({
         </div>
       )}
       </div>
-    </div>
-  );
-}
-
-function AcademyOpsCard({ title, items, className }: { title: string; items: string[]; className?: string }) {
-  return (
-    <div className={cn("rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950", className)}>
-      <p className="text-sm font-bold text-slate-950 dark:text-white">{title}</p>
-      <ul className="mt-3 space-y-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
-        {items.map((item) => (
-          <li key={item} className="flex gap-2">
-            <CheckCircle2 className="mt-1 size-4 shrink-0 text-emerald-600" />
-            {item}
-          </li>
-        ))}
-      </ul>
     </div>
   );
 }
