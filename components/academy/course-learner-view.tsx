@@ -211,8 +211,21 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
   if (activeQuizId) {
     const quiz = data.assessments.quizzes.find((q) => q.id === activeQuizId);
     return (
-      <PageShell eyebrow={data.settings.academyName} title={quiz?.title ?? "Quiz"} description="Complete the quiz to track your progress.">
-        <QuizPanel quizId={activeQuizId} passingPercentage={quiz?.passingPercentage ?? 80} onBack={() => { setActiveQuizId(null); void load(); }} />
+      <PageShell
+        eyebrow={data.settings.academyName}
+        title={quiz?.title ?? "Checkpoint"}
+        description="Apply the lesson in a short field-readiness check."
+        compactHero
+      >
+        <QuizPanel
+          quizId={activeQuizId}
+          title={quiz?.title ?? "Checkpoint"}
+          description={quiz?.description ?? undefined}
+          questionCount={quiz?.questionCount ?? undefined}
+          passingPercentage={quiz?.passingPercentage ?? 80}
+          timeLimitMinutes={quiz?.timeLimitMinutes ?? undefined}
+          onBack={() => { setActiveQuizId(null); void load(); }}
+        />
       </PageShell>
     );
   }
