@@ -11,7 +11,7 @@ const groups = [
     title: "Explore",
     items: [
       ["Search HouseLink properties", "/search"],
-      ["Property Resource Centre", "/blog"],
+      ["HouseLink Property Blog", "/blog"],
       ["Send property request", "/property-request"],
       ["Student accommodation", "/student-accommodation"],
       ["Rent in Harare", "/rent/harare"],
@@ -54,7 +54,7 @@ const groups = [
     items: [
       ["Contact", "/contact"],
       ["Safety centre", "/safety"],
-      ["Resource centre", "/blog"],
+      ["Property blog", "/blog"],
       ["Report listing", "/report-listing"],
       ["Maintenance", "/maintenance"],
     ],

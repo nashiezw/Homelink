@@ -34,7 +34,7 @@ export default async function BlogCategoryPage({ params }: Props) {
           <nav className="mb-5 flex flex-wrap gap-2 text-xs text-slate-300 sm:text-sm" aria-label="Breadcrumb">
             <Link href="/" className="hover:text-white">Home</Link>
             <span>/</span>
-            <Link href="/blog" className="hover:text-white">Property Resource Centre</Link>
+            <Link href="/blog" className="hover:text-white">Property Blog</Link>
           </nav>
           <p className="section-eyebrow text-emerald-200">Resource category</p>
           <h1 className="mt-3 max-w-4xl text-3xl font-bold tracking-normal sm:text-5xl">{data.category.name}</h1>

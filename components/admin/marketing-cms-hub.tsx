@@ -624,7 +624,7 @@ export function MarketingCmsHub() {
       {tab === "cms-content" && (
         <div className="space-y-4">
           <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-4">
-            <p className="text-sm font-semibold text-emerald-100">Property Resource Centre now has its own full Blog Management dashboard.</p>
+            <p className="text-sm font-semibold text-emerald-100">Property Blog now has its own full Blog Management dashboard.</p>
             <p className="mt-1 text-sm text-emerald-100/75">Use it for articles, authors, categories, tags, layouts, SEO, analytics, and AI writing assistance.</p>
             <Link href="/dashboard/admin/blog" className="mt-3 inline-flex min-h-10 items-center rounded-lg bg-white px-4 py-2 text-sm font-semibold text-emerald-900 hover:bg-emerald-50">
               Open Blog Management

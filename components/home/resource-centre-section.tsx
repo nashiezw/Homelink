@@ -12,13 +12,13 @@ export function ResourceCentreSection() {
     <section className="bg-white px-4 py-14 dark:bg-slate-950 sm:px-6 lg:px-8">
       <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
         <div>
-          <p className="section-eyebrow">Property Resource Centre</p>
+          <p className="section-eyebrow">HouseLink Property Blog</p>
           <h2 className="section-title">Zimbabwe-focused property knowledge, not generic advice.</h2>
           <p className="section-copy mt-4 max-w-2xl">
             Read practical HouseLink guides for renting, buying, selling, listing, moving, safety checks, property management, and agent growth.
           </p>
           <Link href="/blog" className="mt-6 inline-flex min-h-11 items-center gap-2 rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-emerald-500">
-            Visit Resource Centre
+            Visit Property Blog
             <ArrowRight className="size-4" />
           </Link>
         </div>
