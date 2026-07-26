@@ -1,5 +1,6 @@
 import { ok, problem } from "@/lib/api/response";
 import { getMainPrisma } from "@/lib/db/main-prisma";
+import { getProgrammeCourse } from "@/lib/academy/academy-programme";
 
 export const dynamic = "force-dynamic";
 
@@ -15,11 +16,15 @@ export async function GET(_request: Request, context: { params: Promise<{ number
     });
     if (!certificate) return problem(404, "NOT_FOUND", "Certificate not found.");
     if (certificate.status !== "ACTIVE") return problem(410, "REVOKED", "This certificate is no longer active.");
+    const programme = certificate.courseId ? getProgrammeCourse(certificate.courseId) : null;
 
     return ok({
       valid: true,
       certificateNumber: certificate.certificateNumber,
       course: certificate.course?.title ?? null,
+      certificateTitle: programme?.certificateTitle ?? certificate.course?.title ?? "HouseLink Academy Certificate",
+      badgeName: programme?.badgeName ?? null,
+      skillsAssessed: programme?.learningOutcomes ?? [],
       issuedAt: certificate.issuedAt.toISOString(),
       expiresAt: certificate.expiresAt?.toISOString() ?? null,
       status: certificate.status,

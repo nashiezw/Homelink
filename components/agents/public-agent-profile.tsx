@@ -35,6 +35,16 @@ type PublicAgentData = {
   territories: Array<Pick<AgentTerritory, "id" | "name" | "province" | "city" | "suburbs">>;
   listings: Listing[];
   ratings: AgentRating[];
+  academyCredentials?: Array<{
+    id: string;
+    courseId: string | null;
+    title: string;
+    badgeName: string;
+    certificateNumber: string;
+    issuedAt: string;
+    verifyUrl: string;
+    accent: string;
+  }>;
 };
 
 const LEVEL_STYLES: Record<AgentLevel, string> = {
@@ -129,6 +139,7 @@ export function PublicAgentProfile({ slug }: { slug: string }) {
   const territories = Array.isArray(data.territories) ? data.territories : [];
   const listings = Array.isArray(data.listings) ? data.listings : [];
   const ratings = Array.isArray(data.ratings) ? data.ratings : [];
+  const academyCredentials = Array.isArray(data.academyCredentials) ? data.academyCredentials : [];
   const name = user?.name ?? "HouseLink Agent";
   const averageRating = Number.isFinite(Number(profile.averageRating)) ? Number(profile.averageRating) : 0;
   const ratingCount = Number.isFinite(Number(profile.ratingCount)) ? Number(profile.ratingCount) : 0;
@@ -193,6 +204,12 @@ export function PublicAgentProfile({ slug }: { slug: string }) {
                       <Award className="size-3.5" />
                       {level}
                     </span>
+                    {academyCredentials.length > 0 && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-700 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-white">
+                        <BadgeCheck className="size-3.5" />
+                        HouseLink Certified
+                      </span>
+                    )}
                   </div>
 
                   <h1 className="mt-3 text-3xl font-bold tracking-tight text-slate-950 dark:text-white sm:text-4xl">
@@ -359,6 +376,28 @@ export function PublicAgentProfile({ slug }: { slug: string }) {
                     Verified agency
                   </p>
                 )}
+              </SidebarCard>
+            )}
+
+            {academyCredentials.length > 0 && (
+              <SidebarCard title="Academy Credentials">
+                <div className="space-y-3">
+                  {academyCredentials.map((credential) => (
+                    <a
+                      key={credential.id}
+                      href={credential.verifyUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block rounded-xl border border-emerald-200 bg-emerald-50 p-3 transition hover:border-emerald-400 hover:bg-emerald-100 dark:border-emerald-900 dark:bg-emerald-950/30"
+                    >
+                      <p className="text-sm font-semibold text-slate-950 dark:text-white">{credential.badgeName}</p>
+                      <p className="mt-1 text-xs text-slate-600 dark:text-slate-300">{credential.title}</p>
+                      <p className="mt-2 text-[11px] font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">
+                        Verify {credential.certificateNumber}
+                      </p>
+                    </a>
+                  ))}
+                </div>
               </SidebarCard>
             )}
 

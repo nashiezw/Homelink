@@ -62,6 +62,19 @@ type AcademyData = {
   videos: AcademyVideo[];
   quizzes: Array<{ id: string; title: string; passingPercentage: number; active: boolean }>;
   assignments: Array<{ id: string; title: string; points: number; active: boolean }>;
+  assignmentSubmissions?: Array<{
+    id: string;
+    assignmentId: string;
+    assignmentTitle: string;
+    agentId: string;
+    status: string;
+    notes?: string | null;
+    fileUrls: string[];
+    grade?: number | null;
+    reviewerNote?: string | null;
+    submittedAt: string;
+    reviewedAt?: string | null;
+  }>;
   exams: Array<{ id: string; title: string; durationMinutes: number; passingScore: number; active: boolean }>;
   certificates: Array<{ id: string; certificateNumber: string; agentId: string; status: string; issuedAt: string; expiresAt?: string }>;
   learningPaths: Array<{ id: string; title: string; description?: string; status: string; badgeTitle?: string; courses: Array<{ id: string; sortOrder: number; required: boolean; course: AcademyCourse }> }>;
@@ -860,6 +873,7 @@ function FeatureWorkbench({
           <MetricRow label="Completion rate" value={`${data.metrics.completionRate ?? 0}%`} />
           <MetricRow label="Average score" value={`${data.metrics.averageScore ?? 0}%`} />
         </ActivityPanel>
+        <AssignmentReviewQueue submissions={data.assignmentSubmissions ?? []} action={action} />
         <ActivityPanel title="Most Active Agents" icon={Trophy}>{data.mostActiveAgents.map((item) => <MetricRow key={item.agentId} label={item.agentId} value={item.actions} />)}</ActivityPanel>
         <ActivityPanel title="Agents Needing Attention" icon={Users}>{data.agentsNeedingAttention.map((item) => <MetricRow key={item.id} label={item.agentId} value={`${item.percentComplete}%`} />)}</ActivityPanel>
       </div>
@@ -912,6 +926,63 @@ function BuilderList({
         emptyMessage="No records yet."
       />
     </section>
+  );
+}
+
+function AssignmentReviewQueue({
+  submissions,
+  action,
+}: {
+  submissions: NonNullable<AcademyData["assignmentSubmissions"]>;
+  action: (body: Record<string, unknown>, success: string) => Promise<unknown>;
+}) {
+  const queue = submissions
+    .filter((submission) => ["SUBMITTED", "RESUBMISSION_REQUESTED"].includes(submission.status))
+    .slice(0, 8);
+  return (
+    <ActivityPanel title="Assignment Review Queue" icon={ClipboardCheck}>
+      {queue.length === 0 ? (
+        <p className="text-sm text-slate-400">No practical assignments are waiting for review.</p>
+      ) : (
+        <div className="space-y-3">
+          {queue.map((submission) => (
+            <div key={submission.id} className="rounded-xl border border-white/10 bg-slate-950/60 p-3">
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div>
+                  <p className="text-sm font-semibold text-white">{submission.assignmentTitle}</p>
+                  <p className="mt-1 text-xs text-slate-400">{submission.agentId} - {new Date(submission.submittedAt).toLocaleDateString()}</p>
+                </div>
+                <span className="rounded-full bg-amber-500/15 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-amber-200">
+                  {submission.status.replace(/_/g, " ")}
+                </span>
+              </div>
+              {submission.notes && <p className="mt-2 line-clamp-2 text-xs text-slate-300">{submission.notes}</p>}
+              {submission.fileUrls.length > 0 && (
+                <a href={submission.fileUrls[0]} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex text-xs font-semibold text-emerald-300 hover:underline">
+                  View submitted file
+                </a>
+              )}
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white"
+                  onClick={() => void action({ action: "review_assignment_submission", submissionId: submission.id, review: { status: "APPROVED", grade: 100, reviewerNote: "Approved against the Academy rubric." } }, "Assignment approved.")}
+                >
+                  Approve
+                </button>
+                <button
+                  type="button"
+                  className="rounded-lg bg-slate-800 px-3 py-1.5 text-xs font-semibold text-slate-100"
+                  onClick={() => void action({ action: "review_assignment_submission", submissionId: submission.id, review: { status: "RESUBMISSION_REQUESTED", reviewerNote: "Please resubmit with stronger evidence against the rubric." } }, "Resubmission requested.")}
+                >
+                  Request resubmission
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </ActivityPanel>
   );
 }
 

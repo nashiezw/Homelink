@@ -16,6 +16,8 @@ export type CertificateDocumentProps = {
   accent?: string;
   signatureName?: string;
   signatureTitle?: string;
+  skillsAssessed?: string[];
+  badgeName?: string;
 };
 
 export function CertificateDocument({
@@ -29,6 +31,8 @@ export function CertificateDocument({
   accent = "#008b68",
   signatureName = "HouseLink Zimbabwe Academy",
   signatureTitle = "Director of Training & Certification",
+  skillsAssessed = [],
+  badgeName,
 }: CertificateDocumentProps) {
   const issuedLabel = new Date(issuedAt).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
 
@@ -73,7 +77,22 @@ export function CertificateDocument({
               has successfully completed <strong>{courseTitle}</strong> and is awarded the designation
             </p>
             <p className="mt-4 text-3xl font-bold sm:text-4xl" style={{ color: accent }}>{certificateTitle}</p>
+            {badgeName && <p className="mt-2 text-sm font-semibold uppercase tracking-wide text-slate-500">{badgeName}</p>}
           </div>
+
+          {skillsAssessed.length > 0 && (
+            <div className="mx-auto mt-10 max-w-3xl rounded-xl border border-slate-200 bg-white/85 p-5 text-left shadow-sm">
+              <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Skills assessed</p>
+              <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                {skillsAssessed.slice(0, 8).map((skill) => (
+                  <p key={skill} className="flex gap-2 text-sm leading-snug text-slate-700">
+                    <ShieldCheck className="mt-0.5 size-4 shrink-0" style={{ color: accent }} />
+                    {skill}
+                  </p>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="mt-12 grid gap-8 border-t border-slate-200 pt-10 sm:grid-cols-[1fr_auto_1fr] sm:items-end">
             <div>

@@ -94,6 +94,13 @@ type CourseDetail = {
     summary?: string | null;
     badgeName?: string | null;
     totals?: { quizzes: number; quizzesPassed: number; assignments: number; assignmentsSubmitted: number; exams: number };
+    readiness?: {
+      overall: number;
+      status: "READY" | "DEVELOPING" | "NEEDS_PRACTICE";
+      mentorSignoffRequired: boolean;
+      mentorSignoffLabel: string;
+      categories: Array<{ id: string; label: string; description: string; score: number; status: "READY" | "DEVELOPING" | "NEEDS_PRACTICE" }>;
+    };
     certificateCheckpoint?: { title: string; description: string } | null;
     quizzes: Array<{ id: string; title: string; description?: string | null; moduleTitle?: string | null; sortOrder?: number; passingPercentage: number; timeLimitMinutes?: number | null; questionCount: number; bestScore: number | null; passed: boolean }>;
     assignments: Array<{ id: string; title: string; description: string; moduleTitle?: string | null; sortOrder?: number; points: number; dueDays?: number | null; submitted: boolean; status: string | null }>;
@@ -431,6 +438,10 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
             </div>
           )}
 
+          {data.assessments.readiness && (
+            <ReadinessPanel readiness={data.assessments.readiness} accent={accent} />
+          )}
+
           <div className="grid gap-6 xl:grid-cols-3">
             <AssessmentSection title={`Module Quizzes (${data.assessments.quizzes.length})`} icon={ShieldCheck} empty="Module quizzes load with your programme enrolment.">
               {data.assessments.quizzes.map((quiz) => (
@@ -521,6 +532,47 @@ function AssessmentStat({ label, value, accent }: { label: string; value: string
       <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</p>
       <p className="mt-1 text-lg font-bold" style={{ color: accent }}>{value}</p>
     </div>
+  );
+}
+
+function ReadinessPanel({
+  readiness,
+  accent,
+}: {
+  readiness: NonNullable<CourseDetail["assessments"]["readiness"]>;
+  accent: string;
+}) {
+  const statusLabel = readiness.status === "READY" ? "Client-ready" : readiness.status === "DEVELOPING" ? "Developing" : "Needs practice";
+  return (
+    <section className="academy-panel rounded-xl p-5">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Agent Readiness Score</p>
+          <h3 className="mt-1 text-xl font-bold">Industry readiness: {statusLabel}</h3>
+          <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">{readiness.mentorSignoffLabel}</p>
+        </div>
+        <div className="shrink-0 rounded-xl px-5 py-4 text-center text-white" style={{ backgroundColor: accent }}>
+          <p className="text-3xl font-bold">{readiness.overall}%</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-white/80">Overall</p>
+        </div>
+      </div>
+      <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+        {readiness.categories.map((category) => (
+          <div key={category.id} className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="font-semibold">{category.label}</p>
+                <p className="mt-1 text-xs leading-relaxed text-slate-500">{category.description}</p>
+              </div>
+              <span className="text-lg font-bold" style={{ color: accent }}>{category.score}%</span>
+            </div>
+            <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+              <div className="h-full rounded-full" style={{ width: `${category.score}%`, backgroundColor: accent }} />
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }
 

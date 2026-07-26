@@ -181,6 +181,20 @@ export async function getAcademyDashboard() {
     videos,
     quizzes,
     assignments,
+    assignmentSubmissions: assignmentSubmissions.slice(0, 50).map((submission) => ({
+      id: submission.id,
+      assignmentId: submission.assignmentId,
+      agentId: submission.agentId,
+      status: submission.status,
+      notes: submission.notes,
+      fileUrls: submission.fileUrls,
+      grade: submission.grade === null ? null : Number(submission.grade),
+      reviewerId: submission.reviewerId,
+      reviewerNote: submission.reviewerNote,
+      submittedAt: submission.submittedAt.toISOString(),
+      reviewedAt: submission.reviewedAt?.toISOString() ?? null,
+      assignmentTitle: assignments.find((assignment) => assignment.id === submission.assignmentId)?.title ?? "Assignment",
+    })),
     exams,
     certificates,
     learningPaths,
@@ -818,6 +832,34 @@ export async function runAcademyAction(body: Record<string, any>, actor: Actor) 
     const assignment = await prisma.assignment.update({ where: { id: String(body.assignmentId) }, data: { active: action === "restore_assignment" } });
     await audit(actor, `academy.assignment.${action.replace("_assignment", "")}`, assignment.id, { active: assignment.active });
     return assignment;
+  }
+  if (action === "review_assignment_submission") {
+    const status = enumValue(AssignmentSubmissionStatus, body.review?.status, AssignmentSubmissionStatus.GRADED);
+    const submission = await prisma.assignmentSubmission.update({
+      where: { id: String(body.submissionId) },
+      data: {
+        status,
+        grade: optionalNumber(body.review?.grade),
+        reviewerId: actor.id,
+        reviewerNote: stringOrNull(body.review?.reviewerNote),
+        reviewedAt: new Date(),
+      },
+    });
+    await audit(actor, "academy.assignment_submission.review", submission.id, {
+      assignmentId: submission.assignmentId,
+      status,
+      grade: submission.grade,
+    });
+    await prisma.trainingNotification.create({
+      data: {
+        userId: submission.agentId,
+        eventType: "ASSIGNMENT_REVIEWED",
+        channel: "IN_APP",
+        subject: "Assignment reviewed",
+        body: `Your assignment submission was marked ${status.replace(/_/g, " ").toLowerCase()}.`,
+      },
+    });
+    return submission;
   }
   if (action === "create_learning_path") {
     const path = await prisma.learningPath.create({

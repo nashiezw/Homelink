@@ -23,6 +23,8 @@ type LessonSeed = {
   richText: string;
   objectives: string[];
   estimatedMinutes: number;
+  videoUrl?: string;
+  embeddedVideoUrl?: string;
   completionRequirement?: string;
   resourceTitles?: string[];
   discussionPrompt?: string;
@@ -218,7 +220,7 @@ export const modules: ModuleSeed[] = [
         objectives: ["Prepare a basic CMA", "Defend a pricing recommendation with evidence", "Handle unrealistic owner price expectations"],
         estimatedMinutes: 60,
         completionRequirement: "ASSIGNMENT",
-        resourceTitles: ["Property Appraisal Form", "Objection Handling Guide", "Listing Agreement Template"],
+        resourceTitles: ["Property Appraisal Form", "Objection Handling Guide", "Listing Agreement Template", "Overpriced Seller CMA Case File"],
         discussionPrompt: "How would you explain a lower-than-expected valuation to a seller without damaging trust?",
       },
       {
@@ -260,7 +262,7 @@ export const modules: ModuleSeed[] = [
         objectives: ["Deliver a structured listing presentation", "Respond to price and commission objections", "Close with documented next steps"],
         estimatedMinutes: 55,
         completionRequirement: "ASSIGNMENT",
-        resourceTitles: ["Objection Handling Guide", "Listing Agreement Template", "Property Marketing Checklist"],
+        resourceTitles: ["Objection Handling Guide", "Listing Agreement Template", "Property Marketing Checklist", "Seller Listing Presentation Video Script"],
       },
       {
         title: "Chapter 2 knowledge check and practical assessment",
@@ -310,7 +312,7 @@ export const modules: ModuleSeed[] = [
         objectives: ["Run structured qualification conversations", "Document buyer and tenant needs", "Decide which enquiries deserve immediate action"],
         estimatedMinutes: 55,
         completionRequirement: "ASSIGNMENT",
-        resourceTitles: ["Buyer Needs Analysis Form", "Tenant Needs Analysis Form", "Buyer Registration Form", "Tenant Registration Form"],
+        resourceTitles: ["Buyer Needs Analysis Form", "Tenant Needs Analysis Form", "Buyer Registration Form", "Tenant Registration Form", "Buyer Qualification Roleplay Script", "Tenant Screening Case File"],
       },
       {
         title: "Matching clients with the right property",
@@ -360,7 +362,7 @@ export const modules: ModuleSeed[] = [
         objectives: ["Present offers neutrally", "Document counter-offers and deadlines", "Escalate legal questions at the right moment"],
         estimatedMinutes: 50,
         completionRequirement: "ASSIGNMENT",
-        resourceTitles: ["Offer to Purchase Template", "Rental Application Form", "Client Follow-Up Register"],
+        resourceTitles: ["Offer to Purchase Template", "Rental Application Form", "Client Follow-Up Register", "Offer Negotiation Case File"],
       },
       {
         title: "Chapter 3 client service simulation",
@@ -426,7 +428,7 @@ export const modules: ModuleSeed[] = [
         objectives: ["Identify high-risk document scenarios", "Create clear escalation file notes", "Pause unsafe transactions before harm is done"],
         estimatedMinutes: 55,
         completionRequirement: "ASSIGNMENT",
-        resourceTitles: ["Compliance Checklist", "File Checklist", "Document Submission Checklist"],
+        resourceTitles: ["Compliance Checklist", "File Checklist", "Document Submission Checklist", "Document Risk Case File"],
       },
       {
         title: "Understanding contracts and confidentiality",
@@ -523,7 +525,7 @@ export const modules: ModuleSeed[] = [
         objectives: ["Diagnose pipeline weaknesses", "Use KPI data for coaching decisions", "Build a realistic 30-day improvement plan"],
         estimatedMinutes: 50,
         completionRequirement: "ASSIGNMENT",
-        resourceTitles: ["Monthly KPI Tracker", "Weekly Performance Review", "Lead Tracking Sheet", "Sales Performance Tracker"],
+        resourceTitles: ["Monthly KPI Tracker", "Weekly Performance Review", "Lead Tracking Sheet", "Sales Performance Tracker", "Zimbabwe Market Intelligence Update Template"],
       },
       {
         title: "Professional reputation and long-term growth",
@@ -554,7 +556,7 @@ export const modules: ModuleSeed[] = [
         objectives: ["Assemble evidence of field competence", "Protect confidential information in submissions", "Prepare for mentor or admin review"],
         estimatedMinutes: 75,
         completionRequirement: "ASSIGNMENT",
-        resourceTitles: ["File Checklist", "Daily Activity Planner", "Property Viewing Register", "Monthly KPI Tracker", "Compliance Checklist"],
+        resourceTitles: ["File Checklist", "Daily Activity Planner", "Property Viewing Register", "Monthly KPI Tracker", "Compliance Checklist", "Field Portfolio Mentor Sign-Off Form"],
       },
       {
         title: "Final competency checklist",
@@ -848,6 +850,8 @@ export async function seedStagedCourseStructure(options?: { forceRebuild?: boole
                     title: lesson.title,
                     summary: lesson.summary,
                     richText: lesson.richText,
+                    videoUrl: lesson.videoUrl,
+                    embeddedVideoUrl: lesson.embeddedVideoUrl,
                     objectives: lesson.objectives,
                     discussionPrompt: lesson.discussionPrompt ?? null,
                     pdfUrl,

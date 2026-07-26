@@ -5,6 +5,7 @@ import { canAccessProgrammeCourse, getProgrammeProgressSummary } from "@/lib/aca
 import { assessmentMetaForAssignment, assessmentMetaForQuiz } from "@/lib/academy/academy-assessments";
 import { getProgrammeCourse, LEGACY_COURSE_ID, PROGRAMME_COURSE_IDS } from "@/lib/academy/academy-programme";
 import { getEnrolledCourseToolkits, getToolkitGroupsForCourse, programmeMetaForCourse } from "@/lib/academy/academy-toolkits";
+import { buildReadinessScore } from "@/lib/academy/academy-readiness";
 import {
   getManualAccessView,
   getToolkitAccessView,
@@ -636,9 +637,10 @@ export async function getLearnerCourseDetail(learnerId: string, courseId: string
   const progress = calculateCourseProgress(course, completedIds);
   const courseProgress = await prisma.courseProgress.findUnique({ where: { courseId_agentId: { courseId, agentId: learnerId } } });
 
-  const [quizAttempts, assignmentSubmissions, settings, bookmarkRows] = await Promise.all([
+  const [quizAttempts, assignmentSubmissions, examAttempts, settings, bookmarkRows] = await Promise.all([
     prisma.quizAttempt.findMany({ where: { agentId: learnerId, quiz: { courseId } }, orderBy: { startedAt: "desc" } }),
     prisma.assignmentSubmission.findMany({ where: { agentId: learnerId, assignment: { courseId } }, orderBy: { submittedAt: "desc" } }),
+    prisma.examAttempt.findMany({ where: { agentId: learnerId, exam: { courseId } }, orderBy: { startedAt: "desc" } }),
     getAcademySettingsPublic(),
     prisma.lessonProgress.findMany({ where: { agentId: learnerId, status: "BOOKMARKED" }, select: { lessonId: true } }),
   ]);
@@ -655,6 +657,19 @@ export async function getLearnerCourseDetail(learnerId: string, courseId: string
   const toolkitRaw = await getToolkitGroupsForCourse(courseId, { cumulative: true });
   const toolkitAccess = await getToolkitAccessView(learnerId, courseId, Boolean(options?.isAgent));
   const toolkit = maskToolkitGroups(toolkitRaw, toolkitAccess);
+  const assignmentStatuses = Object.fromEntries(
+    course.assignments.map((assignment) => [
+      assignment.id,
+      assignmentSubmissions.find((submission) => submission.assignmentId === assignment.id)?.status ?? null,
+    ]),
+  );
+  const quizScores = Object.fromEntries(course.quizzes.map((quiz) => [quiz.id, bestQuizScores.get(quiz.id) ?? null]));
+  const readiness = buildReadinessScore(programme, {
+    courseProgress: courseProgress?.percentComplete ?? progress.percentComplete,
+    quizScores,
+    assignmentStatuses,
+    finalExamPassed: examAttempts.some((attempt) => attempt.status === "PASSED"),
+  });
 
   return {
     settings,
@@ -760,6 +775,7 @@ export async function getLearnerCourseDetail(learnerId: string, courseId: string
             title: "Programme Certificate Checkpoint",
             description: `Pass all ${programme?.quizIds.length ?? 0} module quizzes and submit all ${programme?.assignmentIds.length ?? 0} assignments to unlock your ${programme?.certificateTitle ?? "programme certificate"}.`,
           },
+      readiness,
     },
     materials: flattenCourseMaterials(course),
     application: application

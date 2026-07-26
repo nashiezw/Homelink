@@ -47,6 +47,7 @@ export const TOOLKIT_TITLES_BY_COURSE: Record<string, string[]> = {
     "Weekly Planner",
     "Monthly Planner",
     "Appointment Schedule",
+    "Zimbabwe Market Intelligence Update Template",
   ],
   "academy-course-intermediate": [
     "Property Appraisal Form",
@@ -73,6 +74,11 @@ export const TOOLKIT_TITLES_BY_COURSE: Record<string, string[]> = {
     "Listing Tracker",
     "Offer to Purchase Template",
     "Rental Application Form",
+    "Overpriced Seller CMA Case File",
+    "Seller Listing Presentation Video Script",
+    "Buyer Qualification Roleplay Script",
+    "Tenant Screening Case File",
+    "Offer Negotiation Case File",
   ],
   "academy-course-advanced-professional": [
     "Seller Information Form",
@@ -92,6 +98,8 @@ export const TOOLKIT_TITLES_BY_COURSE: Record<string, string[]> = {
     "Buyer Journey Flowchart",
     "Seller Journey Flowchart",
     "Landlord Journey Flowchart",
+    "Document Risk Case File",
+    "Field Portfolio Mentor Sign-Off Form",
   ],
 };
 

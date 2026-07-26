@@ -22,6 +22,7 @@ import {
   listPostgresAgentTrainingProgress,
 } from "@/lib/agents/postgres-training-repository";
 import type { AgentApplication, AgentLevel, AgentProfile } from "@/lib/agents/types";
+import { getProgrammeCourse } from "@/lib/academy/academy-programme";
 
 export function shouldUsePostgresAgents() {
   return isPostgresStoreEnabled();
@@ -226,10 +227,14 @@ export async function getPublicAgentFromPostgres(slug: string) {
   });
   const user = users.find((candidate) => slugify(candidate.name) === slug);
   if (!user) return null;
-  const [trainingCompleted, applicationRecord, listings] = await Promise.all([
+  const [trainingCompleted, applicationRecord, listings, certificates] = await Promise.all([
     hasCompletedRequiredTraining(user.id),
     prisma.agentApplicationRecord.findUnique({ where: { userId: user.id } }).catch(() => null),
     listListingsFromPostgres({ status: "ACTIVE" }),
+    prisma.certificateIssue.findMany({
+      where: { agentId: user.id, status: "ACTIVE" },
+      orderBy: { issuedAt: "desc" },
+    }),
   ]);
   const application = applicationRecord ? toPublicAgentApplication(applicationRecord) : undefined;
   const activeListings = listings.filter((listing) => listing.ownerId === user.id).map(toPublicPostgresListing);
@@ -247,6 +252,19 @@ export async function getPublicAgentFromPostgres(slug: string) {
     territories: [],
     listings: activeListings,
     ratings: [],
+    academyCredentials: certificates.map((certificate) => {
+      const programme = certificate.courseId ? getProgrammeCourse(certificate.courseId) : null;
+      return {
+        id: certificate.id,
+        courseId: certificate.courseId,
+        title: programme?.certificateTitle ?? "HouseLink Academy Certificate",
+        badgeName: programme?.badgeName ?? "HouseLink Academy Graduate",
+        certificateNumber: certificate.certificateNumber,
+        issuedAt: certificate.issuedAt.toISOString(),
+        verifyUrl: certificate.qrCodeUrl ?? `/api/v1/academy/certificates/verify/${encodeURIComponent(certificate.certificateNumber)}`,
+        accent: programme?.theme.accent ?? "#008b68",
+      };
+    }),
   };
 }
 

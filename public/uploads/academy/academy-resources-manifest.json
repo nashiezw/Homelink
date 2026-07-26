@@ -968,5 +968,157 @@
     "version": 1,
     "fileSizeBytes": 296203,
     "manualPage": 324
+  },
+  {
+    "title": "Overpriced Seller CMA Case File",
+    "description": "Practice case file for pricing a Zimbabwe property with comparable evidence and seller objection handling.",
+    "category": "Case Files",
+    "sourceCategory": "Case Files",
+    "fileName": "overpriced-seller-cma-case-file.pdf",
+    "fileUrl": "/uploads/academy/resources/overpriced-seller-cma-case-file.pdf",
+    "fileType": "PDF",
+    "tags": [
+      "practice",
+      "case file",
+      "agent academy",
+      "trainer review"
+    ],
+    "sortOrder": 50,
+    "version": 1,
+    "fileSizeBytes": 2477,
+    "manualPage": null
+  },
+  {
+    "title": "Seller Listing Presentation Video Script",
+    "description": "Trainer-ready script for recording a listing presentation lesson with pricing, commission, documents, and close.",
+    "category": "Sales Scripts",
+    "sourceCategory": "Video Scripts",
+    "fileName": "seller-listing-presentation-video-script.pdf",
+    "fileUrl": "/uploads/academy/resources/seller-listing-presentation-video-script.pdf",
+    "fileType": "PDF",
+    "tags": [
+      "practice",
+      "case file",
+      "agent academy",
+      "trainer review"
+    ],
+    "sortOrder": 51,
+    "version": 1,
+    "fileSizeBytes": 2418,
+    "manualPage": null
+  },
+  {
+    "title": "Buyer Qualification Roleplay Script",
+    "description": "Roleplay script for turning a vague buyer enquiry into a documented client brief.",
+    "category": "Sales Scripts",
+    "sourceCategory": "Roleplay Scripts",
+    "fileName": "buyer-qualification-roleplay-script.pdf",
+    "fileUrl": "/uploads/academy/resources/buyer-qualification-roleplay-script.pdf",
+    "fileType": "PDF",
+    "tags": [
+      "practice",
+      "case file",
+      "agent academy",
+      "trainer review"
+    ],
+    "sortOrder": 52,
+    "version": 1,
+    "fileSizeBytes": 2414,
+    "manualPage": null
+  },
+  {
+    "title": "Tenant Screening Case File",
+    "description": "Practice file for qualifying a tenant, checking references, and preparing a rental recommendation.",
+    "category": "Case Files",
+    "sourceCategory": "Case Files",
+    "fileName": "tenant-screening-case-file.pdf",
+    "fileUrl": "/uploads/academy/resources/tenant-screening-case-file.pdf",
+    "fileType": "PDF",
+    "tags": [
+      "practice",
+      "case file",
+      "agent academy",
+      "trainer review"
+    ],
+    "sortOrder": 53,
+    "version": 1,
+    "fileSizeBytes": 2391,
+    "manualPage": null
+  },
+  {
+    "title": "Offer Negotiation Case File",
+    "description": "Counter-offer practice case for documenting price, conditions, deadlines, and escalation points.",
+    "category": "Case Files",
+    "sourceCategory": "Case Files",
+    "fileName": "offer-negotiation-case-file.pdf",
+    "fileUrl": "/uploads/academy/resources/offer-negotiation-case-file.pdf",
+    "fileType": "PDF",
+    "tags": [
+      "practice",
+      "case file",
+      "agent academy",
+      "trainer review"
+    ],
+    "sortOrder": 54,
+    "version": 1,
+    "fileSizeBytes": 2387,
+    "manualPage": null
+  },
+  {
+    "title": "Document Risk Case File",
+    "description": "Compliance practice file covering owner authority, estate, cession, and signature risk flags.",
+    "category": "Compliance Documents",
+    "sourceCategory": "Case Files",
+    "fileName": "document-risk-case-file.pdf",
+    "fileUrl": "/uploads/academy/resources/document-risk-case-file.pdf",
+    "fileType": "PDF",
+    "tags": [
+      "practice",
+      "case file",
+      "agent academy",
+      "trainer review"
+    ],
+    "sortOrder": 55,
+    "version": 1,
+    "fileSizeBytes": 2409,
+    "manualPage": null
+  },
+  {
+    "title": "Zimbabwe Market Intelligence Update Template",
+    "description": "Monthly template for tracking suburb demand, pricing signals, rental trends, and client questions.",
+    "category": "Reference Guides",
+    "sourceCategory": "Market Intelligence",
+    "fileName": "zimbabwe-market-intelligence-update-template.pdf",
+    "fileUrl": "/uploads/academy/resources/zimbabwe-market-intelligence-update-template.pdf",
+    "fileType": "PDF",
+    "tags": [
+      "practice",
+      "case file",
+      "agent academy",
+      "trainer review"
+    ],
+    "sortOrder": 56,
+    "version": 1,
+    "fileSizeBytes": 2402,
+    "manualPage": null
+  },
+  {
+    "title": "Field Portfolio Mentor Sign-Off Form",
+    "description": "Mentor/admin sign-off checklist for validating practical readiness before full professional certification.",
+    "category": "Assessments",
+    "sourceCategory": "Mentor Sign-Off",
+    "fileName": "field-portfolio-mentor-sign-off-form.pdf",
+    "fileUrl": "/uploads/academy/resources/field-portfolio-mentor-sign-off-form.pdf",
+    "fileType": "PDF",
+    "tags": [
+      "practice",
+      "case file",
+      "agent academy",
+      "trainer review"
+    ],
+    "sortOrder": 57,
+    "version": 1,
+    "fileSizeBytes": 2422,
+    "manualPage": null
   }
 ]

@@ -27,6 +27,8 @@ export async function GET(request: Request, context: { params: Promise<{ issueId
     courseId: issue.courseId,
     courseTitle: issue.course?.title ?? "HouseLink Academy Course",
     certificateTitle: programme?.certificateTitle ?? "Certified HouseLink Agent",
+    skillsAssessed: programme?.learningOutcomes ?? [],
+    badgeName: programme?.badgeName ?? null,
     issuedAt: issue.issuedAt.toISOString(),
     expiresAt: issue.expiresAt?.toISOString() ?? null,
     verifyUrl: issue.qrCodeUrl ?? `/api/v1/academy/certificates/verify/${encodeURIComponent(issue.certificateNumber)}`,
