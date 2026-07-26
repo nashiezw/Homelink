@@ -1,4 +1,4 @@
-import { BlogArticleLayout, BlogPostStatus, Prisma } from "@prisma/client";
+import { BlogArticleLayout, BlogPostStatus, ListingStatus, Prisma } from "@prisma/client";
 import { getMainPrisma } from "@/lib/db/main-prisma";
 
 export type BlogBlock =
@@ -820,21 +820,20 @@ function starterWhere(params: { query?: string; category?: string; tag?: string 
 }
 
 function getStarterBlogIndex(params: { query?: string; category?: string; tag?: string; page?: number; limit?: number; popular?: boolean }) {
-  const limit = Math.min(Math.max(Number(params.limit ?? 9), 1), 24);
-  const page = Math.max(Number(params.page ?? 1), 1);
+  const { page, limit } = normalisePaging(params);
   const allPosts = starterPosts().filter(starterWhere(params));
   const sorted = [...allPosts].sort((a, b) => {
     if (params.popular && a.popular !== b.popular) return a.popular ? -1 : 1;
     return (b.publishedAt?.getTime() ?? 0) - (a.publishedAt?.getTime() ?? 0);
   });
-  const posts = sorted.slice((page - 1) * limit, page * limit);
+  const posts = withUniqueBlogImages(sorted.slice((page - 1) * limit, page * limit));
   const everyPost = starterPosts();
   const categories = starterCategories();
-  const featured = everyPost.find((post) => post.featured) ?? everyPost[0] ?? null;
-  const popular = everyPost.filter((post) => post.popular).slice(0, 5);
-  const editorsPicks = everyPost.filter((post) => post.featured).slice(0, 4);
-  const recentlyUpdated = [...everyPost].sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime()).slice(0, 4);
-  const latestNews = everyPost.filter((post) => post.category?.slug === "houselink-news").slice(0, 4);
+  const featured = withHeroImage(everyPost.find((post) => post.featured) ?? everyPost[0] ?? null);
+  const popular = withUniqueBlogImages(everyPost.filter((post) => post.popular).slice(0, 5));
+  const editorsPicks = withUniqueBlogImages(everyPost.filter((post) => post.featured).slice(0, 4));
+  const recentlyUpdated = withUniqueBlogImages([...everyPost].sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime()).slice(0, 4));
+  const latestNews = withUniqueBlogImages(everyPost.filter((post) => post.category?.slug === "houselink-news").slice(0, 4));
   const trendingTopics = starterTags().sort((a, b) => b._count.posts - a._count.posts).slice(0, 10);
   return { posts, total: sorted.length, page, limit, hasMore: page * limit < sorted.length, categories, featured, popular, editorsPicks, recentlyUpdated, latestNews, trendingTopics };
 }
@@ -954,21 +953,178 @@ function shouldRefreshStarterArticle(contentText: string | null, updatedAt: Date
   return looksLikeOriginalStarter || wasOnlySeeded;
 }
 
+function normalisePaging(params: { page?: number; limit?: number }) {
+  const page = Math.max(Math.floor(Number(params.page ?? 1)) || 1, 1);
+  const limit = Math.min(Math.max(Math.floor(Number(params.limit ?? 9)) || 9, 1), 24);
+  return { page, limit, skip: (page - 1) * limit };
+}
+
+function publishedPostWhere(params: { query?: string; category?: string; tag?: string; popular?: boolean }): Prisma.BlogPostWhereInput {
+  const query = params.query?.trim();
+  return {
+    status: BlogPostStatus.PUBLISHED,
+    noIndex: false,
+    ...(params.category ? { category: { slug: params.category, active: true } } : {}),
+    ...(params.tag ? { tags: { some: { slug: params.tag, active: true } } } : {}),
+    ...(params.popular ? { popular: true } : {}),
+    ...(query
+      ? {
+          OR: [
+            { title: { contains: query, mode: "insensitive" } },
+            { excerpt: { contains: query, mode: "insensitive" } },
+            { contentText: { contains: query, mode: "insensitive" } },
+            { focusKeyword: { contains: query, mode: "insensitive" } },
+            { searchVector: { contains: query, mode: "insensitive" } },
+            { category: { name: { contains: query, mode: "insensitive" } } },
+            { tags: { some: { name: { contains: query, mode: "insensitive" } } } },
+          ],
+        }
+      : {}),
+  };
+}
+
+function publicOrderBy(popular?: boolean): Prisma.BlogPostOrderByWithRelationInput[] {
+  return popular
+    ? [{ popular: "desc" }, { publishedAt: "desc" }, { updatedAt: "desc" }]
+    : [{ publishedAt: "desc" }, { updatedAt: "desc" }];
+}
+
+function uniqueVisualUrl(post: { slug: string }, variant = "card") {
+  return `/api/v1/blog/card-image/${post.slug}?variant=${variant}`;
+}
+
+function withUniqueBlogImages<T extends { slug: string; featuredImageUrl?: string | null; featuredImageAlt?: string | null; title: string }>(posts: T[]): T[] {
+  const seen = new Set<string>();
+  return posts.map((post) => {
+    const image = post.featuredImageUrl || "";
+    if (!image || seen.has(image)) {
+      return { ...post, featuredImageUrl: uniqueVisualUrl(post), featuredImageAlt: post.featuredImageAlt || post.title };
+    }
+    seen.add(image);
+    return post;
+  });
+}
+
+function withHeroImage<T extends { slug: string; featuredImageUrl?: string | null; featuredImageAlt?: string | null; title: string } | null>(post: T): T {
+  if (!post) return post;
+  return { ...post, featuredImageUrl: uniqueVisualUrl(post, "hero"), featuredImageAlt: post.featuredImageAlt || post.title } as T;
+}
+
+async function getDatabaseBlogIndex(params: { query?: string; category?: string; tag?: string; page?: number; limit?: number; popular?: boolean }) {
+  const prisma = getMainPrisma();
+  const { page, limit, skip } = normalisePaging(params);
+  const where = publishedPostWhere(params);
+  const [posts, total, categories, featured, popular, editorsPicks, recentlyUpdated, latestNews, trendingTopics] = await Promise.all([
+    prisma.blogPost.findMany({ where, include: blogIncludes(), orderBy: publicOrderBy(params.popular), skip, take: limit }),
+    prisma.blogPost.count({ where }),
+    prisma.blogCategory.findMany({ where: { active: true }, orderBy: [{ sortOrder: "asc" }, { name: "asc" }] }),
+    prisma.blogPost.findFirst({ where: { status: BlogPostStatus.PUBLISHED, noIndex: false, featured: true }, include: blogIncludes(), orderBy: publicOrderBy() }),
+    prisma.blogPost.findMany({ where: { status: BlogPostStatus.PUBLISHED, noIndex: false, popular: true }, include: blogIncludes(), orderBy: publicOrderBy(true), take: 5 }),
+    prisma.blogPost.findMany({ where: { status: BlogPostStatus.PUBLISHED, noIndex: false, featured: true }, include: blogIncludes(), orderBy: publicOrderBy(), take: 4 }),
+    prisma.blogPost.findMany({ where: { status: BlogPostStatus.PUBLISHED, noIndex: false }, include: blogIncludes(), orderBy: [{ updatedAt: "desc" }], take: 4 }),
+    prisma.blogPost.findMany({ where: { status: BlogPostStatus.PUBLISHED, noIndex: false, category: { slug: "houselink-news" } }, include: blogIncludes(), orderBy: publicOrderBy(), take: 4 }),
+    prisma.blogTag.findMany({ where: { active: true }, include: { _count: { select: { posts: true } } }, orderBy: [{ name: "asc" }], take: 20 }),
+  ]);
+  return {
+    posts: withUniqueBlogImages(posts),
+    total,
+    page,
+    limit,
+    hasMore: page * limit < total,
+    categories,
+    featured: withHeroImage(featured ?? posts[0] ?? null),
+    popular: withUniqueBlogImages(popular),
+    editorsPicks: withUniqueBlogImages(editorsPicks),
+    recentlyUpdated: withUniqueBlogImages(recentlyUpdated),
+    latestNews: withUniqueBlogImages(latestNews),
+    trendingTopics: trendingTopics.sort((a, b) => b._count.posts - a._count.posts).slice(0, 10),
+  };
+}
+
+async function getDatabaseBlogPost(slug: string, incrementView = false) {
+  const prisma = getMainPrisma();
+  const post = await prisma.blogPost.findFirst({
+    where: { slug, status: BlogPostStatus.PUBLISHED, noIndex: false },
+    include: blogIncludes(),
+  });
+  if (!post) return null;
+  if (incrementView) {
+    void prisma.blogPost.update({ where: { id: post.id }, data: { viewCount: { increment: 1 } } }).catch(() => null);
+  }
+  const relatedMatches = [
+    post.category?.slug ? { category: { slug: post.category.slug } } : {},
+    ...post.tags.map((tag) => ({ tags: { some: { slug: tag.slug } } })),
+  ].filter((item) => Object.keys(item).length) as Prisma.BlogPostWhereInput[];
+  const relatedWhere: Prisma.BlogPostWhereInput = {
+    id: { not: post.id },
+    status: BlogPostStatus.PUBLISHED,
+    noIndex: false,
+    ...(relatedMatches.length ? { OR: relatedMatches } : {}),
+  };
+  const [related, relatedListings, authorArticleCount, relatedCategories, previous, next] = await Promise.all([
+    prisma.blogPost.findMany({ where: relatedWhere, include: blogIncludes(), orderBy: publicOrderBy(), take: 3 }),
+    prisma.listing.findMany({
+      where: { status: ListingStatus.ACTIVE },
+      include: { media: { orderBy: { sortOrder: "asc" }, take: 1 } },
+      orderBy: [{ featured: "desc" }, { updatedAt: "desc" }],
+      take: 3,
+    }),
+    post.author?.slug ? prisma.blogPost.count({ where: { status: BlogPostStatus.PUBLISHED, noIndex: false, author: { slug: post.author.slug } } }) : Promise.resolve(0),
+    post.category ? prisma.blogCategory.findMany({ where: { id: post.category.id } }) : Promise.resolve([]),
+    prisma.blogPost.findFirst({ where: { status: BlogPostStatus.PUBLISHED, noIndex: false, publishedAt: { lt: post.publishedAt ?? post.createdAt } }, select: { title: true, slug: true, publishedAt: true }, orderBy: [{ publishedAt: "desc" }] }),
+    prisma.blogPost.findFirst({ where: { status: BlogPostStatus.PUBLISHED, noIndex: false, publishedAt: { gt: post.publishedAt ?? post.createdAt } }, select: { title: true, slug: true, publishedAt: true }, orderBy: [{ publishedAt: "asc" }] }),
+  ]);
+  return { post, related: withUniqueBlogImages(related), relatedListings, authorArticleCount, relatedCategories, previous, next };
+}
+
 export async function getPublicBlogIndex(params: { query?: string; category?: string; tag?: string; page?: number; limit?: number; popular?: boolean }) {
+  try {
+    const result = await getDatabaseBlogIndex(params);
+    if (result.total > 0) return result;
+  } catch (error) {
+    console.warn("Falling back to starter blog index", error);
+  }
   return getStarterBlogIndex(params);
 }
 
 export async function getPublicBlogCategory(slug: string, params: { page?: number; limit?: number }) {
+  try {
+    const prisma = getMainPrisma();
+    const category = await prisma.blogCategory.findFirst({ where: { slug, active: true } });
+    if (category) return { category, ...(await getDatabaseBlogIndex({ category: slug, page: params.page, limit: params.limit })) };
+  } catch (error) {
+    console.warn("Falling back to starter blog category", error);
+  }
   const category = starterCategories().find((item) => item.slug === slug);
   return category ? { category, ...getStarterBlogIndex({ category: slug, page: params.page, limit: params.limit }) } : null;
 }
 
 export async function getPublicBlogPost(slug: string, incrementView = false) {
-  void incrementView;
+  try {
+    const post = await getDatabaseBlogPost(slug, incrementView);
+    if (post) return post;
+  } catch (error) {
+    console.warn("Falling back to starter blog post", error);
+  }
   return getStarterBlogPost(slug);
 }
 
 export async function getPublicBlogAuthor(slug: string, params: { page?: number; limit?: number }) {
+  try {
+    const prisma = getMainPrisma();
+    const { page, limit, skip } = normalisePaging(params);
+    const author = await prisma.blogAuthor.findFirst({ where: { slug, active: true } });
+    if (author) {
+      const where = { status: BlogPostStatus.PUBLISHED, noIndex: false, author: { slug } } satisfies Prisma.BlogPostWhereInput;
+      const [posts, total] = await Promise.all([
+        prisma.blogPost.findMany({ where, include: blogIncludes(), orderBy: publicOrderBy(), skip, take: limit }),
+        prisma.blogPost.count({ where }),
+      ]);
+      return { author, posts: withUniqueBlogImages(posts), total, page, limit, hasMore: page * limit < total };
+    }
+  } catch (error) {
+    console.warn("Falling back to starter blog author", error);
+  }
   if (slug !== "houselink-editorial-team") return null;
   const fallback = getStarterBlogIndex({ page: params.page, limit: params.limit });
   return { author: starterAuthor(), posts: fallback.posts, total: fallback.total, page: fallback.page, limit: fallback.limit, hasMore: fallback.hasMore };
@@ -977,6 +1133,23 @@ export async function getPublicBlogAuthor(slug: string, params: { page?: number;
 export async function getBlogSearchSuggestions(query: string) {
   const q = query.trim();
   if (!q) return { articles: [], categories: [], tags: [], authors: [] };
+  try {
+    const prisma = getMainPrisma();
+    const [articles, categories, tags, authors] = await Promise.all([
+      prisma.blogPost.findMany({
+        where: publishedPostWhere({ query: q }),
+        select: { title: true, slug: true, excerpt: true },
+        orderBy: publicOrderBy(),
+        take: 5,
+      }),
+      prisma.blogCategory.findMany({ where: { active: true, name: { contains: q, mode: "insensitive" } }, select: { name: true, slug: true }, take: 5 }),
+      prisma.blogTag.findMany({ where: { active: true, name: { contains: q, mode: "insensitive" } }, select: { name: true, slug: true }, take: 5 }),
+      prisma.blogAuthor.findMany({ where: { active: true, name: { contains: q, mode: "insensitive" } }, select: { name: true, slug: true }, take: 5 }),
+    ]);
+    if (articles.length || categories.length || tags.length || authors.length) return { articles, categories, tags, authors };
+  } catch (error) {
+    console.warn("Falling back to starter blog suggestions", error);
+  }
   const lower = q.toLowerCase();
   const articles = starterPosts()
     .filter((post) => [post.title, post.excerpt, post.contentText].join(" ").toLowerCase().includes(lower))

@@ -46,7 +46,7 @@ export default async function BlogCategoryPage({ params }: Props) {
         </div>
       </section>
       <section className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-10 lg:px-8">
-        <BlogIndexClient initialData={JSON.parse(JSON.stringify(data))} />
+        <BlogIndexClient initialData={JSON.parse(JSON.stringify(data))} initialCategorySlug={data.category.slug} />
       </section>
     </main>
   );

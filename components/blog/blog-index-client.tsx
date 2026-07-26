@@ -6,7 +6,7 @@ import { useMemo, useState } from "react";
 import { ArrowRight, Columns3, Home, LayoutGrid, List, Search, ShieldCheck, Sparkles, TrendingUp, type LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api/client";
-import { BlogCard } from "@/components/blog/blog-card";
+import { BlogCard, blogImageUrl, isGeneratedBlogImage } from "@/components/blog/blog-card";
 
 type BlogIndexData = {
   posts: BlogPost[];
@@ -21,6 +21,11 @@ type BlogIndexData = {
   recentlyUpdated: BlogPost[];
   latestNews: BlogPost[];
   trendingTopics: Array<{ id: string; name: string; slug: string; _count?: { posts: number } }>;
+};
+
+type BlogIndexClientProps = {
+  initialData: BlogIndexData;
+  initialCategorySlug?: string;
 };
 
 type ListingLayout = "magazine" | "grid" | "list";
@@ -54,10 +59,10 @@ const popularQuestions = [
   { label: "What are the hidden costs of buying?", href: "/blog/hidden-costs-of-buying-property-in-zimbabwe" },
 ] as const;
 
-export function BlogIndexClient({ initialData }: { initialData: BlogIndexData }) {
+export function BlogIndexClient({ initialData, initialCategorySlug = "" }: BlogIndexClientProps) {
   const [data, setData] = useState(() => normaliseBlogIndexData(initialData));
   const [query, setQuery] = useState("");
-  const [category, setCategory] = useState("");
+  const [category, setCategory] = useState(initialCategorySlug);
   const [listingLayout, setListingLayout] = useState<ListingLayout>("grid");
   const [loading, setLoading] = useState(false);
   const [suggestions, setSuggestions] = useState<{ articles: Array<{ title: string; slug: string; excerpt: string }>; categories: Array<{ name: string; slug: string }>; tags: Array<{ name: string; slug: string }>; authors: Array<{ name: string; slug: string }> } | null>(null);
@@ -73,7 +78,7 @@ export function BlogIndexClient({ initialData }: { initialData: BlogIndexData })
       const nextData = normaliseBlogIndexData(result.data);
       setData((current) => ({
         ...nextData,
-        posts: append ? [...current.posts, ...nextData.posts] : nextData.posts,
+        posts: append ? mergeUniquePosts(current.posts, nextData.posts) : nextData.posts,
       }));
     }
   }
@@ -195,12 +200,26 @@ export function BlogIndexClient({ initialData }: { initialData: BlogIndexData })
         )}
         {data.hasMore ? (
           <div className="mt-7 text-center">
-            <Button variant="secondary" onClick={() => void load(data.page + 1, true)} disabled={loading}>Load More</Button>
+            <Button variant="secondary" onClick={() => void load(data.page + 1, true)} disabled={loading}>
+              {loading ? "Loading..." : `Load more (${data.posts.length}/${data.total})`}
+            </Button>
           </div>
         ) : null}
       </section>
     </div>
   );
+}
+
+function mergeUniquePosts(current: BlogPost[], incoming: BlogPost[]) {
+  const seen = new Set(current.map((post) => post.id || post.slug));
+  const merged = [...current];
+  for (const post of incoming) {
+    const key = post.id || post.slug;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    merged.push(post);
+  }
+  return merged;
 }
 
 function normaliseBlogIndexData(data: BlogIndexData): BlogIndexData {
@@ -249,10 +268,11 @@ function ArticleListing({ posts, layout }: { posts: BlogPost[]; layout: ListingL
 }
 
 function ListArticleCard({ post }: { post: BlogPost }) {
+  const imageUrl = blogImageUrl(post);
   return (
     <Link href={`/blog/${post.slug}`} className="group grid gap-3 rounded-lg border border-slate-200 bg-white p-3 shadow-sm transition hover:border-emerald-300 hover:shadow-soft dark:border-slate-800 dark:bg-slate-900 sm:grid-cols-[9rem_1fr_auto] sm:items-center">
       <div className="relative aspect-[16/9] overflow-hidden rounded-lg bg-slate-100 dark:bg-slate-800">
-        <Image src={post.featuredImageUrl || "/images/houselink-hero.webp"} alt={post.featuredImageAlt || post.title} fill className="object-cover transition duration-500 group-hover:scale-105" sizes="(min-width: 640px) 176px, 100vw" />
+        <Image src={imageUrl} alt={post.featuredImageAlt || post.title} fill unoptimized={isGeneratedBlogImage(imageUrl)} className="object-cover transition duration-500 group-hover:scale-105" sizes="(min-width: 640px) 176px, 100vw" />
       </div>
       <div>
         <p className="text-xs font-bold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">{post.category?.name ?? "HouseLink Resources"}</p>

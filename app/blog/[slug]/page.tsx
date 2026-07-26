@@ -4,7 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ArrowRight, Home, MessageCircle, Search, Share2 } from "lucide-react";
 import { BlogBlocks } from "@/components/blog/blog-block-renderer";
-import { BlogCard, formatDate } from "@/components/blog/blog-card";
+import { BlogCard, blogImageUrl, formatDate, isGeneratedBlogImage } from "@/components/blog/blog-card";
 import { ArticleActions, ImageLightbox, ReadingProgress, RecentlyViewedArticles, RecentlyViewedTracker } from "@/components/blog/article-experience";
 import { getCanonicalSiteUrl } from "@/lib/seo/site-url";
 import { getPublicBlogPost, type BlogBlock } from "@/lib/blog/blog-repository";
@@ -47,6 +47,7 @@ export default async function BlogArticlePage({ params }: Props) {
   const data = await getPublicBlogPost(slug, true);
   if (!data) notFound();
   const { post, related, relatedListings, relatedCategories, authorArticleCount, previous, next } = data;
+  const heroImageUrl = blogImageUrl(post);
   const blocks = Array.isArray(post.contentBlocks) ? post.contentBlocks as BlogBlock[] : [];
   const toc = blocks.filter((block): block is Extract<BlogBlock, { type: "heading" }> => block.type === "heading");
   const url = `${siteUrl}/blog/${post.slug}`;
@@ -107,7 +108,7 @@ export default async function BlogArticlePage({ params }: Props) {
               </div>
             </div>
             <div className="relative aspect-[16/10] overflow-hidden rounded-lg bg-slate-900 shadow-2xl sm:aspect-[16/9]">
-              <Image src={post.featuredImageUrl || "/images/houselink-hero.webp"} alt={post.featuredImageAlt || post.title} fill priority className="object-cover" sizes="(min-width: 1024px) 560px, 100vw" />
+              <Image src={heroImageUrl} alt={post.featuredImageAlt || post.title} fill priority unoptimized={isGeneratedBlogImage(heroImageUrl)} className="object-cover" sizes="(min-width: 1024px) 560px, 100vw" />
             </div>
           </div>
         </div>

@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, BookOpen, Compass, MapPin, Newspaper } from "lucide-react";
 import { BlogIndexClient } from "@/components/blog/blog-index-client";
+import { blogImageUrl, isGeneratedBlogImage } from "@/components/blog/blog-card";
 import { getPublicBlogIndex } from "@/lib/blog/blog-repository";
 
 export const metadata: Metadata = {
@@ -21,10 +22,11 @@ export const dynamic = "force-dynamic";
 export default async function BlogPage() {
   const data = await getPublicBlogIndex({ page: 1, limit: 9 });
   const featured = data.featured ?? data.posts[0] ?? null;
+  const heroImageUrl = featured ? blogImageUrl(featured) : "/images/property-management-dusk.webp";
   return (
     <main className="bg-[#f7fbfa] text-slate-950 dark:bg-slate-950 dark:text-white">
       <section className="relative min-h-[42vh] overflow-hidden bg-[#071417] text-white sm:min-h-[54vh] lg:min-h-[62vh]">
-        <Image src={featured?.featuredImageUrl || "/images/property-management-dusk.webp"} alt={featured?.featuredImageAlt || "HouseLink property resources"} fill priority className="object-cover" sizes="100vw" />
+        <Image src={heroImageUrl} alt={featured?.featuredImageAlt || "HouseLink property resources"} fill priority unoptimized={isGeneratedBlogImage(heroImageUrl)} className="object-cover" sizes="100vw" />
         <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(3,10,16,0.92)_0%,rgba(3,10,16,0.74)_46%,rgba(3,10,16,0.26)_100%)]" />
         <div className="relative mx-auto flex min-h-[42vh] max-w-7xl flex-col justify-between px-4 py-4 sm:min-h-[54vh] sm:px-6 sm:py-7 lg:min-h-[62vh] lg:px-8">
           <nav className="flex items-center justify-between gap-4">

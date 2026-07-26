@@ -15,14 +15,17 @@ type BlogCardPost = {
 };
 
 export function BlogCard({ post, featured = false }: { post: BlogCardPost; featured?: boolean }) {
+  const imageUrl = blogImageUrl(post);
+  const unoptimized = isGeneratedBlogImage(imageUrl);
   if (!featured) {
     return (
       <article className="group grid grid-cols-[7.25rem_1fr] overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm transition hover:border-emerald-300 hover:shadow-soft dark:border-slate-800 dark:bg-slate-900 sm:block">
         <Link href={`/blog/${post.slug}`} className="relative block min-h-[8.75rem] overflow-hidden bg-slate-100 dark:bg-slate-800 sm:aspect-[16/10] sm:min-h-0">
           <Image
-            src={post.featuredImageUrl || "/images/houselink-hero.webp"}
+            src={imageUrl}
             alt={post.featuredImageAlt || post.title}
             fill
+            unoptimized={unoptimized}
             className="object-cover transition duration-500 group-hover:scale-105"
             sizes="(min-width: 1024px) 360px, 116px"
           />
@@ -63,9 +66,10 @@ export function BlogCard({ post, featured = false }: { post: BlogCardPost; featu
       <Link href={`/blog/${post.slug}`} className="block">
         <div className={featured ? "relative aspect-[16/9] overflow-hidden bg-slate-100 dark:bg-slate-800" : "relative aspect-[16/10] overflow-hidden bg-slate-100 dark:bg-slate-800"}>
           <Image
-            src={post.featuredImageUrl || "/images/houselink-hero.webp"}
+            src={imageUrl}
             alt={post.featuredImageAlt || post.title}
             fill
+            unoptimized={unoptimized}
             className="object-cover transition duration-500 group-hover:scale-105"
             sizes={featured ? "(min-width: 1024px) 580px, 100vw" : "(min-width: 1024px) 360px, 100vw"}
           />
@@ -102,6 +106,14 @@ export function BlogCard({ post, featured = false }: { post: BlogCardPost; featu
       </div>
     </article>
   );
+}
+
+export function blogImageUrl(post: { slug: string; featuredImageUrl?: string | null }) {
+  return post.featuredImageUrl || `/api/v1/blog/card-image/${post.slug}`;
+}
+
+export function isGeneratedBlogImage(value: string) {
+  return value.startsWith("/api/v1/blog/card-image/");
 }
 
 export function formatDate(value?: string | Date | null) {
