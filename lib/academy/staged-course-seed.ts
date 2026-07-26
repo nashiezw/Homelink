@@ -48,6 +48,110 @@ function practicalLesson(sections: Array<{ heading: string; body: string }>) {
     .join("");
 }
 
+function inDepthLesson(lesson: {
+  title: string;
+  summary: string;
+  richText: string;
+  objectives: string[];
+  resourceTitles?: string[];
+  discussionPrompt?: string;
+}) {
+  const title = lesson.title.toLowerCase();
+  const mode = /listing|appraisal|cma|marketing|photo|property/.test(title)
+    ? "listing"
+    : /client|buyer|tenant|viewing|offer|negotiation|qualification/.test(title)
+      ? "client"
+      : /document|legal|compliance|contract|confidential|deed|cession|lease|mandate|risk/.test(title)
+        ? "compliance"
+        : /prospecting|pipeline|performance|career|routine|kpi|reputation|specialisation|recertification|portfolio/.test(title)
+          ? "performance"
+          : "foundation";
+
+  const depth = lessonDepthByMode[mode];
+  const objectives = lesson.objectives.map((item) => `<li>${item}</li>`).join("");
+  const resources = (lesson.resourceTitles ?? []).slice(0, 5).map((item) => `<li>${item}</li>`).join("");
+  const prompt = lesson.discussionPrompt
+    ? `<h3>Coach's reflection</h3><p>${lesson.discussionPrompt}</p>`
+    : `<h3>Coach's reflection</h3><p>Write three decisions this lesson would change in your next client conversation, listing file, or follow-up routine.</p>`;
+
+  return [
+    `<h2>${lesson.title}</h2>`,
+    `<p>${lesson.summary}</p>`,
+    lesson.richText,
+    `<h3>Why this matters in Zimbabwe</h3><p>${depth.market}</p>`,
+    `<h3>Professional operating standard</h3><p>${depth.standard}</p>`,
+    `<ul>${depth.checklist.map((item) => `<li>${item}</li>`).join("")}</ul>`,
+    `<h3>Field example</h3><p>${depth.example}</p>`,
+    `<h3>What to practise</h3><p>${depth.practice}</p>`,
+    resources ? `<h3>Tools to use in this lesson</h3><ul>${resources}</ul>` : "",
+    `<h3>Learning outcomes</h3><ul>${objectives}</ul>`,
+    prompt,
+  ].filter(Boolean).join("");
+}
+
+const lessonDepthByMode = {
+  foundation: {
+    market: "Zimbabwe property clients often deal with incomplete information, fast-moving WhatsApp enquiries, informal referrals, and uneven document quality. A trained HouseLink agent creates order: verified facts, clear next steps, written records, and calm guidance before anyone is asked to trust a listing or decision.",
+    standard: "Do not treat the lesson as theory. Turn it into a repeatable field habit: what to verify, what to write down, what to explain, what to refuse, and what to escalate. A premium agent is measured by consistency under pressure.",
+    checklist: [
+      "Identify the client, property, decision, risk, and next action before advising.",
+      "Separate confirmed facts from assumptions or hearsay.",
+      "Record material conversations in a file note or approved tracker.",
+      "Escalate legal, safety, payment, or authority questions before proceeding.",
+    ],
+    example: "A new client asks for quick advice before you know the exact suburb, authority to market, price history, or document status. Instead of guessing, you explain what is missing, ask focused questions, and give a clear next step that protects both the client and HouseLink.",
+    practice: "Create a one-page field note for this lesson. Include the facts you would verify, the client wording you would use, the record you would keep, and the point where you would escalate to a senior agent or admin.",
+  },
+  listing: {
+    market: "A listing is often the first proof of professionalism a client sees. In Zimbabwe, price, water, power, access, title confidence, road condition, photos, and hidden costs can change the decision. Thin listings waste time and damage marketplace trust.",
+    standard: "A HouseLink listing should be accurate enough for a serious client to decide whether to enquire, view, shortlist, negotiate, or walk away. Every important claim must be supported by a source: owner instruction, inspection note, photo, document, comparable, or written confirmation.",
+    checklist: [
+      "Confirm authority, price, availability, location, access, services, defects, and restrictions.",
+      "Use evidence when discussing price; avoid flattering guesses.",
+      "Write descriptions that answer real buyer or tenant questions.",
+      "Update stale listings quickly when price, availability, or condition changes.",
+    ],
+    example: "A seller wants a high asking price because a neighbour advertised higher. You compare location, land size, finishes, water reliability, title status, and time on market, then explain a defendable range and the risk of launching too high.",
+    practice: "Audit one listing against this lesson. Rewrite the description, list missing facts, identify weak photos, prepare three client questions, and note what must be verified before publishing.",
+  },
+  client: {
+    market: "Clients may be emotional, rushed, budget-sensitive, or unclear about documents. A top agent slows the process just enough to qualify needs, protect safety, and keep momentum without creating pressure or confusion.",
+    standard: "Every serious enquiry needs a documented brief. Record budget, area, timing, must-haves, decision makers, payment readiness, documents needed, viewing feedback, objections, and next action. Good service is both warm and traceable.",
+    checklist: [
+      "Qualify before recommending too many options.",
+      "Confirm viewing logistics, identity expectations, and safety rules.",
+      "Summarise calls and viewings in writing.",
+      "Keep negotiation neutral and document all material terms.",
+    ],
+    example: "A tenant says they can pay today if you reserve the property. You still confirm the landlord instruction, viewing status, deposit terms, lease requirements, identity documents, and payment channel before allowing urgency to drive the process.",
+    practice: "Write a short WhatsApp or call script for this lesson. Include the opening, qualifying questions, risk check, recommended next step, and follow-up message after the client responds.",
+  },
+  compliance: {
+    market: "The biggest property losses often begin with small document gaps: unclear authority, missing signatures, rushed deposits, inconsistent names, estate complications, or verbal promises no one recorded. Agents must recognise these issues early.",
+    standard: "Your role is not to give legal advice. Your role is to collect complete information, explain process in plain language, protect confidential data, document instructions, and pause or escalate when the file is not safe.",
+    checklist: [
+      "Check names, IDs, authority, signatures, dates, property references, amounts, and payment instructions.",
+      "Keep client files audit-ready and avoid scattered private-chat records.",
+      "Mask or protect confidential data when submitting portfolio evidence.",
+      "Escalate unusual ownership, estate, company, boundary, or payment situations.",
+    ],
+    example: "A person with keys wants you to advertise urgently, but the owner name on available paperwork is different. A professional agent pauses marketing, records the mismatch, requests authority evidence, and escalates before exposing clients to risk.",
+    practice: "Build a risk note for one document scenario. State the red flag, evidence requested, who you escalated to, what action is paused, and the client wording you would use.",
+  },
+  performance: {
+    market: "A strong agent is not built by motivation alone. Performance comes from routines: prospecting, listing quality, response speed, follow-up, document discipline, market learning, reviews, and honest self-correction.",
+    standard: "Use numbers to coach yourself. Track leads, qualified conversations, appointments, listings won, viewings, offers, closed deals, response times, document gaps, and client feedback. Improve one bottleneck at a time.",
+    checklist: [
+      "Plan daily prospecting and follow-up blocks before reactive work begins.",
+      "Review pipeline and KPIs weekly.",
+      "Keep a portfolio of corrected work, not only successful work.",
+      "Build a niche where your local knowledge becomes hard to replace.",
+    ],
+    example: "Your lead count is high but viewings are low. Instead of blaming the market, you review enquiry qualification, listing fit, response time, and follow-up quality, then set a 30-day improvement plan with one measurable habit.",
+    practice: "Create a 30-day improvement plan. Include the metric you will improve, the daily habit required, the tool you will use, and the review date with a mentor or branch lead.",
+  },
+};
+
 export const modules: ModuleSeed[] = [
   {
     title: "Introduction to the HouseLink Zimbabwe Standard",
@@ -800,6 +904,7 @@ export async function seedStagedCourseStructure(options?: { forceRebuild?: boole
     where: { section: { module: { courseId: { in: [...ACADEMY_PROGRAMME_COURSES.map((c) => c.id), LEGACY_COURSE_ID] } } } },
   });
   if (totalExisting > 10 && !options?.forceRebuild) {
+    await updateExistingOfficialLessonDepth(prisma);
     return {
       rebuilt: false,
       courses: ACADEMY_PROGRAMME_COURSES.map((course) => ({ id: course.id, title: course.title })),
@@ -897,7 +1002,7 @@ export async function seedStagedCourseStructure(options?: { forceRebuild?: boole
                     id: `${programmeCourse.id}-lesson-${globalLessonIndex}-${slugify(lesson.title).slice(0, 28)}`,
                     title: lesson.title,
                     summary: lesson.summary,
-                    richText: lesson.richText,
+                    richText: inDepthLesson(lesson),
                     videoUrl: lesson.videoUrl,
                     embeddedVideoUrl: lesson.embeddedVideoUrl,
                     objectives: lesson.objectives,
@@ -938,6 +1043,35 @@ export async function seedStagedCourseStructure(options?: { forceRebuild?: boole
   }
 
   return { rebuilt: true, courses: courseResults, lessonCount: globalLessonIndex };
+}
+
+async function updateExistingOfficialLessonDepth(prisma: ReturnType<typeof getMainPrisma>) {
+  const officialCourseIds = ACADEMY_PROGRAMME_COURSES.map((course) => course.id);
+  const existingLessons = await prisma.trainingLesson.findMany({
+    where: { section: { module: { courseId: { in: officialCourseIds } } } },
+    include: { lessonDownloads: true },
+  });
+  const seedsByTitle = new Map(modules.flatMap((module) => module.lessons).map((lesson) => [lesson.title, lesson]));
+  const manifest = JSON.parse(await readFile(MANIFEST_PATH, "utf8")) as ManifestItem[];
+  const manifestByUrl = new Map(manifest.map((item) => [item.fileUrl, item.title]));
+
+  for (const existing of existingLessons) {
+    const seed = seedsByTitle.get(existing.title);
+    if (!seed) continue;
+    const resourceTitles = seed.resourceTitles?.length
+      ? seed.resourceTitles
+      : existing.lessonDownloads.map((download) => manifestByUrl.get(download.url) ?? download.title);
+    await prisma.trainingLesson.update({
+      where: { id: existing.id },
+      data: {
+        summary: seed.summary,
+        richText: inDepthLesson({ ...seed, resourceTitles }),
+        objectives: seed.objectives,
+        discussionPrompt: seed.discussionPrompt ?? existing.discussionPrompt,
+        estimatedMinutes: Math.max(seed.estimatedMinutes, existing.estimatedMinutes),
+      },
+    });
+  }
 }
 
 /** Full manual — course library only, not per-lesson default */
