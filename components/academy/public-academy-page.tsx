@@ -479,8 +479,9 @@ export function PublicAcademyPage() {
             <p className="text-xs font-bold uppercase tracking-widest text-emerald-700 dark:text-emerald-300">For serious learners</p>
             <h2 className="mt-1 text-xl font-bold sm:text-2xl">Explore the HouseLink training standard</h2>
           </div>
-          <Link href="/academy/verify" className="inline-flex min-h-10 items-center justify-center rounded-lg border border-emerald-200 px-4 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-50 dark:border-emerald-900 dark:text-emerald-300">
-            Verify Certificate
+          <Link href="/academy/verify" className="inline-flex min-h-9 w-fit max-w-full shrink-0 items-center justify-center gap-2 self-start whitespace-nowrap rounded-full border border-emerald-200 bg-white px-3.5 py-2 text-sm font-semibold text-emerald-700 shadow-sm transition hover:border-emerald-300 hover:bg-emerald-50 dark:border-emerald-900 dark:bg-slate-950 dark:text-emerald-300 dark:hover:bg-emerald-950/40 sm:self-auto">
+            <ShieldCheck className="size-4" />
+            Verify certificate
           </Link>
         </div>
         <div className="mt-5">
