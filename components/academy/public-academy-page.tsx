@@ -283,9 +283,7 @@ export function PublicAcademyPage() {
         </div>
       )}
 
-      <PathwayStrip />
-
-      <div className="mt-6 flex flex-col gap-8 lg:grid lg:grid-cols-[minmax(0,1.35fr)_minmax(18rem,0.65fr)] lg:items-start lg:gap-6">
+      <div className="flex flex-col gap-8 lg:grid lg:grid-cols-[minmax(0,1.35fr)_minmax(18rem,0.65fr)] lg:items-start lg:gap-6">
         <section className="order-1 grid min-w-0 gap-5 lg:order-none">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
             <div>
@@ -342,14 +340,14 @@ export function PublicAcademyPage() {
                     </div>
                   </div>
 
-                  <div className="mt-5 flex flex-wrap gap-2">
+                  <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
                     <CourseMetric icon={BookOpen} value={String(course.lessonCount)} label="sessions" accent={accent} />
                     <CourseMetric icon={ListChecks} value={`${course.quizCount ?? 0}/${course.assignmentCount ?? 0}`} label="quizzes/tasks" accent={accent} />
                     <CourseMetric icon={Clock} value={`${course.estimatedHours || Math.round(course.durationMinutes / 60)}h`} label="guided" accent={accent} />
                     <CourseMetric icon={ShieldCheck} value={String(course.toolkitCount ?? 0)} label="PDF tools" accent={accent} />
                   </div>
 
-                  <div className="mt-4 flex flex-wrap gap-2">
+                  <div className="mt-4 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
                     <TrustChip label="Admin reviewed" />
                     <TrustChip label="Field toolkit" />
                     {course.hasFinalExam && <TrustChip label="Final exam" tone="amber" />}
@@ -584,23 +582,6 @@ function HeroProof({ value, label }: { value: string; label: string }) {
   );
 }
 
-function PathwayStrip() {
-  return (
-    <div className="rounded-2xl border border-slate-200 bg-white/85 p-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/80">
-      <div className="grid gap-2 sm:grid-cols-3">
-        {["Foundations", "Listing Mastery", "Professional Certification"].map((step, index) => (
-          <div key={step} className="flex items-center gap-3 rounded-xl bg-slate-50 px-3 py-3 dark:bg-slate-900">
-            <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-700 text-xs font-black text-white">
-              {index + 1}
-            </span>
-            <span className="text-sm font-bold text-slate-800 dark:text-slate-100">{step}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 function CourseMetric({
   icon: Icon,
   value,
@@ -613,10 +594,10 @@ function CourseMetric({
   accent: string;
 }) {
   return (
-    <div className="inline-flex min-h-10 items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm dark:border-slate-800 dark:bg-slate-950">
+    <div className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-2.5 py-2 text-sm shadow-sm dark:border-slate-800 dark:bg-slate-950 sm:justify-start sm:rounded-full sm:px-3">
       <Icon className="size-4 shrink-0" style={{ color: accent }} />
       <span className="font-bold leading-none text-slate-950 dark:text-white">{value}</span>
-      <span className="text-xs font-medium leading-none text-slate-500">{label}</span>
+      <span className="min-w-0 text-xs font-medium leading-none text-slate-500">{label}</span>
     </div>
   );
 }
@@ -629,7 +610,7 @@ function TrustChip({ label, tone = "emerald" }: { label: string; tone?: "emerald
   };
 
   return (
-    <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-bold ${styles[tone]}`}>
+    <span className={`inline-flex min-h-9 w-full items-center justify-center rounded-xl border px-2.5 py-1 text-center text-[11px] font-bold sm:w-auto sm:rounded-full ${styles[tone]}`}>
       {label}
     </span>
   );
