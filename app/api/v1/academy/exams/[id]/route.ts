@@ -1,6 +1,7 @@
 import { getSessionUserIdFromRequest } from "@/lib/auth/session";
 import { ok, problem } from "@/lib/api/response";
 import { getMainPrisma } from "@/lib/db/main-prisma";
+import { shuffleArray, toPublicShuffledAnswers } from "@/lib/academy/quiz-randomisation";
 
 export const dynamic = "force-dynamic";
 
@@ -38,7 +39,7 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
     orderBy: { sortOrder: "asc" },
   });
 
-  const shuffled = exam.randomQuestions ? [...quizQuestions].sort(() => Math.random() - 0.5) : quizQuestions;
+  const shuffled = exam.randomQuestions ? shuffleArray(quizQuestions) : quizQuestions;
   const selected = shuffled.slice(0, Math.min(minimumQuestions, shuffled.length));
 
   return ok({
@@ -51,7 +52,7 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
     questions: selected.map((q) => ({
       id: q.id,
       prompt: q.prompt,
-      answers: q.answers.map((a) => ({ id: a.id, label: a.label, value: a.value })),
+      answers: toPublicShuffledAnswers(q.answers),
     })),
   });
 }

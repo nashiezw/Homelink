@@ -38,7 +38,10 @@ export function QuizPanel({
 
   const load = useCallback(async () => {
     const detail = await apiFetch<{ questions: QuizQuestion[] }>(`/api/v1/academy/quizzes/${quizId}`);
-    if (detail.data?.questions) setQuestions(detail.data.questions);
+    if (detail.data?.questions) {
+      setQuestions(detail.data.questions);
+      setAnswers({});
+    }
   }, [quizId]);
 
   useEffect(() => {
@@ -62,13 +65,26 @@ export function QuizPanel({
     }
   }
 
+  async function retake() {
+    setResult(null);
+    setAnswers({});
+    await load();
+  }
+
   if (result) {
     return (
       <div className="mx-auto max-w-3xl rounded-xl border border-slate-200 bg-white p-6 text-center shadow-sm dark:border-slate-800 dark:bg-slate-950 sm:p-8">
         {result.passed ? <CheckCircle2 className="mx-auto size-16 text-emerald-500" /> : <XCircle className="mx-auto size-16 text-amber-500" />}
         <p className="mt-4 text-2xl font-bold text-slate-950 dark:text-white">Score: {result.score}%</p>
         <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">{result.passed ? "Passed. This checkpoint is complete." : `Pass mark is ${passingPercentage}%. Review the lesson and retake when ready.`}</p>
-        <Button className="mt-6 w-full sm:w-auto" onClick={onBack}>Back to course</Button>
+        <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-center">
+          {!result.passed && (
+            <Button className="w-full sm:w-auto" onClick={() => void retake()}>
+              Retake checkpoint
+            </Button>
+          )}
+          <Button className="w-full sm:w-auto" variant={result.passed ? "primary" : "secondary"} onClick={onBack}>Back to course</Button>
+        </div>
       </div>
     );
   }
