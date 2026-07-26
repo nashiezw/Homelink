@@ -11,14 +11,17 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   const { id } = await context.params;
   const body = await request.json();
   const prisma = getMainPrisma();
+  const rawStatus = String(body.status ?? "ACTIVE").toUpperCase();
+  const reason = typeof body.reason === "string" && body.reason.trim() ? body.reason.trim() : null;
+  const status = rawStatus === "ACTIVE" ? "ACTIVE" : reason ? `${rawStatus}: ${reason}` : rawStatus;
   
   try {
     const certificate = await prisma.certificateIssue.update({
       where: { id },
       data: {
-        status: body.status,
+        status,
         expiresAt: body.expiresAt ? new Date(body.expiresAt) : undefined,
-        revokedAt: body.status === "REVOKED" ? new Date() : undefined,
+        revokedAt: rawStatus === "ACTIVE" ? null : new Date(),
       }
     });
     return ok(certificate);

@@ -45,12 +45,14 @@ export function QuizPanel({
   const [busy, setBusy] = useState(false);
   const [startedAt, setStartedAt] = useState<number | null>(null);
   const [secondsRemaining, setSecondsRemaining] = useState<number | null>(timeLimitMinutes ? timeLimitMinutes * 60 : null);
+  const [attemptId, setAttemptId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    const detail = await apiFetch<{ questions: QuizQuestion[] }>(`/api/v1/academy/quizzes/${quizId}`);
+    const detail = await apiFetch<{ attemptId?: string; questions: QuizQuestion[] }>(`/api/v1/academy/quizzes/${quizId}`);
     if (detail.data?.questions) {
       setQuestions(detail.data.questions);
       setAnswers({});
+      setAttemptId(detail.data.attemptId ?? null);
       setStartedAt(Date.now());
       setSecondsRemaining(timeLimitMinutes ? timeLimitMinutes * 60 : null);
     }
@@ -66,6 +68,7 @@ export function QuizPanel({
       method: "POST",
       body: JSON.stringify({
         answers,
+        attemptId,
         confidence,
         elapsedSeconds: startedAt ? Math.max(0, Math.round((Date.now() - startedAt) / 1000)) : null,
       }),

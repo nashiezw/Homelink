@@ -459,6 +459,8 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
             <ReadinessPanel readiness={data.assessments.readiness} accent={accent} />
           )}
 
+          <CourseRecommendations recommendations={courseRecommendations(data)} accent={accent} />
+
           <section className="academy-panel rounded-xl p-5">
             <div className="flex flex-col gap-2">
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Mentor/admin sign-off gate</p>
@@ -472,6 +474,8 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
               <EvidenceList title="Roleplay scenarios" items={ROLEPLAY_ASSESSMENT_SCENARIOS} accent={accent} />
             </div>
           </section>
+
+          <SimulationPractice accent={accent} />
 
           <div className="grid gap-6 xl:grid-cols-3">
             <AssessmentSection title={`Module Quizzes (${data.assessments.quizzes.length})`} icon={ShieldCheck} empty="Module quizzes load with your programme enrolment.">
@@ -566,6 +570,23 @@ function AssessmentStat({ label, value, accent }: { label: string; value: string
   );
 }
 
+function CourseRecommendations({ recommendations, accent }: { recommendations: string[]; accent: string }) {
+  return (
+    <section className="academy-panel rounded-xl p-5">
+      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Trainer recommendations</p>
+      <h3 className="mt-1 text-xl font-bold">Best next moves</h3>
+      <div className="mt-4 grid gap-3 md:grid-cols-3">
+        {recommendations.map((item, index) => (
+          <div key={item} className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950">
+            <span className="flex size-8 items-center justify-center rounded-full text-sm font-bold text-white" style={{ backgroundColor: accent }}>{index + 1}</span>
+            <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">{item}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function ReadinessPanel({
   readiness,
   accent,
@@ -607,6 +628,30 @@ function ReadinessPanel({
   );
 }
 
+function SimulationPractice({ accent }: { accent: string }) {
+  return (
+    <section className="academy-panel rounded-xl p-5">
+      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Practical simulations</p>
+      <h3 className="mt-1 text-xl font-bold">Rehearse before client work</h3>
+      <div className="mt-4 space-y-2">
+        {ROLEPLAY_ASSESSMENT_SCENARIOS.slice(0, 4).map((scenario, index) => (
+          <details key={scenario} className="group rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 font-semibold">
+              <span>{scenario}</span>
+              <span className="rounded-full px-2 py-1 text-xs text-white" style={{ backgroundColor: accent }}>Scenario {index + 1}</span>
+            </summary>
+            <div className="mt-3 grid gap-2 text-sm leading-6 text-slate-600 dark:text-slate-300 sm:grid-cols-3">
+              <p>Prepare your opening script, client questions, risk checks, and closing summary.</p>
+              <p>Record what evidence you would save in the client file before moving forward.</p>
+              <p>Ask a mentor to score clarity, judgement, documentation, and escalation discipline.</p>
+            </div>
+          </details>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function AssessmentSection({ title, icon: Icon, empty, children }: { title: string; icon: typeof BookOpen; empty: string; children: React.ReactNode }) {
   return (
     <section>
@@ -614,6 +659,38 @@ function AssessmentSection({ title, icon: Icon, empty, children }: { title: stri
       <div className="space-y-3">{Children.count(children) === 0 ? <p className="text-sm text-slate-500">{empty}</p> : children}</div>
     </section>
   );
+}
+
+function courseRecommendations(data: CourseDetail) {
+  const failedQuizzes = data.assessments.quizzes.filter((quiz) => quiz.bestScore !== null && !quiz.passed);
+  const pendingAssignments = data.assessments.assignments.filter((assignment) => !assignment.submitted);
+  const resubmissions = data.assessments.assignments.filter((assignment) => assignment.status === "RESUBMISSION_REQUESTED");
+  if (resubmissions.length) {
+    return [
+      "Fix resubmission feedback first so your practical evidence becomes certificate-ready.",
+      "Re-read the matching lesson notes, then upload corrected proof with a short explanation.",
+      "Ask for mentor review only after the file is complete, clear, and easy to audit.",
+    ];
+  }
+  if (failedQuizzes.length) {
+    return [
+      `Review ${failedQuizzes[0].title} before retaking; focus on the weak topics shown after submission.`,
+      "Use the toolkit forms while answering practice scenarios so the quiz feels like real field work.",
+      "Retake only when you can explain why each wrong option is unsafe or incomplete.",
+    ];
+  }
+  if (pendingAssignments.length) {
+    return [
+      `Submit ${pendingAssignments[0].title} next; practical evidence is what turns the course into proof of skill.`,
+      "Attach complete notes, screenshots, or files so the reviewer can grade against the rubric.",
+      "Practise one roleplay scenario before uploading to sharpen client communication.",
+    ];
+  }
+  return [
+    "Complete the final checkpoint, then keep your portfolio evidence ready for public certificate verification.",
+    "Use the simulations to rehearse live client judgement, not only course memory.",
+    "Keep reviewing toolkit documents so your field work stays consistent after certification.",
+  ];
 }
 
 function EvidenceList({ title, items, accent }: { title: string; items: string[]; accent: string }) {

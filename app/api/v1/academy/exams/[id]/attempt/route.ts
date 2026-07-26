@@ -16,6 +16,10 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   const { id: examId } = await context.params;
   const body = await request.json();
   const answers = typeof body.answers === "object" && body.answers ? body.answers : {};
+  const elapsedSeconds = typeof body.elapsedSeconds === "number" && Number.isFinite(body.elapsedSeconds) ? Math.max(0, Math.round(body.elapsedSeconds)) : null;
+  const securityEvents = Array.isArray(body.securityEvents)
+    ? body.securityEvents.filter((event: unknown): event is string => typeof event === "string").slice(-20)
+    : [];
 
   try {
     const prisma = getMainPrisma();
@@ -72,7 +76,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
         agentId: userId,
         status: passed ? TrainingAttemptStatus.PASSED : TrainingAttemptStatus.FAILED,
         score,
-        answers: { ...answers, _meta: { reviewTopics: Array.from(reviewTopics) } },
+        answers: { ...answers, _meta: { reviewTopics: Array.from(reviewTopics), elapsedSeconds, securityEvents } },
         submittedAt: new Date(),
         gradedAt: new Date(),
       },

@@ -153,6 +153,7 @@ export async function getAcademyDashboard() {
     }))
     .sort((a, b) => b.failed - a.failed)[0];
   const trainerInsights = buildTrainerInsights({ quizzes, quizAttempts, examAttempts, assignmentSubmissions });
+  const learnerProfiles = buildLearnerProfiles({ enrolments, courseProgress, quizAttempts, examAttempts, assignmentSubmissions, certificates });
   const [certifiedActiveListings, certifiedClosedListings] = await Promise.all([
     certifiedAgentIds.length
       ? prisma.listing.count({ where: { ownerId: { in: certifiedAgentIds }, status: ListingStatus.ACTIVE } })
@@ -273,6 +274,7 @@ export async function getAcademyDashboard() {
       .sort((a, b) => a.average - b.average)[0],
     mostFailedQuiz: failedQuiz,
     trainerInsights,
+    learnerProfiles,
     mostActiveAgents: agentCounts([...lessonProgress.map((entry) => entry.agentId), ...courseProgress.map((entry) => entry.agentId)]).slice(0, 5),
     agentsNeedingAttention: courseProgress.filter((entry) => entry.status !== "COMPLETED" && entry.percentComplete < 35).slice(0, 8),
     recentlyCompletedCourses: completedCourses.slice(0, 8),
@@ -880,6 +882,20 @@ export async function runAcademyAction(body: Record<string, any>, actor: Actor) 
       },
     });
     return submission;
+  }
+  if (action === "update_certificate_status") {
+    const rawStatus = String(body.status ?? "ACTIVE").toUpperCase();
+    const reason = stringOrNull(body.reason);
+    const status = rawStatus === "ACTIVE" ? "ACTIVE" : reason ? `${rawStatus}: ${reason}` : rawStatus;
+    const certificate = await prisma.certificateIssue.update({
+      where: { id: String(body.certificateId) },
+      data: {
+        status,
+        revokedAt: rawStatus === "ACTIVE" ? null : new Date(),
+      },
+    });
+    await audit(actor, "academy.certificate.status", certificate.id, { status });
+    return certificate;
   }
   if (action === "create_learning_path") {
     const path = await prisma.learningPath.create({
@@ -1561,6 +1577,93 @@ function buildTrainerInsights({
     }));
 
   return { lowConfidence, repeatedFailures, weakTopics, rushedAttempts, practicalRisk };
+}
+
+function buildLearnerProfiles({
+  enrolments,
+  courseProgress,
+  quizAttempts,
+  examAttempts,
+  assignmentSubmissions,
+  certificates,
+}: {
+  enrolments: Array<{ agentId: string; courseId: string; status: string; enrolledAt: Date }>;
+  courseProgress: Array<{ agentId: string; courseId: string; percentComplete: number; averageScore: Prisma.Decimal | number; status: string; updatedAt: Date }>;
+  quizAttempts: Array<{ agentId: string; status: TrainingAttemptStatus; score: Prisma.Decimal | number; answers: Prisma.JsonValue; startedAt: Date; submittedAt: Date | null }>;
+  examAttempts: Array<{ agentId: string; status: TrainingAttemptStatus; score: Prisma.Decimal | number; answers: Prisma.JsonValue; startedAt: Date; submittedAt: Date | null }>;
+  assignmentSubmissions: Array<{ agentId: string; status: AssignmentSubmissionStatus; grade: Prisma.Decimal | number | null; reviewerNote: string | null; submittedAt: Date; reviewedAt: Date | null }>;
+  certificates: Array<{ agentId: string; status: string }>;
+}) {
+  const learnerIds = new Set([
+    ...enrolments.map((entry) => entry.agentId),
+    ...courseProgress.map((entry) => entry.agentId),
+    ...quizAttempts.map((entry) => entry.agentId),
+    ...assignmentSubmissions.map((entry) => entry.agentId),
+    ...certificates.map((entry) => entry.agentId),
+  ]);
+
+  return Array.from(learnerIds)
+    .map((agentId) => {
+      const progress = courseProgress.filter((entry) => entry.agentId === agentId);
+      const attempts = [...quizAttempts, ...examAttempts].filter((entry) => entry.agentId === agentId && entry.status !== TrainingAttemptStatus.IN_PROGRESS);
+      const submissions = assignmentSubmissions.filter((entry) => entry.agentId === agentId);
+      const latestActivity = [
+        ...progress.map((entry) => entry.updatedAt),
+        ...attempts.map((entry) => entry.submittedAt ?? entry.startedAt),
+        ...submissions.map((entry) => entry.reviewedAt ?? entry.submittedAt),
+      ].sort((a, b) => b.getTime() - a.getTime())[0];
+      const weakTopics = new Map<string, number>();
+      for (const attempt of attempts) {
+        for (const topic of attemptMeta(attempt.answers).reviewTopics) weakTopics.set(topic, (weakTopics.get(topic) ?? 0) + 1);
+      }
+      const confidence = attempts.map((attempt) => attemptMeta(attempt.answers).confidence).filter((value): value is string => Boolean(value));
+      const passedAttempts = attempts.filter((entry) => entry.status === TrainingAttemptStatus.PASSED).length;
+      const failedAttempts = attempts.filter((entry) => entry.status === TrainingAttemptStatus.FAILED).length;
+      const reviewedAssignments = submissions.filter((entry) => entry.status === AssignmentSubmissionStatus.GRADED || entry.status === AssignmentSubmissionStatus.APPROVED);
+      const mentorSignoffs = submissions.filter((entry) => /mentor sign-off:\s*granted/i.test(entry.reviewerNote ?? "")).length;
+      const riskFlags = [
+        failedAttempts >= 2 ? "Repeated quiz failures" : null,
+        confidence.filter((value) => value === "guessed" || value === "mixed").length >= 2 ? "Low confidence" : null,
+        submissions.some((entry) => entry.status === AssignmentSubmissionStatus.RESUBMISSION_REQUESTED) ? "Practical resubmission" : null,
+        progress.some((entry) => entry.status !== "COMPLETED" && entry.percentComplete < 35 && daysAgo(entry.updatedAt) > 14) ? "Stalled progress" : null,
+      ].filter((value): value is string => Boolean(value));
+
+      return {
+        agentId,
+        courses: enrolments.filter((entry) => entry.agentId === agentId).length,
+        averageProgress: progress.length ? Math.round(progress.reduce((sum, entry) => sum + entry.percentComplete, 0) / progress.length) : 0,
+        averageScore: attempts.length ? Math.round(attempts.reduce((sum, entry) => sum + Number(entry.score), 0) / attempts.length) : 0,
+        passedAttempts,
+        failedAttempts,
+        reviewedAssignments: reviewedAssignments.length,
+        mentorSignoffs,
+        certificates: certificates.filter((entry) => entry.agentId === agentId && entry.status === "ACTIVE").length,
+        weakTopics: Array.from(weakTopics.entries()).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([topic]) => topic),
+        riskFlags,
+        recommendation: recommendationForLearner({ riskFlags, failedAttempts, reviewedAssignments: reviewedAssignments.length, mentorSignoffs }),
+        latestActivity: latestActivity?.toISOString() ?? null,
+      };
+    })
+    .sort((a, b) => b.riskFlags.length - a.riskFlags.length || b.failedAttempts - a.failedAttempts || b.averageProgress - a.averageProgress)
+    .slice(0, 20);
+}
+
+function recommendationForLearner({
+  riskFlags,
+  failedAttempts,
+  reviewedAssignments,
+  mentorSignoffs,
+}: {
+  riskFlags: string[];
+  failedAttempts: number;
+  reviewedAssignments: number;
+  mentorSignoffs: number;
+}) {
+  if (riskFlags.includes("Repeated quiz failures")) return "Schedule a 20-minute coaching review and assign weak-topic remediation before the next retake.";
+  if (riskFlags.includes("Practical resubmission")) return "Review the submitted evidence against the rubric and request a focused field correction.";
+  if (mentorSignoffs === 0 && reviewedAssignments > 0) return "Add mentor sign-off after confirming practical work is client-ready.";
+  if (failedAttempts === 0 && reviewedAssignments > 0) return "Move learner toward portfolio evidence and final certification readiness.";
+  return "Keep learner on the next lesson, checkpoint, and practical task in sequence.";
 }
 
 function attemptMeta(value: Prisma.JsonValue) {

@@ -1,10 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { CheckCircle2, GraduationCap, Loader2, XCircle } from "lucide-react";
+import { AlertTriangle, CheckCircle2, GraduationCap, Loader2, ShieldCheck, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useApp } from "@/components/providers/app-provider";
 import { apiFetch } from "@/lib/api/client";
+import { cn } from "@/lib/utils";
 
 type ExamQuestion = {
   id: string;
@@ -33,12 +34,20 @@ export function ExamPanel({
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [result, setResult] = useState<ExamResult | null>(null);
   const [busy, setBusy] = useState(false);
+  const [startedAt, setStartedAt] = useState<number | null>(null);
+  const [securityEvents, setSecurityEvents] = useState<string[]>([]);
+
+  const recordSecurityEvent = useCallback((event: string) => {
+    setSecurityEvents((current) => [...current, `${event}:${new Date().toISOString()}`].slice(-20));
+  }, []);
 
   const load = useCallback(async () => {
     const detail = await apiFetch<{ title: string; questions: ExamQuestion[] }>(`/api/v1/academy/exams/${examId}`);
     if (detail.data) {
       setTitle(detail.data.title);
       setQuestions(detail.data.questions);
+      setStartedAt(Date.now());
+      setSecurityEvents([]);
     }
     if (detail.error) showToast(detail.error.message, "error");
   }, [examId, showToast]);
@@ -47,11 +56,35 @@ export function ExamPanel({
     void load();
   }, [load]);
 
+  useEffect(() => {
+    if (result) return;
+    const onVisibility = () => {
+      if (document.hidden) recordSecurityEvent("tab_hidden");
+    };
+    const onCopy = () => recordSecurityEvent("copy");
+    const onPaste = () => recordSecurityEvent("paste");
+    const onContextMenu = () => recordSecurityEvent("context_menu");
+    document.addEventListener("visibilitychange", onVisibility);
+    document.addEventListener("copy", onCopy);
+    document.addEventListener("paste", onPaste);
+    document.addEventListener("contextmenu", onContextMenu);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      document.removeEventListener("copy", onCopy);
+      document.removeEventListener("paste", onPaste);
+      document.removeEventListener("contextmenu", onContextMenu);
+    };
+  }, [recordSecurityEvent, result]);
+
   async function submit() {
     setBusy(true);
     const response = await apiFetch<{ score: number; passed: boolean }>(`/api/v1/academy/exams/${examId}/attempt`, {
       method: "POST",
-      body: JSON.stringify({ answers }),
+      body: JSON.stringify({
+        answers,
+        elapsedSeconds: startedAt ? Math.max(0, Math.round((Date.now() - startedAt) / 1000)) : null,
+        securityEvents,
+      }),
     });
     setBusy(false);
     if (response.error) {
@@ -100,6 +133,16 @@ export function ExamPanel({
           <p className="text-sm text-emerald-800/80 dark:text-emerald-200/80">{questions.length} questions · {passingScore}% required to pass</p>
         </div>
       </div>
+      <div className={cn("rounded-xl border p-4 text-sm", securityEvents.length ? "border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-100" : "border-slate-200 bg-white text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300")}>
+        <div className="flex items-start gap-3">
+          {securityEvents.length ? <AlertTriangle className="mt-0.5 size-5 shrink-0 text-amber-500" /> : <ShieldCheck className="mt-0.5 size-5 shrink-0 text-emerald-500" />}
+          <div>
+            <p className="font-semibold text-slate-950 dark:text-white">Exam integrity mode</p>
+            <p className="mt-1 leading-6">Tab changes, copy, paste, and context-menu activity are recorded with the attempt for trainer review.</p>
+            {securityEvents.length > 0 && <p className="mt-1 text-xs font-semibold">{securityEvents.length} integrity event{securityEvents.length === 1 ? "" : "s"} recorded.</p>}
+          </div>
+        </div>
+      </div>
       {questions.map((question, index) => (
         <fieldset key={question.id} className="rounded-xl border border-slate-200 p-5 dark:border-slate-700">
           <legend className="px-1 font-semibold">Question {index + 1}: {question.prompt}</legend>
@@ -120,7 +163,7 @@ export function ExamPanel({
       ))}
       <div className="flex gap-3">
         <Button variant="secondary" onClick={onBack}>Cancel</Button>
-        <Button disabled={busy || questions.length === 0} onClick={() => void submit()}>
+        <Button disabled={busy || questions.length === 0 || Object.keys(answers).length !== questions.length} onClick={() => void submit()}>
           {busy ? <Loader2 className="size-4 animate-spin" /> : "Submit Final Exam"}
         </Button>
       </div>

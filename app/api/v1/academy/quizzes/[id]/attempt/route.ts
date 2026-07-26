@@ -14,6 +14,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   const { id: quizId } = await context.params;
   const body = await request.json();
   const answers = typeof body.answers === "object" && body.answers ? body.answers : {};
+  const attemptId = typeof body.attemptId === "string" ? body.attemptId : null;
   const confidence = typeof body.confidence === "string" ? body.confidence : null;
   const elapsedSeconds = typeof body.elapsedSeconds === "number" && Number.isFinite(body.elapsedSeconds) ? Math.max(0, Math.round(body.elapsedSeconds)) : null;
 
@@ -69,17 +70,21 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     const score = gradedQuestionCount ? Math.round((correct / gradedQuestionCount) * 100) : 0;
     const passed = score >= quiz.passingPercentage;
 
-    const attempt = await prisma.quizAttempt.create({
-      data: {
-        quizId,
-        agentId: userId,
-        status: passed ? TrainingAttemptStatus.PASSED : TrainingAttemptStatus.FAILED,
-        score,
-        answers: { ...answers, _meta: { confidence, elapsedSeconds, reviewTopics: Array.from(reviewTopics) } },
-        submittedAt: new Date(),
-        gradedAt: new Date(),
-      },
-    });
+    const attemptData = {
+      quizId,
+      agentId: userId,
+      status: passed ? TrainingAttemptStatus.PASSED : TrainingAttemptStatus.FAILED,
+      score,
+      answers: { ...answers, _meta: { confidence, elapsedSeconds, reviewTopics: Array.from(reviewTopics) } },
+      submittedAt: new Date(),
+      gradedAt: new Date(),
+    };
+    const existingAttempt = attemptId
+      ? await prisma.quizAttempt.findFirst({ where: { id: attemptId, quizId, agentId: userId, status: TrainingAttemptStatus.IN_PROGRESS } })
+      : null;
+    const attempt = existingAttempt
+      ? await prisma.quizAttempt.update({ where: { id: existingAttempt.id }, data: attemptData })
+      : await prisma.quizAttempt.create({ data: attemptData });
 
     await prisma.trainingNotification.create({
       data: {

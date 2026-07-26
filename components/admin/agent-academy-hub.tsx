@@ -139,6 +139,21 @@ type AcademyData = {
     rushedAttempts: Array<{ id: string; agentId: string; assessmentTitle: string; seconds: number; score: number }>;
     practicalRisk: Array<{ id: string; assignmentId: string; agentId: string; status: string; grade: number | null; submittedAt: string }>;
   };
+  learnerProfiles?: Array<{
+    agentId: string;
+    courses: number;
+    averageProgress: number;
+    averageScore: number;
+    passedAttempts: number;
+    failedAttempts: number;
+    reviewedAssignments: number;
+    mentorSignoffs: number;
+    certificates: number;
+    weakTopics: string[];
+    riskFlags: string[];
+    recommendation: string;
+    latestActivity?: string | null;
+  }>;
   mostActiveAgents: Array<{ agentId: string; actions: number }>;
   agentsNeedingAttention: Array<{ id: string; agentId: string; courseId: string; percentComplete: number }>;
   recentlyCompletedCourses: Array<{ id: string; agentId: string; courseId: string; completedAt?: string }>;
@@ -814,7 +829,7 @@ function FeatureWorkbench({
   setDrawer: (drawer: "course" | "document" | "video" | "quiz" | "exam" | "assignment" | "path" | "announcement" | "badge" | "lesson" | "module" | null) => void;
 }) {
   if (tab === "Certificates") {
-    return <BuilderList title="Certificate Management" icon={Award} rows={data.certificates.map((c) => ({ id: c.id, title: c.certificateNumber, active: c.status === "ACTIVE", detail: `${c.agentId} - ${new Date(c.issuedAt).toLocaleDateString()}` }))} actionLabel="Issued automatically after completion" />;
+    return <CertificateManagementPanel certificates={data.certificates} action={action} />;
   }
   if (tab === "Public Learners") {
     return <PublicLearnersPanel applications={data.publicLearnerApplications} resourceApplications={data.resourceAccessApplications ?? []} action={action} />;
@@ -878,6 +893,15 @@ function FeatureWorkbench({
     const insights = data.trainerInsights;
     return (
       <div className="grid gap-4 xl:grid-cols-2">
+        <div className="xl:col-span-2 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-4">
+          <div>
+            <p className="font-semibold text-white">Trainer intelligence export</p>
+            <p className="mt-1 text-sm text-emerald-100/70">Download learner scores, risk flags, practical reviews, sign-offs, and certificate status for coaching meetings.</p>
+          </div>
+          <a href="/api/v1/admin/academy/export" className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-500">
+            <Download className="size-4" /> Export CSV
+          </a>
+        </div>
         <ActivityPanel title="Revenue & Registrations" icon={BarChart3}>
           <MetricRow label="Academy revenue" value={`USD ${Number(revenue?.total ?? data.metrics.academyRevenue ?? 0).toFixed(2)}`} />
           <MetricRow label="Paid registrations" value={String(revenue?.count ?? 0)} />
@@ -926,6 +950,23 @@ function FeatureWorkbench({
           {insights?.rushedAttempts.length ? insights.rushedAttempts.map((item) => (
             <MetricRow key={item.id} label={`${item.agentId.slice(0, 8)} - ${item.assessmentTitle}`} value={`${item.seconds}s, ${item.score}%`} />
           )) : <p className="text-sm text-slate-400">No suspiciously fast quiz attempts yet.</p>}
+        </ActivityPanel>
+        <ActivityPanel title="Learner Profile Snapshots" icon={Users}>
+          {data.learnerProfiles?.length ? data.learnerProfiles.slice(0, 8).map((profile) => (
+            <div key={profile.agentId} className="rounded-lg border border-white/10 bg-slate-950/60 p-3">
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div>
+                  <p className="text-sm font-semibold text-white">{profile.agentId}</p>
+                  <p className="mt-1 text-xs text-slate-400">{profile.averageProgress}% progress - {profile.averageScore}% average - {profile.reviewedAssignments} reviewed tasks</p>
+                </div>
+                <span className={cn("rounded-full px-2 py-1 text-[10px] font-bold uppercase tracking-wide", profile.riskFlags.length ? "bg-amber-500/15 text-amber-200" : "bg-emerald-500/15 text-emerald-200")}>
+                  {profile.riskFlags.length ? `${profile.riskFlags.length} risk` : "on track"}
+                </span>
+              </div>
+              {!!profile.weakTopics.length && <p className="mt-2 text-xs text-slate-400">Coach: {profile.weakTopics.join(", ")}</p>}
+              <p className="mt-2 text-xs leading-5 text-slate-300">{profile.recommendation}</p>
+            </div>
+          )) : <p className="text-sm text-slate-400">No learner profile signals captured yet.</p>}
         </ActivityPanel>
         <ActivityPanel title="Expert Content Pipeline" icon={Film}>
           {EXPERT_VIDEO_LIBRARY_PLAN.map((item) => (
@@ -993,6 +1034,58 @@ function BuilderList({
   );
 }
 
+function CertificateManagementPanel({
+  certificates,
+  action,
+}: {
+  certificates: AcademyData["certificates"];
+  action: (body: Record<string, unknown>, success: string) => Promise<unknown>;
+}) {
+  const [reason, setReason] = useState("Quality review required before the credential is shown publicly.");
+  return (
+    <section className="rounded-xl border border-white/10 bg-slate-900/60">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 p-4">
+        <div>
+          <h3 className="font-semibold text-white">Certificate Management</h3>
+          <p className="mt-1 text-sm text-slate-400">Suspend, revoke, or reactivate public certificate verification with an audit reason.</p>
+        </div>
+        <input
+          value={reason}
+          onChange={(event) => setReason(event.target.value)}
+          className="min-h-10 w-full rounded-lg border border-white/10 bg-slate-950 px-3 text-sm text-white md:w-96"
+          aria-label="Certificate status reason"
+        />
+      </div>
+      <AdminDataTable
+        rows={certificates}
+        columns={[
+          { key: "number", header: "Certificate", render: (certificate) => <span className="font-semibold text-white">{certificate.certificateNumber}</span> },
+          { key: "agent", header: "Learner", render: (certificate) => <span className="text-sm text-slate-300">{certificate.agentId}</span> },
+          { key: "status", header: "Status", render: (certificate) => <AdminStatusBadge status={certificate.status} variant={certificate.status === "ACTIVE" ? "success" : "danger"} /> },
+          { key: "issued", header: "Issued", render: (certificate) => new Date(certificate.issuedAt).toLocaleDateString() },
+          {
+            key: "actions",
+            header: "Actions",
+            render: (certificate) => (
+              <div className="flex flex-wrap gap-2">
+                {certificate.status !== "ACTIVE" ? (
+                  <Button onClick={() => void action({ action: "update_certificate_status", certificateId: certificate.id, status: "ACTIVE" }, "Certificate reactivated.")}>Reactivate</Button>
+                ) : (
+                  <>
+                    <Button variant="secondary" onClick={() => void action({ action: "update_certificate_status", certificateId: certificate.id, status: "SUSPENDED", reason }, "Certificate suspended.")}>Suspend</Button>
+                    <Button variant="secondary" onClick={() => void action({ action: "update_certificate_status", certificateId: certificate.id, status: "REVOKED", reason }, "Certificate revoked.")}>Revoke</Button>
+                  </>
+                )}
+              </div>
+            ),
+          },
+        ]}
+        emptyMessage="No issued certificates yet."
+      />
+    </section>
+  );
+}
+
 function AssignmentReviewQueue({
   submissions,
   action,
@@ -1044,27 +1137,34 @@ function AssignmentReviewControls({
   assignmentTitle: string;
   action: (body: Record<string, unknown>, success: string) => Promise<unknown>;
 }) {
-  const [grade, setGrade] = useState("85");
   const rubric = assignmentRubricCriteria(assignmentTitle);
-  const [reviewerNote, setReviewerNote] = useState(`Rubric reviewed: ${rubric.join("; ")}.`);
-  const gradeNumber = Math.max(0, Math.min(100, Number(grade) || 0));
+  const [criteriaScores, setCriteriaScores] = useState<Record<string, number>>(() => Object.fromEntries(rubric.map((item) => [item, 85])));
+  const rubricSummary = rubric.map((item) => `${item}: ${criteriaScores[item] ?? 0}`).join("; ");
+  const [reviewerNote, setReviewerNote] = useState("Mentor sign-off: granted. Practical work is client-ready with the corrections noted below.");
+  const gradeNumber = Math.round(rubric.reduce((sum, item) => sum + Math.max(0, Math.min(100, Number(criteriaScores[item]) || 0)), 0) / Math.max(1, rubric.length));
+  const fullReviewerNote = `Rubric scores: ${rubricSummary}. ${reviewerNote}`.trim();
   return (
     <div className="mt-3 space-y-2">
-      <div className="grid gap-1.5 rounded-lg border border-white/10 bg-slate-900/70 p-2 text-[11px] leading-4 text-slate-300 sm:grid-cols-2">
+      <div className="grid gap-2 rounded-lg border border-white/10 bg-slate-900/70 p-2 text-[11px] leading-4 text-slate-300 sm:grid-cols-2">
         {rubric.map((item) => (
-          <span key={item} className="rounded-md bg-slate-950/60 px-2 py-1">{item}</span>
+          <label key={item} className="grid gap-1 rounded-md bg-slate-950/60 px-2 py-1.5">
+            <span>{item}</span>
+            <input
+              value={criteriaScores[item] ?? 0}
+              onChange={(event) => setCriteriaScores({ ...criteriaScores, [item]: Math.max(0, Math.min(100, Number(event.target.value) || 0)) })}
+              type="number"
+              min={0}
+              max={100}
+              className="rounded-md border border-white/10 bg-slate-900 px-2 py-1 text-xs text-white"
+              aria-label={`${item} score`}
+            />
+          </label>
         ))}
       </div>
-      <div className="grid gap-2 sm:grid-cols-[5rem_1fr]">
-        <input
-          value={grade}
-          onChange={(event) => setGrade(event.target.value)}
-          type="number"
-          min={0}
-          max={100}
-          className="rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-xs text-white"
-          aria-label="Assignment score"
-        />
+      <div className="grid gap-2 sm:grid-cols-[7rem_1fr]">
+        <div className="rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-xs text-slate-300">
+          Final: <span className="font-bold text-white">{gradeNumber}%</span>
+        </div>
         <input
           value={reviewerNote}
           onChange={(event) => setReviewerNote(event.target.value)}
@@ -1076,14 +1176,14 @@ function AssignmentReviewControls({
         <button
           type="button"
           className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white"
-          onClick={() => void action({ action: "review_assignment_submission", submissionId, review: { status: "GRADED", grade: gradeNumber, reviewerNote } }, "Assignment graded.")}
+          onClick={() => void action({ action: "review_assignment_submission", submissionId, review: { status: "GRADED", grade: gradeNumber, reviewerNote: fullReviewerNote } }, "Assignment graded.")}
         >
-          Grade
+          Grade and sign off
         </button>
         <button
           type="button"
           className="rounded-lg bg-slate-800 px-3 py-1.5 text-xs font-semibold text-slate-100"
-          onClick={() => void action({ action: "review_assignment_submission", submissionId, review: { status: "RESUBMISSION_REQUESTED", reviewerNote } }, "Resubmission requested.")}
+          onClick={() => void action({ action: "review_assignment_submission", submissionId, review: { status: "RESUBMISSION_REQUESTED", reviewerNote: `Rubric scores: ${rubricSummary}. Resubmission required: ${reviewerNote}` } }, "Resubmission requested.")}
         >
           Request resubmission
         </button>

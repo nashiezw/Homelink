@@ -41,9 +41,19 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
   const bankQuestions = supplementalQuestionsForQuiz(quiz.id);
   const fullPool = [...databaseQuestions, ...bankQuestions];
   const questions = quiz.randomise ? shuffleArray(fullPool).slice(0, Math.min(8, fullPool.length)) : fullPool;
+  const attempt = await prisma.quizAttempt.create({
+    data: {
+      quizId: quiz.id,
+      agentId: userId,
+      status: "IN_PROGRESS",
+      answers: { _meta: { openedAt: new Date().toISOString(), poolSize: fullPool.length, deliveredQuestionIds: questions.map((q) => q.id) } },
+      startedAt: new Date(),
+    },
+  });
 
   return ok({
     id: quiz.id,
+    attemptId: attempt.id,
     title: quiz.title,
     passingPercentage: quiz.passingPercentage,
     poolSize: fullPool.length,
