@@ -6,12 +6,12 @@ import { BlogIndexClient } from "@/components/blog/blog-index-client";
 import { getPublicBlogIndex } from "@/lib/blog/blog-repository";
 
 export const metadata: Metadata = {
-  title: "Property Resource Centre | HouseLink Zimbabwe",
-  description: "HouseLink Zimbabwe's trusted property resource centre for tenants, landlords, buyers, sellers, agents and investors.",
+  title: "Property Blog & Advice | HouseLink Zimbabwe",
+  description: "HouseLink Zimbabwe's practical property blog for tenants, landlords, buyers, sellers, agents and investors.",
   alternates: { canonical: "/blog" },
   openGraph: {
-    title: "Property Resource Centre | HouseLink Zimbabwe",
-    description: "HouseLink Zimbabwe's trusted property resource centre for tenants, landlords, buyers, sellers, agents and investors.",
+    title: "Property Blog & Advice | HouseLink Zimbabwe",
+    description: "HouseLink Zimbabwe's practical property blog for tenants, landlords, buyers, sellers, agents and investors.",
     images: [{ url: "/images/houselink-hero.webp" }],
   },
 };
@@ -44,10 +44,10 @@ export default async function BlogPage() {
                 Zimbabwe property intelligence
               </p>
               <h1 className="mt-3 max-w-4xl text-3xl font-black leading-[1.04] tracking-normal sm:mt-4 sm:text-6xl lg:text-7xl">
-                Property Advice, News and Resources
+                HouseLink Property Blog
               </h1>
               <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-100 sm:mt-4 sm:text-lg sm:leading-7">
-                Practical guides for renting, buying, selling, listing, safety, moving and property decisions in Zimbabwe.
+                Practical Zimbabwe property advice for renting, buying, selling, listing, safety, moving and smarter property decisions.
               </p>
               <div className="mt-4 flex flex-wrap gap-2 sm:mt-5 sm:gap-3">
                 <Link href="/blog#latest-resources" className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-emerald-500 px-4 py-2.5 text-sm font-bold text-ink hover:bg-emerald-400">

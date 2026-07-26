@@ -55,7 +55,7 @@ const popularQuestions = [
 ] as const;
 
 export function BlogIndexClient({ initialData }: { initialData: BlogIndexData }) {
-  const [data, setData] = useState(initialData);
+  const [data, setData] = useState(() => normaliseBlogIndexData(initialData));
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("");
   const [listingLayout, setListingLayout] = useState<ListingLayout>("grid");
@@ -70,9 +70,10 @@ export function BlogIndexClient({ initialData }: { initialData: BlogIndexData })
     const result = await apiFetch<BlogIndexData>(`/api/v1/blog?${params.toString()}`);
     setLoading(false);
     if (result.data) {
+      const nextData = normaliseBlogIndexData(result.data);
       setData((current) => ({
-        ...result.data!,
-        posts: append ? [...current.posts, ...result.data!.posts] : result.data!.posts,
+        ...nextData,
+        posts: append ? [...current.posts, ...nextData.posts] : nextData.posts,
       }));
     }
   }
@@ -114,10 +115,10 @@ export function BlogIndexClient({ initialData }: { initialData: BlogIndexData })
             />
             {suggestions ? (
               <div className="absolute z-30 mt-2 w-full rounded-lg border border-slate-200 bg-white p-3 shadow-xl dark:border-slate-800 dark:bg-slate-950">
-                {suggestions.articles.length ? <SuggestionGroup title="Articles" items={suggestions.articles.map((item) => ({ label: item.title, href: `/blog/${item.slug}` }))} query={query} /> : null}
-                {suggestions.categories.length ? <SuggestionGroup title="Categories" items={suggestions.categories.map((item) => ({ label: item.name, href: `/blog/category/${item.slug}` }))} query={query} /> : null}
-                {suggestions.tags.length ? <SuggestionGroup title="Tags" items={suggestions.tags.map((item) => ({ label: item.name, href: `/blog?tag=${item.slug}` }))} query={query} /> : null}
-                {suggestions.authors.length ? <SuggestionGroup title="Authors" items={suggestions.authors.map((item) => ({ label: item.name, href: `/blog/author/${item.slug}` }))} query={query} /> : null}
+                {suggestions.articles?.length ? <SuggestionGroup title="Articles" items={suggestions.articles.map((item) => ({ label: item.title, href: `/blog/${item.slug}` }))} query={query} /> : null}
+                {suggestions.categories?.length ? <SuggestionGroup title="Categories" items={suggestions.categories.map((item) => ({ label: item.name, href: `/blog/category/${item.slug}` }))} query={query} /> : null}
+                {suggestions.tags?.length ? <SuggestionGroup title="Tags" items={suggestions.tags.map((item) => ({ label: item.name, href: `/blog?tag=${item.slug}` }))} query={query} /> : null}
+                {suggestions.authors?.length ? <SuggestionGroup title="Authors" items={suggestions.authors.map((item) => ({ label: item.name, href: `/blog/author/${item.slug}` }))} query={query} /> : null}
               </div>
             ) : null}
           </label>
@@ -200,6 +201,23 @@ export function BlogIndexClient({ initialData }: { initialData: BlogIndexData })
       </section>
     </div>
   );
+}
+
+function normaliseBlogIndexData(data: BlogIndexData): BlogIndexData {
+  return {
+    ...data,
+    posts: Array.isArray(data.posts) ? data.posts : [],
+    categories: Array.isArray(data.categories) ? data.categories : [],
+    popular: Array.isArray(data.popular) ? data.popular : [],
+    editorsPicks: Array.isArray(data.editorsPicks) ? data.editorsPicks : [],
+    recentlyUpdated: Array.isArray(data.recentlyUpdated) ? data.recentlyUpdated : [],
+    latestNews: Array.isArray(data.latestNews) ? data.latestNews : [],
+    trendingTopics: Array.isArray(data.trendingTopics) ? data.trendingTopics : [],
+    total: Number.isFinite(Number(data.total)) ? Number(data.total) : 0,
+    page: Number.isFinite(Number(data.page)) ? Number(data.page) : 1,
+    limit: Number.isFinite(Number(data.limit)) ? Number(data.limit) : 9,
+    hasMore: Boolean(data.hasMore),
+  };
 }
 
 function ArticleListing({ posts, layout }: { posts: BlogPost[]; layout: ListingLayout }) {

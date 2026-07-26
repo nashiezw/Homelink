@@ -106,5 +106,11 @@ export function BlogCard({ post, featured = false }: { post: BlogCardPost; featu
 
 export function formatDate(value?: string | Date | null) {
   if (!value) return "Draft";
-  return new Intl.DateTimeFormat("en-ZW", { day: "numeric", month: "short", year: "numeric" }).format(new Date(value));
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Recently updated";
+  try {
+    return new Intl.DateTimeFormat("en-ZW", { day: "numeric", month: "short", year: "numeric" }).format(date);
+  } catch {
+    return new Intl.DateTimeFormat("en", { day: "numeric", month: "short", year: "numeric" }).format(date);
+  }
 }
