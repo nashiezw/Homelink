@@ -2,6 +2,7 @@ import { getSessionUserIdFromRequest } from "@/lib/auth/session";
 import { ok, problem } from "@/lib/api/response";
 import { getMainPrisma } from "@/lib/db/main-prisma";
 import { shuffleArray, toPublicShuffledAnswers } from "@/lib/academy/quiz-randomisation";
+import { supplementalQuestionsForQuizzes } from "@/lib/academy/quiz-question-bank";
 
 export const dynamic = "force-dynamic";
 
@@ -39,7 +40,13 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
     orderBy: { sortOrder: "asc" },
   });
 
-  const shuffled = exam.randomQuestions ? shuffleArray(quizQuestions) : quizQuestions;
+  const databaseQuestions = quizQuestions.map((q) => ({
+    id: q.id,
+    prompt: q.prompt,
+    answers: q.answers,
+  }));
+  const fullPool = [...databaseQuestions, ...supplementalQuestionsForQuizzes(quizIds)];
+  const shuffled = exam.randomQuestions ? shuffleArray(fullPool) : fullPool;
   const selected = shuffled.slice(0, Math.min(minimumQuestions, shuffled.length));
 
   return ok({
@@ -49,6 +56,7 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
     passingScore: exam.passingScore,
     attemptNumber: attemptCount + 1,
     attemptLimit: exam.attemptLimit,
+    poolSize: fullPool.length,
     questions: selected.map((q) => ({
       id: q.id,
       prompt: q.prompt,

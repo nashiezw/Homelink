@@ -13,6 +13,13 @@ type QuizQuestion = {
   answers: Array<{ id: string; label: string; value: string }>;
 };
 
+type QuizResult = {
+  score: number;
+  passed: boolean;
+  reviewTopics?: string[];
+  retakeGuidance?: string | null;
+};
+
 export function QuizPanel({
   quizId,
   title = "Checkpoint",
@@ -33,7 +40,8 @@ export function QuizPanel({
   const { showToast } = useApp();
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
   const [answers, setAnswers] = useState<Record<string, string>>({});
-  const [result, setResult] = useState<{ score: number; passed: boolean } | null>(null);
+  const [confidence, setConfidence] = useState<"guessed" | "mixed" | "confident" | null>(null);
+  const [result, setResult] = useState<QuizResult | null>(null);
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
@@ -52,7 +60,7 @@ export function QuizPanel({
     setBusy(true);
     const response = await apiFetch<{ score: number; passed: boolean }>(`/api/v1/academy/quizzes/${quizId}/attempt`, {
       method: "POST",
-      body: JSON.stringify({ answers }),
+      body: JSON.stringify({ answers, confidence }),
     });
     setBusy(false);
     if (response.error) {
@@ -68,6 +76,7 @@ export function QuizPanel({
   async function retake() {
     setResult(null);
     setAnswers({});
+    setConfidence(null);
     await load();
   }
 
@@ -77,6 +86,19 @@ export function QuizPanel({
         {result.passed ? <CheckCircle2 className="mx-auto size-16 text-emerald-500" /> : <XCircle className="mx-auto size-16 text-amber-500" />}
         <p className="mt-4 text-2xl font-bold text-slate-950 dark:text-white">Score: {result.score}%</p>
         <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">{result.passed ? "Passed. This checkpoint is complete." : `Pass mark is ${passingPercentage}%. Review the lesson and retake when ready.`}</p>
+        {!result.passed && !!result.reviewTopics?.length && (
+          <div className="mx-auto mt-5 max-w-md rounded-xl border border-amber-200 bg-amber-50 p-4 text-left dark:border-amber-900/50 dark:bg-amber-950/20">
+            <p className="text-sm font-bold text-amber-950 dark:text-amber-100">Review before retaking</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {result.reviewTopics.map((topic) => (
+                <span key={topic} className="rounded-full bg-white px-3 py-1 text-xs font-bold text-amber-800 shadow-sm dark:bg-slate-900 dark:text-amber-200">
+                  {topic}
+                </span>
+              ))}
+            </div>
+            {result.retakeGuidance && <p className="mt-3 text-xs leading-5 text-amber-900/80 dark:text-amber-100/80">{result.retakeGuidance}</p>}
+          </div>
+        )}
         <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-center">
           {!result.passed && (
             <Button className="w-full sm:w-auto" onClick={() => void retake()}>
@@ -172,12 +194,37 @@ export function QuizPanel({
         )}
       </div>
 
+      <div className="mt-5 rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+        <p className="text-sm font-bold text-slate-950 dark:text-white">How confident are you in these answers?</p>
+        <div className="mt-3 grid gap-2 sm:grid-cols-3">
+          {[
+            ["guessed", "I guessed"],
+            ["mixed", "Some unsure"],
+            ["confident", "Confident"],
+          ].map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setConfidence(value as "guessed" | "mixed" | "confident")}
+              className={cn(
+                "rounded-lg border px-3 py-2.5 text-sm font-bold transition",
+                confidence === value
+                  ? "border-emerald-500 bg-emerald-50 text-emerald-800 dark:border-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-200"
+                  : "border-slate-200 bg-slate-50 text-slate-600 hover:border-emerald-200 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300",
+              )}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 p-3 shadow-[0_-12px_30px_rgba(15,23,42,0.08)] backdrop-blur dark:border-slate-800 dark:bg-slate-950/95 sm:static sm:mt-6 sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none sm:backdrop-blur-0">
         <div className="mx-auto flex max-w-3xl flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <Button className="w-full sm:w-auto" variant="secondary" onClick={onBack}>
             <ChevronLeft className="size-4 mr-2" /> Back
           </Button>
-          <Button className="w-full sm:w-auto" disabled={busy || !canSubmit} onClick={() => void submit()}>
+          <Button className="w-full sm:w-auto" disabled={busy || !canSubmit || !confidence} onClick={() => void submit()}>
             {busy ? <Loader2 className="size-4 animate-spin" /> : "Submit checkpoint"}
           </Button>
         </div>

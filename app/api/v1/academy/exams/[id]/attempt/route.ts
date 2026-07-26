@@ -2,9 +2,12 @@ import { TrainingAttemptStatus } from "@prisma/client";
 import { getSessionUserIdFromRequest } from "@/lib/auth/session";
 import { ok, problem } from "@/lib/api/response";
 import { tryCompleteCourseCertification } from "@/lib/academy/academy-progress";
+import { isSupplementalQuestionId, supplementalQuestionsForQuizzes } from "@/lib/academy/quiz-question-bank";
 import { getMainPrisma } from "@/lib/db/main-prisma";
 
 export const dynamic = "force-dynamic";
+
+type QuestionPool = { quizzes?: string[]; minimumQuestions?: number };
 
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
   const userId = getSessionUserIdFromRequest(request);
@@ -32,21 +35,35 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     }
 
     const questionIds = Object.keys(answers);
-    const questions = questionIds.length
+    const databaseQuestionIds = questionIds.filter((id) => !isSupplementalQuestionId(id));
+    const questions = databaseQuestionIds.length
       ? await prisma.quizQuestion.findMany({
-          where: { id: { in: questionIds } },
+          where: { id: { in: databaseQuestionIds } },
           include: { answers: true },
         })
       : [];
+    const pools = (exam.questionPools ?? {}) as QuestionPool;
+    const supplementalById = new Map(supplementalQuestionsForQuizzes(pools.quizzes ?? []).map((question) => [question.id, question]));
 
     let correct = 0;
+    const reviewTopics = new Set<string>();
     for (const question of questions) {
       const selected = answers[question.id];
       const correctAnswer = question.answers.find((answer) => answer.isCorrect);
-      if (correctAnswer && (selected === correctAnswer.value || selected === correctAnswer.label)) correct += 1;
+      const isCorrect = Boolean(correctAnswer && (selected === correctAnswer.value || selected === correctAnswer.label));
+      if (isCorrect) correct += 1;
+      else reviewTopics.add(question.categories[0] ?? "Final exam review");
     }
 
-    const score = questions.length ? Math.round((correct / questions.length) * 100) : 0;
+    for (const questionId of questionIds.filter(isSupplementalQuestionId)) {
+      const question = supplementalById.get(questionId);
+      if (!question) continue;
+      if (answers[questionId] === question.correctValue) correct += 1;
+      else reviewTopics.add(question.topic);
+    }
+
+    const gradedQuestionCount = questions.length + questionIds.filter((id) => supplementalById.has(id)).length;
+    const score = gradedQuestionCount ? Math.round((correct / gradedQuestionCount) * 100) : 0;
     const passed = score >= exam.passingScore;
 
     const attempt = await prisma.examAttempt.create({
@@ -55,7 +72,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
         agentId: userId,
         status: passed ? TrainingAttemptStatus.PASSED : TrainingAttemptStatus.FAILED,
         score,
-        answers,
+        answers: { ...answers, _meta: { reviewTopics: Array.from(reviewTopics) } },
         submittedAt: new Date(),
         gradedAt: new Date(),
       },
@@ -75,7 +92,13 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       await tryCompleteCourseCertification(userId, exam.courseId);
     }
 
-    return ok({ attemptId: attempt.id, score, passed, passingScore: exam.passingScore });
+    return ok({
+      attemptId: attempt.id,
+      score,
+      passed,
+      passingScore: exam.passingScore,
+      reviewTopics: passed ? [] : Array.from(reviewTopics).slice(0, 6),
+    });
   } catch (error) {
     console.error("Exam submission failed", error);
     return problem(500, "EXAM_SUBMIT_FAILED", "Exam could not be submitted.");

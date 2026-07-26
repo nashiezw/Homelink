@@ -3,6 +3,7 @@ import { getSessionUserIdFromRequest } from "@/lib/auth/session";
 import { ok, problem } from "@/lib/api/response";
 import { getMainPrisma } from "@/lib/db/main-prisma";
 import { tryCompleteCourseCertification } from "@/lib/academy/academy-progress";
+import { isSupplementalQuestionId, supplementalQuestionsForQuiz } from "@/lib/academy/quiz-question-bank";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +14,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   const { id: quizId } = await context.params;
   const body = await request.json();
   const answers = typeof body.answers === "object" && body.answers ? body.answers : {};
+  const confidence = typeof body.confidence === "string" ? body.confidence : null;
 
   try {
     const prisma = getMainPrisma();
@@ -27,13 +29,43 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       });
       if (!enrolment || enrolment.status !== "ACTIVE") return problem(403, "NOT_ENROLLED", "Enrol in this course to take the quiz.");
     }
+
+    const cooldownSince = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const recentFailedAttempts = await prisma.quizAttempt.count({
+      where: {
+        quizId,
+        agentId: userId,
+        status: TrainingAttemptStatus.FAILED,
+        submittedAt: { gte: cooldownSince },
+      },
+    });
+    if (recentFailedAttempts >= 2) {
+      return problem(429, "QUIZ_RETAKE_COOLDOWN", "You have used two attempts in the last 24 hours. Review the lesson notes and try this checkpoint again tomorrow.");
+    }
+
+    const submittedQuestionIds = Object.keys(answers);
+    const supplementalById = new Map(supplementalQuestionsForQuiz(quiz.id).map((question) => [question.id, question]));
+    const submittedDatabaseQuestions = quiz.questions.filter((question) => !isSupplementalQuestionId(question.id) && submittedQuestionIds.includes(question.id));
     let correct = 0;
-    for (const question of quiz.questions) {
+    const reviewTopics = new Set<string>();
+
+    for (const question of submittedDatabaseQuestions) {
       const selected = answers[question.id];
       const correctAnswer = question.answers.find((answer) => answer.isCorrect);
-      if (correctAnswer && (selected === correctAnswer.value || selected === correctAnswer.label)) correct += 1;
+      const isCorrect = Boolean(correctAnswer && (selected === correctAnswer.value || selected === correctAnswer.label));
+      if (isCorrect) correct += 1;
+      else reviewTopics.add(question.categories[0] ?? quiz.title);
     }
-    const score = quiz.questions.length ? Math.round((correct / quiz.questions.length) * 100) : 0;
+
+    for (const questionId of submittedQuestionIds.filter(isSupplementalQuestionId)) {
+      const question = supplementalById.get(questionId);
+      if (!question) continue;
+      if (answers[questionId] === question.correctValue) correct += 1;
+      else reviewTopics.add(question.topic);
+    }
+
+    const gradedQuestionCount = submittedDatabaseQuestions.length + submittedQuestionIds.filter((id) => supplementalById.has(id)).length;
+    const score = gradedQuestionCount ? Math.round((correct / gradedQuestionCount) * 100) : 0;
     const passed = score >= quiz.passingPercentage;
 
     const attempt = await prisma.quizAttempt.create({
@@ -42,7 +74,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
         agentId: userId,
         status: passed ? TrainingAttemptStatus.PASSED : TrainingAttemptStatus.FAILED,
         score,
-        answers,
+        answers: { ...answers, _meta: { confidence, reviewTopics: Array.from(reviewTopics) } },
         submittedAt: new Date(),
         gradedAt: new Date(),
       },
@@ -62,7 +94,14 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       await tryCompleteCourseCertification(userId, quiz.courseId);
     }
 
-    return ok({ attemptId: attempt.id, score, passed, passingScore: quiz.passingPercentage });
+    return ok({
+      attemptId: attempt.id,
+      score,
+      passed,
+      passingScore: quiz.passingPercentage,
+      reviewTopics: passed ? [] : Array.from(reviewTopics).slice(0, 4),
+      retakeGuidance: passed ? null : "Review these topics before retaking. The next attempt will use a fresh question and answer order.",
+    });
   } catch (error) {
     console.error("Quiz submission failed", error);
     return problem(500, "QUIZ_SUBMIT_FAILED", "Quiz could not be submitted.");

@@ -12,6 +12,12 @@ type ExamQuestion = {
   answers: Array<{ id: string; label: string; value: string }>;
 };
 
+type ExamResult = {
+  score: number;
+  passed: boolean;
+  reviewTopics?: string[];
+};
+
 export function ExamPanel({
   examId,
   passingScore,
@@ -25,7 +31,7 @@ export function ExamPanel({
   const [title, setTitle] = useState("");
   const [questions, setQuestions] = useState<ExamQuestion[]>([]);
   const [answers, setAnswers] = useState<Record<string, string>>({});
-  const [result, setResult] = useState<{ score: number; passed: boolean } | null>(null);
+  const [result, setResult] = useState<ExamResult | null>(null);
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
@@ -68,6 +74,18 @@ export function ExamPanel({
             ? "You passed the Certified HouseLink Agent final examination."
             : `Pass mark is ${passingScore}%. Review the course material and try again when ready.`}
         </p>
+        {!result.passed && !!result.reviewTopics?.length && (
+          <div className="mx-auto mt-5 max-w-md rounded-xl border border-amber-200 bg-amber-50 p-4 text-left dark:border-amber-900/50 dark:bg-amber-950/20">
+            <p className="text-sm font-bold text-amber-950 dark:text-amber-100">Review these areas before your next attempt</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {result.reviewTopics.map((topic) => (
+                <span key={topic} className="rounded-full bg-white px-3 py-1 text-xs font-bold text-amber-800 shadow-sm dark:bg-slate-900 dark:text-amber-200">
+                  {topic}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
         <Button className="mt-6" onClick={onBack}>Back to course</Button>
       </div>
     );
