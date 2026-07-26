@@ -37,6 +37,15 @@ import {
   PARTNER_CREDIBILITY_PLAN,
   TOP_AGENT_PATHWAY,
 } from "@/lib/academy/academy-operations";
+import {
+  AGENT_PORTFOLIO_REQUIREMENTS,
+  EXPERT_VIDEO_LIBRARY_PLAN,
+  GRADUATE_OUTCOME_SIGNALS,
+  HOUSELINK_AGENT_PLAYBOOK,
+  RECERTIFICATION_REQUIREMENTS,
+  ROLEPLAY_ASSESSMENT_SCENARIOS,
+  SPECIALISATION_TRACKS,
+} from "@/lib/academy/academy-excellence";
 
 import { cn } from "@/lib/utils";
 
@@ -317,6 +326,24 @@ export function PublicAcademyPage() {
           <AcademyOpsCard title="Market intelligence" items={MARKET_INTELLIGENCE_PLAN} />
           <AcademyOpsCard title="Top Agent pathway" items={TOP_AGENT_PATHWAY} />
           <AcademyOpsCard title="Partner credibility" items={PARTNER_CREDIBILITY_PLAN} className="lg:col-span-2" />
+        </div>
+      </section>
+
+      <section className="academy-panel mt-10 rounded-xl p-6 sm:p-8">
+        <div className="flex flex-col gap-2">
+          <h2 className="text-2xl font-bold">Elite agent standard</h2>
+          <p className="max-w-3xl text-sm leading-6 text-slate-600">
+            Certification is designed around evidence of real agent competence: expert lessons, roleplay, field portfolio, mentor review, specialisation, and annual renewal.
+          </p>
+        </div>
+        <div className="mt-6 grid gap-4 xl:grid-cols-3">
+          <AcademyOpsCard title="Expert video lessons to record" items={EXPERT_VIDEO_LIBRARY_PLAN.map((item) => `${item.role}: ${item.topic}`)} />
+          <AcademyOpsCard title="Portfolio required before full certification" items={AGENT_PORTFOLIO_REQUIREMENTS.slice(0, 6)} />
+          <AcademyOpsCard title="Roleplay assessments" items={ROLEPLAY_ASSESSMENT_SCENARIOS.slice(0, 6)} />
+          <AcademyOpsCard title="HouseLink Agent Playbook" items={HOUSELINK_AGENT_PLAYBOOK.slice(0, 6)} />
+          <AcademyOpsCard title="Advanced specialisation tracks" items={SPECIALISATION_TRACKS.map((track) => `${track.title}: ${track.outcome}`)} />
+          <AcademyOpsCard title="Annual recertification" items={RECERTIFICATION_REQUIREMENTS} />
+          <AcademyOpsCard title="Graduate outcome proof" items={GRADUATE_OUTCOME_SIGNALS} className="xl:col-span-3" />
         </div>
       </section>
 

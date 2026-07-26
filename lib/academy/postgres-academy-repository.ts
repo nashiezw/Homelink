@@ -14,6 +14,7 @@ import { ensureOfficialAcademySeed } from "@/lib/academy/official-academy-seed";
 import { reviewPublicLearnerApplication } from "@/lib/academy/public-academy-repository";
 import { reviewResourceAccessApplication } from "@/lib/academy/academy-resource-access";
 import { fetchCourseTree, resolveLessonSectionId } from "@/lib/academy/course-tree";
+import { tryCompleteCourseCertification } from "@/lib/academy/academy-progress";
 
 export type AcademyDashboard = Awaited<ReturnType<typeof getAcademyDashboard>>;
 
@@ -858,6 +859,10 @@ export async function runAcademyAction(body: Record<string, any>, actor: Actor) 
         reviewedAt: new Date(),
       },
     });
+    const assignment = await prisma.assignment.findUnique({ where: { id: submission.assignmentId }, select: { courseId: true } });
+    if (assignment?.courseId && (status === AssignmentSubmissionStatus.APPROVED || status === AssignmentSubmissionStatus.GRADED)) {
+      await tryCompleteCourseCertification(submission.agentId, assignment.courseId);
+    }
     await audit(actor, "academy.assignment_submission.review", submission.id, {
       assignmentId: submission.assignmentId,
       status,

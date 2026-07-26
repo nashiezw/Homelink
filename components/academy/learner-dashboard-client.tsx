@@ -32,6 +32,13 @@ import { AcademyPaymentDetails } from "@/components/academy/academy-payment-deta
 import type { ToolkitAccessState } from "@/components/academy/academy-accordion";
 import { PaymentProofUpload } from "@/components/payments/payment-proof-upload";
 import type { PublicPaymentConfig } from "@/lib/payments/public-payment-config";
+import {
+  AGENT_PORTFOLIO_REQUIREMENTS,
+  HOUSELINK_AGENT_PLAYBOOK,
+  RECERTIFICATION_REQUIREMENTS,
+  ROLEPLAY_ASSESSMENT_SCENARIOS,
+  SPECIALISATION_TRACKS,
+} from "@/lib/academy/academy-excellence";
 
 type LearnerDashboard = {
   settings?: { academyName: string; primaryColour?: string; dashboardWelcome?: string; paymentInstructions?: string };
@@ -359,6 +366,23 @@ export function LearnerDashboardClient() {
         </section>
       )}
 
+      <section className="academy-panel mt-8 rounded-xl p-6">
+        <div className="flex flex-col gap-2">
+          <p className="text-xs font-bold uppercase tracking-widest text-emerald-700 dark:text-emerald-300">Top agent readiness</p>
+          <h2 className="text-xl font-bold sm:text-2xl">What you must prove before clients trust you</h2>
+          <p className="max-w-3xl text-sm leading-6 text-slate-600 dark:text-slate-300">
+            The strongest HouseLink agents do not rely on certificates alone. They build evidence, practise hard conversations, follow the playbook, and renew their standards every year.
+          </p>
+        </div>
+        <div className="mt-5 grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
+          <ReadinessChecklist title="Portfolio evidence" items={AGENT_PORTFOLIO_REQUIREMENTS} />
+          <ReadinessChecklist title="Roleplay practice" items={ROLEPLAY_ASSESSMENT_SCENARIOS} />
+          <ReadinessChecklist title="HouseLink playbook" items={HOUSELINK_AGENT_PLAYBOOK} />
+          <ReadinessChecklist title="Specialisation paths" items={SPECIALISATION_TRACKS.map((track) => track.title)} />
+          <ReadinessChecklist title="Annual renewal" items={RECERTIFICATION_REQUIREMENTS} className="xl:col-span-2" />
+        </div>
+      </section>
+
       <div className="mt-8 grid gap-6 xl:grid-cols-[minmax(0,1.4fr)_minmax(18rem,0.6fr)]">
         <section className="space-y-5">
           <h2 className="text-xl font-bold sm:text-2xl">My courses</h2>
@@ -656,6 +680,22 @@ function StatCard({ icon: Icon, label, value, accent, highlight }: { icon: typeo
           <p className="text-xs font-medium text-slate-500">{label}</p>
         </div>
       </div>
+    </div>
+  );
+}
+
+function ReadinessChecklist({ title, items, className }: { title: string; items: string[]; className?: string }) {
+  return (
+    <div className={cn("rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950", className)}>
+      <p className="font-semibold text-slate-950 dark:text-white">{title}</p>
+      <ul className="mt-3 space-y-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
+        {items.slice(0, 7).map((item) => (
+          <li key={item} className="flex gap-2">
+            <CheckCircle2 className="mt-1 size-4 shrink-0 text-emerald-600" />
+            <span>{item}</span>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

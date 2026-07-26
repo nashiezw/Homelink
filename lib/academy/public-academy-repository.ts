@@ -273,7 +273,7 @@ export async function getLearnerAcademyDashboard(learnerId: string, options?: { 
       courseTitle: certificate.course?.title ?? "Academy Course",
       issuedAt: certificate.issuedAt.toISOString(),
       expiresAt: certificate.expiresAt?.toISOString() ?? null,
-      verifyUrl: certificate.qrCodeUrl ?? `/api/v1/academy/certificates/verify/${encodeURIComponent(certificate.certificateNumber)}`,
+      verifyUrl: `/academy/verify?certificate=${encodeURIComponent(certificate.certificateNumber)}`,
       downloadUrl: certificate.pdfUrl ?? `/dashboard/academy/certificate/${certificate.id}`,
     })),
     programmeCourses: await getProgrammeProgressSummary(learnerId),

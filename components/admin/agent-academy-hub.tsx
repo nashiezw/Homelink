@@ -53,6 +53,14 @@ import { CourseWorkspace } from "@/components/admin/academy/course-workspace";
 import { AcademyHubNav, resolveAcademyNav, type AcademyPrimaryTab } from "@/components/admin/academy/academy-hub-nav";
 import { cn } from "@/lib/utils";
 import type { LucideIcon } from "lucide-react";
+import {
+  AGENT_PORTFOLIO_REQUIREMENTS,
+  EXPERT_VIDEO_LIBRARY_PLAN,
+  GRADUATE_OUTCOME_SIGNALS,
+  RECERTIFICATION_REQUIREMENTS,
+  ROLEPLAY_ASSESSMENT_SCENARIOS,
+  SPECIALISATION_TRACKS,
+} from "@/lib/academy/academy-excellence";
 
 type AcademyData = {
   metrics: Record<string, number>;
@@ -877,7 +885,24 @@ function FeatureWorkbench({
           <MetricRow label="Certified agents" value={String(data.metrics.certifiedAgents ?? 0)} />
           <MetricRow label="Active listings by certified agents" value={String(data.metrics.certifiedActiveListings ?? 0)} />
           <MetricRow label="Closed listings by certified agents" value={String(data.metrics.certifiedClosedListings ?? 0)} />
+          <MetricRow label="Outcome signals tracked" value={String(GRADUATE_OUTCOME_SIGNALS.length)} />
           <MetricRow label="Public credential display" value="Enabled" />
+        </ActivityPanel>
+        <ActivityPanel title="Mentor Sign-Off Standard" icon={ClipboardCheck}>
+          <MetricRow label="Portfolio requirements" value={String(AGENT_PORTFOLIO_REQUIREMENTS.length)} />
+          <MetricRow label="Roleplay scenarios" value={String(ROLEPLAY_ASSESSMENT_SCENARIOS.length)} />
+          <MetricRow label="Certificate rule" value="Reviewed assignments only" />
+          <MetricRow label="Minimum practical grade" value="70%" />
+        </ActivityPanel>
+        <ActivityPanel title="Expert Content Pipeline" icon={Film}>
+          {EXPERT_VIDEO_LIBRARY_PLAN.map((item) => (
+            <MetricRow key={item.role} label={item.role} value={item.deliverable} />
+          ))}
+        </ActivityPanel>
+        <ActivityPanel title="Specialisation & Recertification" icon={ShieldCheck}>
+          <MetricRow label="Advanced tracks" value={String(SPECIALISATION_TRACKS.length)} />
+          <MetricRow label="Renewal checks" value={String(RECERTIFICATION_REQUIREMENTS.length)} />
+          <MetricRow label="Renewal cadence" value="Annual" />
         </ActivityPanel>
         <AssignmentReviewQueue submissions={data.assignmentSubmissions ?? []} action={action} />
         <ActivityPanel title="Most Active Agents" icon={Trophy}>{data.mostActiveAgents.map((item) => <MetricRow key={item.agentId} label={item.agentId} value={item.actions} />)}</ActivityPanel>

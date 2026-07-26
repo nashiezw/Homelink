@@ -201,18 +201,21 @@ export const ACADEMY_PROGRAMME_COURSES: AcademyProgrammeCourse[] = [
       "Apply confidentiality standards and recognise legal referral boundaries",
       "Build sustainable performance routines with KPI and pipeline tracking",
       "Compile a field apprenticeship portfolio proving practical readiness",
+      "Choose a specialisation pathway for deeper market advantage",
+      "Maintain annual recertification evidence and continuing professional development",
       "Access and apply the complete HouseLink professional resource kit in the field",
       "Pass compliance assessments and the Certified Professional Agent final examination",
     ],
     includes: [
-      "20 advanced lessons across 3 modules",
+      "22 advanced lessons across 3 modules",
       "Complete professional resource kit — all branded forms, flowcharts, and trackers",
       "3 module checkpoint quizzes (Compliance, Performance, Toolkit Mastery)",
       "6 practical assignments including risk review, pipeline coaching, and field portfolio",
       "Certified HouseLink Agent final examination (35 questions, 85% pass mark)",
+      "Specialisation pathway planning and annual recertification requirements",
       "HouseLink Certified Professional Agent badge + full certification",
     ],
-    assessmentSummary: "Complete all lessons, pass all three module quizzes, submit all six assignments, then pass the final examination to earn full professional certification.",
+    assessmentSummary: "Complete all lessons, pass all three module quizzes, earn mentor/admin review on all six assignments, then pass the final examination to earn full professional certification.",
   },
 ];
 

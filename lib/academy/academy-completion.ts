@@ -34,7 +34,8 @@ export async function hasPassedCourseAssessments(learnerId: string, courseId: st
       where: {
         assignmentId,
         agentId: learnerId,
-        status: { in: ["SUBMITTED", "APPROVED", "GRADED"] },
+        status: { in: ["APPROVED", "GRADED"] },
+        OR: [{ grade: null }, { grade: { gte: 70 } }],
       },
     });
     if (!submission) return false;

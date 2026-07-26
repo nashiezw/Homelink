@@ -29,6 +29,10 @@ import {
   buildToolkitProduct,
 } from "@/components/academy/academy-resource-purchase";
 import type { ToolkitAccessState } from "@/components/academy/academy-accordion";
+import {
+  AGENT_PORTFOLIO_REQUIREMENTS,
+  ROLEPLAY_ASSESSMENT_SCENARIOS,
+} from "@/lib/academy/academy-excellence";
 import { cn } from "@/lib/utils";
 
 type CourseDetail = {
@@ -442,6 +446,20 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
             <ReadinessPanel readiness={data.assessments.readiness} accent={accent} />
           )}
 
+          <section className="academy-panel rounded-xl p-5">
+            <div className="flex flex-col gap-2">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Mentor/admin sign-off gate</p>
+              <h3 className="text-xl font-bold">Uploads are not enough for certification</h3>
+              <p className="max-w-3xl text-sm leading-6 text-slate-600 dark:text-slate-300">
+                Practical work must be reviewed and graded before a certificate is issued. The professional portfolio and roleplay evidence show whether you can handle real clients safely.
+              </p>
+            </div>
+            <div className="mt-4 grid gap-4 lg:grid-cols-2">
+              <EvidenceList title="Portfolio evidence" items={AGENT_PORTFOLIO_REQUIREMENTS} accent={accent} />
+              <EvidenceList title="Roleplay scenarios" items={ROLEPLAY_ASSESSMENT_SCENARIOS} accent={accent} />
+            </div>
+          </section>
+
           <div className="grid gap-6 xl:grid-cols-3">
             <AssessmentSection title={`Module Quizzes (${data.assessments.quizzes.length})`} icon={ShieldCheck} empty="Module quizzes load with your programme enrolment.">
               {data.assessments.quizzes.map((quiz) => (
@@ -582,5 +600,21 @@ function AssessmentSection({ title, icon: Icon, empty, children }: { title: stri
       <h3 className="font-bold flex items-center gap-2 mb-3"><Icon className="size-5 text-emerald-500" /> {title}</h3>
       <div className="space-y-3">{Children.count(children) === 0 ? <p className="text-sm text-slate-500">{empty}</p> : children}</div>
     </section>
+  );
+}
+
+function EvidenceList({ title, items, accent }: { title: string; items: string[]; accent: string }) {
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950">
+      <p className="font-semibold">{title}</p>
+      <ul className="mt-3 space-y-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
+        {items.map((item) => (
+          <li key={item} className="flex gap-2">
+            <CheckCircle2 className="mt-1 size-4 shrink-0" style={{ color: accent }} />
+            {item}
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }

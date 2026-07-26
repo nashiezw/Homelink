@@ -4,6 +4,10 @@ import { getMainPrisma } from "@/lib/db/main-prisma";
 import { ACADEMY_FULL_MANUAL_URL } from "@/lib/academy/academy-constants";
 import { ACADEMY_PROGRAMME_COURSES, LEGACY_COURSE_ID } from "@/lib/academy/academy-programme";
 import { lessonHandoutStoragePath } from "@/lib/academy/lesson-handouts";
+import {
+  RECERTIFICATION_REQUIREMENTS,
+  SPECIALISATION_TRACKS,
+} from "@/lib/academy/academy-excellence";
 
 const MANIFEST_PATH = path.join(process.cwd(), "public", "uploads", "academy", "academy-resources-manifest.json");
 
@@ -534,6 +538,50 @@ export const modules: ModuleSeed[] = [
         richText: `<p>Your reputation is your most valuable asset. Deliver on promises, respond professionally to complaints, and ask satisfied clients for reviews through proper HouseLink channels.</p><p>Personal branding should align with HouseLink standards — professional photos, consistent messaging, no misleading claims.</p>`,
         objectives: ["Grow reviews ethically", "Build referral habits", "Align personal brand with HouseLink"],
         estimatedMinutes: 30,
+      },
+      {
+        title: "Specialisation pathways for top agents",
+        stage: "Advanced",
+        summary: "Choose the advanced track that can make you unusually valuable in the market.",
+        richText: practicalLesson([
+          {
+            heading: "Why specialists win",
+            body: "The best agents become known for a clear type of client, property, or transaction. HouseLink's core certificate proves baseline competence; specialisation gives you a sharper market identity and deeper advisory value.",
+          },
+          {
+            heading: "Available pathways",
+            body: SPECIALISATION_TRACKS.map((track) => `${track.title}: ${track.outcome}`).join(" "),
+          },
+          {
+            heading: "Specialisation plan",
+            body: "Pick one pathway for the next 90 days. Define the client type, property type, top objections, required documents, local market signals, and three expert contacts you need to build around that niche.",
+          },
+        ]),
+        objectives: ["Select a professional niche", "Define specialist knowledge gaps", "Create a 90-day specialisation plan"],
+        estimatedMinutes: 45,
+        resourceTitles: ["Personal Goal Planner", "Monthly KPI Tracker", "Lead Tracking Sheet"],
+      },
+      {
+        title: "Annual recertification and continuing professional development",
+        stage: "Advanced",
+        summary: "Keep your certificate meaningful after the first year through renewal, compliance refreshers, and market updates.",
+        richText: practicalLesson([
+          {
+            heading: "Why renewal matters",
+            body: "Markets, scams, document risks, and client expectations change. Annual recertification keeps the HouseLink credential credible and protects clients from agents who stop learning after the first certificate.",
+          },
+          {
+            heading: "Renewal requirements",
+            body: RECERTIFICATION_REQUIREMENTS.join(" "),
+          },
+          {
+            heading: "Professional habit",
+            body: "Keep a small renewal file throughout the year: one market update quiz result, one refreshed compliance checklist, one reviewed client file, one KPI review, and one mentor note.",
+          },
+        ]),
+        objectives: ["Understand annual certificate renewal", "Maintain a renewal evidence file", "Use market updates for ongoing competence"],
+        estimatedMinutes: 35,
+        resourceTitles: ["Weekly Performance Review", "Compliance Checklist", "Zimbabwe Market Intelligence Update Template"],
       },
       {
         title: "Field apprenticeship evidence portfolio",
