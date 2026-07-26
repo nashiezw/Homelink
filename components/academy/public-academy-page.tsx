@@ -127,6 +127,24 @@ const ACADEMY_VALUE_PROOF = [
   "Specialisation and annual renewal path.",
 ];
 
+const TRAINING_STANDARD_PROOFS = [
+  {
+    icon: BookOpen,
+    title: "Field-ready skills",
+    body: "Learners practise the daily work agents are judged on: prospecting, listings, viewings, client follow-up, and clean files.",
+  },
+  {
+    icon: ListChecks,
+    title: "Reviewed evidence",
+    body: "Progress is backed by quizzes, practical tasks, roleplay, portfolio work, and admin review instead of passive watching only.",
+  },
+  {
+    icon: ShieldCheck,
+    title: "Verifiable trust",
+    body: "Graduates earn public certificates that clients, agencies, and HouseLink teams can verify.",
+  },
+];
+
 export function PublicAcademyPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -482,32 +500,62 @@ export function PublicAcademyPage() {
         </aside>
       </div>
 
-      <section className="mt-10 rounded-2xl border border-slate-200 bg-white/70 p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950/60 sm:p-6">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-widest text-emerald-700 dark:text-emerald-300">For serious learners</p>
-            <h2 className="mt-1 text-xl font-bold sm:text-2xl">Explore the HouseLink training standard</h2>
+      <section className="mt-10 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_20px_70px_rgba(15,23,42,0.08)] dark:border-slate-800 dark:bg-slate-950">
+        <div className="grid gap-0 lg:grid-cols-[minmax(0,1fr)_18rem]">
+          <div className="p-5 sm:p-6">
+            <p className="text-xs font-bold uppercase tracking-widest text-emerald-700 dark:text-emerald-300">Academy standard</p>
+            <div className="mt-2 grid gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
+              <div>
+                <h2 className="max-w-2xl text-xl font-black leading-tight tracking-tight text-slate-950 dark:text-white sm:text-2xl">
+                  Training that proves an agent can do the work
+                </h2>
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600 dark:text-slate-300">
+                  HouseLink Academy is built around practical competence: better listings, safer client handling, sharper market judgement, and verified professional evidence.
+                </p>
+              </div>
+              <Link href="/academy/verify" className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-bold text-emerald-800 shadow-sm transition hover:border-emerald-300 hover:bg-emerald-100 dark:border-emerald-900/70 dark:bg-emerald-950/30 dark:text-emerald-200 sm:w-auto">
+                <ShieldCheck className="size-4" />
+                Verify certificate
+              </Link>
+            </div>
+            <div className="mt-5 grid gap-3 sm:grid-cols-3">
+              {TRAINING_STANDARD_PROOFS.map((item) => (
+                <TrainingStandardCard key={item.title} {...item} />
+              ))}
+            </div>
           </div>
-          <Link href="/academy/verify" className="inline-flex min-h-9 w-fit max-w-full shrink-0 items-center justify-center gap-2 self-start whitespace-nowrap rounded-full border border-emerald-200 bg-white px-3.5 py-2 text-sm font-semibold text-emerald-700 shadow-sm transition hover:border-emerald-300 hover:bg-emerald-50 dark:border-emerald-900 dark:bg-slate-950 dark:text-emerald-300 dark:hover:bg-emerald-950/40 sm:self-auto">
-            <ShieldCheck className="size-4" />
-            Verify certificate
-          </Link>
+          <div className="border-t border-slate-200 bg-slate-950 p-5 text-white dark:border-slate-800 lg:border-l lg:border-t-0">
+            <div className="flex h-full flex-col justify-between gap-5">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-widest text-emerald-300">Why it matters</p>
+                <p className="mt-3 text-lg font-black leading-tight">A certificate should signal discipline, evidence, and client trust.</p>
+                <p className="mt-3 text-sm leading-6 text-slate-300">
+                  The goal is not to create agents who only know theory. It is to produce agents who can protect clients, document work, and represent property professionally.
+                </p>
+              </div>
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <StandardStat value="3" label="levels" />
+                <StandardStat value="16" label="tasks" />
+                <StandardStat value="PDF" label="tools" />
+              </div>
+            </div>
+          </div>
         </div>
-        <div className="mt-5">
+        <div className="border-t border-slate-100 bg-slate-50/70 p-4 dark:border-slate-800 dark:bg-slate-900/35 sm:p-5">
           <AcademyAccordion
             accent="#008b68"
             items={[
               {
-                id: "academy-standard-capability",
-                title: "What graduates can do",
+                id: "academy-standard-learn",
+                title: "What agents learn",
                 subtitle: "Client work, listing quality, pricing, viewings, and compliance",
                 meta: `${GRADUATE_CAPABILITY_MAP.length} capabilities`,
                 content: <CompactProofGrid items={GRADUATE_CAPABILITY_MAP} />,
               },
               {
-                id: "academy-standard-assessments",
-                title: "Assignments and grading",
-                subtitle: "Examples of practical work and how submissions are judged",
+                id: "academy-standard-certification",
+                title: "How certification works",
+                subtitle: "Practical submissions are checked against a professional rubric",
                 meta: `${SAMPLE_PUBLIC_ASSIGNMENTS.length} examples`,
                 content: (
                   <div className="grid gap-4 lg:grid-cols-2">
@@ -517,15 +565,15 @@ export function PublicAcademyPage() {
                 ),
               },
               {
-                id: "academy-standard-value",
-                title: "What the fee includes",
+                id: "academy-standard-toolkit",
+                title: "Field tools included",
                 subtitle: "Training, reviewed work, PDFs, certificates, and progression",
                 meta: `${ACADEMY_VALUE_PROOF.length} value points`,
                 content: <CompactProofGrid items={ACADEMY_VALUE_PROOF} />,
               },
               {
-                id: "academy-standard-elite",
-                title: "Top agent pathway",
+                id: "academy-standard-difference",
+                title: "What makes HouseLink agents different",
                 subtitle: "Mentor habits, roleplay, portfolio evidence, and specialisation",
                 meta: "Advanced",
                 content: (
@@ -582,6 +630,37 @@ function HeroProof({ value, label }: { value: string; label: string }) {
   );
 }
 
+function StandardStat({ value, label }: { value: string; label: string }) {
+  return (
+    <div className="rounded-lg bg-white/10 px-2 py-2 ring-1 ring-white/10">
+      <p className="text-base font-black text-white">{value}</p>
+      <p className="text-[10px] font-bold uppercase tracking-wide text-slate-300">{label}</p>
+    </div>
+  );
+}
+
+function TrainingStandardCard({
+  icon: Icon,
+  title,
+  body,
+}: {
+  icon: typeof BookOpen;
+  title: string;
+  body: string;
+}) {
+  return (
+    <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-4 dark:border-slate-800 dark:bg-slate-900/50">
+      <div className="flex items-center gap-3">
+        <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
+          <Icon className="size-4" />
+        </span>
+        <p className="text-sm font-black text-slate-950 dark:text-white">{title}</p>
+      </div>
+      <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">{body}</p>
+    </div>
+  );
+}
+
 function CourseMetric({
   icon: Icon,
   value,
@@ -594,10 +673,10 @@ function CourseMetric({
   accent: string;
 }) {
   return (
-    <div className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-2.5 py-2 text-sm shadow-sm dark:border-slate-800 dark:bg-slate-950 sm:justify-start sm:rounded-full sm:px-3">
+    <div className="flex min-h-12 w-full items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-2.5 py-2 text-sm shadow-sm dark:border-slate-800 dark:bg-slate-950 sm:justify-start sm:rounded-full sm:px-3">
       <Icon className="size-4 shrink-0" style={{ color: accent }} />
       <span className="font-bold leading-none text-slate-950 dark:text-white">{value}</span>
-      <span className="min-w-0 text-xs font-medium leading-none text-slate-500">{label}</span>
+      <span className="min-w-0 text-xs font-medium leading-tight text-slate-500">{label}</span>
     </div>
   );
 }
@@ -880,7 +959,7 @@ function ProgrammeEnrolmentPreview({ course, accent }: { course: PublicCourse; a
         </div>
         <h3 className="mt-4 text-xl font-bold leading-snug">{course.title}</h3>
         <p className="mt-1 text-sm font-medium" style={{ color: accent }}>{course.subtitle}</p>
-        <div className="mt-4 flex flex-wrap gap-2">
+        <div className="mt-4 grid grid-cols-2 gap-2">
           <CourseMetric icon={BookOpen} value={String(course.lessonCount)} label="training sessions" accent={accent} />
           <CourseMetric icon={ListChecks} value={`${course.quizCount ?? 0}/${course.assignmentCount ?? 0}`} label="quizzes/tasks" accent={accent} />
           <CourseMetric icon={Clock} value={`${course.estimatedHours || Math.round(course.durationMinutes / 60)}h`} label="guided learning" accent={accent} />
