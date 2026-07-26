@@ -48,12 +48,16 @@ export function BlogCard({ post, featured = false }: { post: BlogCardPost; featu
             </h2>
           </Link>
           <p className="mt-2 line-clamp-2 text-xs leading-5 text-slate-600 dark:text-slate-300 sm:text-sm sm:leading-6">{post.excerpt}</p>
+          <Link href={`/blog/${post.slug}`} className="mt-3 inline-flex min-h-10 w-full items-center justify-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-500 dark:bg-emerald-500 dark:text-ink sm:hidden">
+            Read guide
+            <ArrowRight className="size-4" />
+          </Link>
           <div className="mt-2 hidden flex-wrap items-center justify-between gap-3 sm:flex">
             <p className="text-xs text-slate-500">
               {post.author?.name ?? "HouseLink Editorial Team"} | {formatDate(post.publishedAt)}
             </p>
-            <Link href={`/blog/${post.slug}`} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-emerald-500 dark:bg-emerald-500 dark:text-ink">
-              Read
+            <Link href={`/blog/${post.slug}`} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-500 dark:bg-emerald-500 dark:text-ink">
+              Read guide
               <ArrowRight className="size-4" />
             </Link>
           </div>
@@ -94,12 +98,12 @@ export function BlogCard({ post, featured = false }: { post: BlogCardPost; featu
           </h2>
         </Link>
         <p className="mt-3 line-clamp-3 text-sm leading-6 text-slate-600 dark:text-slate-300">{post.excerpt}</p>
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-          <p className="text-xs text-slate-500">
+        <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-xs leading-5 text-slate-500">
             {post.author?.name ?? "HouseLink Editorial Team"} | {formatDate(post.publishedAt)}
           </p>
-          <Link href={`/blog/${post.slug}`} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-emerald-500 dark:bg-emerald-500 dark:text-ink">
-            Read Article
+          <Link href={`/blog/${post.slug}`} className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-500 dark:bg-emerald-500 dark:text-ink sm:min-h-9 sm:w-auto sm:px-3 sm:py-1.5">
+            Read guide
             <ArrowRight className="size-4" />
           </Link>
         </div>

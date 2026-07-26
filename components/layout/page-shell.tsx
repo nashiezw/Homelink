@@ -53,7 +53,7 @@ export function PageShell({
             </div>
           )}
           {actions && (
-            <div className="flex w-full max-w-full flex-wrap gap-2 sm:w-auto sm:max-w-none sm:shrink-0 [&_a]:inline-flex [&_a]:min-h-10 [&_a]:max-w-full [&_a]:items-center [&_a]:justify-center [&_a]:rounded-lg [&_a]:px-4 [&_a]:py-2 [&_a]:text-center [&_a]:shadow-none sm:[&_a]:min-h-11 sm:[&_a]:px-5 sm:[&_a]:shadow-lg [&_button]:w-auto [&_button]:rounded-lg sm:[&_button]:w-auto">
+            <div className="flex w-full max-w-full flex-col gap-2 sm:w-auto sm:max-w-none sm:shrink-0 sm:flex-row [&_a]:inline-flex [&_a]:min-h-11 [&_a]:w-full [&_a]:max-w-full [&_a]:items-center [&_a]:justify-center [&_a]:rounded-lg [&_a]:px-4 [&_a]:py-2.5 [&_a]:text-center [&_a]:shadow-none sm:[&_a]:w-auto sm:[&_a]:px-5 sm:[&_a]:shadow-lg [&_button]:w-full [&_button]:rounded-lg sm:[&_button]:w-auto">
               {actions}
             </div>
           )}

@@ -7,14 +7,17 @@ import {
   BookOpen,
   Bookmark,
   CheckCircle2,
+  ClipboardCheck,
   Clock,
   Download,
   FileText,
+  Lightbulb,
   List,
   MessageSquare,
   Play,
   Sparkles,
   StickyNote,
+  Target,
   X,
 } from "lucide-react";
 import { HouseLinkBrand } from "@/components/brand/houselink-logo";
@@ -267,6 +270,7 @@ export function LessonViewer({
                 summary={currentLesson.summary}
                 title={currentLesson.title}
               />
+              <PremiumLessonDepth lesson={currentLesson} accent={accent} />
             </section>
 
             {/* Lesson notes */}
@@ -356,6 +360,188 @@ export function LessonViewer({
       </div>
     </div>
   );
+}
+
+function PremiumLessonDepth({ lesson, accent }: { lesson: Lesson; accent: string }) {
+  const depth = buildLessonDepth(lesson);
+
+  return (
+    <div className="mt-8 space-y-5">
+      <div className="rounded-xl border border-emerald-100 bg-gradient-to-br from-emerald-50/90 via-white to-sky-50/70 p-5 dark:border-emerald-900/50 dark:from-emerald-950/30 dark:via-slate-950 dark:to-sky-950/20 sm:p-6">
+        <div className="flex items-start gap-3">
+          <div className="rounded-xl bg-white p-2 shadow-sm ring-1 ring-emerald-100 dark:bg-slate-900 dark:ring-emerald-900/60">
+            <Target className="size-5" style={{ color: accent }} />
+          </div>
+          <div>
+            <p className="text-xs font-extrabold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">Professional outcome</p>
+            <p className="mt-2 text-base leading-7 text-slate-700 dark:text-slate-200">{depth.outcome}</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <LessonDepthCard icon={ClipboardCheck} title="HouseLink field standard" items={depth.standard} accent={accent} />
+        <LessonDepthCard icon={Lightbulb} title="Common mistakes to avoid" items={depth.mistakes} accent={accent} />
+      </div>
+
+      <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950 sm:p-6">
+        <div className="flex items-center gap-2">
+          <MessageSquare className="size-5" style={{ color: accent }} />
+          <h4 className="text-base font-bold text-slate-950 dark:text-white">Zimbabwe field scenario</h4>
+        </div>
+        <p className="mt-3 text-sm leading-7 text-slate-600 dark:text-slate-300">{depth.scenario}</p>
+      </div>
+
+      <div className="rounded-xl border border-slate-200 bg-slate-50 p-5 dark:border-slate-800 dark:bg-slate-900/50 sm:p-6">
+        <div className="flex items-center gap-2">
+          <StickyNote className="size-5 text-amber-600" />
+          <h4 className="text-base font-bold text-slate-950 dark:text-white">Practice before you move on</h4>
+        </div>
+        <p className="mt-3 text-sm leading-7 text-slate-600 dark:text-slate-300">{depth.practice}</p>
+      </div>
+    </div>
+  );
+}
+
+function LessonDepthCard({
+  icon: Icon,
+  title,
+  items,
+  accent,
+}: {
+  icon: typeof BookOpen;
+  title: string;
+  items: string[];
+  accent: string;
+}) {
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950 sm:p-6">
+      <div className="flex items-center gap-2">
+        <Icon className="size-5" style={{ color: accent }} />
+        <h4 className="text-base font-bold text-slate-950 dark:text-white">{title}</h4>
+      </div>
+      <ul className="mt-4 space-y-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
+        {items.map((item) => (
+          <li key={item} className="flex gap-2">
+            <CheckCircle2 className="mt-1 size-4 shrink-0 text-emerald-600" />
+            <span>{item}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function buildLessonDepth(lesson: Lesson) {
+  const title = lesson.title.toLowerCase();
+
+  if (/journey|professional agent|goal|standard/.test(title)) {
+    return {
+      outcome:
+        "You should be able to explain what separates a trusted property professional from an informal middleman, set a measurable 90-day activity plan, and keep records that a broker, landlord, or client can audit.",
+      standard: [
+        "Use a weekly activity plan covering prospecting, viewings, follow-ups, listing checks, and client updates.",
+        "Keep written records of enquiries, viewing feedback, landlord instructions, price changes, and safety concerns.",
+        "Escalate legal, safety, pricing, and client dispute issues through the correct HouseLink channel instead of guessing.",
+        "Protect client confidentiality and never share documents, phone numbers, keys, or private circumstances casually.",
+      ],
+      mistakes: [
+        "Treating certification as a badge only, instead of building repeatable field habits.",
+        "Promising outcomes before verifying ownership, availability, pricing, and property condition.",
+        "Working from memory instead of a pipeline tracker, viewing notes, and documented client instructions.",
+      ],
+      scenario:
+        "A landlord in Harare asks you to list quickly because another agent already has buyers. A professional response is to confirm mandate details, collect verified property facts, explain realistic pricing, record the landlord's instructions, and only publish when the listing can withstand client questions.",
+      practice:
+        "Create a one-page 90-day agent plan with weekly prospecting targets, listing quality targets, response-time rules, and the evidence you will keep for every client interaction. Use it as your personal operating standard.",
+    };
+  }
+
+  if (/listing|photo|description|pricing|market/.test(title)) {
+    return {
+      outcome:
+        "You should be able to turn a property into a listing that is accurate, searchable, visually credible, and useful enough for serious renters or buyers to make a next-step decision.",
+      standard: [
+        "Verify price, location, availability, ownership or authority to market, utilities, access rules, and defects before publishing.",
+        "Write descriptions with property facts first: rooms, condition, amenities, access, neighbourhood, costs, and restrictions.",
+        "Use photos that show the real condition of key spaces instead of hiding weak areas with vague angles.",
+        "Update or remove stale listings quickly so clients do not lose trust in HouseLink inventory.",
+      ],
+      mistakes: [
+        "Using generic words such as nice, spacious, or secure without evidence.",
+        "Leaving out costs that change affordability, including levies, rates, deposits, arrears, or service charges.",
+        "Publishing before checking whether the property is still available.",
+      ],
+      scenario:
+        "A Borrowdale listing has strong demand, but the borehole is seasonal and the cottage is occupied. A strong agent discloses both facts early, adjusts the viewing script, and positions the property for clients who can accept those trade-offs.",
+      practice:
+        "Rewrite one weak listing into a client-ready version. Include verified facts, a clear price note, five photo requirements, and three questions you would answer before booking a viewing.",
+    };
+  }
+
+  if (/client|lead|enquiry|viewing|negotiation|communication/.test(title)) {
+    return {
+      outcome:
+        "You should be able to qualify clients respectfully, manage expectations, run safer viewings, and keep momentum without pressuring people into poor decisions.",
+      standard: [
+        "Respond with clarity: confirm budget, preferred areas, move-in timing, must-haves, and decision makers.",
+        "Prepare clients before viewings with location, costs, documents needed, safety rules, and viewing expectations.",
+        "Summarise every important call or viewing in writing so next steps are clear.",
+        "Use negotiation notes that separate client preferences, landlord terms, and non-negotiable legal or safety issues.",
+      ],
+      mistakes: [
+        "Sending too many random options instead of qualifying the need.",
+        "Letting WhatsApp conversations become untracked promises.",
+        "Ignoring red flags because the client seems ready to pay.",
+      ],
+      scenario:
+        "A renter wants a same-day viewing and says they can pay immediately. A top agent still confirms identity, budget, documents, viewing logistics, and landlord availability before creating urgency around payment.",
+      practice:
+        "Write a five-message WhatsApp sequence for a new enquiry: greeting, qualification, recommended options, viewing confirmation, and post-viewing follow-up.",
+    };
+  }
+
+  if (/legal|compliance|ethic|document|mandate|fraud|safety|risk/.test(title)) {
+    return {
+      outcome:
+        "You should be able to identify documentation risk, protect clients from unsafe transactions, and know when to pause a deal until the right evidence is available.",
+      standard: [
+        "Check mandate authority, ID details, property access rights, payment instructions, and suspicious urgency.",
+        "Never advise beyond your competence on legal matters; escalate to the right professional when needed.",
+        "Keep copies or references for material instructions, offer terms, deposits, defects, and dispute notes.",
+        "Stop and escalate when ownership, payment destination, identity, or client safety cannot be verified.",
+      ],
+      mistakes: [
+        "Treating verbal permission as enough for high-value decisions.",
+        "Allowing payment pressure before identity and authority are clear.",
+        "Deleting or scattering records across private chats.",
+      ],
+      scenario:
+        "A supposed owner asks for deposit payment into a third-party account before viewing. A competent agent pauses the transaction, verifies authority, flags the risk, and protects the client from rushed payment.",
+      practice:
+        "Build a red-flag checklist for one transaction type you handle often. Include the trigger, evidence needed, escalation route, and client wording you would use.",
+    };
+  }
+
+  return {
+    outcome:
+      "You should be able to apply this lesson in a real client conversation, document the evidence, and explain your decision using HouseLink's professional standard.",
+    standard: [
+      "Translate the lesson into a repeatable field checklist before using it with clients.",
+      "Capture evidence: notes, photos, confirmations, client preferences, risks, and next steps.",
+      "Communicate in plain language so landlords, buyers, tenants, and colleagues can act quickly.",
+      "Review your work after each transaction and improve the next client interaction.",
+    ],
+    mistakes: [
+      "Memorising the idea but failing to use it in the field.",
+      "Skipping records because the conversation feels simple.",
+      "Letting speed reduce accuracy, safety, or client trust.",
+    ],
+    scenario:
+      "A client asks for immediate advice while key facts are still missing. A professional agent slows the decision down, confirms what is known, identifies what must be checked, and gives the client a clear next step.",
+    practice:
+      "Write a short field note for this lesson: what you would check, what you would say to the client, what proof you would keep, and what would make you escalate.",
+  };
 }
 
 function SidebarContent({

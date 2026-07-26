@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { CheckCircle2, Loader2, XCircle } from "lucide-react";
+import { CheckCircle2, ClipboardList, Loader2, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useApp } from "@/components/providers/app-provider";
 import { apiFetch } from "@/lib/api/client";
@@ -66,13 +66,23 @@ export function QuizPanel({
 
   return (
     <div className="space-y-6">
+      <div className="rounded-xl border border-emerald-100 bg-emerald-50/70 p-4 dark:border-emerald-900/50 dark:bg-emerald-950/20 sm:p-5">
+        <p className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">
+          <ClipboardList className="size-4" /> Knowledge check
+        </p>
+        <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
+          Answer as if you are in the field with a real client. The goal is not memorising phrases, it is making the safest professional decision from the facts given.
+        </p>
+        <p className="mt-2 text-xs font-bold text-slate-500 dark:text-slate-400">Pass mark: {passingPercentage}%</p>
+      </div>
       {questions.map((question, index) => (
-        <fieldset key={question.id} className="rounded-xl border border-slate-200 p-5 dark:border-slate-700">
-          <legend className="px-1 font-semibold">Question {index + 1}: {question.prompt}</legend>
+        <fieldset key={question.id} className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-950">
+          <legend className="px-1 text-sm font-bold leading-6 text-slate-950 dark:text-white">Question {index + 1}: {question.prompt}</legend>
           <div className="mt-3 grid gap-2">
             {question.answers.map((answer) => (
-              <label key={answer.id} className="flex items-center gap-3 rounded-lg border border-slate-200 px-3 py-2 dark:border-slate-700">
+              <label key={answer.id} className="flex cursor-pointer items-start gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-3 text-sm leading-6 transition hover:border-emerald-200 hover:bg-emerald-50 dark:border-slate-700 dark:bg-slate-900/50 dark:hover:bg-emerald-950/20">
                 <input
+                  className="mt-1"
                   type="radio"
                   name={question.id}
                   checked={answers[question.id] === answer.value}
@@ -85,10 +95,10 @@ export function QuizPanel({
         </fieldset>
       ))}
       {!questions.length && <p className="text-slate-500">Loading quiz questions...</p>}
-      <div className="flex gap-2">
-        <Button variant="secondary" onClick={onBack}>Cancel</Button>
-        <Button disabled={busy || questions.some((q) => !answers[q.id])} onClick={() => void submit()}>
-          {busy ? <Loader2 className="size-4 animate-spin" /> : "Submit Quiz"}
+      <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+        <Button className="w-full sm:w-auto" variant="secondary" onClick={onBack}>Cancel</Button>
+        <Button className="w-full sm:w-auto" disabled={busy || questions.some((q) => !answers[q.id])} onClick={() => void submit()}>
+          {busy ? <Loader2 className="size-4 animate-spin" /> : "Submit quiz"}
         </Button>
       </div>
     </div>

@@ -219,7 +219,9 @@ export function LearnerDashboardClient() {
       description={data.settings?.dashboardWelcome ?? "Track progress, open course materials, and continue your Academy training."}
       actions={
         <Link href="/academy" className="w-full sm:w-auto">
-          <Button variant="secondary" className="w-full"><BookOpen className="size-4 mr-2" /> Browse Courses</Button>
+          <Button variant="secondary" className="w-full justify-center px-5 py-3 text-base shadow-soft sm:text-sm">
+            <BookOpen className="size-4 mr-2" /> Browse courses
+          </Button>
         </Link>
       }
     >
@@ -246,7 +248,7 @@ export function LearnerDashboardClient() {
       )}
 
       {/* Stats grid */}
-      <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+      <div className="-mt-4 grid gap-3 sm:grid-cols-2 lg:-mt-6 xl:grid-cols-5">
         <StatCard icon={TrendingUp} label="Overall progress" value={`${data.metrics.progress ?? 0}%`} accent={primary} />
         <StatCard icon={Flame} label="Learning streak" value={`${data.streak ?? 0} days`} accent="#f59e0b" highlight />
         <StatCard icon={BookOpen} label="Active courses" value={String(activeCourseCount)} accent={primary} />
@@ -690,14 +692,14 @@ export function LearnerDashboardClient() {
 
 function StatCard({ icon: Icon, label, value, accent, highlight }: { icon: typeof BookOpen; label: string; value: string; accent: string; highlight?: boolean }) {
   return (
-    <div className={cn("academy-card rounded-xl p-5", highlight ? "border-amber-200 dark:border-amber-900/50" : "")}>
-      <div className="flex items-center gap-3">
-        <div className="rounded-xl p-2.5" style={{ backgroundColor: `${accent}18` }}>
+    <div className={cn("rounded-xl border bg-white/95 p-4 shadow-sm backdrop-blur dark:bg-slate-950/95 sm:p-5", highlight ? "border-amber-200 dark:border-amber-900/50" : "border-slate-200 dark:border-slate-800")}>
+      <div className="flex min-h-16 items-center gap-3">
+        <div className="shrink-0 rounded-xl p-2.5" style={{ backgroundColor: `${accent}18` }}>
           <Icon className="size-5" style={{ color: accent }} />
         </div>
-        <div>
-          <p className="text-2xl font-bold tracking-tight">{value}</p>
-          <p className="text-xs font-medium text-slate-500">{label}</p>
+        <div className="min-w-0">
+          <p className="text-2xl font-bold leading-none tracking-tight text-slate-950 dark:text-white">{value}</p>
+          <p className="mt-1 text-sm font-medium leading-5 text-slate-500">{label}</p>
         </div>
       </div>
     </div>
