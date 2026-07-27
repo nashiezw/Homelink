@@ -495,7 +495,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
             </div>
           </header>
 
-          <main className="min-w-0 flex-1 overflow-hidden px-4 py-5 sm:px-5 lg:p-8 xl:p-10">{children}</main>
+          <main className="min-w-0 flex-1 overflow-hidden px-4 pb-[calc(5rem+env(safe-area-inset-bottom))] pt-5 sm:px-5 lg:p-8 xl:p-10">{children}</main>
         </div>
       </div>
 

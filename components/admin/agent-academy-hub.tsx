@@ -843,57 +843,65 @@ function ActionToolbar({ primary, actions }: { primary?: ToolbarAction; actions:
   const [open, setOpen] = useState(false);
   const visible = actions.filter((item) => !item.more);
   const overflow = actions.filter((item) => item.more);
+  const mobileActions = primary ? [primary, ...actions] : actions;
   const run = (item: ToolbarAction) => {
     setOpen(false);
     item.onClick();
   };
   return (
-    <div className="relative flex flex-wrap justify-end gap-2" onClick={(event) => event.stopPropagation()}>
-      {primary && (
-        <button
-          type="button"
-          onClick={() => run(primary)}
-          className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-3 text-xs font-semibold text-emerald-200 transition hover:border-emerald-400/50 hover:bg-emerald-500/15"
-        >
-          <primary.icon className="size-4" />
-          {primary.label}
-        </button>
-      )}
-      {visible.map((item) => (
-        <IconAction key={item.label} label={item.label} icon={item.icon} tone={item.tone} onClick={() => run(item)} />
-      ))}
-      {overflow.length > 0 && (
-        <>
+    <div className="relative" onClick={(event) => event.stopPropagation()}>
+      <div className="flex flex-wrap justify-end gap-2 sm:hidden">
+        {mobileActions.map((item) => (
+          <IconAction key={item.label} label={item.label} icon={item.icon} tone={item.tone} onClick={() => run(item)} />
+        ))}
+      </div>
+      <div className="hidden flex-wrap justify-end gap-2 sm:flex">
+        {primary && (
           <button
             type="button"
-            onClick={() => setOpen((current) => !current)}
-            className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg border border-white/10 text-slate-300 transition hover:border-emerald-500/30 hover:bg-emerald-500/10 hover:text-white"
-            title="More actions"
-            aria-label="More actions"
-            aria-expanded={open}
+            onClick={() => run(primary)}
+            className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-3 text-xs font-semibold text-emerald-200 transition hover:border-emerald-400/50 hover:bg-emerald-500/15"
           >
-            <MoreHorizontal className="size-4" />
+            <primary.icon className="size-4" />
+            {primary.label}
           </button>
-          {open && (
-            <div className="absolute right-0 top-10 z-20 w-44 overflow-hidden rounded-xl border border-white/10 bg-slate-950 py-1 shadow-2xl">
-              {overflow.map((item) => (
-                <button
-                  key={item.label}
-                  type="button"
-                  onClick={() => run(item)}
-                  className={cn(
-                    "flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition hover:bg-white/[0.06]",
-                    item.tone === "danger" ? "text-red-300" : "text-slate-200",
-                  )}
-                >
-                  <item.icon className="size-4" />
-                  {item.label}
-                </button>
-              ))}
-            </div>
-          )}
-        </>
-      )}
+        )}
+        {visible.map((item) => (
+          <IconAction key={item.label} label={item.label} icon={item.icon} tone={item.tone} onClick={() => run(item)} />
+        ))}
+        {overflow.length > 0 && (
+          <>
+            <button
+              type="button"
+              onClick={() => setOpen((current) => !current)}
+              className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg border border-white/10 text-slate-300 transition hover:border-emerald-500/30 hover:bg-emerald-500/10 hover:text-white"
+              title="More actions"
+              aria-label="More actions"
+              aria-expanded={open}
+            >
+              <MoreHorizontal className="size-4" />
+            </button>
+            {open && (
+              <div className="absolute right-0 top-10 z-20 w-44 overflow-hidden rounded-xl border border-white/10 bg-slate-950 py-1 shadow-2xl">
+                {overflow.map((item) => (
+                  <button
+                    key={item.label}
+                    type="button"
+                    onClick={() => run(item)}
+                    className={cn(
+                      "flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition hover:bg-white/[0.06]",
+                      item.tone === "danger" ? "text-red-300" : "text-slate-200",
+                    )}
+                  >
+                    <item.icon className="size-4" />
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+      </div>
     </div>
   );
 }
