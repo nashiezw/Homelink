@@ -469,8 +469,15 @@ export function AgentAcademyHub() {
                 key: "actions",
                 header: "Actions",
                 render: (course) => (
-                  <div className="flex flex-wrap gap-2">
-                    <IconAction label="Build" icon={Layers} onClick={() => setBuildingCourseId(course.id)} />
+                  <div className="flex flex-wrap justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={(event) => { event.stopPropagation(); setBuildingCourseId(course.id); }}
+                      className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-3 text-xs font-semibold text-emerald-200 transition hover:border-emerald-400/50 hover:bg-emerald-500/15"
+                    >
+                      <Layers className="size-4" />
+                      Build
+                    </button>
                     <IconAction label="View" icon={Eye} onClick={() => setViewCourse(course)} />
                     <IconAction label="Edit" icon={Pencil} onClick={() => { setSelectedCourse(course); setDrawer("course"); }} />
                     <IconAction label="Duplicate" icon={Copy} onClick={() => void action({ action: "duplicate_course", courseId: course.id }, "Course duplicated.")} />
@@ -488,7 +495,7 @@ export function AgentAcademyHub() {
                       if (window.confirm(`Delete ${course.title}? This permanently removes the course and its modules, lessons, enrolments, assessments, and public learner applications.`)) {
                         void action({ action: "delete_course", courseId: course.id }, "Course permanently deleted.");
                       }
-                    }} />
+                    }} tone="danger" />
                   </div>
                 ),
               },
@@ -779,11 +786,21 @@ function CourseCell({ course }: { course: AcademyCourse }) {
   );
 }
 
-function IconAction({ label, icon: Icon, onClick }: { label: string; icon: typeof Copy; onClick: () => void }) {
+function IconAction({ label, icon: Icon, onClick, tone = "default" }: { label: string; icon: typeof Copy; onClick: () => void; tone?: "default" | "danger" }) {
   return (
-    <button type="button" onClick={(event) => { event.stopPropagation(); onClick(); }} title={label} className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-white/10 px-3 text-slate-300 hover:border-emerald-500/30 hover:bg-emerald-500/10 hover:text-white sm:size-9 sm:px-0">
+    <button
+      type="button"
+      onClick={(event) => { event.stopPropagation(); onClick(); }}
+      title={label}
+      aria-label={label}
+      className={cn(
+        "inline-flex size-9 shrink-0 items-center justify-center rounded-lg border transition",
+        tone === "danger"
+          ? "border-red-500/20 text-red-300 hover:border-red-400/40 hover:bg-red-500/10 hover:text-red-200"
+          : "border-white/10 text-slate-300 hover:border-emerald-500/30 hover:bg-emerald-500/10 hover:text-white",
+      )}
+    >
       <Icon className="size-4" />
-      <span className="text-xs font-semibold sm:sr-only">{label}</span>
     </button>
   );
 }
@@ -824,11 +841,10 @@ function LibraryView({
             key: "actions",
             header: "Actions",
             render: (document) => (
-              <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap">
+              <div className="flex flex-wrap justify-end gap-2">
                 <IconAction label="Preview" icon={Search} onClick={() => onPreview(document)} />
-                <a href={`/api/v1/academy/documents/${document.id}/download`} className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-white/10 px-3 text-slate-300 hover:border-emerald-500/30 hover:bg-emerald-500/10 hover:text-white sm:size-9 sm:px-0" title="Download" aria-label={`Download ${document.title}`}>
+                <a href={`/api/v1/academy/documents/${document.id}/download`} className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg border border-white/10 text-slate-300 transition hover:border-emerald-500/30 hover:bg-emerald-500/10 hover:text-white" title="Download" aria-label={`Download ${document.title}`}>
                   <Download className="size-4" />
-                  <span className="text-xs font-semibold sm:sr-only">Download</span>
                 </a>
                 <DocumentTextAction label="Edit" icon={Pencil} onClick={() => onEdit(document)} />
                 <DocumentTextAction label="Replace" icon={Upload} onClick={() => onReplace(document)} />
@@ -869,15 +885,16 @@ function DocumentTextAction({ label, icon: Icon, onClick, tone = "default" }: { 
         event.stopPropagation();
         onClick();
       }}
+      title={label}
+      aria-label={label}
       className={cn(
-        "inline-flex min-h-10 w-full items-center justify-center gap-1.5 rounded-lg border px-2.5 text-xs font-semibold transition sm:min-h-9 sm:w-auto sm:px-3",
+        "inline-flex size-9 shrink-0 items-center justify-center rounded-lg border transition",
         tone === "danger"
           ? "border-red-500/20 text-red-300 hover:border-red-400/40 hover:bg-red-500/10 hover:text-red-200"
           : "border-white/10 text-slate-300 hover:border-emerald-500/30 hover:bg-emerald-500/10 hover:text-white",
       )}
     >
-      <Icon className="size-3.5" />
-      {label}
+      <Icon className="size-4" />
     </button>
   );
 }
@@ -1111,13 +1128,14 @@ function BuilderList({
             key: "actions",
             header: "Actions",
             render: (row) => (
-              <div className="grid w-full grid-cols-1 gap-2 sm:inline-flex sm:w-auto">
+              <div className="flex flex-wrap justify-end gap-2">
                 {onEdit && <IconAction label="Edit" icon={Pencil} onClick={() => void onEdit(row)} />}
                 {onArchive && <IconAction label={row.active === false ? "Restore" : "Archive"} icon={row.active === false ? RotateCcw : Archive} onClick={() => void onArchive(row)} />}
                 {onDelete && (
                   <IconAction
                     label="Delete"
                     icon={Trash2}
+                    tone="danger"
                     onClick={() => {
                       if (window.confirm(`Delete ${row.title}?`)) void onDelete(row);
                     }}
