@@ -23,6 +23,7 @@ import {
   Layers,
   Loader2,
   Megaphone,
+  MoreHorizontal,
   Pencil,
   Plus,
   RotateCcw,
@@ -40,6 +41,7 @@ import { apiFetch } from "@/lib/api/client";
 import { useSearchParams } from "next/navigation";
 import {
   AdminDataTable,
+  AdminConfirmDialog,
   AdminDrawer,
   AdminEmptyState,
   AdminFilterBar,
@@ -307,6 +309,13 @@ export function AgentAcademyHub() {
   const [selectedAnnouncement, setSelectedAnnouncement] = useState<AcademyData["announcements"][number] | null>(null);
   const [selectedBadge, setSelectedBadge] = useState<AcademyData["badges"][number] | null>(null);
   const [analytics, setAnalytics] = useState<Record<string, unknown> | null>(null);
+  const [confirm, setConfirm] = useState<{
+    title: string;
+    description: string;
+    confirmLabel?: string;
+    danger?: boolean;
+    onConfirm: () => void;
+  } | null>(null);
   const load = useCallback(async () => {
     const result = await apiFetch<AcademyData>("/api/v1/admin/academy?compact=1");
     if (result.data) setData(result.data);
@@ -347,6 +356,10 @@ export function AgentAcademyHub() {
     setDrawer(null);
     await load();
     return true;
+  }
+
+  function confirmAction(config: NonNullable<typeof confirm>) {
+    setConfirm(config);
   }
 
   const courses = useMemo(() => {
@@ -469,34 +482,33 @@ export function AgentAcademyHub() {
                 key: "actions",
                 header: "Actions",
                 render: (course) => (
-                  <div className="flex flex-wrap justify-end gap-2">
-                    <button
-                      type="button"
-                      onClick={(event) => { event.stopPropagation(); setBuildingCourseId(course.id); }}
-                      className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-3 text-xs font-semibold text-emerald-200 transition hover:border-emerald-400/50 hover:bg-emerald-500/15"
-                    >
-                      <Layers className="size-4" />
-                      Build
-                    </button>
-                    <IconAction label="View" icon={Eye} onClick={() => setViewCourse(course)} />
-                    <IconAction label="Edit" icon={Pencil} onClick={() => { setSelectedCourse(course); setDrawer("course"); }} />
-                    <IconAction label="Duplicate" icon={Copy} onClick={() => void action({ action: "duplicate_course", courseId: course.id }, "Course duplicated.")} />
-                    {course.status === "PUBLISHED" ? (
-                      <IconAction label="Unpublish" icon={FileText} onClick={() => void action({ action: "unpublish_course", courseId: course.id }, "Course unpublished.")} />
-                    ) : (
-                      <IconAction label="Publish" icon={CheckCircle2} onClick={() => void action({ action: "publish_course", courseId: course.id }, "Course published.")} />
-                    )}
-                    {course.status === "ARCHIVED" ? (
-                      <IconAction label="Restore" icon={RotateCcw} onClick={() => void action({ action: "restore_course", courseId: course.id }, "Course restored.")} />
-                    ) : (
-                      <IconAction label="Archive" icon={Archive} onClick={() => void action({ action: "archive_course", courseId: course.id }, "Course archived.")} />
-                    )}
-                    <IconAction label="Delete" icon={Trash2} onClick={() => {
-                      if (window.confirm(`Delete ${course.title}? This permanently removes the course and its modules, lessons, enrolments, assessments, and public learner applications.`)) {
-                        void action({ action: "delete_course", courseId: course.id }, "Course permanently deleted.");
-                      }
-                    }} tone="danger" />
-                  </div>
+                  <ActionToolbar
+                    primary={{ label: "Build", icon: Layers, onClick: () => setBuildingCourseId(course.id) }}
+                    actions={[
+                      { label: "View", icon: Eye, onClick: () => setViewCourse(course) },
+                      { label: "Edit", icon: Pencil, onClick: () => { setSelectedCourse(course); setDrawer("course"); } },
+                      { label: "Duplicate", icon: Copy, onClick: () => void action({ action: "duplicate_course", courseId: course.id }, "Course duplicated."), more: true },
+                      course.status === "PUBLISHED"
+                        ? { label: "Unpublish", icon: FileText, onClick: () => void action({ action: "unpublish_course", courseId: course.id }, "Course unpublished."), more: true }
+                        : { label: "Publish", icon: CheckCircle2, onClick: () => void action({ action: "publish_course", courseId: course.id }, "Course published."), more: true },
+                      course.status === "ARCHIVED"
+                        ? { label: "Restore", icon: RotateCcw, onClick: () => void action({ action: "restore_course", courseId: course.id }, "Course restored."), more: true }
+                        : { label: "Archive", icon: Archive, onClick: () => void action({ action: "archive_course", courseId: course.id }, "Course archived."), more: true },
+                      {
+                        label: "Delete",
+                        icon: Trash2,
+                        tone: "danger",
+                        more: true,
+                        onClick: () => confirmAction({
+                          title: "Delete course?",
+                          description: `This permanently removes ${course.title}, including modules, lessons, enrolments, assessments, and public learner applications.`,
+                          confirmLabel: "Delete course",
+                          danger: true,
+                          onConfirm: () => void action({ action: "delete_course", courseId: course.id }, "Course permanently deleted."),
+                        }),
+                      },
+                    ]}
+                  />
                 ),
               },
             ]}
@@ -528,11 +540,13 @@ export function AgentAcademyHub() {
             setDrawer("document");
             showToast(`Upload a replacement for ${document.title}. The old version will remain in history.`, "info");
           }}
-          onDelete={(document) => {
-            if (window.confirm(`Delete ${document.title}? This removes it from the Academy library.`)) {
-              void action({ action: "delete_document", documentId: document.id }, "Document deleted from the library.");
-            }
-          }}
+          onDelete={(document) => confirmAction({
+            title: "Delete document?",
+            description: `This removes ${document.title} from the Academy library.`,
+            confirmLabel: "Delete document",
+            danger: true,
+            onConfirm: () => void action({ action: "delete_document", documentId: document.id }, "Document deleted from the library."),
+          })}
         />
       )}
 
@@ -638,6 +652,18 @@ export function AgentAcademyHub() {
         onSave={(badge) => selectedBadge
           ? action({ action: "update_badge", badgeId: selectedBadge.id, badge }, "Badge updated.")
           : action({ action: "create_badge", badge }, "Badge created.")}
+      />
+      <AdminConfirmDialog
+        open={Boolean(confirm)}
+        title={confirm?.title ?? ""}
+        description={confirm?.description}
+        confirmLabel={confirm?.confirmLabel}
+        danger={confirm?.danger}
+        onCancel={() => setConfirm(null)}
+        onConfirm={() => {
+          confirm?.onConfirm();
+          setConfirm(null);
+        }}
       />
       <LessonDrawer open={drawer === "lesson"} busy={busy} lesson={selectedLesson} courses={data.courses} onClose={() => { setDrawer(null); setSelectedLesson(null); }} onSave={(lesson) => selectedLesson
         ? action({ action: "update_lesson", lessonId: selectedLesson.id, lesson }, "Lesson updated.")
@@ -805,6 +831,73 @@ function IconAction({ label, icon: Icon, onClick, tone = "default" }: { label: s
   );
 }
 
+type ToolbarAction = {
+  label: string;
+  icon: LucideIcon;
+  onClick: () => void;
+  tone?: "default" | "danger";
+  more?: boolean;
+};
+
+function ActionToolbar({ primary, actions }: { primary?: ToolbarAction; actions: ToolbarAction[] }) {
+  const [open, setOpen] = useState(false);
+  const visible = actions.filter((item) => !item.more);
+  const overflow = actions.filter((item) => item.more);
+  const run = (item: ToolbarAction) => {
+    setOpen(false);
+    item.onClick();
+  };
+  return (
+    <div className="relative flex flex-wrap justify-end gap-2" onClick={(event) => event.stopPropagation()}>
+      {primary && (
+        <button
+          type="button"
+          onClick={() => run(primary)}
+          className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-3 text-xs font-semibold text-emerald-200 transition hover:border-emerald-400/50 hover:bg-emerald-500/15"
+        >
+          <primary.icon className="size-4" />
+          {primary.label}
+        </button>
+      )}
+      {visible.map((item) => (
+        <IconAction key={item.label} label={item.label} icon={item.icon} tone={item.tone} onClick={() => run(item)} />
+      ))}
+      {overflow.length > 0 && (
+        <>
+          <button
+            type="button"
+            onClick={() => setOpen((current) => !current)}
+            className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg border border-white/10 text-slate-300 transition hover:border-emerald-500/30 hover:bg-emerald-500/10 hover:text-white"
+            title="More actions"
+            aria-label="More actions"
+            aria-expanded={open}
+          >
+            <MoreHorizontal className="size-4" />
+          </button>
+          {open && (
+            <div className="absolute right-0 top-10 z-20 w-44 overflow-hidden rounded-xl border border-white/10 bg-slate-950 py-1 shadow-2xl">
+              {overflow.map((item) => (
+                <button
+                  key={item.label}
+                  type="button"
+                  onClick={() => run(item)}
+                  className={cn(
+                    "flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition hover:bg-white/[0.06]",
+                    item.tone === "danger" ? "text-red-300" : "text-slate-200",
+                  )}
+                >
+                  <item.icon className="size-4" />
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
 function LibraryView({
   documents,
   onCreate,
@@ -841,15 +934,15 @@ function LibraryView({
             key: "actions",
             header: "Actions",
             render: (document) => (
-              <div className="flex flex-wrap justify-end gap-2">
-                <IconAction label="Preview" icon={Search} onClick={() => onPreview(document)} />
-                <a href={`/api/v1/academy/documents/${document.id}/download`} className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg border border-white/10 text-slate-300 transition hover:border-emerald-500/30 hover:bg-emerald-500/10 hover:text-white" title="Download" aria-label={`Download ${document.title}`}>
-                  <Download className="size-4" />
-                </a>
-                <DocumentTextAction label="Edit" icon={Pencil} onClick={() => onEdit(document)} />
-                <DocumentTextAction label="Replace" icon={Upload} onClick={() => onReplace(document)} />
-                <DocumentTextAction label="Delete" icon={Trash2} tone="danger" onClick={() => onDelete(document)} />
-              </div>
+              <ActionToolbar
+                actions={[
+                  { label: "Preview", icon: Search, onClick: () => onPreview(document) },
+                  { label: "Download", icon: Download, onClick: () => window.open(`/api/v1/academy/documents/${document.id}/download`, "_blank") },
+                  { label: "Edit", icon: Pencil, onClick: () => onEdit(document) },
+                  { label: "Replace", icon: Upload, onClick: () => onReplace(document), more: true },
+                  { label: "Delete", icon: Trash2, tone: "danger", onClick: () => onDelete(document), more: true },
+                ]}
+              />
             ),
           },
         ]}
@@ -874,28 +967,6 @@ function DocumentCell({ document }: { document: AcademyDocument }) {
         </div>
       </div>
     </div>
-  );
-}
-
-function DocumentTextAction({ label, icon: Icon, onClick, tone = "default" }: { label: string; icon: LucideIcon; onClick: () => void; tone?: "default" | "danger" }) {
-  return (
-    <button
-      type="button"
-      onClick={(event) => {
-        event.stopPropagation();
-        onClick();
-      }}
-      title={label}
-      aria-label={label}
-      className={cn(
-        "inline-flex size-9 shrink-0 items-center justify-center rounded-lg border transition",
-        tone === "danger"
-          ? "border-red-500/20 text-red-300 hover:border-red-400/40 hover:bg-red-500/10 hover:text-red-200"
-          : "border-white/10 text-slate-300 hover:border-emerald-500/30 hover:bg-emerald-500/10 hover:text-white",
-      )}
-    >
-      <Icon className="size-4" />
-    </button>
   );
 }
 
@@ -1109,6 +1180,13 @@ function BuilderList({
   onArchive?: (row: { id: string; title: string; active?: boolean; [key: string]: unknown }) => unknown;
   onDelete?: (row: { id: string; title: string; active?: boolean; [key: string]: unknown }) => unknown;
 }) {
+  const [search, setSearch] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string; active?: boolean; [key: string]: unknown } | null>(null);
+  const filteredRows = rows.filter((row) => {
+    const needle = search.trim().toLowerCase();
+    if (!needle) return true;
+    return `${row.title} ${String(row.detail ?? "")}`.toLowerCase().includes(needle);
+  });
   return (
     <section className="rounded-xl border border-white/10 bg-slate-900/60">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 p-4">
@@ -1118,8 +1196,11 @@ function BuilderList({
         </div>
         {onCreate && <Button className="w-full sm:w-auto" onClick={onCreate}><Plus className="size-4" /> {actionLabel}</Button>}
       </div>
+      <div className="border-b border-white/10 p-3">
+        <AdminSearchInput value={search} onChange={setSearch} placeholder={`Search ${title.toLowerCase()}...`} />
+      </div>
       <AdminDataTable
-        rows={rows}
+        rows={filteredRows}
         columns={[
           { key: "title", header: "Title", render: (row) => <span className="font-semibold text-white">{row.title}</span> },
           { key: "detail", header: "Detail", render: (row) => <span className="text-sm text-slate-400">{String(row.detail ?? "")}</span> },
@@ -1128,25 +1209,31 @@ function BuilderList({
             key: "actions",
             header: "Actions",
             render: (row) => (
-              <div className="flex flex-wrap justify-end gap-2">
-                {onEdit && <IconAction label="Edit" icon={Pencil} onClick={() => void onEdit(row)} />}
-                {onArchive && <IconAction label={row.active === false ? "Restore" : "Archive"} icon={row.active === false ? RotateCcw : Archive} onClick={() => void onArchive(row)} />}
-                {onDelete && (
-                  <IconAction
-                    label="Delete"
-                    icon={Trash2}
-                    tone="danger"
-                    onClick={() => {
-                      if (window.confirm(`Delete ${row.title}?`)) void onDelete(row);
-                    }}
-                  />
-                )}
-                {!onEdit && !onArchive && !onDelete && <span className="text-xs text-slate-500">{actionLabel}</span>}
-              </div>
+              onEdit || onArchive || onDelete ? (
+                <ActionToolbar
+                  actions={[
+                    ...(onEdit ? [{ label: "Edit", icon: Pencil, onClick: () => void onEdit(row) }] : []),
+                    ...(onArchive ? [{ label: row.active === false ? "Restore" : "Archive", icon: row.active === false ? RotateCcw : Archive, onClick: () => void onArchive(row), more: true }] : []),
+                    ...(onDelete ? [{ label: "Delete", icon: Trash2, tone: "danger" as const, onClick: () => setDeleteTarget(row), more: true }] : []),
+                  ]}
+                />
+              ) : <span className="text-xs text-slate-500">{actionLabel}</span>
             ),
           },
         ]}
-        emptyMessage="No records yet."
+        emptyMessage={search ? "No matching records found." : "No records yet."}
+      />
+      <AdminConfirmDialog
+        open={Boolean(deleteTarget)}
+        title="Delete record?"
+        description={deleteTarget ? `This removes ${deleteTarget.title}. This action cannot be undone.` : ""}
+        confirmLabel="Delete"
+        danger
+        onCancel={() => setDeleteTarget(null)}
+        onConfirm={() => {
+          if (deleteTarget) void onDelete?.(deleteTarget);
+          setDeleteTarget(null);
+        }}
       />
     </section>
   );
@@ -1372,6 +1459,15 @@ function PublicLearnersPanel({
   resourceApplications: NonNullable<AcademyData["resourceAccessApplications"]>;
   action: (body: Record<string, unknown>, success: string) => Promise<unknown>;
 }) {
+  const [deleteTarget, setDeleteTarget] = useState<{
+    id: string;
+    fullName: string;
+    productLabel: string;
+    status: string;
+    reviewAction: string;
+    deleteAction: string;
+    deleteIdKey: string;
+  } | null>(null);
   const pendingCount =
     applications.filter((item) => item.status === "PAYMENT_UPLOADED").length +
     resourceApplications.filter((item) => item.status === "PAYMENT_UPLOADED").length;
@@ -1456,7 +1552,7 @@ function PublicLearnersPanel({
             render: (row) => {
               const canReview = row.status !== "APPROVED" && row.status !== "REJECTED";
               return (
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap justify-end gap-2">
                   {canReview ? (
                     <>
                       <Button onClick={() => void action({ action: row.reviewAction, [row.reviewIdKey]: row.id, status: "APPROVED" }, "Access approved.")}>
@@ -1472,22 +1568,29 @@ function PublicLearnersPanel({
                       <span className="mt-0.5 text-[10px] font-medium text-slate-500">Updated {formatShortDate(row.updatedAt)}</span>
                     </span>
                   )}
-                  <Button
-                    variant="secondary"
-                    onClick={() => {
-                      if (!window.confirm(`Delete ${row.fullName}'s ${row.productLabel} record? This removes the registration/access record${row.status === "APPROVED" && row.reviewAction === "review_public_learner" ? " and revokes course access" : ""}.`)) return;
-                      void action({ action: row.deleteAction, [row.deleteIdKey]: row.id }, "Record deleted.");
-                    }}
-                  >
-                    <Trash2 className="size-4" />
-                    Delete
-                  </Button>
+                  <ActionToolbar
+                    actions={[
+                      { label: "Delete", icon: Trash2, tone: "danger", more: !canReview, onClick: () => setDeleteTarget(row) },
+                    ]}
+                  />
                 </div>
               );
             },
           },
         ]}
         emptyMessage="No learner registrations or resource access requests yet."
+      />
+      <AdminConfirmDialog
+        open={Boolean(deleteTarget)}
+        title="Delete learner record?"
+        description={deleteTarget ? `This removes ${deleteTarget.fullName}'s ${deleteTarget.productLabel} record${deleteTarget.status === "APPROVED" && deleteTarget.reviewAction === "review_public_learner" ? " and revokes course access" : ""}.` : ""}
+        confirmLabel="Delete record"
+        danger
+        onCancel={() => setDeleteTarget(null)}
+        onConfirm={() => {
+          if (deleteTarget) void action({ action: deleteTarget.deleteAction, [deleteTarget.deleteIdKey]: deleteTarget.id }, "Record deleted.");
+          setDeleteTarget(null);
+        }}
       />
     </section>
   );
@@ -2104,6 +2207,12 @@ export function LessonContentManager({ lessons, documents, action }: { lessons: 
   const [contentTab, setContentTab] = useState<"videos" | "documents" | "resources" | "downloads">("videos");
   const [drawer, setDrawer] = useState<"video" | "resource" | "download" | "document" | null>(null);
   const [selectedItem, setSelectedItem] = useState<any>(null);
+  const [confirm, setConfirm] = useState<{
+    title: string;
+    description: string;
+    confirmLabel?: string;
+    onConfirm: () => void;
+  } | null>(null);
   const busy = false;
 
   const selectedLesson = lessons.find((l) => l.id === selectedLessonId);
@@ -2148,14 +2257,23 @@ export function LessonContentManager({ lessons, documents, action }: { lessons: 
                 key: "actions",
                 header: "Actions",
                 render: (video: any) => (
-                  <div className="flex gap-2">
-                    <IconAction label="Edit" icon={Pencil} onClick={() => { setSelectedItem(video); setDrawer("video"); }} />
-                    <IconAction label="Delete" icon={Trash2} onClick={() => {
-                      if (window.confirm(`Delete video "${video.title}"?`)) {
-                        void action({ action: "delete_lesson_video", videoId: video.id }, "Video deleted.");
-                      }
-                    }} />
-                  </div>
+                  <ActionToolbar
+                    actions={[
+                      { label: "Edit", icon: Pencil, onClick: () => { setSelectedItem(video); setDrawer("video"); } },
+                      {
+                        label: "Delete",
+                        icon: Trash2,
+                        tone: "danger",
+                        more: true,
+                        onClick: () => setConfirm({
+                          title: "Delete video?",
+                          description: `This removes "${video.title}" from the lesson.`,
+                          confirmLabel: "Delete video",
+                          onConfirm: () => void action({ action: "delete_lesson_video", videoId: video.id }, "Video deleted."),
+                        }),
+                      },
+                    ]}
+                  />
                 ),
               },
             ]}
@@ -2184,11 +2302,21 @@ export function LessonContentManager({ lessons, documents, action }: { lessons: 
                 key: "actions",
                 header: "Actions",
                 render: (link: any) => (
-                  <IconAction label="Remove" icon={Trash2} onClick={() => {
-                    if (window.confirm("Remove this document link?")) {
-                      void action({ action: "remove_lesson_document", linkId: link.id }, "Document removed.");
-                    }
-                  }} />
+                  <ActionToolbar
+                    actions={[
+                      {
+                        label: "Remove",
+                        icon: Trash2,
+                        tone: "danger",
+                        onClick: () => setConfirm({
+                          title: "Remove document link?",
+                          description: "This removes the document from this lesson but keeps it in the Academy library.",
+                          confirmLabel: "Remove link",
+                          onConfirm: () => void action({ action: "remove_lesson_document", linkId: link.id }, "Document removed."),
+                        }),
+                      },
+                    ]}
+                  />
                 ),
               },
             ]}
@@ -2212,14 +2340,23 @@ export function LessonContentManager({ lessons, documents, action }: { lessons: 
                 key: "actions",
                 header: "Actions",
                 render: (resource: any) => (
-                  <div className="flex gap-2">
-                    <IconAction label="Edit" icon={Pencil} onClick={() => { setSelectedItem(resource); setDrawer("resource"); }} />
-                    <IconAction label="Delete" icon={Trash2} onClick={() => {
-                      if (window.confirm(`Delete resource "${resource.title}"?`)) {
-                        void action({ action: "delete_lesson_resource", resourceId: resource.id }, "Resource deleted.");
-                      }
-                    }} />
-                  </div>
+                  <ActionToolbar
+                    actions={[
+                      { label: "Edit", icon: Pencil, onClick: () => { setSelectedItem(resource); setDrawer("resource"); } },
+                      {
+                        label: "Delete",
+                        icon: Trash2,
+                        tone: "danger",
+                        more: true,
+                        onClick: () => setConfirm({
+                          title: "Delete resource?",
+                          description: `This removes "${resource.title}" from the lesson.`,
+                          confirmLabel: "Delete resource",
+                          onConfirm: () => void action({ action: "delete_lesson_resource", resourceId: resource.id }, "Resource deleted."),
+                        }),
+                      },
+                    ]}
+                  />
                 ),
               },
             ]}
@@ -2242,14 +2379,23 @@ export function LessonContentManager({ lessons, documents, action }: { lessons: 
                 key: "actions",
                 header: "Actions",
                 render: (download: any) => (
-                  <div className="flex gap-2">
-                    <IconAction label="Edit" icon={Pencil} onClick={() => { setSelectedItem(download); setDrawer("download"); }} />
-                    <IconAction label="Delete" icon={Trash2} onClick={() => {
-                      if (window.confirm(`Delete download "${download.title}"?`)) {
-                        void action({ action: "delete_lesson_download", downloadId: download.id }, "Download deleted.");
-                      }
-                    }} />
-                  </div>
+                  <ActionToolbar
+                    actions={[
+                      { label: "Edit", icon: Pencil, onClick: () => { setSelectedItem(download); setDrawer("download"); } },
+                      {
+                        label: "Delete",
+                        icon: Trash2,
+                        tone: "danger",
+                        more: true,
+                        onClick: () => setConfirm({
+                          title: "Delete download?",
+                          description: `This removes "${download.title}" from the lesson.`,
+                          confirmLabel: "Delete download",
+                          onConfirm: () => void action({ action: "delete_lesson_download", downloadId: download.id }, "Download deleted."),
+                        }),
+                      },
+                    ]}
+                  />
                 ),
               },
             ]}
@@ -2261,6 +2407,18 @@ export function LessonContentManager({ lessons, documents, action }: { lessons: 
       <LessonVideoDrawer open={drawer === "video"} busy={busy} lessonId={selectedLessonId} video={selectedItem} onClose={() => { setDrawer(null); setSelectedItem(null); }} onSave={(video) => action(selectedItem ? { action: "update_lesson_video", videoId: selectedItem.id, video } : { action: "add_lesson_video", video }, selectedItem ? "Video updated." : "Video added.")} />
       <LessonResourceDrawer open={drawer === "resource"} busy={busy} lessonId={selectedLessonId} resource={selectedItem} onClose={() => { setDrawer(null); setSelectedItem(null); }} onSave={(resource) => action(selectedItem ? { action: "update_lesson_resource", resourceId: selectedItem.id, resource } : { action: "add_lesson_resource", resource }, selectedItem ? "Resource updated." : "Resource added.")} />
       <LessonDownloadDrawer open={drawer === "download"} busy={busy} lessonId={selectedLessonId} download={selectedItem} onClose={() => { setDrawer(null); setSelectedItem(null); }} onSave={(download) => action(selectedItem ? { action: "update_lesson_download", downloadId: selectedItem.id, download } : { action: "add_lesson_download", download }, selectedItem ? "Download updated." : "Download added.")} />
+      <AdminConfirmDialog
+        open={Boolean(confirm)}
+        title={confirm?.title ?? ""}
+        description={confirm?.description}
+        confirmLabel={confirm?.confirmLabel}
+        danger
+        onCancel={() => setConfirm(null)}
+        onConfirm={() => {
+          confirm?.onConfirm();
+          setConfirm(null);
+        }}
+      />
     </div>
   );
 }
