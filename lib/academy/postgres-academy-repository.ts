@@ -48,10 +48,11 @@ const DEFAULT_TRAINING_CATEGORIES = [
 
 type Actor = { id: string; name: string };
 
-export async function getAcademyDashboard() {
+export async function getAcademyDashboard(options: { compact?: boolean } = {}) {
   await ensureAcademyDefaults();
   await ensureOfficialAcademySeed();
   const prisma = getMainPrisma();
+  const compact = options.compact === true;
   const [
     courses,
     lessonCount,
@@ -81,16 +82,44 @@ export async function getAcademyDashboard() {
   ] = await Promise.all([
     prisma.trainingCourse.findMany({ include: { category: true }, orderBy: { updatedAt: "desc" } }),
     prisma.trainingLesson.count(),
-    prisma.trainingLesson.findMany({
-      include: {
-        section: { include: { module: { include: { course: true } } } },
-        lessonVideos: true,
-        lessonDocuments: { include: { document: true } },
-        lessonResources: true,
-        lessonDownloads: true,
-      },
-      orderBy: [{ sortOrder: "asc" }, { updatedAt: "desc" }],
-    }),
+    compact
+      ? prisma.trainingLesson.findMany({
+          select: {
+            id: true,
+            sectionId: true,
+            title: true,
+            summary: true,
+            richText: true,
+            estimatedMinutes: true,
+            completionRequirement: true,
+            sortOrder: true,
+            updatedAt: true,
+            section: {
+              select: {
+                id: true,
+                title: true,
+                module: {
+                  select: {
+                    id: true,
+                    title: true,
+                    course: { select: { id: true, title: true, status: true } },
+                  },
+                },
+              },
+            },
+          },
+          orderBy: [{ sortOrder: "asc" }, { updatedAt: "desc" }],
+        })
+      : prisma.trainingLesson.findMany({
+          include: {
+            section: { include: { module: { include: { course: true } } } },
+            lessonVideos: true,
+            lessonDocuments: { include: { document: true } },
+            lessonResources: true,
+            lessonDownloads: true,
+          },
+          orderBy: [{ sortOrder: "asc" }, { updatedAt: "desc" }],
+        }),
     prisma.documentLibrary.findMany({
       where: { active: true, visible: true },
       include: { category: true },
@@ -121,11 +150,17 @@ export async function getAcademyDashboard() {
       orderBy: { updatedAt: "desc" },
     }),
     prisma.payment.aggregate({ where: { plan: "academy_course", status: "PAID" }, _sum: { amount: true } }),
-    prisma.discussionThread.findMany({
-      include: { posts: true, course: { select: { id: true, title: true } } },
-      orderBy: { updatedAt: "desc" },
-      take: 50,
-    }),
+    compact
+      ? prisma.discussionThread.findMany({
+          include: { _count: { select: { posts: true } }, course: { select: { id: true, title: true } } },
+          orderBy: { updatedAt: "desc" },
+          take: 30,
+        })
+      : prisma.discussionThread.findMany({
+          include: { posts: true, course: { select: { id: true, title: true } } },
+          orderBy: { updatedAt: "desc" },
+          take: 50,
+        }),
     prisma.agentBadge.findMany({
       include: { badge: true },
       orderBy: { awardedAt: "desc" },
@@ -192,7 +227,13 @@ export async function getAcademyDashboard() {
       certifiedClosedListings,
     },
     courses,
-    lessons: lessonRows,
+    lessons: lessonRows.map((lesson: any) => ({
+      ...lesson,
+      lessonVideos: lesson.lessonVideos ?? [],
+      lessonDocuments: lesson.lessonDocuments ?? [],
+      lessonResources: lesson.lessonResources ?? [],
+      lessonDownloads: lesson.lessonDownloads ?? [],
+    })),
     documents,
     videos,
     quizzes,
@@ -285,11 +326,11 @@ export async function getAcademyDashboard() {
       .slice(0, 8),
     overdueAssignments: assignmentSubmissions.filter((submission) => submission.status === AssignmentSubmissionStatus.RESUBMISSION_REQUESTED).length,
     recentActivity,
-    discussionThreads: discussionThreads.map((thread) => ({
+    discussionThreads: discussionThreads.map((thread: any) => ({
       id: thread.id,
       title: thread.title,
       courseTitle: thread.course?.title ?? "General",
-      posts: thread.posts.length,
+      posts: thread._count?.posts ?? thread.posts?.length ?? 0,
       status: thread.locked ? "LOCKED" : thread.pinned ? "PINNED" : "OPEN",
       updatedAt: thread.updatedAt.toISOString(),
     })),

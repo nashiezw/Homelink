@@ -56,7 +56,7 @@ export function BlogCard({ post, featured = false }: { post: BlogCardPost; featu
             <p className="text-xs text-slate-500">
               {post.author?.name ?? "HouseLink Editorial Team"} | {formatDate(post.publishedAt)}
             </p>
-            <Link href={`/blog/${post.slug}`} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-500 dark:bg-emerald-500 dark:text-ink">
+            <Link href={`/blog/${post.slug}`} className="inline-flex min-h-10 w-full items-center justify-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-500 dark:bg-emerald-500 dark:text-ink sm:min-h-9 sm:w-auto sm:py-1.5">
               Read guide
               <ArrowRight className="size-4" />
             </Link>

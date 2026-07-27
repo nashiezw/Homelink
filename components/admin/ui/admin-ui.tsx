@@ -451,26 +451,22 @@ export function AdminDataTable<T extends { id?: string }>({
                     aria-label={`Select row ${idx + 1}`}
                   />
                 )}
-                <div className="min-w-0 flex-1 space-y-2">
-                  {columns.map((col, columnIndex) => (
-                    <div
-                      key={col.key}
-                      className={cn(
-                        columnIndex === 0
-                          ? "text-sm font-semibold text-white"
-                          : "grid grid-cols-[6.5rem_minmax(0,1fr)] gap-2 text-xs",
-                      )}
-                    >
-                      {columnIndex === 0 ? (
-                        <div className="min-w-0 break-words">{col.render(row)}</div>
-                      ) : (
-                        <>
-                          <span className="text-slate-500">{col.header}</span>
-                          <span className="min-w-0 break-words text-slate-300">{col.render(row)}</span>
-                        </>
-                      )}
-                    </div>
-                  ))}
+                <div className="min-w-0 flex-1">
+                  <div className="min-w-0 break-words text-base font-semibold text-white">{columns[0]?.render(row)}</div>
+                  <div className="mt-3 grid gap-2">
+                    {columns.slice(1).map((col) => (
+                      <div
+                        key={col.key}
+                        className={cn(
+                          "min-w-0 rounded-lg border border-white/[0.06] bg-white/[0.025] p-2.5",
+                          col.key === "actions" && "bg-transparent p-0 border-0",
+                        )}
+                      >
+                        {col.key !== "actions" && <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-slate-500">{col.header}</span>}
+                        <span className="block min-w-0 break-words text-sm text-slate-300">{col.render(row)}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             </article>

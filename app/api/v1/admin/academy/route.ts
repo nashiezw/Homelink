@@ -8,7 +8,8 @@ export async function GET(request: Request) {
   const auth = await requireAdminAsync(request);
   if ("error" in auth && auth.error) return auth.error;
   try {
-    return ok(await getAcademyDashboard());
+    const compact = new URL(request.url).searchParams.get("compact") === "1";
+    return ok(await getAcademyDashboard({ compact }));
   } catch (error) {
     console.error("Failed to load HouseLink Agent Academy", error);
     return problem(500, "ACADEMY_READ_FAILED", "HouseLink Agent Academy data could not be loaded.");

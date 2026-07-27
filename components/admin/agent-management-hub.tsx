@@ -40,6 +40,16 @@ type AgentDocumentRow = {
   uploadedAt?: string;
 };
 
+function formatLocation(city?: string | null, province?: string | null) {
+  return [city, province].map((item) => item?.trim()).filter(Boolean).join(", ");
+}
+
+function formatSafeDate(value?: string | Date | null) {
+  if (!value) return "";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? "" : date.toLocaleDateString();
+}
+
 const DEFAULT_COMMISSION_TYPES = ["SALE", "RENTAL", "MANAGEMENT"] as const;
 
 export function AgentManagementHub() {
@@ -394,19 +404,21 @@ export function AgentManagementHub() {
                 <div>
                   <p className="font-semibold text-white">{app.personal.fullName || "Unnamed applicant"}</p>
                   <p className="text-sm text-slate-400">{app.personal.email} - {app.status.replace(/_/g, " ")}</p>
-                  <p className="text-sm text-slate-500">{app.professional.city}, {app.professional.province}</p>
+                  {formatLocation(app.professional.city, app.professional.province) && (
+                    <p className="text-sm text-slate-500">{formatLocation(app.professional.city, app.professional.province)}</p>
+                  )}
                   {app.agentContractAccepted && (
                     <p className="mt-1 text-xs text-emerald-400">
                       Agent agreement signed
-                      {app.agentContractSignedAt ? ` · ${new Date(app.agentContractSignedAt).toLocaleDateString()}` : ""}
+                      {formatSafeDate(app.agentContractSignedAt) ? ` / ${formatSafeDate(app.agentContractSignedAt)}` : ""}
                     </p>
                   )}
                 </div>
-                <div className="grid gap-2 sm:flex sm:flex-wrap">
-                  <Button onClick={() => void adminAction({ action: "update_application_status", applicationId: app.id, status: "PENDING_REVIEW" })}>Review</Button>
-                  <Button onClick={() => void adminAction({ action: "update_application_status", applicationId: app.id, status: "TRAINING" })}>Send to training</Button>
-                  <Button onClick={() => void adminAction({ action: "approve_application", applicationId: app.id })}>Approve</Button>
-                  <Button variant="secondary" onClick={() => declineApplication(app.id, app.personal.fullName)}>Decline</Button>
+                <div className="grid w-full gap-2 sm:w-auto sm:grid-cols-2 lg:flex lg:flex-wrap">
+                  <Button className="w-full lg:w-auto" onClick={() => void adminAction({ action: "update_application_status", applicationId: app.id, status: "PENDING_REVIEW" })}>Review</Button>
+                  <Button className="w-full lg:w-auto" onClick={() => void adminAction({ action: "update_application_status", applicationId: app.id, status: "TRAINING" })}>Send to training</Button>
+                  <Button className="w-full lg:w-auto" onClick={() => void adminAction({ action: "approve_application", applicationId: app.id })}>Approve</Button>
+                  <Button className="w-full lg:w-auto" variant="secondary" onClick={() => declineApplication(app.id, app.personal.fullName)}>Decline</Button>
                 </div>
               </div>
             </article>

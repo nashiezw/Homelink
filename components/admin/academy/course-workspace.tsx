@@ -172,15 +172,15 @@ export function CourseWorkspace({
   }
 
   return (
-    <div className="space-y-6 rounded-2xl border border-white/10 bg-slate-950/80 p-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
+    <div className="space-y-6 rounded-2xl border border-white/10 bg-slate-950/80 p-4 sm:p-6">
+      <div className="flex flex-col items-start justify-between gap-4 lg:flex-row">
         <div>
           <p className="text-xs uppercase tracking-wider text-emerald-400">Course Builder</p>
           <h2 className="text-2xl font-bold text-white">{courseTitle}</h2>
           <p className="mt-1 text-sm text-slate-400">{tree.stats.lessonCount} lessons · {tree.stats.moduleCount} modules · {tree.status.replace(/_/g, " ")}</p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Button variant="secondary" onClick={onClose}>Close</Button>
+        <div className="grid w-full grid-cols-1 gap-2 sm:grid-cols-3 lg:w-auto">
+          <Button className="w-full" variant="secondary" onClick={onClose}>Close</Button>
           <Button variant="secondary" disabled={!undoStack.length || busy} onClick={() => {
             const last = undoStack[undoStack.length - 1];
             if (!last) return;
@@ -191,9 +191,9 @@ export function CourseWorkspace({
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-2">
+      <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
         {STEPS.map((item) => (
-          <Button key={item} variant={step === item ? "primary" : "secondary"} onClick={() => setStep(item)}>{item}</Button>
+          <Button key={item} className="w-full sm:w-auto" variant={step === item ? "primary" : "secondary"} onClick={() => setStep(item)}>{item}</Button>
         ))}
       </div>
 
@@ -213,9 +213,9 @@ export function CourseWorkspace({
 
       {step === "Curriculum" && (
         <div className="space-y-4">
-          <div className="flex flex-wrap gap-2">
+          <div className="grid gap-2 sm:flex sm:flex-wrap">
             <input value={newModuleTitle} onChange={(e) => setNewModuleTitle(e.target.value)} placeholder="New module title" className="flex-1 min-w-[200px] rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-white" />
-            <Button disabled={!newModuleTitle.trim() || busy} onClick={() => void run({ action: "create_module", module: { courseId, title: newModuleTitle } }, "Module created.").then(() => setNewModuleTitle(""))}>
+            <Button className="w-full sm:w-auto" disabled={!newModuleTitle.trim() || busy} onClick={() => void run({ action: "create_module", module: { courseId, title: newModuleTitle } }, "Module created.").then(() => setNewModuleTitle(""))}>
               <Plus className="size-4 mr-2" /> Add Module
             </Button>
           </div>
@@ -228,14 +228,18 @@ export function CourseWorkspace({
               onDrop={() => { if (dragModuleId) void reorderModules(dragModuleId, module.id); setDragModuleId(null); }}
               className="rounded-xl border border-white/10 bg-slate-900/60"
             >
-              <div className="flex items-center gap-3 border-b border-white/5 px-4 py-3">
-                <GripVertical className="size-4 text-slate-500 cursor-grab" />
-                <div className="flex-1">
-                  <p className="font-semibold text-white">{module.title}</p>
-                  <p className="text-xs text-slate-500">{module.sections.reduce((n, s) => n + s.lessons.length, 0)} lessons</p>
+              <div className="grid gap-3 border-b border-white/5 px-4 py-3 sm:flex sm:items-center">
+                <div className="flex min-w-0 items-center gap-3">
+                  <GripVertical className="size-4 shrink-0 cursor-grab text-slate-500" />
+                  <div className="min-w-0 flex-1">
+                    <p className="break-words font-semibold text-white">{module.title}</p>
+                    <p className="text-xs text-slate-500">{module.sections.reduce((n, s) => n + s.lessons.length, 0)} lessons</p>
+                  </div>
                 </div>
-                <Button variant="secondary" onClick={() => void run({ action: "duplicate_module", moduleId: module.id }, "Module duplicated.")}><Copy className="size-4" /></Button>
-                <Button variant="secondary" onClick={() => void run({ action: "delete_module", moduleId: module.id }, "Module deleted.")}><Trash2 className="size-4" /></Button>
+                <div className="grid grid-cols-2 gap-2 sm:ml-auto sm:flex">
+                  <Button className="w-full sm:w-auto" variant="secondary" onClick={() => void run({ action: "duplicate_module", moduleId: module.id }, "Module duplicated.")}><Copy className="size-4" /></Button>
+                  <Button className="w-full sm:w-auto" variant="secondary" onClick={() => void run({ action: "delete_module", moduleId: module.id }, "Module deleted.")}><Trash2 className="size-4" /></Button>
+                </div>
               </div>
               <div className="divide-y divide-white/5">
                 {module.sections.flatMap((section) => section.lessons.map((lesson) => (
@@ -249,17 +253,17 @@ export function CourseWorkspace({
                       setDragLessonId(null);
                       setDragLessonSectionId(null);
                     }}
-                    className="flex items-center gap-3 px-4 py-3 hover:bg-white/5"
+                    className="flex flex-col items-stretch gap-3 px-4 py-3 hover:bg-white/5 sm:flex-row sm:items-center"
                   >
                     <GripVertical className="size-4 text-slate-600 cursor-grab shrink-0" />
                     <BookOpen className="size-4 text-emerald-400 shrink-0" />
-                    <button type="button" className="flex-1 text-left" onClick={() => setSelectedLessonId(lesson.id)}>
+                    <button type="button" className="min-w-0 flex-1 text-left" onClick={() => setSelectedLessonId(lesson.id)}>
                       <p className="text-sm font-medium text-white">{lesson.title}</p>
                       <p className="text-xs text-slate-500">{lesson.estimatedMinutes} min · {lesson.completionRequirement}</p>
                     </button>
-                    <Button variant="secondary" onClick={() => setSelectedLessonId(lesson.id)}><Pencil className="size-4" /></Button>
+                    <Button className="w-full sm:w-auto" variant="secondary" onClick={() => setSelectedLessonId(lesson.id)}><Pencil className="size-4" /></Button>
                     <select
-                      className="rounded-lg border border-white/10 bg-slate-900 px-2 py-1 text-xs text-white max-w-[120px]"
+                      className="w-full rounded-lg border border-white/10 bg-slate-900 px-2 py-2 text-xs text-white sm:max-w-[140px]"
                       defaultValue=""
                       onChange={(e) => {
                         const sectionId = e.target.value;
@@ -277,8 +281,8 @@ export function CourseWorkspace({
                         <option key={s.id} value={s.id}>{m.title.slice(0, 24)}</option>
                       )))}
                     </select>
-                    <Button variant="secondary" onClick={() => void run({ action: "duplicate_lesson", lessonId: lesson.id }, "Lesson duplicated.")}><Copy className="size-4" /></Button>
-                    <Button variant="secondary" onClick={() => void run({ action: "delete_lesson", lessonId: lesson.id }, "Lesson deleted.")}><Trash2 className="size-4" /></Button>
+                    <Button className="w-full sm:w-auto" variant="secondary" onClick={() => void run({ action: "duplicate_lesson", lessonId: lesson.id }, "Lesson duplicated.")}><Copy className="size-4" /></Button>
+                    <Button className="w-full sm:w-auto" variant="secondary" onClick={() => void run({ action: "delete_lesson", lessonId: lesson.id }, "Lesson deleted.")}><Trash2 className="size-4" /></Button>
                   </div>
                 )))}
               </div>
