@@ -303,6 +303,7 @@ export function AgentAcademyHub() {
   const [viewCourse, setViewCourse] = useState<AcademyCourse | null>(null);
   const [selectedLesson, setSelectedLesson] = useState<AcademyLesson | null>(null);
   const [selectedModule, setSelectedModule] = useState<{ id: string; courseId: string; title: string; description?: string; sortOrder: number } | null>(null);
+  const [selectedPath, setSelectedPath] = useState<AcademyData["learningPaths"][number] | null>(null);
   const [selectedAnnouncement, setSelectedAnnouncement] = useState<AcademyData["announcements"][number] | null>(null);
   const [selectedBadge, setSelectedBadge] = useState<AcademyData["badges"][number] | null>(null);
   const [analytics, setAnalytics] = useState<Record<string, unknown> | null>(null);
@@ -414,13 +415,7 @@ export function AgentAcademyHub() {
           </AdminMetricGrid>
 
           <div className="grid gap-4 xl:grid-cols-3">
-            <section className="rounded-xl border border-white/10 bg-slate-900/60 p-5 xl:col-span-2">
-              <div className="mb-4 flex items-center justify-between gap-3">
-                <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-400">Top Courses</h3>
-                <BarChart3 className="size-4 text-emerald-400" />
-              </div>
-              <BarChart data={data.topCourses.map((course) => ({ label: course.title.slice(0, 24), value: course.completions }))} color="bg-emerald-500" />
-            </section>
+            <TopCoursesPanel courses={data.topCourses} />
             <section className="rounded-xl border border-white/10 bg-slate-900/60 p-5">
               <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-400">Risk Radar</h3>
               <div className="mt-4 space-y-4">
@@ -572,6 +567,7 @@ export function AgentAcademyHub() {
           setQuery={setQuery}
           setSelectedLesson={setSelectedLesson}
           setDrawer={setDrawer}
+          onEditPath={(path) => { setSelectedPath(path); setDrawer("path"); }}
           onEditAnnouncement={(announcement) => { setSelectedAnnouncement(announcement); setDrawer("announcement"); }}
           onEditBadge={(badge) => { setSelectedBadge(badge); setDrawer("badge"); }}
         />
@@ -608,7 +604,16 @@ export function AgentAcademyHub() {
       />
       <VideoDrawer open={drawer === "video"} busy={busy} onClose={() => setDrawer(null)} onSave={(video) => action({ action: "create_video", video }, "Video added to the Academy library.")} />
       <QuickBuilderDrawer type={drawer} busy={busy} courses={data.courses} onClose={() => setDrawer(null)} onSave={action} />
-      <LearningPathDrawer open={drawer === "path"} busy={busy} courses={data.courses} onClose={() => setDrawer(null)} onSave={(path) => action({ action: "create_learning_path", path }, "Learning path created.")} />
+      <LearningPathDrawer
+        open={drawer === "path"}
+        busy={busy}
+        courses={data.courses}
+        path={selectedPath}
+        onClose={() => { setDrawer(null); setSelectedPath(null); }}
+        onSave={(path) => selectedPath
+          ? action({ action: "update_learning_path", pathId: selectedPath.id, path }, "Learning path updated.")
+          : action({ action: "create_learning_path", path }, "Learning path created.")}
+      />
       <AnnouncementDrawer
         open={drawer === "announcement"}
         busy={busy}
@@ -707,6 +712,44 @@ function RiskLine({ label, value, helper }: { label: string; value: string; help
   );
 }
 
+function TopCoursesPanel({ courses }: { courses: AcademyData["topCourses"] }) {
+  const hasCompletions = courses.some((course) => course.completions > 0);
+  return (
+    <section className="rounded-2xl border border-white/10 bg-slate-900/60 p-5 xl:col-span-2">
+      <div className="mb-5 flex items-start justify-between gap-3">
+        <div>
+          <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-400">Top Courses</h3>
+          <p className="mt-1 text-xs leading-5 text-slate-500">Ranked by completions, with enrolment demand shown beside each programme.</p>
+        </div>
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-300">
+          <BarChart3 className="size-4" />
+        </span>
+      </div>
+      {hasCompletions ? (
+        <BarChart data={courses.map((course) => ({ label: course.title.slice(0, 24), value: course.completions }))} color="bg-emerald-500" />
+      ) : (
+        <div className="grid gap-3">
+          {courses.map((course, index) => (
+            <div key={course.id} className="rounded-xl border border-white/[0.06] bg-slate-950/55 p-3">
+              <div className="flex items-start gap-3">
+                <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 text-sm font-bold text-emerald-300">{index + 1}</span>
+                <div className="min-w-0 flex-1">
+                  <p className="break-words text-sm font-semibold text-white">{course.title}</p>
+                  <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
+                    <span className="rounded-lg bg-white/[0.04] px-2 py-1 text-slate-300">{course.enrolments} enrolled</span>
+                    <span className="rounded-lg bg-white/[0.04] px-2 py-1 text-slate-300">{course.completions} completed</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+          {!courses.length && <p className="rounded-xl border border-dashed border-white/10 p-4 text-sm text-slate-400">No course activity has been captured yet.</p>}
+        </div>
+      )}
+    </section>
+  );
+}
+
 function ActivityPanel({ title, icon: Icon, children }: { title: string; icon: typeof Award; children: React.ReactNode }) {
   return (
     <section className="rounded-xl border border-white/10 bg-slate-900/60 p-5">
@@ -738,8 +781,9 @@ function CourseCell({ course }: { course: AcademyCourse }) {
 
 function IconAction({ label, icon: Icon, onClick }: { label: string; icon: typeof Copy; onClick: () => void }) {
   return (
-    <button type="button" onClick={(event) => { event.stopPropagation(); onClick(); }} title={label} className="inline-flex h-10 w-full items-center justify-center rounded-lg border border-white/10 text-slate-300 hover:border-emerald-500/30 hover:bg-emerald-500/10 hover:text-white sm:size-9">
+    <button type="button" onClick={(event) => { event.stopPropagation(); onClick(); }} title={label} className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-white/10 px-3 text-slate-300 hover:border-emerald-500/30 hover:bg-emerald-500/10 hover:text-white sm:size-9 sm:px-0">
       <Icon className="size-4" />
+      <span className="text-xs font-semibold sm:sr-only">{label}</span>
     </button>
   );
 }
@@ -780,10 +824,11 @@ function LibraryView({
             key: "actions",
             header: "Actions",
             render: (document) => (
-              <div className="flex flex-wrap gap-2">
+              <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap">
                 <IconAction label="Preview" icon={Search} onClick={() => onPreview(document)} />
-                <a href={`/api/v1/academy/documents/${document.id}/download`} className="inline-flex size-9 items-center justify-center rounded-lg border border-white/10 text-slate-300 hover:border-emerald-500/30 hover:bg-emerald-500/10 hover:text-white" title="Download" aria-label={`Download ${document.title}`}>
+                <a href={`/api/v1/academy/documents/${document.id}/download`} className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-white/10 px-3 text-slate-300 hover:border-emerald-500/30 hover:bg-emerald-500/10 hover:text-white sm:size-9 sm:px-0" title="Download" aria-label={`Download ${document.title}`}>
                   <Download className="size-4" />
+                  <span className="text-xs font-semibold sm:sr-only">Download</span>
                 </a>
                 <DocumentTextAction label="Edit" icon={Pencil} onClick={() => onEdit(document)} />
                 <DocumentTextAction label="Replace" icon={Upload} onClick={() => onReplace(document)} />
@@ -825,7 +870,7 @@ function DocumentTextAction({ label, icon: Icon, onClick, tone = "default" }: { 
         onClick();
       }}
       className={cn(
-        "inline-flex min-h-9 items-center justify-center gap-1.5 rounded-lg border px-2.5 text-xs font-semibold transition sm:px-3",
+        "inline-flex min-h-10 w-full items-center justify-center gap-1.5 rounded-lg border px-2.5 text-xs font-semibold transition sm:min-h-9 sm:w-auto sm:px-3",
         tone === "danger"
           ? "border-red-500/20 text-red-300 hover:border-red-400/40 hover:bg-red-500/10 hover:text-red-200"
           : "border-white/10 text-slate-300 hover:border-emerald-500/30 hover:bg-emerald-500/10 hover:text-white",
@@ -847,6 +892,7 @@ function FeatureWorkbench({
   setQuery: _setQuery,
   setSelectedLesson: _setSelectedLesson,
   setDrawer: _setDrawer,
+  onEditPath,
   onEditAnnouncement,
   onEditBadge,
 }: {
@@ -859,6 +905,7 @@ function FeatureWorkbench({
   setQuery: (query: string) => void;
   setSelectedLesson: (lesson: AcademyLesson | null) => void;
   setDrawer: (drawer: "course" | "document" | "video" | "quiz" | "exam" | "assignment" | "path" | "announcement" | "badge" | "lesson" | "module" | null) => void;
+  onEditPath: (path: AcademyData["learningPaths"][number]) => void;
   onEditAnnouncement: (announcement: AcademyData["announcements"][number]) => void;
   onEditBadge: (badge: AcademyData["badges"][number]) => void;
 }) {
@@ -869,7 +916,7 @@ function FeatureWorkbench({
     return <PublicLearnersPanel applications={data.publicLearnerApplications} resourceApplications={data.resourceAccessApplications ?? []} action={action} />;
   }
   if (tab === "Learning Paths") {
-    return <BuilderList title="Learning Paths" icon={Library} rows={data.learningPaths.map((path) => ({ id: path.id, title: path.title, active: path.status === "PUBLISHED", detail: `${path.courses.length} course(s) - ${path.badgeTitle ?? "No badge"}` }))} actionLabel="Create Path" onCreate={() => openDrawer("path")} onArchive={(row) => action({ action: row.active === false ? "restore_learning_path" : "archive_learning_path", pathId: row.id }, row.active === false ? "Learning path restored." : "Learning path archived.")} />;
+    return <BuilderList title="Learning Paths" icon={Library} rows={data.learningPaths.map((path) => ({ id: path.id, title: path.title, active: path.status === "PUBLISHED", detail: `${path.courses.length} course(s) - ${path.badgeTitle ?? "No badge"}`, source: path }))} actionLabel="Create Path" onCreate={() => openDrawer("path")} onEdit={(row) => onEditPath(row.source as AcademyData["learningPaths"][number])} onArchive={(row) => action({ action: row.active === false ? "restore_learning_path" : "archive_learning_path", pathId: row.id }, row.active === false ? "Learning path restored." : "Learning path archived.")} onDelete={(row) => action({ action: "delete_learning_path", pathId: row.id }, "Learning path deleted.")} />;
   }
   if (tab === "Announcements") {
     return <BuilderList title="Announcements" icon={Megaphone} rows={data.announcements.map((announcement) => ({ id: announcement.id, title: announcement.title, active: Boolean(announcement.publishedAt) && !announcement.expiresAt, detail: `${announcement.audience} - ${announcement.body}`, source: announcement }))} actionLabel="New Announcement" onCreate={() => openDrawer("announcement")} onEdit={(row) => onEditAnnouncement(row.source as AcademyData["announcements"][number])} onArchive={(row) => action({ action: row.active === false ? "restore_announcement" : "archive_announcement", announcementId: row.id }, row.active === false ? "Announcement restored." : "Announcement archived.")} onDelete={(row) => action({ action: "delete_announcement", announcementId: row.id }, "Announcement deleted.")} />;
@@ -1638,10 +1685,21 @@ function QuickBuilderDrawer({ type, busy, courses, onClose, onSave }: { type: st
   );
 }
 
-function LearningPathDrawer({ open, busy, courses, onClose, onSave }: { open: boolean; busy: boolean; courses: AcademyCourse[]; onClose: () => void; onSave: (path: Record<string, unknown>) => Promise<unknown> }) {
+function LearningPathDrawer({ open, busy, courses, path: editingPath, onClose, onSave }: { open: boolean; busy: boolean; courses: AcademyCourse[]; path?: AcademyData["learningPaths"][number] | null; onClose: () => void; onSave: (path: Record<string, unknown>) => Promise<unknown> }) {
   const [path, setPath] = useState({ title: "", description: "", status: "PUBLISHED", badgeTitle: "", courseIds: [] as string[] });
+  useEffect(() => {
+    if (!open) return;
+    setPath({
+      title: editingPath?.title ?? "",
+      description: editingPath?.description ?? "",
+      status: editingPath?.status ?? "PUBLISHED",
+      badgeTitle: editingPath?.badgeTitle ?? "",
+      courseIds: editingPath?.courses?.map((entry) => entry.course.id) ?? [],
+    });
+  }, [editingPath, open]);
+  const editing = Boolean(editingPath);
   return (
-    <AdminDrawer open={open} title="Create Learning Path" description="Combine courses into a sequenced Academy programme with automatic progress tracking." onClose={onClose} width="lg">
+    <AdminDrawer open={open} title={editing ? "Edit Learning Path" : "Create Learning Path"} description="Combine courses into a sequenced Academy programme with automatic progress tracking." onClose={onClose} width="lg">
       <FormGrid>
         <TextInput label="Path title" value={path.title} onChange={(title) => setPath({ ...path, title })} />
         <SelectInput label="Status" value={path.status} options={["DRAFT", "PUBLISHED", "ARCHIVED"]} onChange={(status) => setPath({ ...path, status })} />
@@ -1668,7 +1726,7 @@ function LearningPathDrawer({ open, busy, courses, onClose, onSave }: { open: bo
           ))}
         </div>
       </div>
-      <DrawerActions busy={busy} disabled={!path.title || !path.courseIds.length} onClose={onClose} onSave={() => onSave(path)} label="Create path" />
+      <DrawerActions busy={busy} disabled={!path.title || !path.courseIds.length} onClose={onClose} onSave={() => onSave(path)} label={editing ? "Save path" : "Create path"} />
     </AdminDrawer>
   );
 }

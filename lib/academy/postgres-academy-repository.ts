@@ -126,16 +126,16 @@ export async function getAcademyDashboard(options: { compact?: boolean } = {}) {
       orderBy: [{ sortOrder: "asc" }, { updatedAt: "desc" }],
     }),
     prisma.videoLibrary.findMany({ orderBy: { updatedAt: "desc" } }),
-    prisma.quiz.findMany({ include: { attempts: true }, orderBy: { updatedAt: "desc" } }),
+    prisma.quiz.findMany({ include: { attempts: compact ? { take: 100, orderBy: { startedAt: "desc" } } : true }, orderBy: { updatedAt: "desc" } }),
     prisma.assignment.findMany({ orderBy: { updatedAt: "desc" } }),
-    prisma.finalExam.findMany({ include: { attempts: true }, orderBy: { updatedAt: "desc" } }),
-    prisma.certificateIssue.findMany({ orderBy: { issuedAt: "desc" } }),
+    prisma.finalExam.findMany({ include: { attempts: compact ? { take: 100, orderBy: { startedAt: "desc" } } : true }, orderBy: { updatedAt: "desc" } }),
+    prisma.certificateIssue.findMany({ orderBy: { issuedAt: "desc" }, ...(compact ? { take: 250 } : {}) }),
     prisma.courseEnrolment.findMany(),
-    prisma.courseProgress.findMany({ orderBy: { updatedAt: "desc" } }),
-    prisma.lessonProgress.findMany({ orderBy: { lastViewedAt: "desc" } }),
-    prisma.quizAttempt.findMany({ orderBy: { startedAt: "desc" } }),
-    prisma.examAttempt.findMany({ orderBy: { startedAt: "desc" } }),
-    prisma.assignmentSubmission.findMany({ orderBy: { submittedAt: "desc" } }),
+    prisma.courseProgress.findMany({ orderBy: { updatedAt: "desc" }, ...(compact ? { take: 500 } : {}) }),
+    prisma.lessonProgress.findMany({ orderBy: { lastViewedAt: "desc" }, ...(compact ? { take: 500 } : {}) }),
+    prisma.quizAttempt.findMany({ orderBy: { startedAt: "desc" }, ...(compact ? { take: 500 } : {}) }),
+    prisma.examAttempt.findMany({ orderBy: { startedAt: "desc" }, ...(compact ? { take: 300 } : {}) }),
+    prisma.assignmentSubmission.findMany({ orderBy: { submittedAt: "desc" }, ...(compact ? { take: 300 } : {}) }),
     prisma.learningPath.findMany({ include: { courses: { include: { course: true }, orderBy: { sortOrder: "asc" } } }, orderBy: { updatedAt: "desc" } }),
     prisma.announcement.findMany({ orderBy: { createdAt: "desc" } }),
     prisma.badge.findMany({ orderBy: { createdAt: "desc" } }),
@@ -144,10 +144,12 @@ export async function getAcademyDashboard(options: { compact?: boolean } = {}) {
     prisma.academyLearnerApplication.findMany({
       include: { course: true, payment: true, learner: { select: { id: true, name: true, email: true, phone: true, roles: true } } },
       orderBy: { updatedAt: "desc" },
+      ...(compact ? { take: 100 } : {}),
     }),
     prisma.academyResourceAccess.findMany({
       include: { course: true, payment: true, learner: { select: { id: true, name: true, email: true, phone: true, roles: true } } },
       orderBy: { updatedAt: "desc" },
+      ...(compact ? { take: 100 } : {}),
     }),
     prisma.payment.aggregate({ where: { plan: "academy_course", status: "PAID" }, _sum: { amount: true } }),
     compact
@@ -956,14 +958,31 @@ export async function runAcademyAction(body: Record<string, any>, actor: Actor) 
     return path;
   }
   if (action === "update_learning_path") {
-    const path = await prisma.learningPath.update({
-      where: { id: String(body.pathId) },
-      data: learningPathInput(body.path ?? {}),
+    const pathId = String(body.pathId);
+    const courseIds = arrayOfStrings(body.path?.courseIds);
+    const path = await prisma.$transaction(async (tx) => {
+      const updated = await tx.learningPath.update({
+        where: { id: pathId },
+        data: learningPathInput(body.path ?? {}),
+      });
+      if (courseIds.length) {
+        await tx.pathCourse.deleteMany({ where: { pathId } });
+        await tx.pathCourse.createMany({
+          data: courseIds.map((courseId, index) => ({ pathId, courseId, sortOrder: index, required: true })),
+          skipDuplicates: true,
+        });
+      }
+      return updated;
     });
     await audit(actor, "academy.path.update", path.id, { title: path.title });
     return path;
   }
-  if (action === "archive_learning_path" || action === "restore_learning_path" || action === "delete_learning_path") {
+  if (action === "delete_learning_path") {
+    const path = await prisma.learningPath.delete({ where: { id: String(body.pathId) } });
+    await audit(actor, "academy.path.delete", path.id, { title: path.title });
+    return path;
+  }
+  if (action === "archive_learning_path" || action === "restore_learning_path") {
     const path = await prisma.learningPath.update({ where: { id: String(body.pathId) }, data: { status: action === "restore_learning_path" ? "PUBLISHED" : "ARCHIVED" } });
     await audit(actor, `academy.path.${action.replace("_learning_path", "")}`, path.id, { status: path.status });
     return path;
@@ -979,7 +998,12 @@ export async function runAcademyAction(body: Record<string, any>, actor: Actor) 
     await audit(actor, "academy.announcement.update", announcement.id, { title: announcement.title });
     return announcement;
   }
-  if (action === "archive_announcement" || action === "restore_announcement" || action === "delete_announcement") {
+  if (action === "delete_announcement") {
+    const announcement = await prisma.announcement.delete({ where: { id: String(body.announcementId) } });
+    await audit(actor, "academy.announcement.delete", announcement.id, { title: announcement.title });
+    return announcement;
+  }
+  if (action === "archive_announcement" || action === "restore_announcement") {
     const announcement = await prisma.announcement.update({
       where: { id: String(body.announcementId) },
       data: { expiresAt: action === "restore_announcement" ? null : new Date(), publishedAt: action === "restore_announcement" ? new Date() : undefined },
@@ -997,7 +1021,12 @@ export async function runAcademyAction(body: Record<string, any>, actor: Actor) 
     await audit(actor, "academy.badge.update", badge.id, { name: badge.name });
     return badge;
   }
-  if (action === "archive_badge" || action === "restore_badge" || action === "delete_badge") {
+  if (action === "delete_badge") {
+    const badge = await prisma.badge.delete({ where: { id: String(body.badgeId) } });
+    await audit(actor, "academy.badge.delete", badge.id, { name: badge.name });
+    return badge;
+  }
+  if (action === "archive_badge" || action === "restore_badge") {
     const badge = await prisma.badge.update({ where: { id: String(body.badgeId) }, data: { active: action === "restore_badge" } });
     await audit(actor, `academy.badge.${action.replace("_badge", "")}`, badge.id, { active: badge.active });
     return badge;
