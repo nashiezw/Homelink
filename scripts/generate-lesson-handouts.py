@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import html
 import json
+import os
 import re
 from datetime import date
 from pathlib import Path
@@ -308,8 +309,13 @@ def header_footer(canvas, doc, title: str):
 
 def make_lesson_handout(item: dict, output: Path):
     s = styles()
+    output.parent.mkdir(parents=True, exist_ok=True)
+    tmp_output = output.with_name(f"{output.stem}.tmp.pdf")
+    if tmp_output.exists():
+        tmp_output.unlink()
+    handle = tmp_output.open("wb")
     doc = SimpleDocTemplate(
-        str(output),
+        handle,
         pagesize=A4,
         rightMargin=18 * mm,
         leftMargin=18 * mm,
@@ -388,11 +394,21 @@ def make_lesson_handout(item: dict, output: Path):
     )
 
     title = item["title"]
-    doc.build(
-        story,
-        onFirstPage=lambda c, d: header_footer(c, d, title),
-        onLaterPages=lambda c, d: header_footer(c, d, title),
-    )
+    try:
+        doc.build(
+            story,
+            onFirstPage=lambda c, d: header_footer(c, d, title),
+            onLaterPages=lambda c, d: header_footer(c, d, title),
+        )
+    finally:
+        handle.close()
+    try:
+        os.replace(tmp_output, output)
+    except PermissionError:
+        if output.exists():
+            tmp_output.unlink(missing_ok=True)
+            return
+        raise
 
 
 def main():

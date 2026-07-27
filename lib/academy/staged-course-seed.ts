@@ -67,7 +67,7 @@ function inDepthLesson(lesson: {
           ? "performance"
           : "foundation";
 
-  const depth = lessonDepthByMode[mode];
+  const depth = lessonSpecificDepth(lesson, mode);
   const objectives = lesson.objectives.map((item) => `<li>${item}</li>`).join("");
   const resources = (lesson.resourceTitles ?? []).slice(0, 5).map((item) => `<li>${item}</li>`).join("");
   const prompt = lesson.discussionPrompt
@@ -151,6 +151,137 @@ const lessonDepthByMode = {
     practice: "Create a 30-day improvement plan. Include the metric you will improve, the daily habit required, the tool you will use, and the review date with a mentor or branch lead.",
   },
 };
+
+function lessonSpecificDepth(
+  lesson: {
+    title: string;
+    summary: string;
+    objectives: string[];
+    resourceTitles?: string[];
+  },
+  mode: keyof typeof lessonDepthByMode,
+) {
+  const base = lessonDepthByMode[mode];
+  const title = lesson.title;
+  const titleLower = title.toLowerCase();
+  const objectiveText = lesson.objectives.slice(0, 2).join(" and ").toLowerCase();
+  const toolText = lesson.resourceTitles?.length
+    ? ` Use ${lesson.resourceTitles.slice(0, 3).join(", ")} as the working evidence for this lesson.`
+    : "";
+
+  if (/welcome|orientation|academy/.test(titleLower)) {
+    return {
+      market: `${title} matters because learners need to understand the HouseLink promise before they touch real clients: verified information, safer transactions, disciplined communication, and market-specific judgement for Zimbabwe property work.`,
+      standard: `By the end of this lesson, the learner should be able to ${objectiveText || "explain the HouseLink Academy pathway"} without sounding vague. The standard is simple: know the pathway, know the evidence expected, and know what behaviour HouseLink will not tolerate.`,
+      checklist: [
+        "Explain the HouseLink promise in one clear client-friendly sentence.",
+        "Identify the next course action: lesson, toolkit, quiz, assignment, or certificate requirement.",
+        "Describe what evidence proves progress instead of relying on attendance alone.",
+        "Commit to written records, respectful communication, and escalation when facts are missing.",
+      ],
+      example: "A new learner receives a landlord enquiry before completing training. The correct response is not to improvise as an expert, but to use the HouseLink workflow, ask for the required facts, and seek mentor guidance before advising.",
+      practice: "Write your personal HouseLink operating promise in five lines: who you serve, what you verify, how you communicate, what you record, and when you escalate.",
+    };
+  }
+
+  if (/goal|career|90|professional readiness|routine/.test(titleLower)) {
+    return {
+      market: `${title} is practical because Zimbabwe property agents are judged by daily reliability, not motivational language. Clients remember who followed up, who verified facts, and who kept calm when a deal became messy.`,
+      standard: "Turn this lesson into a measurable work rhythm: prospecting blocks, follow-up times, listing checks, document review, client updates, and weekly pipeline review. A top agent can show the work, not only describe ambition.",
+      checklist: [
+        "Set weekly targets for qualified conversations, listings reviewed, viewings, follow-ups, and portfolio evidence.",
+        "Record what happened, what changed, who must act next, and by when.",
+        "Review one weak point every week and choose one corrective habit.",
+        "Keep a portfolio of corrected work as well as successful work.",
+      ],
+      example: "An agent has many WhatsApp enquiries but few viewings. Instead of blaming the market, they audit response time, qualification questions, listing fit, and follow-up discipline, then fix one bottleneck for 30 days.",
+      practice: "Create a 30-day agent scoreboard with five metrics and one weekly review question your mentor could use to coach you.",
+    };
+  }
+
+  if (/market|area|neighbourhood|infrastructure|value|pricing|cma|appraisal/.test(titleLower)) {
+    return {
+      market: `${title} needs Zimbabwe-specific judgement because value changes with water reliability, power, road access, schools, security, title confidence, transport, internet, and nearby development. Generic price talk is not enough.`,
+      standard: "Support every value opinion with evidence: comparable listings, recent client feedback, condition notes, location trade-offs, infrastructure realities, and documented assumptions. Do not present a price as certain when the file only supports a range.",
+      checklist: [
+        "List the local value drivers that affect this specific property type.",
+        "Separate confirmed comparables from weak or outdated examples.",
+        "Document assumptions behind the recommended price or rental range.",
+        "Explain the risk of overpricing, underpricing, or hiding local constraints.",
+      ],
+      example: "Two homes have similar bedrooms, but one has better road access, stronger water supply, and cleaner documentation. A trained agent explains those differences before recommending a price range.",
+      practice: "Build a mini market note for one suburb: three comparables, three value drivers, two risks, and one pricing recommendation you can defend.",
+    };
+  }
+
+  if (/photo|description|advert|marketing|listing quality/.test(titleLower)) {
+    return {
+      market: `${title} affects trust immediately. Zimbabwe clients often decide whether to enquire from photos, price clarity, location confidence, and whether the description answers practical questions before a viewing.`,
+      standard: "A listing should help a serious client self-qualify. Include truthful photos, accurate features, costs, access details, defects, availability, restrictions, and the next step. Never let attractive wording cover missing facts.",
+      checklist: [
+        "Capture honest photos of key rooms, exterior, access, bathrooms, kitchen, parking, and defects.",
+        "Write facts before adjectives: size, rooms, utilities, condition, costs, location, and restrictions.",
+        "Confirm availability and authority before publishing.",
+        "Update the listing when price, condition, availability, or landlord instruction changes.",
+      ],
+      example: "A flat looks attractive online but has limited parking and unreliable water. A strong listing states those facts clearly so the right client enquires and the wrong client does not waste time.",
+      practice: "Rewrite one weak listing into a client-ready version with verified facts, missing questions, photo checklist, and a short viewing script.",
+    };
+  }
+
+  if (/viewing|client|tenant|buyer|lead|qualification|enquiry/.test(titleLower)) {
+    return {
+      market: `${title} matters because property enquiries in Zimbabwe often arrive fast, informal, and incomplete. A professional agent must qualify without sounding cold and protect everyone before arranging access.`,
+      standard: "Every serious client interaction should produce a usable brief: identity context, budget, area, timing, decision makers, documents needed, viewing plan, risks, and next action.",
+      checklist: [
+        "Ask focused qualification questions before sending many options.",
+        "Confirm viewing time, access, safety expectations, and who will attend.",
+        "Summarise the conversation in writing after important calls or viewings.",
+        "Pause if payment, identity, authority, or safety details are unclear.",
+      ],
+      example: "A tenant says they can pay today. The agent still confirms documents, viewing status, landlord terms, payment channel, and lease process before allowing urgency to drive the decision.",
+      practice: "Write a five-message WhatsApp flow: greeting, qualification, recommended option, viewing confirmation, and post-viewing follow-up.",
+    };
+  }
+
+  if (/offer|negotiation|objection|close|deal/.test(titleLower)) {
+    return {
+      market: `${title} requires discipline because negotiation can become emotional, rushed, or undocumented. HouseLink agents protect trust by keeping terms clear and separating facts from pressure.`,
+      standard: "Document offer terms, deadlines, conditions, counter-offers, accepted items, rejected items, and who approved each step. Stay neutral; your job is to guide the process, not manipulate either side.",
+      checklist: [
+        "Confirm all material terms in writing before presenting an offer.",
+        "Separate client preference from legal, payment, or documentation requirements.",
+        "Record counter-offers and deadlines accurately.",
+        "Escalate unusual clauses, payment risks, or disputes before closing.",
+      ],
+      example: "A buyer wants a discount because repairs are needed. The agent documents the repair evidence, presents the request neutrally, and records the seller's response instead of arguing from opinion.",
+      practice: "Draft an offer summary template with price, conditions, deadline, evidence, client wording, and escalation triggers.",
+    };
+  }
+
+  if (/legal|document|mandate|compliance|confidential|risk|fraud|safety|lease|contract/.test(titleLower)) {
+    return {
+      market: `${title} is high-stakes because many property problems begin with small document gaps: unclear authority, inconsistent names, rushed deposits, verbal promises, or payment details that are not verified.`,
+      standard: "Collect complete information, protect confidential data, explain process clearly, and pause when authority, identity, payment, or legal meaning is uncertain. Do not give legal advice beyond your role.",
+      checklist: [
+        "Check names, IDs, authority, signatures, dates, amounts, property references, and payment instructions.",
+        "Keep audit-ready notes instead of scattered private-chat promises.",
+        "Protect personal documents when submitting evidence.",
+        "Escalate ownership, estate, company, boundary, or payment concerns.",
+      ],
+      example: "A person with keys wants urgent marketing, but paperwork names someone else. A trained agent pauses publication, records the mismatch, requests authority evidence, and escalates before exposing clients to risk.",
+      practice: "Write a risk note for one document problem: red flag, evidence requested, action paused, escalation route, and client wording.",
+    };
+  }
+
+  return {
+    market: `${title} matters in the Zimbabwe property market because ${lesson.summary.charAt(0).toLowerCase()}${lesson.summary.slice(1)} The learner must connect the concept to real client decisions, not only remember theory.`,
+    standard: `${base.standard}${toolText}`,
+    checklist: base.checklist,
+    example: `${base.example} In this lesson, the agent should specifically show how the topic changes what they verify, what they record, and what they tell the client next.`,
+    practice: `${base.practice}${toolText}`,
+  };
+}
 
 export const modules: ModuleSeed[] = [
   {

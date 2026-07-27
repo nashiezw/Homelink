@@ -40,7 +40,7 @@
     "moduleTitle": "Introduction to the HouseLink Zimbabwe Standard",
     "title": "Your journey to becoming a professional agent",
     "summary": "Set goals and routines for a sustainable, ethical real estate career with HouseLink.",
-    "richText": "<p>Top agents combine daily discipline with client care. Your journey starts with honest communication, accurate records, and consistent follow-through — not shortcuts.</p><p>Use the Personal Goal Planner to define income targets, skill milestones, and weekly activity goals. Review progress weekly and adjust based on real pipeline data.</p><p>HouseLink expects every agent to protect client confidentiality, represent properties accurately, and escalate issues through proper channels.</p>",
+    "richText": "<h2>What professional readiness means</h2><p>Top agents combine daily discipline with client care. Your journey starts with honest communication, accurate records, verified facts, and consistent follow-through. A certificate is only valuable when it is backed by habits clients can feel in every enquiry, viewing, negotiation, and follow-up.</p><p>In Zimbabwe's property market, trust is built through clarity. Clients want to know whether the property is real, whether the price is fair, whether the person marketing it has authority, and whether their money and documents are safe. Your role is to reduce confusion and help people make better decisions.</p><h3>Your 90-day operating plan</h3><ul><li>Set a weekly prospecting target for landlords, sellers, buyers, tenants, and referral partners.</li><li>Track every enquiry, viewing, objection, offer, landlord instruction, and follow-up date.</li><li>Choose two skills to improve first: listing quality, qualification, negotiation, documentation, local area knowledge, or closing discipline.</li><li>Review your pipeline every week and adjust your activity using evidence, not mood.</li></ul><h3>The HouseLink professional standard</h3><p>HouseLink expects every agent to protect client confidentiality, represent properties accurately, communicate delays early, and escalate legal, safety, payment, or documentation issues through proper channels.</p><blockquote>Professionalism is visible in small decisions: what you verify, what you write down, what you refuse to guess, and how quickly you correct bad information.</blockquote><h3>Field practice</h3><p>Use the Personal Goal Planner to define income targets, skill milestones, weekly activity goals, and the evidence you will keep. Then complete the Weekly Performance Review after your first week of outreach so you can compare your plan with real pipeline data.</p>",
     "objectives": [
       "Set 90-day professional goals",
       "Adopt weekly review habits",
@@ -685,6 +685,46 @@
     ],
     "estimatedMinutes": 30,
     "resourceTitles": []
+  },
+  {
+    "slug": "academy-course-advanced-professional-specialisation-pathways-for-top-agents",
+    "courseId": "academy-course-advanced-professional",
+    "courseTitle": "HouseLink Professional Certification",
+    "moduleTitle": "Becoming a Top-Performing Agent",
+    "title": "Specialisation pathways for top agents",
+    "summary": "Choose the advanced track that can make you unusually valuable in the market.",
+    "richText": "<p><strong>Why specialists win</strong></p><p>The best agents become known for a clear type of client, property, or transaction. HouseLink's core certificate proves baseline competence; specialisation gives you a sharper market identity and deeper advisory value.</p><p><strong>Available pathways</strong></p><p>Luxury Sales Agent: Premium listing presentation, discreet client service, high-value negotiation, and brand-safe marketing. Rentals Specialist: Tenant qualification, lease readiness, handovers, deposit discipline, and landlord retention. Commercial Property Agent: Office/retail basics, tenant needs analysis, lease terms, yields, and business-owner advisory. Property Management Specialist: Inspections, maintenance triage, rent collection, arrears process, and landlord reporting. Diaspora Buyer Advisor: Remote buyer confidence, document verification, viewing evidence, and secure communication. Land & Development Specialist: Land-risk checks, servicing questions, zoning awareness, development handover, and buyer education.</p><p><strong>Specialisation plan</strong></p><p>Pick one pathway for the next 90 days. Define the client type, property type, top objections, required documents, local market signals, and three expert contacts you need to build around that niche.</p>",
+    "objectives": [
+      "Select a professional niche",
+      "Define specialist knowledge gaps",
+      "Create a 90-day specialisation plan"
+    ],
+    "estimatedMinutes": 45,
+    "resourceTitles": [
+      "Personal Goal Planner",
+      "Monthly KPI Tracker",
+      "Lead Tracking Sheet"
+    ]
+  },
+  {
+    "slug": "academy-course-advanced-professional-annual-recertification-and-continuing-professional-developm",
+    "courseId": "academy-course-advanced-professional",
+    "courseTitle": "HouseLink Professional Certification",
+    "moduleTitle": "Becoming a Top-Performing Agent",
+    "title": "Annual recertification and continuing professional development",
+    "summary": "Keep your certificate meaningful after the first year through renewal, compliance refreshers, and market updates.",
+    "richText": "<p><strong>Why renewal matters</strong></p><p>Markets, scams, document risks, and client expectations change. Annual recertification keeps the HouseLink credential credible and protects clients from agents who stop learning after the first certificate.</p><p><strong>Renewal requirements</strong></p><p>Annual compliance refresher and ethics renewal. Market update quiz based on the latest HouseLink demand and price signals. Updated field portfolio sample or mentor-reviewed live-file audit. Minimum client-service quality check across response speed, listing accuracy, and complaint history. Certificate renewal issued only after admin/mentor sign-off.</p><p><strong>Professional habit</strong></p><p>Keep a small renewal file throughout the year: one market update quiz result, one refreshed compliance checklist, one reviewed client file, one KPI review, and one mentor note.</p>",
+    "objectives": [
+      "Understand annual certificate renewal",
+      "Maintain a renewal evidence file",
+      "Use market updates for ongoing competence"
+    ],
+    "estimatedMinutes": 35,
+    "resourceTitles": [
+      "Weekly Performance Review",
+      "Compliance Checklist",
+      "Zimbabwe Market Intelligence Update Template"
+    ]
   },
   {
     "slug": "academy-course-advanced-professional-field-apprenticeship-evidence-portfolio",

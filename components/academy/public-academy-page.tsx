@@ -840,10 +840,16 @@ function AcademySidePanel({
           )}
 
           {academyStatus?.hasActiveAccess && (
-            <Link href="/dashboard/academy" className="block w-full">
-              <Button className="w-full"><PlayCircle className="size-4 mr-2" /> Go to Learning Dashboard</Button>
-            </Link>
+            <div className="grid gap-2">
+              <Link href="/dashboard/academy" className="block w-full">
+                <Button className="w-full"><PlayCircle className="size-4 mr-2" /> Go to Learning Dashboard</Button>
+              </Link>
+            </div>
           )}
+
+          <Link href="/academy/verify" className="block w-full">
+            <Button variant="secondary" className="w-full"><ShieldCheck className="size-4 mr-2" /> Verify Certificate</Button>
+          </Link>
 
           {selectedRegistration === "APPROVED" && selected && (
             <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm dark:border-emerald-800 dark:bg-emerald-900/20">
