@@ -1007,7 +1007,7 @@ function withUniqueBlogImages<T extends { slug: string; featuredImageUrl?: strin
 
 function withHeroImage<T extends { slug: string; featuredImageUrl?: string | null; featuredImageAlt?: string | null; title: string } | null>(post: T): T {
   if (!post) return post;
-  return { ...post, featuredImageUrl: uniqueVisualUrl(post, "hero"), featuredImageAlt: post.featuredImageAlt || post.title } as T;
+  return { ...post, featuredImageUrl: post.featuredImageUrl || "/images/property-management-dusk.webp", featuredImageAlt: post.featuredImageAlt || post.title } as T;
 }
 
 async function getDatabaseBlogIndex(params: { query?: string; category?: string; tag?: string; page?: number; limit?: number; popular?: boolean }) {

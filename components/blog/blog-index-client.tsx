@@ -44,10 +44,10 @@ type BlogPost = {
 };
 
 const startHereGuides = [
-  { label: "Renters", href: "/blog/how-to-find-a-house-to-rent-in-zimbabwe-without-wasting-time", icon: Search, text: "Budget, viewings, deposits, utilities and warning signs." },
-  { label: "Buyers", href: "/blog/buying-property-in-zimbabwe-questions-to-ask-before-you-commit", icon: Home, text: "Documents, title checks, rates, offers and transfer questions." },
-  { label: "Landlords", href: "/blog/what-landlords-should-check-before-accepting-a-tenant", icon: ShieldCheck, text: "Screening, leases, handover records and tenant expectations." },
-  { label: "Investors", href: "/blog/how-to-evaluate-rental-yield-before-buying-an-investment-property", icon: TrendingUp, text: "Yield, vacancy, services, upgrades and tenant demand." },
+  { label: "Renters", href: "/blog/how-to-find-a-house-to-rent-in-zimbabwe-without-wasting-time", icon: Search, text: "Avoid wasted viewings, unclear deposits, utility surprises and unsafe handovers.", action: "Rent safely" },
+  { label: "Buyers", href: "/blog/buying-property-in-zimbabwe-questions-to-ask-before-you-commit", icon: Home, text: "Check documents, ownership, rates, transfer risk, offers and hidden costs.", action: "Buy with proof" },
+  { label: "Landlords", href: "/blog/what-landlords-should-check-before-accepting-a-tenant", icon: ShieldCheck, text: "Screen tenants, prepare leases, record handovers and reduce arrears risk.", action: "Protect the asset" },
+  { label: "Investors", href: "/blog/how-to-evaluate-rental-yield-before-buying-an-investment-property", icon: TrendingUp, text: "Compare yield, vacancy, services, upgrades and suburb demand before buying.", action: "Run the numbers" },
 ] as const;
 
 const popularQuestions = [
@@ -96,17 +96,20 @@ export function BlogIndexClient({ initialData, initialCategorySlug = "" }: BlogI
   const activeCategoryName = useMemo(() => data.categories.find((item) => item.slug === category)?.name, [category, data.categories]);
 
   return (
-    <div className="space-y-7 sm:space-y-10">
-      <section className="rounded-lg border border-emerald-100 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-4">
+    <div className="space-y-8 sm:space-y-10">
+      <section className="relative overflow-hidden rounded-lg border border-emerald-100 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div className="absolute inset-y-0 right-0 hidden w-1/3 bg-[radial-gradient(circle_at_top_right,rgba(16,185,129,0.18),transparent_62%)] lg:block" />
+        <div className="relative p-3 sm:p-4 lg:p-5">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">
               <Sparkles className="size-3.5" />
-              Find articles
+              Find the right guide
             </p>
+            <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">Search by the decision in front of you: rent, buy, verify, list, move, inspect or negotiate.</p>
           </div>
         </div>
-        <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center lg:grid-cols-[1fr_auto]">
+        <div className="grid gap-2 lg:grid-cols-[minmax(0,1fr)_18rem_auto] lg:items-center">
           <label className="relative block">
             <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
             <input
@@ -127,48 +130,60 @@ export function BlogIndexClient({ initialData, initialCategorySlug = "" }: BlogI
               </div>
             ) : null}
           </label>
-          <div className="grid grid-cols-[1fr_auto] gap-2 sm:flex sm:flex-wrap">
-            <select value={category} onChange={(event) => setCategory(event.target.value)} className="min-h-11 rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-950 dark:text-white">
+          <select value={category} onChange={(event) => setCategory(event.target.value)} className="min-h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-950 dark:text-white">
               <option value="">All categories</option>
               {data.categories.map((item) => <option key={item.id} value={item.slug}>{item.name}</option>)}
             </select>
-            <Button className="px-4" onClick={() => void load(1)} disabled={loading}>Search</Button>
-          </div>
+          <Button className="min-h-11 w-full px-4 lg:w-auto" onClick={() => void load(1)} disabled={loading}>Search</Button>
         </div>
         {activeCategoryName ? <p className="mt-3 text-sm text-slate-500">Filtering by {activeCategoryName}</p> : null}
+        </div>
       </section>
 
-      <section className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
-        <div>
-          <p className="section-eyebrow">Start here</p>
-          <h2 className="mt-2 text-2xl font-bold tracking-normal text-ink dark:text-white sm:text-3xl">Guides by property decision.</h2>
+      <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_25rem]">
+        <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-5">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <p className="section-eyebrow">Start here</p>
+              <h2 className="mt-2 text-2xl font-bold tracking-normal text-ink dark:text-white sm:text-3xl">Guides by property decision</h2>
+            </div>
+            <p className="max-w-sm text-sm leading-6 text-slate-600 dark:text-slate-300">Choose the situation first. Each guide gives checks, questions, warning signs and next steps.</p>
+          </div>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             {startHereGuides.map((guide) => {
               const Icon = guide.icon;
               return (
-                <Link key={guide.href} href={guide.href} className="group rounded-lg border border-slate-200 bg-white p-4 shadow-sm transition hover:border-emerald-300 hover:shadow-soft dark:border-slate-800 dark:bg-slate-900">
-                  <div className="flex items-start gap-3">
-                    <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-200">
+                <Link key={guide.href} href={guide.href} className="group flex min-h-40 flex-col justify-between rounded-lg border border-slate-200 bg-[#fbfefd] p-4 transition hover:border-emerald-300 hover:bg-emerald-50/60 hover:shadow-soft dark:border-slate-800 dark:bg-slate-950 dark:hover:bg-emerald-950/30">
+                  <div>
+                    <span className="inline-flex size-10 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-200">
                       <Icon className="size-5" />
                     </span>
-                    <div>
-                      <p className="font-semibold text-ink group-hover:text-emerald-700 dark:text-white dark:group-hover:text-emerald-300">{guide.label}</p>
-                      <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">{guide.text}</p>
-                    </div>
+                    <p className="mt-4 text-lg font-bold text-ink group-hover:text-emerald-700 dark:text-white dark:group-hover:text-emerald-300">{guide.label}</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">{guide.text}</p>
                   </div>
+                  <span className="mt-4 inline-flex items-center gap-2 text-sm font-bold text-emerald-700 dark:text-emerald-300">
+                    {guide.action}
+                    <ArrowRight className="size-4 transition group-hover:translate-x-1" />
+                  </span>
                 </Link>
               );
             })}
           </div>
         </div>
-        <div>
-          <p className="section-eyebrow">Popular questions</p>
-          <h2 className="mt-2 text-2xl font-bold tracking-normal text-ink dark:text-white sm:text-3xl">Answers people actually need.</h2>
+        <div className="rounded-lg border border-slate-200 bg-[#071417] p-4 text-white shadow-sm dark:border-slate-800 sm:p-5">
+          <div className="relative mb-4 aspect-[16/9] overflow-hidden rounded-lg bg-slate-900">
+            <Image src="/images/bulawayo-family-house.webp" alt="Zimbabwe family property guide" fill className="object-cover" sizes="(min-width: 1024px) 400px, 100vw" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+            <p className="absolute bottom-3 left-3 right-3 text-sm font-semibold text-white">Use the blog as a decision checklist before you call, view, pay or sign.</p>
+          </div>
+          <p className="section-eyebrow text-emerald-200">Popular questions</p>
+          <h2 className="mt-2 text-2xl font-bold tracking-normal text-white">Answers people actually need</h2>
           <div className="mt-4 grid gap-2">
-            {popularQuestions.map((question) => (
-              <Link key={question.href} href={question.href} className="group flex min-h-12 items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-emerald-300 hover:text-emerald-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:text-emerald-300">
+            {popularQuestions.map((question, index) => (
+              <Link key={question.href} href={question.href} className="group flex min-h-12 items-center justify-between gap-3 rounded-lg border border-white/10 bg-white/[0.08] px-3 py-3 text-sm font-semibold text-slate-100 transition hover:border-emerald-300/60 hover:bg-white/[0.12] hover:text-emerald-100">
+                <span className="inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-emerald-400/15 text-xs font-bold text-emerald-200">{index + 1}</span>
                 <span>{question.label}</span>
-                <ArrowRight className="size-4 shrink-0" />
+                <ArrowRight className="size-4 shrink-0 transition group-hover:translate-x-1" />
               </Link>
             ))}
           </div>
