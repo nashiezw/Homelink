@@ -14,10 +14,15 @@ const groups = [
       ["HouseLink Property Blog", "/blog"],
       ["Send property request", "/property-request"],
       ["Student accommodation", "/student-accommodation"],
+      ["Roommate matching", "/roommates"],
+    ],
+  },
+  {
+    title: "Locations",
+    items: [
       ["Rent in Harare", "/rent/harare"],
       ["Rooms in Avondale", "/rooms/avondale"],
       ["Buy in Bulawayo", "/property-for-sale/bulawayo"],
-      ["Roommate matching", "/roommates"],
     ],
   },
   {
@@ -54,7 +59,6 @@ const groups = [
     items: [
       ["Contact", "/contact"],
       ["Safety centre", "/safety"],
-      ["Property blog", "/blog"],
       ["Report listing", "/report-listing"],
       ["Maintenance", "/maintenance"],
     ],
@@ -190,7 +194,7 @@ export function SiteFooter() {
         </div>
 
         <div className="mt-8 border-t border-white/10 pt-6 sm:mt-10 sm:pt-8">
-          <div className="grid gap-x-8 gap-y-8 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
+          <div className="grid gap-x-6 gap-y-8 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-7">
             {groups.map((group) => (
               <div key={group.title} className="min-w-0">
                 <p className="text-sm font-semibold tracking-wide text-white">{group.title}</p>
