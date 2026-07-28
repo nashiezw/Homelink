@@ -1,12 +1,12 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Award,
   BookOpen,
-  ChevronDown,
   CheckCircle2,
   Clock,
   CreditCard,
@@ -301,173 +301,38 @@ export function PublicAcademyPage() {
         </div>
       )}
 
-      <div className="flex flex-col gap-8 lg:grid lg:grid-cols-[minmax(0,1.35fr)_minmax(18rem,0.65fr)] lg:items-start lg:gap-6">
-        <section className="order-1 grid min-w-0 gap-5 lg:order-none">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-widest text-emerald-700 dark:text-emerald-300">Choose your programme</p>
-              <h2 className="mt-1 text-2xl font-bold tracking-tight text-slate-950 dark:text-white">Certification Pathway</h2>
-            </div>
-            <p className="max-w-md text-sm leading-6 text-slate-600 dark:text-slate-300">
-              Three focused levels. Open a programme for curriculum, requirements, and toolkit details.
+      <section className="mb-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_18px_60px_rgba(15,23,42,0.08)] dark:border-slate-800 dark:bg-slate-950">
+        <div className="grid gap-0 lg:grid-cols-[minmax(0,1fr)_19rem]">
+          <div className="p-5 sm:p-6 lg:p-7">
+            <p className="text-xs font-bold uppercase tracking-widest text-emerald-700 dark:text-emerald-300">Choose your programme</p>
+            <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-950 dark:text-white sm:text-3xl">Certification pathway</h2>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600 dark:text-slate-300">
+              Start with the pathway. Select one level, scan the value, then expand only the details you need: outcomes, certification requirements, curriculum, and toolkit.
             </p>
           </div>
-          {courses.map((course, index) => {
-            const registration = courseRegistrationState(academyStatus, course.id);
-            const accent = course.theme?.accent ?? "#008b68";
-            const locked = course.prerequisiteCourseId && courseRegistrationState(academyStatus, course.prerequisiteCourseId) !== "APPROVED" && registration !== "APPROVED";
-            const stageNumber = String(index + 1).padStart(2, "0");
-            return (
-              <article
-                key={course.id}
-                className={cn(
-                  "academy-programme-card relative overflow-hidden rounded-2xl border transition-all duration-300",
-                  selectedId === course.id ? "shadow-[0_24px_70px_rgba(15,23,42,0.14)]" : "border-slate-200 hover:shadow-[0_18px_48px_rgba(15,23,42,0.10)] dark:border-slate-800",
-                )}
-                style={selectedId === course.id ? { borderColor: accent } : undefined}
-              >
-                <div className={cn("absolute inset-y-0 left-0 hidden w-2 bg-gradient-to-b sm:block", course.theme?.gradient ?? "from-emerald-500 to-teal-600")} />
-                {registration === "APPROVED" && (
-                  <div className="absolute top-4 right-4 left-4 sm:left-auto sm:max-w-[12rem] rounded-full bg-emerald-600 px-3 py-1 text-center text-xs font-bold text-white">Enrolled</div>
-                )}
-                {locked && (
-                  <div className="absolute top-4 right-4 left-4 sm:left-auto sm:max-w-[14rem] inline-flex items-center justify-center gap-1 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
-                    <Lock className="size-3 shrink-0" /> Complete previous programme
-                  </div>
-                )}
-                <div className="p-5 pt-14 sm:p-6 sm:pl-8 sm:pt-6 md:p-7 md:pl-9">
-                  <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_9.5rem] xl:items-start">
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="inline-flex h-8 w-8 items-center justify-center rounded-full text-xs font-black text-white shadow-sm" style={{ backgroundColor: accent }}>
-                          {stageNumber}
-                        </span>
-                        <span className={cn("rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide", course.theme?.chip ?? "bg-emerald-100 text-emerald-800")}>{course.theme?.label}</span>
-                        {course.certificateEnabled && (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-800"><Award className="size-3 shrink-0" /> Certificate</span>
-                        )}
-                      </div>
-                      <h3 className="mt-4 text-2xl font-bold leading-tight tracking-tight text-slate-950 dark:text-white">{course.title}</h3>
-                      <p className="mt-1 text-sm font-semibold leading-relaxed" style={{ color: accent }}>{course.subtitle}</p>
-                      <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600 dark:text-slate-300">{course.shortDescription ?? course.description}</p>
-                    </div>
-                    <div className="rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm dark:border-slate-800 dark:bg-slate-950 xl:text-right">
-                      <p className="text-[11px] font-bold uppercase tracking-widest text-slate-500">Programme fee</p>
-                      <p className="mt-1 text-2xl font-black tracking-tight" style={{ color: accent }}>{course.publicPrice ? `${course.currency} ${course.publicPrice.toFixed(2)}` : "Free"}</p>
-                      <p className="mt-1 text-xs font-medium text-slate-500">{course.accessDurationDays} days access</p>
-                    </div>
-                  </div>
+          <div className="border-t border-slate-100 bg-slate-50/80 p-5 dark:border-slate-800 dark:bg-slate-900/40 lg:border-l lg:border-t-0">
+            <div className="grid grid-cols-3 gap-2 text-center">
+              <StandardStat value="3" label="levels" />
+              <StandardStat value={String(courses.reduce((sum, course) => sum + (course.assignmentCount ?? 0) + (course.quizCount ?? 0), 0))} label="checks" />
+              <StandardStat value={String(courses.reduce((sum, course) => sum + (course.toolkitCount ?? 0), 0))} label="tools" />
+            </div>
+          </div>
+        </div>
+      </section>
 
-                  <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
-                    <CourseMetric icon={BookOpen} value={String(course.lessonCount)} label="sessions" accent={accent} />
-                    <CourseMetric icon={ListChecks} value={`${course.quizCount ?? 0}/${course.assignmentCount ?? 0}`} label="quizzes/tasks" accent={accent} />
-                    <CourseMetric icon={Clock} value={`${course.estimatedHours || Math.round(course.durationMinutes / 60)}h`} label="guided" accent={accent} />
-                    <CourseMetric icon={ShieldCheck} value={String(course.toolkitCount ?? 0)} label="PDF tools" accent={accent} />
-                  </div>
-
-                  <div className="mt-4 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
-                    <TrustChip label="Admin reviewed" />
-                    <TrustChip label="Field toolkit" />
-                    {course.hasFinalExam && <TrustChip label="Final exam" tone="amber" />}
-                    {course.portfolioRequired && <TrustChip label="Portfolio" tone="sky" />}
-                  </div>
-
-                  <details className="group mt-5 rounded-xl border border-slate-200 bg-white/80 dark:border-slate-800 dark:bg-slate-950/70">
-                    <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-4 marker:content-none sm:px-5">
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold text-slate-900 dark:text-white">Programme details</p>
-                        <p className="mt-1 text-xs text-slate-500">Outcomes, inclusions, curriculum modules, and toolkit preview</p>
-                      </div>
-                      <div className="flex shrink-0 items-center gap-2">
-                        <span className="rounded-full px-3 py-1 text-xs font-semibold" style={{ backgroundColor: `${accent}18`, color: accent }}>
-                          Expand
-                        </span>
-                        <ChevronDown className="size-5 text-slate-400 transition group-open:rotate-180" />
-                      </div>
-                    </summary>
-                    <div className="border-t border-slate-100 p-4 dark:border-slate-800 sm:p-5">
-                      <AcademyAccordion
-                      accent={accent}
-                      items={[
-                        {
-                          id: `${course.id}-outcomes`,
-                          title: "What you will achieve",
-                          subtitle: "Learning outcomes for this programme",
-                          meta: `${course.learningOutcomes?.length ?? 0} outcomes`,
-                          content: (
-                            <ul className="space-y-2 text-sm text-slate-600">
-                              {(course.learningOutcomes ?? []).map((outcome) => (
-                                <li key={outcome} className="flex gap-2"><CheckCircle2 className="size-4 shrink-0 mt-0.5" style={{ color: accent }} />{outcome}</li>
-                              ))}
-                            </ul>
-                          ),
-                        },
-                        {
-                          id: `${course.id}-includes`,
-                          title: "Value and certification requirements",
-                          subtitle: course.assessmentSummary ?? "Sessions, toolkits, assessments, and certification",
-                          meta: course.badgeName ?? "Certificate",
-                          content: (
-                            <div className="space-y-4">
-                              <ul className="space-y-2 text-sm text-slate-600">
-                                {certificationRequirements(course).map((item) => (
-                                  <li key={item} className="flex gap-2"><CheckCircle2 className="size-4 shrink-0 mt-0.5" style={{ color: accent }} />{item}</li>
-                                ))}
-                              </ul>
-                              <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900">
-                                <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Included value</p>
-                                <ul className="mt-2 space-y-2 text-sm text-slate-600">
-                                  {(course.includes ?? []).map((item) => (
-                                    <li key={item} className="flex gap-2"><Award className="size-4 shrink-0 mt-0.5 text-amber-600" />{item}</li>
-                                  ))}
-                                </ul>
-                              </div>
-                            </div>
-                          ),
-                        },
-                        {
-                          id: `${course.id}-curriculum`,
-                          title: "Curriculum modules",
-                          subtitle: "Expand to preview what you will learn",
-                          meta: `${course.modules.length} modules`,
-                          content: (
-                            <div className="space-y-3">
-                              {course.modules.map((module) => (
-                                <div key={module.id} className="rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-950">
-                                  <p className="font-semibold">{module.title}</p>
-                                  <p className="mt-1 text-xs text-slate-500">{module.lessons.length} training sessions / {module.lessons.reduce((n, l) => n + l.estimatedMinutes, 0)} min</p>
-                                  <ul className="mt-2 space-y-1 text-sm text-slate-600">
-                                    {module.lessons.map((lesson) => <li key={lesson.id} className="flex gap-2"><span style={{ color: accent }}>-</span>{lesson.title}</li>)}
-                                  </ul>
-                                </div>
-                              ))}
-                            </div>
-                          ),
-                        },
-                        {
-                          id: `${course.id}-toolkit`,
-                          title: "Field toolkit included",
-                          subtitle: "HouseLink-branded print-ready PDFs for this level",
-                          meta: `${course.toolkitCount ?? 0} downloads`,
-                          content: <ToolkitGrid groups={course.toolkitPreview ?? []} accent={accent} preview />,
-                        },
-                      ]}
-                    />
-                    </div>
-                  </details>
-
-                  <CourseActionButton
-                    courseId={course.id}
-                    registration={registration}
-                    selected={selectedId === course.id}
-                    locked={!!locked}
-                    accent={accent}
-                    onSelect={() => setSelectedId(course.id)}
-                  />
-                </div>
-              </article>
-            );
-          })}
+      <div className="grid gap-6 xl:grid-cols-[18rem_minmax(0,1fr)_21rem] xl:items-start">
+        <PathwayRail courses={courses} selectedId={selectedId} academyStatus={academyStatus} onSelect={setSelectedId} />
+        <section className="min-w-0">
+          {selected ? (
+            <SelectedProgrammeDetail
+              course={selected}
+              index={Math.max(0, courses.findIndex((course) => course.id === selected.id))}
+              registration={selectedRegistration}
+              academyStatus={academyStatus}
+              selected={true}
+              onSelect={() => setSelectedId(selected.id)}
+            />
+          ) : null}
           {!courses.length && (
             <div className="rounded-2xl border-2 border-dashed border-slate-300 p-12 text-center dark:border-slate-700">
               <BookOpen className="size-12 mx-auto text-slate-400 mb-4" />
@@ -477,8 +342,8 @@ export function PublicAcademyPage() {
           )}
         </section>
 
-        <aside className="order-2 lg:order-none lg:h-fit">
-          <div className="lg:sticky lg:top-4">
+        <aside className="xl:h-fit">
+          <div className="xl:sticky xl:top-4">
             <AcademySidePanel
               user={user}
               selected={selected}
@@ -593,11 +458,216 @@ export function PublicAcademyPage() {
   );
 }
 
+function PathwayRail({
+  courses,
+  selectedId,
+  academyStatus,
+  onSelect,
+}: {
+  courses: PublicCourse[];
+  selectedId: string;
+  academyStatus: AcademyStatus | null;
+  onSelect: (id: string) => void;
+}) {
+  return (
+    <aside className="academy-panel rounded-2xl p-3 xl:sticky xl:top-4">
+      <div className="px-2 pb-3">
+        <p className="text-xs font-bold uppercase tracking-widest text-emerald-700 dark:text-emerald-300">Pathway</p>
+        <p className="mt-1 text-sm leading-5 text-slate-600 dark:text-slate-300">Select a stage to view the course, requirements, and enrolment details.</p>
+      </div>
+      <div className="grid gap-2 sm:grid-cols-3 xl:grid-cols-1">
+        {courses.map((course, index) => {
+          const accent = course.theme?.accent ?? "#008b68";
+          const active = course.id === selectedId;
+          const registration = courseRegistrationState(academyStatus, course.id);
+          const locked = course.prerequisiteCourseId && courseRegistrationState(academyStatus, course.prerequisiteCourseId) !== "APPROVED" && registration !== "APPROVED";
+          return (
+            <button
+              key={course.id}
+              type="button"
+              onClick={() => onSelect(course.id)}
+              className={cn(
+                "group min-w-0 rounded-xl border p-3 text-left transition",
+                active ? "bg-white shadow-lg dark:bg-slate-950" : "border-slate-200 bg-slate-50/80 hover:bg-white dark:border-slate-800 dark:bg-slate-900/60 dark:hover:bg-slate-950",
+              )}
+              style={active ? { borderColor: accent } : undefined}
+            >
+              <div className="flex items-start gap-3">
+                <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-full text-xs font-black text-white" style={{ backgroundColor: accent }}>
+                  {String(index + 1).padStart(2, "0")}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-black text-slate-950 dark:text-white">{course.title}</span>
+                  <span className="mt-1 block text-xs font-semibold" style={{ color: accent }}>{course.theme?.label ?? course.difficulty}</span>
+                  <span className="mt-2 flex flex-wrap gap-1">
+                    {registration === "APPROVED" && <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800">Enrolled</span>}
+                    {registration === "PENDING" && <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800">Pending</span>}
+                    {locked && <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-bold text-slate-600">Locked</span>}
+                  </span>
+                </span>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    </aside>
+  );
+}
+
+function SelectedProgrammeDetail({
+  course,
+  index,
+  registration,
+  academyStatus,
+  selected,
+  onSelect,
+}: {
+  course: PublicCourse;
+  index: number;
+  registration: ReturnType<typeof courseRegistrationState>;
+  academyStatus: AcademyStatus | null;
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  const accent = course.theme?.accent ?? "#008b68";
+  const locked = course.prerequisiteCourseId && courseRegistrationState(academyStatus, course.prerequisiteCourseId) !== "APPROVED" && registration !== "APPROVED";
+  const stageNumber = String(index + 1).padStart(2, "0");
+
+  return (
+    <article className="academy-programme-card relative overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800" style={{ borderColor: selected ? accent : undefined }}>
+      <div className={cn("h-2 bg-gradient-to-r", course.theme?.gradient ?? "from-emerald-500 to-teal-600")} />
+      <div className="p-5 sm:p-6 lg:p-7">
+        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_10rem] lg:items-start">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-flex h-8 w-8 items-center justify-center rounded-full text-xs font-black text-white shadow-sm" style={{ backgroundColor: accent }}>
+                {stageNumber}
+              </span>
+              <span className={cn("rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide", course.theme?.chip ?? "bg-emerald-100 text-emerald-800")}>{course.theme?.label}</span>
+              {course.certificateEnabled && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-800"><Award className="size-3 shrink-0" /> Certificate</span>
+              )}
+              {locked && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+                  <Lock className="size-3 shrink-0" /> Complete previous programme
+                </span>
+              )}
+            </div>
+            <h3 className="mt-4 text-2xl font-black leading-tight tracking-tight text-slate-950 dark:text-white sm:text-3xl">{course.title}</h3>
+            <p className="mt-1 text-sm font-bold leading-relaxed" style={{ color: accent }}>{course.subtitle}</p>
+            <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600 dark:text-slate-300">{course.shortDescription ?? course.description}</p>
+          </div>
+          <div className="rounded-xl border border-slate-200 bg-white p-4 text-left shadow-sm dark:border-slate-800 dark:bg-slate-950 lg:text-right">
+            <p className="text-[11px] font-bold uppercase tracking-widest text-slate-500">Programme fee</p>
+            <p className="mt-1 text-2xl font-black tracking-tight" style={{ color: accent }}>{course.publicPrice ? `${course.currency} ${course.publicPrice.toFixed(2)}` : "Free"}</p>
+            <p className="mt-1 text-xs font-medium text-slate-500">{course.accessDurationDays} days access</p>
+          </div>
+        </div>
+
+        <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <CourseMetric icon={BookOpen} value={String(course.lessonCount)} label="sessions" accent={accent} />
+          <CourseMetric icon={ListChecks} value={`${course.quizCount ?? 0}/${course.assignmentCount ?? 0}`} label="quizzes/tasks" accent={accent} />
+          <CourseMetric icon={Clock} value={`${course.estimatedHours || Math.round(course.durationMinutes / 60)}h`} label="guided" accent={accent} />
+          <CourseMetric icon={ShieldCheck} value={String(course.toolkitCount ?? 0)} label="PDF tools" accent={accent} />
+        </div>
+
+        <div className="mt-4 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+          <TrustChip label="Admin reviewed" />
+          <TrustChip label="Field toolkit" />
+          {course.hasFinalExam && <TrustChip label="Final exam" tone="amber" />}
+          {course.portfolioRequired && <TrustChip label="Portfolio" tone="sky" />}
+        </div>
+
+        <div className="mt-5 rounded-xl border border-slate-200 bg-white/80 p-3 dark:border-slate-800 dark:bg-slate-950/70 sm:p-4">
+          <AcademyAccordion
+            accent={accent}
+            items={[
+              {
+                id: `${course.id}-outcomes`,
+                title: "What you will achieve",
+                subtitle: "Learning outcomes for this programme",
+                meta: `${course.learningOutcomes?.length ?? 0} outcomes`,
+                content: (
+                  <ul className="space-y-2 text-sm text-slate-600">
+                    {(course.learningOutcomes ?? []).map((outcome) => (
+                      <li key={outcome} className="flex gap-2"><CheckCircle2 className="size-4 shrink-0 mt-0.5" style={{ color: accent }} />{outcome}</li>
+                    ))}
+                  </ul>
+                ),
+              },
+              {
+                id: `${course.id}-includes`,
+                title: "Value and certification requirements",
+                subtitle: course.assessmentSummary ?? "Sessions, toolkits, assessments, and certification",
+                meta: course.badgeName ?? "Certificate",
+                content: (
+                  <div className="space-y-4">
+                    <ul className="space-y-2 text-sm text-slate-600">
+                      {certificationRequirements(course).map((item) => (
+                        <li key={item} className="flex gap-2"><CheckCircle2 className="size-4 shrink-0 mt-0.5" style={{ color: accent }} />{item}</li>
+                      ))}
+                    </ul>
+                    <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900">
+                      <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Included value</p>
+                      <ul className="mt-2 space-y-2 text-sm text-slate-600">
+                        {(course.includes ?? []).map((item) => (
+                          <li key={item} className="flex gap-2"><Award className="size-4 shrink-0 mt-0.5 text-amber-600" />{item}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                ),
+              },
+              {
+                id: `${course.id}-curriculum`,
+                title: "Curriculum modules",
+                subtitle: "Expand to preview what you will learn",
+                meta: `${course.modules.length} modules`,
+                content: (
+                  <div className="space-y-3">
+                    {course.modules.map((module) => (
+                      <div key={module.id} className="rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-950">
+                        <p className="font-semibold">{module.title}</p>
+                        <p className="mt-1 text-xs text-slate-500">{module.lessons.length} training sessions / {module.lessons.reduce((n, lesson) => n + lesson.estimatedMinutes, 0)} min</p>
+                        <ul className="mt-2 space-y-1 text-sm text-slate-600">
+                          {module.lessons.map((lesson) => <li key={lesson.id} className="flex gap-2"><span style={{ color: accent }}>-</span>{lesson.title}</li>)}
+                        </ul>
+                      </div>
+                    ))}
+                  </div>
+                ),
+              },
+              {
+                id: `${course.id}-toolkit`,
+                title: "Field toolkit included",
+                subtitle: "HouseLink-branded print-ready PDFs for this level",
+                meta: `${course.toolkitCount ?? 0} downloads`,
+                content: <ToolkitGrid groups={course.toolkitPreview ?? []} accent={accent} preview />,
+              },
+            ]}
+          />
+        </div>
+
+        <CourseActionButton
+          courseId={course.id}
+          registration={registration}
+          selected={selected}
+          locked={!!locked}
+          accent={accent}
+          onSelect={onSelect}
+        />
+      </div>
+    </article>
+  );
+}
+
 function AcademyHeroVisual() {
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-white/15 bg-white/10 p-5 shadow-2xl shadow-emerald-950/20 backdrop-blur">
-      <div className="absolute -right-8 -top-8 h-28 w-28 rounded-full bg-emerald-300/20 blur-2xl" />
-      <div className="relative rounded-xl border border-white/15 bg-white/95 p-4 text-slate-950 shadow-xl">
+    <div className="relative overflow-hidden rounded-2xl border border-white/15 bg-white/10 p-3 shadow-2xl shadow-emerald-950/20 backdrop-blur">
+      <div className="relative aspect-[4/3] overflow-hidden rounded-xl">
+        <Image src="/images/property-management-dusk.webp" alt="Professional property training in Zimbabwe" fill priority className="object-cover" sizes="360px" />
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/45 to-transparent" />
+        <div className="absolute inset-x-4 bottom-4 rounded-xl border border-white/15 bg-white/95 p-4 text-slate-950 shadow-xl">
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-[10px] font-black uppercase tracking-widest text-emerald-700">HouseLink Academy</p>
@@ -616,6 +686,7 @@ function AcademyHeroVisual() {
           <ShieldCheck className="size-4 text-emerald-300" />
           Public certificate verification
         </div>
+        </div>
       </div>
     </div>
   );
@@ -632,9 +703,9 @@ function HeroProof({ value, label }: { value: string; label: string }) {
 
 function StandardStat({ value, label }: { value: string; label: string }) {
   return (
-    <div className="rounded-lg bg-white/10 px-2 py-2 ring-1 ring-white/10">
-      <p className="text-base font-black text-white">{value}</p>
-      <p className="text-[10px] font-bold uppercase tracking-wide text-slate-300">{label}</p>
+    <div className="rounded-lg bg-white/70 px-2 py-2 ring-1 ring-slate-200 dark:bg-white/10 dark:ring-white/10">
+      <p className="text-base font-black text-slate-950 dark:text-white">{value}</p>
+      <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500 dark:text-slate-300">{label}</p>
     </div>
   );
 }

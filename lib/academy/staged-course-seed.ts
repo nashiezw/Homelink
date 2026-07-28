@@ -1097,8 +1097,6 @@ export async function seedStagedCourseStructure(options?: { forceRebuild?: boole
         estimatedHours: Math.max(1, Math.ceil((lessonCount * 30) / 60)),
         durationMinutes: lessonCount * 30,
         learningOutcomes: programmeCourse.learningOutcomes,
-        publicPrice: programmeCourse.publicPrice,
-        agentPrice: programmeCourse.agentPrice,
         status: "PUBLISHED",
         featured: programmeCourse.featured,
         registrationOpen: true,

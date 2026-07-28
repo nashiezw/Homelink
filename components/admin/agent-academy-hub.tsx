@@ -2088,6 +2088,9 @@ function AcademySettingsPanel({ settings, auditLogs, onSave }: { settings: Recor
         </div>
         <div>
           <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-emerald-300">Training Manual Access</p>
+          <p className="mb-3 text-sm leading-6 text-slate-400">
+            Controls the separate Complete Training Manual checkout shown in the learner dashboard. Programme and toolkit prices are edited on each course.
+          </p>
           <FormGrid>
             <TextInput label="Manual public price" type="number" value={draft.manualPublicPrice} onChange={(manualPublicPrice) => setDraft({ ...draft, manualPublicPrice })} />
             <TextInput label="Manual agent price" type="number" value={draft.manualAgentPrice} onChange={(manualAgentPrice) => setDraft({ ...draft, manualAgentPrice })} />
