@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -22,6 +21,7 @@ import {
   ZoomIn,
 } from "lucide-react";
 import { useMemo, useState } from "react";
+import { BookCover } from "@/components/library/book-cover";
 import { Button } from "@/components/ui/button";
 import { writeLibraryCart, useLibraryCart } from "@/lib/library/cart-client";
 import type { LibraryProduct } from "@/lib/library/catalog";
@@ -32,7 +32,6 @@ export function LibraryProductPage({ product, related }: { product: LibraryProdu
   const [galleryIndex, setGalleryIndex] = useState(0);
   const { cart, setCart, count } = useLibraryCart();
   const [cartNotice, setCartNotice] = useState("");
-  const activeImage = product.gallery[galleryIndex] ?? product.gallery[0];
   const relatedBundle = useMemo(() => related.slice(0, 2), [related]);
   const bundleTotal = relatedBundle.reduce((sum, item) => sum + item.price, product.price);
   const productQuantity = cart.find((line) => line.productId === product.id)?.quantity ?? 0;
@@ -61,7 +60,7 @@ export function LibraryProductPage({ product, related }: { product: LibraryProdu
   }
 
   return (
-    <main className="bg-[#f7f8f5] text-ink dark:bg-slate-950 dark:text-white">
+    <main className="bg-[#f6f8f7] text-ink dark:bg-slate-950 dark:text-white">
       <section className="border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-5 sm:px-6 lg:px-8">
           <Link href="/library" className="inline-flex items-center gap-2 text-sm font-bold text-slate-600 hover:text-emerald-700 dark:text-slate-300 dark:hover:text-emerald-300">
@@ -73,32 +72,34 @@ export function LibraryProductPage({ product, related }: { product: LibraryProdu
         </div>
       </section>
 
-      <section className="mx-auto grid max-w-7xl gap-8 px-4 py-8 sm:px-6 lg:grid-cols-[minmax(18rem,30rem)_minmax(0,1fr)_22rem] lg:items-start lg:px-8 lg:py-10">
-        <div className="space-y-3">
-          <div className="relative mx-auto aspect-[3/4] max-w-[28rem] overflow-hidden rounded-lg border border-slate-200 bg-[#eef2ef] shadow-sm dark:border-slate-800 dark:bg-slate-900">
-            <Image src={activeImage?.url ?? "/images/academy/agent-academy-hero.png"} alt={activeImage?.label ?? product.title} fill className="object-cover" sizes="430px" priority />
-            <div className="absolute bottom-3 right-3 flex gap-2">
-              <button type="button" className="rounded-lg bg-white/95 p-2 text-slate-800 shadow-sm" aria-label="Zoom product image">
-                <ZoomIn className="size-4" />
-              </button>
-              <button type="button" className="rounded-lg bg-white/95 p-2 text-slate-800 shadow-sm" aria-label="Open fullscreen gallery">
-                <Expand className="size-4" />
-              </button>
+      <section className="mx-auto grid max-w-[88rem] gap-7 px-4 py-8 sm:px-6 lg:grid-cols-[minmax(0,1fr)_24rem] lg:items-start lg:px-8 lg:py-10">
+        <article className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_26px_90px_rgba(15,23,42,0.08)] dark:border-slate-800 dark:bg-slate-900">
+          <div className="grid gap-7 p-4 sm:p-6 xl:grid-cols-[minmax(18rem,32rem)_minmax(0,1fr)] xl:items-start">
+            <div className="space-y-4">
+              <div className="relative mx-auto max-w-[30rem] xl:mx-0">
+                <BookCover product={product} className="w-full rounded-xl" priority />
+                <div className="absolute bottom-3 right-3 flex gap-2">
+                  <button type="button" className="rounded-lg bg-white/95 p-2 text-slate-800 shadow-sm" aria-label="Zoom product image">
+                    <ZoomIn className="size-4" />
+                  </button>
+                  <button type="button" className="rounded-lg bg-white/95 p-2 text-slate-800 shadow-sm" aria-label="Open fullscreen gallery">
+                    <Expand className="size-4" />
+                  </button>
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                {[product.productType.replace(/_/g, " "), product.category, product.difficulty].map((item, index) => (
+                  <button key={`${item}-${index}`} type="button" onClick={() => setGalleryIndex(index)} className={cn("min-h-14 rounded-xl border bg-white px-3 py-2 text-center text-xs font-black leading-tight text-slate-700 shadow-sm dark:bg-slate-950 dark:text-slate-200", galleryIndex === index ? "border-emerald-600 ring-2 ring-emerald-600/20" : "border-slate-200 dark:border-slate-800")}>
+                    {item}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
-          <div className="grid grid-cols-4 gap-2">
-            {product.gallery.slice(0, 4).map((item, index) => (
-              <button key={`${item.label}-${index}`} type="button" onClick={() => setGalleryIndex(index)} className={cn("relative aspect-square overflow-hidden rounded-lg border bg-slate-100 dark:bg-slate-900", galleryIndex === index ? "border-emerald-600 ring-2 ring-emerald-600/20" : "border-slate-200 dark:border-slate-800")}>
-                <Image src={item.url} alt={item.label} fill className="object-cover" sizes="110px" />
-              </button>
-            ))}
-          </div>
-        </div>
 
-        <div className="min-w-0">
-          <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-700 dark:text-emerald-300">{product.collection}</p>
-          <h1 className="mt-3 max-w-4xl text-4xl font-semibold leading-tight text-ink sm:text-5xl dark:text-white">{product.title}</h1>
-          <p className="mt-4 max-w-2xl text-lg leading-8 text-slate-600 dark:text-slate-300">{product.subtitle}</p>
+            <div className="min-w-0">
+              <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-700 dark:text-emerald-300">{product.collection}</p>
+              <h1 className="mt-3 max-w-4xl text-4xl font-black leading-[0.98] tracking-tight text-ink sm:text-5xl dark:text-white">{product.title}</h1>
+              <p className="mt-4 max-w-2xl text-lg leading-8 text-slate-600 dark:text-slate-300">{product.subtitle}</p>
           <div className="mt-5 flex flex-wrap items-center gap-3 text-sm text-slate-600 dark:text-slate-300">
             <span>
               By <strong className="text-ink dark:text-white">{product.author}</strong>
@@ -109,26 +110,28 @@ export function LibraryProductPage({ product, related }: { product: LibraryProdu
             <span className="rounded-full border border-slate-200 bg-white px-3 py-1 font-bold dark:border-slate-700 dark:bg-slate-900">{product.productType.replace(/_/g, " ")}</span>
           </div>
 
-          <div className="mt-7 grid max-w-2xl gap-3 sm:grid-cols-3">
-            <Proof icon={ShieldCheck} label="Secure checkout" />
-            <Proof icon={ReceiptText} label="Invoice ready" />
-            <Proof icon={Download} label="Tracked access" />
+              <div className="mt-7 grid max-w-3xl gap-3 sm:grid-cols-3">
+                <Proof icon={ShieldCheck} label="Secure checkout" />
+                <Proof icon={ReceiptText} label="Invoice ready" />
+                <Proof icon={Download} label="Tracked access" />
+              </div>
+            </div>
           </div>
 
-          <section className="mt-8 rounded-lg border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <section className="border-t border-slate-200 bg-slate-50/70 p-4 dark:border-slate-800 dark:bg-slate-950/35 sm:p-6">
             <h2 className="flex items-center gap-2 text-lg font-semibold text-ink dark:text-white">
               <Layers3 className="size-5 text-emerald-700 dark:text-emerald-300" /> What you get
             </h2>
             <p className="mt-4 leading-7 text-slate-700 dark:text-slate-300">{product.description}</p>
-            <div className="mt-5 grid gap-3 sm:grid-cols-2">
+            <div className="mt-5 grid items-stretch gap-3 sm:grid-cols-2 xl:grid-cols-4">
               {product.learningOutcomes.slice(0, 6).map((item) => (
-                <p key={item} className="flex gap-2 rounded-lg border border-slate-200 bg-[#fbfcfb] p-3 text-sm dark:border-slate-800 dark:bg-slate-950">
+                <p key={item} className="flex h-full gap-2 rounded-xl border border-slate-200 bg-white p-3 text-sm leading-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
                   <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-600" /> {item}
                 </p>
               ))}
             </div>
           </section>
-        </div>
+        </article>
 
         <aside className="space-y-4 lg:sticky lg:top-24">
           <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
@@ -192,15 +195,13 @@ export function LibraryProductPage({ product, related }: { product: LibraryProdu
         </aside>
       </section>
 
-      <section className="mx-auto grid max-w-7xl gap-7 px-4 pb-10 sm:px-6 lg:grid-cols-[minmax(0,1fr)_23rem] lg:px-8">
+      <section className="mx-auto grid max-w-[88rem] gap-7 px-4 pb-10 sm:px-6 lg:grid-cols-[minmax(0,1fr)_24rem] lg:px-8">
         <div className="space-y-7">
           <Panel title="Sample Preview" icon={BookOpen} action={<Button variant="secondary" onClick={() => setPreviewOpen(true)}><FileText className="size-4" /> Open reader</Button>}>
-            <div className="grid gap-4 md:grid-cols-[11rem_minmax(0,1fr)] md:items-center">
-              <div className="relative aspect-[3/4] overflow-hidden rounded-lg bg-slate-100 dark:bg-slate-900">
-                <Image src={product.gallery[1]?.url ?? product.gallery[0]?.url ?? "/images/academy/agent-academy-hero.png"} alt="Sample preview" fill className="object-cover" sizes="180px" />
-              </div>
+            <div className="grid gap-5 md:grid-cols-[12rem_minmax(0,1fr)] md:items-center">
+              <BookCover product={product} className="w-full rounded-xl" />
               <div>
-                <p className="font-semibold">Preview selected pages before purchase.</p>
+                <p className="text-xl font-black">Preview selected pages before purchase.</p>
                 <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">The reader supports page previews, zoom, fullscreen controls, and future PDF page extraction from admin uploads.</p>
               </div>
             </div>
@@ -209,7 +210,7 @@ export function LibraryProductPage({ product, related }: { product: LibraryProdu
           <Panel title="Table of Contents" icon={FileText}>
             <ol className="grid gap-2 sm:grid-cols-2">
               {product.tableOfContents.map((item, index) => (
-                <li key={item} className="rounded-lg border border-slate-200 bg-[#fbfcfb] p-3 text-sm dark:border-slate-800 dark:bg-slate-950">
+                <li key={item} className="flex min-h-14 items-center rounded-xl border border-slate-200 bg-[#fbfcfb] p-3 text-sm dark:border-slate-800 dark:bg-slate-950">
                   <span className="mr-2 font-black text-emerald-700">{String(index + 1).padStart(2, "0")}</span>
                   {item}
                 </li>
@@ -239,12 +240,12 @@ export function LibraryProductPage({ product, related }: { product: LibraryProdu
 
           {relatedBundle.length > 0 && (
             <Panel title="Frequently Bought Together" icon={ShoppingCart} action={<Button onClick={addBundle}>Buy bundle</Button>}>
-              <div className="grid gap-3 md:grid-cols-3">
+              <div className="grid items-stretch gap-3 md:grid-cols-3">
                 {[product, ...relatedBundle].map((item) => (
-                  <Link key={item.id} href={`/library/${item.slug}`} className="rounded-lg border border-slate-200 bg-[#fbfcfb] p-3 transition hover:border-emerald-300 dark:border-slate-800 dark:bg-slate-950">
+                  <Link key={item.id} href={`/library/${item.slug}`} className="flex h-full flex-col rounded-xl border border-slate-200 bg-[#fbfcfb] p-3 transition hover:border-emerald-300 dark:border-slate-800 dark:bg-slate-950">
                     <p className="text-xs font-bold uppercase text-emerald-700 dark:text-emerald-300">{item.productType.replace(/_/g, " ")}</p>
                     <p className="mt-1 line-clamp-2 font-semibold">{item.title}</p>
-                    <p className="mt-2 text-sm font-black">USD {item.price.toFixed(2)}</p>
+                    <p className="mt-auto pt-3 text-sm font-black">USD {item.price.toFixed(2)}</p>
                   </Link>
                 ))}
               </div>
@@ -266,26 +267,24 @@ export function LibraryProductPage({ product, related }: { product: LibraryProdu
         </aside>
       </section>
 
-      <section className="mx-auto max-w-7xl px-4 pb-14 sm:px-6 lg:px-8">
+      <section className="mx-auto max-w-[88rem] px-4 pb-14 sm:px-6 lg:px-8">
         <div className="mb-4 flex items-end justify-between gap-4">
           <div>
             <p className="text-sm font-black uppercase text-emerald-700 dark:text-emerald-300">Keep Building</p>
-            <h2 className="text-2xl font-semibold text-ink dark:text-white">Related Products</h2>
+            <h2 className="text-3xl font-black text-ink dark:text-white">Related Products</h2>
           </div>
           <Link href="/library" className="hidden items-center gap-1 text-sm font-bold text-emerald-700 dark:text-emerald-300 sm:inline-flex">
             Browse all <ArrowLeft className="size-4 rotate-180" />
           </Link>
         </div>
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid items-stretch gap-4 md:grid-cols-3">
           {related.map((item) => (
-            <Link key={item.id} href={`/library/${item.slug}`} className="group overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm transition hover:border-slate-300 hover:shadow-lg dark:border-slate-800 dark:bg-slate-900">
-              <div className="relative aspect-[4/3] bg-slate-100 dark:bg-slate-950">
-                <Image src={item.gallery[0]?.url ?? "/images/academy/agent-academy-hero.png"} alt={item.title} fill className="object-cover transition group-hover:scale-[1.03]" sizes="340px" />
-              </div>
-              <div className="p-4">
+            <Link key={item.id} href={`/library/${item.slug}`} className="group flex h-full flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-slate-300 hover:shadow-lg dark:border-slate-800 dark:bg-slate-900">
+              <BookCover product={item} className="mx-auto w-full max-w-[12rem]" />
+              <div className="flex flex-1 flex-col p-4">
                 <p className="text-xs font-black uppercase text-emerald-700 dark:text-emerald-300">{item.category}</p>
-                <p className="mt-1 line-clamp-2 font-semibold text-ink dark:text-white">{item.title}</p>
-                <p className="mt-2 text-sm font-black text-slate-700 dark:text-slate-200">USD {item.price.toFixed(2)}</p>
+                <p className="mt-1 line-clamp-2 font-black text-ink dark:text-white">{item.title}</p>
+                <p className="mt-auto pt-3 text-sm font-black text-slate-700 dark:text-slate-200">USD {item.price.toFixed(2)}</p>
               </div>
             </Link>
           ))}
@@ -303,12 +302,10 @@ export function LibraryProductPage({ product, related }: { product: LibraryProdu
             </div>
             <div className="grid min-h-[34rem] place-items-center bg-slate-100 p-5 dark:bg-slate-900">
               <div className="grid w-full max-w-4xl gap-5 md:grid-cols-[15rem_minmax(0,1fr)]">
-                <div className="relative aspect-[3/4] overflow-hidden rounded-lg bg-slate-200 shadow-xl dark:bg-slate-800">
-                  <Image src={product.gallery[0]?.url ?? "/images/academy/agent-academy-hero.png"} alt={product.title} fill className="object-cover" sizes="260px" />
-                </div>
+                <BookCover product={product} />
                 <div className="rounded-lg bg-white p-7 shadow-xl dark:bg-slate-950">
                   <p className="text-xs font-black uppercase text-emerald-700 dark:text-emerald-300">Preview pages</p>
-                  <h3 className="mt-2 text-3xl font-semibold">{product.tableOfContents[0]}</h3>
+                  <h3 className="mt-2 text-3xl font-black">{product.tableOfContents[0]}</h3>
                   <p className="mt-4 leading-8 text-slate-600 dark:text-slate-300">{product.description}</p>
                   <div className="mt-6 grid gap-2 sm:grid-cols-2">
                     {product.tableOfContents.slice(1, 5).map((item) => (
@@ -332,7 +329,7 @@ export function LibraryProductPage({ product, related }: { product: LibraryProdu
 
 function Proof({ icon: Icon, label }: { icon: typeof ShieldCheck; label: string }) {
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
+    <div className="flex min-h-24 flex-col justify-between rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-950">
       <Icon className="size-5 text-emerald-700 dark:text-emerald-300" />
       <p className="mt-2 text-sm font-bold text-slate-800 dark:text-white">{label}</p>
     </div>
@@ -341,7 +338,7 @@ function Proof({ icon: Icon, label }: { icon: typeof ShieldCheck; label: string 
 
 function Panel({ title, icon: Icon, action, children }: { title: string; icon: typeof FileText; action?: React.ReactNode; children: React.ReactNode }) {
   return (
-    <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+    <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
       <div className="mb-4 flex items-center justify-between gap-3">
         <h2 className="flex items-center gap-2 text-lg font-semibold text-ink dark:text-white">
           <Icon className="size-5 text-emerald-700 dark:text-emerald-300" /> {title}
