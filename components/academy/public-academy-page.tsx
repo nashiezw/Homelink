@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  ArrowRight,
   Award,
   BookOpen,
   CheckCircle2,
@@ -261,32 +262,54 @@ export function PublicAcademyPage() {
   const pageActions = user ? (
     <div className="flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap">
       {academyStatus?.hasActiveAccess && (
-        <Link href="/dashboard/academy" className="w-full sm:w-auto">
-          <Button className="w-full"><PlayCircle className="size-4 mr-2" /> Continue Learning</Button>
+        <Link href="/dashboard/academy" className="w-full bg-white text-slate-950 hover:bg-emerald-50 sm:w-auto">
+          <PlayCircle className="mr-2 size-4" />
+          Continue Learning
         </Link>
       )}
       {isAdmin && (
-        <Link href="/dashboard/admin/academy" className="w-full sm:w-auto">
-          <Button variant="secondary" className="w-full"><Settings className="size-4 mr-2" /> Manage Academy</Button>
+        <Link href="/dashboard/admin/academy" className="w-full border border-white/20 bg-white/10 text-white hover:bg-white/15 sm:w-auto">
+          <Settings className="mr-2 size-4" />
+          Manage Academy
         </Link>
       )}
       {!academyStatus?.hasActiveAccess && (
-        <Link href="/dashboard/academy" className="w-full sm:w-auto">
-          <Button variant="secondary" className="w-full">My Dashboard</Button>
+        <Link href="/dashboard/academy" className="w-full bg-white text-slate-950 hover:bg-emerald-50 sm:w-auto">
+          My Dashboard
         </Link>
       )}
+      <Link href="/academy/verify" className="w-full border border-white/20 bg-white/10 text-white hover:bg-white/15 sm:w-auto">
+        <ShieldCheck className="mr-2 size-4" />
+        Verify certificate
+      </Link>
     </div>
-  ) : undefined;
+  ) : (
+    <div className="flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap">
+      <Link href="#academy-programmes" className="w-full bg-white text-slate-950 hover:bg-emerald-50 sm:w-auto">
+        Explore programmes
+        <ArrowRight className="ml-2 size-4" />
+      </Link>
+      <Link href="/academy/verify" className="w-full border border-white/20 bg-white/10 text-white hover:bg-white/15 sm:w-auto">
+        <ShieldCheck className="mr-2 size-4" />
+        Verify certificate
+      </Link>
+    </div>
+  );
 
   return (
     <PageShell
       eyebrow={academySettings?.academyName ?? "HouseLink Academy"}
-      title={browseMode && academyStatus?.hasActiveAccess ? "Browse More Courses" : "Professional Property Training"}
+      title={browseMode && academyStatus?.hasActiveAccess ? "Browse More Courses" : "Train, certify, and operate like a top property agent."}
       description={
         browseMode && academyStatus?.hasActiveAccess
           ? "You already have active course access. Browse additional courses or return to your learning dashboard."
-          : "Practical Zimbabwe property training with certificates, field tools, and reviewed assignments."
+          : "A practical HouseLink Academy pathway for Zimbabwe agents: guided sessions, field tools, reviewed assignments, roleplay evidence, and public certificate verification."
       }
+      highlights={[
+        { value: "3", label: "certification levels" },
+        { value: String(courses.reduce((sum, course) => sum + (course.assignmentCount ?? 0) + (course.quizCount ?? 0), 0) || 16), label: "practical checks" },
+        { value: "PDF", label: "field toolkit" },
+      ]}
       compactHero
       heroAside={<AcademyHeroVisual />}
       actions={pageActions}
@@ -301,7 +324,7 @@ export function PublicAcademyPage() {
         </div>
       )}
 
-      <section className="mb-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_18px_60px_rgba(15,23,42,0.08)] dark:border-slate-800 dark:bg-slate-950">
+      <section id="academy-programmes" className="mb-6 scroll-mt-24 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_18px_60px_rgba(15,23,42,0.08)] dark:border-slate-800 dark:bg-slate-950">
         <div className="grid gap-0 lg:grid-cols-[minmax(0,1fr)_19rem]">
           <div className="p-5 sm:p-6 lg:p-7">
             <p className="text-xs font-bold uppercase tracking-widest text-emerald-700 dark:text-emerald-300">Choose your programme</p>
@@ -663,29 +686,32 @@ function SelectedProgrammeDetail({
 
 function AcademyHeroVisual() {
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-white/15 bg-white/10 p-3 shadow-2xl shadow-emerald-950/20 backdrop-blur">
-      <div className="relative aspect-[16/11] overflow-hidden rounded-xl bg-slate-950">
-        <Image src="/images/academy/agent-academy-hero.png" alt="Professional agents in a HouseLink Academy training session" fill priority className="object-cover" sizes="440px" />
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/35 to-transparent" />
-        <div className="absolute left-4 right-4 bottom-4 rounded-xl border border-white/15 bg-white/95 p-4 text-slate-950 shadow-xl">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-widest text-emerald-700">HouseLink Academy</p>
-              <p className="mt-2 text-lg font-black leading-tight">Certified Property Agent Pathway</p>
-            </div>
-            <div className="rounded-full bg-emerald-100 p-2 text-emerald-700">
-              <Award className="size-5" />
-            </div>
-          </div>
-          <div className="mt-5 grid grid-cols-3 gap-2 text-center">
+    <div className="relative overflow-hidden rounded-[1.35rem] border border-white/15 bg-white/10 p-3 shadow-2xl shadow-emerald-950/30 backdrop-blur">
+      <div className="relative aspect-[5/3] overflow-hidden rounded-2xl bg-slate-950">
+        <Image
+          src="/images/academy/agent-academy-hero.png"
+          alt="Professional agents in a HouseLink Academy training session"
+          fill
+          priority
+          className="object-cover"
+          sizes="520px"
+        />
+        <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(2,6,23,0.16),rgba(2,6,23,0.06)_38%,rgba(2,6,23,0.36)),linear-gradient(180deg,rgba(2,6,23,0)_35%,rgba(2,6,23,0.88))]" />
+        <div className="absolute left-4 top-4 inline-flex items-center gap-2 rounded-full border border-white/20 bg-slate-950/55 px-3 py-1.5 text-xs font-bold text-white shadow-lg backdrop-blur">
+          <BookOpen className="size-3.5 text-emerald-300" />
+          Live field training
+        </div>
+        <div className="absolute bottom-4 left-4 max-w-[14rem] rounded-2xl border border-white/15 bg-white/95 p-4 text-slate-950 shadow-2xl">
+          <p className="text-[10px] font-black uppercase tracking-widest text-emerald-700">Credential pathway</p>
+          <p className="mt-2 text-lg font-black leading-tight">Certified Property Agent</p>
+          <div className="mt-4 grid grid-cols-3 gap-1.5 text-center">
             <HeroProof value="3" label="levels" />
             <HeroProof value="16" label="tasks" />
             <HeroProof value="PDF" label="tools" />
           </div>
-          <div className="mt-5 flex items-center gap-2 rounded-lg bg-slate-950 px-3 py-2 text-xs font-bold text-white">
-            <ShieldCheck className="size-4 text-emerald-300" />
-            Public certificate verification
-          </div>
+        </div>
+        <div className="absolute bottom-4 right-4 flex size-14 items-center justify-center rounded-2xl border border-emerald-200/70 bg-emerald-400 text-slate-950 shadow-2xl shadow-emerald-950/30">
+          <Award className="size-7" />
         </div>
       </div>
     </div>
