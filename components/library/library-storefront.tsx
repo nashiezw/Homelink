@@ -3,7 +3,9 @@
 import Link from "next/link";
 import {
   ArrowRight,
+  Award,
   BookOpen,
+  BookmarkCheck,
   CheckCircle2,
   Filter,
   LibraryBig,
@@ -14,6 +16,7 @@ import {
   ShoppingBag,
   ShoppingCart,
   SlidersHorizontal,
+  Sparkles,
   Star,
   Trash2,
 } from "lucide-react";
@@ -64,53 +67,64 @@ export function LibraryStorefront({ products }: { products: LibraryProduct[] }) 
         </div>
       )}
 
-      <section className="border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
-        <div className="mx-auto grid max-w-7xl gap-10 px-4 py-10 sm:px-6 lg:grid-cols-[minmax(0,1fr)_31rem] lg:items-center lg:px-8 lg:py-14">
+      <section className="relative overflow-hidden border-b border-[#d6c7aa] bg-[#241914] text-white">
+        <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(255,255,255,0.055)_1px,transparent_1px),linear-gradient(180deg,rgba(255,255,255,0.04)_1px,transparent_1px)] bg-[size:72px_72px]" />
+        <div className="absolute inset-x-0 bottom-0 hidden h-28 bg-[repeating-linear-gradient(90deg,#4b2b1f_0_38px,#7f4f2e_38px_64px,#173b38_64px_98px,#b98d45_98px_112px,#2e233d_112px_146px)] opacity-25 lg:block" />
+        <div className="absolute inset-0 bg-[linear-gradient(115deg,rgba(36,25,20,0.98)_0%,rgba(39,32,26,0.92)_42%,rgba(13,55,49,0.74)_100%)]" />
+        <div className="relative mx-auto grid max-w-7xl gap-12 px-4 py-12 sm:px-6 lg:grid-cols-[minmax(0,1fr)_34rem] lg:items-center lg:px-8 lg:py-16">
           <div className="min-w-0">
-            <p className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.18em] text-emerald-700 dark:text-emerald-300">
-              <LibraryBig className="size-4" /> HouseLink Library
+            <p className="inline-flex items-center gap-2 rounded-full border border-[#e7c873]/40 bg-[#fff7e6]/10 px-3 py-1 text-xs font-black uppercase tracking-[0.18em] text-[#f8d77a]">
+              <LibraryBig className="size-4" /> HouseLink Bookshop
             </p>
-            <h1 className="mt-4 max-w-4xl text-4xl font-black leading-[0.98] text-ink sm:text-6xl lg:text-7xl dark:text-white">
-              A sharper bookshop for property professionals.
+            <h1 className="mt-5 max-w-4xl text-5xl font-black leading-[0.92] text-white sm:text-6xl lg:text-[5.8rem]">
+              The property bookshelf worth browsing.
             </h1>
-            <p className="mt-5 max-w-2xl text-base leading-8 text-slate-600 sm:text-lg dark:text-slate-300">
-              Curated manuals, legal packs, templates and training resources designed for Zimbabwean agents, landlords and investors.
+            <p className="mt-6 max-w-2xl text-base leading-8 text-[#f7ead3] sm:text-lg">
+              Beautifully packaged manuals, legal templates, field toolkits and training guides for Zimbabwe’s property professionals.
             </p>
-            <div className="mt-7 flex flex-col gap-3 sm:flex-row">
-              <Link href="#library-products" className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-ink px-5 text-sm font-bold text-white transition hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-200">
-                Browse shelves <ArrowRight className="size-4" />
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+              <Link href="#library-products" className="inline-flex h-12 items-center justify-center gap-2 rounded-lg bg-[#f4c95d] px-5 text-sm font-black text-[#1f1712] shadow-lg shadow-black/25 transition hover:bg-[#ffdc78]">
+                Enter the shop <ArrowRight className="size-4" />
               </Link>
-              <Link href="/dashboard/my-library" className="inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-5 text-sm font-bold text-slate-800 transition hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-white">
+              <Link href="/dashboard/my-library" className="inline-flex h-12 items-center justify-center gap-2 rounded-lg border border-white/18 bg-white/10 px-5 text-sm font-bold text-white backdrop-blur transition hover:bg-white/15">
                 My Library <BookOpen className="size-4" />
               </Link>
             </div>
-            <div className="mt-8 grid max-w-3xl gap-3 sm:grid-cols-3">
-              <Proof label="Secure checkout" />
-              <Proof label="Instant digital delivery" />
-              <Proof label="Invoice-ready orders" />
+            <div className="mt-9 grid max-w-3xl gap-3 sm:grid-cols-3">
+              <HeroBadge icon={Award} label="Expert curated" value="Property practice" />
+              <HeroBadge icon={BookmarkCheck} label="Ready to use" value="Forms + guides" />
+              <HeroBadge icon={ShieldCheck} label="Secure access" value="Checkout + invoices" />
             </div>
           </div>
 
           {featured && (
-            <div className="relative min-h-[28rem]">
-              <div className="absolute left-6 top-8 hidden w-48 rotate-[-9deg] opacity-80 blur-[0.2px] sm:block">
+            <div className="relative min-h-[34rem]">
+              <div className="absolute inset-x-0 bottom-3 mx-auto h-8 max-w-md rounded-[50%] bg-black/45 blur-xl" />
+              <div className="absolute left-0 top-16 hidden w-48 rotate-[-12deg] opacity-90 sm:block">
                 {products[1] && <BookCover product={products[1]} />}
               </div>
-              <div className="absolute right-2 top-12 hidden w-44 rotate-[8deg] opacity-75 sm:block">
+              <div className="absolute right-0 top-20 hidden w-44 rotate-[10deg] opacity-85 sm:block">
                 {products[2] && <BookCover product={products[2]} />}
               </div>
-              <div className="relative mx-auto w-full max-w-sm">
-                <BookCover product={featured} className="mx-auto w-72 sm:w-80" priority />
-                <div className="mt-5 rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-                  <p className="text-xs font-black uppercase text-emerald-700 dark:text-emerald-300">Editor's choice</p>
-                  <Link href={`/library/${featured.slug}`} className="mt-1 block text-xl font-black leading-tight text-ink hover:text-emerald-700 dark:text-white">
-                    {featured.title}
-                  </Link>
-                  <div className="mt-4 flex items-center justify-between gap-3">
-                    <p className="text-2xl font-black">USD {featured.price.toFixed(2)}</p>
-                    <Button onClick={() => addToCart(featured)}>
-                      <ShoppingCart className="size-4" /> {quantityFor(featured.id) ? `In bag (${quantityFor(featured.id)})` : "Add"}
-                    </Button>
+              <div className="absolute left-12 bottom-12 hidden w-40 rotate-[7deg] opacity-80 lg:block">
+                {products[3] && <BookCover product={products[3]} />}
+              </div>
+              <div className="relative mx-auto w-full max-w-sm pt-2">
+                <div className="rounded-lg border border-[#e7c873]/35 bg-[#fff7e6]/10 p-4 shadow-2xl shadow-black/30 backdrop-blur">
+                  <BookCover product={featured} className="mx-auto w-72 sm:w-80" priority />
+                  <div className="mt-5">
+                    <p className="inline-flex items-center gap-1 rounded-full bg-[#f4c95d] px-3 py-1 text-xs font-black uppercase text-[#1f1712]">
+                      <Sparkles className="size-3.5" /> Featured shelf
+                    </p>
+                    <Link href={`/library/${featured.slug}`} className="mt-3 block text-2xl font-black leading-tight text-white hover:text-[#f4c95d]">
+                      {featured.title}
+                    </Link>
+                    <div className="mt-4 flex items-center justify-between gap-3">
+                      <p className="text-3xl font-black">USD {featured.price.toFixed(2)}</p>
+                      <Button onClick={() => addToCart(featured)}>
+                        <ShoppingCart className="size-4" /> {quantityFor(featured.id) ? `In bag (${quantityFor(featured.id)})` : "Add"}
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -119,15 +133,15 @@ export function LibraryStorefront({ products }: { products: LibraryProduct[] }) 
         </div>
       </section>
 
-      <section className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 backdrop-blur dark:border-slate-800 dark:bg-slate-950/95">
+      <section className="sticky top-0 z-20 border-b border-[#e1d7c5] bg-[#fffaf0]/95 backdrop-blur dark:border-slate-800 dark:bg-slate-950/95">
         <div className="mx-auto grid max-w-7xl gap-3 px-4 py-4 sm:px-6 lg:grid-cols-[minmax(0,1fr)_auto_auto_auto] lg:items-center lg:px-8">
           <label className="relative min-w-0">
             <Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
-            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search books, templates, manuals or authors" className="h-11 w-full rounded-lg border border-slate-200 bg-white pl-11 pr-4 text-sm outline-none transition focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/10 dark:border-slate-700 dark:bg-slate-900" />
+            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search books, templates, manuals or authors" className="h-12 w-full rounded-lg border border-[#e1d7c5] bg-white pl-11 pr-4 text-sm shadow-sm outline-none transition focus:border-[#b98d45] focus:ring-4 focus:ring-[#b98d45]/15 dark:border-slate-700 dark:bg-slate-900" />
           </label>
           <Select value={category} onChange={setCategory} label="Category" options={facets.categories} />
           <Select value={type} onChange={setType} label="Format" options={facets.types} />
-          <select value={sort} onChange={(event) => setSort(event.target.value)} className="h-11 rounded-lg border border-slate-200 bg-white px-3 text-sm outline-none transition focus:border-emerald-600 dark:border-slate-700 dark:bg-slate-900">
+          <select value={sort} onChange={(event) => setSort(event.target.value)} className="h-12 rounded-lg border border-[#e1d7c5] bg-white px-3 text-sm shadow-sm outline-none transition focus:border-[#b98d45] dark:border-slate-700 dark:bg-slate-900">
             <option value="newest">Newest</option>
             <option value="best-selling">Best selling</option>
             <option value="most-downloaded">Most downloaded</option>
@@ -137,17 +151,17 @@ export function LibraryStorefront({ products }: { products: LibraryProduct[] }) 
         </div>
       </section>
 
-      <section className="border-b border-slate-200 bg-[#eef6f3] dark:border-slate-800 dark:bg-slate-900/40">
+      <section className="border-b border-[#e1d7c5] bg-[#f4ead7] dark:border-slate-800 dark:bg-slate-900/40">
         <div className="mx-auto flex max-w-7xl gap-3 overflow-x-auto px-4 py-4 sm:px-6 lg:px-8">
           {facets.categories.map((item) => (
-            <button key={item} type="button" onClick={() => setCategory(category === item ? "" : item)} className={cn("shrink-0 rounded-full border px-4 py-2 text-sm font-bold transition", category === item ? "border-ink bg-ink text-white dark:border-white dark:bg-white dark:text-slate-950" : "border-slate-200 bg-white text-slate-700 hover:border-emerald-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200")}>
+            <button key={item} type="button" onClick={() => setCategory(category === item ? "" : item)} className={cn("shrink-0 rounded-full border px-4 py-2 text-sm font-bold shadow-sm transition", category === item ? "border-[#241914] bg-[#241914] text-white dark:border-white dark:bg-white dark:text-slate-950" : "border-[#e1d7c5] bg-white text-slate-700 hover:border-[#b98d45] dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200")}>
               {item}
             </button>
           ))}
         </div>
       </section>
 
-      <section className="mx-auto grid max-w-7xl gap-8 px-4 py-9 sm:px-6 lg:grid-cols-[minmax(0,1fr)_21rem] lg:px-8">
+      <section className="mx-auto grid max-w-7xl gap-8 px-4 py-10 sm:px-6 lg:grid-cols-[minmax(0,1fr)_21rem] lg:px-8">
         <div id="library-products" className="min-w-0 space-y-12">
           <div className="flex flex-wrap items-center gap-2">
             <span className="inline-flex items-center gap-2 pr-2 text-sm font-bold text-slate-700 dark:text-slate-200">
@@ -219,10 +233,10 @@ function filterProducts(products: LibraryProduct[], input: { query: string; cate
 function Shelf({ title, subtitle, products, onAdd, quantityFor }: { title: string; subtitle: string; products: LibraryProduct[]; onAdd: (product: LibraryProduct) => void; quantityFor: (id: string) => number }) {
   if (!products.length) return null;
   return (
-    <section className="space-y-5">
+    <section className="space-y-5 rounded-lg border border-[#e1d7c5] bg-[#fffaf0] p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/70">
       <div className="flex items-end justify-between gap-4">
         <div>
-          <h2 className="text-3xl font-black tracking-normal text-ink dark:text-white">{title}</h2>
+          <h2 className="text-3xl font-black tracking-normal text-[#241914] dark:text-white">{title}</h2>
           <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">{subtitle}</p>
         </div>
         <Link href="#library-products" className="hidden items-center gap-1 text-sm font-bold text-emerald-700 dark:text-emerald-300 sm:inline-flex">
@@ -240,7 +254,7 @@ function Shelf({ title, subtitle, products, onAdd, quantityFor }: { title: strin
 
 function ProductCard({ product, quantity, onAdd }: { product: LibraryProduct; quantity: number; onAdd: (product: LibraryProduct) => void }) {
   return (
-    <article className="group rounded-lg border border-slate-200 bg-white p-4 shadow-sm transition hover:border-slate-300 hover:shadow-xl dark:border-slate-800 dark:bg-slate-900">
+    <article className="group rounded-lg border border-[#e1d7c5] bg-white p-4 shadow-sm transition hover:-translate-y-1 hover:border-[#b98d45] hover:shadow-xl dark:border-slate-800 dark:bg-slate-900">
       <BookCover product={product} className="mx-auto w-full max-w-[13rem]" />
       <div className="mt-5 flex min-w-0 flex-col">
         <p className="text-xs font-black uppercase tracking-wide text-emerald-700 dark:text-emerald-300">{product.productType.replace(/_/g, " ")}</p>
@@ -271,8 +285,8 @@ function ProductCard({ product, quantity, onAdd }: { product: LibraryProduct; qu
 
 function CartPanel({ cart, total, currency, onCart }: { cart: LibraryCartLine[]; total: number; currency: string; onCart: (cart: LibraryCartLine[]) => void }) {
   return (
-    <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
-      <div className="border-b border-slate-200 p-4 dark:border-slate-800">
+    <div className="overflow-hidden rounded-lg border border-[#e1d7c5] bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <div className="border-b border-[#e1d7c5] bg-[#fffaf0] p-4 dark:border-slate-800 dark:bg-slate-950">
         <p className="flex items-center gap-2 text-sm font-bold text-ink dark:text-white">
           <ShoppingBag className="size-4" /> Library Bag
         </p>
@@ -321,7 +335,7 @@ function CartPanel({ cart, total, currency, onCart }: { cart: LibraryCartLine[];
             {currency} {total.toFixed(2)}
           </span>
         </div>
-        <Link href="/library/checkout" className={cn("inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg text-sm font-bold", cart.length ? "bg-ink text-white hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-200" : "pointer-events-none bg-slate-200 text-slate-500 dark:bg-slate-800")}>
+        <Link href="/library/checkout" className={cn("inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg text-sm font-bold", cart.length ? "bg-[#241914] text-white hover:bg-[#3b2920] dark:bg-white dark:text-slate-950 dark:hover:bg-slate-200" : "pointer-events-none bg-slate-200 text-slate-500 dark:bg-slate-800")}>
           <ShoppingCart className="size-4" /> Checkout
         </Link>
       </div>
@@ -334,7 +348,7 @@ function Select({ value, onChange, label, options }: { value: string; onChange: 
     <label className="relative">
       <span className="sr-only">{label}</span>
       <Filter className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
-      <select value={value} onChange={(event) => onChange(event.target.value)} className="h-11 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm outline-none transition focus:border-emerald-600 dark:border-slate-700 dark:bg-slate-900 lg:w-44">
+      <select value={value} onChange={(event) => onChange(event.target.value)} className="h-12 w-full rounded-lg border border-[#e1d7c5] bg-white pl-9 pr-3 text-sm shadow-sm outline-none transition focus:border-[#b98d45] dark:border-slate-700 dark:bg-slate-900 lg:w-44">
         <option value="">{label}</option>
         {options.map((option) => (
           <option key={option} value={option}>
@@ -346,11 +360,12 @@ function Select({ value, onChange, label, options }: { value: string; onChange: 
   );
 }
 
-function Proof({ label }: { label: string }) {
+function HeroBadge({ icon: Icon, label, value }: { icon: typeof ShieldCheck; label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-slate-200 bg-[#fbfcfb] p-3 dark:border-slate-800 dark:bg-slate-900">
-      <ShieldCheck className="size-5 text-emerald-700 dark:text-emerald-300" />
-      <p className="mt-2 text-sm font-bold text-slate-800 dark:text-white">{label}</p>
+    <div className="rounded-lg border border-[#e7c873]/25 bg-[#fff7e6]/10 p-3 backdrop-blur">
+      <Icon className="size-5 text-[#f4c95d]" />
+      <p className="mt-2 text-sm font-black text-white">{value}</p>
+      <p className="text-xs font-semibold text-[#f7ead3]/75">{label}</p>
     </div>
   );
 }
