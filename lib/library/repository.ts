@@ -102,6 +102,21 @@ type DbOrder = Prisma.LibraryOrderGetPayload<{
 
 const TOKEN_TTL_SECONDS = 60 * 15;
 
+type LocalLibraryOrder = LibraryOrder & {
+  customerId?: string;
+  paymentId?: string;
+  items?: Array<{ id: string; title: string; sku: string; quantity: number; unitPrice: number; total: number; productId: string }>;
+  payment?: { status: string };
+};
+
+const localLibraryProducts: LibraryProduct[] = getFallbackLibraryProducts().map((product) => ({
+  ...product,
+  gallery: product.gallery.map((item) => ({ ...item })),
+  downloads: product.downloads.map((item) => ({ ...item })),
+}));
+
+const localLibraryOrders: LocalLibraryOrder[] = LIBRARY_ORDERS.map((order) => ({ ...order, customerId: "demo" }));
+
 export function shouldUsePostgresLibrary() {
   return isPostgresStoreEnabled();
 }
@@ -117,7 +132,7 @@ export async function listLibraryProducts(input: {
   limit?: number;
 } = {}): Promise<LibraryProduct[]> {
   if (!shouldUsePostgresLibrary()) {
-    return getFallbackLibraryProducts();
+    return filterAndSortLocalProducts(input);
   }
   try {
     await seedLibraryIfEmpty();
@@ -156,7 +171,7 @@ export async function listLibraryProducts(input: {
 }
 
 export async function getLibraryProductBySlug(slug: string) {
-  if (!shouldUsePostgresLibrary()) return getFallbackLibraryProductBySlug(slug) ?? null;
+  if (!shouldUsePostgresLibrary()) return localLibraryProducts.find((product) => product.slug === slug && product.status !== "ARCHIVED") ?? getFallbackLibraryProductBySlug(slug) ?? null;
   try {
     await seedLibraryIfEmpty();
     const product = await getMainPrisma().libraryProduct.findUnique({
@@ -230,7 +245,11 @@ export async function getLibraryAnalytics(): Promise<LibraryAnalytics> {
 }
 
 export async function listLibraryOrders(customerId?: string): Promise<LibraryOrder[]> {
-  if (!shouldUsePostgresLibrary()) return LIBRARY_ORDERS;
+  if (!shouldUsePostgresLibrary()) {
+    return localLibraryOrders
+      .filter((order) => !customerId || order.customerId === customerId)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }
   try {
     const rows = await getMainPrisma().libraryOrder.findMany({
       where: customerId ? { customerId } : {},
@@ -247,7 +266,7 @@ export async function listLibraryOrders(customerId?: string): Promise<LibraryOrd
 export async function quoteLibraryCart(items: LibraryCartLine[], couponCode?: string, customerId?: string): Promise<LibraryCartQuote> {
   const normalized = items.map((item) => ({ ...item, quantity: Math.max(1, Number(item.quantity) || 1) })).filter((item) => item.productId);
   if (!shouldUsePostgresLibrary()) {
-    const products = getFallbackLibraryProducts();
+    const products = localLibraryProducts;
     const lines = normalized.map((item) => {
       const product = products.find((entry) => entry.id === item.productId);
       return { ...item, title: product?.title ?? item.title, price: product?.price ?? item.price ?? 0, currency: product?.currency ?? item.currency ?? "USD" };
@@ -281,7 +300,11 @@ export async function quoteLibraryCart(items: LibraryCartLine[], couponCode?: st
 }
 
 export async function createLibraryProduct(input: LibraryProductInput, actorId?: string) {
-  if (!shouldUsePostgresLibrary()) return getFallbackLibraryProducts()[0];
+  if (!shouldUsePostgresLibrary()) {
+    const product = localProductFromInput(input);
+    localLibraryProducts.unshift(product);
+    return product;
+  }
   await seedLibraryIfEmpty();
   const data = await productInputToPrisma(input, actorId) as Prisma.LibraryProductCreateInput;
   const product = await getMainPrisma().libraryProduct.create({
@@ -294,7 +317,12 @@ export async function createLibraryProduct(input: LibraryProductInput, actorId?:
 }
 
 export async function updateLibraryProduct(id: string, input: Partial<LibraryProductInput>, actorId?: string) {
-  if (!shouldUsePostgresLibrary()) return getFallbackLibraryProducts().find((product) => product.id === id) ?? null;
+  if (!shouldUsePostgresLibrary()) {
+    const index = localLibraryProducts.findIndex((product) => product.id === id);
+    if (index === -1) return null;
+    localLibraryProducts[index] = localProductFromInput(input, localLibraryProducts[index]);
+    return localLibraryProducts[index];
+  }
   const data = await productInputToPrisma(input as LibraryProductInput, actorId, true) as Prisma.LibraryProductUpdateInput;
   const product = await getMainPrisma().libraryProduct.update({
     where: { id },
@@ -308,6 +336,25 @@ export async function updateLibraryProduct(id: string, input: Partial<LibraryPro
 }
 
 export async function duplicateLibraryProduct(id: string, actorId?: string) {
+  if (!shouldUsePostgresLibrary()) {
+    const source = localLibraryProducts.find((product) => product.id === id);
+    if (!source) return null;
+    const stamp = Date.now().toString().slice(-5);
+    const clone: LibraryProduct = {
+      ...source,
+      id: `local-product-${stamp}`,
+      title: `${source.title} Copy`,
+      slug: `${source.slug}-copy-${stamp}`,
+      sku: `${source.sku}-COPY-${stamp}`,
+      isbn: undefined,
+      status: "DRAFT",
+      gallery: source.gallery.map((item) => ({ ...item })),
+      downloads: source.downloads.map((item) => ({ ...item, id: `${item.id}-copy-${stamp}` })),
+      publishedAt: new Date().toISOString(),
+    };
+    localLibraryProducts.unshift(clone);
+    return clone;
+  }
   const source = await getMainPrisma().libraryProduct.findUnique({ where: { id }, include: productInclude() });
   if (!source) return null;
   const stamp = Date.now().toString().slice(-5);
@@ -361,6 +408,16 @@ export async function duplicateLibraryProduct(id: string, actorId?: string) {
 
 export async function archiveLibraryProducts(ids: string[], actorId?: string) {
   if (!ids.length) return 0;
+  if (!shouldUsePostgresLibrary()) {
+    let count = 0;
+    localLibraryProducts.forEach((product) => {
+      if (ids.includes(product.id)) {
+        product.status = "ARCHIVED";
+        count += 1;
+      }
+    });
+    return count;
+  }
   const result = await getMainPrisma().libraryProduct.updateMany({
     where: { id: { in: ids } },
     data: { status: LibraryProductStatus.ARCHIVED, archivedAt: new Date(), updatedById: actorId },
@@ -370,6 +427,13 @@ export async function archiveLibraryProducts(ids: string[], actorId?: string) {
 
 export async function softDeleteLibraryProducts(ids: string[], actorId?: string) {
   if (!ids.length) return 0;
+  if (!shouldUsePostgresLibrary()) {
+    const before = localLibraryProducts.length;
+    for (let index = localLibraryProducts.length - 1; index >= 0; index -= 1) {
+      if (ids.includes(localLibraryProducts[index].id)) localLibraryProducts.splice(index, 1);
+    }
+    return before - localLibraryProducts.length;
+  }
   const result = await getMainPrisma().libraryProduct.updateMany({
     where: { id: { in: ids } },
     data: { status: LibraryProductStatus.DELETED, deletedAt: new Date(), updatedById: actorId },
@@ -383,7 +447,36 @@ export async function createLibraryOrderFromCheckout(input: {
   items: LibraryCartLine[];
   couponCode?: string;
 }) {
-  if (!shouldUsePostgresLibrary()) return { order: LIBRARY_ORDERS[0], accessGranted: false };
+  if (!shouldUsePostgresLibrary()) {
+    const quote = await quoteLibraryCart(input.items, input.couponCode, input.customerId);
+    if (!quote.items.length) throw new Error("No valid Library products found.");
+    const order: LocalLibraryOrder = {
+      id: `local-library-order-${Date.now()}`,
+      orderNumber: `HL-LIB-${Date.now()}`,
+      customerId: input.customerId,
+      paymentId: input.paymentId,
+      customerName: "HouseLink Customer",
+      customerEmail: `${input.customerId}@houselink.local`,
+      status: "PENDING",
+      paymentStatus: "PENDING",
+      total: quote.total,
+      currency: quote.currency,
+      itemCount: quote.items.reduce((sum, item) => sum + item.quantity, 0),
+      createdAt: new Date().toISOString(),
+      payment: { status: "PENDING" },
+      items: quote.items.map((item) => ({
+        id: `local-line-${item.productId}-${Date.now()}`,
+        productId: item.productId,
+        title: item.title ?? "Library product",
+        sku: localLibraryProducts.find((product) => product.id === item.productId)?.sku ?? item.productId,
+        quantity: item.quantity,
+        unitPrice: item.price ?? 0,
+        total: (item.price ?? 0) * item.quantity,
+      })),
+    };
+    localLibraryOrders.unshift(order);
+    return { order, accessGranted: false };
+  }
   await seedLibraryIfEmpty();
   const prisma = getMainPrisma();
   const quote = await quoteLibraryCart(input.items, input.couponCode, input.customerId);
@@ -435,7 +528,20 @@ export async function createLibraryOrderFromCheckout(input: {
 }
 
 export async function fulfillPaidLibraryOrdersForPayment(paymentId: string) {
-  if (!shouldUsePostgresLibrary()) return { orders: 0, downloads: 0 };
+  if (!shouldUsePostgresLibrary()) {
+    let downloads = 0;
+    let orders = 0;
+    localLibraryOrders.forEach((order) => {
+      if (order.paymentId === paymentId) {
+        order.status = "FULFILLED";
+        order.paymentStatus = "PAID";
+        order.payment = { status: "PAID" };
+        orders += 1;
+        downloads += order.items?.length ?? 0;
+      }
+    });
+    return { orders, downloads };
+  }
   const prisma = getMainPrisma();
   const orders = await prisma.libraryOrder.findMany({
     where: { paymentId, status: { in: ["PENDING", "PAID"] } },
@@ -520,7 +626,13 @@ export async function revokeLibraryAccessForPayment(paymentId: string, reason = 
 
 export async function listCustomerLibrary(customerId: string) {
   if (!shouldUsePostgresLibrary()) {
-    return { products: getFallbackLibraryProducts().filter((p) => p.downloads.length > 0).slice(0, 3), orders: LIBRARY_ORDERS, downloads: [] };
+    const orders = await listLibraryOrders(customerId);
+    const productIds = new Set(
+      localLibraryOrders
+        .filter((order) => order.customerId === customerId && (order.status === "PAID" || order.status === "FULFILLED"))
+        .flatMap((order) => order.items?.map((item) => item.productId) ?? []),
+    );
+    return { products: localLibraryProducts.filter((product) => productIds.has(product.id)), orders, downloads: [] };
   }
   try {
     const [orders, downloads] = await Promise.all([
@@ -539,6 +651,7 @@ export async function listCustomerLibrary(customerId: string) {
       downloads: downloads.map((download) => ({
         id: download.id,
         productId: download.productId,
+        orderId: download.orderId,
         productTitle: download.product.title,
         fileName: download.file?.fileName ?? download.product.title,
         status: download.status,
@@ -553,7 +666,13 @@ export async function listCustomerLibrary(customerId: string) {
 }
 
 export async function getLibraryOrderForUser(orderId: string, userId: string, roles: string[] = []) {
-  if (!shouldUsePostgresLibrary()) return LIBRARY_ORDERS.find((order) => order.id === orderId) ?? null;
+  if (!shouldUsePostgresLibrary()) {
+    const order = localLibraryOrders.find((entry) => entry.id === orderId) ?? null;
+    if (!order) return null;
+    const admin = roles.some((role) => ["ADMIN", "SUPER_ADMIN"].includes(role));
+    if (!admin && order.customerId !== userId) return "FORBIDDEN" as const;
+    return order;
+  }
   const admin = roles.some((role) => ["ADMIN", "SUPER_ADMIN"].includes(role));
   const order = await getMainPrisma().libraryOrder.findUnique({
     where: { id: orderId },
@@ -578,7 +697,7 @@ export async function getLibraryOrderForUser(orderId: string, userId: string, ro
 
 export async function getLibraryInvoiceForUser(orderId: string, userId: string, roles: string[] = []) {
   if (!shouldUsePostgresLibrary()) {
-    const order = LIBRARY_ORDERS.find((entry) => entry.id === orderId);
+    const order = localLibraryOrders.find((entry) => entry.id === orderId);
     return order ? { order, invoice: { invoiceNumber: `HL-LIB-INV-${order.orderNumber}`, taxTotal: 0 } } : null;
   }
   const admin = roles.some((role) => ["ADMIN", "SUPER_ADMIN"].includes(role));
@@ -1136,6 +1255,109 @@ function normalizeType(type: string): LibraryProductType {
 
 function normalizeStatus(status: string): LibraryProductStatus {
   return Object.values(LibraryProductStatus).includes(status as LibraryProductStatus) ? status as LibraryProductStatus : LibraryProductStatus.DRAFT;
+}
+
+function filterAndSortLocalProducts(input: {
+  q?: string;
+  category?: string;
+  author?: string;
+  type?: string;
+  difficulty?: string;
+  status?: string;
+  includeDrafts?: boolean;
+  limit?: number;
+}) {
+  const q = input.q?.trim().toLowerCase();
+  return localLibraryProducts
+    .filter((product) => {
+      if (!input.includeDrafts && product.status !== "PUBLISHED" && product.status !== "SCHEDULED") return false;
+      if (input.status && product.status !== input.status) return false;
+      if (input.category && product.category !== input.category) return false;
+      if (input.author && product.author !== input.author) return false;
+      if (input.type && product.productType !== input.type) return false;
+      if (input.difficulty && product.difficulty !== input.difficulty) return false;
+      if (!q) return true;
+      return [
+        product.title,
+        product.subtitle,
+        product.sku,
+        product.isbn,
+        product.author,
+        product.category,
+        product.collection,
+        product.publisher,
+        product.tags.join(" "),
+      ].filter(Boolean).join(" ").toLowerCase().includes(q);
+    })
+    .sort((a, b) => Number(b.featured) - Number(a.featured) || new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime())
+    .slice(0, input.limit ?? 100);
+}
+
+function localProductFromInput(input: Partial<LibraryProductInput>, existing?: LibraryProduct): LibraryProduct {
+  const title = input.title ?? existing?.title ?? "Untitled Library Product";
+  const now = new Date().toISOString();
+  const slug = input.slug || existing?.slug || slugify(title);
+  const gallery = input.gallery?.length
+    ? input.gallery.map((item) => ({ label: item.label, url: item.url, kind: item.kind }))
+    : existing?.gallery.map((item) => ({ ...item })) ?? [{ label: "Cover", url: "/images/academy/agent-academy-hero.png", kind: "cover" as const }];
+  const downloads = input.downloads?.length
+    ? input.downloads.map((item, index) => ({
+        id: (item as { id?: string }).id ?? `local-download-${Date.now()}-${index}`,
+        label: item.label,
+        fileType: item.fileType,
+        size: item.size ?? formatBytes(item.fileSizeBytes ?? 0),
+        secure: item.secure ?? true,
+      }))
+    : existing?.downloads.map((item) => ({ ...item })) ?? [];
+  return {
+    id: existing?.id ?? `local-product-${Date.now()}`,
+    slug,
+    title,
+    subtitle: input.subtitle ?? existing?.subtitle ?? "",
+    author: input.author ?? existing?.author ?? "HouseLink Zimbabwe Editorial Board",
+    publisher: input.publisher ?? existing?.publisher ?? "HouseLink Zimbabwe",
+    edition: input.edition ?? existing?.edition ?? "Digital Edition",
+    isbn: input.isbn ?? existing?.isbn,
+    language: input.language ?? existing?.language ?? "English",
+    publicationDate: input.publicationDate ?? existing?.publicationDate ?? now.slice(0, 10),
+    pages: input.pages ?? existing?.pages,
+    weightGrams: input.weightGrams ?? existing?.weightGrams,
+    bookSize: input.bookSize ?? existing?.bookSize,
+    sku: input.sku ?? existing?.sku ?? `HL-LIB-${Date.now()}`,
+    productType: input.productType ?? existing?.productType ?? "PDF",
+    status: (input.status as LibraryProduct["status"] | undefined) ?? existing?.status ?? "DRAFT",
+    price: Number(input.price ?? existing?.price ?? 0),
+    compareAtPrice: input.compareAtPrice ?? existing?.compareAtPrice,
+    currency: input.currency ?? existing?.currency ?? "USD",
+    rating: existing?.rating ?? 0,
+    reviewCount: existing?.reviewCount ?? 0,
+    category: input.category ?? existing?.category ?? "Library",
+    collection: input.collection ?? existing?.collection ?? "HouseLink Library",
+    series: input.series ?? existing?.series,
+    difficulty: (input.difficulty as LibraryProduct["difficulty"] | undefined) ?? existing?.difficulty ?? "Professional",
+    description: input.description ?? existing?.description ?? "",
+    shortDescription: input.shortDescription ?? existing?.shortDescription ?? input.description?.slice(0, 140) ?? "",
+    learningOutcomes: input.learningOutcomes ?? existing?.learningOutcomes ?? [],
+    whoThisIsFor: input.whoThisIsFor ?? existing?.whoThisIsFor ?? [],
+    requirements: input.requirements ?? existing?.requirements ?? [],
+    tableOfContents: input.tableOfContents ?? existing?.tableOfContents ?? [],
+    tags: input.tags ?? existing?.tags ?? [],
+    gallery,
+    downloads,
+    stock: input.stock !== undefined ? input.stock : existing?.stock ?? null,
+    lowStockThreshold: input.lowStockThreshold ?? existing?.lowStockThreshold ?? 0,
+    warehouse: input.warehouse ?? existing?.warehouse,
+    supplier: input.supplier ?? existing?.supplier,
+    featured: input.featured ?? existing?.featured ?? false,
+    bestSeller: input.bestSeller ?? existing?.bestSeller ?? false,
+    newRelease: input.newRelease ?? existing?.newRelease ?? false,
+    editorsChoice: input.editorsChoice ?? existing?.editorsChoice ?? false,
+    comingSoon: input.comingSoon ?? existing?.comingSoon ?? false,
+    preorder: input.preorder ?? existing?.preorder ?? false,
+    downloadCount: existing?.downloadCount ?? 0,
+    viewCount: existing?.viewCount ?? 0,
+    publishedAt: input.status === "PUBLISHED" ? now : existing?.publishedAt ?? now,
+  };
 }
 
 function slugify(value: string) {

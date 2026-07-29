@@ -607,7 +607,7 @@ function SelectedProgrammeDetail({
           <CourseMetric icon={ShieldCheck} value={String(course.toolkitCount ?? 0)} label="PDF tools" accent={accent} />
         </div>
 
-        <div className="mt-5 grid gap-3 sm:grid-cols-3 lg:grid-cols-1 2xl:grid-cols-3">
+        <div className="mt-5 grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(min(100%,16rem),1fr))]">
           <ProgrammeProofCard title="Practice" body="Real client scenarios, roleplay prompts, and field notes before learners move on." accent={accent} />
           <ProgrammeProofCard title="Evidence" body="Quizzes, submitted assignments, toolkit work, and portfolio proof are reviewed." accent={accent} />
           <ProgrammeProofCard title="Trust" body="Graduates earn a public certificate that can be verified by clients and teams." accent={accent} />
@@ -841,16 +841,16 @@ function CourseMetric({
 
 function ProgrammeProofCard({ title, body, accent }: { title: string; body: string; accent: string }) {
   return (
-    <div className="group rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-shadow duration-200 dark:border-slate-800 dark:bg-slate-950 sm:bg-slate-50/80 lg:flex lg:items-start lg:gap-3 lg:bg-white lg:p-4 lg:shadow-[0_10px_30px_rgba(15,23,42,0.05)] lg:hover:shadow-[0_16px_42px_rgba(15,23,42,0.08)] 2xl:block 2xl:bg-slate-50/80 2xl:shadow-sm">
+    <div className="group flex min-h-0 items-start gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-shadow duration-200 hover:shadow-[0_16px_42px_rgba(15,23,42,0.08)] dark:border-slate-800 dark:bg-slate-950 sm:bg-slate-50/80">
       <div
         className="flex size-9 shrink-0 items-center justify-center rounded-full"
         style={{ backgroundColor: `${accent}14`, color: accent }}
       >
         <CheckCircle2 className="size-4" strokeWidth={2.4} />
       </div>
-      <div className="mt-3 min-w-0 lg:mt-0 2xl:mt-3">
+      <div className="min-w-0">
         <p className="text-sm font-black text-slate-950 dark:text-white">{title}</p>
-        <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">{body}</p>
+        <p className="mt-1 max-w-prose text-sm leading-6 text-slate-600 dark:text-slate-300">{body}</p>
       </div>
     </div>
   );

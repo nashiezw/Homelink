@@ -37,6 +37,8 @@ const views = [
   "Settings",
 ];
 
+const productStatuses = ["DRAFT", "SCHEDULED", "PUBLISHED", "ARCHIVED"];
+
 type LibraryOperations = {
   fulfilments: Array<{ id: string; status: string; courier?: string | null; trackingNumber?: string | null; order?: { orderNumber: string; total: unknown; currency: string } }>;
   invoices: Array<{ id: string; invoiceNumber: string; total: unknown; currency: string; issuedAt?: string; order?: { orderNumber: string } }>;
@@ -152,8 +154,8 @@ export function LibraryAdminHub() {
         ...draft,
         price: Number(draft.price),
         shortDescription: draft.description.slice(0, 140),
-        downloads: [],
-        gallery: [],
+        downloads: draft.downloads,
+        gallery: draft.gallery,
       }),
     });
     setSaving(false);
@@ -229,6 +231,14 @@ export function LibraryAdminHub() {
 
   async function duplicate(id: string) {
     await apiFetch("/api/v1/admin/library", { method: "POST", body: JSON.stringify({ action: "duplicate", id }) });
+    await load();
+  }
+
+  async function setProductStatus(product: LibraryProduct, status: string) {
+    await apiFetch<{ product: LibraryProduct }>(`/api/v1/admin/library/products/${product.id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ status }),
+    });
     await load();
   }
 
@@ -315,7 +325,7 @@ export function LibraryAdminHub() {
                 { key: "price", header: "Price", render: (row) => `${row.currency} ${row.price.toFixed(2)}` },
                 { key: "status", header: "Status", render: (row) => <AdminStatusBadge status={row.status} variant={row.status === "PUBLISHED" ? "success" : row.status === "SCHEDULED" ? "warning" : "muted"} /> },
                 { key: "stock", header: "Inventory", render: (row) => row.stock === null ? "Unlimited digital" : `${row.stock} units` },
-                { key: "actions", header: "Actions", render: (row) => <div className="flex gap-2"><IconButton icon={Edit3} label="Edit" onClick={() => openEditor(row)} /><IconButton icon={Copy} label="Duplicate" onClick={() => void duplicate(row.id)} /></div> },
+                { key: "actions", header: "Actions", render: (row) => <div className="flex gap-2"><IconButton icon={Edit3} label="Edit" onClick={() => openEditor(row)} /><IconButton icon={Copy} label="Duplicate" onClick={() => void duplicate(row.id)} /><button type="button" onClick={() => void setProductStatus(row, row.status === "PUBLISHED" ? "DRAFT" : "PUBLISHED")} className="rounded-lg border border-white/10 px-3 py-2 text-xs font-bold text-slate-300 hover:bg-white/5">{row.status === "PUBLISHED" ? "Draft" : "Publish"}</button></div> },
               ]}
             />
           </div>
@@ -368,9 +378,12 @@ export function LibraryAdminHub() {
                 <input value={draft.price} onChange={(e) => setDraft({ ...draft, price: e.target.value })} placeholder="Price" className="rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-white" />
                 <input value={draft.category} onChange={(e) => setDraft({ ...draft, category: e.target.value })} placeholder="Category" className="rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-white" />
                 <select value={draft.productType} onChange={(e) => setDraft({ ...draft, productType: e.target.value })} className="rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-white">
-                  {facets.types.map((type) => <option key={type} value={type}>{type.replace(/_/g, " ")}</option>)}
+                  {(facets.types.length ? facets.types : ["PDF", "PRINTED_BOOK", "DIGITAL_BOOK", "TRAINING_MANUAL", "TOOLKIT", "COURSE", "TEMPLATE", "FORMS", "BUNDLE"]).map((type) => <option key={type} value={type}>{type.replace(/_/g, " ")}</option>)}
                 </select>
               </div>
+              <select value={draft.status} onChange={(e) => setDraft({ ...draft, status: e.target.value })} className="rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-white">
+                {productStatuses.map((status) => <option key={status} value={status}>{status}</option>)}
+              </select>
               <div className="grid gap-3 sm:grid-cols-2">
                 <label className="rounded-lg border border-dashed border-white/10 p-3 text-sm text-slate-300">
                   <span className="flex items-center gap-2 font-semibold"><Upload className="size-4" /> Upload cover/gallery</span>

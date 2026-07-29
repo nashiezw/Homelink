@@ -15,6 +15,7 @@ export function LibraryCheckoutClient() {
   const [couponCode, setCouponCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [config, setConfig] = useState<PublicPaymentConfig | null>(null);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     void apiFetch<PublicPaymentConfig>("/api/v1/payments/config").then((result) => {
@@ -27,6 +28,7 @@ export function LibraryCheckoutClient() {
 
   async function checkout() {
     setBusy(true);
+    setError("");
     const result = await apiFetch<{ redirectUrl?: string; order?: { id?: string; orderNumber?: string } }>("/api/v1/library/checkout", {
       method: "POST",
       body: JSON.stringify({ items: cart, provider: paymentMethod, couponCode }),
@@ -35,7 +37,9 @@ export function LibraryCheckoutClient() {
     if (result.data?.redirectUrl) {
       clearLibraryCart();
       window.location.href = result.data.redirectUrl;
+      return;
     }
+    setError(result.error?.message ?? "We could not create your Library order. Please try again.");
   }
 
   function remove(productId: string) {
@@ -110,6 +114,7 @@ export function LibraryCheckoutClient() {
               <Button className="mt-4 w-full" disabled={!cart.length || busy} onClick={() => void checkout()}>
                 <CreditCard className="size-4" /> {busy ? "Creating order..." : "Place order"}
               </Button>
+              {error && <p role="alert" className="mt-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-200">{error}</p>}
             </div>
           </section>
           <section className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-950 dark:border-emerald-900/40 dark:bg-emerald-950/20 dark:text-emerald-100">

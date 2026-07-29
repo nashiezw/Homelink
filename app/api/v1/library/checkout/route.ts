@@ -1,4 +1,3 @@
-import { buildCheckoutRedirectUrl } from "@/lib/payments/tenancy-checkout";
 import { getSessionUserIdFromRequest } from "@/lib/auth/session";
 import { created, problem } from "@/lib/api/response";
 import {
@@ -46,13 +45,19 @@ export async function POST(request: Request) {
       method: provider,
     });
     const completed = settings.sandboxMode && !manualMethod ? await completePaymentInPostgres(payment.id) : null;
-    const order = await createLibraryOrderFromCheckout({
-      customerId: userId,
-      paymentId: payment.id,
-      items,
-      couponCode: body.couponCode,
-    });
+    let order: Awaited<ReturnType<typeof createLibraryOrderFromCheckout>>;
+    try {
+      order = await createLibraryOrderFromCheckout({
+        customerId: userId,
+        paymentId: payment.id,
+        items,
+        couponCode: body.couponCode,
+      });
+    } catch {
+      return problem(500, "LIBRARY_ORDER_FAILED", "Payment was started, but the Library order could not be created. Please contact support before paying.");
+    }
     const grant = completed ? await fulfillPaidLibraryOrdersForPayment(payment.id) : { orders: 0, downloads: 0 };
+    const status = completed ? "success" : "pending";
     return created({
       ...(completed ?? payment),
       description,
@@ -60,11 +65,7 @@ export async function POST(request: Request) {
       quote,
       accessGranted: grant.downloads > 0,
       items: quote.items,
-      redirectUrl: buildCheckoutRedirectUrl({
-        plan: "library_order",
-        paymentId: payment.id,
-        status: completed ? "success" : "pending",
-      }),
+      redirectUrl: `/library/checkout/confirmation?orderId=${encodeURIComponent(order.order.id)}&paymentId=${encodeURIComponent(payment.id)}&status=${status}`,
       bankDetails: manualMethod ? settings.bankDetails : undefined,
       manualMethod,
     });
@@ -77,16 +78,19 @@ export async function POST(request: Request) {
     amount: quote.total,
     method: provider,
   });
+  const order = await createLibraryOrderFromCheckout({
+    customerId: userId,
+    paymentId: payment.id,
+    items,
+    couponCode: body.couponCode,
+  });
+  const status = payment.status === "PAID" ? "success" : "pending";
   return created({
     ...payment,
     description,
-    order: { orderNumber: `HL-LIB-${Date.now()}`, total: quote.total, currency: quote.currency, itemCount: quote.items.length },
+    order: order.order,
     quote,
     items: quote.items,
-    redirectUrl: buildCheckoutRedirectUrl({
-      plan: "library_order",
-      paymentId: payment.id,
-      status: payment.status === "PAID" ? "success" : "pending",
-    }),
+    redirectUrl: `/library/checkout/confirmation?orderId=${encodeURIComponent(order.order.id)}&paymentId=${encodeURIComponent(payment.id)}&status=${status}`,
   });
 }

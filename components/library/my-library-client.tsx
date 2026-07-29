@@ -11,6 +11,7 @@ import type { LibraryOrder, LibraryProduct } from "@/lib/library/catalog";
 type DownloadAccess = {
   id: string;
   productId: string;
+  orderId: string | null;
   productTitle: string;
   fileName: string;
   status: string;
@@ -58,7 +59,7 @@ export function MyLibraryClient({
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <Stat icon={PackageCheck} label="Purchases" value={library.orders.length} />
             <Stat icon={Download} label="Downloads" value={library.downloads.length || purchased.reduce((sum, product) => sum + product.downloads.length, 0)} />
-            <Stat icon={Heart} label="Wishlist" value={4} />
+            <Stat icon={Heart} label="Wishlist" value={0} />
             <Stat icon={Award} label="Certificates" value="Future" />
           </div>
 
@@ -66,22 +67,13 @@ export function MyLibraryClient({
             <h2 className="text-lg font-semibold text-ink dark:text-white">Purchased Resources</h2>
             <div className="mt-4 grid gap-4">
               {purchased.map((product) => (
-                <article key={product.id} className="grid gap-4 rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
-                  <div className="min-w-0">
-                    <p className="text-xs font-bold uppercase tracking-wide text-emerald-700 dark:text-emerald-400">{product.productType.replace(/_/g, " ")}</p>
-                    <Link href={`/library/${product.slug}`} className="mt-1 block text-lg font-semibold text-ink hover:text-emerald-700 dark:text-white">{product.title}</Link>
-                    <p className="mt-1 text-sm text-slate-500">{product.downloads.length} secure download{product.downloads.length === 1 ? "" : "s"} - permanent access</p>
-                  </div>
-                  <div className="flex flex-wrap gap-2 md:justify-end">
-                    <Button onClick={() => void download(library.downloads.find((download) => download.productId === product.id)?.id)}>
-                      <Download className="size-4" /> Download
-                    </Button>
-                    <Button variant="secondary">
-                      <FileText className="size-4" /> <Link href={`/dashboard/my-library/orders/${library.orders[0]?.id ?? ""}`}>View order</Link>
-                    </Button>
-                  </div>
-                </article>
+                <PurchasedResource key={product.id} product={product} downloads={library.downloads} onDownload={download} />
               ))}
+              {!purchased.length && (
+                <div className="rounded-lg border border-dashed border-slate-300 p-6 text-sm text-slate-500 dark:border-slate-700">
+                  Approved Library purchases and downloads will appear here after payment confirmation.
+                </div>
+              )}
             </div>
           </section>
 
@@ -110,6 +102,7 @@ export function MyLibraryClient({
                   ))}
                 </tbody>
               </table>
+              {!library.orders.length && <p className="mt-4 rounded-lg border border-dashed border-slate-300 p-4 text-sm text-slate-500 dark:border-slate-700">Your Library orders will appear here as soon as checkout creates them.</p>}
             </div>
           </section>
         </div>
@@ -150,6 +143,25 @@ export function MyLibraryClient({
         </aside>
       </div>
     </PageShell>
+  );
+}
+
+function PurchasedResource({ product, downloads, onDownload }: { product: LibraryProduct; downloads: DownloadAccess[]; onDownload: (accessId?: string) => void }) {
+  const access = downloads.find((download) => download.productId === product.id);
+  return (
+    <article className="grid gap-4 rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold uppercase tracking-wide text-emerald-700 dark:text-emerald-400">{product.productType.replace(/_/g, " ")}</p>
+                    <Link href={`/library/${product.slug}`} className="mt-1 block text-lg font-semibold text-ink hover:text-emerald-700 dark:text-white">{product.title}</Link>
+                    <p className="mt-1 text-sm text-slate-500">{product.downloads.length} secure download{product.downloads.length === 1 ? "" : "s"} - permanent access</p>
+                  </div>
+                  <div className="flex flex-wrap gap-2 md:justify-end">
+                    <Button disabled={!access} onClick={() => onDownload(access?.id)}>
+                      <Download className="size-4" /> Download
+                    </Button>
+                    {access?.orderId && <Link href={`/dashboard/my-library/orders/${access.orderId}`} className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-slate-200 px-4 text-sm font-bold text-slate-700 hover:border-emerald-500 hover:text-emerald-700 dark:border-slate-700 dark:text-slate-200"><FileText className="size-4" /> View order</Link>}
+                  </div>
+                </article>
   );
 }
 
