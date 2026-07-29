@@ -278,18 +278,18 @@ export function PublicAcademyPage() {
           My Dashboard
         </Link>
       )}
-      <Link href="/academy/verify" className="w-full border border-white/20 bg-white/10 text-white hover:bg-white/15 sm:w-auto">
+      <Link href="/academy/verify" className="w-full border border-white/25 bg-white/10 text-white hover:bg-white/15 sm:w-auto">
         <ShieldCheck className="mr-2 size-4" />
         Verify certificate
       </Link>
     </div>
   ) : (
     <div className="flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap">
-      <Link href="#academy-programmes" className="w-full bg-white text-slate-950 hover:bg-emerald-50 sm:w-auto">
+      <Link href="#academy-programmes" className="w-full bg-white text-slate-950 shadow-xl shadow-emerald-950/20 hover:bg-emerald-50 sm:w-auto">
         Explore programmes
         <ArrowRight className="ml-2 size-4" />
       </Link>
-      <Link href="/academy/verify" className="w-full border border-white/20 bg-white/10 text-white hover:bg-white/15 sm:w-auto">
+      <Link href="/academy/verify" className="w-full border border-white/25 bg-white/10 text-white hover:bg-white/15 sm:w-auto">
         <ShieldCheck className="mr-2 size-4" />
         Verify certificate
       </Link>
@@ -299,18 +299,19 @@ export function PublicAcademyPage() {
   return (
     <PageShell
       eyebrow={academySettings?.academyName ?? "HouseLink Academy"}
-      title={browseMode && academyStatus?.hasActiveAccess ? "Browse More Courses" : "Train, certify, and operate like a top property agent."}
+      title={browseMode && academyStatus?.hasActiveAccess ? "Browse More Courses" : "Become the agent clients trust."}
       description={
         browseMode && academyStatus?.hasActiveAccess
           ? "You already have active course access. Browse additional courses or return to your learning dashboard."
-          : "A practical HouseLink Academy pathway for Zimbabwe agents: guided sessions, field tools, reviewed assignments, roleplay evidence, and public certificate verification."
+          : "Practical training, reviewed assignments, field tools, roleplay evidence, and verifiable certification for Zimbabwe property professionals."
       }
       highlights={[
-        { value: "3", label: "certification levels" },
-        { value: String(courses.reduce((sum, course) => sum + (course.assignmentCount ?? 0) + (course.quizCount ?? 0), 0) || 16), label: "practical checks" },
-        { value: "PDF", label: "field toolkit" },
+        { value: "3 levels", label: "certification pathway" },
+        { value: `${courses.reduce((sum, course) => sum + (course.assignmentCount ?? 0) + (course.quizCount ?? 0), 0) || 16} checks`, label: "quizzes and tasks" },
+        { value: "Field tools", label: "downloadable PDFs" },
       ]}
       compactHero
+      heroMode="immersive"
       heroAside={<AcademyHeroVisual />}
       actions={pageActions}
     >
@@ -323,6 +324,8 @@ export function PublicAcademyPage() {
           </Link>
         </div>
       )}
+
+      <AcademyPromiseStrip />
 
       <section id="academy-programmes" className="mb-6 scroll-mt-24 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_18px_60px_rgba(15,23,42,0.08)] dark:border-slate-800 dark:bg-slate-950">
         <div className="grid gap-0 lg:grid-cols-[minmax(0,1fr)_19rem]">
@@ -389,16 +392,16 @@ export function PublicAcademyPage() {
       </div>
 
       <section className="mt-10 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_20px_70px_rgba(15,23,42,0.08)] dark:border-slate-800 dark:bg-slate-950">
-        <div className="grid gap-0 lg:grid-cols-[minmax(0,1fr)_18rem]">
+        <div className="grid gap-0 lg:grid-cols-[minmax(0,1fr)_20rem]">
           <div className="p-5 sm:p-6">
             <p className="text-xs font-bold uppercase tracking-widest text-emerald-700 dark:text-emerald-300">Academy standard</p>
             <div className="mt-2 grid gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
               <div>
-                <h2 className="max-w-2xl text-xl font-black leading-tight tracking-tight text-slate-950 dark:text-white sm:text-2xl">
-                  Training that proves an agent can do the work
+                <h2 className="max-w-2xl text-2xl font-black leading-tight tracking-tight text-slate-950 dark:text-white sm:text-3xl">
+                  Proof that learners can handle real clients
                 </h2>
                 <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600 dark:text-slate-300">
-                  HouseLink Academy is built around practical competence: better listings, safer client handling, sharper market judgement, and verified professional evidence.
+                  HouseLink Academy is built around practical competence: stronger listings, safer client handling, sharper market judgement, and evidence that an admin can review.
                 </p>
               </div>
               <Link href="/academy/verify" className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-bold text-emerald-800 shadow-sm transition hover:border-emerald-300 hover:bg-emerald-100 dark:border-emerald-900/70 dark:bg-emerald-950/30 dark:text-emerald-200 sm:w-auto">
@@ -412,19 +415,19 @@ export function PublicAcademyPage() {
               ))}
             </div>
           </div>
-          <div className="border-t border-slate-200 bg-slate-950 p-5 text-white dark:border-slate-800 lg:border-l lg:border-t-0">
+          <div className="border-t border-slate-200 bg-[radial-gradient(circle_at_top_left,rgba(16,185,129,0.22),transparent_36%),#020617] p-5 text-white dark:border-slate-800 lg:border-l lg:border-t-0">
             <div className="flex h-full flex-col justify-between gap-5">
               <div>
-                <p className="text-xs font-bold uppercase tracking-widest text-emerald-300">Why it matters</p>
-                <p className="mt-3 text-lg font-black leading-tight">A certificate should signal discipline, evidence, and client trust.</p>
+                <p className="text-xs font-bold uppercase tracking-widest text-emerald-300">Certification signal</p>
+                <p className="mt-3 text-xl font-black leading-tight">A certificate should prove discipline, evidence, and client trust.</p>
                 <p className="mt-3 text-sm leading-6 text-slate-300">
                   The goal is not to create agents who only know theory. It is to produce agents who can protect clients, document work, and represent property professionally.
                 </p>
               </div>
-              <div className="grid grid-cols-3 gap-2 text-center">
-                <StandardStat value="3" label="levels" />
-                <StandardStat value="16" label="tasks" />
-                <StandardStat value="PDF" label="tools" />
+              <div className="grid gap-2">
+                <EvidencePill label="Admin-reviewed assignments" />
+                <EvidencePill label="Roleplay and scenario checks" />
+                <EvidencePill label="Public certificate verification" />
               </div>
             </div>
           </div>
@@ -495,10 +498,11 @@ function PathwayRail({
   return (
     <aside className="academy-panel rounded-2xl p-3 xl:sticky xl:top-4">
       <div className="px-2 pb-3">
-        <p className="text-xs font-bold uppercase tracking-widest text-emerald-700 dark:text-emerald-300">Pathway</p>
-        <p className="mt-1 text-sm leading-5 text-slate-600 dark:text-slate-300">Select a stage to view the course, requirements, and enrolment details.</p>
+        <p className="text-xs font-bold uppercase tracking-widest text-emerald-700 dark:text-emerald-300">Guided pathway</p>
+        <p className="mt-1 text-sm leading-5 text-slate-600 dark:text-slate-300">Move from foundation habits to listing mastery and professional certification.</p>
       </div>
-      <div className="grid gap-2 sm:grid-cols-3 xl:grid-cols-1">
+      <div className="relative grid gap-2 sm:grid-cols-3 xl:grid-cols-1 xl:gap-3">
+        <div className="absolute left-6 top-6 hidden h-[calc(100%-3rem)] w-px bg-gradient-to-b from-emerald-200 via-slate-200 to-amber-200 dark:from-emerald-900 dark:via-slate-800 dark:to-amber-900 xl:block" />
         {courses.map((course, index) => {
           const accent = course.theme?.accent ?? "#008b68";
           const active = course.id === selectedId;
@@ -510,18 +514,22 @@ function PathwayRail({
               type="button"
               onClick={() => onSelect(course.id)}
               className={cn(
-                "group min-w-0 rounded-xl border p-3 text-left transition",
-                active ? "bg-white shadow-lg dark:bg-slate-950" : "border-slate-200 bg-slate-50/80 hover:bg-white dark:border-slate-800 dark:bg-slate-900/60 dark:hover:bg-slate-950",
+                "group relative min-w-0 rounded-xl border p-3 text-left transition",
+                active ? "bg-white shadow-lg shadow-slate-950/10 dark:bg-slate-950" : "border-slate-200 bg-slate-50/80 hover:bg-white hover:shadow-md dark:border-slate-800 dark:bg-slate-900/60 dark:hover:bg-slate-950",
               )}
               style={active ? { borderColor: accent } : undefined}
             >
               <div className="flex items-start gap-3">
-                <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-full text-xs font-black text-white" style={{ backgroundColor: accent }}>
+                <span className="relative z-10 inline-flex size-9 shrink-0 items-center justify-center rounded-full text-xs font-black text-white ring-4 ring-white dark:ring-slate-950" style={{ backgroundColor: accent }}>
                   {String(index + 1).padStart(2, "0")}
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-black text-slate-950 dark:text-white">{course.title}</span>
+                  <span className="block text-sm font-black leading-snug text-slate-950 dark:text-white">{course.title}</span>
                   <span className="mt-1 block text-xs font-semibold" style={{ color: accent }}>{course.theme?.label ?? course.difficulty}</span>
+                  <span className="mt-2 grid grid-cols-2 gap-1 text-[10px] font-semibold text-slate-500">
+                    <span>{course.lessonCount} sessions</span>
+                    <span>{course.estimatedHours || Math.round(course.durationMinutes / 60)}h guided</span>
+                  </span>
                   <span className="mt-2 flex flex-wrap gap-1">
                     {registration === "APPROVED" && <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800">Enrolled</span>}
                     {registration === "PENDING" && <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800">Pending</span>}
@@ -555,12 +563,14 @@ function SelectedProgrammeDetail({
   const accent = course.theme?.accent ?? "#008b68";
   const locked = course.prerequisiteCourseId && courseRegistrationState(academyStatus, course.prerequisiteCourseId) !== "APPROVED" && registration !== "APPROVED";
   const stageNumber = String(index + 1).padStart(2, "0");
+  const totalChecks = (course.quizCount ?? 0) + (course.assignmentCount ?? 0) + (course.roleplayCount ?? 0) + (course.hasFinalExam ? 1 : 0);
 
   return (
-    <article className="academy-programme-card relative overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800" style={{ borderColor: selected ? accent : undefined }}>
-      <div className={cn("h-2 bg-gradient-to-r", course.theme?.gradient ?? "from-emerald-500 to-teal-600")} />
-      <div className="p-5 sm:p-6 lg:p-7">
-        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_10rem] lg:items-start">
+    <article className="academy-programme-card relative overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_24px_80px_rgba(15,23,42,0.08)] dark:border-slate-800 dark:bg-slate-950" style={{ borderColor: selected ? accent : undefined }}>
+      <div className="absolute inset-x-0 top-0 h-32 opacity-90" style={{ background: `linear-gradient(135deg, ${accent}14, transparent 62%)` }} />
+      <div className={cn("relative h-2 bg-gradient-to-r", course.theme?.gradient ?? "from-emerald-500 to-teal-600")} />
+      <div className="relative p-5 sm:p-6 lg:p-7">
+        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_12rem] lg:items-start">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <span className="inline-flex h-8 w-8 items-center justify-center rounded-full text-xs font-black text-white shadow-sm" style={{ backgroundColor: accent }}>
@@ -580,10 +590,13 @@ function SelectedProgrammeDetail({
             <p className="mt-1 text-sm font-bold leading-relaxed" style={{ color: accent }}>{course.subtitle}</p>
             <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600 dark:text-slate-300">{course.shortDescription ?? course.description}</p>
           </div>
-          <div className="rounded-xl border border-slate-200 bg-white p-4 text-left shadow-sm dark:border-slate-800 dark:bg-slate-950 lg:text-right">
-            <p className="text-[11px] font-bold uppercase tracking-widest text-slate-500">Programme fee</p>
-            <p className="mt-1 text-2xl font-black tracking-tight" style={{ color: accent }}>{course.publicPrice ? `${course.currency} ${course.publicPrice.toFixed(2)}` : "Free"}</p>
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-xl shadow-slate-950/5 dark:border-slate-800 dark:bg-slate-950 lg:text-right">
+            <p className="text-[11px] font-bold uppercase tracking-widest text-slate-500">Programme access</p>
+            <p className="mt-1 text-3xl font-black tracking-tight" style={{ color: accent }}>{course.publicPrice ? `${course.currency} ${course.publicPrice.toFixed(2)}` : "Free"}</p>
             <p className="mt-1 text-xs font-medium text-slate-500">{course.accessDurationDays} days access</p>
+            <div className="mt-4 rounded-xl bg-slate-50 p-3 text-xs font-semibold text-slate-600 dark:bg-slate-900 dark:text-slate-300">
+              {totalChecks} reviewed checkpoints
+            </div>
           </div>
         </div>
 
@@ -592,6 +605,12 @@ function SelectedProgrammeDetail({
           <CourseMetric icon={ListChecks} value={`${course.quizCount ?? 0}/${course.assignmentCount ?? 0}`} label="quizzes/tasks" accent={accent} />
           <CourseMetric icon={Clock} value={`${course.estimatedHours || Math.round(course.durationMinutes / 60)}h`} label="guided" accent={accent} />
           <CourseMetric icon={ShieldCheck} value={String(course.toolkitCount ?? 0)} label="PDF tools" accent={accent} />
+        </div>
+
+        <div className="mt-5 grid gap-3 lg:grid-cols-3">
+          <ProgrammeProofCard title="Practice" body="Real client scenarios, roleplay prompts, and field notes before learners move on." accent={accent} />
+          <ProgrammeProofCard title="Evidence" body="Quizzes, submitted assignments, toolkit work, and portfolio proof are reviewed." accent={accent} />
+          <ProgrammeProofCard title="Trust" body="Graduates earn a public certificate that can be verified by clients and teams." accent={accent} />
         </div>
 
         <div className="mt-4 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
@@ -686,32 +705,44 @@ function SelectedProgrammeDetail({
 
 function AcademyHeroVisual() {
   return (
-    <div className="relative overflow-hidden rounded-[1.35rem] border border-white/15 bg-white/10 p-3 shadow-2xl shadow-emerald-950/30 backdrop-blur">
-      <div className="relative aspect-[5/3] overflow-hidden rounded-2xl bg-slate-950">
+    <div className="relative">
+      <div className="absolute -inset-3 rounded-[2rem] bg-gradient-to-br from-emerald-300/20 via-white/5 to-sky-300/10 blur-2xl" />
+      <div className="relative overflow-hidden rounded-[1.45rem] border border-white/15 bg-white/10 p-2.5 shadow-2xl shadow-emerald-950/35 backdrop-blur">
+        <div className="relative aspect-[16/10] overflow-hidden rounded-[1.15rem] bg-slate-950">
         <Image
           src="/images/academy/agent-academy-hero.png"
           alt="Professional agents in a HouseLink Academy training session"
           fill
           priority
           className="object-cover"
-          sizes="520px"
+          sizes="576px"
         />
-        <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(2,6,23,0.16),rgba(2,6,23,0.06)_38%,rgba(2,6,23,0.36)),linear-gradient(180deg,rgba(2,6,23,0)_35%,rgba(2,6,23,0.88))]" />
-        <div className="absolute left-4 top-4 inline-flex items-center gap-2 rounded-full border border-white/20 bg-slate-950/55 px-3 py-1.5 text-xs font-bold text-white shadow-lg backdrop-blur">
+        <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(2,6,23,0.1),rgba(2,6,23,0.02)_42%,rgba(2,6,23,0.28)),linear-gradient(180deg,rgba(2,6,23,0)_30%,rgba(2,6,23,0.92))]" />
+        <div className="absolute left-4 top-4 inline-flex items-center gap-2 rounded-full border border-white/20 bg-slate-950/60 px-3 py-1.5 text-xs font-bold text-white shadow-lg backdrop-blur">
           <BookOpen className="size-3.5 text-emerald-300" />
-          Live field training
+          Field-ready academy
         </div>
-        <div className="absolute bottom-4 left-4 max-w-[14rem] rounded-2xl border border-white/15 bg-white/95 p-4 text-slate-950 shadow-2xl">
-          <p className="text-[10px] font-black uppercase tracking-widest text-emerald-700">Credential pathway</p>
-          <p className="mt-2 text-lg font-black leading-tight">Certified Property Agent</p>
-          <div className="mt-4 grid grid-cols-3 gap-1.5 text-center">
-            <HeroProof value="3" label="levels" />
-            <HeroProof value="16" label="tasks" />
-            <HeroProof value="PDF" label="tools" />
+        <div className="absolute bottom-4 left-4 right-4 flex items-end justify-between gap-4">
+          <div className="max-w-[16rem] rounded-2xl border border-white/15 bg-white/95 p-4 text-slate-950 shadow-2xl">
+            <p className="text-[10px] font-black uppercase tracking-widest text-emerald-700">Credential pathway</p>
+            <p className="mt-2 text-xl font-black leading-tight">Certified Property Agent</p>
+            <div className="mt-4 grid grid-cols-3 gap-1.5 text-center">
+              <HeroProof value="3" label="levels" />
+              <HeroProof value="16" label="tasks" />
+              <HeroProof value="PDF" label="tools" />
+            </div>
+          </div>
+          <div className="hidden max-w-[10rem] rounded-2xl border border-white/15 bg-slate-950/70 p-3 text-white shadow-2xl backdrop-blur sm:block">
+            <div className="flex items-center gap-2 text-xs font-bold">
+              <ShieldCheck className="size-4 text-emerald-300" />
+              Publicly verifiable
+            </div>
+            <p className="mt-2 text-xs leading-5 text-slate-300">Proof clients and teams can check.</p>
           </div>
         </div>
-        <div className="absolute bottom-4 right-4 flex size-14 items-center justify-center rounded-2xl border border-emerald-200/70 bg-emerald-400 text-slate-950 shadow-2xl shadow-emerald-950/30">
+        <div className="absolute right-4 top-4 flex size-14 items-center justify-center rounded-2xl border border-emerald-200/70 bg-emerald-400 text-slate-950 shadow-2xl shadow-emerald-950/30">
           <Award className="size-7" />
+        </div>
         </div>
       </div>
     </div>
@@ -723,6 +754,36 @@ function HeroProof({ value, label }: { value: string; label: string }) {
     <div className="rounded-lg bg-slate-50 px-2 py-2">
       <p className="text-base font-black text-slate-950">{value}</p>
       <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500">{label}</p>
+    </div>
+  );
+}
+
+function AcademyPromiseStrip() {
+  const promises = [
+    "Train with Zimbabwe field scenarios",
+    "Submit practical evidence for review",
+    "Earn certificates clients can verify",
+  ];
+
+  return (
+    <section className="-mt-2 mb-6 rounded-2xl border border-emerald-100 bg-white p-3 shadow-[0_18px_60px_rgba(15,23,42,0.06)] dark:border-emerald-900/40 dark:bg-slate-950">
+      <div className="grid gap-2 md:grid-cols-3">
+        {promises.map((promise) => (
+          <div key={promise} className="flex items-center gap-3 rounded-xl bg-emerald-50/70 px-4 py-3 text-sm font-bold text-slate-900 dark:bg-emerald-950/25 dark:text-white">
+            <CheckCircle2 className="size-5 shrink-0 text-emerald-600" />
+            <span>{promise}</span>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function EvidencePill({ label }: { label: string }) {
+  return (
+    <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/10 px-3 py-2 text-sm font-bold text-slate-100">
+      <CheckCircle2 className="size-4 shrink-0 text-emerald-300" />
+      {label}
     </div>
   );
 }
@@ -774,6 +835,18 @@ function CourseMetric({
       <Icon className="size-4 shrink-0" style={{ color: accent }} />
       <span className="font-bold leading-none text-slate-950 dark:text-white">{value}</span>
       <span className="min-w-0 text-xs font-medium leading-tight text-slate-500">{label}</span>
+    </div>
+  );
+}
+
+function ProgrammeProofCard({ title, body, accent }: { title: string; body: string; accent: string }) {
+  return (
+    <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-4 dark:border-slate-800 dark:bg-slate-900/45">
+      <div className="flex items-center gap-2">
+        <span className="size-2 rounded-full" style={{ backgroundColor: accent }} />
+        <p className="text-sm font-black text-slate-950 dark:text-white">{title}</p>
+      </div>
+      <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">{body}</p>
     </div>
   );
 }
