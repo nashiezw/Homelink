@@ -1,32 +1,22 @@
 "use client";
 
 import Link from "next/link";
-import { CreditCard, Gift, Lock, ShoppingCart } from "lucide-react";
+import { CreditCard, Gift, Lock, Minus, Plus, ShoppingCart, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { PageShell } from "@/components/layout/page-shell";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api/client";
+import { clearLibraryCart, useLibraryCart } from "@/lib/library/cart-client";
 import type { PublicPaymentConfig } from "@/lib/payments/public-payment-config";
 
-type CartLine = { productId: string; title: string; price: number; currency: string; quantity: number };
-
 export function LibraryCheckoutClient() {
-  const [cart, setCart] = useState<CartLine[]>([]);
+  const { cart, setCart, total } = useLibraryCart();
   const [paymentMethod, setPaymentMethod] = useState("bank_transfer");
   const [couponCode, setCouponCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [config, setConfig] = useState<PublicPaymentConfig | null>(null);
-  const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
   useEffect(() => {
-    const raw = window.sessionStorage.getItem("houselink_library_cart");
-    if (raw) {
-      try {
-        setCart(JSON.parse(raw) as CartLine[]);
-      } catch {
-        setCart([]);
-      }
-    }
     void apiFetch<PublicPaymentConfig>("/api/v1/payments/config").then((result) => {
       if (result.data) {
         setConfig(result.data);
@@ -43,9 +33,17 @@ export function LibraryCheckoutClient() {
     });
     setBusy(false);
     if (result.data?.redirectUrl) {
-      window.sessionStorage.removeItem("houselink_library_cart");
+      clearLibraryCart();
       window.location.href = result.data.redirectUrl;
     }
+  }
+
+  function remove(productId: string) {
+    setCart((current) => current.filter((item) => item.productId !== productId));
+  }
+
+  function quantity(productId: string, value: number) {
+    setCart((current) => current.map((item) => item.productId === productId ? { ...item, quantity: Math.max(1, value) } : item));
   }
 
   return (
@@ -64,7 +62,14 @@ export function LibraryCheckoutClient() {
               <div key={item.productId} className="flex items-start justify-between gap-4 rounded-lg border border-slate-200 p-4 dark:border-slate-800">
                 <div>
                   <p className="font-semibold">{item.title}</p>
-                  <p className="text-sm text-slate-500">Quantity {item.quantity}</p>
+                  <div className="mt-3 inline-flex items-center rounded-lg border border-slate-200 dark:border-slate-700">
+                    <button type="button" onClick={() => quantity(item.productId, item.quantity - 1)} className="grid size-8 place-items-center text-slate-500 hover:text-emerald-700" aria-label="Decrease quantity"><Minus className="size-3.5" /></button>
+                    <span className="w-8 text-center text-xs font-black">{item.quantity}</span>
+                    <button type="button" onClick={() => quantity(item.productId, item.quantity + 1)} className="grid size-8 place-items-center text-slate-500 hover:text-emerald-700" aria-label="Increase quantity"><Plus className="size-3.5" /></button>
+                  </div>
+                  <button type="button" onClick={() => remove(item.productId)} className="ml-3 inline-flex items-center gap-1 text-xs font-bold text-slate-500 hover:text-red-600">
+                    <Trash2 className="size-3.5" /> Remove
+                  </button>
                 </div>
                 <p className="font-bold">{item.currency} {(item.price * item.quantity).toFixed(2)}</p>
               </div>
