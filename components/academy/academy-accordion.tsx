@@ -26,14 +26,14 @@ export function AcademyAccordion({
           className="academy-card gpu-card group rounded-xl open:shadow-md"
           open={item.defaultOpen}
         >
-          <summary className="flex cursor-pointer list-none flex-col gap-3 px-4 py-4 marker:content-none xl:flex-row xl:items-center xl:justify-between xl:gap-4 sm:px-5">
+          <summary className="flex cursor-pointer list-none flex-col gap-3 px-4 py-4 marker:content-none sm:px-5">
             <div className="min-w-0 flex-1">
               <p className="text-base font-semibold leading-snug text-slate-900 dark:text-white">{item.title}</p>
               {item.subtitle && <p className="mt-1 text-sm leading-relaxed text-slate-500">{item.subtitle}</p>}
             </div>
-            <div className="flex min-w-0 shrink-0 items-center justify-between gap-3 xl:justify-end">
+            <div className="flex min-w-0 items-center justify-between gap-3">
               {item.meta && (
-                <span className="min-w-0 rounded-full px-3 py-1 text-xs font-semibold" style={{ backgroundColor: `${accent}18`, color: accent }}>
+                <span className="inline-flex max-w-[calc(100%-2rem)] items-center rounded-full px-3 py-1 text-left text-xs font-semibold leading-snug" style={{ backgroundColor: `${accent}18`, color: accent }}>
                   {item.meta}
                 </span>
               )}
