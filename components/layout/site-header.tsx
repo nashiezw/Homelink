@@ -16,13 +16,13 @@ const exploreNavPrimary = [
   { label: "Rent", href: "/rent/harare", feature: null },
   { label: "Buy", href: "/property-for-sale/bulawayo", feature: null },
   { label: "Request", href: "/property-request", feature: null },
-  { label: "Roommates", href: "/roommates", feature: "roommateMatching" as const },
-  { label: "Students", href: "/student-accommodation", feature: null },
   { label: "Academy", href: "/academy", feature: null, smartAcademy: true },
-  { label: "Library", href: "/library", feature: null },
 ] as const;
 
 const exploreNavMore = [
+  { label: "Roommates", href: "/roommates", feature: "roommateMatching" as const, description: "Rooms, flatshares, and roommate matching" },
+  { label: "Student Accommodation", href: "/student-accommodation", feature: null, description: "Student rooms, hostels, and rentals" },
+  { label: "Library", href: "/library", feature: null, description: "Training manuals, forms, and resources" },
   { label: "Property Blog", href: "/blog", feature: null, description: "Property advice, news, guides, and tools" },
   { label: "Calculators", href: "/calculators", feature: null, description: "Move-in costs, rent budgets, commissions" },
   { label: "Holiday Homes", href: "/search", feature: null, description: "Short-stay and holiday rentals" },
@@ -206,7 +206,7 @@ export function SiteHeader() {
                     : "text-slate-700 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-200 dark:hover:bg-slate-800/80",
                 )}
               >
-                More
+                Explore
                 <ChevronDown className={cn("size-4 transition-transform duration-200", moreOpen && "rotate-180")} />
               </button>
               {moreOpen && (
@@ -254,7 +254,7 @@ export function SiteHeader() {
                     : "text-slate-700 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-200 dark:hover:bg-slate-800/80",
                 )}
               >
-                For Owners
+                Owners
                 <ChevronDown className={cn("size-4 transition-transform duration-200", ownersOpen && "rotate-180")} />
               </button>
               {ownersOpen && (
@@ -311,7 +311,7 @@ export function SiteHeader() {
             rel={internalRel(listHref)}
             className="hidden h-10 items-center justify-center rounded-[10px] bg-gradient-to-b from-emerald-600 to-emerald-700 px-4 text-sm font-bold text-white shadow-[0_4px_16px_-2px_rgba(5,150,105,0.45)] transition-all duration-200 hover:-translate-y-0.5 hover:from-emerald-500 hover:to-emerald-600 sm:inline-flex"
           >
-            Add property listing
+            List property
           </Link>
 
           <button
