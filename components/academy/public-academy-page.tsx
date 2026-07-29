@@ -718,15 +718,15 @@ function AcademyHeroVisual() {
           sizes="576px"
         />
         <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(2,6,23,0.1),rgba(2,6,23,0.02)_42%,rgba(2,6,23,0.28)),linear-gradient(180deg,rgba(2,6,23,0)_30%,rgba(2,6,23,0.92))]" />
-        <div className="absolute left-4 top-4 inline-flex items-center gap-2 rounded-full border border-white/20 bg-slate-950/60 px-3 py-1.5 text-xs font-bold text-white shadow-lg backdrop-blur">
+        <div className="absolute left-3 top-3 inline-flex items-center gap-2 rounded-full border border-white/20 bg-slate-950/60 px-3 py-1.5 text-xs font-bold text-white shadow-lg backdrop-blur sm:left-4 sm:top-4">
           <BookOpen className="size-3.5 text-emerald-300" />
           Field-ready academy
         </div>
-        <div className="absolute bottom-4 left-4 right-4 flex items-end justify-between gap-4">
-          <div className="max-w-[16rem] rounded-2xl border border-white/15 bg-white/95 p-4 text-slate-950 shadow-2xl">
+        <div className="absolute bottom-3 left-3 right-3 flex items-end justify-between gap-3 sm:bottom-4 sm:left-4 sm:right-4 sm:gap-4">
+          <div className="max-w-[13rem] rounded-2xl border border-white/15 bg-white/95 p-3 text-slate-950 shadow-2xl sm:max-w-[16rem] sm:p-4">
             <p className="text-[10px] font-black uppercase tracking-widest text-emerald-700">Credential pathway</p>
-            <p className="mt-2 text-xl font-black leading-tight">Certified Property Agent</p>
-            <div className="mt-4 grid grid-cols-3 gap-1.5 text-center">
+            <p className="mt-1 text-base font-black leading-tight sm:mt-2 sm:text-xl">Certified Property Agent</p>
+            <div className="mt-4 hidden grid-cols-3 gap-1.5 text-center sm:grid">
               <HeroProof value="3" label="levels" />
               <HeroProof value="16" label="tasks" />
               <HeroProof value="PDF" label="tools" />
@@ -740,8 +740,8 @@ function AcademyHeroVisual() {
             <p className="mt-2 text-xs leading-5 text-slate-300">Proof clients and teams can check.</p>
           </div>
         </div>
-        <div className="absolute right-4 top-4 flex size-14 items-center justify-center rounded-2xl border border-emerald-200/70 bg-emerald-400 text-slate-950 shadow-2xl shadow-emerald-950/30">
-          <Award className="size-7" />
+        <div className="absolute right-3 top-3 flex size-11 items-center justify-center rounded-2xl border border-emerald-200/70 bg-emerald-400 text-slate-950 shadow-2xl shadow-emerald-950/30 sm:right-4 sm:top-4 sm:size-14">
+          <Award className="size-5 sm:size-7" />
         </div>
         </div>
       </div>

@@ -46,7 +46,7 @@ export function PageShell({
               </div>
             )}
             {highlights && highlights.length > 0 && (
-              <div className={immersive ? "mt-6 flex max-w-2xl flex-wrap gap-2" : "mt-6 grid max-w-2xl grid-cols-3 gap-px overflow-hidden rounded-lg border border-white/10 bg-white/10"}>
+              <div className={immersive ? "mt-6 hidden max-w-2xl flex-wrap gap-2 sm:flex" : "mt-6 grid max-w-2xl grid-cols-3 gap-px overflow-hidden rounded-lg border border-white/10 bg-white/10"}>
                 {highlights.map((item) => (
                   <div key={item.label} className={immersive ? "inline-flex min-h-10 items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-2 text-sm text-slate-200 backdrop-blur" : "min-w-0 bg-ink/80 px-3 py-2.5 lg:bg-ink/55 lg:backdrop-blur"}>
                     <p className={immersive ? "font-bold text-white" : "truncate text-sm font-semibold text-white sm:text-lg"}>{item.value}</p>
