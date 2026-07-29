@@ -273,7 +273,7 @@ export async function getPostgresAdminPayment(id: string) {
 
 export async function updatePostgresPayment(id: string, action: string, reason?: string, note?: string) {
   const data: Prisma.PaymentUpdateInput = {};
-  if (action === "approve") {
+  if (action === "approve" || action === "mark_received") {
     data.status = PaymentStatus.PAID;
     data.proofStatus = "VERIFIED";
   } else if (action === "reject") {

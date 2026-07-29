@@ -2,6 +2,7 @@ import { PaymentProvider, PaymentStatus, type Prisma } from "@prisma/client";
 import { getPostgresPaymentSettings } from "@/lib/admin/postgres-admin-config";
 import { getPlanPrice } from "@/lib/payments/plans";
 import { getMainPrisma, isPostgresStoreEnabled } from "@/lib/db/main-prisma";
+import { fulfillPaidLibraryOrdersForPayment } from "@/lib/library/repository";
 import type { PaymentSettings } from "@/lib/settings/types";
 
 const PROVIDERS = new Set<string>(Object.values(PaymentProvider));
@@ -27,7 +28,7 @@ export async function createPaymentInPostgres(
   },
 ) {
   const settings = await getProductionPaymentSettings();
-  const amount = input.plan === "tenancy_payment"
+  const amount = input.plan === "tenancy_payment" || input.plan.startsWith("library_")
     ? Number(input.amount) || getPlanPrice(input.plan, settings.fees)
     : getPlanPrice(input.plan, settings.fees);
   const manualMethod = settings.manualMethods.find((method) => method.id === input.provider && method.enabled);
@@ -85,6 +86,9 @@ export async function completePaymentInPostgres(id: string) {
     where: { id },
     data: { status: PaymentStatus.PAID, proofStatus: "VERIFIED" },
   }).catch(() => null);
+  if (row?.plan?.startsWith("library_")) {
+    await fulfillPaidLibraryOrdersForPayment(row.id).catch(() => null);
+  }
   return row ? toPayment(row) : null;
 }
 

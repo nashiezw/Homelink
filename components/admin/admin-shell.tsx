@@ -7,6 +7,7 @@ import {
   CalendarCheck,
   Activity,
   Award,
+  Boxes,
   Brain,
   Briefcase,
   Building2,
@@ -14,6 +15,7 @@ import {
   ClipboardCheck,
   Command,
   CreditCard,
+  Download,
   FileText,
   FolderOpen,
   Headphones,
@@ -29,6 +31,9 @@ import {
   Shield,
   ShieldAlert,
   ShieldCheck,
+  ShoppingBag,
+  Star,
+  Tags,
   Trophy,
   Users,
   Wrench,
@@ -55,6 +60,7 @@ export type AdminTab =
   | "landlords"
   | "agents"
   | "academy"
+  | "library"
   | "property-management"
   | "holiday-homes"
   | "bookings"
@@ -90,6 +96,7 @@ type NavItem = {
   icon: typeof LayoutDashboard;
   badgeKey?: keyof AdminSummary;
   academyView?: string;
+  libraryView?: string;
 };
 
 const NAV_GROUPS: Array<{ label: string; items: NavItem[] }> = [
@@ -124,6 +131,25 @@ const NAV_GROUPS: Array<{ label: string; items: NavItem[] }> = [
       { id: "academy", label: "Badges", icon: Award, academyView: "Badges" },
       { id: "academy", label: "Training Analytics", icon: Activity, academyView: "Analytics" },
       { id: "academy", label: "Training Settings", icon: Settings, academyView: "Settings" },
+    ],
+  },
+  {
+    label: "HouseLink Library",
+    items: [
+      { id: "library", label: "Dashboard", icon: LayoutDashboard, libraryView: "Dashboard" },
+      { id: "library", label: "Products", icon: BookOpen, libraryView: "Products" },
+      { id: "library", label: "Categories", icon: Tags, libraryView: "Categories" },
+      { id: "library", label: "Collections", icon: FolderOpen, libraryView: "Collections" },
+      { id: "library", label: "Authors", icon: Users, libraryView: "Authors" },
+      { id: "library", label: "Orders", icon: ShoppingBag, libraryView: "Orders" },
+      { id: "library", label: "Customers", icon: Users, libraryView: "Customers" },
+      { id: "library", label: "Reviews", icon: Star, libraryView: "Reviews" },
+      { id: "library", label: "Coupons", icon: CreditCard, libraryView: "Coupons" },
+      { id: "library", label: "Downloads", icon: Download, libraryView: "Downloads" },
+      { id: "library", label: "Inventory", icon: Boxes, libraryView: "Inventory" },
+      { id: "library", label: "Reports", icon: FileText, libraryView: "Reports" },
+      { id: "library", label: "Analytics", icon: Activity, libraryView: "Analytics" },
+      { id: "library", label: "Settings", icon: Settings, libraryView: "Settings" },
     ],
   },
   {
@@ -181,6 +207,7 @@ const TAB_LABELS: Record<AdminTab, string> = {
   landlords: "Landlords & Agents",
   agents: "Agent Management",
   academy: "HouseLink Agent Academy",
+  library: "HouseLink Library",
   "property-management": "Management Requests",
   "holiday-homes": "Holiday Homes",
   bookings: "Bookings & Reservations",
@@ -228,6 +255,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
   const tab = (pathTab ?? searchParams?.get("tab") ?? "overview") as AdminTab;
   const activeTab = VALID_TABS.has(tab) ? tab : "overview";
   const activeAcademyView = searchParams?.get("academyView") ?? "Dashboard";
+  const activeLibraryView = searchParams?.get("libraryView") ?? "Dashboard";
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -244,9 +272,12 @@ export function AdminShell({ children }: { children: ReactNode }) {
       if (typeof item !== "string" && item.academyView) {
         next.set("academyView", item.academyView);
       }
+      if (typeof item !== "string" && item.libraryView) {
+        next.set("libraryView", item.libraryView);
+      }
       const tabPath = id === "overview" ? "/dashboard/admin" : `/dashboard/admin/${id}`;
-      const academyView = typeof item !== "string" && item.academyView ? `?${next.toString()}` : "";
-      router.push(`${tabPath}${academyView}`);
+      const queryString = typeof item !== "string" && (item.academyView || item.libraryView) ? `?${next.toString()}` : "";
+      router.push(`${tabPath}${queryString}`);
       setPaletteOpen(false);
       setMobileOpen(false);
     },
@@ -348,9 +379,13 @@ export function AdminShell({ children }: { children: ReactNode }) {
             <p className="mb-2 px-3 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-600">{group.label}</p>
             {group.items.map((item) => (
               <NavButton
-                key={`${item.id}-${item.academyView ?? item.label}`}
+                key={`${item.id}-${item.academyView ?? item.libraryView ?? item.label}`}
                 item={item}
-                active={activeTab === item.id && (item.id !== "academy" || item.academyView === activeAcademyView)}
+                active={
+                  activeTab === item.id &&
+                  (item.id !== "academy" || item.academyView === activeAcademyView) &&
+                  (item.id !== "library" || item.libraryView === activeLibraryView)
+                }
                 badge={item.badgeKey && summary ? summary[item.badgeKey] : 0}
                 onClick={() => navigate(item)}
               />
@@ -532,7 +567,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
             <div className="max-h-80 overflow-y-auto p-2">
               {filteredNav.map((item) => (
                 <button
-                key={`${item.id}-${item.academyView ?? item.label}`}
+                key={`${item.id}-${item.academyView ?? item.libraryView ?? item.label}`}
                 type="button"
                 onClick={() => navigate(item)}
                   className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm text-slate-300 hover:bg-white/5"

@@ -76,6 +76,42 @@ test("upload flow and manual checkout surface are reachable", async ({ page }) =
   await expect(page.getByText(/reference|proof|pending/i).first()).toBeVisible();
 });
 
+test("library storefront and product page render commerce surfaces", async ({ page }) => {
+  await page.goto("/library");
+  await expect(page.getByRole("heading", { name: /professional property books/i })).toBeVisible();
+  await page.getByPlaceholder(/search by title/i).fill("law");
+  await expect(page.getByRole("link", { name: /property development and property law/i }).first()).toBeVisible();
+  await page.getByRole("link", { name: /property development and property law/i }).first().click();
+  await expect(page).toHaveURL(/\/library\//);
+  await expect(page.getByRole("button", { name: /sample preview/i })).toBeVisible();
+  await expect(page.getByText(/secure checkout/i).first()).toBeVisible();
+});
+
+test("library cart starts native checkout for signed-in users", async ({ page }) => {
+  test.skip(!seekerEmail || !seekerPassword, "Set E2E_SEEKER_EMAIL/PASSWORD to run Library checkout flow.");
+  await login(page, seekerEmail!, seekerPassword!);
+  await page.goto("/library");
+  await page.getByRole("button", { name: /add to cart|pre-order/i }).first().click();
+  await page.getByRole("button", { name: /^checkout$/i }).click();
+  await expect(page).toHaveURL(/\/payments\?status=|\/library/);
+});
+
+test("signed-in users can reach My Library", async ({ page }) => {
+  test.skip(!seekerEmail || !seekerPassword, "Set E2E_SEEKER_EMAIL/PASSWORD to run My Library flow.");
+  await login(page, seekerEmail!, seekerPassword!);
+  await page.goto("/dashboard/my-library");
+  await expect(page.getByRole("heading", { name: /your books, manuals, downloads/i })).toBeVisible();
+  await expect(page.getByText(/secure downloads|purchased resources/i).first()).toBeVisible();
+});
+
+test("admin can reach Library operations", async ({ page }) => {
+  test.skip(!adminEmail || !adminPassword, "Set E2E_ADMIN_EMAIL/PASSWORD to run Library admin flow.");
+  await login(page, adminEmail!, adminPassword!);
+  await page.goto("/dashboard/admin/library?libraryView=Products");
+  await expect(page.getByText(/houselink library|library product management/i).first()).toBeVisible();
+  await expect(page.getByRole("button", { name: /create product/i })).toBeVisible();
+});
+
 test("mobile navigation exposes core journeys", async ({ page, isMobile }) => {
   test.skip(!isMobile, "Mobile navigation scan runs only in mobile projects.");
   await page.goto("/");

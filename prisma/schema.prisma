@@ -134,6 +134,43 @@ enum BlogArticleLayout {
   LIST_ARTICLE
 }
 
+enum LibraryProductType {
+  PRINTED_BOOK
+  PDF
+  DIGITAL_BOOK
+  TRAINING_MANUAL
+  TOOLKIT
+  COURSE
+  TEMPLATE
+  FORMS
+  BUNDLE
+  MEMBERSHIP
+  SUBSCRIPTION
+  GIFT_CARD
+}
+
+enum LibraryProductStatus {
+  DRAFT
+  SCHEDULED
+  PUBLISHED
+  ARCHIVED
+  DELETED
+}
+
+enum LibraryOrderStatus {
+  PENDING
+  PAID
+  FULFILLED
+  CANCELLED
+  REFUNDED
+}
+
+enum LibraryDownloadStatus {
+  ACTIVE
+  EXPIRED
+  REVOKED
+}
+
 model User {
   id                String                    @id @default(cuid())
   email             String                    @unique
@@ -166,6 +203,11 @@ model User {
   academyApplications AcademyLearnerApplication[]
   academyResourceAccess AcademyResourceAccess[]
   viewingAvailability   AgentViewingAvailability?
+  libraryOrders         LibraryOrder[]
+  libraryReviews        LibraryReview[]
+  libraryDownloads      LibraryDownloadAccess[]
+  libraryWishlist       LibraryWishlistItem[]
+  libraryGuestClaims    LibraryGuestClaim[]
 }
 
 model BlogAuthor {
@@ -859,6 +901,7 @@ model Payment {
   listing     Listing?        @relation(fields: [listingId], references: [id])
   academyApplications AcademyLearnerApplication[]
   academyResourceAccess AcademyResourceAccess[]
+  libraryOrders LibraryOrder[]
 }
 
 model Notification {
@@ -1787,6 +1830,485 @@ model DocumentLibrary {
   @@index([fileType])
   @@index([active])
   @@map("document_library")
+}
+
+model LibraryAuthor {
+  id          String           @id @default(cuid())
+  name        String
+  slug        String           @unique
+  bio         String?
+  avatarUrl   String?
+  websiteUrl  String?
+  active      Boolean          @default(true)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  products    LibraryProduct[]
+
+  @@index([active])
+  @@map("library_authors")
+}
+
+model LibraryCategory {
+  id              String           @id @default(cuid())
+  name            String
+  slug            String           @unique
+  description     String?
+  seoTitle        String?
+  metaDescription String?
+  sortOrder       Int              @default(0)
+  active          Boolean          @default(true)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  products        LibraryProduct[]
+
+  @@index([active, sortOrder])
+  @@map("library_categories")
+}
+
+model LibraryCollection {
+  id              String           @id @default(cuid())
+  name            String
+  slug            String           @unique
+  description     String?
+  heroImageUrl    String?
+  featured        Boolean          @default(false)
+  sortOrder       Int              @default(0)
+  active          Boolean          @default(true)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  products        LibraryProduct[]
+
+  @@index([active, featured, sortOrder])
+  @@map("library_collections")
+}
+
+model LibraryProduct {
+  id                 String                    @id @default(cuid())
+  slug               String                    @unique
+  title              String
+  subtitle           String?
+  authorId           String?
+  publisher          String?
+  edition            String?
+  isbn               String?
+  language           String                    @default("English")
+  publicationDate    DateTime?
+  pages              Int?
+  weightGrams        Int?
+  bookSize           String?
+  sku                String                    @unique
+  barcode            String?
+  productType        LibraryProductType
+  status             LibraryProductStatus      @default(DRAFT)
+  price              Decimal                   @db.Decimal(12, 2)
+  compareAtPrice     Decimal?                  @db.Decimal(12, 2)
+  currency           String                    @default("USD")
+  categoryId         String?
+  collectionId       String?
+  series             String?
+  difficulty         String?
+  shortDescription   String?
+  description        String
+  learningOutcomes   String[]                  @default([])
+  whoThisIsFor       String[]                  @default([])
+  requirements       String[]                  @default([])
+  tableOfContents    Json?
+  tags               String[]                  @default([])
+  seoTitle           String?
+  metaDescription    String?
+  searchVector       String                    @default("")
+  featured           Boolean                   @default(false)
+  bestSeller         Boolean                   @default(false)
+  newRelease         Boolean                   @default(false)
+  editorsChoice      Boolean                   @default(false)
+  comingSoon         Boolean                   @default(false)
+  preorder           Boolean                   @default(false)
+  stock              Int?
+  lowStockThreshold  Int                       @default(0)
+  warehouse          String?
+  supplier           String?
+  downloadLimit      Int?
+  downloadExpiryDays Int?
+  watermarking       Boolean                   @default(false)
+  licenseKeys        Boolean                   @default(false)
+  viewCount          Int                       @default(0)
+  downloadCount      Int                       @default(0)
+  ratingAverage      Decimal                   @default(0) @db.Decimal(4, 2)
+  ratingCount        Int                       @default(0)
+  scheduledAt        DateTime?
+  publishedAt        DateTime?
+  archivedAt         DateTime?
+  deletedAt          DateTime?
+  createdById        String?
+  updatedById        String?
+  createdAt          DateTime                  @default(now())
+  updatedAt          DateTime                  @updatedAt
+  author             LibraryAuthor?            @relation(fields: [authorId], references: [id])
+  category           LibraryCategory?          @relation(fields: [categoryId], references: [id])
+  collection         LibraryCollection?        @relation(fields: [collectionId], references: [id])
+  media              LibraryProductMedia[]
+  files              LibraryProductFile[]
+  previewPages       LibraryPreviewPage[]
+  orderItems         LibraryOrderItem[]
+  reviews            LibraryReview[]
+  downloads          LibraryDownloadAccess[]
+  wishlistItems      LibraryWishlistItem[]
+  inventoryMovements LibraryInventoryMovement[]
+  recommendationsFrom LibraryRecommendation[] @relation("LibraryRecommendationSource")
+  recommendationsTo   LibraryRecommendation[] @relation("LibraryRecommendationTarget")
+
+  @@index([status, productType])
+  @@index([categoryId])
+  @@index([collectionId])
+  @@index([authorId])
+  @@index([featured, bestSeller, newRelease])
+  @@index([price])
+  @@index([publishedAt])
+  @@map("library_products")
+}
+
+model LibraryProductMedia {
+  id        String         @id @default(cuid())
+  productId String
+  label     String
+  url       String
+  publicId  String?
+  mediaType String
+  sortOrder Int            @default(0)
+  createdAt DateTime       @default(now())
+  product   LibraryProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId, sortOrder])
+  @@map("library_product_media")
+}
+
+model LibraryProductFile {
+  id             String                  @id @default(cuid())
+  productId      String
+  label          String
+  fileUrl        String
+  fileName       String
+  fileType       String
+  fileSizeBytes  Int                     @default(0)
+  version        Int                     @default(1)
+  secure         Boolean                 @default(true)
+  previewable    Boolean                 @default(false)
+  downloadable   Boolean                 @default(true)
+  downloadLimit  Int?
+  expiryDays     Int?
+  sortOrder      Int                     @default(0)
+  active         Boolean                 @default(true)
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+  product        LibraryProduct          @relation(fields: [productId], references: [id], onDelete: Cascade)
+  downloadAccess LibraryDownloadAccess[]
+
+  @@index([productId, active])
+  @@map("library_product_files")
+}
+
+model LibraryPreviewPage {
+  id          String         @id @default(cuid())
+  productId   String
+  label       String
+  pageNumber  Int
+  imageUrl    String?
+  documentUrl String?
+  sortOrder   Int            @default(0)
+  active      Boolean        @default(true)
+  createdAt   DateTime       @default(now())
+  product     LibraryProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, pageNumber])
+  @@index([productId, active, sortOrder])
+  @@map("library_preview_pages")
+}
+
+model LibraryOrder {
+  id            String             @id @default(cuid())
+  orderNumber   String             @unique
+  customerId    String
+  paymentId     String?
+  status        LibraryOrderStatus @default(PENDING)
+  subtotal      Decimal            @db.Decimal(12, 2)
+  discountTotal Decimal            @default(0) @db.Decimal(12, 2)
+  total         Decimal            @db.Decimal(12, 2)
+  currency      String             @default("USD")
+  couponCode    String?
+  billingEmail  String?
+  metadata      Json?
+  fulfilledAt   DateTime?
+  refundedAt    DateTime?
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+  customer      User               @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  payment       Payment?           @relation(fields: [paymentId], references: [id])
+  items         LibraryOrderItem[]
+  downloads     LibraryDownloadAccess[]
+  fulfilments   LibraryFulfilment[]
+  invoices      LibraryInvoice[]
+  guestClaims   LibraryGuestClaim[]
+
+  @@index([customerId, createdAt])
+  @@index([paymentId])
+  @@index([status])
+  @@map("library_orders")
+}
+
+model LibraryOrderItem {
+  id          String         @id @default(cuid())
+  orderId     String
+  productId   String
+  title       String
+  sku         String
+  quantity    Int            @default(1)
+  unitPrice   Decimal        @db.Decimal(12, 2)
+  total       Decimal        @db.Decimal(12, 2)
+  productType LibraryProductType
+  createdAt   DateTime       @default(now())
+  order       LibraryOrder   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product     LibraryProduct @relation(fields: [productId], references: [id])
+
+  @@index([orderId])
+  @@index([productId])
+  @@map("library_order_items")
+}
+
+model LibraryDownloadAccess {
+  id            String                @id @default(cuid())
+  userId        String
+  productId     String
+  orderId       String?
+  fileId        String?
+  tokenHash     String?
+  licenseKey    String?
+  status        LibraryDownloadStatus @default(ACTIVE)
+  downloadLimit Int?
+  downloadCount Int                   @default(0)
+  expiresAt     DateTime?
+  lastDownloadAt DateTime?
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+  user          User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product       LibraryProduct        @relation(fields: [productId], references: [id], onDelete: Cascade)
+  order         LibraryOrder?         @relation(fields: [orderId], references: [id])
+  file          LibraryProductFile?   @relation(fields: [fileId], references: [id])
+
+  @@index([userId])
+  @@index([productId])
+  @@index([orderId])
+  @@index([tokenHash])
+  @@map("library_download_access")
+}
+
+model LibraryReview {
+  id          String         @id @default(cuid())
+  productId   String
+  userId      String
+  rating      Int
+  title       String?
+  body        String?
+  status      String         @default("PENDING")
+  verified    Boolean        @default(false)
+  featured    Boolean        @default(false)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  product     LibraryProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, userId])
+  @@index([status])
+  @@map("library_reviews")
+}
+
+model LibraryCoupon {
+  id              String   @id @default(cuid())
+  code            String   @unique
+  description     String?
+  discountType    String
+  discountValue   Decimal  @db.Decimal(12, 2)
+  usageLimit      Int?
+  usedCount       Int      @default(0)
+  minimumSubtotal Decimal? @db.Decimal(12, 2)
+  startsAt        DateTime?
+  expiresAt       DateTime?
+  active          Boolean  @default(true)
+  metadata        Json?
+  productIds      String[] @default([])
+  categoryIds     String[] @default([])
+  firstPurchaseOnly Boolean @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([active, expiresAt])
+  @@map("library_coupons")
+}
+
+model LibraryWishlistItem {
+  userId    String
+  productId String
+  createdAt DateTime       @default(now())
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product   LibraryProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@id([userId, productId])
+  @@map("library_wishlist_items")
+}
+
+model LibraryInventoryMovement {
+  id        String         @id @default(cuid())
+  productId String
+  type      String
+  quantity  Int
+  note      String?
+  actorId   String?
+  createdAt DateTime       @default(now())
+  product   LibraryProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId, createdAt])
+  @@map("library_inventory_movements")
+}
+
+model LibraryFulfilment {
+  id                String       @id @default(cuid())
+  orderId           String
+  status            String       @default("PENDING")
+  courier           String?
+  trackingNumber    String?
+  trackingUrl       String?
+  packingSlipNumber String?
+  dispatchNotes     String?
+  deliveryNotes     String?
+  assignedToId      String?
+  packedAt          DateTime?
+  dispatchedAt      DateTime?
+  deliveredAt       DateTime?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  order             LibraryOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@index([status, createdAt])
+  @@map("library_fulfilments")
+}
+
+model LibraryInvoice {
+  id            String       @id @default(cuid())
+  orderId       String
+  invoiceNumber String       @unique
+  invoiceUrl    String?
+  subtotal      Decimal      @db.Decimal(12, 2)
+  discountTotal Decimal      @default(0) @db.Decimal(12, 2)
+  taxTotal      Decimal      @default(0) @db.Decimal(12, 2)
+  total         Decimal      @db.Decimal(12, 2)
+  currency      String       @default("USD")
+  billingName   String?
+  billingEmail  String?
+  metadata      Json?
+  issuedAt      DateTime     @default(now())
+  createdAt     DateTime     @default(now())
+  order         LibraryOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@map("library_invoices")
+}
+
+model LibraryActivity {
+  id         String   @id @default(cuid())
+  actorId    String?
+  targetType String
+  targetId   String
+  action     String
+  message    String
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  @@index([targetType, targetId, createdAt])
+  @@index([actorId, createdAt])
+  @@map("library_activity")
+}
+
+model LibraryGuestClaim {
+  id             String       @id @default(cuid())
+  orderId        String
+  userId         String?
+  email          String
+  claimTokenHash String?
+  status         String       @default("PENDING")
+  expiresAt      DateTime?
+  claimedAt      DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  order          LibraryOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  user           User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([email, status])
+  @@index([claimTokenHash])
+  @@map("library_guest_claims")
+}
+
+model LibraryRecommendation {
+  id              String         @id @default(cuid())
+  sourceProductId String
+  targetProductId String
+  reason          String         @default("RELATED")
+  weight          Int            @default(0)
+  active          Boolean        @default(true)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  sourceProduct   LibraryProduct @relation("LibraryRecommendationSource", fields: [sourceProductId], references: [id], onDelete: Cascade)
+  targetProduct   LibraryProduct @relation("LibraryRecommendationTarget", fields: [targetProductId], references: [id], onDelete: Cascade)
+
+  @@unique([sourceProductId, targetProductId, reason])
+  @@index([sourceProductId, active, weight])
+  @@map("library_recommendations")
+}
+
+model LibraryTaxSetting {
+  id        String   @id @default(cuid())
+  name      String
+  country   String   @default("ZW")
+  rate      Decimal  @default(0) @db.Decimal(5, 2)
+  inclusive Boolean  @default(false)
+  active    Boolean  @default(true)
+  metadata  Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([country, active])
+  @@map("library_tax_settings")
+}
+
+model LibraryExportJob {
+  id            String   @id @default(cuid())
+  type          String
+  status        String   @default("PENDING")
+  requestedById String?
+  fileUrl       String?
+  filters       Json?
+  error         String?
+  createdAt     DateTime @default(now())
+  completedAt   DateTime?
+
+  @@index([type, status, createdAt])
+  @@index([requestedById, createdAt])
+  @@map("library_export_jobs")
+}
+
+model LibraryAcademyEntitlement {
+  id        String   @id @default(cuid())
+  orderId   String
+  productId String
+  userId    String
+  courseId  String
+  status    String   @default("ACTIVE")
+  metadata  Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([orderId, productId, courseId])
+  @@index([userId, status])
+  @@map("library_academy_entitlements")
 }
 
 model VideoLibrary {

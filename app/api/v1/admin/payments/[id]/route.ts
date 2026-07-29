@@ -2,6 +2,7 @@ import { requireAdmin, requireAdminAsync } from "@/lib/admin/require-admin";
 import { getPostgresAdminPayment, updatePostgresPayment } from "@/lib/admin/postgres-admin-config";
 import { ok, problem } from "@/lib/api/response";
 import { isPostgresStoreEnabled } from "@/lib/db/main-prisma";
+import { fulfillPaidLibraryOrdersForPayment, revokeLibraryAccessForPayment } from "@/lib/library/repository";
 import { getStore } from "@/lib/store/app-store";
 
 export const dynamic = "force-dynamic";
@@ -36,6 +37,12 @@ export async function PATCH(request: Request, context: RouteContext) {
   if (isPostgresStoreEnabled()) {
     const payment = await updatePostgresPayment(id, String(body.action), body.reason, body.note);
     if (!payment) return problem(400, "UNKNOWN_ACTION", `Unknown action: ${body.action}`);
+    if ((body.action === "approve" || body.action === "mark_received") && payment.plan?.startsWith("library_")) {
+      await fulfillPaidLibraryOrdersForPayment(id);
+    }
+    if ((body.action === "refund" || body.action === "reject") && payment.plan?.startsWith("library_")) {
+      await revokeLibraryAccessForPayment(id, String(body.reason ?? body.action));
+    }
     return ok({ payment });
   }
 
@@ -48,6 +55,13 @@ export async function PATCH(request: Request, context: RouteContext) {
   switch (body.action as string) {
     case "approve":
       store.approveManualPayment(id, actor, body.note);
+      if (payment.plan?.startsWith("library_")) {
+        store.createNotification(payment.userId, {
+          channel: "email",
+          subject: "Library downloads active",
+          body: "Your HouseLink Library payment has been approved. Open My Library to access your purchases.",
+        });
+      }
       store.createNotification(payment.userId, {
         channel: "email",
         subject: "Payment approved",

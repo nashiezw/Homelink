@@ -30,13 +30,14 @@ const ALLOWED_BY_KIND: Record<UploadKind, Record<string, string[]>> = {
   },
   document: {
     "application/pdf": ["pdf"],
+    "application/zip": ["zip"],
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document": ["docx"],
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": ["xlsx"],
     "application/vnd.openxmlformats-officedocument.presentationml.presentation": ["pptx"],
   },
 };
 
-const DOCUMENT_FOLDERS = new Set(["payments", "academy", "verification", "property-management", "leases"]);
+const DOCUMENT_FOLDERS = new Set(["payments", "academy", "verification", "property-management", "leases", "library"]);
 const PAYMENT_PROOF_IMAGE_MIMES = new Set(["image/jpeg", "image/png", "image/webp"]);
 
 export function validateUploadDataUrl(dataUrl: string, requestedKind: UploadKind, folder: string): UploadValidation | { error: string } {
@@ -68,6 +69,7 @@ export function sniffUpload(buffer: Buffer, mime: string): { ok: true } | { ok: 
   if (mime === "image/png" && !hex.startsWith("89504e470d0a1a0a")) return { ok: false, reason: "PNG signature mismatch." };
   if (mime === "image/webp" && !(ascii.startsWith("RIFF") && ascii.slice(8, 12) === "WEBP")) return { ok: false, reason: "WEBP signature mismatch." };
   if (mime === "application/pdf" && !ascii.startsWith("%PDF-")) return { ok: false, reason: "PDF signature mismatch." };
+  if (mime === "application/zip" && !hex.startsWith("504b0304")) return { ok: false, reason: "ZIP signature mismatch." };
   if (mime.includes("openxmlformats") && !hex.startsWith("504b0304")) return { ok: false, reason: "Office document signature mismatch." };
   if ((mime === "video/mp4" || mime === "audio/mp4") && !ascii.slice(4, 12).includes("ftyp")) return { ok: false, reason: "MP4 signature mismatch." };
   if (mime === "video/webm" || mime === "audio/webm") {

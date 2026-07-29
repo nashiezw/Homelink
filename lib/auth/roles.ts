@@ -120,5 +120,6 @@ export const ACCOUNT_NAV: NavLinkItem[] = [
   { label: "Messages", href: "/messages", signedInOnly: true },
   { label: "Tenancies", href: "/dashboard/tenancies", signedInOnly: true },
   { label: "Roommate profile", href: "/roommates/profile", signedInOnly: true },
+  { label: "My Library", href: "/dashboard/my-library", signedInOnly: true },
   { label: "Payments", href: "/payments", signedInOnly: true },
 ];

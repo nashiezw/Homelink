@@ -10,6 +10,12 @@ export const ANALYTICS_EVENTS = [
   "listing_submitted",
   "payment_started",
   "upload_failed",
+  "library_product_viewed",
+  "library_search_submitted",
+  "library_cart_added",
+  "library_checkout_started",
+  "library_purchase_completed",
+  "library_download_started",
 ] as const;
 
 export type AnalyticsEventName = (typeof ANALYTICS_EVENTS)[number];

@@ -34,6 +34,7 @@ import { StudentAccommodationAdminHub } from "@/components/admin/student-accommo
 import { TenantRequestsHub } from "@/components/admin/tenant-requests-hub";
 import { UserDirectory } from "@/components/admin/user-directory";
 import { LandlordAgentHub } from "@/components/admin/landlord-agent-hub";
+import { LibraryAdminHub } from "@/components/admin/library-admin-hub";
 import { PaymentSettingsPanel } from "@/components/admin/settings/payment-settings-panel";
 import { PlatformSettingsPanel } from "@/components/admin/settings/platform-settings-panel";
 import { PaymentsAdminHub } from "@/components/admin/payments/payments-admin-hub";
@@ -299,6 +300,8 @@ export function AdminControlCenter() {
 
       {tab === "academy" && <AgentAcademyHub />}
 
+      {tab === "library" && <LibraryAdminHub />}
+
       {tab === "property-management" && (
         <Panel title="Management request CRM">
           <PropertyManagementHub />
@@ -337,6 +340,7 @@ const tabDescriptions: Record<AdminTab, string> = {
   landlords: "Verify landlords, manage agencies, and control premium tiers.",
   agents: "Recruit agents, approve applications, pay commissions, and manage territories.",
   academy: "Standalone enterprise LMS for HouseLink agent training, certification, documents, videos, live learning, and analytics.",
+  library: "Marketplace operations for books, manuals, templates, downloads, orders, reviews, coupons, inventory, reports, analytics, and settings.",
   "property-management": "Owner management request workflow from intake to completion.",
   "holiday-homes": "Manage holiday listings, seasonal settings, host reviews, and featured placement.",
   bookings: "End-to-end booking operations: enquiries, approvals, calendar view, guest details, and status tracking.",
