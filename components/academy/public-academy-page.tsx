@@ -607,7 +607,7 @@ function SelectedProgrammeDetail({
           <CourseMetric icon={ShieldCheck} value={String(course.toolkitCount ?? 0)} label="PDF tools" accent={accent} />
         </div>
 
-        <div className="mt-5 grid gap-3 lg:grid-cols-3">
+        <div className="mt-5 grid gap-3 sm:grid-cols-3 lg:grid-cols-1 2xl:grid-cols-3">
           <ProgrammeProofCard title="Practice" body="Real client scenarios, roleplay prompts, and field notes before learners move on." accent={accent} />
           <ProgrammeProofCard title="Evidence" body="Quizzes, submitted assignments, toolkit work, and portfolio proof are reviewed." accent={accent} />
           <ProgrammeProofCard title="Trust" body="Graduates earn a public certificate that can be verified by clients and teams." accent={accent} />
@@ -841,12 +841,17 @@ function CourseMetric({
 
 function ProgrammeProofCard({ title, body, accent }: { title: string; body: string; accent: string }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-4 dark:border-slate-800 dark:bg-slate-900/45">
-      <div className="flex items-center gap-2">
-        <span className="size-2 rounded-full" style={{ backgroundColor: accent }} />
-        <p className="text-sm font-black text-slate-950 dark:text-white">{title}</p>
+    <div className="group rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-shadow duration-200 dark:border-slate-800 dark:bg-slate-950 sm:bg-slate-50/80 lg:flex lg:items-start lg:gap-3 lg:bg-white lg:p-4 lg:shadow-[0_10px_30px_rgba(15,23,42,0.05)] lg:hover:shadow-[0_16px_42px_rgba(15,23,42,0.08)] 2xl:block 2xl:bg-slate-50/80 2xl:shadow-sm">
+      <div
+        className="flex size-9 shrink-0 items-center justify-center rounded-full"
+        style={{ backgroundColor: `${accent}14`, color: accent }}
+      >
+        <CheckCircle2 className="size-4" strokeWidth={2.4} />
       </div>
-      <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">{body}</p>
+      <div className="mt-3 min-w-0 lg:mt-0 2xl:mt-3">
+        <p className="text-sm font-black text-slate-950 dark:text-white">{title}</p>
+        <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">{body}</p>
+      </div>
     </div>
   );
 }
