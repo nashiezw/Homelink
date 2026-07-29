@@ -48,7 +48,7 @@ export function PageShell({
             )}
           </div>
           {heroAside && (
-            <div className="hidden w-full max-w-sm shrink-0 lg:block">
+            <div className="hidden w-full max-w-md shrink-0 lg:block">
               {heroAside}
             </div>
           )}

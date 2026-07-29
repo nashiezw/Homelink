@@ -664,28 +664,28 @@ function SelectedProgrammeDetail({
 function AcademyHeroVisual() {
   return (
     <div className="relative overflow-hidden rounded-2xl border border-white/15 bg-white/10 p-3 shadow-2xl shadow-emerald-950/20 backdrop-blur">
-      <div className="relative aspect-[4/3] overflow-hidden rounded-xl">
-        <Image src="/images/property-management-dusk.webp" alt="Professional property training in Zimbabwe" fill priority className="object-cover" sizes="360px" />
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/45 to-transparent" />
-        <div className="absolute inset-x-4 bottom-4 rounded-xl border border-white/15 bg-white/95 p-4 text-slate-950 shadow-xl">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="text-[10px] font-black uppercase tracking-widest text-emerald-700">HouseLink Academy</p>
-            <p className="mt-2 text-lg font-black leading-tight">Certified Property Agent Pathway</p>
+      <div className="relative aspect-[16/11] overflow-hidden rounded-xl bg-slate-950">
+        <Image src="/images/academy/agent-academy-hero.png" alt="Professional agents in a HouseLink Academy training session" fill priority className="object-cover" sizes="440px" />
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/35 to-transparent" />
+        <div className="absolute left-4 right-4 bottom-4 rounded-xl border border-white/15 bg-white/95 p-4 text-slate-950 shadow-xl">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-widest text-emerald-700">HouseLink Academy</p>
+              <p className="mt-2 text-lg font-black leading-tight">Certified Property Agent Pathway</p>
+            </div>
+            <div className="rounded-full bg-emerald-100 p-2 text-emerald-700">
+              <Award className="size-5" />
+            </div>
           </div>
-          <div className="rounded-full bg-emerald-100 p-2 text-emerald-700">
-            <Award className="size-5" />
+          <div className="mt-5 grid grid-cols-3 gap-2 text-center">
+            <HeroProof value="3" label="levels" />
+            <HeroProof value="16" label="tasks" />
+            <HeroProof value="PDF" label="tools" />
           </div>
-        </div>
-        <div className="mt-5 grid grid-cols-3 gap-2 text-center">
-          <HeroProof value="3" label="levels" />
-          <HeroProof value="16" label="tasks" />
-          <HeroProof value="PDF" label="tools" />
-        </div>
-        <div className="mt-5 flex items-center gap-2 rounded-lg bg-slate-950 px-3 py-2 text-xs font-bold text-white">
-          <ShieldCheck className="size-4 text-emerald-300" />
-          Public certificate verification
-        </div>
+          <div className="mt-5 flex items-center gap-2 rounded-lg bg-slate-950 px-3 py-2 text-xs font-bold text-white">
+            <ShieldCheck className="size-4 text-emerald-300" />
+            Public certificate verification
+          </div>
         </div>
       </div>
     </div>
