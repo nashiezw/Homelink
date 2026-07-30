@@ -8,8 +8,6 @@ import {
   BookmarkCheck,
   CheckCircle2,
   Filter,
-  Gem,
-  LibraryBig,
   Minus,
   Plus,
   Search,
@@ -17,9 +15,9 @@ import {
   ShoppingBag,
   ShoppingCart,
   SlidersHorizontal,
-  Sparkles,
   Star,
   Trash2,
+  type LucideIcon,
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { BookCover } from "@/components/library/book-cover";
@@ -44,33 +42,9 @@ export function LibraryStorefront({ products }: { products: LibraryProduct[] }) 
   const [notice, setNotice] = useState("");
   const { cart, setCart, total, currency } = useLibraryCart();
   const featured = products.find((product) => product.editorsChoice) ?? products.find((product) => product.featured) ?? products[0];
+  const featuredProducts = products.filter((product) => product.editorsChoice || product.featured).slice(0, 4);
+  const bestSellers = products.filter((product) => product.bestSeller).slice(0, 4);
   const results = useMemo(() => filterProducts(products, { query, category, type, difficulty, sort }), [products, query, category, type, difficulty, sort]);
-  const bestSellers = products.filter((product) => product.bestSeller);
-  const toolkits = products.filter((product) => ["TOOLKIT", "FORMS", "TEMPLATE", "BUNDLE"].includes(product.productType));
-  const newReleases = products.filter((product) => product.newRelease);
-  const collections = [
-    {
-      title: "Agent Desk",
-      category: "Toolkits",
-      kicker: "Field-ready packs",
-      text: "Scripts, checklists and client-ready forms for daily agency work.",
-      tone: "bg-white text-[#10201d] border-[#dfe6e2]",
-    },
-    {
-      title: "Legal Shelf",
-      category: "Legal Documents",
-      kicker: "Documents that feel official",
-      text: "Lease packs, landlord forms and editable templates for cleaner transactions.",
-      tone: "bg-[#fffaf0] text-[#10201d] border-[#e4d7bf]",
-    },
-    {
-      title: "Investor Shelf",
-      category: "Investment",
-      kicker: "Sharper decisions",
-      text: "Plain-language guides for yield, risk and Zimbabwe property fundamentals.",
-      tone: "bg-[#f1f7f5] text-[#10201d] border-[#cfe0da]",
-    },
-  ];
   const quantityFor = (productId: string) => cart.find((line) => line.productId === productId)?.quantity ?? 0;
 
   function addToCart(product: LibraryProduct) {
@@ -84,55 +58,47 @@ export function LibraryStorefront({ products }: { products: LibraryProduct[] }) 
   }
 
   return (
-    <main className="bg-[#f7f8f5] text-ink dark:bg-slate-950 dark:text-white">
+    <main className="bg-[#f5f8f7] text-ink dark:bg-slate-950 dark:text-white">
       {notice && (
         <div role="status" aria-live="polite" className="fixed right-4 top-24 z-50 max-w-sm rounded-lg border border-emerald-200 bg-white p-4 text-sm font-semibold text-emerald-950 shadow-xl dark:border-emerald-900 dark:bg-slate-900 dark:text-emerald-100">
           <CheckCircle2 className="mr-2 inline size-4 text-emerald-600" /> {notice}
         </div>
       )}
 
-      <section className="relative overflow-hidden border-b border-[#dfe6e2] bg-[#fbfaf6]">
-        <div className="absolute inset-x-0 top-0 h-2 bg-[linear-gradient(90deg,#007f68,#d3a945,#29526f)]" />
-        <div className="relative mx-auto grid max-w-7xl gap-12 px-4 py-12 sm:px-6 lg:grid-cols-[minmax(0,1fr)_31rem] lg:items-center lg:px-8 lg:py-16">
+      <section className="border-b border-[#d7e7e3] bg-[#dceff2]">
+        <div className="mx-auto grid max-w-7xl gap-10 px-4 py-10 sm:px-6 lg:grid-cols-[minmax(0,1fr)_29rem] lg:items-center lg:px-8 lg:py-14">
           <div className="min-w-0">
-            <p className="inline-flex items-center gap-2 rounded-full border border-[#cfe0da] bg-white px-3 py-1 text-xs font-black uppercase tracking-[0.16em] text-[#007f68] shadow-sm">
-              <LibraryBig className="size-4" /> HouseLink Bookshop
+            <p className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-xs font-black uppercase tracking-[0.15em] text-[#007f68] shadow-sm">
+              <BookOpen className="size-4" /> HouseLink Library Store
             </p>
-            <h1 className="mt-5 max-w-4xl text-5xl font-black leading-[0.95] text-[#10201d] sm:text-6xl lg:text-[5rem]">
-              Practical property books, beautifully organised.
+            <h1 className="mt-5 max-w-4xl text-5xl font-black leading-[0.98] tracking-normal text-[#0d2630] sm:text-6xl lg:text-[4.9rem]">
+              Books and tools for smarter property work.
             </h1>
-            <p className="mt-6 max-w-2xl text-base leading-8 text-slate-600 sm:text-lg">
-              A clean HouseLink store for manuals, legal templates, agent toolkits and training resources. Built for fast browsing, confident buying and a professional first impression.
+            <p className="mt-5 max-w-2xl text-base leading-8 text-[#35515a] sm:text-lg">
+              Buy practical manuals, legal packs, templates and agent resources from a clean HouseLink bookshop built for quick decisions.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <Link href="#library-products" className="inline-flex h-12 items-center justify-center gap-2 rounded-lg bg-[#007f68] px-5 text-sm font-black text-white shadow-lg shadow-emerald-900/15 transition hover:bg-[#006b58]">
-                Shop products <ArrowRight className="size-4" />
+                Browse books <ArrowRight className="size-4" />
               </Link>
-              <Link href="/dashboard/my-library" className="inline-flex h-12 items-center justify-center gap-2 rounded-lg border border-[#cfe0da] bg-white px-5 text-sm font-bold text-[#10201d] shadow-sm transition hover:border-[#007f68]">
-                My Library <BookOpen className="size-4" />
+              <Link href="/dashboard/my-library" className="inline-flex h-12 items-center justify-center gap-2 rounded-lg border border-[#b8d8d4] bg-white px-5 text-sm font-bold text-[#0d2630] shadow-sm transition hover:border-[#007f68]">
+                My Library <BookmarkCheck className="size-4" />
               </Link>
-            </div>
-            <div className="mt-9 grid max-w-3xl gap-3 sm:grid-cols-3">
-              <HeroBadge icon={Award} label="Expert curated" value="Property practice" />
-              <HeroBadge icon={BookmarkCheck} label="Ready to use" value="Forms + guides" />
-              <HeroBadge icon={ShieldCheck} label="Secure access" value="Checkout + invoices" />
             </div>
           </div>
 
           {featured && (
-            <div className="rounded-lg border border-[#dfe6e2] bg-white p-5 shadow-xl shadow-slate-900/8">
-              <div className="grid gap-5 sm:grid-cols-[13rem_1fr] lg:grid-cols-1">
-                <BookCover product={featured} className="mx-auto w-full max-w-[15rem]" priority />
+            <div className="rounded-lg border border-white/80 bg-white/85 p-5 shadow-xl shadow-slate-900/10 backdrop-blur">
+              <div className="grid gap-5 sm:grid-cols-[12rem_1fr] lg:grid-cols-1">
+                <BookCover product={featured} className="mx-auto w-full max-w-[14.5rem]" priority />
                 <div>
-                  <p className="inline-flex items-center gap-1 rounded-full bg-[#e9f7f2] px-3 py-1 text-xs font-black uppercase text-[#007f68]">
-                    <Sparkles className="size-3.5" /> Editor's pick
-                  </p>
-                  <Link href={`/library/${featured.slug}`} className="mt-4 block text-2xl font-black leading-tight text-[#10201d] hover:text-[#007f68]">
+                  <p className="inline-flex items-center rounded-full bg-[#fff3d2] px-3 py-1 text-xs font-black uppercase text-[#8a6410]">Featured book</p>
+                  <Link href={`/library/${featured.slug}`} className="mt-3 block text-2xl font-black leading-tight text-[#0d2630] hover:text-[#007f68]">
                     {featured.title}
                   </Link>
-                  <p className="mt-3 text-sm leading-6 text-slate-600">{featured.shortDescription}</p>
+                  <p className="mt-2 text-sm leading-6 text-slate-600">{featured.shortDescription}</p>
                   <div className="mt-5 flex items-center justify-between gap-3">
-                    <p className="text-2xl font-black text-[#10201d]">USD {featured.price.toFixed(2)}</p>
+                    <p className="text-2xl font-black text-[#0d2630]">USD {featured.price.toFixed(2)}</p>
                     <Button onClick={() => addToCart(featured)}>
                       <ShoppingCart className="size-4" /> {quantityFor(featured.id) ? `In bag (${quantityFor(featured.id)})` : "Add"}
                     </Button>
@@ -144,15 +110,23 @@ export function LibraryStorefront({ products }: { products: LibraryProduct[] }) 
         </div>
       </section>
 
-      <section className="sticky top-0 z-20 border-b border-[#e1d7c5] bg-[#fffaf0]/95 backdrop-blur dark:border-slate-800 dark:bg-slate-950/95">
+      <section className="border-b border-[#dfe8e5] bg-white">
+        <div className="mx-auto grid max-w-7xl gap-3 px-4 py-5 sm:px-6 md:grid-cols-3 lg:px-8">
+          <StorePromise icon={ShieldCheck} title="Secure checkout" text="Protected orders and invoices." />
+          <StorePromise icon={Award} title="Professional resources" text="Curated for property operators." />
+          <StorePromise icon={BookOpen} title="Digital delivery" text="Downloads and library access." />
+        </div>
+      </section>
+
+      <section className="sticky top-0 z-20 border-b border-[#dfe8e5] bg-white/95 backdrop-blur dark:border-slate-800 dark:bg-slate-950/95">
         <div className="mx-auto grid max-w-7xl gap-3 px-4 py-4 sm:px-6 lg:grid-cols-[minmax(0,1fr)_auto_auto_auto] lg:items-center lg:px-8">
           <label className="relative min-w-0">
             <Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
-            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search books, templates, manuals or authors" className="h-12 w-full rounded-lg border border-[#e1d7c5] bg-white pl-11 pr-4 text-sm shadow-sm outline-none transition focus:border-[#b98d45] focus:ring-4 focus:ring-[#b98d45]/15 dark:border-slate-700 dark:bg-slate-900" />
+            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search title, author, category or ISBN" className="h-12 w-full rounded-lg border border-[#d8e4e0] bg-white pl-11 pr-4 text-sm shadow-sm outline-none transition focus:border-[#007f68] focus:ring-4 focus:ring-[#007f68]/12 dark:border-slate-700 dark:bg-slate-900" />
           </label>
           <Select value={category} onChange={setCategory} label="Category" options={facets.categories} />
           <Select value={type} onChange={setType} label="Format" options={facets.types} />
-          <select value={sort} onChange={(event) => setSort(event.target.value)} className="h-12 rounded-lg border border-[#e1d7c5] bg-white px-3 text-sm shadow-sm outline-none transition focus:border-[#b98d45] dark:border-slate-700 dark:bg-slate-900">
+          <select value={sort} onChange={(event) => setSort(event.target.value)} className="h-12 rounded-lg border border-[#d8e4e0] bg-white px-3 text-sm shadow-sm outline-none transition focus:border-[#007f68] dark:border-slate-700 dark:bg-slate-900">
             <option value="newest">Newest</option>
             <option value="best-selling">Best selling</option>
             <option value="most-downloaded">Most downloaded</option>
@@ -162,66 +136,34 @@ export function LibraryStorefront({ products }: { products: LibraryProduct[] }) 
         </div>
       </section>
 
-      <section className="border-b border-[#e1d7c5] bg-[#f4ead7] dark:border-slate-800 dark:bg-slate-900/40">
-        <div className="mx-auto flex max-w-7xl gap-3 overflow-x-auto px-4 py-4 sm:px-6 lg:px-8">
+      <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {facets.categories.map((item) => (
-            <button key={item} type="button" onClick={() => setCategory(category === item ? "" : item)} className={cn("shrink-0 rounded-full border px-4 py-2 text-sm font-bold shadow-sm transition", category === item ? "border-[#241914] bg-[#241914] text-white dark:border-white dark:bg-white dark:text-slate-950" : "border-[#e1d7c5] bg-white text-slate-700 hover:border-[#b98d45] dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200")}>
-              {item}
-            </button>
+            <CategoryTile key={item} name={item} count={products.filter((product) => product.category === item).length} active={category === item} onClick={() => setCategory(category === item ? "" : item)} />
           ))}
         </div>
       </section>
 
-      <section className="border-b border-[#e6ddcf] bg-[#fbfaf6] dark:border-slate-800 dark:bg-slate-950">
-        <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-          <div className="mb-5 flex items-end justify-between gap-4">
-            <div>
-              <p className="flex items-center gap-2 text-sm font-black uppercase tracking-[0.14em] text-[#0f766e]">
-                <Gem className="size-4" /> Curated collections
-              </p>
-              <h2 className="mt-1 text-3xl font-black tracking-normal text-[#241914] dark:text-white">Shop by the shelf you need today</h2>
-            </div>
-            <p className="hidden max-w-md text-sm leading-6 text-slate-600 dark:text-slate-300 md:block">
-              Less catalogue clutter, more confident browsing: each collection is shaped around a real property workflow.
-            </p>
-          </div>
-          <div className="grid gap-4 lg:grid-cols-3">
-            {collections.map((collection) => (
-              <CollectionPanel
-                key={collection.title}
-                {...collection}
-                count={products.filter((product) => product.category === collection.category).length}
-                active={category === collection.category}
-                onClick={() => setCategory(category === collection.category ? "" : collection.category)}
-              />
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="mx-auto grid max-w-7xl gap-8 px-4 py-10 sm:px-6 lg:grid-cols-[minmax(0,1fr)_21rem] lg:px-8">
-        <div id="library-products" className="min-w-0 space-y-12">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="inline-flex items-center gap-2 pr-2 text-sm font-bold text-slate-700 dark:text-slate-200">
-              <SlidersHorizontal className="size-4" /> Level
-            </span>
-            {facets.difficulties.map((item) => (
-              <button key={item} type="button" onClick={() => setDifficulty(difficulty === item ? "" : item)} className={cn("rounded-full border px-3 py-1.5 text-sm font-semibold transition", difficulty === item ? "border-ink bg-ink text-white dark:border-white dark:bg-white dark:text-slate-950" : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-950 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300")}>
-                {item}
-              </button>
-            ))}
-          </div>
-
-          <Shelf title="Editor's Desk" subtitle="Flagship resources for serious operators." products={products.filter((product) => product.editorsChoice || product.featured)} onAdd={addToCart} quantityFor={quantityFor} featured />
-          <Shelf title="Best Sellers" subtitle="The products customers come back for." products={bestSellers} onAdd={addToCart} quantityFor={quantityFor} />
-          <Shelf title="Templates and Toolkits" subtitle="Ready-to-use forms, checklists and operating packs." products={toolkits} onAdd={addToCart} quantityFor={quantityFor} />
-          <Shelf title="New Releases" subtitle="Fresh resources and upcoming launches." products={newReleases} onAdd={addToCart} quantityFor={quantityFor} />
+      <section className="mx-auto grid max-w-7xl gap-8 px-4 pb-12 sm:px-6 lg:grid-cols-[minmax(0,1fr)_20rem] lg:px-8">
+        <div id="library-products" className="min-w-0 space-y-10">
+          <ProductSection title="Featured Books" subtitle="The strongest resources to start with." products={featuredProducts} onAdd={addToCart} quantityFor={quantityFor} />
+          <ProductSection title="Best Sellers" subtitle="Popular products customers keep choosing." products={bestSellers} onAdd={addToCart} quantityFor={quantityFor} />
 
           <section className="space-y-5">
-            <div className="flex items-end justify-between gap-4 border-t border-slate-200 pt-8 dark:border-slate-800">
+            <div className="flex flex-col gap-4 border-t border-[#dfe8e5] pt-8 md:flex-row md:items-end md:justify-between">
               <div>
-                <p className="text-sm font-bold uppercase text-emerald-700 dark:text-emerald-300">Catalogue</p>
-                <h2 className="text-3xl font-black tracking-normal text-ink dark:text-white">{results.length} products</h2>
+                <p className="text-sm font-black uppercase tracking-[0.12em] text-[#007f68]">Catalogue</p>
+                <h2 className="mt-1 text-3xl font-black tracking-normal text-[#0d2630] dark:text-white">{results.length} products</h2>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center gap-2 pr-1 text-sm font-bold text-slate-700 dark:text-slate-200">
+                  <SlidersHorizontal className="size-4" /> Level
+                </span>
+                {facets.difficulties.map((item) => (
+                  <button key={item} type="button" onClick={() => setDifficulty(difficulty === item ? "" : item)} className={cn("rounded-full border px-3 py-1.5 text-sm font-semibold transition", difficulty === item ? "border-[#007f68] bg-[#007f68] text-white" : "border-[#d8e4e0] bg-white text-slate-600 hover:border-[#007f68] hover:text-[#0d2630] dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300")}>
+                    {item}
+                  </button>
+                ))}
               </div>
             </div>
             <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
@@ -234,16 +176,6 @@ export function LibraryStorefront({ products }: { products: LibraryProduct[] }) 
 
         <aside className="h-fit space-y-4 lg:sticky lg:top-24">
           <CartPanel cart={cart} total={total} currency={currency} onCart={(next) => setCart(next)} />
-          <div className="rounded-lg border border-slate-200 bg-white p-4 text-sm text-slate-700 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
-            <p className="font-bold text-ink dark:text-white">Why this shop works</p>
-            <div className="mt-3 space-y-2">
-              {["Distinct product covers", "Clean shelf browsing", "Payment-ready checkout flow"].map((item) => (
-                <p key={item} className="flex gap-2">
-                  <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-600" /> {item}
-                </p>
-              ))}
-            </div>
-          </div>
         </aside>
       </section>
     </main>
@@ -268,99 +200,51 @@ function filterProducts(products: LibraryProduct[], input: { query: string; cate
     });
 }
 
-function CollectionPanel({ title, category, kicker, text, tone, count, active, onClick }: { title: string; category: string; kicker: string; text: string; tone: string; count: number; active: boolean; onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn("group min-h-56 overflow-hidden rounded-lg border p-5 text-left shadow-sm transition hover:-translate-y-1 hover:shadow-xl", tone, active && "ring-4 ring-[#f4c95d]/45")}
-    >
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <p className="text-xs font-black uppercase tracking-[0.18em] opacity-75">{kicker}</p>
-          <h3 className="mt-3 text-3xl font-black leading-none tracking-normal">{title}</h3>
-        </div>
-        <span className="rounded-full border border-current/20 px-3 py-1 text-xs font-black">{count} items</span>
-      </div>
-      <p className="mt-6 max-w-sm text-sm font-semibold leading-6 opacity-80">{text}</p>
-      <span className="mt-7 inline-flex items-center gap-2 text-sm font-black">
-        {active ? "Viewing shelf" : `Open ${category}`} <ArrowRight className="size-4 transition group-hover:translate-x-1" />
-      </span>
-    </button>
-  );
-}
-
-function Shelf({ title, subtitle, products, onAdd, quantityFor, featured = false }: { title: string; subtitle: string; products: LibraryProduct[]; onAdd: (product: LibraryProduct) => void; quantityFor: (id: string) => number; featured?: boolean }) {
+function ProductSection({ title, subtitle, products, onAdd, quantityFor }: { title: string; subtitle: string; products: LibraryProduct[]; onAdd: (product: LibraryProduct) => void; quantityFor: (id: string) => number }) {
   if (!products.length) return null;
-  const [lead, ...rest] = products;
   return (
     <section className="space-y-5">
-      <div className="flex items-end justify-between gap-4 border-b border-[#d7c7aa] pb-4">
+      <div className="flex items-end justify-between gap-4">
         <div>
-          <h2 className="text-3xl font-black tracking-normal text-[#241914] dark:text-white">{title}</h2>
+          <h2 className="text-3xl font-black tracking-normal text-[#0d2630] dark:text-white">{title}</h2>
           <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">{subtitle}</p>
         </div>
-        <Link href="#library-products" className="hidden items-center gap-1 text-sm font-bold text-emerald-700 dark:text-emerald-300 sm:inline-flex">
+        <Link href="#library-products" className="hidden items-center gap-1 text-sm font-bold text-[#007f68] sm:inline-flex">
           View all <ArrowRight className="size-4" />
         </Link>
       </div>
-      <div className={cn("relative rounded-lg border border-[#e1d7c5] bg-[#fffaf0] p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/70", featured && "border-[#dfe6e2] bg-white")}>
-        <div className="absolute inset-x-4 bottom-3 h-3 rounded-full bg-[#007f68]/10" />
-        <div className={cn("relative grid gap-5", featured ? "lg:grid-cols-[1.08fr_1fr_1fr]" : "sm:grid-cols-2 xl:grid-cols-3")}>
-          {featured && lead ? <FeatureProduct product={lead} quantity={quantityFor(lead.id)} onAdd={onAdd} /> : null}
-          {(featured ? rest.slice(0, 2) : products.slice(0, 3)).map((product) => (
-            <ProductCard key={product.id} product={product} quantity={quantityFor(product.id)} onAdd={onAdd} />
-          ))}
-        </div>
+      <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
+        {products.map((product) => (
+          <ProductCard key={product.id} product={product} quantity={quantityFor(product.id)} onAdd={onAdd} compact />
+        ))}
       </div>
     </section>
   );
 }
 
-function FeatureProduct({ product, quantity, onAdd }: { product: LibraryProduct; quantity: number; onAdd: (product: LibraryProduct) => void }) {
+function ProductCard({ product, quantity, onAdd, compact = false }: { product: LibraryProduct; quantity: number; onAdd: (product: LibraryProduct) => void; compact?: boolean }) {
   return (
-    <article className="grid gap-5 rounded-lg border border-[#dfe6e2] bg-[#fbfaf6] p-4 shadow-sm sm:grid-cols-[12rem_1fr] lg:grid-cols-1">
-      <BookCover product={product} className="mx-auto w-full max-w-[14rem]" />
-      <div className="flex min-w-0 flex-col justify-end">
-        <p className="text-xs font-black uppercase tracking-[0.18em] text-[#007f68]">Editor's Choice</p>
-        <Link href={`/library/${product.slug}`} className="mt-2 text-2xl font-black leading-tight text-[#10201d] hover:text-[#007f68]">
+    <article className="group rounded-lg border border-[#dfe8e5] bg-white p-4 shadow-sm transition hover:-translate-y-1 hover:border-[#007f68] hover:shadow-xl dark:border-slate-800 dark:bg-slate-900">
+      <BookCover product={product} className={cn("mx-auto w-full", compact ? "max-w-[11rem]" : "max-w-[12.75rem]")} />
+      <div className="mt-4 flex min-w-0 flex-col">
+        <p className="text-xs font-black uppercase tracking-wide text-[#007f68] dark:text-emerald-300">{product.productType.replace(/_/g, " ")}</p>
+        <Link href={`/library/${product.slug}`} className="mt-1 line-clamp-2 text-base font-black leading-snug text-[#0d2630] hover:text-[#007f68] dark:text-white">
           {product.title}
         </Link>
-        <p className="mt-3 text-sm leading-6 text-slate-600">{product.shortDescription}</p>
-        <div className="mt-5 flex items-center justify-between gap-3">
-          <p className="text-2xl font-black text-[#10201d]">USD {product.price.toFixed(2)}</p>
-          <Button onClick={() => onAdd(product)}>
-            <ShoppingCart className="size-4" /> {quantity ? `In bag (${quantity})` : "Add"}
-          </Button>
-        </div>
-      </div>
-    </article>
-  );
-}
-
-function ProductCard({ product, quantity, onAdd }: { product: LibraryProduct; quantity: number; onAdd: (product: LibraryProduct) => void }) {
-  return (
-    <article className="group rounded-lg border border-[#e1d7c5] bg-white p-4 shadow-sm transition hover:-translate-y-1 hover:border-[#007f68] hover:shadow-xl dark:border-slate-800 dark:bg-slate-900">
-      <BookCover product={product} className="mx-auto w-full max-w-[13.5rem]" />
-      <div className="mt-5 flex min-w-0 flex-col">
-        <p className="text-xs font-black uppercase tracking-wide text-emerald-700 dark:text-emerald-300">{product.productType.replace(/_/g, " ")}</p>
-        <Link href={`/library/${product.slug}`} className="mt-1 line-clamp-2 text-lg font-black leading-snug text-ink hover:text-emerald-700 dark:text-white">
-          {product.title}
-        </Link>
-        <p className="mt-1 text-sm text-slate-500">{product.author}</p>
-        <p className="mt-3 line-clamp-2 text-sm leading-6 text-slate-600 dark:text-slate-300">{product.shortDescription}</p>
+        <p className="mt-1 line-clamp-1 text-sm text-slate-500">{product.author}</p>
+        {!compact && <p className="mt-3 line-clamp-2 text-sm leading-6 text-slate-600 dark:text-slate-300">{product.shortDescription}</p>}
         <div className="mt-4 flex items-center justify-between gap-3">
           <span className="flex items-center gap-1 text-sm text-amber-500">
             <Star className="size-4 fill-current" />
             <span className="font-bold text-slate-700 dark:text-slate-200">{product.rating || "New"}</span>
           </span>
-          <p className="text-lg font-black text-ink dark:text-white">USD {product.price.toFixed(2)}</p>
+          <p className="text-base font-black text-[#0d2630] dark:text-white">USD {product.price.toFixed(2)}</p>
         </div>
         <div className="mt-4 grid grid-cols-[1fr_auto] gap-2">
           <Button onClick={() => onAdd(product)} disabled={product.comingSoon && !product.preorder}>
             <ShoppingCart className="size-4" /> {quantity ? `In bag (${quantity})` : product.preorder ? "Pre-order" : "Add"}
           </Button>
-          <Link href={`/library/${product.slug}`} className="inline-flex size-11 items-center justify-center rounded-lg border border-slate-200 text-slate-600 transition hover:border-emerald-500 hover:text-emerald-700 dark:border-slate-700 dark:text-slate-300" aria-label={`View ${product.title}`}>
+          <Link href={`/library/${product.slug}`} className="inline-flex size-11 items-center justify-center rounded-lg border border-slate-200 text-slate-600 transition hover:border-[#007f68] hover:text-[#007f68] dark:border-slate-700 dark:text-slate-300" aria-label={`View ${product.title}`}>
             <ArrowRight className="size-4" />
           </Link>
         </div>
@@ -369,10 +253,36 @@ function ProductCard({ product, quantity, onAdd }: { product: LibraryProduct; qu
   );
 }
 
+function CategoryTile({ name, count, active, onClick }: { name: string; count: number; active: boolean; onClick: () => void }) {
+  return (
+    <button type="button" onClick={onClick} className={cn("rounded-lg border p-5 text-left shadow-sm transition hover:-translate-y-1 hover:shadow-lg", active ? "border-[#007f68] bg-[#007f68] text-white" : "border-[#dfe8e5] bg-white text-[#0d2630] hover:border-[#007f68]")}>
+      <p className={cn("text-xs font-black uppercase tracking-[0.14em]", active ? "text-white/75" : "text-[#007f68]")}>Category</p>
+      <div className="mt-3 flex items-center justify-between gap-4">
+        <h3 className="text-xl font-black leading-tight">{name}</h3>
+        <span className={cn("rounded-full px-3 py-1 text-xs font-black", active ? "bg-white/15 text-white" : "bg-[#eef7f4] text-[#007f68]")}>{count}</span>
+      </div>
+    </button>
+  );
+}
+
+function StorePromise({ icon: Icon, title, text }: { icon: LucideIcon; title: string; text: string }) {
+  return (
+    <div className="flex items-center gap-3 rounded-lg border border-[#dfe8e5] bg-[#fbfaf6] p-4">
+      <span className="grid size-11 shrink-0 place-items-center rounded-lg bg-[#e9f7f2] text-[#007f68]">
+        <Icon className="size-5" />
+      </span>
+      <div>
+        <p className="font-black text-[#0d2630]">{title}</p>
+        <p className="mt-0.5 text-sm text-slate-500">{text}</p>
+      </div>
+    </div>
+  );
+}
+
 function CartPanel({ cart, total, currency, onCart }: { cart: LibraryCartLine[]; total: number; currency: string; onCart: (cart: LibraryCartLine[]) => void }) {
   return (
-    <div className="overflow-hidden rounded-lg border border-[#e1d7c5] bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
-      <div className="border-b border-[#e1d7c5] bg-[#fffaf0] p-4 dark:border-slate-800 dark:bg-slate-950">
+    <div className="overflow-hidden rounded-lg border border-[#dfe8e5] bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <div className="border-b border-[#dfe8e5] bg-[#fbfaf6] p-4 dark:border-slate-800 dark:bg-slate-950">
         <p className="flex items-center gap-2 text-sm font-bold text-ink dark:text-white">
           <ShoppingBag className="size-4" /> Library Bag
         </p>
@@ -421,7 +331,7 @@ function CartPanel({ cart, total, currency, onCart }: { cart: LibraryCartLine[];
             {currency} {total.toFixed(2)}
           </span>
         </div>
-        <Link href="/library/checkout" className={cn("inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg text-sm font-bold", cart.length ? "bg-[#241914] text-white hover:bg-[#3b2920] dark:bg-white dark:text-slate-950 dark:hover:bg-slate-200" : "pointer-events-none bg-slate-200 text-slate-500 dark:bg-slate-800")}>
+        <Link href="/library/checkout" className={cn("inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg text-sm font-bold", cart.length ? "bg-[#007f68] text-white hover:bg-[#006b58]" : "pointer-events-none bg-slate-200 text-slate-500 dark:bg-slate-800")}>
           <ShoppingCart className="size-4" /> Checkout
         </Link>
       </div>
@@ -434,7 +344,7 @@ function Select({ value, onChange, label, options }: { value: string; onChange: 
     <label className="relative">
       <span className="sr-only">{label}</span>
       <Filter className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
-      <select value={value} onChange={(event) => onChange(event.target.value)} className="h-12 w-full rounded-lg border border-[#e1d7c5] bg-white pl-9 pr-3 text-sm shadow-sm outline-none transition focus:border-[#b98d45] dark:border-slate-700 dark:bg-slate-900 lg:w-44">
+      <select value={value} onChange={(event) => onChange(event.target.value)} className="h-12 w-full rounded-lg border border-[#d8e4e0] bg-white pl-9 pr-3 text-sm shadow-sm outline-none transition focus:border-[#007f68] dark:border-slate-700 dark:bg-slate-900 lg:w-44">
         <option value="">{label}</option>
         {options.map((option) => (
           <option key={option} value={option}>
@@ -443,15 +353,5 @@ function Select({ value, onChange, label, options }: { value: string; onChange: 
         ))}
       </select>
     </label>
-  );
-}
-
-function HeroBadge({ icon: Icon, label, value }: { icon: typeof ShieldCheck; label: string; value: string }) {
-  return (
-    <div className="rounded-lg border border-[#dfe6e2] bg-white p-3 shadow-sm">
-      <Icon className="size-5 text-[#007f68]" />
-      <p className="mt-2 text-sm font-black text-[#10201d]">{value}</p>
-      <p className="text-xs font-semibold text-slate-500">{label}</p>
-    </div>
   );
 }
