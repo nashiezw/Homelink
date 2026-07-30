@@ -8,6 +8,9 @@ import {
   BookmarkCheck,
   CheckCircle2,
   Filter,
+  FileText,
+  GraduationCap,
+  Home,
   Minus,
   Plus,
   Search,
@@ -16,7 +19,9 @@ import {
   ShoppingCart,
   SlidersHorizontal,
   Star,
+  TrendingUp,
   Trash2,
+  Wrench,
   type LucideIcon,
 } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -137,12 +142,21 @@ export function LibraryStorefront({ products }: { products: LibraryProduct[] }) 
       </section>
 
       <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mb-5 flex items-end justify-between gap-4">
+          <div>
+            <p className="text-sm font-black uppercase tracking-[0.12em] text-[#007f68]">Shop departments</p>
+            <h2 className="mt-1 text-3xl font-black tracking-normal text-[#0d2630] dark:text-white">Find the right resource faster</h2>
+          </div>
+          <p className="hidden max-w-md text-sm leading-6 text-slate-600 md:block">Browse by the way property professionals actually work: learning, investing, legal paperwork and field operations.</p>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
           {facets.categories.map((item) => (
             <CategoryTile key={item} name={item} count={products.filter((product) => product.category === item).length} active={category === item} onClick={() => setCategory(category === item ? "" : item)} />
           ))}
         </div>
       </section>
+
+      <PromoBanner products={products.slice(0, 3)} />
 
       <section className="mx-auto grid max-w-7xl gap-8 px-4 pb-12 sm:px-6 lg:grid-cols-[minmax(0,1fr)_20rem] lg:px-8">
         <div id="library-products" className="min-w-0 space-y-10">
@@ -213,7 +227,7 @@ function ProductSection({ title, subtitle, products, onAdd, quantityFor }: { tit
           View all <ArrowRight className="size-4" />
         </Link>
       </div>
-      <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
         {products.map((product) => (
           <ProductCard key={product.id} product={product} quantity={quantityFor(product.id)} onAdd={onAdd} compact />
         ))}
@@ -225,7 +239,9 @@ function ProductSection({ title, subtitle, products, onAdd, quantityFor }: { tit
 function ProductCard({ product, quantity, onAdd, compact = false }: { product: LibraryProduct; quantity: number; onAdd: (product: LibraryProduct) => void; compact?: boolean }) {
   return (
     <article className="group rounded-lg border border-[#dfe8e5] bg-white p-4 shadow-sm transition hover:-translate-y-1 hover:border-[#007f68] hover:shadow-xl dark:border-slate-800 dark:bg-slate-900">
-      <BookCover product={product} className={cn("mx-auto w-full", compact ? "max-w-[11rem]" : "max-w-[12.75rem]")} />
+      <div className="rounded-lg bg-[#f5f8f7] px-4 py-5">
+        <BookCover product={product} className={cn("mx-auto w-full", compact ? "max-w-[9.75rem]" : "max-w-[11.75rem]")} />
+      </div>
       <div className="mt-4 flex min-w-0 flex-col">
         <p className="text-xs font-black uppercase tracking-wide text-[#007f68] dark:text-emerald-300">{product.productType.replace(/_/g, " ")}</p>
         <Link href={`/library/${product.slug}`} className="mt-1 line-clamp-2 text-base font-black leading-snug text-[#0d2630] hover:text-[#007f68] dark:text-white">
@@ -254,15 +270,52 @@ function ProductCard({ product, quantity, onAdd, compact = false }: { product: L
 }
 
 function CategoryTile({ name, count, active, onClick }: { name: string; count: number; active: boolean; onClick: () => void }) {
+  const meta = categoryMeta(name);
+  const Icon = meta.icon;
   return (
-    <button type="button" onClick={onClick} className={cn("rounded-lg border p-5 text-left shadow-sm transition hover:-translate-y-1 hover:shadow-lg", active ? "border-[#007f68] bg-[#007f68] text-white" : "border-[#dfe8e5] bg-white text-[#0d2630] hover:border-[#007f68]")}>
-      <p className={cn("text-xs font-black uppercase tracking-[0.14em]", active ? "text-white/75" : "text-[#007f68]")}>Category</p>
-      <div className="mt-3 flex items-center justify-between gap-4">
-        <h3 className="text-xl font-black leading-tight">{name}</h3>
+    <button type="button" onClick={onClick} className={cn("min-h-44 rounded-lg border p-5 text-left shadow-sm transition hover:-translate-y-1 hover:shadow-lg", active ? "border-[#007f68] bg-[#007f68] text-white" : "border-[#dfe8e5] bg-white text-[#0d2630] hover:border-[#007f68]")}>
+      <div className="flex items-start justify-between gap-3">
+        <span className={cn("grid size-11 place-items-center rounded-lg", active ? "bg-white/15 text-white" : meta.badge)}>
+          <Icon className="size-5" />
+        </span>
         <span className={cn("rounded-full px-3 py-1 text-xs font-black", active ? "bg-white/15 text-white" : "bg-[#eef7f4] text-[#007f68]")}>{count}</span>
       </div>
+      <h3 className="mt-5 text-xl font-black leading-tight">{name}</h3>
+      <p className={cn("mt-2 line-clamp-2 text-sm leading-6", active ? "text-white/78" : "text-slate-500")}>{meta.text}</p>
     </button>
   );
+}
+
+function PromoBanner({ products }: { products: LibraryProduct[] }) {
+  return (
+    <section className="mx-auto max-w-7xl px-4 pb-10 sm:px-6 lg:px-8">
+      <div className="grid overflow-hidden rounded-lg border border-[#dfe8e5] bg-[#0d2630] shadow-xl shadow-slate-900/10 lg:grid-cols-[minmax(0,1fr)_25rem]">
+        <div className="p-6 sm:p-8">
+          <p className="text-sm font-black uppercase tracking-[0.14em] text-[#8de5d4]">HouseLink professional library</p>
+          <h2 className="mt-3 max-w-2xl text-3xl font-black leading-tight text-white sm:text-4xl">A cleaner way to buy the documents, books and templates behind better property work.</h2>
+          <p className="mt-4 max-w-xl text-sm leading-7 text-slate-300">Build your operating shelf with resources for agents, landlords, investors and developers, then access them from your HouseLink library.</p>
+          <Link href="#library-products" className="mt-6 inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-white px-5 text-sm font-black text-[#0d2630] transition hover:bg-[#e9f7f2]">
+            Shop the catalogue <ArrowRight className="size-4" />
+          </Link>
+        </div>
+        <div className="relative hidden min-h-72 bg-[#dceff2] lg:block">
+          <div className="absolute bottom-8 left-8 h-4 w-72 rounded-full bg-slate-900/15" />
+          {products[0] && <BookCover product={products[0]} className="absolute bottom-12 left-16 w-36 rotate-[-8deg]" />}
+          {products[1] && <BookCover product={products[1]} className="absolute bottom-12 left-40 z-10 w-40" />}
+          {products[2] && <BookCover product={products[2]} className="absolute bottom-12 right-14 w-36 rotate-[8deg]" />}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function categoryMeta(name: string): { icon: LucideIcon; badge: string; text: string } {
+  if (name === "Courses") return { icon: GraduationCap, badge: "bg-[#eef2ff] text-[#4f46e5]", text: "Structured lessons and guided learning paths." };
+  if (name === "Investment") return { icon: TrendingUp, badge: "bg-[#fff7ed] text-[#c2410c]", text: "Guides for yield, risk and market decisions." };
+  if (name === "Legal Documents") return { icon: FileText, badge: "bg-[#eff6ff] text-[#2563eb]", text: "Editable packs for landlord and lease workflows." };
+  if (name === "Property Law") return { icon: Home, badge: "bg-[#e9f7f2] text-[#007f68]", text: "Reference manuals for compliant property work." };
+  if (name === "Toolkits") return { icon: Wrench, badge: "bg-[#fef3c7] text-[#a16207]", text: "Checklists, scripts and practical agent resources." };
+  return { icon: BookOpen, badge: "bg-[#e9f7f2] text-[#007f68]", text: "Browse professional HouseLink resources." };
 }
 
 function StorePromise({ icon: Icon, title, text }: { icon: LucideIcon; title: string; text: string }) {
