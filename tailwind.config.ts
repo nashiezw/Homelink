@@ -23,8 +23,6 @@ const config: Config = {
       },
       fontFamily: {
         sans: ["var(--font-inter)", "Inter", "system-ui", "Segoe UI", "sans-serif"],
-        library: ["var(--font-library-sans)", "Manrope", "system-ui", "sans-serif"],
-        libraryDisplay: ["var(--font-library-display)", "Fraunces", "Georgia", "serif"],
       },
       animation: {
         "fade-up": "fade-up 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards",

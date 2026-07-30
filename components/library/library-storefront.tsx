@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, BookOpen, Search, ShoppingBag } from "lucide-react";
+import { ArrowRight, BookOpen, Search, ShoppingBag, ShoppingCart, Star } from "lucide-react";
 import { useMemo, useState } from "react";
 import { BookCover } from "@/components/library/book-cover";
 import { LibraryCartFab } from "@/components/library/library-cart-fab";
+import { Button } from "@/components/ui/button";
 import { useApp } from "@/components/providers/app-provider";
 import {
   notifyLibraryCartAdded,
@@ -14,22 +15,12 @@ import {
 import {
   enabledLibraryFormats,
   libraryFacets,
+  libraryFormatsLabel,
   libraryPriceLabel,
   type LibraryProduct,
 } from "@/lib/library/catalog";
 import type { LibraryStoreSettings } from "@/lib/library/settings-shared";
 import { cn } from "@/lib/utils";
-
-const TILE_TONES = [
-  "bg-[#f3f1eb]",
-  "bg-[#efe8e2]",
-  "bg-[#e8ecea]",
-  "bg-[#ece7f0]",
-  "bg-[#e7eef1]",
-  "bg-[#f1ebe3]",
-  "bg-[#e9eee8]",
-  "bg-[#f0ebe7]",
-];
 
 type Merchandising = LibraryStoreSettings["merchandising"];
 type Store = LibraryStoreSettings["store"];
@@ -54,7 +45,8 @@ export function LibraryStorefront({
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("");
   const [sort, setSort] = useState(merchandising.defaultSort === "downloads" ? "most-downloaded" : merchandising.defaultSort === "rating" ? "highest-rated" : merchandising.defaultSort);
-  const { setCart, count } = useLibraryCart();
+  const { cart, setCart, count } = useLibraryCart();
+  const quantityFor = (productId: string) => cart.filter((line) => line.productId === productId).reduce((sum, line) => sum + line.quantity, 0);
 
   const featured = products.find((product) => product.editorsChoice) ?? products.find((product) => product.featured) ?? products[0];
   const curated = useMemo(() => {
@@ -109,13 +101,13 @@ export function LibraryStorefront({
   }
 
   return (
-    <main className="min-h-screen bg-[#fafafa] font-library text-[#141414] antialiased dark:bg-slate-950 dark:text-white">
+    <main className="min-h-screen bg-[#fafafa] text-[#141414] antialiased dark:bg-slate-950 dark:text-white">
       <LibraryCartFab />
 
       <div className="mx-auto max-w-7xl px-4 pt-6 sm:px-6 lg:px-8">
         <header className="flex items-center justify-between gap-4 border-b border-black/[0.06] pb-5 dark:border-white/10">
           <div className="min-w-0">
-            <p className="font-libraryDisplay text-xl font-semibold tracking-[-0.02em] text-[#141414] dark:text-white sm:text-2xl">
+            <p className="text-xl font-bold tracking-tight text-[#141414] dark:text-white sm:text-2xl">
               {storeName}
             </p>
           </div>
@@ -152,7 +144,7 @@ export function LibraryStorefront({
           />
           <div className="relative grid items-center gap-10 px-6 py-12 sm:px-10 lg:grid-cols-[minmax(0,1fr)_minmax(16rem,24rem)] lg:gap-12 lg:py-16 xl:px-14">
             <div className="max-w-xl motion-safe:animate-fade-up">
-              <h1 className="font-libraryDisplay text-[2.6rem] font-medium leading-[1.05] tracking-[-0.03em] text-[#141414] dark:text-white sm:text-5xl lg:text-[3.4rem]">
+              <h1 className="text-[2.6rem] font-bold leading-[1.05] tracking-tight text-[#141414] dark:text-white sm:text-5xl lg:text-[3.4rem]">
                 {headline}
               </h1>
               <p className="mt-5 max-w-md text-base leading-7 text-[#141414]/70 dark:text-white/70">{subcopy}</p>
@@ -197,19 +189,19 @@ export function LibraryStorefront({
           {curated.length > 0 && (
             <section className="mx-auto max-w-7xl px-4 pt-14 sm:px-6 lg:px-8">
               <div className="mb-8 flex items-end justify-between gap-4">
-                <h2 className="font-libraryDisplay text-2xl font-medium tracking-[-0.02em] text-[#141414] dark:text-white sm:text-3xl">
+                <h2 className="text-2xl font-bold tracking-tight text-[#141414] dark:text-white sm:text-3xl">
                   {merchandising.curatedTitle || "Editor picks"}
                 </h2>
                 <a href="#library-products" className="hidden text-sm font-semibold text-[#141414]/55 transition hover:text-[#141414] sm:inline-flex dark:text-white/55 dark:hover:text-white">
                   View all
                 </a>
               </div>
-              <div className="grid grid-cols-2 gap-x-5 gap-y-10 md:grid-cols-3 xl:grid-cols-4">
-                {curated.map((product, index) => (
-                  <ProductTile
+              <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
+                {curated.map((product) => (
+                  <ProductCard
                     key={product.id}
                     product={product}
-                    tone={TILE_TONES[index % TILE_TONES.length]}
+                    quantity={quantityFor(product.id)}
                     hidePrice={hidePrices}
                     onAdd={() => addToCart(product)}
                   />
@@ -221,7 +213,7 @@ export function LibraryStorefront({
           <section id="library-products" className="mx-auto max-w-7xl px-4 pb-20 pt-14 sm:px-6 lg:px-8">
             <div className="mb-8 flex flex-col gap-5 border-b border-black/[0.06] pb-6 dark:border-white/10 lg:flex-row lg:items-end lg:justify-between">
               <div>
-                <h2 className="font-libraryDisplay text-2xl font-medium tracking-[-0.02em] text-[#141414] dark:text-white sm:text-3xl">
+                <h2 className="text-2xl font-bold tracking-tight text-[#141414] dark:text-white sm:text-3xl">
                   All titles
                 </h2>
                 <p className="mt-2 text-sm text-[#141414]/55 dark:text-white/55">
@@ -268,12 +260,12 @@ export function LibraryStorefront({
             </div>
 
             {results.length ? (
-              <div className="grid grid-cols-2 gap-x-5 gap-y-12 md:grid-cols-3 xl:grid-cols-4">
-                {results.map((product, index) => (
-                  <ProductTile
+              <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
+                {results.map((product) => (
+                  <ProductCard
                     key={product.id}
                     product={product}
-                    tone={TILE_TONES[index % TILE_TONES.length]}
+                    quantity={quantityFor(product.id)}
                     hidePrice={hidePrices}
                     onAdd={() => addToCart(product)}
                   />
@@ -289,59 +281,62 @@ export function LibraryStorefront({
   );
 }
 
-function ProductTile({
+function ProductCard({
   product,
-  tone,
+  quantity,
   hidePrice,
   onAdd,
 }: {
   product: LibraryProduct;
-  tone: string;
+  quantity: number;
   hidePrice: boolean;
   onAdd: () => void;
 }) {
   return (
-    <article className="group/tile">
-      <div className={cn("relative aspect-square overflow-hidden", tone)}>
-        <div className="absolute inset-0 grid place-items-center p-6 sm:p-8">
-          <BookCover
-            product={product}
-            variant="shop"
-            interactive={false}
-            className="w-[58%] max-w-[11rem]"
-            sizes="(max-width: 768px) 40vw, 220px"
-          />
-        </div>
-        <Link
-          href={`/library/${product.slug}`}
-          className="absolute inset-0 z-[1] transition duration-500 group-hover/tile:bg-black/[0.02]"
-          aria-label={product.title}
-        />
+    <article className="group flex h-full flex-col rounded-2xl border border-[#dfe8e5] bg-white p-4 shadow-sm transition hover:-translate-y-1 hover:border-[#007f68] hover:shadow-xl dark:border-slate-800 dark:bg-slate-900">
+      <div className="rounded-xl bg-[#f5f8f7] px-4 py-5 dark:bg-slate-950/60">
+        <BookCover product={product} className="mx-auto w-full max-w-[12.75rem]" sizes="(max-width: 768px) 60vw, 240px" />
       </div>
-      <div className="relative z-[2] mt-4 space-y-1.5">
+      <div className="mt-4 flex min-w-0 flex-1 flex-col">
+        <p className="text-xs font-black uppercase tracking-wide text-[#007f68] dark:text-emerald-300">
+          {libraryFormatsLabel(product)}
+        </p>
         <Link
           href={`/library/${product.slug}`}
-          className="block text-sm font-medium leading-snug text-[#141414] transition hover:text-[#1a3560] dark:text-white dark:hover:text-[#8de5d4]"
+          className="mt-1 line-clamp-2 text-base font-black leading-snug text-[#0d2630] hover:text-[#007f68] dark:text-white"
         >
           {product.title}
         </Link>
-        <p className="text-sm text-[#141414]/50 dark:text-white/50">
-          {hidePrice ? (
-            <Link href={`/login?next=/library/${product.slug}`} className="underline-offset-2 hover:underline">
-              Sign in for price
-            </Link>
-          ) : (
-            libraryPriceLabel(product)
-          )}
-        </p>
-        <button
-          type="button"
-          onClick={onAdd}
-          disabled={product.comingSoon && !product.preorder}
-          className="pt-1 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-[#141414]/45 transition hover:text-[#1a3560] disabled:cursor-not-allowed disabled:opacity-40 dark:text-white/45 dark:hover:text-[#8de5d4]"
-        >
-          {product.preorder ? "Pre-order" : "Add to cart"}
-        </button>
+        <p className="mt-1 line-clamp-1 text-sm text-slate-500">{product.author}</p>
+        <p className="mt-3 line-clamp-2 text-sm leading-6 text-slate-600 dark:text-slate-300">{product.shortDescription}</p>
+        <div className="mt-4 flex items-center justify-between gap-3">
+          <span className="flex items-center gap-1 text-sm text-amber-500">
+            <Star className="size-4 fill-current" />
+            <span className="font-bold text-slate-700 dark:text-slate-200">{product.rating || "New"}</span>
+          </span>
+          <p className="text-base font-black text-[#0d2630] dark:text-white">
+            {hidePrice ? (
+              <Link href={`/login?next=/library/${product.slug}`} className="text-sm font-bold text-[#007f68] underline-offset-2 hover:underline">
+                Sign in for price
+              </Link>
+            ) : (
+              libraryPriceLabel(product)
+            )}
+          </p>
+        </div>
+        <div className="mt-auto grid grid-cols-[1fr_auto] gap-2 pt-4">
+          <Button onClick={onAdd} disabled={product.comingSoon && !product.preorder} className="rounded-full">
+            <ShoppingCart className="size-4" />{" "}
+            {quantity ? `In bag (${quantity})` : product.preorder ? "Pre-order" : "Add"}
+          </Button>
+          <Link
+            href={`/library/${product.slug}`}
+            className="inline-flex size-11 items-center justify-center rounded-full border border-slate-200 text-slate-600 shadow-sm transition hover:border-[#007f68] hover:text-[#007f68] dark:border-slate-700 dark:text-slate-300"
+            aria-label={`View ${product.title}`}
+          >
+            <ArrowRight className="size-4" />
+          </Link>
+        </div>
       </div>
     </article>
   );
@@ -371,7 +366,7 @@ function EmptyLibraryState() {
         <span className="mx-auto grid size-12 place-items-center bg-[#ece7df] text-[#1a3560]">
           <BookOpen className="size-5" />
         </span>
-        <h2 className="mt-6 font-libraryDisplay text-3xl font-medium tracking-[-0.02em] text-[#141414] dark:text-white">
+        <h2 className="mt-6 text-3xl font-bold tracking-tight text-[#141414] dark:text-white">
           New titles are on the way
         </h2>
         <p className="mt-3 text-sm leading-7 text-[#141414]/60 dark:text-white/60">

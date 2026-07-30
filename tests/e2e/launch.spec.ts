@@ -91,7 +91,7 @@ test("library cart starts native checkout for signed-in users", async ({ page })
   test.skip(!seekerEmail || !seekerPassword, "Set E2E_SEEKER_EMAIL/PASSWORD to run Library checkout flow.");
   await login(page, seekerEmail!, seekerPassword!);
   await page.goto("/library");
-  await page.getByRole("button", { name: /add to cart|pre-order/i }).first().click();
+  await page.getByRole("button", { name: /^(add|pre-order|in bag)/i }).first().click();
   await page.getByRole("button", { name: /open library bag/i }).click();
   await page.getByRole("link", { name: /^checkout$/i }).click();
   await expect(page).toHaveURL(/\/payments\?status=|\/library/);
