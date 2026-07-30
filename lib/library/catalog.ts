@@ -14,6 +14,18 @@ export type LibraryProductType =
 
 export type LibraryProductStatus = "DRAFT" | "SCHEDULED" | "PUBLISHED" | "ARCHIVED";
 
+export type LibraryProductFormatType = "PRINTED_BOOK" | "PDF" | "DIGITAL_BOOK";
+
+export type LibraryProductFormat = {
+  id: string;
+  type: LibraryProductFormatType;
+  label: string;
+  enabled: boolean;
+  price: number;
+  compareAtPrice?: number;
+  sku?: string;
+};
+
 export type LibraryProduct = {
   id: string;
   slug: string;
@@ -49,6 +61,9 @@ export type LibraryProduct = {
   tags: string[];
   seoTitle?: string;
   metaDescription?: string;
+  seoFocusKeyword?: string;
+  seoImageUrl?: string;
+  formats: LibraryProductFormat[];
   gallery: Array<{ label: string; url: string; kind: "cover" | "back" | "inside" | "mockup" | "video" }>;
   downloads: Array<{
     id: string;
@@ -79,6 +94,53 @@ export type LibraryProduct = {
   viewCount: number;
   publishedAt: string;
 };
+
+export function enabledLibraryFormats(product: Pick<LibraryProduct, "formats" | "productType" | "price" | "compareAtPrice" | "sku">): LibraryProductFormat[] {
+  const formats = (product.formats ?? []).filter((format) => format.enabled);
+  if (formats.length) return formats;
+  return [
+    {
+      id: "primary",
+      type: isPrintedType(product.productType) ? "PRINTED_BOOK" : product.productType === "DIGITAL_BOOK" ? "DIGITAL_BOOK" : "PDF",
+      label: isPrintedType(product.productType) ? "Printed book" : "Digital copy",
+      enabled: true,
+      price: product.price,
+      compareAtPrice: product.compareAtPrice,
+      sku: product.sku,
+    },
+  ];
+}
+
+export function resolveLibraryFormat(
+  product: Pick<LibraryProduct, "formats" | "productType" | "price" | "compareAtPrice" | "sku" | "title">,
+  formatId?: string | null,
+  formatType?: string | null,
+) {
+  const formats = enabledLibraryFormats(product);
+  return (
+    formats.find((format) => formatId && format.id === formatId) ??
+    formats.find((format) => formatType && format.type === formatType) ??
+    formats[0]
+  );
+}
+
+export function primaryLibraryFormat(formats: LibraryProductFormat[], fallbackType: LibraryProductType = "PDF", fallbackPrice = 0) {
+  const enabled = formats.filter((format) => format.enabled);
+  if (!enabled.length) {
+    return {
+      id: "primary",
+      type: (isPrintedType(fallbackType) ? "PRINTED_BOOK" : fallbackType === "DIGITAL_BOOK" ? "DIGITAL_BOOK" : "PDF") as LibraryProductFormatType,
+      label: isPrintedType(fallbackType) ? "Printed book" : "Digital copy",
+      enabled: true,
+      price: fallbackPrice,
+    } satisfies LibraryProductFormat;
+  }
+  return enabled.find((format) => format.type !== "PRINTED_BOOK") ?? enabled[0];
+}
+
+function isPrintedType(type: string) {
+  return type === "PRINTED_BOOK";
+}
 
 export type LibraryOrder = {
   id: string;

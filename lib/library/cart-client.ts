@@ -8,6 +8,9 @@ export type LibraryCartLine = {
   price: number;
   currency: string;
   quantity: number;
+  formatId?: string;
+  formatType?: string;
+  formatLabel?: string;
 };
 
 const CART_KEY = "houselink_library_cart";
@@ -30,6 +33,17 @@ export function writeLibraryCart(cart: LibraryCartLine[]) {
   const raw = JSON.stringify(normalized);
   window.localStorage.setItem(CART_KEY, raw);
   window.sessionStorage.setItem(CART_KEY, raw);
+}
+
+export function sameLibraryCartLine(
+  a: Pick<LibraryCartLine, "productId" | "formatId">,
+  b: Pick<LibraryCartLine, "productId" | "formatId">,
+) {
+  return a.productId === b.productId && (a.formatId ?? undefined) === (b.formatId ?? undefined);
+}
+
+export function libraryCartLineKey(line: Pick<LibraryCartLine, "productId" | "formatId">) {
+  return `${line.productId}:${line.formatId ?? "default"}`;
 }
 
 export function clearLibraryCart() {

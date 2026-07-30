@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Award, Download, FileText, Heart, PackageCheck, Star } from "lucide-react";
+import { Download, FileText, Heart, PackageCheck, Star, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { PageShell } from "@/components/layout/page-shell";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,14 @@ type DownloadAccess = {
   expiresAt: string | null;
 };
 
+type LibraryMe = {
+  products: LibraryProduct[];
+  orders: LibraryOrder[];
+  downloads: DownloadAccess[];
+  wishlist?: LibraryProduct[];
+  wishlistCount?: number;
+};
+
 export function MyLibraryClient({
   products,
   orders,
@@ -29,11 +37,17 @@ export function MyLibraryClient({
   orders: LibraryOrder[];
   downloads?: DownloadAccess[];
 }) {
-  const [library, setLibrary] = useState({ products, orders, downloads: downloads ?? [] });
+  const [library, setLibrary] = useState<LibraryMe>({ products, orders, downloads: downloads ?? [], wishlist: [], wishlistCount: 0 });
+  const [reviewProduct, setReviewProduct] = useState<LibraryProduct | null>(null);
+  const [rating, setRating] = useState(5);
+  const [reviewTitle, setReviewTitle] = useState("");
+  const [reviewBody, setReviewBody] = useState("");
+  const [reviewBusy, setReviewBusy] = useState(false);
+  const [notice, setNotice] = useState("");
   const purchased = library.products.filter((product) => product.downloads.length > 0 || library.downloads.some((download) => download.productId === product.id)).slice(0, 6);
 
   useEffect(() => {
-    void apiFetch<typeof library>("/api/v1/library/me").then((result) => {
+    void apiFetch<LibraryMe>("/api/v1/library/me").then((result) => {
       if (result.data) setLibrary(result.data);
     });
   }, []);
@@ -46,6 +60,25 @@ export function MyLibraryClient({
     }
   }
 
+  async function submitReview() {
+    if (!reviewProduct) return;
+    setReviewBusy(true);
+    const result = await apiFetch("/api/v1/library/reviews", {
+      method: "POST",
+      body: JSON.stringify({ productId: reviewProduct.id, rating, title: reviewTitle, body: reviewBody }),
+    });
+    setReviewBusy(false);
+    if (result.error) {
+      setNotice(result.error.message || "Could not submit review.");
+      return;
+    }
+    setNotice("Review submitted for moderation. Thank you.");
+    setReviewProduct(null);
+    setReviewTitle("");
+    setReviewBody("");
+    setRating(5);
+  }
+
   return (
     <PageShell
       eyebrow="My Library"
@@ -54,13 +87,17 @@ export function MyLibraryClient({
       compactHero
       actions={<Link href="/library" className="bg-emerald-600 text-white hover:bg-emerald-500">Browse Library</Link>}
     >
+      {notice && (
+        <div role="status" className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-900 dark:border-emerald-900/40 dark:bg-emerald-950/20 dark:text-emerald-100">
+          {notice}
+        </div>
+      )}
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <div className="space-y-6">
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             <Stat icon={PackageCheck} label="Purchases" value={library.orders.length} />
             <Stat icon={Download} label="Downloads" value={library.downloads.length || purchased.reduce((sum, product) => sum + product.downloads.length, 0)} />
-            <Stat icon={Heart} label="Wishlist" value={0} />
-            <Stat icon={Award} label="Certificates" value="Future" />
+            <Stat icon={Heart} label="Wishlist" value={library.wishlistCount ?? library.wishlist?.length ?? 0} />
           </div>
 
           <section className="surface-panel rounded-lg p-5">
@@ -76,6 +113,19 @@ export function MyLibraryClient({
               )}
             </div>
           </section>
+
+          {(library.wishlist?.length ?? 0) > 0 && (
+            <section className="surface-panel rounded-lg p-5">
+              <h2 className="text-lg font-semibold text-ink dark:text-white">Wishlist</h2>
+              <div className="mt-4 grid gap-3">
+                {library.wishlist?.map((product) => (
+                  <Link key={product.id} href={`/library/${product.slug}`} className="rounded-lg border border-slate-200 p-3 text-sm font-semibold hover:border-emerald-500 dark:border-slate-800">
+                    {product.title}
+                  </Link>
+                ))}
+              </div>
+            </section>
+          )}
 
           <section className="surface-panel rounded-lg p-5">
             <h2 className="text-lg font-semibold text-ink dark:text-white">Orders</h2>
@@ -128,12 +178,13 @@ export function MyLibraryClient({
             <h2 className="text-lg font-semibold text-ink dark:text-white">Review Queue</h2>
             <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">Share product reviews after download access is active.</p>
             <div className="mt-4 space-y-3">
-              {purchased.slice(0, 2).map((product) => (
-                <button key={product.id} type="button" className="flex w-full items-center justify-between rounded-lg border border-slate-200 p-3 text-left dark:border-slate-800">
+              {purchased.slice(0, 4).map((product) => (
+                <button key={product.id} type="button" onClick={() => setReviewProduct(product)} className="flex w-full items-center justify-between rounded-lg border border-slate-200 p-3 text-left hover:border-emerald-500 dark:border-slate-800">
                   <span className="min-w-0 truncate text-sm font-semibold">{product.title}</span>
                   <Star className="size-4 text-amber-500" />
                 </button>
               ))}
+              {!purchased.length && <p className="text-sm text-slate-500">Purchased products will appear here for review.</p>}
             </div>
           </section>
           <section className="rounded-lg border border-emerald-200 bg-emerald-50 p-5 text-sm text-emerald-950 dark:border-emerald-900/40 dark:bg-emerald-950/20 dark:text-emerald-100">
@@ -142,6 +193,33 @@ export function MyLibraryClient({
           </section>
         </aside>
       </div>
+
+      {reviewProduct && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setReviewProduct(null)}>
+          <div className="w-full max-w-lg rounded-xl bg-white p-5 shadow-2xl dark:bg-slate-950" onClick={(event) => event.stopPropagation()}>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wide text-emerald-700">Write a review</p>
+                <h3 className="mt-1 text-lg font-semibold text-ink dark:text-white">{reviewProduct.title}</h3>
+              </div>
+              <button type="button" onClick={() => setReviewProduct(null)} aria-label="Close review form"><X className="size-4" /></button>
+            </div>
+            <div className="mt-4 flex gap-1">
+              {[1, 2, 3, 4, 5].map((value) => (
+                <button key={value} type="button" onClick={() => setRating(value)} className="rounded p-1" aria-label={`${value} stars`}>
+                  <Star className={`size-5 ${value <= rating ? "fill-current text-amber-500" : "text-slate-300"}`} />
+                </button>
+              ))}
+            </div>
+            <input value={reviewTitle} onChange={(event) => setReviewTitle(event.target.value)} placeholder="Review title" className="mt-4 h-11 w-full rounded-lg border border-slate-200 px-3 dark:border-slate-700 dark:bg-slate-900" />
+            <textarea value={reviewBody} onChange={(event) => setReviewBody(event.target.value)} placeholder="What helped you most?" rows={4} className="mt-3 w-full rounded-lg border border-slate-200 px-3 py-2 dark:border-slate-700 dark:bg-slate-900" />
+            <div className="mt-4 flex justify-end gap-2">
+              <Button variant="secondary" onClick={() => setReviewProduct(null)}>Cancel</Button>
+              <Button disabled={reviewBusy} onClick={() => void submitReview()}>{reviewBusy ? "Submitting..." : "Submit review"}</Button>
+            </div>
+          </div>
+        </div>
+      )}
     </PageShell>
   );
 }
@@ -150,18 +228,18 @@ function PurchasedResource({ product, downloads, onDownload }: { product: Librar
   const access = downloads.find((download) => download.productId === product.id);
   return (
     <article className="grid gap-4 rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
-                  <div className="min-w-0">
-                    <p className="text-xs font-bold uppercase tracking-wide text-emerald-700 dark:text-emerald-400">{product.productType.replace(/_/g, " ")}</p>
-                    <Link href={`/library/${product.slug}`} className="mt-1 block text-lg font-semibold text-ink hover:text-emerald-700 dark:text-white">{product.title}</Link>
-                    <p className="mt-1 text-sm text-slate-500">{product.downloads.length} secure download{product.downloads.length === 1 ? "" : "s"} - permanent access</p>
-                  </div>
-                  <div className="flex flex-wrap gap-2 md:justify-end">
-                    <Button disabled={!access} onClick={() => onDownload(access?.id)}>
-                      <Download className="size-4" /> Download
-                    </Button>
-                    {access?.orderId && <Link href={`/dashboard/my-library/orders/${access.orderId}`} className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-slate-200 px-4 text-sm font-bold text-slate-700 hover:border-emerald-500 hover:text-emerald-700 dark:border-slate-700 dark:text-slate-200"><FileText className="size-4" /> View order</Link>}
-                  </div>
-                </article>
+      <div className="min-w-0">
+        <p className="text-xs font-bold uppercase tracking-wide text-emerald-700 dark:text-emerald-400">{product.productType.replace(/_/g, " ")}</p>
+        <Link href={`/library/${product.slug}`} className="mt-1 block text-lg font-semibold text-ink hover:text-emerald-700 dark:text-white">{product.title}</Link>
+        <p className="mt-1 text-sm text-slate-500">{product.downloads.length} secure download{product.downloads.length === 1 ? "" : "s"} - permanent access</p>
+      </div>
+      <div className="flex flex-wrap gap-2 md:justify-end">
+        <Button disabled={!access} onClick={() => onDownload(access?.id)}>
+          <Download className="size-4" /> Download
+        </Button>
+        {access?.orderId && <Link href={`/dashboard/my-library/orders/${access.orderId}`} className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-slate-200 px-4 text-sm font-bold text-slate-700 hover:border-emerald-500 hover:text-emerald-700 dark:border-slate-700 dark:text-slate-200"><FileText className="size-4" /> View order</Link>}
+      </div>
+    </article>
   );
 }
 

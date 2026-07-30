@@ -1916,6 +1916,9 @@ model LibraryProduct {
   tags               String[]                  @default([])
   seoTitle           String?
   metaDescription    String?
+  seoFocusKeyword    String?
+  seoImageUrl        String?
+  formats            Json?
   searchVector       String                    @default("")
   featured           Boolean                   @default(false)
   bestSeller         Boolean                   @default(false)

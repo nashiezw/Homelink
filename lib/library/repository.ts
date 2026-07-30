@@ -5,9 +5,12 @@ import {
   getLibraryAnalytics as getEmptyLibraryAnalytics,
   getLibraryProducts,
   LIBRARY_ORDERS,
+  primaryLibraryFormat,
+  resolveLibraryFormat,
   type LibraryAnalytics,
   type LibraryOrder,
   type LibraryProduct,
+  type LibraryProductFormat,
   type LibraryProductType as PublicLibraryProductType,
 } from "@/lib/library/catalog";
 
@@ -17,6 +20,9 @@ export type LibraryCartLine = {
   price?: number;
   currency?: string;
   quantity: number;
+  formatId?: string;
+  formatType?: string;
+  formatLabel?: string;
 };
 
 export type LibraryCartQuote = {
@@ -62,6 +68,8 @@ export type LibraryProductInput = {
   tags?: string[];
   seoTitle?: string;
   metaDescription?: string;
+  seoFocusKeyword?: string;
+  seoImageUrl?: string;
   featured?: boolean;
   bestSeller?: boolean;
   newRelease?: boolean;
@@ -76,6 +84,7 @@ export type LibraryProductInput = {
   downloadExpiryDays?: number | null;
   watermarking?: boolean;
   licenseKeys?: boolean;
+  formats?: LibraryProductFormat[];
   gallery?: LibraryProduct["gallery"];
   downloads?: Array<{ label: string; fileUrl?: string; fileName?: string; fileType: string; size?: string; fileSizeBytes?: number; secure?: boolean; previewable?: boolean }>;
 };
@@ -350,10 +359,19 @@ export async function listLibraryOrders(customerId?: string): Promise<LibraryOrd
 export async function quoteLibraryCart(items: LibraryCartLine[], couponCode?: string, customerId?: string): Promise<LibraryCartQuote> {
   const normalized = items.map((item) => ({ ...item, quantity: Math.max(1, Number(item.quantity) || 1) })).filter((item) => item.productId);
   if (!shouldUsePostgresLibrary()) {
-    const products = localLibraryProducts;
     const lines = normalized.map((item) => {
-      const product = products.find((entry) => entry.id === item.productId);
-      return { ...item, title: product?.title ?? item.title, price: product?.price ?? item.price ?? 0, currency: product?.currency ?? item.currency ?? "USD" };
+      const product = localLibraryProducts.find((entry) => entry.id === item.productId);
+      if (!product) return { ...item, title: item.title ?? "Library product", price: item.price ?? 0, currency: item.currency ?? "USD" };
+      const format = resolveLibraryFormat(product, item.formatId, item.formatType);
+      return {
+        ...item,
+        title: formatLabelTitle(product.title, format.label),
+        price: format.price,
+        currency: product.currency,
+        formatId: format.id,
+        formatType: format.type,
+        formatLabel: format.label,
+      };
     });
     const subtotal = lines.reduce((sum, item) => sum + (item.price ?? 0) * item.quantity, 0);
     return { subtotal, discountTotal: 0, taxTotal: 0, total: subtotal, currency: lines[0]?.currency ?? "USD", couponCode, items: lines };
@@ -361,11 +379,22 @@ export async function quoteLibraryCart(items: LibraryCartLine[], couponCode?: st
   await seedLibraryIfEmpty();
   const prisma = getMainPrisma();
   const ids = normalized.map((item) => item.productId);
-  const products = await prisma.libraryProduct.findMany({ where: { id: { in: ids }, deletedAt: null }, include: { category: true } });
-  const lines = products.map((product) => {
-    const cart = normalized.find((item) => item.productId === product.id);
-    const quantity = Math.max(1, Number(cart?.quantity) || 1);
-    return { productId: product.id, title: product.title, price: Number(product.price), currency: product.currency, quantity };
+  const products = await prisma.libraryProduct.findMany({ where: { id: { in: ids }, deletedAt: null }, include: productInclude() });
+  const mapped = products.map((row) => toLibraryProduct(row as DbProduct));
+  const lines = normalized.map((item) => {
+    const product = mapped.find((entry) => entry.id === item.productId);
+    if (!product) return { ...item, title: item.title ?? "Library product", price: item.price ?? 0, currency: item.currency ?? "USD" };
+    const format = resolveLibraryFormat(product, item.formatId, item.formatType);
+    return {
+      productId: product.id,
+      title: formatLabelTitle(product.title, format.label),
+      price: format.price,
+      currency: product.currency,
+      quantity: item.quantity,
+      formatId: format.id,
+      formatType: format.type,
+      formatLabel: format.label,
+    };
   });
   const subtotal = lines.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const discountTotal = await calculateLibraryDiscount({ couponCode, subtotal, products, customerId });
@@ -383,7 +412,36 @@ export async function quoteLibraryCart(items: LibraryCartLine[], couponCode?: st
   };
 }
 
+export function validateLibraryProductPublish(input: Partial<LibraryProductInput>, existing?: Pick<LibraryProduct, "formats" | "downloads" | "productType" | "status"> | null) {
+  const status = input.status ?? existing?.status;
+  if (status !== "PUBLISHED") return null;
+  const formats = input.formats?.length
+    ? normalizeFormatsInput(input.formats)
+    : existing?.formats?.length
+      ? existing.formats
+      : normalizeFormatsInput([
+          {
+            id: "primary",
+            type: (existing?.productType === "PRINTED_BOOK" ? "PRINTED_BOOK" : existing?.productType === "DIGITAL_BOOK" ? "DIGITAL_BOOK" : "PDF") as LibraryProductFormat["type"],
+            label: existing?.productType === "PRINTED_BOOK" ? "Printed book" : "Digital copy",
+            enabled: true,
+            price: Number(input.price ?? 0),
+          },
+        ]);
+  if (!formats.some((format) => format.enabled)) {
+    return "Enable at least one format before publishing.";
+  }
+  const digitalEnabled = formats.some((format) => format.enabled && format.type !== "PRINTED_BOOK");
+  const downloads = input.downloads ?? existing?.downloads ?? [];
+  if (digitalEnabled && !downloads.some((file) => Boolean(file.fileUrl))) {
+    return "Add at least one download file before publishing a digital format.";
+  }
+  return null;
+}
+
 export async function createLibraryProduct(input: LibraryProductInput, actorId?: string) {
+  const publishError = validateLibraryProductPublish(input);
+  if (publishError) throw new Error(publishError);
   if (!shouldUsePostgresLibrary()) {
     const product = localProductFromInput(input);
     localLibraryProducts.unshift(product);
@@ -404,9 +462,16 @@ export async function updateLibraryProduct(id: string, input: Partial<LibraryPro
   if (!shouldUsePostgresLibrary()) {
     const index = localLibraryProducts.findIndex((product) => product.id === id);
     if (index === -1) return null;
+    const publishError = validateLibraryProductPublish(input, localLibraryProducts[index]);
+    if (publishError) throw new Error(publishError);
     localLibraryProducts[index] = localProductFromInput(input, localLibraryProducts[index]);
     return localLibraryProducts[index];
   }
+  const existingRow = await getMainPrisma().libraryProduct.findUnique({ where: { id }, include: productInclude() }).catch(() => null);
+  if (!existingRow) return null;
+  const existing = toLibraryProduct(existingRow as DbProduct);
+  const publishError = validateLibraryProductPublish(input, existing);
+  if (publishError) throw new Error(publishError);
   const data = await productInputToPrisma(input as LibraryProductInput, actorId, true) as Prisma.LibraryProductUpdateInput;
   const product = await getMainPrisma().libraryProduct.update({
     where: { id },
@@ -565,14 +630,26 @@ export async function createLibraryOrderFromCheckout(input: {
   const prisma = getMainPrisma();
   const quote = await quoteLibraryCart(input.items, input.couponCode, input.customerId);
   const ids = input.items.map((item) => item.productId);
-  const products = await prisma.libraryProduct.findMany({ where: { id: { in: ids }, deletedAt: null }, include: { files: true } });
+  const products = await prisma.libraryProduct.findMany({ where: { id: { in: ids }, deletedAt: null }, include: { files: true, media: true, author: true, category: true, collection: true, previewPages: true } });
   if (!products.length) throw new Error("No valid Library products found.");
-  const lines = products.map((product) => {
-    const cart = quote.items.find((item) => item.productId === product.id);
-    const quantity = Math.max(1, Number(cart?.quantity) || 1);
-    const unitPrice = Number(product.price);
-    return { product, quantity, unitPrice, total: unitPrice * quantity };
-  });
+  const mapped = new Map(products.map((row) => [row.id, toLibraryProduct(row as DbProduct)]));
+  const lines = quote.items.map((cart) => {
+    const product = products.find((entry) => entry.id === cart.productId);
+    const mappedProduct = mapped.get(cart.productId);
+    if (!product || !mappedProduct) return null;
+    const format = resolveLibraryFormat(mappedProduct, cart.formatId, cart.formatType);
+    const quantity = Math.max(1, Number(cart.quantity) || 1);
+    const unitPrice = Number(cart.price ?? format.price);
+    return {
+      product,
+      quantity,
+      unitPrice,
+      total: unitPrice * quantity,
+      title: formatLabelTitle(product.title, format.label),
+      productType: normalizeType(format.type),
+      sku: format.sku || product.sku,
+    };
+  }).filter(Boolean) as Array<{ product: (typeof products)[number]; quantity: number; unitPrice: number; total: number; title: string; productType: LibraryProductType; sku: string }>;
   const order = await prisma.libraryOrder.create({
     data: {
       orderNumber: `HL-LIB-${Date.now()}`,
@@ -588,12 +665,12 @@ export async function createLibraryOrderFromCheckout(input: {
       items: {
         create: lines.map((line) => ({
           productId: line.product.id,
-          title: line.product.title,
-          sku: line.product.sku,
+          title: line.title,
+          sku: line.sku,
           quantity: line.quantity,
           unitPrice: line.unitPrice,
           total: line.total,
-          productType: line.product.productType,
+          productType: line.productType,
         })),
       },
     },
@@ -726,7 +803,8 @@ export async function fulfillPaidLibraryOrdersForPayment(paymentId: string) {
       metadata: { paymentId },
     });
     for (const item of order.items) {
-      if (item.product.stock !== null) {
+      const isPrinted = item.productType === "PRINTED_BOOK";
+      if (isPrinted && item.product.stock !== null) {
         await prisma.libraryProduct.update({
           where: { id: item.productId },
           data: { stock: { decrement: item.quantity } },
@@ -735,7 +813,8 @@ export async function fulfillPaidLibraryOrdersForPayment(paymentId: string) {
           data: { productId: item.productId, type: "SALE", quantity: -item.quantity, note: `Order ${order.id}` },
         }).catch(() => null);
       }
-      await createLibraryAcademyEntitlementForItem(order.id, order.customerId, item.productId, item.product.productType);
+      await createLibraryAcademyEntitlementForItem(order.id, order.customerId, item.productId, item.productType);
+      if (isPrinted) continue;
       const files = item.product.files.filter((file) => file.active && file.downloadable);
       if (!files.length) {
         await prisma.libraryDownloadAccess.upsert({
@@ -798,14 +877,19 @@ export async function listCustomerLibrary(customerId: string) {
         .filter((order) => order.customerId === customerId && (order.status === "PAID" || order.status === "FULFILLED"))
         .flatMap((order) => order.items?.map((item) => item.productId) ?? []),
     );
-    return { products: localLibraryProducts.filter((product) => productIds.has(product.id)), orders, downloads: [] };
+    return { products: localLibraryProducts.filter((product) => productIds.has(product.id)), orders, downloads: [], wishlist: [], wishlistCount: 0 };
   }
   try {
-    const [orders, downloads] = await Promise.all([
+    const [orders, downloads, wishlist] = await Promise.all([
       listLibraryOrders(customerId),
       getMainPrisma().libraryDownloadAccess.findMany({
         where: { userId: customerId },
         include: { product: { include: productInclude() }, file: true },
+        orderBy: { createdAt: "desc" },
+      }),
+      getMainPrisma().libraryWishlistItem.findMany({
+        where: { userId: customerId },
+        include: { product: { include: productInclude() } },
         orderBy: { createdAt: "desc" },
       }),
     ]);
@@ -825,10 +909,219 @@ export async function listCustomerLibrary(customerId: string) {
         downloadLimit: download.downloadLimit,
         expiresAt: download.expiresAt?.toISOString() ?? null,
       })),
+      wishlist: wishlist.map((item) => toLibraryProduct(item.product as DbProduct)),
+      wishlistCount: wishlist.length,
     };
   } catch {
-    return { products: [], orders: [], downloads: [] };
+    return { products: [], orders: [], downloads: [], wishlist: [], wishlistCount: 0 };
   }
+}
+
+export async function toggleLibraryWishlist(userId: string, productId: string) {
+  if (!userId || !productId) return null;
+  if (!shouldUsePostgresLibrary()) {
+    return { wished: true, productId };
+  }
+  const prisma = getMainPrisma();
+  const existing = await prisma.libraryWishlistItem.findUnique({ where: { userId_productId: { userId, productId } } }).catch(() => null);
+  if (existing) {
+    await prisma.libraryWishlistItem.delete({ where: { userId_productId: { userId, productId } } });
+    return { wished: false, productId };
+  }
+  const product = await prisma.libraryProduct.findUnique({ where: { id: productId }, select: { id: true } });
+  if (!product) return null;
+  await prisma.libraryWishlistItem.create({ data: { userId, productId } });
+  return { wished: true, productId };
+}
+
+export async function isLibraryWishlisted(userId: string, productId: string) {
+  if (!userId || !productId || !shouldUsePostgresLibrary()) return false;
+  const row = await getMainPrisma().libraryWishlistItem.findUnique({ where: { userId_productId: { userId, productId } } }).catch(() => null);
+  return Boolean(row);
+}
+
+export async function createLibraryCustomerReview(input: { userId: string; productId: string; rating: number; title?: string; body?: string }) {
+  const rating = Math.min(5, Math.max(1, Math.round(Number(input.rating) || 0)));
+  if (!input.userId || !input.productId || rating < 1) return null;
+  if (!shouldUsePostgresLibrary()) {
+    return { id: `local-review-${Date.now()}`, productId: input.productId, rating, status: "PENDING" };
+  }
+  const prisma = getMainPrisma();
+  const access = await prisma.libraryDownloadAccess.findFirst({
+    where: { userId: input.userId, productId: input.productId, status: { in: ["ACTIVE", "EXPIRED"] } },
+    select: { id: true },
+  });
+  if (!access) return { error: "PURCHASE_REQUIRED" as const };
+  const review = await prisma.libraryReview.upsert({
+    where: { productId_userId: { productId: input.productId, userId: input.userId } },
+    create: {
+      productId: input.productId,
+      userId: input.userId,
+      rating,
+      title: input.title?.trim() || null,
+      body: input.body?.trim() || null,
+      status: "PENDING",
+      verified: true,
+    },
+    update: {
+      rating,
+      title: input.title?.trim() || null,
+      body: input.body?.trim() || null,
+      status: "PENDING",
+      verified: true,
+    },
+  });
+  await recalculateLibraryProductRating(input.productId);
+  return review;
+}
+
+export async function buildLibraryExportCsv(type: string) {
+  if (!shouldUsePostgresLibrary()) return "type,message\nexport,Postgres store required\n";
+  const prisma = getMainPrisma();
+  const normalized = type.trim().toLowerCase();
+  if (normalized === "products" || normalized === "catalog") {
+    const products = await prisma.libraryProduct.findMany({
+      include: { category: true, author: true },
+      orderBy: { updatedAt: "desc" },
+      take: 5000,
+    });
+    return toCsv(
+      ["id", "title", "slug", "status", "productType", "price", "currency", "stock", "category", "author", "sku"],
+      products.map((product) => [
+        product.id,
+        product.title,
+        product.slug,
+        product.status,
+        product.productType,
+        Number(product.price),
+        product.currency,
+        product.stock ?? "",
+        product.category?.name ?? "",
+        product.author?.name ?? "",
+        product.sku,
+      ]),
+    );
+  }
+  if (normalized === "orders" || normalized === "sales" || normalized === "revenue") {
+    const orders = await prisma.libraryOrder.findMany({
+      include: { customer: { select: { email: true, name: true } }, payment: { select: { provider: true, method: true, status: true } } },
+      orderBy: { createdAt: "desc" },
+      take: 5000,
+    });
+    return toCsv(
+      ["id", "orderNumber", "status", "paymentStatus", "total", "currency", "customerEmail", "customerName", "provider", "createdAt"],
+      orders.map((order) => [
+        order.id,
+        order.orderNumber,
+        order.status,
+        order.payment?.status ?? "",
+        Number(order.total),
+        order.currency,
+        order.customer.email,
+        order.customer.name,
+        order.payment?.method || order.payment?.provider || "",
+        order.createdAt.toISOString(),
+      ]),
+    );
+  }
+  if (normalized === "downloads") {
+    const downloads = await prisma.libraryDownloadAccess.findMany({
+      include: { user: { select: { email: true } }, product: { select: { title: true } }, file: { select: { fileName: true } } },
+      orderBy: { createdAt: "desc" },
+      take: 5000,
+    });
+    return toCsv(
+      ["id", "product", "file", "userEmail", "status", "downloadCount", "downloadLimit", "expiresAt"],
+      downloads.map((download) => [
+        download.id,
+        download.product.title,
+        download.file?.fileName ?? "",
+        download.user.email,
+        download.status,
+        download.downloadCount,
+        download.downloadLimit ?? "",
+        download.expiresAt?.toISOString() ?? "",
+      ]),
+    );
+  }
+  if (normalized === "coupons") {
+    const coupons = await prisma.libraryCoupon.findMany({ orderBy: { updatedAt: "desc" }, take: 2000 });
+    return toCsv(
+      ["id", "code", "discountType", "discountValue", "usedCount", "usageLimit", "active", "expiresAt"],
+      coupons.map((coupon) => [
+        coupon.id,
+        coupon.code,
+        coupon.discountType,
+        Number(coupon.discountValue),
+        coupon.usedCount,
+        coupon.usageLimit ?? "",
+        coupon.active,
+        coupon.expiresAt?.toISOString() ?? "",
+      ]),
+    );
+  }
+  if (normalized === "customers") {
+    const customers = await prisma.libraryOrder.groupBy({
+      by: ["customerId"],
+      _count: { _all: true },
+      _sum: { total: true },
+      orderBy: { _sum: { total: "desc" } },
+      take: 2000,
+    });
+    const users = await prisma.user.findMany({
+      where: { id: { in: customers.map((item) => item.customerId) } },
+      select: { id: true, email: true, name: true },
+    });
+    const userMap = new Map(users.map((user) => [user.id, user]));
+    return toCsv(
+      ["customerId", "name", "email", "orders", "lifetimeValue"],
+      customers.map((item) => {
+        const user = userMap.get(item.customerId);
+        return [item.customerId, user?.name ?? "", user?.email ?? "", item._count._all, Number(item._sum.total ?? 0)];
+      }),
+    );
+  }
+  if (normalized === "inventory") {
+    const products = await prisma.libraryProduct.findMany({
+      where: { productType: LibraryProductType.PRINTED_BOOK },
+      orderBy: { title: "asc" },
+      take: 5000,
+    });
+    return toCsv(
+      ["id", "title", "sku", "stock", "lowStockThreshold", "warehouse", "supplier"],
+      products.map((product) => [product.id, product.title, product.sku, product.stock ?? "", product.lowStockThreshold, product.warehouse ?? "", product.supplier ?? ""]),
+    );
+  }
+  if (normalized === "taxes" || normalized === "refunds") {
+    const orders = await prisma.libraryOrder.findMany({
+      where: normalized === "refunds" ? { status: LibraryOrderStatus.REFUNDED } : undefined,
+      include: { customer: { select: { email: true } }, invoices: { select: { taxTotal: true }, take: 1 } },
+      orderBy: { createdAt: "desc" },
+      take: 5000,
+    });
+    return toCsv(
+      ["id", "orderNumber", "status", "total", "currency", "taxTotal", "customerEmail", "createdAt"],
+      orders.map((order) => [
+        order.id,
+        order.orderNumber,
+        order.status,
+        Number(order.total),
+        order.currency,
+        Number(order.invoices[0]?.taxTotal ?? 0),
+        order.customer.email,
+        order.createdAt.toISOString(),
+      ]),
+    );
+  }
+  return toCsv(["type", "message"], [[normalized, "Unsupported export type"]]);
+}
+
+function toCsv(headers: string[], rows: Array<Array<string | number | boolean | null | undefined>>) {
+  const escape = (value: string | number | boolean | null | undefined) => {
+    const text = value == null ? "" : String(value);
+    return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+  };
+  return `${headers.join(",")}\n${rows.map((row) => row.map(escape).join(",")).join("\n")}\n`;
 }
 
 export async function getLibraryOrderForUser(orderId: string, userId: string, roles: string[] = []) {
@@ -842,7 +1135,11 @@ export async function getLibraryOrderForUser(orderId: string, userId: string, ro
   const admin = roles.some((role) => ["ADMIN", "SUPER_ADMIN"].includes(role));
   const order = await getMainPrisma().libraryOrder.findUnique({
     where: { id: orderId },
-    include: { customer: { select: { id: true, name: true, email: true } }, items: true, payment: { select: { status: true } } },
+    include: {
+      customer: { select: { id: true, name: true, email: true } },
+      items: true,
+      payment: { select: { id: true, status: true, provider: true, method: true, proofStatus: true, proofUrl: true } },
+    },
   }).catch(() => null);
   if (!order) return null;
   if (!admin && order.customerId !== userId) return "FORBIDDEN" as const;
@@ -857,7 +1154,16 @@ export async function getLibraryOrderForUser(orderId: string, userId: string, ro
       total: Number(item.total),
       productId: item.productId,
     })),
-    payment: order.payment,
+    payment: order.payment
+      ? {
+          id: order.payment.id,
+          status: order.payment.status,
+          provider: order.payment.provider,
+          method: order.payment.method,
+          proofStatus: order.payment.proofStatus,
+          proofUrl: order.payment.proofUrl,
+        }
+      : null,
   };
 }
 
@@ -1211,17 +1517,18 @@ export async function updateLibraryFulfilment(id: string, input: { status?: stri
 
 export async function createLibraryExportJob(type: string, filters: unknown, actorId?: string) {
   if (!shouldUsePostgresLibrary()) return { id: `export-${Date.now()}`, type, status: "COMPLETED", fileUrl: null };
+  const safeType = type.trim().toLowerCase() || "products";
   const job = await getMainPrisma().libraryExportJob.create({
     data: {
-      type,
+      type: safeType,
       status: "COMPLETED",
       requestedById: actorId,
       filters: (filters ?? {}) as Prisma.InputJsonValue,
-      fileUrl: `/api/v1/admin/library/exports/${encodeURIComponent(type)}.csv`,
+      fileUrl: `/api/v1/admin/library/exports/${encodeURIComponent(safeType)}`,
       completedAt: new Date(),
     },
   });
-  await logLibraryActivity({ actorId, targetType: "export", targetId: job.id, action: "CREATED", message: `${type} export prepared.` });
+  await logLibraryActivity({ actorId, targetType: "export", targetId: job.id, action: "CREATED", message: `${safeType} export prepared.` });
   return job;
 }
 
@@ -1438,20 +1745,32 @@ export async function upsertLibraryTaxonomy(kind: LibraryTaxonomyKind, input: {
 
 export async function deleteLibraryTaxonomy(kind: LibraryTaxonomyKind, id: string, actorId?: string) {
   if (!shouldUsePostgresLibrary()) {
-    const row = localLibraryTaxonomy.find((item) => item.id === id && item.kind === kind);
-    if (!row) return null;
-    row.active = false;
+    const index = localLibraryTaxonomy.findIndex((item) => item.id === id && item.kind === kind);
+    if (index === -1) return null;
+    const [row] = localLibraryTaxonomy.splice(index, 1);
     return row;
   }
   const prisma = getMainPrisma();
-  const row = kind === "category"
-    ? await prisma.libraryCategory.update({ where: { id }, data: { active: false }, include: { _count: { select: { products: true } } } }).catch(() => null)
-    : kind === "collection"
-      ? await prisma.libraryCollection.update({ where: { id }, data: { active: false }, include: { _count: { select: { products: true } } } }).catch(() => null)
-      : await prisma.libraryAuthor.update({ where: { id }, data: { active: false }, include: { _count: { select: { products: true } } } }).catch(() => null);
-  if (!row) return null;
-  await logLibraryActivity({ actorId, targetType: kind, targetId: id, action: "TAXONOMY_DISABLED", message: `${kind} disabled.` });
-  return toLibraryTaxonomyAdmin(kind, row);
+  try {
+    if (kind === "category") {
+      await prisma.libraryProduct.updateMany({ where: { categoryId: id }, data: { categoryId: null } });
+      const row = await prisma.libraryCategory.delete({ where: { id }, include: { _count: { select: { products: true } } } });
+      await logLibraryActivity({ actorId, targetType: kind, targetId: id, action: "TAXONOMY_DELETED", message: `${row.name} category deleted.` });
+      return toLibraryTaxonomyAdmin("category", { ...row, _count: { products: 0 } });
+    }
+    if (kind === "collection") {
+      await prisma.libraryProduct.updateMany({ where: { collectionId: id }, data: { collectionId: null } });
+      const row = await prisma.libraryCollection.delete({ where: { id }, include: { _count: { select: { products: true } } } });
+      await logLibraryActivity({ actorId, targetType: kind, targetId: id, action: "TAXONOMY_DELETED", message: `${row.name} collection deleted.` });
+      return toLibraryTaxonomyAdmin("collection", { ...row, _count: { products: 0 } });
+    }
+    await prisma.libraryProduct.updateMany({ where: { authorId: id }, data: { authorId: null } });
+    const row = await prisma.libraryAuthor.delete({ where: { id }, include: { _count: { select: { products: true } } } });
+    await logLibraryActivity({ actorId, targetType: kind, targetId: id, action: "TAXONOMY_DELETED", message: `${row.name} author deleted.` });
+    return toLibraryTaxonomyAdmin("author", { ...row, _count: { products: 0 } });
+  } catch {
+    return null;
+  }
 }
 
 export async function updateLibraryDownloadAccess(id: string, input: { status?: string; downloadLimit?: number | null; expiresAt?: string | null }, actorId?: string) {
@@ -1722,6 +2041,8 @@ async function productInputToPrisma(input: LibraryProductInput, actorId?: string
   const author = authorName ? await upsertAuthor(authorName) : null;
   const category = categoryName ? await upsertCategory(categoryName) : null;
   const collection = collectionName ? await upsertCollection(collectionName) : null;
+  const formats = input.formats !== undefined ? normalizeFormatsInput(input.formats) : undefined;
+  const primary = formats ? primaryLibraryFormat(formats, input.productType ?? "PDF", Number(input.price ?? 0)) : null;
   const createOrUpdate: Prisma.LibraryProductCreateInput | Prisma.LibraryProductUpdateInput = {
     ...(input.title !== undefined ? { title: input.title } : {}),
     ...(input.slug !== undefined || (!partial && input.title) ? { slug: input.slug || slugify(input.title) } : {}),
@@ -1737,10 +2058,10 @@ async function productInputToPrisma(input: LibraryProductInput, actorId?: string
     ...(input.bookSize !== undefined ? { bookSize: input.bookSize || null } : {}),
     ...(input.sku !== undefined || (!partial && input.title) ? { sku: input.sku || `HL-LIB-${Date.now()}` } : {}),
     ...(input.barcode !== undefined ? { barcode: input.barcode || null } : {}),
-    ...(input.productType !== undefined || !partial ? { productType: normalizeType(input.productType ?? "PDF") } : {}),
+    ...(primary || input.productType !== undefined || !partial ? { productType: normalizeType(primary?.type ?? input.productType ?? "PDF") } : {}),
     ...(input.status !== undefined || !partial ? { status: normalizeStatus(input.status ?? "DRAFT") } : {}),
-    ...(input.price !== undefined ? { price: input.price } : {}),
-    ...(input.compareAtPrice !== undefined ? { compareAtPrice: input.compareAtPrice || null } : {}),
+    ...(primary || input.price !== undefined ? { price: primary?.price ?? input.price } : {}),
+    ...(primary?.compareAtPrice !== undefined || input.compareAtPrice !== undefined ? { compareAtPrice: (primary?.compareAtPrice ?? input.compareAtPrice) || null } : {}),
     ...(input.currency !== undefined || !partial ? { currency: input.currency || "USD" } : {}),
     ...(category ? { category: { connect: { id: category.id } } } : {}),
     ...(collection ? { collection: { connect: { id: collection.id } } } : {}),
@@ -1755,6 +2076,9 @@ async function productInputToPrisma(input: LibraryProductInput, actorId?: string
     ...(input.tags !== undefined ? { tags: input.tags } : {}),
     ...(input.seoTitle !== undefined ? { seoTitle: input.seoTitle || null } : {}),
     ...(input.metaDescription !== undefined ? { metaDescription: input.metaDescription || null } : {}),
+    ...(input.seoFocusKeyword !== undefined ? { seoFocusKeyword: input.seoFocusKeyword || null } : {}),
+    ...(input.seoImageUrl !== undefined ? { seoImageUrl: input.seoImageUrl || null } : {}),
+    ...(formats ? { formats: formats as unknown as Prisma.InputJsonValue } : {}),
     ...(input.title || input.description ? { searchVector: buildSearchVector(input) } : {}),
     ...(input.featured !== undefined ? { featured: input.featured } : {}),
     ...(input.bestSeller !== undefined ? { bestSeller: input.bestSeller } : {}),
@@ -1825,6 +2149,9 @@ function toLibraryProduct(row: DbProduct): LibraryProduct {
     tags: row.tags,
     seoTitle: row.seoTitle ?? undefined,
     metaDescription: row.metaDescription ?? undefined,
+    seoFocusKeyword: row.seoFocusKeyword ?? undefined,
+    seoImageUrl: row.seoImageUrl ?? undefined,
+    formats: parseFormats(row.formats, row.productType as PublicLibraryProductType, Number(row.price), row.compareAtPrice ? Number(row.compareAtPrice) : undefined, row.sku),
     gallery: row.media.map((item) => ({ label: item.label, url: item.url, kind: mediaKind(item.mediaType) })),
     downloads: row.files.map((item) => ({ id: item.id, label: item.label, fileType: item.fileType, size: formatBytes(item.fileSizeBytes), secure: item.secure, fileUrl: item.fileUrl, fileName: item.fileName, fileSizeBytes: item.fileSizeBytes, previewable: item.previewable })),
     stock: row.stock,
@@ -2089,6 +2416,20 @@ function localProductFromInput(input: Partial<LibraryProductInput>, existing?: L
         previewable: item.previewable ?? item.fileType.toUpperCase() === "PDF",
       }))
     : existing?.downloads.map((item) => ({ ...item })) ?? [];
+  const formats = input.formats?.length
+    ? normalizeFormatsInput(input.formats)
+    : existing?.formats ?? [
+        {
+          id: "primary",
+          type: (input.productType === "PRINTED_BOOK" || existing?.productType === "PRINTED_BOOK" ? "PRINTED_BOOK" : "PDF") as LibraryProductFormat["type"],
+          label: input.productType === "PRINTED_BOOK" || existing?.productType === "PRINTED_BOOK" ? "Printed book" : "Digital copy",
+          enabled: true,
+          price: Number(input.price ?? existing?.price ?? 0),
+          compareAtPrice: input.compareAtPrice ?? existing?.compareAtPrice,
+          sku: input.sku ?? existing?.sku,
+        },
+      ];
+  const primary = primaryLibraryFormat(formats, input.productType ?? existing?.productType ?? "PDF", Number(input.price ?? existing?.price ?? 0));
   return {
     id: existing?.id ?? `local-product-${Date.now()}`,
     slug,
@@ -2104,10 +2445,10 @@ function localProductFromInput(input: Partial<LibraryProductInput>, existing?: L
     weightGrams: input.weightGrams ?? existing?.weightGrams,
     bookSize: input.bookSize ?? existing?.bookSize,
     sku: input.sku ?? existing?.sku ?? `HL-LIB-${Date.now()}`,
-    productType: input.productType ?? existing?.productType ?? "PDF",
+    productType: (input.productType ?? primary.type ?? existing?.productType ?? "PDF") as LibraryProduct["productType"],
     status: (input.status as LibraryProduct["status"] | undefined) ?? existing?.status ?? "DRAFT",
-    price: Number(input.price ?? existing?.price ?? 0),
-    compareAtPrice: input.compareAtPrice ?? existing?.compareAtPrice,
+    price: Number(input.price ?? primary.price ?? existing?.price ?? 0),
+    compareAtPrice: input.compareAtPrice ?? primary.compareAtPrice ?? existing?.compareAtPrice,
     currency: input.currency ?? existing?.currency ?? "USD",
     rating: existing?.rating ?? 0,
     reviewCount: existing?.reviewCount ?? 0,
@@ -2122,6 +2463,11 @@ function localProductFromInput(input: Partial<LibraryProductInput>, existing?: L
     requirements: input.requirements ?? existing?.requirements ?? [],
     tableOfContents: input.tableOfContents ?? existing?.tableOfContents ?? [],
     tags: input.tags ?? existing?.tags ?? [],
+    seoTitle: input.seoTitle ?? existing?.seoTitle,
+    metaDescription: input.metaDescription ?? existing?.metaDescription,
+    seoFocusKeyword: input.seoFocusKeyword ?? existing?.seoFocusKeyword,
+    seoImageUrl: input.seoImageUrl ?? existing?.seoImageUrl,
+    formats,
     gallery,
     downloads,
     stock: input.stock !== undefined ? input.stock : existing?.stock ?? null,
@@ -2138,6 +2484,49 @@ function localProductFromInput(input: Partial<LibraryProductInput>, existing?: L
     viewCount: existing?.viewCount ?? 0,
     publishedAt: input.status === "PUBLISHED" ? now : existing?.publishedAt ?? now,
   };
+}
+
+function parseFormats(value: unknown, productType: PublicLibraryProductType, price: number, compareAtPrice?: number, sku?: string): LibraryProductFormat[] {
+  const parsed = normalizeFormatsInput(value);
+  if (parsed.length) return parsed;
+  return [
+    {
+      id: "primary",
+      type: productType === "PRINTED_BOOK" ? "PRINTED_BOOK" : productType === "DIGITAL_BOOK" ? "DIGITAL_BOOK" : "PDF",
+      label: productType === "PRINTED_BOOK" ? "Printed book" : "Digital copy",
+      enabled: true,
+      price,
+      compareAtPrice,
+      sku,
+    },
+  ];
+}
+
+function normalizeFormatsInput(value: unknown): LibraryProductFormat[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item, index) => {
+      const row = item as Partial<LibraryProductFormat>;
+      const type = row.type === "PRINTED_BOOK" || row.type === "DIGITAL_BOOK" || row.type === "PDF" ? row.type : null;
+      if (!type) return null;
+      const price = Number(row.price);
+      if (!Number.isFinite(price)) return null;
+      return {
+        id: String(row.id || `${type.toLowerCase()}-${index}`),
+        type,
+        label: String(row.label || (type === "PRINTED_BOOK" ? "Printed book" : type === "DIGITAL_BOOK" ? "Digital book" : "Digital PDF")),
+        enabled: row.enabled !== false,
+        price,
+        compareAtPrice: row.compareAtPrice == null || row.compareAtPrice === ("" as unknown) ? undefined : Number(row.compareAtPrice) || undefined,
+        sku: row.sku ? String(row.sku) : undefined,
+      } satisfies LibraryProductFormat;
+    })
+    .filter(Boolean) as LibraryProductFormat[];
+}
+
+function formatLabelTitle(title: string, label?: string) {
+  if (!label) return title;
+  return title.includes(`(${label})`) ? title : `${title} (${label})`;
 }
 
 function slugify(value: string) {

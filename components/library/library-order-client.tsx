@@ -18,17 +18,27 @@ type OrderDetail = {
   currency: string;
   createdAt: string;
   items?: Array<{ id: string; title: string; sku: string; quantity: number; unitPrice: number; total: number }>;
-  payment?: { status: string; proofStatus?: string | null; referenceNumber?: string | null } | null;
+  payment?: { status: string; proofStatus?: string | null; referenceNumber?: string | null; method?: string | null; provider?: string | null } | null;
 };
 
 export function LibraryOrderClient({ initialOrder }: { initialOrder: OrderDetail }) {
   const [order, setOrder] = useState(initialOrder);
+  const [notice, setNotice] = useState("");
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     void apiFetch<OrderDetail>(`/api/v1/library/orders/${initialOrder.id}`).then((result) => {
       if (result.data) setOrder(result.data);
     });
   }, [initialOrder.id]);
+
+  async function resendEmail() {
+    setBusy(true);
+    setNotice("");
+    const result = await apiFetch<{ message?: string }>(`/api/v1/library/orders/${order.id}/notify`, { method: "POST" });
+    setBusy(false);
+    setNotice(result.error?.message || result.data?.message || "Invoice email queued.");
+  }
 
   return (
     <PageShell
@@ -38,6 +48,11 @@ export function LibraryOrderClient({ initialOrder }: { initialOrder: OrderDetail
       compactHero
       actions={<Link href="/dashboard/my-library" className="bg-emerald-600 text-white hover:bg-emerald-500">Back to My Library</Link>}
     >
+      {notice && (
+        <div role="status" className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-900">
+          {notice}
+        </div>
+      )}
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <section className="surface-panel rounded-lg p-5">
           <div className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-4 dark:border-slate-800">
@@ -90,7 +105,9 @@ export function LibraryOrderClient({ initialOrder }: { initialOrder: OrderDetail
           <Button variant="secondary" className="w-full" onClick={() => { window.location.href = `/api/v1/library/orders/${order.id}/invoice`; }}>
             <FileText className="size-4" /> Download invoice
           </Button>
-          <Button variant="secondary" className="w-full"><Mail className="size-4" /> Resend email</Button>
+          <Button variant="secondary" className="w-full" disabled={busy} onClick={() => void resendEmail()}>
+            <Mail className="size-4" /> {busy ? "Sending..." : "Resend email"}
+          </Button>
           <div className="rounded-lg border border-slate-200 bg-white p-4 text-sm dark:border-slate-800 dark:bg-slate-900">
             <FileText className="mb-2 size-5 text-emerald-600" />
             <p className="font-semibold">Reference</p>

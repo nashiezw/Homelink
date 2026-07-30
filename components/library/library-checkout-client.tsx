@@ -2,20 +2,33 @@
 
 import Link from "next/link";
 import { CreditCard, Gift, Lock, Minus, Plus, ShoppingCart, Trash2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { PageShell } from "@/components/layout/page-shell";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api/client";
-import { clearLibraryCart, useLibraryCart } from "@/lib/library/cart-client";
+import { clearLibraryCart, libraryCartLineKey, sameLibraryCartLine, useLibraryCart } from "@/lib/library/cart-client";
 import type { PublicPaymentConfig } from "@/lib/payments/public-payment-config";
+
+type LibraryQuote = {
+  subtotal: number;
+  discountTotal: number;
+  taxTotal: number;
+  total: number;
+  currency: string;
+  couponCode?: string;
+};
 
 export function LibraryCheckoutClient() {
   const { cart, setCart, total } = useLibraryCart();
   const [paymentMethod, setPaymentMethod] = useState("bank_transfer");
   const [couponCode, setCouponCode] = useState("");
+  const [appliedCoupon, setAppliedCoupon] = useState("");
+  const [quote, setQuote] = useState<LibraryQuote | null>(null);
   const [busy, setBusy] = useState(false);
+  const [quoting, setQuoting] = useState(false);
   const [config, setConfig] = useState<PublicPaymentConfig | null>(null);
   const [error, setError] = useState("");
+  const [couponMessage, setCouponMessage] = useState("");
 
   useEffect(() => {
     void apiFetch<PublicPaymentConfig>("/api/v1/payments/config").then((result) => {
@@ -26,12 +39,67 @@ export function LibraryCheckoutClient() {
     });
   }, []);
 
+  useEffect(() => {
+    if (!cart.length) {
+      setQuote(null);
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      void refreshQuote(appliedCoupon);
+    }, 250);
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cart, appliedCoupon]);
+
+  async function refreshQuote(code?: string) {
+    if (!cart.length) {
+      setQuote(null);
+      return null;
+    }
+    setQuoting(true);
+    const result = await apiFetch<LibraryQuote>("/api/v1/library/quote", {
+      method: "POST",
+      body: JSON.stringify({ items: cart, couponCode: code || undefined }),
+    });
+    setQuoting(false);
+    if (result.error || !result.data) {
+      setQuote(null);
+      return null;
+    }
+    setQuote(result.data);
+    return result.data;
+  }
+
+  async function applyCoupon() {
+    setError("");
+    setCouponMessage("");
+    const code = couponCode.trim().toUpperCase();
+    if (!code) {
+      setAppliedCoupon("");
+      setCouponMessage("Coupon cleared.");
+      return;
+    }
+    const next = await refreshQuote(code);
+    if (!next) {
+      setCouponMessage("Could not validate coupon right now.");
+      return;
+    }
+    if (next.discountTotal <= 0) {
+      setAppliedCoupon("");
+      setCouponMessage("That coupon is invalid or does not apply to this cart.");
+      return;
+    }
+    setAppliedCoupon(code);
+    setCouponCode(code);
+    setCouponMessage(`Coupon ${code} applied (−${next.currency} ${next.discountTotal.toFixed(2)}).`);
+  }
+
   async function checkout() {
     setBusy(true);
     setError("");
     const result = await apiFetch<{ redirectUrl?: string; order?: { id?: string; orderNumber?: string } }>("/api/v1/library/checkout", {
       method: "POST",
-      body: JSON.stringify({ items: cart, provider: paymentMethod, couponCode }),
+      body: JSON.stringify({ items: cart, provider: paymentMethod, couponCode: appliedCoupon || couponCode }),
     });
     setBusy(false);
     if (result.data?.redirectUrl) {
@@ -42,13 +110,15 @@ export function LibraryCheckoutClient() {
     setError(result.error?.message ?? "We could not create your Library order. Please try again.");
   }
 
-  function remove(productId: string) {
-    setCart((current) => current.filter((item) => item.productId !== productId));
+  function remove(productId: string, formatId?: string) {
+    setCart((current) => current.filter((item) => !sameLibraryCartLine(item, { productId, formatId })));
   }
 
-  function quantity(productId: string, value: number) {
-    setCart((current) => current.map((item) => item.productId === productId ? { ...item, quantity: Math.max(1, value) } : item));
+  function quantity(productId: string, value: number, formatId?: string) {
+    setCart((current) => current.map((item) => (sameLibraryCartLine(item, { productId, formatId }) ? { ...item, quantity: Math.max(1, value) } : item)));
   }
+
+  const payable = useMemo(() => quote?.total ?? total, [quote, total]);
 
   return (
     <PageShell
@@ -63,15 +133,16 @@ export function LibraryCheckoutClient() {
           <h2 className="text-lg font-semibold text-ink dark:text-white">Order summary</h2>
           <div className="mt-4 space-y-3">
             {cart.length ? cart.map((item) => (
-              <div key={item.productId} className="flex items-start justify-between gap-4 rounded-lg border border-slate-200 p-4 dark:border-slate-800">
+              <div key={libraryCartLineKey(item)} className="flex items-start justify-between gap-4 rounded-lg border border-slate-200 p-4 dark:border-slate-800">
                 <div>
                   <p className="font-semibold">{item.title}</p>
+                  {item.formatLabel && <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">{item.formatLabel}</p>}
                   <div className="mt-3 inline-flex items-center rounded-lg border border-slate-200 dark:border-slate-700">
-                    <button type="button" onClick={() => quantity(item.productId, item.quantity - 1)} className="grid size-8 place-items-center text-slate-500 hover:text-emerald-700" aria-label="Decrease quantity"><Minus className="size-3.5" /></button>
+                    <button type="button" onClick={() => quantity(item.productId, item.quantity - 1, item.formatId)} className="grid size-8 place-items-center text-slate-500 hover:text-emerald-700" aria-label="Decrease quantity"><Minus className="size-3.5" /></button>
                     <span className="w-8 text-center text-xs font-black">{item.quantity}</span>
-                    <button type="button" onClick={() => quantity(item.productId, item.quantity + 1)} className="grid size-8 place-items-center text-slate-500 hover:text-emerald-700" aria-label="Increase quantity"><Plus className="size-3.5" /></button>
+                    <button type="button" onClick={() => quantity(item.productId, item.quantity + 1, item.formatId)} className="grid size-8 place-items-center text-slate-500 hover:text-emerald-700" aria-label="Increase quantity"><Plus className="size-3.5" /></button>
                   </div>
-                  <button type="button" onClick={() => remove(item.productId)} className="ml-3 inline-flex items-center gap-1 text-xs font-bold text-slate-500 hover:text-red-600">
+                  <button type="button" onClick={() => remove(item.productId, item.formatId)} className="ml-3 inline-flex items-center gap-1 text-xs font-bold text-slate-500 hover:text-red-600">
                     <Trash2 className="size-3.5" /> Remove
                   </button>
                 </div>
@@ -103,13 +174,17 @@ export function LibraryCheckoutClient() {
               Coupon or gift card
               <div className="mt-2 flex gap-2">
                 <input value={couponCode} onChange={(e) => setCouponCode(e.target.value)} className="h-11 min-w-0 flex-1 rounded-lg border border-slate-200 px-3 dark:border-slate-700 dark:bg-slate-900" placeholder="Code" />
-                <button type="button" className="rounded-lg border border-slate-200 px-3 dark:border-slate-700" aria-label="Apply coupon"><Gift className="size-4" /></button>
+                <button type="button" onClick={() => void applyCoupon()} className="rounded-lg border border-slate-200 px-3 dark:border-slate-700" aria-label="Apply coupon"><Gift className="size-4" /></button>
               </div>
             </label>
-            <div className="mt-5 border-t border-slate-200 pt-4 dark:border-slate-800">
+            {couponMessage && <p className="mt-2 text-xs font-semibold text-slate-500">{couponMessage}</p>}
+            <div className="mt-5 space-y-2 border-t border-slate-200 pt-4 text-sm dark:border-slate-800">
+              <div className="flex justify-between"><span>Subtotal</span><span>{quote?.currency ?? "USD"} {(quote?.subtotal ?? total).toFixed(2)}</span></div>
+              {(quote?.discountTotal ?? 0) > 0 && <div className="flex justify-between text-emerald-700 dark:text-emerald-300"><span>Discount</span><span>−{(quote?.discountTotal ?? 0).toFixed(2)}</span></div>}
+              {(quote?.taxTotal ?? 0) > 0 && <div className="flex justify-between"><span>Tax</span><span>{(quote?.taxTotal ?? 0).toFixed(2)}</span></div>}
               <div className="flex justify-between text-lg font-bold">
                 <span>Total</span>
-                <span>USD {total.toFixed(2)}</span>
+                <span>{quote?.currency ?? "USD"} {payable.toFixed(2)}{quoting ? "…" : ""}</span>
               </div>
               <Button className="mt-4 w-full" disabled={!cart.length || busy} onClick={() => void checkout()}>
                 <CreditCard className="size-4" /> {busy ? "Creating order..." : "Place order"}

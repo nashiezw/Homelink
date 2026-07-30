@@ -26,25 +26,19 @@ export function BookCover({
   className,
   priority = false,
   imageUrl,
+  interactive = true,
 }: {
   product: LibraryProduct;
   className?: string;
   priority?: boolean;
   imageUrl?: string;
+  interactive?: boolean;
 }) {
   const style = styleFor(product);
   const coverTitle = getCoverTitle(product);
   const coverUrl = coverImageUrl(product, imageUrl);
-
-  return (
-    <Link
-      href={`/library/${product.slug}`}
-      className={cn(
-        "group/book relative block aspect-[3/4] overflow-hidden rounded-md bg-white shadow-[0_18px_42px_rgba(15,23,42,0.14)] ring-1 ring-slate-950/10 transition duration-300 hover:-translate-y-1 hover:shadow-[0_26px_56px_rgba(15,23,42,0.2)]",
-        className,
-      )}
-      data-priority={priority ? "true" : undefined}
-    >
+  const content = (
+    <>
       {coverUrl ? (
         <>
           <Image
@@ -57,8 +51,8 @@ export function BookCover({
           />
           <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(15,23,42,0.08),transparent_28%,transparent_62%,rgba(15,23,42,0.45))]" />
           <div className="absolute inset-x-0 bottom-0 z-10 p-3">
-            <p className="line-clamp-2 text-sm font-black leading-tight text-white drop-shadow">{product.title}</p>
-            <p className="mt-1 line-clamp-1 text-[11px] font-semibold text-white/85">{product.author}</p>
+            <p className="line-clamp-2 text-[13px] font-bold leading-snug text-white drop-shadow">{product.title}</p>
+            <p className="mt-1 line-clamp-1 text-[11px] font-medium text-white/85">{product.author}</p>
           </div>
         </>
       ) : (
@@ -87,6 +81,26 @@ export function BookCover({
           <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(0,0,0,0.08),transparent_16%,transparent_84%,rgba(0,0,0,0.05))]" />
         </>
       )}
+    </>
+  );
+
+  const frameClassName = cn(
+    "group/book relative block aspect-[3/4] overflow-hidden rounded-md bg-white shadow-[0_18px_42px_rgba(15,23,42,0.14)] ring-1 ring-slate-950/10",
+    interactive && "transition duration-300 hover:-translate-y-1 hover:shadow-[0_26px_56px_rgba(15,23,42,0.2)]",
+    className,
+  );
+
+  if (!interactive) {
+    return (
+      <div className={frameClassName} data-priority={priority ? "true" : undefined}>
+        {content}
+      </div>
+    );
+  }
+
+  return (
+    <Link href={`/library/${product.slug}`} className={frameClassName} data-priority={priority ? "true" : undefined}>
+      {content}
     </Link>
   );
 }

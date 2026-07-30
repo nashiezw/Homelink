@@ -1,9 +1,9 @@
 "use client";
 
-import { Boxes, CheckCircle2, Copy, Download, Edit3, ExternalLink, FileArchive, Plus, Search, Trash2, Upload, X } from "lucide-react";
+import { Boxes, CheckCircle2, Copy, Download, Edit3, ExternalLink, FileArchive, Link2, Plus, Search, Trash2, Upload, X } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type MouseEvent } from "react";
 import {
   AdminDataTable,
   AdminMetricGrid,
@@ -18,7 +18,17 @@ import {
 import { BarChart, DonutChart, MetricRow } from "@/components/admin/charts";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api/client";
-import { getLibraryAnalytics, libraryFacets, searchLibraryProducts, type LibraryAnalytics, type LibraryOrder, type LibraryProduct } from "@/lib/library/catalog";
+import {
+  enabledLibraryFormats,
+  getLibraryAnalytics,
+  libraryFacets,
+  primaryLibraryFormat,
+  searchLibraryProducts,
+  type LibraryAnalytics,
+  type LibraryOrder,
+  type LibraryProduct,
+  type LibraryProductFormat,
+} from "@/lib/library/catalog";
 import { cn } from "@/lib/utils";
 
 const views = [
@@ -42,7 +52,7 @@ const productStatuses = ["DRAFT", "SCHEDULED", "PUBLISHED", "ARCHIVED"];
 
 type LibraryOperations = {
   fulfilments: Array<{ id: string; status: string; courier?: string | null; trackingNumber?: string | null; trackingUrl?: string | null; dispatchNotes?: string | null; deliveryNotes?: string | null; order?: { orderNumber: string; total: unknown; currency: string } }>;
-  invoices: Array<{ id: string; invoiceNumber: string; total: unknown; currency: string; issuedAt?: string; order?: { orderNumber: string } }>;
+  invoices: Array<{ id: string; invoiceNumber: string; total: unknown; currency: string; issuedAt?: string; orderId?: string; order?: { orderNumber: string } }>;
   activities: Array<{ id: string; action: string; message: string; createdAt?: string }>;
   exports: Array<{ id: string; type: string; status: string; fileUrl?: string | null; createdAt?: string }>;
   taxSettings: Array<{ id: string; name: string; country: string; rate: unknown; inclusive: boolean; active: boolean }>;
@@ -211,6 +221,8 @@ type LibraryProductDraft = {
   tagsText: string;
   seoTitle: string;
   metaDescription: string;
+  seoFocusKeyword: string;
+  seoImageUrl: string;
   stock: string;
   lowStockThreshold: string;
   warehouse: string;
@@ -225,6 +237,7 @@ type LibraryProductDraft = {
   editorsChoice: boolean;
   comingSoon: boolean;
   preorder: boolean;
+  formats: LibraryProductFormat[];
   gallery: LibraryProduct["gallery"];
   downloads: LibraryDraftDownload[];
 };
@@ -260,7 +273,7 @@ const emptyOperations: LibraryOperations = {
   },
 };
 
-function OperationsList({ title, rows }: { title: string; rows: Array<{ label: string; value: string; detail?: string }> }) {
+function OperationsList({ title, rows }: { title: string; rows: Array<{ label: string; value: string; detail?: string; href?: string }> }) {
   return (
     <div className="mt-5 rounded-xl border border-white/[0.08] bg-slate-950/40 p-4">
       <div className="flex items-center justify-between gap-3">
@@ -275,6 +288,11 @@ function OperationsList({ title, rows }: { title: string; rows: Array<{ label: s
               <span className="shrink-0 text-xs font-semibold text-emerald-300">{row.value}</span>
             </div>
             {row.detail && <p className="mt-1 line-clamp-2 text-xs text-slate-500">{row.detail}</p>}
+            {row.href && (
+              <a href={row.href} target="_blank" rel="noreferrer" className="mt-2 inline-flex text-xs font-bold text-emerald-300 hover:underline">
+                Open
+              </a>
+            )}
           </div>
         )) : (
           <p className="rounded-lg border border-dashed border-white/[0.08] p-3 text-sm text-slate-500">No records yet.</p>
@@ -340,6 +358,8 @@ export function LibraryAdminHub() {
     tagsText: "",
     seoTitle: "",
     metaDescription: "",
+    seoFocusKeyword: "",
+    seoImageUrl: "",
     stock: "",
     lowStockThreshold: "0",
     warehouse: "",
@@ -354,6 +374,10 @@ export function LibraryAdminHub() {
     editorsChoice: false,
     comingSoon: false,
     preorder: false,
+    formats: [
+      { id: "digital", type: "PDF", label: "Digital PDF", enabled: true, price: 29 },
+      { id: "printed", type: "PRINTED_BOOK", label: "Printed book", enabled: false, price: 45 },
+    ],
     gallery: [],
     downloads: [],
   };
@@ -433,12 +457,12 @@ export function LibraryAdminHub() {
     });
   }
 
-  async function createProduct() {
+  async function createProduct(statusOverride?: string) {
     setSaving(true);
     setFeedback(null);
     const result = await apiFetch<{ product: LibraryProduct }>("/api/v1/admin/library", {
       method: "POST",
-      body: JSON.stringify(productPayload(draft)),
+      body: JSON.stringify(productPayload(draft, statusOverride)),
     });
     setSaving(false);
     if (result.error || !result.data?.product) {
@@ -449,20 +473,20 @@ export function LibraryAdminHub() {
       tone: "success",
       message: result.data.product.status === "PUBLISHED"
         ? "Product created and published to the public Library."
-        : "Product created as draft. Publish it to show it on the public Library.",
+        : "Product saved as draft. Publish it to show it on the public Library.",
     });
     setDraftOpen(false);
     setDraft(emptyDraft);
     await load();
   }
 
-  async function saveProduct() {
-    if (!editingProduct) return createProduct();
+  async function saveProduct(statusOverride?: string) {
+    if (!editingProduct) return createProduct(statusOverride);
     setSaving(true);
     setFeedback(null);
     const result = await apiFetch<{ product: LibraryProduct }>(`/api/v1/admin/library/products/${editingProduct.id}`, {
       method: "PATCH",
-      body: JSON.stringify(productPayload(draft)),
+      body: JSON.stringify(productPayload(draft, statusOverride)),
     });
     setSaving(false);
     if (result.error || !result.data?.product) {
@@ -472,8 +496,8 @@ export function LibraryAdminHub() {
     setFeedback({
       tone: "success",
       message: result.data.product.status === "PUBLISHED"
-        ? "Product saved and visible on the public Library."
-        : "Product saved. Publish it to show it on the public Library.",
+        ? "Product published to the public Library."
+        : "Product saved as draft.",
     });
     closeEditor();
     await load();
@@ -511,6 +535,8 @@ export function LibraryAdminHub() {
       tagsText: product.tags.join(", "),
       seoTitle: product.seoTitle ?? "",
       metaDescription: product.metaDescription ?? "",
+      seoFocusKeyword: product.seoFocusKeyword ?? "",
+      seoImageUrl: product.seoImageUrl ?? "",
       stock: product.stock === null ? "" : String(product.stock),
       lowStockThreshold: String(product.lowStockThreshold),
       warehouse: product.warehouse ?? "",
@@ -525,6 +551,7 @@ export function LibraryAdminHub() {
       editorsChoice: product.editorsChoice,
       comingSoon: product.comingSoon,
       preorder: product.preorder,
+      formats: normalizeDraftFormats(product),
       gallery: product.gallery,
       downloads: product.downloads,
     });
@@ -573,19 +600,35 @@ export function LibraryAdminHub() {
 
   async function deleteProduct(id: string) {
     if (!window.confirm("Delete this Library product? This removes it from the admin catalogue and public library.")) return;
-    await apiFetch(`/api/v1/admin/library/products/${id}`, { method: "DELETE" });
+    setFeedback(null);
+    const result = await apiFetch<{ count: number }>(`/api/v1/admin/library/products/${id}`, { method: "DELETE" });
+    if (result.error || !result.data?.count) {
+      setFeedback({ tone: "error", message: result.error?.message || "Product could not be deleted." });
+      return;
+    }
+    setProductsSource((current) => current.filter((product) => product.id !== id));
     setSelectedIds((current) => {
       const next = new Set(current);
       next.delete(id);
       return next;
     });
+    setFeedback({ tone: "success", message: "Product deleted." });
     await load();
   }
 
   async function setProductStatus(product: LibraryProduct, status: string) {
-    await apiFetch<{ product: LibraryProduct }>(`/api/v1/admin/library/products/${product.id}`, {
+    setFeedback(null);
+    const result = await apiFetch<{ product: LibraryProduct }>(`/api/v1/admin/library/products/${product.id}`, {
       method: "PATCH",
       body: JSON.stringify({ status }),
+    });
+    if (result.error) {
+      setFeedback({ tone: "error", message: result.error.message || "Could not update product status." });
+      return;
+    }
+    setFeedback({
+      tone: "success",
+      message: status === "PUBLISHED" ? "Product published." : `Product marked ${status.toLowerCase()}.`,
     });
     await load();
   }
@@ -626,14 +669,36 @@ export function LibraryAdminHub() {
 
   async function saveTaxonomy() {
     if (!taxonomyDraft) return;
-    await apiFetch("/api/v1/admin/library", { method: "POST", body: JSON.stringify({ action: "save_taxonomy", ...taxonomyPayload(taxonomyDraft) }) });
+    setFeedback(null);
+    const result = await apiFetch<{ taxonomy: LibraryTaxonomyAdmin }>("/api/v1/admin/library", {
+      method: "POST",
+      body: JSON.stringify({ action: "save_taxonomy", ...taxonomyPayload(taxonomyDraft) }),
+    });
+    if (result.error || !result.data?.taxonomy) {
+      setFeedback({ tone: "error", message: result.error?.message || "Taxonomy record could not be saved." });
+      return;
+    }
     setTaxonomyDraft(null);
+    setFeedback({ tone: "success", message: `${result.data.taxonomy.name} saved.` });
     await load();
   }
 
   async function deleteTaxonomy(kind: LibraryGroupField, id: string) {
-    if (!window.confirm("Disable this Library record? Products stay intact, but the record will no longer be active.")) return;
-    await apiFetch("/api/v1/admin/library", { method: "POST", body: JSON.stringify({ action: "delete_taxonomy", kind, id }) });
+    if (!window.confirm("Permanently delete this Library record? Linked products keep their text values, but this taxonomy row will be removed.")) return;
+    setFeedback(null);
+    const result = await apiFetch<{ taxonomy: LibraryTaxonomyAdmin }>("/api/v1/admin/library", {
+      method: "POST",
+      body: JSON.stringify({ action: "delete_taxonomy", kind, id }),
+    });
+    if (result.error || !result.data?.taxonomy) {
+      setFeedback({ tone: "error", message: result.error?.message || "Taxonomy record could not be deleted." });
+      return;
+    }
+    setOperations((current) => ({
+      ...current,
+      taxonomy: current.taxonomy.filter((item) => item.id !== id),
+    }));
+    setFeedback({ tone: "success", message: `${result.data.taxonomy.name} deleted.` });
     await load();
   }
 
@@ -714,14 +779,27 @@ export function LibraryAdminHub() {
 
   async function saveCoupon() {
     if (!couponDraft) return;
-    await apiFetch("/api/v1/admin/library", { method: "POST", body: JSON.stringify({ action: "save_coupon", ...couponPayload(couponDraft) }) });
+    setFeedback(null);
+    const result = await apiFetch("/api/v1/admin/library", { method: "POST", body: JSON.stringify({ action: "save_coupon", ...couponPayload(couponDraft) }) });
+    if (result.error) {
+      setFeedback({ tone: "error", message: result.error.message || "Coupon could not be saved." });
+      return;
+    }
     setCouponDraft(null);
+    setFeedback({ tone: "success", message: "Coupon saved." });
     await load();
   }
 
   async function deleteCoupon(id: string) {
     if (!window.confirm("Delete this Library coupon?")) return;
-    await apiFetch("/api/v1/admin/library", { method: "POST", body: JSON.stringify({ action: "delete_coupon", id }) });
+    setFeedback(null);
+    const result = await apiFetch("/api/v1/admin/library", { method: "POST", body: JSON.stringify({ action: "delete_coupon", id }) });
+    if (result.error) {
+      setFeedback({ tone: "error", message: result.error.message || "Coupon could not be deleted." });
+      return;
+    }
+    setOperations((current) => ({ ...current, coupons: current.coupons.filter((item) => item.id !== id) }));
+    setFeedback({ tone: "success", message: "Coupon deleted." });
     await load();
   }
 
@@ -967,7 +1045,7 @@ export function LibraryAdminHub() {
       {view === "Products" && (
         <AdminPanel
           title="Library product management"
-          description="Create, edit, duplicate, archive, publish, schedule, bulk price, bulk category, and manage product downloads."
+          description="Create, edit, duplicate, archive, publish, and manage product downloads."
           action={<Button onClick={() => setDraftOpen(true)}><Plus className="size-4" /> Create Product</Button>}
         >
           <AdminToolbar>
@@ -1027,7 +1105,7 @@ export function LibraryAdminHub() {
             return !q || [order.orderNumber, order.customerName, order.customerEmail, order.status].join(" ").toLowerCase().includes(q);
           })} onNotify={(order) => setOrderNotifyDraft({ orderId: order.id, type: "invoice", message: "" })} onRefund={(order) => setRefundDraft({ orderId: order.id, reason: "Customer refund / admin adjustment" })} />
           <FulfilmentTable rows={operations.fulfilments} onEdit={openFulfilmentEditor} />
-          <OperationsList title="Invoices" rows={operations.invoices.map((item) => ({ label: item.invoiceNumber, value: `${item.currency} ${Number(item.total).toFixed(2)}`, detail: item.order?.orderNumber ?? "Library invoice" }))} />
+          <OperationsList title="Invoices" rows={operations.invoices.map((item) => ({ label: item.invoiceNumber, value: `${item.currency} ${Number(item.total).toFixed(2)}`, detail: item.order?.orderNumber ?? "Library invoice", href: item.orderId ? `/api/v1/library/orders/${item.orderId}/invoice` : undefined }))} />
         </AdminPanel>
       )}
 
@@ -1084,9 +1162,9 @@ export function LibraryAdminHub() {
             onDisableCustomer={disableCustomer}
             onReportFilterChange={setReportFilter}
           />
-          {view === "Reports" && <OperationsList title="Export jobs" rows={operations.exports.map((item) => ({ label: item.type, value: item.status, detail: item.fileUrl ?? "Preparing export" }))} />}
+          {view === "Reports" && <OperationsList title="Export jobs" rows={operations.exports.map((item) => ({ label: item.type, value: item.status, detail: item.fileUrl ? "Ready to download" : "Preparing export", href: item.fileUrl ?? undefined }))} />}
           {view === "Analytics" && <OperationsList title="Activity timeline" rows={operations.activities.map((item) => ({ label: item.action, value: item.createdAt ? new Date(item.createdAt).toLocaleDateString() : "Now", detail: item.message }))} />}
-          {view === "Customers" && <OperationsList title="Guest claim queue" rows={operations.guestClaims.map((item) => ({ label: item.email, value: item.status, detail: item.order?.orderNumber ?? "Awaiting account claim" }))} />}
+          {view === "Customers" && <OperationsList title="Guest claim queue (read-only)" rows={operations.guestClaims.map((item) => ({ label: item.email, value: item.status, detail: item.order?.orderNumber ?? "Awaiting account claim" }))} />}
           {view === "Inventory" && <OperationsList title="Inventory movements" rows={operations.reports.inventoryMovements.map((item) => ({ label: item.productTitle, value: `${item.type} ${item.quantity > 0 ? "+" : ""}${item.quantity}`, detail: item.note ?? new Date(item.createdAt).toLocaleDateString() }))} />}
           {view === "Downloads" && <OperationsList title="Course entitlement bridge" rows={operations.academyEntitlements.map((item) => ({ label: item.courseId, value: item.status, detail: item.userId }))} />}
         </AdminPanel>
@@ -1127,8 +1205,24 @@ export function LibraryAdminHub() {
                       <TextAreaField label="Who this is for" value={draft.whoThisIsForText} onChange={(value) => setDraft({ ...draft, whoThisIsForText: value })} placeholder="One audience per line" />
                       <TextAreaField label="Requirements" value={draft.requirementsText} onChange={(value) => setDraft({ ...draft, requirementsText: value })} placeholder="One requirement per line" />
                       <Field label="Tags" value={draft.tagsText} onChange={(value) => setDraft({ ...draft, tagsText: value })} placeholder="Comma separated tags" />
+                    </div>
+                  </EditorSection>
+
+                  <EditorSection title="SEO">
+                    <div className="grid gap-3">
+                      <Field label="Focus keyphrase" value={draft.seoFocusKeyword} onChange={(value) => setDraft({ ...draft, seoFocusKeyword: value })} placeholder="Primary search phrase for this product" />
                       <Field label="SEO title" value={draft.seoTitle} onChange={(value) => setDraft({ ...draft, seoTitle: value })} placeholder="Search result title" />
+                      <SeoLengthHint length={draft.seoTitle.length} ideal={60} softMax={70} />
+                      <Field label="Slug" value={draft.slug} onChange={(value) => setDraft({ ...draft, slug: value })} placeholder="URL slug" />
                       <TextAreaField label="Meta description" value={draft.metaDescription} onChange={(value) => setDraft({ ...draft, metaDescription: value })} placeholder="Search result summary" />
+                      <SeoLengthHint length={draft.metaDescription.length} ideal={155} softMax={165} />
+                      <Field label="Social / OG image URL" value={draft.seoImageUrl} onChange={(value) => setDraft({ ...draft, seoImageUrl: value })} placeholder="Defaults to cover image if empty" />
+                      <div className="rounded-lg border border-white/10 bg-slate-900/60 p-3 text-sm text-slate-300">
+                        <p className="text-xs font-black uppercase tracking-wide text-emerald-300">Search preview</p>
+                        <p className="mt-2 text-base font-semibold text-[#8ab4f8]">{draft.seoTitle.trim() || draft.title.trim() || "Product title"}</p>
+                        <p className="mt-1 text-xs text-emerald-400">houselink.co.zw/library/{draft.slug.trim() || "product-slug"}</p>
+                        <p className="mt-1 text-sm text-slate-400">{draft.metaDescription.trim() || draft.shortDescription.trim() || "Meta description will appear here."}</p>
+                      </div>
                     </div>
                   </EditorSection>
 
@@ -1153,18 +1247,67 @@ export function LibraryAdminHub() {
                 </div>
 
                 <aside className="space-y-5">
-                  <EditorSection title="Pricing">
+                  <EditorSection title="Pricing & formats">
                     <div className="grid gap-3">
-                      <Field label="Price" value={draft.price} onChange={(value) => setDraft({ ...draft, price: value })} type="number" required />
-                      <Field label="Compare-at price" value={draft.compareAtPrice} onChange={(value) => setDraft({ ...draft, compareAtPrice: value })} type="number" />
                       <Field label="Currency" value={draft.currency} onChange={(value) => setDraft({ ...draft, currency: value })} />
+                      {draft.formats.map((format) => (
+                        <div key={format.id} className="rounded-lg border border-white/10 bg-slate-900/50 p-3">
+                          <ToggleField
+                            label={format.label}
+                            checked={format.enabled}
+                            onChange={(value) => setDraft((current) => ({
+                              ...current,
+                              formats: current.formats.map((item) => item.id === format.id ? { ...item, enabled: value } : item),
+                            }))}
+                          />
+                          {format.enabled && (
+                            <div className="mt-3 grid gap-2">
+                              {format.id === "digital" && (
+                                <SelectField
+                                  label="Digital type"
+                                  value={format.type}
+                                  onChange={(value) => setDraft((current) => ({
+                                    ...current,
+                                    formats: current.formats.map((item) => item.id === format.id ? { ...item, type: value as LibraryProductFormat["type"], label: value === "DIGITAL_BOOK" ? "Digital book" : "Digital PDF" } : item),
+                                  }))}
+                                  options={["PDF", "DIGITAL_BOOK"]}
+                                />
+                              )}
+                              <Field
+                                label={`${format.label} price`}
+                                value={String(format.price)}
+                                onChange={(value) => setDraft((current) => ({
+                                  ...current,
+                                  formats: current.formats.map((item) => item.id === format.id ? { ...item, price: Number(value) || 0 } : item),
+                                }))}
+                                type="number"
+                                required
+                              />
+                              <Field
+                                label="Compare-at price"
+                                value={format.compareAtPrice == null ? "" : String(format.compareAtPrice)}
+                                onChange={(value) => setDraft((current) => ({
+                                  ...current,
+                                  formats: current.formats.map((item) => item.id === format.id ? { ...item, compareAtPrice: value.trim() ? Number(value) : undefined } : item),
+                                }))}
+                                type="number"
+                              />
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                      {!draft.formats.some((format) => format.enabled) && (
+                        <p className="text-xs text-amber-300">Enable at least one format before publishing.</p>
+                      )}
+                      {draft.formats.some((format) => format.enabled && format.type !== "PRINTED_BOOK") && !draft.downloads.some((file) => Boolean((file as LibraryDraftDownload).fileUrl)) && (
+                        <p className="text-xs text-amber-300">Upload at least one download file before publishing a digital format.</p>
+                      )}
                     </div>
                   </EditorSection>
 
                   <EditorSection title="Publishing">
                     <div className="grid gap-3">
                       <SelectField label="Status" value={draft.status} onChange={(value) => setDraft({ ...draft, status: value })} options={productStatuses} />
-                      <SelectField label="Product type" value={draft.productType} onChange={(value) => setDraft({ ...draft, productType: value })} options={["PDF", "PRINTED_BOOK", "DIGITAL_BOOK", "TRAINING_MANUAL", "TOOLKIT", "COURSE", "TEMPLATE", "FORMS", "BUNDLE"]} />
                       <SelectField label="Difficulty" value={draft.difficulty} onChange={(value) => setDraft({ ...draft, difficulty: value })} options={["Beginner", "Intermediate", "Advanced", "Professional"]} />
                       <ToggleField label="Featured" checked={draft.featured} onChange={(value) => setDraft({ ...draft, featured: value })} />
                       <ToggleField label="Best seller" checked={draft.bestSeller} onChange={(value) => setDraft({ ...draft, bestSeller: value })} />
@@ -1206,9 +1349,33 @@ export function LibraryAdminHub() {
                 </aside>
               </div>
             </div>
-            <div className="flex justify-end gap-2 border-t border-white/10 p-5">
+            <div className="flex flex-wrap justify-end gap-2 border-t border-white/10 p-5">
               <button type="button" onClick={closeEditor} className="rounded-lg border border-white/10 px-4 py-2 text-sm text-slate-300">Cancel</button>
-              <Button disabled={saving || !draft.title.trim() || !draft.description.trim()} onClick={() => void saveProduct()}>{saving ? "Saving..." : editingProduct ? "Save" : "Create"}</Button>
+              <Button
+                variant="secondary"
+                disabled={saving || !draft.title.trim() || !draft.description.trim() || !draft.formats.some((format) => format.enabled)}
+                onClick={() => void saveProduct(draft.status === "SCHEDULED" || draft.status === "ARCHIVED" ? draft.status : "DRAFT")}
+              >
+                {saving
+                  ? "Saving..."
+                  : draft.status === "SCHEDULED"
+                    ? "Save scheduled"
+                    : draft.status === "ARCHIVED"
+                      ? "Save archived"
+                      : "Save draft"}
+              </Button>
+              <Button
+                disabled={
+                  saving
+                  || !draft.title.trim()
+                  || !draft.description.trim()
+                  || !draft.formats.some((format) => format.enabled)
+                  || (draft.formats.some((format) => format.enabled && format.type !== "PRINTED_BOOK") && !draft.downloads.some((file) => Boolean((file as LibraryDraftDownload).fileUrl)))
+                }
+                onClick={() => void saveProduct("PUBLISHED")}
+              >
+                {saving ? "Publishing..." : "Publish"}
+              </Button>
             </div>
           </div>
         </div>
@@ -1359,10 +1526,16 @@ export function LibraryAdminHub() {
   );
 }
 
-function productPayload(draft: LibraryProductDraft) {
+function productPayload(draft: LibraryProductDraft, statusOverride?: string) {
   const lines = (value: string) => value.split(/\r?\n/).map((item) => item.trim()).filter(Boolean);
   const tags = draft.tagsText.split(",").map((item) => item.trim()).filter(Boolean);
   const stock = draft.stock.trim() === "" ? null : Number(draft.stock);
+  const formats = draft.formats.map((format) => ({
+    ...format,
+    price: Number(format.price) || 0,
+    compareAtPrice: format.compareAtPrice == null || Number.isNaN(Number(format.compareAtPrice)) ? undefined : Number(format.compareAtPrice),
+  }));
+  const primary = primaryLibraryFormat(formats, draft.productType as LibraryProduct["productType"], Number(draft.price) || 0);
   return {
     title: draft.title.trim(),
     slug: draft.slug.trim() || undefined,
@@ -1375,10 +1548,10 @@ function productPayload(draft: LibraryProductDraft) {
     publicationDate: draft.publicationDate || undefined,
     pages: draft.pages.trim() ? Number(draft.pages) : undefined,
     sku: draft.sku.trim() || undefined,
-    productType: draft.productType,
-    status: draft.status,
-    price: Number(draft.price),
-    compareAtPrice: draft.compareAtPrice.trim() ? Number(draft.compareAtPrice) : undefined,
+    productType: primary.type,
+    status: statusOverride || draft.status,
+    price: primary.price,
+    compareAtPrice: primary.compareAtPrice,
     currency: draft.currency.trim() || "USD",
     category: draft.category.trim(),
     collection: draft.collection.trim(),
@@ -1393,6 +1566,9 @@ function productPayload(draft: LibraryProductDraft) {
     tags,
     seoTitle: draft.seoTitle.trim() || undefined,
     metaDescription: draft.metaDescription.trim() || undefined,
+    seoFocusKeyword: draft.seoFocusKeyword.trim() || undefined,
+    seoImageUrl: draft.seoImageUrl.trim() || undefined,
+    formats,
     stock,
     lowStockThreshold: Number(draft.lowStockThreshold) || 0,
     warehouse: draft.warehouse.trim() || undefined,
@@ -1410,6 +1586,32 @@ function productPayload(draft: LibraryProductDraft) {
     gallery: draft.gallery,
     downloads: draft.downloads,
   };
+}
+
+function normalizeDraftFormats(product: LibraryProduct): LibraryProductFormat[] {
+  const enabled = enabledLibraryFormats(product);
+  const digital = enabled.find((format) => format.type !== "PRINTED_BOOK");
+  const printed = enabled.find((format) => format.type === "PRINTED_BOOK");
+  return [
+    {
+      id: "digital",
+      type: digital?.type === "DIGITAL_BOOK" ? "DIGITAL_BOOK" : "PDF",
+      label: digital?.type === "DIGITAL_BOOK" ? "Digital book" : "Digital PDF",
+      enabled: Boolean(digital),
+      price: digital?.price ?? product.price,
+      compareAtPrice: digital?.compareAtPrice,
+      sku: digital?.sku,
+    },
+    {
+      id: "printed",
+      type: "PRINTED_BOOK",
+      label: "Printed book",
+      enabled: Boolean(printed),
+      price: printed?.price ?? Math.max(product.price, 45),
+      compareAtPrice: printed?.compareAtPrice,
+      sku: printed?.sku,
+    },
+  ];
 }
 
 function couponPayload(draft: CouponDraft) {
@@ -1635,7 +1837,7 @@ function ProductPerformanceTable({ rows, products, onEditProduct, onRecommend }:
         { key: "health", header: "Health", render: (row) => <AdminStatusBadge status={`${row.health}%`} variant={row.health >= 80 ? "success" : row.health >= 60 ? "warning" : "danger"} /> },
         { key: "actions", header: "Actions", render: (row) => {
           const product = products.find((item) => item.id === row.id);
-          return <RowActions primaryLabel="Edit" primaryIcon={Edit3} onPrimary={() => product && onEditProduct(product)} onEdit={() => product && onRecommend(product)} />;
+          return <RowActions primaryLabel="Edit" primaryIcon={Edit3} onPrimary={() => product && onEditProduct(product)} editIcon={Link2} editLabel="Recommend" onEdit={() => product && onRecommend(product)} />;
         } },
       ]}
     />
@@ -1723,7 +1925,7 @@ function LibraryTabManagement({
             { key: "actions", header: "Actions", render: (row) => <RowActions primaryLabel="Edit" primaryIcon={Edit3} onPrimary={() => onEditRecommendation(row)} onDelete={() => onDeleteRecommendation(row)} /> },
           ]}
         />
-        <Button onClick={() => onOpenRecommendation(products[0])}><Plus className="size-4" /> Add Recommendation</Button>
+        <Button disabled={products.length < 2} onClick={() => onOpenRecommendation(products[0])}><Plus className="size-4" /> Add Recommendation</Button>
       </div>
     );
   }
@@ -1904,9 +2106,9 @@ function LibraryTabManagement({
           columns={[
             { key: "type", header: "Export job", render: (row) => <span className="font-semibold text-white">{row.type}</span> },
             { key: "status", header: "Status", render: (row) => <AdminStatusBadge status={row.status} variant={row.status === "COMPLETED" ? "success" : "warning"} /> },
-            { key: "file", header: "File", render: (row) => row.fileUrl ?? "Preparing" },
+            { key: "file", header: "File", render: (row) => row.fileUrl ? <a href={row.fileUrl} className="font-semibold text-emerald-300 hover:underline" target="_blank" rel="noreferrer">Download CSV</a> : "Preparing" },
             { key: "date", header: "Created", render: (row) => row.createdAt ? new Date(row.createdAt).toLocaleDateString() : "Now" },
-            { key: "actions", header: "Actions", render: (row) => <RowActions primaryLabel="Refresh" primaryIcon={Download} onPrimary={() => onCreateExport(row.type)} onDelete={() => onDeleteExport(row.id, row.type)} /> },
+            { key: "actions", header: "Actions", render: (row) => <RowActions primaryLabel="Download" primaryIcon={Download} onPrimary={() => row.fileUrl && window.open(row.fileUrl, "_blank")} onDelete={() => onDeleteExport(row.id, row.type)} /> },
           ]}
         />
       </div>
@@ -2046,24 +2248,74 @@ function AdminAction({ icon: Icon, label, disabled, danger, onClick }: { icon: L
   );
 }
 
-function RowActions({ primaryIcon: PrimaryIcon, primaryLabel, onPrimary, onEdit, onDelete }: { primaryIcon: LucideIcon; primaryLabel: string; onPrimary?: () => void; onEdit?: () => void; onDelete?: () => void }) {
+function RowActions({
+  primaryIcon: PrimaryIcon,
+  primaryLabel,
+  onPrimary,
+  onEdit,
+  onDelete,
+  editIcon: EditIcon = Edit3,
+  editLabel = "Edit",
+}: {
+  primaryIcon: LucideIcon;
+  primaryLabel: string;
+  onPrimary?: () => void;
+  onEdit?: () => void;
+  onDelete?: () => void;
+  editIcon?: LucideIcon;
+  editLabel?: string;
+}) {
   return (
-    <div className="flex flex-wrap gap-2">
-      <button type="button" onClick={onPrimary} className="inline-flex items-center gap-2 rounded-lg border border-white/10 px-3 py-2 text-xs font-bold text-slate-300 hover:bg-white/5">
+    <div className="flex flex-wrap gap-2" onClick={(event) => event.stopPropagation()}>
+      <button
+        type="button"
+        onClick={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          onPrimary?.();
+        }}
+        className="inline-flex items-center gap-2 rounded-lg border border-white/10 px-3 py-2 text-xs font-bold text-slate-300 hover:bg-white/5"
+      >
         <PrimaryIcon className="size-4" /> {primaryLabel}
       </button>
-      {onEdit && <IconButton icon={Edit3} label="Edit" onClick={onEdit} />}
-      {onDelete && <IconButton icon={Trash2} label="Delete" danger onClick={onDelete} />}
+      {onEdit && (
+        <IconButton
+          icon={EditIcon}
+          label={editLabel}
+          onClick={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            onEdit();
+          }}
+        />
+      )}
+      {onDelete && (
+        <IconButton
+          icon={Trash2}
+          label="Delete"
+          danger
+          onClick={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            void onDelete();
+          }}
+        />
+      )}
     </div>
   );
 }
 
-function IconButton({ icon: Icon, label, onClick, danger }: { icon: LucideIcon; label: string; onClick?: () => void; danger?: boolean }) {
+function IconButton({ icon: Icon, label, onClick, danger }: { icon: LucideIcon; label: string; onClick?: (event: MouseEvent<HTMLButtonElement>) => void; danger?: boolean }) {
   return (
     <button type="button" onClick={onClick} className={`rounded-lg border p-2 hover:bg-white/5 ${danger ? "border-red-500/30 text-red-300" : "border-white/10 text-slate-300"}`} aria-label={label}>
       <Icon className="size-4" />
     </button>
   );
+}
+
+function SeoLengthHint({ length, ideal, softMax }: { length: number; ideal: number; softMax: number }) {
+  const tone = length === 0 ? "text-slate-500" : length <= ideal ? "text-emerald-300" : length <= softMax ? "text-amber-300" : "text-rose-300";
+  return <p className={`text-xs ${tone}`}>{length}/{ideal} characters recommended{length > softMax ? " — too long for most SERPs" : length > ideal ? " — a little long" : length > 0 ? " — looking good" : ""}</p>;
 }
 
 function sectionDescription(view: string) {

@@ -271,8 +271,15 @@ export async function POST(request: Request) {
     if (!body.title || !body.description || body.price == null) {
       return problem(400, "INVALID_PRODUCT", "title, description, and price are required.");
     }
-    const product = await createLibraryProduct({ ...(body as LibraryProductInput), price: Number(body.price) }, auth.user.id);
-    return created({ product });
+    try {
+      const product = await createLibraryProduct({ ...(body as LibraryProductInput), price: Number(body.price) }, auth.user.id);
+      return created({ product });
+    } catch (error) {
+      if (error instanceof Error && /download file|format before publishing/i.test(error.message)) {
+        return problem(400, "INVALID_PRODUCT", error.message);
+      }
+      throw error;
+    }
   } catch (error) {
     console.error("[admin/library] POST failed", error);
     return problem(500, "LIBRARY_ADMIN_WRITE_FAILED", "Library admin change could not be saved to the database.");

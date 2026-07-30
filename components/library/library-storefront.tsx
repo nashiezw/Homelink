@@ -27,8 +27,8 @@ import {
 import { useMemo, useState } from "react";
 import { BookCover } from "@/components/library/book-cover";
 import { Button } from "@/components/ui/button";
-import { useLibraryCart, type LibraryCartLine } from "@/lib/library/cart-client";
-import { libraryFacets, type LibraryProduct } from "@/lib/library/catalog";
+import { useLibraryCart, libraryCartLineKey, sameLibraryCartLine, type LibraryCartLine } from "@/lib/library/cart-client";
+import { enabledLibraryFormats, libraryFacets, type LibraryProduct } from "@/lib/library/catalog";
 import { cn } from "@/lib/utils";
 
 export function LibraryStorefront({ products }: { products: LibraryProduct[] }) {
@@ -50,13 +50,33 @@ export function LibraryStorefront({ products }: { products: LibraryProduct[] }) 
   const featuredProducts = products.filter((product) => product.editorsChoice || product.featured).slice(0, 3);
   const bestSellers = products.filter((product) => product.bestSeller).slice(0, 3);
   const results = useMemo(() => filterProducts(products, { query, category, type, difficulty, sort }), [products, query, category, type, difficulty, sort]);
-  const quantityFor = (productId: string) => cart.find((line) => line.productId === productId)?.quantity ?? 0;
+  const quantityFor = (productId: string) => cart.filter((line) => line.productId === productId).reduce((sum, line) => sum + line.quantity, 0);
 
   function addToCart(product: LibraryProduct) {
+    const formats = enabledLibraryFormats(product);
+    if (formats.length > 1) {
+      window.location.href = `/library/${product.slug}`;
+      return;
+    }
+    const format = formats[0];
     setCart((current) => {
-      const existing = current.find((line) => line.productId === product.id);
-      if (existing) return current.map((line) => (line.productId === product.id ? { ...line, quantity: line.quantity + 1 } : line));
-      return [...current, { productId: product.id, title: product.title, price: product.price, currency: product.currency, quantity: 1 }];
+      const existing = current.find((line) => sameLibraryCartLine(line, { productId: product.id, formatId: format?.id }));
+      if (existing) {
+        return current.map((line) => (sameLibraryCartLine(line, { productId: product.id, formatId: format?.id }) ? { ...line, quantity: line.quantity + 1 } : line));
+      }
+      return [
+        ...current,
+        {
+          productId: product.id,
+          title: format ? `${product.title} (${format.label})` : product.title,
+          price: format?.price ?? product.price,
+          currency: product.currency,
+          quantity: 1,
+          formatId: format?.id,
+          formatType: format?.type,
+          formatLabel: format?.label,
+        },
+      ];
     });
     setNotice(`${product.title} added to your Library Bag.`);
     window.setTimeout(() => setNotice(""), 2600);
@@ -371,10 +391,11 @@ function CartPanel({ cart, total, currency, onCart }: { cart: LibraryCartLine[];
       <div className="space-y-3 p-4">
         {cart.length ? (
           cart.map((line) => (
-            <div key={line.productId} className="rounded-lg border border-slate-200 p-3 text-sm dark:border-slate-700">
+            <div key={libraryCartLineKey(line)} className="rounded-lg border border-slate-200 p-3 text-sm dark:border-slate-700">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="line-clamp-2 font-bold text-ink dark:text-white">{line.title}</p>
+                  {line.formatLabel && <p className="mt-1 text-[11px] font-semibold uppercase tracking-wide text-emerald-700">{line.formatLabel}</p>}
                   <p className="text-slate-500">Qty {line.quantity}</p>
                 </div>
                 <p className="font-black">
@@ -383,15 +404,15 @@ function CartPanel({ cart, total, currency, onCart }: { cart: LibraryCartLine[];
               </div>
               <div className="mt-3 flex items-center justify-between gap-3">
                 <div className="inline-flex items-center rounded-lg border border-slate-200 dark:border-slate-700">
-                  <button type="button" onClick={() => onCart(cart.map((item) => (item.productId === line.productId ? { ...item, quantity: Math.max(1, item.quantity - 1) } : item)))} className="grid size-8 place-items-center text-slate-500 hover:text-emerald-700" aria-label="Decrease quantity">
+                  <button type="button" onClick={() => onCart(cart.map((item) => (sameLibraryCartLine(item, line) ? { ...item, quantity: Math.max(1, item.quantity - 1) } : item)))} className="grid size-8 place-items-center text-slate-500 hover:text-emerald-700" aria-label="Decrease quantity">
                     <Minus className="size-3.5" />
                   </button>
                   <span className="w-8 text-center text-xs font-black">{line.quantity}</span>
-                  <button type="button" onClick={() => onCart(cart.map((item) => (item.productId === line.productId ? { ...item, quantity: item.quantity + 1 } : item)))} className="grid size-8 place-items-center text-slate-500 hover:text-emerald-700" aria-label="Increase quantity">
+                  <button type="button" onClick={() => onCart(cart.map((item) => (sameLibraryCartLine(item, line) ? { ...item, quantity: item.quantity + 1 } : item)))} className="grid size-8 place-items-center text-slate-500 hover:text-emerald-700" aria-label="Increase quantity">
                     <Plus className="size-3.5" />
                   </button>
                 </div>
-                <button type="button" onClick={() => onCart(cart.filter((item) => item.productId !== line.productId))} className="inline-flex items-center gap-1 text-xs font-bold text-slate-500 hover:text-red-600">
+                <button type="button" onClick={() => onCart(cart.filter((item) => !sameLibraryCartLine(item, line)))} className="inline-flex items-center gap-1 text-xs font-bold text-slate-500 hover:text-red-600">
                   <Trash2 className="size-3.5" /> Remove
                 </button>
               </div>

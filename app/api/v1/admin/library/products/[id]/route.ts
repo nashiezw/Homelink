@@ -11,9 +11,16 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   const { id } = await context.params;
   try {
     const body = await request.json();
-    const product = await updateLibraryProduct(id, body, auth.user.id);
-    if (!product) return problem(404, "PRODUCT_NOT_FOUND", "Product not found.");
-    return ok({ product });
+    try {
+      const product = await updateLibraryProduct(id, body, auth.user.id);
+      if (!product) return problem(404, "PRODUCT_NOT_FOUND", "Product not found.");
+      return ok({ product });
+    } catch (error) {
+      if (error instanceof Error && /download file|format before publishing/i.test(error.message)) {
+        return problem(400, "INVALID_PRODUCT", error.message);
+      }
+      throw error;
+    }
   } catch (error) {
     console.error("[admin/library/products] PATCH failed", error);
     return problem(500, "LIBRARY_PRODUCT_UPDATE_FAILED", "Library product could not be saved to the database.");

@@ -6,6 +6,8 @@ import {
   ArrowLeft,
   BookOpen,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
   Download,
   Expand,
   FileText,
@@ -19,47 +21,153 @@ import {
   ShoppingCart,
   Star,
   Users,
+  X,
   ZoomIn,
+  ZoomOut,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { BookCover } from "@/components/library/book-cover";
 import { Button } from "@/components/ui/button";
+import { apiFetch } from "@/lib/api/client";
 import { writeLibraryCart, useLibraryCart } from "@/lib/library/cart-client";
-import type { LibraryProduct } from "@/lib/library/catalog";
+import { enabledLibraryFormats, type LibraryProduct, type LibraryProductFormat } from "@/lib/library/catalog";
 import { cn } from "@/lib/utils";
 
 export function LibraryProductPage({ product, related }: { product: LibraryProduct; related: LibraryProduct[] }) {
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxZoomed, setLightboxZoomed] = useState(false);
   const [galleryIndex, setGalleryIndex] = useState(0);
+  const formats = useMemo(() => enabledLibraryFormats(product), [product]);
+  const [selectedFormatId, setSelectedFormatId] = useState(formats[0]?.id ?? "primary");
   const { cart, setCart, count } = useLibraryCart();
   const [cartNotice, setCartNotice] = useState("");
+  const [wished, setWished] = useState(false);
+  const [wishBusy, setWishBusy] = useState(false);
+  const [shareNotice, setShareNotice] = useState("");
   const relatedBundle = useMemo(() => related.slice(0, 2), [related]);
-  const bundleTotal = relatedBundle.reduce((sum, item) => sum + item.price, product.price);
-  const productQuantity = cart.find((line) => line.productId === product.id)?.quantity ?? 0;
+  const selectedFormat = formats.find((format) => format.id === selectedFormatId) ?? formats[0];
+  const bundleTotal = relatedBundle.reduce((sum, item) => sum + item.price, selectedFormat?.price ?? product.price);
+  const productQuantity = cart
+    .filter((line) => line.productId === product.id && (!line.formatId || line.formatId === selectedFormat?.id))
+    .reduce((sum, line) => sum + line.quantity, 0);
   const galleryImages = useMemo(
     () => product.gallery.filter((item) => item.kind !== "video" && Boolean(item.url)),
     [product.gallery],
   );
   const activeGalleryImage = galleryImages[galleryIndex] ?? galleryImages[0];
+  const isPrinted = selectedFormat?.type === "PRINTED_BOOK";
+  const outOfStock = Boolean(isPrinted && product.stock === 0);
+
+  function openLightbox(options?: { zoomed?: boolean }) {
+    if (!activeGalleryImage?.url && !galleryImages[0]?.url) return;
+    setLightboxZoomed(Boolean(options?.zoomed));
+    setLightboxOpen(true);
+  }
+
+  function closeLightbox() {
+    setLightboxOpen(false);
+    setLightboxZoomed(false);
+  }
+
+  function stepGallery(delta: number) {
+    if (!galleryImages.length) return;
+    setGalleryIndex((current) => (current + delta + galleryImages.length) % galleryImages.length);
+  }
+
+  useEffect(() => {
+    void apiFetch<{ wished: boolean }>(`/api/v1/library/wishlist?productId=${encodeURIComponent(product.id)}`).then((result) => {
+      if (result.data) setWished(result.data.wished);
+    });
+  }, [product.id]);
+
+  useEffect(() => {
+    if (!lightboxOpen) return;
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") closeLightbox();
+      if (event.key === "ArrowLeft") stepGallery(-1);
+      if (event.key === "ArrowRight") stepGallery(1);
+      if (event.key === "+" || event.key === "=") setLightboxZoomed(true);
+      if (event.key === "-") setLightboxZoomed(false);
+    }
+    window.addEventListener("keydown", onKeyDown);
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [lightboxOpen, galleryImages.length]);
+
+  async function toggleWishlist() {
+    setWishBusy(true);
+    const result = await apiFetch<{ wished: boolean }>("/api/v1/library/wishlist", {
+      method: "POST",
+      body: JSON.stringify({ productId: product.id }),
+    });
+    setWishBusy(false);
+    if (result.error) {
+      setCartNotice(result.error.message || "Sign in to save products to your wishlist.");
+      return;
+    }
+    if (result.data) {
+      setWished(result.data.wished);
+      setCartNotice(result.data.wished ? "Saved to your wishlist." : "Removed from your wishlist.");
+    }
+  }
+
+  async function shareProduct() {
+    const url = typeof window !== "undefined" ? window.location.href : `/library/${product.slug}`;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: product.title, text: product.shortDescription, url });
+        setShareNotice("Shared.");
+        return;
+      }
+      await navigator.clipboard.writeText(url);
+      setShareNotice("Link copied.");
+    } catch {
+      setShareNotice("Could not share right now.");
+    }
+    window.setTimeout(() => setShareNotice(""), 2200);
+  }
+
+  function cartLineFromFormat(format: LibraryProductFormat) {
+    return {
+      productId: product.id,
+      title: `${product.title} (${format.label})`,
+      price: format.price,
+      currency: product.currency,
+      quantity: 1,
+      formatId: format.id,
+      formatType: format.type,
+      formatLabel: format.label,
+    };
+  }
 
   function addToCart() {
+    if (!selectedFormat) return;
     setCart((current) => {
-      const existing = current.find((line) => line.productId === product.id);
-      if (existing) return current.map((line) => (line.productId === product.id ? { ...line, quantity: line.quantity + 1 } : line));
-      return [...current, { productId: product.id, title: product.title, price: product.price, currency: product.currency, quantity: 1 }];
+      const existing = current.find((line) => line.productId === product.id && line.formatId === selectedFormat.id);
+      if (existing) {
+        return current.map((line) => (line.productId === product.id && line.formatId === selectedFormat.id ? { ...line, quantity: line.quantity + 1 } : line));
+      }
+      return [...current, cartLineFromFormat(selectedFormat)];
     });
-    setCartNotice(`${product.title} is in your Library Bag.`);
+    setCartNotice(`${product.title} (${selectedFormat.label}) is in your Library Bag.`);
     window.setTimeout(() => setCartNotice(""), 2600);
   }
 
   function buyNow() {
-    writeLibraryCart([{ productId: product.id, title: product.title, price: product.price, currency: product.currency, quantity: 1 }]);
+    if (!selectedFormat) return;
+    writeLibraryCart([cartLineFromFormat(selectedFormat)]);
     window.location.href = "/library/checkout";
   }
 
   function addBundle() {
+    if (!selectedFormat) return;
     writeLibraryCart([
-      { productId: product.id, title: product.title, price: product.price, currency: product.currency, quantity: 1 },
+      cartLineFromFormat(selectedFormat),
       ...relatedBundle.map((item) => ({ productId: item.id, title: item.title, price: item.price, currency: item.currency, quantity: 1 })),
     ]);
     window.location.href = "/library/checkout";
@@ -92,12 +200,31 @@ export function LibraryProductPage({ product, related }: { product: LibraryProdu
           <div className="grid gap-7 p-4 sm:p-6 xl:grid-cols-[minmax(18rem,32rem)_minmax(0,1fr)] xl:items-start">
             <div className="space-y-4">
               <div className="relative mx-auto max-w-[30rem] xl:mx-0">
-                <BookCover product={product} imageUrl={activeGalleryImage?.url} className="w-full rounded-xl" priority />
-                <div className="absolute bottom-3 right-3 flex gap-2">
-                  <button type="button" className="rounded-lg bg-white/95 p-2 text-slate-800 shadow-sm" aria-label="Zoom product image">
+                <button
+                  type="button"
+                  onClick={() => openLightbox()}
+                  className="block w-full rounded-xl text-left"
+                  aria-label="Open product cover"
+                >
+                  <BookCover product={product} imageUrl={activeGalleryImage?.url} interactive={false} className="w-full rounded-xl" priority />
+                </button>
+                <div className="absolute bottom-3 right-3 z-20 flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => openLightbox({ zoomed: true })}
+                    disabled={!activeGalleryImage?.url}
+                    className="rounded-lg bg-white/95 p-2 text-slate-800 shadow-sm transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-50"
+                    aria-label="Zoom product image"
+                  >
                     <ZoomIn className="size-4" />
                   </button>
-                  <button type="button" className="rounded-lg bg-white/95 p-2 text-slate-800 shadow-sm" aria-label="Open fullscreen gallery">
+                  <button
+                    type="button"
+                    onClick={() => openLightbox()}
+                    disabled={!activeGalleryImage?.url}
+                    className="rounded-lg bg-white/95 p-2 text-slate-800 shadow-sm transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-50"
+                    aria-label="Open fullscreen gallery"
+                  >
                     <Expand className="size-4" />
                   </button>
                 </div>
@@ -122,9 +249,9 @@ export function LibraryProductPage({ product, related }: { product: LibraryProdu
               ) : (
                 <div className="grid grid-cols-3 gap-2">
                   {[product.productType.replace(/_/g, " "), product.category, product.difficulty].map((item, index) => (
-                    <button key={`${item}-${index}`} type="button" onClick={() => setGalleryIndex(index)} className={cn("min-h-14 rounded-xl border bg-white px-3 py-2 text-center text-xs font-black leading-tight text-slate-700 shadow-sm dark:bg-slate-950 dark:text-slate-200", galleryIndex === index ? "border-emerald-600 ring-2 ring-emerald-600/20" : "border-slate-200 dark:border-slate-800")}>
+                    <div key={`${item}-${index}`} className="grid min-h-14 place-items-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-center text-xs font-black leading-tight text-slate-700 shadow-sm dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200">
                       {item}
-                    </button>
+                    </div>
                   ))}
                 </div>
               )}
@@ -132,8 +259,10 @@ export function LibraryProductPage({ product, related }: { product: LibraryProdu
 
             <div className="min-w-0">
               <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-700 dark:text-emerald-300">{product.collection}</p>
-              <h1 className="mt-3 max-w-4xl text-4xl font-black leading-[0.98] tracking-tight text-ink sm:text-5xl dark:text-white">{product.title}</h1>
-              <p className="mt-4 max-w-2xl text-lg leading-8 text-slate-600 dark:text-slate-300">{product.subtitle}</p>
+              <h1 className="mt-3 max-w-3xl text-balance text-2xl font-bold leading-snug tracking-tight text-ink sm:text-3xl lg:text-[2.15rem] lg:leading-[1.2] dark:text-white">{product.title}</h1>
+              {product.subtitle ? (
+                <p className="mt-3 max-w-2xl text-base leading-7 text-slate-600 dark:text-slate-300">{product.subtitle}</p>
+              ) : null}
           <div className="mt-5 flex flex-wrap items-center gap-3 text-sm text-slate-600 dark:text-slate-300">
             <span>
               By <strong className="text-ink dark:text-white">{product.author}</strong>
@@ -141,7 +270,7 @@ export function LibraryProductPage({ product, related }: { product: LibraryProdu
             <span className="flex items-center gap-1 text-amber-500">
               <Star className="size-4 fill-current" /> {product.rating || "New"} ({product.reviewCount} reviews)
             </span>
-            <span className="rounded-full border border-slate-200 bg-white px-3 py-1 font-bold dark:border-slate-700 dark:bg-slate-900">{product.productType.replace(/_/g, " ")}</span>
+            <span className="rounded-full border border-slate-200 bg-white px-3 py-1 font-bold dark:border-slate-700 dark:bg-slate-900">{(selectedFormat?.label || product.productType).replace(/_/g, " ")}</span>
           </div>
 
               <div className="mt-7 grid max-w-3xl gap-3 sm:grid-cols-3">
@@ -169,19 +298,50 @@ export function LibraryProductPage({ product, related }: { product: LibraryProdu
 
         <aside className="space-y-4 lg:sticky lg:top-24">
           <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            {formats.length > 1 && (
+              <div className="mb-4 grid gap-2">
+                <p className="text-xs font-bold uppercase text-slate-500">Choose format</p>
+                <div className="grid gap-2">
+                  {formats.map((format) => (
+                    <button
+                      key={format.id}
+                      type="button"
+                      onClick={() => setSelectedFormatId(format.id)}
+                      className={cn(
+                        "rounded-lg border px-3 py-2 text-left transition",
+                        selectedFormat?.id === format.id ? "border-emerald-600 bg-emerald-50 ring-2 ring-emerald-600/15 dark:bg-emerald-950/30" : "border-slate-200 hover:border-emerald-500 dark:border-slate-700",
+                      )}
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-sm font-bold text-ink dark:text-white">{format.label}</span>
+                        <span className="text-sm font-black text-ink dark:text-white">{product.currency} {format.price.toFixed(2)}</span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             <p className="text-xs font-bold uppercase text-slate-500">HouseLink price</p>
             <div className="mt-2 flex flex-wrap items-end gap-3">
-              <p className="text-4xl font-black text-ink dark:text-white">USD {product.price.toFixed(2)}</p>
-              {product.compareAtPrice && <p className="pb-1 text-sm text-slate-400 line-through">USD {product.compareAtPrice.toFixed(2)}</p>}
+              <p className="text-4xl font-black text-ink dark:text-white">{product.currency} {(selectedFormat?.price ?? product.price).toFixed(2)}</p>
+              {(selectedFormat?.compareAtPrice ?? product.compareAtPrice) && (
+                <p className="pb-1 text-sm text-slate-400 line-through">{product.currency} {(selectedFormat?.compareAtPrice ?? product.compareAtPrice)!.toFixed(2)}</p>
+              )}
             </div>
             <p className="mt-3 rounded-lg bg-emerald-50 px-3 py-2 text-sm font-bold text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200">
-              {product.stock === null ? "Unlimited digital delivery" : product.stock > 0 ? `${product.stock} printed copies available` : "Out of stock"}
+              {isPrinted
+                ? product.stock == null
+                  ? "Printed copy available"
+                  : product.stock > 0
+                    ? `${product.stock} printed copies available`
+                    : "Out of stock"
+                : "Instant digital delivery after payment confirmation"}
             </p>
             <div className="mt-5 grid gap-2">
-              <Button disabled={product.stock === 0} onClick={buyNow}>
+              <Button disabled={outOfStock} onClick={buyNow}>
                 <ShoppingCart className="size-4" /> {product.preorder ? "Pre-order now" : "Buy now"}
               </Button>
-              <Button variant="secondary" disabled={product.stock === 0} onClick={addToCart}>
+              <Button variant="secondary" disabled={outOfStock} onClick={addToCart}>
                 <ShoppingBag className="size-4" /> {productQuantity ? `In bag (${productQuantity})` : "Add to cart"}
               </Button>
               <Button variant="secondary" onClick={() => setPreviewOpen(true)}>
@@ -194,11 +354,11 @@ export function LibraryProductPage({ product, related }: { product: LibraryProdu
               </p>
             )}
             <div className="mt-4 grid grid-cols-2 gap-2">
-              <button type="button" className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-slate-200 px-3 text-sm font-bold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800" aria-label="Add to wishlist">
-                <Heart className="size-4" /> Wishlist
+              <button type="button" disabled={wishBusy} onClick={() => void toggleWishlist()} className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-slate-200 px-3 text-sm font-bold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800" aria-label="Add to wishlist">
+                <Heart className={cn("size-4", wished && "fill-current text-rose-500")} /> {wished ? "Saved" : "Wishlist"}
               </button>
-              <button type="button" className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-slate-200 px-3 text-sm font-bold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800" aria-label="Share product">
-                <Share2 className="size-4" /> Share
+              <button type="button" onClick={() => void shareProduct()} className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-slate-200 px-3 text-sm font-bold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800" aria-label="Share product">
+                <Share2 className="size-4" /> {shareNotice || "Share"}
               </button>
             </div>
             <div className="mt-5 space-y-2 border-t border-slate-200 pt-4 text-sm text-slate-600 dark:border-slate-800 dark:text-slate-300">
@@ -231,12 +391,12 @@ export function LibraryProductPage({ product, related }: { product: LibraryProdu
 
       <section className="mx-auto grid max-w-[88rem] gap-7 px-4 pb-10 sm:px-6 lg:grid-cols-[minmax(0,1fr)_24rem] lg:px-8">
         <div className="space-y-7">
-          <Panel title="Sample Preview" icon={BookOpen} action={<Button variant="secondary" onClick={() => setPreviewOpen(true)}><FileText className="size-4" /> Open reader</Button>}>
+          <Panel title="Sample Preview" icon={BookOpen} action={<Button variant="secondary" onClick={() => setPreviewOpen(true)}><FileText className="size-4" /> Open preview</Button>}>
             <div className="grid gap-5 md:grid-cols-[12rem_minmax(0,1fr)] md:items-center">
               <BookCover product={product} className="w-full rounded-xl" />
               <div>
-                <p className="text-xl font-black">Preview selected pages before purchase.</p>
-                <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">The reader supports page previews, zoom, fullscreen controls, and future PDF page extraction from admin uploads.</p>
+                <p className="text-xl font-black">Preview the synopsis and contents before purchase.</p>
+                <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">Open the sample to read the product summary, chapter list, and cover gallery. Full PDF page extraction ships with protected downloads after payment.</p>
               </div>
             </div>
           </Panel>
@@ -325,6 +485,74 @@ export function LibraryProductPage({ product, related }: { product: LibraryProdu
         </div>
       </section>
 
+      {lightboxOpen && activeGalleryImage?.url && (
+        <div className="fixed inset-0 z-[60] flex flex-col bg-black/90" role="dialog" aria-modal="true" aria-label="Product image gallery">
+          <div className="flex items-center justify-between gap-3 px-4 py-3 text-white">
+            <div className="min-w-0">
+              <p className="truncate text-sm font-black">{product.title}</p>
+              <p className="truncate text-xs text-white/70">{activeGalleryImage.label || "Cover"} · {galleryIndex + 1}/{Math.max(galleryImages.length, 1)}</p>
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setLightboxZoomed((current) => !current)}
+                className="rounded-lg bg-white/10 p-2 hover:bg-white/20"
+                aria-label={lightboxZoomed ? "Zoom out" : "Zoom in"}
+              >
+                {lightboxZoomed ? <ZoomOut className="size-4" /> : <ZoomIn className="size-4" />}
+              </button>
+              <button type="button" onClick={closeLightbox} className="rounded-lg bg-white/10 p-2 hover:bg-white/20" aria-label="Close gallery">
+                <X className="size-4" />
+              </button>
+            </div>
+          </div>
+          <div className="relative flex min-h-0 flex-1 items-center justify-center px-4 pb-6" onClick={closeLightbox}>
+            {galleryImages.length > 1 && (
+              <>
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    stepGallery(-1);
+                  }}
+                  className="absolute left-3 z-10 rounded-full bg-white/15 p-2 text-white hover:bg-white/25 sm:left-6"
+                  aria-label="Previous image"
+                >
+                  <ChevronLeft className="size-5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    stepGallery(1);
+                  }}
+                  className="absolute right-3 z-10 rounded-full bg-white/15 p-2 text-white hover:bg-white/25 sm:right-6"
+                  aria-label="Next image"
+                >
+                  <ChevronRight className="size-5" />
+                </button>
+              </>
+            )}
+            <div
+              className={cn("relative max-h-full max-w-5xl overflow-auto transition duration-200", lightboxZoomed ? "w-full cursor-zoom-out" : "w-auto cursor-zoom-in")}
+              onClick={(event) => {
+                event.stopPropagation();
+                setLightboxZoomed((current) => !current);
+              }}
+            >
+              <Image
+                src={activeGalleryImage.url}
+                alt={activeGalleryImage.label || product.title}
+                width={1200}
+                height={1600}
+                className={cn("mx-auto h-auto max-h-[80dvh] w-auto rounded-lg object-contain shadow-2xl transition duration-200", lightboxZoomed && "max-h-none w-full max-w-none scale-125")}
+                priority
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
       {previewOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4" onClick={() => setPreviewOpen(false)}>
           <div className="flex max-h-[92dvh] w-full max-w-5xl flex-col overflow-hidden rounded-lg bg-white shadow-2xl dark:bg-slate-950" onClick={(event) => event.stopPropagation()}>
@@ -336,10 +564,10 @@ export function LibraryProductPage({ product, related }: { product: LibraryProdu
             </div>
             <div className="grid min-h-[34rem] place-items-center bg-slate-100 p-5 dark:bg-slate-900">
               <div className="grid w-full max-w-4xl gap-5 md:grid-cols-[15rem_minmax(0,1fr)]">
-                <BookCover product={product} />
+                <BookCover product={product} imageUrl={activeGalleryImage?.url} />
                 <div className="rounded-lg bg-white p-7 shadow-xl dark:bg-slate-950">
                   <p className="text-xs font-black uppercase text-emerald-700 dark:text-emerald-300">Preview pages</p>
-                  <h3 className="mt-2 text-3xl font-black">{product.tableOfContents[0]}</h3>
+                  <h3 className="mt-2 text-3xl font-black">{product.tableOfContents[0] || product.title}</h3>
                   <p className="mt-4 leading-8 text-slate-600 dark:text-slate-300">{product.description}</p>
                   <div className="mt-6 grid gap-2 sm:grid-cols-2">
                     {product.tableOfContents.slice(1, 5).map((item) => (
@@ -348,8 +576,10 @@ export function LibraryProductPage({ product, related }: { product: LibraryProdu
                       </p>
                     ))}
                   </div>
-                  <div className="mt-6 flex items-center gap-3 text-sm font-semibold text-slate-500">
-                    <ZoomIn className="size-4" /> Zoom and fullscreen controls are ready for generated PDF preview pages.
+                  <div className="mt-6">
+                    <Button variant="secondary" onClick={() => { setPreviewOpen(false); openLightbox({ zoomed: true }); }}>
+                      <ZoomIn className="size-4" /> View cover gallery
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -357,6 +587,29 @@ export function LibraryProductPage({ product, related }: { product: LibraryProdu
           </div>
         </div>
       )}
+
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "Product",
+            name: product.seoTitle || product.title,
+            description: product.metaDescription || product.shortDescription,
+            image: product.seoImageUrl || product.gallery[0]?.url,
+            sku: product.sku,
+            brand: { "@type": "Brand", name: product.publisher || "HouseLink Zimbabwe" },
+            offers: formats.map((format) => ({
+              "@type": "Offer",
+              name: format.label,
+              price: format.price,
+              priceCurrency: product.currency,
+              availability: format.type === "PRINTED_BOOK" && product.stock === 0 ? "https://schema.org/OutOfStock" : "https://schema.org/InStock",
+              url: `/library/${product.slug}`,
+            })),
+          }),
+        }}
+      />
     </main>
   );
 }
