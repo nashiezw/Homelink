@@ -5,10 +5,12 @@ import {
   archiveLibraryProducts,
   createLibraryExportJob,
   createLibraryProduct,
+  deleteLibraryCoupon,
   duplicateLibraryProduct,
   getAdminLibraryData,
   softDeleteLibraryProducts,
   updateLibraryFulfilment,
+  upsertLibraryCoupon,
   upsertLibraryTaxSetting,
 } from "@/lib/library/repository";
 
@@ -46,6 +48,33 @@ export async function POST(request: Request) {
   if (body.action === "save_tax_setting") {
     if (!body.name || body.rate == null) return problem(400, "INVALID_TAX_SETTING", "name and rate are required.");
     return ok({ taxSetting: await upsertLibraryTaxSetting({ id: body.id, name: String(body.name), country: body.country, rate: Number(body.rate), inclusive: Boolean(body.inclusive), active: body.active ?? true }, auth.user.id) });
+  }
+  if (body.action === "save_coupon") {
+    if (!String(body.code ?? "").trim()) return problem(400, "INVALID_COUPON", "Coupon code is required.");
+    const discountValue = Number(body.discountValue);
+    if (!Number.isFinite(discountValue) || discountValue <= 0) return problem(400, "INVALID_COUPON", "Coupon discount must be greater than zero.");
+    return ok({
+      coupon: await upsertLibraryCoupon({
+        id: body.id,
+        code: String(body.code),
+        description: body.description ? String(body.description) : undefined,
+        discountType: String(body.discountType ?? "PERCENT"),
+        discountValue,
+        usageLimit: body.usageLimit === "" || body.usageLimit == null ? null : Number(body.usageLimit),
+        minimumSubtotal: body.minimumSubtotal === "" || body.minimumSubtotal == null ? null : Number(body.minimumSubtotal),
+        startsAt: body.startsAt || null,
+        expiresAt: body.expiresAt || null,
+        active: body.active ?? true,
+        productIds: arrayOfStrings(body.productIds),
+        categoryIds: arrayOfStrings(body.categoryIds),
+        firstPurchaseOnly: Boolean(body.firstPurchaseOnly),
+      }, auth.user.id),
+    });
+  }
+  if (body.action === "delete_coupon") {
+    const coupon = await deleteLibraryCoupon(String(body.id), auth.user.id);
+    if (!coupon) return problem(404, "COUPON_NOT_FOUND", "Coupon not found.");
+    return ok({ coupon });
   }
   if (!body.title || !body.description || body.price == null) {
     return problem(400, "INVALID_PRODUCT", "title, description, and price are required.");

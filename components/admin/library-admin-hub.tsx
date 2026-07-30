@@ -1,6 +1,6 @@
 "use client";
 
-import { Boxes, CheckCircle2, Copy, Download, Edit3, FileArchive, Plus, Search, Star, Trash2, Upload, X } from "lucide-react";
+import { Boxes, CheckCircle2, Copy, Download, Edit3, ExternalLink, FileArchive, Plus, Search, Star, Trash2, Upload, X } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -41,15 +41,55 @@ const views = [
 const productStatuses = ["DRAFT", "SCHEDULED", "PUBLISHED", "ARCHIVED"];
 
 type LibraryOperations = {
-  fulfilments: Array<{ id: string; status: string; courier?: string | null; trackingNumber?: string | null; order?: { orderNumber: string; total: unknown; currency: string } }>;
+  fulfilments: Array<{ id: string; status: string; courier?: string | null; trackingNumber?: string | null; trackingUrl?: string | null; dispatchNotes?: string | null; deliveryNotes?: string | null; order?: { orderNumber: string; total: unknown; currency: string } }>;
   invoices: Array<{ id: string; invoiceNumber: string; total: unknown; currency: string; issuedAt?: string; order?: { orderNumber: string } }>;
   activities: Array<{ id: string; action: string; message: string; createdAt?: string }>;
   exports: Array<{ id: string; type: string; status: string; fileUrl?: string | null; createdAt?: string }>;
   taxSettings: Array<{ id: string; name: string; country: string; rate: unknown; inclusive: boolean; active: boolean }>;
+  coupons: LibraryCouponAdmin[];
   guestClaims: Array<{ id: string; email: string; status: string; order?: { orderNumber: string } }>;
   academyEntitlements: Array<{ id: string; userId: string; courseId: string; status: string }>;
   recommendations: Array<{ id: string; reason: string; sourceProduct?: { title: string }; targetProduct?: { title: string } }>;
 };
+
+type LibraryCouponAdmin = {
+  id: string;
+  code: string;
+  description?: string | null;
+  discountType: string;
+  discountValue: number;
+  usageLimit?: number | null;
+  usedCount: number;
+  minimumSubtotal?: number | null;
+  startsAt?: string | null;
+  expiresAt?: string | null;
+  active: boolean;
+  productIds: string[];
+  categoryIds: string[];
+  firstPurchaseOnly: boolean;
+};
+
+type CouponDraft = {
+  id?: string;
+  code: string;
+  description: string;
+  discountType: string;
+  discountValue: string;
+  usageLimit: string;
+  minimumSubtotal: string;
+  startsAt: string;
+  expiresAt: string;
+  active: boolean;
+  firstPurchaseOnly: boolean;
+  productIdsText: string;
+  categoryIdsText: string;
+};
+
+type TaxDraft = { id?: string; name: string; country: string; rate: string; inclusive: boolean; active: boolean };
+
+type FulfilmentDraft = { id: string; status: string; courier: string; trackingNumber: string; trackingUrl: string; dispatchNotes: string; deliveryNotes: string };
+
+type GroupDraft = { field: LibraryGroupField; currentName: string; nextName: string };
 
 type LibraryDraftDownload = LibraryProduct["downloads"][number] & { fileUrl?: string; fileName?: string; fileSizeBytes?: number; previewable?: boolean };
 
@@ -81,10 +121,16 @@ type LibraryProductDraft = {
   requirementsText: string;
   tableOfContentsText: string;
   tagsText: string;
+  seoTitle: string;
+  metaDescription: string;
   stock: string;
   lowStockThreshold: string;
   warehouse: string;
   supplier: string;
+  downloadLimit: string;
+  downloadExpiryDays: string;
+  watermarking: boolean;
+  licenseKeys: boolean;
   featured: boolean;
   bestSeller: boolean;
   newRelease: boolean;
@@ -101,6 +147,7 @@ const emptyOperations: LibraryOperations = {
   activities: [],
   exports: [],
   taxSettings: [],
+  coupons: [],
   guestClaims: [],
   academyEntitlements: [],
   recommendations: [],
@@ -170,10 +217,16 @@ export function LibraryAdminHub() {
     requirementsText: "",
     tableOfContentsText: "",
     tagsText: "",
+    seoTitle: "",
+    metaDescription: "",
     stock: "",
     lowStockThreshold: "0",
     warehouse: "",
     supplier: "",
+    downloadLimit: "",
+    downloadExpiryDays: "",
+    watermarking: false,
+    licenseKeys: false,
     featured: false,
     bestSeller: false,
     newRelease: false,
@@ -185,6 +238,12 @@ export function LibraryAdminHub() {
   };
   const [draft, setDraft] = useState<LibraryProductDraft>(emptyDraft);
   const [editingProduct, setEditingProduct] = useState<LibraryProduct | null>(null);
+  const emptyCouponDraft: CouponDraft = { code: "", description: "", discountType: "PERCENT", discountValue: "10", usageLimit: "", minimumSubtotal: "", startsAt: "", expiresAt: "", active: true, firstPurchaseOnly: false, productIdsText: "", categoryIdsText: "" };
+  const emptyTaxDraft: TaxDraft = { name: "", country: "ZW", rate: "0", inclusive: false, active: true };
+  const [couponDraft, setCouponDraft] = useState<CouponDraft | null>(null);
+  const [taxDraft, setTaxDraft] = useState<TaxDraft | null>(null);
+  const [fulfilmentDraft, setFulfilmentDraft] = useState<FulfilmentDraft | null>(null);
+  const [groupDraft, setGroupDraft] = useState<GroupDraft | null>(null);
   const source = productsSource.length ? productsSource : searchLibraryProducts({});
   const products = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -289,10 +348,16 @@ export function LibraryAdminHub() {
       requirementsText: product.requirements.join("\n"),
       tableOfContentsText: product.tableOfContents.join("\n"),
       tagsText: product.tags.join(", "),
+      seoTitle: product.seoTitle ?? "",
+      metaDescription: product.metaDescription ?? "",
       stock: product.stock === null ? "" : String(product.stock),
       lowStockThreshold: String(product.lowStockThreshold),
       warehouse: product.warehouse ?? "",
       supplier: product.supplier ?? "",
+      downloadLimit: product.downloadLimit == null ? "" : String(product.downloadLimit),
+      downloadExpiryDays: product.downloadExpiryDays == null ? "" : String(product.downloadExpiryDays),
+      watermarking: Boolean(product.watermarking),
+      licenseKeys: Boolean(product.licenseKeys),
       featured: product.featured,
       bestSeller: product.bestSeller,
       newRelease: product.newRelease,
@@ -371,11 +436,20 @@ export function LibraryAdminHub() {
     await load();
   }
 
-  async function renameProductGroup(field: "category" | "collection" | "author", currentName: string) {
-    const nextName = window.prompt(`Rename ${field}`, currentName)?.trim();
-    if (!nextName || nextName === currentName) return;
-    const ids = source.filter((product) => product[field] === currentName).map((product) => product.id);
-    await updateProducts(ids, { [field]: nextName } as Partial<LibraryProduct>);
+  function openGroupEditor(field: LibraryGroupField, currentName: string) {
+    setGroupDraft({ field, currentName, nextName: currentName });
+  }
+
+  async function saveProductGroup() {
+    if (!groupDraft) return;
+    const nextName = groupDraft.nextName.trim();
+    if (!nextName || nextName === groupDraft.currentName) {
+      setGroupDraft(null);
+      return;
+    }
+    const ids = source.filter((product) => product[groupDraft.field] === groupDraft.currentName).map((product) => product.id);
+    await updateProducts(ids, { [groupDraft.field]: nextName } as Partial<LibraryProduct>);
+    setGroupDraft(null);
   }
 
   async function deleteProductGroup(field: "category" | "collection" | "author", currentName: string) {
@@ -401,19 +475,56 @@ export function LibraryAdminHub() {
     await load();
   }
 
+  function openCouponEditor(coupon?: LibraryCouponAdmin) {
+    setCouponDraft(coupon ? {
+      id: coupon.id,
+      code: coupon.code,
+      description: coupon.description ?? "",
+      discountType: coupon.discountType,
+      discountValue: String(coupon.discountValue),
+      usageLimit: coupon.usageLimit == null ? "" : String(coupon.usageLimit),
+      minimumSubtotal: coupon.minimumSubtotal == null ? "" : String(coupon.minimumSubtotal),
+      startsAt: coupon.startsAt ?? "",
+      expiresAt: coupon.expiresAt ?? "",
+      active: coupon.active,
+      firstPurchaseOnly: coupon.firstPurchaseOnly,
+      productIdsText: coupon.productIds.join(", "),
+      categoryIdsText: coupon.categoryIds.join(", "),
+    } : emptyCouponDraft);
+  }
+
+  async function saveCoupon() {
+    if (!couponDraft) return;
+    await apiFetch("/api/v1/admin/library", { method: "POST", body: JSON.stringify({ action: "save_coupon", ...couponPayload(couponDraft) }) });
+    setCouponDraft(null);
+    await load();
+  }
+
+  async function deleteCoupon(id: string) {
+    if (!window.confirm("Delete this Library coupon?")) return;
+    await apiFetch("/api/v1/admin/library", { method: "POST", body: JSON.stringify({ action: "delete_coupon", id }) });
+    await load();
+  }
+
+  function openTaxEditor(tax?: LibraryOperations["taxSettings"][number]) {
+    setTaxDraft(tax ? { id: tax.id, name: tax.name, country: tax.country, rate: String(tax.rate), inclusive: tax.inclusive, active: tax.active } : emptyTaxDraft);
+  }
+
   async function saveTaxSetting() {
-    const name = window.prompt("Tax setting name");
-    if (!name?.trim()) return;
-    const country = window.prompt("Country code", "ZW");
-    if (!country?.trim()) return;
-    const rateInput = window.prompt("Tax rate percentage", "0");
-    const rate = Number(rateInput);
-    if (!Number.isFinite(rate) || rate < 0) {
-      window.alert("Enter a valid tax rate.");
-      return;
-    }
-    const inclusive = window.confirm("Should this tax be included in the displayed product price?");
-    await apiFetch("/api/v1/admin/library", { method: "POST", body: JSON.stringify({ action: "save_tax_setting", name: name.trim(), country: country.trim().toUpperCase(), rate, inclusive, active: true }) });
+    if (!taxDraft) return;
+    await apiFetch("/api/v1/admin/library", { method: "POST", body: JSON.stringify({ action: "save_tax_setting", id: taxDraft.id, name: taxDraft.name, country: taxDraft.country, rate: Number(taxDraft.rate), inclusive: taxDraft.inclusive, active: taxDraft.active }) });
+    setTaxDraft(null);
+    await load();
+  }
+
+  function openFulfilmentEditor(row: LibraryOperations["fulfilments"][number]) {
+    setFulfilmentDraft({ id: row.id, status: row.status, courier: row.courier ?? "", trackingNumber: row.trackingNumber ?? "", trackingUrl: row.trackingUrl ?? "", dispatchNotes: row.dispatchNotes ?? "", deliveryNotes: row.deliveryNotes ?? "" });
+  }
+
+  async function saveFulfilment() {
+    if (!fulfilmentDraft) return;
+    await apiFetch("/api/v1/admin/library", { method: "POST", body: JSON.stringify({ action: "update_fulfilment", ...fulfilmentDraft }) });
+    setFulfilmentDraft(null);
     await load();
   }
 
@@ -484,7 +595,7 @@ export function LibraryAdminHub() {
                 { key: "price", header: "Price", render: (row) => `${row.currency} ${row.price.toFixed(2)}` },
                 { key: "status", header: "Status", render: (row) => <AdminStatusBadge status={row.status} variant={row.status === "PUBLISHED" ? "success" : row.status === "SCHEDULED" ? "warning" : "muted"} /> },
                 { key: "stock", header: "Inventory", render: (row) => row.stock === null ? "Unlimited digital" : `${row.stock} units` },
-                { key: "actions", header: "Actions", render: (row) => <div className="flex flex-wrap gap-2"><IconButton icon={Edit3} label="Edit" onClick={() => openEditor(row)} /><IconButton icon={Copy} label="Duplicate" onClick={() => void duplicate(row.id)} /><IconButton icon={Trash2} label="Delete" danger onClick={() => void deleteProduct(row.id)} /><button type="button" onClick={() => void setProductStatus(row, row.status === "PUBLISHED" ? "DRAFT" : "PUBLISHED")} className="rounded-lg border border-white/10 px-3 py-2 text-xs font-bold text-slate-300 hover:bg-white/5">{row.status === "PUBLISHED" ? "Draft" : "Publish"}</button></div> },
+                { key: "actions", header: "Actions", render: (row) => <div className="flex flex-wrap gap-2"><IconButton icon={Edit3} label="Edit" onClick={() => openEditor(row)} /><IconButton icon={ExternalLink} label="Preview" onClick={() => window.open(`/library/${row.slug}`, "_blank")} /><IconButton icon={Copy} label="Duplicate" onClick={() => void duplicate(row.id)} /><IconButton icon={Trash2} label="Delete" danger onClick={() => void deleteProduct(row.id)} /><button type="button" onClick={() => void setProductStatus(row, row.status === "PUBLISHED" ? "DRAFT" : "PUBLISHED")} className="rounded-lg border border-white/10 px-3 py-2 text-xs font-bold text-slate-300 hover:bg-white/5">{row.status === "PUBLISHED" ? "Draft" : "Publish"}</button></div> },
               ]}
             />
           </div>
@@ -494,7 +605,7 @@ export function LibraryAdminHub() {
       {view === "Orders" && (
         <AdminPanel title="Library orders" description="Order queue, fulfilment, payment state, invoices, and customer confirmations.">
           <OrdersTable orders={orders} />
-          <OperationsList title="Fulfilment queue" rows={operations.fulfilments.map((item) => ({ label: item.order?.orderNumber ?? item.id, value: item.status, detail: [item.courier, item.trackingNumber].filter(Boolean).join(" - ") || "Awaiting dispatch details" }))} />
+          <FulfilmentTable rows={operations.fulfilments} onEdit={openFulfilmentEditor} />
           <OperationsList title="Invoices" rows={operations.invoices.map((item) => ({ label: item.invoiceNumber, value: `${item.currency} ${Number(item.total).toFixed(2)}`, detail: item.order?.orderNumber ?? "Library invoice" }))} />
         </AdminPanel>
       )}
@@ -507,7 +618,9 @@ export function LibraryAdminHub() {
             view === "Reports" || view === "Analytics" ? (
               <Button onClick={() => void createExport(view.toLowerCase())}>Create Export</Button>
             ) : view === "Settings" ? (
-              <Button onClick={() => void saveTaxSetting()}>Add Tax Setting</Button>
+              <Button onClick={() => openTaxEditor()}>Add Tax Setting</Button>
+            ) : view === "Coupons" ? (
+              <Button onClick={() => openCouponEditor()}><Plus className="size-4" /> Create Coupon</Button>
             ) : ["Categories", "Collections", "Authors", "Downloads", "Inventory"].includes(view) ? (
               <Button onClick={() => createForView()}>
                 <Plus className="size-4" /> Create Product
@@ -524,14 +637,15 @@ export function LibraryAdminHub() {
             onEditProduct={openEditor}
             onDeleteProduct={deleteProduct}
             onSetProductStatus={setProductStatus}
-            onRenameGroup={renameProductGroup}
+            onRenameGroup={openGroupEditor}
             onDeleteGroup={deleteProductGroup}
             onCreateExport={createExport}
-            onSaveTaxSetting={saveTaxSetting}
+            onEditCoupon={openCouponEditor}
+            onDeleteCoupon={deleteCoupon}
+            onEditTaxSetting={openTaxEditor}
           />
           {view === "Reports" && <OperationsList title="Export jobs" rows={operations.exports.map((item) => ({ label: item.type, value: item.status, detail: item.fileUrl ?? "Preparing export" }))} />}
           {view === "Analytics" && <OperationsList title="Activity timeline" rows={operations.activities.map((item) => ({ label: item.action, value: item.createdAt ? new Date(item.createdAt).toLocaleDateString() : "Now", detail: item.message }))} />}
-          {view === "Settings" && <OperationsList title="Tax settings" rows={operations.taxSettings.map((item) => ({ label: item.name, value: `${Number(item.rate).toFixed(2)}%`, detail: `${item.country} - ${item.inclusive ? "inclusive" : "exclusive"} - ${item.active ? "active" : "inactive"}` }))} />}
           {view === "Customers" && <OperationsList title="Guest claim queue" rows={operations.guestClaims.map((item) => ({ label: item.email, value: item.status, detail: item.order?.orderNumber ?? "Awaiting account claim" }))} />}
           {view === "Collections" && <OperationsList title="Recommendation links" rows={operations.recommendations.map((item) => ({ label: item.sourceProduct?.title ?? "Product", value: item.reason, detail: item.targetProduct?.title ?? "Recommended product" }))} />}
           {view === "Downloads" && <OperationsList title="Course entitlement bridge" rows={operations.academyEntitlements.map((item) => ({ label: item.courseId, value: item.status, detail: item.userId }))} />}
@@ -573,6 +687,8 @@ export function LibraryAdminHub() {
                       <TextAreaField label="Who this is for" value={draft.whoThisIsForText} onChange={(value) => setDraft({ ...draft, whoThisIsForText: value })} placeholder="One audience per line" />
                       <TextAreaField label="Requirements" value={draft.requirementsText} onChange={(value) => setDraft({ ...draft, requirementsText: value })} placeholder="One requirement per line" />
                       <Field label="Tags" value={draft.tagsText} onChange={(value) => setDraft({ ...draft, tagsText: value })} placeholder="Comma separated tags" />
+                      <Field label="SEO title" value={draft.seoTitle} onChange={(value) => setDraft({ ...draft, seoTitle: value })} placeholder="Search result title" />
+                      <TextAreaField label="Meta description" value={draft.metaDescription} onChange={(value) => setDraft({ ...draft, metaDescription: value })} placeholder="Search result summary" />
                     </div>
                   </EditorSection>
 
@@ -589,8 +705,8 @@ export function LibraryAdminHub() {
                     </div>
                     {(draft.gallery.length > 0 || draft.downloads.length > 0) && (
                       <div className="mt-3 grid gap-2 rounded-lg border border-white/10 p-3 text-xs text-slate-400">
-                        {draft.gallery.map((item, index) => <p key={`${item.url}-${index}`}>Cover/gallery: {item.label}</p>)}
-                        {draft.downloads.map((item, index) => <p key={`${item.id}-${index}`}>Download: {item.label} ({item.fileType})</p>)}
+                        {draft.gallery.map((item, index) => <AssetRow key={`${item.url}-${index}`} label={`Cover/gallery: ${item.label}`} onRemove={() => setDraft((current) => ({ ...current, gallery: current.gallery.filter((_, itemIndex) => itemIndex !== index) }))} />)}
+                        {draft.downloads.map((item, index) => <AssetRow key={`${item.id}-${index}`} label={`Download: ${item.label} (${item.fileType})`} onRemove={() => setDraft((current) => ({ ...current, downloads: current.downloads.filter((_, itemIndex) => itemIndex !== index) }))} />)}
                       </div>
                     )}
                   </EditorSection>
@@ -638,6 +754,15 @@ export function LibraryAdminHub() {
                       <Field label="Supplier" value={draft.supplier} onChange={(value) => setDraft({ ...draft, supplier: value })} />
                     </div>
                   </EditorSection>
+
+                  <EditorSection title="Downloads and licensing">
+                    <div className="grid gap-3">
+                      <Field label="Download limit" value={draft.downloadLimit} onChange={(value) => setDraft({ ...draft, downloadLimit: value })} type="number" placeholder="Blank for unlimited" />
+                      <Field label="Expiry days" value={draft.downloadExpiryDays} onChange={(value) => setDraft({ ...draft, downloadExpiryDays: value })} type="number" placeholder="Blank for never expires" />
+                      <ToggleField label="Watermark PDF files" checked={draft.watermarking} onChange={(value) => setDraft({ ...draft, watermarking: value })} />
+                      <ToggleField label="Generate license keys" checked={draft.licenseKeys} onChange={(value) => setDraft({ ...draft, licenseKeys: value })} />
+                    </div>
+                  </EditorSection>
                 </aside>
               </div>
             </div>
@@ -647,6 +772,60 @@ export function LibraryAdminHub() {
             </div>
           </div>
         </div>
+      )}
+
+      {couponDraft && (
+        <CommerceModal title={couponDraft.id ? "Edit Library Coupon" : "Create Library Coupon"} description="Discount rules, expiry, usage limits, first-purchase controls, and product/category restrictions." onClose={() => setCouponDraft(null)} onSave={() => void saveCoupon()} saveLabel={couponDraft.id ? "Save Coupon" : "Create Coupon"} disabled={!couponDraft.code.trim() || !Number(couponDraft.discountValue)}>
+          <div className="grid gap-3 md:grid-cols-2">
+            <Field label="Coupon code" value={couponDraft.code} onChange={(value) => setCouponDraft({ ...couponDraft, code: value.toUpperCase() })} required />
+            <SelectField label="Discount type" value={couponDraft.discountType} onChange={(value) => setCouponDraft({ ...couponDraft, discountType: value })} options={["PERCENT", "FIXED"]} />
+            <Field label="Discount value" value={couponDraft.discountValue} onChange={(value) => setCouponDraft({ ...couponDraft, discountValue: value })} type="number" required />
+            <Field label="Minimum subtotal" value={couponDraft.minimumSubtotal} onChange={(value) => setCouponDraft({ ...couponDraft, minimumSubtotal: value })} type="number" />
+            <Field label="Usage limit" value={couponDraft.usageLimit} onChange={(value) => setCouponDraft({ ...couponDraft, usageLimit: value })} type="number" />
+            <Field label="Starts at" value={couponDraft.startsAt} onChange={(value) => setCouponDraft({ ...couponDraft, startsAt: value })} type="date" />
+            <Field label="Expires at" value={couponDraft.expiresAt} onChange={(value) => setCouponDraft({ ...couponDraft, expiresAt: value })} type="date" />
+            <Field label="Product IDs" value={couponDraft.productIdsText} onChange={(value) => setCouponDraft({ ...couponDraft, productIdsText: value })} placeholder="Optional, comma separated" />
+            <Field label="Category IDs" value={couponDraft.categoryIdsText} onChange={(value) => setCouponDraft({ ...couponDraft, categoryIdsText: value })} placeholder="Optional, comma separated" />
+            <TextAreaField label="Description" value={couponDraft.description} onChange={(value) => setCouponDraft({ ...couponDraft, description: value })} />
+            <div className="grid gap-3">
+              <ToggleField label="Active" checked={couponDraft.active} onChange={(value) => setCouponDraft({ ...couponDraft, active: value })} />
+              <ToggleField label="First purchase only" checked={couponDraft.firstPurchaseOnly} onChange={(value) => setCouponDraft({ ...couponDraft, firstPurchaseOnly: value })} />
+            </div>
+          </div>
+        </CommerceModal>
+      )}
+
+      {taxDraft && (
+        <CommerceModal title={taxDraft.id ? "Edit Tax Setting" : "Add Tax Setting"} description="Real checkout tax settings used when quoting Library carts." onClose={() => setTaxDraft(null)} onSave={() => void saveTaxSetting()} saveLabel="Save Tax Setting" disabled={!taxDraft.name.trim() || !taxDraft.country.trim()}>
+          <div className="grid gap-3 md:grid-cols-2">
+            <Field label="Name" value={taxDraft.name} onChange={(value) => setTaxDraft({ ...taxDraft, name: value })} required />
+            <Field label="Country" value={taxDraft.country} onChange={(value) => setTaxDraft({ ...taxDraft, country: value.toUpperCase() })} required />
+            <Field label="Rate percentage" value={taxDraft.rate} onChange={(value) => setTaxDraft({ ...taxDraft, rate: value })} type="number" required />
+            <div className="grid gap-3">
+              <ToggleField label="Tax included in price" checked={taxDraft.inclusive} onChange={(value) => setTaxDraft({ ...taxDraft, inclusive: value })} />
+              <ToggleField label="Active" checked={taxDraft.active} onChange={(value) => setTaxDraft({ ...taxDraft, active: value })} />
+            </div>
+          </div>
+        </CommerceModal>
+      )}
+
+      {fulfilmentDraft && (
+        <CommerceModal title="Update Fulfilment" description="Packing, dispatch, tracking, and delivery notes for printed Library orders." onClose={() => setFulfilmentDraft(null)} onSave={() => void saveFulfilment()} saveLabel="Save Fulfilment">
+          <div className="grid gap-3 md:grid-cols-2">
+            <SelectField label="Status" value={fulfilmentDraft.status} onChange={(value) => setFulfilmentDraft({ ...fulfilmentDraft, status: value })} options={["PENDING", "PACKED", "DISPATCHED", "DELIVERED", "RETURNED", "CANCELLED"]} />
+            <Field label="Courier" value={fulfilmentDraft.courier} onChange={(value) => setFulfilmentDraft({ ...fulfilmentDraft, courier: value })} />
+            <Field label="Tracking number" value={fulfilmentDraft.trackingNumber} onChange={(value) => setFulfilmentDraft({ ...fulfilmentDraft, trackingNumber: value })} />
+            <Field label="Tracking URL" value={fulfilmentDraft.trackingUrl} onChange={(value) => setFulfilmentDraft({ ...fulfilmentDraft, trackingUrl: value })} />
+            <TextAreaField label="Dispatch notes" value={fulfilmentDraft.dispatchNotes} onChange={(value) => setFulfilmentDraft({ ...fulfilmentDraft, dispatchNotes: value })} />
+            <TextAreaField label="Delivery notes" value={fulfilmentDraft.deliveryNotes} onChange={(value) => setFulfilmentDraft({ ...fulfilmentDraft, deliveryNotes: value })} />
+          </div>
+        </CommerceModal>
+      )}
+
+      {groupDraft && (
+        <CommerceModal title={`Rename ${groupDraft.field}`} description="Update this Library grouping across all products currently assigned to it." onClose={() => setGroupDraft(null)} onSave={() => void saveProductGroup()} saveLabel="Save Group" disabled={!groupDraft.nextName.trim()}>
+          <Field label="Name" value={groupDraft.nextName} onChange={(value) => setGroupDraft({ ...groupDraft, nextName: value })} required />
+        </CommerceModal>
       )}
     </div>
   );
@@ -684,10 +863,16 @@ function productPayload(draft: LibraryProductDraft) {
     requirements: lines(draft.requirementsText),
     tableOfContents: lines(draft.tableOfContentsText),
     tags,
+    seoTitle: draft.seoTitle.trim() || undefined,
+    metaDescription: draft.metaDescription.trim() || undefined,
     stock,
     lowStockThreshold: Number(draft.lowStockThreshold) || 0,
     warehouse: draft.warehouse.trim() || undefined,
     supplier: draft.supplier.trim() || undefined,
+    downloadLimit: draft.downloadLimit.trim() ? Number(draft.downloadLimit) : null,
+    downloadExpiryDays: draft.downloadExpiryDays.trim() ? Number(draft.downloadExpiryDays) : null,
+    watermarking: draft.watermarking,
+    licenseKeys: draft.licenseKeys,
     featured: draft.featured,
     bestSeller: draft.bestSeller,
     newRelease: draft.newRelease,
@@ -697,6 +882,55 @@ function productPayload(draft: LibraryProductDraft) {
     gallery: draft.gallery,
     downloads: draft.downloads,
   };
+}
+
+function couponPayload(draft: CouponDraft) {
+  const csv = (value: string) => value.split(",").map((item) => item.trim()).filter(Boolean);
+  return {
+    id: draft.id,
+    code: draft.code.trim().toUpperCase(),
+    description: draft.description.trim(),
+    discountType: draft.discountType,
+    discountValue: Number(draft.discountValue),
+    usageLimit: draft.usageLimit.trim() ? Number(draft.usageLimit) : null,
+    minimumSubtotal: draft.minimumSubtotal.trim() ? Number(draft.minimumSubtotal) : null,
+    startsAt: draft.startsAt || null,
+    expiresAt: draft.expiresAt || null,
+    active: draft.active,
+    firstPurchaseOnly: draft.firstPurchaseOnly,
+    productIds: csv(draft.productIdsText),
+    categoryIds: csv(draft.categoryIdsText),
+  };
+}
+
+function CommerceModal({ title, description, children, saveLabel, disabled, onClose, onSave }: { title: string; description: string; children: React.ReactNode; saveLabel: string; disabled?: boolean; onClose: () => void; onSave: () => void }) {
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/70 p-4" onClick={onClose}>
+      <div className="flex max-h-[90dvh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-slate-950 shadow-2xl" onClick={(event) => event.stopPropagation()}>
+        <div className="flex items-start justify-between gap-3 border-b border-white/10 p-5">
+          <div>
+            <h2 className="text-lg font-semibold text-white">{title}</h2>
+            <p className="mt-1 text-sm text-slate-400">{description}</p>
+          </div>
+          <button type="button" onClick={onClose} className="rounded-lg p-2 text-slate-400 hover:bg-white/5" aria-label="Close modal"><X className="size-4" /></button>
+        </div>
+        <div className="overflow-y-auto p-5">{children}</div>
+        <div className="flex justify-end gap-2 border-t border-white/10 p-5">
+          <button type="button" onClick={onClose} className="rounded-lg border border-white/10 px-4 py-2 text-sm text-slate-300">Cancel</button>
+          <Button disabled={disabled} onClick={onSave}>{saveLabel}</Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AssetRow({ label, onRemove }: { label: string; onRemove: () => void }) {
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-lg border border-white/[0.06] bg-slate-950 p-2">
+      <span className="min-w-0 truncate">{label}</span>
+      <button type="button" onClick={onRemove} className="rounded-md border border-red-500/30 px-2 py-1 text-[11px] font-bold text-red-300 hover:bg-red-500/10">Remove</button>
+    </div>
+  );
 }
 
 function EditorSection({ title, children }: { title: string; children: React.ReactNode }) {
@@ -769,7 +1003,9 @@ function LibraryTabManagement({
   onRenameGroup,
   onDeleteGroup,
   onCreateExport,
-  onSaveTaxSetting,
+  onEditCoupon,
+  onDeleteCoupon,
+  onEditTaxSetting,
 }: {
   view: string;
   products: LibraryProduct[];
@@ -782,7 +1018,9 @@ function LibraryTabManagement({
   onRenameGroup: (field: LibraryGroupField, currentName: string) => void | Promise<void>;
   onDeleteGroup: (field: LibraryGroupField, currentName: string) => void | Promise<void>;
   onCreateExport: (type: string) => void | Promise<void>;
-  onSaveTaxSetting: () => void | Promise<void>;
+  onEditCoupon: (coupon?: LibraryCouponAdmin) => void;
+  onDeleteCoupon: (id: string) => void | Promise<void>;
+  onEditTaxSetting: (tax?: LibraryOperations["taxSettings"][number]) => void;
 }) {
   if (view === "Categories") return <GroupTable field="category" products={products} onRename={onRenameGroup} onDelete={onDeleteGroup} />;
   if (view === "Collections") return <GroupTable field="collection" products={products} onRename={onRenameGroup} onDelete={onDeleteGroup} />;
@@ -860,17 +1098,17 @@ function LibraryTabManagement({
   }
 
   if (view === "Coupons") {
-    const rows: Array<{ id: string; code: string; discount: string; status: string; used: number }> = [];
+    const rows = operations.coupons;
     return (
       <AdminDataTable
         rows={rows}
-        emptyMessage="No Library coupons yet. Connect real coupon campaigns from Marketing before showing them here."
+        emptyMessage="No Library coupons yet. Create real coupon campaigns for discounts, bundles, and launch offers."
         columns={[
           { key: "code", header: "Code", render: (row) => <span className="font-semibold text-white">{row.code}</span> },
-          { key: "discount", header: "Discount", render: (row) => row.discount },
-          { key: "used", header: "Used", render: (row) => row.used },
-          { key: "status", header: "Status", render: (row) => <AdminStatusBadge status={row.status} variant={row.status === "ACTIVE" ? "success" : "muted"} /> },
-          { key: "actions", header: "Actions", render: () => <RowActions primaryLabel="Export Uses" primaryIcon={Download} onPrimary={() => onCreateExport("coupons")} onDelete={() => window.alert("Coupon deletion needs the production coupon editor; export usage before removing active campaigns.")} /> },
+          { key: "discount", header: "Discount", render: (row) => row.discountType === "PERCENT" ? `${row.discountValue}%` : `USD ${row.discountValue.toFixed(2)}` },
+          { key: "rules", header: "Rules", render: (row) => [row.minimumSubtotal ? `Min USD ${row.minimumSubtotal}` : null, row.usageLimit ? `${row.usedCount}/${row.usageLimit} used` : `${row.usedCount} used`, row.firstPurchaseOnly ? "First purchase" : null].filter(Boolean).join(" - ") || "No restrictions" },
+          { key: "status", header: "Status", render: (row) => <AdminStatusBadge status={row.active ? "ACTIVE" : "INACTIVE"} variant={row.active ? "success" : "muted"} /> },
+          { key: "actions", header: "Actions", render: (row) => <RowActions primaryLabel="Export Uses" primaryIcon={Download} onPrimary={() => onCreateExport("coupons")} onEdit={() => onEditCoupon(row)} onDelete={() => onDeleteCoupon(row.id)} /> },
         ]}
       />
     );
@@ -923,7 +1161,7 @@ function LibraryTabManagement({
           { key: "country", header: "Country", render: (row) => row.country },
           { key: "rate", header: "Rate", render: (row) => `${Number(row.rate).toFixed(2)}%` },
           { key: "active", header: "State", render: (row) => <AdminStatusBadge status={row.active ? "ACTIVE" : "INACTIVE"} variant={row.active ? "success" : "muted"} /> },
-          { key: "actions", header: "Actions", render: () => <RowActions primaryLabel="Save Defaults" primaryIcon={CheckCircle2} onPrimary={onSaveTaxSetting} onDelete={() => window.alert("Tax settings are versioned; disable them instead of deleting audit history.")} /> },
+          { key: "actions", header: "Actions", render: (row) => <RowActions primaryLabel="Edit" primaryIcon={CheckCircle2} onPrimary={() => onEditTaxSetting(row)} /> },
         ]}
       />
     );
@@ -966,6 +1204,28 @@ function GroupTable({
         { key: "actions", header: "Actions", render: (row) => <RowActions primaryLabel="Rename" primaryIcon={Edit3} onPrimary={() => onRename(field, row.name)} onDelete={() => onDelete(field, row.name)} /> },
       ]}
     />
+  );
+}
+
+function FulfilmentTable({ rows, onEdit }: { rows: LibraryOperations["fulfilments"]; onEdit: (row: LibraryOperations["fulfilments"][number]) => void }) {
+  return (
+    <div className="mt-5">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <p className="font-semibold text-white">Fulfilment queue</p>
+        <span className="rounded-full bg-white/10 px-2 py-1 text-xs text-slate-300">{rows.length}</span>
+      </div>
+      <AdminDataTable
+        rows={rows}
+        emptyMessage="No printed Library fulfilments yet."
+        columns={[
+          { key: "order", header: "Order", render: (row) => <span className="font-semibold text-white">{row.order?.orderNumber ?? row.id}</span> },
+          { key: "status", header: "Status", render: (row) => <AdminStatusBadge status={row.status} variant={row.status === "DELIVERED" ? "success" : row.status === "DISPATCHED" ? "info" : "warning"} /> },
+          { key: "courier", header: "Courier", render: (row) => row.courier || "Unassigned" },
+          { key: "tracking", header: "Tracking", render: (row) => row.trackingUrl ? <a href={row.trackingUrl} target="_blank" rel="noreferrer" className="text-emerald-300 hover:text-emerald-200">{row.trackingNumber || "Open tracking"}</a> : row.trackingNumber || "Not added" },
+          { key: "actions", header: "Actions", render: (row) => <RowActions primaryLabel="Update" primaryIcon={Edit3} onPrimary={() => onEdit(row)} /> },
+        ]}
+      />
+    </div>
   );
 }
 

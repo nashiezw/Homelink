@@ -108,6 +108,23 @@ type LocalLibraryOrder = LibraryOrder & {
   payment?: { status: string };
 };
 
+export type LibraryCouponAdmin = {
+  id: string;
+  code: string;
+  description?: string | null;
+  discountType: string;
+  discountValue: number;
+  usageLimit?: number | null;
+  usedCount: number;
+  minimumSubtotal?: number | null;
+  startsAt?: string | null;
+  expiresAt?: string | null;
+  active: boolean;
+  productIds: string[];
+  categoryIds: string[];
+  firstPurchaseOnly: boolean;
+};
+
 const localLibraryProducts: LibraryProduct[] = getLibraryProducts().map((product) => ({
   ...product,
   gallery: product.gallery.map((item) => ({ ...item })),
@@ -115,6 +132,7 @@ const localLibraryProducts: LibraryProduct[] = getLibraryProducts().map((product
 }));
 
 const localLibraryOrders: LocalLibraryOrder[] = LIBRARY_ORDERS.map((order) => ({ ...order, customerId: "demo" }));
+const localLibraryCoupons: LibraryCouponAdmin[] = [];
 
 export function shouldUsePostgresLibrary() {
   return isPostgresStoreEnabled();
@@ -755,6 +773,7 @@ export async function getLibraryOperationsSummary() {
       activities: [],
       exports: [],
       taxSettings: [],
+      coupons: localLibraryCoupons,
       guestClaims: [],
       academyEntitlements: [],
       recommendations: [],
@@ -762,12 +781,13 @@ export async function getLibraryOperationsSummary() {
   }
   const prisma = getMainPrisma();
   try {
-    const [fulfilments, invoices, activities, exports, taxSettings, guestClaims, academyEntitlements, recommendations] = await Promise.all([
+    const [fulfilments, invoices, activities, exports, taxSettings, coupons, guestClaims, academyEntitlements, recommendations] = await Promise.all([
       prisma.libraryFulfilment.findMany({ orderBy: { createdAt: "desc" }, take: 20, include: { order: { select: { orderNumber: true, total: true, currency: true } } } }),
       prisma.libraryInvoice.findMany({ orderBy: { issuedAt: "desc" }, take: 20, include: { order: { select: { orderNumber: true } } } }),
       prisma.libraryActivity.findMany({ orderBy: { createdAt: "desc" }, take: 30 }),
       prisma.libraryExportJob.findMany({ orderBy: { createdAt: "desc" }, take: 12 }),
       prisma.libraryTaxSetting.findMany({ orderBy: { createdAt: "desc" }, take: 10 }),
+      prisma.libraryCoupon.findMany({ orderBy: { createdAt: "desc" }, take: 100 }),
       prisma.libraryGuestClaim.findMany({ orderBy: { createdAt: "desc" }, take: 20, include: { order: { select: { orderNumber: true } } } }),
       prisma.libraryAcademyEntitlement.findMany({ orderBy: { createdAt: "desc" }, take: 20 }),
       prisma.libraryRecommendation.findMany({
@@ -777,7 +797,7 @@ export async function getLibraryOperationsSummary() {
         include: { sourceProduct: { select: { title: true } }, targetProduct: { select: { title: true } } },
       }),
     ]);
-    return { fulfilments, invoices, activities, exports, taxSettings, guestClaims, academyEntitlements, recommendations };
+    return { fulfilments, invoices, activities, exports, taxSettings, coupons: coupons.map(toLibraryCouponAdmin), guestClaims, academyEntitlements, recommendations };
   } catch {
     return {
       fulfilments: [],
@@ -785,6 +805,7 @@ export async function getLibraryOperationsSummary() {
       activities: [],
       exports: [],
       taxSettings: [],
+      coupons: [],
       guestClaims: [],
       academyEntitlements: [],
       recommendations: [],
@@ -839,6 +860,79 @@ export async function upsertLibraryTaxSetting(input: { id?: string; name: string
   const row = input.id ? await prisma.libraryTaxSetting.update({ where: { id: input.id }, data }) : await prisma.libraryTaxSetting.create({ data });
   await logLibraryActivity({ actorId, targetType: "settings", targetId: row.id, action: "TAX_UPDATED", message: `${row.name} tax setting saved.` });
   return row;
+}
+
+export async function upsertLibraryCoupon(input: {
+  id?: string;
+  code: string;
+  description?: string;
+  discountType: string;
+  discountValue: number;
+  usageLimit?: number | null;
+  minimumSubtotal?: number | null;
+  startsAt?: string | null;
+  expiresAt?: string | null;
+  active?: boolean;
+  productIds?: string[];
+  categoryIds?: string[];
+  firstPurchaseOnly?: boolean;
+}, actorId?: string) {
+  const normalized = {
+    id: input.id,
+    code: input.code.trim().toUpperCase(),
+    description: input.description?.trim() || null,
+    discountType: input.discountType === "FIXED" ? "FIXED" : "PERCENT",
+    discountValue: input.discountValue,
+    usageLimit: input.usageLimit ?? null,
+    usedCount: 0,
+    minimumSubtotal: input.minimumSubtotal ?? null,
+    startsAt: input.startsAt || null,
+    expiresAt: input.expiresAt || null,
+    active: input.active ?? true,
+    productIds: input.productIds ?? [],
+    categoryIds: input.categoryIds ?? [],
+    firstPurchaseOnly: Boolean(input.firstPurchaseOnly),
+  };
+  if (!shouldUsePostgresLibrary()) {
+    const existing = localLibraryCoupons.find((coupon) => coupon.id === normalized.id || coupon.code === normalized.code);
+    if (existing) {
+      Object.assign(existing, normalized, { usedCount: existing.usedCount, id: existing.id });
+      return existing;
+    }
+    const coupon = { ...normalized, id: `local-coupon-${Date.now()}` };
+    localLibraryCoupons.unshift(coupon);
+    return coupon;
+  }
+  const prisma = getMainPrisma();
+  const data = {
+    code: normalized.code,
+    description: normalized.description,
+    discountType: normalized.discountType,
+    discountValue: normalized.discountValue,
+    usageLimit: normalized.usageLimit,
+    minimumSubtotal: normalized.minimumSubtotal,
+    startsAt: normalized.startsAt ? new Date(normalized.startsAt) : null,
+    expiresAt: normalized.expiresAt ? new Date(normalized.expiresAt) : null,
+    active: normalized.active,
+    productIds: normalized.productIds,
+    categoryIds: normalized.categoryIds,
+    firstPurchaseOnly: normalized.firstPurchaseOnly,
+  };
+  const row = input.id ? await prisma.libraryCoupon.update({ where: { id: input.id }, data }) : await prisma.libraryCoupon.upsert({ where: { code: normalized.code }, create: data, update: data });
+  await logLibraryActivity({ actorId, targetType: "coupon", targetId: row.id, action: "COUPON_SAVED", message: `${row.code} coupon saved.` });
+  return toLibraryCouponAdmin(row);
+}
+
+export async function deleteLibraryCoupon(id: string, actorId?: string) {
+  if (!shouldUsePostgresLibrary()) {
+    const index = localLibraryCoupons.findIndex((coupon) => coupon.id === id);
+    if (index === -1) return null;
+    const [removed] = localLibraryCoupons.splice(index, 1);
+    return removed;
+  }
+  const row = await getMainPrisma().libraryCoupon.delete({ where: { id } }).catch(() => null);
+  if (row) await logLibraryActivity({ actorId, targetType: "coupon", targetId: row.id, action: "COUPON_DELETED", message: `${row.code} coupon deleted.` });
+  return row ? toLibraryCouponAdmin(row) : null;
 }
 
 export async function ensureLibraryInvoice(orderId: string) {
@@ -949,12 +1043,13 @@ async function replaceProductAssets(productId: string, input: Partial<LibraryPro
   }
   if (input.downloads) {
     await prisma.libraryProductFile.deleteMany({ where: { productId } });
-    if (input.downloads.length) {
+    const downloadsWithFiles = input.downloads.filter((item) => item.fileUrl);
+    if (downloadsWithFiles.length) {
       await prisma.libraryProductFile.createMany({
-        data: input.downloads.map((item, sortOrder) => ({
+        data: downloadsWithFiles.map((item, sortOrder) => ({
           productId,
           label: item.label,
-          fileUrl: item.fileUrl || "/uploads/academy/houselink-zimbabwe-real-estate-agent-training-manual.pdf",
+          fileUrl: item.fileUrl!,
           fileName: item.fileName || `${slugify(item.label)}.${item.fileType.toLowerCase()}`,
           fileType: item.fileType,
           fileSizeBytes: item.fileSizeBytes ?? parseSize(item.size ?? "0"),
@@ -1108,12 +1203,18 @@ function toLibraryProduct(row: DbProduct): LibraryProduct {
     requirements: row.requirements,
     tableOfContents: Array.isArray(row.tableOfContents) ? row.tableOfContents.map(String) : [],
     tags: row.tags,
+    seoTitle: row.seoTitle ?? undefined,
+    metaDescription: row.metaDescription ?? undefined,
     gallery: row.media.map((item) => ({ label: item.label, url: item.url, kind: mediaKind(item.mediaType) })),
-    downloads: row.files.map((item) => ({ id: item.id, label: item.label, fileType: item.fileType, size: formatBytes(item.fileSizeBytes), secure: item.secure })),
+    downloads: row.files.map((item) => ({ id: item.id, label: item.label, fileType: item.fileType, size: formatBytes(item.fileSizeBytes), secure: item.secure, fileUrl: item.fileUrl, fileName: item.fileName, fileSizeBytes: item.fileSizeBytes, previewable: item.previewable })),
     stock: row.stock,
     lowStockThreshold: row.lowStockThreshold,
     warehouse: row.warehouse ?? undefined,
     supplier: row.supplier ?? undefined,
+    downloadLimit: row.downloadLimit,
+    downloadExpiryDays: row.downloadExpiryDays,
+    watermarking: row.watermarking,
+    licenseKeys: row.licenseKeys,
     featured: row.featured,
     bestSeller: row.bestSeller,
     newRelease: row.newRelease,
@@ -1148,6 +1249,40 @@ function getLibraryFacets(products: LibraryProduct[]) {
     authors: uniq(products.map((p) => p.author)),
     types: uniq(products.map((p) => p.productType)),
     difficulties: uniq(products.map((p) => p.difficulty)),
+  };
+}
+
+function toLibraryCouponAdmin(row: {
+  id: string;
+  code: string;
+  description: string | null;
+  discountType: string;
+  discountValue: Prisma.Decimal | number;
+  usageLimit: number | null;
+  usedCount: number;
+  minimumSubtotal: Prisma.Decimal | number | null;
+  startsAt: Date | null;
+  expiresAt: Date | null;
+  active: boolean;
+  productIds: string[];
+  categoryIds: string[];
+  firstPurchaseOnly: boolean;
+}): LibraryCouponAdmin {
+  return {
+    id: row.id,
+    code: row.code,
+    description: row.description,
+    discountType: row.discountType,
+    discountValue: Number(row.discountValue),
+    usageLimit: row.usageLimit,
+    usedCount: row.usedCount,
+    minimumSubtotal: row.minimumSubtotal == null ? null : Number(row.minimumSubtotal),
+    startsAt: row.startsAt?.toISOString().slice(0, 10) ?? null,
+    expiresAt: row.expiresAt?.toISOString().slice(0, 10) ?? null,
+    active: row.active,
+    productIds: row.productIds,
+    categoryIds: row.categoryIds,
+    firstPurchaseOnly: row.firstPurchaseOnly,
   };
 }
 
