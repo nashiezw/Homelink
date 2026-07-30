@@ -304,34 +304,6 @@ textarea {
       radial-gradient(circle at 80% 20%, rgba(14, 165, 233, 0.12), transparent 38%);
   }
 
-  .library-shelf-grain {
-    background-image:
-      radial-gradient(rgba(255, 255, 255, 0.04) 0.7px, transparent 0.7px),
-      radial-gradient(rgba(0, 0, 0, 0.08) 0.6px, transparent 0.6px);
-    background-size: 3px 3px, 5px 5px;
-    background-position: 0 0, 1px 2px;
-  }
-
-  @keyframes library-book-float {
-    0%,
-    100% {
-      transform: translateY(0);
-    }
-    50% {
-      transform: translateY(-10px);
-    }
-  }
-
-  .library-book-float {
-    animation: library-book-float 5.5s ease-in-out infinite;
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .library-book-float {
-      animation: none;
-    }
-  }
-
   /* Roommates page - unified composition system */
   .rm-page {
     color: #102024;

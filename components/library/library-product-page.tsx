@@ -120,18 +120,10 @@ export function LibraryProductPage({
 
   useEffect(() => {
     if (!lightboxOpen) return;
-    const length = galleryImages.length;
     function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        setLightboxOpen(false);
-        setLightboxZoomed(false);
-      }
-      if (event.key === "ArrowLeft" && length) {
-        setGalleryIndex((current) => (current - 1 + length) % length);
-      }
-      if (event.key === "ArrowRight" && length) {
-        setGalleryIndex((current) => (current + 1) % length);
-      }
+      if (event.key === "Escape") closeLightbox();
+      if (event.key === "ArrowLeft") stepGallery(-1);
+      if (event.key === "ArrowRight") stepGallery(1);
       if (event.key === "+" || event.key === "=") setLightboxZoomed(true);
       if (event.key === "-") setLightboxZoomed(false);
     }
@@ -242,42 +234,42 @@ export function LibraryProductPage({
   }
 
   return (
-    <main className="bg-[#f6f8f7] text-ink dark:bg-slate-950 dark:text-white">
+    <main className="bg-mist text-ink dark:bg-slate-950 dark:text-white">
       <LibraryCartFab />
-      <section className="border-b border-[#dfe8e5] bg-[#fbfaf6] dark:border-slate-800 dark:bg-slate-950">
-        <div className="mx-auto flex max-w-[88rem] flex-col gap-3 px-4 py-3 sm:px-6 md:flex-row md:items-center md:justify-between lg:px-8">
+      <section className="border-b border-slate-200/80 bg-white/80 backdrop-blur dark:border-slate-800 dark:bg-slate-950/80">
+        <div className="mx-auto flex max-w-[88rem] flex-col gap-3 px-4 py-3.5 sm:px-6 md:flex-row md:items-center md:justify-between lg:px-8">
           <div className="min-w-0">
-            <nav aria-label="Product breadcrumb" className="flex flex-wrap items-center gap-2 text-sm">
-              <Link href="/library" className="inline-flex items-center gap-2 font-black text-[#007f68] hover:text-[#006b58] dark:text-emerald-300">
+            <nav aria-label="Product breadcrumb" className="flex flex-wrap items-center gap-2 text-sm leading-6">
+              <Link href="/library" className="inline-flex items-center gap-2 font-semibold text-emerald-700 hover:text-emerald-800 dark:text-emerald-300">
                 <ArrowLeft className="size-4" /> Library
               </Link>
               <span className="text-slate-300">/</span>
-              <span className="font-semibold text-slate-600 dark:text-slate-300">{product.category}</span>
+              <span className="font-medium text-slate-600 dark:text-slate-300">{product.category}</span>
               <span className="hidden text-slate-300 sm:inline">/</span>
-              <span className="hidden max-w-xl truncate font-semibold text-slate-900 dark:text-white sm:inline">{product.title}</span>
+              <span className="hidden max-w-xl truncate font-medium text-slate-900 dark:text-white sm:inline">{product.title}</span>
             </nav>
-            <p className="mt-1 line-clamp-1 text-xs font-semibold text-slate-500 dark:text-slate-400">
+            <p className="mt-1 line-clamp-1 text-xs leading-5 text-slate-500 dark:text-slate-400">
               {formats.map((format) => format.label).join(" · ") || product.productType.replace(/_/g, " ")} by {product.author}
             </p>
           </div>
-          <Link href="/library/checkout" className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-lg border border-[#cfe0da] bg-white px-4 text-sm font-black text-[#0d2630] shadow-sm transition hover:border-[#007f68] hover:text-[#007f68] dark:border-slate-700 dark:bg-slate-900 dark:text-white">
-            <ShoppingBag className="size-4" /> Library Bag <span className="rounded-full bg-[#e9f7f2] px-2 py-0.5 text-xs text-[#007f68] dark:bg-emerald-950/50 dark:text-emerald-200">{count}</span>
+          <Link href="/library/checkout" className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-ink shadow-sm transition hover:border-emerald-600 hover:text-emerald-700 dark:border-slate-700 dark:bg-slate-900 dark:text-white">
+            <ShoppingBag className="size-4" /> Library Bag <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs tabular-nums text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200">{count}</span>
           </Link>
         </div>
       </section>
 
-      <section className="mx-auto grid max-w-[88rem] gap-7 px-4 py-8 sm:px-6 lg:grid-cols-[minmax(0,1fr)_24rem] lg:items-start lg:px-8 lg:py-10">
-        <article className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_26px_90px_rgba(15,23,42,0.08)] dark:border-slate-800 dark:bg-slate-900">
-          <div className="grid gap-7 p-4 sm:p-6 xl:grid-cols-[minmax(18rem,32rem)_minmax(0,1fr)] xl:items-start">
+      <section className="mx-auto grid max-w-[88rem] gap-7 px-4 py-8 sm:px-6 lg:grid-cols-[minmax(0,1fr)_24rem] lg:items-start lg:px-8 lg:py-12">
+        <article className="overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-soft dark:border-slate-800 dark:bg-slate-900">
+          <div className="grid gap-8 p-5 sm:p-7 xl:grid-cols-[minmax(18rem,30rem)_minmax(0,1fr)] xl:items-start">
             <div className="space-y-4">
-              <div className="relative mx-auto max-w-[30rem] xl:mx-0">
+              <div className="relative mx-auto max-w-[28rem] xl:mx-0">
                 <button
                   type="button"
                   onClick={() => openLightbox()}
-                  className="block w-full rounded-xl text-left"
+                  className="block w-full rounded-2xl text-left"
                   aria-label="Open product cover"
                 >
-                  <BookCover product={product} imageUrl={activeGalleryImage?.url} interactive={false} className="w-full rounded-xl" priority />
+                  <BookCover product={product} imageUrl={activeGalleryImage?.url} interactive={false} className="w-full rounded-2xl" priority />
                 </button>
                 <div className="absolute bottom-3 right-3 z-20 flex gap-2">
                   <button
@@ -329,14 +321,14 @@ export function LibraryProductPage({
             </div>
 
             <div className="min-w-0">
-              <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-700 dark:text-emerald-300">{product.collection}</p>
-              <h1 className="mt-2 max-w-2xl text-balance text-xl font-semibold leading-snug tracking-tight text-ink sm:text-2xl dark:text-white">{product.title}</h1>
+              <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-emerald-700 dark:text-emerald-300">{product.collection}</p>
+              <h1 className="mt-3 max-w-2xl text-balance text-2xl font-semibold leading-[1.2] tracking-[-0.02em] text-ink sm:text-3xl dark:text-white">{product.title}</h1>
               {product.subtitle ? (
-                <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600 normal-case dark:text-slate-300">{product.subtitle}</p>
+                <p className="mt-3 max-w-2xl text-base leading-7 text-slate-600 dark:text-slate-300">{product.subtitle}</p>
               ) : null}
-              <div className="mt-4 flex flex-wrap items-center gap-3 text-sm text-slate-600 dark:text-slate-300">
+              <div className="mt-4 flex flex-wrap items-center gap-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
                 <span>
-                  By <strong className="text-ink dark:text-white">{product.author}</strong>
+                  By <strong className="font-semibold text-ink dark:text-white">{product.author}</strong>
                 </span>
                 <span className="flex items-center gap-1 text-amber-500">
                   <Star className="size-4 fill-current" /> {product.rating || "New"} ({product.reviewCount} reviews)
@@ -359,11 +351,11 @@ export function LibraryProductPage({
                             : "border-slate-200 hover:border-emerald-500 dark:border-slate-700",
                         )}
                       >
-                        <span className="block text-sm font-bold text-ink dark:text-white">{format.label}</span>
-                        <span className="mt-1 block text-lg font-black text-ink dark:text-white">
+                        <span className="block text-sm font-semibold text-ink dark:text-white">{format.label}</span>
+                        <span className="mt-1 block text-lg font-semibold tracking-tight text-ink dark:text-white">
                           {product.currency} {format.price.toFixed(2)}
                         </span>
-                        <span className="mt-1 block text-xs font-semibold text-slate-500">
+                        <span className="mt-1 block text-xs leading-5 text-slate-500">
                           {format.type === "PRINTED_BOOK"
                             ? printStockLabel
                             : "Digital · instant after payment"}
@@ -374,13 +366,13 @@ export function LibraryProductPage({
                 </div>
               )}
 
-              <div className="mt-5 flex flex-wrap items-end gap-3">
-                <p className="text-3xl font-black text-ink dark:text-white">{product.currency} {(selectedFormat?.price ?? product.price).toFixed(2)}</p>
+              <div className="mt-6 flex flex-wrap items-end gap-3">
+                <p className="text-3xl font-semibold tracking-tight text-ink dark:text-white">{product.currency} {(selectedFormat?.price ?? product.price).toFixed(2)}</p>
                 {(selectedFormat?.compareAtPrice ?? product.compareAtPrice) && (
                   <p className="pb-1 text-sm text-slate-400 line-through">{product.currency} {(selectedFormat?.compareAtPrice ?? product.compareAtPrice)!.toFixed(2)}</p>
                 )}
               </div>
-              <p className="mt-2 text-sm font-semibold text-emerald-800 dark:text-emerald-200">
+              <p className="mt-2 text-sm leading-6 text-emerald-800 dark:text-emerald-200">
                 {isPrinted ? printStockLabel : "Instant digital delivery after payment confirmation"}
               </p>
               <div className="mt-4 flex flex-col gap-2 sm:max-w-md sm:flex-row">
@@ -400,11 +392,11 @@ export function LibraryProductPage({
             </div>
           </div>
 
-          <section className="border-t border-slate-200 bg-slate-50/70 p-4 dark:border-slate-800 dark:bg-slate-950/35 sm:p-6">
-            <h2 className="flex items-center gap-2 text-lg font-semibold text-ink dark:text-white">
+          <section className="border-t border-slate-200 bg-slate-50/70 p-5 dark:border-slate-800 dark:bg-slate-950/35 sm:p-7">
+            <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight text-ink dark:text-white">
               <Layers3 className="size-5 text-emerald-700 dark:text-emerald-300" /> What you get
             </h2>
-            <p className="mt-4 leading-7 text-slate-700 dark:text-slate-300">{product.description}</p>
+            <p className="mt-4 text-base leading-8 text-slate-700 dark:text-slate-300">{product.description}</p>
             <div className="mt-5 grid items-stretch gap-3 sm:grid-cols-2 xl:grid-cols-4">
               {product.learningOutcomes.slice(0, 6).map((item) => (
                 <p key={item} className="flex h-full gap-2 rounded-xl border border-slate-200 bg-white p-3 text-sm leading-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
@@ -417,9 +409,9 @@ export function LibraryProductPage({
 
         <aside className="space-y-4 lg:sticky lg:top-24">
           <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-            <p className="text-xs font-bold uppercase text-slate-500">Your selection</p>
-            <p className="mt-2 text-sm font-bold text-ink dark:text-white">{selectedFormat?.label || "Library product"}</p>
-            <p className="mt-1 text-3xl font-black text-ink dark:text-white">{product.currency} {(selectedFormat?.price ?? product.price).toFixed(2)}</p>
+            <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-slate-500">Your selection</p>
+            <p className="mt-2 text-sm font-semibold text-ink dark:text-white">{selectedFormat?.label || "Library product"}</p>
+            <p className="mt-1 text-3xl font-semibold tracking-tight text-ink dark:text-white">{product.currency} {(selectedFormat?.price ?? product.price).toFixed(2)}</p>
             {formats.length > 1 && (
               <div className="mt-4 grid gap-2">
                 {formats.map((format) => (
@@ -492,8 +484,8 @@ export function LibraryProductPage({
             <div className="grid gap-5 md:grid-cols-[12rem_minmax(0,1fr)] md:items-center">
               <BookCover product={product} className="w-full rounded-xl" />
               <div>
-                <p className="text-xl font-black">{sampleUrl ? "Read a free PDF sample before you buy." : "Preview the synopsis and contents before purchase."}</p>
-                <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
+                <p className="text-xl font-semibold tracking-tight leading-snug">{sampleUrl ? "Read a free PDF sample before you buy." : "Preview the synopsis and contents before purchase."}</p>
+                <p className="mt-2 text-sm leading-7 text-slate-600 dark:text-slate-300">
                   {sampleUrl
                     ? "This product includes a previewable sample file from the HouseLink Library."
                     : "Open the sample to read the product summary, chapter list, and cover gallery. Full downloads unlock after payment confirmation."}
@@ -506,7 +498,7 @@ export function LibraryProductPage({
             <ol className="grid gap-2 sm:grid-cols-2">
               {product.tableOfContents.map((item, index) => (
                 <li key={item} className="flex min-h-14 items-center rounded-xl border border-slate-200 bg-[#fbfcfb] p-3 text-sm dark:border-slate-800 dark:bg-slate-950">
-                  <span className="mr-2 font-black text-emerald-700">{String(index + 1).padStart(2, "0")}</span>
+                  <span className="mr-2 font-semibold tabular-nums text-emerald-700">{String(index + 1).padStart(2, "0")}</span>
                   {item}
                 </li>
               ))}
@@ -601,11 +593,11 @@ export function LibraryProductPage({
                   <Link key={item.id} href={`/library/${item.slug}`} className="flex h-full flex-col rounded-xl border border-slate-200 bg-[#fbfcfb] p-3 transition hover:border-emerald-300 dark:border-slate-800 dark:bg-slate-950">
                     <p className="text-xs font-bold uppercase text-emerald-700 dark:text-emerald-300">{item.productType.replace(/_/g, " ")}</p>
                     <p className="mt-1 line-clamp-2 font-semibold">{item.title}</p>
-                    <p className="mt-auto pt-3 text-sm font-black">USD {item.price.toFixed(2)}</p>
+                    <p className="mt-auto pt-3 text-sm font-semibold tabular-nums">USD {item.price.toFixed(2)}</p>
                   </Link>
                 ))}
               </div>
-              <p className="mt-4 text-right text-lg font-black">Bundle total: USD {bundleTotal.toFixed(2)}</p>
+              <p className="mt-4 text-right text-lg font-semibold tracking-tight">Bundle total: USD {bundleTotal.toFixed(2)}</p>
             </Panel>
           )}
         </div>
@@ -624,23 +616,25 @@ export function LibraryProductPage({
       </section>
 
       <section className="mx-auto max-w-[88rem] px-4 pb-14 sm:px-6 lg:px-8">
-        <div className="mb-4 flex items-end justify-between gap-4">
+        <div className="mb-6 flex items-end justify-between gap-4">
           <div>
-            <p className="text-sm font-black uppercase text-emerald-700 dark:text-emerald-300">Keep Building</p>
-            <h2 className="text-3xl font-black text-ink dark:text-white">Related Products</h2>
+            <p className="section-eyebrow">Keep building</p>
+            <h2 className="mt-3 text-[1.85rem] font-semibold tracking-[-0.02em] text-ink dark:text-white sm:text-[2.15rem]">Related products</h2>
           </div>
-          <Link href="/library" className="hidden items-center gap-1 text-sm font-bold text-emerald-700 dark:text-emerald-300 sm:inline-flex">
+          <Link href="/library" className="hidden items-center gap-1 text-sm font-semibold text-emerald-700 dark:text-emerald-300 sm:inline-flex">
             Browse all <ArrowLeft className="size-4 rotate-180" />
           </Link>
         </div>
-        <div className="grid items-stretch gap-4 md:grid-cols-3">
+        <div className="grid items-stretch gap-5 md:grid-cols-3">
           {related.map((item) => (
-            <Link key={item.id} href={`/library/${item.slug}`} className="group flex h-full flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-slate-300 hover:shadow-lg dark:border-slate-800 dark:bg-slate-900">
-              <BookCover product={item} className="mx-auto w-full max-w-[12rem]" />
-              <div className="flex flex-1 flex-col p-4">
-                <p className="text-xs font-black uppercase text-emerald-700 dark:text-emerald-300">{item.category}</p>
-                <p className="mt-1 line-clamp-2 font-black text-ink dark:text-white">{item.title}</p>
-                <p className="mt-auto pt-3 text-sm font-black text-slate-700 dark:text-slate-200">USD {item.price.toFixed(2)}</p>
+            <Link key={item.id} href={`/library/${item.slug}`} className="group flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200/90 bg-white transition duration-300 hover:-translate-y-1 hover:border-emerald-600/30 hover:shadow-card-hover dark:border-slate-800 dark:bg-slate-900">
+              <div className="bg-[linear-gradient(180deg,#f4f8f7_0%,#eef5f2_100%)] px-5 pt-5 dark:bg-slate-950/60">
+                <BookCover product={item} className="mx-auto w-full max-w-[11rem]" />
+              </div>
+              <div className="flex flex-1 flex-col p-5">
+                <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-emerald-700 dark:text-emerald-300">{item.category}</p>
+                <p className="mt-2 line-clamp-2 text-base font-semibold leading-snug tracking-tight text-ink dark:text-white">{item.title}</p>
+                <p className="mt-auto pt-4 text-sm font-semibold tabular-nums text-slate-700 dark:text-slate-200">USD {item.price.toFixed(2)}</p>
               </div>
             </Link>
           ))}
@@ -738,9 +732,9 @@ export function LibraryProductPage({
                 <div className="grid w-full max-w-4xl gap-5 md:grid-cols-[15rem_minmax(0,1fr)]">
                   <BookCover product={product} imageUrl={activeGalleryImage?.url} />
                   <div className="rounded-lg bg-white p-7 shadow-xl dark:bg-slate-950">
-                    <p className="text-xs font-black uppercase text-emerald-700 dark:text-emerald-300">Preview pages</p>
-                    <h3 className="mt-2 text-3xl font-black">{product.tableOfContents[0] || product.title}</h3>
-                    <p className="mt-4 leading-8 text-slate-600 dark:text-slate-300">{product.description}</p>
+                    <p className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-emerald-700 dark:text-emerald-300">Preview pages</p>
+                    <h3 className="mt-2 text-2xl font-semibold tracking-tight leading-snug sm:text-3xl">{product.tableOfContents[0] || product.title}</h3>
+                    <p className="mt-4 text-base leading-8 text-slate-600 dark:text-slate-300">{product.description}</p>
                     <div className="mt-6 grid gap-2 sm:grid-cols-2">
                       {product.tableOfContents.slice(1, 5).map((item) => (
                         <p key={item} className="rounded-lg bg-slate-50 p-3 text-sm dark:bg-slate-900">
