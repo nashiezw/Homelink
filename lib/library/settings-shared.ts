@@ -1,20 +1,3 @@
-import type { Prisma } from "@prisma/client";
-import { getMainPrisma, isPostgresStoreEnabled } from "@/lib/db/main-prisma";
-import { isMissingSchemaError } from "@/lib/db/production-schema";
-import { defaultLibraryEmailTemplates, type LibraryEmailTemplate, type LibraryEmailTemplateKey } from "@/lib/library/email-templates";
-import type { LibraryShippingZone } from "@/lib/library/shipping";
-
-export type LibraryProductTypeTemplate = {
-  productType: string;
-  downloadLimit: number | null;
-  downloadExpiryDays: number | null;
-  watermarking: boolean;
-  licenseKeys: boolean;
-  trackStock: boolean;
-  lowStockThreshold: number;
-  defaultFormats: Array<"PDF" | "DIGITAL_BOOK" | "PRINTED_BOOK" | "TOOLKIT" | "COURSE">;
-};
-
 export type LibraryStoreSettings = {
   store: {
     name: string;
@@ -50,14 +33,6 @@ export type LibraryStoreSettings = {
     estimatedDaysMax: number;
     packingSlipNote: string;
     dispatchNote: string;
-    allowLocalPickup: boolean;
-    zones: LibraryShippingZone[];
-  };
-  payments: {
-    usePlatformDefaults: boolean;
-    allowedMethodIds: string[];
-    requireProof: boolean;
-    instructions: string;
   };
   downloads: {
     defaultLimit: number | null;
@@ -65,7 +40,6 @@ export type LibraryStoreSettings = {
     tokenTtlSeconds: number;
     enforceWatermarkFlag: boolean;
     watermarkByDefault: boolean;
-    stampPdfBytes: boolean;
     maxConcurrentDownloads: number;
   };
   licence: {
@@ -88,23 +62,6 @@ export type LibraryStoreSettings = {
     storeOgImage: string;
     focusKeyword: string;
     robotsIndex: boolean;
-  };
-  merchandising: {
-    heroHeadline: string;
-    heroSubcopy: string;
-    ctaLabel: string;
-    ctaHref: string;
-    showCuratedRail: boolean;
-    curatedTitle: string;
-    defaultSort: "newest" | "best-selling" | "downloads" | "rating" | "price-asc" | "price-desc";
-    hidePricesUntilLogin: boolean;
-    featuredCollectionSlug: string;
-    maxHeroItems: number;
-    maxCuratedItems: number;
-  };
-  productTemplates: LibraryProductTypeTemplate[];
-  emails: {
-    templates: Record<LibraryEmailTemplateKey, LibraryEmailTemplate>;
   };
   claims: {
     enabled: boolean;
@@ -131,62 +88,6 @@ export type LibraryStoreSettings = {
     fromName: string;
   };
 };
-
-const defaultZones: LibraryShippingZone[] = [
-  {
-    id: "harare",
-    name: "Harare metro",
-    countries: ["ZW", "Zimbabwe"],
-    provinces: ["Harare"],
-    cities: ["Harare", "Chitungwiza", "Epworth", "Norton"],
-    rate: 3,
-    freeShippingMin: 80,
-    estimatedDaysMin: 1,
-    estimatedDaysMax: 3,
-    courier: "Harare courier",
-    allowLocalPickup: true,
-    active: true,
-    priority: 10,
-  },
-  {
-    id: "zimbabwe",
-    name: "Rest of Zimbabwe",
-    countries: ["ZW", "Zimbabwe"],
-    provinces: [],
-    cities: [],
-    rate: 8,
-    freeShippingMin: 120,
-    estimatedDaysMin: 3,
-    estimatedDaysMax: 7,
-    courier: "Nationwide courier",
-    allowLocalPickup: false,
-    active: true,
-    priority: 20,
-  },
-  {
-    id: "international",
-    name: "International",
-    countries: [],
-    provinces: [],
-    cities: [],
-    rate: 35,
-    freeShippingMin: null,
-    estimatedDaysMin: 7,
-    estimatedDaysMax: 21,
-    courier: "International courier",
-    allowLocalPickup: false,
-    active: true,
-    priority: 90,
-  },
-];
-
-const defaultProductTemplates: LibraryProductTypeTemplate[] = [
-  { productType: "PDF", downloadLimit: null, downloadExpiryDays: null, watermarking: true, licenseKeys: false, trackStock: false, lowStockThreshold: 0, defaultFormats: ["PDF"] },
-  { productType: "DIGITAL_BOOK", downloadLimit: 5, downloadExpiryDays: 365, watermarking: true, licenseKeys: true, trackStock: false, lowStockThreshold: 0, defaultFormats: ["DIGITAL_BOOK"] },
-  { productType: "PRINTED_BOOK", downloadLimit: null, downloadExpiryDays: null, watermarking: false, licenseKeys: false, trackStock: true, lowStockThreshold: 5, defaultFormats: ["PRINTED_BOOK"] },
-  { productType: "TOOLKIT", downloadLimit: 10, downloadExpiryDays: null, watermarking: true, licenseKeys: true, trackStock: false, lowStockThreshold: 0, defaultFormats: ["TOOLKIT", "PDF"] },
-  { productType: "COURSE", downloadLimit: null, downloadExpiryDays: 365, watermarking: false, licenseKeys: true, trackStock: false, lowStockThreshold: 0, defaultFormats: ["COURSE"] },
-];
 
 export const defaultLibraryStoreSettings: LibraryStoreSettings = {
   store: {
@@ -217,20 +118,12 @@ export const defaultLibraryStoreSettings: LibraryStoreSettings = {
     enablePrintedShipping: true,
     defaultCountry: "Zimbabwe",
     defaultCourier: "Local courier",
-    flatRate: 8,
-    freeShippingMin: 120,
+    flatRate: 0,
+    freeShippingMin: null,
     estimatedDaysMin: 3,
     estimatedDaysMax: 7,
     packingSlipNote: "Thank you for buying from HouseLink Library.",
     dispatchNote: "Handle with care. Printed Library order.",
-    allowLocalPickup: true,
-    zones: defaultZones,
-  },
-  payments: {
-    usePlatformDefaults: true,
-    allowedMethodIds: ["bank_transfer", "zipit", "ecocash"],
-    requireProof: true,
-    instructions: "Pay using one of the enabled Library methods, then upload proof if required.",
   },
   downloads: {
     defaultLimit: null,
@@ -238,7 +131,6 @@ export const defaultLibraryStoreSettings: LibraryStoreSettings = {
     tokenTtlSeconds: 60 * 15,
     enforceWatermarkFlag: true,
     watermarkByDefault: true,
-    stampPdfBytes: true,
     maxConcurrentDownloads: 3,
   },
   licence: {
@@ -261,23 +153,6 @@ export const defaultLibraryStoreSettings: LibraryStoreSettings = {
     storeOgImage: "",
     focusKeyword: "property books Zimbabwe",
     robotsIndex: true,
-  },
-  merchandising: {
-    heroHeadline: "Property knowledge, ready to buy",
-    heroSubcopy: "Books, manuals, contracts, forms, and toolkits built for Zimbabwe's property professionals.",
-    ctaLabel: "Browse the catalogue",
-    ctaHref: "#catalogue",
-    showCuratedRail: true,
-    curatedTitle: "Editor picks",
-    defaultSort: "newest",
-    hidePricesUntilLogin: false,
-    featuredCollectionSlug: "",
-    maxHeroItems: 4,
-    maxCuratedItems: 6,
-  },
-  productTemplates: defaultProductTemplates,
-  emails: {
-    templates: defaultLibraryEmailTemplates,
   },
   claims: {
     enabled: true,
@@ -329,82 +204,21 @@ function nullableNum(value: unknown, fallback: number | null) {
   return Number.isFinite(n) ? n : fallback;
 }
 
-function stringList(value: unknown) {
-  if (!Array.isArray(value)) return [] as string[];
-  return value.map((item) => String(item).trim()).filter(Boolean);
-}
-
-function mergeZones(value: unknown): LibraryShippingZone[] {
-  if (!Array.isArray(value) || !value.length) return defaultLibraryStoreSettings.delivery.zones;
-  return value.map((raw, index) => {
-    const row = asRecord(raw);
-    return {
-      id: str(row.id, `zone-${index + 1}`),
-      name: str(row.name, `Zone ${index + 1}`),
-      countries: stringList(row.countries),
-      provinces: stringList(row.provinces),
-      cities: stringList(row.cities),
-      rate: Math.max(0, num(row.rate, 0)),
-      freeShippingMin: nullableNum(row.freeShippingMin, null),
-      estimatedDaysMin: Math.max(0, Math.round(num(row.estimatedDaysMin, 3))),
-      estimatedDaysMax: Math.max(0, Math.round(num(row.estimatedDaysMax, 7))),
-      courier: str(row.courier, "Courier"),
-      allowLocalPickup: bool(row.allowLocalPickup, false),
-      active: bool(row.active, true),
-      priority: Math.round(num(row.priority, (index + 1) * 10)),
-    };
-  });
-}
-
-function mergeProductTemplates(value: unknown): LibraryProductTypeTemplate[] {
-  if (!Array.isArray(value) || !value.length) return defaultLibraryStoreSettings.productTemplates;
-  return value.map((raw) => {
-    const row = asRecord(raw);
-    return {
-      productType: str(row.productType, "PDF").toUpperCase(),
-      downloadLimit: nullableNum(row.downloadLimit, null),
-      downloadExpiryDays: nullableNum(row.downloadExpiryDays, null),
-      watermarking: bool(row.watermarking, true),
-      licenseKeys: bool(row.licenseKeys, false),
-      trackStock: bool(row.trackStock, false),
-      lowStockThreshold: Math.max(0, Math.round(num(row.lowStockThreshold, 0))),
-      defaultFormats: (Array.isArray(row.defaultFormats) ? row.defaultFormats.map(String) : ["PDF"]) as LibraryProductTypeTemplate["defaultFormats"],
-    };
-  });
-}
-
-function mergeEmailTemplates(value: unknown): Record<LibraryEmailTemplateKey, LibraryEmailTemplate> {
-  const raw = asRecord(value);
-  const keys = Object.keys(defaultLibraryEmailTemplates) as LibraryEmailTemplateKey[];
-  return Object.fromEntries(
-    keys.map((key) => {
-      const row = asRecord(raw[key]);
-      const fallback = defaultLibraryEmailTemplates[key];
-      return [key, { subject: str(row.subject, fallback.subject), body: str(row.body, fallback.body) }];
-    }),
-  ) as Record<LibraryEmailTemplateKey, LibraryEmailTemplate>;
-}
-
 export function mergeLibraryStoreSettings(payload?: unknown): LibraryStoreSettings {
   const raw = asRecord(payload);
   const store = asRecord(raw.store);
   const checkout = asRecord(raw.checkout);
   const tax = asRecord(raw.tax);
   const delivery = asRecord(raw.delivery);
-  const payments = asRecord(raw.payments);
   const downloads = asRecord(raw.downloads);
   const licence = asRecord(raw.licence);
   const reviews = asRecord(raw.reviews);
   const seo = asRecord(raw.seo);
-  const merchandising = asRecord(raw.merchandising);
-  const emails = asRecord(raw.emails);
   const claims = asRecord(raw.claims);
   const preview = asRecord(raw.preview);
   const inventory = asRecord(raw.inventory);
   const notifications = asRecord(raw.notifications);
   const d = defaultLibraryStoreSettings;
-  const sort = str(merchandising.defaultSort, d.merchandising.defaultSort);
-  const allowedSort = ["newest", "best-selling", "downloads", "rating", "price-asc", "price-desc"] as const;
 
   return {
     store: {
@@ -441,14 +255,6 @@ export function mergeLibraryStoreSettings(payload?: unknown): LibraryStoreSettin
       estimatedDaysMax: Math.max(0, Math.round(num(delivery.estimatedDaysMax, d.delivery.estimatedDaysMax))),
       packingSlipNote: str(delivery.packingSlipNote, d.delivery.packingSlipNote),
       dispatchNote: str(delivery.dispatchNote, d.delivery.dispatchNote),
-      allowLocalPickup: bool(delivery.allowLocalPickup, d.delivery.allowLocalPickup),
-      zones: mergeZones(delivery.zones),
-    },
-    payments: {
-      usePlatformDefaults: bool(payments.usePlatformDefaults, d.payments.usePlatformDefaults),
-      allowedMethodIds: stringList(payments.allowedMethodIds).length ? stringList(payments.allowedMethodIds) : d.payments.allowedMethodIds,
-      requireProof: bool(payments.requireProof, d.payments.requireProof),
-      instructions: str(payments.instructions, d.payments.instructions),
     },
     downloads: {
       defaultLimit: nullableNum(downloads.defaultLimit, d.downloads.defaultLimit),
@@ -456,7 +262,6 @@ export function mergeLibraryStoreSettings(payload?: unknown): LibraryStoreSettin
       tokenTtlSeconds: Math.max(60, Math.round(num(downloads.tokenTtlSeconds, d.downloads.tokenTtlSeconds))),
       enforceWatermarkFlag: bool(downloads.enforceWatermarkFlag, d.downloads.enforceWatermarkFlag),
       watermarkByDefault: bool(downloads.watermarkByDefault, d.downloads.watermarkByDefault),
-      stampPdfBytes: bool(downloads.stampPdfBytes, d.downloads.stampPdfBytes),
       maxConcurrentDownloads: Math.max(1, Math.round(num(downloads.maxConcurrentDownloads, d.downloads.maxConcurrentDownloads))),
     },
     licence: {
@@ -479,23 +284,6 @@ export function mergeLibraryStoreSettings(payload?: unknown): LibraryStoreSettin
       storeOgImage: str(seo.storeOgImage, d.seo.storeOgImage),
       focusKeyword: str(seo.focusKeyword, d.seo.focusKeyword),
       robotsIndex: bool(seo.robotsIndex, d.seo.robotsIndex),
-    },
-    merchandising: {
-      heroHeadline: str(merchandising.heroHeadline, d.merchandising.heroHeadline),
-      heroSubcopy: str(merchandising.heroSubcopy, d.merchandising.heroSubcopy),
-      ctaLabel: str(merchandising.ctaLabel, d.merchandising.ctaLabel),
-      ctaHref: str(merchandising.ctaHref, d.merchandising.ctaHref),
-      showCuratedRail: bool(merchandising.showCuratedRail, d.merchandising.showCuratedRail),
-      curatedTitle: str(merchandising.curatedTitle, d.merchandising.curatedTitle),
-      defaultSort: (allowedSort.includes(sort as (typeof allowedSort)[number]) ? sort : d.merchandising.defaultSort) as LibraryStoreSettings["merchandising"]["defaultSort"],
-      hidePricesUntilLogin: bool(merchandising.hidePricesUntilLogin, d.merchandising.hidePricesUntilLogin),
-      featuredCollectionSlug: str(merchandising.featuredCollectionSlug, d.merchandising.featuredCollectionSlug),
-      maxHeroItems: Math.max(1, Math.round(num(merchandising.maxHeroItems, d.merchandising.maxHeroItems))),
-      maxCuratedItems: Math.max(1, Math.round(num(merchandising.maxCuratedItems, d.merchandising.maxCuratedItems))),
-    },
-    productTemplates: mergeProductTemplates(raw.productTemplates),
-    emails: {
-      templates: mergeEmailTemplates(emails.templates),
     },
     claims: {
       enabled: bool(claims.enabled, d.claims.enabled),
@@ -524,75 +312,6 @@ export function mergeLibraryStoreSettings(payload?: unknown): LibraryStoreSettin
   };
 }
 
-export function shouldUsePostgresLibrarySettings() {
-  return isPostgresStoreEnabled();
-}
-
-export async function getLibraryStoreSettings(): Promise<LibraryStoreSettings> {
-  if (!shouldUsePostgresLibrarySettings()) return defaultLibraryStoreSettings;
-  try {
-    const row = await getMainPrisma().librarySetting.findUnique({ where: { id: "singleton" } });
-    return mergeLibraryStoreSettings(row?.payload);
-  } catch (error) {
-    if (isMissingSchemaError(error)) return defaultLibraryStoreSettings;
-    console.error("[library/settings] failed to load", error);
-    return defaultLibraryStoreSettings;
-  }
-}
-
-export async function saveLibraryStoreSettings(payload: unknown, actorId?: string) {
-  const settings = mergeLibraryStoreSettings(payload);
-  if (!shouldUsePostgresLibrarySettings()) return settings;
-  try {
-    await getMainPrisma().librarySetting.upsert({
-      where: { id: "singleton" },
-      create: { id: "singleton", payload: settings as unknown as Prisma.InputJsonValue },
-      update: { payload: settings as unknown as Prisma.InputJsonValue },
-    });
-    if (actorId) {
-      await getMainPrisma().libraryActivity.create({
-        data: {
-          actorId,
-          targetType: "settings",
-          targetId: "singleton",
-          action: "SETTINGS_UPDATED",
-          message: "Library store settings updated.",
-          metadata: {
-            sections: Object.keys(settings),
-            shippingZones: settings.delivery.zones.length,
-            paymentMethods: settings.payments.allowedMethodIds,
-          } as Prisma.InputJsonValue,
-        },
-      }).catch(() => null);
-    }
-  } catch (error) {
-    if (isMissingSchemaError(error)) {
-      throw new Error("Library settings table is missing. Run the latest database migration.");
-    }
-    throw error;
-  }
-  return settings;
-}
-
-export async function listLibrarySettingsAudit(limit = 20) {
-  if (!shouldUsePostgresLibrarySettings()) return [];
-  try {
-    return await getMainPrisma().libraryActivity.findMany({
-      where: { targetType: "settings" },
-      orderBy: { createdAt: "desc" },
-      take: limit,
-      include: { actor: { select: { id: true, name: true, email: true } } },
-    });
-  } catch {
-    return [];
-  }
-}
-
-export function productTemplateForType(settings: LibraryStoreSettings, productType?: string | null) {
-  const type = String(productType || "PDF").toUpperCase();
-  return settings.productTemplates.find((row) => row.productType === type) ?? settings.productTemplates[0] ?? defaultProductTemplates[0];
-}
-
 export function publicLibraryStoreSettings(settings: LibraryStoreSettings) {
   return {
     store: settings.store,
@@ -616,25 +335,6 @@ export function publicLibraryStoreSettings(settings: LibraryStoreSettings) {
       freeShippingMin: settings.delivery.freeShippingMin,
       estimatedDaysMin: settings.delivery.estimatedDaysMin,
       estimatedDaysMax: settings.delivery.estimatedDaysMax,
-      allowLocalPickup: settings.delivery.allowLocalPickup,
-      zones: settings.delivery.zones.filter((zone) => zone.active).map((zone) => ({
-        id: zone.id,
-        name: zone.name,
-        rate: zone.rate,
-        freeShippingMin: zone.freeShippingMin,
-        estimatedDaysMin: zone.estimatedDaysMin,
-        estimatedDaysMax: zone.estimatedDaysMax,
-        allowLocalPickup: zone.allowLocalPickup,
-        countries: zone.countries,
-        provinces: zone.provinces,
-        cities: zone.cities,
-      })),
-    },
-    payments: {
-      allowedMethodIds: settings.payments.allowedMethodIds,
-      usePlatformDefaults: settings.payments.usePlatformDefaults,
-      requireProof: settings.payments.requireProof,
-      instructions: settings.payments.instructions,
     },
     licence: {
       termsUrl: settings.licence.termsUrl,
@@ -646,7 +346,6 @@ export function publicLibraryStoreSettings(settings: LibraryStoreSettings) {
       minRating: settings.reviews.minRating,
     },
     seo: settings.seo,
-    merchandising: settings.merchandising,
     preview: {
       enabled: settings.preview.enabled,
       requireLogin: settings.preview.requireLogin,

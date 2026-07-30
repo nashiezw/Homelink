@@ -30,7 +30,7 @@ import {
   type LibraryProduct,
   type LibraryProductFormat,
 } from "@/lib/library/catalog";
-import { defaultLibraryStoreSettings, type LibraryStoreSettings } from "@/lib/library/settings";
+import { defaultLibraryStoreSettings, type LibraryStoreSettings } from "@/lib/library/settings-shared";
 import { cn } from "@/lib/utils";
 
 const views = [

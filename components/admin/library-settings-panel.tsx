@@ -4,7 +4,7 @@ import { CheckCircle2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { AdminDataTable, AdminStatusBadge } from "@/components/admin/ui/admin-ui";
 import { Button } from "@/components/ui/button";
-import { defaultLibraryStoreSettings, type LibraryStoreSettings } from "@/lib/library/settings";
+import { defaultLibraryStoreSettings, type LibraryStoreSettings } from "@/lib/library/settings-shared";
 import { cn } from "@/lib/utils";
 
 type TaxRow = { id: string; name: string; country: string; rate: unknown; inclusive: boolean; active: boolean };

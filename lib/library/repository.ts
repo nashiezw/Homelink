@@ -288,7 +288,17 @@ export async function listLibraryProducts(input: {
     orderBy: [{ featured: "desc" }, { publishedAt: "desc" }, { createdAt: "desc" }],
     take: input.limit ?? 100,
   });
-  return products.map(toLibraryProduct);
+  const mapped = products.map(toLibraryProduct);
+  if (input.includeDrafts) return mapped;
+  const settings = await getLibraryStoreSettings();
+  if (!settings.inventory.hideOutOfStock) return mapped;
+  return mapped.filter((product) => {
+    const printedOnly = product.formats?.length
+      ? product.formats.every((format) => !format.enabled || format.type === "PRINTED_BOOK")
+      : product.productType === "PRINTED_BOOK";
+    if (!printedOnly) return true;
+    return product.stock == null || product.stock > 0;
+  });
 }
 
 export async function publishDueScheduledLibraryProducts() {
