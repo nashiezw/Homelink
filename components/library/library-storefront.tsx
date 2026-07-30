@@ -141,57 +141,63 @@ export function LibraryStorefront({ products }: { products: LibraryProduct[] }) 
         </div>
       </section>
 
-      <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        <div className="mb-5 flex items-end justify-between gap-4">
-          <div>
-            <p className="text-sm font-black uppercase tracking-[0.12em] text-[#007f68]">Shop departments</p>
-            <h2 className="mt-1 text-3xl font-black tracking-normal text-[#0d2630] dark:text-white">Find the right resource faster</h2>
-          </div>
-          <p className="hidden max-w-md text-sm leading-6 text-slate-600 md:block">Browse by the way property professionals actually work: learning, investing, legal paperwork and field operations.</p>
-        </div>
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-          {facets.categories.map((item) => (
-            <CategoryTile key={item} name={item} count={products.filter((product) => product.category === item).length} active={category === item} onClick={() => setCategory(category === item ? "" : item)} />
-          ))}
-        </div>
-      </section>
-
-      <PromoBanner products={products.slice(0, 3)} />
-
-      <section className="mx-auto grid max-w-7xl gap-8 px-4 pb-12 sm:px-6 lg:grid-cols-[minmax(0,1fr)_20rem] lg:px-8">
-        <div id="library-products" className="min-w-0 space-y-10">
-          <ProductSection title="Featured Books" subtitle="The strongest resources to start with." products={featuredProducts} onAdd={addToCart} quantityFor={quantityFor} />
-          <ProductSection title="Best Sellers" subtitle="Popular products customers keep choosing." products={bestSellers} onAdd={addToCart} quantityFor={quantityFor} />
-
-          <section className="space-y-5">
-            <div className="flex flex-col gap-4 border-t border-[#dfe8e5] pt-8 md:flex-row md:items-end md:justify-between">
+      {!products.length ? (
+        <EmptyLibraryState />
+      ) : (
+        <>
+          <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+            <div className="mb-5 flex items-end justify-between gap-4">
               <div>
-                <p className="text-sm font-black uppercase tracking-[0.12em] text-[#007f68]">Catalogue</p>
-                <h2 className="mt-1 text-3xl font-black tracking-normal text-[#0d2630] dark:text-white">{results.length} products</h2>
+                <p className="text-sm font-black uppercase tracking-[0.12em] text-[#007f68]">Shop departments</p>
+                <h2 className="mt-1 text-3xl font-black tracking-normal text-[#0d2630] dark:text-white">Find the right resource faster</h2>
               </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="inline-flex items-center gap-2 pr-1 text-sm font-bold text-slate-700 dark:text-slate-200">
-                  <SlidersHorizontal className="size-4" /> Level
-                </span>
-                {facets.difficulties.map((item) => (
-                  <button key={item} type="button" onClick={() => setDifficulty(difficulty === item ? "" : item)} className={cn("rounded-full border px-3 py-1.5 text-sm font-semibold transition", difficulty === item ? "border-[#007f68] bg-[#007f68] text-white" : "border-[#d8e4e0] bg-white text-slate-600 hover:border-[#007f68] hover:text-[#0d2630] dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300")}>
-                    {item}
-                  </button>
-                ))}
-              </div>
+              <p className="hidden max-w-md text-sm leading-6 text-slate-600 md:block">Browse by the way property professionals actually work: learning, investing, legal paperwork and field operations.</p>
             </div>
-            <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
-              {results.map((product) => (
-                <ProductCard key={product.id} product={product} quantity={quantityFor(product.id)} onAdd={addToCart} />
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+              {facets.categories.map((item) => (
+                <CategoryTile key={item} name={item} count={products.filter((product) => product.category === item).length} active={category === item} onClick={() => setCategory(category === item ? "" : item)} />
               ))}
             </div>
           </section>
-        </div>
 
-        <aside className="h-fit space-y-4 lg:sticky lg:top-24">
-          <CartPanel cart={cart} total={total} currency={currency} onCart={(next) => setCart(next)} />
-        </aside>
-      </section>
+          <PromoBanner products={products.slice(0, 3)} />
+
+          <section className="mx-auto grid max-w-7xl gap-8 px-4 pb-12 sm:px-6 lg:grid-cols-[minmax(0,1fr)_20rem] lg:px-8">
+            <div id="library-products" className="min-w-0 space-y-10">
+              <ProductSection title="Featured Books" subtitle="The strongest resources to start with." products={featuredProducts} onAdd={addToCart} quantityFor={quantityFor} />
+              <ProductSection title="Best Sellers" subtitle="Popular products customers keep choosing." products={bestSellers} onAdd={addToCart} quantityFor={quantityFor} />
+
+              <section className="space-y-5">
+                <div className="flex flex-col gap-4 border-t border-[#dfe8e5] pt-8 md:flex-row md:items-end md:justify-between">
+                  <div>
+                    <p className="text-sm font-black uppercase tracking-[0.12em] text-[#007f68]">Catalogue</p>
+                    <h2 className="mt-1 text-3xl font-black tracking-normal text-[#0d2630] dark:text-white">{results.length} products</h2>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="inline-flex items-center gap-2 pr-1 text-sm font-bold text-slate-700 dark:text-slate-200">
+                      <SlidersHorizontal className="size-4" /> Level
+                    </span>
+                    {facets.difficulties.map((item) => (
+                      <button key={item} type="button" onClick={() => setDifficulty(difficulty === item ? "" : item)} className={cn("rounded-full border px-3 py-1.5 text-sm font-semibold transition", difficulty === item ? "border-[#007f68] bg-[#007f68] text-white" : "border-[#d8e4e0] bg-white text-slate-600 hover:border-[#007f68] hover:text-[#0d2630] dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300")}>
+                        {item}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
+                  {results.map((product) => (
+                    <ProductCard key={product.id} product={product} quantity={quantityFor(product.id)} onAdd={addToCart} />
+                  ))}
+                </div>
+              </section>
+            </div>
+
+            <aside className="h-fit space-y-4 lg:sticky lg:top-24">
+              <CartPanel cart={cart} total={total} currency={currency} onCart={(next) => setCart(next)} />
+            </aside>
+          </section>
+        </>
+      )}
     </main>
   );
 }
@@ -231,6 +237,27 @@ function ProductSection({ title, subtitle, products, onAdd, quantityFor }: { tit
         {products.map((product) => (
           <ProductCard key={product.id} product={product} quantity={quantityFor(product.id)} onAdd={onAdd} compact />
         ))}
+      </div>
+    </section>
+  );
+}
+
+function EmptyLibraryState() {
+  return (
+    <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+      <div className="grid gap-6 rounded-lg border border-dashed border-[#bdd9d2] bg-white p-8 text-center shadow-sm md:p-12">
+        <span className="mx-auto grid size-14 place-items-center rounded-lg bg-[#e9f7f2] text-[#007f68]">
+          <BookOpen className="size-7" />
+        </span>
+        <div>
+          <h2 className="text-3xl font-black tracking-normal text-[#0d2630] dark:text-white">No library products published yet</h2>
+          <p className="mx-auto mt-3 max-w-2xl text-sm leading-7 text-slate-600">
+            Products added and published from the admin dashboard will appear here automatically. Demo books, fake orders, and seeded catalogue data have been removed.
+          </p>
+        </div>
+        <Link href="/dashboard/admin/library" className="mx-auto inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-[#007f68] px-5 text-sm font-black text-white transition hover:bg-[#006b58]">
+          Open library admin <ArrowRight className="size-4" />
+        </Link>
       </div>
     </section>
   );

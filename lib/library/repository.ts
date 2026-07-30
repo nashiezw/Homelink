@@ -2,9 +2,8 @@ import { createHash, createHmac, randomBytes } from "crypto";
 import { LibraryProductStatus, LibraryProductType, PaymentStatus, type Prisma } from "@prisma/client";
 import { getMainPrisma, isPostgresStoreEnabled } from "@/lib/db/main-prisma";
 import {
-  getLibraryAnalytics as getFallbackLibraryAnalytics,
-  getLibraryProductBySlug as getFallbackLibraryProductBySlug,
-  getLibraryProducts as getFallbackLibraryProducts,
+  getLibraryAnalytics as getEmptyLibraryAnalytics,
+  getLibraryProducts,
   LIBRARY_ORDERS,
   type LibraryAnalytics,
   type LibraryOrder,
@@ -109,7 +108,7 @@ type LocalLibraryOrder = LibraryOrder & {
   payment?: { status: string };
 };
 
-const localLibraryProducts: LibraryProduct[] = getFallbackLibraryProducts().map((product) => ({
+const localLibraryProducts: LibraryProduct[] = getLibraryProducts().map((product) => ({
   ...product,
   gallery: product.gallery.map((item) => ({ ...item })),
   downloads: product.downloads.map((item) => ({ ...item })),
@@ -166,12 +165,12 @@ export async function listLibraryProducts(input: {
     });
     return products.map(toLibraryProduct);
   } catch {
-    return getFallbackLibraryProducts();
+    return [];
   }
 }
 
 export async function getLibraryProductBySlug(slug: string) {
-  if (!shouldUsePostgresLibrary()) return localLibraryProducts.find((product) => product.slug === slug && product.status !== "ARCHIVED") ?? getFallbackLibraryProductBySlug(slug) ?? null;
+  if (!shouldUsePostgresLibrary()) return localLibraryProducts.find((product) => product.slug === slug && product.status !== "ARCHIVED") ?? null;
   try {
     await seedLibraryIfEmpty();
     const product = await getMainPrisma().libraryProduct.findUnique({
@@ -180,7 +179,7 @@ export async function getLibraryProductBySlug(slug: string) {
     });
     return product && !product.deletedAt ? toLibraryProduct(product as DbProduct) : null;
   } catch {
-    return getFallbackLibraryProductBySlug(slug) ?? null;
+    return null;
   }
 }
 
@@ -204,7 +203,7 @@ export async function getAdminLibraryData() {
 }
 
 export async function getLibraryAnalytics(): Promise<LibraryAnalytics> {
-  if (!shouldUsePostgresLibrary()) return getFallbackLibraryAnalytics();
+  if (!shouldUsePostgresLibrary()) return getEmptyLibraryAnalytics();
   try {
     await seedLibraryIfEmpty();
     const prisma = getMainPrisma();
@@ -240,7 +239,7 @@ export async function getLibraryAnalytics(): Promise<LibraryAnalytics> {
     stockLevels: products.filter((p) => p.stock !== null).map((p) => ({ label: p.title, value: p.stock ?? 0 })),
     };
   } catch {
-    return getFallbackLibraryAnalytics();
+    return getEmptyLibraryAnalytics();
   }
 }
 
@@ -661,7 +660,7 @@ export async function listCustomerLibrary(customerId: string) {
       })),
     };
   } catch {
-    return { products: getFallbackLibraryProducts().filter((p) => p.downloads.length > 0).slice(0, 3), orders: LIBRARY_ORDERS, downloads: [] };
+    return { products: [], orders: [], downloads: [] };
   }
 }
 
@@ -987,89 +986,7 @@ export function verifyDownloadToken(token: string, accessId: string, userId: str
 }
 
 async function seedLibraryIfEmpty() {
-  const prisma = getMainPrisma();
-  const count = await prisma.libraryProduct.count().catch(() => 0);
-  if (count > 0) return;
-  for (const product of getFallbackLibraryProducts()) {
-    const author = await prisma.libraryAuthor.upsert({
-      where: { slug: slugify(product.author) },
-      create: { name: product.author, slug: slugify(product.author), bio: `${product.author} contributor profile.` },
-      update: {},
-    });
-    const category = await prisma.libraryCategory.upsert({
-      where: { slug: slugify(product.category) },
-      create: { name: product.category, slug: slugify(product.category), description: `${product.category} products.` },
-      update: {},
-    });
-    const collection = await prisma.libraryCollection.upsert({
-      where: { slug: slugify(product.collection) },
-      create: { name: product.collection, slug: slugify(product.collection), featured: product.featured },
-      update: {},
-    });
-    await prisma.libraryProduct.create({
-      data: {
-        id: product.id,
-        title: product.title,
-        slug: product.slug,
-        subtitle: product.subtitle,
-        authorId: author.id,
-        publisher: product.publisher,
-        edition: product.edition,
-        isbn: product.isbn,
-        language: product.language,
-        publicationDate: new Date(product.publicationDate),
-        pages: product.pages,
-        weightGrams: product.weightGrams,
-        bookSize: product.bookSize,
-        sku: product.sku,
-        productType: normalizeType(product.productType),
-        status: normalizeStatus(product.status),
-        price: product.price,
-        compareAtPrice: product.compareAtPrice,
-        currency: product.currency,
-        categoryId: category.id,
-        collectionId: collection.id,
-        series: product.series,
-        difficulty: product.difficulty,
-        shortDescription: product.shortDescription,
-        description: product.description,
-        learningOutcomes: product.learningOutcomes,
-        whoThisIsFor: product.whoThisIsFor,
-        requirements: product.requirements,
-        tableOfContents: product.tableOfContents,
-        tags: product.tags,
-        searchVector: buildSearchVector(product),
-        featured: product.featured,
-        bestSeller: product.bestSeller,
-        newRelease: product.newRelease,
-        editorsChoice: product.editorsChoice,
-        comingSoon: product.comingSoon,
-        preorder: product.preorder,
-        stock: product.stock,
-        lowStockThreshold: product.lowStockThreshold,
-        warehouse: product.warehouse,
-        supplier: product.supplier,
-        viewCount: product.viewCount,
-        downloadCount: product.downloadCount,
-        ratingAverage: product.rating,
-        ratingCount: product.reviewCount,
-        publishedAt: new Date(product.publishedAt),
-        media: { create: product.gallery.map((item, sortOrder) => ({ label: item.label, url: item.url, mediaType: item.kind, sortOrder })) },
-        files: {
-          create: product.downloads.map((item, sortOrder) => ({
-            label: item.label,
-            fileUrl: "/uploads/academy/houselink-zimbabwe-real-estate-agent-training-manual.pdf",
-            fileName: `${slugify(item.label)}.${item.fileType.toLowerCase()}`,
-            fileType: item.fileType,
-            fileSizeBytes: parseSize(item.size),
-            secure: item.secure,
-            previewable: item.fileType === "PDF",
-            sortOrder,
-          })),
-        },
-      },
-    });
-  }
+  return;
 }
 
 function productInclude() {

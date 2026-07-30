@@ -61,13 +61,22 @@ export function LibraryProductPage({ product, related }: { product: LibraryProdu
 
   return (
     <main className="bg-[#f6f8f7] text-ink dark:bg-slate-950 dark:text-white">
-      <section className="border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-5 sm:px-6 lg:px-8">
-          <Link href="/library" className="inline-flex items-center gap-2 text-sm font-bold text-slate-600 hover:text-emerald-700 dark:text-slate-300 dark:hover:text-emerald-300">
-            <ArrowLeft className="size-4" /> Back to Library
-          </Link>
-          <Link href="/library/checkout" className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-800 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-white">
-            <ShoppingBag className="size-4" /> {count}
+      <section className="border-b border-[#dfe8e5] bg-[#fbfaf6] dark:border-slate-800 dark:bg-slate-950">
+        <div className="mx-auto flex max-w-[88rem] flex-col gap-3 px-4 py-3 sm:px-6 md:flex-row md:items-center md:justify-between lg:px-8">
+          <div className="min-w-0">
+            <nav aria-label="Product breadcrumb" className="flex flex-wrap items-center gap-2 text-sm">
+              <Link href="/library" className="inline-flex items-center gap-2 font-black text-[#007f68] hover:text-[#006b58] dark:text-emerald-300">
+                <ArrowLeft className="size-4" /> Library
+              </Link>
+              <span className="text-slate-300">/</span>
+              <span className="font-semibold text-slate-600 dark:text-slate-300">{product.category}</span>
+              <span className="hidden text-slate-300 sm:inline">/</span>
+              <span className="hidden max-w-xl truncate font-semibold text-slate-900 dark:text-white sm:inline">{product.title}</span>
+            </nav>
+            <p className="mt-1 line-clamp-1 text-xs font-semibold text-slate-500 dark:text-slate-400">{product.productType.replace(/_/g, " ")} by {product.author}</p>
+          </div>
+          <Link href="/library/checkout" className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-lg border border-[#cfe0da] bg-white px-4 text-sm font-black text-[#0d2630] shadow-sm transition hover:border-[#007f68] hover:text-[#007f68] dark:border-slate-700 dark:bg-slate-900 dark:text-white">
+            <ShoppingBag className="size-4" /> Library Bag <span className="rounded-full bg-[#e9f7f2] px-2 py-0.5 text-xs text-[#007f68] dark:bg-emerald-950/50 dark:text-emerald-200">{count}</span>
           </Link>
         </div>
       </section>
