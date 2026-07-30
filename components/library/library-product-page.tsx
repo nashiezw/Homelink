@@ -265,7 +265,7 @@ export function LibraryProductPage({
 
       <section className="mx-auto max-w-[88rem] px-4 py-8 sm:px-6 lg:px-8 lg:py-12">
         <article className="overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-soft dark:border-slate-800 dark:bg-slate-900">
-          <div className="grid gap-6 p-6 sm:gap-8 sm:p-8 xl:grid-cols-[minmax(0,0.9fr)_minmax(28rem,1.25fr)] xl:gap-x-10 xl:gap-y-5 xl:p-10">
+          <div className="grid gap-6 p-6 sm:gap-8 sm:p-8 xl:grid-cols-[minmax(0,1fr)_minmax(22rem,34rem)] xl:gap-x-12 xl:gap-y-5 xl:p-10">
             <div className="relative mx-auto w-full max-w-md xl:mx-0 xl:max-w-none">
               <div className="relative rounded-[1.35rem] bg-[radial-gradient(circle_at_50%_18%,#ffffff_0%,#f3f7f5_55%,#e8f0ec_100%)] p-3 sm:p-4 dark:bg-[radial-gradient(circle_at_50%_18%,#1e293b_0%,#0f172a_70%,#020617_100%)] xl:absolute xl:inset-0">
                 <button
@@ -322,11 +322,11 @@ export function LibraryProductPage({
               <p className="text-[0.7rem] font-semibold uppercase tracking-[0.2em] text-emerald-700 dark:text-emerald-300">
                 {product.collection}
               </p>
-              <h1 className="mt-3 max-w-none text-[1.75rem] font-semibold leading-[1.2] tracking-[-0.025em] text-ink sm:text-[2.2rem] sm:leading-[1.16] xl:text-[2.35rem] xl:leading-[1.15] dark:text-white">
+              <h1 className="mt-3 text-balance text-[1.65rem] font-semibold leading-[1.18] tracking-[-0.025em] text-ink sm:text-[2.05rem] sm:leading-[1.14] dark:text-white">
                 {product.title}
               </h1>
               {product.subtitle ? (
-                <p className="mt-4 text-[0.98rem] leading-[1.65] text-slate-600 dark:text-slate-300">
+                <p className="mt-4 max-w-[34rem] text-[0.98rem] leading-[1.65] text-slate-600 dark:text-slate-300">
                   {readableSubtitle(product.subtitle)}
                 </p>
               ) : null}
