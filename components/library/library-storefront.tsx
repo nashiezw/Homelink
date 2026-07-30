@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, BookOpen, ChevronDown, Filter, Minus, Plus, Search, ShoppingBag, ShoppingCart, Star, Trash2 } from "lucide-react";
+import { ArrowRight, Award, BookOpen, BookmarkCheck, ChevronDown, Filter, Minus, Plus, Search, ShieldCheck, ShoppingBag, ShoppingCart, Star, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { HL_GREEN, HL_NAVY } from "@/components/brand/houselink-icon";
 import { BookCover } from "@/components/library/book-cover";
@@ -32,7 +32,7 @@ type Store = LibraryStoreSettings["store"];
 export function LibraryStorefront({
   products,
   merchandising,
-  store: _store,
+  store,
 }: {
   products: LibraryProduct[];
   merchandising: Merchandising;
@@ -67,8 +67,9 @@ export function LibraryStorefront({
   const hidePrices = merchandising.hidePricesUntilLogin && !user;
   const headline = merchandising.heroHeadline?.trim() || "Professional property books for every day.";
   const subcopy = merchandising.heroSubcopy?.trim() || "Manuals, legal packs, and tools for smarter property work in Zimbabwe.";
-  const ctaLabel = merchandising.ctaLabel?.trim() || "Shop now";
+  const ctaLabel = merchandising.ctaLabel?.trim() || "Browse the catalogue";
   const ctaHref = merchandising.ctaHref?.trim() || "#library-products";
+  const storeName = store.name?.trim() || "HouseLink Library";
 
   function addToCart(product: LibraryProduct) {
     const formats = enabledLibraryFormats(product);
@@ -118,18 +119,39 @@ export function LibraryStorefront({
           />
           <div className="relative grid items-center gap-10 px-6 py-12 sm:px-10 lg:grid-cols-[minmax(0,1fr)_minmax(16rem,24rem)] lg:gap-12 lg:py-16 xl:px-14">
             <div className="max-w-xl motion-safe:animate-fade-up">
-              <h1 className="text-[2.6rem] font-bold leading-[1.05] tracking-tight text-[#1a3560] dark:text-white sm:text-5xl lg:text-[3.4rem]">
-                {headline}
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#22a54b]/90">
+                Professional property resources
+              </p>
+              <h1 className="mt-3 text-[2.6rem] font-bold leading-[1.05] tracking-tight text-[#1a3560] dark:text-white sm:text-5xl lg:text-[3.4rem]">
+                {storeName}
               </h1>
-              <p className="mt-5 max-w-md text-base leading-7 text-slate-600 dark:text-white/70">{subcopy}</p>
-              <div className="mt-8">
+              <p className="mt-4 text-xl font-semibold leading-snug text-[#22a54b] sm:text-2xl">{headline}</p>
+              <p className="mt-4 max-w-md text-base leading-7 text-slate-600 dark:text-white/70">{subcopy}</p>
+              <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
                 <a
                   href={ctaHref}
-                  className="inline-flex h-11 items-center justify-center rounded-lg px-6 text-sm font-semibold text-white shadow-md transition hover:brightness-110"
+                  className="inline-flex h-11 items-center justify-center gap-2 rounded-full px-6 text-sm font-semibold text-white shadow-md transition hover:brightness-110"
                   style={{ backgroundColor: HL_GREEN }}
                 >
-                  {ctaLabel}
+                  {ctaLabel} <ArrowRight className="size-4" />
                 </a>
+                <Link
+                  href="/dashboard/my-library"
+                  className="inline-flex h-11 items-center justify-center gap-2 rounded-full border border-[#c5ddd0] bg-white px-5 text-sm font-semibold text-[#1a3560] transition hover:border-[#22a54b] hover:text-[#22a54b] dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                >
+                  My Library <BookmarkCheck className="size-4" style={{ color: HL_GREEN }} />
+                </Link>
+              </div>
+              <div className="mt-8 flex flex-col gap-3 text-sm font-semibold text-[#1a3560] sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-6 sm:gap-y-2 dark:text-white/85">
+                <span className="inline-flex items-center gap-2">
+                  <ShieldCheck className="size-4 shrink-0" style={{ color: HL_GREEN }} /> Secure checkout
+                </span>
+                <span className="inline-flex items-center gap-2">
+                  <Award className="size-4 shrink-0" style={{ color: HL_GREEN }} /> Curated for operators
+                </span>
+                <span className="inline-flex items-center gap-2">
+                  <BookOpen className="size-4 shrink-0" style={{ color: HL_GREEN }} /> Library delivery
+                </span>
               </div>
             </div>
 
