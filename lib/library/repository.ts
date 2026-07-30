@@ -1,5 +1,5 @@
 import { createHash, createHmac, randomBytes } from "crypto";
-import { LibraryDownloadStatus, LibraryOrderStatus, LibraryProductStatus, LibraryProductType, NotificationChannel, NotificationStatus, PaymentProvider, PaymentStatus, type Prisma } from "@prisma/client";
+import { LibraryDownloadStatus, LibraryOrderStatus, LibraryProductStatus, LibraryProductType, NotificationChannel, NotificationStatus, PaymentProvider, PaymentStatus, Role, type Prisma } from "@prisma/client";
 import { getMainPrisma, isPostgresStoreEnabled } from "@/lib/db/main-prisma";
 import {
   getLibraryAnalytics as getEmptyLibraryAnalytics,
@@ -93,7 +93,7 @@ type DbProduct = Prisma.LibraryProductGetPayload<{
 
 type DbOrder = Prisma.LibraryOrderGetPayload<{
   include: {
-    customer: { select: { name: true; email: true } };
+    customer: { select: { id: true; name: true; email: true } };
     items: true;
     payment: { select: { status: true } };
   };
@@ -176,6 +176,23 @@ export type LibraryReviewAdmin = {
   createdAt: string;
 };
 
+export type LibraryAdminReports = {
+  scorecards: Array<{ label: string; value: number; detail: string; tone: "default" | "success" | "warning" | "danger" | "info" }>;
+  funnel: Array<{ label: string; value: number }>;
+  revenueTrend: Array<{ label: string; value: number }>;
+  orderStatus: Array<{ label: string; value: number }>;
+  paymentGateways: Array<{ label: string; value: number }>;
+  productPerformance: Array<{ id: string; title: string; revenue: number; units: number; views: number; downloads: number; conversionRate: number; health: number }>;
+  customerSegments: Array<{ id: string; userId: string; name: string; email: string; orders: number; spend: number; downloads: number; lastOrderAt: string; segment: string }>;
+  couponPerformance: Array<{ id: string; code: string; usedCount: number; discountValue: number; discountType: string; active: boolean; status: string }>;
+  downloadLogs: Array<{ id: string; customer: string; product: string; file: string; status: string; usage: string; lastDownloadAt?: string | null; expiresAt?: string | null }>;
+  stockAlerts: Array<{ id: string; title: string; stock: number; threshold: number; warehouse: string; supplier: string; state: string }>;
+  inventoryMovements: Array<{ id: string; productTitle: string; type: string; quantity: number; note?: string | null; createdAt: string }>;
+  taxSummary: Array<{ id: string; name: string; country: string; rate: number; active: boolean; collected: number }>;
+  refundSummary: { orders: number; amount: number; rate: number };
+  settingsHealth: Array<{ area: string; status: string; detail: string }>;
+};
+
 const localLibraryProducts: LibraryProduct[] = getLibraryProducts().map((product) => ({
   ...product,
   gallery: product.gallery.map((item) => ({ ...item })),
@@ -203,54 +220,52 @@ export async function listLibraryProducts(input: {
   if (!shouldUsePostgresLibrary()) {
     return filterAndSortLocalProducts(input);
   }
-  try {
-    await seedLibraryIfEmpty();
-    const q = input.q?.trim();
-    const products = await getMainPrisma().libraryProduct.findMany({
-      where: {
-        deletedAt: null,
-        ...(input.includeDrafts ? {} : { status: { in: [LibraryProductStatus.PUBLISHED, LibraryProductStatus.SCHEDULED] } }),
-        ...(input.status ? { status: normalizeStatus(input.status) } : {}),
-        ...(input.category ? { category: { name: input.category } } : {}),
-        ...(input.author ? { author: { name: input.author } } : {}),
-        ...(input.type ? { productType: normalizeType(input.type) } : {}),
-        ...(input.difficulty ? { difficulty: input.difficulty } : {}),
-        ...(q
-          ? {
-              OR: [
-                { title: { contains: q, mode: "insensitive" } },
-                { subtitle: { contains: q, mode: "insensitive" } },
-                { sku: { contains: q, mode: "insensitive" } },
-                { isbn: { contains: q, mode: "insensitive" } },
-                { searchVector: { contains: q, mode: "insensitive" } },
-                { author: { name: { contains: q, mode: "insensitive" } } },
-                { category: { name: { contains: q, mode: "insensitive" } } },
-              ],
-            }
-          : {}),
-      },
-      include: productInclude(),
-      orderBy: [{ featured: "desc" }, { publishedAt: "desc" }, { createdAt: "desc" }],
-      take: input.limit ?? 100,
-    });
-    return products.map(toLibraryProduct);
-  } catch {
-    return [];
-  }
+  await seedLibraryIfEmpty();
+  const q = input.q?.trim();
+  const products = await getMainPrisma().libraryProduct.findMany({
+    where: {
+      deletedAt: null,
+      ...(input.includeDrafts ? {} : { status: { in: [LibraryProductStatus.PUBLISHED, LibraryProductStatus.SCHEDULED] } }),
+      ...(input.status ? { status: normalizeStatus(input.status) } : {}),
+      ...(input.category ? { category: { name: input.category } } : {}),
+      ...(input.author ? { author: { name: input.author } } : {}),
+      ...(input.type ? { productType: normalizeType(input.type) } : {}),
+      ...(input.difficulty ? { difficulty: input.difficulty } : {}),
+      ...(q
+        ? {
+            OR: [
+              { title: { contains: q, mode: "insensitive" } },
+              { subtitle: { contains: q, mode: "insensitive" } },
+              { sku: { contains: q, mode: "insensitive" } },
+              { isbn: { contains: q, mode: "insensitive" } },
+              { searchVector: { contains: q, mode: "insensitive" } },
+              { author: { name: { contains: q, mode: "insensitive" } } },
+              { category: { name: { contains: q, mode: "insensitive" } } },
+            ],
+          }
+        : {}),
+    },
+    include: productInclude(),
+    orderBy: [{ featured: "desc" }, { publishedAt: "desc" }, { createdAt: "desc" }],
+    take: input.limit ?? 100,
+  });
+  return products.map(toLibraryProduct);
 }
 
 export async function getLibraryProductBySlug(slug: string) {
-  if (!shouldUsePostgresLibrary()) return localLibraryProducts.find((product) => product.slug === slug && product.status !== "ARCHIVED") ?? null;
-  try {
-    await seedLibraryIfEmpty();
-    const product = await getMainPrisma().libraryProduct.findUnique({
-      where: { slug },
-      include: productInclude(),
-    });
-    return product && !product.deletedAt ? toLibraryProduct(product as DbProduct) : null;
-  } catch {
+  if (!shouldUsePostgresLibrary()) {
+    return localLibraryProducts.find((product) => product.slug === slug && (product.status === "PUBLISHED" || product.status === "SCHEDULED")) ?? null;
+  }
+  await seedLibraryIfEmpty();
+  const product = await getMainPrisma().libraryProduct.findUnique({
+    where: { slug },
+    include: productInclude(),
+  });
+  if (!product || product.deletedAt) return null;
+  if (product.status !== LibraryProductStatus.PUBLISHED && product.status !== LibraryProductStatus.SCHEDULED) {
     return null;
   }
+  return toLibraryProduct(product as DbProduct);
 }
 
 export async function recordLibraryProductView(slug: string) {
@@ -322,7 +337,7 @@ export async function listLibraryOrders(customerId?: string): Promise<LibraryOrd
   try {
     const rows = await getMainPrisma().libraryOrder.findMany({
       where: customerId ? { customerId } : {},
-      include: { customer: { select: { name: true, email: true } }, items: true, payment: { select: { status: true } } },
+      include: { customer: { select: { id: true, name: true, email: true } }, items: true, payment: { select: { status: true } } },
       orderBy: { createdAt: "desc" },
       take: 100,
     });
@@ -582,7 +597,7 @@ export async function createLibraryOrderFromCheckout(input: {
         })),
       },
     },
-    include: { customer: { select: { name: true, email: true } }, items: true, payment: { select: { status: true } } },
+    include: { customer: { select: { id: true, name: true, email: true } }, items: true, payment: { select: { status: true } } },
   });
   await incrementLibraryCouponUsage(input.couponCode);
   await logLibraryActivity({
@@ -658,7 +673,7 @@ export async function refundLibraryOrder(orderId: string, reason = "admin_refund
   const order = await prisma.libraryOrder.findUnique({ where: { id: orderId }, include: { customer: { select: { id: true } }, payment: true } });
   if (!order) return null;
   const [updated, revoked] = await prisma.$transaction([
-    prisma.libraryOrder.update({ where: { id: orderId }, data: { status: LibraryOrderStatus.REFUNDED, refundedAt: new Date(), metadata: { reason } }, include: { customer: { select: { name: true, email: true } }, items: true, payment: { select: { status: true } } } }),
+    prisma.libraryOrder.update({ where: { id: orderId }, data: { status: LibraryOrderStatus.REFUNDED, refundedAt: new Date(), metadata: { reason } }, include: { customer: { select: { id: true, name: true, email: true } }, items: true, payment: { select: { status: true } } } }),
     prisma.libraryDownloadAccess.updateMany({ where: { orderId }, data: { status: LibraryDownloadStatus.REVOKED } }),
     ...(order.paymentId ? [prisma.payment.update({ where: { id: order.paymentId }, data: { status: PaymentStatus.REFUNDED, metadata: { reason, refundedBy: actorId } } })] : []),
   ]);
@@ -827,7 +842,7 @@ export async function getLibraryOrderForUser(orderId: string, userId: string, ro
   const admin = roles.some((role) => ["ADMIN", "SUPER_ADMIN"].includes(role));
   const order = await getMainPrisma().libraryOrder.findUnique({
     where: { id: orderId },
-    include: { customer: { select: { name: true, email: true } }, items: true, payment: { select: { status: true } } },
+    include: { customer: { select: { id: true, name: true, email: true } }, items: true, payment: { select: { status: true } } },
   }).catch(() => null);
   if (!order) return null;
   if (!admin && order.customerId !== userId) return "FORBIDDEN" as const;
@@ -854,7 +869,7 @@ export async function getLibraryInvoiceForUser(orderId: string, userId: string, 
   const admin = roles.some((role) => ["ADMIN", "SUPER_ADMIN"].includes(role));
   const order = await getMainPrisma().libraryOrder.findUnique({
     where: { id: orderId },
-    include: { customer: { select: { name: true, email: true } }, items: true, payment: { select: { status: true } } },
+    include: { customer: { select: { id: true, name: true, email: true } }, items: true, payment: { select: { status: true } } },
   });
   if (!order) return null;
   if (!admin && order.customerId !== userId) return "FORBIDDEN" as const;
@@ -914,11 +929,12 @@ export async function getLibraryOperationsSummary() {
       guestClaims: [],
       academyEntitlements: [],
       recommendations: [],
+      reports: buildLibraryAdminReports({ orders: [], products: localLibraryProducts, coupons: localLibraryCoupons, downloadAccess: [], reviews: [], taxSettings: [], inventoryMovements: [] }),
     };
   }
   const prisma = getMainPrisma();
   try {
-    const [fulfilments, invoices, activities, exports, taxSettings, coupons, categories, collections, authors, downloadAccess, reviews, guestClaims, academyEntitlements, recommendations] = await Promise.all([
+    const [fulfilments, invoices, activities, exports, taxSettings, coupons, categories, collections, authors, downloadAccess, reviews, guestClaims, academyEntitlements, recommendations, orders, products, inventoryMovements] = await Promise.all([
       prisma.libraryFulfilment.findMany({ orderBy: { createdAt: "desc" }, take: 20, include: { order: { select: { orderNumber: true, total: true, currency: true } } } }),
       prisma.libraryInvoice.findMany({ orderBy: { issuedAt: "desc" }, take: 20, include: { order: { select: { orderNumber: true } } } }),
       prisma.libraryActivity.findMany({ orderBy: { createdAt: "desc" }, take: 30 }),
@@ -938,7 +954,28 @@ export async function getLibraryOperationsSummary() {
         take: 20,
         include: { sourceProduct: { select: { title: true } }, targetProduct: { select: { title: true } } },
       }),
+      prisma.libraryOrder.findMany({
+        orderBy: { createdAt: "desc" },
+        take: 500,
+        include: {
+          customer: { select: { id: true, name: true, email: true } },
+          items: { include: { product: { select: { title: true, viewCount: true, downloadCount: true } } } },
+          payment: { select: { provider: true, status: true } },
+          downloads: true,
+        },
+      }),
+      prisma.libraryProduct.findMany({
+        where: { deletedAt: null },
+        include: { category: true, files: true, reviews: true, orderItems: true, downloads: true },
+        take: 500,
+      }),
+      prisma.libraryInventoryMovement.findMany({
+        orderBy: { createdAt: "desc" },
+        take: 50,
+        include: { product: { select: { title: true } } },
+      }),
     ]);
+    const reports = buildLibraryAdminReports({ orders, products, coupons, downloadAccess, reviews, taxSettings, inventoryMovements });
     return {
       fulfilments,
       invoices,
@@ -956,6 +993,7 @@ export async function getLibraryOperationsSummary() {
       guestClaims,
       academyEntitlements,
       recommendations,
+      reports,
     };
   } catch {
     return {
@@ -971,8 +1009,186 @@ export async function getLibraryOperationsSummary() {
       guestClaims: [],
       academyEntitlements: [],
       recommendations: [],
+      reports: buildLibraryAdminReports({ orders: [], products: [], coupons: [], downloadAccess: [], reviews: [], taxSettings: [], inventoryMovements: [] }),
     };
   }
+}
+
+function buildLibraryAdminReports(input: {
+  orders: Array<{
+    id: string;
+    status: string;
+    total: unknown;
+    discountTotal?: unknown;
+    currency?: string;
+    createdAt: Date | string;
+    customer?: { id: string; name: string | null; email: string } | null;
+    items?: Array<{ productId: string; title: string; quantity: number; total: unknown; product?: { title: string; viewCount: number; downloadCount: number } | null }>;
+    payment?: { provider?: string | null; status?: string | null } | null;
+    downloads?: unknown[];
+  }>;
+  products: Array<{
+    id: string;
+    title: string;
+    status?: string;
+    stock?: number | null;
+    lowStockThreshold?: number;
+    warehouse?: string | null;
+    supplier?: string | null;
+    viewCount?: number;
+    downloadCount?: number;
+    price?: unknown;
+    seoTitle?: string | null;
+    metaDescription?: string | null;
+    shortDescription?: string | null;
+    gallery?: unknown[];
+    files?: unknown[];
+    reviews?: Array<{ status: string; rating: number }>;
+    orderItems?: Array<{ quantity: number; total: unknown }>;
+    downloads?: unknown[];
+  }>;
+  coupons: Array<{ id: string; code: string; discountType: string; discountValue: unknown; usedCount: number; active: boolean; startsAt?: Date | string | null; expiresAt?: Date | string | null }>;
+  downloadAccess: Array<{ id: string; status: string; downloadCount: number; downloadLimit: number | null; expiresAt: Date | string | null; lastDownloadAt: Date | string | null; user?: { name: string | null; email: string } | null; product?: { title: string } | null; file?: { fileName: string } | null }>;
+  reviews: Array<{ status: string; rating: number }>;
+  taxSettings: Array<{ id: string; name: string; country: string; rate: unknown; active: boolean }>;
+  inventoryMovements: Array<{ id: string; type: string; quantity: number; note?: string | null; createdAt: Date | string; product?: { title: string } | null }>;
+}): LibraryAdminReports {
+  const paidOrders = input.orders.filter((order) => ["PAID", "FULFILLED"].includes(order.status));
+  const refundedOrders = input.orders.filter((order) => order.status === "REFUNDED");
+  const revenue = paidOrders.reduce((sum, order) => sum + Number(order.total ?? 0), 0);
+  const refundAmount = refundedOrders.reduce((sum, order) => sum + Number(order.total ?? 0), 0);
+  const downloads = input.downloadAccess.reduce((sum, access) => sum + access.downloadCount, 0);
+  const visitors = input.products.reduce((sum, product) => sum + Number(product.viewCount ?? 0), 0);
+  const lowStock = input.products.filter((product) => product.stock != null && product.stock <= (product.lowStockThreshold ?? 0));
+  const pendingReviews = input.reviews.filter((review) => review.status === "PENDING").length;
+  const activeCoupons = input.coupons.filter((coupon) => coupon.active).length;
+  const productRevenue = new Map<string, { id: string; title: string; revenue: number; units: number; views: number; downloads: number; health: number }>();
+  input.products.forEach((product) => {
+    productRevenue.set(product.id, {
+      id: product.id,
+      title: product.title,
+      revenue: 0,
+      units: 0,
+      views: Number(product.viewCount ?? 0),
+      downloads: Number(product.downloadCount ?? 0),
+      health: productHealthScore(product),
+    });
+  });
+  input.orders.forEach((order) => {
+    order.items?.forEach((item) => {
+      const current = productRevenue.get(item.productId) ?? { id: item.productId, title: item.product?.title ?? item.title, revenue: 0, units: 0, views: item.product?.viewCount ?? 0, downloads: item.product?.downloadCount ?? 0, health: 50 };
+      current.revenue += Number(item.total ?? 0);
+      current.units += item.quantity;
+      productRevenue.set(item.productId, current);
+    });
+  });
+  const customers = new Map<string, { id: string; userId: string; name: string; email: string; orders: number; spend: number; downloads: number; lastOrderAt: string; segment: string }>();
+  input.orders.forEach((order) => {
+    const email = order.customer?.email ?? "unknown@houselink.local";
+    const userId = order.customer?.id ?? "";
+    const current = customers.get(userId || email) ?? { id: userId || email, userId, name: order.customer?.name ?? "Library customer", email, orders: 0, spend: 0, downloads: 0, lastOrderAt: "", segment: "New" };
+    current.orders += 1;
+    current.spend += Number(order.total ?? 0);
+    current.downloads += order.downloads?.length ?? 0;
+    const createdAt = toIso(order.createdAt);
+    if (!current.lastOrderAt || createdAt > current.lastOrderAt) current.lastOrderAt = createdAt;
+    current.segment = current.spend >= 500 ? "VIP" : current.orders >= 3 ? "Repeat" : current.downloads > 0 ? "Activated" : "New";
+    customers.set(userId || email, current);
+  });
+  return {
+    scorecards: [
+      { label: "Revenue", value: roundMoney(revenue), detail: `${paidOrders.length} paid orders`, tone: "success" },
+      { label: "Average order", value: paidOrders.length ? roundMoney(revenue / paidOrders.length) : 0, detail: "Net of paid Library orders", tone: "info" },
+      { label: "Refund rate", value: input.orders.length ? Number(((refundedOrders.length / input.orders.length) * 100).toFixed(1)) : 0, detail: `${refundedOrders.length} refunded orders`, tone: refundedOrders.length ? "warning" : "success" },
+      { label: "Download events", value: downloads, detail: `${input.downloadAccess.length} access records`, tone: "default" },
+      { label: "Low stock", value: lowStock.length, detail: "Products at or under threshold", tone: lowStock.length ? "danger" : "success" },
+      { label: "Pending reviews", value: pendingReviews, detail: "Need moderation", tone: pendingReviews ? "warning" : "success" },
+    ],
+    funnel: [
+      { label: "Views", value: visitors },
+      { label: "Orders", value: input.orders.length },
+      { label: "Paid", value: paidOrders.length },
+      { label: "Downloads", value: input.downloadAccess.length },
+      { label: "Reviews", value: input.reviews.length },
+    ],
+    revenueTrend: buildSalesTrend(paidOrders.map((order) => ({ total: { toString: () => String(order.total ?? 0) } as Prisma.Decimal, createdAt: new Date(order.createdAt) }))),
+    orderStatus: countBy(input.orders, (order) => order.status),
+    paymentGateways: countBy(input.orders, (order) => order.payment?.provider ?? "MANUAL/UNKNOWN"),
+    productPerformance: Array.from(productRevenue.values())
+      .map((row) => ({ ...row, conversionRate: row.views ? Number(((row.units / row.views) * 100).toFixed(1)) : 0 }))
+      .sort((a, b) => b.revenue - a.revenue || b.downloads - a.downloads)
+      .slice(0, 20),
+    customerSegments: Array.from(customers.values()).sort((a, b) => b.spend - a.spend).slice(0, 50),
+    couponPerformance: input.coupons.map((coupon) => ({
+      id: coupon.id,
+      code: coupon.code,
+      usedCount: coupon.usedCount,
+      discountValue: Number(coupon.discountValue ?? 0),
+      discountType: coupon.discountType,
+      active: coupon.active,
+      status: coupon.active && (!coupon.expiresAt || new Date(coupon.expiresAt) >= new Date()) ? "ACTIVE" : "INACTIVE",
+    })),
+    downloadLogs: input.downloadAccess.map((access) => ({
+      id: access.id,
+      customer: access.user?.name ?? access.user?.email ?? "Customer",
+      product: access.product?.title ?? "Library product",
+      file: access.file?.fileName ?? "Product access",
+      status: access.status,
+      usage: `${access.downloadCount}${access.downloadLimit == null ? "" : `/${access.downloadLimit}`}`,
+      lastDownloadAt: access.lastDownloadAt ? toIso(access.lastDownloadAt) : null,
+      expiresAt: access.expiresAt ? toIso(access.expiresAt) : null,
+    })),
+    stockAlerts: lowStock.map((product) => ({
+      id: product.id,
+      title: product.title,
+      stock: product.stock ?? 0,
+      threshold: product.lowStockThreshold ?? 0,
+      warehouse: product.warehouse ?? "Unassigned",
+      supplier: product.supplier ?? "Unassigned",
+      state: product.stock === 0 ? "OUT" : "LOW",
+    })),
+    inventoryMovements: input.inventoryMovements.map((movement) => ({
+      id: movement.id,
+      productTitle: movement.product?.title ?? "Library product",
+      type: movement.type,
+      quantity: movement.quantity,
+      note: movement.note,
+      createdAt: toIso(movement.createdAt),
+    })),
+    taxSummary: input.taxSettings.map((tax) => ({ id: tax.id, name: tax.name, country: tax.country, rate: Number(tax.rate ?? 0), active: tax.active, collected: 0 })),
+    refundSummary: { orders: refundedOrders.length, amount: refundAmount, rate: input.orders.length ? Number(((refundedOrders.length / input.orders.length) * 100).toFixed(1)) : 0 },
+    settingsHealth: [
+      { area: "Tax", status: input.taxSettings.some((setting) => setting.active) ? "READY" : "NEEDS_SETUP", detail: input.taxSettings.some((setting) => setting.active) ? "Active tax rule configured." : "Add at least one active tax rule." },
+      { area: "Downloads", status: input.products.some((product) => (product.files?.length ?? 0) > 0) ? "READY" : "NEEDS_FILES", detail: "Digital delivery depends on active product files." },
+      { area: "Coupons", status: activeCoupons ? "READY" : "OPTIONAL", detail: `${activeCoupons} active campaign${activeCoupons === 1 ? "" : "s"}.` },
+      { area: "Reviews", status: pendingReviews ? "MODERATION" : "CLEAR", detail: pendingReviews ? `${pendingReviews} review${pendingReviews === 1 ? "" : "s"} pending.` : "No pending review queue." },
+      { area: "Inventory", status: lowStock.length ? "ATTENTION" : "READY", detail: lowStock.length ? `${lowStock.length} product${lowStock.length === 1 ? "" : "s"} low on stock.` : "No low-stock alerts." },
+    ],
+  };
+}
+
+function countBy<T>(rows: T[], getKey: (row: T) => string) {
+  const map = new Map<string, number>();
+  rows.forEach((row) => {
+    const key = getKey(row) || "Unknown";
+    map.set(key, (map.get(key) ?? 0) + 1);
+  });
+  return Array.from(map.entries()).map(([label, value]) => ({ label, value }));
+}
+
+function productHealthScore(product: { status?: string; seoTitle?: string | null; metaDescription?: string | null; shortDescription?: string | null; files?: unknown[]; reviews?: Array<{ status: string }>; stock?: number | null; lowStockThreshold?: number; viewCount?: number }) {
+  let score = 35;
+  if (product.status === "PUBLISHED") score += 15;
+  if (product.seoTitle && product.metaDescription) score += 15;
+  if (product.shortDescription) score += 10;
+  if ((product.files?.length ?? 0) > 0) score += 10;
+  if ((product.reviews?.filter((review) => review.status === "APPROVED").length ?? 0) > 0) score += 10;
+  if (product.stock == null || product.stock > (product.lowStockThreshold ?? 0)) score += 5;
+  return Math.min(100, score);
+}
+
+function toIso(value: Date | string) {
+  return value instanceof Date ? value.toISOString() : new Date(value).toISOString();
 }
 
 export async function updateLibraryFulfilment(id: string, input: { status?: string; courier?: string; trackingNumber?: string; trackingUrl?: string; dispatchNotes?: string; deliveryNotes?: string }, actorId?: string) {
@@ -1024,6 +1240,47 @@ export async function deleteLibraryExportJob(id: string, actorId?: string) {
   return job;
 }
 
+export async function createLibraryInventoryMovement(input: { productId: string; type: string; quantity: number; note?: string }, actorId?: string) {
+  const quantity = Math.trunc(Number(input.quantity) || 0);
+  if (!input.productId || quantity === 0) return null;
+  if (!shouldUsePostgresLibrary()) {
+    const product = localLibraryProducts.find((item) => item.id === input.productId);
+    if (!product) return null;
+    product.stock = Math.max(0, (product.stock ?? 0) + quantity);
+    return { id: `local-movement-${Date.now()}`, productId: input.productId, type: input.type, quantity, note: input.note ?? null };
+  }
+  const prisma = getMainPrisma();
+  const result = await prisma.$transaction(async (tx) => {
+    const product = await tx.libraryProduct.findUnique({ where: { id: input.productId }, select: { id: true, title: true, stock: true } });
+    if (!product) return null;
+    const nextStock = Math.max(0, (product.stock ?? 0) + quantity);
+    await tx.libraryProduct.update({ where: { id: product.id }, data: { stock: nextStock, updatedById: actorId } });
+    const movement = await tx.libraryInventoryMovement.create({
+      data: { productId: product.id, type: input.type || (quantity > 0 ? "RESTOCK" : "ADJUSTMENT"), quantity, note: input.note || null, actorId },
+      include: { product: { select: { title: true } } },
+    });
+    return { movement, nextStock };
+  });
+  if (!result) return null;
+  await logLibraryActivity({ actorId, targetType: "inventory", targetId: input.productId, action: "INVENTORY_MOVEMENT", message: `${result.movement.product.title} stock adjusted by ${quantity}.`, metadata: { ...input, nextStock: result.nextStock } });
+  return result;
+}
+
+export async function upsertLibraryRecommendation(input: { sourceProductId: string; targetProductId: string; reason?: string; weight?: number; active?: boolean }, actorId?: string) {
+  if (!input.sourceProductId || !input.targetProductId || input.sourceProductId === input.targetProductId) return null;
+  if (!shouldUsePostgresLibrary()) return null;
+  const reason = input.reason?.trim() || "RELATED";
+  const recommendation = await getMainPrisma().libraryRecommendation.upsert({
+    where: { sourceProductId_targetProductId_reason: { sourceProductId: input.sourceProductId, targetProductId: input.targetProductId, reason } },
+    create: { sourceProductId: input.sourceProductId, targetProductId: input.targetProductId, reason, weight: Number(input.weight) || 0, active: input.active ?? true },
+    update: { weight: Number(input.weight) || 0, active: input.active ?? true },
+    include: { sourceProduct: { select: { title: true } }, targetProduct: { select: { title: true } } },
+  }).catch(() => null);
+  if (!recommendation) return null;
+  await logLibraryActivity({ actorId, targetType: "recommendation", targetId: recommendation.id, action: "RECOMMENDATION_SAVED", message: `${recommendation.sourceProduct.title} recommends ${recommendation.targetProduct.title}.`, metadata: input });
+  return recommendation;
+}
+
 export async function upsertLibraryTaxSetting(input: { id?: string; name: string; country?: string; rate: number; inclusive?: boolean; active?: boolean }, actorId?: string) {
   if (!shouldUsePostgresLibrary()) return input;
   const data = {
@@ -1036,6 +1293,14 @@ export async function upsertLibraryTaxSetting(input: { id?: string; name: string
   const prisma = getMainPrisma();
   const row = input.id ? await prisma.libraryTaxSetting.update({ where: { id: input.id }, data }) : await prisma.libraryTaxSetting.create({ data });
   await logLibraryActivity({ actorId, targetType: "settings", targetId: row.id, action: "TAX_UPDATED", message: `${row.name} tax setting saved.` });
+  return row;
+}
+
+export async function deleteLibraryTaxSetting(id: string, actorId?: string) {
+  if (!id) return null;
+  if (!shouldUsePostgresLibrary()) return { id };
+  const row = await getMainPrisma().libraryTaxSetting.delete({ where: { id } }).catch(() => null);
+  if (row) await logLibraryActivity({ actorId, targetType: "settings", targetId: row.id, action: "TAX_DELETED", message: `${row.name} tax setting deleted.` });
   return row;
 }
 
@@ -1222,6 +1487,52 @@ export async function moderateLibraryReview(id: string, input: { status?: string
   await recalculateLibraryProductRating(row.productId);
   await logLibraryActivity({ actorId, targetType: "review", targetId: row.id, action: "REVIEW_MODERATED", message: `Review marked ${row.status}.`, metadata: input });
   return toLibraryReviewAdmin(row);
+}
+
+export async function disableLibraryCustomer(userId: string, actorId?: string) {
+  if (!shouldUsePostgresLibrary() || !userId) return null;
+  const prisma = getMainPrisma();
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { id: true, email: true, roles: true } });
+  if (!user) return null;
+  const protectedRoles: Role[] = [Role.ADMIN, Role.SUPER_ADMIN, Role.ACADEMY_ADMIN];
+  if (user.roles.some((role) => protectedRoles.includes(role))) {
+    return { protected: true as const };
+  }
+
+  const anonymizedEmail = `deleted-library-${user.id}@houselink.local`;
+  const result = await prisma.$transaction(async (tx) => {
+    const downloads = await tx.libraryDownloadAccess.updateMany({ where: { userId: user.id, status: LibraryDownloadStatus.ACTIVE }, data: { status: LibraryDownloadStatus.REVOKED } });
+    const guestClaims = await tx.libraryGuestClaim.updateMany({
+      where: { OR: [{ userId: user.id }, { email: user.email }], status: { notIn: ["CLAIMED", "REVOKED"] } },
+      data: { status: "REVOKED", claimTokenHash: null },
+    });
+    const disabled = await tx.user.update({
+      where: { id: user.id },
+      data: {
+        accountStatus: "DISABLED",
+        name: "Deleted Library Customer",
+        email: anonymizedEmail,
+        phone: null,
+        passwordHash: null,
+        emailVerifiedAt: null,
+        phoneVerifiedAt: null,
+        sessions: { deleteMany: {} },
+      },
+      select: { id: true, email: true, accountStatus: true },
+    });
+    await tx.libraryActivity.create({
+      data: {
+        actorId,
+        targetType: "customer",
+        targetId: user.id,
+        action: "CUSTOMER_DISABLED",
+        message: "Library customer disabled, anonymised, and download access revoked.",
+        metadata: { revokedDownloads: downloads.count, revokedGuestClaims: guestClaims.count },
+      },
+    });
+    return { user: disabled, revokedDownloads: downloads.count, revokedGuestClaims: guestClaims.count };
+  });
+  return result;
 }
 
 export async function ensureLibraryInvoice(orderId: string) {
@@ -1772,6 +2083,10 @@ function localProductFromInput(input: Partial<LibraryProductInput>, existing?: L
         fileType: item.fileType,
         size: item.size ?? formatBytes(item.fileSizeBytes ?? 0),
         secure: item.secure ?? true,
+        fileUrl: item.fileUrl,
+        fileName: item.fileName,
+        fileSizeBytes: item.fileSizeBytes,
+        previewable: item.previewable ?? item.fileType.toUpperCase() === "PDF",
       }))
     : existing?.downloads.map((item) => ({ ...item })) ?? [];
   return {

@@ -1,11 +1,8 @@
 import { notFound } from "next/navigation";
 import { LibraryProductPage } from "@/components/library/library-product-page";
-import { getLibraryProducts } from "@/lib/library/catalog";
 import { getLibraryProductBySlug, listLibraryProducts, recordLibraryProductView } from "@/lib/library/repository";
 
-export function generateStaticParams() {
-  return getLibraryProducts().map((product) => ({ slug: product.slug }));
-}
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;

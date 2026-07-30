@@ -9,10 +9,15 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   const auth = isPostgresStoreEnabled() ? await requireAdminAsync(request) : requireAdmin(request);
   if (auth.error || !auth.user) return auth.error ?? problem(401, "UNAUTHORIZED", "Admin required.");
   const { id } = await context.params;
-  const body = await request.json();
-  const product = await updateLibraryProduct(id, body, auth.user.id);
-  if (!product) return problem(404, "PRODUCT_NOT_FOUND", "Product not found.");
-  return ok({ product });
+  try {
+    const body = await request.json();
+    const product = await updateLibraryProduct(id, body, auth.user.id);
+    if (!product) return problem(404, "PRODUCT_NOT_FOUND", "Product not found.");
+    return ok({ product });
+  } catch (error) {
+    console.error("[admin/library/products] PATCH failed", error);
+    return problem(500, "LIBRARY_PRODUCT_UPDATE_FAILED", "Library product could not be saved to the database.");
+  }
 }
 
 export async function DELETE(request: Request, context: { params: Promise<{ id: string }> }) {

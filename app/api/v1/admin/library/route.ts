@@ -4,11 +4,14 @@ import { isPostgresStoreEnabled } from "@/lib/db/main-prisma";
 import {
   archiveLibraryProducts,
   createAdminLibraryManualOrder,
+  createLibraryInventoryMovement,
   createLibraryExportJob,
   createLibraryProduct,
   deleteLibraryCoupon,
   deleteLibraryExportJob,
+  deleteLibraryTaxSetting,
   deleteLibraryTaxonomy,
+  disableLibraryCustomer,
   duplicateLibraryProduct,
   getAdminLibraryData,
   moderateLibraryReview,
@@ -17,6 +20,7 @@ import {
   softDeleteLibraryProducts,
   updateLibraryDownloadAccess,
   updateLibraryFulfilment,
+  upsertLibraryRecommendation,
   upsertLibraryCoupon,
   upsertLibraryTaxonomy,
   upsertLibraryTaxSetting,
@@ -28,13 +32,24 @@ export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   const auth = isPostgresStoreEnabled() ? await requireAdminAsync(request) : requireAdmin(request);
   if (auth.error) return auth.error;
-  return ok(await getAdminLibraryData());
+  try {
+    return ok(await getAdminLibraryData());
+  } catch (error) {
+    console.error("[admin/library] GET failed", error);
+    return problem(500, "LIBRARY_ADMIN_LOAD_FAILED", "Library admin data could not be loaded from the database.");
+  }
 }
 
 export async function POST(request: Request) {
   const auth = isPostgresStoreEnabled() ? await requireAdminAsync(request) : requireAdmin(request);
   if (auth.error || !auth.user) return auth.error ?? problem(401, "UNAUTHORIZED", "Admin required.");
-  const body = await request.json();
+  let body: Record<string, unknown>;
+  try {
+    body = await request.json();
+  } catch {
+    return problem(400, "INVALID_JSON", "Request body must be valid JSON.");
+  }
+  try {
   if (body.action === "bulk_archive") {
     return ok({ count: await archiveLibraryProducts(arrayOfStrings(body.ids), auth.user.id) });
   }
@@ -50,6 +65,16 @@ export async function POST(request: Request) {
     const fulfilment = await updateLibraryFulfilment(String(body.id), body, auth.user.id);
     if (!fulfilment) return problem(404, "FULFILMENT_NOT_FOUND", "Fulfilment not found.");
     return ok({ fulfilment });
+  }
+  if (body.action === "inventory_movement") {
+    const movement = await createLibraryInventoryMovement({ productId: String(body.productId ?? ""), type: String(body.type ?? "ADJUSTMENT"), quantity: Number(body.quantity), note: body.note ? String(body.note) : undefined }, auth.user.id);
+    if (!movement) return problem(400, "INVALID_INVENTORY_MOVEMENT", "A valid product and non-zero quantity are required.");
+    return created({ movement });
+  }
+  if (body.action === "save_recommendation") {
+    const recommendation = await upsertLibraryRecommendation({ sourceProductId: String(body.sourceProductId ?? ""), targetProductId: String(body.targetProductId ?? ""), reason: body.reason ? String(body.reason) : undefined, weight: Number(body.weight) || 0, active: body.active ?? true }, auth.user.id);
+    if (!recommendation) return problem(400, "INVALID_RECOMMENDATION", "Choose two different Library products.");
+    return ok({ recommendation });
   }
   if (body.action === "create_manual_order") {
     if (!body.customerId) return problem(400, "INVALID_ORDER", "Customer user id is required.");
@@ -68,6 +93,13 @@ export async function POST(request: Request) {
     if (!result) return problem(404, "ORDER_NOT_FOUND", "Library order not found.");
     return ok({ result });
   }
+  if (body.action === "disable_customer") {
+    if (!body.userId) return problem(400, "INVALID_CUSTOMER", "Customer user id is required.");
+    const result = await disableLibraryCustomer(String(body.userId), auth.user.id);
+    if (!result) return problem(404, "CUSTOMER_NOT_FOUND", "Library customer not found.");
+    if ("protected" in result) return problem(403, "PROTECTED_CUSTOMER", "Admin accounts cannot be disabled from Library customer tools.");
+    return ok({ result });
+  }
   if (body.action === "create_export") {
     return created({ exportJob: await createLibraryExportJob(String(body.type || "products"), body.filters ?? {}, auth.user.id) });
   }
@@ -80,6 +112,12 @@ export async function POST(request: Request) {
   if (body.action === "save_tax_setting") {
     if (!body.name || body.rate == null) return problem(400, "INVALID_TAX_SETTING", "name and rate are required.");
     return ok({ taxSetting: await upsertLibraryTaxSetting({ id: body.id, name: String(body.name), country: body.country, rate: Number(body.rate), inclusive: Boolean(body.inclusive), active: body.active ?? true }, auth.user.id) });
+  }
+  if (body.action === "delete_tax_setting") {
+    if (!body.id) return problem(400, "INVALID_TAX_SETTING", "Tax setting id is required.");
+    const taxSetting = await deleteLibraryTaxSetting(String(body.id), auth.user.id);
+    if (!taxSetting) return problem(404, "TAX_SETTING_NOT_FOUND", "Tax setting not found.");
+    return ok({ taxSetting });
   }
   if (body.action === "save_coupon") {
     if (!String(body.code ?? "").trim()) return problem(400, "INVALID_COUPON", "Coupon code is required.");
@@ -134,8 +172,12 @@ export async function POST(request: Request) {
   if (!body.title || !body.description || body.price == null) {
     return problem(400, "INVALID_PRODUCT", "title, description, and price are required.");
   }
-  const product = await createLibraryProduct({ ...body, price: Number(body.price) }, auth.user.id);
+  const product = await createLibraryProduct({ ...body, price: Number(body.price) } as Parameters<typeof createLibraryProduct>[0], auth.user.id);
   return created({ product });
+  } catch (error) {
+    console.error("[admin/library] POST failed", error);
+    return problem(500, "LIBRARY_ADMIN_WRITE_FAILED", "Library admin change could not be saved to the database.");
+  }
 }
 
 function arrayOfStrings(value: unknown) {

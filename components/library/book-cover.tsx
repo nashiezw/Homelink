@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import type { LibraryProduct } from "@/lib/library/catalog";
 import { cn } from "@/lib/utils";
@@ -15,9 +16,25 @@ function styleFor(product: LibraryProduct) {
   return coverStyles[sum % coverStyles.length];
 }
 
-export function BookCover({ product, className, priority = false }: { product: LibraryProduct; className?: string; priority?: boolean }) {
+function coverImageUrl(product: LibraryProduct, imageUrl?: string) {
+  if (imageUrl) return imageUrl;
+  return product.gallery.find((item) => item.kind === "cover")?.url ?? product.gallery[0]?.url;
+}
+
+export function BookCover({
+  product,
+  className,
+  priority = false,
+  imageUrl,
+}: {
+  product: LibraryProduct;
+  className?: string;
+  priority?: boolean;
+  imageUrl?: string;
+}) {
   const style = styleFor(product);
   const coverTitle = getCoverTitle(product);
+  const coverUrl = coverImageUrl(product, imageUrl);
 
   return (
     <Link
@@ -28,28 +45,48 @@ export function BookCover({ product, className, priority = false }: { product: L
       )}
       data-priority={priority ? "true" : undefined}
     >
-      <div className={cn("absolute inset-0 bg-gradient-to-br", style.paper)} />
-      <div className={cn("absolute inset-y-0 left-0 w-[13%]", style.spine)} />
-      <div className="absolute inset-y-0 left-[13%] w-px bg-slate-950/10" />
-      <div className="relative z-10 flex h-full flex-col justify-between p-4 pl-[21%]">
-        <div>
-          <div className={cn("h-1.5 w-14 rounded-full", style.accent)} />
-          <p className="mt-5 text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">{product.category}</p>
-          <h3 className={cn("mt-4 line-clamp-4 text-balance text-[1.1rem] font-black leading-[1.02] sm:text-[1.2rem]", style.text)}>
-            {coverTitle}
-          </h3>
-        </div>
-        <div>
-          <p className="line-clamp-2 text-[11px] font-semibold leading-4 text-slate-600">{product.author}</p>
-          <div className="mt-3 flex items-center justify-between gap-2">
-            <p className="text-[8px] font-black uppercase tracking-[0.18em] text-slate-400">HouseLink</p>
-            <span className="rounded-full border border-slate-950/10 bg-white/70 px-2 py-1 text-[7px] font-black uppercase tracking-[0.12em] text-slate-600">
-              {product.productType.replace(/_/g, " ")}
-            </span>
+      {coverUrl ? (
+        <>
+          <Image
+            src={coverUrl}
+            alt={product.title}
+            fill
+            sizes="(max-width: 768px) 70vw, 320px"
+            className="object-cover"
+            priority={priority}
+          />
+          <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(15,23,42,0.08),transparent_28%,transparent_62%,rgba(15,23,42,0.45))]" />
+          <div className="absolute inset-x-0 bottom-0 z-10 p-3">
+            <p className="line-clamp-2 text-sm font-black leading-tight text-white drop-shadow">{product.title}</p>
+            <p className="mt-1 line-clamp-1 text-[11px] font-semibold text-white/85">{product.author}</p>
           </div>
-        </div>
-      </div>
-      <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(0,0,0,0.08),transparent_16%,transparent_84%,rgba(0,0,0,0.05))]" />
+        </>
+      ) : (
+        <>
+          <div className={cn("absolute inset-0 bg-gradient-to-br", style.paper)} />
+          <div className={cn("absolute inset-y-0 left-0 w-[13%]", style.spine)} />
+          <div className="absolute inset-y-0 left-[13%] w-px bg-slate-950/10" />
+          <div className="relative z-10 flex h-full flex-col justify-between p-4 pl-[21%]">
+            <div>
+              <div className={cn("h-1.5 w-14 rounded-full", style.accent)} />
+              <p className="mt-5 text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">{product.category}</p>
+              <h3 className={cn("mt-4 line-clamp-4 text-balance text-[1.1rem] font-black leading-[1.02] sm:text-[1.2rem]", style.text)}>
+                {coverTitle}
+              </h3>
+            </div>
+            <div>
+              <p className="line-clamp-2 text-[11px] font-semibold leading-4 text-slate-600">{product.author}</p>
+              <div className="mt-3 flex items-center justify-between gap-2">
+                <p className="text-[8px] font-black uppercase tracking-[0.18em] text-slate-400">HouseLink</p>
+                <span className="rounded-full border border-slate-950/10 bg-white/70 px-2 py-1 text-[7px] font-black uppercase tracking-[0.12em] text-slate-600">
+                  {product.productType.replace(/_/g, " ")}
+                </span>
+              </div>
+            </div>
+          </div>
+          <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(0,0,0,0.08),transparent_16%,transparent_84%,rgba(0,0,0,0.05))]" />
+        </>
+      )}
     </Link>
   );
 }

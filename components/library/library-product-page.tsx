@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -35,6 +36,11 @@ export function LibraryProductPage({ product, related }: { product: LibraryProdu
   const relatedBundle = useMemo(() => related.slice(0, 2), [related]);
   const bundleTotal = relatedBundle.reduce((sum, item) => sum + item.price, product.price);
   const productQuantity = cart.find((line) => line.productId === product.id)?.quantity ?? 0;
+  const galleryImages = useMemo(
+    () => product.gallery.filter((item) => item.kind !== "video" && Boolean(item.url)),
+    [product.gallery],
+  );
+  const activeGalleryImage = galleryImages[galleryIndex] ?? galleryImages[0];
 
   function addToCart() {
     setCart((current) => {
@@ -86,7 +92,7 @@ export function LibraryProductPage({ product, related }: { product: LibraryProdu
           <div className="grid gap-7 p-4 sm:p-6 xl:grid-cols-[minmax(18rem,32rem)_minmax(0,1fr)] xl:items-start">
             <div className="space-y-4">
               <div className="relative mx-auto max-w-[30rem] xl:mx-0">
-                <BookCover product={product} className="w-full rounded-xl" priority />
+                <BookCover product={product} imageUrl={activeGalleryImage?.url} className="w-full rounded-xl" priority />
                 <div className="absolute bottom-3 right-3 flex gap-2">
                   <button type="button" className="rounded-lg bg-white/95 p-2 text-slate-800 shadow-sm" aria-label="Zoom product image">
                     <ZoomIn className="size-4" />
@@ -96,13 +102,32 @@ export function LibraryProductPage({ product, related }: { product: LibraryProdu
                   </button>
                 </div>
               </div>
-              <div className="grid grid-cols-3 gap-2">
-                {[product.productType.replace(/_/g, " "), product.category, product.difficulty].map((item, index) => (
-                  <button key={`${item}-${index}`} type="button" onClick={() => setGalleryIndex(index)} className={cn("min-h-14 rounded-xl border bg-white px-3 py-2 text-center text-xs font-black leading-tight text-slate-700 shadow-sm dark:bg-slate-950 dark:text-slate-200", galleryIndex === index ? "border-emerald-600 ring-2 ring-emerald-600/20" : "border-slate-200 dark:border-slate-800")}>
-                    {item}
-                  </button>
-                ))}
-              </div>
+              {galleryImages.length > 0 ? (
+                <div className="grid grid-cols-3 gap-2">
+                  {galleryImages.slice(0, 6).map((item, index) => (
+                    <button
+                      key={`${item.url}-${index}`}
+                      type="button"
+                      onClick={() => setGalleryIndex(index)}
+                      className={cn(
+                        "relative aspect-[3/4] overflow-hidden rounded-xl border bg-white shadow-sm dark:bg-slate-950",
+                        galleryIndex === index ? "border-emerald-600 ring-2 ring-emerald-600/20" : "border-slate-200 dark:border-slate-800",
+                      )}
+                      aria-label={`Show ${item.label || "gallery image"}`}
+                    >
+                      <Image src={item.url} alt={item.label || product.title} fill sizes="120px" className="object-cover" />
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="grid grid-cols-3 gap-2">
+                  {[product.productType.replace(/_/g, " "), product.category, product.difficulty].map((item, index) => (
+                    <button key={`${item}-${index}`} type="button" onClick={() => setGalleryIndex(index)} className={cn("min-h-14 rounded-xl border bg-white px-3 py-2 text-center text-xs font-black leading-tight text-slate-700 shadow-sm dark:bg-slate-950 dark:text-slate-200", galleryIndex === index ? "border-emerald-600 ring-2 ring-emerald-600/20" : "border-slate-200 dark:border-slate-800")}>
+                      {item}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="min-w-0">

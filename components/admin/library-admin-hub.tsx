@@ -52,7 +52,25 @@ type LibraryOperations = {
   reviews: LibraryReviewAdmin[];
   guestClaims: Array<{ id: string; email: string; status: string; order?: { orderNumber: string } }>;
   academyEntitlements: Array<{ id: string; userId: string; courseId: string; status: string }>;
-  recommendations: Array<{ id: string; reason: string; sourceProduct?: { title: string }; targetProduct?: { title: string } }>;
+  recommendations: LibraryRecommendationAdmin[];
+  reports: LibraryAdminReports;
+};
+
+type LibraryAdminReports = {
+  scorecards: Array<{ label: string; value: number; detail: string; tone: "default" | "success" | "warning" | "danger" | "info" }>;
+  funnel: Array<{ label: string; value: number }>;
+  revenueTrend: Array<{ label: string; value: number }>;
+  orderStatus: Array<{ label: string; value: number }>;
+  paymentGateways: Array<{ label: string; value: number }>;
+  productPerformance: Array<{ id: string; title: string; revenue: number; units: number; views: number; downloads: number; conversionRate: number; health: number }>;
+  customerSegments: Array<{ id: string; userId: string; name: string; email: string; orders: number; spend: number; downloads: number; lastOrderAt: string; segment: string }>;
+  couponPerformance: Array<{ id: string; code: string; usedCount: number; discountValue: number; discountType: string; active: boolean; status: string }>;
+  downloadLogs: Array<{ id: string; customer: string; product: string; file: string; status: string; usage: string; lastDownloadAt?: string | null; expiresAt?: string | null }>;
+  stockAlerts: Array<{ id: string; title: string; stock: number; threshold: number; warehouse: string; supplier: string; state: string }>;
+  inventoryMovements: Array<{ id: string; productTitle: string; type: string; quantity: number; note?: string | null; createdAt: string }>;
+  taxSummary: Array<{ id: string; name: string; country: string; rate: number; active: boolean; collected: number }>;
+  refundSummary: { orders: number; amount: number; rate: number };
+  settingsHealth: Array<{ area: string; status: string; detail: string }>;
 };
 
 type LibraryCouponAdmin = {
@@ -121,6 +139,17 @@ type LibraryReviewAdmin = {
   createdAt: string;
 };
 
+type LibraryRecommendationAdmin = {
+  id: string;
+  reason: string;
+  weight?: number;
+  active?: boolean;
+  sourceProductId?: string;
+  targetProductId?: string;
+  sourceProduct?: { title: string };
+  targetProduct?: { title: string };
+};
+
 type CouponDraft = {
   id?: string;
   code: string;
@@ -147,6 +176,8 @@ type DownloadAccessDraft = { id: string; status: string; downloadLimit: string; 
 type ManualOrderDraft = { customerId: string; productId: string; quantity: string; couponCode: string; provider: string; referenceNumber: string; note: string; markPaid: boolean };
 type OrderNotifyDraft = { orderId: string; type: string; message: string };
 type RefundDraft = { orderId: string; reason: string };
+type InventoryMovementDraft = { productId: string; type: string; quantity: string; note: string };
+type RecommendationDraft = { sourceProductId: string; targetProductId: string; reason: string; weight: string; active: boolean };
 
 type LibraryDraftDownload = LibraryProduct["downloads"][number] & { fileUrl?: string; fileName?: string; fileSizeBytes?: number; previewable?: boolean };
 
@@ -211,6 +242,22 @@ const emptyOperations: LibraryOperations = {
   guestClaims: [],
   academyEntitlements: [],
   recommendations: [],
+  reports: {
+    scorecards: [],
+    funnel: [],
+    revenueTrend: [],
+    orderStatus: [],
+    paymentGateways: [],
+    productPerformance: [],
+    customerSegments: [],
+    couponPerformance: [],
+    downloadLogs: [],
+    stockAlerts: [],
+    inventoryMovements: [],
+    taxSummary: [],
+    refundSummary: { orders: 0, amount: 0, rate: 0 },
+    settingsHealth: [],
+  },
 };
 
 function OperationsList({ title, rows }: { title: string; rows: Array<{ label: string; value: string; detail?: string }> }) {
@@ -233,6 +280,20 @@ function OperationsList({ title, rows }: { title: string; rows: Array<{ label: s
           <p className="rounded-lg border border-dashed border-white/[0.08] p-3 text-sm text-slate-500">No records yet.</p>
         )}
       </div>
+    </div>
+  );
+}
+
+function MiniMetricGrid({ rows }: { rows: Array<{ label: string; value: string | number; detail?: string }> }) {
+  return (
+    <div className="grid gap-2 sm:grid-cols-3">
+      {rows.map((row) => (
+        <div key={row.label} className="min-w-0 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">{row.label}</p>
+          <p className="mt-1 truncate text-lg font-bold text-white">{row.value}</p>
+          {row.detail && <p className="truncate text-xs text-slate-500">{row.detail}</p>}
+        </div>
+      ))}
     </div>
   );
 }
@@ -309,8 +370,16 @@ export function LibraryAdminHub() {
   const [manualOrderDraft, setManualOrderDraft] = useState<ManualOrderDraft | null>(null);
   const [orderNotifyDraft, setOrderNotifyDraft] = useState<OrderNotifyDraft | null>(null);
   const [refundDraft, setRefundDraft] = useState<RefundDraft | null>(null);
+  const [inventoryMovementDraft, setInventoryMovementDraft] = useState<InventoryMovementDraft | null>(null);
+  const [recommendationDraft, setRecommendationDraft] = useState<RecommendationDraft | null>(null);
+  const [previewProduct, setPreviewProduct] = useState<LibraryProduct | null>(null);
   const [feedback, setFeedback] = useState<{ tone: "success" | "error"; message: string } | null>(null);
-  const source = productsSource.length ? productsSource : searchLibraryProducts({});
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [loaded, setLoaded] = useState(false);
+  const [orderFilter, setOrderFilter] = useState("ALL");
+  const [customerFilter, setCustomerFilter] = useState("");
+  const [reportFilter, setReportFilter] = useState("overview");
+  const source = loaded || productsSource.length > 0 ? productsSource : searchLibraryProducts({});
   const products = useMemo(() => {
     const q = query.trim().toLowerCase();
     return source.filter((product) => {
@@ -339,12 +408,20 @@ export function LibraryAdminHub() {
 
   async function load() {
     const result = await apiFetch<{ products: LibraryProduct[]; orders: LibraryOrder[]; analytics: LibraryAnalytics; operations?: LibraryOperations }>("/api/v1/admin/library");
+    if (result.error) {
+      setLoadError(result.error.message || "Library admin could not load from the database.");
+      setFeedback({ tone: "error", message: result.error.message || "Library admin could not load from the database." });
+      setLoaded(true);
+      return;
+    }
     if (result.data) {
       setProductsSource(result.data.products);
       setOrders(result.data.orders);
       setAnalytics(result.data.analytics);
       setOperations(result.data.operations ?? emptyOperations);
+      setLoadError(null);
     }
+    setLoaded(true);
   }
 
   function toggle(id: string) {
@@ -358,30 +435,48 @@ export function LibraryAdminHub() {
 
   async function createProduct() {
     setSaving(true);
+    setFeedback(null);
     const result = await apiFetch<{ product: LibraryProduct }>("/api/v1/admin/library", {
       method: "POST",
       body: JSON.stringify(productPayload(draft)),
     });
     setSaving(false);
-    if (result.data?.product) {
-      setDraftOpen(false);
-      setDraft(emptyDraft);
-      await load();
+    if (result.error || !result.data?.product) {
+      setFeedback({ tone: "error", message: result.error?.message || "Product could not be created in the database." });
+      return;
     }
+    setFeedback({
+      tone: "success",
+      message: result.data.product.status === "PUBLISHED"
+        ? "Product created and published to the public Library."
+        : "Product created as draft. Publish it to show it on the public Library.",
+    });
+    setDraftOpen(false);
+    setDraft(emptyDraft);
+    await load();
   }
 
   async function saveProduct() {
     if (!editingProduct) return createProduct();
     setSaving(true);
+    setFeedback(null);
     const result = await apiFetch<{ product: LibraryProduct }>(`/api/v1/admin/library/products/${editingProduct.id}`, {
       method: "PATCH",
       body: JSON.stringify(productPayload(draft)),
     });
     setSaving(false);
-    if (result.data?.product) {
-      closeEditor();
-      await load();
+    if (result.error || !result.data?.product) {
+      setFeedback({ tone: "error", message: result.error?.message || "Product could not be saved to the database." });
+      return;
     }
+    setFeedback({
+      tone: "success",
+      message: result.data.product.status === "PUBLISHED"
+        ? "Product saved and visible on the public Library."
+        : "Product saved. Publish it to show it on the public Library.",
+    });
+    closeEditor();
+    await load();
   }
 
   function openEditor(product: LibraryProduct) {
@@ -445,13 +540,17 @@ export function LibraryAdminHub() {
   async function uploadAsset(files: FileList | null, kind: "cover" | "download") {
     const file = files?.[0];
     if (!file) return;
+    setFeedback(null);
     const dataUrl = await readFile(file);
     const isImage = file.type.startsWith("image/");
     const uploaded = await apiFetch<{ url: string; filename?: string; size?: number }>("/api/v1/uploads", {
       method: "POST",
       body: JSON.stringify({ dataUrl, kind: isImage ? "image" : "document", folder: "library" }),
     });
-    if (!uploaded.data?.url) return;
+    if (!uploaded.data?.url) {
+      setFeedback({ tone: "error", message: uploaded.error?.message || "Upload failed. Check Cloudinary/storage settings and try again." });
+      return;
+    }
     if (kind === "cover") {
       setDraft((current) => ({
         ...current,
@@ -464,6 +563,7 @@ export function LibraryAdminHub() {
         downloads: [...current.downloads, { id: crypto.randomUUID(), label: file.name.replace(/\.[^.]+$/, ""), fileType: ext, size: formatUploadSize(uploaded.data?.size ?? file.size), secure: true, fileUrl: uploaded.data!.url, fileName: uploaded.data?.filename ?? file.name } as LibraryProduct["downloads"][number] & { fileUrl: string; fileName: string }],
       }));
     }
+    setFeedback({ tone: "success", message: kind === "cover" ? "Cover image uploaded. Save the product to keep it." : "Download file uploaded. Save the product to keep it." });
   }
 
   async function duplicate(id: string) {
@@ -636,6 +736,18 @@ export function LibraryAdminHub() {
     await load();
   }
 
+  async function deleteTaxSetting(id: string) {
+    if (!window.confirm("Delete this Library tax setting? Checkout quotes will stop using it immediately.")) return;
+    setFeedback(null);
+    const result = await apiFetch("/api/v1/admin/library", { method: "POST", body: JSON.stringify({ action: "delete_tax_setting", id }) });
+    if (result.error) {
+      setFeedback({ tone: "error", message: result.error.message || "Tax setting could not be deleted." });
+      return;
+    }
+    await load();
+    setFeedback({ tone: "success", message: "Tax setting deleted." });
+  }
+
   function openFulfilmentEditor(row: LibraryOperations["fulfilments"][number]) {
     setFulfilmentDraft({ id: row.id, status: row.status, courier: row.courier ?? "", trackingNumber: row.trackingNumber ?? "", trackingUrl: row.trackingUrl ?? "", dispatchNotes: row.dispatchNotes ?? "", deliveryNotes: row.deliveryNotes ?? "" });
   }
@@ -706,6 +818,92 @@ export function LibraryAdminHub() {
     setFeedback({ tone: "success", message: "Customer notification queued." });
   }
 
+  async function disableCustomer(userId: string, email: string) {
+    if (!userId) {
+      setFeedback({ tone: "error", message: "This customer segment is missing a user id, so it cannot be changed safely." });
+      return;
+    }
+    if (!window.confirm(`Disable Library customer ${email}? Their orders and invoices stay for audit history, but login and download access will be revoked.`)) return;
+    setFeedback(null);
+    const result = await apiFetch("/api/v1/admin/library", { method: "POST", body: JSON.stringify({ action: "disable_customer", userId }) });
+    if (result.error) {
+      setFeedback({ tone: "error", message: result.error.message || "Customer could not be disabled." });
+      return;
+    }
+    await load();
+    setFeedback({ tone: "success", message: "Customer disabled, personal details anonymised, and download access revoked." });
+  }
+
+  function viewCustomerOrders(email: string) {
+    setOrderFilter("ALL");
+    setCustomerFilter(email);
+    setView("Orders");
+  }
+
+  function openInventoryMovement(product?: LibraryProduct) {
+    setInventoryMovementDraft({ productId: product?.id ?? products[0]?.id ?? source[0]?.id ?? "", type: "RESTOCK", quantity: "1", note: "" });
+  }
+
+  async function saveInventoryMovement() {
+    if (!inventoryMovementDraft) return;
+    setFeedback(null);
+    const result = await apiFetch("/api/v1/admin/library", { method: "POST", body: JSON.stringify({ action: "inventory_movement", ...inventoryMovementDraft, quantity: Number(inventoryMovementDraft.quantity) }) });
+    if (result.error) {
+      setFeedback({ tone: "error", message: result.error.message || "Inventory movement could not be saved." });
+      return;
+    }
+    setInventoryMovementDraft(null);
+    await load();
+    setFeedback({ tone: "success", message: "Inventory movement saved." });
+  }
+
+  function openRecommendation(sourceProduct?: LibraryProduct) {
+    const first = products[0]?.id ?? source[0]?.id ?? "";
+    const second = products.find((product) => product.id !== (sourceProduct?.id ?? first))?.id ?? "";
+    setRecommendationDraft({ sourceProductId: sourceProduct?.id ?? first, targetProductId: second, reason: "RELATED", weight: "10", active: true });
+  }
+
+  function editRecommendation(row: LibraryRecommendationAdmin) {
+    setRecommendationDraft({
+      sourceProductId: row.sourceProductId ?? source.find((product) => product.title === row.sourceProduct?.title)?.id ?? "",
+      targetProductId: row.targetProductId ?? source.find((product) => product.title === row.targetProduct?.title)?.id ?? "",
+      reason: row.reason,
+      weight: String(row.weight ?? 10),
+      active: row.active ?? true,
+    });
+  }
+
+  async function saveRecommendation() {
+    if (!recommendationDraft) return;
+    setFeedback(null);
+    const result = await apiFetch("/api/v1/admin/library", { method: "POST", body: JSON.stringify({ action: "save_recommendation", ...recommendationDraft, weight: Number(recommendationDraft.weight) || 0 }) });
+    if (result.error) {
+      setFeedback({ tone: "error", message: result.error.message || "Recommendation could not be saved." });
+      return;
+    }
+    setRecommendationDraft(null);
+    await load();
+    setFeedback({ tone: "success", message: "Recommendation saved." });
+  }
+
+  async function deleteRecommendation(row: LibraryRecommendationAdmin) {
+    const sourceProductId = row.sourceProductId ?? source.find((product) => product.title === row.sourceProduct?.title)?.id;
+    const targetProductId = row.targetProductId ?? source.find((product) => product.title === row.targetProduct?.title)?.id;
+    if (!sourceProductId || !targetProductId) return;
+    if (!window.confirm("Disable this product recommendation?")) return;
+    setFeedback(null);
+    const result = await apiFetch("/api/v1/admin/library", {
+      method: "POST",
+      body: JSON.stringify({ action: "save_recommendation", sourceProductId, targetProductId, reason: row.reason, weight: row.weight ?? 0, active: false }),
+    });
+    if (result.error) {
+      setFeedback({ tone: "error", message: result.error.message || "Recommendation could not be disabled." });
+      return;
+    }
+    await load();
+    setFeedback({ tone: "success", message: "Recommendation disabled." });
+  }
+
   return (
     <div className="space-y-5">
       <AdminTabStrip tabs={views.map((id) => ({ id, label: id }))} active={view} onChange={setView} />
@@ -714,18 +912,36 @@ export function LibraryAdminHub() {
           {feedback.message}
         </div>
       )}
+      {loadError && !feedback && (
+        <div role="alert" className="rounded-lg border border-red-400/25 bg-red-400/10 px-4 py-3 text-sm font-semibold text-red-200">
+          {loadError}
+        </div>
+      )}
 
       {view === "Dashboard" && (
         <>
-          <AdminMetricGrid cols={4}>
-            <AdminStatPill label="Today's Sales" value={`$${analytics.todaySales}`} tone="success" />
-            <AdminStatPill label="Weekly Sales" value={`$${analytics.weeklySales}`} tone="info" />
-            <AdminStatPill label="Monthly Sales" value={`$${analytics.monthlySales}`} tone="default" />
-            <AdminStatPill label="Conversion Rate" value={`${analytics.conversionRate}%`} tone="warning" />
+          <AdminMetricGrid cols={6}>
+            {(operations.reports.scorecards.length ? operations.reports.scorecards : [
+              { label: "Today's Sales", value: analytics.todaySales, detail: "Today", tone: "success" as const },
+              { label: "Weekly Sales", value: analytics.weeklySales, detail: "7 days", tone: "info" as const },
+              { label: "Monthly Sales", value: analytics.monthlySales, detail: "30 days", tone: "default" as const },
+              { label: "Conversion", value: analytics.conversionRate, detail: "View to order", tone: "warning" as const },
+            ]).map((card) => (
+              <AdminStatPill key={card.label} label={card.label} value={card.label.toLowerCase().includes("rate") || card.label === "Conversion" ? `${card.value}%` : card.label === "Revenue" || card.label === "Average order" ? `USD ${card.value}` : card.value} tone={card.tone} />
+            ))}
           </AdminMetricGrid>
           <div className="grid gap-4 xl:grid-cols-2">
             <AdminPanel title="Interactive sales chart" description="Library revenue and order momentum.">
-              <BarChart data={analytics.salesTrend} color="bg-emerald-500" />
+              <BarChart data={operations.reports.revenueTrend.length ? operations.reports.revenueTrend : analytics.salesTrend} color="bg-emerald-500" />
+            </AdminPanel>
+            <AdminPanel title="Marketplace funnel">
+              <BarChart data={operations.reports.funnel} color="bg-cyan-500" />
+            </AdminPanel>
+            <AdminPanel title="Order status">
+              <DonutChart data={operations.reports.orderStatus} />
+            </AdminPanel>
+            <AdminPanel title="Payment gateways">
+              <DonutChart data={operations.reports.paymentGateways} />
             </AdminPanel>
             <AdminPanel title="Top categories">
               <DonutChart data={analytics.topCategories} />
@@ -778,16 +994,38 @@ export function LibraryAdminHub() {
                 { key: "price", header: "Price", render: (row) => `${row.currency} ${row.price.toFixed(2)}` },
                 { key: "status", header: "Status", render: (row) => <AdminStatusBadge status={row.status} variant={row.status === "PUBLISHED" ? "success" : row.status === "SCHEDULED" ? "warning" : "muted"} /> },
                 { key: "stock", header: "Inventory", render: (row) => row.stock === null ? "Unlimited digital" : `${row.stock} units` },
-                { key: "actions", header: "Actions", render: (row) => <div className="flex flex-wrap gap-2"><IconButton icon={Edit3} label="Edit" onClick={() => openEditor(row)} /><IconButton icon={ExternalLink} label="Preview" onClick={() => window.open(`/library/${row.slug}`, "_blank")} /><IconButton icon={Copy} label="Duplicate" onClick={() => void duplicate(row.id)} /><IconButton icon={Trash2} label="Delete" danger onClick={() => void deleteProduct(row.id)} /><button type="button" onClick={() => void setProductStatus(row, row.status === "PUBLISHED" ? "DRAFT" : "PUBLISHED")} className="rounded-lg border border-white/10 px-3 py-2 text-xs font-bold text-slate-300 hover:bg-white/5">{row.status === "PUBLISHED" ? "Draft" : "Publish"}</button></div> },
+                { key: "actions", header: "Actions", render: (row) => <div className="flex flex-wrap gap-2"><IconButton icon={Edit3} label="Edit" onClick={() => openEditor(row)} /><IconButton icon={ExternalLink} label="Preview" onClick={() => setPreviewProduct(row)} /><IconButton icon={Copy} label="Duplicate" onClick={() => void duplicate(row.id)} /><IconButton icon={Trash2} label="Delete" danger onClick={() => void deleteProduct(row.id)} /><button type="button" onClick={() => void setProductStatus(row, row.status === "PUBLISHED" ? "DRAFT" : "PUBLISHED")} className="rounded-lg border border-white/10 px-3 py-2 text-xs font-bold text-slate-300 hover:bg-white/5">{row.status === "PUBLISHED" ? "Draft" : "Publish"}</button></div> },
               ]}
             />
+          </div>
+          <div className="mt-5 grid gap-5 xl:grid-cols-2">
+            <section className="min-w-0">
+              <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-300">Product performance</h3>
+              <p className="mt-1 text-xs text-slate-500">Database-backed revenue, units, downloads, views, conversion, and merchandising health.</p>
+              <div className="mt-3">
+              <ProductPerformanceTable rows={operations.reports.productPerformance} products={source} onEditProduct={openEditor} onRecommend={openRecommendation} />
+              </div>
+            </section>
+            <section className="min-w-0">
+              <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-300">Product health signals</h3>
+              <p className="mt-1 text-xs text-slate-500">Publishing, SEO, media, files, reviews, and stock completeness.</p>
+              <OperationsList title="Needs attention" rows={operations.reports.productPerformance.filter((row) => row.health < 80).map((row) => ({ label: row.title, value: `${row.health}%`, detail: row.health < 60 ? "Add files, SEO, media, or reviews." : "Polish merchandising details." }))} />
+            </section>
           </div>
         </AdminPanel>
       )}
 
       {view === "Orders" && (
         <AdminPanel title="Library orders" description="Order queue, fulfilment, payment state, invoices, and customer confirmations." action={<Button onClick={openManualOrder}><Plus className="size-4" /> Manual Order</Button>}>
-          <OrdersTable orders={orders} onNotify={(order) => setOrderNotifyDraft({ orderId: order.id, type: "invoice", message: "" })} onRefund={(order) => setRefundDraft({ orderId: order.id, reason: "Customer refund / admin adjustment" })} />
+          <div className="mb-4 grid gap-3 lg:grid-cols-[minmax(0,1fr)_14rem_12rem]">
+            <MiniMetricGrid rows={[{ label: "Refunded", value: operations.reports.refundSummary.orders, detail: `USD ${operations.reports.refundSummary.amount.toFixed(2)}` }, { label: "Refund rate", value: `${operations.reports.refundSummary.rate}%`, detail: "Order quality signal" }, { label: "Fulfilments", value: operations.fulfilments.length, detail: "Printed order queue" }]} />
+            <AdminSearchInput value={customerFilter} onChange={setCustomerFilter} placeholder="Customer or order..." />
+            <AdminSelect value={orderFilter} onChange={setOrderFilter} options={[{ value: "ALL", label: "All statuses" }, ...Array.from(new Set(orders.map((order) => order.status))).map((status) => ({ value: status, label: status }))]} />
+          </div>
+          <OrdersTable orders={(orderFilter === "ALL" ? orders : orders.filter((order) => order.status === orderFilter)).filter((order) => {
+            const q = customerFilter.trim().toLowerCase();
+            return !q || [order.orderNumber, order.customerName, order.customerEmail, order.status].join(" ").toLowerCase().includes(q);
+          })} onNotify={(order) => setOrderNotifyDraft({ orderId: order.id, type: "invoice", message: "" })} onRefund={(order) => setRefundDraft({ orderId: order.id, reason: "Customer refund / admin adjustment" })} />
           <FulfilmentTable rows={operations.fulfilments} onEdit={openFulfilmentEditor} />
           <OperationsList title="Invoices" rows={operations.invoices.map((item) => ({ label: item.invoiceNumber, value: `${item.currency} ${Number(item.total).toFixed(2)}`, detail: item.order?.orderNumber ?? "Library invoice" }))} />
         </AdminPanel>
@@ -819,6 +1057,9 @@ export function LibraryAdminHub() {
             orders={orders}
             analytics={analytics}
             operations={operations}
+            orderFilter={orderFilter}
+            customerFilter={customerFilter}
+            reportFilter={reportFilter}
             onEditProduct={openEditor}
             onDeleteProduct={deleteProduct}
             onSetProductStatus={setProductStatus}
@@ -828,16 +1069,25 @@ export function LibraryAdminHub() {
             onEditCoupon={openCouponEditor}
             onDeleteCoupon={deleteCoupon}
             onEditTaxSetting={openTaxEditor}
+            onDeleteTaxSetting={deleteTaxSetting}
             onEditTaxonomy={openTaxonomyEditor}
             onDeleteTaxonomy={deleteTaxonomy}
             onDeleteExport={deleteExport}
             onEditDownloadAccess={openDownloadAccessEditor}
             onModerateReview={moderateReview}
+            onOpenInventoryMovement={openInventoryMovement}
+            onOpenRecommendation={openRecommendation}
+            onEditRecommendation={editRecommendation}
+            onDeleteRecommendation={deleteRecommendation}
+            onCustomerFilterChange={setCustomerFilter}
+            onViewCustomerOrders={viewCustomerOrders}
+            onDisableCustomer={disableCustomer}
+            onReportFilterChange={setReportFilter}
           />
           {view === "Reports" && <OperationsList title="Export jobs" rows={operations.exports.map((item) => ({ label: item.type, value: item.status, detail: item.fileUrl ?? "Preparing export" }))} />}
           {view === "Analytics" && <OperationsList title="Activity timeline" rows={operations.activities.map((item) => ({ label: item.action, value: item.createdAt ? new Date(item.createdAt).toLocaleDateString() : "Now", detail: item.message }))} />}
           {view === "Customers" && <OperationsList title="Guest claim queue" rows={operations.guestClaims.map((item) => ({ label: item.email, value: item.status, detail: item.order?.orderNumber ?? "Awaiting account claim" }))} />}
-          {view === "Collections" && <OperationsList title="Recommendation links" rows={operations.recommendations.map((item) => ({ label: item.sourceProduct?.title ?? "Product", value: item.reason, detail: item.targetProduct?.title ?? "Recommended product" }))} />}
+          {view === "Inventory" && <OperationsList title="Inventory movements" rows={operations.reports.inventoryMovements.map((item) => ({ label: item.productTitle, value: `${item.type} ${item.quantity > 0 ? "+" : ""}${item.quantity}`, detail: item.note ?? new Date(item.createdAt).toLocaleDateString() }))} />}
           {view === "Downloads" && <OperationsList title="Course entitlement bridge" rows={operations.academyEntitlements.map((item) => ({ label: item.courseId, value: item.status, detail: item.userId }))} />}
         </AdminPanel>
       )}
@@ -895,8 +1145,8 @@ export function LibraryAdminHub() {
                     </div>
                     {(draft.gallery.length > 0 || draft.downloads.length > 0) && (
                       <div className="mt-3 grid gap-2 rounded-lg border border-white/10 p-3 text-xs text-slate-400">
-                        {draft.gallery.map((item, index) => <AssetRow key={`${item.url}-${index}`} label={`Cover/gallery: ${item.label}`} onRemove={() => setDraft((current) => ({ ...current, gallery: current.gallery.filter((_, itemIndex) => itemIndex !== index) }))} />)}
-                        {draft.downloads.map((item, index) => <AssetRow key={`${item.id}-${index}`} label={`Download: ${item.label} (${item.fileType})`} onRemove={() => setDraft((current) => ({ ...current, downloads: current.downloads.filter((_, itemIndex) => itemIndex !== index) }))} />)}
+                        {draft.gallery.map((item, index) => <AssetRow key={`${item.url}-${index}`} label={`Cover/gallery: ${item.label}`} canMoveUp={index > 0} canMoveDown={index < draft.gallery.length - 1} onMoveUp={() => setDraft((current) => ({ ...current, gallery: moveItem(current.gallery, index, index - 1) }))} onMoveDown={() => setDraft((current) => ({ ...current, gallery: moveItem(current.gallery, index, index + 1) }))} onRemove={() => setDraft((current) => ({ ...current, gallery: current.gallery.filter((_, itemIndex) => itemIndex !== index) }))} />)}
+                        {draft.downloads.map((item, index) => <AssetRow key={`${item.id}-${index}`} label={`Download: ${item.label} (${item.fileType})`} canMoveUp={index > 0} canMoveDown={index < draft.downloads.length - 1} onMoveUp={() => setDraft((current) => ({ ...current, downloads: moveItem(current.downloads, index, index - 1) }))} onMoveDown={() => setDraft((current) => ({ ...current, downloads: moveItem(current.downloads, index, index + 1) }))} onRemove={() => setDraft((current) => ({ ...current, downloads: current.downloads.filter((_, itemIndex) => itemIndex !== index) }))} />)}
                       </div>
                     )}
                   </EditorSection>
@@ -1047,6 +1297,29 @@ export function LibraryAdminHub() {
         </CommerceModal>
       )}
 
+      {inventoryMovementDraft && (
+        <CommerceModal title="Adjust Library Inventory" description="Record a stock movement and update the product's available quantity." onClose={() => setInventoryMovementDraft(null)} onSave={() => void saveInventoryMovement()} saveLabel="Save Movement" disabled={!inventoryMovementDraft.productId || !Number(inventoryMovementDraft.quantity)}>
+          <div className="grid gap-3 md:grid-cols-2">
+            <SelectField label="Product" value={inventoryMovementDraft.productId} onChange={(value) => setInventoryMovementDraft({ ...inventoryMovementDraft, productId: value })} options={source.map((product) => product.id)} />
+            <SelectField label="Movement type" value={inventoryMovementDraft.type} onChange={(value) => setInventoryMovementDraft({ ...inventoryMovementDraft, type: value })} options={["RESTOCK", "ADJUSTMENT", "DAMAGE", "RETURN", "RESERVED_RELEASE"]} />
+            <Field label="Quantity change" value={inventoryMovementDraft.quantity} onChange={(value) => setInventoryMovementDraft({ ...inventoryMovementDraft, quantity: value })} type="number" />
+            <TextAreaField label="Note" value={inventoryMovementDraft.note} onChange={(value) => setInventoryMovementDraft({ ...inventoryMovementDraft, note: value })} />
+          </div>
+        </CommerceModal>
+      )}
+
+      {recommendationDraft && (
+        <CommerceModal title="Manage Product Recommendation" description="Connect two Library products for curated related-product merchandising." onClose={() => setRecommendationDraft(null)} onSave={() => void saveRecommendation()} saveLabel="Save Recommendation" disabled={!recommendationDraft.sourceProductId || !recommendationDraft.targetProductId || recommendationDraft.sourceProductId === recommendationDraft.targetProductId}>
+          <div className="grid gap-3 md:grid-cols-2">
+            <SelectField label="Source product" value={recommendationDraft.sourceProductId} onChange={(value) => setRecommendationDraft({ ...recommendationDraft, sourceProductId: value })} options={source.map((product) => product.id)} />
+            <SelectField label="Recommended product" value={recommendationDraft.targetProductId} onChange={(value) => setRecommendationDraft({ ...recommendationDraft, targetProductId: value })} options={source.map((product) => product.id)} />
+            <SelectField label="Reason" value={recommendationDraft.reason} onChange={(value) => setRecommendationDraft({ ...recommendationDraft, reason: value })} options={["RELATED", "BUNDLE", "NEXT_STEP", "POPULAR_WITH", "SAME_AUTHOR"]} />
+            <Field label="Weight" value={recommendationDraft.weight} onChange={(value) => setRecommendationDraft({ ...recommendationDraft, weight: value })} type="number" />
+            <ToggleField label="Active" checked={recommendationDraft.active} onChange={(value) => setRecommendationDraft({ ...recommendationDraft, active: value })} />
+          </div>
+        </CommerceModal>
+      )}
+
       {manualOrderDraft && (
         <CommerceModal title="Create Manual Library Order" description="Create a real payment/order record, apply coupon pricing, and optionally grant Library access immediately." onClose={() => setManualOrderDraft(null)} onSave={() => void saveManualOrder()} saveLabel="Create Order" disabled={!manualOrderDraft.customerId.trim() || !manualOrderDraft.productId}>
           <div className="grid gap-3 md:grid-cols-2">
@@ -1074,6 +1347,12 @@ export function LibraryAdminHub() {
             <SelectField label="Notification type" value={orderNotifyDraft.type} onChange={(value) => setOrderNotifyDraft({ ...orderNotifyDraft, type: value })} options={["invoice", "access", "dispatch", "custom"]} />
             <TextAreaField label="Message" value={orderNotifyDraft.message} onChange={(value) => setOrderNotifyDraft({ ...orderNotifyDraft, message: value })} placeholder="Leave blank to use the default message for this type." />
           </div>
+        </CommerceModal>
+      )}
+
+      {previewProduct && (
+        <CommerceModal title="Product Preview" description="Admin preview of the customer-facing product content before publishing." onClose={() => setPreviewProduct(null)} onSave={() => window.open(`/library/${previewProduct.slug}`, "_blank")} saveLabel="Open Public Page">
+          <ProductPreview product={previewProduct} />
         </CommerceModal>
       )}
     </div>
@@ -1173,11 +1452,55 @@ function CommerceModal({ title, description, children, saveLabel, disabled, onCl
   );
 }
 
-function AssetRow({ label, onRemove }: { label: string; onRemove: () => void }) {
+function AssetRow({ label, canMoveUp, canMoveDown, onMoveUp, onMoveDown, onRemove }: { label: string; canMoveUp?: boolean; canMoveDown?: boolean; onMoveUp?: () => void; onMoveDown?: () => void; onRemove: () => void }) {
   return (
     <div className="flex items-center justify-between gap-3 rounded-lg border border-white/[0.06] bg-slate-950 p-2">
       <span className="min-w-0 truncate">{label}</span>
-      <button type="button" onClick={onRemove} className="rounded-md border border-red-500/30 px-2 py-1 text-[11px] font-bold text-red-300 hover:bg-red-500/10">Remove</button>
+      <div className="flex shrink-0 gap-1">
+        <button type="button" disabled={!canMoveUp} onClick={onMoveUp} className="rounded-md border border-white/10 px-2 py-1 text-[11px] font-bold text-slate-300 hover:bg-white/5 disabled:opacity-35">Up</button>
+        <button type="button" disabled={!canMoveDown} onClick={onMoveDown} className="rounded-md border border-white/10 px-2 py-1 text-[11px] font-bold text-slate-300 hover:bg-white/5 disabled:opacity-35">Down</button>
+        <button type="button" onClick={onRemove} className="rounded-md border border-red-500/30 px-2 py-1 text-[11px] font-bold text-red-300 hover:bg-red-500/10">Remove</button>
+      </div>
+    </div>
+  );
+}
+
+function moveItem<T>(items: T[], from: number, to: number) {
+  const next = [...items];
+  const [item] = next.splice(from, 1);
+  next.splice(to, 0, item);
+  return next;
+}
+
+function ProductPreview({ product }: { product: LibraryProduct }) {
+  const cover = product.gallery[0];
+  return (
+    <div className="grid gap-5 md:grid-cols-[14rem_minmax(0,1fr)]">
+      <div className="rounded-xl border border-white/10 bg-slate-900 p-3">
+        {cover ? (
+          <div role="img" aria-label={cover.label || product.title} className="aspect-[3/4] w-full rounded-lg bg-cover bg-center" style={{ backgroundImage: `url(${cover.url})` }} />
+        ) : (
+          <div className="flex aspect-[3/4] items-center justify-center rounded-lg bg-slate-800 text-sm text-slate-500">No cover</div>
+        )}
+      </div>
+      <div className="space-y-4">
+        <div>
+          <p className="text-xs font-black uppercase tracking-wide text-emerald-300">{product.productType.replace(/_/g, " ")}</p>
+          <h3 className="mt-1 text-2xl font-black text-white">{product.title}</h3>
+          {product.subtitle && <p className="mt-1 text-sm text-slate-400">{product.subtitle}</p>}
+        </div>
+        <div className="flex flex-wrap gap-2 text-xs">
+          <AdminStatusBadge status={product.status} variant={product.status === "PUBLISHED" ? "success" : "warning"} />
+          <span className="rounded-full bg-white/10 px-2.5 py-0.5 font-semibold text-slate-300">{product.category}</span>
+          <span className="rounded-full bg-white/10 px-2.5 py-0.5 font-semibold text-slate-300">{product.difficulty}</span>
+        </div>
+        <p className="text-sm leading-6 text-slate-300">{product.shortDescription || product.description}</p>
+        <div className="grid gap-2 rounded-xl border border-white/10 bg-slate-900/60 p-4 text-sm text-slate-300">
+          <div className="flex justify-between gap-3"><span>Price</span><strong className="text-white">{product.currency} {product.price.toFixed(2)}</strong></div>
+          <div className="flex justify-between gap-3"><span>Author</span><strong className="text-white">{product.author}</strong></div>
+          <div className="flex justify-between gap-3"><span>Downloads</span><strong className="text-white">{product.downloads.length}</strong></div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -1299,12 +1622,35 @@ function DownloadAccessTable({ rows, onEdit }: { rows: LibraryDownloadAccessAdmi
   );
 }
 
+function ProductPerformanceTable({ rows, products, onEditProduct, onRecommend }: { rows: LibraryAdminReports["productPerformance"]; products: LibraryProduct[]; onEditProduct: (product: LibraryProduct) => void; onRecommend: (product?: LibraryProduct) => void }) {
+  return (
+    <AdminDataTable
+      rows={rows}
+      emptyMessage="No product performance yet. Sales, downloads, and views will appear after the Library starts receiving traffic."
+      columns={[
+        { key: "product", header: "Product", render: (row) => <span className="font-semibold text-white">{row.title}</span> },
+        { key: "revenue", header: "Revenue", render: (row) => `USD ${row.revenue.toFixed(2)}` },
+        { key: "units", header: "Units", render: (row) => row.units },
+        { key: "conversion", header: "Conv.", render: (row) => `${row.conversionRate}%` },
+        { key: "health", header: "Health", render: (row) => <AdminStatusBadge status={`${row.health}%`} variant={row.health >= 80 ? "success" : row.health >= 60 ? "warning" : "danger"} /> },
+        { key: "actions", header: "Actions", render: (row) => {
+          const product = products.find((item) => item.id === row.id);
+          return <RowActions primaryLabel="Edit" primaryIcon={Edit3} onPrimary={() => product && onEditProduct(product)} onEdit={() => product && onRecommend(product)} />;
+        } },
+      ]}
+    />
+  );
+}
+
 function LibraryTabManagement({
   view,
   products,
-  orders,
+  orders: _orders,
   analytics,
   operations,
+  orderFilter: _orderFilter,
+  customerFilter,
+  reportFilter,
   onEditProduct,
   onDeleteProduct,
   onSetProductStatus: _onSetProductStatus,
@@ -1315,16 +1661,28 @@ function LibraryTabManagement({
   onEditCoupon,
   onDeleteCoupon,
   onEditTaxSetting,
+  onDeleteTaxSetting,
   onEditTaxonomy,
   onDeleteTaxonomy,
   onEditDownloadAccess,
   onModerateReview,
+  onOpenInventoryMovement,
+  onOpenRecommendation,
+  onEditRecommendation,
+  onDeleteRecommendation,
+  onCustomerFilterChange,
+  onViewCustomerOrders,
+  onDisableCustomer,
+  onReportFilterChange,
 }: {
   view: string;
   products: LibraryProduct[];
   orders: LibraryOrder[];
   analytics: LibraryAnalytics;
   operations: LibraryOperations;
+  orderFilter: string;
+  customerFilter: string;
+  reportFilter: string;
   onEditProduct: (product: LibraryProduct) => void;
   onDeleteProduct: (id: string) => void | Promise<void>;
   onSetProductStatus: (product: LibraryProduct, status: string) => void | Promise<void>;
@@ -1335,37 +1693,65 @@ function LibraryTabManagement({
   onEditCoupon: (coupon?: LibraryCouponAdmin) => void;
   onDeleteCoupon: (id: string) => void | Promise<void>;
   onEditTaxSetting: (tax?: LibraryOperations["taxSettings"][number]) => void;
+  onDeleteTaxSetting: (id: string) => void | Promise<void>;
   onEditTaxonomy: (kind: LibraryGroupField, row?: LibraryTaxonomyAdmin) => void;
   onDeleteTaxonomy: (kind: LibraryGroupField, id: string) => void | Promise<void>;
   onEditDownloadAccess: (row: LibraryDownloadAccessAdmin) => void;
   onModerateReview: (id: string, status: string, patch?: { featured?: boolean; verified?: boolean }) => void | Promise<void>;
+  onOpenInventoryMovement: (product?: LibraryProduct) => void;
+  onOpenRecommendation: (product?: LibraryProduct) => void;
+  onEditRecommendation: (row: LibraryRecommendationAdmin) => void;
+  onDeleteRecommendation: (row: LibraryRecommendationAdmin) => void | Promise<void>;
+  onCustomerFilterChange: (value: string) => void;
+  onViewCustomerOrders: (email: string) => void;
+  onDisableCustomer: (userId: string, email: string) => void | Promise<void>;
+  onReportFilterChange: (value: string) => void;
 }) {
   if (view === "Categories") return <TaxonomyTable kind="category" products={products} taxonomy={operations.taxonomy} onEdit={onEditTaxonomy} onDelete={onDeleteTaxonomy} fallback={<GroupTable field="category" products={products} onRename={onRenameGroup} onDelete={onDeleteGroup} />} />;
-  if (view === "Collections") return <TaxonomyTable kind="collection" products={products} taxonomy={operations.taxonomy} onEdit={onEditTaxonomy} onDelete={onDeleteTaxonomy} fallback={<GroupTable field="collection" products={products} onRename={onRenameGroup} onDelete={onDeleteGroup} />} />;
+  if (view === "Collections") {
+    return (
+      <div className="grid gap-5">
+        <TaxonomyTable kind="collection" products={products} taxonomy={operations.taxonomy} onEdit={onEditTaxonomy} onDelete={onDeleteTaxonomy} fallback={<GroupTable field="collection" products={products} onRename={onRenameGroup} onDelete={onDeleteGroup} />} />
+        <AdminDataTable
+          rows={operations.recommendations}
+          emptyMessage="No recommendation links yet."
+          columns={[
+            { key: "source", header: "Source", render: (row) => <span className="font-semibold text-white">{row.sourceProduct?.title ?? "Product"}</span> },
+            { key: "target", header: "Recommendation", render: (row) => row.targetProduct?.title ?? "Recommended product" },
+            { key: "reason", header: "Reason", render: (row) => row.reason },
+            { key: "active", header: "State", render: (row) => <AdminStatusBadge status={row.active === false ? "INACTIVE" : "ACTIVE"} variant={row.active === false ? "muted" : "success"} /> },
+            { key: "actions", header: "Actions", render: (row) => <RowActions primaryLabel="Edit" primaryIcon={Edit3} onPrimary={() => onEditRecommendation(row)} onDelete={() => onDeleteRecommendation(row)} /> },
+          ]}
+        />
+        <Button onClick={() => onOpenRecommendation(products[0])}><Plus className="size-4" /> Add Recommendation</Button>
+      </div>
+    );
+  }
   if (view === "Authors") return <TaxonomyTable kind="author" products={products} taxonomy={operations.taxonomy} onEdit={onEditTaxonomy} onDelete={onDeleteTaxonomy} fallback={<GroupTable field="author" products={products} onRename={onRenameGroup} onDelete={onDeleteGroup} />} />;
 
   if (view === "Customers") {
-    const customers = Array.from(
-      orders.reduce((map, order) => {
-        const current = map.get(order.customerEmail) ?? { id: order.customerEmail, name: order.customerName, email: order.customerEmail, orders: 0, spend: 0, status: "ACTIVE" };
-        current.orders += 1;
-        current.spend += order.total;
-        map.set(order.customerEmail, current);
-        return map;
-      }, new Map<string, { id: string; name: string; email: string; orders: number; spend: number; status: string }>())
-      .values(),
-    );
+    const q = customerFilter.trim().toLowerCase();
+    const customers = operations.reports.customerSegments.filter((customer) => !q || [customer.name, customer.email, customer.segment].join(" ").toLowerCase().includes(q));
     return (
-      <AdminDataTable
-        rows={customers}
-        columns={[
-          { key: "customer", header: "Customer", render: (row) => <div><p className="font-semibold text-white">{row.name}</p><p className="text-xs text-slate-500">{row.email}</p></div> },
-          { key: "orders", header: "Orders", render: (row) => row.orders },
-          { key: "spend", header: "Lifetime spend", render: (row) => `USD ${row.spend.toFixed(2)}` },
-          { key: "status", header: "Access", render: (row) => <AdminStatusBadge status={row.status} variant="success" /> },
-          { key: "actions", header: "Actions", render: () => <RowActions primaryLabel="View Orders" primaryIcon={Search} onPrimary={() => null} onDelete={() => window.alert("Customer deletion is restricted because orders and invoices must remain auditable.")} /> },
-        ]}
-      />
+      <div className="grid gap-4">
+        <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
+          <MiniMetricGrid rows={[{ label: "Customers", value: operations.reports.customerSegments.length, detail: "Library buyers" }, { label: "VIP", value: operations.reports.customerSegments.filter((row) => row.segment === "VIP").length, detail: "High value" }, { label: "Repeat", value: operations.reports.customerSegments.filter((row) => row.segment === "Repeat").length, detail: "3+ orders" }]} />
+          <AdminSearchInput value={customerFilter} onChange={onCustomerFilterChange} placeholder="Search customers, emails, or segments..." />
+        </div>
+        <AdminDataTable
+          rows={customers}
+          emptyMessage="No Library customer segments yet."
+          columns={[
+            { key: "customer", header: "Customer", render: (row) => <div><p className="font-semibold text-white">{row.name}</p><p className="text-xs text-slate-500">{row.email}</p></div> },
+            { key: "segment", header: "Segment", render: (row) => <AdminStatusBadge status={row.segment} variant={row.segment === "VIP" ? "success" : row.segment === "Repeat" ? "info" : "muted"} /> },
+            { key: "orders", header: "Orders", render: (row) => row.orders },
+            { key: "spend", header: "Lifetime spend", render: (row) => `USD ${row.spend.toFixed(2)}` },
+            { key: "downloads", header: "Downloads", render: (row) => row.downloads },
+            { key: "last", header: "Last order", render: (row) => new Date(row.lastOrderAt).toLocaleDateString() },
+            { key: "actions", header: "Actions", render: (row) => <RowActions primaryLabel="View Orders" primaryIcon={Search} onPrimary={() => onViewCustomerOrders(row.email)} onDelete={() => onDisableCustomer(row.userId, row.email)} /> },
+          ]}
+        />
+      </div>
     );
   }
 
@@ -1400,92 +1786,177 @@ function LibraryTabManagement({
           ]}
         />
         <DownloadAccessTable rows={operations.downloadAccess} onEdit={onEditDownloadAccess} />
+        <div className="mt-5">
+          <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-300">Download logs</h3>
+          <p className="mt-1 text-xs text-slate-500">Access status, usage, expiry, and last-download signals from database access records.</p>
+          <div className="mt-3">
+            <AdminDataTable
+              rows={operations.reports.downloadLogs}
+              emptyMessage="No download activity yet."
+              columns={[
+                { key: "customer", header: "Customer", render: (row) => <span className="font-semibold text-white">{row.customer}</span> },
+                { key: "product", header: "Product", render: (row) => row.product },
+                { key: "file", header: "File", render: (row) => row.file },
+                { key: "usage", header: "Usage", render: (row) => row.usage },
+                { key: "status", header: "Status", render: (row) => <AdminStatusBadge status={row.status} variant={row.status === "ACTIVE" ? "success" : row.status === "REVOKED" ? "danger" : "warning"} /> },
+                { key: "last", header: "Last", render: (row) => row.lastDownloadAt ? new Date(row.lastDownloadAt).toLocaleDateString() : "Never" },
+              ]}
+            />
+          </div>
+        </div>
       </>
     );
   }
 
   if (view === "Inventory") {
     return (
-      <AdminDataTable
-        rows={products}
-        columns={[
-          { key: "product", header: "Product", render: (row) => <ProductCell product={row} /> },
-          { key: "stock", header: "Available", render: (row) => row.stock === null ? "Unlimited digital" : `${row.stock} units` },
-          { key: "threshold", header: "Low stock", render: (row) => row.lowStockThreshold },
-          { key: "warehouse", header: "Warehouse", render: (row) => row.warehouse ?? "Digital delivery" },
-          { key: "actions", header: "Actions", render: (row) => <RowActions primaryLabel="Restock" primaryIcon={Boxes} onPrimary={() => onEditProduct(row)} onEdit={() => onEditProduct(row)} onDelete={() => onDeleteProduct(row.id)} /> },
-        ]}
-      />
+      <div className="grid gap-5">
+        <MiniMetricGrid rows={[{ label: "Low stock", value: operations.reports.stockAlerts.length, detail: "At or under threshold" }, { label: "Movements", value: operations.reports.inventoryMovements.length, detail: "Recent stock ledger" }, { label: "Physical SKUs", value: products.filter((row) => row.stock !== null).length, detail: "Tracked inventory" }]} />
+        <AdminDataTable
+          rows={products}
+          columns={[
+            { key: "product", header: "Product", render: (row) => <ProductCell product={row} /> },
+            { key: "stock", header: "Available", render: (row) => row.stock === null ? "Unlimited digital" : `${row.stock} units` },
+            { key: "threshold", header: "Low stock", render: (row) => row.lowStockThreshold },
+            { key: "warehouse", header: "Warehouse", render: (row) => row.warehouse ?? "Digital delivery" },
+            { key: "state", header: "State", render: (row) => row.stock !== null && row.stock <= row.lowStockThreshold ? <AdminStatusBadge status={row.stock === 0 ? "OUT" : "LOW"} variant="danger" /> : <AdminStatusBadge status="OK" variant="success" /> },
+            { key: "actions", header: "Actions", render: (row) => <RowActions primaryLabel="Restock" primaryIcon={Boxes} onPrimary={() => onOpenInventoryMovement(row)} onEdit={() => onEditProduct(row)} onDelete={() => onDeleteProduct(row.id)} /> },
+          ]}
+        />
+        <AdminDataTable
+          rows={operations.reports.inventoryMovements}
+          emptyMessage="No inventory movements yet."
+          columns={[
+            { key: "product", header: "Product", render: (row) => <span className="font-semibold text-white">{row.productTitle}</span> },
+            { key: "type", header: "Type", render: (row) => row.type },
+            { key: "quantity", header: "Qty", render: (row) => row.quantity },
+            { key: "note", header: "Note", render: (row) => row.note ?? "No note" },
+            { key: "date", header: "Date", render: (row) => new Date(row.createdAt).toLocaleDateString() },
+          ]}
+        />
+      </div>
     );
   }
 
   if (view === "Coupons") {
     const rows = operations.coupons;
     return (
-      <AdminDataTable
-        rows={rows}
-        emptyMessage="No Library coupons yet. Create real coupon campaigns for discounts, bundles, and launch offers."
-        columns={[
-          { key: "code", header: "Code", render: (row) => <span className="font-semibold text-white">{row.code}</span> },
-          { key: "discount", header: "Discount", render: (row) => row.discountType === "PERCENT" ? `${row.discountValue}%` : `USD ${row.discountValue.toFixed(2)}` },
-          { key: "rules", header: "Rules", render: (row) => [row.minimumSubtotal ? `Min USD ${row.minimumSubtotal}` : null, row.usageLimit ? `${row.usedCount}/${row.usageLimit} used` : `${row.usedCount} used`, row.firstPurchaseOnly ? "First purchase" : null].filter(Boolean).join(" - ") || "No restrictions" },
-          { key: "status", header: "Status", render: (row) => <AdminStatusBadge status={row.active ? "ACTIVE" : "INACTIVE"} variant={row.active ? "success" : "muted"} /> },
-          { key: "actions", header: "Actions", render: (row) => <RowActions primaryLabel="Export Uses" primaryIcon={Download} onPrimary={() => onCreateExport("coupons")} onEdit={() => onEditCoupon(row)} onDelete={() => onDeleteCoupon(row.id)} /> },
-        ]}
-      />
+      <div className="grid gap-5">
+        <MiniMetricGrid rows={[{ label: "Campaigns", value: rows.length, detail: "Coupons configured" }, { label: "Active", value: rows.filter((row) => row.active).length, detail: "Live discounts" }, { label: "Uses", value: rows.reduce((sum, row) => sum + row.usedCount, 0), detail: "Total redemptions" }]} />
+        <AdminDataTable
+          rows={rows}
+          emptyMessage="No Library coupons yet. Create real coupon campaigns for discounts, bundles, and launch offers."
+          columns={[
+            { key: "code", header: "Code", render: (row) => <span className="font-semibold text-white">{row.code}</span> },
+            { key: "discount", header: "Discount", render: (row) => row.discountType === "PERCENT" ? `${row.discountValue}%` : `USD ${row.discountValue.toFixed(2)}` },
+            { key: "rules", header: "Rules", render: (row) => [row.minimumSubtotal ? `Min USD ${row.minimumSubtotal}` : null, row.usageLimit ? `${row.usedCount}/${row.usageLimit} used` : `${row.usedCount} used`, row.firstPurchaseOnly ? "First purchase" : null].filter(Boolean).join(" - ") || "No restrictions" },
+            { key: "status", header: "Status", render: (row) => <AdminStatusBadge status={row.active ? "ACTIVE" : "INACTIVE"} variant={row.active ? "success" : "muted"} /> },
+            { key: "actions", header: "Actions", render: (row) => <RowActions primaryLabel="Export Uses" primaryIcon={Download} onPrimary={() => onCreateExport("coupons")} onEdit={() => onEditCoupon(row)} onDelete={() => onDeleteCoupon(row.id)} /> },
+          ]}
+        />
+        <AdminDataTable
+          rows={operations.reports.couponPerformance}
+          emptyMessage="Coupon performance appears after campaign activity."
+          columns={[
+            { key: "code", header: "Campaign", render: (row) => <span className="font-semibold text-white">{row.code}</span> },
+            { key: "uses", header: "Uses", render: (row) => row.usedCount },
+            { key: "discount", header: "Discount", render: (row) => row.discountType === "PERCENT" ? `${row.discountValue}%` : `USD ${row.discountValue.toFixed(2)}` },
+            { key: "state", header: "State", render: (row) => <AdminStatusBadge status={row.status} variant={row.status === "ACTIVE" ? "success" : "muted"} /> },
+          ]}
+        />
+      </div>
     );
   }
 
   if (view === "Reports") {
+    const reportRows = reportFilter === "products" ? operations.reports.productPerformance.map((row) => ({ id: row.id, name: row.title, metric: `USD ${row.revenue.toFixed(2)}`, detail: `${row.units} units / ${row.downloads} downloads`, status: `${row.health}% health` }))
+      : reportFilter === "customers" ? operations.reports.customerSegments.map((row) => ({ id: row.id, name: row.name, metric: `USD ${row.spend.toFixed(2)}`, detail: `${row.orders} orders / ${row.downloads} downloads`, status: row.segment }))
+      : reportFilter === "downloads" ? operations.reports.downloadLogs.map((row) => ({ id: row.id, name: row.product, metric: row.usage, detail: `${row.customer} / ${row.file}`, status: row.status }))
+      : reportFilter === "taxes" ? operations.reports.taxSummary.map((row) => ({ id: row.id, name: `${row.name} (${row.country})`, metric: `${row.rate.toFixed(2)}%`, detail: `Collected USD ${row.collected.toFixed(2)}`, status: row.active ? "ACTIVE" : "INACTIVE" }))
+      : reportFilter === "coupons" ? operations.reports.couponPerformance.map((row) => ({ id: row.id, name: row.code, metric: `${row.usedCount} uses`, detail: row.discountType === "PERCENT" ? `${row.discountValue}% discount` : `USD ${row.discountValue.toFixed(2)} discount`, status: row.status }))
+      : operations.reports.scorecards.map((row) => ({ id: row.label, name: row.label, metric: String(row.value), detail: row.detail, status: row.tone.toUpperCase() }));
     return (
-      <AdminDataTable
-        rows={operations.exports}
-        emptyMessage="No exports yet. Create an export to generate one."
-        columns={[
-          { key: "type", header: "Report", render: (row) => <span className="font-semibold text-white">{row.type}</span> },
-          { key: "status", header: "Status", render: (row) => <AdminStatusBadge status={row.status} variant={row.status === "COMPLETED" ? "success" : "warning"} /> },
-          { key: "file", header: "File", render: (row) => row.fileUrl ?? "Preparing" },
-          { key: "date", header: "Created", render: (row) => row.createdAt ? new Date(row.createdAt).toLocaleDateString() : "Now" },
-          { key: "actions", header: "Actions", render: (row) => <RowActions primaryLabel="Refresh" primaryIcon={Download} onPrimary={() => onCreateExport(row.type)} onDelete={() => onDeleteExport(row.id, row.type)} /> },
-        ]}
-      />
+      <div className="grid gap-5">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <AdminSelect value={reportFilter} onChange={onReportFilterChange} options={[
+            { value: "overview", label: "Overview" },
+            { value: "products", label: "Products" },
+            { value: "customers", label: "Customers" },
+            { value: "downloads", label: "Downloads" },
+            { value: "coupons", label: "Coupons" },
+            { value: "taxes", label: "Taxes" },
+          ]} />
+          <Button onClick={() => onCreateExport(reportFilter)}>Export {reportFilter}</Button>
+        </div>
+        <AdminDataTable
+          rows={reportRows}
+          emptyMessage="No report data for this view yet."
+          columns={[
+            { key: "name", header: "Report row", render: (row) => <span className="font-semibold text-white">{row.name}</span> },
+            { key: "metric", header: "Metric", render: (row) => row.metric },
+            { key: "detail", header: "Detail", render: (row) => row.detail },
+            { key: "status", header: "State", render: (row) => <AdminStatusBadge status={row.status} variant={row.status.includes("ACTIVE") || row.status.includes("SUCCESS") || row.status.includes("VIP") ? "success" : row.status.includes("DANGER") || row.status.includes("LOW") ? "danger" : "info"} /> },
+          ]}
+        />
+        <AdminDataTable
+          rows={operations.exports}
+          emptyMessage="No exports yet. Create an export to generate one."
+          columns={[
+            { key: "type", header: "Export job", render: (row) => <span className="font-semibold text-white">{row.type}</span> },
+            { key: "status", header: "Status", render: (row) => <AdminStatusBadge status={row.status} variant={row.status === "COMPLETED" ? "success" : "warning"} /> },
+            { key: "file", header: "File", render: (row) => row.fileUrl ?? "Preparing" },
+            { key: "date", header: "Created", render: (row) => row.createdAt ? new Date(row.createdAt).toLocaleDateString() : "Now" },
+            { key: "actions", header: "Actions", render: (row) => <RowActions primaryLabel="Refresh" primaryIcon={Download} onPrimary={() => onCreateExport(row.type)} onDelete={() => onDeleteExport(row.id, row.type)} /> },
+          ]}
+        />
+      </div>
     );
   }
 
   if (view === "Analytics") {
-    const rows = [
-      { id: "revenue", metric: "Revenue", value: `USD ${analytics.revenue.toFixed(2)}`, detail: `${analytics.orders} orders` },
-      { id: "downloads", metric: "Downloads", value: analytics.downloads, detail: "Secure file access" },
-      { id: "visitors", metric: "Visitors", value: analytics.visitors, detail: `${analytics.conversionRate}% conversion` },
-      { id: "views", metric: "Most viewed", value: analytics.mostViewed[0]?.value ?? 0, detail: analytics.mostViewed[0]?.label ?? "No product views" },
-    ];
     return (
-      <AdminDataTable
-        rows={rows}
-        columns={[
-          { key: "metric", header: "Metric", render: (row) => <span className="font-semibold text-white">{row.metric}</span> },
-          { key: "value", header: "Value", render: (row) => row.value },
-          { key: "detail", header: "Detail", render: (row) => row.detail },
-          { key: "actions", header: "Actions", render: (row) => <RowActions primaryLabel="Export" primaryIcon={Download} onPrimary={() => onCreateExport(row.id)} /> },
-        ]}
-      />
+      <div className="grid gap-5">
+        <MiniMetricGrid rows={[{ label: "Revenue", value: `USD ${analytics.revenue.toFixed(2)}`, detail: `${analytics.orders} orders` }, { label: "Visitors", value: analytics.visitors, detail: `${analytics.conversionRate}% conversion` }, { label: "Downloads", value: analytics.downloads, detail: "Access events" }]} />
+        <div className="grid gap-5 xl:grid-cols-2">
+          <div>
+            <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-300">Revenue trend</h3>
+            <div className="mt-3"><BarChart data={operations.reports.revenueTrend.length ? operations.reports.revenueTrend : analytics.salesTrend} /></div>
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-300">Marketplace funnel</h3>
+            <div className="mt-3"><BarChart data={operations.reports.funnel} color="bg-cyan-500" /></div>
+          </div>
+        </div>
+        <ProductPerformanceTable rows={operations.reports.productPerformance} products={products} onEditProduct={onEditProduct} onRecommend={onOpenRecommendation} />
+      </div>
     );
   }
 
   if (view === "Settings") {
     const rows = operations.taxSettings;
     return (
-      <AdminDataTable
-        rows={rows}
-        emptyMessage="No Library tax settings yet. Add a real tax setting when the store needs one."
-        columns={[
-          { key: "name", header: "Setting", render: (row) => <span className="font-semibold text-white">{row.name}</span> },
-          { key: "country", header: "Country", render: (row) => row.country },
-          { key: "rate", header: "Rate", render: (row) => `${Number(row.rate).toFixed(2)}%` },
-          { key: "active", header: "State", render: (row) => <AdminStatusBadge status={row.active ? "ACTIVE" : "INACTIVE"} variant={row.active ? "success" : "muted"} /> },
-          { key: "actions", header: "Actions", render: (row) => <RowActions primaryLabel="Edit" primaryIcon={CheckCircle2} onPrimary={() => onEditTaxSetting(row)} /> },
-        ]}
-      />
+      <div className="grid gap-5">
+        <AdminDataTable
+          rows={operations.reports.settingsHealth.map((row) => ({ ...row, id: row.area }))}
+          emptyMessage="Settings health appears after Library data loads."
+          columns={[
+            { key: "area", header: "Area", render: (row) => <span className="font-semibold text-white">{row.area}</span> },
+            { key: "status", header: "Status", render: (row) => <AdminStatusBadge status={row.status} variant={["READY", "CLEAR"].includes(row.status) ? "success" : ["ATTENTION", "MODERATION", "NEEDS_SETUP", "NEEDS_FILES"].includes(row.status) ? "warning" : "muted"} /> },
+            { key: "detail", header: "Detail", render: (row) => row.detail },
+          ]}
+        />
+        <AdminDataTable
+          rows={rows}
+          emptyMessage="No Library tax settings yet. Add a real tax setting when the store needs one."
+          columns={[
+            { key: "name", header: "Tax setting", render: (row) => <span className="font-semibold text-white">{row.name}</span> },
+            { key: "country", header: "Country", render: (row) => row.country },
+            { key: "rate", header: "Rate", render: (row) => `${Number(row.rate).toFixed(2)}%` },
+            { key: "active", header: "State", render: (row) => <AdminStatusBadge status={row.active ? "ACTIVE" : "INACTIVE"} variant={row.active ? "success" : "muted"} /> },
+            { key: "actions", header: "Actions", render: (row) => <RowActions primaryLabel="Edit" primaryIcon={CheckCircle2} onPrimary={() => onEditTaxSetting(row)} onDelete={() => onDeleteTaxSetting(row.id)} /> },
+          ]}
+        />
+      </div>
     );
   }
 
