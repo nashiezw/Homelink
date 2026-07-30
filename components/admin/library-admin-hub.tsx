@@ -240,6 +240,7 @@ type LibraryProductDraft = {
   formats: LibraryProductFormat[];
   gallery: LibraryProduct["gallery"];
   downloads: LibraryDraftDownload[];
+  scheduledAt: string;
 };
 
 const emptyOperations: LibraryOperations = {
@@ -380,6 +381,7 @@ export function LibraryAdminHub() {
     ],
     gallery: [],
     downloads: [],
+    scheduledAt: "",
   };
   const [draft, setDraft] = useState<LibraryProductDraft>(emptyDraft);
   const [editingProduct, setEditingProduct] = useState<LibraryProduct | null>(null);
@@ -397,6 +399,8 @@ export function LibraryAdminHub() {
   const [inventoryMovementDraft, setInventoryMovementDraft] = useState<InventoryMovementDraft | null>(null);
   const [recommendationDraft, setRecommendationDraft] = useState<RecommendationDraft | null>(null);
   const [previewProduct, setPreviewProduct] = useState<LibraryProduct | null>(null);
+  const [guestClaimDraft, setGuestClaimDraft] = useState<{ orderId: string; email: string } | null>(null);
+  const [bulkDraft, setBulkDraft] = useState<{ mode: "price" | "category"; value: string } | null>(null);
   const [feedback, setFeedback] = useState<{ tone: "success" | "error"; message: string } | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
@@ -554,6 +558,7 @@ export function LibraryAdminHub() {
       formats: normalizeDraftFormats(product),
       gallery: product.gallery,
       downloads: product.downloads,
+      scheduledAt: product.scheduledAt ? product.scheduledAt.slice(0, 16) : "",
     });
     setDraftOpen(true);
   }
@@ -587,7 +592,16 @@ export function LibraryAdminHub() {
       const ext = file.name.split(".").pop()?.toUpperCase() || "PDF";
       setDraft((current) => ({
         ...current,
-        downloads: [...current.downloads, { id: crypto.randomUUID(), label: file.name.replace(/\.[^.]+$/, ""), fileType: ext, size: formatUploadSize(uploaded.data?.size ?? file.size), secure: true, fileUrl: uploaded.data!.url, fileName: uploaded.data?.filename ?? file.name } as LibraryProduct["downloads"][number] & { fileUrl: string; fileName: string }],
+        downloads: [...current.downloads, {
+          id: crypto.randomUUID(),
+          label: file.name.replace(/\.[^.]+$/, ""),
+          fileType: ext,
+          size: formatUploadSize(uploaded.data?.size ?? file.size),
+          secure: true,
+          previewable: ext === "PDF",
+          fileUrl: uploaded.data!.url,
+          fileName: uploaded.data?.filename ?? file.name,
+        } as LibraryProduct["downloads"][number] & { fileUrl: string; fileName: string; previewable: boolean }],
       }));
     }
     setFeedback({ tone: "success", message: kind === "cover" ? "Cover image uploaded. Save the product to keep it." : "Download file uploaded. Save the product to keep it." });
@@ -637,6 +651,51 @@ export function LibraryAdminHub() {
     if (action === "bulk_delete" && !window.confirm(`Delete ${selectedIds.size} selected Library product${selectedIds.size === 1 ? "" : "s"}?`)) return;
     await apiFetch("/api/v1/admin/library", { method: "POST", body: JSON.stringify({ action, ids: Array.from(selectedIds) }) });
     setSelectedIds(new Set());
+    await load();
+  }
+
+  async function saveBulkUpdate() {
+    if (!bulkDraft || !selectedIds.size) return;
+    const action = bulkDraft.mode === "price" ? "bulk_price" : "bulk_category";
+    const body = bulkDraft.mode === "price"
+      ? { action, ids: Array.from(selectedIds), price: Number(bulkDraft.value) }
+      : { action, ids: Array.from(selectedIds), category: bulkDraft.value.trim() };
+    setFeedback(null);
+    const result = await apiFetch<{ count?: number }>("/api/v1/admin/library", { method: "POST", body: JSON.stringify(body) });
+    if (result.error) {
+      setFeedback({ tone: "error", message: result.error.message || "Bulk update failed." });
+      return;
+    }
+    setBulkDraft(null);
+    setSelectedIds(new Set());
+    setFeedback({ tone: "success", message: `Updated ${result.data?.count ?? selectedIds.size} product(s).` });
+    await load();
+  }
+
+  async function moderateGuestClaim(id: string, action: "approve_guest_claim" | "reject_guest_claim") {
+    setFeedback(null);
+    const result = await apiFetch("/api/v1/admin/library", { method: "POST", body: JSON.stringify({ action, id }) });
+    if (result.error) {
+      setFeedback({ tone: "error", message: result.error.message || "Guest claim action failed." });
+      return;
+    }
+    setFeedback({ tone: "success", message: action === "approve_guest_claim" ? "Guest claim approved." : "Guest claim rejected." });
+    await load();
+  }
+
+  async function saveGuestClaim() {
+    if (!guestClaimDraft?.orderId || !guestClaimDraft.email.trim()) return;
+    setFeedback(null);
+    const result = await apiFetch("/api/v1/admin/library", {
+      method: "POST",
+      body: JSON.stringify({ action: "create_guest_claim", orderId: guestClaimDraft.orderId, email: guestClaimDraft.email.trim() }),
+    });
+    if (result.error) {
+      setFeedback({ tone: "error", message: result.error.message || "Guest claim could not be created." });
+      return;
+    }
+    setGuestClaimDraft(null);
+    setFeedback({ tone: "success", message: "Guest claim issued." });
     await load();
   }
 
@@ -1045,7 +1104,7 @@ export function LibraryAdminHub() {
       {view === "Products" && (
         <AdminPanel
           title="Library product management"
-          description="Create, edit, duplicate, archive, publish, and manage product downloads."
+          description="Create, edit, duplicate, archive, publish, schedule, bulk price, bulk category, and manage product downloads."
           action={<Button onClick={() => setDraftOpen(true)}><Plus className="size-4" /> Create Product</Button>}
         >
           <AdminToolbar>
@@ -1054,6 +1113,8 @@ export function LibraryAdminHub() {
               <AdminSelect value={category} onChange={setCategory} options={[{ value: "", label: "All categories" }, ...facets.categories.map((item) => ({ value: item, label: item }))]} />
             </div>
             <div className="flex flex-wrap gap-2">
+              <AdminAction icon={Boxes} label="Bulk Price" disabled={!selectedIds.size} onClick={() => setBulkDraft({ mode: "price", value: "" })} />
+              <AdminAction icon={Boxes} label="Bulk Category" disabled={!selectedIds.size} onClick={() => setBulkDraft({ mode: "category", value: category || "" })} />
               <AdminAction icon={FileArchive} label="Archive" disabled={!selectedIds.size} onClick={() => void bulk("bulk_archive")} />
               <AdminAction icon={Trash2} label="Bulk Delete" disabled={!selectedIds.size} danger onClick={() => void bulk("bulk_delete")} />
             </div>
@@ -1164,7 +1225,41 @@ export function LibraryAdminHub() {
           />
           {view === "Reports" && <OperationsList title="Export jobs" rows={operations.exports.map((item) => ({ label: item.type, value: item.status, detail: item.fileUrl ? "Ready to download" : "Preparing export", href: item.fileUrl ?? undefined }))} />}
           {view === "Analytics" && <OperationsList title="Activity timeline" rows={operations.activities.map((item) => ({ label: item.action, value: item.createdAt ? new Date(item.createdAt).toLocaleDateString() : "Now", detail: item.message }))} />}
-          {view === "Customers" && <OperationsList title="Guest claim queue (read-only)" rows={operations.guestClaims.map((item) => ({ label: item.email, value: item.status, detail: item.order?.orderNumber ?? "Awaiting account claim" }))} />}
+          {view === "Customers" && (
+            <>
+              <div className="mb-3 flex flex-wrap gap-2">
+                <Button variant="secondary" onClick={() => setGuestClaimDraft({ orderId: orders[0]?.id ?? "", email: "" })}>
+                  <Plus className="size-4" /> Issue guest claim
+                </Button>
+              </div>
+              <div className="mt-5 rounded-xl border border-white/[0.08] bg-slate-950/40 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="font-semibold text-white">Guest claim queue</p>
+                  <span className="rounded-full bg-white/10 px-2 py-1 text-xs text-slate-300">{operations.guestClaims.length}</span>
+                </div>
+                <div className="mt-3 grid gap-2">
+                  {operations.guestClaims.length ? operations.guestClaims.slice(0, 12).map((claim) => (
+                    <div key={claim.id} className="rounded-lg border border-white/[0.06] bg-white/[0.03] p-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-slate-100">{claim.email}</p>
+                          <p className="mt-1 text-xs text-slate-500">{claim.order?.orderNumber ?? "Library order"} · {claim.status}</p>
+                        </div>
+                        {claim.status === "PENDING" && (
+                          <div className="flex shrink-0 gap-2">
+                            <button type="button" onClick={() => void moderateGuestClaim(claim.id, "approve_guest_claim")} className="rounded-lg border border-white/10 px-3 py-1.5 text-xs font-bold text-emerald-300 hover:bg-white/5">Approve</button>
+                            <button type="button" onClick={() => void moderateGuestClaim(claim.id, "reject_guest_claim")} className="rounded-lg border border-red-500/30 px-3 py-1.5 text-xs font-bold text-red-300 hover:bg-red-500/10">Reject</button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )) : (
+                    <p className="rounded-lg border border-dashed border-white/[0.08] p-3 text-sm text-slate-500">No guest claims yet. Issue one from an order email.</p>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
           {view === "Inventory" && <OperationsList title="Inventory movements" rows={operations.reports.inventoryMovements.map((item) => ({ label: item.productTitle, value: `${item.type} ${item.quantity > 0 ? "+" : ""}${item.quantity}`, detail: item.note ?? new Date(item.createdAt).toLocaleDateString() }))} />}
           {view === "Downloads" && <OperationsList title="Course entitlement bridge" rows={operations.academyEntitlements.map((item) => ({ label: item.courseId, value: item.status, detail: item.userId }))} />}
         </AdminPanel>
@@ -1308,6 +1403,14 @@ export function LibraryAdminHub() {
                   <EditorSection title="Publishing">
                     <div className="grid gap-3">
                       <SelectField label="Status" value={draft.status} onChange={(value) => setDraft({ ...draft, status: value })} options={productStatuses} />
+                      {draft.status === "SCHEDULED" && (
+                        <Field
+                          label="Go live at"
+                          value={draft.scheduledAt}
+                          onChange={(value) => setDraft({ ...draft, scheduledAt: value })}
+                          type="datetime-local"
+                        />
+                      )}
                       <SelectField label="Difficulty" value={draft.difficulty} onChange={(value) => setDraft({ ...draft, difficulty: value })} options={["Beginner", "Intermediate", "Advanced", "Professional"]} />
                       <ToggleField label="Featured" checked={draft.featured} onChange={(value) => setDraft({ ...draft, featured: value })} />
                       <ToggleField label="Best seller" checked={draft.bestSeller} onChange={(value) => setDraft({ ...draft, bestSeller: value })} />
@@ -1522,6 +1625,53 @@ export function LibraryAdminHub() {
           <ProductPreview product={previewProduct} />
         </CommerceModal>
       )}
+
+      {bulkDraft && (
+        <CommerceModal
+          title={bulkDraft.mode === "price" ? "Bulk update price" : "Bulk update category"}
+          description={`Apply to ${selectedIds.size} selected product${selectedIds.size === 1 ? "" : "s"}.`}
+          onClose={() => setBulkDraft(null)}
+          onSave={() => void saveBulkUpdate()}
+          saveLabel="Apply"
+          disabled={bulkDraft.mode === "price" ? !Number.isFinite(Number(bulkDraft.value)) : !bulkDraft.value.trim()}
+        >
+          <Field
+            label={bulkDraft.mode === "price" ? "New price (USD)" : "Category name"}
+            value={bulkDraft.value}
+            onChange={(value) => setBulkDraft({ ...bulkDraft, value })}
+            type={bulkDraft.mode === "price" ? "number" : "text"}
+            required
+          />
+        </CommerceModal>
+      )}
+
+      {guestClaimDraft && (
+        <CommerceModal
+          title="Issue guest claim"
+          description="Create a pending claim so access can be approved once the buyer has a HouseLink account with that email."
+          onClose={() => setGuestClaimDraft(null)}
+          onSave={() => void saveGuestClaim()}
+          saveLabel="Issue claim"
+          disabled={!guestClaimDraft.orderId || !guestClaimDraft.email.trim()}
+        >
+          <div className="grid gap-3">
+            <label className="grid gap-1 text-sm">
+              <span className="font-semibold text-slate-200">Order</span>
+              <select
+                value={guestClaimDraft.orderId}
+                onChange={(event) => setGuestClaimDraft({ ...guestClaimDraft, orderId: event.target.value })}
+                className="h-11 rounded-lg border border-white/10 bg-slate-950 px-3 text-slate-100"
+              >
+                <option value="">Select order</option>
+                {orders.map((order) => (
+                  <option key={order.id} value={order.id}>{order.orderNumber} · {order.customerEmail}</option>
+                ))}
+              </select>
+            </label>
+            <Field label="Buyer email" value={guestClaimDraft.email} onChange={(value) => setGuestClaimDraft({ ...guestClaimDraft, email: value })} required />
+          </div>
+        </CommerceModal>
+      )}
     </div>
   );
 }
@@ -1583,6 +1733,7 @@ function productPayload(draft: LibraryProductDraft, statusOverride?: string) {
     editorsChoice: draft.editorsChoice,
     comingSoon: draft.comingSoon,
     preorder: draft.preorder,
+    scheduledAt: draft.status === "SCHEDULED" ? (draft.scheduledAt || null) : draft.status === "PUBLISHED" ? null : draft.scheduledAt || undefined,
     gallery: draft.gallery,
     downloads: draft.downloads,
   };

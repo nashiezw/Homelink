@@ -5,6 +5,7 @@ import {
   getLibraryAnalytics as getEmptyLibraryAnalytics,
   getLibraryProducts,
   LIBRARY_ORDERS,
+  enabledLibraryFormats,
   primaryLibraryFormat,
   resolveLibraryFormat,
   type LibraryAnalytics,
@@ -87,6 +88,7 @@ export type LibraryProductInput = {
   formats?: LibraryProductFormat[];
   gallery?: LibraryProduct["gallery"];
   downloads?: Array<{ label: string; fileUrl?: string; fileName?: string; fileType: string; size?: string; fileSizeBytes?: number; secure?: boolean; previewable?: boolean }>;
+  scheduledAt?: string | null;
 };
 
 type DbProduct = Prisma.LibraryProductGetPayload<{
@@ -230,11 +232,23 @@ export async function listLibraryProducts(input: {
     return filterAndSortLocalProducts(input);
   }
   await seedLibraryIfEmpty();
+  if (!input.includeDrafts) {
+    await publishDueScheduledLibraryProducts();
+  }
   const q = input.q?.trim();
+  const now = new Date();
   const products = await getMainPrisma().libraryProduct.findMany({
     where: {
       deletedAt: null,
-      ...(input.includeDrafts ? {} : { status: { in: [LibraryProductStatus.PUBLISHED, LibraryProductStatus.SCHEDULED] } }),
+      ...(input.includeDrafts
+        ? {}
+        : {
+            OR: [
+              { status: LibraryProductStatus.PUBLISHED },
+              { status: LibraryProductStatus.SCHEDULED, scheduledAt: null },
+              { status: LibraryProductStatus.SCHEDULED, scheduledAt: { lte: now } },
+            ],
+          }),
       ...(input.status ? { status: normalizeStatus(input.status) } : {}),
       ...(input.category ? { category: { name: input.category } } : {}),
       ...(input.author ? { author: { name: input.author } } : {}),
@@ -261,20 +275,57 @@ export async function listLibraryProducts(input: {
   return products.map(toLibraryProduct);
 }
 
+export async function publishDueScheduledLibraryProducts() {
+  if (!shouldUsePostgresLibrary()) return { count: 0 };
+  const result = await getMainPrisma().libraryProduct.updateMany({
+    where: {
+      deletedAt: null,
+      status: LibraryProductStatus.SCHEDULED,
+      scheduledAt: { lte: new Date() },
+    },
+    data: {
+      status: LibraryProductStatus.PUBLISHED,
+      publishedAt: new Date(),
+    },
+  }).catch(() => ({ count: 0 }));
+  return { count: result.count };
+}
+
 export async function getLibraryProductBySlug(slug: string) {
   if (!shouldUsePostgresLibrary()) {
     return localLibraryProducts.find((product) => product.slug === slug && (product.status === "PUBLISHED" || product.status === "SCHEDULED")) ?? null;
   }
   await seedLibraryIfEmpty();
+  await publishDueScheduledLibraryProducts();
   const product = await getMainPrisma().libraryProduct.findUnique({
     where: { slug },
     include: productInclude(),
   });
   if (!product || product.deletedAt) return null;
+  const now = Date.now();
+  const scheduledFuture = product.status === LibraryProductStatus.SCHEDULED && product.scheduledAt && product.scheduledAt.getTime() > now;
   if (product.status !== LibraryProductStatus.PUBLISHED && product.status !== LibraryProductStatus.SCHEDULED) {
     return null;
   }
+  if (scheduledFuture) return null;
   return toLibraryProduct(product as DbProduct);
+}
+
+export async function getLibraryProductSampleFile(slug: string) {
+  const product = await getLibraryProductBySlug(slug);
+  if (!product) return null;
+  const sample = product.downloads.find((file) => file.previewable && (file.fileType.toUpperCase() === "PDF" || file.fileName?.toLowerCase().endsWith(".pdf")) && file.fileUrl)
+    ?? product.downloads.find((file) => file.previewable && file.fileUrl)
+    ?? null;
+  if (!sample?.fileUrl) return null;
+  return {
+    productId: product.id,
+    productTitle: product.title,
+    fileId: sample.id,
+    fileUrl: sample.fileUrl,
+    fileName: sample.fileName || `${product.slug}-sample.pdf`,
+    fileType: sample.fileType,
+  };
 }
 
 export async function recordLibraryProductView(slug: string) {
@@ -1808,6 +1859,186 @@ export async function moderateLibraryReview(id: string, input: { status?: string
   return toLibraryReviewAdmin(row);
 }
 
+export async function createLibraryGuestClaim(input: { orderId: string; email: string }, actorId?: string) {
+  const email = input.email.trim().toLowerCase();
+  if (!input.orderId || !email) return null;
+  if (!shouldUsePostgresLibrary()) return { id: `local-claim-${Date.now()}`, orderId: input.orderId, email, status: "PENDING" };
+  const prisma = getMainPrisma();
+  const order = await prisma.libraryOrder.findUnique({ where: { id: input.orderId }, select: { id: true, orderNumber: true } });
+  if (!order) return null;
+  const token = randomBytes(24).toString("hex");
+  const claim = await prisma.libraryGuestClaim.create({
+    data: {
+      orderId: order.id,
+      email,
+      status: "PENDING",
+      claimTokenHash: createTokenHash(token),
+      expiresAt: new Date(Date.now() + 14 * 86400000),
+    },
+    include: { order: { select: { orderNumber: true } } },
+  });
+  await logLibraryActivity({
+    actorId,
+    targetType: "guest_claim",
+    targetId: claim.id,
+    action: "CREATED",
+    message: `Guest claim created for ${email} on ${order.orderNumber}.`,
+    metadata: { orderId: order.id, email },
+  });
+  return claim;
+}
+
+export async function approveLibraryGuestClaim(id: string, actorId?: string) {
+  if (!shouldUsePostgresLibrary()) return null;
+  const prisma = getMainPrisma();
+  const claim = await prisma.libraryGuestClaim.findUnique({
+    where: { id },
+    include: { order: { include: { items: { include: { product: { include: { files: true } } } } } } },
+  });
+  if (!claim || claim.status !== "PENDING") return null;
+  const user = await prisma.user.findUnique({ where: { email: claim.email.toLowerCase() }, select: { id: true, email: true, name: true } });
+  if (!user) return { error: "USER_REQUIRED" as const, email: claim.email };
+  await prisma.libraryOrder.update({ where: { id: claim.orderId }, data: { customerId: user.id } });
+  const downloads = await grantLibraryOrderDownloads(claim.orderId, user.id);
+  const updated = await prisma.libraryGuestClaim.update({
+    where: { id: claim.id },
+    data: {
+      status: "CLAIMED",
+      userId: user.id,
+      claimedAt: new Date(),
+      claimTokenHash: null,
+    },
+    include: { order: { select: { orderNumber: true } } },
+  });
+  await notifyLibraryCustomer(user.id, "HouseLink Library access claimed", `Your Library order ${claim.order.orderNumber} is now available in My Library.`);
+  await logLibraryActivity({
+    actorId,
+    targetType: "guest_claim",
+    targetId: claim.id,
+    action: "APPROVED",
+    message: `Guest claim approved for ${claim.email}.`,
+    metadata: { downloads, userId: user.id },
+  });
+  return { claim: updated, downloads };
+}
+
+export async function rejectLibraryGuestClaim(id: string, actorId?: string) {
+  if (!shouldUsePostgresLibrary()) return null;
+  const claim = await getMainPrisma().libraryGuestClaim.update({
+    where: { id },
+    data: { status: "REJECTED", claimTokenHash: null },
+    include: { order: { select: { orderNumber: true } } },
+  }).catch(() => null);
+  if (!claim) return null;
+  await logLibraryActivity({
+    actorId,
+    targetType: "guest_claim",
+    targetId: claim.id,
+    action: "REJECTED",
+    message: `Guest claim rejected for ${claim.email}.`,
+  });
+  return claim;
+}
+
+export async function bulkUpdateLibraryProducts(
+  ids: string[],
+  patch: { price?: number; category?: string; status?: string },
+  actorId?: string,
+) {
+  const uniqueIds = Array.from(new Set(ids.filter(Boolean)));
+  if (!uniqueIds.length) return { count: 0 };
+  let count = 0;
+  for (const id of uniqueIds) {
+    try {
+      const existing = shouldUsePostgresLibrary()
+        ? await getMainPrisma().libraryProduct.findUnique({ where: { id }, include: productInclude() }).then((row) => (row ? toLibraryProduct(row as DbProduct) : null))
+        : localLibraryProducts.find((product) => product.id === id) ?? null;
+      if (!existing) continue;
+      const input: Partial<LibraryProductInput> = {
+        ...(patch.category !== undefined ? { category: patch.category } : {}),
+        ...(patch.status !== undefined ? { status: patch.status } : {}),
+      };
+      if (patch.price !== undefined) {
+        input.price = patch.price;
+        input.formats = (existing.formats.length ? existing.formats : enabledLibraryFormats(existing)).map((format) =>
+          format.enabled ? { ...format, price: patch.price! } : format,
+        );
+      }
+      if (!Object.keys(input).length) continue;
+      const updated = await updateLibraryProduct(id, input, actorId);
+      if (updated) count += 1;
+    } catch {
+      // Skip invalid products (e.g. publish without digital files).
+    }
+  }
+  await logLibraryActivity({
+    actorId,
+    targetType: "product",
+    targetId: uniqueIds[0],
+    action: "BULK_UPDATE",
+    message: `Bulk updated ${count} Library product(s).`,
+    metadata: { ids: uniqueIds, patch },
+  });
+  return { count };
+}
+
+async function grantLibraryOrderDownloads(orderId: string, userId: string) {
+  const prisma = getMainPrisma();
+  const order = await prisma.libraryOrder.findUnique({
+    where: { id: orderId },
+    include: { items: { include: { product: { include: { files: true } } } } },
+  });
+  if (!order) return 0;
+  let downloads = 0;
+  for (const item of order.items) {
+    if (item.productType === "PRINTED_BOOK") continue;
+    const files = item.product.files.filter((file) => file.active && file.downloadable);
+    if (!files.length) {
+      await prisma.libraryDownloadAccess.upsert({
+        where: { id: `${userId}_${item.productId}_${order.id}` },
+        create: {
+          id: `${userId}_${item.productId}_${order.id}`,
+          userId,
+          productId: item.productId,
+          orderId: order.id,
+          status: "ACTIVE",
+          downloadLimit: item.product.downloadLimit,
+          expiresAt: item.product.downloadExpiryDays ? new Date(Date.now() + item.product.downloadExpiryDays * 86400000) : null,
+        },
+        update: { status: "ACTIVE", userId },
+      });
+      downloads += 1;
+      continue;
+    }
+    for (const file of files) {
+      await prisma.libraryDownloadAccess.upsert({
+        where: { id: `${userId}_${item.productId}_${file.id}_${order.id}` },
+        create: {
+          id: `${userId}_${item.productId}_${file.id}_${order.id}`,
+          userId,
+          productId: item.productId,
+          orderId: order.id,
+          fileId: file.id,
+          status: "ACTIVE",
+          tokenHash: createTokenHash(`${userId}:${item.productId}:${file.id}:${order.id}`),
+          licenseKey: item.product.licenseKeys ? `HL-${randomBytes(6).toString("hex").toUpperCase()}` : null,
+          downloadLimit: file.downloadLimit ?? item.product.downloadLimit,
+          expiresAt: (file.expiryDays ?? item.product.downloadExpiryDays)
+            ? new Date(Date.now() + (file.expiryDays ?? item.product.downloadExpiryDays ?? 0) * 86400000)
+            : null,
+        },
+        update: { status: "ACTIVE", userId },
+      });
+      downloads += 1;
+    }
+  }
+  await prisma.libraryOrder.update({
+    where: { id: orderId },
+    data: { status: order.status === "PENDING" ? LibraryOrderStatus.FULFILLED : order.status, fulfilledAt: order.fulfilledAt ?? new Date() },
+  }).catch(() => null);
+  return downloads;
+}
+
 export async function disableLibraryCustomer(userId: string, actorId?: string) {
   if (!shouldUsePostgresLibrary() || !userId) return null;
   const prisma = getMainPrisma();
@@ -2094,7 +2325,12 @@ async function productInputToPrisma(input: LibraryProductInput, actorId?: string
     ...(input.downloadExpiryDays !== undefined ? { downloadExpiryDays: input.downloadExpiryDays } : {}),
     ...(input.watermarking !== undefined ? { watermarking: input.watermarking } : {}),
     ...(input.licenseKeys !== undefined ? { licenseKeys: input.licenseKeys } : {}),
-    ...(input.status === "PUBLISHED" ? { publishedAt: new Date() } : {}),
+    ...(input.status === "PUBLISHED" ? { publishedAt: new Date(), scheduledAt: null } : {}),
+    ...(input.scheduledAt !== undefined
+      ? { scheduledAt: input.scheduledAt ? new Date(input.scheduledAt) : null }
+      : input.status === "SCHEDULED" && !partial
+        ? { scheduledAt: new Date(Date.now() + 86400000) }
+        : {}),
     ...(partial ? { updatedById: actorId } : { createdById: actorId }),
   };
   if (partial) return createOrUpdate;
@@ -2171,6 +2407,7 @@ function toLibraryProduct(row: DbProduct): LibraryProduct {
     downloadCount: row.downloadCount,
     viewCount: row.viewCount,
     publishedAt: row.publishedAt?.toISOString() ?? row.createdAt.toISOString(),
+    scheduledAt: row.scheduledAt?.toISOString(),
   };
 }
 
@@ -2483,6 +2720,7 @@ function localProductFromInput(input: Partial<LibraryProductInput>, existing?: L
     downloadCount: existing?.downloadCount ?? 0,
     viewCount: existing?.viewCount ?? 0,
     publishedAt: input.status === "PUBLISHED" ? now : existing?.publishedAt ?? now,
+    scheduledAt: input.scheduledAt === null ? undefined : input.scheduledAt ?? existing?.scheduledAt,
   };
 }
 

@@ -58,6 +58,14 @@ export function LibraryProductPage({ product, related }: { product: LibraryProdu
   const activeGalleryImage = galleryImages[galleryIndex] ?? galleryImages[0];
   const isPrinted = selectedFormat?.type === "PRINTED_BOOK";
   const outOfStock = Boolean(isPrinted && product.stock === 0);
+  const sampleFile = useMemo(
+    () =>
+      product.downloads.find((file) => file.previewable && Boolean(file.fileUrl) && (file.fileType.toUpperCase() === "PDF" || file.fileName?.toLowerCase().endsWith(".pdf")))
+      ?? product.downloads.find((file) => file.previewable && Boolean(file.fileUrl))
+      ?? null,
+    [product.downloads],
+  );
+  const sampleUrl = sampleFile ? `/api/v1/library/products/${encodeURIComponent(product.slug)}/sample` : null;
 
   function openLightbox(options?: { zoomed?: boolean }) {
     if (!activeGalleryImage?.url && !galleryImages[0]?.url) return;
@@ -391,12 +399,16 @@ export function LibraryProductPage({ product, related }: { product: LibraryProdu
 
       <section className="mx-auto grid max-w-[88rem] gap-7 px-4 pb-10 sm:px-6 lg:grid-cols-[minmax(0,1fr)_24rem] lg:px-8">
         <div className="space-y-7">
-          <Panel title="Sample Preview" icon={BookOpen} action={<Button variant="secondary" onClick={() => setPreviewOpen(true)}><FileText className="size-4" /> Open preview</Button>}>
+          <Panel title="Sample Preview" icon={BookOpen} action={<Button variant="secondary" onClick={() => setPreviewOpen(true)}><FileText className="size-4" /> {sampleUrl ? "Open sample PDF" : "Open preview"}</Button>}>
             <div className="grid gap-5 md:grid-cols-[12rem_minmax(0,1fr)] md:items-center">
               <BookCover product={product} className="w-full rounded-xl" />
               <div>
-                <p className="text-xl font-black">Preview the synopsis and contents before purchase.</p>
-                <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">Open the sample to read the product summary, chapter list, and cover gallery. Full PDF page extraction ships with protected downloads after payment.</p>
+                <p className="text-xl font-black">{sampleUrl ? "Read a free PDF sample before you buy." : "Preview the synopsis and contents before purchase."}</p>
+                <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
+                  {sampleUrl
+                    ? "This product includes a previewable sample file from the HouseLink Library."
+                    : "Open the sample to read the product summary, chapter list, and cover gallery. Full downloads unlock after payment confirmation."}
+                </p>
               </div>
             </div>
           </Panel>
@@ -557,33 +569,44 @@ export function LibraryProductPage({ product, related }: { product: LibraryProdu
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4" onClick={() => setPreviewOpen(false)}>
           <div className="flex max-h-[92dvh] w-full max-w-5xl flex-col overflow-hidden rounded-lg bg-white shadow-2xl dark:bg-slate-950" onClick={(event) => event.stopPropagation()}>
             <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3 dark:border-slate-800">
-              <p className="font-semibold">Sample Reader - {product.title}</p>
+              <p className="font-semibold">{sampleUrl ? "Sample PDF" : "Sample preview"} - {product.title}</p>
               <button type="button" onClick={() => setPreviewOpen(false)} className="rounded-lg px-3 py-1 text-sm font-semibold hover:bg-slate-100 dark:hover:bg-slate-900">
                 Close
               </button>
             </div>
-            <div className="grid min-h-[34rem] place-items-center bg-slate-100 p-5 dark:bg-slate-900">
-              <div className="grid w-full max-w-4xl gap-5 md:grid-cols-[15rem_minmax(0,1fr)]">
-                <BookCover product={product} imageUrl={activeGalleryImage?.url} />
-                <div className="rounded-lg bg-white p-7 shadow-xl dark:bg-slate-950">
-                  <p className="text-xs font-black uppercase text-emerald-700 dark:text-emerald-300">Preview pages</p>
-                  <h3 className="mt-2 text-3xl font-black">{product.tableOfContents[0] || product.title}</h3>
-                  <p className="mt-4 leading-8 text-slate-600 dark:text-slate-300">{product.description}</p>
-                  <div className="mt-6 grid gap-2 sm:grid-cols-2">
-                    {product.tableOfContents.slice(1, 5).map((item) => (
-                      <p key={item} className="rounded-lg bg-slate-50 p-3 text-sm dark:bg-slate-900">
-                        {item}
-                      </p>
-                    ))}
-                  </div>
-                  <div className="mt-6">
-                    <Button variant="secondary" onClick={() => { setPreviewOpen(false); openLightbox({ zoomed: true }); }}>
-                      <ZoomIn className="size-4" /> View cover gallery
-                    </Button>
+            {sampleUrl ? (
+              <div className="min-h-[70dvh] bg-slate-100 dark:bg-slate-900">
+                <iframe title={`${product.title} sample`} src={sampleUrl} className="h-[70dvh] w-full border-0" />
+                <div className="flex justify-end gap-2 border-t border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-950">
+                  <Button variant="secondary" onClick={() => window.open(sampleUrl, "_blank")}>
+                    <FileText className="size-4" /> Open in new tab
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="grid min-h-[34rem] place-items-center bg-slate-100 p-5 dark:bg-slate-900">
+                <div className="grid w-full max-w-4xl gap-5 md:grid-cols-[15rem_minmax(0,1fr)]">
+                  <BookCover product={product} imageUrl={activeGalleryImage?.url} />
+                  <div className="rounded-lg bg-white p-7 shadow-xl dark:bg-slate-950">
+                    <p className="text-xs font-black uppercase text-emerald-700 dark:text-emerald-300">Preview pages</p>
+                    <h3 className="mt-2 text-3xl font-black">{product.tableOfContents[0] || product.title}</h3>
+                    <p className="mt-4 leading-8 text-slate-600 dark:text-slate-300">{product.description}</p>
+                    <div className="mt-6 grid gap-2 sm:grid-cols-2">
+                      {product.tableOfContents.slice(1, 5).map((item) => (
+                        <p key={item} className="rounded-lg bg-slate-50 p-3 text-sm dark:bg-slate-900">
+                          {item}
+                        </p>
+                      ))}
+                    </div>
+                    <div className="mt-6">
+                      <Button variant="secondary" onClick={() => { setPreviewOpen(false); openLightbox({ zoomed: true }); }}>
+                        <ZoomIn className="size-4" /> View cover gallery
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       )}

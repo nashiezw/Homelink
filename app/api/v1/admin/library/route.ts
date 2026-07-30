@@ -3,7 +3,10 @@ import { created, ok, problem } from "@/lib/api/response";
 import { isPostgresStoreEnabled } from "@/lib/db/main-prisma";
 import {
   archiveLibraryProducts,
+  approveLibraryGuestClaim,
+  bulkUpdateLibraryProducts,
   createAdminLibraryManualOrder,
+  createLibraryGuestClaim,
   createLibraryInventoryMovement,
   createLibraryExportJob,
   createLibraryProduct,
@@ -16,6 +19,7 @@ import {
   getAdminLibraryData,
   moderateLibraryReview,
   refundLibraryOrder,
+  rejectLibraryGuestClaim,
   sendLibraryOrderNotification,
   softDeleteLibraryProducts,
   updateLibraryDownloadAccess,
@@ -267,6 +271,35 @@ export async function POST(request: Request) {
       );
       if (!review) return problem(404, "REVIEW_NOT_FOUND", "Review not found.");
       return ok({ review });
+    }
+    if (body.action === "create_guest_claim") {
+      if (!body.orderId || !body.email) return problem(400, "INVALID_CLAIM", "orderId and email are required.");
+      const claim = await createLibraryGuestClaim({ orderId: String(body.orderId), email: String(body.email) }, auth.user.id);
+      if (!claim) return problem(404, "ORDER_NOT_FOUND", "Library order not found.");
+      return created({ claim });
+    }
+    if (body.action === "approve_guest_claim") {
+      const result = await approveLibraryGuestClaim(String(body.id), auth.user.id);
+      if (!result) return problem(404, "CLAIM_NOT_FOUND", "Guest claim not found or already processed.");
+      if ("error" in result && result.error === "USER_REQUIRED") {
+        return problem(400, "USER_REQUIRED", `Ask ${result.email} to create a HouseLink account with that email before approving.`);
+      }
+      return ok(result);
+    }
+    if (body.action === "reject_guest_claim") {
+      const claim = await rejectLibraryGuestClaim(String(body.id), auth.user.id);
+      if (!claim) return problem(404, "CLAIM_NOT_FOUND", "Guest claim not found.");
+      return ok({ claim });
+    }
+    if (body.action === "bulk_price") {
+      const price = Number(body.price);
+      if (!Number.isFinite(price) || price < 0) return problem(400, "INVALID_PRICE", "A valid price is required.");
+      return ok(await bulkUpdateLibraryProducts(arrayOfStrings(body.ids), { price }, auth.user.id));
+    }
+    if (body.action === "bulk_category") {
+      const category = String(body.category ?? "").trim();
+      if (!category) return problem(400, "INVALID_CATEGORY", "Category name is required.");
+      return ok(await bulkUpdateLibraryProducts(arrayOfStrings(body.ids), { category }, auth.user.id));
     }
     if (!body.title || !body.description || body.price == null) {
       return problem(400, "INVALID_PRODUCT", "title, description, and price are required.");

@@ -93,6 +93,7 @@ export type LibraryProduct = {
   downloadCount: number;
   viewCount: number;
   publishedAt: string;
+  scheduledAt?: string;
 };
 
 export function enabledLibraryFormats(product: Pick<LibraryProduct, "formats" | "productType" | "price" | "compareAtPrice" | "sku">): LibraryProductFormat[] {
