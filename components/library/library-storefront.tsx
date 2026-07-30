@@ -200,7 +200,7 @@ export function LibraryStorefront({
                       View all
                     </a>
                   </div>
-                  <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-2">
+                  <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
                     {curated.map((product) => (
                       <ProductCard
                         key={product.id}
@@ -225,7 +225,7 @@ export function LibraryStorefront({
                 </div>
 
                 {results.length ? (
-                  <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-2">
+                  <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
                     {results.map((product) => (
                       <ProductCard
                         key={product.id}
