@@ -3,6 +3,7 @@ import { created, ok, problem } from "@/lib/api/response";
 import { isPostgresStoreEnabled } from "@/lib/db/main-prisma";
 import {
   archiveLibraryProducts,
+  createAdminLibraryManualOrder,
   createLibraryExportJob,
   createLibraryProduct,
   deleteLibraryCoupon,
@@ -11,6 +12,8 @@ import {
   duplicateLibraryProduct,
   getAdminLibraryData,
   moderateLibraryReview,
+  refundLibraryOrder,
+  sendLibraryOrderNotification,
   softDeleteLibraryProducts,
   updateLibraryDownloadAccess,
   updateLibraryFulfilment,
@@ -47,6 +50,23 @@ export async function POST(request: Request) {
     const fulfilment = await updateLibraryFulfilment(String(body.id), body, auth.user.id);
     if (!fulfilment) return problem(404, "FULFILMENT_NOT_FOUND", "Fulfilment not found.");
     return ok({ fulfilment });
+  }
+  if (body.action === "create_manual_order") {
+    if (!body.customerId) return problem(400, "INVALID_ORDER", "Customer user id is required.");
+    const items = Array.isArray(body.items) ? body.items : [];
+    if (!items.length) return problem(400, "INVALID_ORDER", "At least one product is required.");
+    return created({ result: await createAdminLibraryManualOrder({ customerId: String(body.customerId), items: items.map((item: { productId?: string; quantity?: number }) => ({ productId: String(item.productId), quantity: Math.max(1, Number(item.quantity) || 1) })), couponCode: body.couponCode ? String(body.couponCode) : undefined, provider: body.provider ? String(body.provider) : "manual", referenceNumber: body.referenceNumber ? String(body.referenceNumber) : undefined, note: body.note ? String(body.note) : undefined, markPaid: Boolean(body.markPaid) }, auth.user.id) });
+  }
+  if (body.action === "refund_order") {
+    const result = await refundLibraryOrder(String(body.id), body.reason ? String(body.reason) : "admin_refund", auth.user.id);
+    if (!result) return problem(404, "ORDER_NOT_FOUND", "Library order not found.");
+    return ok({ result });
+  }
+  if (body.action === "notify_order") {
+    const type = body.type === "invoice" || body.type === "access" || body.type === "dispatch" || body.type === "custom" ? body.type : "custom";
+    const result = await sendLibraryOrderNotification(String(body.id), type, body.message ? String(body.message) : undefined, auth.user.id);
+    if (!result) return problem(404, "ORDER_NOT_FOUND", "Library order not found.");
+    return ok({ result });
   }
   if (body.action === "create_export") {
     return created({ exportJob: await createLibraryExportJob(String(body.type || "products"), body.filters ?? {}, auth.user.id) });

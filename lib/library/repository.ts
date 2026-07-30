@@ -1,5 +1,5 @@
 import { createHash, createHmac, randomBytes } from "crypto";
-import { LibraryDownloadStatus, LibraryProductStatus, LibraryProductType, PaymentStatus, type Prisma } from "@prisma/client";
+import { LibraryDownloadStatus, LibraryOrderStatus, LibraryProductStatus, LibraryProductType, NotificationChannel, NotificationStatus, PaymentProvider, PaymentStatus, type Prisma } from "@prisma/client";
 import { getMainPrisma, isPostgresStoreEnabled } from "@/lib/db/main-prisma";
 import {
   getLibraryAnalytics as getEmptyLibraryAnalytics,
@@ -594,6 +594,88 @@ export async function createLibraryOrderFromCheckout(input: {
     metadata: { paymentId: input.paymentId, couponCode: input.couponCode, taxTotal: quote.taxTotal },
   });
   return { order: toLibraryOrder(order), accessGranted: false };
+}
+
+export async function createAdminLibraryManualOrder(input: {
+  customerId: string;
+  items: LibraryCartLine[];
+  couponCode?: string;
+  provider?: string;
+  referenceNumber?: string;
+  note?: string;
+  markPaid?: boolean;
+}, actorId?: string) {
+  if (!shouldUsePostgresLibrary()) {
+    const order = await createLibraryOrderFromCheckout({ customerId: input.customerId, paymentId: `manual-${Date.now()}`, items: input.items, couponCode: input.couponCode });
+    if (input.markPaid) {
+      localLibraryOrders.forEach((entry) => {
+        if (entry.id === order.order.id) {
+          entry.status = "FULFILLED";
+          entry.paymentStatus = "PAID";
+        }
+      });
+    }
+    return { ...order, payment: null, grant: { orders: input.markPaid ? 1 : 0, downloads: 0 } };
+  }
+  const quote = await quoteLibraryCart(input.items, input.couponCode, input.customerId);
+  if (!quote.items.length) throw new Error("No valid Library products found.");
+  const prisma = getMainPrisma();
+  const payment = await prisma.payment.create({
+    data: {
+      userId: input.customerId,
+      provider: normalizePaymentProvider(input.provider),
+      status: input.markPaid ? PaymentStatus.PAID : PaymentStatus.PENDING,
+      amount: quote.total,
+      currency: quote.currency,
+      description: "manual library order",
+      plan: "library_order",
+      method: input.provider || "manual",
+      manual: true,
+      proofStatus: input.markPaid ? "VERIFIED" : "REQUESTED",
+      metadata: {
+        referenceNumber: input.referenceNumber || `HL-LIB-MAN-${Date.now()}`,
+        adminNote: input.note,
+        createdBy: actorId,
+      } as Prisma.InputJsonObject,
+    },
+  });
+  const order = await createLibraryOrderFromCheckout({ customerId: input.customerId, paymentId: payment.id, items: quote.items, couponCode: input.couponCode });
+  const grant = input.markPaid ? await fulfillPaidLibraryOrdersForPayment(payment.id) : { orders: 0, downloads: 0 };
+  await notifyLibraryCustomer(input.customerId, "Library order created", input.markPaid ? "Your HouseLink Library order is paid and ready in My Library." : "Your HouseLink Library order has been created and is awaiting payment.");
+  await logLibraryActivity({ actorId, targetType: "order", targetId: order.order.id, action: "MANUAL_ORDER_CREATED", message: `Manual Library order ${order.order.orderNumber} created.`, metadata: { paymentId: payment.id, markPaid: input.markPaid, note: input.note } });
+  return { order: order.order, payment, grant };
+}
+
+export async function refundLibraryOrder(orderId: string, reason = "admin_refund", actorId?: string) {
+  if (!shouldUsePostgresLibrary()) {
+    const order = localLibraryOrders.find((entry) => entry.id === orderId);
+    if (!order) return null;
+    order.status = "REFUNDED";
+    order.paymentStatus = "REFUNDED";
+    return { order, revoked: 0 };
+  }
+  const prisma = getMainPrisma();
+  const order = await prisma.libraryOrder.findUnique({ where: { id: orderId }, include: { customer: { select: { id: true } }, payment: true } });
+  if (!order) return null;
+  const [updated, revoked] = await prisma.$transaction([
+    prisma.libraryOrder.update({ where: { id: orderId }, data: { status: LibraryOrderStatus.REFUNDED, refundedAt: new Date(), metadata: { reason } }, include: { customer: { select: { name: true, email: true } }, items: true, payment: { select: { status: true } } } }),
+    prisma.libraryDownloadAccess.updateMany({ where: { orderId }, data: { status: LibraryDownloadStatus.REVOKED } }),
+    ...(order.paymentId ? [prisma.payment.update({ where: { id: order.paymentId }, data: { status: PaymentStatus.REFUNDED, metadata: { reason, refundedBy: actorId } } })] : []),
+  ]);
+  await notifyLibraryCustomer(order.customerId, "Library order refunded", "Your HouseLink Library order has been marked refunded and related download access has been revoked.");
+  await logLibraryActivity({ actorId, targetType: "order", targetId: orderId, action: "ORDER_REFUNDED", message: `Library order refunded. ${revoked.count} access record(s) revoked.`, metadata: { reason } });
+  return { order: toLibraryOrder(updated), revoked: revoked.count };
+}
+
+export async function sendLibraryOrderNotification(orderId: string, type: "invoice" | "access" | "dispatch" | "custom", message?: string, actorId?: string) {
+  if (!shouldUsePostgresLibrary()) return { notification: null };
+  const order = await getMainPrisma().libraryOrder.findUnique({ where: { id: orderId }, include: { customer: { select: { id: true, name: true, email: true } } } });
+  if (!order) return null;
+  const subject = type === "invoice" ? "HouseLink Library invoice" : type === "access" ? "HouseLink Library access" : type === "dispatch" ? "HouseLink Library dispatch update" : "HouseLink Library update";
+  const body = message?.trim() || (type === "invoice" ? `Your invoice for ${order.orderNumber} is available in My Library.` : type === "access" ? "Your Library downloads are available in My Library." : type === "dispatch" ? `Your order ${order.orderNumber} has a fulfilment update.` : `There is an update on Library order ${order.orderNumber}.`);
+  const notification = await notifyLibraryCustomer(order.customerId, subject, body);
+  await logLibraryActivity({ actorId, targetType: "order", targetId: order.id, action: "NOTIFICATION_QUEUED", message: `${subject} notification queued.`, metadata: { type } });
+  return { notification };
 }
 
 export async function fulfillPaidLibraryOrdersForPayment(paymentId: string) {
@@ -1230,6 +1312,26 @@ async function calculateLibraryDiscount(input: { couponCode?: string; subtotal: 
 async function incrementLibraryCouponUsage(couponCode?: string) {
   if (!couponCode) return;
   await getMainPrisma().libraryCoupon.update({ where: { code: couponCode }, data: { usedCount: { increment: 1 } } }).catch(() => null);
+}
+
+async function notifyLibraryCustomer(userId: string, subject: string, body: string) {
+  if (!shouldUsePostgresLibrary()) return null;
+  return getMainPrisma().notification.create({
+    data: {
+      userId,
+      channel: NotificationChannel.EMAIL,
+      status: NotificationStatus.QUEUED,
+      subject,
+      body,
+    },
+  }).catch(() => null);
+}
+
+function normalizePaymentProvider(provider?: string) {
+  const normalized = provider?.trim().toUpperCase();
+  if (normalized === "STRIPE") return PaymentProvider.STRIPE;
+  if (normalized === "ECOCASH") return PaymentProvider.ECOCASH;
+  return PaymentProvider.PAYNOW;
 }
 
 async function replaceProductAssets(productId: string, input: Partial<LibraryProductInput>) {

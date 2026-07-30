@@ -144,6 +144,9 @@ type FulfilmentDraft = { id: string; status: string; courier: string; trackingNu
 type GroupDraft = { field: LibraryGroupField; currentName: string; nextName: string };
 type TaxonomyDraft = { id?: string; kind: LibraryGroupField; name: string; slug: string; description: string; seoTitle: string; metaDescription: string; heroImageUrl: string; bio: string; websiteUrl: string; featured: boolean; sortOrder: string; active: boolean };
 type DownloadAccessDraft = { id: string; status: string; downloadLimit: string; expiresAt: string };
+type ManualOrderDraft = { customerId: string; productId: string; quantity: string; couponCode: string; provider: string; referenceNumber: string; note: string; markPaid: boolean };
+type OrderNotifyDraft = { orderId: string; type: string; message: string };
+type RefundDraft = { orderId: string; reason: string };
 
 type LibraryDraftDownload = LibraryProduct["downloads"][number] & { fileUrl?: string; fileName?: string; fileSizeBytes?: number; previewable?: boolean };
 
@@ -303,6 +306,9 @@ export function LibraryAdminHub() {
   const [groupDraft, setGroupDraft] = useState<GroupDraft | null>(null);
   const [taxonomyDraft, setTaxonomyDraft] = useState<TaxonomyDraft | null>(null);
   const [downloadAccessDraft, setDownloadAccessDraft] = useState<DownloadAccessDraft | null>(null);
+  const [manualOrderDraft, setManualOrderDraft] = useState<ManualOrderDraft | null>(null);
+  const [orderNotifyDraft, setOrderNotifyDraft] = useState<OrderNotifyDraft | null>(null);
+  const [refundDraft, setRefundDraft] = useState<RefundDraft | null>(null);
   const [feedback, setFeedback] = useState<{ tone: "success" | "error"; message: string } | null>(null);
   const source = productsSource.length ? productsSource : searchLibraryProducts({});
   const products = useMemo(() => {
@@ -657,6 +663,49 @@ export function LibraryAdminHub() {
     await load();
   }
 
+  function openManualOrder() {
+    setManualOrderDraft({ customerId: "", productId: products[0]?.id ?? source[0]?.id ?? "", quantity: "1", couponCode: "", provider: "manual", referenceNumber: `HL-LIB-MAN-${Date.now()}`, note: "", markPaid: true });
+  }
+
+  async function saveManualOrder() {
+    if (!manualOrderDraft) return;
+    setFeedback(null);
+    const result = await apiFetch("/api/v1/admin/library", { method: "POST", body: JSON.stringify({ action: "create_manual_order", customerId: manualOrderDraft.customerId, provider: manualOrderDraft.provider, referenceNumber: manualOrderDraft.referenceNumber, note: manualOrderDraft.note, couponCode: manualOrderDraft.couponCode || undefined, markPaid: manualOrderDraft.markPaid, items: [{ productId: manualOrderDraft.productId, quantity: Number(manualOrderDraft.quantity) || 1 }] }) });
+    if (result.error) {
+      setFeedback({ tone: "error", message: result.error.message || "Manual order could not be created." });
+      return;
+    }
+    setManualOrderDraft(null);
+    await load();
+    setFeedback({ tone: "success", message: "Manual Library order created." });
+  }
+
+  async function refundOrder() {
+    if (!refundDraft) return;
+    setFeedback(null);
+    const result = await apiFetch("/api/v1/admin/library", { method: "POST", body: JSON.stringify({ action: "refund_order", id: refundDraft.orderId, reason: refundDraft.reason }) });
+    if (result.error) {
+      setFeedback({ tone: "error", message: result.error.message || "Order could not be refunded." });
+      return;
+    }
+    setRefundDraft(null);
+    await load();
+    setFeedback({ tone: "success", message: "Order refunded and download access revoked." });
+  }
+
+  async function notifyOrder() {
+    if (!orderNotifyDraft) return;
+    setFeedback(null);
+    const result = await apiFetch("/api/v1/admin/library", { method: "POST", body: JSON.stringify({ action: "notify_order", id: orderNotifyDraft.orderId, type: orderNotifyDraft.type, message: orderNotifyDraft.message }) });
+    if (result.error) {
+      setFeedback({ tone: "error", message: result.error.message || "Notification could not be queued." });
+      return;
+    }
+    setOrderNotifyDraft(null);
+    await load();
+    setFeedback({ tone: "success", message: "Customer notification queued." });
+  }
+
   return (
     <div className="space-y-5">
       <AdminTabStrip tabs={views.map((id) => ({ id, label: id }))} active={view} onChange={setView} />
@@ -737,8 +786,8 @@ export function LibraryAdminHub() {
       )}
 
       {view === "Orders" && (
-        <AdminPanel title="Library orders" description="Order queue, fulfilment, payment state, invoices, and customer confirmations.">
-          <OrdersTable orders={orders} />
+        <AdminPanel title="Library orders" description="Order queue, fulfilment, payment state, invoices, and customer confirmations." action={<Button onClick={openManualOrder}><Plus className="size-4" /> Manual Order</Button>}>
+          <OrdersTable orders={orders} onNotify={(order) => setOrderNotifyDraft({ orderId: order.id, type: "invoice", message: "" })} onRefund={(order) => setRefundDraft({ orderId: order.id, reason: "Customer refund / admin adjustment" })} />
           <FulfilmentTable rows={operations.fulfilments} onEdit={openFulfilmentEditor} />
           <OperationsList title="Invoices" rows={operations.invoices.map((item) => ({ label: item.invoiceNumber, value: `${item.currency} ${Number(item.total).toFixed(2)}`, detail: item.order?.orderNumber ?? "Library invoice" }))} />
         </AdminPanel>
@@ -994,6 +1043,36 @@ export function LibraryAdminHub() {
             <SelectField label="Status" value={downloadAccessDraft.status} onChange={(value) => setDownloadAccessDraft({ ...downloadAccessDraft, status: value })} options={["ACTIVE", "REVOKED", "EXPIRED", "SUSPENDED"]} />
             <Field label="Download limit" value={downloadAccessDraft.downloadLimit} onChange={(value) => setDownloadAccessDraft({ ...downloadAccessDraft, downloadLimit: value })} type="number" placeholder="Blank for unlimited" />
             <Field label="Expires at" value={downloadAccessDraft.expiresAt} onChange={(value) => setDownloadAccessDraft({ ...downloadAccessDraft, expiresAt: value })} type="date" />
+          </div>
+        </CommerceModal>
+      )}
+
+      {manualOrderDraft && (
+        <CommerceModal title="Create Manual Library Order" description="Create a real payment/order record, apply coupon pricing, and optionally grant Library access immediately." onClose={() => setManualOrderDraft(null)} onSave={() => void saveManualOrder()} saveLabel="Create Order" disabled={!manualOrderDraft.customerId.trim() || !manualOrderDraft.productId}>
+          <div className="grid gap-3 md:grid-cols-2">
+            <Field label="Customer user ID" value={manualOrderDraft.customerId} onChange={(value) => setManualOrderDraft({ ...manualOrderDraft, customerId: value })} required />
+            <SelectField label="Product" value={manualOrderDraft.productId} onChange={(value) => setManualOrderDraft({ ...manualOrderDraft, productId: value })} options={source.map((product) => product.id)} />
+            <Field label="Quantity" value={manualOrderDraft.quantity} onChange={(value) => setManualOrderDraft({ ...manualOrderDraft, quantity: value })} type="number" />
+            <Field label="Coupon code" value={manualOrderDraft.couponCode} onChange={(value) => setManualOrderDraft({ ...manualOrderDraft, couponCode: value.toUpperCase() })} />
+            <Field label="Provider / method" value={manualOrderDraft.provider} onChange={(value) => setManualOrderDraft({ ...manualOrderDraft, provider: value })} />
+            <Field label="Reference" value={manualOrderDraft.referenceNumber} onChange={(value) => setManualOrderDraft({ ...manualOrderDraft, referenceNumber: value })} />
+            <TextAreaField label="Internal note" value={manualOrderDraft.note} onChange={(value) => setManualOrderDraft({ ...manualOrderDraft, note: value })} />
+            <ToggleField label="Mark paid and grant access" checked={manualOrderDraft.markPaid} onChange={(value) => setManualOrderDraft({ ...manualOrderDraft, markPaid: value })} />
+          </div>
+        </CommerceModal>
+      )}
+
+      {refundDraft && (
+        <CommerceModal title="Refund Library Order" description="Mark the order refunded, revoke related download access, update payment status, and log the reason." onClose={() => setRefundDraft(null)} onSave={() => void refundOrder()} saveLabel="Refund Order">
+          <TextAreaField label="Reason" value={refundDraft.reason} onChange={(value) => setRefundDraft({ ...refundDraft, reason: value })} />
+        </CommerceModal>
+      )}
+
+      {orderNotifyDraft && (
+        <CommerceModal title="Send Library Notification" description="Queue a real customer notification for invoice, access, dispatch, or a custom order update." onClose={() => setOrderNotifyDraft(null)} onSave={() => void notifyOrder()} saveLabel="Queue Notification">
+          <div className="grid gap-3">
+            <SelectField label="Notification type" value={orderNotifyDraft.type} onChange={(value) => setOrderNotifyDraft({ ...orderNotifyDraft, type: value })} options={["invoice", "access", "dispatch", "custom"]} />
+            <TextAreaField label="Message" value={orderNotifyDraft.message} onChange={(value) => setOrderNotifyDraft({ ...orderNotifyDraft, message: value })} placeholder="Leave blank to use the default message for this type." />
           </div>
         </CommerceModal>
       )}
@@ -1472,7 +1551,7 @@ function FulfilmentTable({ rows, onEdit }: { rows: LibraryOperations["fulfilment
   );
 }
 
-function OrdersTable({ orders }: { orders: LibraryOrder[] }) {
+function OrdersTable({ orders, onNotify, onRefund }: { orders: LibraryOrder[]; onNotify?: (order: LibraryOrder) => void; onRefund?: (order: LibraryOrder) => void }) {
   return (
     <AdminDataTable
       rows={orders}
@@ -1482,7 +1561,7 @@ function OrdersTable({ orders }: { orders: LibraryOrder[] }) {
         { key: "status", header: "Status", render: (row) => <AdminStatusBadge status={row.status} variant={row.status === "FULFILLED" ? "success" : "warning"} /> },
         { key: "payment", header: "Payment", render: (row) => row.paymentStatus },
         { key: "total", header: "Total", render: (row) => `${row.currency} ${row.total.toFixed(2)}` },
-        { key: "actions", header: "Actions", render: (row) => <RowActions primaryLabel="Invoice" primaryIcon={Download} onPrimary={() => window.open(`/api/v1/library/orders/${row.id}/invoice`, "_blank")} onDelete={() => window.alert("Orders are retained for payment, invoice, and audit history.")} /> },
+        { key: "actions", header: "Actions", render: (row) => <div className="flex flex-wrap gap-2"><button type="button" onClick={() => window.open(`/api/v1/library/orders/${row.id}/invoice`, "_blank")} className="inline-flex items-center gap-2 rounded-lg border border-white/10 px-3 py-2 text-xs font-bold text-slate-300 hover:bg-white/5"><Download className="size-4" /> Invoice</button>{onNotify && <button type="button" onClick={() => onNotify(row)} className="rounded-lg border border-white/10 px-3 py-2 text-xs font-bold text-slate-300 hover:bg-white/5">Notify</button>}{onRefund && row.status !== "REFUNDED" && <button type="button" onClick={() => onRefund(row)} className="rounded-lg border border-red-500/30 px-3 py-2 text-xs font-bold text-red-300 hover:bg-red-500/10">Refund</button>}</div> },
       ]}
     />
   );
