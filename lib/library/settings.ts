@@ -1,12 +1,15 @@
 import type { Prisma } from "@prisma/client";
 import { getMainPrisma, isPostgresStoreEnabled } from "@/lib/db/main-prisma";
-import { isMissingSchemaError } from "@/lib/db/production-schema";
+import { isMissingSchemaError } from "@/lib/db/prisma-errors";
 import {
   defaultLibraryStoreSettings,
   mergeLibraryStoreSettings,
   type LibraryStoreSettings,
 } from "@/lib/library/settings-shared";
 
+// Re-export shared types/defaults for server modules only.
+// Client components must import from "@/lib/library/settings-shared"
+// so webpack never pulls Prisma / node:crypto into the browser bundle.
 export {
   defaultLibraryStoreSettings,
   mergeLibraryStoreSettings,
