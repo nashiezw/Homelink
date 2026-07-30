@@ -939,7 +939,7 @@ export async function createLibraryOrderFromCheckout(input: {
       orderNumber: order.orderNumber,
       currency: order.currency,
       total: Number(order.total).toFixed(2),
-      orderUrl: `${getCanonicalSiteUrl()}/dashboard/my-library/orders/${order.id}`,
+      orderUrl: `${getCanonicalSiteUrl()}/library/orders/${order.id}`,
     },
   });
   return { order: toLibraryOrder(order), accessGranted: false };
@@ -1190,7 +1190,7 @@ export async function fulfillPaidLibraryOrdersForPayment(paymentId: string) {
     if (hasDigital) {
       await notifyLibraryCustomer(order.customerId, "HouseLink Library access ready", `Your digital Library items for ${order.orderNumber} are available in My Library.`, {
         templateKey: "downloadReady",
-        variables: { orderNumber: order.orderNumber, orderUrl: `${getCanonicalSiteUrl()}/dashboard/my-library/orders/${order.id}` },
+        variables: { orderNumber: order.orderNumber, orderUrl: `${getCanonicalSiteUrl()}/library/orders/${order.id}` },
       });
     }
     if (hasPrint) {
@@ -1199,7 +1199,7 @@ export async function fulfillPaidLibraryOrdersForPayment(paymentId: string) {
         variables: {
           orderNumber: order.orderNumber,
           extra: "We are preparing your printed book(s) for dispatch.",
-          orderUrl: `${getCanonicalSiteUrl()}/dashboard/my-library/orders/${order.id}`,
+          orderUrl: `${getCanonicalSiteUrl()}/library/orders/${order.id}`,
         },
         force: true,
       });
@@ -2844,7 +2844,7 @@ async function notifyLibraryCustomer(
       templateKey: options.templateKey,
       variables: {
         customerName: user.name || "there",
-        orderUrl: `${getCanonicalSiteUrl()}/dashboard/my-library`,
+        orderUrl: `${getCanonicalSiteUrl()}/library/orders`,
         licenceText: settings.licence.licenceText,
         ...(options.variables ?? {}),
       },

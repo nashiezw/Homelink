@@ -304,11 +304,6 @@ textarea {
       radial-gradient(circle at 80% 20%, rgba(14, 165, 233, 0.12), transparent 38%);
   }
 
-  /* HouseLink Library — editorial shelf */
-  .library-toolbar {
-    transition: box-shadow 0.25s ease, background-color 0.25s ease;
-  }
-
   /* Roommates page - unified composition system */
   .rm-page {
     color: #102024;

@@ -27,12 +27,14 @@ export function BookCover({
   priority = false,
   imageUrl,
   interactive = true,
+  sizes = "(max-width: 768px) 70vw, 320px",
 }: {
   product: LibraryProduct;
   className?: string;
   priority?: boolean;
   imageUrl?: string;
   interactive?: boolean;
+  sizes?: string;
 }) {
   const style = styleFor(product);
   const coverTitle = getCoverTitle(product);
@@ -45,7 +47,7 @@ export function BookCover({
             src={coverUrl}
             alt={product.title}
             fill
-            sizes="(max-width: 768px) 70vw, 320px"
+            sizes={sizes}
             className="object-cover"
             priority={priority}
           />

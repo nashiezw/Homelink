@@ -1,7 +1,12 @@
-import { Role, VerificationStatus } from "@prisma/client";
+import { Prisma, Role, VerificationStatus } from "@prisma/client";
+import { hashPassword } from "@/lib/auth/password";
 import { getMainPrisma, isPostgresStoreEnabled } from "@/lib/db/main-prisma";
 
 let ensurePromise: Promise<void> | null = null;
+
+export function isMissingSchemaError(error: unknown) {
+  return error instanceof Prisma.PrismaClientKnownRequestError && (error.code === "P2021" || error.code === "P2022");
+}
 
 export async function ensureCoreProductionSchema() {
   if (!isPostgresStoreEnabled()) return;
@@ -100,8 +105,6 @@ async function applyCoreProductionSchema() {
 async function ensureBootstrapAdmin() {
   const prisma = getMainPrisma();
   const email = "admin@houselink.co.zw";
-  // Lazy-load so client bundles never pull node:crypto via this module graph.
-  const { hashPassword } = await import("@/lib/auth/password");
   const passwordHash = hashPassword(process.env.SEED_ADMIN_PASSWORD || "HouseLinkAdmin2026!");
   const existing = await prisma.user.findUnique({ where: { email } });
   if (!existing) {

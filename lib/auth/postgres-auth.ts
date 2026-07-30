@@ -1,7 +1,6 @@
 import { Prisma, Role, VerificationStatus } from "@prisma/client";
 import { getMainPrisma, isPostgresStoreEnabled } from "@/lib/db/main-prisma";
-import { ensureCoreProductionSchema } from "@/lib/db/production-schema";
-import { isMissingSchemaError } from "@/lib/db/prisma-errors";
+import { ensureCoreProductionSchema, isMissingSchemaError } from "@/lib/db/production-schema";
 
 export function shouldUsePostgresAuth() {
   return isPostgresStoreEnabled();

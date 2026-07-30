@@ -25,11 +25,11 @@ export function LibraryCartFab({ className }: { className?: string }) {
   return (
     <div className={cn("fixed bottom-5 right-5 z-[60] flex flex-col items-end gap-3", className)}>
       {open && (
-        <div className="w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-hero dark:border-slate-700 dark:bg-slate-950">
-          <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3.5 dark:border-slate-800">
+        <div className="w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-950">
+          <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3 dark:border-slate-800">
             <div>
-              <p className="text-sm font-semibold tracking-tight text-ink dark:text-white">Library Bag</p>
-              <p className="mt-0.5 text-xs leading-5 text-slate-500">{count} item{count === 1 ? "" : "s"} · {currency} {total.toFixed(2)}</p>
+              <p className="text-sm font-bold text-ink dark:text-white">Library Bag</p>
+              <p className="text-xs text-slate-500">{count} item{count === 1 ? "" : "s"} · {currency} {total.toFixed(2)}</p>
             </div>
             <button type="button" onClick={() => setOpen(false)} className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-900" aria-label="Close bag">
               <X className="size-4" />
@@ -55,10 +55,10 @@ export function LibraryCartFab({ className }: { className?: string }) {
             ))}
           </div>
           <div className="grid gap-2 border-t border-slate-200 p-3 dark:border-slate-800">
-            <Link href="/library/checkout" onClick={() => setOpen(false)} className="inline-flex h-11 items-center justify-center rounded-xl bg-emerald-700 text-sm font-semibold text-white hover:bg-emerald-600">
+            <Link href="/library/checkout" onClick={() => setOpen(false)} className="inline-flex h-10 items-center justify-center rounded-lg bg-emerald-600 text-sm font-bold text-white hover:bg-emerald-500">
               Checkout
             </Link>
-            <Link href="/library" onClick={() => setOpen(false)} className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-200 text-sm font-semibold text-slate-700 hover:border-emerald-600 dark:border-slate-700 dark:text-slate-200">
+            <Link href="/library" onClick={() => setOpen(false)} className="inline-flex h-10 items-center justify-center rounded-lg border border-slate-200 text-sm font-bold text-slate-700 hover:border-emerald-500 dark:border-slate-700 dark:text-slate-200">
               Continue shopping
             </Link>
           </div>
@@ -69,13 +69,13 @@ export function LibraryCartFab({ className }: { className?: string }) {
         type="button"
         onClick={() => setOpen((value) => !value)}
         className={cn(
-          "relative inline-flex h-14 w-14 items-center justify-center rounded-full bg-emerald-700 text-white shadow-xl transition hover:bg-emerald-600",
+          "relative inline-flex h-14 w-14 items-center justify-center rounded-full bg-emerald-600 text-white shadow-xl transition hover:bg-emerald-500",
           pulse && "scale-110",
         )}
         aria-label={`Open Library Bag, ${count} items`}
       >
         <ShoppingBag className="size-5" />
-        <span className="absolute -right-1 -top-1 grid h-6 min-w-6 place-items-center rounded-full bg-ink px-1.5 text-xs font-semibold tabular-nums text-white dark:bg-white dark:text-ink">
+        <span className="absolute -right-1 -top-1 grid h-6 min-w-6 place-items-center rounded-full bg-ink px-1.5 text-xs font-black text-white dark:bg-white dark:text-ink">
           {count > 99 ? "99+" : count}
         </span>
       </button>
