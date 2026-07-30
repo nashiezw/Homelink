@@ -16,7 +16,6 @@ import {
   ShieldCheck,
   ShoppingBag,
   ShoppingCart,
-  SlidersHorizontal,
   Star,
   TrendingUp,
   Trash2,
@@ -83,12 +82,12 @@ export function LibraryStorefront({
   const { cart, setCart, total, currency, count } = useLibraryCart();
 
   const hidePrices = merchandising.hidePricesUntilLogin && !user;
-  const featured = products.find((product) => product.editorsChoice) ?? products.find((product) => product.featured) ?? products[0];
+  const featured =
+    products.find((product) => product.editorsChoice) ?? products.find((product) => product.featured) ?? products[0];
   const featuredProducts = products
     .filter((product) => product.editorsChoice || product.featured)
     .slice(0, merchandising.maxCuratedItems);
   const bestSellers = products.filter((product) => product.bestSeller).slice(0, 3);
-  const heroStack = products.slice(0, Math.min(merchandising.maxHeroItems, 3));
   const results = useMemo(
     () => filterProducts(products, { query, category, type, difficulty, sort }),
     [products, query, category, type, difficulty, sort],
@@ -131,70 +130,83 @@ export function LibraryStorefront({
   }
 
   return (
-    <main className="relative min-h-screen overflow-x-hidden bg-mist text-ink dark:bg-slate-950 dark:text-white">
+    <main className="library-shop relative min-h-screen overflow-x-hidden text-ink dark:bg-slate-950 dark:text-white">
       <LibraryCartFab />
 
-      {/* Atmospheric wash */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-0 h-[42rem] bg-[radial-gradient(ellipse_at_20%_0%,rgba(16,185,129,0.12),transparent_50%),radial-gradient(ellipse_at_90%_10%,rgba(14,165,233,0.08),transparent_45%),linear-gradient(180deg,#102024_0%,#16353c_38%,#f4f8f7_72%)] dark:bg-[radial-gradient(ellipse_at_20%_0%,rgba(16,185,129,0.16),transparent_50%),linear-gradient(180deg,#020617_0%,#0f172a_55%,#020617_100%)]"
-      />
+      {/* Hero — one soft composition, books as the visual */}
+      <section className="relative overflow-hidden">
+        <div aria-hidden className="library-hero-atmosphere pointer-events-none absolute inset-0" />
+        <div aria-hidden className="pointer-events-none absolute -left-24 top-10 size-[28rem] animate-hero-glow rounded-full bg-emerald-400/15 blur-3xl motion-reduce:animate-none" />
+        <div aria-hidden className="pointer-events-none absolute -right-16 top-24 size-[32rem] animate-hero-drift rounded-full bg-cyan-300/10 blur-3xl motion-reduce:animate-none" />
 
-      <section className="relative">
-        <div className="mx-auto grid max-w-7xl gap-12 px-4 pb-14 pt-12 sm:px-6 lg:grid-cols-[minmax(0,1.05fr)_minmax(18rem,0.95fr)] lg:items-end lg:gap-16 lg:px-8 lg:pb-20 lg:pt-16">
+        <div className="relative mx-auto grid max-w-7xl gap-10 px-4 pb-12 pt-10 sm:px-6 lg:grid-cols-[minmax(0,1.05fr)_minmax(17rem,0.95fr)] lg:items-center lg:gap-14 lg:px-8 lg:pb-16 lg:pt-14">
           <div className="min-w-0">
-            <p className="animate-fade-up text-[0.7rem] font-semibold uppercase tracking-[0.22em] text-emerald-200/90 motion-reduce:animate-none">
+            <p className="animate-fade-up text-[0.68rem] font-semibold uppercase tracking-[0.22em] text-emerald-800/80 motion-reduce:animate-none dark:text-emerald-300/90">
               Professional property resources
             </p>
-            <h1 className="animate-fade-up mt-4 max-w-3xl text-[2.85rem] font-semibold leading-[1.05] tracking-[-0.035em] text-white motion-reduce:animate-none sm:text-5xl lg:text-[3.85rem] lg:leading-[1.02] [animation-delay:60ms]">
+            <h1 className="animate-fade-up mt-4 max-w-3xl text-[2.75rem] font-semibold leading-[1.05] tracking-[-0.035em] text-ink motion-reduce:animate-none sm:text-5xl lg:text-[3.6rem] lg:leading-[1.02] [animation-delay:70ms] dark:text-white">
               {store.name}
             </h1>
-            <p className="animate-fade-up mt-4 max-w-2xl text-xl font-medium leading-snug tracking-tight text-emerald-100/95 motion-reduce:animate-none sm:text-2xl sm:leading-snug [animation-delay:110ms]">
+            <p className="animate-fade-up mt-4 max-w-xl text-xl font-medium leading-snug tracking-tight text-emerald-900/80 motion-reduce:animate-none sm:text-2xl [animation-delay:120ms] dark:text-emerald-200/90">
               {merchandising.heroHeadline}
             </p>
-            <p className="animate-fade-up mt-4 max-w-xl text-base leading-8 text-slate-200/90 motion-reduce:animate-none sm:text-lg sm:leading-8 [animation-delay:160ms]">
+            <p className="animate-fade-up mt-4 max-w-lg text-base leading-8 text-slate-600 motion-reduce:animate-none sm:text-[1.05rem] sm:leading-8 [animation-delay:170ms] dark:text-slate-300">
               {merchandising.heroSubcopy || store.tagline}
             </p>
-            <div className="animate-fade-up mt-8 flex flex-col gap-3 sm:flex-row sm:items-center [animation-delay:200ms] motion-reduce:animate-none">
+            <div className="animate-fade-up mt-8 flex flex-col gap-3 sm:flex-row sm:items-center [animation-delay:220ms] motion-reduce:animate-none">
               <Link
                 href={merchandising.ctaHref || "#library-products"}
-                className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-emerald-500 px-6 text-sm font-semibold text-white shadow-lg shadow-emerald-950/25 transition hover:-translate-y-0.5 hover:bg-emerald-400"
+                className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-emerald-700 px-6 text-sm font-semibold text-white shadow-lg shadow-emerald-900/15 transition hover:-translate-y-0.5 hover:bg-emerald-600"
               >
                 {merchandising.ctaLabel} <ArrowRight className="size-4" />
               </Link>
               <Link
                 href="/dashboard/my-library"
-                className="inline-flex h-12 items-center justify-center gap-2 rounded-xl border border-white/20 bg-white/10 px-6 text-sm font-semibold text-white backdrop-blur transition hover:bg-white/15"
+                className="inline-flex h-12 items-center justify-center gap-2 rounded-full border border-ink/10 bg-white/55 px-6 text-sm font-semibold text-ink backdrop-blur-sm transition hover:border-emerald-700/30 hover:bg-white/80 dark:border-white/15 dark:bg-white/5 dark:text-white"
               >
                 My Library <BookmarkCheck className="size-4" />
               </Link>
             </div>
+            <div className="animate-fade-up mt-8 flex flex-wrap gap-x-6 gap-y-3 text-sm leading-6 text-slate-600 [animation-delay:280ms] motion-reduce:animate-none dark:text-slate-300">
+              <StorePromise icon={ShieldCheck} title="Secure checkout" />
+              <StorePromise icon={Award} title="Curated for operators" />
+              <StorePromise icon={BookOpen} title="Library delivery" />
+            </div>
             {!store.enabled && (
-              <p className="mt-6 inline-flex rounded-lg border border-amber-300/30 bg-amber-400/10 px-3 py-2 text-sm leading-6 text-amber-100">
-                The storefront is temporarily closed for updates. Browse is available, checkout may be limited.
+              <p className="mt-6 text-sm leading-6 text-amber-800 dark:text-amber-200">
+                The storefront is temporarily closed for updates. Browse is available; checkout may be limited.
               </p>
             )}
           </div>
 
           {featured ? (
-            <div className="animate-fade-up relative mx-auto w-full max-w-sm lg:mx-0 lg:justify-self-end [animation-delay:160ms] motion-reduce:animate-none">
-              <div aria-hidden className="absolute -inset-8 rounded-full bg-emerald-400/15 blur-3xl" />
-              <div className="relative">
-                <BookCover product={featured} className="mx-auto w-full max-w-[15.5rem] sm:max-w-[17rem]" priority />
-                <div className="mt-6 text-center lg:text-left">
-                  <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-emerald-200/80">Featured</p>
+            <div className="animate-fade-up relative mx-auto w-full max-w-sm lg:mx-0 lg:justify-self-end [animation-delay:140ms] motion-reduce:animate-none">
+              <div aria-hidden className="library-book-glow absolute left-1/2 top-1/2 size-72 -translate-x-1/2 -translate-y-1/2 rounded-full" />
+              <div className="relative flex flex-col items-center">
+                <BookCover
+                  product={featured}
+                  className="w-full max-w-[15rem] rotate-[-2deg] sm:max-w-[16.5rem]"
+                  priority
+                />
+                <div aria-hidden className="mt-6 h-3 w-48 rounded-full bg-ink/10 blur-md dark:bg-black/40" />
+                <div className="mt-5 w-full max-w-sm text-center">
+                  <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-emerald-800/70 dark:text-emerald-300/80">
+                    Featured title
+                  </p>
                   <Link
                     href={`/library/${featured.slug}`}
-                    className="mt-2 block text-xl font-semibold leading-snug tracking-tight text-white transition hover:text-emerald-200"
+                    className="mt-2 block text-lg font-semibold leading-snug tracking-tight text-ink transition hover:text-emerald-800 dark:text-white dark:hover:text-emerald-200"
                   >
                     {featured.title}
                   </Link>
-                  <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-300">{featured.shortDescription}</p>
-                  <div className="mt-5 flex flex-wrap items-center justify-center gap-3 lg:justify-start">
-                    <p className="text-lg font-semibold tracking-tight text-white">
+                  <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
+                    {featured.shortDescription}
+                  </p>
+                  <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
+                    <p className="text-base font-semibold tracking-tight text-ink dark:text-white">
                       {hidePrices ? "Sign in for price" : libraryPriceLabel(featured)}
                     </p>
-                    <Button onClick={() => addToCart(featured)} className="rounded-xl">
+                    <Button onClick={() => addToCart(featured)} className="rounded-full px-5">
                       <ShoppingCart className="size-4" />
                       {quantityFor(featured.id) ? `In bag (${quantityFor(featured.id)})` : "Add to bag"}
                     </Button>
@@ -206,74 +218,91 @@ export function LibraryStorefront({
         </div>
       </section>
 
-      <section className="relative border-y border-slate-200/80 bg-white/80 backdrop-blur dark:border-slate-800 dark:bg-slate-950/70">
-        <div className="mx-auto grid max-w-7xl gap-6 px-4 py-6 sm:px-6 md:grid-cols-3 lg:px-8">
-          <StorePromise icon={ShieldCheck} title="Secure checkout" text="Protected orders with invoice-ready receipts." />
-          <StorePromise icon={Award} title="Curated for operators" text="Resources for agents, landlords, and developers." />
-          <StorePromise icon={BookOpen} title="Library delivery" text="Digital downloads and lasting account access." />
-        </div>
-      </section>
-
-      <section className="sticky top-0 z-20 border-b border-slate-200/80 bg-white/90 backdrop-blur-md dark:border-slate-800 dark:bg-slate-950/90">
-        <div className="mx-auto grid max-w-7xl gap-3 px-4 py-3.5 sm:px-6 lg:grid-cols-[minmax(0,1fr)_auto_auto_auto] lg:items-center lg:px-8">
-          <label className="relative min-w-0">
-            <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
-            <input
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search title, author, category, or ISBN"
-              className="h-11 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-4 text-sm leading-none text-ink shadow-sm outline-none transition placeholder:text-slate-400 focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/10 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
-            />
-          </label>
-          <Select value={category} onChange={setCategory} label="Category" options={facets.categories} />
-          <Select value={type} onChange={setType} label="Format" options={facets.types} />
-          <select
-            value={sort}
-            onChange={(event) => setSort(event.target.value)}
-            className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm text-ink shadow-sm outline-none transition focus:border-emerald-600 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
-          >
-            <option value="newest">Newest</option>
-            <option value="best-selling">Best selling</option>
-            <option value="most-downloaded">Most downloaded</option>
-            <option value="highest-rated">Highest rated</option>
-            <option value="price-asc">Price: low to high</option>
-            <option value="price-desc">Price: high to low</option>
-          </select>
+      {/* Search floats on the same canvas — not a separate color slab */}
+      <section className="sticky top-0 z-20">
+        <div className="border-y border-ink/[0.06] bg-white/70 backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/75">
+          <div className="mx-auto grid max-w-7xl gap-3 px-4 py-3.5 sm:px-6 lg:grid-cols-[minmax(0,1fr)_auto_auto_auto] lg:items-center lg:px-8">
+            <label className="relative min-w-0">
+              <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+              <input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Search title, author, category, or ISBN"
+                className="h-11 w-full rounded-full border border-ink/10 bg-white/80 pl-10 pr-4 text-sm text-ink outline-none transition placeholder:text-slate-400 focus:border-emerald-600/50 focus:ring-4 focus:ring-emerald-600/10 dark:border-white/10 dark:bg-slate-900/80 dark:text-white"
+              />
+            </label>
+            <Select value={category} onChange={setCategory} label="Category" options={facets.categories} />
+            <Select value={type} onChange={setType} label="Format" options={facets.types} />
+            <select
+              value={sort}
+              onChange={(event) => setSort(event.target.value)}
+              className="h-11 rounded-full border border-ink/10 bg-white/80 px-4 text-sm text-ink outline-none transition focus:border-emerald-600/50 dark:border-white/10 dark:bg-slate-900/80 dark:text-white"
+            >
+              <option value="newest">Newest</option>
+              <option value="best-selling">Best selling</option>
+              <option value="most-downloaded">Most downloaded</option>
+              <option value="highest-rated">Highest rated</option>
+              <option value="price-asc">Price: low to high</option>
+              <option value="price-desc">Price: high to low</option>
+            </select>
+          </div>
         </div>
       </section>
 
       {!products.length ? (
         <EmptyLibraryState />
       ) : (
-        <>
-          {facets.categories.length > 0 && (
-            <section className="relative mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-              <div className="mb-7 flex items-end justify-between gap-6">
+        <div className="relative">
+          {facets.categories.length > 1 && (
+            <section className="mx-auto max-w-7xl px-4 pt-10 sm:px-6 lg:px-8">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                 <div>
-                  <p className="section-eyebrow">Shop by focus</p>
-                  <h2 className="section-title !mt-3 !text-[1.85rem] sm:!text-[2.15rem]">Find the right shelf</h2>
+                  <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-emerald-800/70 dark:text-emerald-300/80">
+                    Browse
+                  </p>
+                  <h2 className="mt-2 text-2xl font-semibold tracking-[-0.02em] text-ink dark:text-white">Find a shelf</h2>
                 </div>
-                <p className="hidden max-w-sm text-sm leading-7 text-slate-500 md:block">
-                  Filter by how property professionals actually work — learning, investing, legal paperwork, and field ops.
-                </p>
               </div>
-              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-                {facets.categories.map((item) => (
-                  <CategoryTile
-                    key={item}
-                    name={item}
-                    count={products.filter((product) => product.category === item).length}
-                    active={category === item}
-                    onClick={() => setCategory(category === item ? "" : item)}
-                  />
-                ))}
+              <div className="mt-5 flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                <button
+                  type="button"
+                  onClick={() => setCategory("")}
+                  className={cn(
+                    "shrink-0 rounded-full px-4 py-2 text-sm font-medium transition",
+                    !category
+                      ? "bg-ink text-white dark:bg-white dark:text-ink"
+                      : "bg-white/60 text-slate-600 ring-1 ring-ink/8 hover:text-ink dark:bg-white/5 dark:text-slate-300 dark:ring-white/10",
+                  )}
+                >
+                  All
+                </button>
+                {facets.categories.map((item) => {
+                  const meta = categoryMeta(item);
+                  const Icon = meta.icon;
+                  const count = products.filter((product) => product.category === item).length;
+                  return (
+                    <button
+                      key={item}
+                      type="button"
+                      onClick={() => setCategory(category === item ? "" : item)}
+                      className={cn(
+                        "inline-flex shrink-0 items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition",
+                        category === item
+                          ? "bg-emerald-700 text-white"
+                          : "bg-white/60 text-slate-600 ring-1 ring-ink/8 hover:text-ink dark:bg-white/5 dark:text-slate-300 dark:ring-white/10",
+                      )}
+                    >
+                      <Icon className="size-3.5 opacity-80" />
+                      {item}
+                      <span className="tabular-nums opacity-70">{count}</span>
+                    </button>
+                  );
+                })}
               </div>
             </section>
           )}
 
-          {heroStack.length > 0 && <PromoBanner products={heroStack} storeName={store.name} />}
-
-          <section className="relative mx-auto grid max-w-7xl gap-10 px-4 pb-16 sm:px-6 lg:grid-cols-[minmax(0,1fr)_19.5rem] lg:px-8">
+          <section className="mx-auto grid max-w-7xl gap-12 px-4 py-12 sm:px-6 lg:grid-cols-[minmax(0,1fr)_18.5rem] lg:px-8 lg:py-14">
             <div id="library-products" className="min-w-0 space-y-14">
               {merchandising.showCuratedRail && (
                 <ProductSection
@@ -294,29 +323,28 @@ export function LibraryStorefront({
                 hidePrices={hidePrices}
               />
 
-              <section className="space-y-6">
-                <div className="flex flex-col gap-4 border-t border-slate-200/90 pt-10 dark:border-slate-800 md:flex-row md:items-end md:justify-between">
+              <section className="space-y-8">
+                <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
                   <div>
-                    <p className="section-eyebrow">Catalogue</p>
-                    <h2 className="mt-3 text-[1.85rem] font-semibold tracking-[-0.02em] text-ink dark:text-white sm:text-[2.15rem]">
+                    <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-emerald-800/70 dark:text-emerald-300/80">
+                      Catalogue
+                    </p>
+                    <h2 className="mt-2 text-2xl font-semibold tracking-[-0.02em] text-ink dark:text-white sm:text-[2.05rem]">
                       {results.length} {results.length === 1 ? "title" : "titles"}
                     </h2>
                   </div>
                   {facets.difficulties.length > 0 && (
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="inline-flex items-center gap-2 pr-1 text-sm font-medium text-slate-600 dark:text-slate-300">
-                        <SlidersHorizontal className="size-4" /> Level
-                      </span>
                       {facets.difficulties.map((item) => (
                         <button
                           key={item}
                           type="button"
                           onClick={() => setDifficulty(difficulty === item ? "" : item)}
                           className={cn(
-                            "rounded-full border px-3.5 py-1.5 text-sm font-medium transition",
+                            "rounded-full px-3.5 py-1.5 text-sm font-medium transition",
                             difficulty === item
-                              ? "border-emerald-700 bg-emerald-700 text-white"
-                              : "border-slate-200 bg-white text-slate-600 hover:border-emerald-600 hover:text-ink dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300",
+                              ? "bg-emerald-700 text-white"
+                              : "bg-white/55 text-slate-600 ring-1 ring-ink/8 hover:text-ink dark:bg-white/5 dark:text-slate-300 dark:ring-white/10",
                           )}
                         >
                           {item}
@@ -327,7 +355,7 @@ export function LibraryStorefront({
                 </div>
 
                 {results.length ? (
-                  <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+                  <div className="grid gap-x-6 gap-y-10 sm:grid-cols-2 xl:grid-cols-3">
                     {results.map((product) => (
                       <ProductCard
                         key={product.id}
@@ -339,7 +367,7 @@ export function LibraryStorefront({
                     ))}
                   </div>
                 ) : (
-                  <div className="rounded-2xl border border-dashed border-slate-300 bg-white/70 px-6 py-14 text-center dark:border-slate-700 dark:bg-slate-900/50">
+                  <div className="px-2 py-16 text-center">
                     <p className="text-lg font-semibold text-ink dark:text-white">No matches for these filters</p>
                     <p className="mx-auto mt-2 max-w-md text-sm leading-7 text-slate-500">
                       Try clearing a filter or searching by author, ISBN, or a broader keyword.
@@ -361,11 +389,11 @@ export function LibraryStorefront({
               </section>
             </div>
 
-            <aside className="h-fit space-y-4 lg:sticky lg:top-24">
+            <aside className="h-fit lg:sticky lg:top-24">
               <CartPanel cart={cart} total={total} currency={currency} count={count} onCart={(next) => setCart(next)} />
             </aside>
           </section>
-        </>
+        </div>
       )}
     </main>
   );
@@ -425,17 +453,17 @@ function ProductSection({
 }) {
   if (!products.length) return null;
   return (
-    <section className="space-y-6">
+    <section className="space-y-8">
       <div className="flex items-end justify-between gap-4">
         <div>
-          <h2 className="text-[1.85rem] font-semibold tracking-[-0.02em] text-ink dark:text-white sm:text-[2.15rem]">{title}</h2>
+          <h2 className="text-2xl font-semibold tracking-[-0.02em] text-ink dark:text-white sm:text-[2.05rem]">{title}</h2>
           <p className="mt-2 max-w-xl text-sm leading-7 text-slate-500 dark:text-slate-400">{subtitle}</p>
         </div>
         <Link href="#library-products" className="hidden items-center gap-1 text-sm font-semibold text-emerald-700 sm:inline-flex">
           View all <ArrowRight className="size-4" />
         </Link>
       </div>
-      <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="grid gap-x-6 gap-y-10 sm:grid-cols-2 xl:grid-cols-3">
         {products.map((product) => (
           <ProductCard
             key={product.id}
@@ -453,18 +481,16 @@ function ProductSection({
 
 function EmptyLibraryState() {
   return (
-    <section className="relative mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-2xl text-center">
-        <span className="mx-auto grid size-14 place-items-center rounded-2xl bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300 dark:ring-emerald-900">
-          <BookOpen className="size-7" />
-        </span>
-        <h2 className="mt-6 text-3xl font-semibold tracking-tight text-ink dark:text-white">The library is being prepared</h2>
-        <p className="mx-auto mt-3 max-w-lg text-base leading-8 text-slate-500">
-          Professional property books, templates, and toolkits will appear here soon. Check back for published HouseLink resources.
+    <section className="relative mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-xl text-center">
+        <BookOpen className="mx-auto size-8 text-emerald-700/80 dark:text-emerald-300" />
+        <h2 className="mt-5 text-3xl font-semibold tracking-tight text-ink dark:text-white">The library is being prepared</h2>
+        <p className="mx-auto mt-3 text-base leading-8 text-slate-500">
+          Professional property books, templates, and toolkits will appear here soon.
         </p>
         <Link
           href="/search"
-          className="mt-8 inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-emerald-700 px-5 text-sm font-semibold text-white transition hover:bg-emerald-600"
+          className="mt-8 inline-flex h-11 items-center justify-center gap-2 rounded-full bg-emerald-700 px-5 text-sm font-semibold text-white transition hover:bg-emerald-600"
         >
           Browse properties <ArrowRight className="size-4" />
         </Link>
@@ -487,25 +513,32 @@ function ProductCard({
   hidePrices?: boolean;
 }) {
   return (
-    <article className="group flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200/90 bg-white transition duration-300 hover:-translate-y-1 hover:border-emerald-600/30 hover:shadow-card-hover dark:border-slate-800 dark:bg-slate-900">
-      <div className="bg-[linear-gradient(180deg,#f4f8f7_0%,#eef5f2_100%)] px-5 pb-2 pt-5 dark:bg-slate-950/60">
-        <BookCover product={product} className={cn("mx-auto w-full", compact ? "max-w-[10.5rem]" : "max-w-[12rem]")} />
+    <article className="group flex h-full flex-col">
+      <div className="relative flex justify-center px-2 pt-2">
+        <div aria-hidden className="absolute bottom-2 left-1/2 h-4 w-3/5 -translate-x-1/2 rounded-full bg-ink/10 blur-md transition group-hover:bg-emerald-900/15 dark:bg-black/40" />
+        <BookCover
+          product={product}
+          className={cn(
+            "relative w-full transition duration-500 ease-out group-hover:-translate-y-1.5 group-hover:rotate-[-1deg]",
+            compact ? "max-w-[10.25rem]" : "max-w-[11.75rem]",
+          )}
+        />
       </div>
-      <div className="flex min-w-0 flex-1 flex-col p-5">
-        <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-emerald-700 dark:text-emerald-300">
+      <div className="mt-5 flex min-w-0 flex-1 flex-col px-1">
+        <p className="text-[0.65rem] font-semibold uppercase tracking-[0.16em] text-emerald-800/75 dark:text-emerald-300/85">
           {libraryFormatsLabel(product)}
         </p>
         <Link
           href={`/library/${product.slug}`}
-          className="mt-2 line-clamp-2 text-[1.05rem] font-semibold leading-snug tracking-tight text-ink transition hover:text-emerald-700 dark:text-white dark:hover:text-emerald-300"
+          className="mt-2 line-clamp-2 text-[1.05rem] font-semibold leading-snug tracking-tight text-ink transition hover:text-emerald-800 dark:text-white dark:hover:text-emerald-200"
         >
           {product.title}
         </Link>
         <p className="mt-1.5 line-clamp-1 text-sm leading-6 text-slate-500">{product.author}</p>
         {!compact && (
-          <p className="mt-3 line-clamp-2 text-sm leading-7 text-slate-600 dark:text-slate-300">{product.shortDescription}</p>
+          <p className="mt-2.5 line-clamp-2 text-sm leading-7 text-slate-600 dark:text-slate-300">{product.shortDescription}</p>
         )}
-        <div className="mt-auto flex items-center justify-between gap-3 pt-5">
+        <div className="mt-auto flex items-center justify-between gap-3 pt-4">
           <span className="flex items-center gap-1 text-sm text-amber-500">
             <Star className="size-3.5 fill-current" />
             <span className="font-medium text-slate-600 dark:text-slate-300">{product.rating || "New"}</span>
@@ -514,14 +547,18 @@ function ProductCard({
             {hidePrices ? "Sign in" : libraryPriceLabel(product)}
           </p>
         </div>
-        <div className="mt-4 grid grid-cols-[1fr_auto] gap-2">
-          <Button onClick={() => onAdd(product)} disabled={product.comingSoon && !product.preorder} className="rounded-xl">
+        <div className="mt-4 flex gap-2">
+          <Button
+            onClick={() => onAdd(product)}
+            disabled={product.comingSoon && !product.preorder}
+            className="flex-1 rounded-full"
+          >
             <ShoppingCart className="size-4" />
             {quantity ? `In bag (${quantity})` : product.preorder ? "Pre-order" : "Add"}
           </Button>
           <Link
             href={`/library/${product.slug}`}
-            className="inline-flex size-11 items-center justify-center rounded-xl border border-slate-200 text-slate-600 transition hover:border-emerald-600 hover:text-emerald-700 dark:border-slate-700 dark:text-slate-300"
+            className="inline-flex size-11 items-center justify-center rounded-full border border-ink/10 text-slate-600 transition hover:border-emerald-700/40 hover:text-emerald-800 dark:border-white/10 dark:text-slate-300"
             aria-label={`View ${product.title}`}
           >
             <ArrowRight className="size-4" />
@@ -532,112 +569,21 @@ function ProductCard({
   );
 }
 
-function CategoryTile({
-  name,
-  count,
-  active,
-  onClick,
-}: {
-  name: string;
-  count: number;
-  active: boolean;
-  onClick: () => void;
-}) {
-  const meta = categoryMeta(name);
-  const Icon = meta.icon;
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        "min-h-[9.5rem] rounded-2xl border p-5 text-left transition duration-300 hover:-translate-y-0.5",
-        active
-          ? "border-emerald-700 bg-emerald-700 text-white shadow-lg shadow-emerald-900/15"
-          : "border-slate-200/90 bg-white text-ink hover:border-emerald-600/40 hover:shadow-soft dark:border-slate-800 dark:bg-slate-900 dark:text-white",
-      )}
-    >
-      <div className="flex items-start justify-between gap-3">
-        <span
-          className={cn(
-            "grid size-10 place-items-center rounded-xl",
-            active ? "bg-white/15 text-white" : meta.badge,
-          )}
-        >
-          <Icon className="size-5" />
-        </span>
-        <span
-          className={cn(
-            "rounded-full px-2.5 py-0.5 text-xs font-semibold tabular-nums",
-            active ? "bg-white/15 text-white" : "bg-mist text-emerald-800 dark:bg-slate-800 dark:text-emerald-300",
-          )}
-        >
-          {count}
-        </span>
-      </div>
-      <h3 className="mt-4 text-base font-semibold leading-snug tracking-tight">{name}</h3>
-      <p className={cn("mt-1.5 line-clamp-2 text-sm leading-6", active ? "text-white/75" : "text-slate-500")}>
-        {meta.text}
-      </p>
-    </button>
-  );
+function categoryMeta(name: string): { icon: LucideIcon; text: string } {
+  if (name === "Courses") return { icon: GraduationCap, text: "Structured lessons and guided learning paths." };
+  if (name === "Investment") return { icon: TrendingUp, text: "Guides for yield, risk, and market decisions." };
+  if (name === "Legal Documents") return { icon: FileText, text: "Editable packs for landlord and lease workflows." };
+  if (name === "Property Law") return { icon: Home, text: "Reference manuals for compliant property work." };
+  if (name === "Toolkits") return { icon: Wrench, text: "Checklists, scripts, and practical agent resources." };
+  return { icon: BookOpen, text: "Browse professional HouseLink resources." };
 }
 
-function PromoBanner({ products, storeName }: { products: LibraryProduct[]; storeName: string }) {
+function StorePromise({ icon: Icon, title }: { icon: LucideIcon; title: string }) {
   return (
-    <section className="relative mx-auto max-w-7xl px-4 pb-4 sm:px-6 lg:px-8">
-      <div className="relative overflow-hidden rounded-3xl bg-ink text-white shadow-hero">
-        <div
-          aria-hidden
-          className="absolute inset-0 bg-[radial-gradient(ellipse_at_15%_20%,rgba(16,185,129,0.22),transparent_45%),radial-gradient(ellipse_at_85%_80%,rgba(14,165,233,0.12),transparent_40%)]"
-        />
-        <div className="relative grid lg:grid-cols-[minmax(0,1fr)_22rem]">
-          <div className="p-7 sm:p-10">
-            <p className="text-[0.68rem] font-semibold uppercase tracking-[0.2em] text-emerald-300/90">{storeName}</p>
-            <h2 className="mt-3 max-w-2xl text-2xl font-semibold leading-tight tracking-[-0.02em] sm:text-3xl sm:leading-[1.15]">
-              Documents, books, and templates behind better property work.
-            </h2>
-            <p className="mt-4 max-w-lg text-sm leading-7 text-slate-300">
-              Build your operating shelf for agents, landlords, investors, and developers — then open everything from My Library.
-            </p>
-            <Link
-              href="#library-products"
-              className="mt-7 inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-white px-5 text-sm font-semibold text-ink transition hover:bg-emerald-50"
-            >
-              Shop the catalogue <ArrowRight className="size-4" />
-            </Link>
-          </div>
-          <div className="relative hidden min-h-64 lg:block">
-            <div aria-hidden className="absolute bottom-10 left-10 h-3 w-64 rounded-full bg-black/20 blur-sm" />
-            {products[0] && <BookCover product={products[0]} className="absolute bottom-12 left-12 w-32 rotate-[-8deg]" />}
-            {products[1] && <BookCover product={products[1]} className="absolute bottom-12 left-36 z-10 w-36" />}
-            {products[2] && <BookCover product={products[2]} className="absolute bottom-12 right-10 w-32 rotate-[8deg]" />}
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function categoryMeta(name: string): { icon: LucideIcon; badge: string; text: string } {
-  if (name === "Courses") return { icon: GraduationCap, badge: "bg-sky-50 text-sky-700", text: "Structured lessons and guided learning paths." };
-  if (name === "Investment") return { icon: TrendingUp, badge: "bg-orange-50 text-orange-700", text: "Guides for yield, risk, and market decisions." };
-  if (name === "Legal Documents") return { icon: FileText, badge: "bg-blue-50 text-blue-700", text: "Editable packs for landlord and lease workflows." };
-  if (name === "Property Law") return { icon: Home, badge: "bg-emerald-50 text-emerald-700", text: "Reference manuals for compliant property work." };
-  if (name === "Toolkits") return { icon: Wrench, badge: "bg-amber-50 text-amber-700", text: "Checklists, scripts, and practical agent resources." };
-  return { icon: BookOpen, badge: "bg-emerald-50 text-emerald-700", text: "Browse professional HouseLink resources." };
-}
-
-function StorePromise({ icon: Icon, title, text }: { icon: LucideIcon; title: string; text: string }) {
-  return (
-    <div className="flex items-start gap-3.5">
-      <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300">
-        <Icon className="size-5" />
-      </span>
-      <div className="min-w-0">
-        <p className="text-sm font-semibold tracking-tight text-ink dark:text-white">{title}</p>
-        <p className="mt-1 text-sm leading-6 text-slate-500 dark:text-slate-400">{text}</p>
-      </div>
-    </div>
+    <span className="inline-flex items-center gap-2">
+      <Icon className="size-4 text-emerald-700 dark:text-emerald-300" />
+      <span className="font-medium text-slate-700 dark:text-slate-200">{title}</span>
+    </span>
   );
 }
 
@@ -655,8 +601,8 @@ function CartPanel({
   onCart: (cart: LibraryCartLine[]) => void;
 }) {
   return (
-    <div className="overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-soft dark:border-slate-800 dark:bg-slate-900">
-      <div className="border-b border-slate-100 px-5 py-4 dark:border-slate-800">
+    <div className="overflow-hidden rounded-3xl border border-ink/[0.07] bg-white/65 shadow-[0_20px_60px_rgba(16,32,36,0.06)] backdrop-blur-md dark:border-white/10 dark:bg-slate-900/70">
+      <div className="px-5 py-4">
         <p className="flex items-center gap-2 text-sm font-semibold text-ink dark:text-white">
           <ShoppingBag className="size-4 text-emerald-700" /> Library Bag
           {count > 0 && (
@@ -665,10 +611,10 @@ function CartPanel({
         </p>
         <p className="mt-1 text-xs leading-5 text-slate-500">Checkout, invoices, and secure delivery.</p>
       </div>
-      <div className="space-y-3 p-4">
+      <div className="space-y-3 px-4 pb-4">
         {cart.length ? (
           cart.map((line) => (
-            <div key={libraryCartLineKey(line)} className="rounded-xl border border-slate-200/90 p-3 text-sm dark:border-slate-700">
+            <div key={libraryCartLineKey(line)} className="rounded-2xl bg-white/70 p-3 text-sm ring-1 ring-ink/[0.06] dark:bg-slate-950/50 dark:ring-white/10">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="line-clamp-2 font-semibold leading-snug text-ink dark:text-white">{line.title}</p>
@@ -682,7 +628,7 @@ function CartPanel({
                 </p>
               </div>
               <div className="mt-3 flex items-center justify-between gap-3">
-                <div className="inline-flex items-center rounded-lg border border-slate-200 dark:border-slate-700">
+                <div className="inline-flex items-center rounded-full ring-1 ring-ink/10 dark:ring-white/10">
                   <button
                     type="button"
                     onClick={() =>
@@ -720,14 +666,14 @@ function CartPanel({
             </div>
           ))
         ) : (
-          <div className="grid min-h-32 place-items-center rounded-xl border border-dashed border-slate-300 p-4 text-center text-sm leading-6 text-slate-500 dark:border-slate-700">
+          <div className="grid min-h-28 place-items-center px-3 py-6 text-center text-sm leading-6 text-slate-500">
             <div>
               <ShoppingCart className="mx-auto mb-2 size-5 text-slate-400" />
               Add a product to start checkout.
             </div>
           </div>
         )}
-        <div className="flex items-center justify-between border-t border-slate-100 pt-3 text-sm font-semibold dark:border-slate-800">
+        <div className="flex items-center justify-between border-t border-ink/[0.06] pt-3 text-sm font-semibold dark:border-white/10">
           <span>Total</span>
           <span className="tabular-nums">
             {currency} {total.toFixed(2)}
@@ -736,10 +682,10 @@ function CartPanel({
         <Link
           href="/library/checkout"
           className={cn(
-            "inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl text-sm font-semibold transition",
+            "inline-flex h-11 w-full items-center justify-center gap-2 rounded-full text-sm font-semibold transition",
             cart.length
               ? "bg-emerald-700 text-white hover:bg-emerald-600"
-              : "pointer-events-none bg-slate-100 text-slate-400 dark:bg-slate-800",
+              : "pointer-events-none bg-slate-100/80 text-slate-400 dark:bg-slate-800",
           )}
         >
           <ShoppingCart className="size-4" /> Checkout
@@ -763,11 +709,11 @@ function Select({
   return (
     <label className="relative">
       <span className="sr-only">{label}</span>
-      <Filter className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+      <Filter className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
       <select
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="h-11 w-full rounded-xl border border-slate-200 bg-white pl-9 pr-3 text-sm text-ink shadow-sm outline-none transition focus:border-emerald-600 dark:border-slate-700 dark:bg-slate-900 dark:text-white lg:w-44"
+        className="h-11 w-full rounded-full border border-ink/10 bg-white/80 pl-9 pr-4 text-sm text-ink outline-none transition focus:border-emerald-600/50 dark:border-white/10 dark:bg-slate-900/80 dark:text-white lg:w-40"
       >
         <option value="">{label}</option>
         {options.map((option) => (
