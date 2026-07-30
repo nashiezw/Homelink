@@ -260,25 +260,37 @@ export function LibraryProductPage({
 
       <section className="mx-auto max-w-[88rem] px-4 py-8 sm:px-6 lg:px-8 lg:py-12">
         <article className="overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-soft dark:border-slate-800 dark:bg-slate-900">
-          <div className="grid gap-10 p-6 sm:gap-12 sm:p-8 xl:grid-cols-[minmax(28rem,46rem)_minmax(0,1fr)] xl:items-start xl:gap-12 xl:p-10">
-            <div className="mx-auto w-full space-y-4 xl:mx-0">
-              <div className="relative rounded-[1.35rem] bg-[radial-gradient(circle_at_50%_18%,#ffffff_0%,#f3f7f5_55%,#e8f0ec_100%)] p-3 sm:p-4 dark:bg-[radial-gradient(circle_at_50%_18%,#1e293b_0%,#0f172a_70%,#020617_100%)]">
+          <div className="grid gap-6 p-6 sm:gap-8 sm:p-8 xl:grid-cols-[minmax(0,1fr)_minmax(22rem,34rem)] xl:gap-x-12 xl:gap-y-5 xl:p-10">
+            <div className="relative mx-auto w-full max-w-md xl:mx-0 xl:max-w-none">
+              <div className="relative rounded-[1.35rem] bg-[radial-gradient(circle_at_50%_18%,#ffffff_0%,#f3f7f5_55%,#e8f0ec_100%)] p-3 sm:p-4 dark:bg-[radial-gradient(circle_at_50%_18%,#1e293b_0%,#0f172a_70%,#020617_100%)] xl:absolute xl:inset-0">
                 <button
                   type="button"
                   onClick={() => openLightbox()}
-                  className="relative block w-full text-left"
+                  className="relative mx-auto block aspect-[3/4] w-full max-w-[18.5rem] text-left xl:h-full xl:w-full xl:max-w-none xl:aspect-auto"
                   aria-label="Open product cover"
                 >
-                  <BookCover
-                    product={product}
-                    imageUrl={activeGalleryImage?.url}
-                    interactive={false}
-                    className="w-full rounded-xl shadow-[0_22px_48px_rgba(15,23,42,0.16)]"
-                    sizes="(max-width: 768px) 80vw, (max-width: 1280px) 46vw, 720px"
-                    priority
-                  />
+                  {activeGalleryImage?.url ? (
+                    <span className="relative block h-full w-full overflow-hidden rounded-xl shadow-[0_22px_48px_rgba(15,23,42,0.16)]">
+                      <Image
+                        src={activeGalleryImage.url}
+                        alt={product.title}
+                        fill
+                        priority
+                        sizes="(max-width: 768px) 70vw, 420px"
+                        className="object-contain"
+                      />
+                    </span>
+                  ) : (
+                    <BookCover
+                      product={product}
+                      interactive={false}
+                      className="h-full w-full rounded-xl shadow-[0_22px_48px_rgba(15,23,42,0.16)]"
+                      sizes="(max-width: 768px) 70vw, 420px"
+                      priority
+                    />
+                  )}
                 </button>
-                <div className="absolute bottom-4 right-4 z-20 flex gap-2 sm:bottom-5 sm:right-5">
+                <div className="absolute bottom-3 right-3 z-20 flex gap-2 sm:bottom-4 sm:right-4">
                   <button
                     type="button"
                     onClick={() => openLightbox({ zoomed: true })}
@@ -299,6 +311,91 @@ export function LibraryProductPage({
                   </button>
                 </div>
               </div>
+            </div>
+
+            <div className="min-w-0">
+              <p className="text-[0.7rem] font-semibold uppercase tracking-[0.2em] text-emerald-700 dark:text-emerald-300">
+                {product.collection}
+              </p>
+              <h1 className="mt-3 text-balance text-[1.65rem] font-semibold leading-[1.18] tracking-[-0.025em] text-ink sm:text-[2.05rem] sm:leading-[1.14] dark:text-white">
+                {product.title}
+              </h1>
+              {product.subtitle ? (
+                <p className="mt-4 max-w-[34rem] text-[0.98rem] leading-[1.65] text-slate-600 dark:text-slate-300">
+                  {readableSubtitle(product.subtitle)}
+                </p>
+              ) : null}
+
+              <div className="mt-5 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
+                <span>
+                  By <strong className="font-semibold text-ink dark:text-white">{product.author}</strong>
+                </span>
+                <span className="hidden h-1 w-1 rounded-full bg-slate-300 sm:inline-block dark:bg-slate-600" aria-hidden />
+                <span className="inline-flex items-center gap-1.5 text-amber-600 dark:text-amber-400">
+                  <Star className="size-3.5 fill-current" />
+                  <span className="font-medium">{product.rating || "New"}</span>
+                  <span className="text-slate-500 dark:text-slate-400">({product.reviewCount} reviews)</span>
+                </span>
+              </div>
+
+              {formats.length > 0 && (
+                <div className="mt-7">
+                  <p className="text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-slate-500">Choose format</p>
+                  <div className={cn("mt-3 grid gap-3", formats.length > 1 ? "sm:grid-cols-2" : "grid-cols-1")}>
+                    {formats.map((format) => {
+                      const selected = selectedFormat?.id === format.id;
+                      return (
+                        <button
+                          key={format.id}
+                          type="button"
+                          onClick={() => setSelectedFormatId(format.id)}
+                          className={cn(
+                            "rounded-xl border px-4 py-3.5 text-left transition",
+                            selected
+                              ? "border-emerald-600 bg-emerald-50/90 ring-2 ring-emerald-600/15 dark:bg-emerald-950/35"
+                              : "border-slate-200 bg-white hover:border-emerald-500/70 dark:border-slate-700 dark:bg-slate-950/40",
+                          )}
+                        >
+                          <span className="block text-[0.95rem] font-semibold leading-snug text-ink dark:text-white">{format.label}</span>
+                          <span className="mt-1.5 block text-xl font-semibold tracking-tight text-ink dark:text-white">
+                            {product.currency} {format.price.toFixed(2)}
+                          </span>
+                          <span className="mt-1.5 block text-xs leading-5 text-slate-500 dark:text-slate-400">
+                            {format.type === "PRINTED_BOOK" ? printStockLabel : "Digital · instant after payment"}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              <div className="mt-7 border-t border-slate-100 pt-5 dark:border-slate-800">
+                <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                  <p className="text-[2rem] font-semibold tracking-tight text-ink dark:text-white">
+                    {product.currency} {(selectedFormat?.price ?? product.price).toFixed(2)}
+                  </p>
+                  {(selectedFormat?.compareAtPrice ?? product.compareAtPrice) && (
+                    <p className="text-base text-slate-400 line-through">
+                      {product.currency} {(selectedFormat?.compareAtPrice ?? product.compareAtPrice)!.toFixed(2)}
+                    </p>
+                  )}
+                </div>
+                <p className="mt-2 text-sm leading-6 text-emerald-800 dark:text-emerald-200">
+                  {isPrinted ? printStockLabel : "Instant digital delivery after payment confirmation"}
+                </p>
+                <div className="mt-5 grid gap-2.5 sm:grid-cols-2">
+                  <Button disabled={outOfStock} onClick={buyNow} className="h-11">
+                    <ShoppingCart className="size-4" /> {product.preorder ? "Pre-order now" : "Buy now"}
+                  </Button>
+                  <Button variant="secondary" disabled={outOfStock} onClick={addToCart} className="h-11">
+                    <ShoppingBag className="size-4" /> {productQuantity ? `In bag (${productQuantity})` : "Add to cart"}
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            <div className="xl:col-start-1">
               {galleryImages.length > 0 ? (
                 <div className="flex flex-wrap gap-2.5">
                   {galleryImages.slice(0, 6).map((item, index) => (
@@ -332,92 +429,10 @@ export function LibraryProductPage({
               )}
             </div>
 
-            <div className="min-w-0 xl:max-w-[36rem]">
-              <p className="text-[0.7rem] font-semibold uppercase tracking-[0.2em] text-emerald-700 dark:text-emerald-300">
-                {product.collection}
-              </p>
-              <h1 className="mt-3 text-balance text-[1.65rem] font-semibold leading-[1.18] tracking-[-0.025em] text-ink sm:text-[2.05rem] sm:leading-[1.14] dark:text-white">
-                {product.title}
-              </h1>
-              {product.subtitle ? (
-                <p className="mt-4 max-w-[34rem] text-[0.98rem] leading-[1.65] text-slate-600 dark:text-slate-300">
-                  {readableSubtitle(product.subtitle)}
-                </p>
-              ) : null}
-
-              <div className="mt-5 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
-                <span>
-                  By <strong className="font-semibold text-ink dark:text-white">{product.author}</strong>
-                </span>
-                <span className="hidden h-1 w-1 rounded-full bg-slate-300 sm:inline-block dark:bg-slate-600" aria-hidden />
-                <span className="inline-flex items-center gap-1.5 text-amber-600 dark:text-amber-400">
-                  <Star className="size-3.5 fill-current" />
-                  <span className="font-medium">{product.rating || "New"}</span>
-                  <span className="text-slate-500 dark:text-slate-400">({product.reviewCount} reviews)</span>
-                </span>
-              </div>
-
-              {formats.length > 0 && (
-                <div className="mt-8">
-                  <p className="text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-slate-500">Choose format</p>
-                  <div className={cn("mt-3 grid gap-3", formats.length > 1 ? "sm:grid-cols-2" : "grid-cols-1")}>
-                    {formats.map((format) => {
-                      const selected = selectedFormat?.id === format.id;
-                      return (
-                        <button
-                          key={format.id}
-                          type="button"
-                          onClick={() => setSelectedFormatId(format.id)}
-                          className={cn(
-                            "rounded-xl border px-4 py-3.5 text-left transition",
-                            selected
-                              ? "border-emerald-600 bg-emerald-50/90 ring-2 ring-emerald-600/15 dark:bg-emerald-950/35"
-                              : "border-slate-200 bg-white hover:border-emerald-500/70 dark:border-slate-700 dark:bg-slate-950/40",
-                          )}
-                        >
-                          <span className="block text-[0.95rem] font-semibold leading-snug text-ink dark:text-white">{format.label}</span>
-                          <span className="mt-1.5 block text-xl font-semibold tracking-tight text-ink dark:text-white">
-                            {product.currency} {format.price.toFixed(2)}
-                          </span>
-                          <span className="mt-1.5 block text-xs leading-5 text-slate-500 dark:text-slate-400">
-                            {format.type === "PRINTED_BOOK" ? printStockLabel : "Digital · instant after payment"}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              <div className="mt-8 border-t border-slate-100 pt-6 dark:border-slate-800">
-                <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                  <p className="text-[2rem] font-semibold tracking-tight text-ink dark:text-white">
-                    {product.currency} {(selectedFormat?.price ?? product.price).toFixed(2)}
-                  </p>
-                  {(selectedFormat?.compareAtPrice ?? product.compareAtPrice) && (
-                    <p className="text-base text-slate-400 line-through">
-                      {product.currency} {(selectedFormat?.compareAtPrice ?? product.compareAtPrice)!.toFixed(2)}
-                    </p>
-                  )}
-                </div>
-                <p className="mt-2 text-sm leading-6 text-emerald-800 dark:text-emerald-200">
-                  {isPrinted ? printStockLabel : "Instant digital delivery after payment confirmation"}
-                </p>
-                <div className="mt-5 grid gap-2.5 sm:grid-cols-2">
-                  <Button disabled={outOfStock} onClick={buyNow} className="h-11">
-                    <ShoppingCart className="size-4" /> {product.preorder ? "Pre-order now" : "Buy now"}
-                  </Button>
-                  <Button variant="secondary" disabled={outOfStock} onClick={addToCart} className="h-11">
-                    <ShoppingBag className="size-4" /> {productQuantity ? `In bag (${productQuantity})` : "Add to cart"}
-                  </Button>
-                </div>
-              </div>
-
-              <div className="mt-7 grid gap-3 border-t border-slate-100 pt-6 sm:grid-cols-3 dark:border-slate-800">
-                <HeroProof icon={ShieldCheck} label="Secure checkout" />
-                <HeroProof icon={ReceiptText} label="Invoice ready" />
-                <HeroProof icon={Download} label="Tracked access" />
-              </div>
+            <div className="grid gap-3 border-t border-slate-100 pt-5 sm:grid-cols-3 dark:border-slate-800 xl:col-start-2 xl:border-0 xl:pt-0">
+              <HeroProof icon={ShieldCheck} label="Secure checkout" />
+              <HeroProof icon={ReceiptText} label="Invoice ready" />
+              <HeroProof icon={Download} label="Tracked access" />
             </div>
           </div>
         </article>
