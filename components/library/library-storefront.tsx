@@ -187,31 +187,23 @@ export function LibraryStorefront({
             </div>
 
             {featured && (
-              <div className="relative mx-auto flex w-full max-w-[20rem] items-end justify-center pb-4 motion-safe:animate-fade-up motion-safe:[animation-delay:120ms] lg:max-w-none lg:justify-end lg:pr-2">
-                <div className="relative w-[78%] max-w-[17.5rem]">
-                  <div
-                    aria-hidden
-                    className="pointer-events-none absolute -bottom-1 left-1/2 h-6 w-[88%] -translate-x-1/2 rounded-[100%] bg-[radial-gradient(ellipse_at_center,rgba(16,32,36,0.22)_0%,rgba(16,32,36,0.08)_45%,transparent_72%)] blur-[2px]"
-                  />
-                  <div className="relative motion-safe:animate-library-float">
-                    <div
-                      aria-hidden
-                      className="absolute inset-y-[3%] left-0 z-10 w-[7%] rounded-l-[3px] bg-[linear-gradient(90deg,#0f2744_0%,#1a3560_42%,#2a4d7a_100%)] shadow-[inset_-1px_0_0_rgba(255,255,255,0.12)]"
-                    />
-                    <div
-                      aria-hidden
-                      className="absolute inset-y-[4%] left-[6.5%] z-10 w-px bg-white/25"
-                    />
-                    <BookCover
-                      product={featured}
-                      variant="shop"
-                      interactive={false}
-                      priority
-                      className="relative w-full rounded-[3px] shadow-[0_28px_50px_rgba(16,32,36,0.18),0_8px_18px_rgba(16,32,36,0.08)] ring-1 ring-black/[0.06]"
-                      sizes="320px"
-                    />
-                  </div>
-                </div>
+              <div className="relative mx-auto w-full max-w-[15.5rem] pb-1 motion-safe:animate-fade-up motion-safe:[animation-delay:120ms] sm:max-w-[20rem] sm:pb-0 lg:max-w-none">
+                <div className="absolute -inset-4 rounded-full bg-white/40 blur-2xl sm:-inset-6 dark:bg-white/5" aria-hidden />
+                <BookCover
+                  product={featured}
+                  variant="shop"
+                  interactive={false}
+                  priority
+                  className="relative mx-auto w-[74%] max-w-[13.75rem] rotate-[-4deg] shadow-[0_20px_48px_rgba(16,32,36,0.16)] sm:w-[78%] sm:max-w-[16.5rem] sm:shadow-[0_24px_60px_rgba(16,32,36,0.18)]"
+                  sizes="(max-width: 640px) 220px, 340px"
+                />
+                <BookCover
+                  product={products[1] ?? featured}
+                  variant="shop"
+                  interactive={false}
+                  className="absolute bottom-1 right-0 w-[44%] max-w-[8.25rem] rotate-[8deg] opacity-95 shadow-[0_14px_32px_rgba(16,32,36,0.14)] sm:bottom-2 sm:right-2 sm:w-[46%] sm:max-w-[10rem] sm:shadow-[0_18px_40px_rgba(16,32,36,0.16)] lg:right-3"
+                  sizes="(max-width: 640px) 140px, 200px"
+                />
               </div>
             )}
           </div>
