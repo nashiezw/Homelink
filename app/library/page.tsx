@@ -21,5 +21,6 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function LibraryPage() {
-  return <LibraryStorefront products={await listLibraryProducts()} />;
+  const [products, settings] = await Promise.all([listLibraryProducts(), getLibraryStoreSettings()]);
+  return <LibraryStorefront products={products} merchandising={settings.merchandising} store={settings.store} />;
 }

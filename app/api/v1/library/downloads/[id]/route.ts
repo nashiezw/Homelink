@@ -13,6 +13,7 @@ import {
   verifyDownloadToken,
 } from "@/lib/library/repository";
 import { getLibraryStoreSettings } from "@/lib/library/settings";
+import { isPdfFile } from "@/lib/library/pdf-watermark";
 
 export const dynamic = "force-dynamic";
 
@@ -49,6 +50,8 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
     "X-Robots-Tag": "noindex, nofollow",
   } as Record<string, string>;
 
+  const shouldStampPdf = applyWatermark && settings.downloads.stampPdfBytes && isPdfFile(access.file.fileType, access.file.fileName);
+
   if (access.file.fileUrl.startsWith("/uploads/")) {
     const safeRelative = access.file.fileUrl.replace(/^\/+/, "").split("/").filter((part) => part && part !== "..").join(path.sep);
     const absolute = path.join(process.cwd(), "public", safeRelative);
@@ -56,25 +59,38 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
     if (!absolute.startsWith(publicRoot)) return problem(403, "INVALID_FILE_PATH", "Download path is not allowed.");
     const buffer = await readFile(absolute).catch(() => null);
     if (!buffer) return problem(404, "FILE_NOT_FOUND", "The Library file could not be found.");
-    return new NextResponse(new Uint8Array(buffer), {
+    const bytes = shouldStampPdf ? await stampPdf(buffer, watermark, settings.licence.licenceText) : new Uint8Array(buffer);
+    return new NextResponse(Buffer.from(bytes), {
       headers: {
         ...headers,
         "Content-Type": contentType(access.file.fileType, access.file.fileName),
+        ...(shouldStampPdf ? { "X-HouseLink-Pdf-Stamped": "1" } : {}),
       },
     });
   }
 
-  // Proxy remote/CDN files so buyers never receive a naked long-lived URL.
   try {
     const remote = await fetch(access.file.fileUrl, {
       headers: { Accept: "*/*" },
       redirect: "follow",
       cache: "no-store",
     });
-    if (!remote.ok || !remote.body) {
+    if (!remote.ok) {
       return problem(502, "UPSTREAM_FILE_FAILED", "The Library file could not be fetched from storage.");
     }
     const remoteType = remote.headers.get("content-type") || contentType(access.file.fileType, access.file.fileName);
+    if (shouldStampPdf) {
+      const remoteBytes = new Uint8Array(await remote.arrayBuffer());
+      const stamped = await stampPdf(remoteBytes, watermark, settings.licence.licenceText);
+      return new NextResponse(Buffer.from(stamped), {
+        headers: {
+          ...headers,
+          "Content-Type": "application/pdf",
+          "X-HouseLink-Pdf-Stamped": "1",
+        },
+      });
+    }
+    if (!remote.body) return problem(502, "UPSTREAM_FILE_FAILED", "The Library file could not be fetched from storage.");
     return new NextResponse(remote.body, {
       headers: {
         ...headers,
@@ -83,6 +99,16 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
     });
   } catch {
     return problem(502, "UPSTREAM_FILE_FAILED", "The Library file could not be fetched from storage.");
+  }
+}
+
+async function stampPdf(bytes: Uint8Array | Buffer, label: string, licenceText: string) {
+  try {
+    const { watermarkPdfBuffer } = await import("@/lib/library/pdf-watermark");
+    return await watermarkPdfBuffer({ bytes, label, licenceText });
+  } catch (error) {
+    console.error("[library/download] PDF watermark failed; serving original bytes.", error);
+    return bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
   }
 }
 

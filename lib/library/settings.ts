@@ -266,7 +266,7 @@ export const defaultLibraryStoreSettings: LibraryStoreSettings = {
     heroHeadline: "Property knowledge, ready to buy",
     heroSubcopy: "Books, manuals, contracts, forms, and toolkits built for Zimbabwe's property professionals.",
     ctaLabel: "Browse the catalogue",
-    ctaHref: "#catalogue",
+    ctaHref: "#library-products",
     showCuratedRail: true,
     curatedTitle: "Editor picks",
     defaultSort: "newest",
@@ -575,13 +575,13 @@ export async function saveLibraryStoreSettings(payload: unknown, actorId?: strin
 }
 
 export async function listLibrarySettingsAudit(limit = 20) {
-  if (!shouldUsePostgresLibrarySettings()) return [];
+  if (!shouldUsePostgresLibrarySettings()) return [] as Array<{ id: string; actorId: string | null; action: string; message: string; createdAt: Date; metadata: unknown }>;
   try {
     return await getMainPrisma().libraryActivity.findMany({
       where: { targetType: "settings" },
       orderBy: { createdAt: "desc" },
       take: limit,
-      include: { actor: { select: { id: true, name: true, email: true } } },
+      select: { id: true, actorId: true, action: true, message: true, createdAt: true, metadata: true },
     });
   } catch {
     return [];

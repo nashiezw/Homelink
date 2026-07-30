@@ -6,7 +6,15 @@ export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
   const userId = getSessionUserIdFromRequest(request);
-  let body: { items?: LibraryCartLine[]; couponCode?: string; country?: string; includeShipping?: boolean };
+  let body: {
+    items?: LibraryCartLine[];
+    couponCode?: string;
+    country?: string;
+    province?: string;
+    city?: string;
+    includeShipping?: boolean;
+    shippingMethod?: "SHIPPING" | "PICKUP";
+  };
   try {
     body = await request.json();
   } catch {
@@ -17,7 +25,10 @@ export async function POST(request: Request) {
   try {
     const quote = await quoteLibraryCart(items, body.couponCode, userId ?? undefined, {
       country: body.country,
+      province: body.province,
+      city: body.city,
       includeShipping: body.includeShipping !== false,
+      shippingMethod: body.shippingMethod,
     });
     return ok(quote);
   } catch (error) {

@@ -14,9 +14,12 @@ import {
   type LibraryProductFormat,
   type LibraryProductType as PublicLibraryProductType,
 } from "@/lib/library/catalog";
-import { getLibraryStoreSettings, saveLibraryStoreSettings, type LibraryStoreSettings } from "@/lib/library/settings";
+import { getLibraryStoreSettings, listLibrarySettingsAudit, productTemplateForType, saveLibraryStoreSettings, type LibraryStoreSettings } from "@/lib/library/settings";
+import { quoteLibraryShipping } from "@/lib/library/shipping";
+import { sendLibraryTemplatedEmail } from "@/lib/library/emails";
+import { getCanonicalSiteUrl } from "@/lib/seo/site-url";
 
-export { getLibraryStoreSettings, saveLibraryStoreSettings, type LibraryStoreSettings };
+export { getLibraryStoreSettings, listLibrarySettingsAudit, productTemplateForType, saveLibraryStoreSettings, type LibraryStoreSettings };
 
 export type LibraryCartLine = {
   productId: string;
@@ -50,6 +53,12 @@ export type LibraryCartQuote = {
   couponCode?: string;
   taxLabel?: string;
   taxCountry?: string;
+  shippingZoneId?: string | null;
+  shippingZoneName?: string | null;
+  shippingMethod?: string;
+  estimatedDaysMin?: number;
+  estimatedDaysMax?: number;
+  allowLocalPickup?: boolean;
   items: LibraryCartLine[];
 };
 
@@ -216,7 +225,7 @@ export type LibraryAdminReports = {
   stockAlerts: Array<{ id: string; title: string; stock: number; threshold: number; warehouse: string; supplier: string; state: string }>;
   inventoryMovements: Array<{ id: string; productTitle: string; type: string; quantity: number; note?: string | null; createdAt: string }>;
   taxSummary: Array<{ id: string; name: string; country: string; rate: number; active: boolean; collected: number }>;
-  refundSummary: { orders: number; amount: number; rate: number };
+  refundSummary: { orders: number; amount: number; taxReturned?: number; rate: number };
   settingsHealth: Array<{ area: string; status: string; detail: string }>;
 };
 
@@ -364,12 +373,16 @@ export async function recordLibraryProductView(slug: string) {
 
 export async function getAdminLibraryData() {
   const products = await listLibraryProducts({ includeDrafts: true });
+  const operations = await getLibraryOperationsSummary();
   return {
     products,
     orders: await listLibraryOrders(),
     analytics: await getLibraryAnalytics(),
     facets: getLibraryFacets(products),
-    operations: await getLibraryOperationsSummary(),
+    operations: {
+      ...operations,
+      settingsAudit: await listLibrarySettingsAudit(24),
+    },
   };
 }
 
@@ -441,7 +454,13 @@ export async function quoteLibraryCart(
   items: LibraryCartLine[],
   couponCode?: string,
   customerId?: string,
-  options?: { country?: string; includeShipping?: boolean },
+  options?: {
+    country?: string;
+    province?: string;
+    city?: string;
+    includeShipping?: boolean;
+    shippingMethod?: "SHIPPING" | "PICKUP";
+  },
 ): Promise<LibraryCartQuote> {
   const settings = await getLibraryStoreSettings();
   const normalized = items.map((item) => ({ ...item, quantity: Math.max(1, Number(item.quantity) || 1) })).filter((item) => item.productId);
@@ -462,17 +481,31 @@ export async function quoteLibraryCart(
     });
     const subtotal = lines.reduce((sum, item) => sum + (item.price ?? 0) * item.quantity, 0);
     const hasPrinted = lines.some((item) => item.formatType === "PRINTED_BOOK");
-    const shippingTotal = options?.includeShipping !== false && hasPrinted ? resolveShippingTotal(subtotal, 0, settings) : 0;
+    const shipping = options?.includeShipping !== false && hasPrinted
+      ? quoteLibraryShipping({
+          settings,
+          taxable: subtotal,
+          taxTotal: 0,
+          address: { country: options?.country, province: options?.province, city: options?.city },
+          method: options?.shippingMethod,
+        })
+      : null;
     return {
       subtotal,
       discountTotal: 0,
       taxTotal: 0,
-      shippingTotal,
-      total: roundMoney(subtotal + shippingTotal),
+      shippingTotal: shipping?.shippingTotal ?? 0,
+      total: roundMoney(subtotal + (shipping?.shippingTotal ?? 0)),
       currency: lines[0]?.currency ?? settings.store.currency,
       couponCode,
       taxLabel: settings.tax.taxLabel,
       taxCountry: settings.tax.defaultCountry,
+      shippingZoneId: shipping?.zoneId,
+      shippingZoneName: shipping?.zoneName,
+      shippingMethod: shipping?.method,
+      estimatedDaysMin: shipping?.estimatedDaysMin,
+      estimatedDaysMax: shipping?.estimatedDaysMax,
+      allowLocalPickup: shipping?.allowLocalPickup,
       items: lines,
     };
   }
@@ -507,7 +540,16 @@ export async function quoteLibraryCart(
   const inclusive = tax ? tax.inclusive : settings.tax.pricesIncludeTax;
   const taxTotal = tax && !inclusive ? roundMoney(taxable * (Number(tax.rate) / 100)) : 0;
   const hasPrinted = lines.some((item) => item.formatType === "PRINTED_BOOK");
-  const shippingTotal = options?.includeShipping !== false && hasPrinted ? resolveShippingTotal(taxable, taxTotal, settings) : 0;
+  const shipping = options?.includeShipping !== false && hasPrinted
+    ? quoteLibraryShipping({
+        settings,
+        taxable,
+        taxTotal,
+        address: { country: options?.country || taxCountry, province: options?.province, city: options?.city },
+        method: options?.shippingMethod,
+      })
+    : null;
+  const shippingTotal = shipping?.shippingTotal ?? 0;
   return {
     subtotal,
     discountTotal,
@@ -518,6 +560,12 @@ export async function quoteLibraryCart(
     couponCode: discountTotal > 0 ? couponCode : undefined,
     taxLabel: settings.tax.taxLabel,
     taxCountry,
+    shippingZoneId: shipping?.zoneId,
+    shippingZoneName: shipping?.zoneName,
+    shippingMethod: shipping?.method,
+    estimatedDaysMin: shipping?.estimatedDaysMin,
+    estimatedDaysMax: shipping?.estimatedDaysMax,
+    allowLocalPickup: shipping?.allowLocalPickup,
     items: lines,
   };
 }
@@ -706,11 +754,18 @@ export async function createLibraryOrderFromCheckout(input: {
   items: LibraryCartLine[];
   couponCode?: string;
   shipping?: LibraryShippingAddress | null;
+  shippingMethod?: "SHIPPING" | "PICKUP";
 }) {
   const settings = await getLibraryStoreSettings();
   if (!settings.store.enabled) throw new Error("HouseLink Library checkout is temporarily disabled.");
   if (!shouldUsePostgresLibrary()) {
-    const quote = await quoteLibraryCart(input.items, input.couponCode, input.customerId, { country: input.shipping?.country, includeShipping: true });
+    const quote = await quoteLibraryCart(input.items, input.couponCode, input.customerId, {
+      country: input.shipping?.country,
+      province: input.shipping?.province,
+      city: input.shipping?.city,
+      includeShipping: true,
+      shippingMethod: input.shippingMethod,
+    });
     if (!quote.items.length) throw new Error("No valid Library products found.");
     if (quote.subtotal < settings.checkout.minimumOrderAmount) {
       throw new Error(`Minimum order amount is ${quote.currency} ${settings.checkout.minimumOrderAmount.toFixed(2)}.`);
@@ -746,7 +801,10 @@ export async function createLibraryOrderFromCheckout(input: {
   const prisma = getMainPrisma();
   const quote = await quoteLibraryCart(input.items, input.couponCode, input.customerId, {
     country: input.shipping?.country,
+    province: input.shipping?.province,
+    city: input.shipping?.city,
     includeShipping: true,
+    shippingMethod: input.shippingMethod,
   });
   if (quote.subtotal < settings.checkout.minimumOrderAmount) {
     throw new Error(`Minimum order amount is ${quote.currency} ${settings.checkout.minimumOrderAmount.toFixed(2)}.`);
@@ -786,12 +844,16 @@ export async function createLibraryOrderFromCheckout(input: {
   }>;
 
   const printedLines = lines.filter((line) => line.productType === LibraryProductType.PRINTED_BOOK);
+  const isPickup = input.shippingMethod === "PICKUP";
   if (printedLines.length) {
-    if (!settings.delivery.enablePrintedShipping) {
+    if (!settings.delivery.enablePrintedShipping && !isPickup) {
       throw new Error("Printed book shipping is currently disabled in Library settings.");
     }
-    const shipping = normalizeShippingAddress(input.shipping);
-    if (!shipping) throw new Error("Shipping details are required for printed books.");
+    if (isPickup && !(quote.allowLocalPickup || settings.delivery.allowLocalPickup)) {
+      throw new Error("Local pickup is not available for this order.");
+    }
+    const shipping = isPickup ? null : normalizeShippingAddress(input.shipping);
+    if (!isPickup && !shipping) throw new Error("Shipping details are required for printed books.");
     for (const line of printedLines) {
       if (line.product.stock != null && line.product.stock < line.quantity && !settings.inventory.allowBackorder) {
         throw new Error(`${line.product.title} only has ${line.product.stock} printed cop${line.product.stock === 1 ? "y" : "ies"} left.`);
@@ -799,7 +861,7 @@ export async function createLibraryOrderFromCheckout(input: {
     }
   }
 
-  const shipping = printedLines.length ? normalizeShippingAddress(input.shipping) : null;
+  const shipping = printedLines.length && !isPickup ? normalizeShippingAddress(input.shipping) : null;
 
   const order = await prisma.$transaction(async (tx) => {
     for (const line of printedLines) {
@@ -837,9 +899,14 @@ export async function createLibraryOrderFromCheckout(input: {
           shippingTotal: quote.shippingTotal,
           taxLabel: quote.taxLabel,
           taxCountry: quote.taxCountry,
+          shippingZoneId: quote.shippingZoneId,
+          shippingZoneName: quote.shippingZoneName,
+          shippingMethod: quote.shippingMethod,
+          estimatedDaysMin: quote.estimatedDaysMin,
+          estimatedDaysMax: quote.estimatedDaysMax,
           shipping,
           stockReserved: printedLines.some((line) => line.product.stock != null) && !settings.inventory.allowBackorder,
-          needsShipping: printedLines.length > 0,
+          needsShipping: printedLines.length > 0 && quote.shippingMethod !== "PICKUP",
           hasDigital: lines.some((line) => line.productType !== LibraryProductType.PRINTED_BOOK),
         } as Prisma.InputJsonValue,
         items: {
@@ -865,6 +932,15 @@ export async function createLibraryOrderFromCheckout(input: {
     action: "CREATED",
     message: `Library order ${order.orderNumber} created.`,
     metadata: { paymentId: input.paymentId, couponCode: input.couponCode, taxTotal: quote.taxTotal, needsShipping: printedLines.length > 0 },
+  });
+  await notifyLibraryCustomer(input.customerId, "Library order created", `We received your Library order ${order.orderNumber}.`, {
+    templateKey: "orderConfirmation",
+    variables: {
+      orderNumber: order.orderNumber,
+      currency: order.currency,
+      total: Number(order.total).toFixed(2),
+      orderUrl: `${getCanonicalSiteUrl()}/library/orders/${order.id}`,
+    },
   });
   return { order: toLibraryOrder(order), accessGranted: false };
 }
@@ -978,7 +1054,11 @@ export async function refundLibraryOrder(orderId: string, reason = "admin_refund
     }).catch(() => null);
     return [next, revokedDownloads] as const;
   });
-  await notifyLibraryCustomer(order.customerId, "Library order refunded", "Your HouseLink Library order has been marked refunded and related download access has been revoked.");
+  await notifyLibraryCustomer(order.customerId, "Library order refunded", "Your HouseLink Library order has been marked refunded and related download access has been revoked.", {
+    templateKey: "refundNotice",
+    variables: { orderNumber: order.orderNumber, reason },
+    force: true,
+  });
   await logLibraryActivity({ actorId, targetType: "order", targetId: orderId, action: "ORDER_REFUNDED", message: `Library order refunded. ${revoked.count} access record(s) revoked.`, metadata: { reason, stockRestocked: shouldRestock } });
   return { order: toLibraryOrder(updated), revoked: revoked.count };
 }
@@ -1107,11 +1187,22 @@ export async function fulfillPaidLibraryOrdersForPayment(paymentId: string) {
         downloads += 1;
       }
     }
-    if (hasDigital && settings.notifications.downloadReady) {
-      await notifyLibraryCustomer(order.customerId, "HouseLink Library access ready", `Your digital Library items for ${order.orderNumber} are available in My Library.`);
+    if (hasDigital) {
+      await notifyLibraryCustomer(order.customerId, "HouseLink Library access ready", `Your digital Library items for ${order.orderNumber} are available in My Library.`, {
+        templateKey: "downloadReady",
+        variables: { orderNumber: order.orderNumber, orderUrl: `${getCanonicalSiteUrl()}/library/orders/${order.id}` },
+      });
     }
     if (hasPrint) {
-      await notifyLibraryCustomer(order.customerId, "HouseLink Library print order paid", `Payment received for ${order.orderNumber}. We are preparing your printed book(s) for dispatch.`);
+      await notifyLibraryCustomer(order.customerId, "HouseLink Library print order paid", `Payment received for ${order.orderNumber}. We are preparing your printed book(s) for dispatch.`, {
+        templateKey: "paymentReceived",
+        variables: {
+          orderNumber: order.orderNumber,
+          extra: "We are preparing your printed book(s) for dispatch.",
+          orderUrl: `${getCanonicalSiteUrl()}/library/orders/${order.id}`,
+        },
+        force: true,
+      });
     }
   }
   return { orders: orders.length, downloads };
@@ -1743,6 +1834,7 @@ function buildLibraryAdminReports(input: {
     discountTotal?: unknown;
     currency?: string;
     createdAt: Date | string;
+    metadata?: unknown;
     customer?: { id: string; name: string | null; email: string } | null;
     items?: Array<{ productId: string; title: string; quantity: number; total: unknown; product?: { title: string; viewCount: number; downloadCount: number } | null }>;
     payment?: { provider?: string | null; status?: string | null } | null;
@@ -1877,8 +1969,41 @@ function buildLibraryAdminReports(input: {
       note: movement.note,
       createdAt: toIso(movement.createdAt),
     })),
-    taxSummary: input.taxSettings.map((tax) => ({ id: tax.id, name: tax.name, country: tax.country, rate: Number(tax.rate ?? 0), active: tax.active, collected: 0 })),
-    refundSummary: { orders: refundedOrders.length, amount: refundAmount, rate: input.orders.length ? Number(((refundedOrders.length / input.orders.length) * 100).toFixed(1)) : 0 },
+    taxSummary: input.taxSettings.map((tax) => {
+      const country = String(tax.country || "").toUpperCase();
+      const collected = paidOrders.reduce((sum, order) => {
+        const metadata = ((order as { metadata?: unknown }).metadata ?? {}) as Record<string, unknown>;
+        const orderCountry = String(metadata.taxCountry ?? "").toUpperCase();
+        if (orderCountry && orderCountry !== country) return sum;
+        if (!orderCountry && country !== (input.storeSettings?.tax.defaultCountry ?? "ZW").toUpperCase()) return sum;
+        return sum + Number(metadata.taxTotal ?? 0);
+      }, 0);
+      const refundedTax = refundedOrders.reduce((sum, order) => {
+        const metadata = ((order as { metadata?: unknown }).metadata ?? {}) as Record<string, unknown>;
+        const orderCountry = String(metadata.taxCountry ?? "").toUpperCase();
+        if (orderCountry && orderCountry !== country) return sum;
+        return sum + Number(metadata.taxTotal ?? 0);
+      }, 0);
+      return {
+        id: tax.id,
+        name: tax.name,
+        country: tax.country,
+        rate: Number(tax.rate ?? 0),
+        active: tax.active,
+        collected: roundMoney(Math.max(0, collected - refundedTax)),
+      };
+    }),
+    refundSummary: {
+      orders: refundedOrders.length,
+      amount: refundAmount,
+      taxReturned: roundMoney(
+        refundedOrders.reduce((sum, order) => {
+          const metadata = ((order as { metadata?: unknown }).metadata ?? {}) as Record<string, unknown>;
+          return sum + Number(metadata.taxTotal ?? 0);
+        }, 0),
+      ),
+      rate: input.orders.length ? Number(((refundedOrders.length / input.orders.length) * 100).toFixed(1)) : 0,
+    },
     settingsHealth: buildSettingsHealth({
       taxSettings: input.taxSettings,
       products: input.products,
@@ -1903,21 +2028,16 @@ function buildSettingsHealth(input: {
     { area: "Store", status: settings?.store.enabled === false ? "DISABLED" : "READY", detail: settings?.store.enabled === false ? "Library storefront checkout is disabled." : `${settings?.store.name ?? "HouseLink Library"} is live.` },
     { area: "Checkout", status: settings?.checkout.requireTerms ? "READY" : "OPEN", detail: settings?.checkout.requireTerms ? "Terms acceptance required at checkout." : "Terms acceptance optional." },
     { area: "Tax", status: input.taxSettings.some((setting) => setting.active) ? "READY" : "NEEDS_SETUP", detail: input.taxSettings.some((setting) => setting.active) ? `Active tax rule for ${settings?.tax.defaultCountry ?? "default country"}.` : "Add at least one active tax rule." },
-    { area: "Delivery", status: settings?.delivery.enablePrintedShipping ? "READY" : "DISABLED", detail: settings?.delivery.enablePrintedShipping ? `Flat rate ${settings.store.currency} ${Number(settings.delivery.flatRate).toFixed(2)}; free from ${settings.delivery.freeShippingMin ?? "n/a"}.` : "Printed shipping disabled." },
-    { area: "Downloads", status: input.products.some((product) => (product.files?.length ?? 0) > 0) ? "READY" : "NEEDS_FILES", detail: `Token TTL ${settings?.downloads.tokenTtlSeconds ?? 900}s; watermark ${settings?.downloads.enforceWatermarkFlag ? "enforced" : "always on"}.` },
+    { area: "Delivery", status: settings?.delivery.enablePrintedShipping ? "READY" : "DISABLED", detail: settings?.delivery.enablePrintedShipping ? `${settings.delivery.zones.filter((zone) => zone.active).length} active zone(s); fallback ${settings.store.currency} ${Number(settings.delivery.flatRate).toFixed(2)}.` : "Printed shipping disabled." },
+    { area: "Payments", status: settings?.payments.usePlatformDefaults ? "PLATFORM" : "SCOPED", detail: settings?.payments.usePlatformDefaults ? "Using platform payment methods." : `Library methods: ${settings?.payments.allowedMethodIds.join(", ") || "none"}.` },
+    { area: "Emails", status: "READY", detail: "Editable templates for order, payment, download, dispatch, refund, and claims." },
+    { area: "Downloads", status: input.products.some((product) => (product.files?.length ?? 0) > 0) ? "READY" : "NEEDS_FILES", detail: `Token TTL ${settings?.downloads.tokenTtlSeconds ?? 900}s; PDF stamp ${settings?.downloads.stampPdfBytes ? "on" : "off"}.` },
     { area: "Licence", status: settings?.licence.generateByDefault ? "AUTO" : "PER_PRODUCT", detail: `Prefix ${settings?.licence.keyPrefix ?? "HL"}; ${settings?.licence.generateByDefault ? "keys generated by default." : "product toggle controls keys."}` },
     { area: "Reviews", status: !settings?.reviews.enabled ? "DISABLED" : input.pendingReviews ? "MODERATION" : "CLEAR", detail: !settings?.reviews.enabled ? "Reviews disabled." : input.pendingReviews ? `${input.pendingReviews} pending.` : settings?.reviews.autoApprove ? "Auto-approve enabled." : "No pending review queue." },
     { area: "SEO", status: settings?.seo.storeTitle ? "READY" : "NEEDS_SETUP", detail: settings?.seo.robotsIndex === false ? "Storefront set to noindex." : settings?.seo.storeTitle || "Set storefront SEO title and description." },
     { area: "Coupons", status: !settings?.checkout.allowCoupons ? "DISABLED" : input.activeCoupons ? "READY" : "OPTIONAL", detail: !settings?.checkout.allowCoupons ? "Coupons disabled in checkout settings." : `${input.activeCoupons} active campaign${input.activeCoupons === 1 ? "" : "s"}.` },
     { area: "Inventory", status: input.lowStockCount ? "ATTENTION" : "READY", detail: input.lowStockCount ? `${input.lowStockCount} product${input.lowStockCount === 1 ? "" : "s"} low on stock.` : `Low-stock threshold ${settings?.inventory.lowStockThreshold ?? 5}.` },
   ];
-}
-
-function resolveShippingTotal(taxable: number, taxTotal: number, settings: LibraryStoreSettings) {
-  if (!settings.delivery.enablePrintedShipping) return 0;
-  const basis = taxable + taxTotal;
-  if (settings.delivery.freeShippingMin != null && basis >= settings.delivery.freeShippingMin) return 0;
-  return roundMoney(Math.max(0, settings.delivery.flatRate));
 }
 
 function buildLibraryLicenseKey(prefix: string) {
@@ -1990,6 +2110,16 @@ export async function updateLibraryFulfilment(id: string, input: { status?: stri
       input.status === "DELIVERED"
         ? `Your printed Library order ${fulfilment.order.orderNumber} has been marked delivered.`
         : `Your printed Library order ${fulfilment.order.orderNumber} has been dispatched${input.trackingNumber ? ` (tracking ${input.trackingNumber})` : ""}.`,
+      {
+        templateKey: "dispatchUpdate",
+        variables: {
+          orderNumber: fulfilment.order.orderNumber,
+          courier: input.courier || fulfilment.courier || "Courier",
+          trackingNumber: input.trackingNumber || fulfilment.trackingNumber || "n/a",
+          message: input.status === "DELIVERED" ? "Your order has been marked delivered." : "Your order has been dispatched.",
+        },
+        force: true,
+      },
     );
   }
   await logLibraryActivity({ actorId, targetType: "fulfilment", targetId: id, action: "UPDATED", message: `Fulfilment marked ${fulfilment.status}.`, metadata: input });
@@ -2687,15 +2817,68 @@ async function incrementLibraryCouponUsage(couponCode?: string) {
   await getMainPrisma().libraryCoupon.update({ where: { code: couponCode }, data: { usedCount: { increment: 1 } } }).catch(() => null);
 }
 
-async function notifyLibraryCustomer(userId: string, subject: string, body: string) {
+async function notifyLibraryCustomer(
+  userId: string,
+  subject: string,
+  body: string,
+  options?: {
+    templateKey?: "orderConfirmation" | "paymentReceived" | "downloadReady" | "dispatchUpdate" | "reviewRequest" | "refundNotice" | "guestClaim";
+    variables?: Record<string, string | number | null | undefined>;
+    force?: boolean;
+  },
+) {
   if (!shouldUsePostgresLibrary()) return null;
+  const settings = await getLibraryStoreSettings();
+  if (!options?.force) {
+    if (options?.templateKey === "orderConfirmation" && !settings.notifications.orderConfirmation) return null;
+    if (options?.templateKey === "downloadReady" && !settings.notifications.downloadReady) return null;
+    if (options?.templateKey === "reviewRequest" && !settings.notifications.reviewRequest) return null;
+  }
+  const user = await getMainPrisma().user.findUnique({ where: { id: userId }, select: { email: true, name: true } }).catch(() => null);
+  let finalSubject = subject;
+  let finalBody = body;
+  if (options?.templateKey && user?.email) {
+    const sent = await sendLibraryTemplatedEmail({
+      to: user.email,
+      settings,
+      templateKey: options.templateKey,
+      variables: {
+        customerName: user.name || "there",
+        orderUrl: `${getCanonicalSiteUrl()}/library/orders`,
+        licenceText: settings.licence.licenceText,
+        ...(options.variables ?? {}),
+      },
+      fallbackSubject: subject,
+      fallbackBody: body,
+    });
+    if (sent.ok) {
+      return getMainPrisma().notification.create({
+        data: {
+          userId,
+          channel: NotificationChannel.EMAIL,
+          status: NotificationStatus.SENT,
+          subject: finalSubject,
+          body: finalBody,
+        },
+      }).catch(() => null);
+    }
+  } else if (user?.email) {
+    try {
+      const { getHydratedRuntimePlatformSettings } = await import("@/lib/settings/runtime");
+      const { sendSmtpPlainEmail } = await import("@/lib/integrations/smtp");
+      const platform = await getHydratedRuntimePlatformSettings();
+      await sendSmtpPlainEmail(platform.integrations, user.email, subject, body);
+    } catch {
+      // Keep queued notification even if SMTP is unavailable.
+    }
+  }
   return getMainPrisma().notification.create({
     data: {
       userId,
       channel: NotificationChannel.EMAIL,
       status: NotificationStatus.QUEUED,
-      subject,
-      body,
+      subject: finalSubject,
+      body: finalBody,
     },
   }).catch(() => null);
 }
@@ -3362,15 +3545,15 @@ function normalizeShippingAddress(input?: LibraryShippingAddress | null): Librar
 
 async function emailLibraryGuestClaim(email: string, orderNumber: string, claimUrl: string) {
   try {
-    const { getHydratedRuntimePlatformSettings } = await import("@/lib/settings/runtime");
-    const { sendSmtpPlainEmail } = await import("@/lib/integrations/smtp");
-    const settings = await getHydratedRuntimePlatformSettings();
-    await sendSmtpPlainEmail(
-      settings.integrations,
-      email,
-      `Claim your HouseLink Library order ${orderNumber}`,
-      `Hi,\n\nAn admin issued a Library access claim for order ${orderNumber}.\n\n1. Sign in (or create an account) with this email: ${email}\n2. Open this claim link:\n${claimUrl}\n\nThe link expires in 14 days.\n\n— HouseLink Library`,
-    );
+    const settings = await getLibraryStoreSettings();
+    await sendLibraryTemplatedEmail({
+      to: email,
+      settings,
+      templateKey: "guestClaim",
+      variables: { email, orderNumber, claimUrl, expiryDays: settings.claims.expiryDays },
+      fallbackSubject: `Claim your HouseLink Library order ${orderNumber}`,
+      fallbackBody: `Hi,\n\nClaim order ${orderNumber}:\n${claimUrl}\n\nExpires in ${settings.claims.expiryDays} days.`,
+    });
   } catch {
     // Claim token is still returned to admin if email delivery fails.
   }

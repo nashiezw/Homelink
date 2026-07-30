@@ -11,17 +11,29 @@ import {
   ShoppingCart,
   Star,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { BookCover } from "@/components/library/book-cover";
 import { LibraryCartFab } from "@/components/library/library-cart-fab";
 import { Button } from "@/components/ui/button";
 import { useApp } from "@/components/providers/app-provider";
 import { notifyLibraryCartAdded, useLibraryCart, sameLibraryCartLine } from "@/lib/library/cart-client";
 import { enabledLibraryFormats, libraryFacets, libraryFormatsLabel, libraryPriceLabel, type LibraryProduct } from "@/lib/library/catalog";
+import type { LibraryStoreSettings } from "@/lib/library/settings";
 import { cn } from "@/lib/utils";
 
-export function LibraryStorefront({ products }: { products: LibraryProduct[] }) {
-  const { showToast } = useApp();
+type Merchandising = LibraryStoreSettings["merchandising"];
+type StoreInfo = LibraryStoreSettings["store"];
+
+export function LibraryStorefront({
+  products,
+  merchandising,
+  store,
+}: {
+  products: LibraryProduct[];
+  merchandising?: Merchandising;
+  store?: StoreInfo;
+}) {
+  const { showToast, user } = useApp();
   const facets = products.length
     ? {
         categories: Array.from(new Set(products.map((p) => p.category))).sort(),
@@ -33,16 +45,28 @@ export function LibraryStorefront({ products }: { products: LibraryProduct[] }) 
   const [category, setCategory] = useState("");
   const [type, setType] = useState("");
   const [difficulty, setDifficulty] = useState("");
-  const [sort, setSort] = useState("newest");
+  const [sort, setSort] = useState<Merchandising["defaultSort"] | string>(merchandising?.defaultSort ?? "newest");
   const { cart, setCart, count, currency, total } = useLibraryCart();
+  const hidePrices = Boolean(merchandising?.hidePricesUntilLogin && !user);
+  const maxHero = merchandising?.maxHeroItems ?? 4;
+  const maxCurated = merchandising?.maxCuratedItems ?? 6;
+
+  useEffect(() => {
+    if (merchandising?.defaultSort) setSort(merchandising.defaultSort);
+  }, [merchandising?.defaultSort]);
 
   const heroBooks = useMemo(() => {
-    const picks = products.filter((product) => product.editorsChoice || product.featured || product.bestSeller);
+    const featuredSlug = merchandising?.featuredCollectionSlug?.trim().toLowerCase();
+    const picks = products.filter((product) => {
+      if (featuredSlug && product.collection?.toLowerCase() === featuredSlug) return true;
+      return product.editorsChoice || product.featured || product.bestSeller;
+    });
     const pool = picks.length ? picks : products;
-    return pool.slice(0, 4);
-  }, [products]);
+    return pool.slice(0, maxHero);
+  }, [products, merchandising?.featuredCollectionSlug, maxHero]);
 
   const curated = useMemo(() => {
+    if (merchandising?.showCuratedRail === false) return [] as LibraryProduct[];
     const seen = new Set<string>();
     const ordered: LibraryProduct[] = [];
     for (const product of products) {
@@ -50,10 +74,10 @@ export function LibraryStorefront({ products }: { products: LibraryProduct[] }) 
       if (seen.has(product.id)) continue;
       seen.add(product.id);
       ordered.push(product);
-      if (ordered.length >= 6) break;
+      if (ordered.length >= maxCurated) break;
     }
     return ordered;
-  }, [products]);
+  }, [products, merchandising?.showCuratedRail, maxCurated]);
 
   const filtersActive = Boolean(query || category || type || difficulty || sort !== "newest");
   const results = useMemo(() => {
@@ -130,17 +154,17 @@ export function LibraryStorefront({ products }: { products: LibraryProduct[] }) 
               <span className="mt-2 block text-[clamp(2rem,5.5vw,3.75rem)] text-emerald-100/95">Library</span>
             </p>
             <h1 className="animate-fade-up mt-6 max-w-xl text-xl font-semibold leading-snug tracking-tight text-white/92 motion-reduce:animate-none sm:text-2xl [animation-delay:80ms]">
-              Books and tools for smarter property work.
+              {merchandising?.heroHeadline || store?.tagline || "Books and tools for smarter property work."}
             </h1>
             <p className="animate-fade-up mt-4 max-w-lg text-base leading-7 text-slate-300 motion-reduce:animate-none [animation-delay:160ms]">
-              Manuals, legal packs, templates, and agent resources — bought once, kept in your HouseLink library.
+              {merchandising?.heroSubcopy || "Manuals, legal packs, templates, and agent resources — bought once, kept in your HouseLink library."}
             </p>
             <div className="animate-fade-up mt-8 flex flex-col gap-3 motion-reduce:animate-none sm:flex-row [animation-delay:240ms]">
               <Link
-                href="#library-products"
+                href={merchandising?.ctaHref || "#library-products"}
                 className="inline-flex h-12 items-center justify-center gap-2 rounded-lg bg-emerald-500 px-6 text-sm font-semibold text-white shadow-lg shadow-emerald-950/30 transition hover:-translate-y-0.5 hover:bg-emerald-400"
               >
-                Browse catalogue <ArrowRight className="size-4" />
+                {merchandising?.ctaLabel || "Browse catalogue"} <ArrowRight className="size-4" />
               </Link>
               <Link
                 href="/dashboard/my-library"
@@ -257,11 +281,11 @@ export function LibraryStorefront({ products }: { products: LibraryProduct[] }) 
               <div className="mb-7 max-w-2xl">
                 <p className="text-sm font-semibold uppercase tracking-[0.14em] text-emerald-700 dark:text-emerald-300">Curated</p>
                 <h2 className="mt-2 text-3xl font-semibold tracking-tight text-ink dark:text-white">Start with these</h2>
-                <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">Editor picks and titles professionals keep buying.</p>
+                <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">{merchandising?.curatedTitle || "Editor picks and titles professionals keep buying."}</p>
               </div>
               <div className="grid gap-8 sm:grid-cols-2 xl:grid-cols-3">
                 {curated.map((product) => (
-                  <ProductCard key={product.id} product={product} quantity={quantityFor(product.id)} onAdd={addToCart} />
+                  <ProductCard key={product.id} product={product} quantity={quantityFor(product.id)} onAdd={addToCart} hidePrices={hidePrices} />
                 ))}
               </div>
             </section>
@@ -302,7 +326,7 @@ export function LibraryStorefront({ products }: { products: LibraryProduct[] }) 
             {results.length ? (
               <div className="grid gap-8 sm:grid-cols-2 xl:grid-cols-3">
                 {results.map((product) => (
-                  <ProductCard key={product.id} product={product} quantity={quantityFor(product.id)} onAdd={addToCart} />
+                  <ProductCard key={product.id} product={product} quantity={quantityFor(product.id)} onAdd={addToCart} hidePrices={hidePrices} />
                 ))}
               </div>
             ) : (
@@ -332,8 +356,9 @@ function filterProducts(products: LibraryProduct[], input: { query: string; cate
     })
     .sort((a, b) => {
       if (input.sort === "price-asc") return a.price - b.price;
-      if (input.sort === "highest-rated") return b.rating - a.rating;
-      if (input.sort === "most-downloaded") return b.downloadCount - a.downloadCount;
+      if (input.sort === "price-desc") return b.price - a.price;
+      if (input.sort === "rating" || input.sort === "highest-rated") return b.rating - a.rating;
+      if (input.sort === "downloads" || input.sort === "most-downloaded") return b.downloadCount - a.downloadCount;
       if (input.sort === "best-selling") return Number(b.bestSeller) - Number(a.bestSeller) || b.downloadCount - a.downloadCount;
       return new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime();
     });
@@ -359,7 +384,7 @@ function EmptyLibraryState() {
   );
 }
 
-function ProductCard({ product, quantity, onAdd }: { product: LibraryProduct; quantity: number; onAdd: (product: LibraryProduct) => void }) {
+function ProductCard({ product, quantity, onAdd, hidePrices }: { product: LibraryProduct; quantity: number; onAdd: (product: LibraryProduct) => void; hidePrices?: boolean }) {
   return (
     <article className="group flex min-w-0 flex-col">
       <div className="bg-[linear-gradient(180deg,#e8f0ed_0%,#f4f8f7_100%)] px-6 py-7 dark:bg-slate-900">
@@ -377,7 +402,7 @@ function ProductCard({ product, quantity, onAdd }: { product: LibraryProduct; qu
             <Star className="size-4 fill-current" />
             <span className="font-semibold text-slate-700 dark:text-slate-200">{product.rating || "New"}</span>
           </span>
-          <p className="text-base font-semibold text-ink dark:text-white">{libraryPriceLabel(product)}</p>
+          <p className="text-base font-semibold text-ink dark:text-white">{hidePrices ? "Sign in for price" : libraryPriceLabel(product)}</p>
         </div>
         <div className="mt-4 grid grid-cols-[1fr_auto] gap-2">
           <Button onClick={() => onAdd(product)} disabled={product.comingSoon && !product.preorder}>

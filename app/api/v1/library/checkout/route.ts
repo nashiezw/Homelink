@@ -34,23 +34,27 @@ export async function POST(request: Request) {
   const items = Array.isArray(body.items) ? (body.items as CheckoutLine[]) : [];
   if (!items.length) return problem(400, "EMPTY_CART", "Add at least one Library product to checkout.");
 
-  const settings = await getLibraryStoreSettings();
-  if (!settings.store.enabled) {
+  const librarySettings = await getLibraryStoreSettings();
+  if (!librarySettings.store.enabled) {
     return problem(503, "LIBRARY_DISABLED", "HouseLink Library checkout is temporarily disabled.");
   }
-  if (settings.checkout.requireTerms && !body.termsAccepted) {
+  if (librarySettings.checkout.requireTerms && !body.termsAccepted) {
     return problem(400, "TERMS_REQUIRED", "Accept the Library terms to continue checkout.");
   }
-  if (body.couponCode && !settings.checkout.allowCoupons) {
+  if (body.couponCode && !librarySettings.checkout.allowCoupons) {
     return problem(400, "COUPONS_DISABLED", "Coupons are currently disabled for Library checkout.");
   }
   const shipping = (body.shipping ?? null) as LibraryShippingAddress | null;
+  const shippingMethod = body.shippingMethod === "PICKUP" ? "PICKUP" as const : "SHIPPING" as const;
   const quote = await quoteLibraryCart(items, body.couponCode, userId, {
     country: shipping?.country,
+    province: shipping?.province,
+    city: shipping?.city,
     includeShipping: true,
+    shippingMethod,
   });
-  if (quote.subtotal < settings.checkout.minimumOrderAmount) {
-    return problem(400, "MINIMUM_ORDER", `Minimum order amount is ${quote.currency} ${settings.checkout.minimumOrderAmount.toFixed(2)}.`);
+  if (quote.subtotal < librarySettings.checkout.minimumOrderAmount) {
+    return problem(400, "MINIMUM_ORDER", `Minimum order amount is ${quote.currency} ${librarySettings.checkout.minimumOrderAmount.toFixed(2)}.`);
   }
   if (quote.total <= 0) return problem(400, "INVALID_TOTAL", "Library cart total must be greater than zero.");
 
@@ -58,10 +62,16 @@ export async function POST(request: Request) {
   const description = items.length === 1 ? items[0]?.title ?? "HouseLink Library product" : `${items.length} HouseLink Library products`;
 
   if (shouldUsePostgresPayments()) {
-    const settings = await getProductionPaymentSettings();
-    const gateway = settings.gateways.find((g) => g.id === provider);
-    const manualMethod = settings.manualMethods.find((method) => method.id === provider && method.enabled);
-    if (!gateway?.enabled && !manualMethod && !["bank_transfer", "cash", "zipit"].includes(provider)) {
+    const paymentSettings = await getProductionPaymentSettings();
+    const gateway = paymentSettings.gateways.find((g) => g.id === provider);
+    const manualMethod = paymentSettings.manualMethods.find((method) => method.id === provider && method.enabled);
+    const allowed = librarySettings.payments.usePlatformDefaults
+      || librarySettings.payments.allowedMethodIds.includes(provider)
+      || librarySettings.payments.allowedMethodIds.length === 0;
+    if (!allowed) {
+      return problem(400, "LIBRARY_PAYMENT_DISABLED", `${provider} is not enabled for HouseLink Library checkout.`);
+    }
+    if (!gateway?.enabled && !manualMethod && !["bank_transfer", "cash", "zipit", "ecocash"].includes(provider)) {
       return problem(400, "GATEWAY_DISABLED", `${provider} is not enabled. Contact support.`);
     }
     const payment = await createPaymentInPostgres(userId, {
@@ -70,7 +80,7 @@ export async function POST(request: Request) {
       amount: quote.total,
       method: provider,
     });
-    const completed = settings.sandboxMode && !manualMethod ? await completePaymentInPostgres(payment.id) : null;
+    const completed = paymentSettings.sandboxMode && !manualMethod ? await completePaymentInPostgres(payment.id) : null;
     let order: Awaited<ReturnType<typeof createLibraryOrderFromCheckout>>;
     try {
       order = await createLibraryOrderFromCheckout({
@@ -79,6 +89,7 @@ export async function POST(request: Request) {
         items,
         couponCode: body.couponCode,
         shipping,
+        shippingMethod,
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Payment was started, but the Library order could not be created.";
@@ -99,8 +110,9 @@ export async function POST(request: Request) {
       accessGranted: grant.downloads > 0,
       items: quote.items,
       redirectUrl: `/library/checkout/confirmation?orderId=${encodeURIComponent(order.order.id)}&paymentId=${encodeURIComponent(payment.id)}&status=${status}`,
-      bankDetails: manualMethod ? settings.bankDetails : undefined,
+      bankDetails: manualMethod ? paymentSettings.bankDetails : undefined,
       manualMethod,
+      libraryPaymentInstructions: librarySettings.payments.instructions,
     });
   }
 
@@ -118,18 +130,20 @@ export async function POST(request: Request) {
       items,
       couponCode: body.couponCode,
       shipping,
+      shippingMethod,
     });
-    const status = payment.status === "PAID" ? "success" : "pending";
     return created({
       ...payment,
       description,
       order: order.order,
       quote,
+      accessGranted: false,
       items: quote.items,
-      redirectUrl: `/library/checkout/confirmation?orderId=${encodeURIComponent(order.order.id)}&paymentId=${encodeURIComponent(payment.id)}&status=${status}`,
+      redirectUrl: `/library/checkout/confirmation?orderId=${encodeURIComponent(order.order.id)}&paymentId=${encodeURIComponent(payment.id)}&status=pending`,
+      libraryPaymentInstructions: librarySettings.payments.instructions,
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "We could not create your Library order.";
-    return problem(400, "LIBRARY_ORDER_FAILED", message);
+    const message = error instanceof Error ? error.message : "Library order could not be created.";
+    return problem(500, "LIBRARY_ORDER_FAILED", message);
   }
 }

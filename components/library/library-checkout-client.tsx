@@ -20,6 +20,11 @@ type LibraryQuote = {
   currency: string;
   couponCode?: string;
   taxLabel?: string;
+  shippingZoneName?: string | null;
+  shippingMethod?: string;
+  estimatedDaysMin?: number;
+  estimatedDaysMax?: number;
+  allowLocalPickup?: boolean;
 };
 
 type LibraryPublicSettings = {
@@ -38,6 +43,25 @@ type LibraryPublicSettings = {
     freeShippingMin: number | null;
     estimatedDaysMin: number;
     estimatedDaysMax: number;
+    allowLocalPickup?: boolean;
+    zones?: Array<{
+      id: string;
+      name: string;
+      rate: number;
+      freeShippingMin: number | null;
+      estimatedDaysMin: number;
+      estimatedDaysMax: number;
+      allowLocalPickup: boolean;
+      countries: string[];
+      provinces: string[];
+      cities: string[];
+    }>;
+  };
+  payments?: {
+    allowedMethodIds: string[];
+    usePlatformDefaults: boolean;
+    requireProof: boolean;
+    instructions: string;
   };
   store: { enabled: boolean; currency: string; name: string };
 };
@@ -79,18 +103,28 @@ export function LibraryCheckoutClient() {
   const [shipping, setShipping] = useState<ShippingForm>(emptyShipping);
   const [storeSettings, setStoreSettings] = useState<LibraryPublicSettings | null>(null);
   const [termsAccepted, setTermsAccepted] = useState(false);
+  const [shippingMethod, setShippingMethod] = useState<"SHIPPING" | "PICKUP">("SHIPPING");
 
   const needsShipping = useMemo(
     () => cart.some((item) => item.formatType === "PRINTED_BOOK" || /print/i.test(item.formatLabel ?? "") || /print/i.test(item.title)),
     [cart],
   );
 
+  const paymentMethods = useMemo(() => {
+    const methods = config?.manualMethods.length
+      ? config.manualMethods
+      : [
+          { id: "bank_transfer", label: "Bank Transfer", enabled: true, instructions: "", requiresProof: true },
+          { id: "zipit", label: "ZIPIT", enabled: true, instructions: "", requiresProof: true },
+        ];
+    if (!storeSettings?.payments || storeSettings.payments.usePlatformDefaults) return methods;
+    const allowed = new Set(storeSettings.payments.allowedMethodIds);
+    return methods.filter((method) => allowed.has(method.id));
+  }, [config, storeSettings]);
+
   useEffect(() => {
     void apiFetch<PublicPaymentConfig>("/api/v1/payments/config").then((result) => {
-      if (result.data) {
-        setConfig(result.data);
-        if (result.data.manualMethods[0]?.id) setPaymentMethod(result.data.manualMethods[0].id);
-      }
+      if (result.data) setConfig(result.data);
     });
     void apiFetch<LibraryPublicSettings>("/api/v1/library/settings").then((result) => {
       if (result.data) {
@@ -99,6 +133,12 @@ export function LibraryCheckoutClient() {
       }
     });
   }, []);
+
+  useEffect(() => {
+    if (paymentMethods[0]?.id && !paymentMethods.some((method) => method.id === paymentMethod)) {
+      setPaymentMethod(paymentMethods[0].id);
+    }
+  }, [paymentMethods, paymentMethod]);
 
   useEffect(() => {
     if (!cart.length) {
@@ -110,7 +150,7 @@ export function LibraryCheckoutClient() {
     }, 250);
     return () => window.clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cart, appliedCoupon, shipping.country, needsShipping]);
+  }, [cart, appliedCoupon, shipping.country, shipping.province, shipping.city, needsShipping, shippingMethod]);
 
   async function refreshQuote(code?: string) {
     if (!cart.length) {
@@ -124,7 +164,10 @@ export function LibraryCheckoutClient() {
         items: cart,
         couponCode: storeSettings?.checkout.allowCoupons === false ? undefined : code || undefined,
         country: shipping.country || storeSettings?.tax.defaultCountry,
+        province: shipping.province,
+        city: shipping.city,
         includeShipping: needsShipping,
+        shippingMethod: needsShipping ? shippingMethod : undefined,
       }),
     });
     setQuoting(false);
@@ -161,7 +204,7 @@ export function LibraryCheckoutClient() {
   }
 
   function shippingPayload() {
-    if (!needsShipping) return undefined;
+    if (!needsShipping || shippingMethod === "PICKUP") return undefined;
     return {
       name: shipping.name.trim(),
       phone: shipping.phone.trim(),
@@ -176,6 +219,7 @@ export function LibraryCheckoutClient() {
 
   function shippingReady() {
     if (!needsShipping) return true;
+    if (shippingMethod === "PICKUP") return Boolean(quote?.allowLocalPickup || storeSettings?.delivery.allowLocalPickup);
     return Boolean(shipping.name.trim() && shipping.phone.trim() && shipping.line1.trim() && shipping.city.trim());
   }
 
@@ -194,7 +238,7 @@ export function LibraryCheckoutClient() {
     }
     if (!shippingReady()) {
       setBusy(false);
-      setError("Enter delivery name, phone, address, and city for printed books.");
+      setError(shippingMethod === "PICKUP" ? "Local pickup is not available for this address/zone." : "Enter delivery name, phone, address, and city for printed books.");
       return;
     }
     const result = await apiFetch<{ redirectUrl?: string; order?: { id?: string; orderNumber?: string } }>("/api/v1/library/checkout", {
@@ -204,6 +248,7 @@ export function LibraryCheckoutClient() {
         provider: paymentMethod,
         couponCode: storeSettings?.checkout.allowCoupons === false ? undefined : appliedCoupon || couponCode,
         shipping: shippingPayload(),
+        shippingMethod: needsShipping ? shippingMethod : undefined,
         termsAccepted,
       }),
     });
@@ -228,6 +273,7 @@ export function LibraryCheckoutClient() {
   }
 
   const payable = useMemo(() => quote?.total ?? total, [quote, total]);
+  const allowPickup = Boolean(quote?.allowLocalPickup || storeSettings?.delivery.allowLocalPickup);
 
   return (
     <PageShell
@@ -272,43 +318,61 @@ export function LibraryCheckoutClient() {
           {needsShipping && (
             <section className="surface-panel rounded-lg p-5">
               <h2 className="flex items-center gap-2 text-lg font-semibold text-ink dark:text-white">
-                <MapPin className="size-5 text-emerald-600" /> Delivery address
+                <MapPin className="size-5 text-emerald-600" /> Delivery
               </h2>
-              <p className="mt-1 text-sm text-slate-500">Required for printed books in this order.</p>
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                <label className="block text-sm font-medium sm:col-span-1">
-                  Full name
-                  <input value={shipping.name} onChange={(e) => setShipping({ ...shipping, name: e.target.value })} className="mt-2 h-11 w-full rounded-lg border border-slate-200 px-3 dark:border-slate-700 dark:bg-slate-900" required />
-                </label>
-                <label className="block text-sm font-medium">
-                  Phone
-                  <input value={shipping.phone} onChange={(e) => setShipping({ ...shipping, phone: e.target.value })} className="mt-2 h-11 w-full rounded-lg border border-slate-200 px-3 dark:border-slate-700 dark:bg-slate-900" required />
-                </label>
-                <label className="block text-sm font-medium sm:col-span-2">
-                  Street address
-                  <input value={shipping.line1} onChange={(e) => setShipping({ ...shipping, line1: e.target.value })} className="mt-2 h-11 w-full rounded-lg border border-slate-200 px-3 dark:border-slate-700 dark:bg-slate-900" required />
-                </label>
-                <label className="block text-sm font-medium sm:col-span-2">
-                  Apartment / landmark (optional)
-                  <input value={shipping.line2} onChange={(e) => setShipping({ ...shipping, line2: e.target.value })} className="mt-2 h-11 w-full rounded-lg border border-slate-200 px-3 dark:border-slate-700 dark:bg-slate-900" />
-                </label>
-                <label className="block text-sm font-medium">
-                  City
-                  <input value={shipping.city} onChange={(e) => setShipping({ ...shipping, city: e.target.value })} className="mt-2 h-11 w-full rounded-lg border border-slate-200 px-3 dark:border-slate-700 dark:bg-slate-900" required />
-                </label>
-                <label className="block text-sm font-medium">
-                  Province
-                  <input value={shipping.province} onChange={(e) => setShipping({ ...shipping, province: e.target.value })} className="mt-2 h-11 w-full rounded-lg border border-slate-200 px-3 dark:border-slate-700 dark:bg-slate-900" />
-                </label>
-                <label className="block text-sm font-medium">
-                  Country
-                  <input value={shipping.country} onChange={(e) => setShipping({ ...shipping, country: e.target.value })} className="mt-2 h-11 w-full rounded-lg border border-slate-200 px-3 dark:border-slate-700 dark:bg-slate-900" />
-                </label>
-                <label className="block text-sm font-medium sm:col-span-2">
-                  Delivery notes (optional)
-                  <textarea value={shipping.notes} onChange={(e) => setShipping({ ...shipping, notes: e.target.value })} rows={3} className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 dark:border-slate-700 dark:bg-slate-900" />
-                </label>
-              </div>
+              <p className="mt-1 text-sm text-slate-500">Shipping zones and rates are calculated from your address.</p>
+              {(allowPickup || storeSettings?.delivery.allowLocalPickup) && (
+                <div className="mt-4 flex flex-wrap gap-3 text-sm">
+                  <label className="inline-flex items-center gap-2">
+                    <input type="radio" checked={shippingMethod === "SHIPPING"} onChange={() => setShippingMethod("SHIPPING")} /> Courier delivery
+                  </label>
+                  <label className="inline-flex items-center gap-2">
+                    <input type="radio" checked={shippingMethod === "PICKUP"} onChange={() => setShippingMethod("PICKUP")} /> Local pickup
+                  </label>
+                </div>
+              )}
+              {shippingMethod === "SHIPPING" && (
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  <label className="block text-sm font-medium sm:col-span-1">
+                    Full name
+                    <input value={shipping.name} onChange={(e) => setShipping({ ...shipping, name: e.target.value })} className="mt-2 h-11 w-full rounded-lg border border-slate-200 px-3 dark:border-slate-700 dark:bg-slate-900" required />
+                  </label>
+                  <label className="block text-sm font-medium">
+                    Phone
+                    <input value={shipping.phone} onChange={(e) => setShipping({ ...shipping, phone: e.target.value })} className="mt-2 h-11 w-full rounded-lg border border-slate-200 px-3 dark:border-slate-700 dark:bg-slate-900" required />
+                  </label>
+                  <label className="block text-sm font-medium sm:col-span-2">
+                    Street address
+                    <input value={shipping.line1} onChange={(e) => setShipping({ ...shipping, line1: e.target.value })} className="mt-2 h-11 w-full rounded-lg border border-slate-200 px-3 dark:border-slate-700 dark:bg-slate-900" required />
+                  </label>
+                  <label className="block text-sm font-medium sm:col-span-2">
+                    Apartment / landmark (optional)
+                    <input value={shipping.line2} onChange={(e) => setShipping({ ...shipping, line2: e.target.value })} className="mt-2 h-11 w-full rounded-lg border border-slate-200 px-3 dark:border-slate-700 dark:bg-slate-900" />
+                  </label>
+                  <label className="block text-sm font-medium">
+                    City
+                    <input value={shipping.city} onChange={(e) => setShipping({ ...shipping, city: e.target.value })} className="mt-2 h-11 w-full rounded-lg border border-slate-200 px-3 dark:border-slate-700 dark:bg-slate-900" required />
+                  </label>
+                  <label className="block text-sm font-medium">
+                    Province
+                    <input value={shipping.province} onChange={(e) => setShipping({ ...shipping, province: e.target.value })} className="mt-2 h-11 w-full rounded-lg border border-slate-200 px-3 dark:border-slate-700 dark:bg-slate-900" />
+                  </label>
+                  <label className="block text-sm font-medium">
+                    Country
+                    <input value={shipping.country} onChange={(e) => setShipping({ ...shipping, country: e.target.value })} className="mt-2 h-11 w-full rounded-lg border border-slate-200 px-3 dark:border-slate-700 dark:bg-slate-900" />
+                  </label>
+                  <label className="block text-sm font-medium sm:col-span-2">
+                    Delivery notes (optional)
+                    <textarea value={shipping.notes} onChange={(e) => setShipping({ ...shipping, notes: e.target.value })} rows={3} className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 dark:border-slate-700 dark:bg-slate-900" />
+                  </label>
+                </div>
+              )}
+              {quote?.shippingZoneName && (
+                <p className="mt-3 text-xs font-semibold text-slate-500">
+                  Zone: {quote.shippingZoneName}
+                  {quote.estimatedDaysMin != null ? ` · ${quote.estimatedDaysMin}–${quote.estimatedDaysMax} days` : ""}
+                </p>
+              )}
             </section>
           )}
         </div>
@@ -316,13 +380,13 @@ export function LibraryCheckoutClient() {
         <aside className="h-fit space-y-4 lg:sticky lg:top-24">
           <section className="surface-panel rounded-lg p-5">
             <h2 className="text-lg font-semibold text-ink dark:text-white">Payment</h2>
+            {storeSettings?.payments?.instructions && (
+              <p className="mt-2 text-xs leading-5 text-slate-500">{storeSettings.payments.instructions}</p>
+            )}
             <label className="mt-4 block text-sm font-medium text-slate-700 dark:text-slate-300">
               Payment method
               <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} className="mt-2 h-11 w-full rounded-lg border border-slate-200 bg-white px-3 dark:border-slate-700 dark:bg-slate-900">
-                {(config?.manualMethods.length ? config.manualMethods : [
-                  { id: "bank_transfer", label: "Bank Transfer", enabled: true, instructions: "", requiresProof: true },
-                  { id: "zipit", label: "ZIPIT", enabled: true, instructions: "", requiresProof: true },
-                ]).map((method) => <option key={method.id} value={method.id}>{method.label}</option>)}
+                {paymentMethods.map((method) => <option key={method.id} value={method.id}>{method.label}</option>)}
               </select>
             </label>
             {storeSettings?.checkout.allowCoupons !== false && (
@@ -342,12 +406,7 @@ export function LibraryCheckoutClient() {
                 <div className="flex justify-between"><span>{quote?.taxLabel || storeSettings?.tax.taxLabel || "Tax"}</span><span>{(quote?.taxTotal ?? 0).toFixed(2)}</span></div>
               )}
               {(quote?.shippingTotal ?? 0) > 0 && <div className="flex justify-between"><span>Shipping</span><span>{(quote?.shippingTotal ?? 0).toFixed(2)}</span></div>}
-              {needsShipping && storeSettings?.delivery && (
-                <p className="text-xs text-slate-500">
-                  Printed delivery estimate: {storeSettings.delivery.estimatedDaysMin}–{storeSettings.delivery.estimatedDaysMax} days
-                  {storeSettings.delivery.freeShippingMin != null ? ` · free from ${quote?.currency ?? "USD"} ${storeSettings.delivery.freeShippingMin.toFixed(2)}` : ""}.
-                </p>
-              )}
+              {needsShipping && shippingMethod === "PICKUP" && <div className="flex justify-between"><span>Shipping</span><span>Local pickup</span></div>}
               {storeSettings?.checkout.requireTerms && (
                 <label className="flex items-start gap-2 pt-2 text-xs text-slate-600 dark:text-slate-300">
                   <input type="checkbox" checked={termsAccepted} onChange={(e) => setTermsAccepted(e.target.checked)} className="mt-0.5" />
@@ -371,7 +430,7 @@ export function LibraryCheckoutClient() {
           </section>
           <section className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-950 dark:border-emerald-900/40 dark:bg-emerald-950/20 dark:text-emerald-100">
             <p className="flex gap-2 font-semibold"><Lock className="size-4" /> Secure checkout</p>
-            <p className="mt-2 leading-6">Orders, payments, invoices, and downloads are tied to your existing HouseLink account. Coupons are applied at checkout and counted when payment is confirmed.</p>
+            <p className="mt-2 leading-6">Orders, payments, invoices, and downloads are tied to your HouseLink account. Zone rates, Library payment methods, and tax settings are applied live from admin.</p>
           </section>
         </aside>
       </div>

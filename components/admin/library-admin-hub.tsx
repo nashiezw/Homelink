@@ -30,7 +30,7 @@ import {
   type LibraryProduct,
   type LibraryProductFormat,
 } from "@/lib/library/catalog";
-import { defaultLibraryStoreSettings, type LibraryStoreSettings } from "@/lib/library/settings-shared";
+import { defaultLibraryStoreSettings, type LibraryStoreSettings } from "@/lib/library/settings";
 import { cn } from "@/lib/utils";
 
 const views = [
@@ -59,6 +59,7 @@ type LibraryOperations = {
   exports: Array<{ id: string; type: string; status: string; fileUrl?: string | null; createdAt?: string }>;
   taxSettings: Array<{ id: string; name: string; country: string; rate: unknown; inclusive: boolean; active: boolean }>;
   storeSettings?: LibraryStoreSettings;
+  settingsAudit?: LibrarySettingsAuditRow[];
   coupons: LibraryCouponAdmin[];
   taxonomy: LibraryTaxonomyAdmin[];
   downloadAccess: LibraryDownloadAccessAdmin[];
@@ -82,8 +83,17 @@ type LibraryAdminReports = {
   stockAlerts: Array<{ id: string; title: string; stock: number; threshold: number; warehouse: string; supplier: string; state: string }>;
   inventoryMovements: Array<{ id: string; productTitle: string; type: string; quantity: number; note?: string | null; createdAt: string }>;
   taxSummary: Array<{ id: string; name: string; country: string; rate: number; active: boolean; collected: number }>;
-  refundSummary: { orders: number; amount: number; rate: number };
+  refundSummary: { orders: number; amount: number; taxReturned?: number; rate: number };
   settingsHealth: Array<{ area: string; status: string; detail: string }>;
+};
+
+type LibrarySettingsAuditRow = {
+  id: string;
+  actorId: string | null;
+  action: string;
+  message: string;
+  createdAt: string | Date;
+  metadata?: unknown;
 };
 
 type LibraryCouponAdmin = {
@@ -254,6 +264,7 @@ const emptyOperations: LibraryOperations = {
   exports: [],
   taxSettings: [],
   storeSettings: defaultLibraryStoreSettings,
+  settingsAudit: [],
   coupons: [],
   taxonomy: [],
   downloadAccess: [],
@@ -794,17 +805,19 @@ export function LibraryAdminHub() {
   function createForView(targetView = view) {
     setEditingProduct(null);
     const defaults = operations.storeSettings ?? defaultLibraryStoreSettings;
+    const productType = targetView === "Downloads" ? "PDF" : targetView === "Inventory" ? "PRINTED_BOOK" : "PDF";
+    const template = defaults.productTemplates.find((row) => row.productType === productType) ?? defaults.productTemplates[0];
     setDraft({
       ...emptyDraft,
       currency: defaults.store.currency,
-      downloadLimit: defaults.downloads.defaultLimit == null ? "" : String(defaults.downloads.defaultLimit),
-      downloadExpiryDays: defaults.downloads.defaultExpiryDays == null ? "" : String(defaults.downloads.defaultExpiryDays),
-      watermarking: defaults.downloads.watermarkByDefault,
-      licenseKeys: defaults.licence.generateByDefault,
-      lowStockThreshold: String(defaults.inventory.lowStockThreshold),
+      downloadLimit: (template?.downloadLimit ?? defaults.downloads.defaultLimit) == null ? "" : String(template?.downloadLimit ?? defaults.downloads.defaultLimit),
+      downloadExpiryDays: (template?.downloadExpiryDays ?? defaults.downloads.defaultExpiryDays) == null ? "" : String(template?.downloadExpiryDays ?? defaults.downloads.defaultExpiryDays),
+      watermarking: template?.watermarking ?? defaults.downloads.watermarkByDefault,
+      licenseKeys: template?.licenseKeys ?? defaults.licence.generateByDefault,
+      lowStockThreshold: String(template?.lowStockThreshold ?? defaults.inventory.lowStockThreshold),
       category: targetView === "Categories" ? "New Category" : targetView === "Downloads" ? "Digital Downloads" : targetView === "Inventory" ? "Printed Stock" : "Toolkits",
-      productType: targetView === "Downloads" ? "PDF" : targetView === "Inventory" ? "PRINTED_BOOK" : "PDF",
-      stock: targetView === "Inventory" ? "10" : "",
+      productType,
+      stock: targetView === "Inventory" || template?.trackStock ? "10" : "",
     });
     setDraftOpen(true);
   }
@@ -2414,6 +2427,7 @@ function LibraryTabManagement({
         settings={operations.storeSettings}
         taxSettings={operations.taxSettings}
         settingsHealth={operations.reports.settingsHealth}
+        settingsAudit={operations.settingsAudit}
         onSave={onSaveStoreSettings}
         onEditTaxSetting={onEditTaxSetting}
         onDeleteTaxSetting={onDeleteTaxSetting}
