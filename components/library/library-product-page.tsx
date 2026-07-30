@@ -258,7 +258,7 @@ export function LibraryProductPage({
         </div>
       </section>
 
-      <section className="mx-auto grid max-w-[88rem] gap-7 px-4 py-8 sm:px-6 lg:grid-cols-[minmax(0,1fr)_24rem] lg:items-start lg:px-8 lg:py-12">
+      <section className="mx-auto max-w-[88rem] px-4 py-8 sm:px-6 lg:px-8 lg:py-12">
         <article className="overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-soft dark:border-slate-800 dark:bg-slate-900">
           <div className="grid gap-8 p-5 sm:p-7 xl:grid-cols-[minmax(18rem,30rem)_minmax(0,1fr)] xl:items-start">
             <div className="space-y-4">
@@ -391,8 +391,12 @@ export function LibraryProductPage({
               </div>
             </div>
           </div>
+        </article>
+      </section>
 
-          <section className="border-t border-slate-200 bg-slate-50/70 p-5 dark:border-slate-800 dark:bg-slate-950/35 sm:p-7">
+      <section className="mx-auto grid max-w-[88rem] gap-7 px-4 pb-10 sm:px-6 lg:grid-cols-[minmax(0,1fr)_24rem] lg:items-start lg:px-8">
+        <div className="space-y-7">
+          <section className="overflow-hidden rounded-3xl border border-slate-200/90 bg-slate-50/70 p-5 shadow-soft dark:border-slate-800 dark:bg-slate-950/35 sm:p-7">
             <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight text-ink dark:text-white">
               <Layers3 className="size-5 text-emerald-700 dark:text-emerald-300" /> What you get
             </h2>
@@ -405,81 +409,7 @@ export function LibraryProductPage({
               ))}
             </div>
           </section>
-        </article>
 
-        <aside className="space-y-4 lg:sticky lg:top-24">
-          <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-            <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-slate-500">Your selection</p>
-            <p className="mt-2 text-sm font-semibold text-ink dark:text-white">{selectedFormat?.label || "Library product"}</p>
-            <p className="mt-1 text-3xl font-semibold tracking-tight text-ink dark:text-white">{product.currency} {(selectedFormat?.price ?? product.price).toFixed(2)}</p>
-            {formats.length > 1 && (
-              <div className="mt-4 grid gap-2">
-                {formats.map((format) => (
-                  <button
-                    key={`aside-${format.id}`}
-                    type="button"
-                    onClick={() => setSelectedFormatId(format.id)}
-                    className={cn(
-                      "flex items-center justify-between rounded-lg border px-3 py-2 text-left text-sm transition",
-                      selectedFormat?.id === format.id ? "border-emerald-600 bg-emerald-50 dark:bg-emerald-950/30" : "border-slate-200 dark:border-slate-700",
-                    )}
-                  >
-                    <span className="font-semibold">{format.label}</span>
-                    <span className="font-bold">{product.currency} {format.price.toFixed(2)}</span>
-                  </button>
-                ))}
-              </div>
-            )}
-            <div className="mt-5 grid gap-2">
-              <Button disabled={outOfStock} onClick={buyNow}>
-                <ShoppingCart className="size-4" /> {product.preorder ? "Pre-order now" : "Buy now"}
-              </Button>
-              <Button variant="secondary" disabled={outOfStock} onClick={addToCart}>
-                <ShoppingBag className="size-4" /> {productQuantity ? `In bag (${productQuantity})` : "Add to cart"}
-              </Button>
-              <Button variant="secondary" onClick={() => setPreviewOpen(true)}>
-                <FileText className="size-4" /> {sampleUrl ? "Read sample PDF" : "Read sample"}
-              </Button>
-            </div>
-            <div className="mt-4 grid grid-cols-2 gap-2">
-              <button type="button" disabled={wishBusy} onClick={() => void toggleWishlist()} className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-slate-200 px-3 text-sm font-bold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800" aria-label="Add to wishlist">
-                <Heart className={cn("size-4", wished && "fill-current text-rose-500")} /> {wished ? "Saved" : "Wishlist"}
-              </button>
-              <button type="button" onClick={() => void shareProduct()} className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-slate-200 px-3 text-sm font-bold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800" aria-label="Share product">
-                <Share2 className="size-4" /> {shareNotice || "Share"}
-              </button>
-            </div>
-            <div className="mt-5 space-y-2 border-t border-slate-200 pt-4 text-sm text-slate-600 dark:border-slate-800 dark:text-slate-300">
-              {["Native HouseLink checkout", "Protected customer access", "Download limits and license keys"].map((item) => (
-                <p key={item} className="flex gap-2">
-                  <Lock className="mt-0.5 size-4 shrink-0 text-emerald-600" /> {item}
-                </p>
-              ))}
-            </div>
-          </div>
-          <Panel title="Book Details" icon={ReceiptText}>
-            <dl className="space-y-3 text-sm">
-              {[
-                ["Publisher", product.publisher],
-                ["Edition", product.edition],
-                ["ISBN", product.isbn ?? "Digital SKU"],
-                ["Language", product.language],
-                ["Pages", product.pages?.toString() ?? "Digital course"],
-                ["SKU", product.sku],
-                ["Formats", formats.map((format) => `${format.label} (${product.currency} ${format.price.toFixed(2)})`).join(", ") || product.productType.replace(/_/g, " ")],
-              ].map(([label, value]) => (
-                <div key={label} className="flex justify-between gap-3 border-b border-slate-100 pb-2 last:border-0 dark:border-slate-800">
-                  <dt className="text-slate-500">{label}</dt>
-                  <dd className="text-right font-semibold">{value}</dd>
-                </div>
-              ))}
-            </dl>
-          </Panel>
-        </aside>
-      </section>
-
-      <section className="mx-auto grid max-w-[88rem] gap-7 px-4 pb-10 sm:px-6 lg:grid-cols-[minmax(0,1fr)_24rem] lg:px-8">
-        <div className="space-y-7">
           <Panel title="Sample Preview" icon={BookOpen} action={<Button variant="secondary" onClick={() => setPreviewOpen(true)}><FileText className="size-4" /> {sampleUrl ? "Open sample PDF" : "Open preview"}</Button>}>
             <div className="grid gap-5 md:grid-cols-[12rem_minmax(0,1fr)] md:items-center">
               <BookCover product={product} className="w-full rounded-xl" />
@@ -602,7 +532,74 @@ export function LibraryProductPage({
           )}
         </div>
 
-        <aside className="space-y-4">
+        <aside className="space-y-4 lg:sticky lg:top-24">
+          <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-slate-500">Your selection</p>
+            <p className="mt-2 text-sm font-semibold text-ink dark:text-white">{selectedFormat?.label || "Library product"}</p>
+            <p className="mt-1 text-3xl font-semibold tracking-tight text-ink dark:text-white">{product.currency} {(selectedFormat?.price ?? product.price).toFixed(2)}</p>
+            {formats.length > 1 && (
+              <div className="mt-4 grid gap-2">
+                {formats.map((format) => (
+                  <button
+                    key={`aside-${format.id}`}
+                    type="button"
+                    onClick={() => setSelectedFormatId(format.id)}
+                    className={cn(
+                      "flex items-center justify-between rounded-lg border px-3 py-2 text-left text-sm transition",
+                      selectedFormat?.id === format.id ? "border-emerald-600 bg-emerald-50 dark:bg-emerald-950/30" : "border-slate-200 dark:border-slate-700",
+                    )}
+                  >
+                    <span className="font-semibold">{format.label}</span>
+                    <span className="font-bold">{product.currency} {format.price.toFixed(2)}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+            <div className="mt-5 grid gap-2">
+              <Button disabled={outOfStock} onClick={buyNow}>
+                <ShoppingCart className="size-4" /> {product.preorder ? "Pre-order now" : "Buy now"}
+              </Button>
+              <Button variant="secondary" disabled={outOfStock} onClick={addToCart}>
+                <ShoppingBag className="size-4" /> {productQuantity ? `In bag (${productQuantity})` : "Add to cart"}
+              </Button>
+              <Button variant="secondary" onClick={() => setPreviewOpen(true)}>
+                <FileText className="size-4" /> {sampleUrl ? "Read sample PDF" : "Read sample"}
+              </Button>
+            </div>
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              <button type="button" disabled={wishBusy} onClick={() => void toggleWishlist()} className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-slate-200 px-3 text-sm font-bold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800" aria-label="Add to wishlist">
+                <Heart className={cn("size-4", wished && "fill-current text-rose-500")} /> {wished ? "Saved" : "Wishlist"}
+              </button>
+              <button type="button" onClick={() => void shareProduct()} className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-slate-200 px-3 text-sm font-bold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800" aria-label="Share product">
+                <Share2 className="size-4" /> {shareNotice || "Share"}
+              </button>
+            </div>
+            <div className="mt-5 space-y-2 border-t border-slate-200 pt-4 text-sm text-slate-600 dark:border-slate-800 dark:text-slate-300">
+              {["Native HouseLink checkout", "Protected customer access", "Download limits and license keys"].map((item) => (
+                <p key={item} className="flex gap-2">
+                  <Lock className="mt-0.5 size-4 shrink-0 text-emerald-600" /> {item}
+                </p>
+              ))}
+            </div>
+          </div>
+          <Panel title="Book Details" icon={ReceiptText}>
+            <dl className="space-y-3 text-sm">
+              {[
+                ["Publisher", product.publisher],
+                ["Edition", product.edition],
+                ["ISBN", product.isbn ?? "Digital SKU"],
+                ["Language", product.language],
+                ["Pages", product.pages?.toString() ?? "Digital course"],
+                ["SKU", product.sku],
+                ["Formats", formats.map((format) => `${format.label} (${product.currency} ${format.price.toFixed(2)})`).join(", ") || product.productType.replace(/_/g, " ")],
+              ].map(([label, value]) => (
+                <div key={label} className="flex justify-between gap-3 border-b border-slate-100 pb-2 last:border-0 dark:border-slate-800">
+                  <dt className="text-slate-500">{label}</dt>
+                  <dd className="text-right font-semibold">{value}</dd>
+                </div>
+              ))}
+            </dl>
+          </Panel>
           <Panel title="Who This Is For" icon={Users}>
             <div className="flex flex-wrap gap-2">
               {product.whoThisIsFor.map((item) => (
