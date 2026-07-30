@@ -47,8 +47,8 @@ export function LibraryStorefront({ products }: { products: LibraryProduct[] }) 
   const [notice, setNotice] = useState("");
   const { cart, setCart, total, currency } = useLibraryCart();
   const featured = products.find((product) => product.editorsChoice) ?? products.find((product) => product.featured) ?? products[0];
-  const featuredProducts = products.filter((product) => product.editorsChoice || product.featured).slice(0, 4);
-  const bestSellers = products.filter((product) => product.bestSeller).slice(0, 4);
+  const featuredProducts = products.filter((product) => product.editorsChoice || product.featured).slice(0, 3);
+  const bestSellers = products.filter((product) => product.bestSeller).slice(0, 3);
   const results = useMemo(() => filterProducts(products, { query, category, type, difficulty, sort }), [products, query, category, type, difficulty, sort]);
   const quantityFor = (productId: string) => cart.find((line) => line.productId === productId)?.quantity ?? 0;
 
@@ -227,7 +227,7 @@ function ProductSection({ title, subtitle, products, onAdd, quantityFor }: { tit
           View all <ArrowRight className="size-4" />
         </Link>
       </div>
-      <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
         {products.map((product) => (
           <ProductCard key={product.id} product={product} quantity={quantityFor(product.id)} onAdd={onAdd} compact />
         ))}
@@ -240,7 +240,7 @@ function ProductCard({ product, quantity, onAdd, compact = false }: { product: L
   return (
     <article className="group rounded-lg border border-[#dfe8e5] bg-white p-4 shadow-sm transition hover:-translate-y-1 hover:border-[#007f68] hover:shadow-xl dark:border-slate-800 dark:bg-slate-900">
       <div className="rounded-lg bg-[#f5f8f7] px-4 py-5">
-        <BookCover product={product} className={cn("mx-auto w-full", compact ? "max-w-[9.75rem]" : "max-w-[11.75rem]")} />
+        <BookCover product={product} className={cn("mx-auto w-full", compact ? "max-w-[11.25rem]" : "max-w-[12.75rem]")} />
       </div>
       <div className="mt-4 flex min-w-0 flex-col">
         <p className="text-xs font-black uppercase tracking-wide text-[#007f68] dark:text-emerald-300">{product.productType.replace(/_/g, " ")}</p>
