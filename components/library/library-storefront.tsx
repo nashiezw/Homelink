@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, BookOpen, Search, ShoppingBag, ShoppingCart, Star } from "lucide-react";
+import { ArrowRight, BookOpen, Filter, Search, ShoppingBag, ShoppingCart, Star } from "lucide-react";
 import { useMemo, useState } from "react";
 import { BookCover } from "@/components/library/book-cover";
 import { LibraryCartFab } from "@/components/library/library-cart-fab";
@@ -20,7 +20,6 @@ import {
   type LibraryProduct,
 } from "@/lib/library/catalog";
 import type { LibraryStoreSettings } from "@/lib/library/settings-shared";
-import { cn } from "@/lib/utils";
 
 type Merchandising = LibraryStoreSettings["merchandising"];
 type Store = LibraryStoreSettings["store"];
@@ -44,6 +43,7 @@ export function LibraryStorefront({
 
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("");
+  const [type, setType] = useState("");
   const [sort, setSort] = useState(merchandising.defaultSort === "downloads" ? "most-downloaded" : merchandising.defaultSort === "rating" ? "highest-rated" : merchandising.defaultSort);
   const { cart, setCart, count } = useLibraryCart();
   const quantityFor = (productId: string) => cart.filter((line) => line.productId === productId).reduce((sum, line) => sum + line.quantity, 0);
@@ -55,8 +55,8 @@ export function LibraryStorefront({
   }, [products, merchandising.showCuratedRail, merchandising.maxCuratedItems]);
 
   const results = useMemo(
-    () => filterProducts(products, { query, category, sort }),
-    [products, query, category, sort],
+    () => filterProducts(products, { query, category, type, sort }),
+    [products, query, category, type, sort],
   );
 
   const hidePrices = merchandising.hidePricesUntilLogin && !user;
@@ -186,6 +186,39 @@ export function LibraryStorefront({
         <EmptyLibraryState />
       ) : (
         <>
+          <section className="sticky top-0 z-20 mt-8 border-y border-[#dfe8e5] bg-white/95 backdrop-blur dark:border-slate-800 dark:bg-slate-950/95">
+            <div className="mx-auto grid max-w-7xl gap-3 px-4 py-4 sm:px-6 lg:grid-cols-[minmax(0,1fr)_auto_auto_auto] lg:items-center lg:px-8">
+              <label className="relative min-w-0">
+                <Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+                <input
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  placeholder="Search title, author, category, or ISBN"
+                  className="h-12 w-full rounded-full border border-[#d8e4e0] bg-white pl-11 pr-4 text-sm shadow-sm outline-none transition focus:border-[#007f68] focus:ring-4 focus:ring-[#007f68]/12 dark:border-slate-700 dark:bg-slate-900"
+                />
+              </label>
+              <FilterSelect value={category} onChange={setCategory} label="Category" options={facets.categories} />
+              <FilterSelect value={type} onChange={setType} label="Format" options={facets.types} />
+              <select
+                value={sort}
+                onChange={(event) => setSort(event.target.value)}
+                className="h-12 appearance-none rounded-full border border-[#d8e4e0] bg-white bg-[length:1rem] bg-[right_0.9rem_center] bg-no-repeat px-4 pr-10 text-sm shadow-sm outline-none transition focus:border-[#007f68] dark:border-slate-700 dark:bg-slate-900 lg:w-44"
+                style={{
+                  backgroundImage:
+                    "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%1494a3' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E\")",
+                }}
+                aria-label="Sort products"
+              >
+                <option value="newest">Newest</option>
+                <option value="best-selling">Best selling</option>
+                <option value="most-downloaded">Most downloaded</option>
+                <option value="highest-rated">Highest rated</option>
+                <option value="price-asc">Price: low to high</option>
+                <option value="price-desc">Price: high to low</option>
+              </select>
+            </div>
+          </section>
+
           {curated.length > 0 && (
             <section className="mx-auto max-w-7xl px-4 pt-14 sm:px-6 lg:px-8">
               <div className="mb-8 flex items-end justify-between gap-4">
@@ -211,52 +244,13 @@ export function LibraryStorefront({
           )}
 
           <section id="library-products" className="mx-auto max-w-7xl px-4 pb-20 pt-14 sm:px-6 lg:px-8">
-            <div className="mb-8 flex flex-col gap-5 border-b border-black/[0.06] pb-6 dark:border-white/10 lg:flex-row lg:items-end lg:justify-between">
-              <div>
-                <h2 className="text-2xl font-bold tracking-tight text-[#141414] dark:text-white sm:text-3xl">
-                  All titles
-                </h2>
-                <p className="mt-2 text-sm text-[#141414]/55 dark:text-white/55">
-                  {results.length} {results.length === 1 ? "product" : "products"}
-                </p>
-              </div>
-
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                <label className="relative min-w-0 flex-1 sm:w-72">
-                  <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-[#141414]/35" />
-                  <input
-                    value={query}
-                    onChange={(event) => setQuery(event.target.value)}
-                    placeholder="Search by title, author, or category"
-                    className="h-11 w-full border border-black/[0.08] bg-white pl-10 pr-3 text-sm outline-none transition placeholder:text-[#141414]/35 focus:border-[#1a3560] dark:border-white/10 dark:bg-slate-900 dark:placeholder:text-white/35"
-                  />
-                </label>
-                <select
-                  value={sort}
-                  onChange={(event) => setSort(event.target.value)}
-                  className="h-11 border border-black/[0.08] bg-white px-3 text-sm outline-none transition focus:border-[#1a3560] dark:border-white/10 dark:bg-slate-900"
-                  aria-label="Sort products"
-                >
-                  <option value="newest">Newest</option>
-                  <option value="best-selling">Best selling</option>
-                  <option value="most-downloaded">Most downloaded</option>
-                  <option value="highest-rated">Highest rated</option>
-                  <option value="price-asc">Price: low to high</option>
-                  <option value="price-desc">Price: high to low</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="mb-10 flex flex-wrap gap-x-6 gap-y-2">
-              <CategoryLink label="All" active={!category} onClick={() => setCategory("")} />
-              {facets.categories.map((item) => (
-                <CategoryLink
-                  key={item}
-                  label={item}
-                  active={category === item}
-                  onClick={() => setCategory(category === item ? "" : item)}
-                />
-              ))}
+            <div className="mb-8">
+              <h2 className="text-2xl font-bold tracking-tight text-[#141414] dark:text-white sm:text-3xl">
+                All titles
+              </h2>
+              <p className="mt-2 text-sm text-[#141414]/55 dark:text-white/55">
+                {results.length} {results.length === 1 ? "product" : "products"}
+              </p>
             </div>
 
             {results.length ? (
@@ -293,11 +287,16 @@ function ProductCard({
   onAdd: () => void;
 }) {
   return (
-    <article className="group flex h-full flex-col rounded-2xl border border-[#dfe8e5] bg-white p-4 shadow-sm transition hover:-translate-y-1 hover:border-[#007f68] hover:shadow-xl dark:border-slate-800 dark:bg-slate-900">
-      <div className="rounded-xl bg-[#f5f8f7] px-4 py-5 dark:bg-slate-950/60">
-        <BookCover product={product} className="mx-auto w-full max-w-[12.75rem]" sizes="(max-width: 768px) 60vw, 240px" />
+    <article className="group flex h-full flex-col overflow-hidden rounded-2xl border border-[#dfe8e5] bg-white shadow-sm transition hover:-translate-y-1 hover:border-[#007f68] hover:shadow-xl dark:border-slate-800 dark:bg-slate-900">
+      <div className="overflow-hidden bg-[#f5f8f7] dark:bg-slate-950/60">
+        <BookCover
+          product={product}
+          variant="shop"
+          className="w-full max-w-none rounded-none shadow-none ring-0"
+          sizes="(max-width: 768px) 90vw, 420px"
+        />
       </div>
-      <div className="mt-4 flex min-w-0 flex-1 flex-col">
+      <div className="flex min-w-0 flex-1 flex-col p-4">
         <p className="text-xs font-black uppercase tracking-wide text-[#007f68] dark:text-emerald-300">
           {libraryFormatsLabel(product)}
         </p>
@@ -342,20 +341,38 @@ function ProductCard({
   );
 }
 
-function CategoryLink({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+function FilterSelect({
+  value,
+  onChange,
+  label,
+  options,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  label: string;
+  options: string[];
+}) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        "border-b pb-1 text-[11px] font-semibold uppercase tracking-[0.16em] transition",
-        active
-          ? "border-[#141414] text-[#141414] dark:border-white dark:text-white"
-          : "border-transparent text-[#141414]/40 hover:text-[#141414] dark:text-white/40 dark:hover:text-white",
-      )}
-    >
-      {label}
-    </button>
+    <label className="relative">
+      <span className="sr-only">{label}</span>
+      <Filter className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="h-12 w-full appearance-none rounded-full border border-[#d8e4e0] bg-white bg-[length:1rem] bg-[right_0.9rem_center] bg-no-repeat pl-10 pr-10 text-sm shadow-sm outline-none transition focus:border-[#007f68] dark:border-slate-700 dark:bg-slate-900 lg:w-44"
+        style={{
+          backgroundImage:
+            "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%1494a3' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E\")",
+        }}
+      >
+        <option value="">{label}</option>
+        {options.map((option) => (
+          <option key={option} value={option}>
+            {option.replace(/_/g, " ")}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }
 
@@ -385,7 +402,7 @@ function EmptyLibraryState() {
 
 function filterProducts(
   products: LibraryProduct[],
-  input: { query: string; category: string; sort: string },
+  input: { query: string; category: string; type: string; sort: string },
 ) {
   const q = input.query.trim().toLowerCase();
   return products
@@ -403,7 +420,11 @@ function filterProducts(
       ]
         .join(" ")
         .toLowerCase();
-      return (!q || haystack.includes(q)) && (!input.category || product.category === input.category);
+      return (
+        (!q || haystack.includes(q)) &&
+        (!input.category || product.category === input.category) &&
+        (!input.type || product.productType === input.type)
+      );
     })
     .sort((a, b) => {
       if (input.sort === "price-asc") return a.price - b.price;

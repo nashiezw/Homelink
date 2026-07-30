@@ -79,7 +79,7 @@ test("upload flow and manual checkout surface are reachable", async ({ page }) =
 test("library storefront and product page render commerce surfaces", async ({ page }) => {
   await page.goto("/library");
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
-  await page.getByPlaceholder(/search by title/i).fill("law");
+  await page.getByPlaceholder(/search title, author, category/i).fill("law");
   await expect(page.getByRole("link", { name: /property development and property law/i }).first()).toBeVisible();
   await page.getByRole("link", { name: /property development and property law/i }).first().click();
   await expect(page).toHaveURL(/\/library\//);
