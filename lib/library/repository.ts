@@ -14,6 +14,9 @@ import {
   type LibraryProductFormat,
   type LibraryProductType as PublicLibraryProductType,
 } from "@/lib/library/catalog";
+import { getLibraryStoreSettings, saveLibraryStoreSettings, type LibraryStoreSettings } from "@/lib/library/settings";
+
+export { getLibraryStoreSettings, saveLibraryStoreSettings, type LibraryStoreSettings };
 
 export type LibraryCartLine = {
   productId: string;
@@ -26,13 +29,27 @@ export type LibraryCartLine = {
   formatLabel?: string;
 };
 
+export type LibraryShippingAddress = {
+  name: string;
+  phone: string;
+  line1: string;
+  line2?: string;
+  city: string;
+  province?: string;
+  country?: string;
+  notes?: string;
+};
+
 export type LibraryCartQuote = {
   subtotal: number;
   discountTotal: number;
   taxTotal: number;
+  shippingTotal: number;
   total: number;
   currency: string;
   couponCode?: string;
+  taxLabel?: string;
+  taxCountry?: string;
   items: LibraryCartLine[];
 };
 
@@ -110,13 +127,12 @@ type DbOrder = Prisma.LibraryOrderGetPayload<{
   };
 }>;
 
-const TOKEN_TTL_SECONDS = 60 * 15;
+const FALLBACK_TOKEN_TTL_SECONDS = 60 * 15;
 
 type LocalLibraryOrder = LibraryOrder & {
   customerId?: string;
-  paymentId?: string;
   items?: Array<{ id: string; title: string; sku: string; quantity: number; unitPrice: number; total: number; productId: string }>;
-  payment?: { status: string };
+  payment?: { status: string; proofStatus?: string | null; proofUrl?: string | null; id?: string };
 };
 
 export type LibraryCouponAdmin = {
@@ -397,7 +413,11 @@ export async function listLibraryOrders(customerId?: string): Promise<LibraryOrd
   try {
     const rows = await getMainPrisma().libraryOrder.findMany({
       where: customerId ? { customerId } : {},
-      include: { customer: { select: { id: true, name: true, email: true } }, items: true, payment: { select: { status: true } } },
+      include: {
+        customer: { select: { id: true, name: true, email: true } },
+        items: true,
+        payment: { select: { id: true, status: true, proofStatus: true, proofUrl: true, metadata: true } },
+      },
       orderBy: { createdAt: "desc" },
       take: 100,
     });
@@ -407,12 +427,18 @@ export async function listLibraryOrders(customerId?: string): Promise<LibraryOrd
   }
 }
 
-export async function quoteLibraryCart(items: LibraryCartLine[], couponCode?: string, customerId?: string): Promise<LibraryCartQuote> {
+export async function quoteLibraryCart(
+  items: LibraryCartLine[],
+  couponCode?: string,
+  customerId?: string,
+  options?: { country?: string; includeShipping?: boolean },
+): Promise<LibraryCartQuote> {
+  const settings = await getLibraryStoreSettings();
   const normalized = items.map((item) => ({ ...item, quantity: Math.max(1, Number(item.quantity) || 1) })).filter((item) => item.productId);
   if (!shouldUsePostgresLibrary()) {
     const lines = normalized.map((item) => {
       const product = localLibraryProducts.find((entry) => entry.id === item.productId);
-      if (!product) return { ...item, title: item.title ?? "Library product", price: item.price ?? 0, currency: item.currency ?? "USD" };
+      if (!product) return { ...item, title: item.title ?? "Library product", price: item.price ?? 0, currency: item.currency ?? settings.store.currency };
       const format = resolveLibraryFormat(product, item.formatId, item.formatType);
       return {
         ...item,
@@ -425,7 +451,20 @@ export async function quoteLibraryCart(items: LibraryCartLine[], couponCode?: st
       };
     });
     const subtotal = lines.reduce((sum, item) => sum + (item.price ?? 0) * item.quantity, 0);
-    return { subtotal, discountTotal: 0, taxTotal: 0, total: subtotal, currency: lines[0]?.currency ?? "USD", couponCode, items: lines };
+    const hasPrinted = lines.some((item) => item.formatType === "PRINTED_BOOK");
+    const shippingTotal = options?.includeShipping !== false && hasPrinted ? resolveShippingTotal(subtotal, 0, settings) : 0;
+    return {
+      subtotal,
+      discountTotal: 0,
+      taxTotal: 0,
+      shippingTotal,
+      total: roundMoney(subtotal + shippingTotal),
+      currency: lines[0]?.currency ?? settings.store.currency,
+      couponCode,
+      taxLabel: settings.tax.taxLabel,
+      taxCountry: settings.tax.defaultCountry,
+      items: lines,
+    };
   }
   await seedLibraryIfEmpty();
   const prisma = getMainPrisma();
@@ -434,7 +473,7 @@ export async function quoteLibraryCart(items: LibraryCartLine[], couponCode?: st
   const mapped = products.map((row) => toLibraryProduct(row as DbProduct));
   const lines = normalized.map((item) => {
     const product = mapped.find((entry) => entry.id === item.productId);
-    if (!product) return { ...item, title: item.title ?? "Library product", price: item.price ?? 0, currency: item.currency ?? "USD" };
+    if (!product) return { ...item, title: item.title ?? "Library product", price: item.price ?? 0, currency: item.currency ?? settings.store.currency };
     const format = resolveLibraryFormat(product, item.formatId, item.formatType);
     return {
       productId: product.id,
@@ -448,17 +487,27 @@ export async function quoteLibraryCart(items: LibraryCartLine[], couponCode?: st
     };
   });
   const subtotal = lines.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const discountTotal = await calculateLibraryDiscount({ couponCode, subtotal, products, customerId });
-  const tax = await prisma.libraryTaxSetting.findFirst({ where: { active: true, country: "ZW" }, orderBy: { createdAt: "desc" } }).catch(() => null);
+  const discountTotal = settings.checkout.allowCoupons
+    ? await calculateLibraryDiscount({ couponCode, subtotal, products, customerId })
+    : 0;
+  const taxCountry = (options?.country || settings.tax.defaultCountry).toUpperCase();
+  const tax = await prisma.libraryTaxSetting.findFirst({ where: { active: true, country: taxCountry }, orderBy: { createdAt: "desc" } }).catch(() => null)
+    ?? await prisma.libraryTaxSetting.findFirst({ where: { active: true, country: settings.tax.defaultCountry }, orderBy: { createdAt: "desc" } }).catch(() => null);
   const taxable = Math.max(0, subtotal - discountTotal);
-  const taxTotal = tax && !tax.inclusive ? roundMoney(taxable * (Number(tax.rate) / 100)) : 0;
+  const inclusive = tax ? tax.inclusive : settings.tax.pricesIncludeTax;
+  const taxTotal = tax && !inclusive ? roundMoney(taxable * (Number(tax.rate) / 100)) : 0;
+  const hasPrinted = lines.some((item) => item.formatType === "PRINTED_BOOK");
+  const shippingTotal = options?.includeShipping !== false && hasPrinted ? resolveShippingTotal(taxable, taxTotal, settings) : 0;
   return {
     subtotal,
     discountTotal,
     taxTotal,
-    total: Math.max(0, roundMoney(taxable + taxTotal)),
-    currency: lines[0]?.currency ?? "USD",
-    couponCode,
+    shippingTotal,
+    total: Math.max(0, roundMoney(taxable + taxTotal + shippingTotal)),
+    currency: lines[0]?.currency ?? settings.store.currency,
+    couponCode: discountTotal > 0 ? couponCode : undefined,
+    taxLabel: settings.tax.taxLabel,
+    taxCountry,
     items: lines,
   };
 }
@@ -646,13 +695,19 @@ export async function createLibraryOrderFromCheckout(input: {
   paymentId: string;
   items: LibraryCartLine[];
   couponCode?: string;
+  shipping?: LibraryShippingAddress | null;
 }) {
+  const settings = await getLibraryStoreSettings();
+  if (!settings.store.enabled) throw new Error("HouseLink Library checkout is temporarily disabled.");
   if (!shouldUsePostgresLibrary()) {
-    const quote = await quoteLibraryCart(input.items, input.couponCode, input.customerId);
+    const quote = await quoteLibraryCart(input.items, input.couponCode, input.customerId, { country: input.shipping?.country, includeShipping: true });
     if (!quote.items.length) throw new Error("No valid Library products found.");
+    if (quote.subtotal < settings.checkout.minimumOrderAmount) {
+      throw new Error(`Minimum order amount is ${quote.currency} ${settings.checkout.minimumOrderAmount.toFixed(2)}.`);
+    }
     const order: LocalLibraryOrder = {
       id: `local-library-order-${Date.now()}`,
-      orderNumber: `HL-LIB-${Date.now()}`,
+      orderNumber: `${settings.checkout.orderPrefix}-${Date.now()}`,
       customerId: input.customerId,
       paymentId: input.paymentId,
       customerName: "HouseLink Customer",
@@ -679,7 +734,13 @@ export async function createLibraryOrderFromCheckout(input: {
   }
   await seedLibraryIfEmpty();
   const prisma = getMainPrisma();
-  const quote = await quoteLibraryCart(input.items, input.couponCode, input.customerId);
+  const quote = await quoteLibraryCart(input.items, input.couponCode, input.customerId, {
+    country: input.shipping?.country,
+    includeShipping: true,
+  });
+  if (quote.subtotal < settings.checkout.minimumOrderAmount) {
+    throw new Error(`Minimum order amount is ${quote.currency} ${settings.checkout.minimumOrderAmount.toFixed(2)}.`);
+  }
   const ids = input.items.map((item) => item.productId);
   const products = await prisma.libraryProduct.findMany({ where: { id: { in: ids }, deletedAt: null }, include: { files: true, media: true, author: true, category: true, collection: true, previewPages: true } });
   if (!products.length) throw new Error("No valid Library products found.");
@@ -693,48 +754,107 @@ export async function createLibraryOrderFromCheckout(input: {
     const unitPrice = Number(cart.price ?? format.price);
     return {
       product,
+      mappedProduct,
       quantity,
       unitPrice,
       total: unitPrice * quantity,
       title: formatLabelTitle(product.title, format.label),
       productType: normalizeType(format.type),
       sku: format.sku || product.sku,
+      format,
     };
-  }).filter(Boolean) as Array<{ product: (typeof products)[number]; quantity: number; unitPrice: number; total: number; title: string; productType: LibraryProductType; sku: string }>;
-  const order = await prisma.libraryOrder.create({
-    data: {
-      orderNumber: `HL-LIB-${Date.now()}`,
-      customerId: input.customerId,
-      paymentId: input.paymentId,
-      status: LibraryOrderStatusFromPayment(PaymentStatus.PENDING),
-      subtotal: quote.subtotal,
-      discountTotal: quote.discountTotal,
-      total: quote.total,
-      currency: quote.currency,
-      couponCode: input.couponCode || null,
-      metadata: { taxTotal: quote.taxTotal },
-      items: {
-        create: lines.map((line) => ({
+  }).filter(Boolean) as Array<{
+    product: (typeof products)[number];
+    mappedProduct: LibraryProduct;
+    quantity: number;
+    unitPrice: number;
+    total: number;
+    title: string;
+    productType: LibraryProductType;
+    sku: string;
+    format: ReturnType<typeof resolveLibraryFormat>;
+  }>;
+
+  const printedLines = lines.filter((line) => line.productType === LibraryProductType.PRINTED_BOOK);
+  if (printedLines.length) {
+    if (!settings.delivery.enablePrintedShipping) {
+      throw new Error("Printed book shipping is currently disabled in Library settings.");
+    }
+    const shipping = normalizeShippingAddress(input.shipping);
+    if (!shipping) throw new Error("Shipping details are required for printed books.");
+    for (const line of printedLines) {
+      if (line.product.stock != null && line.product.stock < line.quantity && !settings.inventory.allowBackorder) {
+        throw new Error(`${line.product.title} only has ${line.product.stock} printed cop${line.product.stock === 1 ? "y" : "ies"} left.`);
+      }
+    }
+  }
+
+  const shipping = printedLines.length ? normalizeShippingAddress(input.shipping) : null;
+
+  const order = await prisma.$transaction(async (tx) => {
+    for (const line of printedLines) {
+      if (line.product.stock == null || settings.inventory.allowBackorder) continue;
+      const updated = await tx.libraryProduct.updateMany({
+        where: { id: line.product.id, stock: { gte: line.quantity } },
+        data: { stock: { decrement: line.quantity } },
+      });
+      if (!updated.count) {
+        throw new Error(`${line.product.title} is out of printed stock.`);
+      }
+      await tx.libraryInventoryMovement.create({
+        data: {
           productId: line.product.id,
-          title: line.title,
-          sku: line.sku,
-          quantity: line.quantity,
-          unitPrice: line.unitPrice,
-          total: line.total,
-          productType: line.productType,
-        })),
+          type: "RESERVE",
+          quantity: -line.quantity,
+          note: `Reserved for checkout payment ${input.paymentId}`,
+        },
+      });
+    }
+
+    return tx.libraryOrder.create({
+      data: {
+        orderNumber: `${settings.checkout.orderPrefix}-${Date.now()}`,
+        customerId: input.customerId,
+        paymentId: input.paymentId,
+        status: LibraryOrderStatusFromPayment(PaymentStatus.PENDING),
+        subtotal: quote.subtotal,
+        discountTotal: quote.discountTotal,
+        total: quote.total,
+        currency: quote.currency,
+        couponCode: input.couponCode || null,
+        metadata: {
+          taxTotal: quote.taxTotal,
+          shippingTotal: quote.shippingTotal,
+          taxLabel: quote.taxLabel,
+          taxCountry: quote.taxCountry,
+          shipping,
+          stockReserved: printedLines.some((line) => line.product.stock != null) && !settings.inventory.allowBackorder,
+          needsShipping: printedLines.length > 0,
+          hasDigital: lines.some((line) => line.productType !== LibraryProductType.PRINTED_BOOK),
+        } as Prisma.InputJsonValue,
+        items: {
+          create: lines.map((line) => ({
+            productId: line.product.id,
+            title: line.title,
+            sku: line.sku,
+            quantity: line.quantity,
+            unitPrice: line.unitPrice,
+            total: line.total,
+            productType: line.productType,
+          })),
+        },
       },
-    },
-    include: { customer: { select: { id: true, name: true, email: true } }, items: true, payment: { select: { status: true } } },
+      include: { customer: { select: { id: true, name: true, email: true } }, items: true, payment: { select: { status: true } } },
+    });
   });
-  await incrementLibraryCouponUsage(input.couponCode);
+
   await logLibraryActivity({
     actorId: input.customerId,
     targetType: "order",
     targetId: order.id,
     action: "CREATED",
     message: `Library order ${order.orderNumber} created.`,
-    metadata: { paymentId: input.paymentId, couponCode: input.couponCode, taxTotal: quote.taxTotal },
+    metadata: { paymentId: input.paymentId, couponCode: input.couponCode, taxTotal: quote.taxTotal, needsShipping: printedLines.length > 0 },
   });
   return { order: toLibraryOrder(order), accessGranted: false };
 }
@@ -798,15 +918,58 @@ export async function refundLibraryOrder(orderId: string, reason = "admin_refund
     return { order, revoked: 0 };
   }
   const prisma = getMainPrisma();
-  const order = await prisma.libraryOrder.findUnique({ where: { id: orderId }, include: { customer: { select: { id: true } }, payment: true } });
+  const order = await prisma.libraryOrder.findUnique({
+    where: { id: orderId },
+    include: { customer: { select: { id: true } }, payment: true, items: true },
+  });
   if (!order) return null;
-  const [updated, revoked] = await prisma.$transaction([
-    prisma.libraryOrder.update({ where: { id: orderId }, data: { status: LibraryOrderStatus.REFUNDED, refundedAt: new Date(), metadata: { reason } }, include: { customer: { select: { id: true, name: true, email: true } }, items: true, payment: { select: { status: true } } } }),
-    prisma.libraryDownloadAccess.updateMany({ where: { orderId }, data: { status: LibraryDownloadStatus.REVOKED } }),
-    ...(order.paymentId ? [prisma.payment.update({ where: { id: order.paymentId }, data: { status: PaymentStatus.REFUNDED, metadata: { reason, refundedBy: actorId } } })] : []),
-  ]);
+  const metadata = (order.metadata ?? {}) as Record<string, unknown>;
+  const shouldRestock = Boolean(metadata.stockReserved) || ["PAID", "FULFILLED"].includes(order.status);
+  const [updated, revoked] = await prisma.$transaction(async (tx) => {
+    if (shouldRestock) {
+      for (const item of order.items) {
+        if (item.productType !== LibraryProductType.PRINTED_BOOK) continue;
+        await tx.libraryProduct.update({
+          where: { id: item.productId },
+          data: { stock: { increment: item.quantity } },
+        }).catch(() => null);
+        await tx.libraryInventoryMovement.create({
+          data: {
+            productId: item.productId,
+            type: "RESTOCK",
+            quantity: item.quantity,
+            note: `Refund restock for order ${order.orderNumber}`,
+          },
+        }).catch(() => null);
+      }
+    }
+    const next = await tx.libraryOrder.update({
+      where: { id: orderId },
+      data: {
+        status: LibraryOrderStatus.REFUNDED,
+        refundedAt: new Date(),
+        metadata: { ...metadata, reason, stockRestocked: shouldRestock } as Prisma.InputJsonValue,
+      },
+      include: { customer: { select: { id: true, name: true, email: true } }, items: true, payment: { select: { status: true } } },
+    });
+    const revokedDownloads = await tx.libraryDownloadAccess.updateMany({
+      where: { orderId },
+      data: { status: LibraryDownloadStatus.REVOKED },
+    });
+    if (order.paymentId) {
+      await tx.payment.update({
+        where: { id: order.paymentId },
+        data: { status: PaymentStatus.REFUNDED, metadata: { reason, refundedBy: actorId } },
+      }).catch(() => null);
+    }
+    await tx.libraryFulfilment.updateMany({
+      where: { orderId, status: { not: "CANCELLED" } },
+      data: { status: "CANCELLED", deliveryNotes: `Refunded: ${reason}` },
+    }).catch(() => null);
+    return [next, revokedDownloads] as const;
+  });
   await notifyLibraryCustomer(order.customerId, "Library order refunded", "Your HouseLink Library order has been marked refunded and related download access has been revoked.");
-  await logLibraryActivity({ actorId, targetType: "order", targetId: orderId, action: "ORDER_REFUNDED", message: `Library order refunded. ${revoked.count} access record(s) revoked.`, metadata: { reason } });
+  await logLibraryActivity({ actorId, targetType: "order", targetId: orderId, action: "ORDER_REFUNDED", message: `Library order refunded. ${revoked.count} access record(s) revoked.`, metadata: { reason, stockRestocked: shouldRestock } });
   return { order: toLibraryOrder(updated), revoked: revoked.count };
 }
 
@@ -827,41 +990,71 @@ export async function fulfillPaidLibraryOrdersForPayment(paymentId: string) {
     let orders = 0;
     localLibraryOrders.forEach((order) => {
       if (order.paymentId === paymentId) {
-        order.status = "FULFILLED";
+        const hasPrint = (order.items ?? []).some((item) => /print/i.test(item.title));
+        order.status = hasPrint ? "PAID" : "FULFILLED";
         order.paymentStatus = "PAID";
         order.payment = { status: "PAID" };
         orders += 1;
-        downloads += order.items?.length ?? 0;
+        downloads += hasPrint ? 0 : (order.items?.length ?? 0);
       }
     });
     return { orders, downloads };
   }
   const prisma = getMainPrisma();
+  const settings = await getLibraryStoreSettings();
   const orders = await prisma.libraryOrder.findMany({
-    where: { paymentId, status: { in: ["PENDING", "PAID"] } },
+    where: { paymentId, status: LibraryOrderStatus.PENDING },
     include: { items: { include: { product: { include: { files: true } } } } },
   });
   let downloads = 0;
   for (const order of orders) {
-    await prisma.libraryOrder.update({ where: { id: order.id }, data: { status: "FULFILLED", fulfilledAt: new Date() } });
+    const metadata = (order.metadata ?? {}) as Record<string, unknown>;
+    const hasPrint = order.items.some((item) => item.productType === "PRINTED_BOOK");
+    const hasDigital = order.items.some((item) => item.productType !== "PRINTED_BOOK");
+    const nextStatus = hasPrint ? LibraryOrderStatus.PAID : LibraryOrderStatus.FULFILLED;
+    await prisma.libraryOrder.update({
+      where: { id: order.id },
+      data: {
+        status: nextStatus,
+        ...(nextStatus === LibraryOrderStatus.FULFILLED ? { fulfilledAt: new Date() } : {}),
+        metadata: {
+          ...metadata,
+          paidAt: new Date().toISOString(),
+          couponBurned: Boolean(order.couponCode),
+          needsShipping: hasPrint,
+          hasDigital,
+        } as Prisma.InputJsonValue,
+      },
+    });
     await ensureLibraryInvoice(order.id);
     await ensureLibraryFulfilmentQueue(order.id);
+    if (order.couponCode && !metadata.couponBurned) {
+      await incrementLibraryCouponUsage(order.couponCode);
+    }
     await logLibraryActivity({
       targetType: "order",
       targetId: order.id,
-      action: "FULFILLED",
-      message: `Library order ${order.id} fulfilled after payment ${paymentId}.`,
+      action: hasPrint ? "PAID" : "FULFILLED",
+      message: hasPrint
+        ? `Library order ${order.orderNumber} paid. Printed items await fulfilment.`
+        : `Library order ${order.orderNumber} fulfilled after payment ${paymentId}.`,
       metadata: { paymentId },
     });
     for (const item of order.items) {
       const isPrinted = item.productType === "PRINTED_BOOK";
-      if (isPrinted && item.product.stock !== null) {
-        await prisma.libraryProduct.update({
-          where: { id: item.productId },
+      if (isPrinted && item.product.stock !== null && !metadata.stockReserved) {
+        const updated = await prisma.libraryProduct.updateMany({
+          where: { id: item.productId, stock: { gte: item.quantity } },
           data: { stock: { decrement: item.quantity } },
-        }).catch(() => null);
+        });
+        if (updated.count) {
+          await prisma.libraryInventoryMovement.create({
+            data: { productId: item.productId, type: "SALE", quantity: -item.quantity, note: `Order ${order.id}` },
+          }).catch(() => null);
+        }
+      } else if (isPrinted && metadata.stockReserved) {
         await prisma.libraryInventoryMovement.create({
-          data: { productId: item.productId, type: "SALE", quantity: -item.quantity, note: `Order ${order.id}` },
+          data: { productId: item.productId, type: "SALE", quantity: 0, note: `Reserved stock confirmed for order ${order.id}` },
         }).catch(() => null);
       }
       await createLibraryAcademyEntitlementForItem(order.id, order.customerId, item.productId, item.productType);
@@ -876,14 +1069,15 @@ export async function fulfillPaidLibraryOrdersForPayment(paymentId: string) {
             productId: item.productId,
             orderId: order.id,
             status: "ACTIVE",
-            downloadLimit: item.product.downloadLimit,
-            expiresAt: item.product.downloadExpiryDays ? new Date(Date.now() + item.product.downloadExpiryDays * 86400000) : null,
+            downloadLimit: resolveDownloadLimit(item.product.downloadLimit, null, settings),
+            expiresAt: resolveDownloadExpiry(item.product.downloadExpiryDays, null, settings),
           },
           update: { status: "ACTIVE" },
         });
         downloads += 1;
       }
       for (const file of files) {
+        const issueLicense = item.product.licenseKeys || settings.licence.generateByDefault;
         await prisma.libraryDownloadAccess.upsert({
           where: { id: `${order.customerId}_${item.productId}_${file.id}_${order.id}` },
           create: {
@@ -894,29 +1088,84 @@ export async function fulfillPaidLibraryOrdersForPayment(paymentId: string) {
             fileId: file.id,
             status: "ACTIVE",
             tokenHash: createTokenHash(`${order.customerId}:${item.productId}:${file.id}:${order.id}`),
-            licenseKey: item.product.licenseKeys ? `HL-${randomBytes(6).toString("hex").toUpperCase()}` : null,
-            downloadLimit: file.downloadLimit ?? item.product.downloadLimit,
-            expiresAt: (file.expiryDays ?? item.product.downloadExpiryDays)
-              ? new Date(Date.now() + (file.expiryDays ?? item.product.downloadExpiryDays ?? 0) * 86400000)
-              : null,
+            licenseKey: issueLicense ? buildLibraryLicenseKey(settings.licence.keyPrefix) : null,
+            downloadLimit: resolveDownloadLimit(item.product.downloadLimit, file.downloadLimit, settings),
+            expiresAt: resolveDownloadExpiry(item.product.downloadExpiryDays, file.expiryDays, settings),
           },
           update: { status: "ACTIVE" },
         });
         downloads += 1;
       }
     }
+    if (hasDigital && settings.notifications.downloadReady) {
+      await notifyLibraryCustomer(order.customerId, "HouseLink Library access ready", `Your digital Library items for ${order.orderNumber} are available in My Library.`);
+    }
+    if (hasPrint) {
+      await notifyLibraryCustomer(order.customerId, "HouseLink Library print order paid", `Payment received for ${order.orderNumber}. We are preparing your printed book(s) for dispatch.`);
+    }
   }
   return { orders: orders.length, downloads };
 }
 
-export async function revokeLibraryAccessForPayment(paymentId: string, reason = "payment_reversed") {
+export async function revokeLibraryAccessForPayment(
+  paymentId: string,
+  reason = "payment_reversed",
+  mode: "reject" | "refund" = "refund",
+) {
   if (!shouldUsePostgresLibrary()) return { orders: 0, downloads: 0 };
   const prisma = getMainPrisma();
-  const orders = await prisma.libraryOrder.findMany({ where: { paymentId }, select: { id: true } });
+  const orders = await prisma.libraryOrder.findMany({
+    where: { paymentId },
+    include: { items: true },
+  });
+  if (!orders.length) return { orders: 0, downloads: 0 };
+  for (const order of orders) {
+    const metadata = (order.metadata ?? {}) as Record<string, unknown>;
+    // Keep reserved print stock on reject (customer can re-upload). Restock only on refund.
+    const shouldRestock = mode === "refund" && (Boolean(metadata.stockReserved) || ["PAID", "FULFILLED"].includes(order.status));
+    if (shouldRestock) {
+      for (const item of order.items) {
+        if (item.productType !== LibraryProductType.PRINTED_BOOK) continue;
+        await prisma.libraryProduct.update({
+          where: { id: item.productId },
+          data: { stock: { increment: item.quantity } },
+        }).catch(() => null);
+        await prisma.libraryInventoryMovement.create({
+          data: {
+            productId: item.productId,
+            type: "RESTOCK",
+            quantity: item.quantity,
+            note: `Refunded restock for ${order.orderNumber}`,
+          },
+        }).catch(() => null);
+      }
+    }
+    await prisma.libraryOrder.update({
+      where: { id: order.id },
+      data: {
+        status: mode === "reject" ? LibraryOrderStatus.PENDING : LibraryOrderStatus.REFUNDED,
+        ...(mode === "refund" ? { refundedAt: new Date() } : {}),
+        metadata: {
+          ...metadata,
+          revokeReason: reason,
+          revokeMode: mode,
+          stockRestocked: shouldRestock,
+          ...(mode === "reject" ? { paymentRejectedAt: new Date().toISOString() } : {}),
+        } as Prisma.InputJsonValue,
+      },
+    });
+    if (mode === "refund") {
+      await prisma.libraryFulfilment.updateMany({
+        where: { orderId: order.id, status: { not: "CANCELLED" } },
+        data: { status: "CANCELLED", deliveryNotes: `Refunded: ${reason}` },
+      }).catch(() => null);
+    }
+  }
   const orderIds = orders.map((order) => order.id);
-  if (!orderIds.length) return { orders: 0, downloads: 0 };
-  await prisma.libraryOrder.updateMany({ where: { id: { in: orderIds } }, data: { status: "REFUNDED", refundedAt: new Date(), metadata: { revokeReason: reason } } });
-  const downloads = await prisma.libraryDownloadAccess.updateMany({ where: { orderId: { in: orderIds } }, data: { status: "REVOKED" } });
+  const downloads = await prisma.libraryDownloadAccess.updateMany({
+    where: { orderId: { in: orderIds } },
+    data: { status: LibraryDownloadStatus.REVOKED },
+  });
   return { orders: orderIds.length, downloads: downloads.count };
 }
 
@@ -992,17 +1241,34 @@ export async function isLibraryWishlisted(userId: string, productId: string) {
 }
 
 export async function createLibraryCustomerReview(input: { userId: string; productId: string; rating: number; title?: string; body?: string }) {
-  const rating = Math.min(5, Math.max(1, Math.round(Number(input.rating) || 0)));
-  if (!input.userId || !input.productId || rating < 1) return null;
+  const settings = await getLibraryStoreSettings();
+  if (!settings.reviews.enabled) return { error: "REVIEWS_DISABLED" as const };
+  const rating = Math.min(5, Math.max(settings.reviews.minRating, Math.round(Number(input.rating) || 0)));
+  if (!input.userId || !input.productId || rating < settings.reviews.minRating) return null;
+  const status = settings.reviews.autoApprove ? "APPROVED" : "PENDING";
   if (!shouldUsePostgresLibrary()) {
-    return { id: `local-review-${Date.now()}`, productId: input.productId, rating, status: "PENDING" };
+    return { id: `local-review-${Date.now()}`, productId: input.productId, rating, status };
   }
   const prisma = getMainPrisma();
-  const access = await prisma.libraryDownloadAccess.findFirst({
-    where: { userId: input.userId, productId: input.productId, status: { in: ["ACTIVE", "EXPIRED"] } },
-    select: { id: true },
-  });
-  if (!access) return { error: "PURCHASE_REQUIRED" as const };
+  let purchased = true;
+  if (settings.reviews.requirePurchase) {
+    const access = await prisma.libraryDownloadAccess.findFirst({
+      where: { userId: input.userId, productId: input.productId, status: { in: ["ACTIVE", "EXPIRED"] } },
+      select: { id: true },
+    });
+    purchased = access
+      ? true
+      : Boolean(
+          await prisma.libraryOrderItem.findFirst({
+            where: {
+              productId: input.productId,
+              order: { customerId: input.userId, status: { in: ["PAID", "FULFILLED"] } },
+            },
+            select: { id: true },
+          }),
+        );
+  }
+  if (!purchased) return { error: "PURCHASE_REQUIRED" as const };
   const review = await prisma.libraryReview.upsert({
     where: { productId_userId: { productId: input.productId, userId: input.userId } },
     create: {
@@ -1011,19 +1277,39 @@ export async function createLibraryCustomerReview(input: { userId: string; produ
       rating,
       title: input.title?.trim() || null,
       body: input.body?.trim() || null,
-      status: "PENDING",
-      verified: true,
+      status,
+      verified: settings.reviews.requirePurchase,
     },
     update: {
       rating,
       title: input.title?.trim() || null,
       body: input.body?.trim() || null,
-      status: "PENDING",
-      verified: true,
+      status,
+      verified: settings.reviews.requirePurchase,
     },
   });
   await recalculateLibraryProductRating(input.productId);
   return review;
+}
+
+export async function listApprovedLibraryProductReviews(productId: string, limit = 12) {
+  if (!productId || !shouldUsePostgresLibrary()) return [];
+  const rows = await getMainPrisma().libraryReview.findMany({
+    where: { productId, status: { in: ["APPROVED", "PUBLISHED"] } },
+    include: { user: { select: { name: true } } },
+    orderBy: [{ featured: "desc" }, { createdAt: "desc" }],
+    take: limit,
+  }).catch(() => []);
+  return rows.map((row) => ({
+    id: row.id,
+    rating: row.rating,
+    title: row.title,
+    body: row.body,
+    featured: row.featured,
+    verified: row.verified,
+    createdAt: row.createdAt.toISOString(),
+    authorName: row.user.name || "HouseLink customer",
+  }));
 }
 
 export async function buildLibraryExportCsv(type: string) {
@@ -1189,13 +1475,34 @@ export async function getLibraryOrderForUser(orderId: string, userId: string, ro
     include: {
       customer: { select: { id: true, name: true, email: true } },
       items: true,
-      payment: { select: { id: true, status: true, provider: true, method: true, proofStatus: true, proofUrl: true } },
+      payment: {
+        select: {
+          id: true,
+          status: true,
+          provider: true,
+          method: true,
+          proofStatus: true,
+          proofUrl: true,
+          manual: true,
+          metadata: true,
+        },
+      },
+      fulfilments: { orderBy: { createdAt: "desc" }, take: 1 },
+      invoices: { orderBy: { issuedAt: "desc" }, take: 1 },
     },
   }).catch(() => null);
   if (!order) return null;
   if (!admin && order.customerId !== userId) return "FORBIDDEN" as const;
+  const metadata = (order.metadata ?? {}) as Record<string, unknown>;
+  const fulfilment = order.fulfilments[0] ?? null;
+  const paymentMeta = (order.payment?.metadata ?? {}) as Record<string, unknown>;
   return {
     ...toLibraryOrder(order),
+    subtotal: Number(order.subtotal),
+    discountTotal: Number(order.discountTotal),
+    taxTotal: Number((metadata.taxTotal as number | undefined) ?? order.invoices[0]?.taxTotal ?? 0),
+    shipping: (metadata.shipping as LibraryShippingAddress | null | undefined) ?? null,
+    needsShipping: Boolean(metadata.needsShipping),
     items: order.items.map((item) => ({
       id: item.id,
       title: item.title,
@@ -1204,6 +1511,7 @@ export async function getLibraryOrderForUser(orderId: string, userId: string, ro
       unitPrice: Number(item.unitPrice),
       total: Number(item.total),
       productId: item.productId,
+      productType: item.productType,
     })),
     payment: order.payment
       ? {
@@ -1213,6 +1521,28 @@ export async function getLibraryOrderForUser(orderId: string, userId: string, ro
           method: order.payment.method,
           proofStatus: order.payment.proofStatus,
           proofUrl: order.payment.proofUrl,
+          manual: order.payment.manual,
+          referenceNumber: typeof paymentMeta.referenceNumber === "string" ? paymentMeta.referenceNumber : null,
+          adminNote:
+            (typeof paymentMeta.adminNote === "string" && paymentMeta.adminNote) ||
+            (typeof paymentMeta.rejectReason === "string" && paymentMeta.rejectReason) ||
+            (typeof paymentMeta.refundReason === "string" && paymentMeta.refundReason) ||
+            null,
+          metadata: paymentMeta,
+        }
+      : null,
+    fulfilment: fulfilment
+      ? {
+          id: fulfilment.id,
+          status: fulfilment.status,
+          courier: fulfilment.courier,
+          trackingNumber: fulfilment.trackingNumber,
+          trackingUrl: fulfilment.trackingUrl,
+          packedAt: fulfilment.packedAt?.toISOString() ?? null,
+          dispatchedAt: fulfilment.dispatchedAt?.toISOString() ?? null,
+          deliveredAt: fulfilment.deliveredAt?.toISOString() ?? null,
+          dispatchNotes: fulfilment.dispatchNotes,
+          deliveryNotes: fulfilment.deliveryNotes,
         }
       : null,
   };
@@ -1231,7 +1561,25 @@ export async function getLibraryInvoiceForUser(orderId: string, userId: string, 
   if (!order) return null;
   if (!admin && order.customerId !== userId) return "FORBIDDEN" as const;
   const invoice = await ensureLibraryInvoice(order.id);
-  return { order: { ...toLibraryOrder(order), items: order.items.map((item) => ({ id: item.id, title: item.title, sku: item.sku, quantity: item.quantity, unitPrice: Number(item.unitPrice), total: Number(item.total) })) }, invoice };
+  const metadata = (order.metadata ?? {}) as Record<string, unknown>;
+  return {
+    order: {
+      ...toLibraryOrder(order),
+      subtotal: Number(order.subtotal),
+      discountTotal: Number(order.discountTotal),
+      shipping: (metadata.shipping as LibraryShippingAddress | null | undefined) ?? null,
+      items: order.items.map((item) => ({
+        id: item.id,
+        title: item.title,
+        sku: item.sku,
+        quantity: item.quantity,
+        unitPrice: Number(item.unitPrice),
+        total: Number(item.total),
+        productType: item.productType,
+      })),
+    },
+    invoice,
+  };
 }
 
 export async function getDownloadForUser(accessId: string, userId: string, roles: string[] = []) {
@@ -1273,12 +1621,14 @@ export async function auditLibraryDownload(input: { accessId: string; userId: st
 
 export async function getLibraryOperationsSummary() {
   if (!shouldUsePostgresLibrary()) {
+    const storeSettings = await getLibraryStoreSettings();
     return {
       fulfilments: [],
       invoices: [],
       activities: [],
       exports: [],
       taxSettings: [],
+      storeSettings,
       coupons: localLibraryCoupons,
       taxonomy: localLibraryTaxonomy,
       downloadAccess: [],
@@ -1286,17 +1636,18 @@ export async function getLibraryOperationsSummary() {
       guestClaims: [],
       academyEntitlements: [],
       recommendations: [],
-      reports: buildLibraryAdminReports({ orders: [], products: localLibraryProducts, coupons: localLibraryCoupons, downloadAccess: [], reviews: [], taxSettings: [], inventoryMovements: [] }),
+      reports: buildLibraryAdminReports({ orders: [], products: localLibraryProducts, coupons: localLibraryCoupons, downloadAccess: [], reviews: [], taxSettings: [], inventoryMovements: [], storeSettings }),
     };
   }
   const prisma = getMainPrisma();
   try {
-    const [fulfilments, invoices, activities, exports, taxSettings, coupons, categories, collections, authors, downloadAccess, reviews, guestClaims, academyEntitlements, recommendations, orders, products, inventoryMovements] = await Promise.all([
+    const [fulfilments, invoices, activities, exports, taxSettings, storeSettings, coupons, categories, collections, authors, downloadAccess, reviews, guestClaims, academyEntitlements, recommendations, orders, products, inventoryMovements] = await Promise.all([
       prisma.libraryFulfilment.findMany({ orderBy: { createdAt: "desc" }, take: 20, include: { order: { select: { orderNumber: true, total: true, currency: true } } } }),
       prisma.libraryInvoice.findMany({ orderBy: { issuedAt: "desc" }, take: 20, include: { order: { select: { orderNumber: true } } } }),
       prisma.libraryActivity.findMany({ orderBy: { createdAt: "desc" }, take: 30 }),
       prisma.libraryExportJob.findMany({ orderBy: { createdAt: "desc" }, take: 12 }),
       prisma.libraryTaxSetting.findMany({ orderBy: { createdAt: "desc" }, take: 10 }),
+      getLibraryStoreSettings(),
       prisma.libraryCoupon.findMany({ orderBy: { createdAt: "desc" }, take: 100 }),
       prisma.libraryCategory.findMany({ orderBy: [{ sortOrder: "asc" }, { name: "asc" }], include: { _count: { select: { products: true } } } }),
       prisma.libraryCollection.findMany({ orderBy: [{ sortOrder: "asc" }, { name: "asc" }], include: { _count: { select: { products: true } } } }),
@@ -1332,13 +1683,14 @@ export async function getLibraryOperationsSummary() {
         include: { product: { select: { title: true } } },
       }),
     ]);
-    const reports = buildLibraryAdminReports({ orders, products, coupons, downloadAccess, reviews, taxSettings, inventoryMovements });
+    const reports = buildLibraryAdminReports({ orders, products, coupons, downloadAccess, reviews, taxSettings, inventoryMovements, storeSettings });
     return {
       fulfilments,
       invoices,
       activities,
       exports,
       taxSettings,
+      storeSettings,
       coupons: coupons.map(toLibraryCouponAdmin),
       taxonomy: [
         ...categories.map((row) => toLibraryTaxonomyAdmin("category", row)),
@@ -1353,12 +1705,14 @@ export async function getLibraryOperationsSummary() {
       reports,
     };
   } catch {
+    const storeSettings = await getLibraryStoreSettings();
     return {
       fulfilments: [],
       invoices: [],
       activities: [],
       exports: [],
       taxSettings: [],
+      storeSettings,
       coupons: [],
       taxonomy: [],
       downloadAccess: [],
@@ -1366,7 +1720,7 @@ export async function getLibraryOperationsSummary() {
       guestClaims: [],
       academyEntitlements: [],
       recommendations: [],
-      reports: buildLibraryAdminReports({ orders: [], products: [], coupons: [], downloadAccess: [], reviews: [], taxSettings: [], inventoryMovements: [] }),
+      reports: buildLibraryAdminReports({ orders: [], products: [], coupons: [], downloadAccess: [], reviews: [], taxSettings: [], inventoryMovements: [], storeSettings }),
     };
   }
 }
@@ -1409,6 +1763,7 @@ function buildLibraryAdminReports(input: {
   reviews: Array<{ status: string; rating: number }>;
   taxSettings: Array<{ id: string; name: string; country: string; rate: unknown; active: boolean }>;
   inventoryMovements: Array<{ id: string; type: string; quantity: number; note?: string | null; createdAt: Date | string; product?: { title: string } | null }>;
+  storeSettings?: LibraryStoreSettings;
 }): LibraryAdminReports {
   const paidOrders = input.orders.filter((order) => ["PAID", "FULFILLED"].includes(order.status));
   const refundedOrders = input.orders.filter((order) => order.status === "REFUNDED");
@@ -1514,14 +1869,60 @@ function buildLibraryAdminReports(input: {
     })),
     taxSummary: input.taxSettings.map((tax) => ({ id: tax.id, name: tax.name, country: tax.country, rate: Number(tax.rate ?? 0), active: tax.active, collected: 0 })),
     refundSummary: { orders: refundedOrders.length, amount: refundAmount, rate: input.orders.length ? Number(((refundedOrders.length / input.orders.length) * 100).toFixed(1)) : 0 },
-    settingsHealth: [
-      { area: "Tax", status: input.taxSettings.some((setting) => setting.active) ? "READY" : "NEEDS_SETUP", detail: input.taxSettings.some((setting) => setting.active) ? "Active tax rule configured." : "Add at least one active tax rule." },
-      { area: "Downloads", status: input.products.some((product) => (product.files?.length ?? 0) > 0) ? "READY" : "NEEDS_FILES", detail: "Digital delivery depends on active product files." },
-      { area: "Coupons", status: activeCoupons ? "READY" : "OPTIONAL", detail: `${activeCoupons} active campaign${activeCoupons === 1 ? "" : "s"}.` },
-      { area: "Reviews", status: pendingReviews ? "MODERATION" : "CLEAR", detail: pendingReviews ? `${pendingReviews} review${pendingReviews === 1 ? "" : "s"} pending.` : "No pending review queue." },
-      { area: "Inventory", status: lowStock.length ? "ATTENTION" : "READY", detail: lowStock.length ? `${lowStock.length} product${lowStock.length === 1 ? "" : "s"} low on stock.` : "No low-stock alerts." },
-    ],
+    settingsHealth: buildSettingsHealth({
+      taxSettings: input.taxSettings,
+      products: input.products,
+      activeCoupons,
+      pendingReviews,
+      lowStockCount: lowStock.length,
+      storeSettings: input.storeSettings,
+    }),
   };
+}
+
+function buildSettingsHealth(input: {
+  taxSettings: Array<{ active: boolean }>;
+  products: Array<{ files?: unknown[] }>;
+  activeCoupons: number;
+  pendingReviews: number;
+  lowStockCount: number;
+  storeSettings?: LibraryStoreSettings;
+}) {
+  const settings = input.storeSettings;
+  return [
+    { area: "Store", status: settings?.store.enabled === false ? "DISABLED" : "READY", detail: settings?.store.enabled === false ? "Library storefront checkout is disabled." : `${settings?.store.name ?? "HouseLink Library"} is live.` },
+    { area: "Checkout", status: settings?.checkout.requireTerms ? "READY" : "OPEN", detail: settings?.checkout.requireTerms ? "Terms acceptance required at checkout." : "Terms acceptance optional." },
+    { area: "Tax", status: input.taxSettings.some((setting) => setting.active) ? "READY" : "NEEDS_SETUP", detail: input.taxSettings.some((setting) => setting.active) ? `Active tax rule for ${settings?.tax.defaultCountry ?? "default country"}.` : "Add at least one active tax rule." },
+    { area: "Delivery", status: settings?.delivery.enablePrintedShipping ? "READY" : "DISABLED", detail: settings?.delivery.enablePrintedShipping ? `Flat rate ${settings.store.currency} ${Number(settings.delivery.flatRate).toFixed(2)}; free from ${settings.delivery.freeShippingMin ?? "n/a"}.` : "Printed shipping disabled." },
+    { area: "Downloads", status: input.products.some((product) => (product.files?.length ?? 0) > 0) ? "READY" : "NEEDS_FILES", detail: `Token TTL ${settings?.downloads.tokenTtlSeconds ?? 900}s; watermark ${settings?.downloads.enforceWatermarkFlag ? "enforced" : "always on"}.` },
+    { area: "Licence", status: settings?.licence.generateByDefault ? "AUTO" : "PER_PRODUCT", detail: `Prefix ${settings?.licence.keyPrefix ?? "HL"}; ${settings?.licence.generateByDefault ? "keys generated by default." : "product toggle controls keys."}` },
+    { area: "Reviews", status: !settings?.reviews.enabled ? "DISABLED" : input.pendingReviews ? "MODERATION" : "CLEAR", detail: !settings?.reviews.enabled ? "Reviews disabled." : input.pendingReviews ? `${input.pendingReviews} pending.` : settings?.reviews.autoApprove ? "Auto-approve enabled." : "No pending review queue." },
+    { area: "SEO", status: settings?.seo.storeTitle ? "READY" : "NEEDS_SETUP", detail: settings?.seo.robotsIndex === false ? "Storefront set to noindex." : settings?.seo.storeTitle || "Set storefront SEO title and description." },
+    { area: "Coupons", status: !settings?.checkout.allowCoupons ? "DISABLED" : input.activeCoupons ? "READY" : "OPTIONAL", detail: !settings?.checkout.allowCoupons ? "Coupons disabled in checkout settings." : `${input.activeCoupons} active campaign${input.activeCoupons === 1 ? "" : "s"}.` },
+    { area: "Inventory", status: input.lowStockCount ? "ATTENTION" : "READY", detail: input.lowStockCount ? `${input.lowStockCount} product${input.lowStockCount === 1 ? "" : "s"} low on stock.` : `Low-stock threshold ${settings?.inventory.lowStockThreshold ?? 5}.` },
+  ];
+}
+
+function resolveShippingTotal(taxable: number, taxTotal: number, settings: LibraryStoreSettings) {
+  if (!settings.delivery.enablePrintedShipping) return 0;
+  const basis = taxable + taxTotal;
+  if (settings.delivery.freeShippingMin != null && basis >= settings.delivery.freeShippingMin) return 0;
+  return roundMoney(Math.max(0, settings.delivery.flatRate));
+}
+
+function buildLibraryLicenseKey(prefix: string) {
+  return `${prefix}-${randomBytes(6).toString("hex").toUpperCase()}`;
+}
+
+function resolveDownloadLimit(productLimit: number | null | undefined, fileLimit: number | null | undefined, settings: LibraryStoreSettings) {
+  if (fileLimit != null) return fileLimit;
+  if (productLimit != null) return productLimit;
+  return settings.downloads.defaultLimit;
+}
+
+function resolveDownloadExpiry(productDays: number | null | undefined, fileDays: number | null | undefined, settings: LibraryStoreSettings) {
+  const days = fileDays ?? productDays ?? settings.downloads.defaultExpiryDays;
+  return days ? new Date(Date.now() + days * 86400000) : null;
 }
 
 function countBy<T>(rows: T[], getKey: (row: T) => string) {
@@ -1561,7 +1962,26 @@ export async function updateLibraryFulfilment(id: string, input: { status?: stri
     ...(input.status === "DISPATCHED" ? { dispatchedAt: new Date() } : {}),
     ...(input.status === "DELIVERED" ? { deliveredAt: new Date() } : {}),
   };
-  const fulfilment = await getMainPrisma().libraryFulfilment.update({ where: { id }, data });
+  const fulfilment = await getMainPrisma().libraryFulfilment.update({
+    where: { id },
+    data,
+    include: { order: { select: { id: true, orderNumber: true, customerId: true, status: true } } },
+  });
+  if (input.status === "DELIVERED" || input.status === "DISPATCHED") {
+    if (input.status === "DELIVERED" && fulfilment.order.status !== LibraryOrderStatus.FULFILLED) {
+      await getMainPrisma().libraryOrder.update({
+        where: { id: fulfilment.orderId },
+        data: { status: LibraryOrderStatus.FULFILLED, fulfilledAt: new Date() },
+      }).catch(() => null);
+    }
+    await notifyLibraryCustomer(
+      fulfilment.order.customerId,
+      input.status === "DELIVERED" ? "HouseLink Library order delivered" : "HouseLink Library order dispatched",
+      input.status === "DELIVERED"
+        ? `Your printed Library order ${fulfilment.order.orderNumber} has been marked delivered.`
+        : `Your printed Library order ${fulfilment.order.orderNumber} has been dispatched${input.trackingNumber ? ` (tracking ${input.trackingNumber})` : ""}.`,
+    );
+  }
   await logLibraryActivity({ actorId, targetType: "fulfilment", targetId: id, action: "UPDATED", message: `Fulfilment marked ${fulfilment.status}.`, metadata: input });
   return fulfilment;
 }
@@ -1860,9 +2280,24 @@ export async function moderateLibraryReview(id: string, input: { status?: string
 }
 
 export async function createLibraryGuestClaim(input: { orderId: string; email: string }, actorId?: string) {
+  const settings = await getLibraryStoreSettings();
+  if (!settings.claims.enabled) return null;
   const email = input.email.trim().toLowerCase();
   if (!input.orderId || !email) return null;
-  if (!shouldUsePostgresLibrary()) return { id: `local-claim-${Date.now()}`, orderId: input.orderId, email, status: "PENDING" };
+  const { getCanonicalSiteUrl } = await import("@/lib/seo/site-url");
+  const claimUrlBase = `${getCanonicalSiteUrl()}/library/claim`;
+  const status = settings.claims.requireAdminApproval ? "PENDING" : "PENDING";
+  if (!shouldUsePostgresLibrary()) {
+    const token = randomBytes(24).toString("hex");
+    return {
+      id: `local-claim-${Date.now()}`,
+      orderId: input.orderId,
+      email,
+      status,
+      claimToken: token,
+      claimUrl: `${claimUrlBase}?token=${encodeURIComponent(token)}`,
+    };
+  }
   const prisma = getMainPrisma();
   const order = await prisma.libraryOrder.findUnique({ where: { id: input.orderId }, select: { id: true, orderNumber: true } });
   if (!order) return null;
@@ -1871,12 +2306,14 @@ export async function createLibraryGuestClaim(input: { orderId: string; email: s
     data: {
       orderId: order.id,
       email,
-      status: "PENDING",
+      status,
       claimTokenHash: createTokenHash(token),
-      expiresAt: new Date(Date.now() + 14 * 86400000),
+      expiresAt: new Date(Date.now() + settings.claims.expiryDays * 86400000),
     },
     include: { order: { select: { orderNumber: true } } },
   });
+  const claimUrl = `${claimUrlBase}?token=${encodeURIComponent(token)}`;
+  await emailLibraryGuestClaim(email, order.orderNumber, claimUrl);
   await logLibraryActivity({
     actorId,
     targetType: "guest_claim",
@@ -1885,7 +2322,69 @@ export async function createLibraryGuestClaim(input: { orderId: string; email: s
     message: `Guest claim created for ${email} on ${order.orderNumber}.`,
     metadata: { orderId: order.id, email },
   });
-  return claim;
+  return { ...claim, claimToken: token, claimUrl };
+}
+
+export async function redeemLibraryGuestClaim(input: { token: string; userId: string }) {
+  const token = input.token.trim();
+  if (!token || !input.userId) return null;
+  if (!shouldUsePostgresLibrary()) return { error: "NOT_SUPPORTED" as const };
+  const prisma = getMainPrisma();
+  const hash = createTokenHash(token);
+  const claim = await prisma.libraryGuestClaim.findFirst({
+    where: { claimTokenHash: hash, status: "PENDING" },
+    include: { order: { include: { items: { include: { product: { include: { files: true } } } } } } },
+  });
+  if (!claim) return { error: "INVALID_TOKEN" as const };
+  if (claim.expiresAt && claim.expiresAt.getTime() < Date.now()) {
+    await prisma.libraryGuestClaim.update({ where: { id: claim.id }, data: { status: "EXPIRED" } }).catch(() => null);
+    return { error: "EXPIRED" as const };
+  }
+  const user = await prisma.user.findUnique({ where: { id: input.userId }, select: { id: true, email: true, name: true } });
+  if (!user) return { error: "UNAUTHORIZED" as const };
+  if (user.email.trim().toLowerCase() !== claim.email.trim().toLowerCase()) {
+    return { error: "EMAIL_MISMATCH" as const, email: claim.email };
+  }
+  await prisma.libraryOrder.update({ where: { id: claim.orderId }, data: { customerId: user.id } });
+  const downloads = await grantLibraryOrderDownloads(claim.orderId, user.id);
+  const updated = await prisma.libraryGuestClaim.update({
+    where: { id: claim.id },
+    data: {
+      status: "CLAIMED",
+      userId: user.id,
+      claimedAt: new Date(),
+      claimTokenHash: null,
+    },
+    include: { order: { select: { orderNumber: true } } },
+  });
+  await notifyLibraryCustomer(user.id, "HouseLink Library access claimed", `Your Library order ${claim.order.orderNumber} is now available in My Library.`);
+  await logLibraryActivity({
+    actorId: user.id,
+    targetType: "guest_claim",
+    targetId: claim.id,
+    action: "REDEEMED",
+    message: `Guest claim redeemed for ${claim.email}.`,
+    metadata: { downloads, userId: user.id },
+  });
+  return { claim: updated, downloads };
+}
+
+export async function getLibraryGuestClaimByToken(token: string) {
+  if (!token.trim() || !shouldUsePostgresLibrary()) return null;
+  const claim = await getMainPrisma().libraryGuestClaim.findFirst({
+    where: { claimTokenHash: createTokenHash(token.trim()), status: "PENDING" },
+    include: { order: { select: { orderNumber: true, total: true, currency: true } } },
+  }).catch(() => null);
+  if (!claim) return null;
+  if (claim.expiresAt && claim.expiresAt.getTime() < Date.now()) return { expired: true as const, email: claim.email };
+  return {
+    id: claim.id,
+    email: claim.email,
+    expiresAt: claim.expiresAt?.toISOString() ?? null,
+    orderNumber: claim.order.orderNumber,
+    total: Number(claim.order.total),
+    currency: claim.order.currency,
+  };
 }
 
 export async function approveLibraryGuestClaim(id: string, actorId?: string) {
@@ -1984,6 +2483,7 @@ export async function bulkUpdateLibraryProducts(
 
 async function grantLibraryOrderDownloads(orderId: string, userId: string) {
   const prisma = getMainPrisma();
+  const settings = await getLibraryStoreSettings();
   const order = await prisma.libraryOrder.findUnique({
     where: { id: orderId },
     include: { items: { include: { product: { include: { files: true } } } } },
@@ -2002,8 +2502,8 @@ async function grantLibraryOrderDownloads(orderId: string, userId: string) {
           productId: item.productId,
           orderId: order.id,
           status: "ACTIVE",
-          downloadLimit: item.product.downloadLimit,
-          expiresAt: item.product.downloadExpiryDays ? new Date(Date.now() + item.product.downloadExpiryDays * 86400000) : null,
+          downloadLimit: resolveDownloadLimit(item.product.downloadLimit, null, settings),
+          expiresAt: resolveDownloadExpiry(item.product.downloadExpiryDays, null, settings),
         },
         update: { status: "ACTIVE", userId },
       });
@@ -2011,6 +2511,7 @@ async function grantLibraryOrderDownloads(orderId: string, userId: string) {
       continue;
     }
     for (const file of files) {
+      const issueLicense = item.product.licenseKeys || settings.licence.generateByDefault;
       await prisma.libraryDownloadAccess.upsert({
         where: { id: `${userId}_${item.productId}_${file.id}_${order.id}` },
         create: {
@@ -2021,11 +2522,9 @@ async function grantLibraryOrderDownloads(orderId: string, userId: string) {
           fileId: file.id,
           status: "ACTIVE",
           tokenHash: createTokenHash(`${userId}:${item.productId}:${file.id}:${order.id}`),
-          licenseKey: item.product.licenseKeys ? `HL-${randomBytes(6).toString("hex").toUpperCase()}` : null,
-          downloadLimit: file.downloadLimit ?? item.product.downloadLimit,
-          expiresAt: (file.expiryDays ?? item.product.downloadExpiryDays)
-            ? new Date(Date.now() + (file.expiryDays ?? item.product.downloadExpiryDays ?? 0) * 86400000)
-            : null,
+          licenseKey: issueLicense ? buildLibraryLicenseKey(settings.licence.keyPrefix) : null,
+          downloadLimit: resolveDownloadLimit(item.product.downloadLimit, file.downloadLimit, settings),
+          expiresAt: resolveDownloadExpiry(item.product.downloadExpiryDays, file.expiryDays, settings),
         },
         update: { status: "ACTIVE", userId },
       });
@@ -2124,6 +2623,7 @@ export async function logLibraryActivity(input: { actorId?: string; targetType: 
 
 async function ensureLibraryFulfilmentQueue(orderId: string) {
   const prisma = getMainPrisma();
+  const settings = await getLibraryStoreSettings();
   const order = await prisma.libraryOrder.findUnique({ where: { id: orderId }, include: { items: true } });
   if (!order) return null;
   const needsShipping = order.items.some((item) => item.productType === "PRINTED_BOOK");
@@ -2134,8 +2634,10 @@ async function ensureLibraryFulfilmentQueue(orderId: string) {
     data: {
       orderId,
       status: "PENDING",
+      courier: settings.delivery.defaultCourier || null,
       packingSlipNumber: `HL-PACK-${order.orderNumber.replace(/\D/g, "") || Date.now()}`,
-      dispatchNotes: "Auto-created for printed Library products.",
+      dispatchNotes: settings.delivery.dispatchNote || "Auto-created for printed Library products.",
+      deliveryNotes: settings.delivery.packingSlipNote || null,
     },
   });
 }
@@ -2233,8 +2735,10 @@ async function replaceProductAssets(productId: string, input: Partial<LibraryPro
   }
 }
 
-export function createDownloadToken(accessId: string, userId: string) {
-  const exp = Math.floor(Date.now() / 1000) + TOKEN_TTL_SECONDS;
+export async function createDownloadToken(accessId: string, userId: string) {
+  const settings = await getLibraryStoreSettings();
+  const ttl = settings.downloads.tokenTtlSeconds || FALLBACK_TOKEN_TTL_SECONDS;
+  const exp = Math.floor(Date.now() / 1000) + ttl;
   const payload = `${accessId}.${userId}.${exp}`;
   const sig = createHmac("sha256", tokenSecret()).update(payload).digest("base64url");
   return `${payload}.${sig}`;
@@ -2412,17 +2916,35 @@ function toLibraryProduct(row: DbProduct): LibraryProduct {
 }
 
 function toLibraryOrder(row: DbOrder): LibraryOrder {
+  const paymentMeta = ((row as { payment?: { metadata?: unknown } }).payment?.metadata ?? {}) as Record<string, unknown>;
+  const payment = (row as {
+    payment?: {
+      id?: string;
+      status?: string;
+      proofStatus?: string | null;
+      proofUrl?: string | null;
+      metadata?: unknown;
+    } | null;
+  }).payment;
   return {
     id: row.id,
     orderNumber: row.orderNumber,
     customerName: row.customer.name,
     customerEmail: row.customer.email,
     status: row.status === "CANCELLED" ? "PENDING" : row.status === "PAID" ? "PAID" : row.status,
-    paymentStatus: row.payment?.status ?? "PENDING",
+    paymentStatus: (payment?.status as LibraryOrder["paymentStatus"]) ?? "PENDING",
     total: Number(row.total),
     currency: row.currency,
     itemCount: row.items.reduce((sum, item) => sum + item.quantity, 0),
     createdAt: row.createdAt.toISOString(),
+    paymentId: payment?.id ?? (row as { paymentId?: string | null }).paymentId ?? null,
+    proofStatus: payment?.proofStatus ?? null,
+    proofUrl: payment?.proofUrl ?? null,
+    paymentAdminNote:
+      (typeof paymentMeta.adminNote === "string" && paymentMeta.adminNote) ||
+      (typeof paymentMeta.rejectReason === "string" && paymentMeta.rejectReason) ||
+      (typeof paymentMeta.refundReason === "string" && paymentMeta.refundReason) ||
+      null,
   };
 }
 
@@ -2807,4 +3329,49 @@ function createTokenHash(value: string) {
 
 function tokenSecret() {
   return process.env.HOUSELINK_LIBRARY_TOKEN_SECRET ?? process.env.SESSION_SECRET ?? "houselink-library-dev-secret";
+}
+
+function normalizeShippingAddress(input?: LibraryShippingAddress | null): LibraryShippingAddress | null {
+  if (!input) return null;
+  const name = String(input.name ?? "").trim();
+  const phone = String(input.phone ?? "").trim();
+  const line1 = String(input.line1 ?? "").trim();
+  const city = String(input.city ?? "").trim();
+  if (!name || !phone || !line1 || !city) return null;
+  return {
+    name,
+    phone,
+    line1,
+    line2: String(input.line2 ?? "").trim() || undefined,
+    city,
+    province: String(input.province ?? "").trim() || undefined,
+    country: String(input.country ?? "").trim() || "Zimbabwe",
+    notes: String(input.notes ?? "").trim() || undefined,
+  };
+}
+
+async function emailLibraryGuestClaim(email: string, orderNumber: string, claimUrl: string) {
+  try {
+    const { getHydratedRuntimePlatformSettings } = await import("@/lib/settings/runtime");
+    const { sendSmtpPlainEmail } = await import("@/lib/integrations/smtp");
+    const settings = await getHydratedRuntimePlatformSettings();
+    await sendSmtpPlainEmail(
+      settings.integrations,
+      email,
+      `Claim your HouseLink Library order ${orderNumber}`,
+      `Hi,\n\nAn admin issued a Library access claim for order ${orderNumber}.\n\n1. Sign in (or create an account) with this email: ${email}\n2. Open this claim link:\n${claimUrl}\n\nThe link expires in 14 days.\n\n— HouseLink Library`,
+    );
+  } catch {
+    // Claim token is still returned to admin if email delivery fails.
+  }
+}
+
+export async function getLibrarySitemapEntries() {
+  const products = await listLibraryProducts({ includeDrafts: false, limit: 500 });
+  return products
+    .filter((product) => product.status === "PUBLISHED")
+    .map((product) => ({
+      slug: product.slug,
+      updatedAt: new Date(product.publishedAt || Date.now()),
+    }));
 }

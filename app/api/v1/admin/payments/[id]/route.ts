@@ -34,14 +34,36 @@ export async function PATCH(request: Request, context: RouteContext) {
 
   const { id } = await context.params;
   const body = await request.json();
+  const action = String(body.action || "");
+  const reason = typeof body.reason === "string" ? body.reason.trim() : "";
+  const note = typeof body.note === "string" ? body.note.trim() : "";
+
   if (isPostgresStoreEnabled()) {
-    const payment = await updatePostgresPayment(id, String(body.action), body.reason, body.note);
+    const payment = await updatePostgresPayment(id, action, reason || undefined, note || undefined);
     if (!payment) return problem(400, "UNKNOWN_ACTION", `Unknown action: ${body.action}`);
-    if ((body.action === "approve" || body.action === "mark_received") && payment.plan?.startsWith("library_")) {
+    const isLibrary = Boolean(payment.plan?.startsWith("library_"));
+    if ((action === "approve" || action === "mark_received") && isLibrary) {
       await fulfillPaidLibraryOrdersForPayment(id);
+      await notifyPaymentUser(payment.userId, "Library payment approved", "Your HouseLink Library payment has been approved. Open My Library to access your purchases.");
     }
-    if ((body.action === "refund" || body.action === "reject") && payment.plan?.startsWith("library_")) {
-      await revokeLibraryAccessForPayment(id, String(body.reason ?? body.action));
+    if (action === "reject" && isLibrary) {
+      await revokeLibraryAccessForPayment(id, reason || note || "Proof rejected", "reject");
+      await notifyPaymentUser(
+        payment.userId,
+        "Library payment proof rejected",
+        reason || note || "Your Library payment proof could not be verified. Upload a clearer receipt from your order confirmation page.",
+      );
+    }
+    if (action === "refund" && isLibrary) {
+      await revokeLibraryAccessForPayment(id, reason || note || "Refunded", "refund");
+      await notifyPaymentUser(
+        payment.userId,
+        "Library payment refunded",
+        reason || note || "Your HouseLink Library payment was refunded and related download access was revoked.",
+      );
+    }
+    if (action === "request_proof" && isLibrary) {
+      await notifyPaymentUser(payment.userId, "Proof of payment required", "Please upload proof of payment to complete your HouseLink Library order.");
     }
     return ok({ payment });
   }
@@ -52,10 +74,12 @@ export async function PATCH(request: Request, context: RouteContext) {
   const payment = store.getPaymentById(id);
   if (!payment) return problem(404, "NOT_FOUND", "Payment not found.");
 
-  switch (body.action as string) {
+  switch (action) {
     case "approve":
-      store.approveManualPayment(id, actor, body.note);
+    case "mark_received":
+      store.approveManualPayment(id, actor, note || "Approved by admin");
       if (payment.plan?.startsWith("library_")) {
+        await fulfillPaidLibraryOrdersForPayment(id);
         store.createNotification(payment.userId, {
           channel: "email",
           subject: "Library downloads active",
@@ -69,11 +93,14 @@ export async function PATCH(request: Request, context: RouteContext) {
       });
       break;
     case "reject":
-      store.rejectManualPayment(id, actor, body.reason);
+      store.rejectManualPayment(id, actor, reason || note || "Proof could not be verified.");
+      if (payment.plan?.startsWith("library_")) {
+        await revokeLibraryAccessForPayment(id, reason || note || "Proof rejected", "reject");
+      }
       store.createNotification(payment.userId, {
         channel: "email",
         subject: "Payment rejected",
-        body: body.reason ?? "Your payment could not be verified.",
+        body: reason || note || "Your payment could not be verified.",
       });
       break;
     case "request_proof":
@@ -89,17 +116,22 @@ export async function PATCH(request: Request, context: RouteContext) {
       store.uploadPaymentProof(id, body.proofUrl);
       break;
     case "add_note":
-      if (!body.note) return problem(400, "INVALID_INPUT", "note required.");
-      store.addFinanceNote(id, actor, body.note);
+      if (!note) return problem(400, "INVALID_INPUT", "note required.");
+      store.addFinanceNote(id, actor, note);
       break;
     case "reverse":
-      store.reversePayment(id, actor, body.reason);
+      store.reversePayment(id, actor, reason);
       break;
     case "refund":
-      store.refundPayment(id, actor, body.reason);
-      break;
-    case "mark_received":
-      store.approveManualPayment(id, actor, "Marked as received by admin");
+      store.refundPayment(id, actor, reason || note || "Refunded by admin");
+      if (payment.plan?.startsWith("library_")) {
+        await revokeLibraryAccessForPayment(id, reason || note || "Refunded", "refund");
+      }
+      store.createNotification(payment.userId, {
+        channel: "email",
+        subject: "Payment refunded",
+        body: reason || note || "Your payment was refunded.",
+      });
       break;
     case "mark_pending":
       payment.status = "PENDING";
@@ -114,4 +146,19 @@ export async function PATCH(request: Request, context: RouteContext) {
   }
 
   return ok({ payment: store.getPaymentById(id) });
+}
+
+async function notifyPaymentUser(userId: string | undefined | null, subject: string, body: string) {
+  if (!userId || !isPostgresStoreEnabled()) return;
+  const { getMainPrisma } = await import("@/lib/db/main-prisma");
+  const { NotificationChannel, NotificationStatus } = await import("@prisma/client");
+  await getMainPrisma().notification.create({
+    data: {
+      userId,
+      channel: NotificationChannel.EMAIL,
+      status: NotificationStatus.QUEUED,
+      subject,
+      body,
+    },
+  }).catch(() => null);
 }

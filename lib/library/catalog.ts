@@ -173,6 +173,10 @@ export type LibraryOrder = {
   currency: string;
   itemCount: number;
   createdAt: string;
+  paymentId?: string | null;
+  proofStatus?: string | null;
+  proofUrl?: string | null;
+  paymentAdminNote?: string | null;
 };
 
 export type LibraryAnalytics = {

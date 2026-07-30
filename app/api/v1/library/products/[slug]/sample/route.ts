@@ -2,12 +2,19 @@ import { NextResponse } from "next/server";
 import { readFile } from "fs/promises";
 import path from "path";
 import { problem } from "@/lib/api/response";
+import { getSessionUserIdFromRequest } from "@/lib/auth/session";
 import { getLibraryProductSampleFile, shouldUsePostgresLibrary } from "@/lib/library/repository";
+import { getLibraryStoreSettings } from "@/lib/library/settings";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request, context: { params: Promise<{ slug: string }> }) {
   if (!shouldUsePostgresLibrary()) return problem(503, "SAMPLE_UNAVAILABLE", "Library samples require the database-backed Library.");
+  const settings = await getLibraryStoreSettings();
+  if (!settings.preview.enabled) return problem(403, "PREVIEW_DISABLED", "Library previews are currently disabled.");
+  if (settings.preview.requireLogin && !getSessionUserIdFromRequest(request)) {
+    return problem(401, "UNAUTHORIZED", "Sign in to preview Library samples.");
+  }
   const { slug } = await context.params;
   const sample = await getLibraryProductSampleFile(slug);
   if (!sample) return problem(404, "SAMPLE_NOT_FOUND", "No previewable sample file is available for this product.");
@@ -25,6 +32,8 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
         "Content-Disposition": `inline; filename="${sample.fileName.replace(/"/g, "")}"`,
         "Cache-Control": "public, max-age=300",
         "X-HouseLink-Sample": sample.productTitle,
+        "X-HouseLink-Sample-Pages": String(settings.preview.maxSamplePages),
+        "X-HouseLink-Sample-Watermark": settings.preview.watermarkSamples ? "1" : "0",
       },
     });
   }

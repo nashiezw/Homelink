@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { LibraryProductPage } from "@/components/library/library-product-page";
-import { getLibraryProductBySlug, listLibraryProducts, recordLibraryProductView } from "@/lib/library/repository";
+import { getLibraryProductBySlug, listApprovedLibraryProductReviews, listLibraryProducts, recordLibraryProductView } from "@/lib/library/repository";
 
 export const dynamic = "force-dynamic";
 
@@ -38,9 +38,15 @@ export default async function LibraryProductRoute({ params }: { params: Promise<
   const product = await getLibraryProductBySlug(slug);
   if (!product) notFound();
   await recordLibraryProductView(slug);
-  const allProducts = await listLibraryProducts();
+  const [allProducts, reviews] = await Promise.all([listLibraryProducts(), listApprovedLibraryProductReviews(product.id)]);
   const related = allProducts
     .filter((item) => item.id !== product.id && (item.category === product.category || item.collection === product.collection))
     .slice(0, 3);
-  return <LibraryProductPage product={product} related={related.length ? related : allProducts.filter((item) => item.id !== product.id).slice(0, 3)} />;
+  return (
+    <LibraryProductPage
+      product={product}
+      related={related.length ? related : allProducts.filter((item) => item.id !== product.id).slice(0, 3)}
+      reviews={reviews}
+    />
+  );
 }

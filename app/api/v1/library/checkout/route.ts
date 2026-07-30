@@ -7,7 +7,13 @@ import {
   shouldUsePostgresPayments,
 } from "@/lib/payments/postgres-payment-repository";
 import { getStore } from "@/lib/store/app-store";
-import { createLibraryOrderFromCheckout, fulfillPaidLibraryOrdersForPayment, quoteLibraryCart } from "@/lib/library/repository";
+import {
+  createLibraryOrderFromCheckout,
+  fulfillPaidLibraryOrdersForPayment,
+  quoteLibraryCart,
+  type LibraryShippingAddress,
+} from "@/lib/library/repository";
+import { getLibraryStoreSettings } from "@/lib/library/settings";
 
 type CheckoutLine = {
   productId: string;
@@ -15,6 +21,9 @@ type CheckoutLine = {
   price: number;
   currency: string;
   quantity: number;
+  formatId?: string;
+  formatType?: string;
+  formatLabel?: string;
 };
 
 export async function POST(request: Request) {
@@ -25,7 +34,24 @@ export async function POST(request: Request) {
   const items = Array.isArray(body.items) ? (body.items as CheckoutLine[]) : [];
   if (!items.length) return problem(400, "EMPTY_CART", "Add at least one Library product to checkout.");
 
-  const quote = await quoteLibraryCart(items, body.couponCode, userId);
+  const settings = await getLibraryStoreSettings();
+  if (!settings.store.enabled) {
+    return problem(503, "LIBRARY_DISABLED", "HouseLink Library checkout is temporarily disabled.");
+  }
+  if (settings.checkout.requireTerms && !body.termsAccepted) {
+    return problem(400, "TERMS_REQUIRED", "Accept the Library terms to continue checkout.");
+  }
+  if (body.couponCode && !settings.checkout.allowCoupons) {
+    return problem(400, "COUPONS_DISABLED", "Coupons are currently disabled for Library checkout.");
+  }
+  const shipping = (body.shipping ?? null) as LibraryShippingAddress | null;
+  const quote = await quoteLibraryCart(items, body.couponCode, userId, {
+    country: shipping?.country,
+    includeShipping: true,
+  });
+  if (quote.subtotal < settings.checkout.minimumOrderAmount) {
+    return problem(400, "MINIMUM_ORDER", `Minimum order amount is ${quote.currency} ${settings.checkout.minimumOrderAmount.toFixed(2)}.`);
+  }
   if (quote.total <= 0) return problem(400, "INVALID_TOTAL", "Library cart total must be greater than zero.");
 
   const provider = String(body.provider || "bank_transfer");
@@ -52,9 +78,16 @@ export async function POST(request: Request) {
         paymentId: payment.id,
         items,
         couponCode: body.couponCode,
+        shipping,
       });
-    } catch {
-      return problem(500, "LIBRARY_ORDER_FAILED", "Payment was started, but the Library order could not be created. Please contact support before paying.");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Payment was started, but the Library order could not be created.";
+      const code = /shipping/i.test(message)
+        ? "SHIPPING_REQUIRED"
+        : /stock|copie/i.test(message)
+          ? "OUT_OF_STOCK"
+          : "LIBRARY_ORDER_FAILED";
+      return problem(/shipping|stock|copie/i.test(message) ? 400 : 500, code, message);
     }
     const grant = completed ? await fulfillPaidLibraryOrdersForPayment(payment.id) : { orders: 0, downloads: 0 };
     const status = completed ? "success" : "pending";
@@ -71,26 +104,32 @@ export async function POST(request: Request) {
     });
   }
 
-  const store = getStore();
-  const payment = store.createPayment(userId, {
-    provider,
-    plan: "library_order",
-    amount: quote.total,
-    method: provider,
-  });
-  const order = await createLibraryOrderFromCheckout({
-    customerId: userId,
-    paymentId: payment.id,
-    items,
-    couponCode: body.couponCode,
-  });
-  const status = payment.status === "PAID" ? "success" : "pending";
-  return created({
-    ...payment,
-    description,
-    order: order.order,
-    quote,
-    items: quote.items,
-    redirectUrl: `/library/checkout/confirmation?orderId=${encodeURIComponent(order.order.id)}&paymentId=${encodeURIComponent(payment.id)}&status=${status}`,
-  });
+  try {
+    const store = getStore();
+    const payment = store.createPayment(userId, {
+      provider,
+      plan: "library_order",
+      amount: quote.total,
+      method: provider,
+    });
+    const order = await createLibraryOrderFromCheckout({
+      customerId: userId,
+      paymentId: payment.id,
+      items,
+      couponCode: body.couponCode,
+      shipping,
+    });
+    const status = payment.status === "PAID" ? "success" : "pending";
+    return created({
+      ...payment,
+      description,
+      order: order.order,
+      quote,
+      items: quote.items,
+      redirectUrl: `/library/checkout/confirmation?orderId=${encodeURIComponent(order.order.id)}&paymentId=${encodeURIComponent(payment.id)}&status=${status}`,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "We could not create your Library order.";
+    return problem(400, "LIBRARY_ORDER_FAILED", message);
+  }
 }

@@ -272,31 +272,58 @@ export async function getPostgresAdminPayment(id: string) {
 }
 
 export async function updatePostgresPayment(id: string, action: string, reason?: string, note?: string) {
+  const prisma = getMainPrisma();
+  const existing = await prisma.payment.findUnique({ where: { id }, select: { id: true, metadata: true } }).catch(() => null);
+  if (!existing) return null;
+  const currentMeta = jsonObject(existing.metadata);
   const data: Prisma.PaymentUpdateInput = {};
   if (action === "approve" || action === "mark_received") {
     data.status = PaymentStatus.PAID;
     data.proofStatus = "VERIFIED";
+    data.metadata = {
+      ...currentMeta,
+      approvedAt: new Date().toISOString(),
+      adminNote: note || reason || currentMeta.adminNote || null,
+    } as Prisma.InputJsonValue;
   } else if (action === "reject") {
     data.status = PaymentStatus.FAILED;
     data.proofStatus = "REJECTED";
+    data.metadata = {
+      ...currentMeta,
+      rejectReason: reason || note || "Proof could not be verified.",
+      adminNote: reason || note || "Proof could not be verified.",
+      rejectedAt: new Date().toISOString(),
+    } as Prisma.InputJsonValue;
   } else if (action === "refund") {
     data.status = PaymentStatus.REFUNDED;
+    data.metadata = {
+      ...currentMeta,
+      refundReason: reason || note || "Refunded by finance.",
+      adminNote: reason || note || "Refunded by finance.",
+      refundedAt: new Date().toISOString(),
+    } as Prisma.InputJsonValue;
   } else if (action === "request_proof") {
     data.proofStatus = "REQUESTED";
+    data.status = PaymentStatus.PENDING;
+    data.metadata = {
+      ...currentMeta,
+      adminNote: note || reason || currentMeta.adminNote || null,
+      proofRequestedAt: new Date().toISOString(),
+    } as Prisma.InputJsonValue;
   } else if (action === "add_note") {
-    data.metadata = { adminNote: note ?? "", notedAt: new Date().toISOString() };
+    data.metadata = { ...currentMeta, adminNote: note ?? "", notedAt: new Date().toISOString() } as Prisma.InputJsonValue;
   } else {
     return null;
   }
-  const row = await getMainPrisma().payment.update({
+  const row = await prisma.payment.update({
     where: { id },
     data,
     include: { user: { select: { name: true, email: true } } },
   }).catch(() => null);
-  if (row && reason) {
-    await getMainPrisma().auditEvent.create({
-      data: { action: `PAYMENT_${action.toUpperCase()}`, target: id, metadata: { reason } },
-    });
+  if (row && (reason || note)) {
+    await prisma.auditEvent.create({
+      data: { action: `PAYMENT_${action.toUpperCase()}`, target: id, metadata: { reason: reason || note } },
+    }).catch(() => null);
   }
   return row ? toAdminPayment(row) : null;
 }

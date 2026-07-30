@@ -33,6 +33,12 @@ export function writeLibraryCart(cart: LibraryCartLine[]) {
   const raw = JSON.stringify(normalized);
   window.localStorage.setItem(CART_KEY, raw);
   window.sessionStorage.setItem(CART_KEY, raw);
+  window.dispatchEvent(new CustomEvent("houselink:library-cart", { detail: { count: normalized.reduce((sum, item) => sum + item.quantity, 0) } }));
+}
+
+export function notifyLibraryCartAdded(title?: string) {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new CustomEvent("houselink:library-cart-added", { detail: { title } }));
 }
 
 export function sameLibraryCartLine(
@@ -59,7 +65,11 @@ export function useLibraryCart() {
     setCartState(readLibraryCart());
     const sync = () => setCartState(readLibraryCart());
     window.addEventListener("storage", sync);
-    return () => window.removeEventListener("storage", sync);
+    window.addEventListener("houselink:library-cart", sync);
+    return () => {
+      window.removeEventListener("storage", sync);
+      window.removeEventListener("houselink:library-cart", sync);
+    };
   }, []);
 
   function setCart(next: LibraryCartLine[] | ((current: LibraryCartLine[]) => LibraryCartLine[])) {

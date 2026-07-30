@@ -12,6 +12,7 @@ import {
   shouldUsePostgresLibrary,
   verifyDownloadToken,
 } from "@/lib/library/repository";
+import { getLibraryStoreSettings } from "@/lib/library/settings";
 
 export const dynamic = "force-dynamic";
 
@@ -34,6 +35,20 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
   await markLibraryDownload(id);
   await auditLibraryDownload({ accessId: id, userId, fileUrl: access.file?.fileUrl, request });
   if (!access.file?.fileUrl) return ok({ message: "Access confirmed. This product does not have a downloadable file yet." });
+
+  const settings = await getLibraryStoreSettings();
+  const productWatermark = Boolean((access.product as { watermarking?: boolean } | null)?.watermarking);
+  const applyWatermark = settings.downloads.enforceWatermarkFlag ? productWatermark || settings.downloads.watermarkByDefault : true;
+  const watermark = applyWatermark ? watermarkLabel(access.user?.name, access.user?.email, access.order?.orderNumber) : "";
+  const headers = {
+    "Content-Disposition": `attachment; filename="${(access.file.fileName || "library-file").replace(/"/g, "")}"`,
+    "Cache-Control": "private, no-store",
+    "X-HouseLink-License": settings.licence.showOnDownload ? (access.licenseKey ?? "") : "",
+    "X-HouseLink-Watermark": watermark,
+    "X-HouseLink-Licence-Text": settings.licence.showOnDownload ? settings.licence.licenceText : "",
+    "X-Robots-Tag": "noindex, nofollow",
+  } as Record<string, string>;
+
   if (access.file.fileUrl.startsWith("/uploads/")) {
     const safeRelative = access.file.fileUrl.replace(/^\/+/, "").split("/").filter((part) => part && part !== "..").join(path.sep);
     const absolute = path.join(process.cwd(), "public", safeRelative);
@@ -43,15 +58,32 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
     if (!buffer) return problem(404, "FILE_NOT_FOUND", "The Library file could not be found.");
     return new NextResponse(new Uint8Array(buffer), {
       headers: {
+        ...headers,
         "Content-Type": contentType(access.file.fileType, access.file.fileName),
-        "Content-Disposition": `attachment; filename="${access.file.fileName.replace(/"/g, "")}"`,
-        "Cache-Control": "private, no-store",
-        "X-HouseLink-License": access.licenseKey ?? "",
-        "X-HouseLink-Watermark": watermarkLabel(access.user?.name, access.user?.email, access.order?.orderNumber),
       },
     });
   }
-  return NextResponse.redirect(new URL(access.file.fileUrl, request.url));
+
+  // Proxy remote/CDN files so buyers never receive a naked long-lived URL.
+  try {
+    const remote = await fetch(access.file.fileUrl, {
+      headers: { Accept: "*/*" },
+      redirect: "follow",
+      cache: "no-store",
+    });
+    if (!remote.ok || !remote.body) {
+      return problem(502, "UPSTREAM_FILE_FAILED", "The Library file could not be fetched from storage.");
+    }
+    const remoteType = remote.headers.get("content-type") || contentType(access.file.fileType, access.file.fileName);
+    return new NextResponse(remote.body, {
+      headers: {
+        ...headers,
+        "Content-Type": remoteType,
+      },
+    });
+  } catch {
+    return problem(502, "UPSTREAM_FILE_FAILED", "The Library file could not be fetched from storage.");
+  }
 }
 
 function watermarkLabel(name?: string | null, email?: string | null, orderNumber?: string | null) {

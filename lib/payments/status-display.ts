@@ -46,12 +46,19 @@ export function paymentStatusDisplay(payment: PaymentStatusInput): PaymentStatus
   }
 
   if (payment.status === "FAILED" || payment.proofStatus === "REJECTED") {
+    const adminNote = typeof payment.metadata?.adminNote === "string"
+      ? payment.metadata.adminNote
+      : typeof payment.metadata?.rejectReason === "string"
+        ? payment.metadata.rejectReason
+        : "";
     return {
       label: payment.proofStatus === "REJECTED" ? "Proof rejected" : "Payment failed",
       title: payment.proofStatus === "REJECTED" ? "Proof rejected" : "Payment failed",
       description: payment.proofStatus === "REJECTED"
-        ? "Finance could not verify the uploaded proof. Upload a clearer receipt or contact support before paying again."
-        : "The payment did not complete. No HouseLink service has been activated from this attempt.",
+        ? adminNote
+          ? `Finance could not verify the uploaded proof. ${adminNote}`
+          : "Finance could not verify the uploaded proof. Upload a clearer receipt or contact support before paying again."
+        : adminNote || "The payment did not complete. No HouseLink service has been activated from this attempt.",
       tone: "error",
       action: payment.proofStatus === "REJECTED" ? "Upload new proof or contact support." : "Create a new payment when you are ready.",
     };

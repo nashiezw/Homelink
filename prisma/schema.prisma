@@ -2282,6 +2282,14 @@ model LibraryTaxSetting {
   @@map("library_tax_settings")
 }
 
+model LibrarySetting {
+  id        String   @id @default("singleton")
+  payload   Json
+  updatedAt DateTime @updatedAt
+
+  @@map("library_settings")
+}
+
 model LibraryExportJob {
   id            String   @id @default(cuid())
   type          String

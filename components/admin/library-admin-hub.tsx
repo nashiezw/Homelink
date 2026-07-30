@@ -16,6 +16,7 @@ import {
   AdminToolbar,
 } from "@/components/admin/ui/admin-ui";
 import { BarChart, DonutChart, MetricRow } from "@/components/admin/charts";
+import { LibrarySettingsPanel } from "@/components/admin/library-settings-panel";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api/client";
 import {
@@ -29,6 +30,7 @@ import {
   type LibraryProduct,
   type LibraryProductFormat,
 } from "@/lib/library/catalog";
+import { defaultLibraryStoreSettings, type LibraryStoreSettings } from "@/lib/library/settings";
 import { cn } from "@/lib/utils";
 
 const views = [
@@ -56,6 +58,7 @@ type LibraryOperations = {
   activities: Array<{ id: string; action: string; message: string; createdAt?: string }>;
   exports: Array<{ id: string; type: string; status: string; fileUrl?: string | null; createdAt?: string }>;
   taxSettings: Array<{ id: string; name: string; country: string; rate: unknown; inclusive: boolean; active: boolean }>;
+  storeSettings?: LibraryStoreSettings;
   coupons: LibraryCouponAdmin[];
   taxonomy: LibraryTaxonomyAdmin[];
   downloadAccess: LibraryDownloadAccessAdmin[];
@@ -186,6 +189,7 @@ type DownloadAccessDraft = { id: string; status: string; downloadLimit: string; 
 type ManualOrderDraft = { customerId: string; productId: string; quantity: string; couponCode: string; provider: string; referenceNumber: string; note: string; markPaid: boolean };
 type OrderNotifyDraft = { orderId: string; type: string; message: string };
 type RefundDraft = { orderId: string; reason: string };
+type PaymentActionDraft = { paymentId: string; orderNumber: string; action: "approve" | "reject" | "refund"; reason: string };
 type InventoryMovementDraft = { productId: string; type: string; quantity: string; note: string };
 type RecommendationDraft = { sourceProductId: string; targetProductId: string; reason: string; weight: string; active: boolean };
 
@@ -249,6 +253,7 @@ const emptyOperations: LibraryOperations = {
   activities: [],
   exports: [],
   taxSettings: [],
+  storeSettings: defaultLibraryStoreSettings,
   coupons: [],
   taxonomy: [],
   downloadAccess: [],
@@ -396,6 +401,7 @@ export function LibraryAdminHub() {
   const [manualOrderDraft, setManualOrderDraft] = useState<ManualOrderDraft | null>(null);
   const [orderNotifyDraft, setOrderNotifyDraft] = useState<OrderNotifyDraft | null>(null);
   const [refundDraft, setRefundDraft] = useState<RefundDraft | null>(null);
+  const [paymentActionDraft, setPaymentActionDraft] = useState<PaymentActionDraft | null>(null);
   const [inventoryMovementDraft, setInventoryMovementDraft] = useState<InventoryMovementDraft | null>(null);
   const [recommendationDraft, setRecommendationDraft] = useState<RecommendationDraft | null>(null);
   const [previewProduct, setPreviewProduct] = useState<LibraryProduct | null>(null);
@@ -686,7 +692,7 @@ export function LibraryAdminHub() {
   async function saveGuestClaim() {
     if (!guestClaimDraft?.orderId || !guestClaimDraft.email.trim()) return;
     setFeedback(null);
-    const result = await apiFetch("/api/v1/admin/library", {
+    const result = await apiFetch<{ claimUrl?: string }>("/api/v1/admin/library", {
       method: "POST",
       body: JSON.stringify({ action: "create_guest_claim", orderId: guestClaimDraft.orderId, email: guestClaimDraft.email.trim() }),
     });
@@ -695,7 +701,12 @@ export function LibraryAdminHub() {
       return;
     }
     setGuestClaimDraft(null);
-    setFeedback({ tone: "success", message: "Guest claim issued." });
+    setFeedback({
+      tone: "success",
+      message: result.data?.claimUrl
+        ? `Guest claim issued and emailed. Claim link: ${result.data.claimUrl}`
+        : "Guest claim issued.",
+    });
     await load();
   }
 
@@ -782,8 +793,15 @@ export function LibraryAdminHub() {
 
   function createForView(targetView = view) {
     setEditingProduct(null);
+    const defaults = operations.storeSettings ?? defaultLibraryStoreSettings;
     setDraft({
       ...emptyDraft,
+      currency: defaults.store.currency,
+      downloadLimit: defaults.downloads.defaultLimit == null ? "" : String(defaults.downloads.defaultLimit),
+      downloadExpiryDays: defaults.downloads.defaultExpiryDays == null ? "" : String(defaults.downloads.defaultExpiryDays),
+      watermarking: defaults.downloads.watermarkByDefault,
+      licenseKeys: defaults.licence.generateByDefault,
+      lowStockThreshold: String(defaults.inventory.lowStockThreshold),
       category: targetView === "Categories" ? "New Category" : targetView === "Downloads" ? "Digital Downloads" : targetView === "Inventory" ? "Printed Stock" : "Toolkits",
       productType: targetView === "Downloads" ? "PDF" : targetView === "Inventory" ? "PRINTED_BOOK" : "PDF",
       stock: targetView === "Inventory" ? "10" : "",
@@ -885,6 +903,21 @@ export function LibraryAdminHub() {
     setFeedback({ tone: "success", message: "Tax setting deleted." });
   }
 
+  async function saveStoreSettings(next: LibraryStoreSettings) {
+    setFeedback(null);
+    const result = await apiFetch<{ storeSettings: LibraryStoreSettings }>("/api/v1/admin/library", {
+      method: "POST",
+      body: JSON.stringify({ action: "save_store_settings", settings: next }),
+    });
+    if (result.error || !result.data?.storeSettings) {
+      setFeedback({ tone: "error", message: result.error?.message || "Library store settings could not be saved." });
+      return;
+    }
+    setOperations((current) => ({ ...current, storeSettings: result.data!.storeSettings }));
+    setFeedback({ tone: "success", message: "Library store settings saved and now live across checkout, downloads, reviews, SEO, and delivery." });
+    await load();
+  }
+
   function openFulfilmentEditor(row: LibraryOperations["fulfilments"][number]) {
     setFulfilmentDraft({ id: row.id, status: row.status, courier: row.courier ?? "", trackingNumber: row.trackingNumber ?? "", trackingUrl: row.trackingUrl ?? "", dispatchNotes: row.dispatchNotes ?? "", deliveryNotes: row.deliveryNotes ?? "" });
   }
@@ -940,6 +973,31 @@ export function LibraryAdminHub() {
     setRefundDraft(null);
     await load();
     setFeedback({ tone: "success", message: "Order refunded and download access revoked." });
+  }
+
+  async function runPaymentAction() {
+    if (!paymentActionDraft) return;
+    if ((paymentActionDraft.action === "reject" || paymentActionDraft.action === "refund") && !paymentActionDraft.reason.trim()) {
+      setFeedback({ tone: "error", message: "A reason is required for reject/refund." });
+      return;
+    }
+    setFeedback(null);
+    const result = await apiFetch(`/api/v1/admin/payments/${paymentActionDraft.paymentId}`, {
+      method: "PATCH",
+      body: JSON.stringify({
+        action: paymentActionDraft.action,
+        reason: paymentActionDraft.reason.trim() || undefined,
+        note: paymentActionDraft.reason.trim() || undefined,
+      }),
+    });
+    if (result.error) {
+      setFeedback({ tone: "error", message: result.error.message || "Payment action failed." });
+      return;
+    }
+    const label = paymentActionDraft.action === "approve" ? "approved" : paymentActionDraft.action === "reject" ? "rejected" : "refunded";
+    setPaymentActionDraft(null);
+    await load();
+    setFeedback({ tone: "success", message: `Library payment ${label}. Customer has been notified.` });
   }
 
   async function notifyOrder() {
@@ -1171,7 +1229,13 @@ export function LibraryAdminHub() {
           <OrdersTable orders={(orderFilter === "ALL" ? orders : orders.filter((order) => order.status === orderFilter)).filter((order) => {
             const q = customerFilter.trim().toLowerCase();
             return !q || [order.orderNumber, order.customerName, order.customerEmail, order.status].join(" ").toLowerCase().includes(q);
-          })} onNotify={(order) => setOrderNotifyDraft({ orderId: order.id, type: "invoice", message: "" })} onRefund={(order) => setRefundDraft({ orderId: order.id, reason: "Customer refund / admin adjustment" })} />
+          })}
+            onNotify={(order) => setOrderNotifyDraft({ orderId: order.id, type: "invoice", message: "" })}
+            onRefund={(order) => setRefundDraft({ orderId: order.id, reason: "Customer refund / admin adjustment" })}
+            onApprovePayment={(order) => order.paymentId && setPaymentActionDraft({ paymentId: order.paymentId, orderNumber: order.orderNumber, action: "approve", reason: "Payment verified" })}
+            onRejectPayment={(order) => order.paymentId && setPaymentActionDraft({ paymentId: order.paymentId, orderNumber: order.orderNumber, action: "reject", reason: "" })}
+            onRefundPayment={(order) => order.paymentId && setPaymentActionDraft({ paymentId: order.paymentId, orderNumber: order.orderNumber, action: "refund", reason: "" })}
+          />
           <FulfilmentTable rows={operations.fulfilments} onEdit={openFulfilmentEditor} />
           <OperationsList title="Invoices" rows={operations.invoices.map((item) => ({ label: item.invoiceNumber, value: `${item.currency} ${Number(item.total).toFixed(2)}`, detail: item.order?.orderNumber ?? "Library invoice", href: item.orderId ? `/api/v1/library/orders/${item.orderId}/invoice` : undefined }))} />
         </AdminPanel>
@@ -1185,7 +1249,7 @@ export function LibraryAdminHub() {
             view === "Reports" || view === "Analytics" ? (
               <Button onClick={() => void createExport(view.toLowerCase())}>Create Export</Button>
             ) : view === "Settings" ? (
-              <Button onClick={() => openTaxEditor()}>Add Tax Setting</Button>
+              <Button onClick={() => openTaxEditor()}><Plus className="size-4" /> Add Tax Rule</Button>
             ) : view === "Coupons" ? (
               <Button onClick={() => openCouponEditor()}><Plus className="size-4" /> Create Coupon</Button>
             ) : ["Categories", "Collections", "Authors"].includes(view) ? (
@@ -1216,6 +1280,7 @@ export function LibraryAdminHub() {
             onDeleteCoupon={deleteCoupon}
             onEditTaxSetting={openTaxEditor}
             onDeleteTaxSetting={deleteTaxSetting}
+            onSaveStoreSettings={saveStoreSettings}
             onEditTaxonomy={openTaxonomyEditor}
             onDeleteTaxonomy={deleteTaxonomy}
             onDeleteExport={deleteExport}
@@ -1441,7 +1506,7 @@ export function LibraryAdminHub() {
 
                   <EditorSection title="Inventory">
                     <div className="grid gap-3">
-                      <Field label="Stock quantity" value={draft.stock} onChange={(value) => setDraft({ ...draft, stock: value })} type="number" placeholder="Blank for unlimited digital" />
+                      <Field label="Stock quantity (printed format)" value={draft.stock} onChange={(value) => setDraft({ ...draft, stock: value })} type="number" placeholder="Applies to printed books only; blank = unlimited" />
                       <Field label="Low stock threshold" value={draft.lowStockThreshold} onChange={(value) => setDraft({ ...draft, lowStockThreshold: value })} type="number" />
                       <Field label="Warehouse" value={draft.warehouse} onChange={(value) => setDraft({ ...draft, warehouse: value })} />
                       <Field label="Supplier" value={draft.supplier} onChange={(value) => setDraft({ ...draft, supplier: value })} />
@@ -1615,6 +1680,34 @@ export function LibraryAdminHub() {
       {refundDraft && (
         <CommerceModal title="Refund Library Order" description="Mark the order refunded, revoke related download access, update payment status, and log the reason." onClose={() => setRefundDraft(null)} onSave={() => void refundOrder()} saveLabel="Refund Order">
           <TextAreaField label="Reason" value={refundDraft.reason} onChange={(value) => setRefundDraft({ ...refundDraft, reason: value })} />
+        </CommerceModal>
+      )}
+      {paymentActionDraft && (
+        <CommerceModal
+          title={
+            paymentActionDraft.action === "approve"
+              ? `Approve payment · ${paymentActionDraft.orderNumber}`
+              : paymentActionDraft.action === "reject"
+                ? `Reject proof · ${paymentActionDraft.orderNumber}`
+                : `Refund payment · ${paymentActionDraft.orderNumber}`
+          }
+          description={
+            paymentActionDraft.action === "approve"
+              ? "Verify the transfer and unlock Library access / fulfilment for this order."
+              : paymentActionDraft.action === "reject"
+                ? "Reject the uploaded proof, keep the order awaiting a clearer receipt, and tell the customer why."
+                : "Refund the payment, revoke downloads, restock printed items if needed, and notify the customer."
+          }
+          onClose={() => setPaymentActionDraft(null)}
+          onSave={() => void runPaymentAction()}
+          saveLabel={paymentActionDraft.action === "approve" ? "Approve payment" : paymentActionDraft.action === "reject" ? "Reject proof" : "Refund payment"}
+          disabled={(paymentActionDraft.action === "reject" || paymentActionDraft.action === "refund") && !paymentActionDraft.reason.trim()}
+        >
+          <TextAreaField
+            label={paymentActionDraft.action === "approve" ? "Note (optional)" : "Reason (required)"}
+            value={paymentActionDraft.reason}
+            onChange={(value) => setPaymentActionDraft({ ...paymentActionDraft, reason: value })}
+          />
         </CommerceModal>
       )}
 
@@ -2043,6 +2136,7 @@ function LibraryTabManagement({
   onDeleteCoupon,
   onEditTaxSetting,
   onDeleteTaxSetting,
+  onSaveStoreSettings,
   onEditTaxonomy,
   onDeleteTaxonomy,
   onEditDownloadAccess,
@@ -2075,6 +2169,7 @@ function LibraryTabManagement({
   onDeleteCoupon: (id: string) => void | Promise<void>;
   onEditTaxSetting: (tax?: LibraryOperations["taxSettings"][number]) => void;
   onDeleteTaxSetting: (id: string) => void | Promise<void>;
+  onSaveStoreSettings: (settings: LibraryStoreSettings) => Promise<unknown>;
   onEditTaxonomy: (kind: LibraryGroupField, row?: LibraryTaxonomyAdmin) => void;
   onDeleteTaxonomy: (kind: LibraryGroupField, id: string) => void | Promise<void>;
   onEditDownloadAccess: (row: LibraryDownloadAccessAdmin) => void;
@@ -2314,30 +2409,16 @@ function LibraryTabManagement({
   }
 
   if (view === "Settings") {
-    const rows = operations.taxSettings;
     return (
-      <div className="grid gap-5">
-        <AdminDataTable
-          rows={operations.reports.settingsHealth.map((row) => ({ ...row, id: row.area }))}
-          emptyMessage="Settings health appears after Library data loads."
-          columns={[
-            { key: "area", header: "Area", render: (row) => <span className="font-semibold text-white">{row.area}</span> },
-            { key: "status", header: "Status", render: (row) => <AdminStatusBadge status={row.status} variant={["READY", "CLEAR"].includes(row.status) ? "success" : ["ATTENTION", "MODERATION", "NEEDS_SETUP", "NEEDS_FILES"].includes(row.status) ? "warning" : "muted"} /> },
-            { key: "detail", header: "Detail", render: (row) => row.detail },
-          ]}
-        />
-        <AdminDataTable
-          rows={rows}
-          emptyMessage="No Library tax settings yet. Add a real tax setting when the store needs one."
-          columns={[
-            { key: "name", header: "Tax setting", render: (row) => <span className="font-semibold text-white">{row.name}</span> },
-            { key: "country", header: "Country", render: (row) => row.country },
-            { key: "rate", header: "Rate", render: (row) => `${Number(row.rate).toFixed(2)}%` },
-            { key: "active", header: "State", render: (row) => <AdminStatusBadge status={row.active ? "ACTIVE" : "INACTIVE"} variant={row.active ? "success" : "muted"} /> },
-            { key: "actions", header: "Actions", render: (row) => <RowActions primaryLabel="Edit" primaryIcon={CheckCircle2} onPrimary={() => onEditTaxSetting(row)} onDelete={() => onDeleteTaxSetting(row.id)} /> },
-          ]}
-        />
-      </div>
+      <LibrarySettingsPanel
+        settings={operations.storeSettings}
+        taxSettings={operations.taxSettings}
+        settingsHealth={operations.reports.settingsHealth}
+        onSave={onSaveStoreSettings}
+        onEditTaxSetting={onEditTaxSetting}
+        onDeleteTaxSetting={onDeleteTaxSetting}
+        onAddTaxSetting={() => onEditTaxSetting()}
+      />
     );
   }
 
@@ -2403,17 +2484,68 @@ function FulfilmentTable({ rows, onEdit }: { rows: LibraryOperations["fulfilment
   );
 }
 
-function OrdersTable({ orders, onNotify, onRefund }: { orders: LibraryOrder[]; onNotify?: (order: LibraryOrder) => void; onRefund?: (order: LibraryOrder) => void }) {
+function OrdersTable({
+  orders,
+  onNotify,
+  onRefund,
+  onApprovePayment,
+  onRejectPayment,
+  onRefundPayment,
+}: {
+  orders: LibraryOrder[];
+  onNotify?: (order: LibraryOrder) => void;
+  onRefund?: (order: LibraryOrder) => void;
+  onApprovePayment?: (order: LibraryOrder) => void;
+  onRejectPayment?: (order: LibraryOrder) => void;
+  onRefundPayment?: (order: LibraryOrder) => void;
+}) {
   return (
     <AdminDataTable
       rows={orders}
       columns={[
         { key: "order", header: "Order", render: (row) => <span className="font-semibold text-white">{row.orderNumber}</span> },
         { key: "customer", header: "Customer", render: (row) => <div><p>{row.customerName}</p><p className="text-xs text-slate-500">{row.customerEmail}</p></div> },
-        { key: "status", header: "Status", render: (row) => <AdminStatusBadge status={row.status} variant={row.status === "FULFILLED" ? "success" : "warning"} /> },
-        { key: "payment", header: "Payment", render: (row) => row.paymentStatus },
+        { key: "status", header: "Status", render: (row) => <AdminStatusBadge status={row.status} variant={row.status === "FULFILLED" ? "success" : row.status === "REFUNDED" ? "danger" : "warning"} /> },
+        {
+          key: "payment",
+          header: "Payment",
+          render: (row) => (
+            <div>
+              <p>{row.proofStatus === "UPLOADED" ? "PROOF REVIEW" : row.proofStatus === "REJECTED" ? "PROOF REJECTED" : row.paymentStatus}</p>
+              {row.paymentAdminNote && <p className="mt-1 max-w-[14rem] truncate text-xs text-slate-500">{row.paymentAdminNote}</p>}
+            </div>
+          ),
+        },
         { key: "total", header: "Total", render: (row) => `${row.currency} ${row.total.toFixed(2)}` },
-        { key: "actions", header: "Actions", render: (row) => <div className="flex flex-wrap gap-2"><button type="button" onClick={() => window.open(`/api/v1/library/orders/${row.id}/invoice`, "_blank")} className="inline-flex items-center gap-2 rounded-lg border border-white/10 px-3 py-2 text-xs font-bold text-slate-300 hover:bg-white/5"><Download className="size-4" /> Invoice</button>{onNotify && <button type="button" onClick={() => onNotify(row)} className="rounded-lg border border-white/10 px-3 py-2 text-xs font-bold text-slate-300 hover:bg-white/5">Notify</button>}{onRefund && row.status !== "REFUNDED" && <button type="button" onClick={() => onRefund(row)} className="rounded-lg border border-red-500/30 px-3 py-2 text-xs font-bold text-red-300 hover:bg-red-500/10">Refund</button>}</div> },
+        {
+          key: "actions",
+          header: "Actions",
+          render: (row) => {
+            const canReviewProof = Boolean(row.paymentId) && (row.proofStatus === "UPLOADED" || row.paymentStatus === "PENDING" || row.proofStatus === "REJECTED");
+            const canRefundPayment = Boolean(row.paymentId) && row.paymentStatus === "PAID" && row.status !== "REFUNDED";
+            return (
+              <div className="flex flex-wrap gap-2">
+                <button type="button" onClick={() => window.open(`/api/v1/library/orders/${row.id}/invoice`, "_blank")} className="inline-flex items-center gap-2 rounded-lg border border-white/10 px-3 py-2 text-xs font-bold text-slate-300 hover:bg-white/5"><Download className="size-4" /> Invoice</button>
+                {onNotify && <button type="button" onClick={() => onNotify(row)} className="rounded-lg border border-white/10 px-3 py-2 text-xs font-bold text-slate-300 hover:bg-white/5">Notify</button>}
+                {canReviewProof && onApprovePayment && (
+                  <button type="button" onClick={() => onApprovePayment(row)} className="rounded-lg border border-emerald-500/30 px-3 py-2 text-xs font-bold text-emerald-300 hover:bg-emerald-500/10">Approve payment</button>
+                )}
+                {canReviewProof && onRejectPayment && (
+                  <button type="button" onClick={() => onRejectPayment(row)} className="rounded-lg border border-amber-500/30 px-3 py-2 text-xs font-bold text-amber-200 hover:bg-amber-500/10">Reject proof</button>
+                )}
+                {canRefundPayment && onRefundPayment && (
+                  <button type="button" onClick={() => onRefundPayment(row)} className="rounded-lg border border-red-500/30 px-3 py-2 text-xs font-bold text-red-300 hover:bg-red-500/10">Refund payment</button>
+                )}
+                {onRefund && row.status !== "REFUNDED" && !canRefundPayment && (
+                  <button type="button" onClick={() => onRefund(row)} className="rounded-lg border border-red-500/30 px-3 py-2 text-xs font-bold text-red-300 hover:bg-red-500/10">Refund order</button>
+                )}
+                {row.proofUrl && (
+                  <a href={row.proofUrl} target="_blank" rel="noreferrer" className="rounded-lg border border-white/10 px-3 py-2 text-xs font-bold text-slate-300 hover:bg-white/5">View proof</a>
+                )}
+              </div>
+            );
+          },
+        },
       ]}
     />
   );
@@ -2509,7 +2641,7 @@ function sectionDescription(view: string) {
     Inventory: "Manage stock, low-stock alerts, warehouses, suppliers, and reserved quantities.",
     Reports: "Export sales, revenue, refunds, inventory, customers, products, downloads, and taxes.",
     Analytics: "Inspect visitors, conversion, product performance, categories, authors, and cohorts.",
-    Settings: "Configure checkout, delivery, preview, SEO, licence, and future product-type settings.",
+    Settings: "Full store configuration: checkout, tax, delivery, downloads, licence, reviews, SEO, preview, claims, inventory, and notifications.",
   };
   return descriptions[view] ?? "Manage Library operations.";
 }

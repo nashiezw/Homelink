@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
   const userId = getSessionUserIdFromRequest(request);
-  let body: { items?: LibraryCartLine[]; couponCode?: string };
+  let body: { items?: LibraryCartLine[]; couponCode?: string; country?: string; includeShipping?: boolean };
   try {
     body = await request.json();
   } catch {
@@ -15,7 +15,10 @@ export async function POST(request: Request) {
   const items = Array.isArray(body.items) ? body.items : [];
   if (!items.length) return problem(400, "EMPTY_CART", "Add at least one Library product to quote.");
   try {
-    const quote = await quoteLibraryCart(items, body.couponCode, userId ?? undefined);
+    const quote = await quoteLibraryCart(items, body.couponCode, userId ?? undefined, {
+      country: body.country,
+      includeShipping: body.includeShipping !== false,
+    });
     return ok(quote);
   } catch (error) {
     console.error("[library/quote] failed", error);

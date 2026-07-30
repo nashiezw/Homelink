@@ -28,6 +28,7 @@ import {
   upsertLibraryCoupon,
   upsertLibraryTaxonomy,
   upsertLibraryTaxSetting,
+  saveLibraryStoreSettings,
   type LibraryProductInput,
   type LibraryTaxonomyKind,
 } from "@/lib/library/repository";
@@ -184,6 +185,15 @@ export async function POST(request: Request) {
       if (!taxSetting) return problem(404, "TAX_SETTING_NOT_FOUND", "Tax setting not found.");
       return ok({ taxSetting });
     }
+    if (body.action === "save_store_settings") {
+      try {
+        const storeSettings = await saveLibraryStoreSettings(body.settings ?? body, auth.user.id);
+        return ok({ storeSettings });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Library store settings could not be saved.";
+        return problem(500, "LIBRARY_SETTINGS_SAVE_FAILED", message);
+      }
+    }
     if (body.action === "save_coupon") {
       if (!String(body.code ?? "").trim()) return problem(400, "INVALID_COUPON", "Coupon code is required.");
       const discountValue = Number(body.discountValue);
@@ -275,8 +285,12 @@ export async function POST(request: Request) {
     if (body.action === "create_guest_claim") {
       if (!body.orderId || !body.email) return problem(400, "INVALID_CLAIM", "orderId and email are required.");
       const claim = await createLibraryGuestClaim({ orderId: String(body.orderId), email: String(body.email) }, auth.user.id);
-      if (!claim) return problem(404, "ORDER_NOT_FOUND", "Library order not found.");
-      return created({ claim });
+      if (!claim) return problem(404, "CLAIM_UNAVAILABLE", "Guest claims are disabled or the Library order was not found.");
+      return created({
+        claim,
+        claimToken: "claimToken" in claim ? claim.claimToken : undefined,
+        claimUrl: "claimUrl" in claim ? claim.claimUrl : undefined,
+      });
     }
     if (body.action === "approve_guest_claim") {
       const result = await approveLibraryGuestClaim(String(body.id), auth.user.id);

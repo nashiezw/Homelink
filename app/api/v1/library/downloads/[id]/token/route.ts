@@ -17,5 +17,5 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   if (access === "EXPIRED") return problem(403, "DOWNLOAD_EXPIRED", "This download link has expired.");
   if (access === "LIMIT_REACHED") return problem(403, "DOWNLOAD_LIMIT_REACHED", "Download limit reached.");
   if (access === "DISABLED") return problem(403, "DOWNLOAD_DISABLED", "This download is not active.");
-  return ok({ token: createDownloadToken(id, userId), downloadUrl: `/api/v1/library/downloads/${id}` });
+  return ok({ token: await createDownloadToken(id, userId), downloadUrl: `/api/v1/library/downloads/${id}` });
 }

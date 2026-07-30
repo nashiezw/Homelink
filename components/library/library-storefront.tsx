@@ -6,7 +6,6 @@ import {
   Award,
   BookOpen,
   BookmarkCheck,
-  CheckCircle2,
   Filter,
   FileText,
   GraduationCap,
@@ -26,12 +25,15 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { BookCover } from "@/components/library/book-cover";
+import { LibraryCartFab } from "@/components/library/library-cart-fab";
 import { Button } from "@/components/ui/button";
-import { useLibraryCart, libraryCartLineKey, sameLibraryCartLine, type LibraryCartLine } from "@/lib/library/cart-client";
+import { useApp } from "@/components/providers/app-provider";
+import { notifyLibraryCartAdded, useLibraryCart, libraryCartLineKey, sameLibraryCartLine, type LibraryCartLine } from "@/lib/library/cart-client";
 import { enabledLibraryFormats, libraryFacets, libraryFormatsLabel, libraryPriceLabel, type LibraryProduct } from "@/lib/library/catalog";
 import { cn } from "@/lib/utils";
 
 export function LibraryStorefront({ products }: { products: LibraryProduct[] }) {
+  const { showToast } = useApp();
   const facets = products.length
     ? {
         categories: Array.from(new Set(products.map((p) => p.category))).sort(),
@@ -44,8 +46,7 @@ export function LibraryStorefront({ products }: { products: LibraryProduct[] }) 
   const [type, setType] = useState("");
   const [difficulty, setDifficulty] = useState("");
   const [sort, setSort] = useState("newest");
-  const [notice, setNotice] = useState("");
-  const { cart, setCart, total, currency } = useLibraryCart();
+  const { cart, setCart, total, currency, count } = useLibraryCart();
   const featured = products.find((product) => product.editorsChoice) ?? products.find((product) => product.featured) ?? products[0];
   const featuredProducts = products.filter((product) => product.editorsChoice || product.featured).slice(0, 3);
   const bestSellers = products.filter((product) => product.bestSeller).slice(0, 3);
@@ -78,17 +79,13 @@ export function LibraryStorefront({ products }: { products: LibraryProduct[] }) 
         },
       ];
     });
-    setNotice(`${product.title} added to your Library Bag.`);
-    window.setTimeout(() => setNotice(""), 2600);
+    notifyLibraryCartAdded(product.title);
+    showToast(`${product.title} added to your Library Bag.`, "success");
   }
 
   return (
     <main className="bg-[#f5f8f7] text-ink dark:bg-slate-950 dark:text-white">
-      {notice && (
-        <div role="status" aria-live="polite" className="fixed right-4 top-24 z-50 max-w-sm rounded-lg border border-emerald-200 bg-white p-4 text-sm font-semibold text-emerald-950 shadow-xl dark:border-emerald-900 dark:bg-slate-900 dark:text-emerald-100">
-          <CheckCircle2 className="mr-2 inline size-4 text-emerald-600" /> {notice}
-        </div>
-      )}
+      <LibraryCartFab />
 
       <section className="border-b border-[#d7e7e3] bg-[#dceff2]">
         <div className="mx-auto grid max-w-7xl gap-10 px-4 py-10 sm:px-6 lg:grid-cols-[minmax(0,1fr)_29rem] lg:items-center lg:px-8 lg:py-14">
@@ -213,7 +210,7 @@ export function LibraryStorefront({ products }: { products: LibraryProduct[] }) 
             </div>
 
             <aside className="h-fit space-y-4 lg:sticky lg:top-24">
-              <CartPanel cart={cart} total={total} currency={currency} onCart={(next) => setCart(next)} />
+              <CartPanel cart={cart} total={total} currency={currency} count={count} onCart={(next) => setCart(next)} />
             </aside>
           </section>
         </>
@@ -379,12 +376,13 @@ function StorePromise({ icon: Icon, title, text }: { icon: LucideIcon; title: st
   );
 }
 
-function CartPanel({ cart, total, currency, onCart }: { cart: LibraryCartLine[]; total: number; currency: string; onCart: (cart: LibraryCartLine[]) => void }) {
+function CartPanel({ cart, total, currency, count, onCart }: { cart: LibraryCartLine[]; total: number; currency: string; count: number; onCart: (cart: LibraryCartLine[]) => void }) {
   return (
     <div className="overflow-hidden rounded-lg border border-[#dfe8e5] bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
       <div className="border-b border-[#dfe8e5] bg-[#fbfaf6] p-4 dark:border-slate-800 dark:bg-slate-950">
         <p className="flex items-center gap-2 text-sm font-bold text-ink dark:text-white">
           <ShoppingBag className="size-4" /> Library Bag
+          {count > 0 && <span className="rounded-full bg-emerald-600 px-2 py-0.5 text-xs font-black text-white">{count}</span>}
         </p>
         <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">Checkout, invoices and secure delivery.</p>
       </div>

@@ -5,8 +5,10 @@ import { Download, FileText, Heart, PackageCheck, Star, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { PageShell } from "@/components/layout/page-shell";
 import { Button } from "@/components/ui/button";
+import { useApp } from "@/components/providers/app-provider";
 import { apiFetch } from "@/lib/api/client";
 import type { LibraryOrder, LibraryProduct } from "@/lib/library/catalog";
+import { libraryOrderStageCopy, libraryOrderStatusLabel } from "@/lib/library/order-stage";
 
 type DownloadAccess = {
   id: string;
@@ -37,13 +39,13 @@ export function MyLibraryClient({
   orders: LibraryOrder[];
   downloads?: DownloadAccess[];
 }) {
+  const { showToast } = useApp();
   const [library, setLibrary] = useState<LibraryMe>({ products, orders, downloads: downloads ?? [], wishlist: [], wishlistCount: 0 });
   const [reviewProduct, setReviewProduct] = useState<LibraryProduct | null>(null);
   const [rating, setRating] = useState(5);
   const [reviewTitle, setReviewTitle] = useState("");
   const [reviewBody, setReviewBody] = useState("");
   const [reviewBusy, setReviewBusy] = useState(false);
-  const [notice, setNotice] = useState("");
   const purchased = library.products.filter((product) => product.downloads.length > 0 || library.downloads.some((download) => download.productId === product.id)).slice(0, 6);
 
   useEffect(() => {
@@ -69,10 +71,10 @@ export function MyLibraryClient({
     });
     setReviewBusy(false);
     if (result.error) {
-      setNotice(result.error.message || "Could not submit review.");
+      showToast(result.error.message || "Could not submit review.", "error");
       return;
     }
-    setNotice("Review submitted for moderation. Thank you.");
+    showToast("Review submitted for moderation. Thank you.", "success");
     setReviewProduct(null);
     setReviewTitle("");
     setReviewBody("");
@@ -87,11 +89,6 @@ export function MyLibraryClient({
       compactHero
       actions={<Link href="/library" className="bg-emerald-600 text-white hover:bg-emerald-500">Browse Library</Link>}
     >
-      {notice && (
-        <div role="status" className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-900 dark:border-emerald-900/40 dark:bg-emerald-950/20 dark:text-emerald-100">
-          {notice}
-        </div>
-      )}
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <div className="space-y-6">
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -141,15 +138,38 @@ export function MyLibraryClient({
                   </tr>
                 </thead>
                 <tbody>
-                  {library.orders.map((order) => (
-                    <tr key={order.id} className="border-b border-slate-100 dark:border-slate-800">
-                      <td className="py-3 font-semibold"><Link href={`/dashboard/my-library/orders/${order.id}`} className="hover:text-emerald-700 dark:hover:text-emerald-300">{order.orderNumber}</Link></td>
-                      <td>{order.status}</td>
-                      <td>{order.paymentStatus}</td>
-                      <td>{order.currency} {order.total.toFixed(2)}</td>
-                      <td>{new Date(order.createdAt).toLocaleDateString()}</td>
-                    </tr>
-                  ))}
+                  {library.orders.map((order) => {
+                    const stage = libraryOrderStageCopy({
+                      status: order.status,
+                      paymentStatus: order.paymentStatus,
+                      payment: {
+                        id: order.paymentId,
+                        status: order.paymentStatus,
+                        proofStatus: order.proofStatus,
+                        proofUrl: order.proofUrl,
+                        adminNote: order.paymentAdminNote,
+                      },
+                    });
+                    return (
+                      <tr key={order.id} className="border-b border-slate-100 dark:border-slate-800">
+                        <td className="py-3 font-semibold">
+                          <Link href={`/dashboard/my-library/orders/${order.id}`} className="hover:text-emerald-700 dark:hover:text-emerald-300">{order.orderNumber}</Link>
+                          {(stage.showProofUpload || stage.showProofReceived) && order.paymentId && (
+                            <Link
+                              href={`/library/checkout/confirmation?orderId=${encodeURIComponent(order.id)}&paymentId=${encodeURIComponent(order.paymentId)}`}
+                              className="mt-1 block text-xs font-bold text-amber-700 hover:underline dark:text-amber-300"
+                            >
+                              {stage.showProofUpload ? "Complete payment" : "View payment status"}
+                            </Link>
+                          )}
+                        </td>
+                        <td>{libraryOrderStatusLabel(order.status)}</td>
+                        <td>{stage.badge}</td>
+                        <td>{order.currency} {order.total.toFixed(2)}</td>
+                        <td>{new Date(order.createdAt).toLocaleDateString()}</td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
               {!library.orders.length && <p className="mt-4 rounded-lg border border-dashed border-slate-300 p-4 text-sm text-slate-500 dark:border-slate-700">Your Library orders will appear here as soon as checkout creates them.</p>}

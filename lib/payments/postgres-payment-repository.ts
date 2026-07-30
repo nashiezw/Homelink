@@ -76,7 +76,14 @@ export async function uploadPaymentProofInPostgres(id: string, userId: string, p
   if (!existing.manual) return "NOT_MANUAL" as const;
   const row = await getMainPrisma().payment.update({
     where: { id },
-    data: { proofUrl, proofStatus: "UPLOADED" },
+    data: {
+      proofUrl,
+      proofStatus: "UPLOADED",
+      // Re-uploads after reject must leave FAILED so finance can approve again.
+      status: existing.status === PaymentStatus.FAILED || existing.status === PaymentStatus.PENDING
+        ? PaymentStatus.PENDING
+        : existing.status,
+    },
   });
   return toPayment(row);
 }

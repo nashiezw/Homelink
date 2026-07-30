@@ -27,24 +27,47 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { BookCover } from "@/components/library/book-cover";
+import { LibraryCartFab } from "@/components/library/library-cart-fab";
 import { Button } from "@/components/ui/button";
+import { useApp } from "@/components/providers/app-provider";
 import { apiFetch } from "@/lib/api/client";
-import { writeLibraryCart, useLibraryCart } from "@/lib/library/cart-client";
+import { notifyLibraryCartAdded, writeLibraryCart, useLibraryCart } from "@/lib/library/cart-client";
 import { enabledLibraryFormats, type LibraryProduct, type LibraryProductFormat } from "@/lib/library/catalog";
 import { cn } from "@/lib/utils";
 
-export function LibraryProductPage({ product, related }: { product: LibraryProduct; related: LibraryProduct[] }) {
+export function LibraryProductPage({
+  product,
+  related,
+  reviews: initialReviews = [],
+}: {
+  product: LibraryProduct;
+  related: LibraryProduct[];
+  reviews?: Array<{
+    id: string;
+    rating: number;
+    title: string | null;
+    body: string | null;
+    featured: boolean;
+    verified: boolean;
+    createdAt: string;
+    authorName: string;
+  }>;
+}) {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxZoomed, setLightboxZoomed] = useState(false);
   const [galleryIndex, setGalleryIndex] = useState(0);
+  const { showToast } = useApp();
   const formats = useMemo(() => enabledLibraryFormats(product), [product]);
   const [selectedFormatId, setSelectedFormatId] = useState(formats[0]?.id ?? "primary");
   const { cart, setCart, count } = useLibraryCart();
-  const [cartNotice, setCartNotice] = useState("");
   const [wished, setWished] = useState(false);
   const [wishBusy, setWishBusy] = useState(false);
   const [shareNotice, setShareNotice] = useState("");
+  const [reviews, setReviews] = useState(initialReviews);
+  const [reviewForm, setReviewForm] = useState({ rating: 5, title: "", body: "" });
+  const [reviewBusy, setReviewBusy] = useState(false);
+  const [reviewNotice, setReviewNotice] = useState("");
   const relatedBundle = useMemo(() => related.slice(0, 2), [related]);
   const selectedFormat = formats.find((format) => format.id === selectedFormatId) ?? formats[0];
   const bundleTotal = relatedBundle.reduce((sum, item) => sum + item.price, selectedFormat?.price ?? product.price);
@@ -58,6 +81,12 @@ export function LibraryProductPage({ product, related }: { product: LibraryProdu
   const activeGalleryImage = galleryImages[galleryIndex] ?? galleryImages[0];
   const isPrinted = selectedFormat?.type === "PRINTED_BOOK";
   const outOfStock = Boolean(isPrinted && product.stock === 0);
+  const printStockLabel =
+    product.stock == null
+      ? "Printed stock available"
+      : product.stock > 0
+        ? `${product.stock} printed ${product.stock === 1 ? "copy" : "copies"} in stock`
+        : "Printed format out of stock";
   const sampleFile = useMemo(
     () =>
       product.downloads.find((file) => file.previewable && Boolean(file.fileUrl) && (file.fileType.toUpperCase() === "PDF" || file.fileName?.toLowerCase().endsWith(".pdf")))
@@ -115,12 +144,12 @@ export function LibraryProductPage({ product, related }: { product: LibraryProdu
     });
     setWishBusy(false);
     if (result.error) {
-      setCartNotice(result.error.message || "Sign in to save products to your wishlist.");
+      showToast(result.error.message || "Sign in to save products to your wishlist.", "error");
       return;
     }
     if (result.data) {
       setWished(result.data.wished);
-      setCartNotice(result.data.wished ? "Saved to your wishlist." : "Removed from your wishlist.");
+      showToast(result.data.wished ? "Saved to your wishlist." : "Removed from your wishlist.", "success");
     }
   }
 
@@ -138,6 +167,29 @@ export function LibraryProductPage({ product, related }: { product: LibraryProdu
       setShareNotice("Could not share right now.");
     }
     window.setTimeout(() => setShareNotice(""), 2200);
+  }
+
+  async function submitReview() {
+    setReviewBusy(true);
+    setReviewNotice("");
+    const result = await apiFetch<{ review?: { id: string } }>("/api/v1/library/reviews", {
+      method: "POST",
+      body: JSON.stringify({
+        productId: product.id,
+        rating: reviewForm.rating,
+        title: reviewForm.title,
+        body: reviewForm.body,
+      }),
+    });
+    setReviewBusy(false);
+    if (result.error) {
+      setReviewNotice(result.error.message || "Could not submit review.");
+      return;
+    }
+    setReviewForm({ rating: 5, title: "", body: "" });
+    setReviewNotice("Thanks — your review was submitted for moderation.");
+    const refreshed = await apiFetch<{ reviews: typeof reviews }>(`/api/v1/library/reviews?productId=${encodeURIComponent(product.id)}`);
+    if (refreshed.data?.reviews) setReviews(refreshed.data.reviews);
   }
 
   function cartLineFromFormat(format: LibraryProductFormat) {
@@ -162,8 +214,8 @@ export function LibraryProductPage({ product, related }: { product: LibraryProdu
       }
       return [...current, cartLineFromFormat(selectedFormat)];
     });
-    setCartNotice(`${product.title} (${selectedFormat.label}) is in your Library Bag.`);
-    window.setTimeout(() => setCartNotice(""), 2600);
+    notifyLibraryCartAdded(product.title);
+    showToast(`${product.title} (${selectedFormat.label}) added to your Library Bag.`, "success");
   }
 
   function buyNow() {
@@ -183,6 +235,7 @@ export function LibraryProductPage({ product, related }: { product: LibraryProdu
 
   return (
     <main className="bg-[#f6f8f7] text-ink dark:bg-slate-950 dark:text-white">
+      <LibraryCartFab />
       <section className="border-b border-[#dfe8e5] bg-[#fbfaf6] dark:border-slate-800 dark:bg-slate-950">
         <div className="mx-auto flex max-w-[88rem] flex-col gap-3 px-4 py-3 sm:px-6 md:flex-row md:items-center md:justify-between lg:px-8">
           <div className="min-w-0">
@@ -302,6 +355,11 @@ export function LibraryProductPage({ product, related }: { product: LibraryProdu
                         <span className="mt-1 block text-lg font-black text-ink dark:text-white">
                           {product.currency} {format.price.toFixed(2)}
                         </span>
+                        <span className="mt-1 block text-xs font-semibold text-slate-500">
+                          {format.type === "PRINTED_BOOK"
+                            ? printStockLabel
+                            : "Digital · instant after payment"}
+                        </span>
                       </button>
                     ))}
                   </div>
@@ -315,13 +373,7 @@ export function LibraryProductPage({ product, related }: { product: LibraryProdu
                 )}
               </div>
               <p className="mt-2 text-sm font-semibold text-emerald-800 dark:text-emerald-200">
-                {isPrinted
-                  ? product.stock == null
-                    ? "Printed copy available"
-                    : product.stock > 0
-                      ? `${product.stock} printed copies available`
-                      : "Out of stock"
-                  : "Instant digital delivery after payment confirmation"}
+                {isPrinted ? printStockLabel : "Instant digital delivery after payment confirmation"}
               </p>
               <div className="mt-4 flex flex-col gap-2 sm:max-w-md sm:flex-row">
                 <Button disabled={outOfStock} onClick={buyNow} className="sm:flex-1">
@@ -331,11 +383,6 @@ export function LibraryProductPage({ product, related }: { product: LibraryProdu
                   <ShoppingBag className="size-4" /> {productQuantity ? `In bag (${productQuantity})` : "Add to cart"}
                 </Button>
               </div>
-              {cartNotice && (
-                <p role="status" aria-live="polite" className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-900 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-100">
-                  <CheckCircle2 className="mr-2 inline size-4" /> {cartNotice} <Link href="/library/checkout" className="underline underline-offset-4">Checkout</Link>
-                </p>
-              )}
 
               <div className="mt-6 grid max-w-3xl gap-3 sm:grid-cols-3">
                 <Proof icon={ShieldCheck} label="Secure checkout" />
@@ -476,6 +523,67 @@ export function LibraryProductPage({ product, related }: { product: LibraryProdu
             ) : (
               <p className="text-sm text-slate-500">Course resources will be released with the product launch.</p>
             )}
+          </Panel>
+
+          <Panel title="Customer reviews" icon={Star}>
+            <div className="space-y-4">
+              {reviews.length ? reviews.map((review) => (
+                <article key={review.id} className="rounded-xl border border-slate-200 p-4 dark:border-slate-800">
+                  <div className="flex flex-wrap items-center gap-2 text-sm">
+                    <span className="inline-flex items-center gap-1 font-semibold text-amber-500">
+                      <Star className="size-3.5 fill-current" /> {review.rating}/5
+                    </span>
+                    <span className="font-semibold text-ink dark:text-white">{review.authorName}</span>
+                    {review.verified && <span className="text-xs font-bold uppercase text-emerald-700">Verified purchase</span>}
+                  </div>
+                  {review.title && <p className="mt-2 font-semibold">{review.title}</p>}
+                  {review.body && <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">{review.body}</p>}
+                </article>
+              )) : (
+                <p className="text-sm text-slate-500">No published reviews yet. Buyers of digital or printed formats can leave the first one.</p>
+              )}
+              <div className="rounded-xl border border-dashed border-slate-300 p-4 dark:border-slate-700">
+                <p className="font-semibold">Write a review</p>
+                <p className="mt-1 text-xs text-slate-500">Available after you purchase this product (digital or print).</p>
+                <div className="mt-3 grid gap-3 sm:grid-cols-[8rem_minmax(0,1fr)]">
+                  <label className="text-sm font-medium">
+                    Rating
+                    <select
+                      value={reviewForm.rating}
+                      onChange={(e) => setReviewForm({ ...reviewForm, rating: Number(e.target.value) })}
+                      className="mt-1 h-10 w-full rounded-lg border border-slate-200 px-2 dark:border-slate-700 dark:bg-slate-900"
+                    >
+                      {[5, 4, 3, 2, 1].map((value) => <option key={value} value={value}>{value}</option>)}
+                    </select>
+                  </label>
+                  <label className="text-sm font-medium">
+                    Title
+                    <input
+                      value={reviewForm.title}
+                      onChange={(e) => setReviewForm({ ...reviewForm, title: e.target.value })}
+                      className="mt-1 h-10 w-full rounded-lg border border-slate-200 px-3 dark:border-slate-700 dark:bg-slate-900"
+                      placeholder="What stood out?"
+                    />
+                  </label>
+                </div>
+                <label className="mt-3 block text-sm font-medium">
+                  Review
+                  <textarea
+                    value={reviewForm.body}
+                    onChange={(e) => setReviewForm({ ...reviewForm, body: e.target.value })}
+                    rows={3}
+                    className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 dark:border-slate-700 dark:bg-slate-900"
+                    placeholder="Share how this product helped you."
+                  />
+                </label>
+                <div className="mt-3 flex flex-wrap items-center gap-3">
+                  <Button disabled={reviewBusy} onClick={() => void submitReview()}>
+                    {reviewBusy ? "Submitting…" : "Submit review"}
+                  </Button>
+                  {reviewNotice && <p className="text-sm font-semibold text-slate-600 dark:text-slate-300">{reviewNotice}</p>}
+                </div>
+              </div>
+            </div>
           </Panel>
 
           {relatedBundle.length > 0 && (
