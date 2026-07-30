@@ -1,4 +1,4 @@
-import type { LibraryStoreSettings } from "@/lib/library/settings";
+import type { LibraryStoreSettings } from "@/lib/library/settings-shared";
 
 export type LibraryShippingZone = {
   id: string;

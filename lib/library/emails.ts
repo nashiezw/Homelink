@@ -4,7 +4,7 @@ import {
   renderLibraryEmailTemplate,
   type LibraryEmailTemplateKey,
 } from "@/lib/library/email-templates";
-import type { LibraryStoreSettings } from "@/lib/library/settings";
+import type { LibraryStoreSettings } from "@/lib/library/settings-shared";
 
 export type { LibraryEmailTemplate, LibraryEmailTemplateKey } from "@/lib/library/email-templates";
 export { defaultLibraryEmailTemplates, renderLibraryEmailTemplate } from "@/lib/library/email-templates";

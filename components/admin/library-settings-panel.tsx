@@ -11,7 +11,7 @@ import {
   defaultLibraryStoreSettings,
   type LibraryProductTypeTemplate,
   type LibraryStoreSettings,
-} from "@/lib/library/settings";
+} from "@/lib/library/settings-shared";
 import { cn } from "@/lib/utils";
 
 type TaxRow = { id: string; name: string; country: string; rate: unknown; inclusive: boolean; active: boolean };

@@ -18,7 +18,7 @@ import { Button } from "@/components/ui/button";
 import { useApp } from "@/components/providers/app-provider";
 import { notifyLibraryCartAdded, useLibraryCart, sameLibraryCartLine } from "@/lib/library/cart-client";
 import { enabledLibraryFormats, libraryFacets, libraryFormatsLabel, libraryPriceLabel, type LibraryProduct } from "@/lib/library/catalog";
-import type { LibraryStoreSettings } from "@/lib/library/settings";
+import type { LibraryStoreSettings } from "@/lib/library/settings-shared";
 import { cn } from "@/lib/utils";
 
 type Merchandising = LibraryStoreSettings["merchandising"];
