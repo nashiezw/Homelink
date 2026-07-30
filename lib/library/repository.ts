@@ -349,11 +349,11 @@ export async function getLibraryProductBySlug(slug: string) {
 export async function getLibraryProductSampleFile(slug: string) {
   const product = await getLibraryProductBySlug(slug);
   if (!product) return null;
-  const previewable = product.downloads.filter((file) => file.previewable && file.fileUrl);
-  const sample = previewable.find((file) => /sample|preview/i.test(file.label || ""))
-    ?? previewable.find((file) => file.fileType.toUpperCase() === "PDF" || file.fileName?.toLowerCase().endsWith(".pdf"))
-    ?? previewable[0]
-    ?? null;
+  const sample = product.downloads.find((file) => {
+    if (!file.previewable || !file.fileUrl) return false;
+    const label = `${file.label || ""} ${file.fileName || ""}`;
+    return /sample|preview/i.test(label);
+  }) ?? null;
   if (!sample?.fileUrl) return null;
   return {
     productId: product.id,
@@ -2921,7 +2921,7 @@ async function replaceProductAssets(productId: string, input: Partial<LibraryPro
           fileType: item.fileType,
           fileSizeBytes: item.fileSizeBytes ?? parseSize(item.size ?? "0"),
           secure: item.secure ?? true,
-          previewable: item.previewable ?? item.fileType.toUpperCase() === "PDF",
+          previewable: Boolean(item.previewable),
           downloadable: true,
           sortOrder,
         })),
@@ -3367,7 +3367,7 @@ function localProductFromInput(input: Partial<LibraryProductInput>, existing?: L
         fileUrl: item.fileUrl,
         fileName: item.fileName,
         fileSizeBytes: item.fileSizeBytes,
-        previewable: item.previewable ?? item.fileType.toUpperCase() === "PDF",
+        previewable: Boolean(item.previewable),
       }))
     : existing?.downloads.map((item) => ({ ...item })) ?? [];
   const formats = input.formats?.length

@@ -87,13 +87,10 @@ export function LibraryProductPage({
       : product.stock > 0
         ? `${product.stock} printed ${product.stock === 1 ? "copy" : "copies"} in stock`
         : "Printed format out of stock";
-  const sampleFile = useMemo(() => {
-    const previewable = product.downloads.filter((file) => file.previewable && Boolean(file.fileUrl));
-    return previewable.find((file) => /sample|preview/i.test(file.label || ""))
-      ?? previewable.find((file) => file.fileType.toUpperCase() === "PDF" || file.fileName?.toLowerCase().endsWith(".pdf"))
-      ?? previewable[0]
-      ?? null;
-  }, [product.downloads]);
+  const sampleFile = useMemo(
+    () => product.downloads.find((file) => isLibrarySampleFile(file)) ?? null,
+    [product.downloads],
+  );
   const sampleUrl = sampleFile ? `/api/v1/library/products/${encodeURIComponent(product.slug)}/sample` : null;
   const learningOutcomes = product.learningOutcomes.filter((item) => item.trim());
   const tableOfContents = product.tableOfContents.filter((item) => item.trim());
@@ -839,6 +836,11 @@ export function LibraryProductPage({
       />
     </main>
   );
+}
+
+function isLibrarySampleFile(file: LibraryProduct["downloads"][number]) {
+  if (!file.previewable || !file.fileUrl) return false;
+  return /sample|preview/i.test(`${file.label || ""} ${file.fileName || ""}`);
 }
 
 function HeroProof({ icon: Icon, label }: { icon: typeof ShieldCheck; label: string }) {

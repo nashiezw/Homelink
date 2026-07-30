@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { ArrowRight, BookOpen, ChevronDown, Filter, Minus, Plus, Search, ShoppingBag, ShoppingCart, Star, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
+import { HL_GREEN, HL_NAVY } from "@/components/brand/houselink-icon";
 import { BookCover } from "@/components/library/book-cover";
 import { LibraryCartFab } from "@/components/library/library-cart-fab";
 import { Button } from "@/components/ui/button";
@@ -19,6 +20,7 @@ import {
   libraryFacets,
   libraryFormatsLabel,
   libraryPriceLabel,
+  primaryLibraryFormat,
   type LibraryProduct,
 } from "@/lib/library/catalog";
 import type { LibraryStoreSettings } from "@/lib/library/settings-shared";
@@ -70,16 +72,12 @@ export function LibraryStorefront({
 
   function addToCart(product: LibraryProduct) {
     const formats = enabledLibraryFormats(product);
-    if (formats.length > 1) {
-      window.location.href = `/library/${product.slug}`;
-      return;
-    }
-    const format = formats[0];
+    const format = primaryLibraryFormat(formats, product.productType, product.price);
     setCart((current) => {
-      const existing = current.find((line) => sameLibraryCartLine(line, { productId: product.id, formatId: format?.id }));
+      const existing = current.find((line) => sameLibraryCartLine(line, { productId: product.id, formatId: format.id }));
       if (existing) {
         return current.map((line) =>
-          sameLibraryCartLine(line, { productId: product.id, formatId: format?.id })
+          sameLibraryCartLine(line, { productId: product.id, formatId: format.id })
             ? { ...line, quantity: line.quantity + 1 }
             : line,
         );
@@ -88,18 +86,18 @@ export function LibraryStorefront({
         ...current,
         {
           productId: product.id,
-          title: format ? `${product.title} (${format.label})` : product.title,
-          price: format?.price ?? product.price,
+          title: `${product.title} (${format.label})`,
+          price: format.price,
           currency: product.currency,
           quantity: 1,
-          formatId: format?.id,
-          formatType: format?.type,
-          formatLabel: format?.label,
+          formatId: format.id,
+          formatType: format.type,
+          formatLabel: format.label,
         },
       ];
     });
     notifyLibraryCartAdded(product.title);
-    showToast(`${product.title} added to your bag.`, "success");
+    showToast(`${product.title} (${format.label}) added to your bag.`, "success");
   }
 
   return (
@@ -107,21 +105,28 @@ export function LibraryStorefront({
       <LibraryCartFab />
 
       <section className="mx-auto max-w-[90rem] px-4 pt-8 sm:px-6 lg:px-8 xl:px-10">
-        <div className="relative overflow-hidden rounded-[1.75rem] bg-[linear-gradient(135deg,#ece7df_0%,#f4f1eb_42%,#e5ece9_100%)] dark:bg-[linear-gradient(135deg,#1e293b_0%,#0f172a_100%)]">
+        <div
+          className="relative overflow-hidden rounded-[1.75rem] dark:bg-[linear-gradient(135deg,#132743_0%,#0f172a_100%)]"
+          style={{ backgroundImage: `linear-gradient(135deg, #e8f4ef 0%, #f4f8f7 42%, #e7eef5 100%)` }}
+        >
           <div
             aria-hidden
-            className="pointer-events-none absolute inset-0 opacity-40 motion-safe:animate-library-drift [background-image:radial-gradient(circle_at_18%_20%,rgba(255,255,255,0.7),transparent_36%),radial-gradient(circle_at_82%_70%,rgba(26,53,96,0.08),transparent_40%)]"
+            className="pointer-events-none absolute inset-0 opacity-50 motion-safe:animate-library-drift"
+            style={{
+              backgroundImage: `radial-gradient(circle at 18% 20%, rgba(34,165,75,0.14), transparent 36%), radial-gradient(circle at 82% 70%, rgba(26,53,96,0.12), transparent 40%)`,
+            }}
           />
           <div className="relative grid items-center gap-10 px-6 py-12 sm:px-10 lg:grid-cols-[minmax(0,1fr)_minmax(16rem,24rem)] lg:gap-12 lg:py-16 xl:px-14">
             <div className="max-w-xl motion-safe:animate-fade-up">
-              <h1 className="text-[2.6rem] font-bold leading-[1.05] tracking-tight text-[#141414] dark:text-white sm:text-5xl lg:text-[3.4rem]">
+              <h1 className="text-[2.6rem] font-bold leading-[1.05] tracking-tight text-[#1a3560] dark:text-white sm:text-5xl lg:text-[3.4rem]">
                 {headline}
               </h1>
-              <p className="mt-5 max-w-md text-base leading-7 text-[#141414]/70 dark:text-white/70">{subcopy}</p>
+              <p className="mt-5 max-w-md text-base leading-7 text-slate-600 dark:text-white/70">{subcopy}</p>
               <div className="mt-8">
                 <a
                   href={ctaHref}
-                  className="inline-flex h-11 items-center justify-center bg-[#141414] px-6 text-sm font-semibold text-white transition hover:bg-[#1a3560] dark:bg-white dark:text-[#141414] dark:hover:bg-[#e8f4ef]"
+                  className="inline-flex h-11 items-center justify-center rounded-lg px-6 text-sm font-semibold text-white shadow-md transition hover:brightness-110"
+                  style={{ backgroundColor: HL_GREEN }}
                 >
                   {ctaLabel}
                 </a>
@@ -164,7 +169,7 @@ export function LibraryStorefront({
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
                   placeholder="Search title, author, category, or ISBN"
-                  className="h-12 w-full rounded-full border border-[#d8e4e0] bg-white pl-11 pr-4 text-sm shadow-sm outline-none transition focus:border-[#007f68] focus:ring-4 focus:ring-[#007f68]/12 dark:border-slate-700 dark:bg-slate-900"
+                  className="h-12 w-full rounded-full border border-[#d8e4e0] bg-white pl-11 pr-4 text-sm shadow-sm outline-none transition focus:border-[#22a54b] focus:ring-4 focus:ring-[#22a54b]/15 dark:border-slate-700 dark:bg-slate-900"
                 />
               </label>
               <FilterSelect value={category} onChange={setCategory} label="Category" options={facets.categories} />
@@ -174,7 +179,7 @@ export function LibraryStorefront({
                 <select
                   value={sort}
                   onChange={(event) => setSort(event.target.value)}
-                  className="h-12 w-full appearance-none rounded-full border border-[#d8e4e0] bg-white px-4 pr-10 text-sm shadow-sm outline-none transition focus:border-[#007f68] dark:border-slate-700 dark:bg-slate-900 lg:w-44"
+                  className="h-12 w-full appearance-none rounded-full border border-[#d8e4e0] bg-white px-4 pr-10 text-sm shadow-sm outline-none transition focus:border-[#22a54b] dark:border-slate-700 dark:bg-slate-900 lg:w-44"
                 >
                   <option value="newest">Newest</option>
                   <option value="best-selling">Best selling</option>
@@ -193,10 +198,10 @@ export function LibraryStorefront({
               {curated.length > 0 && (
                 <div>
                   <div className="mb-8 flex items-end justify-between gap-4">
-                    <h2 className="text-2xl font-bold tracking-tight text-[#141414] dark:text-white sm:text-3xl">
+                    <h2 className="text-2xl font-bold tracking-tight text-[#1a3560] dark:text-white sm:text-3xl">
                       {merchandising.curatedTitle || "Editor picks"}
                     </h2>
-                    <a href="#library-products" className="hidden text-sm font-semibold text-[#141414]/55 transition hover:text-[#141414] sm:inline-flex dark:text-white/55 dark:hover:text-white">
+                    <a href="#library-products" className="hidden text-sm font-semibold text-[#1a3560]/60 transition hover:text-[#22a54b] sm:inline-flex dark:text-white/55 dark:hover:text-white">
                       View all
                     </a>
                   </div>
@@ -216,10 +221,10 @@ export function LibraryStorefront({
 
               <div id="library-products">
                 <div className="mb-8">
-                  <h2 className="text-2xl font-bold tracking-tight text-[#141414] dark:text-white sm:text-3xl">
+                  <h2 className="text-2xl font-bold tracking-tight text-[#1a3560] dark:text-white sm:text-3xl">
                     All titles
                   </h2>
-                  <p className="mt-2 text-sm text-[#141414]/55 dark:text-white/55">
+                  <p className="mt-2 text-sm text-[#1a3560]/55 dark:text-white/55">
                     {results.length} {results.length === 1 ? "product" : "products"}
                   </p>
                 </div>
@@ -264,8 +269,8 @@ function ProductCard({
   onAdd: () => void;
 }) {
   return (
-    <article className="group flex h-full flex-col rounded-2xl border border-[#dfe8e5] bg-white p-4 shadow-sm transition hover:-translate-y-1 hover:border-[#007f68] hover:shadow-xl dark:border-slate-800 dark:bg-slate-900">
-      <div className="overflow-hidden rounded-xl bg-[#f5f8f7] dark:bg-slate-950/60">
+    <article className="group flex h-full flex-col rounded-2xl border border-[#dfe8e5] bg-white p-4 shadow-sm transition hover:-translate-y-1 hover:border-[#22a54b] hover:shadow-xl dark:border-slate-800 dark:bg-slate-900">
+      <div className="overflow-hidden rounded-xl bg-[#f4f8f7] dark:bg-slate-950/60">
         <BookCover
           product={product}
           variant="shop"
@@ -274,12 +279,12 @@ function ProductCard({
         />
       </div>
       <div className="mt-4 flex min-w-0 flex-1 flex-col">
-        <p className="text-xs font-black uppercase tracking-wide text-[#007f68] dark:text-emerald-300">
+        <p className="text-xs font-black uppercase tracking-wide text-[#22a54b] dark:text-emerald-300">
           {libraryFormatsLabel(product)}
         </p>
         <Link
           href={`/library/${product.slug}`}
-          className="mt-1 line-clamp-2 text-base font-black leading-snug text-[#0d2630] hover:text-[#007f68] dark:text-white"
+          className="mt-1 line-clamp-2 text-base font-black leading-snug text-[#1a3560] hover:text-[#22a54b] dark:text-white"
         >
           {product.title}
         </Link>
@@ -290,9 +295,9 @@ function ProductCard({
             <Star className="size-4 fill-current" />
             <span className="font-bold text-slate-700 dark:text-slate-200">{product.rating || "New"}</span>
           </span>
-          <p className="text-base font-black text-[#0d2630] dark:text-white">
+          <p className="text-base font-black text-[#1a3560] dark:text-white">
             {hidePrice ? (
-              <Link href={`/login?next=/library/${product.slug}`} className="text-sm font-bold text-[#007f68] underline-offset-2 hover:underline">
+              <Link href={`/login?next=/library/${product.slug}`} className="text-sm font-bold text-[#22a54b] underline-offset-2 hover:underline">
                 Sign in for price
               </Link>
             ) : (
@@ -301,13 +306,22 @@ function ProductCard({
           </p>
         </div>
         <div className="mt-auto grid grid-cols-[1fr_auto] gap-2 pt-4">
-          <Button onClick={onAdd} disabled={product.comingSoon && !product.preorder} className="rounded-full">
+          <Button
+            type="button"
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              onAdd();
+            }}
+            disabled={product.comingSoon && !product.preorder}
+            className="rounded-full bg-[#22a54b] shadow-md shadow-emerald-900/10 hover:bg-[#1e9443] hover:from-[#22a54b] hover:to-[#22a54b]"
+          >
             <ShoppingCart className="size-4" />{" "}
             {quantity ? `In bag (${quantity})` : product.preorder ? "Pre-order" : "Add"}
           </Button>
           <Link
             href={`/library/${product.slug}`}
-            className="inline-flex size-11 items-center justify-center rounded-full border border-slate-200 text-slate-600 shadow-sm transition hover:border-[#007f68] hover:text-[#007f68] dark:border-slate-700 dark:text-slate-300"
+            className="inline-flex size-11 items-center justify-center rounded-full border border-slate-200 text-slate-600 shadow-sm transition hover:border-[#22a54b] hover:text-[#22a54b] dark:border-slate-700 dark:text-slate-300"
             aria-label={`View ${product.title}`}
           >
             <ArrowRight className="size-4" />
@@ -334,9 +348,13 @@ function CartPanel({
   return (
     <div className="overflow-hidden rounded-3xl border border-[#dfe8e5] bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
       <div className="border-b border-[#dfe8e5] bg-[#fbfaf6] p-5 dark:border-slate-800 dark:bg-slate-950">
-        <p className="flex items-center gap-2 text-sm font-bold text-ink dark:text-white">
-          <ShoppingBag className="size-4 text-[#007f68]" /> Library Bag
-          {count > 0 && <span className="rounded-full bg-emerald-600 px-2 py-0.5 text-xs font-black text-white">{count}</span>}
+        <p className="flex items-center gap-2 text-sm font-bold text-[#1a3560] dark:text-white">
+          <ShoppingBag className="size-4" style={{ color: HL_GREEN }} /> Library Bag
+          {count > 0 && (
+            <span className="rounded-full px-2 py-0.5 text-xs font-black text-white" style={{ backgroundColor: HL_GREEN }}>
+              {count}
+            </span>
+          )}
         </p>
         <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">Checkout, invoices and secure delivery.</p>
       </div>
@@ -403,9 +421,10 @@ function CartPanel({
           className={cn(
             "inline-flex h-11 w-full items-center justify-center gap-2 rounded-full text-sm font-bold transition",
             cart.length
-              ? "bg-[#007f68] text-white hover:bg-[#006b58]"
+              ? "text-white hover:brightness-110"
               : "pointer-events-none bg-slate-100 text-slate-400 dark:bg-slate-800",
           )}
+          style={cart.length ? { backgroundColor: HL_GREEN } : undefined}
         >
           <ShoppingCart className="size-4" /> Checkout
         </Link>
@@ -432,7 +451,7 @@ function FilterSelect({
       <select
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="h-12 w-full appearance-none rounded-full border border-[#d8e4e0] bg-white pl-10 pr-10 text-sm shadow-sm outline-none transition focus:border-[#007f68] dark:border-slate-700 dark:bg-slate-900 lg:w-44"
+        className="h-12 w-full appearance-none rounded-full border border-[#d8e4e0] bg-white pl-10 pr-10 text-sm shadow-sm outline-none transition focus:border-[#22a54b] dark:border-slate-700 dark:bg-slate-900 lg:w-44"
       >
         <option value="">{label}</option>
         {options.map((option) => (
@@ -450,18 +469,19 @@ function EmptyLibraryState() {
   return (
     <section className="mx-auto max-w-[90rem] px-4 py-20 sm:px-6 lg:px-8 xl:px-10">
       <div className="mx-auto max-w-lg text-center">
-        <span className="mx-auto grid size-12 place-items-center bg-[#ece7df] text-[#1a3560]">
+        <span className="mx-auto grid size-12 place-items-center rounded-lg bg-[#e8f4ef]" style={{ color: HL_NAVY }}>
           <BookOpen className="size-5" />
         </span>
-        <h2 className="mt-6 text-3xl font-bold tracking-tight text-[#141414] dark:text-white">
+        <h2 className="mt-6 text-3xl font-bold tracking-tight text-[#1a3560] dark:text-white">
           New titles are on the way
         </h2>
-        <p className="mt-3 text-sm leading-7 text-[#141414]/60 dark:text-white/60">
+        <p className="mt-3 text-sm leading-7 text-slate-600 dark:text-white/60">
           Professional property books, templates, and toolkits will appear here soon.
         </p>
         <Link
           href="/search"
-          className="mt-8 inline-flex h-11 items-center justify-center gap-2 bg-[#141414] px-5 text-sm font-semibold text-white transition hover:bg-[#1a3560]"
+          className="mt-8 inline-flex h-11 items-center justify-center gap-2 rounded-lg px-5 text-sm font-semibold text-white transition hover:brightness-110"
+          style={{ backgroundColor: HL_GREEN }}
         >
           Browse properties <ArrowRight className="size-4" />
         </Link>

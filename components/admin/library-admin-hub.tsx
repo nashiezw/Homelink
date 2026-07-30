@@ -615,15 +615,16 @@ export function LibraryAdminHub() {
       return;
     }
     const ext = file.name.split(".").pop()?.toUpperCase() || "PDF";
+    const baseName = file.name.replace(/\.[^.]+$/, "");
     const nextFile = {
       id: crypto.randomUUID(),
-      label: kind === "sample" ? (file.name.replace(/\.[^.]+$/, "") || "Sample preview") : file.name.replace(/\.[^.]+$/, ""),
+      label: kind === "sample" ? (baseName.toLowerCase().includes("sample") || baseName.toLowerCase().includes("preview") ? baseName : `Sample preview · ${baseName}`) : baseName,
       fileType: ext,
       size: formatUploadSize(uploaded.data?.size ?? file.size),
       secure: true,
       previewable: kind === "sample",
       fileUrl: uploaded.data!.url,
-      fileName: uploaded.data?.filename ?? file.name,
+      fileName: kind === "sample" ? `sample-${uploaded.data?.filename ?? file.name}` : (uploaded.data?.filename ?? file.name),
       fileSizeBytes: uploaded.data?.size ?? file.size,
     } as LibraryDraftDownload;
     if (kind === "sample") {
@@ -1881,7 +1882,12 @@ function productPayload(draft: LibraryProductDraft, statusOverride?: string) {
       ...(draft.sampleFile?.fileUrl
         ? [{
             ...draft.sampleFile,
-            label: draft.sampleFile.label?.trim() || "Sample preview",
+            label: /sample|preview/i.test(`${draft.sampleFile.label || ""} ${draft.sampleFile.fileName || ""}`)
+              ? (draft.sampleFile.label?.trim() || "Sample preview")
+              : `Sample preview · ${draft.sampleFile.label?.trim() || "PDF"}`,
+            fileName: /sample|preview/i.test(draft.sampleFile.fileName || "")
+              ? draft.sampleFile.fileName
+              : `sample-${draft.sampleFile.fileName || "preview.pdf"}`,
             previewable: true,
             secure: true,
           }]
@@ -1895,23 +1901,16 @@ function splitSampleFromDownloads(downloads: LibraryProduct["downloads"]): {
   downloads: LibraryDraftDownload[];
 } {
   const rows = downloads.map((item) => ({ ...item })) as LibraryDraftDownload[];
-  const labeledSampleIndex = rows.findIndex((item) => item.previewable && /sample|preview/i.test(item.label || ""));
+  const labeledSampleIndex = rows.findIndex((item) => {
+    if (!item.previewable || !item.fileUrl) return false;
+    return /sample|preview/i.test(`${item.label || ""} ${item.fileName || ""}`);
+  });
   if (labeledSampleIndex >= 0) {
     const sampleFile = { ...rows[labeledSampleIndex], previewable: true };
     return {
       sampleFile,
       downloads: rows
         .filter((_, index) => index !== labeledSampleIndex)
-        .map((item) => ({ ...item, previewable: false })),
-    };
-  }
-  const previewable = rows.filter((item) => item.previewable && item.fileUrl);
-  if (previewable.length === 1 && rows.length > 1) {
-    const sampleFile = { ...previewable[0], previewable: true };
-    return {
-      sampleFile,
-      downloads: rows
-        .filter((item) => item.id !== sampleFile.id)
         .map((item) => ({ ...item, previewable: false })),
     };
   }
