@@ -1,5 +1,5 @@
 import { createHash, createHmac, randomBytes } from "crypto";
-import { LibraryProductStatus, LibraryProductType, PaymentStatus, type Prisma } from "@prisma/client";
+import { LibraryDownloadStatus, LibraryProductStatus, LibraryProductType, PaymentStatus, type Prisma } from "@prisma/client";
 import { getMainPrisma, isPostgresStoreEnabled } from "@/lib/db/main-prisma";
 import {
   getLibraryAnalytics as getEmptyLibraryAnalytics,
@@ -125,6 +125,57 @@ export type LibraryCouponAdmin = {
   firstPurchaseOnly: boolean;
 };
 
+export type LibraryTaxonomyKind = "category" | "collection" | "author";
+
+export type LibraryTaxonomyAdmin = {
+  id: string;
+  kind: LibraryTaxonomyKind;
+  name: string;
+  slug: string;
+  description?: string | null;
+  seoTitle?: string | null;
+  metaDescription?: string | null;
+  heroImageUrl?: string | null;
+  bio?: string | null;
+  websiteUrl?: string | null;
+  featured?: boolean;
+  sortOrder?: number;
+  active: boolean;
+  productCount: number;
+};
+
+export type LibraryDownloadAccessAdmin = {
+  id: string;
+  userId: string;
+  userName?: string | null;
+  userEmail?: string | null;
+  productId: string;
+  productTitle: string;
+  orderNumber?: string | null;
+  fileName?: string | null;
+  status: string;
+  downloadCount: number;
+  downloadLimit?: number | null;
+  expiresAt?: string | null;
+  lastDownloadAt?: string | null;
+  licenseKey?: string | null;
+};
+
+export type LibraryReviewAdmin = {
+  id: string;
+  productId: string;
+  productTitle: string;
+  userName?: string | null;
+  userEmail?: string | null;
+  rating: number;
+  title?: string | null;
+  body?: string | null;
+  status: string;
+  verified: boolean;
+  featured: boolean;
+  createdAt: string;
+};
+
 const localLibraryProducts: LibraryProduct[] = getLibraryProducts().map((product) => ({
   ...product,
   gallery: product.gallery.map((item) => ({ ...item })),
@@ -133,6 +184,7 @@ const localLibraryProducts: LibraryProduct[] = getLibraryProducts().map((product
 
 const localLibraryOrders: LocalLibraryOrder[] = LIBRARY_ORDERS.map((order) => ({ ...order, customerId: "demo" }));
 const localLibraryCoupons: LibraryCouponAdmin[] = [];
+const localLibraryTaxonomy: LibraryTaxonomyAdmin[] = [];
 
 export function shouldUsePostgresLibrary() {
   return isPostgresStoreEnabled();
@@ -774,6 +826,9 @@ export async function getLibraryOperationsSummary() {
       exports: [],
       taxSettings: [],
       coupons: localLibraryCoupons,
+      taxonomy: localLibraryTaxonomy,
+      downloadAccess: [],
+      reviews: [],
       guestClaims: [],
       academyEntitlements: [],
       recommendations: [],
@@ -781,13 +836,18 @@ export async function getLibraryOperationsSummary() {
   }
   const prisma = getMainPrisma();
   try {
-    const [fulfilments, invoices, activities, exports, taxSettings, coupons, guestClaims, academyEntitlements, recommendations] = await Promise.all([
+    const [fulfilments, invoices, activities, exports, taxSettings, coupons, categories, collections, authors, downloadAccess, reviews, guestClaims, academyEntitlements, recommendations] = await Promise.all([
       prisma.libraryFulfilment.findMany({ orderBy: { createdAt: "desc" }, take: 20, include: { order: { select: { orderNumber: true, total: true, currency: true } } } }),
       prisma.libraryInvoice.findMany({ orderBy: { issuedAt: "desc" }, take: 20, include: { order: { select: { orderNumber: true } } } }),
       prisma.libraryActivity.findMany({ orderBy: { createdAt: "desc" }, take: 30 }),
       prisma.libraryExportJob.findMany({ orderBy: { createdAt: "desc" }, take: 12 }),
       prisma.libraryTaxSetting.findMany({ orderBy: { createdAt: "desc" }, take: 10 }),
       prisma.libraryCoupon.findMany({ orderBy: { createdAt: "desc" }, take: 100 }),
+      prisma.libraryCategory.findMany({ orderBy: [{ sortOrder: "asc" }, { name: "asc" }], include: { _count: { select: { products: true } } } }),
+      prisma.libraryCollection.findMany({ orderBy: [{ sortOrder: "asc" }, { name: "asc" }], include: { _count: { select: { products: true } } } }),
+      prisma.libraryAuthor.findMany({ orderBy: { name: "asc" }, include: { _count: { select: { products: true } } } }),
+      prisma.libraryDownloadAccess.findMany({ orderBy: { createdAt: "desc" }, take: 100, include: { user: { select: { name: true, email: true } }, product: { select: { title: true } }, order: { select: { orderNumber: true } }, file: { select: { fileName: true } } } }),
+      prisma.libraryReview.findMany({ orderBy: { createdAt: "desc" }, take: 100, include: { product: { select: { title: true } }, user: { select: { name: true, email: true } } } }),
       prisma.libraryGuestClaim.findMany({ orderBy: { createdAt: "desc" }, take: 20, include: { order: { select: { orderNumber: true } } } }),
       prisma.libraryAcademyEntitlement.findMany({ orderBy: { createdAt: "desc" }, take: 20 }),
       prisma.libraryRecommendation.findMany({
@@ -797,7 +857,24 @@ export async function getLibraryOperationsSummary() {
         include: { sourceProduct: { select: { title: true } }, targetProduct: { select: { title: true } } },
       }),
     ]);
-    return { fulfilments, invoices, activities, exports, taxSettings, coupons: coupons.map(toLibraryCouponAdmin), guestClaims, academyEntitlements, recommendations };
+    return {
+      fulfilments,
+      invoices,
+      activities,
+      exports,
+      taxSettings,
+      coupons: coupons.map(toLibraryCouponAdmin),
+      taxonomy: [
+        ...categories.map((row) => toLibraryTaxonomyAdmin("category", row)),
+        ...collections.map((row) => toLibraryTaxonomyAdmin("collection", row)),
+        ...authors.map((row) => toLibraryTaxonomyAdmin("author", row)),
+      ],
+      downloadAccess: downloadAccess.map(toLibraryDownloadAccessAdmin),
+      reviews: reviews.map(toLibraryReviewAdmin),
+      guestClaims,
+      academyEntitlements,
+      recommendations,
+    };
   } catch {
     return {
       fulfilments: [],
@@ -806,6 +883,9 @@ export async function getLibraryOperationsSummary() {
       exports: [],
       taxSettings: [],
       coupons: [],
+      taxonomy: [],
+      downloadAccess: [],
+      reviews: [],
       guestClaims: [],
       academyEntitlements: [],
       recommendations: [],
@@ -844,6 +924,21 @@ export async function createLibraryExportJob(type: string, filters: unknown, act
     },
   });
   await logLibraryActivity({ actorId, targetType: "export", targetId: job.id, action: "CREATED", message: `${type} export prepared.` });
+  return job;
+}
+
+export async function deleteLibraryExportJob(id: string, actorId?: string) {
+  if (!shouldUsePostgresLibrary()) return { id };
+  const job = await getMainPrisma().libraryExportJob.delete({ where: { id } }).catch(() => null);
+  if (!job) return null;
+  await logLibraryActivity({
+    actorId,
+    targetType: "export",
+    targetId: job.id,
+    action: "DELETED",
+    message: `${job.type} export deleted.`,
+    metadata: { type: job.type, status: job.status, fileUrl: job.fileUrl },
+  });
   return job;
 }
 
@@ -933,6 +1028,118 @@ export async function deleteLibraryCoupon(id: string, actorId?: string) {
   const row = await getMainPrisma().libraryCoupon.delete({ where: { id } }).catch(() => null);
   if (row) await logLibraryActivity({ actorId, targetType: "coupon", targetId: row.id, action: "COUPON_DELETED", message: `${row.code} coupon deleted.` });
   return row ? toLibraryCouponAdmin(row) : null;
+}
+
+export async function upsertLibraryTaxonomy(kind: LibraryTaxonomyKind, input: {
+  id?: string;
+  name: string;
+  slug?: string;
+  description?: string;
+  seoTitle?: string;
+  metaDescription?: string;
+  heroImageUrl?: string;
+  bio?: string;
+  websiteUrl?: string;
+  featured?: boolean;
+  sortOrder?: number;
+  active?: boolean;
+}, actorId?: string) {
+  const slug = input.slug?.trim() || slugify(input.name);
+  const common = {
+    name: input.name.trim(),
+    slug,
+    active: input.active ?? true,
+  };
+  if (!shouldUsePostgresLibrary()) {
+    const existing = localLibraryTaxonomy.find((item) => item.id === input.id || (item.kind === kind && item.slug === slug));
+    const next: LibraryTaxonomyAdmin = {
+      id: existing?.id ?? `local-${kind}-${Date.now()}`,
+      kind,
+      ...common,
+      description: input.description?.trim() || null,
+      seoTitle: input.seoTitle?.trim() || null,
+      metaDescription: input.metaDescription?.trim() || null,
+      heroImageUrl: input.heroImageUrl?.trim() || null,
+      bio: input.bio?.trim() || null,
+      websiteUrl: input.websiteUrl?.trim() || null,
+      featured: Boolean(input.featured),
+      sortOrder: input.sortOrder ?? 0,
+      productCount: existing?.productCount ?? 0,
+    };
+    if (existing) Object.assign(existing, next);
+    else localLibraryTaxonomy.unshift(next);
+    return next;
+  }
+  const prisma = getMainPrisma();
+  if (kind === "category") {
+    const data = { ...common, description: input.description || null, seoTitle: input.seoTitle || null, metaDescription: input.metaDescription || null, sortOrder: input.sortOrder ?? 0 };
+    const row = input.id ? await prisma.libraryCategory.update({ where: { id: input.id }, data, include: { _count: { select: { products: true } } } }) : await prisma.libraryCategory.upsert({ where: { slug }, create: data, update: data, include: { _count: { select: { products: true } } } });
+    await logLibraryActivity({ actorId, targetType: "category", targetId: row.id, action: "TAXONOMY_SAVED", message: `${row.name} category saved.` });
+    return toLibraryTaxonomyAdmin("category", row);
+  }
+  if (kind === "collection") {
+    const data = { ...common, description: input.description || null, heroImageUrl: input.heroImageUrl || null, featured: Boolean(input.featured), sortOrder: input.sortOrder ?? 0 };
+    const row = input.id ? await prisma.libraryCollection.update({ where: { id: input.id }, data, include: { _count: { select: { products: true } } } }) : await prisma.libraryCollection.upsert({ where: { slug }, create: data, update: data, include: { _count: { select: { products: true } } } });
+    await logLibraryActivity({ actorId, targetType: "collection", targetId: row.id, action: "TAXONOMY_SAVED", message: `${row.name} collection saved.` });
+    return toLibraryTaxonomyAdmin("collection", row);
+  }
+  const data = { ...common, bio: input.bio || input.description || null, avatarUrl: input.heroImageUrl || null, websiteUrl: input.websiteUrl || null };
+  const row = input.id ? await prisma.libraryAuthor.update({ where: { id: input.id }, data, include: { _count: { select: { products: true } } } }) : await prisma.libraryAuthor.upsert({ where: { slug }, create: data, update: data, include: { _count: { select: { products: true } } } });
+  await logLibraryActivity({ actorId, targetType: "author", targetId: row.id, action: "TAXONOMY_SAVED", message: `${row.name} author saved.` });
+  return toLibraryTaxonomyAdmin("author", row);
+}
+
+export async function deleteLibraryTaxonomy(kind: LibraryTaxonomyKind, id: string, actorId?: string) {
+  if (!shouldUsePostgresLibrary()) {
+    const row = localLibraryTaxonomy.find((item) => item.id === id && item.kind === kind);
+    if (!row) return null;
+    row.active = false;
+    return row;
+  }
+  const prisma = getMainPrisma();
+  const row = kind === "category"
+    ? await prisma.libraryCategory.update({ where: { id }, data: { active: false }, include: { _count: { select: { products: true } } } }).catch(() => null)
+    : kind === "collection"
+      ? await prisma.libraryCollection.update({ where: { id }, data: { active: false }, include: { _count: { select: { products: true } } } }).catch(() => null)
+      : await prisma.libraryAuthor.update({ where: { id }, data: { active: false }, include: { _count: { select: { products: true } } } }).catch(() => null);
+  if (!row) return null;
+  await logLibraryActivity({ actorId, targetType: kind, targetId: id, action: "TAXONOMY_DISABLED", message: `${kind} disabled.` });
+  return toLibraryTaxonomyAdmin(kind, row);
+}
+
+export async function updateLibraryDownloadAccess(id: string, input: { status?: string; downloadLimit?: number | null; expiresAt?: string | null }, actorId?: string) {
+  if (!shouldUsePostgresLibrary()) return null;
+  const status = input.status && Object.values(LibraryDownloadStatus).includes(input.status as LibraryDownloadStatus) ? input.status as LibraryDownloadStatus : undefined;
+  const row = await getMainPrisma().libraryDownloadAccess.update({
+    where: { id },
+    data: {
+      ...(status ? { status } : {}),
+      ...(input.downloadLimit !== undefined ? { downloadLimit: input.downloadLimit } : {}),
+      ...(input.expiresAt !== undefined ? { expiresAt: input.expiresAt ? new Date(input.expiresAt) : null } : {}),
+    },
+    include: { user: { select: { name: true, email: true } }, product: { select: { title: true } }, order: { select: { orderNumber: true } }, file: { select: { fileName: true } } },
+  }).catch(() => null);
+  if (!row) return null;
+  await logLibraryActivity({ actorId, targetType: "download_access", targetId: row.id, action: "ACCESS_UPDATED", message: `Download access marked ${row.status}.`, metadata: input });
+  return toLibraryDownloadAccessAdmin(row);
+}
+
+export async function moderateLibraryReview(id: string, input: { status?: string; featured?: boolean; verified?: boolean }, actorId?: string) {
+  if (!shouldUsePostgresLibrary()) return null;
+  const prisma = getMainPrisma();
+  const row = await prisma.libraryReview.update({
+    where: { id },
+    data: {
+      ...(input.status ? { status: input.status } : {}),
+      ...(input.featured !== undefined ? { featured: input.featured } : {}),
+      ...(input.verified !== undefined ? { verified: input.verified } : {}),
+    },
+    include: { product: { select: { title: true } }, user: { select: { name: true, email: true } } },
+  }).catch(() => null);
+  if (!row) return null;
+  await recalculateLibraryProductRating(row.productId);
+  await logLibraryActivity({ actorId, targetType: "review", targetId: row.id, action: "REVIEW_MODERATED", message: `Review marked ${row.status}.`, metadata: input });
+  return toLibraryReviewAdmin(row);
 }
 
 export async function ensureLibraryInvoice(orderId: string) {
@@ -1284,6 +1491,110 @@ function toLibraryCouponAdmin(row: {
     categoryIds: row.categoryIds,
     firstPurchaseOnly: row.firstPurchaseOnly,
   };
+}
+
+function toLibraryTaxonomyAdmin(kind: LibraryTaxonomyKind, row: {
+  id: string;
+  name: string;
+  slug: string;
+  description?: string | null;
+  seoTitle?: string | null;
+  metaDescription?: string | null;
+  heroImageUrl?: string | null;
+  bio?: string | null;
+  avatarUrl?: string | null;
+  websiteUrl?: string | null;
+  featured?: boolean;
+  sortOrder?: number;
+  active: boolean;
+  _count?: { products: number };
+}): LibraryTaxonomyAdmin {
+  return {
+    id: row.id,
+    kind,
+    name: row.name,
+    slug: row.slug,
+    description: row.description ?? row.bio ?? null,
+    seoTitle: row.seoTitle ?? null,
+    metaDescription: row.metaDescription ?? null,
+    heroImageUrl: row.heroImageUrl ?? row.avatarUrl ?? null,
+    bio: row.bio ?? null,
+    websiteUrl: row.websiteUrl ?? null,
+    featured: row.featured ?? false,
+    sortOrder: row.sortOrder ?? 0,
+    active: row.active,
+    productCount: row._count?.products ?? 0,
+  };
+}
+
+function toLibraryDownloadAccessAdmin(row: {
+  id: string;
+  userId: string;
+  productId: string;
+  status: string;
+  downloadCount: number;
+  downloadLimit: number | null;
+  expiresAt: Date | null;
+  lastDownloadAt: Date | null;
+  licenseKey: string | null;
+  user?: { name: string | null; email: string } | null;
+  product?: { title: string } | null;
+  order?: { orderNumber: string } | null;
+  file?: { fileName: string } | null;
+}): LibraryDownloadAccessAdmin {
+  return {
+    id: row.id,
+    userId: row.userId,
+    userName: row.user?.name ?? null,
+    userEmail: row.user?.email ?? null,
+    productId: row.productId,
+    productTitle: row.product?.title ?? "Library product",
+    orderNumber: row.order?.orderNumber ?? null,
+    fileName: row.file?.fileName ?? null,
+    status: row.status,
+    downloadCount: row.downloadCount,
+    downloadLimit: row.downloadLimit,
+    expiresAt: row.expiresAt?.toISOString().slice(0, 10) ?? null,
+    lastDownloadAt: row.lastDownloadAt?.toISOString() ?? null,
+    licenseKey: row.licenseKey,
+  };
+}
+
+function toLibraryReviewAdmin(row: {
+  id: string;
+  productId: string;
+  rating: number;
+  title: string | null;
+  body: string | null;
+  status: string;
+  verified: boolean;
+  featured: boolean;
+  createdAt: Date;
+  product?: { title: string } | null;
+  user?: { name: string | null; email: string } | null;
+}): LibraryReviewAdmin {
+  return {
+    id: row.id,
+    productId: row.productId,
+    productTitle: row.product?.title ?? "Library product",
+    userName: row.user?.name ?? null,
+    userEmail: row.user?.email ?? null,
+    rating: row.rating,
+    title: row.title,
+    body: row.body,
+    status: row.status,
+    verified: row.verified,
+    featured: row.featured,
+    createdAt: row.createdAt.toISOString(),
+  };
+}
+
+async function recalculateLibraryProductRating(productId: string) {
+  const prisma = getMainPrisma();
+  const reviews = await prisma.libraryReview.findMany({ where: { productId, status: "APPROVED" }, select: { rating: true } });
+  const ratingCount = reviews.length;
+  const ratingAverage = ratingCount ? reviews.reduce((sum, review) => sum + review.rating, 0) / ratingCount : 0;
+  await prisma.libraryProduct.update({ where: { id: productId }, data: { ratingCount, ratingAverage } }).catch(() => null);
 }
 
 function buildSalesTrend(orders: Array<{ total: Prisma.Decimal; createdAt: Date }>) {

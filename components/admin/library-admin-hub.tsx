@@ -1,6 +1,6 @@
 "use client";
 
-import { Boxes, CheckCircle2, Copy, Download, Edit3, ExternalLink, FileArchive, Plus, Search, Star, Trash2, Upload, X } from "lucide-react";
+import { Boxes, CheckCircle2, Copy, Download, Edit3, ExternalLink, FileArchive, Plus, Search, Trash2, Upload, X } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -47,6 +47,9 @@ type LibraryOperations = {
   exports: Array<{ id: string; type: string; status: string; fileUrl?: string | null; createdAt?: string }>;
   taxSettings: Array<{ id: string; name: string; country: string; rate: unknown; inclusive: boolean; active: boolean }>;
   coupons: LibraryCouponAdmin[];
+  taxonomy: LibraryTaxonomyAdmin[];
+  downloadAccess: LibraryDownloadAccessAdmin[];
+  reviews: LibraryReviewAdmin[];
   guestClaims: Array<{ id: string; email: string; status: string; order?: { orderNumber: string } }>;
   academyEntitlements: Array<{ id: string; userId: string; courseId: string; status: string }>;
   recommendations: Array<{ id: string; reason: string; sourceProduct?: { title: string }; targetProduct?: { title: string } }>;
@@ -67,6 +70,55 @@ type LibraryCouponAdmin = {
   productIds: string[];
   categoryIds: string[];
   firstPurchaseOnly: boolean;
+};
+
+type LibraryTaxonomyAdmin = {
+  id: string;
+  kind: LibraryGroupField;
+  name: string;
+  slug: string;
+  description?: string | null;
+  seoTitle?: string | null;
+  metaDescription?: string | null;
+  heroImageUrl?: string | null;
+  bio?: string | null;
+  websiteUrl?: string | null;
+  featured?: boolean;
+  sortOrder?: number;
+  active: boolean;
+  productCount: number;
+};
+
+type LibraryDownloadAccessAdmin = {
+  id: string;
+  userId: string;
+  userName?: string | null;
+  userEmail?: string | null;
+  productId: string;
+  productTitle: string;
+  orderNumber?: string | null;
+  fileName?: string | null;
+  status: string;
+  downloadCount: number;
+  downloadLimit?: number | null;
+  expiresAt?: string | null;
+  lastDownloadAt?: string | null;
+  licenseKey?: string | null;
+};
+
+type LibraryReviewAdmin = {
+  id: string;
+  productId: string;
+  productTitle: string;
+  userName?: string | null;
+  userEmail?: string | null;
+  rating: number;
+  title?: string | null;
+  body?: string | null;
+  status: string;
+  verified: boolean;
+  featured: boolean;
+  createdAt: string;
 };
 
 type CouponDraft = {
@@ -90,6 +142,8 @@ type TaxDraft = { id?: string; name: string; country: string; rate: string; incl
 type FulfilmentDraft = { id: string; status: string; courier: string; trackingNumber: string; trackingUrl: string; dispatchNotes: string; deliveryNotes: string };
 
 type GroupDraft = { field: LibraryGroupField; currentName: string; nextName: string };
+type TaxonomyDraft = { id?: string; kind: LibraryGroupField; name: string; slug: string; description: string; seoTitle: string; metaDescription: string; heroImageUrl: string; bio: string; websiteUrl: string; featured: boolean; sortOrder: string; active: boolean };
+type DownloadAccessDraft = { id: string; status: string; downloadLimit: string; expiresAt: string };
 
 type LibraryDraftDownload = LibraryProduct["downloads"][number] & { fileUrl?: string; fileName?: string; fileSizeBytes?: number; previewable?: boolean };
 
@@ -148,6 +202,9 @@ const emptyOperations: LibraryOperations = {
   exports: [],
   taxSettings: [],
   coupons: [],
+  taxonomy: [],
+  downloadAccess: [],
+  reviews: [],
   guestClaims: [],
   academyEntitlements: [],
   recommendations: [],
@@ -244,6 +301,9 @@ export function LibraryAdminHub() {
   const [taxDraft, setTaxDraft] = useState<TaxDraft | null>(null);
   const [fulfilmentDraft, setFulfilmentDraft] = useState<FulfilmentDraft | null>(null);
   const [groupDraft, setGroupDraft] = useState<GroupDraft | null>(null);
+  const [taxonomyDraft, setTaxonomyDraft] = useState<TaxonomyDraft | null>(null);
+  const [downloadAccessDraft, setDownloadAccessDraft] = useState<DownloadAccessDraft | null>(null);
+  const [feedback, setFeedback] = useState<{ tone: "success" | "error"; message: string } | null>(null);
   const source = productsSource.length ? productsSource : searchLibraryProducts({});
   const products = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -440,6 +500,37 @@ export function LibraryAdminHub() {
     setGroupDraft({ field, currentName, nextName: currentName });
   }
 
+  function openTaxonomyEditor(kind: LibraryGroupField, row?: LibraryTaxonomyAdmin) {
+    setTaxonomyDraft(row ? {
+      id: row.id,
+      kind: row.kind,
+      name: row.name,
+      slug: row.slug,
+      description: row.description ?? "",
+      seoTitle: row.seoTitle ?? "",
+      metaDescription: row.metaDescription ?? "",
+      heroImageUrl: row.heroImageUrl ?? "",
+      bio: row.bio ?? "",
+      websiteUrl: row.websiteUrl ?? "",
+      featured: Boolean(row.featured),
+      sortOrder: String(row.sortOrder ?? 0),
+      active: row.active,
+    } : { kind, name: "", slug: "", description: "", seoTitle: "", metaDescription: "", heroImageUrl: "", bio: "", websiteUrl: "", featured: false, sortOrder: "0", active: true });
+  }
+
+  async function saveTaxonomy() {
+    if (!taxonomyDraft) return;
+    await apiFetch("/api/v1/admin/library", { method: "POST", body: JSON.stringify({ action: "save_taxonomy", ...taxonomyPayload(taxonomyDraft) }) });
+    setTaxonomyDraft(null);
+    await load();
+  }
+
+  async function deleteTaxonomy(kind: LibraryGroupField, id: string) {
+    if (!window.confirm("Disable this Library record? Products stay intact, but the record will no longer be active.")) return;
+    await apiFetch("/api/v1/admin/library", { method: "POST", body: JSON.stringify({ action: "delete_taxonomy", kind, id }) });
+    await load();
+  }
+
   async function saveProductGroup() {
     if (!groupDraft) return;
     const nextName = groupDraft.nextName.trim();
@@ -471,8 +562,30 @@ export function LibraryAdminHub() {
   }
 
   async function createExport(type: string) {
-    await apiFetch("/api/v1/admin/library", { method: "POST", body: JSON.stringify({ action: "create_export", type, filters: { view } }) });
+    setFeedback(null);
+    const result = await apiFetch("/api/v1/admin/library", { method: "POST", body: JSON.stringify({ action: "create_export", type, filters: { view } }) });
+    if (result.error) {
+      setFeedback({ tone: "error", message: result.error.message || "Export could not be created." });
+      return;
+    }
     await load();
+    setFeedback({ tone: "success", message: "Export created." });
+  }
+
+  async function deleteExport(id: string, type: string) {
+    if (!window.confirm(`Delete the ${type} export job? This removes it from the reports list.`)) return;
+    setFeedback(null);
+    const result = await apiFetch<{ deleted: boolean }>("/api/v1/admin/library", { method: "POST", body: JSON.stringify({ action: "delete_export", id }) });
+    if (result.error) {
+      setFeedback({ tone: "error", message: result.error.message || "Export could not be deleted." });
+      return;
+    }
+    setOperations((current) => ({
+      ...current,
+      exports: current.exports.filter((item) => item.id !== id),
+    }));
+    await load();
+    setFeedback({ tone: "success", message: "Export deleted." });
   }
 
   function openCouponEditor(coupon?: LibraryCouponAdmin) {
@@ -528,9 +641,30 @@ export function LibraryAdminHub() {
     await load();
   }
 
+  function openDownloadAccessEditor(row: LibraryDownloadAccessAdmin) {
+    setDownloadAccessDraft({ id: row.id, status: row.status, downloadLimit: row.downloadLimit == null ? "" : String(row.downloadLimit), expiresAt: row.expiresAt ?? "" });
+  }
+
+  async function saveDownloadAccess() {
+    if (!downloadAccessDraft) return;
+    await apiFetch("/api/v1/admin/library", { method: "POST", body: JSON.stringify({ action: "update_download_access", ...downloadAccessDraft }) });
+    setDownloadAccessDraft(null);
+    await load();
+  }
+
+  async function moderateReview(id: string, status: string, patch: { featured?: boolean; verified?: boolean } = {}) {
+    await apiFetch("/api/v1/admin/library", { method: "POST", body: JSON.stringify({ action: "moderate_review", id, status, ...patch }) });
+    await load();
+  }
+
   return (
     <div className="space-y-5">
       <AdminTabStrip tabs={views.map((id) => ({ id, label: id }))} active={view} onChange={setView} />
+      {feedback && (
+        <div role="status" className={cn("rounded-lg border px-4 py-3 text-sm font-semibold", feedback.tone === "success" ? "border-emerald-400/25 bg-emerald-400/10 text-emerald-200" : "border-red-400/25 bg-red-400/10 text-red-200")}>
+          {feedback.message}
+        </div>
+      )}
 
       {view === "Dashboard" && (
         <>
@@ -621,7 +755,9 @@ export function LibraryAdminHub() {
               <Button onClick={() => openTaxEditor()}>Add Tax Setting</Button>
             ) : view === "Coupons" ? (
               <Button onClick={() => openCouponEditor()}><Plus className="size-4" /> Create Coupon</Button>
-            ) : ["Categories", "Collections", "Authors", "Downloads", "Inventory"].includes(view) ? (
+            ) : ["Categories", "Collections", "Authors"].includes(view) ? (
+              <Button onClick={() => openTaxonomyEditor(view === "Categories" ? "category" : view === "Collections" ? "collection" : "author")}><Plus className="size-4" /> Create {view.slice(0, -1)}</Button>
+            ) : ["Downloads", "Inventory"].includes(view) ? (
               <Button onClick={() => createForView()}>
                 <Plus className="size-4" /> Create Product
               </Button>
@@ -643,6 +779,11 @@ export function LibraryAdminHub() {
             onEditCoupon={openCouponEditor}
             onDeleteCoupon={deleteCoupon}
             onEditTaxSetting={openTaxEditor}
+            onEditTaxonomy={openTaxonomyEditor}
+            onDeleteTaxonomy={deleteTaxonomy}
+            onDeleteExport={deleteExport}
+            onEditDownloadAccess={openDownloadAccessEditor}
+            onModerateReview={moderateReview}
           />
           {view === "Reports" && <OperationsList title="Export jobs" rows={operations.exports.map((item) => ({ label: item.type, value: item.status, detail: item.fileUrl ?? "Preparing export" }))} />}
           {view === "Analytics" && <OperationsList title="Activity timeline" rows={operations.activities.map((item) => ({ label: item.action, value: item.createdAt ? new Date(item.createdAt).toLocaleDateString() : "Now", detail: item.message }))} />}
@@ -827,6 +968,35 @@ export function LibraryAdminHub() {
           <Field label="Name" value={groupDraft.nextName} onChange={(value) => setGroupDraft({ ...groupDraft, nextName: value })} required />
         </CommerceModal>
       )}
+
+      {taxonomyDraft && (
+        <CommerceModal title={taxonomyDraft.id ? `Edit ${taxonomyDraft.kind}` : `Create ${taxonomyDraft.kind}`} description="Database-backed Library taxonomy with storefront visibility, SEO, sort order, and merchandising fields." onClose={() => setTaxonomyDraft(null)} onSave={() => void saveTaxonomy()} saveLabel="Save Record" disabled={!taxonomyDraft.name.trim()}>
+          <div className="grid gap-3 md:grid-cols-2">
+            <Field label="Name" value={taxonomyDraft.name} onChange={(value) => setTaxonomyDraft({ ...taxonomyDraft, name: value })} required />
+            <Field label="Slug" value={taxonomyDraft.slug} onChange={(value) => setTaxonomyDraft({ ...taxonomyDraft, slug: value })} placeholder="Auto-generated if empty" />
+            <TextAreaField label={taxonomyDraft.kind === "author" ? "Bio" : "Description"} value={taxonomyDraft.kind === "author" ? taxonomyDraft.bio : taxonomyDraft.description} onChange={(value) => setTaxonomyDraft(taxonomyDraft.kind === "author" ? { ...taxonomyDraft, bio: value } : { ...taxonomyDraft, description: value })} />
+            <Field label={taxonomyDraft.kind === "author" ? "Avatar URL" : "Hero image URL"} value={taxonomyDraft.heroImageUrl} onChange={(value) => setTaxonomyDraft({ ...taxonomyDraft, heroImageUrl: value })} />
+            {taxonomyDraft.kind === "author" && <Field label="Website URL" value={taxonomyDraft.websiteUrl} onChange={(value) => setTaxonomyDraft({ ...taxonomyDraft, websiteUrl: value })} />}
+            {taxonomyDraft.kind !== "author" && <Field label="SEO title" value={taxonomyDraft.seoTitle} onChange={(value) => setTaxonomyDraft({ ...taxonomyDraft, seoTitle: value })} />}
+            {taxonomyDraft.kind !== "author" && <Field label="Meta description" value={taxonomyDraft.metaDescription} onChange={(value) => setTaxonomyDraft({ ...taxonomyDraft, metaDescription: value })} />}
+            <Field label="Sort order" value={taxonomyDraft.sortOrder} onChange={(value) => setTaxonomyDraft({ ...taxonomyDraft, sortOrder: value })} type="number" />
+            <div className="grid gap-3">
+              {taxonomyDraft.kind === "collection" && <ToggleField label="Featured collection" checked={taxonomyDraft.featured} onChange={(value) => setTaxonomyDraft({ ...taxonomyDraft, featured: value })} />}
+              <ToggleField label="Active" checked={taxonomyDraft.active} onChange={(value) => setTaxonomyDraft({ ...taxonomyDraft, active: value })} />
+            </div>
+          </div>
+        </CommerceModal>
+      )}
+
+      {downloadAccessDraft && (
+        <CommerceModal title="Manage Download Access" description="Control customer file access, revocation, expiry, and download limits." onClose={() => setDownloadAccessDraft(null)} onSave={() => void saveDownloadAccess()} saveLabel="Save Access">
+          <div className="grid gap-3 md:grid-cols-2">
+            <SelectField label="Status" value={downloadAccessDraft.status} onChange={(value) => setDownloadAccessDraft({ ...downloadAccessDraft, status: value })} options={["ACTIVE", "REVOKED", "EXPIRED", "SUSPENDED"]} />
+            <Field label="Download limit" value={downloadAccessDraft.downloadLimit} onChange={(value) => setDownloadAccessDraft({ ...downloadAccessDraft, downloadLimit: value })} type="number" placeholder="Blank for unlimited" />
+            <Field label="Expires at" value={downloadAccessDraft.expiresAt} onChange={(value) => setDownloadAccessDraft({ ...downloadAccessDraft, expiresAt: value })} type="date" />
+          </div>
+        </CommerceModal>
+      )}
     </div>
   );
 }
@@ -933,6 +1103,24 @@ function AssetRow({ label, onRemove }: { label: string; onRemove: () => void }) 
   );
 }
 
+function taxonomyPayload(draft: TaxonomyDraft) {
+  return {
+    id: draft.id,
+    kind: draft.kind,
+    name: draft.name.trim(),
+    slug: draft.slug.trim() || undefined,
+    description: draft.description.trim(),
+    seoTitle: draft.seoTitle.trim(),
+    metaDescription: draft.metaDescription.trim(),
+    heroImageUrl: draft.heroImageUrl.trim(),
+    bio: draft.bio.trim(),
+    websiteUrl: draft.websiteUrl.trim(),
+    featured: draft.featured,
+    sortOrder: Number(draft.sortOrder) || 0,
+    active: draft.active,
+  };
+}
+
 function EditorSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="rounded-xl border border-white/10 bg-slate-900/50 p-4">
@@ -991,6 +1179,47 @@ function ProductCell({ product }: { product: LibraryProduct }) {
 
 type LibraryGroupField = "category" | "collection" | "author";
 
+function TaxonomyTable({ kind, products, taxonomy, fallback, onEdit, onDelete }: { kind: LibraryGroupField; products: LibraryProduct[]; taxonomy: LibraryTaxonomyAdmin[]; fallback: React.ReactNode; onEdit: (kind: LibraryGroupField, row?: LibraryTaxonomyAdmin) => void; onDelete: (kind: LibraryGroupField, id: string) => void | Promise<void> }) {
+  const rows = taxonomy.filter((row) => row.kind === kind);
+  if (!rows.length && products.length) return fallback;
+  return (
+    <AdminDataTable
+      rows={rows}
+      emptyMessage={`No Library ${kind} records yet. Create one to control slug, SEO, active state, and sort order.`}
+      columns={[
+        { key: "name", header: "Name", render: (row) => <div><p className="font-semibold text-white">{row.name}</p><p className="text-xs text-slate-500">{row.slug}</p></div> },
+        { key: "products", header: "Products", render: (row) => row.productCount },
+        { key: "visibility", header: "Visibility", render: (row) => <AdminStatusBadge status={row.active ? "ACTIVE" : "INACTIVE"} variant={row.active ? "success" : "muted"} /> },
+        { key: "seo", header: "SEO", render: (row) => row.seoTitle || row.metaDescription || row.description || row.bio ? "Configured" : "Not set" },
+        { key: "actions", header: "Actions", render: (row) => <RowActions primaryLabel="Edit" primaryIcon={Edit3} onPrimary={() => onEdit(kind, row)} onDelete={() => onDelete(kind, row.id)} /> },
+      ]}
+    />
+  );
+}
+
+function DownloadAccessTable({ rows, onEdit }: { rows: LibraryDownloadAccessAdmin[]; onEdit: (row: LibraryDownloadAccessAdmin) => void }) {
+  return (
+    <div className="mt-5 rounded-xl border border-white/[0.08] bg-slate-950/40 p-4">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <p className="font-semibold text-white">Customer download access</p>
+        <span className="rounded-full bg-white/10 px-2 py-1 text-xs text-slate-300">{rows.length}</span>
+      </div>
+      <AdminDataTable
+        rows={rows}
+        emptyMessage="No customer download access records yet."
+        columns={[
+          { key: "customer", header: "Customer", render: (row) => <div><p className="font-semibold text-white">{row.userName ?? row.userEmail ?? row.userId}</p><p className="text-xs text-slate-500">{row.orderNumber ?? "No order"}</p></div> },
+          { key: "product", header: "Product/File", render: (row) => <div><p>{row.productTitle}</p><p className="text-xs text-slate-500">{row.fileName ?? "Product access"}</p></div> },
+          { key: "status", header: "Status", render: (row) => <AdminStatusBadge status={row.status} variant={row.status === "ACTIVE" ? "success" : row.status === "REVOKED" ? "danger" : "warning"} /> },
+          { key: "usage", header: "Usage", render: (row) => `${row.downloadCount}${row.downloadLimit == null ? "" : `/${row.downloadLimit}`}` },
+          { key: "expires", header: "Expires", render: (row) => row.expiresAt ?? "Never" },
+          { key: "actions", header: "Actions", render: (row) => <RowActions primaryLabel="Manage" primaryIcon={Edit3} onPrimary={() => onEdit(row)} /> },
+        ]}
+      />
+    </div>
+  );
+}
+
 function LibraryTabManagement({
   view,
   products,
@@ -999,13 +1228,18 @@ function LibraryTabManagement({
   operations,
   onEditProduct,
   onDeleteProduct,
-  onSetProductStatus,
+  onSetProductStatus: _onSetProductStatus,
   onRenameGroup,
   onDeleteGroup,
   onCreateExport,
+  onDeleteExport,
   onEditCoupon,
   onDeleteCoupon,
   onEditTaxSetting,
+  onEditTaxonomy,
+  onDeleteTaxonomy,
+  onEditDownloadAccess,
+  onModerateReview,
 }: {
   view: string;
   products: LibraryProduct[];
@@ -1018,13 +1252,18 @@ function LibraryTabManagement({
   onRenameGroup: (field: LibraryGroupField, currentName: string) => void | Promise<void>;
   onDeleteGroup: (field: LibraryGroupField, currentName: string) => void | Promise<void>;
   onCreateExport: (type: string) => void | Promise<void>;
+  onDeleteExport: (id: string, type: string) => void | Promise<void>;
   onEditCoupon: (coupon?: LibraryCouponAdmin) => void;
   onDeleteCoupon: (id: string) => void | Promise<void>;
   onEditTaxSetting: (tax?: LibraryOperations["taxSettings"][number]) => void;
+  onEditTaxonomy: (kind: LibraryGroupField, row?: LibraryTaxonomyAdmin) => void;
+  onDeleteTaxonomy: (kind: LibraryGroupField, id: string) => void | Promise<void>;
+  onEditDownloadAccess: (row: LibraryDownloadAccessAdmin) => void;
+  onModerateReview: (id: string, status: string, patch?: { featured?: boolean; verified?: boolean }) => void | Promise<void>;
 }) {
-  if (view === "Categories") return <GroupTable field="category" products={products} onRename={onRenameGroup} onDelete={onDeleteGroup} />;
-  if (view === "Collections") return <GroupTable field="collection" products={products} onRename={onRenameGroup} onDelete={onDeleteGroup} />;
-  if (view === "Authors") return <GroupTable field="author" products={products} onRename={onRenameGroup} onDelete={onDeleteGroup} />;
+  if (view === "Categories") return <TaxonomyTable kind="category" products={products} taxonomy={operations.taxonomy} onEdit={onEditTaxonomy} onDelete={onDeleteTaxonomy} fallback={<GroupTable field="category" products={products} onRename={onRenameGroup} onDelete={onDeleteGroup} />} />;
+  if (view === "Collections") return <TaxonomyTable kind="collection" products={products} taxonomy={operations.taxonomy} onEdit={onEditTaxonomy} onDelete={onDeleteTaxonomy} fallback={<GroupTable field="collection" products={products} onRename={onRenameGroup} onDelete={onDeleteGroup} />} />;
+  if (view === "Authors") return <TaxonomyTable kind="author" products={products} taxonomy={operations.taxonomy} onEdit={onEditTaxonomy} onDelete={onDeleteTaxonomy} fallback={<GroupTable field="author" products={products} onRename={onRenameGroup} onDelete={onDeleteGroup} />} />;
 
   if (view === "Customers") {
     const customers = Array.from(
@@ -1054,13 +1293,14 @@ function LibraryTabManagement({
   if (view === "Reviews") {
     return (
       <AdminDataTable
-        rows={products.filter((product) => product.reviewCount > 0 || product.rating > 0)}
+        rows={operations.reviews}
+        emptyMessage="No Library reviews yet."
         columns={[
-          { key: "product", header: "Product", render: (row) => <ProductCell product={row} /> },
-          { key: "rating", header: "Rating", render: (row) => `${row.rating.toFixed(1)} (${row.reviewCount})` },
-          { key: "featured", header: "Featured", render: (row) => <AdminStatusBadge status={row.editorsChoice ? "FEATURED" : "STANDARD"} variant={row.editorsChoice ? "success" : "muted"} /> },
-          { key: "status", header: "Status", render: (row) => <AdminStatusBadge status={row.status} variant={row.status === "PUBLISHED" ? "success" : "warning"} /> },
-          { key: "actions", header: "Actions", render: (row) => <RowActions primaryLabel="Feature" primaryIcon={Star} onPrimary={() => onSetProductStatus(row, "PUBLISHED")} onEdit={() => onEditProduct(row)} onDelete={() => onDeleteProduct(row.id)} /> },
+          { key: "product", header: "Product", render: (row) => <div><p className="font-semibold text-white">{row.productTitle}</p><p className="text-xs text-slate-500">{row.userName ?? row.userEmail ?? "Customer"}</p></div> },
+          { key: "rating", header: "Rating", render: (row) => `${row.rating}/5` },
+          { key: "review", header: "Review", render: (row) => <div><p className="font-semibold text-slate-200">{row.title ?? "Untitled"}</p><p className="line-clamp-2 text-xs text-slate-500">{row.body ?? "No written review"}</p></div> },
+          { key: "status", header: "Status", render: (row) => <AdminStatusBadge status={row.status} variant={row.status === "APPROVED" ? "success" : row.status === "REJECTED" ? "danger" : "warning"} /> },
+          { key: "actions", header: "Actions", render: (row) => <div className="flex flex-wrap gap-2"><button type="button" onClick={() => onModerateReview(row.id, "APPROVED", { verified: true })} className="rounded-lg border border-white/10 px-3 py-2 text-xs font-bold text-slate-300 hover:bg-white/5">Approve</button><button type="button" onClick={() => onModerateReview(row.id, row.status, { featured: !row.featured })} className="rounded-lg border border-white/10 px-3 py-2 text-xs font-bold text-slate-300 hover:bg-white/5">{row.featured ? "Unfeature" : "Feature"}</button><IconButton icon={Trash2} label="Reject" danger onClick={() => void onModerateReview(row.id, "REJECTED")} /></div> },
         ]}
       />
     );
@@ -1069,16 +1309,19 @@ function LibraryTabManagement({
   if (view === "Downloads") {
     const rows = products.flatMap((product) => product.downloads.map((download) => ({ ...download, id: download.id, product })));
     return (
-      <AdminDataTable
-        rows={rows}
-        columns={[
-          { key: "file", header: "File", render: (row) => <div><p className="font-semibold text-white">{row.label}</p><p className="text-xs text-slate-500">{row.product.title}</p></div> },
-          { key: "type", header: "Type", render: (row) => row.fileType },
-          { key: "size", header: "Size", render: (row) => row.size },
-          { key: "secure", header: "Security", render: (row) => <AdminStatusBadge status={row.secure ? "SECURE" : "OPEN"} variant={row.secure ? "success" : "warning"} /> },
-          { key: "actions", header: "Actions", render: (row) => <RowActions primaryLabel="Edit Product" primaryIcon={Edit3} onPrimary={() => onEditProduct(row.product)} onDelete={() => onDeleteProduct(row.product.id)} /> },
-        ]}
-      />
+      <>
+        <AdminDataTable
+          rows={rows}
+          columns={[
+            { key: "file", header: "File", render: (row) => <div><p className="font-semibold text-white">{row.label}</p><p className="text-xs text-slate-500">{row.product.title}</p></div> },
+            { key: "type", header: "Type", render: (row) => row.fileType },
+            { key: "size", header: "Size", render: (row) => row.size },
+            { key: "secure", header: "Security", render: (row) => <AdminStatusBadge status={row.secure ? "SECURE" : "OPEN"} variant={row.secure ? "success" : "warning"} /> },
+            { key: "actions", header: "Actions", render: (row) => <RowActions primaryLabel="Edit Product" primaryIcon={Edit3} onPrimary={() => onEditProduct(row.product)} onDelete={() => onDeleteProduct(row.product.id)} /> },
+          ]}
+        />
+        <DownloadAccessTable rows={operations.downloadAccess} onEdit={onEditDownloadAccess} />
+      </>
     );
   }
 
@@ -1124,7 +1367,7 @@ function LibraryTabManagement({
           { key: "status", header: "Status", render: (row) => <AdminStatusBadge status={row.status} variant={row.status === "COMPLETED" ? "success" : "warning"} /> },
           { key: "file", header: "File", render: (row) => row.fileUrl ?? "Preparing" },
           { key: "date", header: "Created", render: (row) => row.createdAt ? new Date(row.createdAt).toLocaleDateString() : "Now" },
-          { key: "actions", header: "Actions", render: (row) => <RowActions primaryLabel="Refresh" primaryIcon={Download} onPrimary={() => onCreateExport(row.type)} onDelete={() => window.alert("Export jobs are retained for audit history.")} /> },
+          { key: "actions", header: "Actions", render: (row) => <RowActions primaryLabel="Refresh" primaryIcon={Download} onPrimary={() => onCreateExport(row.type)} onDelete={() => onDeleteExport(row.id, row.type)} /> },
         ]}
       />
     );
