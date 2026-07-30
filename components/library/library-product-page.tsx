@@ -96,7 +96,17 @@ export function LibraryProductPage({
   const tableOfContents = product.tableOfContents.filter((item) => item.trim());
   const whoThisIsFor = product.whoThisIsFor.filter((item) => item.trim());
   const includedDownloads = product.downloads.filter((item) => item.label?.trim());
-  const hasWhatYouGet = Boolean(product.description?.trim()) || learningOutcomes.length > 0;
+  const shortDescription = product.shortDescription?.replace(/\s+/g, " ").trim() || "";
+  const fullDescription = product.description?.replace(/\s+/g, " ").trim() || "";
+  const summaryExcerpt =
+    shortDescription && shortDescription !== fullDescription
+      ? shortDescription
+      : fullDescription
+        ? fullDescription.length > 220
+          ? `${fullDescription.slice(0, 217).trimEnd()}…`
+          : fullDescription
+        : "";
+  const showFullDescription = Boolean(fullDescription && fullDescription !== summaryExcerpt);
 
   function openLightbox(options?: { zoomed?: boolean }) {
     if (!activeGalleryImage?.url && !galleryImages[0]?.url) return;
@@ -340,6 +350,12 @@ export function LibraryProductPage({
                 </span>
               </div>
 
+              {summaryExcerpt ? (
+                <p className="mt-5 max-w-[36rem] text-[0.98rem] leading-7 text-slate-600 dark:text-slate-300">
+                  {summaryExcerpt}
+                </p>
+              ) : null}
+
               {formats.length > 0 && (
                 <div className="mt-7">
                   <p className="text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-slate-500">Choose format</p>
@@ -442,23 +458,27 @@ export function LibraryProductPage({
 
       <section className="mx-auto grid max-w-[88rem] gap-7 px-4 pb-10 sm:px-6 lg:grid-cols-[minmax(0,1fr)_24rem] lg:items-start lg:px-8">
         <div className="space-y-7">
-          {hasWhatYouGet ? (
+          {showFullDescription ? (
+            <section className="overflow-hidden rounded-3xl border border-slate-200/90 bg-white p-5 shadow-soft dark:border-slate-800 dark:bg-slate-900 sm:p-7">
+              <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight text-ink dark:text-white">
+                <FileText className="size-5 text-emerald-700 dark:text-emerald-300" /> Description
+              </h2>
+              <p className="mt-4 text-base leading-8 text-slate-700 dark:text-slate-300">{fullDescription}</p>
+            </section>
+          ) : null}
+
+          {learningOutcomes.length > 0 ? (
             <section className="overflow-hidden rounded-3xl border border-slate-200/90 bg-slate-50/70 p-5 shadow-soft dark:border-slate-800 dark:bg-slate-950/35 sm:p-7">
               <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight text-ink dark:text-white">
                 <Layers3 className="size-5 text-emerald-700 dark:text-emerald-300" /> What you get
               </h2>
-              {product.description?.trim() ? (
-                <p className="mt-4 text-base leading-8 text-slate-700 dark:text-slate-300">{product.description}</p>
-              ) : null}
-              {learningOutcomes.length > 0 ? (
-                <div className="mt-5 grid items-stretch gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                  {learningOutcomes.slice(0, 6).map((item) => (
-                    <p key={item} className="flex h-full gap-2 rounded-xl border border-slate-200 bg-white p-3 text-sm leading-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
-                      <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-600" /> {item}
-                    </p>
-                  ))}
-                </div>
-              ) : null}
+              <div className="mt-5 grid items-stretch gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                {learningOutcomes.slice(0, 6).map((item) => (
+                  <p key={item} className="flex h-full gap-2 rounded-xl border border-slate-200 bg-white p-3 text-sm leading-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+                    <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-600" /> {item}
+                  </p>
+                ))}
+              </div>
             </section>
           ) : null}
 

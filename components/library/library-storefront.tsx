@@ -436,6 +436,14 @@ function FormatPickerDialog({
   );
 }
 
+function productCardBlurb(product: LibraryProduct) {
+  const raw = (product.shortDescription || product.description || "").replace(/\s+/g, " ").trim();
+  if (!raw) return "";
+  // Keep catalogue cards short even when admin pasted the full description into shortDescription.
+  if (raw.length <= 160) return raw;
+  return `${raw.slice(0, 157).trimEnd()}…`;
+}
+
 function ProductCard({
   product,
   quantity,
@@ -447,6 +455,7 @@ function ProductCard({
   hidePrice: boolean;
   onAdd: () => void;
 }) {
+  const blurb = productCardBlurb(product);
   return (
     <article className="group flex h-full flex-col rounded-2xl border border-[#dfe8e5] bg-white p-3 shadow-sm transition hover:-translate-y-1 hover:border-[#22a54b] hover:shadow-xl sm:p-4 dark:border-slate-800 dark:bg-slate-900">
       <div className="overflow-hidden rounded-xl bg-[#f4f8f7] dark:bg-slate-950/60">
@@ -468,7 +477,11 @@ function ProductCard({
           {product.title}
         </Link>
         <p className="mt-1 line-clamp-1 text-xs text-slate-500 sm:text-sm">{product.author}</p>
-        <p className="mt-2 hidden line-clamp-2 text-sm leading-6 text-slate-600 sm:mt-3 sm:block dark:text-slate-300">{product.shortDescription}</p>
+        {blurb ? (
+          <p className="mt-2 line-clamp-3 overflow-hidden text-sm leading-6 text-slate-600 sm:mt-3 dark:text-slate-300">
+            {blurb}
+          </p>
+        ) : null}
         <div className="mt-3 flex items-center justify-between gap-3 sm:mt-4">
           <span className="flex items-center gap-1 text-sm text-amber-500">
             <Star className="size-4 fill-current" />
