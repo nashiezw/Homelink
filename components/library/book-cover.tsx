@@ -28,6 +28,7 @@ export function BookCover({
   imageUrl,
   interactive = true,
   sizes = "(max-width: 768px) 70vw, 320px",
+  variant = "default",
 }: {
   product: LibraryProduct;
   className?: string;
@@ -35,10 +36,12 @@ export function BookCover({
   imageUrl?: string;
   interactive?: boolean;
   sizes?: string;
+  variant?: "default" | "shop";
 }) {
   const style = styleFor(product);
   const coverTitle = getCoverTitle(product);
   const coverUrl = coverImageUrl(product, imageUrl);
+  const shop = variant === "shop";
   const content = (
     <>
       {coverUrl ? (
@@ -51,11 +54,15 @@ export function BookCover({
             className="object-cover"
             priority={priority}
           />
-          <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(15,23,42,0.08),transparent_28%,transparent_62%,rgba(15,23,42,0.45))]" />
-          <div className="absolute inset-x-0 bottom-0 z-10 p-3">
-            <p className="line-clamp-2 text-[13px] font-bold leading-snug text-white drop-shadow">{product.title}</p>
-            <p className="mt-1 line-clamp-1 text-[11px] font-medium text-white/85">{product.author}</p>
-          </div>
+          {!shop && (
+            <>
+              <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(15,23,42,0.08),transparent_28%,transparent_62%,rgba(15,23,42,0.45))]" />
+              <div className="absolute inset-x-0 bottom-0 z-10 p-3">
+                <p className="line-clamp-2 text-[13px] font-bold leading-snug text-white drop-shadow">{product.title}</p>
+                <p className="mt-1 line-clamp-1 text-[11px] font-medium text-white/85">{product.author}</p>
+              </div>
+            </>
+          )}
         </>
       ) : (
         <>
@@ -72,12 +79,14 @@ export function BookCover({
             </div>
             <div>
               <p className="line-clamp-2 text-[11px] font-semibold leading-4 text-slate-600">{product.author}</p>
-              <div className="mt-3 flex items-center justify-between gap-2">
-                <p className="text-[8px] font-black uppercase tracking-[0.18em] text-slate-400">HouseLink</p>
-                <span className="rounded-full border border-slate-950/10 bg-white/70 px-2 py-1 text-[7px] font-black uppercase tracking-[0.12em] text-slate-600">
-                  {product.productType.replace(/_/g, " ")}
-                </span>
-              </div>
+              {!shop && (
+                <div className="mt-3 flex items-center justify-between gap-2">
+                  <p className="text-[8px] font-black uppercase tracking-[0.18em] text-slate-400">HouseLink</p>
+                  <span className="rounded-full border border-slate-950/10 bg-white/70 px-2 py-1 text-[7px] font-black uppercase tracking-[0.12em] text-slate-600">
+                    {product.productType.replace(/_/g, " ")}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
           <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(0,0,0,0.08),transparent_16%,transparent_84%,rgba(0,0,0,0.05))]" />
@@ -87,8 +96,12 @@ export function BookCover({
   );
 
   const frameClassName = cn(
-    "group/book relative block aspect-[3/4] overflow-hidden rounded-md bg-white shadow-[0_18px_42px_rgba(15,23,42,0.14)] ring-1 ring-slate-950/10",
-    interactive && "transition duration-300 hover:-translate-y-1 hover:shadow-[0_26px_56px_rgba(15,23,42,0.2)]",
+    "group/book relative block aspect-[3/4] overflow-hidden bg-white",
+    shop
+      ? "rounded-sm shadow-[0_10px_28px_rgba(16,32,36,0.10)] ring-1 ring-black/[0.04]"
+      : "rounded-md shadow-[0_18px_42px_rgba(15,23,42,0.14)] ring-1 ring-slate-950/10",
+    interactive && !shop && "transition duration-300 hover:-translate-y-1 hover:shadow-[0_26px_56px_rgba(15,23,42,0.2)]",
+    interactive && shop && "transition duration-500 ease-out group-hover/tile:-translate-y-1 group-hover/tile:shadow-[0_18px_40px_rgba(16,32,36,0.14)]",
     className,
   );
 

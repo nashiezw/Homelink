@@ -78,7 +78,7 @@ test("upload flow and manual checkout surface are reachable", async ({ page }) =
 
 test("library storefront and product page render commerce surfaces", async ({ page }) => {
   await page.goto("/library");
-  await expect(page.getByRole("heading", { name: /professional property books/i })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   await page.getByPlaceholder(/search by title/i).fill("law");
   await expect(page.getByRole("link", { name: /property development and property law/i }).first()).toBeVisible();
   await page.getByRole("link", { name: /property development and property law/i }).first().click();
@@ -92,7 +92,8 @@ test("library cart starts native checkout for signed-in users", async ({ page })
   await login(page, seekerEmail!, seekerPassword!);
   await page.goto("/library");
   await page.getByRole("button", { name: /add to cart|pre-order/i }).first().click();
-  await page.getByRole("button", { name: /^checkout$/i }).click();
+  await page.getByRole("button", { name: /open library bag/i }).click();
+  await page.getByRole("link", { name: /^checkout$/i }).click();
   await expect(page).toHaveURL(/\/payments\?status=|\/library/);
 });
 

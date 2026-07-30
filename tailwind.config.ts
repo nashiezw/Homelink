@@ -23,11 +23,14 @@ const config: Config = {
       },
       fontFamily: {
         sans: ["var(--font-inter)", "Inter", "system-ui", "Segoe UI", "sans-serif"],
+        library: ["var(--font-library-sans)", "Manrope", "system-ui", "sans-serif"],
+        libraryDisplay: ["var(--font-library-display)", "Fraunces", "Georgia", "serif"],
       },
       animation: {
         "fade-up": "fade-up 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards",
         "hero-glow": "hero-glow 8s ease-in-out infinite",
         "hero-drift": "hero-drift 20s ease-in-out infinite",
+        "library-drift": "library-drift 18s ease-in-out infinite",
         shimmer: "shimmer 2.5s linear infinite",
       },
       keyframes: {
@@ -42,6 +45,10 @@ const config: Config = {
         "hero-drift": {
           "0%, 100%": { transform: "translate(0, 0)" },
           "50%": { transform: "translate(12px, -8px)" },
+        },
+        "library-drift": {
+          "0%, 100%": { transform: "translate3d(0, 0, 0)" },
+          "50%": { transform: "translate3d(12px, -10px, 0)" },
         },
         shimmer: {
           "0%": { backgroundPosition: "200% center" },
