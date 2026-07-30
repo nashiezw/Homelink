@@ -149,15 +149,14 @@ export function LibraryStorefront({
               backgroundImage: `radial-gradient(circle at 18% 20%, rgba(34,165,75,0.14), transparent 36%), radial-gradient(circle at 82% 70%, rgba(26,53,96,0.12), transparent 40%)`,
             }}
           />
-          <div className="relative grid items-center gap-10 px-6 py-12 sm:px-10 lg:grid-cols-[minmax(0,1fr)_minmax(16rem,24rem)] lg:gap-12 lg:py-16 xl:px-14">
+          <div className="relative grid items-center gap-10 px-6 py-12 sm:px-10 lg:grid-cols-[minmax(0,1.05fr)_minmax(18rem,26rem)] lg:gap-8 lg:py-16 xl:gap-6 xl:px-14">
             <div className="max-w-xl motion-safe:animate-fade-up">
               <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#22a54b]/90">
-                Professional property resources
+                {storeName}
               </p>
               <h1 className="mt-3 text-[2.6rem] font-bold leading-[1.05] tracking-tight text-[#1a3560] dark:text-white sm:text-5xl lg:text-[3.4rem]">
-                {storeName}
+                {headline}
               </h1>
-              <p className="mt-4 text-xl font-semibold leading-snug text-[#22a54b] sm:text-2xl">{headline}</p>
               <p className="mt-4 max-w-md text-base leading-7 text-slate-600 dark:text-white/70">{subcopy}</p>
               <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
                 <a
@@ -188,23 +187,31 @@ export function LibraryStorefront({
             </div>
 
             {featured && (
-              <div className="relative mx-auto w-full max-w-[17rem] motion-safe:animate-fade-up motion-safe:[animation-delay:120ms] lg:max-w-none">
-                <div className="absolute -inset-6 rounded-full bg-white/40 blur-2xl dark:bg-white/5" aria-hidden />
-                <BookCover
-                  product={featured}
-                  variant="shop"
-                  interactive={false}
-                  priority
-                  className="relative mx-auto w-[70%] max-w-[14rem] rotate-[-4deg] shadow-[0_24px_60px_rgba(16,32,36,0.18)]"
-                  sizes="280px"
-                />
-                <BookCover
-                  product={products[1] ?? featured}
-                  variant="shop"
-                  interactive={false}
-                  className="absolute bottom-2 right-2 w-[42%] max-w-[8.5rem] rotate-[8deg] opacity-95 shadow-[0_18px_40px_rgba(16,32,36,0.16)] lg:right-4"
-                  sizes="160px"
-                />
+              <div className="relative mx-auto flex w-full max-w-[20rem] items-end justify-center pb-4 motion-safe:animate-fade-up motion-safe:[animation-delay:120ms] lg:max-w-none lg:justify-end lg:pr-2">
+                <div className="relative w-[78%] max-w-[17.5rem]">
+                  <div
+                    aria-hidden
+                    className="pointer-events-none absolute -bottom-1 left-1/2 h-6 w-[88%] -translate-x-1/2 rounded-[100%] bg-[radial-gradient(ellipse_at_center,rgba(16,32,36,0.22)_0%,rgba(16,32,36,0.08)_45%,transparent_72%)] blur-[2px]"
+                  />
+                  <div className="relative motion-safe:animate-library-float">
+                    <div
+                      aria-hidden
+                      className="absolute inset-y-[3%] left-0 z-10 w-[7%] rounded-l-[3px] bg-[linear-gradient(90deg,#0f2744_0%,#1a3560_42%,#2a4d7a_100%)] shadow-[inset_-1px_0_0_rgba(255,255,255,0.12)]"
+                    />
+                    <div
+                      aria-hidden
+                      className="absolute inset-y-[4%] left-[6.5%] z-10 w-px bg-white/25"
+                    />
+                    <BookCover
+                      product={featured}
+                      variant="shop"
+                      interactive={false}
+                      priority
+                      className="relative w-full rounded-[3px] shadow-[0_28px_50px_rgba(16,32,36,0.18),0_8px_18px_rgba(16,32,36,0.08)] ring-1 ring-black/[0.06]"
+                      sizes="320px"
+                    />
+                  </div>
+                </div>
               </div>
             )}
           </div>
