@@ -87,14 +87,19 @@ export function LibraryProductPage({
       : product.stock > 0
         ? `${product.stock} printed ${product.stock === 1 ? "copy" : "copies"} in stock`
         : "Printed format out of stock";
-  const sampleFile = useMemo(
-    () =>
-      product.downloads.find((file) => file.previewable && Boolean(file.fileUrl) && (file.fileType.toUpperCase() === "PDF" || file.fileName?.toLowerCase().endsWith(".pdf")))
-      ?? product.downloads.find((file) => file.previewable && Boolean(file.fileUrl))
-      ?? null,
-    [product.downloads],
-  );
+  const sampleFile = useMemo(() => {
+    const previewable = product.downloads.filter((file) => file.previewable && Boolean(file.fileUrl));
+    return previewable.find((file) => /sample|preview/i.test(file.label || ""))
+      ?? previewable.find((file) => file.fileType.toUpperCase() === "PDF" || file.fileName?.toLowerCase().endsWith(".pdf"))
+      ?? previewable[0]
+      ?? null;
+  }, [product.downloads]);
   const sampleUrl = sampleFile ? `/api/v1/library/products/${encodeURIComponent(product.slug)}/sample` : null;
+  const learningOutcomes = product.learningOutcomes.filter((item) => item.trim());
+  const tableOfContents = product.tableOfContents.filter((item) => item.trim());
+  const whoThisIsFor = product.whoThisIsFor.filter((item) => item.trim());
+  const includedDownloads = product.downloads.filter((item) => item.label?.trim());
+  const hasWhatYouGet = Boolean(product.description?.trim()) || learningOutcomes.length > 0;
 
   function openLightbox(options?: { zoomed?: boolean }) {
     if (!activeGalleryImage?.url && !galleryImages[0]?.url) return;
@@ -260,7 +265,7 @@ export function LibraryProductPage({
 
       <section className="mx-auto max-w-[88rem] px-4 py-8 sm:px-6 lg:px-8 lg:py-12">
         <article className="overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-soft dark:border-slate-800 dark:bg-slate-900">
-          <div className="grid gap-6 p-6 sm:gap-8 sm:p-8 xl:grid-cols-[minmax(0,1fr)_minmax(22rem,34rem)] xl:gap-x-12 xl:gap-y-5 xl:p-10">
+          <div className="grid gap-6 p-6 sm:gap-8 sm:p-8 xl:grid-cols-[minmax(0,0.9fr)_minmax(28rem,1.25fr)] xl:gap-x-10 xl:gap-y-5 xl:p-10">
             <div className="relative mx-auto w-full max-w-md xl:mx-0 xl:max-w-none">
               <div className="relative rounded-[1.35rem] bg-[radial-gradient(circle_at_50%_18%,#ffffff_0%,#f3f7f5_55%,#e8f0ec_100%)] p-3 sm:p-4 dark:bg-[radial-gradient(circle_at_50%_18%,#1e293b_0%,#0f172a_70%,#020617_100%)] xl:absolute xl:inset-0">
                 <button
@@ -317,11 +322,11 @@ export function LibraryProductPage({
               <p className="text-[0.7rem] font-semibold uppercase tracking-[0.2em] text-emerald-700 dark:text-emerald-300">
                 {product.collection}
               </p>
-              <h1 className="mt-3 text-balance text-[1.65rem] font-semibold leading-[1.18] tracking-[-0.025em] text-ink sm:text-[2.05rem] sm:leading-[1.14] dark:text-white">
+              <h1 className="mt-3 max-w-none text-[1.75rem] font-semibold leading-[1.2] tracking-[-0.025em] text-ink sm:text-[2.2rem] sm:leading-[1.16] xl:text-[2.35rem] xl:leading-[1.15] dark:text-white">
                 {product.title}
               </h1>
               {product.subtitle ? (
-                <p className="mt-4 max-w-[34rem] text-[0.98rem] leading-[1.65] text-slate-600 dark:text-slate-300">
+                <p className="mt-4 text-[0.98rem] leading-[1.65] text-slate-600 dark:text-slate-300">
                   {readableSubtitle(product.subtitle)}
                 </p>
               ) : null}
@@ -440,48 +445,56 @@ export function LibraryProductPage({
 
       <section className="mx-auto grid max-w-[88rem] gap-7 px-4 pb-10 sm:px-6 lg:grid-cols-[minmax(0,1fr)_24rem] lg:items-start lg:px-8">
         <div className="space-y-7">
-          <section className="overflow-hidden rounded-3xl border border-slate-200/90 bg-slate-50/70 p-5 shadow-soft dark:border-slate-800 dark:bg-slate-950/35 sm:p-7">
-            <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight text-ink dark:text-white">
-              <Layers3 className="size-5 text-emerald-700 dark:text-emerald-300" /> What you get
-            </h2>
-            <p className="mt-4 text-base leading-8 text-slate-700 dark:text-slate-300">{product.description}</p>
-            <div className="mt-5 grid items-stretch gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              {product.learningOutcomes.slice(0, 6).map((item) => (
-                <p key={item} className="flex h-full gap-2 rounded-xl border border-slate-200 bg-white p-3 text-sm leading-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
-                  <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-600" /> {item}
-                </p>
-              ))}
-            </div>
-          </section>
+          {hasWhatYouGet ? (
+            <section className="overflow-hidden rounded-3xl border border-slate-200/90 bg-slate-50/70 p-5 shadow-soft dark:border-slate-800 dark:bg-slate-950/35 sm:p-7">
+              <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight text-ink dark:text-white">
+                <Layers3 className="size-5 text-emerald-700 dark:text-emerald-300" /> What you get
+              </h2>
+              {product.description?.trim() ? (
+                <p className="mt-4 text-base leading-8 text-slate-700 dark:text-slate-300">{product.description}</p>
+              ) : null}
+              {learningOutcomes.length > 0 ? (
+                <div className="mt-5 grid items-stretch gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                  {learningOutcomes.slice(0, 6).map((item) => (
+                    <p key={item} className="flex h-full gap-2 rounded-xl border border-slate-200 bg-white p-3 text-sm leading-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+                      <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-600" /> {item}
+                    </p>
+                  ))}
+                </div>
+              ) : null}
+            </section>
+          ) : null}
 
-          <Panel title="Sample Preview" icon={BookOpen} action={<Button variant="secondary" onClick={() => setPreviewOpen(true)}><FileText className="size-4" /> {sampleUrl ? "Open sample PDF" : "Open preview"}</Button>}>
-            <div className="grid gap-5 md:grid-cols-[12rem_minmax(0,1fr)] md:items-center">
-              <BookCover product={product} className="w-full rounded-xl" />
-              <div>
-                <p className="text-xl font-semibold tracking-tight leading-snug">{sampleUrl ? "Read a free PDF sample before you buy." : "Preview the synopsis and contents before purchase."}</p>
-                <p className="mt-2 text-sm leading-7 text-slate-600 dark:text-slate-300">
-                  {sampleUrl
-                    ? "This product includes a previewable sample file from the HouseLink Library."
-                    : "Open the sample to read the product summary, chapter list, and cover gallery. Full downloads unlock after payment confirmation."}
-                </p>
+          {sampleUrl ? (
+            <Panel title="Sample Preview" icon={BookOpen} action={<Button variant="secondary" onClick={() => setPreviewOpen(true)}><FileText className="size-4" /> Open sample PDF</Button>}>
+              <div className="grid gap-5 md:grid-cols-[12rem_minmax(0,1fr)] md:items-center">
+                <BookCover product={product} className="w-full rounded-xl" />
+                <div>
+                  <p className="text-xl font-semibold tracking-tight leading-snug">Read a free PDF sample before you buy.</p>
+                  <p className="mt-2 text-sm leading-7 text-slate-600 dark:text-slate-300">
+                    This product includes a previewable sample file from the HouseLink Library.
+                  </p>
+                </div>
               </div>
-            </div>
-          </Panel>
+            </Panel>
+          ) : null}
 
-          <Panel title="Table of Contents" icon={FileText}>
-            <ol className="grid gap-2 sm:grid-cols-2">
-              {product.tableOfContents.map((item, index) => (
-                <li key={item} className="flex min-h-14 items-center rounded-xl border border-slate-200 bg-[#fbfcfb] p-3 text-sm dark:border-slate-800 dark:bg-slate-950">
-                  <span className="mr-2 font-semibold tabular-nums text-emerald-700">{String(index + 1).padStart(2, "0")}</span>
-                  {item}
-                </li>
-              ))}
-            </ol>
-          </Panel>
+          {tableOfContents.length > 0 ? (
+            <Panel title="Table of Contents" icon={FileText}>
+              <ol className="grid gap-2 sm:grid-cols-2">
+                {tableOfContents.map((item, index) => (
+                  <li key={item} className="flex min-h-14 items-center rounded-xl border border-slate-200 bg-[#fbfcfb] p-3 text-sm dark:border-slate-800 dark:bg-slate-950">
+                    <span className="mr-2 font-semibold tabular-nums text-emerald-700">{String(index + 1).padStart(2, "0")}</span>
+                    {item}
+                  </li>
+                ))}
+              </ol>
+            </Panel>
+          ) : null}
 
-          <Panel title="Downloads Included" icon={Download}>
-            {product.downloads.length ? (
-              product.downloads.map((download) => (
+          {includedDownloads.length > 0 ? (
+            <Panel title="Downloads Included" icon={Download}>
+              {includedDownloads.map((download) => (
                 <div key={download.id} className="flex items-center justify-between gap-3 border-b border-slate-100 py-3 last:border-0 dark:border-slate-800">
                   <div>
                     <p className="font-semibold">{download.label}</p>
@@ -493,11 +506,9 @@ export function LibraryProductPage({
                     <Lock className="size-3" /> Secure
                   </span>
                 </div>
-              ))
-            ) : (
-              <p className="text-sm text-slate-500">Course resources will be released with the product launch.</p>
-            )}
-          </Panel>
+              ))}
+            </Panel>
+          ) : null}
 
           <Panel title="Customer reviews" icon={Star}>
             <div className="space-y-4">
@@ -606,9 +617,11 @@ export function LibraryProductPage({
               <Button variant="secondary" disabled={outOfStock} onClick={addToCart}>
                 <ShoppingBag className="size-4" /> {productQuantity ? `In bag (${productQuantity})` : "Add to cart"}
               </Button>
-              <Button variant="secondary" onClick={() => setPreviewOpen(true)}>
-                <FileText className="size-4" /> {sampleUrl ? "Read sample PDF" : "Read sample"}
-              </Button>
+              {sampleUrl ? (
+                <Button variant="secondary" onClick={() => setPreviewOpen(true)}>
+                  <FileText className="size-4" /> Read sample PDF
+                </Button>
+              ) : null}
             </div>
             <div className="mt-4 grid grid-cols-2 gap-2">
               <button type="button" disabled={wishBusy} onClick={() => void toggleWishlist()} className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-slate-200 px-3 text-sm font-bold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800" aria-label="Add to wishlist">
@@ -631,12 +644,14 @@ export function LibraryProductPage({
               {[
                 ["Publisher", product.publisher],
                 ["Edition", product.edition],
-                ["ISBN", product.isbn ?? "Digital SKU"],
+                ["ISBN", product.isbn],
                 ["Language", product.language],
-                ["Pages", product.pages?.toString() ?? "Digital course"],
+                ["Pages", product.pages?.toString()],
                 ["SKU", product.sku],
                 ["Formats", formats.map((format) => `${format.label} (${product.currency} ${format.price.toFixed(2)})`).join(", ") || product.productType.replace(/_/g, " ")],
-              ].map(([label, value]) => (
+              ]
+                .filter(([, value]) => Boolean(value?.toString().trim()))
+                .map(([label, value]) => (
                 <div key={label} className="flex justify-between gap-3 border-b border-slate-100 pb-2 last:border-0 dark:border-slate-800">
                   <dt className="text-slate-500">{label}</dt>
                   <dd className="text-right font-semibold">{value}</dd>
@@ -644,43 +659,47 @@ export function LibraryProductPage({
               ))}
             </dl>
           </Panel>
-          <Panel title="Who This Is For" icon={Users}>
-            <div className="flex flex-wrap gap-2">
-              {product.whoThisIsFor.map((item) => (
-                <span key={item} className="rounded-full bg-slate-100 px-3 py-1.5 text-sm font-semibold dark:bg-slate-800">
-                  {item}
-                </span>
-              ))}
-            </div>
-          </Panel>
+          {whoThisIsFor.length > 0 ? (
+            <Panel title="Who This Is For" icon={Users}>
+              <div className="flex flex-wrap gap-2">
+                {whoThisIsFor.map((item) => (
+                  <span key={item} className="rounded-full bg-slate-100 px-3 py-1.5 text-sm font-semibold dark:bg-slate-800">
+                    {item}
+                  </span>
+                ))}
+              </div>
+            </Panel>
+          ) : null}
         </aside>
       </section>
 
-      <section className="mx-auto max-w-[88rem] px-4 pb-14 sm:px-6 lg:px-8">
-        <div className="mb-6 flex items-end justify-between gap-4">
-          <div>
-            <p className="section-eyebrow">Keep building</p>
-            <h2 className="mt-3 text-[1.85rem] font-semibold tracking-[-0.02em] text-ink dark:text-white sm:text-[2.15rem]">Related products</h2>
-          </div>
-          <Link href="/library" className="hidden items-center gap-1 text-sm font-semibold text-emerald-700 dark:text-emerald-300 sm:inline-flex">
-            Browse all <ArrowLeft className="size-4 rotate-180" />
-          </Link>
-        </div>
-        <div className="grid items-stretch gap-5 md:grid-cols-3">
-          {related.map((item) => (
-            <Link key={item.id} href={`/library/${item.slug}`} className="group flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200/90 bg-white transition duration-300 hover:-translate-y-1 hover:border-emerald-600/30 hover:shadow-card-hover dark:border-slate-800 dark:bg-slate-900">
-              <div className="bg-[linear-gradient(180deg,#f4f8f7_0%,#eef5f2_100%)] px-5 pt-5 dark:bg-slate-950/60">
-                <BookCover product={item} className="mx-auto w-full max-w-[11rem]" />
-              </div>
-              <div className="flex flex-1 flex-col p-5">
-                <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-emerald-700 dark:text-emerald-300">{item.category}</p>
-                <p className="mt-2 line-clamp-2 text-base font-semibold leading-snug tracking-tight text-ink dark:text-white">{item.title}</p>
-                <p className="mt-auto pt-4 text-sm font-semibold tabular-nums text-slate-700 dark:text-slate-200">USD {item.price.toFixed(2)}</p>
-              </div>
+      {related.length > 0 ? (
+        <section className="mx-auto max-w-[88rem] px-4 pb-14 sm:px-6 lg:px-8">
+          <div className="mb-6 flex items-end justify-between gap-4">
+            <div>
+              <p className="section-eyebrow">Keep building</p>
+              <h2 className="mt-3 text-[1.85rem] font-semibold tracking-[-0.02em] text-ink dark:text-white sm:text-[2.15rem]">Related products</h2>
+            </div>
+            <Link href="/library" className="hidden items-center gap-1 text-sm font-semibold text-emerald-700 dark:text-emerald-300 sm:inline-flex">
+              Browse all <ArrowLeft className="size-4 rotate-180" />
             </Link>
-          ))}
-        </div>
-      </section>
+          </div>
+          <div className="grid items-stretch gap-5 md:grid-cols-3">
+            {related.map((item) => (
+              <Link key={item.id} href={`/library/${item.slug}`} className="group flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200/90 bg-white transition duration-300 hover:-translate-y-1 hover:border-emerald-600/30 hover:shadow-card-hover dark:border-slate-800 dark:bg-slate-900">
+                <div className="bg-[linear-gradient(180deg,#f4f8f7_0%,#eef5f2_100%)] px-5 pt-5 dark:bg-slate-950/60">
+                  <BookCover product={item} className="mx-auto w-full max-w-[11rem]" />
+                </div>
+                <div className="flex flex-1 flex-col p-5">
+                  <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-emerald-700 dark:text-emerald-300">{item.category}</p>
+                  <p className="mt-2 line-clamp-2 text-base font-semibold leading-snug tracking-tight text-ink dark:text-white">{item.title}</p>
+                  <p className="mt-auto pt-4 text-sm font-semibold tabular-nums text-slate-700 dark:text-slate-200">USD {item.price.toFixed(2)}</p>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       {lightboxOpen && activeGalleryImage?.url && (
         <div className="fixed inset-0 z-[60] flex flex-col bg-black/90" role="dialog" aria-modal="true" aria-label="Product image gallery">

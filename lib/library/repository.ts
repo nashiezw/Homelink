@@ -349,8 +349,10 @@ export async function getLibraryProductBySlug(slug: string) {
 export async function getLibraryProductSampleFile(slug: string) {
   const product = await getLibraryProductBySlug(slug);
   if (!product) return null;
-  const sample = product.downloads.find((file) => file.previewable && (file.fileType.toUpperCase() === "PDF" || file.fileName?.toLowerCase().endsWith(".pdf")) && file.fileUrl)
-    ?? product.downloads.find((file) => file.previewable && file.fileUrl)
+  const previewable = product.downloads.filter((file) => file.previewable && file.fileUrl);
+  const sample = previewable.find((file) => /sample|preview/i.test(file.label || ""))
+    ?? previewable.find((file) => file.fileType.toUpperCase() === "PDF" || file.fileName?.toLowerCase().endsWith(".pdf"))
+    ?? previewable[0]
     ?? null;
   if (!sample?.fileUrl) return null;
   return {

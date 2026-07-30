@@ -1,6 +1,6 @@
 "use client";
 
-import { Boxes, Copy, Download, Edit3, ExternalLink, FileArchive, Link2, Plus, Search, Trash2, Upload, X } from "lucide-react";
+import { Boxes, Copy, Download, Edit3, ExternalLink, FileArchive, FileText, Link2, Plus, Search, Trash2, Upload, X } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState, type MouseEvent } from "react";
@@ -254,6 +254,7 @@ type LibraryProductDraft = {
   formats: LibraryProductFormat[];
   gallery: LibraryProduct["gallery"];
   downloads: LibraryDraftDownload[];
+  sampleFile: LibraryDraftDownload | null;
   scheduledAt: string;
 };
 
@@ -397,6 +398,7 @@ export function LibraryAdminHub() {
     ],
     gallery: [],
     downloads: [],
+    sampleFile: null,
     scheduledAt: "",
   };
   const [draft, setDraft] = useState<LibraryProductDraft>(emptyDraft);
@@ -574,7 +576,7 @@ export function LibraryAdminHub() {
       preorder: product.preorder,
       formats: normalizeDraftFormats(product),
       gallery: product.gallery,
-      downloads: product.downloads,
+      ...splitSampleFromDownloads(product.downloads),
       scheduledAt: product.scheduledAt ? product.scheduledAt.slice(0, 16) : "",
     });
     setDraftOpen(true);
@@ -586,10 +588,14 @@ export function LibraryAdminHub() {
     setDraft(emptyDraft);
   }
 
-  async function uploadAsset(files: FileList | null, kind: "cover" | "download") {
+  async function uploadAsset(files: FileList | null, kind: "cover" | "download" | "sample") {
     const file = files?.[0];
     if (!file) return;
     setFeedback(null);
+    if (kind === "sample" && !file.name.toLowerCase().endsWith(".pdf") && file.type !== "application/pdf") {
+      setFeedback({ tone: "error", message: "Sample preview must be a PDF file." });
+      return;
+    }
     const dataUrl = await readFile(file);
     const isImage = file.type.startsWith("image/");
     const uploaded = await apiFetch<{ url: string; filename?: string; size?: number }>("/api/v1/uploads", {
@@ -605,23 +611,31 @@ export function LibraryAdminHub() {
         ...current,
         gallery: [...current.gallery, { label: file.name.replace(/\.[^.]+$/, ""), url: uploaded.data!.url, kind: "cover" }],
       }));
-    } else {
-      const ext = file.name.split(".").pop()?.toUpperCase() || "PDF";
-      setDraft((current) => ({
-        ...current,
-        downloads: [...current.downloads, {
-          id: crypto.randomUUID(),
-          label: file.name.replace(/\.[^.]+$/, ""),
-          fileType: ext,
-          size: formatUploadSize(uploaded.data?.size ?? file.size),
-          secure: true,
-          previewable: ext === "PDF",
-          fileUrl: uploaded.data!.url,
-          fileName: uploaded.data?.filename ?? file.name,
-        } as LibraryProduct["downloads"][number] & { fileUrl: string; fileName: string; previewable: boolean }],
-      }));
+      setFeedback({ tone: "success", message: "Cover image uploaded. Save the product to keep it." });
+      return;
     }
-    setFeedback({ tone: "success", message: kind === "cover" ? "Cover image uploaded. Save the product to keep it." : "Download file uploaded. Save the product to keep it." });
+    const ext = file.name.split(".").pop()?.toUpperCase() || "PDF";
+    const nextFile = {
+      id: crypto.randomUUID(),
+      label: kind === "sample" ? (file.name.replace(/\.[^.]+$/, "") || "Sample preview") : file.name.replace(/\.[^.]+$/, ""),
+      fileType: ext,
+      size: formatUploadSize(uploaded.data?.size ?? file.size),
+      secure: true,
+      previewable: kind === "sample",
+      fileUrl: uploaded.data!.url,
+      fileName: uploaded.data?.filename ?? file.name,
+      fileSizeBytes: uploaded.data?.size ?? file.size,
+    } as LibraryDraftDownload;
+    if (kind === "sample") {
+      setDraft((current) => ({ ...current, sampleFile: nextFile }));
+      setFeedback({ tone: "success", message: "Sample PDF uploaded. Save the product to keep it." });
+      return;
+    }
+    setDraft((current) => ({
+      ...current,
+      downloads: [...current.downloads, nextFile],
+    }));
+    setFeedback({ tone: "success", message: "Download file uploaded. Save the product to keep it." });
   }
 
   async function duplicate(id: string) {
@@ -1413,14 +1427,28 @@ export function LibraryAdminHub() {
                         <input type="file" accept="image/*" className="mt-2 block w-full text-xs" onChange={(event) => void uploadAsset(event.target.files, "cover")} />
                       </label>
                       <label className="rounded-lg border border-dashed border-white/10 p-3 text-sm text-slate-300">
-                        <span className="flex items-center gap-2 font-semibold"><Upload className="size-4" /> Upload download file</span>
+                        <span className="flex items-center gap-2 font-semibold"><Upload className="size-4" /> Upload full download</span>
+                        <p className="mt-1 text-xs text-slate-500">Buyer file after purchase (PDF, DOCX, ZIP, etc.)</p>
                         <input type="file" accept=".pdf,.docx,.xlsx,.pptx,.zip" className="mt-2 block w-full text-xs" onChange={(event) => void uploadAsset(event.target.files, "download")} />
                       </label>
+                      <label className="rounded-lg border border-dashed border-emerald-500/30 bg-emerald-500/5 p-3 text-sm text-slate-300 sm:col-span-2">
+                        <span className="flex items-center gap-2 font-semibold"><FileText className="size-4 text-emerald-300" /> Sample PDF (optional)</span>
+                        <p className="mt-1 text-xs text-slate-500">
+                          Upload a short preview PDF if available. This powers “Read sample” on the product page. Leave empty if you do not have a sample.
+                        </p>
+                        <input type="file" accept=".pdf,application/pdf" className="mt-2 block w-full text-xs" onChange={(event) => void uploadAsset(event.target.files, "sample")} />
+                      </label>
                     </div>
-                    {(draft.gallery.length > 0 || draft.downloads.length > 0) && (
+                    {(draft.gallery.length > 0 || draft.downloads.length > 0 || draft.sampleFile) && (
                       <div className="mt-3 grid gap-2 rounded-lg border border-white/10 p-3 text-xs text-slate-400">
                         {draft.gallery.map((item, index) => <AssetRow key={`${item.url}-${index}`} label={`Cover/gallery: ${item.label}`} canMoveUp={index > 0} canMoveDown={index < draft.gallery.length - 1} onMoveUp={() => setDraft((current) => ({ ...current, gallery: moveItem(current.gallery, index, index - 1) }))} onMoveDown={() => setDraft((current) => ({ ...current, gallery: moveItem(current.gallery, index, index + 1) }))} onRemove={() => setDraft((current) => ({ ...current, gallery: current.gallery.filter((_, itemIndex) => itemIndex !== index) }))} />)}
-                        {draft.downloads.map((item, index) => <AssetRow key={`${item.id}-${index}`} label={`Download: ${item.label} (${item.fileType})`} canMoveUp={index > 0} canMoveDown={index < draft.downloads.length - 1} onMoveUp={() => setDraft((current) => ({ ...current, downloads: moveItem(current.downloads, index, index - 1) }))} onMoveDown={() => setDraft((current) => ({ ...current, downloads: moveItem(current.downloads, index, index + 1) }))} onRemove={() => setDraft((current) => ({ ...current, downloads: current.downloads.filter((_, itemIndex) => itemIndex !== index) }))} />)}
+                        {draft.sampleFile ? (
+                          <AssetRow
+                            label={`Sample preview: ${draft.sampleFile.label} (${draft.sampleFile.fileType})`}
+                            onRemove={() => setDraft((current) => ({ ...current, sampleFile: null }))}
+                          />
+                        ) : null}
+                        {draft.downloads.map((item, index) => <AssetRow key={`${item.id}-${index}`} label={`Full download: ${item.label} (${item.fileType})`} canMoveUp={index > 0} canMoveDown={index < draft.downloads.length - 1} onMoveUp={() => setDraft((current) => ({ ...current, downloads: moveItem(current.downloads, index, index - 1) }))} onMoveDown={() => setDraft((current) => ({ ...current, downloads: moveItem(current.downloads, index, index + 1) }))} onRemove={() => setDraft((current) => ({ ...current, downloads: current.downloads.filter((_, itemIndex) => itemIndex !== index) }))} />)}
                       </div>
                     )}
                   </EditorSection>
@@ -1848,7 +1876,48 @@ function productPayload(draft: LibraryProductDraft, statusOverride?: string) {
     preorder: draft.preorder,
     scheduledAt: draft.status === "SCHEDULED" ? (draft.scheduledAt || null) : draft.status === "PUBLISHED" ? null : draft.scheduledAt || undefined,
     gallery: draft.gallery,
-    downloads: draft.downloads,
+    downloads: [
+      ...draft.downloads.map((item) => ({ ...item, previewable: false })),
+      ...(draft.sampleFile?.fileUrl
+        ? [{
+            ...draft.sampleFile,
+            label: draft.sampleFile.label?.trim() || "Sample preview",
+            previewable: true,
+            secure: true,
+          }]
+        : []),
+    ],
+  };
+}
+
+function splitSampleFromDownloads(downloads: LibraryProduct["downloads"]): {
+  sampleFile: LibraryDraftDownload | null;
+  downloads: LibraryDraftDownload[];
+} {
+  const rows = downloads.map((item) => ({ ...item })) as LibraryDraftDownload[];
+  const labeledSampleIndex = rows.findIndex((item) => item.previewable && /sample|preview/i.test(item.label || ""));
+  if (labeledSampleIndex >= 0) {
+    const sampleFile = { ...rows[labeledSampleIndex], previewable: true };
+    return {
+      sampleFile,
+      downloads: rows
+        .filter((_, index) => index !== labeledSampleIndex)
+        .map((item) => ({ ...item, previewable: false })),
+    };
+  }
+  const previewable = rows.filter((item) => item.previewable && item.fileUrl);
+  if (previewable.length === 1 && rows.length > 1) {
+    const sampleFile = { ...previewable[0], previewable: true };
+    return {
+      sampleFile,
+      downloads: rows
+        .filter((item) => item.id !== sampleFile.id)
+        .map((item) => ({ ...item, previewable: false })),
+    };
+  }
+  return {
+    sampleFile: null,
+    downloads: rows.map((item) => ({ ...item, previewable: false })),
   };
 }
 
