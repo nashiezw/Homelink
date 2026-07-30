@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, Award, BookOpen, BookmarkCheck, ChevronDown, Filter, Minus, Plus, Search, ShieldCheck, ShoppingBag, ShoppingCart, Star, Trash2 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { ArrowRight, Award, BookOpen, BookmarkCheck, ChevronDown, Filter, Minus, Plus, Search, ShieldCheck, ShoppingBag, ShoppingCart, Star, Trash2, X } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { HL_GREEN, HL_NAVY } from "@/components/brand/houselink-icon";
 import { BookCover } from "@/components/library/book-cover";
 import { LibraryCartFab } from "@/components/library/library-cart-fab";
@@ -22,6 +22,7 @@ import {
   libraryPriceLabel,
   primaryLibraryFormat,
   type LibraryProduct,
+  type LibraryProductFormat,
 } from "@/lib/library/catalog";
 import type { LibraryStoreSettings } from "@/lib/library/settings-shared";
 import { cn } from "@/lib/utils";
@@ -39,17 +40,29 @@ export function LibraryStorefront({
   store: Store;
 }) {
   const { showToast, user } = useApp();
-  const facets = products.length
-    ? {
-        categories: Array.from(new Set(products.map((p) => p.category))).sort(),
-        types: Array.from(new Set(products.map((p) => p.productType))).sort(),
+  const facets = useMemo(() => {
+    if (!products.length) {
+      return { categories: libraryFacets().categories, formats: [] as Array<{ value: string; label: string }> };
+    }
+    const formatTypes = new Set<string>();
+    for (const product of products) {
+      for (const format of enabledLibraryFormats(product)) {
+        formatTypes.add(format.type);
       }
-    : libraryFacets();
+    }
+    return {
+      categories: Array.from(new Set(products.map((p) => p.category))).sort(),
+      formats: Array.from(formatTypes)
+        .sort((a, b) => formatTypeLabel(a).localeCompare(formatTypeLabel(b)))
+        .map((value) => ({ value, label: formatTypeLabel(value) })),
+    };
+  }, [products]);
 
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("");
   const [type, setType] = useState("");
   const [sort, setSort] = useState(merchandising.defaultSort === "downloads" ? "most-downloaded" : merchandising.defaultSort === "rating" ? "highest-rated" : merchandising.defaultSort);
+  const [formatPickerProduct, setFormatPickerProduct] = useState<LibraryProduct | null>(null);
   const { cart, setCart, total, currency, count } = useLibraryCart();
   const quantityFor = (productId: string) => cart.filter((line) => line.productId === productId).reduce((sum, line) => sum + line.quantity, 0);
 
@@ -71,9 +84,7 @@ export function LibraryStorefront({
   const ctaHref = merchandising.ctaHref?.trim() || "#library-products";
   const storeName = store.name?.trim() || "HouseLink Library";
 
-  function addToCart(product: LibraryProduct) {
-    const formats = enabledLibraryFormats(product);
-    const format = primaryLibraryFormat(formats, product.productType, product.price);
+  function addFormatToCart(product: LibraryProduct, format: LibraryProductFormat) {
     setCart((current) => {
       const existing = current.find((line) => sameLibraryCartLine(line, { productId: product.id, formatId: format.id }));
       if (existing) {
@@ -101,9 +112,30 @@ export function LibraryStorefront({
     showToast(`${product.title} (${format.label}) added to your bag.`, "success");
   }
 
+  function requestAddToCart(product: LibraryProduct) {
+    const formats = enabledLibraryFormats(product);
+    if (formats.length > 1) {
+      setFormatPickerProduct(product);
+      return;
+    }
+    const format = primaryLibraryFormat(formats, product.productType, product.price);
+    addFormatToCart(product, format);
+  }
+
   return (
     <main className="min-h-screen bg-[#fafafa] text-[#141414] antialiased dark:bg-slate-950 dark:text-white">
       <LibraryCartFab />
+      {formatPickerProduct && (
+        <FormatPickerDialog
+          product={formatPickerProduct}
+          hidePrice={hidePrices}
+          onClose={() => setFormatPickerProduct(null)}
+          onConfirm={(format) => {
+            addFormatToCart(formatPickerProduct, format);
+            setFormatPickerProduct(null);
+          }}
+        />
+      )}
 
       <section className="mx-auto max-w-[90rem] px-4 pt-8 sm:px-6 lg:px-8 xl:px-10">
         <div
@@ -195,7 +227,7 @@ export function LibraryStorefront({
                 />
               </label>
               <FilterSelect value={category} onChange={setCategory} label="Category" options={facets.categories} />
-              <FilterSelect value={type} onChange={setType} label="Format" options={facets.types} />
+              <FilterSelect value={type} onChange={setType} label="Format" options={facets.formats} />
               <label className="relative">
                 <span className="sr-only">Sort products</span>
                 <select
@@ -234,7 +266,7 @@ export function LibraryStorefront({
                         product={product}
                         quantity={quantityFor(product.id)}
                         hidePrice={hidePrices}
-                        onAdd={() => addToCart(product)}
+                        onAdd={() => requestAddToCart(product)}
                       />
                     ))}
                   </div>
@@ -259,7 +291,7 @@ export function LibraryStorefront({
                         product={product}
                         quantity={quantityFor(product.id)}
                         hidePrice={hidePrices}
-                        onAdd={() => addToCart(product)}
+                        onAdd={() => requestAddToCart(product)}
                       />
                     ))}
                   </div>
@@ -276,6 +308,125 @@ export function LibraryStorefront({
         </>
       )}
     </main>
+  );
+}
+
+function FormatPickerDialog({
+  product,
+  hidePrice,
+  onClose,
+  onConfirm,
+}: {
+  product: LibraryProduct;
+  hidePrice: boolean;
+  onClose: () => void;
+  onConfirm: (format: LibraryProductFormat) => void;
+}) {
+  const formats = enabledLibraryFormats(product);
+  const [selectedId, setSelectedId] = useState(
+    () => primaryLibraryFormat(formats, product.productType, product.price).id,
+  );
+  const selected = formats.find((format) => format.id === selectedId) ?? formats[0];
+
+  useEffect(() => {
+    function onKey(event: KeyboardEvent) {
+      if (event.key === "Escape") onClose();
+    }
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = previous;
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [onClose]);
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-end justify-center p-4 sm:items-center" role="presentation">
+      <button
+        type="button"
+        className="absolute inset-0 bg-[#1a3560]/45 backdrop-blur-[2px]"
+        aria-label="Close format picker"
+        onClick={onClose}
+      />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="library-format-picker-title"
+        className="relative z-10 w-full max-w-lg overflow-hidden rounded-3xl border border-[#dfe8e5] bg-white shadow-[0_28px_80px_rgba(16,32,36,0.28)] dark:border-slate-700 dark:bg-slate-950"
+      >
+        <div className="flex items-start justify-between gap-4 border-b border-[#e8f0ed] bg-[linear-gradient(135deg,#e8f4ef_0%,#f4f8f7_55%,#e7eef5_100%)] px-5 py-4 dark:border-slate-800 dark:bg-slate-900">
+          <div className="min-w-0">
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#22a54b]">Choose format</p>
+            <h2 id="library-format-picker-title" className="mt-1 line-clamp-2 text-lg font-bold text-[#1a3560] dark:text-white">
+              {product.title}
+            </h2>
+            <p className="mt-1 text-sm text-slate-500">{product.author}</p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="grid size-9 shrink-0 place-items-center rounded-full border border-slate-200 bg-white text-slate-500 transition hover:border-[#22a54b] hover:text-[#22a54b] dark:border-slate-700 dark:bg-slate-900"
+            aria-label="Close"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+
+        <div className="grid gap-5 p-5 sm:grid-cols-[7.5rem_1fr]">
+          <BookCover product={product} variant="shop" interactive={false} className="mx-auto w-28 shadow-md sm:w-full" sizes="140px" />
+          <div className="space-y-3">
+            {formats.map((format) => {
+              const selectedFormat = format.id === selected?.id;
+              return (
+                <button
+                  key={format.id}
+                  type="button"
+                  onClick={() => setSelectedId(format.id)}
+                  className={cn(
+                    "w-full rounded-2xl border px-4 py-3.5 text-left transition",
+                    selectedFormat
+                      ? "border-[#22a54b] bg-[#e8f4ef] ring-2 ring-[#22a54b]/20 dark:bg-emerald-950/35"
+                      : "border-slate-200 bg-white hover:border-[#22a54b]/70 dark:border-slate-700 dark:bg-slate-900",
+                  )}
+                >
+                  <span className="flex items-start justify-between gap-3">
+                    <span>
+                      <span className="block text-sm font-bold text-[#1a3560] dark:text-white">{format.label}</span>
+                      <span className="mt-1 block text-xs leading-5 text-slate-500">
+                        {format.type === "PRINTED_BOOK" ? "Printed copy · shipping after payment" : "Digital copy · instant after payment"}
+                      </span>
+                    </span>
+                    <span className="shrink-0 text-base font-black text-[#1a3560] dark:text-white">
+                      {hidePrice ? "—" : `${product.currency} ${format.price.toFixed(2)}`}
+                    </span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="flex flex-col-reverse gap-2 border-t border-[#e8f0ed] p-5 sm:flex-row sm:justify-end dark:border-slate-800">
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex h-11 items-center justify-center rounded-full border border-slate-200 px-5 text-sm font-semibold text-[#1a3560] transition hover:border-[#22a54b] dark:border-slate-700 dark:text-white"
+          >
+            Cancel
+          </button>
+          <Button
+            type="button"
+            disabled={!selected}
+            onClick={() => selected && onConfirm(selected)}
+            className="rounded-full bg-[#22a54b] hover:bg-[#1e9443] hover:from-[#22a54b] hover:to-[#22a54b]"
+          >
+            <ShoppingCart className="size-4" /> Add to bag
+            {!hidePrice && selected ? ` · ${product.currency} ${selected.price.toFixed(2)}` : ""}
+          </Button>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -455,6 +606,13 @@ function CartPanel({
   );
 }
 
+function formatTypeLabel(type: string) {
+  if (type === "PRINTED_BOOK") return "Printed book";
+  if (type === "DIGITAL_BOOK") return "Digital book";
+  if (type === "PDF") return "Digital PDF";
+  return type.replace(/_/g, " ");
+}
+
 function FilterSelect({
   value,
   onChange,
@@ -464,7 +622,7 @@ function FilterSelect({
   value: string;
   onChange: (value: string) => void;
   label: string;
-  options: string[];
+  options: Array<string | { value: string; label: string }>;
 }) {
   return (
     <label className="relative">
@@ -476,11 +634,14 @@ function FilterSelect({
         className="h-12 w-full appearance-none rounded-full border border-[#d8e4e0] bg-white pl-10 pr-10 text-sm shadow-sm outline-none transition focus:border-[#22a54b] dark:border-slate-700 dark:bg-slate-900 lg:w-44"
       >
         <option value="">{label}</option>
-        {options.map((option) => (
-          <option key={option} value={option}>
-            {option.replace(/_/g, " ")}
-          </option>
-        ))}
+        {options.map((option) => {
+          const item = typeof option === "string" ? { value: option, label: option.replace(/_/g, " ") } : option;
+          return (
+            <option key={item.value} value={item.value}>
+              {item.label}
+            </option>
+          );
+        })}
       </select>
       <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" aria-hidden />
     </label>
@@ -532,11 +693,12 @@ function filterProducts(
       ]
         .join(" ")
         .toLowerCase();
-      return (
-        (!q || haystack.includes(q)) &&
-        (!input.category || product.category === input.category) &&
-        (!input.type || product.productType === input.type)
-      );
+      const matchesFormat =
+        !input.type ||
+        enabledLibraryFormats(product).some((format) => format.type === input.type) ||
+        // Keep older productType matches working for catalogues without format rows.
+        product.productType === input.type;
+      return (!q || haystack.includes(q)) && (!input.category || product.category === input.category) && matchesFormat;
     })
     .sort((a, b) => {
       if (input.sort === "price-asc") return a.price - b.price;
