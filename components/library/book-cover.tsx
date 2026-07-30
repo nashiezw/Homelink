@@ -3,11 +3,11 @@ import type { LibraryProduct } from "@/lib/library/catalog";
 import { cn } from "@/lib/utils";
 
 const coverStyles = [
-  { bg: "from-[#0f2e2a] via-[#0f766e] to-[#c9a34d]", foil: "text-[#f7d66e]", line: "bg-[#f7d66e]" },
-  { bg: "from-[#172033] via-[#334155] to-[#9fb2c8]", foil: "text-[#dbeafe]", line: "bg-[#93c5fd]" },
-  { bg: "from-[#291624] via-[#8f2d56] to-[#f0b5c9]", foil: "text-[#ffe4ef]", line: "bg-[#f9a8d4]" },
-  { bg: "from-[#211a16] via-[#6b4428] to-[#d7ad5f]", foil: "text-[#ffe6a8]", line: "bg-[#f4c95d]" },
-  { bg: "from-[#102024] via-[#155e75] to-[#8dd6c9]", foil: "text-[#cffafe]", line: "bg-[#67e8f9]" },
+  { accent: "bg-[#007f68]", spine: "bg-[#0b2f2a]", paper: "from-[#fffdf7] to-[#e8f4ef]", text: "text-[#0b2f2a]" },
+  { accent: "bg-[#29526f]", spine: "bg-[#172033]", paper: "from-[#ffffff] to-[#edf3f8]", text: "text-[#172033]" },
+  { accent: "bg-[#9a6231]", spine: "bg-[#342014]", paper: "from-[#fffaf1] to-[#f1e4d2]", text: "text-[#342014]" },
+  { accent: "bg-[#5b5577]", spine: "bg-[#25243a]", paper: "from-[#ffffff] to-[#f0eff7]", text: "text-[#25243a]" },
+  { accent: "bg-[#c49a3a]", spine: "bg-[#102024]", paper: "from-[#fffdf6] to-[#f5edda]", text: "text-[#102024]" },
 ];
 
 function styleFor(product: LibraryProduct) {
@@ -24,30 +24,28 @@ export function BookCover({ product, className, priority = false }: { product: L
     <Link
       href={`/library/${product.slug}`}
       className={cn(
-        "group/book relative block aspect-[3/4] overflow-hidden rounded-md bg-slate-900 shadow-[0_18px_42px_rgba(15,23,42,0.22)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_28px_60px_rgba(15,23,42,0.26)]",
+        "group/book relative block aspect-[3/4] overflow-hidden rounded-md bg-white shadow-[0_18px_42px_rgba(15,23,42,0.14)] ring-1 ring-slate-950/10 transition duration-300 hover:-translate-y-1 hover:shadow-[0_26px_56px_rgba(15,23,42,0.2)]",
         className,
       )}
       data-priority={priority ? "true" : undefined}
     >
-      <div className={cn("absolute inset-0 bg-gradient-to-br", style.bg)} />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_18%,rgba(255,255,255,0.2),transparent_28%),linear-gradient(180deg,rgba(255,255,255,0.08),transparent_34%,rgba(0,0,0,0.24))]" />
-      <div className="absolute inset-y-0 left-0 w-[12%] bg-black/22" />
-      <div className="absolute inset-y-0 left-[12%] w-px bg-white/22" />
-      <div className="absolute left-[17%] top-5 rounded-full border border-white/25 bg-black/12 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.18em] text-white/85">
+      <div className={cn("absolute inset-0 bg-gradient-to-br", style.paper)} />
+      <div className={cn("absolute inset-y-0 left-0 w-[13%]", style.spine)} />
+      <div className="absolute inset-y-0 left-[13%] w-px bg-slate-950/10" />
+      <div className={cn("absolute left-[19%] top-5 h-1.5 w-14 rounded-full", style.accent)} />
+      <div className="absolute right-5 top-5 rounded-full border border-slate-950/10 bg-white/65 px-2.5 py-1 text-[8px] font-black uppercase tracking-[0.16em] text-slate-700">
         {product.productType.replace(/_/g, " ")}
       </div>
-      <div className="absolute left-[17%] right-6 top-[24%] text-white">
-        <p className={cn("text-[10px] font-black uppercase tracking-[0.24em]", style.foil)}>{product.category}</p>
-        <div className={cn("mt-4 h-1.5 w-16 rounded-full", style.line)} />
-        <h3 className="mt-5 text-balance text-[1.72rem] font-black leading-[0.92] sm:text-[2rem]">{coverTitle}</h3>
-        <p className="mt-4 max-w-[12rem] text-balance text-sm font-semibold leading-5 text-white/82">{subtitle}</p>
+      <div className={cn("absolute left-[19%] right-6 top-[22%]", style.text)}>
+        <p className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">{product.category}</p>
+        <h3 className="mt-5 text-balance text-[1.66rem] font-black leading-[0.96] sm:text-[1.9rem]">{coverTitle}</h3>
+        <p className="mt-4 max-w-[12rem] text-balance text-sm font-semibold leading-5 text-slate-600">{subtitle}</p>
       </div>
-      <div className="absolute bottom-0 left-0 right-0 p-5 pl-[17%]">
-        <p className="line-clamp-2 text-xs font-semibold leading-5 text-white/78">{product.author}</p>
-        <p className="mt-3 text-[9px] font-black uppercase tracking-[0.24em] text-white/58">HouseLink Library</p>
+      <div className="absolute bottom-0 left-0 right-0 p-5 pl-[19%]">
+        <p className="line-clamp-2 text-xs font-semibold leading-5 text-slate-600">{product.author}</p>
+        <p className="mt-3 text-[9px] font-black uppercase tracking-[0.22em] text-slate-400">HouseLink Library</p>
       </div>
-      <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-black/42 to-transparent" />
-      <div className="absolute inset-0 ring-1 ring-inset ring-white/20" />
+      <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(0,0,0,0.08),transparent_16%,transparent_84%,rgba(0,0,0,0.05))]" />
     </Link>
   );
 }

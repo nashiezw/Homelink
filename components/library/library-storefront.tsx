@@ -54,21 +54,21 @@ export function LibraryStorefront({ products }: { products: LibraryProduct[] }) 
       category: "Toolkits",
       kicker: "Field-ready packs",
       text: "Scripts, checklists and client-ready forms for daily agency work.",
-      tone: "bg-[#172033] text-white border-[#31415a]",
+      tone: "bg-white text-[#10201d] border-[#dfe6e2]",
     },
     {
       title: "Legal Shelf",
       category: "Legal Documents",
       kicker: "Documents that feel official",
       text: "Lease packs, landlord forms and editable templates for cleaner transactions.",
-      tone: "bg-[#f7ead3] text-[#241914] border-[#dbc49e]",
+      tone: "bg-[#fffaf0] text-[#10201d] border-[#e4d7bf]",
     },
     {
       title: "Investor Shelf",
       category: "Investment",
       kicker: "Sharper decisions",
       text: "Plain-language guides for yield, risk and Zimbabwe property fundamentals.",
-      tone: "bg-[#0f3b35] text-white border-[#286c61]",
+      tone: "bg-[#f1f7f5] text-[#10201d] border-[#cfe0da]",
     },
   ];
   const quantityFor = (productId: string) => cart.find((line) => line.productId === productId)?.quantity ?? 0;
@@ -84,33 +84,31 @@ export function LibraryStorefront({ products }: { products: LibraryProduct[] }) 
   }
 
   return (
-    <main className="bg-[linear-gradient(180deg,#fbfaf6_0%,#eef6f3_48%,#f9faf7_100%)] text-ink dark:bg-slate-950 dark:text-white">
+    <main className="bg-[#f7f8f5] text-ink dark:bg-slate-950 dark:text-white">
       {notice && (
         <div role="status" aria-live="polite" className="fixed right-4 top-24 z-50 max-w-sm rounded-lg border border-emerald-200 bg-white p-4 text-sm font-semibold text-emerald-950 shadow-xl dark:border-emerald-900 dark:bg-slate-900 dark:text-emerald-100">
           <CheckCircle2 className="mr-2 inline size-4 text-emerald-600" /> {notice}
         </div>
       )}
 
-      <section className="relative overflow-hidden border-b border-[#d6c7aa] bg-[#241914] text-white">
-        <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(255,255,255,0.055)_1px,transparent_1px),linear-gradient(180deg,rgba(255,255,255,0.04)_1px,transparent_1px)] bg-[size:72px_72px]" />
-        <div className="absolute inset-x-0 bottom-0 hidden h-32 bg-[repeating-linear-gradient(90deg,#4b2b1f_0_38px,#7f4f2e_38px_64px,#173b38_64px_98px,#b98d45_98px_112px,#2e233d_112px_146px)] opacity-22 lg:block" />
-        <div className="absolute inset-0 bg-[linear-gradient(115deg,rgba(36,25,20,0.98)_0%,rgba(39,32,26,0.92)_38%,rgba(13,55,49,0.78)_100%)]" />
-        <div className="relative mx-auto grid max-w-7xl gap-12 px-4 py-12 sm:px-6 lg:grid-cols-[minmax(0,1fr)_35rem] lg:items-center lg:px-8 lg:py-16">
+      <section className="relative overflow-hidden border-b border-[#dfe6e2] bg-[#fbfaf6]">
+        <div className="absolute inset-x-0 top-0 h-2 bg-[linear-gradient(90deg,#007f68,#d3a945,#29526f)]" />
+        <div className="relative mx-auto grid max-w-7xl gap-12 px-4 py-12 sm:px-6 lg:grid-cols-[minmax(0,1fr)_31rem] lg:items-center lg:px-8 lg:py-16">
           <div className="min-w-0">
-            <p className="inline-flex items-center gap-2 rounded-full border border-[#e7c873]/40 bg-[#fff7e6]/10 px-3 py-1 text-xs font-black uppercase tracking-[0.18em] text-[#f8d77a]">
+            <p className="inline-flex items-center gap-2 rounded-full border border-[#cfe0da] bg-white px-3 py-1 text-xs font-black uppercase tracking-[0.16em] text-[#007f68] shadow-sm">
               <LibraryBig className="size-4" /> HouseLink Bookshop
             </p>
-            <h1 className="mt-5 max-w-4xl text-5xl font-black leading-[0.92] text-white sm:text-6xl lg:text-[5.65rem]">
-              A serious bookshop for property professionals.
+            <h1 className="mt-5 max-w-4xl text-5xl font-black leading-[0.95] text-[#10201d] sm:text-6xl lg:text-[5rem]">
+              Practical property books, beautifully organised.
             </h1>
-            <p className="mt-6 max-w-2xl text-base leading-8 text-[#f7ead3] sm:text-lg">
-              Premium manuals, legal templates, field toolkits and training guides for Zimbabwe's property market, presented like resources worth owning.
+            <p className="mt-6 max-w-2xl text-base leading-8 text-slate-600 sm:text-lg">
+              A clean HouseLink store for manuals, legal templates, agent toolkits and training resources. Built for fast browsing, confident buying and a professional first impression.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <Link href="#library-products" className="inline-flex h-12 items-center justify-center gap-2 rounded-lg bg-[#f4c95d] px-5 text-sm font-black text-[#1f1712] shadow-lg shadow-black/25 transition hover:bg-[#ffdc78]">
-                Enter the shop <ArrowRight className="size-4" />
+              <Link href="#library-products" className="inline-flex h-12 items-center justify-center gap-2 rounded-lg bg-[#007f68] px-5 text-sm font-black text-white shadow-lg shadow-emerald-900/15 transition hover:bg-[#006b58]">
+                Shop products <ArrowRight className="size-4" />
               </Link>
-              <Link href="/dashboard/my-library" className="inline-flex h-12 items-center justify-center gap-2 rounded-lg border border-white/18 bg-white/10 px-5 text-sm font-bold text-white backdrop-blur transition hover:bg-white/15">
+              <Link href="/dashboard/my-library" className="inline-flex h-12 items-center justify-center gap-2 rounded-lg border border-[#cfe0da] bg-white px-5 text-sm font-bold text-[#10201d] shadow-sm transition hover:border-[#007f68]">
                 My Library <BookOpen className="size-4" />
               </Link>
             </div>
@@ -122,33 +120,22 @@ export function LibraryStorefront({ products }: { products: LibraryProduct[] }) 
           </div>
 
           {featured && (
-            <div className="relative min-h-[34rem]">
-              <div className="absolute inset-x-0 bottom-3 mx-auto h-8 max-w-md rounded-[50%] bg-black/45 blur-xl" />
-              <div className="absolute left-0 top-16 hidden w-48 rotate-[-12deg] opacity-90 sm:block">
-                {products[1] && <BookCover product={products[1]} />}
-              </div>
-              <div className="absolute right-0 top-20 hidden w-44 rotate-[10deg] opacity-85 sm:block">
-                {products[2] && <BookCover product={products[2]} />}
-              </div>
-              <div className="absolute left-12 bottom-12 hidden w-40 rotate-[7deg] opacity-80 lg:block">
-                {products[3] && <BookCover product={products[3]} />}
-              </div>
-              <div className="relative mx-auto w-full max-w-sm pt-2">
-                <div className="rounded-lg border border-[#e7c873]/35 bg-[#fff7e6]/10 p-4 shadow-2xl shadow-black/30 backdrop-blur">
-                  <BookCover product={featured} className="mx-auto w-72 sm:w-80" priority />
-                  <div className="mt-5">
-                    <p className="inline-flex items-center gap-1 rounded-full bg-[#f4c95d] px-3 py-1 text-xs font-black uppercase text-[#1f1712]">
-                      <Sparkles className="size-3.5" /> Featured shelf
-                    </p>
-                    <Link href={`/library/${featured.slug}`} className="mt-3 block text-2xl font-black leading-tight text-white hover:text-[#f4c95d]">
-                      {featured.title}
-                    </Link>
-                    <div className="mt-4 flex items-center justify-between gap-3">
-                      <p className="text-3xl font-black">USD {featured.price.toFixed(2)}</p>
-                      <Button onClick={() => addToCart(featured)}>
-                        <ShoppingCart className="size-4" /> {quantityFor(featured.id) ? `In bag (${quantityFor(featured.id)})` : "Add"}
-                      </Button>
-                    </div>
+            <div className="rounded-lg border border-[#dfe6e2] bg-white p-5 shadow-xl shadow-slate-900/8">
+              <div className="grid gap-5 sm:grid-cols-[13rem_1fr] lg:grid-cols-1">
+                <BookCover product={featured} className="mx-auto w-full max-w-[15rem]" priority />
+                <div>
+                  <p className="inline-flex items-center gap-1 rounded-full bg-[#e9f7f2] px-3 py-1 text-xs font-black uppercase text-[#007f68]">
+                    <Sparkles className="size-3.5" /> Editor's pick
+                  </p>
+                  <Link href={`/library/${featured.slug}`} className="mt-4 block text-2xl font-black leading-tight text-[#10201d] hover:text-[#007f68]">
+                    {featured.title}
+                  </Link>
+                  <p className="mt-3 text-sm leading-6 text-slate-600">{featured.shortDescription}</p>
+                  <div className="mt-5 flex items-center justify-between gap-3">
+                    <p className="text-2xl font-black text-[#10201d]">USD {featured.price.toFixed(2)}</p>
+                    <Button onClick={() => addToCart(featured)}>
+                      <ShoppingCart className="size-4" /> {quantityFor(featured.id) ? `In bag (${quantityFor(featured.id)})` : "Add"}
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -317,12 +304,12 @@ function Shelf({ title, subtitle, products, onAdd, quantityFor, featured = false
           View all <ArrowRight className="size-4" />
         </Link>
       </div>
-      <div className={cn("relative rounded-lg border border-[#e1d7c5] bg-[#fffaf0] p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/70", featured && "bg-[#241914] text-white")}>
-        <div className="absolute inset-x-4 bottom-3 h-3 rounded-full bg-[#c59b58]/25" />
+      <div className={cn("relative rounded-lg border border-[#e1d7c5] bg-[#fffaf0] p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/70", featured && "border-[#dfe6e2] bg-white")}>
+        <div className="absolute inset-x-4 bottom-3 h-3 rounded-full bg-[#007f68]/10" />
         <div className={cn("relative grid gap-5", featured ? "lg:grid-cols-[1.08fr_1fr_1fr]" : "sm:grid-cols-2 xl:grid-cols-3")}>
           {featured && lead ? <FeatureProduct product={lead} quantity={quantityFor(lead.id)} onAdd={onAdd} /> : null}
           {(featured ? rest.slice(0, 2) : products.slice(0, 3)).map((product) => (
-            <ProductCard key={product.id} product={product} quantity={quantityFor(product.id)} onAdd={onAdd} elevated={featured} />
+            <ProductCard key={product.id} product={product} quantity={quantityFor(product.id)} onAdd={onAdd} />
           ))}
         </div>
       </div>
@@ -332,16 +319,16 @@ function Shelf({ title, subtitle, products, onAdd, quantityFor, featured = false
 
 function FeatureProduct({ product, quantity, onAdd }: { product: LibraryProduct; quantity: number; onAdd: (product: LibraryProduct) => void }) {
   return (
-    <article className="grid gap-5 rounded-lg border border-[#e7c873]/28 bg-white/8 p-4 shadow-lg backdrop-blur sm:grid-cols-[12rem_1fr] lg:grid-cols-1">
+    <article className="grid gap-5 rounded-lg border border-[#dfe6e2] bg-[#fbfaf6] p-4 shadow-sm sm:grid-cols-[12rem_1fr] lg:grid-cols-1">
       <BookCover product={product} className="mx-auto w-full max-w-[14rem]" />
       <div className="flex min-w-0 flex-col justify-end">
-        <p className="text-xs font-black uppercase tracking-[0.18em] text-[#f4c95d]">Editor's Choice</p>
-        <Link href={`/library/${product.slug}`} className="mt-2 text-2xl font-black leading-tight text-white hover:text-[#f4c95d]">
+        <p className="text-xs font-black uppercase tracking-[0.18em] text-[#007f68]">Editor's Choice</p>
+        <Link href={`/library/${product.slug}`} className="mt-2 text-2xl font-black leading-tight text-[#10201d] hover:text-[#007f68]">
           {product.title}
         </Link>
-        <p className="mt-3 text-sm leading-6 text-[#f7ead3]">{product.shortDescription}</p>
+        <p className="mt-3 text-sm leading-6 text-slate-600">{product.shortDescription}</p>
         <div className="mt-5 flex items-center justify-between gap-3">
-          <p className="text-2xl font-black text-white">USD {product.price.toFixed(2)}</p>
+          <p className="text-2xl font-black text-[#10201d]">USD {product.price.toFixed(2)}</p>
           <Button onClick={() => onAdd(product)}>
             <ShoppingCart className="size-4" /> {quantity ? `In bag (${quantity})` : "Add"}
           </Button>
@@ -351,29 +338,29 @@ function FeatureProduct({ product, quantity, onAdd }: { product: LibraryProduct;
   );
 }
 
-function ProductCard({ product, quantity, onAdd, elevated = false }: { product: LibraryProduct; quantity: number; onAdd: (product: LibraryProduct) => void; elevated?: boolean }) {
+function ProductCard({ product, quantity, onAdd }: { product: LibraryProduct; quantity: number; onAdd: (product: LibraryProduct) => void }) {
   return (
-    <article className={cn("group rounded-lg border p-4 shadow-sm transition hover:-translate-y-1 hover:border-[#b98d45] hover:shadow-xl", elevated ? "border-white/15 bg-white text-ink" : "border-[#e1d7c5] bg-white dark:border-slate-800 dark:bg-slate-900")}>
+    <article className="group rounded-lg border border-[#e1d7c5] bg-white p-4 shadow-sm transition hover:-translate-y-1 hover:border-[#007f68] hover:shadow-xl dark:border-slate-800 dark:bg-slate-900">
       <BookCover product={product} className="mx-auto w-full max-w-[13.5rem]" />
       <div className="mt-5 flex min-w-0 flex-col">
-        <p className={cn("text-xs font-black uppercase tracking-wide text-emerald-700", !elevated && "dark:text-emerald-300")}>{product.productType.replace(/_/g, " ")}</p>
-        <Link href={`/library/${product.slug}`} className={cn("mt-1 line-clamp-2 text-lg font-black leading-snug text-ink hover:text-emerald-700", !elevated && "dark:text-white")}>
+        <p className="text-xs font-black uppercase tracking-wide text-emerald-700 dark:text-emerald-300">{product.productType.replace(/_/g, " ")}</p>
+        <Link href={`/library/${product.slug}`} className="mt-1 line-clamp-2 text-lg font-black leading-snug text-ink hover:text-emerald-700 dark:text-white">
           {product.title}
         </Link>
         <p className="mt-1 text-sm text-slate-500">{product.author}</p>
-        <p className={cn("mt-3 line-clamp-2 text-sm leading-6 text-slate-600", !elevated && "dark:text-slate-300")}>{product.shortDescription}</p>
+        <p className="mt-3 line-clamp-2 text-sm leading-6 text-slate-600 dark:text-slate-300">{product.shortDescription}</p>
         <div className="mt-4 flex items-center justify-between gap-3">
           <span className="flex items-center gap-1 text-sm text-amber-500">
             <Star className="size-4 fill-current" />
-            <span className={cn("font-bold text-slate-700", !elevated && "dark:text-slate-200")}>{product.rating || "New"}</span>
+            <span className="font-bold text-slate-700 dark:text-slate-200">{product.rating || "New"}</span>
           </span>
-          <p className={cn("text-lg font-black text-ink", !elevated && "dark:text-white")}>USD {product.price.toFixed(2)}</p>
+          <p className="text-lg font-black text-ink dark:text-white">USD {product.price.toFixed(2)}</p>
         </div>
         <div className="mt-4 grid grid-cols-[1fr_auto] gap-2">
           <Button onClick={() => onAdd(product)} disabled={product.comingSoon && !product.preorder}>
             <ShoppingCart className="size-4" /> {quantity ? `In bag (${quantity})` : product.preorder ? "Pre-order" : "Add"}
           </Button>
-          <Link href={`/library/${product.slug}`} className={cn("inline-flex size-11 items-center justify-center rounded-lg border border-slate-200 text-slate-600 transition hover:border-emerald-500 hover:text-emerald-700", !elevated && "dark:border-slate-700 dark:text-slate-300")} aria-label={`View ${product.title}`}>
+          <Link href={`/library/${product.slug}`} className="inline-flex size-11 items-center justify-center rounded-lg border border-slate-200 text-slate-600 transition hover:border-emerald-500 hover:text-emerald-700 dark:border-slate-700 dark:text-slate-300" aria-label={`View ${product.title}`}>
             <ArrowRight className="size-4" />
           </Link>
         </div>
@@ -461,10 +448,10 @@ function Select({ value, onChange, label, options }: { value: string; onChange: 
 
 function HeroBadge({ icon: Icon, label, value }: { icon: typeof ShieldCheck; label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-[#e7c873]/25 bg-[#fff7e6]/10 p-3 backdrop-blur">
-      <Icon className="size-5 text-[#f4c95d]" />
-      <p className="mt-2 text-sm font-black text-white">{value}</p>
-      <p className="text-xs font-semibold text-[#f7ead3]/75">{label}</p>
+    <div className="rounded-lg border border-[#dfe6e2] bg-white p-3 shadow-sm">
+      <Icon className="size-5 text-[#007f68]" />
+      <p className="mt-2 text-sm font-black text-[#10201d]">{value}</p>
+      <p className="text-xs font-semibold text-slate-500">{label}</p>
     </div>
   );
 }
