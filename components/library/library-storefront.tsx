@@ -250,13 +250,13 @@ function EmptyLibraryState() {
           <BookOpen className="size-7" />
         </span>
         <div>
-          <h2 className="text-3xl font-black tracking-normal text-[#0d2630] dark:text-white">No library products published yet</h2>
+          <h2 className="text-3xl font-black tracking-normal text-[#0d2630] dark:text-white">The HouseLink Library is being prepared</h2>
           <p className="mx-auto mt-3 max-w-2xl text-sm leading-7 text-slate-600">
-            Products added and published from the admin dashboard will appear here automatically. Demo books, fake orders, and seeded catalogue data have been removed.
+            Professional property books, templates, and toolkits will appear here soon. Please check back for published resources from HouseLink.
           </p>
         </div>
-        <Link href="/dashboard/admin/library" className="mx-auto inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-[#007f68] px-5 text-sm font-black text-white transition hover:bg-[#006b58]">
-          Open library admin <ArrowRight className="size-4" />
+        <Link href="/search" className="mx-auto inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-[#007f68] px-5 text-sm font-black text-white transition hover:bg-[#006b58]">
+          Browse properties <ArrowRight className="size-4" />
         </Link>
       </div>
     </section>
