@@ -120,10 +120,18 @@ export function LibraryProductPage({
 
   useEffect(() => {
     if (!lightboxOpen) return;
+    const length = galleryImages.length;
     function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") closeLightbox();
-      if (event.key === "ArrowLeft") stepGallery(-1);
-      if (event.key === "ArrowRight") stepGallery(1);
+      if (event.key === "Escape") {
+        setLightboxOpen(false);
+        setLightboxZoomed(false);
+      }
+      if (event.key === "ArrowLeft" && length) {
+        setGalleryIndex((current) => (current - 1 + length) % length);
+      }
+      if (event.key === "ArrowRight" && length) {
+        setGalleryIndex((current) => (current + 1) % length);
+      }
       if (event.key === "+" || event.key === "=") setLightboxZoomed(true);
       if (event.key === "-") setLightboxZoomed(false);
     }

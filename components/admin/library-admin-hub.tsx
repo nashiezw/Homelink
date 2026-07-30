@@ -1,6 +1,6 @@
 "use client";
 
-import { Boxes, CheckCircle2, Copy, Download, Edit3, ExternalLink, FileArchive, Link2, Plus, Search, Trash2, Upload, X } from "lucide-react";
+import { Boxes, Copy, Download, Edit3, ExternalLink, FileArchive, Link2, Plus, Search, Trash2, Upload, X } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState, type MouseEvent } from "react";
