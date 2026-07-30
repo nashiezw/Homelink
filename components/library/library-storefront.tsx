@@ -123,7 +123,7 @@ export function LibraryStorefront({
   }
 
   return (
-    <main className="min-h-screen bg-[#fafafa] text-[#141414] antialiased dark:bg-slate-950 dark:text-white">
+    <main className="min-h-screen bg-[#fafafa] pb-24 text-[#141414] antialiased dark:bg-slate-950 dark:text-white lg:pb-0">
       <LibraryCartFab />
       {formatPickerProduct && (
         <FormatPickerDialog
@@ -137,9 +137,9 @@ export function LibraryStorefront({
         />
       )}
 
-      <section className="mx-auto max-w-[90rem] px-4 pt-8 sm:px-6 lg:px-8 xl:px-10">
+      <section className="mx-auto max-w-[90rem] px-3 pt-4 sm:px-6 sm:pt-8 lg:px-8 xl:px-10">
         <div
-          className="relative overflow-hidden rounded-[1.75rem] dark:bg-[linear-gradient(135deg,#132743_0%,#0f172a_100%)]"
+          className="relative overflow-hidden rounded-2xl sm:rounded-[1.75rem] dark:bg-[linear-gradient(135deg,#132743_0%,#0f172a_100%)]"
           style={{ backgroundImage: `linear-gradient(135deg, #e8f4ef 0%, #f4f8f7 42%, #e7eef5 100%)` }}
         >
           <div
@@ -149,39 +149,39 @@ export function LibraryStorefront({
               backgroundImage: `radial-gradient(circle at 18% 20%, rgba(34,165,75,0.14), transparent 36%), radial-gradient(circle at 82% 70%, rgba(26,53,96,0.12), transparent 40%)`,
             }}
           />
-          <div className="relative grid items-center gap-10 px-6 py-12 sm:px-10 lg:grid-cols-[minmax(0,1.05fr)_minmax(18rem,26rem)] lg:gap-8 lg:py-16 xl:gap-6 xl:px-14">
+          <div className="relative grid items-center gap-8 px-4 py-8 sm:gap-10 sm:px-10 sm:py-12 lg:grid-cols-[minmax(0,1.05fr)_minmax(18rem,26rem)] lg:gap-8 lg:py-16 xl:gap-6 xl:px-14">
             <div className="max-w-xl motion-safe:animate-fade-up">
-              <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#22a54b]/90">
+              <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#22a54b]/90 sm:text-xs">
                 {storeName}
               </p>
-              <h1 className="mt-3 text-[2.6rem] font-bold leading-[1.05] tracking-tight text-[#1a3560] dark:text-white sm:text-5xl lg:text-[3.4rem]">
+              <h1 className="mt-2 text-[2rem] font-bold leading-[1.08] tracking-tight text-[#1a3560] dark:text-white sm:mt-3 sm:text-5xl sm:leading-[1.05] lg:text-[3.4rem]">
                 {headline}
               </h1>
-              <p className="mt-4 max-w-md text-base leading-7 text-slate-600 dark:text-white/70">{subcopy}</p>
-              <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
+              <p className="mt-3 max-w-md text-sm leading-6 text-slate-600 dark:text-white/70 sm:mt-4 sm:text-base sm:leading-7">{subcopy}</p>
+              <div className="mt-6 flex flex-col gap-2.5 sm:mt-8 sm:flex-row sm:items-center sm:gap-3">
                 <a
                   href={ctaHref}
-                  className="inline-flex h-11 items-center justify-center gap-2 rounded-full px-6 text-sm font-semibold text-white shadow-md transition hover:brightness-110"
+                  className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-full px-6 text-sm font-semibold text-white shadow-md transition hover:brightness-110 sm:w-auto"
                   style={{ backgroundColor: HL_GREEN }}
                 >
                   {ctaLabel} <ArrowRight className="size-4" />
                 </a>
                 <Link
                   href="/dashboard/my-library"
-                  className="inline-flex h-11 items-center justify-center gap-2 rounded-full border border-[#c5ddd0] bg-white px-5 text-sm font-semibold text-[#1a3560] transition hover:border-[#22a54b] hover:text-[#22a54b] dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                  className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-full border border-[#c5ddd0] bg-white px-5 text-sm font-semibold text-[#1a3560] transition hover:border-[#22a54b] hover:text-[#22a54b] sm:w-auto dark:border-slate-700 dark:bg-slate-900 dark:text-white"
                 >
                   My Library <BookmarkCheck className="size-4" style={{ color: HL_GREEN }} />
                 </Link>
               </div>
-              <div className="mt-8 flex flex-col gap-3 text-sm font-semibold text-[#1a3560] sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-6 sm:gap-y-2 dark:text-white/85">
-                <span className="inline-flex items-center gap-2">
-                  <ShieldCheck className="size-4 shrink-0" style={{ color: HL_GREEN }} /> Secure checkout
+              <div className="mt-6 flex flex-wrap gap-x-4 gap-y-2 text-xs font-semibold text-[#1a3560] sm:mt-8 sm:gap-x-6 sm:text-sm dark:text-white/85">
+                <span className="inline-flex items-center gap-1.5">
+                  <ShieldCheck className="size-3.5 shrink-0 sm:size-4" style={{ color: HL_GREEN }} /> Secure checkout
                 </span>
-                <span className="inline-flex items-center gap-2">
-                  <Award className="size-4 shrink-0" style={{ color: HL_GREEN }} /> Curated for operators
+                <span className="inline-flex items-center gap-1.5">
+                  <Award className="size-3.5 shrink-0 sm:size-4" style={{ color: HL_GREEN }} /> Curated for operators
                 </span>
-                <span className="inline-flex items-center gap-2">
-                  <BookOpen className="size-4 shrink-0" style={{ color: HL_GREEN }} /> Library delivery
+                <span className="inline-flex items-center gap-1.5">
+                  <BookOpen className="size-3.5 shrink-0 sm:size-4" style={{ color: HL_GREEN }} /> Library delivery
                 </span>
               </div>
             </div>
@@ -222,51 +222,53 @@ export function LibraryStorefront({
         <EmptyLibraryState />
       ) : (
         <>
-          <section className="sticky top-0 z-20 mt-8 border-y border-[#dfe8e5] bg-white/95 backdrop-blur dark:border-slate-800 dark:bg-slate-950/95">
-            <div className="mx-auto grid max-w-[90rem] gap-3 px-4 py-4 sm:px-6 lg:grid-cols-[minmax(0,1fr)_auto_auto_auto] lg:items-center lg:px-8 xl:px-10">
+          <section className="sticky top-16 z-20 mt-5 border-y border-[#dfe8e5] bg-white/95 backdrop-blur dark:border-slate-800 dark:bg-slate-950/95 sm:mt-8">
+            <div className="mx-auto grid max-w-[90rem] gap-2.5 px-3 py-3 sm:gap-3 sm:px-6 sm:py-4 lg:grid-cols-[minmax(0,1fr)_auto_auto_auto] lg:items-center lg:px-8 xl:px-10">
               <label className="relative min-w-0">
                 <Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
                 <input
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
-                  placeholder="Search title, author, category, or ISBN"
-                  className="h-12 w-full rounded-full border border-[#d8e4e0] bg-white pl-11 pr-4 text-sm shadow-sm outline-none transition focus:border-[#22a54b] focus:ring-4 focus:ring-[#22a54b]/15 dark:border-slate-700 dark:bg-slate-900"
+                  placeholder="Search title, author, or ISBN"
+                  className="h-11 w-full rounded-full border border-[#d8e4e0] bg-white pl-11 pr-4 text-sm shadow-sm outline-none transition focus:border-[#22a54b] focus:ring-4 focus:ring-[#22a54b]/15 sm:h-12 dark:border-slate-700 dark:bg-slate-900"
                 />
               </label>
-              <FilterSelect value={category} onChange={setCategory} label="Category" options={facets.categories} />
-              <FilterSelect value={type} onChange={setType} label="Format" options={facets.formats} />
-              <label className="relative">
-                <span className="sr-only">Sort products</span>
-                <select
-                  value={sort}
-                  onChange={(event) => setSort(event.target.value)}
-                  className="h-12 w-full appearance-none rounded-full border border-[#d8e4e0] bg-white px-4 pr-10 text-sm shadow-sm outline-none transition focus:border-[#22a54b] dark:border-slate-700 dark:bg-slate-900 lg:w-44"
-                >
-                  <option value="newest">Newest</option>
-                  <option value="best-selling">Best selling</option>
-                  <option value="most-downloaded">Most downloaded</option>
-                  <option value="highest-rated">Highest rated</option>
-                  <option value="price-asc">Price: low to high</option>
-                  <option value="price-desc">Price: high to low</option>
-                </select>
-                <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" aria-hidden />
-              </label>
+              <div className="grid grid-cols-3 gap-2 lg:contents">
+                <FilterSelect value={category} onChange={setCategory} label="Category" options={facets.categories} />
+                <FilterSelect value={type} onChange={setType} label="Format" options={facets.formats} />
+                <label className="relative min-w-0">
+                  <span className="sr-only">Sort products</span>
+                  <select
+                    value={sort}
+                    onChange={(event) => setSort(event.target.value)}
+                    className="h-11 w-full appearance-none rounded-full border border-[#d8e4e0] bg-white px-3 pr-9 text-xs shadow-sm outline-none transition focus:border-[#22a54b] sm:h-12 sm:px-4 sm:pr-10 sm:text-sm dark:border-slate-700 dark:bg-slate-900 lg:w-44"
+                  >
+                    <option value="newest">Newest</option>
+                    <option value="best-selling">Best selling</option>
+                    <option value="most-downloaded">Most downloaded</option>
+                    <option value="highest-rated">Highest rated</option>
+                    <option value="price-asc">Price: low to high</option>
+                    <option value="price-desc">Price: high to low</option>
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-slate-400 sm:right-3.5" aria-hidden />
+                </label>
+              </div>
             </div>
           </section>
 
-          <section className="mx-auto grid max-w-[90rem] gap-8 px-4 pb-20 pt-14 sm:px-6 lg:grid-cols-[minmax(0,1fr)_20rem] lg:px-8 xl:px-10">
-            <div className="min-w-0 space-y-14">
+          <section className="mx-auto grid max-w-[90rem] gap-6 px-3 pb-16 pt-8 sm:gap-8 sm:px-6 sm:pb-20 sm:pt-14 lg:grid-cols-[minmax(0,1fr)_20rem] lg:px-8 xl:px-10">
+            <div className="min-w-0 space-y-10 sm:space-y-14">
               {curated.length > 0 && (
                 <div>
-                  <div className="mb-8 flex items-end justify-between gap-4">
-                    <h2 className="text-2xl font-bold tracking-tight text-[#1a3560] dark:text-white sm:text-3xl">
+                  <div className="mb-5 flex items-end justify-between gap-4 sm:mb-8">
+                    <h2 className="text-xl font-bold tracking-tight text-[#1a3560] dark:text-white sm:text-3xl">
                       {merchandising.curatedTitle || "Editor picks"}
                     </h2>
                     <a href="#library-products" className="hidden text-sm font-semibold text-[#1a3560]/60 transition hover:text-[#22a54b] sm:inline-flex dark:text-white/55 dark:hover:text-white">
                       View all
                     </a>
                   </div>
-                  <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 xl:grid-cols-3">
                     {curated.map((product) => (
                       <ProductCard
                         key={product.id}
@@ -281,17 +283,17 @@ export function LibraryStorefront({
               )}
 
               <div id="library-products">
-                <div className="mb-8">
-                  <h2 className="text-2xl font-bold tracking-tight text-[#1a3560] dark:text-white sm:text-3xl">
+                <div className="mb-5 sm:mb-8">
+                  <h2 className="text-xl font-bold tracking-tight text-[#1a3560] dark:text-white sm:text-3xl">
                     All titles
                   </h2>
-                  <p className="mt-2 text-sm text-[#1a3560]/55 dark:text-white/55">
+                  <p className="mt-1 text-sm text-[#1a3560]/55 sm:mt-2 dark:text-white/55">
                     {results.length} {results.length === 1 ? "product" : "products"}
                   </p>
                 </div>
 
                 {results.length ? (
-                  <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 xl:grid-cols-3">
                     {results.map((product) => (
                       <ProductCard
                         key={product.id}
@@ -303,12 +305,12 @@ export function LibraryStorefront({
                     ))}
                   </div>
                 ) : (
-                  <p className="py-16 text-center text-sm text-[#141414]/55 dark:text-white/55">No titles match that search.</p>
+                  <p className="py-12 text-center text-sm text-[#141414]/55 sm:py-16 dark:text-white/55">No titles match that search.</p>
                 )}
               </div>
             </div>
 
-            <aside className="h-fit lg:sticky lg:top-24">
+            <aside className="hidden h-fit lg:sticky lg:top-24 lg:block">
               <CartPanel cart={cart} total={total} currency={currency} count={count} onCart={(next) => setCart(next)} />
             </aside>
           </section>
@@ -349,7 +351,10 @@ function FormatPickerDialog({
   }, [onClose]);
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-end justify-center p-4 sm:items-center" role="presentation">
+    <div
+      className="fixed inset-0 z-[70] flex items-end justify-center p-0 sm:items-center sm:p-4"
+      role="presentation"
+    >
       <button
         type="button"
         className="absolute inset-0 bg-[#1a3560]/45 backdrop-blur-[2px]"
@@ -360,12 +365,12 @@ function FormatPickerDialog({
         role="dialog"
         aria-modal="true"
         aria-labelledby="library-format-picker-title"
-        className="relative z-10 w-full max-w-lg overflow-hidden rounded-3xl border border-[#dfe8e5] bg-white shadow-[0_28px_80px_rgba(16,32,36,0.28)] dark:border-slate-700 dark:bg-slate-950"
+        className="relative z-10 flex max-h-[min(92dvh,40rem)] w-full max-w-lg flex-col overflow-hidden rounded-t-3xl border border-[#dfe8e5] bg-white shadow-[0_28px_80px_rgba(16,32,36,0.28)] sm:rounded-3xl dark:border-slate-700 dark:bg-slate-950"
       >
-        <div className="flex items-start justify-between gap-4 border-b border-[#e8f0ed] bg-[linear-gradient(135deg,#e8f4ef_0%,#f4f8f7_55%,#e7eef5_100%)] px-5 py-4 dark:border-slate-800 dark:bg-slate-900">
+        <div className="flex shrink-0 items-start justify-between gap-4 border-b border-[#e8f0ed] bg-[linear-gradient(135deg,#e8f4ef_0%,#f4f8f7_55%,#e7eef5_100%)] px-4 py-3.5 sm:px-5 sm:py-4 dark:border-slate-800 dark:bg-slate-900">
           <div className="min-w-0">
             <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#22a54b]">Choose format</p>
-            <h2 id="library-format-picker-title" className="mt-1 line-clamp-2 text-lg font-bold text-[#1a3560] dark:text-white">
+            <h2 id="library-format-picker-title" className="mt-1 line-clamp-2 text-base font-bold text-[#1a3560] sm:text-lg dark:text-white">
               {product.title}
             </h2>
             <p className="mt-1 text-sm text-slate-500">{product.author}</p>
@@ -373,48 +378,50 @@ function FormatPickerDialog({
           <button
             type="button"
             onClick={onClose}
-            className="grid size-9 shrink-0 place-items-center rounded-full border border-slate-200 bg-white text-slate-500 transition hover:border-[#22a54b] hover:text-[#22a54b] dark:border-slate-700 dark:bg-slate-900"
+            className="grid size-10 shrink-0 place-items-center rounded-full border border-slate-200 bg-white text-slate-500 transition hover:border-[#22a54b] hover:text-[#22a54b] dark:border-slate-700 dark:bg-slate-900"
             aria-label="Close"
           >
             <X className="size-4" />
           </button>
         </div>
 
-        <div className="grid gap-5 p-5 sm:grid-cols-[7.5rem_1fr]">
-          <BookCover product={product} variant="shop" interactive={false} className="mx-auto w-28 shadow-md sm:w-full" sizes="140px" />
-          <div className="space-y-3">
-            {formats.map((format) => {
-              const selectedFormat = format.id === selected?.id;
-              return (
-                <button
-                  key={format.id}
-                  type="button"
-                  onClick={() => setSelectedId(format.id)}
-                  className={cn(
-                    "w-full rounded-2xl border px-4 py-3.5 text-left transition",
-                    selectedFormat
-                      ? "border-[#22a54b] bg-[#e8f4ef] ring-2 ring-[#22a54b]/20 dark:bg-emerald-950/35"
-                      : "border-slate-200 bg-white hover:border-[#22a54b]/70 dark:border-slate-700 dark:bg-slate-900",
-                  )}
-                >
-                  <span className="flex items-start justify-between gap-3">
-                    <span>
-                      <span className="block text-sm font-bold text-[#1a3560] dark:text-white">{format.label}</span>
-                      <span className="mt-1 block text-xs leading-5 text-slate-500">
-                        {format.type === "PRINTED_BOOK" ? "Printed copy · shipping after payment" : "Digital copy · instant after payment"}
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+          <div className="grid gap-4 p-4 sm:grid-cols-[7.5rem_1fr] sm:gap-5 sm:p-5">
+            <BookCover product={product} variant="shop" interactive={false} className="mx-auto hidden w-28 shadow-md sm:block sm:w-full" sizes="140px" />
+            <div className="space-y-2.5 sm:space-y-3">
+              {formats.map((format) => {
+                const selectedFormat = format.id === selected?.id;
+                return (
+                  <button
+                    key={format.id}
+                    type="button"
+                    onClick={() => setSelectedId(format.id)}
+                    className={cn(
+                      "w-full rounded-2xl border px-3.5 py-3 text-left transition sm:px-4 sm:py-3.5",
+                      selectedFormat
+                        ? "border-[#22a54b] bg-[#e8f4ef] ring-2 ring-[#22a54b]/20 dark:bg-emerald-950/35"
+                        : "border-slate-200 bg-white hover:border-[#22a54b]/70 dark:border-slate-700 dark:bg-slate-900",
+                    )}
+                  >
+                    <span className="flex items-start justify-between gap-3">
+                      <span className="min-w-0">
+                        <span className="block text-sm font-bold text-[#1a3560] dark:text-white">{format.label}</span>
+                        <span className="mt-1 block text-xs leading-5 text-slate-500">
+                          {format.type === "PRINTED_BOOK" ? "Printed copy · shipping after payment" : "Digital copy · instant after payment"}
+                        </span>
+                      </span>
+                      <span className="shrink-0 text-sm font-black text-[#1a3560] sm:text-base dark:text-white">
+                        {hidePrice ? "—" : `${product.currency} ${format.price.toFixed(2)}`}
                       </span>
                     </span>
-                    <span className="shrink-0 text-base font-black text-[#1a3560] dark:text-white">
-                      {hidePrice ? "—" : `${product.currency} ${format.price.toFixed(2)}`}
-                    </span>
-                  </span>
-                </button>
-              );
-            })}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
 
-        <div className="flex flex-col-reverse gap-2 border-t border-[#e8f0ed] p-5 sm:flex-row sm:justify-end dark:border-slate-800">
+        <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-[#e8f0ed] p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:flex-row sm:justify-end sm:p-5 dark:border-slate-800">
           <button
             type="button"
             onClick={onClose}
@@ -426,7 +433,7 @@ function FormatPickerDialog({
             type="button"
             disabled={!selected}
             onClick={() => selected && onConfirm(selected)}
-            className="rounded-full bg-[#22a54b] hover:bg-[#1e9443] hover:from-[#22a54b] hover:to-[#22a54b]"
+            className="h-11 rounded-full bg-[#22a54b] hover:bg-[#1e9443] hover:from-[#22a54b] hover:to-[#22a54b]"
           >
             <ShoppingCart className="size-4" /> Add to bag
             {!hidePrice && selected ? ` · ${product.currency} ${selected.price.toFixed(2)}` : ""}
@@ -449,33 +456,33 @@ function ProductCard({
   onAdd: () => void;
 }) {
   return (
-    <article className="group flex h-full flex-col rounded-2xl border border-[#dfe8e5] bg-white p-4 shadow-sm transition hover:-translate-y-1 hover:border-[#22a54b] hover:shadow-xl dark:border-slate-800 dark:bg-slate-900">
+    <article className="group flex h-full flex-col rounded-2xl border border-[#dfe8e5] bg-white p-3 shadow-sm transition hover:-translate-y-1 hover:border-[#22a54b] hover:shadow-xl sm:p-4 dark:border-slate-800 dark:bg-slate-900">
       <div className="overflow-hidden rounded-xl bg-[#f4f8f7] dark:bg-slate-950/60">
         <BookCover
           product={product}
           variant="shop"
           className="w-full max-w-none rounded-xl shadow-none ring-0"
-          sizes="(max-width: 768px) 90vw, 420px"
+          sizes="(max-width: 640px) 92vw, (max-width: 1280px) 45vw, 420px"
         />
       </div>
-      <div className="mt-4 flex min-w-0 flex-1 flex-col">
-        <p className="text-xs font-black uppercase tracking-wide text-[#22a54b] dark:text-emerald-300">
+      <div className="mt-3 flex min-w-0 flex-1 flex-col sm:mt-4">
+        <p className="text-[11px] font-black uppercase tracking-wide text-[#22a54b] sm:text-xs dark:text-emerald-300">
           {libraryFormatsLabel(product)}
         </p>
         <Link
           href={`/library/${product.slug}`}
-          className="mt-1 line-clamp-2 text-base font-black leading-snug text-[#1a3560] hover:text-[#22a54b] dark:text-white"
+          className="mt-1 line-clamp-2 text-sm font-black leading-snug text-[#1a3560] hover:text-[#22a54b] sm:text-base dark:text-white"
         >
           {product.title}
         </Link>
-        <p className="mt-1 line-clamp-1 text-sm text-slate-500">{product.author}</p>
-        <p className="mt-3 line-clamp-2 text-sm leading-6 text-slate-600 dark:text-slate-300">{product.shortDescription}</p>
-        <div className="mt-4 flex items-center justify-between gap-3">
+        <p className="mt-1 line-clamp-1 text-xs text-slate-500 sm:text-sm">{product.author}</p>
+        <p className="mt-2 hidden line-clamp-2 text-sm leading-6 text-slate-600 sm:mt-3 sm:block dark:text-slate-300">{product.shortDescription}</p>
+        <div className="mt-3 flex items-center justify-between gap-3 sm:mt-4">
           <span className="flex items-center gap-1 text-sm text-amber-500">
             <Star className="size-4 fill-current" />
             <span className="font-bold text-slate-700 dark:text-slate-200">{product.rating || "New"}</span>
           </span>
-          <p className="text-base font-black text-[#1a3560] dark:text-white">
+          <p className="text-sm font-black text-[#1a3560] sm:text-base dark:text-white">
             {hidePrice ? (
               <Link href={`/login?next=/library/${product.slug}`} className="text-sm font-bold text-[#22a54b] underline-offset-2 hover:underline">
                 Sign in for price
@@ -485,7 +492,7 @@ function ProductCard({
             )}
           </p>
         </div>
-        <div className="mt-auto grid grid-cols-[1fr_auto] gap-2 pt-4">
+        <div className="mt-auto grid grid-cols-[1fr_auto] gap-2 pt-3 sm:pt-4">
           <Button
             type="button"
             onClick={(event) => {
@@ -494,7 +501,7 @@ function ProductCard({
               onAdd();
             }}
             disabled={product.comingSoon && !product.preorder}
-            className="rounded-full bg-[#22a54b] shadow-md shadow-emerald-900/10 hover:bg-[#1e9443] hover:from-[#22a54b] hover:to-[#22a54b]"
+            className="min-h-11 rounded-full bg-[#22a54b] shadow-md shadow-emerald-900/10 hover:bg-[#1e9443] hover:from-[#22a54b] hover:to-[#22a54b]"
           >
             <ShoppingCart className="size-4" />{" "}
             {quantity ? `In bag (${quantity})` : product.preorder ? "Pre-order" : "Add"}
@@ -634,11 +641,11 @@ function FilterSelect({
   return (
     <label className="relative">
       <span className="sr-only">{label}</span>
-      <Filter className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" aria-hidden />
+      <Filter className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-slate-400 sm:left-3.5 sm:size-4" aria-hidden />
       <select
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="h-12 w-full appearance-none rounded-full border border-[#d8e4e0] bg-white pl-10 pr-10 text-sm shadow-sm outline-none transition focus:border-[#22a54b] dark:border-slate-700 dark:bg-slate-900 lg:w-44"
+        className="h-11 w-full appearance-none rounded-full border border-[#d8e4e0] bg-white pl-8 pr-7 text-xs shadow-sm outline-none transition focus:border-[#22a54b] sm:h-12 sm:pl-10 sm:pr-10 sm:text-sm dark:border-slate-700 dark:bg-slate-900 lg:w-44"
       >
         <option value="">{label}</option>
         {options.map((option) => {
@@ -650,7 +657,7 @@ function FilterSelect({
           );
         })}
       </select>
-      <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" aria-hidden />
+      <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 size-3.5 -translate-y-1/2 text-slate-400 sm:right-3.5 sm:size-4" aria-hidden />
     </label>
   );
 }

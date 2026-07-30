@@ -23,7 +23,7 @@ export function LibraryCartFab({ className }: { className?: string }) {
   if (!count) return null;
 
   return (
-    <div className={cn("fixed bottom-5 right-5 z-[60] flex flex-col items-end gap-3", className)}>
+    <div className={cn("fixed bottom-[max(1.25rem,env(safe-area-inset-bottom))] right-4 z-[60] flex flex-col items-end gap-3 sm:right-5 lg:hidden", className)}>
       {open && (
         <div className="w-[min(22rem,calc(100vw-2rem))] overflow-hidden border border-black/[0.08] bg-white shadow-[0_24px_60px_rgba(16,32,36,0.16)] dark:border-white/10 dark:bg-slate-950">
           <div className="flex items-center justify-between border-b border-black/[0.06] px-4 py-3 dark:border-white/10">

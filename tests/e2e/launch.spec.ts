@@ -96,7 +96,11 @@ test("library cart starts native checkout for signed-in users", async ({ page })
   if (await formatDialog.isVisible().catch(() => false)) {
     await formatDialog.getByRole("button", { name: /add to bag/i }).click();
   }
-  await page.getByRole("link", { name: /^checkout$/i }).click();
+  const checkout = page.getByRole("link", { name: /^checkout$/i });
+  if (!(await checkout.first().isVisible().catch(() => false))) {
+    await page.getByRole("button", { name: /open library bag/i }).click();
+  }
+  await page.getByRole("link", { name: /^checkout$/i }).first().click();
   await expect(page).toHaveURL(/\/payments\?status=|\/library/);
 });
 
