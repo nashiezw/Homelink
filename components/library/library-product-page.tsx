@@ -195,7 +195,9 @@ export function LibraryProductPage({ product, related }: { product: LibraryProdu
               <span className="hidden text-slate-300 sm:inline">/</span>
               <span className="hidden max-w-xl truncate font-semibold text-slate-900 dark:text-white sm:inline">{product.title}</span>
             </nav>
-            <p className="mt-1 line-clamp-1 text-xs font-semibold text-slate-500 dark:text-slate-400">{product.productType.replace(/_/g, " ")} by {product.author}</p>
+            <p className="mt-1 line-clamp-1 text-xs font-semibold text-slate-500 dark:text-slate-400">
+              {formats.map((format) => format.label).join(" · ") || product.productType.replace(/_/g, " ")} by {product.author}
+            </p>
           </div>
           <Link href="/library/checkout" className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-lg border border-[#cfe0da] bg-white px-4 text-sm font-black text-[#0d2630] shadow-sm transition hover:border-[#007f68] hover:text-[#007f68] dark:border-slate-700 dark:bg-slate-900 dark:text-white">
             <ShoppingBag className="size-4" /> Library Bag <span className="rounded-full bg-[#e9f7f2] px-2 py-0.5 text-xs text-[#007f68] dark:bg-emerald-950/50 dark:text-emerald-200">{count}</span>
@@ -267,21 +269,75 @@ export function LibraryProductPage({ product, related }: { product: LibraryProdu
 
             <div className="min-w-0">
               <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-700 dark:text-emerald-300">{product.collection}</p>
-              <h1 className="mt-3 max-w-3xl text-balance text-2xl font-bold leading-snug tracking-tight text-ink sm:text-3xl lg:text-[2.15rem] lg:leading-[1.2] dark:text-white">{product.title}</h1>
+              <h1 className="mt-2 max-w-2xl text-balance text-xl font-semibold leading-snug tracking-tight text-ink sm:text-2xl dark:text-white">{product.title}</h1>
               {product.subtitle ? (
-                <p className="mt-3 max-w-2xl text-base leading-7 text-slate-600 dark:text-slate-300">{product.subtitle}</p>
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600 normal-case dark:text-slate-300">{product.subtitle}</p>
               ) : null}
-          <div className="mt-5 flex flex-wrap items-center gap-3 text-sm text-slate-600 dark:text-slate-300">
-            <span>
-              By <strong className="text-ink dark:text-white">{product.author}</strong>
-            </span>
-            <span className="flex items-center gap-1 text-amber-500">
-              <Star className="size-4 fill-current" /> {product.rating || "New"} ({product.reviewCount} reviews)
-            </span>
-            <span className="rounded-full border border-slate-200 bg-white px-3 py-1 font-bold dark:border-slate-700 dark:bg-slate-900">{(selectedFormat?.label || product.productType).replace(/_/g, " ")}</span>
-          </div>
+              <div className="mt-4 flex flex-wrap items-center gap-3 text-sm text-slate-600 dark:text-slate-300">
+                <span>
+                  By <strong className="text-ink dark:text-white">{product.author}</strong>
+                </span>
+                <span className="flex items-center gap-1 text-amber-500">
+                  <Star className="size-4 fill-current" /> {product.rating || "New"} ({product.reviewCount} reviews)
+                </span>
+              </div>
 
-              <div className="mt-7 grid max-w-3xl gap-3 sm:grid-cols-3">
+              {formats.length > 0 && (
+                <div className="mt-5 max-w-lg">
+                  <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Choose format</p>
+                  <div className={cn("mt-2 grid gap-2", formats.length > 1 ? "sm:grid-cols-2" : "grid-cols-1")}>
+                    {formats.map((format) => (
+                      <button
+                        key={format.id}
+                        type="button"
+                        onClick={() => setSelectedFormatId(format.id)}
+                        className={cn(
+                          "rounded-lg border px-3 py-3 text-left transition",
+                          selectedFormat?.id === format.id
+                            ? "border-emerald-600 bg-emerald-50 ring-2 ring-emerald-600/15 dark:bg-emerald-950/30"
+                            : "border-slate-200 hover:border-emerald-500 dark:border-slate-700",
+                        )}
+                      >
+                        <span className="block text-sm font-bold text-ink dark:text-white">{format.label}</span>
+                        <span className="mt-1 block text-lg font-black text-ink dark:text-white">
+                          {product.currency} {format.price.toFixed(2)}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="mt-5 flex flex-wrap items-end gap-3">
+                <p className="text-3xl font-black text-ink dark:text-white">{product.currency} {(selectedFormat?.price ?? product.price).toFixed(2)}</p>
+                {(selectedFormat?.compareAtPrice ?? product.compareAtPrice) && (
+                  <p className="pb-1 text-sm text-slate-400 line-through">{product.currency} {(selectedFormat?.compareAtPrice ?? product.compareAtPrice)!.toFixed(2)}</p>
+                )}
+              </div>
+              <p className="mt-2 text-sm font-semibold text-emerald-800 dark:text-emerald-200">
+                {isPrinted
+                  ? product.stock == null
+                    ? "Printed copy available"
+                    : product.stock > 0
+                      ? `${product.stock} printed copies available`
+                      : "Out of stock"
+                  : "Instant digital delivery after payment confirmation"}
+              </p>
+              <div className="mt-4 flex flex-col gap-2 sm:max-w-md sm:flex-row">
+                <Button disabled={outOfStock} onClick={buyNow} className="sm:flex-1">
+                  <ShoppingCart className="size-4" /> {product.preorder ? "Pre-order now" : "Buy now"}
+                </Button>
+                <Button variant="secondary" disabled={outOfStock} onClick={addToCart} className="sm:flex-1">
+                  <ShoppingBag className="size-4" /> {productQuantity ? `In bag (${productQuantity})` : "Add to cart"}
+                </Button>
+              </div>
+              {cartNotice && (
+                <p role="status" aria-live="polite" className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-900 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-100">
+                  <CheckCircle2 className="mr-2 inline size-4" /> {cartNotice} <Link href="/library/checkout" className="underline underline-offset-4">Checkout</Link>
+                </p>
+              )}
+
+              <div className="mt-6 grid max-w-3xl gap-3 sm:grid-cols-3">
                 <Proof icon={ShieldCheck} label="Secure checkout" />
                 <Proof icon={ReceiptText} label="Invoice ready" />
                 <Proof icon={Download} label="Tracked access" />
@@ -306,45 +362,27 @@ export function LibraryProductPage({ product, related }: { product: LibraryProdu
 
         <aside className="space-y-4 lg:sticky lg:top-24">
           <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <p className="text-xs font-bold uppercase text-slate-500">Your selection</p>
+            <p className="mt-2 text-sm font-bold text-ink dark:text-white">{selectedFormat?.label || "Library product"}</p>
+            <p className="mt-1 text-3xl font-black text-ink dark:text-white">{product.currency} {(selectedFormat?.price ?? product.price).toFixed(2)}</p>
             {formats.length > 1 && (
-              <div className="mb-4 grid gap-2">
-                <p className="text-xs font-bold uppercase text-slate-500">Choose format</p>
-                <div className="grid gap-2">
-                  {formats.map((format) => (
-                    <button
-                      key={format.id}
-                      type="button"
-                      onClick={() => setSelectedFormatId(format.id)}
-                      className={cn(
-                        "rounded-lg border px-3 py-2 text-left transition",
-                        selectedFormat?.id === format.id ? "border-emerald-600 bg-emerald-50 ring-2 ring-emerald-600/15 dark:bg-emerald-950/30" : "border-slate-200 hover:border-emerald-500 dark:border-slate-700",
-                      )}
-                    >
-                      <div className="flex items-center justify-between gap-3">
-                        <span className="text-sm font-bold text-ink dark:text-white">{format.label}</span>
-                        <span className="text-sm font-black text-ink dark:text-white">{product.currency} {format.price.toFixed(2)}</span>
-                      </div>
-                    </button>
-                  ))}
-                </div>
+              <div className="mt-4 grid gap-2">
+                {formats.map((format) => (
+                  <button
+                    key={`aside-${format.id}`}
+                    type="button"
+                    onClick={() => setSelectedFormatId(format.id)}
+                    className={cn(
+                      "flex items-center justify-between rounded-lg border px-3 py-2 text-left text-sm transition",
+                      selectedFormat?.id === format.id ? "border-emerald-600 bg-emerald-50 dark:bg-emerald-950/30" : "border-slate-200 dark:border-slate-700",
+                    )}
+                  >
+                    <span className="font-semibold">{format.label}</span>
+                    <span className="font-bold">{product.currency} {format.price.toFixed(2)}</span>
+                  </button>
+                ))}
               </div>
             )}
-            <p className="text-xs font-bold uppercase text-slate-500">HouseLink price</p>
-            <div className="mt-2 flex flex-wrap items-end gap-3">
-              <p className="text-4xl font-black text-ink dark:text-white">{product.currency} {(selectedFormat?.price ?? product.price).toFixed(2)}</p>
-              {(selectedFormat?.compareAtPrice ?? product.compareAtPrice) && (
-                <p className="pb-1 text-sm text-slate-400 line-through">{product.currency} {(selectedFormat?.compareAtPrice ?? product.compareAtPrice)!.toFixed(2)}</p>
-              )}
-            </div>
-            <p className="mt-3 rounded-lg bg-emerald-50 px-3 py-2 text-sm font-bold text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200">
-              {isPrinted
-                ? product.stock == null
-                  ? "Printed copy available"
-                  : product.stock > 0
-                    ? `${product.stock} printed copies available`
-                    : "Out of stock"
-                : "Instant digital delivery after payment confirmation"}
-            </p>
             <div className="mt-5 grid gap-2">
               <Button disabled={outOfStock} onClick={buyNow}>
                 <ShoppingCart className="size-4" /> {product.preorder ? "Pre-order now" : "Buy now"}
@@ -353,14 +391,9 @@ export function LibraryProductPage({ product, related }: { product: LibraryProdu
                 <ShoppingBag className="size-4" /> {productQuantity ? `In bag (${productQuantity})` : "Add to cart"}
               </Button>
               <Button variant="secondary" onClick={() => setPreviewOpen(true)}>
-                <FileText className="size-4" /> Read sample
+                <FileText className="size-4" /> {sampleUrl ? "Read sample PDF" : "Read sample"}
               </Button>
             </div>
-            {cartNotice && (
-              <p role="status" aria-live="polite" className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-900 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-100">
-                <CheckCircle2 className="mr-2 inline size-4" /> {cartNotice} <Link href="/library/checkout" className="underline underline-offset-4">Checkout</Link>
-              </p>
-            )}
             <div className="mt-4 grid grid-cols-2 gap-2">
               <button type="button" disabled={wishBusy} onClick={() => void toggleWishlist()} className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-slate-200 px-3 text-sm font-bold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800" aria-label="Add to wishlist">
                 <Heart className={cn("size-4", wished && "fill-current text-rose-500")} /> {wished ? "Saved" : "Wishlist"}
@@ -386,6 +419,7 @@ export function LibraryProductPage({ product, related }: { product: LibraryProdu
                 ["Language", product.language],
                 ["Pages", product.pages?.toString() ?? "Digital course"],
                 ["SKU", product.sku],
+                ["Formats", formats.map((format) => `${format.label} (${product.currency} ${format.price.toFixed(2)})`).join(", ") || product.productType.replace(/_/g, " ")],
               ].map(([label, value]) => (
                 <div key={label} className="flex justify-between gap-3 border-b border-slate-100 pb-2 last:border-0 dark:border-slate-800">
                   <dt className="text-slate-500">{label}</dt>

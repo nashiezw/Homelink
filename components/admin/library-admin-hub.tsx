@@ -1129,10 +1129,17 @@ export function LibraryAdminHub() {
               onToggleSelectAll={() => setSelectedIds(selectedIds.size === products.length ? new Set() : new Set(products.map((product) => product.id)))}
               columns={[
                 { key: "title", header: "Product", render: (row) => <ProductCell product={row} /> },
-                { key: "type", header: "Type", render: (row) => row.productType.replace(/_/g, " ") },
-                { key: "price", header: "Price", render: (row) => `${row.currency} ${row.price.toFixed(2)}` },
+                { key: "type", header: "Formats", render: (row) => formatSummary(row) },
+                { key: "price", header: "Price", render: (row) => priceSummary(row) },
                 { key: "status", header: "Status", render: (row) => <AdminStatusBadge status={row.status} variant={row.status === "PUBLISHED" ? "success" : row.status === "SCHEDULED" ? "warning" : "muted"} /> },
-                { key: "stock", header: "Inventory", render: (row) => row.stock === null ? "Unlimited digital" : `${row.stock} units` },
+                { key: "stock", header: "Inventory", render: (row) => {
+                  const formats = enabledLibraryFormats(row);
+                  const hasPrint = formats.some((format) => format.type === "PRINTED_BOOK");
+                  const hasDigital = formats.some((format) => format.type !== "PRINTED_BOOK");
+                  if (hasPrint && hasDigital) return row.stock == null ? "Digital + print stock TBA" : `Digital + ${row.stock} print`;
+                  if (hasPrint) return row.stock == null ? "Print available" : `${row.stock} print units`;
+                  return "Unlimited digital";
+                } },
                 { key: "actions", header: "Actions", render: (row) => <div className="flex flex-wrap gap-2"><IconButton icon={Edit3} label="Edit" onClick={() => openEditor(row)} /><IconButton icon={ExternalLink} label="Preview" onClick={() => setPreviewProduct(row)} /><IconButton icon={Copy} label="Duplicate" onClick={() => void duplicate(row.id)} /><IconButton icon={Trash2} label="Delete" danger onClick={() => void deleteProduct(row.id)} /><button type="button" onClick={() => void setProductStatus(row, row.status === "PUBLISHED" ? "DRAFT" : "PUBLISHED")} className="rounded-lg border border-white/10 px-3 py-2 text-xs font-bold text-slate-300 hover:bg-white/5">{row.status === "PUBLISHED" ? "Draft" : "Publish"}</button></div> },
               ]}
             />
@@ -1740,15 +1747,15 @@ function productPayload(draft: LibraryProductDraft, statusOverride?: string) {
 }
 
 function normalizeDraftFormats(product: LibraryProduct): LibraryProductFormat[] {
-  const enabled = enabledLibraryFormats(product);
-  const digital = enabled.find((format) => format.type !== "PRINTED_BOOK");
-  const printed = enabled.find((format) => format.type === "PRINTED_BOOK");
+  const all = product.formats?.length ? product.formats : enabledLibraryFormats(product);
+  const digital = all.find((format) => format.type !== "PRINTED_BOOK");
+  const printed = all.find((format) => format.type === "PRINTED_BOOK");
   return [
     {
       id: "digital",
       type: digital?.type === "DIGITAL_BOOK" ? "DIGITAL_BOOK" : "PDF",
       label: digital?.type === "DIGITAL_BOOK" ? "Digital book" : "Digital PDF",
-      enabled: Boolean(digital),
+      enabled: digital ? digital.enabled !== false : false,
       price: digital?.price ?? product.price,
       compareAtPrice: digital?.compareAtPrice,
       sku: digital?.sku,
@@ -1757,12 +1764,30 @@ function normalizeDraftFormats(product: LibraryProduct): LibraryProductFormat[] 
       id: "printed",
       type: "PRINTED_BOOK",
       label: "Printed book",
-      enabled: Boolean(printed),
-      price: printed?.price ?? Math.max(product.price, 45),
+      enabled: printed ? printed.enabled !== false : false,
+      price: printed?.price ?? Math.max(product.price + 10, 25),
       compareAtPrice: printed?.compareAtPrice,
       sku: printed?.sku,
     },
   ];
+}
+
+function formatSummary(product: LibraryProduct) {
+  const formats = enabledLibraryFormats(product);
+  if (formats.length > 1) return formats.map((format) => format.label.replace(/Digital PDF/i, "Digital").replace(/Printed book/i, "Print")).join(" + ");
+  return (formats[0]?.label || product.productType).replace(/_/g, " ");
+}
+
+function priceSummary(product: LibraryProduct) {
+  const formats = enabledLibraryFormats(product);
+  if (formats.length > 1) {
+    const prices = formats.map((format) => format.price);
+    const min = Math.min(...prices);
+    const max = Math.max(...prices);
+    if (min === max) return `${product.currency} ${min.toFixed(2)}`;
+    return `${product.currency} ${min.toFixed(2)} – ${max.toFixed(2)}`;
+  }
+  return `${product.currency} ${(formats[0]?.price ?? product.price).toFixed(2)}`;
 }
 
 function couponPayload(draft: CouponDraft) {
@@ -1838,7 +1863,7 @@ function ProductPreview({ product }: { product: LibraryProduct }) {
       </div>
       <div className="space-y-4">
         <div>
-          <p className="text-xs font-black uppercase tracking-wide text-emerald-300">{product.productType.replace(/_/g, " ")}</p>
+          <p className="text-xs font-black uppercase tracking-wide text-emerald-300">{formatSummary(product)}</p>
           <h3 className="mt-1 text-2xl font-black text-white">{product.title}</h3>
           {product.subtitle && <p className="mt-1 text-sm text-slate-400">{product.subtitle}</p>}
         </div>
@@ -1849,7 +1874,10 @@ function ProductPreview({ product }: { product: LibraryProduct }) {
         </div>
         <p className="text-sm leading-6 text-slate-300">{product.shortDescription || product.description}</p>
         <div className="grid gap-2 rounded-xl border border-white/10 bg-slate-900/60 p-4 text-sm text-slate-300">
-          <div className="flex justify-between gap-3"><span>Price</span><strong className="text-white">{product.currency} {product.price.toFixed(2)}</strong></div>
+          <div className="flex justify-between gap-3"><span>Price</span><strong className="text-white">{priceSummary(product)}</strong></div>
+          {enabledLibraryFormats(product).map((format) => (
+            <div key={format.id} className="flex justify-between gap-3"><span>{format.label}</span><strong className="text-white">{product.currency} {format.price.toFixed(2)}</strong></div>
+          ))}
           <div className="flex justify-between gap-3"><span>Author</span><strong className="text-white">{product.author}</strong></div>
           <div className="flex justify-between gap-3"><span>Downloads</span><strong className="text-white">{product.downloads.length}</strong></div>
         </div>

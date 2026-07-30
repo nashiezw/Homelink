@@ -28,7 +28,7 @@ import { useMemo, useState } from "react";
 import { BookCover } from "@/components/library/book-cover";
 import { Button } from "@/components/ui/button";
 import { useLibraryCart, libraryCartLineKey, sameLibraryCartLine, type LibraryCartLine } from "@/lib/library/cart-client";
-import { enabledLibraryFormats, libraryFacets, type LibraryProduct } from "@/lib/library/catalog";
+import { enabledLibraryFormats, libraryFacets, libraryFormatsLabel, libraryPriceLabel, type LibraryProduct } from "@/lib/library/catalog";
 import { cn } from "@/lib/utils";
 
 export function LibraryStorefront({ products }: { products: LibraryProduct[] }) {
@@ -123,7 +123,7 @@ export function LibraryStorefront({ products }: { products: LibraryProduct[] }) 
                   </Link>
                   <p className="mt-2 text-sm leading-6 text-slate-600">{featured.shortDescription}</p>
                   <div className="mt-5 flex items-center justify-between gap-3">
-                    <p className="text-2xl font-black text-[#0d2630]">USD {featured.price.toFixed(2)}</p>
+                    <p className="text-2xl font-black text-[#0d2630]">{libraryPriceLabel(featured)}</p>
                     <Button onClick={() => addToCart(featured)}>
                       <ShoppingCart className="size-4" /> {quantityFor(featured.id) ? `In bag (${quantityFor(featured.id)})` : "Add"}
                     </Button>
@@ -290,7 +290,7 @@ function ProductCard({ product, quantity, onAdd, compact = false }: { product: L
         <BookCover product={product} className={cn("mx-auto w-full", compact ? "max-w-[11.25rem]" : "max-w-[12.75rem]")} />
       </div>
       <div className="mt-4 flex min-w-0 flex-col">
-        <p className="text-xs font-black uppercase tracking-wide text-[#007f68] dark:text-emerald-300">{product.productType.replace(/_/g, " ")}</p>
+        <p className="text-xs font-black uppercase tracking-wide text-[#007f68] dark:text-emerald-300">{libraryFormatsLabel(product)}</p>
         <Link href={`/library/${product.slug}`} className="mt-1 line-clamp-2 text-base font-black leading-snug text-[#0d2630] hover:text-[#007f68] dark:text-white">
           {product.title}
         </Link>
@@ -301,7 +301,7 @@ function ProductCard({ product, quantity, onAdd, compact = false }: { product: L
             <Star className="size-4 fill-current" />
             <span className="font-bold text-slate-700 dark:text-slate-200">{product.rating || "New"}</span>
           </span>
-          <p className="text-base font-black text-[#0d2630] dark:text-white">USD {product.price.toFixed(2)}</p>
+          <p className="text-base font-black text-[#0d2630] dark:text-white">{libraryPriceLabel(product)}</p>
         </div>
         <div className="mt-4 grid grid-cols-[1fr_auto] gap-2">
           <Button onClick={() => onAdd(product)} disabled={product.comingSoon && !product.preorder}>

@@ -139,6 +139,25 @@ export function primaryLibraryFormat(formats: LibraryProductFormat[], fallbackTy
   return enabled.find((format) => format.type !== "PRINTED_BOOK") ?? enabled[0];
 }
 
+export function libraryPriceLabel(product: Pick<LibraryProduct, "formats" | "productType" | "price" | "compareAtPrice" | "sku" | "currency">) {
+  const formats = enabledLibraryFormats(product);
+  const currency = product.currency || "USD";
+  if (formats.length > 1) {
+    const prices = formats.map((format) => format.price);
+    const min = Math.min(...prices);
+    const max = Math.max(...prices);
+    if (min === max) return `${currency} ${min.toFixed(2)}`;
+    return `From ${currency} ${min.toFixed(2)}`;
+  }
+  return `${currency} ${(formats[0]?.price ?? product.price).toFixed(2)}`;
+}
+
+export function libraryFormatsLabel(product: Pick<LibraryProduct, "formats" | "productType" | "price" | "compareAtPrice" | "sku">) {
+  const formats = enabledLibraryFormats(product);
+  if (formats.length > 1) return formats.map((format) => (format.type === "PRINTED_BOOK" ? "Print" : "Digital")).join(" + ");
+  return (formats[0]?.label || product.productType).replace(/_/g, " ");
+}
+
 function isPrintedType(type: string) {
   return type === "PRINTED_BOOK";
 }
