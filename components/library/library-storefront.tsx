@@ -88,12 +88,7 @@ export function LibraryStorefront({
   const subcopy = merchandising.heroSubcopy?.trim() || DESIGN_HERO_SUBCOPY;
   const useDesignedHeadline = normalizeHeroCopy(headline) === normalizeHeroCopy(DESIGN_HERO_HEADLINE);
   const ctaLabel = merchandising.ctaLabel?.trim() || "Browse the catalogue";
-  const configuredCtaHref = merchandising.ctaHref?.trim() || DEFAULT_CATALOGUE_HREF;
-  const featuredProductHref = featuredHeroProduct ? `/library/${featuredHeroProduct.slug}` : null;
-  const ctaHref =
-    !configuredCtaHref || configuredCtaHref === DEFAULT_CATALOGUE_HREF
-      ? featuredProductHref || DEFAULT_CATALOGUE_HREF
-      : configuredCtaHref;
+  const ctaHref = merchandising.ctaHref?.trim() || DEFAULT_CATALOGUE_HREF;
 
   function addFormatToCart(product: LibraryProduct, format: LibraryProductFormat) {
     setCart((current) => {

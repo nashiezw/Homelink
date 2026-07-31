@@ -1439,9 +1439,14 @@ export function LibraryAdminHub() {
                         <span className="flex items-center gap-2 font-semibold"><Upload className="size-4" /> Upload cover/gallery</span>
                         <input type="file" accept="image/*" className="mt-2 block w-full text-xs" onChange={(event) => void uploadAsset(event.target.files, "cover")} />
                       </label>
-                      <label className="rounded-lg border border-dashed border-white/10 p-3 text-sm text-slate-300">
-                        <span className="flex items-center gap-2 font-semibold"><Upload className="size-4" /> Upload full download</span>
-                        <p className="mt-1 text-xs text-slate-500">Buyer file after purchase (PDF, DOCX, ZIP, etc.)</p>
+                      <label className={`rounded-lg border border-dashed p-3 text-sm text-slate-300 ${draft.formats.some((format) => format.enabled && format.type !== "PRINTED_BOOK") && !draft.downloads.some((file) => Boolean((file as LibraryDraftDownload).fileUrl)) ? "border-amber-400/50 bg-amber-500/5" : "border-white/10"}`}>
+                        <span className="flex items-center gap-2 font-semibold">
+                          <Upload className="size-4" /> Upload full download
+                          {draft.formats.some((format) => format.enabled && format.type !== "PRINTED_BOOK") ? <span className="text-emerald-300">*</span> : null}
+                        </span>
+                        <p className="mt-1 text-xs text-slate-500">
+                          Required to publish digital formats. Buyer file after purchase (PDF, DOCX, ZIP, etc.).
+                        </p>
                         <input type="file" accept=".pdf,.docx,.xlsx,.pptx,.zip" className="mt-2 block w-full text-xs" onChange={(event) => void uploadAsset(event.target.files, "download")} />
                       </label>
                       <label className="rounded-lg border border-dashed border-emerald-500/30 bg-emerald-500/5 p-3 text-sm text-slate-300 sm:col-span-2">
@@ -1578,33 +1583,43 @@ export function LibraryAdminHub() {
                 </aside>
               </div>
             </div>
-            <div className="flex flex-wrap justify-end gap-2 border-t border-white/10 p-5">
-              <button type="button" onClick={closeEditor} className="rounded-lg border border-white/10 px-4 py-2 text-sm text-slate-300">Cancel</button>
-              <Button
-                variant="secondary"
-                disabled={saving || !draft.title.trim() || !draft.description.trim() || !draft.formats.some((format) => format.enabled)}
-                onClick={() => void saveProduct(draft.status === "SCHEDULED" || draft.status === "ARCHIVED" ? draft.status : "DRAFT")}
-              >
-                {saving
-                  ? "Saving..."
-                  : draft.status === "SCHEDULED"
-                    ? "Save scheduled"
-                    : draft.status === "ARCHIVED"
-                      ? "Save archived"
-                      : "Save draft"}
-              </Button>
-              <Button
-                disabled={
-                  saving
-                  || !draft.title.trim()
-                  || !draft.description.trim()
-                  || !draft.formats.some((format) => format.enabled)
-                  || (draft.formats.some((format) => format.enabled && format.type !== "PRINTED_BOOK") && !draft.downloads.some((file) => Boolean((file as LibraryDraftDownload).fileUrl)))
-                }
-                onClick={() => void saveProduct("PUBLISHED")}
-              >
-                {saving ? "Publishing..." : "Publish"}
-              </Button>
+            <div className="flex flex-col gap-3 border-t border-white/10 p-5 sm:flex-row sm:items-end sm:justify-between">
+              {(() => {
+                const blockers = libraryPublishBlockers(draft);
+                if (!blockers.length) return null;
+                return (
+                  <div className="min-w-0 flex-1 rounded-lg border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
+                    <p className="font-bold text-amber-200">Publish needs:</p>
+                    <ul className="mt-1 list-disc space-y-0.5 pl-4">
+                      {blockers.map((item) => (
+                        <li key={item}>{item}</li>
+                      ))}
+                    </ul>
+                  </div>
+                );
+              })()}
+              <div className="flex flex-wrap justify-end gap-2">
+                <button type="button" onClick={closeEditor} className="rounded-lg border border-white/10 px-4 py-2 text-sm text-slate-300">Cancel</button>
+                <Button
+                  variant="secondary"
+                  disabled={saving || !draft.title.trim() || !draft.description.trim() || !draft.formats.some((format) => format.enabled)}
+                  onClick={() => void saveProduct(draft.status === "SCHEDULED" || draft.status === "ARCHIVED" ? draft.status : "DRAFT")}
+                >
+                  {saving
+                    ? "Saving..."
+                    : draft.status === "SCHEDULED"
+                      ? "Save scheduled"
+                      : draft.status === "ARCHIVED"
+                        ? "Save archived"
+                        : "Save draft"}
+                </Button>
+                <Button
+                  disabled={saving || libraryPublishBlockers(draft).length > 0}
+                  onClick={() => void saveProduct("PUBLISHED")}
+                >
+                  {saving ? "Publishing..." : "Publish"}
+                </Button>
+              </div>
             </div>
           </div>
         </div>
@@ -1916,6 +1931,19 @@ function productPayload(draft: LibraryProductDraft, statusOverride?: string) {
         : []),
     ],
   };
+}
+
+function libraryPublishBlockers(draft: LibraryProductDraft) {
+  const blockers: string[] = [];
+  if (!draft.title.trim()) blockers.push("Add a product title.");
+  if (!draft.description.trim()) blockers.push("Add a full description (short description alone is not enough).");
+  if (!draft.formats.some((format) => format.enabled)) blockers.push("Enable at least one format (Digital PDF and/or Printed book).");
+  const hasDigital = draft.formats.some((format) => format.enabled && format.type !== "PRINTED_BOOK");
+  const hasDownload = draft.downloads.some((file) => Boolean(file.fileUrl));
+  if (hasDigital && !hasDownload) {
+    blockers.push('Upload a full download file under "Files and media" (required for digital formats).');
+  }
+  return blockers;
 }
 
 function splitSampleFromDownloads(downloads: LibraryProduct["downloads"]): {
