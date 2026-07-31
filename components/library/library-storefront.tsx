@@ -180,12 +180,11 @@ export function LibraryStorefront({
                     <span style={{ color: HL_GREEN }}>Property</span> Professionals Need
                     <span style={{ color: HL_GREEN }}>.</span>
                   </span>
-                  <span className="hidden lg:block">
-                    <span style={{ color: HL_GREEN }}>Property Professionals</span>
+                  <span className="hidden lg:block" style={{ color: HL_GREEN }}>
+                    Property Professionals
                   </span>
                   <span className="hidden lg:block">
-                    Need
-                    <span style={{ color: HL_GREEN }}>.</span>
+                    Need<span style={{ color: HL_GREEN }}>.</span>
                   </span>
                 </h1>
               ) : (
@@ -253,8 +252,8 @@ export function LibraryStorefront({
             </div>
           </div>
 
-          <div className="relative z-10 mt-6 w-full pb-6 motion-safe:animate-library-trust-rise sm:mt-7 sm:pb-8 lg:mt-10 lg:pb-12">
-            <div className="grid grid-cols-1 gap-3 rounded-2xl border border-[#eef1f3] bg-white px-4 py-3.5 shadow-[0_10px_30px_rgba(15,23,42,0.06)] min-[480px]:grid-cols-3 min-[480px]:gap-0 min-[480px]:divide-x min-[480px]:divide-[#e8ecef] sm:rounded-[1.25rem] sm:px-3 sm:py-4 lg:px-5 lg:py-5">
+          <div className="relative z-10 mx-auto mt-6 max-w-4xl pb-6 motion-safe:animate-library-trust-rise sm:mt-7 sm:pb-8 lg:mt-10 lg:max-w-5xl lg:pb-12">
+            <div className="grid grid-cols-1 gap-3 rounded-2xl border border-[#eef1f3] bg-white px-4 py-3.5 shadow-[0_10px_30px_rgba(15,23,42,0.06)] min-[480px]:grid-cols-3 min-[480px]:gap-0 min-[480px]:divide-x min-[480px]:divide-[#e8ecef] min-[480px]:px-1 sm:rounded-[1.25rem] sm:px-2 sm:py-4 lg:px-6 lg:py-5">
               <TrustItem
                 icon={<ShieldCheck className="size-5 shrink-0 sm:size-6" style={{ color: HL_GREEN }} strokeWidth={2.1} />}
                 title="Secure checkout"
@@ -774,7 +773,7 @@ function pickFeaturedLibraryProduct(products: LibraryProduct[]) {
 
 function TrustItem({ icon, title, subtitle }: { icon: ReactNode; title: string; subtitle: string }) {
   return (
-    <div className="flex items-center justify-start gap-3 px-1 sm:gap-3 sm:px-4">
+    <div className="flex items-center gap-3 px-1 min-[480px]:justify-center min-[480px]:px-3 sm:gap-3 sm:px-4 lg:justify-start">
       {icon}
       <div className="min-w-0 text-left">
         <p className="text-sm font-bold leading-tight" style={{ color: HL_NAVY }}>
