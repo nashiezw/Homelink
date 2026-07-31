@@ -1,7 +1,8 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, Award, BookOpen, BookmarkCheck, ChevronDown, Filter, Minus, Plus, Search, ShieldCheck, ShoppingBag, ShoppingCart, Star, Trash2, X } from "lucide-react";
+import { ArrowRight, Award, BookOpen, BookmarkCheck, ChevronDown, Filter, Minus, Plus, Search, ShieldCheck, ShoppingBag, ShoppingCart, Star, Trash2, Truck, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { HL_GREEN, HL_NAVY } from "@/components/brand/houselink-icon";
 import { BookCover } from "@/components/library/book-cover";
@@ -33,7 +34,7 @@ type Store = LibraryStoreSettings["store"];
 export function LibraryStorefront({
   products,
   merchandising,
-  store,
+  store: _store,
 }: {
   products: LibraryProduct[];
   merchandising: Merchandising;
@@ -66,7 +67,6 @@ export function LibraryStorefront({
   const { cart, setCart, total, currency, count } = useLibraryCart();
   const quantityFor = (productId: string) => cart.filter((line) => line.productId === productId).reduce((sum, line) => sum + line.quantity, 0);
 
-  const featured = products.find((product) => product.editorsChoice) ?? products.find((product) => product.featured) ?? products[0];
   const curated = useMemo(() => {
     if (!merchandising.showCuratedRail) return [];
     return products.filter((product) => product.editorsChoice || product.featured).slice(0, merchandising.maxCuratedItems);
@@ -78,11 +78,8 @@ export function LibraryStorefront({
   );
 
   const hidePrices = merchandising.hidePricesUntilLogin && !user;
-  const headline = merchandising.heroHeadline?.trim() || "Professional property books for every day.";
-  const subcopy = merchandising.heroSubcopy?.trim() || "Manuals, legal packs, and tools for smarter property work in Zimbabwe.";
   const ctaLabel = merchandising.ctaLabel?.trim() || "Browse the catalogue";
   const ctaHref = merchandising.ctaHref?.trim() || "#library-products";
-  const storeName = store.name?.trim() || "HouseLink Library";
 
   function addFormatToCart(product: LibraryProduct, format: LibraryProductFormat) {
     setCart((current) => {
@@ -137,75 +134,112 @@ export function LibraryStorefront({
         />
       )}
 
-      <section className="mx-auto max-w-[90rem] px-3 pt-4 sm:px-6 sm:pt-8 lg:px-8 xl:px-10">
+      <section className="relative overflow-hidden bg-[#f7f8f9]">
         <div
-          className="relative overflow-hidden rounded-2xl sm:rounded-[1.75rem] dark:bg-[linear-gradient(135deg,#132743_0%,#0f172a_100%)]"
-          style={{ backgroundImage: `linear-gradient(135deg, #e8f4ef 0%, #f4f8f7 42%, #e7eef5 100%)` }}
-        >
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-0 opacity-50 motion-safe:animate-library-drift"
-            style={{
-              backgroundImage: `radial-gradient(circle at 18% 20%, rgba(34,165,75,0.14), transparent 36%), radial-gradient(circle at 82% 70%, rgba(26,53,96,0.12), transparent 40%)`,
-            }}
-          />
-          <div className="relative grid items-center gap-8 px-4 py-8 sm:gap-10 sm:px-10 sm:py-12 lg:grid-cols-[minmax(0,1.05fr)_minmax(18rem,26rem)] lg:gap-8 lg:py-16 xl:gap-6 xl:px-14">
-            <div className="max-w-xl motion-safe:animate-fade-up">
-              <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#22a54b]/90 sm:text-xs">
-                {storeName}
-              </p>
-              <h1 className="mt-2 text-[2rem] font-bold leading-[1.08] tracking-tight text-[#1a3560] dark:text-white sm:mt-3 sm:text-5xl sm:leading-[1.05] lg:text-[3.4rem]">
-                {headline}
+          aria-hidden
+          className="pointer-events-none absolute -right-8 top-0 h-40 w-40 rounded-full bg-[#22a54b]/15 blur-3xl sm:h-56 sm:w-56 lg:right-[8%] lg:top-4 lg:h-72 lg:w-72 lg:bg-[#22a54b]/20"
+        />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-[38%] bg-[linear-gradient(180deg,transparent_0%,rgba(232,220,198,0.35)_45%,rgba(214,196,168,0.55)_100%)] lg:h-[42%]"
+        />
+
+        <div className="relative mx-auto max-w-[90rem] px-4 pt-6 sm:px-6 sm:pt-8 lg:px-10 lg:pt-12 xl:px-14">
+          {/* Image 1 (phones): split + stacked CTAs · Image 2 (lg+): split + row CTAs */}
+          <div className="grid grid-cols-[minmax(0,1.15fr)_minmax(8.5rem,0.95fr)] items-center gap-3 sm:grid-cols-[minmax(0,1.1fr)_minmax(14rem,0.95fr)] sm:gap-6 md:gap-8 lg:grid-cols-[minmax(0,1.05fr)_minmax(20rem,1fr)] lg:gap-10 xl:gap-14">
+            <div className="relative z-10 min-w-0 max-w-xl motion-safe:animate-fade-up">
+              <span
+                className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-[#b7e0c4] bg-[#e8f7ee] px-2.5 py-1 text-[9px] font-bold uppercase tracking-[0.12em] sm:px-3 sm:text-[11px] sm:tracking-[0.14em]"
+                style={{ color: HL_GREEN }}
+              >
+                <BookOpen className="size-3 shrink-0 sm:size-3.5" strokeWidth={2.25} />
+                <span className="truncate">Resources that build success</span>
+              </span>
+
+              <h1
+                className="mt-3 text-[1.45rem] font-bold leading-[1.08] tracking-tight sm:mt-4 sm:text-[2.5rem] sm:leading-[1.04] md:text-5xl lg:mt-5 lg:text-[3.35rem] xl:text-[3.6rem]"
+                style={{ color: HL_NAVY }}
+              >
+                <span className="block">Everything</span>
+                {/* Image 1: only “Property” is green */}
+                <span className="block lg:hidden">
+                  <span style={{ color: HL_GREEN }}>Property</span> Professionals Need.
+                </span>
+                {/* Image 2: “Property Professionals” is green */}
+                <span className="hidden lg:block">
+                  <span style={{ color: HL_GREEN }}>Property Professionals</span>
+                </span>
+                <span className="hidden lg:block">Need.</span>
               </h1>
-              <p className="mt-3 max-w-md text-sm leading-6 text-slate-600 dark:text-white/70 sm:mt-4 sm:text-base sm:leading-7">{subcopy}</p>
-              <div className="mt-6 flex flex-col gap-2.5 sm:mt-8 sm:flex-row sm:items-center sm:gap-3">
+
+              <p className="mt-2.5 max-w-md text-[12px] leading-5 text-slate-600 sm:mt-4 sm:text-[15px] sm:leading-7 md:text-base">
+                Books, manuals, contracts, forms and toolkits built for Zimbabwe&apos;s property industry.
+              </p>
+
+              <div className="mt-4 flex flex-col gap-2 sm:mt-6 sm:gap-3 lg:mt-8 lg:flex-row lg:items-center">
                 <a
                   href={ctaHref}
-                  className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-full px-6 text-sm font-semibold text-white shadow-md transition hover:brightness-110 sm:w-auto"
+                  className="inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-xl px-3 text-[12px] font-semibold text-white shadow-[0_8px_20px_rgba(34,165,75,0.28)] transition hover:brightness-110 sm:h-12 sm:gap-2 sm:rounded-2xl sm:px-5 sm:text-sm lg:h-[3.25rem] lg:w-auto lg:px-6"
                   style={{ backgroundColor: HL_GREEN }}
                 >
-                  {ctaLabel} <ArrowRight className="size-4" />
+                  <BookOpen className="size-3.5 shrink-0 sm:size-4" strokeWidth={2.25} />
+                  <span className="truncate">{ctaLabel}</span>
+                  <ArrowRight className="size-3.5 shrink-0 sm:size-4" />
                 </a>
                 <Link
                   href="/dashboard/my-library"
-                  className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-full border border-[#c5ddd0] bg-white px-5 text-sm font-semibold text-[#1a3560] transition hover:border-[#22a54b] hover:text-[#22a54b] sm:w-auto dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                  className="inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-xl border border-[#e5e7eb] bg-white px-3 text-[12px] font-semibold shadow-[0_4px_14px_rgba(15,23,42,0.06)] transition hover:border-[#22a54b]/50 sm:h-12 sm:gap-2 sm:rounded-2xl sm:px-5 sm:text-sm lg:h-[3.25rem] lg:w-auto lg:px-6"
+                  style={{ color: HL_NAVY }}
                 >
-                  My Library <BookmarkCheck className="size-4" style={{ color: HL_GREEN }} />
+                  <BookmarkCheck className="size-3.5 shrink-0 sm:size-4" style={{ color: HL_GREEN }} />
+                  My Library
                 </Link>
-              </div>
-              <div className="mt-6 flex flex-wrap gap-x-4 gap-y-2 text-xs font-semibold text-[#1a3560] sm:mt-8 sm:gap-x-6 sm:text-sm dark:text-white/85">
-                <span className="inline-flex items-center gap-1.5">
-                  <ShieldCheck className="size-3.5 shrink-0 sm:size-4" style={{ color: HL_GREEN }} /> Secure checkout
-                </span>
-                <span className="inline-flex items-center gap-1.5">
-                  <Award className="size-3.5 shrink-0 sm:size-4" style={{ color: HL_GREEN }} /> Curated for operators
-                </span>
-                <span className="inline-flex items-center gap-1.5">
-                  <BookOpen className="size-3.5 shrink-0 sm:size-4" style={{ color: HL_GREEN }} /> Library delivery
-                </span>
               </div>
             </div>
 
-            {featured && (
-              <div className="relative mx-auto w-full max-w-[15.5rem] pb-1 motion-safe:animate-fade-up motion-safe:[animation-delay:120ms] sm:max-w-[20rem] sm:pb-0 lg:max-w-none">
-                <div className="absolute -inset-4 rounded-full bg-white/40 blur-2xl sm:-inset-6 dark:bg-white/5" aria-hidden />
-                <BookCover
-                  product={featured}
-                  variant="shop"
-                  interactive={false}
-                  priority
-                  className="relative mx-auto w-[74%] max-w-[13.75rem] rotate-[-4deg] shadow-[0_20px_48px_rgba(16,32,36,0.16)] sm:w-[78%] sm:max-w-[16.5rem] sm:shadow-[0_24px_60px_rgba(16,32,36,0.18)]"
-                  sizes="(max-width: 640px) 220px, 340px"
-                />
-                <BookCover
-                  product={products[1] ?? featured}
-                  variant="shop"
-                  interactive={false}
-                  className="absolute bottom-1 right-0 w-[44%] max-w-[8.25rem] rotate-[8deg] opacity-95 shadow-[0_14px_32px_rgba(16,32,36,0.14)] sm:bottom-2 sm:right-2 sm:w-[46%] sm:max-w-[10rem] sm:shadow-[0_18px_40px_rgba(16,32,36,0.16)] lg:right-3"
-                  sizes="(max-width: 640px) 140px, 200px"
-                />
+            <div className="relative w-full min-w-0 motion-safe:animate-fade-up motion-safe:[animation-delay:120ms] lg:justify-self-end">
+              <Image
+                src="/images/library/library-hero-books-desktop.png"
+                alt="HouseLink property development and property law guide books"
+                width={553}
+                height={430}
+                priority
+                className="relative z-[1] h-auto w-full object-contain drop-shadow-[0_18px_40px_rgba(16,32,36,0.14)]"
+                sizes="(max-width: 640px) 46vw, (max-width: 1024px) 42vw, 520px"
+              />
+            </div>
+          </div>
+
+          <div className="relative z-10 mx-auto mt-5 max-w-4xl pb-6 sm:mt-7 sm:pb-8 lg:mt-10 lg:max-w-5xl lg:pb-12">
+            <div className="grid grid-cols-3 divide-x divide-[#e8ecef] rounded-2xl border border-[#eef1f3] bg-white px-1 py-3.5 shadow-[0_10px_30px_rgba(15,23,42,0.06)] sm:rounded-[1.25rem] sm:px-2 sm:py-4 lg:px-6 lg:py-5">
+              <div className="flex items-center justify-center gap-1.5 px-1 sm:gap-3 sm:px-4 lg:justify-start">
+                <ShieldCheck className="size-4 shrink-0 sm:size-6" style={{ color: HL_GREEN }} strokeWidth={2.1} />
+                <div className="min-w-0 text-left">
+                  <p className="text-[10px] font-bold leading-tight sm:text-sm" style={{ color: HL_NAVY }}>
+                    Secure checkout
+                  </p>
+                  <p className="mt-0.5 hidden text-xs leading-snug text-slate-500 lg:block">Safe and trusted payments</p>
+                </div>
               </div>
-            )}
+              <div className="flex items-center justify-center gap-1.5 px-1 sm:gap-3 sm:px-4 lg:justify-start">
+                <Award className="size-4 shrink-0 sm:size-6" style={{ color: HL_GREEN }} strokeWidth={2.1} />
+                <div className="min-w-0 text-left">
+                  <p className="text-[10px] font-bold leading-tight sm:text-sm" style={{ color: HL_NAVY }}>
+                    Curated for operators
+                  </p>
+                  <p className="mt-0.5 hidden text-xs leading-snug text-slate-500 lg:block">Built for real estate professionals</p>
+                </div>
+              </div>
+              <div className="flex items-center justify-center gap-1.5 px-1 sm:gap-3 sm:px-4 lg:justify-start">
+                <Truck className="size-4 shrink-0 sm:size-6" style={{ color: HL_GREEN }} strokeWidth={2.1} />
+                <div className="min-w-0 text-left">
+                  <p className="text-[10px] font-bold leading-tight sm:text-sm" style={{ color: HL_NAVY }}>
+                    Library delivery
+                  </p>
+                  <p className="mt-0.5 hidden text-xs leading-snug text-slate-500 lg:block">Instant digital delivery</p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
