@@ -153,7 +153,7 @@ export function LibraryStorefront({
           className="pointer-events-none absolute inset-x-0 bottom-0 h-[42%] bg-[linear-gradient(180deg,transparent_0%,rgba(232,220,198,0.32)_38%,rgba(214,196,168,0.55)_100%)]"
         />
 
-        <div className="relative mx-auto max-w-[90rem] px-3.5 pt-5 sm:px-6 sm:pt-8 lg:px-10 lg:pt-12 xl:px-14">
+        <div className="relative mx-auto max-w-[90rem] px-4 pt-5 sm:px-6 sm:pt-8 lg:px-8 lg:pt-12 xl:px-10">
           {/* Mobile ref: always split — copy left, two books right */}
           <div className="grid grid-cols-[minmax(0,1.2fr)_minmax(8.25rem,0.95fr)] items-center gap-2.5 sm:grid-cols-[minmax(0,1.1fr)_minmax(14rem,0.95fr)] sm:gap-6 md:gap-8 lg:grid-cols-[minmax(0,1.05fr)_minmax(20rem,1fr)] lg:gap-10 xl:gap-14">
             <div className="relative z-10 min-w-0 max-w-xl text-left motion-safe:animate-fade-up">
@@ -271,9 +271,9 @@ export function LibraryStorefront({
             </div>
           </div>
 
-          {/* Mobile ref: always 3-across trust bar */}
-          <div className="relative z-10 mt-4 w-full pb-5 motion-safe:animate-library-trust-rise sm:mt-7 sm:pb-8 lg:mx-auto lg:mt-10 lg:max-w-5xl lg:pb-12">
-            <div className="grid grid-cols-3 divide-x divide-[#e8ecef] rounded-2xl border border-[#eef1f3] bg-white px-1 py-3 shadow-[0_10px_30px_rgba(15,23,42,0.06)] sm:rounded-[1.25rem] sm:px-2 sm:py-4 lg:px-6 lg:py-5">
+          {/* Trust bar: same content width as site nav (max-w-[90rem] + matching padding) */}
+          <div className="relative z-10 mt-4 w-full pb-5 motion-safe:animate-library-trust-rise sm:mt-7 sm:pb-8 lg:mt-10 lg:pb-12">
+            <div className="grid w-full grid-cols-3 divide-x divide-[#e8ecef] rounded-2xl border border-[#eef1f3] bg-white px-1 py-3 shadow-[0_10px_30px_rgba(15,23,42,0.06)] sm:rounded-[1.25rem] sm:px-2 sm:py-4 lg:px-6 lg:py-5">
               <TrustItem
                 icon={<ShieldCheck className="size-4 shrink-0 sm:size-6" style={{ color: HL_GREEN }} strokeWidth={2.1} />}
                 title="Secure checkout"
