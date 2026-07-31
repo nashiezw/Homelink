@@ -151,35 +151,37 @@ export function LibraryStorefront({
       <section className="relative overflow-hidden bg-[#f7f8f9]">
         <div
           aria-hidden
-          className="pointer-events-none absolute -right-8 top-0 h-40 w-40 rounded-full bg-[#22a54b]/15 blur-3xl motion-safe:animate-library-drift sm:h-56 sm:w-56 lg:right-[8%] lg:top-4 lg:h-72 lg:w-72 lg:bg-[#22a54b]/20"
+          className="pointer-events-none absolute -right-6 top-0 h-36 w-36 rounded-full bg-[#22a54b]/20 blur-3xl motion-safe:animate-library-drift sm:-right-8 sm:h-56 sm:w-56 lg:right-[6%] lg:top-2 lg:h-72 lg:w-72"
         />
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-x-0 bottom-0 h-[34%] bg-[linear-gradient(180deg,transparent_0%,rgba(232,220,198,0.28)_40%,rgba(214,196,168,0.48)_100%)] min-[480px]:h-[38%] lg:h-[42%]"
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-[42%] bg-[linear-gradient(180deg,transparent_0%,rgba(232,220,198,0.32)_38%,rgba(214,196,168,0.55)_100%)]"
         />
 
-        <div className="relative mx-auto max-w-[90rem] px-4 pt-6 sm:px-6 sm:pt-8 lg:px-10 lg:pt-12 xl:px-14">
-          {/* Stack below 480px for readability; split from 480px (image 1) / lg desktop (image 2) */}
-          <div className="grid grid-cols-1 items-center gap-5 min-[480px]:grid-cols-[minmax(0,1.15fr)_minmax(10rem,0.95fr)] min-[480px]:gap-4 sm:gap-6 md:gap-8 lg:grid-cols-[minmax(0,1.05fr)_minmax(20rem,1fr)] lg:gap-10 xl:gap-14">
-            <div className="relative z-10 mx-auto w-full max-w-xl min-w-0 text-center min-[480px]:mx-0 min-[480px]:text-left motion-safe:animate-fade-up">
+        <div className="relative mx-auto max-w-[90rem] px-3.5 pt-5 sm:px-6 sm:pt-8 lg:px-10 lg:pt-12 xl:px-14">
+          {/* Mobile ref: always split — copy left, two books right */}
+          <div className="grid grid-cols-[minmax(0,1.2fr)_minmax(8.25rem,0.95fr)] items-center gap-2.5 sm:grid-cols-[minmax(0,1.1fr)_minmax(14rem,0.95fr)] sm:gap-6 md:gap-8 lg:grid-cols-[minmax(0,1.05fr)_minmax(20rem,1fr)] lg:gap-10 xl:gap-14">
+            <div className="relative z-10 min-w-0 max-w-xl text-left motion-safe:animate-fade-up">
               <span
-                className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-[#b7e0c4] bg-[#e8f7ee] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.12em] sm:text-[11px] sm:tracking-[0.14em]"
+                className="inline-flex max-w-full items-center gap-1 rounded-full border border-[#b7e0c4] bg-[#e8f7ee] px-2 py-0.5 text-[8px] font-bold uppercase tracking-[0.11em] sm:gap-1.5 sm:px-3 sm:py-1 sm:text-[11px] sm:tracking-[0.14em]"
                 style={{ color: HL_GREEN }}
               >
-                <BookOpen className="size-3.5 shrink-0" strokeWidth={2.25} />
+                <BookOpen className="size-3 shrink-0 sm:size-3.5" strokeWidth={2.25} />
                 <span className="truncate">Resources that build success</span>
               </span>
 
               {useDesignedHeadline ? (
                 <h1
-                  className="mt-3 text-[2rem] font-bold leading-[1.08] tracking-tight sm:mt-4 sm:text-[2.5rem] sm:leading-[1.04] md:text-5xl lg:mt-5 lg:text-[3.35rem] xl:text-[3.6rem]"
+                  className="mt-2.5 text-[1.35rem] font-bold leading-[1.08] tracking-tight sm:mt-4 sm:text-[2.5rem] sm:leading-[1.04] md:text-5xl lg:mt-5 lg:text-[3.35rem] xl:text-[3.6rem]"
                   style={{ color: HL_NAVY }}
                 >
                   <span className="block">Everything</span>
+                  {/* Mobile: “Property Professionals” green */}
                   <span className="block lg:hidden">
-                    <span style={{ color: HL_GREEN }}>Property</span> Professionals Need
+                    <span style={{ color: HL_GREEN }}>Property Professionals</span> Need
                     <span style={{ color: HL_GREEN }}>.</span>
                   </span>
+                  {/* Desktop: “Property Professionals” green */}
                   <span className="hidden lg:block" style={{ color: HL_GREEN }}>
                     Property Professionals
                   </span>
@@ -189,52 +191,68 @@ export function LibraryStorefront({
                 </h1>
               ) : (
                 <h1
-                  className="mt-3 text-[2rem] font-bold leading-[1.08] tracking-tight sm:mt-4 sm:text-[2.5rem] sm:leading-[1.04] md:text-5xl lg:mt-5 lg:text-[3.35rem] xl:text-[3.6rem]"
+                  className="mt-2.5 text-[1.35rem] font-bold leading-[1.08] tracking-tight sm:mt-4 sm:text-[2.5rem] sm:leading-[1.04] md:text-5xl lg:mt-5 lg:text-[3.35rem] xl:text-[3.6rem]"
                   style={{ color: HL_NAVY }}
                 >
                   {headline}
                 </h1>
               )}
 
-              <p className="mx-auto mt-3 max-w-md text-[15px] leading-6 text-slate-600 min-[480px]:mx-0 sm:mt-4 sm:text-[15px] sm:leading-7 md:text-base">
+              <p className="mt-2 max-w-md text-[11px] leading-[1.45] text-slate-600 sm:mt-4 sm:text-[15px] sm:leading-7 md:text-base">
                 {subcopy}
               </p>
 
-              <div className="mt-5 flex flex-col gap-2.5 sm:mt-6 sm:gap-3 lg:mt-8 lg:flex-row lg:items-center lg:justify-start">
+              {/* Mobile: stacked CTAs · Desktop: side-by-side */}
+              <div className="mt-3.5 flex w-full max-w-[16.5rem] flex-col gap-2 sm:mt-6 sm:max-w-none sm:gap-3 lg:mt-8 lg:max-w-none lg:flex-row lg:items-center">
                 {ctaHref.startsWith("/") ? (
                   <Link
                     href={ctaHref}
-                    className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl px-5 text-sm font-semibold text-white shadow-[0_8px_20px_rgba(34,165,75,0.28)] transition hover:brightness-110 sm:h-[3.25rem] lg:w-auto lg:px-6"
+                    className="inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-full px-3.5 text-[11px] font-semibold text-white shadow-[0_8px_20px_rgba(34,165,75,0.28)] transition hover:brightness-110 sm:h-12 sm:gap-2 sm:rounded-2xl sm:px-5 sm:text-sm lg:h-[3.25rem] lg:w-auto lg:px-6"
                     style={{ backgroundColor: HL_GREEN }}
                   >
-                    <BookOpen className="size-4 shrink-0" strokeWidth={2.25} />
+                    <BookOpen className="size-3.5 shrink-0 sm:size-4" strokeWidth={2.25} />
                     <span className="truncate">{ctaLabel}</span>
-                    <ArrowRight className="size-4 shrink-0" />
+                    <ArrowRight className="size-3.5 shrink-0 sm:size-4" />
                   </Link>
                 ) : (
                   <a
                     href={ctaHref}
-                    className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl px-5 text-sm font-semibold text-white shadow-[0_8px_20px_rgba(34,165,75,0.28)] transition hover:brightness-110 sm:h-[3.25rem] lg:w-auto lg:px-6"
+                    className="inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-full px-3.5 text-[11px] font-semibold text-white shadow-[0_8px_20px_rgba(34,165,75,0.28)] transition hover:brightness-110 sm:h-12 sm:gap-2 sm:rounded-2xl sm:px-5 sm:text-sm lg:h-[3.25rem] lg:w-auto lg:px-6"
                     style={{ backgroundColor: HL_GREEN }}
                   >
-                    <BookOpen className="size-4 shrink-0" strokeWidth={2.25} />
+                    <BookOpen className="size-3.5 shrink-0 sm:size-4" strokeWidth={2.25} />
                     <span className="truncate">{ctaLabel}</span>
-                    <ArrowRight className="size-4 shrink-0" />
+                    <ArrowRight className="size-3.5 shrink-0 sm:size-4" />
                   </a>
                 )}
                 <Link
                   href="/dashboard/my-library"
-                  className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl border border-[#e5e7eb] bg-white px-5 text-sm font-semibold shadow-[0_4px_14px_rgba(15,23,42,0.06)] transition hover:border-[#22a54b]/50 sm:h-[3.25rem] lg:w-auto lg:px-6"
+                  className="inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-full border border-[#e8ecef] bg-white px-3.5 text-[11px] font-semibold shadow-[0_4px_14px_rgba(15,23,42,0.06)] transition hover:border-[#22a54b]/50 sm:h-12 sm:gap-2 sm:rounded-2xl sm:px-5 sm:text-sm lg:h-[3.25rem] lg:w-auto lg:px-6"
                   style={{ color: HL_NAVY }}
                 >
-                  <BookmarkCheck className="size-4 shrink-0" style={{ color: HL_GREEN }} />
+                  <BookmarkCheck className="size-3.5 shrink-0 sm:size-4" style={{ color: HL_GREEN }} />
                   My Library
                 </Link>
               </div>
             </div>
 
-            <div className="relative mx-auto w-full max-w-[14.5rem] min-w-0 motion-safe:animate-fade-up motion-safe:[animation-delay:120ms] min-[480px]:max-w-[16rem] sm:max-w-[18rem] md:max-w-[20rem] lg:max-w-[22rem] lg:justify-self-end xl:max-w-[24rem]">
+            <div className="relative w-full min-w-0 self-end motion-safe:animate-fade-up motion-safe:[animation-delay:120ms] lg:self-center lg:justify-self-end">
               <div className="motion-safe:animate-library-book-float">
+                {/* Mobile ref: two-book stack */}
+                <Image
+                  src="/images/library/library-hero-books-mobile.png"
+                  alt={
+                    featuredHeroProduct
+                      ? `${featuredHeroProduct.title} — HouseLink Library`
+                      : "The Complete Guide to Property Development and Property Law in Zimbabwe"
+                  }
+                  width={448}
+                  height={486}
+                  priority
+                  className="relative z-[1] mx-auto h-auto w-full object-contain object-bottom drop-shadow-[0_16px_36px_rgba(16,32,36,0.16)] lg:hidden"
+                  sizes="(max-width: 1023px) 46vw, 1px"
+                />
+                {/* Desktop: provided book PNG */}
                 <Image
                   src="/images/library/library-hero-books.png"
                   alt={
@@ -245,27 +263,28 @@ export function LibraryStorefront({
                   width={731}
                   height={1024}
                   priority
-                  className="relative z-[1] mx-auto h-auto w-full object-contain drop-shadow-[0_22px_48px_rgba(16,32,36,0.18)]"
-                  sizes="(max-width: 479px) 58vw, (max-width: 1024px) 34vw, 380px"
+                  className="relative z-[1] mx-auto hidden h-auto w-full max-w-[24rem] object-contain drop-shadow-[0_22px_48px_rgba(16,32,36,0.18)] lg:block xl:max-w-[26rem]"
+                  sizes="(min-width: 1024px) 380px, 1px"
                 />
               </div>
             </div>
           </div>
 
-          <div className="relative z-10 mx-auto mt-6 max-w-4xl pb-6 motion-safe:animate-library-trust-rise sm:mt-7 sm:pb-8 lg:mt-10 lg:max-w-5xl lg:pb-12">
-            <div className="grid grid-cols-1 gap-3 rounded-2xl border border-[#eef1f3] bg-white px-4 py-3.5 shadow-[0_10px_30px_rgba(15,23,42,0.06)] min-[480px]:grid-cols-3 min-[480px]:gap-0 min-[480px]:divide-x min-[480px]:divide-[#e8ecef] min-[480px]:px-1 sm:rounded-[1.25rem] sm:px-2 sm:py-4 lg:px-6 lg:py-5">
+          {/* Mobile ref: always 3-across trust bar */}
+          <div className="relative z-10 mt-4 w-full pb-5 motion-safe:animate-library-trust-rise sm:mt-7 sm:pb-8 lg:mx-auto lg:mt-10 lg:max-w-5xl lg:pb-12">
+            <div className="grid grid-cols-3 divide-x divide-[#e8ecef] rounded-2xl border border-[#eef1f3] bg-white px-1 py-3 shadow-[0_10px_30px_rgba(15,23,42,0.06)] sm:rounded-[1.25rem] sm:px-2 sm:py-4 lg:px-6 lg:py-5">
               <TrustItem
-                icon={<ShieldCheck className="size-5 shrink-0 sm:size-6" style={{ color: HL_GREEN }} strokeWidth={2.1} />}
+                icon={<ShieldCheck className="size-4 shrink-0 sm:size-6" style={{ color: HL_GREEN }} strokeWidth={2.1} />}
                 title="Secure checkout"
                 subtitle="Safe and trusted payments"
               />
               <TrustItem
-                icon={<Award className="size-5 shrink-0 sm:size-6" style={{ color: HL_GREEN }} strokeWidth={2.1} />}
+                icon={<Award className="size-4 shrink-0 sm:size-6" style={{ color: HL_GREEN }} strokeWidth={2.1} />}
                 title="Curated for operators"
                 subtitle="Built for real estate professionals"
               />
               <TrustItem
-                icon={<Truck className="size-5 shrink-0 sm:size-6" style={{ color: HL_GREEN }} strokeWidth={2.1} />}
+                icon={<Truck className="size-4 shrink-0 sm:size-6" style={{ color: HL_GREEN }} strokeWidth={2.1} />}
                 title="Library delivery"
                 subtitle="Instant digital delivery"
               />
@@ -773,10 +792,10 @@ function pickFeaturedLibraryProduct(products: LibraryProduct[]) {
 
 function TrustItem({ icon, title, subtitle }: { icon: ReactNode; title: string; subtitle: string }) {
   return (
-    <div className="flex items-center gap-3 px-1 min-[480px]:justify-center min-[480px]:px-3 sm:gap-3 sm:px-4 lg:justify-start">
+    <div className="flex items-center justify-center gap-1 px-1 sm:gap-3 sm:px-4 lg:justify-start">
       {icon}
       <div className="min-w-0 text-left">
-        <p className="text-sm font-bold leading-tight" style={{ color: HL_NAVY }}>
+        <p className="text-[9px] font-bold leading-tight sm:text-sm" style={{ color: HL_NAVY }}>
           {title}
         </p>
         <p className="mt-0.5 hidden text-xs leading-snug text-slate-500 lg:block">{subtitle}</p>
