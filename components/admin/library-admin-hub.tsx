@@ -1,9 +1,9 @@
 "use client";
 
-import { Boxes, Copy, Download, Edit3, ExternalLink, FileArchive, FileText, Link2, Plus, Search, Trash2, Upload, X } from "lucide-react";
+import { Boxes, ChevronDown, Copy, Download, Edit3, ExternalLink, FileArchive, FileText, Link2, Plus, Search, Trash2, Upload, X } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState, type MouseEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 import {
   AdminDataTable,
   AdminMetricGrid,
@@ -443,6 +443,18 @@ export function LibraryAdminHub() {
         difficulties: Array.from(new Set(productsSource.map((p) => p.difficulty))).sort(),
       }
     : libraryFacets();
+  const taxonomyOptions = useMemo(() => {
+    const byKind = (kind: LibraryGroupField) => {
+      const fromTaxonomy = operations.taxonomy.filter((row) => row.kind === kind && row.active).map((row) => row.name);
+      const fromProducts = productsSource.map((product) => product[kind]).filter(Boolean);
+      return Array.from(new Set([...fromTaxonomy, ...fromProducts])).sort((a, b) => a.localeCompare(b));
+    };
+    return {
+      categories: byKind("category"),
+      collections: byKind("collection"),
+      authors: byKind("author"),
+    };
+  }, [operations.taxonomy, productsSource]);
 
   useEffect(() => {
     const requested = searchParams?.get("libraryView");
@@ -1384,10 +1396,10 @@ export function LibraryAdminHub() {
                       <Field label="Subtitle" value={draft.subtitle} onChange={(value) => setDraft({ ...draft, subtitle: value })} className="md:col-span-2" />
                       <Field label="Slug" value={draft.slug} onChange={(value) => setDraft({ ...draft, slug: value })} placeholder="Auto-generated from title if empty" />
                       <Field label="SKU" value={draft.sku} onChange={(value) => setDraft({ ...draft, sku: value })} placeholder="Auto-generated if empty" />
-                      <Field label="Author" value={draft.author} onChange={(value) => setDraft({ ...draft, author: value })} />
+                      <CreatableSelectField label="Author" value={draft.author} onChange={(value) => setDraft({ ...draft, author: value })} options={taxonomyOptions.authors} placeholder="Select or create an author" />
                       <Field label="Publisher" value={draft.publisher} onChange={(value) => setDraft({ ...draft, publisher: value })} />
-                      <Field label="Category" value={draft.category} onChange={(value) => setDraft({ ...draft, category: value })} />
-                      <Field label="Collection" value={draft.collection} onChange={(value) => setDraft({ ...draft, collection: value })} />
+                      <CreatableSelectField label="Category" value={draft.category} onChange={(value) => setDraft({ ...draft, category: value })} options={taxonomyOptions.categories} placeholder="Select or create a category" />
+                      <CreatableSelectField label="Collection" value={draft.collection} onChange={(value) => setDraft({ ...draft, collection: value })} options={taxonomyOptions.collections} placeholder="Select or create a collection" />
                     </div>
                   </EditorSection>
 
@@ -1777,13 +1789,23 @@ export function LibraryAdminHub() {
           saveLabel="Apply"
           disabled={bulkDraft.mode === "price" ? !Number.isFinite(Number(bulkDraft.value)) : !bulkDraft.value.trim()}
         >
-          <Field
-            label={bulkDraft.mode === "price" ? "New price (USD)" : "Category name"}
-            value={bulkDraft.value}
-            onChange={(value) => setBulkDraft({ ...bulkDraft, value })}
-            type={bulkDraft.mode === "price" ? "number" : "text"}
-            required
-          />
+          {bulkDraft.mode === "price" ? (
+            <Field
+              label="New price (USD)"
+              value={bulkDraft.value}
+              onChange={(value) => setBulkDraft({ ...bulkDraft, value })}
+              type="number"
+              required
+            />
+          ) : (
+            <CreatableSelectField
+              label="Category"
+              value={bulkDraft.value}
+              onChange={(value) => setBulkDraft({ ...bulkDraft, value })}
+              options={taxonomyOptions.categories}
+              placeholder="Select or create a category"
+            />
+          )}
         </CommerceModal>
       )}
 
@@ -2093,6 +2115,107 @@ function Field({ label, value, onChange, placeholder, type = "text", required = 
       <span className="font-semibold text-slate-300">{label}{required && <span className="text-emerald-300"> *</span>}</span>
       <input value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} type={type} className="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-white outline-none transition placeholder:text-slate-600 focus:border-emerald-500" />
     </label>
+  );
+}
+
+function CreatableSelectField({
+  label,
+  value,
+  onChange,
+  options,
+  placeholder = "Select existing or type a new value",
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: string[];
+  placeholder?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const normalized = value.trim().toLowerCase();
+  const filtered = options.filter((option) => !normalized || option.toLowerCase().includes(normalized));
+  const exactMatch = options.some((option) => option.toLowerCase() === normalized);
+  const canCreate = Boolean(value.trim()) && !exactMatch;
+
+  useEffect(() => {
+    function onPointerDown(event: PointerEvent) {
+      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+    }
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => document.removeEventListener("pointerdown", onPointerDown);
+  }, []);
+
+  function choose(next: string) {
+    onChange(next);
+    setOpen(false);
+  }
+
+  return (
+    <div ref={rootRef} className="relative grid gap-1.5 text-sm">
+      <span className="font-semibold text-slate-300">{label}</span>
+      <div className="relative">
+        <input
+          value={value}
+          onChange={(event) => {
+            onChange(event.target.value);
+            setOpen(true);
+          }}
+          onFocus={() => setOpen(true)}
+          placeholder={placeholder}
+          className="w-full rounded-lg border border-white/10 bg-slate-950 py-2 pl-3 pr-10 text-white outline-none transition placeholder:text-slate-600 focus:border-emerald-500"
+          autoComplete="off"
+          role="combobox"
+          aria-expanded={open}
+          aria-autocomplete="list"
+        />
+        <button
+          type="button"
+          className="absolute inset-y-0 right-0 flex items-center px-3 text-slate-400 hover:text-white"
+          aria-label={`Show ${label.toLowerCase()} options`}
+          onClick={() => setOpen((current) => !current)}
+        >
+          <ChevronDown className={cn("size-4 transition", open && "rotate-180")} />
+        </button>
+      </div>
+      {open ? (
+        <div className="absolute left-0 right-0 top-[calc(100%+0.25rem)] z-30 max-h-56 overflow-y-auto rounded-lg border border-white/10 bg-slate-950 shadow-2xl">
+          {filtered.length ? (
+            filtered.map((option) => (
+              <button
+                key={option}
+                type="button"
+                className={cn(
+                  "flex w-full items-center justify-between px-3 py-2 text-left text-sm text-slate-200 hover:bg-white/5",
+                  option.toLowerCase() === normalized && "bg-emerald-500/10 text-emerald-200",
+                )}
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => choose(option)}
+              >
+                <span>{option}</span>
+                {option.toLowerCase() === normalized ? <span className="text-[10px] font-semibold uppercase tracking-wide text-emerald-300">Selected</span> : null}
+              </button>
+            ))
+          ) : options.length ? (
+            <p className="px-3 py-2 text-sm text-slate-500">No matching {label.toLowerCase()}.</p>
+          ) : (
+            <p className="px-3 py-2 text-sm text-slate-500">No {label.toLowerCase()}s yet. Type a name to create one.</p>
+          )}
+          {canCreate ? (
+            <button
+              type="button"
+              className="flex w-full items-center gap-2 border-t border-white/10 px-3 py-2 text-left text-sm font-semibold text-emerald-300 hover:bg-emerald-500/10"
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => choose(value.trim())}
+            >
+              <Plus className="size-3.5" />
+              Create &ldquo;{value.trim()}&rdquo;
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+      <p className="text-xs text-slate-500">Pick an existing {label.toLowerCase()} or type a new one.</p>
+    </div>
   );
 }
 
