@@ -115,7 +115,7 @@ export function LibraryStorefront({
       ];
     });
     notifyLibraryCartAdded(product.title);
-    showToast(`${product.title} (${format.label}) added to your bag.`, "success");
+    showToast("Added to your Library Bag.", "success");
   }
 
   function requestAddToCart(product: LibraryProduct) {

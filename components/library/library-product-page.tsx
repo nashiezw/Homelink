@@ -328,7 +328,7 @@ export function LibraryProductPage({
       return [...current, cartLineFromFormat(selectedFormat)];
     });
     notifyLibraryCartAdded(product.title);
-    showToast(`${product.title} (${selectedFormat.label}) added to your Library Bag.`, "success");
+    showToast("Added to your Library Bag.", "success");
   }
 
   function buyNow() {
@@ -375,7 +375,7 @@ export function LibraryProductPage({
       ];
     });
     notifyLibraryCartAdded(target.title);
-    showToast(`${target.title} (${format.label}) added to your Library Bag.`, "success");
+    showToast("Added to your Library Bag.", "success");
   }
 
   function requestAddRelated(target: LibraryProduct) {
