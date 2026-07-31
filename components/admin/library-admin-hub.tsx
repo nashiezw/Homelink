@@ -23,6 +23,7 @@ import {
   enabledLibraryFormats,
   getLibraryAnalytics,
   libraryFacets,
+  libraryFormatCompareAt,
   primaryLibraryFormat,
   searchLibraryProducts,
   type LibraryAnalytics,
@@ -153,6 +154,7 @@ type LibraryReviewAdmin = {
   productTitle: string;
   userName?: string | null;
   userEmail?: string | null;
+  displayName?: string | null;
   rating: number;
   title?: string | null;
   body?: string | null;
@@ -1500,7 +1502,7 @@ export function LibraryAdminHub() {
                                 />
                               )}
                               <Field
-                                label={`${format.label} price`}
+                                label={`${format.label} price (selling)`}
                                 value={String(format.price)}
                                 onChange={(value) => setDraft((current) => ({
                                   ...current,
@@ -1510,14 +1512,26 @@ export function LibraryAdminHub() {
                                 required
                               />
                               <Field
-                                label="Compare-at price"
+                                label="Compare-at / was price (promo)"
                                 value={format.compareAtPrice == null ? "" : String(format.compareAtPrice)}
                                 onChange={(value) => setDraft((current) => ({
                                   ...current,
                                   formats: current.formats.map((item) => item.id === format.id ? { ...item, compareAtPrice: value.trim() ? Number(value) : undefined } : item),
                                 }))}
                                 type="number"
+                                placeholder="e.g. 25 when selling at 15"
                               />
+                              <p className="text-[11px] leading-4 text-slate-500">
+                                Optional Woo-style promo: set a higher “was” price to show a strikethrough publicly. Leave blank for no sale badge.
+                              </p>
+                              {format.compareAtPrice != null
+                                && Number.isFinite(Number(format.compareAtPrice))
+                                && Number(format.compareAtPrice) > 0
+                                && Number(format.compareAtPrice) <= Number(format.price) && (
+                                <p className="text-[11px] text-amber-300">
+                                  Compare-at must be higher than the selling price to display as a promotion.
+                                </p>
+                              )}
                             </div>
                           )}
                         </div>
@@ -2008,10 +2022,15 @@ function priceSummary(product: LibraryProduct) {
     const prices = formats.map((format) => format.price);
     const min = Math.min(...prices);
     const max = Math.max(...prices);
-    if (min === max) return `${product.currency} ${min.toFixed(2)}`;
-    return `${product.currency} ${min.toFixed(2)} – ${max.toFixed(2)}`;
+    const range = min === max ? `${product.currency} ${min.toFixed(2)}` : `${product.currency} ${min.toFixed(2)} – ${max.toFixed(2)}`;
+    const onSale = formats.some((format) => libraryFormatCompareAt(format) != null);
+    return onSale ? `${range} · sale` : range;
   }
-  return `${product.currency} ${(formats[0]?.price ?? product.price).toFixed(2)}`;
+  const format = formats[0];
+  const compareAt = format ? libraryFormatCompareAt(format) : undefined;
+  const price = format?.price ?? product.price;
+  if (compareAt != null) return `${product.currency} ${price.toFixed(2)} (was ${compareAt.toFixed(2)})`;
+  return `${product.currency} ${price.toFixed(2)}`;
 }
 
 function couponPayload(draft: CouponDraft) {
@@ -2099,9 +2118,18 @@ function ProductPreview({ product }: { product: LibraryProduct }) {
         <p className="text-sm leading-6 text-slate-300">{product.shortDescription || product.description}</p>
         <div className="grid gap-2 rounded-xl border border-white/10 bg-slate-900/60 p-4 text-sm text-slate-300">
           <div className="flex justify-between gap-3"><span>Price</span><strong className="text-white">{priceSummary(product)}</strong></div>
-          {enabledLibraryFormats(product).map((format) => (
-            <div key={format.id} className="flex justify-between gap-3"><span>{format.label}</span><strong className="text-white">{product.currency} {format.price.toFixed(2)}</strong></div>
-          ))}
+          {enabledLibraryFormats(product).map((format) => {
+            const compareAt = libraryFormatCompareAt(format);
+            return (
+              <div key={format.id} className="flex justify-between gap-3">
+                <span>{format.label}</span>
+                <strong className="text-right text-white">
+                  {product.currency} {format.price.toFixed(2)}
+                  {compareAt != null ? <span className="ml-2 text-xs font-normal text-slate-400 line-through">{product.currency} {compareAt.toFixed(2)}</span> : null}
+                </strong>
+              </div>
+            );
+          })}
           <div className="flex justify-between gap-3"><span>Author</span><strong className="text-white">{product.author}</strong></div>
           <div className="flex justify-between gap-3"><span>Downloads</span><strong className="text-white">{product.downloads.length}</strong></div>
         </div>
@@ -2469,11 +2497,11 @@ function LibraryTabManagement({
         rows={operations.reviews}
         emptyMessage="No Library reviews yet."
         columns={[
-          { key: "product", header: "Product", render: (row) => <div><p className="font-semibold text-white">{row.productTitle}</p><p className="text-xs text-slate-500">{row.userName ?? row.userEmail ?? "Customer"}</p></div> },
+          { key: "product", header: "Product", render: (row) => <div><p className="font-semibold text-white">{row.productTitle}</p><p className="text-xs text-slate-500">{row.displayName ? `${row.displayName} · ${row.userName ?? row.userEmail ?? "Customer"}` : (row.userName ?? row.userEmail ?? "Customer")}</p></div> },
           { key: "rating", header: "Rating", render: (row) => `${row.rating}/5` },
           { key: "review", header: "Review", render: (row) => <div><p className="font-semibold text-slate-200">{row.title ?? "Untitled"}</p><p className="line-clamp-2 text-xs text-slate-500">{row.body ?? "No written review"}</p></div> },
           { key: "status", header: "Status", render: (row) => <AdminStatusBadge status={row.status} variant={row.status === "APPROVED" ? "success" : row.status === "REJECTED" ? "danger" : "warning"} /> },
-          { key: "actions", header: "Actions", render: (row) => <div className="flex flex-wrap gap-2"><button type="button" onClick={() => onModerateReview(row.id, "APPROVED", { verified: true })} className="rounded-lg border border-white/10 px-3 py-2 text-xs font-bold text-slate-300 hover:bg-white/5">Approve</button><button type="button" onClick={() => onModerateReview(row.id, row.status, { featured: !row.featured })} className="rounded-lg border border-white/10 px-3 py-2 text-xs font-bold text-slate-300 hover:bg-white/5">{row.featured ? "Unfeature" : "Feature"}</button><IconButton icon={Trash2} label="Reject" danger onClick={() => void onModerateReview(row.id, "REJECTED")} /></div> },
+          { key: "actions", header: "Actions", render: (row) => <div className="flex flex-wrap gap-2"><button type="button" onClick={() => onModerateReview(row.id, "APPROVED")} className="rounded-lg border border-white/10 px-3 py-2 text-xs font-bold text-slate-300 hover:bg-white/5">Approve</button><button type="button" onClick={() => onModerateReview(row.id, row.status, { featured: !row.featured })} className="rounded-lg border border-white/10 px-3 py-2 text-xs font-bold text-slate-300 hover:bg-white/5">{row.featured ? "Unfeature" : "Feature"}</button><button type="button" onClick={() => onModerateReview(row.id, row.status, { verified: !row.verified })} className="rounded-lg border border-white/10 px-3 py-2 text-xs font-bold text-slate-300 hover:bg-white/5">{row.verified ? "Unverify" : "Verify"}</button><IconButton icon={Trash2} label="Reject" danger onClick={() => void onModerateReview(row.id, "REJECTED")} /></div> },
         ]}
       />
     );

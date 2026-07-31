@@ -139,17 +139,75 @@ export function primaryLibraryFormat(formats: LibraryProductFormat[], fallbackTy
   return enabled.find((format) => format.type !== "PRINTED_BOOK") ?? enabled[0];
 }
 
-export function libraryPriceLabel(product: Pick<LibraryProduct, "formats" | "productType" | "price" | "compareAtPrice" | "sku" | "currency">) {
+/** Woo-style: compare-at only counts as a promo when it is higher than the selling price. */
+export function libraryFormatCompareAt(format: Pick<LibraryProductFormat, "price" | "compareAtPrice">) {
+  const compareAt = format.compareAtPrice;
+  if (compareAt == null || !Number.isFinite(compareAt) || compareAt <= format.price) return undefined;
+  return compareAt;
+}
+
+export function libraryFormatOnSale(format: Pick<LibraryProductFormat, "price" | "compareAtPrice">) {
+  return libraryFormatCompareAt(format) != null;
+}
+
+export type LibraryPriceDisplay = {
+  currency: string;
+  price: number;
+  compareAtPrice?: number;
+  from: boolean;
+  onSale: boolean;
+  label: string;
+};
+
+export function libraryPriceDisplay(
+  product: Pick<LibraryProduct, "formats" | "productType" | "price" | "compareAtPrice" | "sku" | "currency">,
+): LibraryPriceDisplay {
   const formats = enabledLibraryFormats(product);
   const currency = product.currency || "USD";
-  if (formats.length > 1) {
-    const prices = formats.map((format) => format.price);
-    const min = Math.min(...prices);
-    const max = Math.max(...prices);
-    if (min === max) return `${currency} ${min.toFixed(2)}`;
-    return `From ${currency} ${min.toFixed(2)}`;
+  if (!formats.length) {
+    const price = product.price;
+    const compareAt =
+      product.compareAtPrice != null && Number.isFinite(product.compareAtPrice) && product.compareAtPrice > price
+        ? product.compareAtPrice
+        : undefined;
+    return {
+      currency,
+      price,
+      compareAtPrice: compareAt,
+      from: false,
+      onSale: Boolean(compareAt),
+      label: `${currency} ${price.toFixed(2)}`,
+    };
   }
-  return `${currency} ${(formats[0]?.price ?? product.price).toFixed(2)}`;
+
+  const prices = formats.map((format) => format.price);
+  const min = Math.min(...prices);
+  const max = Math.max(...prices);
+  const from = formats.length > 1 && min !== max;
+  const focus = formats.find((format) => format.price === min) ?? formats[0];
+  const compareAt =
+    libraryFormatCompareAt(focus) ??
+    (product.compareAtPrice != null && Number.isFinite(product.compareAtPrice) && product.compareAtPrice > focus.price
+      ? product.compareAtPrice
+      : undefined);
+
+  return {
+    currency,
+    price: min,
+    compareAtPrice: compareAt,
+    from,
+    onSale: Boolean(compareAt),
+    label: from ? `From ${currency} ${min.toFixed(2)}` : `${currency} ${min.toFixed(2)}`,
+  };
+}
+
+export function libraryPriceLabel(product: Pick<LibraryProduct, "formats" | "productType" | "price" | "compareAtPrice" | "sku" | "currency">) {
+  return libraryPriceDisplay(product).label;
+}
+
+export function libraryDiscountPercent(price: number, compareAtPrice?: number) {
+  if (compareAtPrice == null || compareAtPrice <= price || price < 0) return null;
+  return Math.round(((compareAtPrice - price) / compareAtPrice) * 100);
 }
 
 export function libraryFormatsLabel(product: Pick<LibraryProduct, "formats" | "productType" | "price" | "compareAtPrice" | "sku">) {

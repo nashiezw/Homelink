@@ -28,11 +28,25 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { BookCover } from "@/components/library/book-cover";
 import { LibraryCartFab } from "@/components/library/library-cart-fab";
+import { LibraryFormatPickerDialog } from "@/components/library/library-format-picker-dialog";
+import { LibraryProductCard } from "@/components/library/library-product-card";
 import { Button } from "@/components/ui/button";
 import { useApp } from "@/components/providers/app-provider";
 import { apiFetch } from "@/lib/api/client";
-import { notifyLibraryCartAdded, writeLibraryCart, useLibraryCart } from "@/lib/library/cart-client";
-import { enabledLibraryFormats, type LibraryProduct, type LibraryProductFormat } from "@/lib/library/catalog";
+import {
+  notifyLibraryCartAdded,
+  sameLibraryCartLine,
+  writeLibraryCart,
+  useLibraryCart,
+} from "@/lib/library/cart-client";
+import {
+  enabledLibraryFormats,
+  libraryDiscountPercent,
+  libraryFormatCompareAt,
+  primaryLibraryFormat,
+  type LibraryProduct,
+  type LibraryProductFormat,
+} from "@/lib/library/catalog";
 import { cn } from "@/lib/utils";
 
 export function LibraryProductPage({
@@ -57,17 +71,56 @@ export function LibraryProductPage({
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxZoomed, setLightboxZoomed] = useState(false);
   const [galleryIndex, setGalleryIndex] = useState(0);
-  const { showToast } = useApp();
+  const { showToast, user } = useApp();
   const formats = useMemo(() => enabledLibraryFormats(product), [product]);
   const [selectedFormatId, setSelectedFormatId] = useState(formats[0]?.id ?? "primary");
   const { cart, setCart, count } = useLibraryCart();
+  const [formatPickerProduct, setFormatPickerProduct] = useState<LibraryProduct | null>(null);
   const [wished, setWished] = useState(false);
   const [wishBusy, setWishBusy] = useState(false);
   const [shareNotice, setShareNotice] = useState("");
   const [reviews, setReviews] = useState(initialReviews);
-  const [reviewForm, setReviewForm] = useState({ rating: 5, title: "", body: "" });
+  const [ratingSummary, setRatingSummary] = useState({
+    average: product.rating,
+    count: product.reviewCount,
+  });
+  const [reviewSettings, setReviewSettings] = useState<{
+    enabled: boolean;
+    requirePurchase: boolean;
+    minRating: number;
+    autoApprove: boolean;
+    allowGuestNames: boolean;
+  } | null>(null);
+  const [reviewForm, setReviewForm] = useState({ rating: 5, title: "", body: "", displayName: "" });
   const [reviewBusy, setReviewBusy] = useState(false);
   const [reviewNotice, setReviewNotice] = useState("");
+
+  useEffect(() => {
+    void apiFetch<{
+      reviews?: {
+        enabled?: boolean;
+        requirePurchase?: boolean;
+        minRating?: number;
+        autoApprove?: boolean;
+        allowGuestNames?: boolean;
+      };
+    }>("/api/v1/library/settings").then((result) => {
+      const reviewsCfg = result.data?.reviews;
+      if (!reviewsCfg) return;
+      const minRating = Math.min(5, Math.max(1, Number(reviewsCfg.minRating) || 1));
+      setReviewSettings({
+        enabled: reviewsCfg.enabled !== false,
+        requirePurchase: reviewsCfg.requirePurchase !== false,
+        minRating,
+        autoApprove: Boolean(reviewsCfg.autoApprove),
+        allowGuestNames: Boolean(reviewsCfg.allowGuestNames),
+      });
+      setReviewForm((current) => ({
+        ...current,
+        rating: Math.max(current.rating, minRating),
+      }));
+    });
+  }, []);
   const relatedBundle = useMemo(() => related.slice(0, 2), [related]);
   const selectedFormat = formats.find((format) => format.id === selectedFormatId) ?? formats[0];
   const bundleTotal = relatedBundle.reduce((sum, item) => sum + item.price, selectedFormat?.price ?? product.price);
@@ -123,6 +176,11 @@ export function LibraryProductPage({
     if (!galleryImages.length) return;
     setGalleryIndex((current) => (current + delta + galleryImages.length) % galleryImages.length);
   }
+
+  useEffect(() => {
+    setReviews(initialReviews);
+    setRatingSummary({ average: product.rating, count: product.reviewCount });
+  }, [product.id]);
 
   useEffect(() => {
     void apiFetch<{ wished: boolean }>(`/api/v1/library/wishlist?productId=${encodeURIComponent(product.id)}`).then((result) => {
@@ -182,15 +240,45 @@ export function LibraryProductPage({
   }
 
   async function submitReview() {
+    if (!user) {
+      setReviewNotice("Sign in to leave a review.");
+      return;
+    }
+    if (reviewSettings && !reviewSettings.enabled) {
+      setReviewNotice("Reviews are currently disabled.");
+      return;
+    }
+    const minRating = reviewSettings?.minRating ?? 1;
+    if (reviewForm.rating < minRating) {
+      setReviewNotice(`Choose a rating of at least ${minRating} stars.`);
+      return;
+    }
+    if (reviewForm.title.trim().length < 3) {
+      setReviewNotice("Add a short title (at least 3 characters).");
+      return;
+    }
+    if (reviewForm.body.trim().length < 20) {
+      setReviewNotice("Write a review of at least 20 characters.");
+      return;
+    }
+    if (reviewSettings?.allowGuestNames && reviewForm.displayName.trim() && reviewForm.displayName.trim().length < 2) {
+      setReviewNotice("Display name must be at least 2 characters.");
+      return;
+    }
     setReviewBusy(true);
     setReviewNotice("");
-    const result = await apiFetch<{ review?: { id: string } }>("/api/v1/library/reviews", {
+    const result = await apiFetch<{
+      review?: { id: string };
+      autoApproved?: boolean;
+      productRating?: { average: number; count: number };
+    }>("/api/v1/library/reviews", {
       method: "POST",
       body: JSON.stringify({
         productId: product.id,
         rating: reviewForm.rating,
         title: reviewForm.title,
         body: reviewForm.body,
+        displayName: reviewSettings?.allowGuestNames ? reviewForm.displayName : undefined,
       }),
     });
     setReviewBusy(false);
@@ -198,8 +286,18 @@ export function LibraryProductPage({
       setReviewNotice(result.error.message || "Could not submit review.");
       return;
     }
-    setReviewForm({ rating: 5, title: "", body: "" });
-    setReviewNotice("Thanks — your review was submitted for moderation.");
+    setReviewForm({ rating: Math.max(5, minRating), title: "", body: "", displayName: "" });
+    setReviewNotice(
+      result.data?.autoApproved
+        ? "Thanks — your review is live."
+        : "Thanks — your review was submitted for moderation.",
+    );
+    if (result.data?.productRating) {
+      setRatingSummary({
+        average: result.data.productRating.average,
+        count: result.data.productRating.count,
+      });
+    }
     const refreshed = await apiFetch<{ reviews: typeof reviews }>(`/api/v1/library/reviews?productId=${encodeURIComponent(product.id)}`);
     if (refreshed.data?.reviews) setReviews(refreshed.data.reviews);
   }
@@ -245,9 +343,61 @@ export function LibraryProductPage({
     window.location.href = "/library/checkout";
   }
 
+  function quantityFor(productId: string) {
+    return cart.filter((line) => line.productId === productId).reduce((sum, line) => sum + line.quantity, 0);
+  }
+
+  function addRelatedFormatToCart(target: LibraryProduct, format: LibraryProductFormat) {
+    setCart((current) => {
+      const existing = current.find((line) => sameLibraryCartLine(line, { productId: target.id, formatId: format.id }));
+      if (existing) {
+        return current.map((line) =>
+          sameLibraryCartLine(line, { productId: target.id, formatId: format.id })
+            ? { ...line, quantity: line.quantity + 1 }
+            : line,
+        );
+      }
+      return [
+        ...current,
+        {
+          productId: target.id,
+          title: `${target.title} (${format.label})`,
+          price: format.price,
+          currency: target.currency,
+          quantity: 1,
+          formatId: format.id,
+          formatType: format.type,
+          formatLabel: format.label,
+        },
+      ];
+    });
+    notifyLibraryCartAdded(target.title);
+    showToast(`${target.title} (${format.label}) added to your Library Bag.`, "success");
+  }
+
+  function requestAddRelated(target: LibraryProduct) {
+    const formats = enabledLibraryFormats(target);
+    if (formats.length > 1) {
+      setFormatPickerProduct(target);
+      return;
+    }
+    const format = primaryLibraryFormat(formats, target.productType, target.price);
+    addRelatedFormatToCart(target, format);
+  }
+
   return (
     <main className="bg-mist text-ink dark:bg-slate-950 dark:text-white">
       <LibraryCartFab />
+      {formatPickerProduct && (
+        <LibraryFormatPickerDialog
+          product={formatPickerProduct}
+          onClose={() => setFormatPickerProduct(null)}
+          onConfirm={(format) => {
+            addRelatedFormatToCart(formatPickerProduct, format);
+            setFormatPickerProduct(null);
+          }}
+        />
+      )}
       <section className="border-b border-slate-200/80 bg-white/80 backdrop-blur dark:border-slate-800 dark:bg-slate-950/80">
         <div className="mx-auto flex max-w-[88rem] flex-col gap-3 px-4 py-3.5 sm:px-6 md:flex-row md:items-center md:justify-between lg:px-8">
           <div className="min-w-0">
@@ -345,8 +495,8 @@ export function LibraryProductPage({
                 <span className="hidden h-1 w-1 rounded-full bg-slate-300 sm:inline-block dark:bg-slate-600" aria-hidden />
                 <span className="inline-flex items-center gap-1.5 text-amber-600 dark:text-amber-400">
                   <Star className="size-3.5 fill-current" />
-                  <span className="font-medium">{product.rating || "New"}</span>
-                  <span className="text-slate-500 dark:text-slate-400">({product.reviewCount} reviews)</span>
+                  <span className="font-medium">{ratingSummary.count ? ratingSummary.average : "New"}</span>
+                  <span className="text-slate-500 dark:text-slate-400">({ratingSummary.count} reviews)</span>
                 </span>
               </div>
 
@@ -362,6 +512,8 @@ export function LibraryProductPage({
                   <div className={cn("mt-3 grid gap-3", formats.length > 1 ? "sm:grid-cols-2" : "grid-cols-1")}>
                     {formats.map((format) => {
                       const selected = selectedFormat?.id === format.id;
+                      const compareAt = libraryFormatCompareAt(format);
+                      const discount = libraryDiscountPercent(format.price, compareAt);
                       return (
                         <button
                           key={format.id}
@@ -375,9 +527,21 @@ export function LibraryProductPage({
                           )}
                         >
                           <span className="block text-[0.95rem] font-semibold leading-snug text-ink dark:text-white">{format.label}</span>
-                          <span className="mt-1.5 block text-xl font-semibold tracking-tight text-ink dark:text-white">
-                            {product.currency} {format.price.toFixed(2)}
+                          <span className="mt-1.5 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                            <span className="text-xl font-semibold tracking-tight text-ink dark:text-white">
+                              {product.currency} {format.price.toFixed(2)}
+                            </span>
+                            {compareAt != null && (
+                              <span className="text-sm text-slate-400 line-through">
+                                {product.currency} {compareAt.toFixed(2)}
+                              </span>
+                            )}
                           </span>
+                          {discount != null && (
+                            <span className="mt-1 inline-flex rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200">
+                              Save {discount}%
+                            </span>
+                          )}
                           <span className="mt-1.5 block text-xs leading-5 text-slate-500 dark:text-slate-400">
                             {format.type === "PRINTED_BOOK" ? printStockLabel : "Digital · instant after payment"}
                           </span>
@@ -389,16 +553,30 @@ export function LibraryProductPage({
               )}
 
               <div className="mt-7 border-t border-slate-100 pt-5 dark:border-slate-800">
-                <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                  <p className="text-[2rem] font-semibold tracking-tight text-ink dark:text-white">
-                    {product.currency} {(selectedFormat?.price ?? product.price).toFixed(2)}
-                  </p>
-                  {(selectedFormat?.compareAtPrice ?? product.compareAtPrice) && (
-                    <p className="text-base text-slate-400 line-through">
-                      {product.currency} {(selectedFormat?.compareAtPrice ?? product.compareAtPrice)!.toFixed(2)}
-                    </p>
-                  )}
-                </div>
+                {(() => {
+                  const sellPrice = selectedFormat?.price ?? product.price;
+                  const compareAt =
+                    (selectedFormat ? libraryFormatCompareAt(selectedFormat) : undefined) ??
+                    (product.compareAtPrice != null && product.compareAtPrice > sellPrice ? product.compareAtPrice : undefined);
+                  const discount = libraryDiscountPercent(sellPrice, compareAt);
+                  return (
+                    <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                      <p className="text-[2rem] font-semibold tracking-tight text-ink dark:text-white">
+                        {product.currency} {sellPrice.toFixed(2)}
+                      </p>
+                      {compareAt != null && (
+                        <p className="text-base text-slate-400 line-through">
+                          {product.currency} {compareAt.toFixed(2)}
+                        </p>
+                      )}
+                      {discount != null && (
+                        <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-bold uppercase tracking-wide text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200">
+                          Save {discount}%
+                        </span>
+                      )}
+                    </div>
+                  );
+                })()}
                 <p className="mt-2 text-sm leading-6 text-emerald-800 dark:text-emerald-200">
                   {isPrinted ? printStockLabel : "Instant digital delivery after payment confirmation"}
                 </p>
@@ -542,49 +720,94 @@ export function LibraryProductPage({
                   {review.body && <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">{review.body}</p>}
                 </article>
               )) : (
-                <p className="text-sm text-slate-500">No published reviews yet. Buyers of digital or printed formats can leave the first one.</p>
+                <p className="text-sm text-slate-500">
+                  {reviewSettings?.enabled === false
+                    ? "Reviews are currently turned off for this store."
+                    : "No published reviews yet. Buyers of digital or printed formats can leave the first one."}
+                </p>
               )}
-              <div className="rounded-xl border border-dashed border-slate-300 p-4 dark:border-slate-700">
-                <p className="font-semibold">Write a review</p>
-                <p className="mt-1 text-xs text-slate-500">Available after you purchase this product (digital or print).</p>
-                <div className="mt-3 grid gap-3 sm:grid-cols-[8rem_minmax(0,1fr)]">
-                  <label className="text-sm font-medium">
-                    Rating
-                    <select
-                      value={reviewForm.rating}
-                      onChange={(e) => setReviewForm({ ...reviewForm, rating: Number(e.target.value) })}
-                      className="mt-1 h-10 w-full rounded-lg border border-slate-200 px-2 dark:border-slate-700 dark:bg-slate-900"
-                    >
-                      {[5, 4, 3, 2, 1].map((value) => <option key={value} value={value}>{value}</option>)}
-                    </select>
-                  </label>
-                  <label className="text-sm font-medium">
-                    Title
-                    <input
-                      value={reviewForm.title}
-                      onChange={(e) => setReviewForm({ ...reviewForm, title: e.target.value })}
-                      className="mt-1 h-10 w-full rounded-lg border border-slate-200 px-3 dark:border-slate-700 dark:bg-slate-900"
-                      placeholder="What stood out?"
-                    />
-                  </label>
+              {reviewSettings?.enabled === false ? null : (
+                <div className="rounded-xl border border-dashed border-slate-300 p-4 dark:border-slate-700">
+                  <p className="font-semibold">Write a review</p>
+                  <p className="mt-1 text-xs text-slate-500">
+                    {!user
+                      ? "Sign in to leave a review."
+                      : reviewSettings?.requirePurchase !== false
+                        ? "Available after you purchase this product (digital or print)."
+                        : reviewSettings?.autoApprove
+                          ? "Your review will appear immediately after you submit."
+                          : "Your review will appear after moderation."}
+                  </p>
+                  {!user ? (
+                    <div className="mt-3">
+                      <Link href={`/login?next=${encodeURIComponent(`/library/${product.slug}`)}`} className="inline-flex">
+                        <Button>Sign in to review</Button>
+                      </Link>
+                      {reviewNotice && <p className="mt-2 text-sm font-semibold text-slate-600 dark:text-slate-300">{reviewNotice}</p>}
+                    </div>
+                  ) : (
+                    <>
+                      <div className="mt-3 grid gap-3 sm:grid-cols-[8rem_minmax(0,1fr)]">
+                        <label className="text-sm font-medium">
+                          Rating
+                          <select
+                            value={reviewForm.rating}
+                            onChange={(e) => setReviewForm({ ...reviewForm, rating: Number(e.target.value) })}
+                            className="mt-1 h-10 w-full rounded-lg border border-slate-200 px-2 dark:border-slate-700 dark:bg-slate-900"
+                          >
+                            {[5, 4, 3, 2, 1]
+                              .filter((value) => value >= (reviewSettings?.minRating ?? 1))
+                              .map((value) => <option key={value} value={value}>{value}</option>)}
+                          </select>
+                        </label>
+                        <label className="text-sm font-medium">
+                          Title <span className="text-xs font-normal text-slate-500">(required)</span>
+                          <input
+                            value={reviewForm.title}
+                            onChange={(e) => setReviewForm({ ...reviewForm, title: e.target.value })}
+                            className="mt-1 h-10 w-full rounded-lg border border-slate-200 px-3 dark:border-slate-700 dark:bg-slate-900"
+                            placeholder="What stood out?"
+                            required
+                            minLength={3}
+                            maxLength={120}
+                          />
+                        </label>
+                      </div>
+                      {reviewSettings?.allowGuestNames ? (
+                        <label className="mt-3 block text-sm font-medium">
+                          Display name <span className="text-xs font-normal text-slate-500">(optional public name)</span>
+                          <input
+                            value={reviewForm.displayName}
+                            onChange={(e) => setReviewForm({ ...reviewForm, displayName: e.target.value })}
+                            className="mt-1 h-10 w-full rounded-lg border border-slate-200 px-3 dark:border-slate-700 dark:bg-slate-900"
+                            placeholder={user?.name || "How your name should appear"}
+                            maxLength={60}
+                          />
+                        </label>
+                      ) : null}
+                      <label className="mt-3 block text-sm font-medium">
+                        Review <span className="text-xs font-normal text-slate-500">(min. 20 characters)</span>
+                        <textarea
+                          value={reviewForm.body}
+                          onChange={(e) => setReviewForm({ ...reviewForm, body: e.target.value })}
+                          rows={3}
+                          className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 dark:border-slate-700 dark:bg-slate-900"
+                          placeholder="Share how this product helped you."
+                          required
+                          minLength={20}
+                          maxLength={4000}
+                        />
+                      </label>
+                      <div className="mt-3 flex flex-wrap items-center gap-3">
+                        <Button disabled={reviewBusy} onClick={() => void submitReview()}>
+                          {reviewBusy ? "Submitting…" : "Submit review"}
+                        </Button>
+                        {reviewNotice && <p className="text-sm font-semibold text-slate-600 dark:text-slate-300">{reviewNotice}</p>}
+                      </div>
+                    </>
+                  )}
                 </div>
-                <label className="mt-3 block text-sm font-medium">
-                  Review
-                  <textarea
-                    value={reviewForm.body}
-                    onChange={(e) => setReviewForm({ ...reviewForm, body: e.target.value })}
-                    rows={3}
-                    className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 dark:border-slate-700 dark:bg-slate-900"
-                    placeholder="Share how this product helped you."
-                  />
-                </label>
-                <div className="mt-3 flex flex-wrap items-center gap-3">
-                  <Button disabled={reviewBusy} onClick={() => void submitReview()}>
-                    {reviewBusy ? "Submitting…" : "Submit review"}
-                  </Button>
-                  {reviewNotice && <p className="text-sm font-semibold text-slate-600 dark:text-slate-300">{reviewNotice}</p>}
-                </div>
-              </div>
+              )}
             </div>
           </Panel>
 
@@ -608,23 +831,48 @@ export function LibraryProductPage({
           <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
             <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-slate-500">Your selection</p>
             <p className="mt-2 text-sm font-semibold text-ink dark:text-white">{selectedFormat?.label || "Library product"}</p>
-            <p className="mt-1 text-3xl font-semibold tracking-tight text-ink dark:text-white">{product.currency} {(selectedFormat?.price ?? product.price).toFixed(2)}</p>
+            {(() => {
+              const sellPrice = selectedFormat?.price ?? product.price;
+              const compareAt = selectedFormat ? libraryFormatCompareAt(selectedFormat) : undefined;
+              return (
+                <div className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                  <p className="text-3xl font-semibold tracking-tight text-ink dark:text-white">
+                    {product.currency} {sellPrice.toFixed(2)}
+                  </p>
+                  {compareAt != null && (
+                    <p className="text-sm text-slate-400 line-through">
+                      {product.currency} {compareAt.toFixed(2)}
+                    </p>
+                  )}
+                </div>
+              );
+            })()}
             {formats.length > 1 && (
               <div className="mt-4 grid gap-2">
-                {formats.map((format) => (
-                  <button
-                    key={`aside-${format.id}`}
-                    type="button"
-                    onClick={() => setSelectedFormatId(format.id)}
-                    className={cn(
-                      "flex items-center justify-between rounded-lg border px-3 py-2 text-left text-sm transition",
-                      selectedFormat?.id === format.id ? "border-emerald-600 bg-emerald-50 dark:bg-emerald-950/30" : "border-slate-200 dark:border-slate-700",
-                    )}
-                  >
-                    <span className="font-semibold">{format.label}</span>
-                    <span className="font-bold">{product.currency} {format.price.toFixed(2)}</span>
-                  </button>
-                ))}
+                {formats.map((format) => {
+                  const compareAt = libraryFormatCompareAt(format);
+                  return (
+                    <button
+                      key={`aside-${format.id}`}
+                      type="button"
+                      onClick={() => setSelectedFormatId(format.id)}
+                      className={cn(
+                        "flex items-center justify-between gap-2 rounded-lg border px-3 py-2 text-left text-sm transition",
+                        selectedFormat?.id === format.id ? "border-emerald-600 bg-emerald-50 dark:bg-emerald-950/30" : "border-slate-200 dark:border-slate-700",
+                      )}
+                    >
+                      <span className="font-semibold">{format.label}</span>
+                      <span className="text-right">
+                        <span className="block font-bold">{product.currency} {format.price.toFixed(2)}</span>
+                        {compareAt != null && (
+                          <span className="block text-xs text-slate-400 line-through">
+                            {product.currency} {compareAt.toFixed(2)}
+                          </span>
+                        )}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
             )}
             <div className="mt-5 grid gap-2">
@@ -701,18 +949,14 @@ export function LibraryProductPage({
               Browse all <ArrowLeft className="size-4 rotate-180" />
             </Link>
           </div>
-          <div className="grid items-stretch gap-5 md:grid-cols-3">
+          <div className="grid grid-cols-1 items-stretch gap-4 sm:grid-cols-2 sm:gap-5 xl:grid-cols-3">
             {related.map((item) => (
-              <Link key={item.id} href={`/library/${item.slug}`} className="group flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200/90 bg-white transition duration-300 hover:-translate-y-1 hover:border-emerald-600/30 hover:shadow-card-hover dark:border-slate-800 dark:bg-slate-900">
-                <div className="bg-[linear-gradient(180deg,#f4f8f7_0%,#eef5f2_100%)] px-5 pt-5 dark:bg-slate-950/60">
-                  <BookCover product={item} className="mx-auto w-full max-w-[11rem]" />
-                </div>
-                <div className="flex flex-1 flex-col p-5">
-                  <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-emerald-700 dark:text-emerald-300">{item.category}</p>
-                  <p className="mt-2 line-clamp-2 text-base font-semibold leading-snug tracking-tight text-ink dark:text-white">{item.title}</p>
-                  <p className="mt-auto pt-4 text-sm font-semibold tabular-nums text-slate-700 dark:text-slate-200">USD {item.price.toFixed(2)}</p>
-                </div>
-              </Link>
+              <LibraryProductCard
+                key={item.id}
+                product={item}
+                quantity={quantityFor(item.id)}
+                onAdd={() => requestAddRelated(item)}
+              />
             ))}
           </div>
         </section>

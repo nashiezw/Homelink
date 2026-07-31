@@ -590,6 +590,8 @@ export function publicLibraryStoreSettings(settings: LibraryStoreSettings) {
       enabled: settings.reviews.enabled,
       requirePurchase: settings.reviews.requirePurchase,
       minRating: settings.reviews.minRating,
+      autoApprove: settings.reviews.autoApprove,
+      allowGuestNames: settings.reviews.allowGuestNames,
     },
     seo: settings.seo,
     merchandising: settings.merchandising,

@@ -2111,6 +2111,7 @@ model LibraryReview {
   rating      Int
   title       String?
   body        String?
+  displayName String?
   status      String         @default("PENDING")
   verified    Boolean        @default(false)
   featured    Boolean        @default(false)

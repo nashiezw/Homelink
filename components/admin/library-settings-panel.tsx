@@ -468,7 +468,7 @@ export function LibrarySettingsPanel({
                   <ToggleRow label="Reviews enabled" checked={draft.reviews.enabled} onChange={(enabled) => setDraft({ ...draft, reviews: { ...draft.reviews, enabled } })} />
                   <ToggleRow label="Require purchase before review" checked={draft.reviews.requirePurchase} onChange={(requirePurchase) => setDraft({ ...draft, reviews: { ...draft.reviews, requirePurchase } })} />
                   <ToggleRow label="Auto-approve reviews" checked={draft.reviews.autoApprove} onChange={(autoApprove) => setDraft({ ...draft, reviews: { ...draft.reviews, autoApprove } })} />
-                  <ToggleRow label="Allow guest display names" checked={draft.reviews.allowGuestNames} onChange={(allowGuestNames) => setDraft({ ...draft, reviews: { ...draft.reviews, allowGuestNames } })} />
+                  <ToggleRow label="Allow custom public display names on reviews" checked={draft.reviews.allowGuestNames} onChange={(allowGuestNames) => setDraft({ ...draft, reviews: { ...draft.reviews, allowGuestNames } })} />
                 </div>
               </Section>
             )}

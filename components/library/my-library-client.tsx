@@ -39,18 +39,23 @@ export function MyLibraryClient({
   orders: LibraryOrder[];
   downloads?: DownloadAccess[];
 }) {
-  const { showToast } = useApp();
+  const { showToast, user } = useApp();
   const [library, setLibrary] = useState<LibraryMe>({ products, orders, downloads: downloads ?? [], wishlist: [], wishlistCount: 0 });
   const [reviewProduct, setReviewProduct] = useState<LibraryProduct | null>(null);
   const [rating, setRating] = useState(5);
   const [reviewTitle, setReviewTitle] = useState("");
   const [reviewBody, setReviewBody] = useState("");
+  const [reviewDisplayName, setReviewDisplayName] = useState("");
   const [reviewBusy, setReviewBusy] = useState(false);
+  const [allowGuestNames, setAllowGuestNames] = useState(false);
   const purchased = library.products.filter((product) => product.downloads.length > 0 || library.downloads.some((download) => download.productId === product.id)).slice(0, 6);
 
   useEffect(() => {
     void apiFetch<LibraryMe>("/api/v1/library/me").then((result) => {
       if (result.data) setLibrary(result.data);
+    });
+    void apiFetch<{ reviews?: { allowGuestNames?: boolean } }>("/api/v1/library/settings").then((result) => {
+      setAllowGuestNames(Boolean(result.data?.reviews?.allowGuestNames));
     });
   }, []);
 
@@ -64,20 +69,38 @@ export function MyLibraryClient({
 
   async function submitReview() {
     if (!reviewProduct) return;
+    if (reviewTitle.trim().length < 3) {
+      showToast("Add a short title (at least 3 characters).", "error");
+      return;
+    }
+    if (reviewBody.trim().length < 20) {
+      showToast("Write a review of at least 20 characters.", "error");
+      return;
+    }
     setReviewBusy(true);
-    const result = await apiFetch("/api/v1/library/reviews", {
+    const result = await apiFetch<{ autoApproved?: boolean }>("/api/v1/library/reviews", {
       method: "POST",
-      body: JSON.stringify({ productId: reviewProduct.id, rating, title: reviewTitle, body: reviewBody }),
+      body: JSON.stringify({
+        productId: reviewProduct.id,
+        rating,
+        title: reviewTitle,
+        body: reviewBody,
+        displayName: allowGuestNames ? reviewDisplayName : undefined,
+      }),
     });
     setReviewBusy(false);
     if (result.error) {
       showToast(result.error.message || "Could not submit review.", "error");
       return;
     }
-    showToast("Review submitted for moderation. Thank you.", "success");
+    showToast(
+      result.data?.autoApproved ? "Review published. Thank you." : "Review submitted for moderation. Thank you.",
+      "success",
+    );
     setReviewProduct(null);
     setReviewTitle("");
     setReviewBody("");
+    setReviewDisplayName("");
     setRating(5);
   }
 
@@ -231,8 +254,32 @@ export function MyLibraryClient({
                 </button>
               ))}
             </div>
-            <input value={reviewTitle} onChange={(event) => setReviewTitle(event.target.value)} placeholder="Review title" className="mt-4 h-11 w-full rounded-lg border border-slate-200 px-3 dark:border-slate-700 dark:bg-slate-900" />
-            <textarea value={reviewBody} onChange={(event) => setReviewBody(event.target.value)} placeholder="What helped you most?" rows={4} className="mt-3 w-full rounded-lg border border-slate-200 px-3 py-2 dark:border-slate-700 dark:bg-slate-900" />
+            <input
+              value={reviewTitle}
+              onChange={(event) => setReviewTitle(event.target.value)}
+              placeholder="Review title (required)"
+              minLength={3}
+              maxLength={120}
+              className="mt-4 h-11 w-full rounded-lg border border-slate-200 px-3 dark:border-slate-700 dark:bg-slate-900"
+            />
+            {allowGuestNames ? (
+              <input
+                value={reviewDisplayName}
+                onChange={(event) => setReviewDisplayName(event.target.value)}
+                placeholder={user?.name ? `Display name (optional, e.g. ${user.name})` : "Display name (optional)"}
+                maxLength={60}
+                className="mt-3 h-11 w-full rounded-lg border border-slate-200 px-3 dark:border-slate-700 dark:bg-slate-900"
+              />
+            ) : null}
+            <textarea
+              value={reviewBody}
+              onChange={(event) => setReviewBody(event.target.value)}
+              placeholder="What helped you most? (min. 20 characters)"
+              rows={4}
+              minLength={20}
+              maxLength={4000}
+              className="mt-3 w-full rounded-lg border border-slate-200 px-3 py-2 dark:border-slate-700 dark:bg-slate-900"
+            />
             <div className="mt-4 flex justify-end gap-2">
               <Button variant="secondary" onClick={() => setReviewProduct(null)}>Cancel</Button>
               <Button disabled={reviewBusy} onClick={() => void submitReview()}>{reviewBusy ? "Submitting..." : "Submit review"}</Button>

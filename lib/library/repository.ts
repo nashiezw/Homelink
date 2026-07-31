@@ -203,6 +203,7 @@ export type LibraryReviewAdmin = {
   productTitle: string;
   userName?: string | null;
   userEmail?: string | null;
+  displayName?: string | null;
   rating: number;
   title?: string | null;
   body?: string | null;
@@ -211,6 +212,9 @@ export type LibraryReviewAdmin = {
   featured: boolean;
   createdAt: string;
 };
+
+const LIBRARY_REVIEW_MIN_BODY = 20;
+const LIBRARY_REVIEW_MIN_TITLE = 3;
 
 export type LibraryAdminReports = {
   scorecards: Array<{ label: string; value: number; detail: string; tone: "default" | "success" | "warning" | "danger" | "info" }>;
@@ -1206,6 +1210,27 @@ export async function fulfillPaidLibraryOrdersForPayment(paymentId: string) {
         force: true,
       });
     }
+    if (settings.notifications.reviewRequest && settings.reviews.enabled) {
+      const siteUrl = getCanonicalSiteUrl();
+      const seen = new Set<string>();
+      for (const item of order.items) {
+        if (seen.has(item.productId)) continue;
+        seen.add(item.productId);
+        await notifyLibraryCustomer(
+          order.customerId,
+          `How was ${item.product.title}?`,
+          `Thanks for your HouseLink Library purchase. Leave a review for ${item.product.title}: ${siteUrl}/library/${item.product.slug}`,
+          {
+            templateKey: "reviewRequest",
+            variables: {
+              productTitle: item.product.title,
+              productUrl: `${siteUrl}/library/${item.product.slug}`,
+              orderNumber: order.orderNumber,
+            },
+          },
+        );
+      }
+    }
   }
   return { orders: orders.length, downloads };
 }
@@ -1343,56 +1368,101 @@ export async function isLibraryWishlisted(userId: string, productId: string) {
   return Boolean(row);
 }
 
-export async function createLibraryCustomerReview(input: { userId: string; productId: string; rating: number; title?: string; body?: string }) {
+export async function createLibraryCustomerReview(input: {
+  userId: string;
+  productId: string;
+  rating: number;
+  title?: string;
+  body?: string;
+  displayName?: string;
+}) {
   const settings = await getLibraryStoreSettings();
   if (!settings.reviews.enabled) return { error: "REVIEWS_DISABLED" as const };
-  const rating = Math.min(5, Math.max(settings.reviews.minRating, Math.round(Number(input.rating) || 0)));
-  if (!input.userId || !input.productId || rating < settings.reviews.minRating) return null;
-  const status = settings.reviews.autoApprove ? "APPROVED" : "PENDING";
+  if (!input.userId || !input.productId) return { error: "INVALID_REVIEW" as const };
+
+  const rating = Math.round(Number(input.rating));
+  if (!Number.isFinite(rating) || rating < 1 || rating > 5 || rating < settings.reviews.minRating) {
+    return { error: "INVALID_RATING" as const, minRating: settings.reviews.minRating };
+  }
+
+  const title = input.title?.trim().slice(0, 120) || "";
+  const body = input.body?.trim().slice(0, 4000) || "";
+  if (title.length < LIBRARY_REVIEW_MIN_TITLE) {
+    return { error: "INVALID_TITLE" as const, minLength: LIBRARY_REVIEW_MIN_TITLE };
+  }
+  if (body.length < LIBRARY_REVIEW_MIN_BODY) {
+    return { error: "INVALID_BODY" as const, minLength: LIBRARY_REVIEW_MIN_BODY };
+  }
+
+  const displayName = settings.reviews.allowGuestNames
+    ? (input.displayName?.trim().replace(/\s+/g, " ").slice(0, 60) || null)
+    : null;
+  if (settings.reviews.allowGuestNames && displayName && displayName.length < 2) {
+    return { error: "INVALID_DISPLAY_NAME" as const };
+  }
+
+  const autoApproved = Boolean(settings.reviews.autoApprove);
+  const status = autoApproved ? "APPROVED" : "PENDING";
+
   if (!shouldUsePostgresLibrary()) {
-    return { id: `local-review-${Date.now()}`, productId: input.productId, rating, status };
+    return {
+      id: `local-review-${Date.now()}`,
+      productId: input.productId,
+      rating,
+      title,
+      body,
+      displayName,
+      status,
+      verified: false,
+      autoApproved,
+      productRating: { average: rating, count: 1 },
+    };
   }
+
   const prisma = getMainPrisma();
-  let purchased = true;
-  if (settings.reviews.requirePurchase) {
-    const access = await prisma.libraryDownloadAccess.findFirst({
-      where: { userId: input.userId, productId: input.productId, status: { in: ["ACTIVE", "EXPIRED"] } },
-      select: { id: true },
-    });
-    purchased = access
-      ? true
-      : Boolean(
-          await prisma.libraryOrderItem.findFirst({
-            where: {
-              productId: input.productId,
-              order: { customerId: input.userId, status: { in: ["PAID", "FULFILLED"] } },
-            },
-            select: { id: true },
-          }),
-        );
-  }
-  if (!purchased) return { error: "PURCHASE_REQUIRED" as const };
+  const access = await prisma.libraryDownloadAccess.findFirst({
+    where: { userId: input.userId, productId: input.productId, status: { in: ["ACTIVE", "EXPIRED"] } },
+    select: { id: true },
+  });
+  const purchased = access
+    ? true
+    : Boolean(
+        await prisma.libraryOrderItem.findFirst({
+          where: {
+            productId: input.productId,
+            order: { customerId: input.userId, status: { in: ["PAID", "FULFILLED"] } },
+          },
+          select: { id: true },
+        }),
+      );
+
+  if (settings.reviews.requirePurchase && !purchased) return { error: "PURCHASE_REQUIRED" as const };
+
   const review = await prisma.libraryReview.upsert({
     where: { productId_userId: { productId: input.productId, userId: input.userId } },
     create: {
       productId: input.productId,
       userId: input.userId,
       rating,
-      title: input.title?.trim() || null,
-      body: input.body?.trim() || null,
+      title,
+      body,
+      displayName,
       status,
-      verified: settings.reviews.requirePurchase,
+      verified: purchased,
+      featured: false,
     },
     update: {
       rating,
-      title: input.title?.trim() || null,
-      body: input.body?.trim() || null,
+      title,
+      body,
+      displayName,
+      // Resubmits always re-enter moderation unless auto-approve is on.
       status,
-      verified: settings.reviews.requirePurchase,
+      verified: purchased,
     },
   });
-  await recalculateLibraryProductRating(input.productId);
-  return review;
+  const productRating = await recalculateLibraryProductRating(input.productId);
+  return { ...review, autoApproved, productRating };
 }
 
 export async function listApprovedLibraryProductReviews(productId: string, limit = 12) {
@@ -1411,7 +1481,7 @@ export async function listApprovedLibraryProductReviews(productId: string, limit
     featured: row.featured,
     verified: row.verified,
     createdAt: row.createdAt.toISOString(),
-    authorName: row.user.name || "HouseLink customer",
+    authorName: row.displayName?.trim() || row.user.name || "HouseLink customer",
   }));
 }
 
@@ -3260,6 +3330,7 @@ function toLibraryReviewAdmin(row: {
   rating: number;
   title: string | null;
   body: string | null;
+  displayName?: string | null;
   status: string;
   verified: boolean;
   featured: boolean;
@@ -3273,6 +3344,7 @@ function toLibraryReviewAdmin(row: {
     productTitle: row.product?.title ?? "Library product",
     userName: row.user?.name ?? null,
     userEmail: row.user?.email ?? null,
+    displayName: row.displayName ?? null,
     rating: row.rating,
     title: row.title,
     body: row.body,
@@ -3285,10 +3357,18 @@ function toLibraryReviewAdmin(row: {
 
 async function recalculateLibraryProductRating(productId: string) {
   const prisma = getMainPrisma();
-  const reviews = await prisma.libraryReview.findMany({ where: { productId, status: "APPROVED" }, select: { rating: true } });
+  // Treat legacy PUBLISHED the same as APPROVED for aggregates.
+  const reviews = await prisma.libraryReview.findMany({
+    where: { productId, status: { in: ["APPROVED", "PUBLISHED"] } },
+    select: { rating: true },
+  });
   const ratingCount = reviews.length;
   const ratingAverage = ratingCount ? reviews.reduce((sum, review) => sum + review.rating, 0) / ratingCount : 0;
   await prisma.libraryProduct.update({ where: { id: productId }, data: { ratingCount, ratingAverage } }).catch(() => null);
+  return {
+    average: Math.round(ratingAverage * 10) / 10,
+    count: ratingCount,
+  };
 }
 
 function buildSalesTrend(orders: Array<{ total: Prisma.Decimal; createdAt: Date }>) {
@@ -3472,7 +3552,11 @@ function normalizeFormatsInput(value: unknown): LibraryProductFormat[] {
         label: String(row.label || (type === "PRINTED_BOOK" ? "Printed book" : type === "DIGITAL_BOOK" ? "Digital book" : "Digital PDF")),
         enabled: row.enabled !== false,
         price,
-        compareAtPrice: row.compareAtPrice == null || row.compareAtPrice === ("" as unknown) ? undefined : Number(row.compareAtPrice) || undefined,
+        compareAtPrice: (() => {
+          if (row.compareAtPrice == null || row.compareAtPrice === ("" as unknown)) return undefined;
+          const value = Number(row.compareAtPrice);
+          return Number.isFinite(value) && value > 0 ? value : undefined;
+        })(),
         sku: row.sku ? String(row.sku) : undefined,
       } satisfies LibraryProductFormat;
     })

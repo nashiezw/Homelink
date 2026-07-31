@@ -14,7 +14,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const userId = getSessionUserIdFromRequest(request);
   if (!userId) return problem(401, "UNAUTHORIZED", "Sign in to leave a Library review.");
-  let body: { productId?: string; rating?: number; title?: string; body?: string };
+  let body: { productId?: string; rating?: number; title?: string; body?: string; displayName?: string };
   try {
     body = await request.json();
   } catch {
@@ -27,13 +27,36 @@ export async function POST(request: Request) {
     rating: Number(body.rating),
     title: body.title,
     body: body.body,
+    displayName: body.displayName,
   });
   if (!result) return problem(400, "INVALID_REVIEW", "A valid rating and purchased product are required.");
-  if ("error" in result && result.error === "REVIEWS_DISABLED") {
-    return problem(403, "REVIEWS_DISABLED", "Library reviews are currently disabled.");
+  if ("error" in result) {
+    if (result.error === "REVIEWS_DISABLED") {
+      return problem(403, "REVIEWS_DISABLED", "Library reviews are currently disabled.");
+    }
+    if (result.error === "PURCHASE_REQUIRED") {
+      return problem(403, "PURCHASE_REQUIRED", "You can review products after purchasing digital or printed formats.");
+    }
+    if (result.error === "INVALID_RATING") {
+      const min = "minRating" in result && typeof result.minRating === "number" ? result.minRating : 1;
+      return problem(400, "INVALID_RATING", `Choose a rating between ${min} and 5.`);
+    }
+    if (result.error === "INVALID_TITLE") {
+      const min = "minLength" in result && typeof result.minLength === "number" ? result.minLength : 3;
+      return problem(400, "INVALID_TITLE", `Add a review title of at least ${min} characters.`);
+    }
+    if (result.error === "INVALID_BODY") {
+      const min = "minLength" in result && typeof result.minLength === "number" ? result.minLength : 20;
+      return problem(400, "INVALID_BODY", `Write a review of at least ${min} characters.`);
+    }
+    if (result.error === "INVALID_DISPLAY_NAME") {
+      return problem(400, "INVALID_DISPLAY_NAME", "Display name must be at least 2 characters.");
+    }
+    return problem(400, "INVALID_REVIEW", "A valid rating and product are required.");
   }
-  if ("error" in result && result.error === "PURCHASE_REQUIRED") {
-    return problem(403, "PURCHASE_REQUIRED", "You can review products after purchasing digital or printed formats.");
-  }
-  return created({ review: result });
+  return created({
+    review: result,
+    autoApproved: Boolean(result.autoApproved),
+    productRating: "productRating" in result ? result.productRating : undefined,
+  });
 }

@@ -2,11 +2,12 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, Award, BookOpen, BookmarkCheck, ChevronDown, Filter, Minus, Plus, Search, ShieldCheck, ShoppingBag, ShoppingCart, Star, Trash2, Truck, X } from "lucide-react";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { ArrowRight, Award, BookOpen, BookmarkCheck, ChevronDown, Filter, Minus, Plus, Search, ShieldCheck, ShoppingBag, ShoppingCart, Trash2, Truck } from "lucide-react";
+import { useMemo, useState, type ReactNode } from "react";
 import { HL_GREEN, HL_NAVY } from "@/components/brand/houselink-icon";
-import { BookCover } from "@/components/library/book-cover";
 import { LibraryCartFab } from "@/components/library/library-cart-fab";
+import { LibraryFormatPickerDialog } from "@/components/library/library-format-picker-dialog";
+import { LibraryProductCard } from "@/components/library/library-product-card";
 import { Button } from "@/components/ui/button";
 import { useApp } from "@/components/providers/app-provider";
 import {
@@ -19,8 +20,6 @@ import {
 import {
   enabledLibraryFormats,
   libraryFacets,
-  libraryFormatsLabel,
-  libraryPriceLabel,
   primaryLibraryFormat,
   type LibraryProduct,
   type LibraryProductFormat,
@@ -132,7 +131,7 @@ export function LibraryStorefront({
     <main className="min-h-screen bg-[#fafafa] pb-24 text-[#141414] antialiased dark:bg-slate-950 dark:text-white lg:pb-0">
       <LibraryCartFab />
       {formatPickerProduct && (
-        <FormatPickerDialog
+        <LibraryFormatPickerDialog
           product={formatPickerProduct}
           hidePrice={hidePrices}
           onClose={() => setFormatPickerProduct(null)}
@@ -346,7 +345,7 @@ export function LibraryStorefront({
                   </div>
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 xl:grid-cols-3">
                     {curated.map((product) => (
-                      <ProductCard
+                      <LibraryProductCard
                         key={product.id}
                         product={product}
                         quantity={quantityFor(product.id)}
@@ -371,7 +370,7 @@ export function LibraryStorefront({
                 {results.length ? (
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 xl:grid-cols-3">
                     {results.map((product) => (
-                      <ProductCard
+                      <LibraryProductCard
                         key={product.id}
                         product={product}
                         quantity={quantityFor(product.id)}
@@ -393,218 +392,6 @@ export function LibraryStorefront({
         </>
       )}
     </main>
-  );
-}
-
-function FormatPickerDialog({
-  product,
-  hidePrice,
-  onClose,
-  onConfirm,
-}: {
-  product: LibraryProduct;
-  hidePrice: boolean;
-  onClose: () => void;
-  onConfirm: (format: LibraryProductFormat) => void;
-}) {
-  const formats = enabledLibraryFormats(product);
-  const [selectedId, setSelectedId] = useState(
-    () => primaryLibraryFormat(formats, product.productType, product.price).id,
-  );
-  const selected = formats.find((format) => format.id === selectedId) ?? formats[0];
-
-  useEffect(() => {
-    function onKey(event: KeyboardEvent) {
-      if (event.key === "Escape") onClose();
-    }
-    const previous = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    window.addEventListener("keydown", onKey);
-    return () => {
-      document.body.style.overflow = previous;
-      window.removeEventListener("keydown", onKey);
-    };
-  }, [onClose]);
-
-  return (
-    <div
-      className="fixed inset-0 z-[70] flex items-end justify-center p-0 sm:items-center sm:p-4"
-      role="presentation"
-    >
-      <button
-        type="button"
-        className="absolute inset-0 bg-[#1a3560]/45 backdrop-blur-[2px]"
-        aria-label="Close format picker"
-        onClick={onClose}
-      />
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="library-format-picker-title"
-        className="relative z-10 flex max-h-[min(92dvh,40rem)] w-full max-w-lg flex-col overflow-hidden rounded-t-3xl border border-[#dfe8e5] bg-white shadow-[0_28px_80px_rgba(16,32,36,0.28)] sm:rounded-3xl dark:border-slate-700 dark:bg-slate-950"
-      >
-        <div className="flex shrink-0 items-start justify-between gap-4 border-b border-[#e8f0ed] bg-[linear-gradient(135deg,#e8f4ef_0%,#f4f8f7_55%,#e7eef5_100%)] px-4 py-3.5 sm:px-5 sm:py-4 dark:border-slate-800 dark:bg-slate-900">
-          <div className="min-w-0">
-            <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#22a54b]">Choose format</p>
-            <h2 id="library-format-picker-title" className="mt-1 line-clamp-2 text-base font-bold text-[#1a3560] sm:text-lg dark:text-white">
-              {product.title}
-            </h2>
-            <p className="mt-1 text-sm text-slate-500">{product.author}</p>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="grid size-10 shrink-0 place-items-center rounded-full border border-slate-200 bg-white text-slate-500 transition hover:border-[#22a54b] hover:text-[#22a54b] dark:border-slate-700 dark:bg-slate-900"
-            aria-label="Close"
-          >
-            <X className="size-4" />
-          </button>
-        </div>
-
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-          <div className="grid gap-4 p-4 sm:grid-cols-[7.5rem_1fr] sm:gap-5 sm:p-5">
-            <BookCover product={product} variant="shop" interactive={false} className="mx-auto hidden w-28 shadow-md sm:block sm:w-full" sizes="140px" />
-            <div className="space-y-2.5 sm:space-y-3">
-              {formats.map((format) => {
-                const selectedFormat = format.id === selected?.id;
-                return (
-                  <button
-                    key={format.id}
-                    type="button"
-                    onClick={() => setSelectedId(format.id)}
-                    className={cn(
-                      "w-full rounded-2xl border px-3.5 py-3 text-left transition sm:px-4 sm:py-3.5",
-                      selectedFormat
-                        ? "border-[#22a54b] bg-[#e8f4ef] ring-2 ring-[#22a54b]/20 dark:bg-emerald-950/35"
-                        : "border-slate-200 bg-white hover:border-[#22a54b]/70 dark:border-slate-700 dark:bg-slate-900",
-                    )}
-                  >
-                    <span className="flex items-start justify-between gap-3">
-                      <span className="min-w-0">
-                        <span className="block text-sm font-bold text-[#1a3560] dark:text-white">{format.label}</span>
-                        <span className="mt-1 block text-xs leading-5 text-slate-500">
-                          {format.type === "PRINTED_BOOK" ? "Printed copy · shipping after payment" : "Digital copy · instant after payment"}
-                        </span>
-                      </span>
-                      <span className="shrink-0 text-sm font-black text-[#1a3560] sm:text-base dark:text-white">
-                        {hidePrice ? "—" : `${product.currency} ${format.price.toFixed(2)}`}
-                      </span>
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-
-        <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-[#e8f0ed] p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:flex-row sm:justify-end sm:p-5 dark:border-slate-800">
-          <button
-            type="button"
-            onClick={onClose}
-            className="inline-flex h-11 items-center justify-center rounded-full border border-slate-200 px-5 text-sm font-semibold text-[#1a3560] transition hover:border-[#22a54b] dark:border-slate-700 dark:text-white"
-          >
-            Cancel
-          </button>
-          <Button
-            type="button"
-            disabled={!selected}
-            onClick={() => selected && onConfirm(selected)}
-            className="h-11 rounded-full bg-[#22a54b] hover:bg-[#1e9443] hover:from-[#22a54b] hover:to-[#22a54b]"
-          >
-            <ShoppingCart className="size-4" /> Add to bag
-            {!hidePrice && selected ? ` · ${product.currency} ${selected.price.toFixed(2)}` : ""}
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function productCardBlurb(product: LibraryProduct) {
-  const raw = (product.shortDescription || product.description || "").replace(/\s+/g, " ").trim();
-  if (!raw) return "";
-  // Keep catalogue cards short even when admin pasted the full description into shortDescription.
-  if (raw.length <= 160) return raw;
-  return `${raw.slice(0, 157).trimEnd()}…`;
-}
-
-function ProductCard({
-  product,
-  quantity,
-  hidePrice,
-  onAdd,
-}: {
-  product: LibraryProduct;
-  quantity: number;
-  hidePrice: boolean;
-  onAdd: () => void;
-}) {
-  const blurb = productCardBlurb(product);
-  return (
-    <article className="group flex h-full flex-col rounded-2xl border border-[#dfe8e5] bg-white p-3 shadow-sm transition hover:-translate-y-1 hover:border-[#22a54b] hover:shadow-xl sm:p-4 dark:border-slate-800 dark:bg-slate-900">
-      <div className="overflow-hidden rounded-xl bg-[#f4f8f7] dark:bg-slate-950/60">
-        <BookCover
-          product={product}
-          variant="shop"
-          className="w-full max-w-none rounded-xl shadow-none ring-0"
-          sizes="(max-width: 640px) 92vw, (max-width: 1280px) 45vw, 420px"
-        />
-      </div>
-      <div className="mt-3 flex min-w-0 flex-1 flex-col sm:mt-4">
-        <p className="text-[11px] font-black uppercase tracking-wide text-[#22a54b] sm:text-xs dark:text-emerald-300">
-          {libraryFormatsLabel(product)}
-        </p>
-        <Link
-          href={`/library/${product.slug}`}
-          className="mt-1 line-clamp-2 text-sm font-black leading-snug text-[#1a3560] hover:text-[#22a54b] sm:text-base dark:text-white"
-        >
-          {product.title}
-        </Link>
-        <p className="mt-1 line-clamp-1 text-xs text-slate-500 sm:text-sm">{product.author}</p>
-        {blurb ? (
-          <p className="mt-2 line-clamp-3 overflow-hidden text-sm leading-6 text-slate-600 sm:mt-3 dark:text-slate-300">
-            {blurb}
-          </p>
-        ) : null}
-        <div className="mt-3 flex items-center justify-between gap-3 sm:mt-4">
-          <span className="flex items-center gap-1 text-sm text-amber-500">
-            <Star className="size-4 fill-current" />
-            <span className="font-bold text-slate-700 dark:text-slate-200">{product.rating || "New"}</span>
-          </span>
-          <p className="text-sm font-black text-[#1a3560] sm:text-base dark:text-white">
-            {hidePrice ? (
-              <Link href={`/login?next=/library/${product.slug}`} className="text-sm font-bold text-[#22a54b] underline-offset-2 hover:underline">
-                Sign in for price
-              </Link>
-            ) : (
-              libraryPriceLabel(product)
-            )}
-          </p>
-        </div>
-        <div className="mt-auto grid grid-cols-[1fr_auto] gap-2 pt-3 sm:pt-4">
-          <Button
-            type="button"
-            onClick={(event) => {
-              event.preventDefault();
-              event.stopPropagation();
-              onAdd();
-            }}
-            disabled={product.comingSoon && !product.preorder}
-            className="min-h-11 rounded-full bg-[#22a54b] shadow-md shadow-emerald-900/10 hover:bg-[#1e9443] hover:from-[#22a54b] hover:to-[#22a54b]"
-          >
-            <ShoppingCart className="size-4" />{" "}
-            {quantity ? `In bag (${quantity})` : product.preorder ? "Pre-order" : "Add"}
-          </Button>
-          <Link
-            href={`/library/${product.slug}`}
-            className="inline-flex size-11 items-center justify-center rounded-full border border-slate-200 text-slate-600 shadow-sm transition hover:border-[#22a54b] hover:text-[#22a54b] dark:border-slate-700 dark:text-slate-300"
-            aria-label={`View ${product.title}`}
-          >
-            <ArrowRight className="size-4" />
-          </Link>
-        </div>
-      </div>
-    </article>
   );
 }
 
@@ -793,10 +580,13 @@ function pickFeaturedLibraryProduct(products: LibraryProduct[]) {
 
 function TrustItem({ icon, title, subtitle }: { icon: ReactNode; title: string; subtitle: string }) {
   return (
-    <div className="flex items-center justify-center gap-1 px-1 sm:gap-3 sm:px-4 lg:justify-start">
+    <div className="flex min-w-0 items-center justify-center gap-1 px-0.5 sm:gap-3 sm:px-4 lg:justify-start">
       {icon}
       <div className="min-w-0 text-left">
-        <p className="text-[9px] font-bold leading-tight sm:text-sm" style={{ color: HL_NAVY }}>
+        <p
+          className="whitespace-nowrap text-[clamp(0.55rem,2.15vw,0.875rem)] font-bold leading-none tracking-tight sm:text-sm sm:leading-tight"
+          style={{ color: HL_NAVY }}
+        >
           {title}
         </p>
         <p className="mt-0.5 hidden text-xs leading-snug text-slate-500 lg:block">{subtitle}</p>
