@@ -260,8 +260,8 @@ export const defaultLibraryStoreSettings: LibraryStoreSettings = {
     robotsIndex: true,
   },
   merchandising: {
-    heroHeadline: "Property knowledge, ready to buy",
-    heroSubcopy: "Books, manuals, contracts, forms, and toolkits built for Zimbabwe's property professionals.",
+    heroHeadline: "Everything Property Professionals Need.",
+    heroSubcopy: "Books, manuals, contracts, forms and toolkits built for Zimbabwe's property industry.",
     ctaLabel: "Browse the catalogue",
     ctaHref: "#library-products",
     showCuratedRail: true,
@@ -308,6 +308,11 @@ function asRecord(value: unknown): Record<string, unknown> {
 
 function str(value: unknown, fallback: string) {
   return typeof value === "string" ? value : fallback;
+}
+
+/** Map previously shipped merchandising defaults to the current Library hero copy. */
+function upgradeLegacyHeroCopy(value: string, legacyValue: string, nextDefault: string) {
+  return value.trim() === legacyValue ? nextDefault : value;
 }
 
 function bool(value: unknown, fallback: boolean) {
@@ -478,8 +483,16 @@ export function mergeLibraryStoreSettings(payload?: unknown): LibraryStoreSettin
       robotsIndex: bool(seo.robotsIndex, d.seo.robotsIndex),
     },
     merchandising: {
-      heroHeadline: str(merchandising.heroHeadline, d.merchandising.heroHeadline),
-      heroSubcopy: str(merchandising.heroSubcopy, d.merchandising.heroSubcopy),
+      heroHeadline: upgradeLegacyHeroCopy(
+        str(merchandising.heroHeadline, d.merchandising.heroHeadline),
+        "Property knowledge, ready to buy",
+        d.merchandising.heroHeadline,
+      ),
+      heroSubcopy: upgradeLegacyHeroCopy(
+        str(merchandising.heroSubcopy, d.merchandising.heroSubcopy),
+        "Books, manuals, contracts, forms, and toolkits built for Zimbabwe's property professionals.",
+        d.merchandising.heroSubcopy,
+      ),
       ctaLabel: str(merchandising.ctaLabel, d.merchandising.ctaLabel),
       ctaHref: str(merchandising.ctaHref, d.merchandising.ctaHref),
       showCuratedRail: bool(merchandising.showCuratedRail, d.merchandising.showCuratedRail),

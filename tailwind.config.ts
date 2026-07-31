@@ -29,6 +29,8 @@ const config: Config = {
         "hero-glow": "hero-glow 8s ease-in-out infinite",
         "hero-drift": "hero-drift 20s ease-in-out infinite",
         "library-drift": "library-drift 18s ease-in-out infinite",
+        "library-book-float": "library-book-float 5.5s ease-in-out infinite",
+        "library-trust-rise": "library-trust-rise 0.9s cubic-bezier(0.22, 1, 0.36, 1) 0.22s both",
         shimmer: "shimmer 2.5s linear infinite",
       },
       keyframes: {
@@ -47,6 +49,14 @@ const config: Config = {
         "library-drift": {
           "0%, 100%": { transform: "translate3d(0, 0, 0)" },
           "50%": { transform: "translate3d(12px, -10px, 0)" },
+        },
+        "library-book-float": {
+          "0%, 100%": { transform: "translate3d(0, 0, 0)" },
+          "50%": { transform: "translate3d(0, -8px, 0)" },
+        },
+        "library-trust-rise": {
+          from: { opacity: "0", transform: "translateY(1.25rem)" },
+          to: { opacity: "1", transform: "translateY(0)" },
         },
         shimmer: {
           "0%": { backgroundPosition: "200% center" },
