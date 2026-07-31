@@ -3646,7 +3646,23 @@ async function emailLibraryGuestClaim(email: string, orderNumber: string, claimU
 }
 
 export async function getLibrarySitemapEntries() {
-  const products = await listLibraryProducts({ includeDrafts: false, limit: 500 });
+  const settings = await getLibraryStoreSettings();
+  if (!settings.seo.robotsIndex) return [];
+
+  if (shouldUsePostgresLibrary()) {
+    const rows = await getMainPrisma().libraryProduct.findMany({
+      where: { status: "PUBLISHED" },
+      select: { slug: true, updatedAt: true, publishedAt: true },
+      orderBy: { updatedAt: "desc" },
+      take: 5000,
+    }).catch(() => []);
+    return rows.map((row) => ({
+      slug: row.slug,
+      updatedAt: row.updatedAt ?? row.publishedAt ?? new Date(),
+    }));
+  }
+
+  const products = await listLibraryProducts({ includeDrafts: false, limit: 5000 });
   return products
     .filter((product) => product.status === "PUBLISHED")
     .map((product) => ({

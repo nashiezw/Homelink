@@ -25,7 +25,7 @@ import {
   ZoomIn,
   ZoomOut,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { BookCover } from "@/components/library/book-cover";
 import { LibraryCartFab } from "@/components/library/library-cart-fab";
 import { LibraryFormatPickerDialog } from "@/components/library/library-format-picker-dialog";
@@ -172,15 +172,15 @@ export function LibraryProductPage({
     setLightboxZoomed(false);
   }
 
-  function stepGallery(delta: number) {
+  const stepGallery = useCallback((delta: number) => {
     if (!galleryImages.length) return;
     setGalleryIndex((current) => (current + delta + galleryImages.length) % galleryImages.length);
-  }
+  }, [galleryImages.length]);
 
   useEffect(() => {
     setReviews(initialReviews);
     setRatingSummary({ average: product.rating, count: product.reviewCount });
-  }, [product.id]);
+  }, [product.id, product.rating, product.reviewCount, initialReviews]);
 
   useEffect(() => {
     void apiFetch<{ wished: boolean }>(`/api/v1/library/wishlist?productId=${encodeURIComponent(product.id)}`).then((result) => {
@@ -191,7 +191,10 @@ export function LibraryProductPage({
   useEffect(() => {
     if (!lightboxOpen) return;
     function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") closeLightbox();
+      if (event.key === "Escape") {
+        setLightboxOpen(false);
+        setLightboxZoomed(false);
+      }
       if (event.key === "ArrowLeft") stepGallery(-1);
       if (event.key === "ArrowRight") stepGallery(1);
       if (event.key === "+" || event.key === "=") setLightboxZoomed(true);
@@ -204,7 +207,7 @@ export function LibraryProductPage({
       window.removeEventListener("keydown", onKeyDown);
       document.body.style.overflow = previousOverflow;
     };
-  }, [lightboxOpen, galleryImages.length]);
+  }, [lightboxOpen, stepGallery]);
 
   async function toggleWishlist() {
     setWishBusy(true);
@@ -1076,28 +1079,6 @@ export function LibraryProductPage({
         </div>
       )}
 
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "Product",
-            name: product.seoTitle || product.title,
-            description: product.metaDescription || product.shortDescription,
-            image: product.seoImageUrl || product.gallery[0]?.url,
-            sku: product.sku,
-            brand: { "@type": "Brand", name: product.publisher || "HouseLink Zimbabwe" },
-            offers: formats.map((format) => ({
-              "@type": "Offer",
-              name: format.label,
-              price: format.price,
-              priceCurrency: product.currency,
-              availability: format.type === "PRINTED_BOOK" && product.stock === 0 ? "https://schema.org/OutOfStock" : "https://schema.org/InStock",
-              url: `/library/${product.slug}`,
-            })),
-          }),
-        }}
-      />
     </main>
   );
 }

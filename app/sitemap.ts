@@ -3,6 +3,7 @@ import { PROPERTY_CITY_LANDING_PAGES, ROOM_SUBURB_LANDING_PAGES } from "@/lib/se
 import { getCanonicalSiteUrl } from "@/lib/seo/site-url";
 import { getBlogSitemapEntries } from "@/lib/blog/blog-repository";
 import { getLibrarySitemapEntries } from "@/lib/library/repository";
+import { getLibraryStoreSettings } from "@/lib/library/settings";
 
 const siteUrl = getCanonicalSiteUrl();
 
@@ -14,7 +15,7 @@ const routes = [
   { path: "/become-agent", priority: 0.8 },
   { path: "/academy", priority: 0.8 },
   { path: "/academy/verify", priority: 0.72 },
-  { path: "/library", priority: 0.85 },
+  { path: "/library", priority: 0.9 },
   { path: "/blog", priority: 0.8 },
   { path: "/property-management", priority: 0.75 },
   { path: "/verification", priority: 0.7 },
@@ -27,14 +28,23 @@ const routes = [
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const lastModified = new Date();
-  const [blog, library] = await Promise.all([getBlogSitemapEntries(), getLibrarySitemapEntries()]);
+  const [blog, library, librarySettings] = await Promise.all([
+    getBlogSitemapEntries(),
+    getLibrarySitemapEntries(),
+    getLibraryStoreSettings(),
+  ]);
 
-  const staticRoutes = routes.map((route) => ({
-    url: `${siteUrl}${route.path}`,
-    lastModified,
-    changeFrequency: route.path === "/" || route.path === "/search" ? ("daily" as const) : ("weekly" as const),
-    priority: route.priority,
-  }));
+  const staticRoutes = routes
+    .filter((route) => route.path !== "/library" || librarySettings.seo.robotsIndex)
+    .map((route) => ({
+      url: `${siteUrl}${route.path}`,
+      lastModified,
+      changeFrequency:
+        route.path === "/" || route.path === "/search" || route.path === "/library"
+          ? ("daily" as const)
+          : ("weekly" as const),
+      priority: route.priority,
+    }));
 
   const landingRoutes = [
     ...PROPERTY_CITY_LANDING_PAGES.flatMap((city) => [

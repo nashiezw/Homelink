@@ -1,26 +1,36 @@
 import type { Metadata } from "next";
 import { LibraryStorefront } from "@/components/library/library-storefront";
 import { listLibraryProducts } from "@/lib/library/repository";
+import { buildLibraryStoreJsonLd, buildLibraryStoreMetadata, safeJsonLd } from "@/lib/library/seo";
 import { getLibraryStoreSettings } from "@/lib/library/settings";
 
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata(): Promise<Metadata> {
   const settings = await getLibraryStoreSettings();
-  return {
-    title: settings.seo.storeTitle,
-    description: settings.seo.storeDescription,
-    keywords: settings.seo.focusKeyword || undefined,
-    robots: settings.seo.robotsIndex ? undefined : { index: false, follow: false },
-    openGraph: {
-      title: settings.seo.storeTitle,
-      description: settings.seo.storeDescription,
-      ...(settings.seo.storeOgImage ? { images: [{ url: settings.seo.storeOgImage }] } : {}),
-    },
-  };
+  return buildLibraryStoreMetadata(settings);
 }
 
 export default async function LibraryPage() {
   const [products, settings] = await Promise.all([listLibraryProducts(), getLibraryStoreSettings()]);
-  return <LibraryStorefront products={products} merchandising={settings.merchandising} store={settings.store} />;
+  const schemas = buildLibraryStoreJsonLd({ settings, products });
+
+  return (
+    <>
+      {schemas.map((schema, index) => (
+        <script
+          key={`library-store-jsonld-${index}`}
+          type="application/ld+json"
+          suppressHydrationWarning
+          dangerouslySetInnerHTML={{ __html: safeJsonLd(schema) }}
+        />
+      ))}
+      <LibraryStorefront
+        products={products}
+        merchandising={settings.merchandising}
+        store={settings.store}
+        seo={settings.seo}
+      />
+    </>
+  );
 }

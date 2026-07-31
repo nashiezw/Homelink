@@ -481,7 +481,8 @@ export function LibrarySettingsPanel({
                   <TextField label="Focus keyword" value={draft.seo.focusKeyword} onChange={(focusKeyword) => setDraft({ ...draft, seo: { ...draft.seo, focusKeyword } })} />
                   <TextField label="OG image URL" value={draft.seo.storeOgImage} onChange={(storeOgImage) => setDraft({ ...draft, seo: { ...draft.seo, storeOgImage } })} />
                 </FormGrid>
-                <ToggleRow label="Allow search engines to index /library" checked={draft.seo.robotsIndex} onChange={(robotsIndex) => setDraft({ ...draft, seo: { ...draft.seo, robotsIndex } })} />
+                  <ToggleRow label="Allow search engines to index Library storefront and product pages" checked={draft.seo.robotsIndex} onChange={(robotsIndex) => setDraft({ ...draft, seo: { ...draft.seo, robotsIndex } })} />
+                  <p className="mt-2 text-xs leading-5 text-slate-500">When off, Library pages are noindex and excluded from the sitemap. Checkout and claim pages stay private either way.</p>
               </Section>
             )}
 

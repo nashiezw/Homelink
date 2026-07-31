@@ -3,6 +3,7 @@ import localFont from "next/font/local";
 import { AppProvider } from "@/components/providers/app-provider";
 import { PlatformConfigProvider } from "@/components/providers/platform-config-provider";
 import { ChromeGate } from "@/components/layout/chrome-gate";
+import { NavigationProgress } from "@/components/navigation/navigation-progress";
 import { ToastBanner } from "@/components/ui/toast-banner";
 import { getCanonicalSiteUrl } from "@/lib/seo/site-url";
 import "./globals.css";
@@ -127,6 +128,7 @@ export default function RootLayout({
         />
         <PlatformConfigProvider>
           <AppProvider>
+            <NavigationProgress />
             <ChromeGate>{children}</ChromeGate>
             <ToastBanner />
           </AppProvider>

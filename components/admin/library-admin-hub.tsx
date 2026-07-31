@@ -2207,6 +2207,8 @@ function CreatableSelectField({
     setOpen(false);
   }
 
+  const listboxId = `${label.toLowerCase().replace(/\s+/g, "-")}-options`;
+
   return (
     <div ref={rootRef} className="relative grid gap-1.5 text-sm">
       <span className="font-semibold text-slate-300">{label}</span>
@@ -2223,19 +2225,22 @@ function CreatableSelectField({
           autoComplete="off"
           role="combobox"
           aria-expanded={open}
+          aria-controls={listboxId}
           aria-autocomplete="list"
         />
         <button
           type="button"
           className="absolute inset-y-0 right-0 flex items-center px-3 text-slate-400 hover:text-white"
           aria-label={`Show ${label.toLowerCase()} options`}
+          aria-expanded={open}
+          aria-controls={listboxId}
           onClick={() => setOpen((current) => !current)}
         >
           <ChevronDown className={cn("size-4 transition", open && "rotate-180")} />
         </button>
       </div>
       {open ? (
-        <div className="absolute left-0 right-0 top-[calc(100%+0.25rem)] z-30 max-h-56 overflow-y-auto rounded-lg border border-white/10 bg-slate-950 shadow-2xl">
+        <div id={listboxId} role="listbox" className="absolute left-0 right-0 top-[calc(100%+0.25rem)] z-30 max-h-56 overflow-y-auto rounded-lg border border-white/10 bg-slate-950 shadow-2xl">
           {filtered.length ? (
             filtered.map((option) => (
               <button

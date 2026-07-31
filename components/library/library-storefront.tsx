@@ -8,7 +8,6 @@ import { HL_GREEN, HL_NAVY } from "@/components/brand/houselink-icon";
 import { LibraryCartFab } from "@/components/library/library-cart-fab";
 import { LibraryFormatPickerDialog } from "@/components/library/library-format-picker-dialog";
 import { LibraryProductCard } from "@/components/library/library-product-card";
-import { Button } from "@/components/ui/button";
 import { useApp } from "@/components/providers/app-provider";
 import {
   libraryCartLineKey,
@@ -38,10 +37,12 @@ export function LibraryStorefront({
   products,
   merchandising,
   store: _store,
+  seo,
 }: {
   products: LibraryProduct[];
   merchandising: Merchandising;
   store: Store;
+  seo?: LibraryStoreSettings["seo"];
 }) {
   const { showToast, user } = useApp();
   const facets = useMemo(() => {
@@ -365,6 +366,11 @@ export function LibraryStorefront({
                   <p className="mt-1 text-sm text-[#1a3560]/55 sm:mt-2 dark:text-white/55">
                     {results.length} {results.length === 1 ? "product" : "products"}
                   </p>
+                  {seo?.storeDescription?.trim() ? (
+                    <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600 dark:text-slate-300">
+                      {seo.storeDescription.trim()}
+                    </p>
+                  ) : null}
                 </div>
 
                 {results.length ? (

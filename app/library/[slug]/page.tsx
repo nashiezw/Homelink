@@ -1,36 +1,22 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { LibraryProductPage } from "@/components/library/library-product-page";
-import { getLibraryProductBySlug, listApprovedLibraryProductReviews, listLibraryProducts, recordLibraryProductView } from "@/lib/library/repository";
+import {
+  getLibraryProductBySlug,
+  listApprovedLibraryProductReviews,
+  listLibraryProducts,
+  recordLibraryProductView,
+} from "@/lib/library/repository";
+import { buildLibraryProductJsonLd, buildLibraryProductMetadata, safeJsonLd } from "@/lib/library/seo";
+import { getLibraryStoreSettings } from "@/lib/library/settings";
 
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
-  const product = await getLibraryProductBySlug(slug);
+  const [product, settings] = await Promise.all([getLibraryProductBySlug(slug), getLibraryStoreSettings()]);
   if (!product) return {};
-  const title = product.seoTitle?.trim() || `${product.title} | HouseLink Library`;
-  const description = product.metaDescription?.trim() || product.shortDescription;
-  const image = product.seoImageUrl || product.gallery[0]?.url;
-  return {
-    title,
-    description,
-    keywords: product.seoFocusKeyword ? [product.seoFocusKeyword, ...product.tags] : product.tags,
-    alternates: { canonical: `/library/${product.slug}` },
-    openGraph: {
-      title,
-      description,
-      type: "website",
-      url: `/library/${product.slug}`,
-      images: image ? [{ url: image, alt: product.title }] : undefined,
-    },
-    twitter: {
-      card: "summary_large_image",
-      title,
-      description,
-      images: image ? [image] : undefined,
-    },
-  };
+  return buildLibraryProductMetadata(product, { robotsIndex: settings.seo.robotsIndex });
 }
 
 export default async function LibraryProductRoute({ params }: { params: Promise<{ slug: string }> }) {
@@ -38,15 +24,30 @@ export default async function LibraryProductRoute({ params }: { params: Promise<
   const product = await getLibraryProductBySlug(slug);
   if (!product) notFound();
   await recordLibraryProductView(slug);
-  const [allProducts, reviews] = await Promise.all([listLibraryProducts(), listApprovedLibraryProductReviews(product.id)]);
+  const [allProducts, reviews] = await Promise.all([
+    listLibraryProducts(),
+    listApprovedLibraryProductReviews(product.id),
+  ]);
   const related = allProducts
     .filter((item) => item.id !== product.id && (item.category === product.category || item.collection === product.collection))
     .slice(0, 3);
+  const schemas = buildLibraryProductJsonLd({ product, reviews });
+
   return (
-    <LibraryProductPage
-      product={product}
-      related={related.length ? related : allProducts.filter((item) => item.id !== product.id).slice(0, 3)}
-      reviews={reviews}
-    />
+    <>
+      {schemas.map((schema, index) => (
+        <script
+          key={`library-product-jsonld-${index}`}
+          type="application/ld+json"
+          suppressHydrationWarning
+          dangerouslySetInnerHTML={{ __html: safeJsonLd(schema) }}
+        />
+      ))}
+      <LibraryProductPage
+        product={product}
+        related={related.length ? related : allProducts.filter((item) => item.id !== product.id).slice(0, 3)}
+        reviews={reviews}
+      />
+    </>
   );
 }

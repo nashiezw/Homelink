@@ -9,6 +9,7 @@ export const dynamic = "force-dynamic";
 export const metadata = {
   title: "Library Order Confirmation | HouseLink Zimbabwe",
   description: "Confirmation and payment instructions for your HouseLink Library order.",
+  robots: { index: false, follow: false },
 };
 
 export default async function LibraryCheckoutConfirmationPage({

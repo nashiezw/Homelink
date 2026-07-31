@@ -253,9 +253,10 @@ export const defaultLibraryStoreSettings: LibraryStoreSettings = {
     allowGuestNames: false,
   },
   seo: {
-    storeTitle: "HouseLink Library | Books, Manuals, Templates and Courses",
-    storeDescription: "Browse professional property books, manuals, contracts, forms, templates, toolkits, and digital products from HouseLink Zimbabwe.",
-    storeOgImage: "",
+    storeTitle: "HouseLink Library | Property Books, Manuals & Contracts Zimbabwe",
+    storeDescription:
+      "Buy property books, training manuals, contracts, forms, templates and digital toolkits for Zimbabwe real estate agents, developers and property professionals.",
+    storeOgImage: "/images/library/library-hero-books.png",
     focusKeyword: "property books Zimbabwe",
     robotsIndex: true,
   },
