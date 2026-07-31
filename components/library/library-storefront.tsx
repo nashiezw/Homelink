@@ -243,7 +243,7 @@ export function LibraryStorefront({
 
             <div className="relative w-full min-w-0 self-end motion-safe:animate-fade-up motion-safe:[animation-delay:120ms] lg:self-center lg:justify-self-end">
               <div className="motion-safe:animate-library-book-float">
-                {/* Mobile: exact uploaded book PNG (uncropped) */}
+                {/* Mobile/desktop: uploaded book with black studio bg keyed out */}
                 <Image
                   src="/images/library/library-hero-books-mobile.png"
                   alt={
@@ -251,13 +251,13 @@ export function LibraryStorefront({
                       ? `${featuredHeroProduct.title} — HouseLink Library`
                       : "The Complete Guide to Property Development and Property Law in Zimbabwe"
                   }
-                  width={739}
+                  width={719}
                   height={1024}
                   priority
-                  className="relative z-[1] mx-auto h-auto w-full object-contain drop-shadow-[0_16px_36px_rgba(16,32,36,0.16)] lg:hidden"
+                  unoptimized
+                  className="relative z-[1] mx-auto h-auto w-full bg-transparent object-contain drop-shadow-[0_16px_36px_rgba(16,32,36,0.16)] lg:hidden"
                   sizes="(max-width: 1023px) 46vw, 1px"
                 />
-                {/* Desktop: same uploaded book PNG */}
                 <Image
                   src="/images/library/library-hero-books.png"
                   alt={
@@ -265,10 +265,11 @@ export function LibraryStorefront({
                       ? `${featuredHeroProduct.title} — HouseLink Library`
                       : "The Complete Guide to Property Development and Property Law in Zimbabwe"
                   }
-                  width={739}
+                  width={719}
                   height={1024}
                   priority
-                  className="relative z-[1] mx-auto hidden h-auto w-full max-w-[24rem] object-contain drop-shadow-[0_22px_48px_rgba(16,32,36,0.18)] lg:block xl:max-w-[26rem]"
+                  unoptimized
+                  className="relative z-[1] mx-auto hidden h-auto w-full max-w-[24rem] bg-transparent object-contain drop-shadow-[0_22px_48px_rgba(16,32,36,0.18)] lg:block xl:max-w-[26rem]"
                   sizes="(min-width: 1024px) 380px, 1px"
                 />
               </div>
