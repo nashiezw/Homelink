@@ -15,12 +15,12 @@ export function ToastBanner() {
     <div
       role="status"
       aria-live="polite"
-      className="fixed bottom-5 left-1/2 z-[80] w-[min(22rem,calc(100vw-1.5rem))] -translate-x-1/2 motion-safe:animate-fade-up"
+      className="pointer-events-none fixed inset-x-0 bottom-0 z-[80] flex justify-center px-3 pb-[max(5.5rem,calc(env(safe-area-inset-bottom)+4.75rem))] sm:px-4 sm:pb-6 lg:pb-6"
     >
       <div
         className={cn(
-          "flex items-start gap-3 rounded-2xl border bg-white px-4 py-3.5 shadow-[0_12px_40px_rgba(15,23,42,0.14)]",
-          "dark:bg-slate-900",
+          "pointer-events-auto flex w-full max-w-sm items-start gap-3 rounded-2xl border bg-white px-3.5 py-3 shadow-[0_12px_40px_rgba(15,23,42,0.14)]",
+          "motion-safe:animate-fade-up dark:bg-slate-900",
           toast.tone === "error"
             ? "border-red-200 dark:border-red-900/60"
             : toast.tone === "info"
@@ -40,7 +40,7 @@ export function ToastBanner() {
         >
           <Icon className="size-4" strokeWidth={2.25} />
         </span>
-        <p className="min-w-0 flex-1 pt-1 text-sm font-medium leading-5 text-slate-800 dark:text-slate-100">
+        <p className="min-w-0 flex-1 break-words pt-1.5 text-sm font-medium leading-5 text-slate-800 dark:text-slate-100">
           {toast.message}
         </p>
       </div>
