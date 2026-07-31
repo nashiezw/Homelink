@@ -172,16 +172,21 @@ export function LibraryStorefront({
 
               {useDesignedHeadline ? (
                 <h1
-                  className="mt-2.5 text-[1.35rem] font-bold leading-[1.08] tracking-tight sm:mt-4 sm:text-[2.5rem] sm:leading-[1.04] md:text-5xl lg:mt-5 lg:text-[3.35rem] xl:text-[3.6rem]"
+                  className="mt-2.5 text-[1.55rem] font-bold leading-[1.18] tracking-tight sm:mt-4 sm:text-[2.5rem] sm:leading-[1.12] md:text-5xl lg:mt-5 lg:text-[3.35rem] lg:leading-[1.04] xl:text-[3.6rem]"
                   style={{ color: HL_NAVY }}
                 >
                   <span className="block">Everything</span>
-                  {/* Mobile: “Property Professionals” green */}
-                  <span className="block lg:hidden">
-                    <span style={{ color: HL_GREEN }}>Property Professionals</span> Need
-                    <span style={{ color: HL_GREEN }}>.</span>
+                  {/* Mobile: each word on its own line; Property + Professionals green */}
+                  <span className="block lg:hidden" style={{ color: HL_GREEN }}>
+                    Property
                   </span>
-                  {/* Desktop: “Property Professionals” green */}
+                  <span className="block lg:hidden" style={{ color: HL_GREEN }}>
+                    Professionals
+                  </span>
+                  <span className="block lg:hidden">
+                    Need<span style={{ color: HL_GREEN }}>.</span>
+                  </span>
+                  {/* Desktop: “Property Professionals” on one green line */}
                   <span className="hidden lg:block" style={{ color: HL_GREEN }}>
                     Property Professionals
                   </span>
@@ -191,7 +196,7 @@ export function LibraryStorefront({
                 </h1>
               ) : (
                 <h1
-                  className="mt-2.5 text-[1.35rem] font-bold leading-[1.08] tracking-tight sm:mt-4 sm:text-[2.5rem] sm:leading-[1.04] md:text-5xl lg:mt-5 lg:text-[3.35rem] xl:text-[3.6rem]"
+                  className="mt-2.5 text-[1.55rem] font-bold leading-[1.18] tracking-tight sm:mt-4 sm:text-[2.5rem] sm:leading-[1.12] md:text-5xl lg:mt-5 lg:text-[3.35rem] lg:leading-[1.04] xl:text-[3.6rem]"
                   style={{ color: HL_NAVY }}
                 >
                   {headline}
@@ -238,7 +243,7 @@ export function LibraryStorefront({
 
             <div className="relative w-full min-w-0 self-end motion-safe:animate-fade-up motion-safe:[animation-delay:120ms] lg:self-center lg:justify-self-end">
               <div className="motion-safe:animate-library-book-float">
-                {/* Mobile ref: two-book stack */}
+                {/* Mobile: provided book PNG */}
                 <Image
                   src="/images/library/library-hero-books-mobile.png"
                   alt={
@@ -246,10 +251,10 @@ export function LibraryStorefront({
                       ? `${featuredHeroProduct.title} — HouseLink Library`
                       : "The Complete Guide to Property Development and Property Law in Zimbabwe"
                   }
-                  width={448}
-                  height={486}
+                  width={727}
+                  height={1024}
                   priority
-                  className="relative z-[1] mx-auto h-auto w-full object-contain object-bottom drop-shadow-[0_16px_36px_rgba(16,32,36,0.16)] lg:hidden"
+                  className="relative z-[1] mx-auto h-auto w-full max-h-[14.5rem] object-contain object-bottom drop-shadow-[0_16px_36px_rgba(16,32,36,0.16)] sm:max-h-[20rem] md:max-h-[24rem] lg:hidden"
                   sizes="(max-width: 1023px) 46vw, 1px"
                 />
                 {/* Desktop: provided book PNG */}
