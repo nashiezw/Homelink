@@ -18,6 +18,7 @@ import {
   duplicateLibraryProduct,
   getAdminLibraryData,
   moderateLibraryReview,
+  deleteLibraryOrder,
   refundLibraryOrder,
   rejectLibraryGuestClaim,
   sendLibraryOrderNotification,
@@ -138,6 +139,11 @@ export async function POST(request: Request) {
     }
     if (body.action === "refund_order") {
       const result = await refundLibraryOrder(String(body.id), optionalString(body.reason) ?? "admin_refund", auth.user.id);
+      if (!result) return problem(404, "ORDER_NOT_FOUND", "Library order not found.");
+      return ok({ result });
+    }
+    if (body.action === "delete_order") {
+      const result = await deleteLibraryOrder(String(body.id), auth.user.id);
       if (!result) return problem(404, "ORDER_NOT_FOUND", "Library order not found.");
       return ok({ result });
     }

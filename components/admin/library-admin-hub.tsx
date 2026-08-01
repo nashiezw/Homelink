@@ -1148,6 +1148,25 @@ export function LibraryAdminHub() {
     setFeedback({ tone: "success", message: "Order refunded and download access revoked." });
   }
 
+  async function deleteOrder(order: LibraryOrder) {
+    const confirmed = window.confirm(
+      `Permanently delete ${order.orderNumber}? This removes the order, invoice, fulfilment, downloads, and linked payment. This cannot be undone.`,
+    );
+    if (!confirmed) return;
+    setFeedback(null);
+    const result = await apiFetch("/api/v1/admin/library", {
+      method: "POST",
+      body: JSON.stringify({ action: "delete_order", id: order.id }),
+    });
+    if (result.error) {
+      setFeedback({ tone: "error", message: result.error.message || "Order could not be deleted." });
+      return;
+    }
+    setOrders((current) => current.filter((row) => row.id !== order.id));
+    await load();
+    setFeedback({ tone: "success", message: `${order.orderNumber} deleted.` });
+  }
+
   async function runPaymentAction() {
     if (!paymentActionDraft) return;
     if ((paymentActionDraft.action === "reject" || paymentActionDraft.action === "refund") && !paymentActionDraft.reason.trim()) {
@@ -1409,6 +1428,7 @@ export function LibraryAdminHub() {
             onApprovePayment={(order) => order.paymentId && setPaymentActionDraft({ paymentId: order.paymentId, orderNumber: order.orderNumber, action: "approve", reason: "Payment verified" })}
             onRejectPayment={(order) => order.paymentId && setPaymentActionDraft({ paymentId: order.paymentId, orderNumber: order.orderNumber, action: "reject", reason: "" })}
             onRefundPayment={(order) => order.paymentId && setPaymentActionDraft({ paymentId: order.paymentId, orderNumber: order.orderNumber, action: "refund", reason: "" })}
+            onDelete={(order) => void deleteOrder(order)}
           />
           <FulfilmentTable rows={operations.fulfilments} onEdit={openFulfilmentEditor} />
           <OperationsList title="Invoices" rows={operations.invoices.map((item) => ({ label: item.invoiceNumber, value: `${item.currency} ${Number(item.total).toFixed(2)}`, detail: item.order?.orderNumber ?? "Library invoice", href: item.orderId ? `/api/v1/library/orders/${item.orderId}/invoice` : undefined }))} />
@@ -3435,6 +3455,7 @@ function OrdersTable({
   onApprovePayment,
   onRejectPayment,
   onRefundPayment,
+  onDelete,
 }: {
   orders: LibraryOrder[];
   onNotify?: (order: LibraryOrder) => void;
@@ -3442,6 +3463,7 @@ function OrdersTable({
   onApprovePayment?: (order: LibraryOrder) => void;
   onRejectPayment?: (order: LibraryOrder) => void;
   onRefundPayment?: (order: LibraryOrder) => void;
+  onDelete?: (order: LibraryOrder) => void;
 }) {
   return (
     <AdminDataTable
@@ -3485,6 +3507,11 @@ function OrdersTable({
                 )}
                 {row.proofUrl && (
                   <a href={row.proofUrl} target="_blank" rel="noreferrer" className="rounded-lg border border-white/10 px-3 py-2 text-xs font-bold text-slate-300 hover:bg-white/5">View proof</a>
+                )}
+                {onDelete && (
+                  <button type="button" onClick={() => onDelete(row)} className="inline-flex items-center gap-2 rounded-lg border border-red-500/30 px-3 py-2 text-xs font-bold text-red-300 hover:bg-red-500/10">
+                    <Trash2 className="size-4" /> Delete
+                  </button>
                 )}
               </div>
             );

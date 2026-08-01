@@ -1125,6 +1125,63 @@ export async function createAdminLibraryManualOrder(input: {
   return { order: order.order, payment, grant };
 }
 
+/** Permanently remove a Library order and related access/fulfilment/invoice records (for tests/admin cleanup). */
+export async function deleteLibraryOrder(orderId: string, actorId?: string) {
+  if (!orderId) return null;
+  if (!shouldUsePostgresLibrary()) {
+    const index = localLibraryOrders.findIndex((entry) => entry.id === orderId);
+    if (index < 0) return null;
+    const [removed] = localLibraryOrders.splice(index, 1);
+    return { id: removed.id, orderNumber: removed.orderNumber };
+  }
+  const prisma = getMainPrisma();
+  const order = await prisma.libraryOrder.findUnique({
+    where: { id: orderId },
+    include: { items: true, payment: { select: { id: true } } },
+  }).catch(() => null);
+  if (!order) return null;
+  const metadata = (order.metadata ?? {}) as Record<string, unknown>;
+  const shouldRestock =
+    Boolean(metadata.stockReserved) ||
+    ["PAID", "FULFILLED"].includes(order.status);
+  await prisma.$transaction(async (tx) => {
+    if (shouldRestock) {
+      for (const item of order.items) {
+        if (item.productType !== LibraryProductType.PRINTED_BOOK) continue;
+        await tx.libraryProduct.update({
+          where: { id: item.productId },
+          data: { stock: { increment: item.quantity } },
+        }).catch(() => null);
+        await tx.libraryInventoryMovement.create({
+          data: {
+            productId: item.productId,
+            type: "RESTOCK",
+            quantity: item.quantity,
+            note: `Restock after deleting order ${order.orderNumber}`,
+          },
+        }).catch(() => null);
+      }
+    }
+    await tx.libraryDownloadAccess.deleteMany({ where: { orderId } });
+    await tx.libraryOrder.delete({ where: { id: orderId } });
+    if (order.paymentId) {
+      const stillLinked = await tx.libraryOrder.count({ where: { paymentId: order.paymentId } });
+      if (stillLinked === 0) {
+        await tx.payment.delete({ where: { id: order.paymentId } }).catch(() => null);
+      }
+    }
+  });
+  await logLibraryActivity({
+    actorId,
+    targetType: "order",
+    targetId: orderId,
+    action: "ORDER_DELETED",
+    message: `Library order ${order.orderNumber} permanently deleted.`,
+    metadata: { orderNumber: order.orderNumber, stockRestocked: shouldRestock },
+  });
+  return { id: order.id, orderNumber: order.orderNumber };
+}
+
 export async function refundLibraryOrder(orderId: string, reason = "admin_refund", actorId?: string) {
   if (!shouldUsePostgresLibrary()) {
     const order = localLibraryOrders.find((entry) => entry.id === orderId);
