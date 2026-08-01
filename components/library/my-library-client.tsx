@@ -8,6 +8,7 @@ import { LibraryUpsellRail } from "@/components/library/library-upsell-rail";
 import { SetPasswordCard } from "@/components/library/set-password-card";
 import { Button } from "@/components/ui/button";
 import { useApp } from "@/components/providers/app-provider";
+import { trackEvent } from "@/lib/analytics/client";
 import { apiFetch } from "@/lib/api/client";
 import type { LibraryDigitalUpsellSuggestion, LibraryOrder, LibraryProduct } from "@/lib/library/catalog";
 import { libraryOrderStageCopy, libraryOrderStatusLabel } from "@/lib/library/order-stage";
@@ -67,6 +68,7 @@ export function MyLibraryClient({
     if (!accessId) return;
     const token = await apiFetch<{ token: string; downloadUrl: string }>(`/api/v1/library/downloads/${accessId}/token`, { method: "POST" });
     if (token.data?.token) {
+      trackEvent("library_download_started", accessId);
       window.location.href = `${token.data.downloadUrl}?token=${encodeURIComponent(token.data.token)}`;
     }
   }

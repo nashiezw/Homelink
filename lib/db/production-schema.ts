@@ -99,6 +99,51 @@ async function applyCoreProductionSchema() {
   await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "AgentTrainingModuleRecord_active_idx" ON "AgentTrainingModuleRecord"("active")`);
   await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "AgentTrainingModuleRecord_required_idx" ON "AgentTrainingModuleRecord"("required")`);
   await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "AgentTrainingModuleRecord_order_idx" ON "AgentTrainingModuleRecord"("order")`);
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS "SitePageView" (
+      "id" TEXT NOT NULL,
+      "visitorId" TEXT NOT NULL,
+      "sessionId" TEXT NOT NULL,
+      "path" TEXT NOT NULL,
+      "title" TEXT,
+      "referrer" TEXT,
+      "utmSource" TEXT,
+      "utmMedium" TEXT,
+      "utmCampaign" TEXT,
+      "deviceType" TEXT NOT NULL,
+      "durationMs" INTEGER,
+      "userId" TEXT,
+      "startedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "endedAt" TIMESTAMP(3),
+      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT "SitePageView_pkey" PRIMARY KEY ("id")
+    )
+  `);
+  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "SitePageView_visitorId_idx" ON "SitePageView"("visitorId")`);
+  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "SitePageView_sessionId_idx" ON "SitePageView"("sessionId")`);
+  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "SitePageView_path_idx" ON "SitePageView"("path")`);
+  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "SitePageView_startedAt_idx" ON "SitePageView"("startedAt")`);
+  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "SitePageView_deviceType_idx" ON "SitePageView"("deviceType")`);
+  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "SitePageView_utmSource_idx" ON "SitePageView"("utmSource")`);
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS "SiteFunnelEvent" (
+      "id" TEXT NOT NULL,
+      "visitorId" TEXT NOT NULL,
+      "sessionId" TEXT,
+      "name" TEXT NOT NULL,
+      "path" TEXT,
+      "target" TEXT,
+      "deviceType" TEXT,
+      "referrer" TEXT,
+      "metadata" JSONB,
+      "userId" TEXT,
+      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT "SiteFunnelEvent_pkey" PRIMARY KEY ("id")
+    )
+  `);
+  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "SiteFunnelEvent_name_createdAt_idx" ON "SiteFunnelEvent"("name", "createdAt")`);
+  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "SiteFunnelEvent_visitorId_idx" ON "SiteFunnelEvent"("visitorId")`);
+  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "SiteFunnelEvent_createdAt_idx" ON "SiteFunnelEvent"("createdAt")`);
   await ensureBootstrapAdmin();
 }
 

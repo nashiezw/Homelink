@@ -7,6 +7,7 @@ import { PageShell } from "@/components/layout/page-shell";
 import { LibraryUpsellRail } from "@/components/library/library-upsell-rail";
 import { Button } from "@/components/ui/button";
 import { useApp } from "@/components/providers/app-provider";
+import { trackEvent } from "@/lib/analytics/client";
 import { apiFetch } from "@/lib/api/client";
 import {
   clearLibraryCart,
@@ -187,6 +188,11 @@ export function LibraryCheckoutClient() {
       phone: current.phone || user.phone || "",
     }));
   }, [user]);
+
+  useEffect(() => {
+    if (!cart.length) return;
+    trackEvent("library_checkout_started", cart[0]?.productId, { items: cart.length });
+  }, [cart.length]);
 
   // Capture continue-with-email for abandoned-cart reminders once a valid email is entered.
   useEffect(() => {
@@ -394,7 +400,11 @@ export function LibraryCheckoutClient() {
       setError(shippingMethod === "PICKUP" ? "Local pickup is not available for this address/zone." : "Enter delivery name, phone, address, and city for printed books.");
       return;
     }
-    const result = await apiFetch<{ redirectUrl?: string; order?: { id?: string; orderNumber?: string }; needsPassword?: boolean }>("/api/v1/library/checkout", {
+    const result = await apiFetch<{
+      redirectUrl?: string;
+      order?: { id?: string; orderNumber?: string };
+      needsPassword?: boolean;
+    }>("/api/v1/library/checkout", {
       method: "POST",
       body: JSON.stringify({
         items: cart,
@@ -415,6 +425,7 @@ export function LibraryCheckoutClient() {
       }),
     });
     if (result.data?.redirectUrl) {
+      trackEvent("library_purchase_completed", result.data.order?.id, { items: cart.length });
       await refreshUser();
       clearLibraryCart();
       showToast(

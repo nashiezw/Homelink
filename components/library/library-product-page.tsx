@@ -33,6 +33,7 @@ import { LibraryFormatPickerDialog } from "@/components/library/library-format-p
 import { LibraryProductCard } from "@/components/library/library-product-card";
 import { Button } from "@/components/ui/button";
 import { useApp } from "@/components/providers/app-provider";
+import { trackEvent } from "@/lib/analytics/client";
 import { apiFetch } from "@/lib/api/client";
 import {
   notifyLibraryCartAdded,
@@ -284,6 +285,10 @@ export function LibraryProductPage({
     if (!galleryImages.length) return;
     setGalleryIndex((current) => (current + delta + galleryImages.length) % galleryImages.length);
   }, [galleryImages.length]);
+
+  useEffect(() => {
+    trackEvent("library_product_viewed", product.id, { slug: product.slug });
+  }, [product.id, product.slug]);
 
   useEffect(() => {
     setReviews(initialReviews);

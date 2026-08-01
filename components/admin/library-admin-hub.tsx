@@ -17,6 +17,7 @@ import {
 } from "@/components/admin/ui/admin-ui";
 import { BarChart, DonutChart, MetricRow } from "@/components/admin/charts";
 import { LibrarySettingsPanel } from "@/components/admin/library-settings-panel";
+import { SiteAnalyticsPanel } from "@/components/admin/site-analytics-panel";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api/client";
 import {
@@ -3333,6 +3334,7 @@ function LibraryTabManagement({
     const formatMix = operations.reports.bundleFormatMix ?? [];
     return (
       <div className="grid gap-5">
+        <SiteAnalyticsPanel />
         <MiniMetricGrid rows={[
           { label: "Revenue", value: `USD ${analytics.revenue.toFixed(2)}`, detail: `${analytics.orders} orders` },
           { label: "Visitors", value: analytics.visitors, detail: `${analytics.conversionRate}% conversion` },

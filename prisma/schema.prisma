@@ -2517,3 +2517,48 @@ model TrainingAuditLog {
   @@index([actorId])
   @@map("audit_logs")
 }
+
+// First-party anonymous page tracking (no MAC / device fingerprint).
+model SitePageView {
+  id          String    @id @default(cuid())
+  visitorId   String
+  sessionId   String
+  path        String
+  title       String?
+  referrer    String?
+  utmSource   String?
+  utmMedium   String?
+  utmCampaign String?
+  deviceType  String
+  durationMs  Int?
+  userId      String?
+  startedAt   DateTime  @default(now())
+  endedAt     DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([visitorId])
+  @@index([sessionId])
+  @@index([path])
+  @@index([startedAt])
+  @@index([deviceType])
+  @@index([utmSource])
+}
+
+// Funnel / product events tied to the same visitor id.
+model SiteFunnelEvent {
+  id         String   @id @default(cuid())
+  visitorId  String
+  sessionId  String?
+  name       String
+  path       String?
+  target     String?
+  deviceType String?
+  referrer   String?
+  metadata   Json?
+  userId     String?
+  createdAt  DateTime @default(now())
+
+  @@index([name, createdAt])
+  @@index([visitorId])
+  @@index([createdAt])
+}

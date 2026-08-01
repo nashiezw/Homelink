@@ -67,6 +67,14 @@ export function trackLibraryCartEvent(
     body: JSON.stringify({ action, productId, metadata }),
     keepalive: true,
   }).catch(() => undefined);
+  void import("@/lib/analytics/client").then(({ trackEvent }) => {
+    const meta = Object.fromEntries(
+      Object.entries(metadata ?? {}).filter(([, value]) =>
+        ["string", "number", "boolean"].includes(typeof value),
+      ),
+    ) as Record<string, string | number | boolean | undefined>;
+    trackEvent("library_cart_added", productId, { action, ...meta });
+  });
 }
 
 export function sameLibraryCartLine(

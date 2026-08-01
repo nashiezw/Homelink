@@ -99,6 +99,10 @@ export type ContactSettings = {
   phoneLabel: string;
   whatsappNumber: string;
   whatsappLabel: string;
+  /** Sticky left FAB — editable in Platform Settings → Contact. */
+  stickyWhatsAppEnabled: boolean;
+  stickyWhatsAppMessage: string;
+  stickyWhatsAppLabel: string;
   officeAddress: string;
   supportHours: string;
 };
