@@ -1067,6 +1067,30 @@ export async function createLibraryOrderFromCheckout(input: {
   const paymentUrl = `${siteUrl}/library/checkout/confirmation?orderId=${encodeURIComponent(order.id)}&paymentId=${encodeURIComponent(input.paymentId)}&status=pending`;
   const myLibraryUrl = `${siteUrl}/dashboard/my-library`;
   const orderUrl = `${siteUrl}/dashboard/my-library/orders/${order.id}`;
+  let paymentReference = input.paymentId;
+  try {
+    const payment = await getMainPrisma().payment.findUnique({
+      where: { id: input.paymentId },
+      select: { metadata: true },
+    });
+    const meta = (payment?.metadata ?? {}) as Record<string, unknown>;
+    if (typeof meta.referenceNumber === "string" && meta.referenceNumber.trim()) {
+      paymentReference = meta.referenceNumber.trim();
+    }
+  } catch {
+    /* keep paymentId fallback */
+  }
+  let whatsappHelpUrl = "";
+  try {
+    const { getHydratedRuntimePlatformSettings } = await import("@/lib/settings/runtime");
+    const { getWhatsAppHref } = await import("@/lib/settings/contact");
+    const platform = await getHydratedRuntimePlatformSettings();
+    whatsappHelpUrl = getWhatsAppHref(platform.contact, {
+      message: `Hi HouseLink — I need help paying Library order ${order.orderNumber}. Reference: ${paymentReference}. Total: ${order.currency} ${Number(order.total).toFixed(2)}.`,
+    });
+  } catch {
+    whatsappHelpUrl = "";
+  }
   await notifyLibraryCustomer(input.customerId, "Library order created", `We received your Library order ${order.orderNumber}.`, {
     templateKey: "orderConfirmation",
     variables: {
@@ -1076,6 +1100,8 @@ export async function createLibraryOrderFromCheckout(input: {
       orderUrl,
       paymentUrl,
       myLibraryUrl,
+      paymentReference,
+      whatsappHelpUrl: whatsappHelpUrl || paymentUrl,
       setPasswordNote:
         "If you checked out with email only, open My Library while this browser session is still signed in and set a password so you can access downloads later.",
     },
@@ -2575,6 +2601,17 @@ async function maybeSendLibraryLowStockAlert(productId: string, nextStock: numbe
   if (nextStock > threshold) return;
   const support = settings.store.supportEmail;
   if (!support) return;
+  let opsWhatsappUrl = "";
+  try {
+    const { getHydratedRuntimePlatformSettings } = await import("@/lib/settings/runtime");
+    const { getWhatsAppHref } = await import("@/lib/settings/contact");
+    const platform = await getHydratedRuntimePlatformSettings();
+    opsWhatsappUrl = getWhatsAppHref(platform.contact, {
+      message: `Low stock alert: ${product.title} is at ${nextStock} (threshold ${threshold}). Warehouse: ${product.warehouse || "Default"}.`,
+    });
+  } catch {
+    opsWhatsappUrl = "";
+  }
   await sendLibraryTemplatedEmail({
     to: support,
     settings,
@@ -2584,9 +2621,10 @@ async function maybeSendLibraryLowStockAlert(productId: string, nextStock: numbe
       stock: nextStock,
       threshold,
       warehouse: product.warehouse || "Default",
+      opsWhatsappUrl: opsWhatsappUrl || "Set WhatsApp number in Platform Settings → Contact",
     },
     fallbackSubject: `Low stock: ${product.title}`,
-    fallbackBody: `${product.title} is at ${nextStock} (threshold ${threshold}).`,
+    fallbackBody: `${product.title} is at ${nextStock} (threshold ${threshold}).${opsWhatsappUrl ? `\nWhatsApp: ${opsWhatsappUrl}` : ""}`,
   });
   await logLibraryActivity({
     targetType: "inventory",
@@ -2594,6 +2632,67 @@ async function maybeSendLibraryLowStockAlert(productId: string, nextStock: numbe
     action: "LOW_STOCK_ALERT",
     message: `Low stock alert sent for ${product.title} (${nextStock}).`,
   });
+}
+
+/** Weekly ops digest email to Library support (cron). */
+export async function sendLibraryWeeklyDigest() {
+  if (!shouldUsePostgresLibrary()) return { ok: false, message: "Postgres library disabled." };
+  const settings = await getLibraryStoreSettings();
+  const support = settings.store.supportEmail?.trim();
+  if (!support) return { ok: false, message: "Library support email is not set." };
+
+  const [analytics, site, pendingProofs, abandonedReminders] = await Promise.all([
+    getLibraryAnalytics(),
+    import("@/lib/analytics/site-analytics").then((mod) => mod.getSiteAnalyticsReport(7)).catch(() => null),
+    getMainPrisma()
+      .libraryOrder.count({
+        where: { status: "PENDING", payment: { proofStatus: "UPLOADED" } },
+      })
+      .catch(() => 0),
+    getMainPrisma()
+      .libraryAbandonedCart.count({
+        where: {
+          reminderSentAt: { gte: new Date(Date.now() - 7 * 86400000) },
+        },
+      })
+      .catch(() => 0),
+  ]);
+
+  const whatsappClicks = site?.funnel.find((row) => /whatsapp/i.test(row.label))?.value ?? 0;
+  const topPages = (site?.topPages ?? [])
+    .slice(0, 5)
+    .map((row) => `- ${row.label}: ${row.value}`)
+    .join("\n") || "- (no page data yet)";
+
+  const result = await sendLibraryTemplatedEmail({
+    to: support,
+    settings,
+    templateKey: "weeklyDigest",
+    variables: {
+      orders: analytics.orders,
+      currency: settings.store.currency || "USD",
+      weeklySales: analytics.weeklySales.toFixed(2),
+      downloads: analytics.downloads,
+      pageViews: site?.pageViews ?? 0,
+      uniqueVisitors: site?.uniqueVisitors ?? 0,
+      pendingProofs,
+      abandonedReminders,
+      whatsappClicks,
+      topPages,
+    },
+    fallbackSubject: "HouseLink Library weekly digest",
+    fallbackBody: `Weekly sales USD ${analytics.weeklySales.toFixed(2)}. Pending proofs: ${pendingProofs}.`,
+  });
+
+  if (result.ok) {
+    await logLibraryActivity({
+      targetType: "settings",
+      targetId: "singleton",
+      action: "WEEKLY_DIGEST_SENT",
+      message: `Weekly Library digest emailed to ${support}.`,
+    });
+  }
+  return result;
 }
 
 export async function syncLibraryAbandonedCart(input: {

@@ -398,12 +398,20 @@ function mergeEmailTemplates(value: unknown): Record<LibraryEmailTemplateKey, Li
       const fallback = defaultLibraryEmailTemplates[key];
       let subject = str(row.subject, fallback.subject);
       let body = str(row.body, fallback.body);
-      // Refresh legacy saved templates that predate pay-link / continue-with-email copy.
-      if (key === "orderConfirmation" && !body.includes("{{paymentUrl}}")) {
+      // Refresh legacy saved templates that predate newer checkout / digest copy.
+      if (key === "orderConfirmation" && (!body.includes("{{paymentUrl}}") || !body.includes("{{paymentReference}}"))) {
         subject = fallback.subject;
         body = fallback.body;
       }
       if (key === "abandonedCart" && !/set a password/i.test(body)) {
+        subject = fallback.subject;
+        body = fallback.body;
+      }
+      if (key === "lowStockAlert" && !body.includes("{{opsWhatsappUrl}}")) {
+        subject = fallback.subject;
+        body = fallback.body;
+      }
+      if (key === "weeklyDigest" && (!row.subject || !row.body || !body.includes("{{pendingProofs}}"))) {
         subject = fallback.subject;
         body = fallback.body;
       }

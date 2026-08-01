@@ -1415,6 +1415,11 @@ export function LibraryAdminHub() {
 
       {view === "Orders" && (
         <AdminPanel title="Library orders" description="Order queue, fulfilment, payment state, invoices, and customer confirmations." action={<Button onClick={openManualOrder}><Plus className="size-4" /> Manual Order</Button>}>
+          <PaymentProofQueue
+            orders={orders}
+            onApprovePayment={(order) => order.paymentId && setPaymentActionDraft({ paymentId: order.paymentId, orderNumber: order.orderNumber, action: "approve", reason: "Payment verified" })}
+            onRejectPayment={(order) => order.paymentId && setPaymentActionDraft({ paymentId: order.paymentId, orderNumber: order.orderNumber, action: "reject", reason: "" })}
+          />
           <div className="mb-4 grid gap-3 lg:grid-cols-[minmax(0,1fr)_14rem_12rem]">
             <MiniMetricGrid rows={[{ label: "Refunded", value: operations.reports.refundSummary.orders, detail: `USD ${operations.reports.refundSummary.amount.toFixed(2)}` }, { label: "Refund rate", value: `${operations.reports.refundSummary.rate}%`, detail: "Order quality signal" }, { label: "Fulfilments", value: operations.fulfilments.length, detail: "Printed order queue" }]} />
             <AdminSearchInput value={customerFilter} onChange={setCustomerFilter} placeholder="Customer or order..." />
@@ -3446,6 +3451,72 @@ function FulfilmentTable({ rows, onEdit }: { rows: LibraryOperations["fulfilment
           { key: "actions", header: "Actions", render: (row) => <RowActions primaryLabel="Update" primaryIcon={Edit3} onPrimary={() => onEdit(row)} /> },
         ]}
       />
+    </div>
+  );
+}
+
+function PaymentProofQueue({
+  orders,
+  onApprovePayment,
+  onRejectPayment,
+}: {
+  orders: LibraryOrder[];
+  onApprovePayment?: (order: LibraryOrder) => void;
+  onRejectPayment?: (order: LibraryOrder) => void;
+}) {
+  const queue = orders
+    .filter((order) => order.paymentId && (order.proofStatus === "UPLOADED" || (order.status === "PENDING" && order.paymentStatus === "PENDING" && order.proofUrl)))
+    .map((order) => {
+      const ageHours = Math.max(0, Math.round((Date.now() - new Date(order.createdAt).getTime()) / 3600000));
+      return { order, ageHours };
+    })
+    .sort((a, b) => b.ageHours - a.ageHours);
+
+  if (!queue.length) return null;
+
+  return (
+    <div className="mb-5 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h3 className="text-sm font-semibold uppercase tracking-wider text-amber-100">Payment proof queue</h3>
+          <p className="mt-1 text-xs text-amber-100/80">
+            {queue.length} order{queue.length === 1 ? "" : "s"} awaiting finance review. Approve unlocks downloads; reject asks for clearer proof.
+          </p>
+        </div>
+        <span className="rounded-full bg-amber-400/20 px-3 py-1 text-xs font-bold text-amber-100">
+          SLA: review within 24h
+        </span>
+      </div>
+      <div className="mt-4 grid gap-3">
+        {queue.slice(0, 8).map(({ order, ageHours }) => (
+          <div key={order.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-white/10 bg-black/20 px-3 py-3">
+            <div className="min-w-0">
+              <p className="font-semibold text-white">{order.orderNumber}</p>
+              <p className="truncate text-xs text-slate-400">
+                {order.customerName} · {order.currency} {order.total.toFixed(2)} · waiting {ageHours}h
+                {ageHours >= 24 ? " · overdue" : ""}
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {order.proofUrl ? (
+                <a href={order.proofUrl} target="_blank" rel="noreferrer" className="rounded-lg border border-white/10 px-3 py-2 text-xs font-bold text-slate-200 hover:bg-white/5">
+                  View proof
+                </a>
+              ) : null}
+              {onApprovePayment ? (
+                <button type="button" onClick={() => onApprovePayment(order)} className="rounded-lg border border-emerald-500/30 px-3 py-2 text-xs font-bold text-emerald-300 hover:bg-emerald-500/10">
+                  Approve & unlock
+                </button>
+              ) : null}
+              {onRejectPayment ? (
+                <button type="button" onClick={() => onRejectPayment(order)} className="rounded-lg border border-amber-500/30 px-3 py-2 text-xs font-bold text-amber-200 hover:bg-amber-500/10">
+                  Reject proof
+                </button>
+              ) : null}
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

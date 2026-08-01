@@ -25,5 +25,7 @@ export function getMailtoHref(email: string, subject?: string) {
 }
 
 export function stickyWhatsAppVisible(contact: Pick<ContactSettings, "stickyWhatsAppEnabled" | "whatsappNumber">) {
-  return Boolean(contact.stickyWhatsAppEnabled && digitsOnly(contact.whatsappNumber || "").length >= 8);
+  const hasNumber = digitsOnly(contact.whatsappNumber || "").length >= 8;
+  // Show whenever a valid number exists unless admin explicitly disables the sticky.
+  return hasNumber && contact.stickyWhatsAppEnabled !== false;
 }

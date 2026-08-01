@@ -8,7 +8,8 @@ export type LibraryEmailTemplateKey =
   | "guestClaim"
   | "abandonedCart"
   | "lowStockAlert"
-  | "bulkQuoteReceived";
+  | "bulkQuoteReceived"
+  | "weeklyDigest";
 
 export type LibraryEmailTemplate = {
   subject: string;
@@ -17,8 +18,8 @@ export type LibraryEmailTemplate = {
 
 export const defaultLibraryEmailTemplates: Record<LibraryEmailTemplateKey, LibraryEmailTemplate> = {
   orderConfirmation: {
-    subject: "Order {{orderNumber}} received — {{storeName}}",
-    body: "Hi {{customerName}},\n\nWe received your Library order {{orderNumber}}.\nTotal: {{currency}} {{total}}\n\nPay & upload proof (include your payment reference):\n{{paymentUrl}}\n\nYour books & downloads (My Library):\n{{myLibraryUrl}}\n\nOrder details:\n{{orderUrl}}\n\n{{setPasswordNote}}\n\n— {{fromName}}",
+    subject: "Order {{orderNumber}} received — pay with ref {{paymentReference}}",
+    body: "Hi {{customerName}},\n\nWe received your Library order {{orderNumber}}.\nTotal: {{currency}} {{total}}\nPayment reference (put this on your transfer): {{paymentReference}}\n\nPay & upload proof:\n{{paymentUrl}}\n\nNeed help on WhatsApp?\n{{whatsappHelpUrl}}\n\nYour books & downloads (My Library):\n{{myLibraryUrl}}\n\nOrder details:\n{{orderUrl}}\n\n{{setPasswordNote}}\n\n— {{fromName}}",
   },
   paymentReceived: {
     subject: "Payment confirmed for {{orderNumber}}",
@@ -50,11 +51,15 @@ export const defaultLibraryEmailTemplates: Record<LibraryEmailTemplateKey, Libra
   },
   lowStockAlert: {
     subject: "Low stock: {{productTitle}}",
-    body: "Library inventory alert\n\n{{productTitle}} is at {{stock}} unit(s) (threshold {{threshold}}).\nWarehouse: {{warehouse}}\n\nReview inventory in Library Admin.\n\n— {{fromName}}",
+    body: "Library inventory alert\n\n{{productTitle}} is at {{stock}} unit(s) (threshold {{threshold}}).\nWarehouse: {{warehouse}}\n\nReview inventory in Library Admin.\nOps WhatsApp quick open:\n{{opsWhatsappUrl}}\n\n— {{fromName}}",
   },
   bulkQuoteReceived: {
     subject: "We received your Library bulk quote request",
     body: "Hi {{customerName}},\n\nThanks for requesting a quote for {{quantity}} × {{productTitle}}.\nOur team will reply to {{email}} shortly.\n\n— {{fromName}}",
+  },
+  weeklyDigest: {
+    subject: "HouseLink Library weekly digest",
+    body: "Library weekly digest (last 7 days)\n\nOrders: {{orders}}\nRevenue: {{currency}} {{weeklySales}}\nDownloads: {{downloads}}\nPage views: {{pageViews}}\nUnique visitors: {{uniqueVisitors}}\nPending payment proofs: {{pendingProofs}}\nAbandoned cart reminders sent: {{abandonedReminders}}\nWhatsApp sticky clicks: {{whatsappClicks}}\n\nTop pages:\n{{topPages}}\n\nOpen Library Admin Analytics for detail.\n\n— {{fromName}}",
   },
 };
 

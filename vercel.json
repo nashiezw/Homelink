@@ -3,6 +3,10 @@
     {
       "path": "/api/v1/library/cart/remind",
       "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/v1/library/digest/weekly",
+      "schedule": "0 7 * * 1"
     }
   ]
 }

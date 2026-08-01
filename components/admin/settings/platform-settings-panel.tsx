@@ -236,7 +236,17 @@ export function PlatformSettingsPanel({ defaultTab = "general" }: { defaultTab?:
           <Input
             label="WhatsApp number"
             value={settings.contact.whatsappNumber}
-            onChange={(v) => setSettings({ ...settings, contact: { ...settings.contact, whatsappNumber: v } })}
+            onChange={(v) =>
+              setSettings({
+                ...settings,
+                contact: {
+                  ...settings.contact,
+                  whatsappNumber: v,
+                  // Auto-enable sticky when a number is first entered.
+                  stickyWhatsAppEnabled: v.trim() ? true : settings.contact.stickyWhatsAppEnabled,
+                },
+              })
+            }
           />
           <Input
             label="WhatsApp display label"
@@ -246,7 +256,7 @@ export function PlatformSettingsPanel({ defaultTab = "general" }: { defaultTab?:
           <label className="flex items-center gap-2 text-sm font-medium text-slate-200 sm:col-span-2">
             <input
               type="checkbox"
-              checked={Boolean(settings.contact.stickyWhatsAppEnabled)}
+              checked={settings.contact.stickyWhatsAppEnabled !== false}
               onChange={(e) =>
                 setSettings({
                   ...settings,

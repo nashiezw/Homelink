@@ -36,6 +36,7 @@ const EMAIL_TEMPLATE_LABELS: Record<LibraryEmailTemplateKey, string> = {
   refundNotice: "Refund notice",
   guestClaim: "Guest claim",
   lowStockAlert: "Low stock alert",
+  weeklyDigest: "Weekly Library digest",
   bulkQuoteReceived: "Bulk quote received",
 };
 

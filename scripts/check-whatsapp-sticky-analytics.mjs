@@ -16,7 +16,9 @@ function getWhatsAppHref(contact, options = {}) {
 }
 
 function stickyWhatsAppVisible(contact) {
-  return Boolean(contact.stickyWhatsAppEnabled && digitsOnly(contact.whatsappNumber).length >= 8);
+  const hasNumber = digitsOnly(contact.whatsappNumber).length >= 8;
+  // Visible whenever a valid number exists unless admin explicitly disables sticky.
+  return hasNumber && contact.stickyWhatsAppEnabled !== false;
 }
 
 function assert(condition, message) {
@@ -37,6 +39,10 @@ assert(!stickyWhatsAppVisible({ stickyWhatsAppEnabled: true, whatsappNumber: "" 
 assert(
   stickyWhatsAppVisible({ stickyWhatsAppEnabled: true, whatsappNumber: "263771234567" }),
   "shows when enabled with number",
+);
+assert(
+  stickyWhatsAppVisible({ stickyWhatsAppEnabled: undefined, whatsappNumber: "263771234567" }),
+  "shows by default when number is set",
 );
 assert(
   !stickyWhatsAppVisible({ stickyWhatsAppEnabled: false, whatsappNumber: "263771234567" }),

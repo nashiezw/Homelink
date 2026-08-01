@@ -240,7 +240,7 @@ export const defaultPlatformSettings: PlatformSettings = {
     phoneLabel: "",
     whatsappNumber: "",
     whatsappLabel: "",
-    stickyWhatsAppEnabled: false,
+    stickyWhatsAppEnabled: true,
     stickyWhatsAppMessage: "Hi HouseLink — I need help with a property / Library order.",
     stickyWhatsAppLabel: "WhatsApp",
     officeAddress: "",

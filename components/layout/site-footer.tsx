@@ -234,9 +234,18 @@ export function SiteFooter() {
       </div>
 
       <div className="border-t border-white/10">
-        <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-5 text-xs text-slate-500 sm:px-6 md:flex-row md:items-center md:justify-between lg:px-8">
-          <p className="leading-5">&copy; {new Date().getFullYear()} HouseLink Zimbabwe. Verified property marketplace.</p>
-          <p className="font-medium text-slate-400">houselink.co.zw</p>
+        <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-5 text-xs text-slate-500 sm:px-6 lg:px-8">
+          <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+            <p className="leading-5">&copy; {new Date().getFullYear()} HouseLink Zimbabwe. Verified property marketplace.</p>
+            <p className="font-medium text-slate-400">houselink.co.zw</p>
+          </div>
+          <p className="max-w-3xl leading-5 text-slate-500">
+            We use first-party analytics (pages visited, device type, and store funnel steps) to improve HouseLink. See our{" "}
+            <Link href="/privacy" className="font-semibold text-slate-300 underline-offset-2 hover:text-emerald-300 hover:underline">
+              Privacy Policy
+            </Link>
+            .
+          </p>
         </div>
       </div>
     </footer>
