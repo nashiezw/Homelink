@@ -139,7 +139,7 @@ export function MyLibraryClient({
 
           <LibraryUpsellRail
             title="Continue learning"
-            description="Next soft-copy titles based on what you already own."
+            description="Next soft-copy titles based on what you already own — compact picks, one tap to browse."
             suggestions={nextBooks}
             mode="link"
           />

@@ -18,7 +18,7 @@ import {
   trackLibraryCartEvent,
   useLibraryCart,
 } from "@/lib/library/cart-client";
-import type { LibraryDigitalUpsellSuggestion } from "@/lib/library/catalog";
+import type { LibraryDigitalUpsellPack } from "@/lib/library/catalog";
 import type { PublicPaymentConfig } from "@/lib/payments/public-payment-config";
 
 type LibraryQuote = {
@@ -134,8 +134,8 @@ export function LibraryCheckoutClient() {
   const [storeSettings, setStoreSettings] = useState<LibraryPublicSettings | null>(null);
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [shippingMethod, setShippingMethod] = useState<"SHIPPING" | "PICKUP">("SHIPPING");
-  const [upsells, setUpsells] = useState<LibraryDigitalUpsellSuggestion[]>([]);
-  const [upsellBusyId, setUpsellBusyId] = useState<string | null>(null);
+  const [upsellPack, setUpsellPack] = useState<LibraryDigitalUpsellPack | null>(null);
+  const [upsellBusy, setUpsellBusy] = useState(false);
 
   const needsShipping = useMemo(
     () => cart.some((item) => item.formatType === "PRINTED_BOOK" || /print/i.test(item.formatLabel ?? "") || /print/i.test(item.title)),
@@ -178,23 +178,25 @@ export function LibraryCheckoutClient() {
 
   useEffect(() => {
     if (!cart.length) {
-      setUpsells([]);
+      setUpsellPack(null);
       return;
     }
     const seedProductIds = Array.from(new Set(cart.map((item) => item.productId).filter(Boolean)));
     const excludeProductIds = seedProductIds;
     let cancelled = false;
-    void apiFetch<{ suggestions: LibraryDigitalUpsellSuggestion[] }>("/api/v1/library/upsells", {
+    void apiFetch<{ pack: LibraryDigitalUpsellPack | null }>("/api/v1/library/upsells", {
       method: "POST",
       body: JSON.stringify({
+        mode: "pack",
         seedProductIds,
         excludeProductIds,
         cartProductIds: seedProductIds,
-        max: 2,
+        maxItems: 4,
         preferPromoCompanions: cartIsAllDigital,
+        digitalPromoEligible: cartIsAllDigital,
       }),
     }).then((result) => {
-      if (!cancelled) setUpsells(result.data?.suggestions ?? []);
+      if (!cancelled) setUpsellPack(result.data?.pack ?? null);
     });
     return () => {
       cancelled = true;
@@ -373,41 +375,55 @@ export function LibraryCheckoutClient() {
     );
   }
 
-  function addDigitalUpsell(suggestion: LibraryDigitalUpsellSuggestion) {
-    setUpsellBusyId(suggestion.productId);
+  function addDigitalUpsellSet(pack: LibraryDigitalUpsellPack) {
+    if (!pack.items.length || upsellBusy) return;
+    setUpsellBusy(true);
     setCart((current) => {
-      const incoming = repriceLibraryCartLine(
-        {
-          productId: suggestion.productId,
-          title: `${suggestion.title} (${suggestion.formatLabel})`,
-          price: suggestion.price,
-          listPrice: suggestion.price,
-          currency: suggestion.currency,
-          quantity: 1,
-          formatId: suggestion.formatId,
-          formatType: suggestion.formatType,
-          formatLabel: suggestion.formatLabel,
-        },
-        1,
-      );
-      const existing = current.find((line) => sameLibraryCartLine(line, incoming));
-      if (existing) {
-        return current.map((line) =>
-          sameLibraryCartLine(line, incoming) ? repriceLibraryCartLine(line, line.quantity + 1) : line,
+      let next = [...current];
+      for (const suggestion of pack.items) {
+        const incoming = repriceLibraryCartLine(
+          {
+            productId: suggestion.productId,
+            title: `${suggestion.title} (${suggestion.formatLabel})`,
+            price: suggestion.price,
+            listPrice: suggestion.price,
+            currency: suggestion.currency,
+            quantity: 1,
+            formatId: suggestion.formatId,
+            formatType: suggestion.formatType,
+            formatLabel: suggestion.formatLabel,
+          },
+          1,
         );
+        const existing = next.find((line) => sameLibraryCartLine(line, incoming));
+        if (existing) {
+          next = next.map((line) =>
+            sameLibraryCartLine(line, incoming) ? repriceLibraryCartLine(line, line.quantity + 1) : line,
+          );
+        } else {
+          next = [...next, incoming];
+        }
       }
-      return [...current, incoming];
+      return next;
     });
-    notifyLibraryCartAdded(suggestion.title);
-    trackLibraryCartEvent("CART_ADD_SINGLE", suggestion.productId, {
-      formatId: suggestion.formatId,
-      formatType: suggestion.formatType,
-      price: suggestion.price,
-      quantity: 1,
-      source: "checkout_upsell",
+    for (const suggestion of pack.items) {
+      notifyLibraryCartAdded(suggestion.title);
+    }
+    trackLibraryCartEvent("CART_ADD_BUNDLE", pack.sourceProductId, {
+      formatType: "PDF",
+      price: pack.listSubtotal,
+      quantity: pack.itemCount,
+      source: "checkout_upsell_set",
+      companionIds: pack.items.map((item) => item.productId),
+      promoSavings: pack.promoSavings,
     });
-    showToast("Digital title added to your bag.", "success");
-    setUpsellBusyId(null);
+    showToast(
+      pack.completesBundle && pack.promoSavings
+        ? `Set added — soft-copy promo unlocks (save ${pack.currency} ${pack.promoSavings.toFixed(2)}).`
+        : `${pack.itemCount} soft-copy title${pack.itemCount === 1 ? "" : "s"} added to your bag.`,
+      "success",
+    );
+    setUpsellBusy(false);
   }
 
   const payable = useMemo(() => quote?.total ?? total, [quote, total]);
@@ -472,11 +488,10 @@ export function LibraryCheckoutClient() {
 
           <LibraryUpsellRail
             title="Complete your set"
-            description="Digital soft-copy only. Add curated companions to finish the toolkit — and unlock the soft-copy bundle promo when the full set is in your bag."
-            suggestions={upsells}
-            mode="add"
-            busyId={upsellBusyId}
-            onAddDigital={addDigitalUpsell}
+            description="Digital soft-copy only. One pack, one tap — unlock the soft-copy bundle promo when the full set is in your bag."
+            pack={upsellPack}
+            busy={upsellBusy}
+            onAddSet={addDigitalUpsellSet}
           />
 
           <section className="surface-panel rounded-lg p-5">

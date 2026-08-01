@@ -293,7 +293,7 @@ export function LibraryCheckoutConfirmation({
 
         <LibraryUpsellRail
           title="Buy the next book"
-          description="Soft-copy titles that complete what you just ordered — browse now or after payment."
+          description="Soft-copy companions for what you just ordered — open a title to add it."
           suggestions={nextBooks}
           mode="link"
         />
