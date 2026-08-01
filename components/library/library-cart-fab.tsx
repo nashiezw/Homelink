@@ -5,6 +5,7 @@ import { ShoppingBag } from "lucide-react";
 import { useEffect, useState } from "react";
 import { LibraryBagDrawer } from "@/components/library/library-bag-drawer";
 import { useLibraryCart } from "@/lib/library/cart-client";
+import { useHouseLinkBottomDock } from "@/lib/ui/bottom-dock";
 import { cn } from "@/lib/utils";
 
 /** Mobile / tablet Library bag FAB (right). Hidden at lg+ — desktop uses header bag. */
@@ -13,6 +14,7 @@ export function LibraryCartFab({ className }: { className?: string }) {
   const { count } = useLibraryCart();
   const [open, setOpen] = useState(false);
   const [pulse, setPulse] = useState(false);
+  const bottomDock = useHouseLinkBottomDock();
 
   useEffect(() => {
     function onAdded() {
@@ -29,7 +31,11 @@ export function LibraryCartFab({ className }: { className?: string }) {
     <div
       data-houselink-sticky="library-bag"
       className={cn(
-        "fixed bottom-[max(1.25rem,env(safe-area-inset-bottom))] right-4 z-[60] flex flex-col items-end gap-3 sm:right-5 lg:hidden",
+        "fixed right-4 z-[60] flex flex-col items-end gap-3 sm:right-5 lg:hidden",
+        // Lift above the product-page mobile "Add bundle" dock when present.
+        bottomDock
+          ? "bottom-[calc(5.75rem+env(safe-area-inset-bottom))]"
+          : "bottom-[max(1.25rem,env(safe-area-inset-bottom))]",
         className,
       )}
     >

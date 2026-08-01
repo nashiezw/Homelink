@@ -44,6 +44,7 @@ import {
   writeLibraryCart,
   useLibraryCart,
 } from "@/lib/library/cart-client";
+import { setHouseLinkBottomDock } from "@/lib/ui/bottom-dock";
 import {
   applyLibraryBundlePromo,
   availableLibraryFormats,
@@ -290,6 +291,20 @@ export function LibraryProductPage({
   useEffect(() => {
     trackEvent("library_product_viewed", product.id, { slug: product.slug });
   }, [product.id, product.slug]);
+
+  // Tell floating FABs to clear the mobile "Add bundle" dock.
+  useEffect(() => {
+    const sync = () => {
+      const showDock = bundleLines.length > 1 && typeof window !== "undefined" && window.innerWidth < 1024;
+      setHouseLinkBottomDock(showDock ? "library-bundle" : null);
+    };
+    sync();
+    window.addEventListener("resize", sync);
+    return () => {
+      window.removeEventListener("resize", sync);
+      setHouseLinkBottomDock(null);
+    };
+  }, [bundleLines.length]);
 
   useEffect(() => {
     setReviews(initialReviews);

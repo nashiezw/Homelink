@@ -9,18 +9,25 @@ import {
   resolveWhatsAppLane,
   stickyWhatsAppVisible,
 } from "@/lib/settings/contact";
+import { isLibraryProductPath } from "@/lib/ui/bottom-dock";
 import { cn } from "@/lib/utils";
 
 /**
  * Sticky WhatsApp help — all breakpoints (left).
- * Routes Library vs property numbers/messages from the current path.
+ * Hidden on Library product pages (in-page help + mobile bundle dock) and checkout.
  */
 export function WhatsAppStickyFab({ className }: { className?: string }) {
   const pathname = usePathname();
   const { config } = usePlatformConfig();
   const contact = config?.contact;
   if (!contact || !stickyWhatsAppVisible(contact)) return null;
-  if (pathname?.startsWith("/dashboard/admin") || pathname?.startsWith("/library/checkout")) return null;
+  if (
+    pathname?.startsWith("/dashboard/admin") ||
+    pathname?.startsWith("/library/checkout") ||
+    isLibraryProductPath(pathname)
+  ) {
+    return null;
+  }
 
   const lane = resolveWhatsAppLane(pathname || undefined);
   const href = getContextualWhatsAppHref(contact, { source: "sticky_fab", pathname: pathname || undefined, lane });

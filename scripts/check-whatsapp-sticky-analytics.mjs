@@ -91,7 +91,8 @@ const footer = readFileSync(join(root, "components/layout/site-footer.tsx"), "ut
 const panel = readFileSync(join(root, "components/admin/site-analytics-panel.tsx"), "utf8");
 
 assert(/data-houselink-sticky="whatsapp"/.test(whatsappFab), "WhatsApp sticky marker present");
-assert(!/lg:hidden(?![^"]*span)/.test(whatsappFab.split("data-houselink-sticky")[0] || ""), "WhatsApp wrapper is not mobile-only");
+assert(/isLibraryProductPath/.test(whatsappFab), "WhatsApp sticky hides on Library product pages");
+assert(/library\/checkout/.test(whatsappFab), "WhatsApp sticky hides on Library checkout");
 assert(/<span[^>]*lg:hidden/.test(whatsappFab), "WhatsApp label hides on desktop (icon-only)");
 assert(/lg:size-12|lg:rounded-full/.test(whatsappFab), "WhatsApp compact icon circle on desktop");
 assert(/stickyWhatsAppQuietHours|quiet/.test(whatsappFab), "WhatsApp quiet hours note supported");
