@@ -195,7 +195,16 @@ export function estimateLibraryBundleScenario(
     }
     return formats.find((format) => format.type !== "PRINTED_BOOK")?.price ?? formats[0]?.price ?? item.price;
   });
-  return applyLibraryBundlePromo(prices, promoTotal);
+  // Soft-copy promo is digital-only; printed scenarios always use list prices.
+  return applyLibraryBundlePromo(prices, mode === "digital" ? promoTotal : null);
+}
+
+/** Bundle promo totals are priced for soft copy — never discount printed lines with that promo. */
+export function libraryBundlePromoAppliesToFormats(
+  formatTypes: Array<string | null | undefined>,
+) {
+  if (!formatTypes.length) return false;
+  return formatTypes.every((type) => type !== "PRINTED_BOOK");
 }
 
 export function normalizeLibraryVolumeTiers(
@@ -278,9 +287,12 @@ export function maxLibraryPrintQuantity(
 /**
  * Apply an admin-curated FBT promo when the cart contains the source product
  * plus all companions at quantity 1 each (same rules as the PDP bundle CTA).
+ * Soft-copy promo only — any printed line disables the bundle discount.
  * Other cart lines are left unchanged. Picks the matching bundle with the largest savings.
  */
-export function applyLibraryBundlePromoToCartLines<T extends { productId: string; price: number; quantity: number }>(
+export function applyLibraryBundlePromoToCartLines<
+  T extends { productId: string; price: number; quantity: number; formatType?: string | null },
+>(
   lines: T[],
   products: Array<Pick<LibraryProduct, "id" | "bundleProductIds" | "bundlePromoPrice">>,
 ): { lines: T[]; bundleSavings: number; bundleSourceProductId?: string } {
@@ -300,8 +312,10 @@ export function applyLibraryBundlePromoToCartLines<T extends { productId: string
     const memberIds = [source.id, ...companions];
     const memberLines = memberIds.map((id) => lines.find((line) => line.productId === id));
     if (memberLines.some((line) => !line || line.quantity !== 1)) continue;
+    const formatTypes = memberLines.map((line) => line!.formatType);
+    if (!libraryBundlePromoAppliesToFormats(formatTypes)) continue;
     const listPrices = memberLines.map((line) => Number(line!.price) || 0);
-    const result = applyLibraryBundlePromo(listPrices, Number(promo));
+    const result = applyLibraryBundlePromo(listPrices, Number(promo), formatTypes);
     if (result.savings <= 0) continue;
     if (!best || result.savings > best.savings) {
       best = { memberIds, linePrices: result.linePrices, savings: result.savings, sourceId: source.id };
@@ -320,8 +334,15 @@ export function applyLibraryBundlePromoToCartLines<T extends { productId: string
   };
 }
 
-export function applyLibraryBundlePromo(linePrices: number[], promoTotal?: number | null) {
+export function applyLibraryBundlePromo(
+  linePrices: number[],
+  promoTotal?: number | null,
+  formatTypes?: Array<string | null | undefined>,
+) {
   const subtotal = Math.round(linePrices.reduce((sum, price) => sum + price, 0) * 100) / 100;
+  if (formatTypes?.length && !libraryBundlePromoAppliesToFormats(formatTypes)) {
+    return { linePrices, subtotal, total: subtotal, savings: 0 };
+  }
   if (
     promoTotal == null ||
     !Number.isFinite(promoTotal) ||

@@ -4036,7 +4036,7 @@ function localProductFromInput(input: Partial<LibraryProductInput>, existing?: L
           ? Number(input.bundlePromoPrice) || undefined
           : existing?.bundlePromoPrice,
     bundleFormatPreference:
-      input.bundleFormatPreference ?? existing?.bundleFormatPreference ?? "MATCH_SHOPPER",
+      input.bundleFormatPreference ?? existing?.bundleFormatPreference ?? "PREFER_DIGITAL",
     formats,
     gallery,
     downloads,

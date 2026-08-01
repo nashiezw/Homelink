@@ -426,7 +426,7 @@ export function LibraryAdminHub() {
     preorder: false,
     bundleProductIds: [],
     bundlePromoPrice: "",
-    bundleFormatPreference: "MATCH_SHOPPER",
+    bundleFormatPreference: "PREFER_DIGITAL",
     formats: [
       { id: "digital", type: "PDF", label: "Digital PDF", enabled: true, price: 29 },
       { id: "printed", type: "PRINTED_BOOK", label: "Printed book", enabled: false, price: 45 },
@@ -716,7 +716,7 @@ export function LibraryAdminHub() {
       scheduledAt: product.scheduledAt ? product.scheduledAt.slice(0, 16) : "",
       bundleProductIds: product.bundleProductIds ?? [],
       bundlePromoPrice: product.bundlePromoPrice != null ? String(product.bundlePromoPrice) : "",
-      bundleFormatPreference: product.bundleFormatPreference ?? "MATCH_SHOPPER",
+      bundleFormatPreference: product.bundleFormatPreference ?? "PREFER_DIGITAL",
     });
     setBundleCompanionQuery("");
     setHidePrintOosCompanions(false);
@@ -1514,7 +1514,7 @@ export function LibraryAdminHub() {
 
       {draftOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4" onClick={closeEditor}>
-          <div className="flex max-h-[92dvh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-slate-950 shadow-2xl" onClick={(event) => event.stopPropagation()}>
+          <div className="flex max-h-[92dvh] w-full max-w-6xl min-w-0 flex-col overflow-hidden rounded-2xl border border-white/10 bg-slate-950 shadow-2xl" onClick={(event) => event.stopPropagation()}>
             <div className="flex items-start justify-between gap-3 border-b border-white/10 p-5">
               <div>
                 <h2 className="text-lg font-semibold text-white">{editingProduct ? "Edit Library Product" : "Create Library Product"}</h2>
@@ -1522,9 +1522,9 @@ export function LibraryAdminHub() {
               </div>
               <button type="button" onClick={closeEditor} className="rounded-lg p-2 text-slate-400 hover:bg-white/5" aria-label="Close editor"><X className="size-4" /></button>
             </div>
-            <div className="overflow-y-auto p-5">
-              <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_20rem]">
-                <div className="space-y-5">
+            <div className="min-w-0 overflow-y-auto overflow-x-hidden p-5">
+              <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,20rem)]">
+                <div className="min-w-0 space-y-5">
                   <EditorSection title="Product basics">
                     <div className="grid gap-3 md:grid-cols-2">
                       <Field label="Title" value={draft.title} onChange={(value) => setDraft({ ...draft, title: value })} required className="md:col-span-2" />
@@ -1607,7 +1607,7 @@ export function LibraryAdminHub() {
                   </EditorSection>
                 </div>
 
-                <aside className="space-y-5">
+                <aside className="min-w-0 space-y-5">
                   <EditorSection title="Pricing & formats">
                     <div className="grid gap-3">
                       <Field label="Currency" value={draft.currency} onChange={(value) => setDraft({ ...draft, currency: value })} />
@@ -1710,7 +1710,6 @@ export function LibraryAdminHub() {
                         .filter((product): product is LibraryProduct => Boolean(product));
                       const previewProducts = [mainPreview, ...companionPreview];
                       const digital = estimateLibraryBundleScenario(previewProducts, "digital", promo);
-                      const print = estimateLibraryBundleScenario(previewProducts, "print", promo);
                       const digitalList = estimateLibraryBundleScenario(previewProducts, "digital", null);
                       const printList = estimateLibraryBundleScenario(previewProducts, "print", null);
                       const suggestedDigitalPromo = Math.round(digitalList.subtotal * 0.9 * 100) / 100;
@@ -1737,12 +1736,6 @@ export function LibraryAdminHub() {
                       const selectedCompanions = draft.bundleProductIds
                         .map((id) => publishedCompanions.find((product) => product.id === id))
                         .filter((product): product is LibraryProduct => Boolean(product));
-                      const promoSavesDigital =
-                        promo != null && Number.isFinite(promo) && promo > 0 && promo < digitalList.subtotal - 0.001;
-                      const promoDeepOnPrint =
-                        promoSavesDigital &&
-                        printList.subtotal > digitalList.subtotal + 0.001 &&
-                        (printList.subtotal - Number(promo)) / printList.subtotal > 0.35;
                       const promoOnlyHelpsPrint =
                         promo != null &&
                         Number.isFinite(promo) &&
@@ -1750,51 +1743,53 @@ export function LibraryAdminHub() {
                         promo >= digitalList.subtotal - 0.001 &&
                         promo < printList.subtotal - 0.001;
                       return (
-                    <div className="grid gap-3">
+                    <div className="grid min-w-0 max-w-full gap-3 overflow-hidden">
                       <p className="text-xs leading-5 text-slate-500">
-                        Tick up to 4 companions (checkboxes stay clearer than a dropdown). Shoppers choose digital or print on the product page. One promo total applies to whichever formats they pick.
+                        Tick up to 4 companions. Shoppers can still choose digital or print per title. The promo total is for soft copy only — if any printed format is selected, list prices apply.
                       </p>
                       {selectedCompanions.length > 0 ? (
-                        <div className="space-y-1.5">
+                        <div className="min-w-0 space-y-1.5">
                           {selectedCompanions.map((product, index) => (
                             <div
                               key={`selected-${product.id}`}
-                              className="flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1.5"
+                              className="flex min-w-0 max-w-full items-center gap-1.5 overflow-hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-2 py-1.5"
                             >
-                              <span className="min-w-0 flex-1 truncate text-[11px] font-semibold text-emerald-200">
+                              <span className="min-w-0 flex-1 truncate text-[11px] font-semibold text-emerald-200" title={product.title}>
                                 {index + 1}. {product.title}
                               </span>
-                              <button
-                                type="button"
-                                className="rounded px-1.5 py-0.5 text-[10px] font-bold text-slate-300 hover:bg-white/10 disabled:opacity-30"
-                                disabled={index === 0}
-                                onClick={() => moveBundleCompanion(product.id, -1)}
-                                title="Move up"
-                              >
-                                ↑
-                              </button>
-                              <button
-                                type="button"
-                                className="rounded px-1.5 py-0.5 text-[10px] font-bold text-slate-300 hover:bg-white/10 disabled:opacity-30"
-                                disabled={index === selectedCompanions.length - 1}
-                                onClick={() => moveBundleCompanion(product.id, 1)}
-                                title="Move down"
-                              >
-                                ↓
-                              </button>
-                              <button
-                                type="button"
-                                className="rounded px-1.5 py-0.5 text-[11px] font-bold text-emerald-200 hover:bg-white/10"
-                                onClick={() =>
-                                  setDraft((current) => ({
-                                    ...current,
-                                    bundleProductIds: current.bundleProductIds.filter((id) => id !== product.id),
-                                  }))
-                                }
-                                title="Remove from bundle"
-                              >
-                                ×
-                              </button>
+                              <div className="flex shrink-0 items-center gap-0.5">
+                                <button
+                                  type="button"
+                                  className="rounded px-1 py-0.5 text-[10px] font-bold text-slate-300 hover:bg-white/10 disabled:opacity-30"
+                                  disabled={index === 0}
+                                  onClick={() => moveBundleCompanion(product.id, -1)}
+                                  title="Move up"
+                                >
+                                  ↑
+                                </button>
+                                <button
+                                  type="button"
+                                  className="rounded px-1 py-0.5 text-[10px] font-bold text-slate-300 hover:bg-white/10 disabled:opacity-30"
+                                  disabled={index === selectedCompanions.length - 1}
+                                  onClick={() => moveBundleCompanion(product.id, 1)}
+                                  title="Move down"
+                                >
+                                  ↓
+                                </button>
+                                <button
+                                  type="button"
+                                  className="rounded px-1 py-0.5 text-[11px] font-bold text-emerald-200 hover:bg-white/10"
+                                  onClick={() =>
+                                    setDraft((current) => ({
+                                      ...current,
+                                      bundleProductIds: current.bundleProductIds.filter((id) => id !== product.id),
+                                    }))
+                                  }
+                                  title="Remove from bundle"
+                                >
+                                  ×
+                                </button>
+                              </div>
                             </div>
                           ))}
                           <span className="text-[11px] text-slate-500">
@@ -1802,25 +1797,25 @@ export function LibraryAdminHub() {
                           </span>
                         </div>
                       ) : null}
-                      <label className="grid gap-1.5 text-sm">
+                      <label className="grid min-w-0 gap-1.5 text-sm">
                         <span className="font-semibold text-slate-300">Search companions</span>
                         <input
                           value={bundleCompanionQuery}
                           onChange={(event) => setBundleCompanionQuery(event.target.value)}
                           placeholder="Filter by title, author, SKU…"
-                          className="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-white outline-none transition placeholder:text-slate-600 focus:border-emerald-500"
+                          className="w-full min-w-0 rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-white outline-none transition placeholder:text-slate-600 focus:border-emerald-500"
                         />
                       </label>
-                      <label className="flex items-center gap-2 text-[11px] text-slate-400">
+                      <label className="flex min-w-0 items-start gap-2 text-[11px] leading-4 text-slate-400">
                         <input
                           type="checkbox"
-                          className="accent-emerald-600"
+                          className="mt-0.5 shrink-0 accent-emerald-600"
                           checked={hidePrintOosCompanions}
                           onChange={(event) => setHidePrintOosCompanions(event.target.checked)}
                         />
-                        Hide companions with printed format out of stock
+                        <span className="min-w-0 break-words">Hide companions with printed format out of stock</span>
                       </label>
-                      <div className="max-h-56 space-y-2 overflow-y-auto rounded-lg border border-white/10 p-2">
+                      <div className="max-h-56 min-w-0 max-w-full space-y-2 overflow-y-auto overflow-x-hidden rounded-lg border border-white/10 p-2">
                         {filteredCompanions.map((product) => {
                             const checked = draft.bundleProductIds.includes(product.id);
                             const disabled = !checked && draft.bundleProductIds.length >= 4;
@@ -1829,11 +1824,11 @@ export function LibraryAdminHub() {
                             return (
                               <label
                                 key={product.id}
-                                className={`flex cursor-pointer items-start gap-2 rounded-lg px-2 py-2 text-sm transition hover:bg-white/5 ${disabled ? "opacity-40" : ""}`}
+                                className={`flex min-w-0 max-w-full cursor-pointer items-start gap-2 rounded-lg px-2 py-2 text-sm transition hover:bg-white/5 ${disabled ? "opacity-40" : ""}`}
                               >
                                 <input
                                   type="checkbox"
-                                  className="mt-1"
+                                  className="mt-1 shrink-0"
                                   checked={checked}
                                   disabled={disabled}
                                   onChange={() => {
@@ -1845,16 +1840,16 @@ export function LibraryAdminHub() {
                                     }));
                                   }}
                                 />
-                                <span className="min-w-0">
-                                  <span className="flex flex-wrap items-center gap-1.5">
-                                    <span className="font-semibold text-slate-100">{product.title}</span>
+                                <span className="min-w-0 flex-1 overflow-hidden">
+                                  <span className="flex min-w-0 flex-wrap items-center gap-1.5">
+                                    <span className="break-words font-semibold text-slate-100">{product.title}</span>
                                     {printOos ? (
-                                      <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-300">
+                                      <span className="shrink-0 rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-300">
                                         Print OOS
                                       </span>
                                     ) : null}
                                   </span>
-                                  <span className="mt-0.5 block text-[11px] text-slate-500">
+                                  <span className="mt-0.5 block break-words text-[11px] text-slate-500">
                                     {enabledLibraryFormats(product)
                                       .map((format) => `${format.label} ${product.currency} ${format.price.toFixed(2)}`)
                                       .join(" · ") || `${product.currency} ${product.price.toFixed(2)}`}
@@ -1881,16 +1876,16 @@ export function LibraryAdminHub() {
                               : "MATCH_SHOPPER") as LibraryBundleFormatPreference,
                           })
                         }
-                        options={["MATCH_SHOPPER", "PREFER_DIGITAL", "PREFER_PRINT"]}
+                        options={["PREFER_DIGITAL", "MATCH_SHOPPER", "PREFER_PRINT"]}
                         optionLabels={{
+                          PREFER_DIGITAL: "Prefer digital / soft copy (recommended)",
                           MATCH_SHOPPER: "Match shopper’s format",
-                          PREFER_DIGITAL: "Prefer digital / soft copy",
                           PREFER_PRINT: "Prefer printed book",
                         }}
-                        hint="Only the starting default. Shoppers can still switch each companion to digital or print on the product page."
+                        hint="Recommended: prefer digital so the soft-copy deal shows first. Shoppers can still switch formats on the product page."
                       />
                       <Field
-                        label="Bundle promo total (optional)"
+                        label="Soft-copy bundle promo total (optional)"
                         value={draft.bundlePromoPrice}
                         onChange={(value) => setDraft({ ...draft, bundlePromoPrice: value })}
                         type="number"
@@ -1901,7 +1896,7 @@ export function LibraryAdminHub() {
                         }
                       />
                       <p className="text-[11px] leading-4 text-slate-500">
-                        One promo for the whole set (main + companions). Best practice: aim it at the <span className="text-slate-300">digital</span> total. For printed bulk discounts, use printed volume tiers on each book instead.
+                        Aim about 5–15% under the digital list total. Soft-copy only — printed picks stay at list price. Use printed volume tiers or the quote inbox for bulk print.
                       </p>
                       {draft.bundleProductIds.length > 0 ? (
                         <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3 text-xs leading-5 text-slate-300">
@@ -1921,16 +1916,11 @@ export function LibraryAdminHub() {
                             ) : null}
                           </p>
                           <p className="mt-1">
-                            Printed:{" "}
+                            Printed / mixed with print:{" "}
                             <span className="font-semibold text-white">
                               {currency} {printList.subtotal.toFixed(2)}
                             </span>
-                            {print.savings > 0 ? (
-                              <span className="text-slate-400">
-                                {" "}
-                                → with same promo {currency} {print.total.toFixed(2)} (save {currency} {print.savings.toFixed(2)})
-                              </span>
-                            ) : null}
+                            <span className="text-slate-500"> · list prices (soft-copy promo off)</span>
                           </p>
                           {digitalList.subtotal > 0 ? (
                             <button
@@ -1940,10 +1930,7 @@ export function LibraryAdminHub() {
                                 setDraft((current) => ({
                                   ...current,
                                   bundlePromoPrice: suggestedDigitalPromo.toFixed(2),
-                                  bundleFormatPreference:
-                                    current.bundleFormatPreference === "PREFER_PRINT"
-                                      ? "PREFER_DIGITAL"
-                                      : current.bundleFormatPreference,
+                                  bundleFormatPreference: "PREFER_DIGITAL",
                                 }))
                               }
                             >
@@ -1955,13 +1942,8 @@ export function LibraryAdminHub() {
                               This promo is above the soft-copy total, so digital shoppers won’t see a Save. Lower it below {currency} {digitalList.subtotal.toFixed(2)} for a soft-copy deal.
                             </p>
                           ) : null}
-                          {promoDeepOnPrint ? (
-                            <p className="mt-1.5 text-[11px] text-amber-300">
-                              Same promo also cuts printed bundles very deeply (&gt;35% off print). Prefer a digital-aimed promo here, and use printed volume tiers for bulk print savings.
-                            </p>
-                          ) : null}
                           <p className="mt-1.5 text-[11px] text-slate-500">
-                            Soft copy and print are not two separate bundles — companions are shared; format is chosen at checkout time on the storefront.
+                            Companions are shared; shoppers pick format on the product page. Promo unlocks only when every selected format is digital.
                           </p>
                         </div>
                       ) : (
@@ -2350,7 +2332,7 @@ function productPayload(draft: LibraryProductDraft, statusOverride?: string) {
     seoImageUrl: draft.seoImageUrl.trim() || undefined,
     bundleProductIds: draft.bundleProductIds,
     bundlePromoPrice: draft.bundlePromoPrice.trim() ? Number(draft.bundlePromoPrice) : null,
-    bundleFormatPreference: draft.bundleFormatPreference || "MATCH_SHOPPER",
+    bundleFormatPreference: draft.bundleFormatPreference || "PREFER_DIGITAL",
     formats,
     stock,
     lowStockThreshold: Number(draft.lowStockThreshold) || 0,
@@ -2516,7 +2498,7 @@ function PrintedVolumeTiersEditor({
       </p>
       <div className="space-y-2">
         {rows.map((row, index) => (
-          <div key={`volume-tier-${index}`} className="grid grid-cols-[1fr_1fr_auto] items-end gap-2">
+          <div key={`volume-tier-${index}`} className="grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] items-end gap-2">
             <Field
               label={index === 0 ? "Min qty" : ""}
               value={row.minQty}
@@ -2743,18 +2725,18 @@ function taxonomyPayload(draft: TaxonomyDraft) {
 
 function EditorSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="rounded-xl border border-white/10 bg-slate-900/50 p-4">
+    <section className="min-w-0 max-w-full overflow-hidden rounded-xl border border-white/10 bg-slate-900/50 p-4">
       <h3 className="mb-3 text-sm font-black uppercase tracking-wide text-slate-300">{title}</h3>
-      {children}
+      <div className="min-w-0 max-w-full">{children}</div>
     </section>
   );
 }
 
 function Field({ label, value, onChange, placeholder, type = "text", required = false, className }: { label: string; value: string; onChange: (value: string) => void; placeholder?: string; type?: string; required?: boolean; className?: string }) {
   return (
-    <label className={cn("grid gap-1.5 text-sm", className)}>
+    <label className={cn("grid min-w-0 max-w-full gap-1.5 text-sm", className)}>
       <span className="font-semibold text-slate-300">{label}{required && <span className="text-emerald-300"> *</span>}</span>
-      <input value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} type={type} className="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-white outline-none transition placeholder:text-slate-600 focus:border-emerald-500" />
+      <input value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} type={type} className="w-full min-w-0 rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-white outline-none transition placeholder:text-slate-600 focus:border-emerald-500" />
     </label>
   );
 }
@@ -2890,16 +2872,16 @@ function SelectField({
   hint?: string;
 }) {
   return (
-    <label className="grid gap-1.5 text-sm">
+    <label className="grid min-w-0 max-w-full gap-1.5 text-sm">
       <span className="font-semibold text-slate-300">{label}</span>
-      <select value={value} onChange={(event) => onChange(event.target.value)} className="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-white outline-none transition focus:border-emerald-500">
+      <select value={value} onChange={(event) => onChange(event.target.value)} className="w-full min-w-0 max-w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-white outline-none transition focus:border-emerald-500">
         {options.map((option) => (
           <option key={option} value={option}>
             {optionLabels?.[option] ?? option.replace(/_/g, " ")}
           </option>
         ))}
       </select>
-      {hint ? <span className="text-[11px] leading-4 text-slate-500">{hint}</span> : null}
+      {hint ? <span className="break-words text-[11px] leading-4 text-slate-500">{hint}</span> : null}
     </label>
   );
 }

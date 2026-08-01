@@ -165,9 +165,11 @@ export function LibraryProductPage({
       return { product: item, format };
     });
     const rows = [{ product, format: selectedFormat }, ...companions];
+    const formatTypes = rows.map((row) => row.format.type);
     const promo = applyLibraryBundlePromo(
       rows.map((row) => row.format.price),
       product.bundlePromoPrice,
+      formatTypes,
     );
     return rows.map((row, index) => ({
       ...row,
@@ -177,6 +179,7 @@ export function LibraryProductPage({
       total: promo.total,
       savings: promo.savings,
       inStock: libraryFormatInStock(row.product, row.format),
+      promoApplies: promo.savings > 0,
     }));
   }, [bundleCompanions, bundleFormatIds, product, selectedFormat]);
 
@@ -184,6 +187,24 @@ export function LibraryProductPage({
   const bundleSubtotal = bundleLines[0]?.subtotal ?? 0;
   const bundleTotal = bundleLines[0]?.total ?? 0;
   const bundleAvailable = bundleLines.length > 1 && bundleLines.every((line) => line.inStock);
+  const bundleIncludesPrint = bundleLines.some((line) => line.format.type === "PRINTED_BOOK");
+  const bundlePromoDigitalOnly =
+    Boolean(product.bundlePromoPrice) &&
+    bundleIncludesPrint &&
+    bundleSavings <= 0;
+
+  function unlockDigitalBundlePromo() {
+    const next: Record<string, string> = {};
+    for (const item of bundleCompanions) {
+      next[item.id] = pickLibraryBundleFormat(item, "PDF", { requireInStock: false }).id;
+    }
+    setBundleFormatIds(next);
+    if (selectedFormat?.type === "PRINTED_BOOK") {
+      const digital = availableLibraryFormats(product).find((format) => format.type !== "PRINTED_BOOK")
+        ?? enabledLibraryFormats(product).find((format) => format.type !== "PRINTED_BOOK");
+      if (digital) setSelectedFormatId(digital.id);
+    }
+  }
   const bundlePreferenceLabel =
     product.bundleFormatPreference === "PREFER_DIGITAL"
       ? "Defaults to digital"
@@ -1175,7 +1196,9 @@ export function LibraryProductPage({
                 </Button>
               }
             >
-              <p className="mb-3 text-xs font-semibold text-slate-500">{bundlePreferenceLabel}. You can change each companion’s format below.</p>
+              <p className="mb-3 text-xs font-semibold text-slate-500">
+                {bundlePreferenceLabel}. Soft-copy promo applies only when every title is digital — printed picks use full list price.
+              </p>
               <div className={cn("grid items-stretch gap-3", bundleLines.length >= 3 ? "md:grid-cols-3" : "md:grid-cols-2")}>
                 {bundleLines.map((line) => {
                   const itemFormats = availableLibraryFormats(line.product);
@@ -1245,6 +1268,19 @@ export function LibraryProductPage({
                         {product.currency} {bundleSubtotal.toFixed(2)}
                       </span>
                     </p>
+                  ) : bundlePromoDigitalOnly ? (
+                    <div className="space-y-2">
+                      <p className="font-semibold text-amber-700 dark:text-amber-300">
+                        Soft-copy promo paused — printed picks use full list price.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={unlockDigitalBundlePromo}
+                        className="text-xs font-bold text-emerald-700 underline-offset-2 hover:underline dark:text-emerald-300"
+                      >
+                        Switch all to digital and unlock promo
+                      </button>
+                    </div>
                   ) : (
                     <p>Choose formats above, then add the bundle to your bag.</p>
                   )}
@@ -1252,7 +1288,7 @@ export function LibraryProductPage({
                     Buy separately: {product.currency} {bundleSubtotal.toFixed(2)}
                     {bundleSavings > 0
                       ? ` · Bundle: ${product.currency} ${bundleTotal.toFixed(2)}`
-                      : " · Same as bundle total (no promo)"}
+                      : ` · Total: ${product.currency} ${bundleTotal.toFixed(2)}${bundleIncludesPrint ? " (list prices)" : ""}`}
                   </p>
                 </div>
                 <p className="text-right text-lg font-semibold tracking-tight">
@@ -1509,6 +1545,14 @@ export function LibraryProductPage({
                 <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-300">
                   Save {product.currency} {bundleSavings.toFixed(2)}
                 </p>
+              ) : bundlePromoDigitalOnly ? (
+                <button
+                  type="button"
+                  onClick={unlockDigitalBundlePromo}
+                  className="truncate text-left text-xs font-semibold text-emerald-700 dark:text-emerald-300"
+                >
+                  Switch to digital for promo
+                </button>
               ) : (
                 <p className="truncate text-xs text-slate-500">{bundlePreferenceLabel}</p>
               )}
