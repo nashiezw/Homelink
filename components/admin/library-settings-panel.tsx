@@ -375,6 +375,29 @@ export function LibrarySettingsPanel({
                   <ToggleRow label="Enable printed book shipping" checked={draft.delivery.enablePrintedShipping} onChange={(enablePrintedShipping) => setDraft({ ...draft, delivery: { ...draft.delivery, enablePrintedShipping } })} />
                   <ToggleRow label="Allow local pickup" checked={draft.delivery.allowLocalPickup} onChange={(allowLocalPickup) => setDraft({ ...draft, delivery: { ...draft.delivery, allowLocalPickup } })} />
                 </div>
+                {draft.delivery.allowLocalPickup ? (
+                  <div className="mt-4">
+                    <FormGrid>
+                      <TextAreaField
+                        label="Pickup address (shown to customers)"
+                        value={draft.delivery.pickupAddress}
+                        onChange={(pickupAddress) => setDraft({ ...draft, delivery: { ...draft.delivery, pickupAddress } })}
+                        className="sm:col-span-2"
+                      />
+                      <TextAreaField
+                        label="Pickup instructions"
+                        value={draft.delivery.pickupInstructions}
+                        onChange={(pickupInstructions) => setDraft({ ...draft, delivery: { ...draft.delivery, pickupInstructions } })}
+                        className="sm:col-span-2"
+                      />
+                      <TextField
+                        label="Pickup contact phone (optional)"
+                        value={draft.delivery.pickupPhone}
+                        onChange={(pickupPhone) => setDraft({ ...draft, delivery: { ...draft.delivery, pickupPhone } })}
+                      />
+                    </FormGrid>
+                  </div>
+                ) : null}
                 <div className="mt-6">
                   <ShippingZonesEditor
                     zones={draft.delivery.zones}

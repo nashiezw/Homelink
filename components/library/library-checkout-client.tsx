@@ -63,6 +63,9 @@ type LibraryPublicSettings = {
     estimatedDaysMin: number;
     estimatedDaysMax: number;
     allowLocalPickup?: boolean;
+    pickupAddress?: string;
+    pickupInstructions?: string;
+    pickupPhone?: string;
     zones?: Array<{
       id: string;
       name: string;
@@ -82,7 +85,7 @@ type LibraryPublicSettings = {
     requireProof: boolean;
     instructions: string;
   };
-  store: { enabled: boolean; currency: string; name: string };
+  store: { enabled: boolean; currency: string; name: string; supportEmail?: string };
 };
 
 type ShippingForm = {
@@ -442,6 +445,43 @@ export function LibraryCheckoutClient() {
                   <label className="inline-flex items-center gap-2">
                     <input type="radio" checked={shippingMethod === "PICKUP"} onChange={() => setShippingMethod("PICKUP")} /> Local pickup
                   </label>
+                </div>
+              )}
+              {shippingMethod === "PICKUP" && (allowPickup || storeSettings?.delivery.allowLocalPickup) && (
+                <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50/70 p-4 dark:border-emerald-900/40 dark:bg-emerald-950/20">
+                  <p className="text-xs font-bold uppercase tracking-wide text-emerald-800 dark:text-emerald-200">Pickup location</p>
+                  {storeSettings?.delivery.pickupAddress?.trim() ? (
+                    <p className="mt-2 whitespace-pre-line text-sm font-semibold leading-6 text-ink dark:text-white">
+                      {storeSettings.delivery.pickupAddress.trim()}
+                    </p>
+                  ) : (
+                    <p className="mt-2 text-sm leading-6 text-slate-700 dark:text-slate-300">
+                      Pickup address will be confirmed after you place the order
+                      {storeSettings?.store?.supportEmail ? (
+                        <>
+                          {" "}
+                          — or contact{" "}
+                          <a href={`mailto:${storeSettings.store.supportEmail}`} className="font-semibold text-emerald-700 underline dark:text-emerald-300">
+                            {storeSettings.store.supportEmail}
+                          </a>
+                        </>
+                      ) : null}
+                      .
+                    </p>
+                  )}
+                  {storeSettings?.delivery.pickupPhone?.trim() ? (
+                    <p className="mt-2 text-sm text-slate-700 dark:text-slate-300">
+                      Phone:{" "}
+                      <a href={`tel:${storeSettings.delivery.pickupPhone.trim()}`} className="font-semibold text-emerald-700 underline dark:text-emerald-300">
+                        {storeSettings.delivery.pickupPhone.trim()}
+                      </a>
+                    </p>
+                  ) : null}
+                  {storeSettings?.delivery.pickupInstructions?.trim() ? (
+                    <p className="mt-2 whitespace-pre-line text-sm leading-6 text-slate-600 dark:text-slate-300">
+                      {storeSettings.delivery.pickupInstructions.trim()}
+                    </p>
+                  ) : null}
                 </div>
               )}
               {shippingMethod === "SHIPPING" && (

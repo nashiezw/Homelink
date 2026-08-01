@@ -50,6 +50,9 @@ export type LibraryStoreSettings = {
     packingSlipNote: string;
     dispatchNote: string;
     allowLocalPickup: boolean;
+    pickupAddress: string;
+    pickupInstructions: string;
+    pickupPhone: string;
     zones: LibraryShippingZone[];
   };
   payments: {
@@ -227,6 +230,9 @@ export const defaultLibraryStoreSettings: LibraryStoreSettings = {
     packingSlipNote: "Thank you for buying from HouseLink Library.",
     dispatchNote: "Handle with care. Printed Library order.",
     allowLocalPickup: true,
+    pickupAddress: "",
+    pickupInstructions: "Bring your order number and a valid ID. We will confirm readiness by email or WhatsApp after payment.",
+    pickupPhone: "",
     zones: defaultZones,
   },
   payments: {
@@ -454,6 +460,9 @@ export function mergeLibraryStoreSettings(payload?: unknown): LibraryStoreSettin
       packingSlipNote: str(delivery.packingSlipNote, d.delivery.packingSlipNote),
       dispatchNote: str(delivery.dispatchNote, d.delivery.dispatchNote),
       allowLocalPickup: bool(delivery.allowLocalPickup, d.delivery.allowLocalPickup),
+      pickupAddress: str(delivery.pickupAddress, d.delivery.pickupAddress),
+      pickupInstructions: str(delivery.pickupInstructions, d.delivery.pickupInstructions),
+      pickupPhone: str(delivery.pickupPhone, d.delivery.pickupPhone),
       zones: mergeZones(delivery.zones),
     },
     payments: {
@@ -576,6 +585,9 @@ export function publicLibraryStoreSettings(settings: LibraryStoreSettings) {
       estimatedDaysMin: settings.delivery.estimatedDaysMin,
       estimatedDaysMax: settings.delivery.estimatedDaysMax,
       allowLocalPickup: settings.delivery.allowLocalPickup,
+      pickupAddress: settings.delivery.pickupAddress,
+      pickupInstructions: settings.delivery.pickupInstructions,
+      pickupPhone: settings.delivery.pickupPhone,
       zones: settings.delivery.zones.filter((zone) => zone.active).map((zone) => ({
         id: zone.id,
         name: zone.name,

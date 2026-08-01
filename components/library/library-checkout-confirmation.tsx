@@ -21,6 +21,10 @@ type ConfirmationOrder = {
   currency: string;
   itemCount: number;
   createdAt: string;
+  shippingMethod?: string | null;
+  pickupAddress?: string | null;
+  pickupInstructions?: string | null;
+  pickupPhone?: string | null;
   items?: Array<{ id: string; title: string; sku: string; quantity: number; unitPrice: number; total: number; productType?: string }>;
   payment?: {
     id?: string;
@@ -157,10 +161,39 @@ export function LibraryCheckoutConfirmation({ order: initialOrder, paymentId, st
                 ) : null}
                 {hasPrinted ? (
                   <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950">
-                    <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Printed next steps</p>
-                    <p className="mt-2 text-sm leading-6 text-slate-700 dark:text-slate-300">
-                      After payment is confirmed we prepare packing and courier/pickup. You will get a dispatch update with tracking when available.
+                    <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                      {order.shippingMethod === "PICKUP" ? "Local pickup" : "Printed next steps"}
                     </p>
+                    {order.shippingMethod === "PICKUP" ? (
+                      <>
+                        {order.pickupAddress?.trim() ? (
+                          <p className="mt-2 whitespace-pre-line text-sm font-semibold leading-6 text-ink dark:text-white">
+                            {order.pickupAddress.trim()}
+                          </p>
+                        ) : (
+                          <p className="mt-2 text-sm leading-6 text-slate-700 dark:text-slate-300">
+                            After payment is confirmed we will share the exact pickup location and ready time.
+                          </p>
+                        )}
+                        {order.pickupPhone?.trim() ? (
+                          <p className="mt-2 text-sm text-slate-700 dark:text-slate-300">
+                            Phone:{" "}
+                            <a href={`tel:${order.pickupPhone.trim()}`} className="font-semibold text-emerald-700 underline dark:text-emerald-300">
+                              {order.pickupPhone.trim()}
+                            </a>
+                          </p>
+                        ) : null}
+                        {order.pickupInstructions?.trim() ? (
+                          <p className="mt-2 whitespace-pre-line text-sm leading-6 text-slate-600 dark:text-slate-300">
+                            {order.pickupInstructions.trim()}
+                          </p>
+                        ) : null}
+                      </>
+                    ) : (
+                      <p className="mt-2 text-sm leading-6 text-slate-700 dark:text-slate-300">
+                        After payment is confirmed we prepare packing and courier delivery. You will get a dispatch update with tracking when available.
+                      </p>
+                    )}
                     <Link href="/returns" className="mt-3 inline-flex text-sm font-semibold text-emerald-700 hover:underline dark:text-emerald-300">
                       Returns & reprints policy
                     </Link>
