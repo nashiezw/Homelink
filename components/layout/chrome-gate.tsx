@@ -3,6 +3,7 @@
 import { Suspense } from "react";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
+import { AdvancedBehaviorTracker } from "@/components/analytics/advanced-behavior-tracker";
 import { SiteAnalyticsTracker } from "@/components/analytics/site-analytics-tracker";
 import { MaintenanceBanner } from "@/components/layout/maintenance-banner";
 import { SiteFooter } from "@/components/layout/site-footer";
@@ -26,6 +27,7 @@ export function ChromeGate({ children }: { children: ReactNode }) {
       {!isAdmin && (
         <Suspense fallback={null}>
           <SiteAnalyticsTracker />
+          <AdvancedBehaviorTracker />
         </Suspense>
       )}
       {!isAdmin && <WhatsAppStickyFab />}

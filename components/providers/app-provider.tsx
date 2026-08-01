@@ -114,6 +114,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       });
       if (result.data) {
         setUser(result.data);
+        void import("@/lib/analytics/identity-client").then(({ stitchAnalyticsIdentity }) => {
+          stitchAnalyticsIdentity({ userId: result.data!.id, email: result.data!.email });
+        });
         await refreshFavourites();
         showToast(`Welcome back, ${result.data.name}.`);
         return result.data;
@@ -132,6 +135,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       });
       if (result.data) {
         setUser(result.data);
+        void import("@/lib/analytics/identity-client").then(({ stitchAnalyticsIdentity }) => {
+          stitchAnalyticsIdentity({ userId: result.data!.id, email: result.data!.email });
+        });
         await refreshFavourites();
         showToast(`Account created. Welcome, ${result.data.name}.`);
         return result.data;

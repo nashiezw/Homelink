@@ -2,6 +2,8 @@ import { getMainPrisma, isPostgresStoreEnabled } from "@/lib/db/main-prisma";
 import { ensureCoreProductionSchema, isMissingSchemaError } from "@/lib/db/production-schema";
 import { getSiteAnalyticsReport, siteAnalyticsReportToCsv } from "@/lib/analytics/site-analytics";
 import { listLivePresence } from "@/lib/analytics/presence";
+import { buildTopClassAnalytics } from "@/lib/analytics/topclass";
+import { getHydratedRuntimePlatformSettings } from "@/lib/settings/runtime";
 
 type Meta = Record<string, unknown>;
 
@@ -105,6 +107,21 @@ export async function getAdvancedSiteAnalyticsReport(days = 30) {
       knownBuyersOnline: 0,
     },
     alerts: [] as string[],
+    topClass: buildTopClassAnalytics({
+      days,
+      funnels: [],
+      orders: [],
+      abandoned: [],
+      catalog: [],
+      live: [],
+      pageViewsLast24h: 0,
+      pageViewsPrev7dDailyAvg: 0,
+      eventsLast24h: 0,
+      eventsPrev7dDailyAvg: 0,
+      pendingProofs: 0,
+      todayRevenue: 0,
+      todayOrders: 0,
+    }),
   };
 
   if (!isPostgresStoreEnabled()) return emptyAdvanced;
@@ -113,47 +130,84 @@ export async function getAdvancedSiteAnalyticsReport(days = 30) {
   const since = new Date(Date.now() - Math.max(1, Math.min(90, days)) * 86400000);
 
   try {
-    const [funnels, liveRows, orders, firstViews] = await Promise.all([
-      prisma.siteFunnelEvent.findMany({
-        where: { createdAt: { gte: since } },
-        select: {
-          name: true,
-          target: true,
-          metadata: true,
-          visitorId: true,
-          sessionId: true,
-          path: true,
-          userId: true,
-          createdAt: true,
-        },
-        take: 30000,
-        orderBy: { createdAt: "desc" },
-      }),
-      listLivePresence(5 * 60 * 1000),
-      prisma.libraryOrder
-        .findMany({
-          where: { createdAt: { gte: since }, status: { in: ["PAID", "FULFILLED", "PENDING"] } },
+    const dayAgo = new Date(Date.now() - 86400000);
+    const eightDaysAgo = new Date(Date.now() - 8 * 86400000);
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+
+    const [funnels, liveRows, orders, firstViews, abandoned, catalog, views24h, views7d, events24h, events7d, platform] =
+      await Promise.all([
+        prisma.siteFunnelEvent.findMany({
+          where: { createdAt: { gte: since } },
           select: {
-            id: true,
-            orderNumber: true,
-            status: true,
-            total: true,
-            currency: true,
+            name: true,
+            target: true,
+            metadata: true,
+            visitorId: true,
+            sessionId: true,
+            path: true,
+            userId: true,
             createdAt: true,
-            customerId: true,
-            couponCode: true,
-            items: { select: { productId: true, title: true, quantity: true, total: true, productType: true } },
-            payment: { select: { status: true, proofStatus: true, createdAt: true, updatedAt: true } },
           },
-          take: 5000,
-        })
-        .catch(() => []),
-      prisma.sitePageView.groupBy({
-        by: ["visitorId"],
-        _min: { startedAt: true },
-        where: { startedAt: { gte: new Date(Date.now() - 180 * 86400000) } },
-      }).catch(() => []),
-    ]);
+          take: 30000,
+          orderBy: { createdAt: "desc" },
+        }),
+        listLivePresence(5 * 60 * 1000),
+        prisma.libraryOrder
+          .findMany({
+            where: { createdAt: { gte: since }, status: { in: ["PAID", "FULFILLED", "PENDING", "REFUNDED"] } },
+            select: {
+              id: true,
+              orderNumber: true,
+              status: true,
+              total: true,
+              currency: true,
+              createdAt: true,
+              refundedAt: true,
+              customerId: true,
+              couponCode: true,
+              items: { select: { productId: true, title: true, quantity: true, total: true, productType: true } },
+              payment: { select: { status: true, proofStatus: true, createdAt: true, updatedAt: true } },
+              customer: { select: { email: true, name: true } },
+            },
+            take: 5000,
+          })
+          .catch(() => []),
+        prisma.sitePageView.groupBy({
+          by: ["visitorId"],
+          _min: { startedAt: true },
+          where: { startedAt: { gte: new Date(Date.now() - 180 * 86400000) } },
+        }).catch(() => []),
+        prisma.libraryAbandonedCart
+          .findMany({
+            where: { recoveredAt: null, updatedAt: { gte: since } },
+            select: {
+              id: true,
+              email: true,
+              subtotal: true,
+              currency: true,
+              reminderCount: true,
+              reminderSentAt: true,
+              updatedAt: true,
+              items: true,
+            },
+            take: 200,
+            orderBy: { updatedAt: "desc" },
+          })
+          .catch(() => []),
+        prisma.libraryProduct
+          .findMany({
+            where: { deletedAt: null },
+            select: { id: true, title: true, stock: true, lowStockThreshold: true, status: true },
+            take: 500,
+          })
+          .catch(() => []),
+        prisma.sitePageView.count({ where: { startedAt: { gte: dayAgo } } }).catch(() => 0),
+        prisma.sitePageView.count({ where: { startedAt: { gte: eightDaysAgo, lt: dayAgo } } }).catch(() => 0),
+        prisma.siteFunnelEvent.count({ where: { createdAt: { gte: dayAgo } } }).catch(() => 0),
+        prisma.siteFunnelEvent.count({ where: { createdAt: { gte: eightDaysAgo, lt: dayAgo } } }).catch(() => 0),
+        getHydratedRuntimePlatformSettings().catch(() => null),
+      ]);
 
     const productMap = new Map<
       string,
@@ -380,6 +434,28 @@ export async function getAdvancedSiteAnalyticsReport(days = 30) {
         .slice(0, limit)
         .map(([label, value]) => ({ label: label.length > 42 ? `${label.slice(0, 42)}…` : label, value }));
 
+    const todayOrders = orders.filter((order) => order.createdAt >= startOfToday);
+    const todayRevenue = todayOrders
+      .filter((order) => order.status === "PAID" || order.status === "FULFILLED" || order.payment?.status === "PAID")
+      .reduce((sum, order) => sum + Number(order.total || 0), 0);
+
+    const topClass = buildTopClassAnalytics({
+      days,
+      funnels,
+      orders,
+      abandoned,
+      catalog,
+      live: liveVisitors,
+      pageViewsLast24h: views24h,
+      pageViewsPrev7dDailyAvg: views7d / 7,
+      eventsLast24h: events24h,
+      eventsPrev7dDailyAvg: events7d / 7,
+      whatsappNumber: platform?.contact?.whatsappNumber,
+      pendingProofs: base.proofSla.pending,
+      todayRevenue,
+      todayOrders: todayOrders.length,
+    });
+
     return {
       ...base,
       live: {
@@ -414,7 +490,8 @@ export async function getAdvancedSiteAnalyticsReport(days = 30) {
         returningVisitors,
         knownBuyersOnline: liveVisitors.filter((row) => row.userId).length,
       },
-      alerts,
+      alerts: [...alerts, ...topClass.anomalies.map((row) => `Anomaly ${row.metric}: ${row.current} vs baseline ${row.baseline}`)],
+      topClass,
     };
   } catch (error) {
     if (isMissingSchemaError(error)) return emptyAdvanced;
@@ -445,6 +522,57 @@ export function advancedAnalyticsToCsv(report: Awaited<ReturnType<typeof getAdva
   }
   for (const alert of report.alerts) {
     lines.push(`alerts,${csv(alert)},1,`);
+  }
+  const tc = report.topClass;
+  if (tc) {
+    lines.push(`board,todayRevenue,${tc.board.todayRevenue},orders=${tc.board.todayOrders};online=${tc.board.online};bags=${tc.board.openBags}`);
+    lines.push(`board,assistedRevenue,${tc.board.assistedRevenue},waClicks=${tc.board.waClicks};refunds=${tc.board.refundTotal};proofs=${tc.board.pendingProofs}`);
+    for (const row of tc.pathFlows) lines.push(`pathFlows,${csv(`${row.from} → ${row.to}`)},${row.value},`);
+    for (const row of tc.retentionCohorts) lines.push(`retention,${csv(row.cohort)},${row.size},d7=${row.d7};d30=${row.d30}`);
+    for (const row of tc.margins) lines.push(`margins,${csv(row.title)},${row.net},revenue=${row.revenue};refunds=${row.refunds}`);
+    for (const row of tc.inventoryDemand) {
+      lines.push(`inventory,${csv(row.title)},${row.stock},views=${row.views};adds=${row.adds};status=${row.status};id=${row.productId}`);
+    }
+    for (const row of tc.experiments) {
+      lines.push(`experiments,${csv(`${row.experiment}:${row.variant}`)},${row.exposures},conversions=${row.conversions};rate=${row.rate}`);
+    }
+    for (const row of tc.intervene) lines.push(`intervene,${csv(row.reason)},${row.count},severity=${row.severity}`);
+    for (const row of tc.abandonRescue) {
+      lines.push(`abandonRescue,${csv(row.email)},${row.value},idleHours=${row.idleHours};items=${row.itemCount};reminders=${row.reminderCount}`);
+    }
+    for (const row of tc.fraud) lines.push(`fraud,${csv(row.signal)},${row.score},${csv(row.detail)}`);
+    for (const row of tc.orderSlas) {
+      lines.push(`orderSla,${csv(row.orderNumber)},${row.hours},stage=${row.stage};breached=${row.breached}`);
+    }
+    for (const row of tc.identity) {
+      lines.push(`identity,${csv(row.visitorId)},${row.orders},user=${row.userId};email=${csv(row.email)}`);
+    }
+    for (const row of tc.ltvRfm) {
+      lines.push(`ltvRfm,${csv(row.email || row.customerId)},${row.revenue},orders=${row.orders};recency=${row.recencyDays};segment=${row.segment}`);
+    }
+    for (const row of tc.segments) lines.push(`segments,${csv(row.name)},${row.count},${csv(row.description)}`);
+    for (const row of tc.attribution.firstTouch) lines.push(`attrFirst,${csv(row.label)},${row.value},`);
+    for (const row of tc.attribution.lastTouch) lines.push(`attrLast,${csv(row.label)},${row.value},`);
+    for (const row of tc.attribution.linear) lines.push(`attrLinear,${csv(row.label)},${row.value},`);
+    lines.push(`attribution,assistedRate,${tc.attribution.assistedRate},assistedRevenue=${tc.attribution.assistedRevenue}`);
+    for (const row of tc.campaigns) {
+      lines.push(`campaigns,${csv(row.campaign)},${row.revenue},visitors=${row.visitors};purchases=${row.purchases}`);
+    }
+    lines.push(`quality,rageClicks,${tc.rageClicks},uiErrors=${tc.uiErrors};missingProductIdRate=${tc.dataQuality.missingProductIdRate}`);
+    for (const row of tc.search.topQueries) lines.push(`search,${csv(row.label)},${row.value},`);
+    for (const row of tc.search.zeroResults) lines.push(`searchZero,${csv(row.label)},${row.value},`);
+    for (const row of tc.sampleFunnel) lines.push(`sampleFunnel,${csv(row.label)},${row.value},`);
+    lines.push(`nps,avg,${tc.nps.avg},count=${tc.nps.count}`);
+    for (const note of tc.dataQuality.notes) lines.push(`dataQuality,note,1,${csv(note)}`);
+    for (const row of tc.hourly) lines.push(`hourly,h${row.hour},${row.views},events=${row.events}`);
+    for (const row of tc.anomalies) {
+      lines.push(`anomalies,${csv(row.metric)},${row.current},baseline=${row.baseline};severity=${row.severity}`);
+    }
+    for (const field of tc.piiAudit.fieldsStored) lines.push(`piiAudit,field,1,${csv(field)}`);
+    for (const goal of tc.goals) lines.push(`goals,${csv(goal.name)},${goal.current},target=${goal.target};pct=${goal.pct}`);
+    lines.push(
+      `compare,pageViews24h,${tc.compare.pageViewsLast24h},prev7dDailyAvg=${tc.compare.pageViewsPrev7dDailyAvg};events24h=${tc.compare.eventsLast24h};eventsPrevAvg=${tc.compare.eventsPrev7dDailyAvg}`,
+    );
   }
   return `${lines.join("\n")}\n`;
 }

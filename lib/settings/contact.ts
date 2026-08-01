@@ -33,7 +33,6 @@ export function resolveWhatsAppNumber(
 ) {
   const library = digitsOnly(contact.whatsappLibraryNumber || "");
   const property = digitsOnly(contact.whatsappPropertyNumber || "");
-  const main = digitsOnly(contact.whatsappNumber || "");
   if (lane === "library" && library.length >= 8) return contact.whatsappLibraryNumber;
   if (lane === "property" && property.length >= 8) return contact.whatsappPropertyNumber;
   return contact.whatsappNumber || (lane === "library" ? contact.whatsappLibraryNumber : contact.whatsappPropertyNumber) || "";

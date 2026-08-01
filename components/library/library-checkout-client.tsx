@@ -192,7 +192,7 @@ export function LibraryCheckoutClient() {
   useEffect(() => {
     if (!cart.length) return;
     trackEvent("library_checkout_started", cart[0]?.productId, { items: cart.length });
-  }, [cart.length]);
+  }, [cart]);
 
   // Capture continue-with-email for abandoned-cart reminders once a valid email is entered.
   useEffect(() => {
@@ -425,7 +425,23 @@ export function LibraryCheckoutClient() {
       }),
     });
     if (result.data?.redirectUrl) {
-      trackEvent("library_purchase_completed", result.data.order?.id, { items: cart.length });
+      void import("@/lib/analytics/experiments").then(({ peekExperimentVariant }) => {
+        const variant = peekExperimentVariant("library_softcopy_badge") || "control";
+        trackEvent("library_purchase_completed", result.data?.order?.id, {
+          items: cart.length,
+          total: quote?.total,
+          currency: quote?.currency,
+          orderNumber: result.data?.order?.orderNumber,
+          experiment: "library_softcopy_badge",
+          variant,
+        });
+      });
+      void import("@/lib/analytics/identity-client").then(({ stitchAnalyticsIdentity }) => {
+        stitchAnalyticsIdentity({
+          userId: user?.id,
+          email: user?.email || guestEmail.trim().toLowerCase() || undefined,
+        });
+      });
       await refreshUser();
       clearLibraryCart({ track: false });
       showToast(

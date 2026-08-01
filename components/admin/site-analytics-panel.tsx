@@ -1,8 +1,80 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
-import { Download, RefreshCw } from "lucide-react";
+import { Download, ExternalLink, RefreshCw } from "lucide-react";
 import { apiFetch } from "@/lib/api/client";
+
+type TopClassAnalytics = {
+  board?: {
+    todayRevenue?: number;
+    todayOrders?: number;
+    online?: number;
+    openBags?: number;
+    pendingProofs?: number;
+    waClicks?: number;
+    assistedRevenue?: number;
+    refundTotal?: number;
+  };
+  pathFlows?: Array<{ from: string; to: string; value: number }>;
+  retentionCohorts?: Array<{ cohort: string; size: number; d7: number; d30: number }>;
+  margins?: Array<{ title: string; revenue: number; refunds: number; net: number }>;
+  inventoryDemand?: Array<{ productId: string; title: string; views: number; adds: number; stock: number; status: string }>;
+  experiments?: Array<{ experiment: string; variant: string; exposures: number; conversions: number; rate: number }>;
+  intervene?: Array<{ reason: string; count: number; severity: "high" | "medium"; whatsappUrl: string }>;
+  abandonRescue?: Array<{
+    id: string;
+    email: string;
+    value: number;
+    currency: string;
+    idleHours: number;
+    reminderCount: number;
+    itemCount: number;
+    items: string[];
+    whatsappUrl?: string;
+  }>;
+  fraud?: Array<{ signal: string; detail: string; score: number }>;
+  orderSlas?: Array<{ orderNumber: string; stage: string; hours: number; breached: boolean }>;
+  identity?: Array<{ visitorId: string; userId: string; email: string; orders: number }>;
+  ltvRfm?: Array<{ customerId: string; email: string; revenue: number; orders: number; recencyDays: number; segment: string }>;
+  segments?: Array<{ id: string; name: string; description: string; count: number }>;
+  attribution?: {
+    firstTouch?: Array<{ label: string; value: number }>;
+    lastTouch?: Array<{ label: string; value: number }>;
+    linear?: Array<{ label: string; value: number }>;
+    assistedRevenue?: number;
+    assistedRate?: number;
+  };
+  campaigns?: Array<{ campaign: string; visitors: number; purchases: number; revenue: number }>;
+  rageClicks?: number;
+  uiErrors?: number;
+  search?: {
+    topQueries?: Array<{ label: string; value: number }>;
+    zeroResults?: Array<{ label: string; value: number }>;
+  };
+  sampleFunnel?: Array<{ label: string; value: number }>;
+  nps?: { avg?: number; count?: number };
+  dataQuality?: {
+    eventsLast24h?: number;
+    pageViewsLast24h?: number;
+    missingProductIdRate?: number;
+    notes?: string[];
+  };
+  hourly?: Array<{ hour: number; views: number; events: number }>;
+  anomalies?: Array<{ metric: string; current: number; baseline: number; severity: "info" | "warning" }>;
+  piiAudit?: {
+    fieldsStored?: string[];
+    optOutSupported?: boolean;
+    dntSupported?: boolean;
+    macFingerprinting?: boolean;
+  };
+  goals?: Array<{ id: string; name: string; target: number; current: number; pct: number }>;
+  compare?: {
+    pageViewsLast24h?: number;
+    pageViewsPrev7dDailyAvg?: number;
+    eventsLast24h?: number;
+    eventsPrev7dDailyAvg?: number;
+  };
+};
 
 type AdvancedReport = {
   days: number;
@@ -87,9 +159,22 @@ type AdvancedReport = {
   engagement: Array<{ label: string; value: number }>;
   cohorts: { newVisitors: number; returningVisitors: number; knownBuyersOnline: number };
   alerts: string[];
+  topClass?: TopClassAnalytics;
 };
 
-type Tab = "live" | "products" | "carts" | "journeys" | "revenue" | "overview";
+type Tab =
+  | "board"
+  | "live"
+  | "products"
+  | "carts"
+  | "journeys"
+  | "revenue"
+  | "overview"
+  | "rescue"
+  | "attribution"
+  | "segments"
+  | "quality"
+  | "paths";
 
 function BarList({ rows, color = "bg-emerald-500" }: { rows: Array<{ label: string; value: number }>; color?: string }) {
   const max = Math.max(1, ...rows.map((row) => row.value));
@@ -111,13 +196,21 @@ function BarList({ rows, color = "bg-emerald-500" }: { rows: Array<{ label: stri
   );
 }
 
+function pctChange(current: number, baseline: number) {
+  if (!baseline) return baseline === 0 && current > 0 ? "+∞" : "—";
+  const pct = Math.round(((current - baseline) / baseline) * 100);
+  return pct >= 0 ? `+${pct}%` : `${pct}%`;
+}
+
 export function SiteAnalyticsPanel() {
   const [days, setDays] = useState(30);
-  const [tab, setTab] = useState<Tab>("live");
+  const [tab, setTab] = useState<Tab>("board");
   const [report, setReport] = useState<AdvancedReport | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [selectedJourney, setSelectedJourney] = useState<string | null>(null);
+
+  const tc = report?.topClass;
 
   async function load() {
     setLoading(true);
@@ -134,19 +227,25 @@ export function SiteAnalyticsPanel() {
   useEffect(() => {
     void load();
     const timer = window.setInterval(() => {
-      if (tab === "live") void load();
+      if (tab === "live" || tab === "board") void load();
     }, 20000);
     return () => window.clearInterval(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [days, tab]);
 
   const tabs: Array<{ id: Tab; label: string }> = [
+    { id: "board", label: "Board" },
     { id: "live", label: "Live now" },
     { id: "products", label: "Products" },
     { id: "carts", label: "Carts" },
     { id: "journeys", label: "Journeys" },
     { id: "revenue", label: "Revenue & proof" },
     { id: "overview", label: "Overview" },
+    { id: "rescue", label: "Rescue" },
+    { id: "attribution", label: "Attribution" },
+    { id: "segments", label: "Segments" },
+    { id: "quality", label: "Quality" },
+    { id: "paths", label: "Paths" },
   ];
 
   return (
@@ -214,6 +313,123 @@ export function SiteAnalyticsPanel() {
         </div>
       ) : null}
 
+      {tab === "board" && (
+        <div className="grid gap-5">
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <BigMetric label="Today revenue" value={tc?.board?.todayRevenue != null ? `USD ${tc.board.todayRevenue.toFixed(2)}` : "—"} />
+            <BigMetric label="Today orders" value={tc?.board?.todayOrders ?? "—"} />
+            <BigMetric label="Online now" value={tc?.board?.online ?? report?.live.online ?? "—"} accent="text-emerald-300" />
+            <BigMetric label="Open bags" value={tc?.board?.openBags ?? report?.live.openBags ?? "—"} />
+            <BigMetric label="Pending proofs" value={tc?.board?.pendingProofs ?? report?.proofSla.pending ?? "—"} accent="text-amber-300" />
+            <BigMetric label="WhatsApp clicks" value={tc?.board?.waClicks ?? "—"} accent="text-[#25D366]" />
+            <BigMetric
+              label="Assisted revenue"
+              value={tc?.board?.assistedRevenue != null ? `USD ${tc.board.assistedRevenue.toFixed(2)}` : "—"}
+            />
+            <BigMetric label="Refunds total" value={tc?.board?.refundTotal != null ? `USD ${tc.board.refundTotal.toFixed(2)}` : "—"} accent="text-red-300" />
+          </div>
+
+          {(tc?.intervene?.length ?? 0) > 0 && (
+            <Panel title="Intervene now">
+              <div className="grid gap-2 sm:grid-cols-2">
+                {tc!.intervene!.map((alert) => (
+                  <div
+                    key={alert.reason}
+                    className={`rounded-xl border px-4 py-3 ${
+                      alert.severity === "high" ? "border-red-500/40 bg-red-500/10" : "border-amber-500/40 bg-amber-500/10"
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <p className="text-sm font-semibold text-white">{alert.reason}</p>
+                        <p className="mt-1 text-xs text-slate-400">
+                          Count: {alert.count} · {alert.severity}
+                        </p>
+                      </div>
+                      {alert.whatsappUrl ? (
+                        <a
+                          href={alert.whatsappUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-[#25D366]/40 bg-[#25D366]/10 px-2 py-1 text-xs font-semibold text-[#25D366] hover:bg-[#25D366]/20"
+                        >
+                          WhatsApp
+                          <ExternalLink className="size-3" />
+                        </a>
+                      ) : null}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Panel>
+          )}
+
+          <div className="grid gap-5 xl:grid-cols-2">
+            <Panel title="Goals">
+              {(tc?.goals ?? []).length ? (
+                <div className="space-y-3">
+                  {tc!.goals!.map((goal) => (
+                    <div key={goal.id}>
+                      <div className="mb-1 flex items-center justify-between gap-2 text-xs">
+                        <span className="font-medium text-slate-200">{goal.name}</span>
+                        <span className="tabular-nums text-slate-400">
+                          {goal.current} / {goal.target} ({goal.pct}%)
+                        </span>
+                      </div>
+                      <div className="h-3 overflow-hidden rounded-full bg-white/10">
+                        <div
+                          className="h-full rounded-full bg-emerald-500 transition-all"
+                          style={{ width: `${Math.min(100, goal.pct)}%` }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-slate-400">No goals configured yet.</p>
+              )}
+            </Panel>
+
+            <Panel title="Anomalies">
+              {(tc?.anomalies ?? []).length ? (
+                <div className="space-y-2">
+                  {tc!.anomalies!.map((row) => (
+                    <div
+                      key={row.metric}
+                      className={`rounded-lg border px-3 py-2 text-xs ${
+                        row.severity === "warning" ? "border-amber-500/30 bg-amber-500/10" : "border-sky-500/30 bg-sky-500/10"
+                      }`}
+                    >
+                      <p className="font-semibold text-white">{row.metric.replaceAll("_", " ")}</p>
+                      <p className="mt-1 text-slate-400">
+                        Current {row.current} vs baseline {row.baseline} · {row.severity}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-slate-400">No anomalies detected.</p>
+              )}
+            </Panel>
+          </div>
+
+          <Panel title="24h vs 7-day daily average">
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <CompareMetric
+                label="Page views (24h)"
+                current={tc?.compare?.pageViewsLast24h ?? 0}
+                baseline={tc?.compare?.pageViewsPrev7dDailyAvg ?? 0}
+              />
+              <CompareMetric
+                label="Events (24h)"
+                current={tc?.compare?.eventsLast24h ?? 0}
+                baseline={tc?.compare?.eventsPrev7dDailyAvg ?? 0}
+              />
+            </div>
+          </Panel>
+        </div>
+      )}
+
       {tab === "live" && (
         <div className="grid gap-5">
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
@@ -230,7 +446,10 @@ export function SiteAnalyticsPanel() {
                   <div key={`${row.visitorId}-${row.lastSeenAt}`} className="rounded-lg border border-white/10 px-3 py-2">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <p className="font-semibold text-white">{row.path}</p>
-                      <span className="text-slate-500">{row.deviceType}{row.userId ? " · signed in" : ""}</span>
+                      <span className="text-slate-500">
+                        {row.deviceType}
+                        {row.userId ? " · signed in" : ""}
+                      </span>
                     </div>
                     {row.productTitle ? <p className="mt-1 text-emerald-300">{row.productTitle}</p> : null}
                     <p className="mt-1 text-slate-500">
@@ -397,7 +616,7 @@ export function SiteAnalyticsPanel() {
           <Panel title="Marketplace engagement">
             <BarList rows={report?.marketplace ?? []} color="bg-violet-500" />
           </Panel>
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4 xl:col-span-2">
+          <div className="grid gap-3 sm:grid-cols-2 xl:col-span-2 xl:grid-cols-4">
             <Metric label="Proofs pending" value={report?.proofSla.pending ?? "—"} />
             <Metric label="Overdue 24h+" value={report?.proofSla.overdue ?? "—"} />
             <Metric label="Median wait (h)" value={report?.proofSla.medianWaitHours ?? "—"} />
@@ -453,17 +672,576 @@ export function SiteAnalyticsPanel() {
           </div>
         </div>
       )}
+
+      {tab === "rescue" && (
+        <div className="grid gap-5">
+          <Panel title="Abandoned cart rescue queue">
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-left text-xs text-slate-300">
+                <thead className="border-b border-white/10 text-[11px] uppercase tracking-wide text-slate-500">
+                  <tr>
+                    <th className="py-2 pr-3">Email</th>
+                    <th className="py-2 pr-3">Value</th>
+                    <th className="py-2 pr-3">Idle (h)</th>
+                    <th className="py-2 pr-3">Reminders</th>
+                    <th className="py-2 pr-3">Items</th>
+                    <th className="py-2 pr-3">Products</th>
+                    <th className="py-2">Rescue</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(tc?.abandonRescue ?? []).length ? (
+                    tc!.abandonRescue!.map((row) => (
+                      <tr key={row.id} className="border-b border-white/5">
+                        <td className="py-2 pr-3 font-medium text-white">{row.email || "—"}</td>
+                        <td className="py-2 pr-3 tabular-nums">
+                          {row.currency} {row.value.toFixed(2)}
+                        </td>
+                        <td className="py-2 pr-3 tabular-nums text-amber-300">{row.idleHours}</td>
+                        <td className="py-2 pr-3 tabular-nums">{row.reminderCount}</td>
+                        <td className="py-2 pr-3 tabular-nums">{row.itemCount}</td>
+                        <td className="max-w-[14rem] truncate py-2 pr-3 text-slate-400" title={row.items.join(", ")}>
+                          {row.items.length ? row.items.join(", ") : "—"}
+                        </td>
+                        <td className="py-2">
+                          {row.whatsappUrl ? (
+                            <a
+                              href={row.whatsappUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center gap-1 font-semibold text-[#25D366] hover:underline"
+                            >
+                              WhatsApp <ExternalLink className="size-3" />
+                            </a>
+                          ) : (
+                            "—"
+                          )}
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={7} className="py-4 text-slate-400">
+                        No abandoned carts in the rescue queue.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </Panel>
+
+          <div className="grid gap-5 xl:grid-cols-2">
+            <Panel title="Order SLAs">
+              <div className="max-h-80 overflow-y-auto">
+                <table className="min-w-full text-left text-xs text-slate-300">
+                  <thead className="border-b border-white/10 text-[11px] uppercase tracking-wide text-slate-500">
+                    <tr>
+                      <th className="py-2 pr-3">Order</th>
+                      <th className="py-2 pr-3">Stage</th>
+                      <th className="py-2 pr-3">Hours</th>
+                      <th className="py-2">SLA</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(tc?.orderSlas ?? []).length ? (
+                      tc!.orderSlas!.map((row) => (
+                        <tr
+                          key={row.orderNumber}
+                          className={`border-b border-white/5 ${row.breached ? "bg-red-500/10" : ""}`}
+                        >
+                          <td className="py-2 pr-3 font-medium text-white">{row.orderNumber}</td>
+                          <td className="py-2 pr-3">{row.stage.replaceAll("_", " ")}</td>
+                          <td className="py-2 pr-3 tabular-nums">{row.hours}</td>
+                          <td className={`py-2 font-semibold ${row.breached ? "text-red-300" : "text-emerald-300"}`}>
+                            {row.breached ? "Breached" : "OK"}
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={4} className="py-4 text-slate-400">
+                          No open order SLAs.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </Panel>
+
+            <Panel title="Fraud signals">
+              {(tc?.fraud ?? []).length ? (
+                <div className="max-h-80 space-y-2 overflow-y-auto">
+                  {tc!.fraud!.map((row) => (
+                    <div key={`${row.signal}-${row.detail}`} className="rounded-lg border border-red-500/30 bg-red-500/5 px-3 py-2 text-xs">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="font-semibold text-white">{row.signal.replaceAll("_", " ")}</p>
+                        <span className="tabular-nums text-red-300">score {row.score}</span>
+                      </div>
+                      <p className="mt-1 text-slate-400">{row.detail}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-slate-400">No fraud signals detected.</p>
+              )}
+            </Panel>
+          </div>
+        </div>
+      )}
+
+      {tab === "attribution" && (
+        <div className="grid gap-5">
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            <Metric
+              label="Assisted revenue"
+              value={tc?.attribution?.assistedRevenue != null ? `USD ${tc.attribution.assistedRevenue.toFixed(2)}` : "—"}
+            />
+            <Metric label="Assisted rate" value={tc?.attribution?.assistedRate != null ? `${tc.attribution.assistedRate}%` : "—"} />
+          </div>
+          <div className="grid gap-5 xl:grid-cols-3">
+            <Panel title="First touch">
+              <BarList rows={tc?.attribution?.firstTouch ?? []} color="bg-cyan-500" />
+            </Panel>
+            <Panel title="Last touch">
+              <BarList rows={tc?.attribution?.lastTouch ?? []} color="bg-violet-500" />
+            </Panel>
+            <Panel title="Linear">
+              <BarList rows={tc?.attribution?.linear ?? []} color="bg-rose-500" />
+            </Panel>
+          </div>
+          <div className="grid gap-5 xl:grid-cols-2">
+            <Panel title="Campaigns">
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-left text-xs text-slate-300">
+                  <thead className="border-b border-white/10 text-[11px] uppercase tracking-wide text-slate-500">
+                    <tr>
+                      <th className="py-2 pr-3">Campaign</th>
+                      <th className="py-2 pr-3">Visitors</th>
+                      <th className="py-2 pr-3">Purchases</th>
+                      <th className="py-2">Revenue</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(tc?.campaigns ?? []).length ? (
+                      tc!.campaigns!.map((row) => (
+                        <tr key={row.campaign} className="border-b border-white/5">
+                          <td className="py-2 pr-3 font-medium text-white">{row.campaign}</td>
+                          <td className="py-2 pr-3 tabular-nums">{row.visitors}</td>
+                          <td className="py-2 pr-3 tabular-nums">{row.purchases}</td>
+                          <td className="py-2 tabular-nums">USD {row.revenue.toFixed(2)}</td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={4} className="py-4 text-slate-400">
+                          No campaign attribution data yet.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </Panel>
+            <Panel title="Identity stitch">
+              <div className="max-h-80 overflow-y-auto">
+                <table className="min-w-full text-left text-xs text-slate-300">
+                  <thead className="border-b border-white/10 text-[11px] uppercase tracking-wide text-slate-500">
+                    <tr>
+                      <th className="py-2 pr-3">Visitor</th>
+                      <th className="py-2 pr-3">User</th>
+                      <th className="py-2 pr-3">Email</th>
+                      <th className="py-2">Orders</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(tc?.identity ?? []).length ? (
+                      tc!.identity!.map((row) => (
+                        <tr key={row.visitorId} className="border-b border-white/5">
+                          <td className="py-2 pr-3 font-mono text-[10px] text-slate-400">{row.visitorId.slice(0, 12)}…</td>
+                          <td className="py-2 pr-3 font-mono text-[10px] text-slate-400">{row.userId.slice(0, 12)}…</td>
+                          <td className="py-2 pr-3">{row.email || "—"}</td>
+                          <td className="py-2 tabular-nums">{row.orders}</td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={4} className="py-4 text-slate-400">
+                          No identity stitches recorded yet.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </Panel>
+          </div>
+        </div>
+      )}
+
+      {tab === "segments" && (
+        <div className="grid gap-5">
+          <Panel title="Audience segments">
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              {(tc?.segments ?? []).length ? (
+                tc!.segments!.map((seg) => (
+                  <div key={seg.id} className="rounded-xl border border-white/10 bg-black/20 px-4 py-3">
+                    <p className="text-2xl font-bold tabular-nums text-emerald-300">{seg.count}</p>
+                    <p className="mt-1 text-sm font-semibold text-white">{seg.name}</p>
+                    <p className="mt-1 text-xs text-slate-400">{seg.description}</p>
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm text-slate-400">No segments computed yet.</p>
+              )}
+            </div>
+          </Panel>
+
+          <Panel title="LTV / RFM">
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-left text-xs text-slate-300">
+                <thead className="border-b border-white/10 text-[11px] uppercase tracking-wide text-slate-500">
+                  <tr>
+                    <th className="py-2 pr-3">Email</th>
+                    <th className="py-2 pr-3">Revenue</th>
+                    <th className="py-2 pr-3">Orders</th>
+                    <th className="py-2 pr-3">Recency (d)</th>
+                    <th className="py-2">Segment</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(tc?.ltvRfm ?? []).length ? (
+                    tc!.ltvRfm!.map((row) => (
+                      <tr key={row.customerId} className="border-b border-white/5">
+                        <td className="py-2 pr-3 font-medium text-white">{row.email || row.customerId.slice(0, 10)}</td>
+                        <td className="py-2 pr-3 tabular-nums">USD {row.revenue.toFixed(2)}</td>
+                        <td className="py-2 pr-3 tabular-nums">{row.orders}</td>
+                        <td className="py-2 pr-3 tabular-nums">{row.recencyDays}</td>
+                        <td className="py-2">
+                          <SegmentBadge segment={row.segment} />
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={5} className="py-4 text-slate-400">
+                        No customer RFM data yet.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </Panel>
+
+          <div className="grid gap-5 xl:grid-cols-2">
+            <Panel title="Retention cohorts">
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-left text-xs text-slate-300">
+                  <thead className="border-b border-white/10 text-[11px] uppercase tracking-wide text-slate-500">
+                    <tr>
+                      <th className="py-2 pr-3">Cohort week</th>
+                      <th className="py-2 pr-3">Size</th>
+                      <th className="py-2 pr-3">D7 %</th>
+                      <th className="py-2">D30 %</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(tc?.retentionCohorts ?? []).length ? (
+                      tc!.retentionCohorts!.map((row) => (
+                        <tr key={row.cohort} className="border-b border-white/5">
+                          <td className="py-2 pr-3 font-medium text-white">{row.cohort}</td>
+                          <td className="py-2 pr-3 tabular-nums">{row.size}</td>
+                          <td className="py-2 pr-3 tabular-nums text-emerald-300">{row.d7}%</td>
+                          <td className="py-2 tabular-nums text-cyan-300">{row.d30}%</td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={4} className="py-4 text-slate-400">
+                          No retention cohorts yet.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </Panel>
+
+            <Panel title="Experiments">
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-left text-xs text-slate-300">
+                  <thead className="border-b border-white/10 text-[11px] uppercase tracking-wide text-slate-500">
+                    <tr>
+                      <th className="py-2 pr-3">Experiment</th>
+                      <th className="py-2 pr-3">Variant</th>
+                      <th className="py-2 pr-3">Exposures</th>
+                      <th className="py-2 pr-3">Conv.</th>
+                      <th className="py-2">Rate</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(tc?.experiments ?? []).length ? (
+                      tc!.experiments!.map((row) => (
+                        <tr key={`${row.experiment}-${row.variant}`} className="border-b border-white/5">
+                          <td className="py-2 pr-3 font-medium text-white">{row.experiment}</td>
+                          <td className="py-2 pr-3">{row.variant}</td>
+                          <td className="py-2 pr-3 tabular-nums">{row.exposures}</td>
+                          <td className="py-2 pr-3 tabular-nums">{row.conversions}</td>
+                          <td className="py-2 tabular-nums">{row.rate}%</td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={5} className="py-4 text-slate-400">
+                          No experiment exposures recorded.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </Panel>
+          </div>
+
+          <Panel title="Inventory demand">
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-left text-xs text-slate-300">
+                <thead className="border-b border-white/10 text-[11px] uppercase tracking-wide text-slate-500">
+                  <tr>
+                    <th className="py-2 pr-3">Product</th>
+                    <th className="py-2 pr-3">Views</th>
+                    <th className="py-2 pr-3">Adds</th>
+                    <th className="py-2 pr-3">Stock</th>
+                    <th className="py-2">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(tc?.inventoryDemand ?? []).length ? (
+                    tc!.inventoryDemand!.map((row) => (
+                      <tr key={row.productId} className="border-b border-white/5">
+                        <td className="max-w-[14rem] truncate py-2 pr-3 font-medium text-white" title={row.title}>
+                          {row.title}
+                        </td>
+                        <td className="py-2 pr-3 tabular-nums">{row.views}</td>
+                        <td className="py-2 pr-3 tabular-nums">{row.adds}</td>
+                        <td className="py-2 pr-3 tabular-nums">{row.stock >= 0 ? row.stock : "—"}</td>
+                        <td className="py-2">
+                          <InventoryStatus status={row.status} />
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={5} className="py-4 text-slate-400">
+                        No inventory demand signals yet.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </Panel>
+        </div>
+      )}
+
+      {tab === "quality" && (
+        <div className="grid gap-5">
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <Metric label="Events (24h)" value={tc?.dataQuality?.eventsLast24h ?? "—"} />
+            <Metric label="Page views (24h)" value={tc?.dataQuality?.pageViewsLast24h ?? "—"} />
+            <Metric label="Missing product ID %" value={tc?.dataQuality?.missingProductIdRate != null ? `${tc.dataQuality.missingProductIdRate}%` : "—"} />
+            <Metric label="Rage clicks" value={tc?.rageClicks ?? "—"} accent="text-amber-300" />
+            <Metric label="UI errors" value={tc?.uiErrors ?? "—"} accent="text-red-300" />
+            <Metric label="NPS avg" value={tc?.nps?.avg ?? "—"} />
+            <Metric label="NPS responses" value={tc?.nps?.count ?? "—"} />
+          </div>
+
+          <div className="grid gap-5 xl:grid-cols-2">
+            <Panel title="Data quality notes">
+              {(tc?.dataQuality?.notes ?? []).length ? (
+                <ul className="space-y-1 text-xs text-slate-300">
+                  {tc!.dataQuality!.notes!.map((note) => (
+                    <li key={note}>• {note}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-sm text-slate-400">No data quality notes.</p>
+              )}
+            </Panel>
+
+            <Panel title="PII audit">
+              <div className="space-y-2 text-xs text-slate-300">
+                <p>
+                  <span className="text-slate-500">Fields stored:</span>{" "}
+                  {(tc?.piiAudit?.fieldsStored ?? []).join(", ") || "—"}
+                </p>
+                <p>
+                  <span className="text-slate-500">Opt-out supported:</span>{" "}
+                  {tc?.piiAudit?.optOutSupported ? "Yes" : "No"}
+                </p>
+                <p>
+                  <span className="text-slate-500">DNT supported:</span> {tc?.piiAudit?.dntSupported ? "Yes" : "No"}
+                </p>
+                <p>
+                  <span className="text-slate-500">MAC fingerprinting:</span>{" "}
+                  {tc?.piiAudit?.macFingerprinting ? "Yes" : "No"}
+                </p>
+              </div>
+            </Panel>
+
+            <Panel title="Top search queries">
+              <BarList rows={tc?.search?.topQueries ?? []} color="bg-sky-500" />
+            </Panel>
+            <Panel title="Zero-result searches">
+              <BarList rows={tc?.search?.zeroResults ?? []} color="bg-amber-500" />
+            </Panel>
+
+            <Panel title="Sample funnel">
+              <BarList rows={tc?.sampleFunnel ?? []} color="bg-violet-500" />
+            </Panel>
+
+            <Panel title="Hourly activity (last 24h)">
+              {(tc?.hourly ?? []).some((h) => h.views > 0 || h.events > 0) ? (
+                <div className="max-h-64 space-y-1 overflow-y-auto text-xs text-slate-300">
+                  {tc!.hourly!.map((row) =>
+                    row.views > 0 || row.events > 0 ? (
+                      <div key={row.hour} className="flex items-center justify-between rounded border border-white/5 px-2 py-1">
+                        <span className="tabular-nums text-slate-400">{String(row.hour).padStart(2, "0")}:00</span>
+                        <span>
+                          {row.views} views · {row.events} events
+                        </span>
+                      </div>
+                    ) : null,
+                  )}
+                </div>
+              ) : (
+                <p className="text-sm text-slate-400">No hourly activity in the last 24 hours.</p>
+              )}
+            </Panel>
+          </div>
+        </div>
+      )}
+
+      {tab === "paths" && (
+        <div className="grid gap-5 xl:grid-cols-2">
+          <Panel title="Product path flows">
+            {(tc?.pathFlows ?? []).length ? (
+              <div className="max-h-[28rem] space-y-2 overflow-y-auto text-xs">
+                {tc!.pathFlows!.map((row, i) => (
+                  <div key={`${row.from}-${row.to}-${i}`} className="flex items-center justify-between gap-2 rounded-lg border border-white/10 px-3 py-2">
+                    <span className="min-w-0 truncate text-slate-300">
+                      <span className="font-medium text-white">{row.from}</span>
+                      <span className="mx-2 text-slate-500">→</span>
+                      <span className="font-medium text-emerald-300">{row.to || "—"}</span>
+                    </span>
+                    <span className="shrink-0 tabular-nums font-semibold text-white">{row.value}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-slate-400">No product path flows recorded yet.</p>
+            )}
+          </Panel>
+
+          <Panel title="Margins by title">
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-left text-xs text-slate-300">
+                <thead className="border-b border-white/10 text-[11px] uppercase tracking-wide text-slate-500">
+                  <tr>
+                    <th className="py-2 pr-3">Title</th>
+                    <th className="py-2 pr-3">Revenue</th>
+                    <th className="py-2 pr-3">Refunds</th>
+                    <th className="py-2">Net</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(tc?.margins ?? []).length ? (
+                    tc!.margins!.map((row) => (
+                      <tr key={row.title} className="border-b border-white/5">
+                        <td className="max-w-[12rem] truncate py-2 pr-3 font-medium text-white" title={row.title}>
+                          {row.title}
+                        </td>
+                        <td className="py-2 pr-3 tabular-nums">USD {row.revenue.toFixed(2)}</td>
+                        <td className="py-2 pr-3 tabular-nums text-red-300">USD {row.refunds.toFixed(2)}</td>
+                        <td className="py-2 tabular-nums font-semibold text-emerald-300">USD {row.net.toFixed(2)}</td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={4} className="py-4 text-slate-400">
+                        No margin data yet.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </Panel>
+        </div>
+      )}
     </div>
   );
 }
 
-function Metric({ label, value }: { label: string; value: string | number }) {
+function Metric({ label, value, accent }: { label: string; value: string | number; accent?: string }) {
   return (
     <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-3">
       <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{label}</p>
-      <p className="mt-1 text-xl font-bold tabular-nums text-white">{value}</p>
+      <p className={`mt-1 text-xl font-bold tabular-nums ${accent ?? "text-white"}`}>{value}</p>
     </div>
   );
+}
+
+function BigMetric({ label, value, accent }: { label: string; value: string | number; accent?: string }) {
+  return (
+    <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-4">
+      <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">{label}</p>
+      <p className={`mt-2 text-3xl font-bold tabular-nums sm:text-4xl ${accent ?? "text-white"}`}>{value}</p>
+    </div>
+  );
+}
+
+function CompareMetric({ label, current, baseline }: { label: string; current: number; baseline: number }) {
+  const change = pctChange(current, baseline);
+  const up = baseline > 0 && current > baseline;
+  const down = baseline > 0 && current < baseline;
+  return (
+    <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-3">
+      <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{label}</p>
+      <p className="mt-1 text-xl font-bold tabular-nums text-white">{current}</p>
+      <p className="mt-1 text-xs text-slate-500">
+        7d avg {baseline}{" "}
+        <span className={up ? "text-emerald-300" : down ? "text-red-300" : "text-slate-400"}>({change})</span>
+      </p>
+    </div>
+  );
+}
+
+function SegmentBadge({ segment }: { segment: string }) {
+  const colors: Record<string, string> = {
+    champions: "bg-emerald-500/20 text-emerald-200",
+    loyal: "bg-cyan-500/20 text-cyan-200",
+    promising: "bg-violet-500/20 text-violet-200",
+    at_risk: "bg-amber-500/20 text-amber-200",
+    hibernating: "bg-slate-500/20 text-slate-300",
+  };
+  return (
+    <span className={`inline-block rounded px-2 py-0.5 text-[10px] font-bold uppercase ${colors[segment] ?? colors.hibernating}`}>
+      {segment.replaceAll("_", " ")}
+    </span>
+  );
+}
+
+function InventoryStatus({ status }: { status: string }) {
+  const colors: Record<string, string> = {
+    ok: "text-emerald-300",
+    low_stock: "text-amber-300",
+    out_of_stock: "text-red-300",
+    unknown: "text-slate-400",
+  };
+  return <span className={`text-[10px] font-bold uppercase ${colors[status] ?? "text-slate-400"}`}>{status.replaceAll("_", " ")}</span>;
 }
 
 function Panel({ title, children }: { title: string; children: ReactNode }) {

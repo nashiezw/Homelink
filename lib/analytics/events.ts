@@ -26,7 +26,12 @@ export const ANALYTICS_EVENTS = [
   "library_sample_opened",
   "library_scroll_depth",
   "library_review_submitted",
+  "library_nps_submitted",
   "presence_heartbeat",
+  "rage_click",
+  "ui_error",
+  "experiment_exposure",
+  "identity_stitched",
 ] as const;
 
 export type AnalyticsEventName = (typeof ANALYTICS_EVENTS)[number];
@@ -46,6 +51,11 @@ export function shouldMirrorFunnelEvent(event: string) {
     event === "listing_viewed" ||
     event === "search_submitted" ||
     event === "gallery_opened" ||
-    event === "saved_listing"
+    event === "saved_listing" ||
+    event === "rage_click" ||
+    event === "ui_error" ||
+    event === "experiment_exposure" ||
+    event === "identity_stitched" ||
+    event === "upload_failed"
   );
 }

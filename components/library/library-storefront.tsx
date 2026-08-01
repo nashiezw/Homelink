@@ -3,7 +3,8 @@
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, Award, BookOpen, BookmarkCheck, ChevronDown, Filter, Minus, Plus, Search, ShieldCheck, ShoppingBag, ShoppingCart, Trash2, Truck } from "lucide-react";
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { trackEvent } from "@/lib/analytics/client";
 import { HL_GREEN, HL_NAVY } from "@/components/brand/houselink-icon";
 import { LibraryCartFab } from "@/components/library/library-cart-fab";
 import { LibraryFormatPickerDialog } from "@/components/library/library-format-picker-dialog";
@@ -86,6 +87,19 @@ export function LibraryStorefront({
     () => filterProducts(products, { query, category, type, sort }),
     [products, query, category, type, sort],
   );
+
+  useEffect(() => {
+    const q = query.trim();
+    if (q.length < 2) return;
+    const timer = window.setTimeout(() => {
+      trackEvent("library_search_submitted", q, {
+        query: q,
+        resultCount: results.length,
+        zeroResults: results.length === 0 ? "true" : "false",
+      });
+    }, 700);
+    return () => window.clearTimeout(timer);
+  }, [query, results.length]);
 
   const hidePrices = merchandising.hidePricesUntilLogin && !user;
   const headline = merchandising.heroHeadline?.trim() || DESIGN_HERO_HEADLINE;

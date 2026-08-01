@@ -53,6 +53,8 @@ export function MyLibraryClient({
   const [reviewDisplayName, setReviewDisplayName] = useState("");
   const [reviewBusy, setReviewBusy] = useState(false);
   const [allowGuestNames, setAllowGuestNames] = useState(false);
+  const [npsPrompt, setNpsPrompt] = useState<{ accessId: string; productTitle: string } | null>(null);
+  const [npsScore, setNpsScore] = useState<number | null>(null);
   const purchased = library.products.filter((product) => product.downloads.length > 0 || library.downloads.some((download) => download.productId === product.id)).slice(0, 6);
 
   useEffect(() => {
@@ -62,6 +64,18 @@ export function MyLibraryClient({
     void apiFetch<{ reviews?: { allowGuestNames?: boolean } }>("/api/v1/library/settings").then((result) => {
       setAllowGuestNames(Boolean(result.data?.reviews?.allowGuestNames));
     });
+    try {
+      const pending = window.sessionStorage.getItem("houselink_nps_pending");
+      if (pending) {
+        const parsed = JSON.parse(pending) as { accessId: string; productTitle: string };
+        if (parsed?.accessId) {
+          setNpsPrompt(parsed);
+          setNpsScore(null);
+        }
+      }
+    } catch {
+      /* ignore */
+    }
   }, []);
 
   async function download(accessId?: string) {
@@ -70,8 +84,48 @@ export function MyLibraryClient({
     if (token.data?.token) {
       trackEvent("library_download_started", accessId);
       trackEvent("library_download_completed", accessId);
+      const item = library.downloads.find((row) => row.id === accessId);
+      try {
+        const key = "houselink_nps_asked";
+        const asked = new Set(JSON.parse(window.localStorage.getItem(key) || "[]") as string[]);
+        if (!asked.has(accessId)) {
+          asked.add(accessId);
+          window.localStorage.setItem(key, JSON.stringify([...asked].slice(-40)));
+          window.sessionStorage.setItem(
+            "houselink_nps_pending",
+            JSON.stringify({ accessId, productTitle: item?.productTitle || "your download" }),
+          );
+        }
+      } catch {
+        /* ignore */
+      }
       window.location.href = `${token.data.downloadUrl}?token=${encodeURIComponent(token.data.token)}`;
     }
+  }
+
+  function submitNps(score: number) {
+    if (!npsPrompt) return;
+    setNpsScore(score);
+    trackEvent("library_nps_submitted", npsPrompt.accessId, {
+      score,
+      productTitle: npsPrompt.productTitle,
+    });
+    try {
+      window.sessionStorage.removeItem("houselink_nps_pending");
+    } catch {
+      /* ignore */
+    }
+    showToast("Thanks for the feedback.", "success");
+    window.setTimeout(() => setNpsPrompt(null), 900);
+  }
+
+  function dismissNps() {
+    try {
+      window.sessionStorage.removeItem("houselink_nps_pending");
+    } catch {
+      /* ignore */
+    }
+    setNpsPrompt(null);
   }
 
   async function submitReview() {
@@ -129,6 +183,38 @@ export function MyLibraryClient({
           </div>
 
           <SetPasswordCard />
+
+          {npsPrompt ? (
+            <section className="surface-panel min-w-0 max-w-full rounded-lg border border-emerald-500/30 p-4 sm:p-5">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h2 className="text-lg font-semibold text-ink dark:text-white">Quick feedback</h2>
+                  <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+                    How likely are you to recommend {npsPrompt.productTitle} to a colleague? (0–10)
+                  </p>
+                </div>
+                <button type="button" onClick={dismissNps} className="rounded p-1 text-slate-400 hover:text-slate-700 dark:hover:text-white" aria-label="Dismiss">
+                  <X className="size-4" />
+                </button>
+              </div>
+              <div className="mt-4 flex flex-wrap gap-1.5">
+                {Array.from({ length: 11 }, (_, score) => (
+                  <button
+                    key={score}
+                    type="button"
+                    onClick={() => submitNps(score)}
+                    className={`h-9 w-9 rounded-md text-sm font-semibold transition ${
+                      npsScore === score
+                        ? "bg-emerald-600 text-white"
+                        : "border border-slate-200 text-slate-700 hover:border-emerald-500 dark:border-slate-700 dark:text-slate-200"
+                    }`}
+                  >
+                    {score}
+                  </button>
+                ))}
+              </div>
+            </section>
+          ) : null}
 
           <section className="surface-panel min-w-0 max-w-full rounded-lg p-4 sm:p-5">
             <h2 className="text-lg font-semibold text-ink dark:text-white">Purchased Resources</h2>

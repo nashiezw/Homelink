@@ -35,6 +35,7 @@ import { WhatsAppHelpLink } from "@/components/layout/whatsapp-help-link";
 import { Button } from "@/components/ui/button";
 import { useApp } from "@/components/providers/app-provider";
 import { trackEvent } from "@/lib/analytics/client";
+import { getExperimentVariant } from "@/lib/analytics/experiments";
 import { apiFetch } from "@/lib/api/client";
 import {
   notifyLibraryCartAdded,
@@ -113,6 +114,11 @@ export function LibraryProductPage({
   const [reviewForm, setReviewForm] = useState({ rating: 5, title: "", body: "", displayName: "" });
   const [reviewBusy, setReviewBusy] = useState(false);
   const [reviewNotice, setReviewNotice] = useState("");
+  const [softcopyBadgeVariant, setSoftcopyBadgeVariant] = useState("control");
+
+  useEffect(() => {
+    setSoftcopyBadgeVariant(getExperimentVariant("library_softcopy_badge", ["control", "save_callout"]));
+  }, []);
 
   useEffect(() => {
     void apiFetch<{
@@ -834,9 +840,16 @@ export function LibraryProductPage({
                           </span>
                           {discount != null && (
                             <span className="mt-1 inline-flex rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200">
-                              Save {discount}%
+                              {softcopyBadgeVariant === "save_callout" && format.type !== "PRINTED_BOOK"
+                                ? `Soft copy — save ${discount}% vs print`
+                                : `Save ${discount}%`}
                             </span>
                           )}
+                          {discount == null && softcopyBadgeVariant === "save_callout" && format.type !== "PRINTED_BOOK" ? (
+                            <span className="mt-1 inline-flex rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200">
+                              Soft copy · instant download
+                            </span>
+                          ) : null}
                           <span className="mt-1.5 block text-xs leading-5 text-slate-500 dark:text-slate-400">
                             {format.type === "PRINTED_BOOK" ? printStockLabel : "Digital · instant after payment"}
                           </span>
