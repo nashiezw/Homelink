@@ -2,9 +2,18 @@
 
 import { ArrowRight, Mail, MessageCircle, Phone, PlusCircle } from "lucide-react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import { HouseLinkBrand } from "@/components/brand/houselink-logo";
 import { usePlatformConfig } from "@/components/providers/platform-config-provider";
-import { getMailtoHref, getTelHref, getWhatsAppHref } from "@/lib/settings/contact";
+import { trackWhatsAppClick } from "@/lib/analytics/whatsapp-client";
+import { getAnalyticsOptOut, setAnalyticsOptOut } from "@/lib/analytics/privacy-client";
+import {
+  getContextualWhatsAppHref,
+  getMailtoHref,
+  getTelHref,
+  resolveWhatsAppLane,
+} from "@/lib/settings/contact";
 
 const groups = [
   {
@@ -88,13 +97,28 @@ function internalRel(href: string) {
 }
 
 export function SiteFooter() {
+  const pathname = usePathname();
   const { config } = usePlatformConfig();
   const contact = config?.contact ?? null;
   const supportEmail = contact?.supportEmail?.trim() ?? "";
   const phoneNumber = contact?.phoneNumber?.trim() ?? "";
   const phoneLabel = contact?.phoneLabel?.trim() || phoneNumber;
-  const whatsappNumber = contact?.whatsappNumber?.trim() ?? "";
-  const whatsappLabel = contact?.whatsappLabel?.trim() || whatsappNumber;
+  const whatsappHref = contact
+    ? getContextualWhatsAppHref(contact, { source: "footer", pathname: pathname || undefined })
+    : "";
+  const whatsappLabel = contact?.whatsappLabel?.trim() || "WhatsApp";
+  const [analyticsOptOut, setAnalyticsOptOutState] = useState(false);
+
+  useEffect(() => {
+    setAnalyticsOptOutState(getAnalyticsOptOut());
+    function onPref(event: Event) {
+      const detail = (event as CustomEvent<{ optOut?: boolean }>).detail;
+      if (typeof detail?.optOut === "boolean") setAnalyticsOptOutState(detail.optOut);
+      else setAnalyticsOptOutState(getAnalyticsOptOut());
+    }
+    window.addEventListener("houselink:analytics-preference", onPref);
+    return () => window.removeEventListener("houselink:analytics-preference", onPref);
+  }, []);
 
   return (
     <footer className="relative border-t border-slate-800 bg-ink text-white">
@@ -112,7 +136,7 @@ export function SiteFooter() {
               Zimbabwe-focused search.
             </p>
 
-            {contact && (supportEmail || phoneNumber || whatsappNumber) && (
+            {contact && (supportEmail || phoneNumber || whatsappHref) && (
               <div className="mt-5 grid min-w-0 gap-2.5 text-sm text-slate-300 sm:flex sm:flex-wrap sm:gap-x-5">
                 {supportEmail && (
                   <a
@@ -132,17 +156,18 @@ export function SiteFooter() {
                     <span className="min-w-0 break-words">{phoneLabel}</span>
                   </a>
                 )}
-                {whatsappNumber && (
+                {whatsappHref ? (
                   <a
-                    href={getWhatsAppHref(contact)}
+                    href={whatsappHref}
                     target="_blank"
                     rel="noopener noreferrer"
+                    onClick={() => trackWhatsAppClick("footer", { lane: resolveWhatsAppLane(pathname || undefined) })}
                     className="inline-flex min-w-0 items-center gap-2 transition hover:text-emerald-300"
                   >
                     <MessageCircle className="size-4 shrink-0" />
                     <span className="min-w-0 break-words">WhatsApp {whatsappLabel}</span>
                   </a>
-                )}
+                ) : null}
               </div>
             )}
           </div>
@@ -244,6 +269,18 @@ export function SiteFooter() {
             <Link href="/privacy" className="font-semibold text-slate-300 underline-offset-2 hover:text-emerald-300 hover:underline">
               Privacy Policy
             </Link>
+            . Browser Do Not Track is respected.{" "}
+            <button
+              type="button"
+              className="font-semibold text-slate-300 underline-offset-2 hover:text-emerald-300 hover:underline"
+              onClick={() => {
+                const next = !analyticsOptOut;
+                setAnalyticsOptOut(next);
+                setAnalyticsOptOutState(next);
+              }}
+            >
+              {analyticsOptOut ? "Turn analytics on" : "Turn analytics off"}
+            </button>
             .
           </p>
         </div>

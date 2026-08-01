@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { CheckCircle2, FileText, Mail, MapPin, Package, Printer, Truck, Upload } from "lucide-react";
+import { CheckCircle2, FileText, Mail, MapPin, MessageCircle, Package, Printer, Truck, Upload } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { PageShell } from "@/components/layout/page-shell";
+import { WhatsAppHelpLink } from "@/components/layout/whatsapp-help-link";
 import { PaymentProofUpload } from "@/components/payments/payment-proof-upload";
 import { Button } from "@/components/ui/button";
 import { useApp } from "@/components/providers/app-provider";
@@ -248,6 +249,19 @@ export function LibraryOrderClient({ initialOrder }: { initialOrder: OrderDetail
           <Button variant="secondary" className="w-full" disabled={busy} onClick={() => void resendEmail()}>
             <Mail className="size-4" /> {busy ? "Sending..." : "Resend email"}
           </Button>
+          <WhatsAppHelpLink
+            context={{
+              source: "order_status",
+              lane: "library",
+              orderNumber: order.orderNumber,
+              paymentReference: order.payment?.referenceNumber ?? paymentId ?? order.id,
+              totalLabel: `${order.currency} ${order.total.toFixed(2)}`,
+            }}
+            className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-[#25D366] text-sm font-bold text-white hover:bg-[#1ebe57]"
+          >
+            <MessageCircle className="size-4" />
+            Ask about this order on WhatsApp
+          </WhatsAppHelpLink>
           <div className="rounded-lg border border-slate-200 bg-white p-4 text-sm dark:border-slate-800 dark:bg-slate-900">
             <Package className="mb-2 size-5 text-emerald-600" />
             <p className="font-semibold">Reference</p>

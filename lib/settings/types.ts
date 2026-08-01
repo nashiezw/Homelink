@@ -99,10 +99,16 @@ export type ContactSettings = {
   phoneLabel: string;
   whatsappNumber: string;
   whatsappLabel: string;
+  /** Optional lane overrides — empty falls back to whatsappNumber. */
+  whatsappLibraryNumber: string;
+  whatsappPropertyNumber: string;
   /** Sticky left FAB — editable in Platform Settings → Contact. */
   stickyWhatsAppEnabled: boolean;
   stickyWhatsAppMessage: string;
+  stickyWhatsAppLibraryMessage: string;
   stickyWhatsAppLabel: string;
+  /** Shown under sticky + appended to prefills, e.g. We usually reply 8am–6pm CAT. */
+  stickyWhatsAppQuietHours: string;
   officeAddress: string;
   supportHours: string;
 };

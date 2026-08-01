@@ -1083,10 +1083,14 @@ export async function createLibraryOrderFromCheckout(input: {
   let whatsappHelpUrl = "";
   try {
     const { getHydratedRuntimePlatformSettings } = await import("@/lib/settings/runtime");
-    const { getWhatsAppHref } = await import("@/lib/settings/contact");
+    const { getContextualWhatsAppHref } = await import("@/lib/settings/contact");
     const platform = await getHydratedRuntimePlatformSettings();
-    whatsappHelpUrl = getWhatsAppHref(platform.contact, {
-      message: `Hi HouseLink — I need help paying Library order ${order.orderNumber}. Reference: ${paymentReference}. Total: ${order.currency} ${Number(order.total).toFixed(2)}.`,
+    whatsappHelpUrl = getContextualWhatsAppHref(platform.contact, {
+      source: "order_email",
+      lane: "library",
+      orderNumber: order.orderNumber,
+      paymentReference,
+      totalLabel: `${order.currency} ${Number(order.total).toFixed(2)}`,
     });
   } catch {
     whatsappHelpUrl = "";
@@ -2607,6 +2611,7 @@ async function maybeSendLibraryLowStockAlert(productId: string, nextStock: numbe
     const { getWhatsAppHref } = await import("@/lib/settings/contact");
     const platform = await getHydratedRuntimePlatformSettings();
     opsWhatsappUrl = getWhatsAppHref(platform.contact, {
+      lane: "library",
       message: `Low stock alert: ${product.title} is at ${nextStock} (threshold ${threshold}). Warehouse: ${product.warehouse || "Default"}.`,
     });
   } catch {

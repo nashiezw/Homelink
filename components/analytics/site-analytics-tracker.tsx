@@ -3,6 +3,7 @@
 import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useRef } from "react";
 import { apiFetch } from "@/lib/api/client";
+import { isAnalyticsAllowed } from "@/lib/analytics/privacy-client";
 import {
   detectDeviceType,
   getOrCreateSessionId,
@@ -13,6 +14,7 @@ import {
 /**
  * First-party page tracker: anonymous visitor/session ids, path, time on page,
  * referrer, UTM, device class. No MAC / hardware fingerprinting.
+ * Skips when visitor opted out or browser Do Not Track is on.
  */
 export function SiteAnalyticsTracker() {
   const pathname = usePathname();
@@ -21,6 +23,7 @@ export function SiteAnalyticsTracker() {
 
   useEffect(() => {
     if (!pathname || pathname.startsWith("/dashboard/admin")) return;
+    if (!isAnalyticsAllowed()) return;
 
     const visitorId = getOrCreateVisitorId();
     const sessionId = getOrCreateSessionId();

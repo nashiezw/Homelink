@@ -12,6 +12,7 @@ import {
 import { AgentRatingPrompt } from "@/components/agents/agent-rating-prompt";
 import { HolidayBookingForm } from "@/components/holiday-homes/holiday-booking-form";
 import { HolidayHomeDetailSections } from "@/components/holiday-homes/holiday-home-detail-sections";
+import { WhatsAppHelpLink } from "@/components/layout/whatsapp-help-link";
 import { ListingDetailActions } from "@/components/listings/listing-detail-actions";
 import { ListingStatusBadge } from "@/components/listings/listing-status-badge";
 import { MarketInsightPanel } from "@/components/listings/market-insight-panel";
@@ -63,6 +64,12 @@ export function ListingDetailView({
       ) : (
         <ListingDetailActions listing={listing} />
       )}
+      <WhatsAppHelpLink
+        context={{ source: "listing", lane: "property", listingTitle: listing.title }}
+        className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-[#25D366] px-4 text-sm font-bold text-white hover:bg-[#1ebe57]"
+      >
+        WhatsApp about this listing
+      </WhatsAppHelpLink>
       {!isHoliday && listing.intent === "rent" ? (
         <TenancyActions listing={listing} landlordUserId={landlordUserId} />
       ) : null}

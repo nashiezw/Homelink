@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
+import { Download } from "lucide-react";
 import { apiFetch } from "@/lib/api/client";
 
 type SiteReport = {
@@ -13,6 +14,16 @@ type SiteReport = {
   referrers: Array<{ label: string; value: number }>;
   utmSources: Array<{ label: string; value: number }>;
   funnel: Array<{ label: string; value: number }>;
+  funnelDropoff: Array<{ label: string; value: number; pctOfPrevious: number | null; pctOfFirst: number | null }>;
+  whatsappSources: Array<{ label: string; value: number }>;
+  channels: Array<{ label: string; value: number }>;
+  proofSla: {
+    pending: number;
+    overdue: number;
+    overduePct: number;
+    medianWaitHours: number;
+    stuck: Array<{ orderNumber: string; waitHours: number }>;
+  };
   recentPaths: Array<{ path: string; minutes: number; deviceType: string; referrer: string; at: string }>;
 };
 
@@ -59,24 +70,35 @@ export function SiteAnalyticsPanel() {
     };
   }, [days]);
 
+  const whatsappClicks = report?.funnel.find((row) => /whatsapp/i.test(row.label))?.value ?? 0;
+
   return (
     <div className="grid gap-5 rounded-xl border border-white/10 bg-white/[0.03] p-4 sm:p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-300">Site visitor analytics</h3>
           <p className="mt-1 text-xs text-slate-400">
-            First-party tracking: pages, time on page, device class, referrer/UTM, and Library funnel. No MAC or device fingerprinting.
+            First-party tracking with opt-out / Do Not Track. Funnel drop-off, WhatsApp attribution, proof SLA, and channel cohorts.
           </p>
         </div>
-        <select
-          value={days}
-          onChange={(e) => setDays(Number(e.target.value))}
-          className="h-9 rounded-lg border border-white/10 bg-slate-950 px-3 text-sm text-white"
-        >
-          <option value={7}>Last 7 days</option>
-          <option value={30}>Last 30 days</option>
-          <option value={90}>Last 90 days</option>
-        </select>
+        <div className="flex flex-wrap items-center gap-2">
+          <select
+            value={days}
+            onChange={(e) => setDays(Number(e.target.value))}
+            className="h-9 rounded-lg border border-white/10 bg-slate-950 px-3 text-sm text-white"
+          >
+            <option value={7}>Last 7 days</option>
+            <option value={30}>Last 30 days</option>
+            <option value={90}>Last 90 days</option>
+          </select>
+          <a
+            href={`/api/v1/admin/site-analytics/export?days=${days}`}
+            className="inline-flex h-9 items-center gap-2 rounded-lg border border-white/10 px-3 text-sm font-semibold text-slate-200 hover:bg-white/5"
+          >
+            <Download className="size-4" />
+            Export CSV
+          </a>
+        </div>
       </div>
 
       {error ? <p className="text-sm text-red-300">{error}</p> : null}
@@ -85,15 +107,59 @@ export function SiteAnalyticsPanel() {
         <Metric label="Page views" value={report?.pageViews ?? "—"} />
         <Metric label="Unique visitors" value={report?.uniqueVisitors ?? "—"} />
         <Metric label="Avg time / page" value={report ? `${report.avgDurationSec}s` : "—"} />
-        <Metric label="WhatsApp clicks" value={report?.funnel.find((row) => /whatsapp/i.test(row.label))?.value ?? 0} />
+        <Metric label="WhatsApp clicks" value={whatsappClicks} />
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <Metric label="Proofs pending" value={report?.proofSla.pending ?? "—"} />
+        <Metric label="Proofs overdue (24h+)" value={report?.proofSla.overdue ?? "—"} />
+        <Metric label="Overdue %" value={report ? `${report.proofSla.overduePct}%` : "—"} />
+        <Metric label="Median wait (hours)" value={report?.proofSla.medianWaitHours ?? "—"} />
       </div>
 
       <div className="grid gap-5 xl:grid-cols-2">
+        <Panel title="Library funnel drop-off">
+          {(report?.funnelDropoff ?? []).length ? (
+            <div className="space-y-2">
+              {report!.funnelDropoff.map((row) => (
+                <div key={row.label} className="rounded-lg border border-white/10 px-3 py-2 text-xs text-slate-300">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-semibold text-white">{row.label}</span>
+                    <span className="tabular-nums">{row.value}</span>
+                  </div>
+                  <p className="mt-1 text-slate-500">
+                    {row.pctOfPrevious != null ? `${row.pctOfPrevious}% of previous · ` : ""}
+                    {row.pctOfFirst != null ? `${row.pctOfFirst}% of first step` : "—"}
+                  </p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-slate-400">No funnel data yet.</p>
+          )}
+        </Panel>
+        <Panel title="WhatsApp click sources">
+          <BarList rows={report?.whatsappSources ?? []} color="bg-[#25D366]" />
+        </Panel>
+        <Panel title="Channel cohorts">
+          <BarList rows={report?.channels ?? []} color="bg-sky-500" />
+        </Panel>
+        <Panel title="Proof queue (stuck)">
+          {(report?.proofSla.stuck ?? []).length ? (
+            <div className="space-y-2 text-xs text-slate-300">
+              {report!.proofSla.stuck.map((row) => (
+                <div key={row.orderNumber} className="flex items-center justify-between rounded-lg border border-white/10 px-3 py-2">
+                  <span className="font-semibold text-white">{row.orderNumber}</span>
+                  <span className={row.waitHours >= 24 ? "font-bold text-amber-300" : ""}>{row.waitHours}h</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-slate-400">No proofs waiting right now.</p>
+          )}
+        </Panel>
         <Panel title="Top pages">
           <BarList rows={report?.topPages ?? []} />
-        </Panel>
-        <Panel title="Library & engagement funnel">
-          <BarList rows={report?.funnel ?? []} color="bg-cyan-500" />
         </Panel>
         <Panel title="Devices">
           <BarList rows={report?.devices ?? []} color="bg-violet-500" />

@@ -15,6 +15,7 @@ export const ANALYTICS_EVENTS = [
   "library_cart_added",
   "library_checkout_started",
   "library_purchase_completed",
+  "library_proof_uploaded",
   "library_download_started",
 ] as const;
 

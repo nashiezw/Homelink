@@ -64,6 +64,9 @@ export function PaymentProofUpload({
     }
 
     showToast("Proof uploaded. Status is now pending finance verification.", "success");
+    if (typeof window !== "undefined" && window.location.pathname.includes("library")) {
+      trackEvent("library_proof_uploaded", paymentId, { path: window.location.pathname });
+    }
     onUploaded();
   }
 

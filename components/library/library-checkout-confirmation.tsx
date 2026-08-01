@@ -4,17 +4,16 @@ import Link from "next/link";
 import { CheckCircle2, Clock, CreditCard, FileText, LibraryBig, MessageCircle, ReceiptText, RefreshCw, Upload, XCircle } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { PageShell } from "@/components/layout/page-shell";
+import { WhatsAppHelpLink } from "@/components/layout/whatsapp-help-link";
 import { LibraryUpsellRail } from "@/components/library/library-upsell-rail";
 import { SetPasswordCard } from "@/components/library/set-password-card";
 import { PaymentProofUpload } from "@/components/payments/payment-proof-upload";
 import { Button } from "@/components/ui/button";
 import { useApp } from "@/components/providers/app-provider";
-import { usePlatformConfig } from "@/components/providers/platform-config-provider";
 import { apiFetch } from "@/lib/api/client";
 import type { LibraryDigitalUpsellSuggestion } from "@/lib/library/catalog";
 import { libraryOrderStageCopy, libraryOrderStatusLabel } from "@/lib/library/order-stage";
 import { formatBankDetailLabel, type PublicPaymentConfig } from "@/lib/payments/public-payment-config";
-import { getWhatsAppHref } from "@/lib/settings/contact";
 import { cn } from "@/lib/utils";
 
 type ConfirmationOrder = {
@@ -57,7 +56,6 @@ export function LibraryCheckoutConfirmation({
   nextBooks?: LibraryDigitalUpsellSuggestion[];
 }) {
   const { showToast } = useApp();
-  const { config: platformConfig } = usePlatformConfig();
   const [order, setOrder] = useState(initialOrder);
   const [config, setConfig] = useState<PublicPaymentConfig | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -95,11 +93,13 @@ export function LibraryCheckoutConfirmation({
     config?.manualMethods[0];
   const bankEntries = Object.entries(config?.bankDetails ?? {}).filter(([, value]) => Boolean(value));
   const reference = order.payment?.referenceNumber || resolvedPaymentId || order.orderNumber;
-  const whatsappHelpUrl = platformConfig?.contact
-    ? getWhatsAppHref(platformConfig.contact, {
-        message: `Hi HouseLink — I need help paying Library order ${order.orderNumber}. Reference: ${reference}. Total: ${order.currency} ${order.total.toFixed(2)}.`,
-      })
-    : "";
+  const whatsappContext = {
+    source: stage.showProofReceived || stage.tone === "success" ? "order_status" : "confirmation",
+    lane: "library" as const,
+    orderNumber: order.orderNumber,
+    paymentReference: reference,
+    totalLabel: `${order.currency} ${order.total.toFixed(2)}`,
+  };
 
   return (
     <PageShell
@@ -247,17 +247,13 @@ export function LibraryCheckoutConfirmation({
                     </li>
                     <li>Upload a clear PDF or photo of the receipt (bank slip, EcoCash, or ZIPIT screenshot).</li>
                   </ol>
-                  {whatsappHelpUrl ? (
-                    <a
-                      href={whatsappHelpUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="mt-4 inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#25D366] px-4 text-sm font-bold text-white hover:bg-[#1ebe57]"
-                    >
-                      <MessageCircle className="size-4" />
-                      WhatsApp help with this payment
-                    </a>
-                  ) : null}
+                  <WhatsAppHelpLink
+                    context={whatsappContext}
+                    className="mt-4 inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#25D366] px-4 text-sm font-bold text-white hover:bg-[#1ebe57]"
+                  >
+                    <MessageCircle className="size-4" />
+                    WhatsApp help with this payment
+                  </WhatsAppHelpLink>
                   {method && (
                     <div className="mt-4 rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950">
                       <p className="text-sm font-bold text-ink dark:text-white">{method.label}</p>
@@ -297,6 +293,13 @@ export function LibraryCheckoutConfirmation({
                         View uploaded proof
                       </a>
                     )}
+                    <WhatsAppHelpLink
+                      context={{ ...whatsappContext, source: "order_status" }}
+                      className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-emerald-700 hover:underline dark:text-emerald-300"
+                    >
+                      <MessageCircle className="size-4" />
+                      Ask about this order on WhatsApp
+                    </WhatsAppHelpLink>
                   </div>
                 </div>
               )}
@@ -342,6 +345,13 @@ export function LibraryCheckoutConfirmation({
           <Button variant="secondary" className="w-full" onClick={() => { window.location.href = `/dashboard/my-library/orders/${order.id}`; }}>
             <FileText className="size-4" /> View order details
           </Button>
+          <WhatsAppHelpLink
+            context={whatsappContext}
+            className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-[#25D366] text-sm font-bold text-white hover:bg-[#1ebe57]"
+          >
+            <MessageCircle className="size-4" />
+            WhatsApp order help
+          </WhatsAppHelpLink>
           <Link href="/library" className="inline-flex h-10 w-full items-center justify-center rounded-lg border border-slate-200 text-sm font-bold text-slate-700 hover:border-emerald-500 hover:text-emerald-700 dark:border-slate-700 dark:text-slate-200">
             Continue shopping
           </Link>

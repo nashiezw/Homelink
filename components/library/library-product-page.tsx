@@ -31,6 +31,7 @@ import { LibraryBulkQuoteDialog } from "@/components/library/library-bulk-quote-
 import { LibraryCartFab } from "@/components/library/library-cart-fab";
 import { LibraryFormatPickerDialog } from "@/components/library/library-format-picker-dialog";
 import { LibraryProductCard } from "@/components/library/library-product-card";
+import { WhatsAppHelpLink } from "@/components/layout/whatsapp-help-link";
 import { Button } from "@/components/ui/button";
 import { useApp } from "@/components/providers/app-provider";
 import { trackEvent } from "@/lib/analytics/client";
@@ -951,6 +952,12 @@ export function LibraryProductPage({
                     <ShoppingBag className="size-4" /> {productQuantity ? `In bag (${productQuantity})` : "Add to cart"}
                   </Button>
                 </div>
+                <WhatsAppHelpLink
+                  context={{ source: "library_product", lane: "library", productTitle: product.title }}
+                  className="mt-3 inline-flex text-sm font-semibold text-emerald-700 underline-offset-2 hover:underline dark:text-emerald-300"
+                >
+                  Questions? WhatsApp us about this book
+                </WhatsAppHelpLink>
                 {isPrinted ? (
                   <button
                     type="button"

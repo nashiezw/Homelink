@@ -253,6 +253,16 @@ export function PlatformSettingsPanel({ defaultTab = "general" }: { defaultTab?:
             value={settings.contact.whatsappLabel}
             onChange={(v) => setSettings({ ...settings, contact: { ...settings.contact, whatsappLabel: v } })}
           />
+          <Input
+            label="Library WhatsApp number (optional)"
+            value={settings.contact.whatsappLibraryNumber ?? ""}
+            onChange={(v) => setSettings({ ...settings, contact: { ...settings.contact, whatsappLibraryNumber: v } })}
+          />
+          <Input
+            label="Property WhatsApp number (optional)"
+            value={settings.contact.whatsappPropertyNumber ?? ""}
+            onChange={(v) => setSettings({ ...settings, contact: { ...settings.contact, whatsappPropertyNumber: v } })}
+          />
           <label className="flex items-center gap-2 text-sm font-medium text-slate-200 sm:col-span-2">
             <input
               type="checkbox"
@@ -271,10 +281,21 @@ export function PlatformSettingsPanel({ defaultTab = "general" }: { defaultTab?:
             value={settings.contact.stickyWhatsAppLabel ?? ""}
             onChange={(v) => setSettings({ ...settings, contact: { ...settings.contact, stickyWhatsAppLabel: v } })}
           />
+          <Input
+            label="Quiet hours note (shown under sticky)"
+            value={settings.contact.stickyWhatsAppQuietHours ?? ""}
+            onChange={(v) => setSettings({ ...settings, contact: { ...settings.contact, stickyWhatsAppQuietHours: v } })}
+          />
           <TextArea
-            label="Sticky WhatsApp prefilled message"
+            label="Property WhatsApp prefilled message"
             value={settings.contact.stickyWhatsAppMessage ?? ""}
             onChange={(v) => setSettings({ ...settings, contact: { ...settings.contact, stickyWhatsAppMessage: v } })}
+            className="sm:col-span-2"
+          />
+          <TextArea
+            label="Library WhatsApp prefilled message"
+            value={settings.contact.stickyWhatsAppLibraryMessage ?? ""}
+            onChange={(v) => setSettings({ ...settings, contact: { ...settings.contact, stickyWhatsAppLibraryMessage: v } })}
             className="sm:col-span-2"
           />
           <TextArea

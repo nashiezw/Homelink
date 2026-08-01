@@ -14,7 +14,15 @@ function digitsOnly(value) {
 }
 
 function getWhatsAppHref(contact, options = {}) {
-  const digits = digitsOnly(contact.whatsappNumber);
+  const lane = options.lane;
+  let raw = options.number || contact.whatsappNumber;
+  if (lane === "library" && digitsOnly(contact.whatsappLibraryNumber || "").length >= 8) {
+    raw = contact.whatsappLibraryNumber;
+  }
+  if (lane === "property" && digitsOnly(contact.whatsappPropertyNumber || "").length >= 8) {
+    raw = contact.whatsappPropertyNumber;
+  }
+  const digits = digitsOnly(raw);
   if (!digits) return "";
   const text = String(options.message || "").trim();
   if (!text) return `https://wa.me/${digits}`;
@@ -22,8 +30,10 @@ function getWhatsAppHref(contact, options = {}) {
 }
 
 function stickyWhatsAppVisible(contact) {
-  const hasNumber = digitsOnly(contact.whatsappNumber).length >= 8;
-  // Visible whenever a valid number exists unless admin explicitly disables sticky.
+  const hasNumber =
+    digitsOnly(contact.whatsappNumber).length >= 8 ||
+    digitsOnly(contact.whatsappLibraryNumber).length >= 8 ||
+    digitsOnly(contact.whatsappPropertyNumber).length >= 8;
   return hasNumber && contact.stickyWhatsAppEnabled !== false;
 }
 
@@ -41,6 +51,13 @@ assert(
   getWhatsAppHref({ whatsappNumber: "263771234567" }, { message: "Hello" }).includes("text=Hello"),
   "adds prefilled message",
 );
+assert(
+  getWhatsAppHref(
+    { whatsappNumber: "263770000000", whatsappLibraryNumber: "263771111111" },
+    { lane: "library" },
+  ) === "https://wa.me/263771111111",
+  "routes library number",
+);
 assert(!stickyWhatsAppVisible({ stickyWhatsAppEnabled: true, whatsappNumber: "" }), "hides when number missing");
 assert(
   stickyWhatsAppVisible({ stickyWhatsAppEnabled: true, whatsappNumber: "263771234567" }),
@@ -55,19 +72,36 @@ assert(
   "hides when disabled",
 );
 
-const funnel = ["library_product_viewed", "library_cart_added", "library_checkout_started", "library_purchase_completed", "whatsapp_click"];
+const funnel = [
+  "library_product_viewed",
+  "library_cart_added",
+  "library_checkout_started",
+  "library_proof_uploaded",
+  "library_purchase_completed",
+  "whatsapp_click",
+];
 assert(funnel.every((name) => /^[a-z0-9_]+$/.test(name)), "funnel event names are safe labels");
 
 const whatsappFab = readFileSync(join(root, "components/layout/whatsapp-sticky-fab.tsx"), "utf8");
 const bagFab = readFileSync(join(root, "components/library/library-cart-fab.tsx"), "utf8");
 const headerBag = readFileSync(join(root, "components/library/library-header-bag.tsx"), "utf8");
-const whatsappFixedClass = whatsappFab.match(/"fixed[^"]+"/)?.[0] || "";
+const analytics = readFileSync(join(root, "lib/analytics/site-analytics.ts"), "utf8");
+const privacy = readFileSync(join(root, "lib/analytics/privacy-client.ts"), "utf8");
+const footer = readFileSync(join(root, "components/layout/site-footer.tsx"), "utf8");
+const panel = readFileSync(join(root, "components/admin/site-analytics-panel.tsx"), "utf8");
+
 assert(/data-houselink-sticky="whatsapp"/.test(whatsappFab), "WhatsApp sticky marker present");
-assert(whatsappFixedClass.includes("fixed") && !whatsappFixedClass.includes("lg:hidden"), "WhatsApp fixed control is not mobile-only");
-assert(/<span[^>]*className="[^"]*lg:hidden/.test(whatsappFab), "WhatsApp label hides on desktop (icon-only)");
+assert(!/lg:hidden(?![^"]*span)/.test(whatsappFab.split("data-houselink-sticky")[0] || ""), "WhatsApp wrapper is not mobile-only");
+assert(/<span[^>]*lg:hidden/.test(whatsappFab), "WhatsApp label hides on desktop (icon-only)");
 assert(/lg:size-12|lg:rounded-full/.test(whatsappFab), "WhatsApp compact icon circle on desktop");
+assert(/stickyWhatsAppQuietHours|quiet/.test(whatsappFab), "WhatsApp quiet hours note supported");
 assert(/lg:hidden/.test(bagFab) && /data-houselink-sticky="library-bag"/.test(bagFab), "Library bag FAB is mobile-only");
 assert(/hidden lg:block/.test(headerBag) && /data-houselink-header-bag="library"/.test(headerBag), "Library bag header control is desktop-only");
+assert(/funnelDropoff/.test(analytics) && /proofSla/.test(analytics) && /whatsappSources/.test(analytics), "analytics report includes dropoff, SLA, WA sources");
+assert(/siteAnalyticsReportToCsv/.test(analytics), "CSV export helper exists");
+assert(/isAnalyticsAllowed/.test(privacy) && /doNotTrack|Do Not Track/i.test(privacy), "privacy opt-out + DNT");
+assert(/Turn analytics off|Turn analytics on/.test(footer), "footer analytics toggle");
+assert(/Export CSV/.test(panel) && /funnel drop-off|Library funnel drop-off/i.test(panel), "admin panel shows drop-off + export");
 
 if (process.exitCode) {
   console.error("WhatsApp sticky / analytics checks failed.");
