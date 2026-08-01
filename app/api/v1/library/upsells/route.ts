@@ -9,6 +9,7 @@ export async function POST(request: Request) {
   let body: {
     seedProductIds?: unknown;
     excludeProductIds?: unknown;
+    cartProductIds?: unknown;
     max?: unknown;
     preferPromoCompanions?: unknown;
   };
@@ -27,12 +28,16 @@ export async function POST(request: Request) {
   const excludeProductIds = Array.isArray(body.excludeProductIds)
     ? body.excludeProductIds.map(String).filter(Boolean)
     : [];
+  const cartProductIds = Array.isArray(body.cartProductIds)
+    ? body.cartProductIds.map(String).filter(Boolean)
+    : seedProductIds;
   const max = Number(body.max);
   const catalog = await listLibraryProducts({});
   const suggestions = suggestLibraryDigitalUpsells({
     catalog,
     seedProductIds,
     excludeProductIds,
+    cartProductIds,
     max: Number.isFinite(max) ? max : 2,
     preferPromoCompanions: Boolean(body.preferPromoCompanions),
   });

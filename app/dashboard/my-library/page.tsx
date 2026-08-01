@@ -19,6 +19,7 @@ export default async function MyLibraryPage() {
     catalog,
     seedProductIds: ownedIds,
     excludeProductIds: ownedIds,
+    cartProductIds: ownedIds,
     max: 3,
     preferPromoCompanions: true,
   });

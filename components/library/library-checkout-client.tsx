@@ -189,6 +189,7 @@ export function LibraryCheckoutClient() {
       body: JSON.stringify({
         seedProductIds,
         excludeProductIds,
+        cartProductIds: seedProductIds,
         max: 2,
         preferPromoCompanions: cartIsAllDigital,
       }),
@@ -471,7 +472,7 @@ export function LibraryCheckoutClient() {
 
           <LibraryUpsellRail
             title="Complete your set"
-            description="Digital soft-copy add-ons only — one tap, no format maze at payment."
+            description="Digital soft-copy only. Add curated companions to finish the toolkit — and unlock the soft-copy bundle promo when the full set is in your bag."
             suggestions={upsells}
             mode="add"
             busyId={upsellBusyId}

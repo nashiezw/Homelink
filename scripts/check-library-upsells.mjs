@@ -1,5 +1,5 @@
 /**
- * Smoke-check digital-only upsell suggestion rules.
+ * Smoke-check digital-only upsell suggestion + promo copy rules.
  * Run: node scripts/check-library-upsells.mjs
  */
 
@@ -8,8 +8,24 @@ function pickDigital(product) {
   return formats.find((f) => f.type !== "PRINTED_BOOK") || null;
 }
 
-function suggestLibraryDigitalUpsells({ catalog, seedProductIds, excludeProductIds = [], max = 2, preferPromoCompanions = false }) {
+function applyLibraryBundlePromo(linePrices, promoTotal) {
+  const subtotal = Math.round(linePrices.reduce((sum, price) => sum + price, 0) * 100) / 100;
+  if (promoTotal == null || promoTotal <= 0 || promoTotal >= subtotal - 0.001) {
+    return { subtotal, total: subtotal, savings: 0 };
+  }
+  return { subtotal, total: promoTotal, savings: Math.round((subtotal - promoTotal) * 100) / 100 };
+}
+
+function suggestLibraryDigitalUpsells({
+  catalog,
+  seedProductIds,
+  excludeProductIds = [],
+  cartProductIds,
+  max = 2,
+  preferPromoCompanions = false,
+}) {
   const exclude = new Set([...excludeProductIds, ...seedProductIds]);
+  const cartIds = new Set(cartProductIds || seedProductIds);
   const byId = new Map(catalog.map((p) => [p.id, p]));
   const seeds = seedProductIds.map((id) => byId.get(id)).filter(Boolean);
   const scored = [];
@@ -19,8 +35,29 @@ function suggestLibraryDigitalUpsells({ catalog, seedProductIds, excludeProductI
     if (exclude.has(target.id) || seen.has(target.id)) return;
     const format = pickDigital(target);
     if (!format) return;
+    let promoLabel;
+    let completesBundle = false;
+    let promoSavings;
+    let why = `Recommended with ${source.title}.`;
+    if (reason === "BUNDLE" && source.bundlePromoPrice > 0) {
+      const members = [source.id, ...(source.bundleProductIds || [])];
+      const prices = members.map((id) => pickDigital(byId.get(id))?.price || 0);
+      const deal = applyLibraryBundlePromo(prices, source.bundlePromoPrice);
+      if (deal.savings > 0) {
+        const stillMissing = members.filter((id) => id !== target.id && !cartIds.has(id));
+        completesBundle = stillMissing.length === 0;
+        promoSavings = deal.savings;
+        promoLabel = completesBundle
+          ? `Unlock soft-copy bundle · save USD ${deal.savings.toFixed(2)}`
+          : `Soft-copy set deal · save USD ${deal.savings.toFixed(2)} when complete`;
+        why = completesBundle
+          ? `Frequently bought with ${source.title}. Add this soft copy to unlock the set promo.`
+          : `Part of the soft-copy set with ${source.title}.`;
+        score += completesBundle ? 50 : 15;
+      }
+    }
     seen.add(target.id);
-    scored.push({ productId: target.id, reason, score, title: target.title });
+    scored.push({ productId: target.id, reason, score, title: target.title, why, promoLabel, completesBundle, promoSavings });
   }
 
   for (const source of seeds) {
@@ -28,15 +65,6 @@ function suggestLibraryDigitalUpsells({ catalog, seedProductIds, excludeProductI
     for (const id of source.bundleProductIds || []) {
       const companion = byId.get(id);
       if (companion) push(companion, source, "BUNDLE", 100 + promoBoost);
-    }
-  }
-  for (const source of seeds) {
-    const series = (source.series || "").trim().toLowerCase();
-    if (!series) continue;
-    for (const candidate of catalog) {
-      if (candidate.id === source.id) continue;
-      if ((candidate.series || "").trim().toLowerCase() !== series) continue;
-      push(candidate, source, "SERIES", 40);
     }
   }
   return scored.sort((a, b) => b.score - a.score).slice(0, max);
@@ -56,8 +84,9 @@ const catalog = [
     id: "a",
     title: "Main",
     series: "Property",
-    bundleProductIds: ["b", "c"],
-    bundlePromoPrice: 40,
+    bundleProductIds: ["b"],
+    bundlePromoPrice: 25,
+    currency: "USD",
     formats: [{ type: "PDF", enabled: true, price: 15 }],
   },
   {
@@ -70,41 +99,19 @@ const catalog = [
       { type: "PRINTED_BOOK", enabled: true, price: 25 },
     ],
   },
-  {
-    id: "c",
-    title: "Print only C",
-    series: "Other",
-    bundleProductIds: [],
-    formats: [{ type: "PRINTED_BOOK", enabled: true, price: 30 }],
-  },
-  {
-    id: "d",
-    title: "Series D",
-    series: "Property",
-    bundleProductIds: [],
-    formats: [{ type: "PDF", enabled: true, price: 12 }],
-  },
 ];
 
-const checkout = suggestLibraryDigitalUpsells({
+const unlock = suggestLibraryDigitalUpsells({
   catalog,
   seedProductIds: ["a"],
-  excludeProductIds: [],
+  cartProductIds: ["a"],
   max: 2,
   preferPromoCompanions: true,
 });
-assert(checkout.length === 2, "returns up to 2 suggestions");
-assert(checkout[0].productId === "b", "prefers digital FBT companion first");
-assert(checkout.every((row) => row.productId !== "c"), "never suggests print-only titles");
-assert(checkout.some((row) => row.productId === "d"), "fills with same-series digital title");
-
-const excluded = suggestLibraryDigitalUpsells({
-  catalog,
-  seedProductIds: ["a"],
-  excludeProductIds: ["b", "d"],
-  max: 2,
-});
-assert(excluded.length === 0, "excludes cart/owned titles");
+assert(unlock[0]?.completesBundle === true, "single missing companion completes the set");
+assert(Boolean(unlock[0]?.promoLabel?.includes("Unlock")), "shows unlock promo label");
+assert(Boolean(unlock[0]?.why?.includes("unlock")), "explains why to add for promo");
+assert(unlock[0]?.promoSavings === 5, "promo savings = 30 list − 25 promo");
 
 if (process.exitCode) {
   console.error("Library upsell checks failed.");

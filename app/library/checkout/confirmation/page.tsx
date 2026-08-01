@@ -52,6 +52,7 @@ export default async function LibraryCheckoutConfirmationPage({
     catalog,
     seedProductIds,
     excludeProductIds: ownedIds,
+    cartProductIds: ownedIds,
     max: 2,
     preferPromoCompanions: true,
   });

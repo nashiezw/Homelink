@@ -196,7 +196,32 @@ export type LibraryDigitalUpsellSuggestion = {
   reason: "BUNDLE" | "SERIES";
   sourceProductId: string;
   sourceTitle: string;
+  shortDescription: string;
+  coverUrl?: string;
+  rating?: number;
+  reviewCount?: number;
+  /** Shopper-facing reason to add this title. */
+  why: string;
+  /** Soft-copy promo callout, e.g. unlock savings. */
+  promoLabel?: string;
+  promoSavings?: number;
+  /** True when adding this title finishes the curated FBT set. */
+  completesBundle?: boolean;
 };
+
+function libraryCoverUrl(product: Pick<LibraryProduct, "gallery" | "seoImageUrl">) {
+  const cover =
+    product.gallery?.find((item) => item.kind === "cover" && item.url)?.url ||
+    product.gallery?.find((item) => item.url)?.url ||
+    product.seoImageUrl;
+  return cover?.trim() || undefined;
+}
+
+function libraryUpsellBlurb(product: Pick<LibraryProduct, "shortDescription" | "subtitle" | "description">) {
+  const text = (product.shortDescription || product.subtitle || product.description || "").replace(/\s+/g, " ").trim();
+  if (!text) return "";
+  return text.length > 140 ? `${text.slice(0, 137).trim()}…` : text;
+}
 
 /**
  * Light digital-only upsells from FBT companions (preferred) then same series.
@@ -206,11 +231,14 @@ export function suggestLibraryDigitalUpsells(input: {
   catalog: LibraryProduct[];
   seedProductIds: string[];
   excludeProductIds?: string[];
+  /** Product IDs already in the bag/order — used for promo unlock copy. */
+  cartProductIds?: string[];
   max?: number;
   preferPromoCompanions?: boolean;
 }): LibraryDigitalUpsellSuggestion[] {
   const max = Math.max(1, Math.min(6, Math.floor(input.max ?? 2)));
   const exclude = new Set([...(input.excludeProductIds ?? []), ...input.seedProductIds].filter(Boolean));
+  const cartIds = new Set((input.cartProductIds ?? input.seedProductIds).filter(Boolean));
   const byId = new Map(
     input.catalog
       .filter((product) => product.status === "PUBLISHED" || product.status === "SCHEDULED")
@@ -222,6 +250,46 @@ export function suggestLibraryDigitalUpsells(input: {
   const scored: Array<LibraryDigitalUpsellSuggestion & { score: number }> = [];
   const seen = new Set<string>();
 
+  function digitalPrice(product: LibraryProduct) {
+    return pickLibraryBundleFormat(product, "PDF").price;
+  }
+
+  function bundlePromoCopy(source: LibraryProduct, target: LibraryProduct) {
+    const promo = source.bundlePromoPrice;
+    const members = [source.id, ...(source.bundleProductIds ?? [])].filter(Boolean);
+    if (!members.includes(target.id) || promo == null || !Number.isFinite(promo) || promo <= 0) {
+      return { why: "", promoLabel: undefined as string | undefined, promoSavings: undefined as number | undefined, completesBundle: false, scoreBoost: 0 };
+    }
+    const memberProducts = members.map((id) => byId.get(id)).filter((item): item is LibraryProduct => Boolean(item));
+    if (memberProducts.length < 2) {
+      return { why: "", promoLabel: undefined, promoSavings: undefined, completesBundle: false, scoreBoost: 0 };
+    }
+    const prices = memberProducts.map(digitalPrice);
+    const deal = applyLibraryBundlePromo(prices, Number(promo));
+    if (deal.savings <= 0) {
+      return { why: "", promoLabel: undefined, promoSavings: undefined, completesBundle: false, scoreBoost: 0 };
+    }
+    const currency = source.currency || target.currency || "USD";
+    const stillMissing = members.filter((id) => id !== target.id && !cartIds.has(id));
+    const completesBundle = stillMissing.length === 0;
+    if (completesBundle) {
+      return {
+        why: `Frequently bought with ${source.title}. Add this soft copy to unlock the set promo.`,
+        promoLabel: `Unlock soft-copy bundle · save ${currency} ${deal.savings.toFixed(2)}`,
+        promoSavings: deal.savings,
+        completesBundle: true,
+        scoreBoost: 50,
+      };
+    }
+    return {
+      why: `Part of the soft-copy set with ${source.title}. ${stillMissing.length} more title${stillMissing.length === 1 ? "" : "s"} after this unlocks the bundle price.`,
+      promoLabel: `Soft-copy set deal · save ${currency} ${deal.savings.toFixed(2)} when complete`,
+      promoSavings: deal.savings,
+      completesBundle: false,
+      scoreBoost: 15,
+    };
+  }
+
   function pushCandidate(
     target: LibraryProduct,
     source: LibraryProduct,
@@ -231,6 +299,20 @@ export function suggestLibraryDigitalUpsells(input: {
     if (exclude.has(target.id) || seen.has(target.id)) return;
     const format = pickLibraryBundleFormat(target, "PDF");
     if (!format || format.type === "PRINTED_BOOK") return;
+    const blurb = libraryUpsellBlurb(target);
+    const promo = reason === "BUNDLE" ? bundlePromoCopy(source, target) : {
+      why: "",
+      promoLabel: undefined as string | undefined,
+      promoSavings: undefined as number | undefined,
+      completesBundle: false,
+      scoreBoost: 0,
+    };
+    const seriesName = source.series?.trim();
+    const why =
+      promo.why ||
+      (reason === "SERIES" && seriesName
+        ? `Continues the ${seriesName} series after ${source.title}.`
+        : blurb || `Recommended with ${source.title} for a stronger property toolkit.`);
     seen.add(target.id);
     scored.push({
       productId: target.id,
@@ -245,7 +327,15 @@ export function suggestLibraryDigitalUpsells(input: {
       reason,
       sourceProductId: source.id,
       sourceTitle: source.title,
-      score,
+      shortDescription: blurb,
+      coverUrl: libraryCoverUrl(target),
+      rating: target.rating,
+      reviewCount: target.reviewCount,
+      why,
+      promoLabel: promo.promoLabel,
+      promoSavings: promo.promoSavings,
+      completesBundle: promo.completesBundle,
+      score: score + promo.scoreBoost + (promo.promoSavings ? Math.min(30, promo.promoSavings) : 0),
     });
   }
 
