@@ -26,10 +26,12 @@ export type LibraryStoreSettings = {
     requireTerms: boolean;
     termsUrl: string;
     privacyUrl: string;
+    returnsUrl: string;
     orderPrefix: string;
     allowCoupons: boolean;
     minimumOrderAmount: number;
     notePlaceholder: string;
+    bulkQuoteMinQty: number;
   };
   tax: {
     defaultCountry: string;
@@ -125,6 +127,7 @@ export type LibraryStoreSettings = {
     downloadReady: boolean;
     reviewRequest: boolean;
     lowStockAlert: boolean;
+    abandonedCart: boolean;
     fromName: string;
   };
 };
@@ -181,6 +184,7 @@ const defaultProductTemplates: LibraryProductTypeTemplate[] = [
   { productType: "PDF", downloadLimit: null, downloadExpiryDays: null, watermarking: true, licenseKeys: false, trackStock: false, lowStockThreshold: 0, defaultFormats: ["PDF"] },
   { productType: "DIGITAL_BOOK", downloadLimit: 5, downloadExpiryDays: 365, watermarking: true, licenseKeys: true, trackStock: false, lowStockThreshold: 0, defaultFormats: ["DIGITAL_BOOK"] },
   { productType: "PRINTED_BOOK", downloadLimit: null, downloadExpiryDays: null, watermarking: false, licenseKeys: false, trackStock: true, lowStockThreshold: 5, defaultFormats: ["PRINTED_BOOK"] },
+  { productType: "BUNDLE", downloadLimit: null, downloadExpiryDays: null, watermarking: false, licenseKeys: false, trackStock: false, lowStockThreshold: 0, defaultFormats: ["PDF", "PRINTED_BOOK"] },
   { productType: "TOOLKIT", downloadLimit: 10, downloadExpiryDays: null, watermarking: true, licenseKeys: true, trackStock: false, lowStockThreshold: 0, defaultFormats: ["TOOLKIT", "PDF"] },
   { productType: "COURSE", downloadLimit: null, downloadExpiryDays: 365, watermarking: false, licenseKeys: true, trackStock: false, lowStockThreshold: 0, defaultFormats: ["COURSE"] },
 ];
@@ -197,12 +201,14 @@ export const defaultLibraryStoreSettings: LibraryStoreSettings = {
     guestCheckout: false,
     requireAccountForDigital: true,
     requireTerms: false,
-    termsUrl: "/legal/terms",
-    privacyUrl: "/legal/privacy",
+    termsUrl: "/terms",
+    privacyUrl: "/privacy",
+    returnsUrl: "/returns",
     orderPrefix: "HL-LIB",
     allowCoupons: true,
     minimumOrderAmount: 0,
     notePlaceholder: "Add a note for this order (optional)",
+    bulkQuoteMinQty: 20,
   },
   tax: {
     defaultCountry: "ZW",
@@ -299,6 +305,7 @@ export const defaultLibraryStoreSettings: LibraryStoreSettings = {
     downloadReady: true,
     reviewRequest: false,
     lowStockAlert: true,
+    abandonedCart: true,
     fromName: "HouseLink Library",
   },
 };
@@ -423,10 +430,12 @@ export function mergeLibraryStoreSettings(payload?: unknown): LibraryStoreSettin
       requireTerms: bool(checkout.requireTerms, d.checkout.requireTerms),
       termsUrl: str(checkout.termsUrl, d.checkout.termsUrl),
       privacyUrl: str(checkout.privacyUrl, d.checkout.privacyUrl),
+      returnsUrl: str(checkout.returnsUrl, d.checkout.returnsUrl),
       orderPrefix: str(checkout.orderPrefix, d.checkout.orderPrefix).trim() || d.checkout.orderPrefix,
       allowCoupons: bool(checkout.allowCoupons, d.checkout.allowCoupons),
       minimumOrderAmount: Math.max(0, num(checkout.minimumOrderAmount, d.checkout.minimumOrderAmount)),
       notePlaceholder: str(checkout.notePlaceholder, d.checkout.notePlaceholder),
+      bulkQuoteMinQty: Math.max(5, Math.round(num(checkout.bulkQuoteMinQty, d.checkout.bulkQuoteMinQty))),
     },
     tax: {
       defaultCountry: str(tax.defaultCountry, d.tax.defaultCountry).toUpperCase() || d.tax.defaultCountry,
@@ -530,6 +539,7 @@ export function mergeLibraryStoreSettings(payload?: unknown): LibraryStoreSettin
       downloadReady: bool(notifications.downloadReady, d.notifications.downloadReady),
       reviewRequest: bool(notifications.reviewRequest, d.notifications.reviewRequest),
       lowStockAlert: bool(notifications.lowStockAlert, d.notifications.lowStockAlert),
+      abandonedCart: bool(notifications.abandonedCart, d.notifications.abandonedCart),
       fromName: str(notifications.fromName, d.notifications.fromName),
     },
   };
@@ -547,9 +557,11 @@ export function publicLibraryStoreSettings(settings: LibraryStoreSettings) {
       requireTerms: settings.checkout.requireTerms,
       termsUrl: settings.checkout.termsUrl,
       privacyUrl: settings.checkout.privacyUrl,
+      returnsUrl: settings.checkout.returnsUrl,
       allowCoupons: settings.checkout.allowCoupons,
       minimumOrderAmount: settings.checkout.minimumOrderAmount,
       notePlaceholder: settings.checkout.notePlaceholder,
+      bulkQuoteMinQty: settings.checkout.bulkQuoteMinQty,
     },
     tax: {
       defaultCountry: settings.tax.defaultCountry,

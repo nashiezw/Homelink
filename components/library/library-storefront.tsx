@@ -12,6 +12,8 @@ import { useApp } from "@/components/providers/app-provider";
 import {
   libraryCartLineKey,
   notifyLibraryCartAdded,
+  repriceLibraryCartLine,
+  trackLibraryCartEvent,
   useLibraryCart,
   sameLibraryCartLine,
   type LibraryCartLine,
@@ -19,6 +21,8 @@ import {
 import {
   enabledLibraryFormats,
   libraryFacets,
+  maxLibraryPrintQuantity,
+  normalizeLibraryVolumeTiers,
   primaryLibraryFormat,
   type LibraryProduct,
   type LibraryProductFormat,
@@ -91,30 +95,52 @@ export function LibraryStorefront({
   const ctaHref = merchandising.ctaHref?.trim() || DEFAULT_CATALOGUE_HREF;
 
   function addFormatToCart(product: LibraryProduct, format: LibraryProductFormat) {
+    const tiers =
+      format.type === "PRINTED_BOOK" ? normalizeLibraryVolumeTiers(format.volumeTiers, format.price) : [];
+    const maxQty = format.type === "PRINTED_BOOK" ? maxLibraryPrintQuantity(product) : 99;
     setCart((current) => {
       const existing = current.find((line) => sameLibraryCartLine(line, { productId: product.id, formatId: format.id }));
       if (existing) {
+        const nextQty = Math.min(existing.quantity + 1, Math.max(1, maxQty || 1));
         return current.map((line) =>
           sameLibraryCartLine(line, { productId: product.id, formatId: format.id })
-            ? { ...line, quantity: line.quantity + 1 }
+            ? repriceLibraryCartLine(
+                {
+                  ...line,
+                  listPrice: format.price,
+                  volumeTiers: tiers.length ? tiers : undefined,
+                },
+                nextQty,
+              )
             : line,
         );
       }
       return [
         ...current,
-        {
-          productId: product.id,
-          title: `${product.title} (${format.label})`,
-          price: format.price,
-          currency: product.currency,
-          quantity: 1,
-          formatId: format.id,
-          formatType: format.type,
-          formatLabel: format.label,
-        },
+        repriceLibraryCartLine(
+          {
+            productId: product.id,
+            title: `${product.title} (${format.label})`,
+            price: format.price,
+            listPrice: format.price,
+            currency: product.currency,
+            quantity: 1,
+            formatId: format.id,
+            formatType: format.type,
+            formatLabel: format.label,
+            volumeTiers: tiers.length ? tiers : undefined,
+          },
+          1,
+        ),
       ];
     });
     notifyLibraryCartAdded(product.title);
+    trackLibraryCartEvent("CART_ADD_SINGLE", product.id, {
+      formatId: format.id,
+      formatType: format.type,
+      price: format.price,
+      source: "storefront",
+    });
     showToast("Added to your bag.", "success");
   }
 
@@ -437,15 +463,30 @@ function CartPanel({
                   {line.formatLabel && <p className="mt-1 text-[11px] font-semibold uppercase tracking-wide text-emerald-700">{line.formatLabel}</p>}
                   <p className="text-slate-500">Qty {line.quantity}</p>
                 </div>
-                <p className="font-black">
-                  {line.currency} {(line.price * line.quantity).toFixed(2)}
-                </p>
+                <div className="text-right">
+                  <p className="font-black">
+                    {line.currency} {(line.price * line.quantity).toFixed(2)}
+                  </p>
+                  {line.listPrice != null && line.listPrice > line.price + 0.001 ? (
+                    <p className="mt-0.5 text-[11px] font-semibold text-emerald-700">
+                      {line.currency} {line.price.toFixed(2)} ea
+                    </p>
+                  ) : null}
+                </div>
               </div>
               <div className="mt-3 flex items-center justify-between gap-3">
                 <div className="inline-flex items-center rounded-lg border border-slate-200 dark:border-slate-700">
                   <button
                     type="button"
-                    onClick={() => onCart(cart.map((item) => (sameLibraryCartLine(item, line) ? { ...item, quantity: Math.max(1, item.quantity - 1) } : item)))}
+                    onClick={() =>
+                      onCart(
+                        cart.map((item) =>
+                          sameLibraryCartLine(item, line)
+                            ? repriceLibraryCartLine(item, Math.max(1, item.quantity - 1))
+                            : item,
+                        ),
+                      )
+                    }
                     className="grid size-8 place-items-center text-slate-500 hover:text-emerald-700"
                     aria-label="Decrease quantity"
                   >
@@ -454,7 +495,15 @@ function CartPanel({
                   <span className="w-8 text-center text-xs font-black">{line.quantity}</span>
                   <button
                     type="button"
-                    onClick={() => onCart(cart.map((item) => (sameLibraryCartLine(item, line) ? { ...item, quantity: item.quantity + 1 } : item)))}
+                    onClick={() =>
+                      onCart(
+                        cart.map((item) =>
+                          sameLibraryCartLine(item, line)
+                            ? repriceLibraryCartLine(item, item.quantity + 1)
+                            : item,
+                        ),
+                      )
+                    }
                     className="grid size-8 place-items-center text-slate-500 hover:text-emerald-700"
                     aria-label="Increase quantity"
                   >

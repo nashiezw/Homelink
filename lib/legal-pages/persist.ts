@@ -24,11 +24,23 @@ const defaultLegalPages: LegalPage[] = [
     status: "published",
     updatedAt: new Date().toISOString(),
   },
+  {
+    id: "returns",
+    title: "HouseLink Library Returns & Reprints",
+    summary:
+      "How returns, replacements, and reprint requests work for HouseLink Library digital downloads and printed books in Zimbabwe.",
+    body:
+      "Digital products\nDigital PDFs, toolkits, templates, and downloadable Library products are delivered after payment confirmation. Because digital files can be copied immediately, digital purchases are generally non-refundable once access or download has been granted, except where the file is defective, incomplete, or not as described. If a download fails, contact support and we will restore access or replace the file.\n\nPrinted books\nPrinted books are tangible goods. You may request a return or reprint when a book arrives damaged, defective, or incorrect, provided you contact us within 7 days of delivery with clear photos and your order number. We may offer a reprint, replacement, store credit, or refund depending on stock and the issue.\n\nBulk / volume orders\nBulk printed orders (including volume-tier purchases and firm quotes) follow the same damage/defect rules. Partial returns of opened bulk sets may be declined where remaining stock cannot be resold. Quote-based wholesale orders may include separate written terms.\n\nChange of mind\nUnused sealed printed books may be considered for return at our discretion within 7 days of delivery. Shipping costs already paid are usually non-refundable. Digital change-of-mind refunds are not available after delivery.\n\nHow to request help\nEmail library support with your order number, product title, and a short description of the issue. For printed damage claims, include photos of the packaging and book. We aim to respond within 2 business days.\n\nLocal pickup\nIf you chose local pickup, inspect the books before leaving whenever practical. Damage reported after pickup may still be reviewed with photos.\n\nContact\nUse HouseLink support or the Library support email shown in your order confirmation. This policy applies to HouseLink Library purchases and may be updated as fulfilment options grow.",
+    effectiveDate: "2026-08-01",
+    status: "published",
+    updatedAt: new Date().toISOString(),
+  },
 ];
 
 const legacyDefaultBodyStarts: Record<LegalPageId, string> = {
   terms: "Use accurate information\nListings, profiles, documents, prices, availability, photos, and contact details must be truthful and current.",
   privacy: "Information we collect\nHouseLink may collect account details, contact information, listing data, enquiry messages, verification documents, payment references, device information, and support requests.",
+  returns: "Digital products\nDigital PDFs, toolkits, templates, and downloadable Library products are delivered after payment confirmation.",
 };
 
 function toLegalPage(row: {

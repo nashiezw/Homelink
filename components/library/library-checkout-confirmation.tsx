@@ -21,7 +21,7 @@ type ConfirmationOrder = {
   currency: string;
   itemCount: number;
   createdAt: string;
-  items?: Array<{ id: string; title: string; sku: string; quantity: number; unitPrice: number; total: number }>;
+  items?: Array<{ id: string; title: string; sku: string; quantity: number; unitPrice: number; total: number; productType?: string }>;
   payment?: {
     id?: string;
     status?: string;
@@ -137,6 +137,38 @@ export function LibraryCheckoutConfirmation({ order: initialOrder, paymentId, st
               </tbody>
             </table>
           </div>
+
+          {(() => {
+            const hasDigital = (order.items ?? []).some((item) => item.productType && item.productType !== "PRINTED_BOOK");
+            const hasPrinted = (order.items ?? []).some((item) => item.productType === "PRINTED_BOOK");
+            if (!hasDigital && !hasPrinted) return null;
+            return (
+              <div className="mt-6 grid gap-3 md:grid-cols-2">
+                {hasDigital ? (
+                  <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-4 dark:border-emerald-900/40 dark:bg-emerald-950/20">
+                    <p className="text-xs font-bold uppercase tracking-wide text-emerald-800 dark:text-emerald-200">Digital next steps</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-700 dark:text-slate-300">
+                      After payment is confirmed, open <strong>My Library</strong> to download your files. Keep your licence details with your records.
+                    </p>
+                    <Link href="/dashboard/my-library" className="mt-3 inline-flex text-sm font-semibold text-emerald-700 hover:underline dark:text-emerald-300">
+                      Go to My Library
+                    </Link>
+                  </div>
+                ) : null}
+                {hasPrinted ? (
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950">
+                    <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Printed next steps</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-700 dark:text-slate-300">
+                      After payment is confirmed we prepare packing and courier/pickup. You will get a dispatch update with tracking when available.
+                    </p>
+                    <Link href="/returns" className="mt-3 inline-flex text-sm font-semibold text-emerald-700 hover:underline dark:text-emerald-300">
+                      Returns & reprints policy
+                    </Link>
+                  </div>
+                ) : null}
+              </div>
+            );
+          })()}
 
           {(stage.showBankDetails || stage.showProofUpload || stage.showProofReceived) && resolvedPaymentId && (
             <div className={cn(

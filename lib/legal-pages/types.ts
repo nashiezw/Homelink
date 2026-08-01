@@ -1,4 +1,4 @@
-export type LegalPageId = "terms" | "privacy";
+export type LegalPageId = "terms" | "privacy" | "returns";
 
 export type LegalPage = {
   id: LegalPageId;

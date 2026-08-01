@@ -2,12 +2,15 @@ import { createHash, createHmac, randomBytes } from "crypto";
 import { LibraryDownloadStatus, LibraryOrderStatus, LibraryProductStatus, LibraryProductType, NotificationChannel, NotificationStatus, PaymentProvider, PaymentStatus, Role, type Prisma } from "@prisma/client";
 import { getMainPrisma, isPostgresStoreEnabled } from "@/lib/db/main-prisma";
 import {
+  applyLibraryBundlePromoToCartLines,
   getLibraryAnalytics as getEmptyLibraryAnalytics,
   getLibraryProducts,
   LIBRARY_ORDERS,
   enabledLibraryFormats,
+  normalizeLibraryVolumeTiers,
   primaryLibraryFormat,
   resolveLibraryFormat,
+  resolveLibraryVolumeUnitPrice,
   type LibraryAnalytics,
   type LibraryOrder,
   type LibraryProduct,
@@ -35,12 +38,14 @@ export type LibraryCartLine = {
 export type LibraryShippingAddress = {
   name: string;
   phone: string;
+  company?: string;
   line1: string;
   line2?: string;
   city: string;
   province?: string;
   country?: string;
   notes?: string;
+  giftNote?: string;
 };
 
 export type LibraryCartQuote = {
@@ -60,6 +65,10 @@ export type LibraryCartQuote = {
   estimatedDaysMax?: number;
   allowLocalPickup?: boolean;
   items: LibraryCartLine[];
+  bundleSavings?: number;
+  bundleSourceProductId?: string;
+  stockWarnings?: Array<{ productId: string; message: string; available: number }>;
+  listSubtotal?: number;
 };
 
 export type LibraryProductInput = {
@@ -97,6 +106,9 @@ export type LibraryProductInput = {
   metaDescription?: string;
   seoFocusKeyword?: string;
   seoImageUrl?: string;
+  bundleProductIds?: string[];
+  bundlePromoPrice?: number | null;
+  bundleFormatPreference?: "MATCH_SHOPPER" | "PREFER_DIGITAL" | "PREFER_PRINT";
   featured?: boolean;
   bestSeller?: boolean;
   newRelease?: boolean;
@@ -470,42 +482,106 @@ export async function quoteLibraryCart(
 ): Promise<LibraryCartQuote> {
   const settings = await getLibraryStoreSettings();
   const normalized = items.map((item) => ({ ...item, quantity: Math.max(1, Number(item.quantity) || 1) })).filter((item) => item.productId);
-  if (!shouldUsePostgresLibrary()) {
-    const lines = normalized.map((item) => {
-      const product = localLibraryProducts.find((entry) => entry.id === item.productId);
-      if (!product) return { ...item, title: item.title ?? "Library product", price: item.price ?? 0, currency: item.currency ?? settings.store.currency };
+  const allowBackorder = Boolean(settings.inventory.allowBackorder);
+
+  async function finishQuote(
+    mapped: LibraryProduct[],
+    dbProductsForCoupon?: Array<{ id: string }>,
+  ): Promise<LibraryCartQuote> {
+    const stockWarnings: NonNullable<LibraryCartQuote["stockWarnings"]> = [];
+    const priced = normalized.map((item) => {
+      const product = mapped.find((entry) => entry.id === item.productId);
+      if (!product) {
+        return {
+          productId: item.productId,
+          title: item.title ?? "Library product",
+          price: item.price ?? 0,
+          currency: item.currency ?? settings.store.currency,
+          quantity: item.quantity,
+          formatId: item.formatId,
+          formatType: item.formatType,
+          formatLabel: item.formatLabel,
+        };
+      }
       const format = resolveLibraryFormat(product, item.formatId, item.formatType);
+      let quantity = Math.max(1, Number(item.quantity) || 1);
+      if (format.type === "PRINTED_BOOK" && product.stock != null && !allowBackorder) {
+        if (product.stock <= 0) {
+          stockWarnings.push({
+            productId: product.id,
+            message: `${product.title} printed format is out of stock.`,
+            available: 0,
+          });
+          quantity = 0;
+        } else if (quantity > product.stock) {
+          stockWarnings.push({
+            productId: product.id,
+            message: `${product.title} only has ${product.stock} printed cop${product.stock === 1 ? "y" : "ies"} left — quantity was reduced.`,
+            available: product.stock,
+          });
+          quantity = product.stock;
+        }
+      }
       return {
-        ...item,
+        productId: product.id,
         title: formatLabelTitle(product.title, format.label),
-        price: format.price,
+        price: resolveLibraryVolumeUnitPrice(format, Math.max(1, quantity || 1)),
         currency: product.currency,
+        quantity: Math.max(0, quantity),
         formatId: format.id,
         formatType: format.type,
         formatLabel: format.label,
       };
-    });
-    const subtotal = lines.reduce((sum, item) => sum + (item.price ?? 0) * item.quantity, 0);
+    }).filter((line) => line.quantity > 0);
+
+    const listSubtotal = roundMoney(priced.reduce((sum, item) => sum + item.price * item.quantity, 0));
+    const bundled = applyLibraryBundlePromoToCartLines(priced, mapped);
+    const lines = bundled.lines;
+    const subtotal = roundMoney(lines.reduce((sum, item) => sum + item.price * item.quantity, 0));
+    const discountTotal = settings.checkout.allowCoupons && dbProductsForCoupon?.length
+      ? await calculateLibraryDiscount({
+          couponCode,
+          subtotal,
+          products: dbProductsForCoupon.map((product) => ({
+            id: product.id,
+            categoryId: "categoryId" in product ? (product as { categoryId: string | null }).categoryId : null,
+          })),
+          customerId,
+        })
+      : 0;
+    const taxCountry = (options?.country || settings.tax.defaultCountry).toUpperCase();
+    let taxTotal = 0;
+    if (shouldUsePostgresLibrary()) {
+      const prisma = getMainPrisma();
+      const tax = await prisma.libraryTaxSetting.findFirst({ where: { active: true, country: taxCountry }, orderBy: { createdAt: "desc" } }).catch(() => null)
+        ?? await prisma.libraryTaxSetting.findFirst({ where: { active: true, country: settings.tax.defaultCountry }, orderBy: { createdAt: "desc" } }).catch(() => null);
+      const taxable = Math.max(0, subtotal - discountTotal);
+      const inclusive = tax ? tax.inclusive : settings.tax.pricesIncludeTax;
+      taxTotal = tax && !inclusive ? roundMoney(taxable * (Number(tax.rate) / 100)) : 0;
+    }
+    const taxable = Math.max(0, subtotal - discountTotal);
     const hasPrinted = lines.some((item) => item.formatType === "PRINTED_BOOK");
     const shipping = options?.includeShipping !== false && hasPrinted
       ? quoteLibraryShipping({
           settings,
-          taxable: subtotal,
-          taxTotal: 0,
-          address: { country: options?.country, province: options?.province, city: options?.city },
+          taxable,
+          taxTotal,
+          address: { country: options?.country || taxCountry, province: options?.province, city: options?.city },
           method: options?.shippingMethod,
         })
       : null;
+    const shippingTotal = shipping?.shippingTotal ?? 0;
     return {
       subtotal,
-      discountTotal: 0,
-      taxTotal: 0,
-      shippingTotal: shipping?.shippingTotal ?? 0,
-      total: roundMoney(subtotal + (shipping?.shippingTotal ?? 0)),
+      listSubtotal,
+      discountTotal,
+      taxTotal,
+      shippingTotal,
+      total: Math.max(0, roundMoney(taxable + taxTotal + shippingTotal)),
       currency: lines[0]?.currency ?? settings.store.currency,
-      couponCode,
+      couponCode: discountTotal > 0 ? couponCode : undefined,
       taxLabel: settings.tax.taxLabel,
-      taxCountry: settings.tax.defaultCountry,
+      taxCountry,
       shippingZoneId: shipping?.zoneId,
       shippingZoneName: shipping?.zoneName,
       shippingMethod: shipping?.method,
@@ -513,67 +589,37 @@ export async function quoteLibraryCart(
       estimatedDaysMax: shipping?.estimatedDaysMax,
       allowLocalPickup: shipping?.allowLocalPickup,
       items: lines,
+      bundleSavings: bundled.bundleSavings || undefined,
+      bundleSourceProductId: bundled.bundleSourceProductId,
+      stockWarnings: stockWarnings.length ? stockWarnings : undefined,
     };
+  }
+
+  if (!shouldUsePostgresLibrary()) {
+    return finishQuote(localLibraryProducts);
   }
   await seedLibraryIfEmpty();
   const prisma = getMainPrisma();
   const ids = normalized.map((item) => item.productId);
   const products = await prisma.libraryProduct.findMany({ where: { id: { in: ids }, deletedAt: null }, include: productInclude() });
   const mapped = products.map((row) => toLibraryProduct(row as DbProduct));
-  const lines = normalized.map((item) => {
-    const product = mapped.find((entry) => entry.id === item.productId);
-    if (!product) return { ...item, title: item.title ?? "Library product", price: item.price ?? 0, currency: item.currency ?? settings.store.currency };
-    const format = resolveLibraryFormat(product, item.formatId, item.formatType);
-    return {
-      productId: product.id,
-      title: formatLabelTitle(product.title, format.label),
-      price: format.price,
-      currency: product.currency,
-      quantity: item.quantity,
-      formatId: format.id,
-      formatType: format.type,
-      formatLabel: format.label,
-    };
-  });
-  const subtotal = lines.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const discountTotal = settings.checkout.allowCoupons
-    ? await calculateLibraryDiscount({ couponCode, subtotal, products, customerId })
-    : 0;
-  const taxCountry = (options?.country || settings.tax.defaultCountry).toUpperCase();
-  const tax = await prisma.libraryTaxSetting.findFirst({ where: { active: true, country: taxCountry }, orderBy: { createdAt: "desc" } }).catch(() => null)
-    ?? await prisma.libraryTaxSetting.findFirst({ where: { active: true, country: settings.tax.defaultCountry }, orderBy: { createdAt: "desc" } }).catch(() => null);
-  const taxable = Math.max(0, subtotal - discountTotal);
-  const inclusive = tax ? tax.inclusive : settings.tax.pricesIncludeTax;
-  const taxTotal = tax && !inclusive ? roundMoney(taxable * (Number(tax.rate) / 100)) : 0;
-  const hasPrinted = lines.some((item) => item.formatType === "PRINTED_BOOK");
-  const shipping = options?.includeShipping !== false && hasPrinted
-    ? quoteLibraryShipping({
-        settings,
-        taxable,
-        taxTotal,
-        address: { country: options?.country || taxCountry, province: options?.province, city: options?.city },
-        method: options?.shippingMethod,
-      })
-    : null;
-  const shippingTotal = shipping?.shippingTotal ?? 0;
-  return {
-    subtotal,
-    discountTotal,
-    taxTotal,
-    shippingTotal,
-    total: Math.max(0, roundMoney(taxable + taxTotal + shippingTotal)),
-    currency: lines[0]?.currency ?? settings.store.currency,
-    couponCode: discountTotal > 0 ? couponCode : undefined,
-    taxLabel: settings.tax.taxLabel,
-    taxCountry,
-    shippingZoneId: shipping?.zoneId,
-    shippingZoneName: shipping?.zoneName,
-    shippingMethod: shipping?.method,
-    estimatedDaysMin: shipping?.estimatedDaysMin,
-    estimatedDaysMax: shipping?.estimatedDaysMax,
-    allowLocalPickup: shipping?.allowLocalPickup,
-    items: lines,
-  };
+  // Also load FBT source products that may not be in the cart lines' companion-only case — sources are in cart.
+  // Load any products that list cart ids as companions so we can match reverse? PDP always has source in cart.
+  const companionSources = ids.length
+    ? await prisma.libraryProduct.findMany({
+        where: {
+          deletedAt: null,
+          OR: ids.map((id) => ({ bundleProductIds: { has: id } })),
+        },
+        include: productInclude(),
+      }).catch(() => [])
+    : [];
+  const byId = new Map<string, LibraryProduct>();
+  for (const row of [...products, ...companionSources]) {
+    byId.set(row.id, toLibraryProduct(row as DbProduct));
+  }
+  for (const item of mapped) byId.set(item.id, item);
+  return finishQuote(Array.from(byId.values()), products);
 }
 
 export function validateLibraryProductPublish(input: Partial<LibraryProductInput>, existing?: Pick<LibraryProduct, "formats" | "downloads" | "productType" | "status"> | null) {
@@ -618,6 +664,9 @@ export async function createLibraryProduct(input: LibraryProductInput, actorId?:
     include: productInclude(),
   });
   await replaceProductAssets(product.id, input);
+  if (input.bundleProductIds !== undefined) {
+    await syncLibraryBundleRecommendations(product.id, input.bundleProductIds, actorId);
+  }
   const updated = await getMainPrisma().libraryProduct.findUnique({ where: { id: product.id }, include: productInclude() });
   return toLibraryProduct((updated ?? product) as DbProduct);
 }
@@ -644,8 +693,51 @@ export async function updateLibraryProduct(id: string, input: Partial<LibraryPro
   }).catch(() => null);
   if (!product) return null;
   await replaceProductAssets(product.id, input);
+  if (input.bundleProductIds !== undefined) {
+    await syncLibraryBundleRecommendations(product.id, input.bundleProductIds, actorId);
+  }
   const updated = await getMainPrisma().libraryProduct.findUnique({ where: { id: product.id }, include: productInclude() });
   return updated ? toLibraryProduct(updated as DbProduct) : toLibraryProduct(product as DbProduct);
+}
+
+export async function listLibraryBundleCompanions(product: LibraryProduct, catalog?: LibraryProduct[]) {
+  const ids = (product.bundleProductIds ?? []).filter(Boolean).slice(0, 4);
+  if (!ids.length) return [] as LibraryProduct[];
+  const all = catalog ?? (await listLibraryProducts());
+  const byId = new Map(all.map((item) => [item.id, item]));
+  return ids
+    .map((id) => byId.get(id))
+    .filter((item): item is LibraryProduct => Boolean(item && item.id !== product.id && item.status === "PUBLISHED"));
+}
+
+async function syncLibraryBundleRecommendations(sourceProductId: string, targetIds: string[] | undefined, actorId?: string) {
+  if (!shouldUsePostgresLibrary()) return;
+  const prisma = getMainPrisma();
+  const nextIds = Array.from(new Set((targetIds ?? []).map((id) => String(id || "").trim()).filter((id) => id && id !== sourceProductId))).slice(0, 4);
+  const existing = await prisma.libraryRecommendation.findMany({
+    where: { sourceProductId, reason: "BUNDLE" },
+    select: { id: true, targetProductId: true },
+  }).catch(() => []);
+  const keep = new Set(nextIds);
+  await Promise.all(
+    existing
+      .filter((row) => !keep.has(row.targetProductId))
+      .map((row) => prisma.libraryRecommendation.update({ where: { id: row.id }, data: { active: false } }).catch(() => null)),
+  );
+  await Promise.all(
+    nextIds.map((targetProductId, index) =>
+      upsertLibraryRecommendation(
+        {
+          sourceProductId,
+          targetProductId,
+          reason: "BUNDLE",
+          weight: 100 - index,
+          active: true,
+        },
+        actorId,
+      ),
+    ),
+  );
 }
 
 export async function duplicateLibraryProduct(id: string, actorId?: string) {
@@ -911,6 +1003,9 @@ export async function createLibraryOrderFromCheckout(input: {
           estimatedDaysMin: quote.estimatedDaysMin,
           estimatedDaysMax: quote.estimatedDaysMax,
           shipping,
+          company: shipping?.company || input.shipping?.company || null,
+          giftNote: shipping?.giftNote || input.shipping?.giftNote || null,
+          bundleSavings: quote.bundleSavings || 0,
           stockReserved: printedLines.some((line) => line.product.stock != null) && !settings.inventory.allowBackorder,
           needsShipping: printedLines.length > 0 && quote.shippingMethod !== "PICKUP",
           hasDigital: lines.some((line) => line.productType !== LibraryProductType.PRINTED_BOOK),
@@ -937,15 +1032,24 @@ export async function createLibraryOrderFromCheckout(input: {
     targetId: order.id,
     action: "CREATED",
     message: `Library order ${order.orderNumber} created.`,
-    metadata: { paymentId: input.paymentId, couponCode: input.couponCode, taxTotal: quote.taxTotal, needsShipping: printedLines.length > 0 },
+    metadata: {
+      paymentId: input.paymentId,
+      couponCode: input.couponCode,
+      taxTotal: quote.taxTotal,
+      needsShipping: printedLines.length > 0,
+      bundleSavings: quote.bundleSavings,
+      giftNote: input.shipping?.giftNote,
+      company: input.shipping?.company,
+    },
   });
+  await markLibraryAbandonedCartRecovered(order.customer?.email, input.customerId).catch(() => null);
   await notifyLibraryCustomer(input.customerId, "Library order created", `We received your Library order ${order.orderNumber}.`, {
     templateKey: "orderConfirmation",
     variables: {
       orderNumber: order.orderNumber,
       currency: order.currency,
       total: Number(order.total).toFixed(2),
-      orderUrl: `${getCanonicalSiteUrl()}/library/orders/${order.id}`,
+      orderUrl: `${getCanonicalSiteUrl()}/dashboard/my-library/orders/${order.id}`,
     },
   });
   return { order: toLibraryOrder(order), accessGranted: false };
@@ -1196,7 +1300,7 @@ export async function fulfillPaidLibraryOrdersForPayment(paymentId: string) {
     if (hasDigital) {
       await notifyLibraryCustomer(order.customerId, "HouseLink Library access ready", `Your digital Library items for ${order.orderNumber} are available in My Library.`, {
         templateKey: "downloadReady",
-        variables: { orderNumber: order.orderNumber, orderUrl: `${getCanonicalSiteUrl()}/library/orders/${order.id}` },
+        variables: { orderNumber: order.orderNumber, orderUrl: `${getCanonicalSiteUrl()}/dashboard/my-library/orders/${order.id}` },
       });
     }
     if (hasPrint) {
@@ -1205,7 +1309,7 @@ export async function fulfillPaidLibraryOrdersForPayment(paymentId: string) {
         variables: {
           orderNumber: order.orderNumber,
           extra: "We are preparing your printed book(s) for dispatch.",
-          orderUrl: `${getCanonicalSiteUrl()}/library/orders/${order.id}`,
+          orderUrl: `${getCanonicalSiteUrl()}/dashboard/my-library/orders/${order.id}`,
         },
         force: true,
       });
@@ -1809,12 +1913,12 @@ export async function getLibraryOperationsSummary() {
       guestClaims: [],
       academyEntitlements: [],
       recommendations: [],
-      reports: buildLibraryAdminReports({ orders: [], products: localLibraryProducts, coupons: localLibraryCoupons, downloadAccess: [], reviews: [], taxSettings: [], inventoryMovements: [], storeSettings }),
+      reports: buildLibraryAdminReports({ orders: [], products: localLibraryProducts, coupons: localLibraryCoupons, downloadAccess: [], reviews: [], taxSettings: [], inventoryMovements: [], storeSettings, cartAddCounts: { single: 0, bundle: 0 } }),
     };
   }
   const prisma = getMainPrisma();
   try {
-    const [fulfilments, invoices, activities, exports, taxSettings, storeSettings, coupons, categories, collections, authors, downloadAccess, reviews, guestClaims, academyEntitlements, recommendations, orders, products, inventoryMovements] = await Promise.all([
+    const [fulfilments, invoices, activities, exports, taxSettings, storeSettings, coupons, categories, collections, authors, downloadAccess, reviews, guestClaims, academyEntitlements, recommendations, orders, products, inventoryMovements, cartAddGroups] = await Promise.all([
       prisma.libraryFulfilment.findMany({ orderBy: { createdAt: "desc" }, take: 20, include: { order: { select: { orderNumber: true, total: true, currency: true } } } }),
       prisma.libraryInvoice.findMany({ orderBy: { issuedAt: "desc" }, take: 20, include: { order: { select: { orderNumber: true } } } }),
       prisma.libraryActivity.findMany({ orderBy: { createdAt: "desc" }, take: 30 }),
@@ -1855,8 +1959,17 @@ export async function getLibraryOperationsSummary() {
         take: 50,
         include: { product: { select: { title: true } } },
       }),
+      prisma.libraryActivity.groupBy({
+        by: ["action"],
+        where: { action: { in: ["CART_ADD_SINGLE", "CART_ADD_BUNDLE"] } },
+        _count: { _all: true },
+      }).catch(() => [] as Array<{ action: string; _count: { _all: number } }>),
     ]);
-    const reports = buildLibraryAdminReports({ orders, products, coupons, downloadAccess, reviews, taxSettings, inventoryMovements, storeSettings });
+    const cartAddCounts = {
+      single: cartAddGroups.find((row) => row.action === "CART_ADD_SINGLE")?._count._all ?? 0,
+      bundle: cartAddGroups.find((row) => row.action === "CART_ADD_BUNDLE")?._count._all ?? 0,
+    };
+    const reports = buildLibraryAdminReports({ orders, products, coupons, downloadAccess, reviews, taxSettings, inventoryMovements, storeSettings, cartAddCounts });
     return {
       fulfilments,
       invoices,
@@ -1938,6 +2051,7 @@ function buildLibraryAdminReports(input: {
   taxSettings: Array<{ id: string; name: string; country: string; rate: unknown; active: boolean }>;
   inventoryMovements: Array<{ id: string; type: string; quantity: number; note?: string | null; createdAt: Date | string; product?: { title: string } | null }>;
   storeSettings?: LibraryStoreSettings;
+  cartAddCounts?: { single: number; bundle: number };
 }): LibraryAdminReports {
   const paidOrders = input.orders.filter((order) => ["PAID", "FULFILLED"].includes(order.status));
   const refundedOrders = input.orders.filter((order) => order.status === "REFUNDED");
@@ -1948,6 +2062,10 @@ function buildLibraryAdminReports(input: {
   const lowStock = input.products.filter((product) => product.stock != null && product.stock <= (product.lowStockThreshold ?? 0));
   const pendingReviews = input.reviews.filter((review) => review.status === "PENDING").length;
   const activeCoupons = input.coupons.filter((coupon) => coupon.active).length;
+  const singleCartAdds = input.cartAddCounts?.single ?? 0;
+  const bundleCartAdds = input.cartAddCounts?.bundle ?? 0;
+  const totalCartAdds = singleCartAdds + bundleCartAdds;
+  const bundleShare = totalCartAdds ? Number(((bundleCartAdds / totalCartAdds) * 100).toFixed(1)) : 0;
   const productRevenue = new Map<string, { id: string; title: string; revenue: number; units: number; views: number; downloads: number; health: number }>();
   input.products.forEach((product) => {
     productRevenue.set(product.id, {
@@ -1982,16 +2100,29 @@ function buildLibraryAdminReports(input: {
     customers.set(userId || email, current);
   });
   return {
-    scorecards: [
-      { label: "Revenue", value: roundMoney(revenue), detail: `${paidOrders.length} paid orders`, tone: "success" },
-      { label: "Average order", value: paidOrders.length ? roundMoney(revenue / paidOrders.length) : 0, detail: "Net of paid Library orders", tone: "info" },
-      { label: "Refund rate", value: input.orders.length ? Number(((refundedOrders.length / input.orders.length) * 100).toFixed(1)) : 0, detail: `${refundedOrders.length} refunded orders`, tone: refundedOrders.length ? "warning" : "success" },
-      { label: "Download events", value: downloads, detail: `${input.downloadAccess.length} access records`, tone: "default" },
-      { label: "Low stock", value: lowStock.length, detail: "Products at or under threshold", tone: lowStock.length ? "danger" : "success" },
-      { label: "Pending reviews", value: pendingReviews, detail: "Need moderation", tone: pendingReviews ? "warning" : "success" },
-    ],
+    scorecards: (() => {
+      const bulkPrintOrders = paidOrders.filter((order) =>
+        order.items?.some((item) => item.quantity >= 5),
+      );
+      const bulkPrintRevenue = bulkPrintOrders.reduce((sum, order) => sum + Number(order.total ?? 0), 0);
+      const aov = paidOrders.length ? roundMoney(revenue / paidOrders.length) : 0;
+      const bulkAov = bulkPrintOrders.length ? roundMoney(bulkPrintRevenue / bulkPrintOrders.length) : 0;
+      return [
+        { label: "Revenue", value: roundMoney(revenue), detail: `${paidOrders.length} paid orders`, tone: "success" as const },
+        { label: "Average order", value: aov, detail: "Net of paid Library orders", tone: "info" as const },
+        { label: "Bulk print AOV", value: bulkAov, detail: `${bulkPrintOrders.length} orders with qty 5+`, tone: bulkPrintOrders.length ? "success" as const : "default" as const },
+        { label: "Refund rate", value: input.orders.length ? Number(((refundedOrders.length / input.orders.length) * 100).toFixed(1)) : 0, detail: `${refundedOrders.length} refunded orders`, tone: refundedOrders.length ? "warning" as const : "success" as const },
+        { label: "Download events", value: downloads, detail: `${input.downloadAccess.length} access records`, tone: "default" as const },
+        { label: "Single cart adds", value: singleCartAdds, detail: "Product page add-to-bag", tone: "info" as const },
+        { label: "Bundle cart adds", value: bundleCartAdds, detail: `${bundleShare}% of cart adds`, tone: bundleCartAdds ? "success" as const : "default" as const },
+        { label: "Low stock", value: lowStock.length, detail: "Products at or under threshold", tone: lowStock.length ? "danger" as const : "success" as const },
+        { label: "Pending reviews", value: pendingReviews, detail: "Need moderation", tone: pendingReviews ? "warning" as const : "success" as const },
+      ];
+    })(),
     funnel: [
       { label: "Views", value: visitors },
+      { label: "Cart adds", value: totalCartAdds },
+      { label: "Bundle adds", value: bundleCartAdds },
       { label: "Orders", value: input.orders.length },
       { label: "Paid", value: paidOrders.length },
       { label: "Downloads", value: input.downloadAccess.length },
@@ -2253,7 +2384,216 @@ export async function createLibraryInventoryMovement(input: { productId: string;
   });
   if (!result) return null;
   await logLibraryActivity({ actorId, targetType: "inventory", targetId: input.productId, action: "INVENTORY_MOVEMENT", message: `${result.movement.product.title} stock adjusted by ${quantity}.`, metadata: { ...input, nextStock: result.nextStock } });
+  if (quantity < 0) {
+    await maybeSendLibraryLowStockAlert(input.productId, result.nextStock).catch(() => null);
+  }
   return result;
+}
+
+async function maybeSendLibraryLowStockAlert(productId: string, nextStock: number) {
+  const settings = await getLibraryStoreSettings();
+  if (!settings.notifications.lowStockAlert) return;
+  const product = await getMainPrisma().libraryProduct.findUnique({
+    where: { id: productId },
+    select: { id: true, title: true, stock: true, lowStockThreshold: true, warehouse: true },
+  }).catch(() => null);
+  if (!product || product.stock == null) return;
+  const threshold = product.lowStockThreshold ?? settings.inventory.lowStockThreshold;
+  if (nextStock > threshold) return;
+  const support = settings.store.supportEmail;
+  if (!support) return;
+  await sendLibraryTemplatedEmail({
+    to: support,
+    settings,
+    templateKey: "lowStockAlert",
+    variables: {
+      productTitle: product.title,
+      stock: nextStock,
+      threshold,
+      warehouse: product.warehouse || "Default",
+    },
+    fallbackSubject: `Low stock: ${product.title}`,
+    fallbackBody: `${product.title} is at ${nextStock} (threshold ${threshold}).`,
+  });
+  await logLibraryActivity({
+    targetType: "inventory",
+    targetId: productId,
+    action: "LOW_STOCK_ALERT",
+    message: `Low stock alert sent for ${product.title} (${nextStock}).`,
+  });
+}
+
+export async function syncLibraryAbandonedCart(input: {
+  email: string;
+  userId?: string;
+  items: LibraryCartLine[];
+  currency?: string;
+  subtotal?: number;
+}) {
+  const email = String(input.email || "").trim().toLowerCase();
+  if (!email || !email.includes("@") || !input.items?.length) return null;
+  if (!shouldUsePostgresLibrary()) return { id: `local-abandoned-${Date.now()}`, email };
+  const prisma = getMainPrisma();
+  const subtotal = roundMoney(
+    input.subtotal ??
+      input.items.reduce((sum, item) => sum + Number(item.price || 0) * Math.max(1, Number(item.quantity) || 1), 0),
+  );
+  const existing = await prisma.libraryAbandonedCart.findFirst({
+    where: { email, recoveredAt: null },
+    orderBy: { updatedAt: "desc" },
+  }).catch(() => null);
+  const data = {
+    userId: input.userId || null,
+    email,
+    items: input.items as unknown as Prisma.InputJsonValue,
+    currency: input.currency || "USD",
+    subtotal,
+    recoveredAt: null as Date | null,
+  };
+  if (existing) {
+    return prisma.libraryAbandonedCart.update({ where: { id: existing.id }, data });
+  }
+  return prisma.libraryAbandonedCart.create({ data });
+}
+
+export async function markLibraryAbandonedCartRecovered(email?: string | null, userId?: string | null) {
+  if (!shouldUsePostgresLibrary()) return;
+  const prisma = getMainPrisma();
+  const where = email
+    ? { email: email.trim().toLowerCase(), recoveredAt: null }
+    : userId
+      ? { userId, recoveredAt: null }
+      : null;
+  if (!where) return;
+  await prisma.libraryAbandonedCart.updateMany({
+    where,
+    data: { recoveredAt: new Date() },
+  }).catch(() => null);
+}
+
+export async function processLibraryAbandonedCartReminders(options?: { olderThanHours?: number; limit?: number }) {
+  if (!shouldUsePostgresLibrary()) return { sent: 0 };
+  const settings = await getLibraryStoreSettings();
+  if (!settings.notifications.abandonedCart) return { sent: 0 };
+  const olderThanHours = options?.olderThanHours ?? 6;
+  const limit = options?.limit ?? 25;
+  const cutoff = new Date(Date.now() - olderThanHours * 60 * 60 * 1000);
+  const prisma = getMainPrisma();
+  const rows = await prisma.libraryAbandonedCart.findMany({
+    where: {
+      recoveredAt: null,
+      reminderCount: { lt: 2 },
+      updatedAt: { lte: cutoff },
+      OR: [{ reminderSentAt: null }, { reminderSentAt: { lte: cutoff } }],
+    },
+    orderBy: { updatedAt: "asc" },
+    take: limit,
+  }).catch(() => []);
+  let sent = 0;
+  for (const row of rows) {
+    const result = await sendLibraryTemplatedEmail({
+      to: row.email,
+      settings,
+      templateKey: "abandonedCart",
+      variables: {
+        customerName: "there",
+        currency: row.currency,
+        subtotal: Number(row.subtotal).toFixed(2),
+        checkoutUrl: `${getCanonicalSiteUrl()}/library/checkout`,
+      },
+      fallbackSubject: "Your HouseLink Library bag is waiting",
+      fallbackBody: `Return to checkout: ${getCanonicalSiteUrl()}/library/checkout`,
+    });
+    if (result.ok) {
+      sent += 1;
+      await prisma.libraryAbandonedCart.update({
+        where: { id: row.id },
+        data: { reminderCount: { increment: 1 }, reminderSentAt: new Date() },
+      }).catch(() => null);
+      await logLibraryActivity({
+        targetType: "abandoned_cart",
+        targetId: row.id,
+        action: "ABANDONED_CART_REMINDER",
+        message: `Abandoned cart reminder sent to ${row.email}.`,
+      });
+    }
+  }
+  return { sent, considered: rows.length };
+}
+
+export async function createLibraryBulkQuoteRequest(input: {
+  productId?: string;
+  email: string;
+  name?: string;
+  phone?: string;
+  company?: string;
+  quantity: number;
+  formatType?: string;
+  message?: string;
+}) {
+  const email = String(input.email || "").trim().toLowerCase();
+  const quantity = Math.max(1, Math.floor(Number(input.quantity) || 0));
+  if (!email || !email.includes("@") || quantity < 1) return null;
+  const settings = await getLibraryStoreSettings();
+  let productTitle = "Library product";
+  if (input.productId && shouldUsePostgresLibrary()) {
+    const product = await getMainPrisma().libraryProduct.findUnique({ where: { id: input.productId }, select: { title: true } }).catch(() => null);
+    if (product) productTitle = product.title;
+  } else if (input.productId) {
+    productTitle = localLibraryProducts.find((item) => item.id === input.productId)?.title || productTitle;
+  }
+  if (!shouldUsePostgresLibrary()) {
+    return { id: `local-quote-${Date.now()}`, email, quantity, productTitle };
+  }
+  const row = await getMainPrisma().libraryQuoteRequest.create({
+    data: {
+      productId: input.productId || null,
+      email,
+      name: input.name?.trim() || null,
+      phone: input.phone?.trim() || null,
+      company: input.company?.trim() || null,
+      quantity,
+      formatType: input.formatType || null,
+      message: input.message?.trim() || null,
+      status: "NEW",
+    },
+  });
+  await sendLibraryTemplatedEmail({
+    to: email,
+    settings,
+    templateKey: "bulkQuoteReceived",
+    variables: {
+      customerName: input.name?.trim() || "there",
+      email,
+      quantity,
+      productTitle,
+    },
+    fallbackSubject: "We received your Library bulk quote request",
+    fallbackBody: `Thanks for requesting a quote for ${quantity} × ${productTitle}.`,
+  }).catch(() => null);
+  if (settings.store.supportEmail) {
+    await sendLibraryTemplatedEmail({
+      to: settings.store.supportEmail,
+      settings,
+      templateKey: "bulkQuoteReceived",
+      variables: {
+        customerName: "Library team",
+        email,
+        quantity,
+        productTitle: `${productTitle}${input.company ? ` (${input.company})` : ""}`,
+      },
+      fallbackSubject: `Bulk quote request: ${quantity} × ${productTitle}`,
+      fallbackBody: `${email} requested ${quantity} × ${productTitle}.\n${input.message || ""}`,
+    }).catch(() => null);
+  }
+  await logLibraryActivity({
+    targetType: "quote_request",
+    targetId: row.id,
+    action: "QUOTE_REQUEST_CREATED",
+    message: `Bulk quote request for ${quantity} × ${productTitle} from ${email}.`,
+    metadata: input,
+  });
+  return row;
 }
 
 export async function upsertLibraryRecommendation(input: { sourceProductId: string; targetProductId: string; reason?: string; weight?: number; active?: boolean }, actorId?: string) {
@@ -2916,7 +3256,7 @@ async function notifyLibraryCustomer(
       templateKey: options.templateKey,
       variables: {
         customerName: user.name || "there",
-        orderUrl: `${getCanonicalSiteUrl()}/library/orders`,
+        orderUrl: `${getCanonicalSiteUrl()}/dashboard/my-library`,
         licenceText: settings.licence.licenceText,
         ...(options.variables ?? {}),
       },
@@ -3079,6 +3419,32 @@ async function productInputToPrisma(input: LibraryProductInput, actorId?: string
     ...(input.seoFocusKeyword !== undefined ? { seoFocusKeyword: input.seoFocusKeyword || null } : {}),
     ...(input.seoImageUrl !== undefined ? { seoImageUrl: input.seoImageUrl || null } : {}),
     ...(formats ? { formats: formats as unknown as Prisma.InputJsonValue } : {}),
+    ...(input.bundleProductIds !== undefined
+      ? {
+          bundleProductIds: Array.from(
+            new Set(
+              (input.bundleProductIds ?? [])
+                .map((id) => String(id || "").trim())
+                .filter(Boolean),
+            ),
+          ).slice(0, 4),
+        }
+      : {}),
+    ...(input.bundlePromoPrice !== undefined
+      ? {
+          bundlePromoPrice:
+            input.bundlePromoPrice != null && Number.isFinite(Number(input.bundlePromoPrice)) && Number(input.bundlePromoPrice) > 0
+              ? Number(input.bundlePromoPrice)
+              : null,
+        }
+      : {}),
+    ...(input.bundleFormatPreference !== undefined
+      ? {
+          bundleFormatPreference: ["MATCH_SHOPPER", "PREFER_DIGITAL", "PREFER_PRINT"].includes(input.bundleFormatPreference)
+            ? input.bundleFormatPreference
+            : "MATCH_SHOPPER",
+        }
+      : {}),
     ...(input.title || input.description ? { searchVector: buildSearchVector(input) } : {}),
     ...(input.featured !== undefined ? { featured: input.featured } : {}),
     ...(input.bestSeller !== undefined ? { bestSeller: input.bestSeller } : {}),
@@ -3156,6 +3522,12 @@ function toLibraryProduct(row: DbProduct): LibraryProduct {
     metaDescription: row.metaDescription ?? undefined,
     seoFocusKeyword: row.seoFocusKeyword ?? undefined,
     seoImageUrl: row.seoImageUrl ?? undefined,
+    bundleProductIds: Array.isArray(row.bundleProductIds) ? row.bundleProductIds.filter(Boolean) : [],
+    bundlePromoPrice: row.bundlePromoPrice != null ? Number(row.bundlePromoPrice) : undefined,
+    bundleFormatPreference:
+      row.bundleFormatPreference === "PREFER_DIGITAL" || row.bundleFormatPreference === "PREFER_PRINT"
+        ? row.bundleFormatPreference
+        : "MATCH_SHOPPER",
     formats: parseFormats(row.formats, row.productType as PublicLibraryProductType, Number(row.price), row.compareAtPrice ? Number(row.compareAtPrice) : undefined, row.sku),
     gallery: row.media.map((item) => ({ label: item.label, url: item.url, kind: mediaKind(item.mediaType) })),
     downloads: row.files.map((item) => ({ id: item.id, label: item.label, fileType: item.fileType, size: formatBytes(item.fileSizeBytes), secure: item.secure, fileUrl: item.fileUrl, fileName: item.fileName, fileSizeBytes: item.fileSizeBytes, previewable: item.previewable })),
@@ -3501,6 +3873,18 @@ function localProductFromInput(input: Partial<LibraryProductInput>, existing?: L
     metaDescription: input.metaDescription ?? existing?.metaDescription,
     seoFocusKeyword: input.seoFocusKeyword ?? existing?.seoFocusKeyword,
     seoImageUrl: input.seoImageUrl ?? existing?.seoImageUrl,
+    bundleProductIds:
+      input.bundleProductIds !== undefined
+        ? Array.from(new Set(input.bundleProductIds.filter(Boolean))).slice(0, 4)
+        : existing?.bundleProductIds ?? [],
+    bundlePromoPrice:
+      input.bundlePromoPrice === null
+        ? undefined
+        : input.bundlePromoPrice !== undefined
+          ? Number(input.bundlePromoPrice) || undefined
+          : existing?.bundlePromoPrice,
+    bundleFormatPreference:
+      input.bundleFormatPreference ?? existing?.bundleFormatPreference ?? "MATCH_SHOPPER",
     formats,
     gallery,
     downloads,
@@ -3546,6 +3930,8 @@ function normalizeFormatsInput(value: unknown): LibraryProductFormat[] {
       if (!type) return null;
       const price = Number(row.price);
       if (!Number.isFinite(price)) return null;
+      const volumeTiers =
+        type === "PRINTED_BOOK" ? normalizeLibraryVolumeTiers(row.volumeTiers, price) : [];
       return {
         id: String(row.id || `${type.toLowerCase()}-${index}`),
         type,
@@ -3558,6 +3944,7 @@ function normalizeFormatsInput(value: unknown): LibraryProductFormat[] {
           return Number.isFinite(value) && value > 0 ? value : undefined;
         })(),
         sku: row.sku ? String(row.sku) : undefined,
+        ...(volumeTiers.length ? { volumeTiers } : {}),
       } satisfies LibraryProductFormat;
     })
     .filter(Boolean) as LibraryProductFormat[];
@@ -3614,18 +4001,22 @@ function normalizeShippingAddress(input?: LibraryShippingAddress | null): Librar
   if (!input) return null;
   const name = String(input.name ?? "").trim();
   const phone = String(input.phone ?? "").trim();
+  const company = String(input.company ?? "").trim() || undefined;
+  const giftNote = String(input.giftNote ?? "").trim() || undefined;
   const line1 = String(input.line1 ?? "").trim();
   const city = String(input.city ?? "").trim();
   if (!name || !phone || !line1 || !city) return null;
   return {
     name,
     phone,
+    company,
     line1,
     line2: String(input.line2 ?? "").trim() || undefined,
     city,
     province: String(input.province ?? "").trim() || undefined,
     country: String(input.country ?? "").trim() || "Zimbabwe",
     notes: String(input.notes ?? "").trim() || undefined,
+    giftNote,
   };
 }
 

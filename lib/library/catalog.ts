@@ -16,6 +16,14 @@ export type LibraryProductStatus = "DRAFT" | "SCHEDULED" | "PUBLISHED" | "ARCHIV
 
 export type LibraryProductFormatType = "PRINTED_BOOK" | "PDF" | "DIGITAL_BOOK";
 
+export type LibraryBundleFormatPreference = "MATCH_SHOPPER" | "PREFER_DIGITAL" | "PREFER_PRINT";
+
+/** Bulk unit price when buying at least `minQty` of the same printed format. */
+export type LibraryVolumeTier = {
+  minQty: number;
+  unitPrice: number;
+};
+
 export type LibraryProductFormat = {
   id: string;
   type: LibraryProductFormatType;
@@ -24,6 +32,8 @@ export type LibraryProductFormat = {
   price: number;
   compareAtPrice?: number;
   sku?: string;
+  /** Printed format only — quantity breaks for bulk buying. */
+  volumeTiers?: LibraryVolumeTier[];
 };
 
 export type LibraryProduct = {
@@ -63,6 +73,12 @@ export type LibraryProduct = {
   metaDescription?: string;
   seoFocusKeyword?: string;
   seoImageUrl?: string;
+  /** Companion product IDs for Frequently Bought Together (admin-curated). */
+  bundleProductIds: string[];
+  /** Optional promo total for the whole bundle (main + companions). */
+  bundlePromoPrice?: number;
+  /** How companion formats are defaulted on the storefront. */
+  bundleFormatPreference?: LibraryBundleFormatPreference;
   formats: LibraryProductFormat[];
   gallery: Array<{ label: string; url: string; kind: "cover" | "back" | "inside" | "mockup" | "video" }>;
   downloads: Array<{
@@ -123,6 +139,210 @@ export function resolveLibraryFormat(
     formats.find((format) => formatType && format.type === formatType) ??
     formats[0]
   );
+}
+
+export function libraryFormatInStock(
+  product: Pick<LibraryProduct, "stock">,
+  format: Pick<LibraryProductFormat, "type">,
+) {
+  if (format.type !== "PRINTED_BOOK") return true;
+  if (product.stock == null) return true;
+  return product.stock > 0;
+}
+
+export function availableLibraryFormats(
+  product: Pick<LibraryProduct, "formats" | "productType" | "price" | "compareAtPrice" | "sku" | "stock">,
+) {
+  return enabledLibraryFormats(product).filter((format) => libraryFormatInStock(product, format));
+}
+
+export function resolveBundlePreferredType(
+  preference: LibraryBundleFormatPreference | string | null | undefined,
+  shopperType?: string | null,
+) {
+  if (preference === "PREFER_PRINT") return "PRINTED_BOOK";
+  if (preference === "PREFER_DIGITAL") return "PDF";
+  return shopperType || null;
+}
+
+/** Prefer digital formats for bundles unless the shopper chose print on the main product. */
+export function pickLibraryBundleFormat(
+  product: Pick<LibraryProduct, "formats" | "productType" | "price" | "compareAtPrice" | "sku" | "stock">,
+  preferredType?: string | null,
+  options?: { requireInStock?: boolean },
+) {
+  const formats =
+    options?.requireInStock === false ? enabledLibraryFormats(product) : availableLibraryFormats(product);
+  const pool = formats.length ? formats : enabledLibraryFormats(product);
+  if (!pool.length) {
+    return primaryLibraryFormat([], product.productType, product.price);
+  }
+  if (preferredType === "PRINTED_BOOK") {
+    return pool.find((format) => format.type === "PRINTED_BOOK") ?? pool[0];
+  }
+  return pool.find((format) => format.type !== "PRINTED_BOOK") ?? pool[0];
+}
+
+export function estimateLibraryBundleScenario(
+  products: Array<Pick<LibraryProduct, "formats" | "productType" | "price" | "compareAtPrice" | "sku" | "currency">>,
+  mode: "digital" | "print",
+  promoTotal?: number | null,
+) {
+  const prices = products.map((item) => {
+    const formats = enabledLibraryFormats(item);
+    if (mode === "print") {
+      return formats.find((format) => format.type === "PRINTED_BOOK")?.price ?? formats[0]?.price ?? item.price;
+    }
+    return formats.find((format) => format.type !== "PRINTED_BOOK")?.price ?? formats[0]?.price ?? item.price;
+  });
+  return applyLibraryBundlePromo(prices, promoTotal);
+}
+
+export function normalizeLibraryVolumeTiers(
+  value: unknown,
+  basePrice: number,
+): LibraryVolumeTier[] {
+  if (!Array.isArray(value) || !Number.isFinite(basePrice) || basePrice <= 0) return [];
+  const tiers: LibraryVolumeTier[] = [];
+  for (const entry of value) {
+    const row = entry as Partial<LibraryVolumeTier>;
+    const minQty = Math.floor(Number(row?.minQty));
+    const unitPrice = Math.round(Number(row?.unitPrice) * 100) / 100;
+    if (!Number.isFinite(minQty) || minQty < 2) continue;
+    if (!Number.isFinite(unitPrice) || unitPrice <= 0) continue;
+    if (unitPrice >= basePrice - 0.001) continue;
+    tiers.push({ minQty, unitPrice });
+  }
+  tiers.sort((a, b) => a.minQty - b.minQty || a.unitPrice - b.unitPrice);
+  const unique = new Map<number, LibraryVolumeTier>();
+  for (const tier of tiers) {
+    if (!unique.has(tier.minQty)) unique.set(tier.minQty, tier);
+  }
+  return Array.from(unique.values()).slice(0, 5);
+}
+
+/** Unit price after printed volume tiers (digital always uses list price). */
+export function resolveLibraryVolumeUnitPrice(
+  format: Pick<LibraryProductFormat, "price" | "type" | "volumeTiers">,
+  quantity: number,
+) {
+  const qty = Math.max(1, Math.floor(Number(quantity) || 1));
+  if (format.type !== "PRINTED_BOOK") return format.price;
+  const tiers = normalizeLibraryVolumeTiers(format.volumeTiers, format.price);
+  let unitPrice = format.price;
+  for (const tier of tiers) {
+    if (qty >= tier.minQty) unitPrice = tier.unitPrice;
+  }
+  return unitPrice;
+}
+
+export function libraryVolumePricing(
+  format: Pick<LibraryProductFormat, "price" | "type" | "volumeTiers">,
+  quantity: number,
+) {
+  const qty = Math.max(1, Math.floor(Number(quantity) || 1));
+  const listPrice = format.price;
+  const unitPrice = resolveLibraryVolumeUnitPrice(format, qty);
+  const tiers = normalizeLibraryVolumeTiers(format.volumeTiers, listPrice);
+  const activeTier = tiers.filter((tier) => qty >= tier.minQty);
+  const tier = activeTier[activeTier.length - 1] ?? null;
+  const nextTier = tiers.find((entry) => entry.minQty > qty) ?? null;
+  const savingsPerUnit = Math.max(0, Math.round((listPrice - unitPrice) * 100) / 100);
+  const savingsTotal = Math.round(savingsPerUnit * qty * 100) / 100;
+  const savingsPercent =
+    savingsPerUnit > 0 ? Math.round((savingsPerUnit / listPrice) * 100) : 0;
+  return {
+    quantity: qty,
+    listPrice,
+    unitPrice,
+    lineTotal: Math.round(unitPrice * qty * 100) / 100,
+    listTotal: Math.round(listPrice * qty * 100) / 100,
+    savingsPerUnit,
+    savingsTotal,
+    savingsPercent,
+    tier,
+    nextTier,
+    tiers,
+  };
+}
+
+export function maxLibraryPrintQuantity(
+  product: Pick<LibraryProduct, "stock">,
+  options?: { allowBackorder?: boolean; fallbackMax?: number },
+) {
+  if (options?.allowBackorder) return options?.fallbackMax ?? 99;
+  if (product.stock == null) return options?.fallbackMax ?? 99;
+  return Math.max(0, product.stock);
+}
+
+/**
+ * Apply an admin-curated FBT promo when the cart contains the source product
+ * plus all companions at quantity 1 each (same rules as the PDP bundle CTA).
+ * Other cart lines are left unchanged. Picks the matching bundle with the largest savings.
+ */
+export function applyLibraryBundlePromoToCartLines<T extends { productId: string; price: number; quantity: number }>(
+  lines: T[],
+  products: Array<Pick<LibraryProduct, "id" | "bundleProductIds" | "bundlePromoPrice">>,
+): { lines: T[]; bundleSavings: number; bundleSourceProductId?: string } {
+  let best:
+    | {
+        memberIds: string[];
+        linePrices: number[];
+        savings: number;
+        sourceId: string;
+      }
+    | null = null;
+
+  for (const source of products) {
+    const companions = (source.bundleProductIds ?? []).filter(Boolean);
+    const promo = source.bundlePromoPrice;
+    if (!companions.length || promo == null || !Number.isFinite(promo) || promo <= 0) continue;
+    const memberIds = [source.id, ...companions];
+    const memberLines = memberIds.map((id) => lines.find((line) => line.productId === id));
+    if (memberLines.some((line) => !line || line.quantity !== 1)) continue;
+    const listPrices = memberLines.map((line) => Number(line!.price) || 0);
+    const result = applyLibraryBundlePromo(listPrices, Number(promo));
+    if (result.savings <= 0) continue;
+    if (!best || result.savings > best.savings) {
+      best = { memberIds, linePrices: result.linePrices, savings: result.savings, sourceId: source.id };
+    }
+  }
+
+  if (!best) return { lines, bundleSavings: 0 };
+  const priceById = new Map(best.memberIds.map((id, index) => [id, best!.linePrices[index] ?? 0]));
+  return {
+    lines: lines.map((line) => {
+      const nextPrice = priceById.get(line.productId);
+      return nextPrice == null ? line : { ...line, price: nextPrice };
+    }),
+    bundleSavings: best.savings,
+    bundleSourceProductId: best.sourceId,
+  };
+}
+
+export function applyLibraryBundlePromo(linePrices: number[], promoTotal?: number | null) {
+  const subtotal = Math.round(linePrices.reduce((sum, price) => sum + price, 0) * 100) / 100;
+  if (
+    promoTotal == null ||
+    !Number.isFinite(promoTotal) ||
+    promoTotal <= 0 ||
+    promoTotal >= subtotal - 0.001
+  ) {
+    return { linePrices, subtotal, total: subtotal, savings: 0 };
+  }
+  const target = Math.round(promoTotal * 100) / 100;
+  const ratio = target / subtotal;
+  const adjusted = linePrices.map((price, index) =>
+    index === linePrices.length - 1 ? 0 : Math.round(price * ratio * 100) / 100,
+  );
+  const allocated = adjusted.slice(0, -1).reduce((sum, price) => sum + price, 0);
+  adjusted[adjusted.length - 1] = Math.round((target - allocated) * 100) / 100;
+  return {
+    linePrices: adjusted,
+    subtotal,
+    total: target,
+    savings: Math.round((subtotal - target) * 100) / 100,
+  };
 }
 
 export function primaryLibraryFormat(formats: LibraryProductFormat[], fallbackType: LibraryProductType = "PDF", fallbackPrice = 0) {

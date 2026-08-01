@@ -4,6 +4,7 @@ import { LibraryProductPage } from "@/components/library/library-product-page";
 import {
   getLibraryProductBySlug,
   listApprovedLibraryProductReviews,
+  listLibraryBundleCompanions,
   listLibraryProducts,
   recordLibraryProductView,
 } from "@/lib/library/repository";
@@ -28,8 +29,18 @@ export default async function LibraryProductRoute({ params }: { params: Promise<
     listLibraryProducts(),
     listApprovedLibraryProductReviews(product.id),
   ]);
+  const bundleCompanions = await listLibraryBundleCompanions(product, allProducts);
+  const bundleIds = new Set(bundleCompanions.map((item) => item.id));
   const related = allProducts
-    .filter((item) => item.id !== product.id && (item.category === product.category || item.collection === product.collection))
+    .filter(
+      (item) =>
+        item.id !== product.id &&
+        !bundleIds.has(item.id) &&
+        (item.category === product.category || item.collection === product.collection),
+    )
+    .slice(0, 3);
+  const relatedFallback = allProducts
+    .filter((item) => item.id !== product.id && !bundleIds.has(item.id))
     .slice(0, 3);
   const schemas = buildLibraryProductJsonLd({ product, reviews });
 
@@ -45,7 +56,8 @@ export default async function LibraryProductRoute({ params }: { params: Promise<
       ))}
       <LibraryProductPage
         product={product}
-        related={related.length ? related : allProducts.filter((item) => item.id !== product.id).slice(0, 3)}
+        related={related.length ? related : relatedFallback}
+        bundleCompanions={bundleCompanions}
         reviews={reviews}
       />
     </>

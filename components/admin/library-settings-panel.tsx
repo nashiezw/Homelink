@@ -28,12 +28,15 @@ const EMAIL_TEMPLATE_KEYS = Object.keys(defaultLibraryStoreSettings.emails.templ
 
 const EMAIL_TEMPLATE_LABELS: Record<LibraryEmailTemplateKey, string> = {
   orderConfirmation: "Order confirmation",
+  abandonedCart: "Abandoned bag reminder",
   paymentReceived: "Payment received",
   downloadReady: "Download ready",
   dispatchUpdate: "Dispatch update",
   reviewRequest: "Review request",
   refundNotice: "Refund notice",
   guestClaim: "Guest claim",
+  lowStockAlert: "Low stock alert",
+  bulkQuoteReceived: "Bulk quote received",
 };
 
 const MERGE_TAG_HINT =
@@ -652,6 +655,7 @@ export function LibrarySettingsPanel({
                   <ToggleRow label="Download ready" checked={draft.notifications.downloadReady} onChange={(downloadReady) => setDraft({ ...draft, notifications: { ...draft.notifications, downloadReady } })} />
                   <ToggleRow label="Review request" checked={draft.notifications.reviewRequest} onChange={(reviewRequest) => setDraft({ ...draft, notifications: { ...draft.notifications, reviewRequest } })} />
                   <ToggleRow label="Low stock alert to admins" checked={draft.notifications.lowStockAlert} onChange={(lowStockAlert) => setDraft({ ...draft, notifications: { ...draft.notifications, lowStockAlert } })} />
+                  <ToggleRow label="Abandoned bag reminders" checked={draft.notifications.abandonedCart} onChange={(abandonedCart) => setDraft({ ...draft, notifications: { ...draft.notifications, abandonedCart } })} />
                 </div>
               </Section>
             )}

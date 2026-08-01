@@ -315,6 +315,13 @@ export async function POST(request: Request) {
       if (!category) return problem(400, "INVALID_CATEGORY", "Category name is required.");
       return ok(await bulkUpdateLibraryProducts(arrayOfStrings(body.ids), { category }, auth.user.id));
     }
+    if (body.action === "process_abandoned_carts") {
+      const { processLibraryAbandonedCartReminders } = await import("@/lib/library/repository");
+      return ok(await processLibraryAbandonedCartReminders({
+        olderThanHours: Number(body.olderThanHours) || 6,
+        limit: Number(body.limit) || 25,
+      }));
+    }
     if (!body.title || !body.description || body.price == null) {
       return problem(400, "INVALID_PRODUCT", "title, description, and price are required.");
     }

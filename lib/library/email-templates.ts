@@ -5,7 +5,10 @@ export type LibraryEmailTemplateKey =
   | "dispatchUpdate"
   | "reviewRequest"
   | "refundNotice"
-  | "guestClaim";
+  | "guestClaim"
+  | "abandonedCart"
+  | "lowStockAlert"
+  | "bulkQuoteReceived";
 
 export type LibraryEmailTemplate = {
   subject: string;
@@ -40,6 +43,18 @@ export const defaultLibraryEmailTemplates: Record<LibraryEmailTemplateKey, Libra
   guestClaim: {
     subject: "Claim your HouseLink Library order {{orderNumber}}",
     body: "Hi,\n\nAn admin issued a Library access claim for order {{orderNumber}}.\n\n1. Sign in (or create an account) with this email: {{email}}\n2. Open this claim link:\n{{claimUrl}}\n\nThe link expires in {{expiryDays}} days.\n\n— {{fromName}}",
+  },
+  abandonedCart: {
+    subject: "Your HouseLink Library bag is waiting",
+    body: "Hi {{customerName}},\n\nYou left items in your HouseLink Library bag (about {{currency}} {{subtotal}}).\n\nReturn to checkout:\n{{checkoutUrl}}\n\n— {{fromName}}",
+  },
+  lowStockAlert: {
+    subject: "Low stock: {{productTitle}}",
+    body: "Library inventory alert\n\n{{productTitle}} is at {{stock}} unit(s) (threshold {{threshold}}).\nWarehouse: {{warehouse}}\n\nReview inventory in Library Admin.\n\n— {{fromName}}",
+  },
+  bulkQuoteReceived: {
+    subject: "We received your Library bulk quote request",
+    body: "Hi {{customerName}},\n\nThanks for requesting a quote for {{quantity}} × {{productTitle}}.\nOur team will reply to {{email}} shortly.\n\n— {{fromName}}",
   },
 };
 

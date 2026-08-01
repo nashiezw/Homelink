@@ -8,7 +8,13 @@ import { LibraryCartFab } from "@/components/library/library-cart-fab";
 import { Button } from "@/components/ui/button";
 import { useApp } from "@/components/providers/app-provider";
 import { apiFetch } from "@/lib/api/client";
-import { clearLibraryCart, libraryCartLineKey, sameLibraryCartLine, useLibraryCart } from "@/lib/library/cart-client";
+import {
+  clearLibraryCart,
+  libraryCartLineKey,
+  repriceLibraryCartLine,
+  sameLibraryCartLine,
+  useLibraryCart,
+} from "@/lib/library/cart-client";
 import type { PublicPaymentConfig } from "@/lib/payments/public-payment-config";
 
 type LibraryQuote = {
@@ -25,6 +31,16 @@ type LibraryQuote = {
   estimatedDaysMin?: number;
   estimatedDaysMax?: number;
   allowLocalPickup?: boolean;
+  bundleSavings?: number;
+  listSubtotal?: number;
+  stockWarnings?: Array<{ productId: string; message: string; available: number }>;
+  items?: Array<{
+    productId: string;
+    formatId?: string;
+    price: number;
+    quantity: number;
+    currency?: string;
+  }>;
 };
 
 type LibraryPublicSettings = {
@@ -32,8 +48,11 @@ type LibraryPublicSettings = {
     requireTerms: boolean;
     termsUrl: string;
     privacyUrl: string;
+    returnsUrl?: string;
     allowCoupons: boolean;
     minimumOrderAmount: number;
+    notePlaceholder?: string;
+    bulkQuoteMinQty?: number;
   };
   tax: { displayTaxBreakdown: boolean; taxLabel: string; defaultCountry: string };
   delivery: {
@@ -69,27 +88,31 @@ type LibraryPublicSettings = {
 type ShippingForm = {
   name: string;
   phone: string;
+  company: string;
   line1: string;
   line2: string;
   city: string;
   province: string;
   country: string;
   notes: string;
+  giftNote: string;
 };
 
 const emptyShipping: ShippingForm = {
   name: "",
   phone: "",
+  company: "",
   line1: "",
   line2: "",
   city: "",
   province: "",
   country: "Zimbabwe",
   notes: "",
+  giftNote: "",
 };
 
 export function LibraryCheckoutClient() {
-  const { showToast } = useApp();
+  const { showToast, user } = useApp();
   const { cart, setCart, total } = useLibraryCart();
   const [paymentMethod, setPaymentMethod] = useState("bank_transfer");
   const [couponCode, setCouponCode] = useState("");
@@ -176,6 +199,31 @@ export function LibraryCheckoutClient() {
       return null;
     }
     setQuote(result.data);
+    if (result.data.stockWarnings?.length) {
+      setCart((current) =>
+        current
+          .map((line) => {
+            const quoted = result.data!.items?.find(
+              (entry) => entry.productId === line.productId && (entry.formatId ?? undefined) === (line.formatId ?? undefined),
+            );
+            if (!quoted) return line;
+            return repriceLibraryCartLine(line, quoted.quantity);
+          })
+          .filter((line) => line.quantity > 0),
+      );
+      showToast(result.data.stockWarnings[0]?.message || "Printed quantities were adjusted for stock.", "error");
+    }
+    if (user?.email && cart.length) {
+      void apiFetch("/api/v1/library/cart/sync", {
+        method: "POST",
+        body: JSON.stringify({
+          email: user.email,
+          items: cart,
+          currency: result.data.currency,
+          subtotal: result.data.subtotal,
+        }),
+      });
+    }
     return result.data;
   }
 
@@ -204,10 +252,19 @@ export function LibraryCheckoutClient() {
   }
 
   function shippingPayload() {
-    if (!needsShipping || shippingMethod === "PICKUP") return undefined;
+    const extras = {
+      company: shipping.company.trim() || undefined,
+      giftNote: shipping.giftNote.trim() || undefined,
+      notes: shipping.notes.trim() || undefined,
+    };
+    if (!needsShipping || shippingMethod === "PICKUP") {
+      return extras.company || extras.giftNote ? extras : undefined;
+    }
     return {
       name: shipping.name.trim(),
       phone: shipping.phone.trim(),
+      company: extras.company,
+      giftNote: extras.giftNote,
       line1: shipping.line1.trim(),
       line2: shipping.line2.trim() || undefined,
       city: shipping.city.trim(),
@@ -269,7 +326,13 @@ export function LibraryCheckoutClient() {
   }
 
   function quantity(productId: string, value: number, formatId?: string) {
-    setCart((current) => current.map((item) => (sameLibraryCartLine(item, { productId, formatId }) ? { ...item, quantity: Math.max(1, value) } : item)));
+    setCart((current) =>
+      current.map((item) =>
+        sameLibraryCartLine(item, { productId, formatId })
+          ? repriceLibraryCartLine(item, Math.max(1, value))
+          : item,
+      ),
+    );
   }
 
   const payable = useMemo(() => quote?.total ?? total, [quote, total]);
@@ -289,7 +352,13 @@ export function LibraryCheckoutClient() {
           <section className="surface-panel rounded-lg p-5">
             <h2 className="text-lg font-semibold text-ink dark:text-white">Order summary</h2>
             <div className="mt-4 space-y-3">
-              {cart.length ? cart.map((item) => (
+              {cart.length ? cart.map((item) => {
+                const quoted = quote?.items?.find(
+                  (entry) => entry.productId === item.productId && (entry.formatId ?? undefined) === (item.formatId ?? undefined),
+                );
+                const unitPrice = quoted?.price ?? item.price;
+                const listPrice = item.listPrice ?? unitPrice;
+                return (
                 <div key={libraryCartLineKey(item)} className="flex items-start justify-between gap-4 rounded-lg border border-slate-200 p-4 dark:border-slate-800">
                   <div>
                     <p className="font-semibold">{item.title}</p>
@@ -303,9 +372,20 @@ export function LibraryCheckoutClient() {
                       <Trash2 className="size-3.5" /> Remove
                     </button>
                   </div>
-                  <p className="font-bold">{item.currency} {(item.price * item.quantity).toFixed(2)}</p>
+                  <div className="text-right">
+                    <p className="font-bold">{item.currency} {(unitPrice * item.quantity).toFixed(2)}</p>
+                    {listPrice > unitPrice + 0.001 ? (
+                      <p className="mt-1 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
+                        {item.currency} {unitPrice.toFixed(2)} each
+                        <span className="ml-1 text-slate-400 line-through">
+                          {item.currency} {listPrice.toFixed(2)}
+                        </span>
+                      </p>
+                    ) : null}
+                  </div>
                 </div>
-              )) : (
+                );
+              }) : (
                 <div className="rounded-lg border border-dashed border-slate-300 p-8 text-center dark:border-slate-700">
                   <ShoppingCart className="mx-auto mb-3 size-8 text-slate-400" />
                   <p className="font-semibold">Your Library cart is empty</p>
@@ -313,6 +393,39 @@ export function LibraryCheckoutClient() {
                 </div>
               )}
             </div>
+          </section>
+
+          <section className="surface-panel rounded-lg p-5">
+            <h2 className="text-lg font-semibold text-ink dark:text-white">Invoice & gift details</h2>
+            <p className="mt-1 text-sm text-slate-500">Optional for firms, training cohorts, and gift orders.</p>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <label className="block text-sm font-medium sm:col-span-2">
+                Company / organisation (optional)
+                <input
+                  value={shipping.company}
+                  onChange={(e) => setShipping({ ...shipping, company: e.target.value })}
+                  className="mt-2 h-11 w-full rounded-lg border border-slate-200 px-3 dark:border-slate-700 dark:bg-slate-900"
+                  placeholder="e.g. Harare Property Group"
+                />
+              </label>
+              <label className="block text-sm font-medium sm:col-span-2">
+                Gift note (optional)
+                <textarea
+                  value={shipping.giftNote}
+                  onChange={(e) => setShipping({ ...shipping, giftNote: e.target.value })}
+                  rows={2}
+                  className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 dark:border-slate-700 dark:bg-slate-900"
+                  placeholder={storeSettings?.checkout.notePlaceholder || "Message to include with the order"}
+                />
+              </label>
+            </div>
+            <p className="mt-3 text-xs text-slate-500">
+              See our{" "}
+              <Link href={storeSettings?.checkout.returnsUrl || "/returns"} className="font-semibold text-emerald-700 underline dark:text-emerald-300">
+                returns & reprints policy
+              </Link>
+              .
+            </p>
           </section>
 
           {needsShipping && (
@@ -399,9 +512,31 @@ export function LibraryCheckoutClient() {
               </label>
             )}
             {couponMessage && <p className="mt-2 text-xs font-semibold text-slate-500">{couponMessage}</p>}
+            {quote?.stockWarnings?.length ? (
+              <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-100">
+                {quote.stockWarnings.map((warning) => (
+                  <p key={warning.productId}>{warning.message}</p>
+                ))}
+              </div>
+            ) : null}
             <div className="mt-5 space-y-2 border-t border-slate-200 pt-4 text-sm dark:border-slate-800">
+              {(quote?.listSubtotal ?? 0) > (quote?.subtotal ?? 0) + 0.001 ? (
+                <div className="flex justify-between text-slate-500">
+                  <span>List subtotal</span>
+                  <span className="line-through">{quote?.currency ?? "USD"} {(quote?.listSubtotal ?? 0).toFixed(2)}</span>
+                </div>
+              ) : null}
               <div className="flex justify-between"><span>Subtotal</span><span>{quote?.currency ?? "USD"} {(quote?.subtotal ?? total).toFixed(2)}</span></div>
-              {(quote?.discountTotal ?? 0) > 0 && <div className="flex justify-between text-emerald-700 dark:text-emerald-300"><span>Discount</span><span>−{(quote?.discountTotal ?? 0).toFixed(2)}</span></div>}
+              {(quote?.bundleSavings ?? 0) > 0 && (
+                <div className="flex justify-between text-emerald-700 dark:text-emerald-300">
+                  <span>Bundle savings included</span>
+                  <span>{quote?.currency ?? "USD"} {(quote?.bundleSavings ?? 0).toFixed(2)}</span>
+                </div>
+              )}
+              {(quote?.discountTotal ?? 0) > 0 && <div className="flex justify-between text-emerald-700 dark:text-emerald-300"><span>Coupon</span><span>−{(quote?.discountTotal ?? 0).toFixed(2)}</span></div>}
+              <Link href={storeSettings?.checkout.returnsUrl || "/returns"} className="block pt-1 text-xs font-semibold text-emerald-700 underline dark:text-emerald-300">
+                Returns & reprints
+              </Link>
               {storeSettings?.tax.displayTaxBreakdown !== false && (quote?.taxTotal ?? 0) > 0 && (
                 <div className="flex justify-between"><span>{quote?.taxLabel || storeSettings?.tax.taxLabel || "Tax"}</span><span>{(quote?.taxTotal ?? 0).toFixed(2)}</span></div>
               )}

@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { BookCover } from "@/components/library/book-cover";
+import { LibraryBulkQuoteDialog } from "@/components/library/library-bulk-quote-dialog";
 import { LibraryCartFab } from "@/components/library/library-cart-fab";
 import { LibraryFormatPickerDialog } from "@/components/library/library-format-picker-dialog";
 import { LibraryProductCard } from "@/components/library/library-product-card";
@@ -35,15 +36,26 @@ import { useApp } from "@/components/providers/app-provider";
 import { apiFetch } from "@/lib/api/client";
 import {
   notifyLibraryCartAdded,
+  repriceLibraryCartLine,
   sameLibraryCartLine,
+  trackLibraryCartEvent,
   writeLibraryCart,
   useLibraryCart,
 } from "@/lib/library/cart-client";
 import {
+  applyLibraryBundlePromo,
+  availableLibraryFormats,
   enabledLibraryFormats,
   libraryDiscountPercent,
   libraryFormatCompareAt,
+  libraryFormatInStock,
+  libraryVolumePricing,
+  maxLibraryPrintQuantity,
+  normalizeLibraryVolumeTiers,
+  pickLibraryBundleFormat,
   primaryLibraryFormat,
+  resolveBundlePreferredType,
+  resolveLibraryVolumeUnitPrice,
   type LibraryProduct,
   type LibraryProductFormat,
 } from "@/lib/library/catalog";
@@ -52,10 +64,12 @@ import { cn } from "@/lib/utils";
 export function LibraryProductPage({
   product,
   related,
+  bundleCompanions = [],
   reviews: initialReviews = [],
 }: {
   product: LibraryProduct;
   related: LibraryProduct[];
+  bundleCompanions?: LibraryProduct[];
   reviews?: Array<{
     id: string;
     rating: number;
@@ -76,6 +90,8 @@ export function LibraryProductPage({
   const [selectedFormatId, setSelectedFormatId] = useState(formats[0]?.id ?? "primary");
   const { cart, setCart, count } = useLibraryCart();
   const [formatPickerProduct, setFormatPickerProduct] = useState<LibraryProduct | null>(null);
+  const [quoteOpen, setQuoteOpen] = useState(false);
+  const [bulkQuoteMinQty, setBulkQuoteMinQty] = useState(20);
   const [wished, setWished] = useState(false);
   const [wishBusy, setWishBusy] = useState(false);
   const [shareNotice, setShareNotice] = useState("");
@@ -104,8 +120,12 @@ export function LibraryProductPage({
         autoApprove?: boolean;
         allowGuestNames?: boolean;
       };
+      checkout?: { bulkQuoteMinQty?: number };
     }>("/api/v1/library/settings").then((result) => {
       const reviewsCfg = result.data?.reviews;
+      if (result.data?.checkout?.bulkQuoteMinQty) {
+        setBulkQuoteMinQty(Math.max(5, Number(result.data.checkout.bulkQuoteMinQty) || 20));
+      }
       if (!reviewsCfg) return;
       const minRating = Math.min(5, Math.max(1, Number(reviewsCfg.minRating) || 1));
       setReviewSettings({
@@ -121,9 +141,50 @@ export function LibraryProductPage({
       }));
     });
   }, []);
-  const relatedBundle = useMemo(() => related.slice(0, 2), [related]);
   const selectedFormat = formats.find((format) => format.id === selectedFormatId) ?? formats[0];
-  const bundleTotal = relatedBundle.reduce((sum, item) => sum + item.price, selectedFormat?.price ?? product.price);
+  const [bundleFormatIds, setBundleFormatIds] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    const preferred = resolveBundlePreferredType(product.bundleFormatPreference, selectedFormat?.type ?? null);
+    const next: Record<string, string> = {};
+    for (const item of bundleCompanions) {
+      next[item.id] = pickLibraryBundleFormat(item, preferred).id;
+    }
+    setBundleFormatIds(next);
+  }, [bundleCompanions, selectedFormat?.type, product.id, product.bundleFormatPreference]);
+
+  const bundleLines = useMemo(() => {
+    if (!selectedFormat || !bundleCompanions.length) return [];
+    const preferred = resolveBundlePreferredType(product.bundleFormatPreference, selectedFormat.type);
+    const companions = bundleCompanions.map((item) => {
+      const formatsForItem = availableLibraryFormats(item);
+      const pool = formatsForItem.length ? formatsForItem : enabledLibraryFormats(item);
+      const format =
+        pool.find((entry) => entry.id === bundleFormatIds[item.id]) ??
+        pickLibraryBundleFormat(item, preferred);
+      return { product: item, format };
+    });
+    const rows = [{ product, format: selectedFormat }, ...companions];
+    const promo = applyLibraryBundlePromo(
+      rows.map((row) => row.format.price),
+      product.bundlePromoPrice,
+    );
+    return rows.map((row, index) => ({
+      ...row,
+      chargedPrice: promo.linePrices[index] ?? row.format.price,
+      listPrice: row.format.price,
+      subtotal: promo.subtotal,
+      total: promo.total,
+      savings: promo.savings,
+      inStock: libraryFormatInStock(row.product, row.format),
+    }));
+  }, [bundleCompanions, bundleFormatIds, product, selectedFormat]);
+
+  const bundleSavings = bundleLines[0]?.savings ?? 0;
+  const bundleSubtotal = bundleLines[0]?.subtotal ?? 0;
+  const bundleTotal = bundleLines[0]?.total ?? 0;
+  const bundleAvailable = bundleLines.length > 1 && bundleLines.every((line) => line.inStock);
+
   const productQuantity = cart
     .filter((line) => line.productId === product.id && (!line.formatId || line.formatId === selectedFormat?.id))
     .reduce((sum, line) => sum + line.quantity, 0);
@@ -134,6 +195,26 @@ export function LibraryProductPage({
   const activeGalleryImage = galleryImages[galleryIndex] ?? galleryImages[0];
   const isPrinted = selectedFormat?.type === "PRINTED_BOOK";
   const outOfStock = Boolean(isPrinted && product.stock === 0);
+  const maxPrintQty = maxLibraryPrintQuantity(product);
+  const [printQty, setPrintQty] = useState(1);
+  useEffect(() => {
+    setPrintQty(1);
+  }, [product.id, selectedFormatId]);
+  useEffect(() => {
+    if (!isPrinted) return;
+    setPrintQty((current) => Math.min(Math.max(1, current), Math.max(1, maxPrintQty || 1)));
+  }, [isPrinted, maxPrintQty]);
+  const volumeTiers = useMemo(
+    () =>
+      selectedFormat?.type === "PRINTED_BOOK"
+        ? normalizeLibraryVolumeTiers(selectedFormat.volumeTiers, selectedFormat.price)
+        : [],
+    [selectedFormat],
+  );
+  const selectedQty = isPrinted ? printQty : 1;
+  const volumePricing = selectedFormat
+    ? libraryVolumePricing(selectedFormat, selectedQty)
+    : null;
   const printStockLabel =
     product.stock == null
       ? "Printed stock available"
@@ -305,45 +386,144 @@ export function LibraryProductPage({
     if (refreshed.data?.reviews) setReviews(refreshed.data.reviews);
   }
 
-  function cartLineFromFormat(format: LibraryProductFormat) {
+  function cartLineFromFormat(format: LibraryProductFormat, quantity = 1) {
+    const qty =
+      format.type === "PRINTED_BOOK"
+        ? Math.min(Math.max(1, quantity), Math.max(1, maxPrintQty || 1))
+        : Math.max(1, quantity);
+    const tiers =
+      format.type === "PRINTED_BOOK" ? normalizeLibraryVolumeTiers(format.volumeTiers, format.price) : [];
+    const unitPrice = resolveLibraryVolumeUnitPrice(format, qty);
     return {
       productId: product.id,
       title: `${product.title} (${format.label})`,
-      price: format.price,
+      price: unitPrice,
+      listPrice: format.price,
       currency: product.currency,
-      quantity: 1,
+      quantity: qty,
       formatId: format.id,
       formatType: format.type,
       formatLabel: format.label,
+      volumeTiers: tiers.length ? tiers : undefined,
     };
   }
 
   function addToCart() {
     if (!selectedFormat) return;
+    const qty = selectedQty;
     setCart((current) => {
       const existing = current.find((line) => line.productId === product.id && line.formatId === selectedFormat.id);
       if (existing) {
-        return current.map((line) => (line.productId === product.id && line.formatId === selectedFormat.id ? { ...line, quantity: line.quantity + 1 } : line));
+        const nextQty =
+          selectedFormat.type === "PRINTED_BOOK"
+            ? Math.min(existing.quantity + qty, Math.max(1, maxPrintQty || 1))
+            : existing.quantity + qty;
+        return current.map((line) =>
+          line.productId === product.id && line.formatId === selectedFormat.id
+            ? repriceLibraryCartLine(
+                {
+                  ...line,
+                  listPrice: selectedFormat.price,
+                  volumeTiers:
+                    selectedFormat.type === "PRINTED_BOOK"
+                      ? normalizeLibraryVolumeTiers(selectedFormat.volumeTiers, selectedFormat.price)
+                      : undefined,
+                },
+                nextQty,
+              )
+            : line,
+        );
       }
-      return [...current, cartLineFromFormat(selectedFormat)];
+      return [...current, cartLineFromFormat(selectedFormat, qty)];
     });
     notifyLibraryCartAdded(product.title);
-    showToast("Added to your bag.", "success");
+    trackLibraryCartEvent("CART_ADD_SINGLE", product.id, {
+      formatId: selectedFormat.id,
+      formatType: selectedFormat.type,
+      price: resolveLibraryVolumeUnitPrice(selectedFormat, qty),
+      quantity: qty,
+    });
+    showToast(qty > 1 ? `Added ${qty} to your bag.` : "Added to your bag.", "success");
   }
 
   function buyNow() {
     if (!selectedFormat) return;
-    writeLibraryCart([cartLineFromFormat(selectedFormat)]);
+    const line = cartLineFromFormat(selectedFormat, selectedQty);
+    writeLibraryCart([line]);
+    trackLibraryCartEvent("CART_ADD_SINGLE", product.id, {
+      formatId: selectedFormat.id,
+      formatType: selectedFormat.type,
+      price: line.price,
+      quantity: line.quantity,
+      buyNow: true,
+    });
     window.location.href = "/library/checkout";
   }
 
   function addBundle() {
-    if (!selectedFormat) return;
-    writeLibraryCart([
-      cartLineFromFormat(selectedFormat),
-      ...relatedBundle.map((item) => ({ productId: item.id, title: item.title, price: item.price, currency: item.currency, quantity: 1 })),
-    ]);
-    window.location.href = "/library/checkout";
+    if (!selectedFormat || !bundleAvailable) return;
+    setCart((current) => {
+      let next = [...current];
+      for (const line of bundleLines) {
+        const tiers =
+          line.format.type === "PRINTED_BOOK"
+            ? normalizeLibraryVolumeTiers(line.format.volumeTiers, line.format.price)
+            : [];
+        const incoming = repriceLibraryCartLine(
+          {
+            productId: line.product.id,
+            title: `${line.product.title} (${line.format.label})`,
+            price: line.chargedPrice,
+            listPrice: line.format.price,
+            currency: line.product.currency,
+            quantity: 1,
+            formatId: line.format.id,
+            formatType: line.format.type,
+            formatLabel: line.format.label,
+            volumeTiers: tiers.length ? tiers : undefined,
+          },
+          1,
+        );
+        // Keep curated bundle unit price at qty 1; volume tiers apply when qty increases later.
+        incoming.price = line.chargedPrice;
+        const existingIndex = next.findIndex((entry) => sameLibraryCartLine(entry, incoming));
+        if (existingIndex >= 0) {
+          next = next.map((entry, index) =>
+            index === existingIndex
+              ? repriceLibraryCartLine(
+                  {
+                    ...entry,
+                    listPrice: line.format.price,
+                    volumeTiers: tiers.length ? tiers : entry.volumeTiers,
+                  },
+                  entry.quantity + 1,
+                )
+              : entry,
+          );
+        } else {
+          next = [...next, incoming];
+        }
+      }
+      return next;
+    });
+    notifyLibraryCartAdded(product.title);
+    trackLibraryCartEvent("CART_ADD_BUNDLE", product.id, {
+      companionIds: bundleCompanions.map((item) => item.id),
+      total: bundleTotal,
+      savings: bundleSavings,
+      lines: bundleLines.map((line) => ({
+        productId: line.product.id,
+        formatId: line.format.id,
+        formatType: line.format.type,
+        price: line.chargedPrice,
+      })),
+    });
+    showToast(
+      bundleSavings > 0
+        ? `Bundle added · you save ${product.currency} ${bundleSavings.toFixed(2)}.`
+        : "Bundle added to your bag.",
+      "success",
+    );
   }
 
   function quantityFor(productId: string) {
@@ -351,30 +531,52 @@ export function LibraryProductPage({
   }
 
   function addRelatedFormatToCart(target: LibraryProduct, format: LibraryProductFormat) {
+    const tiers =
+      format.type === "PRINTED_BOOK" ? normalizeLibraryVolumeTiers(format.volumeTiers, format.price) : [];
+    const maxQty = format.type === "PRINTED_BOOK" ? maxLibraryPrintQuantity(target) : 99;
     setCart((current) => {
       const existing = current.find((line) => sameLibraryCartLine(line, { productId: target.id, formatId: format.id }));
       if (existing) {
+        const nextQty = Math.min(existing.quantity + 1, Math.max(1, maxQty || 1));
         return current.map((line) =>
           sameLibraryCartLine(line, { productId: target.id, formatId: format.id })
-            ? { ...line, quantity: line.quantity + 1 }
+            ? repriceLibraryCartLine(
+                {
+                  ...line,
+                  listPrice: format.price,
+                  volumeTiers: tiers.length ? tiers : undefined,
+                },
+                nextQty,
+              )
             : line,
         );
       }
       return [
         ...current,
-        {
-          productId: target.id,
-          title: `${target.title} (${format.label})`,
-          price: format.price,
-          currency: target.currency,
-          quantity: 1,
-          formatId: format.id,
-          formatType: format.type,
-          formatLabel: format.label,
-        },
+        repriceLibraryCartLine(
+          {
+            productId: target.id,
+            title: `${target.title} (${format.label})`,
+            price: format.price,
+            listPrice: format.price,
+            currency: target.currency,
+            quantity: 1,
+            formatId: format.id,
+            formatType: format.type,
+            formatLabel: format.label,
+            volumeTiers: tiers.length ? tiers : undefined,
+          },
+          1,
+        ),
       ];
     });
     notifyLibraryCartAdded(target.title);
+    trackLibraryCartEvent("CART_ADD_SINGLE", target.id, {
+      formatId: format.id,
+      formatType: format.type,
+      price: format.price,
+      source: "related",
+    });
     showToast("Added to your bag.", "success");
   }
 
@@ -391,6 +593,18 @@ export function LibraryProductPage({
   return (
     <main className="bg-mist text-ink dark:bg-slate-950 dark:text-white">
       <LibraryCartFab />
+      {quoteOpen ? (
+        <LibraryBulkQuoteDialog
+          product={product}
+          quantity={selectedQty}
+          formatType={selectedFormat?.type}
+          onClose={() => setQuoteOpen(false)}
+          onSubmitted={() => {
+            setQuoteOpen(false);
+            showToast("Quote request sent. We’ll email you shortly.", "success");
+          }}
+        />
+      ) : null}
       {formatPickerProduct && (
         <LibraryFormatPickerDialog
           product={formatPickerProduct}
@@ -557,22 +771,33 @@ export function LibraryProductPage({
 
               <div className="mt-7 border-t border-slate-100 pt-5 dark:border-slate-800">
                 {(() => {
-                  const sellPrice = selectedFormat?.price ?? product.price;
+                  const sellPrice = volumePricing?.unitPrice ?? selectedFormat?.price ?? product.price;
+                  const listPrice = volumePricing?.listPrice ?? selectedFormat?.price ?? product.price;
                   const compareAt =
-                    (selectedFormat ? libraryFormatCompareAt(selectedFormat) : undefined) ??
-                    (product.compareAtPrice != null && product.compareAtPrice > sellPrice ? product.compareAtPrice : undefined);
-                  const discount = libraryDiscountPercent(sellPrice, compareAt);
+                    volumePricing && volumePricing.savingsPerUnit > 0
+                      ? listPrice
+                      : (selectedFormat ? libraryFormatCompareAt(selectedFormat) : undefined) ??
+                        (product.compareAtPrice != null && product.compareAtPrice > sellPrice
+                          ? product.compareAtPrice
+                          : undefined);
+                  const discount =
+                    volumePricing && volumePricing.savingsPercent > 0
+                      ? volumePricing.savingsPercent
+                      : libraryDiscountPercent(sellPrice, compareAt);
                   return (
                     <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
                       <p className="text-[2rem] font-semibold tracking-tight text-ink dark:text-white">
                         {product.currency} {sellPrice.toFixed(2)}
+                        {isPrinted && selectedQty > 1 ? (
+                          <span className="ml-2 text-base font-semibold text-slate-500">each</span>
+                        ) : null}
                       </p>
-                      {compareAt != null && (
+                      {compareAt != null && compareAt > sellPrice + 0.001 && (
                         <p className="text-base text-slate-400 line-through">
                           {product.currency} {compareAt.toFixed(2)}
                         </p>
                       )}
-                      {discount != null && (
+                      {discount != null && discount > 0 && (
                         <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-bold uppercase tracking-wide text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200">
                           Save {discount}%
                         </span>
@@ -580,9 +805,112 @@ export function LibraryProductPage({
                     </div>
                   );
                 })()}
+                {isPrinted && volumePricing && selectedQty > 1 ? (
+                  <p className="mt-1 text-sm font-semibold text-slate-600 dark:text-slate-300">
+                    Line total {product.currency} {volumePricing.lineTotal.toFixed(2)}
+                    {volumePricing.savingsTotal > 0 ? (
+                      <span className="text-emerald-700 dark:text-emerald-300">
+                        {" "}
+                        · you save {product.currency} {volumePricing.savingsTotal.toFixed(2)}
+                      </span>
+                    ) : null}
+                  </p>
+                ) : null}
                 <p className="mt-2 text-sm leading-6 text-emerald-800 dark:text-emerald-200">
                   {isPrinted ? printStockLabel : "Instant digital delivery after payment confirmation"}
                 </p>
+                {isPrinted && !outOfStock ? (
+                  <div className="mt-4 flex flex-wrap items-center gap-3">
+                    <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Quantity</p>
+                    <div className="inline-flex items-center rounded-lg border border-slate-200 dark:border-slate-700">
+                      <button
+                        type="button"
+                        disabled={printQty <= 1}
+                        onClick={() => setPrintQty((current) => Math.max(1, current - 1))}
+                        className="grid size-9 place-items-center text-slate-500 hover:text-emerald-700 disabled:opacity-40"
+                        aria-label="Decrease quantity"
+                      >
+                        −
+                      </button>
+                      <span className="w-10 text-center text-sm font-black tabular-nums">{printQty}</span>
+                      <button
+                        type="button"
+                        disabled={printQty >= maxPrintQty}
+                        onClick={() => setPrintQty((current) => Math.min(maxPrintQty, current + 1))}
+                        className="grid size-9 place-items-center text-slate-500 hover:text-emerald-700 disabled:opacity-40"
+                        aria-label="Increase quantity"
+                      >
+                        +
+                      </button>
+                    </div>
+                    {product.stock != null ? (
+                      <p className="text-xs text-slate-500">Max {maxPrintQty} in stock</p>
+                    ) : null}
+                  </div>
+                ) : null}
+                {product.productType === "BUNDLE" && bundleCompanions.length > 0 ? (
+                  <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm dark:border-slate-800 dark:bg-slate-950">
+                    <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">This pack includes</p>
+                    <ul className="mt-2 space-y-1 text-slate-600 dark:text-slate-300">
+                      {bundleCompanions.map((item) => (
+                        <li key={item.id}>
+                          <Link href={`/library/${item.slug}`} className="font-semibold hover:text-emerald-700">
+                            {item.title}
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+                {isPrinted && volumePricing?.nextTier && product.stock != null && product.stock < volumePricing.nextTier.minQty ? (
+                  <p className="mt-3 text-sm font-semibold text-amber-700 dark:text-amber-300">
+                    Only {product.stock} left — bulk tier needs {volumePricing.nextTier.minQty}.{" "}
+                    <button type="button" className="underline" onClick={() => setQuoteOpen(true)}>
+                      Request a firm quote
+                    </button>
+                  </p>
+                ) : null}
+                {isPrinted && selectedQty >= bulkQuoteMinQty ? (
+                  <p className="mt-3 text-sm font-semibold text-emerald-800 dark:text-emerald-200">
+                    Ordering {selectedQty}+ copies?{" "}
+                    <button type="button" className="underline" onClick={() => setQuoteOpen(true)}>
+                      Request a bulk quote
+                    </button>
+                  </p>
+                ) : null}
+                {isPrinted && volumeTiers.length > 0 ? (
+                  <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50/70 px-3 py-3 text-sm dark:border-emerald-900 dark:bg-emerald-950/30">
+                    <p className="text-xs font-bold uppercase tracking-[0.14em] text-emerald-800 dark:text-emerald-200">
+                      Bulk pricing (printed)
+                    </p>
+                    <ul className="mt-2 space-y-1 text-slate-600 dark:text-slate-300">
+                      <li>
+                        1–{volumeTiers[0].minQty - 1} copies · {product.currency}{" "}
+                        {(selectedFormat?.price ?? product.price).toFixed(2)} each
+                      </li>
+                      {volumeTiers.map((tier, index) => {
+                        const next = volumeTiers[index + 1];
+                        const range = next ? `${tier.minQty}–${next.minQty - 1}` : `${tier.minQty}+`;
+                        const list = selectedFormat?.price ?? product.price;
+                        const savePct = list > 0 ? Math.round(((list - tier.unitPrice) / list) * 100) : 0;
+                        return (
+                          <li key={tier.minQty}>
+                            {range} copies · {product.currency} {tier.unitPrice.toFixed(2)} each
+                            {savePct > 0 ? (
+                              <span className="font-semibold text-emerald-700 dark:text-emerald-300"> · save {savePct}%</span>
+                            ) : null}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                    {volumePricing?.nextTier ? (
+                      <p className="mt-2 text-xs font-semibold text-emerald-800 dark:text-emerald-200">
+                        Buy {volumePricing.nextTier.minQty}+ to unlock {product.currency}{" "}
+                        {volumePricing.nextTier.unitPrice.toFixed(2)} each
+                      </p>
+                    ) : null}
+                  </div>
+                ) : null}
                 <div className="mt-5 grid gap-2.5 sm:grid-cols-2">
                   <Button disabled={outOfStock} onClick={buyNow} className="h-11">
                     <ShoppingCart className="size-4" /> {product.preorder ? "Pre-order now" : "Buy now"}
@@ -591,6 +919,23 @@ export function LibraryProductPage({
                     <ShoppingBag className="size-4" /> {productQuantity ? `In bag (${productQuantity})` : "Add to cart"}
                   </Button>
                 </div>
+                {isPrinted ? (
+                  <button
+                    type="button"
+                    onClick={() => setQuoteOpen(true)}
+                    className="mt-3 text-sm font-semibold text-emerald-700 underline-offset-2 hover:underline dark:text-emerald-300"
+                  >
+                    Need 20+ printed copies or a team pack? Request a quote
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setQuoteOpen(true)}
+                    className="mt-3 text-sm font-semibold text-emerald-700 underline-offset-2 hover:underline dark:text-emerald-300"
+                  >
+                    Need multi-seat / team digital access? Request a quote
+                  </button>
+                )}
               </div>
             </div>
 
@@ -814,18 +1159,93 @@ export function LibraryProductPage({
             </div>
           </Panel>
 
-          {relatedBundle.length > 0 && (
-            <Panel title="Frequently Bought Together" icon={ShoppingCart} action={<Button onClick={addBundle}>Buy bundle</Button>}>
-              <div className="grid items-stretch gap-3 md:grid-cols-3">
-                {[product, ...relatedBundle].map((item) => (
-                  <Link key={item.id} href={`/library/${item.slug}`} className="flex h-full flex-col rounded-xl border border-slate-200 bg-[#fbfcfb] p-3 transition hover:border-emerald-300 dark:border-slate-800 dark:bg-slate-950">
-                    <p className="text-xs font-bold uppercase text-emerald-700 dark:text-emerald-300">{item.productType.replace(/_/g, " ")}</p>
-                    <p className="mt-1 line-clamp-2 font-semibold">{item.title}</p>
-                    <p className="mt-auto pt-3 text-sm font-semibold tabular-nums">USD {item.price.toFixed(2)}</p>
-                  </Link>
-                ))}
+          {bundleLines.length > 1 && (
+            <Panel
+              title="Frequently Bought Together"
+              icon={ShoppingCart}
+              action={
+                <Button disabled={!bundleAvailable} onClick={addBundle}>
+                  Add bundle to bag
+                </Button>
+              }
+            >
+              <div className={cn("grid items-stretch gap-3", bundleLines.length >= 3 ? "md:grid-cols-3" : "md:grid-cols-2")}>
+                {bundleLines.map((line) => {
+                  const itemFormats = availableLibraryFormats(line.product);
+                  const isMain = line.product.id === product.id;
+                  return (
+                    <div
+                      key={line.product.id}
+                      className={cn(
+                        "flex h-full flex-col rounded-xl border bg-[#fbfcfb] p-3 dark:bg-slate-950",
+                        isMain ? "border-emerald-400 dark:border-emerald-700" : "border-slate-200 dark:border-slate-800",
+                        !line.inStock && "opacity-60",
+                      )}
+                    >
+                      <p className="text-xs font-bold uppercase text-emerald-700 dark:text-emerald-300">{line.format.label}</p>
+                      {isMain ? (
+                        <p className="mt-1 line-clamp-2 font-semibold">{line.product.title}</p>
+                      ) : (
+                        <Link href={`/library/${line.product.slug}`} className="mt-1 line-clamp-2 font-semibold hover:text-emerald-700">
+                          {line.product.title}
+                        </Link>
+                      )}
+                      {!isMain && itemFormats.length > 1 ? (
+                        <label className="mt-3 block text-xs font-semibold text-slate-500">
+                          Format
+                          <select
+                            value={line.format.id}
+                            onChange={(event) =>
+                              setBundleFormatIds((current) => ({ ...current, [line.product.id]: event.target.value }))
+                            }
+                            className="mt-1 h-9 w-full rounded-lg border border-slate-200 bg-white px-2 text-sm font-medium text-ink dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                          >
+                            {itemFormats.map((format) => (
+                              <option key={format.id} value={format.id}>
+                                {format.label} · {line.product.currency} {format.price.toFixed(2)}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                      ) : null}
+                      {!line.inStock ? (
+                        <p className="mt-2 text-xs font-semibold text-amber-700 dark:text-amber-300">Printed format out of stock</p>
+                      ) : null}
+                      <div className="mt-auto flex flex-wrap items-baseline gap-2 pt-3">
+                        <p className="text-sm font-semibold tabular-nums">
+                          {line.product.currency} {line.listPrice.toFixed(2)}
+                        </p>
+                        {line.chargedPrice < line.listPrice - 0.001 ? (
+                          <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-300">
+                            Bundle {line.product.currency} {line.chargedPrice.toFixed(2)}
+                          </p>
+                        ) : null}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-              <p className="mt-4 text-right text-lg font-semibold tracking-tight">Bundle total: USD {bundleTotal.toFixed(2)}</p>
+              <div className="mt-4 flex flex-wrap items-end justify-between gap-3">
+                <div className="text-sm text-slate-500">
+                  {!bundleAvailable ? (
+                    <p className="font-semibold text-amber-700 dark:text-amber-300">
+                      One or more printed formats are out of stock. Switch formats or try again later.
+                    </p>
+                  ) : bundleSavings > 0 ? (
+                    <p className="font-semibold text-emerald-700 dark:text-emerald-300">
+                      Save {product.currency} {bundleSavings.toFixed(2)}
+                      <span className="ml-2 font-medium text-slate-400 line-through">
+                        {product.currency} {bundleSubtotal.toFixed(2)}
+                      </span>
+                    </p>
+                  ) : (
+                    <p>Choose formats above, then add the bundle to your bag.</p>
+                  )}
+                </div>
+                <p className="text-right text-lg font-semibold tracking-tight">
+                  Bundle total: {product.currency} {bundleTotal.toFixed(2)}
+                </p>
+              </div>
             </Panel>
           )}
         </div>
@@ -835,14 +1255,23 @@ export function LibraryProductPage({
             <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-slate-500">Your selection</p>
             <p className="mt-2 text-sm font-semibold text-ink dark:text-white">{selectedFormat?.label || "Library product"}</p>
             {(() => {
-              const sellPrice = selectedFormat?.price ?? product.price;
-              const compareAt = selectedFormat ? libraryFormatCompareAt(selectedFormat) : undefined;
+              const sellPrice = volumePricing?.unitPrice ?? selectedFormat?.price ?? product.price;
+              const listPrice = volumePricing?.listPrice ?? selectedFormat?.price ?? product.price;
+              const compareAt =
+                volumePricing && volumePricing.savingsPerUnit > 0
+                  ? listPrice
+                  : selectedFormat
+                    ? libraryFormatCompareAt(selectedFormat)
+                    : undefined;
               return (
                 <div className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
                   <p className="text-3xl font-semibold tracking-tight text-ink dark:text-white">
                     {product.currency} {sellPrice.toFixed(2)}
+                    {isPrinted && selectedQty > 1 ? (
+                      <span className="ml-1 text-sm font-semibold text-slate-500">ea</span>
+                    ) : null}
                   </p>
-                  {compareAt != null && (
+                  {compareAt != null && compareAt > sellPrice + 0.001 && (
                     <p className="text-sm text-slate-400 line-through">
                       {product.currency} {compareAt.toFixed(2)}
                     </p>
@@ -850,6 +1279,29 @@ export function LibraryProductPage({
                 </div>
               );
             })()}
+            {isPrinted && !outOfStock ? (
+              <div className="mt-3 inline-flex items-center rounded-lg border border-slate-200 dark:border-slate-700">
+                <button
+                  type="button"
+                  disabled={printQty <= 1}
+                  onClick={() => setPrintQty((current) => Math.max(1, current - 1))}
+                  className="grid size-8 place-items-center text-slate-500 hover:text-emerald-700 disabled:opacity-40"
+                  aria-label="Decrease quantity"
+                >
+                  −
+                </button>
+                <span className="w-8 text-center text-xs font-black">{printQty}</span>
+                <button
+                  type="button"
+                  disabled={printQty >= maxPrintQty}
+                  onClick={() => setPrintQty((current) => Math.min(maxPrintQty, current + 1))}
+                  className="grid size-8 place-items-center text-slate-500 hover:text-emerald-700 disabled:opacity-40"
+                  aria-label="Increase quantity"
+                >
+                  +
+                </button>
+              </div>
+            ) : null}
             {formats.length > 1 && (
               <div className="mt-4 grid gap-2">
                 {formats.map((format) => {

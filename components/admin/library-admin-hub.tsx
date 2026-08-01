@@ -21,15 +21,20 @@ import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api/client";
 import {
   enabledLibraryFormats,
+  estimateLibraryBundleScenario,
   getLibraryAnalytics,
   libraryFacets,
   libraryFormatCompareAt,
+  libraryVolumePricing,
+  normalizeLibraryVolumeTiers,
   primaryLibraryFormat,
   searchLibraryProducts,
   type LibraryAnalytics,
+  type LibraryBundleFormatPreference,
   type LibraryOrder,
   type LibraryProduct,
   type LibraryProductFormat,
+  type LibraryVolumeTier,
 } from "@/lib/library/catalog";
 import { defaultLibraryStoreSettings, type LibraryStoreSettings } from "@/lib/library/settings-shared";
 import { cn } from "@/lib/utils";
@@ -258,6 +263,9 @@ type LibraryProductDraft = {
   downloads: LibraryDraftDownload[];
   sampleFile: LibraryDraftDownload | null;
   scheduledAt: string;
+  bundleProductIds: string[];
+  bundlePromoPrice: string;
+  bundleFormatPreference: LibraryBundleFormatPreference;
 };
 
 const emptyOperations: LibraryOperations = {
@@ -394,6 +402,9 @@ export function LibraryAdminHub() {
     editorsChoice: false,
     comingSoon: false,
     preorder: false,
+    bundleProductIds: [],
+    bundlePromoPrice: "",
+    bundleFormatPreference: "MATCH_SHOPPER",
     formats: [
       { id: "digital", type: "PDF", label: "Digital PDF", enabled: true, price: 29 },
       { id: "printed", type: "PRINTED_BOOK", label: "Printed book", enabled: false, price: 45 },
@@ -592,6 +603,9 @@ export function LibraryAdminHub() {
       gallery: product.gallery,
       ...splitSampleFromDownloads(product.downloads),
       scheduledAt: product.scheduledAt ? product.scheduledAt.slice(0, 16) : "",
+      bundleProductIds: product.bundleProductIds ?? [],
+      bundlePromoPrice: product.bundlePromoPrice != null ? String(product.bundlePromoPrice) : "",
+      bundleFormatPreference: product.bundleFormatPreference ?? "MATCH_SHOPPER",
     });
     setDraftOpen(true);
   }
@@ -1532,6 +1546,21 @@ export function LibraryAdminHub() {
                                   Compare-at must be higher than the selling price to display as a promotion.
                                 </p>
                               )}
+                              {format.type === "PRINTED_BOOK" ? (
+                                <PrintedVolumeTiersEditor
+                                  currency={draft.currency.trim() || "USD"}
+                                  basePrice={Number(format.price) || 0}
+                                  tiers={format.volumeTiers ?? []}
+                                  onChange={(volumeTiers) =>
+                                    setDraft((current) => ({
+                                      ...current,
+                                      formats: current.formats.map((item) =>
+                                        item.id === format.id ? { ...item, volumeTiers } : item,
+                                      ),
+                                    }))
+                                  }
+                                />
+                              ) : null}
                             </div>
                           )}
                         </div>
@@ -1543,6 +1572,124 @@ export function LibraryAdminHub() {
                         <p className="text-xs text-amber-300">Upload at least one download file before publishing a digital format.</p>
                       )}
                     </div>
+                  </EditorSection>
+
+                  <EditorSection title="Frequently bought together">
+                    {(() => {
+                      const currency = draft.currency.trim() || "USD";
+                      const promo = draft.bundlePromoPrice.trim() ? Number(draft.bundlePromoPrice) : null;
+                      const mainPreview = {
+                        formats: draft.formats,
+                        productType: draft.productType as LibraryProduct["productType"],
+                        price: Number(draft.price) || 0,
+                        compareAtPrice: draft.compareAtPrice.trim() ? Number(draft.compareAtPrice) : undefined,
+                        sku: draft.sku,
+                        currency,
+                      };
+                      const companionPreview = draft.bundleProductIds
+                        .map((id) => productsSource.find((product) => product.id === id))
+                        .filter((product): product is LibraryProduct => Boolean(product));
+                      const previewProducts = [mainPreview, ...companionPreview];
+                      const digital = estimateLibraryBundleScenario(previewProducts, "digital", promo);
+                      const print = estimateLibraryBundleScenario(previewProducts, "print", promo);
+                      return (
+                    <div className="grid gap-3">
+                      <p className="text-xs leading-5 text-slate-500">
+                        Pick up to 4 published products for this title. Shoppers pick digital or print on the product page. Optional promo total shows a public “Save” amount.
+                      </p>
+                      <div className="max-h-56 space-y-2 overflow-y-auto rounded-lg border border-white/10 p-2">
+                        {productsSource
+                          .filter((product) => product.id !== editingProduct?.id && product.status === "PUBLISHED")
+                          .map((product) => {
+                            const checked = draft.bundleProductIds.includes(product.id);
+                            const disabled = !checked && draft.bundleProductIds.length >= 4;
+                            return (
+                              <label
+                                key={product.id}
+                                className={`flex cursor-pointer items-start gap-2 rounded-lg px-2 py-2 text-sm transition hover:bg-white/5 ${disabled ? "opacity-40" : ""}`}
+                              >
+                                <input
+                                  type="checkbox"
+                                  className="mt-1"
+                                  checked={checked}
+                                  disabled={disabled}
+                                  onChange={() => {
+                                    setDraft((current) => ({
+                                      ...current,
+                                      bundleProductIds: checked
+                                        ? current.bundleProductIds.filter((id) => id !== product.id)
+                                        : [...current.bundleProductIds, product.id].slice(0, 4),
+                                    }));
+                                  }}
+                                />
+                                <span className="min-w-0">
+                                  <span className="block font-semibold text-slate-100">{product.title}</span>
+                                  <span className="mt-0.5 block text-[11px] text-slate-500">
+                                    {enabledLibraryFormats(product)
+                                      .map((format) => `${format.label} ${product.currency} ${format.price.toFixed(2)}`)
+                                      .join(" · ") || `${product.currency} ${product.price.toFixed(2)}`}
+                                  </span>
+                                </span>
+                              </label>
+                            );
+                          })}
+                        {!productsSource.some((product) => product.id !== editingProduct?.id && product.status === "PUBLISHED") && (
+                          <p className="px-2 py-3 text-xs text-slate-500">Publish other products first, then pick them here for the bundle.</p>
+                        )}
+                      </div>
+                      <SelectField
+                        label="Default companion formats"
+                        value={draft.bundleFormatPreference}
+                        onChange={(value) =>
+                          setDraft({
+                            ...draft,
+                            bundleFormatPreference: (["MATCH_SHOPPER", "PREFER_DIGITAL", "PREFER_PRINT"].includes(value)
+                              ? value
+                              : "MATCH_SHOPPER") as LibraryBundleFormatPreference,
+                          })
+                        }
+                        options={["MATCH_SHOPPER", "PREFER_DIGITAL", "PREFER_PRINT"]}
+                      />
+                      <Field
+                        label="Bundle promo total (optional)"
+                        value={draft.bundlePromoPrice}
+                        onChange={(value) => setDraft({ ...draft, bundlePromoPrice: value })}
+                        type="number"
+                        placeholder="e.g. 39 when full digital bundle is 45"
+                      />
+                      {draft.bundleProductIds.length > 0 ? (
+                        <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3 text-xs leading-5 text-slate-300">
+                          <p className="font-semibold text-emerald-300">Live bundle preview</p>
+                          <p className="mt-1.5">
+                            Digital total: <span className="font-semibold text-white">{currency} {digital.total.toFixed(2)}</span>
+                            {digital.savings > 0 ? (
+                              <span className="text-slate-500">
+                                {" "}
+                                (was {currency} {digital.subtotal.toFixed(2)}, save {currency} {digital.savings.toFixed(2)})
+                              </span>
+                            ) : null}
+                          </p>
+                          <p className="mt-1">
+                            Print total: <span className="font-semibold text-white">{currency} {print.total.toFixed(2)}</span>
+                            {print.savings > 0 ? (
+                              <span className="text-slate-500">
+                                {" "}
+                                (was {currency} {print.subtotal.toFixed(2)}, save {currency} {print.savings.toFixed(2)})
+                              </span>
+                            ) : null}
+                          </p>
+                          <p className="mt-1.5 text-[11px] text-slate-500">
+                            Totals use enabled formats on this draft plus selected companions. Set promo below the digital total to show a Save amount.
+                          </p>
+                        </div>
+                      ) : (
+                        <p className="text-[11px] leading-4 text-slate-500">
+                          Leave promo blank for no discount. Pick companions to see live digital/print totals.
+                        </p>
+                      )}
+                    </div>
+                      );
+                    })()}
                   </EditorSection>
 
                   <EditorSection title="Publishing">
@@ -1873,11 +2020,19 @@ function productPayload(draft: LibraryProductDraft, statusOverride?: string) {
   const lines = (value: string) => value.split(/\r?\n/).map((item) => item.trim()).filter(Boolean);
   const tags = draft.tagsText.split(",").map((item) => item.trim()).filter(Boolean);
   const stock = draft.stock.trim() === "" ? null : Number(draft.stock);
-  const formats = draft.formats.map((format) => ({
-    ...format,
-    price: Number(format.price) || 0,
-    compareAtPrice: format.compareAtPrice == null || Number.isNaN(Number(format.compareAtPrice)) ? undefined : Number(format.compareAtPrice),
-  }));
+  const formats = draft.formats.map((format) => {
+    const price = Number(format.price) || 0;
+    const volumeTiers =
+      format.type === "PRINTED_BOOK"
+        ? normalizeLibraryVolumeTiers(format.volumeTiers, price)
+        : undefined;
+    return {
+      ...format,
+      price,
+      compareAtPrice: format.compareAtPrice == null || Number.isNaN(Number(format.compareAtPrice)) ? undefined : Number(format.compareAtPrice),
+      volumeTiers: volumeTiers?.length ? volumeTiers : undefined,
+    };
+  });
   const primary = primaryLibraryFormat(formats, draft.productType as LibraryProduct["productType"], Number(draft.price) || 0);
   return {
     title: draft.title.trim(),
@@ -1911,6 +2066,9 @@ function productPayload(draft: LibraryProductDraft, statusOverride?: string) {
     metaDescription: draft.metaDescription.trim() || undefined,
     seoFocusKeyword: draft.seoFocusKeyword.trim() || undefined,
     seoImageUrl: draft.seoImageUrl.trim() || undefined,
+    bundleProductIds: draft.bundleProductIds,
+    bundlePromoPrice: draft.bundlePromoPrice.trim() ? Number(draft.bundlePromoPrice) : null,
+    bundleFormatPreference: draft.bundleFormatPreference || "MATCH_SHOPPER",
     formats,
     stock,
     lowStockThreshold: Number(draft.lowStockThreshold) || 0,
@@ -1988,6 +2146,8 @@ function normalizeDraftFormats(product: LibraryProduct): LibraryProductFormat[] 
   const all = product.formats?.length ? product.formats : enabledLibraryFormats(product);
   const digital = all.find((format) => format.type !== "PRINTED_BOOK");
   const printed = all.find((format) => format.type === "PRINTED_BOOK");
+  const printedPrice = printed?.price ?? Math.max(product.price + 10, 25);
+  const volumeTiers = normalizeLibraryVolumeTiers(printed?.volumeTiers, printedPrice);
   return [
     {
       id: "digital",
@@ -2003,11 +2163,154 @@ function normalizeDraftFormats(product: LibraryProduct): LibraryProductFormat[] 
       type: "PRINTED_BOOK",
       label: "Printed book",
       enabled: printed ? printed.enabled !== false : false,
-      price: printed?.price ?? Math.max(product.price + 10, 25),
+      price: printedPrice,
       compareAtPrice: printed?.compareAtPrice,
       sku: printed?.sku,
+      volumeTiers: volumeTiers.length ? volumeTiers : undefined,
     },
   ];
+}
+
+function PrintedVolumeTiersEditor({
+  currency,
+  basePrice,
+  tiers,
+  onChange,
+}: {
+  currency: string;
+  basePrice: number;
+  tiers: LibraryVolumeTier[];
+  onChange: (tiers: LibraryVolumeTier[]) => void;
+}) {
+  const tiersKey = JSON.stringify(normalizeLibraryVolumeTiers(tiers, basePrice));
+  const [rows, setRows] = useState<Array<{ minQty: string; unitPrice: string }>>(() => {
+    const initial = normalizeLibraryVolumeTiers(tiers, basePrice);
+    return initial.length
+      ? initial.map((tier) => ({ minQty: String(tier.minQty), unitPrice: String(tier.unitPrice) }))
+      : [{ minQty: "", unitPrice: "" }];
+  });
+
+  useEffect(() => {
+    const fromProps = normalizeLibraryVolumeTiers(JSON.parse(tiersKey) as LibraryVolumeTier[], basePrice);
+    setRows((current) => {
+      const drafting = current.some((row) => {
+        const minQty = row.minQty.trim();
+        const unitPrice = row.unitPrice.trim();
+        if (!minQty && !unitPrice) return false;
+        const parsedMin = Number(minQty);
+        const parsedPrice = Number(unitPrice);
+        return !Number.isFinite(parsedMin) || !Number.isFinite(parsedPrice) || parsedPrice >= basePrice - 0.001;
+      });
+      if (drafting) return current;
+      return fromProps.length
+        ? fromProps.map((tier) => ({ minQty: String(tier.minQty), unitPrice: String(tier.unitPrice) }))
+        : [{ minQty: "", unitPrice: "" }];
+    });
+  }, [tiersKey, basePrice]);
+
+  const normalized = normalizeLibraryVolumeTiers(
+    rows.map((row) => ({ minQty: Number(row.minQty), unitPrice: Number(row.unitPrice) })),
+    basePrice,
+  );
+
+  function pushChange(nextRows: Array<{ minQty: string; unitPrice: string }>) {
+    setRows(nextRows.length ? nextRows : [{ minQty: "", unitPrice: "" }]);
+    onChange(
+      normalizeLibraryVolumeTiers(
+        nextRows.map((row) => ({
+          minQty: Number(row.minQty),
+          unitPrice: Number(row.unitPrice),
+        })),
+        basePrice,
+      ),
+    );
+  }
+
+  return (
+    <div className="mt-2 space-y-2 rounded-lg border border-white/10 bg-slate-950/60 p-3">
+      <p className="text-xs font-semibold text-slate-300">Printed bulk / volume pricing</p>
+      <p className="text-[11px] leading-4 text-slate-500">
+        Optional. When shoppers buy enough printed copies of this title, the unit price drops. Digital formats are never discounted this way. Checkout enforces these tiers.
+      </p>
+      <div className="space-y-2">
+        {rows.map((row, index) => (
+          <div key={`volume-tier-${index}`} className="grid grid-cols-[1fr_1fr_auto] items-end gap-2">
+            <Field
+              label={index === 0 ? "Min qty" : ""}
+              value={row.minQty}
+              onChange={(value) => {
+                const next = rows.map((entry, i) => (i === index ? { ...entry, minQty: value } : entry));
+                pushChange(next);
+              }}
+              type="number"
+              placeholder="5"
+            />
+            <Field
+              label={index === 0 ? "Unit price" : ""}
+              value={row.unitPrice}
+              onChange={(value) => {
+                const next = rows.map((entry, i) => (i === index ? { ...entry, unitPrice: value } : entry));
+                pushChange(next);
+              }}
+              type="number"
+              placeholder={basePrice ? String(Math.max(1, Math.round(basePrice * 0.9))) : "40"}
+            />
+            <button
+              type="button"
+              className="mb-0.5 h-9 rounded-lg border border-white/10 px-2 text-xs text-slate-400 hover:border-red-400 hover:text-red-300"
+              onClick={() => pushChange(rows.filter((_, i) => i !== index))}
+              aria-label="Remove tier"
+            >
+              Remove
+            </button>
+          </div>
+        ))}
+      </div>
+      {rows.length < 5 ? (
+        <button
+          type="button"
+          className="text-xs font-semibold text-emerald-300 hover:text-emerald-200"
+          onClick={() =>
+            pushChange([
+              ...rows,
+              {
+                minQty: String(normalized.length ? normalized[normalized.length - 1].minQty + 5 : 5),
+                unitPrice: String(
+                  normalized.length
+                    ? Math.max(1, Math.round(normalized[normalized.length - 1].unitPrice * 0.9))
+                    : Math.max(1, Math.round(basePrice * 0.9) || 1),
+                ),
+              },
+            ])
+          }
+        >
+          + Add quantity break
+        </button>
+      ) : null}
+      {normalized.length > 0 && basePrice > 0 ? (
+        <div className="rounded-md border border-emerald-500/20 bg-emerald-500/5 p-2 text-[11px] leading-5 text-slate-300">
+          <p className="font-semibold text-emerald-300">Live volume preview</p>
+          {normalized.map((tier) => {
+            const pricing = libraryVolumePricing(
+              { price: basePrice, type: "PRINTED_BOOK", volumeTiers: normalized },
+              tier.minQty,
+            );
+            return (
+              <p key={tier.minQty}>
+                {tier.minQty}+ copies → {currency} {tier.unitPrice.toFixed(2)} each
+                {pricing.savingsPercent > 0 ? (
+                  <span className="text-slate-500">
+                    {" "}
+                    · save {pricing.savingsPercent}% ({currency} {pricing.savingsTotal.toFixed(2)} at {tier.minQty})
+                  </span>
+                ) : null}
+              </p>
+            );
+          })}
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 function formatSummary(product: LibraryProduct) {
@@ -2552,7 +2855,35 @@ function LibraryTabManagement({
   if (view === "Inventory") {
     return (
       <div className="grid gap-5">
-        <MiniMetricGrid rows={[{ label: "Low stock", value: operations.reports.stockAlerts.length, detail: "At or under threshold" }, { label: "Movements", value: operations.reports.inventoryMovements.length, detail: "Recent stock ledger" }, { label: "Physical SKUs", value: products.filter((row) => row.stock !== null).length, detail: "Tracked inventory" }]} />
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <MiniMetricGrid rows={[{ label: "Low stock", value: operations.reports.stockAlerts.length, detail: "At or under threshold" }, { label: "Movements", value: operations.reports.inventoryMovements.length, detail: "Recent stock ledger" }, { label: "Physical SKUs", value: products.filter((row) => row.stock !== null).length, detail: "Tracked inventory" }]} />
+          <Button
+            variant="secondary"
+            onClick={() => {
+              void apiFetch("/api/v1/admin/library", { method: "POST", body: JSON.stringify({ action: "process_abandoned_carts" }) }).then((result) => {
+                if (result.error) {
+                  window.alert(result.error.message || "Could not process abandoned carts.");
+                  return;
+                }
+                const sent = Number((result.data as { sent?: number } | undefined)?.sent ?? 0);
+                window.alert(sent ? `Sent ${sent} abandoned bag reminder(s).` : "No abandoned bags were due for a reminder.");
+              });
+            }}
+          >
+            Send abandoned bag reminders
+          </Button>
+        </div>
+        <AdminDataTable
+          rows={operations.reports.stockAlerts}
+          emptyMessage="No low-stock alerts right now."
+          columns={[
+            { key: "title", header: "Alert", render: (row) => <span className="font-semibold text-white">{row.title}</span> },
+            { key: "stock", header: "Stock", render: (row) => row.stock },
+            { key: "threshold", header: "Threshold", render: (row) => row.threshold },
+            { key: "warehouse", header: "Warehouse", render: (row) => row.warehouse || "—" },
+            { key: "state", header: "State", render: (row) => <AdminStatusBadge status={row.state} variant={row.state === "OUT" ? "danger" : "warning"} /> },
+          ]}
+        />
         <AdminDataTable
           rows={products}
           columns={[

@@ -65,7 +65,7 @@ export async function PATCH(request: Request) {
     }
     case "upsert_legal_page": {
       const page = body.page as { id?: string; title?: string; summary?: string; body?: string; status?: string } | undefined;
-      if (page?.id !== "terms" && page?.id !== "privacy") return problem(400, "INVALID_PAGE", "Legal page is not supported.");
+      if (page?.id !== "terms" && page?.id !== "privacy" && page?.id !== "returns") return problem(400, "INVALID_PAGE", "Legal page is not supported.");
       if (!page.title?.trim()) return problem(400, "TITLE_REQUIRED", "Legal page title is required.");
       if (!page.summary?.trim()) return problem(400, "SUMMARY_REQUIRED", "Legal page summary is required.");
       if (!page.body?.trim()) return problem(400, "BODY_REQUIRED", "Legal page body is required.");

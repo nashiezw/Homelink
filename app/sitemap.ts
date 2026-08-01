@@ -24,6 +24,7 @@ const routes = [
   { path: "/contact", priority: 0.6 },
   { path: "/terms", priority: 0.35 },
   { path: "/privacy", priority: 0.35 },
+  { path: "/returns", priority: 0.35 },
 ] as const;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {

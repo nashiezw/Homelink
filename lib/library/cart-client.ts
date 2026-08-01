@@ -1,6 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import {
+  resolveLibraryVolumeUnitPrice,
+  type LibraryVolumeTier,
+} from "@/lib/library/catalog";
 
 export type LibraryCartLine = {
   productId: string;
@@ -11,6 +15,10 @@ export type LibraryCartLine = {
   formatId?: string;
   formatType?: string;
   formatLabel?: string;
+  /** Base format list price before volume tiers. */
+  listPrice?: number;
+  /** Printed volume tiers copied from the product at add-to-bag time. */
+  volumeTiers?: LibraryVolumeTier[];
 };
 
 const CART_KEY = "houselink_library_cart";
@@ -21,7 +29,11 @@ export function readLibraryCart(): LibraryCartLine[] {
   if (!raw) return [];
   try {
     const parsed = JSON.parse(raw) as LibraryCartLine[];
-    return Array.isArray(parsed) ? parsed.filter((line) => line.productId && line.quantity > 0) : [];
+    return Array.isArray(parsed)
+      ? parsed
+          .filter((line) => line.productId && line.quantity > 0)
+          .map((line) => repriceLibraryCartLine(line, line.quantity))
+      : [];
   } catch {
     return [];
   }
@@ -29,7 +41,9 @@ export function readLibraryCart(): LibraryCartLine[] {
 
 export function writeLibraryCart(cart: LibraryCartLine[]) {
   if (typeof window === "undefined") return;
-  const normalized = cart.filter((line) => line.productId && line.quantity > 0);
+  const normalized = cart
+    .filter((line) => line.productId && line.quantity > 0)
+    .map((line) => repriceLibraryCartLine(line, line.quantity));
   const raw = JSON.stringify(normalized);
   window.localStorage.setItem(CART_KEY, raw);
   window.sessionStorage.setItem(CART_KEY, raw);
@@ -41,6 +55,20 @@ export function notifyLibraryCartAdded(title?: string) {
   window.dispatchEvent(new CustomEvent("houselink:library-cart-added", { detail: { title } }));
 }
 
+export function trackLibraryCartEvent(
+  action: "CART_ADD_SINGLE" | "CART_ADD_BUNDLE",
+  productId: string,
+  metadata?: Record<string, unknown>,
+) {
+  if (typeof window === "undefined" || !productId) return;
+  void fetch("/api/v1/library/events", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action, productId, metadata }),
+    keepalive: true,
+  }).catch(() => undefined);
+}
+
 export function sameLibraryCartLine(
   a: Pick<LibraryCartLine, "productId" | "formatId">,
   b: Pick<LibraryCartLine, "productId" | "formatId">,
@@ -50,6 +78,34 @@ export function sameLibraryCartLine(
 
 export function libraryCartLineKey(line: Pick<LibraryCartLine, "productId" | "formatId">) {
   return `${line.productId}:${line.formatId ?? "default"}`;
+}
+
+export function repriceLibraryCartLine(line: LibraryCartLine, quantity: number): LibraryCartLine {
+  const qty = Math.max(1, Math.floor(Number(quantity) || 1));
+  const listPrice = Number.isFinite(Number(line.listPrice)) ? Number(line.listPrice) : line.price;
+  const formatType = line.formatType === "PRINTED_BOOK" || line.formatType === "DIGITAL_BOOK" || line.formatType === "PDF"
+    ? line.formatType
+    : "PDF";
+  const volumePrice = resolveLibraryVolumeUnitPrice(
+    {
+      price: listPrice,
+      type: formatType,
+      volumeTiers: line.volumeTiers,
+    },
+    qty,
+  );
+  // Keep FBT/bundle promo unit prices at qty 1; volume tiers take over from qty breaks (2+).
+  const unitPrice =
+    qty === 1 && Number.isFinite(Number(line.price)) && Number(line.price) > 0 && Number(line.price) < listPrice - 0.001
+      ? Number(line.price)
+      : volumePrice;
+  return {
+    ...line,
+    quantity: qty,
+    listPrice,
+    price: unitPrice,
+    volumeTiers: formatType === "PRINTED_BOOK" && line.volumeTiers?.length ? line.volumeTiers : undefined,
+  };
 }
 
 export function clearLibraryCart() {
@@ -76,7 +132,7 @@ export function useLibraryCart() {
     setCartState((current) => {
       const resolved = typeof next === "function" ? next(current) : next;
       writeLibraryCart(resolved);
-      return resolved;
+      return resolved.map((line) => repriceLibraryCartLine(line, line.quantity));
     });
   }
 

@@ -6,8 +6,10 @@ import { BookCover } from "@/components/library/book-cover";
 import { LibraryPriceBits } from "@/components/library/library-product-card";
 import { Button } from "@/components/ui/button";
 import {
+  availableLibraryFormats,
   enabledLibraryFormats,
   libraryFormatCompareAt,
+  libraryFormatInStock,
   primaryLibraryFormat,
   type LibraryProduct,
   type LibraryProductFormat,
@@ -26,10 +28,12 @@ export function LibraryFormatPickerDialog({
   onConfirm: (format: LibraryProductFormat) => void;
 }) {
   const formats = enabledLibraryFormats(product);
+  const sellableFormats = availableLibraryFormats(product);
   const [selectedId, setSelectedId] = useState(
-    () => primaryLibraryFormat(formats, product.productType, product.price).id,
+    () => primaryLibraryFormat(sellableFormats.length ? sellableFormats : formats, product.productType, product.price).id,
   );
   const selected = formats.find((format) => format.id === selectedId) ?? formats[0];
+  const selectedInStock = selected ? libraryFormatInStock(product, selected) : false;
 
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
@@ -85,13 +89,16 @@ export function LibraryFormatPickerDialog({
             <div className="space-y-2.5 sm:space-y-3">
               {formats.map((format) => {
                 const selectedFormat = format.id === selected?.id;
+                const inStock = libraryFormatInStock(product, format);
                 return (
                   <button
                     key={format.id}
                     type="button"
-                    onClick={() => setSelectedId(format.id)}
+                    disabled={!inStock}
+                    onClick={() => inStock && setSelectedId(format.id)}
                     className={cn(
                       "w-full rounded-2xl border px-3.5 py-3 text-left transition sm:px-4 sm:py-3.5",
+                      !inStock && "cursor-not-allowed opacity-50",
                       selectedFormat
                         ? "border-[#22a54b] bg-[#e8f4ef] ring-2 ring-[#22a54b]/20 dark:bg-emerald-950/35"
                         : "border-slate-200 bg-white hover:border-[#22a54b]/70 dark:border-slate-700 dark:bg-slate-900",
@@ -101,7 +108,11 @@ export function LibraryFormatPickerDialog({
                       <span className="min-w-0">
                         <span className="block text-sm font-bold text-[#1a3560] dark:text-white">{format.label}</span>
                         <span className="mt-1 block text-xs leading-5 text-slate-500">
-                          {format.type === "PRINTED_BOOK" ? "Printed copy · shipping after payment" : "Digital copy · instant after payment"}
+                          {!inStock
+                            ? "Printed format out of stock"
+                            : format.type === "PRINTED_BOOK"
+                              ? "Printed copy · shipping after payment"
+                              : "Digital copy · instant after payment"}
                         </span>
                       </span>
                       <span className="shrink-0 text-right">
@@ -134,8 +145,8 @@ export function LibraryFormatPickerDialog({
           </button>
           <Button
             type="button"
-            disabled={!selected}
-            onClick={() => selected && onConfirm(selected)}
+            disabled={!selected || !selectedInStock}
+            onClick={() => selected && selectedInStock && onConfirm(selected)}
             className="h-11 rounded-full bg-[#22a54b] hover:bg-[#1e9443] hover:from-[#22a54b] hover:to-[#22a54b]"
           >
             <ShoppingCart className="size-4" /> Add to bag

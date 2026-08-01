@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { ShoppingBag, X } from "lucide-react";
+import { Minus, Plus, ShoppingBag, X } from "lucide-react";
 import { useEffect, useState } from "react";
-import { libraryCartLineKey, useLibraryCart } from "@/lib/library/cart-client";
+import { libraryCartLineKey, repriceLibraryCartLine, useLibraryCart } from "@/lib/library/cart-client";
 import { cn } from "@/lib/utils";
 
 export function LibraryCartFab({ className }: { className?: string }) {
@@ -51,12 +51,51 @@ export function LibraryCartFab({ className }: { className?: string }) {
                     {item.formatLabel}
                   </p>
                 )}
-                <div className="mt-2 flex items-center justify-between text-xs text-[#141414]/50 dark:text-white/50">
-                  <span>Qty {item.quantity}</span>
+                <div className="mt-2 flex items-center justify-between gap-2 text-xs text-[#141414]/50 dark:text-white/50">
+                  <div className="inline-flex items-center rounded border border-black/[0.08] dark:border-white/10">
+                    <button
+                      type="button"
+                      className="grid size-7 place-items-center hover:text-[#22a54b]"
+                      aria-label="Decrease quantity"
+                      onClick={() =>
+                        setCart((current) =>
+                          current.map((line) =>
+                            libraryCartLineKey(line) === libraryCartLineKey(item)
+                              ? repriceLibraryCartLine(line, Math.max(1, line.quantity - 1))
+                              : line,
+                          ),
+                        )
+                      }
+                    >
+                      <Minus className="size-3" />
+                    </button>
+                    <span className="w-7 text-center text-[11px] font-black text-[#141414] dark:text-white">{item.quantity}</span>
+                    <button
+                      type="button"
+                      className="grid size-7 place-items-center hover:text-[#22a54b]"
+                      aria-label="Increase quantity"
+                      onClick={() =>
+                        setCart((current) =>
+                          current.map((line) =>
+                            libraryCartLineKey(line) === libraryCartLineKey(item)
+                              ? repriceLibraryCartLine(line, line.quantity + 1)
+                              : line,
+                          ),
+                        )
+                      }
+                    >
+                      <Plus className="size-3" />
+                    </button>
+                  </div>
                   <span className="font-semibold text-[#141414] dark:text-white">
                     {item.currency} {(item.price * item.quantity).toFixed(2)}
                   </span>
                 </div>
+                {item.listPrice != null && item.listPrice > item.price + 0.001 ? (
+                  <p className="mt-1 text-[11px] font-semibold text-[#22a54b]">
+                    {item.currency} {item.price.toFixed(2)} each
+                  </p>
+                ) : null}
                 <button
                   type="button"
                   className="mt-2 text-xs font-semibold text-red-600 hover:underline"

@@ -1919,6 +1919,9 @@ model LibraryProduct {
   seoFocusKeyword    String?
   seoImageUrl        String?
   formats            Json?
+  bundleProductIds         String[]                  @default([])
+  bundlePromoPrice         Decimal?                  @db.Decimal(12, 2)
+  bundleFormatPreference   String                    @default("MATCH_SHOPPER")
   searchVector       String                    @default("")
   featured           Boolean                   @default(false)
   bestSeller         Boolean                   @default(false)
@@ -2230,6 +2233,44 @@ model LibraryActivity {
   @@index([targetType, targetId, createdAt])
   @@index([actorId, createdAt])
   @@map("library_activity")
+}
+
+model LibraryAbandonedCart {
+  id             String    @id @default(cuid())
+  userId         String?
+  email          String
+  items          Json
+  currency       String    @default("USD")
+  subtotal       Decimal   @db.Decimal(12, 2)
+  reminderCount  Int       @default(0)
+  reminderSentAt DateTime?
+  recoveredAt    DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([email, updatedAt])
+  @@index([userId, updatedAt])
+  @@index([recoveredAt, reminderSentAt])
+  @@map("library_abandoned_carts")
+}
+
+model LibraryQuoteRequest {
+  id         String   @id @default(cuid())
+  productId  String?
+  email      String
+  name       String?
+  phone      String?
+  company    String?
+  quantity   Int      @default(20)
+  formatType String?
+  message    String?
+  status     String   @default("NEW")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([status, createdAt])
+  @@index([productId, createdAt])
+  @@map("library_quote_requests")
 }
 
 model LibraryGuestClaim {
