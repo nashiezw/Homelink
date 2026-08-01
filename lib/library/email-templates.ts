@@ -18,7 +18,7 @@ export type LibraryEmailTemplate = {
 export const defaultLibraryEmailTemplates: Record<LibraryEmailTemplateKey, LibraryEmailTemplate> = {
   orderConfirmation: {
     subject: "Order {{orderNumber}} received — {{storeName}}",
-    body: "Hi {{customerName}},\n\nWe received your Library order {{orderNumber}}.\nTotal: {{currency}} {{total}}\n\nTrack it in My Library: {{orderUrl}}\n\n— {{fromName}}",
+    body: "Hi {{customerName}},\n\nWe received your Library order {{orderNumber}}.\nTotal: {{currency}} {{total}}\n\nPay & upload proof (include your payment reference):\n{{paymentUrl}}\n\nYour books & downloads (My Library):\n{{myLibraryUrl}}\n\nOrder details:\n{{orderUrl}}\n\n{{setPasswordNote}}\n\n— {{fromName}}",
   },
   paymentReceived: {
     subject: "Payment confirmed for {{orderNumber}}",
@@ -46,7 +46,7 @@ export const defaultLibraryEmailTemplates: Record<LibraryEmailTemplateKey, Libra
   },
   abandonedCart: {
     subject: "Your HouseLink Library bag is waiting",
-    body: "Hi {{customerName}},\n\nYou left items in your HouseLink Library bag (about {{currency}} {{subtotal}}).\n\nReturn to checkout:\n{{checkoutUrl}}\n\n— {{fromName}}",
+    body: "Hi {{customerName}},\n\nYou left items in your HouseLink Library bag (about {{currency}} {{subtotal}}).\n\nFinish checkout with your email — no password needed to place the order:\n{{checkoutUrl}}\n\nAfter you order, open My Library in the same browser and set a password so you can sign back in later for downloads.\n\n— {{fromName}}",
   },
   lowStockAlert: {
     subject: "Low stock: {{productTitle}}",

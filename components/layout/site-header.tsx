@@ -9,6 +9,7 @@ import { useAcademyDestination } from "@/components/academy/use-academy-destinat
 import { useApp } from "@/components/providers/app-provider";
 import { usePlatformConfig } from "@/components/providers/platform-config-provider";
 import { AccountHubLink, UserMenu, canListProperty } from "@/components/layout/user-menu";
+import { LibraryHeaderBag } from "@/components/library/library-header-bag";
 import { ACCOUNT_NAV, OWNER_NAV, filterNavForUser } from "@/lib/auth/roles";
 import { cn } from "@/lib/utils";
 
@@ -301,6 +302,8 @@ export function SiteHeader() {
               </span>
             )}
           </Link>
+
+          <LibraryHeaderBag />
 
           <div className="hidden sm:block">
             <UserMenu />

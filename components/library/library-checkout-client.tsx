@@ -4,7 +4,6 @@ import Link from "next/link";
 import { CreditCard, Gift, Lock, MapPin, Minus, Plus, ShoppingCart, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { PageShell } from "@/components/layout/page-shell";
-import { LibraryCartFab } from "@/components/library/library-cart-fab";
 import { LibraryUpsellRail } from "@/components/library/library-upsell-rail";
 import { Button } from "@/components/ui/button";
 import { useApp } from "@/components/providers/app-provider";
@@ -189,6 +188,24 @@ export function LibraryCheckoutClient() {
     }));
   }, [user]);
 
+  // Capture continue-with-email for abandoned-cart reminders once a valid email is entered.
+  useEffect(() => {
+    const email = user?.email?.trim() || (guestEmail.trim().includes("@") ? guestEmail.trim().toLowerCase() : "");
+    if (!email || !cart.length || !quote) return;
+    const timer = window.setTimeout(() => {
+      void apiFetch("/api/v1/library/cart/sync", {
+        method: "POST",
+        body: JSON.stringify({
+          email,
+          items: cart,
+          currency: quote.currency,
+          subtotal: quote.subtotal,
+        }),
+      });
+    }, 800);
+    return () => window.clearTimeout(timer);
+  }, [guestEmail, user?.email, cart, quote]);
+
   useEffect(() => {
     if (paymentMethods[0]?.id && !paymentMethods.some((method) => method.id === paymentMethod)) {
       setPaymentMethod(paymentMethods[0].id);
@@ -272,11 +289,14 @@ export function LibraryCheckoutClient() {
       );
       showToast(result.data.stockWarnings[0]?.message || "Printed quantities were adjusted for stock.", "error");
     }
-    if (user?.email && cart.length) {
+    const syncEmail =
+      user?.email?.trim() ||
+      (guestEmail.trim().includes("@") ? guestEmail.trim().toLowerCase() : "");
+    if (syncEmail && cart.length) {
       void apiFetch("/api/v1/library/cart/sync", {
         method: "POST",
         body: JSON.stringify({
-          email: user.email,
+          email: syncEmail,
           items: cart,
           currency: result.data.currency,
           subtotal: result.data.subtotal,
@@ -488,7 +508,6 @@ export function LibraryCheckoutClient() {
       compactHero
       actions={<Link href="/library" className="border border-white/20 bg-white/10 text-white hover:bg-white/15">Continue shopping</Link>}
     >
-      <LibraryCartFab />
       <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,24rem)]">
         <div className="min-w-0 space-y-6">
           <section className="surface-panel min-w-0 max-w-full rounded-lg p-4 sm:p-5">

@@ -396,7 +396,18 @@ function mergeEmailTemplates(value: unknown): Record<LibraryEmailTemplateKey, Li
     keys.map((key) => {
       const row = asRecord(raw[key]);
       const fallback = defaultLibraryEmailTemplates[key];
-      return [key, { subject: str(row.subject, fallback.subject), body: str(row.body, fallback.body) }];
+      let subject = str(row.subject, fallback.subject);
+      let body = str(row.body, fallback.body);
+      // Refresh legacy saved templates that predate pay-link / continue-with-email copy.
+      if (key === "orderConfirmation" && !body.includes("{{paymentUrl}}")) {
+        subject = fallback.subject;
+        body = fallback.body;
+      }
+      if (key === "abandonedCart" && !/set a password/i.test(body)) {
+        subject = fallback.subject;
+        body = fallback.body;
+      }
+      return [key, { subject, body }];
     }),
   ) as Record<LibraryEmailTemplateKey, LibraryEmailTemplate>;
 }

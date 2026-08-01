@@ -231,9 +231,14 @@ export function LibraryCheckoutConfirmation({
               <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">{stage.description}</p>
               {stage.showBankDetails && (
                 <>
-                  <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
-                    Include reference <strong>{reference}</strong> on your transfer.
-                  </p>
+                  <ol className="mt-3 list-decimal space-y-1.5 pl-5 text-sm leading-6 text-slate-600 dark:text-slate-300">
+                    <li>Pay with the HouseLink details below.</li>
+                    <li>
+                      Put this reference on the transfer:{" "}
+                      <strong className="break-all text-ink dark:text-white">{reference}</strong>
+                    </li>
+                    <li>Upload a clear PDF or photo of the receipt (bank slip, EcoCash, or ZIPIT screenshot).</li>
+                  </ol>
                   {method && (
                     <div className="mt-4 rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950">
                       <p className="text-sm font-bold text-ink dark:text-white">{method.label}</p>
@@ -278,16 +283,21 @@ export function LibraryCheckoutConfirmation({
               )}
 
               {stage.showProofUpload && (
-                <PaymentProofUpload
-                  className="mt-4 w-full"
-                  paymentId={resolvedPaymentId}
-                  label={stage.stage === "proof_rejected" ? "Upload a clearer proof of payment" : "Upload proof of payment"}
-                  onUploaded={() => {
-                    showToast("Proof uploaded. Finance will verify your Library payment.", "success");
-                    void refreshOrder(true);
-                  }}
-                  showToast={showToast}
-                />
+                <div className="mt-4 space-y-2">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Accepted: PDF, PNG, JPG · make sure the reference and amount are readable
+                  </p>
+                  <PaymentProofUpload
+                    className="w-full"
+                    paymentId={resolvedPaymentId}
+                    label={stage.stage === "proof_rejected" ? "Upload a clearer proof of payment" : "Upload proof of payment"}
+                    onUploaded={() => {
+                      showToast("Proof uploaded. Finance will verify your Library payment.", "success");
+                      void refreshOrder(true);
+                    }}
+                    showToast={showToast}
+                  />
+                </div>
               )}
             </div>
           )}

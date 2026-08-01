@@ -1063,13 +1063,21 @@ export async function createLibraryOrderFromCheckout(input: {
     },
   });
   await markLibraryAbandonedCartRecovered(order.customer?.email, input.customerId).catch(() => null);
+  const siteUrl = getCanonicalSiteUrl();
+  const paymentUrl = `${siteUrl}/library/checkout/confirmation?orderId=${encodeURIComponent(order.id)}&paymentId=${encodeURIComponent(input.paymentId)}&status=pending`;
+  const myLibraryUrl = `${siteUrl}/dashboard/my-library`;
+  const orderUrl = `${siteUrl}/dashboard/my-library/orders/${order.id}`;
   await notifyLibraryCustomer(input.customerId, "Library order created", `We received your Library order ${order.orderNumber}.`, {
     templateKey: "orderConfirmation",
     variables: {
       orderNumber: order.orderNumber,
       currency: order.currency,
       total: Number(order.total).toFixed(2),
-      orderUrl: `${getCanonicalSiteUrl()}/dashboard/my-library/orders/${order.id}`,
+      orderUrl,
+      paymentUrl,
+      myLibraryUrl,
+      setPasswordNote:
+        "If you checked out with email only, open My Library while this browser session is still signed in and set a password so you can access downloads later.",
     },
   });
   return { order: toLibraryOrder(order), accessGranted: false };
@@ -2656,6 +2664,7 @@ export async function processLibraryAbandonedCartReminders(options?: { olderThan
   }).catch(() => []);
   let sent = 0;
   for (const row of rows) {
+    const checkoutUrl = `${getCanonicalSiteUrl()}/library/checkout`;
     const result = await sendLibraryTemplatedEmail({
       to: row.email,
       settings,
@@ -2664,10 +2673,10 @@ export async function processLibraryAbandonedCartReminders(options?: { olderThan
         customerName: "there",
         currency: row.currency,
         subtotal: Number(row.subtotal).toFixed(2),
-        checkoutUrl: `${getCanonicalSiteUrl()}/library/checkout`,
+        checkoutUrl,
       },
       fallbackSubject: "Your HouseLink Library bag is waiting",
-      fallbackBody: `Return to checkout: ${getCanonicalSiteUrl()}/library/checkout`,
+      fallbackBody: `Finish checkout with your email (no password needed to place the order): ${checkoutUrl}\n\nAfter ordering, set a password in My Library so you can sign back in for downloads.`,
     });
     if (result.ok) {
       sent += 1;

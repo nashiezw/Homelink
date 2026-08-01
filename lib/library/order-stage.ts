@@ -165,7 +165,8 @@ export function libraryOrderStageCopy(order: LibraryOrderStageInput): {
       return {
         stage,
         title: "Upload proof of payment",
-        description: "Pay with the HouseLink details below, include your payment reference, then upload proof for finance verification.",
+        description:
+          "1) Pay using the HouseLink details below. 2) Put your payment reference on the transfer. 3) Upload a clear PDF or photo of the receipt (bank slip, EcoCash/ZIPIT screenshot).",
         badge: "Awaiting proof",
         tone: "pending",
         showBankDetails: true,
@@ -178,7 +179,8 @@ export function libraryOrderStageCopy(order: LibraryOrderStageInput): {
       return {
         stage: "awaiting_payment",
         title: "Awaiting payment",
-        description: "Pay with the HouseLink bank or mobile money details, then upload your proof of payment.",
+        description:
+          "1) Pay using the HouseLink bank or mobile money details. 2) Include your payment reference on the transfer. 3) Upload a clear PDF or photo of the receipt for finance to verify.",
         badge: "Awaiting payment",
         tone: "pending",
         showBankDetails: true,
