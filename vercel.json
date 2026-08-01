@@ -2,7 +2,7 @@
   "crons": [
     {
       "path": "/api/v1/library/cart/remind",
-      "schedule": "0 */6 * * *"
+      "schedule": "0 6 * * *"
     }
   ]
 }
