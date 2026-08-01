@@ -3,6 +3,12 @@
  * Run: node scripts/check-whatsapp-sticky-analytics.mjs
  */
 
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const root = join(dirname(fileURLToPath(import.meta.url)), "..");
+
 function digitsOnly(value) {
   return String(value || "").replace(/\D/g, "");
 }
@@ -51,6 +57,17 @@ assert(
 
 const funnel = ["library_product_viewed", "library_cart_added", "library_checkout_started", "library_purchase_completed", "whatsapp_click"];
 assert(funnel.every((name) => /^[a-z0-9_]+$/.test(name)), "funnel event names are safe labels");
+
+const whatsappFab = readFileSync(join(root, "components/layout/whatsapp-sticky-fab.tsx"), "utf8");
+const bagFab = readFileSync(join(root, "components/library/library-cart-fab.tsx"), "utf8");
+const headerBag = readFileSync(join(root, "components/library/library-header-bag.tsx"), "utf8");
+const whatsappFixedClass = whatsappFab.match(/"fixed[^"]+"/)?.[0] || "";
+assert(/data-houselink-sticky="whatsapp"/.test(whatsappFab), "WhatsApp sticky marker present");
+assert(whatsappFixedClass.includes("fixed") && !whatsappFixedClass.includes("lg:hidden"), "WhatsApp fixed control is not mobile-only");
+assert(/<span[^>]*className="[^"]*lg:hidden/.test(whatsappFab), "WhatsApp label hides on desktop (icon-only)");
+assert(/lg:size-12|lg:rounded-full/.test(whatsappFab), "WhatsApp compact icon circle on desktop");
+assert(/lg:hidden/.test(bagFab) && /data-houselink-sticky="library-bag"/.test(bagFab), "Library bag FAB is mobile-only");
+assert(/hidden lg:block/.test(headerBag) && /data-houselink-header-bag="library"/.test(headerBag), "Library bag header control is desktop-only");
 
 if (process.exitCode) {
   console.error("WhatsApp sticky / analytics checks failed.");

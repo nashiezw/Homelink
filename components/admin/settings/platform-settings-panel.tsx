@@ -264,7 +264,7 @@ export function PlatformSettingsPanel({ defaultTab = "general" }: { defaultTab?:
                 })
               }
             />
-            Show sticky WhatsApp button (left side, opposite Library bag)
+            Show sticky WhatsApp on all screen sizes (left). Library bag stays mobile FAB / desktop header.
           </label>
           <Input
             label="Sticky WhatsApp button label"

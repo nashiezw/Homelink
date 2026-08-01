@@ -41,14 +41,14 @@ export function LibraryHeaderBag({ className }: { className?: string }) {
   if (!count || onCheckout) return null;
 
   return (
-    <div ref={rootRef} className={cn("relative hidden lg:block", className)}>
+    <div ref={rootRef} data-houselink-header-bag="library" className={cn("relative hidden lg:block", className)}>
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}
         className={iconButtonClass}
         aria-label={`Library bag, ${count} item${count === 1 ? "" : "s"}`}
         aria-expanded={open}
-        title="Library bag"
+        title={`Library bag (${count})`}
       >
         <ShoppingBag className="size-5" strokeWidth={1.75} />
         <span className="absolute right-1 top-1 flex size-[18px] items-center justify-center rounded-full bg-emerald-600 text-[10px] font-bold text-white">

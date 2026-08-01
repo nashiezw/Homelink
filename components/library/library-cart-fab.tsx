@@ -7,6 +7,7 @@ import { LibraryBagDrawer } from "@/components/library/library-bag-drawer";
 import { useLibraryCart } from "@/lib/library/cart-client";
 import { cn } from "@/lib/utils";
 
+/** Mobile / tablet Library bag FAB (right). Hidden at lg+ — desktop uses header bag. */
 export function LibraryCartFab({ className }: { className?: string }) {
   const pathname = usePathname();
   const { count } = useLibraryCart();
@@ -25,7 +26,13 @@ export function LibraryCartFab({ className }: { className?: string }) {
   if (!count || pathname?.startsWith("/library/checkout")) return null;
 
   return (
-    <div className={cn("fixed bottom-[max(1.25rem,env(safe-area-inset-bottom))] right-4 z-[60] flex flex-col items-end gap-3 sm:right-5 lg:hidden", className)}>
+    <div
+      data-houselink-sticky="library-bag"
+      className={cn(
+        "fixed bottom-[max(1.25rem,env(safe-area-inset-bottom))] right-4 z-[60] flex flex-col items-end gap-3 sm:right-5 lg:hidden",
+        className,
+      )}
+    >
       {open ? <LibraryBagDrawer onClose={() => setOpen(false)} /> : null}
       <button
         type="button"

@@ -9,6 +9,11 @@ import { getWhatsAppHref, stickyWhatsAppVisible } from "@/lib/settings/contact";
 import { cn } from "@/lib/utils";
 import { apiFetch } from "@/lib/api/client";
 
+/**
+ * Sticky WhatsApp help — all breakpoints (left).
+ * Mobile/tablet: icon + label. Desktop (lg+): compact icon-only circle.
+ * Pair with Library bag: mobile FAB right, desktop header bag (not a second floating bag).
+ */
 export function WhatsAppStickyFab({ className }: { className?: string }) {
   const pathname = usePathname();
   const { config } = usePlatformConfig();
@@ -42,14 +47,19 @@ export function WhatsAppStickyFab({ className }: { className?: string }) {
       target="_blank"
       rel="noopener noreferrer"
       onClick={onClick}
+      data-houselink-sticky="whatsapp"
+      title={label}
       className={cn(
-        "fixed bottom-[max(1.25rem,env(safe-area-inset-bottom))] left-4 z-[60] inline-flex h-12 items-center gap-2 rounded-2xl bg-[#25D366] px-3.5 text-sm font-bold text-white shadow-[0_12px_30px_rgba(18,140,70,0.35)] transition hover:bg-[#1ebe57] sm:left-5",
+        // Visible on all breakpoints — never lg:hidden.
+        "fixed bottom-[max(1.25rem,env(safe-area-inset-bottom))] left-4 z-[60] inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-[#25D366] text-sm font-bold text-white shadow-[0_12px_30px_rgba(18,140,70,0.35)] transition hover:bg-[#1ebe57] sm:left-5",
+        // Label on small screens; quiet icon-only circle on desktop.
+        "px-3.5 lg:size-12 lg:rounded-full lg:px-0",
         className,
       )}
       aria-label={`Chat on WhatsApp — ${label}`}
     >
       <MessageCircle className="size-5 shrink-0" />
-      <span className="max-w-[7rem] truncate sm:max-w-none">{label}</span>
+      <span className="max-w-[7rem] truncate sm:max-w-none lg:hidden">{label}</span>
     </a>
   );
 }
