@@ -438,9 +438,9 @@ export function LibraryCheckoutClient() {
       actions={<Link href="/library" className="border border-white/20 bg-white/10 text-white hover:bg-white/15">Continue shopping</Link>}
     >
       <LibraryCartFab />
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_24rem]">
-        <div className="space-y-6">
-          <section className="surface-panel rounded-lg p-5">
+      <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,24rem)]">
+        <div className="min-w-0 space-y-6">
+          <section className="surface-panel min-w-0 max-w-full rounded-lg p-4 sm:p-5">
             <h2 className="text-lg font-semibold text-ink dark:text-white">Order summary</h2>
             <div className="mt-4 space-y-3">
               {cart.length ? cart.map((item) => {
@@ -450,21 +450,23 @@ export function LibraryCheckoutClient() {
                 const unitPrice = quoted?.price ?? item.price;
                 const listPrice = item.listPrice ?? unitPrice;
                 return (
-                <div key={libraryCartLineKey(item)} className="flex items-start justify-between gap-4 rounded-lg border border-slate-200 p-4 dark:border-slate-800">
-                  <div>
-                    <p className="font-semibold">{item.title}</p>
+                <div key={libraryCartLineKey(item)} className="flex min-w-0 items-start justify-between gap-3 rounded-lg border border-slate-200 p-3 sm:gap-4 sm:p-4 dark:border-slate-800">
+                  <div className="min-w-0 flex-1">
+                    <p className="break-words font-semibold leading-snug">{item.title}</p>
                     {item.formatLabel && <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">{item.formatLabel}</p>}
-                    <div className="mt-3 inline-flex items-center rounded-lg border border-slate-200 dark:border-slate-700">
-                      <button type="button" onClick={() => quantity(item.productId, item.quantity - 1, item.formatId)} className="grid size-8 place-items-center text-slate-500 hover:text-emerald-700" aria-label="Decrease quantity"><Minus className="size-3.5" /></button>
-                      <span className="w-8 text-center text-xs font-black">{item.quantity}</span>
-                      <button type="button" onClick={() => quantity(item.productId, item.quantity + 1, item.formatId)} className="grid size-8 place-items-center text-slate-500 hover:text-emerald-700" aria-label="Increase quantity"><Plus className="size-3.5" /></button>
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      <div className="inline-flex items-center rounded-lg border border-slate-200 dark:border-slate-700">
+                        <button type="button" onClick={() => quantity(item.productId, item.quantity - 1, item.formatId)} className="grid size-8 place-items-center text-slate-500 hover:text-emerald-700" aria-label="Decrease quantity"><Minus className="size-3.5" /></button>
+                        <span className="w-8 text-center text-xs font-black">{item.quantity}</span>
+                        <button type="button" onClick={() => quantity(item.productId, item.quantity + 1, item.formatId)} className="grid size-8 place-items-center text-slate-500 hover:text-emerald-700" aria-label="Increase quantity"><Plus className="size-3.5" /></button>
+                      </div>
+                      <button type="button" onClick={() => remove(item.productId, item.formatId)} className="inline-flex items-center gap-1 text-xs font-bold text-slate-500 hover:text-red-600">
+                        <Trash2 className="size-3.5" /> Remove
+                      </button>
                     </div>
-                    <button type="button" onClick={() => remove(item.productId, item.formatId)} className="ml-3 inline-flex items-center gap-1 text-xs font-bold text-slate-500 hover:text-red-600">
-                      <Trash2 className="size-3.5" /> Remove
-                    </button>
                   </div>
-                  <div className="text-right">
-                    <p className="font-bold">{item.currency} {(unitPrice * item.quantity).toFixed(2)}</p>
+                  <div className="shrink-0 text-right">
+                    <p className="font-bold tabular-nums">{item.currency} {(unitPrice * item.quantity).toFixed(2)}</p>
                     {listPrice > unitPrice + 0.001 ? (
                       <p className="mt-1 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
                         {item.currency} {unitPrice.toFixed(2)} each
@@ -494,9 +496,9 @@ export function LibraryCheckoutClient() {
             onAddSet={addDigitalUpsellSet}
           />
 
-          <section className="surface-panel rounded-lg p-5">
+          <section className="surface-panel min-w-0 max-w-full rounded-lg p-4 sm:p-5">
             <h2 className="text-lg font-semibold text-ink dark:text-white">Invoice & gift details</h2>
-            <p className="mt-1 text-sm text-slate-500">Optional for firms, training cohorts, and gift orders.</p>
+            <p className="mt-1 break-words text-sm text-slate-500">Optional for firms, training cohorts, and gift orders.</p>
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               <label className="block text-sm font-medium sm:col-span-2">
                 Company / organisation (optional)
@@ -528,7 +530,7 @@ export function LibraryCheckoutClient() {
           </section>
 
           {needsShipping && (
-            <section className="surface-panel rounded-lg p-5">
+            <section className="surface-panel min-w-0 max-w-full rounded-lg p-4 sm:p-5">
               <h2 className="flex items-center gap-2 text-lg font-semibold text-ink dark:text-white">
                 <MapPin className="size-5 text-emerald-600" /> Delivery
               </h2>
@@ -626,8 +628,8 @@ export function LibraryCheckoutClient() {
           )}
         </div>
 
-        <aside className="h-fit space-y-4 lg:sticky lg:top-24">
-          <section className="surface-panel rounded-lg p-5">
+        <aside className="h-fit min-w-0 space-y-4 lg:sticky lg:top-24">
+          <section className="surface-panel min-w-0 max-w-full rounded-lg p-4 sm:p-5">
             <h2 className="text-lg font-semibold text-ink dark:text-white">Payment</h2>
             {storeSettings?.payments?.instructions && (
               <p className="mt-2 text-xs leading-5 text-slate-500">{storeSettings.payments.instructions}</p>

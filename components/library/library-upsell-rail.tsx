@@ -52,11 +52,11 @@ function LibraryUpsellList({
   onAddDigital?: (suggestion: LibraryDigitalUpsellSuggestion) => void;
 }) {
   return (
-    <div className="mt-4 grid gap-2">
+    <div className="mt-4 grid min-w-0 gap-2">
       {suggestions.map((item) => (
         <div
           key={item.productId}
-          className="flex items-center gap-3 rounded-lg border border-slate-200 px-3 py-2.5 dark:border-slate-800"
+          className="flex min-w-0 items-center gap-3 rounded-lg border border-slate-200 px-3 py-2.5 dark:border-slate-800"
         >
           <CoverThumb coverUrl={item.coverUrl} href={`/library/${item.slug}`} size="sm" />
           <div className="min-w-0 flex-1">
@@ -109,7 +109,11 @@ function LibraryUpsellPackBlock({
   busy?: boolean;
   onAddSet?: (pack: LibraryDigitalUpsellPack) => void;
 }) {
-  const cta =
+  const ctaMobile =
+    pack.completesBundle && pack.promoSavings
+      ? `Add set · save ${pack.currency} ${pack.promoSavings.toFixed(2)}`
+      : `Add set · ${pack.currency} ${pack.listSubtotal.toFixed(2)}`;
+  const ctaDesktop =
     pack.completesBundle && pack.promoSavings
       ? `Add set · unlock save ${pack.currency} ${pack.promoSavings.toFixed(2)}`
       : pack.promoSavings
@@ -117,9 +121,9 @@ function LibraryUpsellPackBlock({
         : `Add set · ${pack.currency} ${pack.listSubtotal.toFixed(2)}`;
 
   return (
-    <div className="mt-4 rounded-xl border border-slate-200 p-4 dark:border-slate-800">
+    <div className="mt-4 min-w-0 max-w-full rounded-xl border border-slate-200 p-3 sm:p-4 dark:border-slate-800">
       {pack.promoLabel ? (
-        <p className="inline-flex rounded-md bg-emerald-500/10 px-2 py-1 text-xs font-bold text-emerald-800 dark:text-emerald-200">
+        <p className="max-w-full break-words rounded-md bg-emerald-500/10 px-2 py-1 text-xs font-bold leading-5 text-emerald-800 dark:text-emerald-200">
           {pack.promoLabel}
         </p>
       ) : (
@@ -127,11 +131,11 @@ function LibraryUpsellPackBlock({
           Soft-copy set · {pack.itemCount} title{pack.itemCount === 1 ? "" : "s"}
         </p>
       )}
-      <p className="mt-2 text-sm leading-5 text-slate-600 dark:text-slate-300">{pack.why}</p>
+      <p className="mt-2 break-words text-sm leading-5 text-slate-600 dark:text-slate-300">{pack.why}</p>
 
-      <ul className="mt-3 divide-y divide-slate-100 dark:divide-slate-800">
+      <ul className="mt-3 min-w-0 divide-y divide-slate-100 dark:divide-slate-800">
         {pack.items.map((item) => (
-          <li key={item.productId} className="flex items-center gap-3 py-2.5 first:pt-0 last:pb-0">
+          <li key={item.productId} className="flex min-w-0 items-center gap-2.5 py-2.5 first:pt-0 last:pb-0 sm:gap-3">
             <CoverThumb coverUrl={item.coverUrl} href={`/library/${item.slug}`} size="sm" />
             <div className="min-w-0 flex-1">
               <Link
@@ -142,29 +146,32 @@ function LibraryUpsellPackBlock({
               </Link>
               <p className="mt-0.5 text-xs text-slate-500">{item.formatLabel}</p>
             </div>
-            <p className="shrink-0 text-sm font-semibold tabular-nums">
+            <p className="shrink-0 text-xs font-semibold tabular-nums sm:text-sm">
               {item.currency} {item.price.toFixed(2)}
             </p>
           </li>
         ))}
       </ul>
 
-      <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-3 dark:border-slate-800">
-        <p className="text-sm font-semibold tabular-nums">
-          Soft-copy total{" "}
-          <span className="text-ink dark:text-white">
-            {pack.currency} {pack.listSubtotal.toFixed(2)}
-          </span>
-          {pack.promoSavings ? (
-            <span className="ml-2 text-xs font-bold text-emerald-700 dark:text-emerald-300">
-              Save {pack.currency} {pack.promoSavings.toFixed(2)} on the set
+      <div className="mt-3 grid min-w-0 gap-3 border-t border-slate-100 pt-3 dark:border-slate-800">
+        <div className="min-w-0">
+          <p className="text-sm font-semibold tabular-nums">
+            Soft-copy total{" "}
+            <span className="text-ink dark:text-white">
+              {pack.currency} {pack.listSubtotal.toFixed(2)}
             </span>
+          </p>
+          {pack.promoSavings ? (
+            <p className="mt-1 text-xs font-bold text-emerald-700 dark:text-emerald-300">
+              Save {pack.currency} {pack.promoSavings.toFixed(2)} on the set
+            </p>
           ) : null}
-        </p>
+        </div>
         {onAddSet ? (
-          <Button disabled={busy} onClick={() => onAddSet(pack)} className="shrink-0">
-            <ShoppingCart className="size-4" />
-            {busy ? "Adding set…" : cta}
+          <Button disabled={busy} onClick={() => onAddSet(pack)} className="w-full max-w-full sm:w-auto sm:justify-self-end">
+            <ShoppingCart className="size-4 shrink-0" />
+            <span className="min-w-0 text-center sm:hidden">{busy ? "Adding set…" : ctaMobile}</span>
+            <span className="hidden min-w-0 text-center sm:inline">{busy ? "Adding set…" : ctaDesktop}</span>
           </Button>
         ) : null}
       </div>
@@ -199,9 +206,11 @@ export function LibraryUpsellRail({
   const list = suggestions ?? [];
   if (pack?.items?.length) {
     return (
-      <section className={cn("surface-panel rounded-lg p-5", className)}>
+      <section className={cn("surface-panel min-w-0 max-w-full rounded-lg p-4 sm:p-5", className)}>
         <h2 className="text-lg font-semibold text-ink dark:text-white">{title}</h2>
-        {description ? <p className="mt-1 text-sm text-slate-500">{description}</p> : null}
+        {description ? (
+          <p className="mt-1 break-words text-sm leading-5 text-slate-500">{description}</p>
+        ) : null}
         <LibraryUpsellPackBlock pack={pack} busy={busy} onAddSet={onAddSet} />
       </section>
     );
@@ -209,9 +218,11 @@ export function LibraryUpsellRail({
   if (!list.length) return null;
 
   return (
-    <section className={cn("surface-panel rounded-lg p-5", className)}>
+    <section className={cn("surface-panel min-w-0 max-w-full rounded-lg p-4 sm:p-5", className)}>
       <h2 className="text-lg font-semibold text-ink dark:text-white">{title}</h2>
-      {description ? <p className="mt-1 text-sm text-slate-500">{description}</p> : null}
+      {description ? (
+        <p className="mt-1 break-words text-sm leading-5 text-slate-500">{description}</p>
+      ) : null}
       <LibraryUpsellList
         suggestions={list}
         mode={mode}
