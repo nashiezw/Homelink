@@ -16,9 +16,11 @@ import {
   createPostgresSession,
   getPostgresPublicUserById,
   getPostgresUserByEmail,
+  getPostgresUserById,
   recordPostgresAuditEvent,
   recordPostgresLogin,
   revokePostgresSession,
+  setPostgresUserPassword,
   shouldUsePostgresAuth,
   touchPostgresSession,
   toPublicPostgresUser,
@@ -36,10 +38,48 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json();
-  const action = body.action === "register" ? "register" : "login";
+  const action =
+    body.action === "register" ? "register" : body.action === "set_password" ? "set_password" : "login";
   const email = typeof body.email === "string" ? body.email : "";
   const password = typeof body.password === "string" ? body.password : "";
   const name = typeof body.name === "string" ? body.name : "";
+
+  if (action === "set_password") {
+    let userId: string | null;
+    try {
+      userId = getSessionUserIdFromRequest(request);
+    } catch (error) {
+      if (isSessionSecretConfigurationError(error)) return sessionSecretProblem();
+      throw error;
+    }
+    if (!userId) return problem(401, "UNAUTHORIZED", "Sign in to set a password.");
+    if (!password || password.length < policy.minPasswordLength) {
+      return problem(400, "WEAK_PASSWORD", `Password must be at least ${policy.minPasswordLength} characters.`);
+    }
+    if (shouldUsePostgresAuth()) {
+      const current = await getPostgresUserById(userId);
+      if (!current) return problem(401, "UNAUTHORIZED", "Session is no longer valid.");
+      if (current.passwordHash) {
+        return problem(409, "PASSWORD_ALREADY_SET", "This account already has a password. Sign in with email and password.");
+      }
+      const updated = await setPostgresUserPassword(userId, hashPassword(password));
+      await recordPostgresAuditEvent({
+        actorId: userId,
+        action: "AUTH_PASSWORD_SET",
+        target: userId,
+        metadata: { source: "checkout_continue" },
+      });
+      return ok(toPublicPostgresUser(updated));
+    }
+    const store = getStore();
+    const current = store.getUserById(userId);
+    if (!current) return problem(401, "UNAUTHORIZED", "Session is no longer valid.");
+    if (current.passwordHash) {
+      return problem(409, "PASSWORD_ALREADY_SET", "This account already has a password. Sign in with email and password.");
+    }
+    const updated = store.setUserPassword(userId, hashPassword(password));
+    return ok(store.publicUser(updated!));
+  }
 
   if (!email || !password) {
     return problem(400, "INVALID_CREDENTIALS", "Email and password are required.");
@@ -112,6 +152,13 @@ export async function POST(request: Request) {
 
   if (shouldUsePostgresAuth()) {
     const user = await getPostgresUserByEmail(email);
+    if (user && !user.passwordHash) {
+      return problem(
+        401,
+        "PASSWORD_NOT_SET",
+        "This account was started at checkout. Open My Library while signed in to set a password, then sign in normally next time.",
+      );
+    }
     const passwordMatches = Boolean(user?.passwordHash && verifyPassword(password, user.passwordHash));
     const envSeedMatches = user ? seedPasswordMatches(user.email, password) : false;
     if (!user?.passwordHash || (!passwordMatches && !envSeedMatches)) {
@@ -179,7 +226,14 @@ export async function POST(request: Request) {
 
   const store = getStore();
   const user = store.getUserByEmail(email);
-  if (!user || !verifyPassword(password, user.passwordHash)) {
+  if (user && !user.passwordHash) {
+    return problem(
+      401,
+      "PASSWORD_NOT_SET",
+      "This account was started at checkout. Open My Library while signed in to set a password, then sign in normally next time.",
+    );
+  }
+  if (!user || !user.passwordHash || !verifyPassword(password, user.passwordHash)) {
     return problem(401, "INVALID_CREDENTIALS", "Email or password is incorrect.");
   }
 

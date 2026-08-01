@@ -49,6 +49,7 @@ type LibraryQuote = {
 
 type LibraryPublicSettings = {
   checkout: {
+    guestCheckout?: boolean;
     requireTerms: boolean;
     termsUrl: string;
     privacyUrl: string;
@@ -119,7 +120,7 @@ const emptyShipping: ShippingForm = {
 };
 
 export function LibraryCheckoutClient() {
-  const { showToast, user } = useApp();
+  const { showToast, user, refreshUser, loading: authLoading } = useApp();
   const { cart, setCart, total } = useLibraryCart();
   const [paymentMethod, setPaymentMethod] = useState("bank_transfer");
   const [couponCode, setCouponCode] = useState("");
@@ -136,6 +137,12 @@ export function LibraryCheckoutClient() {
   const [shippingMethod, setShippingMethod] = useState<"SHIPPING" | "PICKUP">("SHIPPING");
   const [upsellPack, setUpsellPack] = useState<LibraryDigitalUpsellPack | null>(null);
   const [upsellBusy, setUpsellBusy] = useState(false);
+  const [guestName, setGuestName] = useState("");
+  const [guestEmail, setGuestEmail] = useState("");
+  const [guestPhone, setGuestPhone] = useState("");
+
+  const guestCheckoutEnabled = storeSettings?.checkout.guestCheckout !== false;
+  const needsContinueEmail = !authLoading && !user && guestCheckoutEnabled;
 
   const needsShipping = useMemo(
     () => cart.some((item) => item.formatType === "PRINTED_BOOK" || /print/i.test(item.formatLabel ?? "") || /print/i.test(item.title)),
@@ -169,6 +176,18 @@ export function LibraryCheckoutClient() {
       }
     });
   }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    setGuestName(user.name || "");
+    setGuestEmail(user.email || "");
+    setGuestPhone(user.phone || "");
+    setShipping((current) => ({
+      ...current,
+      name: current.name || user.name || "",
+      phone: current.phone || user.phone || "",
+    }));
+  }, [user]);
 
   useEffect(() => {
     if (paymentMethods[0]?.id && !paymentMethods.some((method) => method.id === paymentMethod)) {
@@ -328,6 +347,23 @@ export function LibraryCheckoutClient() {
       setError("Library checkout is temporarily disabled.");
       return;
     }
+    if (!user && !guestCheckoutEnabled) {
+      setBusy(false);
+      setError("Sign in to place your Library order.");
+      return;
+    }
+    if (needsContinueEmail) {
+      if (!guestName.trim()) {
+        setBusy(false);
+        setError("Enter your name to continue.");
+        return;
+      }
+      if (!guestEmail.trim() || !guestEmail.includes("@")) {
+        setBusy(false);
+        setError("Enter a valid email so we can attach your books and invoice.");
+        return;
+      }
+    }
     if (storeSettings?.checkout.requireTerms && !termsAccepted) {
       setBusy(false);
       setError("Accept the Library terms to continue.");
@@ -338,7 +374,7 @@ export function LibraryCheckoutClient() {
       setError(shippingMethod === "PICKUP" ? "Local pickup is not available for this address/zone." : "Enter delivery name, phone, address, and city for printed books.");
       return;
     }
-    const result = await apiFetch<{ redirectUrl?: string; order?: { id?: string; orderNumber?: string } }>("/api/v1/library/checkout", {
+    const result = await apiFetch<{ redirectUrl?: string; order?: { id?: string; orderNumber?: string }; needsPassword?: boolean }>("/api/v1/library/checkout", {
       method: "POST",
       body: JSON.stringify({
         items: cart,
@@ -347,15 +383,30 @@ export function LibraryCheckoutClient() {
         shipping: shippingPayload(),
         shippingMethod: needsShipping ? shippingMethod : undefined,
         termsAccepted,
+        ...(needsContinueEmail
+          ? {
+              customer: {
+                name: guestName.trim(),
+                email: guestEmail.trim(),
+                phone: guestPhone.trim() || undefined,
+              },
+            }
+          : {}),
       }),
     });
-    setBusy(false);
     if (result.data?.redirectUrl) {
+      await refreshUser();
       clearLibraryCart();
-      showToast("Order created. Complete payment with the bank details on the next page.", "success");
+      showToast(
+        result.data.needsPassword
+          ? "Order created. Set a password on the next page so you can sign back in later."
+          : "Order created. Complete payment with the bank details on the next page.",
+        "success",
+      );
       window.location.href = result.data.redirectUrl;
       return;
     }
+    setBusy(false);
     const message = result.error?.message ?? "We could not create your Library order. Please try again.";
     setError(message);
     showToast(message, "error");
@@ -495,6 +546,82 @@ export function LibraryCheckoutClient() {
             busy={upsellBusy}
             onAddSet={addDigitalUpsellSet}
           />
+
+          {needsContinueEmail ? (
+            <section className="surface-panel min-w-0 max-w-full rounded-lg p-4 sm:p-5">
+              <h2 className="text-lg font-semibold text-ink dark:text-white">Continue with email</h2>
+              <p className="mt-1 break-words text-sm text-slate-500">
+                No password needed to place this order. We create a light HouseLink account for your invoice and downloads — you can set a password after checkout.
+              </p>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <label className="block text-sm font-medium sm:col-span-2">
+                  Full name
+                  <input
+                    value={guestName}
+                    onChange={(e) => {
+                      setGuestName(e.target.value);
+                      setShipping((current) => ({ ...current, name: current.name || e.target.value }));
+                    }}
+                    className="mt-2 h-11 w-full rounded-lg border border-slate-200 px-3 dark:border-slate-700 dark:bg-slate-900"
+                    placeholder="As on your invoice"
+                    autoComplete="name"
+                    required
+                  />
+                </label>
+                <label className="block text-sm font-medium">
+                  Email
+                  <input
+                    type="email"
+                    value={guestEmail}
+                    onChange={(e) => setGuestEmail(e.target.value)}
+                    className="mt-2 h-11 w-full rounded-lg border border-slate-200 px-3 dark:border-slate-700 dark:bg-slate-900"
+                    placeholder="you@example.com"
+                    autoComplete="email"
+                    required
+                  />
+                </label>
+                <label className="block text-sm font-medium">
+                  Phone (optional)
+                  <input
+                    value={guestPhone}
+                    onChange={(e) => {
+                      setGuestPhone(e.target.value);
+                      setShipping((current) => ({ ...current, phone: current.phone || e.target.value }));
+                    }}
+                    className="mt-2 h-11 w-full rounded-lg border border-slate-200 px-3 dark:border-slate-700 dark:bg-slate-900"
+                    placeholder="+263…"
+                    autoComplete="tel"
+                  />
+                </label>
+              </div>
+              <p className="mt-3 text-sm text-slate-500">
+                Already have an account?{" "}
+                <Link href="/auth?mode=login&next=/library/checkout" className="font-semibold text-emerald-700 underline dark:text-emerald-300">
+                  Sign in
+                </Link>
+              </p>
+            </section>
+          ) : !user && !authLoading ? (
+            <section className="surface-panel min-w-0 max-w-full rounded-lg p-4 sm:p-5">
+              <h2 className="text-lg font-semibold text-ink dark:text-white">Sign in to checkout</h2>
+              <p className="mt-1 text-sm text-slate-500">Guest checkout is currently off. Sign in to place your Library order.</p>
+              <Link
+                href="/auth?mode=login&next=/library/checkout"
+                className="mt-4 inline-flex h-11 items-center justify-center rounded-lg bg-emerald-700 px-4 text-sm font-bold text-white hover:bg-emerald-600"
+              >
+                Sign in to continue
+              </Link>
+            </section>
+          ) : user ? (
+            <section className="surface-panel min-w-0 max-w-full rounded-lg p-4 sm:p-5">
+              <h2 className="text-lg font-semibold text-ink dark:text-white">Buying as</h2>
+              <p className="mt-2 break-words text-sm text-slate-600 dark:text-slate-300">
+                <span className="font-semibold text-ink dark:text-white">{user.name}</span>
+                <span className="text-slate-400"> · </span>
+                {user.email}
+              </p>
+            </section>
+          ) : null}
 
           <section className="surface-panel min-w-0 max-w-full rounded-lg p-4 sm:p-5">
             <h2 className="text-lg font-semibold text-ink dark:text-white">Invoice & gift details</h2>
@@ -695,15 +822,32 @@ export function LibraryCheckoutClient() {
                 <span>Total</span>
                 <span>{quote?.currency ?? "USD"} {payable.toFixed(2)}{quoting ? "…" : ""}</span>
               </div>
-              <Button className="mt-4 w-full" disabled={!cart.length || busy || !shippingReady() || Boolean(storeSettings?.checkout.requireTerms && !termsAccepted) || storeSettings?.store.enabled === false} onClick={() => void checkout()}>
-                <CreditCard className="size-4" /> {busy ? "Creating order..." : "Place order"}
+              <Button
+                className="mt-4 w-full"
+                disabled={
+                  !cart.length ||
+                  busy ||
+                  authLoading ||
+                  (!user && !guestCheckoutEnabled) ||
+                  !shippingReady() ||
+                  Boolean(storeSettings?.checkout.requireTerms && !termsAccepted) ||
+                  storeSettings?.store.enabled === false
+                }
+                onClick={() => void checkout()}
+              >
+                <CreditCard className="size-4" /> {busy ? "Creating order..." : needsContinueEmail ? "Continue & place order" : "Place order"}
               </Button>
               {error && <p role="alert" className="mt-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-200">{error}</p>}
             </div>
           </section>
           <section className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-950 dark:border-emerald-900/40 dark:bg-emerald-950/20 dark:text-emerald-100">
             <p className="flex gap-2 font-semibold"><Lock className="size-4" /> Secure checkout</p>
-            <p className="mt-2 leading-6">Orders, payments, invoices, and downloads are tied to your HouseLink account. Zone rates, Library payment methods, and tax settings are applied live from admin.</p>
+            <p className="mt-2 leading-6">
+              {needsContinueEmail
+                ? "Continue with email creates a light account for this order — set a password after checkout to sign back in later."
+                : "Orders, payments, invoices, and downloads are tied to your HouseLink account."}{" "}
+              Zone rates, Library payment methods, and tax settings are applied live from admin.
+            </p>
           </section>
         </aside>
       </div>

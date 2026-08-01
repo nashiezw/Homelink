@@ -201,7 +201,7 @@ export const defaultLibraryStoreSettings: LibraryStoreSettings = {
     enabled: true,
   },
   checkout: {
-    guestCheckout: false,
+    guestCheckout: true,
     requireAccountForDigital: true,
     requireTerms: false,
     termsUrl: "/terms",
@@ -563,6 +563,7 @@ export function publicLibraryStoreSettings(settings: LibraryStoreSettings) {
   return {
     store: settings.store,
     checkout: {
+      guestCheckout: settings.checkout.guestCheckout,
       requireTerms: settings.checkout.requireTerms,
       termsUrl: settings.checkout.termsUrl,
       privacyUrl: settings.checkout.privacyUrl,

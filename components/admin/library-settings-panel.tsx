@@ -301,7 +301,7 @@ export function LibrarySettingsPanel({
                   <ToggleRow label="Require terms acceptance" checked={draft.checkout.requireTerms} onChange={(requireTerms) => setDraft({ ...draft, checkout: { ...draft.checkout, requireTerms } })} />
                   <ToggleRow label="Allow coupons at checkout" checked={draft.checkout.allowCoupons} onChange={(allowCoupons) => setDraft({ ...draft, checkout: { ...draft.checkout, allowCoupons } })} />
                   <ToggleRow label="Require account for digital products" checked={draft.checkout.requireAccountForDigital} onChange={(requireAccountForDigital) => setDraft({ ...draft, checkout: { ...draft.checkout, requireAccountForDigital } })} />
-                  <ToggleRow label="Allow guest checkout (future claims flow)" checked={draft.checkout.guestCheckout} onChange={(guestCheckout) => setDraft({ ...draft, checkout: { ...draft.checkout, guestCheckout } })} />
+                  <ToggleRow label="Continue with email at checkout (light account, set password later)" checked={draft.checkout.guestCheckout} onChange={(guestCheckout) => setDraft({ ...draft, checkout: { ...draft.checkout, guestCheckout } })} />
                 </div>
               </Section>
             )}

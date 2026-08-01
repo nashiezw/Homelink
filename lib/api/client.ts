@@ -36,6 +36,8 @@ export type PublicUser = {
   email: string;
   phone?: string;
   roles: string[];
+  /** False for continue-with-email checkout accounts until they set a password. */
+  hasPassword?: boolean;
   verification: {
     identity: string;
     phone: string;

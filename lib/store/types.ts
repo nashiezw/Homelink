@@ -22,7 +22,7 @@ export type AccountStatus = "ACTIVE" | "SUSPENDED" | "BLOCKED" | "DELETED";
 export type StoreUser = {
   id: string;
   email: string;
-  passwordHash: string;
+  passwordHash: string | null;
   name: string;
   phone?: string;
   city?: string;

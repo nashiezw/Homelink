@@ -26,6 +26,7 @@ const PUBLIC_USER_SELECT = {
   phoneVerifiedAt: true,
   emailVerifiedAt: true,
   createdAt: true,
+  passwordHash: true,
 } satisfies Prisma.UserSelect;
 
 export type PublicPostgresUserRow = Prisma.UserGetPayload<{ select: typeof PUBLIC_USER_SELECT }> & {
@@ -42,7 +43,7 @@ export async function getPostgresPublicUserById(id: string) {
 
 export async function createPostgresUser(input: {
   email: string;
-  passwordHash: string;
+  passwordHash: string | null;
   name: string;
   phone?: string;
 }) {
@@ -56,6 +57,16 @@ export async function createPostgresUser(input: {
       roles: [Role.SEEKER],
       identityStatus: VerificationStatus.PENDING,
     },
+  });
+}
+
+/** Set password for a signed-in passwordless (checkout) account. */
+export async function setPostgresUserPassword(userId: string, passwordHash: string) {
+  await ensureCoreProductionSchema();
+  return getMainPrisma().user.update({
+    where: { id: userId },
+    data: { passwordHash },
+    select: PUBLIC_USER_SELECT,
   });
 }
 
@@ -162,6 +173,7 @@ export function toPublicPostgresUser(user: PublicPostgresUserRow) {
     phone: user.phone ?? undefined,
     roles: user.roles,
     accountStatus: user.accountStatus ?? "ACTIVE",
+    hasPassword: Boolean(user.passwordHash),
     verification: {
       identity: user.identityStatus,
       phone: user.phoneVerifiedAt ? "VERIFIED" : "PENDING",

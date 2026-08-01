@@ -1272,7 +1272,7 @@ class AppStore {
     return null;
   }
 
-  createUser(input: { email: string; passwordHash: string; name: string; phone?: string; city?: string }) {
+  createUser(input: { email: string; passwordHash: string | null; name: string; phone?: string; city?: string }) {
     const user = baseUser({
       id: `user_${crypto.randomUUID()}`,
       email: input.email.toLowerCase().trim(),
@@ -1296,6 +1296,14 @@ class AppStore {
     return user;
   }
 
+  setUserPassword(userId: string, passwordHash: string) {
+    const user = this.getUserById(userId);
+    if (!user) return null;
+    user.passwordHash = passwordHash;
+    this.touch();
+    return user;
+  }
+
   recordLogin(userId: string) {
     const user = this.getUserById(userId);
     if (user) {
@@ -1312,6 +1320,7 @@ class AppStore {
       phone: user.phone,
       roles: user.roles,
       accountStatus: user.accountStatus,
+      hasPassword: Boolean(user.passwordHash),
       verification: user.verification,
     };
   }

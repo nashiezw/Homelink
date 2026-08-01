@@ -5,6 +5,7 @@ import { Download, FileText, Heart, PackageCheck, Star, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { PageShell } from "@/components/layout/page-shell";
 import { LibraryUpsellRail } from "@/components/library/library-upsell-rail";
+import { SetPasswordCard } from "@/components/library/set-password-card";
 import { Button } from "@/components/ui/button";
 import { useApp } from "@/components/providers/app-provider";
 import { apiFetch } from "@/lib/api/client";
@@ -115,15 +116,17 @@ export function MyLibraryClient({
       compactHero
       actions={<Link href="/library" className="bg-emerald-600 text-white hover:bg-emerald-500">Browse Library</Link>}
     >
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
-        <div className="space-y-6">
+      <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)]">
+        <div className="min-w-0 space-y-6">
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             <Stat icon={PackageCheck} label="Purchases" value={library.orders.length} />
             <Stat icon={Download} label="Downloads" value={library.downloads.length || purchased.reduce((sum, product) => sum + product.downloads.length, 0)} />
             <Stat icon={Heart} label="Wishlist" value={library.wishlistCount ?? library.wishlist?.length ?? 0} />
           </div>
 
-          <section className="surface-panel rounded-lg p-5">
+          <SetPasswordCard />
+
+          <section className="surface-panel min-w-0 max-w-full rounded-lg p-4 sm:p-5">
             <h2 className="text-lg font-semibold text-ink dark:text-white">Purchased Resources</h2>
             <div className="mt-4 grid gap-4">
               {purchased.map((product) => (

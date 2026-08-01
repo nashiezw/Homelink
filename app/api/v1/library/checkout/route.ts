@@ -1,4 +1,5 @@
-import { getSessionUserIdFromRequest } from "@/lib/auth/session";
+import { getSessionUserIdFromRequest, sessionCookieHeader } from "@/lib/auth/session";
+import { ensureLibraryCheckoutBuyer } from "@/lib/auth/lightweight-user";
 import { created, problem } from "@/lib/api/response";
 import {
   completePaymentInPostgres,
@@ -26,18 +27,60 @@ type CheckoutLine = {
   formatLabel?: string;
 };
 
-export async function POST(request: Request) {
-  const userId = getSessionUserIdFromRequest(request);
-  if (!userId) return problem(401, "UNAUTHORIZED", "Sign in to checkout.");
+function withOptionalSessionCookie<T>(data: T, session?: { sessionId: string; maxAgeSeconds: number; userId: string } | null) {
+  const response = created(data);
+  if (session) {
+    response.headers.set("Set-Cookie", sessionCookieHeader(session.sessionId, session.maxAgeSeconds, session.userId));
+  }
+  return response;
+}
 
-  const body = await request.json();
-  const items = Array.isArray(body.items) ? (body.items as CheckoutLine[]) : [];
-  if (!items.length) return problem(400, "EMPTY_CART", "Add at least one Library product to checkout.");
+export async function POST(request: Request) {
+  let body: Record<string, unknown>;
+  try {
+    body = await request.json();
+  } catch {
+    return problem(400, "INVALID_JSON", "Request body must be valid JSON.");
+  }
 
   const librarySettings = await getLibraryStoreSettings();
   if (!librarySettings.store.enabled) {
     return problem(503, "LIBRARY_DISABLED", "HouseLink Library checkout is temporarily disabled.");
   }
+
+  let userId = getSessionUserIdFromRequest(request);
+  let newSession: { sessionId: string; maxAgeSeconds: number; userId: string } | null = null;
+  let continueEmail = false;
+
+  if (!userId) {
+    if (!librarySettings.checkout.guestCheckout) {
+      return problem(401, "UNAUTHORIZED", "Sign in to checkout.");
+    }
+    const customer = (body.customer && typeof body.customer === "object" ? body.customer : {}) as {
+      name?: unknown;
+      email?: unknown;
+      phone?: unknown;
+    };
+    const buyer = await ensureLibraryCheckoutBuyer({
+      name: typeof customer.name === "string" ? customer.name : "",
+      email: typeof customer.email === "string" ? customer.email : "",
+      phone: typeof customer.phone === "string" ? customer.phone : undefined,
+    });
+    if (!buyer.ok) {
+      return problem(buyer.status, buyer.code, buyer.message);
+    }
+    userId = buyer.userId;
+    newSession = {
+      sessionId: buyer.sessionId,
+      maxAgeSeconds: buyer.maxAgeSeconds,
+      userId: buyer.userId,
+    };
+    continueEmail = true;
+  }
+
+  const items = Array.isArray(body.items) ? (body.items as CheckoutLine[]) : [];
+  if (!items.length) return problem(400, "EMPTY_CART", "Add at least one Library product to checkout.");
+
   if (librarySettings.checkout.requireTerms && !body.termsAccepted) {
     return problem(400, "TERMS_REQUIRED", "Accept the Library terms to continue checkout.");
   }
@@ -45,8 +88,8 @@ export async function POST(request: Request) {
     return problem(400, "COUPONS_DISABLED", "Coupons are currently disabled for Library checkout.");
   }
   const shipping = (body.shipping ?? null) as LibraryShippingAddress | null;
-  const shippingMethod = body.shippingMethod === "PICKUP" ? "PICKUP" as const : "SHIPPING" as const;
-  const quote = await quoteLibraryCart(items, body.couponCode, userId, {
+  const shippingMethod = body.shippingMethod === "PICKUP" ? ("PICKUP" as const) : ("SHIPPING" as const);
+  const quote = await quoteLibraryCart(items, typeof body.couponCode === "string" ? body.couponCode : undefined, userId, {
     country: shipping?.country,
     province: shipping?.province,
     city: shipping?.city,
@@ -87,7 +130,7 @@ export async function POST(request: Request) {
         customerId: userId,
         paymentId: payment.id,
         items,
-        couponCode: body.couponCode,
+        couponCode: typeof body.couponCode === "string" ? body.couponCode : undefined,
         shipping,
         shippingMethod,
       });
@@ -102,18 +145,23 @@ export async function POST(request: Request) {
     }
     const grant = completed ? await fulfillPaidLibraryOrdersForPayment(payment.id) : { orders: 0, downloads: 0 };
     const status = completed ? "success" : "pending";
-    return created({
-      ...(completed ?? payment),
-      description,
-      order: order.order,
-      quote,
-      accessGranted: grant.downloads > 0,
-      items: quote.items,
-      redirectUrl: `/library/checkout/confirmation?orderId=${encodeURIComponent(order.order.id)}&paymentId=${encodeURIComponent(payment.id)}&status=${status}`,
-      bankDetails: manualMethod ? paymentSettings.bankDetails : undefined,
-      manualMethod,
-      libraryPaymentInstructions: librarySettings.payments.instructions,
-    });
+    return withOptionalSessionCookie(
+      {
+        ...(completed ?? payment),
+        description,
+        order: order.order,
+        quote,
+        accessGranted: grant.downloads > 0,
+        items: quote.items,
+        continueEmail,
+        needsPassword: Boolean(continueEmail),
+        redirectUrl: `/library/checkout/confirmation?orderId=${encodeURIComponent(order.order.id)}&paymentId=${encodeURIComponent(payment.id)}&status=${status}`,
+        bankDetails: manualMethod ? paymentSettings.bankDetails : undefined,
+        manualMethod,
+        libraryPaymentInstructions: librarySettings.payments.instructions,
+      },
+      newSession,
+    );
   }
 
   try {
@@ -128,20 +176,25 @@ export async function POST(request: Request) {
       customerId: userId,
       paymentId: payment.id,
       items,
-      couponCode: body.couponCode,
+      couponCode: typeof body.couponCode === "string" ? body.couponCode : undefined,
       shipping,
       shippingMethod,
     });
-    return created({
-      ...payment,
-      description,
-      order: order.order,
-      quote,
-      accessGranted: false,
-      items: quote.items,
-      redirectUrl: `/library/checkout/confirmation?orderId=${encodeURIComponent(order.order.id)}&paymentId=${encodeURIComponent(payment.id)}&status=pending`,
-      libraryPaymentInstructions: librarySettings.payments.instructions,
-    });
+    return withOptionalSessionCookie(
+      {
+        ...payment,
+        description,
+        order: order.order,
+        quote,
+        accessGranted: false,
+        items: quote.items,
+        continueEmail,
+        needsPassword: Boolean(continueEmail),
+        redirectUrl: `/library/checkout/confirmation?orderId=${encodeURIComponent(order.order.id)}&paymentId=${encodeURIComponent(payment.id)}&status=pending`,
+        libraryPaymentInstructions: librarySettings.payments.instructions,
+      },
+      newSession,
+    );
   } catch (error) {
     const message = error instanceof Error ? error.message : "Library order could not be created.";
     return problem(500, "LIBRARY_ORDER_FAILED", message);

@@ -5,6 +5,7 @@ import { CheckCircle2, Clock, CreditCard, FileText, LibraryBig, ReceiptText, Ref
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { PageShell } from "@/components/layout/page-shell";
 import { LibraryUpsellRail } from "@/components/library/library-upsell-rail";
+import { SetPasswordCard } from "@/components/library/set-password-card";
 import { PaymentProofUpload } from "@/components/payments/payment-proof-upload";
 import { Button } from "@/components/ui/button";
 import { useApp } from "@/components/providers/app-provider";
@@ -115,13 +116,14 @@ export function LibraryCheckoutConfirmation({
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_24rem]">
-        <div className="space-y-6">
-        <section className="surface-panel rounded-lg p-5">
+      <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,24rem)]">
+        <div className="min-w-0 space-y-6">
+        <SetPasswordCard />
+        <section className="surface-panel min-w-0 max-w-full rounded-lg p-4 sm:p-5">
           <div className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-5 dark:border-slate-800">
-            <div>
+            <div className="min-w-0">
               <div className="flex items-center gap-2">
-                {stage.tone === "success" ? <CheckCircle2 className="size-6 text-emerald-600" /> : stage.tone === "error" ? <XCircle className="size-6 text-red-600" /> : <Clock className="size-6 text-amber-500" />}
+                {stage.tone === "success" ? <CheckCircle2 className="size-6 shrink-0 text-emerald-600" /> : stage.tone === "error" ? <XCircle className="size-6 shrink-0 text-red-600" /> : <Clock className="size-6 shrink-0 text-amber-500" />}
                 <h2 className="text-xl font-semibold text-ink dark:text-white">{order.orderNumber}</h2>
               </div>
               <p className="mt-2 text-sm text-slate-500">Created {new Date(order.createdAt).toLocaleString()}</p>
