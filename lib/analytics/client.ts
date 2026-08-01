@@ -2,6 +2,7 @@
 
 import { apiFetch } from "@/lib/api/client";
 import type { AnalyticsEventName } from "@/lib/analytics/events";
+import { shouldMirrorFunnelEvent } from "@/lib/analytics/events";
 import { isAnalyticsAllowed } from "@/lib/analytics/privacy-client";
 import {
   detectDeviceType,
@@ -17,14 +18,7 @@ export function trackEvent(event: AnalyticsEventName, target?: string, metadata?
     method: "POST",
     body: JSON.stringify({ event, target, metadata: { ...utm, ...metadata } }),
   });
-  // Mirror funnel-relevant events into first-party SiteFunnelEvent storage.
-  if (
-    event.startsWith("library_") ||
-    event === "whatsapp_click" ||
-    event === "enquiry_started" ||
-    event === "enquiry_completed" ||
-    event === "payment_started"
-  ) {
+  if (shouldMirrorFunnelEvent(event)) {
     void apiFetch("/api/v1/analytics/pageviews", {
       method: "POST",
       body: JSON.stringify({

@@ -427,7 +427,7 @@ export function LibraryCheckoutClient() {
     if (result.data?.redirectUrl) {
       trackEvent("library_purchase_completed", result.data.order?.id, { items: cart.length });
       await refreshUser();
-      clearLibraryCart();
+      clearLibraryCart({ track: false });
       showToast(
         result.data.needsPassword
           ? "Order created. Set a password on the next page so you can sign back in later."
@@ -444,14 +444,33 @@ export function LibraryCheckoutClient() {
   }
 
   function remove(productId: string, formatId?: string) {
+    const line = cart.find((item) => sameLibraryCartLine(item, { productId, formatId }));
+    if (line) {
+      trackLibraryCartEvent("CART_REMOVE", productId, {
+        title: line.title,
+        quantity: line.quantity,
+        formatLabel: line.formatLabel,
+        price: line.price,
+      });
+    }
     setCart((current) => current.filter((item) => !sameLibraryCartLine(item, { productId, formatId })));
   }
 
   function quantity(productId: string, value: number, formatId?: string) {
+    const nextQty = Math.max(1, value);
+    const line = cart.find((item) => sameLibraryCartLine(item, { productId, formatId }));
+    if (line && line.quantity !== nextQty) {
+      trackLibraryCartEvent("CART_QTY_CHANGE", productId, {
+        title: line.title,
+        quantity: nextQty,
+        formatLabel: line.formatLabel,
+        direction: nextQty > line.quantity ? "up" : "down",
+      });
+    }
     setCart((current) =>
       current.map((item) =>
         sameLibraryCartLine(item, { productId, formatId })
-          ? repriceLibraryCartLine(item, Math.max(1, value))
+          ? repriceLibraryCartLine(item, nextQty)
           : item,
       ),
     );

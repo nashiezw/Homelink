@@ -289,8 +289,12 @@ export function LibraryProductPage({
   }, [galleryImages.length]);
 
   useEffect(() => {
-    trackEvent("library_product_viewed", product.id, { slug: product.slug });
-  }, [product.id, product.slug]);
+    trackEvent("library_product_viewed", product.id, {
+      slug: product.slug,
+      title: product.title,
+      productId: product.id,
+    });
+  }, [product.id, product.slug, product.title]);
 
   // Tell floating FABs to clear the mobile "Add bundle" dock.
   useEffect(() => {
@@ -305,6 +309,32 @@ export function LibraryProductPage({
       setHouseLinkBottomDock(null);
     };
   }, [bundleLines.length]);
+
+  useEffect(() => {
+    if (bundleLines.length > 1) {
+      trackEvent("library_bundle_shown", product.id, {
+        title: product.title,
+        companions: bundleLines.length - 1,
+      });
+    }
+  }, [bundleLines.length, product.id, product.title]);
+
+  useEffect(() => {
+    const marks = new Set<number>();
+    function onScroll() {
+      const doc = document.documentElement;
+      const max = Math.max(1, doc.scrollHeight - window.innerHeight);
+      const pct = Math.round((window.scrollY / max) * 100);
+      for (const mark of [25, 50, 75, 100]) {
+        if (pct >= mark && !marks.has(mark)) {
+          marks.add(mark);
+          trackEvent("library_scroll_depth", product.id, { title: product.title, depth: mark });
+        }
+      }
+    }
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [product.id, product.title]);
 
   useEffect(() => {
     setReviews(initialReviews);
@@ -1063,7 +1093,7 @@ export function LibraryProductPage({
           ) : null}
 
           {sampleUrl ? (
-            <Panel title="Sample Preview" icon={BookOpen} action={<Button variant="secondary" onClick={() => setPreviewOpen(true)}><FileText className="size-4" /> Open sample PDF</Button>}>
+            <Panel title="Sample Preview" icon={BookOpen} action={<Button variant="secondary" onClick={() => { trackEvent("library_sample_opened", product.id, { title: product.title, slug: product.slug }); setPreviewOpen(true); }}><FileText className="size-4" /> Open sample PDF</Button>}>
               <div className="grid gap-5 md:grid-cols-[12rem_minmax(0,1fr)] md:items-center">
                 <BookCover product={product} className="w-full rounded-xl" />
                 <div>
@@ -1414,7 +1444,7 @@ export function LibraryProductPage({
                 <ShoppingBag className="size-4" /> {productQuantity ? `In bag (${productQuantity})` : "Add to cart"}
               </Button>
               {sampleUrl ? (
-                <Button variant="secondary" onClick={() => setPreviewOpen(true)}>
+                <Button variant="secondary" onClick={() => { trackEvent("library_sample_opened", product.id, { title: product.title, slug: product.slug }); setPreviewOpen(true); }}>
                   <FileText className="size-4" /> Read sample PDF
                 </Button>
               ) : null}

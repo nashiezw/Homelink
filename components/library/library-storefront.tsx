@@ -478,15 +478,20 @@ function CartPanel({
                 <div className="inline-flex items-center rounded-lg border border-slate-200 dark:border-slate-700">
                   <button
                     type="button"
-                    onClick={() =>
+                    onClick={() => {
+                      const nextQty = Math.max(1, line.quantity - 1);
+                      trackLibraryCartEvent("CART_QTY_CHANGE", line.productId, {
+                        title: line.title,
+                        quantity: nextQty,
+                        formatLabel: line.formatLabel,
+                        direction: "down",
+                      });
                       onCart(
                         cart.map((item) =>
-                          sameLibraryCartLine(item, line)
-                            ? repriceLibraryCartLine(item, Math.max(1, item.quantity - 1))
-                            : item,
+                          sameLibraryCartLine(item, line) ? repriceLibraryCartLine(item, nextQty) : item,
                         ),
-                      )
-                    }
+                      );
+                    }}
                     className="grid size-8 place-items-center text-slate-500 hover:text-emerald-700"
                     aria-label="Decrease quantity"
                   >
@@ -495,15 +500,20 @@ function CartPanel({
                   <span className="w-8 text-center text-xs font-black">{line.quantity}</span>
                   <button
                     type="button"
-                    onClick={() =>
+                    onClick={() => {
+                      const nextQty = line.quantity + 1;
+                      trackLibraryCartEvent("CART_QTY_CHANGE", line.productId, {
+                        title: line.title,
+                        quantity: nextQty,
+                        formatLabel: line.formatLabel,
+                        direction: "up",
+                      });
                       onCart(
                         cart.map((item) =>
-                          sameLibraryCartLine(item, line)
-                            ? repriceLibraryCartLine(item, item.quantity + 1)
-                            : item,
+                          sameLibraryCartLine(item, line) ? repriceLibraryCartLine(item, nextQty) : item,
                         ),
-                      )
-                    }
+                      );
+                    }}
                     className="grid size-8 place-items-center text-slate-500 hover:text-emerald-700"
                     aria-label="Increase quantity"
                   >
@@ -512,7 +522,15 @@ function CartPanel({
                 </div>
                 <button
                   type="button"
-                  onClick={() => onCart(cart.filter((item) => !sameLibraryCartLine(item, line)))}
+                  onClick={() => {
+                    trackLibraryCartEvent("CART_REMOVE", line.productId, {
+                      title: line.title,
+                      quantity: line.quantity,
+                      formatLabel: line.formatLabel,
+                      price: line.price,
+                    });
+                    onCart(cart.filter((item) => !sameLibraryCartLine(item, line)));
+                  }}
                   className="inline-flex items-center gap-1 text-xs font-bold text-slate-500 hover:text-red-600"
                 >
                   <Trash2 className="size-3.5" /> Remove

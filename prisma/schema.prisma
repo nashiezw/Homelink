@@ -2562,3 +2562,27 @@ model SiteFunnelEvent {
   @@index([visitorId])
   @@index([createdAt])
 }
+
+// Soft presence / "who's online" (heartbeat). No MAC / fingerprinting.
+model SitePresence {
+  id            String   @id @default(cuid())
+  visitorId     String   @unique
+  sessionId     String
+  path          String
+  title         String?
+  deviceType    String?
+  userId        String?
+  productId     String?
+  productTitle  String?
+  cartItemCount Int      @default(0)
+  cartValue     Float    @default(0)
+  cartCurrency  String?
+  cartSummary   Json?
+  lastSeenAt    DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([lastSeenAt])
+  @@index([path])
+  @@index([sessionId])
+}

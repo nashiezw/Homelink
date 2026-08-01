@@ -1,6 +1,7 @@
 import { getSessionUserIdFromRequest } from "@/lib/auth/session";
 import { ok, problem } from "@/lib/api/response";
 import { recordSiteFunnelEvent, recordSitePageView } from "@/lib/analytics/site-analytics";
+import { upsertSitePresence } from "@/lib/analytics/presence";
 import { isAnalyticsEventName } from "@/lib/analytics/events";
 
 export const dynamic = "force-dynamic";
@@ -14,6 +15,36 @@ export async function POST(request: Request) {
   }
 
   const userId = getSessionUserIdFromRequest(request) ?? undefined;
+
+  if (body.kind === "presence" || body.action === "presence") {
+    const cartSummary = Array.isArray(body.cartSummary)
+      ? body.cartSummary
+          .filter((row): row is Record<string, unknown> => Boolean(row) && typeof row === "object")
+          .slice(0, 12)
+          .map((row) => ({
+            productId: String(row.productId || ""),
+            title: String(row.title || ""),
+            quantity: Number(row.quantity) || 0,
+            price: Number(row.price) || 0,
+            formatLabel: typeof row.formatLabel === "string" ? row.formatLabel : undefined,
+          }))
+      : undefined;
+    const result = await upsertSitePresence({
+      visitorId: String(body.visitorId || ""),
+      sessionId: String(body.sessionId || ""),
+      path: String(body.path || "/"),
+      title: typeof body.title === "string" ? body.title : undefined,
+      deviceType: typeof body.deviceType === "string" ? body.deviceType : undefined,
+      userId,
+      productId: typeof body.productId === "string" ? body.productId : undefined,
+      productTitle: typeof body.productTitle === "string" ? body.productTitle : undefined,
+      cartItemCount: typeof body.cartItemCount === "number" ? body.cartItemCount : undefined,
+      cartValue: typeof body.cartValue === "number" ? body.cartValue : undefined,
+      cartCurrency: typeof body.cartCurrency === "string" ? body.cartCurrency : undefined,
+      cartSummary,
+    });
+    return ok(result);
+  }
 
   if (body.kind === "funnel" || (typeof body.name === "string" && !body.action)) {
     const name = String(body.name || "");

@@ -144,6 +144,31 @@ async function applyCoreProductionSchema() {
   await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "SiteFunnelEvent_name_createdAt_idx" ON "SiteFunnelEvent"("name", "createdAt")`);
   await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "SiteFunnelEvent_visitorId_idx" ON "SiteFunnelEvent"("visitorId")`);
   await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "SiteFunnelEvent_createdAt_idx" ON "SiteFunnelEvent"("createdAt")`);
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS "SitePresence" (
+      "id" TEXT NOT NULL,
+      "visitorId" TEXT NOT NULL,
+      "sessionId" TEXT NOT NULL,
+      "path" TEXT NOT NULL,
+      "title" TEXT,
+      "deviceType" TEXT,
+      "userId" TEXT,
+      "productId" TEXT,
+      "productTitle" TEXT,
+      "cartItemCount" INTEGER NOT NULL DEFAULT 0,
+      "cartValue" DOUBLE PRECISION NOT NULL DEFAULT 0,
+      "cartCurrency" TEXT,
+      "cartSummary" JSONB,
+      "lastSeenAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT "SitePresence_pkey" PRIMARY KEY ("id")
+    )
+  `);
+  await prisma.$executeRawUnsafe(`CREATE UNIQUE INDEX IF NOT EXISTS "SitePresence_visitorId_key" ON "SitePresence"("visitorId")`);
+  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "SitePresence_lastSeenAt_idx" ON "SitePresence"("lastSeenAt")`);
+  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "SitePresence_path_idx" ON "SitePresence"("path")`);
+  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "SitePresence_sessionId_idx" ON "SitePresence"("sessionId")`);
   await ensureBootstrapAdmin();
 }
 

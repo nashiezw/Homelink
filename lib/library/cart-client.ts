@@ -55,26 +55,65 @@ export function notifyLibraryCartAdded(title?: string) {
   window.dispatchEvent(new CustomEvent("houselink:library-cart-added", { detail: { title } }));
 }
 
-export function trackLibraryCartEvent(
-  action: "CART_ADD_SINGLE" | "CART_ADD_BUNDLE",
+type CartTrackAction =
+  | "CART_ADD_SINGLE"
+  | "CART_ADD_BUNDLE"
+  | "CART_REMOVE"
+  | "CART_QTY_CHANGE"
+  | "CART_CLEAR";
+
+function emitLibraryCartAnalytics(
+  event:
+    | "library_cart_added"
+    | "library_cart_removed"
+    | "library_cart_qty_changed"
+    | "library_cart_cleared"
+    | "library_bundle_added",
   productId: string,
   metadata?: Record<string, unknown>,
 ) {
-  if (typeof window === "undefined" || !productId) return;
-  void fetch("/api/v1/library/events", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ action, productId, metadata }),
-    keepalive: true,
-  }).catch(() => undefined);
   void import("@/lib/analytics/client").then(({ trackEvent }) => {
     const meta = Object.fromEntries(
       Object.entries(metadata ?? {}).filter(([, value]) =>
         ["string", "number", "boolean"].includes(typeof value),
       ),
     ) as Record<string, string | number | boolean | undefined>;
-    trackEvent("library_cart_added", productId, { action, ...meta });
+    trackEvent(event, productId || "cart", meta);
   });
+}
+
+export function trackLibraryCartEvent(
+  action: CartTrackAction,
+  productId: string,
+  metadata?: Record<string, unknown>,
+) {
+  if (typeof window === "undefined") return;
+  if (action !== "CART_CLEAR" && !productId) return;
+  void fetch("/api/v1/library/events", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action, productId, metadata }),
+    keepalive: true,
+  }).catch(() => undefined);
+
+  if (action === "CART_REMOVE") {
+    emitLibraryCartAnalytics("library_cart_removed", productId, { action, ...metadata });
+    return;
+  }
+  if (action === "CART_QTY_CHANGE") {
+    emitLibraryCartAnalytics("library_cart_qty_changed", productId, { action, ...metadata });
+    return;
+  }
+  if (action === "CART_CLEAR") {
+    emitLibraryCartAnalytics("library_cart_cleared", productId || "cart", { action, ...metadata });
+    return;
+  }
+  if (action === "CART_ADD_BUNDLE") {
+    emitLibraryCartAnalytics("library_bundle_added", productId, { action, ...metadata });
+    emitLibraryCartAnalytics("library_cart_added", productId, { action, ...metadata });
+    return;
+  }
+  emitLibraryCartAnalytics("library_cart_added", productId, { action, ...metadata });
 }
 
 export function sameLibraryCartLine(
@@ -116,10 +155,36 @@ export function repriceLibraryCartLine(line: LibraryCartLine, quantity: number):
   };
 }
 
-export function clearLibraryCart() {
+export function clearLibraryCart(options?: { track?: boolean }) {
   if (typeof window === "undefined") return;
+  if (options?.track !== false) {
+    const cart = readLibraryCart();
+    trackLibraryCartEvent("CART_CLEAR", "cart", {
+      itemCount: cart.reduce((sum, line) => sum + line.quantity, 0),
+      value: cart.reduce((sum, line) => sum + line.price * line.quantity, 0),
+    });
+  }
   window.localStorage.removeItem(CART_KEY);
   window.sessionStorage.removeItem(CART_KEY);
+  window.dispatchEvent(new CustomEvent("houselink:library-cart", { detail: { count: 0 } }));
+}
+
+export function libraryCartSnapshot() {
+  const cart = readLibraryCart();
+  const cartItemCount = cart.reduce((sum, line) => sum + line.quantity, 0);
+  const cartValue = cart.reduce((sum, line) => sum + line.price * line.quantity, 0);
+  return {
+    cartItemCount,
+    cartValue,
+    cartCurrency: cart[0]?.currency || "USD",
+    cartSummary: cart.slice(0, 12).map((line) => ({
+      productId: line.productId,
+      title: line.title,
+      quantity: line.quantity,
+      price: line.price,
+      formatLabel: line.formatLabel,
+    })),
+  };
 }
 
 export function useLibraryCart() {

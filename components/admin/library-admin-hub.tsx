@@ -3684,7 +3684,7 @@ function sectionDescription(view: string) {
     Downloads: "Configure secure files, limits, expiry, watermarking, license keys, and tracking.",
     Inventory: "Manage stock, low-stock alerts, warehouses, suppliers, and reserved quantities.",
     Reports: "Export sales, revenue, refunds, inventory, customers, products, downloads, and taxes.",
-    Analytics: "Inspect visitors, conversion, product performance, categories, authors, and cohorts.",
+    Analytics: "Live presence, product views/adds/removes, cart activity, journeys, revenue, and proof SLA.",
     Settings: "Full store configuration: checkout, tax, delivery, downloads, licence, reviews, SEO, preview, claims, inventory, and notifications.",
   };
   return descriptions[view] ?? "Manage Library operations.";

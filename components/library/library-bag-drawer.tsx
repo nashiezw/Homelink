@@ -2,7 +2,12 @@
 
 import Link from "next/link";
 import { Minus, Plus, X } from "lucide-react";
-import { libraryCartLineKey, repriceLibraryCartLine, useLibraryCart } from "@/lib/library/cart-client";
+import {
+  libraryCartLineKey,
+  repriceLibraryCartLine,
+  trackLibraryCartEvent,
+  useLibraryCart,
+} from "@/lib/library/cart-client";
 import { cn } from "@/lib/utils";
 
 /** Shared mini bag panel for mobile FAB and desktop header. */
@@ -53,15 +58,22 @@ export function LibraryBagDrawer({
                   type="button"
                   className="grid size-7 place-items-center hover:text-emerald-700"
                   aria-label="Decrease quantity"
-                  onClick={() =>
+                  onClick={() => {
+                    const nextQty = Math.max(1, item.quantity - 1);
+                    trackLibraryCartEvent("CART_QTY_CHANGE", item.productId, {
+                      title: item.title,
+                      quantity: nextQty,
+                      formatLabel: item.formatLabel,
+                      direction: "down",
+                    });
                     setCart((current) =>
                       current.map((line) =>
                         libraryCartLineKey(line) === libraryCartLineKey(item)
-                          ? repriceLibraryCartLine(line, Math.max(1, line.quantity - 1))
+                          ? repriceLibraryCartLine(line, nextQty)
                           : line,
                       ),
-                    )
-                  }
+                    );
+                  }}
                 >
                   <Minus className="size-3" />
                 </button>
@@ -70,15 +82,22 @@ export function LibraryBagDrawer({
                   type="button"
                   className="grid size-7 place-items-center hover:text-emerald-700"
                   aria-label="Increase quantity"
-                  onClick={() =>
+                  onClick={() => {
+                    const nextQty = item.quantity + 1;
+                    trackLibraryCartEvent("CART_QTY_CHANGE", item.productId, {
+                      title: item.title,
+                      quantity: nextQty,
+                      formatLabel: item.formatLabel,
+                      direction: "up",
+                    });
                     setCart((current) =>
                       current.map((line) =>
                         libraryCartLineKey(line) === libraryCartLineKey(item)
-                          ? repriceLibraryCartLine(line, line.quantity + 1)
+                          ? repriceLibraryCartLine(line, nextQty)
                           : line,
                       ),
-                    )
-                  }
+                    );
+                  }}
                 >
                   <Plus className="size-3" />
                 </button>
@@ -90,7 +109,15 @@ export function LibraryBagDrawer({
             <button
               type="button"
               className="mt-2 text-xs font-semibold text-red-600 hover:underline"
-              onClick={() => setCart((current) => current.filter((line) => libraryCartLineKey(line) !== libraryCartLineKey(item)))}
+              onClick={() => {
+                trackLibraryCartEvent("CART_REMOVE", item.productId, {
+                  title: item.title,
+                  quantity: item.quantity,
+                  formatLabel: item.formatLabel,
+                  price: item.price,
+                });
+                setCart((current) => current.filter((line) => libraryCartLineKey(line) !== libraryCartLineKey(item)));
+              }}
             >
               Remove
             </button>

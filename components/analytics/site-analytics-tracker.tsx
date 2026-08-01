@@ -10,11 +10,11 @@ import {
   getOrCreateVisitorId,
   readUtmParams,
 } from "@/lib/analytics/visitor-client";
+import { libraryCartSnapshot } from "@/lib/library/cart-client";
 
 /**
- * First-party page tracker: anonymous visitor/session ids, path, time on page,
- * referrer, UTM, device class. No MAC / hardware fingerprinting.
- * Skips when visitor opted out or browser Do Not Track is on.
+ * First-party page tracker + presence heartbeat.
+ * Anonymous visitor/session ids only — no MAC / hardware fingerprinting.
  */
 export function SiteAnalyticsTracker() {
   const pathname = usePathname();
@@ -74,17 +74,44 @@ export function SiteAnalyticsTracker() {
       void apiFetch("/api/v1/analytics/pageviews", { method: "POST", body: payload });
     }
 
+    function heartbeat() {
+      if (document.visibilityState === "hidden") return;
+      const cart = libraryCartSnapshot();
+      const productMatch = (pathname || "").match(/^\/library\/([^/?#]+)/);
+      const productSlug = productMatch?.[1] && !["checkout", "claim"].includes(productMatch[1]) ? productMatch[1] : undefined;
+      void apiFetch("/api/v1/analytics/pageviews", {
+        method: "POST",
+        body: JSON.stringify({
+          kind: "presence",
+          visitorId,
+          sessionId,
+          path,
+          title: typeof document !== "undefined" ? document.title : undefined,
+          deviceType,
+          productId: productSlug,
+          productTitle: productSlug ? (typeof document !== "undefined" ? document.title : productSlug) : undefined,
+          ...cart,
+        }),
+      });
+    }
+
     void start();
+    heartbeat();
+    const beat = window.setInterval(heartbeat, 30000);
     const onHide = () => {
       if (document.visibilityState === "hidden") end();
+      else heartbeat();
     };
     window.addEventListener("pagehide", end);
     document.addEventListener("visibilitychange", onHide);
+    window.addEventListener("houselink:library-cart", heartbeat);
     return () => {
       cancelled = true;
       end();
+      window.clearInterval(beat);
       window.removeEventListener("pagehide", end);
       document.removeEventListener("visibilitychange", onHide);
+      window.removeEventListener("houselink:library-cart", heartbeat);
     };
   }, [pathname, searchParams]);
 

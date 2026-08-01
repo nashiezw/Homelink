@@ -1,6 +1,6 @@
 import { ok } from "@/lib/api/response";
 import { requireAdminAsync } from "@/lib/admin/require-admin";
-import { getSiteAnalyticsReport } from "@/lib/analytics/site-analytics";
+import { getAdvancedSiteAnalyticsReport } from "@/lib/analytics/advanced-report";
 
 export const dynamic = "force-dynamic";
 
@@ -10,5 +10,5 @@ export async function GET(request: Request) {
 
   const url = new URL(request.url);
   const days = Number(url.searchParams.get("days") || 30);
-  return ok(await getSiteAnalyticsReport(Number.isFinite(days) ? days : 30));
+  return ok(await getAdvancedSiteAnalyticsReport(Number.isFinite(days) ? days : 30));
 }
