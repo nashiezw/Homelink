@@ -28,12 +28,34 @@ function metaNum(meta: Meta, ...keys: string[]) {
   return 0;
 }
 
-function productKey(target: string | null | undefined, meta: Meta) {
-  return target?.trim() || metaStr(meta, "productId", "id") || metaStr(meta, "title", "productTitle") || "";
+function looksLikeProductId(value: string) {
+  const v = value.trim();
+  // Prisma/CUID-style ids and bare slug-less opaque tokens should never display as titles.
+  return /^c[a-z0-9]{20,}$/i.test(v) || (/^[a-z0-9_-]{16,}$/i.test(v) && !/\s/.test(v) && v === v.toLowerCase());
 }
 
-function productTitle(target: string | null | undefined, meta: Meta) {
-  return metaStr(meta, "title", "productTitle") || target?.trim() || "Unknown product";
+function productKey(target: string | null | undefined, meta: Meta) {
+  const fromMeta = metaStr(meta, "productId", "id");
+  if (fromMeta) return fromMeta;
+  const targetValue = target?.trim() || "";
+  if (targetValue && (looksLikeProductId(targetValue) || !metaStr(meta, "title", "productTitle"))) return targetValue;
+  return fromMeta || targetValue || "";
+}
+
+function productTitle(target: string | null | undefined, meta: Meta, catalogTitle?: string) {
+  const fromMeta = metaStr(meta, "title", "productTitle");
+  if (fromMeta && !looksLikeProductId(fromMeta)) return fromMeta;
+  if (catalogTitle?.trim()) return catalogTitle.trim();
+  const targetValue = target?.trim() || "";
+  if (targetValue && !looksLikeProductId(targetValue)) return targetValue;
+  return catalogTitle?.trim() || "Unknown product";
+}
+
+function resolveDisplayTitle(title: string, productId: string, catalogTitles: Map<string, string>) {
+  const catalog = catalogTitles.get(productId)?.trim();
+  if (catalog) return catalog;
+  if (title && !looksLikeProductId(title) && title !== "Unknown product") return title;
+  return catalog || "Unknown product";
 }
 
 export async function getAdvancedSiteAnalyticsReport(days = 30) {
@@ -224,14 +246,21 @@ export async function getAdvancedSiteAnalyticsReport(days = 30) {
       }
     >();
 
+    const catalogTitles = new Map(catalog.map((row) => [row.id, row.title]));
+
     const ensureProduct = (id: string, title: string) => {
       if (!id) return null;
+      const resolved = resolveDisplayTitle(title, id, catalogTitles);
       let row = productMap.get(id);
       if (!row) {
-        row = { productId: id, title, views: 0, viewers: new Set(), adds: 0, removes: 0, purchases: 0, samples: 0, formats: {} };
+        row = { productId: id, title: resolved, views: 0, viewers: new Set(), adds: 0, removes: 0, purchases: 0, samples: 0, formats: {} };
         productMap.set(id, row);
-      } else if (title && row.title === "Unknown product") {
-        row.title = title;
+      } else if (
+        resolved &&
+        resolved !== "Unknown product" &&
+        (row.title === "Unknown product" || looksLikeProductId(row.title) || row.title === id)
+      ) {
+        row.title = resolved;
       }
       return row;
     };
@@ -246,7 +275,7 @@ export async function getAdvancedSiteAnalyticsReport(days = 30) {
     for (const event of funnels) {
       const meta = asMeta(event.metadata);
       const id = productKey(event.target, meta);
-      const title = productTitle(event.target, meta);
+      const title = productTitle(event.target, meta, id ? catalogTitles.get(id) : undefined);
       const format = metaStr(meta, "formatLabel", "formatType", "format") || "unknown";
       const sessionId = event.sessionId || `visitor:${event.visitorId}`;
 
@@ -352,7 +381,7 @@ export async function getAdvancedSiteAnalyticsReport(days = 30) {
 
       if (paymentStatus !== "PAID" && order.status !== "PAID" && order.status !== "FULFILLED") continue;
       for (const item of order.items) {
-        const title = item.title || item.productId;
+        const title = resolveDisplayTitle(item.title || "", item.productId, catalogTitles);
         revenueByProduct.set(title, (revenueByProduct.get(title) ?? 0) + Number(item.total || 0));
         const format = item.productType === "PRINTED_BOOK" ? "printed" : "digital";
         revenueByFormat.set(format, (revenueByFormat.get(format) ?? 0) + Number(item.total || 0));
@@ -364,7 +393,7 @@ export async function getAdvancedSiteAnalyticsReport(days = 30) {
     const products = [...productMap.values()]
       .map((row) => ({
         productId: row.productId,
-        title: row.title,
+        title: resolveDisplayTitle(row.title, row.productId, catalogTitles),
         views: row.views,
         uniqueViewers: row.viewers.size,
         adds: row.adds,

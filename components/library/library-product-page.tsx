@@ -522,8 +522,11 @@ export function LibraryProductPage({
     });
     notifyLibraryCartAdded(product.title);
     trackLibraryCartEvent("CART_ADD_SINGLE", product.id, {
+      title: product.title,
+      productId: product.id,
       formatId: selectedFormat.id,
       formatType: selectedFormat.type,
+      formatLabel: selectedFormat.label,
       price: resolveLibraryVolumeUnitPrice(selectedFormat, qty),
       quantity: qty,
     });
@@ -535,8 +538,11 @@ export function LibraryProductPage({
     const line = cartLineFromFormat(selectedFormat, selectedQty);
     writeLibraryCart([line]);
     trackLibraryCartEvent("CART_ADD_SINGLE", product.id, {
+      title: product.title,
+      productId: product.id,
       formatId: selectedFormat.id,
       formatType: selectedFormat.type,
+      formatLabel: selectedFormat.label,
       price: line.price,
       quantity: line.quantity,
       buyNow: true,
@@ -592,15 +598,11 @@ export function LibraryProductPage({
     });
     notifyLibraryCartAdded(product.title);
     trackLibraryCartEvent("CART_ADD_BUNDLE", product.id, {
-      companionIds: bundleCompanions.map((item) => item.id),
+      title: product.title,
+      productId: product.id,
+      companionCount: bundleCompanions.length,
       total: bundleTotal,
       savings: bundleSavings,
-      lines: bundleLines.map((line) => ({
-        productId: line.product.id,
-        formatId: line.format.id,
-        formatType: line.format.type,
-        price: line.chargedPrice,
-      })),
     });
     showToast(
       bundleSavings > 0
@@ -656,8 +658,11 @@ export function LibraryProductPage({
     });
     notifyLibraryCartAdded(target.title);
     trackLibraryCartEvent("CART_ADD_SINGLE", target.id, {
+      title: target.title,
+      productId: target.id,
       formatId: format.id,
       formatType: format.type,
+      formatLabel: format.label,
       price: format.price,
       source: "related",
     });

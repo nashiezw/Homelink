@@ -79,6 +79,13 @@ export function SiteAnalyticsTracker() {
       const cart = libraryCartSnapshot();
       const productMatch = (pathname || "").match(/^\/library\/([^/?#]+)/);
       const productSlug = productMatch?.[1] && !["checkout", "claim"].includes(productMatch[1]) ? productMatch[1] : undefined;
+      const pageTitle = typeof document !== "undefined" ? document.title : undefined;
+      const cleanProductTitle = pageTitle
+        ? pageTitle
+            .replace(/\s*[|–-]\s*HouseLink.*$/i, "")
+            .replace(/\s*[|–-]\s*Library.*$/i, "")
+            .trim()
+        : undefined;
       void apiFetch("/api/v1/analytics/pageviews", {
         method: "POST",
         body: JSON.stringify({
@@ -86,10 +93,10 @@ export function SiteAnalyticsTracker() {
           visitorId,
           sessionId,
           path,
-          title: typeof document !== "undefined" ? document.title : undefined,
+          title: pageTitle,
           deviceType,
           productId: productSlug,
-          productTitle: productSlug ? (typeof document !== "undefined" ? document.title : productSlug) : undefined,
+          productTitle: productSlug ? cleanProductTitle || productSlug : undefined,
           ...cart,
         }),
       });

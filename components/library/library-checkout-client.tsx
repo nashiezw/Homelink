@@ -527,11 +527,13 @@ export function LibraryCheckoutClient() {
       notifyLibraryCartAdded(suggestion.title);
     }
     trackLibraryCartEvent("CART_ADD_BUNDLE", pack.sourceProductId, {
+      title: pack.items.map((item) => item.title).filter(Boolean).join(", ") || "Library set",
+      productId: pack.sourceProductId,
       formatType: "PDF",
       price: pack.listSubtotal,
       quantity: pack.itemCount,
       source: "checkout_upsell_set",
-      companionIds: pack.items.map((item) => item.productId),
+      companionCount: pack.items.length,
       promoSavings: pack.promoSavings,
     });
     showToast(

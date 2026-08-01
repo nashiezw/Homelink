@@ -88,6 +88,11 @@ function topMap(map: Map<string, number>, limit = 12) {
     .map(([label, value]) => ({ label: label.length > 48 ? `${label.slice(0, 48)}…` : label, value }));
 }
 
+function looksLikeProductId(value: string) {
+  const v = value.trim();
+  return /^c[a-z0-9]{20,}$/i.test(v) || (/^[a-z0-9_-]{16,}$/i.test(v) && !/\s/.test(v) && v === v.toLowerCase());
+}
+
 export function buildTopClassAnalytics(input: {
   days: number;
   funnels: FunnelRow[];
@@ -132,6 +137,7 @@ export function buildTopClassAnalytics(input: {
   const campaignMap = new Map<string, { visitors: Set<string>; purchases: number; revenue: number }>();
   const identityMap = new Map<string, { visitorId: string; userId: string; email: string; orders: number }>();
   const customerSpend = new Map<string, { email: string; revenue: number; orders: number; lastAt: number; firstAt: number }>();
+  const catalogMap = new Map(catalog.map((row) => [row.id, row]));
   let rageClicks = 0;
   let uiErrors = 0;
   let sampleOpens = 0;
@@ -146,10 +152,20 @@ export function buildTopClassAnalytics(input: {
   const dayMs = 86400000;
   const chronological = [...funnels].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
 
+  function displayProductTitle(meta: Meta, target: string | null) {
+    const productId = metaStr(meta, "productId", "id") || target || "";
+    const metaTitle = metaStr(meta, "title", "productTitle");
+    if (metaTitle && !looksLikeProductId(metaTitle)) return metaTitle;
+    const catalogTitle = catalogMap.get(productId)?.title;
+    if (catalogTitle) return catalogTitle;
+    if (target && !looksLikeProductId(target)) return target;
+    return "";
+  }
+
   for (const event of chronological) {
     const meta = asMeta(event.metadata);
     const sessionId = event.sessionId || `v:${event.visitorId}`;
-    const title = metaStr(meta, "title", "productTitle") || event.target || "";
+    const title = displayProductTitle(meta, event.target) || metaStr(meta, "title", "productTitle") || event.target || "";
     const created = event.createdAt.getTime();
     const hour = new Date(event.createdAt).getHours();
     if (created >= now - dayMs) hourlyViews[hour].events += 1;
@@ -164,16 +180,19 @@ export function buildTopClassAnalytics(input: {
       if (!event.target && !metaStr(meta, "productId", "id")) missingProductId += 1;
     }
 
-    if (event.name === "library_product_viewed" && title) {
-      const list = sessionProducts.get(sessionId) ?? [];
-      if (list[list.length - 1] !== title) {
-        if (list.length) {
-          const key = `${list[list.length - 1]} → ${title}`;
-          pathFlows.set(key, (pathFlows.get(key) ?? 0) + 1);
+    if (event.name === "library_product_viewed") {
+      const displayTitle = displayProductTitle(meta, event.target);
+      if (displayTitle) {
+        const list = sessionProducts.get(sessionId) ?? [];
+        if (list[list.length - 1] !== displayTitle) {
+          if (list.length) {
+            const key = `${list[list.length - 1]} → ${displayTitle}`;
+            pathFlows.set(key, (pathFlows.get(key) ?? 0) + 1);
+          }
+          list.push(displayTitle);
+          if (list.length > 8) list.shift();
+          sessionProducts.set(sessionId, list);
         }
-        list.push(title);
-        if (list.length > 8) list.shift();
-        sessionProducts.set(sessionId, list);
       }
     }
 
@@ -350,14 +369,16 @@ export function buildTopClassAnalytics(input: {
     if (delta > 0 && delta <= 30 * dayMs) row.d30.add(order.customerId);
   }
 
-  const catalogMap = new Map(catalog.map((row) => [row.id, row]));
   const viewAdds = new Map<string, { title: string; views: number; adds: number }>();
   for (const event of funnels) {
     const meta = asMeta(event.metadata);
-    const id = event.target || metaStr(meta, "productId");
-    const title = metaStr(meta, "title") || catalogMap.get(id || "")?.title || id;
-    if (!id || !title) continue;
+    const id = metaStr(meta, "productId") || event.target || "";
+    const title = displayProductTitle(meta, event.target) || catalogMap.get(id)?.title || "Unknown product";
+    if (!id || id === "cart") continue;
     const row = viewAdds.get(id) ?? { title, views: 0, adds: 0 };
+    if ((!row.title || row.title === "Unknown product" || looksLikeProductId(row.title)) && title && title !== "Unknown product") {
+      row.title = title;
+    }
     if (event.name === "library_product_viewed") row.views += 1;
     if (event.name === "library_cart_added" || event.name === "library_bundle_added") row.adds += 1;
     viewAdds.set(id, row);
@@ -372,7 +393,7 @@ export function buildTopClassAnalytics(input: {
         stock == null ? "unknown" : stock <= 0 ? "out_of_stock" : stock <= threshold ? "low_stock" : "ok";
       return {
         productId,
-        title: row.title,
+        title: stockRow?.title || row.title,
         views: row.views,
         adds: row.adds,
         stock: stock ?? -1,

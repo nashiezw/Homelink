@@ -150,8 +150,11 @@ export function LibraryStorefront({
     });
     notifyLibraryCartAdded(product.title);
     trackLibraryCartEvent("CART_ADD_SINGLE", product.id, {
+      title: product.title,
+      productId: product.id,
       formatId: format.id,
       formatType: format.type,
+      formatLabel: format.label,
       price: format.price,
       source: "storefront",
     });
