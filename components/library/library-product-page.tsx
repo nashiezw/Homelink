@@ -184,6 +184,12 @@ export function LibraryProductPage({
   const bundleSubtotal = bundleLines[0]?.subtotal ?? 0;
   const bundleTotal = bundleLines[0]?.total ?? 0;
   const bundleAvailable = bundleLines.length > 1 && bundleLines.every((line) => line.inStock);
+  const bundlePreferenceLabel =
+    product.bundleFormatPreference === "PREFER_DIGITAL"
+      ? "Defaults to digital"
+      : product.bundleFormatPreference === "PREFER_PRINT"
+        ? "Defaults to printed"
+        : "Matches your selected format";
 
   const productQuantity = cart
     .filter((line) => line.productId === product.id && (!line.formatId || line.formatId === selectedFormat?.id))
@@ -591,7 +597,7 @@ export function LibraryProductPage({
   }
 
   return (
-    <main className="bg-mist text-ink dark:bg-slate-950 dark:text-white">
+    <main className={cn("bg-mist text-ink dark:bg-slate-950 dark:text-white", bundleLines.length > 1 && "pb-24 lg:pb-0")}>
       <LibraryCartFab />
       {quoteOpen ? (
         <LibraryBulkQuoteDialog
@@ -1169,6 +1175,7 @@ export function LibraryProductPage({
                 </Button>
               }
             >
+              <p className="mb-3 text-xs font-semibold text-slate-500">{bundlePreferenceLabel}. You can change each companion’s format below.</p>
               <div className={cn("grid items-stretch gap-3", bundleLines.length >= 3 ? "md:grid-cols-3" : "md:grid-cols-2")}>
                 {bundleLines.map((line) => {
                   const itemFormats = availableLibraryFormats(line.product);
@@ -1241,6 +1248,12 @@ export function LibraryProductPage({
                   ) : (
                     <p>Choose formats above, then add the bundle to your bag.</p>
                   )}
+                  <p className="mt-1 text-xs text-slate-500">
+                    Buy separately: {product.currency} {bundleSubtotal.toFixed(2)}
+                    {bundleSavings > 0
+                      ? ` · Bundle: ${product.currency} ${bundleTotal.toFixed(2)}`
+                      : " · Same as bundle total (no promo)"}
+                  </p>
                 </div>
                 <p className="text-right text-lg font-semibold tracking-tight">
                   Bundle total: {product.currency} {bundleTotal.toFixed(2)}
@@ -1484,6 +1497,28 @@ export function LibraryProductPage({
           </div>
         </div>
       )}
+
+      {bundleLines.length > 1 ? (
+        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur lg:hidden dark:border-slate-800 dark:bg-slate-950/95">
+          <div className="mx-auto flex max-w-lg items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold text-ink dark:text-white">
+                Add bundle · {product.currency} {bundleTotal.toFixed(2)}
+              </p>
+              {bundleSavings > 0 ? (
+                <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-300">
+                  Save {product.currency} {bundleSavings.toFixed(2)}
+                </p>
+              ) : (
+                <p className="truncate text-xs text-slate-500">{bundlePreferenceLabel}</p>
+              )}
+            </div>
+            <Button disabled={!bundleAvailable} onClick={addBundle} className="shrink-0">
+              Add bundle
+            </Button>
+          </div>
+        </div>
+      ) : null}
 
       {previewOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4" onClick={() => setPreviewOpen(false)}>

@@ -25,6 +25,7 @@ import {
   getLibraryAnalytics,
   libraryFacets,
   libraryFormatCompareAt,
+  libraryFormatInStock,
   libraryVolumePricing,
   normalizeLibraryVolumeTiers,
   primaryLibraryFormat,
@@ -73,7 +74,23 @@ type LibraryOperations = {
   guestClaims: Array<{ id: string; email: string; status: string; order?: { orderNumber: string } }>;
   academyEntitlements: Array<{ id: string; userId: string; courseId: string; status: string }>;
   recommendations: LibraryRecommendationAdmin[];
+  quoteRequests: LibraryQuoteRequestAdmin[];
   reports: LibraryAdminReports;
+};
+
+type LibraryQuoteRequestAdmin = {
+  id: string;
+  productId: string | null;
+  productTitle: string;
+  email: string;
+  name: string | null;
+  phone: string | null;
+  company: string | null;
+  quantity: number;
+  formatType: string | null;
+  message: string | null;
+  status: string;
+  createdAt: string;
 };
 
 type LibraryAdminReports = {
@@ -91,6 +108,8 @@ type LibraryAdminReports = {
   taxSummary: Array<{ id: string; name: string; country: string; rate: number; active: boolean; collected: number }>;
   refundSummary: { orders: number; amount: number; taxReturned?: number; rate: number };
   settingsHealth: Array<{ area: string; status: string; detail: string }>;
+  bundlePairPerformance: Array<{ label: string; value: number; digitalLines: number; printLines: number }>;
+  bundleFormatMix: Array<{ label: string; value: number }>;
 };
 
 type LibrarySettingsAuditRow = {
@@ -283,6 +302,7 @@ const emptyOperations: LibraryOperations = {
   guestClaims: [],
   academyEntitlements: [],
   recommendations: [],
+  quoteRequests: [],
   reports: {
     scorecards: [],
     funnel: [],
@@ -298,6 +318,8 @@ const emptyOperations: LibraryOperations = {
     taxSummary: [],
     refundSummary: { orders: 0, amount: 0, rate: 0 },
     settingsHealth: [],
+    bundlePairPerformance: [],
+    bundleFormatMix: [],
   },
 };
 
@@ -415,6 +437,8 @@ export function LibraryAdminHub() {
     scheduledAt: "",
   };
   const [draft, setDraft] = useState<LibraryProductDraft>(emptyDraft);
+  const [bundleCompanionQuery, setBundleCompanionQuery] = useState("");
+  const [hidePrintOosCompanions, setHidePrintOosCompanions] = useState(false);
   const [editingProduct, setEditingProduct] = useState<LibraryProduct | null>(null);
   const emptyCouponDraft: CouponDraft = { code: "", description: "", discountType: "PERCENT", discountValue: "10", usageLimit: "", minimumSubtotal: "", startsAt: "", expiresAt: "", active: true, firstPurchaseOnly: false, productIdsText: "", categoryIdsText: "" };
   const emptyTaxDraft: TaxDraft = { name: "", country: "ZW", rate: "0", inclusive: false, active: true };
@@ -551,6 +575,93 @@ export function LibraryAdminHub() {
     await load();
   }
 
+  function confirmPublishThenSave() {
+    if (draft.bundleProductIds.length > 0 && !draft.bundlePromoPrice.trim()) {
+      const proceed = window.confirm(
+        "Companions are selected but the bundle promo total is blank. Publish without a bundle discount?",
+      );
+      if (!proceed) return;
+    }
+    void saveProduct("PUBLISHED");
+  }
+
+  function moveBundleCompanion(id: string, direction: -1 | 1) {
+    setDraft((current) => {
+      const ids = [...current.bundleProductIds];
+      const index = ids.indexOf(id);
+      if (index < 0) return current;
+      const next = index + direction;
+      if (next < 0 || next >= ids.length) return current;
+      const swap = ids[index]!;
+      ids[index] = ids[next]!;
+      ids[next] = swap;
+      return { ...current, bundleProductIds: ids };
+    });
+  }
+
+  function openPackWizard() {
+    const selected: LibraryProduct[] = [];
+    for (const id of selectedIds) {
+      const product = productsSource.find((item) => item.id === id);
+      if (product?.status === "PUBLISHED") selected.push(product);
+    }
+    if (selected.length < 2) {
+      setFeedback({ tone: "error", message: "Select at least 2 published products, then use Pack wizard." });
+      return;
+    }
+    const main = selected[0]!;
+    const companions = selected.slice(1, 5);
+    const packMembers = [main, ...companions];
+    const digitalList = estimateLibraryBundleScenario(packMembers, "digital", null);
+    const suggested = Math.round(digitalList.subtotal * 0.9 * 100) / 100;
+    setEditingProduct(null);
+    setDraft({
+      ...emptyDraft,
+      title: `${main.title} Pack`,
+      subtitle: "Curated frequently bought together pack",
+      author: main.author,
+      publisher: main.publisher || "HouseLink Zimbabwe",
+      currency: main.currency || "USD",
+      category: main.category || "Toolkits",
+      collection: main.collection || "HouseLink Library",
+      productType: "BUNDLE",
+      price: String(suggested || main.price),
+      shortDescription: `Pack with ${packMembers.map((item) => item.title).join(", ")}.`,
+      description: `A curated HouseLink Library pack featuring ${packMembers.map((item) => item.title).join(", ")}. Shoppers can still choose digital or print per title on the product page.`,
+      formats: [
+        { id: "digital", type: "PDF", label: "Digital PDF", enabled: true, price: suggested || main.price },
+        { id: "printed", type: "PRINTED_BOOK", label: "Printed book", enabled: false, price: Math.round((suggested || main.price) * 1.4 * 100) / 100 },
+      ],
+      bundleProductIds: companions.map((item) => item.id),
+      bundlePromoPrice: suggested > 0 ? suggested.toFixed(2) : "",
+      bundleFormatPreference: "PREFER_DIGITAL",
+    });
+    setBundleCompanionQuery("");
+    setHidePrintOosCompanions(false);
+    setDraftOpen(true);
+    setFeedback({
+      tone: "success",
+      message: `Pack draft ready with ${companions.length} companion${companions.length === 1 ? "" : "s"}. Review promo, then publish.`,
+    });
+  }
+
+  async function updateQuoteRequestStatus(id: string, status: string) {
+    setFeedback(null);
+    const result = await apiFetch("/api/v1/admin/library", {
+      method: "POST",
+      body: JSON.stringify({ action: "update_quote_request", id, status }),
+    });
+    if (result.error) {
+      setFeedback({ tone: "error", message: result.error.message || "Quote request could not be updated." });
+      return;
+    }
+    setOperations((current) => ({
+      ...current,
+      quoteRequests: (current.quoteRequests ?? []).map((row) => (row.id === id ? { ...row, status } : row)),
+    }));
+    setFeedback({ tone: "success", message: `Quote marked ${status}.` });
+  }
+
   function openEditor(product: LibraryProduct) {
     setEditingProduct(product);
     setDraft({
@@ -607,6 +718,8 @@ export function LibraryAdminHub() {
       bundlePromoPrice: product.bundlePromoPrice != null ? String(product.bundlePromoPrice) : "",
       bundleFormatPreference: product.bundleFormatPreference ?? "MATCH_SHOPPER",
     });
+    setBundleCompanionQuery("");
+    setHidePrintOosCompanions(false);
     setDraftOpen(true);
   }
 
@@ -614,6 +727,8 @@ export function LibraryAdminHub() {
     setDraftOpen(false);
     setEditingProduct(null);
     setDraft(emptyDraft);
+    setBundleCompanionQuery("");
+    setHidePrintOosCompanions(false);
   }
 
   async function uploadAsset(files: FileList | null, kind: "cover" | "download" | "sample") {
@@ -862,6 +977,8 @@ export function LibraryAdminHub() {
       productType,
       stock: targetView === "Inventory" || template?.trackStock ? "10" : "",
     });
+    setBundleCompanionQuery("");
+    setHidePrintOosCompanions(false);
     setDraftOpen(true);
   }
 
@@ -1227,6 +1344,7 @@ export function LibraryAdminHub() {
               <AdminSelect value={category} onChange={setCategory} options={[{ value: "", label: "All categories" }, ...facets.categories.map((item) => ({ value: item, label: item }))]} />
             </div>
             <div className="flex flex-wrap gap-2">
+              <AdminAction icon={Link2} label="Pack wizard" disabled={selectedIds.size < 2} onClick={openPackWizard} />
               <AdminAction icon={Boxes} label="Bulk Price" disabled={!selectedIds.size} onClick={() => setBulkDraft({ mode: "price", value: "" })} />
               <AdminAction icon={Boxes} label="Bulk Category" disabled={!selectedIds.size} onClick={() => setBulkDraft({ mode: "category", value: category || "" })} />
               <AdminAction icon={FileArchive} label="Archive" disabled={!selectedIds.size} onClick={() => void bulk("bulk_archive")} />
@@ -1350,6 +1468,7 @@ export function LibraryAdminHub() {
             onViewCustomerOrders={viewCustomerOrders}
             onDisableCustomer={disableCustomer}
             onReportFilterChange={setReportFilter}
+            onUpdateQuoteRequest={updateQuoteRequestStatus}
           />
           {view === "Reports" && <OperationsList title="Export jobs" rows={operations.exports.map((item) => ({ label: item.type, value: item.status, detail: item.fileUrl ? "Ready to download" : "Preparing export", href: item.fileUrl ?? undefined }))} />}
           {view === "Analytics" && <OperationsList title="Activity timeline" rows={operations.activities.map((item) => ({ label: item.action, value: item.createdAt ? new Date(item.createdAt).toLocaleDateString() : "Now", detail: item.message }))} />}
@@ -1592,17 +1711,121 @@ export function LibraryAdminHub() {
                       const previewProducts = [mainPreview, ...companionPreview];
                       const digital = estimateLibraryBundleScenario(previewProducts, "digital", promo);
                       const print = estimateLibraryBundleScenario(previewProducts, "print", promo);
+                      const digitalList = estimateLibraryBundleScenario(previewProducts, "digital", null);
+                      const printList = estimateLibraryBundleScenario(previewProducts, "print", null);
+                      const suggestedDigitalPromo = Math.round(digitalList.subtotal * 0.9 * 100) / 100;
+                      const query = bundleCompanionQuery.trim().toLowerCase();
+                      const publishedCompanions = productsSource.filter(
+                        (product) => product.id !== editingProduct?.id && product.status === "PUBLISHED",
+                      );
+                      const filteredCompanions = publishedCompanions.filter((product) => {
+                        const printEnabled = enabledLibraryFormats(product).some((format) => format.type === "PRINTED_BOOK");
+                        const printOos = printEnabled && !libraryFormatInStock(product, { type: "PRINTED_BOOK" });
+                        if (hidePrintOosCompanions && printOos) return false;
+                        if (!query) return true;
+                        const haystack = [
+                          product.title,
+                          product.author,
+                          product.sku,
+                          product.category,
+                          ...enabledLibraryFormats(product).map((format) => format.label),
+                        ]
+                          .join(" ")
+                          .toLowerCase();
+                        return haystack.includes(query);
+                      });
+                      const selectedCompanions = draft.bundleProductIds
+                        .map((id) => publishedCompanions.find((product) => product.id === id))
+                        .filter((product): product is LibraryProduct => Boolean(product));
+                      const promoSavesDigital =
+                        promo != null && Number.isFinite(promo) && promo > 0 && promo < digitalList.subtotal - 0.001;
+                      const promoDeepOnPrint =
+                        promoSavesDigital &&
+                        printList.subtotal > digitalList.subtotal + 0.001 &&
+                        (printList.subtotal - Number(promo)) / printList.subtotal > 0.35;
+                      const promoOnlyHelpsPrint =
+                        promo != null &&
+                        Number.isFinite(promo) &&
+                        promo > 0 &&
+                        promo >= digitalList.subtotal - 0.001 &&
+                        promo < printList.subtotal - 0.001;
                       return (
                     <div className="grid gap-3">
                       <p className="text-xs leading-5 text-slate-500">
-                        Pick up to 4 published products for this title. Shoppers pick digital or print on the product page. Optional promo total shows a public “Save” amount.
+                        Tick up to 4 companions (checkboxes stay clearer than a dropdown). Shoppers choose digital or print on the product page. One promo total applies to whichever formats they pick.
                       </p>
+                      {selectedCompanions.length > 0 ? (
+                        <div className="space-y-1.5">
+                          {selectedCompanions.map((product, index) => (
+                            <div
+                              key={`selected-${product.id}`}
+                              className="flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1.5"
+                            >
+                              <span className="min-w-0 flex-1 truncate text-[11px] font-semibold text-emerald-200">
+                                {index + 1}. {product.title}
+                              </span>
+                              <button
+                                type="button"
+                                className="rounded px-1.5 py-0.5 text-[10px] font-bold text-slate-300 hover:bg-white/10 disabled:opacity-30"
+                                disabled={index === 0}
+                                onClick={() => moveBundleCompanion(product.id, -1)}
+                                title="Move up"
+                              >
+                                ↑
+                              </button>
+                              <button
+                                type="button"
+                                className="rounded px-1.5 py-0.5 text-[10px] font-bold text-slate-300 hover:bg-white/10 disabled:opacity-30"
+                                disabled={index === selectedCompanions.length - 1}
+                                onClick={() => moveBundleCompanion(product.id, 1)}
+                                title="Move down"
+                              >
+                                ↓
+                              </button>
+                              <button
+                                type="button"
+                                className="rounded px-1.5 py-0.5 text-[11px] font-bold text-emerald-200 hover:bg-white/10"
+                                onClick={() =>
+                                  setDraft((current) => ({
+                                    ...current,
+                                    bundleProductIds: current.bundleProductIds.filter((id) => id !== product.id),
+                                  }))
+                                }
+                                title="Remove from bundle"
+                              >
+                                ×
+                              </button>
+                            </div>
+                          ))}
+                          <span className="text-[11px] text-slate-500">
+                            {draft.bundleProductIds.length}/4 selected · order shown on the product page
+                          </span>
+                        </div>
+                      ) : null}
+                      <label className="grid gap-1.5 text-sm">
+                        <span className="font-semibold text-slate-300">Search companions</span>
+                        <input
+                          value={bundleCompanionQuery}
+                          onChange={(event) => setBundleCompanionQuery(event.target.value)}
+                          placeholder="Filter by title, author, SKU…"
+                          className="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-white outline-none transition placeholder:text-slate-600 focus:border-emerald-500"
+                        />
+                      </label>
+                      <label className="flex items-center gap-2 text-[11px] text-slate-400">
+                        <input
+                          type="checkbox"
+                          className="accent-emerald-600"
+                          checked={hidePrintOosCompanions}
+                          onChange={(event) => setHidePrintOosCompanions(event.target.checked)}
+                        />
+                        Hide companions with printed format out of stock
+                      </label>
                       <div className="max-h-56 space-y-2 overflow-y-auto rounded-lg border border-white/10 p-2">
-                        {productsSource
-                          .filter((product) => product.id !== editingProduct?.id && product.status === "PUBLISHED")
-                          .map((product) => {
+                        {filteredCompanions.map((product) => {
                             const checked = draft.bundleProductIds.includes(product.id);
                             const disabled = !checked && draft.bundleProductIds.length >= 4;
+                            const printEnabled = enabledLibraryFormats(product).some((format) => format.type === "PRINTED_BOOK");
+                            const printOos = printEnabled && !libraryFormatInStock(product, { type: "PRINTED_BOOK" });
                             return (
                               <label
                                 key={product.id}
@@ -1623,7 +1846,14 @@ export function LibraryAdminHub() {
                                   }}
                                 />
                                 <span className="min-w-0">
-                                  <span className="block font-semibold text-slate-100">{product.title}</span>
+                                  <span className="flex flex-wrap items-center gap-1.5">
+                                    <span className="font-semibold text-slate-100">{product.title}</span>
+                                    {printOos ? (
+                                      <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-300">
+                                        Print OOS
+                                      </span>
+                                    ) : null}
+                                  </span>
                                   <span className="mt-0.5 block text-[11px] text-slate-500">
                                     {enabledLibraryFormats(product)
                                       .map((format) => `${format.label} ${product.currency} ${format.price.toFixed(2)}`)
@@ -1633,8 +1863,11 @@ export function LibraryAdminHub() {
                               </label>
                             );
                           })}
-                        {!productsSource.some((product) => product.id !== editingProduct?.id && product.status === "PUBLISHED") && (
+                        {publishedCompanions.length === 0 && (
                           <p className="px-2 py-3 text-xs text-slate-500">Publish other products first, then pick them here for the bundle.</p>
+                        )}
+                        {publishedCompanions.length > 0 && filteredCompanions.length === 0 && (
+                          <p className="px-2 py-3 text-xs text-slate-500">No published products match “{bundleCompanionQuery.trim()}”.</p>
                         )}
                       </div>
                       <SelectField
@@ -1649,42 +1882,91 @@ export function LibraryAdminHub() {
                           })
                         }
                         options={["MATCH_SHOPPER", "PREFER_DIGITAL", "PREFER_PRINT"]}
+                        optionLabels={{
+                          MATCH_SHOPPER: "Match shopper’s format",
+                          PREFER_DIGITAL: "Prefer digital / soft copy",
+                          PREFER_PRINT: "Prefer printed book",
+                        }}
+                        hint="Only the starting default. Shoppers can still switch each companion to digital or print on the product page."
                       />
                       <Field
                         label="Bundle promo total (optional)"
                         value={draft.bundlePromoPrice}
                         onChange={(value) => setDraft({ ...draft, bundlePromoPrice: value })}
                         type="number"
-                        placeholder="e.g. 39 when full digital bundle is 45"
+                        placeholder={
+                          draft.bundleProductIds.length
+                            ? `e.g. ${suggestedDigitalPromo.toFixed(2)} for ~10% off digital`
+                            : "e.g. 39 when full digital bundle is 45"
+                        }
                       />
+                      <p className="text-[11px] leading-4 text-slate-500">
+                        One promo for the whole set (main + companions). Best practice: aim it at the <span className="text-slate-300">digital</span> total. For printed bulk discounts, use printed volume tiers on each book instead.
+                      </p>
                       {draft.bundleProductIds.length > 0 ? (
                         <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3 text-xs leading-5 text-slate-300">
                           <p className="font-semibold text-emerald-300">Live bundle preview</p>
                           <p className="mt-1.5">
-                            Digital total: <span className="font-semibold text-white">{currency} {digital.total.toFixed(2)}</span>
+                            Soft copy (digital):{" "}
+                            <span className="font-semibold text-white">
+                              {currency} {digitalList.subtotal.toFixed(2)}
+                            </span>
                             {digital.savings > 0 ? (
-                              <span className="text-slate-500">
+                              <span className="text-emerald-300">
                                 {" "}
-                                (was {currency} {digital.subtotal.toFixed(2)}, save {currency} {digital.savings.toFixed(2)})
+                                → promo {currency} {digital.total.toFixed(2)} (save {currency} {digital.savings.toFixed(2)})
                               </span>
+                            ) : promo != null && Number.isFinite(promo) && promo > 0 ? (
+                              <span className="text-slate-500"> · promo not below digital total yet</span>
                             ) : null}
                           </p>
                           <p className="mt-1">
-                            Print total: <span className="font-semibold text-white">{currency} {print.total.toFixed(2)}</span>
+                            Printed:{" "}
+                            <span className="font-semibold text-white">
+                              {currency} {printList.subtotal.toFixed(2)}
+                            </span>
                             {print.savings > 0 ? (
-                              <span className="text-slate-500">
+                              <span className="text-slate-400">
                                 {" "}
-                                (was {currency} {print.subtotal.toFixed(2)}, save {currency} {print.savings.toFixed(2)})
+                                → with same promo {currency} {print.total.toFixed(2)} (save {currency} {print.savings.toFixed(2)})
                               </span>
                             ) : null}
                           </p>
+                          {digitalList.subtotal > 0 ? (
+                            <button
+                              type="button"
+                              className="mt-2 text-[11px] font-semibold text-emerald-300 hover:text-emerald-200"
+                              onClick={() =>
+                                setDraft((current) => ({
+                                  ...current,
+                                  bundlePromoPrice: suggestedDigitalPromo.toFixed(2),
+                                  bundleFormatPreference:
+                                    current.bundleFormatPreference === "PREFER_PRINT"
+                                      ? "PREFER_DIGITAL"
+                                      : current.bundleFormatPreference,
+                                }))
+                              }
+                            >
+                              Use suggested digital promo ({currency} {suggestedDigitalPromo.toFixed(2)} · ~10% off soft copy)
+                            </button>
+                          ) : null}
+                          {promoOnlyHelpsPrint ? (
+                            <p className="mt-1.5 text-[11px] text-amber-300">
+                              This promo is above the soft-copy total, so digital shoppers won’t see a Save. Lower it below {currency} {digitalList.subtotal.toFixed(2)} for a soft-copy deal.
+                            </p>
+                          ) : null}
+                          {promoDeepOnPrint ? (
+                            <p className="mt-1.5 text-[11px] text-amber-300">
+                              Same promo also cuts printed bundles very deeply (&gt;35% off print). Prefer a digital-aimed promo here, and use printed volume tiers for bulk print savings.
+                            </p>
+                          ) : null}
                           <p className="mt-1.5 text-[11px] text-slate-500">
-                            Totals use enabled formats on this draft plus selected companions. Set promo below the digital total to show a Save amount.
+                            Soft copy and print are not two separate bundles — companions are shared; format is chosen at checkout time on the storefront.
                           </p>
                         </div>
                       ) : (
                         <p className="text-[11px] leading-4 text-slate-500">
-                          Leave promo blank for no discount. Pick companions to see live digital/print totals.
+                          Leave promo blank for no discount. Pick companions to see live soft-copy and print totals.
                         </p>
                       )}
                     </div>
@@ -1776,7 +2058,7 @@ export function LibraryAdminHub() {
                 </Button>
                 <Button
                   disabled={saving || libraryPublishBlockers(draft).length > 0}
-                  onClick={() => void saveProduct("PUBLISHED")}
+                  onClick={confirmPublishThenSave}
                 >
                   {saving ? "Publishing..." : "Publish"}
                 </Button>
@@ -2046,7 +2328,7 @@ function productPayload(draft: LibraryProductDraft, statusOverride?: string) {
     publicationDate: draft.publicationDate || undefined,
     pages: draft.pages.trim() ? Number(draft.pages) : undefined,
     sku: draft.sku.trim() || undefined,
-    productType: primary.type,
+    productType: draft.productType === "BUNDLE" ? "BUNDLE" : primary.type,
     status: statusOverride || draft.status,
     price: primary.price,
     compareAtPrice: primary.compareAtPrice,
@@ -2592,13 +2874,32 @@ function TextAreaField({ label, value, onChange, placeholder, required = false }
   );
 }
 
-function SelectField({ label, value, onChange, options }: { label: string; value: string; onChange: (value: string) => void; options: string[] }) {
+function SelectField({
+  label,
+  value,
+  onChange,
+  options,
+  optionLabels,
+  hint,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: string[];
+  optionLabels?: Record<string, string>;
+  hint?: string;
+}) {
   return (
     <label className="grid gap-1.5 text-sm">
       <span className="font-semibold text-slate-300">{label}</span>
       <select value={value} onChange={(event) => onChange(event.target.value)} className="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-white outline-none transition focus:border-emerald-500">
-        {options.map((option) => <option key={option} value={option}>{option.replace(/_/g, " ")}</option>)}
+        {options.map((option) => (
+          <option key={option} value={option}>
+            {optionLabels?.[option] ?? option.replace(/_/g, " ")}
+          </option>
+        ))}
       </select>
+      {hint ? <span className="text-[11px] leading-4 text-slate-500">{hint}</span> : null}
     </label>
   );
 }
@@ -2717,6 +3018,7 @@ function LibraryTabManagement({
   onViewCustomerOrders,
   onDisableCustomer,
   onReportFilterChange,
+  onUpdateQuoteRequest,
 }: {
   view: string;
   products: LibraryProduct[];
@@ -2746,6 +3048,7 @@ function LibraryTabManagement({
   onOpenRecommendation: (product?: LibraryProduct) => void;
   onEditRecommendation: (row: LibraryRecommendationAdmin) => void;
   onDeleteRecommendation: (row: LibraryRecommendationAdmin) => void | Promise<void>;
+  onUpdateQuoteRequest: (id: string, status: string) => void | Promise<void>;
   onCustomerFilterChange: (value: string) => void;
   onViewCustomerOrders: (email: string) => void;
   onDisableCustomer: (userId: string, email: string) => void | Promise<void>;
@@ -2853,10 +3156,15 @@ function LibraryTabManagement({
   }
 
   if (view === "Inventory") {
+    const quoteRows = operations.quoteRequests ?? [];
     return (
       <div className="grid gap-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <MiniMetricGrid rows={[{ label: "Low stock", value: operations.reports.stockAlerts.length, detail: "At or under threshold" }, { label: "Movements", value: operations.reports.inventoryMovements.length, detail: "Recent stock ledger" }, { label: "Physical SKUs", value: products.filter((row) => row.stock !== null).length, detail: "Tracked inventory" }]} />
+          <MiniMetricGrid rows={[
+            { label: "Low stock", value: operations.reports.stockAlerts.length, detail: "At or under threshold" },
+            { label: "Quote inbox", value: quoteRows.filter((row) => row.status === "NEW").length, detail: `${quoteRows.length} total requests` },
+            { label: "Physical SKUs", value: products.filter((row) => row.stock !== null).length, detail: "Tracked inventory" },
+          ]} />
           <Button
             variant="secondary"
             onClick={() => {
@@ -2872,6 +3180,35 @@ function LibraryTabManagement({
           >
             Send abandoned bag reminders
           </Button>
+        </div>
+        <div>
+          <h3 className="mb-2 text-sm font-semibold uppercase tracking-wider text-slate-300">Bulk quote inbox</h3>
+          <AdminDataTable
+            rows={quoteRows}
+            emptyMessage="No bulk quote requests yet."
+            columns={[
+              { key: "when", header: "When", render: (row) => new Date(row.createdAt).toLocaleDateString() },
+              { key: "customer", header: "Customer", render: (row) => <span className="font-semibold text-white">{row.name || row.email}</span> },
+              { key: "product", header: "Product", render: (row) => row.productTitle },
+              { key: "qty", header: "Qty", render: (row) => row.quantity },
+              { key: "detail", header: "Detail", render: (row) => [row.company, row.formatType, row.phone].filter(Boolean).join(" · ") || row.message || "—" },
+              {
+                key: "status",
+                header: "Status",
+                render: (row) => (
+                  <select
+                    value={row.status}
+                    onChange={(event) => void onUpdateQuoteRequest(row.id, event.target.value)}
+                    className="rounded-lg border border-white/10 bg-slate-950 px-2 py-1 text-xs text-white"
+                  >
+                    {["NEW", "CONTACTED", "QUOTED", "WON", "LOST", "CLOSED"].map((status) => (
+                      <option key={status} value={status}>{status}</option>
+                    ))}
+                  </select>
+                ),
+              },
+            ]}
+          />
         </div>
         <AdminDataTable
           rows={operations.reports.stockAlerts}
@@ -2946,6 +3283,8 @@ function LibraryTabManagement({
       : reportFilter === "downloads" ? operations.reports.downloadLogs.map((row) => ({ id: row.id, name: row.product, metric: row.usage, detail: `${row.customer} / ${row.file}`, status: row.status }))
       : reportFilter === "taxes" ? operations.reports.taxSummary.map((row) => ({ id: row.id, name: `${row.name} (${row.country})`, metric: `${row.rate.toFixed(2)}%`, detail: `Collected USD ${row.collected.toFixed(2)}`, status: row.active ? "ACTIVE" : "INACTIVE" }))
       : reportFilter === "coupons" ? operations.reports.couponPerformance.map((row) => ({ id: row.id, name: row.code, metric: `${row.usedCount} uses`, detail: row.discountType === "PERCENT" ? `${row.discountValue}% discount` : `USD ${row.discountValue.toFixed(2)} discount`, status: row.status }))
+      : reportFilter === "bundles" ? (operations.reports.bundlePairPerformance ?? []).map((row) => ({ id: row.label, name: row.label, metric: `${row.value} adds`, detail: `Digital lines ${row.digitalLines} · Print lines ${row.printLines}`, status: "BUNDLE" }))
+      : reportFilter === "quotes" ? (operations.quoteRequests ?? []).map((row) => ({ id: row.id, name: row.productTitle, metric: `${row.quantity} qty`, detail: `${row.email}${row.company ? ` · ${row.company}` : ""}`, status: row.status }))
       : operations.reports.scorecards.map((row) => ({ id: row.label, name: row.label, metric: String(row.value), detail: row.detail, status: row.tone.toUpperCase() }));
     return (
       <div className="grid gap-5">
@@ -2957,6 +3296,8 @@ function LibraryTabManagement({
             { value: "downloads", label: "Downloads" },
             { value: "coupons", label: "Coupons" },
             { value: "taxes", label: "Taxes" },
+            { value: "bundles", label: "FBT bundles" },
+            { value: "quotes", label: "Quote requests" },
           ]} />
           <Button onClick={() => onCreateExport(reportFilter)}>Export {reportFilter}</Button>
         </div>
@@ -2986,9 +3327,15 @@ function LibraryTabManagement({
   }
 
   if (view === "Analytics") {
+    const bundlePairs = operations.reports.bundlePairPerformance ?? [];
+    const formatMix = operations.reports.bundleFormatMix ?? [];
     return (
       <div className="grid gap-5">
-        <MiniMetricGrid rows={[{ label: "Revenue", value: `USD ${analytics.revenue.toFixed(2)}`, detail: `${analytics.orders} orders` }, { label: "Visitors", value: analytics.visitors, detail: `${analytics.conversionRate}% conversion` }, { label: "Downloads", value: analytics.downloads, detail: "Access events" }]} />
+        <MiniMetricGrid rows={[
+          { label: "Revenue", value: `USD ${analytics.revenue.toFixed(2)}`, detail: `${analytics.orders} orders` },
+          { label: "Visitors", value: analytics.visitors, detail: `${analytics.conversionRate}% conversion` },
+          { label: "Bundle adds", value: formatMix.reduce((sum, row) => sum + row.value, 0) ? bundlePairs.reduce((sum, row) => sum + row.value, 0) : (operations.reports.scorecards.find((row) => row.label === "Bundle cart adds")?.value ?? 0), detail: "FBT cart events" },
+        ]} />
         <div className="grid gap-5 xl:grid-cols-2">
           <div>
             <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-300">Revenue trend</h3>
@@ -2998,7 +3345,25 @@ function LibraryTabManagement({
             <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-300">Marketplace funnel</h3>
             <div className="mt-3"><BarChart data={operations.reports.funnel} color="bg-cyan-500" /></div>
           </div>
+          <div>
+            <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-300">FBT pair performance</h3>
+            <div className="mt-3"><BarChart data={bundlePairs.map((row) => ({ label: row.label.length > 28 ? `${row.label.slice(0, 28)}…` : row.label, value: row.value }))} color="bg-emerald-500" /></div>
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-300">Bundle digital vs print mix</h3>
+            <div className="mt-3"><DonutChart data={formatMix} /></div>
+          </div>
         </div>
+        <AdminDataTable
+          rows={bundlePairs.map((row, index) => ({ id: `bundle-pair-${index}`, ...row }))}
+          emptyMessage="No frequently-bought-together cart adds yet."
+          columns={[
+            { key: "pair", header: "Pair / set", render: (row) => <span className="font-semibold text-white">{row.label}</span> },
+            { key: "adds", header: "Cart adds", render: (row) => row.value },
+            { key: "digital", header: "Digital lines", render: (row) => row.digitalLines },
+            { key: "print", header: "Print lines", render: (row) => row.printLines },
+          ]}
+        />
         <ProductPerformanceTable rows={operations.reports.productPerformance} products={products} onEditProduct={onEditProduct} onRecommend={onOpenRecommendation} />
       </div>
     );

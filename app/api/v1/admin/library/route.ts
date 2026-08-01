@@ -24,6 +24,7 @@ import {
   softDeleteLibraryProducts,
   updateLibraryDownloadAccess,
   updateLibraryFulfilment,
+  updateLibraryQuoteRequestStatus,
   upsertLibraryRecommendation,
   upsertLibraryCoupon,
   upsertLibraryTaxonomy,
@@ -321,6 +322,11 @@ export async function POST(request: Request) {
         olderThanHours: Number(body.olderThanHours) || 6,
         limit: Number(body.limit) || 25,
       }));
+    }
+    if (body.action === "update_quote_request" && body.id) {
+      const quote = await updateLibraryQuoteRequestStatus(String(body.id), String(body.status ?? ""), auth.user.id);
+      if (!quote) return problem(400, "INVALID_QUOTE_REQUEST", "Valid quote request id and status are required.");
+      return ok({ quote });
     }
     if (!body.title || !body.description || body.price == null) {
       return problem(400, "INVALID_PRODUCT", "title, description, and price are required.");

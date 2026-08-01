@@ -243,6 +243,23 @@ export type LibraryAdminReports = {
   taxSummary: Array<{ id: string; name: string; country: string; rate: number; active: boolean; collected: number }>;
   refundSummary: { orders: number; amount: number; taxReturned?: number; rate: number };
   settingsHealth: Array<{ area: string; status: string; detail: string }>;
+  bundlePairPerformance: Array<{ label: string; value: number; digitalLines: number; printLines: number }>;
+  bundleFormatMix: Array<{ label: string; value: number }>;
+};
+
+export type LibraryQuoteRequestAdmin = {
+  id: string;
+  productId: string | null;
+  productTitle: string;
+  email: string;
+  name: string | null;
+  phone: string | null;
+  company: string | null;
+  quantity: number;
+  formatType: string | null;
+  message: string | null;
+  status: string;
+  createdAt: string;
 };
 
 const localLibraryProducts: LibraryProduct[] = getLibraryProducts().map((product) => ({
@@ -1913,12 +1930,24 @@ export async function getLibraryOperationsSummary() {
       guestClaims: [],
       academyEntitlements: [],
       recommendations: [],
-      reports: buildLibraryAdminReports({ orders: [], products: localLibraryProducts, coupons: localLibraryCoupons, downloadAccess: [], reviews: [], taxSettings: [], inventoryMovements: [], storeSettings, cartAddCounts: { single: 0, bundle: 0 } }),
+      quoteRequests: [] as LibraryQuoteRequestAdmin[],
+      reports: buildLibraryAdminReports({
+        orders: [],
+        products: localLibraryProducts,
+        coupons: localLibraryCoupons,
+        downloadAccess: [],
+        reviews: [],
+        taxSettings: [],
+        inventoryMovements: [],
+        storeSettings,
+        cartAddCounts: { single: 0, bundle: 0 },
+        productTitles: new Map(localLibraryProducts.map((product) => [product.id, product.title])),
+      }),
     };
   }
   const prisma = getMainPrisma();
   try {
-    const [fulfilments, invoices, activities, exports, taxSettings, storeSettings, coupons, categories, collections, authors, downloadAccess, reviews, guestClaims, academyEntitlements, recommendations, orders, products, inventoryMovements, cartAddGroups] = await Promise.all([
+    const [fulfilments, invoices, activities, exports, taxSettings, storeSettings, coupons, categories, collections, authors, downloadAccess, reviews, guestClaims, academyEntitlements, recommendations, orders, products, inventoryMovements, cartAddGroups, bundleEvents, quoteRequests, quoteRequestCount] = await Promise.all([
       prisma.libraryFulfilment.findMany({ orderBy: { createdAt: "desc" }, take: 20, include: { order: { select: { orderNumber: true, total: true, currency: true } } } }),
       prisma.libraryInvoice.findMany({ orderBy: { issuedAt: "desc" }, take: 20, include: { order: { select: { orderNumber: true } } } }),
       prisma.libraryActivity.findMany({ orderBy: { createdAt: "desc" }, take: 30 }),
@@ -1964,12 +1993,34 @@ export async function getLibraryOperationsSummary() {
         where: { action: { in: ["CART_ADD_SINGLE", "CART_ADD_BUNDLE"] } },
         _count: { _all: true },
       }).catch(() => [] as Array<{ action: string; _count: { _all: number } }>),
+      prisma.libraryActivity.findMany({
+        where: { action: "CART_ADD_BUNDLE" },
+        orderBy: { createdAt: "desc" },
+        take: 500,
+        select: { metadata: true, targetId: true },
+      }).catch(() => [] as Array<{ metadata: unknown; targetId: string | null }>),
+      listLibraryQuoteRequests(80),
+      prisma.libraryQuoteRequest.count().catch(() => 0),
     ]);
     const cartAddCounts = {
       single: cartAddGroups.find((row) => row.action === "CART_ADD_SINGLE")?._count._all ?? 0,
       bundle: cartAddGroups.find((row) => row.action === "CART_ADD_BUNDLE")?._count._all ?? 0,
     };
-    const reports = buildLibraryAdminReports({ orders, products, coupons, downloadAccess, reviews, taxSettings, inventoryMovements, storeSettings, cartAddCounts });
+    const productTitles = new Map(products.map((product) => [product.id, product.title]));
+    const reports = buildLibraryAdminReports({
+      orders,
+      products,
+      coupons,
+      downloadAccess,
+      reviews,
+      taxSettings,
+      inventoryMovements,
+      storeSettings,
+      cartAddCounts,
+      bundleEvents,
+      quoteRequestCount,
+      productTitles,
+    });
     return {
       fulfilments,
       invoices,
@@ -1988,6 +2039,7 @@ export async function getLibraryOperationsSummary() {
       guestClaims,
       academyEntitlements,
       recommendations,
+      quoteRequests,
       reports,
     };
   } catch {
@@ -2006,6 +2058,7 @@ export async function getLibraryOperationsSummary() {
       guestClaims: [],
       academyEntitlements: [],
       recommendations: [],
+      quoteRequests: [] as LibraryQuoteRequestAdmin[],
       reports: buildLibraryAdminReports({ orders: [], products: [], coupons: [], downloadAccess: [], reviews: [], taxSettings: [], inventoryMovements: [], storeSettings }),
     };
   }
@@ -2052,6 +2105,9 @@ function buildLibraryAdminReports(input: {
   inventoryMovements: Array<{ id: string; type: string; quantity: number; note?: string | null; createdAt: Date | string; product?: { title: string } | null }>;
   storeSettings?: LibraryStoreSettings;
   cartAddCounts?: { single: number; bundle: number };
+  bundleEvents?: Array<{ metadata?: unknown; targetId?: string | null }>;
+  quoteRequestCount?: number;
+  productTitles?: Map<string, string> | Record<string, string>;
 }): LibraryAdminReports {
   const paidOrders = input.orders.filter((order) => ["PAID", "FULFILLED"].includes(order.status));
   const refundedOrders = input.orders.filter((order) => order.status === "REFUNDED");
@@ -2066,6 +2122,47 @@ function buildLibraryAdminReports(input: {
   const bundleCartAdds = input.cartAddCounts?.bundle ?? 0;
   const totalCartAdds = singleCartAdds + bundleCartAdds;
   const bundleShare = totalCartAdds ? Number(((bundleCartAdds / totalCartAdds) * 100).toFixed(1)) : 0;
+  const titleMap =
+    input.productTitles instanceof Map
+      ? input.productTitles
+      : new Map(Object.entries(input.productTitles ?? {}));
+  const pairCounts = new Map<string, { label: string; value: number; digitalLines: number; printLines: number }>();
+  let digitalLineCount = 0;
+  let printLineCount = 0;
+  for (const event of input.bundleEvents ?? []) {
+    const meta = (event.metadata && typeof event.metadata === "object" ? event.metadata : {}) as {
+      companionIds?: unknown;
+      lines?: Array<{ formatType?: string; productId?: string }>;
+      productId?: string;
+    };
+    const companionIds = Array.isArray(meta.companionIds) ? meta.companionIds.map(String).filter(Boolean) : [];
+    const sourceId = String(event.targetId || meta.productId || meta.lines?.[0]?.productId || "");
+    const memberIds = Array.from(new Set([sourceId, ...companionIds].filter(Boolean))).sort();
+    const lines = Array.isArray(meta.lines) ? meta.lines : [];
+    for (const line of lines) {
+      if (line.formatType === "PRINTED_BOOK") printLineCount += 1;
+      else digitalLineCount += 1;
+    }
+    if (memberIds.length >= 2) {
+      const key = memberIds.join("+");
+      const label = memberIds.map((id) => titleMap.get(id) || id.slice(0, 8)).join(" + ");
+      const current = pairCounts.get(key) ?? { label, value: 0, digitalLines: 0, printLines: 0 };
+      current.value += 1;
+      for (const line of lines) {
+        if (line.formatType === "PRINTED_BOOK") current.printLines += 1;
+        else current.digitalLines += 1;
+      }
+      pairCounts.set(key, current);
+    }
+  }
+  const bundlePairPerformance = Array.from(pairCounts.values())
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 12);
+  const bundleFormatMix = [
+    { label: "Digital lines in bundles", value: digitalLineCount },
+    { label: "Printed lines in bundles", value: printLineCount },
+  ];
+  const quoteRequestCount = input.quoteRequestCount ?? 0;
   const productRevenue = new Map<string, { id: string; title: string; revenue: number; units: number; views: number; downloads: number; health: number }>();
   input.products.forEach((product) => {
     productRevenue.set(product.id, {
@@ -2115,6 +2212,7 @@ function buildLibraryAdminReports(input: {
         { label: "Download events", value: downloads, detail: `${input.downloadAccess.length} access records`, tone: "default" as const },
         { label: "Single cart adds", value: singleCartAdds, detail: "Product page add-to-bag", tone: "info" as const },
         { label: "Bundle cart adds", value: bundleCartAdds, detail: `${bundleShare}% of cart adds`, tone: bundleCartAdds ? "success" as const : "default" as const },
+        { label: "Quote requests", value: quoteRequestCount, detail: "Bulk / firm quote inbox", tone: quoteRequestCount ? "warning" as const : "success" as const },
         { label: "Low stock", value: lowStock.length, detail: "Products at or under threshold", tone: lowStock.length ? "danger" as const : "success" as const },
         { label: "Pending reviews", value: pendingReviews, detail: "Need moderation", tone: pendingReviews ? "warning" as const : "success" as const },
       ];
@@ -2123,6 +2221,7 @@ function buildLibraryAdminReports(input: {
       { label: "Views", value: visitors },
       { label: "Cart adds", value: totalCartAdds },
       { label: "Bundle adds", value: bundleCartAdds },
+      { label: "Quote requests", value: quoteRequestCount },
       { label: "Orders", value: input.orders.length },
       { label: "Paid", value: paidOrders.length },
       { label: "Downloads", value: input.downloadAccess.length },
@@ -2215,6 +2314,8 @@ function buildLibraryAdminReports(input: {
       lowStockCount: lowStock.length,
       storeSettings: input.storeSettings,
     }),
+    bundlePairPerformance,
+    bundleFormatMix,
   };
 }
 
@@ -2592,6 +2693,57 @@ export async function createLibraryBulkQuoteRequest(input: {
     action: "QUOTE_REQUEST_CREATED",
     message: `Bulk quote request for ${quantity} × ${productTitle} from ${email}.`,
     metadata: input,
+  });
+  return row;
+}
+
+const LIBRARY_QUOTE_STATUSES = new Set(["NEW", "CONTACTED", "QUOTED", "WON", "LOST", "CLOSED"]);
+
+export async function listLibraryQuoteRequests(limit = 80): Promise<LibraryQuoteRequestAdmin[]> {
+  if (!shouldUsePostgresLibrary()) return [];
+  const prisma = getMainPrisma();
+  const rows = await prisma.libraryQuoteRequest.findMany({
+    orderBy: { createdAt: "desc" },
+    take: Math.max(1, Math.min(200, Math.floor(limit) || 80)),
+  }).catch(() => []);
+  if (!rows.length) return [];
+  const productIds = Array.from(new Set(rows.map((row) => row.productId).filter((id): id is string => Boolean(id))));
+  const products = productIds.length
+    ? await prisma.libraryProduct.findMany({ where: { id: { in: productIds } }, select: { id: true, title: true } }).catch(() => [])
+    : [];
+  const titles = new Map(products.map((product) => [product.id, product.title]));
+  return rows.map((row) => ({
+    id: row.id,
+    productId: row.productId,
+    productTitle: (row.productId && titles.get(row.productId)) || "Library product",
+    email: row.email,
+    name: row.name,
+    phone: row.phone,
+    company: row.company,
+    quantity: row.quantity,
+    formatType: row.formatType,
+    message: row.message,
+    status: row.status,
+    createdAt: toIso(row.createdAt),
+  }));
+}
+
+export async function updateLibraryQuoteRequestStatus(id: string, status: string, actorId?: string) {
+  const nextStatus = String(status || "").trim().toUpperCase();
+  if (!id || !LIBRARY_QUOTE_STATUSES.has(nextStatus)) return null;
+  if (!shouldUsePostgresLibrary()) return { id, status: nextStatus };
+  const row = await getMainPrisma().libraryQuoteRequest.update({
+    where: { id },
+    data: { status: nextStatus },
+  }).catch(() => null);
+  if (!row) return null;
+  await logLibraryActivity({
+    actorId,
+    targetType: "quote_request",
+    targetId: row.id,
+    action: "QUOTE_REQUEST_UPDATED",
+    message: `Quote request marked ${nextStatus}.`,
+    metadata: { status: nextStatus, email: row.email },
   });
   return row;
 }
