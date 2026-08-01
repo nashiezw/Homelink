@@ -165,7 +165,6 @@ export function buildTopClassAnalytics(input: {
   for (const event of chronological) {
     const meta = asMeta(event.metadata);
     const sessionId = event.sessionId || `v:${event.visitorId}`;
-    const title = displayProductTitle(meta, event.target) || metaStr(meta, "title", "productTitle") || event.target || "";
     const created = event.createdAt.getTime();
     const hour = new Date(event.createdAt).getHours();
     if (created >= now - dayMs) hourlyViews[hour].events += 1;
