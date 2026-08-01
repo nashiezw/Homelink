@@ -1,6 +1,7 @@
 import { MyLibraryClient } from "@/components/library/my-library-client";
 import { requireServerRole } from "@/lib/auth/server-session";
-import { listCustomerLibrary } from "@/lib/library/repository";
+import { suggestLibraryDigitalUpsells } from "@/lib/library/catalog";
+import { listCustomerLibrary, listLibraryProducts } from "@/lib/library/repository";
 
 export const dynamic = "force-dynamic";
 
@@ -9,6 +10,24 @@ export default async function MyLibraryPage() {
     anySignedIn: true,
     next: "/dashboard/my-library",
   });
-  const data = await listCustomerLibrary(user.id);
-  return <MyLibraryClient products={data.products} orders={data.orders} downloads={data.downloads} />;
+  const [data, catalog] = await Promise.all([
+    listCustomerLibrary(user.id),
+    listLibraryProducts({}),
+  ]);
+  const ownedIds = data.products.map((product) => product.id);
+  const nextBooks = suggestLibraryDigitalUpsells({
+    catalog,
+    seedProductIds: ownedIds,
+    excludeProductIds: ownedIds,
+    max: 3,
+    preferPromoCompanions: true,
+  });
+  return (
+    <MyLibraryClient
+      products={data.products}
+      orders={data.orders}
+      downloads={data.downloads}
+      nextBooks={nextBooks}
+    />
+  );
 }

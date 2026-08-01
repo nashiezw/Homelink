@@ -2,7 +2,8 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { LibraryCheckoutConfirmation } from "@/components/library/library-checkout-confirmation";
 import { requireServerRole } from "@/lib/auth/server-session";
-import { getLibraryOrderForUser } from "@/lib/library/repository";
+import { suggestLibraryDigitalUpsells } from "@/lib/library/catalog";
+import { getLibraryOrderForUser, listCustomerLibrary, listLibraryProducts } from "@/lib/library/repository";
 
 export const dynamic = "force-dynamic";
 
@@ -36,5 +37,23 @@ export default async function LibraryCheckoutConfirmationPage({
   const order = await getLibraryOrderForUser(orderId, user.id, user.roles);
   if (!order) notFound();
   if (order === "FORBIDDEN") redirect("/dashboard/my-library");
-  return <LibraryCheckoutConfirmation order={order} paymentId={paymentId} status={status} />;
+  const [catalog, library] = await Promise.all([
+    listLibraryProducts({}),
+    listCustomerLibrary(user.id).catch(() => ({ products: [] as Array<{ id: string }> })),
+  ]);
+  const seedProductIds = (order.items ?? [])
+    .map((item) => ("productId" in item ? String((item as { productId?: string }).productId || "") : ""))
+    .filter(Boolean);
+  const ownedIds = [
+    ...seedProductIds,
+    ...(library.products ?? []).map((product) => product.id),
+  ];
+  const nextBooks = suggestLibraryDigitalUpsells({
+    catalog,
+    seedProductIds,
+    excludeProductIds: ownedIds,
+    max: 2,
+    preferPromoCompanions: true,
+  });
+  return <LibraryCheckoutConfirmation order={order} paymentId={paymentId} status={status} nextBooks={nextBooks} />;
 }

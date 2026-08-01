@@ -5,16 +5,20 @@ import { CreditCard, Gift, Lock, MapPin, Minus, Plus, ShoppingCart, Trash2 } fro
 import { useEffect, useMemo, useState } from "react";
 import { PageShell } from "@/components/layout/page-shell";
 import { LibraryCartFab } from "@/components/library/library-cart-fab";
+import { LibraryUpsellRail } from "@/components/library/library-upsell-rail";
 import { Button } from "@/components/ui/button";
 import { useApp } from "@/components/providers/app-provider";
 import { apiFetch } from "@/lib/api/client";
 import {
   clearLibraryCart,
   libraryCartLineKey,
+  notifyLibraryCartAdded,
   repriceLibraryCartLine,
   sameLibraryCartLine,
+  trackLibraryCartEvent,
   useLibraryCart,
 } from "@/lib/library/cart-client";
+import type { LibraryDigitalUpsellSuggestion } from "@/lib/library/catalog";
 import type { PublicPaymentConfig } from "@/lib/payments/public-payment-config";
 
 type LibraryQuote = {
@@ -130,9 +134,15 @@ export function LibraryCheckoutClient() {
   const [storeSettings, setStoreSettings] = useState<LibraryPublicSettings | null>(null);
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [shippingMethod, setShippingMethod] = useState<"SHIPPING" | "PICKUP">("SHIPPING");
+  const [upsells, setUpsells] = useState<LibraryDigitalUpsellSuggestion[]>([]);
+  const [upsellBusyId, setUpsellBusyId] = useState<string | null>(null);
 
   const needsShipping = useMemo(
     () => cart.some((item) => item.formatType === "PRINTED_BOOK" || /print/i.test(item.formatLabel ?? "") || /print/i.test(item.title)),
+    [cart],
+  );
+  const cartIsAllDigital = useMemo(
+    () => cart.length > 0 && cart.every((item) => item.formatType !== "PRINTED_BOOK"),
     [cart],
   );
 
@@ -165,6 +175,30 @@ export function LibraryCheckoutClient() {
       setPaymentMethod(paymentMethods[0].id);
     }
   }, [paymentMethods, paymentMethod]);
+
+  useEffect(() => {
+    if (!cart.length) {
+      setUpsells([]);
+      return;
+    }
+    const seedProductIds = Array.from(new Set(cart.map((item) => item.productId).filter(Boolean)));
+    const excludeProductIds = seedProductIds;
+    let cancelled = false;
+    void apiFetch<{ suggestions: LibraryDigitalUpsellSuggestion[] }>("/api/v1/library/upsells", {
+      method: "POST",
+      body: JSON.stringify({
+        seedProductIds,
+        excludeProductIds,
+        max: 2,
+        preferPromoCompanions: cartIsAllDigital,
+      }),
+    }).then((result) => {
+      if (!cancelled) setUpsells(result.data?.suggestions ?? []);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [cart, cartIsAllDigital]);
 
   useEffect(() => {
     if (!cart.length) {
@@ -338,6 +372,43 @@ export function LibraryCheckoutClient() {
     );
   }
 
+  function addDigitalUpsell(suggestion: LibraryDigitalUpsellSuggestion) {
+    setUpsellBusyId(suggestion.productId);
+    setCart((current) => {
+      const incoming = repriceLibraryCartLine(
+        {
+          productId: suggestion.productId,
+          title: `${suggestion.title} (${suggestion.formatLabel})`,
+          price: suggestion.price,
+          listPrice: suggestion.price,
+          currency: suggestion.currency,
+          quantity: 1,
+          formatId: suggestion.formatId,
+          formatType: suggestion.formatType,
+          formatLabel: suggestion.formatLabel,
+        },
+        1,
+      );
+      const existing = current.find((line) => sameLibraryCartLine(line, incoming));
+      if (existing) {
+        return current.map((line) =>
+          sameLibraryCartLine(line, incoming) ? repriceLibraryCartLine(line, line.quantity + 1) : line,
+        );
+      }
+      return [...current, incoming];
+    });
+    notifyLibraryCartAdded(suggestion.title);
+    trackLibraryCartEvent("CART_ADD_SINGLE", suggestion.productId, {
+      formatId: suggestion.formatId,
+      formatType: suggestion.formatType,
+      price: suggestion.price,
+      quantity: 1,
+      source: "checkout_upsell",
+    });
+    showToast("Digital title added to your bag.", "success");
+    setUpsellBusyId(null);
+  }
+
   const payable = useMemo(() => quote?.total ?? total, [quote, total]);
   const allowPickup = Boolean(quote?.allowLocalPickup || storeSettings?.delivery.allowLocalPickup);
 
@@ -397,6 +468,15 @@ export function LibraryCheckoutClient() {
               )}
             </div>
           </section>
+
+          <LibraryUpsellRail
+            title="Complete your set"
+            description="Digital soft-copy add-ons only — one tap, no format maze at payment."
+            suggestions={upsells}
+            mode="add"
+            busyId={upsellBusyId}
+            onAddDigital={addDigitalUpsell}
+          />
 
           <section className="surface-panel rounded-lg p-5">
             <h2 className="text-lg font-semibold text-ink dark:text-white">Invoice & gift details</h2>

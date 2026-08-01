@@ -4,10 +4,11 @@ import Link from "next/link";
 import { Download, FileText, Heart, PackageCheck, Star, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { PageShell } from "@/components/layout/page-shell";
+import { LibraryUpsellRail } from "@/components/library/library-upsell-rail";
 import { Button } from "@/components/ui/button";
 import { useApp } from "@/components/providers/app-provider";
 import { apiFetch } from "@/lib/api/client";
-import type { LibraryOrder, LibraryProduct } from "@/lib/library/catalog";
+import type { LibraryDigitalUpsellSuggestion, LibraryOrder, LibraryProduct } from "@/lib/library/catalog";
 import { libraryOrderStageCopy, libraryOrderStatusLabel } from "@/lib/library/order-stage";
 
 type DownloadAccess = {
@@ -34,10 +35,12 @@ export function MyLibraryClient({
   products,
   orders,
   downloads,
+  nextBooks = [],
 }: {
   products: LibraryProduct[];
   orders: LibraryOrder[];
   downloads?: DownloadAccess[];
+  nextBooks?: LibraryDigitalUpsellSuggestion[];
 }) {
   const { showToast, user } = useApp();
   const [library, setLibrary] = useState<LibraryMe>({ products, orders, downloads: downloads ?? [], wishlist: [], wishlistCount: 0 });
@@ -133,6 +136,13 @@ export function MyLibraryClient({
               )}
             </div>
           </section>
+
+          <LibraryUpsellRail
+            title="Continue learning"
+            description="Next soft-copy titles based on what you already own."
+            suggestions={nextBooks}
+            mode="link"
+          />
 
           {(library.wishlist?.length ?? 0) > 0 && (
             <section className="surface-panel rounded-lg p-5">

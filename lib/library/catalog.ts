@@ -183,6 +183,100 @@ export function pickLibraryBundleFormat(
   return pool.find((format) => format.type !== "PRINTED_BOOK") ?? pool[0];
 }
 
+export type LibraryDigitalUpsellSuggestion = {
+  productId: string;
+  slug: string;
+  title: string;
+  author: string;
+  currency: string;
+  price: number;
+  formatId: string;
+  formatType: LibraryProductFormatType;
+  formatLabel: string;
+  reason: "BUNDLE" | "SERIES";
+  sourceProductId: string;
+  sourceTitle: string;
+};
+
+/**
+ * Light digital-only upsells from FBT companions (preferred) then same series.
+ * Never suggests printed formats — checkout/confirmation stay simple.
+ */
+export function suggestLibraryDigitalUpsells(input: {
+  catalog: LibraryProduct[];
+  seedProductIds: string[];
+  excludeProductIds?: string[];
+  max?: number;
+  preferPromoCompanions?: boolean;
+}): LibraryDigitalUpsellSuggestion[] {
+  const max = Math.max(1, Math.min(6, Math.floor(input.max ?? 2)));
+  const exclude = new Set([...(input.excludeProductIds ?? []), ...input.seedProductIds].filter(Boolean));
+  const byId = new Map(
+    input.catalog
+      .filter((product) => product.status === "PUBLISHED" || product.status === "SCHEDULED")
+      .map((product) => [product.id, product]),
+  );
+  const seeds = input.seedProductIds
+    .map((id) => byId.get(id))
+    .filter((product): product is LibraryProduct => Boolean(product));
+  const scored: Array<LibraryDigitalUpsellSuggestion & { score: number }> = [];
+  const seen = new Set<string>();
+
+  function pushCandidate(
+    target: LibraryProduct,
+    source: LibraryProduct,
+    reason: "BUNDLE" | "SERIES",
+    score: number,
+  ) {
+    if (exclude.has(target.id) || seen.has(target.id)) return;
+    const format = pickLibraryBundleFormat(target, "PDF");
+    if (!format || format.type === "PRINTED_BOOK") return;
+    seen.add(target.id);
+    scored.push({
+      productId: target.id,
+      slug: target.slug,
+      title: target.title,
+      author: target.author,
+      currency: target.currency || "USD",
+      price: format.price,
+      formatId: format.id,
+      formatType: format.type,
+      formatLabel: format.label,
+      reason,
+      sourceProductId: source.id,
+      sourceTitle: source.title,
+      score,
+    });
+  }
+
+  for (const source of seeds) {
+    const promoBoost =
+      input.preferPromoCompanions && source.bundlePromoPrice != null && Number(source.bundlePromoPrice) > 0
+        ? 20
+        : 0;
+    for (const companionId of source.bundleProductIds ?? []) {
+      const companion = byId.get(companionId);
+      if (!companion) continue;
+      pushCandidate(companion, source, "BUNDLE", 100 + promoBoost);
+    }
+  }
+
+  for (const source of seeds) {
+    const series = source.series?.trim().toLowerCase();
+    if (!series) continue;
+    for (const candidate of byId.values()) {
+      if (candidate.id === source.id) continue;
+      if ((candidate.series || "").trim().toLowerCase() !== series) continue;
+      pushCandidate(candidate, source, "SERIES", 40);
+    }
+  }
+
+  return scored
+    .sort((a, b) => b.score - a.score || a.title.localeCompare(b.title))
+    .slice(0, max)
+    .map(({ score: _score, ...row }) => row);
+}
+
 export function estimateLibraryBundleScenario(
   products: Array<Pick<LibraryProduct, "formats" | "productType" | "price" | "compareAtPrice" | "sku" | "currency">>,
   mode: "digital" | "print",

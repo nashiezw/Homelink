@@ -4,10 +4,12 @@ import Link from "next/link";
 import { CheckCircle2, Clock, CreditCard, FileText, LibraryBig, ReceiptText, RefreshCw, Upload, XCircle } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { PageShell } from "@/components/layout/page-shell";
+import { LibraryUpsellRail } from "@/components/library/library-upsell-rail";
 import { PaymentProofUpload } from "@/components/payments/payment-proof-upload";
 import { Button } from "@/components/ui/button";
 import { useApp } from "@/components/providers/app-provider";
 import { apiFetch } from "@/lib/api/client";
+import type { LibraryDigitalUpsellSuggestion } from "@/lib/library/catalog";
 import { libraryOrderStageCopy, libraryOrderStatusLabel } from "@/lib/library/order-stage";
 import { formatBankDetailLabel, type PublicPaymentConfig } from "@/lib/payments/public-payment-config";
 import { cn } from "@/lib/utils";
@@ -25,7 +27,7 @@ type ConfirmationOrder = {
   pickupAddress?: string | null;
   pickupInstructions?: string | null;
   pickupPhone?: string | null;
-  items?: Array<{ id: string; title: string; sku: string; quantity: number; unitPrice: number; total: number; productType?: string }>;
+  items?: Array<{ id: string; productId?: string; title: string; sku: string; quantity: number; unitPrice: number; total: number; productType?: string }>;
   payment?: {
     id?: string;
     status?: string;
@@ -40,7 +42,17 @@ type ConfirmationOrder = {
   } | null;
 };
 
-export function LibraryCheckoutConfirmation({ order: initialOrder, paymentId, status }: { order: ConfirmationOrder; paymentId?: string; status?: string }) {
+export function LibraryCheckoutConfirmation({
+  order: initialOrder,
+  paymentId,
+  status,
+  nextBooks = [],
+}: {
+  order: ConfirmationOrder;
+  paymentId?: string;
+  status?: string;
+  nextBooks?: LibraryDigitalUpsellSuggestion[];
+}) {
   const { showToast } = useApp();
   const [order, setOrder] = useState(initialOrder);
   const [config, setConfig] = useState<PublicPaymentConfig | null>(null);
@@ -104,6 +116,7 @@ export function LibraryCheckoutConfirmation({ order: initialOrder, paymentId, st
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_24rem]">
+        <div className="space-y-6">
         <section className="surface-panel rounded-lg p-5">
           <div className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-5 dark:border-slate-800">
             <div>
@@ -277,6 +290,14 @@ export function LibraryCheckoutConfirmation({ order: initialOrder, paymentId, st
             </div>
           )}
         </section>
+
+        <LibraryUpsellRail
+          title="Buy the next book"
+          description="Soft-copy titles that complete what you just ordered — browse now or after payment."
+          suggestions={nextBooks}
+          mode="link"
+        />
+        </div>
 
         <aside className="space-y-3">
           <StatusCard icon={LibraryBig} label="Library order" value={libraryOrderStatusLabel(order.status)} />
