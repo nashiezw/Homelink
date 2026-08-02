@@ -55,6 +55,7 @@ export function MyLibraryClient({
   const [allowGuestNames, setAllowGuestNames] = useState(false);
   const [npsPrompt, setNpsPrompt] = useState<{ accessId: string; productTitle: string } | null>(null);
   const [npsScore, setNpsScore] = useState<number | null>(null);
+  const [downloadState, setDownloadState] = useState<Record<string, { tone: "pending" | "error"; message: string }>>({});
   const purchased = library.products.filter((product) => product.downloads.length > 0 || library.downloads.some((download) => download.productId === product.id)).slice(0, 6);
 
   useEffect(() => {
@@ -80,8 +81,15 @@ export function MyLibraryClient({
 
   async function download(accessId?: string) {
     if (!accessId) return;
-    const token = await apiFetch<{ token: string; downloadUrl: string }>(`/api/v1/library/downloads/${accessId}/token`, { method: "POST" });
-    if (token.data?.token) {
+    setDownloadState((current) => ({ ...current, [accessId]: { tone: "pending", message: "Preparing secure download..." } }));
+    try {
+      const token = await apiFetch<{ token: string; downloadUrl: string }>(`/api/v1/library/downloads/${accessId}/token`, { method: "POST" });
+      if (!token.data?.token) {
+        const message = token.error?.message || "Download could not be prepared. Please refresh and try again.";
+        setDownloadState((current) => ({ ...current, [accessId]: { tone: "error", message } }));
+        showToast(message, "error");
+        return;
+      }
       trackEvent("library_download_started", accessId);
       const item = library.downloads.find((row) => row.id === accessId);
       try {
@@ -98,7 +106,12 @@ export function MyLibraryClient({
       } catch {
         /* ignore */
       }
+      setDownloadState((current) => ({ ...current, [accessId]: { tone: "pending", message: "Opening download..." } }));
       window.location.href = `${token.data.downloadUrl}?token=${encodeURIComponent(token.data.token)}`;
+    } catch (error) {
+      const message = error instanceof Error ? `Download failed: ${error.message}` : "Download failed. Please try again.";
+      setDownloadState((current) => ({ ...current, [accessId]: { tone: "error", message } }));
+      showToast(message, "error");
     }
   }
 
@@ -219,7 +232,7 @@ export function MyLibraryClient({
             <h2 className="text-lg font-semibold text-ink dark:text-white">Purchased Resources</h2>
             <div className="mt-4 grid gap-4">
               {purchased.map((product) => (
-                <PurchasedResource key={product.id} product={product} downloads={library.downloads} onDownload={download} />
+                <PurchasedResource key={product.id} product={product} downloads={library.downloads} downloadState={downloadState} onDownload={download} />
               ))}
               {!purchased.length && (
                 <div className="rounded-lg border border-dashed border-slate-300 p-6 text-sm text-slate-500 dark:border-slate-700">
@@ -348,15 +361,24 @@ export function MyLibraryClient({
           <section className="surface-panel rounded-lg p-5">
             <h2 className="text-lg font-semibold text-ink dark:text-white">Secure Downloads</h2>
             <div className="mt-4 space-y-3">
-              {library.downloads.length ? library.downloads.map((item) => (
-                <button key={item.id} type="button" onClick={() => void download(item.id)} className="flex w-full min-w-0 items-start justify-between gap-3 rounded-lg border border-slate-200 p-3 text-left dark:border-slate-800">
-                  <span className="min-w-0">
+              {library.downloads.length ? library.downloads.map((item) => {
+                const state = downloadState[item.id];
+                const busy = state?.tone === "pending";
+                return (
+                <button key={item.id} type="button" disabled={busy} aria-busy={busy || undefined} onClick={() => void download(item.id)} className="flex w-full min-w-0 items-start justify-between gap-3 rounded-lg border border-slate-200 p-3 text-left transition hover:border-emerald-500 disabled:cursor-wait disabled:opacity-70 dark:border-slate-800">
+                  <span className="min-w-0 space-y-1">
                     <span className="block break-words text-sm font-semibold">{item.productTitle}</span>
                     <span className="block break-all text-xs text-slate-500">{item.fileName} - {item.downloadCount}{item.downloadLimit ? `/${item.downloadLimit}` : ""} downloads</span>
+                    {state ? (
+                      <span className={state.tone === "error" ? "block text-xs font-semibold text-red-600 dark:text-red-300" : "block text-xs font-semibold text-emerald-700 dark:text-emerald-300"}>
+                        {state.message}
+                      </span>
+                    ) : null}
                   </span>
-                  <Download className="size-4 shrink-0 text-emerald-600" />
+                  {busy ? <span className="size-4 shrink-0 animate-spin rounded-full border-2 border-emerald-600 border-t-transparent" aria-hidden="true" /> : <Download className="size-4 shrink-0 text-emerald-600" />}
                 </button>
-              )) : (
+                );
+              }) : (
                 <p className="rounded-lg border border-dashed border-slate-300 p-4 text-sm text-slate-500 dark:border-slate-700">Approved purchases will appear here.</p>
               )}
             </div>
@@ -435,17 +457,34 @@ export function MyLibraryClient({
   );
 }
 
-function PurchasedResource({ product, downloads, onDownload }: { product: LibraryProduct; downloads: DownloadAccess[]; onDownload: (accessId?: string) => void }) {
+function PurchasedResource({
+  product,
+  downloads,
+  downloadState,
+  onDownload,
+}: {
+  product: LibraryProduct;
+  downloads: DownloadAccess[];
+  downloadState: Record<string, { tone: "pending" | "error"; message: string }>;
+  onDownload: (accessId?: string) => void;
+}) {
   const access = downloads.find((download) => download.productId === product.id);
+  const state = access ? downloadState[access.id] : undefined;
+  const busy = state?.tone === "pending";
   return (
     <article className="grid gap-4 rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
       <div className="min-w-0">
         <p className="text-xs font-bold uppercase tracking-wide text-emerald-700 dark:text-emerald-400">{product.productType.replace(/_/g, " ")}</p>
         <Link href={`/library/${product.slug}`} className="mt-1 block text-lg font-semibold text-ink hover:text-emerald-700 dark:text-white">{product.title}</Link>
         <p className="mt-1 text-sm text-slate-500">{product.downloads.length} secure download{product.downloads.length === 1 ? "" : "s"} - permanent access</p>
+        {state && (
+          <p className={`mt-2 text-xs font-semibold ${state.tone === "error" ? "text-red-600 dark:text-red-300" : "text-emerald-700 dark:text-emerald-300"}`}>
+            {state.message}
+          </p>
+        )}
       </div>
       <div className="flex flex-wrap gap-2 md:justify-end">
-        <Button disabled={!access} onClick={() => onDownload(access?.id)}>
+        <Button disabled={!access} loading={busy} loadingText="Preparing..." onClick={() => onDownload(access?.id)}>
           <Download className="size-4" /> Download
         </Button>
         {access?.orderId && <Link href={`/dashboard/my-library/orders/${access.orderId}`} className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-slate-200 px-4 text-sm font-bold text-slate-700 hover:border-emerald-500 hover:text-emerald-700 dark:border-slate-700 dark:text-slate-200"><FileText className="size-4" /> View order</Link>}

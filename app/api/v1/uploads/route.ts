@@ -30,6 +30,7 @@ export async function POST(request: Request) {
   const dataUrl = typeof body.dataUrl === "string" ? body.dataUrl : "";
   const kind: UploadKind = body.kind === "video" ? "video" : body.kind === "document" ? "document" : body.kind === "audio" ? "audio" : "image";
   const folder = typeof body.folder === "string" ? body.folder.replace(/[^a-z0-9_-]/gi, "") : "general";
+  const originalFilename = sanitizeOriginalFilename(typeof body.filename === "string" ? body.filename : "", validationExtension(dataUrl));
 
   const validation = validateUploadDataUrl(dataUrl, kind, folder);
   if ("error" in validation) return problem(400, "INVALID_MEDIA", validation.error);
@@ -95,7 +96,8 @@ export async function POST(request: Request) {
 
     return created({
       url: cloudinary.secure_url,
-      filename: cloudinary.public_id ?? `upload.${validation.ext}`,
+      filename: originalFilename || `upload.${validation.ext}`,
+      storageId: cloudinary.public_id,
       size: cloudinary.bytes ?? buffer.length,
       kind: cloudinary.resource_type ?? resourceType,
       format: cloudinary.format,
@@ -114,7 +116,30 @@ export async function POST(request: Request) {
   await writeFile(path.join(dir, filename), buffer);
 
   const url = `/uploads/${folder}/${filename}`;
-  return created({ url, filename, size: buffer.length, kind: validation.kind });
+  return created({ url, filename: originalFilename || filename, storageId: filename, size: buffer.length, kind: validation.kind });
+}
+
+function validationExtension(dataUrl: string) {
+  const mime = dataUrl.match(/^data:([^;]+);base64,/)?.[1]?.toLowerCase();
+  if (mime === "application/pdf") return "pdf";
+  if (mime === "application/zip") return "zip";
+  if (mime?.includes("wordprocessingml")) return "docx";
+  if (mime?.includes("spreadsheetml")) return "xlsx";
+  if (mime?.includes("presentationml")) return "pptx";
+  if (mime === "image/jpeg") return "jpg";
+  if (mime === "image/png") return "png";
+  if (mime === "image/webp") return "webp";
+  return "bin";
+}
+
+function sanitizeOriginalFilename(filename: string, fallbackExt: string) {
+  const cleaned = filename
+    .replace(/[<>:"/\\|?*\u0000-\u001f]/g, "-")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 160);
+  if (!cleaned) return "";
+  return /\.[a-z0-9]{2,8}$/i.test(cleaned) ? cleaned : `${cleaned}.${fallbackExt}`;
 }
 
 async function verifyCloudinaryDelivery(url: string) {

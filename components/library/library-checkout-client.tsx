@@ -133,6 +133,7 @@ export function LibraryCheckoutClient() {
   const [appliedCoupon, setAppliedCoupon] = useState("");
   const [quote, setQuote] = useState<LibraryQuote | null>(null);
   const [busy, setBusy] = useState(false);
+  const [couponBusy, setCouponBusy] = useState(false);
   const [quoting, setQuoting] = useState(false);
   const [config, setConfig] = useState<PublicPaymentConfig | null>(null);
   const [error, setError] = useState("");
@@ -333,19 +334,25 @@ export function LibraryCheckoutClient() {
       setCouponMessage("Coupon cleared.");
       return;
     }
-    const next = await refreshQuote(code);
-    if (!next) {
-      setCouponMessage("Could not validate coupon right now.");
-      return;
+    setCouponBusy(true);
+    setCouponMessage("Checking coupon...");
+    try {
+      const next = await refreshQuote(code);
+      if (!next) {
+        setCouponMessage("Could not validate coupon right now.");
+        return;
+      }
+      if (next.discountTotal <= 0) {
+        setAppliedCoupon("");
+        setCouponMessage("That coupon is invalid or does not apply to this cart.");
+        return;
+      }
+      setAppliedCoupon(code);
+      setCouponCode(code);
+      setCouponMessage(`Coupon ${code} applied (-${next.currency} ${next.discountTotal.toFixed(2)}).`);
+    } finally {
+      setCouponBusy(false);
     }
-    if (next.discountTotal <= 0) {
-      setAppliedCoupon("");
-      setCouponMessage("That coupon is invalid or does not apply to this cart.");
-      return;
-    }
-    setAppliedCoupon(code);
-    setCouponCode(code);
-    setCouponMessage(`Coupon ${code} applied (−${next.currency} ${next.discountTotal.toFixed(2)}).`);
   }
 
   function shippingPayload() {
@@ -851,7 +858,16 @@ export function LibraryCheckoutClient() {
                 Coupon or gift card
                 <div className="mt-2 flex gap-2">
                   <input value={couponCode} onChange={(e) => setCouponCode(e.target.value)} className="h-11 min-w-0 flex-1 rounded-lg border border-slate-200 px-3 dark:border-slate-700 dark:bg-slate-900" placeholder="Code" />
-                  <button type="button" onClick={() => void applyCoupon()} className="rounded-lg border border-slate-200 px-3 dark:border-slate-700" aria-label="Apply coupon"><Gift className="size-4" /></button>
+                  <button
+                    type="button"
+                    onClick={() => void applyCoupon()}
+                    disabled={couponBusy}
+                    aria-busy={couponBusy || undefined}
+                    className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-slate-200 text-slate-700 transition hover:border-emerald-500 hover:text-emerald-700 disabled:cursor-wait disabled:opacity-60 dark:border-slate-700 dark:text-slate-200"
+                    aria-label="Apply coupon"
+                  >
+                    {couponBusy ? <span className="size-4 animate-spin rounded-full border-2 border-current border-t-transparent" aria-hidden="true" /> : <Gift className="size-4" />}
+                  </button>
                 </div>
               </label>
             )}
@@ -903,9 +919,10 @@ export function LibraryCheckoutClient() {
               </div>
               <Button
                 className="mt-4 w-full"
+                loading={busy}
+                loadingText="Creating order..."
                 disabled={
                   !cart.length ||
-                  busy ||
                   authLoading ||
                   (!user && !guestCheckoutEnabled) ||
                   !shippingReady() ||
@@ -914,7 +931,7 @@ export function LibraryCheckoutClient() {
                 }
                 onClick={() => void checkout()}
               >
-                <CreditCard className="size-4" /> {busy ? "Creating order..." : needsContinueEmail ? "Continue & place order" : "Place order"}
+                <CreditCard className="size-4" /> {needsContinueEmail ? "Continue & place order" : "Place order"}
               </Button>
               {error && <p role="alert" className="mt-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-200">{error}</p>}
             </div>
@@ -933,3 +950,4 @@ export function LibraryCheckoutClient() {
     </PageShell>
   );
 }
+

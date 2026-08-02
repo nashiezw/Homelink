@@ -537,47 +537,57 @@ export function LibraryAdminHub() {
   async function createProduct(statusOverride?: string) {
     setSaving(true);
     setFeedback(null);
-    const result = await apiFetch<{ product: LibraryProduct }>("/api/v1/admin/library", {
-      method: "POST",
-      body: JSON.stringify(productPayload(draft, statusOverride)),
-    });
-    setSaving(false);
-    if (result.error || !result.data?.product) {
-      setFeedback({ tone: "error", message: result.error?.message || "Product could not be created in the database." });
-      return;
+    try {
+      const result = await apiFetch<{ product: LibraryProduct }>("/api/v1/admin/library", {
+        method: "POST",
+        body: JSON.stringify(productPayload(draft, statusOverride)),
+      });
+      if (result.error || !result.data?.product) {
+        setFeedback({ tone: "error", message: result.error?.message || "Product could not be created in the database." });
+        return;
+      }
+      setFeedback({
+        tone: "success",
+        message: result.data.product.status === "PUBLISHED"
+          ? "Product created and published to the public Library."
+          : "Product saved as draft. Publish it to show it on the public Library.",
+      });
+      setDraftOpen(false);
+      setDraft(emptyDraft);
+      await load();
+    } catch (error) {
+      setFeedback({ tone: "error", message: error instanceof Error ? `Product could not be created: ${error.message}` : "Product could not be created in the database." });
+    } finally {
+      setSaving(false);
     }
-    setFeedback({
-      tone: "success",
-      message: result.data.product.status === "PUBLISHED"
-        ? "Product created and published to the public Library."
-        : "Product saved as draft. Publish it to show it on the public Library.",
-    });
-    setDraftOpen(false);
-    setDraft(emptyDraft);
-    await load();
   }
 
   async function saveProduct(statusOverride?: string) {
     if (!editingProduct) return createProduct(statusOverride);
     setSaving(true);
     setFeedback(null);
-    const result = await apiFetch<{ product: LibraryProduct }>(`/api/v1/admin/library/products/${editingProduct.id}`, {
-      method: "PATCH",
-      body: JSON.stringify(productPayload(draft, statusOverride)),
-    });
-    setSaving(false);
-    if (result.error || !result.data?.product) {
-      setFeedback({ tone: "error", message: result.error?.message || "Product could not be saved to the database." });
-      return;
+    try {
+      const result = await apiFetch<{ product: LibraryProduct }>(`/api/v1/admin/library/products/${editingProduct.id}`, {
+        method: "PATCH",
+        body: JSON.stringify(productPayload(draft, statusOverride)),
+      });
+      if (result.error || !result.data?.product) {
+        setFeedback({ tone: "error", message: result.error?.message || "Product could not be saved to the database." });
+        return;
+      }
+      setFeedback({
+        tone: "success",
+        message: result.data.product.status === "PUBLISHED"
+          ? "Product published to the public Library."
+          : "Product saved as draft.",
+      });
+      closeEditor();
+      await load();
+    } catch (error) {
+      setFeedback({ tone: "error", message: error instanceof Error ? `Product could not be saved: ${error.message}` : "Product could not be saved to the database." });
+    } finally {
+      setSaving(false);
     }
-    setFeedback({
-      tone: "success",
-      message: result.data.product.status === "PUBLISHED"
-        ? "Product published to the public Library."
-        : "Product saved as draft.",
-    });
-    closeEditor();
-    await load();
   }
 
   function confirmPublishThenSave() {
@@ -752,9 +762,9 @@ export function LibraryAdminHub() {
     try {
       const dataUrl = await readFile(file);
       const isImage = file.type.startsWith("image/");
-      const uploaded = await apiFetch<{ url: string; filename?: string; size?: number }>("/api/v1/uploads", {
+      const uploaded = await apiFetch<{ url: string; filename?: string; storageId?: string; size?: number }>("/api/v1/uploads", {
         method: "POST",
-        body: JSON.stringify({ dataUrl, kind: isImage ? "image" : "document", folder: "library" }),
+        body: JSON.stringify({ dataUrl, kind: isImage ? "image" : "document", folder: "library", filename: file.name }),
       });
       if (!uploaded.data?.url) {
         setUploadStatus((current) => ({
@@ -2120,22 +2130,24 @@ export function LibraryAdminHub() {
                 <button type="button" onClick={closeEditor} className="rounded-lg border border-white/10 px-4 py-2 text-sm text-slate-300">Cancel</button>
                 <Button
                   variant="secondary"
-                  disabled={saving || !draft.title.trim() || !draft.description.trim() || !draft.formats.some((format) => format.enabled)}
+                  loading={saving}
+                  loadingText="Saving..."
+                  disabled={!draft.title.trim() || !draft.description.trim() || !draft.formats.some((format) => format.enabled)}
                   onClick={() => void saveProduct(draft.status === "SCHEDULED" || draft.status === "ARCHIVED" ? draft.status : "DRAFT")}
                 >
-                  {saving
-                    ? "Saving..."
-                    : draft.status === "SCHEDULED"
+                  {draft.status === "SCHEDULED"
                       ? "Save scheduled"
                       : draft.status === "ARCHIVED"
                         ? "Save archived"
                         : "Save draft"}
                 </Button>
                 <Button
-                  disabled={saving || libraryPublishBlockers(draft).length > 0}
+                  loading={saving}
+                  loadingText="Publishing..."
+                  disabled={libraryPublishBlockers(draft).length > 0}
                   onClick={confirmPublishThenSave}
                 >
-                  {saving ? "Publishing..." : "Publish"}
+                  Publish
                 </Button>
               </div>
             </div>

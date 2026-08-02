@@ -4,12 +4,17 @@ import { cn } from "@/lib/utils";
 type ButtonProps = PropsWithChildren<
   ButtonHTMLAttributes<HTMLButtonElement> & {
     variant?: "primary" | "secondary" | "ghost";
+    loading?: boolean;
+    loadingText?: string;
   }
 >;
 
 export function Button({
   children,
   className,
+  disabled,
+  loading = false,
+  loadingText,
   variant = "primary",
   type = "button",
   ...props
@@ -17,7 +22,7 @@ export function Button({
   return (
     <button
       className={cn(
-        "inline-flex min-h-11 max-w-full items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-center text-sm font-semibold leading-tight whitespace-normal transition duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 disabled:cursor-not-allowed disabled:opacity-60 sm:px-4",
+        "inline-flex min-h-11 max-w-full items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-center text-sm font-semibold leading-tight whitespace-normal transition duration-200 active:translate-y-0 active:scale-[0.99] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 disabled:cursor-not-allowed disabled:opacity-60 disabled:active:scale-100 sm:px-4",
         variant === "primary" &&
           "bg-gradient-to-r from-emerald-700 to-teal-700 text-white shadow-md shadow-emerald-950/15 hover:-translate-y-0.5 hover:from-emerald-600 hover:to-teal-600 hover:shadow-lg",
         variant === "secondary" &&
@@ -26,9 +31,16 @@ export function Button({
         className,
       )}
       type={type}
+      disabled={disabled || loading}
+      aria-busy={loading || undefined}
       {...props}
     >
-      {children}
+      {loading ? (
+        <>
+          <span className="size-4 animate-spin rounded-full border-2 border-current border-t-transparent" aria-hidden="true" />
+          {loadingText ?? children}
+        </>
+      ) : children}
     </button>
   );
 }
