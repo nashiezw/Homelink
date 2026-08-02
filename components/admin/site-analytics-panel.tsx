@@ -210,8 +210,8 @@ function BarList({ rows, color = "bg-emerald-500" }: { rows: Array<{ label: stri
     <div className="space-y-2">
       {rows.map((row) => (
         <div key={`${row.label}-${row.value}`}>
-          <div className="mb-1 flex items-center justify-between gap-2 text-xs text-slate-300">
-            <span className="min-w-0 truncate font-medium">{row.label}</span>
+          <div className="mb-1 grid gap-1 text-xs text-slate-300 min-[460px]:flex min-[460px]:items-center min-[460px]:justify-between min-[460px]:gap-2">
+            <span className="min-w-0 break-words font-medium">{row.label}</span>
             <span className="shrink-0 tabular-nums">{row.value}</span>
           </div>
           <div className="h-2 overflow-hidden rounded-full bg-white/10">
@@ -472,16 +472,16 @@ export function SiteAnalyticsPanel() {
             <div className="max-h-96 space-y-2 overflow-y-auto text-xs text-slate-300">
               {(report?.live.visitors ?? []).length ? (
                 report!.live.visitors.map((row) => (
-                  <div key={`${row.visitorId}-${row.lastSeenAt}`} className="rounded-lg border border-white/10 px-3 py-2">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <p className="font-semibold text-white">{row.path}</p>
-                      <span className="text-slate-500">
+                  <div key={`${row.visitorId}-${row.lastSeenAt}`} className="min-w-0 rounded-lg border border-white/10 px-3 py-2">
+                    <div className="grid gap-1 min-[520px]:flex min-[520px]:items-center min-[520px]:justify-between min-[520px]:gap-2">
+                      <p className="break-all font-semibold text-white">{row.path}</p>
+                      <span className="break-words text-slate-500 min-[520px]:shrink-0">
                         {row.deviceType}
                         {row.userId ? " · signed in" : ""}
                       </span>
                     </div>
-                    {row.productTitle ? <p className="mt-1 text-emerald-300">{row.productTitle}</p> : null}
-                    <p className="mt-1 text-slate-500">
+                    {row.productTitle ? <p className="mt-1 break-words text-emerald-300">{row.productTitle}</p> : null}
+                    <p className="mt-1 break-words text-slate-500">
                       Bag: {row.cartItemCount} · {row.cartCurrency} {row.cartValue.toFixed(2)} · {new Date(row.lastSeenAt).toLocaleTimeString()}
                     </p>
                   </div>
@@ -697,9 +697,9 @@ export function SiteAnalyticsPanel() {
                 <div className="space-y-2">
                   {report!.funnelDropoff.map((row) => (
                     <div key={row.label} className="rounded-lg border border-white/10 px-3 py-2 text-xs text-slate-300">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="font-semibold text-white">{row.label}</span>
-                        <span className="tabular-nums">{row.value}</span>
+                      <div className="grid gap-1 min-[460px]:flex min-[460px]:items-center min-[460px]:justify-between min-[460px]:gap-2">
+                        <span className="break-words font-semibold text-white">{row.label}</span>
+                        <span className="shrink-0 tabular-nums">{row.value}</span>
                       </div>
                       <p className="mt-1 text-slate-500">
                         {row.pctOfPrevious != null ? `${row.pctOfPrevious}% of previous · ` : ""}
@@ -734,7 +734,36 @@ export function SiteAnalyticsPanel() {
       {tab === "rescue" && (
         <div className="grid gap-5">
           <Panel title="Abandoned cart rescue queue">
-            <div className="overflow-x-auto">
+            <div className="grid gap-3 md:hidden">
+              {(tc?.abandonRescue ?? []).length ? (
+                tc!.abandonRescue!.map((row) => (
+                  <MobileRecord key={row.id} title={row.email || "Unknown customer"}>
+                    <MobileFacts
+                      rows={[
+                        ["Value", `${row.currency} ${row.value.toFixed(2)}`],
+                        ["Idle", `${row.idleHours}h`],
+                        ["Reminders", row.reminderCount],
+                        ["Items", row.itemCount],
+                      ]}
+                    />
+                    <p className="mt-3 break-words text-xs text-slate-400">{row.items.length ? row.items.join(", ") : "No products listed"}</p>
+                    {row.whatsappUrl ? (
+                      <a
+                        href={row.whatsappUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-[#25D366] hover:underline"
+                      >
+                        WhatsApp <ExternalLink className="size-3" />
+                      </a>
+                    ) : null}
+                  </MobileRecord>
+                ))
+              ) : (
+                <p className="text-sm text-slate-400">No abandoned carts in the rescue queue.</p>
+              )}
+            </div>
+            <div className="hidden overflow-x-auto md:block">
               <table className="min-w-full text-left text-xs text-slate-300">
                 <thead className="border-b border-white/10 text-[11px] uppercase tracking-wide text-slate-500">
                   <tr>
@@ -791,7 +820,24 @@ export function SiteAnalyticsPanel() {
 
           <div className="grid gap-5 xl:grid-cols-2">
             <Panel title="Order SLAs">
-              <div className="max-h-80 overflow-y-auto">
+              <div className="grid max-h-80 gap-3 overflow-y-auto md:hidden">
+                {(tc?.orderSlas ?? []).length ? (
+                  tc!.orderSlas!.map((row) => (
+                    <MobileRecord key={row.orderNumber} title={row.orderNumber}>
+                      <MobileFacts
+                        rows={[
+                          ["Stage", row.stage.replaceAll("_", " ")],
+                          ["Hours", row.hours],
+                          ["SLA", row.breached ? "Breached" : "OK"],
+                        ]}
+                      />
+                    </MobileRecord>
+                  ))
+                ) : (
+                  <p className="text-sm text-slate-400">No open order SLAs.</p>
+                )}
+              </div>
+              <div className="hidden max-h-80 overflow-y-auto md:block">
                 <table className="min-w-full text-left text-xs text-slate-300">
                   <thead className="border-b border-white/10 text-[11px] uppercase tracking-wide text-slate-500">
                     <tr>
@@ -833,11 +879,11 @@ export function SiteAnalyticsPanel() {
                 <div className="max-h-80 space-y-2 overflow-y-auto">
                   {tc!.fraud!.map((row) => (
                     <div key={`${row.signal}-${row.detail}`} className="rounded-lg border border-red-500/30 bg-red-500/5 px-3 py-2 text-xs">
-                      <div className="flex items-center justify-between gap-2">
-                        <p className="font-semibold text-white">{row.signal.replaceAll("_", " ")}</p>
-                        <span className="tabular-nums text-red-300">score {row.score}</span>
+                      <div className="grid gap-1 min-[460px]:flex min-[460px]:items-center min-[460px]:justify-between min-[460px]:gap-2">
+                        <p className="break-words font-semibold text-white">{row.signal.replaceAll("_", " ")}</p>
+                        <span className="shrink-0 tabular-nums text-red-300">score {row.score}</span>
                       </div>
-                      <p className="mt-1 text-slate-400">{row.detail}</p>
+                      <p className="mt-1 break-words text-slate-400">{row.detail}</p>
                     </div>
                   ))}
                 </div>
@@ -871,7 +917,24 @@ export function SiteAnalyticsPanel() {
           </div>
           <div className="grid gap-5 xl:grid-cols-2">
             <Panel title="Campaigns">
-              <div className="overflow-x-auto">
+              <div className="grid gap-3 md:hidden">
+                {(tc?.campaigns ?? []).length ? (
+                  tc!.campaigns!.map((row) => (
+                    <MobileRecord key={row.campaign} title={row.campaign}>
+                      <MobileFacts
+                        rows={[
+                          ["Visitors", row.visitors],
+                          ["Purchases", row.purchases],
+                          ["Revenue", `USD ${row.revenue.toFixed(2)}`],
+                        ]}
+                      />
+                    </MobileRecord>
+                  ))
+                ) : (
+                  <p className="text-sm text-slate-400">No campaign attribution data yet.</p>
+                )}
+              </div>
+              <div className="hidden overflow-x-auto md:block">
                 <table className="min-w-full text-left text-xs text-slate-300">
                   <thead className="border-b border-white/10 text-[11px] uppercase tracking-wide text-slate-500">
                     <tr>
@@ -903,7 +966,24 @@ export function SiteAnalyticsPanel() {
               </div>
             </Panel>
             <Panel title="Identity stitch">
-              <div className="max-h-80 overflow-y-auto">
+              <div className="grid max-h-80 gap-3 overflow-y-auto md:hidden">
+                {(tc?.identity ?? []).length ? (
+                  tc!.identity!.map((row) => (
+                    <MobileRecord key={row.visitorId} title={row.email || "Known visitor"}>
+                      <MobileFacts
+                        rows={[
+                          ["Visitor", `${row.visitorId.slice(0, 12)}...`],
+                          ["User", `${row.userId.slice(0, 12)}...`],
+                          ["Orders", row.orders],
+                        ]}
+                      />
+                    </MobileRecord>
+                  ))
+                ) : (
+                  <p className="text-sm text-slate-400">No identity stitches recorded yet.</p>
+                )}
+              </div>
+              <div className="hidden max-h-80 overflow-y-auto md:block">
                 <table className="min-w-full text-left text-xs text-slate-300">
                   <thead className="border-b border-white/10 text-[11px] uppercase tracking-wide text-slate-500">
                     <tr>
@@ -957,7 +1037,25 @@ export function SiteAnalyticsPanel() {
           </Panel>
 
           <Panel title="LTV / RFM">
-            <div className="overflow-x-auto">
+            <div className="grid gap-3 md:hidden">
+              {(tc?.ltvRfm ?? []).length ? (
+                tc!.ltvRfm!.map((row) => (
+                  <MobileRecord key={row.customerId} title={row.email || row.customerId.slice(0, 10)}>
+                    <MobileFacts
+                      rows={[
+                        ["Revenue", `USD ${row.revenue.toFixed(2)}`],
+                        ["Orders", row.orders],
+                        ["Recency", `${row.recencyDays}d`],
+                        ["Segment", row.segment.replaceAll("_", " ")],
+                      ]}
+                    />
+                  </MobileRecord>
+                ))
+              ) : (
+                <p className="text-sm text-slate-400">No customer RFM data yet.</p>
+              )}
+            </div>
+            <div className="hidden overflow-x-auto md:block">
               <table className="min-w-full text-left text-xs text-slate-300">
                 <thead className="border-b border-white/10 text-[11px] uppercase tracking-wide text-slate-500">
                   <tr>
@@ -995,7 +1093,24 @@ export function SiteAnalyticsPanel() {
 
           <div className="grid gap-5 xl:grid-cols-2">
             <Panel title="Retention cohorts">
-              <div className="overflow-x-auto">
+              <div className="grid gap-3 md:hidden">
+                {(tc?.retentionCohorts ?? []).length ? (
+                  tc!.retentionCohorts!.map((row) => (
+                    <MobileRecord key={row.cohort} title={row.cohort}>
+                      <MobileFacts
+                        rows={[
+                          ["Size", row.size],
+                          ["D7", `${row.d7}%`],
+                          ["D30", `${row.d30}%`],
+                        ]}
+                      />
+                    </MobileRecord>
+                  ))
+                ) : (
+                  <p className="text-sm text-slate-400">No retention cohorts yet.</p>
+                )}
+              </div>
+              <div className="hidden overflow-x-auto md:block">
                 <table className="min-w-full text-left text-xs text-slate-300">
                   <thead className="border-b border-white/10 text-[11px] uppercase tracking-wide text-slate-500">
                     <tr>
@@ -1028,7 +1143,25 @@ export function SiteAnalyticsPanel() {
             </Panel>
 
             <Panel title="Experiments">
-              <div className="overflow-x-auto">
+              <div className="grid gap-3 md:hidden">
+                {(tc?.experiments ?? []).length ? (
+                  tc!.experiments!.map((row) => (
+                    <MobileRecord key={`${row.experiment}-${row.variant}`} title={row.experiment}>
+                      <MobileFacts
+                        rows={[
+                          ["Variant", row.variant],
+                          ["Exposures", row.exposures],
+                          ["Conv.", row.conversions],
+                          ["Rate", `${row.rate}%`],
+                        ]}
+                      />
+                    </MobileRecord>
+                  ))
+                ) : (
+                  <p className="text-sm text-slate-400">No experiment exposures recorded.</p>
+                )}
+              </div>
+              <div className="hidden overflow-x-auto md:block">
                 <table className="min-w-full text-left text-xs text-slate-300">
                   <thead className="border-b border-white/10 text-[11px] uppercase tracking-wide text-slate-500">
                     <tr>
@@ -1064,7 +1197,25 @@ export function SiteAnalyticsPanel() {
           </div>
 
           <Panel title="Inventory demand">
-            <div className="overflow-x-auto">
+            <div className="grid gap-3 md:hidden">
+              {(tc?.inventoryDemand ?? []).length ? (
+                tc!.inventoryDemand!.map((row) => (
+                  <MobileRecord key={row.productId} title={row.title}>
+                    <MobileFacts
+                      rows={[
+                        ["Views", row.views],
+                        ["Adds", row.adds],
+                        ["Stock", row.stock >= 0 ? row.stock : "-"],
+                        ["Status", row.status.replaceAll("_", " ")],
+                      ]}
+                    />
+                  </MobileRecord>
+                ))
+              ) : (
+                <p className="text-sm text-slate-400">No inventory demand signals yet.</p>
+              )}
+            </div>
+            <div className="hidden overflow-x-auto md:block">
               <table className="min-w-full text-left text-xs text-slate-300">
                 <thead className="border-b border-white/10 text-[11px] uppercase tracking-wide text-slate-500">
                   <tr>
@@ -1186,9 +1337,9 @@ export function SiteAnalyticsPanel() {
                 <div className="max-h-64 space-y-1 overflow-y-auto text-xs text-slate-300">
                   {tc!.hourly!.map((row) =>
                     row.views > 0 || row.events > 0 ? (
-                      <div key={row.hour} className="flex items-center justify-between rounded border border-white/5 px-2 py-1">
+                      <div key={row.hour} className="grid gap-1 rounded border border-white/5 px-2 py-1 min-[460px]:flex min-[460px]:items-center min-[460px]:justify-between">
                         <span className="tabular-nums text-slate-400">{String(row.hour).padStart(2, "0")}:00</span>
-                        <span>
+                        <span className="break-words">
                           {row.views} views · {row.events} events
                         </span>
                       </div>
@@ -1209,8 +1360,8 @@ export function SiteAnalyticsPanel() {
             {(tc?.pathFlows ?? []).length ? (
               <div className="max-h-[28rem] space-y-2 overflow-y-auto text-xs">
                 {tc!.pathFlows!.map((row, i) => (
-                  <div key={`${row.from}-${row.to}-${i}`} className="flex items-center justify-between gap-2 rounded-lg border border-white/10 px-3 py-2">
-                    <span className="min-w-0 truncate text-slate-300">
+                  <div key={`${row.from}-${row.to}-${i}`} className="grid gap-2 rounded-lg border border-white/10 px-3 py-2 min-[520px]:flex min-[520px]:items-center min-[520px]:justify-between">
+                    <span className="min-w-0 break-words text-slate-300">
                       <span className="font-medium text-white">{row.from}</span>
                       <span className="mx-2 text-slate-500">→</span>
                       <span className="font-medium text-emerald-300">{row.to || "—"}</span>
@@ -1225,7 +1376,24 @@ export function SiteAnalyticsPanel() {
           </Panel>
 
           <Panel title="Margins by title">
-            <div className="overflow-x-auto">
+            <div className="grid gap-3 md:hidden">
+              {(tc?.margins ?? []).length ? (
+                tc!.margins!.map((row) => (
+                  <MobileRecord key={row.title} title={row.title}>
+                    <MobileFacts
+                      rows={[
+                        ["Revenue", `USD ${row.revenue.toFixed(2)}`],
+                        ["Refunds", `USD ${row.refunds.toFixed(2)}`],
+                        ["Net", `USD ${row.net.toFixed(2)}`],
+                      ]}
+                    />
+                  </MobileRecord>
+                ))
+              ) : (
+                <p className="text-sm text-slate-400">No margin data yet.</p>
+              )}
+            </div>
+            <div className="hidden overflow-x-auto md:block">
               <table className="min-w-full text-left text-xs text-slate-300">
                 <thead className="border-b border-white/10 text-[11px] uppercase tracking-wide text-slate-500">
                   <tr>
