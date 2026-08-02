@@ -295,6 +295,8 @@ model BlogPost {
   author             BlogAuthor?       @relation(fields: [authorId], references: [id])
   tags               BlogTag[]
   downloads          BlogDownload[]
+  comments           BlogComment[]
+  feedback           BlogArticleFeedback[]
 
   @@index([status])
   @@index([publishedAt])
@@ -302,6 +304,42 @@ model BlogPost {
   @@index([popular])
   @@index([categoryId])
   @@map("blog_posts")
+}
+
+model BlogComment {
+  id             String        @id @default(cuid())
+  postId         String
+  parentId       String?
+  authorName     String
+  authorEmail    String?
+  body           String
+  status         String        @default("PENDING")
+  ipHash         String?
+  userAgent      String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  post           BlogPost      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  parent         BlogComment?  @relation("BlogCommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies        BlogComment[] @relation("BlogCommentReplies")
+
+  @@index([postId, status, createdAt])
+  @@index([parentId])
+  @@map("blog_comments")
+}
+
+model BlogArticleFeedback {
+  id        String   @id @default(cuid())
+  postId    String
+  vote      String
+  note      String?
+  ipHash    String?
+  userAgent String?
+  createdAt DateTime @default(now())
+  post      BlogPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@index([postId, vote])
+  @@index([createdAt])
+  @@map("blog_article_feedback")
 }
 
 model BlogDownload {

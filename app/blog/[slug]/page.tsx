@@ -6,6 +6,7 @@ import { ArrowLeft, ArrowRight, Home, MessageCircle, Search, Share2 } from "luci
 import { BlogBlocks } from "@/components/blog/blog-block-renderer";
 import { BlogCard, blogImageUrl, formatDate, isGeneratedBlogImage } from "@/components/blog/blog-card";
 import { ArticleActions, ImageLightbox, ReadingProgress, RecentlyViewedArticles, RecentlyViewedTracker } from "@/components/blog/article-experience";
+import { BlogArticleFeedback, BlogComments, type PublicBlogComment } from "@/components/blog/blog-comments";
 import { getCanonicalSiteUrl } from "@/lib/seo/site-url";
 import { getPublicBlogPost, type BlogBlock } from "@/lib/blog/blog-repository";
 import { anchorId } from "@/lib/blog/anchors";
@@ -46,7 +47,7 @@ export default async function BlogArticlePage({ params }: Props) {
   const { slug } = await params;
   const data = await getPublicBlogPost(slug, true);
   if (!data) notFound();
-  const { post, related, relatedListings, relatedCategories, authorArticleCount, previous, next } = data;
+  const { post, related, relatedListings, relatedCategories, authorArticleCount, previous, next, comments } = data;
   const heroImageUrl = blogImageUrl(post);
   const blocks = Array.isArray(post.contentBlocks) ? post.contentBlocks as BlogBlock[] : [];
   const toc = blocks.filter((block): block is Extract<BlogBlock, { type: "heading" }> => block.type === "heading");
@@ -144,6 +145,8 @@ export default async function BlogArticlePage({ params }: Props) {
           </div>
           <BlogBlocks blocks={blocks} layout={post.layout} postId={post.id} listings={JSON.parse(JSON.stringify(relatedListings))} />
           <AuthorBox post={post} articleCount={authorArticleCount} />
+          <BlogArticleFeedback postId={post.id} />
+          <BlogComments postId={post.id} initialComments={JSON.parse(JSON.stringify(comments)) as PublicBlogComment[]} />
         </article>
 
         <aside className="hidden space-y-4 lg:block">

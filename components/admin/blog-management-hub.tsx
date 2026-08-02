@@ -1,6 +1,6 @@
 "use client";
 
-import { Archive, BarChart3, CheckCircle2, Copy, Edit, Eye, FileText, ImagePlus, Plus, Trash2, Upload } from "lucide-react";
+import { Archive, BarChart3, CheckCircle2, Copy, Edit, Eye, FileText, ImagePlus, MessageSquare, Plus, ShieldCheck, ThumbsDown, ThumbsUp, Trash2, Upload } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AdminDataTable, AdminDrawer, AdminSearchInput, AdminStatPill, AdminStatusBadge, AdminTabStrip } from "@/components/admin/ui/admin-ui";
@@ -27,7 +27,13 @@ type BlogData = {
     activity: Array<{ id: string; title: string; status: string; updatedAt: string }>;
     topDownloads: Array<{ id: string; label: string; url: string; count: number }>;
     mostSearchedKeywords: Array<{ query: string; _count: { query: number } }>;
+    commentQueue: number;
+    approvedComments: number;
+    helpfulVotes: number;
+    needsWorkVotes: number;
   };
+  comments: BlogComment[];
+  feedback: BlogFeedback[];
   suggestions: {
     services: Array<{ label: string; url: string }>;
     posts: Array<{ title: string; url: string }>;
@@ -71,6 +77,8 @@ type BlogCategory = { id: string; name: string; slug: string; description?: stri
 type BlogAuthor = { id: string; name: string; slug: string; role?: string | null; bio?: string | null; avatarUrl?: string | null; email?: string | null; active: boolean };
 type BlogTag = { id: string; name: string; slug: string; description?: string | null; active: boolean };
 type BlogBlock = Record<string, any> & { type: string };
+type BlogComment = { id: string; postId: string; parentId?: string | null; authorName: string; authorEmail?: string | null; body: string; status: "PENDING" | "APPROVED" | "REJECTED" | "SPAM"; createdAt: string; post?: { title: string; slug: string }; parent?: { authorName: string; body: string } | null };
+type BlogFeedback = { id: string; postId: string; vote: "HELPFUL" | "NEEDS_WORK"; note?: string | null; createdAt: string; post?: { title: string; slug: string } };
 
 const statuses = ["DRAFT", "SCHEDULED", "PUBLISHED", "UNPUBLISHED", "ARCHIVED"] as const;
 const blockTypes = ["paragraph", "heading", "list", "image", "gallery", "video", "quote", "info", "table", "download", "button", "propertyCard", "dynamicProperty", "cta"] as const;
@@ -88,7 +96,7 @@ const internalLinks = [
 export function BlogManagementHub() {
   const { showToast } = useApp();
   const [data, setData] = useState<BlogData | null>(null);
-  const [tab, setTab] = useState<"articles" | "editor" | "categories" | "authors" | "tags" | "layouts" | "analytics" | "ai">("articles");
+  const [tab, setTab] = useState<"articles" | "editor" | "comments" | "categories" | "authors" | "tags" | "layouts" | "analytics" | "ai">("articles");
   const [query, setQuery] = useState("");
   const [selectedPost, setSelectedPost] = useState<BlogPost | null>(null);
   const [categoryEdit, setCategoryEdit] = useState<BlogCategory | null>(null);
@@ -133,7 +141,7 @@ export function BlogManagementHub() {
         <AdminStatPill label="Published" value={data.stats.totalPublished} tone="success" />
         <AdminStatPill label="Drafts" value={data.stats.totalDrafts} tone="warning" />
         <AdminStatPill label="Article views" value={data.stats.totalViews} tone="info" />
-        <AdminStatPill label="Categories" value={data.categories.length} />
+        <AdminStatPill label="Pending comments" value={data.stats.commentQueue} tone="warning" />
       </div>
 
       <AdminTabStrip
@@ -142,6 +150,7 @@ export function BlogManagementHub() {
         tabs={[
           { id: "articles", label: "Articles", count: data.posts.length },
           { id: "editor", label: "New Article" },
+          { id: "comments", label: "Comments", count: data.stats.commentQueue },
           { id: "categories", label: "Categories", count: data.categories.length },
           { id: "authors", label: "Authors", count: data.authors.length },
           { id: "tags", label: "Tags", count: data.tags.length },
@@ -190,6 +199,15 @@ export function BlogManagementHub() {
           data={data}
           post={selectedPost ?? createBlankPost(data)}
           onSave={(post) => action({ action: "save_post", post }, post.status === "PUBLISHED" ? "Article published." : "Article saved.")}
+        />
+      )}
+
+      {tab === "comments" && (
+        <BlogCommentsModeration
+          comments={data.comments}
+          feedback={data.feedback}
+          stats={data.stats}
+          onAction={action}
         />
       )}
 
@@ -489,6 +507,74 @@ function StatusButton({ post, action }: { post: BlogPost; action: (body: Record<
 
 function AnalyticsCard({ title, rows }: { title: string; rows: string[][] }) {
   return <section className="rounded-xl border border-white/10 bg-slate-900/60 p-5"><BarChart3 className="size-5 text-emerald-400" /><h3 className="mt-3 font-semibold text-white">{title}</h3><div className="mt-4 space-y-2">{rows.length ? rows.map(([label, value]) => <div key={label} className="flex justify-between gap-3 rounded-lg bg-white/5 px-3 py-2 text-sm"><span className="line-clamp-1 text-slate-300">{label}</span><span className="shrink-0 font-semibold text-white">{value}</span></div>) : <p className="text-sm text-slate-500">No data yet.</p>}</div></section>;
+}
+
+function BlogCommentsModeration({ comments, feedback, stats, onAction }: { comments: BlogComment[]; feedback: BlogFeedback[]; stats: BlogData["stats"]; onAction: (body: Record<string, unknown>, success: string) => Promise<unknown> }) {
+  const pending = comments.filter((comment) => comment.status === "PENDING");
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <AdminStatPill label="Waiting approval" value={stats.commentQueue} tone="warning" />
+        <AdminStatPill label="Approved comments" value={stats.approvedComments} tone="success" />
+        <AdminStatPill label="Helpful votes" value={stats.helpfulVotes} tone="success" />
+        <AdminStatPill label="Needs more detail" value={stats.needsWorkVotes} tone="warning" />
+      </div>
+      <section className="rounded-xl border border-white/10 bg-slate-900/60">
+        <div className="border-b border-white/10 p-4">
+          <div className="flex items-center gap-2">
+            <MessageSquare className="size-5 text-emerald-400" />
+            <h2 className="font-semibold text-white">Comment moderation</h2>
+          </div>
+          <p className="mt-1 text-sm text-slate-400">Approve useful reader views, reject unhelpful comments, or mark spam before it appears publicly.</p>
+        </div>
+        <AdminDataTable rows={pending.length ? pending : comments} columns={[
+          { key: "comment", header: "Comment", render: (comment) => <CommentModerationCell comment={comment} /> },
+          { key: "status", header: "Status", render: (comment) => <AdminStatusBadge status={comment.status} variant={comment.status === "APPROVED" ? "success" : comment.status === "PENDING" ? "warning" : "muted"} /> },
+          { key: "date", header: "Date", render: (comment) => new Date(comment.createdAt).toLocaleDateString("en-ZW") },
+          {
+            key: "actions",
+            header: "Actions",
+            render: (comment) => (
+              <div className="flex flex-wrap gap-2">
+                <Button variant="secondary" onClick={() => onAction({ action: "moderate_comment", commentId: comment.id, status: "APPROVED" }, "Comment approved.")}><ShieldCheck className="size-4" /> Approve</Button>
+                <Button variant="secondary" onClick={() => onAction({ action: "moderate_comment", commentId: comment.id, status: "REJECTED" }, "Comment rejected.")}>Reject</Button>
+                <Button variant="secondary" onClick={() => onAction({ action: "moderate_comment", commentId: comment.id, status: "SPAM" }, "Comment marked as spam.")}>Spam</Button>
+                <Button variant="secondary" onClick={() => {
+                  if (window.confirm("Delete this comment permanently?")) void onAction({ action: "delete_comment", commentId: comment.id }, "Comment deleted.");
+                }}><Trash2 className="size-4" /> Delete</Button>
+              </div>
+            ),
+          },
+        ]} />
+      </section>
+      <section className="rounded-xl border border-white/10 bg-slate-900/60">
+        <div className="border-b border-white/10 p-4">
+          <div className="flex items-center gap-2">
+            <ThumbsUp className="size-5 text-emerald-400" />
+            <h2 className="font-semibold text-white">Article feedback</h2>
+          </div>
+          <p className="mt-1 text-sm text-slate-400">Use these notes to decide which blogs need deeper examples, checklists, or clearer English.</p>
+        </div>
+        <AdminDataTable rows={feedback} columns={[
+          { key: "article", header: "Article", render: (item) => <Link href={`/blog/${item.post?.slug ?? ""}`} target="_blank" className="font-semibold text-white hover:text-emerald-300">{item.post?.title ?? item.postId}</Link> },
+          { key: "vote", header: "Vote", render: (item) => <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-200">{item.vote === "HELPFUL" ? <ThumbsUp className="size-4 text-emerald-400" /> : <ThumbsDown className="size-4 text-amber-300" />} {item.vote === "HELPFUL" ? "Helpful" : "Needs detail"}</span> },
+          { key: "note", header: "Reader note", render: (item) => <span className="text-sm text-slate-300">{item.note || "-"}</span> },
+          { key: "date", header: "Date", render: (item) => new Date(item.createdAt).toLocaleDateString("en-ZW") },
+        ]} />
+      </section>
+    </div>
+  );
+}
+
+function CommentModerationCell({ comment }: { comment: BlogComment }) {
+  return (
+    <div>
+      <p className="font-semibold text-white">{comment.authorName}</p>
+      <p className="mt-1 text-sm leading-6 text-slate-300">{comment.body}</p>
+      {comment.parent ? <p className="mt-2 rounded-lg bg-white/5 px-2 py-1 text-xs text-slate-400">Reply to {comment.parent.authorName}: {comment.parent.body}</p> : null}
+      <Link href={`/blog/${comment.post?.slug ?? ""}`} target="_blank" className="mt-2 inline-flex text-xs font-semibold text-emerald-300 hover:text-emerald-200">{comment.post?.title ?? comment.postId}</Link>
+    </div>
+  );
 }
 
 function EditorQualityPanel({ post, suggestions, onInsert }: { post: BlogPost; suggestions: BlogData["suggestions"]; onInsert: (block: BlogBlock) => void }) {

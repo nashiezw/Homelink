@@ -688,6 +688,62 @@ const STARTER_ARTICLES = [
       { type: "cta", variant: "search" },
     ],
   },
+  {
+    title: "Ask HouseLink: Should I Pay a Deposit Before Viewing a Property?",
+    slug: "ask-houselink-should-i-pay-a-deposit-before-viewing-a-property",
+    category: "Tenant Advice",
+    tags: ["Ask HouseLink", "deposit", "tenant safety", "viewings"],
+    excerpt: "A direct answer for renters who are being pushed to pay first: when to pause, what proof to ask for, and how to protect your money.",
+    focusKeyword: "pay deposit before viewing Zimbabwe",
+    image: "/images/houselink-hero.webp",
+    layout: BlogArticleLayout.PROPERTY_GUIDE,
+    blocks: [
+      { type: "heading", level: 2, text: "Short answer" },
+      { type: "paragraph", text: "Do not pay a deposit before you have viewed the actual property, confirmed who has authority to rent it, and agreed the terms in writing. If you are outside town, send someone trusted or ask for a live video walkthrough before any serious payment." },
+      { type: "heading", level: 2, text: "Why this question matters" },
+      { type: "paragraph", text: "In Zimbabwe, good rentals can move fast, especially in Harare, Bulawayo, Gweru, and areas close to schools, hospitals, industrial sites, and universities. Scammers use that pressure. They say many people are waiting, then ask for a small commitment fee. That is exactly when you must slow down." },
+      { type: "list", items: ["Ask for the exact suburb and viewing arrangement.", "Confirm whether the person is the owner, agent, caretaker, or relative.", "Ask what the deposit covers and when it is refundable.", "Pay only through a traceable method and keep written proof.", "If anything changes suddenly, pause and verify again."] },
+      { type: "download", label: "Download tenant viewing checklist", url: "/downloads/blog/tenant-viewing-checklist.md" },
+      { type: "cta", variant: "rent" },
+    ],
+  },
+  {
+    title: "Ask HouseLink: My Landlord Wants to Increase Rent, What Should I Check?",
+    slug: "ask-houselink-my-landlord-wants-to-increase-rent-what-should-i-check",
+    category: "Tenant Advice",
+    tags: ["Ask HouseLink", "rent increase", "lease agreement", "tenant advice"],
+    excerpt: "Plain guidance for tenants facing a rent increase: check the lease, notice period, market rent, services, and how to respond calmly.",
+    focusKeyword: "landlord rent increase Zimbabwe",
+    image: "/images/property-management-dusk.webp",
+    layout: BlogArticleLayout.STANDARD_ARTICLE,
+    blocks: [
+      { type: "heading", level: 2, text: "Start with the lease" },
+      { type: "paragraph", text: "Before arguing about the amount, check what your lease says about rent review, notice period, payment currency, service charges, and renewal. If there is no written lease, write down the current arrangement and ask for the new proposal in writing." },
+      { type: "heading", level: 2, text: "Compare value, not only price" },
+      { type: "paragraph", text: "A rent increase may be more reasonable if services have improved, repairs were done, security improved, or nearby rents have moved. It is less reasonable when water, power, access, or repairs are getting worse and no explanation is given." },
+      { type: "table", headers: ["Check", "Simple question"], rows: [["Notice", "When does the new rent start?"], ["Lease", "Does the agreement allow this review now?"], ["Market", "What are similar homes nearby asking?"], ["Services", "Are water, ZESA, WiFi, levies, or security included?"], ["Repairs", "Are known defects being fixed?"]] },
+      { type: "download", label: "Download rent review checklist", url: "/downloads/blog/rent-review-checklist.md" },
+      { type: "cta", variant: "whatsapp" },
+    ],
+  },
+  {
+    title: "Harare, Bulawayo, Gweru and Mutare: How to Compare Suburbs Before Renting",
+    slug: "compare-suburbs-before-renting-harare-bulawayo-gweru-mutare",
+    category: "Renting in Zimbabwe",
+    tags: ["suburb guide", "renting", "Harare", "Bulawayo", "Gweru", "Mutare"],
+    excerpt: "A practical suburb-comparison guide for Zimbabwean renters looking at commute, water, power, security, transport, and total monthly cost.",
+    focusKeyword: "compare suburbs before renting Zimbabwe",
+    image: "/images/roommates-hero.webp",
+    layout: BlogArticleLayout.LIST_ARTICLE,
+    blocks: [
+      { type: "heading", level: 2, text: "A good suburb must fit your daily routine" },
+      { type: "paragraph", text: "Do not choose a suburb only because the name sounds good. Compare how you will actually live there: getting to work or school, buying groceries, finding transport, managing water and power cuts, and getting home safely at night." },
+      { type: "table", headers: ["City", "What to compare"], rows: [["Harare", "Commute route, congestion, borehole or tank setup, security, parking, and proximity to work or school."], ["Bulawayo", "Water schedule, distance to CBD or industrial areas, family amenities, road access, and neighbourhood quietness."], ["Gweru", "Distance to MSU or work, transport availability, room sharing rules, and power/water reliability."], ["Mutare", "Slope, drainage, road access, distance to town, and whether the property is easy to reach in rainy weather."]] },
+      { type: "heading", level: 2, text: "Questions to ask locals" },
+      { type: "list", items: ["How often is water available here?", "What is transport like early morning and after dark?", "Are there noise, security, or flooding issues?", "Which shops, clinics, schools, or campuses are easy to reach?", "What extra costs do tenants usually forget in this area?"] },
+      { type: "cta", variant: "search" },
+    ],
+  },
 ] as const;
 
 const FEATURED_STARTER_SLUGS = new Set([
@@ -698,6 +754,16 @@ const FEATURED_STARTER_SLUGS = new Set([
 
 type StarterArticle = (typeof STARTER_ARTICLES)[number];
 type RelatedBlogListing = Prisma.ListingGetPayload<{ include: { media: true } }>;
+export type BlogCommentThread = {
+  id: string;
+  postId: string;
+  parentId: string | null;
+  authorName: string;
+  body: string;
+  status?: string;
+  createdAt: Date;
+  replies: BlogCommentThread[];
+};
 
 function starterAuthor() {
   const now = new Date("2026-07-26T00:00:00.000Z");
@@ -753,7 +819,7 @@ function starterTags() {
 function starterPost(article: StarterArticle, index: number) {
   const category = starterCategories().find((item) => item.name === article.category) ?? starterCategories()[0];
   const author = starterAuthor();
-  const contentBlocks = article.blocks.map((block) => ({ ...block })) as BlogBlock[];
+  const contentBlocks = enrichStarterBlocks(article);
   const contentText = blocksToText(contentBlocks);
   const publishedAt = new Date(Date.UTC(2026, 6, 26 - index, 8, 0, 0));
   return {
@@ -806,6 +872,65 @@ function starterPosts() {
   return STARTER_ARTICLES.map(starterPost);
 }
 
+function enrichStarterBlocks(article: StarterArticle): BlogBlock[] {
+  const blocks = article.blocks.map((block) => ({ ...block })) as BlogBlock[];
+  if (blocks.some((block) => block.type === "heading" && block.text === "What this means on the ground in Zimbabwe")) return blocks;
+  const download = article.category === "Tenant Advice" || article.category === "Renting in Zimbabwe"
+    ? { type: "download", label: "Download tenant viewing checklist", url: "/downloads/blog/tenant-viewing-checklist.md" } satisfies BlogBlock
+    : article.category === "Landlord Advice"
+      ? { type: "download", label: "Download landlord handover form", url: "/downloads/blog/landlord-handover-form.md" } satisfies BlogBlock
+      : article.category === "Buying Property" || article.category === "Property Law" || article.category === "Property Development"
+        ? { type: "download", label: "Download buyer due diligence checklist", url: "/downloads/blog/buyer-due-diligence-checklist.md" } satisfies BlogBlock
+        : null;
+  const localChecklist = article.category === "Property Law"
+    ? ["Do not rely only on WhatsApp messages when money is involved; ask for written documents.", "Check names, IDs, stand numbers, rates position, and authority to sell or rent.", "Use a conveyancer or qualified legal practitioner for big decisions, especially title deed, cession, estate, or divorce-related property."]
+    : article.category === "Property Development"
+      ? ["Confirm servicing first: roads, water, sewer, power, drainage, and access can change the real price.", "Ask who is responsible for approvals, inspections, levies, timelines, and handover documents.", "Visit the site at different times if possible, including after rain, so you understand access and drainage."]
+    : article.category === "Landlord Advice"
+      ? ["Be clear about rent, deposit, bills, repairs, house rules, and notice period before the tenant moves in.", "Keep receipts, inspection photos, and messages in one place so disagreements are easier to solve.", "A good tenant often chooses the landlord who communicates properly, not only the cheapest property."]
+    : article.category === "Tenant Advice" || article.category === "Renting in Zimbabwe"
+      ? ["Work with your full monthly budget, including transport, ZESA, water, WiFi, levies, and moving costs.", "View the actual place or send someone trusted before paying a deposit.", "Ask simple direct questions: who owns it, who manages repairs, what is included, and when can I move in?"]
+    : article.category === "Buying Property"
+      ? ["Slow down before paying a large deposit, even when the property looks like a bargain.", "Compare the asking price with similar homes in the same suburb, condition, services, and ownership route.", "Check ownership documents, rates, boundaries, approved plans, and seller authority before signing."]
+      : article.category === "Selling Property"
+        ? ["Prepare documents early so serious buyers do not lose confidence.", "Price against real comparable properties, not only what neighbours are asking.", "Clean photos, honest defects, and clear viewing arrangements help buyers trust the listing."]
+        : ["Ask what the decision will cost in real life, not only what the advert says.", "Keep proof of payments, messages, agreements, and inspection notes.", "When something feels rushed or unclear, pause and verify before committing money."];
+  return [
+    ...blocks,
+    { type: "heading", level: 2, text: "What this means on the ground in Zimbabwe" },
+    {
+      type: "paragraph",
+      text: "Property decisions here are usually practical, family-involving, and money-sensitive. A useful article should help you know what to ask next, what proof to request, and where a deal can go wrong before you put cash down.",
+    },
+    { type: "list", items: localChecklist },
+    ...(download ? [download] : []),
+    { type: "heading", level: 2, text: "Common reader questions" },
+    {
+      type: "info",
+      tone: "info",
+      title: "Can I rely on a verbal agreement?",
+      text: "For small discussions, maybe. For rent, deposits, sales, repairs, or occupation dates, write it down. A clear message, signed form, or lease is easier to defend than memory.",
+    },
+    {
+      type: "info",
+      tone: "info",
+      title: "What should I do if I am not sure?",
+      text: "Ask for proof, compare with similar properties, speak to someone experienced, and pause before paying. A serious person should be able to answer simple questions clearly.",
+    },
+    { type: "heading", level: 2, text: "Ask HouseLink" },
+    {
+      type: "paragraph",
+      text: "Have a real property question from Harare, Bulawayo, Gweru, Mutare, Masvingo, Victoria Falls, or another Zimbabwean town? Use the comments to share it. Good reader questions can become future Ask HouseLink articles.",
+    },
+    {
+      type: "info",
+      tone: "info",
+      title: "Plain advice",
+      text: "If you cannot explain the deal in simple words, you probably need more information. Ask again, write it down, and get help before signing or paying.",
+    },
+  ];
+}
+
 function starterWhere(params: { query?: string; category?: string; tag?: string }) {
   const query = params.query?.trim().toLowerCase();
   return (post: ReturnType<typeof starterPost>) => {
@@ -852,6 +977,7 @@ function getStarterBlogPost(slug: string) {
     relatedCategories: post.category ? [post.category] : [],
     previous: posts[index + 1] ? { title: posts[index + 1].title, slug: posts[index + 1].slug, publishedAt: posts[index + 1].publishedAt } : null,
     next: index > 0 ? { title: posts[index - 1].title, slug: posts[index - 1].slug, publishedAt: posts[index - 1].publishedAt } : null,
+    comments: [] as BlogCommentThread[],
   };
 }
 
@@ -892,7 +1018,7 @@ export async function ensureBlogDefaults(actorId?: string) {
     if (!category || !author) continue;
     const existing = await prisma.blogPost.findUnique({ where: { slug: article.slug } });
     const articleTags = [...article.tags];
-    const articleBlocks = article.blocks.map((block) => ({ ...block })) as BlogBlock[];
+    const articleBlocks = enrichStarterBlocks(article);
     const tagIds = await resolveTags(articleTags);
     const contentText = blocksToText(articleBlocks);
     const seedData = {
@@ -1061,7 +1187,7 @@ async function getDatabaseBlogPost(slug: string, incrementView = false) {
     noIndex: false,
     ...(relatedMatches.length ? { OR: relatedMatches } : {}),
   };
-  const [related, relatedListings, authorArticleCount, relatedCategories, previous, next] = await Promise.all([
+  const [related, relatedListings, authorArticleCount, relatedCategories, previous, next, comments] = await Promise.all([
     prisma.blogPost.findMany({ where: relatedWhere, include: blogIncludes(), orderBy: publicOrderBy(), take: 3 }),
     prisma.listing.findMany({
       where: { status: ListingStatus.ACTIVE },
@@ -1073,8 +1199,9 @@ async function getDatabaseBlogPost(slug: string, incrementView = false) {
     post.category ? prisma.blogCategory.findMany({ where: { id: post.category.id } }) : Promise.resolve([]),
     prisma.blogPost.findFirst({ where: { status: BlogPostStatus.PUBLISHED, noIndex: false, publishedAt: { lt: post.publishedAt ?? post.createdAt } }, select: { title: true, slug: true, publishedAt: true }, orderBy: [{ publishedAt: "desc" }] }),
     prisma.blogPost.findFirst({ where: { status: BlogPostStatus.PUBLISHED, noIndex: false, publishedAt: { gt: post.publishedAt ?? post.createdAt } }, select: { title: true, slug: true, publishedAt: true }, orderBy: [{ publishedAt: "asc" }] }),
+    getPublicBlogComments(post.id),
   ]);
-  return { post, related: withUniqueBlogImages(related), relatedListings, authorArticleCount, relatedCategories, previous, next };
+  return { post, related: withUniqueBlogImages(related), relatedListings, authorArticleCount, relatedCategories, previous, next, comments };
 }
 
 export async function getPublicBlogIndex(params: { query?: string; category?: string; tag?: string; page?: number; limit?: number; popular?: boolean }) {
@@ -1170,6 +1297,72 @@ export async function trackBlogDownload(postId: string, label: string, url: stri
   });
 }
 
+export async function getPublicBlogComments(postId: string): Promise<BlogCommentThread[]> {
+  const prisma = getMainPrisma();
+  const comments = await prisma.blogComment.findMany({
+    where: { postId, status: "APPROVED" },
+    select: { id: true, postId: true, parentId: true, authorName: true, body: true, createdAt: true },
+    orderBy: { createdAt: "asc" },
+  });
+  const byId = new Map<string, BlogCommentThread>();
+  const roots: BlogCommentThread[] = [];
+  for (const comment of comments) {
+    byId.set(comment.id, { ...comment, replies: [] });
+  }
+  for (const comment of byId.values()) {
+    if (comment.parentId && byId.has(comment.parentId)) {
+      byId.get(comment.parentId)?.replies.push(comment);
+    } else {
+      roots.push(comment);
+    }
+  }
+  return roots;
+}
+
+export async function createBlogComment(input: { postId: string; parentId?: string | null; authorName: string; authorEmail?: string | null; body: string; ipHash?: string | null; userAgent?: string | null }) {
+  const prisma = getMainPrisma();
+  const post = await prisma.blogPost.findFirst({ where: { id: clean(input.postId), status: BlogPostStatus.PUBLISHED, noIndex: false }, select: { id: true } });
+  if (!post) throw new Error("Article not found.");
+  const parentId = stringOrNull(input.parentId);
+  if (parentId) {
+    const parent = await prisma.blogComment.findFirst({ where: { id: parentId, postId: post.id, status: "APPROVED" }, select: { id: true } });
+    if (!parent) throw new Error("Reply target not found.");
+  }
+  const authorName = required(input.authorName, "Your name").slice(0, 80);
+  const body = required(input.body, "Comment").slice(0, 1200);
+  const authorEmail = stringOrNull(input.authorEmail)?.slice(0, 160) ?? null;
+  const comment = await prisma.blogComment.create({
+    data: {
+      postId: post.id,
+      parentId,
+      authorName,
+      authorEmail,
+      body,
+      status: "PENDING",
+      ipHash: stringOrNull(input.ipHash),
+      userAgent: stringOrNull(input.userAgent)?.slice(0, 240) ?? null,
+    },
+    select: { id: true, postId: true, parentId: true, authorName: true, body: true, status: true, createdAt: true },
+  });
+  return { ...comment, replies: [] as BlogCommentThread[] };
+}
+
+export async function createBlogArticleFeedback(input: { postId: string; vote: string; note?: string | null; ipHash?: string | null; userAgent?: string | null }) {
+  const prisma = getMainPrisma();
+  const post = await prisma.blogPost.findFirst({ where: { id: clean(input.postId), status: BlogPostStatus.PUBLISHED, noIndex: false }, select: { id: true } });
+  if (!post) throw new Error("Article not found.");
+  const vote = String(input.vote ?? "").toUpperCase() === "NEEDS_WORK" ? "NEEDS_WORK" : "HELPFUL";
+  return prisma.blogArticleFeedback.create({
+    data: {
+      postId: post.id,
+      vote,
+      note: stringOrNull(input.note)?.slice(0, 600) ?? null,
+      ipHash: stringOrNull(input.ipHash),
+      userAgent: stringOrNull(input.userAgent)?.slice(0, 240) ?? null,
+    },
+  });
+}
+
 export async function getBlogSitemapEntries() {
   const updatedAt = new Date("2026-07-26T00:00:00.000Z");
   return {
@@ -1214,7 +1407,21 @@ export async function getAdminBlogDashboard() {
       activity: posts.slice(0, 8).map((post) => ({ id: post.id, title: post.title, status: post.status, updatedAt: post.updatedAt })),
       topDownloads: await prisma.blogDownload.findMany({ orderBy: { count: "desc" }, take: 8 }),
       mostSearchedKeywords: await prisma.blogSearchLog.groupBy({ by: ["query"], _count: { query: true }, orderBy: { _count: { query: "desc" } }, take: 8 }),
+      commentQueue: await prisma.blogComment.count({ where: { status: "PENDING" } }),
+      approvedComments: await prisma.blogComment.count({ where: { status: "APPROVED" } }),
+      helpfulVotes: await prisma.blogArticleFeedback.count({ where: { vote: "HELPFUL" } }),
+      needsWorkVotes: await prisma.blogArticleFeedback.count({ where: { vote: "NEEDS_WORK" } }),
     },
+    comments: await prisma.blogComment.findMany({
+      include: { post: { select: { title: true, slug: true } }, parent: { select: { authorName: true, body: true } } },
+      orderBy: [{ status: "asc" }, { createdAt: "desc" }],
+      take: 80,
+    }),
+    feedback: await prisma.blogArticleFeedback.findMany({
+      include: { post: { select: { title: true, slug: true } } },
+      orderBy: { createdAt: "desc" },
+      take: 40,
+    }),
     suggestions: {
       services: [
         { label: "Search Properties", url: "/search" },
@@ -1305,6 +1512,18 @@ export async function runAdminBlogAction(body: Record<string, any>, actor: { id:
     });
     await audit("blog.post.status", post.id, actor.id, { status });
     return post;
+  }
+  if (action === "moderate_comment") {
+    const commentId = required(body.commentId, "Comment");
+    const status = ["APPROVED", "REJECTED", "SPAM"].includes(String(body.status)) ? String(body.status) : "PENDING";
+    const comment = await prisma.blogComment.update({ where: { id: commentId }, data: { status }, include: { post: { select: { title: true, slug: true } }, parent: { select: { authorName: true, body: true } } } });
+    await audit("blog.comment.moderate", comment.id, actor.id, { status, postId: comment.postId });
+    return comment;
+  }
+  if (action === "delete_comment") {
+    const comment = await prisma.blogComment.delete({ where: { id: required(body.commentId, "Comment") } });
+    await audit("blog.comment.delete", comment.id, actor.id, { postId: comment.postId });
+    return comment;
   }
   if (action === "save_category") {
     const category = body.category ?? {};
