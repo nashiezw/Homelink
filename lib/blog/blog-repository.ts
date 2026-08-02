@@ -37,6 +37,8 @@ const DEFAULT_CATEGORIES = [
   ["HouseLink News", "Product updates, platform announcements, and marketplace news."],
 ] as const;
 
+const PROPERTY_DEVELOPMENT_LAW_BOOK_URL = "/library/the-complete-guide-to-property-development-and-property-law-in-zimbabwe";
+
 const STARTER_ARTICLES = [
   {
     title: "How to Find a House to Rent in Zimbabwe Without Wasting Time",
@@ -251,6 +253,68 @@ const STARTER_ARTICLES = [
     ],
   },
   {
+    title: "Property Development in Zimbabwe: What to Check Before You Buy Land",
+    slug: "property-development-in-zimbabwe-what-to-check-before-you-buy-land",
+    category: "Property Development",
+    tags: ["property development", "land due diligence", "zoning", "council approvals"],
+    excerpt: "A practical Zimbabwe-focused guide to land due diligence, zoning, infrastructure, project readiness, and council approval checks before starting a development.",
+    focusKeyword: "property development in Zimbabwe",
+    image: "/images/blog/property-development-zimbabwe-cover.png",
+    layout: BlogArticleLayout.PROPERTY_GUIDE,
+    blocks: [
+      { type: "paragraph", text: "The most expensive development mistakes usually happen before construction starts. A stand may look perfect on viewing day, but the real question is whether the land, planning controls, infrastructure, title position, budget, and professional team all support the project you want to build." },
+      { type: "paragraph", text: "HouseLink's Property Development and Property Law in Zimbabwe manual treats development as a disciplined process: verify the land first, confirm the rules, understand the site, then prepare the design and approvals. This article turns that approach into a practical pre-purchase checklist." },
+      { type: "heading", level: 2, text: "Start with the intended use" },
+      { type: "paragraph", text: "Before paying for land, define the development vision in plain language. Are you planning cluster housing, student accommodation, a warehouse, a commercial conversion, a subdivision, or a long-term land bank? The intended use determines which zoning, infrastructure, approvals, consultants, timelines, and risks matter most." },
+      { type: "table", headers: ["Question", "Why it matters"], rows: [["What do you want to build?", "The use must match planning controls and local authority requirements."], ["Who will occupy or buy it?", "Target users influence density, parking, access, services, and pricing."], ["What infrastructure is needed?", "Roads, water, sewer, drainage, and power can change project cost quickly."], ["Which professionals are required?", "Town planners, architects, engineers, surveyors, quantity surveyors, and lawyers may be needed before design is final."]] },
+      { type: "heading", level: 2, text: "Verify ownership and land tenure" },
+      { type: "paragraph", text: "Do not rely only on a copy of a title document or a seller's assurance. Confirm ownership, registered conditions, encumbrances, servitudes, court orders, leases, subdivision approvals, and other rights through the appropriate official records and professional advisers." },
+      { type: "info", tone: "warning", title: "Development risk", text: "A land deal can fail even when the price is attractive if the buyer cannot verify ownership, transfer route, land tenure, or restrictions that affect the proposed development." },
+      { type: "heading", level: 2, text: "Check zoning before purchase" },
+      { type: "paragraph", text: "Zoning and land-use planning decide what may be built, where, and under what conditions. A residential stand may not permit a warehouse. Agricultural land may carry development controls. A commercial property may need parking, access, environmental, or change-of-use approvals before the intended business can operate." },
+      { type: "list", items: ["Confirm existing zoning with the relevant local authority.", "Check permitted land uses and whether special consent is required.", "Ask about building lines, height restrictions, density controls, parking, access, and road reservations.", "Confirm whether servitudes, future road plans, drainage channels, or environmental concerns affect the site.", "Get written or professionally verified guidance before committing major funds."] },
+      { type: "heading", level: 2, text: "Investigate the physical site" },
+      { type: "paragraph", text: "A proper site investigation looks beyond location and size. It checks boundaries, topography, drainage, neighbouring uses, road access, water, sewer, electricity, environmental constraints, and visible conditions that may affect design or cost." },
+      { type: "table", headers: ["Investigation", "Purpose"], rows: [["Site inspection", "Understand the physical characteristics of the property."], ["Boundary verification", "Confirm property limits using survey information where required."], ["Infrastructure assessment", "Check availability and capacity of roads, water, sewer, drainage, and electricity."], ["Neighbourhood assessment", "Understand surrounding land uses, future trends, access, and market fit."]] },
+      { type: "heading", level: 2, text: "Prepare before detailed design" },
+      { type: "paragraph", text: "Good developers do not rush straight into drawings. First they verify planning requirements, appoint the right professional team, conduct feasibility checks, estimate costs, prepare a realistic programme, and confirm the approval route. Early preparation is often faster than repeated redesign after council comments." },
+      { type: "list", ordered: true, items: ["Define the development vision.", "Conduct legal, planning, market, and financial due diligence.", "Inspect the site and verify constraints.", "Confirm planning requirements with the local authority.", "Appoint the professional team.", "Build a preliminary project budget and programme."] },
+      { type: "button", label: "Get the full Property Development and Property Law guide", url: PROPERTY_DEVELOPMENT_LAW_BOOK_URL },
+      { type: "paragraph", text: "This article is a starting point. The full HouseLink guide goes deeper into planning, land tenure, zoning, council processes, approvals, documentation, development mistakes, and professional responsibilities for Zimbabwe property projects." },
+    ],
+  },
+  {
+    title: "Property Law in Zimbabwe: Legal Checks Before You Commit to a Deal",
+    slug: "property-law-in-zimbabwe-legal-checks-before-you-commit",
+    category: "Property Law",
+    tags: ["property law", "title deeds", "contracts", "compliance", "property due diligence"],
+    excerpt: "A practical guide to ownership verification, contracts, documentation, compliance, ethics, and professional advice before buying, selling, or developing property.",
+    focusKeyword: "property law in Zimbabwe",
+    image: "/images/blog/property-law-zimbabwe-cover.png",
+    layout: BlogArticleLayout.PROPERTY_GUIDE,
+    blocks: [
+      { type: "paragraph", text: "Property law is not only a lawyer's concern. Anyone buying, selling, leasing, managing, or developing property needs enough legal awareness to ask the right questions, keep proper records, and know when specialist advice is required." },
+      { type: "paragraph", text: "HouseLink's Property Development and Property Law in Zimbabwe manual frames legal competence as part of professional practice: compliance, ethical conduct, accountability, proper documentation, and respect for current laws and local authority requirements." },
+      { type: "info", tone: "warning", title: "Not legal advice", text: "Property-related laws, regulations, by-laws, and professional requirements can change. Always consult current legislation, the relevant authority, and qualified legal professionals before relying on any transaction or development decision." },
+      { type: "heading", level: 2, text: "Verify ownership before trusting the deal" },
+      { type: "paragraph", text: "Ownership verification sits at the centre of property due diligence. Buyers and developers should confirm title, tenure, registered conditions, encumbrances, subdivision status, leases, court orders, and other rights through official records and professional advisers where appropriate." },
+      { type: "list", items: ["Request the relevant ownership or tenure documents.", "Confirm the seller or representative has authority to transact.", "Check whether the property has restrictions, servitudes, disputes, or registered conditions.", "Understand whether transfer, cession, lease assignment, or another legal route applies.", "Use a qualified conveyancer or legal practitioner where legal interpretation is needed."] },
+      { type: "heading", level: 2, text: "Understand the purpose of each document" },
+      { type: "paragraph", text: "Real estate transactions create legal and financial obligations. Offers, sale agreements, lease agreements, listing agreements, mandates, receipts, handover records, payment proof, council correspondence, approval letters, and professional reports should be complete, accurate, and safely stored." },
+      { type: "table", headers: ["Document area", "Risk if ignored"], rows: [["Names and identity details", "Wrong parties can delay or undermine the transaction."], ["Property description and address", "Ambiguity can create disputes about what is being bought, sold, leased, or developed."], ["Price, deposits, dates, and conditions", "Unclear obligations can cause payment, timing, and performance disputes."], ["Approvals and authority records", "A transaction or project can stall if required approvals are missing."]] },
+      { type: "heading", level: 2, text: "Contracts are not casual forms" },
+      { type: "paragraph", text: "A contract is a binding agreement. Agents and property professionals should understand the purpose of the documents they handle, but they should not give legal opinions beyond their competence. When a client needs legal interpretation, refer them to a qualified professional." },
+      { type: "info", tone: "info", title: "Professional habit", text: "If it affects ownership, payment, occupation, development rights, cancellation, penalties, transfer, or approvals, it should be documented clearly and reviewed carefully before signature." },
+      { type: "heading", level: 2, text: "Ethics protects the transaction" },
+      { type: "paragraph", text: "Legal awareness works together with ethics. Honest disclosure, transparency, confidentiality, fair dealing, accountability, and professional competence build trust with clients, investors, financial institutions, local authorities, and other professionals." },
+      { type: "list", items: ["Do not hide known defects, disputes, or approval gaps.", "Do not pressure a client to sign documents they do not understand.", "Keep client information confidential.", "Avoid promises about approvals, transfer dates, or legal outcomes that you cannot control.", "Keep complete records of instructions, offers, payments, and communications."] },
+      { type: "heading", level: 2, text: "A simple pre-commitment checklist" },
+      { type: "list", ordered: true, items: ["Confirm who owns or controls the property.", "Confirm what rights are being sold, leased, transferred, or developed.", "Confirm what restrictions or approvals affect the intended use.", "Confirm the written terms, deadlines, deposits, and conditions.", "Confirm which professionals must review the transaction before money changes hands."] },
+      { type: "button", label: "Read the full Property Development and Property Law guide", url: PROPERTY_DEVELOPMENT_LAW_BOOK_URL },
+      { type: "paragraph", text: "The full HouseLink guide expands these legal checks into practical chapters on ownership, tenure, zoning, local authorities, documentation, ethics, approvals, and professional responsibilities in Zimbabwe property work." },
+    ],
+  },
+  {
     title: "What Happens if You Buy a Property With Outstanding Rates or Utility Bills?",
     slug: "what-happens-if-you-buy-a-property-with-outstanding-rates-or-utility-bills",
     category: "Buying Property",
@@ -403,7 +467,7 @@ const STARTER_ARTICLES = [
       { type: "heading", level: 2, text: "How tenants can respond" },
       { type: "list", items: ["Ask for the increase in writing.", "Compare similar rentals nearby before reacting.", "Request reasons if services or repairs have not improved.", "Negotiate a phased increase, longer lease, or repairs as part of the discussion.", "Keep payment records and messages in one place."] },
       { type: "info", tone: "warning", title: "Get advice for disputes", text: "This is general guidance. If a rent increase becomes a legal dispute or eviction threat, speak to a qualified legal practitioner or relevant housing authority." },
-      { type: "download", label: "Download rent review checklist", url: "/downloads/blog/rent-review-checklist.md" },
+      { type: "download", label: "Download rent review checklist", url: "/downloads/blog/rent-review-checklist.pdf" },
       { type: "cta", variant: "rent" },
     ],
   },
@@ -421,7 +485,7 @@ const STARTER_ARTICLES = [
       { type: "paragraph", text: "A good lease is not only a formality. It is the working manual for the rental relationship. It should explain who pays what, who repairs what, how notice works, and what happens when either side breaks the agreement." },
       { type: "heading", level: 2, text: "Core clauses to include" },
       { type: "list", items: ["Full names and contact details of landlord, tenant, agent, or caretaker.", "Property address, rooms included, parking, storage, garden, cottage, or shared areas.", "Rent amount, currency, due date, payment method, and late-payment process.", "Deposit amount, purpose, deductions, inspection method, and refund timing.", "Lease start date, end date, renewal terms, and notice period.", "Utilities, levies, rates, refuse, security, gardener, WiFi, and shared-service responsibilities.", "Repairs and maintenance: urgent, minor, tenant-caused, and structural.", "House rules for pets, visitors, noise, subletting, business use, and alterations.", "Inspection schedule, access notice, handover photos, keys, and meter readings.", "Dispute process, breach notice, termination, and signature dates."] },
-      { type: "download", label: "Download lease clause checklist", url: "/downloads/blog/lease-clause-checklist.md" },
+      { type: "download", label: "Download lease clause checklist", url: "/downloads/blog/lease-clause-checklist.pdf" },
       { type: "cta", variant: "whatsapp" },
     ],
   },
@@ -546,7 +610,7 @@ const STARTER_ARTICLES = [
       { type: "heading", level: 2, text: "Buy the developer's track record, not only the brochure" },
       { type: "paragraph", text: "Marketing images can make a project look complete before the hard work is done. Buyers should check approvals, land control, servicing, timelines, penalties, developer history, and what exactly is included at handover." },
       { type: "table", headers: ["Check", "Question"], rows: [["Approvals", "Are layout, building, environmental, and servicing approvals in place where required?"], ["Land rights", "Who owns or controls the land and can they sell units or stands?"], ["Services", "Roads, water, sewer, drainage, power, internet, security, and waste management."], ["Payment schedule", "What milestones release each payment?"], ["Handover standard", "What finishes, certificates, snagging process, and warranties are included?"]] },
-      { type: "download", label: "Download buyer due diligence checklist", url: "/downloads/blog/buyer-due-diligence-checklist.md" },
+      { type: "download", label: "Download buyer due diligence checklist", url: "/downloads/blog/buyer-due-diligence-checklist.pdf" },
       { type: "cta", variant: "sale" },
     ],
   },
@@ -666,7 +730,7 @@ const STARTER_ARTICLES = [
       { type: "heading", level: 2, text: "Your budget should go beyond the purchase price" },
       { type: "paragraph", text: "A buyer who spends every dollar on the purchase price may struggle with transfer costs, repairs, rates, service reconnection, security upgrades, and moving expenses. Build a transaction budget before making the offer." },
       { type: "table", headers: ["Cost area", "Examples"], rows: [["Transaction costs", "Legal fees, transfer fees, agency commission allocation, bank charges, valuation, and registration costs."], ["Property debts", "Rates, water, levies, association fees, penalties, and service arrears."], ["Occupation costs", "Rent before transfer, insurance, utilities, security, and caretaker costs."], ["Immediate repairs", "Leaks, locks, electrical issues, plumbing, roof, paint, broken fittings, and cleaning."], ["Resilience upgrades", "Water tank, pump, solar, inverter, batteries, lighting, alarm, and boundary improvements."]] },
-      { type: "download", label: "Download buyer due diligence checklist", url: "/downloads/blog/buyer-due-diligence-checklist.md" },
+      { type: "download", label: "Download buyer due diligence checklist", url: "/downloads/blog/buyer-due-diligence-checklist.pdf" },
       { type: "cta", variant: "sale" },
     ],
   },
@@ -703,7 +767,7 @@ const STARTER_ARTICLES = [
       { type: "heading", level: 2, text: "Why this question matters" },
       { type: "paragraph", text: "In Zimbabwe, good rentals can move fast, especially in Harare, Bulawayo, Gweru, and areas close to schools, hospitals, industrial sites, and universities. Scammers use that pressure. They say many people are waiting, then ask for a small commitment fee. That is exactly when you must slow down." },
       { type: "list", items: ["Ask for the exact suburb and viewing arrangement.", "Confirm whether the person is the owner, agent, caretaker, or relative.", "Ask what the deposit covers and when it is refundable.", "Pay only through a traceable method and keep written proof.", "If anything changes suddenly, pause and verify again."] },
-      { type: "download", label: "Download tenant viewing checklist", url: "/downloads/blog/tenant-viewing-checklist.md" },
+      { type: "download", label: "Download tenant viewing checklist", url: "/downloads/blog/tenant-viewing-checklist.pdf" },
       { type: "cta", variant: "rent" },
     ],
   },
@@ -722,7 +786,7 @@ const STARTER_ARTICLES = [
       { type: "heading", level: 2, text: "Compare value, not only price" },
       { type: "paragraph", text: "A rent increase may be more reasonable if services have improved, repairs were done, security improved, or nearby rents have moved. It is less reasonable when water, power, access, or repairs are getting worse and no explanation is given." },
       { type: "table", headers: ["Check", "Simple question"], rows: [["Notice", "When does the new rent start?"], ["Lease", "Does the agreement allow this review now?"], ["Market", "What are similar homes nearby asking?"], ["Services", "Are water, ZESA, WiFi, levies, or security included?"], ["Repairs", "Are known defects being fixed?"]] },
-      { type: "download", label: "Download rent review checklist", url: "/downloads/blog/rent-review-checklist.md" },
+      { type: "download", label: "Download rent review checklist", url: "/downloads/blog/rent-review-checklist.pdf" },
       { type: "cta", variant: "whatsapp" },
     ],
   },
@@ -764,6 +828,52 @@ export type BlogCommentThread = {
   createdAt: Date;
   replies: BlogCommentThread[];
 };
+
+export const BLOG_SERIES = [
+  {
+    slug: "tenant-safety-series",
+    title: "Tenant Safety Series",
+    description: "Plain guides for viewing safely, checking deposits, understanding leases, and avoiding rental pressure.",
+    category: "Tenant Advice",
+    posts: [
+      "tenant-safety-checklist-before-paying-a-deposit",
+      "ask-houselink-should-i-pay-a-deposit-before-viewing-a-property",
+      "what-should-be-in-a-proper-lease-agreement-in-zimbabwe",
+      "how-to-spot-property-scams-in-zimbabwe-before-you-lose-money",
+    ],
+  },
+  {
+    slug: "buyer-due-diligence-series",
+    title: "Buyer Due Diligence Series",
+    description: "Step-by-step checks for ownership, title, cession, rates, hidden costs, and seller authority.",
+    category: "Buying Property",
+    posts: [
+      "buying-property-in-zimbabwe-questions-to-ask-before-you-commit",
+      "title-deeds-cession-and-agreements-of-sale-what-zimbabwe-buyers-should-understand",
+      "hidden-costs-of-buying-property-in-zimbabwe",
+      "diaspora-buyer-checklist-for-buying-property-in-zimbabwe",
+    ],
+  },
+  {
+    slug: "landlord-toolkit-series",
+    title: "Landlord Toolkit Series",
+    description: "Practical help for listing well, screening tenants, lease clarity, handovers, and property management.",
+    category: "Landlord Advice",
+    posts: [
+      "how-landlords-can-create-better-property-listings",
+      "what-landlords-should-check-before-accepting-a-tenant",
+      "what-should-be-in-a-proper-lease-agreement-in-zimbabwe",
+      "what-to-do-if-a-tenant-refuses-to-move-out-in-zimbabwe",
+    ],
+  },
+] as const;
+
+export const BLOG_HUBS = [
+  { slug: "renting-in-harare", title: "Renting in Harare", city: "Harare", category: "Renting in Zimbabwe", description: "Rental guides for Harare tenants comparing suburbs, commute, deposits, water, ZESA, and safety." },
+  { slug: "buying-in-bulawayo", title: "Buying in Bulawayo", city: "Bulawayo", category: "Buying Property", description: "Buyer guidance for Bulawayo families, investors, and diaspora buyers checking ownership, price, and services." },
+  { slug: "student-accommodation-in-gweru", title: "Student Accommodation in Gweru", city: "Gweru", category: "Renting in Zimbabwe", description: "Student housing checks around Gweru and MSU: sharing rules, transport, study space, water, and total cost." },
+  { slug: "moving-to-mutare", title: "Moving to Mutare", city: "Mutare", category: "Moving and Relocation", description: "Practical relocation guidance for access, drainage, slope, suburbs, transport, and family routines in Mutare." },
+] as const;
 
 function starterAuthor() {
   const now = new Date("2026-07-26T00:00:00.000Z");
@@ -876,11 +986,11 @@ function enrichStarterBlocks(article: StarterArticle): BlogBlock[] {
   const blocks = article.blocks.map((block) => ({ ...block })) as BlogBlock[];
   if (blocks.some((block) => block.type === "heading" && block.text === "What this means on the ground in Zimbabwe")) return blocks;
   const download = article.category === "Tenant Advice" || article.category === "Renting in Zimbabwe"
-    ? { type: "download", label: "Download tenant viewing checklist", url: "/downloads/blog/tenant-viewing-checklist.md" } satisfies BlogBlock
+    ? { type: "download", label: "Download tenant viewing checklist", url: "/downloads/blog/tenant-viewing-checklist.pdf" } satisfies BlogBlock
     : article.category === "Landlord Advice"
-      ? { type: "download", label: "Download landlord handover form", url: "/downloads/blog/landlord-handover-form.md" } satisfies BlogBlock
+      ? { type: "download", label: "Download landlord handover form", url: "/downloads/blog/landlord-handover-form.pdf" } satisfies BlogBlock
       : article.category === "Buying Property" || article.category === "Property Law" || article.category === "Property Development"
-        ? { type: "download", label: "Download buyer due diligence checklist", url: "/downloads/blog/buyer-due-diligence-checklist.md" } satisfies BlogBlock
+        ? { type: "download", label: "Download buyer due diligence checklist", url: "/downloads/blog/buyer-due-diligence-checklist.pdf" } satisfies BlogBlock
         : null;
   const localChecklist = article.category === "Property Law"
     ? ["Do not rely only on WhatsApp messages when money is involved; ask for written documents.", "Check names, IDs, stand numbers, rates position, and authority to sell or rent.", "Use a conveyancer or qualified legal practitioner for big decisions, especially title deed, cession, estate, or divorce-related property."]
@@ -897,12 +1007,28 @@ function enrichStarterBlocks(article: StarterArticle): BlogBlock[] {
         : ["Ask what the decision will cost in real life, not only what the advert says.", "Keep proof of payments, messages, agreements, and inspection notes.", "When something feels rushed or unclear, pause and verify before committing money."];
   return [
     ...blocks,
+    { type: "heading", level: 2, text: "In simple words" },
+    {
+      type: "paragraph",
+      text: "The main point is simple: do not rush a property decision because someone is putting pressure on you. Check the person, check the place, check the documents, and make sure the money trail is clear.",
+    },
     { type: "heading", level: 2, text: "What this means on the ground in Zimbabwe" },
     {
       type: "paragraph",
       text: "Property decisions here are usually practical, family-involving, and money-sensitive. A useful article should help you know what to ask next, what proof to request, and where a deal can go wrong before you put cash down.",
     },
     { type: "list", items: localChecklist },
+    { type: "heading", level: 3, text: "Example" },
+    {
+      type: "paragraph",
+      text: article.category === "Renting in Zimbabwe" || article.category === "Tenant Advice"
+        ? "If a tenant in Harare is told to pay today because many people are waiting, the safer move is to request a viewing, confirm who owns or manages the property, and get the deposit terms in writing first."
+        : article.category === "Buying Property" || article.category === "Property Law" || article.category === "Property Development"
+          ? "If a family is buying a stand or house in Bulawayo, Gweru, Mutare or Harare, they should verify ownership, rates, boundaries and seller authority before paying a large deposit."
+          : article.category === "Landlord Advice" || article.category === "Selling Property"
+            ? "If a landlord is handing over a cottage or house, a signed checklist with photos can prevent arguments later about keys, repairs, ZESA, water, and damage."
+            : "If the details are not clear enough to explain to a family member, pause and ask for proof before you commit.",
+    },
     ...(download ? [download] : []),
     { type: "heading", level: 2, text: "Common reader questions" },
     {
@@ -979,6 +1105,11 @@ function getStarterBlogPost(slug: string) {
     next: index > 0 ? { title: posts[index - 1].title, slug: posts[index - 1].slug, publishedAt: posts[index - 1].publishedAt } : null,
     comments: [] as BlogCommentThread[],
   };
+}
+
+function getStarterPostsBySlugs(slugs: readonly string[]) {
+  const bySlug = new Map<string, ReturnType<typeof starterPost>>(starterPosts().map((post) => [post.slug, post]));
+  return slugs.map((slug) => bySlug.get(slug)).filter(Boolean) as ReturnType<typeof starterPost>[];
 }
 
 export async function ensureBlogDefaults(actorId?: string) {
@@ -1236,6 +1367,31 @@ export async function getPublicBlogPost(slug: string, incrementView = false) {
   return getStarterBlogPost(slug);
 }
 
+export async function getPublicBlogSeries(slug: string) {
+  const series = BLOG_SERIES.find((item) => item.slug === slug);
+  if (!series) return null;
+  try {
+    const prisma = getMainPrisma();
+    const posts = await prisma.blogPost.findMany({ where: { slug: { in: [...series.posts] }, status: BlogPostStatus.PUBLISHED, noIndex: false }, include: blogIncludes(), orderBy: publicOrderBy() });
+    return { series, posts: withUniqueBlogImages(posts), allSeries: BLOG_SERIES };
+  } catch (error) {
+    console.warn("Falling back to starter blog series", error);
+  }
+  return { series, posts: withUniqueBlogImages(getStarterPostsBySlugs(series.posts)), allSeries: BLOG_SERIES };
+}
+
+export async function getPublicBlogHub(slug: string) {
+  const hub = BLOG_HUBS.find((item) => item.slug === slug);
+  if (!hub) return null;
+  try {
+    const index = await getDatabaseBlogIndex({ category: slugify(hub.category), limit: 8 });
+    return { hub, ...index, hubs: BLOG_HUBS };
+  } catch (error) {
+    console.warn("Falling back to starter blog hub", error);
+  }
+  return { hub, ...getStarterBlogIndex({ category: slugify(hub.category), limit: 8 }), hubs: BLOG_HUBS };
+}
+
 export async function getPublicBlogAuthor(slug: string, params: { page?: number; limit?: number }) {
   try {
     const prisma = getMainPrisma();
@@ -1363,12 +1519,98 @@ export async function createBlogArticleFeedback(input: { postId: string; vote: s
   });
 }
 
+export async function createBlogReaderQuestion(input: { postId?: string | null; name: string; email?: string | null; city?: string | null; question: string; ipHash?: string | null; userAgent?: string | null }) {
+  const prisma = getMainPrisma();
+  const postId = stringOrNull(input.postId);
+  if (postId) {
+    const post = await prisma.blogPost.findFirst({ where: { id: postId, status: BlogPostStatus.PUBLISHED, noIndex: false }, select: { id: true } });
+    if (!post) throw new Error("Article not found.");
+  }
+  return prisma.blogReaderQuestion.create({
+    data: {
+      postId,
+      name: required(input.name, "Your name").slice(0, 80),
+      email: stringOrNull(input.email)?.slice(0, 160) ?? null,
+      city: stringOrNull(input.city)?.slice(0, 80) ?? null,
+      question: required(input.question, "Question").slice(0, 1200),
+      status: "NEW",
+      ipHash: stringOrNull(input.ipHash),
+      userAgent: stringOrNull(input.userAgent)?.slice(0, 240) ?? null,
+    },
+  });
+}
+
+export async function getPublicReaderQuestionDigest() {
+  try {
+    const prisma = getMainPrisma();
+    const questions = await prisma.blogReaderQuestion.findMany({
+      where: { status: { in: ["PLANNED", "ANSWERED"] } },
+      include: { post: { select: { title: true, slug: true } } },
+      orderBy: { createdAt: "desc" },
+      take: 24,
+    });
+    return { questions, hubs: BLOG_HUBS, series: BLOG_SERIES };
+  } catch (error) {
+    console.warn("Reader question digest unavailable", error);
+    return { questions: [], hubs: BLOG_HUBS, series: BLOG_SERIES };
+  }
+}
+
+async function getBlogContentGaps() {
+  const prisma = getMainPrisma();
+  const [posts, feedbackNotes, questionCounts] = await Promise.all([
+    prisma.blogPost.findMany({ include: { category: true, tags: true, downloads: true }, orderBy: { updatedAt: "desc" }, take: 120 }),
+    prisma.blogArticleFeedback.groupBy({ by: ["postId", "vote"], _count: { vote: true } }),
+    prisma.blogReaderQuestion.groupBy({ by: ["postId"], _count: { postId: true }, where: { postId: { not: null } } }),
+  ]);
+  const feedbackByPost = new Map<string, { helpful: number; needsWork: number }>();
+  for (const item of feedbackNotes) {
+    const current = feedbackByPost.get(item.postId) ?? { helpful: 0, needsWork: 0 };
+    if (item.vote === "NEEDS_WORK") current.needsWork = item._count.vote;
+    if (item.vote === "HELPFUL") current.helpful = item._count.vote;
+    feedbackByPost.set(item.postId, current);
+  }
+  const questionsByPost = new Map(questionCounts.filter((item) => item.postId).map((item) => [item.postId as string, item._count.postId]));
+  return posts.map((post) => {
+    const blocks = Array.isArray(post.contentBlocks) ? post.contentBlocks as BlogBlock[] : [];
+    const headings = blocks.filter((block) => block.type === "heading").length;
+    const downloads = blocks.filter((block) => block.type === "download").length + post.downloads.length;
+    const infoBlocks = blocks.filter((block) => block.type === "info").length;
+    const words = String(post.contentText ?? "").split(/\s+/).filter(Boolean).length;
+    const feedback = feedbackByPost.get(post.id) ?? { helpful: 0, needsWork: 0 };
+    const issues = [
+      words < 650 ? "Needs more depth" : "",
+      headings < 3 ? "Needs clearer headings" : "",
+      downloads < 1 ? "Add a checklist/download" : "",
+      infoBlocks < 2 ? "Add FAQ or plain-English boxes" : "",
+      feedback.needsWork > feedback.helpful ? "Readers asked for more detail" : "",
+      (questionsByPost.get(post.id) ?? 0) > 0 ? "Reader questions waiting around this topic" : "",
+    ].filter(Boolean);
+    return {
+      id: post.id,
+      title: post.title,
+      slug: post.slug,
+      category: post.category?.name ?? "Uncategorised",
+      words,
+      headings,
+      downloads,
+      helpfulVotes: feedback.helpful,
+      needsWorkVotes: feedback.needsWork,
+      readerQuestions: questionsByPost.get(post.id) ?? 0,
+      issues,
+      score: Math.max(0, 100 - issues.length * 14 - Math.max(0, 650 - words) / 20),
+    };
+  }).filter((item) => item.issues.length).sort((a, b) => a.score - b.score).slice(0, 18);
+}
+
 export async function getBlogSitemapEntries() {
   const updatedAt = new Date("2026-07-26T00:00:00.000Z");
   return {
     posts: STARTER_ARTICLES.map((article) => ({ slug: article.slug, updatedAt })),
     categories: DEFAULT_CATEGORIES.map(([name]) => ({ slug: slugify(name), updatedAt })),
     authors: [{ slug: "houselink-editorial-team", updatedAt }],
+    series: BLOG_SERIES.map((series) => ({ slug: series.slug, updatedAt })),
+    hubs: BLOG_HUBS.map((hub) => ({ slug: hub.slug, updatedAt })),
   };
 }
 
@@ -1411,6 +1653,8 @@ export async function getAdminBlogDashboard() {
       approvedComments: await prisma.blogComment.count({ where: { status: "APPROVED" } }),
       helpfulVotes: await prisma.blogArticleFeedback.count({ where: { vote: "HELPFUL" } }),
       needsWorkVotes: await prisma.blogArticleFeedback.count({ where: { vote: "NEEDS_WORK" } }),
+      readerQuestions: await prisma.blogReaderQuestion.count(),
+      newReaderQuestions: await prisma.blogReaderQuestion.count({ where: { status: "NEW" } }),
     },
     comments: await prisma.blogComment.findMany({
       include: { post: { select: { title: true, slug: true } }, parent: { select: { authorName: true, body: true } } },
@@ -1422,6 +1666,14 @@ export async function getAdminBlogDashboard() {
       orderBy: { createdAt: "desc" },
       take: 40,
     }),
+    readerQuestions: await prisma.blogReaderQuestion.findMany({
+      include: { post: { select: { title: true, slug: true } } },
+      orderBy: [{ status: "asc" }, { createdAt: "desc" }],
+      take: 80,
+    }),
+    contentGaps: await getBlogContentGaps(),
+    hubs: BLOG_HUBS,
+    series: BLOG_SERIES,
     suggestions: {
       services: [
         { label: "Search Properties", url: "/search" },
@@ -1524,6 +1776,20 @@ export async function runAdminBlogAction(body: Record<string, any>, actor: { id:
     const comment = await prisma.blogComment.delete({ where: { id: required(body.commentId, "Comment") } });
     await audit("blog.comment.delete", comment.id, actor.id, { postId: comment.postId });
     return comment;
+  }
+  if (action === "review_reader_question") {
+    const status = ["NEW", "PLANNED", "ANSWERED", "ARCHIVED"].includes(String(body.status)) ? String(body.status) : "NEW";
+    const question = await prisma.blogReaderQuestion.update({
+      where: { id: required(body.questionId, "Reader question") },
+      data: {
+        status,
+        adminNote: stringOrNull(body.adminNote),
+        articleSlug: stringOrNull(body.articleSlug),
+      },
+      include: { post: { select: { title: true, slug: true } } },
+    });
+    await audit("blog.reader_question.review", question.id, actor.id, { status, articleSlug: question.articleSlug });
+    return question;
   }
   if (action === "save_category") {
     const category = body.category ?? {};

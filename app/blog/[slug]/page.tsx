@@ -7,6 +7,7 @@ import { BlogBlocks } from "@/components/blog/blog-block-renderer";
 import { BlogCard, blogImageUrl, formatDate, isGeneratedBlogImage } from "@/components/blog/blog-card";
 import { ArticleActions, ImageLightbox, ReadingProgress, RecentlyViewedArticles, RecentlyViewedTracker } from "@/components/blog/article-experience";
 import { BlogArticleFeedback, BlogComments, type PublicBlogComment } from "@/components/blog/blog-comments";
+import { ReaderQuestionForm } from "@/components/blog/reader-question-form";
 import { getCanonicalSiteUrl } from "@/lib/seo/site-url";
 import { getPublicBlogPost, type BlogBlock } from "@/lib/blog/blog-repository";
 import { anchorId } from "@/lib/blog/anchors";
@@ -146,6 +147,7 @@ export default async function BlogArticlePage({ params }: Props) {
           <BlogBlocks blocks={blocks} layout={post.layout} postId={post.id} listings={JSON.parse(JSON.stringify(relatedListings))} />
           <AuthorBox post={post} articleCount={authorArticleCount} />
           <BlogArticleFeedback postId={post.id} />
+          <ReaderQuestionForm postId={post.id} />
           <BlogComments postId={post.id} initialComments={JSON.parse(JSON.stringify(comments)) as PublicBlogComment[]} />
         </article>
 

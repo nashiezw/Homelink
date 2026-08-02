@@ -17,6 +17,8 @@ const routes = [
   { path: "/academy/verify", priority: 0.72 },
   { path: "/library", priority: 0.9 },
   { path: "/blog", priority: 0.8 },
+  { path: "/blog/questions", priority: 0.76 },
+  { path: "/blog/digest", priority: 0.74 },
   { path: "/property-management", priority: 0.75 },
   { path: "/verification", priority: 0.7 },
   { path: "/safety", priority: 0.7 },
@@ -74,6 +76,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: author.updatedAt,
       changeFrequency: "weekly" as const,
       priority: 0.68,
+    })),
+    ...blog.series.map((series) => ({
+      url: `${siteUrl}/blog/series/${series.slug}`,
+      lastModified: series.updatedAt,
+      changeFrequency: "weekly" as const,
+      priority: 0.73,
+    })),
+    ...blog.hubs.map((hub) => ({
+      url: `${siteUrl}/blog/hub/${hub.slug}`,
+      lastModified: hub.updatedAt,
+      changeFrequency: "weekly" as const,
+      priority: 0.73,
     })),
     ...blog.posts.map((post) => ({
       url: `${siteUrl}/blog/${post.slug}`,

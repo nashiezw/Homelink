@@ -297,6 +297,7 @@ model BlogPost {
   downloads          BlogDownload[]
   comments           BlogComment[]
   feedback           BlogArticleFeedback[]
+  questions          BlogReaderQuestion[]
 
   @@index([status])
   @@index([publishedAt])
@@ -340,6 +341,27 @@ model BlogArticleFeedback {
   @@index([postId, vote])
   @@index([createdAt])
   @@map("blog_article_feedback")
+}
+
+model BlogReaderQuestion {
+  id          String    @id @default(cuid())
+  postId      String?
+  name        String
+  email       String?
+  city        String?
+  question    String
+  status      String    @default("NEW")
+  adminNote   String?
+  articleSlug String?
+  ipHash      String?
+  userAgent   String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  post        BlogPost? @relation(fields: [postId], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@index([postId])
+  @@map("blog_reader_questions")
 }
 
 model BlogDownload {

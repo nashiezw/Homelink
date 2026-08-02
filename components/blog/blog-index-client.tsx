@@ -59,6 +59,21 @@ const popularQuestions = [
   { label: "What are the hidden costs of buying?", href: "/blog/hidden-costs-of-buying-property-in-zimbabwe" },
 ] as const;
 
+const blogCollections = [
+  { label: "Tenant Safety Series", href: "/blog/series/tenant-safety-series", text: "Deposits, viewings, scams, leases and practical safety checks." },
+  { label: "Buyer Due Diligence", href: "/blog/series/buyer-due-diligence-series", text: "Ownership, title deed, cession, hidden costs and transfer checks." },
+  { label: "Landlord Toolkit", href: "/blog/series/landlord-toolkit-series", text: "Better listings, screening, handovers, leases and arrears prevention." },
+  { label: "Ask HouseLink", href: "/blog/questions", text: "Send real property questions and see what readers are asking." },
+  { label: "Weekly Digest", href: "/blog/digest", text: "A fresh collection of practical property questions and recommended reads." },
+] as const;
+
+const cityHubs = [
+  { label: "Renting in Harare", href: "/blog/hub/renting-in-harare" },
+  { label: "Buying in Bulawayo", href: "/blog/hub/buying-in-bulawayo" },
+  { label: "Student Accommodation in Gweru", href: "/blog/hub/student-accommodation-in-gweru" },
+  { label: "Moving to Mutare", href: "/blog/hub/moving-to-mutare" },
+] as const;
+
 export function BlogIndexClient({ initialData, initialCategorySlug = "" }: BlogIndexClientProps) {
   const [data, setData] = useState(() => normaliseBlogIndexData(initialData));
   const [query, setQuery] = useState("");
@@ -184,6 +199,34 @@ export function BlogIndexClient({ initialData, initialCategorySlug = "" }: BlogI
                 <span className="inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-emerald-400/15 text-xs font-bold text-emerald-200">{index + 1}</span>
                 <span>{question.label}</span>
                 <ArrowRight className="size-4 shrink-0 transition group-hover:translate-x-1" />
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_24rem]">
+        <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-5">
+          <p className="section-eyebrow">Series</p>
+          <h2 className="mt-2 text-2xl font-bold tracking-normal text-ink dark:text-white">Follow a complete topic.</h2>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            {blogCollections.map((item) => (
+              <Link key={item.href} href={item.href} className="group rounded-lg border border-slate-200 p-4 hover:border-emerald-300 dark:border-slate-800">
+                <p className="font-semibold text-ink group-hover:text-emerald-700 dark:text-white dark:group-hover:text-emerald-300">{item.label}</p>
+                <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">{item.text}</p>
+                <span className="mt-3 inline-flex items-center gap-2 text-sm font-bold text-emerald-700 dark:text-emerald-300">Open series <ArrowRight className="size-4" /></span>
+              </Link>
+            ))}
+          </div>
+        </div>
+        <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-5">
+          <p className="section-eyebrow">City hubs</p>
+          <h2 className="mt-2 text-2xl font-bold tracking-normal text-ink dark:text-white">Local guides.</h2>
+          <div className="mt-4 grid gap-2">
+            {cityHubs.map((item) => (
+              <Link key={item.href} href={item.href} className="flex min-h-11 items-center justify-between gap-3 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:border-emerald-300 dark:border-slate-800 dark:text-slate-200">
+                {item.label}
+                <ArrowRight className="size-4" />
               </Link>
             ))}
           </div>

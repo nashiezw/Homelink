@@ -31,9 +31,15 @@ type BlogData = {
     approvedComments: number;
     helpfulVotes: number;
     needsWorkVotes: number;
+    readerQuestions: number;
+    newReaderQuestions: number;
   };
   comments: BlogComment[];
   feedback: BlogFeedback[];
+  readerQuestions: BlogReaderQuestion[];
+  contentGaps: BlogContentGap[];
+  hubs: Array<{ slug: string; title: string; city: string; category: string; description: string }>;
+  series: Array<{ slug: string; title: string; description: string; category: string; posts: readonly string[] }>;
   suggestions: {
     services: Array<{ label: string; url: string }>;
     posts: Array<{ title: string; url: string }>;
@@ -79,6 +85,8 @@ type BlogTag = { id: string; name: string; slug: string; description?: string | 
 type BlogBlock = Record<string, any> & { type: string };
 type BlogComment = { id: string; postId: string; parentId?: string | null; authorName: string; authorEmail?: string | null; body: string; status: "PENDING" | "APPROVED" | "REJECTED" | "SPAM"; createdAt: string; post?: { title: string; slug: string }; parent?: { authorName: string; body: string } | null };
 type BlogFeedback = { id: string; postId: string; vote: "HELPFUL" | "NEEDS_WORK"; note?: string | null; createdAt: string; post?: { title: string; slug: string } };
+type BlogReaderQuestion = { id: string; postId?: string | null; name: string; email?: string | null; city?: string | null; question: string; status: "NEW" | "PLANNED" | "ANSWERED" | "ARCHIVED"; adminNote?: string | null; articleSlug?: string | null; createdAt: string; post?: { title: string; slug: string } | null };
+type BlogContentGap = { id: string; title: string; slug: string; category: string; words: number; headings: number; downloads: number; helpfulVotes: number; needsWorkVotes: number; readerQuestions: number; issues: string[]; score: number };
 
 const statuses = ["DRAFT", "SCHEDULED", "PUBLISHED", "UNPUBLISHED", "ARCHIVED"] as const;
 const blockTypes = ["paragraph", "heading", "list", "image", "gallery", "video", "quote", "info", "table", "download", "button", "propertyCard", "dynamicProperty", "cta"] as const;
@@ -96,7 +104,7 @@ const internalLinks = [
 export function BlogManagementHub() {
   const { showToast } = useApp();
   const [data, setData] = useState<BlogData | null>(null);
-  const [tab, setTab] = useState<"articles" | "editor" | "comments" | "categories" | "authors" | "tags" | "layouts" | "analytics" | "ai">("articles");
+  const [tab, setTab] = useState<"articles" | "editor" | "comments" | "questions" | "gaps" | "collections" | "categories" | "authors" | "tags" | "layouts" | "analytics" | "ai">("articles");
   const [query, setQuery] = useState("");
   const [selectedPost, setSelectedPost] = useState<BlogPost | null>(null);
   const [categoryEdit, setCategoryEdit] = useState<BlogCategory | null>(null);
@@ -141,7 +149,7 @@ export function BlogManagementHub() {
         <AdminStatPill label="Published" value={data.stats.totalPublished} tone="success" />
         <AdminStatPill label="Drafts" value={data.stats.totalDrafts} tone="warning" />
         <AdminStatPill label="Article views" value={data.stats.totalViews} tone="info" />
-        <AdminStatPill label="Pending comments" value={data.stats.commentQueue} tone="warning" />
+        <AdminStatPill label="Reader questions" value={data.stats.newReaderQuestions} tone="warning" />
       </div>
 
       <AdminTabStrip
@@ -151,6 +159,9 @@ export function BlogManagementHub() {
           { id: "articles", label: "Articles", count: data.posts.length },
           { id: "editor", label: "New Article" },
           { id: "comments", label: "Comments", count: data.stats.commentQueue },
+          { id: "questions", label: "Questions", count: data.stats.newReaderQuestions },
+          { id: "gaps", label: "Content Gaps", count: data.contentGaps.length },
+          { id: "collections", label: "Hubs & Series" },
           { id: "categories", label: "Categories", count: data.categories.length },
           { id: "authors", label: "Authors", count: data.authors.length },
           { id: "tags", label: "Tags", count: data.tags.length },
@@ -209,6 +220,18 @@ export function BlogManagementHub() {
           stats={data.stats}
           onAction={action}
         />
+      )}
+
+      {tab === "questions" && (
+        <ReaderQuestionsPanel questions={data.readerQuestions} onAction={action} />
+      )}
+
+      {tab === "gaps" && (
+        <ContentGapsPanel gaps={data.contentGaps} />
+      )}
+
+      {tab === "collections" && (
+        <BlogCollectionsPanel hubs={data.hubs} series={data.series} />
       )}
 
       {tab === "categories" && (
@@ -574,6 +597,93 @@ function CommentModerationCell({ comment }: { comment: BlogComment }) {
       {comment.parent ? <p className="mt-2 rounded-lg bg-white/5 px-2 py-1 text-xs text-slate-400">Reply to {comment.parent.authorName}: {comment.parent.body}</p> : null}
       <Link href={`/blog/${comment.post?.slug ?? ""}`} target="_blank" className="mt-2 inline-flex text-xs font-semibold text-emerald-300 hover:text-emerald-200">{comment.post?.title ?? comment.postId}</Link>
     </div>
+  );
+}
+
+function ReaderQuestionsPanel({ questions, onAction }: { questions: BlogReaderQuestion[]; onAction: (body: Record<string, unknown>, success: string) => Promise<unknown> }) {
+  return (
+    <section className="rounded-xl border border-white/10 bg-slate-900/60">
+      <div className="border-b border-white/10 p-4">
+        <h2 className="font-semibold text-white">Ask HouseLink queue</h2>
+        <p className="mt-1 text-sm text-slate-400">Review reader questions, plan answers, and link answered questions to published articles.</p>
+      </div>
+      <AdminDataTable rows={questions} columns={[
+        { key: "question", header: "Question", render: (item) => <QuestionCell question={item} /> },
+        { key: "status", header: "Status", render: (item) => <AdminStatusBadge status={item.status} variant={item.status === "ANSWERED" ? "success" : item.status === "PLANNED" ? "info" : item.status === "ARCHIVED" ? "muted" : "warning"} /> },
+        { key: "date", header: "Date", render: (item) => new Date(item.createdAt).toLocaleDateString("en-ZW") },
+        {
+          key: "actions",
+          header: "Actions",
+          render: (item) => (
+            <div className="flex flex-wrap gap-2">
+              <Button variant="secondary" onClick={() => onAction({ action: "review_reader_question", questionId: item.id, status: "PLANNED", adminNote: item.adminNote }, "Question planned.")}>Plan</Button>
+              <Button variant="secondary" onClick={() => {
+                const articleSlug = window.prompt("Article slug for this answer?", item.articleSlug ?? "");
+                void onAction({ action: "review_reader_question", questionId: item.id, status: "ANSWERED", articleSlug }, "Question marked answered.");
+              }}>Answered</Button>
+              <Button variant="secondary" onClick={() => onAction({ action: "review_reader_question", questionId: item.id, status: "ARCHIVED" }, "Question archived.")}>Archive</Button>
+            </div>
+          ),
+        },
+      ]} />
+    </section>
+  );
+}
+
+function QuestionCell({ question }: { question: BlogReaderQuestion }) {
+  return (
+    <div>
+      <p className="font-semibold text-white">{question.question}</p>
+      <p className="mt-1 text-xs text-slate-500">{question.name}{question.city ? ` - ${question.city}` : ""}{question.email ? ` - ${question.email}` : ""}</p>
+      {question.post ? <Link href={`/blog/${question.post.slug}`} target="_blank" className="mt-2 inline-flex text-xs font-semibold text-emerald-300 hover:text-emerald-200">Asked from: {question.post.title}</Link> : null}
+      {question.articleSlug ? <Link href={`/blog/${question.articleSlug}`} target="_blank" className="ml-0 mt-2 block text-xs font-semibold text-cyan-300 hover:text-cyan-200">Answer: /blog/{question.articleSlug}</Link> : null}
+    </div>
+  );
+}
+
+function ContentGapsPanel({ gaps }: { gaps: BlogContentGap[] }) {
+  return (
+    <section className="rounded-xl border border-white/10 bg-slate-900/60">
+      <div className="border-b border-white/10 p-4">
+        <h2 className="font-semibold text-white">Content gaps dashboard</h2>
+        <p className="mt-1 text-sm text-slate-400">Prioritise articles that need more depth, clearer headings, checklists, FAQs, or examples.</p>
+      </div>
+      <AdminDataTable rows={gaps} columns={[
+        { key: "article", header: "Article", render: (gap) => <div><Link href={`/blog/${gap.slug}`} target="_blank" className="font-semibold text-white hover:text-emerald-300">{gap.title}</Link><p className="mt-1 text-xs text-slate-500">{gap.category} - score {Math.round(gap.score)}</p></div> },
+        { key: "metrics", header: "Metrics", render: (gap) => <span className="text-sm text-slate-300">{gap.words} words - {gap.headings} headings - {gap.downloads} downloads</span> },
+        { key: "signals", header: "Reader signals", render: (gap) => <span className="text-sm text-slate-300">{gap.needsWorkVotes} needs detail - {gap.readerQuestions} questions</span> },
+        { key: "issues", header: "Recommended fixes", render: (gap) => <div className="flex flex-wrap gap-1">{gap.issues.map((issue) => <span key={issue} className="rounded-full bg-amber-400/10 px-2 py-1 text-xs font-semibold text-amber-200">{issue}</span>)}</div> },
+      ]} />
+    </section>
+  );
+}
+
+function BlogCollectionsPanel({ hubs, series }: { hubs: BlogData["hubs"]; series: BlogData["series"] }) {
+  return (
+    <section className="grid gap-4 lg:grid-cols-2">
+      <div className="rounded-xl border border-white/10 bg-slate-900/60 p-5">
+        <h2 className="font-semibold text-white">City hubs</h2>
+        <div className="mt-4 space-y-3">
+          {hubs.map((hub) => <CollectionRow key={hub.slug} title={hub.title} href={`/blog/hub/${hub.slug}`} description={hub.description} />)}
+        </div>
+      </div>
+      <div className="rounded-xl border border-white/10 bg-slate-900/60 p-5">
+        <h2 className="font-semibold text-white">Article series</h2>
+        <div className="mt-4 space-y-3">
+          {series.map((item) => <CollectionRow key={item.slug} title={item.title} href={`/blog/series/${item.slug}`} description={`${item.description} ${item.posts.length} linked articles.`} />)}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function CollectionRow({ title, href, description }: { title: string; href: string; description: string }) {
+  return (
+    <Link href={href} target="_blank" className="block rounded-lg border border-white/10 p-3 hover:border-emerald-400/50">
+      <p className="font-semibold text-white">{title}</p>
+      <p className="mt-1 text-sm leading-6 text-slate-400">{description}</p>
+      <span className="mt-2 inline-flex text-xs font-semibold text-emerald-300">{href}</span>
+    </Link>
   );
 }
 
