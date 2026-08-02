@@ -33,8 +33,6 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
   if (access === "EXPIRED") return problem(403, "DOWNLOAD_EXPIRED", "This download link has expired.");
   if (access === "LIMIT_REACHED") return problem(403, "DOWNLOAD_LIMIT_REACHED", "Download limit reached.");
   if (access === "DISABLED") return problem(403, "DOWNLOAD_DISABLED", "This download is not active.");
-  await markLibraryDownload(id);
-  await auditLibraryDownload({ accessId: id, userId, fileUrl: access.file?.fileUrl, request });
   if (!access.file?.fileUrl) return ok({ message: "Access confirmed. This product does not have a downloadable file yet." });
 
   const settings = await getLibraryStoreSettings();
@@ -58,6 +56,8 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
     const fileBytes = localBytes ?? await fetchPublicFile(request.url, publicFilePath.pathname);
     if (!fileBytes) return problem(404, "FILE_NOT_FOUND", "The Library file could not be found.");
     const bytes = shouldStampPdf ? await stampPdf(fileBytes, watermark, settings.licence.licenceText) : fileBytes;
+    await markLibraryDownload(id);
+    await auditLibraryDownload({ accessId: id, userId, fileUrl: access.file.fileUrl, request });
     return new NextResponse(Buffer.from(bytes), {
       headers: {
         ...headers,
@@ -88,6 +88,8 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
     if (shouldStampPdf) {
       const remoteBytes = new Uint8Array(await remote.arrayBuffer());
       const stamped = await stampPdf(remoteBytes, watermark, settings.licence.licenceText);
+      await markLibraryDownload(id);
+      await auditLibraryDownload({ accessId: id, userId, fileUrl: access.file.fileUrl, request });
       return new NextResponse(Buffer.from(stamped), {
         headers: {
           ...headers,
@@ -97,6 +99,8 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       });
     }
     if (!remote.body) return problem(502, "UPSTREAM_FILE_FAILED", "The Library file could not be fetched from storage.");
+    await markLibraryDownload(id);
+    await auditLibraryDownload({ accessId: id, userId, fileUrl: access.file.fileUrl, request });
     return new NextResponse(remote.body, {
       headers: {
         ...headers,

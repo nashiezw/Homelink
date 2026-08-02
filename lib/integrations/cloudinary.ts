@@ -90,7 +90,7 @@ export async function testCloudinaryConfig(
   const uploadUrl = `https://api.cloudinary.com/v1_1/${cloudName}/raw/upload`;
   const form = new FormData();
 
-  form.set("file", new Blob([`HouseLink Cloudinary health test ${new Date().toISOString()}`], { type: "text/plain" }), `${publicId}.txt`);
+  form.set("file", new Blob([minimalPdfBytes()], { type: "application/pdf" }), `${publicId}.pdf`);
   form.set("folder", folder);
   form.set("public_id", publicId);
   form.set("timestamp", String(timestamp));
@@ -112,17 +112,56 @@ export async function testCloudinaryConfig(
       };
     }
 
+    const delivery = await verifyCloudinaryDelivery(uploadData.secure_url);
     void deleteCloudinaryTestAsset(cloudName, apiKey, apiSecret, uploadData.public_id);
+
+    if (!delivery.ok) {
+      return {
+        ok: false,
+        message: delivery.message,
+        sample: uploadData.secure_url,
+      };
+    }
 
     return {
       ok: true,
-      message: "Cloudinary accepted a signed test upload. Credentials and media storage are working.",
+      message: "Cloudinary accepted a signed PDF upload and allowed delivery. Credentials and Library document storage are working.",
       sample: uploadData.secure_url,
     };
   } catch (error) {
     const detail = error instanceof Error ? error.message : "Network error";
     return { ok: false, message: `Cloudinary test failed: ${detail}` };
   }
+}
+
+async function verifyCloudinaryDelivery(url: string) {
+  try {
+    const response = await fetch(url, {
+      method: "HEAD",
+      redirect: "follow",
+      cache: "no-store",
+    });
+    if (response.ok) return { ok: true as const };
+    const cloudinaryError = response.headers.get("x-cld-error");
+    return {
+      ok: false as const,
+      message: cloudinaryError
+        ? `Cloudinary accepted the upload, but blocked PDF delivery: ${cloudinaryError}. Enable PDF and ZIP delivery in Cloudinary Security settings.`
+        : `Cloudinary accepted the upload, but delivery returned HTTP ${response.status}.`,
+    };
+  } catch (error) {
+    return {
+      ok: false as const,
+      message: error instanceof Error ? `Cloudinary delivery check failed: ${error.message}` : "Cloudinary delivery check failed.",
+    };
+  }
+}
+
+function minimalPdfBytes() {
+  return new Uint8Array(Buffer.from(
+    "%PDF-1.4\n1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 120] >>\nendobj\ntrailer\n<< /Root 1 0 R >>\n%%EOF\n",
+    "utf8",
+  ));
 }
 
 async function deleteCloudinaryTestAsset(

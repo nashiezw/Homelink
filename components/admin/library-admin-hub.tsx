@@ -222,7 +222,7 @@ type FulfilmentDraft = { id: string; status: string; courier: string; trackingNu
 
 type GroupDraft = { field: LibraryGroupField; currentName: string; nextName: string };
 type TaxonomyDraft = { id?: string; kind: LibraryGroupField; name: string; slug: string; description: string; seoTitle: string; metaDescription: string; heroImageUrl: string; bio: string; websiteUrl: string; featured: boolean; sortOrder: string; active: boolean };
-type DownloadAccessDraft = { id: string; status: string; downloadLimit: string; expiresAt: string };
+type DownloadAccessDraft = { id: string; status: string; downloadLimit: string; expiresAt: string; resetDownloadCount: boolean };
 type ManualOrderDraft = { customerId: string; productId: string; quantity: string; couponCode: string; provider: string; referenceNumber: string; note: string; markPaid: boolean };
 type OrderNotifyDraft = { orderId: string; type: string; message: string };
 type RefundDraft = { orderId: string; reason: string };
@@ -783,6 +783,26 @@ export function LibraryAdminHub() {
     setFeedback({ tone: "success", message: "Download file uploaded. Save the product to keep it." });
   }
 
+  async function verifyLibraryFile(file: LibraryDraftDownload) {
+    if (!file.fileUrl) {
+      setFeedback({ tone: "error", message: "This Library file does not have a URL to verify." });
+      return;
+    }
+    setFeedback(null);
+    const result = await apiFetch<{ ok: boolean; message: string; status?: number; contentType?: string | null; contentLength?: string | null }>("/api/v1/admin/library", {
+      method: "POST",
+      body: JSON.stringify({ action: "verify_library_file_delivery", fileUrl: file.fileUrl }),
+    });
+    if (result.error || !result.data) {
+      setFeedback({ tone: "error", message: result.error?.message || "Library file delivery could not be verified." });
+      return;
+    }
+    setFeedback({
+      tone: result.data.ok ? "success" : "error",
+      message: result.data.message,
+    });
+  }
+
   async function duplicate(id: string) {
     await apiFetch("/api/v1/admin/library", { method: "POST", body: JSON.stringify({ action: "duplicate", id }) });
     await load();
@@ -1104,7 +1124,7 @@ export function LibraryAdminHub() {
   }
 
   function openDownloadAccessEditor(row: LibraryDownloadAccessAdmin) {
-    setDownloadAccessDraft({ id: row.id, status: row.status, downloadLimit: row.downloadLimit == null ? "" : String(row.downloadLimit), expiresAt: row.expiresAt ?? "" });
+    setDownloadAccessDraft({ id: row.id, status: row.status, downloadLimit: row.downloadLimit == null ? "" : String(row.downloadLimit), expiresAt: row.expiresAt ?? "", resetDownloadCount: false });
   }
 
   async function saveDownloadAccess() {
@@ -1624,10 +1644,11 @@ export function LibraryAdminHub() {
                         {draft.sampleFile ? (
                           <AssetRow
                             label={`Sample preview: ${draft.sampleFile.label} (${draft.sampleFile.fileType})`}
+                            onVerify={() => draft.sampleFile && void verifyLibraryFile(draft.sampleFile)}
                             onRemove={() => setDraft((current) => ({ ...current, sampleFile: null }))}
                           />
                         ) : null}
-                        {draft.downloads.map((item, index) => <AssetRow key={`${item.id}-${index}`} label={`Full download: ${item.label} (${item.fileType})`} canMoveUp={index > 0} canMoveDown={index < draft.downloads.length - 1} onMoveUp={() => setDraft((current) => ({ ...current, downloads: moveItem(current.downloads, index, index - 1) }))} onMoveDown={() => setDraft((current) => ({ ...current, downloads: moveItem(current.downloads, index, index + 1) }))} onRemove={() => setDraft((current) => ({ ...current, downloads: current.downloads.filter((_, itemIndex) => itemIndex !== index) }))} />)}
+                        {draft.downloads.map((item, index) => <AssetRow key={`${item.id}-${index}`} label={`Full download: ${item.label} (${item.fileType})`} canMoveUp={index > 0} canMoveDown={index < draft.downloads.length - 1} onMoveUp={() => setDraft((current) => ({ ...current, downloads: moveItem(current.downloads, index, index - 1) }))} onMoveDown={() => setDraft((current) => ({ ...current, downloads: moveItem(current.downloads, index, index + 1) }))} onVerify={() => void verifyLibraryFile(item)} onRemove={() => setDraft((current) => ({ ...current, downloads: current.downloads.filter((_, itemIndex) => itemIndex !== index) }))} />)}
                       </div>
                     )}
                   </EditorSection>
@@ -2155,6 +2176,9 @@ export function LibraryAdminHub() {
             <SelectField label="Status" value={downloadAccessDraft.status} onChange={(value) => setDownloadAccessDraft({ ...downloadAccessDraft, status: value })} options={["ACTIVE", "REVOKED", "EXPIRED", "SUSPENDED"]} />
             <Field label="Download limit" value={downloadAccessDraft.downloadLimit} onChange={(value) => setDownloadAccessDraft({ ...downloadAccessDraft, downloadLimit: value })} type="number" placeholder="Blank for unlimited" />
             <Field label="Expires at" value={downloadAccessDraft.expiresAt} onChange={(value) => setDownloadAccessDraft({ ...downloadAccessDraft, expiresAt: value })} type="date" />
+            <div className="md:col-span-2">
+              <ToggleField label="Reset used download count" checked={downloadAccessDraft.resetDownloadCount} onChange={(value) => setDownloadAccessDraft({ ...downloadAccessDraft, resetDownloadCount: value })} />
+            </div>
           </div>
         </CommerceModal>
       )}
@@ -2666,13 +2690,30 @@ function CommerceModal({ title, description, children, saveLabel, disabled, onCl
   );
 }
 
-function AssetRow({ label, canMoveUp, canMoveDown, onMoveUp, onMoveDown, onRemove }: { label: string; canMoveUp?: boolean; canMoveDown?: boolean; onMoveUp?: () => void; onMoveDown?: () => void; onRemove: () => void }) {
+function AssetRow({
+  label,
+  canMoveUp,
+  canMoveDown,
+  onMoveUp,
+  onMoveDown,
+  onVerify,
+  onRemove,
+}: {
+  label: string;
+  canMoveUp?: boolean;
+  canMoveDown?: boolean;
+  onMoveUp?: () => void;
+  onMoveDown?: () => void;
+  onVerify?: () => void;
+  onRemove: () => void;
+}) {
   return (
     <div className="flex min-w-0 items-start justify-between gap-3 rounded-lg border border-white/[0.06] bg-slate-950 p-2">
       <span className="min-w-0 break-words [overflow-wrap:anywhere]">{label}</span>
       <div className="flex shrink-0 gap-1">
         <button type="button" disabled={!canMoveUp} onClick={onMoveUp} className="rounded-md border border-white/10 px-2 py-1 text-[11px] font-bold text-slate-300 hover:bg-white/5 disabled:opacity-35">Up</button>
         <button type="button" disabled={!canMoveDown} onClick={onMoveDown} className="rounded-md border border-white/10 px-2 py-1 text-[11px] font-bold text-slate-300 hover:bg-white/5 disabled:opacity-35">Down</button>
+        {onVerify ? <button type="button" onClick={onVerify} className="rounded-md border border-emerald-500/30 px-2 py-1 text-[11px] font-bold text-emerald-300 hover:bg-emerald-500/10">Verify</button> : null}
         <button type="button" onClick={onRemove} className="rounded-md border border-red-500/30 px-2 py-1 text-[11px] font-bold text-red-300 hover:bg-red-500/10">Remove</button>
       </div>
     </div>

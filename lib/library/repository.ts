@@ -3125,7 +3125,7 @@ export async function deleteLibraryTaxonomy(kind: LibraryTaxonomyKind, id: strin
   }
 }
 
-export async function updateLibraryDownloadAccess(id: string, input: { status?: string; downloadLimit?: number | null; expiresAt?: string | null }, actorId?: string) {
+export async function updateLibraryDownloadAccess(id: string, input: { status?: string; downloadLimit?: number | null; expiresAt?: string | null; resetDownloadCount?: boolean }, actorId?: string) {
   if (!shouldUsePostgresLibrary()) return null;
   const status = input.status && Object.values(LibraryDownloadStatus).includes(input.status as LibraryDownloadStatus) ? input.status as LibraryDownloadStatus : undefined;
   const row = await getMainPrisma().libraryDownloadAccess.update({
@@ -3134,11 +3134,12 @@ export async function updateLibraryDownloadAccess(id: string, input: { status?: 
       ...(status ? { status } : {}),
       ...(input.downloadLimit !== undefined ? { downloadLimit: input.downloadLimit } : {}),
       ...(input.expiresAt !== undefined ? { expiresAt: input.expiresAt ? new Date(input.expiresAt) : null } : {}),
+      ...(input.resetDownloadCount ? { downloadCount: 0, lastDownloadAt: null } : {}),
     },
     include: { user: { select: { name: true, email: true } }, product: { select: { title: true } }, order: { select: { orderNumber: true } }, file: { select: { fileName: true } } },
   }).catch(() => null);
   if (!row) return null;
-  await logLibraryActivity({ actorId, targetType: "download_access", targetId: row.id, action: "ACCESS_UPDATED", message: `Download access marked ${row.status}.`, metadata: input });
+  await logLibraryActivity({ actorId, targetType: "download_access", targetId: row.id, action: "ACCESS_UPDATED", message: input.resetDownloadCount ? `Download access marked ${row.status} and usage reset.` : `Download access marked ${row.status}.`, metadata: input });
   return toLibraryDownloadAccessAdmin(row);
 }
 

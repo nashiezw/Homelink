@@ -270,11 +270,17 @@ export async function POST(request: Request) {
           status: optionalString(body.status),
           downloadLimit: body.downloadLimit === "" || body.downloadLimit == null ? null : Number(body.downloadLimit),
           expiresAt: optionalNullableString(body.expiresAt),
+          resetDownloadCount: Boolean(body.resetDownloadCount),
         },
         auth.user.id,
       );
       if (!access) return problem(404, "DOWNLOAD_ACCESS_NOT_FOUND", "Download access not found.");
       return ok({ access });
+    }
+    if (body.action === "verify_library_file_delivery") {
+      const fileUrl = optionalString(body.fileUrl);
+      if (!fileUrl) return problem(400, "INVALID_FILE_URL", "Library file URL is required.");
+      return ok(await verifyLibraryFileDelivery(fileUrl, request.url));
     }
     if (body.action === "moderate_review") {
       const review = await moderateLibraryReview(
@@ -373,4 +379,43 @@ function optionalNullableString(value: unknown) {
 function optionalBoolean(value: unknown, fallback: boolean) {
   if (value == null) return fallback;
   return Boolean(value);
+}
+
+async function verifyLibraryFileDelivery(fileUrl: string, requestUrl: string) {
+  try {
+    const parsed = new URL(fileUrl, requestUrl);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      return { ok: false, status: 0, message: "Only HTTP and HTTPS Library file URLs can be verified." };
+    }
+
+    const response = await fetch(parsed.toString(), {
+      method: "HEAD",
+      redirect: "follow",
+      cache: "no-store",
+    });
+    if (response.ok) {
+      return {
+        ok: true,
+        status: response.status,
+        contentType: response.headers.get("content-type"),
+        contentLength: response.headers.get("content-length"),
+        message: "Library file delivery verified.",
+      };
+    }
+
+    const cloudinaryError = response.headers.get("x-cld-error");
+    return {
+      ok: false,
+      status: response.status,
+      message: cloudinaryError
+        ? `Cloudinary blocked delivery: ${cloudinaryError}. Enable PDF and ZIP delivery in Cloudinary Security settings or replace this product file URL.`
+        : `File delivery returned HTTP ${response.status}. Replace this product file URL or move it to durable app-served storage.`,
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      status: 0,
+      message: error instanceof Error ? `File delivery check failed: ${error.message}` : "File delivery check failed.",
+    };
+  }
 }

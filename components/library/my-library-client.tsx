@@ -83,7 +83,6 @@ export function MyLibraryClient({
     const token = await apiFetch<{ token: string; downloadUrl: string }>(`/api/v1/library/downloads/${accessId}/token`, { method: "POST" });
     if (token.data?.token) {
       trackEvent("library_download_started", accessId);
-      trackEvent("library_download_completed", accessId);
       const item = library.downloads.find((row) => row.id === accessId);
       try {
         const key = "houselink_nps_asked";
