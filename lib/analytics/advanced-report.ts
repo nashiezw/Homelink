@@ -1,6 +1,6 @@
 import { getMainPrisma, isPostgresStoreEnabled } from "@/lib/db/main-prisma";
 import { ensureCoreProductionSchema, isMissingSchemaError } from "@/lib/db/production-schema";
-import { getSiteAnalyticsReport, siteAnalyticsReportToCsv } from "@/lib/analytics/site-analytics";
+import { getSiteAnalyticsReport, isInternalAnalyticsPath, siteAnalyticsReportToCsv } from "@/lib/analytics/site-analytics";
 import { listLivePresence } from "@/lib/analytics/presence";
 import { buildTopClassAnalytics } from "@/lib/analytics/topclass";
 import { getHydratedRuntimePlatformSettings } from "@/lib/settings/runtime";
@@ -57,6 +57,43 @@ function resolveDisplayTitle(title: string, productId: string, catalogTitles: Ma
   if (title && !looksLikeProductId(title) && title !== "Unknown product") return title;
   return catalog || "Unknown product";
 }
+
+const publicPageWhere = {
+  NOT: [
+    { path: { startsWith: "/dashboard/admin" } },
+    { path: { startsWith: "/api/" } },
+    { path: { startsWith: "/_next/" } },
+    { path: { startsWith: "/maintenance" } },
+    { path: "/favicon.ico" },
+    { path: { startsWith: "/auth?next=%2Fdashboard%2Fadmin" } },
+    { path: { startsWith: "/auth?next=/dashboard/admin" } },
+    { path: { startsWith: "/auth?redirect=%2Fdashboard%2Fadmin" } },
+    { path: { startsWith: "/auth?redirect=/dashboard/admin" } },
+  ],
+};
+
+const publicFunnelWhere = {
+  NOT: [
+    { path: { startsWith: "/dashboard/admin" } },
+    { path: { startsWith: "/api/" } },
+    { path: { startsWith: "/_next/" } },
+    { path: { startsWith: "/maintenance" } },
+    { path: "/favicon.ico" },
+    { path: { startsWith: "/auth?next=%2Fdashboard%2Fadmin" } },
+    { path: { startsWith: "/auth?next=/dashboard/admin" } },
+    { path: { startsWith: "/auth?redirect=%2Fdashboard%2Fadmin" } },
+    { path: { startsWith: "/auth?redirect=/dashboard/admin" } },
+    { target: { startsWith: "/dashboard/admin" } },
+    { target: { startsWith: "/api/" } },
+    { target: { startsWith: "/_next/" } },
+    { target: { startsWith: "/maintenance" } },
+    { target: "/favicon.ico" },
+    { target: { startsWith: "/auth?next=%2Fdashboard%2Fadmin" } },
+    { target: { startsWith: "/auth?next=/dashboard/admin" } },
+    { target: { startsWith: "/auth?redirect=%2Fdashboard%2Fadmin" } },
+    { target: { startsWith: "/auth?redirect=/dashboard/admin" } },
+  ],
+};
 
 export async function getAdvancedSiteAnalyticsReport(days = 30) {
   const base = await getSiteAnalyticsReport(days);
@@ -160,7 +197,7 @@ export async function getAdvancedSiteAnalyticsReport(days = 30) {
     const [funnels, liveRows, orders, firstViews, abandoned, catalog, views24h, views7d, events24h, events7d, platform] =
       await Promise.all([
         prisma.siteFunnelEvent.findMany({
-          where: { createdAt: { gte: since } },
+          where: { createdAt: { gte: since }, ...publicFunnelWhere },
           select: {
             name: true,
             target: true,
@@ -198,7 +235,7 @@ export async function getAdvancedSiteAnalyticsReport(days = 30) {
         prisma.sitePageView.groupBy({
           by: ["visitorId"],
           _min: { startedAt: true },
-          where: { startedAt: { gte: new Date(Date.now() - 180 * 86400000) } },
+          where: { startedAt: { gte: new Date(Date.now() - 180 * 86400000) }, ...publicPageWhere },
         }).catch(() => []),
         prisma.libraryAbandonedCart
           .findMany({
@@ -224,13 +261,14 @@ export async function getAdvancedSiteAnalyticsReport(days = 30) {
             take: 500,
           })
           .catch(() => []),
-        prisma.sitePageView.count({ where: { startedAt: { gte: dayAgo } } }).catch(() => 0),
-        prisma.sitePageView.count({ where: { startedAt: { gte: eightDaysAgo, lt: dayAgo } } }).catch(() => 0),
-        prisma.siteFunnelEvent.count({ where: { createdAt: { gte: dayAgo } } }).catch(() => 0),
-        prisma.siteFunnelEvent.count({ where: { createdAt: { gte: eightDaysAgo, lt: dayAgo } } }).catch(() => 0),
+        prisma.sitePageView.count({ where: { startedAt: { gte: dayAgo }, ...publicPageWhere } }).catch(() => 0),
+        prisma.sitePageView.count({ where: { startedAt: { gte: eightDaysAgo, lt: dayAgo }, ...publicPageWhere } }).catch(() => 0),
+        prisma.siteFunnelEvent.count({ where: { createdAt: { gte: dayAgo }, ...publicFunnelWhere } }).catch(() => 0),
+        prisma.siteFunnelEvent.count({ where: { createdAt: { gte: eightDaysAgo, lt: dayAgo }, ...publicFunnelWhere } }).catch(() => 0),
         getHydratedRuntimePlatformSettings().catch(() => null),
       ]);
 
+    const publicFunnels = funnels.filter((event) => !isInternalAnalyticsPath(event.path) && !isInternalAnalyticsPath(event.target));
     const productMap = new Map<
       string,
       {
@@ -272,7 +310,7 @@ export async function getAdvancedSiteAnalyticsReport(days = 30) {
     const engagementMap = new Map<string, number>();
     const marketplaceMap = new Map<string, number>();
 
-    for (const event of funnels) {
+    for (const event of publicFunnels) {
       const meta = asMeta(event.metadata);
       const id = productKey(event.target, meta);
       const title = productTitle(event.target, meta, id ? catalogTitles.get(id) : undefined);
@@ -470,7 +508,7 @@ export async function getAdvancedSiteAnalyticsReport(days = 30) {
 
     const topClass = buildTopClassAnalytics({
       days,
-      funnels,
+      funnels: publicFunnels,
       orders,
       abandoned,
       catalog,

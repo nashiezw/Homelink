@@ -1,5 +1,6 @@
 import { getMainPrisma, isPostgresStoreEnabled } from "@/lib/db/main-prisma";
 import { ensureCoreProductionSchema, isMissingSchemaError } from "@/lib/db/production-schema";
+import { isInternalAnalyticsPath } from "@/lib/analytics/site-analytics";
 
 export type PresenceHeartbeatInput = {
   visitorId: string;
@@ -47,6 +48,7 @@ export async function upsertSitePresence(input: PresenceHeartbeatInput) {
   const sessionId = clip(input.sessionId, 64);
   const path = clip(input.path, 320) || "/";
   if (!visitorId || !sessionId) return { ok: false };
+  if (isInternalAnalyticsPath(path)) return { ok: false, ignored: true };
 
   const title = clip(input.title, 200) || null;
   const deviceType = clip(input.deviceType, 32) || null;
@@ -140,12 +142,14 @@ export async function listLivePresence(withinMs = 5 * 60 * 1000): Promise<LivePr
       `,
       since,
     );
-    return rows.map((row) => ({
-      ...row,
-      cartItemCount: Number(row.cartItemCount) || 0,
-      cartValue: Number(row.cartValue) || 0,
-      lastSeenAt: row.lastSeenAt instanceof Date ? row.lastSeenAt : new Date(row.lastSeenAt),
-    }));
+    return rows
+      .filter((row) => !isInternalAnalyticsPath(row.path))
+      .map((row) => ({
+        ...row,
+        cartItemCount: Number(row.cartItemCount) || 0,
+        cartValue: Number(row.cartValue) || 0,
+        lastSeenAt: row.lastSeenAt instanceof Date ? row.lastSeenAt : new Date(row.lastSeenAt),
+      }));
   } catch (error) {
     if (isMissingSchemaError(error)) return [];
     throw error;

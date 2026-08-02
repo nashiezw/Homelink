@@ -162,6 +162,32 @@ type AdvancedReport = {
   topClass?: TopClassAnalytics;
 };
 
+type Journey = AdvancedReport["journeys"][number];
+type JourneyStep = Journey["steps"][number];
+
+function formatStepName(name: string) {
+  return name.replace(/^library_/, "").replaceAll("_", " ");
+}
+
+function describeJourneyStep(step: JourneyStep) {
+  const name = formatStepName(step.name);
+  return step.detail ? `${name}: ${step.detail}` : name;
+}
+
+function journeyHeadline(journey: Journey) {
+  const meaningful = [...journey.steps].reverse().find((step) => step.name !== "page_view") ?? journey.steps[journey.steps.length - 1];
+  if (!meaningful) return journey.purchased ? "Purchase completed" : "Browsing session";
+  return describeJourneyStep(meaningful);
+}
+
+function journeyPreview(journey: Journey) {
+  return journey.steps
+    .filter((step) => step.name !== "page_view" || step.detail)
+    .slice(-3)
+    .map(describeJourneyStep)
+    .join(" -> ");
+}
+
 type Tab =
   | "board"
   | "live"
@@ -569,13 +595,17 @@ export function SiteAnalyticsPanel() {
                     selectedJourney === journey.sessionId ? "border-emerald-400/40 bg-emerald-500/10" : "border-white/10 hover:bg-white/5"
                   }`}
                 >
-                  <p className="font-semibold text-white">
-                    {journey.steps.length} steps · {journey.purchased ? "purchased" : "browsing"}
-                    {journey.whatsappAssisted ? " · WhatsApp" : ""}
+                  <p className="break-words font-semibold text-white">{journeyHeadline(journey)}</p>
+                  <p className="mt-1 text-slate-400">
+                    {journey.steps.length} tracked {journey.steps.length === 1 ? "step" : "steps"} - {journey.purchased ? "purchased" : "browsing"}
+                    {journey.whatsappAssisted ? " - WhatsApp assisted" : ""}
                   </p>
-                  <p className="mt-1 text-slate-500">
+                  {journeyPreview(journey) ? (
+                    <p className="mt-1 line-clamp-2 break-words text-slate-500">{journeyPreview(journey)}</p>
+                  ) : null}
+                  <p className="mt-1 text-slate-600">
                     {new Date(journey.startedAt).toLocaleString()}
-                    {journey.userId ? " · known buyer" : ""}
+                    {journey.userId ? " - known buyer" : ""}
                   </p>
                 </button>
               ))}
@@ -590,7 +620,7 @@ export function SiteAnalyticsPanel() {
                 <div className="max-h-[28rem] space-y-2 overflow-y-auto text-xs text-slate-300">
                   {journey.steps.map((step, index) => (
                     <div key={`${step.at}-${index}`} className="rounded-lg border border-white/10 px-3 py-2">
-                      <p className="font-semibold text-white">{step.name.replace(/^library_/, "").replaceAll("_", " ")}</p>
+                      <p className="font-semibold text-white">{formatStepName(step.name)}</p>
                       <p className="mt-1 text-slate-400">{step.detail || "—"}</p>
                       <p className="mt-1 text-slate-500">{new Date(step.at).toLocaleString()}</p>
                     </div>

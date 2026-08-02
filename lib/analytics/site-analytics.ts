@@ -34,6 +34,70 @@ function clip(value: unknown, max: number) {
   return String(value ?? "").trim().slice(0, max);
 }
 
+export function isInternalAnalyticsPath(value: unknown) {
+  const path = String(value ?? "").trim();
+  if (!path) return false;
+  let pathname = path;
+  let redirectTarget = "";
+  try {
+    const parsed = new URL(path, "https://houselink.local");
+    pathname = parsed.pathname;
+    redirectTarget =
+      parsed.searchParams.get("next") ||
+      parsed.searchParams.get("redirect") ||
+      parsed.searchParams.get("redirectTo") ||
+      parsed.searchParams.get("callbackUrl") ||
+      "";
+  } catch {
+    pathname = path.split("?")[0]?.split("#")[0] ?? path;
+  }
+  if (redirectTarget && isInternalAnalyticsPath(redirectTarget)) return true;
+  return (
+    pathname.startsWith("/dashboard/admin") ||
+    pathname.startsWith("/api/") ||
+    pathname.startsWith("/_next/") ||
+    pathname.startsWith("/maintenance") ||
+    pathname === "/favicon.ico"
+  );
+}
+
+const publicAnalyticsPageWhere: Prisma.SitePageViewWhereInput = {
+  NOT: [
+    { path: { startsWith: "/dashboard/admin" } },
+    { path: { startsWith: "/api/" } },
+    { path: { startsWith: "/_next/" } },
+    { path: { startsWith: "/maintenance" } },
+    { path: "/favicon.ico" },
+    { path: { startsWith: "/auth?next=%2Fdashboard%2Fadmin" } },
+    { path: { startsWith: "/auth?next=/dashboard/admin" } },
+    { path: { startsWith: "/auth?redirect=%2Fdashboard%2Fadmin" } },
+    { path: { startsWith: "/auth?redirect=/dashboard/admin" } },
+  ],
+};
+
+const publicAnalyticsFunnelWhere: Prisma.SiteFunnelEventWhereInput = {
+  NOT: [
+    { path: { startsWith: "/dashboard/admin" } },
+    { path: { startsWith: "/api/" } },
+    { path: { startsWith: "/_next/" } },
+    { path: { startsWith: "/maintenance" } },
+    { path: "/favicon.ico" },
+    { path: { startsWith: "/auth?next=%2Fdashboard%2Fadmin" } },
+    { path: { startsWith: "/auth?next=/dashboard/admin" } },
+    { path: { startsWith: "/auth?redirect=%2Fdashboard%2Fadmin" } },
+    { path: { startsWith: "/auth?redirect=/dashboard/admin" } },
+    { target: { startsWith: "/dashboard/admin" } },
+    { target: { startsWith: "/api/" } },
+    { target: { startsWith: "/_next/" } },
+    { target: { startsWith: "/maintenance" } },
+    { target: "/favicon.ico" },
+    { target: { startsWith: "/auth?next=%2Fdashboard%2Fadmin" } },
+    { target: { startsWith: "/auth?next=/dashboard/admin" } },
+    { target: { startsWith: "/auth?redirect=%2Fdashboard%2Fadmin" } },
+    { target: { startsWith: "/auth?redirect=/dashboard/admin" } },
+  ],
+};
+
 export async function recordSitePageView(input: SitePageViewInput) {
   if (!isPostgresStoreEnabled()) return { id: input.pageViewId || null };
   await ensureCoreProductionSchema();
@@ -42,6 +106,7 @@ export async function recordSitePageView(input: SitePageViewInput) {
   const sessionId = clip(input.sessionId, 64);
   const path = clip(input.path, 320) || "/";
   if (!visitorId || !sessionId) return { id: null };
+  if (isInternalAnalyticsPath(path)) return { id: null };
 
   try {
     if (input.action === "end" && input.pageViewId) {
@@ -87,6 +152,7 @@ export async function recordSiteFunnelEvent(input: SiteFunnelInput) {
   const visitorId = clip(input.visitorId, 64);
   const name = clip(input.name, 80);
   if (!visitorId || !name) return { id: null };
+  if (isInternalAnalyticsPath(input.path) || isInternalAnalyticsPath(input.target)) return { id: null };
 
   try {
     const row = await prisma.siteFunnelEvent.create({
@@ -165,7 +231,7 @@ export async function getSiteAnalyticsReport(days = 30) {
   try {
     const [views, funnels, durationAgg, visitors, pendingProofs] = await Promise.all([
       prisma.sitePageView.findMany({
-        where: { startedAt: { gte: since } },
+        where: { startedAt: { gte: since }, ...publicAnalyticsPageWhere },
         select: {
           path: true,
           deviceType: true,
@@ -179,17 +245,20 @@ export async function getSiteAnalyticsReport(days = 30) {
         orderBy: { startedAt: "desc" },
       }),
       prisma.siteFunnelEvent.findMany({
-        where: { createdAt: { gte: since } },
-        select: { name: true, target: true, metadata: true, visitorId: true },
+        where: {
+          createdAt: { gte: since },
+          ...publicAnalyticsFunnelWhere,
+        },
+        select: { name: true, path: true, target: true, metadata: true, visitorId: true },
         take: 20000,
       }),
       prisma.sitePageView.aggregate({
-        where: { startedAt: { gte: since }, durationMs: { not: null } },
+        where: { startedAt: { gte: since }, durationMs: { not: null }, ...publicAnalyticsPageWhere },
         _avg: { durationMs: true },
       }),
       prisma.sitePageView.groupBy({
         by: ["visitorId"],
-        where: { startedAt: { gte: since } },
+        where: { startedAt: { gte: since }, ...publicAnalyticsPageWhere },
         _count: true,
       }),
       prisma.libraryOrder
@@ -207,13 +276,15 @@ export async function getSiteAnalyticsReport(days = 30) {
         .catch(() => []),
     ]);
 
+    const publicViews = views.filter((view) => !isInternalAnalyticsPath(view.path));
+    const publicFunnels = funnels.filter((event) => !isInternalAnalyticsPath(event.path) && !isInternalAnalyticsPath(event.target));
     const pageMap = new Map<string, number>();
     const deviceMap = new Map<string, number>();
     const referrerMap = new Map<string, number>();
     const utmMap = new Map<string, number>();
     const visitorsWithUtm = new Set<string>();
     const visitorsOrganic = new Set<string>();
-    for (const view of views) {
+    for (const view of publicViews) {
       pageMap.set(view.path, (pageMap.get(view.path) ?? 0) + 1);
       deviceMap.set(view.deviceType || "unknown", (deviceMap.get(view.deviceType || "unknown") ?? 0) + 1);
       const ref = view.referrer?.trim() || "(direct)";
@@ -238,7 +309,7 @@ export async function getSiteAnalyticsReport(days = 30) {
     const whatsappSourceMap = new Map<string, number>();
     const whatsappVisitors = new Set<string>();
     const purchaseVisitors = new Set<string>();
-    for (const event of funnels) {
+    for (const event of publicFunnels) {
       funnelMap.set(event.name, (funnelMap.get(event.name) ?? 0) + 1);
       if (event.name === "whatsapp_click") {
         whatsappVisitors.add(event.visitorId);
@@ -297,7 +368,7 @@ export async function getSiteAnalyticsReport(days = 30) {
 
     return {
       days,
-      pageViews: views.length,
+      pageViews: publicViews.length,
       uniqueVisitors: visitors.length,
       avgDurationSec: Math.round((durationAgg._avg.durationMs ?? 0) / 1000),
       topPages: topCounts([...pageMap.entries()].map(([key, value]) => ({ key, value }))),
@@ -309,7 +380,7 @@ export async function getSiteAnalyticsReport(days = 30) {
       whatsappSources: topCounts([...whatsappSourceMap.entries()].map(([key, value]) => ({ key, value }))),
       channels,
       proofSla,
-      recentPaths: views.slice(0, 20).map((view) => ({
+      recentPaths: publicViews.slice(0, 20).map((view) => ({
         path: view.path,
         minutes: view.durationMs != null ? Math.round((view.durationMs / 60000) * 10) / 10 : 0,
         deviceType: view.deviceType,

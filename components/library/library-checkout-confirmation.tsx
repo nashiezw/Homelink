@@ -110,7 +110,7 @@ export function LibraryCheckoutConfirmation({
       actions={<Link href="/dashboard/my-library" className="bg-emerald-600 text-white hover:bg-emerald-500">Open My Library</Link>}
     >
       <div className={cn(
-        "mb-4 rounded-xl border px-4 py-3 text-sm font-semibold",
+        "mb-4 break-words rounded-xl border px-4 py-3 text-sm font-semibold",
         stage.tone === "success" && "border-emerald-200 bg-emerald-50 text-emerald-950 dark:border-emerald-900/40 dark:bg-emerald-950/20 dark:text-emerald-100",
         stage.tone === "pending" && "border-amber-200 bg-amber-50 text-amber-950 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-100",
         stage.tone === "error" && "border-red-200 bg-red-50 text-red-950 dark:border-red-900/40 dark:bg-red-950/20 dark:text-red-100",
@@ -128,21 +128,43 @@ export function LibraryCheckoutConfirmation({
         <div className="min-w-0 space-y-6">
         <SetPasswordCard />
         <section className="surface-panel min-w-0 max-w-full rounded-lg p-4 sm:p-5">
-          <div className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-5 dark:border-slate-800">
+          <div className="grid gap-4 border-b border-slate-200 pb-5 dark:border-slate-800 sm:grid-cols-[minmax(0,1fr)_auto]">
             <div className="min-w-0">
-              <div className="flex items-center gap-2">
+              <div className="flex min-w-0 items-center gap-2">
                 {stage.tone === "success" ? <CheckCircle2 className="size-6 shrink-0 text-emerald-600" /> : stage.tone === "error" ? <XCircle className="size-6 shrink-0 text-red-600" /> : <Clock className="size-6 shrink-0 text-amber-500" />}
-                <h2 className="text-xl font-semibold text-ink dark:text-white">{order.orderNumber}</h2>
+                <h2 className="min-w-0 break-all text-xl font-semibold text-ink dark:text-white">{order.orderNumber}</h2>
               </div>
               <p className="mt-2 text-sm text-slate-500">Created {new Date(order.createdAt).toLocaleString()}</p>
             </div>
-            <div className="rounded-lg bg-slate-50 p-4 text-right dark:bg-slate-900">
+            <div className="rounded-lg bg-slate-50 p-4 text-left dark:bg-slate-900 sm:text-right">
               <p className="text-xs font-bold uppercase text-slate-500">Total</p>
-              <p className="text-2xl font-black text-ink dark:text-white">{order.currency} {order.total.toFixed(2)}</p>
+              <p className="break-words text-2xl font-black text-ink dark:text-white">{order.currency} {order.total.toFixed(2)}</p>
             </div>
           </div>
 
-          <div className="mt-5 overflow-x-auto">
+          <div className="mt-5 space-y-3 sm:hidden">
+            {(order.items ?? []).map((item) => (
+              <div key={item.id} className="rounded-lg border border-slate-200 p-3 text-sm dark:border-slate-800">
+                <p className="break-words font-semibold text-ink dark:text-white">{item.title}</p>
+                {item.productType && <p className="mt-1 text-xs uppercase text-slate-500">{item.productType.replace(/_/g, " ")}</p>}
+                <div className="mt-3 grid grid-cols-2 gap-3 text-xs">
+                  <div>
+                    <p className="font-bold uppercase text-slate-500">SKU</p>
+                    <p className="mt-1 break-all text-slate-700 dark:text-slate-200">{item.sku}</p>
+                  </div>
+                  <div>
+                    <p className="font-bold uppercase text-slate-500">Qty</p>
+                    <p className="mt-1 text-slate-700 dark:text-slate-200">{item.quantity}</p>
+                  </div>
+                  <div className="col-span-2 flex justify-between gap-4 border-t border-slate-100 pt-3 dark:border-slate-800">
+                    <span className="font-bold uppercase text-slate-500">Total</span>
+                    <span className="font-semibold text-ink dark:text-white">{order.currency} {item.total.toFixed(2)}</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="mt-5 hidden overflow-x-auto sm:block">
             <table className="w-full min-w-[560px] text-left text-sm">
               <thead className="border-b border-slate-200 text-xs uppercase text-slate-500 dark:border-slate-800">
                 <tr>
@@ -155,8 +177,8 @@ export function LibraryCheckoutConfirmation({
               <tbody>
                 {(order.items ?? []).map((item) => (
                   <tr key={item.id} className="border-b border-slate-100 dark:border-slate-800">
-                    <td className="py-3 font-semibold text-ink dark:text-white">{item.title}</td>
-                    <td>{item.sku}</td>
+                    <td className="py-3 font-semibold text-ink dark:text-white"><span className="block max-w-xs break-words">{item.title}</span></td>
+                    <td className="break-all pr-3">{item.sku}</td>
                     <td>{item.quantity}</td>
                     <td className="text-right">{order.currency} {item.total.toFixed(2)}</td>
                   </tr>
@@ -333,7 +355,7 @@ export function LibraryCheckoutConfirmation({
         />
         </div>
 
-        <aside className="space-y-3">
+        <aside className="min-w-0 space-y-3 lg:sticky lg:top-24 lg:self-start">
           <StatusCard icon={LibraryBig} label="Library order" value={libraryOrderStatusLabel(order.status)} />
           <StatusCard icon={CreditCard} label="Payment" value={stage.badge} />
           {reference && <StatusCard icon={ReceiptText} label="Payment reference" value={reference} />}
@@ -363,19 +385,19 @@ export function LibraryCheckoutConfirmation({
 
 function Detail({ label, value }: { label: string; value: string }) {
   return (
-    <div>
+    <div className="min-w-0">
       <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</dt>
-      <dd className="mt-1 font-semibold text-ink dark:text-white">{value}</dd>
+      <dd className="mt-1 break-all font-semibold text-ink dark:text-white">{value}</dd>
     </div>
   );
 }
 
 function StatusCard({ icon: Icon, label, value }: { icon: typeof LibraryBig; label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+    <div className="min-w-0 rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
       <Icon className="size-5 text-emerald-600" />
       <p className="mt-3 text-xs font-bold uppercase text-slate-500">{label}</p>
-      <p className="mt-1 font-semibold text-ink dark:text-white">{value}</p>
+      <p className="mt-1 break-words font-semibold text-ink dark:text-white">{value}</p>
     </div>
   );
 }

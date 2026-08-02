@@ -52,14 +52,12 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
 
   const shouldStampPdf = applyWatermark && settings.downloads.stampPdfBytes && isPdfFile(access.file.fileType, access.file.fileName);
 
-  if (access.file.fileUrl.startsWith("/uploads/")) {
-    const safeRelative = access.file.fileUrl.replace(/^\/+/, "").split("/").filter((part) => part && part !== "..").join(path.sep);
-    const absolute = path.join(process.cwd(), "public", safeRelative);
-    const publicRoot = path.join(process.cwd(), "public", "uploads");
-    if (!absolute.startsWith(publicRoot)) return problem(403, "INVALID_FILE_PATH", "Download path is not allowed.");
-    const buffer = await readFile(absolute).catch(() => null);
-    if (!buffer) return problem(404, "FILE_NOT_FOUND", "The Library file could not be found.");
-    const bytes = shouldStampPdf ? await stampPdf(buffer, watermark, settings.licence.licenceText) : new Uint8Array(buffer);
+  const publicFilePath = resolvePublicFilePath(access.file.fileUrl, request.url);
+  if (publicFilePath) {
+    const localBytes = await readPublicFile(publicFilePath.pathname);
+    const fileBytes = localBytes ?? await fetchPublicFile(request.url, publicFilePath.pathname);
+    if (!fileBytes) return problem(404, "FILE_NOT_FOUND", "The Library file could not be found.");
+    const bytes = shouldStampPdf ? await stampPdf(fileBytes, watermark, settings.licence.licenceText) : fileBytes;
     return new NextResponse(Buffer.from(bytes), {
       headers: {
         ...headers,
@@ -114,6 +112,41 @@ async function stampPdf(bytes: Uint8Array | Buffer, label: string, licenceText: 
 
 function watermarkLabel(name?: string | null, email?: string | null, orderNumber?: string | null) {
   return [name, email, orderNumber, new Date().toISOString()].filter(Boolean).join(" | ");
+}
+
+function resolvePublicFilePath(fileUrl: string, requestUrl: string) {
+  try {
+    const normalized = fileUrl.startsWith("uploads/") ? `/${fileUrl}` : fileUrl;
+    const parsed = new URL(normalized, requestUrl);
+    const requestOrigin = new URL(requestUrl).origin;
+    if (parsed.origin !== requestOrigin) return null;
+    if (!parsed.pathname.startsWith("/uploads/")) return null;
+    return { pathname: decodeURIComponent(parsed.pathname) };
+  } catch {
+    return null;
+  }
+}
+
+async function readPublicFile(publicPathname: string) {
+  const parts = publicPathname.replace(/^\/+/, "").split("/").filter(Boolean);
+  if (parts.some((part) => part === ".." || part.includes("\\") || path.isAbsolute(part))) return null;
+  const safeRelative = parts.join(path.sep);
+  const publicRoot = path.join(process.cwd(), "public", "uploads");
+  const absolute = path.join(process.cwd(), "public", safeRelative);
+  if (!absolute.startsWith(publicRoot)) return null;
+  const buffer = await readFile(absolute).catch(() => null);
+  return buffer ? new Uint8Array(buffer) : null;
+}
+
+async function fetchPublicFile(requestUrl: string, publicPathname: string) {
+  try {
+    const staticUrl = new URL(publicPathname.split("/").map((part) => encodeURIComponent(part)).join("/"), requestUrl);
+    const response = await fetch(staticUrl.toString(), { cache: "force-cache", redirect: "follow" });
+    if (!response.ok) return null;
+    return new Uint8Array(await response.arrayBuffer());
+  } catch {
+    return null;
+  }
 }
 
 function contentType(fileType: string, fileName: string) {

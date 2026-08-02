@@ -250,9 +250,51 @@ export function MyLibraryClient({
             </section>
           )}
 
-          <section className="surface-panel rounded-lg p-5">
+          <section className="surface-panel min-w-0 max-w-full rounded-lg p-4 sm:p-5">
             <h2 className="text-lg font-semibold text-ink dark:text-white">Orders</h2>
-            <div className="mt-4 overflow-x-auto">
+            <div className="mt-4 space-y-3 sm:hidden">
+              {library.orders.map((order) => {
+                const stage = libraryOrderStageCopy({
+                  status: order.status,
+                  paymentStatus: order.paymentStatus,
+                  payment: {
+                    id: order.paymentId,
+                    status: order.paymentStatus,
+                    proofStatus: order.proofStatus,
+                    proofUrl: order.proofUrl,
+                    adminNote: order.paymentAdminNote,
+                  },
+                });
+                return (
+                  <Link key={order.id} href={`/dashboard/my-library/orders/${order.id}`} className="block rounded-lg border border-slate-200 p-3 text-sm dark:border-slate-800">
+                    <div className="flex items-start justify-between gap-3">
+                      <span className="min-w-0 break-all font-semibold text-ink dark:text-white">{order.orderNumber}</span>
+                      <span className="shrink-0 font-bold">{order.currency} {order.total.toFixed(2)}</span>
+                    </div>
+                    <div className="mt-3 grid grid-cols-2 gap-3 text-xs text-slate-500">
+                      <div>
+                        <p className="font-bold uppercase">Status</p>
+                        <p className="mt-1 text-slate-700 dark:text-slate-200">{libraryOrderStatusLabel(order.status)}</p>
+                      </div>
+                      <div>
+                        <p className="font-bold uppercase">Payment</p>
+                        <p className="mt-1 text-slate-700 dark:text-slate-200">{stage.badge}</p>
+                      </div>
+                      <div className="col-span-2">
+                        <p className="font-bold uppercase">Date</p>
+                        <p className="mt-1 text-slate-700 dark:text-slate-200">{new Date(order.createdAt).toLocaleDateString()}</p>
+                      </div>
+                    </div>
+                    {(stage.showProofUpload || stage.showProofReceived) && order.paymentId && (
+                      <span className="mt-3 block text-xs font-bold text-amber-700 dark:text-amber-300">
+                        {stage.showProofUpload ? "Complete payment" : "View payment status"}
+                      </span>
+                    )}
+                  </Link>
+                );
+              })}
+            </div>
+            <div className="mt-4 hidden overflow-x-auto sm:block">
               <table className="w-full min-w-[640px] text-left text-sm">
                 <thead className="border-b border-slate-200 text-xs uppercase text-slate-500 dark:border-slate-800">
                   <tr>
@@ -298,20 +340,20 @@ export function MyLibraryClient({
                   })}
                 </tbody>
               </table>
-              {!library.orders.length && <p className="mt-4 rounded-lg border border-dashed border-slate-300 p-4 text-sm text-slate-500 dark:border-slate-700">Your Library orders will appear here as soon as checkout creates them.</p>}
             </div>
+            {!library.orders.length && <p className="mt-4 rounded-lg border border-dashed border-slate-300 p-4 text-sm text-slate-500 dark:border-slate-700">Your Library orders will appear here as soon as checkout creates them.</p>}
           </section>
         </div>
 
-        <aside className="space-y-4">
+        <aside className="min-w-0 space-y-4">
           <section className="surface-panel rounded-lg p-5">
             <h2 className="text-lg font-semibold text-ink dark:text-white">Secure Downloads</h2>
             <div className="mt-4 space-y-3">
               {library.downloads.length ? library.downloads.map((item) => (
-                <button key={item.id} type="button" onClick={() => void download(item.id)} className="flex w-full items-start justify-between gap-3 rounded-lg border border-slate-200 p-3 text-left dark:border-slate-800">
+                <button key={item.id} type="button" onClick={() => void download(item.id)} className="flex w-full min-w-0 items-start justify-between gap-3 rounded-lg border border-slate-200 p-3 text-left dark:border-slate-800">
                   <span className="min-w-0">
-                    <span className="block truncate text-sm font-semibold">{item.productTitle}</span>
-                    <span className="block text-xs text-slate-500">{item.fileName} - {item.downloadCount}{item.downloadLimit ? `/${item.downloadLimit}` : ""} downloads</span>
+                    <span className="block break-words text-sm font-semibold">{item.productTitle}</span>
+                    <span className="block break-all text-xs text-slate-500">{item.fileName} - {item.downloadCount}{item.downloadLimit ? `/${item.downloadLimit}` : ""} downloads</span>
                   </span>
                   <Download className="size-4 shrink-0 text-emerald-600" />
                 </button>

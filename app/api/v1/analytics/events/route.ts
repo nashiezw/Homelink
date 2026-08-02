@@ -1,5 +1,6 @@
 import { getSessionUserIdFromRequest } from "@/lib/auth/session";
 import { ok, problem } from "@/lib/api/response";
+import { isInternalAnalyticsPath } from "@/lib/analytics/site-analytics";
 import { getMainPrisma, isPostgresStoreEnabled } from "@/lib/db/main-prisma";
 import { isAnalyticsEventName } from "@/lib/analytics/events";
 import type { Prisma } from "@prisma/client";
@@ -11,6 +12,9 @@ export async function POST(request: Request) {
   }
 
   const metadata = sanitizeMetadata(body.metadata);
+  if (isInternalAnalyticsPath(body.target) || isInternalAnalyticsPath(metadata.path)) {
+    return ok({ tracked: false, ignored: true });
+  }
   const userId = getSessionUserIdFromRequest(request);
 
   if (isPostgresStoreEnabled()) {

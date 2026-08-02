@@ -99,7 +99,7 @@ export function LibraryOrderClient({ initialOrder }: { initialOrder: OrderDetail
       actions={<Link href="/dashboard/my-library" className="bg-emerald-600 text-white hover:bg-emerald-500">Back to My Library</Link>}
     >
       <div className={cn(
-        "mb-4 rounded-xl border px-4 py-3 text-sm font-semibold",
+        "mb-4 break-words rounded-xl border px-4 py-3 text-sm font-semibold",
         stage.tone === "success" && "border-emerald-200 bg-emerald-50 text-emerald-950",
         stage.tone === "pending" && "border-amber-200 bg-amber-50 text-amber-950",
         stage.tone === "error" && "border-red-200 bg-red-50 text-red-950",
@@ -108,22 +108,48 @@ export function LibraryOrderClient({ initialOrder }: { initialOrder: OrderDetail
         {stage.badge}: {stage.paymentDisplay.description}
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
-        <div className="space-y-6">
-          <section className="surface-panel rounded-lg p-5">
-            <div className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-4 dark:border-slate-800">
-              <div>
+      <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
+        <div className="min-w-0 space-y-6">
+          <section className="surface-panel min-w-0 max-w-full rounded-lg p-4 sm:p-5">
+            <div className="grid gap-4 border-b border-slate-200 pb-4 dark:border-slate-800 sm:grid-cols-2">
+              <div className="min-w-0">
                 <p className="text-sm text-slate-500">Customer</p>
-                <p className="font-semibold text-ink dark:text-white">{order.customerName}</p>
-                <p className="text-sm text-slate-500">{order.customerEmail}</p>
+                <p className="break-words font-semibold text-ink dark:text-white">{order.customerName}</p>
+                <p className="break-all text-sm text-slate-500">{order.customerEmail}</p>
               </div>
-              <div className="text-left sm:text-right">
+              <div className="min-w-0 text-left sm:text-right">
                 <p className="text-sm text-slate-500">Issued</p>
                 <p className="font-semibold">{new Date(order.createdAt).toLocaleDateString()}</p>
-                <p className="text-sm text-slate-500">Order: {libraryOrderStatusLabel(order.status)} · Payment: {stage.badge}</p>
+                <p className="break-words text-sm text-slate-500">Order: {libraryOrderStatusLabel(order.status)} - Payment: {stage.badge}</p>
               </div>
             </div>
-            <div className="mt-5 overflow-x-auto">
+            <div className="mt-5 space-y-3 sm:hidden">
+              {(order.items ?? []).map((item) => (
+                <div key={item.id} className="rounded-lg border border-slate-200 p-3 text-sm dark:border-slate-800">
+                  <p className="break-words font-semibold text-ink dark:text-white">{item.title}</p>
+                  {item.productType && <p className="mt-1 text-xs uppercase text-slate-500">{item.productType.replace(/_/g, " ")}</p>}
+                  <div className="mt-3 grid grid-cols-2 gap-3 text-xs">
+                    <div>
+                      <p className="font-bold uppercase text-slate-500">SKU</p>
+                      <p className="mt-1 break-all text-slate-700 dark:text-slate-200">{item.sku}</p>
+                    </div>
+                    <div>
+                      <p className="font-bold uppercase text-slate-500">Qty</p>
+                      <p className="mt-1 text-slate-700 dark:text-slate-200">{item.quantity}</p>
+                    </div>
+                    <div>
+                      <p className="font-bold uppercase text-slate-500">Unit</p>
+                      <p className="mt-1 text-slate-700 dark:text-slate-200">{order.currency} {item.unitPrice.toFixed(2)}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-bold uppercase text-slate-500">Total</p>
+                      <p className="mt-1 font-semibold text-ink dark:text-white">{order.currency} {item.total.toFixed(2)}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="mt-5 hidden overflow-x-auto sm:block">
               <table className="w-full min-w-[560px] text-left text-sm">
                 <thead className="border-b border-slate-200 text-xs uppercase text-slate-500 dark:border-slate-800">
                   <tr>
@@ -138,10 +164,10 @@ export function LibraryOrderClient({ initialOrder }: { initialOrder: OrderDetail
                   {(order.items ?? []).map((item) => (
                     <tr key={item.id} className="border-b border-slate-100 dark:border-slate-800">
                       <td className="py-3">
-                        <p className="font-semibold">{item.title}</p>
+                        <p className="max-w-xs break-words font-semibold">{item.title}</p>
                         {item.productType && <p className="text-xs text-slate-500">{item.productType.replace(/_/g, " ")}</p>}
                       </td>
-                      <td>{item.sku}</td>
+                      <td className="break-all pr-3">{item.sku}</td>
                       <td>{item.quantity}</td>
                       <td>{order.currency} {item.unitPrice.toFixed(2)}</td>
                       <td className="text-right">{order.currency} {item.total.toFixed(2)}</td>
@@ -150,14 +176,14 @@ export function LibraryOrderClient({ initialOrder }: { initialOrder: OrderDetail
                 </tbody>
               </table>
             </div>
-            <div className="mt-5 flex justify-end">
-              <div className="w-full max-w-xs space-y-1 rounded-lg bg-slate-50 p-4 text-sm dark:bg-slate-900">
-                {order.subtotal != null && <div className="flex justify-between"><span>Subtotal</span><span>{order.currency} {order.subtotal.toFixed(2)}</span></div>}
-                {(order.discountTotal ?? 0) > 0 && <div className="flex justify-between text-emerald-700"><span>Discount</span><span>−{(order.discountTotal ?? 0).toFixed(2)}</span></div>}
-                {(order.taxTotal ?? 0) > 0 && <div className="flex justify-between"><span>Tax</span><span>{(order.taxTotal ?? 0).toFixed(2)}</span></div>}
-                <div className="flex justify-between text-lg font-bold">
+            <div className="mt-5 flex sm:justify-end">
+              <div className="w-full space-y-1 rounded-lg bg-slate-50 p-4 text-sm dark:bg-slate-900 sm:max-w-xs">
+                {order.subtotal != null && <div className="flex justify-between gap-4"><span>Subtotal</span><span className="text-right">{order.currency} {order.subtotal.toFixed(2)}</span></div>}
+                {(order.discountTotal ?? 0) > 0 && <div className="flex justify-between gap-4 text-emerald-700"><span>Discount</span><span className="text-right">-{(order.discountTotal ?? 0).toFixed(2)}</span></div>}
+                {(order.taxTotal ?? 0) > 0 && <div className="flex justify-between gap-4"><span>Tax</span><span className="text-right">{(order.taxTotal ?? 0).toFixed(2)}</span></div>}
+                <div className="flex justify-between gap-4 text-lg font-bold">
                   <span>Total</span>
-                  <span>{order.currency} {order.total.toFixed(2)}</span>
+                  <span className="text-right">{order.currency} {order.total.toFixed(2)}</span>
                 </div>
               </div>
             </div>
@@ -241,7 +267,7 @@ export function LibraryOrderClient({ initialOrder }: { initialOrder: OrderDetail
             </section>
           )}
         </div>
-        <aside className="space-y-3">
+        <aside className="min-w-0 space-y-3 lg:sticky lg:top-24 lg:self-start">
           <Button className="w-full" onClick={() => window.print()}><Printer className="size-4" /> Print invoice</Button>
           <Button variant="secondary" className="w-full" onClick={() => { window.open(`/api/v1/library/orders/${order.id}/invoice`, "_blank"); }}>
             <FileText className="size-4" /> Open printable invoice
@@ -265,7 +291,7 @@ export function LibraryOrderClient({ initialOrder }: { initialOrder: OrderDetail
           <div className="rounded-lg border border-slate-200 bg-white p-4 text-sm dark:border-slate-800 dark:bg-slate-900">
             <Package className="mb-2 size-5 text-emerald-600" />
             <p className="font-semibold">Reference</p>
-            <p className="mt-1 text-slate-500">{order.payment?.referenceNumber ?? paymentId ?? order.id}</p>
+            <p className="mt-1 break-all text-slate-500">{order.payment?.referenceNumber ?? paymentId ?? order.id}</p>
             {order.needsShipping && stage.stage === "paid" && (
               <p className="mt-3 text-xs leading-5 text-amber-700 dark:text-amber-300">Payment confirmed. Printed items are being prepared for dispatch.</p>
             )}

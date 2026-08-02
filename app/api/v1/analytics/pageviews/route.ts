@@ -1,6 +1,6 @@
 import { getSessionUserIdFromRequest } from "@/lib/auth/session";
 import { ok, problem } from "@/lib/api/response";
-import { recordSiteFunnelEvent, recordSitePageView } from "@/lib/analytics/site-analytics";
+import { isInternalAnalyticsPath, recordSiteFunnelEvent, recordSitePageView } from "@/lib/analytics/site-analytics";
 import { upsertSitePresence } from "@/lib/analytics/presence";
 import { isAnalyticsEventName } from "@/lib/analytics/events";
 
@@ -17,6 +17,8 @@ export async function POST(request: Request) {
   const userId = getSessionUserIdFromRequest(request) ?? undefined;
 
   if (body.kind === "presence" || body.action === "presence") {
+    const path = String(body.path || "/");
+    if (isInternalAnalyticsPath(path)) return ok({ ok: false, ignored: true });
     const cartSummary = Array.isArray(body.cartSummary)
       ? body.cartSummary
           .filter((row): row is Record<string, unknown> => Boolean(row) && typeof row === "object")
@@ -32,7 +34,7 @@ export async function POST(request: Request) {
     const result = await upsertSitePresence({
       visitorId: String(body.visitorId || ""),
       sessionId: String(body.sessionId || ""),
-      path: String(body.path || "/"),
+      path,
       title: typeof body.title === "string" ? body.title : undefined,
       deviceType: typeof body.deviceType === "string" ? body.deviceType : undefined,
       userId,
@@ -48,6 +50,9 @@ export async function POST(request: Request) {
 
   if (body.kind === "funnel" || (typeof body.name === "string" && !body.action)) {
     const name = String(body.name || "");
+    if (isInternalAnalyticsPath(body.path) || isInternalAnalyticsPath(body.target)) {
+      return ok({ id: null, ignored: true });
+    }
     if (!isAnalyticsEventName(name) && !name.startsWith("library_") && name !== "whatsapp_click" && name !== "page_view") {
       // Allow known analytics names; reject unknown spammy labels.
       if (!/^[a-z0-9_]{3,64}$/i.test(name)) {
@@ -67,6 +72,8 @@ export async function POST(request: Request) {
     });
     return ok(result);
   }
+
+  if (isInternalAnalyticsPath(body.path)) return ok({ id: null, ignored: true });
 
   const result = await recordSitePageView({
     action: body.action === "end" ? "end" : "start",
