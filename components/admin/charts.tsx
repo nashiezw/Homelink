@@ -14,15 +14,15 @@ export function BarChart({
 }) {
   const max = Math.max(...data.map((d) => d.value), 1);
   return (
-    <div className={cn("flex h-40 items-end gap-1.5 sm:h-48 sm:gap-2", className)}>
+    <div className={cn("flex min-w-0 items-end gap-1.5 sm:gap-2", className)}>
       {data.map((point) => (
-        <div key={point.label} className="flex min-w-0 flex-1 flex-col items-center gap-2">
+        <div key={point.label} className="flex min-h-40 min-w-0 flex-1 flex-col items-center justify-end gap-2 sm:min-h-48">
           <div
             className={cn("w-full rounded-t-md transition-all", color)}
             style={{ height: `${(point.value / max) * 100}%`, minHeight: 4 }}
             title={`${point.label}: ${point.value}`}
           />
-          <span className="max-w-full truncate text-[10px] text-slate-400">{point.label}</span>
+          <span className="max-w-full break-words text-center text-[10px] leading-tight text-slate-400 [overflow-wrap:anywhere]">{point.label}</span>
         </div>
       ))}
     </div>
@@ -80,9 +80,9 @@ export function DonutChart({
       </div>
       <div className="grid min-w-0 gap-2 text-sm">
         {segments.map((s) => (
-          <div key={s.label} className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2">
+          <div key={s.label} className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2">
             <span className="size-2.5 rounded-full shadow-[0_0_12px_currentColor]" style={{ background: s.color, color: s.color }} />
-            <span className="truncate text-slate-300">{s.label}</span>
+            <span className="min-w-0 break-words text-slate-300 [overflow-wrap:anywhere]">{s.label}</span>
             <span className="font-semibold text-white">{Math.round(s.pct)}%</span>
           </div>
         ))}

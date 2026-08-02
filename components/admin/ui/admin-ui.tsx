@@ -435,7 +435,7 @@ export function AdminDataTable<T extends { id?: string }>({
               key={rowId}
               onClick={() => onRowClick?.(row)}
               className={cn(
-                "rounded-xl border border-white/[0.07] bg-slate-950/45 p-3 transition",
+                "min-w-0 max-w-full overflow-hidden rounded-xl border border-white/[0.07] bg-slate-950/45 p-3 transition",
                 onRowClick && "cursor-pointer hover:border-white/12 hover:bg-white/[0.03]",
                 active && "border-emerald-400/40 bg-emerald-500/[0.08]",
               )}
@@ -452,12 +452,14 @@ export function AdminDataTable<T extends { id?: string }>({
                   />
                 )}
                 <div className="min-w-0 flex-1">
-                  <div className="min-w-0 break-words text-base font-semibold leading-snug text-white">{columns[0]?.render(row)}</div>
+                  <div className="min-w-0 max-w-full break-words text-base font-semibold leading-snug text-white [overflow-wrap:anywhere] [&_*]:max-w-full [&_*]:break-words [&_*]:[overflow-wrap:anywhere]">
+                    {columns[0]?.render(row)}
+                  </div>
                   <div className="mt-3 rounded-xl border border-white/[0.06] bg-white/[0.025] px-3 py-2">
                     {columns.slice(1).filter((col) => col.key !== "actions").map((col) => (
                       <div key={col.key} className="grid grid-cols-[5.75rem_minmax(0,1fr)] gap-3 border-b border-white/[0.05] py-2 last:border-0">
                         <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">{col.header}</span>
-                        <span className="min-w-0 break-words text-sm leading-5 text-slate-300">{col.render(row)}</span>
+                        <span className="min-w-0 max-w-full break-words text-sm leading-5 text-slate-300 [overflow-wrap:anywhere] [&_*]:max-w-full [&_*]:break-words [&_*]:[overflow-wrap:anywhere]">{col.render(row)}</span>
                       </div>
                     ))}
                   </div>

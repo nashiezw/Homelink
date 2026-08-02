@@ -334,11 +334,11 @@ function OperationsList({ title, rows }: { title: string; rows: Array<{ label: s
       <div className="mt-3 grid gap-2">
         {rows.length ? rows.slice(0, 8).map((row, index) => (
           <div key={`${row.label}-${index}`} className="rounded-lg border border-white/[0.06] bg-white/[0.03] p-3">
-            <div className="flex items-start justify-between gap-3">
-              <p className="min-w-0 truncate text-sm font-semibold text-slate-100">{row.label}</p>
+            <div className="grid min-w-0 gap-1 min-[460px]:flex min-[460px]:items-start min-[460px]:justify-between min-[460px]:gap-3">
+              <p className="min-w-0 break-words text-sm font-semibold text-slate-100 [overflow-wrap:anywhere]">{row.label}</p>
               <span className="shrink-0 text-xs font-semibold text-emerald-300">{row.value}</span>
             </div>
-            {row.detail && <p className="mt-1 line-clamp-2 text-xs text-slate-500">{row.detail}</p>}
+            {row.detail && <p className="mt-1 break-words text-xs text-slate-500 [overflow-wrap:anywhere]">{row.detail}</p>}
             {row.href && (
               <a href={row.href} target="_blank" rel="noreferrer" className="mt-2 inline-flex text-xs font-bold text-emerald-300 hover:underline">
                 Open
@@ -359,8 +359,8 @@ function MiniMetricGrid({ rows }: { rows: Array<{ label: string; value: string |
       {rows.map((row) => (
         <div key={row.label} className="min-w-0 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2">
           <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">{row.label}</p>
-          <p className="mt-1 truncate text-lg font-bold text-white">{row.value}</p>
-          {row.detail && <p className="truncate text-xs text-slate-500">{row.detail}</p>}
+          <p className="mt-1 break-words text-lg font-bold text-white [overflow-wrap:anywhere]">{row.value}</p>
+          {row.detail && <p className="break-words text-xs text-slate-500 [overflow-wrap:anywhere]">{row.detail}</p>}
         </div>
       ))}
     </div>
@@ -1778,9 +1778,9 @@ export function LibraryAdminHub() {
                           {selectedCompanions.map((product, index) => (
                             <div
                               key={`selected-${product.id}`}
-                              className="flex min-w-0 max-w-full items-center gap-1.5 overflow-hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-2 py-1.5"
+                              className="flex min-w-0 max-w-full items-start gap-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-2 py-1.5"
                             >
-                              <span className="min-w-0 flex-1 truncate text-[11px] font-semibold text-emerald-200" title={product.title}>
+                              <span className="min-w-0 flex-1 break-words text-[11px] font-semibold leading-4 text-emerald-200 [overflow-wrap:anywhere]" title={product.title}>
                                 {index + 1}. {product.title}
                               </span>
                               <div className="flex shrink-0 items-center gap-0.5">
@@ -2668,8 +2668,8 @@ function CommerceModal({ title, description, children, saveLabel, disabled, onCl
 
 function AssetRow({ label, canMoveUp, canMoveDown, onMoveUp, onMoveDown, onRemove }: { label: string; canMoveUp?: boolean; canMoveDown?: boolean; onMoveUp?: () => void; onMoveDown?: () => void; onRemove: () => void }) {
   return (
-    <div className="flex items-center justify-between gap-3 rounded-lg border border-white/[0.06] bg-slate-950 p-2">
-      <span className="min-w-0 truncate">{label}</span>
+    <div className="flex min-w-0 items-start justify-between gap-3 rounded-lg border border-white/[0.06] bg-slate-950 p-2">
+      <span className="min-w-0 break-words [overflow-wrap:anywhere]">{label}</span>
       <div className="flex shrink-0 gap-1">
         <button type="button" disabled={!canMoveUp} onClick={onMoveUp} className="rounded-md border border-white/10 px-2 py-1 text-[11px] font-bold text-slate-300 hover:bg-white/5 disabled:opacity-35">Up</button>
         <button type="button" disabled={!canMoveDown} onClick={onMoveDown} className="rounded-md border border-white/10 px-2 py-1 text-[11px] font-bold text-slate-300 hover:bg-white/5 disabled:opacity-35">Down</button>
@@ -3356,7 +3356,7 @@ function LibraryTabManagement({
           </div>
           <div>
             <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-300">FBT pair performance</h3>
-            <div className="mt-3"><BarChart data={bundlePairs.map((row) => ({ label: row.label.length > 28 ? `${row.label.slice(0, 28)}…` : row.label, value: row.value }))} color="bg-emerald-500" /></div>
+            <div className="mt-3"><BarChart data={bundlePairs.map((row) => ({ label: row.label, value: row.value }))} color="bg-emerald-500" /></div>
           </div>
           <div>
             <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-300">Bundle digital vs print mix</h3>
@@ -3367,7 +3367,7 @@ function LibraryTabManagement({
           rows={bundlePairs.map((row, index) => ({ id: `bundle-pair-${index}`, ...row }))}
           emptyMessage="No frequently-bought-together cart adds yet."
           columns={[
-            { key: "pair", header: "Pair / set", render: (row) => <span className="font-semibold text-white">{row.label}</span> },
+            { key: "pair", header: "Pair / set", render: (row) => <span className="block min-w-0 max-w-full break-words font-semibold text-white [overflow-wrap:anywhere]">{row.label}</span> },
             { key: "adds", header: "Cart adds", render: (row) => row.value },
             { key: "digital", header: "Digital lines", render: (row) => row.digitalLines },
             { key: "print", header: "Print lines", render: (row) => row.printLines },
