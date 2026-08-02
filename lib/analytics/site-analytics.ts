@@ -30,6 +30,12 @@ export type SiteFunnelInput = {
   userId?: string;
 };
 
+export type AnalyticsIdentityInput = {
+  visitorId: string;
+  userId?: string;
+  email?: string;
+};
+
 function clip(value: unknown, max: number) {
   return String(value ?? "").trim().slice(0, max);
 }
@@ -175,6 +181,42 @@ export async function recordSiteFunnelEvent(input: SiteFunnelInput) {
   }
 }
 
+export async function stitchAnalyticsIdentity(input: AnalyticsIdentityInput) {
+  if (!isPostgresStoreEnabled()) return { updated: 0 };
+  await ensureCoreProductionSchema();
+  const prisma = getMainPrisma();
+  const visitorId = clip(input.visitorId, 64);
+  const userId = clip(input.userId, 64);
+  const email = clip(input.email, 160);
+  if (!visitorId || !userId) return { updated: 0 };
+
+  try {
+    const [pageViews, funnels, presence] = await Promise.all([
+      prisma.sitePageView.updateMany({
+        where: { visitorId, userId: null },
+        data: { userId },
+      }),
+      prisma.siteFunnelEvent.updateMany({
+        where: { visitorId, userId: null },
+        data: { userId },
+      }),
+      prisma.sitePresence
+        .updateMany({
+          where: { visitorId },
+          data: { userId },
+        })
+        .catch(() => ({ count: 0 })),
+    ]);
+    return {
+      updated: pageViews.count + funnels.count + presence.count,
+      email: email || undefined,
+    };
+  } catch (error) {
+    if (isMissingSchemaError(error)) return { updated: 0 };
+    throw error;
+  }
+}
+
 function topCounts(rows: Array<{ key: string; value: number }>, limit = 12) {
   return rows
     .filter((row) => row.key)
@@ -256,10 +298,10 @@ export async function getSiteAnalyticsReport(days = 30) {
         where: { startedAt: { gte: since }, durationMs: { not: null }, ...publicAnalyticsPageWhere },
         _avg: { durationMs: true },
       }),
-      prisma.sitePageView.groupBy({
-        by: ["visitorId"],
+      prisma.sitePageView.findMany({
         where: { startedAt: { gte: since }, ...publicAnalyticsPageWhere },
-        _count: true,
+        select: { visitorId: true, userId: true },
+        distinct: ["visitorId", "userId"],
       }),
       prisma.libraryOrder
         .findMany({
@@ -369,7 +411,7 @@ export async function getSiteAnalyticsReport(days = 30) {
     return {
       days,
       pageViews: publicViews.length,
-      uniqueVisitors: visitors.length,
+      uniqueVisitors: new Set(visitors.map((row) => row.userId || row.visitorId)).size,
       avgDurationSec: Math.round((durationAgg._avg.durationMs ?? 0) / 1000),
       topPages: topCounts([...pageMap.entries()].map(([key, value]) => ({ key, value }))),
       devices: topCounts([...deviceMap.entries()].map(([key, value]) => ({ key, value }))),

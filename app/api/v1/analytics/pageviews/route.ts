@@ -1,6 +1,6 @@
 import { getSessionUserIdFromRequest } from "@/lib/auth/session";
 import { ok, problem } from "@/lib/api/response";
-import { isInternalAnalyticsPath, recordSiteFunnelEvent, recordSitePageView } from "@/lib/analytics/site-analytics";
+import { isInternalAnalyticsPath, recordSiteFunnelEvent, recordSitePageView, stitchAnalyticsIdentity } from "@/lib/analytics/site-analytics";
 import { upsertSitePresence } from "@/lib/analytics/presence";
 import { isAnalyticsEventName } from "@/lib/analytics/events";
 
@@ -59,8 +59,17 @@ export async function POST(request: Request) {
         return problem(400, "INVALID_EVENT", "Unsupported funnel event.");
       }
     }
+    const visitorId = String(body.visitorId || "");
+    if (name === "identity_stitched") {
+      const metadata = body.metadata && typeof body.metadata === "object" ? (body.metadata as Record<string, unknown>) : {};
+      await stitchAnalyticsIdentity({
+        visitorId,
+        userId: userId ?? (typeof metadata.userId === "string" ? metadata.userId : undefined),
+        email: typeof metadata.email === "string" ? metadata.email : undefined,
+      });
+    }
     const result = await recordSiteFunnelEvent({
-      visitorId: String(body.visitorId || ""),
+      visitorId,
       sessionId: typeof body.sessionId === "string" ? body.sessionId : undefined,
       name,
       path: typeof body.path === "string" ? body.path : undefined,

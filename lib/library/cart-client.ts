@@ -5,6 +5,7 @@ import {
   resolveLibraryVolumeUnitPrice,
   type LibraryVolumeTier,
 } from "@/lib/library/catalog";
+import { getOrCreateSessionId, getOrCreateVisitorId } from "@/lib/analytics/visitor-client";
 
 export type LibraryCartLine = {
   productId: string;
@@ -89,10 +90,15 @@ export function trackLibraryCartEvent(
 ) {
   if (typeof window === "undefined") return;
   if (action !== "CART_CLEAR" && !productId) return;
+  const analyticsMetadata = {
+    ...metadata,
+    visitorId: getOrCreateVisitorId(),
+    sessionId: getOrCreateSessionId(),
+  };
   void fetch("/api/v1/library/events", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ action, productId, metadata }),
+    body: JSON.stringify({ action, productId, metadata: analyticsMetadata }),
     keepalive: true,
   }).catch(() => undefined);
 
