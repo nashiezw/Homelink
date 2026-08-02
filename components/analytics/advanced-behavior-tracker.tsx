@@ -9,6 +9,15 @@ import { getExperimentVariant } from "@/lib/analytics/experiments";
 /**
  * Rage-click / UI-error listeners + default Library experiment exposure.
  */
+function shouldIgnoreUiError(message: string, filename?: string) {
+  const normalized = message.toLowerCase();
+  const source = String(filename || "").toLowerCase();
+  return (
+    normalized.includes("window.webkit.messagehandlers") ||
+    (normalized.includes("messagehandlers") && source.startsWith("webkit-masked-url"))
+  );
+}
+
 export function AdvancedBehaviorTracker() {
   const pathname = usePathname();
   const lastClick = useRef<{ x: number; y: number; at: number; count: number } | null>(null);
@@ -40,6 +49,7 @@ export function AdvancedBehaviorTracker() {
     }
 
     function onError(event: ErrorEvent) {
+      if (shouldIgnoreUiError(String(event.message || ""), event.filename)) return;
       trackEvent("ui_error", pathname || "/", {
         message: String(event.message || "error").slice(0, 160),
         path: pathname || "/",
@@ -47,8 +57,10 @@ export function AdvancedBehaviorTracker() {
     }
 
     function onRejection(event: PromiseRejectionEvent) {
+      const message = String(event.reason || "rejection");
+      if (shouldIgnoreUiError(message)) return;
       trackEvent("ui_error", pathname || "/", {
-        message: String(event.reason || "rejection").slice(0, 160),
+        message: message.slice(0, 160),
         path: pathname || "/",
         kind: "unhandledrejection",
       });

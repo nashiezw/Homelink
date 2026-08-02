@@ -47,6 +47,7 @@ type TopClassAnalytics = {
   campaigns?: Array<{ campaign: string; visitors: number; purchases: number; revenue: number }>;
   rageClicks?: number;
   uiErrors?: number;
+  recentUiErrors?: Array<{ at: string; path: string; message: string; kind: string; visitorId: string }>;
   search?: {
     topQueries?: Array<{ label: string; value: number }>;
     zeroResults?: Array<{ label: string; value: number }>;
@@ -275,19 +276,19 @@ export function SiteAnalyticsPanel() {
   ];
 
   return (
-    <div className="grid gap-5 rounded-xl border border-white/10 bg-white/[0.03] p-4 sm:p-5">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
+    <div className="grid min-w-0 max-w-full gap-4 overflow-hidden rounded-xl border border-white/10 bg-white/[0.03] p-3 sm:gap-5 sm:p-5">
+      <div className="flex min-w-0 flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
+        <div className="min-w-0">
           <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-300">Advanced site analytics</h3>
-          <p className="mt-1 text-xs text-slate-400">
+          <p className="mt-1 max-w-3xl text-xs text-slate-400">
             Live presence, product performance, cart add/remove, session journeys, revenue attribution, and proof SLA — first-party only.
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="grid w-full grid-cols-1 gap-2 min-[420px]:grid-cols-3 xl:w-auto">
           <select
             value={days}
             onChange={(e) => setDays(Number(e.target.value))}
-            className="h-9 rounded-lg border border-white/10 bg-slate-950 px-3 text-sm text-white"
+            className="h-9 min-w-0 rounded-lg border border-white/10 bg-slate-950 px-3 text-sm text-white"
           >
             <option value={7}>Last 7 days</option>
             <option value={30}>Last 30 days</option>
@@ -296,14 +297,14 @@ export function SiteAnalyticsPanel() {
           <button
             type="button"
             onClick={() => void load()}
-            className="inline-flex h-9 items-center gap-2 rounded-lg border border-white/10 px-3 text-sm font-semibold text-slate-200 hover:bg-white/5"
+            className="inline-flex h-9 min-w-0 items-center justify-center gap-2 rounded-lg border border-white/10 px-3 text-sm font-semibold text-slate-200 hover:bg-white/5"
           >
             <RefreshCw className={`size-4 ${loading ? "animate-spin" : ""}`} />
             Refresh
           </button>
           <a
             href={`/api/v1/admin/site-analytics/export?days=${days}`}
-            className="inline-flex h-9 items-center gap-2 rounded-lg border border-white/10 px-3 text-sm font-semibold text-slate-200 hover:bg-white/5"
+            className="inline-flex h-9 min-w-0 items-center justify-center gap-2 rounded-lg border border-white/10 px-3 text-sm font-semibold text-slate-200 hover:bg-white/5"
           >
             <Download className="size-4" />
             Export CSV
@@ -311,19 +312,21 @@ export function SiteAnalyticsPanel() {
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-2">
+      <div className="-mx-3 overflow-x-auto px-3 pb-1 [scrollbar-width:none] sm:mx-0 sm:px-0">
+        <div className="flex w-max gap-2">
         {tabs.map((item) => (
           <button
             key={item.id}
             type="button"
             onClick={() => setTab(item.id)}
-            className={`rounded-lg px-3 py-1.5 text-xs font-bold uppercase tracking-wide ${
+            className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-bold uppercase tracking-wide ${
               tab === item.id ? "bg-emerald-500/20 text-emerald-200" : "border border-white/10 text-slate-400 hover:bg-white/5"
             }`}
           >
             {item.label}
           </button>
         ))}
+        </div>
       </div>
 
       {error ? <p className="text-sm text-red-300">{error}</p> : null}
@@ -396,9 +399,9 @@ export function SiteAnalyticsPanel() {
                 <div className="space-y-3">
                   {tc!.goals!.map((goal) => (
                     <div key={goal.id}>
-                      <div className="mb-1 flex items-center justify-between gap-2 text-xs">
-                        <span className="font-medium text-slate-200">{goal.name}</span>
-                        <span className="tabular-nums text-slate-400">
+                      <div className="mb-1 grid gap-1 text-xs min-[520px]:flex min-[520px]:items-center min-[520px]:justify-between min-[520px]:gap-2">
+                        <span className="min-w-0 break-words font-medium text-slate-200">{goal.name}</span>
+                        <span className="break-words tabular-nums text-slate-400 min-[520px]:shrink-0">
                           {goal.current} / {goal.target} ({goal.pct}%)
                         </span>
                       </div>
@@ -492,7 +495,32 @@ export function SiteAnalyticsPanel() {
       )}
 
       {tab === "products" && (
-        <div className="overflow-x-auto">
+        <div className="grid gap-3 md:hidden">
+          {(report?.products ?? []).length ? (
+            report!.products.map((row) => (
+              <MobileRecord key={row.productId} title={row.title}>
+                <MobileFacts
+                  rows={[
+                    ["Views", row.views],
+                    ["Uniques", row.uniqueViewers],
+                    ["Adds", row.adds],
+                    ["Removes", row.removes],
+                    ["Purchases", row.purchases],
+                    ["Add rate", `${row.addRate}%`],
+                    ["Buy rate", `${row.purchaseRate}%`],
+                    ["Samples", row.samples],
+                  ]}
+                />
+              </MobileRecord>
+            ))
+          ) : (
+            <p className="text-sm text-slate-400">Product views and cart events will appear as shoppers browse Library titles.</p>
+          )}
+        </div>
+      )}
+
+      {tab === "products" && (
+        <div className="hidden overflow-x-auto md:block">
           <table className="min-w-full text-left text-xs text-slate-300">
             <thead className="border-b border-white/10 text-[11px] uppercase tracking-wide text-slate-500">
               <tr>
@@ -548,11 +576,11 @@ export function SiteAnalyticsPanel() {
             <div className="max-h-80 space-y-2 overflow-y-auto text-xs">
               {(report?.cartActivity ?? []).length ? (
                 report!.cartActivity.map((row, index) => (
-                  <div key={`${row.at}-${row.title}-${index}`} className="rounded-lg border border-white/10 px-3 py-2 text-slate-300">
-                    <p className="font-semibold text-white">
+                  <div key={`${row.at}-${row.title}-${index}`} className="min-w-0 rounded-lg border border-white/10 px-3 py-2 text-slate-300">
+                    <p className="break-words font-semibold text-white">
                       {row.name.replace(/^library_/, "").replaceAll("_", " ")} · {row.title}
                     </p>
-                    <p className="mt-1 text-slate-500">
+                    <p className="mt-1 break-words text-slate-500">
                       qty {row.quantity} · {row.formatLabel} · {new Date(row.at).toLocaleString()}
                     </p>
                   </div>
@@ -567,11 +595,11 @@ export function SiteAnalyticsPanel() {
               {(report?.live.visitors ?? [])
                 .filter((row) => row.cartItemCount > 0)
                 .map((row) => (
-                  <div key={`bag-${row.visitorId}`} className="rounded-lg border border-white/10 px-3 py-2 text-slate-300">
-                    <p className="font-semibold text-white">
+                  <div key={`bag-${row.visitorId}`} className="min-w-0 rounded-lg border border-white/10 px-3 py-2 text-slate-300">
+                    <p className="break-words font-semibold text-white">
                       {row.cartItemCount} items · {row.cartCurrency} {row.cartValue.toFixed(2)}
                     </p>
-                    <p className="mt-1 text-slate-500">{row.path}</p>
+                    <p className="mt-1 break-all text-slate-500">{row.path}</p>
                   </div>
                 ))}
               {!report?.live.visitors.some((row) => row.cartItemCount > 0) ? (
@@ -1089,6 +1117,27 @@ export function SiteAnalyticsPanel() {
           </div>
 
           <div className="grid gap-5 xl:grid-cols-2">
+            <Panel title="Recent UI errors">
+              {(tc?.recentUiErrors ?? []).length ? (
+                <div className="max-h-72 space-y-2 overflow-y-auto text-xs">
+                  {tc!.recentUiErrors!.map((row, index) => (
+                    <div key={`${row.at}-${row.visitorId}-${index}`} className="min-w-0 rounded-lg border border-red-500/25 bg-red-500/5 px-3 py-2">
+                      <div className="flex flex-col gap-1 min-[520px]:flex-row min-[520px]:items-start min-[520px]:justify-between">
+                        <p className="break-words font-semibold text-red-100">{row.message}</p>
+                        <span className="shrink-0 text-[10px] uppercase tracking-wide text-red-300">{row.kind}</span>
+                      </div>
+                      <p className="mt-1 break-all text-slate-400">{row.path}</p>
+                      <p className="mt-1 break-words text-slate-500">
+                        {new Date(row.at).toLocaleString()} - visitor {row.visitorId.slice(0, 12)}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-slate-400">No UI error details recorded in this period.</p>
+              )}
+            </Panel>
+
             <Panel title="Data quality notes">
               {(tc?.dataQuality?.notes ?? []).length ? (
                 <ul className="space-y-1 text-xs text-slate-300">
@@ -1217,18 +1266,18 @@ export function SiteAnalyticsPanel() {
 
 function Metric({ label, value, accent }: { label: string; value: string | number; accent?: string }) {
   return (
-    <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-3">
-      <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{label}</p>
-      <p className={`mt-1 text-xl font-bold tabular-nums ${accent ?? "text-white"}`}>{value}</p>
+    <div className="min-w-0 rounded-xl border border-white/10 bg-black/20 px-3 py-3">
+      <p className="break-words text-[11px] font-semibold uppercase tracking-wide text-slate-400">{label}</p>
+      <p className={`mt-1 break-words text-xl font-bold tabular-nums ${accent ?? "text-white"}`}>{value}</p>
     </div>
   );
 }
 
 function BigMetric({ label, value, accent }: { label: string; value: string | number; accent?: string }) {
   return (
-    <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-4">
-      <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">{label}</p>
-      <p className={`mt-2 text-3xl font-bold tabular-nums sm:text-4xl ${accent ?? "text-white"}`}>{value}</p>
+    <div className="min-w-0 rounded-xl border border-white/10 bg-black/30 px-4 py-4">
+      <p className="break-words text-xs font-semibold uppercase tracking-wider text-slate-400">{label}</p>
+      <p className={`mt-2 break-words text-3xl font-bold tabular-nums sm:text-4xl ${accent ?? "text-white"}`}>{value}</p>
     </div>
   );
 }
@@ -1238,14 +1287,36 @@ function CompareMetric({ label, current, baseline }: { label: string; current: n
   const up = baseline > 0 && current > baseline;
   const down = baseline > 0 && current < baseline;
   return (
-    <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-3">
-      <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{label}</p>
+    <div className="min-w-0 rounded-xl border border-white/10 bg-black/20 px-3 py-3">
+      <p className="break-words text-[11px] font-semibold uppercase tracking-wide text-slate-400">{label}</p>
       <p className="mt-1 text-xl font-bold tabular-nums text-white">{current}</p>
       <p className="mt-1 text-xs text-slate-500">
         7d avg {baseline}{" "}
         <span className={up ? "text-emerald-300" : down ? "text-red-300" : "text-slate-400"}>({change})</span>
       </p>
     </div>
+  );
+}
+
+function MobileRecord({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <article className="min-w-0 rounded-xl border border-white/10 bg-black/20 px-3 py-3">
+      <h4 className="break-words text-sm font-semibold text-white">{title}</h4>
+      <div className="mt-3">{children}</div>
+    </article>
+  );
+}
+
+function MobileFacts({ rows }: { rows: Array<[string, string | number]> }) {
+  return (
+    <dl className="grid grid-cols-2 gap-2 text-xs min-[460px]:grid-cols-4">
+      {rows.map(([label, value]) => (
+        <div key={label} className="min-w-0 rounded-lg border border-white/5 bg-white/[0.03] px-2 py-2">
+          <dt className="truncate text-[10px] font-semibold uppercase tracking-wide text-slate-500">{label}</dt>
+          <dd className="mt-1 break-words font-semibold tabular-nums text-slate-100">{value}</dd>
+        </div>
+      ))}
+    </dl>
   );
 }
 
@@ -1276,8 +1347,8 @@ function InventoryStatus({ status }: { status: string }) {
 
 function Panel({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <div>
-      <h4 className="text-sm font-semibold uppercase tracking-wider text-slate-300">{title}</h4>
+    <div className="min-w-0">
+      <h4 className="break-words text-sm font-semibold uppercase tracking-wider text-slate-300">{title}</h4>
       <div className="mt-3">{children}</div>
     </div>
   );

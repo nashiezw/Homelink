@@ -47,6 +47,12 @@ type LibraryQuote = {
   }>;
 };
 
+function ignoreCheckoutRequestFailure(error: unknown) {
+  if (process.env.NODE_ENV === "development") {
+    console.debug("library_checkout_request_failed", error);
+  }
+}
+
 type LibraryPublicSettings = {
   checkout: {
     guestCheckout?: boolean;
@@ -166,15 +172,19 @@ export function LibraryCheckoutClient() {
   }, [config, storeSettings]);
 
   useEffect(() => {
-    void apiFetch<PublicPaymentConfig>("/api/v1/payments/config").then((result) => {
-      if (result.data) setConfig(result.data);
-    });
-    void apiFetch<LibraryPublicSettings>("/api/v1/library/settings").then((result) => {
-      if (result.data) {
-        setStoreSettings(result.data);
-        setShipping((current) => ({ ...current, country: result.data!.delivery.defaultCountry || current.country }));
-      }
-    });
+    void apiFetch<PublicPaymentConfig>("/api/v1/payments/config")
+      .then((result) => {
+        if (result.data) setConfig(result.data);
+      })
+      .catch(ignoreCheckoutRequestFailure);
+    void apiFetch<LibraryPublicSettings>("/api/v1/library/settings")
+      .then((result) => {
+        if (result.data) {
+          setStoreSettings(result.data);
+          setShipping((current) => ({ ...current, country: result.data!.delivery.defaultCountry || current.country }));
+        }
+      })
+      .catch(ignoreCheckoutRequestFailure);
   }, []);
 
   useEffect(() => {
@@ -207,7 +217,7 @@ export function LibraryCheckoutClient() {
           currency: quote.currency,
           subtotal: quote.subtotal,
         }),
-      });
+      }).catch(ignoreCheckoutRequestFailure);
     }, 800);
     return () => window.clearTimeout(timer);
   }, [guestEmail, user?.email, cart, quote]);
@@ -237,9 +247,11 @@ export function LibraryCheckoutClient() {
         preferPromoCompanions: cartIsAllDigital,
         digitalPromoEligible: cartIsAllDigital,
       }),
-    }).then((result) => {
-      if (!cancelled) setUpsellPack(result.data?.pack ?? null);
-    });
+    })
+      .then((result) => {
+        if (!cancelled) setUpsellPack(result.data?.pack ?? null);
+      })
+      .catch(ignoreCheckoutRequestFailure);
     return () => {
       cancelled = true;
     };
@@ -307,7 +319,7 @@ export function LibraryCheckoutClient() {
           currency: result.data.currency,
           subtotal: result.data.subtotal,
         }),
-      });
+      }).catch(ignoreCheckoutRequestFailure);
     }
     return result.data;
   }

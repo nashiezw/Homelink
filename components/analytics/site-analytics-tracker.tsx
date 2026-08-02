@@ -12,6 +12,12 @@ import {
 } from "@/lib/analytics/visitor-client";
 import { libraryCartSnapshot } from "@/lib/library/cart-client";
 
+function ignoreAnalyticsFailure(error: unknown) {
+  if (process.env.NODE_ENV === "development") {
+    console.debug("analytics_request_failed", error);
+  }
+}
+
 /**
  * First-party page tracker + presence heartbeat.
  * Anonymous visitor/session ids only — no MAC / hardware fingerprinting.
@@ -34,21 +40,25 @@ export function SiteAnalyticsTracker() {
     let cancelled = false;
 
     async function start() {
-      const result = await apiFetch<{ id: string | null }>("/api/v1/analytics/pageviews", {
-        method: "POST",
-        body: JSON.stringify({
-          action: "start",
-          visitorId,
-          sessionId,
-          path,
-          title: typeof document !== "undefined" ? document.title : undefined,
-          referrer: typeof document !== "undefined" ? document.referrer || undefined : undefined,
-          deviceType,
-          ...utm,
-        }),
-      });
-      if (!cancelled && result.data?.id) {
-        active.current = { id: result.data.id, startedAt, path };
+      try {
+        const result = await apiFetch<{ id: string | null }>("/api/v1/analytics/pageviews", {
+          method: "POST",
+          body: JSON.stringify({
+            action: "start",
+            visitorId,
+            sessionId,
+            path,
+            title: typeof document !== "undefined" ? document.title : undefined,
+            referrer: typeof document !== "undefined" ? document.referrer || undefined : undefined,
+            deviceType,
+            ...utm,
+          }),
+        });
+        if (!cancelled && result.data?.id) {
+          active.current = { id: result.data.id, startedAt, path };
+        }
+      } catch (error) {
+        ignoreAnalyticsFailure(error);
       }
     }
 
@@ -71,7 +81,7 @@ export function SiteAnalyticsTracker() {
         navigator.sendBeacon("/api/v1/analytics/pageviews", blob);
         return;
       }
-      void apiFetch("/api/v1/analytics/pageviews", { method: "POST", body: payload });
+      void apiFetch("/api/v1/analytics/pageviews", { method: "POST", body: payload }).catch(ignoreAnalyticsFailure);
     }
 
     function heartbeat() {
@@ -99,7 +109,7 @@ export function SiteAnalyticsTracker() {
           productTitle: productSlug ? cleanProductTitle || productSlug : undefined,
           ...cart,
         }),
-      });
+      }).catch(ignoreAnalyticsFailure);
     }
 
     void start();

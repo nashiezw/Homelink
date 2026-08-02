@@ -147,6 +147,7 @@ export function buildTopClassAnalytics(input: {
   let npsCount = 0;
   let missingProductId = 0;
   let productishEvents = 0;
+  const recentUiErrors: Array<{ at: string; path: string; message: string; kind: string; visitorId: string }> = [];
   const hourlyViews = Array.from({ length: 24 }, (_, hour) => ({ hour, views: 0, events: 0 }));
   const now = Date.now();
   const dayMs = 86400000;
@@ -204,7 +205,18 @@ export function buildTopClassAnalytics(input: {
     }
 
     if (event.name === "rage_click") rageClicks += 1;
-    if (event.name === "ui_error" || event.name === "upload_failed") uiErrors += 1;
+    if (event.name === "ui_error" || event.name === "upload_failed") {
+      uiErrors += 1;
+      if (recentUiErrors.length < 25) {
+        recentUiErrors.push({
+          at: event.createdAt.toISOString(),
+          path: metaStr(meta, "path") || event.path || event.target || "/",
+          message: metaStr(meta, "message", "error") || event.name.replaceAll("_", " "),
+          kind: metaStr(meta, "kind") || event.name,
+          visitorId: event.visitorId,
+        });
+      }
+    }
     if (event.name === "library_sample_opened") sampleOpens += 1;
     if (event.name === "library_cart_added" && metaStr(meta, "fromSample") === "true") sampleAdds += 1;
     if (event.name === "library_nps_submitted" || event.name === "library_review_submitted") {
@@ -737,6 +749,7 @@ export function buildTopClassAnalytics(input: {
       .slice(0, 30),
     rageClicks,
     uiErrors,
+    recentUiErrors: [...recentUiErrors].reverse(),
     search: {
       topQueries: topMap(searchQueries),
       zeroResults: topMap(zeroSearches),
