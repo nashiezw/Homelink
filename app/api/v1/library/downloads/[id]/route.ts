@@ -74,6 +74,14 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       cache: "no-store",
     });
     if (!remote.ok) {
+      const cloudinaryError = remote.headers.get("x-cld-error");
+      if (cloudinaryError) {
+        return problem(
+          502,
+          "CLOUDINARY_DELIVERY_BLOCKED",
+          `Cloudinary blocked delivery for this Library file: ${cloudinaryError}. Enable PDF and ZIP delivery in Cloudinary Security settings or move the file to an app-served/durable storage URL.`,
+        );
+      }
       return problem(502, "UPSTREAM_FILE_FAILED", "The Library file could not be fetched from storage.");
     }
     const remoteType = remote.headers.get("content-type") || contentType(access.file.fileType, access.file.fileName);
@@ -95,7 +103,11 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
         "Content-Type": remoteType,
       },
     });
-  } catch {
+  } catch (error) {
+    console.error("[library/download] upstream fetch failed", {
+      fileUrl: access.file.fileUrl,
+      error: error instanceof Error ? error.message : String(error),
+    });
     return problem(502, "UPSTREAM_FILE_FAILED", "The Library file could not be fetched from storage.");
   }
 }
@@ -133,7 +145,8 @@ async function readPublicFile(publicPathname: string) {
   const safeRelative = parts.join(path.sep);
   const publicRoot = path.join(process.cwd(), "public", "uploads");
   const absolute = path.join(process.cwd(), "public", safeRelative);
-  if (!absolute.startsWith(publicRoot)) return null;
+  const relativeToUploads = path.relative(publicRoot, absolute);
+  if (relativeToUploads.startsWith("..") || path.isAbsolute(relativeToUploads)) return null;
   const buffer = await readFile(absolute).catch(() => null);
   return buffer ? new Uint8Array(buffer) : null;
 }

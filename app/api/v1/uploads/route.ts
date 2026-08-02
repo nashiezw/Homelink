@@ -81,6 +81,18 @@ export async function POST(request: Request) {
       );
     }
 
+    if (folder === "library" && validation.kind === "document") {
+      const delivery = await verifyCloudinaryDelivery(cloudinary.secure_url);
+      if (!delivery.ok) {
+        return problem(
+          502,
+          "UPLOAD_DELIVERY_BLOCKED",
+          delivery.reason ||
+            "Cloudinary stored the Library file, but blocked public delivery. Enable PDF and ZIP delivery in Cloudinary Security settings or use a storage provider that permits protected document downloads.",
+        );
+      }
+    }
+
     return created({
       url: cloudinary.secure_url,
       filename: cloudinary.public_id ?? `upload.${validation.ext}`,
@@ -103,4 +115,27 @@ export async function POST(request: Request) {
 
   const url = `/uploads/${folder}/${filename}`;
   return created({ url, filename, size: buffer.length, kind: validation.kind });
+}
+
+async function verifyCloudinaryDelivery(url: string) {
+  try {
+    const response = await fetch(url, {
+      method: "HEAD",
+      redirect: "follow",
+      cache: "no-store",
+    });
+    if (response.ok) return { ok: true as const };
+    const cloudinaryError = response.headers.get("x-cld-error");
+    return {
+      ok: false as const,
+      reason: cloudinaryError
+        ? `Cloudinary blocked delivery for this Library file: ${cloudinaryError}. Enable PDF and ZIP delivery in Cloudinary Security settings.`
+        : `Cloudinary stored the file but delivery returned HTTP ${response.status}.`,
+    };
+  } catch (error) {
+    return {
+      ok: false as const,
+      reason: error instanceof Error ? `Cloudinary delivery check failed: ${error.message}` : "Cloudinary delivery check failed.",
+    };
+  }
 }

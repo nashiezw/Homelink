@@ -76,6 +76,7 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     "/api/v1/academy/files/[...path]": ["./public/uploads/academy/**/*"],
     "/api/v1/academy/documents/[id]/download": ["./public/uploads/academy/**/*"],
+    "/api/v1/library/downloads/[id]": ["./public/uploads/**/*"],
   },
   images: {
     formats: ["image/avif", "image/webp"],
