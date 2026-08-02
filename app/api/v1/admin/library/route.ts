@@ -388,11 +388,18 @@ async function verifyLibraryFileDelivery(fileUrl: string, requestUrl: string) {
       return { ok: false, status: 0, message: "Only HTTP and HTTPS Library file URLs can be verified." };
     }
 
-    const response = await fetch(parsed.toString(), {
+    let response = await fetch(parsed.toString(), {
       method: "HEAD",
       redirect: "follow",
       cache: "no-store",
     });
+    if (response.status === 405 || response.status === 501) {
+      response = await fetch(parsed.toString(), {
+        headers: { Range: "bytes=0-0" },
+        redirect: "follow",
+        cache: "no-store",
+      });
+    }
     if (response.ok) {
       return {
         ok: true,

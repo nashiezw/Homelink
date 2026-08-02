@@ -231,6 +231,8 @@ type InventoryMovementDraft = { productId: string; type: string; quantity: strin
 type RecommendationDraft = { sourceProductId: string; targetProductId: string; reason: string; weight: string; active: boolean };
 
 type LibraryDraftDownload = LibraryProduct["downloads"][number] & { fileUrl?: string; fileName?: string; fileSizeBytes?: number; previewable?: boolean };
+type UploadSlot = "cover" | "download" | "sample";
+type InlineStatus = { tone: "success" | "error" | "pending"; message: string };
 
 type LibraryProductDraft = {
   title: string;
@@ -458,6 +460,8 @@ export function LibraryAdminHub() {
   const [previewProduct, setPreviewProduct] = useState<LibraryProduct | null>(null);
   const [guestClaimDraft, setGuestClaimDraft] = useState<{ orderId: string; email: string } | null>(null);
   const [bulkDraft, setBulkDraft] = useState<{ mode: "price" | "category"; value: string } | null>(null);
+  const [fileVerification, setFileVerification] = useState<Record<string, { tone: "success" | "error" | "pending"; message: string }>>({});
+  const [uploadStatus, setUploadStatus] = useState<Partial<Record<UploadSlot, InlineStatus>>>({});
   const [feedback, setFeedback] = useState<{ tone: "success" | "error"; message: string } | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
@@ -728,79 +732,117 @@ export function LibraryAdminHub() {
     setDraftOpen(false);
     setEditingProduct(null);
     setDraft(emptyDraft);
+    setFileVerification({});
+    setUploadStatus({});
     setBundleCompanionQuery("");
     setHidePrintOosCompanions(false);
   }
 
-  async function uploadAsset(files: FileList | null, kind: "cover" | "download" | "sample") {
+  async function uploadAsset(files: FileList | null, kind: UploadSlot, input?: HTMLInputElement | null) {
     const file = files?.[0];
     if (!file) return;
     setFeedback(null);
     if (kind === "sample" && !file.name.toLowerCase().endsWith(".pdf") && file.type !== "application/pdf") {
-      setFeedback({ tone: "error", message: "Sample preview must be a PDF file." });
+      setUploadStatus((current) => ({ ...current, sample: { tone: "error", message: "Sample preview must be a PDF file." } }));
+      if (input) input.value = "";
       return;
     }
-    const dataUrl = await readFile(file);
-    const isImage = file.type.startsWith("image/");
-    const uploaded = await apiFetch<{ url: string; filename?: string; size?: number }>("/api/v1/uploads", {
-      method: "POST",
-      body: JSON.stringify({ dataUrl, kind: isImage ? "image" : "document", folder: "library" }),
-    });
-    if (!uploaded.data?.url) {
-      setFeedback({ tone: "error", message: uploaded.error?.message || "Upload failed. Check Cloudinary/storage settings and try again." });
-      return;
-    }
-    if (kind === "cover") {
+
+    setUploadStatus((current) => ({ ...current, [kind]: { tone: "pending", message: `Uploading ${file.name}...` } }));
+    try {
+      const dataUrl = await readFile(file);
+      const isImage = file.type.startsWith("image/");
+      const uploaded = await apiFetch<{ url: string; filename?: string; size?: number }>("/api/v1/uploads", {
+        method: "POST",
+        body: JSON.stringify({ dataUrl, kind: isImage ? "image" : "document", folder: "library" }),
+      });
+      if (!uploaded.data?.url) {
+        setUploadStatus((current) => ({
+          ...current,
+          [kind]: { tone: "error", message: uploaded.error?.message || "Upload failed. Check Cloudinary/storage settings and try again." },
+        }));
+        return;
+      }
+      if (kind === "cover") {
+        setDraft((current) => ({
+          ...current,
+          gallery: [...current.gallery, { label: file.name.replace(/\.[^.]+$/, ""), url: uploaded.data!.url, kind: "cover" }],
+        }));
+        setUploadStatus((current) => ({ ...current, cover: { tone: "success", message: "Cover uploaded. Save the product to keep it." } }));
+        return;
+      }
+
+      const ext = file.name.split(".").pop()?.toUpperCase() || "PDF";
+      const baseName = file.name.replace(/\.[^.]+$/, "");
+      const nextFile = {
+        id: crypto.randomUUID(),
+        label: kind === "sample" ? (baseName.toLowerCase().includes("sample") || baseName.toLowerCase().includes("preview") ? baseName : `Sample preview - ${baseName}`) : baseName,
+        fileType: ext,
+        size: formatUploadSize(uploaded.data?.size ?? file.size),
+        secure: true,
+        previewable: kind === "sample",
+        fileUrl: uploaded.data!.url,
+        fileName: kind === "sample" ? `sample-${uploaded.data?.filename ?? file.name}` : (uploaded.data?.filename ?? file.name),
+        fileSizeBytes: uploaded.data?.size ?? file.size,
+      } as LibraryDraftDownload;
+      if (kind === "sample") {
+        setDraft((current) => ({ ...current, sampleFile: nextFile }));
+        setUploadStatus((current) => ({ ...current, sample: { tone: "success", message: "Sample PDF uploaded. Save the product to keep it." } }));
+        return;
+      }
       setDraft((current) => ({
         ...current,
-        gallery: [...current.gallery, { label: file.name.replace(/\.[^.]+$/, ""), url: uploaded.data!.url, kind: "cover" }],
+        downloads: [...current.downloads, nextFile],
       }));
-      setFeedback({ tone: "success", message: "Cover image uploaded. Save the product to keep it." });
-      return;
+      setUploadStatus((current) => ({ ...current, download: { tone: "success", message: "Full download uploaded and attached. Save the product to keep it." } }));
+    } catch (error) {
+      setUploadStatus((current) => ({
+        ...current,
+        [kind]: {
+          tone: "error",
+          message: error instanceof Error ? `Upload failed: ${error.message}` : "Upload failed. Check Cloudinary/storage settings and try again.",
+        },
+      }));
+    } finally {
+      if (input) input.value = "";
     }
-    const ext = file.name.split(".").pop()?.toUpperCase() || "PDF";
-    const baseName = file.name.replace(/\.[^.]+$/, "");
-    const nextFile = {
-      id: crypto.randomUUID(),
-      label: kind === "sample" ? (baseName.toLowerCase().includes("sample") || baseName.toLowerCase().includes("preview") ? baseName : `Sample preview · ${baseName}`) : baseName,
-      fileType: ext,
-      size: formatUploadSize(uploaded.data?.size ?? file.size),
-      secure: true,
-      previewable: kind === "sample",
-      fileUrl: uploaded.data!.url,
-      fileName: kind === "sample" ? `sample-${uploaded.data?.filename ?? file.name}` : (uploaded.data?.filename ?? file.name),
-      fileSizeBytes: uploaded.data?.size ?? file.size,
-    } as LibraryDraftDownload;
-    if (kind === "sample") {
-      setDraft((current) => ({ ...current, sampleFile: nextFile }));
-      setFeedback({ tone: "success", message: "Sample PDF uploaded. Save the product to keep it." });
-      return;
-    }
-    setDraft((current) => ({
-      ...current,
-      downloads: [...current.downloads, nextFile],
-    }));
-    setFeedback({ tone: "success", message: "Download file uploaded. Save the product to keep it." });
   }
 
   async function verifyLibraryFile(file: LibraryDraftDownload) {
+    const key = fileVerificationKey(file);
     if (!file.fileUrl) {
-      setFeedback({ tone: "error", message: "This Library file does not have a URL to verify." });
+      setFileVerification((current) => ({ ...current, [key]: { tone: "error", message: "This file does not have a URL to verify." } }));
       return;
     }
-    setFeedback(null);
-    const result = await apiFetch<{ ok: boolean; message: string; status?: number; contentType?: string | null; contentLength?: string | null }>("/api/v1/admin/library", {
-      method: "POST",
-      body: JSON.stringify({ action: "verify_library_file_delivery", fileUrl: file.fileUrl }),
-    });
-    if (result.error || !result.data) {
-      setFeedback({ tone: "error", message: result.error?.message || "Library file delivery could not be verified." });
-      return;
+    setFileVerification((current) => ({ ...current, [key]: { tone: "pending", message: "Checking file delivery..." } }));
+    try {
+      const result = await apiFetch<{ ok: boolean; message: string; status?: number; contentType?: string | null; contentLength?: string | null }>("/api/v1/admin/library", {
+        method: "POST",
+        body: JSON.stringify({ action: "verify_library_file_delivery", fileUrl: file.fileUrl }),
+      });
+      if (result.error || !result.data) {
+        setFileVerification((current) => ({
+          ...current,
+          [key]: { tone: "error", message: result.error?.message || "Library file delivery could not be verified." },
+        }));
+        return;
+      }
+      setFileVerification((current) => ({
+        ...current,
+        [key]: {
+          tone: result.data.ok ? "success" : "error",
+          message: result.data.message,
+        },
+      }));
+    } catch (error) {
+      setFileVerification((current) => ({
+        ...current,
+        [key]: {
+          tone: "error",
+          message: error instanceof Error ? `Verification failed: ${error.message}` : "Verification failed.",
+        },
+      }));
     }
-    setFeedback({
-      tone: result.data.ok ? "success" : "error",
-      message: result.data.message,
-    });
   }
 
   async function duplicate(id: string) {
@@ -1618,7 +1660,8 @@ export function LibraryAdminHub() {
                     <div className="grid gap-3 sm:grid-cols-2">
                       <label className="rounded-lg border border-dashed border-white/10 p-3 text-sm text-slate-300">
                         <span className="flex items-center gap-2 font-semibold"><Upload className="size-4" /> Upload cover/gallery</span>
-                        <input type="file" accept="image/*" className="mt-2 block w-full text-xs" onChange={(event) => void uploadAsset(event.target.files, "cover")} />
+                        <input type="file" accept="image/*" className="mt-2 block w-full text-xs" onChange={(event) => void uploadAsset(event.currentTarget.files, "cover", event.currentTarget)} />
+                        <UploadInlineStatus status={uploadStatus.cover} />
                       </label>
                       <label className={`rounded-lg border border-dashed p-3 text-sm text-slate-300 ${draft.formats.some((format) => format.enabled && format.type !== "PRINTED_BOOK") && !draft.downloads.some((file) => Boolean((file as LibraryDraftDownload).fileUrl)) ? "border-amber-400/50 bg-amber-500/5" : "border-white/10"}`}>
                         <span className="flex items-center gap-2 font-semibold">
@@ -1628,14 +1671,16 @@ export function LibraryAdminHub() {
                         <p className="mt-1 text-xs text-slate-500">
                           Required to publish digital formats. Buyer file after purchase (PDF, DOCX, ZIP, etc.).
                         </p>
-                        <input type="file" accept=".pdf,.docx,.xlsx,.pptx,.zip" className="mt-2 block w-full text-xs" onChange={(event) => void uploadAsset(event.target.files, "download")} />
+                        <input type="file" accept=".pdf,.docx,.xlsx,.pptx,.zip" className="mt-2 block w-full text-xs" onChange={(event) => void uploadAsset(event.currentTarget.files, "download", event.currentTarget)} />
+                        <UploadInlineStatus status={uploadStatus.download} />
                       </label>
                       <label className="rounded-lg border border-dashed border-emerald-500/30 bg-emerald-500/5 p-3 text-sm text-slate-300 sm:col-span-2">
                         <span className="flex items-center gap-2 font-semibold"><FileText className="size-4 text-emerald-300" /> Sample PDF (optional)</span>
                         <p className="mt-1 text-xs text-slate-500">
                           Upload a short preview PDF if available. This powers “Read sample” on the product page. Leave empty if you do not have a sample.
                         </p>
-                        <input type="file" accept=".pdf,application/pdf" className="mt-2 block w-full text-xs" onChange={(event) => void uploadAsset(event.target.files, "sample")} />
+                        <input type="file" accept=".pdf,application/pdf" className="mt-2 block w-full text-xs" onChange={(event) => void uploadAsset(event.currentTarget.files, "sample", event.currentTarget)} />
+                        <UploadInlineStatus status={uploadStatus.sample} />
                       </label>
                     </div>
                     {(draft.gallery.length > 0 || draft.downloads.length > 0 || draft.sampleFile) && (
@@ -1644,11 +1689,12 @@ export function LibraryAdminHub() {
                         {draft.sampleFile ? (
                           <AssetRow
                             label={`Sample preview: ${draft.sampleFile.label} (${draft.sampleFile.fileType})`}
+                            verification={fileVerification[fileVerificationKey(draft.sampleFile)]}
                             onVerify={() => draft.sampleFile && void verifyLibraryFile(draft.sampleFile)}
                             onRemove={() => setDraft((current) => ({ ...current, sampleFile: null }))}
                           />
                         ) : null}
-                        {draft.downloads.map((item, index) => <AssetRow key={`${item.id}-${index}`} label={`Full download: ${item.label} (${item.fileType})`} canMoveUp={index > 0} canMoveDown={index < draft.downloads.length - 1} onMoveUp={() => setDraft((current) => ({ ...current, downloads: moveItem(current.downloads, index, index - 1) }))} onMoveDown={() => setDraft((current) => ({ ...current, downloads: moveItem(current.downloads, index, index + 1) }))} onVerify={() => void verifyLibraryFile(item)} onRemove={() => setDraft((current) => ({ ...current, downloads: current.downloads.filter((_, itemIndex) => itemIndex !== index) }))} />)}
+                        {draft.downloads.map((item, index) => <AssetRow key={`${item.id}-${index}`} label={`Full download: ${item.label} (${item.fileType})`} canMoveUp={index > 0} canMoveDown={index < draft.downloads.length - 1} verification={fileVerification[fileVerificationKey(item)]} onMoveUp={() => setDraft((current) => ({ ...current, downloads: moveItem(current.downloads, index, index - 1) }))} onMoveDown={() => setDraft((current) => ({ ...current, downloads: moveItem(current.downloads, index, index + 1) }))} onVerify={() => void verifyLibraryFile(item)} onRemove={() => setDraft((current) => ({ ...current, downloads: current.downloads.filter((_, itemIndex) => itemIndex !== index) }))} />)}
                       </div>
                     )}
                   </EditorSection>
@@ -2694,6 +2740,7 @@ function AssetRow({
   label,
   canMoveUp,
   canMoveDown,
+  verification,
   onMoveUp,
   onMoveDown,
   onVerify,
@@ -2702,18 +2749,33 @@ function AssetRow({
   label: string;
   canMoveUp?: boolean;
   canMoveDown?: boolean;
+  verification?: { tone: "success" | "error" | "pending"; message: string };
   onMoveUp?: () => void;
   onMoveDown?: () => void;
   onVerify?: () => void;
   onRemove: () => void;
 }) {
+  const verifying = verification?.tone === "pending";
   return (
-    <div className="flex min-w-0 items-start justify-between gap-3 rounded-lg border border-white/[0.06] bg-slate-950 p-2">
-      <span className="min-w-0 break-words [overflow-wrap:anywhere]">{label}</span>
+    <div className="grid min-w-0 gap-2 rounded-lg border border-white/[0.06] bg-slate-950 p-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+      <div className="min-w-0">
+        <span className="block min-w-0 break-words [overflow-wrap:anywhere]">{label}</span>
+        {verification ? (
+          <p
+            role={verification.tone === "error" ? "alert" : "status"}
+            className={cn(
+              "mt-1 text-[11px] font-semibold leading-4",
+              verification.tone === "success" ? "text-emerald-300" : verification.tone === "pending" ? "text-slate-300" : "text-red-300",
+            )}
+          >
+            {verification.message}
+          </p>
+        ) : null}
+      </div>
       <div className="flex shrink-0 gap-1">
         <button type="button" disabled={!canMoveUp} onClick={onMoveUp} className="rounded-md border border-white/10 px-2 py-1 text-[11px] font-bold text-slate-300 hover:bg-white/5 disabled:opacity-35">Up</button>
         <button type="button" disabled={!canMoveDown} onClick={onMoveDown} className="rounded-md border border-white/10 px-2 py-1 text-[11px] font-bold text-slate-300 hover:bg-white/5 disabled:opacity-35">Down</button>
-        {onVerify ? <button type="button" onClick={onVerify} className="rounded-md border border-emerald-500/30 px-2 py-1 text-[11px] font-bold text-emerald-300 hover:bg-emerald-500/10">Verify</button> : null}
+        {onVerify ? <button type="button" disabled={verifying} onClick={onVerify} className="rounded-md border border-emerald-500/30 px-2 py-1 text-[11px] font-bold text-emerald-300 hover:bg-emerald-500/10 disabled:cursor-wait disabled:opacity-60">{verifying ? "Checking" : "Verify"}</button> : null}
         <button type="button" onClick={onRemove} className="rounded-md border border-red-500/30 px-2 py-1 text-[11px] font-bold text-red-300 hover:bg-red-500/10">Remove</button>
       </div>
     </div>
@@ -2725,6 +2787,29 @@ function moveItem<T>(items: T[], from: number, to: number) {
   const [item] = next.splice(from, 1);
   next.splice(to, 0, item);
   return next;
+}
+
+function fileVerificationKey(file: LibraryDraftDownload) {
+  return file.id || file.fileUrl || file.fileName || file.label;
+}
+
+function UploadInlineStatus({ status }: { status?: InlineStatus }) {
+  if (!status) return null;
+  return (
+    <p
+      role={status.tone === "error" ? "alert" : "status"}
+      className={cn(
+        "mt-2 rounded-md border px-2 py-1 text-[11px] font-semibold leading-4",
+        status.tone === "success"
+          ? "border-emerald-400/25 bg-emerald-400/10 text-emerald-200"
+          : status.tone === "pending"
+            ? "border-white/10 bg-white/5 text-slate-200"
+            : "border-red-400/25 bg-red-400/10 text-red-200",
+      )}
+    >
+      {status.message}
+    </p>
+  );
 }
 
 function ProductPreview({ product }: { product: LibraryProduct }) {
