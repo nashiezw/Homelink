@@ -1779,6 +1779,28 @@ export async function runAdminBlogAction(body: Record<string, any>, actor: { id:
     await audit(input.id ? "blog.post.update" : "blog.post.create", post.id, actor.id, { title: post.title, status: post.status });
     return post;
   }
+  if (action === "bulk_posts") {
+    const ids = arrayOfStrings(body.postIds).filter(Boolean).slice(0, 100);
+    if (!ids.length) throw new Error("Select at least one article.");
+    const operation = String(body.operation ?? "status");
+    if (operation === "delete") {
+      const result = await prisma.blogPost.deleteMany({ where: { id: { in: ids } } });
+      await audit("blog.post.bulk_delete", "blog", actor.id, { ids, count: result.count });
+      return result;
+    }
+    const status = enumValue(BlogPostStatus, body.status, BlogPostStatus.DRAFT);
+    const result = await prisma.blogPost.updateMany({
+      where: { id: { in: ids } },
+      data: {
+        status,
+        publishedAt: status === "PUBLISHED" ? new Date() : undefined,
+        archivedAt: status === "ARCHIVED" ? new Date() : null,
+        lastEditedById: actor.id,
+      },
+    });
+    await audit("blog.post.bulk_status", "blog", actor.id, { ids, count: result.count, status });
+    return result;
+  }
   if (action === "delete_post") {
     const post = await prisma.blogPost.delete({ where: { id: String(body.postId) } });
     await audit("blog.post.delete", post.id, actor.id, { title: post.title });
@@ -1840,6 +1862,39 @@ export async function runAdminBlogAction(body: Record<string, any>, actor: { id:
     await audit("blog.comment.moderate", comment.id, actor.id, { status, postId: comment.postId });
     return comment;
   }
+  if (action === "update_comment") {
+    const commentId = required(body.commentId, "Comment");
+    const status = ["PENDING", "APPROVED", "REJECTED", "SPAM"].includes(String(body.status)) ? String(body.status) : undefined;
+    const comment = await prisma.blogComment.update({
+      where: { id: commentId },
+      data: {
+        authorName: clean(body.authorName).slice(0, 80) || undefined,
+        authorEmail: stringOrNull(body.authorEmail)?.slice(0, 160) ?? null,
+        body: clean(body.body).slice(0, 1800) || undefined,
+        status,
+      },
+      include: { post: { select: { title: true, slug: true } }, parent: { select: { authorName: true, body: true } } },
+    });
+    await audit("blog.comment.update", comment.id, actor.id, { status: comment.status, postId: comment.postId });
+    return comment;
+  }
+  if (action === "reply_comment") {
+    const parent = await prisma.blogComment.findUnique({ where: { id: required(body.commentId, "Comment") }, include: { post: { select: { title: true, slug: true } } } });
+    if (!parent) throw new Error("Comment not found.");
+    const reply = await prisma.blogComment.create({
+      data: {
+        postId: parent.postId,
+        parentId: parent.id,
+        authorName: actor.name || "HouseLink Editorial Team",
+        authorEmail: null,
+        body: required(body.body, "Reply").slice(0, 1800),
+        status: "APPROVED",
+      },
+      include: { post: { select: { title: true, slug: true } }, parent: { select: { authorName: true, body: true } } },
+    });
+    await audit("blog.comment.reply", reply.id, actor.id, { parentId: parent.id, postId: parent.postId });
+    return reply;
+  }
   if (action === "delete_comment") {
     const comment = await prisma.blogComment.delete({ where: { id: required(body.commentId, "Comment") } });
     await audit("blog.comment.delete", comment.id, actor.id, { postId: comment.postId });
@@ -1858,6 +1913,46 @@ export async function runAdminBlogAction(body: Record<string, any>, actor: { id:
     });
     await audit("blog.reader_question.review", question.id, actor.id, { status, articleSlug: question.articleSlug });
     return question;
+  }
+  if (action === "delete_reader_question") {
+    const question = await prisma.blogReaderQuestion.delete({ where: { id: required(body.questionId, "Reader question") } });
+    await audit("blog.reader_question.delete", question.id, actor.id, { status: question.status, postId: question.postId });
+    return question;
+  }
+  if (action === "create_post_from_question") {
+    const question = await prisma.blogReaderQuestion.findUnique({ where: { id: required(body.questionId, "Reader question") }, include: { post: { select: { categoryId: true, authorId: true } } } });
+    if (!question) throw new Error("Reader question not found.");
+    const title = clean(body.title) || question.question.slice(0, 90);
+    const categoryId = stringOrNull(body.categoryId) ?? question.post?.categoryId ?? null;
+    const authorId = stringOrNull(body.authorId) ?? question.post?.authorId ?? null;
+    const post = await prisma.blogPost.create({
+      data: {
+        title,
+        slug: await uniqueSlug(title),
+        excerpt: `HouseLink answers a reader question: ${question.question}`.slice(0, 320),
+        status: BlogPostStatus.DRAFT,
+        layout: BlogArticleLayout.PROPERTY_GUIDE,
+        categoryId,
+        authorId,
+        contentBlocks: [
+          { type: "heading", level: 2, text: "Reader question" },
+          { type: "quote", text: question.question, cite: question.name },
+          { type: "heading", level: 2, text: "HouseLink answer" },
+          { type: "paragraph", text: "Add a practical, plain-English answer for this reader question." },
+          { type: "cta", variant: "search" },
+        ] as Prisma.InputJsonValue,
+        contentText: `${question.question} Add a practical, plain-English answer for this reader question.`,
+        focusKeyword: question.question.split(/\s+/).slice(0, 5).join(" "),
+        secondaryKeywords: ["Ask HouseLink", "Zimbabwe property questions"],
+        createdById: actor.id,
+        lastEditedById: actor.id,
+        searchVector: `${title} ${question.question}`,
+      },
+      include: blogIncludes(),
+    });
+    await prisma.blogReaderQuestion.update({ where: { id: question.id }, data: { status: "PLANNED", articleSlug: post.slug, adminNote: `Draft created: /blog/${post.slug}` } });
+    await audit("blog.reader_question.create_post", post.id, actor.id, { questionId: question.id });
+    return post;
   }
   if (action === "save_category") {
     const category = body.category ?? {};
@@ -1881,6 +1976,20 @@ export async function runAdminBlogAction(body: Record<string, any>, actor: { id:
     await audit("blog.category.delete", saved.id, actor.id, { name: saved.name });
     return saved;
   }
+  if (action === "merge_category") {
+    const sourceId = required(body.sourceId, "Source category");
+    const targetId = required(body.targetId, "Target category");
+    if (sourceId === targetId) throw new Error("Choose a different target category.");
+    const [source, target] = await Promise.all([
+      prisma.blogCategory.findUnique({ where: { id: sourceId } }),
+      prisma.blogCategory.findUnique({ where: { id: targetId } }),
+    ]);
+    if (!source || !target) throw new Error("Category not found.");
+    const moved = await prisma.blogPost.updateMany({ where: { categoryId: sourceId }, data: { categoryId: targetId, lastEditedById: actor.id } });
+    await prisma.blogCategory.update({ where: { id: sourceId }, data: { active: false, slug: await uniqueTaxonomySlug("category", `${source.slug}-merged`) } });
+    await audit("blog.category.merge", targetId, actor.id, { sourceId, source: source.name, target: target.name, moved: moved.count });
+    return { moved: moved.count, source, target };
+  }
   if (action === "save_author") {
     const author = body.author ?? {};
     const id = typeof author.id === "string" ? author.id : undefined;
@@ -1897,6 +2006,11 @@ export async function runAdminBlogAction(body: Record<string, any>, actor: { id:
     await audit(id ? "blog.author.update" : "blog.author.create", saved.id, actor.id, { name: saved.name });
     return saved;
   }
+  if (action === "delete_author") {
+    const saved = await prisma.blogAuthor.update({ where: { id: String(body.authorId) }, data: { active: false } });
+    await audit("blog.author.delete", saved.id, actor.id, { name: saved.name });
+    return saved;
+  }
   if (action === "save_tag") {
     const tag = body.tag ?? {};
     const id = typeof tag.id === "string" ? tag.id : undefined;
@@ -1904,6 +2018,29 @@ export async function runAdminBlogAction(body: Record<string, any>, actor: { id:
     const saved = id ? await prisma.blogTag.update({ where: { id }, data }) : await prisma.blogTag.create({ data });
     await audit(id ? "blog.tag.update" : "blog.tag.create", saved.id, actor.id, { name: saved.name });
     return saved;
+  }
+  if (action === "delete_tag") {
+    const saved = await prisma.blogTag.update({ where: { id: String(body.tagId) }, data: { active: false } });
+    await audit("blog.tag.delete", saved.id, actor.id, { name: saved.name });
+    return saved;
+  }
+  if (action === "merge_tag") {
+    const sourceId = required(body.sourceId, "Source tag");
+    const targetId = required(body.targetId, "Target tag");
+    if (sourceId === targetId) throw new Error("Choose a different target tag.");
+    const [source, target, posts] = await Promise.all([
+      prisma.blogTag.findUnique({ where: { id: sourceId } }),
+      prisma.blogTag.findUnique({ where: { id: targetId } }),
+      prisma.blogPost.findMany({ where: { tags: { some: { id: sourceId } } }, select: { id: true, tags: { select: { id: true } } } }),
+    ]);
+    if (!source || !target) throw new Error("Tag not found.");
+    for (const post of posts) {
+      const tagIds = Array.from(new Set(post.tags.map((tag) => tag.id).filter((id) => id !== sourceId).concat(targetId)));
+      await prisma.blogPost.update({ where: { id: post.id }, data: { tags: { set: tagIds.map((id) => ({ id })) }, lastEditedById: actor.id } });
+    }
+    await prisma.blogTag.update({ where: { id: sourceId }, data: { active: false, slug: await uniqueTaxonomySlug("tag", `${source.slug}-merged`) } });
+    await audit("blog.tag.merge", targetId, actor.id, { sourceId, source: source.name, target: target.name, moved: posts.length });
+    return { moved: posts.length, source, target };
   }
   return null;
 }
@@ -1942,8 +2079,8 @@ function normalisePostInput(input: Record<string, any>) {
     readTimeMinutes: Math.max(numberOr(input.readTimeMinutes, estimateReadTime(contentText)), 1),
     scheduledAt: input.scheduledAt ? new Date(input.scheduledAt) : null,
     publishedAt: input.publishedAt ? new Date(input.publishedAt) : status === "PUBLISHED" ? new Date() : null,
-    tags: arrayOfStrings(input.tags),
-    searchVector: `${title} ${input.excerpt ?? ""} ${contentText} ${arrayOfStrings(input.tags).join(" ")}`.slice(0, 12000),
+    tags: arrayOfTagNames(input.tags),
+    searchVector: `${title} ${input.excerpt ?? ""} ${contentText} ${arrayOfTagNames(input.tags).join(" ")}`.slice(0, 12000),
   };
 }
 
@@ -2036,6 +2173,20 @@ async function uniqueSlug(base: string) {
   return slug;
 }
 
+async function uniqueTaxonomySlug(kind: "category" | "tag", base: string) {
+  const prisma = getMainPrisma();
+  let slug = slugify(base);
+  let index = 2;
+  const exists = (value: string) => kind === "category"
+    ? prisma.blogCategory.findUnique({ where: { slug: value } })
+    : prisma.blogTag.findUnique({ where: { slug: value } });
+  while (await exists(slug)) {
+    slug = `${slugify(base)}-${index}`;
+    index += 1;
+  }
+  return slug;
+}
+
 async function audit(action: string, targetId: string, actorId?: string, metadata?: Prisma.InputJsonObject) {
   await getMainPrisma().blogAuditLog.create({ data: { action, targetId, actorId, metadata } });
 }
@@ -2080,6 +2231,15 @@ function arrayOfStrings(value: unknown): string[] {
   if (Array.isArray(value)) return value.map(clean).filter(Boolean);
   if (typeof value === "string") return value.split(",").map(clean).filter(Boolean);
   return [];
+}
+
+function arrayOfTagNames(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => typeof item === "object" && item !== null && "name" in item ? clean((item as { name?: unknown }).name) : clean(item))
+      .filter(Boolean);
+  }
+  return arrayOfStrings(value);
 }
 
 function enumValue<T extends Record<string, string>>(source: T, value: unknown, fallback: T[keyof T]) {

@@ -1,6 +1,6 @@
 "use client";
 
-import { Archive, BarChart3, CheckCircle2, Copy, Edit, Eye, FileText, ImagePlus, MessageSquare, Plus, ShieldCheck, ThumbsDown, ThumbsUp, Trash2, Upload } from "lucide-react";
+import { Archive, BarChart3, CheckCircle2, Copy, Edit, Eye, FileText, Filter, ImagePlus, Layers, MessageSquare, Plus, ShieldCheck, ThumbsDown, ThumbsUp, Trash2, Upload } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AdminDataTable, AdminDrawer, AdminSearchInput, AdminStatPill, AdminStatusBadge, AdminTabStrip } from "@/components/admin/ui/admin-ui";
@@ -107,9 +107,15 @@ export function BlogManagementHub() {
   const [tab, setTab] = useState<"articles" | "editor" | "comments" | "questions" | "gaps" | "collections" | "categories" | "authors" | "tags" | "layouts" | "analytics" | "ai">("articles");
   const [query, setQuery] = useState("");
   const [selectedPost, setSelectedPost] = useState<BlogPost | null>(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [statusFilter, setStatusFilter] = useState<string>("ALL");
+  const [categoryFilter, setCategoryFilter] = useState<string>("ALL");
+  const [authorFilter, setAuthorFilter] = useState<string>("ALL");
   const [categoryEdit, setCategoryEdit] = useState<BlogCategory | null>(null);
   const [authorEdit, setAuthorEdit] = useState<BlogAuthor | null>(null);
   const [tagEdit, setTagEdit] = useState<BlogTag | null>(null);
+  const [commentEdit, setCommentEdit] = useState<BlogComment | null>(null);
+  const [questionEdit, setQuestionEdit] = useState<BlogReaderQuestion | null>(null);
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
@@ -135,13 +141,23 @@ export function BlogManagementHub() {
     setCategoryEdit(null);
     setAuthorEdit(null);
     setTagEdit(null);
+    setCommentEdit(null);
+    setQuestionEdit(null);
+    setSelectedIds([]);
     await load();
     return true;
   }
 
   if (!data) return <p className="text-slate-400">Loading Blog Management...</p>;
 
-  const posts = data.posts.filter((post) => `${post.title} ${post.excerpt} ${post.slug} ${post.category?.name ?? ""} ${post.tags.map((tag) => tag.name).join(" ")}`.toLowerCase().includes(query.toLowerCase()));
+  const posts = data.posts
+    .filter((post) => `${post.title} ${post.excerpt} ${post.slug} ${post.category?.name ?? ""} ${post.author?.name ?? ""} ${post.tags.map((tag) => tag.name).join(" ")}`.toLowerCase().includes(query.toLowerCase()))
+    .filter((post) => statusFilter === "ALL" || post.status === statusFilter)
+    .filter((post) => categoryFilter === "ALL" || post.categoryId === categoryFilter)
+    .filter((post) => authorFilter === "ALL" || post.authorId === authorFilter);
+  const tagUsage = countUsage(data.posts.flatMap((post) => post.tags.map((tag) => tag.id)));
+  const categoryUsage = countUsage(data.posts.map((post) => post.categoryId).filter(Boolean) as string[]);
+  const authorUsage = countUsage(data.posts.map((post) => post.authorId).filter(Boolean) as string[]);
 
   return (
     <div className="space-y-5">
@@ -173,13 +189,46 @@ export function BlogManagementHub() {
 
       {tab === "articles" && (
         <section className="rounded-xl border border-white/10 bg-slate-900/60">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 p-4">
-            <AdminSearchInput value={query} onChange={setQuery} placeholder="Search articles, categories, tags..." className="sm:max-w-md" />
-            <Button onClick={() => { setSelectedPost(createBlankPost(data)); setTab("editor"); }}><Plus className="size-4" /> New article</Button>
+          <div className="space-y-3 border-b border-white/10 p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <AdminSearchInput value={query} onChange={setQuery} placeholder="Search articles, authors, categories, tags..." className="sm:max-w-md" />
+              <Button onClick={() => { setSelectedPost(createBlankPost(data)); setTab("editor"); }}><Plus className="size-4" /> New article</Button>
+            </div>
+            <div className="grid gap-2 lg:grid-cols-[repeat(3,minmax(0,1fr))_auto] lg:items-end">
+              <Select label="Status filter" value={statusFilter} options={["ALL", ...statuses]} onChange={setStatusFilter} />
+              <Select label="Category filter" value={categoryFilter} options={["ALL", ...data.categories.map((category) => category.id)]} labels={{ ALL: "All categories", ...Object.fromEntries(data.categories.map((category) => [category.id, category.name])) }} onChange={setCategoryFilter} />
+              <Select label="Author filter" value={authorFilter} options={["ALL", ...data.authors.map((author) => author.id)]} labels={{ ALL: "All authors", ...Object.fromEntries(data.authors.map((author) => [author.id, author.name])) }} onChange={setAuthorFilter} />
+              <Button variant="secondary" onClick={() => { setQuery(""); setStatusFilter("ALL"); setCategoryFilter("ALL"); setAuthorFilter("ALL"); setSelectedIds([]); }}>
+                <Filter className="size-4" /> Reset
+              </Button>
+            </div>
+            {selectedIds.length ? (
+              <div className="flex flex-wrap items-center gap-2 rounded-lg border border-emerald-500/20 bg-emerald-500/10 p-3">
+                <span className="text-sm font-semibold text-emerald-100">{selectedIds.length} selected</span>
+                <Button variant="secondary" onClick={() => void action({ action: "bulk_posts", postIds: selectedIds, status: "PUBLISHED" }, "Selected articles published.")}>Publish</Button>
+                <Button variant="secondary" onClick={() => void action({ action: "bulk_posts", postIds: selectedIds, status: "DRAFT" }, "Selected articles moved to draft.")}>Draft</Button>
+                <Button variant="secondary" onClick={() => void action({ action: "bulk_posts", postIds: selectedIds, status: "ARCHIVED" }, "Selected articles archived.")}>Archive</Button>
+                <Button variant="secondary" onClick={() => {
+                  if (window.confirm(`Delete ${selectedIds.length} selected article(s)? This cannot be undone.`)) void action({ action: "bulk_posts", operation: "delete", postIds: selectedIds }, "Selected articles deleted.");
+                }}><Trash2 className="size-4" /> Delete</Button>
+              </div>
+            ) : null}
           </div>
           <AdminDataTable
             rows={posts}
             columns={[
+              {
+                key: "select",
+                header: "Select",
+                render: (post) => (
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.includes(post.id)}
+                    onChange={(event) => setSelectedIds((current) => event.target.checked ? Array.from(new Set([...current, post.id])) : current.filter((id) => id !== post.id))}
+                    aria-label={`Select ${post.title}`}
+                  />
+                ),
+              },
               { key: "article", header: "Article", render: (post) => <ArticleCell post={post} /> },
               { key: "status", header: "Status", render: (post) => <AdminStatusBadge status={post.status} variant={post.status === "PUBLISHED" ? "success" : post.status === "SCHEDULED" ? "info" : post.status === "ARCHIVED" ? "muted" : "warning"} /> },
               { key: "layout", header: "Layout", render: (post) => layoutLabel(data, post.layout) },
@@ -219,15 +268,16 @@ export function BlogManagementHub() {
           feedback={data.feedback}
           stats={data.stats}
           onAction={action}
+          onEdit={setCommentEdit}
         />
       )}
 
       {tab === "questions" && (
-        <ReaderQuestionsPanel questions={data.readerQuestions} onAction={action} />
+        <ReaderQuestionsPanel questions={data.readerQuestions} posts={data.posts} categories={data.categories} authors={data.authors} onAction={action} onEdit={setQuestionEdit} />
       )}
 
       {tab === "gaps" && (
-        <ContentGapsPanel gaps={data.contentGaps} />
+        <ContentGapsPanel gaps={data.contentGaps} posts={data.posts} onEdit={(post) => { setSelectedPost(post); setTab("editor"); }} />
       )}
 
       {tab === "collections" && (
@@ -239,18 +289,21 @@ export function BlogManagementHub() {
           title="Blog categories"
           description="Create, edit, reorder, and retire SEO-friendly category pages."
           rows={data.categories}
+          usage={categoryUsage}
+          mergeTargets={data.categories}
           onNew={() => setCategoryEdit({ id: "", name: "", slug: "", description: "", imageUrl: "", seoTitle: "", metaDescription: "", sortOrder: data.categories.length, active: true })}
           onEdit={setCategoryEdit}
           onDelete={(row) => action({ action: "delete_category", categoryId: row.id }, "Category archived.")}
+          onMerge={(source, targetId) => action({ action: "merge_category", sourceId: source.id, targetId }, "Category merged.")}
         />
       )}
 
       {tab === "authors" && (
-        <TaxonomyPanel title="Authors" description="Manage article bylines and author information." rows={data.authors} onNew={() => setAuthorEdit({ id: "", name: "", slug: "", role: "", bio: "", avatarUrl: "", email: "", active: true })} onEdit={setAuthorEdit} />
+        <TaxonomyPanel title="Authors" description="Manage article bylines and author information." rows={data.authors} usage={authorUsage} onNew={() => setAuthorEdit({ id: "", name: "", slug: "", role: "", bio: "", avatarUrl: "", email: "", active: true })} onEdit={setAuthorEdit} onDelete={(row) => action({ action: "delete_author", authorId: row.id }, "Author archived.")} />
       )}
 
       {tab === "tags" && (
-        <TaxonomyPanel title="Tags" description="Manage article tags for search and internal discovery." rows={data.tags} onNew={() => setTagEdit({ id: "", name: "", slug: "", description: "", active: true })} onEdit={setTagEdit} />
+        <TaxonomyPanel title="Tags" description="Manage article tags for search and internal discovery." rows={data.tags} usage={tagUsage} mergeTargets={data.tags} onNew={() => setTagEdit({ id: "", name: "", slug: "", description: "", active: true })} onEdit={setTagEdit} onDelete={(row) => action({ action: "delete_tag", tagId: row.id }, "Tag archived.")} onMerge={(source, targetId) => action({ action: "merge_tag", sourceId: source.id, targetId }, "Tag merged.")} />
       )}
 
       {tab === "layouts" && (
@@ -292,25 +345,42 @@ export function BlogManagementHub() {
       <CategoryDrawer busy={busy} category={categoryEdit} onClose={() => setCategoryEdit(null)} onSave={(category) => action({ action: "save_category", category }, "Category saved.")} />
       <AuthorDrawer busy={busy} author={authorEdit} onClose={() => setAuthorEdit(null)} onSave={(author) => action({ action: "save_author", author }, "Author saved.")} />
       <TagDrawer busy={busy} tag={tagEdit} onClose={() => setTagEdit(null)} onSave={(tag) => action({ action: "save_tag", tag }, "Tag saved.")} />
+      <CommentDrawer busy={busy} comment={commentEdit} onClose={() => setCommentEdit(null)} onSave={(comment) => action({ action: "update_comment", commentId: comment.id, authorName: comment.authorName, authorEmail: comment.authorEmail, body: comment.body, status: comment.status }, "Comment updated.")} onReply={(comment, body) => action({ action: "reply_comment", commentId: comment.id, body }, "Reply published.")} />
+      <QuestionDrawer busy={busy} question={questionEdit} posts={data.posts} onClose={() => setQuestionEdit(null)} onSave={(question) => action({ action: "review_reader_question", questionId: question.id, status: question.status, adminNote: question.adminNote, articleSlug: question.articleSlug }, "Question updated.")} />
     </div>
   );
 }
 
 function ArticleEditor({ post, data, busy, onSave }: { post: BlogPost; data: BlogData; busy: boolean; onSave: (post: BlogPost) => Promise<unknown> }) {
   const [form, setForm] = useState(post);
+  const [preview, setPreview] = useState(true);
+  useEffect(() => setForm(post), [post]);
+  useEffect(() => {
+    if (!form.id && (form.title || form.excerpt || (form.contentBlocks ?? []).some((block) => block.text))) {
+      window.localStorage.setItem("houselink_blog_autosave", JSON.stringify({ ...form, updatedAt: new Date().toISOString() }));
+    }
+  }, [form]);
+  const quality = articleQuality(form);
   return (
     <section className="rounded-xl border border-white/10 bg-slate-900/60 p-4 sm:p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold text-white">{form.id ? "Edit article" : "Create article"}</h2>
-          <p className="mt-1 text-sm text-slate-400">Content is managed here; article design is controlled by the selected global layout.</p>
+          <p className="mt-1 text-sm text-slate-400">Content is managed here; article design is controlled by the selected global layout. Drafts autosave locally while you work.</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button disabled={busy || !form.title.trim() || !form.excerpt.trim()} onClick={() => onSave(form)}><CheckCircle2 className="size-4" /> Save</Button>
+          <Button variant="secondary" onClick={() => setPreview((current) => !current)}><Eye className="size-4" /> {preview ? "Hide preview" : "Show preview"}</Button>
+          <Button disabled={busy || quality.blocking.length > 0} onClick={() => onSave(form)}><CheckCircle2 className="size-4" /> Save</Button>
         </div>
       </div>
+      {quality.blocking.length ? (
+        <div className="mt-4 rounded-lg border border-amber-500/20 bg-amber-500/10 p-3 text-sm text-amber-100">
+          <p className="font-semibold">Publish checklist needs attention</p>
+          <div className="mt-2 flex flex-wrap gap-1">{quality.blocking.map((item) => <span key={item} className="rounded-full bg-amber-400/10 px-2 py-1 text-xs font-semibold text-amber-100">{item}</span>)}</div>
+        </div>
+      ) : null}
 
-      <div className="mt-5 grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
+      <div className={preview ? "mt-5 grid gap-4 xl:grid-cols-[minmax(0,1fr)_24rem_24rem]" : "mt-5 grid gap-4 lg:grid-cols-[1.1fr_0.9fr]"}>
         <div className="space-y-4">
           <Field label="Title" value={form.title} onChange={(title) => setForm({ ...form, title, slug: form.slug || slugify(title) })} />
           <Field label="URL slug" value={form.slug} onChange={(slug) => setForm({ ...form, slug: slugify(slug) })} />
@@ -341,6 +411,7 @@ function ArticleEditor({ post, data, busy, onSave }: { post: BlogPost; data: Blo
           </div>
           <EditorQualityPanel post={form} suggestions={data.suggestions} onInsert={(block) => setForm({ ...form, contentBlocks: [...(form.contentBlocks ?? []), block] })} />
         </aside>
+        {preview ? <ArticlePreview post={form} data={data} quality={quality} /> : null}
       </div>
     </section>
   );
@@ -430,6 +501,44 @@ function CoverImagePanel({ form, onChange }: { form: BlogPost; onChange: (post: 
   );
 }
 
+function ArticlePreview({ post, data, quality }: { post: BlogPost; data: BlogData; quality: ReturnType<typeof articleQuality> }) {
+  const category = data.categories.find((item) => item.id === post.categoryId);
+  const author = data.authors.find((item) => item.id === post.authorId);
+  const blocks = post.contentBlocks ?? [];
+  return (
+    <aside className="space-y-4">
+      <section className="rounded-xl border border-white/10 bg-slate-950/60 p-4">
+        <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Live article preview</p>
+        <div className="mt-3 overflow-hidden rounded-lg border border-white/10 bg-slate-900">
+          {post.featuredImageUrl ? <div className="aspect-[16/9] bg-cover bg-center" style={{ backgroundImage: `url("${post.featuredImageUrl.replace(/"/g, "%22")}")` }} /> : <div className="grid aspect-[16/9] place-items-center text-sm text-slate-500">No cover image</div>}
+          <div className="p-4">
+            <p className="text-xs font-semibold uppercase text-emerald-300">{category?.name ?? "Uncategorised"}</p>
+            <h3 className="mt-2 text-xl font-bold text-white">{post.title || "Untitled article"}</h3>
+            <p className="mt-2 text-sm leading-6 text-slate-300">{post.excerpt || "Article excerpt will appear here."}</p>
+            <p className="mt-3 text-xs text-slate-500">{author?.name ?? "No author"} - {post.readTimeMinutes || estimateReadingMinutes(blocksToPreviewText(blocks))} min read - {post.status}</p>
+          </div>
+        </div>
+      </section>
+      <section className="rounded-xl border border-white/10 bg-slate-950/60 p-4">
+        <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Quality score</p>
+        <div className="mt-3 flex items-center gap-3">
+          <span className={quality.score >= 85 ? "text-3xl font-bold text-emerald-300" : quality.score >= 65 ? "text-3xl font-bold text-amber-300" : "text-3xl font-bold text-red-300"}>{quality.score}</span>
+          <span className="text-sm text-slate-400">/ 100 editorial readiness</span>
+        </div>
+        <div className="mt-3 space-y-2">
+          {quality.items.map((item) => <p key={item.label} className={item.ok ? "text-xs text-emerald-300" : "text-xs text-amber-300"}>{item.ok ? "OK" : "Fix"} - {item.label}</p>)}
+        </div>
+      </section>
+      <section className="rounded-xl border border-white/10 bg-slate-950/60 p-4">
+        <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Block outline</p>
+        <div className="mt-3 space-y-2">
+          {blocks.map((block, index) => <p key={index} className="rounded-lg bg-white/5 px-3 py-2 text-xs text-slate-300">{index + 1}. {block.type}{block.text ? ` - ${String(block.text).slice(0, 70)}` : ""}</p>)}
+        </div>
+      </section>
+    </aside>
+  );
+}
+
 function BlockEditor({ blocks, suggestions, onChange }: { blocks: BlogBlock[]; suggestions: BlogData["suggestions"]; onChange: (blocks: BlogBlock[]) => void }) {
   function update(index: number, next: BlogBlock) {
     onChange(blocks.map((block, i) => i === index ? next : block));
@@ -451,7 +560,12 @@ function BlockEditor({ blocks, suggestions, onChange }: { blocks: BlogBlock[]; s
           <div key={index} className="rounded-lg border border-white/10 bg-slate-900/70 p-3">
             <div className="mb-2 flex items-center justify-between gap-2">
               <span className="rounded-full bg-white/5 px-2 py-1 text-xs font-semibold text-slate-300">{block.type}</span>
-              <Button variant="secondary" onClick={() => onChange(blocks.filter((_, i) => i !== index))}><Trash2 className="size-4" /></Button>
+              <div className="flex flex-wrap gap-1">
+                <Button variant="secondary" onClick={() => onChange(moveItem(blocks, index, index - 1))} disabled={index === 0}>Up</Button>
+                <Button variant="secondary" onClick={() => onChange(moveItem(blocks, index, index + 1))} disabled={index === blocks.length - 1}>Down</Button>
+                <Button variant="secondary" onClick={() => onChange([...blocks.slice(0, index + 1), { ...block }, ...blocks.slice(index + 1)])}><Copy className="size-4" /></Button>
+                <Button variant="secondary" onClick={() => onChange(blocks.filter((_, i) => i !== index))}><Trash2 className="size-4" /></Button>
+              </div>
             </div>
             <BlockFields block={block} onChange={(next) => update(index, next)} />
           </div>
@@ -480,7 +594,27 @@ function BlockFields({ block, onChange }: { block: BlogBlock; onChange: (block: 
   return <Area label="JSON block" value={JSON.stringify(block, null, 2)} onChange={(text) => { try { onChange(JSON.parse(text)); } catch {} }} />;
 }
 
-function TaxonomyPanel({ title, description, rows, onNew, onEdit, onDelete }: { title: string; description: string; rows: any[]; onNew: () => void; onEdit: (row: any) => void; onDelete?: (row: any) => Promise<unknown> }) {
+function TaxonomyPanel({
+  title,
+  description,
+  rows,
+  usage = {},
+  mergeTargets = [],
+  onNew,
+  onEdit,
+  onDelete,
+  onMerge,
+}: {
+  title: string;
+  description: string;
+  rows: any[];
+  usage?: Record<string, number>;
+  mergeTargets?: any[];
+  onNew: () => void;
+  onEdit: (row: any) => void;
+  onDelete?: (row: any) => Promise<unknown>;
+  onMerge?: (row: any, targetId: string) => Promise<unknown>;
+}) {
   return (
     <section className="rounded-xl border border-white/10 bg-slate-900/60">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 p-4">
@@ -490,10 +624,67 @@ function TaxonomyPanel({ title, description, rows, onNew, onEdit, onDelete }: { 
       <AdminDataTable rows={rows} columns={[
         { key: "name", header: "Name", render: (row) => <span className="font-semibold text-white">{row.name}</span> },
         { key: "slug", header: "Slug", render: (row) => <span className="text-sm text-slate-400">/{row.slug}</span> },
+        { key: "usage", header: "Articles", render: (row) => <span className="text-sm font-semibold text-slate-200">{usage[row.id] ?? 0}</span> },
         { key: "status", header: "Status", render: (row) => <AdminStatusBadge status={row.active ? "Active" : "Hidden"} variant={row.active ? "success" : "muted"} /> },
-        { key: "actions", header: "Actions", render: (row) => <div className="flex flex-wrap gap-2"><Button variant="secondary" onClick={() => onEdit(row)}><Edit className="size-4" /> Edit</Button>{onDelete ? <Button variant="secondary" onClick={() => onDelete(row)}><Archive className="size-4" /> Archive</Button> : null}</div> },
+        {
+          key: "actions",
+          header: "Actions",
+          render: (row) => (
+            <div className="flex flex-wrap gap-2">
+              <Button variant="secondary" onClick={() => onEdit(row)}><Edit className="size-4" /> Edit</Button>
+              {onDelete ? <Button variant="secondary" disabled={!row.active} onClick={() => onDelete(row)}><Archive className="size-4" /> {row.active ? "Archive" : "Archived"}</Button> : null}
+              {onMerge ? (
+                <Button variant="secondary" onClick={() => {
+                  const options = mergeTargets.filter((item) => item.id !== row.id && item.active);
+                  const targetSlug = window.prompt(`Merge "${row.name}" into which slug?\n\n${options.map((item) => item.slug).join(", ")}`);
+                  const target = options.find((item) => item.slug === targetSlug || item.id === targetSlug);
+                  if (target) void onMerge(row, target.id);
+                }}><Layers className="size-4" /> Merge</Button>
+              ) : null}
+            </div>
+          ),
+        },
       ]} />
     </section>
+  );
+}
+
+function CommentDrawer({ comment, busy, onClose, onSave, onReply }: { comment: BlogComment | null; busy: boolean; onClose: () => void; onSave: (comment: BlogComment) => Promise<unknown>; onReply: (comment: BlogComment, body: string) => Promise<unknown> }) {
+  const [form, setForm] = useState(comment);
+  const [reply, setReply] = useState("");
+  useEffect(() => { setForm(comment); setReply(""); }, [comment]);
+  if (!form) return null;
+  return (
+    <AdminDrawer open title="Edit Comment" onClose={onClose} width="lg">
+      <Field label="Author name" value={form.authorName} onChange={(authorName) => setForm({ ...form, authorName })} />
+      <Field label="Author email" value={form.authorEmail ?? ""} onChange={(authorEmail) => setForm({ ...form, authorEmail })} />
+      <Select label="Status" value={form.status} options={["PENDING", "APPROVED", "REJECTED", "SPAM"]} onChange={(status) => setForm({ ...form, status: status as BlogComment["status"] })} />
+      <Area label="Comment body" value={form.body} onChange={(body) => setForm({ ...form, body })} />
+      <div className="mt-5 rounded-xl border border-white/10 bg-slate-950/60 p-4">
+        <p className="text-sm font-semibold text-white">Reply as HouseLink</p>
+        <Area label="Reply" value={reply} onChange={setReply} />
+        <Button className="mt-3" variant="secondary" disabled={busy || !reply.trim()} onClick={() => onReply(form, reply)}>Publish reply</Button>
+      </div>
+      <Button className="mt-5" disabled={busy || !form.authorName.trim() || !form.body.trim()} onClick={() => onSave(form)}>Save comment</Button>
+    </AdminDrawer>
+  );
+}
+
+function QuestionDrawer({ question, posts, busy, onClose, onSave }: { question: BlogReaderQuestion | null; posts: BlogPost[]; busy: boolean; onClose: () => void; onSave: (question: BlogReaderQuestion) => Promise<unknown> }) {
+  const [form, setForm] = useState(question);
+  useEffect(() => setForm(question), [question]);
+  if (!form) return null;
+  return (
+    <AdminDrawer open title="Review Reader Question" onClose={onClose} width="lg">
+      <div className="rounded-xl border border-white/10 bg-slate-950/60 p-4">
+        <p className="text-sm font-semibold text-white">{form.question}</p>
+        <p className="mt-2 text-xs text-slate-500">{form.name}{form.email ? ` - ${form.email}` : ""}{form.city ? ` - ${form.city}` : ""}</p>
+      </div>
+      <Select label="Status" value={form.status} options={["NEW", "PLANNED", "ANSWERED", "ARCHIVED"]} onChange={(status) => setForm({ ...form, status: status as BlogReaderQuestion["status"] })} />
+      <Select label="Linked answer article" value={form.articleSlug ?? ""} options={["", ...posts.map((post) => post.slug)]} labels={Object.fromEntries(posts.map((post) => [post.slug, post.title]))} onChange={(articleSlug) => setForm({ ...form, articleSlug })} />
+      <Area label="Admin note" value={form.adminNote ?? ""} onChange={(adminNote) => setForm({ ...form, adminNote })} />
+      <Button className="mt-5" disabled={busy} onClick={() => onSave(form)}>Save question</Button>
+    </AdminDrawer>
   );
 }
 
@@ -606,7 +797,7 @@ function AnalyticsCard({ title, rows }: { title: string; rows: string[][] }) {
   return <section className="rounded-xl border border-white/10 bg-slate-900/60 p-5"><BarChart3 className="size-5 text-emerald-400" /><h3 className="mt-3 font-semibold text-white">{title}</h3><div className="mt-4 space-y-2">{rows.length ? rows.map(([label, value]) => <div key={label} className="flex justify-between gap-3 rounded-lg bg-white/5 px-3 py-2 text-sm"><span className="line-clamp-1 text-slate-300">{label}</span><span className="shrink-0 font-semibold text-white">{value}</span></div>) : <p className="text-sm text-slate-500">No data yet.</p>}</div></section>;
 }
 
-function BlogCommentsModeration({ comments, feedback, stats, onAction }: { comments: BlogComment[]; feedback: BlogFeedback[]; stats: BlogData["stats"]; onAction: (body: Record<string, unknown>, success: string) => Promise<unknown> }) {
+function BlogCommentsModeration({ comments, feedback, stats, onAction, onEdit }: { comments: BlogComment[]; feedback: BlogFeedback[]; stats: BlogData["stats"]; onAction: (body: Record<string, unknown>, success: string) => Promise<unknown>; onEdit: (comment: BlogComment) => void }) {
   const pending = comments.filter((comment) => comment.status === "PENDING");
   return (
     <div className="space-y-4">
@@ -634,6 +825,7 @@ function BlogCommentsModeration({ comments, feedback, stats, onAction }: { comme
             render: (comment) => (
               <div className="flex flex-wrap gap-2">
                 <Button variant="secondary" onClick={() => onAction({ action: "moderate_comment", commentId: comment.id, status: "APPROVED" }, "Comment approved.")}><ShieldCheck className="size-4" /> Approve</Button>
+                <Button variant="secondary" onClick={() => onEdit(comment)}><Edit className="size-4" /> Edit</Button>
                 <Button variant="secondary" onClick={() => onAction({ action: "moderate_comment", commentId: comment.id, status: "REJECTED" }, "Comment rejected.")}>Reject</Button>
                 <Button variant="secondary" onClick={() => onAction({ action: "moderate_comment", commentId: comment.id, status: "SPAM" }, "Comment marked as spam.")}>Spam</Button>
                 <Button variant="secondary" onClick={() => {
@@ -674,7 +866,7 @@ function CommentModerationCell({ comment }: { comment: BlogComment }) {
   );
 }
 
-function ReaderQuestionsPanel({ questions, onAction }: { questions: BlogReaderQuestion[]; onAction: (body: Record<string, unknown>, success: string) => Promise<unknown> }) {
+function ReaderQuestionsPanel({ questions, posts, categories, authors, onAction, onEdit }: { questions: BlogReaderQuestion[]; posts: BlogPost[]; categories: BlogCategory[]; authors: BlogAuthor[]; onAction: (body: Record<string, unknown>, success: string) => Promise<unknown>; onEdit: (question: BlogReaderQuestion) => void }) {
   return (
     <section className="rounded-xl border border-white/10 bg-slate-900/60">
       <div className="border-b border-white/10 p-4">
@@ -690,16 +882,27 @@ function ReaderQuestionsPanel({ questions, onAction }: { questions: BlogReaderQu
           header: "Actions",
           render: (item) => (
             <div className="flex flex-wrap gap-2">
+              <Button variant="secondary" onClick={() => onEdit(item)}><Edit className="size-4" /> Edit</Button>
               <Button variant="secondary" onClick={() => onAction({ action: "review_reader_question", questionId: item.id, status: "PLANNED", adminNote: item.adminNote }, "Question planned.")}>Plan</Button>
               <Button variant="secondary" onClick={() => {
                 const articleSlug = window.prompt("Article slug for this answer?", item.articleSlug ?? "");
                 void onAction({ action: "review_reader_question", questionId: item.id, status: "ANSWERED", articleSlug }, "Question marked answered.");
               }}>Answered</Button>
+              <Button variant="secondary" onClick={() => {
+                const title = window.prompt("Draft article title", item.question);
+                if (title) void onAction({ action: "create_post_from_question", questionId: item.id, title, categoryId: categories[0]?.id, authorId: authors[0]?.id }, "Draft article created from question.");
+              }}><Plus className="size-4" /> Draft</Button>
               <Button variant="secondary" onClick={() => onAction({ action: "review_reader_question", questionId: item.id, status: "ARCHIVED" }, "Question archived.")}>Archive</Button>
+              <Button variant="secondary" onClick={() => {
+                if (window.confirm("Delete this reader question permanently?")) void onAction({ action: "delete_reader_question", questionId: item.id }, "Question deleted.");
+              }}><Trash2 className="size-4" /> Delete</Button>
             </div>
           ),
         },
       ]} />
+      <div className="border-t border-white/10 p-4 text-xs text-slate-500">
+        {posts.length} articles available for linking. Use Draft to turn high-value reader questions into planned articles.
+      </div>
     </section>
   );
 }
@@ -715,7 +918,7 @@ function QuestionCell({ question }: { question: BlogReaderQuestion }) {
   );
 }
 
-function ContentGapsPanel({ gaps }: { gaps: BlogContentGap[] }) {
+function ContentGapsPanel({ gaps, posts, onEdit }: { gaps: BlogContentGap[]; posts: BlogPost[]; onEdit: (post: BlogPost) => void }) {
   return (
     <section className="rounded-xl border border-white/10 bg-slate-900/60">
       <div className="border-b border-white/10 p-4">
@@ -727,24 +930,41 @@ function ContentGapsPanel({ gaps }: { gaps: BlogContentGap[] }) {
         { key: "metrics", header: "Metrics", render: (gap) => <span className="text-sm text-slate-300">{gap.words} words - {gap.headings} headings - {gap.downloads} downloads</span> },
         { key: "signals", header: "Reader signals", render: (gap) => <span className="text-sm text-slate-300">{gap.needsWorkVotes} needs detail - {gap.readerQuestions} questions</span> },
         { key: "issues", header: "Recommended fixes", render: (gap) => <div className="flex flex-wrap gap-1">{gap.issues.map((issue) => <span key={issue} className="rounded-full bg-amber-400/10 px-2 py-1 text-xs font-semibold text-amber-200">{issue}</span>)}</div> },
+        { key: "actions", header: "Actions", render: (gap) => {
+          const post = posts.find((item) => item.id === gap.id);
+          return post ? <Button variant="secondary" onClick={() => onEdit(post)}><Edit className="size-4" /> Fix article</Button> : null;
+        } },
       ]} />
     </section>
   );
 }
 
 function BlogCollectionsPanel({ hubs, series }: { hubs: BlogData["hubs"]; series: BlogData["series"] }) {
+  const copyCollections = (payload: unknown) => navigator.clipboard?.writeText(JSON.stringify(payload, null, 2));
   return (
-    <section className="grid gap-4 lg:grid-cols-2">
-      <div className="rounded-xl border border-white/10 bg-slate-900/60 p-5">
-        <h2 className="font-semibold text-white">City hubs</h2>
-        <div className="mt-4 space-y-3">
-          {hubs.map((hub) => <CollectionRow key={hub.slug} title={hub.title} href={`/blog/hub/${hub.slug}`} description={hub.description} />)}
+    <section className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 bg-slate-900/60 p-4">
+        <div>
+          <h2 className="font-semibold text-white">Hubs and series operations</h2>
+          <p className="mt-1 text-sm text-slate-400">Audit topic clusters, open their public pages, and export their configuration for editorial planning.</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="secondary" onClick={() => copyCollections({ hubs, series })}><Copy className="size-4" /> Copy JSON</Button>
+          <Button variant="secondary" onClick={() => copyCollections(series.flatMap((item) => item.posts.map((slug) => ({ series: item.slug, article: slug }))))}><FileText className="size-4" /> Copy article map</Button>
         </div>
       </div>
-      <div className="rounded-xl border border-white/10 bg-slate-900/60 p-5">
-        <h2 className="font-semibold text-white">Article series</h2>
-        <div className="mt-4 space-y-3">
-          {series.map((item) => <CollectionRow key={item.slug} title={item.title} href={`/blog/series/${item.slug}`} description={`${item.description} ${item.posts.length} linked articles.`} />)}
+      <div className="grid gap-4 lg:grid-cols-2">
+        <div className="rounded-xl border border-white/10 bg-slate-900/60 p-5">
+          <h2 className="font-semibold text-white">City hubs</h2>
+          <div className="mt-4 space-y-3">
+            {hubs.map((hub) => <CollectionRow key={hub.slug} title={hub.title} href={`/blog/hub/${hub.slug}`} description={hub.description} />)}
+          </div>
+        </div>
+        <div className="rounded-xl border border-white/10 bg-slate-900/60 p-5">
+          <h2 className="font-semibold text-white">Article series</h2>
+          <div className="mt-4 space-y-3">
+            {series.map((item) => <CollectionRow key={item.slug} title={item.title} href={`/blog/series/${item.slug}`} description={`${item.description} ${item.posts.length} linked articles.`} />)}
+          </div>
         </div>
       </div>
     </section>
@@ -778,7 +998,7 @@ function EditorQualityPanel({ post, suggestions, onInsert }: { post: BlogPost; s
     <div className="rounded-lg border border-white/10 bg-slate-950/60 p-3">
       <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">SEO and quality checks</p>
       <div className="mt-2 space-y-1">
-        {checks.map(([label, ok]) => <p key={String(label)} className={ok ? "text-xs text-emerald-300" : "text-xs text-amber-300"}>{ok ? "✓" : "!"} {label}</p>)}
+        {checks.map(([label, ok]) => <p key={String(label)} className={ok ? "text-xs text-emerald-300" : "text-xs text-amber-300"}>{ok ? "OK" : "Fix"} - {label}</p>)}
       </div>
       <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Smart internal linking</p>
       <div className="mt-2 space-y-2">
@@ -835,6 +1055,66 @@ function Area({ label, value, onChange }: { label: string; value: string; onChan
 
 function Select({ label, value, options, labels = {}, onChange }: { label: string; value: string; options: string[]; labels?: Record<string, string>; onChange: (value: string) => void }) {
   return <label className="mt-3 block text-sm font-semibold text-slate-300">{label}<select value={value} onChange={(event) => onChange(event.target.value)} className="mt-1 min-h-11 w-full rounded-lg border border-white/10 bg-slate-950 px-3 text-sm font-medium text-white outline-none focus:border-emerald-400">{options.map((option) => <option key={option} value={option}>{labels[option] ?? (option || "None")}</option>)}</select></label>;
+}
+
+function countUsage(ids: string[]) {
+  return ids.reduce<Record<string, number>>((totals, id) => {
+    totals[id] = (totals[id] ?? 0) + 1;
+    return totals;
+  }, {});
+}
+
+function moveItem<T>(items: T[], from: number, to: number) {
+  if (to < 0 || to >= items.length) return items;
+  const next = [...items];
+  const [item] = next.splice(from, 1);
+  next.splice(to, 0, item);
+  return next;
+}
+
+function blocksToPreviewText(blocks: BlogBlock[]) {
+  return blocks
+    .flatMap((block) => {
+      if (typeof block.text === "string") return [block.text];
+      if (typeof block.title === "string") return [block.title];
+      if (Array.isArray(block.items)) return block.items;
+      if (Array.isArray(block.rows)) return block.rows.flat();
+      return [];
+    })
+    .filter((value): value is string => typeof value === "string")
+    .join(" ");
+}
+
+function estimateReadingMinutes(text: string) {
+  const words = text.trim().split(/\s+/).filter(Boolean).length;
+  return Math.max(1, Math.ceil(words / 220));
+}
+
+function articleQuality(post: BlogPost) {
+  const text = blocksToPreviewText(post.contentBlocks ?? []);
+  const wordCount = text.trim().split(/\s+/).filter(Boolean).length;
+  const headings = (post.contentBlocks ?? []).filter((block) => block.type === "heading" && String(block.text ?? "").trim()).length;
+  const hasCta = (post.contentBlocks ?? []).some((block) => ["cta", "button", "download"].includes(block.type));
+  const hasStructuredHelp = (post.contentBlocks ?? []).some((block) => ["list", "table", "info", "download"].includes(block.type));
+  const items = [
+    { label: "Title is clear and searchable", ok: post.title.trim().length >= 20 && post.title.trim().length <= 80, blocking: true },
+    { label: "Slug is present", ok: Boolean(post.slug.trim()), blocking: true },
+    { label: "Excerpt explains the value", ok: post.excerpt.trim().length >= 80 && post.excerpt.trim().length <= 220, blocking: true },
+    { label: "Category and author selected", ok: Boolean(post.categoryId && post.authorId), blocking: true },
+    { label: "Cover image and alt text ready", ok: Boolean(post.featuredImageUrl && post.featuredImageAlt?.trim()), blocking: false },
+    { label: "SEO title and meta description ready", ok: Boolean(post.seoTitle?.trim() && post.metaDescription?.trim()), blocking: false },
+    { label: "Focus keyword and secondary keywords set", ok: Boolean(post.focusKeyword?.trim() && post.secondaryKeywords.length), blocking: false },
+    { label: "Article has useful depth", ok: wordCount >= 350, blocking: false },
+    { label: "At least two meaningful sections", ok: headings >= 2, blocking: false },
+    { label: "Includes checklist, table, tip, or download", ok: hasStructuredHelp, blocking: false },
+    { label: "Includes a reader action", ok: hasCta, blocking: false },
+  ];
+  const score = Math.round((items.filter((item) => item.ok).length / items.length) * 100);
+  return {
+    score,
+    items,
+    blocking: items.filter((item) => item.blocking && !item.ok).map((item) => item.label),
+  };
 }
 
 function createBlankPost(data: BlogData): BlogPost {
