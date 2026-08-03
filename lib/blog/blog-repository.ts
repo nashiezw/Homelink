@@ -1,5 +1,6 @@
 import { BlogArticleLayout, BlogPostStatus, ListingStatus, Prisma } from "@prisma/client";
 import { getMainPrisma } from "@/lib/db/main-prisma";
+import { ensureBlogProductionSchema } from "@/lib/db/production-schema";
 
 export type BlogBlock =
   | { type: "heading"; level: 2 | 3; text: string }
@@ -42,7 +43,7 @@ const PROPERTY_DEVELOPMENT_LAW_BOOK_URL = "/library/the-complete-guide-to-proper
 function isMissingBlogEngagementTableError(error: unknown) {
   if (!error || typeof error !== "object") return false;
   const candidate = error as { code?: unknown; meta?: { table?: unknown } };
-  return candidate.code === "P2021" && typeof candidate.meta?.table === "string" && /blog_(comments|article_feedback)/.test(candidate.meta.table);
+  return candidate.code === "P2021" && typeof candidate.meta?.table === "string" && /blog_(comments|article_feedback|reader_questions)/.test(candidate.meta.table);
 }
 
 async function getBlogEngagementDashboardData(prisma: ReturnType<typeof getMainPrisma>) {
@@ -67,7 +68,7 @@ async function getBlogEngagementDashboardData(prisma: ReturnType<typeof getMainP
     return { commentQueue, approvedComments, helpfulVotes, needsWorkVotes, comments, feedback };
   } catch (error) {
     if (!isMissingBlogEngagementTableError(error)) throw error;
-    console.warn("Blog engagement tables are unavailable; returning empty admin engagement data.", error);
+    console.warn("Blog engagement tables are unavailable; returning empty admin engagement data.");
     return {
       commentQueue: 0,
       approvedComments: 0,
@@ -76,6 +77,25 @@ async function getBlogEngagementDashboardData(prisma: ReturnType<typeof getMainP
       comments: [],
       feedback: [],
     };
+  }
+}
+
+async function getBlogReaderQuestionDashboardData(prisma: ReturnType<typeof getMainPrisma>) {
+  try {
+    const [readerQuestions, newReaderQuestions, questions] = await Promise.all([
+      prisma.blogReaderQuestion.count(),
+      prisma.blogReaderQuestion.count({ where: { status: "NEW" } }),
+      prisma.blogReaderQuestion.findMany({
+        include: { post: { select: { title: true, slug: true } } },
+        orderBy: [{ status: "asc" }, { createdAt: "desc" }],
+        take: 80,
+      }),
+    ]);
+    return { readerQuestions, newReaderQuestions, questions };
+  } catch (error) {
+    if (!isMissingBlogEngagementTableError(error)) throw error;
+    console.warn("Blog reader question table is unavailable; returning empty admin question data.");
+    return { readerQuestions: 0, newReaderQuestions: 0, questions: [] };
   }
 }
 
@@ -1153,6 +1173,7 @@ function getStarterPostsBySlugs(slugs: readonly string[]) {
 }
 
 export async function ensureBlogDefaults(actorId?: string) {
+  await ensureBlogProductionSchema();
   const prisma = getMainPrisma();
   await Promise.all(
     DEFAULT_CATEGORIES.map(([name, description], sortOrder) =>
@@ -1494,6 +1515,7 @@ export async function trackBlogDownload(postId: string, label: string, url: stri
 }
 
 export async function getPublicBlogComments(postId: string): Promise<BlogCommentThread[]> {
+  await ensureBlogProductionSchema();
   const prisma = getMainPrisma();
   const comments = await prisma.blogComment.findMany({
     where: { postId, status: "APPROVED" },
@@ -1516,6 +1538,7 @@ export async function getPublicBlogComments(postId: string): Promise<BlogComment
 }
 
 export async function createBlogComment(input: { postId: string; parentId?: string | null; authorName: string; authorEmail?: string | null; body: string; ipHash?: string | null; userAgent?: string | null }) {
+  await ensureBlogProductionSchema();
   const prisma = getMainPrisma();
   const post = await prisma.blogPost.findFirst({ where: { id: clean(input.postId), status: BlogPostStatus.PUBLISHED, noIndex: false }, select: { id: true } });
   if (!post) throw new Error("Article not found.");
@@ -1544,6 +1567,7 @@ export async function createBlogComment(input: { postId: string; parentId?: stri
 }
 
 export async function createBlogArticleFeedback(input: { postId: string; vote: string; note?: string | null; ipHash?: string | null; userAgent?: string | null }) {
+  await ensureBlogProductionSchema();
   const prisma = getMainPrisma();
   const post = await prisma.blogPost.findFirst({ where: { id: clean(input.postId), status: BlogPostStatus.PUBLISHED, noIndex: false }, select: { id: true } });
   if (!post) throw new Error("Article not found.");
@@ -1560,6 +1584,7 @@ export async function createBlogArticleFeedback(input: { postId: string; vote: s
 }
 
 export async function createBlogReaderQuestion(input: { postId?: string | null; name: string; email?: string | null; city?: string | null; question: string; ipHash?: string | null; userAgent?: string | null }) {
+  await ensureBlogProductionSchema();
   const prisma = getMainPrisma();
   const postId = stringOrNull(input.postId);
   if (postId) {
@@ -1582,6 +1607,7 @@ export async function createBlogReaderQuestion(input: { postId?: string | null; 
 
 export async function getPublicReaderQuestionDigest() {
   try {
+    await ensureBlogProductionSchema();
     const prisma = getMainPrisma();
     const questions = await prisma.blogReaderQuestion.findMany({
       where: { status: { in: ["PLANNED", "ANSWERED"] } },
@@ -1591,18 +1617,29 @@ export async function getPublicReaderQuestionDigest() {
     });
     return { questions, hubs: BLOG_HUBS, series: BLOG_SERIES };
   } catch (error) {
-    console.warn("Reader question digest unavailable", error);
+    if (!isMissingBlogEngagementTableError(error)) console.warn("Reader question digest unavailable", error);
     return { questions: [], hubs: BLOG_HUBS, series: BLOG_SERIES };
   }
 }
 
 async function getBlogContentGaps() {
   const prisma = getMainPrisma();
-  const [posts, feedbackNotes, questionCounts] = await Promise.all([
-    prisma.blogPost.findMany({ include: { category: true, tags: true, downloads: true }, orderBy: { updatedAt: "desc" }, take: 120 }),
-    prisma.blogArticleFeedback.groupBy({ by: ["postId", "vote"], _count: { vote: true } }),
-    prisma.blogReaderQuestion.groupBy({ by: ["postId"], _count: { postId: true }, where: { postId: { not: null } } }),
-  ]);
+  let posts: Array<Prisma.BlogPostGetPayload<{ include: { category: true; tags: true; downloads: true } }>>;
+  let feedbackNotes: Array<{ postId: string; vote: string; _count: { vote: number } }>;
+  let questionCounts: Array<{ postId: string | null; _count: { postId: number } }>;
+  try {
+    [posts, feedbackNotes, questionCounts] = await Promise.all([
+      prisma.blogPost.findMany({ include: { category: true, tags: true, downloads: true }, orderBy: { updatedAt: "desc" }, take: 120 }),
+      prisma.blogArticleFeedback.groupBy({ by: ["postId", "vote"], _count: { vote: true } }),
+      prisma.blogReaderQuestion.groupBy({ by: ["postId"], _count: { postId: true }, where: { postId: { not: null } } }),
+    ]);
+  } catch (error) {
+    if (!isMissingBlogEngagementTableError(error)) throw error;
+    console.warn("Blog engagement/question tables are unavailable; returning content gaps without reader signals.");
+    posts = await prisma.blogPost.findMany({ include: { category: true, tags: true, downloads: true }, orderBy: { updatedAt: "desc" }, take: 120 });
+    feedbackNotes = [];
+    questionCounts = [];
+  }
   const feedbackByPost = new Map<string, { helpful: number; needsWork: number }>();
   for (const item of feedbackNotes) {
     const current = feedbackByPost.get(item.postId) ?? { helpful: 0, needsWork: 0 };
@@ -1657,12 +1694,14 @@ export async function getBlogSitemapEntries() {
 export async function getAdminBlogDashboard() {
   await ensureBlogDefaults();
   const prisma = getMainPrisma();
-  const [posts, categories, authors, tags, engagement] = await Promise.all([
+  const [posts, categories, authors, tags, engagement, questionData, contentGaps] = await Promise.all([
     prisma.blogPost.findMany({ include: blogIncludes(), orderBy: [{ updatedAt: "desc" }] }),
     prisma.blogCategory.findMany({ orderBy: [{ sortOrder: "asc" }, { name: "asc" }] }),
     prisma.blogAuthor.findMany({ orderBy: [{ active: "desc" }, { name: "asc" }] }),
     prisma.blogTag.findMany({ orderBy: [{ active: "desc" }, { name: "asc" }] }),
     getBlogEngagementDashboardData(prisma),
+    getBlogReaderQuestionDashboardData(prisma),
+    getBlogContentGaps(),
   ]);
   const published = posts.filter((post) => post.status === "PUBLISHED");
   const draft = posts.filter((post) => post.status === "DRAFT");
@@ -1694,17 +1733,13 @@ export async function getAdminBlogDashboard() {
       approvedComments: engagement.approvedComments,
       helpfulVotes: engagement.helpfulVotes,
       needsWorkVotes: engagement.needsWorkVotes,
-      readerQuestions: await prisma.blogReaderQuestion.count(),
-      newReaderQuestions: await prisma.blogReaderQuestion.count({ where: { status: "NEW" } }),
+      readerQuestions: questionData.readerQuestions,
+      newReaderQuestions: questionData.newReaderQuestions,
     },
     comments: engagement.comments,
     feedback: engagement.feedback,
-    readerQuestions: await prisma.blogReaderQuestion.findMany({
-      include: { post: { select: { title: true, slug: true } } },
-      orderBy: [{ status: "asc" }, { createdAt: "desc" }],
-      take: 80,
-    }),
-    contentGaps: await getBlogContentGaps(),
+    readerQuestions: questionData.questions,
+    contentGaps,
     hubs: BLOG_HUBS,
     series: BLOG_SERIES,
     suggestions: {

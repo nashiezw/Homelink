@@ -90,16 +90,16 @@ export async function GET(request: Request) {
       prisma.$queryRaw`
         SELECT 
           c.title,
-          COUNT(DISTINCT ce.agent_id) as enrolled,
-          COUNT(DISTINCT CASE WHEN cp.status = 'COMPLETED' THEN cp.agent_id END) as completed,
+          COUNT(DISTINCT ce."agentId") as enrolled,
+          COUNT(DISTINCT CASE WHEN cp.status = 'COMPLETED' THEN cp."agentId" END) as completed,
           ROUND(
-            COUNT(DISTINCT CASE WHEN cp.status = 'COMPLETED' THEN cp.agent_id END) * 100.0 / 
-            NULLIF(COUNT(DISTINCT ce.agent_id), 0),
+            COUNT(DISTINCT CASE WHEN cp.status = 'COMPLETED' THEN cp."agentId" END) * 100.0 / 
+            NULLIF(COUNT(DISTINCT ce."agentId"), 0),
             1
           ) as completion_rate
         FROM training_courses c
-        LEFT JOIN course_enrolments ce ON c.id = ce.course_id
-        LEFT JOIN course_progress cp ON c.id = cp.course_id AND ce.agent_id = cp.agent_id
+        LEFT JOIN course_enrolments ce ON c.id = ce."courseId"
+        LEFT JOIN course_progress cp ON c.id = cp."courseId" AND ce."agentId" = cp."agentId"
         WHERE c.status = 'PUBLISHED'
         GROUP BY c.id, c.title
         ORDER BY completion_rate DESC NULLS LAST
