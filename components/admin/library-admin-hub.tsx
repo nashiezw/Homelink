@@ -59,6 +59,7 @@ const views = [
 ];
 
 const productStatuses = ["DRAFT", "SCHEDULED", "PUBLISHED", "ARCHIVED"];
+const MAX_LIBRARY_SAMPLE_UPLOAD_BYTES = 4 * 1024 * 1024;
 
 type LibraryOperations = {
   fulfilments: Array<{ id: string; status: string; courier?: string | null; trackingNumber?: string | null; trackingUrl?: string | null; dispatchNotes?: string | null; deliveryNotes?: string | null; order?: { orderNumber: string; total: unknown; currency: string } }>;
@@ -756,6 +757,17 @@ export function LibraryAdminHub() {
     setFeedback(null);
     if (kind === "sample" && !file.name.toLowerCase().endsWith(".pdf") && file.type !== "application/pdf") {
       setUploadStatus((current) => ({ ...current, sample: { tone: "error", message: "Sample preview must be a PDF file." } }));
+      if (input) input.value = "";
+      return;
+    }
+    if (kind === "sample" && file.size > MAX_LIBRARY_SAMPLE_UPLOAD_BYTES) {
+      setUploadStatus((current) => ({
+        ...current,
+        sample: {
+          tone: "error",
+          message: `Sample preview is ${formatUploadSize(file.size)}. Please upload a PDF under ${formatUploadSize(MAX_LIBRARY_SAMPLE_UPLOAD_BYTES)} so the admin upload can complete reliably.`,
+        },
+      }));
       if (input) input.value = "";
       return;
     }

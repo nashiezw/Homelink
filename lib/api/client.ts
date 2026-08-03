@@ -30,11 +30,17 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<Api
   }
   const contentType = response.headers.get("content-type") ?? "";
   if (!contentType.includes("application/json")) {
+    const fallbackMessage =
+      response.status === 413
+        ? "The upload is too large for the server request limit. Try a smaller file."
+        : response.ok
+          ? "Unexpected server response."
+          : `Server error (${response.status}). Please try again.`;
     return {
       data: undefined as T,
       error: {
         code: "NON_JSON_RESPONSE",
-        message: response.ok ? "Unexpected server response." : "Server error. Please try again.",
+        message: fallbackMessage,
       },
     };
   }

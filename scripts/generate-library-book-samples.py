@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from PIL import Image
 from pypdf import PdfReader, PdfWriter
 from reportlab.lib.utils import ImageReader
 from reportlab.pdfgen import canvas
@@ -36,6 +37,21 @@ BOOKS = [
 ]
 
 
+def optimized_cover_image(source: Path) -> Path:
+    output = TMP_DIR / f"{source.stem}-sample-cover.jpg"
+    with Image.open(source) as image:
+        image.thumbnail((1400, 1400), Image.Resampling.LANCZOS)
+        if image.mode in ("RGBA", "LA"):
+            background = Image.new("RGB", image.size, "white")
+            background.paste(image, mask=image.getchannel("A"))
+            image = background
+        else:
+            image = image.convert("RGB")
+        output.parent.mkdir(parents=True, exist_ok=True)
+        image.save(output, "JPEG", quality=82, optimize=True, progressive=True)
+    return output
+
+
 def wrap_text(c: canvas.Canvas, text: str, max_width: float, font_name: str, font_size: int) -> list[str]:
     words = text.split()
     lines: list[str] = []
@@ -60,7 +76,7 @@ def draw_cover_page(book: dict, page_width: float, page_height: float, destinati
     c.setFillColorRGB(0.965, 0.973, 0.96)
     c.rect(0, 0, page_width, page_height, fill=1, stroke=0)
 
-    image = ImageReader(str(book["cover_image"]))
+    image = ImageReader(str(optimized_cover_image(book["cover_image"])))
     image_width, image_height = image.getSize()
     max_width = page_width * 0.78
     max_height = page_height * 0.55
