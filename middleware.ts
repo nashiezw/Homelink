@@ -6,6 +6,7 @@ const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 const CSRF_EXEMPT_PATHS = [
   /^\/api\/v1\/payments\/webhooks\/[^/]+$/,
   /^\/api\/v1\/payments\/callback\/[^/]+$/,
+  /^\/api\/v1\/analytics\/pageviews$/,
 ];
 const RATE_LIMITS = [
   { pattern: /^\/api\/v1\/auth\/session$/, limit: 20 },
@@ -16,6 +17,7 @@ const RATE_LIMITS = [
   { pattern: /^\/api\/v1\/search\/ai$/, limit: 12 },
   { pattern: /^\/api\/v1\/payments\/checkout$/, limit: 20 },
   { pattern: /^\/api\/v1\/messages(?:\/.*)?$/, limit: 60 },
+  { pattern: /^\/api\/v1\/analytics\/pageviews$/, limit: 240 },
   { pattern: /^\/api\/v1\/analytics\/events$/, limit: 120 },
   { pattern: /^\/api\/v1\/admin(?:\/.*)?$/, limit: 120 },
 ];

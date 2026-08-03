@@ -39,6 +39,46 @@ const DEFAULT_CATEGORIES = [
 
 const PROPERTY_DEVELOPMENT_LAW_BOOK_URL = "/library/the-complete-guide-to-property-development-and-property-law-in-zimbabwe";
 
+function isMissingBlogEngagementTableError(error: unknown) {
+  if (!error || typeof error !== "object") return false;
+  const candidate = error as { code?: unknown; meta?: { table?: unknown } };
+  return candidate.code === "P2021" && typeof candidate.meta?.table === "string" && /blog_(comments|article_feedback)/.test(candidate.meta.table);
+}
+
+async function getBlogEngagementDashboardData(prisma: ReturnType<typeof getMainPrisma>) {
+  try {
+    const [commentQueue, approvedComments, helpfulVotes, needsWorkVotes, comments, feedback] = await Promise.all([
+      prisma.blogComment.count({ where: { status: "PENDING" } }),
+      prisma.blogComment.count({ where: { status: "APPROVED" } }),
+      prisma.blogArticleFeedback.count({ where: { vote: "HELPFUL" } }),
+      prisma.blogArticleFeedback.count({ where: { vote: "NEEDS_WORK" } }),
+      prisma.blogComment.findMany({
+        include: { post: { select: { title: true, slug: true } }, parent: { select: { authorName: true, body: true } } },
+        orderBy: [{ status: "asc" }, { createdAt: "desc" }],
+        take: 80,
+      }),
+      prisma.blogArticleFeedback.findMany({
+        include: { post: { select: { title: true, slug: true } } },
+        orderBy: { createdAt: "desc" },
+        take: 40,
+      }),
+    ]);
+
+    return { commentQueue, approvedComments, helpfulVotes, needsWorkVotes, comments, feedback };
+  } catch (error) {
+    if (!isMissingBlogEngagementTableError(error)) throw error;
+    console.warn("Blog engagement tables are unavailable; returning empty admin engagement data.", error);
+    return {
+      commentQueue: 0,
+      approvedComments: 0,
+      helpfulVotes: 0,
+      needsWorkVotes: 0,
+      comments: [],
+      feedback: [],
+    };
+  }
+}
+
 const STARTER_ARTICLES = [
   {
     title: "How to Find a House to Rent in Zimbabwe Without Wasting Time",
@@ -1617,11 +1657,12 @@ export async function getBlogSitemapEntries() {
 export async function getAdminBlogDashboard() {
   await ensureBlogDefaults();
   const prisma = getMainPrisma();
-  const [posts, categories, authors, tags] = await Promise.all([
+  const [posts, categories, authors, tags, engagement] = await Promise.all([
     prisma.blogPost.findMany({ include: blogIncludes(), orderBy: [{ updatedAt: "desc" }] }),
     prisma.blogCategory.findMany({ orderBy: [{ sortOrder: "asc" }, { name: "asc" }] }),
     prisma.blogAuthor.findMany({ orderBy: [{ active: "desc" }, { name: "asc" }] }),
     prisma.blogTag.findMany({ orderBy: [{ active: "desc" }, { name: "asc" }] }),
+    getBlogEngagementDashboardData(prisma),
   ]);
   const published = posts.filter((post) => post.status === "PUBLISHED");
   const draft = posts.filter((post) => post.status === "DRAFT");
@@ -1649,23 +1690,15 @@ export async function getAdminBlogDashboard() {
       activity: posts.slice(0, 8).map((post) => ({ id: post.id, title: post.title, status: post.status, updatedAt: post.updatedAt })),
       topDownloads: await prisma.blogDownload.findMany({ orderBy: { count: "desc" }, take: 8 }),
       mostSearchedKeywords: await prisma.blogSearchLog.groupBy({ by: ["query"], _count: { query: true }, orderBy: { _count: { query: "desc" } }, take: 8 }),
-      commentQueue: await prisma.blogComment.count({ where: { status: "PENDING" } }),
-      approvedComments: await prisma.blogComment.count({ where: { status: "APPROVED" } }),
-      helpfulVotes: await prisma.blogArticleFeedback.count({ where: { vote: "HELPFUL" } }),
-      needsWorkVotes: await prisma.blogArticleFeedback.count({ where: { vote: "NEEDS_WORK" } }),
+      commentQueue: engagement.commentQueue,
+      approvedComments: engagement.approvedComments,
+      helpfulVotes: engagement.helpfulVotes,
+      needsWorkVotes: engagement.needsWorkVotes,
       readerQuestions: await prisma.blogReaderQuestion.count(),
       newReaderQuestions: await prisma.blogReaderQuestion.count({ where: { status: "NEW" } }),
     },
-    comments: await prisma.blogComment.findMany({
-      include: { post: { select: { title: true, slug: true } }, parent: { select: { authorName: true, body: true } } },
-      orderBy: [{ status: "asc" }, { createdAt: "desc" }],
-      take: 80,
-    }),
-    feedback: await prisma.blogArticleFeedback.findMany({
-      include: { post: { select: { title: true, slug: true } } },
-      orderBy: { createdAt: "desc" },
-      take: 40,
-    }),
+    comments: engagement.comments,
+    feedback: engagement.feedback,
     readerQuestions: await prisma.blogReaderQuestion.findMany({
       include: { post: { select: { title: true, slug: true } } },
       orderBy: [{ status: "asc" }, { createdAt: "desc" }],
