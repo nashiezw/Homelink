@@ -24,6 +24,7 @@ export function ForgotPasswordForm() {
   const [email, setEmail] = useState(searchParams?.get("email") ?? "");
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [submittedEmail, setSubmittedEmail] = useState<string | null>(null);
   const [devResetUrl, setDevResetUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -31,15 +32,18 @@ export function ForgotPasswordForm() {
     event.preventDefault();
     setError(null);
     setMessage(null);
+    setSubmittedEmail(null);
     setDevResetUrl(null);
-    if (!isEmail(email)) {
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!isEmail(normalizedEmail)) {
       setError("Enter a valid email address, for example you@example.com.");
       return;
     }
+    setEmail(normalizedEmail);
     setSubmitting(true);
     const result = await apiFetch<ResetRequestResponse>("/api/v1/auth/password-reset", {
       method: "POST",
-      body: JSON.stringify({ email }),
+      body: JSON.stringify({ email: normalizedEmail }),
     });
     setSubmitting(false);
     if (result.error) {
@@ -51,6 +55,7 @@ export function ForgotPasswordForm() {
       return;
     }
     setMessage(result.data.message);
+    setSubmittedEmail(normalizedEmail);
     setDevResetUrl(result.data.resetUrl ?? null);
   }
 
@@ -61,9 +66,10 @@ export function ForgotPasswordForm() {
         <p className="font-semibold">Reset your password</p>
       </div>
       <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
-        Enter your HouseLink account email and we will send a secure reset link.
+        Enter the email address you use for HouseLink and we will send a secure reset link if it matches an account.
       </p>
       {message ? <Feedback tone="success" message={message} /> : null}
+      {message ? <ResetRequestHelp email={submittedEmail} onTryAnotherEmail={() => { setMessage(null); setSubmittedEmail(null); setDevResetUrl(null); }} /> : null}
       {error ? <Feedback tone="error" message={error} /> : null}
       <label className="mt-5 grid gap-2 text-sm font-medium">
         Email
@@ -72,9 +78,12 @@ export function ForgotPasswordForm() {
           placeholder="you@example.com"
           type="email"
           value={email}
-          onChange={(event) => { setEmail(event.target.value); setError(null); }}
+          onChange={(event) => { setEmail(event.target.value); setError(null); setMessage(null); setSubmittedEmail(null); }}
           required
         />
+        <span className="text-xs font-normal leading-5 text-slate-500 dark:text-slate-400">
+          Use the same email you used when registering or checking out on HouseLink.
+        </span>
       </label>
       <Button className="mt-5 w-full" type="submit" disabled={submitting}>
         {submitting ? "Sending..." : "Send reset link"}
@@ -88,6 +97,32 @@ export function ForgotPasswordForm() {
         Back to sign in
       </Link>
     </form>
+  );
+}
+
+function ResetRequestHelp({ email, onTryAnotherEmail }: { email: string | null; onTryAnotherEmail: () => void }) {
+  return (
+    <div className="mt-4 space-y-3 text-sm text-slate-600 dark:text-slate-300" role="status">
+      <p>
+        We cannot confirm whether {email ? <span className="font-semibold text-slate-800 dark:text-slate-100">{email}</span> : "that email"} is registered, but these steps usually resolve it:
+      </p>
+      <ul className="grid gap-2 pl-5 text-sm leading-6 [list-style:disc]">
+        <li>Check your inbox, spam, and junk folders for a HouseLink email.</li>
+        <li>Try another email address you may have used with HouseLink.</li>
+        <li>Create a new account if you have not registered yet.</li>
+      </ul>
+      <div className="flex flex-wrap gap-3">
+        <button type="button" className="text-sm font-semibold text-ocean hover:underline" onClick={onTryAnotherEmail}>
+          Try another email
+        </button>
+        <Link href="/auth?mode=register" className="text-sm font-semibold text-ocean hover:underline">
+          Create account
+        </Link>
+        <Link href="/contact" className="text-sm font-semibold text-ocean hover:underline">
+          Contact support
+        </Link>
+      </div>
+    </div>
   );
 }
 

@@ -34,7 +34,7 @@ export type PasswordResetApplyResult =
 
 export async function requestPasswordReset(email: string, requestUrl: string, exposeResetUrl = false): Promise<PasswordResetRequestResult> {
   const normalizedEmail = email.trim().toLowerCase();
-  const genericMessage = "If that email belongs to a HouseLink account, we have sent password reset instructions.";
+  const genericMessage = "If this email is linked to a HouseLink account, we have sent reset instructions. Check your inbox and spam folder.";
   if (!isEmail(normalizedEmail)) {
     return { accepted: true, delivered: false, message: genericMessage };
   }
