@@ -199,6 +199,7 @@ model User {
   payments          Payment[]
   auditEvents       AuditEvent[]
   sessions          AppSession[]
+  passwordResetTokens PasswordResetToken[]
   agencyMemberships AgencyAgent[]
   academyApplications AcademyLearnerApplication[]
   academyResourceAccess AcademyResourceAccess[]
@@ -1013,6 +1014,22 @@ model AppSession {
   @@index([userId])
   @@index([expiresAt])
   @@index([revokedAt])
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  email     String
+  createdAt DateTime  @default(now())
+  expiresAt DateTime
+  usedAt    DateTime?
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([email])
+  @@index([expiresAt])
+  @@index([usedAt])
 }
 
 model LegalPageRecord {

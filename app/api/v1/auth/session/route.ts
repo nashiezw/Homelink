@@ -37,10 +37,13 @@ export async function POST(request: Request) {
     return problem(429, "RATE_LIMITED", `Too many attempts. Retry in ${rate.retryAfterSec}s.`);
   }
 
-  const body = await request.json();
+  const body = await request.json().catch(() => null);
+  if (!body || typeof body !== "object") {
+    return problem(400, "INVALID_JSON", "Request body must be valid JSON.");
+  }
   const action =
     body.action === "register" ? "register" : body.action === "set_password" ? "set_password" : "login";
-  const email = typeof body.email === "string" ? body.email : "";
+  const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
   const password = typeof body.password === "string" ? body.password : "";
   const name = typeof body.name === "string" ? body.name : "";
 
@@ -83,6 +86,10 @@ export async function POST(request: Request) {
 
   if (!email || !password) {
     return problem(400, "INVALID_CREDENTIALS", "Email and password are required.");
+  }
+
+  if (!isEmail(email)) {
+    return problem(400, "INVALID_EMAIL", "Enter a valid email address.");
   }
 
   if (password.length < policy.minPasswordLength) {
@@ -156,7 +163,7 @@ export async function POST(request: Request) {
       return problem(
         401,
         "PASSWORD_NOT_SET",
-        "This account was started at checkout. Open My Library while signed in to set a password, then sign in normally next time.",
+        "This account was started without a password. Use Forgot password to send yourself a secure setup link, then sign in normally.",
       );
     }
     const passwordMatches = Boolean(user?.passwordHash && verifyPassword(password, user.passwordHash));
@@ -230,7 +237,7 @@ export async function POST(request: Request) {
     return problem(
       401,
       "PASSWORD_NOT_SET",
-      "This account was started at checkout. Open My Library while signed in to set a password, then sign in normally next time.",
+      "This account was started without a password. Use Forgot password to send yourself a secure setup link, then sign in normally.",
     );
   }
   if (!user || !user.passwordHash || !verifyPassword(password, user.passwordHash)) {
@@ -271,6 +278,10 @@ function seedPasswordMatches(email: string, password: string) {
     process.env.SEED_STANDARD_PASSWORD,
   ].filter((value): value is string => Boolean(value));
   return candidates.some((candidate) => candidate === password);
+}
+
+function isEmail(value: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
 
 export async function DELETE(request: Request) {

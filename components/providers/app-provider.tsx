@@ -26,8 +26,8 @@ type AppContextValue = {
   toast: Toast | null;
   refreshUser: () => Promise<PublicUser | null>;
   refreshFavourites: () => Promise<void>;
-  signIn: (input: { email: string; password: string }) => Promise<PublicUser | null>;
-  register: (input: { name: string; email: string; password: string }) => Promise<PublicUser | null>;
+  signIn: (input: { email: string; password: string }) => Promise<AuthResult>;
+  register: (input: { name: string; email: string; password: string }) => Promise<AuthResult>;
   signOut: () => Promise<void>;
   toggleFavourite: (listingId: string) => Promise<void>;
   isFavourite: (listingId: string) => boolean;
@@ -35,6 +35,10 @@ type AppContextValue = {
   isCompared: (listingId: string) => boolean;
   showToast: (message: string, tone?: Toast["tone"]) => void;
 };
+
+type AuthResult =
+  | { user: PublicUser; error?: undefined }
+  | { user: null; error: { code: string; message: string } };
 
 const AppContext = createContext<AppContextValue | null>(null);
 const COMPARE_KEY = "houselink_compare";
@@ -119,10 +123,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         });
         await refreshFavourites();
         showToast(`Welcome back, ${result.data.name}.`);
-        return result.data;
+        return { user: result.data };
       }
-      showToast(result.error?.message ?? "Sign in failed.", "error");
-      return null;
+      return { user: null, error: result.error ?? { code: "AUTH_FAILED", message: "Sign in failed." } };
     },
     [refreshFavourites, showToast],
   );
@@ -140,10 +143,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         });
         await refreshFavourites();
         showToast(`Account created. Welcome, ${result.data.name}.`);
-        return result.data;
+        return { user: result.data };
       }
-      showToast(result.error?.message ?? "Registration failed.", "error");
-      return null;
+      return { user: null, error: result.error ?? { code: "REGISTRATION_FAILED", message: "Registration failed." } };
     },
     [refreshFavourites, showToast],
   );

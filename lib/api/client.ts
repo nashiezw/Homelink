@@ -12,11 +12,22 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<Api
   const headers = new Headers(init?.headers);
   if (!headers.has("Content-Type")) headers.set("Content-Type", "application/json");
   if (!["GET", "HEAD", "OPTIONS"].includes(method)) headers.set("X-HouseLink-CSRF", "1");
-  const response = await fetch(path, {
-    ...init,
-    headers,
-    credentials: "include",
-  });
+  let response: Response;
+  try {
+    response = await fetch(path, {
+      ...init,
+      headers,
+      credentials: "include",
+    });
+  } catch {
+    return {
+      data: undefined as T,
+      error: {
+        code: "NETWORK_ERROR",
+        message: "Could not connect. Check your internet connection and try again.",
+      },
+    };
+  }
   const contentType = response.headers.get("content-type") ?? "";
   if (!contentType.includes("application/json")) {
     return {

@@ -90,6 +90,38 @@ async function applyCoreProductionSchema() {
   await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "AppSession_expiresAt_idx" ON "AppSession"("expiresAt")`);
   await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "AppSession_revokedAt_idx" ON "AppSession"("revokedAt")`);
   await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS "PasswordResetToken" (
+      "id" TEXT NOT NULL,
+      "userId" TEXT NOT NULL,
+      "tokenHash" TEXT NOT NULL,
+      "email" TEXT NOT NULL,
+      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "expiresAt" TIMESTAMP(3) NOT NULL,
+      "usedAt" TIMESTAMP(3),
+      CONSTRAINT "PasswordResetToken_pkey" PRIMARY KEY ("id")
+    )
+  `);
+  await prisma.$executeRawUnsafe(`
+    DO $$
+    BEGIN
+      IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname = 'PasswordResetToken_userId_fkey'
+      ) THEN
+        ALTER TABLE "PasswordResetToken"
+          ADD CONSTRAINT "PasswordResetToken_userId_fkey"
+          FOREIGN KEY ("userId") REFERENCES "User"("id")
+          ON DELETE CASCADE ON UPDATE CASCADE;
+      END IF;
+    END $$
+  `);
+  await prisma.$executeRawUnsafe(`CREATE UNIQUE INDEX IF NOT EXISTS "PasswordResetToken_tokenHash_key" ON "PasswordResetToken"("tokenHash")`);
+  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "PasswordResetToken_userId_idx" ON "PasswordResetToken"("userId")`);
+  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "PasswordResetToken_email_idx" ON "PasswordResetToken"("email")`);
+  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "PasswordResetToken_expiresAt_idx" ON "PasswordResetToken"("expiresAt")`);
+  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "PasswordResetToken_usedAt_idx" ON "PasswordResetToken"("usedAt")`);
+  await prisma.$executeRawUnsafe(`
     CREATE TABLE IF NOT EXISTS "AgentTrainingModuleRecord" (
       "id" TEXT NOT NULL,
       "title" TEXT NOT NULL,
