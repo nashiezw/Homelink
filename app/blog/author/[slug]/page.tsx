@@ -33,7 +33,13 @@ export default async function BlogAuthorPage({ params }: Props) {
       <section className="bg-ink text-white">
         <div className="mx-auto grid max-w-7xl gap-4 px-4 py-8 sm:px-6 sm:py-12 lg:grid-cols-[auto_1fr] lg:px-8">
           <div className="relative size-16 overflow-hidden rounded-lg bg-white/10 sm:size-24">
-            {data.author.avatarUrl ? <Image src={data.author.avatarUrl} alt={data.author.name} fill className="object-cover" /> : null}
+            {data.author.avatarUrl ? (
+              <Image src={data.author.avatarUrl} alt={data.author.name} fill className="object-cover" />
+            ) : (
+              <div className="grid size-full place-items-center bg-emerald-500/15 text-xl font-bold text-emerald-100 sm:text-3xl">
+                {authorInitials(data.author.name)}
+              </div>
+            )}
           </div>
           <div>
             <p className="section-eyebrow text-emerald-200">HouseLink author</p>
@@ -64,4 +70,15 @@ export default async function BlogAuthorPage({ params }: Props) {
       />
     </main>
   );
+}
+
+function authorInitials(name: string) {
+  const initials = name
+    .split(/\s+/)
+    .map((part) => part[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+  return initials || "HL";
 }

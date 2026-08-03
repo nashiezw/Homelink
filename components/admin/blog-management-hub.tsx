@@ -506,9 +506,83 @@ function CategoryDrawer({ category, busy, onClose, onSave }: { category: BlogCat
 
 function AuthorDrawer({ author, busy, onClose, onSave }: { author: BlogAuthor | null; busy: boolean; onClose: () => void; onSave: (author: BlogAuthor) => Promise<unknown> }) {
   const [form, setForm] = useState(author);
+  const [uploading, setUploading] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const { showToast } = useApp();
   useEffect(() => setForm(author), [author]);
   if (!form) return null;
-  return <AdminDrawer open title={form.id ? "Edit Author" : "New Author"} onClose={onClose} width="lg"><Field label="Name" value={form.name} onChange={(name) => setForm({ ...form, name, slug: form.slug || slugify(name) })} /><Field label="Slug" value={form.slug} onChange={(slug) => setForm({ ...form, slug: slugify(slug) })} /><Field label="Role" value={form.role ?? ""} onChange={(role) => setForm({ ...form, role })} /><Field label="Email" value={form.email ?? ""} onChange={(email) => setForm({ ...form, email })} /><Field label="Avatar URL" value={form.avatarUrl ?? ""} onChange={(avatarUrl) => setForm({ ...form, avatarUrl })} /><Area label="Bio" value={form.bio ?? ""} onChange={(bio) => setForm({ ...form, bio })} /><Button className="mt-5" disabled={busy || !form.name.trim()} onClick={() => onSave(form)}>Save author</Button></AdminDrawer>;
+
+  async function uploadAvatar(files: FileList | null) {
+    const file = files?.[0];
+    if (!file) return;
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      showToast("Use a JPG, PNG, or WebP profile image.", "error");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      showToast("Author profile images must be under 5 MB.", "error");
+      return;
+    }
+    setUploading(true);
+    const dataUrl = await readFile(file);
+    const result = await apiFetch<{ url: string; size: number }>("/api/v1/uploads", {
+      method: "POST",
+      body: JSON.stringify({ dataUrl, kind: "image", folder: "blog-authors", filename: file.name }),
+    });
+    setUploading(false);
+    if (inputRef.current) inputRef.current.value = "";
+    if (result.data?.url) {
+      setForm((current) => current ? { ...current, avatarUrl: result.data.url } : current);
+      showToast("Author profile image uploaded.", "success");
+      return;
+    }
+    showToast(result.error?.message ?? "Author image upload failed.", "error");
+  }
+
+  return (
+    <AdminDrawer open title={form.id ? "Edit Author" : "New Author"} onClose={onClose} width="lg">
+      <section className="rounded-xl border border-white/10 bg-slate-950/60 p-4">
+        <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Profile image</p>
+        <div className="mt-3 flex flex-wrap items-center gap-4">
+          <div className="grid size-24 place-items-center overflow-hidden rounded-lg border border-white/10 bg-slate-900">
+            {form.avatarUrl ? (
+              <div
+                role="img"
+                aria-label={`${form.name || "Author"} profile image preview`}
+                className="size-full bg-cover bg-center"
+                style={{ backgroundImage: `url("${form.avatarUrl.replace(/"/g, "%22")}")` }}
+              />
+            ) : (
+              <span className="text-xl font-bold text-emerald-200">{authorInitials(form.name)}</span>
+            )}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm leading-6 text-slate-400">Upload a square JPG, PNG, or WebP image for the author byline and author page.</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Button variant="secondary" disabled={busy || uploading} onClick={() => inputRef.current?.click()}>
+                <Upload className="size-4" />
+                {uploading ? "Uploading..." : form.avatarUrl ? "Replace image" : "Upload image"}
+              </Button>
+              {form.avatarUrl ? (
+                <Button variant="secondary" disabled={busy || uploading} onClick={() => setForm({ ...form, avatarUrl: "" })}>
+                  <Trash2 className="size-4" />
+                  Remove
+                </Button>
+              ) : null}
+            </div>
+          </div>
+        </div>
+        <input ref={inputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(event) => void uploadAvatar(event.target.files)} />
+      </section>
+      <Field label="Name" value={form.name} onChange={(name) => setForm({ ...form, name, slug: form.slug || slugify(name) })} />
+      <Field label="Slug" value={form.slug} onChange={(slug) => setForm({ ...form, slug: slugify(slug) })} />
+      <Field label="Role" value={form.role ?? ""} onChange={(role) => setForm({ ...form, role })} />
+      <Field label="Email" value={form.email ?? ""} onChange={(email) => setForm({ ...form, email })} />
+      <Field label="Avatar URL" value={form.avatarUrl ?? ""} onChange={(avatarUrl) => setForm({ ...form, avatarUrl })} />
+      <Area label="Bio" value={form.bio ?? ""} onChange={(bio) => setForm({ ...form, bio })} />
+      <Button className="mt-5" disabled={busy || uploading || !form.name.trim()} onClick={() => onSave(form)}>Save author</Button>
+    </AdminDrawer>
+  );
 }
 
 function TagDrawer({ tag, busy, onClose, onSave }: { tag: BlogTag | null; busy: boolean; onClose: () => void; onSave: (tag: BlogTag) => Promise<unknown> }) {
@@ -790,6 +864,17 @@ function layoutLabel(data: BlogData, id: string) {
 
 function slugify(value: string) {
   return value.toLowerCase().replace(/&/g, " and ").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 96);
+}
+
+function authorInitials(name: string) {
+  const initials = name
+    .split(/\s+/)
+    .map((part) => part[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+  return initials || "HL";
 }
 
 function toDateTimeLocal(value?: string | null) {

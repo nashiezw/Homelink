@@ -220,7 +220,13 @@ function AuthorBox({ post, articleCount }: { post: { author?: { name: string; sl
       <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Author</p>
       <div className="mt-3 flex gap-4">
         <div className="relative size-14 shrink-0 overflow-hidden rounded-lg bg-slate-100 dark:bg-slate-800">
-          {post.author?.avatarUrl ? <Image src={post.author.avatarUrl} alt={post.author.name} fill className="object-cover" /> : null}
+          {post.author?.avatarUrl ? (
+            <Image src={post.author.avatarUrl} alt={post.author.name} fill className="object-cover" />
+          ) : (
+            <div className="grid size-full place-items-center bg-emerald-50 text-base font-bold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">
+              {authorInitials(post.author?.name ?? "HouseLink Editorial Team")}
+            </div>
+          )}
         </div>
         <div>
           <p className="text-lg font-semibold text-ink dark:text-white">{post.author?.name ?? "HouseLink Editorial Team"}</p>
@@ -235,6 +241,17 @@ function AuthorBox({ post, articleCount }: { post: { author?: { name: string; sl
 
 function absoluteUrl(value: string) {
   return value.startsWith("http") ? value : `${siteUrl}${value}`;
+}
+
+function authorInitials(name: string) {
+  const initials = name
+    .split(/\s+/)
+    .map((part) => part[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+  return initials || "HL";
 }
 
 function safeJsonLd(value: unknown) {
