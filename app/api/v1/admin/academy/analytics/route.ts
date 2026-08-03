@@ -108,11 +108,11 @@ export async function GET(request: Request) {
       // Daily activity
       prisma.$queryRaw`
         SELECT 
-          DATE(created_at) as date,
+          DATE("createdAt") as date,
           COUNT(*) as actions
-        FROM training_audit_logs
-        WHERE created_at >= ${startDate}
-        GROUP BY DATE(created_at)
+        FROM audit_logs
+        WHERE "createdAt" >= ${startDate}
+        GROUP BY DATE("createdAt")
         ORDER BY date DESC
         LIMIT 30
       `,
