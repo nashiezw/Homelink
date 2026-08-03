@@ -8,6 +8,7 @@ import {
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
+  ExternalLink,
   Download,
   Expand,
   FileText,
@@ -86,6 +87,7 @@ export function LibraryProductPage({
   }>;
 }) {
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [sampleFrameFailed, setSampleFrameFailed] = useState(false);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxZoomed, setLightboxZoomed] = useState(false);
   const [galleryIndex, setGalleryIndex] = useState(0);
@@ -262,10 +264,20 @@ export function LibraryProductPage({
     [product.downloads],
   );
   const sampleUrl = sampleFile ? `/api/v1/library/products/${encodeURIComponent(product.slug)}/sample` : null;
+  const sampleDownloadUrl = sampleUrl ? `${sampleUrl}?download=1` : null;
+  const sampleMeta = useMemo(() => {
+    if (!sampleFile) return null;
+    const size = sampleFile.size || formatSampleSize(sampleFile.fileSizeBytes);
+    return {
+      label: sampleFile.label?.trim() || "Sample preview",
+      size,
+      type: sampleFile.fileType || "PDF",
+    };
+  }, [sampleFile]);
   const learningOutcomes = product.learningOutcomes.filter((item) => item.trim());
   const tableOfContents = product.tableOfContents.filter((item) => item.trim());
   const whoThisIsFor = product.whoThisIsFor.filter((item) => item.trim());
-  const includedDownloads = product.downloads.filter((item) => item.label?.trim());
+  const includedDownloads = product.downloads.filter((item) => item.label?.trim() && !isLibrarySampleFile(item));
   const shortDescription = product.shortDescription?.replace(/\s+/g, " ").trim() || "";
   const fullDescription = product.description?.replace(/\s+/g, " ").trim() || "";
   const summaryExcerpt =
@@ -324,6 +336,11 @@ export function LibraryProductPage({
       });
     }
   }, [bundleLines.length, product.id, product.title]);
+
+  useEffect(() => {
+    if (!previewOpen) return;
+    setSampleFrameFailed(false);
+  }, [previewOpen, sampleUrl]);
 
   useEffect(() => {
     const marks = new Set<number>();
@@ -1110,15 +1127,40 @@ export function LibraryProductPage({
             </section>
           ) : null}
 
-          {sampleUrl ? (
-            <Panel title="Sample Preview" icon={BookOpen} action={<Button variant="secondary" onClick={() => { trackEvent("library_sample_opened", product.id, { title: product.title, slug: product.slug }); setPreviewOpen(true); }}><FileText className="size-4" /> Open sample PDF</Button>}>
+          {sampleUrl && sampleMeta ? (
+            <Panel
+              title="Sample Preview"
+              icon={BookOpen}
+              action={
+                <Button variant="secondary" onClick={() => { trackEvent("library_sample_opened", product.id, { title: product.title, slug: product.slug }); setPreviewOpen(true); }}>
+                  <FileText className="size-4" /> Preview
+                </Button>
+              }
+            >
               <div className="grid gap-5 md:grid-cols-[12rem_minmax(0,1fr)] md:items-center">
                 <BookCover product={product} className="w-full rounded-xl" />
-                <div>
-                  <p className="text-xl font-semibold tracking-tight leading-snug">Read a free PDF sample before you buy.</p>
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2 text-xs font-bold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">
+                    <span>{sampleMeta.type} sample</span>
+                    {sampleMeta.size ? <span className="rounded-full bg-emerald-50 px-2 py-1 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200">{sampleMeta.size}</span> : null}
+                  </div>
+                  <p className="mt-2 text-xl font-semibold leading-snug tracking-tight">Read a free sample before you buy.</p>
                   <p className="mt-2 text-sm leading-7 text-slate-600 dark:text-slate-300">
-                    This product includes a previewable sample file from the HouseLink Library.
+                    {sampleMeta.label}. Open it inline, view it in a new tab, or download the preview for later.
                   </p>
+                  <div className="mt-5 flex flex-wrap gap-2">
+                    <Button onClick={() => { trackEvent("library_sample_opened", product.id, { title: product.title, slug: product.slug, surface: "panel" }); setPreviewOpen(true); }}>
+                      <FileText className="size-4" /> Preview sample
+                    </Button>
+                    <Button variant="secondary" onClick={() => window.open(sampleUrl, "_blank", "noopener,noreferrer")}>
+                      <ExternalLink className="size-4" /> Open in new tab
+                    </Button>
+                    {sampleDownloadUrl ? (
+                      <Button variant="secondary" onClick={() => window.open(sampleDownloadUrl, "_blank", "noopener,noreferrer")}>
+                        <Download className="size-4" /> Download sample
+                      </Button>
+                    ) : null}
+                  </div>
                 </div>
               </div>
             </Panel>
@@ -1463,7 +1505,7 @@ export function LibraryProductPage({
               </Button>
               {sampleUrl ? (
                 <Button variant="secondary" onClick={() => { trackEvent("library_sample_opened", product.id, { title: product.title, slug: product.slug }); setPreviewOpen(true); }}>
-                  <FileText className="size-4" /> Read sample PDF
+                  <FileText className="size-4" /> Preview sample
                 </Button>
               ) : null}
             </div>
@@ -1650,11 +1692,36 @@ export function LibraryProductPage({
             </div>
             {sampleUrl ? (
               <div className="min-h-[70dvh] bg-slate-100 dark:bg-slate-900">
-                <iframe title={`${product.title} sample`} src={sampleUrl} className="h-[70dvh] w-full border-0" />
-                <div className="flex justify-end gap-2 border-t border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-950">
-                  <Button variant="secondary" onClick={() => window.open(sampleUrl, "_blank")}>
-                    <FileText className="size-4" /> Open in new tab
+                {sampleFrameFailed ? (
+                  <div className="grid min-h-[70dvh] place-items-center p-5">
+                    <div className="max-w-md rounded-lg bg-white p-6 text-center shadow-xl dark:bg-slate-950">
+                      <FileText className="mx-auto size-8 text-emerald-700 dark:text-emerald-300" />
+                      <p className="mt-3 font-semibold text-ink dark:text-white">The embedded PDF preview could not load.</p>
+                      <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">Open the sample in a new browser tab or download it instead.</p>
+                      <div className="mt-5 flex justify-center gap-2">
+                        <Button variant="secondary" onClick={() => window.open(sampleUrl, "_blank", "noopener,noreferrer")}>
+                          <ExternalLink className="size-4" /> Open in new tab
+                        </Button>
+                        {sampleDownloadUrl ? (
+                          <Button variant="secondary" onClick={() => window.open(sampleDownloadUrl, "_blank", "noopener,noreferrer")}>
+                            <Download className="size-4" /> Download
+                          </Button>
+                        ) : null}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <iframe title={`${product.title} sample`} src={sampleUrl} className="h-[70dvh] w-full border-0" onError={() => setSampleFrameFailed(true)} />
+                )}
+                <div className="flex flex-wrap justify-end gap-2 border-t border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-950">
+                  <Button variant="secondary" onClick={() => window.open(sampleUrl, "_blank", "noopener,noreferrer")}>
+                    <ExternalLink className="size-4" /> Open in new tab
                   </Button>
+                  {sampleDownloadUrl ? (
+                    <Button variant="secondary" onClick={() => window.open(sampleDownloadUrl, "_blank", "noopener,noreferrer")}>
+                      <Download className="size-4" /> Download sample
+                    </Button>
+                  ) : null}
                 </div>
               </div>
             ) : (
@@ -1692,6 +1759,13 @@ export function LibraryProductPage({
 function isLibrarySampleFile(file: LibraryProduct["downloads"][number]) {
   if (!file.previewable || !file.fileUrl) return false;
   return /sample|preview/i.test(`${file.label || ""} ${file.fileName || ""}`);
+}
+
+function formatSampleSize(bytes?: number) {
+  if (!bytes || !Number.isFinite(bytes) || bytes <= 0) return "";
+  if (bytes >= 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+  if (bytes >= 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${bytes} B`;
 }
 
 function HeroProof({ icon: Icon, label }: { icon: typeof ShieldCheck; label: string }) {

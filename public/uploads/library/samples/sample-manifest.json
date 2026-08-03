@@ -1,0 +1,27 @@
+{
+  "generatedBy": "scripts/generate-library-book-samples.py",
+  "samples": [
+    {
+      "slug": "property-development-and-property-law-in-zimbabwe",
+      "title": "The Complete Guide to Property Development and Property Law in Zimbabwe",
+      "label": "Sample preview - Property Development and Property Law in Zimbabwe",
+      "fileUrl": "/uploads/library/samples/property-development-law-sample-preview.pdf",
+      "fileName": "property-development-law-sample-preview.pdf",
+      "fileType": "PDF",
+      "fileSizeBytes": 1229213,
+      "size": "1.2 MB",
+      "pages": 10
+    },
+    {
+      "slug": "real-estate-agent-training-manual",
+      "title": "HouseLink Zimbabwe Real Estate Agent Training Manual",
+      "label": "Sample preview - HouseLink Zimbabwe Real Estate Agent Training Manual",
+      "fileUrl": "/uploads/library/samples/houselink-zimbabwe-real-estate-agent-training-manual-sample-preview.pdf",
+      "fileName": "houselink-zimbabwe-real-estate-agent-training-manual-sample-preview.pdf",
+      "fileType": "PDF",
+      "fileSizeBytes": 1438014,
+      "size": "1.4 MB",
+      "pages": 10
+    }
+  ]
+}

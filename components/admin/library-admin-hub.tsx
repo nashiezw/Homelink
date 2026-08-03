@@ -20,6 +20,7 @@ import { LibrarySettingsPanel } from "@/components/admin/library-settings-panel"
 import { SiteAnalyticsPanel } from "@/components/admin/site-analytics-panel";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api/client";
+import sampleManifest from "@/public/uploads/library/samples/sample-manifest.json";
 import {
   enabledLibraryFormats,
   estimateLibraryBundleScenario,
@@ -234,6 +235,17 @@ type RecommendationDraft = { sourceProductId: string; targetProductId: string; r
 type LibraryDraftDownload = LibraryProduct["downloads"][number] & { fileUrl?: string; fileName?: string; fileSizeBytes?: number; previewable?: boolean };
 type UploadSlot = "cover" | "download" | "sample";
 type InlineStatus = { tone: "success" | "error" | "pending"; message: string };
+type PreparedLibrarySample = {
+  slug: string;
+  title: string;
+  label: string;
+  fileUrl: string;
+  fileName: string;
+  fileType: string;
+  fileSizeBytes: number;
+  size: string;
+  pages: number;
+};
 
 type LibraryProductDraft = {
   title: string;
@@ -290,6 +302,8 @@ type LibraryProductDraft = {
   bundlePromoPrice: string;
   bundleFormatPreference: LibraryBundleFormatPreference;
 };
+
+const preparedLibrarySamples = sampleManifest.samples as PreparedLibrarySample[];
 
 const emptyOperations: LibraryOperations = {
   fulfilments: [],
@@ -441,6 +455,9 @@ export function LibraryAdminHub() {
     scheduledAt: "",
   };
   const [draft, setDraft] = useState<LibraryProductDraft>(emptyDraft);
+  const draftSlug = draft.slug;
+  const draftTitle = draft.title;
+  const preparedSample = useMemo(() => findPreparedLibrarySample({ slug: draftSlug, title: draftTitle }), [draftSlug, draftTitle]);
   const [bundleCompanionQuery, setBundleCompanionQuery] = useState("");
   const [hidePrintOosCompanions, setHidePrintOosCompanions] = useState(false);
   const [editingProduct, setEditingProduct] = useState<LibraryProduct | null>(null);
@@ -465,6 +482,7 @@ export function LibraryAdminHub() {
   const [bulkDraft, setBulkDraft] = useState<{ mode: "price" | "category"; value: string } | null>(null);
   const [fileVerification, setFileVerification] = useState<Record<string, { tone: "success" | "error" | "pending"; message: string }>>({});
   const [uploadStatus, setUploadStatus] = useState<Partial<Record<UploadSlot, InlineStatus>>>({});
+  const [storageStatus, setStorageStatus] = useState<InlineStatus | null>(null);
   const [feedback, setFeedback] = useState<{ tone: "success" | "error"; message: string } | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
@@ -814,11 +832,22 @@ export function LibraryAdminHub() {
         setUploadStatus((current) => ({ ...current, sample: { tone: "success", message: "Sample PDF uploaded. Save the product to keep it." } }));
         return;
       }
+      const prepared = findPreparedLibrarySample(draft);
+      const shouldAttachPreparedSample = Boolean(prepared && !draft.sampleFile && (file.name.toLowerCase().endsWith(".pdf") || file.type === "application/pdf"));
       setDraft((current) => ({
         ...current,
         downloads: [...current.downloads, nextFile],
+        sampleFile: shouldAttachPreparedSample && prepared ? preparedSampleToDraft(prepared) : current.sampleFile,
       }));
-      setUploadStatus((current) => ({ ...current, download: { tone: "success", message: "Full download uploaded and attached. Save the product to keep it." } }));
+      setUploadStatus((current) => ({
+        ...current,
+        download: {
+          tone: "success",
+          message: shouldAttachPreparedSample
+            ? "Full download uploaded. A matching prepared sample was attached too; save the product to keep both."
+            : "Full download uploaded and attached. Save the product to keep it.",
+        },
+      }));
     } catch (error) {
       setUploadStatus((current) => ({
         ...current,
@@ -902,6 +931,35 @@ export function LibraryAdminHub() {
           message: error instanceof Error ? `Verification failed: ${error.message}` : "Verification failed.",
         },
       }));
+    }
+  }
+
+  function attachPreparedSample(sample = preparedSample) {
+    if (!sample) return;
+    setDraft((current) => ({ ...current, sampleFile: preparedSampleToDraft(sample) }));
+    setUploadStatus((current) => ({
+      ...current,
+      sample: { tone: "success", message: `${sample.size}, ${sample.pages}-page prepared sample attached. Save the product to keep it.` },
+    }));
+  }
+
+  async function checkLibraryStorage() {
+    setStorageStatus({ tone: "pending", message: "Checking Library document storage..." });
+    try {
+      const result = await apiFetch<{ ok: boolean; message: string }>("/api/v1/admin/library", {
+        method: "POST",
+        body: JSON.stringify({ action: "test_library_storage" }),
+      });
+      if (result.error || !result.data) {
+        setStorageStatus({ tone: "error", message: result.error?.message || "Library storage check failed." });
+        return;
+      }
+      setStorageStatus({ tone: result.data.ok ? "success" : "error", message: result.data.message });
+    } catch (error) {
+      setStorageStatus({
+        tone: "error",
+        message: error instanceof Error ? `Library storage check failed: ${error.message}` : "Library storage check failed.",
+      });
     }
   }
 
@@ -1504,6 +1562,7 @@ export function LibraryAdminHub() {
               columns={[
                 { key: "title", header: "Product", render: (row) => <ProductCell product={row} /> },
                 { key: "type", header: "Formats", render: (row) => formatSummary(row) },
+                { key: "sample", header: "Sample", render: (row) => <SampleStatus product={row} /> },
                 { key: "price", header: "Price", render: (row) => priceSummary(row) },
                 { key: "status", header: "Status", render: (row) => <AdminStatusBadge status={row.status} variant={row.status === "PUBLISHED" ? "success" : row.status === "SCHEDULED" ? "warning" : "muted"} /> },
                 { key: "stock", header: "Inventory", render: (row) => {
@@ -1618,6 +1677,20 @@ export function LibraryAdminHub() {
             onReportFilterChange={setReportFilter}
             onUpdateQuoteRequest={updateQuoteRequestStatus}
           />
+          {view === "Settings" && (
+            <div className="mt-5 rounded-xl border border-white/[0.08] bg-slate-950/40 p-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="font-semibold text-white">Library document storage</p>
+                  <p className="mt-1 text-xs text-slate-500">Checks whether PDF uploads can be accepted and served publicly for samples and buyer files.</p>
+                </div>
+                <Button variant="secondary" onClick={() => void checkLibraryStorage()}>
+                  <Upload className="size-4" /> Check storage
+                </Button>
+              </div>
+              <UploadInlineStatus status={storageStatus ?? undefined} />
+            </div>
+          )}
           {view === "Reports" && <OperationsList title="Export jobs" rows={operations.exports.map((item) => ({ label: item.type, value: item.status, detail: item.fileUrl ? "Ready to download" : "Preparing export", href: item.fileUrl ?? undefined }))} />}
           {view === "Analytics" && <OperationsList title="Activity timeline" rows={operations.activities.map((item) => ({ label: item.action, value: item.createdAt ? new Date(item.createdAt).toLocaleDateString() : "Now", detail: item.message }))} />}
           {view === "Customers" && (
@@ -1734,14 +1807,32 @@ export function LibraryAdminHub() {
                         <input type="file" accept=".pdf,.docx,.xlsx,.pptx,.zip" className="mt-2 block w-full text-xs" onChange={(event) => void uploadAsset(event.currentTarget.files, "download", event.currentTarget)} />
                         <UploadInlineStatus status={uploadStatus.download} />
                       </label>
-                      <label className="rounded-lg border border-dashed border-emerald-500/30 bg-emerald-500/5 p-3 text-sm text-slate-300 sm:col-span-2">
-                        <span className="flex items-center gap-2 font-semibold"><FileText className="size-4 text-emerald-300" /> Sample PDF (optional)</span>
+                      <div className="rounded-lg border border-dashed border-emerald-500/30 bg-emerald-500/5 p-3 text-sm text-slate-300 sm:col-span-2">
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div>
+                            <span className="flex items-center gap-2 font-semibold"><FileText className="size-4 text-emerald-300" /> Sample PDF (optional)</span>
+                            {preparedSample ? (
+                              <p className="mt-1 text-xs font-semibold text-emerald-200">
+                                Prepared sample available: {preparedSample.size}, {preparedSample.pages} pages.
+                              </p>
+                            ) : null}
+                          </div>
+                          {preparedSample ? (
+                            <button
+                              type="button"
+                              onClick={() => attachPreparedSample(preparedSample)}
+                              className="inline-flex items-center gap-2 rounded-lg border border-emerald-500/30 px-3 py-2 text-xs font-bold text-emerald-200 hover:bg-emerald-500/10"
+                            >
+                              <FileText className="size-4" /> Use prepared sample
+                            </button>
+                          ) : null}
+                        </div>
                         <p className="mt-1 text-xs text-slate-500">
                           Upload a short preview PDF if available. This powers “Read sample” on the product page. Leave empty if you do not have a sample.
                         </p>
                         <input type="file" accept=".pdf,application/pdf" className="mt-2 block w-full text-xs" onChange={(event) => void uploadAsset(event.currentTarget.files, "sample", event.currentTarget)} />
                         <UploadInlineStatus status={uploadStatus.sample} />
-                      </label>
+                      </div>
                     </div>
                     {(draft.gallery.length > 0 || draft.downloads.length > 0 || draft.sampleFile) && (
                       <div className="mt-3 grid gap-2 rounded-lg border border-white/10 p-3 text-xs text-slate-400">
@@ -1749,7 +1840,13 @@ export function LibraryAdminHub() {
                         {draft.sampleFile ? (
                           <AssetRow
                             label={`Sample preview: ${draft.sampleFile.label} (${draft.sampleFile.fileType})`}
+                            details={[
+                              draft.sampleFile.fileName ? `File: ${draft.sampleFile.fileName}` : "",
+                              draft.sampleFile.size || draft.sampleFile.fileSizeBytes ? `Size: ${draft.sampleFile.size || formatUploadSize(draft.sampleFile.fileSizeBytes ?? 0)}` : "",
+                              editingProduct ? "Saved sample will remain public after you save product changes." : "Save the product to make this sample public.",
+                            ].filter(Boolean)}
                             verification={fileVerification[fileVerificationKey(draft.sampleFile)]}
+                            onOpen={draft.sampleFile.fileUrl ? () => window.open(draft.sampleFile?.fileUrl, "_blank", "noopener,noreferrer") : undefined}
                             onVerify={() => draft.sampleFile && void verifyLibraryFile(draft.sampleFile)}
                             onRemove={() => setDraft((current) => ({ ...current, sampleFile: null }))}
                           />
@@ -2844,18 +2941,22 @@ function CommerceModal({ title, description, children, saveLabel, disabled, onCl
 
 function AssetRow({
   label,
+  details,
   canMoveUp,
   canMoveDown,
   verification,
+  onOpen,
   onMoveUp,
   onMoveDown,
   onVerify,
   onRemove,
 }: {
   label: string;
+  details?: string[];
   canMoveUp?: boolean;
   canMoveDown?: boolean;
   verification?: { tone: "success" | "error" | "pending"; message: string };
+  onOpen?: () => void;
   onMoveUp?: () => void;
   onMoveDown?: () => void;
   onVerify?: () => void;
@@ -2866,6 +2967,11 @@ function AssetRow({
     <div className="grid min-w-0 gap-2 rounded-lg border border-white/[0.06] bg-slate-950 p-2 sm:grid-cols-[minmax(0,1fr)_auto]">
       <div className="min-w-0">
         <span className="block min-w-0 break-words [overflow-wrap:anywhere]">{label}</span>
+        {details?.length ? (
+          <div className="mt-1 grid gap-0.5 text-[11px] leading-4 text-slate-500">
+            {details.map((detail) => <span key={detail} className="break-words [overflow-wrap:anywhere]">{detail}</span>)}
+          </div>
+        ) : null}
         {verification ? (
           <p
             role={verification.tone === "error" ? "alert" : "status"}
@@ -2881,6 +2987,7 @@ function AssetRow({
       <div className="flex shrink-0 gap-1">
         <button type="button" disabled={!canMoveUp} onClick={onMoveUp} className="rounded-md border border-white/10 px-2 py-1 text-[11px] font-bold text-slate-300 hover:bg-white/5 disabled:opacity-35">Up</button>
         <button type="button" disabled={!canMoveDown} onClick={onMoveDown} className="rounded-md border border-white/10 px-2 py-1 text-[11px] font-bold text-slate-300 hover:bg-white/5 disabled:opacity-35">Down</button>
+        {onOpen ? <button type="button" onClick={onOpen} className="rounded-md border border-white/10 px-2 py-1 text-[11px] font-bold text-slate-300 hover:bg-white/5">Open</button> : null}
         {onVerify ? <button type="button" disabled={verifying} onClick={onVerify} className="rounded-md border border-emerald-500/30 px-2 py-1 text-[11px] font-bold text-emerald-300 hover:bg-emerald-500/10 disabled:cursor-wait disabled:opacity-60">{verifying ? "Checking" : "Verify"}</button> : null}
         <button type="button" onClick={onRemove} className="rounded-md border border-red-500/30 px-2 py-1 text-[11px] font-bold text-red-300 hover:bg-red-500/10">Remove</button>
       </div>
@@ -3162,6 +3269,60 @@ function ProductCell({ product }: { product: LibraryProduct }) {
   );
 }
 
+function SampleStatus({ product }: { product: LibraryProduct }) {
+  const sample = product.downloads.find((file) => isLibrarySampleFile(file));
+  if (sample?.fileUrl) {
+    return (
+      <div className="grid gap-1">
+        <AdminStatusBadge status="ATTACHED" variant="success" />
+        <span className="text-xs text-slate-500">{sample.size || formatUploadSize(sample.fileSizeBytes ?? 0)}</span>
+      </div>
+    );
+  }
+  const prepared = findPreparedLibrarySample(product);
+  return prepared
+    ? <AdminStatusBadge status="PREPARED" variant="info" />
+    : <AdminStatusBadge status="MISSING" variant="warning" />;
+}
+
+function isLibrarySampleFile(file: Pick<LibraryDraftDownload, "label" | "fileName" | "fileUrl" | "previewable">) {
+  if (!file.previewable || !file.fileUrl) return false;
+  return /sample|preview/i.test(`${file.label || ""} ${file.fileName || ""}`);
+}
+
+function findPreparedLibrarySample(input: Pick<LibraryProductDraft, "slug" | "title"> | Pick<LibraryProduct, "slug" | "title">) {
+  const slug = normalizeSampleMatch(input.slug);
+  const title = normalizeSampleMatch(input.title);
+  return preparedLibrarySamples.find((sample) => sample.slug === slug)
+    ?? preparedLibrarySamples.find((sample) => normalizeSampleMatch(sample.title) === title)
+    ?? preparedLibrarySamples.find((sample) => {
+      const sampleTitle = normalizeSampleMatch(sample.title);
+      return Boolean(title) && (title.includes(sampleTitle) || sampleTitle.includes(title));
+    })
+    ?? null;
+}
+
+function preparedSampleToDraft(sample: PreparedLibrarySample): LibraryDraftDownload {
+  return {
+    id: `prepared-sample-${sample.slug}`,
+    label: sample.label,
+    fileType: sample.fileType,
+    size: sample.size,
+    secure: true,
+    previewable: true,
+    fileUrl: sample.fileUrl,
+    fileName: sample.fileName,
+    fileSizeBytes: sample.fileSizeBytes,
+  };
+}
+
+function normalizeSampleMatch(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
 type LibraryGroupField = "category" | "collection" | "author";
 
 function TaxonomyTable({ kind, products, taxonomy, fallback, onEdit, onDelete }: { kind: LibraryGroupField; products: LibraryProduct[]; taxonomy: LibraryTaxonomyAdmin[]; fallback: React.ReactNode; onEdit: (kind: LibraryGroupField, row?: LibraryTaxonomyAdmin) => void; onDelete: (kind: LibraryGroupField, id: string) => void | Promise<void> }) {
@@ -3368,6 +3529,7 @@ function LibraryTabManagement({
             { key: "file", header: "File", render: (row) => <div><p className="font-semibold text-white">{row.label}</p><p className="text-xs text-slate-500">{row.product.title}</p></div> },
             { key: "type", header: "Type", render: (row) => row.fileType },
             { key: "size", header: "Size", render: (row) => row.size },
+            { key: "access", header: "Access", render: (row) => <AdminStatusBadge status={isLibrarySampleFile(row) ? "SAMPLE" : "BUYER FILE"} variant={isLibrarySampleFile(row) ? "info" : "success"} /> },
             { key: "secure", header: "Security", render: (row) => <AdminStatusBadge status={row.secure ? "SECURE" : "OPEN"} variant={row.secure ? "success" : "warning"} /> },
             { key: "actions", header: "Actions", render: (row) => <RowActions primaryLabel="Edit Product" primaryIcon={Edit3} onPrimary={() => onEditProduct(row.product)} onDelete={() => onDeleteProduct(row.product.id)} /> },
           ]}

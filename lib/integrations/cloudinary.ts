@@ -76,10 +76,33 @@ export async function testCloudinaryConfig(
   const apiKey = integrations.cloudinaryKey.trim();
   const apiSecret = integrations.cloudinarySecret.trim();
 
+  return testCloudinaryCredentials(
+    cloudName,
+    apiKey,
+    apiSecret,
+    "Add Cloudinary cloud name, API key, and API secret in Platform Settings > Integrations.",
+  );
+}
+
+export async function testCloudinaryEnvConfig(): Promise<CloudinaryTestResult> {
+  return testCloudinaryCredentials(
+    process.env.CLOUDINARY_CLOUD_NAME?.trim() ?? "",
+    process.env.CLOUDINARY_API_KEY?.trim() ?? "",
+    process.env.CLOUDINARY_API_SECRET?.trim() ?? "",
+    "Set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET before uploading Library PDFs.",
+  );
+}
+
+async function testCloudinaryCredentials(
+  cloudName: string,
+  apiKey: string,
+  apiSecret: string,
+  missingMessage: string,
+): Promise<CloudinaryTestResult> {
   if (!cloudName || !apiKey || !apiSecret) {
     return {
       ok: false,
-      message: "Add Cloudinary cloud name, API key, and API secret in Platform Settings > Integrations.",
+      message: missingMessage,
     };
   }
 

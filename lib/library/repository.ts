@@ -3662,7 +3662,7 @@ async function replaceProductAssets(productId: string, input: Partial<LibraryPro
           fileSizeBytes: item.fileSizeBytes ?? parseSize(item.size ?? "0"),
           secure: item.secure ?? true,
           previewable: Boolean(item.previewable),
-          downloadable: true,
+          downloadable: !item.previewable,
           sortOrder,
         })),
       });

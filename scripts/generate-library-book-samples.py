@@ -1,3 +1,5 @@
+import json
+import shutil
 from pathlib import Path
 
 from PIL import Image
@@ -8,6 +10,7 @@ from reportlab.pdfgen import canvas
 
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT_DIR = ROOT / "output" / "pdf"
+PUBLIC_SAMPLE_DIR = ROOT / "public" / "uploads" / "library" / "samples"
 TMP_DIR = ROOT / "tmp" / "pdfs"
 
 BOOKS = [
@@ -18,6 +21,9 @@ BOOKS = [
         "cover_image": ROOT / "public" / "images" / "library" / "property-development-law-cover.png",
         "sample_pdf": OUTPUT_DIR
         / "PROPERTY DEVELOPMENT AND PROPERTY LAW IN ZIMBABWE - HouseLink sample preview.pdf",
+        "public_sample_pdf": PUBLIC_SAMPLE_DIR / "property-development-law-sample-preview.pdf",
+        "slug": "property-development-and-property-law-in-zimbabwe",
+        "label": "Sample preview - Property Development and Property Law in Zimbabwe",
         "source_start_page": 1,
         "pages_from_source": 9,
     },
@@ -31,6 +37,9 @@ BOOKS = [
         "cover_image": ROOT / "public" / "images" / "academy" / "agent-academy-hero.png",
         "sample_pdf": OUTPUT_DIR
         / "HouseLink Zimbabwe Real Estate Agent Training Manual - sample preview.pdf",
+        "public_sample_pdf": PUBLIC_SAMPLE_DIR / "houselink-zimbabwe-real-estate-agent-training-manual-sample-preview.pdf",
+        "slug": "real-estate-agent-training-manual",
+        "label": "Sample preview - HouseLink Zimbabwe Real Estate Agent Training Manual",
         "source_start_page": 2,
         "pages_from_source": 9,
     }
@@ -110,6 +119,17 @@ def draw_cover_page(book: dict, page_width: float, page_height: float, destinati
 
 
 def generate_sample(book: dict) -> None:
+    try:
+        generate_sample_from_source(book)
+    except Exception as error:
+        if not book["sample_pdf"].exists():
+            raise
+        print(f"Using existing sample for {book['title']} because the source could not be opened: {error}")
+        book["public_sample_pdf"].parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(book["sample_pdf"], book["public_sample_pdf"])
+
+
+def generate_sample_from_source(book: dict) -> None:
     source = PdfReader(str(book["source_pdf"]))
     if not source.pages:
         raise ValueError(f"Source PDF has no pages: {book['source_pdf']}")
@@ -138,13 +158,48 @@ def generate_sample(book: dict) -> None:
     if len(result.pages) != expected:
         raise ValueError(f"Expected {expected} pages, got {len(result.pages)}")
 
+    book["public_sample_pdf"].parent.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(book["sample_pdf"], book["public_sample_pdf"])
+
     print(f"Created {book['sample_pdf']} ({len(result.pages)} pages)")
+
+
+def write_manifest() -> None:
+    manifest = {
+        "generatedBy": "scripts/generate-library-book-samples.py",
+        "samples": [
+            {
+                "slug": book["slug"],
+                "title": book["title"],
+                "label": book["label"],
+                "fileUrl": f"/uploads/library/samples/{book['public_sample_pdf'].name}",
+                "fileName": book["public_sample_pdf"].name,
+                "fileType": "PDF",
+                "fileSizeBytes": book["public_sample_pdf"].stat().st_size,
+                "size": format_bytes(book["public_sample_pdf"].stat().st_size),
+                "pages": int(book["pages_from_source"]) + 1,
+            }
+            for book in BOOKS
+        ],
+    }
+    manifest_path = PUBLIC_SAMPLE_DIR / "sample-manifest.json"
+    manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+    print(f"Created {manifest_path}")
+
+
+def format_bytes(size: int) -> str:
+    if size >= 1024 * 1024:
+        return f"{size / 1024 / 1024:.1f} MB"
+    if size >= 1024:
+        return f"{round(size / 1024)} KB"
+    return f"{size} B"
 
 
 def main() -> None:
     TMP_DIR.mkdir(parents=True, exist_ok=True)
     for book in BOOKS:
         generate_sample(book)
+    write_manifest()
 
 
 if __name__ == "__main__":

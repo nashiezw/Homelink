@@ -18,6 +18,7 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
   const { slug } = await context.params;
   const sample = await getLibraryProductSampleFile(slug);
   if (!sample) return problem(404, "SAMPLE_NOT_FOUND", "No previewable sample file is available for this product.");
+  const disposition = new URL(request.url).searchParams.get("download") === "1" ? "attachment" : "inline";
 
   if (sample.fileUrl.startsWith("/uploads/")) {
     const safeRelative = sample.fileUrl.replace(/^\/+/, "").split("/").filter((part) => part && part !== "..").join(path.sep);
@@ -29,7 +30,7 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
     return new NextResponse(new Uint8Array(buffer), {
       headers: {
         "Content-Type": sample.fileType.toLowerCase() === "pdf" || sample.fileName.toLowerCase().endsWith(".pdf") ? "application/pdf" : "application/octet-stream",
-        "Content-Disposition": `inline; filename="${sample.fileName.replace(/"/g, "")}"`,
+        "Content-Disposition": `${disposition}; filename="${sample.fileName.replace(/"/g, "")}"`,
         "Cache-Control": "public, max-age=300",
         "X-HouseLink-Sample": sample.productTitle,
         "X-HouseLink-Sample-Pages": String(settings.preview.maxSamplePages),

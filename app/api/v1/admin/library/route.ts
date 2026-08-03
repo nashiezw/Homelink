@@ -1,6 +1,7 @@
 import { requireAdminAsync, requireAdmin } from "@/lib/admin/require-admin";
 import { created, ok, problem } from "@/lib/api/response";
 import { isPostgresStoreEnabled } from "@/lib/db/main-prisma";
+import { testCloudinaryEnvConfig } from "@/lib/integrations/cloudinary";
 import {
   archiveLibraryProducts,
   approveLibraryGuestClaim,
@@ -281,6 +282,9 @@ export async function POST(request: Request) {
       const fileUrl = optionalString(body.fileUrl);
       if (!fileUrl) return problem(400, "INVALID_FILE_URL", "Library file URL is required.");
       return ok(await verifyLibraryFileDelivery(fileUrl, request.url));
+    }
+    if (body.action === "test_library_storage") {
+      return ok(await testCloudinaryEnvConfig());
     }
     if (body.action === "moderate_review") {
       const review = await moderateLibraryReview(
