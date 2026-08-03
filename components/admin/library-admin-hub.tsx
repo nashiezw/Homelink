@@ -1,6 +1,6 @@
 "use client";
 
-import { Boxes, ChevronDown, Copy, Download, Edit3, ExternalLink, FileArchive, FileText, Link2, Plus, Search, Trash2, Upload, X } from "lucide-react";
+import { Boxes, ChevronDown, Copy, Download, Edit3, ExternalLink, FileArchive, FileText, ImagePlus, Link2, Loader2, Plus, Search, Trash2, Upload, X } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
@@ -450,6 +450,8 @@ export function LibraryAdminHub() {
   const [fulfilmentDraft, setFulfilmentDraft] = useState<FulfilmentDraft | null>(null);
   const [groupDraft, setGroupDraft] = useState<GroupDraft | null>(null);
   const [taxonomyDraft, setTaxonomyDraft] = useState<TaxonomyDraft | null>(null);
+  const taxonomyAvatarInputRef = useRef<HTMLInputElement>(null);
+  const [taxonomyAvatarUploading, setTaxonomyAvatarUploading] = useState(false);
   const [downloadAccessDraft, setDownloadAccessDraft] = useState<DownloadAccessDraft | null>(null);
   const [manualOrderDraft, setManualOrderDraft] = useState<ManualOrderDraft | null>(null);
   const [orderNotifyDraft, setOrderNotifyDraft] = useState<OrderNotifyDraft | null>(null);
@@ -814,6 +816,42 @@ export function LibraryAdminHub() {
         },
       }));
     } finally {
+      if (input) input.value = "";
+    }
+  }
+
+  async function uploadTaxonomyAvatar(files: FileList | null, input?: HTMLInputElement | null) {
+    const file = files?.[0];
+    if (!file || !taxonomyDraft || taxonomyDraft.kind !== "author") return;
+    setFeedback(null);
+    if (!file.type.startsWith("image/")) {
+      setFeedback({ tone: "error", message: "Author profile image must be a JPG, PNG, or WebP file." });
+      if (input) input.value = "";
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setFeedback({ tone: "error", message: "Author profile images must be under 5 MB." });
+      if (input) input.value = "";
+      return;
+    }
+
+    setTaxonomyAvatarUploading(true);
+    try {
+      const dataUrl = await readFile(file);
+      const uploaded = await apiFetch<{ url: string }>("/api/v1/uploads", {
+        method: "POST",
+        body: JSON.stringify({ dataUrl, kind: "image", folder: "library-authors", filename: file.name }),
+      });
+      if (!uploaded.data?.url) {
+        setFeedback({ tone: "error", message: uploaded.error?.message || "Author profile image upload failed." });
+        return;
+      }
+      setTaxonomyDraft((current) => current ? { ...current, heroImageUrl: uploaded.data!.url } : current);
+      setFeedback({ tone: "success", message: "Author profile image uploaded. Save the author to keep it." });
+    } catch {
+      setFeedback({ tone: "error", message: "Author profile image upload failed." });
+    } finally {
+      setTaxonomyAvatarUploading(false);
       if (input) input.value = "";
     }
   }
@@ -2215,7 +2253,51 @@ export function LibraryAdminHub() {
             <Field label="Name" value={taxonomyDraft.name} onChange={(value) => setTaxonomyDraft({ ...taxonomyDraft, name: value })} required />
             <Field label="Slug" value={taxonomyDraft.slug} onChange={(value) => setTaxonomyDraft({ ...taxonomyDraft, slug: value })} placeholder="Auto-generated if empty" />
             <TextAreaField label={taxonomyDraft.kind === "author" ? "Bio" : "Description"} value={taxonomyDraft.kind === "author" ? taxonomyDraft.bio : taxonomyDraft.description} onChange={(value) => setTaxonomyDraft(taxonomyDraft.kind === "author" ? { ...taxonomyDraft, bio: value } : { ...taxonomyDraft, description: value })} />
-            <Field label={taxonomyDraft.kind === "author" ? "Avatar URL" : "Hero image URL"} value={taxonomyDraft.heroImageUrl} onChange={(value) => setTaxonomyDraft({ ...taxonomyDraft, heroImageUrl: value })} />
+            {taxonomyDraft.kind === "author" ? (
+              <div className="md:col-span-2 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                <p className="text-sm font-semibold text-white">Author profile image</p>
+                <p className="mt-1 text-xs leading-5 text-slate-400">Upload a square JPG, PNG, or WebP image. This is used on Library author profiles and bylines.</p>
+                <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center">
+                  <div className="flex size-24 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-slate-950">
+                    {taxonomyDraft.heroImageUrl ? (
+                      <div
+                        className="size-full bg-cover bg-center"
+                        role="img"
+                        aria-label={`${taxonomyDraft.name || "Author"} profile image preview`}
+                        style={{ backgroundImage: `url("${taxonomyDraft.heroImageUrl.replace(/"/g, "%22")}")` }}
+                      />
+                    ) : (
+                      <span className="text-2xl font-black text-emerald-200">{initials(taxonomyDraft.name)}</span>
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-col gap-2 sm:flex-row">
+                      <Button type="button" disabled={taxonomyAvatarUploading} onClick={() => taxonomyAvatarInputRef.current?.click()}>
+                        {taxonomyAvatarUploading ? <Loader2 className="size-4 animate-spin" /> : <ImagePlus className="size-4" />}
+                        {taxonomyAvatarUploading ? "Uploading..." : taxonomyDraft.heroImageUrl ? "Replace image" : "Upload image"}
+                      </Button>
+                      {taxonomyDraft.heroImageUrl ? (
+                        <Button type="button" variant="secondary" disabled={taxonomyAvatarUploading} onClick={() => setTaxonomyDraft({ ...taxonomyDraft, heroImageUrl: "" })}>
+                          <X className="size-4" /> Remove
+                        </Button>
+                      ) : null}
+                    </div>
+                    <input
+                      ref={taxonomyAvatarInputRef}
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      className="hidden"
+                      onChange={(event) => void uploadTaxonomyAvatar(event.target.files, event.currentTarget)}
+                    />
+                  </div>
+                </div>
+                <div className="mt-4">
+                  <Field label="Image URL" value={taxonomyDraft.heroImageUrl} onChange={(value) => setTaxonomyDraft({ ...taxonomyDraft, heroImageUrl: value })} placeholder="Optional hosted image URL" />
+                </div>
+              </div>
+            ) : (
+              <Field label="Hero image URL" value={taxonomyDraft.heroImageUrl} onChange={(value) => setTaxonomyDraft({ ...taxonomyDraft, heroImageUrl: value })} />
+            )}
             {taxonomyDraft.kind === "author" && <Field label="Website URL" value={taxonomyDraft.websiteUrl} onChange={(value) => setTaxonomyDraft({ ...taxonomyDraft, websiteUrl: value })} />}
             {taxonomyDraft.kind !== "author" && <Field label="SEO title" value={taxonomyDraft.seoTitle} onChange={(value) => setTaxonomyDraft({ ...taxonomyDraft, seoTitle: value })} />}
             {taxonomyDraft.kind !== "author" && <Field label="Meta description" value={taxonomyDraft.metaDescription} onChange={(value) => setTaxonomyDraft({ ...taxonomyDraft, metaDescription: value })} />}
@@ -3826,6 +3908,12 @@ function sectionDescription(view: string) {
     Settings: "Full store configuration: checkout, tax, delivery, downloads, licence, reviews, SEO, preview, claims, inventory, and notifications.",
   };
   return descriptions[view] ?? "Manage Library operations.";
+}
+
+function initials(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return "HL";
+  return parts.slice(0, 2).map((part) => part[0]?.toUpperCase()).join("");
 }
 
 function readFile(file: File): Promise<string> {
