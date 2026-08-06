@@ -604,7 +604,7 @@ export function AgentAcademyHub() {
         </div>
       )}
 
-      {["Certificates", "Public Learners", "Learning Paths", "Announcements", "Discussion Board", "Leaderboard", "Badges", "Analytics", "Settings"].includes(tab) && (
+      {["Certificates", "Coupons", "Public Learners", "Learning Paths", "Announcements", "Discussion Board", "Leaderboard", "Badges", "Analytics", "Settings"].includes(tab) && (
         <FeatureWorkbench
           tab={tab}
           data={data}
