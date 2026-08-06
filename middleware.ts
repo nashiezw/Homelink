@@ -21,11 +21,37 @@ const RATE_LIMITS = [
   { pattern: /^\/api\/v1\/analytics\/events$/, limit: 120 },
   { pattern: /^\/api\/v1\/admin(?:\/.*)?$/, limit: 120 },
 ];
+
+type Role = "ADMIN" | "AGENT" | "LANDLORD" | "CONSULTANT" | "TRAINER" | "LEARNER";
+
+const ROLE_PERMISSIONS: Record<string, Role[]> = {
+  "/api/v1/admin/academy": ["ADMIN", "TRAINER"],
+  "/api/v1/admin/academy/coupons": ["ADMIN"],
+  "/api/v1/academy/coupons/validate": ["AGENT", "LEARNER"],
+  "/api/v1/academy/register": ["AGENT", "LEARNER"],
+};
+
 const buckets = new Map<string, { count: number; resetAt: number }>();
 
 export function middleware(request: NextRequest) {
   const requestId = request.headers.get("x-request-id") ?? crypto.randomUUID();
   const { pathname } = request.nextUrl;
+  
+  // Check role-based permissions for Academy routes
+  const permissionCheck = checkRolePermissions(request, pathname);
+  if (!permissionCheck.allowed) {
+    return withRequestId(
+      NextResponse.json(
+        {
+          error: { code: "FORBIDDEN", message: permissionCheck.message },
+          meta: { requestId },
+        },
+        { status: 403 },
+      ),
+      requestId,
+    );
+  }
+  
   const limited = checkRouteRateLimit(request, pathname);
   if (!limited.allowed) {
     return withRequestId(
@@ -122,4 +148,29 @@ function checkRouteRateLimit(request: NextRequest, pathname: string) {
 function withRequestId(response: NextResponse, requestId: string) {
   response.headers.set("X-Request-Id", requestId);
   return response;
+}
+
+function checkRolePermissions(request: NextRequest, pathname: string): { allowed: boolean; message?: string } {
+  const sessionCookie = request.cookies.get(SESSION_COOKIE);
+  if (!sessionCookie) {
+    return { allowed: true };
+  }
+  
+  try {
+    const session = JSON.parse(decodeURIComponent(sessionCookie.value));
+    const userRoles: Role[] = session.roles || [];
+    
+    for (const [pattern, allowedRoles] of Object.entries(ROLE_PERMISSIONS)) {
+      if (pathname.startsWith(pattern)) {
+        const hasPermission = allowedRoles.some(role => userRoles.includes(role));
+        if (!hasPermission) {
+          return { allowed: false, message: `Requires one of: ${allowedRoles.join(", ")}` };
+        }
+      }
+    }
+  } catch {
+    return { allowed: true };
+  }
+  
+  return { allowed: true };
 }
