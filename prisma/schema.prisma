@@ -209,6 +209,8 @@ model User {
   libraryDownloads      LibraryDownloadAccess[]
   libraryWishlist       LibraryWishlistItem[]
   libraryGuestClaims    LibraryGuestClaim[]
+  couponUsages          AcademyCouponUsage[]
+  createdCoupons        AcademyCoupon[]
 }
 
 model BlogAuthor {
@@ -2592,7 +2594,56 @@ model TrainingAuditLog {
   createdAt DateTime @default(now())
 
   @@index([actorId])
-  @@map("audit_logs")
+  @@map("training_audit_logs")
+}
+
+model AcademyCoupon {
+  id                String              @id @default(cuid())
+  code              String              @unique
+  description       String?
+  discountType      CouponDiscountType  @default(PERCENTAGE)
+  discountValue     Decimal             @db.Decimal(5, 2)
+  maxUses           Int?
+  usedCount         Int                 @default(0)
+  minPurchaseAmount Decimal?            @db.Decimal(12, 2)
+  validFrom         DateTime            @default(now())
+  validUntil        DateTime?
+  applicableCourses String[]            @default([])
+  applicableRoles   String[]            @default([])
+  active            Boolean             @default(true)
+  createdBy         String?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  usages            AcademyCouponUsage[]
+  createdByUser     User?               @relation(fields: [createdBy], references: [id])
+
+  @@index([code])
+  @@index([active])
+  @@index([validFrom, validUntil])
+  @@map("academy_coupons")
+}
+
+model AcademyCouponUsage {
+  id             String       @id @default(cuid())
+  couponId       String
+  userId         String
+  paymentId      String
+  discountAmount Decimal     @db.Decimal(12, 2)
+  originalAmount Decimal     @db.Decimal(12, 2)
+  finalAmount    Decimal     @db.Decimal(12, 2)
+  createdAt      DateTime    @default(now())
+  coupon         AcademyCoupon @relation(fields: [couponId], references: [id], onDelete: Cascade)
+  user           User          @relation(fields: [userId], references: [id])
+
+  @@index([couponId])
+  @@index([userId])
+  @@index([paymentId])
+  @@map("academy_coupon_usages")
+}
+
+enum CouponDiscountType {
+  PERCENTAGE
+  FIXED_AMOUNT
 }
 
 // First-party anonymous page tracking (no MAC / device fingerprint).

@@ -89,8 +89,28 @@ type AcademyData = {
   exams: Array<{ id: string; title: string; durationMinutes: number; passingScore: number; active: boolean }>;
   certificates: Array<{ id: string; certificateNumber: string; agentId: string; status: string; issuedAt: string; expiresAt?: string }>;
   learningPaths: Array<{ id: string; title: string; description?: string; status: string; badgeTitle?: string; courses: Array<{ id: string; sortOrder: number; required: boolean; course: AcademyCourse }> }>;
-  announcements: Array<{ id: string; title: string; body: string; audience: string; publishedAt?: string; expiresAt?: string; createdAt: string }>;
-  badges: Array<{ id: string; name: string; description?: string; xp: number; iconUrl?: string | null; active: boolean }>;
+  announcements: Array<{ id: string; title: string; body: string; audience: string; expiresAt: string | null; createdAt: string }>;
+  badges: Array<{ id: string; name: string; description: string; xp: number; iconUrl: string | null; active: boolean }>;
+  settings: Record<string, unknown>;
+  auditLogs: Array<{ id: string; actorId: string | null; action: string; target: string; metadata: Record<string, unknown>; createdAt: string }>;
+  coupons?: Array<{
+    id: string;
+    code: string;
+    description: string | null;
+    discountType: string;
+    discountValue: number;
+    maxUses: number | null;
+    usedCount: number;
+    minPurchaseAmount: number | null;
+    validFrom: string;
+    validUntil: string | null;
+    applicableCourses: string[];
+    applicableRoles: string[];
+    active: boolean;
+    remainingUses: number | null;
+    isValid: boolean;
+    createdByUser: { id: string; name: string; email: string } | null;
+  }>;
   publicLearnerApplications: Array<{
     id: string;
     status: string;
@@ -264,6 +284,7 @@ const academyTabs = [
   "Courses",
   "Public Learners",
   "Certificates",
+  "Coupons",
   "Training Resources",
   "Video Library",
   "Learning Paths",
@@ -295,16 +316,14 @@ export function AgentAcademyHub() {
   const [tab, setTab] = useState<AcademyTab>("Dashboard");
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
-  const [drawer, setDrawer] = useState<"course" | "document" | "video" | "quiz" | "exam" | "assignment" | "path" | "announcement" | "badge" | "lesson" | "module" | null>(null);
+  const [drawer, setDrawer] = useState<"course" | "document" | "video" | "quiz" | "exam" | "assignment" | "path" | "announcement" | "badge" | "lesson" | "module" | "coupon" | null>(null);
   const [busy, setBusy] = useState(false);
   const [previewDocument, setPreviewDocument] = useState<AcademyDocument | null>(null);
-  const [selectedDocument, setSelectedDocument] = useState<AcademyDocument | null>(null);
-  const [documentMode, setDocumentMode] = useState<"create" | "edit" | "replace">("create");
   const [selectedCourse, setSelectedCourse] = useState<AcademyCourse | null>(null);
-  const [buildingCourseId, setBuildingCourseId] = useState<string | null>(null);
   const [viewCourse, setViewCourse] = useState<AcademyCourse | null>(null);
   const [selectedLesson, setSelectedLesson] = useState<AcademyLesson | null>(null);
   const [selectedModule, setSelectedModule] = useState<{ id: string; courseId: string; title: string; description?: string; sortOrder: number } | null>(null);
+  const [selectedCoupon, setSelectedCoupon] = useState<AcademyData["coupons"][number] | null>(null);
   const [selectedPath, setSelectedPath] = useState<AcademyData["learningPaths"][number] | null>(null);
   const [selectedAnnouncement, setSelectedAnnouncement] = useState<AcademyData["announcements"][number] | null>(null);
   const [selectedBadge, setSelectedBadge] = useState<AcademyData["badges"][number] | null>(null);
@@ -671,6 +690,21 @@ export function AgentAcademyHub() {
       <ModuleDrawer open={drawer === "module"} busy={busy} module={selectedModule} courses={data.courses} onClose={() => { setDrawer(null); setSelectedModule(null); }} onSave={(module) => selectedModule
         ? action({ action: "update_module", moduleId: selectedModule.id, module }, "Module updated.")
         : action({ action: "create_module", module }, "Module created.")} />
+      <CouponDrawer open={drawer === "coupon"} busy={busy} coupon={selectedCoupon} courses={data.courses} onClose={() => { setDrawer(null); setSelectedCoupon(null); }} onSave={async (coupon) => {
+        const result = await apiFetch("/api/v1/admin/academy/coupons" + (selectedCoupon ? `/${selectedCoupon.id}` : ""), {
+          method: selectedCoupon ? "PATCH" : "POST",
+          body: JSON.stringify(coupon),
+        });
+        if (result.error) {
+          showToast(result.error.message, "error");
+          return false;
+        }
+        showToast(selectedCoupon ? "Coupon updated." : "Coupon created.");
+        setDrawer(null);
+        setSelectedCoupon(null);
+        await load();
+        return true;
+      }} />
       {previewDocument && <DocumentPreview document={previewDocument} onClose={() => setPreviewDocument(null)} />}
       {viewCourse && <CoursePreview course={viewCourse} onClose={() => setViewCourse(null)} />}
     </div>
@@ -1000,13 +1034,16 @@ function FeatureWorkbench({
   query: string;
   setQuery: (query: string) => void;
   setSelectedLesson: (lesson: AcademyLesson | null) => void;
-  setDrawer: (drawer: "course" | "document" | "video" | "quiz" | "exam" | "assignment" | "path" | "announcement" | "badge" | "lesson" | "module" | null) => void;
+  setDrawer: (drawer: "course" | "document" | "video" | "quiz" | "exam" | "assignment" | "path" | "announcement" | "badge" | "lesson" | "module" | "coupon" | null) => void;
   onEditPath: (path: AcademyData["learningPaths"][number]) => void;
   onEditAnnouncement: (announcement: AcademyData["announcements"][number]) => void;
   onEditBadge: (badge: AcademyData["badges"][number]) => void;
 }) {
   if (tab === "Certificates") {
     return <CertificateManagementPanel certificates={data.certificates} action={action} />;
+  }
+  if (tab === "Coupons") {
+    return <CouponManagementPanel coupons={data.coupons || []} onEditCoupon={(coupon) => setSelectedCoupon(coupon)} onCreateCoupon={() => setSelectedCoupon(null)} setDrawer={setDrawer} />;
   }
   if (tab === "Public Learners") {
     return <PublicLearnersPanel applications={data.publicLearnerApplications} resourceApplications={data.resourceAccessApplications ?? []} action={action} />;
@@ -1996,6 +2033,131 @@ function ModuleDrawer({ open, busy, module: editingModule, courses, onClose, onS
         <TextInput label="Sort order" type="number" value={String(moduleData.sortOrder)} onChange={(sortOrder) => setModuleData({ ...moduleData, sortOrder: Number(sortOrder) })} />
       </FormGrid>
       <DrawerActions busy={busy} disabled={!moduleData.title.trim() || !moduleData.courseId} onClose={onClose} onSave={() => onSave(moduleData)} label={editing ? "Save module" : "Create module"} />
+    </AdminDrawer>
+  );
+}
+
+function CouponManagementPanel({ coupons, onEditCoupon, onCreateCoupon, setDrawer }: { coupons: AcademyData["coupons"]; onEditCoupon: (coupon: AcademyData["coupons"][number]) => void; onCreateCoupon: () => void; setDrawer: (drawer: "coupon" | null) => void }) {
+  return (
+    <div className="space-y-4">
+      <AdminFilterBar>
+        <AdminSearchInput placeholder="Search coupons by code..." className="lg:flex-1" />
+        <Button onClick={() => { onCreateCoupon(); setDrawer("coupon"); }}><Plus className="size-4" /> New Coupon</Button>
+      </AdminFilterBar>
+      <AdminDataTable
+        rows={coupons}
+        columns={[
+          { key: "code", header: "Code", render: (coupon) => (
+            <div>
+              <p className="font-bold text-white font-mono text-lg">{coupon.code}</p>
+              <p className="text-xs text-slate-500">{coupon.description || "No description"}</p>
+            </div>
+          )},
+          { key: "discount", header: "Discount", render: (coupon) => (
+            <div>
+              <p className="font-semibold">
+                {coupon.discountType === "PERCENTAGE" ? `${coupon.discountValue}%` : `$${coupon.discountValue}`}
+              </p>
+              <p className="text-xs text-slate-500">{coupon.discountType === "PERCENTAGE" ? "Percentage" : "Fixed amount"}</p>
+            </div>
+          )},
+          { key: "usage", header: "Usage", render: (coupon) => (
+            <div>
+              <p className="font-semibold">{coupon.usedCount}{coupon.maxUses ? ` / ${coupon.maxUses}` : " / Unlimited"}</p>
+              <p className="text-xs text-slate-500">{coupon.remainingUses !== null ? `${coupon.remainingUses} remaining` : "No limit"}</p>
+            </div>
+          )},
+          { key: "validity", header: "Validity", render: (coupon) => (
+            <div>
+              <p className="text-sm">{new Date(coupon.validFrom).toLocaleDateString()}</p>
+              <p className="text-xs text-slate-500">{coupon.validUntil ? `to ${new Date(coupon.validUntil).toLocaleDateString()}` : "No expiry"}</p>
+            </div>
+          )},
+          { key: "status", header: "Status", render: (coupon) => (
+            <AdminStatusBadge status={coupon.isValid ? (coupon.active ? "ACTIVE" : "INACTIVE") : "EXPIRED"} />
+          )},
+        ]}
+        onEdit={onEditCoupon}
+      />
+      {!coupons.length && (
+        <AdminEmptyState title="No coupons created" description="Create promotional coupons to offer discounts on Academy courses." actionLabel="Create Coupon" onAction={() => { onCreateCoupon(); setDrawer("coupon"); }} />
+      )}
+    </div>
+  );
+}
+
+function CouponDrawer({ open, busy, coupon: editingCoupon, courses, onClose, onSave }: { open: boolean; busy: boolean; coupon?: AcademyData["coupons"][number] | null; courses: AcademyCourse[]; onClose: () => void; onSave: (coupon: Record<string, unknown>) => Promise<unknown> }) {
+  const [couponData, setCouponData] = useState({
+    code: editingCoupon?.code ?? "",
+    description: editingCoupon?.description ?? "",
+    discountType: editingCoupon?.discountType ?? "PERCENTAGE",
+    discountValue: editingCoupon?.discountValue ?? 10,
+    maxUses: editingCoupon?.maxUses ?? null,
+    minPurchaseAmount: editingCoupon?.minPurchaseAmount ?? null,
+    validFrom: editingCoupon?.validFrom ? new Date(editingCoupon.validFrom).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+    validUntil: editingCoupon?.validUntil ? new Date(editingCoupon.validUntil).toISOString().split('T')[0] : "",
+    applicableCourses: editingCoupon?.applicableCourses || [],
+    applicableRoles: editingCoupon?.applicableRoles || [],
+    active: editingCoupon?.active !== false,
+  });
+  const editing = Boolean(editingCoupon);
+  return (
+    <AdminDrawer open={open} title={editing ? "Edit Coupon" : "Create Coupon"} description="Create promotional coupons with discount rules, usage limits, and course restrictions." onClose={onClose} width="xl">
+      <FormGrid>
+        <TextInput label="Coupon code" value={couponData.code} onChange={(code) => setCouponData({ ...couponData, code: code.toUpperCase().replace(/[^A-Z0-9]/g, "") })} placeholder="SAVE20" className="sm:col-span-2" />
+        <TextArea label="Description" value={couponData.description} onChange={(description) => setCouponData({ ...couponData, description })} placeholder="20% off all courses" className="sm:col-span-2" />
+        <SelectInput label="Discount type" value={couponData.discountType} options={["PERCENTAGE", "FIXED_AMOUNT"]} onChange={(discountType) => setCouponData({ ...couponData, discountType })} />
+        <TextInput label="Discount value" type="number" value={String(couponData.discountValue)} onChange={(discountValue) => setCouponData({ ...couponData, discountValue: Number(discountValue) })} placeholder={couponData.discountType === "PERCENTAGE" ? "20" : "50"} />
+        <TextInput label="Max uses" type="number" value={couponData.maxUses ? String(couponData.maxUses) : ""} onChange={(maxUses) => setCouponData({ ...couponData, maxUses: maxUses ? Number(maxUses) : null })} placeholder="50 (leave empty for unlimited)" />
+        <TextInput label="Min purchase amount" type="number" value={couponData.minPurchaseAmount ? String(couponData.minPurchaseAmount) : ""} onChange={(minPurchaseAmount) => setCouponData({ ...couponData, minPurchaseAmount: minPurchaseAmount ? Number(minPurchaseAmount) : null })} placeholder="100 (leave empty for no minimum)" />
+        <TextInput label="Valid from" type="date" value={couponData.validFrom} onChange={(validFrom) => setCouponData({ ...couponData, validFrom })} />
+        <TextInput label="Valid until" type="date" value={couponData.validUntil} onChange={(validUntil) => setCouponData({ ...couponData, validUntil })} placeholder="Leave empty for no expiry" />
+        <div className="sm:col-span-2">
+          <label className="block text-sm font-medium text-slate-300 mb-2">Applicable courses (leave empty for all courses)</label>
+          <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto">
+            {courses.map((course) => (
+              <label key={course.id} className="flex items-center gap-2 text-sm text-slate-400">
+                <input 
+                  type="checkbox" 
+                  checked={couponData.applicableCourses.includes(course.id)} 
+                  onChange={(e) => setCouponData({ 
+                    ...couponData, 
+                    applicableCourses: e.target.checked 
+                      ? [...couponData.applicableCourses, course.id] 
+                      : couponData.applicableCourses.filter((id) => id !== course.id) 
+                  })} 
+                />
+                {course.title}
+              </label>
+            ))}
+          </div>
+        </div>
+        <div className="sm:col-span-2">
+          <label className="block text-sm font-medium text-slate-300 mb-2">Applicable roles (leave empty for all roles)</label>
+          <div className="flex flex-wrap gap-2">
+            {["AGENT", "PUBLIC_LEARNER", "ADMIN"].map((role) => (
+              <label key={role} className="flex items-center gap-2 text-sm text-slate-400">
+                <input 
+                  type="checkbox" 
+                  checked={couponData.applicableRoles.includes(role)} 
+                  onChange={(e) => setCouponData({ 
+                    ...couponData, 
+                    applicableRoles: e.target.checked 
+                      ? [...couponData.applicableRoles, role] 
+                      : couponData.applicableRoles.filter((r) => r !== role) 
+                  })} 
+                />
+                {role}
+              </label>
+            ))}
+          </div>
+        </div>
+        <label className="flex items-center gap-2 text-sm text-slate-300 sm:col-span-2">
+          <input type="checkbox" checked={couponData.active} onChange={(e) => setCouponData({ ...couponData, active: e.target.checked })} />
+          Active (coupon can be used)
+        </label>
+      </FormGrid>
+      <DrawerActions busy={busy} disabled={!couponData.code.trim() || couponData.code.length < 4} onClose={onClose} onSave={() => onSave(couponData)} label={editing ? "Update coupon" : "Create coupon"} />
     </AdminDrawer>
   );
 }

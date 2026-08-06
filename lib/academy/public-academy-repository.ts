@@ -405,8 +405,7 @@ export async function registerPublicLearner(input: {
   organisation?: string;
   motivation?: string;
   paymentMethod?: string;
-  registrationIntent?: AcademyRegistrationIntent;
-  isAgent?: boolean;
+  couponCode?: string;
 }) {
   const prisma = getMainPrisma();
   const course = await prisma.trainingCourse.findFirst({
@@ -414,64 +413,117 @@ export async function registerPublicLearner(input: {
   });
   if (!course) return "COURSE_NOT_AVAILABLE" as const;
 
-  const intent: AcademyRegistrationIntent =
-    input.registrationIntent ??
-    (input.isAgent ? "AGENT_TRAINING" : "TRAINING_ONLY");
-  const learnerType = intent === "AGENT_TRAINING" ? "AGENT" : "PUBLIC_LEARNER";
-  const payableAmount = resolveCoursePrice(course, intent);
-
   const existing = await prisma.academyLearnerApplication.findUnique({
     where: { learnerId_courseId: { learnerId: input.learnerId, courseId: input.courseId } },
     include: { payment: true },
   });
   if (existing) return existing;
 
+  // Calculate price with coupon if provided
+  let basePrice = course.publicPrice || course.price;
+  let discountAmount = 0;
+  let couponId: string | null = null;
+
+  if (input.couponCode) {
+    const code = input.couponCode.toUpperCase().replace(/[^A-Z0-9]/g, "");
+    const coupon = await prisma.academyCoupon.findUnique({
+      where: { code },
+      include: { _count: { select: { usages: true } } },
+    });
+
+    if (coupon && coupon.active) {
+      const now = new Date();
+      const validFrom = coupon.validFrom ? new Date(coupon.validFrom) : null;
+      const validUntil = coupon.validUntil ? new Date(coupon.validUntil) : null;
+      
+      if ((!validFrom || validFrom <= now) && (!validUntil || validUntil >= now)) {
+        if (!coupon.maxUses || coupon.usedCount < coupon.maxUses) {
+          if (!coupon.minPurchaseAmount || Number(basePrice) >= Number(coupon.minPurchaseAmount)) {
+            const applicable = coupon.applicableCourses.length === 0 || coupon.applicableCourses.includes(course.id);
+            if (applicable) {
+              couponId = coupon.id;
+              if (coupon.discountType === "PERCENTAGE") {
+                discountAmount = Number(basePrice) * (Number(coupon.discountValue) / 100);
+              } else {
+                discountAmount = Number(coupon.discountValue);
+              }
+              discountAmount = Math.min(discountAmount, Number(basePrice));
+            }
+          }
+        }
+      }
+    }
+  }
+
+  const finalPrice = new Prisma.Decimal(Math.max(0, Number(basePrice) - discountAmount));
+
   const payment = await prisma.payment.create({
     data: {
       userId: input.learnerId,
       provider: PaymentProvider.PAYNOW,
-      status: Number(payableAmount) > 0 ? PaymentStatus.PENDING : PaymentStatus.PAID,
-      amount: payableAmount,
+      status: Number(finalPrice) > 0 ? PaymentStatus.PENDING : PaymentStatus.PAID,
+      amount: finalPrice,
       currency: course.currency,
-      description: `${course.title} Academy enrolment`,
+      description: `${course.title} Academy enrolment${couponId ? " (with coupon)" : ""}`,
       plan: "academy_course",
       method: input.paymentMethod || "bank_transfer",
-      manual: Number(payableAmount) > 0,
-      proofStatus: Number(payableAmount) > 0 ? "REQUESTED" : "NONE",
-      metadata: { courseId: course.id, learnerType, registrationIntent: intent, referenceNumber: `HLA-${Date.now()}` } as Prisma.InputJsonObject,
+      manual: Number(finalPrice) > 0,
+      proofStatus: Number(finalPrice) > 0 ? "REQUESTED" : "NONE",
+      metadata: { 
+        courseId: course.id, 
+        learnerType: "PUBLIC_LEARNER", 
+        referenceNumber: `HLA-${Date.now()}`,
+        couponCode: input.couponCode || null,
+        couponId,
+        discountAmount: discountAmount.toString(),
+      } as Prisma.InputJsonObject,
     },
   });
+  
   const now = new Date();
-  const isFree = Number(payableAmount) <= 0;
+  const isFree = Number(finalPrice) <= 0;
   const accessEndsAt = new Date(now.getTime() + course.accessDurationDays * 86400000);
   const application = await prisma.academyLearnerApplication.create({
     data: {
       learnerId: input.learnerId,
       courseId: course.id,
       paymentId: payment.id,
-      learnerType,
       status: isFree ? AcademyRegistrationStatus.APPROVED : AcademyRegistrationStatus.PENDING_PAYMENT,
       fullName: input.fullName,
       email: input.email.trim().toLowerCase(),
       phone: input.phone || null,
       organisation: input.organisation || null,
       motivation: input.motivation || null,
-      amount: payableAmount,
+      amount: finalPrice,
       currency: course.currency,
       accessStartsAt: isFree ? now : null,
       accessEndsAt: isFree ? accessEndsAt : null,
     },
   });
 
+  // Record coupon usage if applicable
+  if (couponId && discountAmount > 0) {
+    await prisma.$transaction([
+      prisma.academyCoupon.update({
+        where: { id: couponId },
+        data: { usedCount: { increment: 1 } },
+      }),
+      prisma.academyCouponUsage.create({
+        data: {
+          couponId,
+          userId: input.learnerId,
+          paymentId: payment.id,
+          discountAmount: new Prisma.Decimal(discountAmount),
+          originalAmount: basePrice,
+          finalAmount: finalPrice,
+        },
+      }),
+    ]);
+  }
+
   const user = await prisma.user.findUnique({ where: { id: input.learnerId }, select: { roles: true } });
-  if (user) {
-    const rolesToAdd: Role[] = [];
-    if (intent === "TRAINING_ONLY" && !user.roles.includes(Role.PUBLIC_LEARNER)) {
-      rolesToAdd.push(Role.PUBLIC_LEARNER);
-    }
-    if (rolesToAdd.length) {
-      await prisma.user.update({ where: { id: input.learnerId }, data: { roles: [...user.roles, ...rolesToAdd] } });
-    }
+  if (user && !user.roles.includes(Role.PUBLIC_LEARNER)) {
+    await prisma.user.update({ where: { id: input.learnerId }, data: { roles: [...user.roles, Role.PUBLIC_LEARNER] } });
   }
   await prisma.trainingNotification.create({
     data: {
@@ -479,11 +531,7 @@ export async function registerPublicLearner(input: {
       eventType: "ACADEMY_REGISTRATION",
       channel: "IN_APP",
       subject: isFree ? "Academy access activated" : "Academy payment pending",
-      body: isFree
-        ? `${course.title} is active in your learner dashboard.`
-        : intent === "TRAINING_ONLY"
-          ? `Upload proof of payment for ${course.title}. You do not need to become a HouseLink agent to complete this training.`
-          : `Upload proof of payment for ${course.title} so an admin can activate your access.`,
+      body: isFree ? `${course.title} is active in your learner dashboard.` : `Upload proof of payment for ${course.title} so an admin can activate your access.`,
     },
   });
   if (isFree) {

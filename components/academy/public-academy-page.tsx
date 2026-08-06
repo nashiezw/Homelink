@@ -164,7 +164,16 @@ export function PublicAcademyPage() {
     motivation: "",
     paymentMethod: "bank_transfer",
     registrationIntent: "TRAINING_ONLY" as "TRAINING_ONLY" | "AGENT_TRAINING",
+    couponCode: "",
   });
+  const [couponValidation, setCouponValidation] = useState<{
+    valid: boolean;
+    discountAmount: number;
+    finalAmount: number;
+    savings: number;
+    message?: string;
+  } | null>(null);
+  const [validatingCoupon, setValidatingCoupon] = useState(false);
 
   const isAdmin = user?.roles?.some((role) => ["ADMIN", "SUPER_ADMIN", "ACADEMY_ADMIN"].includes(role)) ?? false;
   const isAgent = user?.roles?.includes("AGENT") ?? false;
@@ -210,9 +219,43 @@ export function PublicAcademyPage() {
 
   const displayPrice = useMemo(() => {
     if (!selected) return null;
-    if (isAgent && form.registrationIntent === "AGENT_TRAINING") return selected.agentPrice;
-    return selected.publicPrice;
-  }, [selected, isAgent, form.registrationIntent]);
+    let basePrice = isAgent && form.registrationIntent === "AGENT_TRAINING" ? selected.agentPrice : selected.publicPrice;
+    if (couponValidation?.valid) {
+      return Math.max(0, basePrice - couponValidation.discountAmount);
+    }
+    return basePrice;
+  }, [selected, isAgent, form.registrationIntent, couponValidation]);
+
+  async function validateCoupon() {
+    if (!form.couponCode.trim() || !selected) {
+      setCouponValidation(null);
+      return;
+    }
+    setValidatingCoupon(true);
+    const result = await apiFetch<{
+      valid: boolean;
+      discountAmount: number;
+      finalAmount: number;
+      savings: number;
+    }>("/api/v1/academy/coupons/validate", {
+      method: "POST",
+      body: JSON.stringify({
+        code: form.couponCode,
+        courseId: selected.id,
+        amount: isAgent && form.registrationIntent === "AGENT_TRAINING" ? selected.agentPrice : selected.publicPrice,
+      }),
+    });
+    setValidatingCoupon(false);
+    if (result.error) {
+      setCouponValidation({ valid: false, discountAmount: 0, finalAmount: 0, savings: 0, message: result.error.message });
+    } else if (result.data) {
+      setCouponValidation({ valid: result.data.valid, discountAmount: result.data.discountAmount, finalAmount: result.data.finalAmount, savings: result.data.savings });
+    }
+  }
+
+  useEffect(() => {
+    setCouponValidation(null);
+  }, [selectedId, form.registrationIntent]);
 
   async function register() {
     if (!selected || selectedRegistration !== "NOT_REGISTERED") return;
@@ -228,6 +271,7 @@ export function PublicAcademyPage() {
         motivation: form.motivation,
         paymentMethod: form.paymentMethod,
         registrationIntent: form.registrationIntent,
+        couponCode: form.couponCode || undefined,
       }),
     });
     setBusy(false);
@@ -382,6 +426,9 @@ export function PublicAcademyPage() {
               setForm={setForm}
               displayPrice={displayPrice}
               busy={busy}
+              couponValidation={couponValidation}
+              validatingCoupon={validatingCoupon}
+              validateCoupon={validateCoupon}
               onRegister={() => void register()}
               courses={courses}
               selectedId={selectedId}
@@ -966,10 +1013,13 @@ function AcademySidePanel({
   academyStatus: AcademyStatus | null;
   isAdmin: boolean;
   isAgent: boolean;
-  form: { phone: string; organisation: string; motivation: string; paymentMethod: string; registrationIntent: "TRAINING_ONLY" | "AGENT_TRAINING" };
+  form: { phone: string; organisation: string; motivation: string; paymentMethod: string; registrationIntent: "TRAINING_ONLY" | "AGENT_TRAINING"; couponCode: string };
   setForm: React.Dispatch<React.SetStateAction<typeof form>>;
   displayPrice: number | null;
   busy: boolean;
+  couponValidation: { valid: boolean; discountAmount: number; finalAmount: number; savings: number; message?: string } | null;
+  validatingCoupon: boolean;
+  validateCoupon: () => void;
   onRegister: () => void;
   courses: PublicCourse[];
   selectedId: string;
@@ -1076,6 +1126,39 @@ function AcademySidePanel({
                 <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm dark:border-slate-700 dark:bg-slate-900/50">
                   <p className="font-semibold">Course fee</p>
                   <p className="text-2xl font-bold text-emerald-600 mt-1">{displayPrice > 0 ? `${selected.currency} ${displayPrice.toFixed(2)}` : "Free"}</p>
+                </div>
+              )}
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+                Coupon Code
+                <div className="mt-2 flex gap-2">
+                  <input 
+                    type="text" 
+                    value={form.couponCode} 
+                    onChange={(event) => setForm({ ...form, couponCode: event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "") })} 
+                    placeholder="Enter coupon code" 
+                    className="flex-1 rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-900 focus:ring-2 focus:ring-emerald-500 font-mono uppercase"
+                  />
+                  <Button 
+                    type="button" 
+                    variant="secondary" 
+                    onClick={validateCoupon} 
+                    disabled={!form.couponCode.trim() || validatingCoupon}
+                  >
+                    {validatingCoupon ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}
+                  </Button>
+                </div>
+              </label>
+              {couponValidation && (
+                <div className={`rounded-xl p-4 text-sm ${couponValidation.valid ? 'bg-emerald-50 border-emerald-200 text-emerald-800 dark:bg-emerald-900/20 dark:border-emerald-800 dark:text-emerald-300' : 'bg-red-50 border-red-200 text-red-800 dark:bg-red-900/20 dark:border-red-800 dark:text-red-300'}`}>
+                  {couponValidation.valid ? (
+                    <>
+                      <p className="font-semibold">Coupon applied!</p>
+                      <p className="mt-1">You save {selected.currency} {couponValidation.savings.toFixed(2)}</p>
+                      <p className="text-xs mt-1">Final price: {selected.currency} {couponValidation.finalAmount.toFixed(2)}</p>
+                    </>
+                  ) : (
+                    <p>{couponValidation.message || "Invalid coupon code"}</p>
+                  )}
                 </div>
               )}
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">

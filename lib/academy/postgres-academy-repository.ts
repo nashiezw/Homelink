@@ -79,6 +79,7 @@ export async function getAcademyDashboard(options: { compact?: boolean } = {}) {
     academyRevenue,
     discussionThreads,
     agentBadges,
+    coupons,
   ] = await Promise.all([
     prisma.trainingCourse.findMany({ include: { category: true }, orderBy: { updatedAt: "desc" } }),
     prisma.trainingLesson.count(),
@@ -163,6 +164,15 @@ export async function getAcademyDashboard(options: { compact?: boolean } = {}) {
           orderBy: { updatedAt: "desc" },
           take: 50,
         }),
+    prisma.badgeAward.findMany({ include: { badge: true }, orderBy: { awardedAt: "desc" }, ...(compact ? { take: 100 } : {}) }),
+    prisma.academyCoupon.findMany({
+      include: {
+        createdByUser: { select: { id: true, name: true, email: true } },
+        usages: { take: 10, orderBy: { createdAt: "desc" } },
+        _count: { select: { usages: true } },
+      },
+      orderBy: { createdAt: "desc" },
+    }),
     prisma.agentBadge.findMany({
       include: { badge: true },
       orderBy: { awardedAt: "desc" },
@@ -297,6 +307,15 @@ export async function getAcademyDashboard(options: { compact?: boolean } = {}) {
       learner: entry.learner,
       payment: entry.payment ? { id: entry.payment.id, status: entry.payment.status, proofStatus: entry.payment.proofStatus, proofUrl: entry.payment.proofUrl } : null,
       productType: "RESOURCE_ACCESS" as const,
+    })),
+    coupons: coupons.map((coupon) => ({
+      ...coupon,
+      discountValue: Number(coupon.discountValue),
+      minPurchaseAmount: coupon.minPurchaseAmount ? Number(coupon.minPurchaseAmount) : null,
+      remainingUses: coupon.maxUses ? coupon.maxUses - coupon.usedCount : null,
+      isValid: coupon.active && 
+                (!coupon.validUntil || new Date(coupon.validUntil) > new Date()) &&
+                (!coupon.maxUses || coupon.usedCount < coupon.maxUses),
     })),
     auditLogs: recentActivity,
     topCourses: courses
