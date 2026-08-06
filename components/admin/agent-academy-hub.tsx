@@ -423,13 +423,13 @@ export function AgentAcademyHub() {
 
       {tab === "Dashboard" && (
         <div className="space-y-5">
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-6">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
             <ExecutiveTile label="Total Courses" value={data.metrics.totalCourses} icon={GraduationCap} onClick={() => openTab("Courses")} />
             <ExecutiveTile label="Published" value={data.metrics.publishedCourses} icon={CheckCircle2} tone="success" onClick={() => openTab("Courses")} />
             <ExecutiveTile label="Draft" value={data.metrics.draftCourses} icon={FileText} tone="warning" onClick={() => openTab("Courses")} />
             <ExecutiveTile label="Lessons" value={data.metrics.totalLessons} icon={BookOpen} onClick={() => openTab("Courses")} />
-            <ExecutiveTile label="Active Learners" value={data.metrics.activeLearners} icon={Users} tone="success" onClick={() => openTab("Public Learners")} />
-            <ExecutiveTile label="Completion" value={`${data.metrics.completionRate}%`} icon={BadgeCheck} tone="info" onClick={() => openTab("Analytics")} />
+            <ExecutiveTile label="Enrolments" value={data.metrics.totalEnrolments} icon={Users} onClick={() => openTab("Public Learners")} />
+            <ExecutiveTile label="Certificates" value={data.metrics.totalCertificates} icon={Award} onClick={() => openTab("Certificates")} />
           </div>
           <AdminMetricGrid cols={6}>
             <ClickableStatPill label="Videos Uploaded" value={data.metrics.videosUploaded} onClick={() => openTab("Video Library")} />
@@ -449,7 +449,7 @@ export function AgentAcademyHub() {
             <ClickableStatPill label="Academy Revenue" value={`$${data.metrics.academyRevenue}`} tone="success" onClick={() => openTab("Analytics")} />
           </AdminMetricGrid>
 
-          <div className="grid gap-4 xl:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <TopCoursesPanel courses={data.topCourses} />
             <section className="rounded-xl border border-white/10 bg-slate-900/60 p-5">
               <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-400">Risk Radar</h3>
@@ -461,16 +461,21 @@ export function AgentAcademyHub() {
             </section>
           </div>
 
-          <div className="grid gap-4 xl:grid-cols-3">
-            <ActivityPanel title="Recent Activity" icon={Megaphone}>
-              {data.recentActivity.map((item) => <MetricRow key={item.id} label={item.action.replace("academy.", "").replace(/\./g, " ")} value={new Date(item.createdAt).toLocaleDateString()} />)}
-            </ActivityPanel>
-            <ActivityPanel title="Recent Certificates" icon={Award}>
-              {data.recentCertificates.map((item) => <MetricRow key={item.id} label={item.certificateNumber} value={item.agentId.slice(0, 8)} />)}
-            </ActivityPanel>
-            <ActivityPanel title="Expiring Soon" icon={ShieldCheck}>
-              {data.upcomingExpiringCertificates.map((item) => <MetricRow key={item.id} label={item.certificateNumber} value={item.expiresAt ? new Date(item.expiresAt).toLocaleDateString() : "No expiry"} />)}
-            </ActivityPanel>
+          <div className="space-y-5">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <ActivityPanel title="Recent Applications" icon={Users}>
+                {data.publicLearnerApplications.slice(0, 5).map((item) => <MetricRow key={item.id} label={item.fullName} value={item.course.title} />)}
+              </ActivityPanel>
+              <ActivityPanel title="Recent Certificates" icon={Award}>
+                {data.certificates.slice(0, 5).map((item) => <MetricRow key={item.id} label={item.certificateNumber} value={item.agentId} />)}
+              </ActivityPanel>
+              <ActivityPanel title="Top Courses" icon={BookOpen}>
+                {data.topCourses.map((item) => <MetricRow key={item.id} label={item.title} value={`${item.completions} completions`} />)}
+              </ActivityPanel>
+              <ActivityPanel title="Pending Applications" icon={FileText}>
+                {data.publicLearnerApplications.filter((a) => a.status === "PENDING").slice(0, 5).map((item) => <MetricRow key={item.id} label={item.fullName} value={item.course.title} />)}
+              </ActivityPanel>
+            </div>
           </div>
         </div>
       )}

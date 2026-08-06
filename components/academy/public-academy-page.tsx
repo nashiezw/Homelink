@@ -391,7 +391,7 @@ export function PublicAcademyPage() {
         </div>
       </section>
 
-      <div className="grid gap-6 xl:grid-cols-[18rem_minmax(0,1fr)_21rem] xl:items-start">
+      <div className="grid gap-6 lg:grid-cols-[18rem_minmax(0,1fr)] xl:grid-cols-[18rem_minmax(0,1fr)_21rem] xl:items-start">
         <PathwayRail courses={courses} selectedId={selectedId} academyStatus={academyStatus} onSelect={setSelectedId} />
         <section className="min-w-0">
           {selected ? (
@@ -413,9 +413,8 @@ export function PublicAcademyPage() {
           )}
         </section>
 
-        <aside className="xl:h-fit">
-          <div className="xl:sticky xl:top-4">
-            <AcademySidePanel
+        <aside className="lg:h-fit lg:sticky lg:top-4 order-first lg:order-last">
+          <AcademySidePanel
               user={user}
               selected={selected}
               selectedRegistration={selectedRegistration}
@@ -434,8 +433,7 @@ export function PublicAcademyPage() {
               courses={courses}
               selectedId={selectedId}
               onSelectCourse={setSelectedId}
-            />
-          </div>
+          />
         </aside>
       </div>
 
@@ -544,13 +542,13 @@ function PathwayRail({
   onSelect: (id: string) => void;
 }) {
   return (
-    <aside className="academy-panel rounded-2xl p-3 xl:sticky xl:top-4">
+    <aside className="academy-panel rounded-2xl p-3 sm:sticky sm:top-4">
       <div className="px-2 pb-3">
         <p className="text-xs font-bold uppercase tracking-widest text-emerald-700 dark:text-emerald-300">Guided pathway</p>
         <p className="mt-1 text-sm leading-5 text-slate-600 dark:text-slate-300">Move from foundation habits to listing mastery and professional certification.</p>
       </div>
-      <div className="relative grid gap-2 sm:grid-cols-3 xl:grid-cols-1 xl:gap-3">
-        <div className="absolute left-6 top-6 hidden h-[calc(100%-3rem)] w-px bg-gradient-to-b from-emerald-200 via-slate-200 to-amber-200 dark:from-emerald-900 dark:via-slate-800 dark:to-amber-900 xl:block" />
+      <div className="relative grid gap-2 sm:grid-cols-3 lg:grid-cols-1 lg:gap-3">
+        <div className="absolute left-6 top-6 hidden h-[calc(100%-3rem)] w-px bg-gradient-to-b from-emerald-200 via-slate-200 to-amber-200 dark:from-emerald-900 dark:via-slate-800 dark:to-amber-900 lg:block" />
         {courses.map((course, index) => {
           const accent = course.theme?.accent ?? "#008b68";
           const active = course.id === selectedId;
