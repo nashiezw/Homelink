@@ -62,7 +62,7 @@ export async function POST(request: Request) {
     
     // Check role applicability
     const user = await prisma.user.findUnique({ where: { id: userId }, select: { roles: true } });
-    if (coupon.applicableRoles.length > 0 && user && !coupon.applicableRoles.some(role => user.roles.includes(role))) {
+    if (coupon.applicableRoles.length > 0 && user && !coupon.applicableRoles.some((role) => user.roles.includes(role as any))) {
       return problem(400, "COUPON_NOT_ELIGIBLE", "You are not eligible for this coupon.");
     }
     

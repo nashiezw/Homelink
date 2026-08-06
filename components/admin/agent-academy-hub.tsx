@@ -11,16 +11,16 @@ import {
   BookOpen,
   CheckCircle2,
   ClipboardCheck,
-  Copy,
   Clock,
+  Copy,
   Download,
   Eye,
   FileArchive,
   FileText,
   Film,
   GraduationCap,
-  Library,
   Layers,
+  Library,
   Loader2,
   Megaphone,
   MoreHorizontal,
@@ -34,6 +34,7 @@ import {
   Trophy,
   Upload,
   Users,
+  Ticket,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useApp } from "@/components/providers/app-provider";
@@ -65,6 +66,25 @@ import {
   SPECIALISATION_TRACKS,
 } from "@/lib/academy/academy-excellence";
 
+type AcademyCoupon = {
+  id: string;
+  code: string;
+  description: string | null;
+  discountType: string;
+  discountValue: number;
+  maxUses: number | null;
+  usedCount: number;
+  minPurchaseAmount: number | null;
+  validFrom: string;
+  validUntil: string | null;
+  applicableCourses: string[];
+  applicableRoles: string[];
+  active: boolean;
+  remainingUses: number | null;
+  isValid: boolean;
+  createdByUser: { id: string; name: string; email: string } | null;
+};
+
 type AcademyData = {
   metrics: Record<string, number>;
   courses: AcademyCourse[];
@@ -92,25 +112,7 @@ type AcademyData = {
   announcements: Array<{ id: string; title: string; body: string; audience: string; expiresAt: string | null; createdAt: string }>;
   badges: Array<{ id: string; name: string; description: string; xp: number; iconUrl: string | null; active: boolean }>;
   settings: Record<string, unknown>;
-  auditLogs: Array<{ id: string; actorId: string | null; action: string; target: string; metadata: Record<string, unknown>; createdAt: string }>;
-  coupons?: Array<{
-    id: string;
-    code: string;
-    description: string | null;
-    discountType: string;
-    discountValue: number;
-    maxUses: number | null;
-    usedCount: number;
-    minPurchaseAmount: number | null;
-    validFrom: string;
-    validUntil: string | null;
-    applicableCourses: string[];
-    applicableRoles: string[];
-    active: boolean;
-    remainingUses: number | null;
-    isValid: boolean;
-    createdByUser: { id: string; name: string; email: string } | null;
-  }>;
+  coupons?: AcademyCoupon[];
   publicLearnerApplications: Array<{
     id: string;
     status: string;
@@ -142,14 +144,12 @@ type AcademyData = {
     currency: string;
     proofUrl?: string;
     adminNote?: string;
-    createdAt: string;
-    updatedAt: string;
-    productType: "RESOURCE_ACCESS";
     course: { id: string; title: string } | null;
     learner: { id: string; name: string; email: string; phone?: string; roles: string[] };
     payment: { id: string; status: string; proofStatus?: string; proofUrl?: string } | null;
+    updatedAt: string;
   }>;
-  settings?: { id: string; payload: Record<string, unknown>; updatedAt: string } | null;
+  trainingSettings?: { id: string; payload: Record<string, unknown>; updatedAt: string } | null;
   auditLogs: Array<{ id: string; actorId?: string; action: string; target: string; createdAt: string }>;
   topCourses: Array<{ id: string; title: string; completions: number; enrolments: number }>;
   mostDifficultCourse?: { title: string; average: number };
@@ -321,9 +321,12 @@ export function AgentAcademyHub() {
   const [previewDocument, setPreviewDocument] = useState<AcademyDocument | null>(null);
   const [selectedCourse, setSelectedCourse] = useState<AcademyCourse | null>(null);
   const [viewCourse, setViewCourse] = useState<AcademyCourse | null>(null);
+  const [buildingCourseId, setBuildingCourseId] = useState<string | null>(null);
+  const [selectedDocument, setSelectedDocument] = useState<AcademyDocument | null>(null);
+  const [documentMode, setDocumentMode] = useState<"create" | "edit" | "replace">("create");
   const [selectedLesson, setSelectedLesson] = useState<AcademyLesson | null>(null);
   const [selectedModule, setSelectedModule] = useState<{ id: string; courseId: string; title: string; description?: string; sortOrder: number } | null>(null);
-  const [selectedCoupon, setSelectedCoupon] = useState<AcademyData["coupons"][number] | null>(null);
+  const [selectedCoupon, setSelectedCoupon] = useState<AcademyCoupon | null>(null);
   const [selectedPath, setSelectedPath] = useState<AcademyData["learningPaths"][number] | null>(null);
   const [selectedAnnouncement, setSelectedAnnouncement] = useState<AcademyData["announcements"][number] | null>(null);
   const [selectedBadge, setSelectedBadge] = useState<AcademyData["badges"][number] | null>(null);
@@ -610,6 +613,7 @@ export function AgentAcademyHub() {
           onEditPath={(path) => { setSelectedPath(path); setDrawer("path"); }}
           onEditAnnouncement={(announcement) => { setSelectedAnnouncement(announcement); setDrawer("announcement"); }}
           onEditBadge={(badge) => { setSelectedBadge(badge); setDrawer("badge"); }}
+          onEditCoupon={(coupon) => { setSelectedCoupon(coupon); setDrawer("coupon"); }}
         />
       )}
 
@@ -1025,6 +1029,7 @@ function FeatureWorkbench({
   onEditPath,
   onEditAnnouncement,
   onEditBadge,
+  onEditCoupon,
 }: {
   tab: AcademyTab;
   data: AcademyData;
@@ -1038,12 +1043,13 @@ function FeatureWorkbench({
   onEditPath: (path: AcademyData["learningPaths"][number]) => void;
   onEditAnnouncement: (announcement: AcademyData["announcements"][number]) => void;
   onEditBadge: (badge: AcademyData["badges"][number]) => void;
+  onEditCoupon: (coupon: AcademyCoupon | null) => void;
 }) {
   if (tab === "Certificates") {
     return <CertificateManagementPanel certificates={data.certificates} action={action} />;
   }
   if (tab === "Coupons") {
-    return <CouponManagementPanel coupons={data.coupons || []} onEditCoupon={(coupon) => setSelectedCoupon(coupon)} onCreateCoupon={() => setSelectedCoupon(null)} setDrawer={setDrawer} />;
+    return <CouponManagementPanel coupons={data.coupons || []} onEditCoupon={(coupon) => onEditCoupon(coupon)} onCreateCoupon={() => onEditCoupon(null)} setDrawer={_setDrawer} />;
   }
   if (tab === "Public Learners") {
     return <PublicLearnersPanel applications={data.publicLearnerApplications} resourceApplications={data.resourceAccessApplications ?? []} action={action} />;
@@ -1052,7 +1058,7 @@ function FeatureWorkbench({
     return <BuilderList title="Learning Paths" icon={Library} rows={data.learningPaths.map((path) => ({ id: path.id, title: path.title, active: path.status === "PUBLISHED", detail: `${path.courses.length} course(s) - ${path.badgeTitle ?? "No badge"}`, source: path }))} actionLabel="Create Path" onCreate={() => openDrawer("path")} onEdit={(row) => onEditPath(row.source as AcademyData["learningPaths"][number])} onArchive={(row) => action({ action: row.active === false ? "restore_learning_path" : "archive_learning_path", pathId: row.id }, row.active === false ? "Learning path restored." : "Learning path archived.")} onDelete={(row) => action({ action: "delete_learning_path", pathId: row.id }, "Learning path deleted.")} />;
   }
   if (tab === "Announcements") {
-    return <BuilderList title="Announcements" icon={Megaphone} rows={data.announcements.map((announcement) => ({ id: announcement.id, title: announcement.title, active: Boolean(announcement.publishedAt) && !announcement.expiresAt, detail: `${announcement.audience} - ${announcement.body}`, source: announcement }))} actionLabel="New Announcement" onCreate={() => openDrawer("announcement")} onEdit={(row) => onEditAnnouncement(row.source as AcademyData["announcements"][number])} onArchive={(row) => action({ action: row.active === false ? "restore_announcement" : "archive_announcement", announcementId: row.id }, row.active === false ? "Announcement restored." : "Announcement archived.")} onDelete={(row) => action({ action: "delete_announcement", announcementId: row.id }, "Announcement deleted.")} />;
+    return <BuilderList title="Announcements" icon={Megaphone} rows={data.announcements.map((announcement) => ({ id: announcement.id, title: announcement.title, active: true, detail: `${announcement.audience} - ${announcement.body}`, source: announcement }))} actionLabel="New Announcement" onCreate={() => openDrawer("announcement")} onEdit={(row) => onEditAnnouncement(row.source as AcademyData["announcements"][number])} onArchive={(row) => action({ action: row.active === false ? "restore_announcement" : "archive_announcement", announcementId: row.id }, row.active === false ? "Announcement restored." : "Announcement archived.")} onDelete={(row) => action({ action: "delete_announcement", announcementId: row.id }, "Announcement deleted.")} />;
   }
   if (tab === "Badges") {
     return <BuilderList title="Badges and Achievements" icon={BadgeCheck} rows={data.badges.map((badge) => ({ id: badge.id, title: badge.name, active: badge.active, detail: `${badge.xp} XP - ${badge.description ?? ""}`, source: badge }))} actionLabel="Create Badge" onCreate={() => openDrawer("badge")} onEdit={(row) => onEditBadge(row.source as AcademyData["badges"][number])} onArchive={(row) => action({ action: row.active === false ? "restore_badge" : "archive_badge", badgeId: row.id }, row.active === false ? "Badge restored." : "Badge archived.")} onDelete={(row) => action({ action: "delete_badge", badgeId: row.id }, "Badge deleted.")} />;
@@ -1199,7 +1205,7 @@ function FeatureWorkbench({
     );
   }
   if (tab === "Settings") {
-    return <AcademySettingsPanel settings={data.settings?.payload ?? {}} auditLogs={data.auditLogs} onSave={(settings) => action({ action: "update_settings", settings }, "Academy settings saved.")} />;
+    return <AcademySettingsPanel settings={data.trainingSettings?.payload as Record<string, unknown> ?? {}} auditLogs={data.auditLogs} onSave={(settings) => action({ action: "update_settings", settings }, "Academy settings saved.")} />;
   }
   return (
     <OperationalPanel tab={tab} />
@@ -1898,14 +1904,13 @@ function LearningPathDrawer({ open, busy, courses, path: editingPath, onClose, o
 }
 
 function AnnouncementDrawer({ open, busy, announcement: editingAnnouncement, onClose, onSave }: { open: boolean; busy: boolean; announcement?: AcademyData["announcements"][number] | null; onClose: () => void; onSave: (announcement: Record<string, unknown>) => Promise<unknown> }) {
-  const [announcement, setAnnouncement] = useState({ title: "", body: "", audience: "ALL", publishedAt: true });
+  const [announcement, setAnnouncement] = useState({ title: "", body: "", audience: "ALL" });
   useEffect(() => {
     if (!open) return;
     setAnnouncement({
       title: editingAnnouncement?.title ?? "",
       body: editingAnnouncement?.body ?? "",
       audience: editingAnnouncement?.audience ?? "ALL",
-      publishedAt: Boolean(editingAnnouncement?.publishedAt ?? true),
     });
   }, [editingAnnouncement, open]);
   const editing = Boolean(editingAnnouncement);
@@ -1915,12 +1920,8 @@ function AnnouncementDrawer({ open, busy, announcement: editingAnnouncement, onC
         <TextInput label="Title" value={announcement.title} onChange={(title) => setAnnouncement({ ...announcement, title })} />
         <SelectInput label="Audience" value={announcement.audience} options={["ALL", "AGENTS", "LEARNERS", "TRAINERS", "ADMINS"]} onChange={(audience) => setAnnouncement({ ...announcement, audience })} />
         <TextArea label="Message" value={announcement.body} onChange={(body) => setAnnouncement({ ...announcement, body })} className="sm:col-span-2" />
-        <label className="flex items-center gap-2 text-sm text-slate-300">
-          <input type="checkbox" checked={announcement.publishedAt} onChange={(event) => setAnnouncement({ ...announcement, publishedAt: event.target.checked })} />
-          Publish immediately
-        </label>
       </FormGrid>
-      <DrawerActions busy={busy} disabled={!announcement.title || !announcement.body} onClose={onClose} onSave={() => onSave(announcement)} label={editing ? "Save announcement" : "Publish"} />
+      <DrawerActions busy={busy} disabled={!announcement.title || !announcement.body} onClose={onClose} onSave={() => onSave(announcement)} label={editing ? "Update announcement" : "Publish announcement"} />
     </AdminDrawer>
   );
 }
@@ -2037,56 +2038,39 @@ function ModuleDrawer({ open, busy, module: editingModule, courses, onClose, onS
   );
 }
 
-function CouponManagementPanel({ coupons, onEditCoupon, onCreateCoupon, setDrawer }: { coupons: AcademyData["coupons"]; onEditCoupon: (coupon: AcademyData["coupons"][number]) => void; onCreateCoupon: () => void; setDrawer: (drawer: "coupon" | null) => void }) {
+function CouponManagementPanel({ coupons, onEditCoupon, onCreateCoupon, setDrawer }: { coupons: AcademyCoupon[]; onEditCoupon: (coupon: AcademyCoupon) => void; onCreateCoupon: () => void; setDrawer: (drawer: "coupon" | null) => void }) {
+  const [search, setSearch] = useState("");
+  const filtered = coupons.filter((coupon) => `${coupon.code} ${coupon.description ?? ""}`.toLowerCase().includes(search.toLowerCase()));
   return (
     <div className="space-y-4">
       <AdminFilterBar>
-        <AdminSearchInput placeholder="Search coupons by code..." className="lg:flex-1" />
+        <AdminSearchInput value={search} onChange={setSearch} placeholder="Search coupons by code..." className="lg:flex-1" />
         <Button onClick={() => { onCreateCoupon(); setDrawer("coupon"); }}><Plus className="size-4" /> New Coupon</Button>
       </AdminFilterBar>
-      <AdminDataTable
-        rows={coupons}
-        columns={[
-          { key: "code", header: "Code", render: (coupon) => (
-            <div>
-              <p className="font-bold text-white font-mono text-lg">{coupon.code}</p>
-              <p className="text-xs text-slate-500">{coupon.description || "No description"}</p>
-            </div>
-          )},
-          { key: "discount", header: "Discount", render: (coupon) => (
-            <div>
-              <p className="font-semibold">
-                {coupon.discountType === "PERCENTAGE" ? `${coupon.discountValue}%` : `$${coupon.discountValue}`}
-              </p>
-              <p className="text-xs text-slate-500">{coupon.discountType === "PERCENTAGE" ? "Percentage" : "Fixed amount"}</p>
-            </div>
-          )},
-          { key: "usage", header: "Usage", render: (coupon) => (
-            <div>
-              <p className="font-semibold">{coupon.usedCount}{coupon.maxUses ? ` / ${coupon.maxUses}` : " / Unlimited"}</p>
-              <p className="text-xs text-slate-500">{coupon.remainingUses !== null ? `${coupon.remainingUses} remaining` : "No limit"}</p>
-            </div>
-          )},
-          { key: "validity", header: "Validity", render: (coupon) => (
-            <div>
-              <p className="text-sm">{new Date(coupon.validFrom).toLocaleDateString()}</p>
-              <p className="text-xs text-slate-500">{coupon.validUntil ? `to ${new Date(coupon.validUntil).toLocaleDateString()}` : "No expiry"}</p>
-            </div>
-          )},
-          { key: "status", header: "Status", render: (coupon) => (
-            <AdminStatusBadge status={coupon.isValid ? (coupon.active ? "ACTIVE" : "INACTIVE") : "EXPIRED"} />
-          )},
-        ]}
-        onEdit={onEditCoupon}
+      <BuilderList
+        title="Coupons"
+        icon={Ticket}
+        rows={filtered.map((coupon) => ({
+          id: coupon.id,
+          title: coupon.code,
+          active: coupon.active && coupon.isValid,
+          detail: `${coupon.discountType === "PERCENTAGE" ? `${coupon.discountValue}%` : `$${coupon.discountValue}`} - ${coupon.usedCount}${coupon.maxUses ? `/${coupon.maxUses}` : ''} used`,
+          source: coupon,
+        }))}
+        actionLabel="Create Coupon"
+        onCreate={() => { onCreateCoupon(); setDrawer("coupon"); }}
+        onEdit={(row) => onEditCoupon(row.source as AcademyCoupon)}
+        onArchive={(_row) => setDrawer(null)}
+        onDelete={(_row) => setDrawer(null)}
       />
       {!coupons.length && (
-        <AdminEmptyState title="No coupons created" description="Create promotional coupons to offer discounts on Academy courses." actionLabel="Create Coupon" onAction={() => { onCreateCoupon(); setDrawer("coupon"); }} />
+        <AdminEmptyState title="No coupons created" description="Create promotional coupons to offer discounts on Academy courses." action={<Button onClick={() => { onCreateCoupon(); setDrawer("coupon"); }}><Plus className="size-4" /> Create Coupon</Button>} />
       )}
     </div>
   );
 }
 
-function CouponDrawer({ open, busy, coupon: editingCoupon, courses, onClose, onSave }: { open: boolean; busy: boolean; coupon?: AcademyData["coupons"][number] | null; courses: AcademyCourse[]; onClose: () => void; onSave: (coupon: Record<string, unknown>) => Promise<unknown> }) {
+function CouponDrawer({ open, busy, coupon: editingCoupon, courses, onClose, onSave }: { open: boolean; busy: boolean; coupon?: AcademyCoupon | null; courses: AcademyCourse[]; onClose: () => void; onSave: (coupon: Record<string, unknown>) => Promise<unknown> }) {
   const [couponData, setCouponData] = useState({
     code: editingCoupon?.code ?? "",
     description: editingCoupon?.description ?? "",
@@ -2104,14 +2088,14 @@ function CouponDrawer({ open, busy, coupon: editingCoupon, courses, onClose, onS
   return (
     <AdminDrawer open={open} title={editing ? "Edit Coupon" : "Create Coupon"} description="Create promotional coupons with discount rules, usage limits, and course restrictions." onClose={onClose} width="xl">
       <FormGrid>
-        <TextInput label="Coupon code" value={couponData.code} onChange={(code) => setCouponData({ ...couponData, code: code.toUpperCase().replace(/[^A-Z0-9]/g, "") })} placeholder="SAVE20" className="sm:col-span-2" />
-        <TextArea label="Description" value={couponData.description} onChange={(description) => setCouponData({ ...couponData, description })} placeholder="20% off all courses" className="sm:col-span-2" />
+        <TextInput label="Coupon code" value={couponData.code} onChange={(code) => setCouponData({ ...couponData, code: code.toUpperCase().replace(/[^A-Z0-9]/g, "") })} className="sm:col-span-2" />
+        <TextArea label="Description" value={couponData.description} onChange={(description) => setCouponData({ ...couponData, description })} className="sm:col-span-2" />
         <SelectInput label="Discount type" value={couponData.discountType} options={["PERCENTAGE", "FIXED_AMOUNT"]} onChange={(discountType) => setCouponData({ ...couponData, discountType })} />
-        <TextInput label="Discount value" type="number" value={String(couponData.discountValue)} onChange={(discountValue) => setCouponData({ ...couponData, discountValue: Number(discountValue) })} placeholder={couponData.discountType === "PERCENTAGE" ? "20" : "50"} />
-        <TextInput label="Max uses" type="number" value={couponData.maxUses ? String(couponData.maxUses) : ""} onChange={(maxUses) => setCouponData({ ...couponData, maxUses: maxUses ? Number(maxUses) : null })} placeholder="50 (leave empty for unlimited)" />
-        <TextInput label="Min purchase amount" type="number" value={couponData.minPurchaseAmount ? String(couponData.minPurchaseAmount) : ""} onChange={(minPurchaseAmount) => setCouponData({ ...couponData, minPurchaseAmount: minPurchaseAmount ? Number(minPurchaseAmount) : null })} placeholder="100 (leave empty for no minimum)" />
+        <TextInput label="Discount value" type="number" value={String(couponData.discountValue)} onChange={(discountValue) => setCouponData({ ...couponData, discountValue: Number(discountValue) })} />
+        <TextInput label="Max uses" type="number" value={couponData.maxUses ? String(couponData.maxUses) : ""} onChange={(maxUses) => setCouponData({ ...couponData, maxUses: maxUses ? Number(maxUses) : null })} />
+        <TextInput label="Min purchase amount" type="number" value={couponData.minPurchaseAmount ? String(couponData.minPurchaseAmount) : ""} onChange={(minPurchaseAmount) => setCouponData({ ...couponData, minPurchaseAmount: minPurchaseAmount ? Number(minPurchaseAmount) : null })} />
         <TextInput label="Valid from" type="date" value={couponData.validFrom} onChange={(validFrom) => setCouponData({ ...couponData, validFrom })} />
-        <TextInput label="Valid until" type="date" value={couponData.validUntil} onChange={(validUntil) => setCouponData({ ...couponData, validUntil })} placeholder="Leave empty for no expiry" />
+        <TextInput label="Valid until" type="date" value={couponData.validUntil} onChange={(validUntil) => setCouponData({ ...couponData, validUntil })} />
         <div className="sm:col-span-2">
           <label className="block text-sm font-medium text-slate-300 mb-2">Applicable courses (leave empty for all courses)</label>
           <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto">

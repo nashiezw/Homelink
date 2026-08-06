@@ -164,7 +164,7 @@ export async function getAcademyDashboard(options: { compact?: boolean } = {}) {
           orderBy: { updatedAt: "desc" },
           take: 50,
         }),
-    prisma.badgeAward.findMany({ include: { badge: true }, orderBy: { awardedAt: "desc" }, ...(compact ? { take: 100 } : {}) }),
+    prisma.agentBadge.findMany({ include: { badge: true }, orderBy: { awardedAt: "desc" }, ...(compact ? { take: 100 } : {}) }),
     prisma.academyCoupon.findMany({
       include: {
         createdByUser: { select: { id: true, name: true, email: true } },
@@ -172,11 +172,6 @@ export async function getAcademyDashboard(options: { compact?: boolean } = {}) {
         _count: { select: { usages: true } },
       },
       orderBy: { createdAt: "desc" },
-    }),
-    prisma.agentBadge.findMany({
-      include: { badge: true },
-      orderBy: { awardedAt: "desc" },
-      take: 50,
     }),
   ]);
 

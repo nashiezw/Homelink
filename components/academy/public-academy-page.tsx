@@ -1002,6 +1002,9 @@ function AcademySidePanel({
   setForm,
   displayPrice,
   busy,
+  couponValidation,
+  validatingCoupon,
+  validateCoupon,
   onRegister,
   courses,
   selectedId,
@@ -1154,8 +1157,8 @@ function AcademySidePanel({
                   {couponValidation.valid ? (
                     <>
                       <p className="font-semibold">Coupon applied!</p>
-                      <p className="mt-1">You save {selected.currency} {couponValidation.savings.toFixed(2)}</p>
-                      <p className="text-xs mt-1">Final price: {selected.currency} {couponValidation.finalAmount.toFixed(2)}</p>
+                      <p className="mt-1">You save {selected?.currency || "USD"} {couponValidation.savings.toFixed(2)}</p>
+                      <p className="text-xs mt-1">Final price: {selected?.currency || "USD"} {couponValidation.finalAmount.toFixed(2)}</p>
                     </>
                   ) : (
                     <p>{couponValidation.message || "Invalid coupon code"}</p>
