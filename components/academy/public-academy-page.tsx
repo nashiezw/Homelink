@@ -1092,9 +1092,13 @@ function AcademySidePanel({
             <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm dark:border-amber-800 dark:bg-amber-900/20">
               <p className="font-semibold text-amber-900 dark:text-amber-100">Payment approval pending</p>
               <p className="mt-1 text-amber-800 dark:text-amber-200">Upload proof of payment from your learner dashboard. An admin will activate your access.</p>
-              <Link href="/dashboard/academy" className="mt-4 block">
-                <Button className="w-full" variant="secondary"><Upload className="size-4 mr-2" /> Upload Payment Proof</Button>
-              </Link>
+              {displayPrice === 0 ? (
+                <p className="mt-2 text-emerald-700 dark:text-emerald-300 font-medium">Your coupon made this course free! No payment proof needed.</p>
+              ) : (
+                <Link href="/dashboard/academy" className="mt-4 block">
+                  <Button className="w-full" variant="secondary"><Upload className="size-4 mr-2" /> Upload Payment Proof</Button>
+                </Link>
+              )}
             </div>
           )}
 

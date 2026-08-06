@@ -226,8 +226,8 @@ export async function getAcademyDashboard(options: { compact?: boolean } = {}) {
       downloads: documents.filter((document) => document.downloadable).length,
       videoWatchPercent: totalVideoSeconds ? Math.min(100, Math.round(((watchedSeconds._sum.watchedSeconds ?? 0) / totalVideoSeconds) * 100)) : 0,
       publicLearners: publicLearnerApplications.length,
-      pendingPublicApprovals: publicLearnerApplications.filter((entry) => entry.status === "PAYMENT_UPLOADED").length
-        + resourceAccessApplications.filter((entry) => entry.status === "PAYMENT_UPLOADED").length,
+      pendingPublicApprovals: publicLearnerApplications.filter((entry) => entry.status === "PAYMENT_UPLOADED" || entry.status === "PENDING_PAYMENT").length
+        + resourceAccessApplications.filter((entry) => entry.status === "PAYMENT_UPLOADED" || entry.status === "PENDING_PAYMENT").length,
       academyRevenue: Number(academyRevenue._sum.amount ?? 0),
       certifiedAgents: certifiedAgentIds.length,
       certifiedActiveListings,

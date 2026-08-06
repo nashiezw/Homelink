@@ -2052,22 +2052,66 @@ function CouponManagementPanel({ coupons, onEditCoupon, onCreateCoupon, setDrawe
         <AdminSearchInput value={search} onChange={setSearch} placeholder="Search coupons by code..." className="lg:flex-1" />
         <Button onClick={() => { onCreateCoupon(); setDrawer("coupon"); }}><Plus className="size-4" /> New Coupon</Button>
       </AdminFilterBar>
-      <BuilderList
-        title="Coupons"
-        icon={Ticket}
-        rows={filtered.map((coupon) => ({
-          id: coupon.id,
-          title: coupon.code,
-          active: coupon.active && coupon.isValid,
-          detail: `${coupon.discountType === "PERCENTAGE" ? `${coupon.discountValue}%` : `$${coupon.discountValue}`} - ${coupon.usedCount}${coupon.maxUses ? `/${coupon.maxUses}` : ''} used`,
-          source: coupon,
-        }))}
-        actionLabel="Create Coupon"
-        onCreate={() => { onCreateCoupon(); setDrawer("coupon"); }}
-        onEdit={(row) => onEditCoupon(row.source as AcademyCoupon)}
-        onArchive={(_row) => setDrawer(null)}
-        onDelete={(_row) => setDrawer(null)}
-      />
+      <div className="rounded-xl border border-white/10 bg-slate-900/60 overflow-hidden">
+        <table className="w-full text-sm">
+          <thead className="bg-white/5 text-slate-400">
+            <tr>
+              <th className="px-4 py-3 text-left font-medium">Code</th>
+              <th className="px-4 py-3 text-left font-medium">Discount</th>
+              <th className="px-4 py-3 text-left font-medium">Usage</th>
+              <th className="px-4 py-3 text-left font-medium">Validity</th>
+              <th className="px-4 py-3 text-left font-medium">Status</th>
+              <th className="px-4 py-3 text-right font-medium">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5">
+            {filtered.map((coupon) => (
+              <tr key={coupon.id} className="hover:bg-white/5 transition-colors">
+                <td className="px-4 py-3">
+                  <div>
+                    <p className="font-bold text-white font-mono">{coupon.code}</p>
+                    <p className="text-xs text-slate-500">{coupon.description || "No description"}</p>
+                  </div>
+                </td>
+                <td className="px-4 py-3">
+                  <div>
+                    <p className="font-semibold text-white">
+                      {coupon.discountType === "PERCENTAGE" ? `${coupon.discountValue}%` : `$${coupon.discountValue}`}
+                    </p>
+                    <p className="text-xs text-slate-500">{coupon.discountType === "PERCENTAGE" ? "Percentage" : "Fixed amount"}</p>
+                  </div>
+                </td>
+                <td className="px-4 py-3">
+                  <div>
+                    <p className="font-semibold text-white">{coupon.usedCount}{coupon.maxUses ? ` / ${coupon.maxUses}` : " / Unlimited"}</p>
+                    <p className="text-xs text-slate-500">{coupon.remainingUses !== null ? `${coupon.remainingUses} remaining` : "No limit"}</p>
+                  </div>
+                </td>
+                <td className="px-4 py-3">
+                  <div>
+                    <p className="text-sm text-white">{new Date(coupon.validFrom).toLocaleDateString()}</p>
+                    <p className="text-xs text-slate-500">{coupon.validUntil ? `to ${new Date(coupon.validUntil).toLocaleDateString()}` : "No expiry"}</p>
+                  </div>
+                </td>
+                <td className="px-4 py-3">
+                  <AdminStatusBadge status={coupon.isValid ? (coupon.active ? "ACTIVE" : "INACTIVE") : "EXPIRED"} />
+                </td>
+                <td className="px-4 py-3 text-right">
+                  <div className="flex justify-end gap-2">
+                    <Button variant="ghost" onClick={() => onEditCoupon(coupon)}><Pencil className="size-4" /></Button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {!filtered.length && (
+          <div className="p-8 text-center text-slate-500">
+            <Ticket className="size-12 mx-auto mb-3 opacity-50" />
+            <p>No coupons found</p>
+          </div>
+        )}
+      </div>
       {!coupons.length && (
         <AdminEmptyState title="No coupons created" description="Create promotional coupons to offer discounts on Academy courses." action={<Button onClick={() => { onCreateCoupon(); setDrawer("coupon"); }}><Plus className="size-4" /> Create Coupon</Button>} />
       )}
