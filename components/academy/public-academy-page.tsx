@@ -8,6 +8,7 @@ import {
   ArrowRight,
   Award,
   BookOpen,
+  Check,
   CheckCircle2,
   Clock,
   CreditCard,

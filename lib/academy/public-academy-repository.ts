@@ -1,4 +1,4 @@
-import { AcademyRegistrationStatus, PaymentProvider, PaymentStatus, Role, TrainingCourseStatus, TrainingVisibility, type Prisma } from "@prisma/client";
+import { AcademyRegistrationStatus, PaymentProvider, PaymentStatus, Role, TrainingCourseStatus, TrainingVisibility, Prisma } from "@prisma/client";
 import { getMainPrisma } from "@/lib/db/main-prisma";
 import { calculateCourseProgress, getCompletedLessonIds } from "@/lib/academy/academy-progress";
 import { canAccessProgrammeCourse, getProgrammeProgressSummary } from "@/lib/academy/academy-completion";
@@ -18,11 +18,6 @@ import { repairLegacyBrandingInPostgres, replaceLegacyBrandingText } from "@/lib
 import { lessonHandoutStoragePath } from "@/lib/academy/lesson-handouts";
 
 export type AcademyRegistrationIntent = "TRAINING_ONLY" | "AGENT_TRAINING";
-
-function resolveCoursePrice(course: { publicPrice: Prisma.Decimal; agentPrice: Prisma.Decimal; price: Prisma.Decimal }, intent: AcademyRegistrationIntent) {
-  if (intent === "AGENT_TRAINING") return course.agentPrice ?? course.price;
-  return course.publicPrice || course.price;
-}
 
 export async function listPublicAcademyCourses() {
   await repairLegacyBrandingInPostgres();

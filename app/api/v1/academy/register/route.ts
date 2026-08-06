@@ -18,12 +18,6 @@ export async function POST(request: Request) {
     : getStore().getUserById(userId);
   if (!user) return problem(401, "UNAUTHORIZED", "Your session is no longer valid.");
 
-  const registrationIntent =
-    body.registrationIntent === "AGENT_TRAINING" || body.registrationIntent === "TRAINING_ONLY"
-      ? body.registrationIntent
-      : undefined;
-  const isAgent = user.roles?.includes("AGENT") ?? false;
-
   const result = await registerPublicLearner({
     learnerId: userId,
     courseId,
