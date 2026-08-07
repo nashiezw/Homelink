@@ -9,14 +9,12 @@ export function AcademyProse({
   summary,
   title,
   className,
-  toolkitLocked = false,
 }: {
   richText?: string | null;
   transcript?: string | null;
   summary?: string | null;
   title?: string;
   className?: string;
-  toolkitLocked?: boolean;
 }) {
   const html = formatLessonContent({ richText, transcript, summary, title });
 
@@ -27,9 +25,6 @@ export function AcademyProse({
       </p>
     );
   }
-
-  // If toolkit is locked, filter out download links from the HTML content
-  const filteredHtml = toolkitLocked ? filterDownloadLinks(html) : html;
 
   return (
     <article
@@ -49,15 +44,7 @@ export function AcademyProse({
         "[&_td]:border-t [&_td]:border-slate-100 [&_td]:px-3 [&_td]:py-2 dark:[&_td]:border-slate-800",
         className,
       )}
-      dangerouslySetInnerHTML={{ __html: filteredHtml }}
+      dangerouslySetInnerHTML={{ __html: html }}
     />
   );
-}
-
-function filterDownloadLinks(html: string): string {
-  // Remove anchor tags that contain download-related attributes or href patterns
-  return html
-    .replace(/<a[^>]*\bdownload\b[^>]*>.*?<\/a>/gi, '<span class="text-slate-400 italic">[Download link - toolkit access required]</span>')
-    .replace(/<a[^>]*href=["'][^"']*\.(pdf|doc|docx|xls|xlsx|ppt|pptx|zip|rar)[^"']*["'][^>]*>.*?<\/a>/gi, '<span class="text-slate-400 italic">[File link - toolkit access required]</span>')
-    .replace(/<a[^>]*href=["'][^"']*\/api\/[^"']*download[^"']*["'][^>]*>.*?<\/a>/gi, '<span class="text-slate-400 italic">[Download link - toolkit access required]</span>');
 }

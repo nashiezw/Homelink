@@ -393,95 +393,70 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
 
       {tab === "materials" && (
         <div className="mt-6 space-y-5">
-          {data.toolkitAccess?.unlocked ? (
-            <>
-              <div className="academy-panel rounded-xl p-5 dark:border-sky-900/40 dark:from-sky-950/30 dark:to-slate-950">
-                <div className="flex flex-wrap items-start justify-between gap-4">
-                  <div>
-                    <h3 className="text-lg font-bold">Training Session Notes - Downloadable PDFs</h3>
-                    <p className="mt-1 max-w-2xl text-sm text-slate-600 dark:text-slate-400">
-                      {data.materials.length} branded HouseLink study guides - each PDF includes the HouseLink logo, session overview, key takeaways, in-depth notes, field application steps, and reflection questions.
-                    </p>
-                  </div>
-                  <span className="rounded-full bg-sky-100 px-3 py-1 text-xs font-bold text-sky-800 dark:bg-sky-900/40 dark:text-sky-200">
-                    {data.materials.length} PDFs ready
-                  </span>
-                </div>
+          <div className="academy-panel rounded-xl p-5 dark:border-sky-900/40 dark:from-sky-950/30 dark:to-slate-950">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <h3 className="text-lg font-bold">Training Session Notes - Downloadable PDFs</h3>
+                <p className="mt-1 max-w-2xl text-sm text-slate-600 dark:text-slate-400">
+                  {data.materials.length} branded HouseLink study guides - each PDF includes the HouseLink logo, session overview, key takeaways, in-depth notes, field application steps, and reflection questions.
+                </p>
               </div>
-              {Object.entries(
-                data.materials.reduce<Record<string, typeof data.materials>>((groups, material) => {
-                  const list = groups[material.moduleTitle] ?? [];
-                  list.push(material);
-                  groups[material.moduleTitle] = list;
-                  return groups;
-                }, {}),
-              ).map(([moduleTitle, items]) => (
-                <div key={moduleTitle} className="space-y-3">
-                  <h4 className="text-sm font-bold uppercase tracking-wide text-slate-500">{moduleTitle}</h4>
-                  <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                    {items.map((material) => (
-                      <div
-                        key={material.id}
-                        className="academy-card group flex flex-col overflow-hidden rounded-xl border-sky-200/70 dark:border-sky-900/40"
-                      >
-                        <div className="border-b border-sky-100 bg-gradient-to-r from-sky-600 to-emerald-600 px-4 py-3 dark:border-sky-900">
-                          <div className="flex items-center justify-between gap-2">
-                            <HouseLinkBrand variant="icon" iconOnly className="scale-[0.55] brightness-0 invert" />
-                            <span className="rounded bg-white/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">PDF</span>
-                          </div>
-                          <p className="mt-2 line-clamp-2 text-sm font-bold text-white">{material.title}</p>
-                        </div>
-                        <div className="flex flex-1 flex-col p-4">
-                          <p className="flex-1 text-xs leading-relaxed text-slate-600 line-clamp-3 dark:text-slate-400">{material.summary || "Branded lesson study guide with overview, takeaways, and field application."}</p>
-                          <p className="mt-3 text-xs font-medium text-slate-500">{material.estimatedMinutes} min read</p>
-                          <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-                            <a
-                              href={material.viewUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-sky-200 bg-white px-4 py-3 text-sm font-semibold text-sky-700 transition hover:bg-sky-50 dark:border-sky-800 dark:bg-slate-900 dark:text-sky-300 sm:flex-1 sm:py-2.5"
-                            >
-                              View PDF
-                            </a>
-                            <a
-                              href={material.downloadUrl}
-                              download
-                              className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-sky-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-sky-700 sm:flex-1 sm:py-2.5"
-                            >
-                              <Download className="size-4" />
-                              Download
-                            </a>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-              {!data.materials.length && <p className="text-slate-500">Lesson notes PDFs appear for every lesson in this programme.</p>}
-            </>
-          ) : (
-            <div className="rounded-xl border border-amber-200 bg-amber-50 p-6 dark:border-amber-900/40 dark:bg-amber-950/20">
-              <div className="flex items-start gap-3">
-                <div className="rounded-full bg-amber-100 p-2 dark:bg-amber-900/40">
-                  <FileText className="size-5 text-amber-600 dark:text-amber-400" />
-                </div>
-                <div className="flex-1">
-                  <p className="font-semibold text-amber-900 dark:text-amber-100">Toolkit access required</p>
-                  <p className="mt-1 text-sm text-amber-800 dark:text-amber-300">
-                    These training session notes and PDF materials are part of the premium toolkit. Purchase the toolkit from the Toolkit tab to access all {data.materials.length} downloadable resources.
-                  </p>
-                  <button
-                    onClick={() => setTab("toolkit")}
-                    className="mt-3 inline-flex items-center gap-2 rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-amber-700"
+              <span className="rounded-full bg-sky-100 px-3 py-1 text-xs font-bold text-sky-800 dark:bg-sky-900/40 dark:text-sky-200">
+                {data.materials.length} PDFs ready
+              </span>
+            </div>
+          </div>
+          {Object.entries(
+            data.materials.reduce<Record<string, typeof data.materials>>((groups, material) => {
+              const list = groups[material.moduleTitle] ?? [];
+              list.push(material);
+              groups[material.moduleTitle] = list;
+              return groups;
+            }, {}),
+          ).map(([moduleTitle, items]) => (
+            <div key={moduleTitle} className="space-y-3">
+              <h4 className="text-sm font-bold uppercase tracking-wide text-slate-500">{moduleTitle}</h4>
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                {items.map((material) => (
+                  <div
+                    key={material.id}
+                    className="academy-card group flex flex-col overflow-hidden rounded-xl border-sky-200/70 dark:border-sky-900/40"
                   >
-                    <GraduationCap className="size-4" />
-                    Go to Toolkit
-                  </button>
-                </div>
+                    <div className="border-b border-sky-100 bg-gradient-to-r from-sky-600 to-emerald-600 px-4 py-3 dark:border-sky-900">
+                      <div className="flex items-center justify-between gap-2">
+                        <HouseLinkBrand variant="icon" iconOnly className="scale-[0.55] brightness-0 invert" />
+                        <span className="rounded bg-white/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">PDF</span>
+                      </div>
+                      <p className="mt-2 line-clamp-2 text-sm font-bold text-white">{material.title}</p>
+                    </div>
+                    <div className="flex flex-1 flex-col p-4">
+                      <p className="flex-1 text-xs leading-relaxed text-slate-600 line-clamp-3 dark:text-slate-400">{material.summary || "Branded lesson study guide with overview, takeaways, and field application."}</p>
+                      <p className="mt-3 text-xs font-medium text-slate-500">{material.estimatedMinutes} min read</p>
+                      <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+                        <a
+                          href={material.viewUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-sky-200 bg-white px-4 py-3 text-sm font-semibold text-sky-700 transition hover:bg-sky-50 dark:border-sky-800 dark:bg-slate-900 dark:text-sky-300 sm:flex-1 sm:py-2.5"
+                        >
+                          View PDF
+                        </a>
+                        <a
+                          href={material.downloadUrl}
+                          download
+                          className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-sky-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-sky-700 sm:flex-1 sm:py-2.5"
+                        >
+                          <Download className="size-4" />
+                          Download
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
-          )}
+          ))}
+          {!data.materials.length && <p className="text-slate-500">Lesson notes PDFs appear for every lesson in this programme.</p>}
         </div>
       )}
 
