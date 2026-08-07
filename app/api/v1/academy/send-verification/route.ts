@@ -2,6 +2,7 @@ import { getSessionUserIdFromRequest } from "@/lib/auth/session";
 import { ok, problem } from "@/lib/api/response";
 import { getMainPrisma } from "@/lib/db/main-prisma";
 import { randomBytes } from "crypto";
+import { sendEmailVerificationEmail } from "@/lib/academy/academy-email";
 
 export const dynamic = "force-dynamic";
 
@@ -22,7 +23,7 @@ export async function POST(request: Request) {
     // Check if email is already verified
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { email: true, emailVerifiedAt: true },
+      select: { email: true, emailVerifiedAt: true, name: true },
     });
 
     if (!user) {
@@ -36,30 +37,32 @@ export async function POST(request: Request) {
     // Generate verification token
     const token = randomBytes(32).toString("hex");
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+    const ipAddress = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "unknown";
+    const userAgent = request.headers.get("user-agent") || "unknown";
 
     // Store verification token
     await prisma.emailVerificationToken.upsert({
       where: { userId },
-      create: {
-        userId,
-        token,
-        expiresAt,
-      },
-      update: {
-        token,
-        expiresAt,
-      },
+      create: { userId, token, expiresAt, ipAddress, userAgent },
+      update: { token, expiresAt, ipAddress, userAgent },
     });
 
-    // In a real implementation, you would send an email here
-    // For now, we'll return the token for testing purposes
-    // TODO: Integrate with email service (Resend, SendGrid, etc.)
+    // Send verification email
+    const emailResult = await sendEmailVerificationEmail(user.email, user.name, token);
+    
+    if (!emailResult.success) {
+      console.error("Failed to send verification email:", emailResult.error);
+      return problem(500, "EMAIL_SEND_FAILED", "Failed to send verification email. Please try again.");
+    }
     
     return ok({
       verified: false,
-      message: "Verification email sent.",
+      message: "Verification email sent successfully.",
       // Only return token in development for testing
-      ...(process.env.NODE_ENV === "development" && { verificationToken: token, verificationLink: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/academy/verify-email?token=${token}` }),
+      ...(process.env.NODE_ENV === "development" && { 
+        verificationToken: token, 
+        verificationLink: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/academy/verify-email?token=${token}` 
+      }),
     });
   } catch (error) {
     console.error("Failed to send verification email", error);
