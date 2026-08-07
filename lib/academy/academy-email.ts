@@ -4,12 +4,14 @@ import { renderRegistrationEmail, renderVerificationEmail, type EmailTemplateDat
 import { getPostgresPaymentSettings } from "@/lib/admin/postgres-admin-config";
 import { getActiveEmailTemplate } from "@/lib/academy/email-template-repository";
 import { getAcademyBranding } from "@/lib/academy/branding-repository";
+import { getMainPrisma } from "@/lib/db/main-prisma";
 
 async function sendEmailWithRetry(
   integrations: any,
   to: string,
   subject: string,
   body: string,
+  emailType: string = "email",
   maxRetries = 3,
   initialDelayMs = 1000,
 ): Promise<{ ok: boolean; message?: string }> {
@@ -27,7 +29,26 @@ async function sendEmailWithRetry(
     }
   }
   
-  // All retries failed
+  // All retries failed - log to audit for admin visibility
+  try {
+    const prisma = getMainPrisma();
+    await prisma.auditEvent.create({
+      data: {
+        action: "EMAIL_SEND_FAILED",
+        target: to,
+        metadata: {
+          emailType,
+          subject,
+          error: `Failed after ${maxRetries} attempts`,
+          timestamp: new Date().toISOString(),
+          smtpConfigured: Boolean(integrations.smtpHost && integrations.smtpPort && integrations.smtpUser),
+        },
+      },
+    });
+  } catch (logError) {
+    console.error("Failed to log email error to audit:", logError);
+  }
+  
   return { ok: false, message: `Failed after ${maxRetries} attempts` };
 }
 
@@ -120,7 +141,7 @@ export async function sendRegistrationConfirmationEmail(
       body = renderRegistrationEmail(templateData);
     }
 
-    const result = await sendEmailWithRetry(integrations, learnerEmail, subject, body);
+    const result = await sendEmailWithRetry(integrations, learnerEmail, subject, body, "registration_confirmation");
     
     if (!result.ok) {
       console.error("Failed to send registration email:", result.message);
@@ -174,7 +195,7 @@ export async function sendEmailVerificationEmail(
       body = renderVerificationEmail(templateData);
     }
 
-    const result = await sendEmailWithRetry(integrations, userEmail, subject, body);
+    const result = await sendEmailWithRetry(integrations, userEmail, subject, body, "email_verification");
     
     if (!result.ok) {
       console.error("Failed to send verification email:", result.message);
