@@ -25,12 +25,13 @@ export function created<T>(data: T, meta: Meta = {}) {
   );
 }
 
-export function problem(status: number, code: string, message: string) {
+export function problem(status: number, code: string, message: string, extra?: Meta) {
   return NextResponse.json(
     {
       error: {
         code,
         message,
+        ...(extra && { extra }),
       },
       meta: {
         requestId: crypto.randomUUID(),

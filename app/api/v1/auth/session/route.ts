@@ -9,7 +9,7 @@ import {
   isSessionSecretConfigurationError,
   sessionCookieHeader,
 } from "@/lib/auth/session";
-import { getRegistrationPolicy, getRateLimitPerMinute, getSessionTimeoutSeconds } from "@/lib/settings/runtime";
+import { getRegistrationPolicy, getRateLimitPerMinute, getSessionTimeoutSeconds, getRuntimePlatformSettings } from "@/lib/settings/runtime";
 import { ok, problem } from "@/lib/api/response";
 import {
   createPostgresUser,
@@ -27,6 +27,8 @@ import {
 } from "@/lib/auth/postgres-auth";
 import { getMainPrisma } from "@/lib/db/main-prisma";
 import { getStore } from "@/lib/store/app-store";
+import { randomBytes } from "crypto";
+import { sendEmailVerificationEmail } from "@/lib/academy/academy-email";
 
 export async function POST(request: Request) {
   if (!hasUsableSessionSecret()) return sessionSecretProblem();
@@ -103,6 +105,11 @@ export async function POST(request: Request) {
     if (!name.trim()) {
       return problem(400, "NAME_REQUIRED", "Name is required for registration.");
     }
+    
+    // Check if email verification is required
+    const platformSettings = getRuntimePlatformSettings();
+    const requireEmailVerification = platformSettings.emailVerificationRequired;
+    
     if (shouldUsePostgresAuth()) {
       const existing = await getPostgresUserByEmail(email);
       if (existing) {
@@ -114,6 +121,48 @@ export async function POST(request: Request) {
         name,
         phone: body.phone,
       });
+      
+      // If email verification is required, generate token and send email
+      if (requireEmailVerification) {
+        const prisma = getMainPrisma();
+        const token = randomBytes(32).toString("hex");
+        const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+        const ipAddress = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "unknown";
+        const userAgent = request.headers.get("user-agent") || "unknown";
+
+        await prisma.emailVerificationToken.upsert({
+          where: { userId: user.id },
+          create: { userId: user.id, token, expiresAt, ipAddress, userAgent },
+          update: { token, expiresAt, ipAddress, userAgent },
+        });
+
+        // Send verification email
+        const emailResult = await sendEmailVerificationEmail(user.email, user.name, token);
+        
+        return new NextResponse(
+          JSON.stringify({
+            data: {
+              user: toPublicPostgresUser(user),
+              requiresEmailVerification: true,
+              emailSent: emailResult.success,
+              message: "Please verify your email address. A verification link has been sent to your email.",
+              ...(process.env.NODE_ENV === "development" && { 
+                verificationToken: token, 
+                verificationLink: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/academy/verify-email?token=${token}` 
+              }),
+            },
+            meta: { requestId: crypto.randomUUID() },
+          }),
+          {
+            status: 201,
+            headers: {
+              "Content-Type": "application/json",
+            },
+          },
+        );
+      }
+      
+      // If no email verification required, create session and log in
       const sessionId = `session_${crypto.randomUUID()}`;
       const sessionMaxAge = getSessionTimeoutSeconds();
       await createPostgresSession(user.id, sessionId, sessionMaxAge);
@@ -141,6 +190,48 @@ export async function POST(request: Request) {
       name,
       phone: body.phone,
     });
+    
+    // If email verification is required, generate token and send email
+    if (requireEmailVerification) {
+      const prisma = getMainPrisma();
+      const token = randomBytes(32).toString("hex");
+      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+      const ipAddress = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "unknown";
+      const userAgent = request.headers.get("user-agent") || "unknown";
+
+      await prisma.emailVerificationToken.upsert({
+        where: { userId: user.id },
+        create: { userId: user.id, token, expiresAt, ipAddress, userAgent },
+        update: { token, expiresAt, ipAddress, userAgent },
+      });
+
+      // Send verification email
+      const emailResult = await sendEmailVerificationEmail(user.email, user.name, token);
+      
+      return new NextResponse(
+        JSON.stringify({
+          data: {
+            user: store.publicUser(user),
+            requiresEmailVerification: true,
+            emailSent: emailResult.success,
+            message: "Please verify your email address. A verification link has been sent to your email.",
+            ...(process.env.NODE_ENV === "development" && { 
+              verificationToken: token, 
+              verificationLink: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/academy/verify-email?token=${token}` 
+            }),
+          },
+          meta: { requestId: crypto.randomUUID() },
+        }),
+        {
+          status: 201,
+          headers: {
+            "Content-Type": "application/json",
+          },
+        },
+      );
+    }
+    
+    // If no email verification required, create session and log in
     const session = store.createSession(user.id);
     return new NextResponse(
       JSON.stringify({
@@ -176,6 +267,35 @@ export async function POST(request: Request) {
       });
       return problem(401, "INVALID_CREDENTIALS", "Email or password is incorrect.");
     }
+    
+    // Check if email verification is required and user's email is not verified
+    const platformSettings = getRuntimePlatformSettings();
+    const requireEmailVerification = platformSettings.emailVerificationRequired;
+    if (requireEmailVerification && !user.emailVerifiedAt) {
+      // Generate and send new verification token
+      const prisma = getMainPrisma();
+      const token = randomBytes(32).toString("hex");
+      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+      const ipAddress = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "unknown";
+      const userAgent = request.headers.get("user-agent") || "unknown";
+
+      await prisma.emailVerificationToken.upsert({
+        where: { userId: user.id },
+        create: { userId: user.id, token, expiresAt, ipAddress, userAgent },
+        update: { token, expiresAt, ipAddress, userAgent },
+      });
+
+      // Send verification email
+      const emailResult = await sendEmailVerificationEmail(user.email, user.name, token);
+      
+      return problem(
+        403,
+        "EMAIL_VERIFICATION_REQUIRED",
+        "Please verify your email address before signing in. A new verification link has been sent to your email.",
+        { emailSent: emailResult.success, ...(process.env.NODE_ENV === "development" && { verificationToken: token, verificationLink: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/academy/verify-email?token=${token}` }) }
+      );
+    }
+    
     if (user.accountStatus === "SUSPENDED") {
       await recordPostgresAuditEvent({
         actorId: user.id,
