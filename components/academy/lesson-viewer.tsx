@@ -69,6 +69,7 @@ export function LessonViewer({
   onToggleBookmark,
   primaryColour = "#008b68",
   courseTheme,
+  toolkitLocked = false,
 }: {
   course: Course;
   initialLessonId?: string;
@@ -77,6 +78,7 @@ export function LessonViewer({
   onToggleBookmark?: (lessonId: string, bookmarked: boolean) => void;
   primaryColour?: string;
   courseTheme?: CourseTheme;
+  toolkitLocked?: boolean;
 }) {
   const [currentLessonId, setCurrentLessonId] = useState(initialLessonId || course.modules[0]?.lessons[0]?.id || "");
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -321,11 +323,27 @@ export function LessonViewer({
                   </h3>
                   <p className="mt-1 text-sm text-slate-500">Print-ready HouseLink forms and checklists — also available under the Toolkit tab.</p>
                 </div>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {fieldForms.map((resource) => (
-                    <DownloadCard key={resource.id} href={resource.url} title={resource.title} subtitle={resource.subtitle} />
-                  ))}
-                </div>
+                {toolkitLocked ? (
+                  <div className="rounded-xl border border-amber-200 bg-amber-50 p-6 dark:border-amber-900/40 dark:bg-amber-950/20">
+                    <div className="flex items-start gap-3">
+                      <div className="rounded-full bg-amber-100 p-2 dark:bg-amber-900/40">
+                        <Download className="size-5 text-amber-600 dark:text-amber-400" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-semibold text-amber-900 dark:text-amber-100">Toolkit access required</p>
+                        <p className="mt-1 text-sm text-amber-800 dark:text-amber-300">
+                          These field forms and tools are part of the premium toolkit. Purchase the toolkit from the Toolkit tab to access all {fieldForms.length} downloadable resources.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {fieldForms.map((resource) => (
+                      <DownloadCard key={resource.id} href={resource.url} title={resource.title} subtitle={resource.subtitle} />
+                    ))}
+                  </div>
+                )}
               </section>
             )}
 

@@ -180,6 +180,7 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
         initialLessonId={viewingLessonId}
         primaryColour={accent}
         courseTheme={theme}
+        toolkitLocked={!data.toolkitAccess?.unlocked}
         onBack={() => setViewingLessonId(null)}
         onToggleBookmark={async (lessonId, bookmarked) => {
           await apiFetch("/api/v1/academy/bookmarks", { method: "POST", body: JSON.stringify({ lessonId, bookmarked }) });
