@@ -133,6 +133,7 @@ export function AuthForm({
           aria-invalid={emailHasError}
           aria-describedby={emailError ? "auth-email-error" : undefined}
           required
+          pattern="[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
         />
         {emailError ? <FieldError id="auth-email-error" message={emailError} /> : null}
       </label>

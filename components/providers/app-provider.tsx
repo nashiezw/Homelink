@@ -50,12 +50,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [compareIds, setCompareIds] = useState<string[]>([]);
   const [toast, setToast] = useState<Toast | null>(null);
 
-  const showToast = useCallback((message: string, tone: Toast["tone"] = "success") => {
+  const showToast = useCallback((message: string, tone: Toast["tone"] = "success", duration: number = 3200) => {
     const id = crypto.randomUUID();
     setToast({ id, message, tone });
     window.setTimeout(() => {
       setToast((current) => (current?.id === id ? null : current));
-    }, 3200);
+    }, duration);
   }, []);
 
   const refreshUser = useCallback(async () => {
@@ -140,7 +140,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       // Handle email verification required response
       if (result.data && typeof result.data === "object" && "requiresEmailVerification" in result.data && result.data.requiresEmailVerification) {
         const data = result.data as { user: PublicUser; requiresEmailVerification: boolean; message: string };
-        showToast(data.message || "Please verify your email address.", "info");
+        showToast(data.message || "Please verify your email address.", "info", 8000);
         return { user: data.user, requiresEmailVerification: true, message: data.message };
       }
       
