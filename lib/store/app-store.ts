@@ -1825,13 +1825,23 @@ class AppStore {
     if (!mine) return null;
     const author = this.getUserById(authorUserId);
     const targetUserId = input.targetUserId ?? mine.counterpartyUserId;
+    
+    // Map UserRole to ResidenceRole for tenancy references
+    const getResidenceRole = (roles: string[] | undefined): "tenant" | "roommate" | "owner" | "landlord" => {
+      if (!roles || roles.length === 0) return "tenant";
+      if (roles.includes("LANDLORD")) return "landlord";
+      if (roles.includes("OWNER")) return "owner";
+      if (roles.includes("ROOMMATE")) return "roommate";
+      return "tenant";
+    };
+    
     const ref: TenancyReference = {
       id: `ref_${crypto.randomUUID()}`,
       tenancyId,
       authorUserId,
       authorName: author?.name ?? "User",
       targetUserId,
-      authorRole: mine.role,
+      authorRole: getResidenceRole(author?.roles),
       note: input.note,
       rating: input.rating,
       createdAt: new Date().toISOString(),
