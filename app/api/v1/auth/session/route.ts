@@ -29,6 +29,7 @@ import { getMainPrisma } from "@/lib/db/main-prisma";
 import { getStore } from "@/lib/store/app-store";
 import { randomBytes } from "crypto";
 import { sendEmailVerificationEmail } from "@/lib/academy/academy-email";
+import { sendWelcomeEmail } from "@/lib/academy/welcome-email";
 
 export async function POST(request: Request) {
   if (!hasUsableSessionSecret()) return sessionSecretProblem();
@@ -166,6 +167,10 @@ export async function POST(request: Request) {
       const sessionId = `session_${crypto.randomUUID()}`;
       const sessionMaxAge = getSessionTimeoutSeconds();
       await createPostgresSession(user.id, sessionId, sessionMaxAge);
+      
+      // Send welcome email
+      await sendWelcomeEmail(user.email, user.name);
+      
       return new NextResponse(
         JSON.stringify({
           data: toPublicPostgresUser(user),
@@ -233,6 +238,10 @@ export async function POST(request: Request) {
     
     // If no email verification required, create session and log in
     const session = store.createSession(user.id);
+    
+    // Send welcome email
+    await sendWelcomeEmail(user.email, user.name);
+    
     return new NextResponse(
       JSON.stringify({
         data: store.publicUser(user),

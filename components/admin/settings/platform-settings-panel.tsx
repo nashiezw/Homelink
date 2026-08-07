@@ -481,8 +481,20 @@ function SettingsLoadError({ message, onRetry }: { message: string; onRetry: () 
 function mergeSavedSettingsForForm(serverSettings: PlatformSettings, submittedSettings: PlatformSettings): PlatformSettings {
   const integrations = { ...serverSettings.integrations };
   for (const key of ["cloudinarySecret", "smtpPass"] as const) {
-    if (isMaskedSecret(integrations[key])) {
-      integrations[key] = submittedSettings.integrations[key];
+    const serverValue = integrations[key];
+    const submittedValue = submittedSettings.integrations[key];
+    
+    // If server value is masked (stored) and submitted value is also masked, keep server value
+    if (isMaskedSecret(serverValue) && isMaskedSecret(submittedValue)) {
+      integrations[key] = serverValue;
+    }
+    // If server value is masked but submitted value is not masked (user entered new value), use submitted
+    else if (isMaskedSecret(serverValue) && !isMaskedSecret(submittedValue)) {
+      integrations[key] = submittedValue;
+    }
+    // If server value is not masked, use submitted value
+    else {
+      integrations[key] = submittedValue;
     }
   }
   return { ...serverSettings, integrations };

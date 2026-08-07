@@ -37,7 +37,7 @@ type AppContextValue = {
 };
 
 type AuthResult =
-  | { user: PublicUser; error?: undefined }
+  | { user: PublicUser; error?: undefined; requiresEmailVerification?: boolean; message?: string }
   | { user: null; error: { code: string; message: string } };
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -132,18 +132,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const register = useCallback(
     async (input: { name: string; email: string; password: string }) => {
-      const result = await apiFetch<PublicUser>("/api/v1/auth/session", {
+      const result = await apiFetch<PublicUser | { user: PublicUser; requiresEmailVerification: boolean; message: string }>("/api/v1/auth/session", {
         method: "POST",
         body: JSON.stringify({ ...input, action: "register" }),
       });
-      if (result.data) {
-        setUser(result.data);
+      
+      // Handle email verification required response
+      if (result.data && typeof result.data === "object" && "requiresEmailVerification" in result.data && result.data.requiresEmailVerification) {
+        const data = result.data as { user: PublicUser; requiresEmailVerification: boolean; message: string };
+        showToast(data.message || "Please verify your email address.", "info");
+        return { user: data.user, requiresEmailVerification: true, message: data.message };
+      }
+      
+      if (result.data && typeof result.data !== "object" || !("requiresEmailVerification" in result.data)) {
+        setUser(result.data as PublicUser);
         void import("@/lib/analytics/identity-client").then(({ stitchAnalyticsIdentity }) => {
-          stitchAnalyticsIdentity({ userId: result.data!.id, email: result.data!.email });
+          stitchAnalyticsIdentity({ userId: (result.data as PublicUser).id, email: (result.data as PublicUser).email });
         });
         await refreshFavourites();
-        showToast(`Account created. Welcome, ${result.data.name}.`);
-        return { user: result.data };
+        showToast(`Account created. Welcome, ${(result.data as PublicUser).name}.`);
+        return { user: result.data as PublicUser };
       }
       return { user: null, error: result.error ?? { code: "REGISTRATION_FAILED", message: "Registration failed." } };
     },
