@@ -205,7 +205,7 @@ export const defaultPlatformSettings: PlatformSettings = {
   maintenanceMode: false,
   maintenanceMessage: "We are performing scheduled maintenance. Please check back shortly.",
   registrationOpen: true,
-  emailVerificationRequired: false,
+  emailVerificationRequired: true,
   phoneVerificationRequired: false,
   minPasswordLength: 8,
   sessionTimeoutMinutes: 480,
