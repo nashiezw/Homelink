@@ -1,4 +1,4 @@
-import { getRuntimePlatformSettings } from "@/lib/settings/runtime";
+import { getHydratedRuntimePlatformSettings } from "@/lib/settings/runtime";
 import { sendSmtpPlainEmail } from "@/lib/integrations/smtp";
 import { getMainPrisma } from "@/lib/db/main-prisma";
 
@@ -47,7 +47,7 @@ async function sendEmailWithRetry(
 }
 
 export async function sendWelcomeEmail(userEmail: string, userName: string, _language: string = "en") {
-  const settings = getRuntimePlatformSettings();
+  const settings = await getHydratedRuntimePlatformSettings();
   const platformName = settings.platformName || "HouseLink";
   
   const subject = `Welcome to ${platformName}!`;

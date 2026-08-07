@@ -9,7 +9,7 @@ import {
   isSessionSecretConfigurationError,
   sessionCookieHeader,
 } from "@/lib/auth/session";
-import { getRegistrationPolicy, getRateLimitPerMinute, getSessionTimeoutSeconds, getRuntimePlatformSettings } from "@/lib/settings/runtime";
+import { getRegistrationPolicy, getRateLimitPerMinute, getSessionTimeoutSeconds, getHydratedRuntimePlatformSettings } from "@/lib/settings/runtime";
 import { ok, problem } from "@/lib/api/response";
 import {
   createPostgresUser,
@@ -108,7 +108,7 @@ export async function POST(request: Request) {
     }
     
     // Check if email verification is required
-    const platformSettings = getRuntimePlatformSettings();
+    const platformSettings = await getHydratedRuntimePlatformSettings();
     const requireEmailVerification = platformSettings.emailVerificationRequired;
     
     if (shouldUsePostgresAuth()) {
@@ -278,7 +278,7 @@ export async function POST(request: Request) {
     }
     
     // Check if email verification is required and user's email is not verified
-    const platformSettings = getRuntimePlatformSettings();
+    const platformSettings = await getHydratedRuntimePlatformSettings();
     const requireEmailVerification = platformSettings.emailVerificationRequired;
     if (requireEmailVerification && !user.emailVerifiedAt) {
       // Generate and send new verification token

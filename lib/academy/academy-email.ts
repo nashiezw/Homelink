@@ -1,5 +1,5 @@
 import { sendSmtpPlainEmail } from "@/lib/integrations/smtp";
-import { getRuntimePlatformSettings } from "@/lib/settings/runtime";
+import { getHydratedRuntimePlatformSettings } from "@/lib/settings/runtime";
 import { renderRegistrationEmail, renderVerificationEmail, type EmailTemplateData, type VerificationEmailData } from "@/lib/academy/email-templates";
 import { getPostgresPaymentSettings } from "@/lib/admin/postgres-admin-config";
 import { getActiveEmailTemplate } from "@/lib/academy/email-template-repository";
@@ -63,7 +63,7 @@ export async function sendRegistrationConfirmationEmail(
   language: string = "en",
 ) {
   try {
-    const settings = getRuntimePlatformSettings();
+    const settings = await getHydratedRuntimePlatformSettings();
     const integrations = settings.integrations;
     
     // Build payment instructions from platform payment settings
@@ -162,7 +162,7 @@ export async function sendEmailVerificationEmail(
   language: string = "en",
 ) {
   try {
-    const settings = getRuntimePlatformSettings();
+    const settings = await getHydratedRuntimePlatformSettings();
     const integrations = settings.integrations;
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
     const verificationLink = `${baseUrl}/academy/verify-email?token=${verificationToken}`;

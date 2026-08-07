@@ -1,11 +1,13 @@
 import type { PlatformSettings, PublicPlatformConfig } from "@/lib/settings/types";
-import { defaultPlatformSettings } from "@/lib/settings/defaults";
 import { isPostgresStoreEnabled } from "@/lib/db/main-prisma";
 import { getHydratedStore, getStore } from "@/lib/store/app-store";
 
 export function getRuntimePlatformSettings(): PlatformSettings {
-  if (process.env.HOUSELINK_STRICT_PRODUCTION === "true" && isPostgresStoreEnabled()) {
-    return defaultPlatformSettings;
+  if (isPostgresStoreEnabled()) {
+    // For synchronous calls, we need to use the store fallback
+    // This is a limitation of the sync context, but in production
+    // the async version should be used where possible
+    return getStore().getPlatformSettings();
   }
   return getStore().getPlatformSettings();
 }
