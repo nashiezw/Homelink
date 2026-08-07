@@ -178,7 +178,7 @@ export function LandlordAgentHub() {
                     {landlord.accountStatus}
                   </span>
                 </div>
-                <div className="mt-4 grid grid-cols-3 gap-2 text-center text-sm">
+                <div className="mt-4 grid grid-cols-2 gap-2 text-center text-sm sm:grid-cols-3">
                   <div className="rounded-lg bg-slate-950/50 p-2">
                     <p className="text-xs text-slate-500">Active</p>
                     <p className="font-bold text-white">{landlord.activeListings}</p>
@@ -187,12 +187,12 @@ export function LandlordAgentHub() {
                     <p className="text-xs text-slate-500">Enquiries</p>
                     <p className="font-bold text-white">{landlord.totalEnquiries}</p>
                   </div>
-                  <div className="rounded-lg bg-slate-950/50 p-2">
+                  <div className="rounded-lg bg-slate-950/50 p-2 col-span-2 sm:col-span-1">
                     <p className="text-xs text-slate-500">Score</p>
                     <p className="font-bold text-white">{landlord.performanceScore}</p>
                   </div>
                 </div>
-                <div className="mt-3 flex flex-wrap gap-4 text-xs text-slate-400">
+                <div className="mt-3 flex flex-wrap gap-2 text-xs text-slate-400 sm:gap-4">
                   <span>Views: {landlord.totalViews}</span>
                   <span>Occupancy: {landlord.occupancyRate}%</span>
                   <span>Response: ~{landlord.avgResponseMin}m</span>
@@ -200,18 +200,18 @@ export function LandlordAgentHub() {
                 </div>
                 <div className="mt-4 grid gap-2 sm:flex sm:flex-wrap">
                   {landlord.verification.identity !== "VERIFIED" && (
-                    <Button onClick={() => void userAction(landlord.id, "verify")}>
+                    <Button className="text-xs sm:text-sm" onClick={() => void userAction(landlord.id, "verify")}>
                       <ShieldCheck className="size-4" /> Verify
                     </Button>
                   )}
                   {landlord.accountStatus === "ACTIVE" ? (
-                    <Button variant="secondary" onClick={() => reasonedUserAction(landlord.id, "suspend", "Suspend landlord")}>
+                    <Button className="text-xs sm:text-sm" variant="secondary" onClick={() => reasonedUserAction(landlord.id, "suspend", "Suspend landlord")}>
                       Suspend
                     </Button>
                   ) : (
-                    <Button onClick={() => void userAction(landlord.id, "activate")}>Activate</Button>
+                    <Button className="text-xs sm:text-sm" onClick={() => void userAction(landlord.id, "activate")}>Activate</Button>
                   )}
-                  <Button variant="secondary" onClick={() => reasonedUserAction(landlord.id, "warn", "Issue warning")}>
+                  <Button className="text-xs sm:text-sm" variant="secondary" onClick={() => reasonedUserAction(landlord.id, "warn", "Issue warning")}>
                     Issue warning
                   </Button>
                 </div>
@@ -226,14 +226,14 @@ export function LandlordAgentHub() {
           {filteredAgents.map((agent) => (
             <article key={agent.id} className="rounded-xl border border-white/10 bg-slate-900/60 p-5">
               <div className="flex items-start justify-between">
-                <div>
-                  <h3 className="font-semibold text-white">{agent.name}</h3>
-                  <p className="text-sm text-slate-400">{agent.agencyName}</p>
+                <div className="min-w-0 flex-1">
+                  <h3 className="font-semibold text-white truncate">{agent.name}</h3>
+                  <p className="text-sm text-slate-400 truncate">{agent.agencyName}</p>
                   <p className="text-xs text-slate-500">{agent.city}</p>
                 </div>
-                <Users className="size-5 text-cyan-400" />
+                <Users className="size-5 shrink-0 text-cyan-400 ml-2" />
               </div>
-              <div className="mt-4 grid grid-cols-3 gap-2 text-center text-sm">
+              <div className="mt-4 grid grid-cols-2 gap-2 text-center text-sm sm:grid-cols-3">
                 <div className="rounded-lg bg-slate-950/50 p-2">
                   <p className="text-xs text-slate-500">Managed</p>
                   <p className="font-bold text-white">{agent.propertiesManaged}</p>
@@ -242,19 +242,20 @@ export function LandlordAgentHub() {
                   <p className="text-xs text-slate-500">Rentals</p>
                   <p className="font-bold text-white">{agent.rentals}</p>
                 </div>
-                <div className="rounded-lg bg-slate-950/50 p-2">
+                <div className="rounded-lg bg-slate-950/50 p-2 col-span-2 sm:col-span-1">
                   <p className="text-xs text-slate-500">Conversion</p>
                   <p className="font-bold text-white">{agent.leadConversion}%</p>
                 </div>
               </div>
               <div className="mt-4 flex gap-2">
                 <Button
+                  className="text-xs sm:text-sm"
                   variant="secondary"
                   onClick={() => void userAction(agent.id, "set_premium", { premium: !agent.premium })}
                 >
                   {agent.premium ? "Remove premium" : "Grant premium"}
                 </Button>
-                <Button variant="secondary" onClick={() => reasonedUserAction(agent.id, "warn", "Warn agent")}>
+                <Button className="text-xs sm:text-sm" variant="secondary" onClick={() => reasonedUserAction(agent.id, "warn", "Warn agent")}>
                   Warn
                 </Button>
               </div>
@@ -268,8 +269,8 @@ export function LandlordAgentHub() {
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             {Object.entries(agencyData.summary).map(([key, value]) => (
               <div key={key} className="rounded-xl border border-white/10 bg-slate-900/60 p-4">
-                <p className="text-xs uppercase text-slate-500">{key}</p>
-                <p className="text-2xl font-bold text-white">{typeof value === "number" && key.includes("Revenue") ? `$${value}` : value}</p>
+                <p className="text-xs uppercase text-slate-500 truncate">{key}</p>
+                <p className="text-2xl font-bold text-white truncate">{typeof value === "number" && key.includes("Revenue") ? `$${value}` : value}</p>
               </div>
             ))}
           </div>
@@ -279,7 +280,7 @@ export function LandlordAgentHub() {
                 <div className="flex items-start gap-3">
                   <Building2 className="size-5 shrink-0 text-cyan-400" />
                   <div className="min-w-0 flex-1">
-                    <h3 className="font-semibold text-white">{agency.name}</h3>
+                    <h3 className="font-semibold text-white truncate">{agency.name}</h3>
                     <p className="text-sm text-slate-400">{agency.city}</p>
                     <p className="truncate text-xs text-slate-500">{agency.email}</p>
                   </div>
@@ -287,7 +288,7 @@ export function LandlordAgentHub() {
                 <div className="mt-4 space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-slate-500">Tier</span>
-                    <span className="text-white">{agency.subscriptionTier}</span>
+                    <span className="text-white truncate ml-2">{agency.subscriptionTier}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-500">Agents</span>
@@ -318,7 +319,7 @@ export function LandlordAgentHub() {
                   <div className="mt-4 border-t border-white/10 pt-3">
                     <p className="mb-2 text-xs uppercase text-slate-500">Top agents</p>
                     {agency.topAgents.map((a) => (
-                      <p key={a.name} className="text-xs text-slate-400">
+                      <p key={a.name} className="text-xs text-slate-400 truncate">
                         {a.name} - {a.listings} listings
                       </p>
                     ))}
@@ -326,27 +327,27 @@ export function LandlordAgentHub() {
                 )}
                 <div className="mt-4 grid gap-2 sm:flex sm:flex-wrap">
                   {agency.verificationStatus !== "VERIFIED" && (
-                    <Button onClick={() => void agencyAction(agency.id, "verify")}>
+                    <Button className="text-xs sm:text-sm" onClick={() => void agencyAction(agency.id, "verify")}>
                       <ShieldCheck className="size-4" /> Verify
                     </Button>
                   )}
                   {agency.verificationStatus === "PENDING" && (
-                    <Button variant="secondary" onClick={() => reasonedAgencyAction(agency.id, "reject", "Reject agency")}>
+                    <Button className="text-xs sm:text-sm" variant="secondary" onClick={() => reasonedAgencyAction(agency.id, "reject", "Reject agency")}>
                       <XCircle className="size-4" /> Reject
                     </Button>
                   )}
                   {agency.accountStatus !== "SUSPENDED" && agency.accountStatus !== "DELETED" && (
-                    <Button variant="secondary" onClick={() => reasonedAgencyAction(agency.id, "suspend", "Suspend agency")}>
+                    <Button className="text-xs sm:text-sm" variant="secondary" onClick={() => reasonedAgencyAction(agency.id, "suspend", "Suspend agency")}>
                       Suspend
                     </Button>
                   )}
                   {agency.accountStatus === "SUSPENDED" && (
-                    <Button onClick={() => void agencyAction(agency.id, "activate")}>Activate</Button>
+                    <Button className="text-xs sm:text-sm" onClick={() => void agencyAction(agency.id, "activate")}>Activate</Button>
                   )}
-                  <Button variant="secondary" onClick={() => void agencyAction(agency.id, "feature")}>
+                  <Button className="text-xs sm:text-sm" variant="secondary" onClick={() => void agencyAction(agency.id, "feature")}>
                     <Crown className="size-4" /> Enterprise tier
                   </Button>
-                  <Button variant="secondary" onClick={() => reasonedAgencyAction(agency.id, "delete", "Delete agency", "danger")}>
+                  <Button className="text-xs sm:text-sm" variant="secondary" onClick={() => reasonedAgencyAction(agency.id, "delete", "Delete agency", "danger")}>
                     <Trash2 className="size-4" /> Delete
                   </Button>
                 </div>
