@@ -120,57 +120,82 @@ function RegistrationConfirmationContent() {
               <Clock className="size-10 text-amber-600 dark:text-amber-400" />
             </div>
             <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100 mb-2">Registration Submitted</h1>
-            <p className="text-lg text-slate-600 dark:text-slate-400 mb-4">Your registration for {status.courseTitle} is pending approval</p>
+            <p className="text-lg text-slate-600 dark:text-slate-400 mb-4">Your registration for {status.courseTitle} is pending payment verification</p>
             
             <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-6 mb-8 text-left">
-              <h3 className="font-semibold text-amber-900 dark:text-amber-100 mb-3">Next Steps:</h3>
-              <ol className="space-y-3 text-amber-800 dark:text-amber-300">
-                {emailSent && (finalPrice === undefined || finalPrice > 0) && (
-                  <li className="flex items-start gap-3">
-                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-amber-200 dark:bg-amber-800 flex items-center justify-center text-amber-900 dark:text-amber-100 text-sm font-bold">1</span>
-                    <span>Complete your payment using the instructions sent to your email</span>
-                  </li>
-                )}
-                {!emailSent && (finalPrice === undefined || finalPrice > 0) && (
-                  <li className="flex items-start gap-3">
-                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-amber-200 dark:bg-amber-800 flex items-center justify-center text-amber-900 dark:text-amber-100 text-sm font-bold">1</span>
-                    <span>Check your learner dashboard for payment instructions</span>
-                  </li>
-                )}
-                {status.needsPaymentProof && (finalPrice === undefined || finalPrice > 0) && (
-                  <li className="flex items-start gap-3">
-                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-amber-200 dark:bg-amber-800 flex items-center justify-center text-amber-900 dark:text-amber-100 text-sm font-bold">2</span>
-                    <span>Upload proof of payment from your learner dashboard</span>
-                  </li>
-                )}
-                <li className="flex items-start gap-3">
-                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-amber-200 dark:bg-amber-800 flex items-center justify-center text-amber-900 dark:text-amber-100 text-sm font-bold">
-                    {status.needsPaymentProof && (finalPrice === undefined || finalPrice > 0) ? "3" : (finalPrice === undefined || finalPrice > 0) ? "2" : "1"}
-                  </span>
-                  <span>Wait for admin approval (usually within 24-48 hours)</span>
-                </li>
-              </ol>
-              {finalPrice !== undefined && finalPrice > 0 && (
-                <div className="mt-4 pt-4 border-t border-amber-200 dark:border-amber-800">
-                  <p className="text-sm">
-                    <span className="font-medium">Amount to pay:</span>{" "}
-                    <span className="font-bold">{currency} {finalPrice.toFixed(2)}</span>
+              <h3 className="font-semibold text-amber-900 dark:text-amber-100 mb-3">Payment Required</h3>
+              <div className="space-y-3 text-amber-800 dark:text-amber-300">
+                {finalPrice !== undefined && finalPrice > 0 ? (
+                  <>
+                    <p className="text-base">
+                      <span className="font-medium">Amount to pay:</span>{" "}
+                      <span className="font-bold text-lg">{currency} {finalPrice.toFixed(2)}</span>
+                    </p>
+                    {status.needsPaymentProof && (
+                      <div className="bg-amber-100 dark:bg-amber-900/30 rounded-lg p-4 mt-4">
+                        <p className="font-medium mb-2">⚠️ Action Required:</p>
+                        <p className="text-sm">Please upload proof of payment from your learner dashboard to complete your registration. Your access will be activated after admin verification.</p>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <p className="text-base font-medium text-emerald-700 dark:text-emerald-300">
+                    This course is free! Your registration is complete and awaiting admin approval.
                   </p>
-                </div>
-              )}
-              {finalPrice !== undefined && finalPrice === 0 && (
-                <div className="mt-4 pt-4 border-t border-amber-200 dark:border-amber-800">
-                  <p className="text-sm font-medium text-emerald-700 dark:text-emerald-300">
-                    This course is free! Your registration is complete and awaiting approval.
-                  </p>
-                </div>
-              )}
+                )}
+              </div>
+              
+              <div className="mt-6 pt-4 border-t border-amber-200 dark:border-amber-800">
+                <h4 className="font-semibold text-amber-900 dark:text-amber-100 mb-2">Next Steps:</h4>
+                <ol className="space-y-2 text-sm text-amber-800 dark:text-amber-300">
+                  {finalPrice !== undefined && finalPrice > 0 && (
+                    <>
+                      {emailSent ? (
+                        <li className="flex items-start gap-3">
+                          <span className="flex-shrink-0 w-6 h-6 rounded-full bg-amber-200 dark:bg-amber-800 flex items-center justify-center text-amber-900 dark:text-amber-100 text-sm font-bold">1</span>
+                          <span>Complete payment using the instructions sent to your email</span>
+                        </li>
+                      ) : (
+                        <li className="flex items-start gap-3">
+                          <span className="flex-shrink-0 w-6 h-6 rounded-full bg-amber-200 dark:bg-amber-800 flex items-center justify-center text-amber-900 dark:text-amber-100 text-sm font-bold">1</span>
+                          <span>Check your learner dashboard for payment instructions</span>
+                        </li>
+                      )}
+                      {status.needsPaymentProof && (
+                        <li className="flex items-start gap-3">
+                          <span className="flex-shrink-0 w-6 h-6 rounded-full bg-amber-200 dark:bg-amber-800 flex items-center justify-center text-amber-900 dark:text-amber-100 text-sm font-bold">2</span>
+                          <span>Upload proof of payment from your learner dashboard</span>
+                        </li>
+                      )}
+                      <li className="flex items-start gap-3">
+                        <span className="flex-shrink-0 w-6 h-6 rounded-full bg-amber-200 dark:bg-amber-800 flex items-center justify-center text-amber-900 dark:text-amber-100 text-sm font-bold">
+                          {status.needsPaymentProof ? "3" : "2"}
+                        </span>
+                        <span>Wait for admin approval (usually within 24-48 hours)</span>
+                      </li>
+                    </>
+                  )}
+                  {finalPrice !== undefined && finalPrice === 0 && (
+                    <li className="flex items-start gap-3">
+                      <span className="flex-shrink-0 w-6 h-6 rounded-full bg-amber-200 dark:bg-amber-800 flex items-center justify-center text-amber-900 dark:text-amber-100 text-sm font-bold">1</span>
+                      <span>Wait for admin approval (usually within 24-48 hours)</span>
+                    </li>
+                  )}
+                </ol>
+              </div>
             </div>
 
             <div className="flex flex-col sm:flex-row gap-3">
+              {status.needsPaymentProof && finalPrice !== undefined && finalPrice > 0 && (
+                <Link href="/dashboard/academy" className="flex-1">
+                  <Button className="w-full">
+                    <Upload className="size-4 mr-2" /> Upload Payment Proof
+                  </Button>
+                </Link>
+              )}
               <Link href="/dashboard/academy" className="flex-1">
                 <Button variant="secondary" className="w-full">
-                  <Upload className="size-4 mr-2" /> Upload Payment Proof
+                  <ArrowRight className="size-4 mr-2" /> Go to Dashboard
                 </Button>
               </Link>
               <Link href="/academy" className="flex-1">

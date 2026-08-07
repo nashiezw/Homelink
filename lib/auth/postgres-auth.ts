@@ -26,6 +26,7 @@ const PUBLIC_USER_SELECT = {
   phoneVerifiedAt: true,
   emailVerifiedAt: true,
   createdAt: true,
+  lastLoginAt: true,
   passwordHash: true,
 } satisfies Prisma.UserSelect;
 
@@ -180,6 +181,7 @@ export function toPublicPostgresUser(user: PublicPostgresUserRow) {
       email: user.emailVerifiedAt ? "VERIFIED" : "PENDING",
     },
     createdAt: user.createdAt.toISOString(),
+    lastLoginAt: user.lastLoginAt ? user.lastLoginAt.toISOString() : null,
   };
 }
 

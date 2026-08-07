@@ -420,7 +420,10 @@ export async function registerPublicLearner(input: {
   let discountAmount = 0;
   let couponId: string | null = null;
 
-  if (input.couponCode) {
+  // If course has no price set, treat as free
+  const courseHasPrice = basePrice !== null && basePrice !== undefined && Number(basePrice) > 0;
+
+  if (input.couponCode && courseHasPrice) {
     const code = input.couponCode.toUpperCase().replace(/[^A-Z0-9]/g, "");
     const coupon = await prisma.academyCoupon.findUnique({
       where: { code },
@@ -451,7 +454,7 @@ export async function registerPublicLearner(input: {
     }
   }
 
-  const finalPrice = new Prisma.Decimal(Math.max(0, Number(basePrice) - discountAmount));
+  const finalPrice = courseHasPrice ? new Prisma.Decimal(Math.max(0, Number(basePrice) - discountAmount)) : new Prisma.Decimal(0);
 
   const payment = await prisma.payment.create({
     data: {
