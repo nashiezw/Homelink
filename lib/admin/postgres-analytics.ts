@@ -10,6 +10,7 @@ import {
 } from "@prisma/client";
 import { defaultHolidayHomeSettings } from "@/lib/holiday-homes/defaults";
 import { getMainPrisma } from "@/lib/db/main-prisma";
+import { getPostgresPlatformSettings } from "@/lib/admin/postgres-admin-config";
 import type {
   ActivityItem,
   AdminOverview,
@@ -304,18 +305,33 @@ export async function getPostgresPaymentsCenter() {
 }
 
 export async function getPostgresSystemHealth(): Promise<SystemHealth> {
-  const [users, listings, reports] = await Promise.all([
+  const [users, listings, reports, settings] = await Promise.all([
     getMainPrisma().user.count(),
     getMainPrisma().listing.count(),
     getMainPrisma().report.count({ where: { status: { in: [ReportStatus.OPEN, ReportStatus.IN_REVIEW] } } }),
+    getPostgresPlatformSettings(),
   ]);
+  
+  const emailConfigured = Boolean(
+    settings.integrations.smtpHost &&
+    settings.integrations.smtpPort &&
+    settings.integrations.smtpUser &&
+    settings.integrations.smtpPass
+  );
+  
+  const cloudinaryConfigured = Boolean(
+    settings.integrations.cloudinaryCloud &&
+    settings.integrations.cloudinaryKey &&
+    settings.integrations.cloudinarySecret
+  );
+  
   return {
-    api: "operational",
+    api: settings.maintenanceMode ? "maintenance" : "operational",
     database: "operational",
-    email: "degraded",
+    email: emailConfigured ? "operational" : "degraded",
     sms: "operational",
     whatsapp: "operational",
-    cloudinary: "degraded",
+    cloudinary: cloudinaryConfigured ? "operational" : "degraded",
     payments: "operational",
     maps: "operational",
     cpu: Math.min(users * 2, 95),
