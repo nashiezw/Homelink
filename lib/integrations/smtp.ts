@@ -71,12 +71,16 @@ function textToHtml(body: string) {
     .join("");
 }
 
+function isHtml(value: string): boolean {
+  return value.trim().startsWith("<!DOCTYPE html") || value.trim().startsWith("<html");
+}
+
 function buildHtmlEmail(input: { subject: string; body: string; preheader: string }) {
   const appUrl = getAppUrl();
   const logoUrl = getLogoUrl();
   const subject = escapeHtml(input.subject);
   const preheader = escapeHtml(input.preheader);
-  const content = textToHtml(input.body);
+  const content = isHtml(input.body) ? input.body : textToHtml(input.body);
 
   return `<!doctype html>
 <html lang="en">
@@ -102,6 +106,7 @@ function buildHtmlEmail(input: { subject: string; body: string; preheader: strin
             </tr>
             <tr>
               <td style="overflow:hidden;border:1px solid #e2e8f0;border-radius:14px;background:#ffffff;">
+                ${isHtml(input.body) ? content : `
                 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
                   <tr>
                     <td style="background:#064e3b;padding:6px 28px;"></td>
@@ -121,7 +126,7 @@ function buildHtmlEmail(input: { subject: string; body: string; preheader: strin
                       <a href="${appUrl}" style="display:inline-block;border-radius:8px;background:#047857;padding:11px 16px;color:#ffffff;font-size:14px;font-weight:700;text-decoration:none;">Open HouseLink</a>
                     </td>
                   </tr>
-                </table>
+                </table>`}
               </td>
             </tr>
             <tr>
