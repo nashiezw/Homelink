@@ -355,6 +355,7 @@ export async function getPostgresAuditEntries(input: { q?: string; limit: number
       action: row.action,
       target: row.target,
       createdAt: row.createdAt.toISOString(),
+      metadata: row.metadata as Record<string, unknown> | null,
     })),
     total,
     limit: input.limit,

@@ -1,9 +1,8 @@
 "use client";
 
-import { Search } from "lucide-react";
+import { Search, X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { apiFetch } from "@/lib/api/client";
 
 type AuditEntry = {
   id: string;
@@ -12,6 +11,7 @@ type AuditEntry = {
   target: string;
   createdAt: string;
   ip?: string;
+  metadata?: Record<string, unknown> | null;
 };
 
 type AuditResponse = {
@@ -25,13 +25,15 @@ export function AuditLogExplorer() {
   const [q, setQ] = useState("");
   const [data, setData] = useState<AuditResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [selectedEntry, setSelectedEntry] = useState<AuditEntry | null>(null);
 
   const load = useCallback(async (offset = 0) => {
     setLoading(true);
     const params = new URLSearchParams({ limit: "50", offset: String(offset) });
     if (q.trim()) params.set("q", q.trim());
-    const result = await apiFetch<AuditResponse>(`/api/v1/admin/audit?${params}`);
-    if (result.data) setData(result.data);
+    const result = await fetch(`/api/v1/admin/audit?${params}`);
+    const json = await result.json();
+    if (json.data) setData(json.data);
     setLoading(false);
   }, [q]);
 
@@ -67,14 +69,23 @@ export function AuditLogExplorer() {
         <>
           <div className="max-h-96 space-y-2 overflow-y-auto">
             {data.entries.map((entry) => (
-              <div key={entry.id} className="rounded-lg bg-slate-950/50 px-3 py-2.5 text-sm">
+              <button
+                key={entry.id}
+                onClick={() => setSelectedEntry(entry)}
+                className="w-full rounded-lg bg-slate-950/50 px-3 py-2.5 text-sm text-left hover:bg-slate-950/80 transition-colors cursor-pointer"
+              >
                 <p className="font-medium text-white">
                   {entry.actor} - {entry.action.replace(/_/g, " ")}
                 </p>
                 <p className="text-xs text-slate-500">
                   Target: {entry.target} - {new Date(entry.createdAt).toLocaleString()}
                 </p>
-              </div>
+                {entry.metadata && (
+                  <p className="text-xs text-emerald-400 mt-1">
+                    Click to view details
+                  </p>
+                )}
+              </button>
             ))}
             {!data.entries.length && (
               <p className="text-sm text-slate-400">No audit entries match your search.</p>
@@ -98,6 +109,60 @@ export function AuditLogExplorer() {
             </Button>
           </div>
         </>
+      )}
+
+      {selectedEntry && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="max-w-2xl w-full rounded-xl bg-slate-900 border border-white/10 p-6 max-h-[80vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-white">Audit Entry Details</h3>
+              <Button
+                variant="ghost"
+                onClick={() => setSelectedEntry(null)}
+              >
+                <X className="size-4" />
+              </Button>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <p className="text-xs text-slate-400 uppercase tracking-wider mb-1">Action</p>
+                <p className="text-white font-medium">{selectedEntry.action.replace(/_/g, " ")}</p>
+              </div>
+              
+              <div>
+                <p className="text-xs text-slate-400 uppercase tracking-wider mb-1">Actor</p>
+                <p className="text-white">{selectedEntry.actor}</p>
+              </div>
+              
+              <div>
+                <p className="text-xs text-slate-400 uppercase tracking-wider mb-1">Target</p>
+                <p className="text-white">{selectedEntry.target}</p>
+              </div>
+              
+              <div>
+                <p className="text-xs text-slate-400 uppercase tracking-wider mb-1">Timestamp</p>
+                <p className="text-white">{new Date(selectedEntry.createdAt).toLocaleString()}</p>
+              </div>
+              
+              {selectedEntry.ip && (
+                <div>
+                  <p className="text-xs text-slate-400 uppercase tracking-wider mb-1">IP Address</p>
+                  <p className="text-white">{selectedEntry.ip}</p>
+                </div>
+              )}
+              
+              {selectedEntry.metadata && (
+                <div>
+                  <p className="text-xs text-slate-400 uppercase tracking-wider mb-1">Metadata</p>
+                  <pre className="bg-slate-950 rounded-lg p-3 text-xs text-slate-300 overflow-x-auto">
+                    {JSON.stringify(selectedEntry.metadata, null, 2)}
+                  </pre>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </section>
   );

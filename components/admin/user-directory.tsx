@@ -94,7 +94,13 @@ export function UserDirectory() {
     const users = [...(data?.users ?? [])];
     if (sort === "name") users.sort((a, b) => a.name.localeCompare(b.name));
     else if (sort === "score") users.sort((a, b) => b.performanceScore - a.performanceScore);
-    else users.sort((a, b) => new Date(b.lastLoginAt).getTime() - new Date(a.lastLoginAt).getTime());
+    else {
+      users.sort((a, b) => {
+        const dateA = a.lastLoginAt ? new Date(a.lastLoginAt).getTime() : 0;
+        const dateB = b.lastLoginAt ? new Date(b.lastLoginAt).getTime() : 0;
+        return dateB - dateA;
+      });
+    }
     return users;
   }, [data?.users, sort]);
 
@@ -370,7 +376,11 @@ export function UserDirectory() {
                 {
                   key: "login",
                   header: "Last login",
-                  render: (user) => <span className="text-xs text-slate-500">{new Date(user.lastLoginAt).toLocaleDateString()}</span>,
+                  render: (user) => {
+                    const date = user.lastLoginAt ? new Date(user.lastLoginAt) : null;
+                    const isValidDate = date && !isNaN(date.getTime());
+                    return <span className="text-xs text-slate-500">{isValidDate ? date.toLocaleDateString() : "Never"}</span>;
+                  },
                 },
               ]}
             />
