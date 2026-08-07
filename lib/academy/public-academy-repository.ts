@@ -655,6 +655,7 @@ export async function getAcademySettingsPublic() {
     quizSettings: (payload.quizSettings ?? { defaultPassMark: 80, maxAttempts: 3, showResults: true }) as Record<string, unknown>,
     enrolmentSettings: (payload.enrolmentSettings ?? { allowTrainingOnly: true, requirePaymentProof: true }) as Record<string, unknown>,
     completionRules: (payload.completionRules ?? { requireAllLessons: true, requireFinalExam: false }) as Record<string, unknown>,
+    requireEmailVerification: Boolean(payload.requireEmailVerification ?? false),
   };
 }
 

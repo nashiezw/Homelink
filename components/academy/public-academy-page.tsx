@@ -261,7 +261,7 @@ export function PublicAcademyPage() {
   async function register() {
     if (!selected || selectedRegistration !== "NOT_REGISTERED") return;
     setBusy(true);
-    const result = await apiFetch<{ id: string; paymentId?: string; status: string }>("/api/v1/academy/register", {
+    const result = await apiFetch<{ id: string; paymentId?: string; status: string; verificationToken?: string; verificationLink?: string }>("/api/v1/academy/register", {
       method: "POST",
       body: JSON.stringify({
         courseId: selected.id,
@@ -280,6 +280,17 @@ export function PublicAcademyPage() {
       showToast(result.error.message, "error");
       return;
     }
+    
+    if (result.data.status === "PENDING_EMAIL_VERIFICATION") {
+      showToast("Please verify your email to complete registration.");
+      if (result.data.verificationLink && process.env.NODE_ENV === "development") {
+        // In development, show the verification link
+        window.open(result.data.verificationLink, "_blank");
+      }
+      router.push("/academy/verify-email?pending=true");
+      return;
+    }
+    
     const approved = result.data.status === "APPROVED";
     const pending = result.data.status === "PENDING_PAYMENT" || result.data.status === "PAYMENT_UPLOADED";
     if (approved) {
@@ -288,12 +299,12 @@ export function PublicAcademyPage() {
       return;
     }
     if (pending) {
-      showToast("You already registered for this course. Upload payment proof from your dashboard.");
-      router.push("/dashboard/academy");
+      showToast("Registration submitted successfully.");
+      router.push(`/academy/registration-confirmation?id=${result.data.id}`);
       return;
     }
     showToast("Registration saved.");
-    router.push("/dashboard/academy");
+    router.push(`/academy/registration-confirmation?id=${result.data.id}`);
   }
 
   if (user && (!statusLoaded || (academyStatus?.hasLearnerActivity && !browseMode))) {
@@ -1129,9 +1140,23 @@ function AcademySidePanel({
                 </select>
               </label>
               {selected && displayPrice !== null && (
-                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm dark:border-slate-700 dark:bg-slate-900/50">
+                <div className={`rounded-xl border p-4 text-sm ${couponValidation?.valid ? 'border-emerald-200 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-900/20' : 'border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900/50'}`}>
                   <p className="font-semibold">Course fee</p>
-                  <p className="text-2xl font-bold text-emerald-600 mt-1">{displayPrice > 0 ? `${selected.currency} ${displayPrice.toFixed(2)}` : "Free"}</p>
+                  {couponValidation?.valid ? (
+                    <div className="mt-2">
+                      <p className="text-sm text-slate-600 dark:text-slate-400 line-through">
+                        {selected.currency} {(isAgent && form.registrationIntent === "AGENT_TRAINING" ? selected.agentPrice : selected.publicPrice).toFixed(2)}
+                      </p>
+                      <p className="text-2xl font-bold text-emerald-600 mt-1">
+                        {displayPrice > 0 ? `${selected.currency} ${displayPrice.toFixed(2)}` : "FREE"}
+                      </p>
+                      <p className="text-xs text-emerald-700 dark:text-emerald-300 mt-1 font-medium">
+                        You save {selected.currency} {couponValidation.savings.toFixed(2)}
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="text-2xl font-bold text-emerald-600 mt-1">{displayPrice > 0 ? `${selected.currency} ${displayPrice.toFixed(2)}` : "Free"}</p>
+                  )}
                 </div>
               )}
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
@@ -1157,13 +1182,19 @@ function AcademySidePanel({
               {couponValidation && (
                 <div className={`rounded-xl p-4 text-sm ${couponValidation.valid ? 'bg-emerald-50 border-emerald-200 text-emerald-800 dark:bg-emerald-900/20 dark:border-emerald-800 dark:text-emerald-300' : 'bg-red-50 border-red-200 text-red-800 dark:bg-red-900/20 dark:border-red-800 dark:text-red-300'}`}>
                   {couponValidation.valid ? (
-                    <>
-                      <p className="font-semibold">Coupon applied!</p>
-                      <p className="mt-1">You save {selected?.currency || "USD"} {couponValidation.savings.toFixed(2)}</p>
-                      <p className="text-xs mt-1">Final price: {selected?.currency || "USD"} {couponValidation.finalAmount.toFixed(2)}</p>
-                    </>
+                    <div className="flex items-start gap-3">
+                      <CheckCircle2 className="size-5 mt-0.5 flex-shrink-0" />
+                      <div>
+                        <p className="font-semibold">Coupon applied successfully!</p>
+                        <p className="mt-1">You save {selected?.currency || "USD"} {couponValidation.savings.toFixed(2)}</p>
+                        <p className="text-xs mt-1">Final price: {selected?.currency || "USD"} {couponValidation.finalAmount.toFixed(2)}</p>
+                      </div>
+                    </div>
                   ) : (
-                    <p>{couponValidation.message || "Invalid coupon code"}</p>
+                    <div className="flex items-start gap-3">
+                      <div className="size-5 mt-0.5 flex-shrink-0 rounded-full bg-red-200 dark:bg-red-800 flex items-center justify-center text-red-800 dark:text-red-200 text-xs font-bold">!</div>
+                      <p>{couponValidation.message || "Invalid coupon code"}</p>
+                    </div>
                   )}
                 </div>
               )}

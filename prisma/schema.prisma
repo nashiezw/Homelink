@@ -201,6 +201,8 @@ model User {
   sessions          AppSession[]
   passwordResetTokens PasswordResetToken[]
   agencyMemberships AgencyAgent[]
+  emailVerificationTokens EmailVerificationToken[]
+  agentBadge AgentBadge[]
   academyApplications AcademyLearnerApplication[]
   academyResourceAccess AcademyResourceAccess[]
   viewingAvailability   AgentViewingAvailability?
@@ -1030,6 +1032,21 @@ model PasswordResetToken {
 
   @@index([userId])
   @@index([email])
+  @@index([expiresAt])
+  @@index([usedAt])
+}
+
+model EmailVerificationToken {
+  id        String    @id @default(cuid())
+  userId    String    @unique
+  token     String    @unique
+  createdAt DateTime  @default(now())
+  expiresAt DateTime
+  usedAt    DateTime?
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
   @@index([expiresAt])
   @@index([usedAt])
 }
@@ -2559,6 +2576,7 @@ model AgentBadge {
   agentId   String
   awardedAt DateTime @default(now())
   badge     Badge    @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [agentId], references: [id], onDelete: Cascade)
 
   @@unique([badgeId, agentId])
   @@map("agent_badges")

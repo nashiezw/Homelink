@@ -43,7 +43,6 @@
     "db:store": "prisma db push --schema prisma/schema.prisma"
   },
   "dependencies": {
-    "@prisma/client": "^5.22.0",
     "clsx": "^2.1.1",
     "lucide-react": "^0.468.0",
     "next": "^15.0.3",
@@ -55,6 +54,7 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.51.1",
+    "@prisma/client": "^5.22.0",
     "@types/node": "^22.10.2",
     "@types/react": "^19.0.1",
     "@types/react-dom": "^19.0.2",

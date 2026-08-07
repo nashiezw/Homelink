@@ -2212,6 +2212,7 @@ function AcademySettingsPanel({ settings, auditLogs, onSave }: { settings: Recor
     maxQuizAttempts: String(quizSettings.maxAttempts ?? "3"),
     allowTrainingOnly: enrolmentSettings.allowTrainingOnly !== false,
     requirePaymentProof: enrolmentSettings.requirePaymentProof !== false,
+    requireEmailVerification: settings.requireEmailVerification !== false,
     autoIssueCertificate: completionRules.autoIssueCertificate !== false,
     requireAllLessons: completionRules.requireAllLessons !== false,
     emailFromName: String((settings.emailSettings as Record<string, unknown>)?.fromName ?? "HouseLink Academy"),
@@ -2258,6 +2259,7 @@ function AcademySettingsPanel({ settings, auditLogs, onSave }: { settings: Recor
                   manualAgentPrice: Number(draft.manualAgentPrice) || 15,
                   manualSalesEnabled: draft.manualSalesEnabled,
                 },
+                requireEmailVerification: draft.requireEmailVerification,
               })
             }
           >
@@ -2298,6 +2300,7 @@ function AcademySettingsPanel({ settings, auditLogs, onSave }: { settings: Recor
           <div className="mt-3 flex flex-wrap gap-4 text-sm text-slate-300">
             <label className="flex items-center gap-2"><input type="checkbox" checked={draft.allowTrainingOnly} onChange={(e) => setDraft({ ...draft, allowTrainingOnly: e.target.checked })} /> Allow training-only registration (non-agents)</label>
             <label className="flex items-center gap-2"><input type="checkbox" checked={draft.requirePaymentProof} onChange={(e) => setDraft({ ...draft, requirePaymentProof: e.target.checked })} /> Require payment proof upload</label>
+            <label className="flex items-center gap-2"><input type="checkbox" checked={draft.requireEmailVerification} onChange={(e) => setDraft({ ...draft, requireEmailVerification: e.target.checked })} /> Require email verification before registration</label>
           </div>
         </div>
         <div>
