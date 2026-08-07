@@ -1,10 +1,12 @@
 import { getSessionUserIdFromRequest } from "@/lib/auth/session";
 import { ok, problem } from "@/lib/api/response";
 import { registerPublicLearner } from "@/lib/academy/public-academy-repository";
+import { randomBytes } from "crypto";
+import { getMainPrisma } from "@/lib/db/main-prisma";
+import { sendEmailVerificationEmail } from "@/lib/academy/academy-email";
 import { getPostgresPublicUserById, shouldUsePostgresAuth } from "@/lib/auth/postgres-auth";
 import { getStore } from "@/lib/store/app-store";
-import { getMainPrisma } from "@/lib/db/main-prisma";
-import { randomBytes } from "crypto";
+import { getRuntimePlatformSettings } from "@/lib/settings/runtime";
 
 export const dynamic = "force-dynamic";
 
@@ -22,34 +24,45 @@ export async function POST(request: Request) {
 
   const prisma = getMainPrisma();
 
-  // Check if email verification is required
-  const settings = await prisma.trainingSetting.findUnique({ where: { id: "singleton" } });
-  const payload = (settings?.payload ?? {}) as Record<string, unknown>;
-  const requireEmailVerification = Boolean(payload.requireEmailVerification ?? false);
+  // Check if email verification is required (both platform-wide and Academy-specific)
+  const platformSettings = getRuntimePlatformSettings();
+  const platformRequiresVerification = platformSettings.emailVerificationRequired;
+  
+  const academySettings = await prisma.trainingSetting.findUnique({ where: { id: "singleton" } });
+  const academyPayload = (academySettings?.payload ?? {}) as Record<string, unknown>;
+  const academyRequiresVerification = Boolean(academyPayload.requireEmailVerification ?? false);
+  
+  const requireEmailVerification = platformRequiresVerification || academyRequiresVerification;
 
   // Check if user's email is verified
   const userRecord = await prisma.user.findUnique({
     where: { id: userId },
-    select: { emailVerifiedAt: true, email: true },
+    select: { emailVerifiedAt: true, email: true, name: true },
   });
 
   if (requireEmailVerification && !userRecord?.emailVerifiedAt) {
+    if (!userRecord) return problem(400, "USER_NOT_FOUND", "User record not found.");
+    
     // Generate and send verification token
     const token = randomBytes(32).toString("hex");
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+    const ipAddress = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "unknown";
+    const userAgent = request.headers.get("user-agent") || "unknown";
 
     await prisma.emailVerificationToken.upsert({
       where: { userId },
-      create: { userId, token, expiresAt },
-      update: { token, expiresAt },
+      create: { userId, token, expiresAt, ipAddress, userAgent },
+      update: { token, expiresAt, ipAddress, userAgent },
     });
 
-    // TODO: Send actual email with verification link
-    // For now, return the token in development for testing
+    // Send verification email
+    const emailResult = await sendEmailVerificationEmail(userRecord.email, userRecord.name, token);
+    
     return ok({
       status: "PENDING_EMAIL_VERIFICATION",
       id: "pending-verification",
       message: "Email verification required. A verification link has been sent to your email.",
+      emailSent: emailResult.success,
       ...(process.env.NODE_ENV === "development" && { 
         verificationToken: token, 
         verificationLink: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/academy/verify-email?token=${token}` 

@@ -1,6 +1,8 @@
 import { requireAdminAsync } from "@/lib/admin/require-admin";
 import { ok, problem } from "@/lib/api/response";
 import { getMainPrisma } from "@/lib/db/main-prisma";
+import { identifyAtRiskLearners } from "@/lib/academy/at-risk-learner-identification";
+import { getCourseAnalytics } from "@/lib/academy/learner-analytics-repository";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +18,10 @@ export async function GET(request: Request) {
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - parseInt(period));
     
+    const { searchParams } = new URL(request.url);
+    const courseId = searchParams.get("courseId");
+    const includeAtRisk = searchParams.get("includeAtRisk") === "true";
+    
     const [
       totalRevenue,
       totalRegistrations,
@@ -26,6 +32,8 @@ export async function GET(request: Request) {
       popularCourses,
       completionRates,
       dailyActivity,
+      atRiskLearners,
+      courseEngagement,
     ] = await Promise.all([
       // Revenue
       prisma.payment.aggregate({
@@ -116,6 +124,12 @@ export async function GET(request: Request) {
         ORDER BY date DESC
         LIMIT 30
       `,
+      
+      // At-risk learners
+      includeAtRisk ? identifyAtRiskLearners(courseId || undefined) : Promise.resolve([]),
+      
+      // Course engagement analytics
+      courseId ? getCourseAnalytics(courseId, parseInt(period)) : Promise.resolve(null),
     ]);
     
     return ok({
@@ -138,6 +152,8 @@ export async function GET(request: Request) {
       popularCourses: popularCourses,
       completionRates,
       dailyActivity,
+      atRiskLearners,
+      courseEngagement,
     });
   } catch (error) {
     console.error("Failed to load analytics", error);

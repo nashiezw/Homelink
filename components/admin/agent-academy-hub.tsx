@@ -33,6 +33,7 @@ import {
   Trash2,
   Trophy,
   Upload,
+  XCircle,
   Users,
   Ticket,
 } from "lucide-react";
@@ -55,6 +56,7 @@ import {
 import { BarChart, MetricRow } from "@/components/admin/charts";
 import { CourseWorkspace } from "@/components/admin/academy/course-workspace";
 import { AcademyHubNav, resolveAcademyNav, type AcademyPrimaryTab } from "@/components/admin/academy/academy-hub-nav";
+import { EmailTemplatesManagementPanel, BrandingManagementPanel, InstructorsManagementPanel, RefundsManagementPanel } from "@/components/admin/academy/enhancement-panels";
 import { cn } from "@/lib/utils";
 import type { LucideIcon } from "lucide-react";
 import {
@@ -293,6 +295,10 @@ const academyTabs = [
   "Announcements",
   "Discussion Board",
   "Analytics",
+  "Email Templates",
+  "Branding",
+  "Instructors",
+  "Refunds",
   "Settings",
 ] as const;
 
@@ -378,6 +384,35 @@ export function AgentAcademyHub() {
     setDrawer(null);
     await load();
     return true;
+  }
+
+  function handleDeleteCoupon(coupon: AcademyCoupon) {
+    confirmAction({
+      title: "Delete Coupon",
+      description: `Are you sure you want to delete coupon "${coupon.code}"? This action cannot be undone.`,
+      confirmLabel: "Delete",
+      danger: true,
+      onConfirm: async () => {
+        const result = await action({ action: "delete_coupon", couponId: coupon.id }, "Coupon deleted.");
+        if (result) {
+          await load();
+        }
+      },
+    });
+  }
+
+  function handleResetCoupon(coupon: AcademyCoupon) {
+    confirmAction({
+      title: "Reset Coupon Usage",
+      description: `Are you sure you want to reset the usage count for coupon "${coupon.code}"? This will remove all coupon usage records and set the count to 0.`,
+      confirmLabel: "Reset",
+      onConfirm: async () => {
+        const result = await action({ action: "reset_coupon_usage", couponId: coupon.id }, "Coupon usage reset.");
+        if (result) {
+          await load();
+        }
+      },
+    });
   }
 
   function confirmAction(config: NonNullable<typeof confirm>) {
@@ -619,6 +654,8 @@ export function AgentAcademyHub() {
           onEditAnnouncement={(announcement) => { setSelectedAnnouncement(announcement); setDrawer("announcement"); }}
           onEditBadge={(badge) => { setSelectedBadge(badge); setDrawer("badge"); }}
           onEditCoupon={(coupon) => { setSelectedCoupon(coupon); setDrawer("coupon"); }}
+          onResetCoupon={handleResetCoupon}
+          onDeleteCoupon={handleDeleteCoupon}
         />
       )}
 
@@ -1035,6 +1072,8 @@ function FeatureWorkbench({
   onEditAnnouncement,
   onEditBadge,
   onEditCoupon,
+  onResetCoupon,
+  onDeleteCoupon,
 }: {
   tab: AcademyTab;
   data: AcademyData;
@@ -1049,12 +1088,14 @@ function FeatureWorkbench({
   onEditAnnouncement: (announcement: AcademyData["announcements"][number]) => void;
   onEditBadge: (badge: AcademyData["badges"][number]) => void;
   onEditCoupon: (coupon: AcademyCoupon | null) => void;
+  onResetCoupon: (coupon: AcademyCoupon) => void;
+  onDeleteCoupon: (coupon: AcademyCoupon) => void;
 }) {
   if (tab === "Certificates") {
     return <CertificateManagementPanel certificates={data.certificates} action={action} />;
   }
   if (tab === "Coupons") {
-    return <CouponManagementPanel coupons={data.coupons || []} onEditCoupon={(coupon) => onEditCoupon(coupon)} onCreateCoupon={() => onEditCoupon(null)} setDrawer={_setDrawer} />;
+    return <CouponManagementPanel coupons={data.coupons || []} onEditCoupon={(coupon) => onEditCoupon(coupon)} onCreateCoupon={() => onEditCoupon(null)} onResetCoupon={onResetCoupon} onDeleteCoupon={onDeleteCoupon} setDrawer={_setDrawer} />;
   }
   if (tab === "Public Learners") {
     return <PublicLearnersPanel applications={data.publicLearnerApplications} resourceApplications={data.resourceAccessApplications ?? []} action={action} />;
@@ -1208,6 +1249,18 @@ function FeatureWorkbench({
         <ActivityPanel title="Agents Needing Attention" icon={Users}>{data.agentsNeedingAttention.map((item) => <MetricRow key={item.id} label={item.agentId} value={`${item.percentComplete}%`} />)}</ActivityPanel>
       </div>
     );
+  }
+  if (tab === "Email Templates") {
+    return <EmailTemplatesManagementPanel />;
+  }
+  if (tab === "Branding") {
+    return <BrandingManagementPanel />;
+  }
+  if (tab === "Instructors") {
+    return <InstructorsManagementPanel />;
+  }
+  if (tab === "Refunds") {
+    return <RefundsManagementPanel />;
   }
   if (tab === "Settings") {
     return <AcademySettingsPanel settings={data.trainingSettings?.payload as Record<string, unknown> ?? {}} auditLogs={data.auditLogs} onSave={(settings) => action({ action: "update_settings", settings }, "Academy settings saved.")} />;
@@ -1525,8 +1578,8 @@ function PublicLearnersPanel({
     deleteIdKey: string;
   } | null>(null);
   const pendingCount =
-    applications.filter((item) => item.status === "PAYMENT_UPLOADED").length +
-    resourceApplications.filter((item) => item.status === "PAYMENT_UPLOADED").length;
+    applications.filter((item) => item.status === "PAYMENT_UPLOADED" || item.status === "PENDING_PAYMENT").length +
+    resourceApplications.filter((item) => item.status === "PAYMENT_UPLOADED" || item.status === "PENDING_PAYMENT").length;
 
   const resourceRows = resourceApplications.map((row) => ({
     id: row.id,
@@ -2043,7 +2096,7 @@ function ModuleDrawer({ open, busy, module: editingModule, courses, onClose, onS
   );
 }
 
-function CouponManagementPanel({ coupons, onEditCoupon, onCreateCoupon, setDrawer }: { coupons: AcademyCoupon[]; onEditCoupon: (coupon: AcademyCoupon) => void; onCreateCoupon: () => void; setDrawer: (drawer: "coupon" | null) => void }) {
+function CouponManagementPanel({ coupons, onEditCoupon, onCreateCoupon, onResetCoupon, onDeleteCoupon, setDrawer }: { coupons: AcademyCoupon[]; onEditCoupon: (coupon: AcademyCoupon) => void; onCreateCoupon: () => void; onResetCoupon: (coupon: AcademyCoupon) => void; onDeleteCoupon: (coupon: AcademyCoupon) => void; setDrawer: (drawer: "coupon" | null) => void }) {
   const [search, setSearch] = useState("");
   const filtered = coupons.filter((coupon) => `${coupon.code} ${coupon.description ?? ""}`.toLowerCase().includes(search.toLowerCase()));
   return (
@@ -2052,7 +2105,9 @@ function CouponManagementPanel({ coupons, onEditCoupon, onCreateCoupon, setDrawe
         <AdminSearchInput value={search} onChange={setSearch} placeholder="Search coupons by code..." className="lg:flex-1" />
         <Button onClick={() => { onCreateCoupon(); setDrawer("coupon"); }}><Plus className="size-4" /> New Coupon</Button>
       </AdminFilterBar>
-      <div className="rounded-xl border border-white/10 bg-slate-900/60 overflow-hidden">
+      
+      {/* Desktop table view */}
+      <div className="hidden lg:block rounded-xl border border-white/10 bg-slate-900/60 overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-white/5 text-slate-400">
             <tr>
@@ -2099,6 +2154,8 @@ function CouponManagementPanel({ coupons, onEditCoupon, onCreateCoupon, setDrawe
                 <td className="px-4 py-3 text-right">
                   <div className="flex justify-end gap-2">
                     <Button variant="ghost" onClick={() => onEditCoupon(coupon)}><Pencil className="size-4" /></Button>
+                    <Button variant="ghost" onClick={() => onResetCoupon(coupon)} title="Reset usage"><RotateCcw className="size-4" /></Button>
+                    <Button variant="ghost" className="text-red-400" onClick={() => onDeleteCoupon(coupon)} title="Delete coupon"><Trash2 className="size-4" /></Button>
                   </div>
                 </td>
               </tr>
@@ -2112,6 +2169,74 @@ function CouponManagementPanel({ coupons, onEditCoupon, onCreateCoupon, setDrawe
           </div>
         )}
       </div>
+
+      {/* Mobile card view */}
+      <div className="lg:hidden grid gap-4">
+        {filtered.map((coupon) => (
+          <div key={coupon.id} className="rounded-xl border border-white/10 bg-slate-900/60 p-4 space-y-3">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex-1">
+                <p className="font-bold text-white font-mono text-lg">{coupon.code}</p>
+                <p className="text-sm text-slate-400">{coupon.description || "No description"}</p>
+              </div>
+              <AdminStatusBadge status={coupon.isValid ? (coupon.active ? "ACTIVE" : "INACTIVE") : "EXPIRED"} />
+            </div>
+            
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div>
+                <p className="text-xs text-slate-500 mb-1">Discount</p>
+                <p className="font-semibold text-white">
+                  {coupon.discountType === "PERCENTAGE" ? `${coupon.discountValue}%` : `$${coupon.discountValue}`}
+                </p>
+                <p className="text-xs text-slate-500">{coupon.discountType === "PERCENTAGE" ? "Percentage" : "Fixed amount"}</p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-500 mb-1">Usage</p>
+                <p className="font-semibold text-white">{coupon.usedCount}{coupon.maxUses ? ` / ${coupon.maxUses}` : " / Unlimited"}</p>
+                <p className="text-xs text-slate-500">{coupon.remainingUses !== null ? `${coupon.remainingUses} remaining` : "No limit"}</p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-500 mb-1">Valid From</p>
+                <p className="text-sm text-white">{new Date(coupon.validFrom).toLocaleDateString()}</p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-500 mb-1">Expiry Date</p>
+                <p className="text-sm text-white">{coupon.validUntil ? new Date(coupon.validUntil).toLocaleDateString() : "No expiry"}</p>
+              </div>
+            </div>
+
+            <div className="flex gap-2 pt-2 border-t border-white/10">
+              <Button variant="secondary" className="flex-1" onClick={() => onEditCoupon(coupon)}>
+                <Pencil className="size-4 mr-2" /> Edit
+              </Button>
+              {coupon.active ? (
+                <Button variant="ghost" className="flex-1" onClick={() => onEditCoupon({ ...coupon, active: false } as AcademyCoupon)}>
+                  <XCircle className="size-4 mr-2" /> Deactivate
+                </Button>
+              ) : (
+                <Button variant="ghost" className="flex-1" onClick={() => onEditCoupon({ ...coupon, active: true } as AcademyCoupon)}>
+                  <CheckCircle2 className="size-4 mr-2" /> Activate
+                </Button>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <Button variant="ghost" className="flex-1 text-xs" onClick={() => onResetCoupon(coupon)}>
+                <RotateCcw className="size-3 mr-1" /> Reset Usage
+              </Button>
+              <Button variant="ghost" className="flex-1 text-xs text-red-400" onClick={() => onDeleteCoupon(coupon)}>
+                <Trash2 className="size-3 mr-1" /> Delete
+              </Button>
+            </div>
+          </div>
+        ))}
+        {!filtered.length && (
+          <div className="p-8 text-center text-slate-500">
+            <Ticket className="size-12 mx-auto mb-3 opacity-50" />
+            <p>No coupons found</p>
+          </div>
+        )}
+      </div>
+
       {!coupons.length && (
         <AdminEmptyState title="No coupons created" description="Create promotional coupons to offer discounts on Academy courses." action={<Button onClick={() => { onCreateCoupon(); setDrawer("coupon"); }}><Plus className="size-4" /> Create Coupon</Button>} />
       )}

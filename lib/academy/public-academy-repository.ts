@@ -1,5 +1,6 @@
 import { AcademyRegistrationStatus, PaymentProvider, PaymentStatus, Role, TrainingCourseStatus, TrainingVisibility, Prisma } from "@prisma/client";
 import { getMainPrisma } from "@/lib/db/main-prisma";
+import { sendRegistrationConfirmationEmail } from "@/lib/academy/academy-email";
 import { calculateCourseProgress, getCompletedLessonIds } from "@/lib/academy/academy-progress";
 import { canAccessProgrammeCourse, getProgrammeProgressSummary } from "@/lib/academy/academy-completion";
 import { assessmentMetaForAssignment, assessmentMetaForQuiz } from "@/lib/academy/academy-assessments";
@@ -516,7 +517,7 @@ export async function registerPublicLearner(input: {
     ]);
   }
 
-  const user = await prisma.user.findUnique({ where: { id: input.learnerId }, select: { roles: true } });
+  const user = await prisma.user.findUnique({ where: { id: input.learnerId }, select: { roles: true, email: true, name: true } });
   if (user && !user.roles.includes(Role.PUBLIC_LEARNER)) {
     await prisma.user.update({ where: { id: input.learnerId }, data: { roles: [...user.roles, Role.PUBLIC_LEARNER] } });
   }
@@ -536,7 +537,41 @@ export async function registerPublicLearner(input: {
       update: { status: "ACTIVE", dueAt: accessEndsAt },
     });
   }
-  return application;
+
+  // Send registration confirmation email if payment is required
+  let emailSent = false;
+  let emailError = null;
+  if (!isFree && user) {
+    const emailResult = await sendRegistrationConfirmationEmail(
+      input.email || user.email,
+      input.fullName || user.name,
+      course.title,
+      Number(finalPrice),
+      course.currency,
+      input.paymentMethod || "bank_transfer",
+      application.id,
+    );
+    emailSent = emailResult.success;
+    emailError = emailResult.error;
+    
+    // Log email delivery status to audit log
+    await prisma.trainingAuditLog.create({
+      data: {
+        actorId: input.learnerId,
+        action: "academy.registration.email_sent",
+        target: application.id,
+        metadata: {
+          courseId: course.id,
+          courseTitle: course.title,
+          learnerId: input.learnerId,
+          emailSent: emailSent,
+          emailError: emailError,
+        } as Prisma.InputJsonObject,
+      },
+    });
+  }
+
+  return { ...application, emailSent, emailError };
 }
 
 export async function attachAcademyPaymentProof(paymentId: string, learnerId: string, proofUrl: string) {
@@ -563,11 +598,21 @@ export async function reviewPublicLearnerApplication(input: {
   adminNote?: string;
 }) {
   const prisma = getMainPrisma();
-  const application = await prisma.academyLearnerApplication.findUnique({ where: { id: input.applicationId }, include: { course: true } });
+  const application = await prisma.academyLearnerApplication.findUnique({ where: { id: input.applicationId }, include: { course: true, payment: true } });
   if (!application) return null;
   const now = new Date();
   const accessEndsAt = new Date(now.getTime() + application.course.accessDurationDays * 86400000);
   const approved = input.status === "APPROVED";
+  
+  // If rejecting, refunding, or expiring, remove coupon usage
+  if (input.status === "REJECTED" || input.status === "REFUNDED" || input.status === "EXPIRED") {
+    if (application.paymentId) {
+      await prisma.academyCouponUsage.deleteMany({
+        where: { paymentId: application.paymentId },
+      });
+    }
+  }
+  
   const updated = await prisma.academyLearnerApplication.update({
     where: { id: application.id },
     data: {
@@ -596,6 +641,16 @@ export async function reviewPublicLearnerApplication(input: {
       update: { status: "ACTIVE", dueAt: accessEndsAt },
     });
   }
+
+  // If rejecting, refunding, or expiring, remove coupon usage
+  if (input.status === "REJECTED" || input.status === "REFUNDED" || input.status === "EXPIRED") {
+    if (application.paymentId) {
+      await prisma.academyCouponUsage.deleteMany({
+        where: { paymentId: application.paymentId },
+      });
+    }
+  }
+
   await prisma.trainingNotification.create({
     data: {
       userId: application.learnerId,

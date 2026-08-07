@@ -73,6 +73,8 @@ type PublicCourse = {
   toolkitPreview?: Array<{ category: string; description: string; items: Array<{ id: string; title: string; description: string; fileUrl: string }> }>;
   lessonCount: number;
   modules: Array<{ id: string; title: string; description?: string | null; lessons: Array<{ id: string; title: string; estimatedMinutes: number }> }>;
+  averageRating?: number;
+  totalReviews?: number;
 };
 
 type AcademyStatus = {
@@ -261,7 +263,7 @@ export function PublicAcademyPage() {
   async function register() {
     if (!selected || selectedRegistration !== "NOT_REGISTERED") return;
     setBusy(true);
-    const result = await apiFetch<{ id: string; paymentId?: string; status: string; verificationToken?: string; verificationLink?: string }>("/api/v1/academy/register", {
+    const result = await apiFetch<{ id: string; paymentId?: string; status: string; finalPrice?: number; currency?: string; emailSent?: boolean; emailError?: string; verificationToken?: string; verificationLink?: string }>("/api/v1/academy/register", {
       method: "POST",
       body: JSON.stringify({
         courseId: selected.id,
@@ -299,8 +301,20 @@ export function PublicAcademyPage() {
       return;
     }
     if (pending) {
-      showToast("Registration submitted successfully.");
-      router.push(`/academy/registration-confirmation?id=${result.data.id}`);
+      const emailSent = result.data.emailSent ?? false;
+      const emailError = result.data.emailError;
+      const finalPrice = result.data.finalPrice;
+      const currency = result.data.currency;
+      
+      if (emailError) {
+        showToast("Registration submitted, but email delivery failed. Check your dashboard for payment instructions.", "info");
+      } else if (!emailSent) {
+        showToast("Registration submitted. Payment instructions may be in your dashboard.", "info");
+      } else {
+        showToast("Registration submitted successfully. Payment instructions sent to your email.");
+      }
+      
+      router.push(`/academy/registration-confirmation?id=${result.data.id}&emailSent=${emailSent}&finalPrice=${finalPrice ?? 0}&currency=${currency || 'USD'}`);
       return;
     }
     showToast("Registration saved.");

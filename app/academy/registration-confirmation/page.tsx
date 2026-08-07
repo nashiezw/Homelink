@@ -18,6 +18,8 @@ type RegistrationStatus = {
   currency?: string;
   needsPaymentProof?: boolean;
   emailVerified?: boolean;
+  emailSent?: boolean;
+  emailError?: string;
 };
 
 function RegistrationConfirmationContent() {
@@ -27,6 +29,13 @@ function RegistrationConfirmationContent() {
   const [error, setError] = useState<string | null>(null);
 
   const registrationId = searchParams?.get("id");
+  const emailSentParam = searchParams?.get("emailSent");
+  const finalPriceParam = searchParams?.get("finalPrice");
+  const currencyParam = searchParams?.get("currency");
+
+  const emailSent = emailSentParam === "true";
+  const finalPrice = finalPriceParam ? parseFloat(finalPriceParam) : undefined;
+  const currency = currencyParam || "USD";
 
   useEffect(() => {
     if (!registrationId) {
@@ -116,26 +125,43 @@ function RegistrationConfirmationContent() {
             <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-6 mb-8 text-left">
               <h3 className="font-semibold text-amber-900 dark:text-amber-100 mb-3">Next Steps:</h3>
               <ol className="space-y-3 text-amber-800 dark:text-amber-300">
-                <li className="flex items-start gap-3">
-                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-amber-200 dark:bg-amber-800 flex items-center justify-center text-amber-900 dark:text-amber-100 text-sm font-bold">1</span>
-                  <span>Complete your payment using the instructions sent to your email</span>
-                </li>
-                {status.needsPaymentProof && status.finalPrice && status.finalPrice > 0 && (
+                {emailSent && (finalPrice === undefined || finalPrice > 0) && (
+                  <li className="flex items-start gap-3">
+                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-amber-200 dark:bg-amber-800 flex items-center justify-center text-amber-900 dark:text-amber-100 text-sm font-bold">1</span>
+                    <span>Complete your payment using the instructions sent to your email</span>
+                  </li>
+                )}
+                {!emailSent && (finalPrice === undefined || finalPrice > 0) && (
+                  <li className="flex items-start gap-3">
+                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-amber-200 dark:bg-amber-800 flex items-center justify-center text-amber-900 dark:text-amber-100 text-sm font-bold">1</span>
+                    <span>Check your learner dashboard for payment instructions</span>
+                  </li>
+                )}
+                {status.needsPaymentProof && (finalPrice === undefined || finalPrice > 0) && (
                   <li className="flex items-start gap-3">
                     <span className="flex-shrink-0 w-6 h-6 rounded-full bg-amber-200 dark:bg-amber-800 flex items-center justify-center text-amber-900 dark:text-amber-100 text-sm font-bold">2</span>
                     <span>Upload proof of payment from your learner dashboard</span>
                   </li>
                 )}
                 <li className="flex items-start gap-3">
-                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-amber-200 dark:bg-amber-800 flex items-center justify-center text-amber-900 dark:text-amber-100 text-sm font-bold">{status.needsPaymentProof && status.finalPrice && status.finalPrice > 0 ? "3" : "2"}</span>
+                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-amber-200 dark:bg-amber-800 flex items-center justify-center text-amber-900 dark:text-amber-100 text-sm font-bold">
+                    {status.needsPaymentProof && (finalPrice === undefined || finalPrice > 0) ? "3" : (finalPrice === undefined || finalPrice > 0) ? "2" : "1"}
+                  </span>
                   <span>Wait for admin approval (usually within 24-48 hours)</span>
                 </li>
               </ol>
-              {status.finalPrice !== undefined && (
+              {finalPrice !== undefined && finalPrice > 0 && (
                 <div className="mt-4 pt-4 border-t border-amber-200 dark:border-amber-800">
                   <p className="text-sm">
                     <span className="font-medium">Amount to pay:</span>{" "}
-                    <span className="font-bold">{status.currency || "USD"} {status.finalPrice.toFixed(2)}</span>
+                    <span className="font-bold">{currency} {finalPrice.toFixed(2)}</span>
+                  </p>
+                </div>
+              )}
+              {finalPrice !== undefined && finalPrice === 0 && (
+                <div className="mt-4 pt-4 border-t border-amber-200 dark:border-amber-800">
+                  <p className="text-sm font-medium text-emerald-700 dark:text-emerald-300">
+                    This course is free! Your registration is complete and awaiting approval.
                   </p>
                 </div>
               )}

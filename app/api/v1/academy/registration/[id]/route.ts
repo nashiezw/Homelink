@@ -48,6 +48,19 @@ export async function GET(
       select: { emailVerifiedAt: true },
     });
 
+    // Get email delivery status from audit log
+    const emailAuditLog = await prisma.trainingAuditLog.findFirst({
+      where: {
+        action: "academy.registration.email_sent",
+        target: registration.id,
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    const metadata = emailAuditLog?.metadata as Record<string, unknown> | undefined;
+    const emailSent = metadata?.emailSent as boolean | undefined;
+    const emailError = metadata?.emailError as string | undefined;
+
     return ok({
       id: registration.id,
       courseId: registration.course.id,
@@ -58,6 +71,8 @@ export async function GET(
       currency: registration.payment?.currency || "USD",
       needsPaymentProof: registration.status === "PENDING_PAYMENT" && (!registration.payment || registration.payment.proofStatus !== "UPLOADED"),
       emailVerified: !!user?.emailVerifiedAt,
+      emailSent,
+      emailError,
     });
   } catch (error) {
     console.error("Failed to fetch registration status", error);

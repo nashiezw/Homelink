@@ -1,7 +1,8 @@
-import { getSessionUserIdFromRequest } from "@/lib/auth/session";
-import { ok, problem } from "@/lib/api/response";
-import { getMainPrisma } from "@/lib/db/main-prisma";
 import { randomBytes } from "crypto";
+import { ok, problem } from "@/lib/api/response";
+import { getSessionUserIdFromRequest } from "@/lib/auth/session";
+import { getMainPrisma } from "@/lib/db/main-prisma";
+import { sendEmailVerificationEmail } from "@/lib/academy/academy-email";
 
 export const dynamic = "force-dynamic";
 
@@ -30,6 +31,7 @@ export async function POST(request: Request) {
           select: {
             email: true,
             emailVerifiedAt: true,
+            name: true,
           },
         },
       },
@@ -43,9 +45,22 @@ export async function POST(request: Request) {
       return ok({ verified: true, message: "Email is already verified." });
     }
 
+    // Rate limiting: Check if token was updated in the last 5 minutes
+    const existingToken = await prisma.emailVerificationToken.findUnique({ where: { userId } });
+    if (existingToken) {
+      const timeSinceLastUpdate = Date.now() - existingToken.createdAt.getTime();
+      const fiveMinutes = 5 * 60 * 1000;
+      if (timeSinceLastUpdate < fiveMinutes) {
+        const remainingSeconds = Math.ceil((fiveMinutes - timeSinceLastUpdate) / 1000);
+        return problem(429, "RATE_LIMIT_EXCEEDED", `Please wait ${remainingSeconds} seconds before requesting another verification email.`);
+      }
+    }
+
     // Generate new verification token
     const token = randomBytes(32).toString("hex");
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+    const ipAddress = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "unknown";
+    const userAgent = request.headers.get("user-agent") || "unknown";
 
     // Store verification token
     await prisma.emailVerificationToken.upsert({
@@ -54,19 +69,24 @@ export async function POST(request: Request) {
         userId,
         token,
         expiresAt,
+        ipAddress,
+        userAgent,
       },
       update: {
         token,
         expiresAt,
+        ipAddress,
+        userAgent,
       },
     });
 
-    // In a real implementation, you would send an email here
-    // TODO: Integrate with email service (Resend, SendGrid, etc.)
+    // Send verification email
+    const emailResult = await sendEmailVerificationEmail(registration.learner.email, registration.learner.name || "Learner", token);
     
     return ok({
       verified: false,
       message: "Verification email resent.",
+      emailSent: emailResult.success,
       // Only return token in development for testing
       ...(process.env.NODE_ENV === "development" && { verificationToken: token, verificationLink: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/academy/verify-email?token=${token}` }),
     });

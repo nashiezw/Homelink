@@ -300,10 +300,11 @@ export async function getAcademyDashboard(options: { compact?: boolean } = {}) {
       ...coupon,
       discountValue: Number(coupon.discountValue),
       minPurchaseAmount: coupon.minPurchaseAmount ? Number(coupon.minPurchaseAmount) : null,
-      remainingUses: coupon.maxUses ? coupon.maxUses - coupon.usedCount : null,
+      usedCount: coupon._count.usages,
+      remainingUses: coupon.maxUses ? coupon.maxUses - coupon._count.usages : null,
       isValid: coupon.active && 
                 (!coupon.validUntil || new Date(coupon.validUntil) > new Date()) &&
-                (!coupon.maxUses || coupon.usedCount < coupon.maxUses),
+                (!coupon.maxUses || coupon._count.usages < coupon.maxUses),
     })),
     auditLogs: recentActivity,
     topCourses: courses
@@ -1092,6 +1093,42 @@ export async function runAcademyAction(body: Record<string, any>, actor: Actor) 
       adminNote: typeof body.adminNote === "string" ? body.adminNote : undefined,
     });
   }
+  if (action === "delete_coupon") {
+    const coupon = await prisma.academyCoupon.findUnique({
+      where: { id: String(body.couponId) },
+      include: { _count: { select: { usages: true } } },
+    });
+    if (!coupon) return null;
+    if (coupon._count.usages > 0) {
+      throw new Error("Cannot delete coupon with existing usages. Reset usage first.");
+    }
+    await prisma.academyCoupon.delete({ where: { id: coupon.id } });
+    await prisma.trainingAuditLog.create({
+      data: {
+        actorId: actor.id,
+        action: "academy.coupon.delete",
+        target: coupon.id,
+        metadata: { code: coupon.code } as Prisma.InputJsonObject,
+      },
+    });
+    return { deleted: true };
+  }
+  if (action === "reset_coupon_usage") {
+    const coupon = await prisma.academyCoupon.findUnique({
+      where: { id: String(body.couponId) },
+    });
+    if (!coupon) return null;
+    await prisma.academyCouponUsage.deleteMany({ where: { couponId: coupon.id } });
+    await prisma.trainingAuditLog.create({
+      data: {
+        actorId: actor.id,
+        action: "academy.coupon.reset_usage",
+        target: coupon.id,
+        metadata: { code: coupon.code } as Prisma.InputJsonObject,
+      },
+    });
+    return { reset: true };
+  }
   if (action === "delete_public_learner") {
     const application = await prisma.academyLearnerApplication.findUnique({
       where: { id: String(body.applicationId) },
@@ -1110,12 +1147,21 @@ export async function runAcademyAction(body: Record<string, any>, actor: Actor) 
             },
           },
         },
+        payment: true,
       },
     });
     if (!application) return null;
     const lessonIds = application.course.modules.flatMap((module) =>
       module.sections.flatMap((section) => section.lessons.map((lesson) => lesson.id)),
     );
+    
+    // Delete coupon usage if payment exists
+    if (application.paymentId) {
+      await prisma.academyCouponUsage.deleteMany({
+        where: { paymentId: application.paymentId },
+      });
+    }
+    
     await prisma.$transaction([
       prisma.academyLearnerApplication.update({ where: { id: application.id }, data: { paymentId: null } }),
       prisma.courseEnrolment.deleteMany({ where: { courseId: application.courseId, agentId: application.learnerId } }),
