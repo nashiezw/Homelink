@@ -9,12 +9,14 @@ export function AcademyProse({
   summary,
   title,
   className,
+  toolkitLocked = false,
 }: {
   richText?: string | null;
   transcript?: string | null;
   summary?: string | null;
   title?: string;
   className?: string;
+  toolkitLocked?: boolean;
 }) {
   const html = formatLessonContent({ richText, transcript, summary, title });
 
@@ -26,6 +28,9 @@ export function AcademyProse({
     );
   }
 
+  // If toolkit is locked, filter out download links from the HTML content
+  const filteredHtml = toolkitLocked ? filterDownloadLinks(html) : html;
+
   return (
     <article
       className={cn(
@@ -33,7 +38,7 @@ export function AcademyProse({
         "[&_p]:mb-6 [&_p:last-child]:mb-0",
         "[&_h2]:mb-4 [&_h2]:mt-10 [&_h2]:text-2xl [&_h2]:font-bold [&_h2]:leading-tight [&_h2]:tracking-normal [&_h2]:text-slate-950 dark:[&_h2]:text-white",
         "[&_h3]:mb-3 [&_h3]:mt-8 [&_h3]:text-xl [&_h3]:font-bold [&_h3]:leading-tight [&_h3]:tracking-normal [&_h3]:text-slate-950 dark:[&_h3]:text-white",
-        "[&_h3.lesson-heading]:mt-10 [&_h3.lesson-heading]:mb-4 [&_h3.lesson-heading]:text-xl [&_h3.lesson-heading]:font-bold [&_h3.lesson-heading]:tracking-tight [&_h3.lesson-heading]:text-emerald-800 dark:[&_h3.lesson-heading]:text-emerald-300",
+        "[&_h3.lesson-heading]:mt-10 [&_h3]:mb-4 [&_h3]:text-xl [&_h3]:font-bold [&_h3]:tracking-tight [&_h3]:text-emerald-800 dark:[&_h3]:text-emerald-300",
         "[&_ul]:my-6 [&_ul]:list-disc [&_ul]:space-y-2 [&_ul]:pl-6 [&_ul]:marker:text-emerald-600",
         "[&_ol]:my-6 [&_ol]:list-decimal [&_ol]:space-y-2 [&_ol]:pl-6 [&_ol]:marker:font-bold [&_ol]:marker:text-emerald-700",
         "[&_strong]:font-semibold [&_strong]:text-slate-900 dark:[&_strong]:text-white",
@@ -44,7 +49,15 @@ export function AcademyProse({
         "[&_td]:border-t [&_td]:border-slate-100 [&_td]:px-3 [&_td]:py-2 dark:[&_td]:border-slate-800",
         className,
       )}
-      dangerouslySetInnerHTML={{ __html: html }}
+      dangerouslySetInnerHTML={{ __html: filteredHtml }}
     />
   );
+}
+
+function filterDownloadLinks(html: string): string {
+  // Remove anchor tags that contain download-related attributes or href patterns
+  return html
+    .replace(/<a[^>]*\bdownload\b[^>]*>.*?<\/a>/gi, '<span class="text-slate-400 italic">[Download link - toolkit access required]</span>')
+    .replace(/<a[^>]*href=["'][^"']*\.(pdf|doc|docx|xls|xlsx|ppt|pptx|zip|rar)[^"']*["'][^>]*>.*?<\/a>/gi, '<span class="text-slate-400 italic">[File link - toolkit access required]</span>')
+    .replace(/<a[^>]*href=["'][^"']*\/api\/[^"']*download[^"']*["'][^>]*>.*?<\/a>/gi, '<span class="text-slate-400 italic">[Download link - toolkit access required]</span>');
 }

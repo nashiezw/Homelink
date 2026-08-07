@@ -271,6 +271,7 @@ export function LessonViewer({
                 transcript={currentLesson.transcript}
                 summary={currentLesson.summary}
                 title={currentLesson.title}
+                toolkitLocked={toolkitLocked}
               />
               <PremiumLessonDepth lesson={currentLesson} accent={accent} />
             </section>
@@ -306,11 +307,27 @@ export function LessonViewer({
                   </h3>
                   <p className="mt-1 text-sm text-slate-500">Branded PDF study guide for this lesson — overview, takeaways, and field application.</p>
                 </div>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {lessonNotes.map((resource) => (
-                    <DownloadCard key={resource.id} href={resource.url} title={resource.title} subtitle={resource.subtitle} />
-                  ))}
-                </div>
+                {toolkitLocked ? (
+                  <div className="rounded-xl border border-amber-200 bg-amber-50 p-6 dark:border-amber-900/40 dark:bg-amber-950/20">
+                    <div className="flex items-start gap-3">
+                      <div className="rounded-full bg-amber-100 p-2 dark:bg-amber-900/40">
+                        <FileText className="size-5 text-amber-600 dark:text-amber-400" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-semibold text-amber-900 dark:text-amber-100">Toolkit access required</p>
+                        <p className="mt-1 text-sm text-amber-800 dark:text-amber-300">
+                          These lesson notes are part of the premium toolkit. Purchase the toolkit from the Toolkit tab to access all {lessonNotes.length} downloadable resources.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {lessonNotes.map((resource) => (
+                      <DownloadCard key={resource.id} href={resource.url} title={resource.title} subtitle={resource.subtitle} />
+                    ))}
+                  </div>
+                )}
               </section>
             )}
 
