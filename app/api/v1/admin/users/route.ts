@@ -39,12 +39,20 @@ export async function GET(request: Request) {
       },
       orderBy: { createdAt: "desc" },
     });
-    const all = await prisma.user.findMany({ select: { roles: true, accountStatus: true } });
+    const all = await prisma.user.findMany({ select: { roles: true, accountStatus: true, lastLoginAt: true } });
     const visible = includeDeleted ? all : all.filter((u) => u.accountStatus !== "DELETED");
+    
+    // Calculate active today (users who logged in within the last 24 hours)
+    const today = new Date();
+    const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000);
+    const activeToday = visible.filter((u) => u.lastLoginAt && new Date(u.lastLoginAt) >= yesterday).length;
+    
     return ok({
       users: users.map(toPublicPostgresUser),
       totals: {
-        all: visible.length,
+        totalUsers: visible.length,
+        total: visible.length,
+        activeToday,
         active: visible.filter((u) => u.accountStatus === "ACTIVE").length,
         suspended: visible.filter((u) => u.accountStatus === "SUSPENDED").length,
         blocked: visible.filter((u) => u.accountStatus === "BLOCKED").length,
@@ -59,11 +67,18 @@ export async function GET(request: Request) {
   const store = getStore();
   const users = store.listUsers({ role, status, q });
   const visibleUsers = store.listUsers();
+  
+  // Calculate active today for non-Postgres store
+  const today = new Date();
+  const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000);
+  const activeToday = visibleUsers.filter((u) => u.lastLoginAt && new Date(u.lastLoginAt) >= yesterday).length;
 
   return ok({
     users,
     totals: {
-      all: visibleUsers.length,
+      totalUsers: visibleUsers.length,
+      total: visibleUsers.length,
+      activeToday,
       active: store.listUsers({ status: "ACTIVE" }).length,
       suspended: store.listUsers({ status: "SUSPENDED" }).length,
       blocked: store.listUsers({ status: "BLOCKED" }).length,
