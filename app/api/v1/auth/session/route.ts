@@ -108,8 +108,8 @@ export async function POST(request: Request) {
     }
     
     // Check if email verification is required
-    const platformSettings = await getHydratedRuntimePlatformSettings();
-    const requireEmailVerification = platformSettings.emailVerificationRequired;
+    // Force email verification to always be required for registration
+    const requireEmailVerification = true;
     
     if (shouldUsePostgresAuth()) {
       const existing = await getPostgresUserByEmail(email);
