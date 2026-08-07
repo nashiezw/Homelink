@@ -160,6 +160,15 @@ export async function getAcademyDashboard(options: { compact?: boolean } = {}) {
     }),
   ]);
 
+  const [pendingLearnerCount, pendingResourceCount] = await Promise.all([
+    prisma.academyLearnerApplication.count({
+      where: { status: { in: ["PAYMENT_UPLOADED", "PENDING_PAYMENT"] } },
+    }),
+    prisma.academyResourceAccess.count({
+      where: { status: { in: ["PAYMENT_UPLOADED", "PENDING_PAYMENT"] } },
+    }),
+  ]);
+
   const activeLearners = new Set([
     ...courseProgress.filter((entry) => daysAgo(entry.updatedAt) <= 30).map((entry) => entry.agentId),
     ...lessonProgress.filter((entry) => daysAgo(entry.lastViewedAt) <= 30).map((entry) => entry.agentId),
@@ -211,8 +220,7 @@ export async function getAcademyDashboard(options: { compact?: boolean } = {}) {
       downloads: documents.filter((document) => document.downloadable).length,
       videoWatchPercent: totalVideoSeconds ? Math.min(100, Math.round(((watchedSeconds._sum.watchedSeconds ?? 0) / totalVideoSeconds) * 100)) : 0,
       publicLearners: publicLearnerApplications.length,
-      pendingPublicApprovals: publicLearnerApplications.filter((entry) => entry.status === "PAYMENT_UPLOADED" || entry.status === "PENDING_PAYMENT").length
-        + resourceAccessApplications.filter((entry) => entry.status === "PAYMENT_UPLOADED" || entry.status === "PENDING_PAYMENT").length,
+      pendingPublicApprovals: pendingLearnerCount + pendingResourceCount,
       academyRevenue: Number(academyRevenue._sum.amount ?? 0),
       certifiedAgents: certifiedAgentIds.length,
       certifiedActiveListings,
