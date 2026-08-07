@@ -90,24 +90,9 @@ export async function getAcademyDashboard(options: { compact?: boolean } = {}) {
             sectionId: true,
             title: true,
             summary: true,
-            richText: true,
             estimatedMinutes: true,
-            completionRequirement: true,
             sortOrder: true,
-            updatedAt: true,
-            section: {
-              select: {
-                id: true,
-                title: true,
-                module: {
-                  select: {
-                    id: true,
-                    title: true,
-                    course: { select: { id: true, title: true, status: true } },
-                  },
-                },
-              },
-            },
+            section: { select: { id: true, title: true, module: { select: { id: true, title: true, course: { select: { id: true, title: true, status: true } } } } } },
           },
           orderBy: [{ sortOrder: "asc" }, { updatedAt: "desc" }],
         })
