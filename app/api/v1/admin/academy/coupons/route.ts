@@ -29,6 +29,9 @@ export async function GET(request: Request) {
       discountValue: Number(coupon.discountValue),
       minPurchaseAmount: coupon.minPurchaseAmount ? Number(coupon.minPurchaseAmount) : null,
       remainingUses: coupon.maxUses ? coupon.maxUses - coupon.usedCount : null,
+      _count: {
+        usages: Number(coupon._count.usages)
+      },
       isValid: coupon.active && 
                 (!coupon.validUntil || new Date(coupon.validUntil) > new Date()) &&
                 (!coupon.maxUses || coupon.usedCount < coupon.maxUses),

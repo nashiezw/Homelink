@@ -42,22 +42,22 @@ export async function GET(request: Request) {
       },
     });
 
-    const totalUsages = couponsWithUsage.reduce((sum, coupon) => sum + coupon._count.usages, 0);
+    const totalUsages = couponsWithUsage.reduce((sum, coupon) => sum + Number(coupon._count.usages), 0);
     const totalDiscountValue = couponsWithUsage.reduce((sum, coupon) => {
-      const usageCount = coupon._count.usages;
+      const usageCount = Number(coupon._count.usages);
       const discountPerUse = Number(coupon.discountValue);
       return sum + (usageCount * discountPerUse);
     }, 0);
 
     // Get top performing coupons
     const topCoupons = [...couponsWithUsage]
-      .sort((a, b) => b._count.usages - a._count.usages)
+      .sort((a, b) => Number(b._count.usages) - Number(a._count.usages))
       .slice(0, 10)
       .map((coupon) => ({
         code: coupon.code,
         discountType: coupon.discountType,
         discountValue: Number(coupon.discountValue),
-        usageCount: coupon._count.usages,
+        usageCount: Number(coupon._count.usages),
         active: coupon.active,
       }));
 
@@ -67,8 +67,8 @@ export async function GET(request: Request) {
       if (!acc[type]) {
         acc[type] = { count: 0, totalDiscount: 0 };
       }
-      acc[type].count += coupon._count.usages;
-      acc[type].totalDiscount += coupon._count.usages * Number(coupon.discountValue);
+      acc[type].count += Number(coupon._count.usages);
+      acc[type].totalDiscount += Number(coupon._count.usages) * Number(coupon.discountValue);
       return acc;
     }, {} as Record<string, { count: number; totalDiscount: number }>);
 
@@ -85,7 +85,7 @@ export async function GET(request: Request) {
       if (!acc[month]) {
         acc[month] = 0;
       }
-      acc[month] += item._count;
+      acc[month] += Number(item._count);
       return acc;
     }, {} as Record<string, number>);
 

@@ -26,7 +26,7 @@ export async function GET(request: Request) {
     });
 
     // Convert to CSV
-    const headers = ["code", "discountType", "discountValue", "maxUses", "usedCount", "validUntil", "applicableCourses", "active", "createdAt"];
+    const headers = ["code", "discountType", "discountValue", "maxUses", "usedCount", "validUntil", "applicableCourses", "active", "createdAt", "usageCount"];
     const csvRows = [headers.join(",")];
 
     coupons.forEach((coupon) => {
@@ -40,6 +40,7 @@ export async function GET(request: Request) {
         coupon.applicableCourses.join(";"),
         coupon.active.toString(),
         coupon.createdAt.toISOString(),
+        Number(coupon._count.usages).toString(),
       ];
       csvRows.push(row.join(","));
     });

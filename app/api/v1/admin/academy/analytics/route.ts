@@ -226,7 +226,7 @@ export async function GET(request: Request) {
       })
     );
     
-    console.log('Popular courses with titles:', JSON.stringify(popularCoursesWithTitles));
+    console.log('Popular courses with titles:', JSON.stringify(popularCoursesWithTitles, (key, value) => typeof value === 'bigint' ? Number(value) : value));
     
     // Convert BigInt values to numbers in completion rates
     const completionRatesFixed = (completionRates as any[]).map((cr: any) => ({
@@ -238,31 +238,46 @@ export async function GET(request: Request) {
       completion_rate: cr.completion_rate
     }));
     
-    console.log('Completion rates fixed:', JSON.stringify(completionRatesFixed));
-    console.log('At-risk learners:', JSON.stringify(atRiskLearners));
+    // Convert BigInt values in daily activity (COUNT(*) returns BigInt)
+    const dailyActivityFixed = (dailyActivity as any[]).map((da: any) => ({
+      date: da.date,
+      actions: Number(da.actions)
+    }));
+    
+    // Convert BigInt values in at-risk learners
+    const atRiskLearnersFixed = (atRiskLearners as any[]).map((learner: any) => ({
+      ...learner,
+      riskScore: Number(learner.riskScore),
+      // Convert any other potential BigInt fields
+      ...(learner.totalEnrollments !== undefined && { totalEnrollments: Number(learner.totalEnrollments) }),
+      ...(learner.totalProgress !== undefined && { totalProgress: Number(learner.totalProgress) }),
+    }));
+    
+    console.log('Completion rates fixed:', JSON.stringify(completionRatesFixed, (key, value) => typeof value === 'bigint' ? Number(value) : value));
+    console.log('At-risk learners:', JSON.stringify(atRiskLearnersFixed, (key, value) => typeof value === 'bigint' ? Number(value) : value));
     
     return ok({
       revenue: {
         total: Number(totalRevenue._sum.amount || 0),
-        count: totalRevenue._count,
+        count: Number(totalRevenue._count),
         period,
       },
-      registrations: totalRegistrations,
-      completions: totalCompletions,
-      certificates: totalCertificates,
-      activeLearners: activeLearners.length,
+      registrations: Number(totalRegistrations),
+      completions: Number(totalCompletions),
+      certificates: Number(totalCertificates),
+      activeLearners: Number(activeLearners.length),
       averageScore: Number(averageScore._avg.averageScore || 0),
       courses: courseStats.map(course => ({
         id: course.id,
         title: course.title,
-        enrolments: course._count.enrolments,
-        inProgress: course._count.progress,
-        certificates: course._count.certificateIssues,
+        enrolments: Number(course._count.enrolments),
+        inProgress: Number(course._count.progress),
+        certificates: Number(course._count.certificateIssues),
       })),
       popularCourses: popularCoursesWithTitles,
       completionRates: completionRatesFixed,
-      dailyActivity,
-      atRiskLearners,
+      dailyActivity: dailyActivityFixed,
+      atRiskLearners: atRiskLearnersFixed,
       userMap: Object.fromEntries(userMap),
     });
   } catch (error) {

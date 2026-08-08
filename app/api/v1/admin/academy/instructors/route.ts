@@ -32,7 +32,7 @@ export async function GET(request: Request) {
         phone: null,
         createdAt: new Date().toISOString(),
         _count: {
-          instructedCourses: courses.filter((c: any) => c.instructor === name).length,
+          instructedCourses: Number(courses.filter((c: any) => c.instructor === name).length),
         },
       }));
 

@@ -32,7 +32,12 @@ export async function GET(request: Request, { params }: { params: Promise<{ inst
         email: null,
         phone: null,
         createdAt: new Date().toISOString(),
-        instructedCourses: courses,
+        instructedCourses: courses.map(course => ({
+          ...course,
+          _count: {
+            enrolments: Number(course._count.enrolments)
+          }
+        })),
       },
     });
   } catch (error) {

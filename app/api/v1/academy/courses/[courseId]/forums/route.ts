@@ -21,7 +21,12 @@ export async function GET(request: Request, { params }: { params: Promise<{ cour
       orderBy: { createdAt: "desc" },
     });
 
-    return ok({ forums });
+    return ok({ forums: forums.map(forum => ({
+      ...forum,
+      _count: {
+        posts: Number(forum._count.posts)
+      }
+    })) });
   } catch (error) {
     console.error("Failed to get forums:", error);
     return problem(500, "SERVER_ERROR", "Failed to get forums.");

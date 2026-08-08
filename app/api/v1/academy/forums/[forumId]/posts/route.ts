@@ -28,7 +28,12 @@ export async function GET(request: Request, { params }: { params: Promise<{ foru
       orderBy: { createdAt: "desc" },
     });
 
-    return ok({ posts });
+    return ok({ posts: posts.map(post => ({
+      ...post,
+      _count: {
+        replies: Number(post._count.replies)
+      }
+    })) });
   } catch (error) {
     console.error("Failed to get forum posts:", error);
     return problem(500, "SERVER_ERROR", "Failed to get forum posts.");

@@ -80,7 +80,7 @@ export async function GET(request: Request) {
       fullscreenOpens: 0,
       lastViewedAt: undefined,
     };
-    const count = row._count._all;
+    const count = Number(row._count._all);
     current.totalEvents += count;
     if (row.eventType === "VIEW") current.views += count;
     if (row.eventType === "SCENE_VIEW") current.sceneViews += count;

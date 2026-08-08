@@ -208,7 +208,7 @@ export async function stitchAnalyticsIdentity(input: AnalyticsIdentityInput) {
         .catch(() => ({ count: 0 })),
     ]);
     return {
-      updated: pageViews.count + funnels.count + presence.count,
+      updated: Number(pageViews.count + funnels.count + presence.count),
       email: email || undefined,
     };
   } catch (error) {
