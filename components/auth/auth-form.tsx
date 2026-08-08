@@ -70,12 +70,12 @@ export function AuthForm({
       }
       return;
     }
+    // Check if email verification is required (before checking user/next)
+    if (result.requiresEmailVerification) {
+      router.push(`/auth/verify-email?email=${encodeURIComponent(email)}`);
+      return;
+    }
     if (result.user && next !== null) {
-      // Check if email verification is required
-      if (result.requiresEmailVerification) {
-        router.push(`/auth/verify-email?email=${encodeURIComponent(email)}`);
-        return;
-      }
       const destination =
         next && next.startsWith("/") && !next.startsWith("/auth") ? next : getDefaultDashboard(result.user);
       router.push(destination);

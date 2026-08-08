@@ -138,13 +138,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
       });
       
       // Handle email verification required response
-      if (result.data && typeof result.data === "object" && "requiresEmailVerification" in result.data && result.data.requiresEmailVerification) {
+      if (result.data && typeof result.data === "object" && "requiresEmailVerification" in result.data) {
         const data = result.data as { user: PublicUser; requiresEmailVerification: boolean; message: string };
         // Don't show toast - let the redirect happen
         return { user: data.user, requiresEmailVerification: true, message: data.message };
       }
       
-      if (result.data && typeof result.data !== "object" || !("requiresEmailVerification" in result.data)) {
+      if (result.data) {
         setUser(result.data as PublicUser);
         void import("@/lib/analytics/identity-client").then(({ stitchAnalyticsIdentity }) => {
           stitchAnalyticsIdentity({ userId: (result.data as PublicUser).id, email: (result.data as PublicUser).email });
