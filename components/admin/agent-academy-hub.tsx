@@ -1476,11 +1476,21 @@ function FeatureWorkbench({
     );
     } catch (error) {
       console.error("Error rendering analytics:", error);
+      console.error("Error details:", {
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : 'No stack trace',
+        analytics: analytics,
+        dataKeys: analytics ? Object.keys(analytics) : 'No analytics data',
+        atRiskLearners: analytics?.atRiskLearners,
+        popularCourses: analytics?.popularCourses,
+        completionRates: analytics?.completionRates
+      });
       return (
         <div className="space-y-4">
           <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-8 text-center">
             <p className="text-red-300">Error loading analytics</p>
             <p className="text-sm text-slate-400 mt-2">Please refresh the page or try again later.</p>
+            <p className="text-xs text-slate-500 mt-2">{error instanceof Error ? error.message : String(error)}</p>
           </div>
         </div>
       );
