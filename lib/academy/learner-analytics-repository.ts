@@ -102,14 +102,109 @@ export async function getCourseAnalytics(courseId: string, _days: number = 30): 
   averageTimeSpent: number;
   atRiskCount: number;
 }> {
-  // TODO: Implement using actual data models
-  // Return default values for now
-  return {
-    totalLearners: 0,
-    averageEngagementScore: 0,
-    averageLessonsCompleted: 0,
-    averageTimeSpent: 0,
-    atRiskCount: 0,
-  };
+  const prisma = getMainPrisma();
+  
+  try {
+    // Get all enrolments for this course
+    const enrolments = await prisma.courseEnrolment.findMany({
+      where: { courseId },
+    });
+    
+    const totalLearners = enrolments.length;
+    
+    if (totalLearners === 0) {
+      return {
+        totalLearners: 0,
+        averageEngagementScore: 0,
+        averageLessonsCompleted: 0,
+        averageTimeSpent: 0,
+        atRiskCount: 0,
+      };
+    }
+    
+    // Get course progress for all learners in this course
+    const courseProgressList = await prisma.courseProgress.findMany({
+      where: { courseId },
+    });
+    
+    // Get lesson progress for all learners in this course
+    const lessonProgressList = await prisma.lessonProgress.findMany({
+      where: {
+        lesson: {
+          section: {
+            module: { courseId },
+          },
+        },
+      },
+    });
+    
+    // Calculate engagement scores for each learner
+    const engagementScores: number[] = [];
+    const lessonsCompletedPerLearner: number[] = [];
+    const timeSpentPerLearner: number[] = [];
+    let atRiskCount = 0;
+    
+    for (const enrolment of enrolments) {
+      const learnerId = enrolment.agentId;
+      
+      // Get lesson progress for this learner
+      const learnerLessonProgress = lessonProgressList.filter(lp => lp.agentId === learnerId);
+      const completedLessons = learnerLessonProgress.filter(lp => lp.completedAt !== null).length;
+      const totalMinutes = learnerLessonProgress.reduce((sum, lp) => sum + lp.readingSeconds / 60, 0);
+      
+      // Get course progress for this learner
+      const courseProgress = courseProgressList.find(cp => cp.agentId === learnerId);
+      const lastActivity = courseProgress?.updatedAt || new Date();
+      const daysSinceActivity = Math.floor((Date.now() - lastActivity.getTime()) / (1000 * 60 * 60 * 24));
+      
+      // Calculate engagement score
+      const totalLessons = learnerLessonProgress.length;
+      const completionRate = totalLessons > 0 ? (completedLessons / totalLessons) * 100 : 0;
+      
+      let score = 0;
+      score += completionRate * 0.4; // 40% weight on completion
+      score += Math.min(totalMinutes / 300, 1) * 30; // 30% weight on time (5 hours max)
+      score += Math.max(0, 1 - daysSinceActivity / 30) * 30; // 30% weight on recency
+      
+      const engagementScore = Math.round(score);
+      engagementScores.push(engagementScore);
+      lessonsCompletedPerLearner.push(completedLessons);
+      timeSpentPerLearner.push(totalMinutes);
+      
+      // At-risk criteria: engagement score < 40 or no activity in 14 days
+      if (engagementScore < 40 || daysSinceActivity > 14) {
+        atRiskCount++;
+      }
+    }
+    
+    const averageEngagementScore = engagementScores.length > 0 
+      ? Math.round(engagementScores.reduce((sum, score) => sum + score, 0) / engagementScores.length)
+      : 0;
+    
+    const averageLessonsCompleted = lessonsCompletedPerLearner.length > 0
+      ? Math.round(lessonsCompletedPerLearner.reduce((sum, count) => sum + count, 0) / lessonsCompletedPerLearner.length)
+      : 0;
+    
+    const averageTimeSpent = timeSpentPerLearner.length > 0
+      ? Math.round(timeSpentPerLearner.reduce((sum, time) => sum + time, 0) / timeSpentPerLearner.length)
+      : 0;
+    
+    return {
+      totalLearners,
+      averageEngagementScore,
+      averageLessonsCompleted,
+      averageTimeSpent,
+      atRiskCount,
+    };
+  } catch (error) {
+    console.error('Error fetching course analytics:', error);
+    return {
+      totalLearners: 0,
+      averageEngagementScore: 0,
+      averageLessonsCompleted: 0,
+      averageTimeSpent: 0,
+      atRiskCount: 0,
+    };
+  }
 }
 

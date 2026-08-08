@@ -1,5 +1,8 @@
 import { ok, problem } from "@/lib/api/response";
 import { getMainPrisma } from "@/lib/db/main-prisma";
+import { createPostgresSession } from "@/lib/auth/postgres-auth";
+import { cookies } from "next/headers";
+import { randomUUID } from "crypto";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +26,10 @@ export async function POST(request: Request) {
             id: true,
             email: true,
             emailVerifiedAt: true,
+            name: true,
+            roles: true,
+            phone: true,
+            accountStatus: true,
           },
         },
       },
@@ -44,7 +51,35 @@ export async function POST(request: Request) {
 
     // Check if email is already verified
     if (verificationToken.user.emailVerifiedAt) {
-      return ok({ message: "Email is already verified." });
+      // If already verified, try to create session and return user data
+      const user = verificationToken.user;
+      if (user.accountStatus !== "ACTIVE") {
+        return problem(403, "ACCOUNT_INACTIVE", "Your account is not active. Please contact support.");
+      }
+      
+      const sessionId = `session_${randomUUID()}`;
+      const maxAgeSeconds = 60 * 60 * 24 * 30; // 30 days
+      await createPostgresSession(user.id, sessionId, maxAgeSeconds);
+      
+      const cookieStore = await cookies();
+      cookieStore.set("session", sessionId, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        maxAge: maxAgeSeconds,
+        path: "/",
+      });
+      
+      return ok({ 
+        message: "Email is already verified.",
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          phone: user.phone,
+          roles: user.roles,
+        },
+      });
     }
 
     // Mark token as used and verify email
@@ -59,7 +94,35 @@ export async function POST(request: Request) {
       }),
     ]);
 
-    return ok({ message: "Email verified successfully!" });
+    // Create session for the verified user
+    const user = verificationToken.user;
+    if (user.accountStatus !== "ACTIVE") {
+      return problem(403, "ACCOUNT_INACTIVE", "Your account is not active. Please contact support.");
+    }
+    
+    const sessionId = `session_${randomUUID()}`;
+    const maxAgeSeconds = 60 * 60 * 24 * 30; // 30 days
+    await createPostgresSession(user.id, sessionId, maxAgeSeconds);
+    
+    const cookieStore = await cookies();
+    cookieStore.set("session", sessionId, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: maxAgeSeconds,
+      path: "/",
+    });
+
+    return ok({ 
+      message: "Email verified successfully!",
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        roles: user.roles,
+      },
+    });
   } catch (error) {
     console.error("Failed to verify email", error);
     return problem(500, "SERVER_ERROR", "Failed to verify email.");

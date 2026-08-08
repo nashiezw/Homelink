@@ -48,6 +48,15 @@ function VerifyEmailContent() {
         } else if (result.data) {
           setStatus("success");
           setMessage((result.data as { message?: string }).message || "Email verified successfully!");
+          
+          // If user data is returned, update the app context
+          const userData = (result.data as { user?: any }).user;
+          if (userData) {
+            // Refresh the page to trigger session refresh and redirect to dashboard
+            setTimeout(() => {
+              window.location.href = "/dashboard/academy";
+            }, 1500);
+          }
         }
       } catch {
         setStatus("error");
