@@ -9,7 +9,8 @@ import {
   getAtRiskStudents,
   getStudentActivityLog,
   getComparativeAnalytics,
-  predictCourseCompletion
+  predictCourseCompletion,
+  getStudentQuizAnalytics
 } from "@/lib/academy/analytics-repository";
 
 export const dynamic = "force-dynamic";
@@ -35,6 +36,30 @@ export async function GET(request: Request) {
     if (type === "student" && studentId) {
       const studentAnalytics = await getStudentProgressAnalytics(studentId);
       return ok(studentAnalytics);
+    }
+    
+    if (type === "student-quiz" && studentId) {
+      const studentQuizAnalytics = await getStudentQuizAnalytics(studentId);
+      return ok(studentQuizAnalytics);
+    }
+    
+    if (type === "student-search") {
+      const searchQuery = searchParams.get("q") || "";
+      const students = await prisma.user.findMany({
+        where: {
+          OR: [
+            { name: { contains: searchQuery, mode: "insensitive" } },
+            { email: { contains: searchQuery, mode: "insensitive" } }
+          ]
+        },
+        select: {
+          id: true,
+          name: true,
+          email: true
+        },
+        take: 20
+      });
+      return ok(students);
     }
     
     if (type === "course" && courseId) {

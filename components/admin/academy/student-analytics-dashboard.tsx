@@ -46,6 +46,72 @@ type CourseProgressDetail = {
   estimatedCompletionDate: Date | null;
 };
 
+type StudentQuizAnalytics = {
+  studentId: string;
+  studentName: string;
+  studentEmail: string;
+  quizAttempts: QuizAttemptDetail[];
+  examAttempts: ExamAttemptDetail[];
+  assignmentSubmissions: AssignmentSubmissionDetail[];
+  overallStats: {
+    totalQuizzesAttempted: number;
+    averageQuizScore: number;
+    quizPassRate: number;
+    totalExamsAttempted: number;
+    averageExamScore: number;
+    examPassRate: number;
+    totalAssignmentsSubmitted: number;
+    averageAssignmentGrade: number;
+    onTimeSubmissionRate: number;
+  };
+};
+
+type QuizAttemptDetail = {
+  attemptId: string;
+  quizId: string;
+  quizTitle: string;
+  courseId: string;
+  courseTitle: string;
+  score: number;
+  status: string;
+  startedAt: Date;
+  submittedAt: Date | null;
+  timeSpentMinutes: number;
+  answers: any;
+  passed: boolean;
+  attemptNumber: number;
+};
+
+type ExamAttemptDetail = {
+  attemptId: string;
+  examId: string;
+  examTitle: string;
+  courseId: string;
+  courseTitle: string;
+  score: number;
+  status: string;
+  startedAt: Date;
+  submittedAt: Date | null;
+  timeSpentMinutes: number;
+  passed: boolean;
+  attemptNumber: number;
+};
+
+type AssignmentSubmissionDetail = {
+  submissionId: string;
+  assignmentId: string;
+  assignmentTitle: string;
+  courseId: string;
+  courseTitle: string;
+  grade: number | null;
+  status: string;
+  submittedAt: Date;
+  gradedAt: Date | null;
+  onTime: boolean;
+  reviewerNote: string | null;
+  attemptNumber: number;
+};
+
 type AtRiskStudent = {
   studentId: string;
   studentName: string;
@@ -66,12 +132,21 @@ type AtRiskStudent = {
   interventionActions: string[];
 };
 
+type StudentSearchResult = {
+  id: string;
+  name: string;
+  email: string;
+};
+
 export function StudentAnalyticsDashboard() {
-  const [view, setView] = useState<"overview" | "student" | "at-risk">("overview");
+  const [view, setView] = useState<"overview" | "student" | "student-quiz" | "at-risk">("overview");
   const [loading, setLoading] = useState(true);
   const [studentAnalytics, setStudentAnalytics] = useState<StudentProgressAnalytics | null>(null);
+  const [studentQuizAnalytics, setStudentQuizAnalytics] = useState<StudentQuizAnalytics | null>(null);
   const [atRiskStudents, setAtRiskStudents] = useState<AtRiskStudent[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [studentSearchResults, setStudentSearchResults] = useState<StudentSearchResult[]>([]);
+  const [showStudentSearch, setShowStudentSearch] = useState(false);
 
   useEffect(() => {
     loadOverviewData();
@@ -104,6 +179,44 @@ export function StudentAnalyticsDashboard() {
       setLoading(false);
     }
   };
+
+  const loadStudentQuizAnalytics = async (studentId: string) => {
+    setLoading(true);
+    try {
+      const response = await apiFetch<StudentQuizAnalytics>(`/api/v1/admin/academy/analytics?type=student-quiz&studentId=${studentId}`);
+      if (response.data) {
+        setStudentQuizAnalytics(response.data);
+      }
+    } catch (error) {
+      console.error("Failed to load student quiz analytics:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const searchStudents = async (query: string) => {
+    if (query.length < 2) {
+      setStudentSearchResults([]);
+      return;
+    }
+    try {
+      const response = await apiFetch<StudentSearchResult[]>(`/api/v1/admin/academy/analytics?type=student-search&q=${encodeURIComponent(query)}`);
+      if (response.data) {
+        setStudentSearchResults(response.data);
+      }
+    } catch (error) {
+      console.error("Failed to search students:", error);
+    }
+  };
+
+  useEffect(() => {
+    if (searchQuery.length >= 2 && showStudentSearch) {
+      const debounceTimer = setTimeout(() => searchStudents(searchQuery), 300);
+      return () => clearTimeout(debounceTimer);
+    } else {
+      setStudentSearchResults([]);
+    }
+  }, [searchQuery, showStudentSearch]);
 
 
   const loadAtRiskStudents = async (courseId?: string) => {
@@ -162,6 +275,13 @@ export function StudentAnalyticsDashboard() {
           >
             <Users className="mr-2 size-4" />
             Student View
+          </Button>
+          <Button
+            variant={view === "student-quiz" ? "primary" : "secondary"}
+            onClick={() => setView("student-quiz")}
+          >
+            <Filter className="mr-2 size-4" />
+            Quiz Analytics
           </Button>
           <Button
             variant={view === "at-risk" ? "primary" : "secondary"}
@@ -316,6 +436,233 @@ export function StudentAnalyticsDashboard() {
           </div>
         </div>
       )}
+
+      {/* Student Quiz Analytics View */}
+      {view === "student-quiz" && (
+        <div className="space-y-6">
+          <div className="flex gap-4">
+            <div className="relative flex-1">
+              <input
+                type="text"
+                placeholder="Search students by name or email..."
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setShowStudentSearch(true);
+                }}
+                onFocus={() => setShowStudentSearch(true)}
+                className="w-full rounded-lg border border-white/10 bg-slate-900 px-4 py-2 text-white"
+              />
+              {showStudentSearch && studentSearchResults.length > 0 && (
+                <div className="absolute top-full left-0 right-0 mt-2 rounded-lg border border-white/10 bg-slate-950 p-2 z-10 max-h-64 overflow-y-auto">
+                  {studentSearchResults.map(student => (
+                    <button
+                      key={student.id}
+                      onClick={() => {
+                        setSearchQuery(student.id);
+                        setShowStudentSearch(false);
+                        loadStudentQuizAnalytics(student.id);
+                      }}
+                      className="w-full text-left px-3 py-2 rounded hover:bg-slate-800 transition text-sm"
+                    >
+                      <p className="font-medium text-white">{student.name}</p>
+                      <p className="text-xs text-slate-400">{student.email}</p>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            <Button 
+              variant="primary"
+              onClick={() => searchQuery && loadStudentQuizAnalytics(searchQuery)}
+            >
+              <Search className="mr-2 size-4" />
+              Load Analytics
+            </Button>
+          </div>
+
+          {studentQuizAnalytics ? (
+            <StudentQuizDetailView analytics={studentQuizAnalytics} />
+          ) : (
+            <div className="rounded-xl border border-white/10 bg-slate-900/60 p-8 text-center">
+              <Filter className="mx-auto mb-4 size-12 text-slate-500" />
+              <p className="text-slate-400">Search for a student to view detailed quiz and assessment analytics</p>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function StudentQuizDetailView({ analytics }: { analytics: StudentQuizAnalytics }) {
+  return (
+    <div className="space-y-6">
+      {/* Student Overview */}
+      <div className="rounded-xl border border-white/10 bg-slate-900/60 p-6">
+        <div className="flex items-start justify-between">
+          <div>
+            <h3 className="text-2xl font-bold text-white">{analytics.studentName}</h3>
+            <p className="text-slate-400">{analytics.studentEmail}</p>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="secondary">
+              <Download className="mr-2 size-4" />
+              Export Report
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Overall Statistics */}
+      <div className="grid gap-4 md:grid-cols-4">
+        <AdminStatPill label="Quizzes Attempted" value={String(analytics.overallStats.totalQuizzesAttempted)} />
+        <AdminStatPill label="Avg Quiz Score" value={`${analytics.overallStats.averageQuizScore.toFixed(1)}%`} />
+        <AdminStatPill label="Quiz Pass Rate" value={`${analytics.overallStats.quizPassRate.toFixed(1)}%`} />
+        <AdminStatPill label="Exams Attempted" value={String(analytics.overallStats.totalExamsAttempted)} />
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-4">
+        <AdminStatPill label="Avg Exam Score" value={`${analytics.overallStats.averageExamScore.toFixed(1)}%`} />
+        <AdminStatPill label="Exam Pass Rate" value={`${analytics.overallStats.examPassRate.toFixed(1)}%`} />
+        <AdminStatPill label="Assignments" value={String(analytics.overallStats.totalAssignmentsSubmitted)} />
+        <AdminStatPill label="Avg Grade" value={`${analytics.overallStats.averageAssignmentGrade.toFixed(1)}%`} />
+      </div>
+
+      {/* Quiz Attempts */}
+      <div className="rounded-xl border border-white/10 bg-slate-900/60 p-6">
+        <h3 className="mb-4 text-lg font-bold text-white">Quiz Attempts</h3>
+        {analytics.quizAttempts.length > 0 ? (
+          <div className="space-y-4">
+            {analytics.quizAttempts.map(attempt => (
+              <div key={attempt.attemptId} className="rounded-lg border border-white/5 bg-slate-800/50 p-4">
+                <div className="flex items-start justify-between mb-3">
+                  <div>
+                    <p className="font-semibold text-white">{attempt.quizTitle}</p>
+                    <p className="text-sm text-slate-400">{attempt.courseTitle}</p>
+                  </div>
+                  <AdminStatusBadge 
+                    status={attempt.passed ? "PASSED" : "FAILED"} 
+                    variant={attempt.passed ? "success" : "danger"} 
+                  />
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                  <>
+                    <p className="text-slate-400">Score</p>
+                    <p className="font-semibold text-white">{attempt.score}%</p>
+                  </>
+                  <>
+                    <p className="text-slate-400">Attempt</p>
+                    <p className="font-semibold text-white">#{attempt.attemptNumber}</p>
+                  </>
+                  <>
+                    <p className="text-slate-400">Time</p>
+                    <p className="font-semibold text-white">{attempt.timeSpentMinutes} min</p>
+                  </>
+                  <>
+                    <p className="text-slate-400">Date</p>
+                    <p className="font-semibold text-white">{new Date(attempt.startedAt).toLocaleDateString()}</p>
+                  </>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-slate-400">No quiz attempts recorded</p>
+        )}
+      </div>
+
+      {/* Exam Attempts */}
+      <div className="rounded-xl border border-white/10 bg-slate-900/60 p-6">
+        <h3 className="mb-4 text-lg font-bold text-white">Exam Attempts</h3>
+        {analytics.examAttempts.length > 0 ? (
+          <div className="space-y-4">
+            {analytics.examAttempts.map(attempt => (
+              <div key={attempt.attemptId} className="rounded-lg border border-white/5 bg-slate-800/50 p-4">
+                <div className="flex items-start justify-between mb-3">
+                  <div>
+                    <p className="font-semibold text-white">{attempt.examTitle}</p>
+                    <p className="text-sm text-slate-400">{attempt.courseTitle}</p>
+                  </div>
+                  <AdminStatusBadge 
+                    status={attempt.passed ? "PASSED" : "FAILED"} 
+                    variant={attempt.passed ? "success" : "danger"} 
+                  />
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                  <>
+                    <p className="text-slate-400">Score</p>
+                    <p className="font-semibold text-white">{attempt.score}%</p>
+                  </>
+                  <>
+                    <p className="text-slate-400">Attempt</p>
+                    <p className="font-semibold text-white">#{attempt.attemptNumber}</p>
+                  </>
+                  <>
+                    <p className="text-slate-400">Time</p>
+                    <p className="font-semibold text-white">{attempt.timeSpentMinutes} min</p>
+                  </>
+                  <>
+                    <p className="text-slate-400">Date</p>
+                    <p className="font-semibold text-white">{new Date(attempt.startedAt).toLocaleDateString()}</p>
+                  </>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-slate-400">No exam attempts recorded</p>
+        )}
+      </div>
+
+      {/* Assignment Submissions */}
+      <div className="rounded-xl border border-white/10 bg-slate-900/60 p-6">
+        <h3 className="mb-4 text-lg font-bold text-white">Assignment Submissions</h3>
+        {analytics.assignmentSubmissions.length > 0 ? (
+          <div className="space-y-4">
+            {analytics.assignmentSubmissions.map(submission => (
+              <div key={submission.submissionId} className="rounded-lg border border-white/5 bg-slate-800/50 p-4">
+                <div className="flex items-start justify-between mb-3">
+                  <div>
+                    <p className="font-semibold text-white">{submission.assignmentTitle}</p>
+                    <p className="text-sm text-slate-400">{submission.courseTitle}</p>
+                  </div>
+                  <AdminStatusBadge 
+                    status={submission.status} 
+                    variant={submission.status === "GRADED" ? "success" : "info"} 
+                  />
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                  <>
+                    <p className="text-slate-400">Grade</p>
+                    <p className="font-semibold text-white">{submission.grade ? `${submission.grade}%` : "Not graded"}</p>
+                  </>
+                  <>
+                    <p className="text-slate-400">Attempt</p>
+                    <p className="font-semibold text-white">#{submission.attemptNumber}</p>
+                  </>
+                  <>
+                    <p className="text-slate-400">Submitted</p>
+                    <p className="font-semibold text-white">{new Date(submission.submittedAt).toLocaleDateString()}</p>
+                  </>
+                  <>
+                    <p className="text-slate-400">On Time</p>
+                    <p className="font-semibold text-white">{submission.onTime ? "Yes" : "No"}</p>
+                  </>
+                </div>
+                {submission.reviewerNote && (
+                  <div className="mt-3 p-3 bg-slate-700/50 rounded-lg">
+                    <p className="text-xs text-slate-400 mb-1">Reviewer Note:</p>
+                    <p className="text-sm text-slate-300">{submission.reviewerNote}</p>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-slate-400">No assignment submissions recorded</p>
+        )}
+      </div>
     </div>
   );
 }

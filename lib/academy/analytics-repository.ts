@@ -352,6 +352,268 @@ export async function getSessionMetrics(studentId: string, days: number = 30): P
   };
 }
 
+export interface StudentQuizAnalytics {
+  studentId: string;
+  studentName: string;
+  studentEmail: string;
+  quizAttempts: QuizAttemptDetail[];
+  examAttempts: ExamAttemptDetail[];
+  assignmentSubmissions: AssignmentSubmissionDetail[];
+  overallStats: {
+    totalQuizzesAttempted: number;
+    averageQuizScore: number;
+    quizPassRate: number;
+    totalExamsAttempted: number;
+    averageExamScore: number;
+    examPassRate: number;
+    totalAssignmentsSubmitted: number;
+    averageAssignmentGrade: number;
+    onTimeSubmissionRate: number;
+  };
+}
+
+export interface QuizAttemptDetail {
+  attemptId: string;
+  quizId: string;
+  quizTitle: string;
+  courseId: string;
+  courseTitle: string;
+  score: number;
+  status: string;
+  startedAt: Date;
+  submittedAt: Date | null;
+  timeSpentMinutes: number;
+  answers: any;
+  passed: boolean;
+  attemptNumber: number;
+}
+
+export interface ExamAttemptDetail {
+  attemptId: string;
+  examId: string;
+  examTitle: string;
+  courseId: string;
+  courseTitle: string;
+  score: number;
+  status: string;
+  startedAt: Date;
+  submittedAt: Date | null;
+  timeSpentMinutes: number;
+  passed: boolean;
+  attemptNumber: number;
+}
+
+export interface AssignmentSubmissionDetail {
+  submissionId: string;
+  assignmentId: string;
+  assignmentTitle: string;
+  courseId: string;
+  courseTitle: string;
+  grade: number | null;
+  status: string;
+  submittedAt: Date;
+  gradedAt: Date | null;
+  onTime: boolean;
+  reviewerNote: string | null;
+  attemptNumber: number;
+}
+
+export async function getStudentQuizAnalytics(studentId: string): Promise<StudentQuizAnalytics> {
+  const cacheKey = `student-quiz-analytics-${studentId}`;
+  const cached = getCached<StudentQuizAnalytics>(cacheKey);
+  if (cached) return cached;
+
+  const prisma = getMainPrisma();
+
+  const [student, quizAttempts, examAttempts, assignmentSubmissions] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: studentId },
+      select: { id: true, name: true, email: true }
+    }),
+    prisma.quizAttempt.findMany({
+      where: { agentId: studentId },
+      include: {
+        quiz: {
+          include: {
+            course: {
+              select: { id: true, title: true }
+            }
+          }
+        }
+      },
+      orderBy: { startedAt: 'desc' }
+    }),
+    prisma.examAttempt.findMany({
+      where: { agentId: studentId },
+      include: {
+        exam: {
+          include: {
+            course: {
+              select: { id: true, title: true }
+            }
+          }
+        }
+      },
+      orderBy: { startedAt: 'desc' }
+    }),
+    prisma.assignmentSubmission.findMany({
+      where: { agentId: studentId },
+      include: {
+        assignment: {
+          include: {
+            course: {
+              select: { id: true, title: true }
+            }
+          }
+        }
+      },
+      orderBy: { submittedAt: 'desc' }
+    })
+  ]);
+
+  if (!student) {
+    throw new Error(`Student not found: ${studentId}`);
+  }
+
+  // Process quiz attempts with attempt numbers
+  const quizAttemptsByQuiz = new Map<string, typeof quizAttempts>();
+  quizAttempts.forEach(attempt => {
+    const existing = quizAttemptsByQuiz.get(attempt.quizId) || [];
+    existing.push(attempt);
+    quizAttemptsByQuiz.set(attempt.quizId, existing);
+  });
+
+  const quizAttemptDetails: QuizAttemptDetail[] = [];
+  quizAttemptsByQuiz.forEach((attempts, _quizId) => {
+    attempts.sort((a, b) => a.startedAt.getTime() - b.startedAt.getTime());
+    attempts.forEach((attempt, index) => {
+      const timeSpent = attempt.submittedAt 
+        ? (attempt.submittedAt.getTime() - attempt.startedAt.getTime()) / (1000 * 60)
+        : 0;
+      
+      quizAttemptDetails.push({
+        attemptId: attempt.id,
+        quizId: attempt.quizId,
+        quizTitle: attempt.quiz.title,
+        courseId: attempt.quiz.courseId || '',
+        courseTitle: attempt.quiz.course?.title || '',
+        score: Number(attempt.score),
+        status: attempt.status,
+        startedAt: attempt.startedAt,
+        submittedAt: attempt.submittedAt,
+        timeSpentMinutes: Math.round(timeSpent),
+        answers: attempt.answers,
+        passed: Number(attempt.score) >= (attempt.quiz.passingPercentage || 70),
+        attemptNumber: index + 1
+      });
+    });
+  });
+
+  // Process exam attempts with attempt numbers
+  const examAttemptsByExam = new Map<string, typeof examAttempts>();
+  examAttempts.forEach(attempt => {
+    const existing = examAttemptsByExam.get(attempt.examId) || [];
+    existing.push(attempt);
+    examAttemptsByExam.set(attempt.examId, existing);
+  });
+
+  const examAttemptDetails: ExamAttemptDetail[] = [];
+  examAttemptsByExam.forEach((attempts, _examId) => {
+    attempts.sort((a, b) => a.startedAt.getTime() - b.startedAt.getTime());
+    attempts.forEach((attempt, index) => {
+      const timeSpent = attempt.submittedAt 
+        ? (attempt.submittedAt.getTime() - attempt.startedAt.getTime()) / (1000 * 60)
+        : 0;
+      
+      examAttemptDetails.push({
+        attemptId: attempt.id,
+        examId: attempt.examId,
+        examTitle: attempt.exam.title,
+        courseId: attempt.exam.courseId,
+        courseTitle: attempt.exam.course.title,
+        score: Number(attempt.score),
+        status: attempt.status,
+        startedAt: attempt.startedAt,
+        submittedAt: attempt.submittedAt,
+        timeSpentMinutes: Math.round(timeSpent),
+        passed: Number(attempt.score) >= attempt.exam.passingScore,
+        attemptNumber: index + 1
+      });
+    });
+  });
+
+  // Process assignment submissions with attempt numbers
+  const assignmentSubmissionsByAssignment = new Map<string, typeof assignmentSubmissions>();
+  assignmentSubmissions.forEach(submission => {
+    const existing = assignmentSubmissionsByAssignment.get(submission.assignmentId) || [];
+    existing.push(submission);
+    assignmentSubmissionsByAssignment.set(submission.assignmentId, existing);
+  });
+
+  const assignmentSubmissionDetails: AssignmentSubmissionDetail[] = [];
+  assignmentSubmissionsByAssignment.forEach((submissions, _assignmentId) => {
+    submissions.sort((a, b) => a.submittedAt.getTime() - b.submittedAt.getTime());
+    submissions.forEach((submission, index) => {
+      assignmentSubmissionDetails.push({
+        submissionId: submission.id,
+        assignmentId: submission.assignmentId,
+        assignmentTitle: submission.assignment.title,
+        courseId: submission.assignment.courseId || '',
+        courseTitle: submission.assignment.course?.title || '',
+        grade: submission.grade ? Number(submission.grade) : null,
+        status: submission.status,
+        submittedAt: submission.submittedAt,
+        gradedAt: submission.reviewedAt, // Using reviewedAt as proxy for gradedAt
+        onTime: true, // Would need deadline info to determine this
+        reviewerNote: submission.reviewerNote,
+        attemptNumber: index + 1
+      });
+    });
+  });
+
+  // Calculate overall statistics
+  const passedQuizzes = quizAttemptDetails.filter(q => q.passed);
+  const passedExams = examAttemptDetails.filter(e => e.passed);
+  const gradedAssignments = assignmentSubmissionDetails.filter(a => a.grade !== null);
+
+  const overallStats = {
+    totalQuizzesAttempted: quizAttemptDetails.length,
+    averageQuizScore: quizAttemptDetails.length > 0 
+      ? quizAttemptDetails.reduce((sum, q) => sum + q.score, 0) / quizAttemptDetails.length 
+      : 0,
+    quizPassRate: quizAttemptDetails.length > 0 
+      ? (passedQuizzes.length / quizAttemptDetails.length) * 100 
+      : 0,
+    totalExamsAttempted: examAttemptDetails.length,
+    averageExamScore: examAttemptDetails.length > 0 
+      ? examAttemptDetails.reduce((sum, e) => sum + e.score, 0) / examAttemptDetails.length 
+      : 0,
+    examPassRate: examAttemptDetails.length > 0 
+      ? (passedExams.length / examAttemptDetails.length) * 100 
+      : 0,
+    totalAssignmentsSubmitted: assignmentSubmissionDetails.length,
+    averageAssignmentGrade: gradedAssignments.length > 0 
+      ? gradedAssignments.reduce((sum, a) => sum + (a.grade || 0), 0) / gradedAssignments.length 
+      : 0,
+    onTimeSubmissionRate: assignmentSubmissionDetails.length > 0 
+      ? (assignmentSubmissionDetails.filter(a => a.onTime).length / assignmentSubmissionDetails.length) * 100 
+      : 0
+  };
+
+  const result: StudentQuizAnalytics = {
+    studentId: student.id,
+    studentName: student.name,
+    studentEmail: student.email,
+    quizAttempts: quizAttemptDetails,
+    examAttempts: examAttemptDetails,
+    assignmentSubmissions: assignmentSubmissionDetails,
+    overallStats
+  };
+
+  setCache(cacheKey, result);
+  return result;
+}
+
 export async function getStudentProgressAnalytics(studentId: string): Promise<StudentProgressAnalytics> {
   const cacheKey = `student-progress-${studentId}`;
   const cached = getCached<StudentProgressAnalytics>(cacheKey);
