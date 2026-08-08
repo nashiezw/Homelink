@@ -1340,7 +1340,17 @@ function FeatureWorkbench({
     const popularCourses = analytics?.popularCourses as Array<{ courseId: string; courseTitle: string; _count: number }> | undefined;
     const completionRates = analytics?.completionRates as Array<{ title: string; enrolled: number; completed: number; completion_rate: number; avg_progress: number }> | undefined;
     const _dailyActivity = analytics?.dailyActivity as Array<{ date: Date; actions: number }> | undefined;
-    const atRiskLearners = analytics?.atRiskLearners as Array<{ learnerId: string; learnerName: string; learnerEmail: string; riskScore: number; riskFactors: string[] }> | undefined;
+    const atRiskLearners = analytics?.atRiskLearners as Array<{ learnerId: string; learnerName: string; learnerEmail: string; riskScore: number; riskFactors?: string[] }> | undefined;
+    
+    if (!analytics) {
+      return (
+        <div className="space-y-4">
+          <div className="rounded-xl border border-white/10 bg-slate-900/60 p-8 text-center">
+            <p className="text-slate-400">Loading analytics...</p>
+          </div>
+        </div>
+      );
+    }
     
     return (
       <div className="space-y-4">
@@ -1451,7 +1461,7 @@ function FeatureWorkbench({
                   </div>
                   <div className="text-right sm:ml-2">
                     <p className="text-xs font-semibold text-red-300">{learner.riskScore}% risk</p>
-                    <p className="text-xs text-slate-500">{learner.riskFactors.length} factors</p>
+                    <p className="text-xs text-slate-500">{learner.riskFactors?.length || 0} factors</p>
                   </div>
                 </div>
               ))}
