@@ -1,14 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import {
-  BarChart3,
-  Users,
-  AlertTriangle,
-  Download,
-  Filter,
-  Search,
-} from "lucide-react";
+import { Search, Filter, AlertTriangle, User, BookOpen, TrendingDown, TrendingUp, BarChart3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api/client";
 import { AdminStatPill, AdminStatusBadge } from "@/components/admin/ui/admin-ui";
@@ -148,6 +141,7 @@ export function StudentAnalyticsDashboard() {
   const [studentSearchResults, setStudentSearchResults] = useState<StudentSearchResult[]>([]);
   const [showStudentSearch, setShowStudentSearch] = useState(false);
   const [selectedStudentId, setSelectedStudentId] = useState("");
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     loadOverviewData();
@@ -169,13 +163,21 @@ export function StudentAnalyticsDashboard() {
 
   const loadStudentAnalytics = async (studentId: string) => {
     setLoading(true);
+    setError(null);
     try {
+      console.log(`[StudentAnalytics] Loading progress analytics for studentId=${studentId}`);
       const response = await apiFetch<StudentProgressAnalytics>(`/api/v1/admin/academy/analytics?type=student&studentId=${studentId}`);
       if (response.data) {
         setStudentAnalytics(response.data);
+        console.log(`[StudentAnalytics] Progress analytics loaded successfully for ${studentId}`);
+      } else if (response.error) {
+        setError(response.error.message || "Failed to load student analytics");
+        console.error(`[StudentAnalytics] API error:`, response.error);
       }
     } catch (error) {
-      console.error("Failed to load student analytics:", error);
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      setError(`Failed to load student analytics: ${errorMessage}`);
+      console.error("[StudentAnalytics] Failed to load student analytics:", error);
     } finally {
       setLoading(false);
     }
@@ -183,13 +185,21 @@ export function StudentAnalyticsDashboard() {
 
   const loadStudentQuizAnalytics = async (studentId: string) => {
     setLoading(true);
+    setError(null);
     try {
+      console.log(`[StudentAnalytics] Loading quiz analytics for studentId=${studentId}`);
       const response = await apiFetch<StudentQuizAnalytics>(`/api/v1/admin/academy/analytics?type=student-quiz&studentId=${studentId}`);
       if (response.data) {
         setStudentQuizAnalytics(response.data);
+        console.log(`[StudentAnalytics] Quiz analytics loaded successfully for ${studentId}`);
+      } else if (response.error) {
+        setError(response.error.message || "Failed to load student quiz analytics");
+        console.error(`[StudentAnalytics] API error:`, response.error);
       }
     } catch (error) {
-      console.error("Failed to load student quiz analytics:", error);
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      setError(`Failed to load student quiz analytics: ${errorMessage}`);
+      console.error("[StudentAnalytics] Failed to load student quiz analytics:", error);
     } finally {
       setLoading(false);
     }
@@ -437,9 +447,15 @@ export function StudentAnalyticsDashboard() {
 
           {studentAnalytics ? (
             <StudentDetailView analytics={studentAnalytics} />
+          ) : error ? (
+            <div className="rounded-xl border border-red-500/30 bg-red-950/20 p-8 text-center">
+              <AlertTriangle className="mx-auto mb-4 size-12 text-red-500" />
+              <p className="text-red-400 font-semibold mb-2">Error Loading Analytics</p>
+              <p className="text-slate-400 text-sm">{error}</p>
+            </div>
           ) : (
             <div className="rounded-xl border border-white/10 bg-slate-900/60 p-8 text-center">
-              <Users className="mx-auto mb-4 size-12 text-slate-500" />
+              <User className="mx-auto mb-4 size-12 text-slate-500" />
               <p className="text-slate-400">Select a student to view detailed analytics</p>
             </div>
           )}
@@ -531,6 +547,12 @@ export function StudentAnalyticsDashboard() {
 
           {studentQuizAnalytics ? (
             <StudentQuizDetailView analytics={studentQuizAnalytics} />
+          ) : error ? (
+            <div className="rounded-xl border border-red-500/30 bg-red-950/20 p-8 text-center">
+              <AlertTriangle className="mx-auto mb-4 size-12 text-red-500" />
+              <p className="text-red-400 font-semibold mb-2">Error Loading Analytics</p>
+              <p className="text-slate-400 text-sm">{error}</p>
+            </div>
           ) : (
             <div className="rounded-xl border border-white/10 bg-slate-900/60 p-8 text-center">
               <Filter className="mx-auto mb-4 size-12 text-slate-500" />

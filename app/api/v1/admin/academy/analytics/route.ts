@@ -32,15 +32,31 @@ export async function GET(request: Request) {
     const studentId = searchParams.get("studentId");
     const includeAtRisk = searchParams.get("includeAtRisk") === "true";
     
+    console.log(`[Analytics] Request: type=${type}, period=${period}, courseId=${courseId}, studentId=${studentId}, includeAtRisk=${includeAtRisk}`);
+    
     // Handle different analytics types
     if (type === "student" && studentId) {
-      const studentAnalytics = await getStudentProgressAnalytics(studentId);
-      return ok(studentAnalytics);
+      console.log(`[Analytics] Loading student progress analytics for studentId=${studentId}`);
+      try {
+        const studentAnalytics = await getStudentProgressAnalytics(studentId);
+        console.log(`[Analytics] Student progress analytics loaded successfully for ${studentId}`);
+        return ok(studentAnalytics);
+      } catch (error) {
+        console.error(`[Analytics] Error loading student progress analytics for ${studentId}:`, error);
+        return problem(500, "STUDENT_ANALYTICS_FAILED", `Failed to load student analytics: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
     }
     
     if (type === "student-quiz" && studentId) {
-      const studentQuizAnalytics = await getStudentQuizAnalytics(studentId);
-      return ok(studentQuizAnalytics);
+      console.log(`[Analytics] Loading student quiz analytics for studentId=${studentId}`);
+      try {
+        const studentQuizAnalytics = await getStudentQuizAnalytics(studentId);
+        console.log(`[Analytics] Student quiz analytics loaded successfully for ${studentId}`);
+        return ok(studentQuizAnalytics);
+      } catch (error) {
+        console.error(`[Analytics] Error loading student quiz analytics for ${studentId}:`, error);
+        return problem(500, "STUDENT_QUIZ_ANALYTICS_FAILED", `Failed to load student quiz analytics: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
     }
     
     if (type === "student-search") {
