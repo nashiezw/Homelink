@@ -541,7 +541,7 @@ export function AgentAcademyHub() {
           <AdminFilterBar>
             <AdminSearchInput value={query} onChange={setQuery} placeholder="Search courses, tags, instructors..." className="lg:flex-1" />
             <AdminSelect value={statusFilter} onChange={setStatusFilter} options={["ALL", "DRAFT", "PUBLISHED", "ARCHIVED"].map((value) => ({ value, label: value.replace("_", " ") }))} />
-            <Button onClick={() => { setSelectedCourse(null); setDrawer("course"); }}><Plus className="size-4" /> New Course</Button>
+            <Button onClick={() => { setSelectedCourse(null); setDrawer("course"); }} className="flex-1 sm:flex-none"><Plus className="size-4" /> New Course</Button>
           </AdminFilterBar>
           <AdminDataTable
             rows={courses}
@@ -627,16 +627,16 @@ export function AgentAcademyHub() {
         <div className="space-y-4">
           <AdminFilterBar>
             <div className="flex-1 text-sm text-slate-400">Streaming videos, captions, watch history, resume progress, and analytics are stored in PostgreSQL.</div>
-            <Button onClick={() => setDrawer("video")}><Upload className="size-4" /> Add Video</Button>
+            <Button onClick={() => setDrawer("video")} className="flex-1 sm:flex-none"><Upload className="size-4" /> Add Video</Button>
           </AdminFilterBar>
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {data.videos.map((video) => (
               <article key={video.id} className="overflow-hidden rounded-xl border border-white/10 bg-slate-900/60">
                 <video src={video.videoUrl} controls className="aspect-video w-full bg-black object-contain" preload="metadata" />
                 <div className="p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="font-semibold text-white">{video.title}</p>
+                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-white truncate">{video.title}</p>
                       <p className="mt-1 text-xs text-slate-500">{video.category} - {Math.round(video.durationSeconds / 60)} min</p>
                     </div>
                     <AdminStatusBadge status={video.active ? "Active" : "Hidden"} variant={video.active ? "success" : "muted"} />
@@ -1512,7 +1512,7 @@ function BuilderList({
   });
   return (
     <section className="rounded-xl border border-white/10 bg-slate-900/60">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 p-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-white/10 p-4">
         <div className="flex items-center gap-3">
           <Icon className="size-5 text-emerald-400" />
           <h3 className="font-semibold text-white">{title}</h3>

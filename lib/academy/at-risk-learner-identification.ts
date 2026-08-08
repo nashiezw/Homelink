@@ -17,20 +17,13 @@ export interface AtRiskLearner {
 export async function identifyAtRiskLearners(courseId?: string): Promise<AtRiskLearner[]> {
   const prisma = getMainPrisma();
   
-  // Get all active enrollments
-  const enrollments = await prisma.academyLearnerApplication.findMany({
+  // Get all active enrollments using courseEnrolment table
+  const enrollments = await prisma.courseEnrolment.findMany({
     where: {
-      status: "APPROVED",
+      status: "ACTIVE",
       ...(courseId && { courseId }),
     },
     include: {
-      learner: {
-        select: {
-          id: true,
-          name: true,
-          email: true,
-        },
-      },
       course: {
         select: {
           id: true,
@@ -40,13 +33,24 @@ export async function identifyAtRiskLearners(courseId?: string): Promise<AtRiskL
     },
   });
 
+  // Get user details for all agents
+  const agentIds = enrollments.map(e => e.agentId);
+  const users = await prisma.user.findMany({
+    where: { id: { in: agentIds } },
+    select: { id: true, name: true, email: true },
+  });
+  const userMap = new Map(users.map(u => [u.id, u]));
+
   const atRiskLearners: AtRiskLearner[] = [];
 
   for (const enrollment of enrollments) {
-    const analytics = await getLearnerAnalytics(enrollment.learnerId, enrollment.courseId, 30);
-    const engagementScore = await calculateEngagementScore(enrollment.learnerId, enrollment.courseId);
+    const learner = userMap.get(enrollment.agentId);
+    if (!learner) continue;
+
+    const analytics = await getLearnerAnalytics(enrollment.agentId, enrollment.courseId, 30);
+    const engagementScore = await calculateEngagementScore(enrollment.agentId, enrollment.courseId);
     
-    const lastActivity = analytics.length > 0 ? analytics[0].date : enrollment.createdAt;
+    const lastActivity = analytics.length > 0 ? analytics[0].date : enrollment.enrolledAt;
     const daysSinceLastActivity = Math.floor((Date.now() - lastActivity.getTime()) / (1000 * 60 * 60 * 24));
     
     const riskFactors: string[] = [];
@@ -87,9 +91,9 @@ export async function identifyAtRiskLearners(courseId?: string): Promise<AtRiskL
     // Only include if there are risk factors
     if (riskFactors.length > 0) {
       atRiskLearners.push({
-        learnerId: enrollment.learner.id,
-        learnerName: enrollment.learner.name,
-        learnerEmail: enrollment.learner.email,
+        learnerId: learner.id,
+        learnerName: learner.name,
+        learnerEmail: learner.email,
         courseId: enrollment.course.id,
         courseTitle: enrollment.course.title,
         engagementScore,
