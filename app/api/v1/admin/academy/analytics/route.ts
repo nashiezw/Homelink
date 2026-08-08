@@ -171,9 +171,9 @@ export async function GET(request: Request) {
             NULLIF(COUNT(DISTINCT ce."agentId"), 0),
             1
           ) as completion_rate
-        FROM training_courses c
-        LEFT JOIN course_enrolments ce ON c.id = ce."courseId" AND ce.status = 'ACTIVE'
-        LEFT JOIN course_progress cp ON c.id = cp."courseId" AND ce."agentId" = cp."agentId"
+        FROM "training_courses" c
+        LEFT JOIN "course_enrolments" ce ON c.id = ce."courseId" AND ce.status = 'ACTIVE'
+        LEFT JOIN "course_progress" cp ON c.id = cp."courseId" AND ce."agentId" = cp."agentId"
         WHERE c.status = 'PUBLISHED'
         GROUP BY c.id, c.title
         ORDER BY completion_rate DESC NULLS LAST
