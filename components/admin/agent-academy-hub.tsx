@@ -352,7 +352,7 @@ export function AgentAcademyHub() {
 
   useEffect(() => {
     if (tab !== "Analytics") return;
-    void apiFetch<Record<string, unknown>>("/api/v1/admin/academy/analytics").then((result) => {
+    void apiFetch<Record<string, unknown>>("/api/v1/admin/academy/analytics?includeAtRisk=true").then((result) => {
       if (result.data) setAnalytics(result.data);
     });
   }, [tab]);

@@ -226,6 +226,8 @@ export async function GET(request: Request) {
       })
     );
     
+    console.log('Popular courses with titles:', JSON.stringify(popularCoursesWithTitles));
+    
     // Convert BigInt values to numbers in completion rates
     const completionRatesFixed = (completionRates as any[]).map((cr: any) => ({
       courseId: cr.courseId,
@@ -235,6 +237,9 @@ export async function GET(request: Request) {
       avg_progress: cr.avg_progress,
       completion_rate: cr.completion_rate
     }));
+    
+    console.log('Completion rates fixed:', JSON.stringify(completionRatesFixed));
+    console.log('At-risk learners:', JSON.stringify(atRiskLearners));
     
     return ok({
       revenue: {
