@@ -11,7 +11,6 @@ import {
   BookOpen,
   CheckCircle2,
   ClipboardCheck,
-  Clock,
   Copy,
   Download,
   Eye,
@@ -29,18 +28,20 @@ import {
   RotateCcw,
   Search,
   Settings,
-  ShieldCheck,
   Trash2,
   Trophy,
   Upload,
   XCircle,
   Users,
   Ticket,
+  AlertTriangle,
+  Target,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useApp } from "@/components/providers/app-provider";
 import { apiFetch } from "@/lib/api/client";
 import { useSearchParams } from "next/navigation";
+import { AnalyticsDateRangeFilter } from "@/components/admin/analytics-date-range-filter";
 import {
   AdminDataTable,
   AdminConfirmDialog,
@@ -59,14 +60,6 @@ import { AcademyHubNav, resolveAcademyNav, type AcademyPrimaryTab } from "@/comp
 import { EmailTemplatesManagementPanel, BrandingManagementPanel, InstructorsManagementPanel, RefundsManagementPanel } from "@/components/admin/academy/enhancement-panels";
 import { cn } from "@/lib/utils";
 import type { LucideIcon } from "lucide-react";
-import {
-  AGENT_PORTFOLIO_REQUIREMENTS,
-  EXPERT_VIDEO_LIBRARY_PLAN,
-  GRADUATE_OUTCOME_SIGNALS,
-  RECERTIFICATION_REQUIREMENTS,
-  ROLEPLAY_ASSESSMENT_SCENARIOS,
-  SPECIALISATION_TRACKS,
-} from "@/lib/academy/academy-excellence";
 
 type AcademyCoupon = {
   id: string;
@@ -337,6 +330,7 @@ export function AgentAcademyHub() {
   const [selectedAnnouncement, setSelectedAnnouncement] = useState<AcademyData["announcements"][number] | null>(null);
   const [selectedBadge, setSelectedBadge] = useState<AcademyData["badges"][number] | null>(null);
   const [analytics, setAnalytics] = useState<Record<string, unknown> | null>(null);
+  const [selectedCourseForDrilldown, setSelectedCourseForDrilldown] = useState<{ id: string; title: string } | null>(null);
   const [confirm, setConfirm] = useState<{
     title: string;
     description: string;
@@ -656,6 +650,7 @@ export function AgentAcademyHub() {
           onEditCoupon={(coupon) => { setSelectedCoupon(coupon); setDrawer("coupon"); }}
           onResetCoupon={handleResetCoupon}
           onDeleteCoupon={handleDeleteCoupon}
+          setSelectedCourseForDrilldown={setSelectedCourseForDrilldown}
         />
       )}
 
@@ -718,6 +713,45 @@ export function AgentAcademyHub() {
           ? action({ action: "update_badge", badgeId: selectedBadge.id, badge }, "Badge updated.")
           : action({ action: "create_badge", badge }, "Badge created.")}
       />
+      
+      {/* Course Drill-down Drawer */}
+      <AdminDrawer
+        open={!!selectedCourseForDrilldown}
+        onClose={() => setSelectedCourseForDrilldown(null)}
+        title={`Course Analytics: ${selectedCourseForDrilldown?.title || ''}`}
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-slate-400">Detailed analytics for this course will be displayed here.</p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <ActivityPanel title="Enrollment Trends" icon={BarChart3}>
+              <MetricRow label="Total enrolled" value="Loading..." />
+              <MetricRow label="Active learners" value="Loading..." />
+              <MetricRow label="New this month" value="Loading..." />
+            </ActivityPanel>
+            <ActivityPanel title="Completion Metrics" icon={Trophy}>
+              <MetricRow label="Completion rate" value="Loading..." />
+              <MetricRow label="Average score" value="Loading..." />
+              <MetricRow label="Time to complete" value="Loading..." />
+            </ActivityPanel>
+            <ActivityPanel title="Learner Progress" icon={Target}>
+              <MetricRow label="Not started" value="Loading..." />
+              <MetricRow label="In progress" value="Loading..." />
+              <MetricRow label="Completed" value="Loading..." />
+            </ActivityPanel>
+            <ActivityPanel title="Assessment Performance" icon={BookOpen}>
+              <MetricRow label="Quiz pass rate" value="Loading..." />
+              <MetricRow label="Assignment avg" value="Loading..." />
+              <MetricRow label="Exam pass rate" value="Loading..." />
+            </ActivityPanel>
+          </div>
+          <ActivityPanel title="At-Risk Learners in this Course" icon={AlertTriangle}>
+            <p className="text-sm text-slate-400">Loading at-risk learners...</p>
+          </ActivityPanel>
+          <ActivityPanel title="Module Completion Rates" icon={ClipboardCheck}>
+            <p className="text-sm text-slate-400">Loading module data...</p>
+          </ActivityPanel>
+        </div>
+      </AdminDrawer>
       <AdminConfirmDialog
         open={Boolean(confirm)}
         title={confirm?.title ?? ""}
@@ -1074,6 +1108,7 @@ function FeatureWorkbench({
   onEditCoupon,
   onResetCoupon,
   onDeleteCoupon,
+  setSelectedCourseForDrilldown,
 }: {
   tab: AcademyTab;
   data: AcademyData;
@@ -1090,6 +1125,7 @@ function FeatureWorkbench({
   onEditCoupon: (coupon: AcademyCoupon | null) => void;
   onResetCoupon: (coupon: AcademyCoupon) => void;
   onDeleteCoupon: (coupon: AcademyCoupon) => void;
+  setSelectedCourseForDrilldown: (course: { id: string; title: string } | null) => void;
 }) {
   if (tab === "Certificates") {
     return <CertificateManagementPanel certificates={data.certificates} action={action} />;
@@ -1156,97 +1192,95 @@ function FeatureWorkbench({
   }
   if (tab === "Analytics") {
     const revenue = analytics?.revenue as { total?: number; count?: number } | undefined;
-    const insights = data.trainerInsights;
+    const _insights = data.trainerInsights;
+    const popularCourses = analytics?.popularCourses as Array<{ courseId: string; courseTitle: string; _count: number }> | undefined;
+    const completionRates = analytics?.completionRates as Array<{ title: string; enrolled: number; completed: number; completion_rate: number }> | undefined;
+    const _dailyActivity = analytics?.dailyActivity as Array<{ date: Date; actions: number }> | undefined;
+    const atRiskLearners = analytics?.atRiskLearners as Array<{ learnerId: string; learnerName: string; learnerEmail: string; riskScore: number; riskFactors: string[] }> | undefined;
+    
     return (
-      <div className="grid gap-4 xl:grid-cols-2">
-        <div className="xl:col-span-2 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-4">
+      <div className="space-y-4">
+        {/* Analytics Header with Date Range Filter */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div>
-            <p className="font-semibold text-white">Trainer intelligence export</p>
-            <p className="mt-1 text-sm text-emerald-100/70">Download learner scores, risk flags, practical reviews, sign-offs, and certificate status for coaching meetings.</p>
+            <h2 className="text-lg font-semibold text-white">Academy Analytics</h2>
+            <p className="text-sm text-slate-400">Last 30 days</p>
           </div>
-          <a href="/api/v1/admin/academy/export" className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-500">
-            <Download className="size-4" /> Export CSV
-          </a>
+          <AnalyticsDateRangeFilter 
+            onRangeChange={(range, preset) => {
+              // For now, just log - will implement actual filtering later
+              console.log('Date range changed:', range, preset);
+            }}
+            defaultPreset="30d"
+          />
         </div>
+        
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-2">
+          <div className="col-span-full sm:col-span-2 lg:col-span-3 xl:col-span-2 flex flex-col sm:flex-row flex-wrap items-center justify-between gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-4">
+            <div className="flex-1 min-w-0">
+              <p className="font-semibold text-white">Trainer intelligence export</p>
+              <p className="mt-1 text-sm text-emerald-100/70">Download learner scores, risk flags, practical reviews, sign-offs, and certificate status for coaching meetings.</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <a href="/api/v1/admin/academy/export?format=csv" className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-500 whitespace-nowrap">
+                <Download className="size-4" /> CSV
+              </a>
+              <a href="/api/v1/admin/academy/export?format=excel" className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-500 whitespace-nowrap">
+                <Download className="size-4" /> Excel
+              </a>
+              <a href="/api/v1/admin/academy/export?format=pdf" className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-red-500 whitespace-nowrap">
+                <Download className="size-4" /> PDF
+              </a>
+            </div>
+          </div>
+        
+        {/* Revenue & Registrations */}
         <ActivityPanel title="Revenue & Registrations" icon={BarChart3}>
           <MetricRow label="Academy revenue" value={`USD ${Number(revenue?.total ?? data.metrics.academyRevenue ?? 0).toFixed(2)}`} />
           <MetricRow label="Paid registrations" value={String(revenue?.count ?? 0)} />
           <MetricRow label="Total registrations" value={String(analytics?.registrations ?? data.metrics.publicLearners ?? 0)} />
           <MetricRow label="Active learners (7d)" value={String(analytics?.activeLearners ?? data.metrics.activeLearners ?? 0)} />
         </ActivityPanel>
+        
+        {/* Completion & Certificates */}
         <ActivityPanel title="Completion & Certificates" icon={Trophy}>
           <MetricRow label="Course completions" value={String(analytics?.completions ?? 0)} />
           <MetricRow label="Certificates issued" value={String(analytics?.certificates ?? data.metrics.certificatesIssued ?? 0)} />
           <MetricRow label="Completion rate" value={`${data.metrics.completionRate ?? 0}%`} />
           <MetricRow label="Average score" value={`${data.metrics.averageScore ?? 0}%`} />
         </ActivityPanel>
-        <ActivityPanel title="Graduate Outcomes" icon={Award}>
-          <MetricRow label="Certified agents" value={String(data.metrics.certifiedAgents ?? 0)} />
-          <MetricRow label="Active listings by certified agents" value={String(data.metrics.certifiedActiveListings ?? 0)} />
-          <MetricRow label="Closed listings by certified agents" value={String(data.metrics.certifiedClosedListings ?? 0)} />
-          <MetricRow label="Outcome signals tracked" value={String(GRADUATE_OUTCOME_SIGNALS.length)} />
-          <MetricRow label="Public credential display" value="Enabled" />
-        </ActivityPanel>
-        <ActivityPanel title="Mentor Sign-Off Standard" icon={ClipboardCheck}>
-          <MetricRow label="Portfolio requirements" value={String(AGENT_PORTFOLIO_REQUIREMENTS.length)} />
-          <MetricRow label="Roleplay scenarios" value={String(ROLEPLAY_ASSESSMENT_SCENARIOS.length)} />
-          <MetricRow label="Certificate rule" value="Reviewed assignments only" />
-          <MetricRow label="Minimum practical grade" value="70%" />
-        </ActivityPanel>
-        <ActivityPanel title="Trainer Risk Signals" icon={ShieldCheck}>
-          <MetricRow label="Low-confidence attempts" value={String(insights?.lowConfidence.length ?? 0)} />
-          <MetricRow label="Repeated quiz failures" value={String(insights?.repeatedFailures.length ?? 0)} />
-          <MetricRow label="Rushed attempts" value={String(insights?.rushedAttempts.length ?? 0)} />
-          <MetricRow label="Practical work risk" value={String(insights?.practicalRisk.length ?? 0)} />
-        </ActivityPanel>
-        <ActivityPanel title="Weak Topics To Coach" icon={BarChart3}>
-          {insights?.weakTopics.length ? insights.weakTopics.map((item) => <MetricRow key={item.topic} label={item.topic} value={item.count} />) : <p className="text-sm text-slate-400">No weak-topic signals captured yet.</p>}
-        </ActivityPanel>
-        <ActivityPanel title="Learners Needing Coaching" icon={Users}>
-          {insights?.repeatedFailures.length ? insights.repeatedFailures.map((item) => (
-            <MetricRow key={`${item.agentId}-${item.quizTitle}`} label={`${item.agentId.slice(0, 8)} - ${item.quizTitle}`} value={`${item.failures} fails`} />
-          )) : <p className="text-sm text-slate-400">No repeated quiz failures yet.</p>}
-        </ActivityPanel>
-        <ActivityPanel title="Confidence Mismatch" icon={BadgeCheck}>
-          {insights?.lowConfidence.length ? insights.lowConfidence.map((item) => (
-            <MetricRow key={item.id} label={`${item.agentId.slice(0, 8)} - ${item.assessmentTitle}`} value={`${item.confidence}, ${item.score}%`} />
-          )) : <p className="text-sm text-slate-400">No low-confidence submissions yet.</p>}
-        </ActivityPanel>
-        <ActivityPanel title="Rushed Quiz Attempts" icon={Clock}>
-          {insights?.rushedAttempts.length ? insights.rushedAttempts.map((item) => (
-            <MetricRow key={item.id} label={`${item.agentId.slice(0, 8)} - ${item.assessmentTitle}`} value={`${item.seconds}s, ${item.score}%`} />
-          )) : <p className="text-sm text-slate-400">No suspiciously fast quiz attempts yet.</p>}
-        </ActivityPanel>
-        <ActivityPanel title="Learner Profile Snapshots" icon={Users}>
-          {data.learnerProfiles?.length ? data.learnerProfiles.slice(0, 8).map((profile) => (
-            <div key={profile.agentId} className="rounded-lg border border-white/10 bg-slate-950/60 p-3">
-              <div className="flex flex-wrap items-start justify-between gap-2">
-                <div>
-                  <p className="text-sm font-semibold text-white">{profile.agentId}</p>
-                  <p className="mt-1 text-xs text-slate-400">{profile.averageProgress}% progress - {profile.averageScore}% average - {profile.reviewedAssignments} reviewed tasks</p>
-                </div>
-                <span className={cn("rounded-full px-2 py-1 text-[10px] font-bold uppercase tracking-wide", profile.riskFlags.length ? "bg-amber-500/15 text-amber-200" : "bg-emerald-500/15 text-emerald-200")}>
-                  {profile.riskFlags.length ? `${profile.riskFlags.length} risk` : "on track"}
-                </span>
-              </div>
-              {!!profile.weakTopics.length && <p className="mt-2 text-xs text-slate-400">Coach: {profile.weakTopics.join(", ")}</p>}
-              <p className="mt-2 text-xs leading-5 text-slate-300">{profile.recommendation}</p>
+        
+        {/* Popular Courses */}
+        <ActivityPanel title="Popular Courses" icon={BookOpen}>
+          {popularCourses?.length ? popularCourses.map((course) => (
+            <div 
+              key={course.courseId} 
+              className="cursor-pointer hover:bg-white/5 rounded p-2 transition"
+              onClick={() => setSelectedCourseForDrilldown({ id: course.courseId, title: course.courseTitle })}
+            >
+              <MetricRow label={course.courseTitle} value={`${course._count} enrolled`} />
             </div>
-          )) : <p className="text-sm text-slate-400">No learner profile signals captured yet.</p>}
+          )) : <p className="text-sm text-slate-400">No course data yet.</p>}
         </ActivityPanel>
-        <ActivityPanel title="Expert Content Pipeline" icon={Film}>
-          {EXPERT_VIDEO_LIBRARY_PLAN.map((item) => (
-            <MetricRow key={item.role} label={item.role} value={item.deliverable} />
-          ))}
+        
+        {/* Course Completion Rates */}
+        <ActivityPanel title="Course Completion Rates" icon={Target}>
+          {completionRates?.length ? completionRates.slice(0, 5).map((rate) => (
+            <MetricRow key={rate.title} label={rate.title} value={`${rate.completion_rate}% (${rate.completed}/${rate.enrolled})`} />
+          )) : <p className="text-sm text-slate-400">No completion data yet.</p>}
         </ActivityPanel>
-        <ActivityPanel title="Specialisation & Recertification" icon={ShieldCheck}>
-          <MetricRow label="Advanced tracks" value={String(SPECIALISATION_TRACKS.length)} />
-          <MetricRow label="Renewal checks" value={String(RECERTIFICATION_REQUIREMENTS.length)} />
-          <MetricRow label="Renewal cadence" value="Annual" />
+        
+        {/* At-Risk Learners */}
+        <ActivityPanel title="At-Risk Learners" icon={AlertTriangle}>
+          {atRiskLearners?.length ? atRiskLearners.slice(0, 5).map((learner) => (
+            <div key={learner.learnerId} className="rounded-lg border border-amber-500/20 bg-amber-500/10 p-2 mb-2">
+              <p className="text-sm font-semibold text-white">{learner.learnerName || learner.learnerEmail}</p>
+              <p className="text-xs text-amber-200">Risk Score: {learner.riskScore}</p>
+              <p className="text-xs text-slate-400">{learner.riskFactors.join(", ")}</p>
+            </div>
+          )) : <p className="text-sm text-slate-400">No at-risk learners identified.</p>}
         </ActivityPanel>
-        <AssignmentReviewQueue submissions={data.assignmentSubmissions ?? []} action={action} />
-        <ActivityPanel title="Most Active Agents" icon={Trophy}>{data.mostActiveAgents.map((item) => <MetricRow key={item.agentId} label={item.agentId} value={item.actions} />)}</ActivityPanel>
-        <ActivityPanel title="Agents Needing Attention" icon={Users}>{data.agentsNeedingAttention.map((item) => <MetricRow key={item.id} label={item.agentId} value={`${item.percentComplete}%`} />)}</ActivityPanel>
+        </div>
       </div>
     );
   }
@@ -1400,7 +1434,7 @@ function CertificateManagementPanel({
   );
 }
 
-function AssignmentReviewQueue({
+function _AssignmentReviewQueue({
   submissions,
   action,
 }: {

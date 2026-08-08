@@ -74,6 +74,7 @@ export async function GET(request: Request) {
       completionRates,
       dailyActivity,
       atRiskLearners,
+      users,
     ] = await Promise.all([
       // Revenue
       prisma.payment.aggregate({
@@ -167,7 +168,29 @@ export async function GET(request: Request) {
       
       // At-risk learners
       includeAtRisk ? identifyAtRiskLearners(courseId || undefined) : Promise.resolve([]),
+      
+      // Fetch all users for name mapping
+      prisma.user.findMany({
+        select: { id: true, name: true, email: true }
+      }),
     ]);
+    
+    // Create user ID to name map
+    const userMap = new Map(users.map(u => [u.id, { name: u.name, email: u.email }]));
+    
+    // Map popular courses to include course titles
+    const popularCoursesWithTitles = await Promise.all(
+      popularCourses.map(async (pc: any) => {
+        const course = await prisma.trainingCourse.findUnique({
+          where: { id: pc.courseId },
+          select: { title: true }
+        });
+        return {
+          ...pc,
+          courseTitle: course?.title || pc.courseId
+        };
+      })
+    );
     
     return ok({
       revenue: {
@@ -186,10 +209,11 @@ export async function GET(request: Request) {
         inProgress: course._count.progress,
         certificates: course._count.certificateIssues,
       })),
-      popularCourses: popularCourses,
+      popularCourses: popularCoursesWithTitles,
       completionRates,
       dailyActivity,
       atRiskLearners,
+      userMap: Object.fromEntries(userMap),
     });
   } catch (error) {
     console.error("Failed to load analytics", error);

@@ -2139,6 +2139,7 @@ export async function getLibraryOperationsSummary() {
       bundle: cartAddGroups.find((row) => row.action === "CART_ADD_BUNDLE")?._count._all ?? 0,
     };
     const productTitles = new Map(products.map((product) => [product.id, product.title]));
+    
     const reports = buildLibraryAdminReports({
       orders,
       products,

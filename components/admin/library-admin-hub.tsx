@@ -3731,6 +3731,10 @@ function LibraryTabManagement({
   if (view === "Analytics") {
     const bundlePairs = operations.reports.bundlePairPerformance ?? [];
     const formatMix = operations.reports.bundleFormatMix ?? [];
+    const stockAlerts = operations.reports.stockAlerts ?? [];
+    const downloadLogs = operations.reports.downloadLogs ?? [];
+    const customerSegments = operations.reports.customerSegments ?? [];
+    
     return (
       <div className="grid gap-5">
         <SiteAnalyticsPanel />
@@ -3738,25 +3742,122 @@ function LibraryTabManagement({
           { label: "Revenue", value: `USD ${analytics.revenue.toFixed(2)}`, detail: `${analytics.orders} orders` },
           { label: "Visitors", value: analytics.visitors, detail: `${analytics.conversionRate}% conversion` },
           { label: "Bundle adds", value: formatMix.reduce((sum, row) => sum + row.value, 0) ? bundlePairs.reduce((sum, row) => sum + row.value, 0) : (operations.reports.scorecards.find((row) => row.label === "Bundle cart adds")?.value ?? 0), detail: "FBT cart events" },
+          { label: "Avg Order Value", value: `USD ${analytics.averageOrderValue.toFixed(2)}`, detail: "Per order" },
+          { label: "Active Customers", value: analytics.activeCustomers, detail: "Last 30 days" },
+          { label: "Avg Rating", value: `${analytics.averageRating.toFixed(1)}/5`, detail: "Customer satisfaction" },
         ]} />
-        <div className="grid gap-5 xl:grid-cols-2">
-          <div>
+        <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-2">
+          <div className="sm:col-span-2 xl:col-span-1">
             <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-300">Revenue trend</h3>
             <div className="mt-3"><BarChart data={operations.reports.revenueTrend.length ? operations.reports.revenueTrend : analytics.salesTrend} /></div>
           </div>
-          <div>
+          <div className="sm:col-span-2 xl:col-span-1">
             <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-300">Marketplace funnel</h3>
             <div className="mt-3"><BarChart data={operations.reports.funnel} color="bg-cyan-500" /></div>
           </div>
-          <div>
+          <div className="sm:col-span-2 xl:col-span-1">
             <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-300">FBT pair performance</h3>
             <div className="mt-3"><BarChart data={bundlePairs.map((row) => ({ label: row.label, value: row.value }))} color="bg-emerald-500" /></div>
           </div>
-          <div>
+          <div className="sm:col-span-2 xl:col-span-1">
             <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-300">Bundle digital vs print mix</h3>
             <div className="mt-3"><DonutChart data={formatMix} /></div>
           </div>
         </div>
+        
+        {/* Top Categories */}
+        <div className="rounded-xl border border-white/10 bg-slate-950/60 p-4">
+          <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-300">Top Categories</h3>
+          <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {analytics.topCategories.slice(0, 6).map((cat) => (
+              <div key={cat.label} className="flex items-center justify-between rounded-lg border border-white/10 bg-slate-900/60 p-3">
+                <span className="text-sm font-medium text-white">{cat.label}</span>
+                <span className="text-sm text-slate-400">{cat.value} products</span>
+              </div>
+            ))}
+          </div>
+        </div>
+        
+        {/* Most Downloaded */}
+        <div className="rounded-xl border border-white/10 bg-slate-950/60 p-4">
+          <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-300">Most Downloaded Products</h3>
+          <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {analytics.mostDownloaded.slice(0, 6).map((product) => (
+              <div key={product.label} className="flex items-center justify-between rounded-lg border border-white/10 bg-slate-900/60 p-3">
+                <span className="text-sm font-medium text-white truncate">{product.label}</span>
+                <span className="text-sm text-slate-400">{product.value} downloads</span>
+              </div>
+            ))}
+          </div>
+        </div>
+        
+        {/* Most Viewed */}
+        <div className="rounded-xl border border-white/10 bg-slate-950/60 p-4">
+          <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-300">Most Viewed Products</h3>
+          <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {analytics.mostViewed.slice(0, 6).map((product) => (
+              <div key={product.label} className="flex items-center justify-between rounded-lg border border-white/10 bg-slate-900/60 p-3">
+                <span className="text-sm font-medium text-white truncate">{product.label}</span>
+                <span className="text-sm text-slate-400">{product.value} views</span>
+              </div>
+            ))}
+          </div>
+        </div>
+        
+        {/* Stock Alerts */}
+        {stockAlerts.length > 0 && (
+          <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-4">
+            <h3 className="text-sm font-semibold uppercase tracking-wider text-amber-200">Stock Alerts</h3>
+            <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {stockAlerts.slice(0, 6).map((alert) => (
+                <div key={alert.id} className="flex items-center justify-between rounded-lg border border-amber-500/20 bg-amber-500/5 p-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-white truncate">{alert.title}</p>
+                    <p className="text-xs text-amber-200">{alert.state} - {alert.stock} left</p>
+                  </div>
+                  <span className="text-xs text-slate-400">{alert.warehouse}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        
+        {/* Recent Downloads */}
+        {downloadLogs.length > 0 && (
+          <div className="rounded-xl border border-white/10 bg-slate-950/60 p-4">
+            <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-300">Recent Downloads</h3>
+            <div className="mt-3 space-y-2">
+              {downloadLogs.slice(0, 5).map((log) => (
+                <div key={log.id} className="flex items-center justify-between rounded-lg border border-white/10 bg-slate-900/60 p-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-white truncate">{log.customer}</p>
+                    <p className="text-xs text-slate-400 truncate">{log.product} - {log.file}</p>
+                  </div>
+                  <span className="text-xs text-slate-400 whitespace-nowrap">{log.usage}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        
+        {/* Customer Segments */}
+        {customerSegments.length > 0 && (
+          <div className="rounded-xl border border-white/10 bg-slate-950/60 p-4">
+            <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-300">Customer Segments</h3>
+            <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {customerSegments.slice(0, 6).map((segment) => (
+                <div key={segment.id} className="flex items-center justify-between rounded-lg border border-white/10 bg-slate-900/60 p-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-white truncate">{segment.name}</p>
+                    <p className="text-xs text-slate-400">{segment.segment}</p>
+                  </div>
+                  <span className="text-sm text-slate-400 whitespace-nowrap">USD {segment.spend.toFixed(2)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        
         <AdminDataTable
           rows={bundlePairs.map((row, index) => ({ id: `bundle-pair-${index}`, ...row }))}
           emptyMessage="No frequently-bought-together cart adds yet."

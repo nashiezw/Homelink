@@ -1,11 +1,16 @@
 import { requireAdminAsync } from "@/lib/admin/require-admin";
 import { getMainPrisma } from "@/lib/db/main-prisma";
+import * as XLSX from 'xlsx';
+import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
   const auth = await requireAdminAsync(request);
   if ("error" in auth && auth.error) return auth.error;
+
+  const url = new URL(request.url);
+  const format = url.searchParams.get("format") || "csv";
 
   const prisma = getMainPrisma();
   const [enrolments, courseProgress, quizAttempts, examAttempts, assignmentSubmissions, certificates] = await Promise.all([
@@ -105,13 +110,122 @@ export async function GET(request: Request) {
   ];
 
   const headers = ["recordType", "agentId", "course", "assessment", "status", "score", "riskSignals", "weakTopics", "mentorSignoff", "certificateNumber", "occurredAt"];
-  const csv = [headers.join(","), ...rows.map((row) => headers.map((header) => csvCell(row[header as keyof typeof row])).join(","))].join("\n");
-  const filename = `houselink-academy-trainer-export-${new Date().toISOString().slice(0, 10)}.csv`;
+  const filename = `houselink-academy-trainer-export-${new Date().toISOString().slice(0, 10)}`;
 
+  if (format === "excel" || format === "xlsx") {
+    return generateExcelExport(rows, headers, filename);
+  }
+
+  if (format === "pdf") {
+    return generatePdfExport(rows, headers, filename);
+  }
+
+  // Default to CSV
+  const csv = [headers.join(","), ...rows.map((row) => headers.map((header) => csvCell(row[header as keyof typeof row])).join(","))].join("\n");
   return new Response(csv, {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
-      "Content-Disposition": `attachment; filename="${filename}"`,
+      "Content-Disposition": `attachment; filename="${filename}.csv"`,
+    },
+  });
+}
+
+async function generateExcelExport(rows: Array<Record<string, unknown>>, headers: string[], filename: string) {
+  const worksheet = XLSX.utils.json_to_sheet(rows.map(row => {
+    const newRow: Record<string, string> = {};
+    headers.forEach(header => {
+      newRow[header] = String(row[header] ?? "");
+    });
+    return newRow;
+  }));
+
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Academy Data");
+
+  const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+  
+  return new Response(excelBuffer, {
+    headers: {
+      "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "Content-Disposition": `attachment; filename="${filename}.xlsx"`,
+    },
+  });
+}
+
+async function generatePdfExport(rows: Array<Record<string, unknown>>, headers: string[], filename: string) {
+  const pdfDoc = await PDFDocument.create();
+  const page = pdfDoc.addPage();
+  const { height } = page.getSize();
+  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+
+  let y = height - 50;
+  const margin = 50;
+  const lineHeight = 14;
+  const colWidth = (page.getWidth() - 2 * margin) / headers.length;
+
+  // Title
+  page.drawText("HouseLink Academy Trainer Export", {
+    x: margin,
+    y,
+    size: 18,
+    font: boldFont,
+    color: rgb(0, 0, 0),
+  });
+  y -= 30;
+
+  // Headers
+  headers.forEach((header, i) => {
+    page.drawText(header, {
+      x: margin + i * colWidth,
+      y,
+      size: 10,
+      font: boldFont,
+      color: rgb(0, 0, 0),
+    });
+  });
+  y -= lineHeight;
+
+  // Data rows
+  for (const row of rows) {
+    if (y < 50) {
+      // Add new page if we run out of space
+      page.drawText("(continued on next page)", { x: margin, y, size: 9, font, color: rgb(0.5, 0.5, 0.5) });
+      const newPage = pdfDoc.addPage();
+      y = newPage.getHeight() - 50;
+      
+      // Repeat headers on new page
+      headers.forEach((header, i) => {
+        newPage.drawText(header, {
+          x: margin + i * colWidth,
+          y,
+          size: 10,
+          font: boldFont,
+          color: rgb(0, 0, 0),
+        });
+      });
+      y -= lineHeight;
+    }
+
+    headers.forEach((header, i) => {
+      const value = String(row[header as keyof typeof row] ?? "").substring(0, 20);
+      page.drawText(value, {
+        x: margin + i * colWidth,
+        y,
+        size: 8,
+        font,
+        color: rgb(0, 0, 0),
+      });
+    });
+    y -= lineHeight;
+  }
+
+  const pdfBytes = await pdfDoc.save();
+  
+  return new Response(Buffer.from(pdfBytes), {
+    headers: {
+      "Content-Type": "application/pdf",
+      "Content-Disposition": `attachment; filename="${filename}.pdf"`,
     },
   });
 }
