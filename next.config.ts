@@ -11,6 +11,10 @@ const nextConfig: NextConfig = {
           { key: "X-DNS-Prefetch-Control", value: "on" },
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          {
+            key: "Content-Security-Policy",
+            value: "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline' *.vercel-scripts.com; style-src 'self' 'unsafe-inline' *.googleapis.com; img-src 'self' data: blob: *.unsplash.com *.cloudinary.com; font-src 'self' *.googleapis.com *.gstatic.com; connect-src 'self' *.vercel.app *.houselink.co.zw; frame-src 'self' *.youtube.com *.vimeo.com;"
+          },
         ],
       },
       {
