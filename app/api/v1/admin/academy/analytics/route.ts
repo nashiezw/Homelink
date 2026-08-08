@@ -184,7 +184,7 @@ export async function GET(request: Request) {
         SELECT 
           DATE("createdAt") as date,
           COUNT(*) as actions
-        FROM audit_logs
+        FROM "AuditEvent"
         WHERE "createdAt" >= ${startDate}
         GROUP BY DATE("createdAt")
         ORDER BY date DESC
