@@ -1448,10 +1448,10 @@ function FeatureWorkbench({
                   </div>
                   <span className={cn(
                     "text-sm font-semibold sm:ml-2",
-                    rate.completion_rate >= 70 ? "text-emerald-400" :
-                    rate.completion_rate >= 40 ? "text-amber-400" : "text-red-400"
+                    Number(rate.completion_rate) >= 70 ? "text-emerald-400" :
+                    Number(rate.completion_rate) >= 40 ? "text-amber-400" : "text-red-400"
                   )}>
-                    {rate.completion_rate?.toFixed(1) || 0}%
+                    {Number(rate.completion_rate || 0).toFixed(1)}%
                   </span>
                 </div>
               ))}
