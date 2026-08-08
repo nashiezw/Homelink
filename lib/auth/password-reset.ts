@@ -129,7 +129,9 @@ export async function applyPasswordReset(token: string, password: string): Promi
 }
 
 async function sendPasswordResetEmail(email: string, name: string, resetUrl: string) {
+  console.log('Sending password reset email to:', email);
   const settings = await getHydratedRuntimePlatformSettings();
+  console.log('SMTP settings configured:', !!settings.integrations.smtpHost, !!settings.integrations.smtpUser, !!settings.integrations.smtpPass);
   const body = [
     `Hi ${name || "there"},`,
     "We received a request to reset your HouseLink password.",
@@ -137,6 +139,7 @@ async function sendPasswordResetEmail(email: string, name: string, resetUrl: str
     `This link expires in ${RESET_TTL_MINUTES} minutes. If you did not request this, you can safely ignore this email.`,
   ].join("\n\n");
   const result = await sendSmtpPlainEmail(settings.integrations, email, "Reset your HouseLink password", body);
+  console.log('Password reset email result:', result);
   return result.ok;
 }
 
