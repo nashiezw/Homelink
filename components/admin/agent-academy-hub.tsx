@@ -1343,6 +1343,17 @@ function FeatureWorkbench({
       const _dailyActivity = analytics?.dailyActivity as Array<{ date: Date; actions: number }> | undefined;
       const atRiskLearners = analytics?.atRiskLearners as Array<{ learnerId: string; learnerName: string; learnerEmail: string; riskScore: number; riskFactors?: string[] }> | undefined;
       
+      console.log('Analytics data check:', {
+        hasAnalytics: !!analytics,
+        hasRevenue: !!revenue,
+        hasPopularCourses: !!popularCourses,
+        popularCoursesCount: popularCourses?.length,
+        hasCompletionRates: !!completionRates,
+        completionRatesCount: completionRates?.length,
+        hasAtRiskLearners: !!atRiskLearners,
+        atRiskLearnersCount: atRiskLearners?.length
+      });
+      
       if (!analytics) {
         return (
           <div className="space-y-4">
