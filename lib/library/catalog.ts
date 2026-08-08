@@ -858,6 +858,14 @@ export type LibraryAnalytics = {
   mostViewed: Array<{ label: string; value: number }>;
   salesTrend: Array<{ label: string; value: number }>;
   stockLevels: Array<{ label: string; value: number }>;
+  // Advanced metrics
+  averageOrderValue: number;
+  customerLifetimeValue: number;
+  repeatPurchaseRate: number;
+  averageRating: number;
+  inventoryTurnover: number;
+  activeCustomers: number;
+  totalCustomers: number;
 };
 
 export const LIBRARY_PRODUCTS: LibraryProduct[] = [];
@@ -927,6 +935,14 @@ export function getLibraryAnalytics(): LibraryAnalytics {
     mostViewed: [],
     salesTrend: [],
     stockLevels: [],
+    // Advanced metrics
+    averageOrderValue: 0,
+    customerLifetimeValue: 0,
+    repeatPurchaseRate: 0,
+    averageRating: 0,
+    inventoryTurnover: 0,
+    activeCustomers: 0,
+    totalCustomers: 0,
   };
 }
 

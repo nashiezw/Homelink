@@ -2,7 +2,14 @@ import { requireAdminAsync } from "@/lib/admin/require-admin";
 import { ok, problem } from "@/lib/api/response";
 import { getMainPrisma } from "@/lib/db/main-prisma";
 import { identifyAtRiskLearners } from "@/lib/academy/at-risk-learner-identification";
-import { getCourseAnalytics } from "@/lib/academy/learner-analytics-repository";
+import {
+  getStudentProgressAnalytics,
+  getCourseWideAnalytics,
+  getAssessmentPerformanceAnalytics,
+  getAtRiskStudents,
+  getStudentActivityLog,
+  getComparativeAnalytics
+} from "@/lib/academy/analytics-repository";
 
 export const dynamic = "force-dynamic";
 
@@ -13,15 +20,49 @@ export async function GET(request: Request) {
   const prisma = getMainPrisma();
   const { searchParams } = new URL(request.url);
   const period = searchParams.get("period") || "30"; // days
+  const type = searchParams.get("type") || "overview"; // overview, student, course, assessment, at-risk, activity, comparative
   
   try {
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - parseInt(period));
     
-    const { searchParams } = new URL(request.url);
     const courseId = searchParams.get("courseId");
+    const studentId = searchParams.get("studentId");
     const includeAtRisk = searchParams.get("includeAtRisk") === "true";
     
+    // Handle different analytics types
+    if (type === "student" && studentId) {
+      const studentAnalytics = await getStudentProgressAnalytics(studentId);
+      return ok(studentAnalytics);
+    }
+    
+    if (type === "course" && courseId) {
+      const courseAnalytics = await getCourseWideAnalytics(courseId);
+      return ok(courseAnalytics);
+    }
+    
+    if (type === "assessment" && courseId) {
+      const assessmentAnalytics = await getAssessmentPerformanceAnalytics(courseId);
+      return ok(assessmentAnalytics);
+    }
+    
+    if (type === "at-risk") {
+      const atRiskStudents = await getAtRiskStudents(courseId || undefined);
+      return ok(atRiskStudents);
+    }
+    
+    if (type === "activity" && studentId) {
+      const limit = parseInt(searchParams.get("limit") || "50");
+      const activityLog = await getStudentActivityLog(studentId, limit);
+      return ok(activityLog);
+    }
+    
+    if (type === "comparative" && courseId) {
+      const comparativeAnalytics = await getComparativeAnalytics(courseId, parseInt(period));
+      return ok(comparativeAnalytics);
+    }
+    
+    // Default overview analytics
     const [
       totalRevenue,
       totalRegistrations,
@@ -33,7 +74,6 @@ export async function GET(request: Request) {
       completionRates,
       dailyActivity,
       atRiskLearners,
-      courseEngagement,
     ] = await Promise.all([
       // Revenue
       prisma.payment.aggregate({
@@ -127,9 +167,6 @@ export async function GET(request: Request) {
       
       // At-risk learners
       includeAtRisk ? identifyAtRiskLearners(courseId || undefined) : Promise.resolve([]),
-      
-      // Course engagement analytics
-      courseId ? getCourseAnalytics(courseId, parseInt(period)) : Promise.resolve(null),
     ]);
     
     return ok({
@@ -153,7 +190,6 @@ export async function GET(request: Request) {
       completionRates,
       dailyActivity,
       atRiskLearners,
-      courseEngagement,
     });
   } catch (error) {
     console.error("Failed to load analytics", error);

@@ -1232,7 +1232,7 @@ export function LibraryProductPage({
                   </p>
                   {!user ? (
                     <div className="mt-3">
-                      <Link href={`/login?next=${encodeURIComponent(`/library/${product.slug}`)}`} className="inline-flex">
+                      <Link href={`/auth?next=${encodeURIComponent(`/library/${product.slug}`)}`} className="inline-flex">
                         <Button>Sign in to review</Button>
                       </Link>
                       {reviewNotice && <p className="mt-2 text-sm font-semibold text-slate-600 dark:text-slate-300">{reviewNotice}</p>}

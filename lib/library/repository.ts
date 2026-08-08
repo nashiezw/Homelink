@@ -426,10 +426,11 @@ export async function getLibraryAnalytics(): Promise<LibraryAnalytics> {
   try {
     await seedLibraryIfEmpty();
     const prisma = getMainPrisma();
-    const [orders, products, downloads] = await Promise.all([
-      prisma.libraryOrder.findMany({ include: { items: true } }),
+    const [orders, products, downloads, reviews] = await Promise.all([
+      prisma.libraryOrder.findMany({ include: { items: true, customer: true } }),
       prisma.libraryProduct.findMany({ include: { category: true } }),
       prisma.libraryDownloadAccess.count(),
+      prisma.libraryReview.findMany()
     ]);
   const paidOrders = orders.filter((order) => order.status === "PAID" || order.status === "FULFILLED");
   const revenue = paidOrders.reduce((sum, order) => sum + Number(order.total), 0);
@@ -441,6 +442,27 @@ export async function getLibraryAnalytics(): Promise<LibraryAnalytics> {
   const visitors = products.reduce((sum, product) => sum + product.viewCount, 0);
   const categories = new Map<string, number>();
   products.forEach((product) => categories.set(product.category?.name ?? "Uncategorised", (categories.get(product.category?.name ?? "Uncategorised") ?? 0) + 1));
+  
+  // Advanced metrics
+  const averageOrderValue = paidOrders.length > 0 ? revenue / paidOrders.length : 0;
+  
+  // Customer satisfaction (from reviews)
+  const averageRating = reviews.length > 0 
+    ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length 
+    : 0;
+  
+  // Inventory turnover (simplified)
+  const totalStock = products.reduce((sum, p) => sum + (p.stock || 0), 0);
+  const totalSold = products.reduce((sum, p) => sum + p.downloadCount, 0);
+  const inventoryTurnover = totalStock > 0 ? totalSold / totalStock : 0;
+  
+  // Active customers (purchased in last 30 days)
+  const activeCustomers = new Set(
+    paidOrders
+      .filter(order => order.createdAt.getTime() >= monthAgo)
+      .map(order => order.customerId)
+  ).size;
+  
     return {
     todaySales: revenueSince(startOfDay),
     weeklySales: revenueSince(weekAgo),
@@ -456,6 +478,14 @@ export async function getLibraryAnalytics(): Promise<LibraryAnalytics> {
     mostViewed: [...products].sort((a, b) => b.viewCount - a.viewCount).slice(0, 5).map((p) => ({ label: p.title, value: p.viewCount })),
     salesTrend: buildSalesTrend(paidOrders),
     stockLevels: products.filter((p) => p.stock !== null).map((p) => ({ label: p.title, value: p.stock ?? 0 })),
+    // Advanced metrics
+    averageOrderValue,
+    customerLifetimeValue: 0, // Not available without customer model
+    repeatPurchaseRate: 0, // Not available without customer model
+    averageRating,
+    inventoryTurnover,
+    activeCustomers,
+    totalCustomers: 0, // Not available without customer model
     };
   } catch {
     return getEmptyLibraryAnalytics();

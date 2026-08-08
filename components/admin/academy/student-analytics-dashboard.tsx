@@ -1,0 +1,458 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import {
+  BarChart3,
+  Users,
+  AlertTriangle,
+  Download,
+  Filter,
+  Search,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { apiFetch } from "@/lib/api/client";
+import { AdminStatPill, AdminStatusBadge } from "@/components/admin/ui/admin-ui";
+
+type StudentProgressAnalytics = {
+  studentId: string;
+  studentName: string;
+  studentEmail: string;
+  enrolledCourses: number;
+  completedCourses: number;
+  inProgressCourses: number;
+  averageCompletionRate: number;
+  totalLearningMinutes: number;
+  lastActivityDate: Date | null;
+  enrollmentDate: Date | null;
+  courses: CourseProgressDetail[];
+};
+
+type CourseProgressDetail = {
+  courseId: string;
+  courseTitle: string;
+  enrollmentDate: Date;
+  status: string;
+  completionPercentage: number;
+  learningMinutes: number;
+  averageScore: number;
+  completedAt: Date | null;
+  lastActivityDate: Date | null;
+  modulesCompleted: number;
+  totalModules: number;
+  lessonsCompleted: number;
+  totalLessons: number;
+  currentLesson: string | null;
+  timeSpentPerLesson: number;
+  estimatedCompletionDate: Date | null;
+};
+
+type AtRiskStudent = {
+  studentId: string;
+  studentName: string;
+  studentEmail: string;
+  courseId: string;
+  courseTitle: string;
+  riskType: "INACTIVE" | "STRUGGLING" | "STUCK" | "BEHIND_SCHEDULE";
+  riskLevel: "HIGH" | "MEDIUM" | "LOW";
+  riskDescription: string;
+  lastActivityDate: Date | null;
+  daysSinceLastActivity: number | null;
+  consecutiveFailures: number;
+  currentLesson: string | null;
+  timeOnCurrentLesson: number;
+  progressPercentage: number;
+  expectedProgress: number;
+  interventionRecommended: boolean;
+  interventionActions: string[];
+};
+
+export function StudentAnalyticsDashboard() {
+  const [view, setView] = useState<"overview" | "student" | "at-risk">("overview");
+  const [loading, setLoading] = useState(true);
+  const [studentAnalytics, setStudentAnalytics] = useState<StudentProgressAnalytics | null>(null);
+  const [atRiskStudents, setAtRiskStudents] = useState<AtRiskStudent[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  useEffect(() => {
+    loadOverviewData();
+  }, []);
+
+  const loadOverviewData = async () => {
+    setLoading(true);
+    try {
+      const response = await apiFetch<{ atRiskLearners: AtRiskStudent[] }>("/api/v1/admin/academy/analytics?includeAtRisk=true");
+      if (response.data) {
+        setAtRiskStudents(response.data.atRiskLearners || []);
+      }
+    } catch (error) {
+      console.error("Failed to load overview data:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadStudentAnalytics = async (studentId: string) => {
+    setLoading(true);
+    try {
+      const response = await apiFetch<StudentProgressAnalytics>(`/api/v1/admin/academy/analytics?type=student&studentId=${studentId}`);
+      if (response.data) {
+        setStudentAnalytics(response.data);
+      }
+    } catch (error) {
+      console.error("Failed to load student analytics:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
+  const loadAtRiskStudents = async (courseId?: string) => {
+    setLoading(true);
+    try {
+      const url = courseId 
+        ? `/api/v1/admin/academy/analytics?type=at-risk&courseId=${courseId}`
+        : "/api/v1/admin/academy/analytics?type=at-risk";
+      const response = await apiFetch<AtRiskStudent[]>(url);
+      if (response.data) {
+        setAtRiskStudents(response.data);
+      }
+    } catch (error) {
+      console.error("Failed to load at-risk students:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredAtRiskStudents = atRiskStudents.filter(student =>
+    student.studentName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    student.studentEmail.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    student.courseTitle.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  if (loading) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <div className="text-center">
+          <div className="mx-auto mb-4 size-12 animate-spin rounded-full border-4 border-emerald-500 border-t-transparent" />
+          <p className="text-slate-400">Loading analytics...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col items-start justify-between gap-4 lg:flex-row">
+        <div>
+          <h2 className="text-2xl font-bold text-white">Student Progress Analytics</h2>
+          <p className="mt-1 text-sm text-slate-400">Comprehensive learner performance tracking and insights</p>
+        </div>
+        <div className="flex gap-2">
+          <Button
+            variant={view === "overview" ? "primary" : "secondary"}
+            onClick={() => setView("overview")}
+          >
+            <BarChart3 className="mr-2 size-4" />
+            Overview
+          </Button>
+          <Button
+            variant={view === "student" ? "primary" : "secondary"}
+            onClick={() => setView("student")}
+          >
+            <Users className="mr-2 size-4" />
+            Student View
+          </Button>
+          <Button
+            variant={view === "at-risk" ? "primary" : "secondary"}
+            onClick={() => {
+              setView("at-risk");
+              loadAtRiskStudents();
+            }}
+          >
+            <AlertTriangle className="mr-2 size-4" />
+            At-Risk Students
+          </Button>
+        </div>
+      </div>
+
+      {/* Overview View */}
+      {view === "overview" && (
+        <div className="space-y-6">
+          {/* Quick Stats */}
+          <div className="grid gap-4 md:grid-cols-4">
+            <AdminStatPill
+              label="At-Risk Students"
+              value={String(atRiskStudents.length)}
+              tone={atRiskStudents.length > 10 ? "danger" : "warning"}
+            />
+            <AdminStatPill
+              label="High Risk"
+              value={String(atRiskStudents.filter(s => s.riskLevel === "HIGH").length)}
+              tone="danger"
+            />
+            <AdminStatPill
+              label="Medium Risk"
+              value={String(atRiskStudents.filter(s => s.riskLevel === "MEDIUM").length)}
+              tone="warning"
+            />
+            <AdminStatPill
+              label="Low Risk"
+              value={String(atRiskStudents.filter(s => s.riskLevel === "LOW").length)}
+              tone="success"
+            />
+          </div>
+
+          {/* At-Risk Students Summary */}
+          <div className="rounded-xl border border-white/10 bg-slate-900/60 p-6">
+            <h3 className="mb-4 text-lg font-bold text-white flex items-center gap-2">
+              <AlertTriangle className="size-5 text-amber-500" />
+              At-Risk Students Overview
+            </h3>
+            <div className="space-y-4">
+              {atRiskStudents.slice(0, 5).map(student => (
+                <div
+                  key={student.studentId}
+                  className="flex items-center justify-between rounded-lg border border-white/5 bg-slate-800/50 p-4"
+                >
+                  <div className="flex-1">
+                    <p className="font-semibold text-white">{student.studentName}</p>
+                    <p className="text-sm text-slate-400">{student.studentEmail}</p>
+                    <p className="mt-1 text-xs text-slate-500">{student.courseTitle}</p>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <div className="text-right">
+                      <p className="text-sm font-medium text-white">{student.riskType.replace(/_/g, " ")}</p>
+                      <AdminStatusBadge
+                        status={student.riskLevel}
+                        variant={student.riskLevel === "HIGH" ? "danger" : student.riskLevel === "MEDIUM" ? "warning" : "success"}
+                      />
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="secondary"
+                        onClick={() => {
+                          loadStudentAnalytics(student.studentId);
+                          setView("student");
+                        }}
+                      >
+                        View Details
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {atRiskStudents.length === 0 && (
+                <p className="text-center text-slate-400">No at-risk students identified</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Student View */}
+      {view === "student" && (
+        <div className="space-y-6">
+          <div className="flex gap-4">
+            <input
+              type="text"
+              placeholder="Search by student name or email..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="flex-1 rounded-lg border border-white/10 bg-slate-900 px-4 py-2 text-white"
+            />
+            <Button variant="secondary">
+              <Search className="mr-2 size-4" />
+              Search
+            </Button>
+          </div>
+
+          {studentAnalytics ? (
+            <StudentDetailView analytics={studentAnalytics} />
+          ) : (
+            <div className="rounded-xl border border-white/10 bg-slate-900/60 p-8 text-center">
+              <Users className="mx-auto mb-4 size-12 text-slate-500" />
+              <p className="text-slate-400">Select a student to view detailed analytics</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* At-Risk View */}
+      {view === "at-risk" && (
+        <div className="space-y-6">
+          <div className="flex gap-4">
+            <input
+              type="text"
+              placeholder="Search by student name, email, or course..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="flex-1 rounded-lg border border-white/10 bg-slate-900 px-4 py-2 text-white"
+            />
+            <Button variant="secondary">
+              <Search className="mr-2 size-4" />
+              Search
+            </Button>
+            <Button variant="secondary">
+              <Filter className="mr-2 size-4" />
+              Filter
+            </Button>
+          </div>
+
+          <div className="space-y-4">
+            {filteredAtRiskStudents.map(student => (
+              <AtRiskStudentCard
+                key={student.studentId}
+                student={student}
+                onViewDetails={() => loadStudentAnalytics(student.studentId)}
+              />
+            ))}
+            {filteredAtRiskStudents.length === 0 && (
+              <div className="rounded-xl border border-white/10 bg-slate-900/60 p-8 text-center">
+                <AlertTriangle className="mx-auto mb-4 size-12 text-slate-500" />
+                <p className="text-slate-400">No at-risk students found</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function StudentDetailView({ analytics }: { analytics: StudentProgressAnalytics }) {
+  return (
+    <div className="space-y-6">
+      {/* Student Overview */}
+      <div className="rounded-xl border border-white/10 bg-slate-900/60 p-6">
+        <div className="flex items-start justify-between">
+          <div>
+            <h3 className="text-2xl font-bold text-white">{analytics.studentName}</h3>
+            <p className="text-slate-400">{analytics.studentEmail}</p>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="secondary">
+              <Download className="mr-2 size-4" />
+              Export Report
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Progress Stats */}
+      <div className="grid gap-4 md:grid-cols-4">
+        <AdminStatPill label="Enrolled Courses" value={String(analytics.enrolledCourses)} />
+        <AdminStatPill label="Completed Courses" value={String(analytics.completedCourses)} />
+        <AdminStatPill label="In Progress" value={String(analytics.inProgressCourses)} />
+        <AdminStatPill label="Learning Hours" value={`${Math.floor(analytics.totalLearningMinutes / 60)}h`} />
+      </div>
+
+      {/* Course Progress Details */}
+      <div className="rounded-xl border border-white/10 bg-slate-900/60 p-6">
+        <h3 className="mb-4 text-lg font-bold text-white">Course Progress Details</h3>
+        <div className="space-y-4">
+          {analytics.courses.map(course => (
+            <div key={course.courseId} className="rounded-lg border border-white/5 bg-slate-800/50 p-4">
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <p className="font-semibold text-white">{course.courseTitle}</p>
+                  <p className="text-sm text-slate-400">Enrolled: {new Date(course.enrollmentDate).toLocaleDateString()}</p>
+                </div>
+                <AdminStatusBadge status={course.status} variant={course.status === "COMPLETED" ? "success" : "warning"} />
+              </div>
+              <div className="grid gap-4 md:grid-cols-3">
+                <div>
+                  <p className="text-xs text-slate-500">Completion</p>
+                  <p className="text-lg font-bold text-white">{course.completionPercentage}%</p>
+                  <div className="mt-1 h-2 rounded-full bg-slate-700">
+                    <div
+                      className="h-2 rounded-full bg-emerald-500"
+                      style={{ width: `${course.completionPercentage}%` }}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500">Progress</p>
+                  <p className="text-lg font-bold text-white">{course.lessonsCompleted}/{course.totalLessons} lessons</p>
+                  <p className="text-xs text-slate-400">{course.modulesCompleted}/{course.totalModules} modules</p>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500">Time Spent</p>
+                  <p className="text-lg font-bold text-white">{Math.floor(course.learningMinutes / 60)}h</p>
+                  <p className="text-xs text-slate-400">{Math.floor(course.timeSpentPerLesson)}min/lesson avg</p>
+                </div>
+              </div>
+              {course.currentLesson && (
+                <div className="mt-3 pt-3 border-t border-white/5">
+                  <p className="text-xs text-slate-500">Current Lesson</p>
+                  <p className="text-sm font-medium text-white">{course.currentLesson}</p>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AtRiskStudentCard({ student, onViewDetails }: { student: AtRiskStudent; onViewDetails: () => void }) {
+  const riskColors = {
+    HIGH: "border-red-500/50 bg-red-500/10",
+    MEDIUM: "border-orange-500/50 bg-orange-500/10",
+    LOW: "border-amber-500/50 bg-amber-500/10",
+  };
+
+  const riskBadgeColors = {
+    HIGH: "danger",
+    MEDIUM: "warning",
+    LOW: "success",
+  } as const;
+
+  return (
+    <div className={`rounded-xl border ${riskColors[student.riskLevel]} p-6`}>
+      <div className="flex items-start justify-between">
+        <div className="flex-1">
+          <div className="flex items-center gap-3 mb-2">
+            <h4 className="text-lg font-bold text-white">{student.studentName}</h4>
+            <AdminStatusBadge status={student.riskLevel} variant={riskBadgeColors[student.riskLevel]} />
+          </div>
+          <p className="text-sm text-slate-400 mb-3">{student.studentEmail}</p>
+          <p className="text-sm text-slate-300 mb-2">{student.courseTitle}</p>
+          <p className="text-sm text-slate-400">{student.riskDescription}</p>
+        </div>
+        <div className="flex flex-col items-end gap-2">
+          <Button variant="secondary" onClick={onViewDetails}>
+            View Details
+          </Button>
+          {student.interventionRecommended && (
+            <div className="text-right">
+              <p className="text-xs text-slate-400">Intervention Recommended</p>
+              <div className="flex flex-col gap-1 mt-1">
+                {student.interventionActions.slice(0, 2).map((action, index) => (
+                  <p key={index} className="text-xs text-slate-300">• {action}</p>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+      <div className="mt-4 grid grid-cols-3 gap-4 pt-4 border-t border-white/10">
+        <div>
+          <p className="text-xs text-slate-500">Progress</p>
+          <p className="text-lg font-bold text-white">{student.progressPercentage}%</p>
+        </div>
+        <div>
+          <p className="text-xs text-slate-500">Last Activity</p>
+          <p className="text-sm font-medium text-white">
+            {student.daysSinceLastActivity ? `${student.daysSinceLastActivity} days ago` : "N/A"}
+          </p>
+        </div>
+        <div>
+          <p className="text-xs text-slate-500">Current Lesson</p>
+          <p className="text-sm font-medium text-white truncate">{student.currentLesson || "N/A"}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
