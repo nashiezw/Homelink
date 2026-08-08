@@ -27,7 +27,7 @@ type AppContextValue = {
   refreshUser: () => Promise<PublicUser | null>;
   refreshFavourites: () => Promise<void>;
   signIn: (input: { email: string; password: string }) => Promise<AuthResult>;
-  register: (input: { name: string; email: string; password: string }) => Promise<AuthResult>;
+  register: (input: { name: string; email: string; password: string; redirectUrl?: string }) => Promise<AuthResult>;
   signOut: () => Promise<void>;
   toggleFavourite: (listingId: string) => Promise<void>;
   isFavourite: (listingId: string) => boolean;
@@ -131,7 +131,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   );
 
   const register = useCallback(
-    async (input: { name: string; email: string; password: string }) => {
+    async (input: { name: string; email: string; password: string; redirectUrl?: string }) => {
       const result = await apiFetch<PublicUser | { user: PublicUser; requiresEmailVerification: boolean; message: string }>("/api/v1/auth/session", {
         method: "POST",
         body: JSON.stringify({ ...input, action: "register" }),

@@ -148,6 +148,17 @@ export function LibraryCheckoutClient() {
   const [guestEmail, setGuestEmail] = useState("");
   const [guestPhone, setGuestPhone] = useState("");
 
+  // Autofill shipping form with user data when available
+  useEffect(() => {
+    if (user && !authLoading) {
+      setShipping(prev => ({
+        ...prev,
+        name: user.name || prev.name,
+        phone: user.phone || prev.phone,
+      }));
+    }
+  }, [user, authLoading]);
+
   const guestCheckoutEnabled = storeSettings?.checkout.guestCheckout !== false;
   const needsContinueEmail = !authLoading && !user && guestCheckoutEnabled;
 

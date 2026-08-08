@@ -27,6 +27,7 @@ export function AuthForm({
   const router = useRouter();
   const searchParams = useSearchParams();
   const next = redirectTo === undefined ? searchParams?.get("next") : redirectTo === null ? null : redirectTo;
+  const redirectParam = searchParams?.get("redirect");
   const modeParam = searchParams?.get("mode");
   const resolvedInitial =
     initialMode ?? (modeParam === "register" ? "register" : "login");
@@ -53,26 +54,26 @@ export function AuthForm({
     const result =
       mode === "login"
         ? await signIn({ email, password })
-        : await register({ name, email, password });
+        : await register({ name, email, password, redirectUrl: redirectParam || undefined });
     setSubmitting(false);
     if (result.error) {
       setError(result.error);
       setFieldErrors(fieldErrorsForApiError(result.error.code));
       // Handle email verification required error
       if (result.error.code === "EMAIL_VERIFICATION_REQUIRED") {
-        router.push(`/auth/verify-email?email=${encodeURIComponent(email)}`);
+        router.push(`/auth/verify-email?email=${encodeURIComponent(email)}${redirectParam ? `&redirect=${encodeURIComponent(redirectParam)}` : ''}`);
         return;
       }
       // Handle email exists but not verified - redirect to verification page
       if (result.error.code === "EMAIL_EXISTS" && result.error.message && result.error.message.includes("not verified")) {
-        router.push(`/auth/verify-email?email=${encodeURIComponent(email)}`);
+        router.push(`/auth/verify-email?email=${encodeURIComponent(email)}${redirectParam ? `&redirect=${encodeURIComponent(redirectParam)}` : ''}`);
         return;
       }
       return;
     }
     // Check if email verification is required (before checking user/next)
     if (result.requiresEmailVerification) {
-      router.push(`/auth/verify-email?email=${encodeURIComponent(email)}`);
+      router.push(`/auth/verify-email?email=${encodeURIComponent(email)}${redirectParam ? `&redirect=${encodeURIComponent(redirectParam)}` : ''}`);
       return;
     }
     if (result.user && next !== null) {

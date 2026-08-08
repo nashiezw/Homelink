@@ -14,13 +14,19 @@ function VerifyEmailContent() {
   const [message, setMessage] = useState("");
   const [resending, setResending] = useState(false);
   const [email, setEmail] = useState("");
+  const [redirectUrl, setRedirectUrl] = useState<string | null>(null);
 
   const token = searchParams?.get("token");
   const emailParam = searchParams?.get("email");
+  const redirectParam = searchParams?.get("redirect");
 
   useEffect(() => {
     if (emailParam) {
       setEmail(emailParam);
+    }
+    
+    if (redirectParam) {
+      setRedirectUrl(redirectParam);
     }
     
     if (!token) {
@@ -51,10 +57,18 @@ function VerifyEmailContent() {
           
           // If user data is returned, update the app context
           const userData = (result.data as { user?: any }).user;
+          const returnedRedirectUrl = (result.data as { redirectUrl?: string }).redirectUrl;
+          
           if (userData) {
-            // Refresh the page to trigger session refresh and redirect to dashboard
+            // Determine redirect URL: use returned URL from token, then URL param, then default
+            const finalRedirectUrl = returnedRedirectUrl || redirectUrl || "/dashboard/academy";
+            
+            // Validate redirect URL for security
+            const isValidRedirect = validateRedirectUrl(finalRedirectUrl);
+            
+            // Refresh the page to trigger session refresh and redirect
             setTimeout(() => {
-              window.location.href = "/dashboard/academy";
+              window.location.href = isValidRedirect ? finalRedirectUrl : "/dashboard/academy";
             }, 1500);
           }
         }
@@ -65,7 +79,28 @@ function VerifyEmailContent() {
     }
 
     verifyEmail();
-  }, [token, emailParam]);
+  }, [token, emailParam, redirectUrl]);
+
+  // Security validation function to prevent open redirects
+  function validateRedirectUrl(url: string): boolean {
+    if (!url) return false;
+    
+    // Allow relative URLs
+    if (url.startsWith('/')) {
+      // Prevent protocol-relative URLs that could redirect to external sites
+      if (url.startsWith('//')) return false;
+      return true;
+    }
+    
+    // Allow same-origin URLs
+    const currentOrigin = window.location.origin;
+    try {
+      const urlObj = new URL(url);
+      return urlObj.origin === currentOrigin;
+    } catch {
+      return false;
+    }
+  }
 
   async function resendVerification() {
     if (!email) {

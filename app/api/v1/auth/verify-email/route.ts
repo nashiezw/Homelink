@@ -79,6 +79,7 @@ export async function POST(request: Request) {
           phone: user.phone,
           roles: user.roles,
         },
+        redirectUrl: verificationToken.redirectUrl,
       });
     }
 
@@ -122,6 +123,7 @@ export async function POST(request: Request) {
         phone: user.phone,
         roles: user.roles,
       },
+      redirectUrl: verificationToken.redirectUrl,
     });
   } catch (error) {
     console.error("Failed to verify email", error);
