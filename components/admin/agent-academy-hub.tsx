@@ -41,6 +41,9 @@ import { Button } from "@/components/ui/button";
 import { useApp } from "@/components/providers/app-provider";
 import { apiFetch } from "@/lib/api/client";
 import { useSearchParams } from "next/navigation";
+import { CertificateTemplateManagement } from "@/components/admin/academy/certificate-template-management";
+import { CertificateMonitoringDashboard } from "@/components/admin/academy/certificate-monitoring-dashboard";
+import { AssignmentReviewPanel } from "@/components/admin/academy/assignment-review-panel";
 import { AnalyticsDateRangeFilter } from "@/components/admin/analytics-date-range-filter";
 import {
   AdminDataTable,
@@ -279,6 +282,9 @@ const academyTabs = [
   "Courses",
   "Public Learners",
   "Certificates",
+  "Certificate Templates",
+  "Certificate Monitoring",
+  "Assignment Review",
   "Coupons",
   "Training Resources",
   "Video Library",
@@ -1273,6 +1279,15 @@ function FeatureWorkbench({
 }) {
   if (tab === "Certificates") {
     return <CertificateManagementPanel certificates={data.certificates} action={action} />;
+  }
+  if (tab === "Certificate Templates") {
+    return <CertificateTemplateManagement />;
+  }
+  if (tab === "Certificate Monitoring") {
+    return <CertificateMonitoringDashboard />;
+  }
+  if (tab === "Assignment Review") {
+    return <AssignmentReviewPanel />;
   }
   if (tab === "Coupons") {
     return <CouponManagementPanel coupons={data.coupons || []} onEditCoupon={(coupon) => onEditCoupon(coupon)} onCreateCoupon={() => onEditCoupon(null)} onResetCoupon={onResetCoupon} onDeleteCoupon={onDeleteCoupon} setDrawer={_setDrawer} />;

@@ -13,6 +13,13 @@ export interface CertificateIssue {
   issuedAt: Date;
   expiresAt: Date | null;
   revokedAt: Date | null;
+  course?: {
+    title: string;
+  } | null;
+  template?: {
+    name: string;
+    templateJson: Record<string, unknown>;
+  } | null;
 }
 
 export interface CreateCertificateIssueInput {
