@@ -1,8 +1,19 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { Award, Edit, Eye, Loader2, Palette, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Plus, Edit, Trash2 } from "lucide-react";
+import { apiFetch } from "@/lib/api/client";
+import { useApp } from "@/components/providers/app-provider";
+import {
+  AdminConfirmDialog,
+  AdminDrawer,
+  AdminEmptyState,
+  AdminMetricGrid,
+  AdminPanel,
+  AdminStatPill,
+  AdminStatusBadge,
+} from "@/components/admin/ui/admin-ui";
 
 type CertificateTemplate = {
   id: string;
@@ -16,165 +27,151 @@ type CertificateTemplate = {
   updatedAt: string;
 };
 
+type TemplateFormData = {
+  name: string;
+  backgroundUrl: string;
+  logoUrl: string;
+  signatureUrl: string;
+  certificateNumberPrefix: string;
+  title: string;
+  primaryColor: string;
+  accentColor: string;
+  expiryDays: number;
+  active: boolean;
+};
+
+const emptyForm: TemplateFormData = {
+  name: "",
+  backgroundUrl: "",
+  logoUrl: "",
+  signatureUrl: "",
+  certificateNumberPrefix: "HLA",
+  title: "Certificate of Achievement",
+  primaryColor: "#008b68",
+  accentColor: "#c6a15b",
+  expiryDays: 365,
+  active: true,
+};
+
 export function CertificateTemplateManagement() {
+  const { showToast } = useApp();
   const [templates, setTemplates] = useState<CertificateTemplate[]>([]);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<CertificateTemplate | null>(null);
-  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<CertificateTemplate | null>(null);
+  const [formData, setFormData] = useState<TemplateFormData>(emptyForm);
 
-  const [formData, setFormData] = useState({
-    name: "",
-    backgroundUrl: "",
-    logoUrl: "",
-    signatureUrl: "",
-    certificateNumberPrefix: "HLA",
-    title: "Certificate of Achievement",
-    primaryColor: "#008b68",
-    accentColor: "#c6a15b",
-    expiryDays: 365,
-    active: true,
-  });
+  const activeTemplates = useMemo(() => templates.filter((template) => template.active).length, [templates]);
 
   useEffect(() => {
-    loadTemplates();
+    void loadTemplates();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const loadTemplates = async () => {
+  async function loadTemplates() {
     setLoading(true);
-    try {
-      const response = await fetch("/api/v1/admin/academy/certificates/templates");
-      if (response.ok) {
-        const data = await response.json();
-        setTemplates(data.data || []);
-      }
-    } catch (error) {
-      console.error("Failed to load templates:", error);
-    } finally {
-      setLoading(false);
+    const result = await apiFetch<CertificateTemplate[]>("/api/v1/admin/academy/certificates/templates");
+    if (result.data) {
+      setTemplates(result.data);
+    } else {
+      showToast(result.error?.message ?? "Certificate templates could not be loaded.", "error");
     }
-  };
+    setLoading(false);
+  }
 
-  const handleCreate = async () => {
-    try {
-      const response = await fetch("/api/v1/admin/academy/certificates/templates", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: formData.name,
-          backgroundUrl: formData.backgroundUrl || null,
-          logoUrl: formData.logoUrl || null,
-          signatureUrl: formData.signatureUrl || null,
-          templateJson: {
-            certificateNumberPrefix: formData.certificateNumberPrefix,
-            title: formData.title,
-            colours: {
-              primary: formData.primaryColor,
-              accent: formData.accentColor,
-            },
-            expiryDays: formData.expiryDays,
-          },
-          active: formData.active,
-        }),
-      });
+  function payloadFromForm() {
+    return {
+      name: formData.name.trim(),
+      backgroundUrl: formData.backgroundUrl.trim() || null,
+      logoUrl: formData.logoUrl.trim() || null,
+      signatureUrl: formData.signatureUrl.trim() || null,
+      templateJson: {
+        certificateNumberPrefix: formData.certificateNumberPrefix.trim() || "HLA",
+        title: formData.title.trim() || "Certificate of Achievement",
+        colours: {
+          primary: formData.primaryColor,
+          accent: formData.accentColor,
+        },
+        expiryDays: Math.max(0, Number(formData.expiryDays) || 0),
+      },
+      active: formData.active,
+    };
+  }
 
-      if (response.ok) {
-        setShowCreateForm(false);
-        resetForm();
-        loadTemplates();
-      }
-    } catch (error) {
-      console.error("Failed to create template:", error);
+  async function saveTemplate() {
+    if (!formData.name.trim()) {
+      showToast("Template name is required.", "error");
+      return;
     }
-  };
-
-  const handleUpdate = async () => {
-    if (!editingTemplate) return;
-
-    try {
-      const response = await fetch(`/api/v1/admin/academy/certificates/templates/${editingTemplate.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: formData.name,
-          backgroundUrl: formData.backgroundUrl || null,
-          logoUrl: formData.logoUrl || null,
-          signatureUrl: formData.signatureUrl || null,
-          templateJson: {
-            certificateNumberPrefix: formData.certificateNumberPrefix,
-            title: formData.title,
-            colours: {
-              primary: formData.primaryColor,
-              accent: formData.accentColor,
-            },
-            expiryDays: formData.expiryDays,
-          },
-          active: formData.active,
-        }),
-      });
-
-      if (response.ok) {
-        setEditingTemplate(null);
-        resetForm();
-        loadTemplates();
-      }
-    } catch (error) {
-      console.error("Failed to update template:", error);
+    setSaving(true);
+    const endpoint = editingTemplate
+      ? `/api/v1/admin/academy/certificates/templates/${editingTemplate.id}`
+      : "/api/v1/admin/academy/certificates/templates";
+    const result = await apiFetch(endpoint, {
+      method: editingTemplate ? "PUT" : "POST",
+      body: JSON.stringify(payloadFromForm()),
+    });
+    if (result.data) {
+      showToast(editingTemplate ? "Certificate template updated." : "Certificate template created.");
+      closeDrawer();
+      await loadTemplates();
+    } else {
+      showToast(result.error?.message ?? "Certificate template could not be saved.", "error");
     }
-  };
+    setSaving(false);
+  }
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this template?")) return;
-
-    try {
-      const response = await fetch(`/api/v1/admin/academy/certificates/templates/${id}`, {
-        method: "DELETE",
-      });
-
-      if (response.ok) {
-        loadTemplates();
-      }
-    } catch (error) {
-      console.error("Failed to delete template:", error);
+  async function deleteTemplate() {
+    if (!deleteTarget) return;
+    const result = await apiFetch(`/api/v1/admin/academy/certificates/templates/${deleteTarget.id}`, { method: "DELETE" });
+    if (result.data) {
+      showToast("Certificate template deleted.");
+      setDeleteTarget(null);
+      await loadTemplates();
+    } else {
+      showToast(result.error?.message ?? "Certificate template could not be deleted.", "error");
     }
-  };
+  }
 
-  const handleEdit = (template: CertificateTemplate) => {
+  function openCreate() {
+    setEditingTemplate(null);
+    setFormData(emptyForm);
+    setDrawerOpen(true);
+  }
+
+  function openEdit(template: CertificateTemplate) {
+    const templateJson = template.templateJson ?? {};
+    const colours = (templateJson.colours as Record<string, string> | undefined) ?? {};
     setEditingTemplate(template);
-    const templateJson = template.templateJson as Record<string, unknown>;
-    const colours = templateJson.colours as Record<string, string> || {};
-    
     setFormData({
       name: template.name,
-      backgroundUrl: template.backgroundUrl || "",
-      logoUrl: template.logoUrl || "",
-      signatureUrl: template.signatureUrl || "",
-      certificateNumberPrefix: (templateJson.certificateNumberPrefix as string) || "HLA",
-      title: (templateJson.title as string) || "Certificate of Achievement",
-      primaryColor: colours.primary || "#008b68",
-      accentColor: colours.accent || "#c6a15b",
-      expiryDays: (templateJson.expiryDays as number) || 365,
+      backgroundUrl: template.backgroundUrl ?? "",
+      logoUrl: template.logoUrl ?? "",
+      signatureUrl: template.signatureUrl ?? "",
+      certificateNumberPrefix: String(templateJson.certificateNumberPrefix ?? "HLA"),
+      title: String(templateJson.title ?? "Certificate of Achievement"),
+      primaryColor: colours.primary ?? "#008b68",
+      accentColor: colours.accent ?? "#c6a15b",
+      expiryDays: Number(templateJson.expiryDays ?? 365),
       active: template.active,
     });
-    setShowCreateForm(true);
-  };
+    setDrawerOpen(true);
+  }
 
-  const resetForm = () => {
-    setFormData({
-      name: "",
-      backgroundUrl: "",
-      logoUrl: "",
-      signatureUrl: "",
-      certificateNumberPrefix: "HLA",
-      title: "Certificate of Achievement",
-      primaryColor: "#008b68",
-      accentColor: "#c6a15b",
-      expiryDays: 365,
-      active: true,
-    });
-  };
+  function closeDrawer() {
+    setDrawerOpen(false);
+    setEditingTemplate(null);
+    setFormData(emptyForm);
+  }
 
   if (loading) {
-    return <div className="text-center py-8 text-slate-400">Loading templates...</div>;
+    return (
+      <div className="flex items-center justify-center py-12">
+        <RefreshCw className="size-8 animate-spin text-slate-400" />
+      </div>
+    );
   }
 
   return (
@@ -182,195 +179,240 @@ export function CertificateTemplateManagement() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
           <h3 className="text-lg font-bold text-white">Certificate Templates</h3>
-          <p className="text-sm text-slate-400">Manage certificate designs and configurations</p>
+          <p className="text-sm text-slate-400">Design, preview, and manage certificate issuance templates.</p>
         </div>
-        <Button className="w-full sm:w-auto" onClick={() => { setShowCreateForm(true); resetForm(); }}>
+        <Button className="w-full sm:w-auto" onClick={openCreate}>
           <Plus className="mr-2 size-4" />
           Create Template
         </Button>
       </div>
 
-      {showCreateForm && (
-        <div className="rounded-xl border border-white/10 bg-slate-900/60 p-6 space-y-4">
-          <div>
-            <h4 className="text-lg font-bold text-white">
-              {editingTemplate ? "Edit Template" : "Create New Template"}
-            </h4>
-            <p className="text-sm text-slate-400">Configure certificate design and settings</p>
-          </div>
+      <AdminMetricGrid cols={3}>
+        <AdminStatPill label="Templates" value={templates.length} />
+        <AdminStatPill label="Active" value={activeTemplates} tone="success" />
+        <AdminStatPill label="Inactive" value={templates.length - activeTemplates} tone={templates.length - activeTemplates ? "warning" : "default"} />
+      </AdminMetricGrid>
 
-          <div className="grid gap-4 md:grid-cols-2">
-            <div>
-              <label className="block text-sm text-white mb-1">Template Name</label>
-              <input
-                value={formData.name}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="e.g., Certified HouseLink Agent"
-                className="w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-white"
-              />
-            </div>
-            <div>
-              <label className="block text-sm text-white mb-1">Certificate Title</label>
-              <input
-                value={formData.title}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, title: e.target.value })}
-                placeholder="e.g., Certificate of Achievement"
-                className="w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-white"
-              />
-            </div>
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-2">
-            <div>
-              <label className="block text-sm text-white mb-1">Certificate Number Prefix</label>
-              <input
-                value={formData.certificateNumberPrefix}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, certificateNumberPrefix: e.target.value })}
-                placeholder="e.g., HLA"
-                className="w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-white"
-              />
-            </div>
-            <div>
-              <label className="block text-sm text-white mb-1">Expiry Days</label>
-              <input
-                type="number"
-                value={formData.expiryDays}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, expiryDays: parseInt(e.target.value) })}
-                placeholder="365"
-                className="w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-white"
-              />
-            </div>
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-2">
-            <div>
-              <label className="block text-sm text-white mb-1">Primary Color</label>
-              <div className="flex gap-2">
-                <input
-                  type="color"
-                  value={formData.primaryColor}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, primaryColor: e.target.value })}
-                  className="w-16 h-10 rounded"
-                />
-                <input
-                  value={formData.primaryColor}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, primaryColor: e.target.value })}
-                  placeholder="#008b68"
-                  className="flex-1 rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-white"
-                />
+      {templates.length === 0 ? (
+        <AdminEmptyState
+          icon={Award}
+          title="No certificate templates yet"
+          description="Create a template before issuing styled certificates to learners."
+          action={<Button onClick={openCreate}><Plus className="mr-2 size-4" />Create Template</Button>}
+        />
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {templates.map((template) => (
+            <article key={template.id} className="min-w-0 overflow-hidden rounded-xl border border-white/10 bg-slate-900/60">
+              <TemplatePreview template={template} compact />
+              <div className="space-y-4 p-4">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0">
+                    <h4 className="break-words font-semibold text-white [overflow-wrap:anywhere]">{template.name}</h4>
+                    <p className="text-xs text-slate-500">Updated {new Date(template.updatedAt).toLocaleDateString()}</p>
+                  </div>
+                  <AdminStatusBadge status={template.active ? "Active" : "Inactive"} variant={template.active ? "success" : "muted"} />
+                </div>
+                <div className="grid gap-2 text-sm text-slate-300">
+                  <TemplateMeta template={template} />
+                </div>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <Button variant="secondary" onClick={() => openEdit(template)}>
+                    <Edit className="mr-2 size-4" />
+                    Edit
+                  </Button>
+                  <Button variant="secondary" onClick={() => setDeleteTarget(template)}>
+                    <Trash2 className="mr-2 size-4 text-red-300" />
+                    Delete
+                  </Button>
+                </div>
               </div>
-            </div>
-            <div>
-              <label className="block text-sm text-white mb-1">Accent Color</label>
-              <div className="flex gap-2">
-                <input
-                  type="color"
-                  value={formData.accentColor}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, accentColor: e.target.value })}
-                  className="w-16 h-10 rounded"
-                />
-                <input
-                  value={formData.accentColor}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, accentColor: e.target.value })}
-                  placeholder="#c6a15b"
-                  className="flex-1 rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-white"
-                />
-              </div>
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm text-white mb-1">Background Image URL</label>
-            <input
-              value={formData.backgroundUrl}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, backgroundUrl: e.target.value })}
-              placeholder="https://example.com/background.jpg"
-              className="w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-white"
-            />
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-2">
-            <div>
-              <label className="block text-sm text-white mb-1">Logo URL</label>
-              <input
-                value={formData.logoUrl}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, logoUrl: e.target.value })}
-                placeholder="https://example.com/logo.png"
-                className="w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-white"
-              />
-            </div>
-            <div>
-              <label className="block text-sm text-white mb-1">Signature URL</label>
-              <input
-                value={formData.signatureUrl}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, signatureUrl: e.target.value })}
-                placeholder="https://example.com/signature.png"
-                className="w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-white"
-              />
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              id="active"
-              checked={formData.active}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, active: e.target.checked })}
-              className="rounded"
-            />
-            <label htmlFor="active" className="text-sm text-white">Active</label>
-          </div>
-
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <Button onClick={editingTemplate ? handleUpdate : handleCreate}>
-              {editingTemplate ? "Update Template" : "Create Template"}
-            </Button>
-            <Button variant="secondary" onClick={() => { setShowCreateForm(false); setEditingTemplate(null); resetForm(); }}>
-              Cancel
-            </Button>
-          </div>
+            </article>
+          ))}
         </div>
       )}
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {templates.map((template) => (
-          <div key={template.id} className="rounded-xl border border-white/10 bg-slate-900/60 p-4">
-            <div className="flex flex-col gap-2 mb-3 sm:flex-row sm:items-start sm:justify-between">
-              <div className="min-w-0">
-                <h4 className="break-words font-semibold text-white text-base [overflow-wrap:anywhere]">{template.name}</h4>
-                <p className="text-xs text-slate-400">{new Date(template.updatedAt).toLocaleDateString()}</p>
+      <AdminDrawer
+        open={drawerOpen}
+        width="xl"
+        title={editingTemplate ? "Edit Certificate Template" : "Create Certificate Template"}
+        description="Preview changes before saving so certificates stay consistent."
+        onClose={closeDrawer}
+      >
+        <div className="space-y-5">
+          <TemplatePreview form={formData} />
+          <AdminPanel title="Template Details" description="Core certificate text and numbering.">
+            <div className="grid gap-4">
+              <TextField label="Template Name" value={formData.name} onChange={(name) => setFormData({ ...formData, name })} placeholder="Certified HouseLink Agent" />
+              <TextField label="Certificate Title" value={formData.title} onChange={(title) => setFormData({ ...formData, title })} placeholder="Certificate of Achievement" />
+              <div className="grid gap-4 sm:grid-cols-2">
+                <TextField label="Number Prefix" value={formData.certificateNumberPrefix} onChange={(certificateNumberPrefix) => setFormData({ ...formData, certificateNumberPrefix })} placeholder="HLA" />
+                <TextField
+                  label="Expiry Days"
+                  type="number"
+                  value={String(formData.expiryDays)}
+                  onChange={(expiryDays) => setFormData({ ...formData, expiryDays: Math.max(0, Number(expiryDays) || 0) })}
+                  placeholder="365"
+                />
               </div>
-              <span className={`w-fit shrink-0 text-xs px-2 py-1 rounded ${template.active ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-500/20 text-slate-400'}`}>
-                {template.active ? "Active" : "Inactive"}
+              <div className="grid gap-4 sm:grid-cols-2">
+                <ColorField label="Primary Color" value={formData.primaryColor} onChange={(primaryColor) => setFormData({ ...formData, primaryColor })} />
+                <ColorField label="Accent Color" value={formData.accentColor} onChange={(accentColor) => setFormData({ ...formData, accentColor })} />
+              </div>
+              <TextField label="Background Image URL" value={formData.backgroundUrl} onChange={(backgroundUrl) => setFormData({ ...formData, backgroundUrl })} placeholder="https://example.com/background.jpg" />
+              <div className="grid gap-4 sm:grid-cols-2">
+                <TextField label="Logo URL" value={formData.logoUrl} onChange={(logoUrl) => setFormData({ ...formData, logoUrl })} placeholder="https://example.com/logo.png" />
+                <TextField label="Signature URL" value={formData.signatureUrl} onChange={(signatureUrl) => setFormData({ ...formData, signatureUrl })} placeholder="https://example.com/signature.png" />
+              </div>
+              <label className="flex items-center gap-2 text-sm text-slate-300">
+                <input
+                  type="checkbox"
+                  checked={formData.active}
+                  onChange={(event) => setFormData({ ...formData, active: event.target.checked })}
+                  className="rounded border-white/10 bg-slate-950"
+                />
+                Active template
+              </label>
+              <div className="grid gap-2 sm:flex sm:justify-end">
+                <Button variant="secondary" onClick={closeDrawer}>Cancel</Button>
+                <Button onClick={saveTemplate} disabled={saving}>
+                  {saving && <Loader2 className="mr-2 size-4 animate-spin" />}
+                  {editingTemplate ? "Update Template" : "Create Template"}
+                </Button>
+              </div>
+            </div>
+          </AdminPanel>
+        </div>
+      </AdminDrawer>
+
+      <AdminConfirmDialog
+        open={Boolean(deleteTarget)}
+        danger
+        title="Delete Certificate Template"
+        description={`Delete "${deleteTarget?.name}"? Existing certificate records remain, but this design can no longer be used.`}
+        confirmLabel="Delete Template"
+        onCancel={() => setDeleteTarget(null)}
+        onConfirm={deleteTemplate}
+      />
+    </div>
+  );
+}
+
+function TemplateMeta({ template }: { template: CertificateTemplate }) {
+  const templateJson = template.templateJson ?? {};
+  return (
+    <>
+      <p><span className="text-slate-500">Prefix:</span> {String(templateJson.certificateNumberPrefix ?? "N/A")}</p>
+      <p><span className="text-slate-500">Expiry:</span> {String(templateJson.expiryDays ?? 365)} days</p>
+    </>
+  );
+}
+
+function TemplatePreview({ template, form, compact }: { template?: CertificateTemplate; form?: TemplateFormData; compact?: boolean }) {
+  const templateJson = template?.templateJson ?? {};
+  const colours = (templateJson.colours as Record<string, string> | undefined) ?? {};
+  const title = form?.title ?? String(templateJson.title ?? "Certificate of Achievement");
+  const name = form?.name ?? template?.name ?? "Certified HouseLink Agent";
+  const primary = form?.primaryColor ?? colours.primary ?? "#008b68";
+  const accent = form?.accentColor ?? colours.accent ?? "#c6a15b";
+  const logoUrl = form?.logoUrl ?? template?.logoUrl ?? "";
+  const signatureUrl = form?.signatureUrl ?? template?.signatureUrl ?? "";
+  const backgroundUrl = form?.backgroundUrl ?? template?.backgroundUrl ?? "";
+  const prefix = form?.certificateNumberPrefix ?? String(templateJson.certificateNumberPrefix ?? "HLA");
+
+  return (
+    <div
+      className="relative min-h-44 overflow-hidden bg-slate-950 p-4"
+      style={{
+        backgroundImage: backgroundUrl ? `linear-gradient(rgba(2,6,23,.84), rgba(2,6,23,.9)), url(${backgroundUrl})` : undefined,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+      }}
+    >
+      <div className="absolute inset-x-0 top-0 h-1" style={{ backgroundColor: primary }} />
+      <div className="rounded-xl border border-white/10 bg-slate-950/80 p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-3">
+            {logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={logoUrl} alt="" className="size-10 shrink-0 rounded-lg object-contain" />
+            ) : (
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-lg" style={{ backgroundColor: `${primary}22`, color: primary }}>
+                <Award className="size-5" />
               </span>
-            </div>
-            <div className="space-y-1 text-sm mb-4">
-              <p className="text-slate-300">
-                <span className="text-slate-500">Prefix:</span> {(template.templateJson as Record<string, unknown>).certificateNumberPrefix as string || "N/A"}
-              </p>
-              <p className="text-slate-300">
-                <span className="text-slate-500">Expiry:</span> {(template.templateJson as Record<string, unknown>).expiryDays as string || "365"} days
-              </p>
-            </div>
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <Button className="w-full sm:w-auto" variant="secondary" onClick={() => handleEdit(template)}>
-                <Edit className="size-3 mr-1" />
-                Edit
-              </Button>
-              <Button className="w-full sm:w-auto" variant="secondary" onClick={() => handleDelete(template.id)}>
-                <Trash2 className="size-3 mr-1" />
-                Delete
-              </Button>
+            )}
+            <div className="min-w-0">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">{prefix}-000001</p>
+              <h4 className="break-words text-base font-bold text-white [overflow-wrap:anywhere]">{title}</h4>
             </div>
           </div>
-        ))}
+          <Palette className="size-4 shrink-0" style={{ color: accent }} />
+        </div>
+        <div className={compact ? "mt-5" : "mt-8"}>
+          <p className="text-xs uppercase tracking-wider text-slate-500">Presented to</p>
+          <p className="mt-1 text-xl font-bold text-white">Learner Name</p>
+          <p className="mt-2 text-sm text-slate-300">For successfully completing {name || "the selected course"}.</p>
+        </div>
+        <div className="mt-5 flex items-end justify-between gap-4">
+          <div>
+            <div className="h-0.5 w-24" style={{ backgroundColor: accent }} />
+            <p className="mt-1 text-[10px] uppercase tracking-wider text-slate-500">Issued by HouseLink Academy</p>
+          </div>
+          {signatureUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={signatureUrl} alt="" className="h-8 max-w-24 object-contain" />
+          )}
+        </div>
       </div>
-
-      {templates.length === 0 && (
-        <div className="rounded-xl border border-white/10 bg-slate-900/60 p-8 text-center text-slate-400">
-          No certificate templates found. Create your first template to get started.
+      {!compact && (
+        <div className="mt-3 flex items-center gap-2 text-xs text-slate-500">
+          <Eye className="size-3" />
+          Live preview
         </div>
       )}
     </div>
+  );
+}
+
+function TextField({
+  label,
+  value,
+  onChange,
+  placeholder,
+  type = "text",
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  type?: string;
+}) {
+  return (
+    <label className="block">
+      <span className="mb-1 block text-sm font-medium text-slate-300">{label}</span>
+      <input
+        type={type}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={placeholder}
+        className="w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-white placeholder:text-slate-600 focus:border-emerald-500/40 focus:outline-none"
+      />
+    </label>
+  );
+}
+
+function ColorField({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
+  return (
+    <label className="block">
+      <span className="mb-1 block text-sm font-medium text-slate-300">{label}</span>
+      <div className="flex min-w-0 gap-2">
+        <input type="color" value={value} onChange={(event) => onChange(event.target.value)} className="h-10 w-12 shrink-0 rounded border border-white/10 bg-slate-950" />
+        <input
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          className="min-w-0 flex-1 rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-white focus:border-emerald-500/40 focus:outline-none"
+        />
+      </div>
+    </label>
   );
 }

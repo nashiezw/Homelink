@@ -13,6 +13,7 @@ import {
   AdminSelect,
   AdminStatusBadge,
   AdminEmptyState,
+  AdminConfirmDialog,
 } from "@/components/admin/ui/admin-ui";
 
 type EmailTemplate = {
@@ -76,6 +77,7 @@ export function EmailTemplatesManagementPanel() {
   const [search, setSearch] = useState("");
   const [drawer, setDrawer] = useState<"create" | "edit" | null>(null);
   const [selectedTemplate, setSelectedTemplate] = useState<EmailTemplate | null>(null);
+  const [deleteTemplate, setDeleteTemplate] = useState<EmailTemplate | null>(null);
   const [formData, setFormData] = useState({
     templateKey: "",
     language: "en",
@@ -128,12 +130,14 @@ export function EmailTemplatesManagementPanel() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    const result = await apiFetch(`/api/v1/admin/academy/email-templates?id=${id}`, {
+  const handleDelete = async () => {
+    if (!deleteTemplate) return;
+    const result = await apiFetch(`/api/v1/admin/academy/email-templates?id=${deleteTemplate.id}`, {
       method: "DELETE",
     });
     if (result.data) {
       showToast("Email template deleted successfully");
+      setDeleteTemplate(null);
       void loadTemplates();
     } else {
       showToast(result.error?.message ?? "Failed to delete template", "error");
@@ -177,7 +181,7 @@ export function EmailTemplatesManagementPanel() {
                   <Button variant="ghost" onClick={() => { setSelectedTemplate(t); setFormData({ ...t, textContent: t.textContent || "" }); setDrawer("edit"); }}>
                     <Pencil className="size-4" />
                   </Button>
-                  <Button variant="ghost" onClick={() => handleDelete(t.id)}>
+                  <Button variant="ghost" onClick={() => setDeleteTemplate(t)}>
                     <Trash2 className="size-4 text-red-400" />
                   </Button>
                 </div>
@@ -256,6 +260,15 @@ export function EmailTemplatesManagementPanel() {
           </Button>
         </div>
       </AdminDrawer>
+      <AdminConfirmDialog
+        open={Boolean(deleteTemplate)}
+        danger
+        title="Delete Email Template"
+        description={`Delete "${deleteTemplate?.templateKey}"? Emails using this template will fall back to the system default.`}
+        confirmLabel="Delete Template"
+        onCancel={() => setDeleteTemplate(null)}
+        onConfirm={handleDelete}
+      />
     </div>
   );
 }
@@ -264,6 +277,7 @@ export function BrandingManagementPanel() {
   const { showToast } = useApp();
   const [branding, setBranding] = useState<BrandingSettings>({});
   const [loading, setLoading] = useState(true);
+  const [confirmReset, setConfirmReset] = useState(false);
 
   const loadBranding = useCallback(async () => {
     setLoading(true);
@@ -305,7 +319,7 @@ export function BrandingManagementPanel() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold text-white">Academy Branding</h3>
-        <Button variant="ghost" onClick={handleReset}>
+        <Button variant="ghost" onClick={() => setConfirmReset(true)}>
           <RefreshCw className="size-4 mr-2" /> Reset to Defaults
         </Button>
       </div>
@@ -427,6 +441,17 @@ export function BrandingManagementPanel() {
           </Button>
         </div>
       )}
+      <AdminConfirmDialog
+        open={confirmReset}
+        title="Reset Academy Branding"
+        description="This will replace the current logo, colour, font, and custom CSS settings with platform defaults."
+        confirmLabel="Reset Branding"
+        onCancel={() => setConfirmReset(false)}
+        onConfirm={() => {
+          setConfirmReset(false);
+          void handleReset();
+        }}
+      />
     </div>
   );
 }
@@ -438,6 +463,7 @@ export function InstructorsManagementPanel() {
   const [search, setSearch] = useState("");
   const [drawer, setDrawer] = useState<"create" | null>(null);
   const [formData, setFormData] = useState({ name: "", email: "", phone: "" });
+  const [deleteInstructor, setDeleteInstructor] = useState<Instructor | null>(null);
 
   const loadInstructors = useCallback(async () => {
     setLoading(true);
@@ -466,12 +492,14 @@ export function InstructorsManagementPanel() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    const result = await apiFetch(`/api/v1/admin/academy/instructors?id=${id}`, {
+  const handleDelete = async () => {
+    if (!deleteInstructor) return;
+    const result = await apiFetch(`/api/v1/admin/academy/instructors?id=${deleteInstructor.id}`, {
       method: "DELETE",
     });
     if (result.data) {
       showToast("Instructor removed successfully");
+      setDeleteInstructor(null);
       void loadInstructors();
     } else {
       showToast(result.error?.message ?? "Failed to remove instructor", "error");
@@ -511,7 +539,7 @@ export function InstructorsManagementPanel() {
               key: "actions",
               header: "Actions",
               render: (i) => (
-                <Button variant="ghost" onClick={() => handleDelete(i.id)}>
+                <Button variant="ghost" onClick={() => setDeleteInstructor(i)}>
                   <Trash2 className="size-4 text-red-400" />
                 </Button>
               ),
@@ -557,6 +585,15 @@ export function InstructorsManagementPanel() {
           </Button>
         </div>
       </AdminDrawer>
+      <AdminConfirmDialog
+        open={Boolean(deleteInstructor)}
+        danger
+        title="Remove Instructor"
+        description={`Remove ${deleteInstructor?.name}? Course history remains, but this instructor row will no longer be available.`}
+        confirmLabel="Remove Instructor"
+        onCancel={() => setDeleteInstructor(null)}
+        onConfirm={handleDelete}
+      />
     </div>
   );
 }
@@ -566,6 +603,7 @@ export function RefundsManagementPanel() {
   const [refunds, setRefunds] = useState<Refund[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
+  const [pendingAction, setPendingAction] = useState<{ refund: Refund; actionType: "approve" | "reject" | "process" } | null>(null);
 
   const loadRefunds = useCallback(async () => {
     setLoading(true);
@@ -579,13 +617,15 @@ export function RefundsManagementPanel() {
     void loadRefunds();
   }, [loadRefunds]);
 
-  const handleProcess = async (refundId: string, actionType: "approve" | "reject" | "process") => {
+  const handleProcess = async () => {
+    if (!pendingAction) return;
     const result = await apiFetch("/api/v1/admin/academy/refunds", {
       method: "PATCH",
-      body: JSON.stringify({ refundId, action: actionType }),
+      body: JSON.stringify({ refundId: pendingAction.refund.id, action: pendingAction.actionType }),
     });
     if (result.data) {
-      showToast(`Refund ${actionType}d successfully`);
+      showToast(`Refund ${pendingAction.actionType}d successfully`);
+      setPendingAction(null);
       void loadRefunds();
     } else {
       showToast(result.error?.message ?? "Failed to process refund", "error");
@@ -636,15 +676,15 @@ export function RefundsManagementPanel() {
               render: (r) => (
                 r.status === "PENDING" ? (
                   <div className="flex gap-2">
-                    <Button variant="ghost" onClick={() => handleProcess(r.id, "approve")}>
+                    <Button variant="ghost" onClick={() => setPendingAction({ refund: r, actionType: "approve" })}>
                       <CheckCircle2 className="size-4 text-green-400" />
                     </Button>
-                    <Button variant="ghost" onClick={() => handleProcess(r.id, "reject")}>
+                    <Button variant="ghost" onClick={() => setPendingAction({ refund: r, actionType: "reject" })}>
                       <XCircle className="size-4 text-red-400" />
                     </Button>
                   </div>
                 ) : r.status === "APPROVED" ? (
-                  <Button onClick={() => handleProcess(r.id, "process")}>
+                  <Button onClick={() => setPendingAction({ refund: r, actionType: "process" })}>
                     <Download className="size-4 mr-2" /> Process Refund
                   </Button>
                 ) : (
@@ -655,6 +695,25 @@ export function RefundsManagementPanel() {
           ]}
         />
       )}
+      <AdminConfirmDialog
+        open={Boolean(pendingAction)}
+        danger={pendingAction?.actionType === "reject"}
+        title={
+          pendingAction?.actionType === "approve"
+            ? "Approve Refund"
+            : pendingAction?.actionType === "reject"
+              ? "Reject Refund"
+              : "Process Refund"
+        }
+        description={
+          pendingAction
+            ? `${pendingAction.actionType === "process" ? "Mark" : "Set"} refund ${pendingAction.refund.payment.currency} ${pendingAction.refund.amount.toFixed(2)} for ${pendingAction.refund.user.email}.`
+            : undefined
+        }
+        confirmLabel={pendingAction?.actionType === "process" ? "Process Refund" : pendingAction?.actionType === "reject" ? "Reject Refund" : "Approve Refund"}
+        onCancel={() => setPendingAction(null)}
+        onConfirm={handleProcess}
+      />
     </div>
   );
 }

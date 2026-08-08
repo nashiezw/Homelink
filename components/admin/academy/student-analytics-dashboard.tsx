@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Search, Filter, AlertTriangle, User, BookOpen, TrendingDown, TrendingUp, BarChart3 } from "lucide-react";
+import { Search, Filter, AlertTriangle, User, BarChart3, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api/client";
 import { AdminStatPill, AdminStatusBadge } from "@/components/admin/ui/admin-ui";
@@ -131,6 +131,42 @@ type StudentSearchResult = {
   email: string;
 };
 
+function downloadCsv(filename: string, rows: Array<Array<string | number | null | undefined>>) {
+  const csv = rows.map((row) => row.map((cell) => `"${String(cell ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+function exportStudentProgress(analytics: StudentProgressAnalytics) {
+  downloadCsv(`student-progress-${analytics.studentId}-${new Date().toISOString().slice(0, 10)}.csv`, [
+    ["Course", "Status", "Completion %", "Completed Lessons", "Total Lessons", "Average Score", "Learning Minutes", "Last Activity"],
+    ...analytics.courses.map((course) => [
+      course.courseTitle,
+      course.status,
+      course.completionPercentage,
+      course.lessonsCompleted,
+      course.totalLessons,
+      course.averageScore,
+      course.learningMinutes,
+      course.lastActivityDate ? new Date(course.lastActivityDate).toISOString() : "",
+    ]),
+  ]);
+}
+
+function exportStudentQuizAnalytics(analytics: StudentQuizAnalytics) {
+  downloadCsv(`student-assessments-${analytics.studentId}-${new Date().toISOString().slice(0, 10)}.csv`, [
+    ["Type", "Title", "Course", "Score/Grade", "Status", "Passed/On Time", "Attempt", "Date"],
+    ...analytics.quizAttempts.map((attempt) => ["Quiz", attempt.quizTitle, attempt.courseTitle, attempt.score, attempt.status, attempt.passed ? "Yes" : "No", attempt.attemptNumber, new Date(attempt.startedAt).toISOString()]),
+    ...analytics.examAttempts.map((attempt) => ["Exam", attempt.examTitle, attempt.courseTitle, attempt.score, attempt.status, attempt.passed ? "Yes" : "No", attempt.attemptNumber, new Date(attempt.startedAt).toISOString()]),
+    ...analytics.assignmentSubmissions.map((submission) => ["Assignment", submission.assignmentTitle, submission.courseTitle, submission.grade ?? "", submission.status, submission.onTime ? "Yes" : "No", submission.attemptNumber, new Date(submission.submittedAt).toISOString()]),
+  ]);
+}
+
 export function StudentAnalyticsDashboard() {
   const [view, setView] = useState<"overview" | "student" | "student-quiz" | "at-risk">("overview");
   const [loading, setLoading] = useState(true);
@@ -165,11 +201,9 @@ export function StudentAnalyticsDashboard() {
     setLoading(true);
     setError(null);
     try {
-      console.log(`[StudentAnalytics] Loading progress analytics for studentId=${studentId}`);
       const response = await apiFetch<StudentProgressAnalytics>(`/api/v1/admin/academy/analytics?type=student&studentId=${studentId}`);
       if (response.data) {
         setStudentAnalytics(response.data);
-        console.log(`[StudentAnalytics] Progress analytics loaded successfully for ${studentId}`);
       } else if (response.error) {
         setError(response.error.message || "Failed to load student analytics");
         console.error(`[StudentAnalytics] API error:`, response.error);
@@ -187,11 +221,9 @@ export function StudentAnalyticsDashboard() {
     setLoading(true);
     setError(null);
     try {
-      console.log(`[StudentAnalytics] Loading quiz analytics for studentId=${studentId}`);
       const response = await apiFetch<StudentQuizAnalytics>(`/api/v1/admin/academy/analytics?type=student-quiz&studentId=${studentId}`);
       if (response.data) {
         setStudentQuizAnalytics(response.data);
-        console.log(`[StudentAnalytics] Quiz analytics loaded successfully for ${studentId}`);
       } else if (response.error) {
         setError(response.error.message || "Failed to load student quiz analytics");
         console.error(`[StudentAnalytics] API error:`, response.error);
@@ -307,7 +339,7 @@ export function StudentAnalyticsDashboard() {
             variant={view === "student" ? "primary" : "secondary"}
             onClick={() => setView("student")}
           >
-            <Users className="mr-2 size-4" />
+            <User className="mr-2 size-4" />
             Student View
           </Button>
           <Button
@@ -576,7 +608,7 @@ function StudentQuizDetailView({ analytics }: { analytics: StudentQuizAnalytics 
             <p className="text-slate-400">{analytics.studentEmail}</p>
           </div>
           <div className="flex gap-2">
-            <Button variant="secondary">
+            <Button variant="secondary" onClick={() => exportStudentQuizAnalytics(analytics)}>
               <Download className="mr-2 size-4" />
               Export Report
             </Button>
@@ -748,7 +780,7 @@ function StudentDetailView({ analytics }: { analytics: StudentProgressAnalytics 
             <p className="text-slate-400">{analytics.studentEmail}</p>
           </div>
           <div className="flex gap-2">
-            <Button variant="secondary">
+            <Button variant="secondary" onClick={() => exportStudentProgress(analytics)}>
               <Download className="mr-2 size-4" />
               Export Report
             </Button>
@@ -767,8 +799,9 @@ function StudentDetailView({ analytics }: { analytics: StudentProgressAnalytics 
       {/* Course Progress Details */}
       <div className="rounded-xl border border-white/10 bg-slate-900/60 p-6">
         <h3 className="mb-4 text-lg font-bold text-white">Course Progress Details</h3>
-        <div className="space-y-4">
-          {analytics.courses.map(course => (
+        {analytics.courses.length > 0 ? (
+          <div className="space-y-4">
+            {analytics.courses.map(course => (
             <div key={course.courseId} className="rounded-lg border border-white/5 bg-slate-800/50 p-4">
               <div className="flex flex-col gap-2 mb-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
@@ -806,8 +839,13 @@ function StudentDetailView({ analytics }: { analytics: StudentProgressAnalytics 
                 </div>
               )}
             </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-lg border border-dashed border-white/10 p-6 text-center text-sm text-slate-500">
+            This learner has no course progress records yet.
+          </div>
+        )}
       </div>
     </div>
   );
@@ -847,7 +885,7 @@ function AtRiskStudentCard({ student, onViewDetails }: { student: AtRiskStudent;
               <p className="text-xs text-slate-400">Intervention Recommended</p>
               <div className="flex flex-col gap-1 mt-1">
                 {student.interventionActions.slice(0, 2).map((action, index) => (
-                  <p key={index} className="text-xs text-slate-300">• {action}</p>
+                  <p key={index} className="text-xs text-slate-300">- {action}</p>
                 ))}
               </div>
             </div>

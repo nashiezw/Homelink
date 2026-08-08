@@ -32,14 +32,10 @@ export async function GET(request: Request) {
     const studentId = searchParams.get("studentId");
     const includeAtRisk = searchParams.get("includeAtRisk") === "true";
     
-    console.log(`[Analytics] Request: type=${type}, period=${period}, courseId=${courseId}, studentId=${studentId}, includeAtRisk=${includeAtRisk}`);
-    
     // Handle different analytics types
     if (type === "student" && studentId) {
-      console.log(`[Analytics] Loading student progress analytics for studentId=${studentId}`);
       try {
         const studentAnalytics = await getStudentProgressAnalytics(studentId);
-        console.log(`[Analytics] Student progress analytics loaded successfully for ${studentId}`);
         return ok(studentAnalytics);
       } catch (error) {
         console.error(`[Analytics] Error loading student progress analytics for ${studentId}:`, error);
@@ -48,10 +44,8 @@ export async function GET(request: Request) {
     }
     
     if (type === "student-quiz" && studentId) {
-      console.log(`[Analytics] Loading student quiz analytics for studentId=${studentId}`);
       try {
         const studentQuizAnalytics = await getStudentQuizAnalytics(studentId);
-        console.log(`[Analytics] Student quiz analytics loaded successfully for ${studentId}`);
         return ok(studentQuizAnalytics);
       } catch (error) {
         console.error(`[Analytics] Error loading student quiz analytics for ${studentId}:`, error);
@@ -310,8 +304,6 @@ export async function GET(request: Request) {
       })
     );
     
-    console.log('Popular courses with titles:', JSON.stringify(popularCoursesWithTitles, (key, value) => typeof value === 'bigint' ? Number(value) : value));
-    
     // Convert BigInt values to numbers in completion rates
     const completionRatesFixed = (completionRates as any[]).map((cr: any) => ({
       courseId: cr.courseId,
@@ -336,9 +328,6 @@ export async function GET(request: Request) {
       ...(learner.totalEnrollments !== undefined && { totalEnrollments: Number(learner.totalEnrollments) }),
       ...(learner.totalProgress !== undefined && { totalProgress: Number(learner.totalProgress) }),
     }));
-    
-    console.log('Completion rates fixed:', JSON.stringify(completionRatesFixed, (key, value) => typeof value === 'bigint' ? Number(value) : value));
-    console.log('At-risk learners:', JSON.stringify(atRiskLearnersFixed, (key, value) => typeof value === 'bigint' ? Number(value) : value));
     
     return ok({
       revenue: {

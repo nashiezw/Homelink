@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 import {
   AdminDataTable,
+  AdminConfirmDialog,
   AdminMetricGrid,
   AdminPanel,
   AdminSearchInput,
@@ -88,6 +89,13 @@ type LibraryCustomerJourney = {
   averageJourneyTime: number;
   conversionRate: number;
   returnVisitorRate: number;
+};
+
+type LibraryConfirmRequest = {
+  title: string;
+  description?: string;
+  confirmLabel?: string;
+  danger?: boolean;
 };
 
 type LibraryQuoteRequestAdmin = {
@@ -404,6 +412,10 @@ export function LibraryAdminHub() {
   const [analytics, setAnalytics] = useState<LibraryAnalytics>(getLibraryAnalytics());
   const [operations, setOperations] = useState<LibraryOperations>(emptyOperations);
   const [customerJourney, setCustomerJourney] = useState<LibraryCustomerJourney | null>(null);
+  const [customerJourneyLoading, setCustomerJourneyLoading] = useState(false);
+  const [customerJourneyError, setCustomerJourneyError] = useState<string | null>(null);
+  const [confirmRequest, setConfirmRequest] = useState<LibraryConfirmRequest | null>(null);
+  const confirmResolverRef = useRef<((confirmed: boolean) => void) | null>(null);
   const [draftOpen, setDraftOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const emptyDraft: LibraryProductDraft = {
@@ -486,6 +498,19 @@ export function LibraryAdminHub() {
   const [refundDraft, setRefundDraft] = useState<RefundDraft | null>(null);
   const [paymentActionDraft, setPaymentActionDraft] = useState<PaymentActionDraft | null>(null);
   const [inventoryMovementDraft, setInventoryMovementDraft] = useState<InventoryMovementDraft | null>(null);
+
+  function requestConfirm(options: LibraryConfirmRequest) {
+    return new Promise<boolean>((resolve) => {
+      confirmResolverRef.current = resolve;
+      setConfirmRequest(options);
+    });
+  }
+
+  function closeConfirm(confirmed: boolean) {
+    confirmResolverRef.current?.(confirmed);
+    confirmResolverRef.current = null;
+    setConfirmRequest(null);
+  }
   const [recommendationDraft, setRecommendationDraft] = useState<RecommendationDraft | null>(null);
   const [previewProduct, setPreviewProduct] = useState<LibraryProduct | null>(null);
   const [guestClaimDraft, setGuestClaimDraft] = useState<{ orderId: string; email: string } | null>(null);
@@ -540,8 +565,12 @@ export function LibraryAdminHub() {
 
   useEffect(() => {
     if (view !== "Analytics") return;
+    setCustomerJourneyLoading(true);
+    setCustomerJourneyError(null);
     void apiFetch<LibraryCustomerJourney>("/api/v1/admin/library?type=customer-journey&days=30").then((result) => {
       if (result.data) setCustomerJourney(result.data);
+      else setCustomerJourneyError(result.error?.message ?? "Customer journey analytics could not be loaded.");
+      setCustomerJourneyLoading(false);
     });
   }, [view]);
 
@@ -628,11 +657,13 @@ export function LibraryAdminHub() {
     }
   }
 
-  function confirmPublishThenSave() {
+  async function confirmPublishThenSave() {
     if (draft.bundleProductIds.length > 0 && !draft.bundlePromoPrice.trim()) {
-      const proceed = window.confirm(
-        "Companions are selected but the bundle promo total is blank. Publish without a bundle discount?",
-      );
+      const proceed = await requestConfirm({
+        title: "Publish Without Bundle Discount",
+        description: "Companions are selected but the bundle promo total is blank. Publish without a bundle discount?",
+        confirmLabel: "Publish Anyway",
+      });
       if (!proceed) return;
     }
     void saveProduct("PUBLISHED");
@@ -986,7 +1017,13 @@ export function LibraryAdminHub() {
   }
 
   async function deleteProduct(id: string) {
-    if (!window.confirm("Delete this Library product? This removes it from the admin catalogue and public library.")) return;
+    const proceed = await requestConfirm({
+      title: "Delete Library Product",
+      description: "This removes the product from the admin catalogue and public Library.",
+      confirmLabel: "Delete Product",
+      danger: true,
+    });
+    if (!proceed) return;
     setFeedback(null);
     const result = await apiFetch<{ count: number }>(`/api/v1/admin/library/products/${id}`, { method: "DELETE" });
     if (result.error || !result.data?.count) {
@@ -1021,7 +1058,15 @@ export function LibraryAdminHub() {
   }
 
   async function bulk(action: "bulk_archive" | "bulk_delete") {
-    if (action === "bulk_delete" && !window.confirm(`Delete ${selectedIds.size} selected Library product${selectedIds.size === 1 ? "" : "s"}?`)) return;
+    if (action === "bulk_delete") {
+      const proceed = await requestConfirm({
+        title: "Delete Selected Products",
+        description: `Delete ${selectedIds.size} selected Library product${selectedIds.size === 1 ? "" : "s"}?`,
+        confirmLabel: "Delete Products",
+        danger: true,
+      });
+      if (!proceed) return;
+    }
     await apiFetch("/api/v1/admin/library", { method: "POST", body: JSON.stringify({ action, ids: Array.from(selectedIds) }) });
     setSelectedIds(new Set());
     await load();
@@ -1121,7 +1166,13 @@ export function LibraryAdminHub() {
   }
 
   async function deleteTaxonomy(kind: LibraryGroupField, id: string) {
-    if (!window.confirm("Permanently delete this Library record? Linked products keep their text values, but this taxonomy row will be removed.")) return;
+    const proceed = await requestConfirm({
+      title: "Delete Library Taxonomy",
+      description: "Linked products keep their text values, but this taxonomy row will be removed permanently.",
+      confirmLabel: "Delete Record",
+      danger: true,
+    });
+    if (!proceed) return;
     setFeedback(null);
     const result = await apiFetch<{ taxonomy: LibraryTaxonomyAdmin }>("/api/v1/admin/library", {
       method: "POST",
@@ -1153,7 +1204,14 @@ export function LibraryAdminHub() {
 
   async function deleteProductGroup(field: "category" | "collection" | "author", currentName: string) {
     const ids = source.filter((product) => product[field] === currentName).map((product) => product.id);
-    if (!ids.length || !window.confirm(`Delete ${ids.length} product${ids.length === 1 ? "" : "s"} in ${currentName}?`)) return;
+    if (!ids.length) return;
+    const proceed = await requestConfirm({
+      title: "Delete Product Group",
+      description: `Delete ${ids.length} product${ids.length === 1 ? "" : "s"} in ${currentName}?`,
+      confirmLabel: "Delete Products",
+      danger: true,
+    });
+    if (!proceed) return;
     await apiFetch("/api/v1/admin/library", { method: "POST", body: JSON.stringify({ action: "bulk_delete", ids }) });
     await load();
   }
@@ -1192,7 +1250,13 @@ export function LibraryAdminHub() {
   }
 
   async function deleteExport(id: string, type: string) {
-    if (!window.confirm(`Delete the ${type} export job? This removes it from the reports list.`)) return;
+    const proceed = await requestConfirm({
+      title: "Delete Export Job",
+      description: `Delete the ${type} export job? This removes it from the reports list.`,
+      confirmLabel: "Delete Export",
+      danger: true,
+    });
+    if (!proceed) return;
     setFeedback(null);
     const result = await apiFetch<{ deleted: boolean }>("/api/v1/admin/library", { method: "POST", body: JSON.stringify({ action: "delete_export", id }) });
     if (result.error) {
@@ -1239,7 +1303,13 @@ export function LibraryAdminHub() {
   }
 
   async function deleteCoupon(id: string) {
-    if (!window.confirm("Delete this Library coupon?")) return;
+    const proceed = await requestConfirm({
+      title: "Delete Library Coupon",
+      description: "Delete this Library coupon? It will no longer apply at checkout.",
+      confirmLabel: "Delete Coupon",
+      danger: true,
+    });
+    if (!proceed) return;
     setFeedback(null);
     const result = await apiFetch("/api/v1/admin/library", { method: "POST", body: JSON.stringify({ action: "delete_coupon", id }) });
     if (result.error) {
@@ -1263,7 +1333,13 @@ export function LibraryAdminHub() {
   }
 
   async function deleteTaxSetting(id: string) {
-    if (!window.confirm("Delete this Library tax setting? Checkout quotes will stop using it immediately.")) return;
+    const proceed = await requestConfirm({
+      title: "Delete Tax Setting",
+      description: "Checkout quotes will stop using this tax setting immediately.",
+      confirmLabel: "Delete Tax Setting",
+      danger: true,
+    });
+    if (!proceed) return;
     setFeedback(null);
     const result = await apiFetch("/api/v1/admin/library", { method: "POST", body: JSON.stringify({ action: "delete_tax_setting", id }) });
     if (result.error) {
@@ -1347,9 +1423,12 @@ export function LibraryAdminHub() {
   }
 
   async function deleteOrder(order: LibraryOrder) {
-    const confirmed = window.confirm(
-      `Permanently delete ${order.orderNumber}? This removes the order, invoice, fulfilment, downloads, and linked payment. This cannot be undone.`,
-    );
+    const confirmed = await requestConfirm({
+      title: "Delete Library Order",
+      description: `Permanently delete ${order.orderNumber}? This removes the order, invoice, fulfilment, downloads, and linked payment. This cannot be undone.`,
+      confirmLabel: "Delete Order",
+      danger: true,
+    });
     if (!confirmed) return;
     setFeedback(null);
     const result = await apiFetch("/api/v1/admin/library", {
@@ -1408,7 +1487,13 @@ export function LibraryAdminHub() {
       setFeedback({ tone: "error", message: "This customer segment is missing a user id, so it cannot be changed safely." });
       return;
     }
-    if (!window.confirm(`Disable Library customer ${email}? Their orders and invoices stay for audit history, but login and download access will be revoked.`)) return;
+    const proceed = await requestConfirm({
+      title: "Disable Library Customer",
+      description: `Disable Library customer ${email}? Their orders and invoices stay for audit history, but login and download access will be revoked.`,
+      confirmLabel: "Disable Customer",
+      danger: true,
+    });
+    if (!proceed) return;
     setFeedback(null);
     const result = await apiFetch("/api/v1/admin/library", { method: "POST", body: JSON.stringify({ action: "disable_customer", userId }) });
     if (result.error) {
@@ -1475,7 +1560,13 @@ export function LibraryAdminHub() {
     const sourceProductId = row.sourceProductId ?? source.find((product) => product.title === row.sourceProduct?.title)?.id;
     const targetProductId = row.targetProductId ?? source.find((product) => product.title === row.targetProduct?.title)?.id;
     if (!sourceProductId || !targetProductId) return;
-    if (!window.confirm("Disable this product recommendation?")) return;
+    const proceed = await requestConfirm({
+      title: "Disable Recommendation",
+      description: "Disable this product recommendation? It will stop appearing in Library merchandising surfaces.",
+      confirmLabel: "Disable Recommendation",
+      danger: true,
+    });
+    if (!proceed) return;
     setFeedback(null);
     const result = await apiFetch("/api/v1/admin/library", {
       method: "POST",
@@ -1497,6 +1588,15 @@ export function LibraryAdminHub() {
           {feedback.message}
         </div>
       )}
+      <AdminConfirmDialog
+        open={Boolean(confirmRequest)}
+        title={confirmRequest?.title ?? "Confirm Action"}
+        description={confirmRequest?.description}
+        confirmLabel={confirmRequest?.confirmLabel ?? "Confirm"}
+        danger={confirmRequest?.danger}
+        onCancel={() => closeConfirm(false)}
+        onConfirm={() => closeConfirm(true)}
+      />
       {loadError && !feedback && (
         <div role="alert" className="rounded-lg border border-red-400/25 bg-red-400/10 px-4 py-3 text-sm font-semibold text-red-200">
           {loadError}
@@ -1665,6 +1765,8 @@ export function LibraryAdminHub() {
             orders={orders}
             analytics={analytics}
             customerJourney={customerJourney}
+            customerJourneyLoading={customerJourneyLoading}
+            customerJourneyError={customerJourneyError}
             operations={operations}
             orderFilter={orderFilter}
             customerFilter={customerFilter}
@@ -3410,6 +3512,8 @@ function LibraryTabManagement({
   orders: _orders,
   analytics,
   customerJourney,
+  customerJourneyLoading,
+  customerJourneyError,
   operations,
   orderFilter: _orderFilter,
   customerFilter,
@@ -3445,6 +3549,8 @@ function LibraryTabManagement({
   orders: LibraryOrder[];
   analytics: LibraryAnalytics;
   customerJourney: LibraryCustomerJourney | null;
+  customerJourneyLoading: boolean;
+  customerJourneyError: string | null;
   operations: LibraryOperations;
   orderFilter: string;
   customerFilter: string;
@@ -3766,30 +3872,66 @@ function LibraryTabManagement({
           { label: "Active Customers", value: analytics.activeCustomers, detail: "Last 30 days" },
           { label: "Avg Rating", value: `${analytics.averageRating.toFixed(1)}/5`, detail: "Customer satisfaction" },
         ]} />
-        {customerJourney && (
-          <div className="rounded-xl border border-white/10 bg-slate-950/60 p-4">
-            <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-              <div>
-                <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-300">Customer Journey</h3>
-                <p className="text-xs text-slate-500">Browse, cart, purchase, and download movement from real Library records.</p>
-              </div>
-              <span className="text-sm font-semibold text-emerald-300">{customerJourney.conversionRate.toFixed(1)}% conversion</span>
+        <AdminPanel
+          title="Customer Journey"
+          description="Browse, cart, purchase, and download movement from real Library records."
+          action={
+            customerJourney ? (
+              <span className="rounded-full bg-emerald-500/10 px-3 py-1 text-sm font-semibold text-emerald-300">
+                {customerJourney.conversionRate.toFixed(1)}% conversion
+              </span>
+            ) : null
+          }
+        >
+          {customerJourneyLoading ? (
+            <div className="flex items-center justify-center py-10 text-slate-400">
+              <Loader2 className="mr-2 size-5 animate-spin" />
+              Loading journey data...
             </div>
-            <div className="mt-3 grid gap-3 md:grid-cols-2">
-              <BarChart data={customerJourney.funnelStages.map((stage) => ({ label: stage.stage, value: stage.count }))} color="bg-emerald-500" />
-              <div className="space-y-2">
+          ) : customerJourneyError ? (
+            <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-200">{customerJourneyError}</div>
+          ) : customerJourney ? (
+            <div className="space-y-4">
+              <AdminMetricGrid cols={4}>
+                <AdminStatPill label="Visitors" value={customerJourney.totalVisitors} />
+                <AdminStatPill label="Conversion" value={`${customerJourney.conversionRate.toFixed(1)}%`} tone={customerJourney.conversionRate > 0 ? "success" : "default"} />
+                <AdminStatPill label="Return Visitors" value={`${customerJourney.returnVisitorRate.toFixed(1)}%`} />
+                <AdminStatPill label="Journey Time" value={customerJourney.averageJourneyTime ? `${customerJourney.averageJourneyTime}m` : "N/A"} />
+              </AdminMetricGrid>
+              <div className="grid gap-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(280px,0.9fr)]">
+                <div className="min-w-0 overflow-x-auto rounded-xl border border-white/10 bg-slate-950/60 p-3">
+                  <BarChart data={customerJourney.funnelStages.map((stage) => ({ label: stage.stage, value: stage.count }))} color="bg-emerald-500" />
+                </div>
+                <div className="space-y-3">
+                  {customerJourney.funnelStages.map((stage) => (
+                    <div key={stage.stage} className="rounded-xl border border-white/10 bg-slate-950/60 p-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="font-semibold text-white">{stage.stage}</p>
+                        <span className="text-sm tabular-nums text-slate-300">{stage.count}</span>
+                      </div>
+                      <p className="mt-1 text-xs text-slate-500">
+                        {stage.percentage.toFixed(1)}% stage rate / {stage.dropOffRate.toFixed(1)}% drop-off
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="grid gap-3 md:grid-cols-3">
                 {customerJourney.topDropOffPoints.length ? customerJourney.topDropOffPoints.map((point) => (
-                  <div key={point.stage} className="rounded-lg border border-white/10 bg-slate-900/60 p-3">
+                  <div key={point.stage} className="rounded-xl border border-white/10 bg-slate-950/60 p-3">
                     <p className="text-sm font-semibold text-white">{point.stage}</p>
-                    <p className="text-xs text-slate-400">{point.count} drop-offs / {point.percentage.toFixed(1)}%</p>
+                    <p className="mt-1 text-xs text-slate-400">{point.count} drop-offs / {point.percentage.toFixed(1)}%</p>
+                    {point.reason && <p className="mt-2 text-xs text-amber-300">{point.reason}</p>}
                   </div>
                 )) : (
-                  <p className="rounded-lg border border-dashed border-white/10 p-3 text-sm text-slate-500">No customer journey drop-offs yet.</p>
+                  <p className="rounded-xl border border-dashed border-white/10 p-3 text-sm text-slate-500 md:col-span-3">No customer journey drop-offs yet.</p>
                 )}
               </div>
             </div>
-          </div>
-        )}
+          ) : (
+            <p className="rounded-xl border border-dashed border-white/10 p-4 text-sm text-slate-500">No customer journey data available yet.</p>
+          )}
+        </AdminPanel>
         <div className="grid gap-5 grid-cols-1 sm:grid-cols-2 xl:grid-cols-2">
           <div className="col-span-1 sm:col-span-2 xl:col-span-1">
             <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-300">Revenue trend</h3>

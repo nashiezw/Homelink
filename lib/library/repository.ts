@@ -455,24 +455,37 @@ export async function getLibraryCustomerJourney(days: number = 30): Promise<Libr
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
 
-    const [products, orders, downloads] = await Promise.all([
+    const [products, orders, downloads, cartAdds, abandonedCarts] = await Promise.all([
       prisma.libraryProduct.findMany({
-        where: { updatedAt: { gte: startDate } }
+        where: { updatedAt: { gte: startDate }, deletedAt: null },
       }),
       prisma.libraryOrder.findMany({
         where: { createdAt: { gte: startDate } },
-        include: { items: true }
+        include: { items: true },
       }),
       prisma.libraryDownloadAccess.findMany({
-        where: { createdAt: { gte: startDate } }
-      })
+        where: { createdAt: { gte: startDate } },
+      }),
+      prisma.libraryActivity.findMany({
+        where: {
+          createdAt: { gte: startDate },
+          action: { in: ["CART_ADD_SINGLE", "CART_ADD_BUNDLE"] },
+        },
+        select: { actorId: true, targetId: true, metadata: true, createdAt: true },
+      }).catch(() => []),
+      prisma.libraryAbandonedCart.findMany({
+        where: { updatedAt: { gte: startDate } },
+        select: { id: true, recoveredAt: true, subtotal: true },
+      }).catch(() => []),
     ]);
 
     // Calculate funnel stages using real data
     const totalVisitors = products.reduce((sum, p) => sum + p.viewCount, 0);
     const pendingOrders = orders.filter(o => o.status === "PENDING").length;
     const paidOrders = orders.filter(o => o.status === "PAID" || o.status === "FULFILLED").length;
+    const cartAddCount = Math.max(cartAdds.length, abandonedCarts.length, pendingOrders + paidOrders);
     const downloadCount = downloads.length;
+    const abandonedCount = abandonedCarts.filter((cart) => !cart.recoveredAt).length;
 
     const funnelStages: LibraryFunnelAnalytics[] = [
       {
@@ -480,29 +493,29 @@ export async function getLibraryCustomerJourney(days: number = 30): Promise<Libr
         count: totalVisitors,
         percentage: totalVisitors > 0 ? 100 : 0,
         dropOffRate: 0,
-        averageTimeInStage: 0
+        averageTimeInStage: 0,
       },
       {
         stage: "Add to Cart",
-        count: pendingOrders,
-        percentage: totalVisitors > 0 ? (pendingOrders / totalVisitors) * 100 : 0,
-        dropOffRate: totalVisitors > 0 ? ((totalVisitors - pendingOrders) / totalVisitors) * 100 : 0,
-        averageTimeInStage: 0
+        count: cartAddCount,
+        percentage: totalVisitors > 0 ? (cartAddCount / totalVisitors) * 100 : 0,
+        dropOffRate: totalVisitors > 0 ? (Math.max(totalVisitors - cartAddCount, 0) / totalVisitors) * 100 : 0,
+        averageTimeInStage: 0,
       },
       {
         stage: "Purchase",
         count: paidOrders,
-        percentage: pendingOrders > 0 ? (paidOrders / pendingOrders) * 100 : 0,
-        dropOffRate: pendingOrders > 0 ? ((pendingOrders - paidOrders) / pendingOrders) * 100 : 0,
-        averageTimeInStage: 0
+        percentage: cartAddCount > 0 ? (paidOrders / cartAddCount) * 100 : 0,
+        dropOffRate: cartAddCount > 0 ? (Math.max(cartAddCount - paidOrders, 0) / cartAddCount) * 100 : 0,
+        averageTimeInStage: 0,
       },
       {
         stage: "Download",
         count: downloadCount,
         percentage: paidOrders > 0 ? (downloadCount / paidOrders) * 100 : 0,
         dropOffRate: paidOrders > 0 ? ((paidOrders - downloadCount) / paidOrders) * 100 : 0,
-        averageTimeInStage: 0
-      }
+        averageTimeInStage: 0,
+      },
     ];
 
     // Calculate top drop-off points
@@ -510,8 +523,9 @@ export async function getLibraryCustomerJourney(days: number = 30): Promise<Libr
       .filter(stage => stage.dropOffRate > 0)
       .map(stage => ({
         stage: stage.stage,
-        count: Math.round((stage.dropOffRate / 100) * totalVisitors),
-        percentage: stage.dropOffRate
+        count: stage.stage === "Purchase" ? Math.max(cartAddCount - paidOrders, 0) : stage.stage === "Download" ? Math.max(paidOrders - downloadCount, 0) : Math.round((stage.dropOffRate / 100) * totalVisitors),
+        percentage: stage.dropOffRate,
+        reason: stage.stage === "Purchase" && abandonedCount > 0 ? `${abandonedCount} unrecovered abandoned cart${abandonedCount === 1 ? "" : "s"}` : undefined,
       }))
       .sort((a, b) => b.percentage - a.percentage)
       .slice(0, 3);
