@@ -94,16 +94,16 @@ export function AssignmentReviewPanel() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
           <h3 className="text-lg font-bold text-white">Assignment Review</h3>
           <p className="text-sm text-slate-400">Review and grade student assignment submissions</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex w-full gap-2 sm:w-auto">
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
-            className="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-white"
+            className="w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-white sm:w-auto"
           >
             <option value="SUBMITTED">Pending Review</option>
             <option value="APPROVED">Approved</option>
@@ -120,12 +120,12 @@ export function AssignmentReviewPanel() {
             className="rounded-xl border border-white/10 bg-slate-900/60 p-4 cursor-pointer hover:border-white/20 transition"
             onClick={() => setSelectedSubmission(submission)}
           >
-            <div className="flex items-start justify-between mb-3">
+            <div className="flex items-start justify-between gap-2 mb-3">
               <div className="flex-1 min-w-0">
                 <h4 className="font-semibold text-white text-sm truncate">{submission.assignment.title}</h4>
                 <p className="text-xs text-slate-400 truncate">{submission.agent.name}</p>
               </div>
-              <span className={`text-xs px-2 py-1 rounded ml-2 ${
+              <span className={`shrink-0 text-xs px-2 py-1 rounded ${
                 submission.status === "SUBMITTED" ? "bg-amber-500/20 text-amber-400" :
                 submission.status === "APPROVED" ? "bg-emerald-500/20 text-emerald-400" :
                 "bg-red-500/20 text-red-400"
@@ -152,9 +152,9 @@ export function AssignmentReviewPanel() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
           <div className="bg-slate-900 rounded-xl border border-white/10 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6 space-y-4">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <h3 className="text-lg font-bold text-white">Review Assignment</h3>
-                <Button variant="secondary" onClick={() => setSelectedSubmission(null)}>Close</Button>
+                <Button className="w-full sm:w-auto" variant="secondary" onClick={() => setSelectedSubmission(null)}>Close</Button>
               </div>
 
               <div className="space-y-3">
@@ -229,7 +229,7 @@ export function AssignmentReviewPanel() {
                       className="w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-white"
                     />
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex flex-col gap-2 sm:flex-row">
                     <Button
                       onClick={() => handleGrade("APPROVED")}
                       disabled={grading}

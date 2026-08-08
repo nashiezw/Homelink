@@ -52,15 +52,16 @@ export async function identifyAtRiskLearners(courseId?: string): Promise<AtRiskL
     
     const lastActivity = analytics.length > 0 ? analytics[0].date : enrollment.enrolledAt;
     const daysSinceLastActivity = Math.floor((Date.now() - lastActivity.getTime()) / (1000 * 60 * 60 * 24));
+    const daysSinceEnrollment = Math.floor((Date.now() - enrollment.enrolledAt.getTime()) / (1000 * 60 * 60 * 24));
     
     const riskFactors: string[] = [];
     let riskLevel: "LOW" | "MEDIUM" | "HIGH" = "LOW";
 
     // Risk factor 1: Low engagement score
-    if (engagementScore < 30) {
+    if (daysSinceEnrollment >= 7 && engagementScore < 30) {
       riskFactors.push("Low engagement score");
       riskLevel = "HIGH";
-    } else if (engagementScore < 50) {
+    } else if (daysSinceEnrollment >= 7 && engagementScore < 50) {
       riskFactors.push("Moderate engagement score");
       riskLevel = "MEDIUM";
     }
@@ -76,14 +77,14 @@ export async function identifyAtRiskLearners(courseId?: string): Promise<AtRiskL
 
     // Risk factor 3: Low lesson completion rate
     const totalLessons = analytics.reduce((sum: number, a: any) => sum + a.lessonsCompleted, 0);
-    if (totalLessons < 2 && daysSinceLastActivity > 3) {
+    if (totalLessons < 2 && daysSinceLastActivity > 7 && daysSinceEnrollment >= 7) {
       riskFactors.push("Low lesson completion");
       riskLevel = riskLevel === "HIGH" ? "HIGH" : "MEDIUM";
     }
 
     // Risk factor 4: Low time spent
     const totalTime = analytics.reduce((sum: number, a: any) => sum + a.totalTimeSpent, 0);
-    if (totalTime < 60 && daysSinceLastActivity > 3) {
+    if (totalTime < 60 && daysSinceLastActivity > 7 && daysSinceEnrollment >= 7) {
       riskFactors.push("Low time spent learning");
       riskLevel = riskLevel === "HIGH" ? "HIGH" : "MEDIUM";
     }

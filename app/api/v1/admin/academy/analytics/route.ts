@@ -185,20 +185,63 @@ export async function GET(request: Request) {
       
       // Completion rates by course - include IN_PROGRESS learners with their actual progress
       prisma.$queryRaw`
+        WITH lesson_totals AS (
+          SELECT
+            tm."courseId",
+            COUNT(tl.id) AS total_lessons
+          FROM "training_modules" tm
+          JOIN "training_sections" ts ON ts."moduleId" = tm.id
+          JOIN "training_lessons" tl ON tl."sectionId" = ts.id
+          GROUP BY tm."courseId"
+        ),
+        lesson_progress_by_learner AS (
+          SELECT
+            tm."courseId",
+            lp."agentId",
+            COUNT(DISTINCT CASE WHEN lp.status = 'COMPLETED' THEN lp."lessonId" END) AS completed_lessons
+          FROM "lesson_progress" lp
+          JOIN "training_lessons" tl ON tl.id = lp."lessonId"
+          JOIN "training_sections" ts ON ts.id = tl."sectionId"
+          JOIN "training_modules" tm ON tm.id = ts."moduleId"
+          GROUP BY tm."courseId", lp."agentId"
+        )
         SELECT 
           c.id as "courseId",
           c.title,
           COUNT(DISTINCT ce."agentId") as enrolled,
-          COUNT(DISTINCT CASE WHEN cp.status = 'COMPLETED' THEN cp."agentId" END) as completed,
-          ROUND(AVG(cp."percentComplete"), 1) as avg_progress,
+          COUNT(DISTINCT CASE
+            WHEN cp.status = 'COMPLETED'
+              OR (
+                COALESCE(lt.total_lessons, 0) > 0
+                AND COALESCE(lpl.completed_lessons, 0) >= lt.total_lessons
+              )
+            THEN ce."agentId"
+          END) as completed,
+          ROUND(AVG(COALESCE(
+            cp."percentComplete",
+            CASE
+              WHEN COALESCE(lt.total_lessons, 0) > 0
+              THEN LEAST(100, COALESCE(lpl.completed_lessons, 0) * 100.0 / lt.total_lessons)
+              ELSE 0
+            END
+          )), 1) as avg_progress,
           ROUND(
-            COUNT(DISTINCT CASE WHEN cp.status = 'COMPLETED' THEN cp."agentId" END) * 100.0 / 
+            COUNT(DISTINCT CASE
+              WHEN cp.status = 'COMPLETED'
+                OR (
+                  COALESCE(lt.total_lessons, 0) > 0
+                  AND COALESCE(lpl.completed_lessons, 0) >= lt.total_lessons
+                )
+              THEN ce."agentId"
+            END) * 100.0 /
             NULLIF(COUNT(DISTINCT ce."agentId"), 0),
             1
           ) as completion_rate
         FROM "training_courses" c
         LEFT JOIN "course_enrolments" ce ON c.id = ce."courseId" AND ce.status = 'ACTIVE'
         LEFT JOIN "course_progress" cp ON c.id = cp."courseId" AND ce."agentId" = cp."agentId"
+        LEFT JOIN lesson_totals lt ON lt."courseId" = c.id
+        LEFT JOIN lesson_progress_by_learner lpl ON lpl."courseId" = c.id AND lpl."agentId" = ce."agentId"
         WHERE c.status = 'PUBLISHED'
         GROUP BY c.id, c.title
         ORDER BY completion_rate DESC NULLS LAST

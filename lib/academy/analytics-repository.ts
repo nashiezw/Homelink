@@ -691,10 +691,16 @@ export async function getStudentProgressAnalytics(studentId: string): Promise<St
     );
 
     const averageTimePerLesson = totalLessons > 0 ? totalLearningMinutes / totalLessons : 0;
+    const derivedCompletionPercentage = totalLessons > 0
+      ? Math.round((completedLessons.length / totalLessons) * 100)
+      : 0;
+    const completionPercentage = courseProgress?.percentComplete ?? derivedCompletionPercentage;
+    const status = courseProgress?.status
+      ?? (completionPercentage >= 100 ? "COMPLETED" : completionPercentage > 0 ? "IN_PROGRESS" : "NOT_STARTED");
 
     // Estimate completion date based on current pace
-    const estimatedCompletionDate = courseProgress?.percentComplete && courseProgress.percentComplete > 0
-      ? new Date(Date.now() + ((100 - courseProgress.percentComplete) / courseProgress.percentComplete) * 
+    const estimatedCompletionDate = completionPercentage > 0 && completionPercentage < 100
+      ? new Date(Date.now() + ((100 - completionPercentage) / completionPercentage) *
           (Date.now() - enrolment.enrolledAt.getTime()))
       : null;
 
@@ -702,9 +708,9 @@ export async function getStudentProgressAnalytics(studentId: string): Promise<St
       courseId: enrolment.course.id,
       courseTitle: enrolment.course.title,
       enrollmentDate: enrolment.enrolledAt,
-      status: courseProgress?.status || "NOT_STARTED",
-      completionPercentage: courseProgress?.percentComplete || 0,
-      learningMinutes: courseProgress?.learningMinutes || 0,
+      status,
+      completionPercentage,
+      learningMinutes: courseProgress?.learningMinutes || totalLearningMinutes,
       averageScore: Number(courseProgress?.averageScore || 0),
       completedAt: courseProgress?.completedAt || null,
       lastActivityDate: currentLesson?.lastViewedAt || enrolment.enrolledAt,

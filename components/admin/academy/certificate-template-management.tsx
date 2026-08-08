@@ -179,12 +179,12 @@ export function CertificateTemplateManagement() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
           <h3 className="text-lg font-bold text-white">Certificate Templates</h3>
           <p className="text-sm text-slate-400">Manage certificate designs and configurations</p>
         </div>
-        <Button onClick={() => { setShowCreateForm(true); resetForm(); }}>
+        <Button className="w-full sm:w-auto" onClick={() => { setShowCreateForm(true); resetForm(); }}>
           <Plus className="mr-2 size-4" />
           Create Template
         </Button>
@@ -321,7 +321,7 @@ export function CertificateTemplateManagement() {
             <label htmlFor="active" className="text-sm text-white">Active</label>
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex flex-col gap-2 sm:flex-row">
             <Button onClick={editingTemplate ? handleUpdate : handleCreate}>
               {editingTemplate ? "Update Template" : "Create Template"}
             </Button>
@@ -335,12 +335,12 @@ export function CertificateTemplateManagement() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {templates.map((template) => (
           <div key={template.id} className="rounded-xl border border-white/10 bg-slate-900/60 p-4">
-            <div className="flex items-start justify-between mb-3">
-              <div>
-                <h4 className="font-semibold text-white text-base">{template.name}</h4>
+            <div className="flex flex-col gap-2 mb-3 sm:flex-row sm:items-start sm:justify-between">
+              <div className="min-w-0">
+                <h4 className="break-words font-semibold text-white text-base [overflow-wrap:anywhere]">{template.name}</h4>
                 <p className="text-xs text-slate-400">{new Date(template.updatedAt).toLocaleDateString()}</p>
               </div>
-              <span className={`text-xs px-2 py-1 rounded ${template.active ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-500/20 text-slate-400'}`}>
+              <span className={`w-fit shrink-0 text-xs px-2 py-1 rounded ${template.active ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-500/20 text-slate-400'}`}>
                 {template.active ? "Active" : "Inactive"}
               </span>
             </div>
@@ -352,12 +352,12 @@ export function CertificateTemplateManagement() {
                 <span className="text-slate-500">Expiry:</span> {(template.templateJson as Record<string, unknown>).expiryDays as string || "365"} days
               </p>
             </div>
-            <div className="flex gap-2">
-              <Button variant="secondary" onClick={() => handleEdit(template)}>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Button className="w-full sm:w-auto" variant="secondary" onClick={() => handleEdit(template)}>
                 <Edit className="size-3 mr-1" />
                 Edit
               </Button>
-              <Button variant="secondary" onClick={() => handleDelete(template.id)}>
+              <Button className="w-full sm:w-auto" variant="secondary" onClick={() => handleDelete(template.id)}>
                 <Trash2 className="size-3 mr-1" />
                 Delete
               </Button>

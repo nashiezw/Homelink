@@ -550,14 +550,27 @@ export async function getLibraryAnalytics(): Promise<LibraryAnalytics> {
   try {
     await seedLibraryIfEmpty();
     const prisma = getMainPrisma();
-    const [orders, products, downloads, reviews] = await Promise.all([
+    const [orders, products, downloadAccess, reviews] = await Promise.all([
       prisma.libraryOrder.findMany({ include: { items: true, customer: true } }),
       prisma.libraryProduct.findMany({ where: { status: "PUBLISHED" }, include: { category: true } }),
-      prisma.libraryDownloadAccess.count(),
+      prisma.libraryDownloadAccess.findMany({
+        where: { status: { not: LibraryDownloadStatus.REVOKED } },
+        select: { productId: true, downloadCount: true },
+      }),
       prisma.libraryReview.findMany()
     ]);
   const paidOrders = orders.filter((order) => order.status === "PAID" || order.status === "FULFILLED");
   const revenue = paidOrders.reduce((sum, order) => sum + Number(order.total), 0);
+  const paidProductUnits = new Map<string, number>();
+  paidOrders.forEach((order) => {
+    order.items.forEach((item) => {
+      paidProductUnits.set(item.productId, (paidProductUnits.get(item.productId) ?? 0) + item.quantity);
+    });
+  });
+  const productDownloadEvents = new Map<string, number>();
+  downloadAccess.forEach((access) => {
+    productDownloadEvents.set(access.productId, (productDownloadEvents.get(access.productId) ?? 0) + access.downloadCount);
+  });
   const today = new Date();
   const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
   const weekAgo = Date.now() - 7 * 86400000;
@@ -577,7 +590,7 @@ export async function getLibraryAnalytics(): Promise<LibraryAnalytics> {
   
   // Inventory turnover (simplified)
   const totalStock = products.reduce((sum, p) => sum + (p.stock || 0), 0);
-  const totalSold = products.reduce((sum, p) => sum + p.downloadCount, 0);
+  const totalSold = Array.from(paidProductUnits.values()).reduce((sum, units) => sum + units, 0);
   const inventoryTurnover = totalStock > 0 ? totalSold / totalStock : 0;
   
   // Active customers (purchased in last 30 days)
@@ -611,12 +624,20 @@ export async function getLibraryAnalytics(): Promise<LibraryAnalytics> {
     monthlySales: revenueSince(monthAgo),
     revenue,
     orders: orders.length,
-    downloads,
+    downloads: Array.from(productDownloadEvents.values()).reduce((sum, count) => sum + count, 0),
     visitors,
     conversionRate: visitors ? Number(((paidOrders.length / visitors) * 100).toFixed(1)) : 0,
-    bestSellers: products.filter((p) => p.bestSeller).map((p) => ({ label: p.title, value: p.downloadCount })),
+    bestSellers: [...products]
+      .filter((product) => paidProductUnits.has(product.id) || productDownloadEvents.has(product.id))
+      .sort((a, b) => (paidProductUnits.get(b.id) ?? 0) - (paidProductUnits.get(a.id) ?? 0) || (productDownloadEvents.get(b.id) ?? 0) - (productDownloadEvents.get(a.id) ?? 0))
+      .slice(0, 5)
+      .map((product) => ({ label: product.title, value: paidProductUnits.get(product.id) ?? 0 })),
     topCategories: Array.from(categories.entries()).map(([label, value]) => ({ label, value })),
-    mostDownloaded: [...products].sort((a, b) => b.downloadCount - a.downloadCount).slice(0, 5).map((p) => ({ label: p.title, value: p.downloadCount })),
+    mostDownloaded: [...products]
+      .filter((product) => productDownloadEvents.has(product.id))
+      .sort((a, b) => (productDownloadEvents.get(b.id) ?? 0) - (productDownloadEvents.get(a.id) ?? 0))
+      .slice(0, 5)
+      .map((product) => ({ label: product.title, value: productDownloadEvents.get(product.id) ?? 0 })),
     mostViewed: [...products].sort((a, b) => b.viewCount - a.viewCount).slice(0, 5).map((p) => ({ label: p.title, value: p.viewCount })),
     salesTrend: buildSalesTrend(paidOrders),
     stockLevels: products.filter((p) => p.stock !== null).map((p) => ({ label: p.title, value: p.stock ?? 0 })),
@@ -2446,20 +2467,26 @@ function buildLibraryAdminReports(input: {
       revenue: 0,
       units: 0,
       views: Number(product.viewCount ?? 0),
-      downloads: Number(product.downloadCount ?? 0),
+      downloads: 0,
       health: productHealthScore(product),
     });
   });
-  input.orders.forEach((order) => {
+  input.downloadAccess.forEach((access) => {
+    const productId = String((access as { productId?: unknown }).productId ?? "");
+    if (!productId) return;
+    const current = productRevenue.get(productId);
+    if (current) current.downloads += Number(access.downloadCount ?? 0);
+  });
+  paidOrders.forEach((order) => {
     order.items?.forEach((item) => {
-      const current = productRevenue.get(item.productId) ?? { id: item.productId, title: item.product?.title ?? item.title, revenue: 0, units: 0, views: item.product?.viewCount ?? 0, downloads: item.product?.downloadCount ?? 0, health: 50 };
+      const current = productRevenue.get(item.productId) ?? { id: item.productId, title: item.product?.title ?? item.title, revenue: 0, units: 0, views: item.product?.viewCount ?? 0, downloads: 0, health: 50 };
       current.revenue += Number(item.total ?? 0);
       current.units += item.quantity;
       productRevenue.set(item.productId, current);
     });
   });
   const customers = new Map<string, { id: string; userId: string; name: string; email: string; orders: number; spend: number; downloads: number; lastOrderAt: string; segment: string }>();
-  input.orders.forEach((order) => {
+  paidOrders.forEach((order) => {
     const email = order.customer?.email ?? "unknown@houselink.local";
     const userId = order.customer?.id ?? "";
     const current = customers.get(userId || email) ?? { id: userId || email, userId, name: order.customer?.name ?? "Library customer", email, orders: 0, spend: 0, downloads: 0, lastOrderAt: "", segment: "New" };

@@ -53,14 +53,16 @@ export function CertificateMonitoringDashboard() {
     return <div className="text-center py-8 text-slate-400">Loading certificate monitoring data...</div>;
   }
 
+  const activePercentage = stats && stats.totalIssued > 0 ? ((stats.active / stats.totalIssued) * 100).toFixed(1) : "0.0";
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h3 className="text-lg font-bold text-white">Certificate Monitoring</h3>
           <p className="text-sm text-slate-400">Real-time certificate generation and status tracking</p>
         </div>
-        <Button onClick={loadMonitoringData}>Refresh</Button>
+        <Button className="w-full sm:w-auto" onClick={loadMonitoringData}>Refresh</Button>
       </div>
 
       {stats && (
@@ -80,7 +82,7 @@ export function CertificateMonitoringDashboard() {
               <span className="text-sm text-slate-400">Active</span>
             </div>
             <p className="text-2xl font-bold text-white">{stats.active}</p>
-            <p className="text-xs text-slate-500 mt-1">{((stats.active / stats.totalIssued) * 100).toFixed(1)}% of total</p>
+            <p className="text-xs text-slate-500 mt-1">{activePercentage}% of total</p>
           </div>
 
           <div className="rounded-xl border border-white/10 bg-slate-900/60 p-4">
@@ -107,12 +109,12 @@ export function CertificateMonitoringDashboard() {
         <h4 className="font-semibold text-white mb-4">Recent Certificates</h4>
         <div className="space-y-2">
           {recentCertificates.map((cert) => (
-            <div key={cert.id} className="flex items-center justify-between p-3 rounded-lg bg-slate-950/50">
-              <div>
-                <p className="font-medium text-white">{cert.certificateNumber}</p>
-                <p className="text-sm text-slate-400">Course ID: {cert.courseId}</p>
+            <div key={cert.id} className="flex flex-col gap-3 p-3 rounded-lg bg-slate-950/50 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
+                <p className="break-words font-medium text-white [overflow-wrap:anywhere]">{cert.certificateNumber}</p>
+                <p className="break-words text-sm text-slate-400 [overflow-wrap:anywhere]">Course ID: {cert.courseId}</p>
               </div>
-              <div className="text-right">
+              <div className="shrink-0 sm:text-right">
                 <span className={`text-xs px-2 py-1 rounded ${
                   cert.status === "ACTIVE" ? "bg-emerald-500/20 text-emerald-400" :
                   cert.status === "REVOKED" ? "bg-red-500/20 text-red-400" :

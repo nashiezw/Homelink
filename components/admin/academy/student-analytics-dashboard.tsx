@@ -147,6 +147,7 @@ export function StudentAnalyticsDashboard() {
   const [searchQuery, setSearchQuery] = useState("");
   const [studentSearchResults, setStudentSearchResults] = useState<StudentSearchResult[]>([]);
   const [showStudentSearch, setShowStudentSearch] = useState(false);
+  const [selectedStudentId, setSelectedStudentId] = useState("");
 
   useEffect(() => {
     loadOverviewData();
@@ -209,6 +210,27 @@ export function StudentAnalyticsDashboard() {
     }
   };
 
+  const selectStudent = (student: StudentSearchResult, mode: "progress" | "quiz") => {
+    setSelectedStudentId(student.id);
+    setSearchQuery(`${student.name} (${student.email})`);
+    setShowStudentSearch(false);
+    if (mode === "progress") {
+      loadStudentAnalytics(student.id);
+    } else {
+      loadStudentQuizAnalytics(student.id);
+    }
+  };
+
+  const loadSelectedStudent = (mode: "progress" | "quiz") => {
+    const targetId = selectedStudentId || searchQuery.trim();
+    if (!targetId) return;
+    if (mode === "progress") {
+      loadStudentAnalytics(targetId);
+    } else {
+      loadStudentQuizAnalytics(targetId);
+    }
+  };
+
   useEffect(() => {
     if (searchQuery.length >= 2 && showStudentSearch) {
       const debounceTimer = setTimeout(() => searchStudents(searchQuery), 300);
@@ -261,8 +283,9 @@ export function StudentAnalyticsDashboard() {
           <h2 className="text-2xl font-bold text-white">Student Progress Analytics</h2>
           <p className="mt-1 text-sm text-slate-400">Comprehensive learner performance tracking and insights</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex w-full flex-wrap gap-2 lg:w-auto">
           <Button
+            className="flex-1 sm:flex-none"
             variant={view === "overview" ? "primary" : "secondary"}
             onClick={() => setView("overview")}
           >
@@ -270,6 +293,7 @@ export function StudentAnalyticsDashboard() {
             Overview
           </Button>
           <Button
+            className="flex-1 sm:flex-none"
             variant={view === "student" ? "primary" : "secondary"}
             onClick={() => setView("student")}
           >
@@ -277,6 +301,7 @@ export function StudentAnalyticsDashboard() {
             Student View
           </Button>
           <Button
+            className="flex-1 sm:flex-none"
             variant={view === "student-quiz" ? "primary" : "secondary"}
             onClick={() => setView("student-quiz")}
           >
@@ -284,6 +309,7 @@ export function StudentAnalyticsDashboard() {
             Quiz Analytics
           </Button>
           <Button
+            className="flex-1 sm:flex-none"
             variant={view === "at-risk" ? "primary" : "secondary"}
             onClick={() => {
               setView("at-risk");
@@ -333,15 +359,15 @@ export function StudentAnalyticsDashboard() {
               {atRiskStudents.slice(0, 5).map(student => (
                 <div
                   key={student.studentId}
-                  className="flex items-center justify-between rounded-lg border border-white/5 bg-slate-800/50 p-4"
+                  className="flex flex-col gap-3 rounded-lg border border-white/5 bg-slate-800/50 p-4 sm:flex-row sm:items-center sm:justify-between"
                 >
                   <div className="flex-1">
                     <p className="font-semibold text-white">{student.studentName}</p>
                     <p className="text-sm text-slate-400">{student.studentEmail}</p>
                     <p className="mt-1 text-xs text-slate-500">{student.courseTitle}</p>
                   </div>
-                  <div className="flex items-center gap-4">
-                    <div className="text-right">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+                    <div className="sm:text-right">
                       <p className="text-sm font-medium text-white">{student.riskType.replace(/_/g, " ")}</p>
                       <AdminStatusBadge
                         status={student.riskLevel}
@@ -350,6 +376,7 @@ export function StudentAnalyticsDashboard() {
                     </div>
                     <div className="flex gap-2">
                       <Button
+                        className="w-full sm:w-auto"
                         variant="secondary"
                         onClick={() => {
                           loadStudentAnalytics(student.studentId);
@@ -373,15 +400,36 @@ export function StudentAnalyticsDashboard() {
       {/* Student View */}
       {view === "student" && (
         <div className="space-y-6">
-          <div className="flex gap-4">
-            <input
-              type="text"
-              placeholder="Search by student name or email..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="flex-1 rounded-lg border border-white/10 bg-slate-900 px-4 py-2 text-white"
-            />
-            <Button variant="secondary">
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <div className="relative flex-1">
+              <input
+                type="text"
+                placeholder="Search by student name or email..."
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setSelectedStudentId("");
+                  setShowStudentSearch(true);
+                }}
+                onFocus={() => setShowStudentSearch(true)}
+                className="w-full rounded-lg border border-white/10 bg-slate-900 px-4 py-2 text-white"
+              />
+              {showStudentSearch && studentSearchResults.length > 0 && (
+                <div className="absolute top-full left-0 right-0 mt-2 rounded-lg border border-white/10 bg-slate-950 p-2 z-10 max-h-64 overflow-y-auto">
+                  {studentSearchResults.map(student => (
+                    <button
+                      key={student.id}
+                      onClick={() => selectStudent(student, "progress")}
+                      className="w-full text-left px-3 py-2 rounded hover:bg-slate-800 transition text-sm"
+                    >
+                      <p className="font-medium text-white">{student.name}</p>
+                      <p className="text-xs text-slate-400">{student.email}</p>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            <Button className="w-full sm:w-auto" variant="secondary" onClick={() => loadSelectedStudent("progress")}>
               <Search className="mr-2 size-4" />
               Search
             </Button>
@@ -401,19 +449,19 @@ export function StudentAnalyticsDashboard() {
       {/* At-Risk View */}
       {view === "at-risk" && (
         <div className="space-y-6">
-          <div className="flex gap-4">
+          <div className="flex flex-col gap-3 sm:flex-row">
             <input
               type="text"
               placeholder="Search by student name, email, or course..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="flex-1 rounded-lg border border-white/10 bg-slate-900 px-4 py-2 text-white"
+              className="w-full flex-1 rounded-lg border border-white/10 bg-slate-900 px-4 py-2 text-white"
             />
-            <Button variant="secondary">
+            <Button className="w-full sm:w-auto" variant="secondary">
               <Search className="mr-2 size-4" />
               Search
             </Button>
-            <Button variant="secondary">
+            <Button className="w-full sm:w-auto" variant="secondary">
               <Filter className="mr-2 size-4" />
               Filter
             </Button>
@@ -440,7 +488,7 @@ export function StudentAnalyticsDashboard() {
       {/* Student Quiz Analytics View */}
       {view === "student-quiz" && (
         <div className="space-y-6">
-          <div className="flex gap-4">
+          <div className="flex flex-col gap-3 sm:flex-row">
             <div className="relative flex-1">
               <input
                 type="text"
@@ -448,6 +496,7 @@ export function StudentAnalyticsDashboard() {
                 value={searchQuery}
                 onChange={(e) => {
                   setSearchQuery(e.target.value);
+                  setSelectedStudentId("");
                   setShowStudentSearch(true);
                 }}
                 onFocus={() => setShowStudentSearch(true)}
@@ -459,9 +508,7 @@ export function StudentAnalyticsDashboard() {
                     <button
                       key={student.id}
                       onClick={() => {
-                        setSearchQuery(student.id);
-                        setShowStudentSearch(false);
-                        loadStudentQuizAnalytics(student.id);
+                        selectStudent(student, "quiz");
                       }}
                       className="w-full text-left px-3 py-2 rounded hover:bg-slate-800 transition text-sm"
                     >
@@ -473,8 +520,9 @@ export function StudentAnalyticsDashboard() {
               )}
             </div>
             <Button 
+              className="w-full sm:w-auto"
               variant="primary"
-              onClick={() => searchQuery && loadStudentQuizAnalytics(searchQuery)}
+              onClick={() => loadSelectedStudent("quiz")}
             >
               <Search className="mr-2 size-4" />
               Load Analytics
@@ -500,7 +548,7 @@ function StudentQuizDetailView({ analytics }: { analytics: StudentQuizAnalytics 
     <div className="space-y-6">
       {/* Student Overview */}
       <div className="rounded-xl border border-white/10 bg-slate-900/60 p-6">
-        <div className="flex items-start justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h3 className="text-2xl font-bold text-white">{analytics.studentName}</h3>
             <p className="text-slate-400">{analytics.studentEmail}</p>
@@ -536,7 +584,7 @@ function StudentQuizDetailView({ analytics }: { analytics: StudentQuizAnalytics 
           <div className="space-y-4">
             {analytics.quizAttempts.map(attempt => (
               <div key={attempt.attemptId} className="rounded-lg border border-white/5 bg-slate-800/50 p-4">
-                <div className="flex items-start justify-between mb-3">
+                <div className="flex flex-col gap-2 mb-3 sm:flex-row sm:items-start sm:justify-between">
                   <div>
                     <p className="font-semibold text-white">{attempt.quizTitle}</p>
                     <p className="text-sm text-slate-400">{attempt.courseTitle}</p>
@@ -546,7 +594,7 @@ function StudentQuizDetailView({ analytics }: { analytics: StudentQuizAnalytics 
                     variant={attempt.passed ? "success" : "danger"} 
                   />
                 </div>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2 md:grid-cols-4">
                   <>
                     <p className="text-slate-400">Score</p>
                     <p className="font-semibold text-white">{attempt.score}%</p>
@@ -579,7 +627,7 @@ function StudentQuizDetailView({ analytics }: { analytics: StudentQuizAnalytics 
           <div className="space-y-4">
             {analytics.examAttempts.map(attempt => (
               <div key={attempt.attemptId} className="rounded-lg border border-white/5 bg-slate-800/50 p-4">
-                <div className="flex items-start justify-between mb-3">
+                <div className="flex flex-col gap-2 mb-3 sm:flex-row sm:items-start sm:justify-between">
                   <div>
                     <p className="font-semibold text-white">{attempt.examTitle}</p>
                     <p className="text-sm text-slate-400">{attempt.courseTitle}</p>
@@ -589,7 +637,7 @@ function StudentQuizDetailView({ analytics }: { analytics: StudentQuizAnalytics 
                     variant={attempt.passed ? "success" : "danger"} 
                   />
                 </div>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2 md:grid-cols-4">
                   <>
                     <p className="text-slate-400">Score</p>
                     <p className="font-semibold text-white">{attempt.score}%</p>
@@ -622,7 +670,7 @@ function StudentQuizDetailView({ analytics }: { analytics: StudentQuizAnalytics 
           <div className="space-y-4">
             {analytics.assignmentSubmissions.map(submission => (
               <div key={submission.submissionId} className="rounded-lg border border-white/5 bg-slate-800/50 p-4">
-                <div className="flex items-start justify-between mb-3">
+                <div className="flex flex-col gap-2 mb-3 sm:flex-row sm:items-start sm:justify-between">
                   <div>
                     <p className="font-semibold text-white">{submission.assignmentTitle}</p>
                     <p className="text-sm text-slate-400">{submission.courseTitle}</p>
@@ -632,7 +680,7 @@ function StudentQuizDetailView({ analytics }: { analytics: StudentQuizAnalytics 
                     variant={submission.status === "GRADED" ? "success" : "info"} 
                   />
                 </div>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2 md:grid-cols-4">
                   <>
                     <p className="text-slate-400">Grade</p>
                     <p className="font-semibold text-white">{submission.grade ? `${submission.grade}%` : "Not graded"}</p>
@@ -672,7 +720,7 @@ function StudentDetailView({ analytics }: { analytics: StudentProgressAnalytics 
     <div className="space-y-6">
       {/* Student Overview */}
       <div className="rounded-xl border border-white/10 bg-slate-900/60 p-6">
-        <div className="flex items-start justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h3 className="text-2xl font-bold text-white">{analytics.studentName}</h3>
             <p className="text-slate-400">{analytics.studentEmail}</p>
@@ -700,7 +748,7 @@ function StudentDetailView({ analytics }: { analytics: StudentProgressAnalytics 
         <div className="space-y-4">
           {analytics.courses.map(course => (
             <div key={course.courseId} className="rounded-lg border border-white/5 bg-slate-800/50 p-4">
-              <div className="flex items-center justify-between mb-3">
+              <div className="flex flex-col gap-2 mb-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <p className="font-semibold text-white">{course.courseTitle}</p>
                   <p className="text-sm text-slate-400">Enrolled: {new Date(course.enrollmentDate).toLocaleDateString()}</p>
@@ -758,9 +806,9 @@ function AtRiskStudentCard({ student, onViewDetails }: { student: AtRiskStudent;
 
   return (
     <div className={`rounded-xl border ${riskColors[student.riskLevel]} p-6`}>
-      <div className="flex items-start justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex-1">
-          <div className="flex items-center gap-3 mb-2">
+          <div className="flex flex-wrap items-center gap-3 mb-2">
             <h4 className="text-lg font-bold text-white">{student.studentName}</h4>
             <AdminStatusBadge status={student.riskLevel} variant={riskBadgeColors[student.riskLevel]} />
           </div>
@@ -768,8 +816,8 @@ function AtRiskStudentCard({ student, onViewDetails }: { student: AtRiskStudent;
           <p className="text-sm text-slate-300 mb-2">{student.courseTitle}</p>
           <p className="text-sm text-slate-400">{student.riskDescription}</p>
         </div>
-        <div className="flex flex-col items-end gap-2">
-          <Button variant="secondary" onClick={onViewDetails}>
+        <div className="flex flex-col gap-2 sm:items-end">
+          <Button className="w-full sm:w-auto" variant="secondary" onClick={onViewDetails}>
             View Details
           </Button>
           {student.interventionRecommended && (
@@ -784,7 +832,7 @@ function AtRiskStudentCard({ student, onViewDetails }: { student: AtRiskStudent;
           )}
         </div>
       </div>
-      <div className="mt-4 grid grid-cols-3 gap-4 pt-4 border-t border-white/10">
+      <div className="mt-4 grid grid-cols-1 gap-4 pt-4 border-t border-white/10 sm:grid-cols-3">
         <div>
           <p className="text-xs text-slate-500">Progress</p>
           <p className="text-lg font-bold text-white">{student.progressPercentage}%</p>

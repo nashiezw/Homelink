@@ -44,6 +44,7 @@ import { useSearchParams } from "next/navigation";
 import { CertificateTemplateManagement } from "@/components/admin/academy/certificate-template-management";
 import { CertificateMonitoringDashboard } from "@/components/admin/academy/certificate-monitoring-dashboard";
 import { AssignmentReviewPanel } from "@/components/admin/academy/assignment-review-panel";
+import { StudentAnalyticsDashboard } from "@/components/admin/academy/student-analytics-dashboard";
 import { AnalyticsDateRangeFilter } from "@/components/admin/analytics-date-range-filter";
 import {
   AdminDataTable,
@@ -281,6 +282,7 @@ const academyTabs = [
   "Dashboard",
   "Courses",
   "Public Learners",
+  "Student Analytics",
   "Certificates",
   "Certificate Templates",
   "Certificate Monitoring",
@@ -656,7 +658,7 @@ export function AgentAcademyHub() {
         </div>
       )}
 
-      {["Certificates", "Coupons", "Public Learners", "Learning Paths", "Announcements", "Discussion Board", "Leaderboard", "Badges", "Analytics", "Settings"].includes(tab) && (
+      {["Certificates", "Certificate Templates", "Certificate Monitoring", "Assignment Review", "Student Analytics", "Coupons", "Public Learners", "Learning Paths", "Announcements", "Discussion Board", "Leaderboard", "Badges", "Analytics", "Settings"].includes(tab) && (
         <FeatureWorkbench
           tab={tab}
           data={data}
@@ -1279,6 +1281,9 @@ function FeatureWorkbench({
 }) {
   if (tab === "Certificates") {
     return <CertificateManagementPanel certificates={data.certificates} action={action} />;
+  }
+  if (tab === "Student Analytics") {
+    return <StudentAnalyticsDashboard />;
   }
   if (tab === "Certificate Templates") {
     return <CertificateTemplateManagement />;
