@@ -20,12 +20,56 @@ type SnapshotPayload = {
 export async function getPostgresPlatformSettings() {
   const payload = await readSettingsSnapshotPayload();
   const settings = mergePlatformSettings(defaultPlatformSettings, payload.platformSettings ?? {});
+  const envOverrides = getPlatformIntegrationEnvOverrides();
+  
+  // Only apply environment variable overrides if database setting is empty
+  // This allows admin-configured settings in Platform Settings to take precedence
+  const integrations = { ...settings.integrations };
+  
+  // Apply each override only if the database setting is empty
+  if (envOverrides.googleMapsKey && !integrations.googleMapsKey) {
+    integrations.googleMapsKey = envOverrides.googleMapsKey;
+  }
+  if (envOverrides.cloudinaryCloud && !integrations.cloudinaryCloud) {
+    integrations.cloudinaryCloud = envOverrides.cloudinaryCloud;
+  }
+  if (envOverrides.cloudinaryKey && !integrations.cloudinaryKey) {
+    integrations.cloudinaryKey = envOverrides.cloudinaryKey;
+  }
+  if (envOverrides.cloudinarySecret && !integrations.cloudinarySecret) {
+    integrations.cloudinarySecret = envOverrides.cloudinarySecret;
+  }
+  if (envOverrides.firebaseProjectId && !integrations.firebaseProjectId) {
+    integrations.firebaseProjectId = envOverrides.firebaseProjectId;
+  }
+  if (envOverrides.clerkPublishableKey && !integrations.clerkPublishableKey) {
+    integrations.clerkPublishableKey = envOverrides.clerkPublishableKey;
+  }
+  if (envOverrides.smtpHost && !integrations.smtpHost) {
+    integrations.smtpHost = envOverrides.smtpHost;
+  }
+  if (envOverrides.smtpPort && !integrations.smtpPort) {
+    integrations.smtpPort = envOverrides.smtpPort;
+  }
+  if (envOverrides.smtpUser && !integrations.smtpUser) {
+    integrations.smtpUser = envOverrides.smtpUser;
+  }
+  if (envOverrides.smtpPass && !integrations.smtpPass) {
+    integrations.smtpPass = envOverrides.smtpPass;
+  }
+  if (envOverrides.smtpFrom && !integrations.smtpFrom) {
+    integrations.smtpFrom = envOverrides.smtpFrom;
+  }
+  if (envOverrides.analyticsId && !integrations.analyticsId) {
+    integrations.analyticsId = envOverrides.analyticsId;
+  }
+  if (envOverrides.cdnUrl && !integrations.cdnUrl) {
+    integrations.cdnUrl = envOverrides.cdnUrl;
+  }
+  
   return {
     ...settings,
-    integrations: {
-      ...settings.integrations,
-      ...getPlatformIntegrationEnvOverrides(),
-    },
+    integrations,
   };
 }
 

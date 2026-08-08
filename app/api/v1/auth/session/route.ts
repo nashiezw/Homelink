@@ -107,9 +107,9 @@ export async function POST(request: Request) {
       return problem(400, "NAME_REQUIRED", "Name is required for registration.");
     }
     
-    // Check if email verification is required
-    // Force email verification to always be required for registration
-    const requireEmailVerification = true;
+    // Check if email verification is required from platform settings
+    const platformSettings = await getHydratedRuntimePlatformSettings();
+    const requireEmailVerification = platformSettings.emailVerificationRequired;
     
     if (shouldUsePostgresAuth()) {
       const existing = await getPostgresUserByEmail(email);
@@ -121,6 +121,7 @@ export async function POST(request: Request) {
           const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
           const ipAddress = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "unknown";
           const userAgent = request.headers.get("user-agent") || "unknown";
+          const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
           await prisma.emailVerificationToken.upsert({
             where: { userId: existing.id },
@@ -140,7 +141,7 @@ export async function POST(request: Request) {
                 message: "An account with this email already exists but is not verified. A new verification link has been sent to your email.",
                 ...(process.env.NODE_ENV === "development" && { 
                   verificationToken: token, 
-                  verificationLink: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/auth/verify-email?token=${token}` 
+                  verificationLink: `${baseUrl}/auth/verify-email?token=${token}` 
                 }),
               },
               meta: { requestId: crypto.randomUUID() },
@@ -244,6 +245,7 @@ export async function POST(request: Request) {
       const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
       const ipAddress = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "unknown";
       const userAgent = request.headers.get("user-agent") || "unknown";
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
       await prisma.emailVerificationToken.upsert({
         where: { userId: user.id },
@@ -263,7 +265,7 @@ export async function POST(request: Request) {
             message: "Please verify your email address. A verification link has been sent to your email.",
             ...(process.env.NODE_ENV === "development" && { 
               verificationToken: token, 
-              verificationLink: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/auth/verify-email?token=${token}` 
+              verificationLink: `${baseUrl}/auth/verify-email?token=${token}` 
             }),
           },
           meta: { requestId: crypto.randomUUID() },
@@ -328,6 +330,7 @@ export async function POST(request: Request) {
       const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
       const ipAddress = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "unknown";
       const userAgent = request.headers.get("user-agent") || "unknown";
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
       await prisma.emailVerificationToken.upsert({
         where: { userId: user.id },
@@ -342,7 +345,7 @@ export async function POST(request: Request) {
         403,
         "EMAIL_VERIFICATION_REQUIRED",
         "Please verify your email address before signing in. A new verification link has been sent to your email.",
-        { emailSent: emailResult.success, email: user.email, ...(process.env.NODE_ENV === "development" && { verificationToken: token, verificationLink: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/auth/verify-email?token=${token}` }) }
+        { emailSent: emailResult.success, email: user.email, ...(process.env.NODE_ENV === "development" && { verificationToken: token, verificationLink: `${baseUrl}/auth/verify-email?token=${token}` }) }
       );
     }
     

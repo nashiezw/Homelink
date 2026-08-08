@@ -165,7 +165,7 @@ export async function sendEmailVerificationEmail(
     const settings = await getHydratedRuntimePlatformSettings();
     const integrations = settings.integrations;
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-    const verificationLink = `${baseUrl}/academy/verify-email?token=${verificationToken}`;
+    const verificationLink = `${baseUrl}/auth/verify-email?token=${verificationToken}`;
 
     // Try to get custom email template from database
     const customTemplate = await getActiveEmailTemplate("email_verification", language);

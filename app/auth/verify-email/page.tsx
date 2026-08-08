@@ -37,7 +37,7 @@ function VerifyEmailContent() {
 
     async function verifyEmail() {
       try {
-        const result = await apiFetch("/api/v1/academy/verify-email", {
+        const result = await apiFetch("/api/v1/auth/verify-email", {
           method: "POST",
           body: JSON.stringify({ token }),
         });
