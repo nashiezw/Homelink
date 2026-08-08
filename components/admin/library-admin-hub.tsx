@@ -3770,8 +3770,8 @@ function LibraryTabManagement({
           <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-300">Top Categories</h3>
           <div className="mt-3 grid gap-2 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
             {analytics.topCategories.slice(0, 6).map((cat) => (
-              <div key={cat.label} className="flex items-center justify-between rounded-lg border border-white/10 bg-slate-900/60 p-3">
-                <span className="text-sm font-medium text-white truncate flex-1 mr-2">{cat.label}</span>
+              <div key={cat.label} className="flex flex-col sm:flex-row sm:items-center justify-between rounded-lg border border-white/10 bg-slate-900/60 p-3 gap-2">
+                <span className="text-sm font-medium text-white truncate flex-1">{cat.label}</span>
                 <span className="text-sm text-slate-400 shrink-0">{cat.value} products</span>
               </div>
             ))}
@@ -3783,8 +3783,8 @@ function LibraryTabManagement({
           <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-300">Most Downloaded Products</h3>
           <div className="mt-3 grid gap-2 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
             {analytics.mostDownloaded.slice(0, 6).map((product) => (
-              <div key={product.label} className="flex items-center justify-between rounded-lg border border-white/10 bg-slate-900/60 p-3">
-                <span className="text-sm font-medium text-white truncate flex-1 mr-2">{product.label}</span>
+              <div key={product.label} className="flex flex-col sm:flex-row sm:items-center justify-between rounded-lg border border-white/10 bg-slate-900/60 p-3 gap-2">
+                <span className="text-sm font-medium text-white truncate flex-1">{product.label}</span>
                 <span className="text-sm text-slate-400 shrink-0">{product.value} downloads</span>
               </div>
             ))}
@@ -3796,8 +3796,8 @@ function LibraryTabManagement({
           <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-300">Most Viewed Products</h3>
           <div className="mt-3 grid gap-2 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
             {analytics.mostViewed.slice(0, 6).map((product) => (
-              <div key={product.label} className="flex items-center justify-between rounded-lg border border-white/10 bg-slate-900/60 p-3">
-                <span className="text-sm font-medium text-white truncate flex-1 mr-2">{product.label}</span>
+              <div key={product.label} className="flex flex-col sm:flex-row sm:items-center justify-between rounded-lg border border-white/10 bg-slate-900/60 p-3 gap-2">
+                <span className="text-sm font-medium text-white truncate flex-1">{product.label}</span>
                 <span className="text-sm text-slate-400 shrink-0">{product.value} views</span>
               </div>
             ))}

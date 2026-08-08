@@ -149,7 +149,7 @@ export async function GET(request: Request) {
         }
       }),
       
-      // Popular courses (by ACTIVE enrolments)
+      // Popular courses (by ACTIVE enrolments - no date filter to show all-time popularity)
       prisma.courseEnrolment.groupBy({
         by: ["courseId"],
         where: { status: "ACTIVE" },
@@ -158,13 +158,14 @@ export async function GET(request: Request) {
         take: 5,
       }),
       
-      // Completion rates by course - fixed query
+      // Completion rates by course - include IN_PROGRESS learners with their actual progress
       prisma.$queryRaw`
         SELECT 
           c.id as "courseId",
           c.title,
           COUNT(DISTINCT ce."agentId") as enrolled,
           COUNT(DISTINCT CASE WHEN cp.status = 'COMPLETED' THEN cp."agentId" END) as completed,
+          ROUND(AVG(cp."percentComplete"), 1) as avg_progress,
           ROUND(
             COUNT(DISTINCT CASE WHEN cp.status = 'COMPLETED' THEN cp."agentId" END) * 100.0 / 
             NULLIF(COUNT(DISTINCT ce."agentId"), 0),
@@ -198,10 +199,9 @@ export async function GET(request: Request) {
         select: { id: true, name: true, email: true }
       }),
       
-      // Average score across all course progress
+      // Average score across all course progress - include zero scores
       prisma.courseProgress.aggregate({
         where: {
-          averageScore: { gt: 0 },
           updatedAt: { gte: startDate }
         },
         _avg: { averageScore: true }

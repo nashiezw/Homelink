@@ -552,7 +552,7 @@ export async function getLibraryAnalytics(): Promise<LibraryAnalytics> {
     const prisma = getMainPrisma();
     const [orders, products, downloads, reviews] = await Promise.all([
       prisma.libraryOrder.findMany({ include: { items: true, customer: true } }),
-      prisma.libraryProduct.findMany({ include: { category: true } }),
+      prisma.libraryProduct.findMany({ where: { status: "PUBLISHED" }, include: { category: true } }),
       prisma.libraryDownloadAccess.count(),
       prisma.libraryReview.findMany()
     ]);
@@ -587,6 +587,24 @@ export async function getLibraryAnalytics(): Promise<LibraryAnalytics> {
       .map(order => order.customerId)
   ).size;
   
+  // Total customers (unique customers who have placed orders)
+  const totalCustomers = new Set(orders.map(order => order.customerId)).size;
+  
+  // Repeat purchase rate (customers with >1 order)
+  const customerOrderCounts = new Map<string, number>();
+  orders.forEach(order => {
+    customerOrderCounts.set(order.customerId, (customerOrderCounts.get(order.customerId) || 0) + 1);
+  });
+  const repeatCustomers = Array.from(customerOrderCounts.values()).filter(count => count > 1).length;
+  const repeatPurchaseRate = totalCustomers > 0 ? (repeatCustomers / totalCustomers) * 100 : 0;
+  
+  // Customer lifetime value (average total spent per customer)
+  const customerSpend = new Map<string, number>();
+  paidOrders.forEach(order => {
+    customerSpend.set(order.customerId, (customerSpend.get(order.customerId) || 0) + Number(order.total));
+  });
+  const customerLifetimeValue = totalCustomers > 0 ? Array.from(customerSpend.values()).reduce((sum, spend) => sum + spend, 0) / totalCustomers : 0;
+  
     return {
     todaySales: revenueSince(startOfDay),
     weeklySales: revenueSince(weekAgo),
@@ -604,12 +622,12 @@ export async function getLibraryAnalytics(): Promise<LibraryAnalytics> {
     stockLevels: products.filter((p) => p.stock !== null).map((p) => ({ label: p.title, value: p.stock ?? 0 })),
     // Advanced metrics
     averageOrderValue,
-    customerLifetimeValue: 0, // Not available without customer model
-    repeatPurchaseRate: 0, // Not available without customer model
+    customerLifetimeValue,
+    repeatPurchaseRate,
     averageRating,
     inventoryTurnover,
     activeCustomers,
-    totalCustomers: 0, // Not available without customer model
+    totalCustomers,
     };
   } catch {
     return getEmptyLibraryAnalytics();

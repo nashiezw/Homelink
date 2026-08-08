@@ -114,7 +114,48 @@ export async function POST(request: Request) {
     if (shouldUsePostgresAuth()) {
       const existing = await getPostgresUserByEmail(email);
       if (existing) {
-        return problem(409, "EMAIL_EXISTS", "An account with this email already exists.");
+        // If email exists but is not verified, resend verification email
+        if (!existing.emailVerifiedAt) {
+          const prisma = getMainPrisma();
+          const token = randomBytes(32).toString("hex");
+          const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+          const ipAddress = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "unknown";
+          const userAgent = request.headers.get("user-agent") || "unknown";
+
+          await prisma.emailVerificationToken.upsert({
+            where: { userId: existing.id },
+            create: { userId: existing.id, token, expiresAt, ipAddress, userAgent },
+            update: { token, expiresAt, ipAddress, userAgent },
+          });
+
+          // Send verification email
+          const emailResult = await sendEmailVerificationEmail(existing.email, existing.name, token);
+          
+          return new NextResponse(
+            JSON.stringify({
+              data: {
+                user: toPublicPostgresUser(existing),
+                requiresEmailVerification: true,
+                emailSent: emailResult.success,
+                message: "An account with this email already exists but is not verified. A new verification link has been sent to your email.",
+                ...(process.env.NODE_ENV === "development" && { 
+                  verificationToken: token, 
+                  verificationLink: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/auth/verify-email?token=${token}` 
+                }),
+              },
+              meta: { requestId: crypto.randomUUID() },
+            }),
+            {
+              status: 200,
+              headers: {
+                "Content-Type": "application/json",
+              },
+            },
+          );
+        }
+        
+        // If email exists and is verified, return error
+        return problem(409, "EMAIL_EXISTS", "An account with this email already exists. Please sign in instead.");
       }
       const user = await createPostgresUser({
         email,

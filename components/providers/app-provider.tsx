@@ -140,7 +140,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       // Handle email verification required response
       if (result.data && typeof result.data === "object" && "requiresEmailVerification" in result.data && result.data.requiresEmailVerification) {
         const data = result.data as { user: PublicUser; requiresEmailVerification: boolean; message: string };
-        showToast(data.message || "Please verify your email address.", "info", 8000);
+        // Don't show toast - let the redirect happen
         return { user: data.user, requiresEmailVerification: true, message: data.message };
       }
       

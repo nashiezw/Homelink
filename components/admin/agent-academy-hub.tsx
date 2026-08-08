@@ -1338,7 +1338,7 @@ function FeatureWorkbench({
     const revenue = analytics?.revenue as { total?: number; count?: number } | undefined;
     const _insights = data.trainerInsights;
     const popularCourses = analytics?.popularCourses as Array<{ courseId: string; courseTitle: string; _count: number }> | undefined;
-    const completionRates = analytics?.completionRates as Array<{ title: string; enrolled: number; completed: number; completion_rate: number }> | undefined;
+    const completionRates = analytics?.completionRates as Array<{ title: string; enrolled: number; completed: number; completion_rate: number; avg_progress: number }> | undefined;
     const _dailyActivity = analytics?.dailyActivity as Array<{ date: Date; actions: number }> | undefined;
     const atRiskLearners = analytics?.atRiskLearners as Array<{ learnerId: string; learnerName: string; learnerEmail: string; riskScore: number; riskFactors: string[] }> | undefined;
     
@@ -1401,11 +1401,11 @@ function FeatureWorkbench({
               {popularCourses.map((course) => (
                 <div 
                   key={course.courseId} 
-                  className="flex items-center justify-between rounded-lg border border-white/10 bg-slate-900/60 p-3 cursor-pointer hover:border-emerald-500/30 transition"
+                  className="flex flex-col sm:flex-row sm:items-center sm:justify-between rounded-lg border border-white/10 bg-slate-900/60 p-3 cursor-pointer hover:border-emerald-500/30 transition"
                   onClick={() => setSelectedCourseForDrilldown({ id: course.courseId, title: course.courseTitle })}
                 >
                   <span className="text-sm font-medium text-white truncate flex-1">{course.courseTitle}</span>
-                  <span className="text-sm text-slate-400 ml-2">{course._count} enrolled</span>
+                  <span className="text-sm text-slate-400 sm:ml-2">{course._count || 0} enrolled</span>
                 </div>
               ))}
             </div>
@@ -1419,17 +1419,17 @@ function FeatureWorkbench({
           {completionRates && completionRates.length > 0 ? (
             <div className="space-y-2">
               {completionRates.map((rate) => (
-                <div key={rate.title} className="flex items-center justify-between rounded-lg border border-white/10 bg-slate-900/60 p-3">
+                <div key={rate.title} className="flex flex-col sm:flex-row sm:items-center sm:justify-between rounded-lg border border-white/10 bg-slate-900/60 p-3">
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-white truncate">{rate.title}</p>
-                    <p className="text-xs text-slate-500">{rate.completed} of {rate.enrolled} completed</p>
+                    <p className="text-xs text-slate-500">{rate.completed} of {rate.enrolled} completed • Avg progress: {rate.avg_progress || 0}%</p>
                   </div>
                   <span className={cn(
-                    "text-sm font-semibold ml-2",
+                    "text-sm font-semibold sm:ml-2",
                     rate.completion_rate >= 70 ? "text-emerald-400" :
                     rate.completion_rate >= 40 ? "text-amber-400" : "text-red-400"
                   )}>
-                    {rate.completion_rate.toFixed(1)}%
+                    {rate.completion_rate?.toFixed(1) || 0}%
                   </span>
                 </div>
               ))}
@@ -1444,12 +1444,12 @@ function FeatureWorkbench({
           {atRiskLearners && atRiskLearners.length > 0 ? (
             <div className="space-y-2">
               {atRiskLearners.slice(0, 5).map((learner) => (
-                <div key={learner.learnerId} className="flex items-center justify-between rounded-lg border border-red-500/20 bg-red-500/10 p-3">
+                <div key={learner.learnerId} className="flex flex-col sm:flex-row sm:items-center sm:justify-between rounded-lg border border-red-500/20 bg-red-500/10 p-3">
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-white truncate">{learner.learnerName}</p>
                     <p className="text-xs text-slate-400">{learner.learnerEmail}</p>
                   </div>
-                  <div className="text-right ml-2">
+                  <div className="text-right sm:ml-2">
                     <p className="text-xs font-semibold text-red-300">{learner.riskScore}% risk</p>
                     <p className="text-xs text-slate-500">{learner.riskFactors.length} factors</p>
                   </div>

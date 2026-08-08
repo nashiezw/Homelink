@@ -63,6 +63,11 @@ export function AuthForm({
         router.push(`/auth/verify-email?email=${encodeURIComponent(email)}`);
         return;
       }
+      // Handle email exists but not verified - redirect to verification page
+      if (result.error.code === "EMAIL_EXISTS" && result.error.message && result.error.message.includes("not verified")) {
+        router.push(`/auth/verify-email?email=${encodeURIComponent(email)}`);
+        return;
+      }
       return;
     }
     if (result.user && next !== null) {
