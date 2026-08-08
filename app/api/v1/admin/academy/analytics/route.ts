@@ -219,11 +219,22 @@ export async function GET(request: Request) {
           select: { title: true }
         });
         return {
-          ...pc,
-          courseTitle: course?.title || pc.courseId
+          courseId: pc.courseId,
+          courseTitle: course?.title || pc.courseId,
+          _count: Number(pc._count)
         };
       })
     );
+    
+    // Convert BigInt values to numbers in completion rates
+    const completionRatesFixed = (completionRates as any[]).map((cr: any) => ({
+      courseId: cr.courseId,
+      title: cr.title,
+      enrolled: Number(cr.enrolled),
+      completed: Number(cr.completed),
+      avg_progress: cr.avg_progress,
+      completion_rate: cr.completion_rate
+    }));
     
     return ok({
       revenue: {
@@ -244,7 +255,7 @@ export async function GET(request: Request) {
         certificates: course._count.certificateIssues,
       })),
       popularCourses: popularCoursesWithTitles,
-      completionRates,
+      completionRates: completionRatesFixed,
       dailyActivity,
       atRiskLearners,
       userMap: Object.fromEntries(userMap),
