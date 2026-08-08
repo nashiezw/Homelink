@@ -1335,24 +1335,25 @@ function FeatureWorkbench({
     );
   }
   if (tab === "Analytics") {
-    const revenue = analytics?.revenue as { total?: number; count?: number } | undefined;
-    const _insights = data.trainerInsights;
-    const popularCourses = analytics?.popularCourses as Array<{ courseId: string; courseTitle: string; _count: number }> | undefined;
-    const completionRates = analytics?.completionRates as Array<{ title: string; enrolled: number; completed: number; completion_rate: number; avg_progress: number }> | undefined;
-    const _dailyActivity = analytics?.dailyActivity as Array<{ date: Date; actions: number }> | undefined;
-    const atRiskLearners = analytics?.atRiskLearners as Array<{ learnerId: string; learnerName: string; learnerEmail: string; riskScore: number; riskFactors?: string[] }> | undefined;
-    
-    if (!analytics) {
-      return (
-        <div className="space-y-4">
-          <div className="rounded-xl border border-white/10 bg-slate-900/60 p-8 text-center">
-            <p className="text-slate-400">Loading analytics...</p>
+    try {
+      const revenue = analytics?.revenue as { total?: number; count?: number } | undefined;
+      const _insights = data.trainerInsights;
+      const popularCourses = analytics?.popularCourses as Array<{ courseId: string; courseTitle: string; _count: number }> | undefined;
+      const completionRates = analytics?.completionRates as Array<{ title: string; enrolled: number; completed: number; completion_rate: number; avg_progress: number }> | undefined;
+      const _dailyActivity = analytics?.dailyActivity as Array<{ date: Date; actions: number }> | undefined;
+      const atRiskLearners = analytics?.atRiskLearners as Array<{ learnerId: string; learnerName: string; learnerEmail: string; riskScore: number; riskFactors?: string[] }> | undefined;
+      
+      if (!analytics) {
+        return (
+          <div className="space-y-4">
+            <div className="rounded-xl border border-white/10 bg-slate-900/60 p-8 text-center">
+              <p className="text-slate-400">Loading analytics...</p>
+            </div>
           </div>
-        </div>
-      );
-    }
-    
-    return (
+        );
+      }
+      
+      return (
       <div className="space-y-4">
         {/* Analytics Header with Date Range Filter */}
         <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -1473,6 +1474,17 @@ function FeatureWorkbench({
         </div>
       </div>
     );
+    } catch (error) {
+      console.error("Error rendering analytics:", error);
+      return (
+        <div className="space-y-4">
+          <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-8 text-center">
+            <p className="text-red-300">Error loading analytics</p>
+            <p className="text-sm text-slate-400 mt-2">Please refresh the page or try again later.</p>
+          </div>
+        </div>
+      );
+    }
   }
   if (tab === "Email Templates") {
     return <EmailTemplatesManagementPanel />;
