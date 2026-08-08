@@ -42,7 +42,13 @@ export const academySubTabs: Record<AcademyPrimaryTab, Array<{ id: string; label
     { id: "Announcements", label: "Announcements" },
     { id: "Discussion Board", label: "Discussions" },
   ],
-  Settings: [{ id: "Settings", label: "Academy Settings" }],
+  Settings: [
+    { id: "Settings", label: "Academy Settings" },
+    { id: "Email Templates", label: "Email Templates" },
+    { id: "Branding", label: "Branding" },
+    { id: "Instructors", label: "Instructors" },
+    { id: "Refunds", label: "Refunds" },
+  ],
 };
 
 /** Maps legacy flat tabs to primary + sub tab. */
@@ -71,6 +77,10 @@ export function resolveAcademyNav(requested?: string | null): { primary: Academy
     Announcements: { primary: "Community", sub: "Announcements" },
     "Discussion Board": { primary: "Community", sub: "Discussion Board" },
     Settings: { primary: "Settings", sub: "Settings" },
+    "Email Templates": { primary: "Settings", sub: "Email Templates" },
+    Branding: { primary: "Settings", sub: "Branding" },
+    Instructors: { primary: "Settings", sub: "Instructors" },
+    Refunds: { primary: "Settings", sub: "Refunds" },
   };
   if (requested && legacyMap[requested]) return legacyMap[requested];
   return { primary: "Overview", sub: "Dashboard" };

@@ -81,6 +81,15 @@ type LibraryOperations = {
   reports: LibraryAdminReports;
 };
 
+type LibraryCustomerJourney = {
+  totalVisitors: number;
+  funnelStages: Array<{ stage: string; count: number; percentage: number; dropOffRate: number; averageTimeInStage: number }>;
+  topDropOffPoints: Array<{ stage: string; count: number; percentage: number; reason?: string }>;
+  averageJourneyTime: number;
+  conversionRate: number;
+  returnVisitorRate: number;
+};
+
 type LibraryQuoteRequestAdmin = {
   id: string;
   productId: string | null;
@@ -394,6 +403,7 @@ export function LibraryAdminHub() {
   const [orders, setOrders] = useState<LibraryOrder[]>([]);
   const [analytics, setAnalytics] = useState<LibraryAnalytics>(getLibraryAnalytics());
   const [operations, setOperations] = useState<LibraryOperations>(emptyOperations);
+  const [customerJourney, setCustomerJourney] = useState<LibraryCustomerJourney | null>(null);
   const [draftOpen, setDraftOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const emptyDraft: LibraryProductDraft = {
@@ -527,6 +537,13 @@ export function LibraryAdminHub() {
   useEffect(() => {
     void load();
   }, []);
+
+  useEffect(() => {
+    if (view !== "Analytics") return;
+    void apiFetch<LibraryCustomerJourney>("/api/v1/admin/library?type=customer-journey&days=30").then((result) => {
+      if (result.data) setCustomerJourney(result.data);
+    });
+  }, [view]);
 
   async function load() {
     const result = await apiFetch<{ products: LibraryProduct[]; orders: LibraryOrder[]; analytics: LibraryAnalytics; operations?: LibraryOperations }>("/api/v1/admin/library");
@@ -1647,6 +1664,7 @@ export function LibraryAdminHub() {
             products={source}
             orders={orders}
             analytics={analytics}
+            customerJourney={customerJourney}
             operations={operations}
             orderFilter={orderFilter}
             customerFilter={customerFilter}
@@ -3391,6 +3409,7 @@ function LibraryTabManagement({
   products,
   orders: _orders,
   analytics,
+  customerJourney,
   operations,
   orderFilter: _orderFilter,
   customerFilter,
@@ -3425,6 +3444,7 @@ function LibraryTabManagement({
   products: LibraryProduct[];
   orders: LibraryOrder[];
   analytics: LibraryAnalytics;
+  customerJourney: LibraryCustomerJourney | null;
   operations: LibraryOperations;
   orderFilter: string;
   customerFilter: string;
@@ -3746,6 +3766,30 @@ function LibraryTabManagement({
           { label: "Active Customers", value: analytics.activeCustomers, detail: "Last 30 days" },
           { label: "Avg Rating", value: `${analytics.averageRating.toFixed(1)}/5`, detail: "Customer satisfaction" },
         ]} />
+        {customerJourney && (
+          <div className="rounded-xl border border-white/10 bg-slate-950/60 p-4">
+            <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-300">Customer Journey</h3>
+                <p className="text-xs text-slate-500">Browse, cart, purchase, and download movement from real Library records.</p>
+              </div>
+              <span className="text-sm font-semibold text-emerald-300">{customerJourney.conversionRate.toFixed(1)}% conversion</span>
+            </div>
+            <div className="mt-3 grid gap-3 md:grid-cols-2">
+              <BarChart data={customerJourney.funnelStages.map((stage) => ({ label: stage.stage, value: stage.count }))} color="bg-emerald-500" />
+              <div className="space-y-2">
+                {customerJourney.topDropOffPoints.length ? customerJourney.topDropOffPoints.map((point) => (
+                  <div key={point.stage} className="rounded-lg border border-white/10 bg-slate-900/60 p-3">
+                    <p className="text-sm font-semibold text-white">{point.stage}</p>
+                    <p className="text-xs text-slate-400">{point.count} drop-offs / {point.percentage.toFixed(1)}%</p>
+                  </div>
+                )) : (
+                  <p className="rounded-lg border border-dashed border-white/10 p-3 text-sm text-slate-500">No customer journey drop-offs yet.</p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
         <div className="grid gap-5 grid-cols-1 sm:grid-cols-2 xl:grid-cols-2">
           <div className="col-span-1 sm:col-span-2 xl:col-span-1">
             <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-300">Revenue trend</h3>

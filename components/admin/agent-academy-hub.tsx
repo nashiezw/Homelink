@@ -338,6 +338,8 @@ export function AgentAcademyHub() {
   const [selectedAnnouncement, setSelectedAnnouncement] = useState<AcademyData["announcements"][number] | null>(null);
   const [selectedBadge, setSelectedBadge] = useState<AcademyData["badges"][number] | null>(null);
   const [analytics, setAnalytics] = useState<Record<string, unknown> | null>(null);
+  const [analyticsPeriod, setAnalyticsPeriod] = useState(30);
+  const [analyticsPeriodLabel, setAnalyticsPeriodLabel] = useState("Last 30 days");
   const [selectedCourseForDrilldown, setSelectedCourseForDrilldown] = useState<{ id: string; title: string } | null>(null);
   const [comparativeAnalytics, setComparativeAnalytics] = useState<Record<string, unknown> | null>(null);
   const [predictiveAnalytics, setPredictiveAnalytics] = useState<Record<string, unknown> | null>(null);
@@ -360,15 +362,15 @@ export function AgentAcademyHub() {
 
   useEffect(() => {
     if (tab !== "Analytics") return;
-    void apiFetch<Record<string, unknown>>("/api/v1/admin/academy/analytics?includeAtRisk=true").then((result) => {
+    void apiFetch<Record<string, unknown>>(`/api/v1/admin/academy/analytics?includeAtRisk=true&period=${analyticsPeriod}`).then((result) => {
       if (result.data) setAnalytics(result.data);
     });
-  }, [tab]);
+  }, [tab, analyticsPeriod]);
 
   // Fetch comparative analytics when a course is selected for drill-down
   useEffect(() => {
     if (selectedCourseForDrilldown) {
-      void apiFetch<Record<string, unknown>>(`/api/v1/admin/academy/analytics?type=comparative&courseId=${selectedCourseForDrilldown.id}&period=30`).then((result) => {
+      void apiFetch<Record<string, unknown>>(`/api/v1/admin/academy/analytics?type=comparative&courseId=${selectedCourseForDrilldown.id}&period=${analyticsPeriod}`).then((result) => {
         if (result.data) setComparativeAnalytics(result.data);
       });
       void apiFetch<Record<string, unknown>>(`/api/v1/admin/academy/analytics?type=predictions&courseId=${selectedCourseForDrilldown.id}`).then((result) => {
@@ -378,7 +380,7 @@ export function AgentAcademyHub() {
       setComparativeAnalytics(null);
       setPredictiveAnalytics(null);
     }
-  }, [selectedCourseForDrilldown]);
+  }, [selectedCourseForDrilldown, analyticsPeriod]);
 
   useEffect(() => {
     const requested = searchParams?.get("academyView");
@@ -658,7 +660,7 @@ export function AgentAcademyHub() {
         </div>
       )}
 
-      {["Certificates", "Certificate Templates", "Certificate Monitoring", "Assignment Review", "Student Analytics", "Coupons", "Public Learners", "Learning Paths", "Announcements", "Discussion Board", "Leaderboard", "Badges", "Analytics", "Settings"].includes(tab) && (
+      {["Certificates", "Certificate Templates", "Certificate Monitoring", "Assignment Review", "Student Analytics", "Coupons", "Public Learners", "Learning Paths", "Announcements", "Discussion Board", "Leaderboard", "Badges", "Analytics", "Settings", "Email Templates", "Branding", "Instructors", "Refunds"].includes(tab) && (
         <FeatureWorkbench
           tab={tab}
           data={data}
@@ -676,6 +678,20 @@ export function AgentAcademyHub() {
           onResetCoupon={handleResetCoupon}
           onDeleteCoupon={handleDeleteCoupon}
           setSelectedCourseForDrilldown={setSelectedCourseForDrilldown}
+          analyticsPeriodLabel={analyticsPeriodLabel}
+          onAnalyticsRangeChange={(range, preset) => {
+            const days = Math.max(1, Math.ceil((range.endDate.getTime() - range.startDate.getTime()) / 86400000));
+            setAnalyticsPeriod(days);
+            const labels: Record<string, string> = {
+              "7d": "Last 7 days",
+              "30d": "Last 30 days",
+              "90d": "Last 90 days",
+              ytd: "Year to date",
+              "12m": "Last 12 months",
+              custom: `${range.startDate.toLocaleDateString()} - ${range.endDate.toLocaleDateString()}`,
+            };
+            setAnalyticsPeriodLabel(labels[preset] ?? `${days} days`);
+          }}
         />
       )}
 
@@ -1261,6 +1277,8 @@ function FeatureWorkbench({
   onResetCoupon,
   onDeleteCoupon,
   setSelectedCourseForDrilldown,
+  analyticsPeriodLabel,
+  onAnalyticsRangeChange,
 }: {
   tab: AcademyTab;
   data: AcademyData;
@@ -1278,6 +1296,8 @@ function FeatureWorkbench({
   onResetCoupon: (coupon: AcademyCoupon) => void;
   onDeleteCoupon: (coupon: AcademyCoupon) => void;
   setSelectedCourseForDrilldown: (course: { id: string; title: string } | null) => void;
+  analyticsPeriodLabel: string;
+  onAnalyticsRangeChange: (range: { startDate: Date; endDate: Date }, preset: string) => void;
 }) {
   if (tab === "Certificates") {
     return <CertificateManagementPanel certificates={data.certificates} action={action} />;
@@ -1390,13 +1410,11 @@ function FeatureWorkbench({
         <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
             <h2 className="text-lg font-semibold text-white truncate">Academy Analytics</h2>
-            <p className="text-sm text-slate-400">Last 30 days</p>
+            <p className="text-sm text-slate-400">{analyticsPeriodLabel}</p>
           </div>
           <div className="w-full sm:w-auto">
             <AnalyticsDateRangeFilter 
-              onRangeChange={(range, preset) => {
-                console.log('Date range changed:', range, preset);
-              }}
+              onRangeChange={onAnalyticsRangeChange}
               defaultPreset="30d"
             />
           </div>
