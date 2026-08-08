@@ -247,7 +247,21 @@ export async function GET(request: Request) {
     // Convert BigInt values in at-risk learners
     const atRiskLearnersFixed = (atRiskLearners as any[]).map((learner: any) => ({
       ...learner,
-      riskScore: Number(learner.riskScore),
+      studentId: learner.learnerId,
+      studentName: learner.learnerName,
+      studentEmail: learner.learnerEmail,
+      riskType: learner.riskLevel === "HIGH" ? "STRUGGLING" : learner.riskLevel === "MEDIUM" ? "BEHIND_SCHEDULE" : "INACTIVE",
+      riskDescription: learner.riskFactors?.join(", ") || learner.riskLevel,
+      lastActivityDate: learner.lastActivity,
+      daysSinceLastActivity: learner.daysSinceLastActivity,
+      consecutiveFailures: 0,
+      currentLesson: null,
+      timeOnCurrentLesson: 0,
+      progressPercentage: learner.engagementScore,
+      expectedProgress: 100,
+      interventionRecommended: learner.riskLevel === "HIGH",
+      interventionActions: learner.riskFactors || [],
+      riskScore: Number(learner.engagementScore),
       // Convert any other potential BigInt fields
       ...(learner.totalEnrollments !== undefined && { totalEnrollments: Number(learner.totalEnrollments) }),
       ...(learner.totalProgress !== undefined && { totalProgress: Number(learner.totalProgress) }),
