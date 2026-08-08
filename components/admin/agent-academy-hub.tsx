@@ -331,6 +331,8 @@ export function AgentAcademyHub() {
   const [selectedBadge, setSelectedBadge] = useState<AcademyData["badges"][number] | null>(null);
   const [analytics, setAnalytics] = useState<Record<string, unknown> | null>(null);
   const [selectedCourseForDrilldown, setSelectedCourseForDrilldown] = useState<{ id: string; title: string } | null>(null);
+  const [comparativeAnalytics, setComparativeAnalytics] = useState<Record<string, unknown> | null>(null);
+  const [predictiveAnalytics, setPredictiveAnalytics] = useState<Record<string, unknown> | null>(null);
   const [confirm, setConfirm] = useState<{
     title: string;
     description: string;
@@ -354,6 +356,21 @@ export function AgentAcademyHub() {
       if (result.data) setAnalytics(result.data);
     });
   }, [tab]);
+
+  // Fetch comparative analytics when a course is selected for drill-down
+  useEffect(() => {
+    if (selectedCourseForDrilldown) {
+      void apiFetch<Record<string, unknown>>(`/api/v1/admin/academy/analytics?type=comparative&courseId=${selectedCourseForDrilldown.id}&period=30`).then((result) => {
+        if (result.data) setComparativeAnalytics(result.data);
+      });
+      void apiFetch<Record<string, unknown>>(`/api/v1/admin/academy/analytics?type=predictions&courseId=${selectedCourseForDrilldown.id}`).then((result) => {
+        if (result.data) setPredictiveAnalytics(result.data);
+      });
+    } else {
+      setComparativeAnalytics(null);
+      setPredictiveAnalytics(null);
+    }
+  }, [selectedCourseForDrilldown]);
 
   useEffect(() => {
     const requested = searchParams?.get("academyView");
@@ -744,6 +761,133 @@ export function AgentAcademyHub() {
               <MetricRow label="Exam pass rate" value="Loading..." />
             </ActivityPanel>
           </div>
+          
+          {/* Comparative Analytics Section */}
+          {comparativeAnalytics && (
+            <ActivityPanel title="Period-over-Period Comparison" icon={Trophy}>
+              <div className="space-y-3">
+                <div className="rounded-lg bg-emerald-500/10 border border-emerald-500/20 p-3">
+                  <p className="text-xs font-semibold text-emerald-300 uppercase tracking-wider mb-2">Current Period (Last 30 days)</p>
+                  <MetricRow label="Enrollments" value={String((comparativeAnalytics as any).currentPeriod?.totalEnrollments ?? 0)} />
+                  <MetricRow label="Completion rate" value={`${((comparativeAnalytics as any).currentPeriod?.completionRate ?? 0).toFixed(1)}%`} />
+                  <MetricRow label="Average score" value={`${((comparativeAnalytics as any).currentPeriod?.averageScore ?? 0).toFixed(1)}%`} />
+                </div>
+                <div className="rounded-lg bg-slate-500/10 border border-slate-500/20 p-3">
+                  <p className="text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Previous Period (30 days prior)</p>
+                  <MetricRow label="Enrollments" value={String((comparativeAnalytics as any).previousPeriod?.totalEnrollments ?? 0)} />
+                  <MetricRow label="Completion rate" value={`${((comparativeAnalytics as any).previousPeriod?.completionRate ?? 0).toFixed(1)}%`} />
+                  <MetricRow label="Average score" value={`${((comparativeAnalytics as any).previousPeriod?.averageScore ?? 0).toFixed(1)}%`} />
+                </div>
+                <div className="rounded-lg bg-blue-500/10 border border-blue-500/20 p-3">
+                  <p className="text-xs font-semibold text-blue-300 uppercase tracking-wider mb-2">Trend Analysis</p>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-slate-400">Enrollment trend</span>
+                      <span className={cn(
+                        "font-semibold",
+                        (comparativeAnalytics as any).trendAnalysis?.enrollmentTrend === "INCREASING" ? "text-emerald-400" :
+                        (comparativeAnalytics as any).trendAnalysis?.enrollmentTrend === "DECREASING" ? "text-red-400" : "text-slate-300"
+                      )}>
+                        {(comparativeAnalytics as any).trendAnalysis?.enrollmentTrend ?? "STABLE"}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-slate-400">Completion trend</span>
+                      <span className={cn(
+                        "font-semibold",
+                        (comparativeAnalytics as any).trendAnalysis?.completionTrend === "INCREASING" ? "text-emerald-400" :
+                        (comparativeAnalytics as any).trendAnalysis?.completionTrend === "DECREASING" ? "text-red-400" : "text-slate-300"
+                      )}>
+                        {(comparativeAnalytics as any).trendAnalysis?.completionTrend ?? "STABLE"}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-slate-400">Score trend</span>
+                      <span className={cn(
+                        "font-semibold",
+                        (comparativeAnalytics as any).trendAnalysis?.scoreTrend === "IMPROVING" ? "text-emerald-400" :
+                        (comparativeAnalytics as any).trendAnalysis?.scoreTrend === "DECLINING" ? "text-red-400" : "text-slate-300"
+                      )}>
+                        {(comparativeAnalytics as any).trendAnalysis?.scoreTrend ?? "STABLE"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                {(comparativeAnalytics as any).trendAnalysis?.keyInsights && (
+                  <div className="rounded-lg bg-amber-500/10 border border-amber-500/20 p-3">
+                    <p className="text-xs font-semibold text-amber-300 uppercase tracking-wider mb-2">Key Insights</p>
+                    <ul className="space-y-1">
+                      {((comparativeAnalytics as any).trendAnalysis.keyInsights as string[]).map((insight, i) => (
+                        <li key={i} className="text-xs text-slate-300">• {insight}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {(comparativeAnalytics as any).trendAnalysis?.recommendations && (
+                  <div className="rounded-lg bg-purple-500/10 border border-purple-500/20 p-3">
+                    <p className="text-xs font-semibold text-purple-300 uppercase tracking-wider mb-2">Recommendations</p>
+                    <ul className="space-y-1">
+                      {((comparativeAnalytics as any).trendAnalysis.recommendations as string[]).map((rec, i) => (
+                        <li key={i} className="text-xs text-slate-300">• {rec}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            </ActivityPanel>
+          )}
+          
+          {/* Predictive Analytics Section */}
+          {predictiveAnalytics && (
+            <ActivityPanel title="Completion Predictions" icon={Target}>
+              <div className="space-y-3">
+                <p className="text-sm text-slate-400">AI-powered predictions for learner completion based on progress, activity, and performance.</p>
+                <div className="grid gap-2">
+                  {((predictiveAnalytics as any).predictions as Array<{ studentId: string; predictedCompletionProbability: number; estimatedCompletionDate: Date | null; riskFactors: string[]; recommendations: string[] }>).map((prediction, i) => (
+                    <div key={i} className="rounded-lg border border-white/10 bg-slate-900/60 p-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-semibold text-white">Student {prediction.studentId.slice(0, 8)}...</span>
+                        <span className={cn(
+                          "text-xs font-semibold px-2 py-1 rounded-full",
+                          prediction.predictedCompletionProbability >= 80 ? "bg-emerald-500/20 text-emerald-300" :
+                          prediction.predictedCompletionProbability >= 50 ? "bg-amber-500/20 text-amber-300" :
+                          "bg-red-500/20 text-red-300"
+                        )}>
+                          {prediction.predictedCompletionProbability.toFixed(0)}% likely to complete
+                        </span>
+                      </div>
+                      {prediction.estimatedCompletionDate && (
+                        <p className="text-xs text-slate-400 mb-2">
+                          Est. completion: {new Date(prediction.estimatedCompletionDate).toLocaleDateString()}
+                        </p>
+                      )}
+                      {prediction.riskFactors.length > 0 && (
+                        <div className="mb-2">
+                          <p className="text-xs font-semibold text-red-300 mb-1">Risk Factors:</p>
+                          <ul className="space-y-1">
+                            {prediction.riskFactors.map((factor, fi) => (
+                              <li key={fi} className="text-xs text-slate-400">• {factor}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      {prediction.recommendations.length > 0 && (
+                        <div>
+                          <p className="text-xs font-semibold text-blue-300 mb-1">Recommendations:</p>
+                          <ul className="space-y-1">
+                            {prediction.recommendations.map((rec, ri) => (
+                              <li key={ri} className="text-xs text-slate-400">• {rec}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </ActivityPanel>
+          )}
+          
           <ActivityPanel title="At-Risk Learners in this Course" icon={AlertTriangle}>
             <p className="text-sm text-slate-400">Loading at-risk learners...</p>
           </ActivityPanel>
@@ -1201,34 +1345,35 @@ function FeatureWorkbench({
     return (
       <div className="space-y-4">
         {/* Analytics Header with Date Range Filter */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <div>
-            <h2 className="text-lg font-semibold text-white">Academy Analytics</h2>
+        <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <h2 className="text-lg font-semibold text-white truncate">Academy Analytics</h2>
             <p className="text-sm text-slate-400">Last 30 days</p>
           </div>
-          <AnalyticsDateRangeFilter 
-            onRangeChange={(range, preset) => {
-              // For now, just log - will implement actual filtering later
-              console.log('Date range changed:', range, preset);
-            }}
-            defaultPreset="30d"
-          />
+          <div className="w-full sm:w-auto">
+            <AnalyticsDateRangeFilter 
+              onRangeChange={(range, preset) => {
+                console.log('Date range changed:', range, preset);
+              }}
+              defaultPreset="30d"
+            />
+          </div>
         </div>
         
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-2">
-          <div className="col-span-full sm:col-span-2 lg:col-span-3 xl:col-span-2 flex flex-col sm:flex-row flex-wrap items-center justify-between gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-4">
+        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-2">
+          <div className="col-span-1 sm:col-span-2 lg:col-span-3 xl:col-span-2 flex flex-col gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-4">
             <div className="flex-1 min-w-0">
-              <p className="font-semibold text-white">Trainer intelligence export</p>
-              <p className="mt-1 text-sm text-emerald-100/70">Download learner scores, risk flags, practical reviews, sign-offs, and certificate status for coaching meetings.</p>
+              <p className="font-semibold text-white truncate">Trainer intelligence export</p>
+              <p className="mt-1 text-sm text-emerald-100/70 line-clamp-2">Download learner scores, risk flags, practical reviews, sign-offs, and certificate status for coaching meetings.</p>
             </div>
-            <div className="flex items-center gap-2">
-              <a href="/api/v1/admin/academy/export?format=csv" className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-500 whitespace-nowrap">
+            <div className="flex flex-wrap items-center gap-2">
+              <a href="/api/v1/admin/academy/export?format=csv" className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-500 whitespace-nowrap flex-1 sm:flex-none justify-center">
                 <Download className="size-4" /> CSV
               </a>
-              <a href="/api/v1/admin/academy/export?format=excel" className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-500 whitespace-nowrap">
+              <a href="/api/v1/admin/academy/export?format=excel" className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-500 whitespace-nowrap flex-1 sm:flex-none justify-center">
                 <Download className="size-4" /> Excel
               </a>
-              <a href="/api/v1/admin/academy/export?format=pdf" className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-red-500 whitespace-nowrap">
+              <a href="/api/v1/admin/academy/export?format=pdf" className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-red-500 whitespace-nowrap flex-1 sm:flex-none justify-center">
                 <Download className="size-4" /> PDF
               </a>
             </div>
@@ -1245,40 +1390,75 @@ function FeatureWorkbench({
         {/* Completion & Certificates */}
         <ActivityPanel title="Completion & Certificates" icon={Trophy}>
           <MetricRow label="Course completions" value={String(analytics?.completions ?? 0)} />
-          <MetricRow label="Certificates issued" value={String(analytics?.certificates ?? data.metrics.certificatesIssued ?? 0)} />
-          <MetricRow label="Completion rate" value={`${data.metrics.completionRate ?? 0}%`} />
-          <MetricRow label="Average score" value={`${data.metrics.averageScore ?? 0}%`} />
+          <MetricRow label="Certificates issued" value={String(analytics?.certificates ?? 0)} />
+          <MetricRow label="Average score" value={`${Number(analytics?.averageScore ?? 0).toFixed(1)}%`} />
         </ActivityPanel>
         
         {/* Popular Courses */}
         <ActivityPanel title="Popular Courses" icon={BookOpen}>
-          {popularCourses?.length ? popularCourses.map((course) => (
-            <div 
-              key={course.courseId} 
-              className="cursor-pointer hover:bg-white/5 rounded p-2 transition"
-              onClick={() => setSelectedCourseForDrilldown({ id: course.courseId, title: course.courseTitle })}
-            >
-              <MetricRow label={course.courseTitle} value={`${course._count} enrolled`} />
+          {popularCourses && popularCourses.length > 0 ? (
+            <div className="space-y-2">
+              {popularCourses.map((course) => (
+                <div 
+                  key={course.courseId} 
+                  className="flex items-center justify-between rounded-lg border border-white/10 bg-slate-900/60 p-3 cursor-pointer hover:border-emerald-500/30 transition"
+                  onClick={() => setSelectedCourseForDrilldown({ id: course.courseId, title: course.courseTitle })}
+                >
+                  <span className="text-sm font-medium text-white truncate flex-1">{course.courseTitle}</span>
+                  <span className="text-sm text-slate-400 ml-2">{course._count} enrolled</span>
+                </div>
+              ))}
             </div>
-          )) : <p className="text-sm text-slate-400">No course data yet.</p>}
+          ) : (
+            <p className="text-sm text-slate-400">No course enrollment data yet.</p>
+          )}
         </ActivityPanel>
         
         {/* Course Completion Rates */}
         <ActivityPanel title="Course Completion Rates" icon={Target}>
-          {completionRates?.length ? completionRates.slice(0, 5).map((rate) => (
-            <MetricRow key={rate.title} label={rate.title} value={`${rate.completion_rate}% (${rate.completed}/${rate.enrolled})`} />
-          )) : <p className="text-sm text-slate-400">No completion data yet.</p>}
+          {completionRates && completionRates.length > 0 ? (
+            <div className="space-y-2">
+              {completionRates.map((rate) => (
+                <div key={rate.title} className="flex items-center justify-between rounded-lg border border-white/10 bg-slate-900/60 p-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-white truncate">{rate.title}</p>
+                    <p className="text-xs text-slate-500">{rate.completed} of {rate.enrolled} completed</p>
+                  </div>
+                  <span className={cn(
+                    "text-sm font-semibold ml-2",
+                    rate.completion_rate >= 70 ? "text-emerald-400" :
+                    rate.completion_rate >= 40 ? "text-amber-400" : "text-red-400"
+                  )}>
+                    {rate.completion_rate.toFixed(1)}%
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-slate-400">No completion data yet.</p>
+          )}
         </ActivityPanel>
         
         {/* At-Risk Learners */}
         <ActivityPanel title="At-Risk Learners" icon={AlertTriangle}>
-          {atRiskLearners?.length ? atRiskLearners.slice(0, 5).map((learner) => (
-            <div key={learner.learnerId} className="rounded-lg border border-amber-500/20 bg-amber-500/10 p-2 mb-2">
-              <p className="text-sm font-semibold text-white">{learner.learnerName || learner.learnerEmail}</p>
-              <p className="text-xs text-amber-200">Risk Score: {learner.riskScore}</p>
-              <p className="text-xs text-slate-400">{learner.riskFactors.join(", ")}</p>
+          {atRiskLearners && atRiskLearners.length > 0 ? (
+            <div className="space-y-2">
+              {atRiskLearners.slice(0, 5).map((learner) => (
+                <div key={learner.learnerId} className="flex items-center justify-between rounded-lg border border-red-500/20 bg-red-500/10 p-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-white truncate">{learner.learnerName}</p>
+                    <p className="text-xs text-slate-400">{learner.learnerEmail}</p>
+                  </div>
+                  <div className="text-right ml-2">
+                    <p className="text-xs font-semibold text-red-300">{learner.riskScore}% risk</p>
+                    <p className="text-xs text-slate-500">{learner.riskFactors.length} factors</p>
+                  </div>
+                </div>
+              ))}
             </div>
-          )) : <p className="text-sm text-slate-400">No at-risk learners identified.</p>}
+          ) : (
+            <p className="text-sm text-slate-400">No at-risk learners identified.</p>
+          )}
         </ActivityPanel>
         </div>
       </div>

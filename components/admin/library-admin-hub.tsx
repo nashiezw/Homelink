@@ -323,21 +323,21 @@ const emptyOperations: LibraryOperations = {
   quoteRequests: [],
   reports: {
     scorecards: [],
-    funnel: [],
     revenueTrend: [],
-    orderStatus: [],
-    paymentGateways: [],
-    productPerformance: [],
+    funnel: [],
+    bundlePairPerformance: [],
+    bundleFormatMix: [],
+    stockAlerts: [],
+    downloadLogs: [],
     customerSegments: [],
     couponPerformance: [],
-    downloadLogs: [],
-    stockAlerts: [],
     inventoryMovements: [],
     taxSummary: [],
     refundSummary: { orders: 0, amount: 0, rate: 0 },
     settingsHealth: [],
-    bundlePairPerformance: [],
-    bundleFormatMix: [],
+    orderStatus: [],
+    paymentGateways: [],
+    productPerformance: [],
   },
 };
 
@@ -3746,33 +3746,33 @@ function LibraryTabManagement({
           { label: "Active Customers", value: analytics.activeCustomers, detail: "Last 30 days" },
           { label: "Avg Rating", value: `${analytics.averageRating.toFixed(1)}/5`, detail: "Customer satisfaction" },
         ]} />
-        <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-2">
-          <div className="sm:col-span-2 xl:col-span-1">
+        <div className="grid gap-5 grid-cols-1 sm:grid-cols-2 xl:grid-cols-2">
+          <div className="col-span-1 sm:col-span-2 xl:col-span-1">
             <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-300">Revenue trend</h3>
-            <div className="mt-3"><BarChart data={operations.reports.revenueTrend.length ? operations.reports.revenueTrend : analytics.salesTrend} /></div>
+            <div className="mt-3 overflow-x-auto"><BarChart data={operations.reports.revenueTrend.length ? operations.reports.revenueTrend : analytics.salesTrend} /></div>
           </div>
-          <div className="sm:col-span-2 xl:col-span-1">
+          <div className="col-span-1 sm:col-span-2 xl:col-span-1">
             <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-300">Marketplace funnel</h3>
-            <div className="mt-3"><BarChart data={operations.reports.funnel} color="bg-cyan-500" /></div>
+            <div className="mt-3 overflow-x-auto"><BarChart data={operations.reports.funnel} color="bg-cyan-500" /></div>
           </div>
-          <div className="sm:col-span-2 xl:col-span-1">
+          <div className="col-span-1 sm:col-span-2 xl:col-span-1">
             <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-300">FBT pair performance</h3>
-            <div className="mt-3"><BarChart data={bundlePairs.map((row) => ({ label: row.label, value: row.value }))} color="bg-emerald-500" /></div>
+            <div className="mt-3 overflow-x-auto"><BarChart data={bundlePairs.map((row) => ({ label: row.label, value: row.value }))} color="bg-emerald-500" /></div>
           </div>
-          <div className="sm:col-span-2 xl:col-span-1">
+          <div className="col-span-1 sm:col-span-2 xl:col-span-1">
             <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-300">Bundle digital vs print mix</h3>
-            <div className="mt-3"><DonutChart data={formatMix} /></div>
+            <div className="mt-3 overflow-x-auto"><DonutChart data={formatMix} /></div>
           </div>
         </div>
         
         {/* Top Categories */}
         <div className="rounded-xl border border-white/10 bg-slate-950/60 p-4">
           <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-300">Top Categories</h3>
-          <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-3 grid gap-2 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
             {analytics.topCategories.slice(0, 6).map((cat) => (
               <div key={cat.label} className="flex items-center justify-between rounded-lg border border-white/10 bg-slate-900/60 p-3">
-                <span className="text-sm font-medium text-white">{cat.label}</span>
-                <span className="text-sm text-slate-400">{cat.value} products</span>
+                <span className="text-sm font-medium text-white truncate flex-1 mr-2">{cat.label}</span>
+                <span className="text-sm text-slate-400 shrink-0">{cat.value} products</span>
               </div>
             ))}
           </div>
@@ -3781,11 +3781,11 @@ function LibraryTabManagement({
         {/* Most Downloaded */}
         <div className="rounded-xl border border-white/10 bg-slate-950/60 p-4">
           <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-300">Most Downloaded Products</h3>
-          <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-3 grid gap-2 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
             {analytics.mostDownloaded.slice(0, 6).map((product) => (
               <div key={product.label} className="flex items-center justify-between rounded-lg border border-white/10 bg-slate-900/60 p-3">
-                <span className="text-sm font-medium text-white truncate">{product.label}</span>
-                <span className="text-sm text-slate-400">{product.value} downloads</span>
+                <span className="text-sm font-medium text-white truncate flex-1 mr-2">{product.label}</span>
+                <span className="text-sm text-slate-400 shrink-0">{product.value} downloads</span>
               </div>
             ))}
           </div>
@@ -3794,11 +3794,11 @@ function LibraryTabManagement({
         {/* Most Viewed */}
         <div className="rounded-xl border border-white/10 bg-slate-950/60 p-4">
           <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-300">Most Viewed Products</h3>
-          <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-3 grid gap-2 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
             {analytics.mostViewed.slice(0, 6).map((product) => (
               <div key={product.label} className="flex items-center justify-between rounded-lg border border-white/10 bg-slate-900/60 p-3">
-                <span className="text-sm font-medium text-white truncate">{product.label}</span>
-                <span className="text-sm text-slate-400">{product.value} views</span>
+                <span className="text-sm font-medium text-white truncate flex-1 mr-2">{product.label}</span>
+                <span className="text-sm text-slate-400 shrink-0">{product.value} views</span>
               </div>
             ))}
           </div>
@@ -3808,14 +3808,14 @@ function LibraryTabManagement({
         {stockAlerts.length > 0 && (
           <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-4">
             <h3 className="text-sm font-semibold uppercase tracking-wider text-amber-200">Stock Alerts</h3>
-            <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="mt-3 grid gap-2 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
               {stockAlerts.slice(0, 6).map((alert) => (
-                <div key={alert.id} className="flex items-center justify-between rounded-lg border border-amber-500/20 bg-amber-500/5 p-3">
+                <div key={alert.id} className="flex flex-col sm:flex-row sm:items-center justify-between rounded-lg border border-amber-500/20 bg-amber-500/5 p-3 gap-2">
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium text-white truncate">{alert.title}</p>
                     <p className="text-xs text-amber-200">{alert.state} - {alert.stock} left</p>
                   </div>
-                  <span className="text-xs text-slate-400">{alert.warehouse}</span>
+                  <span className="text-xs text-slate-400 shrink-0">{alert.warehouse}</span>
                 </div>
               ))}
             </div>
@@ -3826,16 +3826,25 @@ function LibraryTabManagement({
         {downloadLogs.length > 0 && (
           <div className="rounded-xl border border-white/10 bg-slate-950/60 p-4">
             <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-300">Recent Downloads</h3>
-            <div className="mt-3 space-y-2">
-              {downloadLogs.slice(0, 5).map((log) => (
-                <div key={log.id} className="flex items-center justify-between rounded-lg border border-white/10 bg-slate-900/60 p-3">
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-white truncate">{log.customer}</p>
-                    <p className="text-xs text-slate-400 truncate">{log.product} - {log.file}</p>
-                  </div>
-                  <span className="text-xs text-slate-400 whitespace-nowrap">{log.usage}</span>
-                </div>
-              ))}
+            <div className="mt-3 overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-white/10">
+                    <th className="text-left py-2 px-3 text-slate-400 font-semibold">Product</th>
+                    <th className="text-left py-2 px-3 text-slate-400 font-semibold">Customer</th>
+                    <th className="text-left py-2 px-3 text-slate-400 font-semibold">Date</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {downloadLogs.slice(0, 5).map((log) => (
+                    <tr key={log.id} className="border-b border-white/5 last:border-0">
+                      <td className="py-2 px-3 text-white truncate max-w-[150px]">{log.product}</td>
+                      <td className="py-2 px-3 text-slate-400 truncate max-w-[120px]">{log.customer}</td>
+                      <td className="py-2 px-3 text-slate-500 whitespace-nowrap">{log.lastDownloadAt ? new Date(log.lastDownloadAt).toLocaleDateString() : 'N/A'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
         )}

@@ -149,7 +149,7 @@ export async function POST(request: Request) {
               message: "Please verify your email address. A verification link has been sent to your email.",
               ...(process.env.NODE_ENV === "development" && { 
                 verificationToken: token, 
-                verificationLink: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/academy/verify-email?token=${token}` 
+                verificationLink: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/auth/verify-email?token=${token}` 
               }),
             },
             meta: { requestId: crypto.randomUUID() },
@@ -222,7 +222,7 @@ export async function POST(request: Request) {
             message: "Please verify your email address. A verification link has been sent to your email.",
             ...(process.env.NODE_ENV === "development" && { 
               verificationToken: token, 
-              verificationLink: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/academy/verify-email?token=${token}` 
+              verificationLink: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/auth/verify-email?token=${token}` 
             }),
           },
           meta: { requestId: crypto.randomUUID() },
@@ -301,7 +301,7 @@ export async function POST(request: Request) {
         403,
         "EMAIL_VERIFICATION_REQUIRED",
         "Please verify your email address before signing in. A new verification link has been sent to your email.",
-        { emailSent: emailResult.success, ...(process.env.NODE_ENV === "development" && { verificationToken: token, verificationLink: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/academy/verify-email?token=${token}` }) }
+        { emailSent: emailResult.success, email: user.email, ...(process.env.NODE_ENV === "development" && { verificationToken: token, verificationLink: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/auth/verify-email?token=${token}` }) }
       );
     }
     

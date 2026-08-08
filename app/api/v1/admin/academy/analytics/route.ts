@@ -8,7 +8,8 @@ import {
   getAssessmentPerformanceAnalytics,
   getAtRiskStudents,
   getStudentActivityLog,
-  getComparativeAnalytics
+  getComparativeAnalytics,
+  predictCourseCompletion
 } from "@/lib/academy/analytics-repository";
 
 export const dynamic = "force-dynamic";
@@ -62,6 +63,22 @@ export async function GET(request: Request) {
       return ok(comparativeAnalytics);
     }
     
+    if (type === "predictions" && courseId) {
+      // Get all enrolled students and predict completion for each
+      const enrollments = await prisma.courseEnrolment.findMany({
+        where: { courseId },
+        select: { agentId: true }
+      });
+      
+      const predictions = await Promise.all(
+        enrollments.map(enrollment => 
+          predictCourseCompletion(enrollment.agentId, courseId)
+        )
+      );
+      
+      return ok({ courseId, predictions });
+    }
+    
     // Default overview analytics
     const [
       totalRevenue,
@@ -75,6 +92,7 @@ export async function GET(request: Request) {
       dailyActivity,
       atRiskLearners,
       users,
+      averageScore,
     ] = await Promise.all([
       // Revenue
       prisma.payment.aggregate({
@@ -87,16 +105,19 @@ export async function GET(request: Request) {
         _count: true,
       }),
       
-      // Registrations
-      prisma.academyLearnerApplication.count({
-        where: { createdAt: { gte: startDate } }
+      // Registrations (approved enrolments)
+      prisma.courseEnrolment.count({
+        where: { 
+          enrolledAt: { gte: startDate },
+          status: "ACTIVE"
+        }
       }),
       
       // Completions
       prisma.courseProgress.count({
         where: {
           status: "COMPLETED",
-          updatedAt: { gte: startDate }
+          completedAt: { gte: startDate }
         }
       }),
       
@@ -105,15 +126,16 @@ export async function GET(request: Request) {
         where: { issuedAt: { gte: startDate } }
       }),
       
-      // Active learners (last 7 days)
+      // Active learners (last 7 days - based on lesson progress)
       prisma.lessonProgress.groupBy({
         by: ["agentId"],
         where: { lastViewedAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } },
         _count: true,
       }),
       
-      // Course stats
+      // Course stats with enrolments and progress
       prisma.trainingCourse.findMany({
+        where: { status: "PUBLISHED" },
         select: {
           id: true,
           title: true,
@@ -127,17 +149,19 @@ export async function GET(request: Request) {
         }
       }),
       
-      // Popular courses (by enrolments)
+      // Popular courses (by ACTIVE enrolments)
       prisma.courseEnrolment.groupBy({
         by: ["courseId"],
+        where: { status: "ACTIVE" },
         _count: true,
         orderBy: { _count: { courseId: "desc" } },
         take: 5,
       }),
       
-      // Completion rates by course
+      // Completion rates by course - fixed query
       prisma.$queryRaw`
         SELECT 
+          c.id as "courseId",
           c.title,
           COUNT(DISTINCT ce."agentId") as enrolled,
           COUNT(DISTINCT CASE WHEN cp.status = 'COMPLETED' THEN cp."agentId" END) as completed,
@@ -147,7 +171,7 @@ export async function GET(request: Request) {
             1
           ) as completion_rate
         FROM training_courses c
-        LEFT JOIN course_enrolments ce ON c.id = ce."courseId"
+        LEFT JOIN course_enrolments ce ON c.id = ce."courseId" AND ce.status = 'ACTIVE'
         LEFT JOIN course_progress cp ON c.id = cp."courseId" AND ce."agentId" = cp."agentId"
         WHERE c.status = 'PUBLISHED'
         GROUP BY c.id, c.title
@@ -172,6 +196,15 @@ export async function GET(request: Request) {
       // Fetch all users for name mapping
       prisma.user.findMany({
         select: { id: true, name: true, email: true }
+      }),
+      
+      // Average score across all course progress
+      prisma.courseProgress.aggregate({
+        where: {
+          averageScore: { gt: 0 },
+          updatedAt: { gte: startDate }
+        },
+        _avg: { averageScore: true }
       }),
     ]);
     
@@ -202,6 +235,7 @@ export async function GET(request: Request) {
       completions: totalCompletions,
       certificates: totalCertificates,
       activeLearners: activeLearners.length,
+      averageScore: Number(averageScore._avg.averageScore || 0),
       courses: courseStats.map(course => ({
         id: course.id,
         title: course.title,

@@ -7,233 +7,69 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum Role {
-  SEEKER
-  LANDLORD
-  AGENT
-  AGENCY_ADMIN
-  ADMIN
-  SUPER_ADMIN
-  ACADEMY_ADMIN
-  TRAINER
-  PUBLIC_LEARNER
-  MODERATOR
-}
-
-enum ListingIntent {
-  RENT
-  BUY
-}
-
-enum PropertyType {
-  ROOM
-  BOARDING_HOUSE
-  HOUSE
-  FLAT
-  COTTAGE
-  COMMERCIAL
-  LAND
-}
-
-enum VerificationStatus {
-  PENDING
-  VERIFIED
-  REJECTED
-  EXPIRED
-}
-
-enum ListingStatus {
-  DRAFT
-  PENDING_REVIEW
-  ACTIVE
-  VIEWING_IN_PROGRESS
-  RENTED
-  SOLD
-  SUSPENDED
-  EXPIRED
-  REJECTED
-  ARCHIVED
-  DELETED
-}
-
-enum ReportStatus {
-  OPEN
-  IN_REVIEW
-  RESOLVED
-  DISMISSED
-}
-
-enum PaymentProvider {
-  STRIPE
-  PAYNOW
-  ECOCASH
-}
-
-enum PaymentStatus {
-  PENDING
-  PAID
-  FAILED
-  REFUNDED
-}
-
-enum NotificationChannel {
-  EMAIL
-  SMS
-  WHATSAPP
-  PUSH
-}
-
-enum NotificationStatus {
-  QUEUED
-  SENT
-  FAILED
-}
-
-enum LeadSource {
-  HOUSELINK
-  AGENT
-}
-
-enum AgentCommissionStatus {
-  PENDING
-  APPROVED
-  PAID
-  CANCELLED
-  DISPUTED
-}
-
-enum CommissionRuleScope {
-  DEFAULT
-  AGENT
-  TRANSACTION
-  BRANCH
-  PROPERTY_TYPE
-  PROMOTION
-  AGENT_LEVEL
-}
-
-enum LeadOwnershipReviewStatus {
-  NOT_REQUIRED
-  PENDING_ADMIN_REVIEW
-  CLEARED
-  DUPLICATE_BLOCKED
-}
-
-enum BlogPostStatus {
-  DRAFT
-  SCHEDULED
-  PUBLISHED
-  UNPUBLISHED
-  ARCHIVED
-}
-
-enum BlogArticleLayout {
-  STANDARD_ARTICLE
-  PROPERTY_GUIDE
-  NEWS_ANNOUNCEMENT
-  LIST_ARTICLE
-}
-
-enum LibraryProductType {
-  PRINTED_BOOK
-  PDF
-  DIGITAL_BOOK
-  TRAINING_MANUAL
-  TOOLKIT
-  COURSE
-  TEMPLATE
-  FORMS
-  BUNDLE
-  MEMBERSHIP
-  SUBSCRIPTION
-  GIFT_CARD
-}
-
-enum LibraryProductStatus {
-  DRAFT
-  SCHEDULED
-  PUBLISHED
-  ARCHIVED
-  DELETED
-}
-
-enum LibraryOrderStatus {
-  PENDING
-  PAID
-  FULFILLED
-  CANCELLED
-  REFUNDED
-}
-
-enum LibraryDownloadStatus {
-  ACTIVE
-  EXPIRED
-  REVOKED
-}
-
 model User {
-  id                String                    @id @default(cuid())
-  email             String                    @unique
-  phone             String?                   @unique
-  passwordHash      String?
-  accountStatus     String                    @default("ACTIVE")
-  name              String
-  roles             Role[]                    @default([SEEKER])
-  identityStatus    VerificationStatus        @default(PENDING)
-  phoneVerifiedAt   DateTime?
-  emailVerifiedAt   DateTime?
-  createdAt         DateTime                  @default(now())
-  lastLoginAt       DateTime?
-  updatedAt         DateTime                  @updatedAt
-  listings          Listing[]
-  favourites        Favourite[]
-  savedSearches     SavedSearch[]
-  roommateProfile   RoommateProfile?
-  reviewsGiven      Review[]                  @relation("ReviewAuthor")
-  enquiries         Enquiry[]                 @relation("SeekerEnquiries")
-  documents         UserDocument[]
-  reports           Report[]
-  messagesSent      Message[]                 @relation("MessagesSent")
-  conversations     ConversationParticipant[]
-  notifications     Notification[]
-  payments          Payment[]
-  auditEvents       AuditEvent[]
-  sessions          AppSession[]
-  passwordResetTokens PasswordResetToken[]
-  agencyMemberships AgencyAgent[]
-  emailVerificationTokens EmailVerificationToken[]
-  agentBadge AgentBadge[]
-  academyApplications AcademyLearnerApplication[]
-  academyResourceAccess AcademyResourceAccess[]
-  viewingAvailability   AgentViewingAvailability?
-  libraryOrders         LibraryOrder[]
-  libraryReviews        LibraryReview[]
-  libraryDownloads      LibraryDownloadAccess[]
-  libraryWishlist       LibraryWishlistItem[]
-  libraryGuestClaims    LibraryGuestClaim[]
-  couponUsages          AcademyCouponUsage[]
-  createdCoupons        AcademyCoupon[]
-  waitlistEntries       CourseWaitlist[]
-  courseReviews         CourseReview[]
-  forumPosts            ForumPost[]
-  forumReplies          ForumReply[]
-  refundRequests         RefundRequest[]
-  pushNotifications      PushNotification[]
-  learnerAnalytics       LearnerAnalytics[]
+  id                      String                      @id @default(cuid())
+  email                   String                      @unique
+  phone                   String?                     @unique
+  name                    String
+  roles                   Role[]                      @default([SEEKER])
+  identityStatus          VerificationStatus          @default(PENDING)
+  phoneVerifiedAt         DateTime?
+  emailVerifiedAt         DateTime?
+  createdAt               DateTime                    @default(now())
+  updatedAt               DateTime                    @updatedAt
+  passwordHash            String?
+  accountStatus           String                      @default("ACTIVE")
+  lastLoginAt             DateTime?
+  agencyMemberships       AgencyAgent[]
+  viewingAvailability     AgentViewingAvailability?
+  sessions                AppSession[]
+  auditEvents             AuditEvent[]
+  conversations           ConversationParticipant[]
+  emailVerificationTokens EmailVerificationToken?
+  enquiries               Enquiry[]                   @relation("SeekerEnquiries")
+  favourites              Favourite[]
+  listings                Listing[]
+  messagesSent            Message[]                   @relation("MessagesSent")
+  notifications           Notification[]
+  passwordResetTokens     PasswordResetToken[]
+  payments                Payment[]
+  reports                 Report[]
+  reviewsGiven            Review[]                    @relation("ReviewAuthor")
+  roommateProfile         RoommateProfile?
+  savedSearches           SavedSearch[]
+  documents               UserDocument[]
+  couponUsages            AcademyCouponUsage[]
+  createdCoupons          AcademyCoupon[]
+  academyApplications     AcademyLearnerApplication[]
+  academyResourceAccess   AcademyResourceAccess[]
+  agentBadge              AgentBadge[]
+  courseReviews           CourseReview[]
+  waitlistEntries         CourseWaitlist[]
+  forumPosts              ForumPost[]
+  forumReplies            ForumReply[]
+  learnerAnalytics        LearnerAnalytics[]
+  libraryDownloads        LibraryDownloadAccess[]
+  libraryGuestClaims      LibraryGuestClaim[]
+  libraryOrders           LibraryOrder[]
+  libraryReviews          LibraryReview[]
+  libraryWishlist         LibraryWishlistItem[]
+  pushNotifications       PushNotification[]
+  refundRequests          RefundRequest[]
 }
 
 model BlogAuthor {
-  id          String     @id @default(cuid())
-  name        String
-  slug        String     @unique
-  role        String?
-  bio         String?
-  avatarUrl   String?
-  email       String?
-  active      Boolean    @default(true)
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
-  posts       BlogPost[]
+  id        String     @id @default(cuid())
+  name      String
+  slug      String     @unique
+  role      String?
+  bio       String?
+  avatarUrl String?
+  email     String?
+  active    Boolean    @default(true)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  posts     BlogPost[]
 
   @@map("blog_authors")
 }
@@ -265,51 +101,51 @@ model BlogTag {
   active      Boolean    @default(true)
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
-  posts       BlogPost[]
+  posts       BlogPost[] @relation("BlogPostToBlogTag")
 
   @@index([active])
   @@map("blog_tags")
 }
 
 model BlogPost {
-  id                 String            @id @default(cuid())
-  title              String
-  slug               String            @unique
-  excerpt            String
-  status             BlogPostStatus    @default(DRAFT)
-  layout             BlogArticleLayout @default(STANDARD_ARTICLE)
-  categoryId         String?
-  authorId           String?
-  featuredImageUrl   String?
-  featuredImageAlt   String?
-  socialImageUrl     String?
-  contentBlocks      Json
-  contentText        String            @default("")
-  seoTitle           String?
-  metaDescription    String?
-  focusKeyword       String?
-  secondaryKeywords  String[]          @default([])
-  canonicalUrl       String?
-  noIndex            Boolean           @default(false)
-  featured           Boolean           @default(false)
-  popular            Boolean           @default(false)
-  readTimeMinutes    Int               @default(4)
-  viewCount          Int               @default(0)
-  searchVector       String            @default("")
-  scheduledAt        DateTime?
-  publishedAt        DateTime?
-  lastEditedById     String?
-  createdById        String?
-  createdAt          DateTime          @default(now())
-  updatedAt          DateTime          @updatedAt
-  archivedAt         DateTime?
-  category           BlogCategory?     @relation(fields: [categoryId], references: [id])
-  author             BlogAuthor?       @relation(fields: [authorId], references: [id])
-  tags               BlogTag[]
-  downloads          BlogDownload[]
-  comments           BlogComment[]
-  feedback           BlogArticleFeedback[]
-  questions          BlogReaderQuestion[]
+  id                String                @id @default(cuid())
+  title             String
+  slug              String                @unique
+  excerpt           String
+  status            BlogPostStatus        @default(DRAFT)
+  layout            BlogArticleLayout     @default(STANDARD_ARTICLE)
+  categoryId        String?
+  authorId          String?
+  featuredImageUrl  String?
+  featuredImageAlt  String?
+  socialImageUrl    String?
+  contentBlocks     Json
+  contentText       String                @default("")
+  seoTitle          String?
+  metaDescription   String?
+  focusKeyword      String?
+  secondaryKeywords String[]              @default([])
+  canonicalUrl      String?
+  noIndex           Boolean               @default(false)
+  featured          Boolean               @default(false)
+  popular           Boolean               @default(false)
+  readTimeMinutes   Int                   @default(4)
+  viewCount         Int                   @default(0)
+  searchVector      String                @default("")
+  scheduledAt       DateTime?
+  publishedAt       DateTime?
+  lastEditedById    String?
+  createdById       String?
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+  archivedAt        DateTime?
+  feedback          BlogArticleFeedback[]
+  comments          BlogComment[]
+  downloads         BlogDownload[]
+  author            BlogAuthor?           @relation(fields: [authorId], references: [id])
+  category          BlogCategory?         @relation(fields: [categoryId], references: [id])
+  questions         BlogReaderQuestion[]
+  tags              BlogTag[]             @relation("BlogPostToBlogTag")
 
   @@index([status])
   @@index([publishedAt])
@@ -320,20 +156,20 @@ model BlogPost {
 }
 
 model BlogComment {
-  id             String        @id @default(cuid())
-  postId         String
-  parentId       String?
-  authorName     String
-  authorEmail    String?
-  body           String
-  status         String        @default("PENDING")
-  ipHash         String?
-  userAgent      String?
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
-  post           BlogPost      @relation(fields: [postId], references: [id], onDelete: Cascade)
-  parent         BlogComment?  @relation("BlogCommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
-  replies        BlogComment[] @relation("BlogCommentReplies")
+  id          String        @id @default(cuid())
+  postId      String
+  parentId    String?
+  authorName  String
+  authorEmail String?
+  body        String
+  status      String        @default("PENDING")
+  ipHash      String?
+  userAgent   String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  parent      BlogComment?  @relation("BlogCommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies     BlogComment[] @relation("BlogCommentReplies")
+  post        BlogPost      @relation(fields: [postId], references: [id], onDelete: Cascade)
 
   @@index([postId, status, createdAt])
   @@index([parentId])
@@ -369,7 +205,7 @@ model BlogReaderQuestion {
   userAgent   String?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
-  post        BlogPost? @relation(fields: [postId], references: [id], onDelete: SetNull)
+  post        BlogPost? @relation(fields: [postId], references: [id])
 
   @@index([status, createdAt])
   @@index([postId])
@@ -423,16 +259,16 @@ model Agency {
   name               String
   phone              String
   email              String
-  city               String             @default("")
   verificationStatus VerificationStatus @default(PENDING)
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  city               String             @default("")
   accountStatus      String             @default("ACTIVE")
   subscriptionTier   String             @default("FREE")
   revenue            Decimal            @default(0) @db.Decimal(12, 2)
   leadConversion     Int                @default(0)
-  createdAt          DateTime           @default(now())
-  updatedAt          DateTime           @updatedAt
-  listings           Listing[]
   agents             AgencyAgent[]
+  listings           Listing[]
 }
 
 model AgencyAgent {
@@ -447,76 +283,76 @@ model AgencyAgent {
 }
 
 model Listing {
-  id                         String                    @id @default(cuid())
-  slug                       String                    @unique
-  ownerId                    String
-  agencyId                   String?
-  intent                     ListingIntent
-  propertyType               PropertyType
-  status                     ListingStatus             @default(DRAFT)
-  title                      String
-  description                String
-  price                      Decimal                   @db.Decimal(12, 2)
-  currency                   String                    @default("USD")
-  city                       String
-  suburb                     String
-  addressLine                String?
-  latitude                   Decimal?                  @db.Decimal(10, 7)
-  longitude                  Decimal?                  @db.Decimal(10, 7)
-  bedrooms                   Int                       @default(0)
-  bathrooms                  Int                       @default(0)
-  furnished                  Boolean                   @default(false)
-  parking                    Boolean                   @default(false)
-  petFriendly                Boolean                   @default(false)
-  wifi                       Boolean                   @default(false)
-  solarBackup                Boolean                   @default(false)
-  borehole                   Boolean                   @default(false)
-  generator                  Boolean                   @default(false)
-  waterTank                  Boolean                   @default(false)
-  securityWall               Boolean                   @default(false)
-  electricFence              Boolean                   @default(false)
-  garden                     Boolean                   @default(false)
-  swimmingPool               Boolean                   @default(false)
-  availableFrom              DateTime?
-  verifiedAt                 DateTime?
-  featured                   Boolean                   @default(false)
-  featuredUntil              DateTime?
-  views                      Int                       @default(0)
-  adminNotes                 String?
-  expiresAt                  DateTime?
-  leadSource                 LeadSource                @default(HOUSELINK)
-  leadCreatedById            String?
-  assignedAgentId            String?
-  propertyOwnerName          String?
-  propertyOwnerEmail         String?
-  propertyOwnerPhone         String?
-  duplicateOwnerReviewStatus LeadOwnershipReviewStatus @default(NOT_REQUIRED)
-  duplicateOwnerMatchId      String?
-  ownerAgreementAccepted     Boolean                   @default(false)
-  ownerAgreementSignedAt     DateTime?
-  ownerAgreementSignerName   String?
-  ownerAgreementVersion      String?
-  ownerAgreementBypassedAt   DateTime?
-  ownerAgreementBypassedById String?
-  ownerAgreementBypassedByName String?
+  id                            String                    @id @default(cuid())
+  ownerId                       String
+  agencyId                      String?
+  intent                        ListingIntent
+  propertyType                  PropertyType
+  status                        ListingStatus             @default(DRAFT)
+  title                         String
+  description                   String
+  price                         Decimal                   @db.Decimal(12, 2)
+  currency                      String                    @default("USD")
+  city                          String
+  suburb                        String
+  addressLine                   String?
+  latitude                      Decimal?                  @db.Decimal(10, 7)
+  longitude                     Decimal?                  @db.Decimal(10, 7)
+  bedrooms                      Int                       @default(0)
+  bathrooms                     Int                       @default(0)
+  furnished                     Boolean                   @default(false)
+  parking                       Boolean                   @default(false)
+  petFriendly                   Boolean                   @default(false)
+  wifi                          Boolean                   @default(false)
+  solarBackup                   Boolean                   @default(false)
+  borehole                      Boolean                   @default(false)
+  generator                     Boolean                   @default(false)
+  waterTank                     Boolean                   @default(false)
+  securityWall                  Boolean                   @default(false)
+  electricFence                 Boolean                   @default(false)
+  garden                        Boolean                   @default(false)
+  swimmingPool                  Boolean                   @default(false)
+  availableFrom                 DateTime?
+  verifiedAt                    DateTime?
+  expiresAt                     DateTime?
+  leadSource                    LeadSource                @default(HOUSELINK)
+  leadCreatedById               String?
+  assignedAgentId               String?
+  propertyOwnerName             String?
+  propertyOwnerEmail            String?
+  propertyOwnerPhone            String?
+  duplicateOwnerReviewStatus    LeadOwnershipReviewStatus @default(NOT_REQUIRED)
+  duplicateOwnerMatchId         String?
+  createdAt                     DateTime                  @default(now())
+  updatedAt                     DateTime                  @updatedAt
+  neighbourhoodId               String?
+  featured                      Boolean                   @default(false)
+  featuredUntil                 DateTime?
+  views                         Int                       @default(0)
+  adminNotes                    String?
+  slug                          String                    @unique
+  ownerAgreementAccepted        Boolean                   @default(false)
+  ownerAgreementSignedAt        DateTime?
+  ownerAgreementSignerName      String?
+  ownerAgreementVersion         String?
+  ownerAgreementBypassedAt      DateTime?
+  ownerAgreementBypassedById    String?
+  ownerAgreementBypassedByName  String?
   ownerAgreementBypassedByEmail String?
-  ownerAgreementBypassReason String?
-  createdAt                  DateTime                  @default(now())
-  updatedAt                  DateTime                  @updatedAt
-  owner                      User                      @relation(fields: [ownerId], references: [id])
-  agency                     Agency?                   @relation(fields: [agencyId], references: [id])
-  media                      ListingMedia[]
-  favourites                 Favourite[]
-  enquiries                  Enquiry[]
-  reviews                    Review[]
-  reports                    Report[]
-  payments                   Payment[]
-  viewingAppointments        ViewingAppointment[]
-  signedAgreements           SignedAgreement[]
-  marketInsightSnapshots     MarketInsightSnapshot[]
-  neighbourhood              Neighbourhood?            @relation(fields: [neighbourhoodId], references: [id])
-  neighbourhoodId            String?
-  virtualTour                ListingVirtualTour?
+  ownerAgreementBypassReason    String?
+  enquiries                     Enquiry[]
+  favourites                    Favourite[]
+  agency                        Agency?                   @relation(fields: [agencyId], references: [id])
+  neighbourhood                 Neighbourhood?            @relation(fields: [neighbourhoodId], references: [id])
+  owner                         User                      @relation(fields: [ownerId], references: [id])
+  media                         ListingMedia[]
+  virtualTour                   ListingVirtualTour?
+  marketInsightSnapshots        MarketInsightSnapshot[]
+  payments                      Payment[]
+  reports                       Report[]
+  reviews                       Review[]
+  signedAgreements              SignedAgreement[]
+  viewingAppointments           ViewingAppointment[]
 
   @@index([city, suburb])
   @@index([intent, propertyType, status])
@@ -525,6 +361,7 @@ model Listing {
   @@index([propertyOwnerEmail])
   @@index([propertyOwnerPhone])
   @@index([price])
+  @@index([slug])
 }
 
 model ListingMedia {
@@ -550,8 +387,8 @@ model ListingVirtualTour {
   createdAt       DateTime           @default(now())
   updatedAt       DateTime           @updatedAt
   listing         Listing            @relation(fields: [listingId], references: [id], onDelete: Cascade)
-  scenes          VirtualTourScene[]
   events          VirtualTourEvent[]
+  scenes          VirtualTourScene[]
 
   @@index([status])
 }
@@ -586,8 +423,8 @@ model VirtualTourEvent {
 }
 
 model ViewingAppointment {
-  id              String   @id @default(cuid())
-  referenceNumber String   @unique
+  id              String    @id @default(cuid())
+  referenceNumber String    @unique
   listingId       String
   enquiryId       String?
   seekerId        String?
@@ -598,7 +435,7 @@ model ViewingAppointment {
   agentName       String?
   startAt         DateTime
   endAt           DateTime
-  status          String   @default("REQUESTED")
+  status          String    @default("REQUESTED")
   location        String
   notes           String?
   reminderAt      DateTime?
@@ -607,9 +444,9 @@ model ViewingAppointment {
   cancelledAt     DateTime?
   completedAt     DateTime?
   auditTrail      Json?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  listing         Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  listing         Listing   @relation(fields: [listingId], references: [id], onDelete: Cascade)
 
   @@index([listingId, startAt])
   @@index([enquiryId])
@@ -625,25 +462,25 @@ model AgentViewingAvailability {
 }
 
 model SignedAgreement {
-  id             String   @id @default(cuid())
-  subjectType    String
-  subjectId      String
-  listingId      String?
-  title          String
-  signerUserId   String?
-  signerName     String
-  signerEmail    String?
-  signerRole     String
-  signatureText  String
-  agreementText  String
-  contentHash    String
-  pdfBase64      String
-  ipAddress      String?
-  userAgent      String?
-  metadata       Json?
-  signedAt       DateTime @default(now())
-  createdAt      DateTime @default(now())
-  listing        Listing? @relation(fields: [listingId], references: [id])
+  id            String   @id @default(cuid())
+  subjectType   String
+  subjectId     String
+  listingId     String?
+  title         String
+  signerUserId  String?
+  signerName    String
+  signerEmail   String?
+  signerRole    String
+  signatureText String
+  agreementText String
+  contentHash   String
+  pdfBase64     String
+  ipAddress     String?
+  userAgent     String?
+  metadata      Json?
+  signedAt      DateTime @default(now())
+  createdAt     DateTime @default(now())
+  listing       Listing? @relation(fields: [listingId], references: [id])
 
   @@index([subjectType, subjectId])
   @@index([listingId])
@@ -679,8 +516,8 @@ model Favourite {
   userId    String
   listingId String
   createdAt DateTime @default(now())
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   listing   Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@id([userId, listingId])
 }
@@ -892,13 +729,13 @@ model RoommateProfile {
   pets               Boolean         @default(false)
   age                Int?
   preferredLocations String[]
-  active             Boolean         @default(true)
-  payload            Json?
   createdAt          DateTime        @default(now())
   updatedAt          DateTime        @updatedAt
-  user               User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  matchesAsSource    RoommateMatch[] @relation("RoommateSource")
+  active             Boolean         @default(true)
+  payload            Json?
   matchesAsCandidate RoommateMatch[] @relation("RoommateCandidate")
+  matchesAsSource    RoommateMatch[] @relation("RoommateSource")
+  user               User            @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model RoommateMatch {
@@ -908,8 +745,8 @@ model RoommateMatch {
   score       Int
   reasons     String[]
   createdAt   DateTime        @default(now())
-  source      RoommateProfile @relation("RoommateSource", fields: [sourceId], references: [id], onDelete: Cascade)
   candidate   RoommateProfile @relation("RoommateCandidate", fields: [candidateId], references: [id], onDelete: Cascade)
+  source      RoommateProfile @relation("RoommateSource", fields: [sourceId], references: [id], onDelete: Cascade)
 
   @@unique([sourceId, candidateId])
 }
@@ -921,8 +758,8 @@ model Review {
   rating    Int
   body      String
   target    String
-  metadata  Json?
   createdAt DateTime @default(now())
+  metadata  Json?
   author    User     @relation("ReviewAuthor", fields: [authorId], references: [id], onDelete: Cascade)
   listing   Listing? @relation(fields: [listingId], references: [id])
 }
@@ -936,8 +773,8 @@ model Report {
   status     ReportStatus @default(OPEN)
   createdAt  DateTime     @default(now())
   updatedAt  DateTime     @updatedAt
-  reporter   User?        @relation(fields: [reporterId], references: [id])
   listing    Listing      @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  reporter   User?        @relation(fields: [reporterId], references: [id])
 }
 
 model UserDocument {
@@ -952,29 +789,29 @@ model UserDocument {
 }
 
 model Payment {
-  id          String          @id @default(cuid())
-  userId      String
-  listingId   String?
-  provider    PaymentProvider
-  status      PaymentStatus   @default(PENDING)
-  amount      Decimal         @db.Decimal(12, 2)
-  currency    String          @default("USD")
-  description String
-  externalId  String?
-  plan        String?
-  method      String?
-  manual      Boolean         @default(false)
-  proofUrl    String?
-  proofStatus String?
-  metadata    Json?
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
-  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  listing     Listing?        @relation(fields: [listingId], references: [id])
-  academyApplications AcademyLearnerApplication[]
+  id                    String                      @id @default(cuid())
+  userId                String
+  listingId             String?
+  provider              PaymentProvider
+  status                PaymentStatus               @default(PENDING)
+  amount                Decimal                     @db.Decimal(12, 2)
+  currency              String                      @default("USD")
+  description           String
+  externalId            String?
+  createdAt             DateTime                    @default(now())
+  updatedAt             DateTime                    @updatedAt
+  plan                  String?
+  method                String?
+  manual                Boolean                     @default(false)
+  proofUrl              String?
+  proofStatus           String?
+  metadata              Json?
+  listing               Listing?                    @relation(fields: [listingId], references: [id])
+  user                  User                        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  academyApplications   AcademyLearnerApplication[]
   academyResourceAccess AcademyResourceAccess[]
-  libraryOrders LibraryOrder[]
-  refundRequests RefundRequest[]
+  libraryOrders         LibraryOrder[]
+  refundRequests        RefundRequest[]
 }
 
 model Notification {
@@ -997,9 +834,9 @@ model Neighbourhood {
   safetyScore    Int?
   waterScore     Int?
   transportScore Int?
-  listings       Listing[]
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
+  listings       Listing[]
 
   @@unique([city, suburb])
 }
@@ -1045,15 +882,15 @@ model PasswordResetToken {
 }
 
 model EmailVerificationToken {
-  id         String    @id @default(cuid())
-  userId     String    @unique
-  token      String    @unique
-  ipAddress  String?
-  userAgent  String?
-  createdAt  DateTime  @default(now())
-  expiresAt  DateTime
-  usedAt     DateTime?
-  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id        String    @id @default(cuid())
+  userId    String    @unique
+  token     String    @unique
+  createdAt DateTime  @default(now())
+  expiresAt DateTime
+  usedAt    DateTime?
+  ipAddress String?
+  userAgent String?
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([token])
@@ -1112,33 +949,33 @@ model AgentLeadRecord {
 }
 
 model AgentCommissionRule {
-  id                   String                  @id @default(cuid())
-  type                 String
-  label                String
-  leadSource           LeadSource?
-  scope                CommissionRuleScope     @default(DEFAULT)
-  agentId              String?
-  transactionId        String?
-  branchId             String?
-  propertyType         String?
-  agentLevel           String?
-  promotionCode        String?
-  priority             Int                     @default(100)
-  ratePercent          Decimal                 @db.Decimal(5, 2)
+  id                    String                  @id @default(cuid())
+  type                  String
+  label                 String
+  leadSource            LeadSource?
+  scope                 CommissionRuleScope     @default(DEFAULT)
+  agentId               String?
+  transactionId         String?
+  branchId              String?
+  propertyType          String?
+  agentLevel            String?
+  promotionCode         String?
+  priority              Int                     @default(100)
+  ratePercent           Decimal                 @db.Decimal(5, 2)
   houselinkSplitPercent Decimal                 @db.Decimal(5, 2)
-  agentSplitPercent    Decimal                 @db.Decimal(5, 2)
-  minAmount            Decimal                 @default(0) @db.Decimal(12, 2)
-  maxAmount            Decimal                 @default(0) @db.Decimal(12, 2)
-  vatPercent           Decimal                 @default(0) @db.Decimal(5, 2)
-  bonusPercent         Decimal                 @default(0) @db.Decimal(5, 2)
-  reason               String?
-  active               Boolean                 @default(true)
-  startsAt             DateTime?
-  endsAt               DateTime?
-  createdAt            DateTime                @default(now())
-  updatedAt            DateTime                @updatedAt
-  commissions          AgentCommissionRecord[]
-  audits               CommissionAudit[]
+  agentSplitPercent     Decimal                 @db.Decimal(5, 2)
+  minAmount             Decimal                 @default(0) @db.Decimal(12, 2)
+  maxAmount             Decimal                 @default(0) @db.Decimal(12, 2)
+  vatPercent            Decimal                 @default(0) @db.Decimal(5, 2)
+  bonusPercent          Decimal                 @default(0) @db.Decimal(5, 2)
+  reason                String?
+  active                Boolean                 @default(true)
+  startsAt              DateTime?
+  endsAt                DateTime?
+  createdAt             DateTime                @default(now())
+  updatedAt             DateTime                @updatedAt
+  commissions           AgentCommissionRecord[]
+  audits                CommissionAudit[]
 
   @@index([type, active])
   @@index([leadSource])
@@ -1160,13 +997,13 @@ model AgentCommissionRecord {
   type                String
   status              AgentCommissionStatus @default(PENDING)
   paymentStatus       AgentCommissionStatus @default(PENDING)
-  dealRef             String
+  dealRef             String                @unique
   leadSource          LeadSource            @default(HOUSELINK)
   commissionRuleId    String?
   commissionRuleLabel String?
   commissionPercent   Decimal               @db.Decimal(5, 2)
   grossAmount         Decimal               @db.Decimal(12, 2)
-  houselinkAmount      Decimal               @db.Decimal(12, 2)
+  houselinkAmount     Decimal               @db.Decimal(12, 2)
   agentAmount         Decimal               @db.Decimal(12, 2)
   taxAmount           Decimal               @db.Decimal(12, 2)
   netAgentAmount      Decimal               @db.Decimal(12, 2)
@@ -1179,11 +1016,10 @@ model AgentCommissionRecord {
   payout              Json?
   createdAt           DateTime              @default(now())
   updatedAt           DateTime              @updatedAt
-  lead                AgentLeadRecord?      @relation(fields: [leadId], references: [id])
   rule                AgentCommissionRule?  @relation(fields: [commissionRuleId], references: [id])
+  lead                AgentLeadRecord?      @relation(fields: [leadId], references: [id])
   audits              CommissionAudit[]
 
-  @@unique([dealRef])
   @@index([agentId])
   @@index([leadSource])
   @@index([status])
@@ -1239,78 +1075,6 @@ model AppStoreSnapshot {
   updatedAt DateTime @updatedAt
 }
 
-enum TrainingCourseStatus {
-  DRAFT
-  PUBLISHED
-  ARCHIVED
-}
-
-enum TrainingVisibility {
-  INTERNAL_ONLY
-  PUBLIC
-  BRANCH_SPECIFIC
-  ROLE_BASED
-}
-
-enum TrainingDifficulty {
-  BEGINNER
-  INTERMEDIATE
-  ADVANCED
-  EXPERT
-}
-
-enum TrainingResourceType {
-  PDF
-  DOCX
-  XLSX
-  PPTX
-  IMAGE
-  VIDEO
-  AUDIO
-  ZIP
-  LINK
-}
-
-enum TrainingQuestionType {
-  MULTIPLE_CHOICE
-  MULTIPLE_ANSWER
-  TRUE_FALSE
-  FILL_BLANK
-  MATCHING
-  ORDERING
-  IMAGE
-  VIDEO
-  SCENARIO
-  ESSAY
-  DRAG_DROP
-  HOTSPOT
-}
-
-enum TrainingAttemptStatus {
-  IN_PROGRESS
-  SUBMITTED
-  PASSED
-  FAILED
-  GRADED
-}
-
-enum AcademyRegistrationStatus {
-  PENDING_PAYMENT
-  PAYMENT_UPLOADED
-  APPROVED
-  REJECTED
-  EXPIRED
-  REFUNDED
-}
-
-enum AssignmentSubmissionStatus {
-  SUBMITTED
-  APPROVED
-  REJECTED
-  RESUBMISSION_REQUESTED
-  GRADED
-}
-
 model TrainingCategory {
   id          String           @id @default(cuid())
   name        String
@@ -1327,69 +1091,69 @@ model TrainingCategory {
 }
 
 model TrainingCourse {
-  id                String                 @id @default(cuid())
-  title             String
-  subtitle          String?
-  slug              String                 @unique
-  thumbnailUrl      String?
-  bannerUrl         String?
-  description       String
-  shortDescription  String?
-  categoryId        String?
-  tags              String[]               @default([])
-  difficulty        TrainingDifficulty     @default(BEGINNER)
-  durationMinutes   Int                    @default(0)
-  instructor        String?
-  coInstructors     String[]               @default([])
-  learningOutcomes  String[]               @default([])
-  targetAudience    String?
-  introVideoUrl     String?
-  previewVideoUrl   String?
-  welcomeVideoUrl   String?
-  seoTitle          String?
-  seoDescription    String?
-  enrollmentType    String                 @default("OPEN")
-  capacity          Int?
-  discountPrice     Decimal?               @db.Decimal(12, 2)
-  prerequisites     String[]               @default([])
-  passingPercentage Int                    @default(80)
-  estimatedHours    Decimal                @default(0) @db.Decimal(6, 2)
-  certificateEnabled Boolean               @default(false)
-  expiresAfterDays  Int?
-  price             Decimal                @default(0) @db.Decimal(12, 2)
-  publicPrice       Decimal                @default(0) @db.Decimal(12, 2)
-  agentPrice        Decimal                @default(0) @db.Decimal(12, 2)
-  currency          String                 @default("USD")
-  registrationOpen  Boolean                @default(false)
-  accessDurationDays Int                   @default(365)
-  version           Int                    @default(1)
-  language          String                 @default("English")
-  status            TrainingCourseStatus   @default(DRAFT)
-  featured          Boolean                @default(false)
-  visibility        TrainingVisibility     @default(INTERNAL_ONLY)
-  branchIds         String[]               @default([])
-  roleNames         String[]               @default([])
-  createdById       String?
-  createdAt         DateTime               @default(now())
-  updatedAt         DateTime               @updatedAt
-  category          TrainingCategory?      @relation(fields: [categoryId], references: [id])
-  modules           TrainingModule[]
-  enrolments        CourseEnrolment[]
-  progress          CourseProgress[]
-  pathCourses       PathCourse[]
-  waitlistEntries   CourseWaitlist[]
-  reviews           CourseReview[]
-  forum             Forum?
-  quizzes           Quiz[]
-  finalExams        FinalExam[]
-  assignments       Assignment[]
-  certificateIssues CertificateIssue[]
-  discussions       DiscussionThread[]
-  publicApplications AcademyLearnerApplication[]
-  resourceAccess     AcademyResourceAccess[]
-  toolkitPublicPrice Decimal                @default(15) @db.Decimal(12, 2)
-  toolkitAgentPrice  Decimal                @default(0) @db.Decimal(12, 2)
-  toolkitSalesEnabled Boolean               @default(true)
+  id                  String                      @id @default(cuid())
+  title               String
+  slug                String                      @unique
+  thumbnailUrl        String?
+  bannerUrl           String?
+  description         String
+  categoryId          String?
+  tags                String[]                    @default([])
+  difficulty          TrainingDifficulty          @default(BEGINNER)
+  durationMinutes     Int                         @default(0)
+  instructor          String?
+  prerequisites       String[]                    @default([])
+  passingPercentage   Int                         @default(80)
+  estimatedHours      Decimal                     @default(0) @db.Decimal(6, 2)
+  certificateEnabled  Boolean                     @default(false)
+  expiresAfterDays    Int?
+  version             Int                         @default(1)
+  language            String                      @default("English")
+  status              TrainingCourseStatus        @default(DRAFT)
+  featured            Boolean                     @default(false)
+  visibility          TrainingVisibility          @default(INTERNAL_ONLY)
+  branchIds           String[]                    @default([])
+  roleNames           String[]                    @default([])
+  createdById         String?
+  createdAt           DateTime                    @default(now())
+  updatedAt           DateTime                    @updatedAt
+  price               Decimal                     @default(0) @db.Decimal(12, 2)
+  publicPrice         Decimal                     @default(0) @db.Decimal(12, 2)
+  agentPrice          Decimal                     @default(0) @db.Decimal(12, 2)
+  currency            String                      @default("USD")
+  registrationOpen    Boolean                     @default(false)
+  accessDurationDays  Int                         @default(365)
+  subtitle            String?
+  shortDescription    String?
+  coInstructors       String[]                    @default([])
+  learningOutcomes    String[]                    @default([])
+  targetAudience      String?
+  introVideoUrl       String?
+  previewVideoUrl     String?
+  welcomeVideoUrl     String?
+  seoTitle            String?
+  seoDescription      String?
+  enrollmentType      String                      @default("OPEN")
+  capacity            Int?
+  discountPrice       Decimal?                    @db.Decimal(12, 2)
+  toolkitPublicPrice  Decimal                     @default(15) @db.Decimal(12, 2)
+  toolkitAgentPrice   Decimal                     @default(0) @db.Decimal(12, 2)
+  toolkitSalesEnabled Boolean                     @default(true)
+  publicApplications  AcademyLearnerApplication[]
+  resourceAccess      AcademyResourceAccess[]
+  assignments         Assignment[]
+  certificateIssues   CertificateIssue[]
+  enrolments          CourseEnrolment[]
+  progress            CourseProgress[]
+  reviews             CourseReview[]
+  waitlistEntries     CourseWaitlist[]
+  discussions         DiscussionThread[]
+  finalExams          FinalExam[]
+  forum               Forum?
+  pathCourses         PathCourse[]
+  quizzes             Quiz[]
+  category            TrainingCategory?           @relation(fields: [categoryId], references: [id])
+  modules             TrainingModule[]
 
   @@index([status])
   @@index([categoryId])
@@ -1398,31 +1162,31 @@ model TrainingCourse {
 }
 
 model AcademyLearnerApplication {
-  id             String                    @id @default(cuid())
-  learnerId      String
-  courseId       String
-  paymentId      String?
-  status         AcademyRegistrationStatus @default(PENDING_PAYMENT)
-  learnerType    String                    @default("PUBLIC_LEARNER")
-  fullName       String
-  email          String
-  phone          String?
-  organisation   String?
-  motivation     String?
-  amount         Decimal                   @default(0) @db.Decimal(12, 2)
-  currency       String                    @default("USD")
-  proofUrl       String?
-  adminNote      String?
-  approvedById   String?
-  approvedAt     DateTime?
-  rejectedAt     DateTime?
-  accessStartsAt DateTime?
-  accessEndsAt   DateTime?
-  createdAt      DateTime                  @default(now())
-  updatedAt      DateTime                  @updatedAt
-  learner        User                      @relation(fields: [learnerId], references: [id], onDelete: Cascade)
-  course         TrainingCourse            @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  payment        Payment?                  @relation(fields: [paymentId], references: [id])
+  id               String                    @id @default(cuid())
+  learnerId        String
+  courseId         String
+  paymentId        String?
+  status           AcademyRegistrationStatus @default(PENDING_PAYMENT)
+  learnerType      String                    @default("PUBLIC_LEARNER")
+  fullName         String
+  email            String
+  phone            String?
+  organisation     String?
+  motivation       String?
+  amount           Decimal                   @default(0) @db.Decimal(12, 2)
+  currency         String                    @default("USD")
+  proofUrl         String?
+  adminNote        String?
+  approvedById     String?
+  approvedAt       DateTime?
+  rejectedAt       DateTime?
+  accessStartsAt   DateTime?
+  accessEndsAt     DateTime?
+  createdAt        DateTime                  @default(now())
+  updatedAt        DateTime                  @updatedAt
+  course           TrainingCourse            @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  learner          User                      @relation(fields: [learnerId], references: [id], onDelete: Cascade)
+  payment          Payment?                  @relation(fields: [paymentId], references: [id])
   paymentReminders PaymentReminder[]
 
   @@unique([learnerId, courseId])
@@ -1430,11 +1194,6 @@ model AcademyLearnerApplication {
   @@index([courseId])
   @@index([paymentId])
   @@map("academy_learner_applications")
-}
-
-enum AcademyResourceKind {
-  COURSE_TOOLKIT
-  TRAINING_MANUAL
 }
 
 model AcademyResourceAccess {
@@ -1460,8 +1219,8 @@ model AcademyResourceAccess {
   accessEndsAt   DateTime?
   createdAt      DateTime                  @default(now())
   updatedAt      DateTime                  @updatedAt
-  learner        User                      @relation(fields: [learnerId], references: [id], onDelete: Cascade)
   course         TrainingCourse?           @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  learner        User                      @relation(fields: [learnerId], references: [id], onDelete: Cascade)
   payment        Payment?                  @relation(fields: [paymentId], references: [id])
 
   @@unique([learnerId, resourceKey])
@@ -1476,15 +1235,15 @@ model TrainingModule {
   courseId         String
   title            String
   description      String?
-  objectives       String[]          @default([])
-  estimatedMinutes Int               @default(0)
   sortOrder        Int               @default(0)
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
+  objectives       String[]          @default([])
+  estimatedMinutes Int               @default(0)
+  assignments      Assignment[]
+  quizzes          Quiz[]
   course           TrainingCourse    @relation(fields: [courseId], references: [id], onDelete: Cascade)
   sections         TrainingSection[]
-  quizzes          Quiz[]
-  assignments      Assignment[]
 
   @@index([courseId, sortOrder])
   @@map("training_modules")
@@ -1498,88 +1257,88 @@ model TrainingSection {
   sortOrder   Int              @default(0)
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
-  module      TrainingModule   @relation(fields: [moduleId], references: [id], onDelete: Cascade)
   lessons     TrainingLesson[]
+  module      TrainingModule   @relation(fields: [moduleId], references: [id], onDelete: Cascade)
 
   @@index([moduleId, sortOrder])
   @@map("training_sections")
 }
 
 model TrainingLesson {
-  id                       String             @id @default(cuid())
-  sectionId                String
-  title                    String
-  summary                  String?
-  richText                 String             @default("")
-  transcript               String?
-  lessonNotes              String?
-  objectives               String[]           @default([])
-  discussionPrompt         String?
-  checklist                Json?
-  reflectionQuestions      Json?
-  videoUrl                 String?
-  embeddedVideoUrl         String?
-  pdfUrl                   String?
-  audioUrl                 String?
-  mapEmbedUrl              String?
-  estimatedMinutes         Int                @default(0)
-  completionRequirement    String             @default("VIEW")
-  sortOrder                Int                @default(0)
-  commentsEnabled          Boolean            @default(true)
-  bookmarksEnabled         Boolean            @default(true)
-  createdAt                DateTime           @default(now())
-  updatedAt                DateTime           @updatedAt
-  section                  TrainingSection    @relation(fields: [sectionId], references: [id], onDelete: Cascade)
-  lessonVideos             LessonVideo[]
-  lessonDocuments          LessonDocument[]
-  lessonResources          LessonResource[]
-  lessonDownloads          LessonDownload[]
-  progress                 LessonProgress[]
-  quizzes                  Quiz[]
-  assignments              Assignment[]
+  id                    String           @id @default(cuid())
+  sectionId             String
+  title                 String
+  summary               String?
+  richText              String           @default("")
+  videoUrl              String?
+  embeddedVideoUrl      String?
+  pdfUrl                String?
+  audioUrl              String?
+  mapEmbedUrl           String?
+  estimatedMinutes      Int              @default(0)
+  completionRequirement String           @default("VIEW")
+  sortOrder             Int              @default(0)
+  commentsEnabled       Boolean          @default(true)
+  bookmarksEnabled      Boolean          @default(true)
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+  transcript            String?
+  lessonNotes           String?
+  objectives            String[]         @default([])
+  discussionPrompt      String?
+  checklist             Json?
+  reflectionQuestions   Json?
+  assignments           Assignment[]
+  lessonDocuments       LessonDocument[]
+  lessonDownloads       LessonDownload[]
+  progress              LessonProgress[]
+  lessonResources       LessonResource[]
+  lessonVideos          LessonVideo[]
+  quizzes               Quiz[]
+  section               TrainingSection  @relation(fields: [sectionId], references: [id], onDelete: Cascade)
 
   @@index([sectionId, sortOrder])
   @@map("training_lessons")
 }
 
 model LessonVideo {
-  id             String               @id @default(cuid())
-  lessonId       String
-  title          String
-  url            String
-  provider       String               @default("UPLOAD")
-  durationSeconds Int                 @default(0)
-  captionsUrl    String?
-  downloadable   Boolean             @default(false)
-  createdAt      DateTime            @default(now())
-  lesson         TrainingLesson      @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  id              String         @id @default(cuid())
+  lessonId        String
+  title           String
+  url             String
+  provider        String         @default("UPLOAD")
+  durationSeconds Int            @default(0)
+  captionsUrl     String?
+  downloadable    Boolean        @default(false)
+  createdAt       DateTime       @default(now())
+  lesson          TrainingLesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
 
   @@index([lessonId])
   @@map("lesson_videos")
 }
 
 model LessonDocument {
-  id         String               @id @default(cuid())
+  id         String          @id @default(cuid())
   lessonId   String
   documentId String
-  sortOrder  Int                  @default(0)
-  createdAt  DateTime             @default(now())
-  lesson     TrainingLesson       @relation(fields: [lessonId], references: [id], onDelete: Cascade)
-  document   DocumentLibrary      @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  sortOrder  Int             @default(0)
+  createdAt  DateTime        @default(now())
+  document   DocumentLibrary @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  lesson     TrainingLesson  @relation(fields: [lessonId], references: [id], onDelete: Cascade)
 
   @@unique([lessonId, documentId])
   @@map("lesson_documents")
 }
 
 model LessonResource {
-  id        String               @id @default(cuid())
+  id        String         @id @default(cuid())
   lessonId  String
   title     String
   body      String
   type      String
-  sortOrder Int                  @default(0)
-  createdAt DateTime             @default(now())
-  lesson    TrainingLesson       @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  sortOrder Int            @default(0)
+  createdAt DateTime       @default(now())
+  lesson    TrainingLesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
 
   @@index([lessonId])
   @@map("lesson_resources")
@@ -1601,8 +1360,6 @@ model LessonDownload {
 model Quiz {
   id                String          @id @default(cuid())
   courseId          String?
-  moduleId          String?
-  lessonId          String?
   title             String
   description       String?
   passingPercentage Int             @default(80)
@@ -1611,11 +1368,13 @@ model Quiz {
   active            Boolean         @default(true)
   createdAt         DateTime        @default(now())
   updatedAt         DateTime        @updatedAt
-  course            TrainingCourse? @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  module            TrainingModule? @relation(fields: [moduleId], references: [id], onDelete: Cascade)
-  lesson            TrainingLesson? @relation(fields: [lessonId], references: [id], onDelete: Cascade)
-  questions         QuizQuestion[]
+  moduleId          String?
+  lessonId          String?
   attempts          QuizAttempt[]
+  questions         QuizQuestion[]
+  course            TrainingCourse? @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lesson            TrainingLesson? @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  module            TrainingModule? @relation(fields: [moduleId], references: [id], onDelete: Cascade)
 
   @@index([courseId])
   @@index([moduleId])
@@ -1643,9 +1402,9 @@ model QuizQuestion {
   sortOrder         Int                  @default(0)
   createdAt         DateTime             @default(now())
   updatedAt         DateTime             @updatedAt
-  quiz              Quiz?                @relation(fields: [quizId], references: [id], onDelete: Cascade)
-  bank              QuestionBank?        @relation(fields: [bankId], references: [id])
   answers           QuizAnswer[]
+  bank              QuestionBank?        @relation(fields: [bankId], references: [id])
+  quiz              Quiz?                @relation(fields: [quizId], references: [id], onDelete: Cascade)
 
   @@index([quizId])
   @@index([bankId])
@@ -1653,15 +1412,15 @@ model QuizQuestion {
 }
 
 model QuizAnswer {
-  id          String       @id @default(cuid())
-  questionId  String
-  label       String
-  value       String
-  isCorrect   Boolean      @default(false)
-  feedback    String?
-  sortOrder   Int          @default(0)
-  createdAt   DateTime     @default(now())
-  question    QuizQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  id         String       @id @default(cuid())
+  questionId String
+  label      String
+  value      String
+  isCorrect  Boolean      @default(false)
+  feedback   String?
+  sortOrder  Int          @default(0)
+  createdAt  DateTime     @default(now())
+  question   QuizQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
 
   @@index([questionId])
   @@map("quiz_answers")
@@ -1698,24 +1457,24 @@ model QuizAttempt {
 }
 
 model FinalExam {
-  id                String        @id @default(cuid())
-  courseId          String
-  title             String
-  durationMinutes   Int           @default(60)
-  passingScore      Int           @default(80)
-  randomQuestions   Boolean       @default(true)
-  questionPools     Json?
-  attemptLimit      Int           @default(2)
-  browserLock       Boolean       @default(false)
-  autoSubmit        Boolean       @default(true)
-  retakeRules       Json?
-  reviewEnabled     Boolean       @default(true)
-  manualGrading     Boolean       @default(false)
-  active            Boolean       @default(true)
-  createdAt         DateTime      @default(now())
-  updatedAt         DateTime      @updatedAt
-  course            TrainingCourse @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  attempts          ExamAttempt[]
+  id              String         @id @default(cuid())
+  courseId        String
+  title           String
+  durationMinutes Int            @default(60)
+  passingScore    Int            @default(80)
+  randomQuestions Boolean        @default(true)
+  questionPools   Json?
+  attemptLimit    Int            @default(2)
+  browserLock     Boolean        @default(false)
+  autoSubmit      Boolean        @default(true)
+  retakeRules     Json?
+  reviewEnabled   Boolean        @default(true)
+  manualGrading   Boolean        @default(false)
+  active          Boolean        @default(true)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  attempts        ExamAttempt[]
+  course          TrainingCourse @relation(fields: [courseId], references: [id], onDelete: Cascade)
 
   @@index([courseId])
   @@map("final_exams")
@@ -1741,8 +1500,6 @@ model ExamAttempt {
 model Assignment {
   id          String                 @id @default(cuid())
   courseId    String?
-  moduleId    String?
-  lessonId    String?
   title       String
   description String
   dueDays     Int?
@@ -1750,10 +1507,12 @@ model Assignment {
   active      Boolean                @default(true)
   createdAt   DateTime               @default(now())
   updatedAt   DateTime               @updatedAt
-  course      TrainingCourse?        @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  module      TrainingModule?        @relation(fields: [moduleId], references: [id], onDelete: Cascade)
-  lesson      TrainingLesson?        @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  moduleId    String?
+  lessonId    String?
   submissions AssignmentSubmission[]
+  course      TrainingCourse?        @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lesson      TrainingLesson?        @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  module      TrainingModule?        @relation(fields: [moduleId], references: [id], onDelete: Cascade)
 
   @@index([courseId])
   @@index([moduleId])
@@ -1795,15 +1554,15 @@ model CourseEnrolment {
 }
 
 model LessonProgress {
-  id               String          @id @default(cuid())
-  lessonId         String
-  agentId          String
-  status           String          @default("NOT_STARTED")
-  percentComplete  Int             @default(0)
-  readingSeconds   Int             @default(0)
-  completedAt      DateTime?
-  lastViewedAt     DateTime        @default(now())
-  lesson           TrainingLesson  @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  id              String         @id @default(cuid())
+  lessonId        String
+  agentId         String
+  status          String         @default("NOT_STARTED")
+  percentComplete Int            @default(0)
+  readingSeconds  Int            @default(0)
+  completedAt     DateTime?
+  lastViewedAt    DateTime       @default(now())
+  lesson          TrainingLesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
 
   @@unique([lessonId, agentId])
   @@index([agentId])
@@ -1846,19 +1605,19 @@ model PathCourse {
   courseId  String
   sortOrder Int            @default(0)
   required  Boolean        @default(true)
-  path      LearningPath   @relation(fields: [pathId], references: [id], onDelete: Cascade)
   course    TrainingCourse @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  path      LearningPath   @relation(fields: [pathId], references: [id], onDelete: Cascade)
 
   @@unique([pathId, courseId])
   @@map("path_courses")
 }
 
 model Certificate {
-  id          String              @id @default(cuid())
+  id          String   @id @default(cuid())
   title       String
   description String?
-  active      Boolean             @default(true)
-  createdAt   DateTime            @default(now())
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
 
   @@map("certificates")
 }
@@ -1879,18 +1638,18 @@ model CertificateTemplate {
 }
 
 model CertificateIssue {
-  id                String              @id @default(cuid())
-  certificateNumber String              @unique
+  id                String               @id @default(cuid())
+  certificateNumber String               @unique
   courseId          String?
   agentId           String
   templateId        String?
   qrCodeUrl         String?
   pdfUrl            String?
-  status            String              @default("ACTIVE")
-  issuedAt          DateTime            @default(now())
+  status            String               @default("ACTIVE")
+  issuedAt          DateTime             @default(now())
   expiresAt         DateTime?
   revokedAt         DateTime?
-  course            TrainingCourse?     @relation(fields: [courseId], references: [id])
+  course            TrainingCourse?      @relation(fields: [courseId], references: [id])
   template          CertificateTemplate? @relation(fields: [templateId], references: [id])
 
   @@index([agentId])
@@ -1911,30 +1670,30 @@ model DocumentCategory {
 }
 
 model DocumentLibrary {
-  id                 String                 @id @default(cuid())
-  categoryId         String?
-  title              String
-  description        String?
-  fileUrl            String
-  fileName           String
-  fileType           TrainingResourceType
-  fileSizeBytes      Int                    @default(0)
-  version            Int                    @default(1)
-  tags               String[]               @default([])
-  permissions        String[]               @default(["ADMIN", "AGENT"])
-  searchableText     String                 @default("")
-  downloadable       Boolean                @default(true)
-  previewable        Boolean                @default(true)
-  visible            Boolean                @default(true)
-  sortOrder          Int                    @default(0)
-  downloadCount      Int                    @default(0)
-  replacedById       String?
-  active             Boolean                @default(true)
-  createdById        String?
-  createdAt          DateTime               @default(now())
-  updatedAt          DateTime               @updatedAt
-  category           DocumentCategory?      @relation(fields: [categoryId], references: [id])
-  lessonDocuments    LessonDocument[]
+  id              String               @id @default(cuid())
+  categoryId      String?
+  title           String
+  description     String?
+  fileUrl         String
+  fileName        String
+  fileType        TrainingResourceType
+  fileSizeBytes   Int                  @default(0)
+  version         Int                  @default(1)
+  tags            String[]             @default([])
+  permissions     String[]             @default(["ADMIN", "AGENT"])
+  searchableText  String               @default("")
+  downloadable    Boolean              @default(true)
+  previewable     Boolean              @default(true)
+  replacedById    String?
+  active          Boolean              @default(true)
+  createdById     String?
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+  visible         Boolean              @default(true)
+  sortOrder       Int                  @default(0)
+  downloadCount   Int                  @default(0)
+  category        DocumentCategory?    @relation(fields: [categoryId], references: [id])
+  lessonDocuments LessonDocument[]
 
   @@index([categoryId])
   @@index([fileType])
@@ -1943,16 +1702,16 @@ model DocumentLibrary {
 }
 
 model LibraryAuthor {
-  id          String           @id @default(cuid())
-  name        String
-  slug        String           @unique
-  bio         String?
-  avatarUrl   String?
-  websiteUrl  String?
-  active      Boolean          @default(true)
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
-  products    LibraryProduct[]
+  id         String           @id @default(cuid())
+  name       String
+  slug       String           @unique
+  bio        String?
+  avatarUrl  String?
+  websiteUrl String?
+  active     Boolean          @default(true)
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+  products   LibraryProduct[]
 
   @@index([active])
   @@map("library_authors")
@@ -1976,102 +1735,102 @@ model LibraryCategory {
 }
 
 model LibraryCollection {
-  id              String           @id @default(cuid())
-  name            String
-  slug            String           @unique
-  description     String?
-  heroImageUrl    String?
-  featured        Boolean          @default(false)
-  sortOrder       Int              @default(0)
-  active          Boolean          @default(true)
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
-  products        LibraryProduct[]
+  id           String           @id @default(cuid())
+  name         String
+  slug         String           @unique
+  description  String?
+  heroImageUrl String?
+  featured     Boolean          @default(false)
+  sortOrder    Int              @default(0)
+  active       Boolean          @default(true)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  products     LibraryProduct[]
 
   @@index([active, featured, sortOrder])
   @@map("library_collections")
 }
 
 model LibraryProduct {
-  id                 String                    @id @default(cuid())
-  slug               String                    @unique
-  title              String
-  subtitle           String?
-  authorId           String?
-  publisher          String?
-  edition            String?
-  isbn               String?
-  language           String                    @default("English")
-  publicationDate    DateTime?
-  pages              Int?
-  weightGrams        Int?
-  bookSize           String?
-  sku                String                    @unique
-  barcode            String?
-  productType        LibraryProductType
-  status             LibraryProductStatus      @default(DRAFT)
-  price              Decimal                   @db.Decimal(12, 2)
-  compareAtPrice     Decimal?                  @db.Decimal(12, 2)
-  currency           String                    @default("USD")
-  categoryId         String?
-  collectionId       String?
-  series             String?
-  difficulty         String?
-  shortDescription   String?
-  description        String
-  learningOutcomes   String[]                  @default([])
-  whoThisIsFor       String[]                  @default([])
-  requirements       String[]                  @default([])
-  tableOfContents    Json?
-  tags               String[]                  @default([])
-  seoTitle           String?
-  metaDescription    String?
-  seoFocusKeyword    String?
-  seoImageUrl        String?
-  formats            Json?
-  bundleProductIds         String[]                  @default([])
-  bundlePromoPrice         Decimal?                  @db.Decimal(12, 2)
-  bundleFormatPreference   String                    @default("MATCH_SHOPPER")
-  searchVector       String                    @default("")
-  featured           Boolean                   @default(false)
-  bestSeller         Boolean                   @default(false)
-  newRelease         Boolean                   @default(false)
-  editorsChoice      Boolean                   @default(false)
-  comingSoon         Boolean                   @default(false)
-  preorder           Boolean                   @default(false)
-  stock              Int?
-  lowStockThreshold  Int                       @default(0)
-  warehouse          String?
-  supplier           String?
-  downloadLimit      Int?
-  downloadExpiryDays Int?
-  watermarking       Boolean                   @default(false)
-  licenseKeys        Boolean                   @default(false)
-  viewCount          Int                       @default(0)
-  downloadCount      Int                       @default(0)
-  ratingAverage      Decimal                   @default(0) @db.Decimal(4, 2)
-  ratingCount        Int                       @default(0)
-  scheduledAt        DateTime?
-  publishedAt        DateTime?
-  archivedAt         DateTime?
-  deletedAt          DateTime?
-  createdById        String?
-  updatedById        String?
-  createdAt          DateTime                  @default(now())
-  updatedAt          DateTime                  @updatedAt
-  author             LibraryAuthor?            @relation(fields: [authorId], references: [id])
-  category           LibraryCategory?          @relation(fields: [categoryId], references: [id])
-  collection         LibraryCollection?        @relation(fields: [collectionId], references: [id])
-  media              LibraryProductMedia[]
-  files              LibraryProductFile[]
-  previewPages       LibraryPreviewPage[]
-  orderItems         LibraryOrderItem[]
-  reviews            LibraryReview[]
-  downloads          LibraryDownloadAccess[]
-  wishlistItems      LibraryWishlistItem[]
-  inventoryMovements LibraryInventoryMovement[]
-  recommendationsFrom LibraryRecommendation[] @relation("LibraryRecommendationSource")
-  recommendationsTo   LibraryRecommendation[] @relation("LibraryRecommendationTarget")
+  id                     String                     @id @default(cuid())
+  slug                   String                     @unique
+  title                  String
+  subtitle               String?
+  authorId               String?
+  publisher              String?
+  edition                String?
+  isbn                   String?
+  language               String                     @default("English")
+  publicationDate        DateTime?
+  pages                  Int?
+  weightGrams            Int?
+  bookSize               String?
+  sku                    String                     @unique
+  barcode                String?
+  productType            LibraryProductType
+  status                 LibraryProductStatus       @default(DRAFT)
+  price                  Decimal                    @db.Decimal(12, 2)
+  compareAtPrice         Decimal?                   @db.Decimal(12, 2)
+  currency               String                     @default("USD")
+  categoryId             String?
+  collectionId           String?
+  series                 String?
+  difficulty             String?
+  shortDescription       String?
+  description            String
+  learningOutcomes       String[]                   @default([])
+  whoThisIsFor           String[]                   @default([])
+  requirements           String[]                   @default([])
+  tableOfContents        Json?
+  tags                   String[]                   @default([])
+  seoTitle               String?
+  metaDescription        String?
+  searchVector           String                     @default("")
+  featured               Boolean                    @default(false)
+  bestSeller             Boolean                    @default(false)
+  newRelease             Boolean                    @default(false)
+  editorsChoice          Boolean                    @default(false)
+  comingSoon             Boolean                    @default(false)
+  preorder               Boolean                    @default(false)
+  stock                  Int?
+  lowStockThreshold      Int                        @default(0)
+  warehouse              String?
+  supplier               String?
+  downloadLimit          Int?
+  downloadExpiryDays     Int?
+  watermarking           Boolean                    @default(false)
+  licenseKeys            Boolean                    @default(false)
+  viewCount              Int                        @default(0)
+  downloadCount          Int                        @default(0)
+  ratingAverage          Decimal                    @default(0) @db.Decimal(4, 2)
+  ratingCount            Int                        @default(0)
+  scheduledAt            DateTime?
+  publishedAt            DateTime?
+  archivedAt             DateTime?
+  deletedAt              DateTime?
+  createdById            String?
+  updatedById            String?
+  createdAt              DateTime                   @default(now())
+  updatedAt              DateTime                   @updatedAt
+  seoFocusKeyword        String?
+  seoImageUrl            String?
+  formats                Json?
+  bundleProductIds       String[]                   @default([])
+  bundlePromoPrice       Decimal?                   @db.Decimal(12, 2)
+  bundleFormatPreference String                     @default("MATCH_SHOPPER")
+  downloads              LibraryDownloadAccess[]
+  inventoryMovements     LibraryInventoryMovement[]
+  orderItems             LibraryOrderItem[]
+  previewPages           LibraryPreviewPage[]
+  files                  LibraryProductFile[]
+  media                  LibraryProductMedia[]
+  author                 LibraryAuthor?             @relation(fields: [authorId], references: [id])
+  category               LibraryCategory?           @relation(fields: [categoryId], references: [id])
+  collection             LibraryCollection?         @relation(fields: [collectionId], references: [id])
+  recommendationsFrom    LibraryRecommendation[]    @relation("LibraryRecommendationSource")
+  recommendationsTo      LibraryRecommendation[]    @relation("LibraryRecommendationTarget")
+  reviews                LibraryReview[]
+  wishlistItems          LibraryWishlistItem[]
 
   @@index([status, productType])
   @@index([categoryId])
@@ -2116,8 +1875,8 @@ model LibraryProductFile {
   active         Boolean                 @default(true)
   createdAt      DateTime                @default(now())
   updatedAt      DateTime                @updatedAt
-  product        LibraryProduct          @relation(fields: [productId], references: [id], onDelete: Cascade)
   downloadAccess LibraryDownloadAccess[]
+  product        LibraryProduct          @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@index([productId, active])
   @@map("library_product_files")
@@ -2141,29 +1900,29 @@ model LibraryPreviewPage {
 }
 
 model LibraryOrder {
-  id            String             @id @default(cuid())
-  orderNumber   String             @unique
+  id            String                  @id @default(cuid())
+  orderNumber   String                  @unique
   customerId    String
   paymentId     String?
-  status        LibraryOrderStatus @default(PENDING)
-  subtotal      Decimal            @db.Decimal(12, 2)
-  discountTotal Decimal            @default(0) @db.Decimal(12, 2)
-  total         Decimal            @db.Decimal(12, 2)
-  currency      String             @default("USD")
+  status        LibraryOrderStatus      @default(PENDING)
+  subtotal      Decimal                 @db.Decimal(12, 2)
+  discountTotal Decimal                 @default(0) @db.Decimal(12, 2)
+  total         Decimal                 @db.Decimal(12, 2)
+  currency      String                  @default("USD")
   couponCode    String?
   billingEmail  String?
   metadata      Json?
   fulfilledAt   DateTime?
   refundedAt    DateTime?
-  createdAt     DateTime           @default(now())
-  updatedAt     DateTime           @updatedAt
-  customer      User               @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  payment       Payment?           @relation(fields: [paymentId], references: [id])
-  items         LibraryOrderItem[]
+  createdAt     DateTime                @default(now())
+  updatedAt     DateTime                @updatedAt
   downloads     LibraryDownloadAccess[]
   fulfilments   LibraryFulfilment[]
-  invoices      LibraryInvoice[]
   guestClaims   LibraryGuestClaim[]
+  invoices      LibraryInvoice[]
+  items         LibraryOrderItem[]
+  customer      User                    @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  payment       Payment?                @relation(fields: [paymentId], references: [id])
 
   @@index([customerId, createdAt])
   @@index([paymentId])
@@ -2172,18 +1931,18 @@ model LibraryOrder {
 }
 
 model LibraryOrderItem {
-  id          String         @id @default(cuid())
+  id          String             @id @default(cuid())
   orderId     String
   productId   String
   title       String
   sku         String
-  quantity    Int            @default(1)
-  unitPrice   Decimal        @db.Decimal(12, 2)
-  total       Decimal        @db.Decimal(12, 2)
+  quantity    Int                @default(1)
+  unitPrice   Decimal            @db.Decimal(12, 2)
+  total       Decimal            @db.Decimal(12, 2)
   productType LibraryProductType
-  createdAt   DateTime       @default(now())
-  order       LibraryOrder   @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  product     LibraryProduct @relation(fields: [productId], references: [id])
+  createdAt   DateTime           @default(now())
+  order       LibraryOrder       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product     LibraryProduct     @relation(fields: [productId], references: [id])
 
   @@index([orderId])
   @@index([productId])
@@ -2191,24 +1950,24 @@ model LibraryOrderItem {
 }
 
 model LibraryDownloadAccess {
-  id            String                @id @default(cuid())
-  userId        String
-  productId     String
-  orderId       String?
-  fileId        String?
-  tokenHash     String?
-  licenseKey    String?
-  status        LibraryDownloadStatus @default(ACTIVE)
-  downloadLimit Int?
-  downloadCount Int                   @default(0)
-  expiresAt     DateTime?
+  id             String                @id @default(cuid())
+  userId         String
+  productId      String
+  orderId        String?
+  fileId         String?
+  tokenHash      String?
+  licenseKey     String?
+  status         LibraryDownloadStatus @default(ACTIVE)
+  downloadLimit  Int?
+  downloadCount  Int                   @default(0)
+  expiresAt      DateTime?
   lastDownloadAt DateTime?
-  createdAt     DateTime              @default(now())
-  updatedAt     DateTime              @updatedAt
-  user          User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  product       LibraryProduct        @relation(fields: [productId], references: [id], onDelete: Cascade)
-  order         LibraryOrder?         @relation(fields: [orderId], references: [id])
-  file          LibraryProductFile?   @relation(fields: [fileId], references: [id])
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+  file           LibraryProductFile?   @relation(fields: [fileId], references: [id])
+  order          LibraryOrder?         @relation(fields: [orderId], references: [id])
+  product        LibraryProduct        @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user           User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([productId])
@@ -2224,12 +1983,12 @@ model LibraryReview {
   rating      Int
   title       String?
   body        String?
-  displayName String?
   status      String         @default("PENDING")
   verified    Boolean        @default(false)
   featured    Boolean        @default(false)
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
+  displayName String?
   product     LibraryProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
   user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -2239,23 +1998,23 @@ model LibraryReview {
 }
 
 model LibraryCoupon {
-  id              String   @id @default(cuid())
-  code            String   @unique
-  description     String?
-  discountType    String
-  discountValue   Decimal  @db.Decimal(12, 2)
-  usageLimit      Int?
-  usedCount       Int      @default(0)
-  minimumSubtotal Decimal? @db.Decimal(12, 2)
-  startsAt        DateTime?
-  expiresAt       DateTime?
-  active          Boolean  @default(true)
-  metadata        Json?
-  productIds      String[] @default([])
-  categoryIds     String[] @default([])
-  firstPurchaseOnly Boolean @default(false)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id                String    @id @default(cuid())
+  code              String    @unique
+  description       String?
+  discountType      String
+  discountValue     Decimal   @db.Decimal(12, 2)
+  usageLimit        Int?
+  usedCount         Int       @default(0)
+  minimumSubtotal   Decimal?  @db.Decimal(12, 2)
+  startsAt          DateTime?
+  expiresAt         DateTime?
+  active            Boolean   @default(true)
+  metadata          Json?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  productIds        String[]  @default([])
+  categoryIds       String[]  @default([])
+  firstPurchaseOnly Boolean   @default(false)
 
   @@index([active, expiresAt])
   @@map("library_coupons")
@@ -2265,8 +2024,8 @@ model LibraryWishlistItem {
   userId    String
   productId String
   createdAt DateTime       @default(now())
-  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   product   LibraryProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@id([userId, productId])
   @@map("library_wishlist_items")
@@ -2395,7 +2154,7 @@ model LibraryGuestClaim {
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
   order          LibraryOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  user           User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  user           User?        @relation(fields: [userId], references: [id])
 
   @@index([email, status])
   @@index([claimTokenHash])
@@ -2443,14 +2202,14 @@ model LibrarySetting {
 }
 
 model LibraryExportJob {
-  id            String   @id @default(cuid())
+  id            String    @id @default(cuid())
   type          String
-  status        String   @default("PENDING")
+  status        String    @default("PENDING")
   requestedById String?
   fileUrl       String?
   filters       Json?
   error         String?
-  createdAt     DateTime @default(now())
+  createdAt     DateTime  @default(now())
   completedAt   DateTime?
 
   @@index([type, status, createdAt])
@@ -2511,60 +2270,60 @@ model VideoProgress {
 }
 
 model DiscussionThread {
-  id        String            @id @default(cuid())
+  id        String           @id @default(cuid())
   courseId  String?
   title     String
   authorId  String
-  pinned    Boolean           @default(false)
-  locked    Boolean           @default(false)
-  createdAt DateTime          @default(now())
-  updatedAt DateTime          @updatedAt
-  course    TrainingCourse?   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  pinned    Boolean          @default(false)
+  locked    Boolean          @default(false)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
   posts     DiscussionPost[]
+  course    TrainingCourse?  @relation(fields: [courseId], references: [id], onDelete: Cascade)
 
   @@index([courseId])
   @@map("discussion_threads")
 }
 
 model DiscussionPost {
-  id          String           @id @default(cuid())
-  threadId    String
-  authorId    String
-  body        String
-  imageUrls   String[]         @default([])
-  reactions   Json?
-  mentions    String[]         @default([])
-  bookmarkedBy String[]        @default([])
-  moderated   Boolean          @default(false)
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
-  thread      DiscussionThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  id           String           @id @default(cuid())
+  threadId     String
+  authorId     String
+  body         String
+  imageUrls    String[]         @default([])
+  reactions    Json?
+  mentions     String[]         @default([])
+  bookmarkedBy String[]         @default([])
+  moderated    Boolean          @default(false)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  thread       DiscussionThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
 
   @@index([threadId])
   @@map("discussion_posts")
 }
 
 model Announcement {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   title       String
   body        String
-  audience    String   @default("ALL")
+  audience    String    @default("ALL")
   publishedAt DateTime?
   expiresAt   DateTime?
-  createdAt   DateTime @default(now())
+  createdAt   DateTime  @default(now())
 
   @@map("announcements")
 }
 
 model TrainingNotification {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   userId    String
   eventType String
   channel   String
   subject   String
   body      String
-  status    String   @default("QUEUED")
-  createdAt DateTime @default(now())
+  status    String    @default("QUEUED")
+  createdAt DateTime  @default(now())
   sentAt    DateTime?
 
   @@index([userId])
@@ -2589,8 +2348,8 @@ model AgentBadge {
   badgeId   String
   agentId   String
   awardedAt DateTime @default(now())
-  badge     Badge    @relation(fields: [badgeId], references: [id], onDelete: Cascade)
   user      User     @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  badge     Badge    @relation(fields: [badgeId], references: [id], onDelete: Cascade)
 
   @@unique([badgeId, agentId])
   @@map("agent_badges")
@@ -2619,7 +2378,7 @@ model TrainingSetting {
 
 model AcademyEmailTemplate {
   id          String   @id @default(cuid())
-  templateKey String   @unique // "registration_confirmation", "email_verification", "payment_reminder", etc.
+  templateKey String   @unique
   language    String   @default("en")
   subject     String
   htmlContent String
@@ -2646,14 +2405,14 @@ model AcademyBranding {
 }
 
 model PaymentReminder {
-  id             String   @id @default(cuid())
-  registrationId  String
-  reminderDay    Int      // 3, 7, 14 days after registration
+  id             String                    @id @default(cuid())
+  registrationId String
+  reminderDay    Int
   sentAt         DateTime?
-  delivered      Boolean  @default(false)
-  converted      Boolean  @default(false)
+  delivered      Boolean                   @default(false)
+  converted      Boolean                   @default(false)
   convertedAt    DateTime?
-  createdAt      DateTime @default(now())
+  createdAt      DateTime                  @default(now())
   registration   AcademyLearnerApplication @relation(fields: [registrationId], references: [id], onDelete: Cascade)
 
   @@index([registrationId])
@@ -2662,15 +2421,15 @@ model PaymentReminder {
 }
 
 model CourseWaitlist {
-  id             String   @id @default(cuid())
-  courseId       String
-  learnerId      String
-  priority       Int      @default(0)
-  notifiedAt     DateTime?
-  enrolledAt     DateTime?
-  createdAt      DateTime @default(now())
-  course         TrainingCourse @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  learner        User @relation(fields: [learnerId], references: [id], onDelete: Cascade)
+  id         String         @id @default(cuid())
+  courseId   String
+  learnerId  String
+  priority   Int            @default(0)
+  notifiedAt DateTime?
+  enrolledAt DateTime?
+  createdAt  DateTime       @default(now())
+  course     TrainingCourse @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  learner    User           @relation(fields: [learnerId], references: [id], onDelete: Cascade)
 
   @@unique([courseId, learnerId])
   @@index([courseId])
@@ -2679,17 +2438,17 @@ model CourseWaitlist {
 }
 
 model CourseReview {
-  id          String   @id @default(cuid())
-  courseId    String
-  learnerId   String
-  rating      Int      // 1-5
-  title       String?
-  comment     String
-  approved    Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  course      TrainingCourse @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  learner     User @relation(fields: [learnerId], references: [id], onDelete: Cascade)
+  id        String         @id @default(cuid())
+  courseId  String
+  learnerId String
+  rating    Int
+  title     String?
+  comment   String
+  approved  Boolean        @default(false)
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  course    TrainingCourse @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  learner   User           @relation(fields: [learnerId], references: [id], onDelete: Cascade)
 
   @@unique([courseId, learnerId])
   @@index([courseId])
@@ -2698,32 +2457,31 @@ model CourseReview {
 }
 
 model Forum {
-  id          String   @id @default(cuid())
-  courseId    String
+  id          String         @id @default(cuid())
+  courseId    String         @unique
   title       String
   description String?
-  active      Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  course      TrainingCourse @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  active      Boolean        @default(true)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
   posts       ForumPost[]
+  course      TrainingCourse @relation(fields: [courseId], references: [id], onDelete: Cascade)
 
-  @@unique([courseId])
   @@map("forums")
 }
 
 model ForumPost {
-  id          String   @id @default(cuid())
-  forumId     String
-  learnerId   String
-  title       String
-  content     String
-  pinned      Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  forum       Forum @relation(fields: [forumId], references: [id], onDelete: Cascade)
-  learner     User @relation(fields: [learnerId], references: [id], onDelete: Cascade)
-  replies     ForumReply[]
+  id        String       @id @default(cuid())
+  forumId   String
+  learnerId String
+  title     String
+  content   String
+  pinned    Boolean      @default(false)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  forum     Forum        @relation(fields: [forumId], references: [id], onDelete: Cascade)
+  learner   User         @relation(fields: [learnerId], references: [id], onDelete: Cascade)
+  replies   ForumReply[]
 
   @@index([forumId])
   @@index([learnerId])
@@ -2731,14 +2489,14 @@ model ForumPost {
 }
 
 model ForumReply {
-  id          String   @id @default(cuid())
-  postId      String
-  learnerId   String
-  content     String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  post        ForumPost @relation(fields: [postId], references: [id], onDelete: Cascade)
-  learner     User @relation(fields: [learnerId], references: [id], onDelete: Cascade)
+  id        String    @id @default(cuid())
+  postId    String
+  learnerId String
+  content   String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  learner   User      @relation(fields: [learnerId], references: [id], onDelete: Cascade)
+  post      ForumPost @relation(fields: [postId], references: [id], onDelete: Cascade)
 
   @@index([postId])
   @@index([learnerId])
@@ -2746,17 +2504,17 @@ model ForumReply {
 }
 
 model RefundRequest {
-  id             String   @id @default(cuid())
-  paymentId      String
-  learnerId      String
-  reason         String
-  status         String   @default("PENDING") // PENDING, APPROVED, REJECTED
-  adminNote      String?
-  processedAt    DateTime?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  payment        Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
-  learner        User @relation(fields: [learnerId], references: [id], onDelete: Cascade)
+  id          String    @id @default(cuid())
+  paymentId   String
+  learnerId   String
+  reason      String
+  status      String    @default("PENDING")
+  adminNote   String?
+  processedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  learner     User      @relation(fields: [learnerId], references: [id], onDelete: Cascade)
+  payment     Payment   @relation(fields: [paymentId], references: [id], onDelete: Cascade)
 
   @@index([paymentId])
   @@index([learnerId])
@@ -2764,16 +2522,16 @@ model RefundRequest {
 }
 
 model PushNotification {
-  id          String   @id @default(cuid())
-  userId      String
-  title       String
-  body        String
-  type        String   // "course_update", "payment_reminder", "new_course"
-  data        Json?
-  read        Boolean  @default(false)
-  sentAt      DateTime @default(now())
-  readAt      DateTime?
-  user        User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id     String    @id @default(cuid())
+  userId String
+  title  String
+  body   String
+  type   String
+  data   Json?
+  read   Boolean   @default(false)
+  sentAt DateTime  @default(now())
+  readAt DateTime?
+  user   User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([read])
@@ -2781,17 +2539,17 @@ model PushNotification {
 }
 
 model LearnerAnalytics {
-  id              String   @id @default(cuid())
-  learnerId       String
-  courseId        String?
-  lastLoginAt     DateTime?
-  loginCount      Int      @default(0)
-  lessonsCompleted Int     @default(0)
-  totalTimeSpent  Int      @default(0) // minutes
-  engagementScore Float    @default(0)
-  riskLevel       String?  // "LOW", "MEDIUM", "HIGH"
-  date            DateTime @default(now())
-  learner         User @relation(fields: [learnerId], references: [id], onDelete: Cascade)
+  id               String    @id @default(cuid())
+  learnerId        String
+  courseId         String?
+  lastLoginAt      DateTime?
+  loginCount       Int       @default(0)
+  lessonsCompleted Int       @default(0)
+  totalTimeSpent   Int       @default(0)
+  engagementScore  Float     @default(0)
+  riskLevel        String?
+  date             DateTime  @default(now())
+  learner          User      @relation(fields: [learnerId], references: [id], onDelete: Cascade)
 
   @@unique([learnerId, courseId, date])
   @@index([learnerId])
@@ -2812,24 +2570,24 @@ model TrainingAuditLog {
 }
 
 model AcademyCoupon {
-  id                String              @id @default(cuid())
-  code              String              @unique
+  id                String               @id @default(cuid())
+  code              String               @unique
   description       String?
-  discountType      CouponDiscountType  @default(PERCENTAGE)
-  discountValue     Decimal             @db.Decimal(5, 2)
+  discountType      CouponDiscountType   @default(PERCENTAGE)
+  discountValue     Decimal              @db.Decimal(5, 2)
   maxUses           Int?
-  usedCount         Int                 @default(0)
-  minPurchaseAmount Decimal?            @db.Decimal(12, 2)
-  validFrom         DateTime            @default(now())
+  usedCount         Int                  @default(0)
+  minPurchaseAmount Decimal?             @db.Decimal(12, 2)
+  validFrom         DateTime             @default(now())
   validUntil        DateTime?
-  applicableCourses String[]            @default([])
-  applicableRoles   String[]            @default([])
-  active            Boolean             @default(true)
+  applicableCourses String[]             @default([])
+  applicableRoles   String[]             @default([])
+  active            Boolean              @default(true)
   createdBy         String?
-  createdAt         DateTime            @default(now())
-  updatedAt         DateTime            @updatedAt
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
   usages            AcademyCouponUsage[]
-  createdByUser     User?               @relation(fields: [createdBy], references: [id])
+  createdByUser     User?                @relation(fields: [createdBy], references: [id])
 
   @@index([code])
   @@index([active])
@@ -2838,14 +2596,14 @@ model AcademyCoupon {
 }
 
 model AcademyCouponUsage {
-  id             String       @id @default(cuid())
+  id             String        @id @default(cuid())
   couponId       String
   userId         String
   paymentId      String
-  discountAmount Decimal     @db.Decimal(12, 2)
-  originalAmount Decimal     @db.Decimal(12, 2)
-  finalAmount    Decimal     @db.Decimal(12, 2)
-  createdAt      DateTime    @default(now())
+  discountAmount Decimal       @db.Decimal(12, 2)
+  originalAmount Decimal       @db.Decimal(12, 2)
+  finalAmount    Decimal       @db.Decimal(12, 2)
+  createdAt      DateTime      @default(now())
   coupon         AcademyCoupon @relation(fields: [couponId], references: [id], onDelete: Cascade)
   user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -2855,12 +2613,6 @@ model AcademyCouponUsage {
   @@map("academy_coupon_usages")
 }
 
-enum CouponDiscountType {
-  PERCENTAGE
-  FIXED_AMOUNT
-}
-
-// First-party anonymous page tracking (no MAC / device fingerprint).
 model SitePageView {
   id          String    @id @default(cuid())
   visitorId   String
@@ -2886,7 +2638,6 @@ model SitePageView {
   @@index([utmSource])
 }
 
-// Funnel / product events tied to the same visitor id.
 model SiteFunnelEvent {
   id         String   @id @default(cuid())
   visitorId  String
@@ -2905,7 +2656,6 @@ model SiteFunnelEvent {
   @@index([createdAt])
 }
 
-// Soft presence / "who's online" (heartbeat). No MAC / fingerprinting.
 model SitePresence {
   id            String   @id @default(cuid())
   visitorId     String   @unique
@@ -2927,4 +2677,250 @@ model SitePresence {
   @@index([lastSeenAt])
   @@index([path])
   @@index([sessionId])
+}
+
+enum Role {
+  SEEKER
+  LANDLORD
+  AGENT
+  AGENCY_ADMIN
+  ADMIN
+  SUPER_ADMIN
+  ACADEMY_ADMIN
+  TRAINER
+  PUBLIC_LEARNER
+  MODERATOR
+}
+
+enum ListingIntent {
+  RENT
+  BUY
+}
+
+enum PropertyType {
+  ROOM
+  HOUSE
+  FLAT
+  COTTAGE
+  COMMERCIAL
+  LAND
+  BOARDING_HOUSE
+}
+
+enum VerificationStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+  EXPIRED
+}
+
+enum ListingStatus {
+  DRAFT
+  PENDING_REVIEW
+  ACTIVE
+  RENTED
+  SOLD
+  SUSPENDED
+  EXPIRED
+  REJECTED
+  ARCHIVED
+  DELETED
+  VIEWING_IN_PROGRESS
+}
+
+enum ReportStatus {
+  OPEN
+  IN_REVIEW
+  RESOLVED
+  DISMISSED
+}
+
+enum PaymentProvider {
+  STRIPE
+  PAYNOW
+  ECOCASH
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum NotificationChannel {
+  EMAIL
+  SMS
+  WHATSAPP
+  PUSH
+}
+
+enum NotificationStatus {
+  QUEUED
+  SENT
+  FAILED
+}
+
+enum LeadSource {
+  HOUSELINK
+  AGENT
+}
+
+enum AgentCommissionStatus {
+  PENDING
+  APPROVED
+  PAID
+  CANCELLED
+  DISPUTED
+}
+
+enum CommissionRuleScope {
+  DEFAULT
+  AGENT
+  TRANSACTION
+  BRANCH
+  PROPERTY_TYPE
+  PROMOTION
+  AGENT_LEVEL
+}
+
+enum LeadOwnershipReviewStatus {
+  NOT_REQUIRED
+  PENDING_ADMIN_REVIEW
+  CLEARED
+  DUPLICATE_BLOCKED
+}
+
+enum BlogPostStatus {
+  DRAFT
+  SCHEDULED
+  PUBLISHED
+  UNPUBLISHED
+  ARCHIVED
+}
+
+enum BlogArticleLayout {
+  STANDARD_ARTICLE
+  PROPERTY_GUIDE
+  NEWS_ANNOUNCEMENT
+  LIST_ARTICLE
+}
+
+enum LibraryProductType {
+  PRINTED_BOOK
+  PDF
+  DIGITAL_BOOK
+  TRAINING_MANUAL
+  TOOLKIT
+  COURSE
+  TEMPLATE
+  FORMS
+  BUNDLE
+  MEMBERSHIP
+  SUBSCRIPTION
+  GIFT_CARD
+}
+
+enum LibraryProductStatus {
+  DRAFT
+  SCHEDULED
+  PUBLISHED
+  ARCHIVED
+  DELETED
+}
+
+enum LibraryOrderStatus {
+  PENDING
+  PAID
+  FULFILLED
+  CANCELLED
+  REFUNDED
+}
+
+enum LibraryDownloadStatus {
+  ACTIVE
+  EXPIRED
+  REVOKED
+}
+
+enum TrainingCourseStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum TrainingVisibility {
+  INTERNAL_ONLY
+  PUBLIC
+  BRANCH_SPECIFIC
+  ROLE_BASED
+}
+
+enum TrainingDifficulty {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+  EXPERT
+}
+
+enum TrainingResourceType {
+  PDF
+  DOCX
+  XLSX
+  PPTX
+  IMAGE
+  VIDEO
+  AUDIO
+  ZIP
+  LINK
+}
+
+enum TrainingQuestionType {
+  MULTIPLE_CHOICE
+  MULTIPLE_ANSWER
+  TRUE_FALSE
+  FILL_BLANK
+  MATCHING
+  ORDERING
+  IMAGE
+  VIDEO
+  SCENARIO
+  ESSAY
+  DRAG_DROP
+  HOTSPOT
+}
+
+enum TrainingAttemptStatus {
+  IN_PROGRESS
+  SUBMITTED
+  PASSED
+  FAILED
+  GRADED
+}
+
+enum AcademyRegistrationStatus {
+  PENDING_PAYMENT
+  PAYMENT_UPLOADED
+  APPROVED
+  REJECTED
+  EXPIRED
+  REFUNDED
+}
+
+enum AssignmentSubmissionStatus {
+  SUBMITTED
+  APPROVED
+  REJECTED
+  RESUBMISSION_REQUESTED
+  GRADED
+}
+
+enum AcademyResourceKind {
+  COURSE_TOOLKIT
+  TRAINING_MANUAL
+}
+
+enum CouponDiscountType {
+  PERCENTAGE
+  FIXED_AMOUNT
 }

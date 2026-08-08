@@ -58,6 +58,11 @@ export function AuthForm({
     if (result.error) {
       setError(result.error);
       setFieldErrors(fieldErrorsForApiError(result.error.code));
+      // Handle email verification required error
+      if (result.error.code === "EMAIL_VERIFICATION_REQUIRED") {
+        router.push(`/auth/verify-email?email=${encodeURIComponent(email)}`);
+        return;
+      }
       return;
     }
     if (result.user && next !== null) {

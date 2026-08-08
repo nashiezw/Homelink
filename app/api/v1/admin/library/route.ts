@@ -18,6 +18,7 @@ import {
   disableLibraryCustomer,
   duplicateLibraryProduct,
   getAdminLibraryData,
+  getLibraryCustomerJourney,
   moderateLibraryReview,
   deleteLibraryOrder,
   refundLibraryOrder,
@@ -41,6 +42,21 @@ export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   const auth = isPostgresStoreEnabled() ? await requireAdminAsync(request) : requireAdmin(request);
   if (auth.error) return auth.error;
+  
+  const { searchParams } = new URL(request.url);
+  const type = searchParams.get("type");
+  
+  // Handle customer journey analytics request
+  if (type === "customer-journey") {
+    try {
+      const days = parseInt(searchParams.get("days") || "30");
+      return ok(await getLibraryCustomerJourney(days));
+    } catch (error) {
+      console.error("[admin/library] customer-journey failed", error);
+      return problem(500, "CUSTOMER_JOURNEY_FAILED", "Customer journey analytics could not be loaded.");
+    }
+  }
+  
   try {
     return ok(await getAdminLibraryData());
   } catch (error) {

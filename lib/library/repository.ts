@@ -421,6 +421,130 @@ export async function getAdminLibraryData() {
   };
 }
 
+export type LibraryFunnelAnalytics = {
+  stage: string;
+  count: number;
+  percentage: number;
+  dropOffRate: number;
+  averageTimeInStage: number; // in minutes
+};
+
+export type LibraryCustomerJourney = {
+  totalVisitors: number;
+  funnelStages: LibraryFunnelAnalytics[];
+  topDropOffPoints: Array<{ stage: string; count: number; percentage: number; reason?: string }>;
+  averageJourneyTime: number; // in minutes
+  conversionRate: number;
+  returnVisitorRate: number;
+};
+
+export async function getLibraryCustomerJourney(days: number = 30): Promise<LibraryCustomerJourney> {
+  if (!shouldUsePostgresLibrary()) {
+    return {
+      totalVisitors: 0,
+      funnelStages: [],
+      topDropOffPoints: [],
+      averageJourneyTime: 0,
+      conversionRate: 0,
+      returnVisitorRate: 0,
+    };
+  }
+
+  try {
+    const prisma = getMainPrisma();
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+
+    const [products, orders, downloads] = await Promise.all([
+      prisma.libraryProduct.findMany({
+        where: { updatedAt: { gte: startDate } }
+      }),
+      prisma.libraryOrder.findMany({
+        where: { createdAt: { gte: startDate } },
+        include: { items: true }
+      }),
+      prisma.libraryDownloadAccess.findMany({
+        where: { createdAt: { gte: startDate } }
+      })
+    ]);
+
+    // Calculate funnel stages using real data
+    const totalVisitors = products.reduce((sum, p) => sum + p.viewCount, 0);
+    const pendingOrders = orders.filter(o => o.status === "PENDING").length;
+    const paidOrders = orders.filter(o => o.status === "PAID" || o.status === "FULFILLED").length;
+    const downloadCount = downloads.length;
+
+    const funnelStages: LibraryFunnelAnalytics[] = [
+      {
+        stage: "Browse",
+        count: totalVisitors,
+        percentage: totalVisitors > 0 ? 100 : 0,
+        dropOffRate: 0,
+        averageTimeInStage: 0
+      },
+      {
+        stage: "Add to Cart",
+        count: pendingOrders,
+        percentage: totalVisitors > 0 ? (pendingOrders / totalVisitors) * 100 : 0,
+        dropOffRate: totalVisitors > 0 ? ((totalVisitors - pendingOrders) / totalVisitors) * 100 : 0,
+        averageTimeInStage: 0
+      },
+      {
+        stage: "Purchase",
+        count: paidOrders,
+        percentage: pendingOrders > 0 ? (paidOrders / pendingOrders) * 100 : 0,
+        dropOffRate: pendingOrders > 0 ? ((pendingOrders - paidOrders) / pendingOrders) * 100 : 0,
+        averageTimeInStage: 0
+      },
+      {
+        stage: "Download",
+        count: downloadCount,
+        percentage: paidOrders > 0 ? (downloadCount / paidOrders) * 100 : 0,
+        dropOffRate: paidOrders > 0 ? ((paidOrders - downloadCount) / paidOrders) * 100 : 0,
+        averageTimeInStage: 0
+      }
+    ];
+
+    // Calculate top drop-off points
+    const topDropOffPoints = funnelStages
+      .filter(stage => stage.dropOffRate > 0)
+      .map(stage => ({
+        stage: stage.stage,
+        count: Math.round((stage.dropOffRate / 100) * totalVisitors),
+        percentage: stage.dropOffRate
+      }))
+      .sort((a, b) => b.percentage - a.percentage)
+      .slice(0, 3);
+
+    // Average journey time - not available without session tracking
+    const averageJourneyTime = 0;
+
+    // Conversion rate
+    const conversionRate = totalVisitors > 0 ? (paidOrders / totalVisitors) * 100 : 0;
+
+    // Return visitor rate - not available without visitor tracking
+    const returnVisitorRate = 0;
+
+    return {
+      totalVisitors,
+      funnelStages,
+      topDropOffPoints,
+      averageJourneyTime,
+      conversionRate,
+      returnVisitorRate,
+    };
+  } catch {
+    return {
+      totalVisitors: 0,
+      funnelStages: [],
+      topDropOffPoints: [],
+      averageJourneyTime: 0,
+      conversionRate: 0,
+      returnVisitorRate: 0,
+    };
+  }
+}
+
 export async function getLibraryAnalytics(): Promise<LibraryAnalytics> {
   if (!shouldUsePostgresLibrary()) return getEmptyLibraryAnalytics();
   try {
