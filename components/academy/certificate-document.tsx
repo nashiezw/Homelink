@@ -654,7 +654,7 @@ function formatDate(value: string) {
 }
 
 function normaliseSignatureName(value: string) {
-  if (/^w\.\s*tigere$/i.test(value.trim())) return "Wadzanii Tigere";
+  if (/^w\.\s*tigere$/i.test(value.trim())) return "Wadzanai Tigere";
   if (/^t\.\s*ndudzo$/i.test(value.trim())) return "Tinashe Ndudzo";
   return value;
 }
