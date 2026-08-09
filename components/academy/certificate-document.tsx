@@ -23,6 +23,8 @@ export type CertificateDocumentProps = {
   secondSignatureName?: string;
   secondSignatureTitle?: string;
   sealUrl?: string | null;
+  leftLaurelUrl?: string | null;
+  rightLaurelUrl?: string | null;
   designation?: string | null;
   customHtml?: string;
   customCss?: string;
@@ -51,6 +53,8 @@ export function CertificateDocument({
   secondSignatureName = "W. Tigere",
   secondSignatureTitle = "Academy Director",
   sealUrl,
+  leftLaurelUrl,
+  rightLaurelUrl,
   designation,
   customHtml = "",
   customCss = "",
@@ -72,6 +76,8 @@ export function CertificateDocument({
   const firstSignatureHref = signatureUrl ? absoluteAssetUrl(signatureUrl, verifyOrigin) : "";
   const secondSignatureHref = secondSignatureUrl ? absoluteAssetUrl(secondSignatureUrl, verifyOrigin) : "";
   const sealHref = sealUrl ? absoluteAssetUrl(sealUrl, verifyOrigin) : "";
+  const leftLaurelHref = leftLaurelUrl ? absoluteAssetUrl(leftLaurelUrl, verifyOrigin) : "";
+  const rightLaurelHref = rightLaurelUrl ? absoluteAssetUrl(rightLaurelUrl, verifyOrigin) : "";
   const learnerFontSize = learnerName.length > 28 ? 70 : learnerName.length > 20 ? 82 : 96;
   const designationFontSize = displayDesignation.length > 30 ? 35 : displayDesignation.length > 24 ? 39 : 44;
   const courseLines = splitCertificateLine(courseTitle, 42);
@@ -96,6 +102,8 @@ export function CertificateDocument({
         signatureUrl: signatureUrl ?? "",
         secondSignatureUrl: secondSignatureUrl ?? "",
         sealUrl: sealUrl ?? "",
+        leftLaurelUrl: leftLaurelUrl ?? "",
+        rightLaurelUrl: rightLaurelUrl ?? "",
         badgeName: badgeName ?? "",
       })
     : "";
@@ -214,8 +222,8 @@ export function CertificateDocument({
               {certificateNumber}
             </text>
 
-            <LaurelSvg side="left" />
-            <LaurelSvg side="right" />
+            <LaurelSvg side="left" href={leftLaurelHref} />
+            <LaurelSvg side="right" href={rightLaurelHref} />
             <EmbossedSeal iconHref={iconHref} />
 
             <text x="700" y="247" textAnchor="middle" fontFamily="Georgia, 'Times New Roman', serif" fontSize="83" fontWeight="600" letterSpacing="18" fill="#071936">
@@ -299,7 +307,12 @@ function CertificateCorner({ x, y, corner }: { x: number; y: number; corner: "tl
   return <path d={paths[corner]} fill="none" stroke="#d4ad5b" strokeWidth="5" strokeLinecap="round" />;
 }
 
-function LaurelSvg({ side }: { side: "left" | "right" }) {
+function LaurelSvg({ side, href }: { side: "left" | "right"; href?: string }) {
+  if (href) {
+    const x = side === "left" ? 235 : 1065;
+    return <image href={href} x={x} y="250" width="110" height="270" preserveAspectRatio="xMidYMid meet" />;
+  }
+
   const leaves = [
     { x: 296, y: 278, angle: -48, scale: 0.78 },
     { x: 282, y: 299, angle: -53, scale: 0.9 },

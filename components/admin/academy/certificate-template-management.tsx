@@ -45,6 +45,8 @@ type TemplateFormData = {
   signatureUrl: string;
   secondSignatureUrl: string;
   sealUrl: string;
+  leftLaurelUrl: string;
+  rightLaurelUrl: string;
   courseIds: string[];
   certificateNumberPrefix: string;
   title: string;
@@ -68,6 +70,8 @@ const emptyForm: TemplateFormData = {
   signatureUrl: "",
   secondSignatureUrl: "",
   sealUrl: "",
+  leftLaurelUrl: "",
+  rightLaurelUrl: "",
   courseIds: [],
   certificateNumberPrefix: "HLZA",
   title: "Certificate of Completion - HouseLink Training Programme",
@@ -94,7 +98,7 @@ export function CertificateTemplateManagement() {
   const [deleteTarget, setDeleteTarget] = useState<CertificateTemplate | null>(null);
   const [formData, setFormData] = useState<TemplateFormData>(emptyForm);
   const [courses, setCourses] = useState<CertificateCourseOption[]>([]);
-  const [uploadingField, setUploadingField] = useState<"backgroundUrl" | "logoUrl" | "signatureUrl" | "secondSignatureUrl" | "sealUrl" | null>(null);
+  const [uploadingField, setUploadingField] = useState<"backgroundUrl" | "logoUrl" | "signatureUrl" | "secondSignatureUrl" | "sealUrl" | "leftLaurelUrl" | "rightLaurelUrl" | null>(null);
 
   const activeTemplates = useMemo(() => templates.filter((template) => template.active).length, [templates]);
 
@@ -132,6 +136,8 @@ export function CertificateTemplateManagement() {
         secondSignatureName: formData.secondSignatureName.trim() || "W. Tigere",
         secondSignatureTitle: formData.secondSignatureTitle.trim() || "Academy Director",
         sealUrl: formData.sealUrl.trim() || null,
+        leftLaurelUrl: formData.leftLaurelUrl.trim() || null,
+        rightLaurelUrl: formData.rightLaurelUrl.trim() || null,
         customHtml: formData.customHtml.trim(),
         customCss: formData.customCss.trim(),
         colours: {
@@ -196,6 +202,8 @@ export function CertificateTemplateManagement() {
       signatureUrl: template.signatureUrl ?? "",
       secondSignatureUrl: String(templateJson.secondSignatureUrl ?? ""),
       sealUrl: String(templateJson.sealUrl ?? ""),
+      leftLaurelUrl: String(templateJson.leftLaurelUrl ?? ""),
+      rightLaurelUrl: String(templateJson.rightLaurelUrl ?? ""),
       courseIds: Array.isArray(templateJson.courseIds) ? templateJson.courseIds.filter((id): id is string => typeof id === "string") : [],
       certificateNumberPrefix: String(templateJson.certificateNumberPrefix ?? "HLA"),
       title: trainingCertificateTitle(String(templateJson.title ?? "Certificate of Completion - HouseLink Training Programme")),
@@ -220,7 +228,7 @@ export function CertificateTemplateManagement() {
     setFormData(emptyForm);
   }
 
-  async function uploadTemplateAsset(field: "backgroundUrl" | "logoUrl" | "signatureUrl" | "secondSignatureUrl" | "sealUrl", files: FileList | null) {
+  async function uploadTemplateAsset(field: "backgroundUrl" | "logoUrl" | "signatureUrl" | "secondSignatureUrl" | "sealUrl" | "leftLaurelUrl" | "rightLaurelUrl", files: FileList | null) {
     const file = files?.[0];
     if (!file) return;
     setUploadingField(field);
@@ -373,6 +381,22 @@ export function CertificateTemplateManagement() {
                     onChange={(sealUrl) => setFormData({ ...formData, sealUrl })}
                     onUpload={(files) => void uploadTemplateAsset("sealUrl", files)}
                   />
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <TemplateImageField
+                      label="Left Laurel Image"
+                      value={formData.leftLaurelUrl}
+                      uploading={uploadingField === "leftLaurelUrl"}
+                      onChange={(leftLaurelUrl) => setFormData({ ...formData, leftLaurelUrl })}
+                      onUpload={(files) => void uploadTemplateAsset("leftLaurelUrl", files)}
+                    />
+                    <TemplateImageField
+                      label="Right Laurel Image"
+                      value={formData.rightLaurelUrl}
+                      uploading={uploadingField === "rightLaurelUrl"}
+                      onChange={(rightLaurelUrl) => setFormData({ ...formData, rightLaurelUrl })}
+                      onUpload={(files) => void uploadTemplateAsset("rightLaurelUrl", files)}
+                    />
+                  </div>
                 </div>
               </AdminPanel>
               <TemplateImageField
@@ -394,7 +418,7 @@ export function CertificateTemplateManagement() {
               <div className="rounded-xl border border-white/10 bg-slate-950/50 p-4">
                 <div>
                   <p className="font-semibold text-white">Advanced Design</p>
-                  <p className="mt-1 text-sm leading-6 text-slate-400">Optional HTML/CSS override. Use tokens like {"{{learnerName}}"}, {"{{courseTitle}}"}, {"{{certificateTitle}}"}, {"{{designation}}"}, {"{{certificateNumber}}"}, {"{{issuedAt}}"}, {"{{expiresAt}}"}, {"{{verifyUrl}}"}, {"{{signatureUrl}}"}, {"{{secondSignatureUrl}}"}, and {"{{sealUrl}}"}. Leave blank to use the standard HouseLink design.</p>
+                  <p className="mt-1 text-sm leading-6 text-slate-400">Optional HTML/CSS override. Use tokens like {"{{learnerName}}"}, {"{{courseTitle}}"}, {"{{certificateTitle}}"}, {"{{designation}}"}, {"{{certificateNumber}}"}, {"{{issuedAt}}"}, {"{{expiresAt}}"}, {"{{verifyUrl}}"}, {"{{signatureUrl}}"}, {"{{secondSignatureUrl}}"}, {"{{sealUrl}}"}, {"{{leftLaurelUrl}}"}, and {"{{rightLaurelUrl}}"}. Leave blank to use the standard HouseLink design.</p>
                 </div>
                 <div className="grid gap-4">
                   <TextAreaField label="Custom HTML" value={formData.customHtml} onChange={(customHtml) => setFormData({ ...formData, customHtml })} rows={8} placeholder="<section class='certificate'>...</section>" />
@@ -448,6 +472,7 @@ function TemplateMeta({ template, courses }: { template: CertificateTemplate; co
       <p><span className="text-slate-500">Courses:</span> {courseIds.length ? courseNames : "Global fallback"}</p>
       <p><span className="text-slate-500">Signatures:</span> {template.signatureUrl || templateJson.secondSignatureUrl ? "Configured" : "Default typed names"}</p>
       <p><span className="text-slate-500">Seal:</span> {templateJson.sealUrl ? "Custom image" : "Generated HouseLink seal"}</p>
+      <p><span className="text-slate-500">Laurels:</span> {templateJson.leftLaurelUrl || templateJson.rightLaurelUrl ? "Custom images" : "Generated gold laurels"}</p>
       {templateJson.customHtml ? <p><span className="text-slate-500">Design:</span> Custom HTML</p> : null}
     </>
   );
@@ -473,6 +498,8 @@ function TemplatePreview({ template, form, compact }: { template?: CertificateTe
   const signatureUrl = form?.signatureUrl ?? template?.signatureUrl ?? "";
   const secondSignatureUrl = form?.secondSignatureUrl ?? String(templateJson.secondSignatureUrl ?? "");
   const sealUrl = form?.sealUrl ?? String(templateJson.sealUrl ?? "");
+  const leftLaurelUrl = form?.leftLaurelUrl ?? String(templateJson.leftLaurelUrl ?? "");
+  const rightLaurelUrl = form?.rightLaurelUrl ?? String(templateJson.rightLaurelUrl ?? "");
   const backgroundUrl = form?.backgroundUrl ?? template?.backgroundUrl ?? "";
   const prefix = form?.certificateNumberPrefix ?? String(templateJson.certificateNumberPrefix ?? "HLA");
   const hasCustomDesign = Boolean(form?.customHtml?.trim() || templateJson.customHtml);
@@ -528,6 +555,14 @@ function TemplatePreview({ template, form, compact }: { template?: CertificateTe
           {sealUrl && (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={sealUrl} alt="" className="size-10 object-contain" />
+          )}
+          {leftLaurelUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={leftLaurelUrl} alt="" className="h-10 max-w-8 object-contain" />
+          )}
+          {rightLaurelUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={rightLaurelUrl} alt="" className="h-10 max-w-8 object-contain" />
           )}
         </div>
       </div>

@@ -29,6 +29,8 @@ type CertificatePayload = {
   secondSignatureName?: string | null;
   secondSignatureTitle?: string | null;
   sealUrl?: string | null;
+  leftLaurelUrl?: string | null;
+  rightLaurelUrl?: string | null;
   designation?: string | null;
   customHtml?: string;
   customCss?: string;
@@ -100,6 +102,8 @@ export function AcademyCertificatePageClient({ issueId }: { issueId: string }) {
         secondSignatureName={data.secondSignatureName ?? undefined}
         secondSignatureTitle={data.secondSignatureTitle ?? undefined}
         sealUrl={data.sealUrl}
+        leftLaurelUrl={data.leftLaurelUrl}
+        rightLaurelUrl={data.rightLaurelUrl}
         designation={data.designation}
         customHtml={data.customHtml}
         customCss={data.customCss}

@@ -92,6 +92,8 @@ export default async function CertificateVerificationPage({
           secondSignatureName={typeof templateJson.secondSignatureName === "string" ? templateJson.secondSignatureName : undefined}
           secondSignatureTitle={typeof templateJson.secondSignatureTitle === "string" ? templateJson.secondSignatureTitle : undefined}
           sealUrl={typeof templateJson.sealUrl === "string" ? templateJson.sealUrl : null}
+          leftLaurelUrl={typeof templateJson.leftLaurelUrl === "string" ? templateJson.leftLaurelUrl : null}
+          rightLaurelUrl={typeof templateJson.rightLaurelUrl === "string" ? templateJson.rightLaurelUrl : null}
           designation={typeof templateJson.designation === "string" ? templateJson.designation : undefined}
           customHtml={typeof templateJson.customHtml === "string" ? templateJson.customHtml : ""}
           customCss={typeof templateJson.customCss === "string" ? templateJson.customCss : ""}
