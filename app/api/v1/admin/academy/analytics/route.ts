@@ -55,21 +55,306 @@ export async function GET(request: Request) {
     
     if (type === "student-search") {
       const searchQuery = searchParams.get("q") || "";
+      const learnerIds = await prisma.courseEnrolment.findMany({
+        select: { agentId: true },
+        distinct: ["agentId"],
+      });
       const students = await prisma.user.findMany({
         where: {
-          OR: [
-            { name: { contains: searchQuery, mode: "insensitive" } },
-            { email: { contains: searchQuery, mode: "insensitive" } }
-          ]
+          id: { in: learnerIds.map((learner) => learner.agentId) },
+          ...(searchQuery.length >= 2
+            ? {
+                OR: [
+                  { name: { contains: searchQuery, mode: "insensitive" } },
+                  { email: { contains: searchQuery, mode: "insensitive" } },
+                ],
+              }
+            : {}),
         },
         select: {
           id: true,
           name: true,
           email: true
         },
+        orderBy: { name: "asc" },
         take: 20
       });
       return ok(students);
+    }
+
+    if (type === "learners-overview") {
+      const enrolments = await prisma.courseEnrolment.findMany({
+        include: {
+          course: {
+            select: {
+              id: true,
+              title: true,
+              status: true,
+              certificateEnabled: true,
+            },
+          },
+        },
+        orderBy: [{ course: { title: "asc" } }, { enrolledAt: "desc" }],
+      });
+
+      const learnerIds = [...new Set(enrolments.map((enrolment) => enrolment.agentId))];
+      const courseIds = [...new Set(enrolments.map((enrolment) => enrolment.courseId))];
+
+      const [
+        users,
+        courseProgress,
+        modules,
+        lessonProgress,
+        quizAttempts,
+        examAttempts,
+        assignmentSubmissions,
+        certificateIssues,
+        atRiskLearners,
+      ] = await Promise.all([
+        prisma.user.findMany({
+          where: { id: { in: learnerIds } },
+          select: { id: true, name: true, email: true },
+        }),
+        prisma.courseProgress.findMany({
+          where: { agentId: { in: learnerIds }, courseId: { in: courseIds } },
+        }),
+        prisma.trainingModule.findMany({
+          where: { courseId: { in: courseIds } },
+          select: {
+            courseId: true,
+            sections: { select: { lessons: { select: { id: true } } } },
+          },
+        }),
+        prisma.lessonProgress.findMany({
+          where: {
+            agentId: { in: learnerIds },
+            lesson: { section: { module: { courseId: { in: courseIds } } } },
+          },
+          select: {
+            agentId: true,
+            status: true,
+            completedAt: true,
+            lastViewedAt: true,
+            lesson: {
+              select: {
+                title: true,
+                section: { select: { module: { select: { courseId: true } } } },
+              },
+            },
+          },
+        }),
+        prisma.quizAttempt.findMany({
+          where: {
+            agentId: { in: learnerIds },
+            quiz: { courseId: { in: courseIds } },
+            status: { in: ["SUBMITTED", "PASSED", "FAILED", "GRADED"] },
+          },
+          select: {
+            agentId: true,
+            score: true,
+            status: true,
+            submittedAt: true,
+            startedAt: true,
+            quiz: { select: { courseId: true } },
+          },
+        }),
+        prisma.examAttempt.findMany({
+          where: {
+            agentId: { in: learnerIds },
+            exam: { courseId: { in: courseIds } },
+            status: { in: ["SUBMITTED", "PASSED", "FAILED", "GRADED"] },
+          },
+          select: {
+            agentId: true,
+            score: true,
+            status: true,
+            submittedAt: true,
+            startedAt: true,
+            exam: { select: { courseId: true } },
+          },
+        }),
+        prisma.assignmentSubmission.findMany({
+          where: {
+            agentId: { in: learnerIds },
+            assignment: { courseId: { in: courseIds } },
+          },
+          select: {
+            agentId: true,
+            status: true,
+            grade: true,
+            submittedAt: true,
+            reviewedAt: true,
+            assignment: { select: { courseId: true, points: true } },
+          },
+        }),
+        prisma.certificateIssue.findMany({
+          where: { agentId: { in: learnerIds }, courseId: { in: courseIds } },
+          select: { agentId: true, courseId: true, status: true, issuedAt: true, revokedAt: true },
+          orderBy: { issuedAt: "desc" },
+        }),
+        identifyAtRiskLearners(),
+      ]);
+
+      const userMap = new Map(users.map((user) => [user.id, user]));
+      const progressMap = new Map(courseProgress.map((progress) => [`${progress.agentId}:${progress.courseId}`, progress]));
+      const totalLessonsByCourse = new Map<string, number>();
+      modules.forEach((module) => {
+        const count = module.sections.reduce((total, section) => total + section.lessons.length, 0);
+        totalLessonsByCourse.set(module.courseId, (totalLessonsByCourse.get(module.courseId) ?? 0) + count);
+      });
+
+      const lessonStats = new Map<string, { completed: number; lastActivity: Date | null; currentLesson: string | null }>();
+      lessonProgress.forEach((progress) => {
+        const courseIdForLesson = progress.lesson.section.module.courseId;
+        const key = `${progress.agentId}:${courseIdForLesson}`;
+        const current = lessonStats.get(key) ?? { completed: 0, lastActivity: null, currentLesson: null };
+        if (progress.status === "COMPLETED" || progress.completedAt) current.completed += 1;
+        if (!current.lastActivity || progress.lastViewedAt > current.lastActivity) {
+          current.lastActivity = progress.lastViewedAt;
+          current.currentLesson = progress.status === "COMPLETED" ? current.currentLesson : progress.lesson.title;
+        }
+        lessonStats.set(key, current);
+      });
+
+      const assessmentStats = new Map<string, { scores: number[]; quizAttempts: number; examAttempts: number; failedAttempts: number }>();
+      quizAttempts.forEach((attempt) => {
+        const courseIdForAttempt = attempt.quiz.courseId;
+        if (!courseIdForAttempt) return;
+        const key = `${attempt.agentId}:${courseIdForAttempt}`;
+        const current = assessmentStats.get(key) ?? { scores: [], quizAttempts: 0, examAttempts: 0, failedAttempts: 0 };
+        current.quizAttempts += 1;
+        current.scores.push(Number(attempt.score ?? 0));
+        if (attempt.status === "FAILED") current.failedAttempts += 1;
+        assessmentStats.set(key, current);
+      });
+      examAttempts.forEach((attempt) => {
+        const key = `${attempt.agentId}:${attempt.exam.courseId}`;
+        const current = assessmentStats.get(key) ?? { scores: [], quizAttempts: 0, examAttempts: 0, failedAttempts: 0 };
+        current.examAttempts += 1;
+        current.scores.push(Number(attempt.score ?? 0));
+        if (attempt.status === "FAILED") current.failedAttempts += 1;
+        assessmentStats.set(key, current);
+      });
+
+      const assignmentStats = new Map<string, { submitted: number; reviewed: number; pending: number; grades: number[] }>();
+      assignmentSubmissions.forEach((submission) => {
+        const courseIdForSubmission = submission.assignment.courseId;
+        if (!courseIdForSubmission) return;
+        const key = `${submission.agentId}:${courseIdForSubmission}`;
+        const current = assignmentStats.get(key) ?? { submitted: 0, reviewed: 0, pending: 0, grades: [] };
+        current.submitted += 1;
+        if (["APPROVED", "REJECTED", "GRADED"].includes(submission.status) || submission.reviewedAt) current.reviewed += 1;
+        else current.pending += 1;
+        if (submission.grade != null) {
+          const points = Number(submission.assignment.points || 100) || 100;
+          current.grades.push(Math.round((Number(submission.grade) / points) * 100));
+        }
+        assignmentStats.set(key, current);
+      });
+
+      const certificateMap = new Map<string, { status: string; issuedAt: Date | null }>();
+      certificateIssues.forEach((issue) => {
+        if (!issue.courseId) return;
+        const key = `${issue.agentId}:${issue.courseId}`;
+        if (!certificateMap.has(key)) certificateMap.set(key, { status: issue.status, issuedAt: issue.issuedAt });
+      });
+
+      const riskMap = new Map<string, any>();
+      (atRiskLearners as any[]).forEach((learner) => {
+        const learnerId = learner.learnerId ?? learner.studentId;
+        const riskCourseId = learner.courseId ?? "";
+        if (learnerId) riskMap.set(`${learnerId}:${riskCourseId}`, learner);
+      });
+
+      const learnerRows = enrolments.map((enrolment) => {
+        const key = `${enrolment.agentId}:${enrolment.courseId}`;
+        const user = userMap.get(enrolment.agentId);
+        const progress = progressMap.get(key);
+        const lesson = lessonStats.get(key);
+        const assessments = assessmentStats.get(key) ?? { scores: [], quizAttempts: 0, examAttempts: 0, failedAttempts: 0 };
+        const assignments = assignmentStats.get(key) ?? { submitted: 0, reviewed: 0, pending: 0, grades: [] };
+        const certificate = certificateMap.get(key) ?? null;
+        const risk = riskMap.get(key) ?? riskMap.get(`${enrolment.agentId}:`) ?? null;
+        const totalLessons = totalLessonsByCourse.get(enrolment.courseId) ?? 0;
+        const completedLessons = lesson?.completed ?? 0;
+        const lessonProgressPercent = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0;
+        const completionPercentage = progress ? Number(progress.percentComplete) : lessonProgressPercent;
+        const averageAssessmentScore = assessments.scores.length
+          ? Math.round(assessments.scores.reduce((sum, score) => sum + score, 0) / assessments.scores.length)
+          : Number(progress?.averageScore ?? 0);
+        const lastActivity = [lesson?.lastActivity, progress?.updatedAt, certificate?.issuedAt].filter(Boolean).sort((a, b) => Number(b) - Number(a))[0] ?? null;
+        const status =
+          progress?.status === "COMPLETED" || completionPercentage >= 100
+            ? "COMPLETED"
+            : enrolment.status === "ACTIVE" && completionPercentage > 0
+              ? "IN_PROGRESS"
+              : enrolment.status;
+
+        return {
+          learnerId: enrolment.agentId,
+          learnerName: user?.name ?? "Unknown learner",
+          learnerEmail: user?.email ?? "",
+          courseId: enrolment.courseId,
+          courseTitle: enrolment.course.title,
+          courseStatus: enrolment.course.status,
+          enrolmentStatus: enrolment.status,
+          enrolledAt: enrolment.enrolledAt,
+          dueAt: enrolment.dueAt,
+          status,
+          completionPercentage,
+          completedLessons,
+          totalLessons,
+          learningMinutes: Number(progress?.learningMinutes ?? 0),
+          averageScore: averageAssessmentScore,
+          quizAttempts: assessments.quizAttempts,
+          examAttempts: assessments.examAttempts,
+          failedAttempts: assessments.failedAttempts,
+          assignmentsSubmitted: assignments.submitted,
+          assignmentsReviewed: assignments.reviewed,
+          assignmentsPending: assignments.pending,
+          averageAssignmentGrade: assignments.grades.length
+            ? Math.round(assignments.grades.reduce((sum, grade) => sum + grade, 0) / assignments.grades.length)
+            : null,
+          certificateStatus: certificate?.status ?? "NOT_ISSUED",
+          certificateIssuedAt: certificate?.issuedAt ?? null,
+          certificateEnabled: enrolment.course.certificateEnabled,
+          lastActivityDate: lastActivity,
+          currentLesson: lesson?.currentLesson ?? null,
+          riskLevel: risk?.riskLevel ?? null,
+          riskDescription: risk?.riskDescription ?? (Array.isArray(risk?.riskFactors) ? risk.riskFactors.join(", ") : null),
+        };
+      });
+
+      const courseGroups = [...new Map(enrolments.map((enrolment) => [enrolment.courseId, enrolment.course])).values()].map((course) => {
+        const learners = learnerRows.filter((row) => row.courseId === course.id);
+        return {
+          courseId: course.id,
+          courseTitle: course.title,
+          courseStatus: course.status,
+          totalLearners: learners.length,
+          completedLearners: learners.filter((row) => row.status === "COMPLETED").length,
+          inProgressLearners: learners.filter((row) => row.status === "IN_PROGRESS").length,
+          atRiskLearners: learners.filter((row) => row.riskLevel).length,
+          averageProgress: learners.length ? Math.round(learners.reduce((sum, row) => sum + row.completionPercentage, 0) / learners.length) : 0,
+          learners,
+        };
+      });
+
+      return ok({
+        generatedAt: new Date().toISOString(),
+        totals: {
+          learners: learnerIds.length,
+          enrolments: learnerRows.length,
+          courses: courseGroups.length,
+          completed: learnerRows.filter((row) => row.status === "COMPLETED").length,
+          inProgress: learnerRows.filter((row) => row.status === "IN_PROGRESS").length,
+          atRisk: learnerRows.filter((row) => row.riskLevel).length,
+          certificatesIssued: learnerRows.filter((row) => row.certificateStatus === "ACTIVE").length,
+          averageProgress: learnerRows.length ? Math.round(learnerRows.reduce((sum, row) => sum + row.completionPercentage, 0) / learnerRows.length) : 0,
+        },
+        courseGroups,
+        learners: learnerRows,
+      });
     }
     
     if (type === "course" && courseId) {
