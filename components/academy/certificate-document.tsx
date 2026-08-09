@@ -186,8 +186,8 @@ export function CertificateDocument({
               </filter>
               <path id="embossed-seal-top-arc" d="M105 590 A80 80 0 0 0 265 590" />
               <path id="embossed-seal-bottom-arc" d="M105 590 A80 80 0 0 1 265 590" />
-              <path id="center-seal-top-arc" d="M653 848 A47 47 0 0 0 747 848" />
-              <path id="center-seal-bottom-arc" d="M653 848 A47 47 0 0 1 747 848" />
+              <path id="center-seal-top-arc" d="M661 848 A39 39 0 0 0 739 848" />
+              <path id="center-seal-bottom-arc" d="M661 848 A39 39 0 0 1 739 848" />
             </defs>
 
             <rect width={SVG_WIDTH} height={SVG_HEIGHT} fill="#061936" />
@@ -269,9 +269,9 @@ export function CertificateDocument({
               {verifyOrigin.replace(/^https?:\/\//, "")}/academy/verify
             </text>
 
-            <SignatureSvg x={365} y={820} signature={secondSignatureName} name={normaliseSignatureName(secondSignatureName)} title={secondSignatureTitle} href={secondSignatureHref} />
-            <CenterSeal href={sealHref} iconHref={iconHref} />
-            <SignatureSvg x={1050} y={820} signature={displaySignatureName} name={normaliseSignatureName(displaySignatureName)} title={signatureTitle} href={firstSignatureHref} />
+            <SignatureSvg x={375} y={812} signature={secondSignatureName} name={normaliseSignatureName(secondSignatureName)} title={secondSignatureTitle} href={secondSignatureHref} />
+            <CenterSeal href={sealHref} />
+            <SignatureSvg x={1050} y={812} signature={displaySignatureName} name={normaliseSignatureName(displaySignatureName)} title={signatureTitle} href={firstSignatureHref} />
 
             <CertificateFactSvg x={795} y={902} label="Date of Issue" value={issuedLong} />
             <line x1="930" y1="880" x2="930" y2="932" stroke="#d4ad5b" strokeWidth="2" />
@@ -300,37 +300,42 @@ function CertificateCorner({ x, y, corner }: { x: number; y: number; corner: "tl
 }
 
 function LaurelSvg({ side }: { side: "left" | "right" }) {
-  const leaves = Array.from({ length: 11 });
+  const leaves = [
+    { x: 296, y: 278, angle: -48, scale: 0.78 },
+    { x: 282, y: 299, angle: -53, scale: 0.9 },
+    { x: 269, y: 323, angle: -57, scale: 1 },
+    { x: 259, y: 350, angle: -60, scale: 1.08 },
+    { x: 253, y: 380, angle: -61, scale: 1.1 },
+    { x: 253, y: 410, angle: -57, scale: 1.04 },
+    { x: 260, y: 438, angle: -50, scale: 0.98 },
+    { x: 272, y: 464, angle: -40, scale: 0.9 },
+    { x: 288, y: 487, angle: -29, scale: 0.78 },
+  ];
   const mirror = side === "right" ? "translate(1400 0) scale(-1 1)" : undefined;
 
   return (
     <g transform={mirror} opacity="0.95">
-      <path d="M306 258 C244 328 238 436 304 514" fill="none" stroke="#b88b32" strokeWidth="3.5" strokeLinecap="round" />
-      {leaves.map((_, index) => {
-        const progress = index / (leaves.length - 1);
-        const y = 278 + progress * 202;
-        const branchX = 302 - Math.sin(progress * Math.PI) * 48;
-        const scale = 0.88 + Math.sin(progress * Math.PI) * 0.2;
-        const outsideAngle = -49 + progress * 35;
-        const insideAngle = outsideAngle + 65;
-        return (
-          <g key={index}>
-            <path
-              d="M0 0 C-9 -12 -7 -29 10 -41 C20 -24 17 -8 0 0Z"
-              fill="#c69b45"
-              transform={`translate(${branchX - 17} ${y}) rotate(${outsideAngle}) scale(${scale})`}
-            />
-            {index > 1 && index < leaves.length - 1 ? (
-              <path
-                d="M0 0 C-8 -10 -6 -24 8 -35 C17 -20 14 -7 0 0Z"
-                fill="#d3aa50"
-                transform={`translate(${branchX + 14} ${y + 5}) rotate(${insideAngle}) scale(${scale * 0.82})`}
-              />
-            ) : null}
-          </g>
-        );
-      })}
-      <path d="M303 514 C290 502 279 489 270 474" fill="none" stroke="#b88b32" strokeWidth="2.5" strokeLinecap="round" />
+      <path d="M316 256 C254 324 248 430 314 512" fill="none" stroke="#b88b32" strokeWidth="3" strokeLinecap="round" />
+      {leaves.map((leaf, index) => (
+        <g key={index}>
+          <path d={`M${leaf.x + 18} ${leaf.y + 8} C${leaf.x + 7} ${leaf.y + 5}, ${leaf.x} ${leaf.y}, ${leaf.x - 7} ${leaf.y - 10}`} fill="none" stroke="#b88b32" strokeWidth="1.7" strokeLinecap="round" />
+          <path
+            d="M0 0 C-12 -14 -12 -34 7 -50 C21 -29 17 -10 0 0Z"
+            fill="#c69b45"
+            transform={`translate(${leaf.x} ${leaf.y}) rotate(${leaf.angle}) scale(${leaf.scale})`}
+          />
+          <path
+            d="M0 0 C-4 -11 -1 -25 7 -39"
+            fill="none"
+            stroke="#e0bd68"
+            strokeWidth="1.2"
+            strokeLinecap="round"
+            opacity="0.55"
+            transform={`translate(${leaf.x} ${leaf.y}) rotate(${leaf.angle}) scale(${leaf.scale})`}
+          />
+        </g>
+      ))}
+      <path d="M314 512 C301 500 290 487 282 472" fill="none" stroke="#b88b32" strokeWidth="2.2" strokeLinecap="round" />
     </g>
   );
 }
@@ -356,7 +361,7 @@ function EmbossedSeal({ iconHref }: { iconHref: string }) {
   );
 }
 
-function CenterSeal({ href, iconHref }: { href: string; iconHref: string }) {
+function CenterSeal({ href }: { href: string }) {
   if (href) {
     return <image href={href} x="632" y="774" width="136" height="136" preserveAspectRatio="xMidYMid meet" filter="url(#soft-shadow)" />;
   }
@@ -365,17 +370,33 @@ function CenterSeal({ href, iconHref }: { href: string; iconHref: string }) {
     <g filter="url(#soft-shadow)">
       <circle cx="700" cy="848" r="62" fill="#071936" stroke="#d4ad5b" strokeWidth="8" />
       <circle cx="700" cy="848" r="49" fill="none" stroke="#f6d37d" strokeWidth="1.5" />
-      <text fontFamily="Arial, sans-serif" fontSize="7.8" fontWeight="800" letterSpacing="1.2" fill="#f6d37d">
+      <text fontFamily="Arial, sans-serif" fontSize="7.4" fontWeight="800" letterSpacing="1.1" fill="#f6d37d">
         <textPath href="#center-seal-top-arc" startOffset="50%" textAnchor="middle">
           HOUSELINK ACADEMY
         </textPath>
       </text>
-      <image href={iconHref} x="671" y="821" width="58" height="54" preserveAspectRatio="xMidYMid meet" />
-      <text fontFamily="Arial, sans-serif" fontSize="8" fontWeight="800" letterSpacing="2.4" fill="#f6d37d">
+      <HouseLinkSealIcon x={700} y={850} />
+      <text fontFamily="Arial, sans-serif" fontSize="7.5" fontWeight="800" letterSpacing="2" fill="#f6d37d">
         <textPath href="#center-seal-bottom-arc" startOffset="50%" textAnchor="middle">
           EST. 2026
         </textPath>
       </text>
+    </g>
+  );
+}
+
+function HouseLinkSealIcon({ x, y }: { x: number; y: number }) {
+  return (
+    <g transform={`translate(${x - 28} ${y - 30})`} fill="none" stroke="#ffffff" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M8 35 L8 18 L28 5 L48 18 L48 35" strokeWidth="5.5" />
+      <path d="M16 35 H48" strokeWidth="5.5" />
+      <path d="M18 35 V25 C18 19 22 16 27 16 C32 16 36 19 36 25 V35" strokeWidth="5.5" />
+      <g fill="#ffffff" stroke="none">
+        <rect x="24" y="20" width="5" height="5" rx="1" />
+        <rect x="31" y="20" width="5" height="5" rx="1" />
+        <rect x="24" y="27" width="5" height="5" rx="1" />
+        <rect x="31" y="27" width="5" height="5" rx="1" />
+      </g>
     </g>
   );
 }
@@ -398,17 +419,17 @@ function SignatureSvg({
   return (
     <g>
       {href ? (
-        <image href={href} x={x - 94} y={y - 54} width="188" height="54" preserveAspectRatio="xMidYMid meet" />
+        <image href={href} x={x - 94} y={y - 60} width="188" height="48" preserveAspectRatio="xMidYMid meet" />
       ) : (
-        <text x={x} y={y} textAnchor="middle" fontFamily="'Brush Script MT', 'Segoe Script', 'Lucida Handwriting', cursive" fontSize="32" fontStyle="italic" fill="#071936">
+        <text x={x} y={y - 8} textAnchor="middle" fontFamily="'Brush Script MT', 'Segoe Script', 'Lucida Handwriting', cursive" fontSize="31" fontStyle="italic" fill="#071936">
           {signature}
         </text>
       )}
-      <line x1={x - 120} y1={y + 12} x2={x + 120} y2={y + 12} stroke="#a87922" strokeWidth="2" />
-      <text x={x} y={y + 36} textAnchor="middle" fontFamily="Arial, sans-serif" fontSize="12" fontWeight="800" letterSpacing="3" fill="#071936">
+      <line x1={x - 112} y1={y + 12} x2={x + 112} y2={y + 12} stroke="#a87922" strokeWidth="2" />
+      <text x={x} y={y + 36} textAnchor="middle" fontFamily="Arial, sans-serif" fontSize="11" fontWeight="800" letterSpacing="2.5" fill="#071936">
         {name.toUpperCase()}
       </text>
-      <text x={x} y={y + 57} textAnchor="middle" fontFamily="Arial, sans-serif" fontSize="9.5" fontWeight="800" letterSpacing="1.5" fill="#0b7a46">
+      <text x={x} y={y + 55} textAnchor="middle" fontFamily="Arial, sans-serif" fontSize="8.6" fontWeight="800" letterSpacing="1.1" fill="#0b7a46">
         {title.toUpperCase()}
       </text>
     </g>
