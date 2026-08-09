@@ -109,8 +109,12 @@ export function CertificateDocument({
   const learnerFontStack = certificateFontStack(learnerNameFont);
   
   const [isReady, setIsReady] = useState(false);
+  const [base64Images, setBase64Images] = useState<Record<string, string>>({});
   
-  // Generate QR code and preload all assets when component mounts
+  // Helper to get base64 version of image if available
+  const getBase64Image = (url: string) => base64Images[url] || url;
+  
+  // Generate QR code and convert all images to base64 when component mounts
   useEffect(() => {
     const prepareCertificate = async () => {
       // Generate QR code client-side
@@ -128,17 +132,28 @@ export function CertificateDocument({
         console.error('Failed to generate QR code:', error);
       }
       
-      // Preload images
+      // Convert all external images to base64
       const imageUrls = [logoHref, iconHref, backgroundHref, firstSignatureHref, secondSignatureHref, sealHref, leftLaurelHref, rightLaurelHref].filter(Boolean);
-      const imagePromises = imageUrls.map(url => {
-        return new Promise<void>((resolve) => {
-          const img = new Image();
-          img.crossOrigin = "anonymous";
-          img.onload = () => resolve();
-          img.onerror = () => resolve();
-          img.src = url;
-        });
-      });
+      const base64Map: Record<string, string> = {};
+      
+      await Promise.all(
+        imageUrls.map(async (url) => {
+          try {
+            const response = await fetch(url);
+            const blob = await response.blob();
+            const base64 = await new Promise<string>((resolve) => {
+              const reader = new FileReader();
+              reader.onloadend = () => resolve(reader.result as string);
+              reader.readAsDataURL(blob);
+            });
+            base64Map[url] = base64;
+          } catch (error) {
+            console.error('Failed to convert image to base64:', url, error);
+          }
+        })
+      );
+      
+      setBase64Images(base64Map);
       
       // Preload fonts
       const fontPromises = [
@@ -152,7 +167,7 @@ export function CertificateDocument({
         document.fonts.load('16px "Times New Roman"'),
       ];
       
-      await Promise.all([...imagePromises, ...fontPromises]);
+      await Promise.all(fontPromises);
       await document.fonts.ready;
       await new Promise(resolve => setTimeout(resolve, 1000)); // Extra wait for rendering
       setIsReady(true);
@@ -430,7 +445,7 @@ export function CertificateDocument({
 
             <rect width={SVG_WIDTH} height={SVG_HEIGHT} fill="#061936" />
             <rect x="30" y="24" width="1340" height="942" rx="0" fill="url(#paper-glow)" />
-            {backgroundHref ? <image href={backgroundHref} x="30" y="24" width="1340" height="942" preserveAspectRatio="xMidYMid slice" opacity="0.1" crossOrigin="anonymous" /> : null}
+            {backgroundHref ? <image href={getBase64Image(backgroundHref)} x="30" y="24" width="1340" height="942" preserveAspectRatio="xMidYMid slice" opacity="0.1" /> : null}
             <rect x="30" y="24" width="1340" height="942" fill="url(#houselink-paper-dots)" />
 
             <rect x="45" y="39" width="1310" height="912" fill="none" stroke="#d4ad5b" strokeWidth="2" />
@@ -444,7 +459,7 @@ export function CertificateDocument({
               <rect x="485" y="28" width="430" height="82" rx="14" fill="#fffdf7" opacity="0.98" />
               <rect x="495" y="38" width="410" height="62" rx="10" fill="none" stroke="#e5d8b7" strokeWidth="1.2" opacity="0.9" />
             </g>
-            <image href={logoHref} x="540" y="47" width="320" height="42" preserveAspectRatio="xMidYMid meet" crossOrigin="anonymous" />
+            <image href={getBase64Image(logoHref)} x="540" y="47" width="320" height="42" preserveAspectRatio="xMidYMid meet" />
             <text x="700" y="143" textAnchor="middle" fontFamily="Arial, sans-serif" fontSize="17" fontWeight="800" letterSpacing="9" fill="#071936">
               ZIMBABWE ACADEMY
             </text>
@@ -456,9 +471,9 @@ export function CertificateDocument({
               {certificateNumber}
             </text>
 
-            <LaurelSvg side="left" href={leftLaurelHref} />
-            <LaurelSvg side="right" href={rightLaurelHref} />
-            <EmbossedSeal iconHref={iconHref} />
+            <LaurelSvg side="left" href={getBase64Image(leftLaurelHref)} />
+            <LaurelSvg side="right" href={getBase64Image(rightLaurelHref)} />
+            <EmbossedSeal iconHref={getBase64Image(iconHref)} />
 
             <text x="700" y="247" textAnchor="middle" fontFamily="Georgia, 'Times New Roman', serif" fontSize="83" fontWeight="600" letterSpacing="18" fill="#071936">
               CERTIFICATE
@@ -523,9 +538,9 @@ export function CertificateDocument({
               {verifyOrigin.replace(/^https?:\/\//, "")}/academy/verify
             </text>
 
-            <SignatureSvg x={375} y={812} signature={secondSignatureName} name={normaliseSignatureName(secondSignatureName)} title={secondSignatureTitle} href={secondSignatureHref} />
-            <CenterSeal href={sealHref} />
-            <SignatureSvg x={1050} y={812} signature={displaySignatureName} name={normaliseSignatureName(displaySignatureName)} title={signatureTitle} href={firstSignatureHref} />
+            <SignatureSvg x={375} y={812} signature={secondSignatureName} name={normaliseSignatureName(secondSignatureName)} title={secondSignatureTitle} href={getBase64Image(secondSignatureHref)} />
+            <CenterSeal href={getBase64Image(sealHref)} />
+            <SignatureSvg x={1050} y={812} signature={displaySignatureName} name={normaliseSignatureName(displaySignatureName)} title={signatureTitle} href={getBase64Image(firstSignatureHref)} />
 
             <CertificateFactSvg x={700} y={895} label="Date of Issue" value={issuedLong} />
             <line x1="860" y1="878" x2="860" y2="932" stroke="#d4ad5b" strokeWidth="2" />
@@ -556,7 +571,7 @@ function CertificateCorner({ x, y, corner }: { x: number; y: number; corner: "tl
 function LaurelSvg({ side, href }: { side: "left" | "right"; href?: string }) {
   if (href) {
     const x = side === "left" ? 235 : 1065;
-    return <image href={href} x={x} y="250" width="110" height="270" preserveAspectRatio="xMidYMid meet" crossOrigin="anonymous" />;
+    return <image href={href} x={x} y="250" width="110" height="270" preserveAspectRatio="xMidYMid meet" />;
   }
 
   const leaves = [
@@ -610,7 +625,7 @@ function EmbossedSeal({ iconHref }: { iconHref: string }) {
           HOUSELINK ZIMBABWE ACADEMY
         </textPath>
       </text>
-      <image href={iconHref} x="139" y="548" width="92" height="76" preserveAspectRatio="xMidYMid meet" opacity="0.24" crossOrigin="anonymous" />
+      {iconHref && <image href={iconHref} x="139" y="548" width="92" height="76" preserveAspectRatio="xMidYMid meet" opacity="0.24" />}
       <text fontFamily="Arial, sans-serif" fontSize="10.5" fontWeight="800" letterSpacing="2.8" fill="#c8c2b8">
         <textPath href="#embossed-seal-bottom-arc" startOffset="50%" textAnchor="middle">
           EXCELLENCE - INTEGRITY
@@ -622,7 +637,7 @@ function EmbossedSeal({ iconHref }: { iconHref: string }) {
 
 function CenterSeal({ href }: { href: string }) {
   if (href) {
-    return <image href={href} x="654" y="786" width="92" height="92" preserveAspectRatio="xMidYMid meet" filter="url(#soft-shadow)" crossOrigin="anonymous" />;
+    return <image href={href} x="654" y="786" width="92" height="92" preserveAspectRatio="xMidYMid meet" filter="url(#soft-shadow)" />;
   }
 
   return (
@@ -678,7 +693,7 @@ function SignatureSvg({
   return (
     <g>
       {href ? (
-        <image href={href} x={x - 94} y={y - 60} width="188" height="48" preserveAspectRatio="xMidYMid meet" crossOrigin="anonymous" />
+        <image href={href} x={x - 94} y={y - 60} width="188" height="48" preserveAspectRatio="xMidYMid meet" />
       ) : (
         <text x={x} y={y - 8} textAnchor="middle" fontFamily="'Brush Script MT', 'Segoe Script', 'Lucida Handwriting', cursive" fontSize="31" fontStyle="italic" fill="#071936">
           {signature}
