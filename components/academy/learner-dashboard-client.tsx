@@ -646,12 +646,16 @@ export function LearnerDashboardClient() {
           </SidebarCard>
 
           <SidebarCard title="Announcements" icon={Bell}>
-            {data.announcements.slice(0, 4).map((a) => (
-              <div key={a.id} className="rounded-xl bg-slate-50 p-3 text-sm dark:bg-slate-900/50">
-                <p className="font-semibold">{a.title}</p>
-                <p className="mt-1 line-clamp-2 text-slate-500">{a.body}</p>
-              </div>
-            ))}
+            {data.announcements.length ? (
+              data.announcements.slice(0, 4).map((a) => (
+                <div key={a.id} className="rounded-xl bg-slate-50 p-3 text-sm dark:bg-slate-900/50">
+                  <p className="font-semibold">{a.title}</p>
+                  <p className="mt-1 line-clamp-2 text-slate-500">{a.body}</p>
+                </div>
+              ))
+            ) : (
+              <p className="text-sm leading-6 text-slate-500">No Academy announcements are currently published for your learner group.</p>
+            )}
           </SidebarCard>
         </aside>
       </div>

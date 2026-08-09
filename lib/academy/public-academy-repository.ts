@@ -90,9 +90,17 @@ export async function listPublicAcademyCourses() {
   })).then((rows) => rows.filter(Boolean));
 }
 
-export async function getLearnerAcademyDashboard(learnerId: string, options?: { isAgent?: boolean }) {
+export async function getLearnerAcademyDashboard(learnerId: string, options?: { isAgent?: boolean; isAdmin?: boolean; isTrainer?: boolean; isPublicLearner?: boolean }) {
   const prisma = getMainPrisma();
   const isAgent = Boolean(options?.isAgent);
+  const announcementAudiences = new Set(["ALL", "LEARNERS"]);
+  if (isAgent || options?.isAdmin) announcementAudiences.add("AGENTS");
+  if (options?.isAdmin) {
+    announcementAudiences.add("ADMINS");
+    announcementAudiences.add("PUBLIC_LEARNERS");
+  }
+  if (options?.isTrainer) announcementAudiences.add("TRAINERS");
+  if (options?.isPublicLearner) announcementAudiences.add("PUBLIC_LEARNERS");
   const [applications, notifications, announcements, certificates, courseProgressRows, resourceAccessRows] = await Promise.all([
     prisma.academyLearnerApplication.findMany({
       where: {
@@ -130,7 +138,8 @@ export async function getLearnerAcademyDashboard(learnerId: string, options?: { 
     prisma.announcement.findMany({
       where: {
         AND: [
-          { OR: [{ audience: "ALL" }, { audience: "LEARNERS" }, { audience: "PUBLIC_LEARNERS" }] },
+          { audience: { in: Array.from(announcementAudiences) } },
+          { publishedAt: { not: null } },
           { OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] },
         ],
       },

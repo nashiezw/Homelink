@@ -13,7 +13,13 @@ export async function GET(request: Request) {
     ? await getPostgresPublicUserById(userId)
     : getStore().getUserById(userId);
   try {
-    return ok(await getLearnerAcademyDashboard(userId, { isAgent: user?.roles?.includes("AGENT") ?? false }));
+    const roles = user?.roles ?? [];
+    return ok(await getLearnerAcademyDashboard(userId, {
+      isAgent: roles.includes("AGENT"),
+      isAdmin: roles.some((role) => ["ADMIN", "SUPER_ADMIN", "ACADEMY_ADMIN", "AGENCY_ADMIN"].includes(role)),
+      isTrainer: roles.includes("TRAINER"),
+      isPublicLearner: roles.includes("PUBLIC_LEARNER"),
+    }));
   } catch (error) {
     console.error("Failed to load learner Academy dashboard", error);
     return problem(500, "ACADEMY_LEARNER_FAILED", "Your Academy dashboard could not be loaded.");
