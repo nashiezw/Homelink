@@ -31,6 +31,11 @@ export type CertificateDocumentProps = {
   badgeLine?: string | null;
   recognitionLineOne?: string | null;
   recognitionLineTwo?: string | null;
+  learnerNameFont?: string | null;
+  learnerNameMaxFontSize?: number | null;
+  learnerNameMinFontSize?: number | null;
+  designationMaxFontSize?: number | null;
+  badgeLineMaxFontSize?: number | null;
   customHtml?: string;
   customCss?: string;
   skillsAssessed?: string[];
@@ -66,6 +71,11 @@ export function CertificateDocument({
   badgeLine,
   recognitionLineOne,
   recognitionLineTwo,
+  learnerNameFont,
+  learnerNameMaxFontSize,
+  learnerNameMinFontSize,
+  designationMaxFontSize,
+  badgeLineMaxFontSize,
   customHtml = "",
   customCss = "",
   badgeName,
@@ -93,14 +103,20 @@ export function CertificateDocument({
   const sealHref = sealUrl ? absoluteAssetUrl(sealUrl, verifyOrigin) : "";
   const leftLaurelHref = leftLaurelUrl ? absoluteAssetUrl(leftLaurelUrl, verifyOrigin) : "";
   const rightLaurelHref = rightLaurelUrl ? absoluteAssetUrl(rightLaurelUrl, verifyOrigin) : "";
-  const learnerFontSize = fitTextToWidth(learnerName, 690, 76, 42);
+  const learnerFontStack = certificateFontStack(learnerNameFont);
+  const learnerFontSize = fitTextToWidth(
+    learnerName,
+    720,
+    clampNumber(learnerNameMaxFontSize, 78, 52, 96),
+    clampNumber(learnerNameMinFontSize, 44, 32, 64),
+  );
   const learnerLetterSpacing = 0;
-  const learnerTextLength = fittedTextLength(learnerName, learnerFontSize, 690);
+  const learnerTextLength = fittedTextLength(learnerName, learnerFontSize, 720);
   const designationText = displayDesignation.toUpperCase();
-  const designationFontSize = fitTextToWidth(designationText, 760, 36, 22);
+  const designationFontSize = fitTextToWidth(designationText, 760, clampNumber(designationMaxFontSize, 30, 18, 42), 18);
   const designationLetterSpacing = designationText.length > 34 ? 3.5 : designationText.length > 26 ? 5 : 8;
   const designationTextLength = fittedTextLength(designationText, designationFontSize, 760, designationLetterSpacing);
-  const badgeFontSize = fitTextToWidth(badgeText, 680, 16, 10);
+  const badgeFontSize = fitTextToWidth(badgeText, 680, clampNumber(badgeLineMaxFontSize, 13, 8, 24), 8);
   const badgeLetterSpacing = badgeText.length > 34 ? 3 : badgeText.length > 26 ? 5 : 8;
   const badgeTextLength = fittedTextLength(badgeText, badgeFontSize, 680, badgeLetterSpacing);
   const courseLines = splitCertificateLine(courseTitle, 42);
@@ -130,6 +146,11 @@ export function CertificateDocument({
         badgeLine: displayBadgeLine,
         recognitionLineOne: displayRecognitionLineOne,
         recognitionLineTwo: displayRecognitionLineTwo,
+        learnerNameFont: learnerNameFont ?? "",
+        learnerNameMaxFontSize: String(learnerNameMaxFontSize ?? ""),
+        learnerNameMinFontSize: String(learnerNameMinFontSize ?? ""),
+        designationMaxFontSize: String(designationMaxFontSize ?? ""),
+        badgeLineMaxFontSize: String(badgeLineMaxFontSize ?? ""),
         accent,
         backgroundUrl: backgroundUrl ?? "",
         logoUrl: logoUrl ?? "",
@@ -279,7 +300,7 @@ export function CertificateDocument({
             <text x="700" y="362" textAnchor="middle" fontFamily="Arial, sans-serif" fontSize="15" fontWeight="800" letterSpacing="8" fill="#071936">
               THIS CERTIFIES THAT
             </text>
-            <text x="700" y="467" textAnchor="middle" fontFamily="'Great Vibes', 'Good Vibes', 'Allura', 'Edwardian Script ITC', 'Segoe Script', 'Brush Script MT', cursive" fontSize={learnerFontSize} fontStyle="normal" fontWeight="400" letterSpacing={learnerLetterSpacing} textLength={learnerTextLength} lengthAdjust="spacingAndGlyphs" fill="#071936">
+            <text x="700" y="467" textAnchor="middle" fontFamily={learnerFontStack} fontSize={learnerFontSize} fontStyle="normal" fontWeight="400" letterSpacing={learnerLetterSpacing} textLength={learnerTextLength} lengthAdjust="spacingAndGlyphs" fill="#071936">
               {learnerName}
             </text>
             <path d="M470 484 C585 499, 815 499, 930 484" fill="none" stroke="#d4ad5b" strokeWidth="2" />
@@ -557,6 +578,19 @@ function fittedTextLength(value: string, fontSize: number, maxWidth: number, let
     return sum + 0.52 * fontSize;
   }, Math.max(0, value.length - 1) * letterSpacing);
   return Math.round(Math.min(maxWidth, Math.max(estimatedWidth, maxWidth * 0.42)));
+}
+
+function certificateFontStack(value: string | null | undefined) {
+  if (value === "formal-script") return "'Edwardian Script ITC', 'Great Vibes', 'Good Vibes', 'Segoe Script', 'Brush Script MT', cursive";
+  if (value === "clean-script") return "'Allura', 'Great Vibes', 'Good Vibes', 'Segoe Script', cursive";
+  if (value === "classic-serif") return "'Palatino Linotype', 'Book Antiqua', Georgia, serif";
+  return "'Great Vibes', 'Good Vibes', 'Allura', 'Edwardian Script ITC', 'Segoe Script', 'Brush Script MT', cursive";
+}
+
+function clampNumber(value: number | null | undefined, fallback: number, min: number, max: number) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return fallback;
+  return Math.min(max, Math.max(min, Math.round(number)));
 }
 
 function absoluteAssetUrl(value: string, origin: string) {

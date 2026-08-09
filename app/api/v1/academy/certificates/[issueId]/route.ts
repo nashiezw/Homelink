@@ -59,6 +59,11 @@ export async function GET(request: Request, context: { params: Promise<{ issueId
     badgeLine: typeof templateJson.badgeLine === "string" ? templateJson.badgeLine : null,
     recognitionLineOne: typeof templateJson.recognitionLineOne === "string" ? templateJson.recognitionLineOne : null,
     recognitionLineTwo: typeof templateJson.recognitionLineTwo === "string" ? templateJson.recognitionLineTwo : null,
+    learnerNameFont: typeof templateJson.learnerNameFont === "string" ? templateJson.learnerNameFont : null,
+    learnerNameMaxFontSize: typeof templateJson.learnerNameMaxFontSize === "number" ? templateJson.learnerNameMaxFontSize : null,
+    learnerNameMinFontSize: typeof templateJson.learnerNameMinFontSize === "number" ? templateJson.learnerNameMinFontSize : null,
+    designationMaxFontSize: typeof templateJson.designationMaxFontSize === "number" ? templateJson.designationMaxFontSize : null,
+    badgeLineMaxFontSize: typeof templateJson.badgeLineMaxFontSize === "number" ? templateJson.badgeLineMaxFontSize : null,
     customHtml: typeof templateJson.customHtml === "string" ? templateJson.customHtml : "",
     customCss: typeof templateJson.customCss === "string" ? templateJson.customCss : "",
   });

@@ -37,6 +37,11 @@ type CertificatePayload = {
   badgeLine?: string | null;
   recognitionLineOne?: string | null;
   recognitionLineTwo?: string | null;
+  learnerNameFont?: string | null;
+  learnerNameMaxFontSize?: number | null;
+  learnerNameMinFontSize?: number | null;
+  designationMaxFontSize?: number | null;
+  badgeLineMaxFontSize?: number | null;
   customHtml?: string;
   customCss?: string;
   skillsAssessed?: string[];
@@ -115,6 +120,11 @@ export function AcademyCertificatePageClient({ issueId }: { issueId: string }) {
         badgeLine={data.badgeLine}
         recognitionLineOne={data.recognitionLineOne}
         recognitionLineTwo={data.recognitionLineTwo}
+        learnerNameFont={data.learnerNameFont}
+        learnerNameMaxFontSize={data.learnerNameMaxFontSize}
+        learnerNameMinFontSize={data.learnerNameMinFontSize}
+        designationMaxFontSize={data.designationMaxFontSize}
+        badgeLineMaxFontSize={data.badgeLineMaxFontSize}
         customHtml={data.customHtml}
         customCss={data.customCss}
         skillsAssessed={data.skillsAssessed?.length ? data.skillsAssessed : programme?.learningOutcomes ?? []}

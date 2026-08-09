@@ -56,6 +56,11 @@ type TemplateFormData = {
   badgeLine: string;
   recognitionLineOne: string;
   recognitionLineTwo: string;
+  learnerNameFont: string;
+  learnerNameMaxFontSize: number;
+  learnerNameMinFontSize: number;
+  designationMaxFontSize: number;
+  badgeLineMaxFontSize: number;
   signatureName: string;
   signatureTitle: string;
   secondSignatureName: string;
@@ -86,6 +91,11 @@ const emptyForm: TemplateFormData = {
   badgeLine: "HouseLink Foundations Graduate",
   recognitionLineOne: "In recognition of demonstrated knowledge, skills and commitment",
   recognitionLineTwo: "to ethical practice and professional excellence in real estate.",
+  learnerNameFont: "great-vibes",
+  learnerNameMaxFontSize: 78,
+  learnerNameMinFontSize: 44,
+  designationMaxFontSize: 30,
+  badgeLineMaxFontSize: 13,
   signatureName: "T. Ndudzo",
   signatureTitle: "Director of Training & Certification",
   secondSignatureName: "W. Tigere",
@@ -145,6 +155,11 @@ export function CertificateTemplateManagement() {
         badgeLine: formData.badgeLine.trim(),
         recognitionLineOne: formData.recognitionLineOne.trim(),
         recognitionLineTwo: formData.recognitionLineTwo.trim(),
+        learnerNameFont: formData.learnerNameFont,
+        learnerNameMaxFontSize: clampTypographySize(formData.learnerNameMaxFontSize, 78, 52, 96),
+        learnerNameMinFontSize: clampTypographySize(formData.learnerNameMinFontSize, 44, 32, 64),
+        designationMaxFontSize: clampTypographySize(formData.designationMaxFontSize, 30, 18, 42),
+        badgeLineMaxFontSize: clampTypographySize(formData.badgeLineMaxFontSize, 13, 8, 24),
         signatureName: formData.signatureName.trim() || "T. Ndudzo",
         signatureTitle: formData.signatureTitle.trim() || "Director of Training & Certification",
         secondSignatureUrl: formData.secondSignatureUrl.trim() || null,
@@ -232,6 +247,11 @@ export function CertificateTemplateManagement() {
       badgeLine: String(templateJson.badgeLine ?? "HouseLink Foundations Graduate"),
       recognitionLineOne: String(templateJson.recognitionLineOne ?? "In recognition of demonstrated knowledge, skills and commitment"),
       recognitionLineTwo: String(templateJson.recognitionLineTwo ?? "to ethical practice and professional excellence in real estate."),
+      learnerNameFont: String(templateJson.learnerNameFont ?? "great-vibes"),
+      learnerNameMaxFontSize: clampTypographySize(templateJson.learnerNameMaxFontSize, 78, 52, 96),
+      learnerNameMinFontSize: clampTypographySize(templateJson.learnerNameMinFontSize, 44, 32, 64),
+      designationMaxFontSize: clampTypographySize(templateJson.designationMaxFontSize, 30, 18, 42),
+      badgeLineMaxFontSize: clampTypographySize(templateJson.badgeLineMaxFontSize, 13, 8, 24),
       signatureName: String(templateJson.signatureName ?? "T. Ndudzo"),
       signatureTitle: String(templateJson.signatureTitle ?? "Director of Training & Certification"),
       secondSignatureName: String(templateJson.secondSignatureName ?? "W. Tigere"),
@@ -433,6 +453,51 @@ export function CertificateTemplateManagement() {
                   placeholder="to ethical practice and professional excellence in real estate."
                   helper="Second italic recognition sentence. Leave blank to hide it."
                 />
+                <div className="rounded-xl border border-white/10 bg-slate-900/50 p-4">
+                  <FormSectionEyebrow title="Certificate typography" description="Control the recipient name and long achievement lines so they stay elegant and fit the certificate." />
+                  <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                    <SelectField
+                      label="Learner Name Font"
+                      value={formData.learnerNameFont}
+                      onChange={(learnerNameFont) => setFormData({ ...formData, learnerNameFont })}
+                      options={[
+                        { value: "great-vibes", label: "Great Vibes / Good Vibes" },
+                        { value: "formal-script", label: "Formal Script" },
+                        { value: "clean-script", label: "Clean Script" },
+                        { value: "classic-serif", label: "Classic Serif" },
+                      ]}
+                      helper="Great Vibes is the preferred calligraphy look, with Good Vibes as fallback."
+                    />
+                    <TextField
+                      label="Learner Name Max Size"
+                      type="number"
+                      value={String(formData.learnerNameMaxFontSize)}
+                      onChange={(learnerNameMaxFontSize) => setFormData({ ...formData, learnerNameMaxFontSize: clampTypographySize(learnerNameMaxFontSize, 78, 52, 96) })}
+                      helper="Recommended: 76-84. Long names still auto-fit within the name area."
+                    />
+                    <TextField
+                      label="Learner Name Minimum Size"
+                      type="number"
+                      value={String(formData.learnerNameMinFontSize)}
+                      onChange={(learnerNameMinFontSize) => setFormData({ ...formData, learnerNameMinFontSize: clampTypographySize(learnerNameMinFontSize, 44, 32, 64) })}
+                      helper="Recommended: 42-48 for long names."
+                    />
+                    <TextField
+                      label="Green Designation Max Size"
+                      type="number"
+                      value={String(formData.designationMaxFontSize)}
+                      onChange={(designationMaxFontSize) => setFormData({ ...formData, designationMaxFontSize: clampTypographySize(designationMaxFontSize, 30, 18, 42) })}
+                      helper="Recommended: 26-32. This controls the large green line."
+                    />
+                    <TextField
+                      label="Graduate / Badge Max Size"
+                      type="number"
+                      value={String(formData.badgeLineMaxFontSize)}
+                      onChange={(badgeLineMaxFontSize) => setFormData({ ...formData, badgeLineMaxFontSize: clampTypographySize(badgeLineMaxFontSize, 13, 8, 24) })}
+                      helper="Recommended: 11-14. This controls the smaller uppercase line below."
+                    />
+                  </div>
+                </div>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <TextField label="Number Prefix" value={formData.certificateNumberPrefix} onChange={(certificateNumberPrefix) => setFormData({ ...formData, certificateNumberPrefix })} placeholder="HLA" />
                   <TextField
@@ -629,6 +694,19 @@ function trainingCertificateTitle(title: string) {
   return title;
 }
 
+function clampTypographySize(value: unknown, fallback: number, min: number, max: number) {
+  const number = Math.round(Number(value));
+  if (!Number.isFinite(number)) return fallback;
+  return Math.min(max, Math.max(min, number));
+}
+
+function previewFontStack(value: string) {
+  if (value === "formal-script") return "'Edwardian Script ITC', 'Great Vibes', 'Good Vibes', 'Segoe Script', cursive";
+  if (value === "clean-script") return "'Allura', 'Great Vibes', 'Good Vibes', 'Segoe Script', cursive";
+  if (value === "classic-serif") return "'Palatino Linotype', 'Book Antiqua', Georgia, serif";
+  return "'Great Vibes', 'Good Vibes', 'Allura', 'Segoe Script', cursive";
+}
+
 function TemplatePreview({ template, form, compact }: { template?: CertificateTemplate; form?: TemplateFormData; compact?: boolean }) {
   const templateJson = template?.templateJson ?? {};
   const colours = (templateJson.colours as Record<string, string> | undefined) ?? {};
@@ -639,6 +717,10 @@ function TemplatePreview({ template, form, compact }: { template?: CertificateTe
   const badgeLine = form?.badgeLine ?? String(templateJson.badgeLine ?? "HouseLink Foundations Graduate");
   const recognitionLineOne = form?.recognitionLineOne ?? String(templateJson.recognitionLineOne ?? "In recognition of demonstrated knowledge, skills and commitment");
   const recognitionLineTwo = form?.recognitionLineTwo ?? String(templateJson.recognitionLineTwo ?? "to ethical practice and professional excellence in real estate.");
+  const learnerNameFont = form?.learnerNameFont ?? String(templateJson.learnerNameFont ?? "great-vibes");
+  const learnerNameMaxFontSize = form?.learnerNameMaxFontSize ?? clampTypographySize(templateJson.learnerNameMaxFontSize, 78, 52, 96);
+  const designationMaxFontSize = form?.designationMaxFontSize ?? clampTypographySize(templateJson.designationMaxFontSize, 30, 18, 42);
+  const badgeLineMaxFontSize = form?.badgeLineMaxFontSize ?? clampTypographySize(templateJson.badgeLineMaxFontSize, 13, 8, 24);
   const name = form?.name ?? template?.name ?? "HouseLink Agent Foundations Certificate";
   const primary = form?.primaryColor ?? colours.primary ?? "#008b68";
   const accent = form?.accentColor ?? colours.accent ?? "#c6a15b";
@@ -682,12 +764,12 @@ function TemplatePreview({ template, form, compact }: { template?: CertificateTe
         </div>
         <div className={compact ? "mt-5" : "mt-8"}>
           <p className="text-xs uppercase tracking-wider text-slate-500">Presented to</p>
-          <p className="mt-1 text-xl font-bold text-white">Learner Name</p>
+          <p className="mt-1 break-words text-white [overflow-wrap:anywhere]" style={{ fontFamily: previewFontStack(learnerNameFont), fontSize: `${Math.min(34, Math.max(24, learnerNameMaxFontSize * 0.42))}px` }}>Learner Name</p>
           {completionIntro.trim() ? <p className="mt-2 text-sm text-slate-300">{completionIntro}</p> : null}
           <p className="mt-1 text-sm font-semibold text-white">{name || "Selected course"}</p>
           {awardIntro.trim() ? <p className="mt-1 text-sm text-slate-300">{awardIntro}</p> : null}
-          {designation.trim() ? <p className="mt-2 break-words text-sm font-bold uppercase tracking-wider text-emerald-300 [overflow-wrap:anywhere]">{designation}</p> : null}
-          {badgeLine.trim() ? <p className="mt-1 break-words text-xs font-semibold uppercase tracking-wider text-slate-300 [overflow-wrap:anywhere]">{badgeLine}</p> : null}
+          {designation.trim() ? <p className="mt-2 break-words font-bold uppercase tracking-wider text-emerald-300 [overflow-wrap:anywhere]" style={{ fontSize: `${Math.min(15, Math.max(11, designationMaxFontSize * 0.42))}px` }}>{designation}</p> : null}
+          {badgeLine.trim() ? <p className="mt-1 break-words font-semibold uppercase tracking-wider text-slate-300 [overflow-wrap:anywhere]" style={{ fontSize: `${Math.min(12, Math.max(9, badgeLineMaxFontSize * 0.7))}px` }}>{badgeLine}</p> : null}
           {recognitionLineOne.trim() || recognitionLineTwo.trim() ? (
             <p className="mt-2 text-xs italic leading-5 text-slate-400">
               {[recognitionLineOne, recognitionLineTwo].filter((line) => line.trim()).join(" ")}
@@ -803,6 +885,36 @@ function TextField({
         placeholder={placeholder}
         className="w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-white placeholder:text-slate-600 focus:border-emerald-500/40 focus:outline-none"
       />
+      {helper ? <span className="mt-1 block text-xs leading-5 text-slate-500">{helper}</span> : null}
+    </label>
+  );
+}
+
+function SelectField({
+  label,
+  value,
+  onChange,
+  options,
+  helper,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: Array<{ value: string; label: string }>;
+  helper?: string;
+}) {
+  return (
+    <label className="block">
+      <span className="mb-1 block text-sm font-medium text-slate-300">{label}</span>
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-white focus:border-emerald-500/40 focus:outline-none"
+      >
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>{option.label}</option>
+        ))}
+      </select>
       {helper ? <span className="mt-1 block text-xs leading-5 text-slate-500">{helper}</span> : null}
     </label>
   );

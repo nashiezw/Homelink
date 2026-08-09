@@ -100,6 +100,11 @@ export default async function CertificateVerificationPage({
           badgeLine={typeof templateJson.badgeLine === "string" ? templateJson.badgeLine : undefined}
           recognitionLineOne={typeof templateJson.recognitionLineOne === "string" ? templateJson.recognitionLineOne : undefined}
           recognitionLineTwo={typeof templateJson.recognitionLineTwo === "string" ? templateJson.recognitionLineTwo : undefined}
+          learnerNameFont={typeof templateJson.learnerNameFont === "string" ? templateJson.learnerNameFont : undefined}
+          learnerNameMaxFontSize={typeof templateJson.learnerNameMaxFontSize === "number" ? templateJson.learnerNameMaxFontSize : undefined}
+          learnerNameMinFontSize={typeof templateJson.learnerNameMinFontSize === "number" ? templateJson.learnerNameMinFontSize : undefined}
+          designationMaxFontSize={typeof templateJson.designationMaxFontSize === "number" ? templateJson.designationMaxFontSize : undefined}
+          badgeLineMaxFontSize={typeof templateJson.badgeLineMaxFontSize === "number" ? templateJson.badgeLineMaxFontSize : undefined}
           customHtml={typeof templateJson.customHtml === "string" ? templateJson.customHtml : ""}
           customCss={typeof templateJson.customCss === "string" ? templateJson.customCss : ""}
         />
