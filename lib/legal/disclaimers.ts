@@ -1,7 +1,7 @@
 export const ACADEMY_TRAINING_DISCLAIMER_TITLE = "Training & Certification Disclaimer";
 
 export const ACADEMY_TRAINING_DISCLAIMER =
-  "HouseLink Zimbabwe Academy is a private training and educational platform operated by HouseLink Zimbabwe. Courses, assessments, certificates and designations issued through HouseLink Zimbabwe Academy recognise successful completion of HouseLink's internal training programmes only. They do not constitute a professional licence, statutory qualification, registration, accreditation, or authorisation to practise as an estate agent or any other regulated property professional in Zimbabwe.";
+  "HouseLink Zimbabwe Academy is a private training and educational platform operated by HouseLink Zimbabwe. Courses, assessments, certificates and designations issued through HouseLink Zimbabwe Academy recognise successful completion of HouseLink Academy training programmes and may be presented as HouseLink-issued training credentials. They do not constitute a professional licence, statutory qualification, registration, accreditation, or authorisation to practise as an estate agent or any other regulated property professional in Zimbabwe.";
 
 export const ACADEMY_REGULATORY_DISCLAIMER =
   "HouseLink Zimbabwe Academy does not replace, represent, exercise the functions of, or assume the regulatory responsibilities of the Estate Agents Council of Zimbabwe or any other statutory, governmental or professional regulatory authority. Where a profession or activity requires registration, licensing, accreditation or other statutory approval, participants remain responsible for satisfying the requirements of the relevant authority before undertaking such activities.";

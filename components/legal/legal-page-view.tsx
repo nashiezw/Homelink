@@ -206,7 +206,7 @@ export function LegalPageView({ page, fallbackTitle }: LegalPageViewProps) {
             <div className="rounded-lg border border-amber-200 bg-amber-50 p-5 dark:border-amber-900 dark:bg-amber-950/30">
               <p className="text-sm font-semibold text-amber-950 dark:text-amber-100">Training and marketplace disclaimer</p>
               <p className="mt-2 text-sm leading-6 text-amber-900/80 dark:text-amber-100/80">
-                HouseLink Academy certificates are internal training credentials, not statutory licences or regulatory approvals.
+                HouseLink Academy certificates are private HouseLink-issued training credentials, not statutory licences or regulatory approvals.
               </p>
               <Link href="/legal-disclaimer" className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-amber-900 hover:underline dark:text-amber-100">
                 Read the legal disclaimer

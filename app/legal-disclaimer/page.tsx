@@ -56,7 +56,8 @@ export default function LegalDisclaimerPage() {
         <aside className="h-fit rounded-xl border border-slate-200 bg-white p-5 text-sm leading-6 text-slate-600 shadow-sm dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
           <p className="font-bold text-slate-950 dark:text-white">Plain-language summary</p>
           <ul className="mt-3 space-y-2">
-            <li>HouseLink Academy certificates are internal training credentials.</li>
+            <li>HouseLink Academy certificates are private HouseLink-issued training credentials.</li>
+            <li>They may be shared and verified as evidence of completing HouseLink Academy training.</li>
             <li>They are not statutory licences or regulatory approvals.</li>
             <li>Property transactions may require registered professionals or public authorities.</li>
             <li>Users remain responsible for legal and regulatory compliance.</li>
