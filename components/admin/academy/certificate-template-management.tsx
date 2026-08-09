@@ -75,7 +75,7 @@ const emptyForm: TemplateFormData = {
   courseIds: [],
   certificateNumberPrefix: "HLZA",
   title: "Certificate of Completion - HouseLink Training Programme",
-  designation: "Certified HouseLink Agent",
+  designation: "HouseLink Agent Foundations Graduate",
   signatureName: "T. Ndudzo",
   signatureTitle: "Director of Training & Certification",
   secondSignatureName: "W. Tigere",
@@ -129,7 +129,7 @@ export function CertificateTemplateManagement() {
         certificateNumberPrefix: formData.certificateNumberPrefix.trim() || "HLA",
         courseIds: formData.courseIds,
         title: trainingCertificateTitle(formData.title.trim() || "Certificate of Completion - HouseLink Training Programme"),
-        designation: formData.designation.trim() || "Certified HouseLink Agent",
+        designation: formData.designation.trim() || "HouseLink Agent Foundations Graduate",
         signatureName: formData.signatureName.trim() || "T. Ndudzo",
         signatureTitle: formData.signatureTitle.trim() || "Director of Training & Certification",
         secondSignatureUrl: formData.secondSignatureUrl.trim() || null,
@@ -211,7 +211,7 @@ export function CertificateTemplateManagement() {
       courseIds: Array.isArray(templateJson.courseIds) ? templateJson.courseIds.filter((id): id is string => typeof id === "string") : [],
       certificateNumberPrefix: String(templateJson.certificateNumberPrefix ?? "HLA"),
       title: trainingCertificateTitle(String(templateJson.title ?? "Certificate of Completion - HouseLink Training Programme")),
-      designation: String(templateJson.designation ?? "Certified HouseLink Agent"),
+      designation: safeTemplateAchievementLine(String(templateJson.designation ?? "HouseLink Agent Foundations Graduate")),
       signatureName: String(templateJson.signatureName ?? "T. Ndudzo"),
       signatureTitle: String(templateJson.signatureTitle ?? "Director of Training & Certification"),
       secondSignatureName: String(templateJson.secondSignatureName ?? "W. Tigere"),
@@ -371,7 +371,7 @@ export function CertificateTemplateManagement() {
               <div className="grid gap-4 rounded-xl border border-white/10 bg-slate-950/40 p-4">
                 <TextField label="Template Name" value={formData.name} onChange={(name) => setFormData({ ...formData, name })} placeholder="HouseLink Agent Foundations Certificate" />
                 <TextField label="Certificate Title" value={formData.title} onChange={(title) => setFormData({ ...formData, title })} placeholder="Certificate of Completion - HouseLink Agent Foundations" />
-                <TextField label="Certificate Designation Line" value={formData.designation} onChange={(designation) => setFormData({ ...formData, designation })} placeholder="Certified HouseLink Agent" />
+                <TextField label="Certificate Achievement Line" value={formData.designation} onChange={(designation) => setFormData({ ...formData, designation })} placeholder="HouseLink Agent Foundations Graduate" />
                 <div className="grid gap-4 sm:grid-cols-2">
                   <TextField label="Number Prefix" value={formData.certificateNumberPrefix} onChange={(certificateNumberPrefix) => setFormData({ ...formData, certificateNumberPrefix })} placeholder="HLA" />
                   <TextField
@@ -572,7 +572,7 @@ function TemplatePreview({ template, form, compact }: { template?: CertificateTe
   const templateJson = template?.templateJson ?? {};
   const colours = (templateJson.colours as Record<string, string> | undefined) ?? {};
   const title = form?.title ?? String(templateJson.title ?? "Certificate of Achievement");
-  const designation = form?.designation ?? String(templateJson.designation ?? "Certified HouseLink Agent");
+  const designation = safeTemplateAchievementLine(form?.designation ?? String(templateJson.designation ?? "HouseLink Agent Foundations Graduate"));
   const name = form?.name ?? template?.name ?? "HouseLink Agent Foundations Certificate";
   const primary = form?.primaryColor ?? colours.primary ?? "#008b68";
   const accent = form?.accentColor ?? colours.accent ?? "#c6a15b";
@@ -851,4 +851,10 @@ function readTemplateFile(file: File): Promise<string> {
     reader.onerror = () => reject(new Error("File could not be read."));
     reader.readAsDataURL(file);
   });
+}
+
+function safeTemplateAchievementLine(value: string) {
+  return /^(certified houselink agent|houselink certified agent)$/i.test(value.trim())
+    ? "HouseLink Agent Foundations Graduate"
+    : value;
 }

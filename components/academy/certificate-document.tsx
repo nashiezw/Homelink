@@ -67,9 +67,10 @@ export function CertificateDocument({
   const verifyPath = verifyUrl.replace(/^https?:\/\/[^/]+/, "");
   const verifyAbsoluteUrl = `${verifyOrigin}${verifyPath}`;
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&margin=6&data=${encodeURIComponent(verifyAbsoluteUrl)}`;
-  const displayDesignation = designation?.trim() || "Certified HouseLink Agent";
+  const displayAchievement = safeAchievementLine(designation, badgeName, courseTitle);
   const displaySignatureName = signatureName === "HouseLink Zimbabwe Academy" ? "T. Ndudzo" : signatureName;
-  const badgeText = (badgeName || "HouseLink Foundations Graduate").toUpperCase();
+  const validityLabel = expiresAt ? "Designation Valid Until" : "Completion Record";
+  const validityValue = expiresAt ? expiresShort : "No Expiry";
   const logoHref = absoluteAssetUrl(logoUrl || "/brand/houselink-nav-lockup.png", verifyOrigin);
   const iconHref = absoluteAssetUrl("/brand/houselink-icon-transparent.png", verifyOrigin);
   const backgroundHref = backgroundUrl ? absoluteAssetUrl(backgroundUrl, verifyOrigin) : "";
@@ -78,8 +79,8 @@ export function CertificateDocument({
   const sealHref = sealUrl ? absoluteAssetUrl(sealUrl, verifyOrigin) : "";
   const leftLaurelHref = leftLaurelUrl ? absoluteAssetUrl(leftLaurelUrl, verifyOrigin) : "";
   const rightLaurelHref = rightLaurelUrl ? absoluteAssetUrl(rightLaurelUrl, verifyOrigin) : "";
-  const learnerFontSize = learnerName.length > 28 ? 70 : learnerName.length > 20 ? 82 : 96;
-  const designationFontSize = displayDesignation.length > 30 ? 35 : displayDesignation.length > 24 ? 39 : 44;
+  const learnerFontSize = learnerName.length > 28 ? 76 : learnerName.length > 20 ? 88 : 104;
+  const achievementFontSize = displayAchievement.length > 38 ? 30 : displayAchievement.length > 30 ? 34 : 38;
   const courseLines = splitCertificateLine(courseTitle, 42);
 
   const renderedCustomHtml = customHtml.trim()
@@ -95,7 +96,7 @@ export function CertificateDocument({
         signatureTitle,
         secondSignatureName,
         secondSignatureTitle,
-        designation: displayDesignation,
+        designation: displayAchievement,
         accent,
         backgroundUrl: backgroundUrl ?? "",
         logoUrl: logoUrl ?? "",
@@ -210,8 +211,8 @@ export function CertificateDocument({
             <CertificateCorner x={45} y={951} corner="bl" />
             <CertificateCorner x={1355} y={951} corner="br" />
 
-            <image href={logoHref} x="530" y="32" width="340" height="78" preserveAspectRatio="xMidYMid meet" />
-            <text x="700" y="137" textAnchor="middle" fontFamily="Arial, sans-serif" fontSize="18" fontWeight="700" letterSpacing="13" fill="#071936">
+            <image href={logoHref} x="500" y="30" width="400" height="88" preserveAspectRatio="xMidYMid meet" />
+            <text x="700" y="145" textAnchor="middle" fontFamily="Arial, sans-serif" fontSize="18" fontWeight="700" letterSpacing="9" fill="#071936">
               ZIMBABWE ACADEMY
             </text>
 
@@ -242,38 +243,32 @@ export function CertificateDocument({
             </text>
             <path d="M470 484 C585 499, 815 499, 930 484" fill="none" stroke="#d4ad5b" strokeWidth="2" />
             <text x="700" y="536" textAnchor="middle" fontFamily="Georgia, 'Times New Roman', serif" fontSize="18" fill="#2d2a25">
-              has successfully completed the requirements of the
+              has successfully completed the
             </text>
             {courseLines.map((line, index) => (
-              <text key={line} x="700" y={566 + index * 24} textAnchor="middle" fontFamily="Georgia, 'Times New Roman', serif" fontSize="20" fontWeight="700" fill="#071936">
+              <text key={line} x="700" y={574 + index * 28} textAnchor="middle" fontFamily="Georgia, 'Times New Roman', serif" fontSize="25" fontWeight="700" fill="#071936">
                 {line}
               </text>
             ))}
-            <text x="700" y={590 + courseLines.length * 24} textAnchor="middle" fontFamily="Georgia, 'Times New Roman', serif" fontSize="18" fill="#2d2a25">
-              and is hereby awarded the designation of
+            <text x="700" y={608 + courseLines.length * 28} textAnchor="middle" fontFamily="Georgia, 'Times New Roman', serif" fontSize="18" fill="#2d2a25">
+              training course and is recognised as a
             </text>
-            <text x="700" y={654 + courseLines.length * 16} textAnchor="middle" fontFamily="Georgia, 'Times New Roman', serif" fontSize={designationFontSize} fontWeight="700" letterSpacing="8" fill="#0b7a46">
-              {displayDesignation.toUpperCase()}
+            <text x="700" y={668 + courseLines.length * 14} textAnchor="middle" fontFamily="Georgia, 'Times New Roman', serif" fontSize={achievementFontSize} fontWeight="700" letterSpacing="5" fill="#0b7a46">
+              {displayAchievement.toUpperCase()}
             </text>
-            <line x1="470" y1={680 + courseLines.length * 16} x2="930" y2={680 + courseLines.length * 16} stroke="#d4ad5b" strokeWidth="2" />
-            <text x="700" y={713 + courseLines.length * 16} textAnchor="middle" fontFamily="Arial, sans-serif" fontSize="17" fontWeight="800" letterSpacing="8" fill="#071936">
-              {badgeText}
-            </text>
-            <text x="700" y={746 + courseLines.length * 8} textAnchor="middle" fontFamily="Georgia, 'Times New Roman', serif" fontSize="17" fontStyle="italic" fill="#2d2a25">
+            <line x1="505" y1={692 + courseLines.length * 14} x2="895" y2={692 + courseLines.length * 14} stroke="#d4ad5b" strokeWidth="2" />
+            <text x="700" y={736 + courseLines.length * 8} textAnchor="middle" fontFamily="Georgia, 'Times New Roman', serif" fontSize="17" fontStyle="italic" fill="#2d2a25">
               In recognition of demonstrated knowledge, skills and commitment
             </text>
-            <text x="700" y={770 + courseLines.length * 8} textAnchor="middle" fontFamily="Georgia, 'Times New Roman', serif" fontSize="17" fontStyle="italic" fill="#2d2a25">
+            <text x="700" y={760 + courseLines.length * 8} textAnchor="middle" fontFamily="Georgia, 'Times New Roman', serif" fontSize="17" fontStyle="italic" fill="#2d2a25">
               to ethical practice and professional excellence in real estate.
             </text>
 
-            <image href={qrUrl} x="80" y="792" width="74" height="74" />
-            <text x="117" y="883" textAnchor="middle" fontFamily="Arial, sans-serif" fontSize="8.5" fontWeight="800" letterSpacing="1.2" fill="#071936">
-              VERIFY THIS CERTIFICATE
+            <image href={qrUrl} x="96" y="796" width="76" height="76" />
+            <text x="134" y="894" textAnchor="middle" fontFamily="Arial, sans-serif" fontSize="10" fontWeight="800" letterSpacing="1.5" fill="#071936">
+              VERIFY CERTIFICATE
             </text>
-            <text x="117" y="899" textAnchor="middle" fontFamily="Arial, sans-serif" fontSize="8.5" fill="#2d2a25">
-              Scan the QR code or visit:
-            </text>
-            <text x="117" y="914" textAnchor="middle" fontFamily="Arial, sans-serif" fontSize="8.5" fontWeight="700" fill="#0b7a46">
+            <text x="134" y="913" textAnchor="middle" fontFamily="Arial, sans-serif" fontSize="8.5" fontWeight="700" fill="#0b7a46">
               {verifyOrigin.replace(/^https?:\/\//, "")}/academy/verify
             </text>
 
@@ -282,10 +277,8 @@ export function CertificateDocument({
             <SignatureSvg x={1050} y={812} signature={displaySignatureName} name={normaliseSignatureName(displaySignatureName)} title={signatureTitle} href={firstSignatureHref} />
 
             <CertificateFactSvg x={700} y={895} label="Date of Issue" value={issuedLong} />
-            <line x1="860" y1="878" x2="860" y2="932" stroke="#d4ad5b" strokeWidth="2" />
-            <CertificateFactSvg x={1050} y={895} label="Certificate ID" value={certificateNumber} />
-            <line x1="1190" y1="878" x2="1190" y2="932" stroke="#d4ad5b" strokeWidth="2" />
-            <CertificateFactSvg x={1275} y={895} label="Valid Until" value={expiresShort} />
+            <line x1="930" y1="878" x2="930" y2="932" stroke="#d4ad5b" strokeWidth="2" />
+            <CertificateFactSvg x={1140} y={895} label={validityLabel} value={validityValue} />
 
             <text x="700" y="947" textAnchor="middle" fontFamily="Arial, sans-serif" fontSize="6.8" fill="#6b7280">
               {CERTIFICATE_SHORT_DISCLAIMER}
@@ -309,8 +302,8 @@ function CertificateCorner({ x, y, corner }: { x: number; y: number; corner: "tl
 
 function LaurelSvg({ side, href }: { side: "left" | "right"; href?: string }) {
   if (href) {
-    const x = side === "left" ? 235 : 1065;
-    return <image href={href} x={x} y="250" width="110" height="270" preserveAspectRatio="xMidYMid meet" />;
+    const x = side === "left" ? 245 : 1075;
+    return <image href={href} x={x} y="270" width="94" height="232" preserveAspectRatio="xMidYMid meet" opacity="0.9" />;
   }
 
   const leaves = [
@@ -327,7 +320,7 @@ function LaurelSvg({ side, href }: { side: "left" | "right"; href?: string }) {
   const mirror = side === "right" ? "translate(1400 0) scale(-1 1)" : undefined;
 
   return (
-    <g transform={mirror} opacity="0.95">
+    <g transform={mirror} opacity="0.82">
       <path d="M316 256 C254 324 248 430 314 512" fill="none" stroke="#b88b32" strokeWidth="3" strokeLinecap="round" />
       {leaves.map((leaf, index) => (
         <g key={index}>
@@ -452,7 +445,7 @@ function SignatureSvg({
 function CertificateFactSvg({ x, y, label, value }: { x: number; y: number; label: string; value: string }) {
   return (
     <g>
-      <text x={x} y={y} textAnchor="middle" fontFamily="Arial, sans-serif" fontSize="9.5" fontWeight="800" letterSpacing="1.8" fill="#6b7280">
+      <text x={x} y={y} textAnchor="middle" fontFamily="Arial, sans-serif" fontSize={label.length > 18 ? 8.5 : 9.5} fontWeight="800" letterSpacing="1.5" fill="#6b7280">
         {label.toUpperCase()}
       </text>
       <text x={x} y={y + 29} textAnchor="middle" fontFamily="Georgia, 'Times New Roman', serif" fontSize={value.length > 20 ? 13 : 16} fontWeight="700" fill="#071936">
@@ -460,6 +453,15 @@ function CertificateFactSvg({ x, y, label, value }: { x: number; y: number; labe
       </text>
     </g>
   );
+}
+
+function safeAchievementLine(designation: string | null | undefined, badgeName: string | undefined, courseTitle: string) {
+  const raw = designation?.trim();
+  if (raw && !/^(certified houselink agent|houselink certified agent)$/i.test(raw)) {
+    return raw;
+  }
+
+  return badgeName?.trim() || `${courseTitle} Graduate`;
 }
 
 function splitCertificateLine(value: string, maxLength: number) {

@@ -341,7 +341,7 @@ async function seedCertificateTemplate(prisma: ReturnType<typeof getMainPrisma>)
       templateJson: {
         certificateNumberPrefix: "HLZA",
         title: "Certificate of Completion - HouseLink Agent Foundations",
-        designation: "Certified HouseLink Agent",
+        designation: "HouseLink Agent Foundations Graduate",
         qrVerification: true,
         expiryDays: 365,
         signatureName: "T. Ndudzo",
