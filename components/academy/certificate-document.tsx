@@ -279,7 +279,7 @@ export function CertificateDocument({
             <line x1="1170" y1="880" x2="1170" y2="932" stroke="#d4ad5b" strokeWidth="2" />
             <CertificateFactSvg x={1268} y={902} label="Valid Until" value={expiresShort} />
 
-            <text x="700" y="940" textAnchor="middle" fontFamily="Arial, sans-serif" fontSize="8.5" fill="#6b7280">
+            <text x="700" y="947" textAnchor="middle" fontFamily="Arial, sans-serif" fontSize="6.8" fill="#6b7280">
               {CERTIFICATE_SHORT_DISCLAIMER}
             </text>
           </svg>
