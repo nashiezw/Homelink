@@ -16,15 +16,19 @@ export async function GET(request: Request) {
     const templates = await prisma.certificateTemplate.findMany({
       orderBy: { updatedAt: "desc" },
     });
+    const normalisedTemplates = templates.map((template) => ({
+      ...template,
+      templateJson: toJsonObject(template.templateJson),
+    }));
     if (includeCourses) {
       const courses = await prisma.trainingCourse.findMany({
         select: { id: true, title: true, status: true },
         orderBy: [{ title: "asc" }],
       });
-      return ok({ templates, courses });
+      return ok({ templates: normalisedTemplates, courses });
     }
     
-    return ok(templates);
+    return ok(normalisedTemplates);
   } catch (error) {
     console.error("Failed to fetch certificate templates:", error);
     return problem(500, "SERVER_ERROR", "Failed to fetch certificate templates");

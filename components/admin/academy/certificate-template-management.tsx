@@ -109,7 +109,7 @@ export function CertificateTemplateManagement() {
 
   async function loadTemplates() {
     setLoading(true);
-    const result = await apiFetch<CertificateTemplatePayload>("/api/v1/admin/academy/certificates/templates?includeCourses=1");
+    const result = await apiFetch<CertificateTemplatePayload>("/api/v1/admin/academy/certificates/templates?includeCourses=1", { cache: "no-store" });
     if (result.data) {
       setTemplates(result.data.templates);
       setCourses(result.data.courses.map((course) => ({ id: course.id, title: course.title, status: course.status })));
@@ -247,9 +247,44 @@ export function CertificateTemplateManagement() {
         return;
       }
       setFormData((current) => ({ ...current, [field]: result.data!.url }));
-      showToast("Certificate image uploaded. Save the template to keep it.");
+      if (editingTemplate) {
+        await persistTemplateAsset(editingTemplate.id, field, result.data.url);
+        showToast("Certificate image uploaded and saved.");
+        await loadTemplates();
+      } else {
+        showToast("Certificate image uploaded. Save the template to keep it.");
+      }
     } catch (error) {
       showToast(error instanceof Error ? error.message : "Certificate image upload failed.", "error");
+    } finally {
+      setUploadingField(null);
+    }
+  }
+
+  async function persistTemplateAsset(templateId: string, field: "backgroundUrl" | "logoUrl" | "signatureUrl" | "secondSignatureUrl" | "sealUrl" | "leftLaurelUrl" | "rightLaurelUrl", url: string) {
+    const body =
+      field === "backgroundUrl" || field === "logoUrl" || field === "signatureUrl"
+        ? { [field]: url }
+        : { templateJson: { [field]: url } };
+    const result = await apiFetch(`/api/v1/admin/academy/certificates/templates/${templateId}`, {
+      method: "PUT",
+      body: JSON.stringify(body),
+    });
+    if (!result.data) {
+      throw new Error(result.error?.message ?? "Certificate image uploaded but could not be saved to the template.");
+    }
+  }
+
+  async function clearTemplateAsset(field: "backgroundUrl" | "logoUrl" | "signatureUrl" | "secondSignatureUrl" | "sealUrl" | "leftLaurelUrl" | "rightLaurelUrl") {
+    setFormData((current) => ({ ...current, [field]: "" }));
+    if (!editingTemplate) return;
+    setUploadingField(field);
+    try {
+      await persistTemplateAsset(editingTemplate.id, field, "");
+      showToast("Certificate image cleared and saved.");
+      await loadTemplates();
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Certificate image could not be cleared.", "error");
     } finally {
       setUploadingField(null);
     }
@@ -365,6 +400,7 @@ export function CertificateTemplateManagement() {
                   value={formData.backgroundUrl}
                   uploading={uploadingField === "backgroundUrl"}
                   onChange={(backgroundUrl) => setFormData({ ...formData, backgroundUrl })}
+                  onClear={() => void clearTemplateAsset("backgroundUrl")}
                   onUpload={(files) => void uploadTemplateAsset("backgroundUrl", files)}
                 />
                 <TemplateImageField
@@ -374,6 +410,7 @@ export function CertificateTemplateManagement() {
                   value={formData.logoUrl}
                   uploading={uploadingField === "logoUrl"}
                   onChange={(logoUrl) => setFormData({ ...formData, logoUrl })}
+                  onClear={() => void clearTemplateAsset("logoUrl")}
                   onUpload={(files) => void uploadTemplateAsset("logoUrl", files)}
                 />
                 <div className="grid gap-4 sm:grid-cols-2">
@@ -395,6 +432,7 @@ export function CertificateTemplateManagement() {
                       value={formData.secondSignatureUrl}
                       uploading={uploadingField === "secondSignatureUrl"}
                       onChange={(secondSignatureUrl) => setFormData({ ...formData, secondSignatureUrl })}
+                      onClear={() => void clearTemplateAsset("secondSignatureUrl")}
                       onUpload={(files) => void uploadTemplateAsset("secondSignatureUrl", files)}
                     />
                   </div>
@@ -410,6 +448,7 @@ export function CertificateTemplateManagement() {
                       value={formData.signatureUrl}
                       uploading={uploadingField === "signatureUrl"}
                       onChange={(signatureUrl) => setFormData({ ...formData, signatureUrl })}
+                      onClear={() => void clearTemplateAsset("signatureUrl")}
                       onUpload={(files) => void uploadTemplateAsset("signatureUrl", files)}
                     />
                   </div>
@@ -424,6 +463,7 @@ export function CertificateTemplateManagement() {
                     value={formData.sealUrl}
                     uploading={uploadingField === "sealUrl"}
                     onChange={(sealUrl) => setFormData({ ...formData, sealUrl })}
+                    onClear={() => void clearTemplateAsset("sealUrl")}
                     onUpload={(files) => void uploadTemplateAsset("sealUrl", files)}
                   />
                   <div className="grid gap-4 sm:grid-cols-2">
@@ -434,6 +474,7 @@ export function CertificateTemplateManagement() {
                       value={formData.leftLaurelUrl}
                       uploading={uploadingField === "leftLaurelUrl"}
                       onChange={(leftLaurelUrl) => setFormData({ ...formData, leftLaurelUrl })}
+                      onClear={() => void clearTemplateAsset("leftLaurelUrl")}
                       onUpload={(files) => void uploadTemplateAsset("leftLaurelUrl", files)}
                     />
                     <TemplateImageField
@@ -443,6 +484,7 @@ export function CertificateTemplateManagement() {
                       value={formData.rightLaurelUrl}
                       uploading={uploadingField === "rightLaurelUrl"}
                       onChange={(rightLaurelUrl) => setFormData({ ...formData, rightLaurelUrl })}
+                      onClear={() => void clearTemplateAsset("rightLaurelUrl")}
                       onUpload={(files) => void uploadTemplateAsset("rightLaurelUrl", files)}
                     />
                   </div>
@@ -732,6 +774,7 @@ function TemplateImageField({
   value,
   uploading,
   onChange,
+  onClear,
   onUpload,
 }: {
   label: string;
@@ -740,6 +783,7 @@ function TemplateImageField({
   value: string;
   uploading: boolean;
   onChange: (value: string) => void;
+  onClear: () => void;
   onUpload: (files: FileList | null) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -757,7 +801,7 @@ function TemplateImageField({
             {uploading ? "Uploading..." : "Upload"}
           </Button>
           {value ? (
-            <Button type="button" variant="secondary" disabled={uploading} onClick={() => onChange("")}>
+            <Button type="button" variant="secondary" disabled={uploading} onClick={onClear}>
               Clear
             </Button>
           ) : null}

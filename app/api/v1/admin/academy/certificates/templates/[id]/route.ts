@@ -25,7 +25,10 @@ export async function GET(
       return problem(404, "NOT_FOUND", "Certificate template not found");
     }
 
-    return ok(template);
+    return ok({
+      ...template,
+      templateJson: toJsonObject(template.templateJson),
+    });
   } catch (error) {
     console.error("Failed to fetch certificate template:", error);
     return problem(500, "SERVER_ERROR", "Failed to fetch certificate template");
