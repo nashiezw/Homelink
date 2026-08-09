@@ -8,6 +8,7 @@ import { getProgrammeCourse, LEGACY_COURSE_ID, PROGRAMME_COURSE_IDS } from "@/li
 import { getEnrolledCourseToolkits, getToolkitGroupsForCourse, programmeMetaForCourse } from "@/lib/academy/academy-toolkits";
 import { buildReadinessScore } from "@/lib/academy/academy-readiness";
 import { getProgrammeGateState } from "@/lib/academy/academy-gates";
+import { attemptsRemaining, getCourseRetakeRules } from "@/lib/academy/assessment-retake-rules";
 import {
   getManualAccessView,
   getToolkitAccessView,
@@ -778,12 +779,13 @@ export async function getLearnerCourseDetail(learnerId: string, courseId: string
   const progress = calculateCourseProgress(course, completedIds);
   const courseProgress = await prisma.courseProgress.findUnique({ where: { courseId_agentId: { courseId, agentId: learnerId } } });
 
-  const [quizAttempts, assignmentSubmissions, examAttempts, settings, bookmarkRows] = await Promise.all([
+  const [quizAttempts, assignmentSubmissions, examAttempts, settings, bookmarkRows, retakeRules] = await Promise.all([
     prisma.quizAttempt.findMany({ where: { agentId: learnerId, quiz: { courseId } }, orderBy: { startedAt: "desc" } }),
     prisma.assignmentSubmission.findMany({ where: { agentId: learnerId, assignment: { courseId } }, orderBy: { submittedAt: "desc" } }),
     prisma.examAttempt.findMany({ where: { agentId: learnerId, exam: { courseId } }, orderBy: { startedAt: "desc" } }),
     getAcademySettingsPublic(),
     prisma.lessonProgress.findMany({ where: { agentId: learnerId, status: "BOOKMARKED" }, select: { lessonId: true } }),
+    getCourseRetakeRules(courseId),
   ]);
   const bookmarkIds = new Set(bookmarkRows.map((row) => row.lessonId));
 
@@ -837,6 +839,7 @@ export async function getLearnerCourseDetail(learnerId: string, courseId: string
       instructor: course.instructor,
       certificateEnabled: course.certificateEnabled,
       passingPercentage: course.passingPercentage,
+      retakeRules,
       progress: courseProgress?.percentComplete ?? progress.percentComplete,
       status: courseProgress?.status ?? "NOT_STARTED",
       modules: course.modules.map((module, moduleIndex) => ({
@@ -877,6 +880,7 @@ export async function getLearnerCourseDetail(learnerId: string, courseId: string
         .filter((quiz) => !programme?.quizIds.length || programme.quizIds.includes(quiz.id))
         .map((quiz) => {
           const meta = assessmentMetaForQuiz(quiz.id);
+          const attempts = quizAttempts.filter((attempt) => attempt.quizId === quiz.id && (attempt.status === "PASSED" || attempt.status === "FAILED"));
           return {
             id: quiz.id,
             title: quiz.title,
@@ -888,6 +892,9 @@ export async function getLearnerCourseDetail(learnerId: string, courseId: string
             questionCount: quiz.questions.length,
             bestScore: bestQuizScores.get(quiz.id) ?? null,
             passed: (bestQuizScores.get(quiz.id) ?? 0) >= quiz.passingPercentage,
+            attemptsUsed: attempts.length,
+            attemptLimit: retakeRules.quizAttemptLimit,
+            attemptsRemaining: attemptsRemaining(retakeRules.quizAttemptLimit, attempts.length),
           };
         })
         .sort((a, b) => a.sortOrder - b.sortOrder),
@@ -895,6 +902,19 @@ export async function getLearnerCourseDetail(learnerId: string, courseId: string
         .filter((assignment) => !programme?.assignmentIds.length || programme.assignmentIds.includes(assignment.id))
         .map((assignment) => {
           const meta = assessmentMetaForAssignment(assignment.id);
+          const submissions = assignmentSubmissions.filter((submission) => submission.assignmentId === assignment.id);
+          const latestSubmission = submissions[0];
+          const grade = latestSubmission?.grade == null ? null : Number(latestSubmission.grade);
+          const gradePercent = grade == null
+            ? null
+            : assignment.points > 0
+              ? Math.round((grade / assignment.points) * 100)
+              : 0;
+          const passed = latestSubmission?.status === "APPROVED"
+            || (latestSubmission?.status === "GRADED" && (gradePercent ?? 0) >= course.passingPercentage);
+          const needsResubmission = latestSubmission?.status === "RESUBMISSION_REQUESTED"
+            || latestSubmission?.status === "REJECTED"
+            || (latestSubmission?.status === "GRADED" && gradePercent !== null && gradePercent < course.passingPercentage);
           return {
             id: assignment.id,
             title: assignment.title,
@@ -903,20 +923,36 @@ export async function getLearnerCourseDetail(learnerId: string, courseId: string
             sortOrder: meta?.sortOrder ?? 0,
             points: assignment.points,
             dueDays: assignment.dueDays,
-            submitted: assignmentSubmissions.some((s) => s.assignmentId === assignment.id),
-            status: assignmentSubmissions.find((s) => s.assignmentId === assignment.id)?.status ?? null,
+            submitted: Boolean(latestSubmission),
+            status: latestSubmission?.status ?? null,
+            grade,
+            gradePercent,
+            passed,
+            needsResubmission,
+            reviewerNote: latestSubmission?.reviewerNote ?? null,
+            attemptsUsed: submissions.length,
+            attemptLimit: retakeRules.assignmentSubmissionLimit,
+            attemptsRemaining: attemptsRemaining(retakeRules.assignmentSubmissionLimit, submissions.length),
           };
         })
         .sort((a, b) => a.sortOrder - b.sortOrder),
       exams: programme?.requiresFinalExam
-        ? course.finalExams.map((exam) => ({
-            id: exam.id,
-            title: exam.title,
-            description: "Capstone examination covering Foundations, Listing & Client Mastery, and Professional Training.",
-            durationMinutes: exam.durationMinutes,
-            passingScore: exam.passingScore,
-            attemptLimit: exam.attemptLimit,
-          }))
+        ? course.finalExams.map((exam) => {
+            const attempts = examAttempts.filter((attempt) => attempt.examId === exam.id && (attempt.status === "PASSED" || attempt.status === "FAILED"));
+            const attemptLimit = retakeRules.examAttemptLimit || exam.attemptLimit;
+            return {
+              id: exam.id,
+              title: exam.title,
+              description: "Capstone examination covering Foundations, Listing & Client Mastery, and Professional Training.",
+              durationMinutes: exam.durationMinutes,
+              passingScore: exam.passingScore,
+              attemptLimit,
+              attemptsUsed: attempts.length,
+              attemptsRemaining: attemptsRemaining(attemptLimit, attempts.length),
+              bestScore: attempts.length ? Math.max(...attempts.map((attempt) => Number(attempt.score))) : null,
+              passed: attempts.some((attempt) => attempt.status === "PASSED"),
+            };
+          })
         : [],
       certificateCheckpoint: programme?.requiresFinalExam
         ? null

@@ -16,6 +16,11 @@ type QuizQuestion = {
 type QuizResult = {
   score: number;
   passed: boolean;
+  passingScore?: number;
+  attemptNumber?: number;
+  attemptLimit?: number;
+  attemptsUsed?: number;
+  attemptsRemaining?: number;
   reviewTopics?: string[];
   retakeGuidance?: string | null;
 };
@@ -26,6 +31,9 @@ export function QuizPanel({
   description,
   questionCount,
   passingPercentage,
+  attemptsUsed: initialAttemptsUsed,
+  attemptLimit: initialAttemptLimit,
+  attemptsRemaining: initialAttemptsRemaining,
   timeLimitMinutes,
   onBack,
 }: {
@@ -34,6 +42,9 @@ export function QuizPanel({
   description?: string;
   questionCount?: number;
   passingPercentage: number;
+  attemptsUsed?: number;
+  attemptLimit?: number;
+  attemptsRemaining?: number;
   timeLimitMinutes?: number | null;
   onBack: () => void;
 }) {
@@ -46,17 +57,30 @@ export function QuizPanel({
   const [startedAt, setStartedAt] = useState<number | null>(null);
   const [secondsRemaining, setSecondsRemaining] = useState<number | null>(timeLimitMinutes ? timeLimitMinutes * 60 : null);
   const [attemptId, setAttemptId] = useState<string | null>(null);
+  const [attemptMeta, setAttemptMeta] = useState({
+    attemptsUsed: initialAttemptsUsed ?? 0,
+    attemptLimit: initialAttemptLimit ?? 3,
+    attemptsRemaining: initialAttemptsRemaining ?? initialAttemptLimit ?? 3,
+    attemptNumber: (initialAttemptsUsed ?? 0) + 1,
+  });
 
   const load = useCallback(async () => {
-    const detail = await apiFetch<{ attemptId?: string; questions: QuizQuestion[] }>(`/api/v1/academy/quizzes/${quizId}`);
+    const detail = await apiFetch<{ attemptId?: string; questions: QuizQuestion[]; attemptsUsed?: number; attemptLimit?: number; attemptsRemaining?: number; attemptNumber?: number }>(`/api/v1/academy/quizzes/${quizId}`);
     if (detail.data?.questions) {
       setQuestions(detail.data.questions);
       setAnswers({});
       setAttemptId(detail.data.attemptId ?? null);
+      setAttemptMeta({
+        attemptsUsed: detail.data.attemptsUsed ?? initialAttemptsUsed ?? 0,
+        attemptLimit: detail.data.attemptLimit ?? initialAttemptLimit ?? 3,
+        attemptsRemaining: detail.data.attemptsRemaining ?? initialAttemptsRemaining ?? 3,
+        attemptNumber: detail.data.attemptNumber ?? (detail.data.attemptsUsed ?? 0) + 1,
+      });
       setStartedAt(Date.now());
       setSecondsRemaining(timeLimitMinutes ? timeLimitMinutes * 60 : null);
     }
-  }, [quizId, timeLimitMinutes]);
+    if (detail.error) showToast(detail.error.message, "error");
+  }, [initialAttemptLimit, initialAttemptsRemaining, initialAttemptsUsed, quizId, showToast, timeLimitMinutes]);
 
   useEffect(() => {
     void load();
@@ -64,7 +88,7 @@ export function QuizPanel({
 
   async function submit() {
     setBusy(true);
-    const response = await apiFetch<{ score: number; passed: boolean }>(`/api/v1/academy/quizzes/${quizId}/attempt`, {
+    const response = await apiFetch<QuizResult>(`/api/v1/academy/quizzes/${quizId}/attempt`, {
       method: "POST",
       body: JSON.stringify({
         answers,
@@ -80,6 +104,12 @@ export function QuizPanel({
     }
     if (response.data) {
       setResult(response.data);
+      setAttemptMeta((current) => ({
+        attemptsUsed: response.data?.attemptsUsed ?? current.attemptsUsed,
+        attemptLimit: response.data?.attemptLimit ?? current.attemptLimit,
+        attemptsRemaining: response.data?.attemptsRemaining ?? current.attemptsRemaining,
+        attemptNumber: (response.data?.attemptNumber ?? current.attemptNumber) + 1,
+      }));
       showToast(response.data.passed ? "Quiz passed!" : "Quiz submitted.");
     }
   }
@@ -105,7 +135,12 @@ export function QuizPanel({
       <div className="mx-auto max-w-3xl rounded-xl border border-slate-200 bg-white p-6 text-center shadow-sm dark:border-slate-800 dark:bg-slate-950 sm:p-8">
         {result.passed ? <CheckCircle2 className="mx-auto size-16 text-emerald-500" /> : <XCircle className="mx-auto size-16 text-amber-500" />}
         <p className="mt-4 text-2xl font-bold text-slate-950 dark:text-white">Score: {result.score}%</p>
-        <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">{result.passed ? "Passed. This checkpoint is complete." : `Pass mark is ${passingPercentage}%. Review the lesson and retake when ready.`}</p>
+        <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
+          {result.passed ? "Passed. This checkpoint is complete." : `Not passed yet. Pass mark is ${result.passingScore ?? passingPercentage}%. Review the lesson before retaking.`}
+        </p>
+        <p className="mt-2 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+          Attempt {result.attemptNumber ?? attemptMeta.attemptsUsed} of {result.attemptLimit ?? attemptMeta.attemptLimit} / {result.attemptsRemaining ?? attemptMeta.attemptsRemaining} remaining
+        </p>
         {!result.passed && !!result.reviewTopics?.length && (
           <div className="mx-auto mt-5 max-w-md rounded-xl border border-amber-200 bg-amber-50 p-4 text-left dark:border-amber-900/50 dark:bg-amber-950/20">
             <p className="text-sm font-bold text-amber-950 dark:text-amber-100">Review before retaking</p>
@@ -127,7 +162,7 @@ export function QuizPanel({
           </div>
         )}
         <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-center">
-          {!result.passed && (
+          {!result.passed && (result.attemptsRemaining ?? attemptMeta.attemptsRemaining) > 0 && (
             <Button className="w-full sm:w-auto" onClick={() => void retake()}>
               Retake checkpoint
             </Button>
@@ -157,11 +192,15 @@ export function QuizPanel({
             </p>
           </div>
         </div>
-        <div className="mt-4 grid grid-cols-3 gap-2">
+        <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
           <QuizMeta label="Questions" value={String(resolvedQuestionCount || "-")} />
           <QuizMeta label="Answered" value={`${answeredCount}/${questions.length || resolvedQuestionCount || 0}`} />
+          <QuizMeta label="Attempts" value={`${attemptMeta.attemptNumber}/${attemptMeta.attemptLimit}`} />
           <QuizMeta label={timeLimitMinutes ? "Time left" : "Pass mark"} value={timeLimitMinutes ? formatSeconds(secondsRemaining ?? timeLimitMinutes * 60) : `${passingPercentage}%`} />
         </div>
+        <p className="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-600 dark:bg-slate-900 dark:text-slate-300">
+          {attemptMeta.attemptsRemaining} attempt{attemptMeta.attemptsRemaining === 1 ? "" : "s"} remaining. Your lesson progress is kept; only this checkpoint must be passed for certification.
+        </p>
         {timeLimitMinutes ? (
           <p className={cn("mt-3 rounded-lg px-3 py-2 text-xs font-semibold", secondsRemaining === 0 ? "bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-200" : "bg-slate-50 text-slate-500 dark:bg-slate-900 dark:text-slate-400")}>
             {secondsRemaining === 0 ? "Time has expired. Retake the checkpoint to submit a fresh timed attempt." : `Timed session: ${timeLimitMinutes} minutes. Submit before the timer reaches zero.`}

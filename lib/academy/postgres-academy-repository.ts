@@ -15,6 +15,7 @@ import { reviewPublicLearnerApplication } from "@/lib/academy/public-academy-rep
 import { reviewResourceAccessApplication } from "@/lib/academy/academy-resource-access";
 import { fetchCourseTree, resolveLessonSectionId } from "@/lib/academy/course-tree";
 import { tryCompleteCourseCertification } from "@/lib/academy/academy-progress";
+import { getCourseRetakeRules, normaliseRetakeRules, saveCourseRetakeRules } from "@/lib/academy/assessment-retake-rules";
 
 export type AcademyDashboard = Awaited<ReturnType<typeof getAcademyDashboard>>;
 
@@ -418,22 +419,27 @@ export async function runAcademyAction(body: Record<string, any>, actor: Actor) 
   }
   if (action === "update_course_certification_rules") {
     const rules = body.rules ?? {};
-    const course = await prisma.trainingCourse.update({
-      where: { id: String(body.courseId) },
-      data: {
-        passingPercentage: clamp(numberOr(rules.passingPercentage, 80), 0, 100),
-        certificateEnabled: Boolean(rules.certificateEnabled),
-        expiresAfterDays: optionalNumber(rules.expiresAfterDays),
-        accessDurationDays: Math.max(0, numberOr(rules.accessDurationDays, 365)),
-      },
-    });
+    const courseId = String(body.courseId);
+    const [course, retakeRules] = await Promise.all([
+      prisma.trainingCourse.update({
+        where: { id: courseId },
+        data: {
+          passingPercentage: clamp(numberOr(rules.passingPercentage, 80), 0, 100),
+          certificateEnabled: Boolean(rules.certificateEnabled),
+          expiresAfterDays: optionalNumber(rules.expiresAfterDays),
+          accessDurationDays: Math.max(0, numberOr(rules.accessDurationDays, 365)),
+        },
+      }),
+      saveCourseRetakeRules(courseId, normaliseRetakeRules(rules)),
+    ]);
     await audit(actor, "academy.course.certification_rules", course.id, {
       passingPercentage: course.passingPercentage,
       certificateEnabled: course.certificateEnabled,
       expiresAfterDays: course.expiresAfterDays,
       accessDurationDays: course.accessDurationDays,
+      retakeRules,
     });
-    return course;
+    return { ...course, retakeRules };
   }
   if (action === "duplicate_course") {
     const source = await prisma.trainingCourse.findUnique({
@@ -1287,6 +1293,7 @@ export async function runAcademyAction(body: Record<string, any>, actor: Actor) 
 export async function getAdminCourseTree(courseId: string) {
   const course = await fetchCourseTree(courseId);
   if (!course) return null;
+  const retakeRules = await getCourseRetakeRules(courseId);
   return {
     id: course.id,
     title: course.title,
@@ -1307,6 +1314,7 @@ export async function getAdminCourseTree(courseId: string) {
     toolkitSalesEnabled: course.toolkitSalesEnabled,
     currency: course.currency,
     accessDurationDays: course.accessDurationDays,
+    retakeRules,
     featured: course.featured,
     category: course.category,
     modules: course.modules.map((module) => ({

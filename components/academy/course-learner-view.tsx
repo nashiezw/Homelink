@@ -70,6 +70,14 @@ type CourseDetail = {
     instructor?: string | null;
     certificateEnabled: boolean;
     passingPercentage: number;
+    retakeRules?: {
+      quizAttemptLimit: number;
+      examAttemptLimit: number;
+      assignmentSubmissionLimit: number;
+      retakeCooldownHours: number;
+      exhaustedAction: "LOCK_CERTIFICATE" | "REQUIRE_MODULE_RESTART" | "REQUIRE_COURSE_RESTART";
+      allowAdminExtraAttempts: boolean;
+    };
     progress: number;
     status: string;
     modules: Array<{
@@ -116,9 +124,9 @@ type CourseDetail = {
       categories: Array<{ id: string; label: string; description: string; score: number; status: "READY" | "DEVELOPING" | "NEEDS_PRACTICE" }>;
     };
     certificateCheckpoint?: { title: string; description: string } | null;
-    quizzes: Array<{ id: string; title: string; description?: string | null; moduleTitle?: string | null; sortOrder?: number; passingPercentage: number; timeLimitMinutes?: number | null; questionCount: number; bestScore: number | null; passed: boolean }>;
-    assignments: Array<{ id: string; title: string; description: string; moduleTitle?: string | null; sortOrder?: number; points: number; dueDays?: number | null; submitted: boolean; status: string | null }>;
-    exams: Array<{ id: string; title: string; description?: string | null; durationMinutes: number; passingScore: number; attemptLimit: number }>;
+    quizzes: Array<{ id: string; title: string; description?: string | null; moduleTitle?: string | null; sortOrder?: number; passingPercentage: number; timeLimitMinutes?: number | null; questionCount: number; bestScore: number | null; passed: boolean; attemptsUsed: number; attemptLimit: number; attemptsRemaining: number }>;
+    assignments: Array<{ id: string; title: string; description: string; moduleTitle?: string | null; sortOrder?: number; points: number; dueDays?: number | null; submitted: boolean; status: string | null; grade?: number | null; gradePercent?: number | null; passed?: boolean; needsResubmission?: boolean; reviewerNote?: string | null; attemptsUsed: number; attemptLimit: number; attemptsRemaining: number }>;
+    exams: Array<{ id: string; title: string; description?: string | null; durationMinutes: number; passingScore: number; attemptLimit: number; attemptsUsed: number; attemptsRemaining: number; bestScore: number | null; passed: boolean }>;
   };
   materials: Array<{ id: string; title: string; subtitle: string; summary: string; moduleTitle: string; lessonTitle: string; estimatedMinutes: number; location: string; fileType: string; downloadUrl: string; viewUrl: string }>;
 };
@@ -219,6 +227,14 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
           points={assignment?.points ?? 100}
           submitted={assignment?.submitted ?? false}
           status={assignment?.status ?? null}
+          grade={assignment?.grade ?? null}
+          gradePercent={assignment?.gradePercent ?? null}
+          passed={assignment?.passed ?? false}
+          needsResubmission={assignment?.needsResubmission ?? false}
+          reviewerNote={assignment?.reviewerNote ?? null}
+          attemptsUsed={assignment?.attemptsUsed ?? 0}
+          attemptLimit={assignment?.attemptLimit ?? data.course.retakeRules?.assignmentSubmissionLimit ?? 3}
+          attemptsRemaining={assignment?.attemptsRemaining ?? 0}
           onBack={() => { setActiveAssignmentId(null); void load(); }}
         />
       </PageShell>
@@ -240,6 +256,9 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
           description={quiz?.description ?? undefined}
           questionCount={quiz?.questionCount ?? undefined}
           passingPercentage={quiz?.passingPercentage ?? 80}
+          attemptsUsed={quiz?.attemptsUsed ?? 0}
+          attemptLimit={quiz?.attemptLimit ?? data.course.retakeRules?.quizAttemptLimit ?? 3}
+          attemptsRemaining={quiz?.attemptsRemaining ?? 0}
           timeLimitMinutes={quiz?.timeLimitMinutes ?? undefined}
           onBack={() => { setActiveQuizId(null); void load(); }}
         />
@@ -251,7 +270,14 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
     const exam = data.assessments.exams.find((e) => e.id === activeExamId);
     return (
       <PageShell eyebrow={data.settings.academyName} title={exam?.title ?? "Final Exam"} description="Complete the final examination to earn the HouseLink training certificate.">
-        <ExamPanel examId={activeExamId} passingScore={exam?.passingScore ?? 80} onBack={() => { setActiveExamId(null); void load(); }} />
+        <ExamPanel
+          examId={activeExamId}
+          passingScore={exam?.passingScore ?? 80}
+          attemptsUsed={exam?.attemptsUsed ?? 0}
+          attemptLimit={exam?.attemptLimit ?? data.course.retakeRules?.examAttemptLimit ?? 2}
+          attemptsRemaining={exam?.attemptsRemaining ?? 0}
+          onBack={() => { setActiveExamId(null); void load(); }}
+        />
       </PageShell>
     );
   }
@@ -571,9 +597,10 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
                     eyebrow={quiz.moduleTitle}
                     description={quiz.description}
                     meta={`${quiz.questionCount} questions / ${quiz.passingPercentage}% pass${quiz.timeLimitMinutes ? ` / ${quiz.timeLimitMinutes} min` : ""}`}
-                    status={quiz.bestScore !== null ? `Best score: ${quiz.bestScore}% ${quiz.passed ? "Passed" : "Retake available"}` : "Not attempted yet"}
+                    status={quiz.bestScore !== null ? `Best score: ${quiz.bestScore}% / ${quiz.passed ? "Passed" : `Not passed yet - ${quiz.attemptsRemaining} left`}` : `Not attempted yet - ${quiz.attemptLimit} attempts available`}
                     statusTone={quiz.bestScore !== null && !quiz.passed ? "amber" : quiz.passed ? "emerald" : "slate"}
-                    actionLabel={quiz.passed ? "Retake Quiz" : "Take Quiz"}
+                    actionLabel={quiz.passed ? "Review / Retake" : quiz.attemptsRemaining > 0 ? "Take Quiz" : "Attempts Used"}
+                    disabled={quiz.attemptsRemaining <= 0 && !quiz.passed}
                     locked={gate.locked}
                     lockedReason={gate.locked ? gate.title : undefined}
                     onAction={() => { if (!gate.locked) setActiveQuizId(quiz.id); }}
@@ -599,10 +626,11 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
                     eyebrow={assignment.moduleTitle}
                     description={assignment.description}
                     meta={`${assignment.points} points${assignment.dueDays ? ` / due within ${assignment.dueDays} days` : ""}`}
-                    status={assignment.submitted ? `Submitted / ${assignment.status}` : "Not submitted yet"}
-                    statusTone={assignment.submitted ? "emerald" : "slate"}
-                    actionLabel={assignment.submitted ? "View Submission" : "Submit Assignment"}
+                    status={assignmentStatusLabel(assignment)}
+                    statusTone={assignment.needsResubmission ? "amber" : assignment.passed ? "emerald" : assignment.submitted ? "slate" : "slate"}
+                    actionLabel={assignmentActionLabel(assignment)}
                     actionVariant="secondary"
+                    disabled={Boolean(assignment.needsResubmission && assignment.attemptsRemaining <= 0)}
                     locked={gate.locked}
                     lockedReason={gate.locked ? gate.title : undefined}
                     onAction={() => { if (!gate.locked) setActiveAssignmentId(assignment.id); }}
@@ -626,9 +654,10 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
                   eyebrow="Capstone"
                   description={exam.description}
                   meta={`${exam.durationMinutes} min / ${exam.passingScore}% pass / ${exam.attemptLimit} attempts`}
-                  status="Final exam opens after the required coursework is complete."
-                  statusTone="amber"
-                  actionLabel="Take Final Exam"
+                  status={exam.bestScore !== null ? `Best score: ${exam.bestScore}% / ${exam.passed ? "Passed" : `Not passed yet - ${exam.attemptsRemaining} left`}` : `Final exam opens after coursework - ${exam.attemptLimit} attempts available`}
+                  statusTone={exam.passed ? "emerald" : exam.bestScore !== null ? "amber" : "slate"}
+                  actionLabel={exam.passed ? "Review / Retake" : exam.attemptsRemaining > 0 ? "Take Final Exam" : "Attempts Used"}
+                  disabled={exam.attemptsRemaining <= 0 && !exam.passed}
                   onAction={() => setActiveExamId(exam.id)}
                 />
               ))}
@@ -837,6 +866,7 @@ function AssessmentActionCard({
   actionLabel,
   actionVariant = "primary",
   locked = false,
+  disabled = false,
   lockedReason,
   onAction,
 }: {
@@ -849,6 +879,7 @@ function AssessmentActionCard({
   actionLabel: string;
   actionVariant?: "primary" | "secondary";
   locked?: boolean;
+  disabled?: boolean;
   lockedReason?: string;
   onAction: () => void;
 }) {
@@ -876,11 +907,28 @@ function AssessmentActionCard({
           </p>
         )}
       </div>
-      <Button className="mt-auto w-full" variant={actionVariant} onClick={onAction} disabled={locked}>
+      <Button className="mt-auto w-full" variant={actionVariant} onClick={onAction} disabled={locked || disabled}>
         {locked ? "Locked" : actionLabel}
       </Button>
     </article>
   );
+}
+
+function assignmentStatusLabel(assignment: CourseDetail["assessments"]["assignments"][number]) {
+  if (!assignment.submitted) return `Not submitted yet - ${assignment.attemptLimit} submissions available`;
+  const status = assignment.status?.replace(/_/g, " ").toLowerCase() ?? "awaiting review";
+  const grade = assignment.grade == null ? "" : ` / Grade: ${assignment.grade}/${assignment.points}`;
+  if (assignment.needsResubmission) return `Not passed yet - ${assignment.attemptsRemaining} left${grade}`;
+  if (assignment.passed) return `Accepted${grade}`;
+  return `${status}${grade}`;
+}
+
+function assignmentActionLabel(assignment: CourseDetail["assessments"]["assignments"][number]) {
+  if (!assignment.submitted) return "Submit Assignment";
+  if (assignment.needsResubmission) {
+    return assignment.attemptsRemaining > 0 ? "Resubmit Assignment" : "Submissions Used";
+  }
+  return "View Submission";
 }
 
 function GateNotice({ gate, accent }: { gate: CourseGate; accent: string }) {

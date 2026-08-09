@@ -48,6 +48,14 @@ type CourseTree = {
   certificateEnabled: boolean;
   expiresAfterDays?: number | null;
   accessDurationDays: number;
+  retakeRules: {
+    quizAttemptLimit: number;
+    examAttemptLimit: number;
+    assignmentSubmissionLimit: number;
+    retakeCooldownHours: number;
+    exhaustedAction: "LOCK_CERTIFICATE" | "REQUIRE_MODULE_RESTART" | "REQUIRE_COURSE_RESTART";
+    allowAdminExtraAttempts: boolean;
+  };
   modules: Array<{
     id: string;
     title: string;
@@ -96,6 +104,12 @@ export function CourseWorkspace({
     certificateEnabled: false,
     expiresAfterDays: "",
     accessDurationDays: 365,
+    quizAttemptLimit: 3,
+    examAttemptLimit: 2,
+    assignmentSubmissionLimit: 3,
+    retakeCooldownHours: 0,
+    exhaustedAction: "LOCK_CERTIFICATE" as "LOCK_CERTIFICATE" | "REQUIRE_MODULE_RESTART" | "REQUIRE_COURSE_RESTART",
+    allowAdminExtraAttempts: true,
   });
   const [undoStack, setUndoStack] = useState<Array<{ label: string; body: Record<string, unknown> }>>([]);
   const [auditLogs, setAuditLogs] = useState<Array<{ id: string; action: string; createdAt: string }>>([]);
@@ -114,6 +128,12 @@ export function CourseWorkspace({
       certificateEnabled: tree.certificateEnabled,
       expiresAfterDays: tree.expiresAfterDays == null ? "" : String(tree.expiresAfterDays),
       accessDurationDays: Math.max(0, Number(tree.accessDurationDays) || 365),
+      quizAttemptLimit: Math.max(1, Number(tree.retakeRules?.quizAttemptLimit) || 3),
+      examAttemptLimit: Math.max(1, Number(tree.retakeRules?.examAttemptLimit) || 2),
+      assignmentSubmissionLimit: Math.max(1, Number(tree.retakeRules?.assignmentSubmissionLimit) || 3),
+      retakeCooldownHours: Math.max(0, Number(tree.retakeRules?.retakeCooldownHours) || 0),
+      exhaustedAction: tree.retakeRules?.exhaustedAction ?? "LOCK_CERTIFICATE",
+      allowAdminExtraAttempts: tree.retakeRules?.allowAdminExtraAttempts !== false,
     });
   }, [tree]);
 
@@ -172,6 +192,12 @@ export function CourseWorkspace({
           certificateEnabled: certificationDraft.certificateEnabled,
           expiresAfterDays,
           accessDurationDays: Math.max(0, Number(certificationDraft.accessDurationDays) || 365),
+          quizAttemptLimit: Math.max(1, Number(certificationDraft.quizAttemptLimit) || 3),
+          examAttemptLimit: Math.max(1, Number(certificationDraft.examAttemptLimit) || 2),
+          assignmentSubmissionLimit: Math.max(1, Number(certificationDraft.assignmentSubmissionLimit) || 3),
+          retakeCooldownHours: Math.max(0, Number(certificationDraft.retakeCooldownHours) || 0),
+          exhaustedAction: certificationDraft.exhaustedAction,
+          allowAdminExtraAttempts: certificationDraft.allowAdminExtraAttempts,
         },
       },
       "Certification rules saved.",
@@ -295,10 +321,62 @@ export function CourseWorkspace({
                 </span>
               </label>
             </div>
+            <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <NumberField
+                label="Quiz Attempts"
+                value={String(certificationDraft.quizAttemptLimit)}
+                min={1}
+                onChange={(value) => setCertificationDraft((draft) => ({ ...draft, quizAttemptLimit: Math.max(1, Number(value) || 1) }))}
+              />
+              <NumberField
+                label="Exam Attempts"
+                value={String(certificationDraft.examAttemptLimit)}
+                min={1}
+                onChange={(value) => setCertificationDraft((draft) => ({ ...draft, examAttemptLimit: Math.max(1, Number(value) || 1) }))}
+              />
+              <NumberField
+                label="Assignment Submissions"
+                value={String(certificationDraft.assignmentSubmissionLimit)}
+                min={1}
+                onChange={(value) => setCertificationDraft((draft) => ({ ...draft, assignmentSubmissionLimit: Math.max(1, Number(value) || 1) }))}
+              />
+              <NumberField
+                label="Retake Cooldown Hours"
+                value={String(certificationDraft.retakeCooldownHours)}
+                min={0}
+                onChange={(value) => setCertificationDraft((draft) => ({ ...draft, retakeCooldownHours: Math.max(0, Number(value) || 0) }))}
+              />
+            </div>
+            <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+              <label className="block rounded-xl border border-white/10 bg-slate-950/50 p-4 text-sm text-slate-300">
+                <span className="mb-2 block font-semibold text-white">When Attempts Are Exhausted</span>
+                <select
+                  value={certificationDraft.exhaustedAction}
+                  onChange={(event) => setCertificationDraft((draft) => ({ ...draft, exhaustedAction: event.target.value as typeof draft.exhaustedAction }))}
+                  className="w-full rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-white"
+                >
+                  <option value="LOCK_CERTIFICATE">Lock certificate until admin review</option>
+                  <option value="REQUIRE_MODULE_RESTART">Require module restart</option>
+                  <option value="REQUIRE_COURSE_RESTART">Require full course restart</option>
+                </select>
+              </label>
+              <label className="flex min-h-20 items-center gap-3 rounded-xl border border-white/10 bg-slate-950/50 p-4 text-sm text-slate-300">
+                <input
+                  type="checkbox"
+                  checked={certificationDraft.allowAdminExtraAttempts}
+                  onChange={(event) => setCertificationDraft((draft) => ({ ...draft, allowAdminExtraAttempts: event.target.checked }))}
+                  className="size-5 rounded border-white/10 bg-slate-950"
+                />
+                <span>
+                  <span className="block font-semibold text-white">Allow admin extra attempts</span>
+                  <span className="mt-1 block text-xs leading-5 text-slate-400">Admins can grant another attempt when a learner has exhausted their limit.</span>
+                </span>
+              </label>
+            </div>
             <div className="mt-5 grid gap-2 rounded-xl border border-white/10 bg-slate-950/50 p-4 text-xs leading-5 text-slate-400 sm:grid-cols-3">
               <p><span className="font-semibold text-slate-200">Lessons:</span> {tree.stats.lessonCount ? "100% completion required" : "No lessons configured"}</p>
-              <p><span className="font-semibold text-slate-200">Assessments:</span> {tree.stats.quizCount + tree.stats.assignmentCount + tree.stats.examCount ? "Passed items are checked before issuing" : "No assessments configured"}</p>
-              <p><span className="font-semibold text-slate-200">If learner fails:</span> retake/rework the failed activity before certificate generation.</p>
+              <p><span className="font-semibold text-slate-200">Assessments:</span> learners see attempts used, attempts remaining, and retake/resubmission status.</p>
+              <p><span className="font-semibold text-slate-200">If learner fails:</span> progress stays; certification and locked gates wait for a passed attempt.</p>
             </div>
             <div className="mt-5 flex justify-end">
               <Button disabled={busy} onClick={() => void saveCertificationRules()}>

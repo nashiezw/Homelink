@@ -13,6 +13,14 @@ export function AssignmentPanel({
   points,
   submitted,
   status,
+  grade,
+  gradePercent,
+  passed,
+  needsResubmission,
+  reviewerNote,
+  attemptsUsed,
+  attemptLimit,
+  attemptsRemaining,
   onBack,
 }: {
   assignmentId: string;
@@ -21,6 +29,14 @@ export function AssignmentPanel({
   points: number;
   submitted: boolean;
   status: string | null;
+  grade?: number | null;
+  gradePercent?: number | null;
+  passed?: boolean;
+  needsResubmission?: boolean;
+  reviewerNote?: string | null;
+  attemptsUsed: number;
+  attemptLimit: number;
+  attemptsRemaining: number;
   onBack: () => void;
 }) {
   const { showToast } = useApp();
@@ -29,6 +45,8 @@ export function AssignmentPanel({
   const [fileName, setFileName] = useState("");
   const [uploadBusy, setUploadBusy] = useState(false);
   const [busy, setBusy] = useState(false);
+  const canResubmit = Boolean(needsResubmission || status === "RESUBMISSION_REQUESTED" || status === "REJECTED");
+  const exhausted = (!submitted || canResubmit) && attemptsRemaining <= 0;
 
   async function uploadFile(file: File) {
     setUploadBusy(true);
@@ -81,7 +99,15 @@ export function AssignmentPanel({
         </p>
         <h2 className="mt-2 text-xl font-bold leading-tight text-slate-950 dark:text-white">{title}</h2>
         <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">{description}</p>
-        <p className="mt-3 inline-flex rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-700 shadow-sm dark:bg-slate-900 dark:text-slate-200">{points} points</p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <p className="inline-flex rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-700 shadow-sm dark:bg-slate-900 dark:text-slate-200">{points} points</p>
+          <p className="inline-flex rounded-full bg-white px-3 py-1 text-xs font-bold text-emerald-700 shadow-sm dark:bg-slate-900 dark:text-emerald-200">
+            {attemptsUsed}/{attemptLimit} submissions used
+          </p>
+          <p className="inline-flex rounded-full bg-white px-3 py-1 text-xs font-bold text-amber-700 shadow-sm dark:bg-slate-900 dark:text-amber-200">
+            {attemptsRemaining} left
+          </p>
+        </div>
       </div>
 
       <div className="mt-5 grid gap-3 sm:grid-cols-2">
@@ -93,16 +119,32 @@ export function AssignmentPanel({
         ))}
       </div>
 
-      {submitted ? (
+      {submitted && !canResubmit ? (
         <div className="mt-6 rounded-xl bg-emerald-50 p-4 text-emerald-900 dark:bg-emerald-900/20 dark:text-emerald-100">
-          <p className="font-semibold">Submitted</p>
+          <p className="font-semibold">{passed ? "Accepted" : "Submitted"}</p>
           <p className="text-sm mt-1">Status: {status?.replace(/_/g, " ") ?? "Awaiting review"}</p>
+          {grade != null ? <p className="mt-1 text-sm">Grade: {grade}/{points}</p> : null}
+          {gradePercent != null ? <p className="mt-1 text-sm">Score: {gradePercent}%</p> : null}
+          {reviewerNote ? <p className="mt-2 text-sm leading-6">Reviewer note: {reviewerNote}</p> : null}
         </div>
       ) : (
         <div className="mt-6 space-y-4">
+          {canResubmit ? (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-100">
+              <p className="font-semibold">Not accepted yet - resubmission required</p>
+              <p className="mt-1 text-sm leading-6">
+                {attemptsRemaining > 0
+                  ? `You have ${attemptsRemaining} submission${attemptsRemaining === 1 ? "" : "s"} remaining. Review the feedback and upload corrected evidence.`
+                  : "You have used all available submissions. Ask Academy Admin to review your options."}
+              </p>
+              {grade != null ? <p className="mt-2 text-sm">Last grade: {grade}/{points}</p> : null}
+              {gradePercent != null ? <p className="mt-1 text-sm">Last score: {gradePercent}%</p> : null}
+              {reviewerNote ? <p className="mt-2 text-sm leading-6">Reviewer feedback: {reviewerNote}</p> : null}
+            </div>
+          ) : null}
           <label className="block text-sm font-medium">
             Your response / notes
-            <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={7} className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 leading-7 dark:border-slate-700 dark:bg-slate-900" placeholder="Write your field evidence, decision logic, risks found, client wording, and next steps..." />
+            <textarea disabled={exhausted} value={notes} onChange={(e) => setNotes(e.target.value)} rows={7} className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 leading-7 dark:border-slate-700 dark:bg-slate-900" placeholder="Write your field evidence, decision logic, risks found, client wording, and next steps..." />
           </label>
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900/50">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -117,7 +159,7 @@ export function AssignmentPanel({
                   type="file"
                   className="sr-only"
                   accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.png,.jpg,.jpeg,.webp,image/*,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                  disabled={uploadBusy || busy}
+                  disabled={uploadBusy || busy || exhausted}
                   onChange={(event) => {
                     const file = event.target.files?.[0];
                     event.target.value = "";
@@ -147,8 +189,8 @@ export function AssignmentPanel({
             )}
           </div>
           <div className="flex flex-col gap-3 sm:flex-row">
-            <Button className="w-full sm:flex-1" onClick={() => void submit()} disabled={busy || uploadBusy || !notes.trim()}>
-              {busy ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4 mr-2" />} Submit assignment
+            <Button className="w-full sm:flex-1" onClick={() => void submit()} disabled={busy || uploadBusy || !notes.trim() || exhausted}>
+              {busy ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4 mr-2" />} {canResubmit ? "Resubmit assignment" : "Submit assignment"}
             </Button>
             <Button className="w-full sm:flex-1" variant="secondary" onClick={onBack}>Cancel</Button>
           </div>

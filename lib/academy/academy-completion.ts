@@ -21,12 +21,20 @@ export async function hasPassedCourseAssessments(learnerId: string, courseId: st
   if (!programme) return true;
 
   const prisma = getMainPrisma();
+  const course = await prisma.trainingCourse.findUnique({
+    where: { id: courseId },
+    select: { passingPercentage: true },
+  });
+  const coursePassMark = course?.passingPercentage ?? 80;
+  const assessmentScores: number[] = [];
 
   for (const quizId of programme.quizIds) {
-    const passed = await prisma.quizAttempt.findFirst({
+    const bestAttempt = await prisma.quizAttempt.findFirst({
       where: { quizId, agentId: learnerId, status: "PASSED" },
+      orderBy: { score: "desc" },
     });
-    if (!passed) return false;
+    if (!bestAttempt) return false;
+    assessmentScores.push(Number(bestAttempt.score));
   }
 
   for (const assignmentId of programme.assignmentIds) {
@@ -36,21 +44,35 @@ export async function hasPassedCourseAssessments(learnerId: string, courseId: st
         agentId: learnerId,
         OR: [
           { status: "APPROVED" },
-          { status: "GRADED", grade: { gte: 70 } },
+          { status: "GRADED" },
         ],
       },
+      include: { assignment: { select: { points: true } } },
+      orderBy: [{ reviewedAt: "desc" }, { submittedAt: "desc" }],
     });
     if (!submission) return false;
+    const gradePercent = submission.grade == null
+      ? coursePassMark
+      : submission.assignment.points > 0
+        ? Math.round((Number(submission.grade) / submission.assignment.points) * 100)
+        : 0;
+    if (gradePercent < coursePassMark) return false;
+    assessmentScores.push(gradePercent);
   }
 
   if (programme.requiresFinalExam) {
     const passedExam = await prisma.examAttempt.findFirst({
       where: { agentId: learnerId, status: "PASSED", exam: { courseId } },
+      orderBy: { score: "desc" },
     });
     if (!passedExam) return false;
+    assessmentScores.push(Number(passedExam.score));
   }
 
-  return true;
+  const overallScore = assessmentScores.length
+    ? Math.round(assessmentScores.reduce((sum, score) => sum + score, 0) / assessmentScores.length)
+    : 100;
+  return overallScore >= coursePassMark;
 }
 
 export async function awardProgrammeBadge(learnerId: string, courseId: string) {

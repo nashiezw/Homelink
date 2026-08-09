@@ -4,6 +4,7 @@ import { ok, problem } from "@/lib/api/response";
 import { tryCompleteCourseCertification } from "@/lib/academy/academy-progress";
 import { isSupplementalQuestionId, supplementalQuestionsForQuizzes } from "@/lib/academy/quiz-question-bank";
 import { getMainPrisma } from "@/lib/db/main-prisma";
+import { attemptsRemaining, getCourseRetakeRules } from "@/lib/academy/assessment-retake-rules";
 
 export const dynamic = "force-dynamic";
 
@@ -33,9 +34,23 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       return problem(403, "NOT_ENROLLED", "Enrol in this course to take the final exam.");
     }
 
-    const attemptCount = await prisma.examAttempt.count({ where: { examId, agentId: userId } });
-    if (attemptCount >= exam.attemptLimit) {
+    const rules = await getCourseRetakeRules(exam.courseId);
+    const attemptLimit = rules.examAttemptLimit || exam.attemptLimit;
+    const submittedAttempts = await prisma.examAttempt.findMany({
+      where: { examId, agentId: userId, status: { in: [TrainingAttemptStatus.PASSED, TrainingAttemptStatus.FAILED] } },
+      orderBy: { submittedAt: "desc" },
+    });
+    const attemptCount = submittedAttempts.length;
+    const passedAttempt = submittedAttempts.find((attempt) => attempt.status === TrainingAttemptStatus.PASSED);
+    if (!passedAttempt && attemptCount >= attemptLimit) {
       return problem(403, "ATTEMPT_LIMIT", "You have used all available exam attempts.");
+    }
+    const lastFailedAttempt = submittedAttempts.find((attempt) => attempt.status === TrainingAttemptStatus.FAILED && attempt.submittedAt);
+    const retryAvailableAt = lastFailedAttempt?.submittedAt && rules.retakeCooldownHours > 0
+      ? new Date(lastFailedAttempt.submittedAt.getTime() + rules.retakeCooldownHours * 60 * 60 * 1000)
+      : null;
+    if (!passedAttempt && retryAvailableAt && retryAvailableAt.getTime() > Date.now()) {
+      return problem(429, "EXAM_RETAKE_COOLDOWN", `Retake available ${retryAvailableAt.toLocaleString()}. Review the course notes before trying again.`);
     }
 
     const questionIds = Object.keys(answers);
@@ -95,13 +110,24 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     if (passed) {
       await tryCompleteCourseCertification(userId, exam.courseId);
     }
+    const attemptsUsed = attemptCount + 1;
+    const remainingAttempts = attemptsRemaining(attemptLimit, attemptsUsed);
 
     return ok({
       attemptId: attempt.id,
       score,
       passed,
       passingScore: exam.passingScore,
+      attemptNumber: attemptsUsed,
+      attemptLimit,
+      attemptsUsed,
+      attemptsRemaining: remainingAttempts,
       reviewTopics: passed ? [] : Array.from(reviewTopics).slice(0, 6),
+      retakeGuidance: passed
+        ? null
+        : remainingAttempts > 0
+          ? `Review these areas before retaking. You have ${remainingAttempts} attempt${remainingAttempts === 1 ? "" : "s"} remaining.`
+          : "You have used all available attempts. Ask Academy Admin to review your options.",
     });
   } catch (error) {
     console.error("Exam submission failed", error);

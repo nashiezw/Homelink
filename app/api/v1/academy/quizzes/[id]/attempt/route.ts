@@ -5,6 +5,7 @@ import { getMainPrisma } from "@/lib/db/main-prisma";
 import { tryCompleteCourseCertification } from "@/lib/academy/academy-progress";
 import { isSupplementalQuestionId, supplementalQuestionsForQuiz } from "@/lib/academy/quiz-question-bank";
 import { getAssessmentGateState } from "@/lib/academy/academy-gates";
+import { DEFAULT_COURSE_RETAKE_RULES, attemptsRemaining, getCourseRetakeRules } from "@/lib/academy/assessment-retake-rules";
 
 export const dynamic = "force-dynamic";
 
@@ -35,17 +36,25 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       if (gate.locked) return problem(403, "CHECKPOINT_LOCKED", gate.title);
     }
 
-    const cooldownSince = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    const recentFailedAttempts = await prisma.quizAttempt.count({
-      where: {
-        quizId,
-        agentId: userId,
-        status: TrainingAttemptStatus.FAILED,
-        submittedAt: { gte: cooldownSince },
-      },
+    const rules = quiz.courseId ? await getCourseRetakeRules(quiz.courseId) : DEFAULT_COURSE_RETAKE_RULES;
+    const submittedAttempts = await prisma.quizAttempt.findMany({
+      where: { quizId, agentId: userId, status: { in: [TrainingAttemptStatus.PASSED, TrainingAttemptStatus.FAILED] } },
+      orderBy: { submittedAt: "desc" },
     });
-    if (recentFailedAttempts >= 2) {
-      return problem(429, "QUIZ_RETAKE_COOLDOWN", "You have used two attempts in the last 24 hours. Review the lesson notes and try this checkpoint again tomorrow.");
+    const passedAttempt = submittedAttempts.find((attempt) => attempt.status === TrainingAttemptStatus.PASSED);
+    const existingAttempt = attemptId
+      ? await prisma.quizAttempt.findFirst({ where: { id: attemptId, quizId, agentId: userId, status: TrainingAttemptStatus.IN_PROGRESS } })
+      : null;
+    const submittedCount = submittedAttempts.length;
+    if (!passedAttempt && submittedCount >= rules.quizAttemptLimit) {
+      return problem(403, "ATTEMPT_LIMIT", "You have used all available quiz attempts. Ask Academy Admin to review your options.");
+    }
+    const lastFailedAttempt = submittedAttempts.find((attempt) => attempt.status === TrainingAttemptStatus.FAILED && attempt.submittedAt);
+    const retryAvailableAt = lastFailedAttempt?.submittedAt && rules.retakeCooldownHours > 0
+      ? new Date(lastFailedAttempt.submittedAt.getTime() + rules.retakeCooldownHours * 60 * 60 * 1000)
+      : null;
+    if (!passedAttempt && retryAvailableAt && retryAvailableAt.getTime() > Date.now()) {
+      return problem(429, "QUIZ_RETAKE_COOLDOWN", `Retake available ${retryAvailableAt.toLocaleString()}. Review the lesson notes before trying again.`);
     }
 
     const submittedQuestionIds = Object.keys(answers);
@@ -82,12 +91,11 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       submittedAt: new Date(),
       gradedAt: new Date(),
     };
-    const existingAttempt = attemptId
-      ? await prisma.quizAttempt.findFirst({ where: { id: attemptId, quizId, agentId: userId, status: TrainingAttemptStatus.IN_PROGRESS } })
-      : null;
     const attempt = existingAttempt
       ? await prisma.quizAttempt.update({ where: { id: existingAttempt.id }, data: attemptData })
       : await prisma.quizAttempt.create({ data: attemptData });
+    const attemptsUsed = submittedCount + 1;
+    const remainingAttempts = attemptsRemaining(rules.quizAttemptLimit, attemptsUsed);
 
     await prisma.trainingNotification.create({
       data: {
@@ -108,8 +116,16 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       score,
       passed,
       passingScore: quiz.passingPercentage,
+      attemptNumber: attemptsUsed,
+      attemptLimit: rules.quizAttemptLimit,
+      attemptsUsed,
+      attemptsRemaining: remainingAttempts,
       reviewTopics: passed ? [] : Array.from(reviewTopics).slice(0, 4),
-      retakeGuidance: passed ? null : "Review these topics before retaking. The next attempt will use a fresh question and answer order.",
+      retakeGuidance: passed
+        ? null
+        : remainingAttempts > 0
+          ? `Review these topics before retaking. You have ${remainingAttempts} attempt${remainingAttempts === 1 ? "" : "s"} remaining.`
+          : "You have used all available attempts. Ask Academy Admin to review your options.",
     });
   } catch (error) {
     console.error("Quiz submission failed", error);

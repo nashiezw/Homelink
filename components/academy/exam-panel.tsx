@@ -16,16 +16,28 @@ type ExamQuestion = {
 type ExamResult = {
   score: number;
   passed: boolean;
+  passingScore?: number;
+  attemptNumber?: number;
+  attemptLimit?: number;
+  attemptsUsed?: number;
+  attemptsRemaining?: number;
   reviewTopics?: string[];
+  retakeGuidance?: string | null;
 };
 
 export function ExamPanel({
   examId,
   passingScore,
+  attemptsUsed: initialAttemptsUsed,
+  attemptLimit: initialAttemptLimit,
+  attemptsRemaining: initialAttemptsRemaining,
   onBack,
 }: {
   examId: string;
   passingScore: number;
+  attemptsUsed?: number;
+  attemptLimit?: number;
+  attemptsRemaining?: number;
   onBack: () => void;
 }) {
   const { showToast } = useApp();
@@ -36,21 +48,33 @@ export function ExamPanel({
   const [busy, setBusy] = useState(false);
   const [startedAt, setStartedAt] = useState<number | null>(null);
   const [securityEvents, setSecurityEvents] = useState<string[]>([]);
+  const [attemptMeta, setAttemptMeta] = useState({
+    attemptsUsed: initialAttemptsUsed ?? 0,
+    attemptLimit: initialAttemptLimit ?? 2,
+    attemptsRemaining: initialAttemptsRemaining ?? initialAttemptLimit ?? 2,
+    attemptNumber: (initialAttemptsUsed ?? 0) + 1,
+  });
 
   const recordSecurityEvent = useCallback((event: string) => {
     setSecurityEvents((current) => [...current, `${event}:${new Date().toISOString()}`].slice(-20));
   }, []);
 
   const load = useCallback(async () => {
-    const detail = await apiFetch<{ title: string; questions: ExamQuestion[] }>(`/api/v1/academy/exams/${examId}`);
+    const detail = await apiFetch<{ title: string; questions: ExamQuestion[]; attemptsUsed?: number; attemptLimit?: number; attemptsRemaining?: number; attemptNumber?: number }>(`/api/v1/academy/exams/${examId}`);
     if (detail.data) {
       setTitle(detail.data.title);
       setQuestions(detail.data.questions);
+      setAttemptMeta({
+        attemptsUsed: detail.data.attemptsUsed ?? initialAttemptsUsed ?? 0,
+        attemptLimit: detail.data.attemptLimit ?? initialAttemptLimit ?? 2,
+        attemptsRemaining: detail.data.attemptsRemaining ?? initialAttemptsRemaining ?? 2,
+        attemptNumber: detail.data.attemptNumber ?? (detail.data.attemptsUsed ?? 0) + 1,
+      });
       setStartedAt(Date.now());
       setSecurityEvents([]);
     }
     if (detail.error) showToast(detail.error.message, "error");
-  }, [examId, showToast]);
+  }, [examId, initialAttemptLimit, initialAttemptsRemaining, initialAttemptsUsed, showToast]);
 
   useEffect(() => {
     void load();
@@ -78,7 +102,7 @@ export function ExamPanel({
 
   async function submit() {
     setBusy(true);
-    const response = await apiFetch<{ score: number; passed: boolean }>(`/api/v1/academy/exams/${examId}/attempt`, {
+    const response = await apiFetch<ExamResult>(`/api/v1/academy/exams/${examId}/attempt`, {
       method: "POST",
       body: JSON.stringify({
         answers,
@@ -93,6 +117,12 @@ export function ExamPanel({
     }
     if (response.data) {
       setResult(response.data);
+      setAttemptMeta((current) => ({
+        attemptsUsed: response.data?.attemptsUsed ?? current.attemptsUsed,
+        attemptLimit: response.data?.attemptLimit ?? current.attemptLimit,
+        attemptsRemaining: response.data?.attemptsRemaining ?? current.attemptsRemaining,
+        attemptNumber: (response.data?.attemptNumber ?? current.attemptNumber) + 1,
+      }));
       showToast(response.data.passed ? "Congratulations! You passed the final exam." : "Exam submitted.");
     }
   }
@@ -105,7 +135,10 @@ export function ExamPanel({
         <p className="text-slate-600 mt-2">
           {result.passed
             ? "You passed the HouseLink Agent Foundations final examination."
-            : `Pass mark is ${passingScore}%. Review the course material and try again when ready.`}
+            : `Not passed yet. Pass mark is ${result.passingScore ?? passingScore}%. Review the course material and try again when ready.`}
+        </p>
+        <p className="mt-2 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+          Attempt {result.attemptNumber ?? attemptMeta.attemptsUsed} of {result.attemptLimit ?? attemptMeta.attemptLimit} / {result.attemptsRemaining ?? attemptMeta.attemptsRemaining} remaining
         </p>
         {!result.passed && !!result.reviewTopics?.length && (
           <div className="mx-auto mt-5 max-w-md rounded-xl border border-amber-200 bg-amber-50 p-4 text-left dark:border-amber-900/50 dark:bg-amber-950/20">
@@ -119,7 +152,11 @@ export function ExamPanel({
             </div>
           </div>
         )}
-        <Button className="mt-6" onClick={onBack}>Back to course</Button>
+        {result.retakeGuidance ? <p className="mx-auto mt-4 max-w-md text-sm leading-6 text-slate-600 dark:text-slate-300">{result.retakeGuidance}</p> : null}
+        <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-center">
+          {!result.passed && (result.attemptsRemaining ?? attemptMeta.attemptsRemaining) > 0 ? <Button onClick={() => { setResult(null); void load(); }}>Retake final exam</Button> : null}
+          <Button variant={result.passed ? "primary" : "secondary"} onClick={onBack}>Back to course</Button>
+        </div>
       </div>
     );
   }
@@ -130,7 +167,8 @@ export function ExamPanel({
         <GraduationCap className="size-8 text-emerald-600" />
         <div>
           <p className="font-bold text-emerald-900 dark:text-emerald-100">{title || "Final Examination"}</p>
-          <p className="text-sm text-emerald-800/80 dark:text-emerald-200/80">{questions.length} questions · {passingScore}% required to pass</p>
+          <p className="text-sm text-emerald-800/80 dark:text-emerald-200/80">{questions.length} questions / {passingScore}% required to pass / attempt {attemptMeta.attemptNumber} of {attemptMeta.attemptLimit}</p>
+          <p className="mt-1 text-xs font-semibold text-emerald-800/80 dark:text-emerald-200/80">{attemptMeta.attemptsRemaining} attempt{attemptMeta.attemptsRemaining === 1 ? "" : "s"} remaining. Course progress is kept; certification waits for a passing exam.</p>
         </div>
       </div>
       <div className={cn("rounded-xl border p-4 text-sm", securityEvents.length ? "border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-100" : "border-slate-200 bg-white text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300")}>

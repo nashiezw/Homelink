@@ -1,9 +1,11 @@
+import { TrainingAttemptStatus } from "@prisma/client";
 import { getSessionUserIdFromRequest } from "@/lib/auth/session";
 import { ok, problem } from "@/lib/api/response";
 import { getMainPrisma } from "@/lib/db/main-prisma";
 import { shuffleArray, toPublicShuffledAnswers } from "@/lib/academy/quiz-randomisation";
 import { supplementalQuestionsForQuiz } from "@/lib/academy/quiz-question-bank";
 import { getAssessmentGateState } from "@/lib/academy/academy-gates";
+import { DEFAULT_COURSE_RETAKE_RULES, attemptsRemaining, getCourseRetakeRules } from "@/lib/academy/assessment-retake-rules";
 
 export const dynamic = "force-dynamic";
 
@@ -24,6 +26,27 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
     },
   });
   if (!quiz) return problem(404, "NOT_FOUND", "Quiz not found.");
+
+  const rules = quiz.courseId ? await getCourseRetakeRules(quiz.courseId) : DEFAULT_COURSE_RETAKE_RULES;
+  const submittedAttempts = await prisma.quizAttempt.findMany({
+    where: { quizId, agentId: userId, status: { in: [TrainingAttemptStatus.PASSED, TrainingAttemptStatus.FAILED] } },
+    orderBy: { submittedAt: "desc" },
+    take: 20,
+  });
+  const attemptLimit = rules.quizAttemptLimit;
+  const remainingAttempts = attemptsRemaining(attemptLimit, submittedAttempts.length);
+  const passedAttempt = submittedAttempts.find((attempt) => attempt.status === TrainingAttemptStatus.PASSED);
+  const lastFailedAttempt = submittedAttempts.find((attempt) => attempt.status === TrainingAttemptStatus.FAILED && attempt.submittedAt);
+  const retryAvailableAt = lastFailedAttempt?.submittedAt && rules.retakeCooldownHours > 0
+    ? new Date(lastFailedAttempt.submittedAt.getTime() + rules.retakeCooldownHours * 60 * 60 * 1000)
+    : null;
+
+  if (!passedAttempt && remainingAttempts <= 0) {
+    return problem(403, "ATTEMPT_LIMIT", "You have used all available quiz attempts. Ask Academy Admin to review your options.");
+  }
+  if (!passedAttempt && retryAvailableAt && retryAvailableAt.getTime() > Date.now()) {
+    return problem(429, "RETAKE_COOLDOWN", `Retake available ${retryAvailableAt.toLocaleString()}. Review the lesson notes before trying again.`);
+  }
 
   if (quiz.courseId) {
     const enrolment = await prisma.courseEnrolment.findUnique({
@@ -61,6 +84,12 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
     attemptId: attempt.id,
     title: quiz.title,
     passingPercentage: quiz.passingPercentage,
+    attemptNumber: submittedAttempts.length + 1,
+    attemptLimit,
+    attemptsUsed: submittedAttempts.length,
+    attemptsRemaining: remainingAttempts,
+    passed: Boolean(passedAttempt),
+    bestScore: submittedAttempts.length ? Math.max(...submittedAttempts.map((attempt) => Number(attempt.score))) : null,
     poolSize: fullPool.length,
     questions: questions.map((q) => ({
       id: q.id,
