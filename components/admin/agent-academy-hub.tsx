@@ -150,7 +150,7 @@ type AcademyData = {
   }>;
   trainingSettings?: { id: string; payload: Record<string, unknown>; updatedAt: string } | null;
   auditLogs: Array<{ id: string; actorId?: string; action: string; target: string; createdAt: string }>;
-  topCourses: Array<{ id: string; title: string; completions: number; enrolments: number }>;
+  topCourses: Array<{ id: string; title: string; completions: number; enrolments: number; activeLearners?: number }>;
   mostDifficultCourse?: { title: string; average: number };
   mostFailedQuiz?: { title: string; failed: number; attempts: number };
   trainerInsights?: {
@@ -468,6 +468,13 @@ export function AgentAcademyHub() {
     );
   }
 
+  const metric = (key: string, fallback = 0) => toFiniteNumber(data.metrics?.[key], fallback);
+  const totalEnrolments = metric("totalEnrolments", metric("enrolments"));
+  const totalCertificates = metric("totalCertificates", metric("certificatesIssued"));
+  const academyRevenue = metric("academyRevenue");
+  const averageScore = metric("averageScore");
+  const videoWatchPercent = metric("videoWatchPercent");
+
   return (
     <div className="space-y-5">
       <AcademyHubNav
@@ -484,8 +491,8 @@ export function AgentAcademyHub() {
             <ExecutiveTile label="Published" value={data.metrics.publishedCourses} icon={CheckCircle2} tone="success" onClick={() => openTab("Courses")} />
             <ExecutiveTile label="Draft" value={data.metrics.draftCourses} icon={FileText} tone="warning" onClick={() => openTab("Courses")} />
             <ExecutiveTile label="Lessons" value={data.metrics.totalLessons} icon={BookOpen} onClick={() => openTab("Courses")} />
-            <ExecutiveTile label="Enrolments" value={data.metrics.totalEnrolments} icon={Users} onClick={() => openTab("Public Learners")} />
-            <ExecutiveTile label="Certificates" value={data.metrics.totalCertificates} icon={Award} onClick={() => openTab("Certificates")} />
+            <ExecutiveTile label="Enrolments" value={totalEnrolments} icon={Users} onClick={() => openTab("Public Learners")} />
+            <ExecutiveTile label="Certificates" value={totalCertificates} icon={Award} onClick={() => openTab("Certificates")} />
           </div>
           <AdminMetricGrid cols={6}>
             <ClickableStatPill label="Videos Uploaded" value={data.metrics.videosUploaded} onClick={() => openTab("Video Library")} />
@@ -495,14 +502,14 @@ export function AgentAcademyHub() {
             <ClickableStatPill label="Exams" value={data.metrics.exams} onClick={() => openTab("Courses")} />
             <ClickableStatPill label="Certificates Issued" value={data.metrics.certificatesIssued} tone="success" onClick={() => openTab("Certificates")} />
             <ClickableStatPill label="Inactive Learners" value={data.metrics.inactiveLearners} tone="warning" onClick={() => openTab("Analytics")} />
-            <ClickableStatPill label="Average Score" value={`${data.metrics.averageScore}%`} tone="info" onClick={() => openTab("Analytics")} />
+            <ClickableStatPill label="Average Score" value={`${averageScore}%`} tone="info" onClick={() => openTab("Analytics")} />
             <ClickableStatPill label="Learning Hours" value={data.metrics.learningHours} onClick={() => openTab("Analytics")} />
             <ClickableStatPill label="Downloads" value={data.metrics.downloads} onClick={() => openTab("Training Resources")} />
-            <ClickableStatPill label="Video Watch %" value={`${data.metrics.videoWatchPercent}%`} onClick={() => openTab("Analytics")} />
+            <ClickableStatPill label="Video Watch %" value={`${videoWatchPercent}%`} onClick={() => openTab("Analytics")} />
             <ClickableStatPill label="Overdue Assignments" value={data.overdueAssignments} tone={data.overdueAssignments ? "warning" : "default"} onClick={() => openTab("Analytics")} />
             <ClickableStatPill label="Public Learners" value={data.metrics.publicLearners} tone="info" onClick={() => openTab("Public Learners")} />
             <ClickableStatPill label="Pending Public Approvals" value={data.metrics.pendingPublicApprovals} tone={data.metrics.pendingPublicApprovals ? "warning" : "success"} onClick={() => openTab("Public Learners")} />
-            <ClickableStatPill label="Academy Revenue" value={`$${data.metrics.academyRevenue}`} tone="success" onClick={() => openTab("Analytics")} />
+            <ClickableStatPill label="Academy Revenue" value={`$${academyRevenue}`} tone="success" onClick={() => openTab("Analytics")} />
           </AdminMetricGrid>
 
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -510,8 +517,8 @@ export function AgentAcademyHub() {
             <section className="rounded-xl border border-white/10 bg-slate-900/60 p-5">
               <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-400">Risk Radar</h3>
               <div className="mt-4 space-y-4">
-                <RiskLine label="Most difficult course" value={data.mostDifficultCourse?.title ?? "No scored courses yet"} helper={`${Math.round(data.mostDifficultCourse?.average ?? 0)}% average`} />
-                <RiskLine label="Most failed quiz" value={data.mostFailedQuiz?.title ?? "No failed quizzes yet"} helper={`${data.mostFailedQuiz?.failed ?? 0} failed attempts`} />
+                <RiskLine label="Most difficult course" value={data.mostDifficultCourse?.title ?? "No scored courses yet"} helper={data.mostDifficultCourse ? `${Math.round(data.mostDifficultCourse.average)}% average` : "Waiting for scored learner progress"} />
+                <RiskLine label="Most failed quiz" value={data.mostFailedQuiz?.title ?? "No failed quizzes yet"} helper={data.mostFailedQuiz ? `${data.mostFailedQuiz.failed} failed attempts` : "Waiting for failed attempts"} />
                 <RiskLine label="Agents needing attention" value={String(data.agentsNeedingAttention.length)} helper="Low progress or stalled learning" />
               </div>
             </section>
@@ -520,16 +527,16 @@ export function AgentAcademyHub() {
           <div className="space-y-5">
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <ActivityPanel title="Recent Applications" icon={Users}>
-                {data.publicLearnerApplications.slice(0, 5).map((item) => <MetricRow key={item.id} label={item.fullName} value={item.course.title} />)}
+                {data.publicLearnerApplications.length ? data.publicLearnerApplications.slice(0, 5).map((item) => <MetricRow key={item.id} label={item.fullName} value={item.course.title} />) : <EmptyPanelText>No learner applications yet.</EmptyPanelText>}
               </ActivityPanel>
               <ActivityPanel title="Recent Certificates" icon={Award}>
-                {data.certificates.slice(0, 5).map((item) => <MetricRow key={item.id} label={item.certificateNumber} value={item.agentId} />)}
+                {data.certificates.length ? data.certificates.slice(0, 5).map((item) => <MetricRow key={item.id} label={item.certificateNumber} value={item.agentId} />) : <EmptyPanelText>No certificate records yet.</EmptyPanelText>}
               </ActivityPanel>
               <ActivityPanel title="Top Courses" icon={BookOpen}>
-                {data.topCourses.map((item) => <MetricRow key={item.id} label={item.title} value={`${item.completions} completions`} />)}
+                {data.topCourses.length ? data.topCourses.map((item) => <MetricRow key={item.id} label={item.title} value={item.completions > 0 ? `${item.completions} completions` : `${item.enrolments} enrolled`} />) : <EmptyPanelText>No course activity yet.</EmptyPanelText>}
               </ActivityPanel>
               <ActivityPanel title="Pending Applications" icon={FileText}>
-                {data.publicLearnerApplications.filter((a) => a.status === "PENDING").slice(0, 5).map((item) => <MetricRow key={item.id} label={item.fullName} value={item.course.title} />)}
+                {data.publicLearnerApplications.filter((a) => a.status === "PENDING").length ? data.publicLearnerApplications.filter((a) => a.status === "PENDING").slice(0, 5).map((item) => <MetricRow key={item.id} label={item.fullName} value={item.course.title} />) : <EmptyPanelText>No pending applications.</EmptyPanelText>}
               </ActivityPanel>
             </div>
           </div>
@@ -793,14 +800,14 @@ export function AgentAcademyHub() {
                 <div className="rounded-lg bg-emerald-500/10 border border-emerald-500/20 p-3">
                   <p className="text-xs font-semibold text-emerald-300 uppercase tracking-wider mb-2">Current Period (Last 30 days)</p>
                   <MetricRow label="Enrollments" value={String((comparativeAnalytics as any).currentPeriod?.totalEnrollments ?? 0)} />
-                  <MetricRow label="Completion rate" value={`${((comparativeAnalytics as any).currentPeriod?.completionRate ?? 0).toFixed(1)}%`} />
-                  <MetricRow label="Average score" value={`${((comparativeAnalytics as any).currentPeriod?.averageScore ?? 0).toFixed(1)}%`} />
+                  <MetricRow label="Completion rate" value={`${toFiniteNumber((comparativeAnalytics as any).currentPeriod?.completionRate).toFixed(1)}%`} />
+                  <MetricRow label="Average score" value={`${toFiniteNumber((comparativeAnalytics as any).currentPeriod?.averageScore).toFixed(1)}%`} />
                 </div>
                 <div className="rounded-lg bg-slate-500/10 border border-slate-500/20 p-3">
                   <p className="text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Previous Period (30 days prior)</p>
                   <MetricRow label="Enrollments" value={String((comparativeAnalytics as any).previousPeriod?.totalEnrollments ?? 0)} />
-                  <MetricRow label="Completion rate" value={`${((comparativeAnalytics as any).previousPeriod?.completionRate ?? 0).toFixed(1)}%`} />
-                  <MetricRow label="Average score" value={`${((comparativeAnalytics as any).previousPeriod?.averageScore ?? 0).toFixed(1)}%`} />
+                  <MetricRow label="Completion rate" value={`${toFiniteNumber((comparativeAnalytics as any).previousPeriod?.completionRate).toFixed(1)}%`} />
+                  <MetricRow label="Average score" value={`${toFiniteNumber((comparativeAnalytics as any).previousPeriod?.averageScore).toFixed(1)}%`} />
                 </div>
                 <div className="rounded-lg bg-blue-500/10 border border-blue-500/20 p-3">
                   <p className="text-xs font-semibold text-blue-300 uppercase tracking-wider mb-2">Trend Analysis</p>
@@ -867,17 +874,21 @@ export function AgentAcademyHub() {
               <div className="space-y-3">
                 <p className="text-sm text-slate-400">AI-powered predictions for learner completion based on progress, activity, and performance.</p>
                 <div className="grid gap-2">
-                  {((predictiveAnalytics as any).predictions as Array<{ studentId: string; predictedCompletionProbability: number; estimatedCompletionDate: Date | null; riskFactors: string[]; recommendations: string[] }>).map((prediction, i) => (
+                  {(Array.isArray((predictiveAnalytics as any).predictions) ? ((predictiveAnalytics as any).predictions as Array<{ studentId: string; predictedCompletionProbability: number; estimatedCompletionDate: Date | null; riskFactors: string[]; recommendations: string[] }>) : []).map((prediction, i) => {
+                    const completionProbability = toFiniteNumber(prediction.predictedCompletionProbability);
+                    const riskFactors = Array.isArray(prediction.riskFactors) ? prediction.riskFactors : [];
+                    const recommendations = Array.isArray(prediction.recommendations) ? prediction.recommendations : [];
+                    return (
                     <div key={i} className="rounded-lg border border-white/10 bg-slate-900/60 p-3">
                       <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm font-semibold text-white">Student {prediction.studentId.slice(0, 8)}...</span>
+                        <span className="text-sm font-semibold text-white">Student {String(prediction.studentId ?? "unknown").slice(0, 8)}...</span>
                         <span className={cn(
                           "text-xs font-semibold px-2 py-1 rounded-full",
-                          prediction.predictedCompletionProbability >= 80 ? "bg-emerald-500/20 text-emerald-300" :
-                          prediction.predictedCompletionProbability >= 50 ? "bg-amber-500/20 text-amber-300" :
+                          completionProbability >= 80 ? "bg-emerald-500/20 text-emerald-300" :
+                          completionProbability >= 50 ? "bg-amber-500/20 text-amber-300" :
                           "bg-red-500/20 text-red-300"
                         )}>
-                          {prediction.predictedCompletionProbability.toFixed(0)}% likely to complete
+                          {completionProbability.toFixed(0)}% likely to complete
                         </span>
                       </div>
                       {prediction.estimatedCompletionDate && (
@@ -885,28 +896,29 @@ export function AgentAcademyHub() {
                           Est. completion: {new Date(prediction.estimatedCompletionDate).toLocaleDateString()}
                         </p>
                       )}
-                      {prediction.riskFactors.length > 0 && (
+                      {riskFactors.length > 0 && (
                         <div className="mb-2">
                           <p className="text-xs font-semibold text-red-300 mb-1">Risk Factors:</p>
                           <ul className="space-y-1">
-                            {prediction.riskFactors.map((factor, fi) => (
+                            {riskFactors.map((factor, fi) => (
                               <li key={fi} className="text-xs text-slate-400">• {factor}</li>
                             ))}
                           </ul>
                         </div>
                       )}
-                      {prediction.recommendations.length > 0 && (
+                      {recommendations.length > 0 && (
                         <div>
                           <p className="text-xs font-semibold text-blue-300 mb-1">Recommendations:</p>
                           <ul className="space-y-1">
-                            {prediction.recommendations.map((rec, ri) => (
+                            {recommendations.map((rec, ri) => (
                               <li key={ri} className="text-xs text-slate-400">• {rec}</li>
                             ))}
                           </ul>
                         </div>
                       )}
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             </ActivityPanel>
@@ -999,6 +1011,11 @@ function ExecutiveTile({
   );
 }
 
+function toFiniteNumber(value: unknown, fallback = 0) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : fallback;
+}
+
 function ClickableStatPill({
   label,
   value,
@@ -1017,6 +1034,10 @@ function ClickableStatPill({
   );
 }
 
+function EmptyPanelText({ children }: { children: React.ReactNode }) {
+  return <p className="rounded-lg border border-dashed border-white/10 bg-slate-950/35 p-3 text-sm text-slate-400">{children}</p>;
+}
+
 function RiskLine({ label, value, helper }: { label: string; value: string; helper: string }) {
   return (
     <div>
@@ -1028,7 +1049,11 @@ function RiskLine({ label, value, helper }: { label: string; value: string; help
 }
 
 function TopCoursesPanel({ courses }: { courses: AcademyData["topCourses"] }) {
-  const hasCompletions = courses.some((course) => course.completions > 0);
+  const chartRows = courses.map((course) => ({
+    label: course.title.slice(0, 24),
+    value: course.completions > 0 ? course.completions : Math.max(course.enrolments, course.activeLearners ?? 0),
+  }));
+  const hasActivity = chartRows.some((course) => course.value > 0);
   return (
     <section className="rounded-2xl border border-white/10 bg-slate-900/60 p-5 xl:col-span-2">
       <div className="mb-5 flex items-start justify-between gap-3">
@@ -1040,8 +1065,8 @@ function TopCoursesPanel({ courses }: { courses: AcademyData["topCourses"] }) {
           <BarChart3 className="size-4" />
         </span>
       </div>
-      {hasCompletions ? (
-        <BarChart data={courses.map((course) => ({ label: course.title.slice(0, 24), value: course.completions }))} color="bg-emerald-500" />
+      {hasActivity ? (
+        <BarChart data={chartRows} color="bg-emerald-500" />
       ) : (
         <div className="grid gap-3">
           {courses.map((course, index) => (

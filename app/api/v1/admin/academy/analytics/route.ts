@@ -296,10 +296,11 @@ export async function GET(request: Request) {
           where: { id: pc.courseId },
           select: { title: true }
         });
+        const enrolmentCount = typeof pc._count === "number" ? pc._count : Number(pc._count?._all ?? pc._count?.courseId ?? 0);
         return {
           courseId: pc.courseId,
           courseTitle: course?.title || pc.courseId,
-          _count: Number(pc._count)
+          _count: enrolmentCount
         };
       })
     );
@@ -310,8 +311,8 @@ export async function GET(request: Request) {
       title: cr.title,
       enrolled: Number(cr.enrolled),
       completed: Number(cr.completed),
-      avg_progress: cr.avg_progress,
-      completion_rate: cr.completion_rate
+      avg_progress: Number(cr.avg_progress ?? 0),
+      completion_rate: Number(cr.completion_rate ?? 0)
     }));
     
     // Convert BigInt values in daily activity (COUNT(*) returns BigInt)

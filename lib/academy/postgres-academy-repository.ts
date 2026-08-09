@@ -187,9 +187,13 @@ export async function getAcademyDashboard(options: { compact?: boolean } = {}) {
       failed: quiz.attempts.filter((attempt) => attempt.status === TrainingAttemptStatus.FAILED).length,
       attempts: quiz.attempts.length,
     }))
+    .filter((quiz) => quiz.attempts > 0 && quiz.failed > 0)
     .sort((a, b) => b.failed - a.failed)[0];
   const trainerInsights = buildTrainerInsights({ quizzes, quizAttempts, examAttempts, assignmentSubmissions });
   const learnerProfiles = buildLearnerProfiles({ enrolments, courseProgress, quizAttempts, examAttempts, assignmentSubmissions, certificates });
+  const courseIdByLessonId = new Map(
+    lessonRows.map((lesson: any) => [lesson.id, lesson.section?.module?.course?.id ?? lesson.section?.module?.courseId ?? null]),
+  );
   const [certifiedActiveListings, certifiedClosedListings] = await Promise.all([
     certifiedAgentIds.length
       ? prisma.listing.count({ where: { ownerId: { in: certifiedAgentIds }, status: ListingStatus.ACTIVE } })
@@ -211,7 +215,10 @@ export async function getAcademyDashboard(options: { compact?: boolean } = {}) {
       quizzes: quizzes.length,
       assignments: assignments.length,
       exams: exams.length,
+      totalEnrolments: enrolments.filter((entry) => entry.status === "ACTIVE").length,
+      totalCertificates: certificates.length,
       certificatesIssued: certificates.length,
+      activeCertificates: certificates.filter((certificate) => certificate.status === "ACTIVE").length,
       activeLearners: activeLearners.size,
       inactiveLearners: Math.max(0, enrolledLearners.size - activeLearners.size),
       averageScore: scoredAttempts.length ? Math.round(scoredAttempts.reduce((sum, attempt) => sum + Number(attempt.score), 0) / scoredAttempts.length) : 0,
@@ -312,16 +319,29 @@ export async function getAcademyDashboard(options: { compact?: boolean } = {}) {
         id: course.id,
         title: course.title,
         completions: courseProgress.filter((entry) => entry.courseId === course.id && entry.status === "COMPLETED").length,
-        enrolments: enrolments.filter((entry) => entry.courseId === course.id).length,
+        enrolments: enrolments.filter((entry) => entry.courseId === course.id && entry.status === "ACTIVE").length,
+        activeLearners: new Set([
+          ...courseProgress.filter((entry) => entry.courseId === course.id && daysAgo(entry.updatedAt) <= 30).map((entry) => entry.agentId),
+          ...lessonProgress
+            .filter((entry) => courseIdByLessonId.get(entry.lessonId) === course.id && daysAgo(entry.lastViewedAt) <= 30)
+            .map((entry) => entry.agentId),
+        ]).size,
       }))
-      .sort((a, b) => b.completions - a.completions)
+      .sort((a, b) => b.completions - a.completions || b.enrolments - a.enrolments || b.activeLearners - a.activeLearners)
       .slice(0, 5),
     mostDifficultCourse: courses
-      .map((course) => ({
-        id: course.id,
-        title: course.title,
-        average: average(courseProgress.filter((entry) => entry.courseId === course.id).map((entry) => Number(entry.averageScore))),
-      }))
+      .map((course) => {
+        const scoredProgress = courseProgress
+          .filter((entry) => entry.courseId === course.id && Number(entry.averageScore) > 0)
+          .map((entry) => Number(entry.averageScore));
+        return {
+          id: course.id,
+          title: course.title,
+          average: average(scoredProgress),
+          scoredLearners: scoredProgress.length,
+        };
+      })
+      .filter((course) => course.scoredLearners > 0)
       .sort((a, b) => a.average - b.average)[0],
     mostFailedQuiz: failedQuiz,
     trainerInsights,

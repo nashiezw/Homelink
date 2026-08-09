@@ -209,6 +209,11 @@ function normalizeAtRiskStudents(students: RawAtRiskStudent[] = []) {
   return students.map(normalizeAtRiskStudent);
 }
 
+function toFiniteNumber(value: unknown, fallback = 0) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : fallback;
+}
+
 export function StudentAnalyticsDashboard() {
   const [view, setView] = useState<"overview" | "student" | "student-quiz" | "at-risk">("overview");
   const [loading, setLoading] = useState(true);
@@ -342,10 +347,11 @@ export function StudentAnalyticsDashboard() {
     }
   };
 
-  const filteredAtRiskStudents = atRiskStudents.filter(student =>
-    student.studentName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    student.studentEmail.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    student.courseTitle.toLowerCase().includes(searchQuery.toLowerCase())
+  const normalizedSearchQuery = searchQuery.toLowerCase();
+  const filteredAtRiskStudents = atRiskStudents.filter((student) =>
+    String(student.studentName ?? "").toLowerCase().includes(normalizedSearchQuery) ||
+    String(student.studentEmail ?? "").toLowerCase().includes(normalizedSearchQuery) ||
+    String(student.courseTitle ?? "").toLowerCase().includes(normalizedSearchQuery)
   );
 
   if (loading) {
@@ -660,17 +666,17 @@ function StudentQuizDetailView({ analytics }: { analytics: StudentQuizAnalytics 
 
       {/* Overall Statistics */}
       <div className="grid gap-4 md:grid-cols-4">
-        <AdminStatPill label="Quizzes Attempted" value={String(analytics.overallStats.totalQuizzesAttempted)} />
-        <AdminStatPill label="Avg Quiz Score" value={`${analytics.overallStats.averageQuizScore.toFixed(1)}%`} />
-        <AdminStatPill label="Quiz Pass Rate" value={`${analytics.overallStats.quizPassRate.toFixed(1)}%`} />
-        <AdminStatPill label="Exams Attempted" value={String(analytics.overallStats.totalExamsAttempted)} />
+        <AdminStatPill label="Quizzes Attempted" value={String(toFiniteNumber(analytics.overallStats.totalQuizzesAttempted))} />
+        <AdminStatPill label="Avg Quiz Score" value={`${toFiniteNumber(analytics.overallStats.averageQuizScore).toFixed(1)}%`} />
+        <AdminStatPill label="Quiz Pass Rate" value={`${toFiniteNumber(analytics.overallStats.quizPassRate).toFixed(1)}%`} />
+        <AdminStatPill label="Exams Attempted" value={String(toFiniteNumber(analytics.overallStats.totalExamsAttempted))} />
       </div>
 
       <div className="grid gap-4 md:grid-cols-4">
-        <AdminStatPill label="Avg Exam Score" value={`${analytics.overallStats.averageExamScore.toFixed(1)}%`} />
-        <AdminStatPill label="Exam Pass Rate" value={`${analytics.overallStats.examPassRate.toFixed(1)}%`} />
-        <AdminStatPill label="Assignments" value={String(analytics.overallStats.totalAssignmentsSubmitted)} />
-        <AdminStatPill label="Avg Grade" value={`${analytics.overallStats.averageAssignmentGrade.toFixed(1)}%`} />
+        <AdminStatPill label="Avg Exam Score" value={`${toFiniteNumber(analytics.overallStats.averageExamScore).toFixed(1)}%`} />
+        <AdminStatPill label="Exam Pass Rate" value={`${toFiniteNumber(analytics.overallStats.examPassRate).toFixed(1)}%`} />
+        <AdminStatPill label="Assignments" value={String(toFiniteNumber(analytics.overallStats.totalAssignmentsSubmitted))} />
+        <AdminStatPill label="Avg Grade" value={`${toFiniteNumber(analytics.overallStats.averageAssignmentGrade).toFixed(1)}%`} />
       </div>
 
       {/* Quiz Attempts */}
