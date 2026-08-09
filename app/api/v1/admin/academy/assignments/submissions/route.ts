@@ -20,7 +20,11 @@ export async function GET(request: Request) {
     }
     if (courseId) {
       where.assignment = {
-        courseId,
+        OR: [
+          { courseId },
+          { module: { courseId } },
+          { lesson: { section: { module: { courseId } } } },
+        ],
       };
     }
 
@@ -37,6 +41,12 @@ export async function GET(request: Request) {
             lesson: {
               select: {
                 title: true,
+                section: { select: { module: { select: { course: { select: { title: true } } } } } },
+              },
+            },
+            module: {
+              select: {
+                course: { select: { title: true } },
               },
             },
           },
@@ -52,7 +62,11 @@ export async function GET(request: Request) {
           where: { id: submission.agentId },
           select: { name: true, email: true },
         });
-        return { ...submission, agent };
+        const resolvedCourse = submission.assignment.course
+          ?? submission.assignment.module?.course
+          ?? submission.assignment.lesson?.section.module.course
+          ?? null;
+        return { ...submission, assignment: { ...submission.assignment, course: resolvedCourse }, agent };
       })
     );
 

@@ -17,19 +17,35 @@ export async function PATCH(
   const body = await request.json();
   const { status, grade, reviewerNote } = body;
 
-  if (!status || !["APPROVED", "REJECTED"].includes(status)) {
-    return problem(400, "INVALID_STATUS", "Status must be APPROVED or REJECTED");
+  const allowedStatuses = ["APPROVED", "REJECTED", "GRADED", "RESUBMISSION_REQUESTED"];
+  if (!status || !allowedStatuses.includes(status)) {
+    return problem(400, "INVALID_STATUS", "Status must be APPROVED, REJECTED, GRADED, or RESUBMISSION_REQUESTED");
   }
 
   const prisma = getMainPrisma();
   const actorId = getSessionUserIdFromRequest(request);
 
   try {
+    const existing = await prisma.assignmentSubmission.findUnique({
+      where: { id },
+      select: {
+        status: true,
+        reviewedAt: true,
+        assignment: { select: { points: true } },
+      },
+    });
+    if (!existing) return problem(404, "NOT_FOUND", "Assignment submission not found");
+
+    const numericGrade = status === "APPROVED" || status === "GRADED" ? Number(grade) : null;
+    if ((status === "APPROVED" || status === "GRADED") && (numericGrade === null || !Number.isFinite(numericGrade) || numericGrade < 0 || numericGrade > existing.assignment.points)) {
+      return problem(400, "INVALID_GRADE", `Grade must be between 0 and ${existing.assignment.points}`);
+    }
+
     const submission = await prisma.assignmentSubmission.update({
       where: { id },
       data: {
         status,
-        grade: grade !== undefined ? parseFloat(grade) : null,
+        grade: numericGrade,
         reviewerNote: reviewerNote || null,
         reviewedAt: new Date(),
       },
@@ -55,8 +71,8 @@ export async function PATCH(
         userId: submission.agentId,
         eventType: "ASSIGNMENT_REVIEWED",
         channel: "IN_APP",
-        subject: `Assignment ${status.toLowerCase()}`,
-        body: `Your submission for ${submission.assignment.title} has been ${status.toLowerCase()}. ${grade ? `Grade: ${grade}` : ""}`,
+        subject: existing.reviewedAt ? "Assignment review updated" : `Assignment ${status.toLowerCase().replace(/_/g, " ")}`,
+        body: `Your submission for ${submission.assignment.title} has been ${status.toLowerCase().replace(/_/g, " ")}. ${numericGrade !== null ? `Grade: ${numericGrade}` : ""}`,
       },
     });
 
@@ -64,12 +80,14 @@ export async function PATCH(
     await prisma.auditEvent.create({
       data: {
         actorId,
-        action: `ASSIGNMENT_${status}`,
+        action: existing.reviewedAt ? "ASSIGNMENT_REMARKED" : `ASSIGNMENT_${status}`,
         target: `AssignmentSubmission:${id}`,
         metadata: {
           assignmentId: submission.assignmentId,
           agentId: submission.agentId,
-          grade,
+          previousStatus: existing.status,
+          newStatus: status,
+          grade: numericGrade,
           reviewerNote,
         } as any,
       },
@@ -79,7 +97,7 @@ export async function PATCH(
       ?? submission.assignment.module?.courseId
       ?? submission.assignment.lesson?.section.module.courseId
       ?? null;
-    if (status === "APPROVED" && courseId) {
+    if ((status === "APPROVED" || status === "GRADED") && courseId) {
       await tryCompleteCourseCertification(submission.agentId, courseId);
     }
 

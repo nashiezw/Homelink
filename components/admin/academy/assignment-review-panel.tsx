@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { CheckCircle, ClipboardCheck, Eye, FileText, Loader2, XCircle } from "lucide-react";
+import { CheckCircle, ClipboardCheck, Eye, FileText, Loader2, RotateCcw, Save, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api/client";
 import { useApp } from "@/components/providers/app-provider";
@@ -41,7 +41,7 @@ type AssignmentSubmission = {
   };
 };
 
-type ReviewDecision = "APPROVED" | "REJECTED";
+type ReviewDecision = "APPROVED" | "REJECTED" | "GRADED" | "RESUBMISSION_REQUESTED";
 
 export function AssignmentReviewPanel() {
   const { showToast } = useApp();
@@ -94,7 +94,7 @@ export function AssignmentReviewPanel() {
 
   function requestDecision(status: ReviewDecision) {
     if (!selectedSubmission) return;
-    if (status === "APPROVED") {
+    if (status === "APPROVED" || status === "GRADED") {
       const numericGrade = Number(grade);
       if (!Number.isFinite(numericGrade) || numericGrade < 0 || numericGrade > selectedSubmission.assignment.points) {
         showToast(`Enter a grade between 0 and ${selectedSubmission.assignment.points}.`, "error");
@@ -111,12 +111,12 @@ export function AssignmentReviewPanel() {
       method: "PATCH",
       body: JSON.stringify({
         status: pendingDecision,
-        grade: pendingDecision === "APPROVED" ? Number(grade) : null,
+        grade: pendingDecision === "APPROVED" || pendingDecision === "GRADED" ? Number(grade) : null,
         reviewerNote: reviewerNote.trim() || null,
       }),
     });
     if (result.data) {
-      showToast(pendingDecision === "APPROVED" ? "Assignment approved and graded." : "Assignment rejected with feedback.");
+      showToast(reviewSuccessMessage(pendingDecision));
       setSelectedSubmission(null);
       setPendingDecision(null);
       setGrade("");
@@ -160,6 +160,8 @@ export function AssignmentReviewPanel() {
           options={[
             { value: "SUBMITTED", label: "Pending Review" },
             { value: "APPROVED", label: "Approved" },
+            { value: "GRADED", label: "Graded" },
+            { value: "RESUBMISSION_REQUESTED", label: "Resubmission Requested" },
             { value: "REJECTED", label: "Rejected" },
             { value: "", label: "All Statuses" },
           ]}
@@ -269,45 +271,45 @@ export function AssignmentReviewPanel() {
             </section>
 
             {selectedSubmission.status === "SUBMITTED" ? (
-              <section className="space-y-3 rounded-xl border border-white/10 bg-slate-900/60 p-4">
-                <label className="block">
-                  <span className="mb-1 block text-sm text-slate-300">Grade out of {selectedSubmission.assignment.points}</span>
-                  <input
-                    type="number"
-                    value={grade}
-                    onChange={(event) => setGrade(event.target.value)}
-                    min={0}
-                    max={selectedSubmission.assignment.points}
-                    className="w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-white focus:border-emerald-500/40 focus:outline-none"
-                    placeholder="Enter grade"
-                  />
-                </label>
-                <label className="block">
-                  <span className="mb-1 block text-sm text-slate-300">Reviewer Note</span>
-                  <textarea
-                    value={reviewerNote}
-                    onChange={(event) => setReviewerNote(event.target.value)}
-                    rows={4}
-                    className="w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-white focus:border-emerald-500/40 focus:outline-none"
-                    placeholder="Add feedback for the learner..."
-                  />
-                </label>
-                <div className="grid gap-2 sm:grid-cols-2">
-                  <Button onClick={() => requestDecision("APPROVED")} disabled={grading}>
-                    <CheckCircle className="mr-2 size-4" />
-                    Approve
-                  </Button>
-                  <Button variant="secondary" onClick={() => requestDecision("REJECTED")} disabled={grading}>
-                    <XCircle className="mr-2 size-4" />
-                    Reject
-                  </Button>
-                </div>
-              </section>
+              <ReviewEditor
+                submission={selectedSubmission}
+                grade={grade}
+                reviewerNote={reviewerNote}
+                grading={grading}
+                onGradeChange={setGrade}
+                onReviewerNoteChange={setReviewerNote}
+                onDecision={requestDecision}
+              />
             ) : (
-              <section className="rounded-xl border border-white/10 bg-slate-900/60 p-4">
-                <SubmissionStatus status={selectedSubmission.status} />
-                <p className="mt-3 text-sm text-slate-300">Grade: {selectedSubmission.grade == null ? "Not graded" : `${selectedSubmission.grade}/${selectedSubmission.assignment.points}`}</p>
-                {selectedSubmission.reviewerNote && <p className="mt-2 whitespace-pre-wrap text-sm text-slate-400">{selectedSubmission.reviewerNote}</p>}
+              <section className="space-y-4 rounded-xl border border-white/10 bg-slate-900/60 p-4">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <SubmissionStatus status={selectedSubmission.status} />
+                    <p className="mt-3 text-sm text-slate-300">Grade: {selectedSubmission.grade == null ? "Not graded" : `${selectedSubmission.grade}/${selectedSubmission.assignment.points}`}</p>
+                    {selectedSubmission.reviewerNote && <p className="mt-2 whitespace-pre-wrap text-sm text-slate-400">{selectedSubmission.reviewerNote}</p>}
+                  </div>
+                  {selectedSubmission.reviewedAt && (
+                    <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                      Reviewed {new Date(selectedSubmission.reviewedAt).toLocaleDateString()}
+                    </p>
+                  )}
+                </div>
+                <div className="border-t border-white/10 pt-4">
+                  <p className="text-sm font-semibold text-white">Re-mark assignment</p>
+                  <p className="mt-1 text-xs leading-5 text-slate-400">
+                    Update the mark, change the outcome, or request another submission. The learner is notified and the audit trail is updated.
+                  </p>
+                </div>
+                <ReviewEditor
+                  submission={selectedSubmission}
+                  grade={grade}
+                  reviewerNote={reviewerNote}
+                  grading={grading}
+                  remark
+                  onGradeChange={setGrade}
+                  onReviewerNoteChange={setReviewerNote}
+                  onDecision={requestDecision}
+                />
               </section>
             )}
           </div>
@@ -317,13 +319,9 @@ export function AssignmentReviewPanel() {
       <AdminConfirmDialog
         open={Boolean(pendingDecision)}
         danger={pendingDecision === "REJECTED"}
-        title={pendingDecision === "APPROVED" ? "Approve Assignment" : "Reject Assignment"}
-        description={
-          pendingDecision === "APPROVED"
-            ? "This will save the grade, notify the learner, and write an audit event."
-            : "This will reject the submission, notify the learner, and write an audit event."
-        }
-        confirmLabel={pendingDecision === "APPROVED" ? "Approve" : "Reject"}
+        title={reviewDialogTitle(pendingDecision)}
+        description={reviewDialogDescription(pendingDecision)}
+        confirmLabel={reviewDialogConfirmLabel(pendingDecision)}
         onCancel={() => setPendingDecision(null)}
         onConfirm={submitDecision}
       />
@@ -331,11 +329,104 @@ export function AssignmentReviewPanel() {
   );
 }
 
+function ReviewEditor({
+  submission,
+  grade,
+  reviewerNote,
+  grading,
+  remark = false,
+  onGradeChange,
+  onReviewerNoteChange,
+  onDecision,
+}: {
+  submission: AssignmentSubmission;
+  grade: string;
+  reviewerNote: string;
+  grading: boolean;
+  remark?: boolean;
+  onGradeChange: (value: string) => void;
+  onReviewerNoteChange: (value: string) => void;
+  onDecision: (status: ReviewDecision) => void;
+}) {
+  return (
+    <section className={remark ? "space-y-3" : "space-y-3 rounded-xl border border-white/10 bg-slate-900/60 p-4"}>
+      <label className="block">
+        <span className="mb-1 block text-sm text-slate-300">Grade out of {submission.assignment.points}</span>
+        <input
+          type="number"
+          value={grade}
+          onChange={(event) => onGradeChange(event.target.value)}
+          min={0}
+          max={submission.assignment.points}
+          className="w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-white focus:border-emerald-500/40 focus:outline-none"
+          placeholder="Enter grade"
+        />
+      </label>
+      <label className="block">
+        <span className="mb-1 block text-sm text-slate-300">Reviewer Note</span>
+        <textarea
+          value={reviewerNote}
+          onChange={(event) => onReviewerNoteChange(event.target.value)}
+          rows={4}
+          className="w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-white focus:border-emerald-500/40 focus:outline-none"
+          placeholder="Add feedback for the learner..."
+        />
+      </label>
+      <div className="grid gap-2 sm:grid-cols-2">
+        <Button onClick={() => onDecision("APPROVED")} disabled={grading}>
+          <CheckCircle className="mr-2 size-4" />
+          {remark ? "Approve Again" : "Approve"}
+        </Button>
+        <Button variant="secondary" onClick={() => onDecision("GRADED")} disabled={grading}>
+          <Save className="mr-2 size-4" />
+          Save Mark
+        </Button>
+        <Button variant="secondary" onClick={() => onDecision("RESUBMISSION_REQUESTED")} disabled={grading}>
+          <RotateCcw className="mr-2 size-4" />
+          Resubmit
+        </Button>
+        <Button variant="secondary" onClick={() => onDecision("REJECTED")} disabled={grading}>
+          <XCircle className="mr-2 size-4" />
+          Reject
+        </Button>
+      </div>
+    </section>
+  );
+}
+
+function reviewDialogTitle(decision: ReviewDecision | null) {
+  if (decision === "APPROVED") return "Approve Assignment";
+  if (decision === "GRADED") return "Save Updated Mark";
+  if (decision === "RESUBMISSION_REQUESTED") return "Request Resubmission";
+  return "Reject Assignment";
+}
+
+function reviewDialogDescription(decision: ReviewDecision | null) {
+  if (decision === "APPROVED") return "This will save the grade, notify the learner, re-check certificate eligibility, and write an audit event.";
+  if (decision === "GRADED") return "This will update the mark and feedback, notify the learner, re-check certificate eligibility, and write an audit event.";
+  if (decision === "RESUBMISSION_REQUESTED") return "This will ask the learner to submit the assignment again and write an audit event.";
+  return "This will reject the submission, notify the learner, and write an audit event.";
+}
+
+function reviewDialogConfirmLabel(decision: ReviewDecision | null) {
+  if (decision === "APPROVED") return "Approve";
+  if (decision === "GRADED") return "Save Mark";
+  if (decision === "RESUBMISSION_REQUESTED") return "Request Resubmission";
+  return "Reject";
+}
+
+function reviewSuccessMessage(decision: ReviewDecision) {
+  if (decision === "APPROVED") return "Assignment approved and graded.";
+  if (decision === "GRADED") return "Assignment mark updated.";
+  if (decision === "RESUBMISSION_REQUESTED") return "Resubmission requested.";
+  return "Assignment rejected with feedback.";
+}
+
 function SubmissionStatus({ status }: { status: string }) {
   return (
     <AdminStatusBadge
       status={status}
-      variant={status === "APPROVED" ? "success" : status === "REJECTED" ? "danger" : "warning"}
+      variant={status === "APPROVED" || status === "GRADED" ? "success" : status === "REJECTED" ? "danger" : "warning"}
     />
   );
 }
