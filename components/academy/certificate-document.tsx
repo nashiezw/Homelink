@@ -192,6 +192,9 @@ export function CertificateDocument({
               <filter id="soft-shadow" x="-20%" y="-20%" width="140%" height="140%">
                 <feDropShadow dx="0" dy="12" stdDeviation="12" floodColor="#061936" floodOpacity="0.18" />
               </filter>
+              <filter id="logo-plaque-shadow" x="-20%" y="-30%" width="140%" height="160%">
+                <feDropShadow dx="0" dy="8" stdDeviation="8" floodColor="#061936" floodOpacity="0.12" />
+              </filter>
               <path id="embossed-seal-top-arc" d="M105 590 A80 80 0 0 0 265 590" />
               <path id="embossed-seal-bottom-arc" d="M105 590 A80 80 0 0 1 265 590" />
               <path id="center-seal-top-arc" d="M668 834 A32 32 0 0 0 732 834" />
@@ -210,7 +213,11 @@ export function CertificateDocument({
             <CertificateCorner x={45} y={951} corner="bl" />
             <CertificateCorner x={1355} y={951} corner="br" />
 
-            <image href={logoHref} x="530" y="32" width="340" height="78" preserveAspectRatio="xMidYMid meet" />
+            <g filter="url(#logo-plaque-shadow)">
+              <rect x="492" y="28" width="416" height="94" rx="16" fill="#fffdf7" opacity="0.96" />
+              <rect x="500" y="36" width="400" height="78" rx="12" fill="none" stroke="#e5d8b7" strokeWidth="1.5" opacity="0.9" />
+            </g>
+            <image href={logoHref} x="525" y="45" width="350" height="54" preserveAspectRatio="xMidYMid meet" />
             <text x="700" y="137" textAnchor="middle" fontFamily="Arial, sans-serif" fontSize="18" fontWeight="700" letterSpacing="13" fill="#071936">
               ZIMBABWE ACADEMY
             </text>
