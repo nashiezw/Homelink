@@ -78,7 +78,7 @@ export function CertificateDocument({
   const sealHref = sealUrl ? absoluteAssetUrl(sealUrl, verifyOrigin) : "";
   const leftLaurelHref = leftLaurelUrl ? absoluteAssetUrl(leftLaurelUrl, verifyOrigin) : "";
   const rightLaurelHref = rightLaurelUrl ? absoluteAssetUrl(rightLaurelUrl, verifyOrigin) : "";
-  const learnerFontSize = learnerName.length > 28 ? 70 : learnerName.length > 20 ? 82 : 96;
+  const learnerFontSize = learnerName.length > 28 ? 72 : learnerName.length > 20 ? 84 : 98;
   const designationFontSize = displayDesignation.length > 30 ? 35 : displayDesignation.length > 24 ? 39 : 44;
   const courseLines = splitCertificateLine(courseTitle, 42);
 
@@ -244,7 +244,7 @@ export function CertificateDocument({
             <text x="700" y="362" textAnchor="middle" fontFamily="Arial, sans-serif" fontSize="15" fontWeight="800" letterSpacing="8" fill="#071936">
               THIS CERTIFIES THAT
             </text>
-            <text x="700" y="467" textAnchor="middle" fontFamily="'Brush Script MT', 'Segoe Script', 'Lucida Handwriting', cursive" fontSize={learnerFontSize} fontStyle="italic" fill="#071936">
+            <text x="700" y="467" textAnchor="middle" fontFamily="'Palatino Linotype', 'Book Antiqua', Georgia, serif" fontSize={learnerFontSize} fontStyle="italic" fontWeight="500" fill="#071936">
               {learnerName}
             </text>
             <path d="M470 484 C585 499, 815 499, 930 484" fill="none" stroke="#d4ad5b" strokeWidth="2" />
