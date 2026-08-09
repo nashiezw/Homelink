@@ -126,6 +126,15 @@ export function CertificateDocument({
   const showBadgeLine = displayBadgeLine.trim().length > 0;
   const showRecognitionLineOne = displayRecognitionLineOne.trim().length > 0;
   const showRecognitionLineTwo = displayRecognitionLineTwo.trim().length > 0;
+  const courseLineOffset = courseLines.length * 16;
+  const awardLineOffset = showAwardIntro ? 0 : -24;
+  const badgeSlotOffset = showBadgeLine ? 0 : 22;
+  const designationY = 654 + courseLineOffset + awardLineOffset + badgeSlotOffset;
+  const dividerY = 680 + courseLineOffset + awardLineOffset + badgeSlotOffset;
+  const badgeLineY = 713 + courseLineOffset + awardLineOffset;
+  const recognitionBaseY = showBadgeLine
+    ? 746 + courseLines.length * 8 + awardLineOffset
+    : 746 + courseLines.length * 8;
 
   const renderedCustomHtml = customHtml.trim()
     ? renderCertificateHtml(customHtml, {
@@ -320,23 +329,23 @@ export function CertificateDocument({
               </text>
             ) : null}
             {showDesignation ? (
-              <text x="700" y={654 + courseLines.length * 16} textAnchor="middle" fontFamily="Georgia, 'Times New Roman', serif" fontSize={designationFontSize} fontWeight="700" letterSpacing={designationLetterSpacing} textLength={designationTextLength} lengthAdjust="spacingAndGlyphs" fill="#0b7a46">
+              <text x="700" y={designationY} textAnchor="middle" fontFamily="Georgia, 'Times New Roman', serif" fontSize={designationFontSize} fontWeight="700" letterSpacing={designationLetterSpacing} textLength={designationTextLength} lengthAdjust="spacingAndGlyphs" fill="#0b7a46">
                 {designationText}
               </text>
             ) : null}
-            <line x1="470" y1={680 + courseLines.length * 16} x2="930" y2={680 + courseLines.length * 16} stroke="#d4ad5b" strokeWidth="2" />
+            <line x1="470" y1={dividerY} x2="930" y2={dividerY} stroke="#d4ad5b" strokeWidth="2" />
             {showBadgeLine ? (
-              <text x="700" y={713 + courseLines.length * 16} textAnchor="middle" fontFamily="Arial, sans-serif" fontSize={badgeFontSize} fontWeight="800" letterSpacing={badgeLetterSpacing} textLength={badgeTextLength} lengthAdjust="spacingAndGlyphs" fill="#071936">
+              <text x="700" y={badgeLineY} textAnchor="middle" fontFamily="Arial, sans-serif" fontSize={badgeFontSize} fontWeight="800" letterSpacing={badgeLetterSpacing} textLength={badgeTextLength} lengthAdjust="spacingAndGlyphs" fill="#071936">
                 {badgeText}
               </text>
             ) : null}
             {showRecognitionLineOne ? (
-              <text x="700" y={746 + courseLines.length * 8} textAnchor="middle" fontFamily="Georgia, 'Times New Roman', serif" fontSize="17" fontStyle="italic" fill="#2d2a25">
+              <text x="700" y={recognitionBaseY} textAnchor="middle" fontFamily="Georgia, 'Times New Roman', serif" fontSize="17" fontStyle="italic" fill="#2d2a25">
                 {displayRecognitionLineOne}
               </text>
             ) : null}
             {showRecognitionLineTwo ? (
-              <text x="700" y={770 + courseLines.length * 8} textAnchor="middle" fontFamily="Georgia, 'Times New Roman', serif" fontSize="17" fontStyle="italic" fill="#2d2a25">
+              <text x="700" y={recognitionBaseY + 24} textAnchor="middle" fontFamily="Georgia, 'Times New Roman', serif" fontSize="17" fontStyle="italic" fill="#2d2a25">
                 {displayRecognitionLineTwo}
               </text>
             ) : null}
