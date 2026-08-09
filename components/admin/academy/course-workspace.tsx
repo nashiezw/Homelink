@@ -43,6 +43,11 @@ type CourseTree = {
   description: string;
   shortDescription?: string | null;
   status: string;
+  slug: string;
+  passingPercentage: number;
+  certificateEnabled: boolean;
+  expiresAfterDays?: number | null;
+  accessDurationDays: number;
   modules: Array<{
     id: string;
     title: string;
@@ -86,6 +91,12 @@ export function CourseWorkspace({
   const [lessonDepthDraft, setLessonDepthDraft] = useState(lessonDepthFromResources([]));
   const [selectedQuizId, setSelectedQuizId] = useState<string | null>(null);
   const [questionDraft, setQuestionDraft] = useState({ prompt: "", answers: ["", "", "", ""], correctIndex: 0, explanation: "" });
+  const [certificationDraft, setCertificationDraft] = useState({
+    passingPercentage: 80,
+    certificateEnabled: false,
+    expiresAfterDays: "",
+    accessDurationDays: 365,
+  });
   const [undoStack, setUndoStack] = useState<Array<{ label: string; body: Record<string, unknown> }>>([]);
   const [auditLogs, setAuditLogs] = useState<Array<{ id: string; action: string; createdAt: string }>>([]);
 
@@ -95,6 +106,16 @@ export function CourseWorkspace({
   }, [courseId]);
 
   useEffect(() => { void load(); }, [load]);
+
+  useEffect(() => {
+    if (!tree) return;
+    setCertificationDraft({
+      passingPercentage: clampPercentage(tree.passingPercentage),
+      certificateEnabled: tree.certificateEnabled,
+      expiresAfterDays: tree.expiresAfterDays == null ? "" : String(tree.expiresAfterDays),
+      accessDurationDays: Math.max(0, Number(tree.accessDurationDays) || 365),
+    });
+  }, [tree]);
 
   const allLessons = useMemo(
     () => tree?.modules.flatMap((m) => m.sections.flatMap((s) => s.lessons.map((l) => ({ ...l, moduleId: m.id, sectionId: s.id, moduleTitle: m.title })))) ?? [],
@@ -137,6 +158,24 @@ export function CourseWorkspace({
       body: JSON.stringify({ action: "get_course_audit_log", courseId }),
     });
     if (Array.isArray(result.data)) setAuditLogs(result.data);
+  }
+
+  async function saveCertificationRules() {
+    if (!tree) return;
+    const expiresAfterDays = certificationDraft.expiresAfterDays.trim() ? Math.max(0, Number(certificationDraft.expiresAfterDays) || 0) : null;
+    await run(
+      {
+        action: "update_course_certification_rules",
+        courseId,
+        rules: {
+          passingPercentage: clampPercentage(certificationDraft.passingPercentage),
+          certificateEnabled: certificationDraft.certificateEnabled,
+          expiresAfterDays,
+          accessDurationDays: Math.max(0, Number(certificationDraft.accessDurationDays) || 365),
+        },
+      },
+      "Certification rules saved.",
+    );
   }
 
   useEffect(() => {
@@ -199,15 +238,74 @@ export function CourseWorkspace({
       </div>
 
       {step === "Overview" && (
-        <div className="grid gap-4 md:grid-cols-5">
-          <AdminStatPill label="Modules" value={String(tree.stats.moduleCount)} />
-          <AdminStatPill label="Lessons" value={String(tree.stats.lessonCount)} />
-          <AdminStatPill label="Quizzes" value={String(tree.stats.quizCount)} />
-          <AdminStatPill label="Assignments" value={String(tree.stats.assignmentCount)} />
-          <AdminStatPill label="Exams" value={String(tree.stats.examCount)} />
-          <div className="md:col-span-5 rounded-xl border border-white/10 p-4 text-sm text-slate-300">
+        <div className="grid gap-4">
+          <div className="grid gap-4 md:grid-cols-5">
+            <AdminStatPill label="Modules" value={String(tree.stats.moduleCount)} />
+            <AdminStatPill label="Lessons" value={String(tree.stats.lessonCount)} />
+            <AdminStatPill label="Quizzes" value={String(tree.stats.quizCount)} />
+            <AdminStatPill label="Assignments" value={String(tree.stats.assignmentCount)} />
+            <AdminStatPill label="Exams" value={String(tree.stats.examCount)} />
+          </div>
+          <div className="rounded-xl border border-white/10 p-4 text-sm text-slate-300">
             <AdminStatusBadge status={tree.status} variant={tree.status === "PUBLISHED" ? "success" : "warning"} />
             <p className="mt-3">{tree.description}</p>
+          </div>
+          <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/[0.06] p-4 sm:p-5">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+              <div className="min-w-0">
+                <p className="text-xs font-bold uppercase tracking-[0.22em] text-emerald-300">Certification Rules</p>
+                <h3 className="mt-2 text-lg font-bold text-white">Certificate eligibility for this course</h3>
+                <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-300">
+                  Learners should complete all required lessons, pass required quizzes/exams/assignments, and meet this course pass threshold before a certificate is issued.
+                </p>
+              </div>
+              <AdminStatusBadge status={certificationDraft.certificateEnabled ? "Auto certificate enabled" : "Certificate disabled"} variant={certificationDraft.certificateEnabled ? "success" : "muted"} />
+            </div>
+            <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <NumberField
+                label="Overall Pass Required (%)"
+                value={String(certificationDraft.passingPercentage)}
+                min={0}
+                max={100}
+                onChange={(value) => setCertificationDraft((draft) => ({ ...draft, passingPercentage: clampPercentage(Number(value) || 0) }))}
+              />
+              <NumberField
+                label="Learner Access Days"
+                value={String(certificationDraft.accessDurationDays)}
+                min={0}
+                onChange={(value) => setCertificationDraft((draft) => ({ ...draft, accessDurationDays: Math.max(0, Number(value) || 0) }))}
+              />
+              <NumberField
+                label="Certificate Valid Days"
+                value={certificationDraft.expiresAfterDays}
+                min={0}
+                placeholder="No expiry"
+                onChange={(value) => setCertificationDraft((draft) => ({ ...draft, expiresAfterDays: value }))}
+              />
+              <label className="flex min-h-20 items-center gap-3 rounded-xl border border-white/10 bg-slate-950/50 p-4 text-sm text-slate-300">
+                <input
+                  type="checkbox"
+                  checked={certificationDraft.certificateEnabled}
+                  onChange={(event) => setCertificationDraft((draft) => ({ ...draft, certificateEnabled: event.target.checked }))}
+                  className="size-5 rounded border-white/10 bg-slate-950"
+                />
+                <span>
+                  <span className="block font-semibold text-white">Auto-issue certificate</span>
+                  <span className="mt-1 block text-xs leading-5 text-slate-400">Issue only after all configured requirements are satisfied.</span>
+                </span>
+              </label>
+            </div>
+            <div className="mt-5 grid gap-2 rounded-xl border border-white/10 bg-slate-950/50 p-4 text-xs leading-5 text-slate-400 sm:grid-cols-3">
+              <p><span className="font-semibold text-slate-200">Lessons:</span> {tree.stats.lessonCount ? "100% completion required" : "No lessons configured"}</p>
+              <p><span className="font-semibold text-slate-200">Assessments:</span> {tree.stats.quizCount + tree.stats.assignmentCount + tree.stats.examCount ? "Passed items are checked before issuing" : "No assessments configured"}</p>
+              <p><span className="font-semibold text-slate-200">If learner fails:</span> retake/rework the failed activity before certificate generation.</p>
+            </div>
+            <div className="mt-5 flex justify-end">
+              <Button disabled={busy} onClick={() => void saveCertificationRules()}>
+                {busy ? <Loader2 className="mr-2 size-4 animate-spin" /> : <CheckCircle2 className="mr-2 size-4" />}
+                Save Certification Rules
+              </Button>
+            </div>
           </div>
         </div>
       )}
@@ -433,6 +531,41 @@ function Field({ label, value, onChange }: { label: string; value: string; onCha
       <input value={value} onChange={(e) => onChange(e.target.value)} className="mt-1 w-full rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-white" />
     </label>
   );
+}
+
+function NumberField({
+  label,
+  value,
+  onChange,
+  min,
+  max,
+  placeholder,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  min?: number;
+  max?: number;
+  placeholder?: string;
+}) {
+  return (
+    <label className="block rounded-xl border border-white/10 bg-slate-950/50 p-4 text-sm text-slate-300">
+      <span className="mb-2 block font-semibold text-white">{label}</span>
+      <input
+        type="number"
+        min={min}
+        max={max}
+        value={value}
+        placeholder={placeholder}
+        onChange={(event) => onChange(event.target.value)}
+        className="w-full rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-white placeholder:text-slate-600"
+      />
+    </label>
+  );
+}
+
+function clampPercentage(value: number) {
+  return Math.min(100, Math.max(0, Math.round(value)));
 }
 
 function CourseMediaField({ label, value, accept, kind, onChange }: { label: string; value: string; accept: string; kind: "video" | "document"; onChange: (v: string) => void }) {

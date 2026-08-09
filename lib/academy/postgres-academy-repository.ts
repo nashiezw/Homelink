@@ -416,6 +416,25 @@ export async function runAcademyAction(body: Record<string, any>, actor: Actor) 
     await audit(actor, "academy.course.update", course.id, { title: course.title });
     return course;
   }
+  if (action === "update_course_certification_rules") {
+    const rules = body.rules ?? {};
+    const course = await prisma.trainingCourse.update({
+      where: { id: String(body.courseId) },
+      data: {
+        passingPercentage: clamp(numberOr(rules.passingPercentage, 80), 0, 100),
+        certificateEnabled: Boolean(rules.certificateEnabled),
+        expiresAfterDays: optionalNumber(rules.expiresAfterDays),
+        accessDurationDays: Math.max(0, numberOr(rules.accessDurationDays, 365)),
+      },
+    });
+    await audit(actor, "academy.course.certification_rules", course.id, {
+      passingPercentage: course.passingPercentage,
+      certificateEnabled: course.certificateEnabled,
+      expiresAfterDays: course.expiresAfterDays,
+      accessDurationDays: course.accessDurationDays,
+    });
+    return course;
+  }
   if (action === "duplicate_course") {
     const source = await prisma.trainingCourse.findUnique({
       where: { id: String(body.courseId) },
@@ -1279,6 +1298,7 @@ export async function getAdminCourseTree(courseId: string) {
     difficulty: course.difficulty,
     passingPercentage: course.passingPercentage,
     certificateEnabled: course.certificateEnabled,
+    expiresAfterDays: course.expiresAfterDays,
     registrationOpen: course.registrationOpen,
     publicPrice: Number(course.publicPrice),
     agentPrice: Number(course.agentPrice),
@@ -1638,6 +1658,10 @@ function stringOrNull(value: unknown) {
 function numberOr(value: unknown, fallback: number) {
   const number = Number(value);
   return Number.isFinite(number) ? number : fallback;
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, Math.round(value)));
 }
 
 function optionalNumber(value: unknown) {

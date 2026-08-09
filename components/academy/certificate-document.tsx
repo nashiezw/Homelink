@@ -93,7 +93,8 @@ export function CertificateDocument({
   const sealHref = sealUrl ? absoluteAssetUrl(sealUrl, verifyOrigin) : "";
   const leftLaurelHref = leftLaurelUrl ? absoluteAssetUrl(leftLaurelUrl, verifyOrigin) : "";
   const rightLaurelHref = rightLaurelUrl ? absoluteAssetUrl(rightLaurelUrl, verifyOrigin) : "";
-  const learnerFontSize = learnerName.length > 28 ? 72 : learnerName.length > 20 ? 84 : 98;
+  const learnerFontSize = fitTextToWidth(learnerName, 840, 92, 54);
+  const learnerLetterSpacing = learnerName.length > 28 ? -1 : 0;
   const designationFontSize = displayDesignation.length > 30 ? 35 : displayDesignation.length > 24 ? 39 : 44;
   const courseLines = splitCertificateLine(courseTitle, 42);
   const showCompletionIntro = displayCompletionIntro.trim().length > 0;
@@ -240,11 +241,11 @@ export function CertificateDocument({
             <CertificateCorner x={1355} y={951} corner="br" />
 
             <g filter="url(#logo-plaque-shadow)">
-              <rect x="492" y="28" width="416" height="94" rx="16" fill="#fffdf7" opacity="0.96" />
-              <rect x="500" y="36" width="400" height="78" rx="12" fill="none" stroke="#e5d8b7" strokeWidth="1.5" opacity="0.9" />
+              <rect x="485" y="28" width="430" height="82" rx="14" fill="#fffdf7" opacity="0.98" />
+              <rect x="495" y="38" width="410" height="62" rx="10" fill="none" stroke="#e5d8b7" strokeWidth="1.2" opacity="0.9" />
             </g>
-            <image href={logoHref} x="525" y="45" width="350" height="54" preserveAspectRatio="xMidYMid meet" />
-            <text x="700" y="137" textAnchor="middle" fontFamily="Arial, sans-serif" fontSize="18" fontWeight="700" letterSpacing="13" fill="#071936">
+            <image href={logoHref} x="540" y="47" width="320" height="42" preserveAspectRatio="xMidYMid meet" />
+            <text x="700" y="143" textAnchor="middle" fontFamily="Arial, sans-serif" fontSize="17" fontWeight="800" letterSpacing="9" fill="#071936">
               ZIMBABWE ACADEMY
             </text>
 
@@ -270,7 +271,7 @@ export function CertificateDocument({
             <text x="700" y="362" textAnchor="middle" fontFamily="Arial, sans-serif" fontSize="15" fontWeight="800" letterSpacing="8" fill="#071936">
               THIS CERTIFIES THAT
             </text>
-            <text x="700" y="467" textAnchor="middle" fontFamily="'Palatino Linotype', 'Book Antiqua', Georgia, serif" fontSize={learnerFontSize} fontStyle="italic" fontWeight="500" fill="#071936">
+            <text x="700" y="467" textAnchor="middle" fontFamily="'Palatino Linotype', 'Book Antiqua', Georgia, serif" fontSize={learnerFontSize} fontStyle="italic" fontWeight="500" letterSpacing={learnerLetterSpacing} fill="#071936">
               {learnerName}
             </text>
             <path d="M470 484 C585 499, 815 499, 930 484" fill="none" stroke="#d4ad5b" strokeWidth="2" />
@@ -525,6 +526,18 @@ function splitCertificateLine(value: string, maxLength: number) {
 
   if (current) lines.push(current);
   return lines.slice(0, 2);
+}
+
+function fitTextToWidth(value: string, maxWidth: number, maxFontSize: number, minFontSize: number) {
+  const estimatedWidthAtOnePixel = value.split("").reduce((sum, char) => {
+    if (char === " ") return sum + 0.28;
+    if (/[A-Z]/.test(char)) return sum + 0.62;
+    if (/[il.,']/i.test(char)) return sum + 0.28;
+    if (/[mw]/i.test(char)) return sum + 0.82;
+    return sum + 0.52;
+  }, 0);
+  if (!estimatedWidthAtOnePixel) return maxFontSize;
+  return Math.max(minFontSize, Math.min(maxFontSize, Math.floor(maxWidth / estimatedWidthAtOnePixel)));
 }
 
 function absoluteAssetUrl(value: string, origin: string) {
