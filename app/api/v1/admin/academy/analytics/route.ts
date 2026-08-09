@@ -320,14 +320,44 @@ export async function GET(request: Request) {
       actions: Number(da.actions)
     }));
     
-    // Convert BigInt values in at-risk learners
-    const atRiskLearnersFixed = (atRiskLearners as any[]).map((learner: any) => ({
-      ...learner,
-      riskScore: Number(learner.engagementScore),
-      // Convert any other potential BigInt fields
-      ...(learner.totalEnrollments !== undefined && { totalEnrollments: Number(learner.totalEnrollments) }),
-      ...(learner.totalProgress !== undefined && { totalProgress: Number(learner.totalProgress) }),
-    }));
+    // Normalise at-risk learners so all analytics widgets can safely consume the
+    // same shape, while preserving the legacy learner* fields used elsewhere.
+    const atRiskLearnersFixed = (atRiskLearners as any[]).map((learner: any) => {
+      const riskFactors = Array.isArray(learner.riskFactors) ? learner.riskFactors : [];
+      const daysSinceLastActivity = learner.daysSinceLastActivity == null ? null : Number(learner.daysSinceLastActivity);
+      const riskType =
+        riskFactors.some((factor: string) => factor.toLowerCase().includes("activity")) ? "INACTIVE" :
+        riskFactors.some((factor: string) => factor.toLowerCase().includes("completion")) ? "BEHIND_SCHEDULE" :
+        riskFactors.some((factor: string) => factor.toLowerCase().includes("score")) ? "STRUGGLING" :
+        "INACTIVE";
+      const learnerId = learner.learnerId ?? learner.studentId ?? "";
+      const learnerName = learner.learnerName ?? learner.studentName ?? "";
+      const learnerEmail = learner.learnerEmail ?? learner.studentEmail ?? "";
+      return {
+        ...learner,
+        learnerId,
+        learnerName,
+        learnerEmail,
+        studentId: learner.studentId ?? learnerId,
+        studentName: learner.studentName ?? learnerName,
+        studentEmail: learner.studentEmail ?? learnerEmail,
+        riskType,
+        riskLevel: learner.riskLevel ?? "MEDIUM",
+        riskDescription: learner.riskDescription ?? (riskFactors.length ? riskFactors.join(", ") : "Learner may need support"),
+        lastActivityDate: learner.lastActivityDate ?? learner.lastActivity ?? null,
+        daysSinceLastActivity,
+        consecutiveFailures: Number(learner.consecutiveFailures ?? 0),
+        currentLesson: learner.currentLesson ?? null,
+        timeOnCurrentLesson: Number(learner.timeOnCurrentLesson ?? 0),
+        progressPercentage: Number(learner.progressPercentage ?? 0),
+        expectedProgress: Number(learner.expectedProgress ?? 0),
+        interventionRecommended: Boolean(learner.interventionRecommended ?? riskFactors.length > 0),
+        interventionActions: learner.interventionActions ?? ["Send reminder email", "Schedule check-in call"],
+        riskScore: Number(learner.engagementScore ?? learner.riskScore ?? 0),
+        ...(learner.totalEnrollments !== undefined && { totalEnrollments: Number(learner.totalEnrollments) }),
+        ...(learner.totalProgress !== undefined && { totalProgress: Number(learner.totalProgress) }),
+      };
+    });
     
     return ok({
       revenue: {

@@ -125,6 +125,15 @@ type AtRiskStudent = {
   interventionActions: string[];
 };
 
+type RawAtRiskStudent = Partial<AtRiskStudent> & {
+  learnerId?: string;
+  learnerName?: string;
+  learnerEmail?: string;
+  riskFactors?: string[];
+  engagementScore?: number;
+  lastActivity?: string | Date | null;
+};
+
 type StudentSearchResult = {
   id: string;
   name: string;
@@ -167,6 +176,39 @@ function exportStudentQuizAnalytics(analytics: StudentQuizAnalytics) {
   ]);
 }
 
+function normalizeAtRiskStudent(student: RawAtRiskStudent): AtRiskStudent {
+  const riskFactors = Array.isArray(student.riskFactors) ? student.riskFactors : [];
+  const rawLastActivity = student.lastActivityDate ?? student.lastActivity ?? null;
+  const riskType =
+    student.riskType ??
+    (riskFactors.some((factor) => factor.toLowerCase().includes("completion")) ? "BEHIND_SCHEDULE" :
+      riskFactors.some((factor) => factor.toLowerCase().includes("score")) ? "STRUGGLING" :
+      "INACTIVE");
+  return {
+    studentId: student.studentId ?? student.learnerId ?? "",
+    studentName: student.studentName ?? student.learnerName ?? "Unknown learner",
+    studentEmail: student.studentEmail ?? student.learnerEmail ?? "",
+    courseId: student.courseId ?? "",
+    courseTitle: student.courseTitle ?? "Unknown course",
+    riskType,
+    riskLevel: student.riskLevel ?? "MEDIUM",
+    riskDescription: student.riskDescription ?? (riskFactors.length ? riskFactors.join(", ") : "Learner may need support"),
+    lastActivityDate: rawLastActivity ? new Date(rawLastActivity) : null,
+    daysSinceLastActivity: student.daysSinceLastActivity ?? null,
+    consecutiveFailures: student.consecutiveFailures ?? 0,
+    currentLesson: student.currentLesson ?? null,
+    timeOnCurrentLesson: student.timeOnCurrentLesson ?? 0,
+    progressPercentage: student.progressPercentage ?? 0,
+    expectedProgress: student.expectedProgress ?? 0,
+    interventionRecommended: student.interventionRecommended ?? riskFactors.length > 0,
+    interventionActions: student.interventionActions ?? ["Send reminder email", "Schedule check-in call"],
+  };
+}
+
+function normalizeAtRiskStudents(students: RawAtRiskStudent[] = []) {
+  return students.map(normalizeAtRiskStudent);
+}
+
 export function StudentAnalyticsDashboard() {
   const [view, setView] = useState<"overview" | "student" | "student-quiz" | "at-risk">("overview");
   const [loading, setLoading] = useState(true);
@@ -186,9 +228,9 @@ export function StudentAnalyticsDashboard() {
   const loadOverviewData = async () => {
     setLoading(true);
     try {
-      const response = await apiFetch<{ atRiskLearners: AtRiskStudent[] }>("/api/v1/admin/academy/analytics?includeAtRisk=true");
+      const response = await apiFetch<{ atRiskLearners: RawAtRiskStudent[] }>("/api/v1/admin/academy/analytics?includeAtRisk=true");
       if (response.data) {
-        setAtRiskStudents(response.data.atRiskLearners || []);
+        setAtRiskStudents(normalizeAtRiskStudents(response.data.atRiskLearners || []));
       }
     } catch (error) {
       console.error("Failed to load overview data:", error);
@@ -289,9 +331,9 @@ export function StudentAnalyticsDashboard() {
       const url = courseId 
         ? `/api/v1/admin/academy/analytics?type=at-risk&courseId=${courseId}`
         : "/api/v1/admin/academy/analytics?type=at-risk";
-      const response = await apiFetch<AtRiskStudent[]>(url);
+      const response = await apiFetch<RawAtRiskStudent[]>(url);
       if (response.data) {
-        setAtRiskStudents(response.data);
+        setAtRiskStudents(normalizeAtRiskStudents(response.data));
       }
     } catch (error) {
       console.error("Failed to load at-risk students:", error);
