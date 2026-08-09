@@ -18,9 +18,15 @@ export async function GET(request: Request, context: { params: Promise<{ issueId
   if (!issue || issue.status !== "ACTIVE") return problem(404, "NOT_FOUND", "Certificate not found.");
   if (issue.agentId !== userId) return problem(403, "FORBIDDEN", "This certificate belongs to another learner.");
 
-  const user = await prisma.user.findUnique({ where: { id: userId }, select: { name: true } });
+  const [user, fallbackTemplate] = await Promise.all([
+    prisma.user.findUnique({ where: { id: userId }, select: { name: true } }),
+    issue.template || !issue.courseId
+      ? Promise.resolve(null)
+      : prisma.certificateTemplate.findMany({ where: { active: true }, orderBy: { updatedAt: "desc" } }).then((templates) => selectCertificateTemplateForCourse(templates, issue.courseId!)),
+  ]);
+  const template = issue.template ?? fallbackTemplate;
   const programme = issue.courseId ? getProgrammeCourse(issue.courseId) : null;
-  const templateJson = (issue.template?.templateJson ?? {}) as Record<string, unknown>;
+  const templateJson = (template?.templateJson ?? {}) as Record<string, unknown>;
   const colours = (templateJson.colours ?? {}) as Record<string, unknown>;
 
   return ok({
@@ -36,9 +42,9 @@ export async function GET(request: Request, context: { params: Promise<{ issueId
     verifyUrl: `/academy/verify?certificate=${encodeURIComponent(issue.certificateNumber)}`,
     learnerName: user?.name ?? "HouseLink Learner",
     accent: String(colours.primary ?? programme?.theme.accent ?? "#008b68"),
-    backgroundUrl: issue.template?.backgroundUrl ?? null,
-    logoUrl: issue.template?.logoUrl ?? null,
-    signatureUrl: issue.template?.signatureUrl ?? null,
+    backgroundUrl: template?.backgroundUrl ?? null,
+    logoUrl: template?.logoUrl ?? null,
+    signatureUrl: template?.signatureUrl ?? null,
     signatureName: typeof templateJson.signatureName === "string" ? templateJson.signatureName : null,
     signatureTitle: typeof templateJson.signatureTitle === "string" ? templateJson.signatureTitle : null,
     secondSignatureUrl: typeof templateJson.secondSignatureUrl === "string" ? templateJson.secondSignatureUrl : null,
@@ -49,6 +55,21 @@ export async function GET(request: Request, context: { params: Promise<{ issueId
     customHtml: typeof templateJson.customHtml === "string" ? templateJson.customHtml : "",
     customCss: typeof templateJson.customCss === "string" ? templateJson.customCss : "",
   });
+}
+
+function selectCertificateTemplateForCourse<T extends { templateJson: unknown }>(templates: T[], courseId: string): T | null {
+  const courseTemplate = templates.find((template) => {
+    const templateJson = (template.templateJson ?? {}) as Record<string, unknown>;
+    const courseIds = Array.isArray(templateJson.courseIds) ? templateJson.courseIds.filter((id): id is string => typeof id === "string") : [];
+    return courseIds.includes(courseId);
+  });
+  if (courseTemplate) return courseTemplate;
+
+  return templates.find((template) => {
+    const templateJson = (template.templateJson ?? {}) as Record<string, unknown>;
+    const courseIds = Array.isArray(templateJson.courseIds) ? templateJson.courseIds.filter((id): id is string => typeof id === "string") : [];
+    return courseIds.length === 0;
+  }) ?? templates[0] ?? null;
 }
 
 function trainingCertificateTitle(title: string) {

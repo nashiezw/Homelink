@@ -18,8 +18,12 @@ export interface CertificateIssue {
   } | null;
   template?: {
     name: string;
+    backgroundUrl: string | null;
+    logoUrl: string | null;
+    signatureUrl: string | null;
     templateJson: Record<string, unknown>;
   } | null;
+  learnerName?: string | null;
 }
 
 export interface CreateCertificateIssueInput {
@@ -75,10 +79,32 @@ export async function getCertificate(certificateNumber: string): Promise<Certifi
           title: true,
         },
       },
+      template: {
+        select: {
+          name: true,
+          backgroundUrl: true,
+          logoUrl: true,
+          signatureUrl: true,
+          templateJson: true,
+        },
+      },
     },
   });
 
-  return certificate;
+  if (!certificate) return null;
+
+  const [learner, fallbackTemplate] = await Promise.all([
+    prisma.user.findUnique({ where: { id: certificate.agentId }, select: { name: true } }),
+    certificate.template || !certificate.courseId
+      ? Promise.resolve(null)
+      : prisma.certificateTemplate.findMany({ where: { active: true }, orderBy: { updatedAt: "desc" } }).then((templates) => selectCertificateTemplateForCourse(templates, certificate.courseId!)),
+  ]);
+
+  return {
+    ...certificate,
+    learnerName: learner?.name ?? null,
+    template: normaliseCertificateTemplate(certificate.template ?? fallbackTemplate),
+  };
 }
 
 export async function getAgentCertificates(agentId: string): Promise<CertificateIssue[]> {
@@ -178,3 +204,40 @@ function generateCertificateNumber(): string {
   return `CERT-${timestamp}-${random}`;
 }
 
+function selectCertificateTemplateForCourse<T extends { templateJson: unknown }>(templates: T[], courseId: string): T | null {
+  const courseTemplate = templates.find((template) => {
+    const templateJson = (template.templateJson ?? {}) as Record<string, unknown>;
+    const courseIds = Array.isArray(templateJson.courseIds) ? templateJson.courseIds.filter((id): id is string => typeof id === "string") : [];
+    return courseIds.includes(courseId);
+  });
+  if (courseTemplate) return courseTemplate;
+
+  return templates.find((template) => {
+    const templateJson = (template.templateJson ?? {}) as Record<string, unknown>;
+    const courseIds = Array.isArray(templateJson.courseIds) ? templateJson.courseIds.filter((id): id is string => typeof id === "string") : [];
+    return courseIds.length === 0;
+  }) ?? templates[0] ?? null;
+}
+
+function normaliseCertificateTemplate(
+  template: {
+    name: string;
+    backgroundUrl: string | null;
+    logoUrl: string | null;
+    signatureUrl: string | null;
+    templateJson: unknown;
+  } | null
+) {
+  if (!template) return null;
+  const templateJson = template.templateJson && typeof template.templateJson === "object" && !Array.isArray(template.templateJson)
+    ? (template.templateJson as Record<string, unknown>)
+    : {};
+
+  return {
+    name: template.name,
+    backgroundUrl: template.backgroundUrl,
+    logoUrl: template.logoUrl,
+    signatureUrl: template.signatureUrl,
+    templateJson,
+  };
+}

@@ -1,5 +1,6 @@
 import { getCertificate } from "@/lib/academy/certificate-repository";
 import { CertificateDocument } from "@/components/academy/certificate-document";
+import { getProgrammeCourse } from "@/lib/academy/academy-programme";
 import { ShieldCheck, AlertTriangle } from "lucide-react";
 
 export default async function CertificateVerificationPage({
@@ -33,6 +34,9 @@ export default async function CertificateVerificationPage({
 
   const isExpired = certificate.expiresAt && new Date(certificate.expiresAt) < new Date();
   const isRevoked = certificate.status !== "ACTIVE";
+  const programme = certificate.courseId ? getProgrammeCourse(certificate.courseId) : null;
+  const templateJson = (certificate.template?.templateJson ?? {}) as Record<string, unknown>;
+  const colours = (templateJson.colours ?? {}) as Record<string, unknown>;
 
   if (isExpired || isRevoked) {
     return (
@@ -71,13 +75,26 @@ export default async function CertificateVerificationPage({
         </div>
 
         <CertificateDocument
-          learnerName="Certificate Holder"
+          learnerName={certificate.learnerName || "Certificate Holder"}
           courseTitle={certificate.course?.title || "Course"}
-          certificateTitle="Certificate of Achievement"
+          certificateTitle={trainingCertificateTitle(String(templateJson.title ?? programme?.certificateTitle ?? "HouseLink Academy Training Certificate"))}
           certificateNumber={certificate.certificateNumber}
           issuedAt={certificate.issuedAt.toISOString()}
           expiresAt={certificate.expiresAt?.toISOString()}
           verifyUrl={`/verify/certificate/${certificate.certificateNumber}`}
+          accent={String(colours.primary ?? programme?.theme.accent ?? "#008b68")}
+          backgroundUrl={certificate.template?.backgroundUrl ?? null}
+          logoUrl={certificate.template?.logoUrl ?? null}
+          signatureUrl={certificate.template?.signatureUrl ?? null}
+          signatureName={typeof templateJson.signatureName === "string" ? templateJson.signatureName : undefined}
+          signatureTitle={typeof templateJson.signatureTitle === "string" ? templateJson.signatureTitle : undefined}
+          secondSignatureUrl={typeof templateJson.secondSignatureUrl === "string" ? templateJson.secondSignatureUrl : null}
+          secondSignatureName={typeof templateJson.secondSignatureName === "string" ? templateJson.secondSignatureName : undefined}
+          secondSignatureTitle={typeof templateJson.secondSignatureTitle === "string" ? templateJson.secondSignatureTitle : undefined}
+          sealUrl={typeof templateJson.sealUrl === "string" ? templateJson.sealUrl : null}
+          designation={typeof templateJson.designation === "string" ? templateJson.designation : undefined}
+          customHtml={typeof templateJson.customHtml === "string" ? templateJson.customHtml : ""}
+          customCss={typeof templateJson.customCss === "string" ? templateJson.customCss : ""}
         />
 
         <div className="mt-8 text-center">
@@ -108,4 +125,12 @@ export default async function CertificateVerificationPage({
       </div>
     </div>
   );
+}
+
+function trainingCertificateTitle(title: string) {
+  if (/^Certified HouseLink Agent$/i.test(title.trim())) return "Certificate of Completion - HouseLink Agent Foundations";
+  if (/HouseLink Certified Agent - Foundations/i.test(title)) return "Certificate of Completion - HouseLink Agent Foundations";
+  if (/HouseLink Certified Agent - Listing & Client Mastery/i.test(title)) return "Certificate of Completion - HouseLink Listing & Client Mastery";
+  if (/HouseLink Certified Professional Agent/i.test(title)) return "Certificate of Completion - HouseLink Professional Training";
+  return title;
 }
