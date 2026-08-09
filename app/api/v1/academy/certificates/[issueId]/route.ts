@@ -18,13 +18,13 @@ export async function GET(request: Request, context: { params: Promise<{ issueId
   if (!issue || issue.status !== "ACTIVE") return problem(404, "NOT_FOUND", "Certificate not found.");
   if (issue.agentId !== userId) return problem(403, "FORBIDDEN", "This certificate belongs to another learner.");
 
-  const [user, fallbackTemplate] = await Promise.all([
+  const [user, currentCourseTemplate] = await Promise.all([
     prisma.user.findUnique({ where: { id: userId }, select: { name: true } }),
-    issue.template || !issue.courseId
+    !issue.courseId
       ? Promise.resolve(null)
       : prisma.certificateTemplate.findMany({ where: { active: true }, orderBy: { updatedAt: "desc" } }).then((templates) => selectCertificateTemplateForCourse(templates, issue.courseId!)),
   ]);
-  const template = issue.template ?? fallbackTemplate;
+  const template = currentCourseTemplate ?? issue.template;
   const programme = issue.courseId ? getProgrammeCourse(issue.courseId) : null;
   const templateJson = (template?.templateJson ?? {}) as Record<string, unknown>;
   const colours = (templateJson.colours ?? {}) as Record<string, unknown>;

@@ -29,10 +29,11 @@ export async function POST(request: Request) {
   const body = await request.json();
   const dataUrl = typeof body.dataUrl === "string" ? body.dataUrl : "";
   const kind: UploadKind = body.kind === "video" ? "video" : body.kind === "document" ? "document" : body.kind === "audio" ? "audio" : "image";
-  const folder = typeof body.folder === "string" ? body.folder.replace(/[^a-z0-9_-]/gi, "") : "general";
+  const folder = sanitizeUploadFolder(typeof body.folder === "string" ? body.folder : "general");
+  const validationFolder = folder.split("/")[0] || "general";
   const originalFilename = sanitizeOriginalFilename(typeof body.filename === "string" ? body.filename : "", validationExtension(dataUrl));
 
-  const validation = validateUploadDataUrl(dataUrl, kind, folder);
+  const validation = validateUploadDataUrl(dataUrl, kind, validationFolder);
   if ("error" in validation) return problem(400, "INVALID_MEDIA", validation.error);
 
   const buffer = Buffer.from(validation.base64, "base64");
@@ -140,6 +141,17 @@ function sanitizeOriginalFilename(filename: string, fallbackExt: string) {
     .slice(0, 160);
   if (!cleaned) return "";
   return /\.[a-z0-9]{2,8}$/i.test(cleaned) ? cleaned : `${cleaned}.${fallbackExt}`;
+}
+
+function sanitizeUploadFolder(folder: string) {
+  const cleaned = folder
+    .split("/")
+    .map((part) => part.replace(/[^a-z0-9_-]/gi, "").trim())
+    .filter(Boolean)
+    .slice(0, 4)
+    .join("/");
+
+  return cleaned || "general";
 }
 
 async function verifyCloudinaryDelivery(url: string) {

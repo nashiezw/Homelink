@@ -17,6 +17,7 @@ export interface CertificateIssue {
     title: string;
   } | null;
   template?: {
+    id: string;
     name: string;
     backgroundUrl: string | null;
     logoUrl: string | null;
@@ -81,6 +82,7 @@ export async function getCertificate(certificateNumber: string): Promise<Certifi
       },
       template: {
         select: {
+          id: true,
           name: true,
           backgroundUrl: true,
           logoUrl: true,
@@ -93,17 +95,18 @@ export async function getCertificate(certificateNumber: string): Promise<Certifi
 
   if (!certificate) return null;
 
-  const [learner, fallbackTemplate] = await Promise.all([
+  const [learner, currentCourseTemplate] = await Promise.all([
     prisma.user.findUnique({ where: { id: certificate.agentId }, select: { name: true } }),
-    certificate.template || !certificate.courseId
+    !certificate.courseId
       ? Promise.resolve(null)
       : prisma.certificateTemplate.findMany({ where: { active: true }, orderBy: { updatedAt: "desc" } }).then((templates) => selectCertificateTemplateForCourse(templates, certificate.courseId!)),
   ]);
+  const displayTemplate = currentCourseTemplate ?? certificate.template;
 
   return {
     ...certificate,
     learnerName: learner?.name ?? null,
-    template: normaliseCertificateTemplate(certificate.template ?? fallbackTemplate),
+    template: normaliseCertificateTemplate(displayTemplate),
   };
 }
 
@@ -221,6 +224,7 @@ function selectCertificateTemplateForCourse<T extends { templateJson: unknown }>
 
 function normaliseCertificateTemplate(
   template: {
+    id: string;
     name: string;
     backgroundUrl: string | null;
     logoUrl: string | null;
@@ -234,6 +238,7 @@ function normaliseCertificateTemplate(
     : {};
 
   return {
+    id: template.id,
     name: template.name,
     backgroundUrl: template.backgroundUrl,
     logoUrl: template.logoUrl,
