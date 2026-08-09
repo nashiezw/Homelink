@@ -328,54 +328,95 @@ export function CertificateTemplateManagement() {
           <TemplatePreview form={formData} />
           <AdminPanel title="Template Details" description="Core certificate text and numbering.">
             <div className="grid gap-4">
-              <TextField label="Template Name" value={formData.name} onChange={(name) => setFormData({ ...formData, name })} placeholder="HouseLink Agent Foundations Certificate" />
-              <TextField label="Certificate Title" value={formData.title} onChange={(title) => setFormData({ ...formData, title })} placeholder="Certificate of Completion - HouseLink Agent Foundations" />
-              <TextField label="Certificate Designation Line" value={formData.designation} onChange={(designation) => setFormData({ ...formData, designation })} placeholder="Certified HouseLink Agent" />
+              <FormSectionEyebrow title="Certificate wording" description="The visible title, graduate line, certificate number prefix, and expiry rules." />
+              <div className="grid gap-4 rounded-xl border border-white/10 bg-slate-950/40 p-4">
+                <TextField label="Template Name" value={formData.name} onChange={(name) => setFormData({ ...formData, name })} placeholder="HouseLink Agent Foundations Certificate" />
+                <TextField label="Certificate Title" value={formData.title} onChange={(title) => setFormData({ ...formData, title })} placeholder="Certificate of Completion - HouseLink Agent Foundations" />
+                <TextField label="Certificate Designation Line" value={formData.designation} onChange={(designation) => setFormData({ ...formData, designation })} placeholder="Certified HouseLink Agent" />
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <TextField label="Number Prefix" value={formData.certificateNumberPrefix} onChange={(certificateNumberPrefix) => setFormData({ ...formData, certificateNumberPrefix })} placeholder="HLA" />
+                  <TextField
+                    label="Expiry Days"
+                    type="number"
+                    value={String(formData.expiryDays)}
+                    onChange={(expiryDays) => setFormData({ ...formData, expiryDays: Math.max(0, Number(expiryDays) || 0) })}
+                    placeholder="365"
+                  />
+                </div>
+              </div>
+
+              <FormSectionEyebrow title="Course assignment" description="Choose which course uses this certificate. Leave empty only when this should be the global fallback." />
               <CourseAssignmentField
                 courses={courses}
                 selectedIds={formData.courseIds}
                 onChange={(courseIds) => setFormData({ ...formData, courseIds })}
               />
-              <div className="grid gap-4 sm:grid-cols-2">
-                <TextField label="Number Prefix" value={formData.certificateNumberPrefix} onChange={(certificateNumberPrefix) => setFormData({ ...formData, certificateNumberPrefix })} placeholder="HLA" />
-                <TextField
-                  label="Expiry Days"
-                  type="number"
-                  value={String(formData.expiryDays)}
-                  onChange={(expiryDays) => setFormData({ ...formData, expiryDays: Math.max(0, Number(expiryDays) || 0) })}
-                  placeholder="365"
+
+              <FormSectionEyebrow title="Brand artwork" description="Upload transparent artwork where possible so the certificate remains clean on download." />
+              <div className="grid gap-4 rounded-xl border border-white/10 bg-slate-950/40 p-4">
+                <TemplateImageField
+                  label="Background Image"
+                  ratio="Best ratio: 1.414:1 landscape, ideally 2800 x 1980px or larger"
+                  description="Use a subtle certificate paper texture or full artwork background. Avoid busy images behind text."
+                  value={formData.backgroundUrl}
+                  uploading={uploadingField === "backgroundUrl"}
+                  onChange={(backgroundUrl) => setFormData({ ...formData, backgroundUrl })}
+                  onUpload={(files) => void uploadTemplateAsset("backgroundUrl", files)}
                 />
+                <TemplateImageField
+                  label="Logo"
+                  ratio="Best ratio: 4:1 horizontal, transparent PNG or SVG"
+                  description="Use the full HouseLink lockup for the top of the certificate."
+                  value={formData.logoUrl}
+                  uploading={uploadingField === "logoUrl"}
+                  onChange={(logoUrl) => setFormData({ ...formData, logoUrl })}
+                  onUpload={(files) => void uploadTemplateAsset("logoUrl", files)}
+                />
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <ColorField label="Primary Color" value={formData.primaryColor} onChange={(primaryColor) => setFormData({ ...formData, primaryColor })} />
+                  <ColorField label="Accent Color" value={formData.accentColor} onChange={(accentColor) => setFormData({ ...formData, accentColor })} />
+                </div>
               </div>
+
+              <FormSectionEyebrow title="Signatures, seal and laurels" description="These assets sit in the lower certificate band and side ornaments." />
               <div className="grid gap-4 sm:grid-cols-2">
-                <ColorField label="Primary Color" value={formData.primaryColor} onChange={(primaryColor) => setFormData({ ...formData, primaryColor })} />
-                <ColorField label="Accent Color" value={formData.accentColor} onChange={(accentColor) => setFormData({ ...formData, accentColor })} />
-              </div>
-              <AdminPanel title="Signatures and Seal" description="Upload the two certificate signatures and optional centre seal used in the landscape certificate.">
-                <div className="grid gap-4">
-                  <div className="grid gap-4 sm:grid-cols-2">
+                <AdminPanel title="Left Signature" description="Director or academy signatory on the lower-left side.">
+                  <div className="grid gap-4">
                     <TextField label="Left Signature Name" value={formData.secondSignatureName} onChange={(secondSignatureName) => setFormData({ ...formData, secondSignatureName })} />
                     <TextField label="Left Signature Title" value={formData.secondSignatureTitle} onChange={(secondSignatureTitle) => setFormData({ ...formData, secondSignatureTitle })} />
+                    <TemplateImageField
+                      label="Left Signature Image"
+                      ratio="Best ratio: 4:1 to 5:1, transparent PNG, around 900 x 220px"
+                      description="Upload only the signature mark with transparent background."
+                      value={formData.secondSignatureUrl}
+                      uploading={uploadingField === "secondSignatureUrl"}
+                      onChange={(secondSignatureUrl) => setFormData({ ...formData, secondSignatureUrl })}
+                      onUpload={(files) => void uploadTemplateAsset("secondSignatureUrl", files)}
+                    />
                   </div>
-                  <TemplateImageField
-                    label="Left Signature Image"
-                    value={formData.secondSignatureUrl}
-                    uploading={uploadingField === "secondSignatureUrl"}
-                    onChange={(secondSignatureUrl) => setFormData({ ...formData, secondSignatureUrl })}
-                    onUpload={(files) => void uploadTemplateAsset("secondSignatureUrl", files)}
-                  />
-                  <div className="grid gap-4 sm:grid-cols-2">
+                </AdminPanel>
+                <AdminPanel title="Right Signature" description="Director or certification signatory on the lower-right side.">
+                  <div className="grid gap-4">
                     <TextField label="Right Signature Name" value={formData.signatureName} onChange={(signatureName) => setFormData({ ...formData, signatureName })} />
                     <TextField label="Right Signature Title" value={formData.signatureTitle} onChange={(signatureTitle) => setFormData({ ...formData, signatureTitle })} />
+                    <TemplateImageField
+                      label="Right Signature Image"
+                      ratio="Best ratio: 4:1 to 5:1, transparent PNG, around 900 x 220px"
+                      description="Upload only the signature mark with transparent background."
+                      value={formData.signatureUrl}
+                      uploading={uploadingField === "signatureUrl"}
+                      onChange={(signatureUrl) => setFormData({ ...formData, signatureUrl })}
+                      onUpload={(files) => void uploadTemplateAsset("signatureUrl", files)}
+                    />
                   </div>
-                  <TemplateImageField
-                    label="Right Signature Image"
-                    value={formData.signatureUrl}
-                    uploading={uploadingField === "signatureUrl"}
-                    onChange={(signatureUrl) => setFormData({ ...formData, signatureUrl })}
-                    onUpload={(files) => void uploadTemplateAsset("signatureUrl", files)}
-                  />
+                </AdminPanel>
+              </div>
+              <AdminPanel title="Certificate Ornaments" description="Optional custom seal and side laurels. Leave blank to use the generated HouseLink artwork.">
+                <div className="grid gap-4">
                   <TemplateImageField
                     label="Centre Seal Image"
+                    ratio="Best ratio: 1:1 square, transparent PNG, 800 x 800px"
+                    description="Use a circular seal or badge. Transparent background works best."
                     value={formData.sealUrl}
                     uploading={uploadingField === "sealUrl"}
                     onChange={(sealUrl) => setFormData({ ...formData, sealUrl })}
@@ -384,6 +425,8 @@ export function CertificateTemplateManagement() {
                   <div className="grid gap-4 sm:grid-cols-2">
                     <TemplateImageField
                       label="Left Laurel Image"
+                      ratio="Best ratio: 2:5 vertical, transparent PNG, around 500 x 1250px"
+                      description="Upload one slim left-side ornament. Keep empty space trimmed tightly."
                       value={formData.leftLaurelUrl}
                       uploading={uploadingField === "leftLaurelUrl"}
                       onChange={(leftLaurelUrl) => setFormData({ ...formData, leftLaurelUrl })}
@@ -391,6 +434,8 @@ export function CertificateTemplateManagement() {
                     />
                     <TemplateImageField
                       label="Right Laurel Image"
+                      ratio="Best ratio: 2:5 vertical, transparent PNG, around 500 x 1250px"
+                      description="Upload a matching right-side ornament. Use the same visual height as the left laurel."
                       value={formData.rightLaurelUrl}
                       uploading={uploadingField === "rightLaurelUrl"}
                       onChange={(rightLaurelUrl) => setFormData({ ...formData, rightLaurelUrl })}
@@ -399,22 +444,6 @@ export function CertificateTemplateManagement() {
                   </div>
                 </div>
               </AdminPanel>
-              <TemplateImageField
-                label="Background Image"
-                value={formData.backgroundUrl}
-                uploading={uploadingField === "backgroundUrl"}
-                onChange={(backgroundUrl) => setFormData({ ...formData, backgroundUrl })}
-                onUpload={(files) => void uploadTemplateAsset("backgroundUrl", files)}
-              />
-              <div className="grid gap-4 sm:grid-cols-2">
-                <TemplateImageField
-                  label="Logo"
-                  value={formData.logoUrl}
-                  uploading={uploadingField === "logoUrl"}
-                  onChange={(logoUrl) => setFormData({ ...formData, logoUrl })}
-                  onUpload={(files) => void uploadTemplateAsset("logoUrl", files)}
-                />
-              </div>
               <div className="rounded-xl border border-white/10 bg-slate-950/50 p-4">
                 <div>
                   <p className="font-semibold text-white">Advanced Design</p>
@@ -676,14 +705,27 @@ function TextAreaField({
   );
 }
 
+function FormSectionEyebrow({ title, description }: { title: string; description: string }) {
+  return (
+    <div className="rounded-xl border border-emerald-400/10 bg-emerald-400/[0.04] px-4 py-3">
+      <p className="text-xs font-bold uppercase tracking-[0.24em] text-emerald-300">{title}</p>
+      <p className="mt-1 text-sm leading-6 text-slate-400">{description}</p>
+    </div>
+  );
+}
+
 function TemplateImageField({
   label,
+  ratio,
+  description,
   value,
   uploading,
   onChange,
   onUpload,
 }: {
   label: string;
+  ratio: string;
+  description?: string;
   value: string;
   uploading: boolean;
   onChange: (value: string) => void;
@@ -691,11 +733,15 @@ function TemplateImageField({
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   return (
-    <div className="block min-w-0">
-      <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
-        <span className="text-sm font-medium text-slate-300">{label}</span>
-        <div className="flex flex-wrap gap-2">
-          <Button type="button" variant="secondary" disabled={uploading} onClick={() => inputRef.current?.click()}>
+    <div className="block min-w-0 rounded-xl border border-white/10 bg-slate-950/60 p-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <span className="text-sm font-semibold text-white">{label}</span>
+          <p className="mt-1 text-xs font-medium text-emerald-300">{ratio}</p>
+          {description ? <p className="mt-1 text-xs leading-5 text-slate-500">{description}</p> : null}
+        </div>
+        <div className="flex shrink-0 flex-wrap gap-2">
+          <Button type="button" variant="secondary" disabled={uploading} onClick={() => inputRef.current?.click()} className="min-w-28">
             {uploading ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}
             {uploading ? "Uploading..." : "Upload"}
           </Button>
@@ -707,12 +753,22 @@ function TemplateImageField({
         </div>
       </div>
       <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={(event) => onUpload(event.currentTarget.files)} />
-      <input
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        placeholder="Paste an image URL or upload a file"
-        className="w-full min-w-0 rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-white placeholder:text-slate-600 focus:border-emerald-500/40 focus:outline-none"
-      />
+      <div className="mt-3 grid gap-3 sm:grid-cols-[96px_minmax(0,1fr)]">
+        <div className="flex h-20 w-full items-center justify-center overflow-hidden rounded-lg border border-dashed border-white/10 bg-slate-900/70 sm:w-24">
+          {value ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={value} alt="" className="h-full w-full object-contain p-2" />
+          ) : (
+            <Upload className="size-5 text-slate-600" />
+          )}
+        </div>
+        <input
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          placeholder="Paste an image URL or upload a file"
+          className="w-full min-w-0 self-center rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-white placeholder:text-slate-600 focus:border-emerald-500/40 focus:outline-none"
+        />
+      </div>
     </div>
   );
 }
