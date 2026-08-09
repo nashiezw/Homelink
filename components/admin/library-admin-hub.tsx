@@ -25,14 +25,11 @@ import sampleManifest from "@/public/uploads/library/samples/sample-manifest.jso
 import {
   enabledLibraryFormats,
   estimateLibraryBundleScenario,
-  getLibraryAnalytics,
-  libraryFacets,
   libraryFormatCompareAt,
   libraryFormatInStock,
   libraryVolumePricing,
   normalizeLibraryVolumeTiers,
   primaryLibraryFormat,
-  searchLibraryProducts,
   type LibraryAnalytics,
   type LibraryBundleFormatPreference,
   type LibraryOrder,
@@ -250,7 +247,7 @@ type InventoryMovementDraft = { productId: string; type: string; quantity: strin
 type RecommendationDraft = { sourceProductId: string; targetProductId: string; reason: string; weight: string; active: boolean };
 
 type LibraryDraftDownload = LibraryProduct["downloads"][number] & { fileUrl?: string; fileName?: string; fileSizeBytes?: number; previewable?: boolean };
-type UploadSlot = "cover" | "download" | "sample";
+type UploadSlot = "cover" | "download" | "sample" | "seoImage";
 type InlineStatus = { tone: "success" | "error" | "pending"; message: string };
 type PreparedLibrarySample = {
   slug: string;
@@ -321,6 +318,30 @@ type LibraryProductDraft = {
 };
 
 const preparedLibrarySamples = sampleManifest.samples as PreparedLibrarySample[];
+
+const emptyLibraryAnalytics: LibraryAnalytics = {
+  todaySales: 0,
+  weeklySales: 0,
+  monthlySales: 0,
+  revenue: 0,
+  orders: 0,
+  downloads: 0,
+  visitors: 0,
+  conversionRate: 0,
+  bestSellers: [],
+  topCategories: [],
+  mostDownloaded: [],
+  mostViewed: [],
+  salesTrend: [],
+  stockLevels: [],
+  averageOrderValue: 0,
+  customerLifetimeValue: 0,
+  repeatPurchaseRate: 0,
+  averageRating: 0,
+  inventoryTurnover: 0,
+  activeCustomers: 0,
+  totalCustomers: 0,
+};
 
 const emptyOperations: LibraryOperations = {
   fulfilments: [],
@@ -409,7 +430,7 @@ export function LibraryAdminHub() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [productsSource, setProductsSource] = useState<LibraryProduct[]>([]);
   const [orders, setOrders] = useState<LibraryOrder[]>([]);
-  const [analytics, setAnalytics] = useState<LibraryAnalytics>(getLibraryAnalytics());
+  const [analytics, setAnalytics] = useState<LibraryAnalytics>(emptyLibraryAnalytics);
   const [operations, setOperations] = useState<LibraryOperations>(emptyOperations);
   const [customerJourney, setCustomerJourney] = useState<LibraryCustomerJourney | null>(null);
   const [customerJourneyLoading, setCustomerJourneyLoading] = useState(false);
@@ -524,7 +545,7 @@ export function LibraryAdminHub() {
   const [orderFilter, setOrderFilter] = useState("ALL");
   const [customerFilter, setCustomerFilter] = useState("");
   const [reportFilter, setReportFilter] = useState("overview");
-  const source = loaded || productsSource.length > 0 ? productsSource : searchLibraryProducts({});
+  const source = productsSource;
   const products = useMemo(() => {
     const q = query.trim().toLowerCase();
     return source.filter((product) => {
@@ -533,14 +554,14 @@ export function LibraryAdminHub() {
       return [product.title, product.sku, product.author, product.isbn, product.category].filter(Boolean).join(" ").toLowerCase().includes(q);
     });
   }, [category, query, source]);
-  const facets = productsSource.length
+  const facets = loaded
     ? {
         categories: Array.from(new Set(productsSource.map((p) => p.category))).sort(),
         authors: Array.from(new Set(productsSource.map((p) => p.author))).sort(),
         types: Array.from(new Set(productsSource.map((p) => p.productType))).sort(),
         difficulties: Array.from(new Set(productsSource.map((p) => p.difficulty))).sort(),
       }
-    : libraryFacets();
+    : { categories: [], authors: [], types: [], difficulties: [] };
   const taxonomyOptions = useMemo(() => {
     const byKind = (kind: LibraryGroupField) => {
       const fromTaxonomy = operations.taxonomy.filter((row) => row.kind === kind && row.active).map((row) => row.name);
@@ -861,6 +882,11 @@ export function LibraryAdminHub() {
         setUploadStatus((current) => ({ ...current, cover: { tone: "success", message: "Cover uploaded. Save the product to keep it." } }));
         return;
       }
+      if (kind === "seoImage") {
+        setDraft((current) => ({ ...current, seoImageUrl: uploaded.data!.url }));
+        setUploadStatus((current) => ({ ...current, seoImage: { tone: "success", message: "Social image uploaded. Save the product to keep it." } }));
+        return;
+      }
 
       const ext = file.name.split(".").pop()?.toUpperCase() || "PDF";
       const baseName = file.name.replace(/\.[^.]+$/, "");
@@ -911,15 +937,16 @@ export function LibraryAdminHub() {
 
   async function uploadTaxonomyAvatar(files: FileList | null, input?: HTMLInputElement | null) {
     const file = files?.[0];
-    if (!file || !taxonomyDraft || taxonomyDraft.kind !== "author") return;
+    if (!file || !taxonomyDraft) return;
+    const imageLabel = taxonomyDraft.kind === "author" ? "Author profile image" : "Hero image";
     setFeedback(null);
     if (!file.type.startsWith("image/")) {
-      setFeedback({ tone: "error", message: "Author profile image must be a JPG, PNG, or WebP file." });
+      setFeedback({ tone: "error", message: `${imageLabel} must be a JPG, PNG, or WebP file.` });
       if (input) input.value = "";
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
-      setFeedback({ tone: "error", message: "Author profile images must be under 5 MB." });
+      setFeedback({ tone: "error", message: `${imageLabel} must be under 5 MB.` });
       if (input) input.value = "";
       return;
     }
@@ -929,16 +956,16 @@ export function LibraryAdminHub() {
       const dataUrl = await readFile(file);
       const uploaded = await apiFetch<{ url: string }>("/api/v1/uploads", {
         method: "POST",
-        body: JSON.stringify({ dataUrl, kind: "image", folder: "library-authors", filename: file.name }),
+        body: JSON.stringify({ dataUrl, kind: "image", folder: taxonomyDraft.kind === "author" ? "library-authors" : "library-taxonomy", filename: file.name }),
       });
       if (!uploaded.data?.url) {
-        setFeedback({ tone: "error", message: uploaded.error?.message || "Author profile image upload failed." });
+        setFeedback({ tone: "error", message: uploaded.error?.message || `${imageLabel} upload failed.` });
         return;
       }
       setTaxonomyDraft((current) => current ? { ...current, heroImageUrl: uploaded.data!.url } : current);
-      setFeedback({ tone: "success", message: "Author profile image uploaded. Save the author to keep it." });
+      setFeedback({ tone: "success", message: `${imageLabel} uploaded. Save the item to keep it.` });
     } catch {
-      setFeedback({ tone: "error", message: "Author profile image upload failed." });
+      setFeedback({ tone: "error", message: `${imageLabel} upload failed.` });
     } finally {
       setTaxonomyAvatarUploading(false);
       if (input) input.value = "";
@@ -1125,6 +1152,19 @@ export function LibraryAdminHub() {
   async function updateProducts(ids: string[], patch: Partial<LibraryProduct>) {
     await Promise.all(ids.map((id) => apiFetch(`/api/v1/admin/library/products/${id}`, { method: "PATCH", body: JSON.stringify(patch) })));
     await load();
+  }
+
+  async function processAbandonedCarts() {
+    const result = await apiFetch("/api/v1/admin/library", { method: "POST", body: JSON.stringify({ action: "process_abandoned_carts" }) });
+    if (result.error) {
+      setFeedback({ tone: "error", message: result.error.message || "Could not process abandoned carts." });
+      return;
+    }
+    const sent = Number((result.data as { sent?: number } | undefined)?.sent ?? 0);
+    setFeedback({
+      tone: "success",
+      message: sent ? `Sent ${sent} abandoned bag reminder(s).` : "No abandoned bags were due for a reminder.",
+    });
   }
 
   function openGroupEditor(field: LibraryGroupField, currentName: string) {
@@ -1796,6 +1836,7 @@ export function LibraryAdminHub() {
             onDisableCustomer={disableCustomer}
             onReportFilterChange={setReportFilter}
             onUpdateQuoteRequest={updateQuoteRequestStatus}
+            onProcessAbandonedCarts={processAbandonedCarts}
           />
           {view === "Settings" && (
             <div className="mt-5 rounded-xl border border-white/[0.08] bg-slate-950/40 p-4">
@@ -1899,7 +1940,19 @@ export function LibraryAdminHub() {
                       <Field label="Slug" value={draft.slug} onChange={(value) => setDraft({ ...draft, slug: value })} placeholder="URL slug" />
                       <TextAreaField label="Meta description" value={draft.metaDescription} onChange={(value) => setDraft({ ...draft, metaDescription: value })} placeholder="Search result summary" />
                       <SeoLengthHint length={draft.metaDescription.length} ideal={155} softMax={165} />
-                      <Field label="Social / OG image URL" value={draft.seoImageUrl} onChange={(value) => setDraft({ ...draft, seoImageUrl: value })} placeholder="Defaults to cover image if empty" />
+                      <div className="rounded-lg border border-dashed border-white/10 p-3 text-sm text-slate-300">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <span className="flex items-center gap-2 font-semibold"><ImagePlus className="size-4" /> Social / OG image</span>
+                          {draft.seoImageUrl ? (
+                            <button type="button" className="text-xs font-bold text-slate-300 hover:text-white" onClick={() => setDraft({ ...draft, seoImageUrl: "" })}>
+                              Clear
+                            </button>
+                          ) : null}
+                        </div>
+                        <input type="file" accept="image/*" className="mt-2 block w-full text-xs" onChange={(event) => void uploadAsset(event.currentTarget.files, "seoImage", event.currentTarget)} />
+                        <UploadInlineStatus status={uploadStatus.seoImage} />
+                        <Field label="Social / OG image URL" value={draft.seoImageUrl} onChange={(value) => setDraft({ ...draft, seoImageUrl: value })} placeholder="Defaults to cover image if empty" />
+                      </div>
                       <div className="rounded-lg border border-white/10 bg-slate-900/60 p-3 text-sm text-slate-300">
                         <p className="text-xs font-black uppercase tracking-wide text-emerald-300">Search preview</p>
                         <p className="mt-2 text-base font-semibold text-[#8ab4f8]">{draft.seoTitle.trim() || draft.title.trim() || "Product title"}</p>
@@ -2482,21 +2535,25 @@ export function LibraryAdminHub() {
             <Field label="Name" value={taxonomyDraft.name} onChange={(value) => setTaxonomyDraft({ ...taxonomyDraft, name: value })} required />
             <Field label="Slug" value={taxonomyDraft.slug} onChange={(value) => setTaxonomyDraft({ ...taxonomyDraft, slug: value })} placeholder="Auto-generated if empty" />
             <TextAreaField label={taxonomyDraft.kind === "author" ? "Bio" : "Description"} value={taxonomyDraft.kind === "author" ? taxonomyDraft.bio : taxonomyDraft.description} onChange={(value) => setTaxonomyDraft(taxonomyDraft.kind === "author" ? { ...taxonomyDraft, bio: value } : { ...taxonomyDraft, description: value })} />
-            {taxonomyDraft.kind === "author" ? (
+            {(
               <div className="md:col-span-2 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                <p className="text-sm font-semibold text-white">Author profile image</p>
-                <p className="mt-1 text-xs leading-5 text-slate-400">Upload a square JPG, PNG, or WebP image. This is used on Library author profiles and bylines.</p>
+                <p className="text-sm font-semibold text-white">{taxonomyDraft.kind === "author" ? "Author profile image" : "Hero image"}</p>
+                <p className="mt-1 text-xs leading-5 text-slate-400">
+                  {taxonomyDraft.kind === "author"
+                    ? "Upload a square JPG, PNG, or WebP image. This is used on Library author profiles and bylines."
+                    : "Upload a wide JPG, PNG, or WebP image. This is used on Library category and collection landing pages."}
+                </p>
                 <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center">
-                  <div className="flex size-24 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-slate-950">
+                  <div className={cn("flex shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-slate-950", taxonomyDraft.kind === "author" ? "size-24" : "h-24 w-full sm:w-40")}>
                     {taxonomyDraft.heroImageUrl ? (
                       <div
                         className="size-full bg-cover bg-center"
                         role="img"
-                        aria-label={`${taxonomyDraft.name || "Author"} profile image preview`}
+                        aria-label={`${taxonomyDraft.name || taxonomyDraft.kind} image preview`}
                         style={{ backgroundImage: `url("${taxonomyDraft.heroImageUrl.replace(/"/g, "%22")}")` }}
                       />
                     ) : (
-                      <span className="text-2xl font-black text-emerald-200">{initials(taxonomyDraft.name)}</span>
+                      <span className="text-2xl font-black text-emerald-200">{taxonomyDraft.kind === "author" ? initials(taxonomyDraft.name) : <ImagePlus className="size-8" />}</span>
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
@@ -2521,11 +2578,9 @@ export function LibraryAdminHub() {
                   </div>
                 </div>
                 <div className="mt-4">
-                  <Field label="Image URL" value={taxonomyDraft.heroImageUrl} onChange={(value) => setTaxonomyDraft({ ...taxonomyDraft, heroImageUrl: value })} placeholder="Optional hosted image URL" />
+                  <Field label={taxonomyDraft.kind === "author" ? "Image URL" : "Hero image URL"} value={taxonomyDraft.heroImageUrl} onChange={(value) => setTaxonomyDraft({ ...taxonomyDraft, heroImageUrl: value })} placeholder="Optional hosted image URL" />
                 </div>
               </div>
-            ) : (
-              <Field label="Hero image URL" value={taxonomyDraft.heroImageUrl} onChange={(value) => setTaxonomyDraft({ ...taxonomyDraft, heroImageUrl: value })} />
             )}
             {taxonomyDraft.kind === "author" && <Field label="Website URL" value={taxonomyDraft.websiteUrl} onChange={(value) => setTaxonomyDraft({ ...taxonomyDraft, websiteUrl: value })} />}
             {taxonomyDraft.kind !== "author" && <Field label="SEO title" value={taxonomyDraft.seoTitle} onChange={(value) => setTaxonomyDraft({ ...taxonomyDraft, seoTitle: value })} />}
@@ -3543,6 +3598,7 @@ function LibraryTabManagement({
   onDisableCustomer,
   onReportFilterChange,
   onUpdateQuoteRequest,
+  onProcessAbandonedCarts,
 }: {
   view: string;
   products: LibraryProduct[];
@@ -3576,6 +3632,7 @@ function LibraryTabManagement({
   onEditRecommendation: (row: LibraryRecommendationAdmin) => void;
   onDeleteRecommendation: (row: LibraryRecommendationAdmin) => void | Promise<void>;
   onUpdateQuoteRequest: (id: string, status: string) => void | Promise<void>;
+  onProcessAbandonedCarts: () => void | Promise<void>;
   onCustomerFilterChange: (value: string) => void;
   onViewCustomerOrders: (email: string) => void;
   onDisableCustomer: (userId: string, email: string) => void | Promise<void>;
@@ -3695,16 +3752,7 @@ function LibraryTabManagement({
           ]} />
           <Button
             variant="secondary"
-            onClick={() => {
-              void apiFetch("/api/v1/admin/library", { method: "POST", body: JSON.stringify({ action: "process_abandoned_carts" }) }).then((result) => {
-                if (result.error) {
-                  window.alert(result.error.message || "Could not process abandoned carts.");
-                  return;
-                }
-                const sent = Number((result.data as { sent?: number } | undefined)?.sent ?? 0);
-                window.alert(sent ? `Sent ${sent} abandoned bag reminder(s).` : "No abandoned bags were due for a reminder.");
-              });
-            }}
+            onClick={() => void onProcessAbandonedCarts()}
           >
             Send abandoned bag reminders
           </Button>

@@ -474,6 +474,21 @@ export function AgentAcademyHub() {
   const academyRevenue = metric("academyRevenue");
   const averageScore = metric("averageScore");
   const videoWatchPercent = metric("videoWatchPercent");
+  const selectedCourseAnalytics = selectedCourseForDrilldown
+    ? {
+        course: data.courses.find((course) => course.id === selectedCourseForDrilldown.id),
+        popularity: (analytics?.popularCourses as Array<{ courseId: string; courseTitle: string; _count: number }> | undefined)?.find((course) => course.courseId === selectedCourseForDrilldown.id),
+        completion: (analytics?.completionRates as Array<{ courseId?: string; title: string; enrolled: number; completed: number; completion_rate: number; avg_progress: number }> | undefined)?.find(
+          (course) => course.courseId === selectedCourseForDrilldown.id || course.title === selectedCourseForDrilldown.title,
+        ),
+        courseStats: (analytics?.courses as Array<{ id: string; title: string; enrolments: number; inProgress: number; certificates: number }> | undefined)?.find((course) => course.id === selectedCourseForDrilldown.id),
+      }
+    : null;
+  const selectedCourseAtRisk = selectedCourseForDrilldown
+    ? ((analytics?.atRiskLearners as Array<{ learnerId: string; learnerName: string; learnerEmail: string; courseId?: string; riskScore: number; riskFactors?: string[] }> | undefined) ?? []).filter(
+        (learner) => !learner.courseId || learner.courseId === selectedCourseForDrilldown.id,
+      )
+    : [];
 
   return (
     <div className="space-y-5">
@@ -769,27 +784,27 @@ export function AgentAcademyHub() {
         title={`Course Analytics: ${selectedCourseForDrilldown?.title || ''}`}
       >
         <div className="space-y-4">
-          <p className="text-sm text-slate-400">Detailed analytics for this course will be displayed here.</p>
+          <p className="text-sm text-slate-400">Database-backed course performance for the selected period.</p>
           <div className="grid gap-3 sm:grid-cols-2">
             <ActivityPanel title="Enrollment Trends" icon={BarChart3}>
-              <MetricRow label="Total enrolled" value="Loading..." />
-              <MetricRow label="Active learners" value="Loading..." />
-              <MetricRow label="New this month" value="Loading..." />
+              <MetricRow label="Total enrolled" value={selectedCourseAnalytics?.completion?.enrolled ?? selectedCourseAnalytics?.popularity?._count ?? selectedCourseAnalytics?.courseStats?.enrolments ?? 0} />
+              <MetricRow label="Active learners" value={selectedCourseAnalytics?.courseStats?.inProgress ?? 0} />
+              <MetricRow label="Published state" value={selectedCourseAnalytics?.course?.status ?? "Unknown"} />
             </ActivityPanel>
             <ActivityPanel title="Completion Metrics" icon={Trophy}>
-              <MetricRow label="Completion rate" value="Loading..." />
-              <MetricRow label="Average score" value="Loading..." />
-              <MetricRow label="Time to complete" value="Loading..." />
+              <MetricRow label="Completion rate" value={`${toFiniteNumber(selectedCourseAnalytics?.completion?.completion_rate).toFixed(1)}%`} />
+              <MetricRow label="Average progress" value={`${toFiniteNumber(selectedCourseAnalytics?.completion?.avg_progress).toFixed(1)}%`} />
+              <MetricRow label="Certificates" value={selectedCourseAnalytics?.courseStats?.certificates ?? 0} />
             </ActivityPanel>
             <ActivityPanel title="Learner Progress" icon={Target}>
-              <MetricRow label="Not started" value="Loading..." />
-              <MetricRow label="In progress" value="Loading..." />
-              <MetricRow label="Completed" value="Loading..." />
+              <MetricRow label="Completed" value={selectedCourseAnalytics?.completion?.completed ?? 0} />
+              <MetricRow label="In progress records" value={selectedCourseAnalytics?.courseStats?.inProgress ?? 0} />
+              <MetricRow label="Not started" value={Math.max(0, toFiniteNumber(selectedCourseAnalytics?.completion?.enrolled) - toFiniteNumber(selectedCourseAnalytics?.courseStats?.inProgress))} />
             </ActivityPanel>
             <ActivityPanel title="Assessment Performance" icon={BookOpen}>
-              <MetricRow label="Quiz pass rate" value="Loading..." />
-              <MetricRow label="Assignment avg" value="Loading..." />
-              <MetricRow label="Exam pass rate" value="Loading..." />
+              <MetricRow label="Average score" value={`${toFiniteNumber((comparativeAnalytics as any)?.currentPeriod?.averageScore ?? analytics?.averageScore).toFixed(1)}%`} />
+              <MetricRow label="Score trend" value={String((comparativeAnalytics as any)?.trendAnalysis?.scoreTrend ?? "No trend yet")} />
+              <MetricRow label="Assessment data" value={comparativeAnalytics ? "Loaded" : "Select course activity"} />
             </ActivityPanel>
           </div>
           
@@ -925,10 +940,16 @@ export function AgentAcademyHub() {
           )}
           
           <ActivityPanel title="At-Risk Learners in this Course" icon={AlertTriangle}>
-            <p className="text-sm text-slate-400">Loading at-risk learners...</p>
+            {selectedCourseAtRisk.length ? (
+              selectedCourseAtRisk.slice(0, 6).map((learner) => (
+                <MetricRow key={learner.learnerId} label={learner.learnerName || learner.learnerEmail} value={`${toFiniteNumber(learner.riskScore).toFixed(0)}% risk`} />
+              ))
+            ) : (
+              <EmptyPanelText>No course-specific at-risk learner records for this period.</EmptyPanelText>
+            )}
           </ActivityPanel>
           <ActivityPanel title="Module Completion Rates" icon={ClipboardCheck}>
-            <p className="text-sm text-slate-400">Loading module data...</p>
+            <EmptyPanelText>Module-level completion is not stored as a separate aggregate yet. Lesson and course progress above are calculated from database records.</EmptyPanelText>
           </ActivityPanel>
         </div>
       </AdminDrawer>
@@ -1407,17 +1428,6 @@ function FeatureWorkbench({
       const completionRates = analytics?.completionRates as Array<{ title: string; enrolled: number; completed: number; completion_rate: number; avg_progress: number }> | undefined;
       const _dailyActivity = analytics?.dailyActivity as Array<{ date: Date; actions: number }> | undefined;
       const atRiskLearners = analytics?.atRiskLearners as Array<{ learnerId: string; learnerName: string; learnerEmail: string; riskScore: number; riskFactors?: string[] }> | undefined;
-      
-      console.log('Analytics data check:', {
-        hasAnalytics: !!analytics,
-        hasRevenue: !!revenue,
-        hasPopularCourses: !!popularCourses,
-        popularCoursesCount: popularCourses?.length,
-        hasCompletionRates: !!completionRates,
-        completionRatesCount: completionRates?.length,
-        hasAtRiskLearners: !!atRiskLearners,
-        atRiskLearnersCount: atRiskLearners?.length
-      });
       
       if (!analytics) {
         return (
@@ -2199,16 +2209,34 @@ function DocumentDrawer({
 }
 
 function VideoDrawer({ open, busy, onClose, onSave }: { open: boolean; busy: boolean; onClose: () => void; onSave: (video: Record<string, unknown>) => Promise<unknown> }) {
+  const { showToast } = useApp();
   const [video, setVideo] = useState({ title: "", description: "", category: "Training", videoUrl: "", durationSeconds: 0, captionsUrl: "", downloadable: false, tags: "" });
   return (
     <AdminDrawer open={open} title="Add Video" description="Add streamed Academy videos with watch tracking, captions, bookmarks, notes, and analytics." onClose={onClose} width="xl">
       <FormGrid>
         <TextInput label="Title" value={video.title} onChange={(title) => setVideo({ ...video, title })} />
         <TextInput label="Category" value={video.category} onChange={(category) => setVideo({ ...video, category })} />
-        <TextInput label="Video URL" value={video.videoUrl} onChange={(videoUrl) => setVideo({ ...video, videoUrl })} className="sm:col-span-2" />
+        <MediaUrlInput
+          label="Video"
+          value={video.videoUrl}
+          folder="academy/videos"
+          accept="video/*"
+          kind="video"
+          onChange={(videoUrl) => setVideo({ ...video, videoUrl })}
+          onError={(message) => showToast(message, "error")}
+          className="sm:col-span-2"
+        />
         <TextArea label="Description" value={video.description} onChange={(description) => setVideo({ ...video, description })} className="sm:col-span-2" />
         <TextInput label="Duration seconds" type="number" value={String(video.durationSeconds)} onChange={(durationSeconds) => setVideo({ ...video, durationSeconds: Number(durationSeconds) })} />
-        <TextInput label="Captions URL" value={video.captionsUrl} onChange={(captionsUrl) => setVideo({ ...video, captionsUrl })} />
+        <MediaUrlInput
+          label="Captions"
+          value={video.captionsUrl}
+          folder="academy/captions"
+          accept=".vtt,.srt,text/vtt,text/plain"
+          kind="document"
+          onChange={(captionsUrl) => setVideo({ ...video, captionsUrl })}
+          onError={(message) => showToast(message, "error")}
+        />
       </FormGrid>
       <DrawerActions busy={busy} onClose={onClose} onSave={() => onSave(video)} label="Add video" />
     </AdminDrawer>
@@ -2305,6 +2333,7 @@ function AnnouncementDrawer({ open, busy, announcement: editingAnnouncement, onC
 }
 
 function BadgeDrawer({ open, busy, badge: editingBadge, onClose, onSave }: { open: boolean; busy: boolean; badge?: AcademyData["badges"][number] | null; onClose: () => void; onSave: (badge: Record<string, unknown>) => Promise<unknown> }) {
+  const { showToast } = useApp();
   const [badge, setBadge] = useState({ name: "", description: "", xp: 100, iconUrl: "", active: true });
   useEffect(() => {
     if (!open) return;
@@ -2322,7 +2351,15 @@ function BadgeDrawer({ open, busy, badge: editingBadge, onClose, onSave }: { ope
       <FormGrid>
         <TextInput label="Badge name" value={badge.name} onChange={(name) => setBadge({ ...badge, name })} />
         <TextInput label="XP" type="number" value={String(badge.xp)} onChange={(xp) => setBadge({ ...badge, xp: Number(xp) })} />
-        <TextInput label="Icon URL" value={badge.iconUrl} onChange={(iconUrl) => setBadge({ ...badge, iconUrl })} />
+        <MediaUrlInput
+          label="Badge Icon"
+          value={badge.iconUrl}
+          folder="academy/badges"
+          accept="image/*"
+          kind="image"
+          onChange={(iconUrl) => setBadge({ ...badge, iconUrl })}
+          onError={(message) => showToast(message, "error")}
+        />
         <TextArea label="Description" value={badge.description} onChange={(description) => setBadge({ ...badge, description })} className="sm:col-span-2" />
         <label className="flex items-center gap-2 text-sm text-slate-300">
           <input type="checkbox" checked={badge.active} onChange={(event) => setBadge({ ...badge, active: event.target.checked })} />
@@ -2335,6 +2372,7 @@ function BadgeDrawer({ open, busy, badge: editingBadge, onClose, onSave }: { ope
 }
 
 function LessonDrawer({ open, busy, lesson: editingLesson, courses: _courses, onClose, onSave }: { open: boolean; busy: boolean; lesson?: AcademyLesson | null; courses: AcademyCourse[]; onClose: () => void; onSave: (lesson: Record<string, unknown>) => Promise<unknown> }) {
+  const { showToast } = useApp();
   const [lesson, setLesson] = useState({
     title: editingLesson?.title ?? "",
     summary: editingLesson?.summary ?? "",
@@ -2382,10 +2420,35 @@ function LessonDrawer({ open, busy, lesson: editingLesson, courses: _courses, on
             <TextArea label="Practice before you move on" value={lesson.lessonDepth.practice} onChange={(practice) => setLesson({ ...lesson, lessonDepth: { ...lesson.lessonDepth, practice } })} rows={4} />
           </div>
         </div>
-        <TextInput label="Video URL" value={lesson.videoUrl} onChange={(videoUrl) => setLesson({ ...lesson, videoUrl })} className="sm:col-span-2" />
+        <MediaUrlInput
+          label="Video"
+          value={lesson.videoUrl}
+          folder="academy/lessons"
+          accept="video/*"
+          kind="video"
+          onChange={(videoUrl) => setLesson({ ...lesson, videoUrl })}
+          onError={(message) => showToast(message, "error")}
+          className="sm:col-span-2"
+        />
         <TextInput label="Embedded video URL (YouTube/Vimeo)" value={lesson.embeddedVideoUrl} onChange={(embeddedVideoUrl) => setLesson({ ...lesson, embeddedVideoUrl })} className="sm:col-span-2" />
-        <TextInput label="PDF URL" value={lesson.pdfUrl} onChange={(pdfUrl) => setLesson({ ...lesson, pdfUrl })} />
-        <TextInput label="Audio URL" value={lesson.audioUrl} onChange={(audioUrl) => setLesson({ ...lesson, audioUrl })} />
+        <MediaUrlInput
+          label="PDF"
+          value={lesson.pdfUrl}
+          folder="academy/lessons"
+          accept=".pdf,application/pdf"
+          kind="document"
+          onChange={(pdfUrl) => setLesson({ ...lesson, pdfUrl })}
+          onError={(message) => showToast(message, "error")}
+        />
+        <MediaUrlInput
+          label="Audio"
+          value={lesson.audioUrl}
+          folder="academy/lessons"
+          accept="audio/*"
+          kind="audio"
+          onChange={(audioUrl) => setLesson({ ...lesson, audioUrl })}
+          onError={(message) => showToast(message, "error")}
+        />
         <TextInput label="Estimated minutes" type="number" value={String(lesson.estimatedMinutes)} onChange={(estimatedMinutes) => setLesson({ ...lesson, estimatedMinutes: Number(estimatedMinutes) })} />
         <SelectInput label="Completion requirement" value={lesson.completionRequirement} options={["VIEW", "COMPLETE_QUIZ", "SUBMIT_ASSIGNMENT"]} onChange={(completionRequirement) => setLesson({ ...lesson, completionRequirement })} />
         <TextInput label="Sort order" type="number" value={String(lesson.sortOrder)} onChange={(sortOrder) => setLesson({ ...lesson, sortOrder: Number(sortOrder) })} />
@@ -2811,6 +2874,79 @@ function TextInput({ label, value, onChange, type = "text", className }: { label
   return <label className={cn("text-sm text-slate-300", className)}>{label}<input type={type} value={value} onChange={(event) => onChange(event.target.value)} className="mt-1 w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-white outline-none focus:border-emerald-500/40" /></label>;
 }
 
+function MediaUrlInput({
+  label,
+  value,
+  onChange,
+  accept,
+  kind,
+  folder,
+  className,
+  onError,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  accept: string;
+  kind: "image" | "video" | "audio" | "document";
+  folder: string;
+  className?: string;
+  onError: (message: string) => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+
+  async function upload(files: FileList | null) {
+    const file = files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const dataUrl = await readFile(file);
+      const result = await apiFetch<{ url: string }>("/api/v1/uploads", {
+        method: "POST",
+        body: JSON.stringify({ dataUrl, kind, folder }),
+      });
+      if (!result.data?.url) {
+        onError(result.error?.message ?? `${label} upload failed.`);
+        return;
+      }
+      onChange(result.data.url);
+    } catch (error) {
+      onError(error instanceof Error ? error.message : `${label} upload failed.`);
+    } finally {
+      setUploading(false);
+      if (inputRef.current) inputRef.current.value = "";
+    }
+  }
+
+  return (
+    <div className={cn("min-w-0 text-sm text-slate-300", className)}>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span>{label}</span>
+        <div className="flex flex-wrap gap-2">
+          <Button type="button" variant="secondary" disabled={uploading} onClick={() => inputRef.current?.click()}>
+            {uploading ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}
+            {uploading ? "Uploading..." : "Upload"}
+          </Button>
+          {value ? (
+            <Button type="button" variant="secondary" disabled={uploading} onClick={() => onChange("")}>
+              Clear
+            </Button>
+          ) : null}
+        </div>
+      </div>
+      <input ref={inputRef} type="file" accept={accept} className="hidden" onChange={(event) => void upload(event.currentTarget.files)} />
+      <input
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder="Paste a hosted URL or upload a file"
+        className="mt-1 w-full min-w-0 rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-white outline-none focus:border-emerald-500/40"
+      />
+      {value ? <p className="mt-1 truncate text-xs text-slate-500">{value}</p> : null}
+    </div>
+  );
+}
+
 function TextArea({ label, value, onChange, className, rows = 4 }: { label: string; value: string; onChange: (value: string) => void; className?: string; rows?: number }) {
   return <label className={cn("text-sm text-slate-300", className)}>{label}<textarea value={value} onChange={(event) => onChange(event.target.value)} rows={rows} className="mt-1 w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-white outline-none focus:border-emerald-500/40" /></label>;
 }
@@ -3078,6 +3214,7 @@ export function LessonContentManager({ lessons, documents, action }: { lessons: 
 }
 
 function LessonVideoDrawer({ open, busy, lessonId, video, onClose, onSave }: { open: boolean; busy: boolean; lessonId: string; video?: any; onClose: () => void; onSave: (video: Record<string, unknown>) => Promise<unknown> }) {
+  const { showToast } = useApp();
   const [form, setForm] = useState({
     title: video?.title ?? "",
     url: video?.url ?? "",
@@ -3091,10 +3228,27 @@ function LessonVideoDrawer({ open, busy, lessonId, video, onClose, onSave }: { o
     <AdminDrawer open={open} title={editing ? "Edit Video" : "Add Video"} description="Add or edit lesson video content." onClose={onClose} width="lg">
       <FormGrid>
         <TextInput label="Video title" value={form.title} onChange={(title) => setForm({ ...form, title })} className="sm:col-span-2" />
-        <TextInput label="Video URL" value={form.url} onChange={(url) => setForm({ ...form, url })} className="sm:col-span-2" />
+        <MediaUrlInput
+          label="Video"
+          value={form.url}
+          folder="academy/lesson-videos"
+          accept="video/*"
+          kind="video"
+          onChange={(url) => setForm({ ...form, url })}
+          onError={(message) => showToast(message, "error")}
+          className="sm:col-span-2"
+        />
         <SelectInput label="Provider" value={form.provider} options={["UPLOAD", "YOUTUBE", "VIMEO", "EXTERNAL"]} onChange={(provider) => setForm({ ...form, provider })} />
         <TextInput label="Duration (seconds)" type="number" value={String(form.durationSeconds)} onChange={(durationSeconds) => setForm({ ...form, durationSeconds: Number(durationSeconds) })} />
-        <TextInput label="Captions URL" value={form.captionsUrl} onChange={(captionsUrl) => setForm({ ...form, captionsUrl })} />
+        <MediaUrlInput
+          label="Captions"
+          value={form.captionsUrl}
+          folder="academy/captions"
+          accept=".vtt,.srt,text/vtt,text/plain"
+          kind="document"
+          onChange={(captionsUrl) => setForm({ ...form, captionsUrl })}
+          onError={(message) => showToast(message, "error")}
+        />
         <label className="flex items-center gap-2 text-sm text-slate-300">
           <input type="checkbox" checked={form.downloadable} onChange={(e) => setForm({ ...form, downloadable: e.target.checked })} />
           Downloadable

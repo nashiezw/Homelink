@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   BookOpen,
   CheckCircle2,
@@ -13,6 +13,7 @@ import {
   Plus,
   Trash2,
   Undo2,
+  Upload,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api/client";
@@ -332,8 +333,8 @@ export function CourseWorkspace({
               </label>
               <Field label="Discussion prompt" value={lessonDraft.discussionPrompt ?? ""} onChange={(v) => setLessonDraft({ ...lessonDraft, discussionPrompt: v })} />
               <div className="grid gap-3 sm:grid-cols-2">
-                <Field label="Video URL" value={lessonDraft.videoUrl ?? ""} onChange={(v) => setLessonDraft({ ...lessonDraft, videoUrl: v })} />
-                <Field label="PDF URL" value={lessonDraft.pdfUrl ?? ""} onChange={(v) => setLessonDraft({ ...lessonDraft, pdfUrl: v })} />
+                <CourseMediaField label="Video" value={lessonDraft.videoUrl ?? ""} accept="video/*" kind="video" onChange={(v) => setLessonDraft({ ...lessonDraft, videoUrl: v })} />
+                <CourseMediaField label="PDF" value={lessonDraft.pdfUrl ?? ""} accept=".pdf,application/pdf" kind="document" onChange={(v) => setLessonDraft({ ...lessonDraft, pdfUrl: v })} />
               </div>
               <Button disabled={busy} onClick={() => void run({ action: "update_lesson", lessonId: selectedLesson.id, lesson: { ...lessonDraft, lessonDepth: lessonDepthDraft } }, "Lesson saved.")}>
                 {busy ? <Loader2 className="size-4 animate-spin" /> : <CheckCircle2 className="size-4 mr-2" />} Save Lesson
@@ -434,12 +435,71 @@ function Field({ label, value, onChange }: { label: string; value: string; onCha
   );
 }
 
+function CourseMediaField({ label, value, accept, kind, onChange }: { label: string; value: string; accept: string; kind: "video" | "document"; onChange: (v: string) => void }) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function upload(files: FileList | null) {
+    const file = files?.[0];
+    if (!file) return;
+    setUploading(true);
+    setError(null);
+    try {
+      const dataUrl = await readCourseWorkspaceFile(file);
+      const result = await apiFetch<{ url: string }>("/api/v1/uploads", {
+        method: "POST",
+        body: JSON.stringify({ dataUrl, kind, folder: "academy/course-workspace" }),
+      });
+      if (!result.data?.url) {
+        setError(result.error?.message ?? `${label} upload failed.`);
+        return;
+      }
+      onChange(result.data.url);
+    } catch (uploadError) {
+      setError(uploadError instanceof Error ? uploadError.message : `${label} upload failed.`);
+    } finally {
+      setUploading(false);
+      if (inputRef.current) inputRef.current.value = "";
+    }
+  }
+
+  return (
+    <div className="block min-w-0 text-sm text-slate-300">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span>{label}</span>
+        <Button type="button" variant="secondary" disabled={uploading} onClick={() => inputRef.current?.click()}>
+          {uploading ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}
+          {uploading ? "Uploading..." : "Upload"}
+        </Button>
+      </div>
+      <input ref={inputRef} type="file" accept={accept} className="hidden" onChange={(event) => void upload(event.currentTarget.files)} />
+      <input
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder="Paste a hosted URL or upload a file"
+        className="mt-1 w-full min-w-0 rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-white"
+      />
+      {error ? <p className="mt-1 text-xs text-red-300">{error}</p> : null}
+    </div>
+  );
+}
+
 function TextareaField({ label, value, rows, onChange }: { label: string; value: string; rows: number; onChange: (v: string) => void }) {
   return (
     <label className="block text-sm text-slate-300">{label}
       <textarea value={value} onChange={(event) => onChange(event.target.value)} rows={rows} className="mt-1 w-full rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white" />
     </label>
   );
+}
+
+function readCourseWorkspaceFile(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(new Error("File could not be read."));
+    reader.readAsDataURL(file);
+  });
 }
 
 const lessonDepthResourceTitles = {

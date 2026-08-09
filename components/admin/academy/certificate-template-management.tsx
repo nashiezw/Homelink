@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { Award, Edit, Eye, Loader2, Palette, Plus, RefreshCw, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Award, Edit, Eye, Loader2, Palette, Plus, RefreshCw, Trash2, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api/client";
 import { useApp } from "@/components/providers/app-provider";
@@ -62,6 +62,7 @@ export function CertificateTemplateManagement() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<CertificateTemplate | null>(null);
   const [formData, setFormData] = useState<TemplateFormData>(emptyForm);
+  const [uploadingField, setUploadingField] = useState<"backgroundUrl" | "logoUrl" | "signatureUrl" | null>(null);
 
   const activeTemplates = useMemo(() => templates.filter((template) => template.active).length, [templates]);
 
@@ -166,6 +167,29 @@ export function CertificateTemplateManagement() {
     setFormData(emptyForm);
   }
 
+  async function uploadTemplateAsset(field: "backgroundUrl" | "logoUrl" | "signatureUrl", files: FileList | null) {
+    const file = files?.[0];
+    if (!file) return;
+    setUploadingField(field);
+    try {
+      const dataUrl = await readTemplateFile(file);
+      const result = await apiFetch<{ url: string }>("/api/v1/uploads", {
+        method: "POST",
+        body: JSON.stringify({ dataUrl, kind: "image", folder: "academy/certificates" }),
+      });
+      if (!result.data?.url) {
+        showToast(result.error?.message ?? "Certificate image upload failed.", "error");
+        return;
+      }
+      setFormData((current) => ({ ...current, [field]: result.data!.url }));
+      showToast("Certificate image uploaded. Save the template to keep it.");
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Certificate image upload failed.", "error");
+    } finally {
+      setUploadingField(null);
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -259,10 +283,28 @@ export function CertificateTemplateManagement() {
                 <ColorField label="Primary Color" value={formData.primaryColor} onChange={(primaryColor) => setFormData({ ...formData, primaryColor })} />
                 <ColorField label="Accent Color" value={formData.accentColor} onChange={(accentColor) => setFormData({ ...formData, accentColor })} />
               </div>
-              <TextField label="Background Image URL" value={formData.backgroundUrl} onChange={(backgroundUrl) => setFormData({ ...formData, backgroundUrl })} placeholder="https://example.com/background.jpg" />
+              <TemplateImageField
+                label="Background Image"
+                value={formData.backgroundUrl}
+                uploading={uploadingField === "backgroundUrl"}
+                onChange={(backgroundUrl) => setFormData({ ...formData, backgroundUrl })}
+                onUpload={(files) => void uploadTemplateAsset("backgroundUrl", files)}
+              />
               <div className="grid gap-4 sm:grid-cols-2">
-                <TextField label="Logo URL" value={formData.logoUrl} onChange={(logoUrl) => setFormData({ ...formData, logoUrl })} placeholder="https://example.com/logo.png" />
-                <TextField label="Signature URL" value={formData.signatureUrl} onChange={(signatureUrl) => setFormData({ ...formData, signatureUrl })} placeholder="https://example.com/signature.png" />
+                <TemplateImageField
+                  label="Logo"
+                  value={formData.logoUrl}
+                  uploading={uploadingField === "logoUrl"}
+                  onChange={(logoUrl) => setFormData({ ...formData, logoUrl })}
+                  onUpload={(files) => void uploadTemplateAsset("logoUrl", files)}
+                />
+                <TemplateImageField
+                  label="Signature"
+                  value={formData.signatureUrl}
+                  uploading={uploadingField === "signatureUrl"}
+                  onChange={(signatureUrl) => setFormData({ ...formData, signatureUrl })}
+                  onUpload={(files) => void uploadTemplateAsset("signatureUrl", files)}
+                />
               </div>
               <label className="flex items-center gap-2 text-sm text-slate-300">
                 <input
@@ -401,6 +443,47 @@ function TextField({
   );
 }
 
+function TemplateImageField({
+  label,
+  value,
+  uploading,
+  onChange,
+  onUpload,
+}: {
+  label: string;
+  value: string;
+  uploading: boolean;
+  onChange: (value: string) => void;
+  onUpload: (files: FileList | null) => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  return (
+    <div className="block min-w-0">
+      <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+        <span className="text-sm font-medium text-slate-300">{label}</span>
+        <div className="flex flex-wrap gap-2">
+          <Button type="button" variant="secondary" disabled={uploading} onClick={() => inputRef.current?.click()}>
+            {uploading ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}
+            {uploading ? "Uploading..." : "Upload"}
+          </Button>
+          {value ? (
+            <Button type="button" variant="secondary" disabled={uploading} onClick={() => onChange("")}>
+              Clear
+            </Button>
+          ) : null}
+        </div>
+      </div>
+      <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={(event) => onUpload(event.currentTarget.files)} />
+      <input
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder="Paste an image URL or upload a file"
+        className="w-full min-w-0 rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-white placeholder:text-slate-600 focus:border-emerald-500/40 focus:outline-none"
+      />
+    </div>
+  );
+}
+
 function ColorField({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
   return (
     <label className="block">
@@ -415,4 +498,13 @@ function ColorField({ label, value, onChange }: { label: string; value: string; 
       </div>
     </label>
   );
+}
+
+function readTemplateFile(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(new Error("File could not be read."));
+    reader.readAsDataURL(file);
+  });
 }

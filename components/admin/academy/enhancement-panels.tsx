@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { Mail, Users, CreditCard, Plus, Pencil, Trash2, CheckCircle2, XCircle, Download, RefreshCw } from "lucide-react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { Mail, Users, CreditCard, Plus, Pencil, Trash2, CheckCircle2, XCircle, Download, RefreshCw, Upload, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api/client";
 import { useApp } from "@/components/providers/app-provider";
@@ -278,6 +278,8 @@ export function BrandingManagementPanel() {
   const [branding, setBranding] = useState<BrandingSettings>({});
   const [loading, setLoading] = useState(true);
   const [confirmReset, setConfirmReset] = useState(false);
+  const [logoUploading, setLogoUploading] = useState(false);
+  const logoInputRef = useRef<HTMLInputElement>(null);
 
   const loadBranding = useCallback(async () => {
     setLoading(true);
@@ -315,6 +317,30 @@ export function BrandingManagementPanel() {
     }
   };
 
+  const uploadLogo = async (files: FileList | null) => {
+    const file = files?.[0];
+    if (!file) return;
+    setLogoUploading(true);
+    try {
+      const dataUrl = await readEnhancementFile(file);
+      const result = await apiFetch<{ url: string }>("/api/v1/uploads", {
+        method: "POST",
+        body: JSON.stringify({ dataUrl, kind: "image", folder: "academy/branding" }),
+      });
+      if (!result.data?.url) {
+        showToast(result.error?.message ?? "Logo upload failed.", "error");
+        return;
+      }
+      setBranding((current) => ({ ...current, logoUrl: result.data!.url }));
+      showToast("Logo uploaded. Save branding to keep it.");
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Logo upload failed.", "error");
+    } finally {
+      setLogoUploading(false);
+      if (logoInputRef.current) logoInputRef.current.value = "";
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -331,7 +357,21 @@ export function BrandingManagementPanel() {
       ) : (
         <div className="rounded-xl border border-white/10 bg-slate-900/60 p-6 space-y-4">
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1">Logo URL</label>
+            <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+              <label className="block text-sm font-medium text-slate-300">Logo</label>
+              <div className="flex flex-wrap gap-2">
+                <Button type="button" variant="secondary" disabled={logoUploading} onClick={() => logoInputRef.current?.click()}>
+                  {logoUploading ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}
+                  {logoUploading ? "Uploading..." : "Upload"}
+                </Button>
+                {branding.logoUrl ? (
+                  <Button type="button" variant="secondary" disabled={logoUploading} onClick={() => setBranding({ ...branding, logoUrl: "" })}>
+                    Clear
+                  </Button>
+                ) : null}
+              </div>
+            </div>
+            <input ref={logoInputRef} type="file" accept="image/*" className="hidden" onChange={(event) => void uploadLogo(event.currentTarget.files)} />
             <input
               type="text"
               value={branding.logoUrl || ""}
@@ -716,4 +756,13 @@ export function RefundsManagementPanel() {
       />
     </div>
   );
+}
+
+function readEnhancementFile(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(new Error("File could not be read."));
+    reader.readAsDataURL(file);
+  });
 }
