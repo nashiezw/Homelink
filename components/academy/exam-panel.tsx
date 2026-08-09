@@ -104,7 +104,7 @@ export function ExamPanel({
         <p className="mt-4 text-2xl font-bold">Final Exam Score: {result.score}%</p>
         <p className="text-slate-600 mt-2">
           {result.passed
-            ? "You passed the Certified HouseLink Agent final examination."
+            ? "You passed the HouseLink Agent Foundations final examination."
             : `Pass mark is ${passingScore}%. Review the course material and try again when ready.`}
         </p>
         {!result.passed && !!result.reviewTopics?.length && (

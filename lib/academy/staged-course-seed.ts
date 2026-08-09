@@ -302,7 +302,7 @@ export const modules: ModuleSeed[] = [
       {
         title: "How to use this Academy",
         stage: "Beginner",
-        summary: "How to progress through modules, use branded downloads, and track your certification path.",
+        summary: "How to progress through modules, use branded downloads, and track your HouseLink certificate path.",
         richText: `<p>Each lesson includes reading material, practical downloads, and checkpoints. Branded PDFs in this Academy are print-ready HouseLink resources — forms, checklists, and planners — not generic placeholders.</p><p>Use <strong>Continue learning</strong> on your dashboard to resume where you left off. Bookmark lessons you want to revisit. The full training manual is available once in the Resource Library for reference — individual lessons link only to the tools you need for that topic.</p><p>Quizzes and assignments appear at stage checkpoints. Pass marks and certificates are tracked in your learner dashboard.</p>`,
         objectives: ["Navigate the learner dashboard", "Use lesson downloads correctly", "Understand quiz and certificate requirements"],
         estimatedMinutes: 15,
@@ -714,8 +714,8 @@ export const modules: ModuleSeed[] = [
   {
     title: "Becoming a Top-Performing Agent",
     stage: "Advanced",
-    description: "Performance habits, KPIs, reputation, and certification readiness.",
-    objectives: ["Build sustainable performance routines", "Track KPIs weekly", "Prepare for final certification"],
+    description: "Performance habits, KPIs, reputation, and HouseLink certificate readiness.",
+    objectives: ["Build sustainable performance routines", "Track KPIs weekly", "Prepare for final certificate completion"],
     lessons: [
       {
         title: "Building a successful real estate career",
@@ -781,7 +781,7 @@ export const modules: ModuleSeed[] = [
         richText: practicalLesson([
           {
             heading: "Why specialists win",
-            body: "The best agents become known for a clear type of client, property, or transaction. HouseLink's core certificate proves baseline competence; specialisation gives you a sharper market identity and deeper advisory value.",
+            body: "The best agents become known for a clear type of client, property, or transaction. HouseLink's core training certificate shows baseline completion; specialisation gives you a sharper market identity and deeper advisory value.",
           },
           {
             heading: "Available pathways",
@@ -797,13 +797,13 @@ export const modules: ModuleSeed[] = [
         resourceTitles: ["Personal Goal Planner", "Monthly KPI Tracker", "Lead Tracking Sheet"],
       },
       {
-        title: "Annual recertification and continuing professional development",
+        title: "Annual training renewal and continuing professional development",
         stage: "Advanced",
         summary: "Keep your certificate meaningful after the first year through renewal, compliance refreshers, and market updates.",
         richText: practicalLesson([
           {
             heading: "Why renewal matters",
-            body: "Markets, scams, document risks, and client expectations change. Annual recertification keeps the HouseLink credential credible and protects clients from agents who stop learning after the first certificate.",
+            body: "Markets, scams, document risks, and client expectations change. Annual training renewal keeps the HouseLink credential credible and protects clients from agents who stop learning after the first certificate.",
           },
           {
             heading: "Renewal requirements",
@@ -844,8 +844,8 @@ export const modules: ModuleSeed[] = [
       {
         title: "Final competency checklist",
         stage: "Advanced",
-        summary: "Confirm readiness for the Certified HouseLink Agent final examination.",
-        richText: `<p>Before the final exam, verify you have completed all stage lessons, downloaded and used key branded tools, passed module quizzes, and submitted practical assignments.</p><p>The full training manual remains in the Resource Library for deep reference — your certification is based on this staged programme and assessments.</p>`,
+        summary: "Confirm readiness for the HouseLink Agent Foundations final examination.",
+        richText: `<p>Before the final exam, verify you have completed all stage lessons, downloaded and used key branded tools, passed module quizzes, and submitted practical assignments.</p><p>The full training manual remains in the Resource Library for deep reference - your HouseLink training certificate is based on this staged programme and assessments.</p>`,
         objectives: ["Complete competency checklist", "Schedule final examination", "Identify final revision areas"],
         estimatedMinutes: 30,
         completionRequirement: "QUIZ",
@@ -1008,7 +1008,7 @@ async function migrateLegacyEnrollments(prisma: ReturnType<typeof getMainPrisma>
     where: { courseId: LEGACY_COURSE_ID },
     data: {
       status: "EXPIRED",
-      adminNote: "Superseded by the HouseLink Agent Foundations programme. Your access continues on the new staged certification path.",
+      adminNote: "Superseded by the HouseLink Agent Foundations programme. Your access continues on the new staged training certificate path.",
     },
   });
   await prisma.courseEnrolment.updateMany({
@@ -1027,8 +1027,8 @@ export async function seedStagedCourseStructure(options?: { forceRebuild?: boole
 
   const category = await prisma.trainingCategory.upsert({
     where: { slug: "new-agent-programme" },
-    create: { name: "New Agent Programme", slug: "new-agent-programme", description: "Three-course HouseLink agent certification — Beginner, Intermediate, Advanced.", sortOrder: 0 },
-    update: { name: "New Agent Programme", description: "Three-course HouseLink agent certification.", active: true },
+    create: { name: "New Agent Programme", slug: "new-agent-programme", description: "Three-course HouseLink agent training certificate pathway - Beginner, Intermediate, Advanced.", sortOrder: 0 },
+    update: { name: "New Agent Programme", description: "Three-course HouseLink agent training certificate pathway.", active: true },
   });
 
   const totalExisting = await prisma.trainingLesson.count({
@@ -1064,9 +1064,9 @@ export async function seedStagedCourseStructure(options?: { forceRebuild?: boole
         coInstructors: ["HouseLink Training Team"],
         learningOutcomes: programmeCourse.learningOutcomes,
         targetAudience: programmeCourse.sortOrder === 0
-          ? "New HouseLink agents and public learners starting certification"
+          ? "New HouseLink agents and public learners starting the training certificate pathway"
           : `Agents who completed ${ACADEMY_PROGRAMME_COURSES[programmeCourse.sortOrder - 1]?.title ?? "the previous programme"}`,
-        tags: [programmeCourse.theme.label.toLowerCase(), "houselink", "certification", "agent"],
+        tags: [programmeCourse.theme.label.toLowerCase(), "houselink", "training", "certificate", "agent"],
         difficulty: programmeCourse.difficulty,
         durationMinutes: lessonCount * 30,
         estimatedHours: Math.max(1, Math.ceil((lessonCount * 30) / 60)),

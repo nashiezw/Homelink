@@ -58,7 +58,7 @@ const emptyForm: TemplateFormData = {
   signatureUrl: "",
   courseIds: [],
   certificateNumberPrefix: "HLA",
-  title: "Certificate of Achievement",
+  title: "Certificate of Completion - HouseLink Training Programme",
   signatureName: "T. Ndudzo",
   signatureTitle: "Director of Training & Certification",
   customHtml: "",
@@ -112,7 +112,7 @@ export function CertificateTemplateManagement() {
       templateJson: {
         certificateNumberPrefix: formData.certificateNumberPrefix.trim() || "HLA",
         courseIds: formData.courseIds,
-        title: formData.title.trim() || "Certificate of Achievement",
+        title: trainingCertificateTitle(formData.title.trim() || "Certificate of Completion - HouseLink Training Programme"),
         signatureName: formData.signatureName.trim() || "T. Ndudzo",
         signatureTitle: formData.signatureTitle.trim() || "Director of Training & Certification",
         customHtml: formData.customHtml.trim(),
@@ -179,7 +179,7 @@ export function CertificateTemplateManagement() {
       signatureUrl: template.signatureUrl ?? "",
       courseIds: Array.isArray(templateJson.courseIds) ? templateJson.courseIds.filter((id): id is string => typeof id === "string") : [],
       certificateNumberPrefix: String(templateJson.certificateNumberPrefix ?? "HLA"),
-      title: String(templateJson.title ?? "Certificate of Achievement"),
+      title: trainingCertificateTitle(String(templateJson.title ?? "Certificate of Completion - HouseLink Training Programme")),
       signatureName: String(templateJson.signatureName ?? "T. Ndudzo"),
       signatureTitle: String(templateJson.signatureTitle ?? "Director of Training & Certification"),
       customHtml: String(templateJson.customHtml ?? ""),
@@ -298,8 +298,8 @@ export function CertificateTemplateManagement() {
           <TemplatePreview form={formData} />
           <AdminPanel title="Template Details" description="Core certificate text and numbering.">
             <div className="grid gap-4">
-              <TextField label="Template Name" value={formData.name} onChange={(name) => setFormData({ ...formData, name })} placeholder="Certified HouseLink Agent" />
-              <TextField label="Certificate Title" value={formData.title} onChange={(title) => setFormData({ ...formData, title })} placeholder="Certificate of Achievement" />
+              <TextField label="Template Name" value={formData.name} onChange={(name) => setFormData({ ...formData, name })} placeholder="HouseLink Agent Foundations Certificate" />
+              <TextField label="Certificate Title" value={formData.title} onChange={(title) => setFormData({ ...formData, title })} placeholder="Certificate of Completion - HouseLink Agent Foundations" />
               <CourseAssignmentField
                 courses={courses}
                 selectedIds={formData.courseIds}
@@ -406,11 +406,19 @@ function TemplateMeta({ template, courses }: { template: CertificateTemplate; co
   );
 }
 
+function trainingCertificateTitle(title: string) {
+  if (/^Certified HouseLink Agent$/i.test(title.trim())) return "Certificate of Completion - HouseLink Agent Foundations";
+  if (/HouseLink Certified Agent - Foundations/i.test(title)) return "Certificate of Completion - HouseLink Agent Foundations";
+  if (/HouseLink Certified Agent - Listing & Client Mastery/i.test(title)) return "Certificate of Completion - HouseLink Listing & Client Mastery";
+  if (/HouseLink Certified Professional Agent/i.test(title)) return "Certificate of Completion - HouseLink Professional Training";
+  return title;
+}
+
 function TemplatePreview({ template, form, compact }: { template?: CertificateTemplate; form?: TemplateFormData; compact?: boolean }) {
   const templateJson = template?.templateJson ?? {};
   const colours = (templateJson.colours as Record<string, string> | undefined) ?? {};
   const title = form?.title ?? String(templateJson.title ?? "Certificate of Achievement");
-  const name = form?.name ?? template?.name ?? "Certified HouseLink Agent";
+  const name = form?.name ?? template?.name ?? "HouseLink Agent Foundations Certificate";
   const primary = form?.primaryColor ?? colours.primary ?? "#008b68";
   const accent = form?.accentColor ?? colours.accent ?? "#c6a15b";
   const logoUrl = form?.logoUrl ?? template?.logoUrl ?? "";

@@ -4,6 +4,7 @@ import Image from "next/image";
 import { Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { HouseLinkBrand } from "@/components/brand/houselink-logo";
+import { CERTIFICATE_SHORT_DISCLAIMER } from "@/lib/legal/disclaimers";
 
 export type CertificateDocumentProps = {
   learnerName: string;
@@ -101,6 +102,9 @@ export function CertificateDocument({
         <article className="relative overflow-hidden rounded-xl bg-white shadow-hero print:rounded-none print:shadow-none">
           {customCss.trim() ? <style dangerouslySetInnerHTML={{ __html: customCss }} /> : null}
           <div dangerouslySetInnerHTML={{ __html: renderedCustomHtml }} />
+          <p className="border-t border-slate-200 px-5 py-2 text-center text-[9px] leading-4 text-slate-500">
+            {CERTIFICATE_SHORT_DISCLAIMER}
+          </p>
         </article>
       ) : (
         <article
@@ -120,7 +124,7 @@ export function CertificateDocument({
             <div className="absolute bottom-[2.1%] right-[2.1%] size-[5.8%] rounded-tl-full border-l-4 border-t-4 border-[#d6ad55] bg-[#fffaf0]" />
             <div className="absolute inset-0 opacity-[0.08] [background-image:radial-gradient(circle_at_center,#0a1d3f_1px,transparent_1px)] [background-size:18px_18px]" />
 
-            <div className="relative grid h-full grid-rows-[auto_1fr_auto]">
+            <div className="relative grid h-full grid-rows-[auto_1fr_auto_auto]">
               <header className="grid grid-cols-[1fr_auto_1fr] items-start gap-4">
                 <div />
                 <div className="text-center">
@@ -207,6 +211,9 @@ export function CertificateDocument({
                   />
                 </div>
               </footer>
+              <p className="mt-2 text-center text-[8px] leading-3 text-slate-500 sm:text-[9px]">
+                {CERTIFICATE_SHORT_DISCLAIMER}
+              </p>
             </div>
           </div>
         </article>

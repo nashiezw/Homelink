@@ -97,7 +97,7 @@ export const ACADEMY_QUIZ_SEEDS: AcademyQuizSeed[] = [
         "The Academy is designed around applying tools in real or practice scenarios.",
       ),
       q(
-        "What does certification on the staged pathway require beyond reading lessons?",
+        "What does HouseLink certificate completion on the staged pathway require beyond reading lessons?",
         [
           "Passing quizzes, submitting practical evidence, and meeting programme requirements.",
           "Only opening every PDF once.",
@@ -601,8 +601,8 @@ export const ACADEMY_ASSIGNMENT_SEEDS: AcademyAssignmentSeed[] = [
 export const ACADEMY_FINAL_EXAM = {
   id: "academy-final-exam-certified-houselink-agent",
   courseId: "academy-course-advanced-professional",
-  title: "Certified HouseLink Agent Final Examination",
-  description: "Capstone examination drawing from all three programmes — Foundations, Listing & Client Mastery, and Professional Certification.",
+  title: "HouseLink Agent Foundations Final Examination",
+  description: "Capstone examination drawing from all three HouseLink training programmes: Foundations, Listing & Client Mastery, and Professional Training.",
   durationMinutes: 120,
   passingScore: 85,
   attemptLimit: 2,

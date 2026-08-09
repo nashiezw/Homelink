@@ -50,7 +50,7 @@ export async function GET(_request: Request, context: { params: Promise<{ number
       valid: true,
       certificateNumber: certificate.certificateNumber,
       course: certificate.course?.title ?? null,
-      certificateTitle: programme?.certificateTitle ?? certificate.course?.title ?? "HouseLink Academy Certificate",
+      certificateTitle: trainingCertificateTitle(programme?.certificateTitle ?? certificate.course?.title ?? "HouseLink Academy Training Certificate"),
       badgeName: programme?.badgeName ?? null,
       skillsAssessed: programme?.learningOutcomes ?? [],
       assessmentProof: programme
@@ -99,6 +99,14 @@ export async function GET(_request: Request, context: { params: Promise<{ number
     console.error("Certificate verification failed", error);
     return problem(500, "VERIFY_FAILED", "Certificate could not be verified.");
   }
+}
+
+function trainingCertificateTitle(title: string) {
+  if (/^Certified HouseLink Agent$/i.test(title.trim())) return "Certificate of Completion - HouseLink Agent Foundations";
+  if (/HouseLink Certified Agent - Foundations/i.test(title)) return "Certificate of Completion - HouseLink Agent Foundations";
+  if (/HouseLink Certified Agent - Listing & Client Mastery/i.test(title)) return "Certificate of Completion - HouseLink Listing & Client Mastery";
+  if (/HouseLink Certified Professional Agent/i.test(title)) return "Certificate of Completion - HouseLink Professional Training";
+  return title;
 }
 
 function readAttemptConfidence(value: unknown) {

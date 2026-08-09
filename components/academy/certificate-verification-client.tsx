@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { Award, CheckCircle2, ClipboardCheck, Loader2, Search, ShieldCheck, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api/client";
+import { TrainingDisclaimer } from "@/components/legal/training-disclaimer";
 
 type VerificationResult = {
   valid: boolean;
@@ -180,6 +181,7 @@ export function CertificateVerificationClient() {
             )}
           </div>
         )}
+        <TrainingDisclaimer compact className="mt-6" />
       </section>
 
       <aside className="surface-panel h-fit rounded-lg p-6">

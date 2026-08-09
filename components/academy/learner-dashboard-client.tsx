@@ -200,7 +200,7 @@ export function LearnerDashboardClient() {
   const applicationByCourseId = new Map(data.applications.map((application) => [application.course.id, application]));
   const approvedCourseIds = new Set(data.applications.filter((application) => application.status === "APPROVED").map((application) => application.course.id));
   const activeCourseCount = approvedCourseIds.size;
-  const professionalCertificate = data.certificates.find((certificate) => /Professional|HLP|Certified HouseLink Agent/i.test(`${certificate.courseTitle} ${certificate.certificateNumber}`));
+  const professionalCertificate = data.certificates.find((certificate) => /Professional|HLP/i.test(`${certificate.courseTitle} ${certificate.certificateNumber}`));
   const nextActionCards = learnerNextActions(data);
 
   function toggleProgrammeDetails(courseId: string) {
@@ -279,10 +279,10 @@ export function LearnerDashboardClient() {
         <section className="academy-panel mt-6 rounded-xl p-6">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
-              <p className="text-xs font-bold uppercase tracking-widest text-emerald-700 dark:text-emerald-300">Post-certification onboarding</p>
-              <h2 className="mt-2 text-xl font-bold">Ready to turn certification into agent work?</h2>
+              <p className="text-xs font-bold uppercase tracking-widest text-emerald-700 dark:text-emerald-300">Post-training onboarding</p>
+              <h2 className="mt-2 text-xl font-bold">Ready to turn your training into agent work?</h2>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600 dark:text-slate-300">
-                Apply to become a HouseLink agent, complete your public profile, choose territories, upload a professional photo, and keep your verified certificate ready for clients.
+                Apply to become a HouseLink agent, complete your public profile, choose territories, upload a professional photo, and keep your verified training certificate ready for clients.
               </p>
             </div>
             <div className="flex flex-col gap-2 sm:flex-row lg:flex-col">
@@ -299,8 +299,8 @@ export function LearnerDashboardClient() {
 
       {!!data.programmeCourses?.length && (
         <section className="mt-8">
-          <h2 className="text-xl font-bold sm:text-2xl">Certification pathway</h2>
-          <p className="mt-1 text-sm text-slate-600">Foundations -&gt; Listing & Client Mastery -&gt; Professional Certification. Earn a badge and downloadable certificate after each programme.</p>
+          <h2 className="text-xl font-bold sm:text-2xl">Training certificate pathway</h2>
+          <p className="mt-1 text-sm text-slate-600">Foundations -&gt; Listing & Client Mastery -&gt; Professional Training. Earn a badge and downloadable HouseLink certificate after each programme.</p>
           <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {data.programmeCourses.map((course) => {
               const expanded = expandedProgrammeIds.has(course.id);
@@ -768,7 +768,7 @@ function learnerNextActions(data: LearnerDashboard) {
       },
       {
         title: "Preview the pathway",
-        body: "Review the lessons, assignments, and certification requirements while approval is pending.",
+        body: "Review the lessons, assignments, and certificate requirements while approval is pending.",
         href: "/academy?browse=1",
       },
       {
@@ -786,7 +786,7 @@ function learnerNextActions(data: LearnerDashboard) {
       },
       {
         title: "Read the standard",
-        body: "Use the top-agent readiness checklist below to understand what certification will require.",
+        body: "Use the top-agent readiness checklist below to understand what HouseLink certificate completion will require.",
       },
       {
         title: "Plan study time",
@@ -804,7 +804,7 @@ function learnerNextActions(data: LearnerDashboard) {
       },
       {
         title: "Complete assessments",
-        body: "Pass module quizzes and submit practical work for review before certification.",
+        body: "Pass module quizzes and submit practical work for review before certificate issue.",
         href: `/dashboard/academy/${activeApplication.course.id}?tab=assessments`,
       },
       {
@@ -824,7 +824,7 @@ function learnerNextActions(data: LearnerDashboard) {
       },
       {
         title: "Choose a specialisation",
-        body: "Move from general certification into rentals, sales, commercial, management, land, or diaspora advisory.",
+        body: "Move from general HouseLink training into rentals, sales, commercial, management, land, or diaspora advisory.",
       },
       {
         title: "Keep evidence current",
@@ -836,7 +836,7 @@ function learnerNextActions(data: LearnerDashboard) {
   return [
     {
       title: "Start the pathway",
-      body: "Choose Foundations first, then progress into Listing & Client Mastery and Professional Certification.",
+      body: "Choose Foundations first, then progress into Listing & Client Mastery and Professional Training.",
       href: "/academy",
     },
   ];

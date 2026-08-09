@@ -24,7 +24,7 @@ const benefits = [
   { icon: Briefcase, title: "Manage your listings", body: "Create, edit, and promote properties from one dashboard." },
   { icon: ShieldCheck, title: "Verified HouseLink badge", body: "Stand out with trusted branding and a public profile." },
   { icon: BarChart3, title: "Analytics dashboard", body: "Track leads, conversions, revenue, and performance." },
-  { icon: GraduationCap, title: "Ongoing training", body: "Videos, documents, quizzes, and certification." },
+  { icon: GraduationCap, title: "Ongoing training", body: "Videos, documents, quizzes, and HouseLink certificates." },
   { icon: MapPin, title: "Nationwide exposure", body: "Reach seekers across Zimbabwe with territory-based leads." },
   { icon: Star, title: "Customer ratings", body: "Build reputation with verified client reviews." },
 ];
@@ -112,7 +112,7 @@ export function BecomeAgentLanding({ highlights }: BecomeAgentLandingProps) {
               Complete the online application, upload your documents, and track your approval status from your agent dashboard.
             </p>
             <ul className="mt-5 grid gap-2 text-sm text-emerald-50">
-              {["Digital application", "Document verification", "Training & certification", "Lead assignment"].map((item) => (
+              {["Digital application", "Document verification", "Training completion", "Lead assignment"].map((item) => (
                 <li key={item} className="flex items-center gap-2">
                   <CheckCircle2 className="size-4" />
                   {item}

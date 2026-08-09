@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { AuthForm } from "@/components/auth/auth-form";
 import { AcademyAccordion, ToolkitGrid } from "@/components/academy/academy-accordion";
+import { TrainingDisclaimer } from "@/components/legal/training-disclaimer";
 import { PageShell } from "@/components/layout/page-shell";
 import { Button } from "@/components/ui/button";
 import { useApp } from "@/components/providers/app-provider";
@@ -126,7 +127,7 @@ const ACADEMY_VALUE_PROOF = [
   "Admin-reviewed practical assignments.",
   "Roleplay and simulation evidence.",
   "Field-ready branded PDF tools.",
-  "Portfolio and final exam gate for professional certification.",
+  "Portfolio and final exam gate for HouseLink training completion.",
   "Public certificate verification.",
   "Specialisation and annual renewal path.",
 ];
@@ -145,7 +146,7 @@ const TRAINING_STANDARD_PROOFS = [
   {
     icon: ShieldCheck,
     title: "Verifiable trust",
-    body: "Graduates earn public certificates that clients, agencies, and HouseLink teams can verify.",
+    body: "Graduates earn HouseLink training certificates that clients, agencies, and HouseLink teams can verify.",
   },
 ];
 
@@ -373,10 +374,10 @@ export function PublicAcademyPage() {
       description={
         browseMode && academyStatus?.hasActiveAccess
           ? "You already have active course access. Browse additional courses or return to your learning dashboard."
-          : "Practical training, reviewed assignments, field tools, roleplay evidence, and verifiable certification for Zimbabwe property professionals."
+          : "Practical training, reviewed assignments, field tools, roleplay evidence, and verifiable HouseLink completion certificates for Zimbabwe property work."
       }
       highlights={[
-        { value: "3 levels", label: "certification pathway" },
+        { value: "3 levels", label: "training pathway" },
         { value: `${courses.reduce((sum, course) => sum + (course.assignmentCount ?? 0) + (course.quizCount ?? 0), 0) || 16} checks`, label: "quizzes and tasks" },
         { value: "Field tools", label: "downloadable PDFs" },
       ]}
@@ -396,14 +397,15 @@ export function PublicAcademyPage() {
       )}
 
       <AcademyPromiseStrip />
+      <TrainingDisclaimer compact className="mb-6" />
 
       <section id="academy-programmes" className="mb-6 scroll-mt-24 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_18px_60px_rgba(15,23,42,0.08)] dark:border-slate-800 dark:bg-slate-950">
         <div className="grid gap-0 lg:grid-cols-[minmax(0,1fr)_19rem]">
           <div className="p-5 sm:p-6 lg:p-7">
             <p className="text-xs font-bold uppercase tracking-widest text-emerald-700 dark:text-emerald-300">Choose your programme</p>
-            <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-950 dark:text-white sm:text-3xl">Certification pathway</h2>
+            <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-950 dark:text-white sm:text-3xl">Training certificate pathway</h2>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600 dark:text-slate-300">
-              Start with the pathway. Select one level, scan the value, then expand only the details you need: outcomes, certification requirements, curriculum, and toolkit.
+              Start with the pathway. Select one level, scan the value, then expand only the details you need: outcomes, certificate requirements, curriculum, and toolkit.
             </p>
           </div>
           <div className="border-t border-slate-100 bg-slate-50/80 p-5 dark:border-slate-800 dark:bg-slate-900/40 lg:border-l lg:border-t-0">
@@ -489,8 +491,8 @@ export function PublicAcademyPage() {
           <div className="border-t border-slate-200 bg-[radial-gradient(circle_at_top_left,rgba(16,185,129,0.22),transparent_36%),#020617] p-5 text-white dark:border-slate-800 lg:border-l lg:border-t-0">
             <div className="flex h-full flex-col justify-between gap-5">
               <div>
-                <p className="text-xs font-bold uppercase tracking-widest text-emerald-300">Certification signal</p>
-                <p className="mt-3 text-xl font-black leading-tight">A certificate should prove discipline, evidence, and client trust.</p>
+                <p className="text-xs font-bold uppercase tracking-widest text-emerald-300">Training credential signal</p>
+                <p className="mt-3 text-xl font-black leading-tight">A HouseLink certificate should prove discipline, evidence, and client trust inside the HouseLink training standard.</p>
                 <p className="mt-3 text-sm leading-6 text-slate-300">
                   The goal is not to create agents who only know theory. It is to produce agents who can protect clients, document work, and represent property professionally.
                 </p>
@@ -516,7 +518,7 @@ export function PublicAcademyPage() {
               },
               {
                 id: "academy-standard-certification",
-                title: "How certification works",
+                title: "How certificate completion works",
                 subtitle: "Practical submissions are checked against a professional rubric",
                 meta: `${SAMPLE_PUBLIC_ASSIGNMENTS.length} examples`,
                 content: (
@@ -570,7 +572,7 @@ function PathwayRail({
     <aside className="academy-panel rounded-2xl p-3 sm:sticky sm:top-4">
       <div className="px-2 pb-3">
         <p className="text-xs font-bold uppercase tracking-widest text-emerald-700 dark:text-emerald-300">Guided pathway</p>
-        <p className="mt-1 text-sm leading-5 text-slate-600 dark:text-slate-300">Move from foundation habits to listing mastery and professional certification.</p>
+        <p className="mt-1 text-sm leading-5 text-slate-600 dark:text-slate-300">Move from foundation habits to listing mastery and professional training.</p>
       </div>
       <div className="relative grid gap-2 sm:grid-cols-3 lg:grid-cols-1 lg:gap-3">
         <div className="absolute left-6 top-6 hidden h-[calc(100%-3rem)] w-px bg-gradient-to-b from-emerald-200 via-slate-200 to-amber-200 dark:from-emerald-900 dark:via-slate-800 dark:to-amber-900 lg:block" />
@@ -710,8 +712,8 @@ function SelectedProgrammeDetail({
               },
               {
                 id: `${course.id}-includes`,
-                title: "Value and certification requirements",
-                subtitle: course.assessmentSummary ?? "Sessions, toolkits, assessments, and certification",
+                title: "Value and certificate requirements",
+                subtitle: course.assessmentSummary ?? "Sessions, toolkits, assessments, and HouseLink certificate completion",
                 meta: course.badgeName ?? "Certificate",
                 content: (
                   <div className="space-y-4">
@@ -796,7 +798,7 @@ function AcademyHeroVisual() {
         <div className="absolute bottom-3 left-3 right-3 flex items-end justify-between gap-3 sm:bottom-4 sm:left-4 sm:right-4 sm:gap-4">
           <div className="max-w-[13rem] rounded-2xl border border-white/15 bg-white/95 p-3 text-slate-950 shadow-2xl sm:max-w-[16rem] sm:p-4">
             <p className="text-[10px] font-black uppercase tracking-widest text-emerald-700">Credential pathway</p>
-            <p className="mt-1 text-base font-black leading-tight sm:mt-2 sm:text-xl">Certified Property Agent</p>
+            <p className="mt-1 text-base font-black leading-tight sm:mt-2 sm:text-xl">HouseLink Training Graduate</p>
             <div className="mt-4 hidden grid-cols-3 gap-1.5 text-center sm:grid">
               <HeroProof value="3" label="levels" />
               <HeroProof value="16" label="tasks" />
@@ -833,7 +835,7 @@ function AcademyPromiseStrip() {
   const promises = [
     "Train with Zimbabwe field scenarios",
     "Submit practical evidence for review",
-    "Earn certificates clients can verify",
+    "Earn HouseLink certificates clients can verify",
   ];
 
   return (
@@ -1256,8 +1258,8 @@ function certificationRequirements(course: PublicCourse) {
     course.assignmentCount ? `Submit ${course.assignmentCount} ${taskLabel} for admin review` : "",
     course.roleplayCount ? `Complete ${course.roleplayCount} ${simulationLabel}` : "",
     course.portfolioRequired ? "Submit a field portfolio for sign-off" : "",
-    course.hasFinalExam ? "Pass the final professional examination" : "",
-    "Earn a publicly verifiable HouseLink certificate",
+    course.hasFinalExam ? "Pass the final HouseLink examination" : "",
+    "Earn a publicly verifiable HouseLink training certificate",
   ].filter(Boolean) as string[];
 }
 

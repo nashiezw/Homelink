@@ -96,7 +96,7 @@ async function seedDocuments(prisma: ReturnType<typeof getMainPrisma>, manifest:
       id: "academy-doc-official-training-manual",
       categoryId: manualCategory.id,
       title: MANUAL_TITLE,
-      description: "Official downloadable PDF manual for HouseLink Zimbabwe agent onboarding, training and certification.",
+      description: "Official downloadable PDF manual for HouseLink Zimbabwe agent onboarding and training certificate preparation.",
       fileUrl: MANUAL_URL,
       fileName: "houselink-zimbabwe-real-estate-agent-training-manual.pdf",
       fileType: "PDF",
@@ -104,7 +104,7 @@ async function seedDocuments(prisma: ReturnType<typeof getMainPrisma>, manifest:
       version: 1,
       tags: ["manual", "training", "official", "agent academy"],
       permissions: ["ADMIN", "AGENT", "PUBLIC_LEARNER"],
-      searchableText: "HouseLink Zimbabwe Real Estate Agent Training Manual official onboarding training certification",
+      searchableText: "HouseLink Zimbabwe Real Estate Agent Training Manual official onboarding training certificate",
       downloadable: true,
       previewable: true,
       visible: true,
@@ -114,7 +114,7 @@ async function seedDocuments(prisma: ReturnType<typeof getMainPrisma>, manifest:
     update: {
       categoryId: manualCategory.id,
       title: MANUAL_TITLE,
-      description: "Official downloadable PDF manual for HouseLink Zimbabwe agent onboarding, training and certification.",
+      description: "Official downloadable PDF manual for HouseLink Zimbabwe agent onboarding and training certificate preparation.",
       fileUrl: MANUAL_URL,
       downloadable: true,
       previewable: true,
@@ -305,16 +305,16 @@ async function seedLearningPath(prisma: ReturnType<typeof getMainPrisma>) {
     where: { id: LEARNING_PATH_ID },
     create: {
       id: LEARNING_PATH_ID,
-      title: "HouseLink Agent Certification Path",
-      description: "Three progressive courses: Beginner, Intermediate, and Advanced & Professional — each with its own badge and certificate.",
+      title: "HouseLink Agent Training Path",
+      description: "Three progressive courses: Beginner, Intermediate, and Advanced Training - each with its own badge and HouseLink certificate of completion.",
       status: "PUBLISHED",
-      badgeTitle: "HouseLink Certified Agent",
+      badgeTitle: "HouseLink Training Graduate",
     },
     update: {
-      title: "HouseLink Agent Certification Path",
-      description: "Three progressive courses: Beginner, Intermediate, and Advanced & Professional.",
+      title: "HouseLink Agent Training Path",
+      description: "Three progressive courses: Beginner, Intermediate, and Advanced Training.",
       status: "PUBLISHED",
-      badgeTitle: "HouseLink Certified Agent",
+      badgeTitle: "HouseLink Training Graduate",
     },
   });
   for (const course of ACADEMY_PROGRAMME_COURSES) {
@@ -331,11 +331,11 @@ async function seedCertificateTemplate(prisma: ReturnType<typeof getMainPrisma>)
     where: { id: CERTIFICATE_TEMPLATE_ID },
     create: {
       id: CERTIFICATE_TEMPLATE_ID,
-      name: "Certified HouseLink Agent Certificate",
+      name: "HouseLink Agent Foundations Certificate",
       logoUrl: "/brand/houselink-full-lockup.png",
       templateJson: {
         certificateNumberPrefix: "HLA",
-        title: "Certified HouseLink Agent",
+        title: "Certificate of Completion - HouseLink Agent Foundations",
         qrVerification: true,
         expiryDays: 365,
         colours: { primary: "#008b68", accent: "#c6a15b" },
@@ -343,11 +343,11 @@ async function seedCertificateTemplate(prisma: ReturnType<typeof getMainPrisma>)
       active: true,
     },
     update: {
-      name: "Certified HouseLink Agent Certificate",
+      name: "HouseLink Agent Foundations Certificate",
       logoUrl: "/brand/houselink-full-lockup.png",
       templateJson: {
         certificateNumberPrefix: "HLA",
-        title: "Certified HouseLink Agent",
+        title: "Certificate of Completion - HouseLink Agent Foundations",
         qrVerification: true,
         expiryDays: 365,
         colours: { primary: "#008b68", accent: "#c6a15b" },
@@ -394,8 +394,8 @@ async function seedEngagementRecords(prisma: ReturnType<typeof getMainPrisma>) {
   }
   await prisma.badge.upsert({
     where: { id: "academy-badge-certified-houselink-agent" },
-    create: { id: "academy-badge-certified-houselink-agent", name: "Certified HouseLink Agent", description: "Completed all three Academy courses and earned full certification.", xp: 1500, active: true },
-    update: { name: "Certified HouseLink Agent", description: "Completed all three Academy courses and earned full certification.", xp: 1500, active: true },
+    create: { id: "academy-badge-certified-houselink-agent", name: "HouseLink Training Graduate", description: "Completed all three Academy courses and earned HouseLink training completion recognition.", xp: 1500, active: true },
+    update: { name: "HouseLink Training Graduate", description: "Completed all three Academy courses and earned HouseLink training completion recognition.", xp: 1500, active: true },
   });
 }
 

@@ -1853,7 +1853,7 @@ function recommendationForLearner({
   if (riskFlags.includes("Repeated quiz failures")) return "Schedule a 20-minute coaching review and assign weak-topic remediation before the next retake.";
   if (riskFlags.includes("Practical resubmission")) return "Review the submitted evidence against the rubric and request a focused field correction.";
   if (mentorSignoffs === 0 && reviewedAssignments > 0) return "Add mentor sign-off after confirming practical work is client-ready.";
-  if (failedAttempts === 0 && reviewedAssignments > 0) return "Move learner toward portfolio evidence and final certification readiness.";
+  if (failedAttempts === 0 && reviewedAssignments > 0) return "Move learner toward portfolio evidence and final certificate readiness.";
   return "Keep learner on the next lesson, checkpoint, and practical task in sequence.";
 }
 

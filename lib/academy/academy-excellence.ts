@@ -33,7 +33,7 @@ export const AGENT_PORTFOLIO_REQUIREMENTS = [
   "Buyer or tenant qualification file showing needs, budget, timing, documents, and shortlist criteria.",
   "Viewing record with attendance, feedback, safety notes, and written follow-up plan.",
   "Offer or negotiation roleplay showing neutral communication, deadlines, counter-offer records, and escalation notes.",
-  "Compliance audit and final reflection showing what the learner corrected before certification.",
+  "Compliance audit and final reflection showing what the learner corrected before certificate completion.",
 ];
 
 export const ROLEPLAY_ASSESSMENT_SCENARIOS = [
@@ -92,9 +92,9 @@ export const RECERTIFICATION_REQUIREMENTS = [
 ];
 
 export const GRADUATE_OUTCOME_SIGNALS = [
-  "Verified active listings handled by certified agents.",
-  "Closed, sold, or rented listings connected to certified agents.",
+  "Verified active listings handled by HouseLink-trained agents.",
+  "Closed, sold, or rented listings connected to HouseLink-trained agents.",
   "Client ratings, response speed, and enquiry follow-up quality.",
   "Portfolio quality and mentor sign-off rate.",
-  "Specialisation badges earned after core certification.",
+  "Specialisation badges earned after core training completion.",
 ];

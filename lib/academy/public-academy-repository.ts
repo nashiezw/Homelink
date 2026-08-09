@@ -884,7 +884,7 @@ export async function getLearnerCourseDetail(learnerId: string, courseId: string
         ? course.finalExams.map((exam) => ({
             id: exam.id,
             title: exam.title,
-            description: "Capstone examination covering Foundations, Listing & Client Mastery, and Professional Certification.",
+            description: "Capstone examination covering Foundations, Listing & Client Mastery, and Professional Training.",
             durationMinutes: exam.durationMinutes,
             passingScore: exam.passingScore,
             attemptLimit: exam.attemptLimit,

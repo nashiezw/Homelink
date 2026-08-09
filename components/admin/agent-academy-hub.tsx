@@ -307,7 +307,7 @@ type AcademyTab = (typeof academyTabs)[number];
 
 const documentTypes = ["PDF", "DOCX", "XLSX", "PPTX", "IMAGE", "VIDEO", "AUDIO", "ZIP"] as const;
 const featureTiles: Array<[AcademyTab, LucideIcon, string]> = [
-  ["Learning Paths", Library, "Programme sequencing for multi-course certification journeys."],
+  ["Learning Paths", Library, "Programme sequencing for multi-course training certificate journeys."],
   ["Announcements", Megaphone, "Publish targeted Academy updates to agents and branches."],
   ["Discussion Board", Users, "Course discussion threads, replies, reactions, mentions, bookmarks, and moderation."],
   ["Leaderboard", Trophy, "Automatic points, XP, ranks, branch competition, and monthly leaders."],

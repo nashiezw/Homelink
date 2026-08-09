@@ -24,7 +24,7 @@ export const ACADEMY_LIVE_WORKSHOPS = [
 export const ACADEMY_MENTOR_PROGRAMME = [
   "Assign mentor/admin reviewer after Listing & Client Mastery enrolment.",
   "Review one listing presentation roleplay and one client qualification simulation.",
-  "Review the field portfolio before final professional certification is treated as client-ready.",
+  "Review the field portfolio before final HouseLink training completion is treated as client-ready.",
   "Record approve, resubmit, or needs coaching decision against practical evidence.",
 ];
 

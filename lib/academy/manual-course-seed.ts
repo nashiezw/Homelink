@@ -100,7 +100,7 @@ export async function seedManualCourseStructure(options?: { forceRebuild?: boole
   const data = await loadManualCourseData();
   const category = await prisma.trainingCategory.upsert({
     where: { slug: "new-agent-programme" },
-    create: { name: "New Agent Programme", slug: "new-agent-programme", description: "Official HouseLink Zimbabwe agent certification.", sortOrder: 0 },
+    create: { name: "New Agent Programme", slug: "new-agent-programme", description: "HouseLink Zimbabwe agent training certificate pathway.", sortOrder: 0 },
     update: { name: "New Agent Programme", active: true },
   });
 

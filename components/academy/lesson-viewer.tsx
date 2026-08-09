@@ -478,7 +478,7 @@ function buildLessonDepth(lesson: Lesson) {
         "Protect client confidentiality and never share documents, phone numbers, keys, or private circumstances casually.",
       ],
       mistakes: [
-        "Treating certification as a badge only, instead of building repeatable field habits.",
+        "Treating the certificate as a badge only, instead of building repeatable field habits.",
         "Promising outcomes before verifying ownership, availability, pricing, and property condition.",
         "Working from memory instead of a pipeline tracker, viewing notes, and documented client instructions.",
       ],

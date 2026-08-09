@@ -28,7 +28,7 @@ export async function GET(request: Request, context: { params: Promise<{ issueId
     certificateNumber: issue.certificateNumber,
     courseId: issue.courseId,
     courseTitle: issue.course?.title ?? "HouseLink Academy Course",
-    certificateTitle: String(templateJson.title ?? programme?.certificateTitle ?? "Certified HouseLink Agent"),
+    certificateTitle: trainingCertificateTitle(String(templateJson.title ?? programme?.certificateTitle ?? "HouseLink Academy Training Certificate")),
     skillsAssessed: programme?.learningOutcomes ?? [],
     badgeName: programme?.badgeName ?? null,
     issuedAt: issue.issuedAt.toISOString(),
@@ -44,4 +44,12 @@ export async function GET(request: Request, context: { params: Promise<{ issueId
     customHtml: typeof templateJson.customHtml === "string" ? templateJson.customHtml : "",
     customCss: typeof templateJson.customCss === "string" ? templateJson.customCss : "",
   });
+}
+
+function trainingCertificateTitle(title: string) {
+  if (/^Certified HouseLink Agent$/i.test(title.trim())) return "Certificate of Completion - HouseLink Agent Foundations";
+  if (/HouseLink Certified Agent - Foundations/i.test(title)) return "Certificate of Completion - HouseLink Agent Foundations";
+  if (/HouseLink Certified Agent - Listing & Client Mastery/i.test(title)) return "Certificate of Completion - HouseLink Listing & Client Mastery";
+  if (/HouseLink Certified Professional Agent/i.test(title)) return "Certificate of Completion - HouseLink Professional Training";
+  return title;
 }

@@ -88,7 +88,7 @@ export function AgentTrainingDashboard() {
     <PageShell
       eyebrow="Agent Training"
       title={`Welcome, ${user?.name}`}
-      description="Track your training progress, access courses, and achieve certification."
+      description="Track your training progress, access courses, and earn HouseLink certificates."
       actions={<Link href={`/dashboard/academy/${data.assignedCourses[0]?.id ?? ""}`}><Button variant="secondary"><BookOpen className="size-4 mr-2" /> Open Course Viewer</Button></Link>}
     >
       {/* Stats Overview */}

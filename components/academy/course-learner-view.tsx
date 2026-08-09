@@ -30,6 +30,7 @@ import { ExamPanel } from "@/components/academy/exam-panel";
 import { AssignmentPanel } from "@/components/academy/assignment-panel";
 import { DiscussionPanel } from "@/components/academy/discussion-panel";
 import { AcademyAccordion, ToolkitGrid } from "@/components/academy/academy-accordion";
+import { TrainingDisclaimer } from "@/components/legal/training-disclaimer";
 import {
   AcademyResourcePurchaseModal,
   buildToolkitProduct,
@@ -249,7 +250,7 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
   if (activeExamId) {
     const exam = data.assessments.exams.find((e) => e.id === activeExamId);
     return (
-      <PageShell eyebrow={data.settings.academyName} title={exam?.title ?? "Final Exam"} description="Complete the final examination to earn certification.">
+      <PageShell eyebrow={data.settings.academyName} title={exam?.title ?? "Final Exam"} description="Complete the final examination to earn the HouseLink training certificate.">
         <ExamPanel examId={activeExamId} passingScore={exam?.passingScore ?? 80} onBack={() => { setActiveExamId(null); void load(); }} />
       </PageShell>
     );
@@ -292,7 +293,7 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
                 <Sparkles className="size-3.5 shrink-0" /> {theme?.label ?? data.settings.academyName}
               </p>
               <p className="mt-2 text-sm text-emerald-100/90">{data.course.instructor ?? "HouseLink trainers"}</p>
-              <p className="mt-1 text-base font-medium leading-snug text-white/95 sm:text-lg">{data.programme?.certificateTitle ?? "HouseLink Agent Certification"}</p>
+              <p className="mt-1 text-base font-medium leading-snug text-white/95 sm:text-lg">{data.programme?.certificateTitle ?? "HouseLink training certificate"}</p>
             </div>
           </div>
           <div className="w-full rounded-lg border border-white/20 bg-white/15 p-5 lg:max-w-xs lg:border-white/10 lg:bg-white/10 lg:backdrop-blur-sm">
@@ -334,6 +335,7 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
           })}
         </div>
       </div>
+      <TrainingDisclaimer compact className="mt-6" />
 
       {tab === "curriculum" && (
         <div className="mt-6">
@@ -489,8 +491,8 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
             <div className="academy-panel overflow-hidden rounded-xl dark:border-emerald-900/40">
               <div className="grid gap-0 md:grid-cols-[1fr_15rem]">
                 <div className="p-5 sm:p-6">
-                  <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-emerald-700 dark:text-emerald-300">Certification pathway</p>
-                  <h2 className="mt-2 text-xl font-bold leading-tight text-slate-950 dark:text-white sm:text-2xl">Prove skill before certification</h2>
+                  <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-emerald-700 dark:text-emerald-300">Training certificate pathway</p>
+                  <h2 className="mt-2 text-xl font-bold leading-tight text-slate-950 dark:text-white sm:text-2xl">Prove skill before your HouseLink certificate</h2>
                   {data.assessments.summary && <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600 dark:text-slate-300">{data.assessments.summary}</p>}
                 </div>
                 {data.programme?.badgeName && (
@@ -521,9 +523,9 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
           <section className="academy-panel rounded-xl p-5 sm:p-6">
             <div className="flex flex-col gap-2">
               <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Mentor/admin sign-off gate</p>
-              <h3 className="text-lg font-bold leading-tight text-slate-950 dark:text-white sm:text-xl">Uploads are reviewed before certification</h3>
+              <h3 className="text-lg font-bold leading-tight text-slate-950 dark:text-white sm:text-xl">Uploads are reviewed before certificate issue</h3>
               <p className="max-w-3xl text-sm leading-6 text-slate-600 dark:text-slate-300">
-                Practical work must be reviewed and graded before a certificate is issued. The professional portfolio and roleplay evidence show whether you can handle real clients safely.
+                Practical work must be reviewed and graded before a HouseLink training certificate is issued. The portfolio and roleplay evidence show whether you can handle real clients safely within HouseLink standards.
               </p>
             </div>
             <div className="mt-4">
@@ -540,7 +542,7 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
                   {
                     id: "roleplay-scenarios",
                     title: "Roleplay scenarios",
-                    subtitle: "Client conversations and judgement calls to rehearse before certification.",
+                    subtitle: "Client conversations and judgement calls to rehearse before certificate completion.",
                     meta: `${ROLEPLAY_ASSESSMENT_SCENARIOS.length} scenarios`,
                     content: <EvidenceChecklist items={ROLEPLAY_ASSESSMENT_SCENARIOS} accent={accent} />,
                   },
@@ -658,7 +660,7 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
         <div className="academy-panel mt-6 rounded-xl p-6">
           <p className="text-3xl font-bold text-emerald-600">{data.course.progress}%</p>
           <p className="text-slate-600 mt-1">Course completion / Status: {data.course.status.replace(/_/g, " ")}</p>
-          <p className="text-sm text-slate-500 mt-4">Pass mark: {data.course.passingPercentage}% / Complete all training sessions{data.course.certificateEnabled ? " to earn your certificate" : ""}.</p>
+          <p className="text-sm text-slate-500 mt-4">Pass mark: {data.course.passingPercentage}% / Complete all training sessions{data.course.certificateEnabled ? " to earn your HouseLink training certificate" : ""}.</p>
         </div>
       )}
     </PageShell>
@@ -943,7 +945,7 @@ function courseRecommendations(data: CourseDetail) {
   return [
     "Complete the final checkpoint, then keep your portfolio evidence ready for public certificate verification.",
     "Use the simulations to rehearse live client judgement, not only course memory.",
-    "Keep reviewing toolkit documents so your field work stays consistent after certification.",
+    "Keep reviewing toolkit documents so your field work stays consistent after certificate completion.",
   ];
 }
 

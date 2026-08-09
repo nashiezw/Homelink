@@ -427,7 +427,7 @@ export function PublicAgentProfile({ slug }: { slug: string }) {
                 <CredRow label="Performance tier" value={level} />
                 <CredRow
                   label="Training"
-                  value={profile.trainingCompleted ? "HouseLink certified" : "In progress"}
+                  value={profile.trainingCompleted ? "HouseLink trained" : "In progress"}
                   highlight={profile.trainingCompleted}
                 />
                 <CredRow label="Total ratings" value={String(ratingCount)} />

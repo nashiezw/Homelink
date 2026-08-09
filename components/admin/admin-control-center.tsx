@@ -339,7 +339,7 @@ const tabDescriptions: Record<AdminTab, string> = {
   proptech: "Appointment booking, signed documents, AI market intelligence, virtual tour analytics, and notification operations in one enterprise dashboard.",
   landlords: "Verify landlords, manage agencies, and control premium tiers.",
   agents: "Recruit agents, approve applications, pay commissions, and manage territories.",
-  academy: "Standalone enterprise LMS for HouseLink agent training, certification, documents, videos, live learning, and analytics.",
+  academy: "Standalone enterprise LMS for HouseLink agent training, certificates of completion, documents, videos, live learning, and analytics.",
   library: "Marketplace operations for books, manuals, templates, downloads, orders, reviews, coupons, inventory, reports, analytics, and settings.",
   "property-management": "Owner management request workflow from intake to completion.",
   "holiday-homes": "Manage holiday listings, seasonal settings, host reviews, and featured placement.",
