@@ -34,7 +34,10 @@ export async function GET(_request: Request, context: { params: Promise<{ number
             orderBy: { submittedAt: "desc" },
           }),
           prisma.assignmentSubmission.findMany({
-            where: { agentId: certificate.agentId, assignment: { courseId: certificate.courseId } },
+            where: {
+              agentId: certificate.agentId,
+              assignmentId: { in: programme?.assignmentIds ?? [] },
+            },
             orderBy: { submittedAt: "desc" },
           }),
         ])
@@ -56,7 +59,11 @@ export async function GET(_request: Request, context: { params: Promise<{ number
             quizzes: programme.quizIds.length,
             assignments: programme.assignmentIds.length,
             passedQuizAttempts: quizAttempts.filter((attempt) => attempt.status === "PASSED").length,
-            reviewedAssignments: assignmentSubmissions.filter((submission) => submission.status === "GRADED").length,
+            reviewedAssignments: new Set(
+              assignmentSubmissions
+                .filter((submission) => submission.status === "GRADED" || submission.status === "APPROVED")
+                .map((submission) => submission.assignmentId),
+            ).size,
             finalExamBestScore: examAttempts.length ? Math.max(...examAttempts.map((attempt) => Number(attempt.score))) : null,
             confidenceSignals: confidenceSignals.length
               ? {

@@ -115,7 +115,16 @@ export function CertificateVerificationClient() {
                   <VerificationFact label="Capstone" value={result.assessmentProof.requiresFinalExam ? "Final exam" : "Module gates"} />
                   <VerificationFact label="Passed attempts" value={String(result.assessmentProof.passedQuizAttempts ?? result.assessmentProof.quizzes)} />
                   <VerificationFact label="Reviewed work" value={String(result.assessmentProof.reviewedAssignments ?? result.assessmentProof.assignments)} />
-                  <VerificationFact label="Best final score" value={result.assessmentProof.finalExamBestScore === null || result.assessmentProof.finalExamBestScore === undefined ? "N/A" : `${result.assessmentProof.finalExamBestScore}%`} />
+                  <VerificationFact
+                    label="Best final score"
+                    value={
+                      result.assessmentProof.requiresFinalExam
+                        ? result.assessmentProof.finalExamBestScore === null || result.assessmentProof.finalExamBestScore === undefined
+                          ? "Pending"
+                          : `${result.assessmentProof.finalExamBestScore}%`
+                        : "Not required"
+                    }
+                  />
                 </div>
                 <div className="mt-3 flex flex-wrap gap-2">
                   {result.assessmentProof.trainingSessions && <VerificationChip value={result.assessmentProof.trainingSessions} />}

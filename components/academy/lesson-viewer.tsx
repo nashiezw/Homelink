@@ -13,6 +13,7 @@ import {
   FileText,
   Lightbulb,
   List,
+  Lock,
   MessageSquare,
   Play,
   Sparkles,
@@ -48,6 +49,12 @@ type Lesson = {
   lessonResources?: Array<{ id: string; title: string; body: string; type: string }>;
   completed?: boolean;
   bookmarked?: boolean;
+  locked?: boolean;
+  gate?: {
+    locked: boolean;
+    title: string;
+    requirements: Array<{ id: string; title: string; type: "quiz" | "assignment"; complete: boolean }>;
+  };
 };
 
 type Module = { id: string; title: string; lessons: Lesson[] };
@@ -362,10 +369,16 @@ export function LessonViewer({
                   </Button>
                 )}
                 {nextLesson ? (
-                  <Button className="w-full sm:w-auto" style={{ backgroundColor: accent }} onClick={() => setCurrentLessonId(nextLesson.id)}>
-                    <span className="truncate">Next: {nextLesson.title}</span>
-                    <ArrowRight className="size-4 ml-2 shrink-0" />
-                  </Button>
+                  nextLesson.locked ? (
+                    <Button className="w-full sm:w-auto" variant="secondary" disabled>
+                      <Lock className="size-4 mr-2" /> Complete checkpoint to continue
+                    </Button>
+                  ) : (
+                    <Button className="w-full sm:w-auto" style={{ backgroundColor: accent }} onClick={() => setCurrentLessonId(nextLesson.id)}>
+                      <span className="truncate">Next: {nextLesson.title}</span>
+                      <ArrowRight className="size-4 ml-2 shrink-0" />
+                    </Button>
+                  )
                 ) : (
                   <Button className="w-full sm:w-auto" onClick={onBack} style={{ backgroundColor: accent }}>
                     <CheckCircle2 className="size-4 mr-2" /> Finish course

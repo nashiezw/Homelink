@@ -3,6 +3,7 @@ import { ok, problem } from "@/lib/api/response";
 import { getMainPrisma } from "@/lib/db/main-prisma";
 import { shuffleArray, toPublicShuffledAnswers } from "@/lib/academy/quiz-randomisation";
 import { supplementalQuestionsForQuiz } from "@/lib/academy/quiz-question-bank";
+import { getAssessmentGateState } from "@/lib/academy/academy-gates";
 
 export const dynamic = "force-dynamic";
 
@@ -30,6 +31,10 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
     });
     if (!enrolment || enrolment.status !== "ACTIVE") {
       return problem(403, "NOT_ENROLLED", "Enrol in this course to take the quiz.");
+    }
+    const gate = await getAssessmentGateState(userId, quiz.courseId, quiz.id, "quiz");
+    if (gate.locked) {
+      return problem(403, "CHECKPOINT_LOCKED", gate.title);
     }
   }
 

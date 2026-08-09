@@ -4,6 +4,7 @@ import { ok, problem } from "@/lib/api/response";
 import { getMainPrisma } from "@/lib/db/main-prisma";
 import { tryCompleteCourseCertification } from "@/lib/academy/academy-progress";
 import { isSupplementalQuestionId, supplementalQuestionsForQuiz } from "@/lib/academy/quiz-question-bank";
+import { getAssessmentGateState } from "@/lib/academy/academy-gates";
 
 export const dynamic = "force-dynamic";
 
@@ -30,6 +31,8 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
         where: { courseId_agentId: { courseId: quiz.courseId, agentId: userId } },
       });
       if (!enrolment || enrolment.status !== "ACTIVE") return problem(403, "NOT_ENROLLED", "Enrol in this course to take the quiz.");
+      const gate = await getAssessmentGateState(userId, quiz.courseId, quiz.id, "quiz");
+      if (gate.locked) return problem(403, "CHECKPOINT_LOCKED", gate.title);
     }
 
     const cooldownSince = new Date(Date.now() - 24 * 60 * 60 * 1000);

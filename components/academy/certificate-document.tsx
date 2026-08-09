@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { Award, Download, ShieldCheck } from "lucide-react";
+import { Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { HouseLinkBrand } from "@/components/brand/houselink-logo";
 
@@ -37,24 +37,30 @@ export function CertificateDocument({
   backgroundUrl,
   logoUrl,
   signatureUrl,
-  signatureName = "HouseLink Zimbabwe Academy",
+  signatureName = "T. Ndudzo",
   signatureTitle = "Director of Training & Certification",
   customHtml = "",
   customCss = "",
   skillsAssessed = [],
   badgeName,
 }: CertificateDocumentProps) {
-  const issuedLabel = new Date(issuedAt).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+  const issuedLong = new Date(issuedAt).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+  const issuedShort = new Date(issuedAt).toLocaleDateString("en-GB");
+  const expiresShort = expiresAt ? new Date(expiresAt).toLocaleDateString("en-GB") : "No expiry";
+  const verifyOrigin = typeof window !== "undefined" ? window.location.origin : "https://www.houselink.co.zw";
+  const verifyAbsoluteUrl = `${verifyOrigin}${verifyUrl.replace(/^https?:\/\/[^/]+/, "")}`;
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=120x120&margin=8&data=${encodeURIComponent(verifyAbsoluteUrl)}`;
+  const displaySignatureName = signatureName === "HouseLink Zimbabwe Academy" ? "T. Ndudzo" : signatureName;
   const renderedCustomHtml = customHtml.trim()
     ? renderCertificateHtml(customHtml, {
         learnerName,
         courseTitle,
         certificateTitle,
         certificateNumber,
-        issuedAt: issuedLabel,
-        expiresAt: expiresAt ? new Date(expiresAt).toLocaleDateString("en-GB") : "",
+        issuedAt: issuedLong,
+        expiresAt: expiresShort,
         verifyUrl,
-        signatureName,
+        signatureName: displaySignatureName,
         signatureTitle,
         accent,
         backgroundUrl: backgroundUrl ?? "",
@@ -66,14 +72,28 @@ export function CertificateDocument({
     : "";
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-8 print:px-0 print:py-0">
+    <div id="houselink-certificate-print" className="mx-auto max-w-6xl px-4 py-8 print:max-w-none print:px-0 print:py-0">
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
+            @media print {
+              @page { size: A4 landscape; margin: 0; }
+              html, body { width: 100%; height: 100%; background: white !important; }
+              body * { visibility: hidden !important; }
+              #houselink-certificate-print, #houselink-certificate-print * { visibility: visible !important; }
+              #houselink-certificate-print { position: fixed !important; inset: 0 !important; width: 100vw !important; height: 100vh !important; margin: 0 !important; padding: 0 !important; background: white !important; }
+              #houselink-certificate-print .certificate-sheet { width: 100vw !important; height: 100vh !important; max-width: none !important; border-radius: 0 !important; box-shadow: none !important; }
+            }
+          `,
+        }}
+      />
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3 print:hidden">
         <div>
           <p className="text-sm font-semibold text-emerald-700">HouseLink digital certificate</p>
           <h1 className="text-2xl font-bold">{certificateTitle}</h1>
         </div>
         <Button onClick={() => window.print()} style={{ backgroundColor: accent }}>
-          <Download className="size-4 mr-2" /> Download / Print PDF
+          <Download className="mr-2 size-4" /> Download / Print PDF
         </Button>
       </div>
 
@@ -84,103 +104,151 @@ export function CertificateDocument({
         </article>
       ) : (
         <article
-          className="relative overflow-hidden rounded-xl bg-white shadow-hero ring-1 ring-slate-200 print:rounded-none print:shadow-none"
+          className="certificate-sheet relative mx-auto aspect-[1.414/1] w-full overflow-hidden rounded-lg bg-[#061a35] p-[1.6%] text-[#071936] shadow-hero print:p-[1.2%]"
           style={{
-            backgroundImage: backgroundUrl ? `linear-gradient(rgba(255,255,255,.88), rgba(255,255,255,.94)), url(${backgroundUrl})` : undefined,
+            backgroundImage: backgroundUrl ? `linear-gradient(rgba(6,26,53,.88), rgba(6,26,53,.92)), url(${backgroundUrl})` : undefined,
             backgroundSize: "cover",
             backgroundPosition: "center",
           }}
         >
-          <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(198,161,91,0.16),transparent_34%),linear-gradient(225deg,rgba(0,139,104,0.12),transparent_38%),linear-gradient(180deg,rgba(15,23,42,0.04),transparent_45%)]" />
-          <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(15,23,42,0.045)_1px,transparent_1px),linear-gradient(180deg,rgba(15,23,42,0.035)_1px,transparent_1px)] bg-[size:44px_44px]" />
-          <div className="absolute inset-5 rounded-lg border border-slate-900/10 print:inset-3" />
-          <div className="absolute inset-8 rounded-md border-2 border-amber-300/60 print:inset-5" />
-          <div className="absolute left-0 top-0 h-28 w-28 border-l-[18px] border-t-[18px] border-amber-400/70" />
-          <div className="absolute bottom-0 right-0 h-28 w-28 border-b-[18px] border-r-[18px] border-amber-400/70" />
+          <div className="relative h-full overflow-hidden bg-[#fffaf0] px-[4.2%] py-[3.1%]">
+            <div className="absolute inset-[1.1%] border border-[#d6ad55]" />
+            <div className="absolute inset-[2.1%] border-2 border-[#d6ad55]" />
+            <div className="absolute left-[2.1%] top-[2.1%] size-[5.8%] rounded-br-full border-b-4 border-r-4 border-[#d6ad55] bg-[#fffaf0]" />
+            <div className="absolute right-[2.1%] top-[2.1%] size-[5.8%] rounded-bl-full border-b-4 border-l-4 border-[#d6ad55] bg-[#fffaf0]" />
+            <div className="absolute bottom-[2.1%] left-[2.1%] size-[5.8%] rounded-tr-full border-r-4 border-t-4 border-[#d6ad55] bg-[#fffaf0]" />
+            <div className="absolute bottom-[2.1%] right-[2.1%] size-[5.8%] rounded-tl-full border-l-4 border-t-4 border-[#d6ad55] bg-[#fffaf0]" />
+            <div className="absolute inset-0 opacity-[0.08] [background-image:radial-gradient(circle_at_center,#0a1d3f_1px,transparent_1px)] [background-size:18px_18px]" />
 
-          <div className="relative px-6 py-8 sm:px-12 sm:py-14 lg:px-16">
-            <div className="flex flex-wrap items-start justify-between gap-6">
-              <div className="rounded-lg bg-white p-3 shadow-lg ring-1 ring-slate-200">
-                {logoUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={logoUrl} alt="Certificate logo" className="h-12 w-auto max-w-44 object-contain" />
-                ) : (
-                  <HouseLinkBrand variant="auth" iconOnly={false} />
-                )}
-              </div>
-              <div className="min-w-0 text-left sm:text-right">
-                <p className="text-xs font-bold uppercase tracking-[0.24em] text-slate-500">HouseLink Academy Credential</p>
-                <p className="mt-2 break-words text-sm font-semibold [overflow-wrap:anywhere]" style={{ color: accent }}>{certificateNumber}</p>
-                <p className="mt-1 text-xs text-slate-500">Verified digital record</p>
-              </div>
-            </div>
-
-            <div className="mx-auto mt-10 max-w-4xl text-center">
-              <div className="mx-auto mb-7 inline-flex items-center gap-2 rounded-full px-5 py-2 text-sm font-semibold text-white shadow-lg" style={{ backgroundColor: accent }}>
-                <Award className="size-4" /> Official HouseLink Certification
-              </div>
-              <p className="text-sm font-semibold uppercase tracking-[0.24em] text-slate-500">This certifies that</p>
-              <h2 className="mt-4 break-words font-serif text-4xl font-bold text-slate-950 [overflow-wrap:anywhere] sm:text-6xl">{learnerName}</h2>
-              <div className="mx-auto mt-5 h-px max-w-xl bg-gradient-to-r from-transparent via-amber-300 to-transparent" />
-              <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-slate-600">
-                has successfully completed <strong>{courseTitle}</strong> and is awarded the designation
-              </p>
-              <p className="mt-4 break-words text-3xl font-bold [overflow-wrap:anywhere] sm:text-4xl" style={{ color: accent }}>{certificateTitle}</p>
-              {badgeName && <p className="mt-2 text-sm font-semibold uppercase tracking-wide text-slate-500">{badgeName}</p>}
-            </div>
-
-            {skillsAssessed.length > 0 && (
-              <div className="mx-auto mt-10 max-w-3xl rounded-lg border border-slate-200 bg-white/88 p-5 text-left shadow-sm">
-                <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Skills assessed</p>
-                <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                  {skillsAssessed.slice(0, 8).map((skill) => (
-                    <p key={skill} className="flex gap-2 text-sm leading-snug text-slate-700">
-                      <ShieldCheck className="mt-0.5 size-4 shrink-0" style={{ color: accent }} />
-                      {skill}
-                    </p>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <div className="mt-12 grid gap-8 border-t border-slate-200 pt-10 sm:grid-cols-[1fr_auto_1fr] sm:items-end">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Date of issue</p>
-                <p className="mt-2 text-lg font-semibold">{issuedLabel}</p>
-                {expiresAt && (
-                  <p className="mt-2 text-sm text-slate-500">Valid until {new Date(expiresAt).toLocaleDateString("en-GB")}</p>
-                )}
-              </div>
-
-              <div className="hidden justify-center sm:flex">
-                <div className="rounded-full border border-amber-300 bg-white p-5 text-center shadow-md">
-                  <ShieldCheck className="mx-auto size-10" style={{ color: accent }} />
-                  <p className="mt-2 max-w-28 text-xs font-bold uppercase tracking-[0.12em] text-slate-600">Verified credential</p>
-                </div>
-              </div>
-
-              <div className="sm:text-right">
-                <div className="inline-block border-b-2 border-slate-800 pb-2">
-                  {signatureUrl ? (
+            <div className="relative grid h-full grid-rows-[auto_1fr_auto]">
+              <header className="grid grid-cols-[1fr_auto_1fr] items-start gap-4">
+                <div />
+                <div className="text-center">
+                  {logoUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={signatureUrl} alt="" className="ml-auto h-12 max-w-48 object-contain" />
+                    <img src={logoUrl} alt="HouseLink Zimbabwe Academy" className="mx-auto h-14 w-auto object-contain sm:h-20" />
                   ) : (
-                    <p className="font-serif text-2xl italic text-slate-800">{signatureName}</p>
+                    <Image src="/brand/houselink-full-lockup.png" alt="HouseLink Zimbabwe Academy" width={360} height={150} className="mx-auto h-14 w-auto object-contain sm:h-20" priority />
                   )}
+                  <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.52em] text-[#071936] sm:text-xs">Zimbabwe Academy</p>
                 </div>
-                <p className="mt-2 text-sm text-slate-500">{signatureTitle}</p>
-                <div className="mt-4 flex items-center gap-3 sm:justify-end">
-                  <Image src="/brand/houselink-full-lockup.png" alt="HouseLink" width={152} height={80} className="h-8 w-auto opacity-80" />
+                <div className="pt-2 text-right">
+                  <p className="text-[9px] font-bold uppercase tracking-[0.28em] text-[#071936] sm:text-[11px]">Certificate No.</p>
+                  <p className="mt-1 break-words text-xs font-semibold text-[#a87922] [overflow-wrap:anywhere] sm:text-sm">{certificateNumber}</p>
                 </div>
-              </div>
-            </div>
+              </header>
 
-            <p className="mt-10 text-center text-xs text-slate-500 print:mt-8">
-              Verify this certificate at {typeof window !== "undefined" ? window.location.origin : "https://www.houselink.co.zw"}{verifyUrl.replace(/^https?:\/\/[^/]+/, "")}
-            </p>
+              <main className="relative flex flex-col items-center justify-center text-center">
+                <div className="absolute left-[8%] top-[25%] hidden h-28 w-12 rounded-l-full border-y-4 border-l-4 border-[#c49a43] opacity-80 md:block" />
+                <div className="absolute right-[8%] top-[25%] hidden h-28 w-12 rounded-r-full border-y-4 border-r-4 border-[#c49a43] opacity-80 md:block" />
+                <div className="absolute left-[2%] top-[47%] hidden size-28 rounded-full border border-slate-200 bg-white/60 text-center text-[9px] font-bold uppercase tracking-widest text-slate-300 shadow-inner md:flex md:items-center md:justify-center">
+                  HouseLink<br />Zimbabwe<br />Academy
+                </div>
+
+                <h1 className="font-serif text-4xl font-semibold uppercase tracking-[0.38em] text-[#071936] sm:text-6xl lg:text-7xl">Certificate</h1>
+                <div className="mt-2 flex items-center gap-5 text-[#a87922]">
+                  <span className="h-px w-20 bg-[#d6ad55]" />
+                  <p className="font-serif text-lg uppercase tracking-[0.24em] sm:text-2xl">of Achievement</p>
+                  <span className="h-px w-20 bg-[#d6ad55]" />
+                </div>
+                <p className="mt-4 text-[10px] font-bold uppercase tracking-[0.42em] text-[#071936] sm:text-xs">This certifies that</p>
+                <p className="mt-2 break-words font-serif text-4xl italic leading-none text-[#071936] [overflow-wrap:anywhere] sm:text-7xl">{learnerName}</p>
+                <div className="mt-1 h-px w-[52%] bg-[#d6ad55]" />
+                <p className="mt-4 max-w-2xl text-sm leading-6 text-[#2d2a25] sm:text-base">
+                  has successfully completed the requirements of the
+                  <br />
+                  <strong className="font-bold text-[#071936]">{courseTitle}</strong>
+                  <br />
+                  and is hereby awarded the designation of
+                </p>
+                <p className="mt-3 break-words text-2xl font-bold uppercase tracking-[0.16em] text-[#0b7a46] [overflow-wrap:anywhere] sm:text-4xl">{certificateTitle}</p>
+                {badgeName && <p className="mt-2 text-xs font-bold uppercase tracking-[0.38em] text-[#071936] sm:text-sm">{badgeName}</p>}
+                <p className="mt-3 max-w-2xl font-serif text-sm italic leading-5 text-[#2d2a25] sm:text-base">
+                  In recognition of demonstrated knowledge, skills and commitment to ethical practice and professional excellence in real estate.
+                </p>
+              </main>
+
+              <footer className="grid grid-cols-[1fr_auto_1fr] items-end gap-4">
+                <div>
+                  <div className="flex items-end gap-4">
+                    <div className="border border-[#d6ad55] bg-white p-1">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={qrUrl} alt="Certificate verification QR code" className="size-16 sm:size-20" />
+                    </div>
+                    <div className="text-left">
+                      <p className="text-[9px] font-bold uppercase tracking-[0.16em] text-[#071936] sm:text-[11px]">Verify this certificate</p>
+                      <p className="mt-1 text-[9px] leading-4 text-[#2d2a25] sm:text-xs">Scan the QR code or visit:</p>
+                      <p className="break-all text-[9px] font-bold text-[#0b7a46] sm:text-xs">{verifyOrigin.replace(/^https?:\/\//, "")}/academy/verify</p>
+                    </div>
+                  </div>
+                  <SignatureBlock signature="W. Tigere" name="Wadzanii Tigere" title="Academy Director" />
+                </div>
+
+                <div className="flex flex-col items-center">
+                  <div className="relative flex size-24 items-center justify-center rounded-full bg-[#071936] text-[#f6d37d] shadow-lg ring-4 ring-[#d6ad55] sm:size-32">
+                    <div className="absolute inset-2 rounded-full border border-[#f6d37d]" />
+                    <HouseLinkBrand variant="icon" iconOnly className="scale-75" />
+                    <p className="absolute bottom-3 text-[8px] font-bold tracking-[0.22em] sm:text-[9px]">EST. 2026</p>
+                  </div>
+                  <div className="mt-3 grid grid-cols-3 gap-4 text-center text-[9px] sm:text-xs">
+                    <CertificateFact label="Date of Issue" value={issuedShort} />
+                    <CertificateFact label="Certificate ID" value={certificateNumber} />
+                    <CertificateFact label="Valid Until" value={expiresShort} />
+                  </div>
+                </div>
+
+                <div className="flex flex-col items-end">
+                  <SignatureBlock
+                    signature={displaySignatureName}
+                    name={displaySignatureName}
+                    title={signatureTitle}
+                    signatureUrl={signatureUrl}
+                    align="right"
+                  />
+                </div>
+              </footer>
+            </div>
           </div>
         </article>
       )}
+    </div>
+  );
+}
+
+function SignatureBlock({
+  signature,
+  name,
+  title,
+  signatureUrl,
+  align = "left",
+}: {
+  signature: string;
+  name: string;
+  title: string;
+  signatureUrl?: string | null;
+  align?: "left" | "right";
+}) {
+  return (
+    <div className={`mt-6 max-w-56 text-center ${align === "right" ? "ml-auto" : ""}`}>
+      <div className="border-b border-[#a87922] pb-1">
+        {signatureUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={signatureUrl} alt="" className="mx-auto h-10 max-w-44 object-contain" />
+        ) : (
+          <p className="font-serif text-xl italic text-[#071936] sm:text-2xl">{signature}</p>
+        )}
+      </div>
+      <p className="mt-1 text-[9px] font-bold uppercase tracking-[0.24em] text-[#071936] sm:text-[11px]">{name}</p>
+      <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-[#0b7a46] sm:text-[10px]">{title}</p>
+    </div>
+  );
+}
+
+function CertificateFact({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="border-l border-[#d6ad55] px-3 first:border-l-0">
+      <p className="font-bold uppercase tracking-[0.12em] text-slate-500">{label}</p>
+      <p className="mt-1 break-words font-bold text-[#071936] [overflow-wrap:anywhere]">{value}</p>
     </div>
   );
 }

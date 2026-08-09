@@ -13,6 +13,7 @@ import {
   FileText,
   GraduationCap,
   ListChecks,
+  Lock,
   MessageSquareText,
   ShieldCheck,
   Sparkles,
@@ -76,6 +77,7 @@ type CourseDetail = {
       description?: string | null;
       lessonCount: number;
       completedCount: number;
+      gate?: CourseGate;
       sections: Array<{
         id: string;
         title: string;
@@ -95,6 +97,8 @@ type CourseDetail = {
           lessonDocuments?: Array<{ id: string; title: string; fileType: string; downloadUrl: string }>;
           lessonResources?: Array<{ id: string; title: string; body: string; type: string }>;
           lessonDownloads?: Array<{ id: string; title: string; url: string; type: string }>;
+          locked?: boolean;
+          gate?: CourseGate;
         }>;
       }>;
     }>;
@@ -116,6 +120,12 @@ type CourseDetail = {
     exams: Array<{ id: string; title: string; description?: string | null; durationMinutes: number; passingScore: number; attemptLimit: number }>;
   };
   materials: Array<{ id: string; title: string; subtitle: string; summary: string; moduleTitle: string; lessonTitle: string; estimatedMinutes: number; location: string; fileType: string; downloadUrl: string; viewUrl: string }>;
+};
+
+type CourseGate = {
+  locked: boolean;
+  title: string;
+  requirements: Array<{ id: string; title: string; type: "quiz" | "assignment"; complete: boolean }>;
 };
 
 type Tab = "curriculum" | "toolkit" | "materials" | "assessments" | "discussions" | "progress";
@@ -331,27 +341,40 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
             accent={accent}
             items={data.course.modules.map((module, index) => ({
               id: module.id,
-              title: module.title,
+              title: module.gate?.locked ? `${module.title} - locked` : module.title,
               subtitle: module.description ?? undefined,
-              meta: `${module.completedCount}/${module.lessonCount} complete`,
-              defaultOpen: index === 0,
+              meta: module.gate?.locked ? "Checkpoint required" : `${module.completedCount}/${module.lessonCount} complete`,
+              defaultOpen: index === 0 || Boolean(module.gate?.locked),
               content: (
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {module.sections.flatMap((section) => section.lessons).map((lesson) => (
-                    <button
-                      key={lesson.id}
-                      type="button"
-                      onClick={() => setViewingLessonId(lesson.id)}
-                      className="academy-card group rounded-lg p-4 text-left"
-                      style={{ borderColor: `${accent}22` }}
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <p className="font-semibold leading-snug group-hover:text-emerald-700 dark:group-hover:text-emerald-300">{lesson.title}</p>
-                        <CheckCircle2 className={cn("size-5 shrink-0", lesson.completed ? "text-emerald-500" : "text-slate-200 dark:text-slate-700")} />
-                      </div>
-                      <p className="mt-2 text-xs text-slate-500">{lesson.estimatedMinutes} min / {lesson.completionRequirement.replace(/_/g, " ")}</p>
-                    </button>
-                  ))}
+                <div className="space-y-3">
+                  {module.gate?.locked && <GateNotice gate={module.gate} accent={accent} />}
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {module.sections.flatMap((section) => section.lessons).map((lesson) => (
+                      <button
+                        key={lesson.id}
+                        type="button"
+                        onClick={() => {
+                          if (!lesson.locked) setViewingLessonId(lesson.id);
+                        }}
+                        disabled={lesson.locked}
+                        className={cn(
+                          "academy-card group rounded-lg p-4 text-left",
+                          lesson.locked && "cursor-not-allowed opacity-70",
+                        )}
+                        style={{ borderColor: `${accent}22` }}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="font-semibold leading-snug group-hover:text-emerald-700 dark:group-hover:text-emerald-300">{lesson.title}</p>
+                          {lesson.locked ? (
+                            <Lock className="size-5 shrink-0 text-amber-500" />
+                          ) : (
+                            <CheckCircle2 className={cn("size-5 shrink-0", lesson.completed ? "text-emerald-500" : "text-slate-200 dark:text-slate-700")} />
+                          )}
+                        </div>
+                        <p className="mt-2 text-xs text-slate-500">{lesson.estimatedMinutes} min / {lesson.completionRequirement.replace(/_/g, " ")}</p>
+                      </button>
+                    ))}
+                  </div>
                 </div>
               ),
             }))}
@@ -537,19 +560,24 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
               accent={accent}
               empty="Module quizzes load with your programme enrolment."
             >
-              {data.assessments.quizzes.map((quiz) => (
-                <AssessmentActionCard
-                  key={quiz.id}
-                  title={quiz.title}
-                  eyebrow={quiz.moduleTitle}
-                  description={quiz.description}
-                  meta={`${quiz.questionCount} questions / ${quiz.passingPercentage}% pass${quiz.timeLimitMinutes ? ` / ${quiz.timeLimitMinutes} min` : ""}`}
-                  status={quiz.bestScore !== null ? `Best score: ${quiz.bestScore}% ${quiz.passed ? "Passed" : "Retake available"}` : "Not attempted yet"}
-                  statusTone={quiz.bestScore !== null && !quiz.passed ? "amber" : quiz.passed ? "emerald" : "slate"}
-                  actionLabel={quiz.passed ? "Retake Quiz" : "Take Quiz"}
-                  onAction={() => setActiveQuizId(quiz.id)}
-                />
-              ))}
+              {data.assessments.quizzes.map((quiz) => {
+                const gate = assessmentGateFor(data, quiz.sortOrder ?? 0);
+                return (
+                  <AssessmentActionCard
+                    key={quiz.id}
+                    title={quiz.title}
+                    eyebrow={quiz.moduleTitle}
+                    description={quiz.description}
+                    meta={`${quiz.questionCount} questions / ${quiz.passingPercentage}% pass${quiz.timeLimitMinutes ? ` / ${quiz.timeLimitMinutes} min` : ""}`}
+                    status={quiz.bestScore !== null ? `Best score: ${quiz.bestScore}% ${quiz.passed ? "Passed" : "Retake available"}` : "Not attempted yet"}
+                    statusTone={quiz.bestScore !== null && !quiz.passed ? "amber" : quiz.passed ? "emerald" : "slate"}
+                    actionLabel={quiz.passed ? "Retake Quiz" : "Take Quiz"}
+                    locked={gate.locked}
+                    lockedReason={gate.locked ? gate.title : undefined}
+                    onAction={() => { if (!gate.locked) setActiveQuizId(quiz.id); }}
+                  />
+                );
+              })}
             </AssessmentGroup>
 
             <AssessmentGroup
@@ -560,20 +588,25 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
               accent={accent}
               empty="Practical assignments are tied to each module in this programme."
             >
-              {data.assessments.assignments.map((assignment) => (
-                <AssessmentActionCard
-                  key={assignment.id}
-                  title={assignment.title}
-                  eyebrow={assignment.moduleTitle}
-                  description={assignment.description}
-                  meta={`${assignment.points} points${assignment.dueDays ? ` / due within ${assignment.dueDays} days` : ""}`}
-                  status={assignment.submitted ? `Submitted / ${assignment.status}` : "Not submitted yet"}
-                  statusTone={assignment.submitted ? "emerald" : "slate"}
-                  actionLabel={assignment.submitted ? "View Submission" : "Submit Assignment"}
-                  actionVariant="secondary"
-                  onAction={() => setActiveAssignmentId(assignment.id)}
-                />
-              ))}
+              {data.assessments.assignments.map((assignment) => {
+                const gate = assessmentGateFor(data, assignment.sortOrder ?? 0);
+                return (
+                  <AssessmentActionCard
+                    key={assignment.id}
+                    title={assignment.title}
+                    eyebrow={assignment.moduleTitle}
+                    description={assignment.description}
+                    meta={`${assignment.points} points${assignment.dueDays ? ` / due within ${assignment.dueDays} days` : ""}`}
+                    status={assignment.submitted ? `Submitted / ${assignment.status}` : "Not submitted yet"}
+                    statusTone={assignment.submitted ? "emerald" : "slate"}
+                    actionLabel={assignment.submitted ? "View Submission" : "Submit Assignment"}
+                    actionVariant="secondary"
+                    locked={gate.locked}
+                    lockedReason={gate.locked ? gate.title : undefined}
+                    onAction={() => { if (!gate.locked) setActiveAssignmentId(assignment.id); }}
+                  />
+                );
+              })}
             </AssessmentGroup>
 
             <AssessmentGroup
@@ -801,6 +834,8 @@ function AssessmentActionCard({
   statusTone,
   actionLabel,
   actionVariant = "primary",
+  locked = false,
+  lockedReason,
   onAction,
 }: {
   title: string;
@@ -811,10 +846,12 @@ function AssessmentActionCard({
   statusTone: "emerald" | "amber" | "slate";
   actionLabel: string;
   actionVariant?: "primary" | "secondary";
+  locked?: boolean;
+  lockedReason?: string;
   onAction: () => void;
 }) {
   return (
-    <article className="flex min-h-[13rem] flex-col rounded-xl border border-slate-200 bg-slate-50/70 p-4 dark:border-slate-800 dark:bg-slate-900/50">
+    <article className={cn("flex min-h-[13rem] flex-col rounded-xl border border-slate-200 bg-slate-50/70 p-4 dark:border-slate-800 dark:bg-slate-900/50", locked && "opacity-75")}>
       {eyebrow && <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-emerald-700 dark:text-emerald-300">{eyebrow}</p>}
       <h4 className="mt-1 text-sm font-bold leading-5 text-slate-950 dark:text-white">{title}</h4>
       {description && <p className="mt-2 line-clamp-3 text-sm leading-6 text-slate-600 dark:text-slate-300">{description}</p>}
@@ -830,12 +867,52 @@ function AssessmentActionCard({
         >
           {status}
         </p>
+        {lockedReason && (
+          <p className="flex items-start gap-1.5 rounded-lg bg-amber-50 px-2 py-1.5 font-semibold text-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
+            <Lock className="mt-0.5 size-3.5 shrink-0" />
+            <span>{lockedReason}</span>
+          </p>
+        )}
       </div>
-      <Button className="mt-auto w-full" variant={actionVariant} onClick={onAction}>
-        {actionLabel}
+      <Button className="mt-auto w-full" variant={actionVariant} onClick={onAction} disabled={locked}>
+        {locked ? "Locked" : actionLabel}
       </Button>
     </article>
   );
+}
+
+function GateNotice({ gate, accent }: { gate: CourseGate; accent: string }) {
+  return (
+    <div className="rounded-xl border border-amber-200 bg-amber-50/80 p-4 dark:border-amber-900/40 dark:bg-amber-950/20">
+      <p className="flex items-center gap-2 text-sm font-bold text-amber-900 dark:text-amber-100">
+        <Lock className="size-4" />
+        Module checkpoint required
+      </p>
+      <p className="mt-1 text-sm leading-6 text-amber-900/80 dark:text-amber-100/80">{gate.title}</p>
+      <div className="mt-3 grid gap-2 sm:grid-cols-2">
+        {gate.requirements.map((requirement) => (
+          <div key={requirement.id} className="flex items-start gap-2 rounded-lg bg-white/80 p-2 text-xs font-semibold text-slate-700 dark:bg-slate-950/60 dark:text-slate-200">
+            <CheckCircle2 className={cn("mt-0.5 size-4 shrink-0", requirement.complete ? "text-emerald-600" : "text-slate-300")} />
+            <span className="min-w-0">
+              <span className="block uppercase tracking-wide" style={{ color: requirement.complete ? accent : undefined }}>{requirement.type}</span>
+              <span className="block leading-5">{requirement.title}</span>
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function assessmentGateFor(data: CourseDetail, sortOrder: number): CourseGate {
+  const gate = data.course.modules
+    .map((module) => module.gate)
+    .find((moduleGate) => moduleGate?.requirements.some((requirement) => {
+      const quiz = data.assessments.quizzes.find((entry) => entry.id === requirement.id);
+      const assignment = data.assessments.assignments.find((entry) => entry.id === requirement.id);
+      return (quiz?.sortOrder ?? assignment?.sortOrder ?? -1) < sortOrder;
+    }));
+  return gate ?? { locked: false, title: "", requirements: [] };
 }
 
 function courseRecommendations(data: CourseDetail) {

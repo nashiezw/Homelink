@@ -2,6 +2,7 @@ import { AssignmentSubmissionStatus } from "@prisma/client";
 import { getSessionUserIdFromRequest } from "@/lib/auth/session";
 import { ok, problem } from "@/lib/api/response";
 import { getMainPrisma } from "@/lib/db/main-prisma";
+import { getAssessmentGateState } from "@/lib/academy/academy-gates";
 
 export const dynamic = "force-dynamic";
 
@@ -16,13 +17,22 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
 
   try {
     const prisma = getMainPrisma();
-    const assignment = await prisma.assignment.findUnique({ where: { id: assignmentId } });
+    const assignment = await prisma.assignment.findUnique({
+      where: { id: assignmentId },
+      include: {
+        module: { select: { courseId: true } },
+        lesson: { select: { section: { select: { module: { select: { courseId: true } } } } } },
+      },
+    });
     if (!assignment || assignment.active === false) return problem(404, "ASSIGNMENT_NOT_FOUND", "Assignment not found.");
-    if (assignment.courseId) {
+    const courseId = assignment.courseId ?? assignment.module?.courseId ?? assignment.lesson?.section.module.courseId ?? null;
+    if (courseId) {
       const enrolment = await prisma.courseEnrolment.findUnique({
-        where: { courseId_agentId: { courseId: assignment.courseId, agentId: userId } },
+        where: { courseId_agentId: { courseId, agentId: userId } },
       });
       if (!enrolment || enrolment.status !== "ACTIVE") return problem(403, "NOT_ENROLLED", "Enrol in this course to submit assignments.");
+      const gate = await getAssessmentGateState(userId, courseId, assignment.id, "assignment");
+      if (gate.locked) return problem(403, "CHECKPOINT_LOCKED", gate.title);
     }
     const submission = await prisma.assignmentSubmission.create({
       data: {

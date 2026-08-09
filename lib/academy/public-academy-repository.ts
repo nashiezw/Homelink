@@ -7,6 +7,7 @@ import { assessmentMetaForAssignment, assessmentMetaForQuiz } from "@/lib/academ
 import { getProgrammeCourse, LEGACY_COURSE_ID, PROGRAMME_COURSE_IDS } from "@/lib/academy/academy-programme";
 import { getEnrolledCourseToolkits, getToolkitGroupsForCourse, programmeMetaForCourse } from "@/lib/academy/academy-toolkits";
 import { buildReadinessScore } from "@/lib/academy/academy-readiness";
+import { getProgrammeGateState } from "@/lib/academy/academy-gates";
 import {
   getManualAccessView,
   getToolkitAccessView,
@@ -187,17 +188,22 @@ export async function getLearnerAcademyDashboard(learnerId: string, options?: { 
     take: 60,
   });
   const streak = computeLearningStreak(activityDates.map((row) => row.completedAt ?? row.lastViewedAt));
+  const completedOrCertifiedCourseIds = new Set([
+    ...certificates.map((certificate) => certificate.courseId).filter((id): id is string => Boolean(id)),
+    ...courseProgressRows.filter((row) => row.status === "COMPLETED" || row.percentComplete >= 100).map((row) => row.courseId),
+  ]);
 
   const continueLearning = (() => {
     const recent = recentProgress.find(
       (row) =>
         row.lesson.section.module.courseId !== LEGACY_COURSE_ID &&
-        PROGRAMME_COURSE_IDS.includes(row.lesson.section.module.courseId),
+        PROGRAMME_COURSE_IDS.includes(row.lesson.section.module.courseId) &&
+        !completedOrCertifiedCourseIds.has(row.lesson.section.module.courseId),
     ) ?? recentProgress[0];
     if (!recent) return null;
     const courseId = recent.lesson.section.module.courseId;
-    if (courseId === LEGACY_COURSE_ID || !PROGRAMME_COURSE_IDS.includes(courseId)) {
-      const fallback = approved[0];
+    if (courseId === LEGACY_COURSE_ID || !PROGRAMME_COURSE_IDS.includes(courseId) || completedOrCertifiedCourseIds.has(courseId)) {
+      const fallback = approved.find((entry) => !completedOrCertifiedCourseIds.has(entry.course.id));
       if (!fallback) return null;
       return {
         lessonId: "",
@@ -777,6 +783,9 @@ export async function getLearnerCourseDetail(learnerId: string, courseId: string
     assignmentStatuses,
     finalExamPassed: examAttempts.some((attempt) => attempt.status === "PASSED"),
   });
+  const moduleGateStates = await Promise.all(
+    course.modules.map((module) => getProgrammeGateState(learnerId, courseId, module.sortOrder)),
+  );
 
   return {
     settings,
@@ -802,16 +811,21 @@ export async function getLearnerCourseDetail(learnerId: string, courseId: string
       passingPercentage: course.passingPercentage,
       progress: courseProgress?.percentComplete ?? progress.percentComplete,
       status: courseProgress?.status ?? "NOT_STARTED",
-      modules: course.modules.map((module) => ({
+      modules: course.modules.map((module, moduleIndex) => ({
         id: module.id,
         title: module.title,
         description: module.description,
         sortOrder: module.sortOrder,
+        gate: moduleGateStates[moduleIndex],
         sections: module.sections.map((section) => ({
           id: section.id,
           title: section.title,
           sortOrder: section.sortOrder,
-          lessons: section.lessons.map((lesson) => mapLessonForLearner(lesson, completedIds, bookmarkIds)),
+          lessons: section.lessons.map((lesson) => ({
+            ...mapLessonForLearner(lesson, completedIds, bookmarkIds),
+            locked: moduleGateStates[moduleIndex]?.locked ?? false,
+            gate: moduleGateStates[moduleIndex],
+          })),
         })),
         lessonCount: module.sections.reduce((sum, s) => sum + s.lessons.length, 0),
         completedCount: module.sections.reduce((sum, s) => sum + s.lessons.filter((l) => completedIds.has(l.id)).length, 0),
