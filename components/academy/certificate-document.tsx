@@ -184,6 +184,10 @@ export function CertificateDocument({
               <filter id="soft-shadow" x="-20%" y="-20%" width="140%" height="140%">
                 <feDropShadow dx="0" dy="12" stdDeviation="12" floodColor="#061936" floodOpacity="0.18" />
               </filter>
+              <path id="embossed-seal-top-arc" d="M105 590 A80 80 0 0 0 265 590" />
+              <path id="embossed-seal-bottom-arc" d="M105 590 A80 80 0 0 1 265 590" />
+              <path id="center-seal-top-arc" d="M653 848 A47 47 0 0 0 747 848" />
+              <path id="center-seal-bottom-arc" d="M653 848 A47 47 0 0 1 747 848" />
             </defs>
 
             <rect width={SVG_WIDTH} height={SVG_HEIGHT} fill="#061936" />
@@ -254,20 +258,20 @@ export function CertificateDocument({
               to ethical practice and professional excellence in real estate.
             </text>
 
-            <image href={qrUrl} x="80" y="794" width="82" height="82" />
-            <text x="186" y="806" fontFamily="Arial, sans-serif" fontSize="10" fontWeight="800" letterSpacing="1.6" fill="#071936">
+            <image href={qrUrl} x="80" y="792" width="74" height="74" />
+            <text x="117" y="883" textAnchor="middle" fontFamily="Arial, sans-serif" fontSize="8.5" fontWeight="800" letterSpacing="1.2" fill="#071936">
               VERIFY THIS CERTIFICATE
             </text>
-            <text x="186" y="826" fontFamily="Arial, sans-serif" fontSize="10" fill="#2d2a25">
+            <text x="117" y="899" textAnchor="middle" fontFamily="Arial, sans-serif" fontSize="8.5" fill="#2d2a25">
               Scan the QR code or visit:
             </text>
-            <text x="186" y="846" fontFamily="Arial, sans-serif" fontSize="10" fontWeight="700" fill="#0b7a46">
+            <text x="117" y="914" textAnchor="middle" fontFamily="Arial, sans-serif" fontSize="8.5" fontWeight="700" fill="#0b7a46">
               {verifyOrigin.replace(/^https?:\/\//, "")}/academy/verify
             </text>
 
-            <SignatureSvg x={340} y={828} signature={secondSignatureName} name={normaliseSignatureName(secondSignatureName)} title={secondSignatureTitle} href={secondSignatureHref} />
+            <SignatureSvg x={365} y={820} signature={secondSignatureName} name={normaliseSignatureName(secondSignatureName)} title={secondSignatureTitle} href={secondSignatureHref} />
             <CenterSeal href={sealHref} iconHref={iconHref} />
-            <SignatureSvg x={1060} y={828} signature={displaySignatureName} name={normaliseSignatureName(displaySignatureName)} title={signatureTitle} href={firstSignatureHref} />
+            <SignatureSvg x={1050} y={820} signature={displaySignatureName} name={normaliseSignatureName(displaySignatureName)} title={signatureTitle} href={firstSignatureHref} />
 
             <CertificateFactSvg x={795} y={902} label="Date of Issue" value={issuedLong} />
             <line x1="930" y1="880" x2="930" y2="932" stroke="#d4ad5b" strokeWidth="2" />
@@ -296,28 +300,37 @@ function CertificateCorner({ x, y, corner }: { x: number; y: number; corner: "tl
 }
 
 function LaurelSvg({ side }: { side: "left" | "right" }) {
-  const leaves = Array.from({ length: 12 });
+  const leaves = Array.from({ length: 11 });
   const mirror = side === "right" ? "translate(1400 0) scale(-1 1)" : undefined;
 
   return (
-    <g transform={mirror} opacity="0.9">
-      <path d="M303 257 C242 335 236 431 298 512" fill="none" stroke="#c49a43" strokeWidth="5" strokeLinecap="round" />
+    <g transform={mirror} opacity="0.95">
+      <path d="M306 258 C244 328 238 436 304 514" fill="none" stroke="#b88b32" strokeWidth="3.5" strokeLinecap="round" />
       {leaves.map((_, index) => {
-        const y = 276 + index * 18;
-        const branchX = 292 - Math.sin(index / 3) * 28;
-        const leftLeafX = branchX - 12;
-        const rightLeafX = branchX + 17;
-        const angle = -43 + index * 4.8;
+        const progress = index / (leaves.length - 1);
+        const y = 278 + progress * 202;
+        const branchX = 302 - Math.sin(progress * Math.PI) * 48;
+        const scale = 0.88 + Math.sin(progress * Math.PI) * 0.2;
+        const outsideAngle = -49 + progress * 35;
+        const insideAngle = outsideAngle + 65;
         return (
           <g key={index}>
-            <ellipse cx={leftLeafX} cy={y} rx="9" ry="23" fill="#c49a43" transform={`rotate(${angle} ${leftLeafX} ${y})`} />
-            {index > 1 && index < 10 ? (
-              <ellipse cx={rightLeafX} cy={y + 3} rx="7" ry="18" fill="#d3aa50" transform={`rotate(${angle + 58} ${rightLeafX} ${y + 3})`} />
+            <path
+              d="M0 0 C-9 -12 -7 -29 10 -41 C20 -24 17 -8 0 0Z"
+              fill="#c69b45"
+              transform={`translate(${branchX - 17} ${y}) rotate(${outsideAngle}) scale(${scale})`}
+            />
+            {index > 1 && index < leaves.length - 1 ? (
+              <path
+                d="M0 0 C-8 -10 -6 -24 8 -35 C17 -20 14 -7 0 0Z"
+                fill="#d3aa50"
+                transform={`translate(${branchX + 14} ${y + 5}) rotate(${insideAngle}) scale(${scale * 0.82})`}
+              />
             ) : null}
           </g>
         );
       })}
-      <path d="M301 512 C289 499 279 487 270 473" fill="none" stroke="#c49a43" strokeWidth="3" strokeLinecap="round" />
+      <path d="M303 514 C290 502 279 489 270 474" fill="none" stroke="#b88b32" strokeWidth="2.5" strokeLinecap="round" />
     </g>
   );
 }
@@ -328,12 +341,16 @@ function EmbossedSeal({ iconHref }: { iconHref: string }) {
       <circle cx="185" cy="590" r="108" fill="#f7f3eb" stroke="#d8d4cb" strokeWidth="3" />
       <circle cx="185" cy="590" r="88" fill="none" stroke="#d8d4cb" strokeWidth="2" />
       <circle cx="185" cy="590" r="70" fill="none" stroke="#d8d4cb" strokeWidth="1.5" />
-      <text x="185" y="535" textAnchor="middle" fontFamily="Arial, sans-serif" fontSize="13" fontWeight="700" letterSpacing="3" fill="#c8c2b8">
-        HOUSELINK ZIMBABWE ACADEMY
+      <text fontFamily="Arial, sans-serif" fontSize="12" fontWeight="800" letterSpacing="2.5" fill="#c8c2b8">
+        <textPath href="#embossed-seal-top-arc" startOffset="50%" textAnchor="middle">
+          HOUSELINK ZIMBABWE ACADEMY
+        </textPath>
       </text>
       <image href={iconHref} x="139" y="548" width="92" height="76" preserveAspectRatio="xMidYMid meet" opacity="0.24" />
-      <text x="185" y="655" textAnchor="middle" fontFamily="Arial, sans-serif" fontSize="12" fontWeight="700" letterSpacing="3" fill="#c8c2b8">
-        EXCELLENCE - INTEGRITY
+      <text fontFamily="Arial, sans-serif" fontSize="10.5" fontWeight="800" letterSpacing="2.8" fill="#c8c2b8">
+        <textPath href="#embossed-seal-bottom-arc" startOffset="50%" textAnchor="middle">
+          EXCELLENCE - INTEGRITY
+        </textPath>
       </text>
     </g>
   );
@@ -348,12 +365,16 @@ function CenterSeal({ href, iconHref }: { href: string; iconHref: string }) {
     <g filter="url(#soft-shadow)">
       <circle cx="700" cy="848" r="62" fill="#071936" stroke="#d4ad5b" strokeWidth="8" />
       <circle cx="700" cy="848" r="49" fill="none" stroke="#f6d37d" strokeWidth="1.5" />
-      <text x="700" y="812" textAnchor="middle" fontFamily="Arial, sans-serif" fontSize="8.5" fontWeight="800" letterSpacing="1.6" fill="#f6d37d">
-        HOUSELINK ACADEMY
+      <text fontFamily="Arial, sans-serif" fontSize="7.8" fontWeight="800" letterSpacing="1.2" fill="#f6d37d">
+        <textPath href="#center-seal-top-arc" startOffset="50%" textAnchor="middle">
+          HOUSELINK ACADEMY
+        </textPath>
       </text>
       <image href={iconHref} x="671" y="821" width="58" height="54" preserveAspectRatio="xMidYMid meet" />
-      <text x="700" y="891" textAnchor="middle" fontFamily="Arial, sans-serif" fontSize="9" fontWeight="800" letterSpacing="3" fill="#f6d37d">
-        EST. 2026
+      <text fontFamily="Arial, sans-serif" fontSize="8" fontWeight="800" letterSpacing="2.4" fill="#f6d37d">
+        <textPath href="#center-seal-bottom-arc" startOffset="50%" textAnchor="middle">
+          EST. 2026
+        </textPath>
       </text>
     </g>
   );
