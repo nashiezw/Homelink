@@ -93,9 +93,16 @@ export function CertificateDocument({
   const sealHref = sealUrl ? absoluteAssetUrl(sealUrl, verifyOrigin) : "";
   const leftLaurelHref = leftLaurelUrl ? absoluteAssetUrl(leftLaurelUrl, verifyOrigin) : "";
   const rightLaurelHref = rightLaurelUrl ? absoluteAssetUrl(rightLaurelUrl, verifyOrigin) : "";
-  const learnerFontSize = fitTextToWidth(learnerName, 840, 92, 54);
-  const learnerLetterSpacing = learnerName.length > 28 ? -1 : 0;
-  const designationFontSize = displayDesignation.length > 30 ? 35 : displayDesignation.length > 24 ? 39 : 44;
+  const learnerFontSize = fitTextToWidth(learnerName, 690, 76, 42);
+  const learnerLetterSpacing = 0;
+  const learnerTextLength = fittedTextLength(learnerName, learnerFontSize, 690);
+  const designationText = displayDesignation.toUpperCase();
+  const designationFontSize = fitTextToWidth(designationText, 760, 36, 22);
+  const designationLetterSpacing = designationText.length > 34 ? 3.5 : designationText.length > 26 ? 5 : 8;
+  const designationTextLength = fittedTextLength(designationText, designationFontSize, 760, designationLetterSpacing);
+  const badgeFontSize = fitTextToWidth(badgeText, 680, 16, 10);
+  const badgeLetterSpacing = badgeText.length > 34 ? 3 : badgeText.length > 26 ? 5 : 8;
+  const badgeTextLength = fittedTextLength(badgeText, badgeFontSize, 680, badgeLetterSpacing);
   const courseLines = splitCertificateLine(courseTitle, 42);
   const showCompletionIntro = displayCompletionIntro.trim().length > 0;
   const showAwardIntro = displayAwardIntro.trim().length > 0;
@@ -162,6 +169,7 @@ export function CertificateDocument({
       <style
         dangerouslySetInnerHTML={{
           __html: `
+            @import url('https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap');
             @media print {
               @page { size: A4 landscape; margin: 0; }
               html, body { width: 297mm !important; height: 210mm !important; margin: 0 !important; overflow: hidden !important; background: #fff !important; }
@@ -271,7 +279,7 @@ export function CertificateDocument({
             <text x="700" y="362" textAnchor="middle" fontFamily="Arial, sans-serif" fontSize="15" fontWeight="800" letterSpacing="8" fill="#071936">
               THIS CERTIFIES THAT
             </text>
-            <text x="700" y="467" textAnchor="middle" fontFamily="'Palatino Linotype', 'Book Antiqua', Georgia, serif" fontSize={learnerFontSize} fontStyle="italic" fontWeight="500" letterSpacing={learnerLetterSpacing} fill="#071936">
+            <text x="700" y="467" textAnchor="middle" fontFamily="'Great Vibes', 'Good Vibes', 'Allura', 'Edwardian Script ITC', 'Segoe Script', 'Brush Script MT', cursive" fontSize={learnerFontSize} fontStyle="normal" fontWeight="400" letterSpacing={learnerLetterSpacing} textLength={learnerTextLength} lengthAdjust="spacingAndGlyphs" fill="#071936">
               {learnerName}
             </text>
             <path d="M470 484 C585 499, 815 499, 930 484" fill="none" stroke="#d4ad5b" strokeWidth="2" />
@@ -291,13 +299,13 @@ export function CertificateDocument({
               </text>
             ) : null}
             {showDesignation ? (
-              <text x="700" y={654 + courseLines.length * 16} textAnchor="middle" fontFamily="Georgia, 'Times New Roman', serif" fontSize={designationFontSize} fontWeight="700" letterSpacing="8" fill="#0b7a46">
-                {displayDesignation.toUpperCase()}
+              <text x="700" y={654 + courseLines.length * 16} textAnchor="middle" fontFamily="Georgia, 'Times New Roman', serif" fontSize={designationFontSize} fontWeight="700" letterSpacing={designationLetterSpacing} textLength={designationTextLength} lengthAdjust="spacingAndGlyphs" fill="#0b7a46">
+                {designationText}
               </text>
             ) : null}
             <line x1="470" y1={680 + courseLines.length * 16} x2="930" y2={680 + courseLines.length * 16} stroke="#d4ad5b" strokeWidth="2" />
             {showBadgeLine ? (
-              <text x="700" y={713 + courseLines.length * 16} textAnchor="middle" fontFamily="Arial, sans-serif" fontSize="17" fontWeight="800" letterSpacing="8" fill="#071936">
+              <text x="700" y={713 + courseLines.length * 16} textAnchor="middle" fontFamily="Arial, sans-serif" fontSize={badgeFontSize} fontWeight="800" letterSpacing={badgeLetterSpacing} textLength={badgeTextLength} lengthAdjust="spacingAndGlyphs" fill="#071936">
                 {badgeText}
               </text>
             ) : null}
@@ -538,6 +546,17 @@ function fitTextToWidth(value: string, maxWidth: number, maxFontSize: number, mi
   }, 0);
   if (!estimatedWidthAtOnePixel) return maxFontSize;
   return Math.max(minFontSize, Math.min(maxFontSize, Math.floor(maxWidth / estimatedWidthAtOnePixel)));
+}
+
+function fittedTextLength(value: string, fontSize: number, maxWidth: number, letterSpacing = 0) {
+  const estimatedWidth = value.split("").reduce((sum, char) => {
+    if (char === " ") return sum + 0.28 * fontSize;
+    if (/[A-Z]/.test(char)) return sum + 0.62 * fontSize;
+    if (/[il.,']/i.test(char)) return sum + 0.28 * fontSize;
+    if (/[mw]/i.test(char)) return sum + 0.82 * fontSize;
+    return sum + 0.52 * fontSize;
+  }, Math.max(0, value.length - 1) * letterSpacing);
+  return Math.round(Math.min(maxWidth, Math.max(estimatedWidth, maxWidth * 0.42)));
 }
 
 function absoluteAssetUrl(value: string, origin: string) {
