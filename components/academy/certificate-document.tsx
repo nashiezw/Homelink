@@ -26,6 +26,11 @@ export type CertificateDocumentProps = {
   leftLaurelUrl?: string | null;
   rightLaurelUrl?: string | null;
   designation?: string | null;
+  completionIntro?: string | null;
+  awardIntro?: string | null;
+  badgeLine?: string | null;
+  recognitionLineOne?: string | null;
+  recognitionLineTwo?: string | null;
   customHtml?: string;
   customCss?: string;
   skillsAssessed?: string[];
@@ -56,6 +61,11 @@ export function CertificateDocument({
   leftLaurelUrl,
   rightLaurelUrl,
   designation,
+  completionIntro,
+  awardIntro,
+  badgeLine,
+  recognitionLineOne,
+  recognitionLineTwo,
   customHtml = "",
   customCss = "",
   badgeName,
@@ -67,9 +77,14 @@ export function CertificateDocument({
   const verifyPath = verifyUrl.replace(/^https?:\/\/[^/]+/, "");
   const verifyAbsoluteUrl = `${verifyOrigin}${verifyPath}`;
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&margin=6&data=${encodeURIComponent(verifyAbsoluteUrl)}`;
-  const displayDesignation = designation?.trim() || "Certified HouseLink Agent";
+  const displayDesignation = templateText(designation, "Certified HouseLink Agent");
+  const displayCompletionIntro = templateText(completionIntro, "has successfully completed the requirements of the");
+  const displayAwardIntro = templateText(awardIntro, "and is hereby awarded the designation of");
+  const displayBadgeLine = templateText(badgeLine ?? badgeName, "HouseLink Foundations Graduate");
+  const displayRecognitionLineOne = templateText(recognitionLineOne, "In recognition of demonstrated knowledge, skills and commitment");
+  const displayRecognitionLineTwo = templateText(recognitionLineTwo, "to ethical practice and professional excellence in real estate.");
   const displaySignatureName = signatureName === "HouseLink Zimbabwe Academy" ? "T. Ndudzo" : signatureName;
-  const badgeText = (badgeName || "HouseLink Foundations Graduate").toUpperCase();
+  const badgeText = displayBadgeLine.toUpperCase();
   const logoHref = absoluteAssetUrl(logoUrl || "/brand/houselink-nav-lockup.png", verifyOrigin);
   const iconHref = absoluteAssetUrl("/brand/houselink-icon-transparent.png", verifyOrigin);
   const backgroundHref = backgroundUrl ? absoluteAssetUrl(backgroundUrl, verifyOrigin) : "";
@@ -81,6 +96,12 @@ export function CertificateDocument({
   const learnerFontSize = learnerName.length > 28 ? 72 : learnerName.length > 20 ? 84 : 98;
   const designationFontSize = displayDesignation.length > 30 ? 35 : displayDesignation.length > 24 ? 39 : 44;
   const courseLines = splitCertificateLine(courseTitle, 42);
+  const showCompletionIntro = displayCompletionIntro.trim().length > 0;
+  const showAwardIntro = displayAwardIntro.trim().length > 0;
+  const showDesignation = displayDesignation.trim().length > 0;
+  const showBadgeLine = displayBadgeLine.trim().length > 0;
+  const showRecognitionLineOne = displayRecognitionLineOne.trim().length > 0;
+  const showRecognitionLineTwo = displayRecognitionLineTwo.trim().length > 0;
 
   const renderedCustomHtml = customHtml.trim()
     ? renderCertificateHtml(customHtml, {
@@ -96,6 +117,11 @@ export function CertificateDocument({
         secondSignatureName,
         secondSignatureTitle,
         designation: displayDesignation,
+        completionIntro: displayCompletionIntro,
+        awardIntro: displayAwardIntro,
+        badgeLine: displayBadgeLine,
+        recognitionLineOne: displayRecognitionLineOne,
+        recognitionLineTwo: displayRecognitionLineTwo,
         accent,
         backgroundUrl: backgroundUrl ?? "",
         logoUrl: logoUrl ?? "",
@@ -104,7 +130,7 @@ export function CertificateDocument({
         sealUrl: sealUrl ?? "",
         leftLaurelUrl: leftLaurelUrl ?? "",
         rightLaurelUrl: rightLaurelUrl ?? "",
-        badgeName: badgeName ?? "",
+        badgeName: displayBadgeLine,
       })
     : "";
 
@@ -248,30 +274,42 @@ export function CertificateDocument({
               {learnerName}
             </text>
             <path d="M470 484 C585 499, 815 499, 930 484" fill="none" stroke="#d4ad5b" strokeWidth="2" />
-            <text x="700" y="536" textAnchor="middle" fontFamily="Georgia, 'Times New Roman', serif" fontSize="18" fill="#2d2a25">
-              has successfully completed the requirements of the
-            </text>
+            {showCompletionIntro ? (
+              <text x="700" y="536" textAnchor="middle" fontFamily="Georgia, 'Times New Roman', serif" fontSize="18" fill="#2d2a25">
+                {displayCompletionIntro}
+              </text>
+            ) : null}
             {courseLines.map((line, index) => (
               <text key={line} x="700" y={566 + index * 24} textAnchor="middle" fontFamily="Georgia, 'Times New Roman', serif" fontSize="20" fontWeight="700" fill="#071936">
                 {line}
               </text>
             ))}
-            <text x="700" y={590 + courseLines.length * 24} textAnchor="middle" fontFamily="Georgia, 'Times New Roman', serif" fontSize="18" fill="#2d2a25">
-              and is hereby awarded the designation of
-            </text>
-            <text x="700" y={654 + courseLines.length * 16} textAnchor="middle" fontFamily="Georgia, 'Times New Roman', serif" fontSize={designationFontSize} fontWeight="700" letterSpacing="8" fill="#0b7a46">
-              {displayDesignation.toUpperCase()}
-            </text>
+            {showAwardIntro ? (
+              <text x="700" y={590 + courseLines.length * 24} textAnchor="middle" fontFamily="Georgia, 'Times New Roman', serif" fontSize="18" fill="#2d2a25">
+                {displayAwardIntro}
+              </text>
+            ) : null}
+            {showDesignation ? (
+              <text x="700" y={654 + courseLines.length * 16} textAnchor="middle" fontFamily="Georgia, 'Times New Roman', serif" fontSize={designationFontSize} fontWeight="700" letterSpacing="8" fill="#0b7a46">
+                {displayDesignation.toUpperCase()}
+              </text>
+            ) : null}
             <line x1="470" y1={680 + courseLines.length * 16} x2="930" y2={680 + courseLines.length * 16} stroke="#d4ad5b" strokeWidth="2" />
-            <text x="700" y={713 + courseLines.length * 16} textAnchor="middle" fontFamily="Arial, sans-serif" fontSize="17" fontWeight="800" letterSpacing="8" fill="#071936">
-              {badgeText}
-            </text>
-            <text x="700" y={746 + courseLines.length * 8} textAnchor="middle" fontFamily="Georgia, 'Times New Roman', serif" fontSize="17" fontStyle="italic" fill="#2d2a25">
-              In recognition of demonstrated knowledge, skills and commitment
-            </text>
-            <text x="700" y={770 + courseLines.length * 8} textAnchor="middle" fontFamily="Georgia, 'Times New Roman', serif" fontSize="17" fontStyle="italic" fill="#2d2a25">
-              to ethical practice and professional excellence in real estate.
-            </text>
+            {showBadgeLine ? (
+              <text x="700" y={713 + courseLines.length * 16} textAnchor="middle" fontFamily="Arial, sans-serif" fontSize="17" fontWeight="800" letterSpacing="8" fill="#071936">
+                {badgeText}
+              </text>
+            ) : null}
+            {showRecognitionLineOne ? (
+              <text x="700" y={746 + courseLines.length * 8} textAnchor="middle" fontFamily="Georgia, 'Times New Roman', serif" fontSize="17" fontStyle="italic" fill="#2d2a25">
+                {displayRecognitionLineOne}
+              </text>
+            ) : null}
+            {showRecognitionLineTwo ? (
+              <text x="700" y={770 + courseLines.length * 8} textAnchor="middle" fontFamily="Georgia, 'Times New Roman', serif" fontSize="17" fontStyle="italic" fill="#2d2a25">
+                {displayRecognitionLineTwo}
+              </text>
+            ) : null}
 
             <image href={qrUrl} x="80" y="792" width="74" height="74" />
             <text x="117" y="883" textAnchor="middle" fontFamily="Arial, sans-serif" fontSize="8.5" fontWeight="800" letterSpacing="1.2" fill="#071936">
@@ -502,6 +540,10 @@ function normaliseSignatureName(value: string) {
   if (/^w\.\s*tigere$/i.test(value.trim())) return "Wadzanii Tigere";
   if (/^t\.\s*ndudzo$/i.test(value.trim())) return "Tinashe Ndudzo";
   return value;
+}
+
+function templateText(value: string | null | undefined, fallback: string) {
+  return value === undefined || value === null ? fallback : value;
 }
 
 function renderCertificateHtml(template: string, values: Record<string, string>) {

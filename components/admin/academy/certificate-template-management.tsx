@@ -51,6 +51,11 @@ type TemplateFormData = {
   certificateNumberPrefix: string;
   title: string;
   designation: string;
+  completionIntro: string;
+  awardIntro: string;
+  badgeLine: string;
+  recognitionLineOne: string;
+  recognitionLineTwo: string;
   signatureName: string;
   signatureTitle: string;
   secondSignatureName: string;
@@ -76,6 +81,11 @@ const emptyForm: TemplateFormData = {
   certificateNumberPrefix: "HLZA",
   title: "Certificate of Completion - HouseLink Training Programme",
   designation: "Certified HouseLink Agent",
+  completionIntro: "has successfully completed the requirements of the",
+  awardIntro: "and is hereby awarded the designation of",
+  badgeLine: "HouseLink Foundations Graduate",
+  recognitionLineOne: "In recognition of demonstrated knowledge, skills and commitment",
+  recognitionLineTwo: "to ethical practice and professional excellence in real estate.",
   signatureName: "T. Ndudzo",
   signatureTitle: "Director of Training & Certification",
   secondSignatureName: "W. Tigere",
@@ -129,7 +139,12 @@ export function CertificateTemplateManagement() {
         certificateNumberPrefix: formData.certificateNumberPrefix.trim() || "HLA",
         courseIds: formData.courseIds,
         title: trainingCertificateTitle(formData.title.trim() || "Certificate of Completion - HouseLink Training Programme"),
-        designation: formData.designation.trim() || "Certified HouseLink Agent",
+        designation: formData.designation.trim(),
+        completionIntro: formData.completionIntro.trim(),
+        awardIntro: formData.awardIntro.trim(),
+        badgeLine: formData.badgeLine.trim(),
+        recognitionLineOne: formData.recognitionLineOne.trim(),
+        recognitionLineTwo: formData.recognitionLineTwo.trim(),
         signatureName: formData.signatureName.trim() || "T. Ndudzo",
         signatureTitle: formData.signatureTitle.trim() || "Director of Training & Certification",
         secondSignatureUrl: formData.secondSignatureUrl.trim() || null,
@@ -212,6 +227,11 @@ export function CertificateTemplateManagement() {
       certificateNumberPrefix: String(templateJson.certificateNumberPrefix ?? "HLA"),
       title: trainingCertificateTitle(String(templateJson.title ?? "Certificate of Completion - HouseLink Training Programme")),
       designation: String(templateJson.designation ?? "Certified HouseLink Agent"),
+      completionIntro: String(templateJson.completionIntro ?? "has successfully completed the requirements of the"),
+      awardIntro: String(templateJson.awardIntro ?? "and is hereby awarded the designation of"),
+      badgeLine: String(templateJson.badgeLine ?? "HouseLink Foundations Graduate"),
+      recognitionLineOne: String(templateJson.recognitionLineOne ?? "In recognition of demonstrated knowledge, skills and commitment"),
+      recognitionLineTwo: String(templateJson.recognitionLineTwo ?? "to ethical practice and professional excellence in real estate."),
       signatureName: String(templateJson.signatureName ?? "T. Ndudzo"),
       signatureTitle: String(templateJson.signatureTitle ?? "Director of Training & Certification"),
       secondSignatureName: String(templateJson.secondSignatureName ?? "W. Tigere"),
@@ -371,7 +391,48 @@ export function CertificateTemplateManagement() {
               <div className="grid gap-4 rounded-xl border border-white/10 bg-slate-950/40 p-4">
                 <TextField label="Template Name" value={formData.name} onChange={(name) => setFormData({ ...formData, name })} placeholder="HouseLink Agent Foundations Certificate" />
                 <TextField label="Certificate Title" value={formData.title} onChange={(title) => setFormData({ ...formData, title })} placeholder="Certificate of Completion - HouseLink Agent Foundations" />
-                <TextField label="Certificate Designation Line" value={formData.designation} onChange={(designation) => setFormData({ ...formData, designation })} placeholder="Certified HouseLink Agent" />
+                <TextField
+                  label="Completion Intro"
+                  value={formData.completionIntro}
+                  onChange={(completionIntro) => setFormData({ ...formData, completionIntro })}
+                  placeholder="has successfully completed the requirements of the"
+                  helper="The sentence shown above the course name. Leave blank to hide it."
+                />
+                <TextField
+                  label="Award Intro"
+                  value={formData.awardIntro}
+                  onChange={(awardIntro) => setFormData({ ...formData, awardIntro })}
+                  placeholder="and is hereby awarded the designation of"
+                  helper="The sentence shown above the green designation. Leave blank to hide it."
+                />
+                <TextField
+                  label="Certificate Designation Line"
+                  value={formData.designation}
+                  onChange={(designation) => setFormData({ ...formData, designation })}
+                  placeholder="Certified HouseLink Agent"
+                  helper="The large green achievement line. Leave blank to remove it completely."
+                />
+                <TextField
+                  label="Graduate / Badge Line"
+                  value={formData.badgeLine}
+                  onChange={(badgeLine) => setFormData({ ...formData, badgeLine })}
+                  placeholder="HouseLink Foundations Graduate"
+                  helper="The uppercase line below the designation. Leave blank if you want this area empty."
+                />
+                <TextField
+                  label="Recognition Line 1"
+                  value={formData.recognitionLineOne}
+                  onChange={(recognitionLineOne) => setFormData({ ...formData, recognitionLineOne })}
+                  placeholder="In recognition of demonstrated knowledge, skills and commitment"
+                  helper="First italic recognition sentence. Leave blank to hide it."
+                />
+                <TextField
+                  label="Recognition Line 2"
+                  value={formData.recognitionLineTwo}
+                  onChange={(recognitionLineTwo) => setFormData({ ...formData, recognitionLineTwo })}
+                  placeholder="to ethical practice and professional excellence in real estate."
+                  helper="Second italic recognition sentence. Leave blank to hide it."
+                />
                 <div className="grid gap-4 sm:grid-cols-2">
                   <TextField label="Number Prefix" value={formData.certificateNumberPrefix} onChange={(certificateNumberPrefix) => setFormData({ ...formData, certificateNumberPrefix })} placeholder="HLA" />
                   <TextField
@@ -493,7 +554,7 @@ export function CertificateTemplateManagement() {
               <div className="rounded-xl border border-white/10 bg-slate-950/50 p-4">
                 <div>
                   <p className="font-semibold text-white">Advanced Design</p>
-                  <p className="mt-1 text-sm leading-6 text-slate-400">Optional HTML/CSS override. Use tokens like {"{{learnerName}}"}, {"{{courseTitle}}"}, {"{{certificateTitle}}"}, {"{{designation}}"}, {"{{certificateNumber}}"}, {"{{issuedAt}}"}, {"{{expiresAt}}"}, {"{{verifyUrl}}"}, {"{{signatureUrl}}"}, {"{{secondSignatureUrl}}"}, {"{{sealUrl}}"}, {"{{leftLaurelUrl}}"}, and {"{{rightLaurelUrl}}"}. Leave blank to use the standard HouseLink design.</p>
+                  <p className="mt-1 text-sm leading-6 text-slate-400">Optional HTML/CSS override. Use tokens like {"{{learnerName}}"}, {"{{courseTitle}}"}, {"{{certificateTitle}}"}, {"{{completionIntro}}"}, {"{{awardIntro}}"}, {"{{designation}}"}, {"{{badgeLine}}"}, {"{{recognitionLineOne}}"}, {"{{recognitionLineTwo}}"}, {"{{certificateNumber}}"}, {"{{issuedAt}}"}, {"{{expiresAt}}"}, {"{{verifyUrl}}"}, {"{{signatureUrl}}"}, {"{{secondSignatureUrl}}"}, {"{{sealUrl}}"}, {"{{leftLaurelUrl}}"}, and {"{{rightLaurelUrl}}"}. Leave blank to use the standard HouseLink design.</p>
                 </div>
                 <div className="grid gap-4">
                   <TextAreaField label="Custom HTML" value={formData.customHtml} onChange={(customHtml) => setFormData({ ...formData, customHtml })} rows={8} placeholder="<section class='certificate'>...</section>" />
@@ -573,6 +634,11 @@ function TemplatePreview({ template, form, compact }: { template?: CertificateTe
   const colours = (templateJson.colours as Record<string, string> | undefined) ?? {};
   const title = form?.title ?? String(templateJson.title ?? "Certificate of Achievement");
   const designation = form?.designation ?? String(templateJson.designation ?? "Certified HouseLink Agent");
+  const completionIntro = form?.completionIntro ?? String(templateJson.completionIntro ?? "has successfully completed the requirements of the");
+  const awardIntro = form?.awardIntro ?? String(templateJson.awardIntro ?? "and is hereby awarded the designation of");
+  const badgeLine = form?.badgeLine ?? String(templateJson.badgeLine ?? "HouseLink Foundations Graduate");
+  const recognitionLineOne = form?.recognitionLineOne ?? String(templateJson.recognitionLineOne ?? "In recognition of demonstrated knowledge, skills and commitment");
+  const recognitionLineTwo = form?.recognitionLineTwo ?? String(templateJson.recognitionLineTwo ?? "to ethical practice and professional excellence in real estate.");
   const name = form?.name ?? template?.name ?? "HouseLink Agent Foundations Certificate";
   const primary = form?.primaryColor ?? colours.primary ?? "#008b68";
   const accent = form?.accentColor ?? colours.accent ?? "#c6a15b";
@@ -617,8 +683,16 @@ function TemplatePreview({ template, form, compact }: { template?: CertificateTe
         <div className={compact ? "mt-5" : "mt-8"}>
           <p className="text-xs uppercase tracking-wider text-slate-500">Presented to</p>
           <p className="mt-1 text-xl font-bold text-white">Learner Name</p>
-          <p className="mt-2 text-sm text-slate-300">For successfully completing {name || "the selected course"}.</p>
-          <p className="mt-2 break-words text-sm font-bold uppercase tracking-wider text-emerald-300 [overflow-wrap:anywhere]">{designation}</p>
+          {completionIntro.trim() ? <p className="mt-2 text-sm text-slate-300">{completionIntro}</p> : null}
+          <p className="mt-1 text-sm font-semibold text-white">{name || "Selected course"}</p>
+          {awardIntro.trim() ? <p className="mt-1 text-sm text-slate-300">{awardIntro}</p> : null}
+          {designation.trim() ? <p className="mt-2 break-words text-sm font-bold uppercase tracking-wider text-emerald-300 [overflow-wrap:anywhere]">{designation}</p> : null}
+          {badgeLine.trim() ? <p className="mt-1 break-words text-xs font-semibold uppercase tracking-wider text-slate-300 [overflow-wrap:anywhere]">{badgeLine}</p> : null}
+          {recognitionLineOne.trim() || recognitionLineTwo.trim() ? (
+            <p className="mt-2 text-xs italic leading-5 text-slate-400">
+              {[recognitionLineOne, recognitionLineTwo].filter((line) => line.trim()).join(" ")}
+            </p>
+          ) : null}
           {hasCustomDesign ? <p className="mt-2 text-xs font-semibold uppercase tracking-wider text-amber-200">Custom HTML design enabled</p> : null}
         </div>
         <div className="mt-5 flex items-end justify-between gap-4">
@@ -709,12 +783,14 @@ function TextField({
   value,
   onChange,
   placeholder,
+  helper,
   type = "text",
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
+  helper?: string;
   type?: string;
 }) {
   return (
@@ -727,6 +803,7 @@ function TextField({
         placeholder={placeholder}
         className="w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-white placeholder:text-slate-600 focus:border-emerald-500/40 focus:outline-none"
       />
+      {helper ? <span className="mt-1 block text-xs leading-5 text-slate-500">{helper}</span> : null}
     </label>
   );
 }

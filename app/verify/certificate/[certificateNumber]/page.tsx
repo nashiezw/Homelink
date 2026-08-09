@@ -95,6 +95,11 @@ export default async function CertificateVerificationPage({
           leftLaurelUrl={typeof templateJson.leftLaurelUrl === "string" ? templateJson.leftLaurelUrl : null}
           rightLaurelUrl={typeof templateJson.rightLaurelUrl === "string" ? templateJson.rightLaurelUrl : null}
           designation={typeof templateJson.designation === "string" ? templateJson.designation : undefined}
+          completionIntro={typeof templateJson.completionIntro === "string" ? templateJson.completionIntro : undefined}
+          awardIntro={typeof templateJson.awardIntro === "string" ? templateJson.awardIntro : undefined}
+          badgeLine={typeof templateJson.badgeLine === "string" ? templateJson.badgeLine : undefined}
+          recognitionLineOne={typeof templateJson.recognitionLineOne === "string" ? templateJson.recognitionLineOne : undefined}
+          recognitionLineTwo={typeof templateJson.recognitionLineTwo === "string" ? templateJson.recognitionLineTwo : undefined}
           customHtml={typeof templateJson.customHtml === "string" ? templateJson.customHtml : ""}
           customCss={typeof templateJson.customCss === "string" ? templateJson.customCss : ""}
         />

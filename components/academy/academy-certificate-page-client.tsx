@@ -32,6 +32,11 @@ type CertificatePayload = {
   leftLaurelUrl?: string | null;
   rightLaurelUrl?: string | null;
   designation?: string | null;
+  completionIntro?: string | null;
+  awardIntro?: string | null;
+  badgeLine?: string | null;
+  recognitionLineOne?: string | null;
+  recognitionLineTwo?: string | null;
   customHtml?: string;
   customCss?: string;
   skillsAssessed?: string[];
@@ -105,6 +110,11 @@ export function AcademyCertificatePageClient({ issueId }: { issueId: string }) {
         leftLaurelUrl={data.leftLaurelUrl}
         rightLaurelUrl={data.rightLaurelUrl}
         designation={data.designation}
+        completionIntro={data.completionIntro}
+        awardIntro={data.awardIntro}
+        badgeLine={data.badgeLine}
+        recognitionLineOne={data.recognitionLineOne}
+        recognitionLineTwo={data.recognitionLineTwo}
         customHtml={data.customHtml}
         customCss={data.customCss}
         skillsAssessed={data.skillsAssessed?.length ? data.skillsAssessed : programme?.learningOutcomes ?? []}

@@ -54,6 +54,11 @@ export async function GET(request: Request, context: { params: Promise<{ issueId
     leftLaurelUrl: typeof templateJson.leftLaurelUrl === "string" ? templateJson.leftLaurelUrl : null,
     rightLaurelUrl: typeof templateJson.rightLaurelUrl === "string" ? templateJson.rightLaurelUrl : null,
     designation: typeof templateJson.designation === "string" ? templateJson.designation : null,
+    completionIntro: typeof templateJson.completionIntro === "string" ? templateJson.completionIntro : null,
+    awardIntro: typeof templateJson.awardIntro === "string" ? templateJson.awardIntro : null,
+    badgeLine: typeof templateJson.badgeLine === "string" ? templateJson.badgeLine : null,
+    recognitionLineOne: typeof templateJson.recognitionLineOne === "string" ? templateJson.recognitionLineOne : null,
+    recognitionLineTwo: typeof templateJson.recognitionLineTwo === "string" ? templateJson.recognitionLineTwo : null,
     customHtml: typeof templateJson.customHtml === "string" ? templateJson.customHtml : "",
     customCss: typeof templateJson.customCss === "string" ? templateJson.customCss : "",
   });
