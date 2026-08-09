@@ -1050,60 +1050,83 @@ export async function seedStagedCourseStructure(options?: { forceRebuild?: boole
     const courseModules = modules.filter((module) => programmeCourse.moduleStages.includes(module.stage));
     const lessonCount = courseModules.reduce((n, m) => n + m.lessons.length, 0);
 
-    await prisma.trainingCourse.upsert({
-      where: { id: programmeCourse.id },
-      create: {
-        id: programmeCourse.id,
-        title: programmeCourse.title,
-        subtitle: programmeCourse.subtitle,
-        slug: programmeCourse.slug,
-        shortDescription: programmeCourse.shortDescription,
-        description: programmeCourse.description,
-        categoryId: category.id,
-        instructor: "HouseLink Zimbabwe Academy",
-        coInstructors: ["HouseLink Training Team"],
-        learningOutcomes: programmeCourse.learningOutcomes,
-        targetAudience: programmeCourse.sortOrder === 0
-          ? "New HouseLink agents and public learners starting the training certificate pathway"
-          : `Agents who completed ${ACADEMY_PROGRAMME_COURSES[programmeCourse.sortOrder - 1]?.title ?? "the previous programme"}`,
-        tags: [programmeCourse.theme.label.toLowerCase(), "houselink", "training", "certificate", "agent"],
-        difficulty: programmeCourse.difficulty,
-        durationMinutes: lessonCount * 30,
-        estimatedHours: Math.max(1, Math.ceil((lessonCount * 30) / 60)),
-        language: "English",
-        passingPercentage: 80,
-        certificateEnabled: true,
-        price: programmeCourse.publicPrice,
-        publicPrice: programmeCourse.publicPrice,
-        agentPrice: programmeCourse.agentPrice,
-        currency: "USD",
-        registrationOpen: true,
-        accessDurationDays: 365,
-        status: "PUBLISHED",
-        featured: programmeCourse.featured,
-        visibility: "PUBLIC",
-        roleNames: ["AGENT", "ADMIN", "PUBLIC_LEARNER"],
-        thumbnailUrl: "/brand/houselink-full-lockup.png",
-        bannerUrl: "/brand/houselink-full-lockup.png",
-        enrollmentType: "OPEN",
-      },
-      update: {
-        title: programmeCourse.title,
-        subtitle: programmeCourse.subtitle,
-        slug: programmeCourse.slug,
-        shortDescription: programmeCourse.shortDescription,
-        description: programmeCourse.description,
-        difficulty: programmeCourse.difficulty,
-        estimatedHours: Math.max(1, Math.ceil((lessonCount * 30) / 60)),
-        durationMinutes: lessonCount * 30,
-        learningOutcomes: programmeCourse.learningOutcomes,
-        status: "PUBLISHED",
-        featured: programmeCourse.featured,
-        registrationOpen: true,
-        certificateEnabled: true,
-        updatedAt: new Date(),
-      },
+    // Only update system-controlled fields, preserve admin edits
+    const existingCourse = await prisma.trainingCourse.findUnique({
+      where: { id: programmeCourse.id }
     });
+    
+    if (existingCourse) {
+      // Update only system fields, preserve admin edits to description, shortDescription, subtitle
+      await prisma.trainingCourse.update({
+        where: { id: programmeCourse.id },
+        data: {
+          slug: programmeCourse.slug,
+          categoryId: category.id,
+          learningOutcomes: programmeCourse.learningOutcomes,
+          targetAudience: programmeCourse.sortOrder === 0
+            ? "New HouseLink agents and public learners starting the training certificate pathway"
+            : `Agents who completed ${ACADEMY_PROGRAMME_COURSES[programmeCourse.sortOrder - 1]?.title ?? "the previous programme"}`,
+          difficulty: programmeCourse.difficulty,
+          durationMinutes: lessonCount * 30,
+          estimatedHours: Math.max(1, Math.ceil((lessonCount * 30) / 60)),
+          passingPercentage: 80,
+          certificateEnabled: true,
+          price: programmeCourse.publicPrice,
+          publicPrice: programmeCourse.publicPrice,
+          agentPrice: programmeCourse.agentPrice,
+          currency: "USD",
+          registrationOpen: true,
+          accessDurationDays: 365,
+          status: "PUBLISHED",
+          featured: programmeCourse.featured,
+          visibility: "PUBLIC",
+          roleNames: ["AGENT", "ADMIN", "PUBLIC_LEARNER"],
+          thumbnailUrl: "/brand/houselink-full-lockup.png",
+          bannerUrl: "/brand/houselink-full-lockup.png",
+          enrollmentType: "OPEN",
+          updatedAt: new Date(),
+        },
+      });
+    } else {
+      // Create new course with all default values
+      await prisma.trainingCourse.create({
+        data: {
+          id: programmeCourse.id,
+          title: programmeCourse.title,
+          subtitle: programmeCourse.subtitle,
+          slug: programmeCourse.slug,
+          shortDescription: programmeCourse.shortDescription,
+          description: programmeCourse.description,
+          categoryId: category.id,
+          instructor: "HouseLink Zimbabwe Academy",
+          coInstructors: ["HouseLink Training Team"],
+          learningOutcomes: programmeCourse.learningOutcomes,
+          targetAudience: programmeCourse.sortOrder === 0
+            ? "New HouseLink agents and public learners starting the training certificate pathway"
+            : `Agents who completed ${ACADEMY_PROGRAMME_COURSES[programmeCourse.sortOrder - 1]?.title ?? "the previous programme"}`,
+          tags: [programmeCourse.theme.label.toLowerCase(), "houselink", "training", "certificate", "agent"],
+          difficulty: programmeCourse.difficulty,
+          durationMinutes: lessonCount * 30,
+          estimatedHours: Math.max(1, Math.ceil((lessonCount * 30) / 60)),
+          language: "English",
+          passingPercentage: 80,
+          certificateEnabled: true,
+          price: programmeCourse.publicPrice,
+          publicPrice: programmeCourse.publicPrice,
+          agentPrice: programmeCourse.agentPrice,
+          currency: "USD",
+          registrationOpen: true,
+          accessDurationDays: 365,
+          status: "PUBLISHED",
+          featured: programmeCourse.featured,
+          visibility: "PUBLIC",
+          roleNames: ["AGENT", "ADMIN", "PUBLIC_LEARNER"],
+          thumbnailUrl: "/brand/houselink-full-lockup.png",
+          bannerUrl: "/brand/houselink-full-lockup.png",
+          enrollmentType: "OPEN",
+        },
+      });
+    }
 
     await prisma.trainingModule.deleteMany({ where: { courseId: programmeCourse.id } });
 

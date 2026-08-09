@@ -274,7 +274,11 @@ export function CourseWorkspace({
           </div>
           <div className="rounded-xl border border-white/10 p-4 text-sm text-slate-300">
             <AdminStatusBadge status={tree.status} variant={tree.status === "PUBLISHED" ? "success" : "warning"} />
-            <p className="mt-3">{tree.description}</p>
+            <div className="mt-3 space-y-4">
+              <TextareaField label="Course Description" value={tree.description} rows={3} onChange={(v) => void run({ action: "update_course", course: { courseId, description: v } }, "Description updated.")} />
+              <TextareaField label="Short Description" value={tree.shortDescription ?? ""} rows={2} onChange={(v) => void run({ action: "update_course", course: { courseId, shortDescription: v } }, "Short description updated.")} />
+              <Field label="Subtitle" value={tree.subtitle ?? ""} onChange={(v) => void run({ action: "update_course", course: { courseId, subtitle: v } }, "Subtitle updated.")} />
+            </div>
           </div>
           <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/[0.06] p-4 sm:p-5">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
