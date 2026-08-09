@@ -42,6 +42,15 @@ type CourseTree = {
   subtitle?: string | null;
   description: string;
   shortDescription?: string | null;
+  instructor?: string | null;
+  learningOutcomes?: string[];
+  targetAudience?: string | null;
+  prerequisites?: string[];
+  thumbnailUrl?: string | null;
+  bannerUrl?: string | null;
+  introVideoUrl?: string | null;
+  seoTitle?: string | null;
+  seoDescription?: string | null;
   status: string;
   slug: string;
   passingPercentage: number;
@@ -91,12 +100,14 @@ export function CourseWorkspace({
   const [tree, setTree] = useState<CourseTree | null>(null);
   const [busy, setBusy] = useState(false);
   const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null);
+  const [selectedModuleId, setSelectedModuleId] = useState<string | null>(null);
   const [dragModuleId, setDragModuleId] = useState<string | null>(null);
   const [dragLessonId, setDragLessonId] = useState<string | null>(null);
   const [dragLessonSectionId, setDragLessonSectionId] = useState<string | null>(null);
   const [newModuleTitle, setNewModuleTitle] = useState("");
   const [lessonDraft, setLessonDraft] = useState<Partial<LessonNode>>({});
   const [lessonDepthDraft, setLessonDepthDraft] = useState(lessonDepthFromResources([]));
+  const [moduleDraft, setModuleDraft] = useState<{ title: string; description: string; objectives: string; estimatedMinutes: string }>({ title: "", description: "", objectives: "", estimatedMinutes: "" });
   const [selectedQuizId, setSelectedQuizId] = useState<string | null>(null);
   const [questionDraft, setQuestionDraft] = useState({ prompt: "", answers: ["", "", "", ""], correctIndex: 0, explanation: "" });
   const [certificationDraft, setCertificationDraft] = useState({
@@ -275,9 +286,37 @@ export function CourseWorkspace({
           <div className="rounded-xl border border-white/10 p-4 text-sm text-slate-300">
             <AdminStatusBadge status={tree.status} variant={tree.status === "PUBLISHED" ? "success" : "warning"} />
             <div className="mt-3 space-y-4">
+              <Field label="Course Title" value={tree.title} onChange={(v) => void run({ action: "update_course", course: { courseId, title: v } }, "Title updated.")} />
+              <Field label="Subtitle" value={tree.subtitle ?? ""} onChange={(v) => void run({ action: "update_course", course: { courseId, subtitle: v } }, "Subtitle updated.")} />
               <TextareaField label="Course Description" value={tree.description} rows={3} onChange={(v) => void run({ action: "update_course", course: { courseId, description: v } }, "Description updated.")} />
               <TextareaField label="Short Description" value={tree.shortDescription ?? ""} rows={2} onChange={(v) => void run({ action: "update_course", course: { courseId, shortDescription: v } }, "Short description updated.")} />
-              <Field label="Subtitle" value={tree.subtitle ?? ""} onChange={(v) => void run({ action: "update_course", course: { courseId, subtitle: v } }, "Subtitle updated.")} />
+              <Field label="Instructor" value={tree.instructor ?? ""} onChange={(v) => void run({ action: "update_course", course: { courseId, instructor: v } }, "Instructor updated.")} />
+            </div>
+          </div>
+          
+          <div className="rounded-xl border border-white/10 p-4 text-sm text-slate-300">
+            <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Marketing Content</p>
+            <div className="mt-3 space-y-4">
+              <TextareaField label="Learning Outcomes (one per line)" value={(tree.learningOutcomes ?? []).join("\n")} rows={4} onChange={(v) => void run({ action: "update_course", course: { courseId, learningOutcomes: v.split("\n").filter(Boolean) } }, "Learning outcomes updated.")} />
+              <TextareaField label="Target Audience" value={tree.targetAudience ?? ""} rows={2} onChange={(v) => void run({ action: "update_course", course: { courseId, targetAudience: v } }, "Target audience updated.")} />
+              <TextareaField label="Prerequisites (one per line)" value={(tree.prerequisites ?? []).join("\n")} rows={2} onChange={(v) => void run({ action: "update_course", course: { courseId, prerequisites: v.split("\n").filter(Boolean) } }, "Prerequisites updated.")} />
+            </div>
+          </div>
+          
+          <div className="rounded-xl border border-white/10 p-4 text-sm text-slate-300">
+            <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Media Assets</p>
+            <div className="mt-3 space-y-4">
+              <Field label="Thumbnail URL" value={tree.thumbnailUrl ?? ""} onChange={(v) => void run({ action: "update_course", course: { courseId, thumbnailUrl: v } }, "Thumbnail URL updated.")} />
+              <Field label="Banner URL" value={tree.bannerUrl ?? ""} onChange={(v) => void run({ action: "update_course", course: { courseId, bannerUrl: v } }, "Banner URL updated.")} />
+              <Field label="Intro Video URL" value={tree.introVideoUrl ?? ""} onChange={(v) => void run({ action: "update_course", course: { courseId, introVideoUrl: v } }, "Intro video URL updated.")} />
+            </div>
+          </div>
+          
+          <div className="rounded-xl border border-white/10 p-4 text-sm text-slate-300">
+            <p className="text-xs font-bold uppercase tracking-wide text-slate-400">SEO</p>
+            <div className="mt-3 space-y-4">
+              <Field label="SEO Title" value={tree.seoTitle ?? ""} onChange={(v) => void run({ action: "update_course", course: { courseId, seoTitle: v } }, "SEO title updated.")} />
+              <TextareaField label="SEO Description" value={tree.seoDescription ?? ""} rows={2} onChange={(v) => void run({ action: "update_course", course: { courseId, seoDescription: v } }, "SEO description updated.")} />
             </div>
           </div>
           <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/[0.06] p-4 sm:p-5">
@@ -418,6 +457,18 @@ export function CourseWorkspace({
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-2 sm:ml-auto sm:flex">
+                  <Button className="w-full sm:w-auto" variant="secondary" onClick={() => {
+                    const mod = tree.modules.find(m => m.id === module.id);
+                    if (mod) {
+                      setModuleDraft({
+                        title: mod.title,
+                        description: mod.description ?? "",
+                        objectives: (mod.objectives ?? []).join("\n"),
+                        estimatedMinutes: String(mod.estimatedMinutes ?? "")
+                      });
+                      setSelectedModuleId(module.id);
+                    }
+                  }}><Pencil className="size-4" /></Button>
                   <Button className="w-full sm:w-auto" variant="secondary" onClick={() => void run({ action: "duplicate_module", moduleId: module.id }, "Module duplicated.")}><Copy className="size-4" /></Button>
                   <Button className="w-full sm:w-auto" variant="secondary" onClick={() => void run({ action: "delete_module", moduleId: module.id }, "Module deleted.")}><Trash2 className="size-4" /></Button>
                 </div>
@@ -522,6 +573,27 @@ export function CourseWorkspace({
             </div>
           ) : (
             <p className="text-slate-400">Select a lesson from the curriculum to edit content, transcript, notes and materials.</p>
+          )}
+          
+          {selectedModuleId && (
+            <div className="mt-6 space-y-4 rounded-xl border border-white/10 p-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-white">Edit Module</h3>
+                <Button variant="secondary" onClick={() => setSelectedModuleId(null)}>Close</Button>
+              </div>
+              <Field label="Module Title" value={moduleDraft.title} onChange={(v) => setModuleDraft({ ...moduleDraft, title: v })} />
+              <TextareaField label="Module Description" value={moduleDraft.description} rows={3} onChange={(v) => setModuleDraft({ ...moduleDraft, description: v })} />
+              <TextareaField label="Module Objectives (one per line)" value={moduleDraft.objectives} rows={4} onChange={(v) => setModuleDraft({ ...moduleDraft, objectives: v })} />
+              <NumberField label="Estimated Minutes" value={moduleDraft.estimatedMinutes} min={0} onChange={(v) => setModuleDraft({ ...moduleDraft, estimatedMinutes: v })} />
+              <Button disabled={busy} onClick={() => void run({ action: "update_module", moduleId: selectedModuleId, module: { 
+                title: moduleDraft.title,
+                description: moduleDraft.description,
+                objectives: moduleDraft.objectives.split("\n").filter(Boolean),
+                estimatedMinutes: Number(moduleDraft.estimatedMinutes) || 0
+              } }, "Module updated.").then(() => setSelectedModuleId(null))}>
+                {busy ? <Loader2 className="size-4 animate-spin" /> : <CheckCircle2 className="size-4 mr-2" />} Save Module
+              </Button>
+            </div>
           )}
         </div>
       )}

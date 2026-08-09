@@ -1056,13 +1056,16 @@ export async function seedStagedCourseStructure(options?: { forceRebuild?: boole
     });
     
     if (existingCourse) {
-      // Update only system fields, preserve admin edits to description, shortDescription, subtitle
+      // Update only system fields, preserve admin edits to description, shortDescription, subtitle, learningOutcomes, assessmentSummary
       await prisma.trainingCourse.update({
         where: { id: programmeCourse.id },
         data: {
           slug: programmeCourse.slug,
           categoryId: category.id,
-          learningOutcomes: programmeCourse.learningOutcomes,
+          // Only update learningOutcomes if empty (preserve admin edits)
+          learningOutcomes: existingCourse.learningOutcomes && existingCourse.learningOutcomes.length > 0 
+            ? existingCourse.learningOutcomes 
+            : programmeCourse.learningOutcomes,
           targetAudience: programmeCourse.sortOrder === 0
             ? "New HouseLink agents and public learners starting the training certificate pathway"
             : `Agents who completed ${ACADEMY_PROGRAMME_COURSES[programmeCourse.sortOrder - 1]?.title ?? "the previous programme"}`,
