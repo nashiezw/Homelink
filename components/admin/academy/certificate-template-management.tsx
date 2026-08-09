@@ -57,10 +57,10 @@ type TemplateFormData = {
   recognitionLineOne: string;
   recognitionLineTwo: string;
   learnerNameFont: string;
-  learnerNameMaxFontSize: number;
-  learnerNameMinFontSize: number;
-  designationMaxFontSize: number;
-  badgeLineMaxFontSize: number;
+  learnerNameMaxFontSize: string;
+  learnerNameMinFontSize: string;
+  designationMaxFontSize: string;
+  badgeLineMaxFontSize: string;
   signatureName: string;
   signatureTitle: string;
   secondSignatureName: string;
@@ -92,10 +92,10 @@ const emptyForm: TemplateFormData = {
   recognitionLineOne: "In recognition of demonstrated knowledge, skills and commitment",
   recognitionLineTwo: "to ethical practice and professional excellence in real estate.",
   learnerNameFont: "great-vibes",
-  learnerNameMaxFontSize: 78,
-  learnerNameMinFontSize: 44,
-  designationMaxFontSize: 30,
-  badgeLineMaxFontSize: 13,
+  learnerNameMaxFontSize: "78",
+  learnerNameMinFontSize: "44",
+  designationMaxFontSize: "30",
+  badgeLineMaxFontSize: "13",
   signatureName: "T. Ndudzo",
   signatureTitle: "Director of Training & Certification",
   secondSignatureName: "W. Tigere",
@@ -248,10 +248,10 @@ export function CertificateTemplateManagement() {
       recognitionLineOne: String(templateJson.recognitionLineOne ?? "In recognition of demonstrated knowledge, skills and commitment"),
       recognitionLineTwo: String(templateJson.recognitionLineTwo ?? "to ethical practice and professional excellence in real estate."),
       learnerNameFont: String(templateJson.learnerNameFont ?? "great-vibes"),
-      learnerNameMaxFontSize: clampTypographySize(templateJson.learnerNameMaxFontSize, 78, 52, 96),
-      learnerNameMinFontSize: clampTypographySize(templateJson.learnerNameMinFontSize, 44, 32, 64),
-      designationMaxFontSize: clampTypographySize(templateJson.designationMaxFontSize, 30, 18, 42),
-      badgeLineMaxFontSize: clampTypographySize(templateJson.badgeLineMaxFontSize, 13, 8, 24),
+      learnerNameMaxFontSize: String(clampTypographySize(templateJson.learnerNameMaxFontSize, 78, 52, 96)),
+      learnerNameMinFontSize: String(clampTypographySize(templateJson.learnerNameMinFontSize, 44, 32, 64)),
+      designationMaxFontSize: String(clampTypographySize(templateJson.designationMaxFontSize, 30, 18, 42)),
+      badgeLineMaxFontSize: String(clampTypographySize(templateJson.badgeLineMaxFontSize, 13, 8, 24)),
       signatureName: String(templateJson.signatureName ?? "T. Ndudzo"),
       signatureTitle: String(templateJson.signatureTitle ?? "Director of Training & Certification"),
       secondSignatureName: String(templateJson.secondSignatureName ?? "W. Tigere"),
@@ -471,29 +471,29 @@ export function CertificateTemplateManagement() {
                     <TextField
                       label="Learner Name Max Size"
                       type="number"
-                      value={String(formData.learnerNameMaxFontSize)}
-                      onChange={(learnerNameMaxFontSize) => setFormData({ ...formData, learnerNameMaxFontSize: clampTypographySize(learnerNameMaxFontSize, 78, 52, 96) })}
+                      value={formData.learnerNameMaxFontSize}
+                      onChange={(learnerNameMaxFontSize) => setFormData({ ...formData, learnerNameMaxFontSize })}
                       helper="Recommended: 76-84. Long names still auto-fit within the name area."
                     />
                     <TextField
                       label="Learner Name Minimum Size"
                       type="number"
-                      value={String(formData.learnerNameMinFontSize)}
-                      onChange={(learnerNameMinFontSize) => setFormData({ ...formData, learnerNameMinFontSize: clampTypographySize(learnerNameMinFontSize, 44, 32, 64) })}
+                      value={formData.learnerNameMinFontSize}
+                      onChange={(learnerNameMinFontSize) => setFormData({ ...formData, learnerNameMinFontSize })}
                       helper="Recommended: 42-48 for long names."
                     />
                     <TextField
                       label="Green Designation Max Size"
                       type="number"
-                      value={String(formData.designationMaxFontSize)}
-                      onChange={(designationMaxFontSize) => setFormData({ ...formData, designationMaxFontSize: clampTypographySize(designationMaxFontSize, 30, 18, 42) })}
+                      value={formData.designationMaxFontSize}
+                      onChange={(designationMaxFontSize) => setFormData({ ...formData, designationMaxFontSize })}
                       helper="Recommended: 26-32. This controls the large green line."
                     />
                     <TextField
                       label="Graduate / Badge Max Size"
                       type="number"
-                      value={String(formData.badgeLineMaxFontSize)}
-                      onChange={(badgeLineMaxFontSize) => setFormData({ ...formData, badgeLineMaxFontSize: clampTypographySize(badgeLineMaxFontSize, 13, 8, 24) })}
+                      value={formData.badgeLineMaxFontSize}
+                      onChange={(badgeLineMaxFontSize) => setFormData({ ...formData, badgeLineMaxFontSize })}
                       helper="Recommended: 11-14. This controls the smaller uppercase line below."
                     />
                   </div>
@@ -718,9 +718,9 @@ function TemplatePreview({ template, form, compact }: { template?: CertificateTe
   const recognitionLineOne = form?.recognitionLineOne ?? String(templateJson.recognitionLineOne ?? "In recognition of demonstrated knowledge, skills and commitment");
   const recognitionLineTwo = form?.recognitionLineTwo ?? String(templateJson.recognitionLineTwo ?? "to ethical practice and professional excellence in real estate.");
   const learnerNameFont = form?.learnerNameFont ?? String(templateJson.learnerNameFont ?? "great-vibes");
-  const learnerNameMaxFontSize = form?.learnerNameMaxFontSize ?? clampTypographySize(templateJson.learnerNameMaxFontSize, 78, 52, 96);
-  const designationMaxFontSize = form?.designationMaxFontSize ?? clampTypographySize(templateJson.designationMaxFontSize, 30, 18, 42);
-  const badgeLineMaxFontSize = form?.badgeLineMaxFontSize ?? clampTypographySize(templateJson.badgeLineMaxFontSize, 13, 8, 24);
+  const learnerNameMaxFontSize = clampTypographySize(form?.learnerNameMaxFontSize ?? templateJson.learnerNameMaxFontSize, 78, 52, 96);
+  const designationMaxFontSize = clampTypographySize(form?.designationMaxFontSize ?? templateJson.designationMaxFontSize, 30, 18, 42);
+  const badgeLineMaxFontSize = clampTypographySize(form?.badgeLineMaxFontSize ?? templateJson.badgeLineMaxFontSize, 13, 8, 24);
   const name = form?.name ?? template?.name ?? "HouseLink Agent Foundations Certificate";
   const primary = form?.primaryColor ?? colours.primary ?? "#008b68";
   const accent = form?.accentColor ?? colours.accent ?? "#c6a15b";
