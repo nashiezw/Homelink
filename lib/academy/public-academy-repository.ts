@@ -2,7 +2,7 @@ import { AcademyRegistrationStatus, PaymentProvider, PaymentStatus, Role, Traini
 import { getMainPrisma } from "@/lib/db/main-prisma";
 import { sendRegistrationConfirmationEmail } from "@/lib/academy/academy-email";
 import { calculateCourseProgress, getCompletedLessonIds } from "@/lib/academy/academy-progress";
-import { canAccessProgrammeCourse, getProgrammeProgressSummary } from "@/lib/academy/academy-completion";
+import { awardProgrammeBadge, canAccessProgrammeCourse, getProgrammeProgressSummary } from "@/lib/academy/academy-completion";
 import { assessmentMetaForAssignment, assessmentMetaForQuiz } from "@/lib/academy/academy-assessments";
 import { getProgrammeCourse, LEGACY_COURSE_ID, PROGRAMME_COURSE_IDS } from "@/lib/academy/academy-programme";
 import { getEnrolledCourseToolkits, getToolkitGroupsForCourse, programmeMetaForCourse } from "@/lib/academy/academy-toolkits";
@@ -174,7 +174,7 @@ export async function getLearnerAcademyDashboard(learnerId: string, options?: { 
   const overallProgress = totalLessons ? Math.round((completedLessonTotal / totalLessons) * 100) : 0;
   const settings = await getAcademySettingsPublic();
 
-  const [agentBadges, bookmarkRows, recentProgress] = await Promise.all([
+  let [agentBadges, bookmarkRows, recentProgress] = await Promise.all([
     prisma.agentBadge.findMany({ where: { agentId: learnerId }, include: { badge: true }, orderBy: { awardedAt: "desc" } }),
     prisma.lessonProgress.findMany({
       where: { agentId: learnerId, status: "BOOKMARKED" },
@@ -189,6 +189,25 @@ export async function getLearnerAcademyDashboard(learnerId: string, options?: { 
       take: 1,
     }),
   ]);
+
+  const existingBadgeIds = new Set(agentBadges.map((entry) => entry.badgeId));
+  const missingBadgeCourseIds = certificates
+    .filter((certificate) => certificate.status === "ACTIVE" && certificate.courseId)
+    .map((certificate) => certificate.courseId)
+    .filter((courseId): courseId is string => Boolean(courseId))
+    .map((courseId) => getProgrammeCourse(courseId))
+    .filter((programme): programme is NonNullable<ReturnType<typeof getProgrammeCourse>> => Boolean(programme))
+    .filter((programme) => !existingBadgeIds.has(programme.badgeId))
+    .map((programme) => programme.id);
+
+  if (missingBadgeCourseIds.length) {
+    await Promise.all(missingBadgeCourseIds.map((courseId) => awardProgrammeBadge(learnerId, courseId)));
+    agentBadges = await prisma.agentBadge.findMany({
+      where: { agentId: learnerId },
+      include: { badge: true },
+      orderBy: { awardedAt: "desc" },
+    });
+  }
 
   const activityDates = await prisma.lessonProgress.findMany({
     where: { agentId: learnerId },
