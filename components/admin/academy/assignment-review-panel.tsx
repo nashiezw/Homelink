@@ -130,7 +130,10 @@ export function AssignmentReviewPanel() {
 
   const pendingCount = submissions.filter((submission) => submission.status === "SUBMITTED").length;
   const approvedCount = submissions.filter((submission) => submission.status === "APPROVED").length;
-  const averageGrade = submissions.filter((submission) => submission.grade != null).reduce((sum, submission, _, rows) => sum + Number(submission.grade ?? 0) / rows.length, 0);
+  const gradedSubmissions = submissions.filter((submission) => submission.grade != null && submission.assignment.points > 0);
+  const averageGrade = gradedSubmissions.length
+    ? gradedSubmissions.reduce((sum, submission) => sum + assignmentGradePercent(submission), 0) / gradedSubmissions.length
+    : null;
 
   return (
     <div className="space-y-6">
@@ -149,7 +152,7 @@ export function AssignmentReviewPanel() {
         <AdminStatPill label="Visible" value={submissions.length} />
         <AdminStatPill label="Pending" value={pendingCount} tone={pendingCount ? "warning" : "default"} />
         <AdminStatPill label="Approved" value={approvedCount} tone="success" />
-        <AdminStatPill label="Avg Grade" value={averageGrade ? `${averageGrade.toFixed(1)}%` : "N/A"} />
+        <AdminStatPill label="Avg Grade" value={averageGrade == null ? "N/A" : `${averageGrade.toFixed(1)}%`} />
       </AdminMetricGrid>
 
       <AdminFilterBar>
@@ -205,7 +208,7 @@ export function AssignmentReviewPanel() {
               ),
             },
             { key: "status", header: "Status", render: (submission) => <SubmissionStatus status={submission.status} /> },
-            { key: "grade", header: "Grade", render: (submission) => submission.grade == null ? "Not graded" : `${submission.grade}/${submission.assignment.points}` },
+            { key: "grade", header: "Grade", render: (submission) => submission.grade == null ? "Not graded" : `${submission.grade}/${submission.assignment.points} (${assignmentGradePercent(submission).toFixed(0)}%)` },
             { key: "submitted", header: "Submitted", render: (submission) => new Date(submission.submittedAt).toLocaleDateString() },
             {
               key: "actions",
@@ -285,7 +288,7 @@ export function AssignmentReviewPanel() {
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                   <div>
                     <SubmissionStatus status={selectedSubmission.status} />
-                    <p className="mt-3 text-sm text-slate-300">Grade: {selectedSubmission.grade == null ? "Not graded" : `${selectedSubmission.grade}/${selectedSubmission.assignment.points}`}</p>
+                    <p className="mt-3 text-sm text-slate-300">Grade: {selectedSubmission.grade == null ? "Not graded" : `${selectedSubmission.grade}/${selectedSubmission.assignment.points} (${assignmentGradePercent(selectedSubmission).toFixed(0)}%)`}</p>
                     {selectedSubmission.reviewerNote && <p className="mt-2 whitespace-pre-wrap text-sm text-slate-400">{selectedSubmission.reviewerNote}</p>}
                   </div>
                   {selectedSubmission.reviewedAt && (
@@ -429,6 +432,11 @@ function SubmissionStatus({ status }: { status: string }) {
       variant={status === "APPROVED" || status === "GRADED" ? "success" : status === "REJECTED" ? "danger" : "warning"}
     />
   );
+}
+
+function assignmentGradePercent(submission: AssignmentSubmission) {
+  if (submission.grade == null || submission.assignment.points <= 0) return 0;
+  return Math.round((Number(submission.grade) / submission.assignment.points) * 1000) / 10;
 }
 
 function Detail({ label, value }: { label: string; value: string }) {

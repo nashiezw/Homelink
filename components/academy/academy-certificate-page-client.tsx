@@ -25,6 +25,11 @@ type CertificatePayload = {
   signatureUrl?: string | null;
   signatureName?: string | null;
   signatureTitle?: string | null;
+  secondSignatureUrl?: string | null;
+  secondSignatureName?: string | null;
+  secondSignatureTitle?: string | null;
+  sealUrl?: string | null;
+  designation?: string | null;
   customHtml?: string;
   customCss?: string;
   skillsAssessed?: string[];
@@ -91,6 +96,11 @@ export function AcademyCertificatePageClient({ issueId }: { issueId: string }) {
         signatureUrl={data.signatureUrl}
         signatureName={data.signatureName ?? undefined}
         signatureTitle={data.signatureTitle ?? undefined}
+        secondSignatureUrl={data.secondSignatureUrl}
+        secondSignatureName={data.secondSignatureName ?? undefined}
+        secondSignatureTitle={data.secondSignatureTitle ?? undefined}
+        sealUrl={data.sealUrl}
+        designation={data.designation}
         customHtml={data.customHtml}
         customCss={data.customCss}
         skillsAssessed={data.skillsAssessed?.length ? data.skillsAssessed : programme?.learningOutcomes ?? []}

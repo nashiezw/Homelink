@@ -41,6 +41,11 @@ export async function GET(request: Request, context: { params: Promise<{ issueId
     signatureUrl: issue.template?.signatureUrl ?? null,
     signatureName: typeof templateJson.signatureName === "string" ? templateJson.signatureName : null,
     signatureTitle: typeof templateJson.signatureTitle === "string" ? templateJson.signatureTitle : null,
+    secondSignatureUrl: typeof templateJson.secondSignatureUrl === "string" ? templateJson.secondSignatureUrl : null,
+    secondSignatureName: typeof templateJson.secondSignatureName === "string" ? templateJson.secondSignatureName : null,
+    secondSignatureTitle: typeof templateJson.secondSignatureTitle === "string" ? templateJson.secondSignatureTitle : null,
+    sealUrl: typeof templateJson.sealUrl === "string" ? templateJson.sealUrl : null,
+    designation: typeof templateJson.designation === "string" ? templateJson.designation : null,
     customHtml: typeof templateJson.customHtml === "string" ? templateJson.customHtml : "",
     customCss: typeof templateJson.customCss === "string" ? templateJson.customCss : "",
   });

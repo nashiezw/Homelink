@@ -97,6 +97,7 @@ type AssignmentSubmissionDetail = {
   courseId: string;
   courseTitle: string;
   grade: number | null;
+  maxPoints?: number;
   status: string;
   submittedAt: Date;
   gradedAt: Date | null;
@@ -785,7 +786,7 @@ function StudentQuizDetailView({ analytics }: { analytics: StudentQuizAnalytics 
                 <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2 md:grid-cols-4">
                   <>
                     <p className="text-slate-400">Grade</p>
-                    <p className="font-semibold text-white">{submission.grade ? `${submission.grade}%` : "Not graded"}</p>
+                    <p className="font-semibold text-white">{submission.grade == null ? "Not graded" : `${submission.grade}%`}</p>
                   </>
                   <>
                     <p className="text-slate-400">Attempt</p>

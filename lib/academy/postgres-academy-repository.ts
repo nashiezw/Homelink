@@ -115,7 +115,7 @@ export async function getAcademyDashboard(options: { compact?: boolean } = {}) {
     prisma.quiz.findMany({ include: { attempts: compact ? { take: 100, orderBy: { startedAt: "desc" } } : true }, orderBy: { updatedAt: "desc" } }),
     prisma.assignment.findMany({ orderBy: { updatedAt: "desc" } }),
     prisma.finalExam.findMany({ include: { attempts: compact ? { take: 100, orderBy: { startedAt: "desc" } } : true }, orderBy: { updatedAt: "desc" } }),
-    prisma.certificateIssue.findMany({ orderBy: { issuedAt: "desc" }, ...(compact ? { take: 250 } : {}) }),
+    prisma.certificateIssue.findMany({ include: { course: { select: { title: true } } }, orderBy: { issuedAt: "desc" }, ...(compact ? { take: 250 } : {}) }),
     prisma.courseEnrolment.findMany(),
     prisma.courseProgress.findMany({ orderBy: { updatedAt: "desc" }, ...(compact ? { take: 500 } : {}) }),
     prisma.lessonProgress.findMany({ orderBy: { lastViewedAt: "desc" }, ...(compact ? { take: 500 } : {}) }),
@@ -168,6 +168,26 @@ export async function getAcademyDashboard(options: { compact?: boolean } = {}) {
       where: { status: { in: ["PAYMENT_UPLOADED", "PENDING_PAYMENT"] } },
     }),
   ]);
+  const certificateLearners = await prisma.user.findMany({
+    where: { id: { in: [...new Set(certificates.map((certificate) => certificate.agentId))] } },
+    select: { id: true, name: true, email: true },
+  });
+  const certificateLearnerById = new Map(certificateLearners.map((learner) => [learner.id, learner]));
+  const certificateRows = certificates.map((certificate) => {
+    const learner = certificateLearnerById.get(certificate.agentId);
+    return {
+      id: certificate.id,
+      certificateNumber: certificate.certificateNumber,
+      agentId: certificate.agentId,
+      learnerName: learner?.name ?? null,
+      learnerEmail: learner?.email ?? null,
+      courseId: certificate.courseId,
+      courseTitle: certificate.course?.title ?? null,
+      status: certificate.status,
+      issuedAt: certificate.issuedAt.toISOString(),
+      expiresAt: certificate.expiresAt?.toISOString() ?? null,
+    };
+  });
 
   const activeLearners = new Set([
     ...courseProgress.filter((entry) => daysAgo(entry.updatedAt) <= 30).map((entry) => entry.agentId),
@@ -260,7 +280,7 @@ export async function getAcademyDashboard(options: { compact?: boolean } = {}) {
       assignmentTitle: assignments.find((assignment) => assignment.id === submission.assignmentId)?.title ?? "Assignment",
     })),
     exams,
-    certificates,
+    certificates: certificateRows,
     learningPaths,
     announcements,
     badges,
@@ -349,11 +369,13 @@ export async function getAcademyDashboard(options: { compact?: boolean } = {}) {
     mostActiveAgents: agentCounts([...lessonProgress.map((entry) => entry.agentId), ...courseProgress.map((entry) => entry.agentId)]).slice(0, 5),
     agentsNeedingAttention: courseProgress.filter((entry) => entry.status !== "COMPLETED" && entry.percentComplete < 35).slice(0, 8),
     recentlyCompletedCourses: completedCourses.slice(0, 8),
-    recentCertificates: certificates.slice(0, 8),
+    recentCertificates: certificateRows.slice(0, 8),
     upcomingExpiringCertificates: certificates
       .filter((certificate) => certificate.expiresAt && certificate.expiresAt.getTime() > Date.now())
       .sort((a, b) => (a.expiresAt?.getTime() ?? 0) - (b.expiresAt?.getTime() ?? 0))
-      .slice(0, 8),
+      .slice(0, 8)
+      .map((certificate) => certificateRows.find((row) => row.id === certificate.id)!)
+      .filter(Boolean),
     overdueAssignments: assignmentSubmissions.filter((submission) => submission.status === AssignmentSubmissionStatus.RESUBMISSION_REQUESTED).length,
     recentActivity,
     discussionThreads: discussionThreads.map((thread: any) => ({

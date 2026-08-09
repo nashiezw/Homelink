@@ -106,7 +106,7 @@ type AcademyData = {
     reviewedAt?: string | null;
   }>;
   exams: Array<{ id: string; title: string; durationMinutes: number; passingScore: number; active: boolean }>;
-  certificates: Array<{ id: string; certificateNumber: string; agentId: string; status: string; issuedAt: string; expiresAt?: string }>;
+  certificates: Array<{ id: string; certificateNumber: string; agentId: string; learnerName?: string | null; learnerEmail?: string | null; courseTitle?: string | null; status: string; issuedAt: string; expiresAt?: string | null }>;
   learningPaths: Array<{ id: string; title: string; description?: string; status: string; badgeTitle?: string; courses: Array<{ id: string; sortOrder: number; required: boolean; course: AcademyCourse }> }>;
   announcements: Array<{ id: string; title: string; body: string; audience: string; expiresAt: string | null; createdAt: string }>;
   badges: Array<{ id: string; name: string; description: string; xp: number; iconUrl: string | null; active: boolean }>;
@@ -178,8 +178,8 @@ type AcademyData = {
   mostActiveAgents: Array<{ agentId: string; actions: number }>;
   agentsNeedingAttention: Array<{ id: string; agentId: string; courseId: string; percentComplete: number }>;
   recentlyCompletedCourses: Array<{ id: string; agentId: string; courseId: string; completedAt?: string }>;
-  recentCertificates: Array<{ id: string; certificateNumber: string; agentId: string; issuedAt: string }>;
-  upcomingExpiringCertificates: Array<{ id: string; certificateNumber: string; agentId: string; expiresAt?: string }>;
+  recentCertificates: Array<{ id: string; certificateNumber: string; agentId: string; learnerName?: string | null; learnerEmail?: string | null; courseTitle?: string | null; issuedAt: string }>;
+  upcomingExpiringCertificates: Array<{ id: string; certificateNumber: string; agentId: string; learnerName?: string | null; learnerEmail?: string | null; courseTitle?: string | null; expiresAt?: string | null }>;
   overdueAssignments: number;
   recentActivity: Array<{ id: string; actorId?: string; action: string; target: string; createdAt: string }>;
   discussionThreads?: Array<{ id: string; title: string; courseTitle: string; posts: number; status: string; updatedAt: string }>;
@@ -474,6 +474,7 @@ export function AgentAcademyHub() {
   const academyRevenue = metric("academyRevenue");
   const averageScore = metric("averageScore");
   const videoWatchPercent = metric("videoWatchPercent");
+  const pendingPublicApplications = data.publicLearnerApplications.filter((application) => isPendingPublicApproval(application.status));
   const selectedCourseAnalytics = selectedCourseForDrilldown
     ? {
         course: data.courses.find((course) => course.id === selectedCourseForDrilldown.id),
@@ -545,13 +546,13 @@ export function AgentAcademyHub() {
                 {data.publicLearnerApplications.length ? data.publicLearnerApplications.slice(0, 5).map((item) => <MetricRow key={item.id} label={item.fullName} value={item.course.title} />) : <EmptyPanelText>No learner applications yet.</EmptyPanelText>}
               </ActivityPanel>
               <ActivityPanel title="Recent Certificates" icon={Award}>
-                {data.certificates.length ? data.certificates.slice(0, 5).map((item) => <MetricRow key={item.id} label={item.certificateNumber} value={item.agentId} />) : <EmptyPanelText>No certificate records yet.</EmptyPanelText>}
+                {data.certificates.length ? data.certificates.slice(0, 5).map((item) => <MetricRow key={item.id} label={item.certificateNumber} value={item.learnerName ?? item.learnerEmail ?? "Unknown learner"} />) : <EmptyPanelText>No certificate records yet.</EmptyPanelText>}
               </ActivityPanel>
               <ActivityPanel title="Top Courses" icon={BookOpen}>
                 {data.topCourses.length ? data.topCourses.map((item) => <MetricRow key={item.id} label={item.title} value={item.completions > 0 ? `${item.completions} completions` : `${item.enrolments} enrolled`} />) : <EmptyPanelText>No course activity yet.</EmptyPanelText>}
               </ActivityPanel>
               <ActivityPanel title="Pending Applications" icon={FileText}>
-                {data.publicLearnerApplications.filter((a) => a.status === "PENDING").length ? data.publicLearnerApplications.filter((a) => a.status === "PENDING").slice(0, 5).map((item) => <MetricRow key={item.id} label={item.fullName} value={item.course.title} />) : <EmptyPanelText>No pending applications.</EmptyPanelText>}
+                {pendingPublicApplications.length ? pendingPublicApplications.slice(0, 5).map((item) => <MetricRow key={item.id} label={item.fullName} value={item.course.title} />) : <EmptyPanelText>No pending applications.</EmptyPanelText>}
               </ActivityPanel>
             </div>
           </div>
@@ -1035,6 +1036,10 @@ function ExecutiveTile({
 function toFiniteNumber(value: unknown, fallback = 0) {
   const number = Number(value);
   return Number.isFinite(number) ? number : fallback;
+}
+
+function isPendingPublicApproval(status: string) {
+  return ["PENDING", "PENDING_PAYMENT", "PAYMENT_UPLOADED"].includes(status);
 }
 
 function ClickableStatPill({
@@ -1704,7 +1709,13 @@ function CertificateManagementPanel({
         rows={certificates}
         columns={[
           { key: "number", header: "Certificate", render: (certificate) => <span className="font-semibold text-white">{certificate.certificateNumber}</span> },
-          { key: "agent", header: "Learner", render: (certificate) => <span className="text-sm text-slate-300">{certificate.agentId}</span> },
+          {
+            key: "agent",
+            header: "Learner",
+            render: (certificate) => (
+              <span className="text-sm text-slate-300">{certificate.learnerName ?? certificate.learnerEmail ?? certificate.agentId}</span>
+            ),
+          },
           { key: "status", header: "Status", render: (certificate) => <AdminStatusBadge status={certificate.status} variant={certificate.status === "ACTIVE" ? "success" : "danger"} /> },
           { key: "issued", header: "Issued", render: (certificate) => new Date(certificate.issuedAt).toLocaleDateString() },
           {

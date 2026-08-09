@@ -410,6 +410,7 @@ export interface AssignmentSubmissionDetail {
   courseId: string;
   courseTitle: string;
   grade: number | null;
+  maxPoints: number;
   status: string;
   submittedAt: Date;
   gradedAt: Date | null;
@@ -560,7 +561,8 @@ export async function getStudentQuizAnalytics(studentId: string): Promise<Studen
         assignmentTitle: submission.assignment.title,
         courseId: submission.assignment.courseId || '',
         courseTitle: submission.assignment.course?.title || '',
-        grade: submission.grade ? Number(submission.grade) : null,
+        grade: submission.grade == null ? null : assignmentGradePercent(Number(submission.grade), submission.assignment.points),
+        maxPoints: submission.assignment.points,
         status: submission.status,
         submittedAt: submission.submittedAt,
         gradedAt: submission.reviewedAt, // Using reviewedAt as proxy for gradedAt
@@ -1062,7 +1064,7 @@ export async function getAssessmentPerformanceAnalytics(courseId: string): Promi
     const submissions = assignmentSubmissions.filter(as => as.assignmentId === assignment.id);
     const gradedSubmissions = submissions.filter(s => s.grade !== null);
     const averageGrade = gradedSubmissions.length > 0
-      ? gradedSubmissions.reduce((sum, s) => sum + Number(s.grade), 0) / gradedSubmissions.length
+      ? gradedSubmissions.reduce((sum, s) => sum + assignmentGradePercent(Number(s.grade), assignment.points), 0) / gradedSubmissions.length
       : 0;
     
     // Calculate on-time submissions based on assignment dueDays
@@ -1886,4 +1888,10 @@ export async function getStudentActivityLog(studentId: string, limit: number = 5
     studentName: student.name,
     activities: activities.slice(0, limit)
   };
+}
+
+function assignmentGradePercent(grade: number, points: number | null | undefined) {
+  const maxPoints = Number(points);
+  if (!Number.isFinite(grade) || !Number.isFinite(maxPoints) || maxPoints <= 0) return 0;
+  return Math.round((grade / maxPoints) * 1000) / 10;
 }

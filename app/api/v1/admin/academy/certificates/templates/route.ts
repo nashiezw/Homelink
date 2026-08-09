@@ -9,11 +9,19 @@ export async function GET(request: Request) {
   if ("error" in auth && auth.error) return auth.error;
 
   const prisma = getMainPrisma();
+  const includeCourses = new URL(request.url).searchParams.get("includeCourses") === "1";
   
   try {
     const templates = await prisma.certificateTemplate.findMany({
       orderBy: { updatedAt: "desc" },
     });
+    if (includeCourses) {
+      const courses = await prisma.trainingCourse.findMany({
+        select: { id: true, title: true, status: true },
+        orderBy: [{ title: "asc" }],
+      });
+      return ok({ templates, courses });
+    }
     
     return ok(templates);
   } catch (error) {

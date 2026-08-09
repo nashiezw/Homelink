@@ -33,16 +33,26 @@ type CertificateCourseOption = {
   status: string;
 };
 
+type CertificateTemplatePayload = {
+  templates: CertificateTemplate[];
+  courses: CertificateCourseOption[];
+};
+
 type TemplateFormData = {
   name: string;
   backgroundUrl: string;
   logoUrl: string;
   signatureUrl: string;
+  secondSignatureUrl: string;
+  sealUrl: string;
   courseIds: string[];
   certificateNumberPrefix: string;
   title: string;
+  designation: string;
   signatureName: string;
   signatureTitle: string;
+  secondSignatureName: string;
+  secondSignatureTitle: string;
   customHtml: string;
   customCss: string;
   primaryColor: string;
@@ -56,11 +66,16 @@ const emptyForm: TemplateFormData = {
   backgroundUrl: "",
   logoUrl: "",
   signatureUrl: "",
+  secondSignatureUrl: "",
+  sealUrl: "",
   courseIds: [],
-  certificateNumberPrefix: "HLA",
+  certificateNumberPrefix: "HLZA",
   title: "Certificate of Completion - HouseLink Training Programme",
+  designation: "Certified HouseLink Agent",
   signatureName: "T. Ndudzo",
   signatureTitle: "Director of Training & Certification",
+  secondSignatureName: "W. Tigere",
+  secondSignatureTitle: "Academy Director",
   customHtml: "",
   customCss: "",
   primaryColor: "#008b68",
@@ -79,7 +94,7 @@ export function CertificateTemplateManagement() {
   const [deleteTarget, setDeleteTarget] = useState<CertificateTemplate | null>(null);
   const [formData, setFormData] = useState<TemplateFormData>(emptyForm);
   const [courses, setCourses] = useState<CertificateCourseOption[]>([]);
-  const [uploadingField, setUploadingField] = useState<"backgroundUrl" | "logoUrl" | "signatureUrl" | null>(null);
+  const [uploadingField, setUploadingField] = useState<"backgroundUrl" | "logoUrl" | "signatureUrl" | "secondSignatureUrl" | "sealUrl" | null>(null);
 
   const activeTemplates = useMemo(() => templates.filter((template) => template.active).length, [templates]);
 
@@ -90,15 +105,12 @@ export function CertificateTemplateManagement() {
 
   async function loadTemplates() {
     setLoading(true);
-    const result = await apiFetch<CertificateTemplate[]>("/api/v1/admin/academy/certificates/templates");
-    const coursesResult = await apiFetch<{ courses: CertificateCourseOption[] }>("/api/v1/admin/academy?compact=1");
+    const result = await apiFetch<CertificateTemplatePayload>("/api/v1/admin/academy/certificates/templates?includeCourses=1");
     if (result.data) {
-      setTemplates(result.data);
+      setTemplates(result.data.templates);
+      setCourses(result.data.courses.map((course) => ({ id: course.id, title: course.title, status: course.status })));
     } else {
       showToast(result.error?.message ?? "Certificate templates could not be loaded.", "error");
-    }
-    if (coursesResult.data?.courses) {
-      setCourses(coursesResult.data.courses.map((course) => ({ id: course.id, title: course.title, status: course.status })));
     }
     setLoading(false);
   }
@@ -113,8 +125,13 @@ export function CertificateTemplateManagement() {
         certificateNumberPrefix: formData.certificateNumberPrefix.trim() || "HLA",
         courseIds: formData.courseIds,
         title: trainingCertificateTitle(formData.title.trim() || "Certificate of Completion - HouseLink Training Programme"),
+        designation: formData.designation.trim() || "Certified HouseLink Agent",
         signatureName: formData.signatureName.trim() || "T. Ndudzo",
         signatureTitle: formData.signatureTitle.trim() || "Director of Training & Certification",
+        secondSignatureUrl: formData.secondSignatureUrl.trim() || null,
+        secondSignatureName: formData.secondSignatureName.trim() || "W. Tigere",
+        secondSignatureTitle: formData.secondSignatureTitle.trim() || "Academy Director",
+        sealUrl: formData.sealUrl.trim() || null,
         customHtml: formData.customHtml.trim(),
         customCss: formData.customCss.trim(),
         colours: {
@@ -177,11 +194,16 @@ export function CertificateTemplateManagement() {
       backgroundUrl: template.backgroundUrl ?? "",
       logoUrl: template.logoUrl ?? "",
       signatureUrl: template.signatureUrl ?? "",
+      secondSignatureUrl: String(templateJson.secondSignatureUrl ?? ""),
+      sealUrl: String(templateJson.sealUrl ?? ""),
       courseIds: Array.isArray(templateJson.courseIds) ? templateJson.courseIds.filter((id): id is string => typeof id === "string") : [],
       certificateNumberPrefix: String(templateJson.certificateNumberPrefix ?? "HLA"),
       title: trainingCertificateTitle(String(templateJson.title ?? "Certificate of Completion - HouseLink Training Programme")),
+      designation: String(templateJson.designation ?? "Certified HouseLink Agent"),
       signatureName: String(templateJson.signatureName ?? "T. Ndudzo"),
       signatureTitle: String(templateJson.signatureTitle ?? "Director of Training & Certification"),
+      secondSignatureName: String(templateJson.secondSignatureName ?? "W. Tigere"),
+      secondSignatureTitle: String(templateJson.secondSignatureTitle ?? "Academy Director"),
       customHtml: String(templateJson.customHtml ?? ""),
       customCss: String(templateJson.customCss ?? ""),
       primaryColor: colours.primary ?? "#008b68",
@@ -198,7 +220,7 @@ export function CertificateTemplateManagement() {
     setFormData(emptyForm);
   }
 
-  async function uploadTemplateAsset(field: "backgroundUrl" | "logoUrl" | "signatureUrl", files: FileList | null) {
+  async function uploadTemplateAsset(field: "backgroundUrl" | "logoUrl" | "signatureUrl" | "secondSignatureUrl" | "sealUrl", files: FileList | null) {
     const file = files?.[0];
     if (!file) return;
     setUploadingField(field);
@@ -300,6 +322,7 @@ export function CertificateTemplateManagement() {
             <div className="grid gap-4">
               <TextField label="Template Name" value={formData.name} onChange={(name) => setFormData({ ...formData, name })} placeholder="HouseLink Agent Foundations Certificate" />
               <TextField label="Certificate Title" value={formData.title} onChange={(title) => setFormData({ ...formData, title })} placeholder="Certificate of Completion - HouseLink Agent Foundations" />
+              <TextField label="Certificate Designation Line" value={formData.designation} onChange={(designation) => setFormData({ ...formData, designation })} placeholder="Certified HouseLink Agent" />
               <CourseAssignmentField
                 courses={courses}
                 selectedIds={formData.courseIds}
@@ -319,10 +342,39 @@ export function CertificateTemplateManagement() {
                 <ColorField label="Primary Color" value={formData.primaryColor} onChange={(primaryColor) => setFormData({ ...formData, primaryColor })} />
                 <ColorField label="Accent Color" value={formData.accentColor} onChange={(accentColor) => setFormData({ ...formData, accentColor })} />
               </div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <TextField label="Signature Name" value={formData.signatureName} onChange={(signatureName) => setFormData({ ...formData, signatureName })} />
-                <TextField label="Signature Title" value={formData.signatureTitle} onChange={(signatureTitle) => setFormData({ ...formData, signatureTitle })} />
-              </div>
+              <AdminPanel title="Signatures and Seal" description="Upload the two certificate signatures and optional centre seal used in the landscape certificate.">
+                <div className="grid gap-4">
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <TextField label="Left Signature Name" value={formData.secondSignatureName} onChange={(secondSignatureName) => setFormData({ ...formData, secondSignatureName })} />
+                    <TextField label="Left Signature Title" value={formData.secondSignatureTitle} onChange={(secondSignatureTitle) => setFormData({ ...formData, secondSignatureTitle })} />
+                  </div>
+                  <TemplateImageField
+                    label="Left Signature Image"
+                    value={formData.secondSignatureUrl}
+                    uploading={uploadingField === "secondSignatureUrl"}
+                    onChange={(secondSignatureUrl) => setFormData({ ...formData, secondSignatureUrl })}
+                    onUpload={(files) => void uploadTemplateAsset("secondSignatureUrl", files)}
+                  />
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <TextField label="Right Signature Name" value={formData.signatureName} onChange={(signatureName) => setFormData({ ...formData, signatureName })} />
+                    <TextField label="Right Signature Title" value={formData.signatureTitle} onChange={(signatureTitle) => setFormData({ ...formData, signatureTitle })} />
+                  </div>
+                  <TemplateImageField
+                    label="Right Signature Image"
+                    value={formData.signatureUrl}
+                    uploading={uploadingField === "signatureUrl"}
+                    onChange={(signatureUrl) => setFormData({ ...formData, signatureUrl })}
+                    onUpload={(files) => void uploadTemplateAsset("signatureUrl", files)}
+                  />
+                  <TemplateImageField
+                    label="Centre Seal Image"
+                    value={formData.sealUrl}
+                    uploading={uploadingField === "sealUrl"}
+                    onChange={(sealUrl) => setFormData({ ...formData, sealUrl })}
+                    onUpload={(files) => void uploadTemplateAsset("sealUrl", files)}
+                  />
+                </div>
+              </AdminPanel>
               <TemplateImageField
                 label="Background Image"
                 value={formData.backgroundUrl}
@@ -338,18 +390,11 @@ export function CertificateTemplateManagement() {
                   onChange={(logoUrl) => setFormData({ ...formData, logoUrl })}
                   onUpload={(files) => void uploadTemplateAsset("logoUrl", files)}
                 />
-                <TemplateImageField
-                  label="Signature"
-                  value={formData.signatureUrl}
-                  uploading={uploadingField === "signatureUrl"}
-                  onChange={(signatureUrl) => setFormData({ ...formData, signatureUrl })}
-                  onUpload={(files) => void uploadTemplateAsset("signatureUrl", files)}
-                />
               </div>
               <div className="rounded-xl border border-white/10 bg-slate-950/50 p-4">
                 <div>
                   <p className="font-semibold text-white">Advanced Design</p>
-                  <p className="mt-1 text-sm leading-6 text-slate-400">Optional HTML/CSS override. Use tokens like {"{{learnerName}}"}, {"{{courseTitle}}"}, {"{{certificateTitle}}"}, {"{{certificateNumber}}"}, {"{{issuedAt}}"}, {"{{expiresAt}}"}, and {"{{verifyUrl}}"}. Leave blank to use the standard HouseLink design.</p>
+                  <p className="mt-1 text-sm leading-6 text-slate-400">Optional HTML/CSS override. Use tokens like {"{{learnerName}}"}, {"{{courseTitle}}"}, {"{{certificateTitle}}"}, {"{{designation}}"}, {"{{certificateNumber}}"}, {"{{issuedAt}}"}, {"{{expiresAt}}"}, {"{{verifyUrl}}"}, {"{{signatureUrl}}"}, {"{{secondSignatureUrl}}"}, and {"{{sealUrl}}"}. Leave blank to use the standard HouseLink design.</p>
                 </div>
                 <div className="grid gap-4">
                   <TextAreaField label="Custom HTML" value={formData.customHtml} onChange={(customHtml) => setFormData({ ...formData, customHtml })} rows={8} placeholder="<section class='certificate'>...</section>" />
@@ -401,6 +446,8 @@ function TemplateMeta({ template, courses }: { template: CertificateTemplate; co
       <p><span className="text-slate-500">Prefix:</span> {String(templateJson.certificateNumberPrefix ?? "N/A")}</p>
       <p><span className="text-slate-500">Expiry:</span> {String(templateJson.expiryDays ?? 365)} days</p>
       <p><span className="text-slate-500">Courses:</span> {courseIds.length ? courseNames : "Global fallback"}</p>
+      <p><span className="text-slate-500">Signatures:</span> {template.signatureUrl || templateJson.secondSignatureUrl ? "Configured" : "Default typed names"}</p>
+      <p><span className="text-slate-500">Seal:</span> {templateJson.sealUrl ? "Custom image" : "Generated HouseLink seal"}</p>
       {templateJson.customHtml ? <p><span className="text-slate-500">Design:</span> Custom HTML</p> : null}
     </>
   );
@@ -418,11 +465,14 @@ function TemplatePreview({ template, form, compact }: { template?: CertificateTe
   const templateJson = template?.templateJson ?? {};
   const colours = (templateJson.colours as Record<string, string> | undefined) ?? {};
   const title = form?.title ?? String(templateJson.title ?? "Certificate of Achievement");
+  const designation = form?.designation ?? String(templateJson.designation ?? "Certified HouseLink Agent");
   const name = form?.name ?? template?.name ?? "HouseLink Agent Foundations Certificate";
   const primary = form?.primaryColor ?? colours.primary ?? "#008b68";
   const accent = form?.accentColor ?? colours.accent ?? "#c6a15b";
   const logoUrl = form?.logoUrl ?? template?.logoUrl ?? "";
   const signatureUrl = form?.signatureUrl ?? template?.signatureUrl ?? "";
+  const secondSignatureUrl = form?.secondSignatureUrl ?? String(templateJson.secondSignatureUrl ?? "");
+  const sealUrl = form?.sealUrl ?? String(templateJson.sealUrl ?? "");
   const backgroundUrl = form?.backgroundUrl ?? template?.backgroundUrl ?? "";
   const prefix = form?.certificateNumberPrefix ?? String(templateJson.certificateNumberPrefix ?? "HLA");
   const hasCustomDesign = Boolean(form?.customHtml?.trim() || templateJson.customHtml);
@@ -459,6 +509,7 @@ function TemplatePreview({ template, form, compact }: { template?: CertificateTe
           <p className="text-xs uppercase tracking-wider text-slate-500">Presented to</p>
           <p className="mt-1 text-xl font-bold text-white">Learner Name</p>
           <p className="mt-2 text-sm text-slate-300">For successfully completing {name || "the selected course"}.</p>
+          <p className="mt-2 break-words text-sm font-bold uppercase tracking-wider text-emerald-300 [overflow-wrap:anywhere]">{designation}</p>
           {hasCustomDesign ? <p className="mt-2 text-xs font-semibold uppercase tracking-wider text-amber-200">Custom HTML design enabled</p> : null}
         </div>
         <div className="mt-5 flex items-end justify-between gap-4">
@@ -469,6 +520,14 @@ function TemplatePreview({ template, form, compact }: { template?: CertificateTe
           {signatureUrl && (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={signatureUrl} alt="" className="h-8 max-w-24 object-contain" />
+          )}
+          {secondSignatureUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={secondSignatureUrl} alt="" className="h-8 max-w-24 object-contain" />
+          )}
+          {sealUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={sealUrl} alt="" className="size-10 object-contain" />
           )}
         </div>
       </div>
