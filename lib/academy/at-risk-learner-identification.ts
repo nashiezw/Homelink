@@ -153,12 +153,20 @@ export async function updateRiskLevel(learnerId: string, courseId: string): Prom
       where: { id: existing.id },
       data: { riskLevel },
     });
+  } else {
+    await prisma.learnerAnalytics.create({
+      data: {
+        learnerId,
+        courseId,
+        date: today,
+        engagementScore,
+        riskLevel,
+      },
+    });
   }
 }
 
 export async function sendAtRiskAlert(learnerId: string, courseId: string): Promise<void> {
-  // This would integrate with an email notification system
-  // For now, we'll just log the alert
   const prisma = getMainPrisma();
   
   const learner = await prisma.user.findUnique({
@@ -171,6 +179,15 @@ export async function sendAtRiskAlert(learnerId: string, courseId: string): Prom
     select: { title: true },
   });
 
-  console.log(`AT-RISK ALERT: ${learner?.name} (${learner?.email}) for course ${course?.title}`);
-  console.log(`Recommendation: Send intervention email or schedule check-in call`);
+  if (!learner || !course) return;
+
+  await prisma.trainingNotification.create({
+    data: {
+      userId: learnerId,
+      eventType: "AT_RISK_LEARNER",
+      channel: "IN_APP",
+      subject: "Learning support recommended",
+      body: `${learner.name} may need support in ${course.title}. Review progress, assessment scores, and recent activity before intervening.`,
+    },
+  });
 }

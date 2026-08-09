@@ -13,22 +13,59 @@ export interface LearnerAnalytics {
   date: Date;
 }
 
-// Stub functions since learnerAnalytics model doesn't exist in Prisma schema
-// These should be implemented using actual data models when available
+function analyticsDay(date = new Date()) {
+  const day = new Date(date);
+  day.setHours(0, 0, 0, 0);
+  return day;
+}
 
 export async function trackLearnerLogin(learnerId: string, courseId?: string): Promise<void> {
-  // TODO: Implement using actual data models
-  console.log(`Track login for learner ${learnerId} in course ${courseId}`);
+  const prisma = getMainPrisma();
+  const date = analyticsDay();
+  if (!courseId) {
+    const existing = await prisma.learnerAnalytics.findFirst({ where: { learnerId, courseId: null, date } });
+    if (existing) {
+      await prisma.learnerAnalytics.update({
+        where: { id: existing.id },
+        data: { lastLoginAt: new Date(), loginCount: { increment: 1 } },
+      });
+    } else {
+      await prisma.learnerAnalytics.create({
+        data: { learnerId, courseId: null, date, lastLoginAt: new Date(), loginCount: 1 },
+      });
+    }
+    return;
+  }
+
+  await prisma.learnerAnalytics.upsert({
+    where: { learnerId_courseId_date: { learnerId, courseId, date } },
+    create: { learnerId, courseId, date, lastLoginAt: new Date(), loginCount: 1 },
+    update: { lastLoginAt: new Date(), loginCount: { increment: 1 } },
+  });
 }
 
 export async function trackLessonCompletion(learnerId: string, courseId: string): Promise<void> {
-  // TODO: Implement using actual data models
-  console.log(`Track lesson completion for learner ${learnerId} in course ${courseId}`);
+  const prisma = getMainPrisma();
+  const date = analyticsDay();
+  const engagementScore = await calculateEngagementScore(learnerId, courseId);
+  await prisma.learnerAnalytics.upsert({
+    where: { learnerId_courseId_date: { learnerId, courseId, date } },
+    create: { learnerId, courseId, date, lessonsCompleted: 1, engagementScore },
+    update: { lessonsCompleted: { increment: 1 }, engagementScore },
+  });
 }
 
 export async function trackTimeSpent(learnerId: string, courseId: string, minutes: number): Promise<void> {
-  // TODO: Implement using actual data models
-  console.log(`Track time spent for learner ${learnerId} in course ${courseId}: ${minutes} minutes`);
+  const prisma = getMainPrisma();
+  const date = analyticsDay();
+  const safeMinutes = Math.max(0, Math.round(minutes));
+  if (!safeMinutes) return;
+  const engagementScore = await calculateEngagementScore(learnerId, courseId);
+  await prisma.learnerAnalytics.upsert({
+    where: { learnerId_courseId_date: { learnerId, courseId, date } },
+    create: { learnerId, courseId, date, totalTimeSpent: safeMinutes, engagementScore },
+    update: { totalTimeSpent: { increment: safeMinutes }, engagementScore },
+  });
 }
 
 export async function calculateEngagementScore(learnerId: string, courseId: string): Promise<number> {
@@ -85,14 +122,66 @@ export async function calculateEngagementScore(learnerId: string, courseId: stri
 }
 
 export async function updateEngagementScore(learnerId: string, courseId: string): Promise<void> {
-  // TODO: Implement using actual data models
-  console.log(`Update engagement score for learner ${learnerId} in course ${courseId}`);
+  const prisma = getMainPrisma();
+  const date = analyticsDay();
+  const engagementScore = await calculateEngagementScore(learnerId, courseId);
+  await prisma.learnerAnalytics.upsert({
+    where: { learnerId_courseId_date: { learnerId, courseId, date } },
+    create: { learnerId, courseId, date, engagementScore },
+    update: { engagementScore },
+  });
 }
 
-export async function getLearnerAnalytics(learnerId: string, courseId?: string, _days: number = 30): Promise<LearnerAnalytics[]> {
-  // TODO: Implement using actual data models
-  // Return empty array for now since learnerAnalytics model doesn't exist
-  return [];
+export async function getLearnerAnalytics(learnerId: string, courseId?: string, days: number = 30): Promise<LearnerAnalytics[]> {
+  const prisma = getMainPrisma();
+  const since = analyticsDay(new Date(Date.now() - Math.max(1, days) * 86400000));
+  const rows = await prisma.learnerAnalytics.findMany({
+    where: {
+      learnerId,
+      ...(courseId ? { courseId } : {}),
+      date: { gte: since },
+    },
+    orderBy: { date: "desc" },
+  });
+  if (rows.length) return rows;
+
+  if (!courseId) return [];
+
+  const [lessonProgress, courseProgress] = await Promise.all([
+    prisma.lessonProgress.findMany({
+      where: {
+        agentId: learnerId,
+        lesson: {
+          section: {
+            module: { courseId },
+          },
+        },
+      },
+      orderBy: { lastViewedAt: "desc" },
+    }),
+    prisma.courseProgress.findUnique({ where: { courseId_agentId: { courseId, agentId: learnerId } } }),
+  ]);
+  if (!lessonProgress.length && !courseProgress) return [];
+
+  const completedLessons = lessonProgress.filter((row) => row.completedAt).length;
+  const totalTimeSpent = Math.round(lessonProgress.reduce((sum, row) => sum + row.readingSeconds, 0) / 60);
+  const latestLessonActivity = lessonProgress[0]?.completedAt ?? lessonProgress[0]?.lastViewedAt ?? null;
+  const latestActivity = latestLessonActivity && courseProgress?.updatedAt
+    ? (latestLessonActivity > courseProgress.updatedAt ? latestLessonActivity : courseProgress.updatedAt)
+    : latestLessonActivity ?? courseProgress?.updatedAt ?? new Date();
+
+  return [{
+    id: "derived",
+    learnerId,
+    courseId,
+    lastLoginAt: null,
+    loginCount: 0,
+    lessonsCompleted: completedLessons,
+    totalTimeSpent,
+    engagementScore: await calculateEngagementScore(learnerId, courseId),
+    riskLevel: null,
+    date: latestActivity,
+  }];
 }
 
 export async function getCourseAnalytics(courseId: string, _days: number = 30): Promise<{
@@ -207,4 +296,3 @@ export async function getCourseAnalytics(courseId: string, _days: number = 30): 
     };
   }
 }
-

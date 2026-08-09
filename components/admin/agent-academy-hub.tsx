@@ -1517,7 +1517,7 @@ function FeatureWorkbench({
                 <div key={rate.title} className="flex flex-col sm:flex-row sm:items-center sm:justify-between rounded-lg border border-white/10 bg-slate-900/60 p-3">
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-white truncate">{rate.title}</p>
-                    <p className="text-xs text-slate-500">{rate.completed} of {rate.enrolled} completed • Avg progress: {rate.avg_progress || 0}%</p>
+                    <p className="text-xs text-slate-500">{rate.completed} of {rate.enrolled} completed - Avg progress: {rate.avg_progress || 0}%</p>
                   </div>
                   <span className={cn(
                     "text-sm font-semibold sm:ml-2",
@@ -1530,7 +1530,7 @@ function FeatureWorkbench({
               ))}
             </div>
           ) : (
-            <p className="text-sm text-slate-400">No completion data yet.</p>
+            <EmptyPanelText>No database-backed course progress records are available for this period.</EmptyPanelText>
           )}
         </ActivityPanel>
         

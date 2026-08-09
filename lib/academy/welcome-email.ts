@@ -20,7 +20,6 @@ async function sendEmailWithRetry(
     if (attempt < maxRetries - 1) {
       const delay = initialDelayMs * Math.pow(2, attempt);
       await new Promise(resolve => setTimeout(resolve, delay));
-      console.log(`Email send attempt ${attempt + 1} failed, retrying in ${delay}ms...`);
     }
   }
   

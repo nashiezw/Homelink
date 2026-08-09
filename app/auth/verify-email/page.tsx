@@ -14,7 +14,6 @@ function VerifyEmailContent() {
   const [message, setMessage] = useState("");
   const [resending, setResending] = useState(false);
   const [email, setEmail] = useState("");
-  const [redirectUrl, setRedirectUrl] = useState<string | null>(null);
 
   const token = searchParams?.get("token");
   const emailParam = searchParams?.get("email");
@@ -23,10 +22,6 @@ function VerifyEmailContent() {
   useEffect(() => {
     if (emailParam) {
       setEmail(emailParam);
-    }
-    
-    if (redirectParam) {
-      setRedirectUrl(redirectParam);
     }
     
     if (!token) {
@@ -61,7 +56,7 @@ function VerifyEmailContent() {
           
           if (userData) {
             // Determine redirect URL: use returned URL from token, then URL param, then default
-            const finalRedirectUrl = returnedRedirectUrl || redirectUrl || "/dashboard/academy";
+            const finalRedirectUrl = returnedRedirectUrl || redirectParam || "/dashboard/academy";
             
             // Validate redirect URL for security
             const isValidRedirect = validateRedirectUrl(finalRedirectUrl);
@@ -79,7 +74,7 @@ function VerifyEmailContent() {
     }
 
     verifyEmail();
-  }, [token, emailParam, redirectUrl]);
+  }, [token, emailParam, redirectParam]);
 
   // Security validation function to prevent open redirects
   function validateRedirectUrl(url: string): boolean {

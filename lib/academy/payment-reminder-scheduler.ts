@@ -183,12 +183,10 @@ export async function processPaymentReminders() {
             },
           });
 
-          console.log(`Payment reminder sent for registration ${registration.id} (day ${daysSinceRegistration})`);
         }
       }
     }
 
-    console.log(`Processed ${pendingRegistrations.length} pending payment registrations`);
     return { success: true, processed: pendingRegistrations.length };
   } catch (error) {
     console.error("Error processing payment reminders:", error);

@@ -17,8 +17,6 @@ export async function POST(request: Request) {
       return problem(400, "MISSING_FIELDS", "courseId and agentId are required.");
     }
 
-    console.log(`[Certificate] Manual certificate issuance requested for agent ${agentId}, course ${courseId}, force: ${force}`);
-
     const prisma = getMainPrisma();
     
     // Check if certificate already exists
@@ -39,7 +37,6 @@ export async function POST(request: Request) {
         where: { id: existing.id },
         data: { status: "REVOKED", revokedAt: new Date() },
       });
-      console.log(`[Certificate] Existing certificate revoked: ${existing.certificateNumber}`);
     }
 
     // Use the enhanced certificate issuance function

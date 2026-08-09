@@ -36,7 +36,7 @@ export async function sendPushNotification(
   const shouldSend = shouldSendNotification(type, preferences);
 
   if (!shouldSend) {
-    console.log(`Notification type ${type} is disabled for user ${userId}`);
+    return null;
   }
 
   const notification = await prisma.notification.create({
@@ -48,10 +48,6 @@ export async function sendPushNotification(
       body,
     },
   });
-
-  // In a real implementation, this would integrate with a push notification service
-  // like Firebase Cloud Messaging, OneSignal, or Apple Push Notification Service
-  console.log(`Push notification sent to user ${userId}: ${title}`);
 
   return {
     id: notification.id,

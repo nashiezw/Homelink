@@ -149,18 +149,13 @@ export async function completeLessonForLearner(learnerId: string, lessonId: stri
 export async function issueCertificateIfMissing(learnerId: string, courseId: string) {
   const prisma = getMainPrisma();
   
-  console.log(`[Certificate] Checking certificate for learner ${learnerId}, course ${courseId}`);
-  
   const existing = await prisma.certificateIssue.findFirst({
     where: { agentId: learnerId, courseId, status: "ACTIVE" },
   });
   if (existing) {
-    console.log(`[Certificate] Certificate already exists: ${existing.certificateNumber}`);
     return existing;
   }
 
-  console.log(`[Certificate] No existing certificate, fetching course and template data`);
-  
   const [course, template, settingsRow] = await Promise.all([
     prisma.trainingCourse.findUnique({ where: { id: courseId } }),
     prisma.certificateTemplate.findFirst({ where: { active: true }, orderBy: { updatedAt: "desc" } }),
@@ -177,8 +172,6 @@ export async function issueCertificateIfMissing(learnerId: string, courseId: str
     return null;
   }
 
-  console.log(`[Certificate] Course: ${course.title}, Template: ${template.name}`);
-
   const settingsPayload = (settingsRow?.payload ?? {}) as Record<string, unknown>;
   const templateJson = (template?.templateJson ?? {}) as Record<string, unknown>;
   const programme = getProgrammeCourse(courseId);
@@ -189,8 +182,6 @@ export async function issueCertificateIfMissing(learnerId: string, courseId: str
   const expiryDays = typeof templateJson.expiryDays === "number" ? templateJson.expiryDays : 365;
   const certificateNumber = `${prefix}-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
   const expiresAt = new Date(Date.now() + expiryDays * 86400000);
-
-  console.log(`[Certificate] Generating certificate: ${certificateNumber}, expires: ${expiresAt.toISOString()}`);
 
   try {
     const issue = await prisma.certificateIssue.create({
@@ -211,16 +202,12 @@ export async function issueCertificateIfMissing(learnerId: string, courseId: str
       data: { pdfUrl: `/dashboard/academy/certificate/${issue.id}` },
     });
     
-    console.log(`[Certificate] Certificate created successfully: ${issue.id}`);
-    
-    // Log audit event
     await logCertificateAuditEvent(learnerId, "CERTIFICATE_ISSUED", issue.id, {
       courseId,
       certificateNumber,
       templateId: template?.id,
     });
     
-    // Send email notification
     await sendCertificateNotification(learnerId, courseId, certificateNumber);
     
     return { ...issue, pdfUrl: `/dashboard/academy/certificate/${issue.id}` };
@@ -239,7 +226,6 @@ async function sendCertificateNotification(learnerId: string, courseId: string, 
     ]);
 
     if (!learner || !course) {
-      console.log(`[Certificate] Could not send notification - learner or course not found`);
       return;
     }
 
@@ -253,7 +239,6 @@ async function sendCertificateNotification(learnerId: string, courseId: string, 
       },
     });
 
-    console.log(`[Certificate] Email notification sent to ${learner.email}`);
   } catch (error) {
     console.error(`[Certificate] Failed to send email notification:`, error);
     // Don't throw error - certificate should still be valid even if notification fails
@@ -276,7 +261,6 @@ async function logCertificateAuditEvent(
         metadata: metadata as any,
       },
     });
-    console.log(`[Certificate] Audit event logged: ${action} on ${certificateId}`);
   } catch (error) {
     console.error(`[Certificate] Failed to log audit event:`, error);
     // Don't throw error - certificate operation should still succeed
@@ -286,8 +270,6 @@ async function logCertificateAuditEvent(
 export async function tryCompleteCourseCertification(learnerId: string, courseId: string, retryCount = 0): Promise<CertificateIssue | null> {
   const prisma = getMainPrisma();
   const MAX_RETRIES = 3;
-  
-  console.log(`[Certificate] Attempting course certification for learner ${learnerId}, course ${courseId} (attempt ${retryCount + 1}/${MAX_RETRIES})`);
   
   try {
     const course = await prisma.trainingCourse.findUnique({
@@ -304,42 +286,30 @@ export async function tryCompleteCourseCertification(learnerId: string, courseId
       return null;
     }
     
-    console.log(`[Certificate] Course found: ${course.title}, certificateEnabled: ${course.certificateEnabled}`);
-    
     if (!course.certificateEnabled) {
-      console.log(`[Certificate] Certificate generation disabled for this course`);
       return null;
     }
 
     const completedIds = await getCompletedLessonIds(learnerId, courseId);
     const { percentComplete } = calculateCourseProgress(course, completedIds);
     
-    console.log(`[Certificate] Course progress: ${percentComplete}%`);
-    
     if (percentComplete < 100) {
-      console.log(`[Certificate] Course not completed (progress: ${percentComplete}%)`);
       return null;
     }
 
-    console.log(`[Certificate] Checking assessment requirements`);
     const assessmentsPassed = await hasPassedCourseAssessments(learnerId, courseId);
     
     if (!assessmentsPassed) {
-      console.log(`[Certificate] Assessments not passed`);
       return null;
     }
 
-    console.log(`[Certificate] All requirements met, issuing certificate`);
-    
     const certificate = await issueCertificateIfMissing(learnerId, courseId);
     await awardProgrammeBadge(learnerId, courseId);
-    console.log(`[Certificate] Certification completed successfully`);
     return certificate;
   } catch (error) {
     console.error(`[Certificate] Failed to complete certification (attempt ${retryCount + 1}):`, error);
     
     if (retryCount < MAX_RETRIES) {
-      console.log(`[Certificate] Retrying in 2 seconds...`);
       await new Promise(resolve => setTimeout(resolve, 2000));
       return tryCompleteCourseCertification(learnerId, courseId, retryCount + 1);
     }
