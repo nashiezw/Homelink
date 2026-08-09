@@ -66,7 +66,8 @@ export function CertificateDocument({
   const displayDesignation = designation?.trim() || "Certified HouseLink Agent";
   const displaySignatureName = signatureName === "HouseLink Zimbabwe Academy" ? "T. Ndudzo" : signatureName;
   const badgeText = (badgeName || "HouseLink Foundations Graduate").toUpperCase();
-  const logoHref = absoluteAssetUrl(logoUrl || "/brand/houselink-full-lockup.png", verifyOrigin);
+  const logoHref = absoluteAssetUrl(logoUrl || "/brand/houselink-nav-lockup.png", verifyOrigin);
+  const iconHref = absoluteAssetUrl("/brand/houselink-icon-transparent.png", verifyOrigin);
   const backgroundHref = backgroundUrl ? absoluteAssetUrl(backgroundUrl, verifyOrigin) : "";
   const firstSignatureHref = signatureUrl ? absoluteAssetUrl(signatureUrl, verifyOrigin) : "";
   const secondSignatureHref = secondSignatureUrl ? absoluteAssetUrl(secondSignatureUrl, verifyOrigin) : "";
@@ -197,7 +198,7 @@ export function CertificateDocument({
             <CertificateCorner x={45} y={951} corner="bl" />
             <CertificateCorner x={1355} y={951} corner="br" />
 
-            <image href={logoHref} x="445" y="26" width="510" height="130" preserveAspectRatio="xMidYMid meet" />
+            <image href={logoHref} x="530" y="32" width="340" height="78" preserveAspectRatio="xMidYMid meet" />
             <text x="700" y="137" textAnchor="middle" fontFamily="Arial, sans-serif" fontSize="18" fontWeight="700" letterSpacing="13" fill="#071936">
               ZIMBABWE ACADEMY
             </text>
@@ -211,7 +212,7 @@ export function CertificateDocument({
 
             <LaurelSvg side="left" />
             <LaurelSvg side="right" />
-            <EmbossedSeal />
+            <EmbossedSeal iconHref={iconHref} />
 
             <text x="700" y="247" textAnchor="middle" fontFamily="Georgia, 'Times New Roman', serif" fontSize="83" fontWeight="600" letterSpacing="18" fill="#071936">
               CERTIFICATE
@@ -246,33 +247,33 @@ export function CertificateDocument({
             <text x="700" y={713 + courseLines.length * 16} textAnchor="middle" fontFamily="Arial, sans-serif" fontSize="17" fontWeight="800" letterSpacing="8" fill="#071936">
               {badgeText}
             </text>
-            <text x="700" y={754 + courseLines.length * 10} textAnchor="middle" fontFamily="Georgia, 'Times New Roman', serif" fontSize="18" fontStyle="italic" fill="#2d2a25">
+            <text x="700" y={746 + courseLines.length * 8} textAnchor="middle" fontFamily="Georgia, 'Times New Roman', serif" fontSize="17" fontStyle="italic" fill="#2d2a25">
               In recognition of demonstrated knowledge, skills and commitment
             </text>
-            <text x="700" y={779 + courseLines.length * 10} textAnchor="middle" fontFamily="Georgia, 'Times New Roman', serif" fontSize="18" fontStyle="italic" fill="#2d2a25">
+            <text x="700" y={770 + courseLines.length * 8} textAnchor="middle" fontFamily="Georgia, 'Times New Roman', serif" fontSize="17" fontStyle="italic" fill="#2d2a25">
               to ethical practice and professional excellence in real estate.
             </text>
 
-            <image href={qrUrl} x="78" y="790" width="92" height="92" />
-            <text x="205" y="805" fontFamily="Arial, sans-serif" fontSize="11" fontWeight="800" letterSpacing="2" fill="#071936">
+            <image href={qrUrl} x="80" y="794" width="82" height="82" />
+            <text x="186" y="806" fontFamily="Arial, sans-serif" fontSize="10" fontWeight="800" letterSpacing="1.6" fill="#071936">
               VERIFY THIS CERTIFICATE
             </text>
-            <text x="205" y="827" fontFamily="Arial, sans-serif" fontSize="12" fill="#2d2a25">
+            <text x="186" y="826" fontFamily="Arial, sans-serif" fontSize="10" fill="#2d2a25">
               Scan the QR code or visit:
             </text>
-            <text x="205" y="849" fontFamily="Arial, sans-serif" fontSize="12" fontWeight="700" fill="#0b7a46">
+            <text x="186" y="846" fontFamily="Arial, sans-serif" fontSize="10" fontWeight="700" fill="#0b7a46">
               {verifyOrigin.replace(/^https?:\/\//, "")}/academy/verify
             </text>
 
-            <SignatureSvg x={360} y={822} signature={secondSignatureName} name={normaliseSignatureName(secondSignatureName)} title={secondSignatureTitle} href={secondSignatureHref} />
-            <CenterSeal href={sealHref} logoHref={logoHref} />
-            <SignatureSvg x={1040} y={822} signature={displaySignatureName} name={normaliseSignatureName(displaySignatureName)} title={signatureTitle} href={firstSignatureHref} />
+            <SignatureSvg x={340} y={828} signature={secondSignatureName} name={normaliseSignatureName(secondSignatureName)} title={secondSignatureTitle} href={secondSignatureHref} />
+            <CenterSeal href={sealHref} iconHref={iconHref} />
+            <SignatureSvg x={1060} y={828} signature={displaySignatureName} name={normaliseSignatureName(displaySignatureName)} title={signatureTitle} href={firstSignatureHref} />
 
-            <CertificateFactSvg x={800} y={872} label="Date of Issue" value={issuedLong} />
-            <line x1="940" y1="842" x2="940" y2="925" stroke="#d4ad5b" strokeWidth="2" />
-            <CertificateFactSvg x={1038} y={872} label="Certificate ID" value={certificateNumber} />
-            <line x1="1168" y1="842" x2="1168" y2="925" stroke="#d4ad5b" strokeWidth="2" />
-            <CertificateFactSvg x={1262} y={872} label="Valid Until" value={expiresShort} />
+            <CertificateFactSvg x={795} y={902} label="Date of Issue" value={issuedLong} />
+            <line x1="930" y1="880" x2="930" y2="932" stroke="#d4ad5b" strokeWidth="2" />
+            <CertificateFactSvg x={1038} y={902} label="Certificate ID" value={certificateNumber} />
+            <line x1="1170" y1="880" x2="1170" y2="932" stroke="#d4ad5b" strokeWidth="2" />
+            <CertificateFactSvg x={1268} y={902} label="Valid Until" value={expiresShort} />
 
             <text x="700" y="940" textAnchor="middle" fontFamily="Arial, sans-serif" fontSize="8.5" fill="#6b7280">
               {CERTIFICATE_SHORT_DISCLAIMER}
@@ -295,55 +296,63 @@ function CertificateCorner({ x, y, corner }: { x: number; y: number; corner: "tl
 }
 
 function LaurelSvg({ side }: { side: "left" | "right" }) {
-  const leaves = Array.from({ length: 9 });
-  const sign = side === "left" ? 1 : -1;
-  const baseX = side === "left" ? 260 : 1140;
+  const leaves = Array.from({ length: 12 });
+  const mirror = side === "right" ? "translate(1400 0) scale(-1 1)" : undefined;
 
   return (
-    <g opacity="0.9">
+    <g transform={mirror} opacity="0.9">
+      <path d="M303 257 C242 335 236 431 298 512" fill="none" stroke="#c49a43" strokeWidth="5" strokeLinecap="round" />
       {leaves.map((_, index) => {
-        const y = 270 + index * 24;
-        const x = baseX - sign * Math.sin(index / 3) * 18;
-        return <ellipse key={index} cx={x} cy={y} rx="10" ry="28" fill="#c49a43" transform={`rotate(${sign * (-38 + index * 5)} ${x} ${y})`} />;
+        const y = 276 + index * 18;
+        const branchX = 292 - Math.sin(index / 3) * 28;
+        const leftLeafX = branchX - 12;
+        const rightLeafX = branchX + 17;
+        const angle = -43 + index * 4.8;
+        return (
+          <g key={index}>
+            <ellipse cx={leftLeafX} cy={y} rx="9" ry="23" fill="#c49a43" transform={`rotate(${angle} ${leftLeafX} ${y})`} />
+            {index > 1 && index < 10 ? (
+              <ellipse cx={rightLeafX} cy={y + 3} rx="7" ry="18" fill="#d3aa50" transform={`rotate(${angle + 58} ${rightLeafX} ${y + 3})`} />
+            ) : null}
+          </g>
+        );
       })}
-      <path d={side === "left" ? "M285 248 C220 325, 214 430, 292 510" : "M1115 248 C1180 325, 1186 430, 1108 510"} fill="none" stroke="#c49a43" strokeWidth="4" />
+      <path d="M301 512 C289 499 279 487 270 473" fill="none" stroke="#c49a43" strokeWidth="3" strokeLinecap="round" />
     </g>
   );
 }
 
-function EmbossedSeal() {
+function EmbossedSeal({ iconHref }: { iconHref: string }) {
   return (
     <g opacity="0.72">
       <circle cx="185" cy="590" r="108" fill="#f7f3eb" stroke="#d8d4cb" strokeWidth="3" />
       <circle cx="185" cy="590" r="88" fill="none" stroke="#d8d4cb" strokeWidth="2" />
       <circle cx="185" cy="590" r="70" fill="none" stroke="#d8d4cb" strokeWidth="1.5" />
-      <text x="185" y="542" textAnchor="middle" fontFamily="Arial, sans-serif" fontSize="14" fontWeight="700" letterSpacing="3" fill="#c8c2b8">
+      <text x="185" y="535" textAnchor="middle" fontFamily="Arial, sans-serif" fontSize="13" fontWeight="700" letterSpacing="3" fill="#c8c2b8">
         HOUSELINK ZIMBABWE ACADEMY
       </text>
-      <text x="185" y="595" textAnchor="middle" fontFamily="Arial, sans-serif" fontSize="74" fontWeight="800" fill="#d6d0c7">
-        HL
-      </text>
-      <text x="185" y="654" textAnchor="middle" fontFamily="Arial, sans-serif" fontSize="13" fontWeight="700" letterSpacing="3" fill="#c8c2b8">
+      <image href={iconHref} x="139" y="548" width="92" height="76" preserveAspectRatio="xMidYMid meet" opacity="0.24" />
+      <text x="185" y="655" textAnchor="middle" fontFamily="Arial, sans-serif" fontSize="12" fontWeight="700" letterSpacing="3" fill="#c8c2b8">
         EXCELLENCE - INTEGRITY
       </text>
     </g>
   );
 }
 
-function CenterSeal({ href, logoHref }: { href: string; logoHref: string }) {
+function CenterSeal({ href, iconHref }: { href: string; iconHref: string }) {
   if (href) {
-    return <image href={href} x="610" y="758" width="180" height="180" preserveAspectRatio="xMidYMid meet" filter="url(#soft-shadow)" />;
+    return <image href={href} x="632" y="774" width="136" height="136" preserveAspectRatio="xMidYMid meet" filter="url(#soft-shadow)" />;
   }
 
   return (
     <g filter="url(#soft-shadow)">
-      <circle cx="700" cy="850" r="78" fill="#071936" stroke="#d4ad5b" strokeWidth="10" />
-      <circle cx="700" cy="850" r="61" fill="none" stroke="#f6d37d" strokeWidth="2" />
-      <text x="700" y="801" textAnchor="middle" fontFamily="Arial, sans-serif" fontSize="11" fontWeight="800" letterSpacing="2" fill="#f6d37d">
-        HOUSELINK ZIMBABWE ACADEMY
+      <circle cx="700" cy="848" r="62" fill="#071936" stroke="#d4ad5b" strokeWidth="8" />
+      <circle cx="700" cy="848" r="49" fill="none" stroke="#f6d37d" strokeWidth="1.5" />
+      <text x="700" y="812" textAnchor="middle" fontFamily="Arial, sans-serif" fontSize="8.5" fontWeight="800" letterSpacing="1.6" fill="#f6d37d">
+        HOUSELINK ACADEMY
       </text>
-      <image href={logoHref} x="660" y="815" width="80" height="70" preserveAspectRatio="xMidYMid meet" />
-      <text x="700" y="901" textAnchor="middle" fontFamily="Arial, sans-serif" fontSize="12" fontWeight="800" letterSpacing="4" fill="#f6d37d">
+      <image href={iconHref} x="671" y="821" width="58" height="54" preserveAspectRatio="xMidYMid meet" />
+      <text x="700" y="891" textAnchor="middle" fontFamily="Arial, sans-serif" fontSize="9" fontWeight="800" letterSpacing="3" fill="#f6d37d">
         EST. 2026
       </text>
     </g>
@@ -368,17 +377,17 @@ function SignatureSvg({
   return (
     <g>
       {href ? (
-        <image href={href} x={x - 100} y={y - 58} width="200" height="62" preserveAspectRatio="xMidYMid meet" />
+        <image href={href} x={x - 94} y={y - 54} width="188" height="54" preserveAspectRatio="xMidYMid meet" />
       ) : (
-        <text x={x} y={y} textAnchor="middle" fontFamily="'Brush Script MT', 'Segoe Script', 'Lucida Handwriting', cursive" fontSize="36" fontStyle="italic" fill="#071936">
+        <text x={x} y={y} textAnchor="middle" fontFamily="'Brush Script MT', 'Segoe Script', 'Lucida Handwriting', cursive" fontSize="32" fontStyle="italic" fill="#071936">
           {signature}
         </text>
       )}
-      <line x1={x - 125} y1={y + 14} x2={x + 125} y2={y + 14} stroke="#a87922" strokeWidth="2" />
-      <text x={x} y={y + 42} textAnchor="middle" fontFamily="Arial, sans-serif" fontSize="14" fontWeight="800" letterSpacing="4" fill="#071936">
+      <line x1={x - 120} y1={y + 12} x2={x + 120} y2={y + 12} stroke="#a87922" strokeWidth="2" />
+      <text x={x} y={y + 36} textAnchor="middle" fontFamily="Arial, sans-serif" fontSize="12" fontWeight="800" letterSpacing="3" fill="#071936">
         {name.toUpperCase()}
       </text>
-      <text x={x} y={y + 66} textAnchor="middle" fontFamily="Arial, sans-serif" fontSize="12" fontWeight="800" letterSpacing="2" fill="#0b7a46">
+      <text x={x} y={y + 57} textAnchor="middle" fontFamily="Arial, sans-serif" fontSize="9.5" fontWeight="800" letterSpacing="1.5" fill="#0b7a46">
         {title.toUpperCase()}
       </text>
     </g>
@@ -388,10 +397,10 @@ function SignatureSvg({
 function CertificateFactSvg({ x, y, label, value }: { x: number; y: number; label: string; value: string }) {
   return (
     <g>
-      <text x={x} y={y} textAnchor="middle" fontFamily="Arial, sans-serif" fontSize="11" fontWeight="800" letterSpacing="2" fill="#6b7280">
+      <text x={x} y={y} textAnchor="middle" fontFamily="Arial, sans-serif" fontSize="9.5" fontWeight="800" letterSpacing="1.8" fill="#6b7280">
         {label.toUpperCase()}
       </text>
-      <text x={x} y={y + 32} textAnchor="middle" fontFamily="Georgia, 'Times New Roman', serif" fontSize="18" fontWeight="700" fill="#071936">
+      <text x={x} y={y + 29} textAnchor="middle" fontFamily="Georgia, 'Times New Roman', serif" fontSize={value.length > 20 ? 13 : 16} fontWeight="700" fill="#071936">
         {value}
       </text>
     </g>
