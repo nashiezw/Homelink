@@ -24,7 +24,7 @@ export async function GET(request: Request, context: { params: Promise<{ issueId
       ? Promise.resolve(null)
       : prisma.certificateTemplate.findMany({ where: { active: true }, orderBy: { updatedAt: "desc" } }).then((templates) => selectCertificateTemplateForCourse(templates, issue.courseId!)),
   ]);
-  const template = currentCourseTemplate ?? issue.template;
+  const template = issue.template ?? currentCourseTemplate;
   const programme = issue.courseId ? getProgrammeCourse(issue.courseId) : null;
   const templateJson = (template?.templateJson ?? {}) as Record<string, unknown>;
   const colours = (templateJson.colours ?? {}) as Record<string, unknown>;

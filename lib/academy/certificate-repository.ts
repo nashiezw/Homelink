@@ -101,7 +101,7 @@ export async function getCertificate(certificateNumber: string): Promise<Certifi
       ? Promise.resolve(null)
       : prisma.certificateTemplate.findMany({ where: { active: true }, orderBy: { updatedAt: "desc" } }).then((templates) => selectCertificateTemplateForCourse(templates, certificate.courseId!)),
   ]);
-  const displayTemplate = currentCourseTemplate ?? certificate.template;
+  const displayTemplate = certificate.template ?? currentCourseTemplate;
 
   return {
     ...certificate,

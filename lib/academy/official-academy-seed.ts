@@ -327,27 +327,15 @@ async function seedLearningPath(prisma: ReturnType<typeof getMainPrisma>) {
 }
 
 async function seedCertificateTemplate(prisma: ReturnType<typeof getMainPrisma>) {
-  await prisma.certificateTemplate.upsert({
+  const existingTemplate = await prisma.certificateTemplate.findUnique({
     where: { id: CERTIFICATE_TEMPLATE_ID },
-    create: {
+  });
+
+  if (existingTemplate) return;
+
+  await prisma.certificateTemplate.create({
+    data: {
       id: CERTIFICATE_TEMPLATE_ID,
-      name: "HouseLink Agent Foundations Certificate",
-      logoUrl: "/brand/houselink-full-lockup.png",
-      templateJson: {
-        certificateNumberPrefix: "HLZA",
-        title: "Certificate of Completion - HouseLink Agent Foundations",
-        designation: "Certified HouseLink Agent",
-        qrVerification: true,
-        expiryDays: 365,
-        signatureName: "T. Ndudzo",
-        signatureTitle: "Director of Training & Certification",
-        secondSignatureName: "W. Tigere",
-        secondSignatureTitle: "Academy Director",
-        colours: { primary: "#008b68", accent: "#c6a15b" },
-      } as Prisma.InputJsonObject,
-      active: true,
-    },
-    update: {
       name: "HouseLink Agent Foundations Certificate",
       logoUrl: "/brand/houselink-full-lockup.png",
       templateJson: {

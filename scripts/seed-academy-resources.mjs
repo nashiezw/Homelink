@@ -386,22 +386,21 @@ async function seedProgrammeRecords() {
     create: { pathId: LEARNING_PATH_ID, courseId: COURSE_ID, sortOrder: 0, required: true },
     update: { sortOrder: 0, required: true },
   });
-  await prisma.certificateTemplate.upsert({
+  const existingTemplate = await prisma.certificateTemplate.findUnique({
     where: { id: CERTIFICATE_TEMPLATE_ID },
-    create: {
+  });
+
+  if (!existingTemplate) {
+    await prisma.certificateTemplate.create({
+      data: {
       id: CERTIFICATE_TEMPLATE_ID,
       name: "Certified HouseLink Agent Certificate",
       logoUrl: "/brand/houselink-full-lockup.png",
       templateJson: { certificateNumberPrefix: "HLA", title: "Certified HouseLink Agent", qrVerification: true, expiryDays: 365, colours: { primary: "#008b68", accent: "#c6a15b" } },
       active: true,
-    },
-    update: {
-      name: "Certified HouseLink Agent Certificate",
-      logoUrl: "/brand/houselink-full-lockup.png",
-      templateJson: { certificateNumberPrefix: "HLA", title: "Certified HouseLink Agent", qrVerification: true, expiryDays: 365, colours: { primary: "#008b68", accent: "#c6a15b" } },
-      active: true,
-    },
-  });
+      },
+    });
+  }
   await prisma.announcement.upsert({
     where: { id: "academy-announcement-official-manual-live" },
     create: {

@@ -1,6 +1,7 @@
 import { requireAdminAsync } from "@/lib/admin/require-admin";
 import { ok, problem } from "@/lib/api/response";
 import { getMainPrisma } from "@/lib/db/main-prisma";
+import type { Prisma } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 
@@ -46,11 +47,11 @@ export async function POST(request: Request) {
 
     const template = await prisma.certificateTemplate.create({
       data: {
-        name,
-        backgroundUrl,
-        logoUrl,
-        signatureUrl,
-        templateJson: templateJson || {},
+        name: String(name).trim(),
+        backgroundUrl: stringOrNull(backgroundUrl),
+        logoUrl: stringOrNull(logoUrl),
+        signatureUrl: stringOrNull(signatureUrl),
+        templateJson: toJsonObject(templateJson),
         active: active !== undefined ? active : true,
       },
     });
@@ -60,4 +61,14 @@ export async function POST(request: Request) {
     console.error("Failed to create certificate template:", error);
     return problem(500, "SERVER_ERROR", "Failed to create certificate template");
   }
+}
+
+function stringOrNull(value: unknown) {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function toJsonObject(value: unknown): Prisma.InputJsonObject {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Prisma.InputJsonObject)
+    : {};
 }

@@ -155,6 +155,10 @@ export function CertificateTemplateManagement() {
       showToast("Template name is required.", "error");
       return;
     }
+    if (uploadingField) {
+      showToast("Please wait for the certificate image upload to finish before saving.", "error");
+      return;
+    }
     setSaving(true);
     const endpoint = editingTemplate
       ? `/api/v1/admin/academy/certificates/templates/${editingTemplate.id}`
@@ -465,9 +469,9 @@ export function CertificateTemplateManagement() {
               </label>
               <div className="grid gap-2 sm:flex sm:justify-end">
                 <Button variant="secondary" onClick={closeDrawer}>Cancel</Button>
-                <Button onClick={saveTemplate} disabled={saving}>
+                <Button onClick={saveTemplate} disabled={saving || Boolean(uploadingField)}>
                   {saving && <Loader2 className="mr-2 size-4 animate-spin" />}
-                  {editingTemplate ? "Update Template" : "Create Template"}
+                  {uploadingField ? "Upload in progress" : editingTemplate ? "Update Template" : "Create Template"}
                 </Button>
               </div>
             </div>
@@ -494,14 +498,21 @@ function TemplateMeta({ template, courses }: { template: CertificateTemplate; co
   const courseNames = courseIds
     .map((id) => courses.find((course) => course.id === id)?.title ?? id)
     .join(", ");
+  const secondSignatureUrl = typeof templateJson.secondSignatureUrl === "string" ? templateJson.secondSignatureUrl : "";
+  const sealUrl = typeof templateJson.sealUrl === "string" ? templateJson.sealUrl : "";
+  const leftLaurelUrl = typeof templateJson.leftLaurelUrl === "string" ? templateJson.leftLaurelUrl : "";
+  const rightLaurelUrl = typeof templateJson.rightLaurelUrl === "string" ? templateJson.rightLaurelUrl : "";
+  const savedAssetUrls = [template.backgroundUrl, template.logoUrl, template.signatureUrl, secondSignatureUrl, sealUrl, leftLaurelUrl, rightLaurelUrl].filter(Boolean) as string[];
+  const hasLocalUploadAsset = savedAssetUrls.some((url) => url.startsWith("/uploads/"));
   return (
     <>
       <p><span className="text-slate-500">Prefix:</span> {String(templateJson.certificateNumberPrefix ?? "N/A")}</p>
       <p><span className="text-slate-500">Expiry:</span> {String(templateJson.expiryDays ?? 365)} days</p>
       <p><span className="text-slate-500">Courses:</span> {courseIds.length ? courseNames : "Global fallback"}</p>
-      <p><span className="text-slate-500">Signatures:</span> {template.signatureUrl || templateJson.secondSignatureUrl ? "Configured" : "Default typed names"}</p>
-      <p><span className="text-slate-500">Seal:</span> {templateJson.sealUrl ? "Custom image" : "Generated HouseLink seal"}</p>
-      <p><span className="text-slate-500">Laurels:</span> {templateJson.leftLaurelUrl || templateJson.rightLaurelUrl ? "Custom images" : "Generated gold laurels"}</p>
+      <p><span className="text-slate-500">Signatures:</span> {template.signatureUrl || secondSignatureUrl ? "Uploaded image saved" : "Typed names"}</p>
+      <p><span className="text-slate-500">Seal:</span> {sealUrl ? "Uploaded image saved" : "Generated HouseLink seal"}</p>
+      <p><span className="text-slate-500">Laurels:</span> {leftLaurelUrl || rightLaurelUrl ? "Uploaded images saved" : "Generated gold laurels"}</p>
+      {hasLocalUploadAsset ? <p className="text-amber-300"><span className="text-slate-500">Storage:</span> Local upload URL. Use Cloudinary/durable storage before production.</p> : null}
       {templateJson.customHtml ? <p><span className="text-slate-500">Design:</span> Custom HTML</p> : null}
     </>
   );

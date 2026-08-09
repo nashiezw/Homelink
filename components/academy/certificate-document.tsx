@@ -194,8 +194,8 @@ export function CertificateDocument({
               </filter>
               <path id="embossed-seal-top-arc" d="M105 590 A80 80 0 0 0 265 590" />
               <path id="embossed-seal-bottom-arc" d="M105 590 A80 80 0 0 1 265 590" />
-              <path id="center-seal-top-arc" d="M661 848 A39 39 0 0 0 739 848" />
-              <path id="center-seal-bottom-arc" d="M661 848 A39 39 0 0 1 739 848" />
+              <path id="center-seal-top-arc" d="M664 816 A36 36 0 0 0 736 816" />
+              <path id="center-seal-bottom-arc" d="M664 816 A36 36 0 0 1 736 816" />
             </defs>
 
             <rect width={SVG_WIDTH} height={SVG_HEIGHT} fill="#061936" />
@@ -281,10 +281,10 @@ export function CertificateDocument({
             <CenterSeal href={sealHref} />
             <SignatureSvg x={1050} y={812} signature={displaySignatureName} name={normaliseSignatureName(displaySignatureName)} title={signatureTitle} href={firstSignatureHref} />
 
-            <CertificateFactSvg x={795} y={902} label="Date of Issue" value={issuedLong} />
-            <line x1="930" y1="880" x2="930" y2="932" stroke="#d4ad5b" strokeWidth="2" />
-            <CertificateFactSvg x={1038} y={902} label="Certificate ID" value={certificateNumber} />
-            <line x1="1170" y1="880" x2="1170" y2="932" stroke="#d4ad5b" strokeWidth="2" />
+            <CertificateFactSvg x={700} y={902} label="Date of Issue" value={issuedLong} />
+            <line x1="860" y1="884" x2="860" y2="932" stroke="#d4ad5b" strokeWidth="2" />
+            <CertificateFactSvg x={1010} y={902} label="Certificate ID" value={certificateNumber} />
+            <line x1="1160" y1="884" x2="1160" y2="932" stroke="#d4ad5b" strokeWidth="2" />
             <CertificateFactSvg x={1268} y={902} label="Valid Until" value={expiresShort} />
 
             <text x="700" y="947" textAnchor="middle" fontFamily="Arial, sans-serif" fontSize="6.8" fill="#6b7280">
@@ -376,19 +376,19 @@ function EmbossedSeal({ iconHref }: { iconHref: string }) {
 
 function CenterSeal({ href }: { href: string }) {
   if (href) {
-    return <image href={href} x="632" y="774" width="136" height="136" preserveAspectRatio="xMidYMid meet" filter="url(#soft-shadow)" />;
+    return <image href={href} x="644" y="760" width="112" height="112" preserveAspectRatio="xMidYMid meet" filter="url(#soft-shadow)" />;
   }
 
   return (
     <g filter="url(#soft-shadow)">
-      <circle cx="700" cy="848" r="62" fill="#071936" stroke="#d4ad5b" strokeWidth="8" />
-      <circle cx="700" cy="848" r="49" fill="none" stroke="#f6d37d" strokeWidth="1.5" />
+      <circle cx="700" cy="816" r="56" fill="#071936" stroke="#d4ad5b" strokeWidth="7" />
+      <circle cx="700" cy="816" r="44" fill="none" stroke="#f6d37d" strokeWidth="1.4" />
       <text fontFamily="Arial, sans-serif" fontSize="7.4" fontWeight="800" letterSpacing="1.1" fill="#f6d37d">
         <textPath href="#center-seal-top-arc" startOffset="50%" textAnchor="middle">
           HOUSELINK ACADEMY
         </textPath>
       </text>
-      <HouseLinkSealIcon x={700} y={850} />
+      <HouseLinkSealIcon x={700} y={818} />
       <text fontFamily="Arial, sans-serif" fontSize="7.5" fontWeight="800" letterSpacing="2" fill="#f6d37d">
         <textPath href="#center-seal-bottom-arc" startOffset="50%" textAnchor="middle">
           EST. 2026
