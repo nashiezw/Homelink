@@ -414,7 +414,7 @@ export function CertificateDocument({
 
             <rect width={SVG_WIDTH} height={SVG_HEIGHT} fill="#061936" />
             <rect x="30" y="24" width="1340" height="942" rx="0" fill="url(#paper-glow)" />
-            {backgroundHref ? <image href={backgroundHref} x="30" y="24" width="1340" height="942" preserveAspectRatio="xMidYMid slice" opacity="0.1" /> : null}
+            {backgroundHref ? <image href={backgroundHref} x="30" y="24" width="1340" height="942" preserveAspectRatio="xMidYMid slice" opacity="0.1" crossOrigin="anonymous" /> : null}
             <rect x="30" y="24" width="1340" height="942" fill="url(#houselink-paper-dots)" />
 
             <rect x="45" y="39" width="1310" height="912" fill="none" stroke="#d4ad5b" strokeWidth="2" />
@@ -428,7 +428,7 @@ export function CertificateDocument({
               <rect x="485" y="28" width="430" height="82" rx="14" fill="#fffdf7" opacity="0.98" />
               <rect x="495" y="38" width="410" height="62" rx="10" fill="none" stroke="#e5d8b7" strokeWidth="1.2" opacity="0.9" />
             </g>
-            <image href={logoHref} x="540" y="47" width="320" height="42" preserveAspectRatio="xMidYMid meet" />
+            <image href={logoHref} x="540" y="47" width="320" height="42" preserveAspectRatio="xMidYMid meet" crossOrigin="anonymous" />
             <text x="700" y="143" textAnchor="middle" fontFamily="Arial, sans-serif" fontSize="17" fontWeight="800" letterSpacing="9" fill="#071936">
               ZIMBABWE ACADEMY
             </text>
@@ -496,7 +496,7 @@ export function CertificateDocument({
               </text>
             ) : null}
 
-            <image href={qrUrl} x="80" y="792" width="74" height="74" />
+            <image href={qrUrl} x="80" y="792" width="74" height="74" crossOrigin="anonymous" />
             <text x="117" y="883" textAnchor="middle" fontFamily="Arial, sans-serif" fontSize="8.5" fontWeight="800" letterSpacing="1.2" fill="#071936">
               VERIFY THIS CERTIFICATE
             </text>
@@ -540,7 +540,7 @@ function CertificateCorner({ x, y, corner }: { x: number; y: number; corner: "tl
 function LaurelSvg({ side, href }: { side: "left" | "right"; href?: string }) {
   if (href) {
     const x = side === "left" ? 235 : 1065;
-    return <image href={href} x={x} y="250" width="110" height="270" preserveAspectRatio="xMidYMid meet" />;
+    return <image href={href} x={x} y="250" width="110" height="270" preserveAspectRatio="xMidYMid meet" crossOrigin="anonymous" />;
   }
 
   const leaves = [
@@ -594,7 +594,7 @@ function EmbossedSeal({ iconHref }: { iconHref: string }) {
           HOUSELINK ZIMBABWE ACADEMY
         </textPath>
       </text>
-      <image href={iconHref} x="139" y="548" width="92" height="76" preserveAspectRatio="xMidYMid meet" opacity="0.24" />
+      <image href={iconHref} x="139" y="548" width="92" height="76" preserveAspectRatio="xMidYMid meet" opacity="0.24" crossOrigin="anonymous" />
       <text fontFamily="Arial, sans-serif" fontSize="10.5" fontWeight="800" letterSpacing="2.8" fill="#c8c2b8">
         <textPath href="#embossed-seal-bottom-arc" startOffset="50%" textAnchor="middle">
           EXCELLENCE - INTEGRITY
@@ -606,7 +606,7 @@ function EmbossedSeal({ iconHref }: { iconHref: string }) {
 
 function CenterSeal({ href }: { href: string }) {
   if (href) {
-    return <image href={href} x="654" y="786" width="92" height="92" preserveAspectRatio="xMidYMid meet" filter="url(#soft-shadow)" />;
+    return <image href={href} x="654" y="786" width="92" height="92" preserveAspectRatio="xMidYMid meet" filter="url(#soft-shadow)" crossOrigin="anonymous" />;
   }
 
   return (
@@ -662,7 +662,7 @@ function SignatureSvg({
   return (
     <g>
       {href ? (
-        <image href={href} x={x - 94} y={y - 60} width="188" height="48" preserveAspectRatio="xMidYMid meet" />
+        <image href={href} x={x - 94} y={y - 60} width="188" height="48" preserveAspectRatio="xMidYMid meet" crossOrigin="anonymous" />
       ) : (
         <text x={x} y={y - 8} textAnchor="middle" fontFamily="'Brush Script MT', 'Segoe Script', 'Lucida Handwriting', cursive" fontSize="31" fontStyle="italic" fill="#071936">
           {signature}
