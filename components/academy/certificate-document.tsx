@@ -343,11 +343,11 @@ export function CertificateDocument({
             <text x="700" y="247" textAnchor="middle" fontFamily="Georgia, 'Times New Roman', serif" fontSize="83" fontWeight="600" letterSpacing="18" fill="#071936">
               CERTIFICATE
             </text>
-            <line x1="550" y1="293" x2="620" y2="293" stroke="#d4ad5b" strokeWidth="2" />
+            <line x1="560" y1="293" x2="600" y2="293" stroke="#d4ad5b" strokeWidth="2" />
             <text x="700" y="307" textAnchor="middle" fontFamily="Georgia, 'Times New Roman', serif" fontSize="38" letterSpacing="11" fill="#a87922">
               OF ACHIEVEMENT
             </text>
-            <line x1="780" y1="293" x2="850" y2="293" stroke="#d4ad5b" strokeWidth="2" />
+            <line x1="800" y1="293" x2="840" y2="293" stroke="#d4ad5b" strokeWidth="2" />
             <text x="700" y="362" textAnchor="middle" fontFamily="Arial, sans-serif" fontSize="15" fontWeight="800" letterSpacing="8" fill="#071936">
               THIS CERTIFIES THAT
             </text>
