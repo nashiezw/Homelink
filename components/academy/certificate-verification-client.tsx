@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Award, CheckCircle2, ClipboardCheck, Loader2, Search, ShieldCheck, XCircle } from "lucide-react";
+import { Award, CalendarDays, CheckCircle2, ClipboardCheck, FileCheck2, GraduationCap, IdCard, Loader2, Search, ShieldCheck, XCircle } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api/client";
 import { TrainingDisclaimer } from "@/components/legal/training-disclaimer";
@@ -10,6 +11,7 @@ import { TrainingDisclaimer } from "@/components/legal/training-disclaimer";
 type VerificationResult = {
   valid: boolean;
   certificateNumber: string;
+  learnerName?: string;
   course: string | null;
   certificateTitle?: string;
   badgeName?: string | null;
@@ -95,35 +97,71 @@ export function CertificateVerificationClient() {
         )}
 
         {result && (
-          <div className="mt-6 rounded-lg border border-emerald-200 bg-emerald-50 p-5 dark:border-emerald-900 dark:bg-emerald-950/30">
-            <p className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-emerald-800 dark:text-emerald-200">
-              <ShieldCheck className="size-4" /> Valid HouseLink Academy Credential
-            </p>
-            <h3 className="mt-3 text-2xl font-bold text-ink dark:text-white">{result.certificateTitle ?? result.course ?? "HouseLink Academy Certificate"}</h3>
-            {result.badgeName && <p className="mt-1 text-sm font-semibold text-emerald-800 dark:text-emerald-200">{result.badgeName}</p>}
-            <dl className="mt-5 grid gap-3 sm:grid-cols-2">
-              <VerificationFact label="Certificate No." value={result.certificateNumber} />
-              <VerificationFact label="Status" value={result.status} />
-              <VerificationFact label="Issued" value={new Date(result.issuedAt).toLocaleDateString("en-GB")} />
-              <VerificationFact label="Expires" value={result.expiresAt ? new Date(result.expiresAt).toLocaleDateString("en-GB") : "No expiry"} />
-            </dl>
+          <div className="mt-6 overflow-hidden rounded-xl border border-emerald-200 bg-white shadow-soft dark:border-emerald-900/70 dark:bg-slate-950">
+            <div className="relative overflow-hidden bg-[#061936] px-5 py-6 text-white sm:px-6">
+              <div className="absolute inset-y-0 right-0 w-1/2 bg-[radial-gradient(circle_at_70%_20%,rgba(16,185,129,0.35),transparent_35%),radial-gradient(circle_at_85%_90%,rgba(212,175,55,0.22),transparent_35%)]" />
+              <div className="relative flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+                <div className="min-w-0">
+                  <p className="inline-flex items-center gap-2 rounded-full bg-emerald-400/15 px-3 py-1 text-xs font-bold uppercase tracking-wide text-emerald-100 ring-1 ring-emerald-300/30">
+                    <ShieldCheck className="size-4" /> Verified credential
+                  </p>
+                  <h3 className="mt-4 break-words text-2xl font-bold tracking-tight sm:text-3xl">{result.learnerName ?? "HouseLink Learner"}</h3>
+                  <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-200">
+                    This certificate is active in HouseLink Academy records and matches the course, issue date, and assessment evidence below.
+                  </p>
+                </div>
+                <div className="shrink-0 rounded-lg border border-white/15 bg-white/10 px-4 py-3 text-left backdrop-blur sm:text-right">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-300">Certificate No.</p>
+                  <p className="mt-1 max-w-52 break-words font-mono text-sm font-bold text-white">{result.certificateNumber}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-5 sm:p-6">
+              <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_16rem] lg:items-start">
+                <div className="min-w-0">
+                  <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">
+                    <GraduationCap className="size-4" /> HouseLink Zimbabwe Academy
+                  </p>
+                  <h3 className="mt-2 break-words text-2xl font-bold text-ink dark:text-white">{result.certificateTitle ?? result.course ?? "HouseLink Academy Certificate"}</h3>
+                  {result.badgeName && (
+                    <p className="mt-3 inline-flex max-w-full items-center gap-2 rounded-full bg-emerald-50 px-3 py-1.5 text-sm font-bold text-emerald-800 ring-1 ring-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-100 dark:ring-emerald-900">
+                      <Award className="size-4 shrink-0" />
+                      <span className="min-w-0 truncate">{result.badgeName}</span>
+                    </p>
+                  )}
+                </div>
+                <dl className="grid gap-2">
+                  <VerificationFact icon={CheckCircle2} label="Status" value={sentenceCase(result.status)} tone="success" />
+                  <VerificationFact icon={CalendarDays} label="Issued" value={new Date(result.issuedAt).toLocaleDateString("en-GB")} />
+                  <VerificationFact icon={CalendarDays} label="Expires" value={result.expiresAt ? new Date(result.expiresAt).toLocaleDateString("en-GB") : "No expiry"} />
+                </dl>
+              </div>
+
             {result.assessmentProof && (
-              <div className="mt-5 rounded-lg border border-emerald-200 bg-white p-4 dark:border-emerald-900/50 dark:bg-slate-950">
-                <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Verified completion evidence</p>
-                <div className="mt-3 grid gap-2 sm:grid-cols-3">
-                  <VerificationFact label="Quizzes" value={String(result.assessmentProof.quizzes)} />
-                  <VerificationFact label="Assignments" value={String(result.assessmentProof.assignments)} />
-                  <VerificationFact label="Capstone" value={result.assessmentProof.requiresFinalExam ? "Final exam" : "Module gates"} />
-                  <VerificationFact label="Passed attempts" value={String(result.assessmentProof.passedQuizAttempts ?? result.assessmentProof.quizzes)} />
-                  <VerificationFact label="Reviewed work" value={String(result.assessmentProof.reviewedAssignments ?? result.assessmentProof.assignments)} />
+              <div className="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900/60">
+                <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Verified completion evidence</p>
+                    <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Assessment requirements recorded for this credential.</p>
+                  </div>
+                  <FileCheck2 className="hidden size-8 text-emerald-600 sm:block" />
+                </div>
+                <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                  <VerificationFact icon={ClipboardCheck} label="Quizzes required" value={String(result.assessmentProof.quizzes)} />
+                  <VerificationFact icon={FileCheck2} label="Assignments required" value={String(result.assessmentProof.assignments)} />
+                  <VerificationFact icon={IdCard} label="Capstone" value={result.assessmentProof.requiresFinalExam ? "Final exam" : "Module gates"} />
+                  <VerificationFact icon={CheckCircle2} label="Passed attempts" value={String(result.assessmentProof.passedQuizAttempts ?? result.assessmentProof.quizzes)} tone="success" />
+                  <VerificationFact icon={CheckCircle2} label="Reviewed work" value={String(result.assessmentProof.reviewedAssignments ?? result.assessmentProof.assignments)} tone="success" />
                   <VerificationFact
+                    icon={Award}
                     label="Best final score"
                     value={
                       result.assessmentProof.requiresFinalExam
                         ? result.assessmentProof.finalExamBestScore === null || result.assessmentProof.finalExamBestScore === undefined
                           ? "Pending"
                           : `${result.assessmentProof.finalExamBestScore}%`
-                        : "Not required"
+                      : "Not required"
                     }
                   />
                 </div>
@@ -140,7 +178,7 @@ export function CertificateVerificationClient() {
               </div>
             )}
             {!!result.skillsAssessed?.length && (
-              <div className="mt-5">
+              <div className="mt-6 rounded-xl border border-slate-200 p-4 dark:border-slate-800">
                 <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Skills assessed</p>
                 <div className="mt-3 grid gap-2 sm:grid-cols-2">
                   {result.skillsAssessed.slice(0, 8).map((skill) => (
@@ -180,6 +218,7 @@ export function CertificateVerificationClient() {
               </div>
             )}
           </div>
+          </div>
         )}
         <TrainingDisclaimer compact className="mt-6" />
       </section>
@@ -197,13 +236,20 @@ export function CertificateVerificationClient() {
   );
 }
 
-function VerificationFact({ label, value }: { label: string; value: string }) {
+function VerificationFact({ icon: Icon, label, value, tone = "neutral" }: { icon?: LucideIcon; label: string; value: string; tone?: "neutral" | "success" }) {
   return (
-    <div className="rounded-lg bg-white p-3 dark:bg-slate-950">
-      <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</dt>
-      <dd className="mt-1 font-semibold text-slate-950 dark:text-white">{value}</dd>
+    <div className="rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-950">
+      <dt className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+        {Icon && <Icon className={tone === "success" ? "size-4 text-emerald-600" : "size-4 text-slate-400"} />}
+        {label}
+      </dt>
+      <dd className="mt-1 break-words font-semibold text-slate-950 dark:text-white">{value}</dd>
     </div>
   );
+}
+
+function sentenceCase(value: string) {
+  return value.toLowerCase().replace(/^\w/, (letter) => letter.toUpperCase());
 }
 
 function VerificationChip({ value }: { value: string }) {

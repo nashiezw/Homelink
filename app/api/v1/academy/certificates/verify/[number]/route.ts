@@ -23,6 +23,10 @@ export async function GET(_request: Request, context: { params: Promise<{ number
     if (certificate.status !== "ACTIVE") return problem(410, "REVOKED", "This certificate is no longer active.");
     const programme = certificate.courseId ? getProgrammeCourse(certificate.courseId) : null;
     const prisma = getMainPrisma();
+    const learner = await prisma.user.findUnique({
+      where: { id: certificate.agentId },
+      select: { name: true },
+    });
     const [quizAttempts, examAttempts, assignmentSubmissions] = certificate.courseId
       ? await Promise.all([
           prisma.quizAttempt.findMany({
@@ -49,6 +53,7 @@ export async function GET(_request: Request, context: { params: Promise<{ number
     return ok({
       valid: true,
       certificateNumber: certificate.certificateNumber,
+      learnerName: learner?.name ?? "HouseLink Learner",
       course: certificate.course?.title ?? null,
       certificateTitle: trainingCertificateTitle(programme?.certificateTitle ?? certificate.course?.title ?? "HouseLink Academy Training Certificate"),
       badgeName: programme?.badgeName ?? null,
