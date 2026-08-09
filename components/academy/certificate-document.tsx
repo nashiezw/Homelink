@@ -1,9 +1,10 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useEffect, useState } from "react";
 import { Download, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CERTIFICATE_SHORT_DISCLAIMER } from "@/lib/legal/disclaimers";
+import html2canvas from "html2canvas";
 
 export type CertificateDocumentProps = {
   learnerName: string;
@@ -81,6 +82,7 @@ export function CertificateDocument({
   badgeName,
 }: CertificateDocumentProps) {
   const svgRef = useRef<SVGSVGElement | null>(null);
+  const certificateRef = useRef<HTMLDivElement | null>(null);
   const issuedLong = formatDate(issuedAt);
   const expiresShort = expiresAt ? formatDate(expiresAt) : "No expiry";
   const verifyOrigin = typeof window !== "undefined" ? window.location.origin : "https://www.houselink.co.zw";
@@ -104,6 +106,44 @@ export function CertificateDocument({
   const leftLaurelHref = leftLaurelUrl ? absoluteAssetUrl(leftLaurelUrl, verifyOrigin) : "";
   const rightLaurelHref = rightLaurelUrl ? absoluteAssetUrl(rightLaurelUrl, verifyOrigin) : "";
   const learnerFontStack = certificateFontStack(learnerNameFont);
+  
+  const [isReady, setIsReady] = useState(false);
+  
+  // Preload all assets when component mounts
+  useEffect(() => {
+    const prepareCertificate = async () => {
+      // Preload images
+      const imageUrls = [logoHref, iconHref, backgroundHref, firstSignatureHref, secondSignatureHref, sealHref, leftLaurelHref, rightLaurelHref, qrUrl].filter(Boolean);
+      const imagePromises = imageUrls.map(url => {
+        return new Promise<void>((resolve) => {
+          const img = new Image();
+          img.crossOrigin = "anonymous";
+          img.onload = () => resolve();
+          img.onerror = () => resolve();
+          img.src = url;
+        });
+      });
+      
+      // Preload fonts
+      const fontPromises = [
+        document.fonts.load('16px "Great Vibes"'),
+        document.fonts.load('16px "Edwardian Script ITC"'),
+        document.fonts.load('16px "Allura"'),
+        document.fonts.load('16px "Palatino Linotype"'),
+        document.fonts.load('16px "Book Antiqua"'),
+        document.fonts.load('16px "Georgia"'),
+        document.fonts.load('16px "Arial"'),
+        document.fonts.load('16px "Times New Roman"'),
+      ];
+      
+      await Promise.all([...imagePromises, ...fontPromises]);
+      await document.fonts.ready;
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Extra wait for rendering
+      setIsReady(true);
+    };
+    
+    prepareCertificate();
+  }, [logoHref, iconHref, backgroundHref, firstSignatureHref, secondSignatureHref, sealHref, leftLaurelHref, rightLaurelHref, qrUrl]);
   const learnerFontSize = fitTextToWidth(
     learnerName,
     720,
@@ -172,21 +212,61 @@ export function CertificateDocument({
       })
     : "";
 
-  function getSerializedCertificateSvg() {
+  async function getSerializedCertificateSvg() {
     if (!svgRef.current) {
       throw new Error("Image/PDF download is only available for the standard certificate design.");
     }
 
     const clone = svgRef.current.cloneNode(true) as SVGSVGElement;
     clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+    clone.setAttribute("xmlns:xlink", "http://www.w3.org/1999/xlink");
     clone.setAttribute("width", String(SVG_WIDTH));
     clone.setAttribute("height", String(SVG_HEIGHT));
+    
+    // Embed fonts as base64 data URIs in SVG
+    const fontFaceData = await getFontFaceData();
+    const styleElement = document.createElement("style");
+    styleElement.textContent = fontFaceData;
+    clone.insertBefore(styleElement, clone.firstChild);
+    
     return new XMLSerializer().serializeToString(clone);
   }
+  
+  async function getFontFaceData(): Promise<string> {
+    // This is a simplified approach - in production you'd want to embed actual font files
+    // For now, we'll use system font fallbacks that are always available
+    return `
+      @font-face {
+        font-family: 'Great Vibes';
+        src: local('Great Vibes'), local('Brush Script MT'), local('cursive');
+      }
+      @font-face {
+        font-family: 'Edwardian Script ITC';
+        src: local('Edwardian Script ITC'), local('Brush Script MT'), local('cursive');
+      }
+      @font-face {
+        font-family: 'Allura';
+        src: local('Allura'), local('Brush Script MT'), local('cursive');
+      }
+      @font-face {
+        font-family: 'Palatino Linotype';
+        src: local('Palatino Linotype'), local('Palatino'), local('Georgia'), serif;
+      }
+      @font-face {
+        font-family: 'Book Antiqua';
+        src: local('Book Antiqua'), local('Palatino'), local('Georgia'), serif;
+      }
+      @font-face {
+        font-family: 'Georgia';
+        src: local('Georgia'), local('Times New Roman'), serif;
+      }
+      text { font-family: inherit; }
+    `;
+  }
 
-  function downloadSvgCertificate() {
+  async function downloadSvgCertificate() {
     try {
-      const source = getSerializedCertificateSvg();
+      const source = await getSerializedCertificateSvg();
       const blob = new Blob([source], { type: "image/svg+xml;charset=utf-8" });
       downloadBlob(blob, `${certificateNumber || "houselink-certificate"}.svg`);
     } catch (error) {
@@ -195,17 +275,51 @@ export function CertificateDocument({
   }
 
   async function downloadImageCertificate() {
+    if (!isReady) {
+      alert("Please wait for certificate to fully load before downloading.");
+      return;
+    }
+    
     try {
-      const pngDataUrl = await renderCertificatePng();
-      downloadBlob(dataUrlToBlob(pngDataUrl), `${certificateNumber || "houselink-certificate"}.png`);
+      if (!certificateRef.current) {
+        throw new Error("Certificate element not found.");
+      }
+      
+      const canvas = await html2canvas(certificateRef.current, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: "#ffffff",
+        logging: false,
+      });
+      
+      const dataUrl = canvas.toDataURL("image/png", 1.0);
+      downloadBlob(dataUrlToBlob(dataUrl), `${certificateNumber || "houselink-certificate"}.png`);
     } catch (error) {
       alert(error instanceof Error ? error.message : "Certificate image could not be created.");
     }
   }
 
   async function downloadPdfCertificate() {
+    if (!isReady) {
+      alert("Please wait for certificate to fully load before downloading.");
+      return;
+    }
+    
     try {
-      const pngDataUrl = await renderCertificatePng();
+      if (!certificateRef.current) {
+        throw new Error("Certificate element not found.");
+      }
+      
+      const canvas = await html2canvas(certificateRef.current, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: "#ffffff",
+        logging: false,
+      });
+      
+      const pngDataUrl = canvas.toDataURL("image/png", 1.0);
       const { PDFDocument } = await import("pdf-lib");
       const pdfDoc = await PDFDocument.create();
       const page = pdfDoc.addPage([SVG_WIDTH, SVG_HEIGHT]);
@@ -217,26 +331,6 @@ export function CertificateDocument({
       downloadBlob(new Blob([pdfBuffer], { type: "application/pdf" }), `${certificateNumber || "houselink-certificate"}.pdf`);
     } catch (error) {
       alert(error instanceof Error ? error.message : "Certificate PDF could not be created.");
-    }
-  }
-
-  async function renderCertificatePng() {
-    const source = getSerializedCertificateSvg();
-    const blob = new Blob([source], { type: "image/svg+xml;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    try {
-      const image = await loadImage(url);
-      const canvas = document.createElement("canvas");
-      canvas.width = SVG_WIDTH;
-      canvas.height = SVG_HEIGHT;
-      const context = canvas.getContext("2d");
-      if (!context) throw new Error("Your browser could not prepare the certificate canvas.");
-      context.fillStyle = "#ffffff";
-      context.fillRect(0, 0, SVG_WIDTH, SVG_HEIGHT);
-      context.drawImage(image, 0, 0, SVG_WIDTH, SVG_HEIGHT);
-      return canvas.toDataURL("image/png", 1);
-    } finally {
-      URL.revokeObjectURL(url);
     }
   }
 
@@ -281,7 +375,7 @@ export function CertificateDocument({
       </div>
 
       {renderedCustomHtml ? (
-        <article className="certificate-sheet relative mx-auto aspect-[1.414/1] w-full overflow-hidden rounded-lg bg-white shadow-hero print:rounded-none print:shadow-none">
+        <article ref={certificateRef} className="certificate-sheet relative mx-auto aspect-[1.414/1] w-full overflow-hidden rounded-lg bg-white shadow-hero print:rounded-none print:shadow-none">
           {customCss.trim() ? <style dangerouslySetInnerHTML={{ __html: customCss }} /> : null}
           <div className="h-full w-full" dangerouslySetInnerHTML={{ __html: renderedCustomHtml }} />
           <p className="absolute inset-x-[4%] bottom-[1.4%] text-center text-[clamp(5px,0.72vw,8px)] leading-tight text-slate-500">
@@ -289,7 +383,7 @@ export function CertificateDocument({
           </p>
         </article>
       ) : (
-        <article className="certificate-sheet mx-auto aspect-[1.414/1] w-full overflow-hidden rounded-lg bg-[#061936] shadow-hero print:rounded-none print:shadow-none">
+        <article ref={certificateRef} className="certificate-sheet mx-auto aspect-[1.414/1] w-full overflow-hidden rounded-lg bg-[#061936] shadow-hero print:rounded-none print:shadow-none">
           <svg
             ref={svgRef}
             className="certificate-svg block h-full w-full"
@@ -652,15 +746,6 @@ function clampNumber(value: number | null | undefined, fallback: number, min: nu
   const number = Number(value);
   if (!Number.isFinite(number)) return fallback;
   return Math.min(max, Math.max(min, Math.round(number)));
-}
-
-function loadImage(src: string) {
-  return new Promise<HTMLImageElement>((resolve, reject) => {
-    const image = new Image();
-    image.onload = () => resolve(image);
-    image.onerror = () => reject(new Error("Certificate image could not be rendered. Check that uploaded assets are accessible."));
-    image.src = src;
-  });
 }
 
 function downloadBlob(blob: Blob, filename: string) {
