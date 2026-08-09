@@ -5,6 +5,7 @@ import { Download, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CERTIFICATE_SHORT_DISCLAIMER } from "@/lib/legal/disclaimers";
 import html2canvas from "html2canvas";
+import QRCode from 'qrcode';
 
 export type CertificateDocumentProps = {
   learnerName: string;
@@ -88,7 +89,7 @@ export function CertificateDocument({
   const verifyOrigin = typeof window !== "undefined" ? window.location.origin : "https://www.houselink.co.zw";
   const verifyPath = verifyUrl.replace(/^https?:\/\/[^/]+/, "");
   const verifyAbsoluteUrl = `${verifyOrigin}${verifyPath}`;
-  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&margin=6&data=${encodeURIComponent(verifyAbsoluteUrl)}`;
+  const [qrUrl, setQrUrl] = useState<string>("");
   const displayDesignation = templateText(designation, "Certified HouseLink Agent");
   const displayCompletionIntro = templateText(completionIntro, "has successfully completed the requirements of the");
   const displayAwardIntro = templateText(awardIntro, "and is hereby awarded the designation of");
@@ -109,11 +110,26 @@ export function CertificateDocument({
   
   const [isReady, setIsReady] = useState(false);
   
-  // Preload all assets when component mounts
+  // Generate QR code and preload all assets when component mounts
   useEffect(() => {
     const prepareCertificate = async () => {
+      // Generate QR code client-side
+      try {
+        const qrDataUrl = await QRCode.toDataURL(verifyAbsoluteUrl, {
+          width: 180,
+          margin: 2,
+          color: {
+            dark: '#000000',
+            light: '#ffffff'
+          }
+        });
+        setQrUrl(qrDataUrl);
+      } catch (error) {
+        console.error('Failed to generate QR code:', error);
+      }
+      
       // Preload images
-      const imageUrls = [logoHref, iconHref, backgroundHref, firstSignatureHref, secondSignatureHref, sealHref, leftLaurelHref, rightLaurelHref, qrUrl].filter(Boolean);
+      const imageUrls = [logoHref, iconHref, backgroundHref, firstSignatureHref, secondSignatureHref, sealHref, leftLaurelHref, rightLaurelHref].filter(Boolean);
       const imagePromises = imageUrls.map(url => {
         return new Promise<void>((resolve) => {
           const img = new Image();
@@ -143,7 +159,7 @@ export function CertificateDocument({
     };
     
     prepareCertificate();
-  }, [logoHref, iconHref, backgroundHref, firstSignatureHref, secondSignatureHref, sealHref, leftLaurelHref, rightLaurelHref, qrUrl]);
+  }, [logoHref, iconHref, backgroundHref, firstSignatureHref, secondSignatureHref, sealHref, leftLaurelHref, rightLaurelHref, verifyAbsoluteUrl]);
   const learnerFontSize = fitTextToWidth(
     learnerName,
     720,
@@ -496,7 +512,7 @@ export function CertificateDocument({
               </text>
             ) : null}
 
-            <image href={qrUrl} x="80" y="792" width="74" height="74" crossOrigin="anonymous" />
+            {qrUrl && <image href={qrUrl} x="80" y="792" width="74" height="74" />}
             <text x="117" y="883" textAnchor="middle" fontFamily="Arial, sans-serif" fontSize="8.5" fontWeight="800" letterSpacing="1.2" fill="#071936">
               VERIFY THIS CERTIFICATE
             </text>
