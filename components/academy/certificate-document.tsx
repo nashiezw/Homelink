@@ -172,26 +172,72 @@ export function CertificateDocument({
       })
     : "";
 
-  function downloadLandscapeCertificate() {
+  function getSerializedCertificateSvg() {
     if (!svgRef.current) {
-      window.print();
-      return;
+      throw new Error("Image/PDF download is only available for the standard certificate design.");
     }
 
     const clone = svgRef.current.cloneNode(true) as SVGSVGElement;
     clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
     clone.setAttribute("width", String(SVG_WIDTH));
     clone.setAttribute("height", String(SVG_HEIGHT));
-    const source = new XMLSerializer().serializeToString(clone);
+    return new XMLSerializer().serializeToString(clone);
+  }
+
+  function downloadSvgCertificate() {
+    try {
+      const source = getSerializedCertificateSvg();
+      const blob = new Blob([source], { type: "image/svg+xml;charset=utf-8" });
+      downloadBlob(blob, `${certificateNumber || "houselink-certificate"}.svg`);
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Certificate SVG could not be created.");
+    }
+  }
+
+  async function downloadImageCertificate() {
+    try {
+      const pngDataUrl = await renderCertificatePng();
+      downloadBlob(dataUrlToBlob(pngDataUrl), `${certificateNumber || "houselink-certificate"}.png`);
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Certificate image could not be created.");
+    }
+  }
+
+  async function downloadPdfCertificate() {
+    try {
+      const pngDataUrl = await renderCertificatePng();
+      const { PDFDocument } = await import("pdf-lib");
+      const pdfDoc = await PDFDocument.create();
+      const page = pdfDoc.addPage([SVG_WIDTH, SVG_HEIGHT]);
+      const pngBytes = dataUrlToBytes(pngDataUrl);
+      const image = await pdfDoc.embedPng(pngBytes);
+      page.drawImage(image, { x: 0, y: 0, width: SVG_WIDTH, height: SVG_HEIGHT });
+      const pdfBytes = await pdfDoc.save();
+      const pdfBuffer = pdfBytes.buffer.slice(pdfBytes.byteOffset, pdfBytes.byteOffset + pdfBytes.byteLength) as ArrayBuffer;
+      downloadBlob(new Blob([pdfBuffer], { type: "application/pdf" }), `${certificateNumber || "houselink-certificate"}.pdf`);
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Certificate PDF could not be created.");
+    }
+  }
+
+  async function renderCertificatePng() {
+    const source = getSerializedCertificateSvg();
     const blob = new Blob([source], { type: "image/svg+xml;charset=utf-8" });
     const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `${certificateNumber || "houselink-certificate"}.svg`;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
+    try {
+      const image = await loadImage(url);
+      const canvas = document.createElement("canvas");
+      canvas.width = SVG_WIDTH;
+      canvas.height = SVG_HEIGHT;
+      const context = canvas.getContext("2d");
+      if (!context) throw new Error("Your browser could not prepare the certificate canvas.");
+      context.fillStyle = "#ffffff";
+      context.fillRect(0, 0, SVG_WIDTH, SVG_HEIGHT);
+      context.drawImage(image, 0, 0, SVG_WIDTH, SVG_HEIGHT);
+      return canvas.toDataURL("image/png", 1);
+    } finally {
+      URL.revokeObjectURL(url);
+    }
   }
 
   return (
@@ -218,11 +264,17 @@ export function CertificateDocument({
           <p className="text-sm font-semibold text-emerald-700">HouseLink digital certificate</p>
           <h1 className="break-words text-2xl font-bold text-slate-950 [overflow-wrap:anywhere]">{certificateTitle}</h1>
         </div>
-        <div className="flex flex-col gap-2 sm:flex-row">
-          <Button className="w-full sm:w-auto" onClick={downloadLandscapeCertificate} style={{ backgroundColor: accent }}>
-            <Download className="mr-2 size-4" /> Download Certificate
+        <div className="grid gap-2 sm:grid-cols-4">
+          <Button className="w-full" onClick={() => void downloadImageCertificate()} style={{ backgroundColor: accent }}>
+            <Download className="mr-2 size-4" /> Image
           </Button>
-          <Button className="w-full sm:w-auto" type="button" variant="secondary" onClick={() => window.print()}>
+          <Button className="w-full" onClick={() => void downloadPdfCertificate()} style={{ backgroundColor: accent }}>
+            <Download className="mr-2 size-4" /> PDF
+          </Button>
+          <Button className="w-full" type="button" variant="secondary" onClick={downloadSvgCertificate}>
+            <Download className="mr-2 size-4" /> SVG
+          </Button>
+          <Button className="w-full" type="button" variant="secondary" onClick={() => window.print()}>
             <Printer className="mr-2 size-4" /> Print
           </Button>
         </div>
@@ -600,6 +652,40 @@ function clampNumber(value: number | null | undefined, fallback: number, min: nu
   const number = Number(value);
   if (!Number.isFinite(number)) return fallback;
   return Math.min(max, Math.max(min, Math.round(number)));
+}
+
+function loadImage(src: string) {
+  return new Promise<HTMLImageElement>((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error("Certificate image could not be rendered. Check that uploaded assets are accessible."));
+    image.src = src;
+  });
+}
+
+function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+function dataUrlToBlob(dataUrl: string) {
+  return new Blob([dataUrlToBytes(dataUrl)], { type: dataUrl.slice(5, dataUrl.indexOf(";")) || "application/octet-stream" });
+}
+
+function dataUrlToBytes(dataUrl: string) {
+  const base64 = dataUrl.split(",")[1] ?? "";
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+  return bytes;
 }
 
 function absoluteAssetUrl(value: string, origin: string) {
