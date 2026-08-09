@@ -340,7 +340,7 @@ async function seedAssessments() {
     create: {
       id: "academy-final-exam-certified-houselink-agent",
       courseId: COURSE_ID,
-      title: "HouseLink Agent Foundations Final Examination",
+      title: "Certified HouseLink Agent Final Examination",
       durationMinutes: 90,
       passingScore: 80,
       randomQuestions: true,
@@ -355,7 +355,7 @@ async function seedAssessments() {
     },
     update: {
       courseId: COURSE_ID,
-      title: "HouseLink Agent Foundations Final Examination",
+      title: "Certified HouseLink Agent Final Examination",
       durationMinutes: 90,
       passingScore: 80,
       questionPools: { quizzes: quizSeeds.map((quiz) => quiz.id), minimumQuestions: 6 },
@@ -372,13 +372,13 @@ async function seedProgrammeRecords() {
       title: "New Agent Programme",
       description: "Structured HouseLink onboarding path from foundations through legal compliance, sales, property management and certification.",
       status: "PUBLISHED",
-      badgeTitle: "HouseLink Agent Foundations Graduate",
+      badgeTitle: "Certified HouseLink Agent",
     },
     update: {
       title: "New Agent Programme",
       description: "Structured HouseLink onboarding path from foundations through legal compliance, sales, property management and certification.",
       status: "PUBLISHED",
-      badgeTitle: "HouseLink Agent Foundations Graduate",
+      badgeTitle: "Certified HouseLink Agent",
     },
   });
   await prisma.pathCourse.upsert({
@@ -394,9 +394,9 @@ async function seedProgrammeRecords() {
     await prisma.certificateTemplate.create({
       data: {
       id: CERTIFICATE_TEMPLATE_ID,
-      name: "HouseLink Agent Foundations Certificate",
+      name: "Certified HouseLink Agent Certificate",
       logoUrl: "/brand/houselink-full-lockup.png",
-      templateJson: { certificateNumberPrefix: "HLA", title: "Certificate of Completion - HouseLink Agent Foundations", designation: "HouseLink Agent Foundations Graduate", qrVerification: true, expiryDays: 365, colours: { primary: "#008b68", accent: "#c6a15b" } },
+      templateJson: { certificateNumberPrefix: "HLA", title: "Certified HouseLink Agent", qrVerification: true, expiryDays: 365, colours: { primary: "#008b68", accent: "#c6a15b" } },
       active: true,
       },
     });
@@ -419,8 +419,8 @@ async function seedProgrammeRecords() {
   });
   await prisma.badge.upsert({
     where: { id: "academy-badge-certified-houselink-agent" },
-    create: { id: "academy-badge-certified-houselink-agent", name: "HouseLink Agent Foundations Graduate", description: "Awarded after completing the HouseLink Agent Foundations course and final examination.", xp: 1000, active: true },
-    update: { name: "HouseLink Agent Foundations Graduate", description: "Awarded after completing the HouseLink Agent Foundations course and final examination.", xp: 1000, active: true },
+    create: { id: "academy-badge-certified-houselink-agent", name: "Certified HouseLink Agent", description: "Awarded after completing the official Academy course and final examination.", xp: 1000, active: true },
+    update: { name: "Certified HouseLink Agent", description: "Awarded after completing the official Academy course and final examination.", xp: 1000, active: true },
   });
 }
 
