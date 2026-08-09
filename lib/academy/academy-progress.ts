@@ -156,9 +156,9 @@ export async function issueCertificateIfMissing(learnerId: string, courseId: str
     return existing;
   }
 
-  const [course, template, settingsRow] = await Promise.all([
+  const [course, templates, settingsRow] = await Promise.all([
     prisma.trainingCourse.findUnique({ where: { id: courseId } }),
-    prisma.certificateTemplate.findFirst({ where: { active: true }, orderBy: { updatedAt: "desc" } }),
+    prisma.certificateTemplate.findMany({ where: { active: true }, orderBy: { updatedAt: "desc" } }),
     prisma.trainingSetting.findUnique({ where: { id: "singleton" } }),
   ]);
   
@@ -167,6 +167,7 @@ export async function issueCertificateIfMissing(learnerId: string, courseId: str
     return null;
   }
 
+  const template = selectCertificateTemplateForCourse(templates, courseId);
   if (!template) {
     console.error(`[Certificate] No active certificate template found`);
     return null;
@@ -215,6 +216,21 @@ export async function issueCertificateIfMissing(learnerId: string, courseId: str
     console.error(`[Certificate] Failed to create certificate:`, error);
     throw error;
   }
+}
+
+function selectCertificateTemplateForCourse<T extends { templateJson: unknown }>(templates: T[], courseId: string): T | null {
+  const courseTemplate = templates.find((template) => {
+    const templateJson = (template.templateJson ?? {}) as Record<string, unknown>;
+    const courseIds = Array.isArray(templateJson.courseIds) ? templateJson.courseIds.filter((id): id is string => typeof id === "string") : [];
+    return courseIds.includes(courseId);
+  });
+  if (courseTemplate) return courseTemplate;
+
+  return templates.find((template) => {
+    const templateJson = (template.templateJson ?? {}) as Record<string, unknown>;
+    const courseIds = Array.isArray(templateJson.courseIds) ? templateJson.courseIds.filter((id): id is string => typeof id === "string") : [];
+    return courseIds.length === 0;
+  }) ?? templates[0] ?? null;
 }
 
 async function sendCertificateNotification(learnerId: string, courseId: string, certificateNumber: string) {

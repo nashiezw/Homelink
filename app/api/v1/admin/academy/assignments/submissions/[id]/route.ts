@@ -2,6 +2,7 @@ import { requireAdminAsync } from "@/lib/admin/require-admin";
 import { ok, problem } from "@/lib/api/response";
 import { getMainPrisma } from "@/lib/db/main-prisma";
 import { getSessionUserIdFromRequest } from "@/lib/auth/session";
+import { tryCompleteCourseCertification } from "@/lib/academy/academy-progress";
 
 export const dynamic = "force-dynamic";
 
@@ -33,7 +34,12 @@ export async function PATCH(
         reviewedAt: new Date(),
       },
       include: {
-        assignment: true,
+        assignment: {
+          include: {
+            lesson: { select: { section: { select: { module: { select: { courseId: true } } } } } },
+            module: { select: { courseId: true } },
+          },
+        },
       },
     });
 
@@ -68,6 +74,14 @@ export async function PATCH(
         } as any,
       },
     });
+
+    const courseId = submission.assignment.courseId
+      ?? submission.assignment.module?.courseId
+      ?? submission.assignment.lesson?.section.module.courseId
+      ?? null;
+    if (status === "APPROVED" && courseId) {
+      await tryCompleteCourseCertification(submission.agentId, courseId);
+    }
 
     return ok({ ...submission, agent });
   } catch (error) {

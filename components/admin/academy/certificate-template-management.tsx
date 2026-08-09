@@ -27,13 +27,24 @@ type CertificateTemplate = {
   updatedAt: string;
 };
 
+type CertificateCourseOption = {
+  id: string;
+  title: string;
+  status: string;
+};
+
 type TemplateFormData = {
   name: string;
   backgroundUrl: string;
   logoUrl: string;
   signatureUrl: string;
+  courseIds: string[];
   certificateNumberPrefix: string;
   title: string;
+  signatureName: string;
+  signatureTitle: string;
+  customHtml: string;
+  customCss: string;
   primaryColor: string;
   accentColor: string;
   expiryDays: number;
@@ -45,8 +56,13 @@ const emptyForm: TemplateFormData = {
   backgroundUrl: "",
   logoUrl: "",
   signatureUrl: "",
+  courseIds: [],
   certificateNumberPrefix: "HLA",
   title: "Certificate of Achievement",
+  signatureName: "HouseLink Zimbabwe Academy",
+  signatureTitle: "Director of Training & Certification",
+  customHtml: "",
+  customCss: "",
   primaryColor: "#008b68",
   accentColor: "#c6a15b",
   expiryDays: 365,
@@ -62,6 +78,7 @@ export function CertificateTemplateManagement() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<CertificateTemplate | null>(null);
   const [formData, setFormData] = useState<TemplateFormData>(emptyForm);
+  const [courses, setCourses] = useState<CertificateCourseOption[]>([]);
   const [uploadingField, setUploadingField] = useState<"backgroundUrl" | "logoUrl" | "signatureUrl" | null>(null);
 
   const activeTemplates = useMemo(() => templates.filter((template) => template.active).length, [templates]);
@@ -74,10 +91,14 @@ export function CertificateTemplateManagement() {
   async function loadTemplates() {
     setLoading(true);
     const result = await apiFetch<CertificateTemplate[]>("/api/v1/admin/academy/certificates/templates");
+    const coursesResult = await apiFetch<{ courses: CertificateCourseOption[] }>("/api/v1/admin/academy?compact=1");
     if (result.data) {
       setTemplates(result.data);
     } else {
       showToast(result.error?.message ?? "Certificate templates could not be loaded.", "error");
+    }
+    if (coursesResult.data?.courses) {
+      setCourses(coursesResult.data.courses.map((course) => ({ id: course.id, title: course.title, status: course.status })));
     }
     setLoading(false);
   }
@@ -90,7 +111,12 @@ export function CertificateTemplateManagement() {
       signatureUrl: formData.signatureUrl.trim() || null,
       templateJson: {
         certificateNumberPrefix: formData.certificateNumberPrefix.trim() || "HLA",
+        courseIds: formData.courseIds,
         title: formData.title.trim() || "Certificate of Achievement",
+        signatureName: formData.signatureName.trim() || "HouseLink Zimbabwe Academy",
+        signatureTitle: formData.signatureTitle.trim() || "Director of Training & Certification",
+        customHtml: formData.customHtml.trim(),
+        customCss: formData.customCss.trim(),
         colours: {
           primary: formData.primaryColor,
           accent: formData.accentColor,
@@ -151,8 +177,13 @@ export function CertificateTemplateManagement() {
       backgroundUrl: template.backgroundUrl ?? "",
       logoUrl: template.logoUrl ?? "",
       signatureUrl: template.signatureUrl ?? "",
+      courseIds: Array.isArray(templateJson.courseIds) ? templateJson.courseIds.filter((id): id is string => typeof id === "string") : [],
       certificateNumberPrefix: String(templateJson.certificateNumberPrefix ?? "HLA"),
       title: String(templateJson.title ?? "Certificate of Achievement"),
+      signatureName: String(templateJson.signatureName ?? "HouseLink Zimbabwe Academy"),
+      signatureTitle: String(templateJson.signatureTitle ?? "Director of Training & Certification"),
+      customHtml: String(templateJson.customHtml ?? ""),
+      customCss: String(templateJson.customCss ?? ""),
       primaryColor: colours.primary ?? "#008b68",
       accentColor: colours.accent ?? "#c6a15b",
       expiryDays: Number(templateJson.expiryDays ?? 365),
@@ -238,7 +269,7 @@ export function CertificateTemplateManagement() {
                   <AdminStatusBadge status={template.active ? "Active" : "Inactive"} variant={template.active ? "success" : "muted"} />
                 </div>
                 <div className="grid gap-2 text-sm text-slate-300">
-                  <TemplateMeta template={template} />
+                  <TemplateMeta template={template} courses={courses} />
                 </div>
                 <div className="grid gap-2 sm:grid-cols-2">
                   <Button variant="secondary" onClick={() => openEdit(template)}>
@@ -269,6 +300,11 @@ export function CertificateTemplateManagement() {
             <div className="grid gap-4">
               <TextField label="Template Name" value={formData.name} onChange={(name) => setFormData({ ...formData, name })} placeholder="Certified HouseLink Agent" />
               <TextField label="Certificate Title" value={formData.title} onChange={(title) => setFormData({ ...formData, title })} placeholder="Certificate of Achievement" />
+              <CourseAssignmentField
+                courses={courses}
+                selectedIds={formData.courseIds}
+                onChange={(courseIds) => setFormData({ ...formData, courseIds })}
+              />
               <div className="grid gap-4 sm:grid-cols-2">
                 <TextField label="Number Prefix" value={formData.certificateNumberPrefix} onChange={(certificateNumberPrefix) => setFormData({ ...formData, certificateNumberPrefix })} placeholder="HLA" />
                 <TextField
@@ -282,6 +318,10 @@ export function CertificateTemplateManagement() {
               <div className="grid gap-4 sm:grid-cols-2">
                 <ColorField label="Primary Color" value={formData.primaryColor} onChange={(primaryColor) => setFormData({ ...formData, primaryColor })} />
                 <ColorField label="Accent Color" value={formData.accentColor} onChange={(accentColor) => setFormData({ ...formData, accentColor })} />
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <TextField label="Signature Name" value={formData.signatureName} onChange={(signatureName) => setFormData({ ...formData, signatureName })} />
+                <TextField label="Signature Title" value={formData.signatureTitle} onChange={(signatureTitle) => setFormData({ ...formData, signatureTitle })} />
               </div>
               <TemplateImageField
                 label="Background Image"
@@ -305,6 +345,16 @@ export function CertificateTemplateManagement() {
                   onChange={(signatureUrl) => setFormData({ ...formData, signatureUrl })}
                   onUpload={(files) => void uploadTemplateAsset("signatureUrl", files)}
                 />
+              </div>
+              <div className="rounded-xl border border-white/10 bg-slate-950/50 p-4">
+                <div>
+                  <p className="font-semibold text-white">Advanced Design</p>
+                  <p className="mt-1 text-sm leading-6 text-slate-400">Optional HTML/CSS override. Use tokens like {"{{learnerName}}"}, {"{{courseTitle}}"}, {"{{certificateTitle}}"}, {"{{certificateNumber}}"}, {"{{issuedAt}}"}, {"{{expiresAt}}"}, and {"{{verifyUrl}}"}. Leave blank to use the standard HouseLink design.</p>
+                </div>
+                <div className="grid gap-4">
+                  <TextAreaField label="Custom HTML" value={formData.customHtml} onChange={(customHtml) => setFormData({ ...formData, customHtml })} rows={8} placeholder="<section class='certificate'>...</section>" />
+                  <TextAreaField label="Custom CSS" value={formData.customCss} onChange={(customCss) => setFormData({ ...formData, customCss })} rows={6} placeholder=".certificate { ... }" />
+                </div>
               </div>
               <label className="flex items-center gap-2 text-sm text-slate-300">
                 <input
@@ -340,12 +390,18 @@ export function CertificateTemplateManagement() {
   );
 }
 
-function TemplateMeta({ template }: { template: CertificateTemplate }) {
+function TemplateMeta({ template, courses }: { template: CertificateTemplate; courses: CertificateCourseOption[] }) {
   const templateJson = template.templateJson ?? {};
+  const courseIds = Array.isArray(templateJson.courseIds) ? templateJson.courseIds.filter((id): id is string => typeof id === "string") : [];
+  const courseNames = courseIds
+    .map((id) => courses.find((course) => course.id === id)?.title ?? id)
+    .join(", ");
   return (
     <>
       <p><span className="text-slate-500">Prefix:</span> {String(templateJson.certificateNumberPrefix ?? "N/A")}</p>
       <p><span className="text-slate-500">Expiry:</span> {String(templateJson.expiryDays ?? 365)} days</p>
+      <p><span className="text-slate-500">Courses:</span> {courseIds.length ? courseNames : "Global fallback"}</p>
+      {templateJson.customHtml ? <p><span className="text-slate-500">Design:</span> Custom HTML</p> : null}
     </>
   );
 }
@@ -361,6 +417,7 @@ function TemplatePreview({ template, form, compact }: { template?: CertificateTe
   const signatureUrl = form?.signatureUrl ?? template?.signatureUrl ?? "";
   const backgroundUrl = form?.backgroundUrl ?? template?.backgroundUrl ?? "";
   const prefix = form?.certificateNumberPrefix ?? String(templateJson.certificateNumberPrefix ?? "HLA");
+  const hasCustomDesign = Boolean(form?.customHtml?.trim() || templateJson.customHtml);
 
   return (
     <div
@@ -394,6 +451,7 @@ function TemplatePreview({ template, form, compact }: { template?: CertificateTe
           <p className="text-xs uppercase tracking-wider text-slate-500">Presented to</p>
           <p className="mt-1 text-xl font-bold text-white">Learner Name</p>
           <p className="mt-2 text-sm text-slate-300">For successfully completing {name || "the selected course"}.</p>
+          {hasCustomDesign ? <p className="mt-2 text-xs font-semibold uppercase tracking-wider text-amber-200">Custom HTML design enabled</p> : null}
         </div>
         <div className="mt-5 flex items-end justify-between gap-4">
           <div>
@@ -412,6 +470,52 @@ function TemplatePreview({ template, form, compact }: { template?: CertificateTe
           Live preview
         </div>
       )}
+    </div>
+  );
+}
+
+function CourseAssignmentField({
+  courses,
+  selectedIds,
+  onChange,
+}: {
+  courses: CertificateCourseOption[];
+  selectedIds: string[];
+  onChange: (courseIds: string[]) => void;
+}) {
+  function toggle(courseId: string) {
+    onChange(selectedIds.includes(courseId) ? selectedIds.filter((id) => id !== courseId) : [...selectedIds, courseId]);
+  }
+
+  return (
+    <div className="rounded-xl border border-white/10 bg-slate-950/50 p-4">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="text-sm font-semibold text-white">Assigned Courses</p>
+          <p className="mt-1 text-xs leading-5 text-slate-400">Select one or more courses for this template. If none are selected, it becomes the global fallback template.</p>
+        </div>
+        {selectedIds.length ? (
+          <Button type="button" variant="secondary" onClick={() => onChange([])}>Use as Global</Button>
+        ) : null}
+      </div>
+      <div className="mt-4 grid gap-2">
+        {courses.length ? courses.map((course) => (
+          <label key={course.id} className="flex min-w-0 items-start gap-3 rounded-lg border border-white/10 bg-white/[0.03] p-3 text-sm text-slate-300">
+            <input
+              type="checkbox"
+              checked={selectedIds.includes(course.id)}
+              onChange={() => toggle(course.id)}
+              className="mt-1 rounded border-white/10 bg-slate-950"
+            />
+            <span className="min-w-0">
+              <span className="block break-words font-semibold text-white [overflow-wrap:anywhere]">{course.title}</span>
+              <span className="text-xs uppercase tracking-wider text-slate-500">{course.status}</span>
+            </span>
+          </label>
+        )) : (
+          <p className="rounded-lg border border-dashed border-white/10 p-3 text-sm text-slate-500">Courses could not be loaded. You can still save this as a global fallback template.</p>
+        )}
+      </div>
     </div>
   );
 }
@@ -438,6 +542,33 @@ function TextField({
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
         className="w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-white placeholder:text-slate-600 focus:border-emerald-500/40 focus:outline-none"
+      />
+    </label>
+  );
+}
+
+function TextAreaField({
+  label,
+  value,
+  onChange,
+  placeholder,
+  rows = 4,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  rows?: number;
+}) {
+  return (
+    <label className="block">
+      <span className="mb-1 block text-sm font-medium text-slate-300">{label}</span>
+      <textarea
+        value={value}
+        rows={rows}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={placeholder}
+        className="w-full min-w-0 rounded-lg border border-white/10 bg-slate-950 px-3 py-2 font-mono text-sm text-white placeholder:text-slate-600 focus:border-emerald-500/40 focus:outline-none"
       />
     </label>
   );

@@ -20,6 +20,13 @@ type CertificatePayload = {
   verifyUrl: string;
   learnerName: string;
   accent: string;
+  backgroundUrl?: string | null;
+  logoUrl?: string | null;
+  signatureUrl?: string | null;
+  signatureName?: string | null;
+  signatureTitle?: string | null;
+  customHtml?: string;
+  customCss?: string;
   skillsAssessed?: string[];
   badgeName?: string | null;
 };
@@ -79,6 +86,13 @@ export function AcademyCertificatePageClient({ issueId }: { issueId: string }) {
         expiresAt={data.expiresAt}
         verifyUrl={data.verifyUrl}
         accent={programme?.theme.accent ?? data.accent}
+        backgroundUrl={data.backgroundUrl}
+        logoUrl={data.logoUrl}
+        signatureUrl={data.signatureUrl}
+        signatureName={data.signatureName ?? undefined}
+        signatureTitle={data.signatureTitle ?? undefined}
+        customHtml={data.customHtml}
+        customCss={data.customCss}
         skillsAssessed={data.skillsAssessed?.length ? data.skillsAssessed : programme?.learningOutcomes ?? []}
         badgeName={data.badgeName ?? programme?.badgeName ?? undefined}
       />

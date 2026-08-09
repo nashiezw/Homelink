@@ -14,8 +14,13 @@ export type CertificateDocumentProps = {
   expiresAt?: string | null;
   verifyUrl: string;
   accent?: string;
+  backgroundUrl?: string | null;
+  logoUrl?: string | null;
+  signatureUrl?: string | null;
   signatureName?: string;
   signatureTitle?: string;
+  customHtml?: string;
+  customCss?: string;
   skillsAssessed?: string[];
   badgeName?: string;
 };
@@ -29,12 +34,36 @@ export function CertificateDocument({
   expiresAt,
   verifyUrl,
   accent = "#008b68",
+  backgroundUrl,
+  logoUrl,
+  signatureUrl,
   signatureName = "HouseLink Zimbabwe Academy",
   signatureTitle = "Director of Training & Certification",
+  customHtml = "",
+  customCss = "",
   skillsAssessed = [],
   badgeName,
 }: CertificateDocumentProps) {
   const issuedLabel = new Date(issuedAt).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+  const renderedCustomHtml = customHtml.trim()
+    ? renderCertificateHtml(customHtml, {
+        learnerName,
+        courseTitle,
+        certificateTitle,
+        certificateNumber,
+        issuedAt: issuedLabel,
+        expiresAt: expiresAt ? new Date(expiresAt).toLocaleDateString("en-GB") : "",
+        verifyUrl,
+        signatureName,
+        signatureTitle,
+        accent,
+        backgroundUrl: backgroundUrl ?? "",
+        logoUrl: logoUrl ?? "",
+        signatureUrl: signatureUrl ?? "",
+        skillsAssessed: skillsAssessed.join(", "),
+        badgeName: badgeName ?? "",
+      })
+    : "";
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 print:px-0 print:py-0">
@@ -48,9 +77,20 @@ export function CertificateDocument({
         </Button>
       </div>
 
+      {renderedCustomHtml ? (
+        <article className="relative overflow-hidden rounded-xl bg-white shadow-hero print:rounded-none print:shadow-none">
+          {customCss.trim() ? <style dangerouslySetInnerHTML={{ __html: customCss }} /> : null}
+          <div dangerouslySetInnerHTML={{ __html: renderedCustomHtml }} />
+        </article>
+      ) : (
       <article
         className="relative overflow-hidden rounded-xl border-8 border-double bg-white shadow-hero print:rounded-none print:border-[6px] print:shadow-none"
-        style={{ borderColor: `${accent}55` }}
+        style={{
+          borderColor: `${accent}55`,
+          backgroundImage: backgroundUrl ? `linear-gradient(rgba(255,255,255,.88), rgba(255,255,255,.94)), url(${backgroundUrl})` : undefined,
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+        }}
       >
         <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(198,161,91,0.14),transparent_38%),linear-gradient(180deg,rgba(16,185,129,0.08),transparent_52%)]" />
         <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(16,32,36,0.04)_1px,transparent_1px),linear-gradient(180deg,rgba(16,32,36,0.03)_1px,transparent_1px)] bg-[size:42px_42px]" />
@@ -59,7 +99,12 @@ export function CertificateDocument({
         <div className="relative px-8 py-10 sm:px-12 sm:py-14">
           <div className="flex flex-wrap items-start justify-between gap-6">
             <div className="rounded-2xl bg-white p-3 shadow-lg ring-1 ring-slate-200">
-              <HouseLinkBrand variant="auth" iconOnly={false} />
+              {logoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={logoUrl} alt="Certificate logo" className="h-12 w-auto max-w-44 object-contain" />
+              ) : (
+                <HouseLinkBrand variant="auth" iconOnly={false} />
+              )}
             </div>
             <div className="text-right">
               <p className="text-xs font-bold uppercase tracking-[0.35em] text-slate-500">Certificate of Achievement</p>
@@ -112,7 +157,12 @@ export function CertificateDocument({
 
             <div className="sm:text-right">
               <div className="inline-block border-b-2 border-slate-800 pb-2">
-                <p className="font-serif text-2xl italic text-slate-800">{signatureName}</p>
+                {signatureUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={signatureUrl} alt="" className="ml-auto h-12 max-w-48 object-contain" />
+                ) : (
+                  <p className="font-serif text-2xl italic text-slate-800">{signatureName}</p>
+                )}
               </div>
               <p className="mt-2 text-sm text-slate-500">{signatureTitle}</p>
               <div className="mt-4 flex items-center gap-3 sm:justify-end">
@@ -126,6 +176,20 @@ export function CertificateDocument({
           </p>
         </div>
       </article>
+      )}
     </div>
   );
+}
+
+function renderCertificateHtml(template: string, values: Record<string, string>) {
+  return template.replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, (_match, key: string) => escapeHtml(values[key] ?? ""));
+}
+
+function escapeHtml(value: string) {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 }

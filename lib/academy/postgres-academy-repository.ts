@@ -936,9 +936,16 @@ export async function runAcademyAction(body: Record<string, any>, actor: Actor) 
         reviewedAt: new Date(),
       },
     });
-    const assignment = await prisma.assignment.findUnique({ where: { id: submission.assignmentId }, select: { courseId: true } });
-    if (assignment?.courseId && (status === AssignmentSubmissionStatus.APPROVED || status === AssignmentSubmissionStatus.GRADED)) {
-      await tryCompleteCourseCertification(submission.agentId, assignment.courseId);
+    const assignment = await prisma.assignment.findUnique({
+      where: { id: submission.assignmentId },
+      include: {
+        lesson: { select: { section: { select: { module: { select: { courseId: true } } } } } },
+        module: { select: { courseId: true } },
+      },
+    });
+    const courseId = assignment?.courseId ?? assignment?.module?.courseId ?? assignment?.lesson?.section.module.courseId ?? null;
+    if (courseId && (status === AssignmentSubmissionStatus.APPROVED || status === AssignmentSubmissionStatus.GRADED)) {
+      await tryCompleteCourseCertification(submission.agentId, courseId);
     }
     await audit(actor, "academy.assignment_submission.review", submission.id, {
       assignmentId: submission.assignmentId,
