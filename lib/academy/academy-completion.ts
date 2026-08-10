@@ -1,5 +1,6 @@
 import { getMainPrisma } from "@/lib/db/main-prisma";
-import { ACADEMY_PROGRAMME_COURSES, getProgrammeCourse } from "@/lib/academy/academy-programme";
+import { ACADEMY_PROGRAMME_COURSES, getProgrammeCourse, PROGRAMME_COURSE_IDS } from "@/lib/academy/academy-programme";
+import { TrainingCourseStatus } from "@prisma/client";
 
 export async function canAccessProgrammeCourse(learnerId: string, courseId: string) {
   const course = getProgrammeCourse(courseId);
@@ -8,10 +9,16 @@ export async function canAccessProgrammeCourse(learnerId: string, courseId: stri
     where: { agentId: learnerId, courseId: course.prerequisiteCourseId, status: "ACTIVE" },
   });
   if (hasPrerequisite) return { allowed: true as const };
-  const prerequisite = getProgrammeCourse(course.prerequisiteCourseId);
+  
+  // Get database course data for accurate prerequisite title
+  const prerequisiteCourse = await getMainPrisma().trainingCourse.findUnique({
+    where: { id: course.prerequisiteCourseId },
+    select: { title: true }
+  });
+  
   return {
     allowed: false as const,
-    reason: `Complete ${prerequisite?.title ?? "the previous course"} and earn its certificate first.`,
+    reason: `Complete ${prerequisiteCourse?.title ?? "the previous course"} and earn its certificate first.`,
     prerequisiteCourseId: course.prerequisiteCourseId,
   };
 }
@@ -88,24 +95,31 @@ export async function awardProgrammeBadge(learnerId: string, courseId: string) {
 
 export async function getProgrammeProgressSummary(learnerId: string) {
   const prisma = getMainPrisma();
-  const [certificates, badges, progressRows] = await Promise.all([
+  const [certificates, badges, progressRows, courses] = await Promise.all([
     prisma.certificateIssue.findMany({ where: { agentId: learnerId, status: "ACTIVE" } }),
     prisma.agentBadge.findMany({ where: { agentId: learnerId }, include: { badge: true } }),
     prisma.courseProgress.findMany({ where: { agentId: learnerId } }),
+    prisma.trainingCourse.findMany({
+      where: { id: { in: PROGRAMME_COURSE_IDS }, status: TrainingCourseStatus.PUBLISHED },
+      select: { id: true, title: true, subtitle: true, status: true }
+    }),
   ]);
 
   const certByCourse = new Map(certificates.map((c) => [c.courseId, c]));
   const badgeIds = new Set(badges.map((b) => b.badgeId));
   const progressByCourse = new Map(progressRows.map((p) => [p.courseId, p.percentComplete]));
+  const courseDbData = new Map(courses.map((c) => [c.id, c]));
 
   return ACADEMY_PROGRAMME_COURSES.map((course) => {
     const certificate = certByCourse.get(course.id);
     const previousCert = course.prerequisiteCourseId ? certByCourse.get(course.prerequisiteCourseId) : true;
     const unlocked = !course.prerequisiteCourseId || !!previousCert;
+    const dbCourse = courseDbData.get(course.id);
+    
     return {
       id: course.id,
-      title: course.title,
-      subtitle: course.subtitle,
+      title: dbCourse?.title ?? course.title,
+      subtitle: dbCourse?.subtitle ?? course.subtitle,
       theme: course.theme,
       sortOrder: course.sortOrder,
       unlocked,
