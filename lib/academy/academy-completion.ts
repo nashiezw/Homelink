@@ -95,7 +95,7 @@ export async function awardProgrammeBadge(learnerId: string, courseId: string) {
 
 export async function getProgrammeProgressSummary(learnerId: string) {
   const prisma = getMainPrisma();
-  const [certificates, badges, progressRows, courses] = await Promise.all([
+  const [certificates, badges, progressRows, courses, badgeData] = await Promise.all([
     prisma.certificateIssue.findMany({ where: { agentId: learnerId, status: "ACTIVE" } }),
     prisma.agentBadge.findMany({ where: { agentId: learnerId }, include: { badge: true } }),
     prisma.courseProgress.findMany({ where: { agentId: learnerId } }),
@@ -103,18 +103,23 @@ export async function getProgrammeProgressSummary(learnerId: string) {
       where: { id: { in: PROGRAMME_COURSE_IDS }, status: TrainingCourseStatus.PUBLISHED },
       select: { id: true, title: true, subtitle: true, status: true }
     }),
+    prisma.badge.findMany({
+      where: { id: { in: ACADEMY_PROGRAMME_COURSES.map((c) => c.badgeId) } },
+    }),
   ]);
 
   const certByCourse = new Map(certificates.map((c) => [c.courseId, c]));
   const badgeIds = new Set(badges.map((b) => b.badgeId));
   const progressByCourse = new Map(progressRows.map((p) => [p.courseId, p.percentComplete]));
   const courseDbData = new Map(courses.map((c) => [c.id, c]));
+  const badgeDbData = new Map(badgeData.map((b) => [b.id, b]));
 
   return ACADEMY_PROGRAMME_COURSES.map((course) => {
     const certificate = certByCourse.get(course.id);
     const previousCert = course.prerequisiteCourseId ? certByCourse.get(course.prerequisiteCourseId) : true;
     const unlocked = !course.prerequisiteCourseId || !!previousCert;
     const dbCourse = courseDbData.get(course.id);
+    const dbBadge = badgeDbData.get(course.badgeId);
     
     return {
       id: course.id,
@@ -126,7 +131,7 @@ export async function getProgrammeProgressSummary(learnerId: string) {
       progress: progressByCourse.get(course.id) ?? 0,
       completed: !!certificate,
       badgeEarned: badgeIds.has(course.badgeId),
-      badgeName: course.badgeName,
+      badgeName: (dbBadge as { name?: string } | null)?.name ?? course.badgeName,
       certificate: certificate
         ? {
             id: certificate.id,
