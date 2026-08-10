@@ -1108,28 +1108,38 @@ export async function runAcademyAction(body: Record<string, any>, actor: Actor) 
       select: { title: true, description: true, status: true, badgeTitle: true }
     });
     
-    const path = await prisma.$transaction(async (tx) => {
-      const updated = await tx.learningPath.update({
-        where: { id: pathId },
-        data: learningPathInput(body.path ?? {}),
-      });
-      if (courseIds.length) {
-        await tx.pathCourse.deleteMany({ where: { pathId } });
-        await tx.pathCourse.createMany({
-          data: courseIds.map((courseId, index) => ({ pathId, courseId, sortOrder: index, required: true })),
-          skipDuplicates: true,
-        });
-      }
-      return updated;
-    });
-    
-    // Track changes for debugging
     console.log("Learning path update - Before:", before);
     console.log("Learning path update - Input:", body.path);
-    console.log("Learning path update - After:", path);
     
-    await audit(actor, "academy.path.update", path.id, { title: path.title });
-    return path;
+    try {
+      const path = await prisma.$transaction(async (tx) => {
+        const updateData: Record<string, any> = {};
+        if (body.path?.title !== undefined) updateData.title = String(body.path.title);
+        if (body.path?.description !== undefined) updateData.description = body.path.description ? String(body.path.description) : null;
+        if (body.path?.status !== undefined) updateData.status = String(body.path.status);
+        if (body.path?.badgeTitle !== undefined) updateData.badgeTitle = body.path.badgeTitle ? String(body.path.badgeTitle) : null;
+        
+        const updated = await tx.learningPath.update({
+          where: { id: pathId },
+          data: updateData,
+        });
+        if (courseIds.length) {
+          await tx.pathCourse.deleteMany({ where: { pathId } });
+          await tx.pathCourse.createMany({
+            data: courseIds.map((courseId, index) => ({ pathId, courseId, sortOrder: index, required: true })),
+            skipDuplicates: true,
+          });
+        }
+        return updated;
+      });
+      
+      console.log("Learning path update - After:", path);
+      await audit(actor, "academy.path.update", path.id, { title: path.title });
+      return path;
+    } catch (error) {
+      console.error("Learning path update error:", error);
+      throw error;
+    }
   }
   if (action === "delete_learning_path") {
     const path = await prisma.learningPath.delete({ where: { id: String(body.pathId) } });
@@ -1172,20 +1182,33 @@ export async function runAcademyAction(body: Record<string, any>, actor: Actor) 
   }
   if (action === "update_badge") {
     const input = body.badge ?? {};
+    const badgeId = String(body.badgeId);
+    
     const before = await prisma.badge.findUnique({
-      where: { id: String(body.badgeId) },
+      where: { id: badgeId },
       select: { name: true, description: true, xp: true, active: true }
     });
     
-    const badge = await prisma.badge.update({ where: { id: String(body.badgeId) }, data: badgeInput(input) });
-    
-    // Track changes for debugging
     console.log("Badge update - Before:", before);
     console.log("Badge update - Input:", input);
-    console.log("Badge update - After:", badge);
     
-    await audit(actor, "academy.badge.update", badge.id, { name: badge.name });
-    return badge;
+    try {
+      const updateData: Record<string, any> = {};
+      if (input.name !== undefined) updateData.name = String(input.name);
+      if (input.description !== undefined) updateData.description = input.description ? String(input.description) : null;
+      if (input.iconUrl !== undefined) updateData.iconUrl = input.iconUrl ? String(input.iconUrl) : null;
+      if (input.xp !== undefined) updateData.xp = Number(input.xp) || 0;
+      if (input.active !== undefined) updateData.active = Boolean(input.active);
+      
+      const badge = await prisma.badge.update({ where: { id: badgeId }, data: updateData });
+      
+      console.log("Badge update - After:", badge);
+      await audit(actor, "academy.badge.update", badge.id, { name: badge.name });
+      return badge;
+    } catch (error) {
+      console.error("Badge update error:", error);
+      throw error;
+    }
   }
   if (action === "delete_badge") {
     const badge = await prisma.badge.delete({ where: { id: String(body.badgeId) } });
@@ -1644,14 +1667,14 @@ function assignmentInput(input: Record<string, any>): Prisma.AssignmentUnchecked
   };
 }
 
-function learningPathInput(input: Record<string, any>): Prisma.LearningPathUpdateInput {
-  return {
-    title: required(input.title, "Path title"),
-    description: stringOrNull(input.description),
-    status: String(input.status ?? "DRAFT"),
-    badgeTitle: stringOrNull(input.badgeTitle),
-  };
-}
+// function learningPathInput(input: Record<string, any>): Prisma.LearningPathUpdateInput {
+//   return {
+//     title: required(input.title, "Path title"),
+//     description: stringOrNull(input.description),
+//     status: String(input.status ?? "DRAFT"),
+//     badgeTitle: stringOrNull(input.badgeTitle),
+//   };
+// }
 
 function announcementInput(input: Record<string, any>): Prisma.AnnouncementCreateInput {
   return {

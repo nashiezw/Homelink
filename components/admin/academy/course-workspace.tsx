@@ -317,9 +317,9 @@ export function CourseWorkspace({
           <div className="rounded-xl border border-white/10 p-4 text-sm text-slate-300">
             <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Media Assets</p>
             <div className="mt-3 space-y-4">
-              <Field label="Thumbnail URL" value={tree.thumbnailUrl ?? ""} onChange={(v) => void debouncedRun({ action: "update_course", course: { courseId, thumbnailUrl: v } }, "Thumbnail URL updated.")} />
-              <Field label="Banner URL" value={tree.bannerUrl ?? ""} onChange={(v) => void debouncedRun({ action: "update_course", course: { courseId, bannerUrl: v } }, "Banner URL updated.")} />
-              <Field label="Intro Video URL" value={tree.introVideoUrl ?? ""} onChange={(v) => void debouncedRun({ action: "update_course", course: { courseId, introVideoUrl: v } }, "Intro video URL updated.")} />
+              <CourseMediaField label="Thumbnail" value={tree.thumbnailUrl ?? ""} accept="image/*" kind="image" onChange={(v) => void debouncedRun({ action: "update_course", course: { courseId, thumbnailUrl: v } }, "Thumbnail updated.")} courseId={courseId} />
+              <CourseMediaField label="Banner" value={tree.bannerUrl ?? ""} accept="image/*" kind="image" onChange={(v) => void debouncedRun({ action: "update_course", course: { courseId, bannerUrl: v } }, "Banner updated.")} courseId={courseId} />
+              <CourseMediaField label="Intro Video" value={tree.introVideoUrl ?? ""} accept="video/*" kind="video" onChange={(v) => void debouncedRun({ action: "update_course", course: { courseId, introVideoUrl: v } }, "Intro video updated.")} courseId={courseId} />
             </div>
           </div>
           
@@ -733,7 +733,7 @@ function clampPercentage(value: number) {
   return Math.min(100, Math.max(0, Math.round(value)));
 }
 
-function CourseMediaField({ label, value, accept, kind, onChange }: { label: string; value: string; accept: string; kind: "video" | "document"; onChange: (v: string) => void }) {
+function CourseMediaField({ label, value, accept, kind, onChange, courseId }: { label: string; value: string; accept: string; kind: "video" | "document" | "image"; onChange: (v: string) => void; courseId?: string }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -747,7 +747,7 @@ function CourseMediaField({ label, value, accept, kind, onChange }: { label: str
       const dataUrl = await readCourseWorkspaceFile(file);
       const result = await apiFetch<{ url: string }>("/api/v1/uploads", {
         method: "POST",
-        body: JSON.stringify({ dataUrl, kind, folder: "academy/course-workspace" }),
+        body: JSON.stringify({ dataUrl, kind, folder: courseId ? `academy/course-workspace/${courseId}` : "academy/course-workspace" }),
       });
       if (!result.data?.url) {
         setError(result.error?.message ?? `${label} upload failed.`);
