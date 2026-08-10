@@ -26,7 +26,7 @@ from reportlab.platypus import (
 )
 
 ROOT = Path(__file__).resolve().parents[1]
-MANIFEST = ROOT / "public" / "uploads" / "academy" / "lesson-handouts-manifest.json"
+MANIFEST = Path(os.environ.get("LESSON_HANDOUT_MANIFEST_PATH", ROOT / "public" / "uploads" / "academy" / "lesson-handouts-manifest.json"))
 OUT_DIR = ROOT / "public" / "uploads" / "academy" / "lessons"
 LOGO = ROOT / "public" / "brand" / "houselink-full-lockup.png"
 
