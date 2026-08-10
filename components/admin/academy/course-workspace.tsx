@@ -269,11 +269,14 @@ export function CourseWorkspace({
 
   const run = useCallback(async (body: Record<string, unknown>, success: string, undo?: { label: string; body: Record<string, unknown> }) => {
     setBusy(true);
-    await action(body, success);
-    if (undo) setUndoStack((stack) => [...stack.slice(-9), undo]);
-    await load();
-    await onRefresh();
-    setBusy(false);
+    try {
+      await action(body, success);
+      if (undo) setUndoStack((stack) => [...stack.slice(-9), undo]);
+      await load();
+      await onRefresh();
+    } finally {
+      setBusy(false);
+    }
   }, [action, load, onRefresh]);
 
   // Simple debounced save for field updates to prevent typing issues
@@ -773,6 +776,16 @@ export function CourseWorkspace({
             <div className="space-y-4 rounded-xl border border-white/10 p-4">
               <Field label="Title" value={lessonDraft.title ?? ""} onChange={(v) => setLessonDraft({ ...lessonDraft, title: v })} />
               <Field label="Summary" value={lessonDraft.summary ?? ""} onChange={(v) => setLessonDraft({ ...lessonDraft, summary: v })} />
+              <div className="rounded-xl border border-emerald-400/15 bg-emerald-400/[0.05] p-4">
+                <p className="text-sm font-semibold text-white">Lesson Learning Objectives</p>
+                <p className="mt-1 text-xs leading-5 text-slate-400">These are the checklist items shown to learners under “Learning objectives” inside this specific lesson. Enter one objective per line.</p>
+                <TextareaField
+                  label="Objectives shown on learner lesson page"
+                  value={(lessonDraft.objectives ?? []).join("\n")}
+                  rows={4}
+                  onChange={(value) => setLessonDraft({ ...lessonDraft, objectives: value.split("\n").map((item) => item.trim()).filter(Boolean) })}
+                />
+              </div>
               <label className="block text-sm text-slate-300">Reading material (HTML)
                 <textarea value={lessonDraft.richText ?? ""} onChange={(e) => setLessonDraft({ ...lessonDraft, richText: e.target.value })} rows={8} className="mt-1 w-full rounded-lg border border-white/10 bg-slate-900 px-3 py-2 font-mono text-xs text-white" />
               </label>
