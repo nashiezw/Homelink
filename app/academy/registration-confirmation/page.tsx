@@ -133,7 +133,7 @@ function RegistrationConfirmationContent() {
                     </p>
                     {status.needsPaymentProof && (
                       <div className="bg-amber-100 dark:bg-amber-900/30 rounded-lg p-4 mt-4">
-                        <p className="font-medium mb-2">⚠️ Action Required:</p>
+                        <p className="font-medium mb-2">Action Required:</p>
                         <p className="text-sm">Please upload proof of payment from your learner dashboard to complete your registration. Your access will be activated after admin verification.</p>
                       </div>
                     )}

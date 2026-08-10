@@ -361,7 +361,7 @@ export function AgentAcademyHub() {
     onConfirm: () => void;
   } | null>(null);
   const load = useCallback(async () => {
-    const result = await apiFetch<AcademyData>("/api/v1/admin/academy?compact=1");
+    const result = await apiFetch<AcademyData>("/api/v1/admin/academy?compact=1", { cache: "no-store" });
     if (result.data) setData(result.data);
     else showToast(result.error?.message ?? "Academy could not load.", "error");
   }, [showToast]);
@@ -413,6 +413,8 @@ export function AgentAcademyHub() {
     }
     showToast(success);
     setDrawer(null);
+    setSelectedPath(null);
+    setSelectedBadge(null);
     await load();
     return true;
   }

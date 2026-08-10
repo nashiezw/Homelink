@@ -419,12 +419,12 @@ export function CertificateTemplateManagement() {
 
       <AdminDrawer
         open={drawerOpen}
-        width="xl"
+        width="full"
         title={editingTemplate ? "Edit Certificate Template" : "Create Certificate Template"}
         description="Preview changes before saving so certificates stay consistent."
         onClose={closeDrawer}
       >
-        <div className="grid gap-5 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.35fr)] xl:items-start">
+        <div className="grid gap-5 2xl:grid-cols-[minmax(38rem,1.15fr)_minmax(30rem,0.85fr)] 2xl:items-start">
           <div className="space-y-4 xl:sticky xl:top-4">
             <TemplatePreview form={formData} />
             <div className="rounded-2xl border border-emerald-400/15 bg-emerald-400/[0.06] p-4">
@@ -767,10 +767,20 @@ function TemplatePreview({ template, form, compact }: { template?: CertificateTe
   const backgroundUrl = form?.backgroundUrl ?? template?.backgroundUrl ?? "";
   const prefix = form?.certificateNumberPrefix ?? String(templateJson.certificateNumberPrefix ?? "HLA");
   const hasCustomDesign = Boolean(form?.customHtml?.trim() || templateJson.customHtml);
+  const previewTitle = trainingCertificateTitle(title);
+  const previewNameSize = compact
+    ? Math.min(28, Math.max(20, learnerNameMaxFontSize * 0.34))
+    : Math.min(46, Math.max(30, learnerNameMaxFontSize * 0.56));
+  const previewDesignationSize = compact
+    ? Math.min(12, Math.max(9, designationMaxFontSize * 0.38))
+    : Math.min(18, Math.max(12, designationMaxFontSize * 0.55));
+  const previewBadgeSize = compact
+    ? Math.min(9, Math.max(7, badgeLineMaxFontSize * 0.62))
+    : Math.min(13, Math.max(9, badgeLineMaxFontSize * 0.85));
 
   return (
     <div
-      className="relative min-h-44 overflow-hidden bg-slate-950 p-4"
+      className={`${compact ? "aspect-[1.414/1]" : "aspect-[1.414/1] min-h-[240px]"} relative min-w-0 overflow-hidden rounded-2xl border border-white/10 bg-slate-950 p-3 shadow-2xl shadow-black/30 sm:p-4`}
       style={{
         backgroundImage: backgroundUrl ? `linear-gradient(rgba(2,6,23,.84), rgba(2,6,23,.9)), url(${backgroundUrl})` : undefined,
         backgroundSize: "cover",
@@ -778,64 +788,89 @@ function TemplatePreview({ template, form, compact }: { template?: CertificateTe
       }}
     >
       <div className="absolute inset-x-0 top-0 h-1" style={{ backgroundColor: primary }} />
-      <div className="rounded-xl border border-white/10 bg-slate-950/80 p-4">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex min-w-0 items-center gap-3">
-            {logoUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={logoUrl} alt="" className="size-10 shrink-0 rounded-lg object-contain" />
-            ) : (
-              <span className="flex size-10 shrink-0 items-center justify-center rounded-lg" style={{ backgroundColor: `${primary}22`, color: primary }}>
-                <Award className="size-5" />
-              </span>
-            )}
+      <div className="relative flex h-full min-w-0 flex-col justify-between rounded-xl border border-white/10 bg-slate-950/82 p-3 sm:p-4">
+        <div className="grid grid-cols-[1fr_auto] items-start gap-3">
+          <div className="flex min-w-0 items-start gap-3">
+            <div className="flex h-10 w-20 shrink-0 items-center justify-center rounded-lg bg-white/95 p-1.5">
+              {logoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={logoUrl} alt="" className="h-full w-full object-contain" />
+              ) : (
+                <Award className="size-5" style={{ color: primary }} />
+              )}
+            </div>
             <div className="min-w-0">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">{prefix}-000001</p>
-              <h4 className="break-words text-base font-bold text-white [overflow-wrap:anywhere]">{title}</h4>
+              <p className="truncate text-[9px] font-semibold uppercase tracking-[0.2em] text-slate-500">{prefix}-000001</p>
+              <h4 className={`${compact ? "text-[10px]" : "text-sm"} line-clamp-2 max-w-full font-bold leading-tight text-white`}>
+                {previewTitle}
+              </h4>
             </div>
           </div>
           <Palette className="size-4 shrink-0" style={{ color: accent }} />
         </div>
-        <div className={compact ? "mt-5" : "mt-8"}>
-          <p className="text-xs uppercase tracking-wider text-slate-500">Presented to</p>
-          <p className="mt-1 break-words text-white [overflow-wrap:anywhere]" style={{ fontFamily: previewFontStack(learnerNameFont), fontSize: `${Math.min(34, Math.max(24, learnerNameMaxFontSize * 0.42))}px` }}>Learner Name</p>
-          {completionIntro.trim() ? <p className="mt-2 text-sm text-slate-300">{completionIntro}</p> : null}
-          <p className="mt-1 text-sm font-semibold text-white">{name || "Selected course"}</p>
-          {awardIntro.trim() ? <p className="mt-1 text-sm text-slate-300">{awardIntro}</p> : null}
-          {designation.trim() ? <p className="mt-2 break-words font-bold uppercase tracking-wider text-emerald-300 [overflow-wrap:anywhere]" style={{ fontSize: `${Math.min(15, Math.max(11, designationMaxFontSize * 0.42))}px` }}>{designation}</p> : null}
-          {badgeLine.trim() ? <p className="mt-1 break-words font-semibold uppercase tracking-wider text-slate-300 [overflow-wrap:anywhere]" style={{ fontSize: `${Math.min(12, Math.max(9, badgeLineMaxFontSize * 0.7))}px` }}>{badgeLine}</p> : null}
+
+        <div className="mx-auto grid w-full max-w-[82%] place-items-center text-center">
+          <p className={`${compact ? "text-[7px]" : "text-[9px]"} uppercase tracking-[0.26em] text-slate-500`}>Presented to</p>
+          <p
+            className="mt-0.5 w-full truncate text-white"
+            style={{ fontFamily: previewFontStack(learnerNameFont), fontSize: `${previewNameSize}px`, lineHeight: 1.02 }}
+          >
+            Learner Name
+          </p>
+          {completionIntro.trim() ? <p className={`${compact ? "mt-1 text-[8px]" : "mt-2 text-xs"} line-clamp-1 text-slate-300`}>{completionIntro}</p> : null}
+          <p className={`${compact ? "text-[8px]" : "text-xs"} line-clamp-1 font-semibold text-white`}>{name || "Selected course"}</p>
+          {awardIntro.trim() ? <p className={`${compact ? "text-[8px]" : "text-xs"} line-clamp-1 text-slate-300`}>{awardIntro}</p> : null}
+          {designation.trim() ? (
+            <p className="mt-1 w-full truncate font-bold uppercase tracking-[0.18em]" style={{ color: primary, fontSize: `${previewDesignationSize}px` }}>
+              {designation}
+            </p>
+          ) : null}
+          {badgeLine.trim() ? (
+            <p className="mt-0.5 w-full truncate font-semibold uppercase tracking-[0.2em] text-slate-300" style={{ fontSize: `${previewBadgeSize}px` }}>
+              {badgeLine}
+            </p>
+          ) : null}
           {recognitionLineOne.trim() || recognitionLineTwo.trim() ? (
-            <p className="mt-2 text-xs italic leading-5 text-slate-400">
+            <p className={`${compact ? "mt-1 text-[7px]" : "mt-2 text-[10px]"} line-clamp-2 max-w-[90%] italic leading-snug text-slate-400`}>
               {[recognitionLineOne, recognitionLineTwo].filter((line) => line.trim()).join(" ")}
             </p>
           ) : null}
-          {hasCustomDesign ? <p className="mt-2 text-xs font-semibold uppercase tracking-wider text-amber-200">Custom HTML design enabled</p> : null}
+          {hasCustomDesign ? <p className="mt-1 text-[9px] font-semibold uppercase tracking-wider text-amber-200">Custom HTML design enabled</p> : null}
         </div>
-        <div className="mt-5 flex items-end justify-between gap-4">
-          <div>
-            <div className="h-0.5 w-24" style={{ backgroundColor: accent }} />
-            <p className="mt-1 text-[10px] uppercase tracking-wider text-slate-500">Issued by HouseLink Academy</p>
+
+        <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-3">
+          <div className="min-w-0">
+            {secondSignatureUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={secondSignatureUrl} alt="" className="h-7 max-w-full object-contain object-left" />
+            ) : null}
+            <div className="mt-1 h-px w-full max-w-28" style={{ backgroundColor: accent }} />
+            <p className="mt-1 truncate text-[8px] uppercase tracking-[0.18em] text-slate-500">Left signatory</p>
           </div>
-          {signatureUrl && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={signatureUrl} alt="" className="h-8 max-w-24 object-contain" />
-          )}
-          {secondSignatureUrl && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={secondSignatureUrl} alt="" className="h-8 max-w-24 object-contain" />
-          )}
-          {sealUrl && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={sealUrl} alt="" className="size-10 object-contain" />
-          )}
-          {leftLaurelUrl && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={leftLaurelUrl} alt="" className="h-10 max-w-8 object-contain" />
-          )}
-          {rightLaurelUrl && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={rightLaurelUrl} alt="" className="h-10 max-w-8 object-contain" />
-          )}
+          <div className="flex items-end gap-2">
+            {leftLaurelUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={leftLaurelUrl} alt="" className="h-10 w-5 object-contain" />
+            ) : null}
+            {sealUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={sealUrl} alt="" className="size-10 object-contain" />
+            ) : (
+              <span className="size-8 rounded-full border" style={{ borderColor: accent }} />
+            )}
+            {rightLaurelUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={rightLaurelUrl} alt="" className="h-10 w-5 object-contain" />
+            ) : null}
+          </div>
+          <div className="min-w-0 text-right">
+            {signatureUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={signatureUrl} alt="" className="ml-auto h-7 max-w-full object-contain object-right" />
+            ) : null}
+            <div className="mt-1 ml-auto h-px w-full max-w-28" style={{ backgroundColor: accent }} />
+            <p className="mt-1 truncate text-[8px] uppercase tracking-[0.18em] text-slate-500">Issued by Academy</p>
+          </div>
         </div>
       </div>
       {!compact && (

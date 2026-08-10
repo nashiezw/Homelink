@@ -594,10 +594,10 @@ export function AdminDrawer({
   description?: string;
   onClose: () => void;
   children: ReactNode;
-  width?: "md" | "lg" | "xl";
+  width?: "md" | "lg" | "xl" | "2xl" | "full";
 }) {
   if (!open) return null;
-  const widths = { md: "max-w-md", lg: "max-w-lg", xl: "max-w-xl" };
+  const widths = { md: "max-w-md", lg: "max-w-lg", xl: "max-w-xl", "2xl": "max-w-5xl", full: "max-w-[min(100vw,92rem)]" };
   return (
     <div className="fixed inset-0 z-[55] flex justify-end bg-black/50" onClick={onClose}>
       <aside

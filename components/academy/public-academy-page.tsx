@@ -377,8 +377,8 @@ export function PublicAcademyPage() {
           : "Practical training, reviewed assignments, field tools, roleplay evidence, and verifiable HouseLink completion certificates for Zimbabwe property work."
       }
       highlights={[
-        { value: "3 levels", label: "training pathway" },
-        { value: `${courses.reduce((sum, course) => sum + (course.assignmentCount ?? 0) + (course.quizCount ?? 0), 0) || 16} checks`, label: "quizzes and tasks" },
+        { value: `${courses.length} ${courses.length === 1 ? "course" : "courses"}`, label: "training pathway" },
+        { value: `${courses.reduce((sum, course) => sum + (course.assignmentCount ?? 0) + (course.quizCount ?? 0), 0)} checks`, label: "quizzes and tasks" },
         { value: "Field tools", label: "downloadable PDFs" },
       ]}
       compactHero
@@ -410,7 +410,7 @@ export function PublicAcademyPage() {
           </div>
           <div className="border-t border-slate-100 bg-slate-50/80 p-5 dark:border-slate-800 dark:bg-slate-900/40 lg:border-l lg:border-t-0">
             <div className="grid grid-cols-3 gap-2 text-center">
-              <StandardStat value="3" label="levels" />
+              <StandardStat value={String(courses.length)} label={courses.length === 1 ? "course" : "courses"} />
               <StandardStat value={String(courses.reduce((sum, course) => sum + (course.assignmentCount ?? 0) + (course.quizCount ?? 0), 0))} label="checks" />
               <StandardStat value={String(courses.reduce((sum, course) => sum + (course.toolkitCount ?? 0), 0))} label="tools" />
             </div>
@@ -713,7 +713,7 @@ function SelectedProgrammeDetail({
               {
                 id: `${course.id}-includes`,
                 title: "Value and certificate requirements",
-                subtitle: course.assessmentSummary ?? "Sessions, toolkits, assessments, and HouseLink certificate completion",
+                subtitle: course.assessmentSummary ?? "Sessions, toolkits, assessments, and certificate completion",
                 meta: course.badgeName ?? "Certificate",
                 content: (
                   <div className="space-y-4">

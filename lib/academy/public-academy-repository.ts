@@ -72,7 +72,7 @@ export async function listPublicAcademyCourses() {
       slug: course.slug,
       description: course.description,
       shortDescription: course.shortDescription,
-      category: course.category?.name ?? "HouseLink Agent Academy",
+      category: course.category?.name ?? "HouseLink Academy",
       difficulty: course.difficulty,
       estimatedHours: Number(course.estimatedHours),
       durationMinutes: course.durationMinutes,
@@ -914,6 +914,34 @@ export async function getLearnerCourseDetail(learnerId: string, courseId: string
   const toolkitRaw = await getToolkitGroupsForCourse(courseId, { cumulative: true });
   const toolkitAccess = await getToolkitAccessView(learnerId, courseId, Boolean(options?.isAgent));
   const toolkit = maskToolkitGroups(toolkitRaw, toolkitAccess);
+  const lessonCount = course.modules.reduce((sum, module) => sum + module.sections.reduce((sectionSum, section) => sectionSum + section.lessons.length, 0), 0);
+  const toolkitCount = toolkitRaw.reduce((sum, group) => sum + group.items.length, 0);
+  const quizCount = course.quizzes.length;
+  const assignmentCount = course.assignments.length;
+  const finalExamCount = course.finalExams.length;
+  const generatedIncludes = buildCourseIncludes({
+    lessonCount,
+    toolkitCount,
+    quizCount,
+    assignmentCount,
+    finalExamCount,
+    certificateEnabled: course.certificateEnabled,
+  });
+  const generatedAssessmentSummary = buildAssessmentSummary({
+    courseTitle: course.title,
+    quizCount,
+    assignmentCount,
+    finalExamCount,
+    passMark: course.passingPercentage,
+    certificateEnabled: course.certificateEnabled,
+  });
+  const defaultCourseTheme = {
+    label: "Course",
+    accent: settings.primaryColour,
+    gradient: "from-emerald-600 via-emerald-700 to-teal-800",
+    sidebar: "from-emerald-50 via-white to-teal-50/60",
+    chip: "bg-emerald-100 text-emerald-900",
+  };
   const assignmentStatuses = Object.fromEntries(
     course.assignments.map((assignment) => [
       assignment.id,
@@ -933,16 +961,14 @@ export async function getLearnerCourseDetail(learnerId: string, courseId: string
 
   return {
     settings,
-    programme: programme
-      ? {
-          theme: programme.theme,
-          badgeName: programmeBadge?.name ?? programme.badgeName,
-          certificateTitle: programme.certificateTitle,
-          subtitle: course.subtitle,
-          assessmentSummary: programme.assessmentSummary,
-          includes: programme.includes,
-        }
-      : null,
+    programme: {
+      theme: programme?.theme ?? defaultCourseTheme,
+      badgeName: programmeBadge?.name ?? programme?.badgeName ?? `${course.title} completion`,
+      certificateTitle: course.certificateEnabled ? `${course.title} Certificate` : "Course completion",
+      subtitle: course.subtitle,
+      assessmentSummary: generatedAssessmentSummary,
+      includes: generatedIncludes,
+    },
     toolkit,
     toolkitAccess,
     course: {
@@ -977,7 +1003,7 @@ export async function getLearnerCourseDetail(learnerId: string, courseId: string
       })),
     },
     assessments: {
-      summary: programme?.assessmentSummary ?? null,
+      summary: generatedAssessmentSummary,
       badgeName: programmeBadge?.name ?? programme?.badgeName ?? null,
       totals: {
         quizzes: programme?.quizIds.length ?? course.quizzes.length,
@@ -1058,7 +1084,7 @@ export async function getLearnerCourseDetail(learnerId: string, courseId: string
             return {
               id: exam.id,
               title: exam.title,
-              description: "Capstone examination covering Foundations, Listing & Client Mastery, and Professional Training.",
+              description: `Final examination covering ${course.title}.`,
               durationMinutes: exam.durationMinutes,
               passingScore: exam.passingScore,
               attemptLimit,
@@ -1070,10 +1096,10 @@ export async function getLearnerCourseDetail(learnerId: string, courseId: string
           }),
       certificateCheckpoint: programme?.requiresFinalExam
         ? null
-        : programme
+        : course.certificateEnabled
           ? {
-            title: "Programme Certificate Checkpoint",
-            description: `Pass all ${programme?.quizIds.length ?? 0} module quizzes and submit all ${programme?.assignmentIds.length ?? 0} assignments to unlock your ${programme?.certificateTitle ?? "programme certificate"}.`,
+            title: "Certificate Checkpoint",
+            description: generatedAssessmentSummary,
           }
           : null,
       readiness,

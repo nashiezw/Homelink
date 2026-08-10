@@ -1138,14 +1138,15 @@ export async function runAcademyAction(body: Record<string, any>, actor: Actor) 
     return certificate;
   }
   if (action === "create_learning_path") {
+    const input = learningPathPayload(body);
     const path = await prisma.learningPath.create({
       data: {
-        title: required(body.path?.title, "Path title"),
-        description: stringOrNull(body.path?.description),
-        status: String(body.path?.status ?? "DRAFT"),
-        badgeTitle: stringOrNull(body.path?.badgeTitle),
+        title: required(input.title ?? input.name, "Path title"),
+        description: stringOrNull(input.description),
+        status: String(input.status ?? "DRAFT"),
+        badgeTitle: stringOrNull(input.badgeTitle ?? input.badgeName),
         courses: {
-          create: arrayOfStrings(body.path?.courseIds).map((courseId, index) => ({ courseId, sortOrder: index, required: true })),
+          create: arrayOfStrings(input.courseIds).map((courseId, index) => ({ courseId, sortOrder: index, required: true })),
         },
       },
     });
@@ -1154,7 +1155,8 @@ export async function runAcademyAction(body: Record<string, any>, actor: Actor) 
   }
   if (action === "update_learning_path") {
     const pathId = String(body.pathId);
-    const courseIds = arrayOfStrings(body.path?.courseIds);
+    const input = learningPathPayload(body);
+    const courseIds = arrayOfStrings(input.courseIds);
     
     const before = await prisma.learningPath.findUnique({
       where: { id: pathId },
@@ -1167,10 +1169,10 @@ export async function runAcademyAction(body: Record<string, any>, actor: Actor) 
     
     try {
       const updateData: Record<string, any> = {};
-      if (body.path?.title !== undefined) updateData.title = String(body.path.title);
-      if (body.path?.description !== undefined) updateData.description = body.path.description ? String(body.path.description) : null;
-      if (body.path?.status !== undefined) updateData.status = String(body.path.status);
-      if (body.path?.badgeTitle !== undefined) updateData.badgeTitle = body.path.badgeTitle ? String(body.path.badgeTitle) : null;
+      if (input.title !== undefined || input.name !== undefined) updateData.title = required(input.title ?? input.name, "Path title");
+      if (input.description !== undefined) updateData.description = stringOrNull(input.description);
+      if (input.status !== undefined) updateData.status = String(input.status);
+      if (input.badgeTitle !== undefined || input.badgeName !== undefined) updateData.badgeTitle = stringOrNull(input.badgeTitle ?? input.badgeName);
       
       const path = await prisma.$transaction(async (tx) => {
         const updated = await tx.learningPath.update({
@@ -1228,12 +1230,12 @@ export async function runAcademyAction(body: Record<string, any>, actor: Actor) 
     return announcement;
   }
   if (action === "create_badge") {
-    const badge = await prisma.badge.create({ data: badgeInput(body.badge ?? {}) });
+    const badge = await prisma.badge.create({ data: badgeInput(badgePayload(body)) });
     await audit(actor, "academy.badge.create", badge.id, { name: badge.name });
     return badge;
   }
   if (action === "update_badge") {
-    const input = body.badge ?? {};
+    const input = badgePayload(body);
     const badgeId = String(body.badgeId);
     
     const before = await prisma.badge.findUnique({
@@ -1244,9 +1246,9 @@ export async function runAcademyAction(body: Record<string, any>, actor: Actor) 
     
     try {
       const updateData: Record<string, any> = {};
-      if (input.name !== undefined) updateData.name = String(input.name);
-      if (input.description !== undefined) updateData.description = input.description ? String(input.description) : null;
-      if (input.iconUrl !== undefined) updateData.iconUrl = input.iconUrl ? String(input.iconUrl) : null;
+      if (input.name !== undefined || input.title !== undefined) updateData.name = required(input.name ?? input.title, "Badge name");
+      if (input.description !== undefined || input.detail !== undefined) updateData.description = stringOrNull(input.description ?? input.detail);
+      if (input.iconUrl !== undefined || input.icon !== undefined) updateData.iconUrl = stringOrNull(input.iconUrl ?? input.icon);
       if (input.xp !== undefined) updateData.xp = Number(input.xp) || 0;
       if (input.active !== undefined) updateData.active = Boolean(input.active);
       
@@ -1736,12 +1738,22 @@ function announcementInput(input: Record<string, any>): Prisma.AnnouncementCreat
 
 function badgeInput(input: Record<string, any>): Prisma.BadgeCreateInput {
   return {
-    name: required(input.name, "Badge name"),
-    description: stringOrNull(input.description),
-    iconUrl: stringOrNull(input.iconUrl),
+    name: required(input.name ?? input.title, "Badge name"),
+    description: stringOrNull(input.description ?? input.detail),
+    iconUrl: stringOrNull(input.iconUrl ?? input.icon),
     xp: numberOr(input.xp, 0),
     active: input.active !== false,
   };
+}
+
+function badgePayload(body: Record<string, any>): Record<string, any> {
+  const input = body.badge ?? body.achievement ?? body;
+  return input && typeof input === "object" && !Array.isArray(input) ? input : {};
+}
+
+function learningPathPayload(body: Record<string, any>): Record<string, any> {
+  const input = body.path ?? body.learningPath ?? body.programmePath ?? body;
+  return input && typeof input === "object" && !Array.isArray(input) ? input : {};
 }
 
 function lessonInput(input: Record<string, any>): Prisma.TrainingLessonUpdateInput {
