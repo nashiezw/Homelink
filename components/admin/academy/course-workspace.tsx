@@ -794,7 +794,7 @@ export function CourseWorkspace({
                 <p className="mt-1 text-xs text-slate-400">Make scenario, practice, outcome, standards, and mistakes unique for this lesson. Empty fields keep learner-facing fallbacks.</p>
                 <div className="mt-4 grid gap-3">
                   <TextareaField label="Professional outcome" value={lessonDepthDraft.outcome} onChange={(outcome) => setLessonDepthDraft({ ...lessonDepthDraft, outcome })} rows={3} />
-                  <TextareaField label="HouseLink field standard (one point per line)" value={lessonDepthDraft.standard} onChange={(standard) => setLessonDepthDraft({ ...lessonDepthDraft, standard })} rows={4} />
+                  <TextareaField label="Field Practice Standard (one point per line)" value={lessonDepthDraft.standard} onChange={(standard) => setLessonDepthDraft({ ...lessonDepthDraft, standard })} rows={4} />
                   <TextareaField label="Common mistakes to avoid (one point per line)" value={lessonDepthDraft.mistakes} onChange={(mistakes) => setLessonDepthDraft({ ...lessonDepthDraft, mistakes })} rows={4} />
                   <TextareaField label="Zimbabwe field scenario" value={lessonDepthDraft.scenario} onChange={(scenario) => setLessonDepthDraft({ ...lessonDepthDraft, scenario })} rows={4} />
                   <TextareaField label="Practice before you move on" value={lessonDepthDraft.practice} onChange={(practice) => setLessonDepthDraft({ ...lessonDepthDraft, practice })} rows={4} />
@@ -1379,7 +1379,7 @@ function readCourseWorkspaceFile(file: File): Promise<string> {
 
 const lessonDepthResourceTitles = {
   outcome: "Professional outcome",
-  standard: "HouseLink field standard",
+  standard: "Field Practice Standard",
   mistakes: "Common mistakes to avoid",
   scenario: "Zimbabwe field scenario",
   practice: "Practice before you move on",

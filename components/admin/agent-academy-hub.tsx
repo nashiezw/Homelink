@@ -2056,7 +2056,7 @@ function assignmentRubricCriteria(title: string) {
 
 const lessonDepthResourceTitles = {
   outcome: "Professional outcome",
-  standard: "HouseLink field standard",
+  standard: "Field Practice Standard",
   mistakes: "Common mistakes to avoid",
   scenario: "Zimbabwe field scenario",
   practice: "Practice before you move on",
@@ -2648,7 +2648,7 @@ function LessonDrawer({ open, busy, lesson: editingLesson, courses: _courses, on
           <p className="mt-1 text-xs text-slate-400">Optional per-lesson content. Empty fields use smart fallbacks, so every lesson still displays well.</p>
           <div className="mt-4 grid gap-3">
             <TextArea label="Professional outcome" value={lesson.lessonDepth.outcome} onChange={(outcome) => setLesson({ ...lesson, lessonDepth: { ...lesson.lessonDepth, outcome } })} rows={3} />
-            <TextArea label="HouseLink field standard (one point per line)" value={lesson.lessonDepth.standard} onChange={(standard) => setLesson({ ...lesson, lessonDepth: { ...lesson.lessonDepth, standard } })} rows={4} />
+            <TextArea label="Field Practice Standard (one point per line)" value={lesson.lessonDepth.standard} onChange={(standard) => setLesson({ ...lesson, lessonDepth: { ...lesson.lessonDepth, standard } })} rows={4} />
             <TextArea label="Common mistakes to avoid (one point per line)" value={lesson.lessonDepth.mistakes} onChange={(mistakes) => setLesson({ ...lesson, lessonDepth: { ...lesson.lessonDepth, mistakes } })} rows={4} />
             <TextArea label="Zimbabwe field scenario" value={lesson.lessonDepth.scenario} onChange={(scenario) => setLesson({ ...lesson, lessonDepth: { ...lesson.lessonDepth, scenario } })} rows={4} />
             <TextArea label="Practice before you move on" value={lesson.lessonDepth.practice} onChange={(practice) => setLesson({ ...lesson, lessonDepth: { ...lesson.lessonDepth, practice } })} rows={4} />

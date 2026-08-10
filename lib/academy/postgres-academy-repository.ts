@@ -2020,7 +2020,7 @@ function lessonInput(input: Record<string, any>): Prisma.TrainingLessonUpdateInp
 const LESSON_DEPTH_RESOURCE_TYPE = "LESSON_DEPTH";
 const LESSON_DEPTH_FIELDS = [
   ["outcome", "Professional outcome"],
-  ["standard", "HouseLink field standard"],
+  ["standard", "Field Practice Standard"],
   ["mistakes", "Common mistakes to avoid"],
   ["scenario", "Zimbabwe field scenario"],
   ["practice", "Practice before you move on"],

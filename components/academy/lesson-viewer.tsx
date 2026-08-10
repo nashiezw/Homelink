@@ -411,7 +411,7 @@ function PremiumLessonDepth({ lesson, accent }: { lesson: Lesson; accent: string
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
-        <LessonDepthCard icon={ClipboardCheck} title="HouseLink field standard" items={depth.standard} accent={accent} />
+        <LessonDepthCard icon={ClipboardCheck} title="Field Practice Standard" items={depth.standard} accent={accent} />
         <LessonDepthCard icon={Lightbulb} title="Common mistakes to avoid" items={depth.mistakes} accent={accent} />
       </div>
 
@@ -586,7 +586,7 @@ type LessonDepth = {
 
 const lessonDepthResourceTitles = {
   outcome: "Professional outcome",
-  standard: "HouseLink field standard",
+  standard: "Field Practice Standard",
   mistakes: "Common mistakes to avoid",
   scenario: "Zimbabwe field scenario",
   practice: "Practice before you move on",
