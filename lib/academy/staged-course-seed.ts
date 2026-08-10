@@ -1056,13 +1056,17 @@ export async function seedStagedCourseStructure(options?: { forceRebuild?: boole
     });
     
     if (existingCourse) {
-      // Update only system fields, preserve admin edits to description, shortDescription, subtitle, learningOutcomes, assessmentSummary
+      // Update only structure/technical fields, preserve ALL content fields
       await prisma.trainingCourse.update({
         where: { id: programmeCourse.id },
         data: {
           slug: programmeCourse.slug,
           categoryId: category.id,
-          // Only update learningOutcomes if empty (preserve admin edits)
+          // Preserve all content fields - don't overwrite admin edits
+          title: existingCourse.title,
+          subtitle: existingCourse.subtitle,
+          description: existingCourse.description,
+          shortDescription: existingCourse.shortDescription,
           learningOutcomes: existingCourse.learningOutcomes && existingCourse.learningOutcomes.length > 0 
             ? existingCourse.learningOutcomes 
             : programmeCourse.learningOutcomes,

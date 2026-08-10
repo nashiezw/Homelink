@@ -410,11 +410,33 @@ export async function runAcademyAction(body: Record<string, any>, actor: Actor) 
     return course;
   }
   if (action === "update_course") {
+    const input = body.course ?? {};
+    const before = await prisma.trainingCourse.findUnique({
+      where: { id: String(body.courseId) },
+      select: { title: true, subtitle: true, description: true, shortDescription: true, learningOutcomes: true }
+    });
+    
     const course = await prisma.trainingCourse.update({
       where: { id: String(body.courseId) },
-      data: courseInput(body.course ?? {}, actor.id, true),
+      data: courseInput(input, actor.id, true),
     });
-    await audit(actor, "academy.course.update", course.id, { title: course.title });
+    
+    // Track content changes with detailed audit
+    const changes: Record<string, { from: string | string[] | null; to: string | string[] | null }> = {};
+    if (before) {
+      if (input.title !== undefined && input.title !== before.title) changes.title = { from: before.title, to: input.title };
+      if (input.subtitle !== undefined && input.subtitle !== before.subtitle) changes.subtitle = { from: before.subtitle, to: input.subtitle };
+      if (input.description !== undefined && input.description !== before.description) changes.description = { from: before.description, to: input.description };
+      if (input.shortDescription !== undefined && input.shortDescription !== before.shortDescription) changes.shortDescription = { from: before.shortDescription, to: input.shortDescription };
+      if (input.learningOutcomes !== undefined && JSON.stringify(input.learningOutcomes) !== JSON.stringify(before.learningOutcomes)) {
+        changes.learningOutcomes = { from: before.learningOutcomes, to: input.learningOutcomes };
+      }
+    }
+    
+    await audit(actor, "academy.course.update", course.id, { 
+      title: course.title,
+      changes: Object.keys(changes).length > 0 ? changes : undefined
+    });
     return course;
   }
   if (action === "update_course_certification_rules") {
@@ -581,9 +603,30 @@ export async function runAcademyAction(body: Record<string, any>, actor: Actor) 
     return lesson;
   }
   if (action === "update_lesson") {
-    const lesson = await prisma.trainingLesson.update({ where: { id: String(body.lessonId) }, data: lessonInput(body.lesson ?? {}) });
+    const input = body.lesson ?? {};
+    const before = await prisma.trainingLesson.findUnique({
+      where: { id: String(body.lessonId) },
+      select: { title: true, summary: true, richText: true, objectives: true }
+    });
+    
+    const lesson = await prisma.trainingLesson.update({ where: { id: String(body.lessonId) }, data: lessonInput(input) });
     await syncLessonDepthResources(lesson.id, body.lesson?.lessonDepth);
-    await audit(actor, "academy.lesson.update", lesson.id, { title: lesson.title });
+    
+    // Track content changes with detailed audit
+    const changes: Record<string, { from: string | string[] | null; to: string | string[] | null }> = {};
+    if (before) {
+      if (input.title !== undefined && input.title !== before.title) changes.title = { from: before.title, to: input.title };
+      if (input.summary !== undefined && input.summary !== before.summary) changes.summary = { from: before.summary, to: input.summary };
+      if (input.richText !== undefined && input.richText !== before.richText) changes.richText = { from: before.richText, to: input.richText };
+      if (input.objectives !== undefined && JSON.stringify(input.objectives) !== JSON.stringify(before.objectives)) {
+        changes.objectives = { from: before.objectives, to: input.objectives };
+      }
+    }
+    
+    await audit(actor, "academy.lesson.update", lesson.id, { 
+      title: lesson.title,
+      changes: Object.keys(changes).length > 0 ? changes : undefined
+    });
     return lesson;
   }
   if (action === "delete_lesson") {
@@ -749,15 +792,32 @@ export async function runAcademyAction(body: Record<string, any>, actor: Actor) 
     return section;
   }
   if (action === "update_module") {
+    const input = body.module ?? {};
+    const before = await prisma.trainingModule.findUnique({
+      where: { id: String(body.moduleId) },
+      select: { title: true, description: true }
+    });
+    
     const trainingModule = await prisma.trainingModule.update({
       where: { id: String(body.moduleId) },
       data: {
-        title: body.module?.title,
-        description: body.module?.description,
-        sortOrder: body.module?.sortOrder,
+        title: input.title,
+        description: input.description,
+        sortOrder: input.sortOrder,
       }
     });
-    await audit(actor, "academy.module.update", trainingModule.id, { title: trainingModule.title });
+    
+    // Track content changes with detailed audit
+    const changes: Record<string, { from: string | null; to: string | null }> = {};
+    if (before) {
+      if (input.title !== undefined && input.title !== before.title) changes.title = { from: before.title, to: input.title };
+      if (input.description !== undefined && input.description !== before.description) changes.description = { from: before.description, to: input.description };
+    }
+    
+    await audit(actor, "academy.module.update", trainingModule.id, { 
+      title: trainingModule.title,
+      changes: Object.keys(changes).length > 0 ? changes : undefined
+    });
     return trainingModule;
   }
   if (action === "delete_module") {

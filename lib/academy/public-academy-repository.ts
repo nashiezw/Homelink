@@ -238,7 +238,7 @@ export async function getLearnerAcademyDashboard(learnerId: string, options?: { 
         lessonId: "",
         lessonTitle: "Continue your programme",
         courseId: fallback.course.id,
-        courseTitle: getProgrammeCourse(fallback.course.id)?.title ?? fallback.course.title,
+        courseTitle: fallback.course.title,
         lastViewedAt: new Date().toISOString(),
       };
     }
@@ -246,7 +246,7 @@ export async function getLearnerAcademyDashboard(learnerId: string, options?: { 
       lessonId: recent.lessonId,
       lessonTitle: recent.lesson.title,
       courseId,
-      courseTitle: getProgrammeCourse(courseId)?.title ?? recent.lesson.section.module.course.title,
+      courseTitle: recent.lesson.section.module.course.title,
       lastViewedAt: recent.lastViewedAt.toISOString(),
     };
   })();
@@ -366,9 +366,11 @@ export async function getLearnerAcademyDashboard(learnerId: string, options?: { 
       } : null,
       course: {
         id: entry.course.id,
-        title: getProgrammeCourse(entry.course.id)?.title ?? entry.course.title,
+        title: entry.course.title,
         slug: entry.course.slug,
         description: entry.course.description,
+        shortDescription: entry.course.shortDescription,
+        subtitle: entry.course.subtitle,
         certificateEnabled: entry.course.certificateEnabled,
         modules: entry.course.modules.map((module) => ({
           id: module.id,
@@ -824,7 +826,7 @@ export async function getLearnerCourseDetail(learnerId: string, courseId: string
           theme: programme.theme,
           badgeName: programme.badgeName,
           certificateTitle: programme.certificateTitle,
-          subtitle: programme.subtitle,
+          subtitle: course.subtitle,
           assessmentSummary: programme.assessmentSummary,
           includes: programme.includes,
         }
@@ -833,9 +835,9 @@ export async function getLearnerCourseDetail(learnerId: string, courseId: string
     toolkitAccess,
     course: {
       id: course.id,
-      title: programme?.title ?? course.title,
+      title: course.title,
       slug: course.slug,
-      description: programme?.description ?? course.description,
+      description: course.description,
       instructor: course.instructor,
       certificateEnabled: course.certificateEnabled,
       passingPercentage: course.passingPercentage,
