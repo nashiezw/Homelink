@@ -2,6 +2,7 @@ import { ACADEMY_PROGRAMME_COURSES, getProgrammeCourse, PROGRAMME_COURSE_IDS, ty
 import manifestData from "@/public/uploads/academy/academy-resources-manifest.json";
 import { isFullTrainingManualUrl } from "@/lib/academy/academy-constants";
 import { toAcademyFileDownloadUrl } from "@/lib/academy/academy-files";
+import { getMainPrisma } from "@/lib/db/main-prisma";
 
 export type ToolkitItem = {
   id: string;
@@ -156,7 +157,17 @@ export function programmeMetaForCourse(courseId: string): AcademyProgrammeCourse
 }
 
 export async function getEnrolledCourseToolkits(courseIds: string[]) {
-  const ordered = PROGRAMME_COURSE_IDS.filter((id) => courseIds.includes(id));
+  const ordered = [
+    ...PROGRAMME_COURSE_IDS.filter((id) => courseIds.includes(id)),
+    ...courseIds.filter((id) => !PROGRAMME_COURSE_IDS.includes(id)),
+  ];
+  const dbCourses = ordered.length
+    ? await getMainPrisma().trainingCourse.findMany({
+        where: { id: { in: ordered } },
+        select: { id: true, title: true },
+      })
+    : [];
+  const dbTitleById = new Map(dbCourses.map((course) => [course.id, course.title]));
   return Promise.all(
     ordered.map(async (courseId) => {
       const meta = getProgrammeCourse(courseId);
@@ -164,7 +175,7 @@ export async function getEnrolledCourseToolkits(courseIds: string[]) {
       const itemCount = groups.reduce((sum, group) => sum + group.items.length, 0);
       return {
         courseId,
-        courseTitle: meta?.title ?? courseId,
+        courseTitle: dbTitleById.get(courseId) ?? meta?.title ?? courseId,
         theme: meta?.theme ?? null,
         itemCount,
         groups,

@@ -1,6 +1,5 @@
 import { getCertificate } from "@/lib/academy/certificate-repository";
 import { CertificateDocument } from "@/components/academy/certificate-document";
-import { getProgrammeCourse } from "@/lib/academy/academy-programme";
 import { ShieldCheck, AlertTriangle } from "lucide-react";
 
 export default async function CertificateVerificationPage({
@@ -34,9 +33,12 @@ export default async function CertificateVerificationPage({
 
   const isExpired = certificate.expiresAt && new Date(certificate.expiresAt) < new Date();
   const isRevoked = certificate.status !== "ACTIVE";
-  const programme = certificate.courseId ? getProgrammeCourse(certificate.courseId) : null;
   const templateJson = (certificate.template?.templateJson ?? {}) as Record<string, unknown>;
   const colours = (templateJson.colours ?? {}) as Record<string, unknown>;
+  const certificateTitle =
+    typeof templateJson.title === "string" && templateJson.title.trim()
+      ? templateJson.title
+      : `${certificate.course?.title ?? "HouseLink Academy Training"} Certificate`;
 
   if (isExpired || isRevoked) {
     return (
@@ -77,12 +79,12 @@ export default async function CertificateVerificationPage({
         <CertificateDocument
           learnerName={certificate.learnerName || "Certificate Holder"}
           courseTitle={certificate.course?.title || "Course"}
-          certificateTitle={trainingCertificateTitle(String(templateJson.title ?? programme?.certificateTitle ?? "HouseLink Academy Training Certificate"))}
+          certificateTitle={trainingCertificateTitle(certificateTitle)}
           certificateNumber={certificate.certificateNumber}
           issuedAt={certificate.issuedAt.toISOString()}
           expiresAt={certificate.expiresAt?.toISOString()}
           verifyUrl={`/verify/certificate/${certificate.certificateNumber}`}
-          accent={String(colours.primary ?? programme?.theme.accent ?? "#008b68")}
+          accent={String(colours.primary ?? "#008b68")}
           backgroundUrl={certificate.template?.backgroundUrl ?? null}
           logoUrl={certificate.template?.logoUrl ?? null}
           signatureUrl={certificate.template?.signatureUrl ?? null}

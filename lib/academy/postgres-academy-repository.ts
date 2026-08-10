@@ -412,37 +412,63 @@ export async function runAcademyAction(body: Record<string, any>, actor: Actor) 
   if (action === "update_course") {
     const input = body.course ?? {};
     const courseId = String(body.courseId);
+    if (!courseId || courseId === "undefined") throw new Error("Course id is required.");
     
     const before = await prisma.trainingCourse.findUnique({
       where: { id: courseId },
       select: { title: true, subtitle: true, description: true, shortDescription: true, learningOutcomes: true }
     });
     
-    console.log("Course update - Before:", before);
-    console.log("Course update - Input:", input);
-    
     try {
       const updateData: Record<string, any> = {};
       if (input.title !== undefined) updateData.title = String(input.title);
+      if (input.slug !== undefined) updateData.slug = slugify(String(input.slug));
       if (input.subtitle !== undefined) updateData.subtitle = input.subtitle ? String(input.subtitle) : null;
       if (input.description !== undefined) updateData.description = String(input.description);
       if (input.shortDescription !== undefined) updateData.shortDescription = input.shortDescription ? String(input.shortDescription) : null;
+      if (input.categoryId !== undefined) updateData.categoryId = input.categoryId ? String(input.categoryId) : null;
+      if (input.tags !== undefined) updateData.tags = arrayOfStrings(input.tags);
+      if (input.difficulty !== undefined) updateData.difficulty = enumValue(TrainingDifficulty, input.difficulty, TrainingDifficulty.BEGINNER);
+      if (input.durationMinutes !== undefined) updateData.durationMinutes = numberOr(input.durationMinutes, 0);
       if (input.instructor !== undefined) updateData.instructor = input.instructor ? String(input.instructor) : null;
+      if (input.coInstructors !== undefined) updateData.coInstructors = arrayOfStrings(input.coInstructors);
       if (input.learningOutcomes !== undefined) updateData.learningOutcomes = Array.isArray(input.learningOutcomes) ? input.learningOutcomes : [];
       if (input.targetAudience !== undefined) updateData.targetAudience = input.targetAudience ? String(input.targetAudience) : null;
       if (input.prerequisites !== undefined) updateData.prerequisites = Array.isArray(input.prerequisites) ? input.prerequisites : [];
       if (input.thumbnailUrl !== undefined) updateData.thumbnailUrl = input.thumbnailUrl ? String(input.thumbnailUrl) : null;
       if (input.bannerUrl !== undefined) updateData.bannerUrl = input.bannerUrl ? String(input.bannerUrl) : null;
       if (input.introVideoUrl !== undefined) updateData.introVideoUrl = input.introVideoUrl ? String(input.introVideoUrl) : null;
+      if (input.previewVideoUrl !== undefined) updateData.previewVideoUrl = input.previewVideoUrl ? String(input.previewVideoUrl) : null;
+      if (input.welcomeVideoUrl !== undefined) updateData.welcomeVideoUrl = input.welcomeVideoUrl ? String(input.welcomeVideoUrl) : null;
       if (input.seoTitle !== undefined) updateData.seoTitle = input.seoTitle ? String(input.seoTitle) : null;
       if (input.seoDescription !== undefined) updateData.seoDescription = input.seoDescription ? String(input.seoDescription) : null;
+      if (input.enrollmentType !== undefined) updateData.enrollmentType = String(input.enrollmentType ?? "OPEN");
+      if (input.capacity !== undefined) updateData.capacity = optionalNumber(input.capacity);
+      if (input.discountPrice !== undefined) updateData.discountPrice = input.discountPrice == null || input.discountPrice === "" ? null : decimalOr(input.discountPrice, 0);
+      if (input.passingPercentage !== undefined) updateData.passingPercentage = clamp(numberOr(input.passingPercentage, 80), 0, 100);
+      if (input.estimatedHours !== undefined) updateData.estimatedHours = decimalOr(input.estimatedHours, 0);
+      if (input.certificateEnabled !== undefined) updateData.certificateEnabled = Boolean(input.certificateEnabled);
+      if (input.expiresAfterDays !== undefined) updateData.expiresAfterDays = optionalNumber(input.expiresAfterDays);
+      if (input.price !== undefined) updateData.price = decimalOr(input.price, 0);
+      if (input.publicPrice !== undefined) updateData.publicPrice = decimalOr(input.publicPrice, 0);
+      if (input.agentPrice !== undefined) updateData.agentPrice = decimalOr(input.agentPrice, 0);
+      if (input.toolkitPublicPrice !== undefined) updateData.toolkitPublicPrice = decimalOr(input.toolkitPublicPrice, 15);
+      if (input.toolkitAgentPrice !== undefined) updateData.toolkitAgentPrice = decimalOr(input.toolkitAgentPrice, 0);
+      if (input.toolkitSalesEnabled !== undefined) updateData.toolkitSalesEnabled = input.toolkitSalesEnabled !== false;
+      if (input.currency !== undefined) updateData.currency = String(input.currency ?? "USD");
+      if (input.registrationOpen !== undefined) updateData.registrationOpen = Boolean(input.registrationOpen);
+      if (input.accessDurationDays !== undefined) updateData.accessDurationDays = numberOr(input.accessDurationDays, 365);
+      if (input.language !== undefined) updateData.language = String(input.language ?? "English");
+      if (input.status !== undefined) updateData.status = enumValue(TrainingCourseStatus, input.status, TrainingCourseStatus.DRAFT);
+      if (input.featured !== undefined) updateData.featured = Boolean(input.featured);
+      if (input.visibility !== undefined) updateData.visibility = enumValue(TrainingVisibility, input.visibility, TrainingVisibility.INTERNAL_ONLY);
+      if (input.branchIds !== undefined) updateData.branchIds = arrayOfStrings(input.branchIds);
+      if (input.roleNames !== undefined) updateData.roleNames = arrayOfStrings(input.roleNames);
       
       const course = await prisma.trainingCourse.update({
         where: { id: courseId },
         data: updateData,
       });
-      
-      console.log("Course update - After:", course);
       
       // Track content changes with detailed audit
       const changes: Record<string, { from: string | string[] | null; to: string | string[] | null }> = {};
@@ -1135,17 +1161,18 @@ export async function runAcademyAction(body: Record<string, any>, actor: Actor) 
       select: { title: true, description: true, status: true, badgeTitle: true }
     });
     
-    console.log("Learning path update - Before:", before);
-    console.log("Learning path update - Input:", body.path);
+    if (!before) {
+      throw new Error(`Learning path not found: ${pathId}`);
+    }
     
     try {
+      const updateData: Record<string, any> = {};
+      if (body.path?.title !== undefined) updateData.title = String(body.path.title);
+      if (body.path?.description !== undefined) updateData.description = body.path.description ? String(body.path.description) : null;
+      if (body.path?.status !== undefined) updateData.status = String(body.path.status);
+      if (body.path?.badgeTitle !== undefined) updateData.badgeTitle = body.path.badgeTitle ? String(body.path.badgeTitle) : null;
+      
       const path = await prisma.$transaction(async (tx) => {
-        const updateData: Record<string, any> = {};
-        if (body.path?.title !== undefined) updateData.title = String(body.path.title);
-        if (body.path?.description !== undefined) updateData.description = body.path.description ? String(body.path.description) : null;
-        if (body.path?.status !== undefined) updateData.status = String(body.path.status);
-        if (body.path?.badgeTitle !== undefined) updateData.badgeTitle = body.path.badgeTitle ? String(body.path.badgeTitle) : null;
-        
         const updated = await tx.learningPath.update({
           where: { id: pathId },
           data: updateData,
@@ -1153,14 +1180,12 @@ export async function runAcademyAction(body: Record<string, any>, actor: Actor) 
         if (courseIds.length) {
           await tx.pathCourse.deleteMany({ where: { pathId } });
           await tx.pathCourse.createMany({
-            data: courseIds.map((courseId, index) => ({ pathId, courseId, sortOrder: index, required: true })),
+            data: courseIds.map((cId, index) => ({ pathId, courseId: cId, sortOrder: index, required: true })),
             skipDuplicates: true,
           });
         }
         return updated;
       });
-      
-      console.log("Learning path update - After:", path);
       await audit(actor, "academy.path.update", path.id, { title: path.title });
       return path;
     } catch (error) {
@@ -1215,9 +1240,7 @@ export async function runAcademyAction(body: Record<string, any>, actor: Actor) 
       where: { id: badgeId },
       select: { name: true, description: true, xp: true, active: true }
     });
-    
-    console.log("Badge update - Before:", before);
-    console.log("Badge update - Input:", input);
+    if (!before) throw new Error(`Badge not found: ${badgeId}`);
     
     try {
       const updateData: Record<string, any> = {};
@@ -1228,8 +1251,6 @@ export async function runAcademyAction(body: Record<string, any>, actor: Actor) 
       if (input.active !== undefined) updateData.active = Boolean(input.active);
       
       const badge = await prisma.badge.update({ where: { id: badgeId }, data: updateData });
-      
-      console.log("Badge update - After:", badge);
       await audit(actor, "academy.badge.update", badge.id, { name: badge.name });
       return badge;
     } catch (error) {

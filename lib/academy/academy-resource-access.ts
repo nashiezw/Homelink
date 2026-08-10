@@ -219,7 +219,7 @@ export async function registerResourceAccess(input: {
       : toolkitResourceKey(String(input.courseId ?? ""));
 
   if (input.resourceKind === AcademyResourceKind.COURSE_TOOLKIT) {
-    if (!input.courseId || !PROGRAMME_COURSE_IDS.includes(input.courseId)) return "RESOURCE_NOT_AVAILABLE" as const;
+    if (!input.courseId) return "RESOURCE_NOT_AVAILABLE" as const;
     const course = await prisma.trainingCourse.findFirst({
       where: { id: input.courseId, status: TrainingCourseStatus.PUBLISHED },
     });

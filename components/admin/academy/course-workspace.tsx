@@ -5,12 +5,17 @@ import {
   BookOpen,
   CheckCircle2,
   Copy,
+  ClipboardCheck,
   Eye,
+  FileText,
   GripVertical,
   History,
+  Layers3,
   Loader2,
   Pencil,
   Plus,
+  Rocket,
+  Target,
   Trash2,
   Undo2,
   Upload,
@@ -83,6 +88,14 @@ type CourseTree = {
 const STEPS = ["Overview", "Curriculum", "Lesson Editor", "Assessments", "Publish"] as const;
 type Step = (typeof STEPS)[number];
 
+const STEP_DETAILS: Record<Step, { icon: typeof Target; title: string; description: string }> = {
+  Overview: { icon: Target, title: "Course setup", description: "Name, promise, media, SEO, pass mark, and retake rules." },
+  Curriculum: { icon: Layers3, title: "Structure", description: "Arrange modules and lessons in the learner journey." },
+  "Lesson Editor": { icon: FileText, title: "Lesson content", description: "Write content, upload media, and add practice depth." },
+  Assessments: { icon: ClipboardCheck, title: "Assessment gates", description: "Build quizzes, assignments, and final exams." },
+  Publish: { icon: Rocket, title: "Launch check", description: "Review readiness, preview, publish, and inspect history." },
+};
+
 export function CourseWorkspace({
   courseId,
   courseTitle,
@@ -153,6 +166,17 @@ export function CourseWorkspace({
     [tree],
   );
   const selectedLesson = allLessons.find((l) => l.id === selectedLessonId);
+  const readinessItems = useMemo(() => {
+    if (!tree) return [];
+    return [
+      { label: "Course identity", complete: Boolean(tree.title.trim() && tree.description.trim()) },
+      { label: "Learner promise", complete: Boolean((tree.learningOutcomes ?? []).length || tree.shortDescription?.trim()) },
+      { label: "Curriculum", complete: tree.stats.moduleCount > 0 && tree.stats.lessonCount > 0 },
+      { label: "Assessments", complete: tree.stats.quizCount + tree.stats.assignmentCount + tree.stats.examCount > 0 },
+      { label: "Certification", complete: !tree.certificateEnabled || tree.passingPercentage > 0 },
+    ];
+  }, [tree]);
+  const readinessComplete = readinessItems.filter((item) => item.complete).length;
 
   useEffect(() => {
     if (selectedLesson) {
@@ -186,6 +210,16 @@ export function CourseWorkspace({
   // Simple debounced save for field updates to prevent typing issues
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const debouncedRun = useCallback((body: Record<string, unknown>, success: string) => {
+    // Overview inputs are controlled by `tree`.  Keep that local copy in sync
+    // immediately, otherwise React restores the old server value after every
+    // keystroke while the debounced request is waiting to run.
+    const courseUpdate = body.action === "update_course" && body.course && typeof body.course === "object"
+      ? body.course as Partial<CourseTree> & { courseId?: string }
+      : null;
+    if (courseUpdate) {
+      const { courseId: _courseId, ...safeCourseUpdate } = courseUpdate;
+      setTree((current) => current ? { ...current, ...safeCourseUpdate } : current);
+    }
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current);
     }
@@ -260,7 +294,8 @@ export function CourseWorkspace({
   }
 
   return (
-    <div className="space-y-6 rounded-2xl border border-white/10 bg-slate-950/80 p-4 sm:p-6">
+    <div className="admin-mobile-safe space-y-5 rounded-2xl border border-white/10 bg-slate-950/80 p-3 sm:p-6">
+      <div className="overflow-hidden rounded-2xl border border-emerald-400/15 bg-[radial-gradient(circle_at_top_left,rgba(16,185,129,0.18),transparent_34%),linear-gradient(135deg,rgba(15,23,42,0.98),rgba(2,6,23,0.98))] p-4 sm:p-5">
       <div className="flex flex-col items-start justify-between gap-4 lg:flex-row">
         <div>
           <p className="text-xs uppercase tracking-wider text-emerald-400">Course Builder</p>
@@ -278,11 +313,44 @@ export function CourseWorkspace({
           <Button variant="secondary" onClick={() => window.open(`/dashboard/academy/${courseId}`, "_blank")}><Eye className="size-4 mr-2" /> Preview</Button>
         </div>
       </div>
-
-      <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
-        {STEPS.map((item) => (
-          <Button key={item} className="w-full sm:w-auto" variant={step === item ? "primary" : "secondary"} onClick={() => setStep(item)}>{item}</Button>
+      <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+        {readinessItems.map((item) => (
+          <div key={item.label} className={`rounded-xl border p-3 ${item.complete ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-100" : "border-amber-400/20 bg-amber-400/10 text-amber-100"}`}>
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className={`size-4 shrink-0 ${item.complete ? "text-emerald-300" : "text-amber-300"}`} />
+              <p className="min-w-0 break-words text-xs font-bold uppercase tracking-wide">{item.label}</p>
+            </div>
+          </div>
         ))}
+      </div>
+      <p className="mt-3 text-xs text-slate-400">{readinessComplete}/{readinessItems.length} launch checks complete. Use the steps below from left to right for a clean build flow.</p>
+      </div>
+
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+        {STEPS.map((item, index) => {
+          const meta = STEP_DETAILS[item];
+          const Icon = meta.icon;
+          const active = step === item;
+          return (
+            <button
+              key={item}
+              type="button"
+              onClick={() => setStep(item)}
+              className={`min-w-0 rounded-2xl border p-4 text-left transition ${active ? "border-emerald-400/40 bg-emerald-400/15" : "border-white/10 bg-slate-900/60 hover:border-white/20 hover:bg-slate-900"}`}
+            >
+              <div className="flex items-start gap-3">
+                <span className={`flex size-9 shrink-0 items-center justify-center rounded-xl ${active ? "bg-emerald-400 text-slate-950" : "bg-white/5 text-slate-300"}`}>
+                  <Icon className="size-4" />
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-[11px] font-bold uppercase tracking-wider text-slate-500">Step {index + 1}</span>
+                  <span className="mt-1 block break-words font-bold text-white">{meta.title}</span>
+                  <span className="mt-1 block text-xs leading-5 text-slate-400">{meta.description}</span>
+                </span>
+              </div>
+            </button>
+          );
+        })}
       </div>
 
       {step === "Overview" && (
@@ -297,37 +365,37 @@ export function CourseWorkspace({
           <div className="rounded-xl border border-white/10 p-4 text-sm text-slate-300">
             <AdminStatusBadge status={tree.status} variant={tree.status === "PUBLISHED" ? "success" : "warning"} />
             <div className="mt-3 space-y-4">
-              <Field label="Course Title" value={tree.title} onChange={(v) => void debouncedRun({ action: "update_course", course: { courseId, title: v } }, "Title updated.")} />
-              <Field label="Subtitle" value={tree.subtitle ?? ""} onChange={(v) => void debouncedRun({ action: "update_course", course: { courseId, subtitle: v } }, "Subtitle updated.")} />
-              <TextareaField label="Course Description" value={tree.description} rows={3} onChange={(v) => void debouncedRun({ action: "update_course", course: { courseId, description: v } }, "Description updated.")} />
-              <TextareaField label="Short Description" value={tree.shortDescription ?? ""} rows={2} onChange={(v) => void debouncedRun({ action: "update_course", course: { courseId, shortDescription: v } }, "Short description updated.")} />
-              <Field label="Instructor" value={tree.instructor ?? ""} onChange={(v) => void debouncedRun({ action: "update_course", course: { courseId, instructor: v } }, "Instructor updated.")} />
+              <Field label="Course Title" value={tree.title} onChange={(v) => void debouncedRun({ action: "update_course", courseId, course: { title: v } }, "Title updated.")} />
+              <Field label="Subtitle" value={tree.subtitle ?? ""} onChange={(v) => void debouncedRun({ action: "update_course", courseId, course: { subtitle: v } }, "Subtitle updated.")} />
+              <TextareaField label="Course Description" value={tree.description} rows={3} onChange={(v) => void debouncedRun({ action: "update_course", courseId, course: { description: v } }, "Description updated.")} />
+              <TextareaField label="Short Description" value={tree.shortDescription ?? ""} rows={2} onChange={(v) => void debouncedRun({ action: "update_course", courseId, course: { shortDescription: v } }, "Short description updated.")} />
+              <Field label="Instructor" value={tree.instructor ?? ""} onChange={(v) => void debouncedRun({ action: "update_course", courseId, course: { instructor: v } }, "Instructor updated.")} />
             </div>
           </div>
           
           <div className="rounded-xl border border-white/10 p-4 text-sm text-slate-300">
             <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Marketing Content</p>
             <div className="mt-3 space-y-4">
-              <TextareaField label="Learning Outcomes (one per line)" value={(tree.learningOutcomes ?? []).join("\n")} rows={4} onChange={(v) => void debouncedRun({ action: "update_course", course: { courseId, learningOutcomes: v.split("\n").filter(Boolean) } }, "Learning outcomes updated.")} />
-              <TextareaField label="Target Audience" value={tree.targetAudience ?? ""} rows={2} onChange={(v) => void debouncedRun({ action: "update_course", course: { courseId, targetAudience: v } }, "Target audience updated.")} />
-              <TextareaField label="Prerequisites (one per line)" value={(tree.prerequisites ?? []).join("\n")} rows={2} onChange={(v) => void debouncedRun({ action: "update_course", course: { courseId, prerequisites: v.split("\n").filter(Boolean) } }, "Prerequisites updated.")} />
+              <TextareaField label="Learning Outcomes (one per line)" value={(tree.learningOutcomes ?? []).join("\n")} rows={4} onChange={(v) => void debouncedRun({ action: "update_course", courseId, course: { learningOutcomes: v.split("\n").filter(Boolean) } }, "Learning outcomes updated.")} />
+              <TextareaField label="Target Audience" value={tree.targetAudience ?? ""} rows={2} onChange={(v) => void debouncedRun({ action: "update_course", courseId, course: { targetAudience: v } }, "Target audience updated.")} />
+              <TextareaField label="Prerequisites (one per line)" value={(tree.prerequisites ?? []).join("\n")} rows={2} onChange={(v) => void debouncedRun({ action: "update_course", courseId, course: { prerequisites: v.split("\n").filter(Boolean) } }, "Prerequisites updated.")} />
             </div>
           </div>
           
           <div className="rounded-xl border border-white/10 p-4 text-sm text-slate-300">
             <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Media Assets</p>
             <div className="mt-3 space-y-4">
-              <CourseMediaField label="Thumbnail" value={tree.thumbnailUrl ?? ""} accept="image/*" kind="image" onChange={(v) => void debouncedRun({ action: "update_course", course: { courseId, thumbnailUrl: v } }, "Thumbnail updated.")} courseId={courseId} />
-              <CourseMediaField label="Banner" value={tree.bannerUrl ?? ""} accept="image/*" kind="image" onChange={(v) => void debouncedRun({ action: "update_course", course: { courseId, bannerUrl: v } }, "Banner updated.")} courseId={courseId} />
-              <CourseMediaField label="Intro Video" value={tree.introVideoUrl ?? ""} accept="video/*" kind="video" onChange={(v) => void debouncedRun({ action: "update_course", course: { courseId, introVideoUrl: v } }, "Intro video updated.")} courseId={courseId} />
+              <CourseMediaField label="Thumbnail" value={tree.thumbnailUrl ?? ""} accept="image/*" kind="image" onChange={(v) => void debouncedRun({ action: "update_course", courseId, course: { thumbnailUrl: v } }, "Thumbnail updated.")} courseId={courseId} />
+              <CourseMediaField label="Banner" value={tree.bannerUrl ?? ""} accept="image/*" kind="image" onChange={(v) => void debouncedRun({ action: "update_course", courseId, course: { bannerUrl: v } }, "Banner updated.")} courseId={courseId} />
+              <CourseMediaField label="Intro Video" value={tree.introVideoUrl ?? ""} accept="video/*" kind="video" onChange={(v) => void debouncedRun({ action: "update_course", courseId, course: { introVideoUrl: v } }, "Intro video updated.")} courseId={courseId} />
             </div>
           </div>
           
           <div className="rounded-xl border border-white/10 p-4 text-sm text-slate-300">
             <p className="text-xs font-bold uppercase tracking-wide text-slate-400">SEO</p>
             <div className="mt-3 space-y-4">
-              <Field label="SEO Title" value={tree.seoTitle ?? ""} onChange={(v) => void debouncedRun({ action: "update_course", course: { courseId, seoTitle: v } }, "SEO title updated.")} />
-              <TextareaField label="SEO Description" value={tree.seoDescription ?? ""} rows={2} onChange={(v) => void debouncedRun({ action: "update_course", course: { courseId, seoDescription: v } }, "SEO description updated.")} />
+              <Field label="SEO Title" value={tree.seoTitle ?? ""} onChange={(v) => void debouncedRun({ action: "update_course", courseId, course: { seoTitle: v } }, "SEO title updated.")} />
+              <TextareaField label="SEO Description" value={tree.seoDescription ?? ""} rows={2} onChange={(v) => void debouncedRun({ action: "update_course", courseId, course: { seoDescription: v } }, "SEO description updated.")} />
             </div>
           </div>
           <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/[0.06] p-4 sm:p-5">
@@ -830,3 +898,4 @@ function AssessmentCard({ title, items, onAdd }: { title: string; items: string[
     </div>
   );
 }
+

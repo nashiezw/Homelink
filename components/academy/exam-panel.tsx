@@ -134,7 +134,7 @@ export function ExamPanel({
         <p className="mt-4 text-2xl font-bold">Final Exam Score: {result.score}%</p>
         <p className="text-slate-600 mt-2">
           {result.passed
-            ? "You passed the HouseLink Agent Foundations final examination."
+            ? `You passed ${title || "the final examination"}.`
             : `Not passed yet. Pass mark is ${result.passingScore ?? passingScore}%. Review the course material and try again when ready.`}
         </p>
         <p className="mt-2 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">

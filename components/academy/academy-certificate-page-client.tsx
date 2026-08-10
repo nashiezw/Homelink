@@ -7,7 +7,6 @@ import { CertificateDocument } from "@/components/academy/certificate-document";
 import { Button } from "@/components/ui/button";
 import { useApp } from "@/components/providers/app-provider";
 import { apiFetch } from "@/lib/api/client";
-import { getProgrammeCourse } from "@/lib/academy/academy-programme";
 
 type CertificatePayload = {
   id: string;
@@ -85,8 +84,6 @@ export function AcademyCertificatePageClient({ issueId }: { issueId: string }) {
     );
   }
 
-  const programme = getProgrammeCourse(data.courseId);
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-100 via-emerald-50/40 to-amber-50/30 print:bg-white">
       <div className="mx-auto max-w-5xl px-4 pt-6 print:hidden">
@@ -102,7 +99,7 @@ export function AcademyCertificatePageClient({ issueId }: { issueId: string }) {
         issuedAt={data.issuedAt}
         expiresAt={data.expiresAt}
         verifyUrl={data.verifyUrl}
-        accent={programme?.theme.accent ?? data.accent}
+        accent={data.accent}
         backgroundUrl={data.backgroundUrl}
         logoUrl={data.logoUrl}
         signatureUrl={data.signatureUrl}
@@ -127,8 +124,8 @@ export function AcademyCertificatePageClient({ issueId }: { issueId: string }) {
         badgeLineMaxFontSize={data.badgeLineMaxFontSize}
         customHtml={data.customHtml}
         customCss={data.customCss}
-        skillsAssessed={data.skillsAssessed?.length ? data.skillsAssessed : programme?.learningOutcomes ?? []}
-        badgeName={data.badgeName ?? programme?.badgeName ?? undefined}
+        skillsAssessed={data.skillsAssessed ?? []}
+        badgeName={data.badgeName ?? undefined}
       />
     </div>
   );

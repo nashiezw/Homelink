@@ -18,25 +18,32 @@ export async function GET(request: Request, context: { params: Promise<{ issueId
   if (!issue || issue.status !== "ACTIVE") return problem(404, "NOT_FOUND", "Certificate not found.");
   if (issue.agentId !== userId) return problem(403, "FORBIDDEN", "This certificate belongs to another learner.");
 
-  const [user, currentCourseTemplate] = await Promise.all([
+  const programme = issue.courseId ? getProgrammeCourse(issue.courseId) : null;
+  const [user, currentCourseTemplate, programmeBadge] = await Promise.all([
     prisma.user.findUnique({ where: { id: userId }, select: { name: true } }),
     !issue.courseId
       ? Promise.resolve(null)
       : prisma.certificateTemplate.findMany({ where: { active: true }, orderBy: { updatedAt: "desc" } }).then((templates) => selectCertificateTemplateForCourse(templates, issue.courseId!)),
+    programme ? prisma.badge.findUnique({ where: { id: programme.badgeId } }) : Promise.resolve(null),
   ]);
   const template = issue.template ?? currentCourseTemplate;
-  const programme = issue.courseId ? getProgrammeCourse(issue.courseId) : null;
   const templateJson = (template?.templateJson ?? {}) as Record<string, unknown>;
   const colours = (templateJson.colours ?? {}) as Record<string, unknown>;
+  const courseLearningOutcomes = Array.isArray(issue.course?.learningOutcomes) ? issue.course.learningOutcomes : [];
+  const certificateTitle = typeof templateJson.title === "string" && templateJson.title.trim()
+    ? String(templateJson.title)
+    : issue.course?.title
+      ? `${issue.course.title} Certificate`
+      : "HouseLink Academy Training Certificate";
 
   return ok({
     id: issue.id,
     certificateNumber: issue.certificateNumber,
     courseId: issue.courseId,
     courseTitle: issue.course?.title ?? "HouseLink Academy Course",
-    certificateTitle: trainingCertificateTitle(String(templateJson.title ?? programme?.certificateTitle ?? "HouseLink Academy Training Certificate")),
-    skillsAssessed: programme?.learningOutcomes ?? [],
-    badgeName: programme?.badgeName ?? null,
+    certificateTitle: trainingCertificateTitle(certificateTitle),
+    skillsAssessed: courseLearningOutcomes,
+    badgeName: programmeBadge?.name ?? null,
     issuedAt: issue.issuedAt.toISOString(),
     expiresAt: issue.expiresAt?.toISOString() ?? null,
     verifyUrl: `/academy/verify?certificate=${encodeURIComponent(issue.certificateNumber)}`,

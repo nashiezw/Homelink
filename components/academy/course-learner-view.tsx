@@ -269,7 +269,7 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
   if (activeExamId) {
     const exam = data.assessments.exams.find((e) => e.id === activeExamId);
     return (
-      <PageShell eyebrow={data.settings.academyName} title={exam?.title ?? "Final Exam"} description="Complete the final examination to earn the HouseLink training certificate.">
+      <PageShell eyebrow={data.settings.academyName} title={exam?.title ?? "Final Exam"} description="Complete the final examination for this course certificate.">
         <ExamPanel
           examId={activeExamId}
           passingScore={exam?.passingScore ?? 80}
@@ -319,7 +319,7 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
                 <Sparkles className="size-3.5 shrink-0" /> {theme?.label ?? data.settings.academyName}
               </p>
               <p className="mt-2 text-sm text-emerald-100/90">{data.course.instructor ?? "HouseLink trainers"}</p>
-              <p className="mt-1 text-base font-medium leading-snug text-white/95 sm:text-lg">{data.programme?.certificateTitle ?? "HouseLink training certificate"}</p>
+              <p className="mt-1 text-base font-medium leading-snug text-white/95 sm:text-lg">{data.programme?.certificateTitle ?? `${data.course.title} certificate`}</p>
             </div>
           </div>
           <div className="w-full rounded-lg border border-white/20 bg-white/15 p-5 lg:max-w-xs lg:border-white/10 lg:bg-white/10 lg:backdrop-blur-sm">
@@ -449,7 +449,7 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
               <div>
                 <h3 className="text-lg font-bold">Training Session Notes - Downloadable PDFs</h3>
                 <p className="mt-1 max-w-2xl text-sm text-slate-600 dark:text-slate-400">
-                  {data.materials.length} branded HouseLink study guides - each PDF includes the HouseLink logo, session overview, key takeaways, in-depth notes, field application steps, and reflection questions.
+                  {data.materials.length} study guides with session overviews, key takeaways, in-depth notes, field application steps, and reflection questions.
                 </p>
               </div>
               <span className="rounded-full bg-sky-100 px-3 py-1 text-xs font-bold text-sky-800 dark:bg-sky-900/40 dark:text-sky-200">
@@ -551,7 +551,7 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
               <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Mentor/admin sign-off gate</p>
               <h3 className="text-lg font-bold leading-tight text-slate-950 dark:text-white sm:text-xl">Uploads are reviewed before certificate issue</h3>
               <p className="max-w-3xl text-sm leading-6 text-slate-600 dark:text-slate-300">
-                Practical work must be reviewed and graded before a HouseLink training certificate is issued. The portfolio and roleplay evidence show whether you can handle real clients safely within HouseLink standards.
+                Practical work must be reviewed and graded before a course certificate is issued. The submitted evidence shows whether you can apply the course standards safely and professionally.
               </p>
             </div>
             <div className="mt-4">
@@ -689,7 +689,7 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
         <div className="academy-panel mt-6 rounded-xl p-6">
           <p className="text-3xl font-bold text-emerald-600">{data.course.progress}%</p>
           <p className="text-slate-600 mt-1">Course completion / Status: {data.course.status.replace(/_/g, " ")}</p>
-          <p className="text-sm text-slate-500 mt-4">Pass mark: {data.course.passingPercentage}% / Complete all training sessions{data.course.certificateEnabled ? " to earn your HouseLink training certificate" : ""}.</p>
+          <p className="text-sm text-slate-500 mt-4">Pass mark: {data.course.passingPercentage}% / Complete all training sessions{data.course.certificateEnabled ? " to earn your course certificate" : ""}.</p>
         </div>
       )}
     </PageShell>

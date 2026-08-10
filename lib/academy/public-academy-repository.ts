@@ -2,7 +2,7 @@ import { AcademyRegistrationStatus, PaymentProvider, PaymentStatus, Role, Traini
 import { getMainPrisma } from "@/lib/db/main-prisma";
 import { sendRegistrationConfirmationEmail } from "@/lib/academy/academy-email";
 import { calculateCourseProgress, getCompletedLessonIds } from "@/lib/academy/academy-progress";
-import { awardProgrammeBadge, canAccessProgrammeCourse, getProgrammeProgressSummary } from "@/lib/academy/academy-completion";
+import { awardProgrammeBadge, canAccessProgrammeCourse } from "@/lib/academy/academy-completion";
 import { assessmentMetaForAssignment, assessmentMetaForQuiz } from "@/lib/academy/academy-assessments";
 import { getProgrammeCourse, LEGACY_COURSE_ID, PROGRAMME_COURSE_IDS } from "@/lib/academy/academy-programme";
 import { getEnrolledCourseToolkits, getToolkitGroupsForCourse, programmeMetaForCourse } from "@/lib/academy/academy-toolkits";
@@ -17,16 +17,15 @@ import {
 } from "@/lib/academy/academy-resource-access";
 import { fetchCourseTree, flattenCourseMaterials, mapLessonForLearner } from "@/lib/academy/course-tree";
 import { toAcademyFileDownloadUrl } from "@/lib/academy/academy-files";
-import { repairLegacyBrandingInPostgres, replaceLegacyBrandingText } from "@/lib/brand/rebrand";
+import { replaceLegacyBrandingText } from "@/lib/brand/rebrand";
 import { lessonHandoutStoragePath } from "@/lib/academy/lesson-handouts";
 
 export type AcademyRegistrationIntent = "TRAINING_ONLY" | "AGENT_TRAINING";
 
 export async function listPublicAcademyCourses() {
-  await repairLegacyBrandingInPostgres();
-  const courses = await getMainPrisma().trainingCourse.findMany({
+  const prisma = getMainPrisma();
+  const courses = await prisma.trainingCourse.findMany({
     where: {
-      id: { in: PROGRAMME_COURSE_IDS },
       status: TrainingCourseStatus.PUBLISHED,
       visibility: { in: [TrainingVisibility.PUBLIC, TrainingVisibility.ROLE_BASED] },
       registrationOpen: true,
@@ -34,18 +33,38 @@ export async function listPublicAcademyCourses() {
     include: {
       category: true,
       modules: { include: { sections: { include: { lessons: true }, orderBy: { sortOrder: "asc" } } }, orderBy: { sortOrder: "asc" } },
+      quizzes: { where: { active: true } },
+      assignments: { where: { active: true } },
+      finalExams: { where: { active: true } },
     },
   });
+  const programmeBadges = await prisma.badge.findMany({
+    where: { id: { in: PROGRAMME_COURSE_IDS.map((courseId) => getProgrammeCourse(courseId)?.badgeId).filter((id): id is string => Boolean(id)) } },
+  });
+  const badgeById = new Map(programmeBadges.map((badge) => [badge.id, badge]));
 
-  const ordered = PROGRAMME_COURSE_IDS
-    .map((id) => courses.find((course) => course.id === id))
-    .filter(Boolean);
+  // The programme order is useful for the original structured programme, but
+  // it must not hide courses created in the admin course builder.
+  const ordered = [...courses].sort((a, b) => {
+    const programmeOrder = PROGRAMME_COURSE_IDS.indexOf(a.id) - PROGRAMME_COURSE_IDS.indexOf(b.id);
+    const aIsProgramme = PROGRAMME_COURSE_IDS.includes(a.id);
+    const bIsProgramme = PROGRAMME_COURSE_IDS.includes(b.id);
+    if (aIsProgramme && bIsProgramme) return programmeOrder;
+    if (aIsProgramme) return -1;
+    if (bIsProgramme) return 1;
+    return Number(b.featured) - Number(a.featured) || a.createdAt.getTime() - b.createdAt.getTime();
+  });
 
   return Promise.all(ordered.map(async (course) => {
     if (!course) return null;
     const meta = programmeMetaForCourse(course.id);
+    const badge = meta ? badgeById.get(meta.badgeId) : null;
     const toolkit = await getToolkitGroupsForCourse(course.id, { preview: true });
     const toolkitCount = toolkit.reduce((sum, group) => sum + group.items.length, 0);
+    const quizCount = course.quizzes?.length ?? 0;
+    const assignmentCount = course.assignments?.length ?? 0;
+    const finalExamCount = course.finalExams?.length ?? 0;
+    const lessonCount = course.modules.reduce((sum, module) => sum + module.sections.reduce((count, section) => count + section.lessons.length, 0), 0);
     return {
       id: course.id,
       title: course.title,
@@ -68,19 +87,19 @@ export async function listPublicAcademyCourses() {
       sortOrder: meta?.sortOrder ?? 0,
       theme: meta?.theme ?? null,
       prerequisiteCourseId: meta?.prerequisiteCourseId ?? null,
-      badgeName: meta?.badgeName ?? null,
-      certificateTitle: meta?.certificateTitle ?? null,
+      badgeName: badge?.name ?? meta?.badgeName ?? null,
+      certificateTitle: course.certificateEnabled ? (meta?.certificateTitle ?? `${course.title} Certificate`) : null,
       learningOutcomes: course.learningOutcomes && course.learningOutcomes.length > 0 ? course.learningOutcomes : (meta?.learningOutcomes ?? []),
-      includes: meta?.includes ?? [],
-      assessmentSummary: meta?.assessmentSummary ?? null,
-      quizCount: meta?.quizIds.length ?? 0,
-      assignmentCount: meta?.assignmentIds.length ?? 0,
-      hasFinalExam: meta?.requiresFinalExam ?? false,
+      includes: buildCourseIncludes({ lessonCount, toolkitCount, quizCount, assignmentCount, finalExamCount, certificateEnabled: course.certificateEnabled }),
+      assessmentSummary: buildAssessmentSummary({ courseTitle: course.title, quizCount, assignmentCount, finalExamCount, passMark: course.passingPercentage, certificateEnabled: course.certificateEnabled }),
+      quizCount,
+      assignmentCount,
+      hasFinalExam: finalExamCount > 0,
       portfolioRequired: meta?.assignmentIds.some((id) => id.includes("portfolio")) ?? false,
       roleplayCount: meta?.assignmentIds.filter((id) => id.includes("roleplay") || id.includes("simulation")).length ?? 0,
       toolkitCount,
       toolkitPreview: previewToolkitGroups(toolkit),
-      lessonCount: course.modules.reduce((sum, module) => sum + module.sections.reduce((count, section) => count + section.lessons.length, 0), 0),
+      lessonCount,
       modules: course.modules.map((module) => ({
         id: module.id,
         title: module.title,
@@ -106,7 +125,6 @@ export async function getLearnerAcademyDashboard(learnerId: string, options?: { 
     prisma.academyLearnerApplication.findMany({
       where: {
         learnerId,
-        courseId: { in: PROGRAMME_COURSE_IDS },
         course: { status: TrainingCourseStatus.PUBLISHED },
       },
       include: {
@@ -160,10 +178,8 @@ export async function getLearnerAcademyDashboard(learnerId: string, options?: { 
     }),
   ]);
 
-  const programmeApplications = applications.filter(
-    (entry) => entry.courseId !== LEGACY_COURSE_ID && PROGRAMME_COURSE_IDS.includes(entry.courseId),
-  );
-  const approved = programmeApplications.filter((entry) => entry.status === AcademyRegistrationStatus.APPROVED);
+  const visibleApplications = applications.filter((entry) => entry.courseId !== LEGACY_COURSE_ID);
+  const approved = visibleApplications.filter((entry) => entry.status === AcademyRegistrationStatus.APPROVED);
   const totalLessons = approved.reduce((sum, entry) => sum + countLessons(entry.course), 0);
   const completedLessons = await Promise.all(
     approved.map(async (entry) => {
@@ -226,12 +242,11 @@ export async function getLearnerAcademyDashboard(learnerId: string, options?: { 
     const recent = recentProgress.find(
       (row) =>
         row.lesson.section.module.courseId !== LEGACY_COURSE_ID &&
-        PROGRAMME_COURSE_IDS.includes(row.lesson.section.module.courseId) &&
         !completedOrCertifiedCourseIds.has(row.lesson.section.module.courseId),
     ) ?? recentProgress[0];
     if (!recent) return null;
     const courseId = recent.lesson.section.module.courseId;
-    if (courseId === LEGACY_COURSE_ID || !PROGRAMME_COURSE_IDS.includes(courseId) || completedOrCertifiedCourseIds.has(courseId)) {
+    if (courseId === LEGACY_COURSE_ID || completedOrCertifiedCourseIds.has(courseId)) {
       const fallback = approved.find((entry) => !completedOrCertifiedCourseIds.has(entry.course.id));
       if (!fallback) return null;
       return {
@@ -270,6 +285,38 @@ export async function getLearnerAcademyDashboard(learnerId: string, options?: { 
   const activeCourseToolkit = courseToolkits.find((toolkit) => toolkit.courseId === activeCourseId) ?? courseToolkits[0] ?? null;
   const manualAccess = await getManualAccessView(learnerId, isAgent);
   const toolkitDownloadCount = courseToolkits.reduce((sum, toolkit) => sum + toolkit.itemCount, 0);
+  const badgeById = new Map(agentBadges.map((entry) => [entry.badgeId, entry.badge]));
+  const certificateByCourseId = new Map(
+    certificates
+      .filter((certificate) => certificate.courseId)
+      .map((certificate) => [certificate.courseId as string, certificate]),
+  );
+  const dashboardCourseCards = approved.map((entry) => {
+    const programme = getProgrammeCourse(entry.course.id);
+    const certificate = certificateByCourseId.get(entry.course.id);
+    const courseProgress = courseProgressRows.find((row) => row.courseId === entry.course.id);
+    const badge = programme ? badgeById.get(programme.badgeId) : null;
+    return {
+      id: entry.course.id,
+      title: entry.course.title,
+      subtitle: entry.course.subtitle ?? entry.course.shortDescription ?? "",
+      theme: programme?.theme ?? null,
+      sortOrder: programme?.sortOrder ?? 999,
+      unlocked: true,
+      progress: courseProgress?.percentComplete ?? 0,
+      completed: Boolean(certificate) || courseProgress?.status === "COMPLETED" || (courseProgress?.percentComplete ?? 0) >= 100,
+      badgeEarned: programme ? existingBadgeIds.has(programme.badgeId) : Boolean(certificate),
+      badgeName: badge?.name ?? programme?.badgeName ?? `${entry.course.title} completion`,
+      certificate: certificate
+        ? {
+            id: certificate.id,
+            certificateNumber: certificate.certificateNumber,
+            issuedAt: certificate.issuedAt.toISOString(),
+            downloadUrl: `/dashboard/academy/certificate/${certificate.id}`,
+          }
+        : null,
+    };
+  }).sort((a, b) => a.sortOrder - b.sortOrder || a.title.localeCompare(b.title));
 
   return {
     settings: {
@@ -278,7 +325,7 @@ export async function getLearnerAcademyDashboard(learnerId: string, options?: { 
     },
     metrics: {
       enrolledCourses: approved.length,
-      pendingApprovals: programmeApplications.filter((entry) => entry.status === AcademyRegistrationStatus.PENDING_PAYMENT || entry.status === AcademyRegistrationStatus.PAYMENT_UPLOADED).length,
+      pendingApprovals: visibleApplications.filter((entry) => entry.status === AcademyRegistrationStatus.PENDING_PAYMENT || entry.status === AcademyRegistrationStatus.PAYMENT_UPLOADED).length,
       certificates: certificates.length,
       downloads: toolkitDownloadCount,
       totalLessons,
@@ -312,7 +359,7 @@ export async function getLearnerAcademyDashboard(learnerId: string, options?: { 
       verifyUrl: `/academy/verify?certificate=${encodeURIComponent(certificate.certificateNumber)}`,
       downloadUrl: certificate.pdfUrl ?? `/dashboard/academy/certificate/${certificate.id}`,
     })),
-    programmeCourses: await getProgrammeProgressSummary(learnerId),
+    programmeCourses: dashboardCourseCards,
     activeCourseId,
     activeCourseToolkit,
     courseToolkits,
@@ -336,7 +383,7 @@ export async function getLearnerAcademyDashboard(learnerId: string, options?: { 
       course: entry.course ? { id: entry.course.id, title: entry.course.title } : null,
       payment: entry.payment ? { id: entry.payment.id, status: entry.payment.status, proofStatus: entry.payment.proofStatus } : null,
     })),
-    applications: await Promise.all(programmeApplications.map(async (entry) => {
+    applications: await Promise.all(visibleApplications.map(async (entry) => {
       const completedIds = entry.status === AcademyRegistrationStatus.APPROVED
         ? await getCompletedLessonIds(learnerId, entry.course.id)
         : new Set<string>();
@@ -736,6 +783,42 @@ function computeLearningStreak(dates: Date[]) {
   return streak;
 }
 
+function buildCourseIncludes(input: {
+  lessonCount: number;
+  toolkitCount: number;
+  quizCount: number;
+  assignmentCount: number;
+  finalExamCount: number;
+  certificateEnabled: boolean;
+}) {
+  const rows = [`${input.lessonCount} guided lesson${input.lessonCount === 1 ? "" : "s"}`];
+  if (input.toolkitCount) rows.push(`${input.toolkitCount} downloadable resource${input.toolkitCount === 1 ? "" : "s"}`);
+  if (input.quizCount) rows.push(`${input.quizCount} quiz${input.quizCount === 1 ? "" : "zes"}`);
+  if (input.assignmentCount) rows.push(`${input.assignmentCount} practical assignment${input.assignmentCount === 1 ? "" : "s"}`);
+  if (input.finalExamCount) rows.push(`${input.finalExamCount} final exam${input.finalExamCount === 1 ? "" : "s"}`);
+  if (input.certificateEnabled) rows.push("Downloadable certificate after completion requirements are met");
+  return rows;
+}
+
+function buildAssessmentSummary(input: {
+  courseTitle: string;
+  quizCount: number;
+  assignmentCount: number;
+  finalExamCount: number;
+  passMark: number;
+  certificateEnabled: boolean;
+}) {
+  const requirements = [];
+  if (input.quizCount) requirements.push(`pass ${input.quizCount} quiz${input.quizCount === 1 ? "" : "zes"}`);
+  if (input.assignmentCount) requirements.push(`complete ${input.assignmentCount} assignment${input.assignmentCount === 1 ? "" : "s"}`);
+  if (input.finalExamCount) requirements.push(`pass the final exam`);
+  if (!requirements.length) return input.certificateEnabled
+    ? `Complete ${input.courseTitle} lessons and meet the ${input.passMark}% course pass requirement to unlock the certificate.`
+    : `Complete ${input.courseTitle} lessons to finish this course.`;
+  const joined = requirements.length === 1 ? requirements[0] : `${requirements.slice(0, -1).join(", ")} and ${requirements.at(-1)}`;
+  return `Complete the lessons, ${joined}, and meet the ${input.passMark}% course pass requirement${input.certificateEnabled ? " to unlock the certificate" : ""}.`;
+}
+
 export async function getAcademySettingsPublic() {
   const settings = await getMainPrisma().trainingSetting.findUnique({ where: { id: "singleton" } });
   const payload = (settings?.payload ?? {}) as Record<string, unknown>;
@@ -755,13 +838,15 @@ export async function getAcademySettingsPublic() {
 }
 
 export async function getLearnerCourseDetail(learnerId: string, courseId: string, options?: { isAgent?: boolean }) {
-  await repairLegacyBrandingInPostgres();
-  if (courseId === LEGACY_COURSE_ID || !PROGRAMME_COURSE_IDS.includes(courseId)) {
-    return "NOT_FOUND" as const;
-  }
   const prisma = getMainPrisma();
-  const access = await canAccessProgrammeCourse(learnerId, courseId);
-  if (!access.allowed) return "PREREQUISITE_NOT_MET" as const;
+  const programme = getProgrammeCourse(courseId);
+  // Courses built in admin are independent unless they belong to the managed
+  // programme; only managed programme courses use the programme prerequisite
+  // gates.
+  if (programme) {
+    const access = await canAccessProgrammeCourse(learnerId, courseId);
+    if (!access.allowed) return "PREREQUISITE_NOT_MET" as const;
+  }
 
   const enrolment = await prisma.courseEnrolment.findUnique({
     where: { courseId_agentId: { courseId, agentId: learnerId } },
@@ -781,13 +866,14 @@ export async function getLearnerCourseDetail(learnerId: string, courseId: string
   const progress = calculateCourseProgress(course, completedIds);
   const courseProgress = await prisma.courseProgress.findUnique({ where: { courseId_agentId: { courseId, agentId: learnerId } } });
 
-  const [quizAttempts, assignmentSubmissions, examAttempts, settings, bookmarkRows, retakeRules] = await Promise.all([
+  const [quizAttempts, assignmentSubmissions, examAttempts, settings, bookmarkRows, retakeRules, programmeBadge] = await Promise.all([
     prisma.quizAttempt.findMany({ where: { agentId: learnerId, quiz: { courseId } }, orderBy: { startedAt: "desc" } }),
     prisma.assignmentSubmission.findMany({ where: { agentId: learnerId, assignment: { courseId } }, orderBy: { submittedAt: "desc" } }),
     prisma.examAttempt.findMany({ where: { agentId: learnerId, exam: { courseId } }, orderBy: { startedAt: "desc" } }),
     getAcademySettingsPublic(),
     prisma.lessonProgress.findMany({ where: { agentId: learnerId, status: "BOOKMARKED" }, select: { lessonId: true } }),
     getCourseRetakeRules(courseId),
+    programme ? prisma.badge.findUnique({ where: { id: programme.badgeId } }) : Promise.resolve(null),
   ]);
   const bookmarkIds = new Set(bookmarkRows.map((row) => row.lessonId));
 
@@ -798,7 +884,6 @@ export async function getLearnerCourseDetail(learnerId: string, courseId: string
     if (score > current) bestQuizScores.set(attempt.quizId, score);
   }
 
-  const programme = getProgrammeCourse(courseId);
   const toolkitRaw = await getToolkitGroupsForCourse(courseId, { cumulative: true });
   const toolkitAccess = await getToolkitAccessView(learnerId, courseId, Boolean(options?.isAgent));
   const toolkit = maskToolkitGroups(toolkitRaw, toolkitAccess);
@@ -815,16 +900,16 @@ export async function getLearnerCourseDetail(learnerId: string, courseId: string
     assignmentStatuses,
     finalExamPassed: examAttempts.some((attempt) => attempt.status === "PASSED"),
   });
-  const moduleGateStates = await Promise.all(
-    course.modules.map((module) => getProgrammeGateState(learnerId, courseId, module.sortOrder)),
-  );
+  const moduleGateStates = programme
+    ? await Promise.all(course.modules.map((module) => getProgrammeGateState(learnerId, courseId, module.sortOrder)))
+    : course.modules.map(() => null);
 
   return {
     settings,
     programme: programme
       ? {
           theme: programme.theme,
-          badgeName: programme.badgeName,
+          badgeName: programmeBadge?.name ?? programme.badgeName,
           certificateTitle: programme.certificateTitle,
           subtitle: course.subtitle,
           assessmentSummary: programme.assessmentSummary,
@@ -866,17 +951,17 @@ export async function getLearnerCourseDetail(learnerId: string, courseId: string
     },
     assessments: {
       summary: programme?.assessmentSummary ?? null,
-      badgeName: programme?.badgeName ?? null,
+      badgeName: programmeBadge?.name ?? programme?.badgeName ?? null,
       totals: {
-        quizzes: programme?.quizIds.length ?? 0,
+        quizzes: programme?.quizIds.length ?? course.quizzes.length,
         quizzesPassed: course.quizzes.filter(
-          (quiz) => programme?.quizIds.includes(quiz.id) && (bestQuizScores.get(quiz.id) ?? 0) >= quiz.passingPercentage,
+          (quiz) => (!programme || programme.quizIds.includes(quiz.id)) && (bestQuizScores.get(quiz.id) ?? 0) >= quiz.passingPercentage,
         ).length,
-        assignments: programme?.assignmentIds.length ?? 0,
+        assignments: programme?.assignmentIds.length ?? course.assignments.length,
         assignmentsSubmitted: course.assignments.filter(
-          (assignment) => programme?.assignmentIds.includes(assignment.id) && assignmentSubmissions.some((s) => s.assignmentId === assignment.id),
+          (assignment) => (!programme || programme.assignmentIds.includes(assignment.id)) && assignmentSubmissions.some((s) => s.assignmentId === assignment.id),
         ).length,
-        exams: programme?.requiresFinalExam ? course.finalExams.length : 0,
+        exams: programme?.requiresFinalExam === false ? 0 : course.finalExams.length,
       },
       quizzes: course.quizzes
         .filter((quiz) => !programme?.quizIds.length || programme.quizIds.includes(quiz.id))
@@ -938,8 +1023,9 @@ export async function getLearnerCourseDetail(learnerId: string, courseId: string
           };
         })
         .sort((a, b) => a.sortOrder - b.sortOrder),
-      exams: programme?.requiresFinalExam
-        ? course.finalExams.map((exam) => {
+      exams: programme?.requiresFinalExam === false
+        ? []
+        : course.finalExams.map((exam) => {
             const attempts = examAttempts.filter((attempt) => attempt.examId === exam.id && (attempt.status === "PASSED" || attempt.status === "FAILED"));
             const attemptLimit = retakeRules.examAttemptLimit || exam.attemptLimit;
             return {
@@ -954,14 +1040,15 @@ export async function getLearnerCourseDetail(learnerId: string, courseId: string
               bestScore: attempts.length ? Math.max(...attempts.map((attempt) => Number(attempt.score))) : null,
               passed: attempts.some((attempt) => attempt.status === "PASSED"),
             };
-          })
-        : [],
+          }),
       certificateCheckpoint: programme?.requiresFinalExam
         ? null
-        : {
+        : programme
+          ? {
             title: "Programme Certificate Checkpoint",
             description: `Pass all ${programme?.quizIds.length ?? 0} module quizzes and submit all ${programme?.assignmentIds.length ?? 0} assignments to unlock your ${programme?.certificateTitle ?? "programme certificate"}.`,
-          },
+          }
+          : null,
       readiness,
     },
     materials: flattenCourseMaterials(course),

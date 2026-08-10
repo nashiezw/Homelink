@@ -1056,42 +1056,12 @@ export async function seedStagedCourseStructure(options?: { forceRebuild?: boole
     });
     
     if (existingCourse) {
-      // Update only structure/technical fields, preserve ALL content fields
+      const missingLearningOutcomes = !existingCourse.learningOutcomes || existingCourse.learningOutcomes.length === 0;
       await prisma.trainingCourse.update({
         where: { id: programmeCourse.id },
         data: {
-          slug: programmeCourse.slug,
           categoryId: category.id,
-          // Preserve all content fields - don't overwrite admin edits
-          title: existingCourse.title,
-          subtitle: existingCourse.subtitle,
-          description: existingCourse.description,
-          shortDescription: existingCourse.shortDescription,
-          learningOutcomes: existingCourse.learningOutcomes && existingCourse.learningOutcomes.length > 0 
-            ? existingCourse.learningOutcomes 
-            : programmeCourse.learningOutcomes,
-          targetAudience: programmeCourse.sortOrder === 0
-            ? "New HouseLink agents and public learners starting the training certificate pathway"
-            : `Agents who completed ${ACADEMY_PROGRAMME_COURSES[programmeCourse.sortOrder - 1]?.title ?? "the previous programme"}`,
-          difficulty: programmeCourse.difficulty,
-          durationMinutes: lessonCount * 30,
-          estimatedHours: Math.max(1, Math.ceil((lessonCount * 30) / 60)),
-          passingPercentage: 80,
-          certificateEnabled: true,
-          price: programmeCourse.publicPrice,
-          publicPrice: programmeCourse.publicPrice,
-          agentPrice: programmeCourse.agentPrice,
-          currency: "USD",
-          registrationOpen: true,
-          accessDurationDays: 365,
-          status: "PUBLISHED",
-          featured: programmeCourse.featured,
-          visibility: "PUBLIC",
-          roleNames: ["AGENT", "ADMIN", "PUBLIC_LEARNER"],
-          thumbnailUrl: "/brand/houselink-full-lockup.png",
-          bannerUrl: "/brand/houselink-full-lockup.png",
-          enrollmentType: "OPEN",
-          updatedAt: new Date(),
+          ...(missingLearningOutcomes ? { learningOutcomes: programmeCourse.learningOutcomes } : {}),
         },
       });
     } else {

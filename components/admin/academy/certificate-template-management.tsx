@@ -332,8 +332,23 @@ export function CertificateTemplateManagement() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <RefreshCw className="size-8 animate-spin text-slate-400" />
+      <div className="space-y-4">
+        <div className="rounded-2xl border border-white/10 bg-slate-950 p-5">
+          <div className="flex items-center gap-3">
+            <span className="flex size-11 items-center justify-center rounded-xl bg-emerald-400/10 text-emerald-300">
+              <RefreshCw className="size-5 animate-spin" />
+            </span>
+            <div>
+              <p className="font-semibold text-white">Loading certificate templates</p>
+              <p className="text-sm text-slate-500">Fetching saved designs, course assignments, uploads, and active fallback rules.</p>
+            </div>
+          </div>
+        </div>
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {[1, 2, 3].map((item) => (
+            <div key={item} className="h-64 animate-pulse rounded-xl border border-white/10 bg-slate-900/50" />
+          ))}
+        </div>
       </div>
     );
   }
@@ -356,6 +371,12 @@ export function CertificateTemplateManagement() {
         <AdminStatPill label="Active" value={activeTemplates} tone="success" />
         <AdminStatPill label="Inactive" value={templates.length - activeTemplates} tone={templates.length - activeTemplates ? "warning" : "default"} />
       </AdminMetricGrid>
+
+      <div className="grid gap-3 md:grid-cols-3">
+        <TemplateGuidanceCard title="Assign by Course" body="Choose one or more courses so each learner receives the correct certificate design. Empty course assignment becomes the global fallback." />
+        <TemplateGuidanceCard title="Upload Real Assets" body="Logo, signatures, seal, and laurels should use transparent images. Saved uploads are always preferred over generated artwork." />
+        <TemplateGuidanceCard title="Preview Before Save" body="The preview uses the same template fields as the learner certificate page, so wording and spacing issues can be caught early." />
+      </div>
 
       {templates.length === 0 ? (
         <AdminEmptyState
@@ -403,8 +424,20 @@ export function CertificateTemplateManagement() {
         description="Preview changes before saving so certificates stay consistent."
         onClose={closeDrawer}
       >
-        <div className="space-y-5">
-          <TemplatePreview form={formData} />
+        <div className="grid gap-5 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.35fr)] xl:items-start">
+          <div className="space-y-4 xl:sticky xl:top-4">
+            <TemplatePreview form={formData} />
+            <div className="rounded-2xl border border-emerald-400/15 bg-emerald-400/[0.06] p-4">
+              <p className="text-xs font-bold uppercase tracking-[0.22em] text-emerald-300">Design Workflow</p>
+              <div className="mt-3 grid gap-2 text-sm leading-6 text-slate-300">
+                <p>1. Assign this template to the correct course.</p>
+                <p>2. Upload transparent logo, signatures, seal, and ornaments.</p>
+                <p>3. Edit wording, typography, and certificate validity.</p>
+                <p>4. Save, then preview a real issued learner certificate.</p>
+              </div>
+            </div>
+          </div>
+          <div className="space-y-5">
           <AdminPanel title="Template Details" description="Core certificate text and numbering.">
             <div className="grid gap-4">
               <FormSectionEyebrow title="Certificate wording" description="The visible title, graduate line, certificate number prefix, and expiry rules." />
@@ -644,6 +677,7 @@ export function CertificateTemplateManagement() {
               </div>
             </div>
           </AdminPanel>
+          </div>
         </div>
       </AdminDrawer>
 
@@ -952,6 +986,22 @@ function FormSectionEyebrow({ title, description }: { title: string; description
     <div className="rounded-xl border border-emerald-400/10 bg-emerald-400/[0.04] px-4 py-3">
       <p className="text-xs font-bold uppercase tracking-[0.24em] text-emerald-300">{title}</p>
       <p className="mt-1 text-sm leading-6 text-slate-400">{description}</p>
+    </div>
+  );
+}
+
+function TemplateGuidanceCard({ title, body }: { title: string; body: string }) {
+  return (
+    <div className="min-w-0 rounded-2xl border border-white/10 bg-slate-950/70 p-4">
+      <div className="flex items-start gap-3">
+        <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-xl bg-emerald-400/10 text-emerald-300">
+          <Palette className="size-4" />
+        </span>
+        <div className="min-w-0">
+          <p className="break-words text-sm font-bold text-white">{title}</p>
+          <p className="mt-1 text-xs leading-5 text-slate-500">{body}</p>
+        </div>
+      </div>
     </div>
   );
 }

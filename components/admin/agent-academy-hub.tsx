@@ -216,13 +216,23 @@ type AcademyCourse = {
   id: string;
   title: string;
   slug: string;
+  subtitle?: string | null;
   description: string;
+  shortDescription?: string | null;
   categoryId?: string;
   category?: { id: string; name: string } | null;
   tags: string[];
   difficulty: "BEGINNER" | "INTERMEDIATE" | "ADVANCED" | "EXPERT";
   durationMinutes: number;
   instructor?: string;
+  learningOutcomes?: string[];
+  targetAudience?: string | null;
+  prerequisites?: string[];
+  thumbnailUrl?: string | null;
+  bannerUrl?: string | null;
+  introVideoUrl?: string | null;
+  seoTitle?: string | null;
+  seoDescription?: string | null;
   passingPercentage: number;
   estimatedHours: string | number;
   certificateEnabled: boolean;
@@ -2081,12 +2091,22 @@ function CoursePreview({ course, onClose }: { course: AcademyCourse; onClose: ()
 function courseFormDefaults(course?: AcademyCourse | null) {
   return {
     title: course?.title ?? "",
+    subtitle: course?.subtitle ?? "",
     description: course?.description ?? "",
+    shortDescription: course?.shortDescription ?? "",
     categoryId: course?.categoryId ?? "",
     difficulty: course?.difficulty ?? "BEGINNER" as AcademyCourse["difficulty"],
     status: course?.status ?? "DRAFT" as AcademyCourse["status"],
     visibility: course?.visibility ?? "INTERNAL_ONLY" as AcademyCourse["visibility"],
     instructor: course?.instructor ?? "",
+    learningOutcomes: course?.learningOutcomes?.join("\n") ?? "",
+    targetAudience: course?.targetAudience ?? "",
+    prerequisites: course?.prerequisites?.join("\n") ?? "",
+    thumbnailUrl: course?.thumbnailUrl ?? "",
+    bannerUrl: course?.bannerUrl ?? "",
+    introVideoUrl: course?.introVideoUrl ?? "",
+    seoTitle: course?.seoTitle ?? "",
+    seoDescription: course?.seoDescription ?? "",
     estimatedHours: Number(course?.estimatedHours ?? 1),
     passingPercentage: Number(course?.passingPercentage ?? 80),
     language: course?.language ?? "English",
@@ -2106,6 +2126,7 @@ function courseFormDefaults(course?: AcademyCourse | null) {
 }
 
 function CourseDrawer({ open, busy, course: editingCourse, onClose, onSave }: { open: boolean; busy: boolean; course?: AcademyCourse | null; onClose: () => void; onSave: (course: Record<string, unknown>) => Promise<unknown> }) {
+  const { showToast } = useApp();
   const [course, setCourse] = useState(courseFormDefaults(editingCourse));
   useEffect(() => {
     if (open) setCourse(courseFormDefaults(editingCourse));
@@ -2115,8 +2136,18 @@ function CourseDrawer({ open, busy, course: editingCourse, onClose, onSave }: { 
     <AdminDrawer open={open} title={editing ? "Edit Course" : "Create Course"} description="Admin-controlled courses with status, visibility, public learner pricing, agent pricing, certificates, access duration, and analytics." onClose={onClose} width="xl">
       <FormGrid>
         <TextInput label="Course title" value={course.title} onChange={(title) => setCourse({ ...course, title })} />
+        <TextInput label="Subtitle" value={course.subtitle} onChange={(subtitle) => setCourse({ ...course, subtitle })} />
         <TextInput label="Instructor" value={course.instructor} onChange={(instructor) => setCourse({ ...course, instructor })} />
         <TextArea label="Description" value={course.description} onChange={(description) => setCourse({ ...course, description })} className="sm:col-span-2" />
+        <TextArea label="Short Description" value={course.shortDescription} onChange={(shortDescription) => setCourse({ ...course, shortDescription })} className="sm:col-span-2" />
+        <TextArea label="Learning Outcomes (one per line)" value={course.learningOutcomes} onChange={(learningOutcomes) => setCourse({ ...course, learningOutcomes })} className="sm:col-span-2" />
+        <TextArea label="Target Audience" value={course.targetAudience} onChange={(targetAudience) => setCourse({ ...course, targetAudience })} className="sm:col-span-2" />
+        <TextArea label="Prerequisites (one per line)" value={course.prerequisites} onChange={(prerequisites) => setCourse({ ...course, prerequisites })} className="sm:col-span-2" />
+        <MediaUrlInput label="Thumbnail" value={course.thumbnailUrl} folder="academy/courses" accept="image/*" kind="image" onChange={(thumbnailUrl) => setCourse({ ...course, thumbnailUrl })} onError={(message) => showToast(message, "error")} className="sm:col-span-2" />
+        <MediaUrlInput label="Banner" value={course.bannerUrl} folder="academy/courses" accept="image/*" kind="image" onChange={(bannerUrl) => setCourse({ ...course, bannerUrl })} onError={(message) => showToast(message, "error")} className="sm:col-span-2" />
+        <MediaUrlInput label="Intro Video" value={course.introVideoUrl} folder="academy/courses" accept="video/*" kind="video" onChange={(introVideoUrl) => setCourse({ ...course, introVideoUrl })} onError={(message) => showToast(message, "error")} className="sm:col-span-2" />
+        <TextInput label="SEO Title" value={course.seoTitle} onChange={(seoTitle) => setCourse({ ...course, seoTitle })} />
+        <TextInput label="SEO Description" value={course.seoDescription} onChange={(seoDescription) => setCourse({ ...course, seoDescription })} />
         <SelectInput label="Difficulty" value={course.difficulty} options={["BEGINNER", "INTERMEDIATE", "ADVANCED", "EXPERT"]} onChange={(difficulty) => setCourse({ ...course, difficulty: difficulty as AcademyCourse["difficulty"] })} />
         <SelectInput label="Status" value={course.status} options={["DRAFT", "PUBLISHED", "ARCHIVED"]} onChange={(status) => setCourse({ ...course, status: status as AcademyCourse["status"] })} />
         <SelectInput label="Visibility" value={course.visibility} options={["INTERNAL_ONLY", "PUBLIC", "BRANCH_SPECIFIC", "ROLE_BASED"]} onChange={(visibility) => setCourse({ ...course, visibility: visibility as AcademyCourse["visibility"] })} />
@@ -2135,7 +2166,18 @@ function CourseDrawer({ open, busy, course: editingCourse, onClose, onSave }: { 
         <label className="flex items-center gap-2 text-sm text-slate-300"><input type="checkbox" checked={course.registrationOpen} onChange={(e) => setCourse({ ...course, registrationOpen: e.target.checked, visibility: e.target.checked ? "PUBLIC" : course.visibility })} /> Open to public learners</label>
         <label className="flex items-center gap-2 text-sm text-slate-300"><input type="checkbox" checked={course.certificateEnabled} onChange={(e) => setCourse({ ...course, certificateEnabled: e.target.checked })} /> Certificate enabled</label>
       </FormGrid>
-      <DrawerActions busy={busy} disabled={!course.title.trim() || !course.description.trim()} onClose={onClose} onSave={() => onSave({ ...course, tags: course.tags })} label={editing ? "Save course" : "Create course"} />
+      <DrawerActions
+        busy={busy}
+        disabled={!course.title.trim() || !course.description.trim()}
+        onClose={onClose}
+        onSave={() => onSave({
+          ...course,
+          tags: course.tags,
+          learningOutcomes: course.learningOutcomes.split("\n").map((item) => item.trim()).filter(Boolean),
+          prerequisites: course.prerequisites.split("\n").map((item) => item.trim()).filter(Boolean),
+        })}
+        label={editing ? "Save course" : "Create course"}
+      />
     </AdminDrawer>
   );
 }

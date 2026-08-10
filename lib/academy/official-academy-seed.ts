@@ -10,7 +10,6 @@ import {
 } from "@/lib/academy/academy-assessments";
 import { verifyAcademyAssets } from "@/lib/academy/academy-files-server";
 import { seedStagedCourseStructure } from "@/lib/academy/staged-course-seed";
-import { repairLegacyBrandingInPostgres } from "@/lib/brand/rebrand";
 
 const CERTIFICATE_TEMPLATE_ID = "academy-certificate-certified-houselink-agent";
 
@@ -45,7 +44,6 @@ export async function ensureOfficialAcademySeed() {
   await seedLearningPath(prisma);
   await seedCertificateTemplate(prisma);
   await seedEngagementRecords(prisma);
-  await repairLegacyBrandingInPostgres();
 }
 
 export async function seedOfficialAcademyResources(options?: { skipCourseRebuild?: boolean }) {
@@ -190,9 +188,13 @@ async function resolveModuleId(prisma: ReturnType<typeof getMainPrisma>, courseI
 async function seedAssessments(prisma: ReturnType<typeof getMainPrisma>) {
   for (const quiz of ACADEMY_QUIZ_SEEDS) {
     const moduleId = await resolveModuleId(prisma, quiz.courseId, quiz.moduleTitle);
-    await prisma.quiz.upsert({
+    const existingQuiz = await prisma.quiz.findUnique({
       where: { id: quiz.id },
-      create: {
+      select: { id: true, _count: { select: { questions: true } } },
+    });
+    if (!existingQuiz) {
+      await prisma.quiz.create({
+        data: {
         id: quiz.id,
         courseId: quiz.courseId,
         moduleId,
@@ -203,17 +205,11 @@ async function seedAssessments(prisma: ReturnType<typeof getMainPrisma>) {
         timeLimitMinutes: quiz.timeLimitMinutes,
         active: true,
       },
-      update: {
-        courseId: quiz.courseId,
-        moduleId,
-        title: quiz.title,
-        description: quiz.description,
-        passingPercentage: 80,
-        randomise: true,
-        timeLimitMinutes: quiz.timeLimitMinutes,
-        active: true,
-      },
-    });
+      });
+    } else if (moduleId) {
+      await prisma.quiz.update({ where: { id: quiz.id }, data: { moduleId } });
+    }
+    if (existingQuiz && existingQuiz._count.questions > 0) continue;
     await prisma.quizQuestion.deleteMany({ where: { quizId: quiz.id } });
     for (const [index, question] of quiz.questions.entries()) {
       await prisma.quizQuestion.create({
@@ -262,11 +258,6 @@ async function seedAssessments(prisma: ReturnType<typeof getMainPrisma>) {
       update: {
         courseId: assignment.courseId,
         moduleId,
-        title: assignment.title,
-        description: assignment.description,
-        points: assignment.points,
-        dueDays: assignment.dueDays,
-        active: true,
       },
     });
   }
@@ -291,11 +282,6 @@ async function seedAssessments(prisma: ReturnType<typeof getMainPrisma>) {
     },
     update: {
       courseId: ACADEMY_FINAL_EXAM.courseId,
-      title: ACADEMY_FINAL_EXAM.title,
-      durationMinutes: ACADEMY_FINAL_EXAM.durationMinutes,
-      passingScore: ACADEMY_FINAL_EXAM.passingScore,
-      questionPools: { quizzes: ACADEMY_QUIZ_SEEDS.map((quiz) => quiz.id), minimumQuestions: ACADEMY_FINAL_EXAM.minimumQuestions },
-      active: true,
     },
   });
 }
@@ -311,10 +297,7 @@ async function seedLearningPath(prisma: ReturnType<typeof getMainPrisma>) {
       badgeTitle: "HouseLink Training Graduate",
     },
     update: {
-      title: "HouseLink Agent Training Path",
-      description: "Three progressive courses: Beginner, Intermediate, and Advanced Training.",
-      status: "PUBLISHED",
-      badgeTitle: "HouseLink Training Graduate",
+      // Preserve admin-edited path title, description, status, and badge title.
     },
   });
   for (const course of ACADEMY_PROGRAMME_COURSES) {
@@ -366,10 +349,7 @@ async function seedEngagementRecords(prisma: ReturnType<typeof getMainPrisma>) {
       publishedAt: new Date(),
     },
     update: {
-      title: "Official HouseLink Agent Academy is live",
-      body: "The official HouseLink Zimbabwe Real Estate Agent Training Manual, course sequence and downloadable resources are now available.",
-      audience: "AGENTS",
-      publishedAt: new Date(),
+      // Preserve admin-edited announcement copy and audience.
     },
   });
   for (const course of ACADEMY_PROGRAMME_COURSES) {
@@ -383,17 +363,14 @@ async function seedEngagementRecords(prisma: ReturnType<typeof getMainPrisma>) {
         active: true,
       },
       update: {
-        name: course.badgeName,
-        description: course.badgeDescription,
-        xp: course.badgeXp,
-        active: true,
+        // Preserve admin-edited badge name, description, XP, icon, and active state.
       },
     });
   }
   await prisma.badge.upsert({
     where: { id: "academy-badge-certified-houselink-agent" },
     create: { id: "academy-badge-certified-houselink-agent", name: "HouseLink Training Graduate", description: "Completed all three Academy courses and earned HouseLink training completion recognition.", xp: 1500, active: true },
-    update: { name: "HouseLink Training Graduate", description: "Completed all three Academy courses and earned HouseLink training completion recognition.", xp: 1500, active: true },
+    update: {},
   });
 }
 

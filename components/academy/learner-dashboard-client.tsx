@@ -300,7 +300,7 @@ export function LearnerDashboardClient() {
       {!!data.programmeCourses?.length && (
         <section className="mt-8">
           <h2 className="text-xl font-bold sm:text-2xl">Training certificate pathway</h2>
-          <p className="mt-1 text-sm text-slate-600">Foundations -&gt; Listing & Client Mastery -&gt; Professional Training. Earn a badge and downloadable HouseLink certificate after each programme.</p>
+          <p className="mt-1 text-sm text-slate-600">Track your enrolled courses, completion progress, badges, and downloadable certificates from one place.</p>
           <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {data.programmeCourses.map((course) => {
               const expanded = expandedProgrammeIds.has(course.id);

@@ -23,10 +23,26 @@ export async function GET(_request: Request, context: { params: Promise<{ number
     if (certificate.status !== "ACTIVE") return problem(410, "REVOKED", "This certificate is no longer active.");
     const programme = certificate.courseId ? getProgrammeCourse(certificate.courseId) : null;
     const prisma = getMainPrisma();
-    const learner = await prisma.user.findUnique({
+    const [learner, courseStats, programmeBadge] = await Promise.all([
+      prisma.user.findUnique({
       where: { id: certificate.agentId },
       select: { name: true },
-    });
+      }),
+      certificate.courseId
+        ? prisma.trainingCourse.findUnique({
+            where: { id: certificate.courseId },
+            select: {
+              title: true,
+              learningOutcomes: true,
+              modules: { select: { sections: { select: { lessons: { select: { id: true } } } } } },
+              quizzes: { where: { active: true }, select: { id: true } },
+              assignments: { where: { active: true }, select: { id: true, title: true } },
+              finalExams: { where: { active: true }, select: { id: true } },
+            },
+          })
+        : Promise.resolve(null),
+      programme ? prisma.badge.findUnique({ where: { id: programme.badgeId } }) : Promise.resolve(null),
+    ]);
     const [quizAttempts, examAttempts, assignmentSubmissions] = certificate.courseId
       ? await Promise.all([
           prisma.quizAttempt.findMany({
@@ -40,7 +56,7 @@ export async function GET(_request: Request, context: { params: Promise<{ number
           prisma.assignmentSubmission.findMany({
             where: {
               agentId: certificate.agentId,
-              assignmentId: { in: programme?.assignmentIds ?? [] },
+              assignment: { courseId: certificate.courseId },
             },
             orderBy: { submittedAt: "desc" },
           }),
@@ -49,20 +65,29 @@ export async function GET(_request: Request, context: { params: Promise<{ number
     const confidenceSignals = quizAttempts
       .map((attempt) => readAttemptConfidence(attempt.answers))
       .filter((value): value is string => Boolean(value));
+    const lessonCount = courseStats?.modules.reduce((sum, module) => sum + module.sections.reduce((sectionSum, section) => sectionSum + section.lessons.length, 0), 0) ?? 0;
+    const quizCount = courseStats?.quizzes.length ?? 0;
+    const assignmentCount = courseStats?.assignments.length ?? 0;
+    const requiresPortfolio = courseStats?.assignments.some((assignment) => /portfolio/i.test(assignment.title)) ?? false;
+    const roleplayAssessments = courseStats?.assignments.filter((assignment) => /roleplay|simulation/i.test(assignment.title)).length ?? 0;
+    const finalExamCount = courseStats?.finalExams.length ?? 0;
+    const certificateTitle = certificate.course?.title
+      ? `${certificate.course.title} Certificate`
+      : "HouseLink Academy Training Certificate";
 
     return ok({
       valid: true,
       certificateNumber: certificate.certificateNumber,
       learnerName: learner?.name ?? "HouseLink Learner",
       course: certificate.course?.title ?? null,
-      certificateTitle: trainingCertificateTitle(programme?.certificateTitle ?? certificate.course?.title ?? "HouseLink Academy Training Certificate"),
-      badgeName: programme?.badgeName ?? null,
-      skillsAssessed: programme?.learningOutcomes ?? [],
-      assessmentProof: programme
+      certificateTitle: trainingCertificateTitle(certificateTitle),
+      badgeName: programmeBadge?.name ?? null,
+      skillsAssessed: courseStats?.learningOutcomes ?? [],
+      assessmentProof: certificate.courseId
         ? {
-            trainingSessions: programme.includes.find((item) => /training sessions/i.test(item)) ?? null,
-            quizzes: programme.quizIds.length,
-            assignments: programme.assignmentIds.length,
+            trainingSessions: lessonCount ? `${lessonCount} training sessions` : null,
+            quizzes: quizCount,
+            assignments: assignmentCount,
             passedQuizAttempts: quizAttempts.filter((attempt) => attempt.status === "PASSED").length,
             reviewedAssignments: new Set(
               assignmentSubmissions
@@ -77,13 +102,15 @@ export async function GET(_request: Request, context: { params: Promise<{ number
                   guessed: confidenceSignals.filter((value) => value === "guessed").length,
                 }
               : null,
-            requiresFinalExam: programme.requiresFinalExam,
-            requiresPortfolio: programme.assignmentIds.some((id) => id.includes("portfolio")),
-            roleplayAssessments: programme.assignmentIds.filter((id) => id.includes("roleplay") || id.includes("simulation")).length,
+            requiresFinalExam: finalExamCount > 0,
+            requiresPortfolio,
+            roleplayAssessments,
             certificateRequirements: [
-              programme.assessmentSummary,
-              ...programme.includes.filter((item) => /quiz|assignment|exam|portfolio|certificate/i.test(item)),
-            ],
+              `Completed ${certificate.course?.title ?? "the course"} requirements recorded in HouseLink Academy.`,
+              quizCount ? `Passed required quiz${quizCount === 1 ? "" : "zes"}.` : null,
+              assignmentCount ? `Submitted required assignment${assignmentCount === 1 ? "" : "s"} for review.` : null,
+              finalExamCount ? "Passed the final examination." : null,
+            ].filter(Boolean),
           }
         : null,
       gradingStandard: [
