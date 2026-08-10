@@ -1102,6 +1102,12 @@ export async function runAcademyAction(body: Record<string, any>, actor: Actor) 
   if (action === "update_learning_path") {
     const pathId = String(body.pathId);
     const courseIds = arrayOfStrings(body.path?.courseIds);
+    
+    const before = await prisma.learningPath.findUnique({
+      where: { id: pathId },
+      select: { title: true, description: true, status: true, badgeTitle: true }
+    });
+    
     const path = await prisma.$transaction(async (tx) => {
       const updated = await tx.learningPath.update({
         where: { id: pathId },
@@ -1116,6 +1122,12 @@ export async function runAcademyAction(body: Record<string, any>, actor: Actor) 
       }
       return updated;
     });
+    
+    // Track changes for debugging
+    console.log("Learning path update - Before:", before);
+    console.log("Learning path update - Input:", body.path);
+    console.log("Learning path update - After:", path);
+    
     await audit(actor, "academy.path.update", path.id, { title: path.title });
     return path;
   }
@@ -1159,7 +1171,19 @@ export async function runAcademyAction(body: Record<string, any>, actor: Actor) 
     return badge;
   }
   if (action === "update_badge") {
-    const badge = await prisma.badge.update({ where: { id: String(body.badgeId) }, data: badgeInput(body.badge ?? {}) });
+    const input = body.badge ?? {};
+    const before = await prisma.badge.findUnique({
+      where: { id: String(body.badgeId) },
+      select: { name: true, description: true, xp: true, active: true }
+    });
+    
+    const badge = await prisma.badge.update({ where: { id: String(body.badgeId) }, data: badgeInput(input) });
+    
+    // Track changes for debugging
+    console.log("Badge update - Before:", before);
+    console.log("Badge update - Input:", input);
+    console.log("Badge update - After:", badge);
+    
     await audit(actor, "academy.badge.update", badge.id, { name: badge.name });
     return badge;
   }
