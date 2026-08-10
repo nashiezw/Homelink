@@ -97,6 +97,8 @@ type AcademyData = {
     assignmentId: string;
     assignmentTitle: string;
     agentId: string;
+    learnerName?: string | null;
+    learnerEmail?: string | null;
     status: string;
     notes?: string | null;
     fileUrls: string[];
@@ -183,7 +185,34 @@ type AcademyData = {
   overdueAssignments: number;
   recentActivity: Array<{ id: string; actorId?: string; action: string; target: string; createdAt: string }>;
   discussionThreads?: Array<{ id: string; title: string; courseTitle: string; posts: number; status: string; updatedAt: string }>;
-  leaderboard?: Array<{ id: string; agentId: string; badgeName: string; xp: number; awardedAt: string }>;
+  academyIntegrity?: {
+    score: number;
+    danger: number;
+    warning: number;
+    info: number;
+    issues: Array<{ id: string; severity: "danger" | "warning" | "info"; area: string; title: string; detail: string; action: string }>;
+  };
+  learnerTimeline?: Array<{ id: string; learnerId: string; learnerName: string; learnerEmail: string; type: string; title: string; detail: string; occurredAt: string; status: string }>;
+  certificateSimulations?: Array<{
+    id: string;
+    learnerId: string;
+    learnerName: string;
+    learnerEmail: string;
+    courseId: string;
+    courseTitle: string;
+    eligible: boolean;
+    certificateNumber?: string | null;
+    progress: number;
+    passedQuizzes: number;
+    totalQuizzes: number;
+    approvedAssignments: number;
+    totalAssignments: number;
+    passedExams: number;
+    totalExams: number;
+    blockers: string[];
+  }>;
+  announcementDelivery?: Array<{ id: string; title: string; audience: string; active: boolean; estimatedReach: number; createdAt: string; expiresAt?: string | null }>;
+  leaderboard?: Array<{ id: string; agentId: string; learnerName?: string | null; learnerEmail?: string | null; badgeName: string; xp: number; awardedAt: string }>;
 };
 
 type AcademyLesson = {
@@ -306,6 +335,7 @@ const academyTabs = [
   "Announcements",
   "Discussion Board",
   "Analytics",
+  "Health",
   "Email Templates",
   "Branding",
   "Instructors",
@@ -317,6 +347,7 @@ type AcademyTab = (typeof academyTabs)[number];
 
 const documentTypes = ["PDF", "DOCX", "XLSX", "PPTX", "IMAGE", "VIDEO", "AUDIO", "ZIP"] as const;
 const featureTiles: Array<[AcademyTab, LucideIcon, string]> = [
+  ["Health", AlertTriangle, "Integrity checks, certificate simulations, announcement reach, and learner timelines."],
   ["Learning Paths", Library, "Programme sequencing for multi-course training certificate journeys."],
   ["Announcements", Megaphone, "Publish targeted Academy updates to agents and branches."],
   ["Discussion Board", Users, "Course discussion threads, replies, reactions, mentions, bookmarks, and moderation."],
@@ -413,8 +444,15 @@ export function AgentAcademyHub() {
     }
     showToast(success);
     setDrawer(null);
+    setSelectedCourse(null);
+    setSelectedDocument(null);
+    setSelectedLesson(null);
+    setSelectedModule(null);
+    setSelectedCoupon(null);
     setSelectedPath(null);
     setSelectedBadge(null);
+    setSelectedAnnouncement(null);
+    setDocumentMode("create");
     await load();
     return true;
   }
@@ -695,7 +733,7 @@ export function AgentAcademyHub() {
         </div>
       )}
 
-      {["Certificates", "Certificate Templates", "Certificate Monitoring", "Assignment Review", "Student Analytics", "Coupons", "Public Learners", "Learning Paths", "Announcements", "Discussion Board", "Leaderboard", "Badges", "Analytics", "Settings", "Email Templates", "Branding", "Instructors", "Refunds"].includes(tab) && (
+      {["Certificates", "Certificate Templates", "Certificate Monitoring", "Assignment Review", "Student Analytics", "Coupons", "Public Learners", "Learning Paths", "Announcements", "Discussion Board", "Leaderboard", "Badges", "Analytics", "Health", "Settings", "Email Templates", "Branding", "Instructors", "Refunds"].includes(tab) && (
         <FeatureWorkbench
           tab={tab}
           data={data}
@@ -1431,7 +1469,7 @@ function FeatureWorkbench({
           id: entry.id,
           title: entry.badgeName,
           active: true,
-          detail: `${entry.agentId} - ${entry.xp} XP - ${new Date(entry.awardedAt).toLocaleDateString()}`,
+          detail: `${learnerDisplayName(entry)} - ${entry.xp} XP - ${new Date(entry.awardedAt).toLocaleDateString()}`,
         }))}
         actionLabel="Badges and XP drive leaderboard rankings"
       />
@@ -1597,8 +1635,11 @@ function FeatureWorkbench({
       );
     }
   }
+  if (tab === "Health") {
+    return <AcademyHealthPanel data={data} />;
+  }
   if (tab === "Email Templates") {
-    return <EmailTemplatesManagementPanel />;
+    return <EmailTemplatesManagementPanel action={action} />;
   }
   if (tab === "Branding") {
     return <BrandingManagementPanel />;
@@ -1695,6 +1736,144 @@ function BuilderList({
   );
 }
 
+function AcademyHealthPanel({ data }: { data: AcademyData }) {
+  const integrity = data.academyIntegrity ?? { score: 100, danger: 0, warning: 0, info: 0, issues: [] };
+  const simulations = data.certificateSimulations ?? [];
+  const timeline = data.learnerTimeline ?? [];
+  const announcementDelivery = data.announcementDelivery ?? [];
+  const [learnerFilter, setLearnerFilter] = useState("");
+  const filteredTimeline = learnerFilter
+    ? timeline.filter((event) => event.learnerId === learnerFilter)
+    : timeline.slice(0, 25);
+  const learnerOptions = Array.from(new Map(timeline.map((event) => [event.learnerId, event])).values()).slice(0, 80);
+
+  return (
+    <div className="space-y-5">
+      <div className="overflow-hidden rounded-2xl border border-emerald-400/15 bg-[radial-gradient(circle_at_top_left,rgba(16,185,129,0.16),transparent_34%),linear-gradient(135deg,rgba(15,23,42,0.98),rgba(2,6,23,0.98))] p-5">
+        <p className="text-xs font-bold uppercase tracking-[0.2em] text-emerald-300">Academy health</p>
+        <div className="mt-3 grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+          <div>
+            <h2 className="text-2xl font-bold text-white">Integrity, certificate readiness, and learner timelines</h2>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">Database-backed checks for broken gates, empty quizzes, certificate setup, announcement reach, and learner progression history.</p>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-slate-950/70 p-4 text-center">
+            <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Health score</p>
+            <p className={cn("mt-1 text-4xl font-black", integrity.score >= 85 ? "text-emerald-300" : integrity.score >= 65 ? "text-amber-300" : "text-red-300")}>{integrity.score}%</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-3">
+        <AdminStatPill label="Critical issues" value={integrity.danger} tone={integrity.danger ? "danger" : "success"} />
+        <AdminStatPill label="Warnings" value={integrity.warning} tone={integrity.warning ? "warning" : "success"} />
+        <AdminStatPill label="Info" value={integrity.info} />
+      </div>
+
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
+        <ActivityPanel title="Data Integrity Dashboard" icon={AlertTriangle}>
+          {integrity.issues.length ? (
+            <div className="space-y-3">
+              {integrity.issues.map((issue) => (
+                <div key={issue.id} className={cn("rounded-xl border p-3", issue.severity === "danger" ? "border-red-500/25 bg-red-500/10" : issue.severity === "warning" ? "border-amber-500/25 bg-amber-500/10" : "border-white/10 bg-slate-900/60")}>
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div>
+                      <p className="text-sm font-bold text-white">{issue.title}</p>
+                      <p className="mt-1 text-xs uppercase tracking-wide text-slate-500">{issue.area}</p>
+                    </div>
+                    <AdminStatusBadge status={issue.severity} variant={issue.severity === "danger" ? "danger" : issue.severity === "warning" ? "warning" : "muted"} />
+                  </div>
+                  <p className="mt-2 text-sm leading-6 text-slate-300">{issue.detail}</p>
+                  <p className="mt-2 text-xs font-semibold text-emerald-200">{issue.action}</p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <EmptyPanelText>No integrity issues found in the current Academy data.</EmptyPanelText>
+          )}
+        </ActivityPanel>
+
+        <ActivityPanel title="Announcement Delivery Audit" icon={Megaphone}>
+          {announcementDelivery.length ? (
+            <div className="space-y-2">
+              {announcementDelivery.slice(0, 8).map((announcement) => (
+                <MetricRow
+                  key={announcement.id}
+                  label={announcement.title}
+                  value={`${announcement.estimatedReach} reach`}
+                  delta={`${announcement.audience} - ${announcement.active ? "Active" : "Expired"}`}
+                />
+              ))}
+            </div>
+          ) : (
+            <EmptyPanelText>No announcement records yet.</EmptyPanelText>
+          )}
+        </ActivityPanel>
+      </div>
+
+      <ActivityPanel title="Certificate Rule Simulator" icon={Award}>
+        {simulations.length ? (
+          <div className="grid gap-3 lg:grid-cols-2">
+            {simulations.slice(0, 12).map((row) => (
+              <div key={row.id} className="rounded-xl border border-white/10 bg-slate-950/60 p-4">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-bold text-white">{row.learnerName}</p>
+                    <p className="mt-1 truncate text-xs text-slate-500">{row.courseTitle}</p>
+                  </div>
+                  <AdminStatusBadge status={row.eligible ? "Eligible" : "Blocked"} variant={row.eligible ? "success" : "warning"} />
+                </div>
+                <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-slate-300">
+                  <span>Progress: {row.progress}%</span>
+                  <span>Quizzes: {row.passedQuizzes}/{row.totalQuizzes}</span>
+                  <span>Assignments: {row.approvedAssignments}/{row.totalAssignments}</span>
+                  <span>Exams: {row.passedExams}/{row.totalExams}</span>
+                </div>
+                {row.certificateNumber && <p className="mt-2 text-xs font-semibold text-emerald-300">Issued: {row.certificateNumber}</p>}
+                {row.blockers.length ? (
+                  <ul className="mt-3 space-y-1 text-xs leading-5 text-amber-100">
+                    {row.blockers.slice(0, 3).map((blocker) => <li key={blocker}>- {blocker}</li>)}
+                  </ul>
+                ) : (
+                  <p className="mt-3 text-xs font-semibold text-emerald-200">No blockers found. Certificate rules are satisfied.</p>
+                )}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <EmptyPanelText>No learner enrolments available for certificate simulation.</EmptyPanelText>
+        )}
+      </ActivityPanel>
+
+      <ActivityPanel title="Learner Timeline" icon={Users}>
+        <div className="mb-4 max-w-md">
+          <select value={learnerFilter} onChange={(event) => setLearnerFilter(event.target.value)} className="w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white">
+            <option value="">Latest activity across all learners</option>
+            {learnerOptions.map((learner) => <option key={learner.learnerId} value={learner.learnerId}>{learner.learnerName}</option>)}
+          </select>
+        </div>
+        {filteredTimeline.length ? (
+          <div className="space-y-3">
+            {filteredTimeline.map((event) => (
+              <div key={event.id} className="rounded-xl border border-white/10 bg-slate-950/60 p-3">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div>
+                    <p className="text-sm font-bold text-white">{event.title}</p>
+                    <p className="mt-1 text-xs text-slate-500">{event.learnerName} - {event.type}</p>
+                  </div>
+                  <span className="text-xs text-slate-400">{new Date(event.occurredAt).toLocaleString()}</span>
+                </div>
+                <p className="mt-2 text-sm text-slate-300">{event.detail}</p>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <EmptyPanelText>No learner activity found for this filter.</EmptyPanelText>
+        )}
+      </ActivityPanel>
+    </div>
+  );
+}
+
 function CertificateManagementPanel({
   certificates,
   action,
@@ -1774,7 +1953,7 @@ function _AssignmentReviewQueue({
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div>
                   <p className="text-sm font-semibold text-white">{submission.assignmentTitle}</p>
-                  <p className="mt-1 text-xs text-slate-400">{submission.agentId} - {new Date(submission.submittedAt).toLocaleDateString()}</p>
+                  <p className="mt-1 text-xs text-slate-400">{learnerDisplayName(submission)} - {new Date(submission.submittedAt).toLocaleDateString()}</p>
                 </div>
                 <span className="rounded-full bg-amber-500/15 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-amber-200">
                   {submission.status.replace(/_/g, " ")}
@@ -3045,6 +3224,10 @@ function formatShortDate(value?: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "recently";
   return date.toLocaleDateString("en-ZW", { month: "short", day: "numeric" });
+}
+
+function learnerDisplayName(record: { learnerName?: string | null; learnerEmail?: string | null; agentId?: string | null }) {
+  return record.learnerName?.trim() || record.learnerEmail?.trim() || record.agentId || "Unknown learner";
 }
 
 export function LessonContentManager({ lessons, documents, action }: { lessons: AcademyLesson[]; documents: AcademyDocument[]; action: (body: Record<string, unknown>, success: string) => Promise<unknown> }) {

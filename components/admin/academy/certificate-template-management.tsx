@@ -424,8 +424,8 @@ export function CertificateTemplateManagement() {
         description="Preview changes before saving so certificates stay consistent."
         onClose={closeDrawer}
       >
-        <div className="grid gap-5 2xl:grid-cols-[minmax(38rem,1.15fr)_minmax(30rem,0.85fr)] 2xl:items-start">
-          <div className="space-y-4 xl:sticky xl:top-4">
+        <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(40rem,1.05fr)_minmax(38rem,0.95fr)] xl:items-start">
+          <div className="min-w-0 space-y-4 xl:sticky xl:top-4">
             <TemplatePreview form={formData} />
             <div className="rounded-2xl border border-emerald-400/15 bg-emerald-400/[0.06] p-4">
               <p className="text-xs font-bold uppercase tracking-[0.22em] text-emerald-300">Design Workflow</p>
@@ -437,7 +437,7 @@ export function CertificateTemplateManagement() {
               </div>
             </div>
           </div>
-          <div className="space-y-5">
+          <div className="min-w-0 space-y-5">
           <AdminPanel title="Template Details" description="Core certificate text and numbering.">
             <div className="grid gap-4">
               <FormSectionEyebrow title="Certificate wording" description="The visible title, graduate line, certificate number prefix, and expiry rules." />
@@ -579,7 +579,7 @@ export function CertificateTemplateManagement() {
               </div>
 
               <FormSectionEyebrow title="Signatures, seal and laurels" description="These assets sit in the lower certificate band and side ornaments." />
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-4 2xl:grid-cols-2">
                 <AdminPanel title="Left Signature" description="Director or academy signatory on the lower-left side.">
                   <div className="grid gap-4">
                     <TextField label="Left Signature Name" value={formData.secondSignatureName} onChange={(secondSignatureName) => setFormData({ ...formData, secondSignatureName })} />
@@ -625,7 +625,7 @@ export function CertificateTemplateManagement() {
                     onClear={() => void clearTemplateAsset("sealUrl")}
                     onUpload={(files) => void uploadTemplateAsset("sealUrl", files)}
                   />
-                  <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="grid gap-4 2xl:grid-cols-2">
                     <TemplateImageField
                       label="Left Laurel Image"
                       ratio="Best ratio: 2:5 vertical, transparent PNG, around 500 x 1250px"
@@ -1062,12 +1062,19 @@ function TemplateImageField({
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   return (
-    <div className="block min-w-0 rounded-xl border border-white/10 bg-slate-950/60 p-3">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+    <div className="block min-w-0 rounded-2xl border border-white/10 bg-slate-950/70 p-4 shadow-[0_18px_45px_rgba(2,6,23,0.22)]">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0">
-          <span className="text-sm font-semibold text-white">{label}</span>
-          <p className="mt-1 text-xs font-medium text-emerald-300">{ratio}</p>
-          {description ? <p className="mt-1 text-xs leading-5 text-slate-500">{description}</p> : null}
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm font-semibold text-white">{label}</span>
+            <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] ${value ? "bg-emerald-400/10 text-emerald-200" : "bg-slate-800 text-slate-400"}`}>
+              {value ? "Uploaded" : "Fallback"}
+            </span>
+          </div>
+          <p className="mt-2 inline-flex max-w-full rounded-lg border border-emerald-400/15 bg-emerald-400/[0.07] px-2.5 py-1 text-xs font-semibold leading-5 text-emerald-200">
+            {ratio}
+          </p>
+          {description ? <p className="mt-2 max-w-2xl text-xs leading-5 text-slate-500">{description}</p> : null}
         </div>
         <div className="flex shrink-0 flex-wrap gap-2">
           <Button type="button" variant="secondary" disabled={uploading} onClick={() => inputRef.current?.click()} className="min-w-28">
@@ -1082,8 +1089,8 @@ function TemplateImageField({
         </div>
       </div>
       <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={(event) => onUpload(event.currentTarget.files)} />
-      <div className="mt-3 grid gap-3 sm:grid-cols-[96px_minmax(0,1fr)]">
-        <div className="flex h-20 w-full items-center justify-center overflow-hidden rounded-lg border border-dashed border-white/10 bg-slate-900/70 sm:w-24">
+      <div className="mt-4 grid min-w-0 gap-3 lg:grid-cols-[132px_minmax(0,1fr)]">
+        <div className="flex h-28 w-full items-center justify-center overflow-hidden rounded-xl border border-dashed border-white/10 bg-[radial-gradient(circle_at_top,_rgba(16,185,129,0.12),_rgba(15,23,42,0.78))] lg:w-32">
           {value ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={value} alt="" className="h-full w-full object-contain p-2" />
@@ -1091,12 +1098,15 @@ function TemplateImageField({
             <Upload className="size-5 text-slate-600" />
           )}
         </div>
-        <input
-          value={value}
-          onChange={(event) => onChange(event.target.value)}
-          placeholder="Paste an image URL or upload a file"
-          className="w-full min-w-0 self-center rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-white placeholder:text-slate-600 focus:border-emerald-500/40 focus:outline-none"
-        />
+        <label className="min-w-0 self-center">
+          <span className="mb-1 block text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Saved image URL</span>
+          <input
+            value={value}
+            onChange={(event) => onChange(event.target.value)}
+            placeholder="Paste an image URL or upload a file"
+            className="w-full min-w-0 rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-white placeholder:text-slate-600 focus:border-emerald-500/40 focus:outline-none"
+          />
+        </label>
       </div>
     </div>
   );

@@ -369,7 +369,7 @@ export function CourseWorkspace({
         <div>
           <p className="text-xs uppercase tracking-wider text-emerald-400">Course Builder</p>
           <h2 className="text-2xl font-bold text-white">{courseTitle}</h2>
-          <p className="mt-1 text-sm text-slate-400">{tree.stats.lessonCount} lessons · {tree.stats.moduleCount} modules · {tree.status.replace(/_/g, " ")}</p>
+          <p className="mt-1 text-sm text-slate-400">{tree.stats.lessonCount} lessons - {tree.stats.moduleCount} modules - {tree.status.replace(/_/g, " ")}</p>
         </div>
         <div className="grid w-full grid-cols-1 gap-2 sm:grid-cols-3 lg:w-auto">
           <Button className="w-full" variant="secondary" onClick={onClose}>Close</Button>
@@ -581,27 +581,85 @@ export function CourseWorkspace({
 
       {step === "Curriculum" && (
         <div className="space-y-4">
-          <div className="grid gap-2 sm:flex sm:flex-wrap">
-            <input value={newModuleTitle} onChange={(e) => setNewModuleTitle(e.target.value)} placeholder="New module title" className="flex-1 min-w-[200px] rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-white" />
-            <Button className="w-full sm:w-auto" disabled={!newModuleTitle.trim() || busy} onClick={() => void run({ action: "create_module", module: { courseId, title: newModuleTitle } }, "Module created.").then(() => setNewModuleTitle(""))}>
-              <Plus className="size-4 mr-2" /> Add Module
-            </Button>
+          <div className="rounded-2xl border border-white/10 bg-slate-950/70 p-4">
+            <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+              <div className="min-w-0">
+                <p className="text-sm font-bold text-white">Curriculum flow</p>
+                <p className="mt-1 text-sm leading-6 text-slate-400">Build the learner sequence and see every quiz, assignment, and module checkpoint exactly where it blocks progress.</p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <CurriculumMetric label="Modules" value={tree.stats.moduleCount} />
+                  <CurriculumMetric label="Lessons" value={tree.stats.lessonCount} />
+                  <CurriculumMetric label="Quizzes" value={tree.stats.quizCount} />
+                  <CurriculumMetric label="Assignments" value={tree.stats.assignmentCount} />
+                </div>
+              </div>
+              <div className="grid min-w-0 gap-2 sm:flex sm:flex-wrap">
+                <input value={newModuleTitle} onChange={(e) => setNewModuleTitle(e.target.value)} placeholder="New module title" className="min-w-0 flex-1 rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-white placeholder:text-slate-600 sm:min-w-[220px]" />
+                <Button className="w-full sm:w-auto" disabled={!newModuleTitle.trim() || busy} onClick={() => void run({ action: "create_module", module: { courseId, title: newModuleTitle } }, "Module created.").then(() => setNewModuleTitle(""))}>
+                  <Plus className="size-4 mr-2" /> Add Module
+                </Button>
+              </div>
+            </div>
           </div>
-          {tree.modules.map((module) => (
+          {selectedModuleId ? (
+            <div className="space-y-4 rounded-2xl border border-emerald-400/20 bg-emerald-400/[0.06] p-4">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                <div className="min-w-0">
+                  <p className="text-xs font-bold uppercase tracking-[0.22em] text-emerald-300">Edit Module</p>
+                  <h3 className="mt-1 break-words text-lg font-bold text-white">{moduleDraft.title || "Untitled module"}</h3>
+                  <p className="mt-1 text-sm leading-6 text-slate-400">Update the module name, learner-facing overview, objectives, and expected duration.</p>
+                </div>
+                <Button variant="secondary" onClick={() => setSelectedModuleId(null)}>Close</Button>
+              </div>
+              <div className="grid gap-4 lg:grid-cols-2">
+                <Field label="Module Title" value={moduleDraft.title} onChange={(v) => setModuleDraft({ ...moduleDraft, title: v })} />
+                <NumberField label="Estimated Minutes" value={moduleDraft.estimatedMinutes} min={0} onChange={(v) => setModuleDraft({ ...moduleDraft, estimatedMinutes: v })} />
+              </div>
+              <TextareaField label="Module Description" value={moduleDraft.description} rows={3} onChange={(v) => setModuleDraft({ ...moduleDraft, description: v })} />
+              <TextareaField label="Module Objectives (one per line)" value={moduleDraft.objectives} rows={4} onChange={(v) => setModuleDraft({ ...moduleDraft, objectives: v })} />
+              <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+                <Button variant="secondary" onClick={() => setSelectedModuleId(null)}>Cancel</Button>
+                <Button disabled={busy || !moduleDraft.title.trim()} onClick={() => void run({ action: "update_module", moduleId: selectedModuleId, module: {
+                  title: moduleDraft.title.trim(),
+                  description: moduleDraft.description.trim(),
+                  objectives: moduleDraft.objectives.split("\n").map((item) => item.trim()).filter(Boolean),
+                  estimatedMinutes: Number(moduleDraft.estimatedMinutes) || 0,
+                } }, "Module updated.").then(() => setSelectedModuleId(null))}>
+                  {busy ? <Loader2 className="size-4 animate-spin" /> : <CheckCircle2 className="size-4 mr-2" />} Save Module
+                </Button>
+              </div>
+            </div>
+          ) : null}
+          {tree.modules.map((module) => {
+            const moduleLessons = module.sections.flatMap((section) => section.lessons);
+            const moduleQuizzes = tree.quizzes.filter((quiz) => quiz.moduleId === module.id && !quiz.lessonId);
+            const moduleAssignments = tree.assignments.filter((assignment) => assignment.moduleId === module.id && !assignment.lessonId);
+            const lessonGateCount = moduleLessons.reduce((total, lesson) => (
+              total
+              + tree.quizzes.filter((quiz) => quiz.lessonId === lesson.id).length
+              + tree.assignments.filter((assignment) => assignment.lessonId === lesson.id).length
+            ), 0);
+            const missingContentCount = moduleLessons.filter((lesson) => stripHtml(lesson.richText).length < 40).length;
+            return (
             <div
               key={module.id}
               draggable
               onDragStart={() => setDragModuleId(module.id)}
               onDragOver={(e) => e.preventDefault()}
               onDrop={() => { if (dragModuleId) void reorderModules(dragModuleId, module.id); setDragModuleId(null); }}
-              className="rounded-xl border border-white/10 bg-slate-900/60"
+              className="overflow-hidden rounded-2xl border border-white/10 bg-slate-900/60"
             >
               <div className="grid gap-3 border-b border-white/5 px-4 py-3 sm:flex sm:items-center">
                 <div className="flex min-w-0 items-center gap-3">
                   <GripVertical className="size-4 shrink-0 cursor-grab text-slate-500" />
                   <div className="min-w-0 flex-1">
                     <p className="break-words font-semibold text-white">{module.title}</p>
-                    <p className="text-xs text-slate-500">{module.sections.reduce((n, s) => n + s.lessons.length, 0)} lessons</p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <CurriculumMetric label="Lessons" value={moduleLessons.length} compact />
+                      <CurriculumMetric label="Lesson gates" value={lessonGateCount} compact />
+                      <CurriculumMetric label="Module gates" value={moduleQuizzes.length + moduleAssignments.length} compact />
+                      {missingContentCount ? <CurriculumMetric label="Need content" value={missingContentCount} compact tone="warning" /> : null}
+                    </div>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-2 sm:ml-auto sm:flex">
@@ -622,7 +680,12 @@ export function CourseWorkspace({
                 </div>
               </div>
               <div className="divide-y divide-white/5">
-                {module.sections.flatMap((section) => section.lessons.map((lesson) => (
+                {module.sections.flatMap((section) => section.lessons.map((lesson) => {
+                  const lessonQuizzes = tree.quizzes.filter((quiz) => quiz.lessonId === lesson.id);
+                  const lessonAssignments = tree.assignments.filter((assignment) => assignment.lessonId === lesson.id);
+                  const needsLinkedQuiz = lesson.completionRequirement === "COMPLETE_QUIZ" && !lessonQuizzes.length;
+                  const needsLinkedAssignment = lesson.completionRequirement === "SUBMIT_ASSIGNMENT" && !lessonAssignments.length;
+                  return (
                   <div
                     key={lesson.id}
                     draggable
@@ -633,39 +696,59 @@ export function CourseWorkspace({
                       setDragLessonId(null);
                       setDragLessonSectionId(null);
                     }}
-                    className="flex flex-col items-stretch gap-3 px-4 py-3 hover:bg-white/5 sm:flex-row sm:items-center"
+                    className="grid gap-3 px-4 py-3 hover:bg-white/5 lg:grid-cols-[auto_minmax(0,1fr)_auto] lg:items-center"
                   >
-                    <GripVertical className="size-4 text-slate-600 cursor-grab shrink-0" />
-                    <BookOpen className="size-4 text-emerald-400 shrink-0" />
+                    <div className="flex items-center gap-2">
+                      <GripVertical className="size-4 shrink-0 cursor-grab text-slate-600" />
+                      <BookOpen className="size-4 shrink-0 text-emerald-400" />
+                    </div>
                     <button type="button" className="min-w-0 flex-1 text-left" onClick={() => setSelectedLessonId(lesson.id)}>
                       <p className="text-sm font-medium text-white">{lesson.title}</p>
-                      <p className="text-xs text-slate-500">{lesson.estimatedMinutes} min · {lesson.completionRequirement}</p>
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        {lessonQuizzes.map((quiz) => <GateChip key={quiz.id} kind="quiz" title={quiz.title} detail={`${quiz.passingPercentage}% pass - ${quiz.questionCount ?? 0} questions`} />)}
+                        {lessonAssignments.map((assignment) => <GateChip key={assignment.id} kind="assignment" title={assignment.title} detail={`${assignment.points} pts`} />)}
+                        {needsLinkedQuiz ? <GateChip kind="warning" title="Missing quiz gate" detail="Lesson requires a quiz but none is linked" /> : null}
+                        {needsLinkedAssignment ? <GateChip kind="warning" title="Missing assignment gate" detail="Lesson requires an assignment but none is linked" /> : null}
+                        {!lessonQuizzes.length && !lessonAssignments.length && lesson.completionRequirement === "VIEW" ? <GateChip kind="open" title="Open lesson" detail="No checkpoint required" /> : null}
+                      </div>
+                      <p className="text-xs text-slate-500">{lesson.estimatedMinutes} min - {lesson.completionRequirement}</p>
                     </button>
-                    <Button className="w-full sm:w-auto" variant="secondary" onClick={() => setSelectedLessonId(lesson.id)}><Pencil className="size-4" /></Button>
-                    <select
-                      className="w-full rounded-lg border border-white/10 bg-slate-900 px-2 py-2 text-xs text-white sm:max-w-[140px]"
-                      defaultValue=""
-                      onChange={(e) => {
-                        const sectionId = e.target.value;
-                        if (!sectionId || sectionId === section.id) return;
-                        void run(
-                          { action: "update_lesson", lessonId: lesson.id, lesson: { sectionId } },
-                          "Lesson moved to another module.",
-                          { label: "move lesson", body: { action: "update_lesson", lessonId: lesson.id, lesson: { sectionId: section.id } } },
-                        );
-                        e.target.value = "";
-                      }}
-                    >
-                      <option value="">Move to…</option>
-                      {tree.modules.flatMap((m) => m.sections.map((s) => (
-                        <option key={s.id} value={s.id}>{m.title.slice(0, 24)}</option>
-                      )))}
-                    </select>
-                    <Button className="w-full sm:w-auto" variant="secondary" onClick={() => void run({ action: "duplicate_lesson", lessonId: lesson.id }, "Lesson duplicated.")}><Copy className="size-4" /></Button>
-                    <Button className="w-full sm:w-auto" variant="secondary" onClick={() => void run({ action: "delete_lesson", lessonId: lesson.id }, "Lesson deleted.")}><Trash2 className="size-4" /></Button>
+                    <div className="grid gap-2 sm:flex lg:justify-end">
+                      <Button className="w-full sm:w-auto" variant="secondary" onClick={() => setSelectedLessonId(lesson.id)}><Pencil className="size-4" /></Button>
+                      <select
+                        className="w-full rounded-lg border border-white/10 bg-slate-900 px-2 py-2 text-xs text-white sm:max-w-[150px]"
+                        defaultValue=""
+                        onChange={(e) => {
+                          const sectionId = e.target.value;
+                          if (!sectionId || sectionId === section.id) return;
+                          void run(
+                            { action: "update_lesson", lessonId: lesson.id, lesson: { sectionId } },
+                            "Lesson moved to another module.",
+                            { label: "move lesson", body: { action: "update_lesson", lessonId: lesson.id, lesson: { sectionId: section.id } } },
+                          );
+                          e.target.value = "";
+                        }}
+                      >
+                        <option value="">Move to...</option>
+                        {tree.modules.flatMap((m) => m.sections.map((s) => (
+                          <option key={s.id} value={s.id}>{m.title.slice(0, 24)}</option>
+                        )))}
+                      </select>
+                      <Button className="w-full sm:w-auto" variant="secondary" onClick={() => void run({ action: "duplicate_lesson", lessonId: lesson.id }, "Lesson duplicated.")}><Copy className="size-4" /></Button>
+                      <Button className="w-full sm:w-auto" variant="secondary" onClick={() => void run({ action: "delete_lesson", lessonId: lesson.id }, "Lesson deleted.")}><Trash2 className="size-4" /></Button>
+                    </div>
                   </div>
-                )))}
+                );}))}
               </div>
+              {(moduleQuizzes.length || moduleAssignments.length) ? (
+                <div className="border-t border-amber-400/15 bg-amber-400/[0.06] px-4 py-3">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-amber-200">Before learner enters the next module</p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {moduleQuizzes.map((quiz) => <GateChip key={quiz.id} kind="quiz" title={quiz.title} detail={`Module quiz - ${quiz.passingPercentage}% pass`} />)}
+                    {moduleAssignments.map((assignment) => <GateChip key={assignment.id} kind="assignment" title={assignment.title} detail={`Module assignment - ${assignment.points} pts`} />)}
+                  </div>
+                </div>
+              ) : null}
               <div className="border-t border-white/5 p-3">
                 <Button variant="secondary" className="w-full" onClick={() => void run({
                   action: "create_lesson",
@@ -673,7 +756,7 @@ export function CourseWorkspace({
                 }, "Lesson added.")}><Plus className="size-4 mr-2" /> Add Lesson</Button>
               </div>
             </div>
-          ))}
+          );})}
         </div>
       )}
 
@@ -733,27 +816,6 @@ export function CourseWorkspace({
             </div>
           ) : (
             <p className="text-slate-400">Select a lesson from the curriculum to edit content, transcript, notes and materials.</p>
-          )}
-          
-          {selectedModuleId && (
-            <div className="mt-6 space-y-4 rounded-xl border border-white/10 p-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-white">Edit Module</h3>
-                <Button variant="secondary" onClick={() => setSelectedModuleId(null)}>Close</Button>
-              </div>
-              <Field label="Module Title" value={moduleDraft.title} onChange={(v) => setModuleDraft({ ...moduleDraft, title: v })} />
-              <TextareaField label="Module Description" value={moduleDraft.description} rows={3} onChange={(v) => setModuleDraft({ ...moduleDraft, description: v })} />
-              <TextareaField label="Module Objectives (one per line)" value={moduleDraft.objectives} rows={4} onChange={(v) => setModuleDraft({ ...moduleDraft, objectives: v })} />
-              <NumberField label="Estimated Minutes" value={moduleDraft.estimatedMinutes} min={0} onChange={(v) => setModuleDraft({ ...moduleDraft, estimatedMinutes: v })} />
-              <Button disabled={busy} onClick={() => void run({ action: "update_module", moduleId: selectedModuleId, module: { 
-                title: moduleDraft.title,
-                description: moduleDraft.description,
-                objectives: moduleDraft.objectives.split("\n").filter(Boolean),
-                estimatedMinutes: Number(moduleDraft.estimatedMinutes) || 0
-              } }, "Module updated.").then(() => setSelectedModuleId(null))}>
-                {busy ? <Loader2 className="size-4 animate-spin" /> : <CheckCircle2 className="size-4 mr-2" />} Save Module
-              </Button>
-            </div>
           )}
         </div>
       )}
@@ -1199,6 +1261,32 @@ function checkpointLabel(
     return courseModule ? `End of module: ${courseModule.title}` : "Module checkpoint";
   }
   return "Course-level certificate requirement";
+}
+
+function CurriculumMetric({ label, value, compact, tone = "default" }: { label: string; value: number; compact?: boolean; tone?: "default" | "warning" }) {
+  return (
+    <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${compact ? "" : "sm:text-xs"} ${tone === "warning" ? "border-amber-400/20 bg-amber-400/10 text-amber-200" : "border-white/10 bg-white/[0.04] text-slate-300"}`}>
+      <span className={tone === "warning" ? "text-amber-100" : "text-white"}>{value}</span>
+      {label}
+    </span>
+  );
+}
+
+function GateChip({ kind, title, detail }: { kind: "quiz" | "assignment" | "warning" | "open"; title: string; detail: string }) {
+  const tone =
+    kind === "quiz"
+      ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-100"
+      : kind === "assignment"
+        ? "border-cyan-400/20 bg-cyan-400/10 text-cyan-100"
+        : kind === "warning"
+          ? "border-amber-400/20 bg-amber-400/10 text-amber-100"
+          : "border-white/10 bg-slate-950/70 text-slate-300";
+  return (
+    <span className={`inline-flex max-w-full flex-col rounded-xl border px-2.5 py-1.5 text-left ${tone}`}>
+      <span className="max-w-[20rem] truncate text-[11px] font-bold">{title}</span>
+      <span className="text-[10px] opacity-75">{detail}</span>
+    </span>
+  );
 }
 
 function clampPercentage(value: number) {

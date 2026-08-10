@@ -16,6 +16,8 @@ import { reviewResourceAccessApplication } from "@/lib/academy/academy-resource-
 import { fetchCourseTree, resolveLessonSectionId } from "@/lib/academy/course-tree";
 import { tryCompleteCourseCertification } from "@/lib/academy/academy-progress";
 import { getCourseRetakeRules, normaliseRetakeRules, saveCourseRetakeRules } from "@/lib/academy/assessment-retake-rules";
+import { sendSmtpPlainEmail } from "@/lib/integrations/smtp";
+import { getHydratedRuntimePlatformSettings } from "@/lib/settings/runtime";
 
 export type AcademyDashboard = Awaited<ReturnType<typeof getAcademyDashboard>>;
 
@@ -81,8 +83,15 @@ export async function getAcademyDashboard(options: { compact?: boolean } = {}) {
     discussionThreads,
     agentBadges,
     coupons,
+    certificateTemplates,
   ] = await Promise.all([
-    prisma.trainingCourse.findMany({ include: { category: true }, orderBy: { updatedAt: "desc" } }),
+    prisma.trainingCourse.findMany({
+      include: {
+        category: true,
+        modules: { include: { sections: { include: { lessons: true } } } },
+      },
+      orderBy: { updatedAt: "desc" },
+    }),
     prisma.trainingLesson.count(),
     compact
       ? prisma.trainingLesson.findMany({
@@ -113,7 +122,7 @@ export async function getAcademyDashboard(options: { compact?: boolean } = {}) {
       orderBy: [{ sortOrder: "asc" }, { updatedAt: "desc" }],
     }),
     prisma.videoLibrary.findMany({ orderBy: { updatedAt: "desc" } }),
-    prisma.quiz.findMany({ include: { attempts: compact ? { take: 100, orderBy: { startedAt: "desc" } } : true }, orderBy: { updatedAt: "desc" } }),
+    prisma.quiz.findMany({ include: { questions: true, attempts: compact ? { take: 100, orderBy: { startedAt: "desc" } } : true }, orderBy: { updatedAt: "desc" } }),
     prisma.assignment.findMany({ orderBy: { updatedAt: "desc" } }),
     prisma.finalExam.findMany({ include: { attempts: compact ? { take: 100, orderBy: { startedAt: "desc" } } : true }, orderBy: { updatedAt: "desc" } }),
     prisma.certificateIssue.findMany({ include: { course: { select: { title: true } } }, orderBy: { issuedAt: "desc" }, ...(compact ? { take: 250 } : {}) }),
@@ -150,7 +159,11 @@ export async function getAcademyDashboard(options: { compact?: boolean } = {}) {
           orderBy: { updatedAt: "desc" },
           take: 50,
         }),
-    prisma.agentBadge.findMany({ include: { badge: true }, orderBy: { awardedAt: "desc" }, ...(compact ? { take: 100 } : {}) }),
+    prisma.agentBadge.findMany({
+      include: { badge: true, user: { select: { id: true, name: true, email: true } } },
+      orderBy: { awardedAt: "desc" },
+      ...(compact ? { take: 100 } : {}),
+    }),
     prisma.academyCoupon.findMany({
       include: {
         createdByUser: { select: { id: true, name: true, email: true } },
@@ -159,6 +172,7 @@ export async function getAcademyDashboard(options: { compact?: boolean } = {}) {
       },
       orderBy: { createdAt: "desc" },
     }),
+    prisma.certificateTemplate.findMany({ orderBy: { updatedAt: "desc" } }),
   ]);
 
   const [pendingLearnerCount, pendingResourceCount] = await Promise.all([
@@ -169,8 +183,13 @@ export async function getAcademyDashboard(options: { compact?: boolean } = {}) {
       where: { status: { in: ["PAYMENT_UPLOADED", "PENDING_PAYMENT"] } },
     }),
   ]);
+  const learnerIdsForDisplay = [
+    ...certificates.map((certificate) => certificate.agentId),
+    ...assignmentSubmissions.map((submission) => submission.agentId),
+    ...agentBadges.map((entry) => entry.agentId),
+  ];
   const certificateLearners = await prisma.user.findMany({
-    where: { id: { in: [...new Set(certificates.map((certificate) => certificate.agentId))] } },
+    where: { id: { in: [...new Set(learnerIdsForDisplay)] } },
     select: { id: true, name: true, email: true },
   });
   const certificateLearnerById = new Map(certificateLearners.map((learner) => [learner.id, learner]));
@@ -223,6 +242,50 @@ export async function getAcademyDashboard(options: { compact?: boolean } = {}) {
       ? prisma.listing.count({ where: { ownerId: { in: certifiedAgentIds }, status: { in: [ListingStatus.SOLD, ListingStatus.RENTED] } } })
       : 0,
   ]);
+  const learnerDirectory = new Map(certificateLearners.map((learner) => [learner.id, { name: learner.name ?? learner.email ?? learner.id, email: learner.email ?? "" }]));
+  for (const application of publicLearnerApplications) {
+    learnerDirectory.set(application.learnerId, {
+      name: application.learner?.name ?? application.fullName ?? application.email ?? application.learnerId,
+      email: application.learner?.email ?? application.email ?? "",
+    });
+  }
+  const academyIntegrity = buildAcademyIntegrity({
+    courses,
+    lessons: lessonRows as any[],
+    quizzes,
+    assignments,
+    certificateTemplates,
+    announcements,
+    badges,
+  });
+  const learnerTimeline = buildLearnerTimeline({
+    learnerDirectory,
+    enrolments,
+    courseProgress,
+    lessonProgress,
+    quizAttempts,
+    examAttempts,
+    assignmentSubmissions,
+    certificates,
+    courses,
+    quizzes,
+    assignments,
+    exams,
+  });
+  const certificateSimulations = buildCertificateSimulations({
+    learnerDirectory,
+    enrolments,
+    courseProgress,
+    quizAttempts,
+    examAttempts,
+    assignmentSubmissions,
+    certificates,
+    courses,
+    quizzes,
+    assignments,
+    exams,
+  });
+  const announcementDelivery = buildAnnouncementDeliverySummary({ announcements, publicLearnerApplications, enrolments });
 
   return {
     metrics: {
@@ -270,6 +333,8 @@ export async function getAcademyDashboard(options: { compact?: boolean } = {}) {
       id: submission.id,
       assignmentId: submission.assignmentId,
       agentId: submission.agentId,
+      learnerName: certificateLearnerById.get(submission.agentId)?.name ?? null,
+      learnerEmail: certificateLearnerById.get(submission.agentId)?.email ?? null,
       status: submission.status,
       notes: submission.notes,
       fileUrls: submission.fileUrls,
@@ -387,9 +452,15 @@ export async function getAcademyDashboard(options: { compact?: boolean } = {}) {
       status: thread.locked ? "LOCKED" : thread.pinned ? "PINNED" : "OPEN",
       updatedAt: thread.updatedAt.toISOString(),
     })),
+    academyIntegrity,
+    learnerTimeline,
+    certificateSimulations,
+    announcementDelivery,
     leaderboard: agentBadges.map((entry) => ({
       id: entry.id,
       agentId: entry.agentId,
+      learnerName: entry.user?.name ?? certificateLearnerById.get(entry.agentId)?.name ?? null,
+      learnerEmail: entry.user?.email ?? certificateLearnerById.get(entry.agentId)?.email ?? null,
       badgeName: entry.badge.name,
       xp: entry.badge.xp,
       awardedAt: entry.awardedAt.toISOString(),
@@ -1311,6 +1382,16 @@ export async function runAcademyAction(body: Record<string, any>, actor: Actor) 
     });
     await audit(actor, "academy.settings.update", settings.id, {});
     return settings;
+  }
+  if (action === "send_test_email_template") {
+    const to = required(body.to, "Recipient email");
+    const subject = required(body.subject, "Email subject");
+    const htmlContent = required(body.htmlContent, "Email HTML content");
+    const platformSettings = await getHydratedRuntimePlatformSettings();
+    const result = await sendSmtpPlainEmail(platformSettings.integrations, to, `[Test] ${subject}`, htmlContent);
+    await audit(actor, "academy.email_template.test", String(body.templateKey ?? "custom"), { to, ok: result.ok, message: result.message });
+    if (!result.ok) throw new Error(result.message);
+    return { sent: true, message: result.message };
   }
   if (action === "grant_extra_quiz_attempt") {
     const learnerId = required(body.learnerId, "Learner");
@@ -2299,6 +2380,215 @@ function agentCounts(agentIds: string[]) {
   const counts = new Map<string, number>();
   for (const agentId of agentIds) counts.set(agentId, (counts.get(agentId) ?? 0) + 1);
   return Array.from(counts.entries()).map(([agentId, actions]) => ({ agentId, actions })).sort((a, b) => b.actions - a.actions);
+}
+
+function buildAcademyIntegrity({
+  courses,
+  lessons,
+  quizzes,
+  assignments,
+  certificateTemplates,
+  announcements,
+  badges,
+}: {
+  courses: any[];
+  lessons: any[];
+  quizzes: any[];
+  assignments: any[];
+  certificateTemplates: any[];
+  announcements: any[];
+  badges: any[];
+}) {
+  const issues: Array<{ id: string; severity: "danger" | "warning" | "info"; area: string; title: string; detail: string; action: string }> = [];
+  const activeTemplates = certificateTemplates.filter((template) => template.active);
+  const courseIdsWithTemplate = new Set<string>();
+  for (const template of activeTemplates) {
+    const config = template.templateJson && typeof template.templateJson === "object" && !Array.isArray(template.templateJson) ? template.templateJson as Record<string, unknown> : {};
+    const courseIds = Array.isArray(config.courseIds) ? config.courseIds.filter((id): id is string => typeof id === "string") : [];
+    for (const id of courseIds) courseIdsWithTemplate.add(id);
+  }
+
+  for (const course of courses) {
+    const courseLessons = course.modules?.flatMap((module: any) => module.sections?.flatMap((section: any) => section.lessons ?? []) ?? []) ?? [];
+    if (course.status === TrainingCourseStatus.PUBLISHED && !courseLessons.length) {
+      issues.push({ id: `course-no-lessons-${course.id}`, severity: "danger", area: "Courses", title: `${course.title} has no lessons`, detail: "Published courses need learner-facing lessons before enrolment.", action: "Add lessons or unpublish the course." });
+    }
+    if (course.status === TrainingCourseStatus.PUBLISHED && courseLessons.some((lesson: any) => !String(lesson.richText ?? "").replace(/<[^>]+>/g, " ").trim())) {
+      issues.push({ id: `course-empty-lessons-${course.id}`, severity: "warning", area: "Lessons", title: `${course.title} has empty lesson content`, detail: "At least one lesson has no readable body content.", action: "Open the course builder and complete lesson content." });
+    }
+    if (course.certificateEnabled && !activeTemplates.length && !courseIdsWithTemplate.has(course.id)) {
+      issues.push({ id: `course-no-template-${course.id}`, severity: "danger", area: "Certificates", title: `${course.title} has certificates enabled but no active template`, detail: "Certificate issue can fail or fall back unexpectedly without an active template.", action: "Create or activate a certificate template." });
+    }
+  }
+
+  for (const lesson of lessons) {
+    if (lesson.completionRequirement === "COMPLETE_QUIZ" && !quizzes.some((quiz) => quiz.lessonId === lesson.id && quiz.active !== false)) {
+      issues.push({ id: `lesson-gate-quiz-${lesson.id}`, severity: "danger", area: "Gates", title: `${lesson.title} requires a quiz but none is linked`, detail: "Learners may be blocked with no quiz to complete.", action: "Link an active quiz to this lesson or change the completion requirement." });
+    }
+    if (lesson.completionRequirement === "SUBMIT_ASSIGNMENT" && !assignments.some((assignment) => assignment.lessonId === lesson.id && assignment.active !== false)) {
+      issues.push({ id: `lesson-gate-assignment-${lesson.id}`, severity: "danger", area: "Gates", title: `${lesson.title} requires an assignment but none is linked`, detail: "Learners may be blocked with no assignment to submit.", action: "Link an active assignment to this lesson or change the completion requirement." });
+    }
+  }
+
+  for (const quiz of quizzes) {
+    if (quiz.active !== false && (quiz.questions?.length ?? 0) === 0) {
+      issues.push({ id: `quiz-no-questions-${quiz.id}`, severity: "danger", area: "Quizzes", title: `${quiz.title} has no questions`, detail: "Learners cannot meaningfully pass a quiz without questions.", action: "Add questions before publishing or gate-linking this quiz." });
+    }
+  }
+
+  const expiredAnnouncements = announcements.filter((announcement) => announcement.expiresAt && announcement.expiresAt.getTime() <= Date.now());
+  for (const announcement of expiredAnnouncements.slice(0, 5)) {
+    issues.push({ id: `announcement-expired-${announcement.id}`, severity: "info", area: "Announcements", title: `${announcement.title} is expired`, detail: "Expired announcements are hidden from active learner dashboards.", action: "Restore it or leave archived if no longer relevant." });
+  }
+  for (const badge of badges.filter((badge) => badge.active && badge.xp <= 0)) {
+    issues.push({ id: `badge-no-xp-${badge.id}`, severity: "warning", area: "Badges", title: `${badge.name} has no XP value`, detail: "Badges with 0 XP do not improve leaderboard progress.", action: "Set an XP value or mark the badge inactive." });
+  }
+
+  return {
+    score: Math.max(0, 100 - issues.filter((issue) => issue.severity === "danger").length * 18 - issues.filter((issue) => issue.severity === "warning").length * 8),
+    danger: issues.filter((issue) => issue.severity === "danger").length,
+    warning: issues.filter((issue) => issue.severity === "warning").length,
+    info: issues.filter((issue) => issue.severity === "info").length,
+    issues: issues.slice(0, 40),
+  };
+}
+
+function buildCertificateSimulations({
+  learnerDirectory,
+  enrolments,
+  courseProgress,
+  quizAttempts,
+  examAttempts,
+  assignmentSubmissions,
+  certificates,
+  courses,
+  quizzes,
+  assignments,
+  exams,
+}: {
+  learnerDirectory: Map<string, { name: string; email: string }>;
+  enrolments: any[];
+  courseProgress: any[];
+  quizAttempts: any[];
+  examAttempts: any[];
+  assignmentSubmissions: any[];
+  certificates: any[];
+  courses: any[];
+  quizzes: any[];
+  assignments: any[];
+  exams: any[];
+}) {
+  const courseById = new Map(courses.map((course) => [course.id, course]));
+  return enrolments.slice(0, 30).map((enrolment) => {
+    const course = courseById.get(enrolment.courseId);
+    const learner = learnerDirectory.get(enrolment.agentId);
+    const progress = courseProgress.find((row) => row.agentId === enrolment.agentId && row.courseId === enrolment.courseId);
+    const courseQuizzes = quizzes.filter((quiz) => quiz.courseId === enrolment.courseId && quiz.active !== false);
+    const courseAssignments = assignments.filter((assignment) => assignment.courseId === enrolment.courseId && assignment.active !== false);
+    const courseExams = exams.filter((exam) => exam.courseId === enrolment.courseId && exam.active !== false);
+    const blockers: string[] = [];
+    const passedQuizzes = courseQuizzes.filter((quiz) => quizAttempts.some((attempt) => attempt.agentId === enrolment.agentId && attempt.quizId === quiz.id && attempt.status === TrainingAttemptStatus.PASSED && Number(attempt.score) >= quiz.passingPercentage));
+    const approvedAssignments = courseAssignments.filter((assignment) => assignmentSubmissions.some((submission) => {
+      const gradePercent = submission.grade == null || assignment.points <= 0 ? course?.passingPercentage ?? 80 : Math.round((Number(submission.grade) / assignment.points) * 100);
+      return submission.agentId === enrolment.agentId && submission.assignmentId === assignment.id && [AssignmentSubmissionStatus.APPROVED, AssignmentSubmissionStatus.GRADED].includes(submission.status) && gradePercent >= (course?.passingPercentage ?? 80);
+    }));
+    const passedExams = courseExams.filter((exam) => examAttempts.some((attempt) => attempt.agentId === enrolment.agentId && attempt.examId === exam.id && attempt.status === TrainingAttemptStatus.PASSED && Number(attempt.score) >= exam.passingScore));
+    if (!course?.certificateEnabled) blockers.push("Certificate issuing is disabled for this course.");
+    if ((progress?.percentComplete ?? 0) < 100) blockers.push(`Course progress is ${progress?.percentComplete ?? 0}%, not 100%.`);
+    if (passedQuizzes.length < courseQuizzes.length) blockers.push(`${courseQuizzes.length - passedQuizzes.length} quiz checkpoint${courseQuizzes.length - passedQuizzes.length === 1 ? "" : "s"} still not passed.`);
+    if (approvedAssignments.length < courseAssignments.length) blockers.push(`${courseAssignments.length - approvedAssignments.length} assignment${courseAssignments.length - approvedAssignments.length === 1 ? "" : "s"} still not approved/passed.`);
+    if (passedExams.length < courseExams.length) blockers.push(`${courseExams.length - passedExams.length} final exam${courseExams.length - passedExams.length === 1 ? "" : "s"} still not passed.`);
+    const certificate = certificates.find((issue) => issue.agentId === enrolment.agentId && issue.courseId === enrolment.courseId && issue.status === "ACTIVE");
+    return {
+      id: `${enrolment.agentId}:${enrolment.courseId}`,
+      learnerId: enrolment.agentId,
+      learnerName: learner?.name ?? enrolment.agentId,
+      learnerEmail: learner?.email ?? "",
+      courseId: enrolment.courseId,
+      courseTitle: course?.title ?? "Unknown course",
+      eligible: blockers.length === 0,
+      certificateNumber: certificate?.certificateNumber ?? null,
+      progress: progress?.percentComplete ?? 0,
+      passedQuizzes: passedQuizzes.length,
+      totalQuizzes: courseQuizzes.length,
+      approvedAssignments: approvedAssignments.length,
+      totalAssignments: courseAssignments.length,
+      passedExams: passedExams.length,
+      totalExams: courseExams.length,
+      blockers,
+    };
+  });
+}
+
+function buildLearnerTimeline({
+  learnerDirectory,
+  enrolments,
+  courseProgress,
+  lessonProgress,
+  quizAttempts,
+  examAttempts,
+  assignmentSubmissions,
+  certificates,
+  courses,
+  quizzes,
+  assignments,
+  exams,
+}: {
+  learnerDirectory: Map<string, { name: string; email: string }>;
+  enrolments: any[];
+  courseProgress: any[];
+  lessonProgress: any[];
+  quizAttempts: any[];
+  examAttempts: any[];
+  assignmentSubmissions: any[];
+  certificates: any[];
+  courses: any[];
+  quizzes: any[];
+  assignments: any[];
+  exams: any[];
+}) {
+  const courseTitle = new Map(courses.map((course) => [course.id, course.title]));
+  const quizTitle = new Map(quizzes.map((quiz) => [quiz.id, quiz.title]));
+  const assignmentTitle = new Map(assignments.map((assignment) => [assignment.id, assignment.title]));
+  const examTitle = new Map(exams.map((exam) => [exam.id, exam.title]));
+  const events: Array<{ id: string; learnerId: string; learnerName: string; learnerEmail: string; type: string; title: string; detail: string; occurredAt: string; status: string }> = [];
+  const push = (learnerId: string, id: string, type: string, title: string, detail: string, date: Date | null | undefined, status: string) => {
+    if (!date) return;
+    const learner = learnerDirectory.get(learnerId);
+    events.push({ id, learnerId, learnerName: learner?.name ?? learnerId, learnerEmail: learner?.email ?? "", type, title, detail, occurredAt: date.toISOString(), status });
+  };
+  for (const row of enrolments) push(row.agentId, `enrolment-${row.id}`, "Enrolment", `Enrolled in ${courseTitle.get(row.courseId) ?? "course"}`, row.status, row.enrolledAt, row.status);
+  for (const row of courseProgress) push(row.agentId, `course-progress-${row.id}`, "Course progress", courseTitle.get(row.courseId) ?? "Course progress", `${row.percentComplete}% complete`, row.updatedAt, row.status);
+  for (const row of lessonProgress) push(row.agentId, `lesson-progress-${row.id}`, "Lesson", "Lesson activity", `${row.percentComplete}% complete`, row.completedAt ?? row.lastViewedAt, row.status);
+  for (const row of quizAttempts) push(row.agentId, `quiz-${row.id}`, "Quiz", quizTitle.get(row.quizId) ?? "Quiz", `${row.status} - ${Number(row.score)}%`, row.submittedAt ?? row.startedAt, row.status);
+  for (const row of examAttempts) push(row.agentId, `exam-${row.id}`, "Exam", examTitle.get(row.examId) ?? "Exam", `${row.status} - ${Number(row.score)}%`, row.submittedAt ?? row.startedAt, row.status);
+  for (const row of assignmentSubmissions) push(row.agentId, `assignment-${row.id}`, "Assignment", assignmentTitle.get(row.assignmentId) ?? "Assignment", row.grade == null ? row.status : `${row.status} - ${Number(row.grade)}`, row.reviewedAt ?? row.submittedAt, row.status);
+  for (const row of certificates) push(row.agentId, `certificate-${row.id}`, "Certificate", row.course?.title ?? courseTitle.get(row.courseId) ?? "Certificate", row.certificateNumber, row.issuedAt, row.status);
+  return events.sort((a, b) => new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime()).slice(0, 120);
+}
+
+function buildAnnouncementDeliverySummary({ announcements, publicLearnerApplications, enrolments }: { announcements: any[]; publicLearnerApplications: any[]; enrolments: any[] }) {
+  const activeLearnerIds = new Set(enrolments.filter((entry) => entry.status === "ACTIVE").map((entry) => entry.agentId));
+  const publicLearnerIds = new Set(publicLearnerApplications.filter((entry) => entry.status === "APPROVED").map((entry) => entry.learnerId));
+  return announcements.slice(0, 30).map((announcement) => {
+    const audience = announcement.audience ?? "ALL";
+    const estimatedReach = audience === "PUBLIC_LEARNERS"
+      ? publicLearnerIds.size
+      : audience === "LEARNERS" || audience === "AGENTS"
+        ? activeLearnerIds.size
+        : audience === "ALL"
+          ? new Set([...activeLearnerIds, ...publicLearnerIds]).size
+          : 0;
+    return {
+      id: announcement.id,
+      title: announcement.title,
+      audience,
+      active: !announcement.expiresAt || announcement.expiresAt.getTime() > Date.now(),
+      estimatedReach,
+      createdAt: announcement.createdAt.toISOString(),
+      expiresAt: announcement.expiresAt?.toISOString() ?? null,
+    };
+  });
 }
 
 function buildTrainerInsights({

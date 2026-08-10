@@ -70,7 +70,57 @@ type Refund = {
   };
 };
 
-export function EmailTemplatesManagementPanel() {
+const ACADEMY_EMAIL_TEMPLATE_PURPOSES = [
+  {
+    key: "registration_confirmation",
+    label: "Registration confirmation",
+    description: "Sent after a learner registers for a paid Academy course.",
+    icon: Users,
+    variables: ["{{learnerName}}", "{{courseTitle}}", "{{amount}}", "{{currency}}", "{{registrationId}}", "{{paymentInstructions}}", "{{logoUrl}}", "{{primaryColor}}"],
+    subject: "Registration Confirmation: {{courseTitle}}",
+    htmlContent:
+      `<h2>Registration received</h2><p>Hello {{learnerName}},</p><p>Your registration for <strong>{{courseTitle}}</strong> has been received.</p><p><strong>Amount due:</strong> {{currency}} {{amount}}</p><p><strong>Reference:</strong> {{registrationId}}</p><h3>Payment instructions</h3><p>{{paymentInstructions}}</p>`,
+    textContent:
+      "Hello {{learnerName}}, your registration for {{courseTitle}} has been received. Amount due: {{currency}} {{amount}}. Reference: {{registrationId}}. Payment instructions: {{paymentInstructions}}",
+  },
+  {
+    key: "email_verification",
+    label: "Email verification",
+    description: "Sent when an Academy learner must verify their email address.",
+    icon: Mail,
+    variables: ["{{userName}}", "{{verificationLink}}", "{{logoUrl}}", "{{primaryColor}}", "{{secondaryColor}}"],
+    subject: "Verify Your Email - HouseLink Academy",
+    htmlContent:
+      `<h2>Verify your email</h2><p>Hello {{userName}},</p><p>Please confirm your email address to continue with HouseLink Academy.</p><p><a href="{{verificationLink}}">Verify email address</a></p>`,
+    textContent: "Hello {{userName}}, verify your email address here: {{verificationLink}}",
+  },
+  {
+    key: "payment_reminder",
+    label: "Payment reminder",
+    description: "Sent to learners who registered but have not completed payment proof.",
+    icon: CreditCard,
+    variables: ["{{learnerName}}", "{{courseTitle}}", "{{amount}}", "{{currency}}", "{{registrationId}}", "{{reminderDay}}", "{{paymentInstructions}}", "{{logoUrl}}"],
+    subject: "Payment Reminder: {{courseTitle}}",
+    htmlContent:
+      `<h2>Payment reminder</h2><p>Hello {{learnerName}},</p><p>Your payment for <strong>{{courseTitle}}</strong> is still pending.</p><p><strong>Amount:</strong> {{currency}} {{amount}}</p><p><strong>Reference:</strong> {{registrationId}}</p><p>{{paymentInstructions}}</p>`,
+    textContent: "Hello {{learnerName}}, your payment for {{courseTitle}} is still pending. Amount: {{currency}} {{amount}}. Reference: {{registrationId}}.",
+  },
+  {
+    key: "waitlist_notification",
+    label: "Waitlist spot available",
+    description: "Sent when a course spot opens for a learner on the waitlist.",
+    icon: CheckCircle2,
+    variables: ["{{learnerName}}", "{{courseTitle}}", "{{courseUrl}}", "{{logoUrl}}", "{{primaryColor}}"],
+    subject: "Spot Available: {{courseTitle}}",
+    htmlContent:
+      `<h2>A course spot is available</h2><p>Hello {{learnerName}},</p><p>A spot has opened for <strong>{{courseTitle}}</strong>.</p><p><a href="{{courseUrl}}">Register now</a></p>`,
+    textContent: "Hello {{learnerName}}, a spot has opened for {{courseTitle}}. Register here: {{courseUrl}}",
+  },
+] as const;
+
+type AcademyEmailTemplatePurposeKey = (typeof ACADEMY_EMAIL_TEMPLATE_PURPOSES)[number]["key"];
+
+export function EmailTemplatesManagementPanel({ action }: { action?: (body: Record<string, unknown>, success: string) => Promise<unknown> }) {
   const { showToast } = useApp();
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [loading, setLoading] = useState(true);
@@ -79,13 +129,14 @@ export function EmailTemplatesManagementPanel() {
   const [selectedTemplate, setSelectedTemplate] = useState<EmailTemplate | null>(null);
   const [deleteTemplate, setDeleteTemplate] = useState<EmailTemplate | null>(null);
   const [formData, setFormData] = useState({
-    templateKey: "",
+    templateKey: "registration_confirmation",
     language: "en",
     subject: "",
     htmlContent: "",
     textContent: "",
     active: true,
   });
+  const [testRecipient, setTestRecipient] = useState("");
 
   const loadTemplates = useCallback(async () => {
     setLoading(true);
@@ -99,6 +150,111 @@ export function EmailTemplatesManagementPanel() {
     void loadTemplates();
   }, [loadTemplates]);
 
+  const templatesByKey = new Map(templates.map((template) => [`${template.templateKey}:${template.language}`, template]));
+  const selectedPurpose = ACADEMY_EMAIL_TEMPLATE_PURPOSES.find((purpose) => purpose.key === formData.templateKey) ?? ACADEMY_EMAIL_TEMPLATE_PURPOSES[0];
+
+  function templateForPurpose(key: AcademyEmailTemplatePurposeKey, language = "en") {
+    return templatesByKey.get(`${key}:${language}`) ?? templates.find((template) => template.templateKey === key);
+  }
+
+  function openTemplateEditor(key: AcademyEmailTemplatePurposeKey, language = "en") {
+    const purpose = ACADEMY_EMAIL_TEMPLATE_PURPOSES.find((item) => item.key === key) ?? ACADEMY_EMAIL_TEMPLATE_PURPOSES[0];
+    const existing = templateForPurpose(key, language);
+    if (existing) {
+      setSelectedTemplate(existing);
+      setFormData({
+        templateKey: existing.templateKey,
+        language: existing.language,
+        subject: existing.subject,
+        htmlContent: existing.htmlContent,
+        textContent: existing.textContent || "",
+        active: existing.active,
+      });
+      setDrawer("edit");
+      return;
+    }
+    setSelectedTemplate(null);
+    setFormData({
+      templateKey: purpose.key,
+      language,
+      subject: purpose.subject,
+      htmlContent: purpose.htmlContent,
+      textContent: purpose.textContent,
+      active: true,
+    });
+    setDrawer("create");
+  }
+
+  function handlePurposeChange(key: string) {
+    const purpose = ACADEMY_EMAIL_TEMPLATE_PURPOSES.find((item) => item.key === key) ?? ACADEMY_EMAIL_TEMPLATE_PURPOSES[0];
+    const existing = templateForPurpose(purpose.key, formData.language);
+    if (existing) {
+      setSelectedTemplate(existing);
+      setDrawer("edit");
+      setFormData({
+        templateKey: existing.templateKey,
+        language: existing.language,
+        subject: existing.subject,
+        htmlContent: existing.htmlContent,
+        textContent: existing.textContent || "",
+        active: existing.active,
+      });
+      return;
+    }
+    setSelectedTemplate(null);
+    setDrawer("create");
+    setFormData({
+      templateKey: purpose.key,
+      language: formData.language,
+      subject: purpose.subject,
+      htmlContent: purpose.htmlContent,
+      textContent: purpose.textContent,
+      active: true,
+    });
+  }
+
+  function handleLanguageChange(language: string) {
+    const existing = templateForPurpose(formData.templateKey as AcademyEmailTemplatePurposeKey, language);
+    if (existing) {
+      setSelectedTemplate(existing);
+      setDrawer("edit");
+      setFormData({
+        templateKey: existing.templateKey,
+        language: existing.language,
+        subject: existing.subject,
+        htmlContent: existing.htmlContent,
+        textContent: existing.textContent || "",
+        active: existing.active,
+      });
+      return;
+    }
+    setSelectedTemplate(null);
+    setDrawer("create");
+    setFormData((current) => ({ ...current, language }));
+  }
+
+  function insertVariable(variable: string) {
+    setFormData((current) => ({ ...current, htmlContent: `${current.htmlContent}${current.htmlContent.endsWith(" ") ? "" : " "}${variable}` }));
+  }
+
+  async function handleSendTest() {
+    if (!action) {
+      showToast("Test email action is not available in this context.", "error");
+      return;
+    }
+    if (!testRecipient.trim()) {
+      showToast("Enter a recipient email for the test.", "error");
+      return;
+    }
+    await action({
+      action: "send_test_email_template",
+      to: testRecipient.trim(),
+      templateKey: formData.templateKey,
+      subject: formData.subject,
+      htmlContent: formData.htmlContent,
+    }, "Test email sent.");
+  }
+
   const handleCreate = async () => {
     const result = await apiFetch("/api/v1/admin/academy/email-templates", {
       method: "POST",
@@ -107,7 +263,7 @@ export function EmailTemplatesManagementPanel() {
     if (result.data) {
       showToast("Email template created successfully");
       setDrawer(null);
-      setFormData({ templateKey: "", language: "en", subject: "", htmlContent: "", textContent: "", active: true });
+      setSelectedTemplate(null);
       void loadTemplates();
     } else {
       showToast(result.error?.message ?? "Failed to create template", "error");
@@ -150,13 +306,42 @@ export function EmailTemplatesManagementPanel() {
   );
 
   return (
-    <div className="space-y-4">
-      <AdminFilterBar>
-        <AdminSearchInput value={search} onChange={setSearch} placeholder="Search templates..." className="lg:flex-1" />
-        <Button onClick={() => { setFormData({ templateKey: "", language: "en", subject: "", htmlContent: "", textContent: "", active: true }); setDrawer("create"); }}>
-          <Plus className="size-4" /> New Template
-        </Button>
-      </AdminFilterBar>
+    <div className="space-y-5">
+      <div className="overflow-hidden rounded-2xl border border-emerald-400/15 bg-[radial-gradient(circle_at_top_left,rgba(16,185,129,0.16),transparent_34%),linear-gradient(135deg,rgba(15,23,42,0.98),rgba(2,6,23,0.98))] p-5">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-emerald-300">Academy messaging</p>
+            <h3 className="mt-2 text-2xl font-bold text-white">Transactional email templates</h3>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">Edit the real email templates used by Academy registration, verification, payment reminders, and waitlist alerts. Variables are shown per template so admins do not have to guess keys.</p>
+          </div>
+          <AdminSearchInput value={search} onChange={setSearch} placeholder="Search saved templates..." className="lg:w-80" />
+        </div>
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-4">
+        {ACADEMY_EMAIL_TEMPLATE_PURPOSES.map((purpose) => {
+          const Icon = purpose.icon;
+          const existing = templateForPurpose(purpose.key);
+          return (
+            <button
+              key={purpose.key}
+              type="button"
+              onClick={() => openTemplateEditor(purpose.key)}
+              className="rounded-2xl border border-white/10 bg-slate-900/70 p-4 text-left transition hover:border-emerald-400/40 hover:bg-slate-900"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <span className="flex size-10 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-300">
+                  <Icon className="size-5" />
+                </span>
+                <AdminStatusBadge status={existing?.active === false ? "Inactive" : existing ? "Configured" : "Default"} variant={existing?.active === false ? "muted" : existing ? "success" : "warning"} />
+              </div>
+              <p className="mt-4 text-sm font-bold text-white">{purpose.label}</p>
+              <p className="mt-2 min-h-12 text-xs leading-5 text-slate-400">{purpose.description}</p>
+              <p className="mt-3 text-[11px] font-semibold uppercase tracking-wide text-slate-500">{purpose.key}</p>
+            </button>
+          );
+        })}
+      </div>
 
       {loading ? (
         <div className="flex items-center justify-center py-12">
@@ -168,7 +353,7 @@ export function EmailTemplatesManagementPanel() {
         <AdminDataTable
           rows={filteredTemplates}
           columns={[
-            { key: "templateKey", header: "Template Key", render: (t) => <span className="font-mono text-sm">{t.templateKey}</span> },
+            { key: "templateKey", header: "Purpose", render: (t) => <span className="font-semibold text-white">{ACADEMY_EMAIL_TEMPLATE_PURPOSES.find((purpose) => purpose.key === t.templateKey)?.label ?? t.templateKey}</span> },
             { key: "language", header: "Language", render: (t) => t.language.toUpperCase() },
             { key: "subject", header: "Subject", render: (t) => t.subject },
             { key: "status", header: "Status", render: (t) => <AdminStatusBadge status={t.active ? "Active" : "Inactive"} variant={t.active ? "success" : "muted"} /> },
@@ -191,73 +376,118 @@ export function EmailTemplatesManagementPanel() {
         />
       )}
 
-      <AdminDrawer open={Boolean(drawer)} onClose={() => setDrawer(null)} title={drawer === "create" ? "Create Email Template" : "Edit Email Template"}>
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1">Template Key</label>
-            <input
-              type="text"
-              value={formData.templateKey}
-              onChange={(e) => setFormData({ ...formData, templateKey: e.target.value })}
-              className="w-full rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-white"
-              placeholder="e.g., course_welcome"
-              disabled={drawer === "edit"}
-            />
+      <AdminDrawer open={Boolean(drawer)} onClose={() => { setDrawer(null); setSelectedTemplate(null); }} title={drawer === "create" ? "Create Email Template" : "Edit Email Template"} width="xl">
+        <div className="space-y-5">
+          <div className="rounded-xl border border-emerald-400/20 bg-emerald-400/10 p-4">
+            <p className="text-sm font-bold text-white">{selectedPurpose.label}</p>
+            <p className="mt-1 text-xs leading-5 text-emerald-50/80">{selectedPurpose.description}</p>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1">Language</label>
-            <select
-              value={formData.language}
-              onChange={(e) => setFormData({ ...formData, language: e.target.value })}
-              className="w-full rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-white"
-            >
-              <option value="en">English</option>
-              <option value="es">Spanish</option>
-              <option value="fr">French</option>
-              <option value="de">German</option>
-            </select>
+
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(280px,0.85fr)]">
+            <div className="space-y-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="block text-sm font-medium text-slate-300">Template purpose
+                  <select value={formData.templateKey} onChange={(e) => handlePurposeChange(e.target.value)} className="mt-1 w-full rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-white">
+                    {ACADEMY_EMAIL_TEMPLATE_PURPOSES.map((purpose) => <option key={purpose.key} value={purpose.key}>{purpose.label}</option>)}
+                  </select>
+                </label>
+                <label className="block text-sm font-medium text-slate-300">Language
+                  <select value={formData.language} onChange={(e) => handleLanguageChange(e.target.value)} className="mt-1 w-full rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-white">
+                    <option value="en">English</option>
+                    <option value="sn">Shona</option>
+                    <option value="nd">Ndebele</option>
+                    <option value="fr">French</option>
+                  </select>
+                </label>
+              </div>
+
+              <label className="block text-sm font-medium text-slate-300">Subject
+                <input
+                  type="text"
+                  value={formData.subject}
+                  onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
+                  className="mt-1 w-full rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-white"
+                  placeholder="Email subject line"
+                />
+              </label>
+
+              <div>
+                <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                  <label className="text-sm font-medium text-slate-300">Available variables</label>
+                  <span className="text-xs text-slate-500">Click to insert into HTML</span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {selectedPurpose.variables.map((variable) => (
+                    <button key={variable} type="button" onClick={() => insertVariable(variable)} className="rounded-full border border-white/10 bg-slate-950 px-3 py-1.5 text-xs font-semibold text-emerald-200 transition hover:border-emerald-400/40">
+                      {variable}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <label className="block text-sm font-medium text-slate-300">HTML content
+                <textarea
+                  value={formData.htmlContent}
+                  onChange={(e) => setFormData({ ...formData, htmlContent: e.target.value })}
+                  className="mt-1 min-h-[260px] w-full rounded-lg border border-white/10 bg-slate-900 px-3 py-2 font-mono text-sm text-white"
+                  placeholder="Write the HTML body used for this email"
+                />
+              </label>
+
+              <label className="block text-sm font-medium text-slate-300">Plain text fallback
+                <textarea
+                  value={formData.textContent}
+                  onChange={(e) => setFormData({ ...formData, textContent: e.target.value })}
+                  className="mt-1 min-h-[110px] w-full rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-white"
+                  placeholder="Short fallback for inboxes that do not render HTML"
+                />
+              </label>
+            </div>
+
+            <div className="space-y-4">
+              <div className="rounded-xl border border-white/10 bg-slate-950/70 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-bold text-white">Email preview</p>
+                    <p className="mt-1 text-xs text-slate-500">Preview uses placeholder variables.</p>
+                  </div>
+                  <AdminStatusBadge status={formData.active ? "Active" : "Inactive"} variant={formData.active ? "success" : "muted"} />
+                </div>
+                <p className="mt-4 rounded-lg bg-slate-900 px-3 py-2 text-sm font-semibold text-white">{formData.subject || "No subject yet"}</p>
+                <iframe title="Email template preview" srcDoc={formData.htmlContent || "<p>No HTML content yet.</p>"} className="mt-3 h-80 w-full rounded-lg border border-white/10 bg-white" />
+              </div>
+
+              <label className="flex items-center gap-3 rounded-xl border border-white/10 bg-slate-950/70 p-4 text-sm text-slate-300">
+                <input
+                  type="checkbox"
+                  checked={formData.active}
+                  onChange={(e) => setFormData({ ...formData, active: e.target.checked })}
+                  className="rounded border-white/10 bg-slate-900"
+                />
+                Active template
+              </label>
+
+              <Button disabled={!formData.templateKey || !formData.language || !formData.subject.trim() || !formData.htmlContent.trim()} onClick={drawer === "create" ? handleCreate : handleUpdate} className="w-full">
+                {drawer === "create" ? "Create Template" : "Update Template"}
+              </Button>
+
+              <div className="rounded-xl border border-white/10 bg-slate-950/70 p-4">
+                <p className="text-sm font-bold text-white">Send test email</p>
+                <p className="mt-1 text-xs leading-5 text-slate-500">Uses the live SMTP settings. Send to yourself before activating major copy changes.</p>
+                <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                  <input
+                    value={testRecipient}
+                    onChange={(event) => setTestRecipient(event.target.value)}
+                    className="min-h-10 flex-1 rounded-lg border border-white/10 bg-slate-900 px-3 text-sm text-white"
+                    placeholder="admin@example.com"
+                  />
+                  <Button variant="secondary" disabled={!formData.subject.trim() || !formData.htmlContent.trim()} onClick={() => void handleSendTest()}>
+                    <Mail className="size-4" /> Send test
+                  </Button>
+                </div>
+              </div>
+            </div>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1">Subject</label>
-            <input
-              type="text"
-              value={formData.subject}
-              onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
-              className="w-full rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-white"
-              placeholder="Email subject line"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1">HTML Content</label>
-            <textarea
-              value={formData.htmlContent}
-              onChange={(e) => setFormData({ ...formData, htmlContent: e.target.value })}
-              className="w-full rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-white min-h-[200px]"
-              placeholder="HTML email content"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1">Text Content (Optional)</label>
-            <textarea
-              value={formData.textContent}
-              onChange={(e) => setFormData({ ...formData, textContent: e.target.value })}
-              className="w-full rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-white min-h-[100px]"
-              placeholder="Plain text fallback"
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              id="active"
-              checked={formData.active}
-              onChange={(e) => setFormData({ ...formData, active: e.target.checked })}
-              className="rounded border-white/10 bg-slate-900"
-            />
-            <label htmlFor="active" className="text-sm text-slate-300">Active</label>
-          </div>
-          <Button onClick={drawer === "create" ? handleCreate : handleUpdate} className="w-full">
-            {drawer === "create" ? "Create Template" : "Update Template"}
-          </Button>
         </div>
       </AdminDrawer>
       <AdminConfirmDialog
