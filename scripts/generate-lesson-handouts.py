@@ -415,6 +415,9 @@ def main():
     if not MANIFEST.exists():
         raise SystemExit(f"Manifest not found: {MANIFEST}. Run: npm run academy:export-lesson-handouts")
     items = json.loads(MANIFEST.read_text(encoding="utf-8"))
+    course_id = os.environ.get("LESSON_HANDOUT_COURSE_ID")
+    if course_id:
+        items = [item for item in items if item.get("courseId") == course_id]
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     generated = 0
     for item in items:
