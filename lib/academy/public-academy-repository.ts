@@ -121,7 +121,7 @@ export async function getLearnerAcademyDashboard(learnerId: string, options?: { 
   }
   if (options?.isTrainer) announcementAudiences.add("TRAINERS");
   if (options?.isPublicLearner) announcementAudiences.add("PUBLIC_LEARNERS");
-  const [applications, notifications, announcements, certificates, courseProgressRows, resourceAccessRows] = await Promise.all([
+  const [applications, dashboardCourses, notifications, announcements, certificates, courseProgressRows, resourceAccessRows] = await Promise.all([
     prisma.academyLearnerApplication.findMany({
       where: {
         learnerId,
@@ -152,6 +152,22 @@ export async function getLearnerAcademyDashboard(learnerId: string, options?: { 
         payment: true,
       },
       orderBy: { updatedAt: "desc" },
+    }),
+    prisma.trainingCourse.findMany({
+      where: {
+        id: { not: LEGACY_COURSE_ID },
+        status: TrainingCourseStatus.PUBLISHED,
+        visibility: { in: [TrainingVisibility.PUBLIC, TrainingVisibility.ROLE_BASED] },
+        registrationOpen: true,
+      },
+      select: {
+        id: true,
+        title: true,
+        subtitle: true,
+        shortDescription: true,
+        featured: true,
+        createdAt: true,
+      },
     }),
     prisma.trainingNotification.findMany({ where: { userId: learnerId }, orderBy: { createdAt: "desc" }, take: 10 }),
     prisma.announcement.findMany({
@@ -291,22 +307,33 @@ export async function getLearnerAcademyDashboard(learnerId: string, options?: { 
       .filter((certificate) => certificate.courseId)
       .map((certificate) => [certificate.courseId as string, certificate]),
   );
-  const dashboardCourseCards = approved.map((entry) => {
-    const programme = getProgrammeCourse(entry.course.id);
-    const certificate = certificateByCourseId.get(entry.course.id);
-    const courseProgress = courseProgressRows.find((row) => row.courseId === entry.course.id);
+  const applicationByCourseId = new Map(visibleApplications.map((entry) => [entry.courseId, entry]));
+  const defaultTheme = {
+    label: "Course",
+    accent: String(brandingPayload.primaryColour ?? "#008b68"),
+    gradient: "from-emerald-600 to-slate-900",
+    sidebar: "bg-emerald-600",
+    chip: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  };
+  const dashboardCourseCards = (await Promise.all(dashboardCourses.map(async (course) => {
+    const application = applicationByCourseId.get(course.id);
+    const approvedApplication = application?.status === AcademyRegistrationStatus.APPROVED;
+    const programme = getProgrammeCourse(course.id);
+    const certificate = certificateByCourseId.get(course.id);
+    const courseProgress = courseProgressRows.find((row) => row.courseId === course.id);
     const badge = programme ? badgeById.get(programme.badgeId) : null;
+    const programmeAccess = programme ? await canAccessProgrammeCourse(learnerId, course.id) : { allowed: true as const };
     return {
-      id: entry.course.id,
-      title: entry.course.title,
-      subtitle: entry.course.subtitle ?? entry.course.shortDescription ?? "",
-      theme: programme?.theme ?? null,
+      id: course.id,
+      title: course.title,
+      subtitle: course.subtitle ?? course.shortDescription ?? "",
+      theme: programme?.theme ?? defaultTheme,
       sortOrder: programme?.sortOrder ?? 999,
-      unlocked: true,
+      unlocked: approvedApplication || !programme || programmeAccess.allowed,
       progress: courseProgress?.percentComplete ?? 0,
       completed: Boolean(certificate) || courseProgress?.status === "COMPLETED" || (courseProgress?.percentComplete ?? 0) >= 100,
       badgeEarned: programme ? existingBadgeIds.has(programme.badgeId) : Boolean(certificate),
-      badgeName: badge?.name ?? programme?.badgeName ?? `${entry.course.title} completion`,
+      badgeName: badge?.name ?? programme?.badgeName ?? `${course.title} completion`,
       certificate: certificate
         ? {
             id: certificate.id,
@@ -316,7 +343,7 @@ export async function getLearnerAcademyDashboard(learnerId: string, options?: { 
           }
         : null,
     };
-  }).sort((a, b) => a.sortOrder - b.sortOrder || a.title.localeCompare(b.title));
+  }))).sort((a, b) => a.sortOrder - b.sortOrder || a.title.localeCompare(b.title));
 
   return {
     settings: {
