@@ -69,13 +69,13 @@ export async function serveAcademyPdf(
   try {
     const staticUrl = new URL(staticPath, request.url);
     const response = await fetch(staticUrl.toString(), { cache: "force-cache" });
-    if (!response.ok) return null;
+    if (!response.ok) return Response.redirect(staticUrl, 307);
     const buffer = Buffer.from(await response.arrayBuffer());
     return new Response(buffer, {
       status: 200,
       headers: pdfResponseHeaders(fileName, inline, buffer.length),
     });
   } catch {
-    return null;
+    return Response.redirect(new URL(staticPath, request.url), 307);
   }
 }
