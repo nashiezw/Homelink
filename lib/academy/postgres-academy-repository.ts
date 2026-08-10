@@ -2025,6 +2025,9 @@ const LESSON_DEPTH_FIELDS = [
   ["scenario", "Zimbabwe field scenario"],
   ["practice", "Practice before you move on"],
 ] as const;
+const LEGACY_LESSON_DEPTH_RESOURCE_TITLES: Record<string, string> = {
+  "Field Practice Standard": "HouseLink field standard",
+};
 
 async function syncLessonDepthResources(lessonId: string, input: unknown) {
   if (!input || typeof input !== "object" || Array.isArray(input)) return;
@@ -2035,13 +2038,13 @@ async function syncLessonDepthResources(lessonId: string, input: unknown) {
   for (const [key, title] of LESSON_DEPTH_FIELDS) {
     const raw = (input as Record<string, unknown>)[key];
     const body = Array.isArray(raw) ? raw.filter((item): item is string => typeof item === "string").join("\n") : typeof raw === "string" ? raw.trim() : "";
-    const current = existingByTitle.get(title);
+    const current = existingByTitle.get(title) ?? existingByTitle.get(LEGACY_LESSON_DEPTH_RESOURCE_TITLES[title] ?? "");
     if (!body) {
       if (current) await prisma.lessonResource.delete({ where: { id: current.id } });
       continue;
     }
     if (current) {
-      await prisma.lessonResource.update({ where: { id: current.id }, data: { body, sortOrder: LESSON_DEPTH_FIELDS.findIndex(([field]) => field === key) } });
+      await prisma.lessonResource.update({ where: { id: current.id }, data: { title, body, sortOrder: LESSON_DEPTH_FIELDS.findIndex(([field]) => field === key) } });
     } else {
       await prisma.lessonResource.create({
         data: {

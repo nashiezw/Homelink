@@ -591,6 +591,9 @@ const lessonDepthResourceTitles = {
   scenario: "Zimbabwe field scenario",
   practice: "Practice before you move on",
 } as const;
+const legacyLessonDepthResourceTitles = {
+  standard: "HouseLink field standard",
+} as const;
 
 function editableLessonDepth(lesson: Lesson): Partial<LessonDepth> {
   const resources = new Map(
@@ -600,7 +603,7 @@ function editableLessonDepth(lesson: Lesson): Partial<LessonDepth> {
   );
   return {
     outcome: resources.get(lessonDepthResourceTitles.outcome) || undefined,
-    standard: splitDepthList(resources.get(lessonDepthResourceTitles.standard)),
+    standard: splitDepthList(resources.get(lessonDepthResourceTitles.standard) ?? resources.get(legacyLessonDepthResourceTitles.standard)),
     mistakes: splitDepthList(resources.get(lessonDepthResourceTitles.mistakes)),
     scenario: resources.get(lessonDepthResourceTitles.scenario) || undefined,
     practice: resources.get(lessonDepthResourceTitles.practice) || undefined,

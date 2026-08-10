@@ -2061,12 +2061,15 @@ const lessonDepthResourceTitles = {
   scenario: "Zimbabwe field scenario",
   practice: "Practice before you move on",
 } as const;
+const legacyLessonDepthResourceTitles = {
+  standard: "HouseLink field standard",
+} as const;
 
 function lessonDepthFromResources(resources: Array<{ title: string; body: string; type: string }>) {
   const map = new Map(resources.filter((resource) => resource.type === "LESSON_DEPTH").map((resource) => [resource.title, resource.body]));
   return {
     outcome: map.get(lessonDepthResourceTitles.outcome) ?? "",
-    standard: map.get(lessonDepthResourceTitles.standard) ?? "",
+    standard: map.get(lessonDepthResourceTitles.standard) ?? map.get(legacyLessonDepthResourceTitles.standard) ?? "",
     mistakes: map.get(lessonDepthResourceTitles.mistakes) ?? "",
     scenario: map.get(lessonDepthResourceTitles.scenario) ?? "",
     practice: map.get(lessonDepthResourceTitles.practice) ?? "",
