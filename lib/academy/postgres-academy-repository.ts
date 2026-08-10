@@ -411,33 +411,60 @@ export async function runAcademyAction(body: Record<string, any>, actor: Actor) 
   }
   if (action === "update_course") {
     const input = body.course ?? {};
+    const courseId = String(body.courseId);
+    
     const before = await prisma.trainingCourse.findUnique({
-      where: { id: String(body.courseId) },
+      where: { id: courseId },
       select: { title: true, subtitle: true, description: true, shortDescription: true, learningOutcomes: true }
     });
     
-    const course = await prisma.trainingCourse.update({
-      where: { id: String(body.courseId) },
-      data: courseInput(input, actor.id, true),
-    });
+    console.log("Course update - Before:", before);
+    console.log("Course update - Input:", input);
     
-    // Track content changes with detailed audit
-    const changes: Record<string, { from: string | string[] | null; to: string | string[] | null }> = {};
-    if (before) {
-      if (input.title !== undefined && input.title !== before.title) changes.title = { from: before.title, to: input.title };
-      if (input.subtitle !== undefined && input.subtitle !== before.subtitle) changes.subtitle = { from: before.subtitle, to: input.subtitle };
-      if (input.description !== undefined && input.description !== before.description) changes.description = { from: before.description, to: input.description };
-      if (input.shortDescription !== undefined && input.shortDescription !== before.shortDescription) changes.shortDescription = { from: before.shortDescription, to: input.shortDescription };
-      if (input.learningOutcomes !== undefined && JSON.stringify(input.learningOutcomes) !== JSON.stringify(before.learningOutcomes)) {
-        changes.learningOutcomes = { from: before.learningOutcomes, to: input.learningOutcomes };
+    try {
+      const updateData: Record<string, any> = {};
+      if (input.title !== undefined) updateData.title = String(input.title);
+      if (input.subtitle !== undefined) updateData.subtitle = input.subtitle ? String(input.subtitle) : null;
+      if (input.description !== undefined) updateData.description = String(input.description);
+      if (input.shortDescription !== undefined) updateData.shortDescription = input.shortDescription ? String(input.shortDescription) : null;
+      if (input.instructor !== undefined) updateData.instructor = input.instructor ? String(input.instructor) : null;
+      if (input.learningOutcomes !== undefined) updateData.learningOutcomes = Array.isArray(input.learningOutcomes) ? input.learningOutcomes : [];
+      if (input.targetAudience !== undefined) updateData.targetAudience = input.targetAudience ? String(input.targetAudience) : null;
+      if (input.prerequisites !== undefined) updateData.prerequisites = Array.isArray(input.prerequisites) ? input.prerequisites : [];
+      if (input.thumbnailUrl !== undefined) updateData.thumbnailUrl = input.thumbnailUrl ? String(input.thumbnailUrl) : null;
+      if (input.bannerUrl !== undefined) updateData.bannerUrl = input.bannerUrl ? String(input.bannerUrl) : null;
+      if (input.introVideoUrl !== undefined) updateData.introVideoUrl = input.introVideoUrl ? String(input.introVideoUrl) : null;
+      if (input.seoTitle !== undefined) updateData.seoTitle = input.seoTitle ? String(input.seoTitle) : null;
+      if (input.seoDescription !== undefined) updateData.seoDescription = input.seoDescription ? String(input.seoDescription) : null;
+      
+      const course = await prisma.trainingCourse.update({
+        where: { id: courseId },
+        data: updateData,
+      });
+      
+      console.log("Course update - After:", course);
+      
+      // Track content changes with detailed audit
+      const changes: Record<string, { from: string | string[] | null; to: string | string[] | null }> = {};
+      if (before) {
+        if (input.title !== undefined && input.title !== before.title) changes.title = { from: before.title, to: input.title };
+        if (input.subtitle !== undefined && input.subtitle !== before.subtitle) changes.subtitle = { from: before.subtitle, to: input.subtitle };
+        if (input.description !== undefined && input.description !== before.description) changes.description = { from: before.description, to: input.description };
+        if (input.shortDescription !== undefined && input.shortDescription !== before.shortDescription) changes.shortDescription = { from: before.shortDescription, to: input.shortDescription };
+        if (input.learningOutcomes !== undefined && JSON.stringify(input.learningOutcomes) !== JSON.stringify(before.learningOutcomes)) {
+          changes.learningOutcomes = { from: before.learningOutcomes, to: input.learningOutcomes };
+        }
       }
+      
+      await audit(actor, "academy.course.update", course.id, { 
+        title: course.title,
+        changes: Object.keys(changes).length > 0 ? changes : undefined
+      });
+      return course;
+    } catch (error) {
+      console.error("Course update error:", error);
+      throw error;
     }
-    
-    await audit(actor, "academy.course.update", course.id, { 
-      title: course.title,
-      changes: Object.keys(changes).length > 0 ? changes : undefined
-    });
-    return course;
   }
   if (action === "update_course_certification_rules") {
     const rules = body.rules ?? {};
