@@ -174,14 +174,25 @@ export function CourseWorkspace({
     }
   }, [selectedLessonId, selectedLesson]);
 
-  async function run(body: Record<string, unknown>, success: string, undo?: { label: string; body: Record<string, unknown> }) {
+  const run = useCallback(async (body: Record<string, unknown>, success: string, undo?: { label: string; body: Record<string, unknown> }) => {
     setBusy(true);
     await action(body, success);
     if (undo) setUndoStack((stack) => [...stack.slice(-9), undo]);
     await load();
     await onRefresh();
     setBusy(false);
-  }
+  }, [action, load, onRefresh]);
+
+  // Simple debounced save for field updates to prevent typing issues
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const debouncedRun = useCallback((body: Record<string, unknown>, success: string) => {
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+    saveTimeoutRef.current = setTimeout(() => {
+      void run(body, success);
+    }, 1000);
+  }, [run]);
 
   async function loadAuditLogs() {
     const result = await apiFetch<Array<{ id: string; action: string; createdAt: string }>>("/api/v1/admin/academy", {
@@ -286,37 +297,37 @@ export function CourseWorkspace({
           <div className="rounded-xl border border-white/10 p-4 text-sm text-slate-300">
             <AdminStatusBadge status={tree.status} variant={tree.status === "PUBLISHED" ? "success" : "warning"} />
             <div className="mt-3 space-y-4">
-              <Field label="Course Title" value={tree.title} onChange={(v) => void run({ action: "update_course", course: { courseId, title: v } }, "Title updated.")} />
-              <Field label="Subtitle" value={tree.subtitle ?? ""} onChange={(v) => void run({ action: "update_course", course: { courseId, subtitle: v } }, "Subtitle updated.")} />
-              <TextareaField label="Course Description" value={tree.description} rows={3} onChange={(v) => void run({ action: "update_course", course: { courseId, description: v } }, "Description updated.")} />
-              <TextareaField label="Short Description" value={tree.shortDescription ?? ""} rows={2} onChange={(v) => void run({ action: "update_course", course: { courseId, shortDescription: v } }, "Short description updated.")} />
-              <Field label="Instructor" value={tree.instructor ?? ""} onChange={(v) => void run({ action: "update_course", course: { courseId, instructor: v } }, "Instructor updated.")} />
+              <Field label="Course Title" value={tree.title} onChange={(v) => void debouncedRun({ action: "update_course", course: { courseId, title: v } }, "Title updated.")} />
+              <Field label="Subtitle" value={tree.subtitle ?? ""} onChange={(v) => void debouncedRun({ action: "update_course", course: { courseId, subtitle: v } }, "Subtitle updated.")} />
+              <TextareaField label="Course Description" value={tree.description} rows={3} onChange={(v) => void debouncedRun({ action: "update_course", course: { courseId, description: v } }, "Description updated.")} />
+              <TextareaField label="Short Description" value={tree.shortDescription ?? ""} rows={2} onChange={(v) => void debouncedRun({ action: "update_course", course: { courseId, shortDescription: v } }, "Short description updated.")} />
+              <Field label="Instructor" value={tree.instructor ?? ""} onChange={(v) => void debouncedRun({ action: "update_course", course: { courseId, instructor: v } }, "Instructor updated.")} />
             </div>
           </div>
           
           <div className="rounded-xl border border-white/10 p-4 text-sm text-slate-300">
             <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Marketing Content</p>
             <div className="mt-3 space-y-4">
-              <TextareaField label="Learning Outcomes (one per line)" value={(tree.learningOutcomes ?? []).join("\n")} rows={4} onChange={(v) => void run({ action: "update_course", course: { courseId, learningOutcomes: v.split("\n").filter(Boolean) } }, "Learning outcomes updated.")} />
-              <TextareaField label="Target Audience" value={tree.targetAudience ?? ""} rows={2} onChange={(v) => void run({ action: "update_course", course: { courseId, targetAudience: v } }, "Target audience updated.")} />
-              <TextareaField label="Prerequisites (one per line)" value={(tree.prerequisites ?? []).join("\n")} rows={2} onChange={(v) => void run({ action: "update_course", course: { courseId, prerequisites: v.split("\n").filter(Boolean) } }, "Prerequisites updated.")} />
+              <TextareaField label="Learning Outcomes (one per line)" value={(tree.learningOutcomes ?? []).join("\n")} rows={4} onChange={(v) => void debouncedRun({ action: "update_course", course: { courseId, learningOutcomes: v.split("\n").filter(Boolean) } }, "Learning outcomes updated.")} />
+              <TextareaField label="Target Audience" value={tree.targetAudience ?? ""} rows={2} onChange={(v) => void debouncedRun({ action: "update_course", course: { courseId, targetAudience: v } }, "Target audience updated.")} />
+              <TextareaField label="Prerequisites (one per line)" value={(tree.prerequisites ?? []).join("\n")} rows={2} onChange={(v) => void debouncedRun({ action: "update_course", course: { courseId, prerequisites: v.split("\n").filter(Boolean) } }, "Prerequisites updated.")} />
             </div>
           </div>
           
           <div className="rounded-xl border border-white/10 p-4 text-sm text-slate-300">
             <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Media Assets</p>
             <div className="mt-3 space-y-4">
-              <Field label="Thumbnail URL" value={tree.thumbnailUrl ?? ""} onChange={(v) => void run({ action: "update_course", course: { courseId, thumbnailUrl: v } }, "Thumbnail URL updated.")} />
-              <Field label="Banner URL" value={tree.bannerUrl ?? ""} onChange={(v) => void run({ action: "update_course", course: { courseId, bannerUrl: v } }, "Banner URL updated.")} />
-              <Field label="Intro Video URL" value={tree.introVideoUrl ?? ""} onChange={(v) => void run({ action: "update_course", course: { courseId, introVideoUrl: v } }, "Intro video URL updated.")} />
+              <Field label="Thumbnail URL" value={tree.thumbnailUrl ?? ""} onChange={(v) => void debouncedRun({ action: "update_course", course: { courseId, thumbnailUrl: v } }, "Thumbnail URL updated.")} />
+              <Field label="Banner URL" value={tree.bannerUrl ?? ""} onChange={(v) => void debouncedRun({ action: "update_course", course: { courseId, bannerUrl: v } }, "Banner URL updated.")} />
+              <Field label="Intro Video URL" value={tree.introVideoUrl ?? ""} onChange={(v) => void debouncedRun({ action: "update_course", course: { courseId, introVideoUrl: v } }, "Intro video URL updated.")} />
             </div>
           </div>
           
           <div className="rounded-xl border border-white/10 p-4 text-sm text-slate-300">
             <p className="text-xs font-bold uppercase tracking-wide text-slate-400">SEO</p>
             <div className="mt-3 space-y-4">
-              <Field label="SEO Title" value={tree.seoTitle ?? ""} onChange={(v) => void run({ action: "update_course", course: { courseId, seoTitle: v } }, "SEO title updated.")} />
-              <TextareaField label="SEO Description" value={tree.seoDescription ?? ""} rows={2} onChange={(v) => void run({ action: "update_course", course: { courseId, seoDescription: v } }, "SEO description updated.")} />
+              <Field label="SEO Title" value={tree.seoTitle ?? ""} onChange={(v) => void debouncedRun({ action: "update_course", course: { courseId, seoTitle: v } }, "SEO title updated.")} />
+              <TextareaField label="SEO Description" value={tree.seoDescription ?? ""} rows={2} onChange={(v) => void debouncedRun({ action: "update_course", course: { courseId, seoDescription: v } }, "SEO description updated.")} />
             </div>
           </div>
           <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/[0.06] p-4 sm:p-5">
