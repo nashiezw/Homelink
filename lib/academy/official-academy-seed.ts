@@ -190,7 +190,7 @@ async function seedAssessments(prisma: ReturnType<typeof getMainPrisma>) {
     const moduleId = await resolveModuleId(prisma, quiz.courseId, quiz.moduleTitle);
     const existingQuiz = await prisma.quiz.findUnique({
       where: { id: quiz.id },
-      select: { id: true, _count: { select: { questions: true } } },
+      select: { id: true, moduleId: true, lessonId: true, _count: { select: { questions: true } } },
     });
     if (!existingQuiz) {
       await prisma.quiz.create({
@@ -206,7 +206,7 @@ async function seedAssessments(prisma: ReturnType<typeof getMainPrisma>) {
         active: true,
       },
       });
-    } else if (moduleId) {
+    } else if (moduleId && !existingQuiz.moduleId && !existingQuiz.lessonId) {
       await prisma.quiz.update({ where: { id: quiz.id }, data: { moduleId } });
     }
     if (existingQuiz && existingQuiz._count.questions > 0) continue;
@@ -257,9 +257,14 @@ async function seedAssessments(prisma: ReturnType<typeof getMainPrisma>) {
       },
       update: {
         courseId: assignment.courseId,
-        moduleId,
       },
     });
+    if (moduleId) {
+      const existing = await prisma.assignment.findUnique({ where: { id: assignment.id }, select: { moduleId: true, lessonId: true } });
+      if (existing && !existing.moduleId && !existing.lessonId) {
+        await prisma.assignment.update({ where: { id: assignment.id }, data: { moduleId } });
+      }
+    }
   }
 
   await prisma.finalExam.upsert({

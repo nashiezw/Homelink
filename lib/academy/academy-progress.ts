@@ -2,7 +2,7 @@ import { getMainPrisma } from "@/lib/db/main-prisma";
 import { awardProgrammeBadge, hasPassedCourseAssessments } from "@/lib/academy/academy-completion";
 import { getProgrammeCourse } from "@/lib/academy/academy-programme";
 import { CertificateIssue } from "@/lib/academy/certificate-repository";
-import { getProgrammeGateState } from "@/lib/academy/academy-gates";
+import { getLessonCompletionGateState, getLessonGateState } from "@/lib/academy/academy-gates";
 
 type CourseWithLessons = {
   id: string;
@@ -62,8 +62,10 @@ export async function completeLessonForLearner(learnerId: string, lessonId: stri
     where: { courseId_agentId: { courseId: course.id, agentId: learnerId } },
   });
   if (!enrolment || enrolment.status !== "ACTIVE") return "NOT_ENROLLED" as const;
-  const gate = await getProgrammeGateState(learnerId, course.id, lesson.section.module.sortOrder);
+  const gate = await getLessonGateState(learnerId, course.id, lesson.id);
   if (gate.locked) return "CHECKPOINT_LOCKED" as const;
+  const completionGate = await getLessonCompletionGateState(learnerId, course.id, lesson.id, lesson.completionRequirement);
+  if (completionGate.locked) return "LESSON_REQUIREMENT_LOCKED" as const;
 
   const now = new Date();
   await prisma.lessonProgress.upsert({

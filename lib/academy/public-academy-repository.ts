@@ -2,12 +2,12 @@ import { AcademyRegistrationStatus, PaymentProvider, PaymentStatus, Role, Traini
 import { getMainPrisma } from "@/lib/db/main-prisma";
 import { sendRegistrationConfirmationEmail } from "@/lib/academy/academy-email";
 import { calculateCourseProgress, getCompletedLessonIds } from "@/lib/academy/academy-progress";
+import { getAssessmentGateState, getLessonGateState, getModuleGateState } from "@/lib/academy/academy-gates";
 import { awardProgrammeBadge, canAccessProgrammeCourse } from "@/lib/academy/academy-completion";
 import { assessmentMetaForAssignment, assessmentMetaForQuiz } from "@/lib/academy/academy-assessments";
 import { getProgrammeCourse, LEGACY_COURSE_ID, PROGRAMME_COURSE_IDS } from "@/lib/academy/academy-programme";
 import { getEnrolledCourseToolkits, getToolkitGroupsForCourse, programmeMetaForCourse } from "@/lib/academy/academy-toolkits";
 import { buildReadinessScore } from "@/lib/academy/academy-readiness";
-import { getProgrammeGateState } from "@/lib/academy/academy-gates";
 import { attemptsRemaining, getCourseRetakeRules } from "@/lib/academy/assessment-retake-rules";
 import {
   getManualAccessView,
@@ -955,9 +955,25 @@ export async function getLearnerCourseDetail(learnerId: string, courseId: string
     assignmentStatuses,
     finalExamPassed: examAttempts.some((attempt) => attempt.status === "PASSED"),
   });
-  const moduleGateStates = programme
-    ? await Promise.all(course.modules.map((module) => getProgrammeGateState(learnerId, courseId, module.sortOrder)))
-    : course.modules.map(() => null);
+  const moduleGateStates = await Promise.all(course.modules.map((module) => getModuleGateState(learnerId, courseId, module.id)));
+  const lessonGateEntries = await Promise.all(
+    course.modules.flatMap((module) =>
+      module.sections.flatMap((section) =>
+        section.lessons.map(async (lesson) => [lesson.id, await getLessonGateState(learnerId, courseId, lesson.id)] as const),
+      ),
+    ),
+  );
+  const lessonGateById = new Map(lessonGateEntries);
+  const quizGateEntries = await Promise.all(course.quizzes.map(async (quiz) => [quiz.id, await getAssessmentGateState(learnerId, courseId, quiz.id, "quiz")] as const));
+  const assignmentGateEntries = await Promise.all(course.assignments.map(async (assignment) => [assignment.id, await getAssessmentGateState(learnerId, courseId, assignment.id, "assignment")] as const));
+  const quizGateById = new Map(quizGateEntries);
+  const assignmentGateById = new Map(assignmentGateEntries);
+  const moduleTitleById = new Map(course.modules.map((module) => [module.id, module.title]));
+  const lessonPlacementById = new Map(
+    course.modules.flatMap((module) =>
+      module.sections.flatMap((section) => section.lessons.map((lesson) => [lesson.id, { lessonTitle: lesson.title, moduleTitle: module.title }] as const)),
+    ),
+  );
 
   return {
     settings,
@@ -994,8 +1010,8 @@ export async function getLearnerCourseDetail(learnerId: string, courseId: string
           sortOrder: section.sortOrder,
           lessons: section.lessons.map((lesson) => ({
             ...mapLessonForLearner(lesson, completedIds, bookmarkIds),
-            locked: moduleGateStates[moduleIndex]?.locked ?? false,
-            gate: moduleGateStates[moduleIndex],
+            locked: lessonGateById.get(lesson.id)?.locked ?? moduleGateStates[moduleIndex]?.locked ?? false,
+            gate: lessonGateById.get(lesson.id) ?? moduleGateStates[moduleIndex],
           })),
         })),
         lessonCount: module.sections.reduce((sum, s) => sum + s.lessons.length, 0),
@@ -1006,27 +1022,31 @@ export async function getLearnerCourseDetail(learnerId: string, courseId: string
       summary: generatedAssessmentSummary,
       badgeName: programmeBadge?.name ?? programme?.badgeName ?? null,
       totals: {
-        quizzes: programme?.quizIds.length ?? course.quizzes.length,
+        quizzes: course.quizzes.length,
         quizzesPassed: course.quizzes.filter(
-          (quiz) => (!programme || programme.quizIds.includes(quiz.id)) && (bestQuizScores.get(quiz.id) ?? 0) >= quiz.passingPercentage,
+          (quiz) => (bestQuizScores.get(quiz.id) ?? 0) >= quiz.passingPercentage,
         ).length,
-        assignments: programme?.assignmentIds.length ?? course.assignments.length,
+        assignments: course.assignments.length,
         assignmentsSubmitted: course.assignments.filter(
-          (assignment) => (!programme || programme.assignmentIds.includes(assignment.id)) && assignmentSubmissions.some((s) => s.assignmentId === assignment.id),
+          (assignment) => assignmentSubmissions.some((s) => s.assignmentId === assignment.id),
         ).length,
         exams: programme?.requiresFinalExam === false ? 0 : course.finalExams.length,
       },
       quizzes: course.quizzes
-        .filter((quiz) => !programme?.quizIds.length || programme.quizIds.includes(quiz.id))
         .map((quiz) => {
           const meta = assessmentMetaForQuiz(quiz.id);
           const attempts = quizAttempts.filter((attempt) => attempt.quizId === quiz.id && (attempt.status === "PASSED" || attempt.status === "FAILED"));
+          const lessonPlacement = quiz.lessonId ? lessonPlacementById.get(quiz.lessonId) : null;
           return {
             id: quiz.id,
             title: quiz.title,
             description: quiz.description,
-            moduleTitle: meta?.moduleTitle ?? null,
+            moduleTitle: lessonPlacement?.moduleTitle ?? (quiz.moduleId ? moduleTitleById.get(quiz.moduleId) : null) ?? meta?.moduleTitle ?? null,
+            lessonTitle: lessonPlacement?.lessonTitle ?? null,
+            moduleId: quiz.moduleId,
+            lessonId: quiz.lessonId,
             sortOrder: meta?.sortOrder ?? 0,
+            gate: quizGateById.get(quiz.id) ?? { locked: false, title: "", requirements: [] },
             passingPercentage: quiz.passingPercentage,
             timeLimitMinutes: quiz.timeLimitMinutes,
             questionCount: quiz.questions.length,
@@ -1039,7 +1059,6 @@ export async function getLearnerCourseDetail(learnerId: string, courseId: string
         })
         .sort((a, b) => a.sortOrder - b.sortOrder),
       assignments: course.assignments
-        .filter((assignment) => !programme?.assignmentIds.length || programme.assignmentIds.includes(assignment.id))
         .map((assignment) => {
           const meta = assessmentMetaForAssignment(assignment.id);
           const submissions = assignmentSubmissions.filter((submission) => submission.assignmentId === assignment.id);
@@ -1055,12 +1074,17 @@ export async function getLearnerCourseDetail(learnerId: string, courseId: string
           const needsResubmission = latestSubmission?.status === "RESUBMISSION_REQUESTED"
             || latestSubmission?.status === "REJECTED"
             || (latestSubmission?.status === "GRADED" && gradePercent !== null && gradePercent < course.passingPercentage);
+          const lessonPlacement = assignment.lessonId ? lessonPlacementById.get(assignment.lessonId) : null;
           return {
             id: assignment.id,
             title: assignment.title,
             description: assignment.description,
-            moduleTitle: meta?.moduleTitle ?? null,
+            moduleTitle: lessonPlacement?.moduleTitle ?? (assignment.moduleId ? moduleTitleById.get(assignment.moduleId) : null) ?? meta?.moduleTitle ?? null,
+            lessonTitle: lessonPlacement?.lessonTitle ?? null,
+            moduleId: assignment.moduleId,
+            lessonId: assignment.lessonId,
             sortOrder: meta?.sortOrder ?? 0,
+            gate: assignmentGateById.get(assignment.id) ?? { locked: false, title: "", requirements: [] },
             points: assignment.points,
             dueDays: assignment.dueDays,
             submitted: Boolean(latestSubmission),

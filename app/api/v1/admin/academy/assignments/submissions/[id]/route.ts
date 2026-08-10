@@ -3,6 +3,7 @@ import { ok, problem } from "@/lib/api/response";
 import { getMainPrisma } from "@/lib/db/main-prisma";
 import { getSessionUserIdFromRequest } from "@/lib/auth/session";
 import { tryCompleteCourseCertification } from "@/lib/academy/academy-progress";
+import { DEFAULT_COURSE_RETAKE_RULES, attemptsRemaining, getCourseRetakeRules } from "@/lib/academy/assessment-retake-rules";
 
 export const dynamic = "force-dynamic";
 
@@ -65,6 +66,17 @@ export async function PATCH(
       select: { name: true, email: true },
     });
 
+    const courseId = submission.assignment.courseId
+      ?? submission.assignment.module?.courseId
+      ?? submission.assignment.lesson?.section.module.courseId
+      ?? null;
+    const rules = courseId ? await getCourseRetakeRules(courseId) : DEFAULT_COURSE_RETAKE_RULES;
+    const submissionCount = await prisma.assignmentSubmission.count({
+      where: { assignmentId: submission.assignmentId, agentId: submission.agentId },
+    });
+    const remainingSubmissions = attemptsRemaining(rules.assignmentSubmissionLimit, submissionCount);
+    const passedReview = status === "APPROVED" || status === "GRADED";
+
     // Create notification for the student
     await prisma.trainingNotification.create({
       data: {
@@ -72,7 +84,9 @@ export async function PATCH(
         eventType: "ASSIGNMENT_REVIEWED",
         channel: "IN_APP",
         subject: existing.reviewedAt ? "Assignment review updated" : `Assignment ${status.toLowerCase().replace(/_/g, " ")}`,
-        body: `Your submission for ${submission.assignment.title} has been ${status.toLowerCase().replace(/_/g, " ")}. ${numericGrade !== null ? `Grade: ${numericGrade}` : ""}`,
+        body: passedReview
+          ? `Your submission for ${submission.assignment.title} was approved. The next eligible lesson or module is now unlocked.${numericGrade !== null ? ` Grade: ${numericGrade}/${submission.assignment.points}.` : ""}`
+          : `Your submission for ${submission.assignment.title} needs changes. ${remainingSubmissions} submission${remainingSubmissions === 1 ? "" : "s"} remaining.`,
       },
     });
 
@@ -93,10 +107,6 @@ export async function PATCH(
       },
     });
 
-    const courseId = submission.assignment.courseId
-      ?? submission.assignment.module?.courseId
-      ?? submission.assignment.lesson?.section.module.courseId
-      ?? null;
     if ((status === "APPROVED" || status === "GRADED") && courseId) {
       await tryCompleteCourseCertification(submission.agentId, courseId);
     }

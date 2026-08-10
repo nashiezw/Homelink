@@ -976,6 +976,8 @@ export async function runAcademyAction(body: Record<string, any>, actor: Actor) 
     const quiz = await prisma.quiz.create({
       data: {
         courseId: stringOrNull(body.quiz?.courseId),
+        moduleId: stringOrNull(body.quiz?.moduleId),
+        lessonId: stringOrNull(body.quiz?.lessonId),
         title: required(body.quiz?.title, "Quiz title"),
         description: stringOrNull(body.quiz?.description),
         passingPercentage: numberOr(body.quiz?.passingPercentage, 80),
@@ -1065,6 +1067,8 @@ export async function runAcademyAction(body: Record<string, any>, actor: Actor) 
     const assignment = await prisma.assignment.create({
       data: {
         courseId: stringOrNull(body.assignment?.courseId),
+        moduleId: stringOrNull(body.assignment?.moduleId),
+        lessonId: stringOrNull(body.assignment?.lessonId),
         title: required(body.assignment?.title, "Assignment title"),
         description: required(body.assignment?.description, "Assignment description"),
         dueDays: optionalNumber(body.assignment?.dueDays),
@@ -1308,6 +1312,119 @@ export async function runAcademyAction(body: Record<string, any>, actor: Actor) 
     await audit(actor, "academy.settings.update", settings.id, {});
     return settings;
   }
+  if (action === "grant_extra_quiz_attempt") {
+    const learnerId = required(body.learnerId, "Learner");
+    const quizId = required(body.quizId, "Quiz");
+    const quiz = await prisma.quiz.findUnique({ where: { id: quizId }, select: { id: true, title: true, courseId: true } });
+    if (!quiz) throw new Error("Quiz not found.");
+
+    await prisma.quizAttempt.create({
+      data: {
+        quizId,
+        agentId: learnerId,
+        status: TrainingAttemptStatus.IN_PROGRESS,
+        score: 0,
+        answers: {
+          _adminOverride: {
+            actorId: actor.id,
+            actorName: actor.name,
+            reason: "Extra attempt granted by Academy Admin",
+            createdAt: new Date().toISOString(),
+          },
+        } as Prisma.InputJsonObject,
+      },
+    });
+    await prisma.trainingNotification.create({
+      data: {
+        userId: learnerId,
+        eventType: "QUIZ_EXTRA_ATTEMPT_GRANTED",
+        channel: "IN_APP",
+        subject: "Extra quiz attempt granted",
+        body: `Academy Admin granted you another attempt for ${quiz.title}. Open the quiz when you are ready to retake it.`,
+      },
+    });
+    await audit(actor, "academy.override.quiz_extra_attempt", quizId, { learnerId, courseId: quiz.courseId ?? null, quizTitle: quiz.title });
+    return { granted: true };
+  }
+  if (action === "mark_lesson_gate_satisfied") {
+    const learnerId = required(body.learnerId, "Learner");
+    const lessonId = required(body.lessonId, "Lesson");
+    const result = await markLessonCompleteForAdmin(learnerId, lessonId);
+    await prisma.trainingNotification.create({
+      data: {
+        userId: learnerId,
+        eventType: "LESSON_GATE_APPROVED",
+        channel: "IN_APP",
+        subject: "Lesson gate marked complete",
+        body: `Academy Admin marked ${result.lessonTitle} complete. Your course progress has been recalculated.`,
+      },
+    });
+    await audit(actor, "academy.override.lesson_gate_satisfied", lessonId, { learnerId, courseId: result.courseId, lessonTitle: result.lessonTitle });
+    return result;
+  }
+  if (action === "approve_assignment_gate") {
+    const learnerId = required(body.learnerId, "Learner");
+    const assignmentId = required(body.assignmentId, "Assignment");
+    const assignment = await prisma.assignment.findUnique({
+      where: { id: assignmentId },
+      include: {
+        lesson: { select: { section: { select: { module: { select: { courseId: true } } } } } },
+        module: { select: { courseId: true } },
+      },
+    });
+    if (!assignment) throw new Error("Assignment not found.");
+    const courseId = assignment.courseId ?? assignment.module?.courseId ?? assignment.lesson?.section.module.courseId ?? null;
+    await prisma.assignmentSubmission.create({
+      data: {
+        assignmentId,
+        agentId: learnerId,
+        status: AssignmentSubmissionStatus.APPROVED,
+        notes: "Gate approved by Academy Admin.",
+        grade: assignment.points,
+        reviewerId: actor.id,
+        reviewerNote: "Admin override: assignment gate satisfied.",
+        reviewedAt: new Date(),
+      },
+    });
+    if (courseId) await recalculateCourseProgress(courseId, learnerId);
+    await prisma.trainingNotification.create({
+      data: {
+        userId: learnerId,
+        eventType: "ASSIGNMENT_GATE_APPROVED",
+        channel: "IN_APP",
+        subject: "Assignment gate approved",
+        body: `Academy Admin approved ${assignment.title}. The next eligible lesson or module is now unlocked.`,
+      },
+    });
+    await audit(actor, "academy.override.assignment_gate_satisfied", assignmentId, { learnerId, courseId, assignmentTitle: assignment.title });
+    return { approved: true, courseId };
+  }
+  if (action === "unlock_module_for_learner") {
+    const learnerId = required(body.learnerId, "Learner");
+    const courseId = required(body.courseId, "Course");
+    const moduleId = required(body.moduleId, "Module");
+    const result = await unlockModuleForLearner(courseId, moduleId, learnerId, actor);
+    await prisma.trainingNotification.create({
+      data: {
+        userId: learnerId,
+        eventType: "MODULE_UNLOCKED_BY_ADMIN",
+        channel: "IN_APP",
+        subject: "Module unlocked",
+        body: `${result.moduleTitle} has been unlocked by Academy Admin. Your course progress has been repaired so you can continue.`,
+      },
+    });
+    await audit(actor, "academy.override.module_unlocked", moduleId, { learnerId, courseId, ...result });
+    return result;
+  }
+  if (action === "repair_course_progress") {
+    const courseId = required(body.courseId, "Course");
+    const learnerId = typeof body.learnerId === "string" && body.learnerId.trim() ? body.learnerId.trim() : null;
+    const result = learnerId
+      ? await recalculateCourseProgress(courseId, learnerId)
+      : await repairCourseProgressForAllLearners(courseId);
+    await audit(actor, "academy.progress.repair", courseId, { learnerId, result: result as Prisma.InputJsonValue });
+    return result;
+  }
   if (action === "review_public_learner") {
     return reviewPublicLearnerApplication({
       applicationId: String(body.applicationId),
@@ -1450,7 +1567,17 @@ export async function runAcademyAction(body: Record<string, any>, actor: Actor) 
 export async function getAdminCourseTree(courseId: string) {
   const course = await fetchCourseTree(courseId);
   if (!course) return null;
-  const retakeRules = await getCourseRetakeRules(courseId);
+  const prisma = getMainPrisma();
+  const [retakeRules, enrolments, progressRows] = await Promise.all([
+    getCourseRetakeRules(courseId),
+    prisma.courseEnrolment.findMany({ where: { courseId }, orderBy: { enrolledAt: "desc" } }),
+    prisma.courseProgress.findMany({ where: { courseId } }),
+  ]);
+  const users = enrolments.length
+    ? await prisma.user.findMany({ where: { id: { in: enrolments.map((entry) => entry.agentId) } }, select: { id: true, name: true, email: true } })
+    : [];
+  const userById = new Map(users.map((user) => [user.id, user]));
+  const progressByLearner = new Map(progressRows.map((progress) => [progress.agentId, progress]));
   return {
     id: course.id,
     title: course.title,
@@ -1516,9 +1643,35 @@ export async function getAdminCourseTree(courseId: string) {
         })),
       })),
     })),
-    quizzes: course.quizzes,
-    assignments: course.assignments,
+    quizzes: course.quizzes.map((quiz) => ({
+      id: quiz.id,
+      title: quiz.title,
+      description: quiz.description,
+      passingPercentage: quiz.passingPercentage,
+      moduleId: quiz.moduleId,
+      lessonId: quiz.lessonId,
+      questionCount: quiz.questions.length,
+    })),
+    assignments: course.assignments.map((assignment) => ({
+      id: assignment.id,
+      title: assignment.title,
+      description: assignment.description,
+      points: assignment.points,
+      moduleId: assignment.moduleId,
+      lessonId: assignment.lessonId,
+    })),
     exams: course.finalExams,
+    learners: enrolments.map((enrolment) => {
+      const user = userById.get(enrolment.agentId);
+      const progress = progressByLearner.get(enrolment.agentId);
+      return {
+        id: enrolment.agentId,
+        name: user?.name ?? user?.email ?? enrolment.agentId,
+        email: user?.email ?? "",
+        progress: progress?.percentComplete ?? 0,
+        status: progress?.status ?? enrolment.status,
+      };
+    }),
     stats: {
       moduleCount: course.modules.length,
       lessonCount: course.modules.reduce((sum, m) => sum + m.sections.reduce((s, sec) => s + sec.lessons.length, 0), 0),
@@ -1679,6 +1832,8 @@ function videoInput(input: Record<string, any>): Prisma.VideoLibraryCreateInput 
 function quizInput(input: Record<string, any>): Prisma.QuizUncheckedUpdateInput {
   return {
     courseId: stringOrNull(input.courseId),
+    moduleId: stringOrNull(input.moduleId),
+    lessonId: stringOrNull(input.lessonId),
     title: required(input.title, "Quiz title"),
     description: stringOrNull(input.description),
     passingPercentage: numberOr(input.passingPercentage, 80),
@@ -1709,6 +1864,8 @@ function examInput(input: Record<string, any>): Prisma.FinalExamUncheckedUpdateI
 function assignmentInput(input: Record<string, any>): Prisma.AssignmentUncheckedUpdateInput {
   return {
     courseId: stringOrNull(input.courseId),
+    moduleId: stringOrNull(input.moduleId),
+    lessonId: stringOrNull(input.lessonId),
     title: required(input.title, "Assignment title"),
     description: required(input.description, "Assignment description"),
     dueDays: optionalNumber(input.dueDays),
@@ -1816,6 +1973,249 @@ async function syncLessonDepthResources(lessonId: string, input: unknown) {
       });
     }
   }
+}
+
+async function markLessonCompleteForAdmin(learnerId: string, lessonId: string) {
+  const prisma = getMainPrisma();
+  const lesson = await prisma.trainingLesson.findUnique({
+    where: { id: lessonId },
+    include: {
+      section: {
+        include: {
+          module: {
+            select: { courseId: true },
+          },
+        },
+      },
+    },
+  });
+  if (!lesson) throw new Error("Lesson not found.");
+
+  const now = new Date();
+  await prisma.lessonProgress.upsert({
+    where: { lessonId_agentId: { lessonId, agentId: learnerId } },
+    create: {
+      lessonId,
+      agentId: learnerId,
+      status: "COMPLETED",
+      percentComplete: 100,
+      completedAt: now,
+      lastViewedAt: now,
+      readingSeconds: lesson.estimatedMinutes * 60,
+    },
+    update: {
+      status: "COMPLETED",
+      percentComplete: 100,
+      completedAt: now,
+      lastViewedAt: now,
+    },
+  });
+  const progress = await recalculateCourseProgress(lesson.section.module.courseId, learnerId);
+  return {
+    lessonId,
+    lessonTitle: lesson.title,
+    courseId: lesson.section.module.courseId,
+    progress,
+  };
+}
+
+async function recalculateCourseProgress(courseId: string, learnerId: string) {
+  const prisma = getMainPrisma();
+  const course = await prisma.trainingCourse.findUnique({
+    where: { id: courseId },
+    select: {
+      id: true,
+      certificateEnabled: true,
+      modules: {
+        select: {
+          sections: {
+            select: {
+              lessons: {
+                select: { id: true, estimatedMinutes: true },
+              },
+            },
+          },
+        },
+      },
+    },
+  });
+  if (!course) throw new Error("Course not found.");
+
+  const lessons = course.modules.flatMap((module) => module.sections.flatMap((section) => section.lessons));
+  const completedRows = lessons.length
+    ? await prisma.lessonProgress.findMany({
+        where: {
+          agentId: learnerId,
+          lessonId: { in: lessons.map((lesson) => lesson.id) },
+          status: "COMPLETED",
+        },
+        select: { lessonId: true },
+      })
+    : [];
+  const completedIds = new Set(completedRows.map((row) => row.lessonId));
+  const completedCount = lessons.filter((lesson) => completedIds.has(lesson.id)).length;
+  const percentComplete = lessons.length ? Math.round((completedCount / lessons.length) * 100) : 0;
+  const learningMinutes = lessons
+    .filter((lesson) => completedIds.has(lesson.id))
+    .reduce((sum, lesson) => sum + lesson.estimatedMinutes, 0);
+  const now = new Date();
+  const progress = await prisma.courseProgress.upsert({
+    where: { courseId_agentId: { courseId, agentId: learnerId } },
+    create: {
+      courseId,
+      agentId: learnerId,
+      status: percentComplete >= 100 ? "COMPLETED" : percentComplete > 0 ? "IN_PROGRESS" : "NOT_STARTED",
+      percentComplete,
+      learningMinutes,
+      completedAt: percentComplete >= 100 ? now : null,
+    },
+    update: {
+      status: percentComplete >= 100 ? "COMPLETED" : percentComplete > 0 ? "IN_PROGRESS" : "NOT_STARTED",
+      percentComplete,
+      learningMinutes,
+      completedAt: percentComplete >= 100 ? now : null,
+    },
+  });
+
+  if (percentComplete >= 100 && course.certificateEnabled) {
+    await tryCompleteCourseCertification(learnerId, courseId);
+  }
+
+  return {
+    learnerId,
+    courseId,
+    lessonCount: lessons.length,
+    completedLessons: completedCount,
+    percentComplete: progress.percentComplete,
+    status: progress.status,
+  };
+}
+
+async function repairCourseProgressForAllLearners(courseId: string) {
+  const prisma = getMainPrisma();
+  const enrolments = await prisma.courseEnrolment.findMany({
+    where: { courseId, status: "ACTIVE" },
+    select: { agentId: true },
+  });
+  const learners = await Promise.all(enrolments.map((enrolment) => recalculateCourseProgress(courseId, enrolment.agentId)));
+  return {
+    courseId,
+    repairedLearners: learners.length,
+    learners,
+  };
+}
+
+async function unlockModuleForLearner(courseId: string, moduleId: string, learnerId: string, actor: Actor) {
+  const prisma = getMainPrisma();
+  const course = await prisma.trainingCourse.findUnique({
+    where: { id: courseId },
+    include: {
+      modules: {
+        orderBy: { sortOrder: "asc" },
+        include: {
+          sections: {
+            orderBy: { sortOrder: "asc" },
+            include: { lessons: { orderBy: { sortOrder: "asc" }, select: { id: true, title: true, estimatedMinutes: true } } },
+          },
+        },
+      },
+      quizzes: { where: { active: true }, select: { id: true, title: true, passingPercentage: true, moduleId: true, lessonId: true } },
+      assignments: { where: { active: true }, select: { id: true, title: true, points: true, moduleId: true, lessonId: true } },
+    },
+  });
+  if (!course) throw new Error("Course not found.");
+  const targetModule = course.modules.find((module) => module.id === moduleId);
+  if (!targetModule) throw new Error("Module not found.");
+
+  const priorModules = course.modules.filter((module) => module.sortOrder < targetModule.sortOrder);
+  const priorModuleIds = new Set(priorModules.map((module) => module.id));
+  const priorLessons = priorModules.flatMap((module) => module.sections.flatMap((section) => section.lessons));
+  const priorLessonIds = new Set(priorLessons.map((lesson) => lesson.id));
+  const now = new Date();
+
+  for (const lesson of priorLessons) {
+    await prisma.lessonProgress.upsert({
+      where: { lessonId_agentId: { lessonId: lesson.id, agentId: learnerId } },
+      create: {
+        lessonId: lesson.id,
+        agentId: learnerId,
+        status: "COMPLETED",
+        percentComplete: 100,
+        completedAt: now,
+        lastViewedAt: now,
+        readingSeconds: lesson.estimatedMinutes * 60,
+      },
+      update: { status: "COMPLETED", percentComplete: 100, completedAt: now, lastViewedAt: now },
+    });
+  }
+
+  const priorQuizzes = course.quizzes.filter((quiz) => (quiz.moduleId && priorModuleIds.has(quiz.moduleId)) || (quiz.lessonId && priorLessonIds.has(quiz.lessonId)));
+  const priorAssignments = course.assignments.filter((assignment) => (assignment.moduleId && priorModuleIds.has(assignment.moduleId)) || (assignment.lessonId && priorLessonIds.has(assignment.lessonId)));
+  const passedQuizRows = priorQuizzes.length
+    ? await prisma.quizAttempt.findMany({
+        where: { agentId: learnerId, quizId: { in: priorQuizzes.map((quiz) => quiz.id) }, status: TrainingAttemptStatus.PASSED },
+        select: { quizId: true },
+      })
+    : [];
+  const passedQuizIds = new Set(passedQuizRows.map((row) => row.quizId));
+  const approvedAssignmentRows = priorAssignments.length
+    ? await prisma.assignmentSubmission.findMany({
+        where: {
+          agentId: learnerId,
+          assignmentId: { in: priorAssignments.map((assignment) => assignment.id) },
+          status: { in: [AssignmentSubmissionStatus.APPROVED, AssignmentSubmissionStatus.GRADED] },
+        },
+        select: { assignmentId: true },
+      })
+    : [];
+  const approvedAssignmentIds = new Set(approvedAssignmentRows.map((row) => row.assignmentId));
+
+  for (const quiz of priorQuizzes.filter((quiz) => !passedQuizIds.has(quiz.id))) {
+    await prisma.quizAttempt.create({
+      data: {
+        quizId: quiz.id,
+        agentId: learnerId,
+        status: TrainingAttemptStatus.PASSED,
+        score: quiz.passingPercentage,
+        answers: {
+          _adminOverride: {
+            actorId: actor.id,
+            actorName: actor.name,
+            reason: "Module unlocked by Academy Admin",
+            createdAt: now.toISOString(),
+          },
+        } as Prisma.InputJsonObject,
+        submittedAt: now,
+        gradedAt: now,
+      },
+    });
+  }
+
+  for (const assignment of priorAssignments.filter((assignment) => !approvedAssignmentIds.has(assignment.id))) {
+    await prisma.assignmentSubmission.create({
+      data: {
+        assignmentId: assignment.id,
+        agentId: learnerId,
+        status: AssignmentSubmissionStatus.APPROVED,
+        notes: "Gate approved by Academy Admin.",
+        grade: assignment.points,
+        reviewerId: actor.id,
+        reviewerNote: "Admin override: module unlocked.",
+        submittedAt: now,
+        reviewedAt: now,
+      },
+    });
+  }
+
+  const progress = await recalculateCourseProgress(courseId, learnerId);
+  return {
+    moduleId,
+    moduleTitle: targetModule.title,
+    lessonsMarkedComplete: priorLessons.length,
+    quizzesSatisfied: priorQuizzes.length,
+    assignmentsSatisfied: priorAssignments.length,
+    progress,
+  };
 }
 
 async function notifyAgents(eventType: string, subject: string, body: string) {

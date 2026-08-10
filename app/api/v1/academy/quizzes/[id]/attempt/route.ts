@@ -103,7 +103,9 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
         eventType: passed ? "QUIZ_PASSED" : "QUIZ_FAILED",
         channel: "IN_APP",
         subject: passed ? "Quiz passed" : "Quiz attempt recorded",
-        body: `You scored ${score}% on ${quiz.title}.`,
+        body: passed
+          ? `You passed ${quiz.title}. The next eligible lesson or module is now unlocked.`
+          : `You scored ${score}% on ${quiz.title}. ${remainingAttempts > 0 ? `${remainingAttempts} retake${remainingAttempts === 1 ? "" : "s"} remaining.` : "You have used all available attempts. Ask Academy Admin to review your options."}`,
       },
     });
 

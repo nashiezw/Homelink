@@ -124,8 +124,8 @@ type CourseDetail = {
       categories: Array<{ id: string; label: string; description: string; score: number; status: "READY" | "DEVELOPING" | "NEEDS_PRACTICE" }>;
     };
     certificateCheckpoint?: { title: string; description: string } | null;
-    quizzes: Array<{ id: string; title: string; description?: string | null; moduleTitle?: string | null; sortOrder?: number; passingPercentage: number; timeLimitMinutes?: number | null; questionCount: number; bestScore: number | null; passed: boolean; attemptsUsed: number; attemptLimit: number; attemptsRemaining: number }>;
-    assignments: Array<{ id: string; title: string; description: string; moduleTitle?: string | null; sortOrder?: number; points: number; dueDays?: number | null; submitted: boolean; status: string | null; grade?: number | null; gradePercent?: number | null; passed?: boolean; needsResubmission?: boolean; reviewerNote?: string | null; attemptsUsed: number; attemptLimit: number; attemptsRemaining: number }>;
+    quizzes: Array<{ id: string; title: string; description?: string | null; moduleTitle?: string | null; lessonTitle?: string | null; moduleId?: string | null; lessonId?: string | null; sortOrder?: number; gate?: CourseGate; passingPercentage: number; timeLimitMinutes?: number | null; questionCount: number; bestScore: number | null; passed: boolean; attemptsUsed: number; attemptLimit: number; attemptsRemaining: number }>;
+    assignments: Array<{ id: string; title: string; description: string; moduleTitle?: string | null; lessonTitle?: string | null; moduleId?: string | null; lessonId?: string | null; sortOrder?: number; gate?: CourseGate; points: number; dueDays?: number | null; submitted: boolean; status: string | null; grade?: number | null; gradePercent?: number | null; passed?: boolean; needsResubmission?: boolean; reviewerNote?: string | null; attemptsUsed: number; attemptLimit: number; attemptsRemaining: number }>;
     exams: Array<{ id: string; title: string; description?: string | null; durationMinutes: number; passingScore: number; attemptLimit: number; attemptsUsed: number; attemptsRemaining: number; bestScore: number | null; passed: boolean }>;
   };
   materials: Array<{ id: string; title: string; subtitle: string; summary: string; moduleTitle: string; lessonTitle: string; estimatedMinutes: number; location: string; fileType: string; downloadUrl: string; viewUrl: string }>;
@@ -134,7 +134,7 @@ type CourseDetail = {
 type CourseGate = {
   locked: boolean;
   title: string;
-  requirements: Array<{ id: string; title: string; type: "quiz" | "assignment"; complete: boolean }>;
+  requirements: Array<{ id: string; title: string; type: "lesson" | "quiz" | "assignment"; complete: boolean }>;
 };
 
 type Tab = "curriculum" | "toolkit" | "materials" | "assessments" | "discussions" | "progress";
@@ -375,7 +375,17 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
               defaultOpen: index === 0 || Boolean(module.gate?.locked),
               content: (
                 <div className="space-y-3">
-                  {module.gate?.locked && <GateNotice gate={module.gate} accent={accent} />}
+                  {module.gate?.locked && (
+                    <GateNotice
+                      gate={module.gate}
+                      accent={accent}
+                      onOpenRequirement={(requirement) => {
+                        if (requirement.type === "quiz") setActiveQuizId(requirement.id);
+                        if (requirement.type === "assignment") setActiveAssignmentId(requirement.id);
+                        if (requirement.type === "lesson") setViewingLessonId(requirement.id);
+                      }}
+                    />
+                  )}
                   <div className="grid gap-3 sm:grid-cols-2">
                     {module.sections.flatMap((section) => section.lessons).map((lesson) => (
                       <button
@@ -589,12 +599,12 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
               empty="Module quizzes load with your programme enrolment."
             >
               {data.assessments.quizzes.map((quiz) => {
-                const gate = assessmentGateFor(data, quiz.sortOrder ?? 0);
+                const gate = quiz.gate ?? assessmentGateFor(data, quiz.sortOrder ?? 0);
                 return (
                   <AssessmentActionCard
                     key={quiz.id}
                     title={quiz.title}
-                    eyebrow={quiz.moduleTitle}
+                    eyebrow={quiz.lessonTitle ? `${quiz.moduleTitle ?? "Module"} / ${quiz.lessonTitle}` : quiz.moduleTitle}
                     description={quiz.description}
                     meta={`${quiz.questionCount} questions / ${quiz.passingPercentage}% pass${quiz.timeLimitMinutes ? ` / ${quiz.timeLimitMinutes} min` : ""}`}
                     status={quiz.bestScore !== null ? `Best score: ${quiz.bestScore}% / ${quiz.passed ? "Passed" : `Not passed yet - ${quiz.attemptsRemaining} left`}` : `Not attempted yet - ${quiz.attemptLimit} attempts available`}
@@ -618,12 +628,12 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
               empty="Practical assignments are tied to each module in this programme."
             >
               {data.assessments.assignments.map((assignment) => {
-                const gate = assessmentGateFor(data, assignment.sortOrder ?? 0);
+                const gate = assignment.gate ?? assessmentGateFor(data, assignment.sortOrder ?? 0);
                 return (
                   <AssessmentActionCard
                     key={assignment.id}
                     title={assignment.title}
-                    eyebrow={assignment.moduleTitle}
+                    eyebrow={assignment.lessonTitle ? `${assignment.moduleTitle ?? "Module"} / ${assignment.lessonTitle}` : assignment.moduleTitle}
                     description={assignment.description}
                     meta={`${assignment.points} points${assignment.dueDays ? ` / due within ${assignment.dueDays} days` : ""}`}
                     status={assignmentStatusLabel(assignment)}
@@ -931,12 +941,21 @@ function assignmentActionLabel(assignment: CourseDetail["assessments"]["assignme
   return "View Submission";
 }
 
-function GateNotice({ gate, accent }: { gate: CourseGate; accent: string }) {
+function GateNotice({
+  gate,
+  accent,
+  onOpenRequirement,
+}: {
+  gate: CourseGate;
+  accent: string;
+  onOpenRequirement?: (requirement: CourseGate["requirements"][number]) => void;
+}) {
+  const incomplete = gate.requirements.filter((requirement) => !requirement.complete);
   return (
     <div className="rounded-xl border border-amber-200 bg-amber-50/80 p-4 dark:border-amber-900/40 dark:bg-amber-950/20">
       <p className="flex items-center gap-2 text-sm font-bold text-amber-900 dark:text-amber-100">
         <Lock className="size-4" />
-        Module checkpoint required
+        What is blocking me?
       </p>
       <p className="mt-1 text-sm leading-6 text-amber-900/80 dark:text-amber-100/80">{gate.title}</p>
       <div className="mt-3 grid gap-2 sm:grid-cols-2">
@@ -950,6 +969,22 @@ function GateNotice({ gate, accent }: { gate: CourseGate; accent: string }) {
           </div>
         ))}
       </div>
+      {incomplete.length ? (
+        <div className="mt-4 flex flex-wrap gap-2">
+          {incomplete.slice(0, 4).map((requirement) => (
+            <Button
+              key={`${requirement.type}-${requirement.id}`}
+              type="button"
+              variant={requirement.type === "lesson" ? "secondary" : "primary"}
+              className="min-h-9 px-3 py-2 text-xs"
+              style={requirement.type === "lesson" ? undefined : { backgroundColor: accent }}
+              onClick={() => onOpenRequirement?.(requirement)}
+            >
+              {requirement.type === "quiz" ? "Take quiz" : requirement.type === "assignment" ? "Submit assignment" : "Open lesson"}
+            </Button>
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }

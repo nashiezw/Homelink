@@ -17,6 +17,7 @@ export async function POST(request: Request) {
     if (result === "LESSON_NOT_FOUND") return problem(404, "LESSON_NOT_FOUND", "This lesson could not be found.");
     if (result === "NOT_ENROLLED") return problem(403, "NOT_ENROLLED", "You do not have active access to this course.");
     if (result === "CHECKPOINT_LOCKED") return problem(403, "CHECKPOINT_LOCKED", "Complete the required quiz and approved assignment checkpoint before moving to this lesson.");
+    if (result === "LESSON_REQUIREMENT_LOCKED") return problem(403, "LESSON_REQUIREMENT_LOCKED", "Complete this lesson's required quiz or approved assignment before marking it complete.");
     return ok(result);
   } catch (error) {
     console.error("Failed to update lesson progress", error);

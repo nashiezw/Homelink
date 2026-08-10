@@ -53,7 +53,7 @@ type Lesson = {
   gate?: {
     locked: boolean;
     title: string;
-    requirements: Array<{ id: string; title: string; type: "quiz" | "assignment"; complete: boolean }>;
+    requirements: Array<{ id: string; title: string; type: "lesson" | "quiz" | "assignment"; complete: boolean }>;
   };
 };
 

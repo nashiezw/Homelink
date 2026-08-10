@@ -24,7 +24,6 @@ export async function canAccessProgrammeCourse(learnerId: string, courseId: stri
 }
 
 export async function hasPassedCourseAssessments(learnerId: string, courseId: string) {
-  const programme = getProgrammeCourse(courseId);
   const prisma = getMainPrisma();
   const course = await prisma.trainingCourse.findUnique({
     where: { id: courseId },
@@ -38,12 +37,9 @@ export async function hasPassedCourseAssessments(learnerId: string, courseId: st
   if (!course) return false;
   const coursePassMark = course?.passingPercentage ?? 80;
   const assessmentScores: number[] = [];
-  const quizIds = programme?.quizIds.length
-    ? programme.quizIds
-    : course.quizzes.map((quiz) => quiz.id);
-  const assignmentIds = programme?.assignmentIds.length
-    ? programme.assignmentIds
-    : course.assignments.map((assignment) => assignment.id);
+  const programme = getProgrammeCourse(courseId);
+  const quizIds = course.quizzes.map((quiz) => quiz.id);
+  const assignmentIds = course.assignments.map((assignment) => assignment.id);
   const requiresFinalExam = programme?.requiresFinalExam ?? course.finalExams.length > 0;
 
   for (const quizId of quizIds) {

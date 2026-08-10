@@ -14,7 +14,9 @@ import {
   Loader2,
   Pencil,
   Plus,
+  RefreshCw,
   Rocket,
+  ShieldCheck,
   Target,
   Trash2,
   Undo2,
@@ -79,9 +81,10 @@ type CourseTree = {
     sortOrder: number;
     sections: Array<{ id: string; title: string; sortOrder: number; lessons: LessonNode[] }>;
   }>;
-  quizzes: Array<{ id: string; title: string; passingPercentage: number; lessonId?: string | null }>;
-  assignments: Array<{ id: string; title: string; points: number; lessonId?: string | null }>;
+  quizzes: Array<{ id: string; title: string; description?: string | null; passingPercentage: number; moduleId?: string | null; lessonId?: string | null; questionCount?: number }>;
+  assignments: Array<{ id: string; title: string; description: string; points: number; moduleId?: string | null; lessonId?: string | null }>;
   exams: Array<{ id: string; title: string; durationMinutes: number; passingScore: number }>;
+  learners: Array<{ id: string; name: string; email: string; progress: number; status: string }>;
   stats: { moduleCount: number; lessonCount: number; quizCount: number; assignmentCount: number; examCount: number };
 };
 
@@ -122,6 +125,14 @@ export function CourseWorkspace({
   const [lessonDepthDraft, setLessonDepthDraft] = useState(lessonDepthFromResources([]));
   const [moduleDraft, setModuleDraft] = useState<{ title: string; description: string; objectives: string; estimatedMinutes: string }>({ title: "", description: "", objectives: "", estimatedMinutes: "" });
   const [selectedQuizId, setSelectedQuizId] = useState<string | null>(null);
+  const [selectedAssignmentId, setSelectedAssignmentId] = useState<string | null>(null);
+  const [selectedLearnerId, setSelectedLearnerId] = useState<string>("");
+  const [overrideQuizId, setOverrideQuizId] = useState<string>("");
+  const [overrideAssignmentId, setOverrideAssignmentId] = useState<string>("");
+  const [overrideLessonId, setOverrideLessonId] = useState<string>("");
+  const [overrideModuleId, setOverrideModuleId] = useState<string>("");
+  const [quizDraft, setQuizDraft] = useState({ title: "", description: "", passingPercentage: "80", moduleId: "", lessonId: "" });
+  const [assignmentDraft, setAssignmentDraft] = useState({ title: "", description: "", points: "100", moduleId: "", lessonId: "" });
   const [questionDraft, setQuestionDraft] = useState({ prompt: "", answers: ["", "", "", ""], correctIndex: 0, explanation: "" });
   const [certificationDraft, setCertificationDraft] = useState({
     passingPercentage: 80,
@@ -161,19 +172,45 @@ export function CourseWorkspace({
     });
   }, [tree]);
 
+  useEffect(() => {
+    if (!tree?.learners.length) {
+      setSelectedLearnerId("");
+      return;
+    }
+    setSelectedLearnerId((current) => current && tree.learners.some((learner) => learner.id === current) ? current : tree.learners[0].id);
+  }, [tree]);
+
   const allLessons = useMemo(
     () => tree?.modules.flatMap((m) => m.sections.flatMap((s) => s.lessons.map((l) => ({ ...l, moduleId: m.id, sectionId: s.id, moduleTitle: m.title })))) ?? [],
     [tree],
   );
+  const moduleOptions = useMemo(() => tree?.modules.map((module) => ({ id: module.id, title: module.title })) ?? [], [tree]);
+  const lessonOptions = useMemo(
+    () => allLessons.filter((lesson) => !quizDraft.moduleId || lesson.moduleId === quizDraft.moduleId),
+    [allLessons, quizDraft.moduleId],
+  );
+  const assignmentLessonOptions = useMemo(
+    () => allLessons.filter((lesson) => !assignmentDraft.moduleId || lesson.moduleId === assignmentDraft.moduleId),
+    [allLessons, assignmentDraft.moduleId],
+  );
   const selectedLesson = allLessons.find((l) => l.id === selectedLessonId);
   const readinessItems = useMemo(() => {
     if (!tree) return [];
+    const lessons = tree.modules.flatMap((module) => module.sections.flatMap((section) => section.lessons));
+    const gatedLessons = lessons.filter((lesson) => lesson.completionRequirement === "COMPLETE_QUIZ" || lesson.completionRequirement === "SUBMIT_ASSIGNMENT");
+    const linkedLessonGateIds = new Set([
+      ...tree.quizzes.filter((quiz) => quiz.lessonId).map((quiz) => `COMPLETE_QUIZ:${quiz.lessonId}`),
+      ...tree.assignments.filter((assignment) => assignment.lessonId).map((assignment) => `SUBMIT_ASSIGNMENT:${assignment.lessonId}`),
+    ]);
     return [
-      { label: "Course identity", complete: Boolean(tree.title.trim() && tree.description.trim()) },
-      { label: "Learner promise", complete: Boolean((tree.learningOutcomes ?? []).length || tree.shortDescription?.trim()) },
-      { label: "Curriculum", complete: tree.stats.moduleCount > 0 && tree.stats.lessonCount > 0 },
-      { label: "Assessments", complete: tree.stats.quizCount + tree.stats.assignmentCount + tree.stats.examCount > 0 },
-      { label: "Certification", complete: !tree.certificateEnabled || tree.passingPercentage > 0 },
+      { label: "Course identity", detail: "Title and description are present.", complete: Boolean(tree.title.trim() && tree.description.trim()) },
+      { label: "Learner promise", detail: "Learning outcomes or short description explain the value.", complete: Boolean((tree.learningOutcomes ?? []).length || tree.shortDescription?.trim()) },
+      { label: "Curriculum", detail: "At least one module and lesson are configured.", complete: tree.stats.moduleCount > 0 && tree.stats.lessonCount > 0 },
+      { label: "All lessons have content", detail: "Every lesson has readable body content.", complete: lessons.length > 0 && lessons.every((lesson) => stripHtml(lesson.richText).length >= 40) },
+      { label: "Required lesson gates are linked", detail: "Lessons requiring a quiz/assignment have a matching linked checkpoint.", complete: gatedLessons.every((lesson) => linkedLessonGateIds.has(`${lesson.completionRequirement}:${lesson.id}`)) },
+      { label: "All quizzes have questions", detail: "Every quiz has at least one question.", complete: tree.quizzes.every((quiz) => (quiz.questionCount ?? 0) > 0) },
+      { label: "Assignments have instructions", detail: "Every assignment has clear evidence instructions.", complete: tree.assignments.every((assignment) => stripHtml(assignment.description).length >= 30) },
+      { label: "Certificate rules configured", detail: "Certificate and pass rules are clear.", complete: !tree.certificateEnabled || tree.passingPercentage > 0 },
     ];
   }, [tree]);
   const readinessComplete = readinessItems.filter((item) => item.complete).length;
@@ -197,6 +234,38 @@ export function CourseWorkspace({
       setStep("Lesson Editor");
     }
   }, [selectedLessonId, selectedLesson]);
+
+  useEffect(() => {
+    if (!tree) return;
+    const quiz = tree.quizzes.find((entry) => entry.id === selectedQuizId);
+    if (!quiz) {
+      setQuizDraft({ title: "", description: "", passingPercentage: "80", moduleId: "", lessonId: "" });
+      return;
+    }
+    setQuizDraft({
+      title: quiz.title,
+      description: quiz.description ?? "",
+      passingPercentage: String(quiz.passingPercentage ?? 80),
+      moduleId: quiz.moduleId ?? "",
+      lessonId: quiz.lessonId ?? "",
+    });
+  }, [selectedQuizId, tree]);
+
+  useEffect(() => {
+    if (!tree) return;
+    const assignment = tree.assignments.find((entry) => entry.id === selectedAssignmentId);
+    if (!assignment) {
+      setAssignmentDraft({ title: "", description: "", points: "100", moduleId: "", lessonId: "" });
+      return;
+    }
+    setAssignmentDraft({
+      title: assignment.title,
+      description: assignment.description ?? "",
+      points: String(assignment.points ?? 100),
+      moduleId: assignment.moduleId ?? "",
+      lessonId: assignment.lessonId ?? "",
+    });
+  }, [selectedAssignmentId, tree]);
 
   const run = useCallback(async (body: Record<string, unknown>, success: string, undo?: { label: string; body: Record<string, unknown> }) => {
     setBusy(true);
@@ -646,6 +715,18 @@ export function CourseWorkspace({
                 <CourseMediaField label="Video" value={lessonDraft.videoUrl ?? ""} accept="video/*" kind="video" onChange={(v) => setLessonDraft({ ...lessonDraft, videoUrl: v })} />
                 <CourseMediaField label="PDF" value={lessonDraft.pdfUrl ?? ""} accept=".pdf,application/pdf" kind="document" onChange={(v) => setLessonDraft({ ...lessonDraft, pdfUrl: v })} />
               </div>
+              <label className="block rounded-xl border border-white/10 bg-slate-950/50 p-4 text-sm text-slate-300">Completion gate
+                <select
+                  value={lessonDraft.completionRequirement ?? "VIEW"}
+                  onChange={(event) => setLessonDraft({ ...lessonDraft, completionRequirement: event.target.value })}
+                  className="mt-2 w-full rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-white"
+                >
+                  <option value="VIEW">View lesson content only</option>
+                  <option value="COMPLETE_QUIZ">Pass lesson-linked quiz before marking complete</option>
+                  <option value="SUBMIT_ASSIGNMENT">Submit approved lesson-linked assignment before marking complete</option>
+                </select>
+                <span className="mt-2 block text-xs leading-5 text-slate-500">Use this only when a quiz or assignment is linked directly to this lesson in the Assessment Gates step.</span>
+              </label>
               <Button disabled={busy} onClick={() => void run({ action: "update_lesson", lessonId: selectedLesson.id, lesson: { ...lessonDraft, lessonDepth: lessonDepthDraft } }, "Lesson saved.")}>
                 {busy ? <Loader2 className="size-4 animate-spin" /> : <CheckCircle2 className="size-4 mr-2" />} Save Lesson
               </Button>
@@ -678,12 +759,156 @@ export function CourseWorkspace({
       )}
 
       {step === "Assessments" && (
-        <div className="grid gap-6 lg:grid-cols-[1fr_1fr]">
-          <div className="space-y-4">
-            <AssessmentCard title="Quizzes" items={tree.quizzes.map((q) => q.title)} onAdd={() => void run({ action: "create_quiz", quiz: { courseId, title: "New Quiz" } }, "Quiz created.")} />
-            <AssessmentCard title="Assignments" items={tree.assignments.map((a) => a.title)} onAdd={() => void run({ action: "create_assignment", assignment: { courseId, title: "New Assignment", description: "Practical assignment", points: 100 } }, "Assignment created.")} />
-            <AssessmentCard title="Final Exams" items={tree.exams.map((e) => e.title)} onAdd={() => void run({ action: "create_exam", exam: { courseId, title: "Final Exam", durationMinutes: 90, passingScore: 80 } }, "Exam created.")} />
+        <div className="space-y-5">
+          <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-4">
+            <p className="text-sm font-bold text-emerald-100">Recommended flow</p>
+            <p className="mt-1 text-sm leading-6 text-emerald-50/80">
+              Use lesson checkpoints for short knowledge checks and module checkpoints for practical evidence. A module-level quiz or assignment unlocks the next module after it is passed or approved. A lesson-level checkpoint unlocks the next lesson after it is passed or approved.
+            </p>
           </div>
+
+          <div className="grid gap-5 xl:grid-cols-2">
+            <div className="rounded-xl border border-white/10 bg-slate-900/60 p-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h4 className="font-semibold text-white">Quiz checkpoints</h4>
+                  <p className="mt-1 text-xs leading-5 text-slate-400">Attach each quiz to a module or exact lesson so progression gates know when to stop the learner.</p>
+                </div>
+                <Button
+                  className="w-full sm:w-auto"
+                  onClick={() => void run({ action: "create_quiz", quiz: { courseId, title: "New checkpoint quiz", moduleId: moduleOptions[0]?.id ?? null, passingPercentage: 80 } }, "Quiz checkpoint created.")}
+                >
+                  <Plus className="mr-2 size-4" /> Add Quiz
+                </Button>
+              </div>
+              <div className="mt-4 grid gap-3 md:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
+                <div className="max-h-96 space-y-2 overflow-y-auto pr-1">
+                  {tree.quizzes.map((quiz) => (
+                    <button
+                      key={quiz.id}
+                      type="button"
+                      onClick={() => setSelectedQuizId(quiz.id)}
+                      className={`w-full rounded-lg border px-3 py-2 text-left text-sm ${selectedQuizId === quiz.id ? "border-emerald-400/50 bg-emerald-500/15 text-emerald-50" : "border-white/10 bg-slate-950/50 text-slate-300 hover:bg-white/5"}`}
+                    >
+                      <span className="block font-semibold">{quiz.title}</span>
+                      <span className="mt-1 block text-xs text-slate-500">{checkpointLabel(quiz, tree)}</span>
+                    </button>
+                  ))}
+                  {!tree.quizzes.length && <p className="rounded-lg border border-dashed border-white/10 p-3 text-sm text-slate-500">No quizzes yet.</p>}
+                </div>
+                <div className="space-y-3 rounded-xl border border-white/10 bg-slate-950/50 p-4">
+                  {selectedQuizId ? (
+                    <>
+                      <Field label="Quiz title" value={quizDraft.title} onChange={(title) => setQuizDraft({ ...quizDraft, title })} />
+                      <TextareaField label="Description" value={quizDraft.description} rows={3} onChange={(description) => setQuizDraft({ ...quizDraft, description })} />
+                      <NumberField label="Passing Percentage" value={quizDraft.passingPercentage} min={0} max={100} onChange={(passingPercentage) => setQuizDraft({ ...quizDraft, passingPercentage })} />
+                      <CheckpointPlacementFields
+                        moduleId={quizDraft.moduleId}
+                        lessonId={quizDraft.lessonId}
+                        modules={moduleOptions}
+                        lessons={lessonOptions}
+                        onModuleChange={(moduleId) => setQuizDraft({ ...quizDraft, moduleId, lessonId: "" })}
+                        onLessonChange={(lessonId) => setQuizDraft({ ...quizDraft, lessonId })}
+                      />
+                      <div className="flex justify-end">
+                        <Button
+                          disabled={busy || !quizDraft.title.trim()}
+                          onClick={() => void run({
+                            action: "update_quiz",
+                            quizId: selectedQuizId,
+                            quiz: {
+                              courseId,
+                              title: quizDraft.title,
+                              description: quizDraft.description,
+                              passingPercentage: clampPercentage(Number(quizDraft.passingPercentage) || 80),
+                              moduleId: quizDraft.lessonId ? allLessons.find((lesson) => lesson.id === quizDraft.lessonId)?.moduleId ?? quizDraft.moduleId : quizDraft.moduleId || null,
+                              lessonId: quizDraft.lessonId || null,
+                              active: true,
+                            },
+                          }, "Quiz checkpoint saved.")}
+                        >
+                          Save Quiz Gate
+                        </Button>
+                      </div>
+                    </>
+                  ) : (
+                    <p className="text-sm text-slate-500">Select a quiz to edit its wording and gate placement.</p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-white/10 bg-slate-900/60 p-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h4 className="font-semibold text-white">Assignment checkpoints</h4>
+                  <p className="mt-1 text-xs leading-5 text-slate-400">Assignments require admin approval before the learner can pass that practical gate.</p>
+                </div>
+                <Button
+                  className="w-full sm:w-auto"
+                  onClick={() => void run({ action: "create_assignment", assignment: { courseId, title: "New practical assignment", description: "Describe the evidence learners must submit.", moduleId: moduleOptions[0]?.id ?? null, points: 100 } }, "Assignment checkpoint created.")}
+                >
+                  <Plus className="mr-2 size-4" /> Add Assignment
+                </Button>
+              </div>
+              <div className="mt-4 grid gap-3 md:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
+                <div className="max-h-96 space-y-2 overflow-y-auto pr-1">
+                  {tree.assignments.map((assignment) => (
+                    <button
+                      key={assignment.id}
+                      type="button"
+                      onClick={() => setSelectedAssignmentId(assignment.id)}
+                      className={`w-full rounded-lg border px-3 py-2 text-left text-sm ${selectedAssignmentId === assignment.id ? "border-emerald-400/50 bg-emerald-500/15 text-emerald-50" : "border-white/10 bg-slate-950/50 text-slate-300 hover:bg-white/5"}`}
+                    >
+                      <span className="block font-semibold">{assignment.title}</span>
+                      <span className="mt-1 block text-xs text-slate-500">{checkpointLabel(assignment, tree)}</span>
+                    </button>
+                  ))}
+                  {!tree.assignments.length && <p className="rounded-lg border border-dashed border-white/10 p-3 text-sm text-slate-500">No assignments yet.</p>}
+                </div>
+                <div className="space-y-3 rounded-xl border border-white/10 bg-slate-950/50 p-4">
+                  {selectedAssignmentId ? (
+                    <>
+                      <Field label="Assignment title" value={assignmentDraft.title} onChange={(title) => setAssignmentDraft({ ...assignmentDraft, title })} />
+                      <TextareaField label="Evidence instructions" value={assignmentDraft.description} rows={4} onChange={(description) => setAssignmentDraft({ ...assignmentDraft, description })} />
+                      <NumberField label="Points" value={assignmentDraft.points} min={1} onChange={(points) => setAssignmentDraft({ ...assignmentDraft, points })} />
+                      <CheckpointPlacementFields
+                        moduleId={assignmentDraft.moduleId}
+                        lessonId={assignmentDraft.lessonId}
+                        modules={moduleOptions}
+                        lessons={assignmentLessonOptions}
+                        onModuleChange={(moduleId) => setAssignmentDraft({ ...assignmentDraft, moduleId, lessonId: "" })}
+                        onLessonChange={(lessonId) => setAssignmentDraft({ ...assignmentDraft, lessonId })}
+                      />
+                      <div className="flex justify-end">
+                        <Button
+                          disabled={busy || !assignmentDraft.title.trim() || !assignmentDraft.description.trim()}
+                          onClick={() => void run({
+                            action: "update_assignment",
+                            assignmentId: selectedAssignmentId,
+                            assignment: {
+                              courseId,
+                              title: assignmentDraft.title,
+                              description: assignmentDraft.description,
+                              points: Math.max(1, Number(assignmentDraft.points) || 100),
+                              moduleId: assignmentDraft.lessonId ? allLessons.find((lesson) => lesson.id === assignmentDraft.lessonId)?.moduleId ?? assignmentDraft.moduleId : assignmentDraft.moduleId || null,
+                              lessonId: assignmentDraft.lessonId || null,
+                              active: true,
+                            },
+                          }, "Assignment checkpoint saved.")}
+                        >
+                          Save Assignment Gate
+                        </Button>
+                      </div>
+                    </>
+                  ) : (
+                    <p className="text-sm text-slate-500">Select an assignment to edit its instructions and gate placement.</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div className="rounded-xl border border-white/10 p-4 space-y-4">
             <h4 className="font-semibold text-white">Quiz Question Editor</h4>
             <label className="block text-sm text-slate-300">Select quiz
@@ -724,36 +949,107 @@ export function CourseWorkspace({
       )}
 
       {step === "Publish" && (
-        <div className="grid gap-6 lg:grid-cols-2">
-          <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-6">
-            <h3 className="text-lg font-bold text-white">Ready to publish?</h3>
-            <ul className="mt-4 space-y-2 text-sm text-emerald-100">
-              <li>✓ {tree.stats.moduleCount} modules configured</li>
-              <li>✓ {tree.stats.lessonCount} lessons with content</li>
-              <li>✓ {tree.stats.quizCount} quizzes · {tree.stats.assignmentCount} assignments · {tree.stats.examCount} exams</li>
-            </ul>
-            <div className="mt-6 flex gap-3">
-              {tree.status === "PUBLISHED" ? (
-                <Button variant="secondary" onClick={() => void run({ action: "unpublish_course", courseId }, "Course unpublished.")}>Unpublish</Button>
-              ) : (
-                <Button onClick={() => void run({ action: "publish_course", courseId }, "Course published.")}><CheckCircle2 className="size-4 mr-2" /> Publish Course</Button>
-              )}
+        <div className="space-y-6">
+          <div className="grid gap-6 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+            <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-6">
+              <div className="flex items-start gap-3">
+                <ShieldCheck className="mt-1 size-5 shrink-0 text-emerald-300" />
+                <div>
+                  <h3 className="text-lg font-bold text-white">Course readiness checklist</h3>
+                  <p className="mt-1 text-sm leading-6 text-emerald-50/80">{readinessComplete}/{readinessItems.length} launch checks complete. Fix incomplete items before publishing paid training.</p>
+                </div>
+              </div>
+              <div className="mt-5 grid gap-2">
+                {readinessItems.map((item) => (
+                  <div key={item.label} className="flex items-start gap-3 rounded-lg border border-white/10 bg-slate-950/40 p-3">
+                    <CheckCircle2 className={`mt-0.5 size-4 shrink-0 ${item.complete ? "text-emerald-300" : "text-amber-300"}`} />
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-white">{item.label}</p>
+                      <p className="mt-1 text-xs leading-5 text-slate-400">{item.detail}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+                {tree.status === "PUBLISHED" ? (
+                  <Button variant="secondary" onClick={() => void run({ action: "unpublish_course", courseId }, "Course unpublished.")}>Unpublish</Button>
+                ) : (
+                  <Button disabled={readinessComplete < readinessItems.length} onClick={() => void run({ action: "publish_course", courseId }, "Course published.")}><CheckCircle2 className="size-4 mr-2" /> Publish Course</Button>
+                )}
+                {readinessComplete < readinessItems.length && <p className="text-xs leading-5 text-amber-200">Publishing is disabled until every readiness check passes.</p>}
+              </div>
             </div>
+            <LearnerPreviewPanel tree={tree} />
           </div>
-          <div className="rounded-xl border border-white/10 p-4">
-            <h4 className="font-semibold text-white flex items-center gap-2 mb-3"><History className="size-4" /> Version history</h4>
-            <ul className="max-h-64 space-y-2 overflow-y-auto text-sm text-slate-400">
-              {auditLogs.map((log) => (
-                <li key={log.id} className="rounded-lg bg-slate-900/60 px-3 py-2">
-                  <p className="text-white">{log.action.replace("academy.", "").replace(/\./g, " ")}</p>
-                  <p className="text-xs">{new Date(log.createdAt).toLocaleString()}</p>
-                </li>
-              ))}
-              {!auditLogs.length && <li className="text-slate-500">No audit entries yet. Changes will appear here.</li>}
-            </ul>
+
+          <div className="grid gap-6 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
+            <div className="rounded-xl border border-white/10 bg-slate-900/60 p-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <h4 className="font-semibold text-white">Learner override and repair tools</h4>
+                  <p className="mt-1 text-sm leading-6 text-slate-400">Use these when a gate changed after enrolment, a learner exhausted attempts, or admin has manually reviewed evidence. Every action writes an audit log.</p>
+                </div>
+                <Button variant="secondary" onClick={() => void run({ action: "repair_course_progress", courseId }, "All learner progress recalculated.")}>
+                  <RefreshCw className="mr-2 size-4" /> Repair all
+                </Button>
+              </div>
+              <div className="mt-4 grid gap-4 lg:grid-cols-2">
+                <label className="block text-sm text-slate-300">Learner
+                  <select value={selectedLearnerId} onChange={(event) => setSelectedLearnerId(event.target.value)} className="mt-1 w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-white">
+                    <option value="">Select learner...</option>
+                    {tree.learners.map((learner) => <option key={learner.id} value={learner.id}>{learner.name} - {learner.progress}%</option>)}
+                  </select>
+                </label>
+                <label className="block text-sm text-slate-300">Quiz attempt to reopen
+                  <select value={overrideQuizId} onChange={(event) => setOverrideQuizId(event.target.value)} className="mt-1 w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-white">
+                    <option value="">Select quiz...</option>
+                    {tree.quizzes.map((quiz) => <option key={quiz.id} value={quiz.id}>{quiz.title}</option>)}
+                  </select>
+                </label>
+                <label className="block text-sm text-slate-300">Lesson to mark complete
+                  <select value={overrideLessonId} onChange={(event) => setOverrideLessonId(event.target.value)} className="mt-1 w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-white">
+                    <option value="">Select lesson...</option>
+                    {allLessons.map((lesson) => <option key={lesson.id} value={lesson.id}>{lesson.moduleTitle} / {lesson.title}</option>)}
+                  </select>
+                </label>
+                <label className="block text-sm text-slate-300">Assignment to approve
+                  <select value={overrideAssignmentId} onChange={(event) => setOverrideAssignmentId(event.target.value)} className="mt-1 w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-white">
+                    <option value="">Select assignment...</option>
+                    {tree.assignments.map((assignment) => <option key={assignment.id} value={assignment.id}>{assignment.title}</option>)}
+                  </select>
+                </label>
+                <label className="block text-sm text-slate-300">Module to unlock
+                  <select value={overrideModuleId} onChange={(event) => setOverrideModuleId(event.target.value)} className="mt-1 w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-white">
+                    <option value="">Select module...</option>
+                    {tree.modules.map((module) => <option key={module.id} value={module.id}>{module.title}</option>)}
+                  </select>
+                </label>
+              </div>
+              <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                <Button variant="secondary" disabled={!selectedLearnerId || !overrideQuizId || busy} onClick={() => void run({ action: "grant_extra_quiz_attempt", courseId, learnerId: selectedLearnerId, quizId: overrideQuizId }, "Extra quiz attempt granted.")}>Grant extra attempt</Button>
+                <Button variant="secondary" disabled={!selectedLearnerId || !overrideLessonId || busy} onClick={() => void run({ action: "mark_lesson_gate_satisfied", courseId, learnerId: selectedLearnerId, lessonId: overrideLessonId }, "Lesson gate marked complete.")}>Mark lesson complete</Button>
+                <Button variant="secondary" disabled={!selectedLearnerId || !overrideAssignmentId || busy} onClick={() => void run({ action: "approve_assignment_gate", courseId, learnerId: selectedLearnerId, assignmentId: overrideAssignmentId }, "Assignment gate approved.")}>Approve assignment gate</Button>
+                <Button disabled={!selectedLearnerId || !overrideModuleId || busy} onClick={() => void run({ action: "unlock_module_for_learner", courseId, learnerId: selectedLearnerId, moduleId: overrideModuleId }, "Module unlocked for learner.")}>Unlock module</Button>
+              </div>
+              {!tree.learners.length && <p className="mt-4 rounded-lg border border-dashed border-white/10 p-3 text-sm text-slate-500">No enrolled learners found for this course yet.</p>}
+            </div>
+
+            <div className="rounded-xl border border-white/10 p-4">
+              <h4 className="font-semibold text-white flex items-center gap-2 mb-3"><History className="size-4" /> Version history</h4>
+              <ul className="max-h-80 space-y-2 overflow-y-auto text-sm text-slate-400">
+                {auditLogs.map((log) => (
+                  <li key={log.id} className="rounded-lg bg-slate-900/60 px-3 py-2">
+                    <p className="text-white">{log.action.replace("academy.", "").replace(/\./g, " ")}</p>
+                    <p className="text-xs">{new Date(log.createdAt).toLocaleString()}</p>
+                  </li>
+                ))}
+                {!auditLogs.length && <li className="text-slate-500">No audit entries yet. Changes will appear here.</li>}
+              </ul>
+            </div>
           </div>
         </div>
       )}
+
     </div>
   );
 }
@@ -763,6 +1059,64 @@ function Field({ label, value, onChange }: { label: string; value: string; onCha
     <label className="block text-sm text-slate-300">{label}
       <input value={value} onChange={(e) => onChange(e.target.value)} className="mt-1 w-full rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-white" />
     </label>
+  );
+}
+
+function LearnerPreviewPanel({ tree }: { tree: CourseTree }) {
+  return (
+    <div className="rounded-xl border border-white/10 bg-slate-900/60 p-4">
+      <div className="flex items-start gap-3">
+        <Eye className="mt-1 size-5 shrink-0 text-emerald-300" />
+        <div>
+          <h4 className="font-semibold text-white">Preview as learner</h4>
+          <p className="mt-1 text-sm leading-6 text-slate-400">This shows the sequence learners will experience before any personal progress is applied.</p>
+        </div>
+      </div>
+      <div className="mt-4 max-h-[34rem] space-y-3 overflow-y-auto pr-1">
+        {tree.modules.map((module, moduleIndex) => {
+          const moduleQuizzes = tree.quizzes.filter((quiz) => quiz.moduleId === module.id && !quiz.lessonId);
+          const moduleAssignments = tree.assignments.filter((assignment) => assignment.moduleId === module.id && !assignment.lessonId);
+          return (
+            <div key={module.id} className="rounded-xl border border-white/10 bg-slate-950/50 p-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-bold text-white">{moduleIndex + 1}. {module.title}</p>
+                  <p className="mt-1 text-xs text-slate-500">{module.sections.reduce((sum, section) => sum + section.lessons.length, 0)} lessons</p>
+                </div>
+                {(moduleQuizzes.length || moduleAssignments.length) ? <AdminStatusBadge status="Module gate" variant="warning" /> : <AdminStatusBadge status="Open" variant="success" />}
+              </div>
+              <div className="mt-3 space-y-2">
+                {module.sections.flatMap((section) => section.lessons).map((lesson) => {
+                  const lessonQuizzes = tree.quizzes.filter((quiz) => quiz.lessonId === lesson.id);
+                  const lessonAssignments = tree.assignments.filter((assignment) => assignment.lessonId === lesson.id);
+                  return (
+                    <div key={lesson.id} className="rounded-lg border border-white/10 bg-slate-900/60 p-2">
+                      <p className="text-xs font-semibold text-slate-200">{lesson.title}</p>
+                      <p className="mt-1 text-[11px] text-slate-500">{lesson.completionRequirement.replace(/_/g, " ")}</p>
+                      {(lessonQuizzes.length || lessonAssignments.length) ? (
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                          {lessonQuizzes.map((quiz) => <span key={quiz.id} className="rounded-full bg-emerald-500/10 px-2 py-1 text-[10px] font-semibold text-emerald-200">Quiz: {quiz.title}</span>)}
+                          {lessonAssignments.map((assignment) => <span key={assignment.id} className="rounded-full bg-cyan-500/10 px-2 py-1 text-[10px] font-semibold text-cyan-200">Assignment: {assignment.title}</span>)}
+                        </div>
+                      ) : null}
+                    </div>
+                  );
+                })}
+              </div>
+              {(moduleQuizzes.length || moduleAssignments.length) ? (
+                <div className="mt-3 rounded-lg border border-amber-400/20 bg-amber-400/10 p-2">
+                  <p className="text-[11px] font-bold uppercase tracking-wide text-amber-200">Before next module</p>
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {moduleQuizzes.map((quiz) => <span key={quiz.id} className="rounded-full bg-slate-950 px-2 py-1 text-[10px] text-slate-300">Pass {quiz.title}</span>)}
+                    {moduleAssignments.map((assignment) => <span key={assignment.id} className="rounded-full bg-slate-950 px-2 py-1 text-[10px] text-slate-300">Approved {assignment.title}</span>)}
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
@@ -797,8 +1151,62 @@ function NumberField({
   );
 }
 
+function CheckpointPlacementFields({
+  moduleId,
+  lessonId,
+  modules,
+  lessons,
+  onModuleChange,
+  onLessonChange,
+}: {
+  moduleId: string;
+  lessonId: string;
+  modules: Array<{ id: string; title: string }>;
+  lessons: Array<{ id: string; title: string; moduleTitle: string }>;
+  onModuleChange: (moduleId: string) => void;
+  onLessonChange: (lessonId: string) => void;
+}) {
+  return (
+    <div className="grid gap-3 rounded-xl border border-white/10 bg-slate-950/50 p-4">
+      <p className="text-sm font-semibold text-white">Progression gate placement</p>
+      <p className="text-xs leading-5 text-slate-500">Choose a module for an end-of-module checkpoint. Choose a lesson as well when the learner must pass or submit immediately after that exact lesson.</p>
+      <label className="block text-sm text-slate-300">Module gate
+        <select value={moduleId} onChange={(event) => onModuleChange(event.target.value)} className="mt-1 w-full rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-white">
+          <option value="">Course-level only (certificate requirement)</option>
+          {modules.map((module) => <option key={module.id} value={module.id}>{module.title}</option>)}
+        </select>
+      </label>
+      <label className="block text-sm text-slate-300">Optional lesson gate
+        <select value={lessonId} onChange={(event) => onLessonChange(event.target.value)} disabled={!moduleId} className="mt-1 w-full rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-white disabled:opacity-50">
+          <option value="">End of selected module</option>
+          {lessons.map((lesson) => <option key={lesson.id} value={lesson.id}>{lesson.title}</option>)}
+        </select>
+      </label>
+    </div>
+  );
+}
+
+function checkpointLabel(
+  item: { moduleId?: string | null; lessonId?: string | null },
+  tree: CourseTree,
+) {
+  if (item.lessonId) {
+    const lesson = tree.modules.flatMap((module) => module.sections.flatMap((section) => section.lessons.map((entry) => ({ ...entry, moduleTitle: module.title })))).find((entry) => entry.id === item.lessonId);
+    return lesson ? `After lesson: ${lesson.title}` : "Lesson checkpoint";
+  }
+  if (item.moduleId) {
+    const courseModule = tree.modules.find((module) => module.id === item.moduleId);
+    return courseModule ? `End of module: ${courseModule.title}` : "Module checkpoint";
+  }
+  return "Course-level certificate requirement";
+}
+
 function clampPercentage(value: number) {
   return Math.min(100, Math.max(0, Math.round(value)));
+}
+
+function stripHtml(value: string | null | undefined) {
+  return String(value ?? "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
 }
 
 function CourseMediaField({ label, value, accept, kind, onChange, courseId }: { label: string; value: string; accept: string; kind: "video" | "document" | "image"; onChange: (v: string) => void; courseId?: string }) {
@@ -887,7 +1295,7 @@ function lessonDepthFromResources(resources: Array<{ title: string; body: string
   };
 }
 
-function AssessmentCard({ title, items, onAdd }: { title: string; items: string[]; onAdd: () => void }) {
+function _AssessmentCard({ title, items, onAdd }: { title: string; items: string[]; onAdd: () => void }) {
   return (
     <div className="rounded-xl border border-white/10 p-4">
       <div className="flex items-center justify-between mb-3">
