@@ -18,6 +18,7 @@ import {
   ShieldCheck,
   Sparkles,
   Target,
+  Users,
 } from "lucide-react";
 import { HouseLinkBrand } from "@/components/brand/houselink-logo";
 import { PageShell } from "@/components/layout/page-shell";
@@ -29,6 +30,7 @@ import { QuizPanel } from "@/components/academy/quiz-panel";
 import { ExamPanel } from "@/components/academy/exam-panel";
 import { AssignmentPanel } from "@/components/academy/assignment-panel";
 import { DiscussionPanel } from "@/components/academy/discussion-panel";
+import { AcademyEngagementHub } from "@/components/academy/engagement-hub";
 import { AcademyAccordion, ToolkitGrid } from "@/components/academy/academy-accordion";
 import { TrainingDisclaimer } from "@/components/legal/training-disclaimer";
 import {
@@ -137,9 +139,9 @@ type CourseGate = {
   requirements: Array<{ id: string; title: string; type: "lesson" | "quiz" | "assignment"; complete: boolean }>;
 };
 
-type Tab = "curriculum" | "toolkit" | "materials" | "assessments" | "discussions" | "progress";
+type Tab = "curriculum" | "toolkit" | "materials" | "assessments" | "discussions" | "engagement" | "progress";
 
-const VALID_TABS: Tab[] = ["curriculum", "toolkit", "materials", "assessments", "discussions", "progress"];
+const VALID_TABS: Tab[] = ["curriculum", "toolkit", "materials", "assessments", "discussions", "engagement", "progress"];
 
 export function CourseLearnerView({ courseId }: { courseId: string }) {
   const searchParams = useSearchParams();
@@ -293,6 +295,7 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
     { id: "materials", label: "Notes", icon: Download },
     { id: "assessments", label: "Assessments", icon: ShieldCheck },
     { id: "discussions", label: "Discuss", icon: MessageSquareText },
+    { id: "engagement", label: "Engage", icon: Users },
     { id: "progress", label: "Progress", icon: GraduationCap },
   ];
 
@@ -694,6 +697,12 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
       {tab === "discussions" && (
         <div className="mt-6">
           <DiscussionPanel courseId={courseId} />
+        </div>
+      )}
+
+      {tab === "engagement" && (
+        <div className="mt-6">
+          <AcademyEngagementHub compact />
         </div>
       )}
 

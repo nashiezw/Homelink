@@ -28,6 +28,7 @@ import {
   RotateCcw,
   Search,
   Settings,
+  Sparkles,
   Trash2,
   Trophy,
   Upload,
@@ -61,6 +62,7 @@ import {
 import { BarChart, MetricRow } from "@/components/admin/charts";
 import { CourseWorkspace } from "@/components/admin/academy/course-workspace";
 import { AcademyHubNav, resolveAcademyNav, type AcademyPrimaryTab } from "@/components/admin/academy/academy-hub-nav";
+import { AcademyEngagementCentre } from "@/components/admin/academy/engagement-centre";
 import { EmailTemplatesManagementPanel, BrandingManagementPanel, InstructorsManagementPanel, RefundsManagementPanel } from "@/components/admin/academy/enhancement-panels";
 import { cn } from "@/lib/utils";
 import type { LucideIcon } from "lucide-react";
@@ -332,6 +334,7 @@ const academyTabs = [
   "Learning Paths",
   "Badges",
   "Leaderboard",
+  "Engagement",
   "Announcements",
   "Discussion Board",
   "Analytics",
@@ -350,6 +353,7 @@ const featureTiles: Array<[AcademyTab, LucideIcon, string]> = [
   ["Health", AlertTriangle, "Integrity checks, certificate simulations, announcement reach, and learner timelines."],
   ["Learning Paths", Library, "Programme sequencing for multi-course training certificate journeys."],
   ["Announcements", Megaphone, "Publish targeted Academy updates to agents and branches."],
+  ["Engagement", Sparkles, "Optional community, referrals, testimonials, challenges, office hours, and consent moderation."],
   ["Discussion Board", Users, "Course discussion threads, replies, reactions, mentions, bookmarks, and moderation."],
   ["Leaderboard", Trophy, "Automatic points, XP, ranks, branch competition, and monthly leaders."],
   ["Badges", BadgeCheck, "Achievement rules and awarded agent badges."],
@@ -1420,6 +1424,9 @@ function FeatureWorkbench({
   }
   if (tab === "Public Learners") {
     return <PublicLearnersPanel applications={data.publicLearnerApplications} resourceApplications={data.resourceAccessApplications ?? []} action={action} />;
+  }
+  if (tab === "Engagement") {
+    return <AcademyEngagementCentre />;
   }
   if (tab === "Learning Paths") {
     return <BuilderList title="Learning Paths" icon={Library} rows={data.learningPaths.map((path) => ({ id: path.id, title: path.title, active: path.status === "PUBLISHED", detail: `${path.courses.length} course(s) - ${path.badgeTitle ?? "No badge"}`, source: path }))} actionLabel="Create Path" onCreate={() => openDrawer("path")} onEdit={(row) => onEditPath(row.source as AcademyData["learningPaths"][number])} onArchive={(row) => action({ action: row.active === false ? "restore_learning_path" : "archive_learning_path", pathId: row.id }, row.active === false ? "Learning path restored." : "Learning path archived.")} onDelete={(row) => action({ action: "delete_learning_path", pathId: row.id }, "Learning path deleted.")} />;

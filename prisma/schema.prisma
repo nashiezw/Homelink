@@ -2369,6 +2369,137 @@ model Leaderboard {
   @@map("leaderboards")
 }
 
+model AcademyEngagementSetting {
+  id        String   @id @default("singleton")
+  payload   Json
+  updatedAt DateTime @updatedAt
+
+  @@map("academy_engagement_settings")
+}
+
+model AcademyEngagementProfile {
+  id                  String    @id @default(cuid())
+  learnerId           String
+  courseId            String?
+  communityOptIn      Boolean   @default(false)
+  ambassadorOptIn     Boolean   @default(false)
+  directoryOptIn      Boolean   @default(false)
+  spotlightConsent    Boolean   @default(false)
+  publicVisibility    String    @default("PRIVATE")
+  profileHeadline     String?
+  profileBio          String?
+  referralCode        String?   @unique
+  consentedAt         DateTime?
+  consentWithdrawnAt  DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  @@unique([learnerId, courseId])
+  @@index([learnerId])
+  @@index([courseId])
+  @@map("academy_engagement_profiles")
+}
+
+model AcademyReferral {
+  id            String   @id @default(cuid())
+  referrerId    String
+  courseId      String?
+  referralCode  String
+  referredName  String?
+  referredEmail String?
+  status        String   @default("INVITED")
+  rewardLabel   String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([referrerId])
+  @@index([courseId])
+  @@index([referralCode])
+  @@map("academy_referrals")
+}
+
+model AcademyTestimonial {
+  id            String   @id @default(cuid())
+  learnerId     String
+  courseId      String?
+  rating        Int?
+  title         String
+  body          String
+  publicConsent Boolean  @default(false)
+  status        String   @default("PENDING")
+  adminNote     String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([learnerId])
+  @@index([courseId])
+  @@index([status])
+  @@map("academy_testimonials")
+}
+
+model AcademyChallenge {
+  id           String   @id @default(cuid())
+  courseId     String?
+  title        String
+  instructions String
+  rewardLabel  String?
+  status       String   @default("DRAFT")
+  startsAt     DateTime?
+  endsAt       DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([courseId])
+  @@index([status])
+  @@map("academy_challenges")
+}
+
+model AcademyChallengeSubmission {
+  id          String   @id @default(cuid())
+  challengeId String
+  learnerId   String
+  evidence    String
+  status      String   @default("SUBMITTED")
+  adminNote   String?
+  submittedAt DateTime @default(now())
+  reviewedAt  DateTime?
+
+  @@unique([challengeId, learnerId])
+  @@index([challengeId])
+  @@index([learnerId])
+  @@map("academy_challenge_submissions")
+}
+
+model AcademyOfficeHour {
+  id          String   @id @default(cuid())
+  courseId    String?
+  title       String
+  description String?
+  startsAt    DateTime
+  link        String?
+  capacity    Int?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([courseId])
+  @@index([startsAt])
+  @@map("academy_office_hours")
+}
+
+model AcademyOfficeHourRsvp {
+  id           String   @id @default(cuid())
+  officeHourId String
+  learnerId    String
+  status       String   @default("GOING")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([officeHourId, learnerId])
+  @@index([learnerId])
+  @@map("academy_office_hour_rsvps")
+}
+
 model TrainingSetting {
   id        String   @id @default("singleton")
   payload   Json

@@ -30,6 +30,7 @@ import {
   buildManualProduct,
   buildToolkitProduct,
 } from "@/components/academy/academy-resource-purchase";
+import { AcademyEngagementHub } from "@/components/academy/engagement-hub";
 import { AcademyPaymentDetails } from "@/components/academy/academy-payment-details";
 import type { ToolkitAccessState } from "@/components/academy/academy-accordion";
 import { PaymentProofUpload } from "@/components/payments/payment-proof-upload";
@@ -207,6 +208,7 @@ export function LearnerDashboardClient() {
   const activeCourseCount = approvedCourseIds.size;
   const professionalCertificate = data.certificates.find((certificate) => /Professional|HLP/i.test(`${certificate.courseTitle} ${certificate.certificateNumber}`));
   const nextActionCards = learnerNextActions(data);
+  const progressNudges = buildProgressNudges(data.programmeCourses ?? []);
 
   function toggleProgrammeDetails(courseId: string) {
     setExpandedProgrammeIds((current) => {
@@ -752,6 +754,22 @@ export function LearnerDashboardClient() {
         </aside>
       </div>
 
+      {!!progressNudges.length && (
+        <section className="rounded-3xl border border-emerald-100 bg-emerald-50/70 p-4 dark:border-emerald-900/40 dark:bg-emerald-950/20 sm:p-5">
+          <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-700 dark:text-emerald-300">Learner success nudges</p>
+          <div className="mt-3 grid gap-3 md:grid-cols-3">
+            {progressNudges.map((nudge) => (
+              <Link key={`${nudge.courseId}-${nudge.milestone}`} href={`/dashboard/academy/${nudge.courseId}`} className="rounded-2xl border border-white bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-emerald-200 dark:border-slate-800 dark:bg-slate-950">
+                <p className="text-sm font-black text-slate-950 dark:text-white">{nudge.title}</p>
+                <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">{nudge.message}</p>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
+
+      <AcademyEngagementHub compact />
+
       {checkout === "toolkit" && data.activeCourseToolkit?.access && (
         <AcademyResourcePurchaseModal
           open
@@ -936,6 +954,26 @@ function learnerNextActions(data: LearnerDashboard) {
       href: "/academy",
     },
   ];
+}
+
+function buildProgressNudges(courses: NonNullable<LearnerDashboard["programmeCourses"]>) {
+  return courses
+    .filter((course) => course.unlocked && !course.completed && course.progress >= 25)
+    .slice(0, 3)
+    .map((course) => {
+      const milestone = course.progress >= 80 ? 80 : course.progress >= 50 ? 50 : 25;
+      const message = milestone === 80
+        ? "You are close to completion. Check remaining assessments, submit practical evidence, and prepare for certificate review."
+        : milestone === 50
+          ? "You are halfway through. This is a good time to review weak topics and finish any open checkpoint work."
+          : "Good momentum. Keep going while the material is fresh, and save questions for office hours or the learner community.";
+      return {
+        courseId: course.id,
+        milestone,
+        title: `${course.title}: ${milestone}% milestone`,
+        message,
+      };
+    });
 }
 
 function isProofSubmitted(application: LearnerDashboard["applications"][number]) {

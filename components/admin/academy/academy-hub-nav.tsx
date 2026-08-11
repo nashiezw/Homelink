@@ -39,6 +39,7 @@ export const academySubTabs: Record<AcademyPrimaryTab, Array<{ id: string; label
     { id: "Leaderboard", label: "Leaderboard" },
   ],
   Community: [
+    { id: "Engagement", label: "Engagement" },
     { id: "Announcements", label: "Announcements" },
     { id: "Discussion Board", label: "Discussions" },
   ],
@@ -74,6 +75,7 @@ export function resolveAcademyNav(requested?: string | null): { primary: Academy
     "Learning Paths": { primary: "Programmes", sub: "Learning Paths" },
     Badges: { primary: "Programmes", sub: "Badges" },
     Leaderboard: { primary: "Programmes", sub: "Leaderboard" },
+    Engagement: { primary: "Community", sub: "Engagement" },
     Announcements: { primary: "Community", sub: "Announcements" },
     "Discussion Board": { primary: "Community", sub: "Discussion Board" },
     Settings: { primary: "Settings", sub: "Settings" },
