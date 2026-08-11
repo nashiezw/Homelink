@@ -591,7 +591,7 @@ export function AgentAcademyHub() {
           </div>
 
           <div className="space-y-5">
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-4 lg:grid-cols-2 2xl:grid-cols-4">
               <ActivityPanel title="Recent Applications" icon={Users}>
                 {data.publicLearnerApplications.length ? data.publicLearnerApplications.slice(0, 5).map((item) => <MetricRow key={item.id} label={item.fullName} value={item.course.title} />) : <EmptyPanelText>No learner applications yet.</EmptyPanelText>}
               </ActivityPanel>
@@ -1168,10 +1168,10 @@ function TopCoursesPanel({ courses }: { courses: AcademyData["topCourses"] }) {
 
 function ActivityPanel({ title, icon: Icon, children }: { title: string; icon: typeof Award; children: React.ReactNode }) {
   return (
-    <section className="rounded-xl border border-white/10 bg-slate-900/60 p-5">
+    <section className="min-w-0 overflow-hidden rounded-xl border border-white/10 bg-slate-900/60 p-5">
       <div className="mb-4 flex items-center justify-between">
-        <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-400">{title}</h3>
-        <Icon className="size-4 text-emerald-400" />
+        <h3 className="min-w-0 break-words text-sm font-semibold uppercase tracking-wider text-slate-400 [overflow-wrap:anywhere]">{title}</h3>
+        <Icon className="size-4 shrink-0 text-emerald-400" />
       </div>
       <div className="space-y-2">{children}</div>
     </section>

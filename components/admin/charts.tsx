@@ -112,11 +112,11 @@ export function Sparkline({ values, className }: { values: number[]; className?:
 
 export function MetricRow({ label, value, delta }: { label: string; value: string | number; delta?: string }) {
   return (
-    <div className="flex items-start justify-between gap-3 border-b border-white/5 py-3 last:border-0">
-      <span className="min-w-0 break-words text-sm text-slate-400">{label}</span>
-      <div className="shrink-0 text-right">
-        <span className="font-semibold text-white">{value}</span>
-        {delta && <p className="text-xs text-emerald-400">{delta}</p>}
+    <div className="flex min-w-0 flex-wrap items-start justify-between gap-x-4 gap-y-1 border-b border-white/5 py-3 last:border-0">
+      <span className="min-w-40 flex-1 break-words text-sm leading-5 text-slate-400 [overflow-wrap:anywhere]">{label}</span>
+      <div className="min-w-0 max-w-full text-left sm:text-right">
+        <span className="block break-words font-semibold leading-5 text-white [overflow-wrap:anywhere]">{value}</span>
+        {delta && <p className="break-words text-xs leading-4 text-emerald-400 [overflow-wrap:anywhere]">{delta}</p>}
       </div>
     </div>
   );
