@@ -868,6 +868,7 @@ export async function getAcademySettingsPublic() {
     enrolmentSettings: (payload.enrolmentSettings ?? { allowTrainingOnly: true, requirePaymentProof: true }) as Record<string, unknown>,
     completionRules: (payload.completionRules ?? { requireAllLessons: true, requireFinalExam: false }) as Record<string, unknown>,
     requireEmailVerification: Boolean(payload.requireEmailVerification ?? false),
+    community: (payload.community ?? { enabled: false, name: "Zimbabwe Real Estate Professionals Network", whatsappUrl: "", inviteText: "Join fellow learners for market insights and professional support.", sharePrompt: "I have enrolled with HouseLink Academy to grow my Zimbabwe real estate knowledge." }) as Record<string, unknown>,
   };
 }
 

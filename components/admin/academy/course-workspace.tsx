@@ -147,6 +147,7 @@ export function CourseWorkspace({
   const [quizDraft, setQuizDraft] = useState({ title: "", description: "", passingPercentage: "80", moduleId: "", lessonId: "", randomise: true, timeLimitMinutes: "" });
   const [assignmentDraft, setAssignmentDraft] = useState({ title: "", instructions: "", gradingGuidance: "", points: "100", moduleId: "", lessonId: "", dueDays: "" });
   const [questionDraft, setQuestionDraft] = useState({ prompt: "", answers: ["", "", "", ""], correctIndex: 0, explanation: "" });
+  const [communityDraft, setCommunityDraft] = useState({ enabled: false, name: "Zimbabwe Real Estate Professionals Network", whatsappUrl: "", inviteText: "Join fellow learners for market insights and professional support.", sharePrompt: "I have enrolled with HouseLink Academy to grow my Zimbabwe real estate knowledge." });
   const [certificationDraft, setCertificationDraft] = useState({
     passingPercentage: 80,
     certificateEnabled: false,
@@ -168,6 +169,7 @@ export function CourseWorkspace({
   }, [courseId]);
 
   useEffect(() => { void load(); }, [load]);
+  useEffect(() => { void apiFetch<{ community?: Partial<typeof communityDraft> }>("/api/v1/academy/settings").then((result) => { if (result.data?.community) setCommunityDraft((current) => ({ ...current, ...result.data!.community })); }); }, []);
 
   useEffect(() => {
     if (!tree) return;
@@ -913,6 +915,8 @@ export function CourseWorkspace({
               </div>
             </div>
           </div>
+
+          <div className="rounded-xl border border-sky-400/20 bg-gradient-to-r from-sky-500/10 via-slate-900/40 to-emerald-500/10 p-5"><div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between"><div><p className="text-sm font-bold text-white">Learner community & ambassador invite</p><p className="mt-1 max-w-2xl text-sm leading-6 text-slate-300">Offer learners an optional WhatsApp community and a ready-to-share enrolment message. This never blocks course progress.</p></div><label className="flex items-center gap-2 text-sm font-semibold text-emerald-200"><input type="checkbox" checked={communityDraft.enabled} onChange={(event) => setCommunityDraft({ ...communityDraft, enabled: event.target.checked })} /> Enabled</label></div><div className="mt-4 grid gap-3 md:grid-cols-2"><Field label="Community name" value={communityDraft.name} onChange={(name) => setCommunityDraft({ ...communityDraft, name })} /><Field label="WhatsApp invite URL" value={communityDraft.whatsappUrl} onChange={(whatsappUrl) => setCommunityDraft({ ...communityDraft, whatsappUrl })} /></div><div className="mt-3 grid gap-3 md:grid-cols-2"><TextareaField label="Learner invitation" value={communityDraft.inviteText} rows={3} onChange={(inviteText) => setCommunityDraft({ ...communityDraft, inviteText })} /><TextareaField label="Share prompt" value={communityDraft.sharePrompt} rows={3} onChange={(sharePrompt) => setCommunityDraft({ ...communityDraft, sharePrompt })} /></div><div className="mt-4 flex justify-end"><Button disabled={busy || (communityDraft.enabled && !communityDraft.whatsappUrl.trim())} onClick={() => void run({ action: "update_community_settings", community: communityDraft }, "Learner community settings saved.")}>Save community settings</Button></div></div>
 
           <div className="grid gap-5 xl:grid-cols-2">
             <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-4 shadow-[0_18px_55px_rgba(2,6,23,0.24)]">

@@ -1430,6 +1430,13 @@ export async function runAcademyAction(body: Record<string, any>, actor: Actor) 
     await audit(actor, "academy.settings.update", settings.id, {});
     return settings;
   }
+  if (action === "update_community_settings") {
+    const existing = await prisma.trainingSetting.findUnique({ where: { id: "singleton" } });
+    const payload = (existing?.payload ?? {}) as Record<string, unknown>;
+    const settings = await prisma.trainingSetting.upsert({ where: { id: "singleton" }, create: { id: "singleton", payload: { ...payload, community: body.community ?? {} } as Prisma.InputJsonObject }, update: { payload: { ...payload, community: body.community ?? {} } as Prisma.InputJsonObject } });
+    await audit(actor, "academy.community.update", settings.id, {});
+    return settings;
+  }
   if (action === "send_test_email_template") {
     const to = required(body.to, "Recipient email");
     const subject = required(body.subject, "Email subject");

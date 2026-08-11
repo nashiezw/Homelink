@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -43,7 +43,7 @@ import {
 import { cn } from "@/lib/utils";
 
 type CourseDetail = {
-  settings: { academyName: string; primaryColour: string; paymentInstructions?: string };
+  settings: { academyName: string; primaryColour: string; paymentInstructions?: string; community?: { enabled?: boolean; name?: string; whatsappUrl?: string; inviteText?: string; sharePrompt?: string } };
   programme?: {
     theme: { label: string; accent: string; gradient: string; sidebar: string; chip: string };
     badgeName: string;
@@ -362,6 +362,8 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
         </div>
       </div>
       <TrainingDisclaimer compact className="mt-6" />
+
+      {data.settings.community?.enabled ? <section className="mt-5 rounded-xl border border-emerald-200 bg-emerald-50 p-5 text-slate-800 shadow-sm"><div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"><div><p className="text-sm font-bold text-emerald-900">{data.settings.community.name || "Zimbabwe Real Estate Professionals Network"}</p><p className="mt-1 text-sm leading-6 text-slate-600">{data.settings.community.inviteText}</p></div><div className="flex flex-wrap gap-2"><a href={data.settings.community.whatsappUrl} target="_blank" rel="noreferrer"><Button disabled={!data.settings.community.whatsappUrl}>Join WhatsApp group</Button></a><Button variant="secondary" onClick={() => navigator.clipboard.writeText(data.settings.community?.sharePrompt || "I have enrolled with HouseLink Academy.").then(() => showToast("Share message copied.", "success"))}>Copy share message</Button></div></div></section> : null}
 
       {tab === "curriculum" && (
         <div className="mt-6">
