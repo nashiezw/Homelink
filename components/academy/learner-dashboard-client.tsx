@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import {
+  AlertCircle,
   Award,
   Bell,
   Bookmark,
@@ -15,6 +16,7 @@ import {
   Lock,
   Play,
   Sparkles,
+  Tag,
   TrendingUp,
   Zap,
 } from "lucide-react";
@@ -153,6 +155,9 @@ export function LearnerDashboardClient() {
   const [paymentConfig, setPaymentConfig] = useState<PublicPaymentConfig | null>(null);
   const [checkout, setCheckout] = useState<"toolkit" | "manual" | null>(null);
   const [expandedProgrammeIds, setExpandedProgrammeIds] = useState<Set<string>>(new Set());
+  const [promoDrafts, setPromoDrafts] = useState<Record<string, string>>({});
+  const [promoBusyId, setPromoBusyId] = useState<string | null>(null);
+  const [promoMessages, setPromoMessages] = useState<Record<string, { type: "success" | "error"; text: string }>>({});
   const primary = data?.settings?.primaryColour ?? "#008b68";
 
   const load = useCallback(async () => {
@@ -210,6 +215,36 @@ export function LearnerDashboardClient() {
       else next.add(courseId);
       return next;
     });
+  }
+
+  async function applyApplicationPromo(application: LearnerDashboard["applications"][number]) {
+    const code = (promoDrafts[application.id] || "").trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
+    if (!code) {
+      setPromoMessages((current) => ({ ...current, [application.id]: { type: "error", text: "Enter a promo code first." } }));
+      return;
+    }
+    setPromoBusyId(application.id);
+    setPromoMessages((current) => {
+      const next = { ...current };
+      delete next[application.id];
+      return next;
+    });
+    const result = await apiFetch<{ finalPrice: number; currency: string; discountAmount?: number; code?: string; status?: string }>(`/api/v1/academy/registration/${application.id}/coupon`, {
+      method: "POST",
+      body: JSON.stringify({ code }),
+    });
+    setPromoBusyId(null);
+    const errorMessage = result.error?.message;
+    if (errorMessage) {
+      setPromoMessages((current) => ({ ...current, [application.id]: { type: "error", text: errorMessage } }));
+      return;
+    }
+    const appliedCode = result.data?.code || code;
+    const discount = typeof result.data?.discountAmount === "number" ? `${result.data.currency || application.currency} ${result.data.discountAmount.toFixed(2)}` : "the discount";
+    setPromoDrafts((current) => ({ ...current, [application.id]: "" }));
+    setPromoMessages((current) => ({ ...current, [application.id]: { type: "success", text: `${appliedCode} applied. You saved ${discount}.` } }));
+    showToast(result.data?.status === "APPROVED" ? "Promo applied. Your course access is active." : "Promo applied. Your balance has been updated.");
+    await load();
   }
 
   return (
@@ -469,6 +504,63 @@ export function LearnerDashboardClient() {
                           Pay {application.currency} {application.amount.toFixed(2)} using the details below, then upload proof for admin review.
                         </p>
                       </>
+                    )}
+                    {!isProofSubmitted(application) && application.status === "PENDING_PAYMENT" && application.amount > 0 && (
+                      <div className="rounded-xl border border-emerald-200 bg-white p-4 dark:border-emerald-900/50 dark:bg-slate-950/70">
+                        <div className="flex items-start gap-3">
+                          <span className="rounded-lg bg-emerald-100 p-2 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200">
+                            <Tag className="size-4" />
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <p className="font-semibold text-slate-950 dark:text-white">Have a promo code?</p>
+                            <p className="mt-1 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
+                              Apply it before uploading payment proof. If it covers the full amount, your payment step will close automatically.
+                            </p>
+                          </div>
+                        </div>
+                        <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+                          <input
+                            value={promoDrafts[application.id] || ""}
+                            onChange={(event) => {
+                              const value = event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "");
+                              setPromoDrafts((current) => ({ ...current, [application.id]: value }));
+                              setPromoMessages((current) => {
+                                const next = { ...current };
+                                delete next[application.id];
+                                return next;
+                              });
+                            }}
+                            placeholder="PROMO CODE"
+                            className="min-h-11 flex-1 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold uppercase tracking-wide text-slate-950 outline-none ring-emerald-500 transition focus:border-emerald-500 focus:ring-2 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                          />
+                          <Button
+                            type="button"
+                            onClick={() => void applyApplicationPromo(application)}
+                            disabled={promoBusyId === application.id}
+                            className="min-h-11 sm:min-w-28"
+                            style={{ backgroundColor: primary }}
+                          >
+                            {promoBusyId === application.id ? "Applying..." : "Apply"}
+                          </Button>
+                        </div>
+                        {promoMessages[application.id] && (
+                          <p
+                            className={cn(
+                              "mt-3 flex items-start gap-2 text-sm font-medium",
+                              promoMessages[application.id].type === "success"
+                                ? "text-emerald-700 dark:text-emerald-300"
+                                : "text-red-700 dark:text-red-300",
+                            )}
+                          >
+                            {promoMessages[application.id].type === "success" ? (
+                              <CheckCircle2 className="mt-0.5 size-4 shrink-0" />
+                            ) : (
+                              <AlertCircle className="mt-0.5 size-4 shrink-0" />
+                            )}
+                            {promoMessages[application.id].text}
+                          </p>
+                        )}
+                      </div>
                     )}
                     <AcademyPaymentDetails
                       config={paymentConfig}
