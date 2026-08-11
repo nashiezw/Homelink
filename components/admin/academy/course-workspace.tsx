@@ -194,6 +194,8 @@ export function CourseWorkspace({
     [allLessons, assignmentDraft.moduleId],
   );
   const selectedLesson = allLessons.find((l) => l.id === selectedLessonId);
+  const selectedQuiz = tree?.quizzes.find((quiz) => quiz.id === selectedQuizId);
+  const selectedAssignment = tree?.assignments.find((assignment) => assignment.id === selectedAssignmentId);
   const readinessItems = useMemo(() => {
     if (!tree) return [];
     const lessons = tree.modules.flatMap((module) => module.sections.flatMap((section) => section.lessons));
@@ -888,7 +890,7 @@ export function CourseWorkspace({
                         onModuleChange={(moduleId) => setQuizDraft({ ...quizDraft, moduleId, lessonId: "" })}
                         onLessonChange={(lessonId) => setQuizDraft({ ...quizDraft, lessonId })}
                       />
-                      <div className="flex flex-wrap justify-between gap-2"><Button variant="secondary" disabled={busy} onClick={() => void run({ action: quiz.active ? "archive_quiz" : "restore_quiz", quizId: selectedQuizId }, quiz.active ? "Quiz archived." : "Quiz restored.").then(() => setSelectedQuizId(null))}>{quiz.active ? "Archive quiz" : "Restore quiz"}</Button>
+                      <div className="flex flex-wrap justify-between gap-2"><Button variant="secondary" disabled={busy} onClick={() => void run({ action: selectedQuiz?.active ? "archive_quiz" : "restore_quiz", quizId: selectedQuizId }, selectedQuiz?.active ? "Quiz archived." : "Quiz restored.").then(() => setSelectedQuizId(null))}>{selectedQuiz?.active ? "Archive quiz" : "Restore quiz"}</Button>
                         <Button
                           disabled={busy || !quizDraft.title.trim()}
                           onClick={() => void run({
@@ -958,7 +960,7 @@ export function CourseWorkspace({
                         onModuleChange={(moduleId) => setAssignmentDraft({ ...assignmentDraft, moduleId, lessonId: "" })}
                         onLessonChange={(lessonId) => setAssignmentDraft({ ...assignmentDraft, lessonId })}
                       />
-                      <div className="flex flex-wrap justify-between gap-2"><Button variant="secondary" disabled={busy} onClick={() => void run({ action: assignment.active ? "archive_assignment" : "restore_assignment", assignmentId: selectedAssignmentId }, assignment.active ? "Assignment archived." : "Assignment restored.").then(() => setSelectedAssignmentId(null))}>{assignment.active ? "Archive assignment" : "Restore assignment"}</Button>
+                      <div className="flex flex-wrap justify-between gap-2"><Button variant="secondary" disabled={busy} onClick={() => void run({ action: selectedAssignment?.active ? "archive_assignment" : "restore_assignment", assignmentId: selectedAssignmentId }, selectedAssignment?.active ? "Assignment archived." : "Assignment restored.").then(() => setSelectedAssignmentId(null))}>{selectedAssignment?.active ? "Archive assignment" : "Restore assignment"}</Button>
                         <Button
                           disabled={busy || !assignmentDraft.title.trim() || !assignmentDraft.description.trim()}
                           onClick={() => void run({
