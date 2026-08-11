@@ -1102,6 +1102,37 @@ export async function runAcademyAction(body: Record<string, any>, actor: Actor) 
     await audit(actor, "academy.question.create", question.id, { quizId: question.quizId });
     return question;
   }
+  if (action === "update_question") {
+    const answers = Array.isArray(body.question?.answers) ? body.question.answers.map((answer: unknown) => String(answer)).filter(Boolean) : [];
+    const correctIndex = numberOr(body.question?.correctIndex, 0);
+    const question = await prisma.$transaction(async (tx) => {
+      await tx.quizAnswer.deleteMany({ where: { questionId: String(body.questionId) } });
+      return tx.quizQuestion.update({
+        where: { id: String(body.questionId) },
+        data: {
+          prompt: required(body.question?.prompt, "Question prompt"),
+          explanation: stringOrNull(body.question?.explanation),
+          correctAnswer: { value: String(correctIndex) },
+          answers: answers.length ? {
+            create: answers.map((answer: string, answerIndex: number) => ({
+              label: answer,
+              value: String(answerIndex),
+              isCorrect: answerIndex === correctIndex,
+              feedback: answerIndex === correctIndex ? "Correct." : "Incorrect.",
+              sortOrder: answerIndex,
+            })),
+          } : undefined,
+        },
+      });
+    });
+    await audit(actor, "academy.question.update", question.id, { quizId: question.quizId });
+    return question;
+  }
+  if (action === "delete_question") {
+    const question = await prisma.quizQuestion.delete({ where: { id: String(body.questionId) } });
+    await audit(actor, "academy.question.delete", question.id, { quizId: question.quizId });
+    return { id: question.id, deleted: true };
+  }
   if (action === "create_exam") {
     const exam = await prisma.finalExam.create({
       data: {
@@ -1647,10 +1678,16 @@ export async function getAdminCourseTree(courseId: string) {
   const course = await fetchCourseTree(courseId);
   if (!course) return null;
   const prisma = getMainPrisma();
-  const [retakeRules, enrolments, progressRows] = await Promise.all([
+  const [retakeRules, enrolments, progressRows, quizzes, assignments] = await Promise.all([
     getCourseRetakeRules(courseId),
     prisma.courseEnrolment.findMany({ where: { courseId }, orderBy: { enrolledAt: "desc" } }),
     prisma.courseProgress.findMany({ where: { courseId } }),
+    prisma.quiz.findMany({
+      where: { courseId },
+      include: { questions: { include: { answers: { orderBy: { sortOrder: "asc" } } }, orderBy: { sortOrder: "asc" } } },
+      orderBy: { createdAt: "asc" },
+    }),
+    prisma.assignment.findMany({ where: { courseId }, orderBy: { createdAt: "asc" } }),
   ]);
   const users = enrolments.length
     ? await prisma.user.findMany({ where: { id: { in: enrolments.map((entry) => entry.agentId) } }, select: { id: true, name: true, email: true } })
@@ -1722,7 +1759,7 @@ export async function getAdminCourseTree(courseId: string) {
         })),
       })),
     })),
-    quizzes: course.quizzes.map((quiz) => ({
+    quizzes: quizzes.map((quiz) => ({
       id: quiz.id,
       title: quiz.title,
       description: quiz.description,
@@ -1733,8 +1770,18 @@ export async function getAdminCourseTree(courseId: string) {
       active: quiz.active,
       randomise: quiz.randomise,
       timeLimitMinutes: quiz.timeLimitMinutes,
+      questions: quiz.questions.map((question) => {
+        const correctAnswer = question.answers.find((answer) => answer.isCorrect);
+        return {
+          id: question.id,
+          prompt: question.prompt,
+          explanation: question.explanation,
+          correctIndex: correctAnswer ? Math.max(0, Number(correctAnswer.value) || 0) : 0,
+          answers: question.answers.map((answer) => answer.label),
+        };
+      }),
     })),
-    assignments: course.assignments.map((assignment) => ({
+    assignments: assignments.map((assignment) => ({
       id: assignment.id,
       title: assignment.title,
       description: assignment.description,

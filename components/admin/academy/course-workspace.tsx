@@ -81,7 +81,19 @@ type CourseTree = {
     sortOrder: number;
     sections: Array<{ id: string; title: string; sortOrder: number; lessons: LessonNode[] }>;
   }>;
-  quizzes: Array<{ id: string; title: string; description?: string | null; passingPercentage: number; moduleId?: string | null; lessonId?: string | null; questionCount?: number; active: boolean; randomise: boolean; timeLimitMinutes?: number | null }>;
+  quizzes: Array<{
+    id: string;
+    title: string;
+    description?: string | null;
+    passingPercentage: number;
+    moduleId?: string | null;
+    lessonId?: string | null;
+    questionCount?: number;
+    active: boolean;
+    randomise: boolean;
+    timeLimitMinutes?: number | null;
+    questions: Array<{ id: string; prompt: string; explanation?: string | null; correctIndex: number; answers: string[] }>;
+  }>;
   assignments: Array<{ id: string; title: string; description: string; points: number; moduleId?: string | null; lessonId?: string | null; active: boolean; dueDays?: number | null }>;
   exams: Array<{ id: string; title: string; durationMinutes: number; passingScore: number }>;
   learners: Array<{ id: string; name: string; email: string; progress: number; status: string }>;
@@ -126,6 +138,7 @@ export function CourseWorkspace({
   const [moduleDraft, setModuleDraft] = useState<{ title: string; description: string; objectives: string; estimatedMinutes: string }>({ title: "", description: "", objectives: "", estimatedMinutes: "" });
   const [selectedQuizId, setSelectedQuizId] = useState<string | null>(null);
   const [selectedAssignmentId, setSelectedAssignmentId] = useState<string | null>(null);
+  const [selectedQuestionId, setSelectedQuestionId] = useState<string | null>(null);
   const [selectedLearnerId, setSelectedLearnerId] = useState<string>("");
   const [overrideQuizId, setOverrideQuizId] = useState<string>("");
   const [overrideAssignmentId, setOverrideAssignmentId] = useState<string>("");
@@ -196,6 +209,7 @@ export function CourseWorkspace({
   const selectedLesson = allLessons.find((l) => l.id === selectedLessonId);
   const selectedQuiz = tree?.quizzes.find((quiz) => quiz.id === selectedQuizId);
   const selectedAssignment = tree?.assignments.find((assignment) => assignment.id === selectedAssignmentId);
+  const selectedQuestion = selectedQuiz?.questions.find((question) => question.id === selectedQuestionId);
   const readinessItems = useMemo(() => {
     if (!tree) return [];
     const lessons = tree.modules.flatMap((module) => module.sections.flatMap((section) => section.lessons));
@@ -242,6 +256,7 @@ export function CourseWorkspace({
     const quiz = tree.quizzes.find((entry) => entry.id === selectedQuizId);
     if (!quiz) {
       setQuizDraft({ title: "", description: "", passingPercentage: "80", moduleId: "", lessonId: "", randomise: true, timeLimitMinutes: "" });
+      setSelectedQuestionId(null);
       return;
     }
     setQuizDraft({
@@ -254,6 +269,19 @@ export function CourseWorkspace({
       timeLimitMinutes: quiz.timeLimitMinutes == null ? "" : String(quiz.timeLimitMinutes),
     });
   }, [selectedQuizId, tree]);
+
+  useEffect(() => {
+    if (!selectedQuestion) {
+      setQuestionDraft({ prompt: "", answers: ["", "", "", ""], correctIndex: 0, explanation: "" });
+      return;
+    }
+    setQuestionDraft({
+      prompt: selectedQuestion.prompt,
+      answers: [...selectedQuestion.answers, "", "", "", ""].slice(0, 4),
+      correctIndex: selectedQuestion.correctIndex,
+      explanation: selectedQuestion.explanation ?? "",
+    });
+  }, [selectedQuestion]);
 
   useEffect(() => {
     if (!tree) return;
@@ -840,18 +868,28 @@ export function CourseWorkspace({
 
       {step === "Assessments" && (
         <div className="space-y-5">
-          <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-4">
-            <p className="text-sm font-bold text-emerald-100">Recommended flow</p>
-            <p className="mt-1 text-sm leading-6 text-emerald-50/80">
-              Use lesson checkpoints for short knowledge checks and module checkpoints for practical evidence. A module-level quiz or assignment unlocks the next module after it is passed or approved. A lesson-level checkpoint unlocks the next lesson after it is passed or approved.
-            </p>
+          <div className="overflow-hidden rounded-2xl border border-emerald-400/20 bg-[linear-gradient(135deg,rgba(16,185,129,0.16),rgba(15,23,42,0.72))] p-5 shadow-[0_20px_70px_rgba(2,6,23,0.3)]">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div className="min-w-0">
+                <p className="text-xs font-bold uppercase tracking-[0.24em] text-emerald-200">Assessment Gate Builder</p>
+                <h3 className="mt-2 text-xl font-bold text-white">Control exactly when learners can progress</h3>
+                <p className="mt-2 max-w-4xl text-sm leading-6 text-emerald-50/80">
+                  Use lesson checkpoints for short knowledge checks and module checkpoints for practical evidence. A module-level gate unlocks the next module after it is passed or approved.
+                </p>
+              </div>
+              <div className="grid grid-cols-2 gap-2 sm:flex">
+                <CurriculumMetric label="Quizzes" value={tree.quizzes.length} />
+                <CurriculumMetric label="Assignments" value={tree.assignments.length} />
+                <CurriculumMetric label="Questions" value={tree.quizzes.reduce((sum, quiz) => sum + (quiz.questionCount ?? 0), 0)} />
+              </div>
+            </div>
           </div>
 
           <div className="grid gap-5 xl:grid-cols-2">
-            <div className="rounded-xl border border-white/10 bg-slate-900/60 p-4">
+            <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-4 shadow-[0_18px_55px_rgba(2,6,23,0.24)]">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <h4 className="font-semibold text-white">Quiz checkpoints</h4>
+                  <h4 className="text-lg font-bold text-white">Quiz checkpoints</h4>
                   <p className="mt-1 text-xs leading-5 text-slate-400">Attach each quiz to a module or exact lesson so progression gates know when to stop the learner.</p>
                 </div>
                 <Button
@@ -861,24 +899,30 @@ export function CourseWorkspace({
                   <Plus className="mr-2 size-4" /> Add Quiz
                 </Button>
               </div>
-              <div className="mt-4 grid gap-3 md:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
-                <div className="max-h-96 space-y-2 overflow-y-auto pr-1">
+              <div className="mt-4 grid gap-4 2xl:grid-cols-[minmax(0,0.82fr)_minmax(0,1.18fr)]">
+                <div className="max-h-[31rem] space-y-2 overflow-y-auto rounded-xl border border-white/10 bg-slate-950/40 p-2">
                   {tree.quizzes.map((quiz) => (
                     <button
                       key={quiz.id}
                       type="button"
                       onClick={() => setSelectedQuizId(quiz.id)}
-                      className={`w-full rounded-lg border px-3 py-2 text-left text-sm ${selectedQuizId === quiz.id ? "border-emerald-400/50 bg-emerald-500/15 text-emerald-50" : "border-white/10 bg-slate-950/50 text-slate-300 hover:bg-white/5"}`}
+                      className={`w-full rounded-xl border px-3 py-3 text-left text-sm transition ${selectedQuizId === quiz.id ? "border-emerald-400/60 bg-emerald-500/15 text-emerald-50 shadow-[inset_3px_0_0_rgba(52,211,153,0.9)]" : "border-white/10 bg-slate-900/70 text-slate-300 hover:border-white/20 hover:bg-white/5"}`}
                     >
                       <span className="block font-semibold">{quiz.title}</span>
-                      <span className="mt-1 block text-xs text-slate-500">{checkpointLabel(quiz, tree)} · {quiz.questionCount ?? 0} questions · {quiz.active ? "Active" : "Archived"}</span>
+                      <span className="mt-1 block text-xs text-slate-500">{checkpointLabel(quiz, tree)}</span>
+                      <span className="mt-2 flex flex-wrap gap-1.5">
+                        <AssessmentStatusChip label={`${quiz.questionCount ?? 0} questions`} />
+                        <AssessmentStatusChip label={`${quiz.passingPercentage}% pass`} />
+                        <AssessmentStatusChip label={quiz.active ? "Active" : "Archived"} tone={quiz.active ? "success" : "muted"} />
+                      </span>
                     </button>
                   ))}
                   {!tree.quizzes.length && <p className="rounded-lg border border-dashed border-white/10 p-3 text-sm text-slate-500">No quizzes yet.</p>}
                 </div>
-                <div className="space-y-3 rounded-xl border border-white/10 bg-slate-950/50 p-4">
+                <div className="space-y-4 rounded-2xl border border-white/10 bg-slate-950/60 p-4">
                   {selectedQuizId ? (
                     <>
+                      <AssessmentEditorHeader title="Edit quiz gate" detail={checkpointLabel(selectedQuiz ?? { moduleId: null, lessonId: null }, tree)} status={selectedQuiz?.active ? "Active" : "Archived"} />
                       <Field label="Quiz title" value={quizDraft.title} onChange={(title) => setQuizDraft({ ...quizDraft, title })} />
                       <TextareaField label="Description" value={quizDraft.description} rows={3} onChange={(description) => setQuizDraft({ ...quizDraft, description })} />
                       <div className="grid gap-3 sm:grid-cols-2"><NumberField label="Passing Percentage" value={quizDraft.passingPercentage} min={0} max={100} onChange={(passingPercentage) => setQuizDraft({ ...quizDraft, passingPercentage })} /><NumberField label="Time limit (minutes)" value={quizDraft.timeLimitMinutes} min={0} onChange={(timeLimitMinutes) => setQuizDraft({ ...quizDraft, timeLimitMinutes })} /></div><label className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-slate-200"><input type="checkbox" checked={quizDraft.randomise} onChange={(event) => setQuizDraft({ ...quizDraft, randomise: event.target.checked })} /> Randomise question order</label>
@@ -890,7 +934,7 @@ export function CourseWorkspace({
                         onModuleChange={(moduleId) => setQuizDraft({ ...quizDraft, moduleId, lessonId: "" })}
                         onLessonChange={(lessonId) => setQuizDraft({ ...quizDraft, lessonId })}
                       />
-                      <div className="flex flex-wrap justify-between gap-2"><Button variant="secondary" disabled={busy} onClick={() => void run({ action: selectedQuiz?.active ? "archive_quiz" : "restore_quiz", quizId: selectedQuizId }, selectedQuiz?.active ? "Quiz archived." : "Quiz restored.").then(() => setSelectedQuizId(null))}>{selectedQuiz?.active ? "Archive quiz" : "Restore quiz"}</Button>
+                      <div className="flex flex-wrap justify-between gap-2"><Button variant="secondary" disabled={busy} onClick={() => void run({ action: selectedQuiz?.active ? "delete_quiz" : "restore_quiz", quizId: selectedQuizId }, selectedQuiz?.active ? "Quiz removed from learner view." : "Quiz restored.").then(() => setSelectedQuizId(null))}>{selectedQuiz?.active ? "Delete / Archive quiz" : "Restore quiz"}</Button>
                         <Button
                           disabled={busy || !quizDraft.title.trim()}
                           onClick={() => void run({
@@ -918,10 +962,10 @@ export function CourseWorkspace({
               </div>
             </div>
 
-            <div className="rounded-xl border border-white/10 bg-slate-900/60 p-4">
+            <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-4 shadow-[0_18px_55px_rgba(2,6,23,0.24)]">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <h4 className="font-semibold text-white">Assignment checkpoints</h4>
+                  <h4 className="text-lg font-bold text-white">Assignment checkpoints</h4>
                   <p className="mt-1 text-xs leading-5 text-slate-400">Assignments require admin approval before the learner can pass that practical gate.</p>
                 </div>
                 <Button
@@ -931,24 +975,30 @@ export function CourseWorkspace({
                   <Plus className="mr-2 size-4" /> Add Assignment
                 </Button>
               </div>
-              <div className="mt-4 grid gap-3 md:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
-                <div className="max-h-96 space-y-2 overflow-y-auto pr-1">
+              <div className="mt-4 grid gap-4 2xl:grid-cols-[minmax(0,0.82fr)_minmax(0,1.18fr)]">
+                <div className="max-h-[31rem] space-y-2 overflow-y-auto rounded-xl border border-white/10 bg-slate-950/40 p-2">
                   {tree.assignments.map((assignment) => (
                     <button
                       key={assignment.id}
                       type="button"
                       onClick={() => setSelectedAssignmentId(assignment.id)}
-                      className={`w-full rounded-lg border px-3 py-2 text-left text-sm ${selectedAssignmentId === assignment.id ? "border-emerald-400/50 bg-emerald-500/15 text-emerald-50" : "border-white/10 bg-slate-950/50 text-slate-300 hover:bg-white/5"}`}
+                      className={`w-full rounded-xl border px-3 py-3 text-left text-sm transition ${selectedAssignmentId === assignment.id ? "border-emerald-400/60 bg-emerald-500/15 text-emerald-50 shadow-[inset_3px_0_0_rgba(52,211,153,0.9)]" : "border-white/10 bg-slate-900/70 text-slate-300 hover:border-white/20 hover:bg-white/5"}`}
                     >
                       <span className="block font-semibold">{assignment.title}</span>
-                      <span className="mt-1 block text-xs text-slate-500">{checkpointLabel(assignment, tree)} · {assignment.points} points · {assignment.active ? "Active" : "Archived"}</span>
+                      <span className="mt-1 block text-xs text-slate-500">{checkpointLabel(assignment, tree)}</span>
+                      <span className="mt-2 flex flex-wrap gap-1.5">
+                        <AssessmentStatusChip label={`${assignment.points} points`} />
+                        {assignment.dueDays ? <AssessmentStatusChip label={`${assignment.dueDays} days due`} /> : null}
+                        <AssessmentStatusChip label={assignment.active ? "Active" : "Archived"} tone={assignment.active ? "success" : "muted"} />
+                      </span>
                     </button>
                   ))}
                   {!tree.assignments.length && <p className="rounded-lg border border-dashed border-white/10 p-3 text-sm text-slate-500">No assignments yet.</p>}
                 </div>
-                <div className="space-y-3 rounded-xl border border-white/10 bg-slate-950/50 p-4">
+                <div className="space-y-4 rounded-2xl border border-white/10 bg-slate-950/60 p-4">
                   {selectedAssignmentId ? (
                     <>
+                      <AssessmentEditorHeader title="Edit assignment gate" detail={checkpointLabel(selectedAssignment ?? { moduleId: null, lessonId: null }, tree)} status={selectedAssignment?.active ? "Active" : "Archived"} />
                       <Field label="Assignment title" value={assignmentDraft.title} onChange={(title) => setAssignmentDraft({ ...assignmentDraft, title })} />
                       <TextareaField label="Evidence instructions" value={assignmentDraft.description} rows={4} onChange={(description) => setAssignmentDraft({ ...assignmentDraft, description })} />
                       <div className="grid gap-3 sm:grid-cols-2"><NumberField label="Points" value={assignmentDraft.points} min={1} onChange={(points) => setAssignmentDraft({ ...assignmentDraft, points })} /><NumberField label="Due in days (optional)" value={assignmentDraft.dueDays} min={0} onChange={(dueDays) => setAssignmentDraft({ ...assignmentDraft, dueDays })} /></div>
@@ -960,7 +1010,7 @@ export function CourseWorkspace({
                         onModuleChange={(moduleId) => setAssignmentDraft({ ...assignmentDraft, moduleId, lessonId: "" })}
                         onLessonChange={(lessonId) => setAssignmentDraft({ ...assignmentDraft, lessonId })}
                       />
-                      <div className="flex flex-wrap justify-between gap-2"><Button variant="secondary" disabled={busy} onClick={() => void run({ action: selectedAssignment?.active ? "archive_assignment" : "restore_assignment", assignmentId: selectedAssignmentId }, selectedAssignment?.active ? "Assignment archived." : "Assignment restored.").then(() => setSelectedAssignmentId(null))}>{selectedAssignment?.active ? "Archive assignment" : "Restore assignment"}</Button>
+                      <div className="flex flex-wrap justify-between gap-2"><Button variant="secondary" disabled={busy} onClick={() => void run({ action: selectedAssignment?.active ? "delete_assignment" : "restore_assignment", assignmentId: selectedAssignmentId }, selectedAssignment?.active ? "Assignment removed from learner view." : "Assignment restored.").then(() => setSelectedAssignmentId(null))}>{selectedAssignment?.active ? "Delete / Archive assignment" : "Restore assignment"}</Button>
                         <Button
                           disabled={busy || !assignmentDraft.title.trim() || !assignmentDraft.description.trim()}
                           onClick={() => void run({
@@ -989,41 +1039,89 @@ export function CourseWorkspace({
             </div>
           </div>
 
-          <div className="rounded-xl border border-white/10 p-4 space-y-4">
-            <h4 className="font-semibold text-white">Quiz Question Editor</h4>
+          <div className="space-y-4 rounded-2xl border border-white/10 bg-slate-900/70 p-4 shadow-[0_18px_55px_rgba(2,6,23,0.24)]">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h4 className="text-lg font-bold text-white">Quiz Question Manager</h4>
+                <p className="mt-1 text-xs leading-5 text-slate-400">Select a quiz, then add, edit, or delete its questions. Existing learner attempts remain separate from this editor.</p>
+              </div>
+              <Button variant="secondary" disabled={!selectedQuizId} onClick={() => setSelectedQuestionId(null)}>
+                <Plus className="mr-2 size-4" /> New Question
+              </Button>
+            </div>
             <label className="block text-sm text-slate-300">Select quiz
-              <select value={selectedQuizId ?? ""} onChange={(e) => setSelectedQuizId(e.target.value || null)} className="mt-1 w-full rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-white">
+              <select value={selectedQuizId ?? ""} onChange={(e) => { setSelectedQuizId(e.target.value || null); setSelectedQuestionId(null); }} className="mt-1 w-full rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-white">
                 <option value="">Choose a quiz...</option>
                 {tree.quizzes.map((quiz) => <option key={quiz.id} value={quiz.id}>{quiz.title}</option>)}
               </select>
             </label>
-            <Field label="Question prompt" value={questionDraft.prompt} onChange={(v) => setQuestionDraft({ ...questionDraft, prompt: v })} />
-            {questionDraft.answers.map((answer, index) => (
-              <label key={index} className="flex items-center gap-2 text-sm text-slate-300">
-                <input type="radio" name="correct" checked={questionDraft.correctIndex === index} onChange={() => setQuestionDraft({ ...questionDraft, correctIndex: index })} />
-                <input value={answer} onChange={(e) => {
-                  const answers = [...questionDraft.answers];
-                  answers[index] = e.target.value;
-                  setQuestionDraft({ ...questionDraft, answers });
-                }} className="flex-1 rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-white" placeholder={`Answer ${index + 1}`} />
-              </label>
-            ))}
-            <Field label="Explanation" value={questionDraft.explanation} onChange={(v) => setQuestionDraft({ ...questionDraft, explanation: v })} />
-            <Button
-              disabled={!selectedQuizId || !questionDraft.prompt.trim() || busy}
-              onClick={() => void run({
-                action: "create_question",
-                question: {
-                  quizId: selectedQuizId,
-                  prompt: questionDraft.prompt,
-                  answers: questionDraft.answers.filter(Boolean),
-                  correctIndex: questionDraft.correctIndex,
-                  explanation: questionDraft.explanation,
-                },
-              }, "Question added.").then(() => setQuestionDraft({ prompt: "", answers: ["", "", "", ""], correctIndex: 0, explanation: "" }))}
-            >
-              Add Question
-            </Button>
+            {selectedQuizId ? (
+              <div className="grid gap-4 xl:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
+                <div className="max-h-[32rem] space-y-2 overflow-y-auto rounded-xl border border-white/10 bg-slate-950/40 p-3">
+                  {(selectedQuiz?.questions ?? []).map((question, index) => (
+                    <button
+                      key={question.id}
+                      type="button"
+                      onClick={() => setSelectedQuestionId(question.id)}
+                      className={`w-full rounded-xl border px-3 py-3 text-left text-sm transition ${selectedQuestionId === question.id ? "border-emerald-400/60 bg-emerald-500/15 text-emerald-50 shadow-[inset_3px_0_0_rgba(52,211,153,0.9)]" : "border-white/10 bg-slate-900/70 text-slate-300 hover:border-white/20 hover:bg-white/5"}`}
+                    >
+                      <span className="block text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Question {index + 1}</span>
+                      <span className="mt-1 block truncate font-semibold">{question.prompt}</span>
+                      <span className="mt-1 block text-xs text-slate-500">{question.answers.length} answers</span>
+                    </button>
+                  ))}
+                  {selectedQuiz && !selectedQuiz.questions.length ? <p className="rounded-lg border border-dashed border-white/10 p-3 text-sm text-slate-500">No questions yet. Use the form to add the first one.</p> : null}
+                </div>
+                <div className="space-y-4 rounded-2xl border border-white/10 bg-slate-950/60 p-4">
+                  <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <p className="text-sm font-semibold text-white">{selectedQuestionId ? "Edit Question" : "Add Question"}</p>
+                      <p className="text-xs text-slate-500">{selectedQuiz?.title}</p>
+                    </div>
+                    {selectedQuestionId ? <Button variant="secondary" onClick={() => setSelectedQuestionId(null)}>Clear</Button> : null}
+                  </div>
+                  <Field label="Question prompt" value={questionDraft.prompt} onChange={(v) => setQuestionDraft({ ...questionDraft, prompt: v })} />
+                  <div className="grid gap-2">
+                  {questionDraft.answers.map((answer, index) => (
+                    <label key={index} className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-sm text-slate-300 ${questionDraft.correctIndex === index ? "border-emerald-400/30 bg-emerald-400/10" : "border-white/10 bg-slate-900/60"}`}>
+                      <input type="radio" name="correct" checked={questionDraft.correctIndex === index} onChange={() => setQuestionDraft({ ...questionDraft, correctIndex: index })} />
+                      <input value={answer} onChange={(e) => {
+                        const answers = [...questionDraft.answers];
+                        answers[index] = e.target.value;
+                        setQuestionDraft({ ...questionDraft, answers });
+                      }} className="flex-1 rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-white" placeholder={`Answer ${index + 1}`} />
+                    </label>
+                  ))}
+                  </div>
+                  <Field label="Explanation" value={questionDraft.explanation} onChange={(v) => setQuestionDraft({ ...questionDraft, explanation: v })} />
+                  <div className="flex flex-col gap-2 sm:flex-row sm:justify-between">
+                    {selectedQuestionId ? (
+                      <Button variant="secondary" disabled={busy} onClick={() => void run({ action: "delete_question", questionId: selectedQuestionId }, "Question deleted.").then(() => setSelectedQuestionId(null))}>
+                        <Trash2 className="mr-2 size-4" /> Delete Question
+                      </Button>
+                    ) : <span />}
+                    <Button
+                      disabled={!selectedQuizId || !questionDraft.prompt.trim() || busy}
+                      onClick={() => void run({
+                        action: selectedQuestionId ? "update_question" : "create_question",
+                        ...(selectedQuestionId ? { questionId: selectedQuestionId } : {}),
+                        question: {
+                          quizId: selectedQuizId,
+                          prompt: questionDraft.prompt,
+                          answers: questionDraft.answers.filter(Boolean),
+                          correctIndex: questionDraft.correctIndex,
+                          explanation: questionDraft.explanation,
+                        },
+                      }, selectedQuestionId ? "Question updated." : "Question added.").then(() => setSelectedQuestionId(null))}
+                    >
+                      {selectedQuestionId ? "Save Question" : "Add Question"}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <p className="rounded-lg border border-dashed border-white/10 p-3 text-sm text-slate-500">Select a quiz above to manage its questions.</p>
+            )}
           </div>
         </div>
       )}
@@ -1304,6 +1402,30 @@ function GateChip({ kind, title, detail }: { kind: "quiz" | "assignment" | "warn
       <span className="max-w-[20rem] truncate text-[11px] font-bold">{title}</span>
       <span className="text-[10px] opacity-75">{detail}</span>
     </span>
+  );
+}
+
+function AssessmentStatusChip({ label, tone = "default" }: { label: string; tone?: "default" | "success" | "muted" }) {
+  const toneClass =
+    tone === "success"
+      ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-200"
+      : tone === "muted"
+        ? "border-white/10 bg-slate-800/80 text-slate-400"
+        : "border-white/10 bg-slate-950/70 text-slate-300";
+  return <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${toneClass}`}>{label}</span>;
+}
+
+function AssessmentEditorHeader({ title, detail, status }: { title: string; detail: string; status?: string }) {
+  return (
+    <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-300">{title}</p>
+          <p className="mt-1 break-words text-sm text-slate-400">{detail}</p>
+        </div>
+        {status ? <AssessmentStatusChip label={status} tone={status === "Active" ? "success" : "muted"} /> : null}
+      </div>
+    </div>
   );
 }
 
