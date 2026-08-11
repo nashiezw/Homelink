@@ -147,7 +147,7 @@ export function CourseWorkspace({
   const [quizDraft, setQuizDraft] = useState({ title: "", description: "", passingPercentage: "80", moduleId: "", lessonId: "", randomise: true, timeLimitMinutes: "" });
   const [assignmentDraft, setAssignmentDraft] = useState({ title: "", instructions: "", gradingGuidance: "", points: "100", moduleId: "", lessonId: "", dueDays: "" });
   const [questionDraft, setQuestionDraft] = useState({ prompt: "", answers: ["", "", "", ""], correctIndex: 0, explanation: "" });
-  const [communityDraft, setCommunityDraft] = useState({ enabled: false, name: "Zimbabwe Real Estate Professionals Network", whatsappUrl: "", inviteText: "Join fellow learners for market insights and professional support.", sharePrompt: "I have enrolled with HouseLink Academy to grow my Zimbabwe real estate knowledge." });
+  const [communityDraft, setCommunityDraft] = useState({ enabled: false, name: "", whatsappUrl: "", inviteText: "", sharePrompt: "" });
   const [certificationDraft, setCertificationDraft] = useState({
     passingPercentage: 80,
     certificateEnabled: false,

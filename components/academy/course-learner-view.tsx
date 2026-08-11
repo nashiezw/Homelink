@@ -298,6 +298,11 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
   const theme = data.programme?.theme;
   const accent = theme?.accent ?? primaryColour;
   const heroGradient = theme?.gradient ?? "from-emerald-600 via-emerald-700 to-teal-800";
+  const community = data.settings.community;
+  const communityName = String(community?.name ?? "").trim();
+  const communityInviteText = String(community?.inviteText ?? "").trim();
+  const communityWhatsappUrl = String(community?.whatsappUrl ?? "").trim();
+  const communitySharePrompt = String(community?.sharePrompt ?? "").trim();
   const tabItems: Array<{ id: Tab; label: string; icon: typeof BookOpen }> = [
     { id: "curriculum", label: "Curriculum", icon: BookOpen },
     { id: "toolkit", label: "Toolkit", icon: ClipboardCheck },
@@ -375,7 +380,7 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
       </div>
       <TrainingDisclaimer compact className="mt-6" />
 
-      {data.settings.community?.enabled ? <section className="mt-5 rounded-xl border border-emerald-200 bg-emerald-50 p-5 text-slate-800 shadow-sm"><div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"><div><p className="text-sm font-bold text-emerald-900">{data.settings.community.name || "Zimbabwe Real Estate Professionals Network"}</p><p className="mt-1 text-sm leading-6 text-slate-600">{data.settings.community.inviteText}</p></div><div className="flex flex-wrap gap-2"><a href={data.settings.community.whatsappUrl} target="_blank" rel="noreferrer"><Button disabled={!data.settings.community.whatsappUrl}>Join WhatsApp group</Button></a><Button variant="secondary" onClick={() => navigator.clipboard.writeText(data.settings.community?.sharePrompt || "I have enrolled with HouseLink Academy.").then(() => showToast("Share message copied.", "success"))}>Copy share message</Button></div></div></section> : null}
+      {community?.enabled ? <section className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-slate-800 shadow-sm dark:border-emerald-400/20 dark:bg-emerald-400/10 sm:p-5"><div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"><div className="min-w-0"><p className="text-sm font-black text-emerald-900 dark:text-emerald-100">{communityName || "Academy community"}</p>{communityInviteText ? <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">{communityInviteText}</p> : <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">Admin has enabled community sharing for this course.</p>}</div><div className="flex flex-col gap-2 sm:flex-row"><a href={communityWhatsappUrl || undefined} target="_blank" rel="noreferrer" className={!communityWhatsappUrl ? "pointer-events-none opacity-50" : undefined}><Button disabled={!communityWhatsappUrl}>Join WhatsApp group</Button></a>{communitySharePrompt ? <Button variant="secondary" onClick={() => navigator.clipboard.writeText(communitySharePrompt).then(() => showToast("Share message copied.", "success"))}>Copy share message</Button> : null}</div></div></section> : null}
 
       {tab === "curriculum" && (
         <div className="mt-6">
