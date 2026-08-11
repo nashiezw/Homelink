@@ -1187,10 +1187,24 @@ export async function runAcademyAction(body: Record<string, any>, actor: Actor) 
     await audit(actor, "academy.assignment.update", assignment.id, { title: assignment.title });
     return assignment;
   }
-  if (action === "archive_assignment" || action === "restore_assignment" || action === "delete_assignment") {
+  if (action === "archive_assignment" || action === "restore_assignment") {
     const assignment = await prisma.assignment.update({ where: { id: String(body.assignmentId) }, data: { active: action === "restore_assignment" } });
     await audit(actor, `academy.assignment.${action.replace("_assignment", "")}`, assignment.id, { active: assignment.active });
     return assignment;
+  }
+  if (action === "delete_assignment") {
+    const assignmentId = String(body.assignmentId);
+    const [assignment, submissionCount] = await Promise.all([
+      prisma.assignment.findUnique({ where: { id: assignmentId }, select: { id: true, title: true } }),
+      prisma.assignmentSubmission.count({ where: { assignmentId } }),
+    ]);
+    if (!assignment) throw new Error("Assignment not found.");
+    if (submissionCount > 0) {
+      throw new Error("Cannot permanently delete an assignment with learner submissions. Archive it instead to preserve learner records.");
+    }
+    await prisma.assignment.delete({ where: { id: assignmentId } });
+    await audit(actor, "academy.assignment.delete", assignmentId, { title: assignment.title, submissionCount });
+    return { id: assignmentId, deleted: true };
   }
   if (action === "review_assignment_submission") {
     const status = enumValue(AssignmentSubmissionStatus, body.review?.status, AssignmentSubmissionStatus.GRADED);

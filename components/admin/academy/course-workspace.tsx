@@ -145,7 +145,7 @@ export function CourseWorkspace({
   const [overrideLessonId, setOverrideLessonId] = useState<string>("");
   const [overrideModuleId, setOverrideModuleId] = useState<string>("");
   const [quizDraft, setQuizDraft] = useState({ title: "", description: "", passingPercentage: "80", moduleId: "", lessonId: "", randomise: true, timeLimitMinutes: "" });
-  const [assignmentDraft, setAssignmentDraft] = useState({ title: "", description: "", points: "100", moduleId: "", lessonId: "", dueDays: "" });
+  const [assignmentDraft, setAssignmentDraft] = useState({ title: "", instructions: "", gradingGuidance: "", points: "100", moduleId: "", lessonId: "", dueDays: "" });
   const [questionDraft, setQuestionDraft] = useState({ prompt: "", answers: ["", "", "", ""], correctIndex: 0, explanation: "" });
   const [certificationDraft, setCertificationDraft] = useState({
     passingPercentage: 80,
@@ -314,12 +314,14 @@ export function CourseWorkspace({
     if (!tree) return;
     const assignment = tree.assignments.find((entry) => entry.id === selectedAssignmentId);
     if (!assignment) {
-      setAssignmentDraft({ title: "", description: "", points: "100", moduleId: "", lessonId: "", dueDays: "" });
+      setAssignmentDraft({ title: "", instructions: "", gradingGuidance: "", points: "100", moduleId: "", lessonId: "", dueDays: "" });
       return;
     }
+    const parsedDescription = splitAssignmentDescription(assignment.description ?? "");
     setAssignmentDraft({
       title: assignment.title,
-      description: assignment.description ?? "",
+      instructions: parsedDescription.instructions,
+      gradingGuidance: parsedDescription.gradingGuidance,
       points: String(assignment.points ?? 100),
       moduleId: assignment.moduleId ?? "",
       lessonId: assignment.lessonId ?? "",
@@ -1027,8 +1029,26 @@ export function CourseWorkspace({
                     <>
                       <AssessmentEditorHeader title="Edit assignment gate" detail={checkpointLabel(selectedAssignment ?? { moduleId: null, lessonId: null }, tree)} status={selectedAssignment?.active ? "Active" : "Archived"} />
                       <Field label="Assignment title" value={assignmentDraft.title} onChange={(title) => setAssignmentDraft({ ...assignmentDraft, title })} />
-                      <TextareaField label="Evidence instructions" value={assignmentDraft.description} rows={4} onChange={(description) => setAssignmentDraft({ ...assignmentDraft, description })} />
-                      <div className="grid gap-3 sm:grid-cols-2"><NumberField label="Points" value={assignmentDraft.points} min={1} onChange={(points) => setAssignmentDraft({ ...assignmentDraft, points })} /><NumberField label="Due in days (optional)" value={assignmentDraft.dueDays} min={0} onChange={(dueDays) => setAssignmentDraft({ ...assignmentDraft, dueDays })} /></div>
+                      <TextareaField
+                        label="Learner evidence instructions"
+                        value={assignmentDraft.instructions}
+                        rows={5}
+                        onChange={(instructions) => setAssignmentDraft({ ...assignmentDraft, instructions })}
+                      />
+                      <TextareaField
+                        label="Grading guidance / explanation"
+                        value={assignmentDraft.gradingGuidance}
+                        rows={4}
+                        onChange={(gradingGuidance) => setAssignmentDraft({ ...assignmentDraft, gradingGuidance })}
+                      />
+                      <div className="rounded-xl border border-emerald-400/20 bg-emerald-400/10 p-3 text-xs leading-5 text-emerald-50/90">
+                        <p className="font-semibold text-emerald-100">Recommended assignment brief</p>
+                        <p className="mt-1">Tell learners exactly what evidence to upload, how many scenarios/forms are required, what quality standard you expect, and how admin will grade it.</p>
+                      </div>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <NumberField label="Points" value={assignmentDraft.points} min={1} onChange={(points) => setAssignmentDraft({ ...assignmentDraft, points })} />
+                        <NumberField label="Due in days (optional)" value={assignmentDraft.dueDays} min={0} onChange={(dueDays) => setAssignmentDraft({ ...assignmentDraft, dueDays })} />
+                      </div>
                       <CheckpointPlacementFields
                         moduleId={assignmentDraft.moduleId}
                         lessonId={assignmentDraft.lessonId}
@@ -1037,16 +1057,50 @@ export function CourseWorkspace({
                         onModuleChange={(moduleId) => setAssignmentDraft({ ...assignmentDraft, moduleId, lessonId: "" })}
                         onLessonChange={(lessonId) => setAssignmentDraft({ ...assignmentDraft, lessonId })}
                       />
-                      <div className="flex flex-wrap justify-between gap-2"><Button variant="secondary" disabled={busy} onClick={() => void run({ action: selectedAssignment?.active ? "delete_assignment" : "restore_assignment", assignmentId: selectedAssignmentId }, selectedAssignment?.active ? "Assignment removed from learner view." : "Assignment restored.").then(() => setSelectedAssignmentId(null))}>{selectedAssignment?.active ? "Delete / Archive assignment" : "Restore assignment"}</Button>
+                      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-between">
+                        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+                          <Button
+                            variant="secondary"
+                            disabled={busy || !selectedAssignment}
+                            onClick={() => void run({
+                              action: "create_assignment",
+                              assignment: {
+                                courseId,
+                                title: `${assignmentDraft.title || selectedAssignment?.title || "Assignment"} copy`,
+                                description: composeAssignmentDescription(assignmentDraft),
+                                points: Math.max(1, Number(assignmentDraft.points) || 100),
+                                dueDays: assignmentDraft.dueDays ? Number(assignmentDraft.dueDays) : null,
+                                moduleId: assignmentDraft.lessonId ? allLessons.find((lesson) => lesson.id === assignmentDraft.lessonId)?.moduleId ?? assignmentDraft.moduleId : assignmentDraft.moduleId || null,
+                                lessonId: assignmentDraft.lessonId || null,
+                              },
+                            }, "Assignment duplicated.")}
+                          >
+                            <Copy className="mr-2 size-4" /> Duplicate
+                          </Button>
+                          <Button variant="secondary" disabled={busy} onClick={() => void run({ action: selectedAssignment?.active ? "archive_assignment" : "restore_assignment", assignmentId: selectedAssignmentId }, selectedAssignment?.active ? "Assignment removed from learner view." : "Assignment restored.").then(() => setSelectedAssignmentId(null))}>{selectedAssignment?.active ? "Archive assignment" : "Restore assignment"}</Button>
+                          <Button
+                            variant="secondary"
+                            className="border-red-500/30 text-red-200 hover:border-red-400/60 hover:bg-red-500/10"
+                            disabled={busy || !selectedAssignmentId}
+                            onClick={() => {
+                              if (!selectedAssignmentId) return;
+                              const confirmed = window.confirm("Permanently delete this assignment? This only works when there are no learner submissions. Use Archive for assignments that learners have already used.");
+                              if (!confirmed) return;
+                              void run({ action: "delete_assignment", assignmentId: selectedAssignmentId }, "Assignment permanently deleted.").then(() => setSelectedAssignmentId(null));
+                            }}
+                          >
+                            <Trash2 className="mr-2 size-4" /> Delete permanently
+                          </Button>
+                        </div>
                         <Button
-                          disabled={busy || !assignmentDraft.title.trim() || !assignmentDraft.description.trim()}
+                          disabled={busy || !assignmentDraft.title.trim() || !assignmentDraft.instructions.trim()}
                           onClick={() => void run({
                             action: "update_assignment",
                             assignmentId: selectedAssignmentId,
                             assignment: {
                               courseId,
                               title: assignmentDraft.title,
-                              description: assignmentDraft.description,
+                              description: composeAssignmentDescription(assignmentDraft),
                               points: Math.max(1, Number(assignmentDraft.points) || 100), dueDays: assignmentDraft.dueDays ? Number(assignmentDraft.dueDays) : null,
                               moduleId: assignmentDraft.lessonId ? allLessons.find((lesson) => lesson.id === assignmentDraft.lessonId)?.moduleId ?? assignmentDraft.moduleId : assignmentDraft.moduleId || null,
                               lessonId: assignmentDraft.lessonId || null,
@@ -1471,6 +1525,33 @@ function AssessmentEditorHeader({ title, detail, status }: { title: string; deta
 
 function clampPercentage(value: number) {
   return Math.min(100, Math.max(0, Math.round(value)));
+}
+
+function splitAssignmentDescription(value: string) {
+  const normalized = String(value ?? "").trim();
+  if (!normalized) return { instructions: "", gradingGuidance: "" };
+  const explicitMarker = /\n\s*(?:Explanation \/ grading guidance|Grading guidance|Rubric)\s*:\s*/i;
+  const explicitParts = normalized.split(explicitMarker);
+  if (explicitParts.length > 1) {
+    return {
+      instructions: explicitParts[0].trim(),
+      gradingGuidance: explicitParts.slice(1).join("\n").trim(),
+    };
+  }
+  const inlineRubricIndex = normalized.search(/\bRubric\s*:/i);
+  if (inlineRubricIndex > 0) {
+    return {
+      instructions: normalized.slice(0, inlineRubricIndex).trim(),
+      gradingGuidance: normalized.slice(inlineRubricIndex).replace(/^Rubric\s*:\s*/i, "").trim(),
+    };
+  }
+  return { instructions: normalized, gradingGuidance: "" };
+}
+
+function composeAssignmentDescription(input: { instructions: string; gradingGuidance: string }) {
+  const instructions = input.instructions.trim();
+  const gradingGuidance = input.gradingGuidance.trim();
+  return gradingGuidance ? `${instructions}\n\nGrading guidance: ${gradingGuidance}` : instructions;
 }
 
 function stripHtml(value: string | null | undefined) {
