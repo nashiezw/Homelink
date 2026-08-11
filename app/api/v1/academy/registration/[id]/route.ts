@@ -1,3 +1,4 @@
+import { AcademyRegistrationStatus, Role } from "@prisma/client";
 import { getSessionUserIdFromRequest } from "@/lib/auth/session";
 import { ok, problem } from "@/lib/api/response";
 import { getMainPrisma } from "@/lib/db/main-prisma";
@@ -25,6 +26,7 @@ export async function GET(
           select: {
             id: true,
             title: true,
+            accessDurationDays: true,
           },
         },
         payment: {
@@ -45,8 +47,23 @@ export async function GET(
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { emailVerifiedAt: true },
+      select: { emailVerifiedAt: true, roles: true },
     });
+
+    if (registration.status === AcademyRegistrationStatus.APPROVED) {
+      const now = new Date();
+      const accessEndsAt = registration.accessEndsAt ?? new Date(now.getTime() + registration.course.accessDurationDays * 86400000);
+      await prisma.$transaction([
+        ...(user && !user.roles.includes(Role.PUBLIC_LEARNER)
+          ? [prisma.user.update({ where: { id: userId }, data: { roles: [...user.roles, Role.PUBLIC_LEARNER] } })]
+          : []),
+        prisma.courseEnrolment.upsert({
+          where: { courseId_agentId: { courseId: registration.courseId, agentId: userId } },
+          create: { courseId: registration.courseId, agentId: userId, status: "ACTIVE", dueAt: accessEndsAt },
+          update: { status: "ACTIVE", dueAt: accessEndsAt },
+        }),
+      ]);
+    }
 
     // Get email delivery status from audit log
     const emailAuditLog = await prisma.trainingAuditLog.findFirst({

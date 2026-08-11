@@ -164,7 +164,7 @@ export function PublicAcademyPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const browseMode = searchParams?.get("browse") === "1";
-  const { user, showToast } = useApp();
+  const { user, showToast, refreshUser } = useApp();
   const [courses, setCourses] = useState<PublicCourse[]>([]);
   const [academySettings, setAcademySettings] = useState<{ academyName?: string; paymentInstructions?: string } | null>(null);
   const [paymentConfig, setPaymentConfig] = useState<PublicPaymentConfig | null>(null);
@@ -309,8 +309,12 @@ export function PublicAcademyPage() {
     const approved = result.data.status === "APPROVED";
     const pending = result.data.status === "PENDING_PAYMENT" || result.data.status === "PAYMENT_UPLOADED";
     if (approved) {
+      await refreshUser();
       showToast("Your course access is active.");
-      router.push(`/dashboard/academy/${selected.id}`);
+      const finalPrice = result.data.finalPrice;
+      const currency = result.data.currency;
+      const priceQuery = typeof finalPrice === "number" && Number.isFinite(finalPrice) ? `&finalPrice=${finalPrice}` : "";
+      router.push(`/academy/registration-confirmation?id=${result.data.id}&emailSent=false${priceQuery}&currency=${currency || "USD"}`);
       return;
     }
     if (pending) {

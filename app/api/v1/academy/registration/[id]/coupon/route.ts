@@ -1,7 +1,8 @@
-import { Prisma, AcademyRegistrationStatus, PaymentStatus } from "@prisma/client";
+import { Prisma, AcademyRegistrationStatus, PaymentStatus, Role } from "@prisma/client";
 import { getSessionUserIdFromRequest } from "@/lib/auth/session";
 import { ok, problem } from "@/lib/api/response";
 import { getMainPrisma } from "@/lib/db/main-prisma";
+import { rewardSuccessfulAcademyReferral } from "@/lib/academy/engagement-repository";
 
 export const dynamic = "force-dynamic";
 
@@ -133,6 +134,9 @@ export async function POST(
       },
     });
     if (fullyCovered) {
+      if (user && !user.roles.includes(Role.PUBLIC_LEARNER)) {
+        await tx.user.update({ where: { id: userId }, data: { roles: [...user.roles, Role.PUBLIC_LEARNER] } });
+      }
       await tx.courseEnrolment.upsert({
         where: { courseId_agentId: { courseId: registration.courseId, agentId: userId } },
         create: { courseId: registration.courseId, agentId: userId, status: "ACTIVE", dueAt: accessEndsAt },
@@ -169,6 +173,10 @@ export async function POST(
     });
     return application;
   });
+
+  if (fullyCovered) {
+    await rewardSuccessfulAcademyReferral({ learnerId: userId, courseId: registration.courseId });
+  }
 
   return ok({
     id: updated.id,
