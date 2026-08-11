@@ -169,6 +169,9 @@ type LearnerCourseRow = {
   certificateIssuedAt: string | null;
   certificateEnabled: boolean;
   lastActivityDate: string | null;
+  lastLearningActivityDate?: string | null;
+  lastSeenAt?: string | null;
+  isOnline?: boolean;
   currentLesson: string | null;
   riskLevel: "HIGH" | "MEDIUM" | "LOW" | null;
   riskDescription: string | null;
@@ -873,6 +876,7 @@ function LearnerCourseCard({ learner, onViewProgress, onViewQuiz }: { learner: L
           <p className="break-words text-base font-bold text-white [overflow-wrap:anywhere]">{learner.learnerName}</p>
           <p className="break-words text-sm text-slate-400 [overflow-wrap:anywhere]">{learner.learnerEmail}</p>
           <div className="mt-3 flex flex-wrap gap-2">
+            {learner.isOnline ? <AdminStatusBadge status="Online now" variant="success" /> : null}
             <AdminStatusBadge status={formatStatus(learner.status)} variant={learner.status === "COMPLETED" ? "success" : learner.status === "IN_PROGRESS" ? "warning" : "info"} />
             <AdminStatusBadge status={learner.certificateStatus === "ACTIVE" ? "Certificate issued" : "Certificate missing"} variant={learner.certificateStatus === "ACTIVE" ? "success" : "muted"} />
             {learner.riskLevel ? <AdminStatusBadge status={`${learner.riskLevel} risk`} variant={riskVariant} /> : null}
@@ -904,7 +908,7 @@ function LearnerCourseCard({ learner, onViewProgress, onViewQuiz }: { learner: L
         <LearnerFact icon={BookOpen} label="Lessons" value={`${learner.completedLessons}/${learner.totalLessons}`} />
         <LearnerFact icon={BarChart3} label="Avg score" value={learner.averageScore ? `${learner.averageScore}%` : "N/A"} />
         <LearnerFact icon={Award} label="Reviewed" value={`${learner.assignmentsReviewed}/${learner.assignmentsSubmitted}`} />
-        <LearnerFact icon={Clock} label="Last active" value={formatRelativeDate(learner.lastActivityDate)} />
+        <LearnerFact icon={Clock} label={learner.isOnline ? "Presence" : "Last active"} value={formatActivityStatus(learner)} />
       </div>
 
       {(learner.currentLesson || learner.riskDescription) && (
@@ -934,11 +938,20 @@ function formatStatus(status: string) {
 function formatRelativeDate(value: string | null) {
   if (!value) return "Never";
   const date = new Date(value);
-  const days = Math.floor((Date.now() - date.getTime()) / 86400000);
-  if (days <= 0) return "Today";
+  const minutes = Math.max(0, Math.floor((Date.now() - date.getTime()) / 60000));
+  if (minutes < 1) return "Just now";
+  if (minutes < 60) return `${minutes} min ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} hr ago`;
+  const days = Math.floor(hours / 24);
   if (days === 1) return "1 day";
   if (days < 30) return `${days} days`;
   return date.toLocaleDateString();
+}
+
+function formatActivityStatus(learner: LearnerCourseRow) {
+  if (learner.isOnline) return "Online now";
+  return formatRelativeDate(learner.lastActivityDate);
 }
 
 function StudentQuizDetailView({ analytics }: { analytics: StudentQuizAnalytics }) {

@@ -109,6 +109,7 @@ export async function GET(request: Request) {
         examAttempts,
         assignmentSubmissions,
         certificateIssues,
+        activeSessions,
         atRiskLearners,
       ] = await Promise.all([
         prisma.user.findMany({
@@ -192,11 +193,26 @@ export async function GET(request: Request) {
           select: { agentId: true, courseId: true, status: true, issuedAt: true, revokedAt: true },
           orderBy: { issuedAt: "desc" },
         }),
+        prisma.appSession.findMany({
+          where: {
+            userId: { in: learnerIds },
+            revokedAt: null,
+            expiresAt: { gt: new Date() },
+          },
+          select: { userId: true, lastSeenAt: true },
+          orderBy: { lastSeenAt: "desc" },
+        }),
         identifyAtRiskLearners(),
       ]);
 
       const userMap = new Map(users.map((user) => [user.id, user]));
       const progressMap = new Map(courseProgress.map((progress) => [`${progress.agentId}:${progress.courseId}`, progress]));
+      const sessionMap = new Map<string, Date>();
+      activeSessions.forEach((session) => {
+        const current = sessionMap.get(session.userId);
+        if (!current || session.lastSeenAt > current) sessionMap.set(session.userId, session.lastSeenAt);
+      });
+      const onlineThreshold = Date.now() - 5 * 60 * 1000;
       const totalLessonsByCourse = new Map<string, number>();
       modules.forEach((module) => {
         const count = module.sections.reduce((total, section) => total + section.lessons.length, 0);
@@ -275,6 +291,7 @@ export async function GET(request: Request) {
         const assignments = assignmentStats.get(key) ?? { submitted: 0, reviewed: 0, pending: 0, grades: [] };
         const certificate = certificateMap.get(key) ?? null;
         const risk = riskMap.get(key) ?? riskMap.get(`${enrolment.agentId}:`) ?? null;
+        const lastSeenAt = sessionMap.get(enrolment.agentId) ?? null;
         const totalLessons = totalLessonsByCourse.get(enrolment.courseId) ?? 0;
         const completedLessons = lesson?.completed ?? 0;
         const lessonProgressPercent = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0;
@@ -282,7 +299,8 @@ export async function GET(request: Request) {
         const averageAssessmentScore = assessments.scores.length
           ? Math.round(assessments.scores.reduce((sum, score) => sum + score, 0) / assessments.scores.length)
           : Number(progress?.averageScore ?? 0);
-        const lastActivity = [lesson?.lastActivity, progress?.updatedAt, certificate?.issuedAt].filter(Boolean).sort((a, b) => Number(b) - Number(a))[0] ?? null;
+        const lastLearningActivity = [lesson?.lastActivity, progress?.updatedAt, certificate?.issuedAt].filter(Boolean).sort((a, b) => Number(b) - Number(a))[0] ?? null;
+        const lastActivity = [lastLearningActivity, lastSeenAt].filter(Boolean).sort((a, b) => Number(b) - Number(a))[0] ?? null;
         const status =
           progress?.status === "COMPLETED" || completionPercentage >= 100
             ? "COMPLETED"
@@ -319,6 +337,9 @@ export async function GET(request: Request) {
           certificateIssuedAt: certificate?.issuedAt ?? null,
           certificateEnabled: enrolment.course.certificateEnabled,
           lastActivityDate: lastActivity,
+          lastLearningActivityDate: lastLearningActivity,
+          lastSeenAt,
+          isOnline: lastSeenAt ? lastSeenAt.getTime() >= onlineThreshold : false,
           currentLesson: lesson?.currentLesson ?? null,
           riskLevel: risk?.riskLevel ?? null,
           riskDescription: risk?.riskDescription ?? (Array.isArray(risk?.riskFactors) ? risk.riskFactors.join(", ") : null),
