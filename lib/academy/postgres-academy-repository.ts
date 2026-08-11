@@ -10,7 +10,6 @@ import {
   TrainingVisibility,
 } from "@prisma/client";
 import { getMainPrisma } from "@/lib/db/main-prisma";
-import { ensureOfficialAcademySeed } from "@/lib/academy/official-academy-seed";
 import { reviewPublicLearnerApplication } from "@/lib/academy/public-academy-repository";
 import { reviewResourceAccessApplication } from "@/lib/academy/academy-resource-access";
 import { fetchCourseTree, resolveLessonSectionId } from "@/lib/academy/course-tree";
@@ -53,7 +52,6 @@ type Actor = { id: string; name: string };
 
 export async function getAcademyDashboard(options: { compact?: boolean } = {}) {
   await ensureAcademyDefaults();
-  await ensureOfficialAcademySeed();
   const prisma = getMainPrisma();
   const compact = options.compact === true;
   const [
