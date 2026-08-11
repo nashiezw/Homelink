@@ -1071,8 +1071,10 @@ export async function runAcademyAction(body: Record<string, any>, actor: Actor) 
     return quiz;
   }
   if (action === "create_question") {
-    const answers = Array.isArray(body.question?.answers) ? body.question.answers : [];
+    const answers = Array.isArray(body.question?.answers) ? body.question.answers.map((answer: unknown) => String(answer).trim()).filter(Boolean) : [];
     const correctIndex = numberOr(body.question?.correctIndex, 0);
+    if (answers.length < 2) throw new Error("At least two answer options are required.");
+    if (correctIndex < 0 || correctIndex >= answers.length) throw new Error("Select a valid correct answer.");
     const question = await prisma.quizQuestion.create({
       data: {
         quizId: stringOrNull(body.question?.quizId),
@@ -1103,8 +1105,10 @@ export async function runAcademyAction(body: Record<string, any>, actor: Actor) 
     return question;
   }
   if (action === "update_question") {
-    const answers = Array.isArray(body.question?.answers) ? body.question.answers.map((answer: unknown) => String(answer)).filter(Boolean) : [];
+    const answers = Array.isArray(body.question?.answers) ? body.question.answers.map((answer: unknown) => String(answer).trim()).filter(Boolean) : [];
     const correctIndex = numberOr(body.question?.correctIndex, 0);
+    if (answers.length < 2) throw new Error("At least two answer options are required.");
+    if (correctIndex < 0 || correctIndex >= answers.length) throw new Error("Select a valid correct answer.");
     const question = await prisma.$transaction(async (tx) => {
       await tx.quizAnswer.deleteMany({ where: { questionId: String(body.questionId) } });
       return tx.quizQuestion.update({

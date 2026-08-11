@@ -210,6 +210,14 @@ export function CourseWorkspace({
   const selectedQuiz = tree?.quizzes.find((quiz) => quiz.id === selectedQuizId);
   const selectedAssignment = tree?.assignments.find((assignment) => assignment.id === selectedAssignmentId);
   const selectedQuestion = selectedQuiz?.questions.find((question) => question.id === selectedQuestionId);
+  const preparedQuestionAnswers = useMemo(
+    () => questionDraft.answers
+      .map((label, originalIndex) => ({ label: label.trim(), originalIndex }))
+      .filter((answer) => answer.label.length > 0),
+    [questionDraft.answers],
+  );
+  const preparedCorrectIndex = preparedQuestionAnswers.findIndex((answer) => answer.originalIndex === questionDraft.correctIndex);
+  const canSaveQuestion = Boolean(selectedQuizId && questionDraft.prompt.trim() && preparedQuestionAnswers.length >= 2 && preparedCorrectIndex >= 0);
   const readinessItems = useMemo(() => {
     if (!tree) return [];
     const lessons = tree.modules.flatMap((module) => module.sections.flatMap((section) => section.lessons));
@@ -277,11 +285,30 @@ export function CourseWorkspace({
     }
     setQuestionDraft({
       prompt: selectedQuestion.prompt,
-      answers: [...selectedQuestion.answers, "", "", "", ""].slice(0, 4),
+      answers: selectedQuestion.answers.length >= 2 ? selectedQuestion.answers : [...selectedQuestion.answers, "", ""].slice(0, 2),
       correctIndex: selectedQuestion.correctIndex,
       explanation: selectedQuestion.explanation ?? "",
     });
   }, [selectedQuestion]);
+
+  function addAnswerOption() {
+    setQuestionDraft((current) => ({ ...current, answers: [...current.answers, ""] }));
+  }
+
+  function removeAnswerOption(index: number) {
+    setQuestionDraft((current) => {
+      if (current.answers.length <= 2) return current;
+      const answers = current.answers.filter((_, answerIndex) => answerIndex !== index);
+      let correctIndex = current.correctIndex;
+      if (current.correctIndex === index) {
+        correctIndex = answers.findIndex((answer) => answer.trim());
+        if (correctIndex < 0) correctIndex = 0;
+      } else if (current.correctIndex > index) {
+        correctIndex = current.correctIndex - 1;
+      }
+      return { ...current, answers, correctIndex };
+    });
+  }
 
   useEffect(() => {
     if (!tree) return;
@@ -1083,15 +1110,28 @@ export function CourseWorkspace({
                   <Field label="Question prompt" value={questionDraft.prompt} onChange={(v) => setQuestionDraft({ ...questionDraft, prompt: v })} />
                   <div className="grid gap-2">
                   {questionDraft.answers.map((answer, index) => (
-                    <label key={index} className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-sm text-slate-300 ${questionDraft.correctIndex === index ? "border-emerald-400/30 bg-emerald-400/10" : "border-white/10 bg-slate-900/60"}`}>
-                      <input type="radio" name="correct" checked={questionDraft.correctIndex === index} onChange={() => setQuestionDraft({ ...questionDraft, correctIndex: index })} />
-                      <input value={answer} onChange={(e) => {
-                        const answers = [...questionDraft.answers];
-                        answers[index] = e.target.value;
-                        setQuestionDraft({ ...questionDraft, answers });
-                      }} className="flex-1 rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-white" placeholder={`Answer ${index + 1}`} />
-                    </label>
+                    <div key={index} className={`rounded-xl border px-3 py-2 text-sm text-slate-300 ${questionDraft.correctIndex === index ? "border-emerald-400/40 bg-emerald-400/10" : "border-white/10 bg-slate-900/60"}`}>
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                        <label className="flex shrink-0 items-center gap-2 font-semibold">
+                          <input type="radio" name="correct" checked={questionDraft.correctIndex === index} onChange={() => setQuestionDraft({ ...questionDraft, correctIndex: index })} />
+                          {questionDraft.correctIndex === index ? "Correct answer" : "Mark correct"}
+                        </label>
+                        <input value={answer} onChange={(e) => {
+                          const answers = [...questionDraft.answers];
+                          answers[index] = e.target.value;
+                          setQuestionDraft({ ...questionDraft, answers });
+                        }} className="min-w-0 flex-1 rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-white" placeholder={`Answer ${index + 1}`} />
+                        <Button type="button" variant="secondary" disabled={questionDraft.answers.length <= 2} onClick={() => removeAnswerOption(index)} className="w-full sm:w-auto">
+                          Remove
+                        </Button>
+                      </div>
+                    </div>
                   ))}
+                    <Button type="button" variant="secondary" onClick={addAnswerOption} className="w-full sm:w-auto">
+                      <Plus className="mr-2 size-4" /> Add answer option
+                    </Button>
+                    <p className="text-xs leading-5 text-slate-500">Learners see answer choices shuffled on the quiz page, so the correct answer will not always appear first.</p>
+                    {!canSaveQuestion ? <p className="rounded-lg border border-amber-400/20 bg-amber-400/10 px-3 py-2 text-xs text-amber-100">Add at least 2 answers and mark a filled answer as correct before saving.</p> : null}
                   </div>
                   <Field label="Explanation" value={questionDraft.explanation} onChange={(v) => setQuestionDraft({ ...questionDraft, explanation: v })} />
                   <div className="flex flex-col gap-2 sm:flex-row sm:justify-between">
@@ -1101,15 +1141,15 @@ export function CourseWorkspace({
                       </Button>
                     ) : <span />}
                     <Button
-                      disabled={!selectedQuizId || !questionDraft.prompt.trim() || busy}
+                      disabled={!canSaveQuestion || busy}
                       onClick={() => void run({
                         action: selectedQuestionId ? "update_question" : "create_question",
                         ...(selectedQuestionId ? { questionId: selectedQuestionId } : {}),
                         question: {
                           quizId: selectedQuizId,
                           prompt: questionDraft.prompt,
-                          answers: questionDraft.answers.filter(Boolean),
-                          correctIndex: questionDraft.correctIndex,
+                          answers: preparedQuestionAnswers.map((answer) => answer.label),
+                          correctIndex: preparedCorrectIndex,
                           explanation: questionDraft.explanation,
                         },
                       }, selectedQuestionId ? "Question updated." : "Question added.").then(() => setSelectedQuestionId(null))}
