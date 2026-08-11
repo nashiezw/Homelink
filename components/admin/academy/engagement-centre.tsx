@@ -99,7 +99,7 @@ export function AcademyEngagementCentre() {
 
   if (!data) {
     return (
-      <div className="min-h-[320px] rounded-2xl border border-white/10 bg-slate-950/80 p-8 text-slate-300">
+      <div className="min-h-[320px] rounded-2xl border border-white/10 bg-slate-950/80 p-4 text-slate-300 sm:p-8">
         {loadError ? (
           <div className="max-w-2xl">
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-red-300">Engagement Centre needs attention</p>
@@ -116,9 +116,9 @@ export function AcademyEngagementCentre() {
     <div className="space-y-5">
       <section className="rounded-2xl border border-emerald-400/20 bg-gradient-to-br from-slate-950 via-slate-950 to-emerald-950/30 p-4 sm:p-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div>
+          <div className="min-w-0">
             <p className="text-xs font-bold uppercase tracking-[0.22em] text-emerald-300">Academy Engagement Centre</p>
-            <h2 className="mt-2 text-2xl font-black text-white">Community, referrals, testimonials and learner success</h2>
+            <h2 className="mt-2 text-2xl font-black leading-tight text-white">Community, referrals, testimonials and learner success</h2>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">Engagement is optional and separate from course access, assessments, progress and certificates. Admin controls what is visible and moderates every public-facing learner submission.</p>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row">
@@ -307,7 +307,7 @@ export function AcademyEngagementCentre() {
 }
 
 function Metric({ icon: Icon, label, value }: { icon: typeof Users; label: string; value: number }) {
-  return <div className="rounded-2xl border border-white/10 bg-slate-950 p-4"><Icon className="size-5 text-emerald-300" /><p className="mt-4 text-2xl font-black text-white">{value}</p><p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">{label}</p></div>;
+  return <div className="rounded-2xl border border-white/10 bg-slate-950 p-4"><Icon className="size-5 text-emerald-300" /><p className="mt-4 text-2xl font-black text-white">{value}</p><p className="text-xs font-bold uppercase tracking-[0.12em] text-slate-400 sm:tracking-[0.16em]">{label}</p></div>;
 }
 
 function RateBar({ label, value }: { label: string; value: number }) {
@@ -325,7 +325,7 @@ function RateBar({ label, value }: { label: string; value: number }) {
 }
 
 function Panel({ title, icon: Icon, children }: { title: string; icon: typeof Users; children: React.ReactNode }) {
-  return <section className="rounded-2xl border border-white/10 bg-slate-950/90 p-4 shadow-xl shadow-black/20"><div className="mb-4 flex items-center gap-2"><Icon className="size-5 text-emerald-300" /><h3 className="text-lg font-black text-white">{title}</h3></div>{children}</section>;
+  return <section className="rounded-2xl border border-white/10 bg-slate-950/90 p-4 shadow-xl shadow-black/20"><div className="mb-4 flex items-center gap-2"><Icon className="size-5 shrink-0 text-emerald-300" /><h3 className="min-w-0 text-lg font-black leading-tight text-white">{title}</h3></div>{children}</section>;
 }
 
 function Field({ label, value, onChange, type = "text", help }: { label: string; value: string; onChange: (value: string) => void; type?: string; help?: string }) {
@@ -353,7 +353,7 @@ function ModerationList({ title, empty, items, approveLabel = "Approve", rejectL
 }
 
 function ItemStack({ items }: { items: Array<{ id: string; title: string; detail: string; onEdit: () => void; onDelete: () => void }> }) {
-  return <div className="space-y-2">{items.length ? items.map((item) => <div key={item.id} className="flex flex-col gap-3 rounded-xl border border-white/10 bg-slate-900 p-3 sm:flex-row sm:items-center sm:justify-between"><div className="min-w-0"><p className="truncate text-sm font-bold text-white">{item.title}</p><p className="mt-1 text-xs text-slate-400">{item.detail}</p></div><div className="flex gap-2"><Button variant="secondary" onClick={item.onEdit}>Edit</Button><Button variant="secondary" className={cn("text-red-200")} onClick={item.onDelete}><Trash2 className="size-4" /></Button></div></div>) : <p className="rounded-xl border border-dashed border-white/10 p-4 text-sm text-slate-500">Nothing created yet.</p>}</div>;
+  return <div className="space-y-2">{items.length ? items.map((item) => <div key={item.id} className="flex flex-col gap-3 rounded-xl border border-white/10 bg-slate-900 p-3 sm:flex-row sm:items-center sm:justify-between"><div className="min-w-0"><p className="truncate text-sm font-bold text-white">{item.title}</p><p className="mt-1 break-words text-xs leading-5 text-slate-400">{item.detail}</p></div><div className="grid grid-cols-[1fr_auto] gap-2 sm:flex"><Button className="w-full sm:w-auto" variant="secondary" onClick={item.onEdit}>Edit</Button><Button variant="secondary" className={cn("text-red-200")} onClick={item.onDelete}><Trash2 className="size-4" /></Button></div></div>) : <p className="rounded-xl border border-dashed border-white/10 p-4 text-sm text-slate-500">Nothing created yet.</p>}</div>;
 }
 
 function toInputDateTime(value?: string | null) {

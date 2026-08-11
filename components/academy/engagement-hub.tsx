@@ -98,9 +98,9 @@ export function AcademyEngagementHub({ compact = false }: { compact?: boolean })
     <section className={compact ? "space-y-4" : "mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8"}>
       <div className="rounded-3xl border border-emerald-200 bg-gradient-to-br from-white via-emerald-50/60 to-white p-4 shadow-sm dark:border-emerald-400/20 dark:from-slate-950 dark:via-emerald-950/20 dark:to-slate-950 sm:p-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div>
+          <div className="min-w-0">
             <p className="text-xs font-black uppercase tracking-[0.2em] text-emerald-700 dark:text-emerald-300">Optional Learner Engagement</p>
-            <h2 className="mt-2 text-2xl font-black text-slate-950 dark:text-white">{data.settings.communityName ?? "Academy Engagement Hub"}</h2>
+            <h2 className="mt-2 text-2xl font-black leading-tight text-slate-950 dark:text-white">{data.settings.communityName ?? "Academy Engagement Hub"}</h2>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600 dark:text-slate-300">{data.settings.invitation}</p>
           </div>
           {data.settings.communityEnabled && communityLinks[0] && (
@@ -251,7 +251,7 @@ function Select({ label, value, options, onChange }: { label: string; value: str
 }
 
 function MiniStatus({ rows, empty }: { rows: Array<{ id: string; title: string; detail: string }>; empty: string }) {
-  return <div className="mt-4 space-y-2">{rows.length ? rows.slice(0, 4).map((row) => <div key={row.id} className="flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-3 py-2 text-sm dark:bg-slate-900"><span className="min-w-0 truncate font-semibold">{row.title}</span><span className="shrink-0 text-xs font-black uppercase text-emerald-700 dark:text-emerald-300">{row.detail}</span></div>) : <p className="text-sm text-slate-500">{empty}</p>}</div>;
+  return <div className="mt-4 space-y-2">{rows.length ? rows.slice(0, 4).map((row) => <div key={row.id} className="flex flex-col gap-1 rounded-xl bg-slate-50 px-3 py-2 text-sm dark:bg-slate-900 sm:flex-row sm:items-center sm:justify-between"><span className="min-w-0 truncate font-semibold">{row.title}</span><span className="shrink-0 text-xs font-black uppercase text-emerald-700 dark:text-emerald-300">{row.detail}</span></div>) : <p className="text-sm text-slate-500">{empty}</p>}</div>;
 }
 
 function EmptyState({ title, body }: { title: string; body: string }) {
