@@ -191,22 +191,22 @@ export function AcademyEngagementCentre() {
             ))}
           </div>
           <div className="mt-4 grid gap-3">
-            <Field label="Community name" value={settingsDraft.communityName ?? ""} onChange={(communityName) => setSettingsDraft({ ...settingsDraft, communityName })} />
+            <Field label="Community name" help="Shown as the learner Engagement Hub heading." value={settingsDraft.communityName ?? ""} onChange={(communityName) => setSettingsDraft({ ...settingsDraft, communityName })} />
             <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/10 p-4">
               <p className="text-sm font-black text-white">Community and sharing destinations</p>
               <p className="mt-1 text-sm leading-6 text-emerald-100/80">These links are what learners see in the Engage tab. Leave any network blank to hide it.</p>
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                <Field label="WhatsApp group invite URL" value={settingsDraft.whatsappUrl ?? ""} onChange={(whatsappUrl) => setSettingsDraft({ ...settingsDraft, whatsappUrl })} />
-                <Field label="WhatsApp channel URL" value={settingsDraft.whatsappChannelUrl ?? ""} onChange={(whatsappChannelUrl) => setSettingsDraft({ ...settingsDraft, whatsappChannelUrl })} />
-                <Field label="Facebook page/group URL" value={settingsDraft.facebookPageUrl ?? ""} onChange={(facebookPageUrl) => setSettingsDraft({ ...settingsDraft, facebookPageUrl })} />
-                <Field label="LinkedIn page URL" value={settingsDraft.linkedinPageUrl ?? ""} onChange={(linkedinPageUrl) => setSettingsDraft({ ...settingsDraft, linkedinPageUrl })} />
+                <Field label="WhatsApp group invite URL" help="Adds the Join WhatsApp group button for learners." value={settingsDraft.whatsappUrl ?? ""} onChange={(whatsappUrl) => setSettingsDraft({ ...settingsDraft, whatsappUrl })} />
+                <Field label="WhatsApp channel URL" help="Adds the WhatsApp channel button when saved." value={settingsDraft.whatsappChannelUrl ?? ""} onChange={(whatsappChannelUrl) => setSettingsDraft({ ...settingsDraft, whatsappChannelUrl })} />
+                <Field label="Facebook page/group URL" help="Adds the Facebook community button when saved." value={settingsDraft.facebookPageUrl ?? ""} onChange={(facebookPageUrl) => setSettingsDraft({ ...settingsDraft, facebookPageUrl })} />
+                <Field label="LinkedIn page URL" help="Adds the LinkedIn community button when saved." value={settingsDraft.linkedinPageUrl ?? ""} onChange={(linkedinPageUrl) => setSettingsDraft({ ...settingsDraft, linkedinPageUrl })} />
               </div>
             </div>
-            <Textarea label="Learner invitation" value={settingsDraft.invitation ?? ""} onChange={(invitation) => setSettingsDraft({ ...settingsDraft, invitation })} />
-            <Textarea label="Share prompt" value={settingsDraft.sharePrompt ?? ""} onChange={(sharePrompt) => setSettingsDraft({ ...settingsDraft, sharePrompt })} />
-            <Field label="Referral reward label" value={settingsDraft.referralRewardLabel ?? ""} onChange={(referralRewardLabel) => setSettingsDraft({ ...settingsDraft, referralRewardLabel })} />
-            <Textarea label="Campaign schedule" value={settingsDraft.campaignSchedule ?? ""} onChange={(campaignSchedule) => setSettingsDraft({ ...settingsDraft, campaignSchedule })} />
-            <Textarea label="Weekly WhatsApp themes" value={settingsDraft.weeklyThemes ?? ""} onChange={(weeklyThemes) => setSettingsDraft({ ...settingsDraft, weeklyThemes })} />
+            <Textarea label="Learner invitation" help="Short introduction displayed at the top of the learner Engage tab." value={settingsDraft.invitation ?? ""} onChange={(invitation) => setSettingsDraft({ ...settingsDraft, invitation })} />
+            <Textarea label="Share prompt" help="Copied into the learner's share message. Their referral link/code is appended automatically." value={settingsDraft.sharePrompt ?? ""} onChange={(sharePrompt) => setSettingsDraft({ ...settingsDraft, sharePrompt })} />
+            <Field label="Referral reward label" help="Leave blank if there is no reward. This is visible to learners." value={settingsDraft.referralRewardLabel ?? ""} onChange={(referralRewardLabel) => setSettingsDraft({ ...settingsDraft, referralRewardLabel })} />
+            <Textarea label="Campaign schedule" help="Internal admin reminder copy. This is not shown as a learner calendar unless you also add themes below." value={settingsDraft.campaignSchedule ?? ""} onChange={(campaignSchedule) => setSettingsDraft({ ...settingsDraft, campaignSchedule })} />
+            <Textarea label="Community calendar themes" help="One learner-facing item per line. Leave blank to hide the Community calendar card." value={settingsDraft.weeklyThemes ?? ""} onChange={(weeklyThemes) => setSettingsDraft({ ...settingsDraft, weeklyThemes })} />
           </div>
         </Panel>
 
@@ -259,12 +259,12 @@ export function AcademyEngagementCentre() {
       <section className="grid gap-4 xl:grid-cols-2">
         <Panel title="Practical Challenges" icon={Sparkles}>
           <EngagementForm>
-            <Field label="Challenge title" value={challengeDraft.title} onChange={(title) => setChallengeDraft({ ...challengeDraft, title })} />
-            <Textarea label="Learner instructions" value={challengeDraft.instructions} onChange={(instructions) => setChallengeDraft({ ...challengeDraft, instructions })} />
+            <Field label="Challenge title" help="Shown on the learner Engage tab only when this challenge is published." value={challengeDraft.title} onChange={(title) => setChallengeDraft({ ...challengeDraft, title })} />
+            <Textarea label="Learner instructions" help="Tell learners exactly what evidence, link, or written summary to submit." value={challengeDraft.instructions} onChange={(instructions) => setChallengeDraft({ ...challengeDraft, instructions })} />
             <div className="grid gap-3 sm:grid-cols-2">
               <Select label="Course" value={challengeDraft.courseId} options={[{ value: "", label: "All enrolled learners" }, ...data.courses.map((course) => ({ value: course.id, label: course.title }))]} onChange={(courseId) => setChallengeDraft({ ...challengeDraft, courseId })} />
               <Select label="Status" value={challengeDraft.status} options={["DRAFT", "PUBLISHED", "ARCHIVED"].map((status) => ({ value: status, label: status }))} onChange={(status) => setChallengeDraft({ ...challengeDraft, status })} />
-              <Field label="Reward label" value={challengeDraft.rewardLabel} onChange={(rewardLabel) => setChallengeDraft({ ...challengeDraft, rewardLabel })} />
+              <Field label="Reward label" help="Optional learner-facing recognition text." value={challengeDraft.rewardLabel} onChange={(rewardLabel) => setChallengeDraft({ ...challengeDraft, rewardLabel })} />
               <Field type="datetime-local" label="Starts" value={challengeDraft.startsAt} onChange={(startsAt) => setChallengeDraft({ ...challengeDraft, startsAt })} />
               <Field type="datetime-local" label="Ends" value={challengeDraft.endsAt} onChange={(endsAt) => setChallengeDraft({ ...challengeDraft, endsAt })} />
             </div>
@@ -285,8 +285,8 @@ export function AcademyEngagementCentre() {
 
         <Panel title="Office Hours" icon={CalendarClock}>
           <EngagementForm>
-            <Field label="Event title" value={officeDraft.title} onChange={(title) => setOfficeDraft({ ...officeDraft, title })} />
-            <Textarea label="Description / reminder copy" value={officeDraft.description} onChange={(description) => setOfficeDraft({ ...officeDraft, description })} />
+            <Field label="Event title" help="Shown on the learner Engage tab and notification." value={officeDraft.title} onChange={(title) => setOfficeDraft({ ...officeDraft, title })} />
+            <Textarea label="Description / reminder copy" help="Use this for what learners should bring, prepare, or ask." value={officeDraft.description} onChange={(description) => setOfficeDraft({ ...officeDraft, description })} />
             <div className="grid gap-3 sm:grid-cols-2">
               <Select label="Course" value={officeDraft.courseId} options={[{ value: "", label: "All enrolled learners" }, ...data.courses.map((course) => ({ value: course.id, label: course.title }))]} onChange={(courseId) => setOfficeDraft({ ...officeDraft, courseId })} />
               <Field type="datetime-local" label="Date and time" value={officeDraft.startsAt} onChange={(startsAt) => setOfficeDraft({ ...officeDraft, startsAt })} />
@@ -328,12 +328,12 @@ function Panel({ title, icon: Icon, children }: { title: string; icon: typeof Us
   return <section className="rounded-2xl border border-white/10 bg-slate-950/90 p-4 shadow-xl shadow-black/20"><div className="mb-4 flex items-center gap-2"><Icon className="size-5 text-emerald-300" /><h3 className="text-lg font-black text-white">{title}</h3></div>{children}</section>;
 }
 
-function Field({ label, value, onChange, type = "text" }: { label: string; value: string; onChange: (value: string) => void; type?: string }) {
-  return <label className="block text-xs font-bold uppercase tracking-[0.14em] text-slate-400">{label}<input type={type} value={value} onChange={(event) => onChange(event.target.value)} className="mt-2 w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-3 text-sm normal-case tracking-normal text-white outline-none focus:border-emerald-400" /></label>;
+function Field({ label, value, onChange, type = "text", help }: { label: string; value: string; onChange: (value: string) => void; type?: string; help?: string }) {
+  return <label className="block text-xs font-bold uppercase tracking-[0.14em] text-slate-400">{label}<input type={type} value={value} onChange={(event) => onChange(event.target.value)} className="mt-2 w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-3 text-sm normal-case tracking-normal text-white outline-none focus:border-emerald-400" />{help && <span className="mt-1 block text-xs normal-case leading-5 tracking-normal text-slate-500">{help}</span>}</label>;
 }
 
-function Textarea({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
-  return <label className="block text-xs font-bold uppercase tracking-[0.14em] text-slate-400">{label}<textarea value={value} rows={4} onChange={(event) => onChange(event.target.value)} className="mt-2 w-full resize-y rounded-xl border border-white/10 bg-slate-900 px-3 py-3 text-sm normal-case tracking-normal text-white outline-none focus:border-emerald-400" /></label>;
+function Textarea({ label, value, onChange, help }: { label: string; value: string; onChange: (value: string) => void; help?: string }) {
+  return <label className="block text-xs font-bold uppercase tracking-[0.14em] text-slate-400">{label}<textarea value={value} rows={4} onChange={(event) => onChange(event.target.value)} className="mt-2 w-full resize-y rounded-xl border border-white/10 bg-slate-900 px-3 py-3 text-sm normal-case tracking-normal text-white outline-none focus:border-emerald-400" />{help && <span className="mt-1 block text-xs normal-case leading-5 tracking-normal text-slate-500">{help}</span>}</label>;
 }
 
 function Select({ label, value, options, onChange }: { label: string; value: string; options: Array<{ value: string; label: string }>; onChange: (value: string) => void }) {

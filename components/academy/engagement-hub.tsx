@@ -112,7 +112,7 @@ export function AcademyEngagementHub({ compact = false }: { compact?: boolean })
         {message && <p className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-900 dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-100">{message}</p>}
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
+      <div className="grid items-start gap-4 xl:grid-cols-[0.95fr_1.05fr]">
         <HubCard title="Consent and visibility" icon={ShieldCheck}>
           <p className="mb-4 text-sm leading-6 text-slate-600 dark:text-slate-300">These activities are optional. They never block your course progress, assessments, certificates or access.</p>
           <div className="grid gap-3 sm:grid-cols-2">
@@ -152,7 +152,7 @@ export function AcademyEngagementHub({ compact = false }: { compact?: boolean })
         </HubCard>}
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-3">
+      <div className="grid items-start gap-4 md:grid-cols-2 xl:grid-cols-3">
         {data.settings.communityEnabled && <HubCard title="Community channels" icon={MessageCircle}>
           {communityLinks.length ? (
             <div className="grid gap-2">
@@ -235,7 +235,7 @@ export function AcademyEngagementHub({ compact = false }: { compact?: boolean })
 }
 
 function HubCard({ title, icon: Icon, children }: { title: string; icon: typeof Users; children: React.ReactNode }) {
-  return <section className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950 sm:p-5"><div className="mb-4 flex items-center gap-2"><span className="grid size-10 place-items-center rounded-2xl bg-emerald-50 text-emerald-700 dark:bg-emerald-400/10 dark:text-emerald-300"><Icon className="size-5" /></span><h3 className="text-lg font-black text-slate-950 dark:text-white">{title}</h3></div>{children}</section>;
+  return <section className="h-fit rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950 sm:p-5"><div className="mb-4 flex items-center gap-2"><span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-emerald-50 text-emerald-700 dark:bg-emerald-400/10 dark:text-emerald-300"><Icon className="size-5" /></span><h3 className="text-lg font-black leading-tight text-slate-950 dark:text-white">{title}</h3></div>{children}</section>;
 }
 
 function Field({ label, value, onChange, type = "text" }: { label: string; value: string; onChange: (value: string) => void; type?: string }) {
@@ -255,7 +255,7 @@ function MiniStatus({ rows, empty }: { rows: Array<{ id: string; title: string; 
 }
 
 function EmptyState({ title, body }: { title: string; body: string }) {
-  return <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4 text-sm dark:border-slate-800 dark:bg-slate-900"><p className="font-black text-slate-900 dark:text-white">{title}</p><p className="mt-1 leading-6 text-slate-500 dark:text-slate-400">{body}</p></div>;
+  return <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4 text-sm dark:border-slate-800 dark:bg-slate-900"><p className="font-black text-slate-900 dark:text-white">{title}</p><p className="mt-1 max-w-prose leading-6 text-slate-500 dark:text-slate-400">{body}</p></div>;
 }
 
 function formatDateTime(value: string) {

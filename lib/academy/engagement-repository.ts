@@ -2,6 +2,9 @@ import { getMainPrisma } from "@/lib/db/main-prisma";
 
 type Actor = { id: string; name?: string | null };
 
+const LEGACY_DEFAULT_CAMPAIGN_SCHEDULE = "Weekly learner wins, practical field prompts, and office-hours reminders.";
+const LEGACY_DEFAULT_WEEKLY_THEMES = "Market update Monday\nDocument clinic Wednesday\nField win Friday";
+
 const DEFAULT_SETTINGS = {
   enabled: true,
   communityEnabled: true,
@@ -20,10 +23,10 @@ const DEFAULT_SETTINGS = {
   linkedinPageUrl: "",
   invitation: "Join the optional learner community for peer support, announcements, and practical field discussions.",
   sharePrompt: "I am building my real estate knowledge through HouseLink Academy.",
-  referralRewardLabel: "Admin-reviewed recognition reward",
+  referralRewardLabel: "",
   referralUrlBase: "",
-  campaignSchedule: "Weekly learner wins, practical field prompts, and office-hours reminders.",
-  weeklyThemes: "Market update Monday\nDocument clinic Wednesday\nField win Friday",
+  campaignSchedule: "",
+  weeklyThemes: "",
 };
 
 export async function getAdminAcademyEngagement() {
@@ -462,19 +465,21 @@ export async function ensureAcademyEngagementStorage() {
 async function ensureEngagementSettings() {
   const prisma = getMainPrisma() as any;
   try {
-    await prisma.academyEngagementSetting.upsert({
+    const settings = await prisma.academyEngagementSetting.upsert({
       where: { id: "singleton" },
       create: { id: "singleton", payload: DEFAULT_SETTINGS },
       update: {},
     });
+    await clearLegacyPublicDefaults(prisma, settings);
   } catch (error) {
     if (!isMissingEngagementStorage(error)) throw error;
     await createEngagementStorage(prisma);
-    await prisma.academyEngagementSetting.upsert({
+    const settings = await prisma.academyEngagementSetting.upsert({
       where: { id: "singleton" },
       create: { id: "singleton", payload: DEFAULT_SETTINGS },
       update: {},
     });
+    await clearLegacyPublicDefaults(prisma, settings);
   }
 }
 
@@ -657,7 +662,25 @@ async function audit(actor: Actor, action: string, target: string, metadata: Rec
 }
 
 function normalizeSettings(input: any) {
-  return { ...DEFAULT_SETTINGS, ...(input && typeof input === "object" ? input : {}) };
+  const settings = { ...DEFAULT_SETTINGS, ...(input && typeof input === "object" ? input : {}) };
+  if (settings.weeklyThemes === LEGACY_DEFAULT_WEEKLY_THEMES) settings.weeklyThemes = "";
+  if (settings.campaignSchedule === LEGACY_DEFAULT_CAMPAIGN_SCHEDULE) settings.campaignSchedule = "";
+  if (settings.referralRewardLabel === "Admin-reviewed recognition reward") settings.referralRewardLabel = "";
+  return settings;
+}
+
+async function clearLegacyPublicDefaults(prisma: any, settings: { id: string; payload: any } | null) {
+  if (!settings?.payload || typeof settings.payload !== "object") return;
+  const cleaned = normalizeSettings(settings.payload);
+  if (
+    cleaned.weeklyThemes === settings.payload.weeklyThemes
+    && cleaned.campaignSchedule === settings.payload.campaignSchedule
+    && cleaned.referralRewardLabel === settings.payload.referralRewardLabel
+  ) return;
+  await prisma.academyEngagementSetting.update({
+    where: { id: settings.id },
+    data: { payload: cleaned },
+  });
 }
 
 function isMissingEngagementStorage(error: unknown) {
