@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Award, SearchCheck, ShieldCheck, Star } from "lucide-react";
+import { GraduateDirectoryClient, type DirectoryProfile } from "@/components/academy/graduate-directory-client";
 import { PageShell } from "@/components/layout/page-shell";
+import { ensureAcademyEngagementStorage } from "@/lib/academy/engagement-repository";
 import { getMainPrisma } from "@/lib/db/main-prisma";
 
 export const dynamic = "force-dynamic";
@@ -15,6 +16,7 @@ export const metadata: Metadata = {
 export default async function AcademyDirectoryPage() {
   const profiles = await getDirectoryProfiles();
   const featured = profiles.filter((profile) => profile.spotlightStatus === "APPROVED").slice(0, 3);
+  const courseOptions = [...new Set(profiles.flatMap((profile) => profile.courses))].sort((a, b) => a.localeCompare(b));
 
   return (
     <PageShell
@@ -28,88 +30,15 @@ export default async function AcademyDirectoryPage() {
       ]}
       actions={<Link href="/academy">Explore Academy courses</Link>}
     >
-      <div className="space-y-8">
-        <section className="rounded-3xl border border-amber-200 bg-amber-50 p-5 text-amber-950 shadow-sm dark:border-amber-400/20 dark:bg-amber-400/10 dark:text-amber-100">
-          <div className="flex items-start gap-3">
-            <ShieldCheck className="mt-1 size-5 shrink-0" />
-            <div>
-              <h2 className="text-lg font-black">Directory disclaimer</h2>
-              <p className="mt-2 text-sm leading-6">
-                These profiles show optional HouseLink Academy training participation or completion only. They do not confirm statutory registration, professional licensing, accreditation, or regulatory approval by any public authority.
-              </p>
-            </div>
-          </div>
-        </section>
-
-        {featured.length > 0 && (
-          <section>
-            <div className="mb-4 flex items-center gap-2">
-              <Star className="size-5 text-emerald-700" />
-              <h2 className="text-2xl font-black text-slate-950 dark:text-white">Featured learners</h2>
-            </div>
-            <div className="grid gap-4 md:grid-cols-3">
-              {featured.map((profile) => <DirectoryCard key={profile.id} profile={profile} featured />)}
-            </div>
-          </section>
-        )}
-
-        <section>
-          <div className="mb-4 flex items-center gap-2">
-            <SearchCheck className="size-5 text-emerald-700" />
-            <h2 className="text-2xl font-black text-slate-950 dark:text-white">Public learner profiles</h2>
-          </div>
-          {profiles.length ? (
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {profiles.map((profile) => <DirectoryCard key={profile.id} profile={profile} />)}
-            </div>
-          ) : (
-            <div className="rounded-3xl border border-dashed border-slate-300 bg-white p-8 text-center text-slate-600 shadow-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300">
-              No public graduate profiles yet.
-            </div>
-          )}
-        </section>
-      </div>
+      <GraduateDirectoryClient profiles={profiles} courseOptions={courseOptions} />
     </PageShell>
   );
 }
 
-function DirectoryCard({ profile, featured = false }: { profile: DirectoryProfile; featured?: boolean }) {
-  return (
-    <article className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="truncate text-lg font-black text-slate-950 dark:text-white">{profile.name}</p>
-          <p className="mt-1 text-sm font-semibold text-emerald-700 dark:text-emerald-300">{profile.headline}</p>
-        </div>
-        <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-emerald-50 text-emerald-700 dark:bg-emerald-400/10 dark:text-emerald-300">
-          <Award className="size-5" />
-        </span>
-      </div>
-      {profile.bio && <p className="mt-4 text-sm leading-6 text-slate-600 dark:text-slate-300">{profile.bio}</p>}
-      {profile.courses.length > 0 && (
-        <div className="mt-4 flex flex-wrap gap-2">
-          {profile.courses.map((course) => (
-            <span key={course} className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700 dark:bg-slate-900 dark:text-slate-200">{course}</span>
-          ))}
-        </div>
-      )}
-      {featured && <p className="mt-4 rounded-2xl bg-emerald-50 px-3 py-2 text-xs font-black uppercase tracking-[0.14em] text-emerald-800 dark:bg-emerald-400/10 dark:text-emerald-200">Featured by Academy admin</p>}
-    </article>
-  );
-}
-
-type DirectoryProfile = {
-  id: string;
-  name: string;
-  headline: string;
-  bio: string | null;
-  courses: string[];
-  spotlightStatus: string;
-};
-
 type DirectoryLearner = { id: string; name?: string | null; email?: string | null };
 
 async function getDirectoryProfiles(): Promise<DirectoryProfile[]> {
+  await ensureAcademyEngagementStorage();
   const prisma = getMainPrisma() as any;
   const profiles = await prisma.academyEngagementProfile.findMany({
     where: { directoryOptIn: true, publicVisibility: "PUBLIC" },

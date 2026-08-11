@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { CalendarClock, Copy, MessageCircle, Send, ShieldCheck, Sparkles, Star, Users } from "lucide-react";
+import { CalendarClock, Copy, ExternalLink, MessageCircle, Send, ShieldCheck, Sparkles, Star, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api/client";
 
@@ -67,6 +67,12 @@ export function AcademyEngagementHub({ compact = false }: { compact?: boolean })
     .split(/\r?\n/)
     .map((line) => line.trim())
     .filter(Boolean);
+  const communityLinks = [
+    data?.settings.whatsappUrl && { label: "Join WhatsApp group", href: String(data.settings.whatsappUrl), tone: "primary" },
+    data?.settings.whatsappChannelUrl && { label: "Follow WhatsApp channel", href: String(data.settings.whatsappChannelUrl), tone: "soft" },
+    data?.settings.facebookPageUrl && { label: "Open Facebook page", href: String(data.settings.facebookPageUrl), tone: "soft" },
+    data?.settings.linkedinPageUrl && { label: "Open LinkedIn page", href: String(data.settings.linkedinPageUrl), tone: "soft" },
+  ].filter((link): link is { label: string; href: string; tone: string } => Boolean(link));
 
   async function action(body: Record<string, unknown>, success: string) {
     setBusy(true);
@@ -97,9 +103,9 @@ export function AcademyEngagementHub({ compact = false }: { compact?: boolean })
             <h2 className="mt-2 text-2xl font-black text-slate-950 dark:text-white">{data.settings.communityName ?? "Academy Engagement Hub"}</h2>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600 dark:text-slate-300">{data.settings.invitation}</p>
           </div>
-          {data.settings.communityEnabled && data.settings.whatsappUrl && (
-            <a href={data.settings.whatsappUrl} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center justify-center rounded-xl bg-emerald-600 px-4 py-2 text-sm font-bold text-white shadow-sm hover:bg-emerald-500">
-              <MessageCircle className="mr-2 size-4" /> Join community
+          {data.settings.communityEnabled && communityLinks[0] && (
+            <a href={communityLinks[0].href} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center justify-center rounded-xl bg-emerald-600 px-4 py-2 text-sm font-bold text-white shadow-sm hover:bg-emerald-500">
+              <MessageCircle className="mr-2 size-4" /> {communityLinks[0].label}
             </a>
           )}
         </div>
@@ -147,6 +153,29 @@ export function AcademyEngagementHub({ compact = false }: { compact?: boolean })
       </div>
 
       <div className="grid gap-4 xl:grid-cols-3">
+        {data.settings.communityEnabled && <HubCard title="Community channels" icon={MessageCircle}>
+          {communityLinks.length ? (
+            <div className="grid gap-2">
+              {communityLinks.map((link) => (
+                <a
+                  key={link.href}
+                  href={link.href}
+                  target="_blank"
+                  rel="noreferrer"
+                  className={link.tone === "primary"
+                    ? "inline-flex min-h-11 items-center justify-center rounded-xl bg-emerald-600 px-4 py-2 text-sm font-bold text-white shadow-sm hover:bg-emerald-500"
+                    : "inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-800 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100"}
+                >
+                  <ExternalLink className="mr-2 size-4" /> {link.label}
+                </a>
+              ))}
+              <Button variant="secondary" onClick={copyShareText}><Copy className="size-4" /> Copy share message</Button>
+            </div>
+          ) : (
+            <EmptyState title="No community links yet" body="Admin has not added WhatsApp, Facebook, or LinkedIn community links yet." />
+          )}
+        </HubCard>}
+
         {data.settings.communityEnabled && weeklyThemes.length > 0 && <HubCard title="Community calendar" icon={MessageCircle}>
           <div className="space-y-2">
             {weeklyThemes.map((theme) => (
@@ -181,7 +210,7 @@ export function AcademyEngagementHub({ compact = false }: { compact?: boolean })
                   </div>
                 )}
               </div>
-            )) : <p className="text-sm text-slate-500">No active challenges right now.</p>}
+            )) : <EmptyState title="No active challenges right now" body="When admin publishes weekly practical challenges, they will appear here with an evidence box." />}
           </div>
         </HubCard>}
 
@@ -197,7 +226,7 @@ export function AcademyEngagementHub({ compact = false }: { compact?: boolean })
                   {officeHour.link && <a href={officeHour.link} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center justify-center rounded-lg border border-slate-200 px-3 py-2 text-sm font-bold text-slate-800 dark:border-slate-700 dark:text-slate-100">Open link</a>}
                 </div>
               </div>
-            )) : <p className="text-sm text-slate-500">No upcoming office hours yet.</p>}
+            )) : <EmptyState title="No upcoming office hours yet" body="When admin schedules a WhatsApp or Zoom session, you will be able to RSVP here." />}
           </div>
         </HubCard>}
       </div>
@@ -223,6 +252,10 @@ function Select({ label, value, options, onChange }: { label: string; value: str
 
 function MiniStatus({ rows, empty }: { rows: Array<{ id: string; title: string; detail: string }>; empty: string }) {
   return <div className="mt-4 space-y-2">{rows.length ? rows.slice(0, 4).map((row) => <div key={row.id} className="flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-3 py-2 text-sm dark:bg-slate-900"><span className="min-w-0 truncate font-semibold">{row.title}</span><span className="shrink-0 text-xs font-black uppercase text-emerald-700 dark:text-emerald-300">{row.detail}</span></div>) : <p className="text-sm text-slate-500">{empty}</p>}</div>;
+}
+
+function EmptyState({ title, body }: { title: string; body: string }) {
+  return <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4 text-sm dark:border-slate-800 dark:bg-slate-900"><p className="font-black text-slate-900 dark:text-white">{title}</p><p className="mt-1 leading-6 text-slate-500 dark:text-slate-400">{body}</p></div>;
 }
 
 function formatDateTime(value: string) {

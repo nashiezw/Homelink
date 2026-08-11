@@ -15,6 +15,9 @@ const DEFAULT_SETTINGS = {
   moduleFeedbackEnabled: true,
   communityName: "HouseLink Academy Learner Community",
   whatsappUrl: "",
+  whatsappChannelUrl: "",
+  facebookPageUrl: "",
+  linkedinPageUrl: "",
   invitation: "Join the optional learner community for peer support, announcements, and practical field discussions.",
   sharePrompt: "I am building my real estate knowledge through HouseLink Academy.",
   referralRewardLabel: "Admin-reviewed recognition reward",
@@ -26,7 +29,7 @@ const DEFAULT_SETTINGS = {
 export async function getAdminAcademyEngagement() {
   const prisma = getMainPrisma() as any;
   await ensureEngagementSettings();
-  const [settingsRow, courses, profiles, testimonials, challenges, challengeSubmissions, officeHours, rsvps, referrals, moduleFeedback] = await Promise.all([
+  const [settingsRow, courses, profiles, testimonials, challenges, challengeSubmissions, officeHours, rsvps, referrals, moduleFeedback, courseProgressRows] = await Promise.all([
     prisma.academyEngagementSetting.findUnique({ where: { id: "singleton" } }),
     prisma.trainingCourse.findMany({ select: { id: true, title: true, status: true }, orderBy: { title: "asc" } }),
     prisma.academyEngagementProfile.findMany({ orderBy: { updatedAt: "desc" }, take: 200 }),
@@ -37,6 +40,7 @@ export async function getAdminAcademyEngagement() {
     prisma.academyOfficeHourRsvp.findMany({ orderBy: { updatedAt: "desc" }, take: 200 }),
     prisma.academyReferral.findMany({ orderBy: { createdAt: "desc" }, take: 200 }),
     prisma.academyModuleFeedback.findMany({ orderBy: { createdAt: "desc" }, take: 200 }),
+    prisma.courseProgress.findMany({ select: { agentId: true, courseId: true, percentComplete: true, status: true, updatedAt: true }, take: 2000 }),
   ]);
   const learnerIds = unique([
     ...profiles.map((row: any) => row.learnerId),
@@ -72,7 +76,14 @@ export async function getAdminAcademyEngagement() {
       upcomingOfficeHours: officeHours.filter((row: any) => row.active && new Date(row.startsAt).getTime() >= Date.now()).length,
       referrals: referrals.length,
       moduleFeedback: moduleFeedback.length,
+      rewardedReferrals: referrals.filter((row: any) => row.status === "REWARDED").length,
+      approvedTestimonials: testimonials.filter((row: any) => row.status === "APPROVED").length,
+      spotlightApproved: profiles.filter((row: any) => row.spotlightStatus === "APPROVED").length,
+      challengeSubmissions: challengeSubmissions.length,
+      challengeApprovals: challengeSubmissions.filter((row: any) => row.status === "APPROVED").length,
+      averageProgress: courseProgressRows.length ? Math.round(courseProgressRows.reduce((sum: number, row: any) => sum + Number(row.percentComplete ?? 0), 0) / courseProgressRows.length) : 0,
     },
+    reporting: buildEngagementReporting({ profiles, testimonials, challenges, challengeSubmissions, officeHours, rsvps, referrals, moduleFeedback, courseProgressRows }),
     profiles: profiles.map((row: any) => ({
       ...serializeDates(row),
       learner: learnerById.get(row.learnerId) ?? null,
@@ -165,6 +176,9 @@ export async function runAdminAcademyEngagementAction(body: Record<string, any>,
       ? await prisma.academyOfficeHour.update({ where: { id: String(body.officeHourId) }, data })
       : await prisma.academyOfficeHour.create({ data });
     await audit(actor, "academy.engagement.office_hour.save", row.id, { title: row.title, active: row.active });
+    if (row.active && row.startsAt > new Date()) {
+      await notifyOfficeHourAudience(row);
+    }
     return row;
   }
   if (action === "delete_office_hour") {
@@ -183,6 +197,7 @@ export async function runAdminAcademyEngagementAction(body: Record<string, any>,
       },
     });
     await audit(actor, "academy.engagement.testimonial.moderate", row.id, { status: row.status });
+    await notifyLearner(row.learnerId, "ACADEMY_TESTIMONIAL_MODERATED", row.status === "APPROVED" ? "Testimonial approved" : "Testimonial reviewed", row.status === "APPROVED" ? "Your Academy testimonial was approved for public use. Thank you for sharing your experience." : "Your Academy testimonial has been reviewed by the Academy team.");
     return row;
   }
   if (action === "moderate_challenge_submission") {
@@ -195,6 +210,7 @@ export async function runAdminAcademyEngagementAction(body: Record<string, any>,
       },
     });
     await audit(actor, "academy.engagement.challenge_submission.moderate", row.id, { status: row.status });
+    await notifyLearner(row.learnerId, "ACADEMY_CHALLENGE_REVIEWED", row.status === "APPROVED" ? "Challenge approved" : "Challenge needs attention", row.status === "APPROVED" ? "Your practical challenge submission was approved." : "Your practical challenge submission was reviewed. Please check the Engagement Hub for the latest status.");
     return row;
   }
   if (action === "moderate_module_feedback") {
@@ -203,6 +219,9 @@ export async function runAdminAcademyEngagementAction(body: Record<string, any>,
       data: { status: ["NEW", "REVIEWED", "ARCHIVED"].includes(String(body.status)) ? String(body.status) : "REVIEWED" },
     });
     await audit(actor, "academy.engagement.module_feedback.moderate", row.id, { status: row.status });
+    if (row.status === "REVIEWED") {
+      await notifyLearner(row.learnerId, "ACADEMY_MODULE_FEEDBACK_REVIEWED", "Module feedback reviewed", "Thank you for your module feedback. The Academy team has reviewed it and will use it to improve the course experience.");
+    }
     return row;
   }
   if (action === "moderate_spotlight") {
@@ -211,7 +230,13 @@ export async function runAdminAcademyEngagementAction(body: Record<string, any>,
       data: { spotlightStatus: ["APPROVED", "REJECTED", "PENDING", "NOT_SUBMITTED"].includes(String(body.status)) ? String(body.status) : "PENDING" },
     });
     await audit(actor, "academy.engagement.spotlight.moderate", row.id, { status: row.spotlightStatus });
+    await notifyLearner(row.learnerId, "ACADEMY_SPOTLIGHT_REVIEWED", row.spotlightStatus === "APPROVED" ? "Learner spotlight approved" : "Learner spotlight reviewed", row.spotlightStatus === "APPROVED" ? "Your optional Academy learner spotlight permission was approved. You may be featured on HouseLink Academy surfaces." : "Your optional Academy learner spotlight permission was reviewed.");
     return row;
+  }
+  if (action === "send_progress_nudges") {
+    const count = await sendProgressNudges();
+    await audit(actor, "academy.engagement.progress_nudges.send", "academy", { count });
+    return { count };
   }
   return null;
 }
@@ -430,13 +455,27 @@ export async function createCertificateTestimonialPrompt(learnerId: string, cour
   }).catch(() => null);
 }
 
+export async function ensureAcademyEngagementStorage() {
+  await ensureEngagementSettings();
+}
+
 async function ensureEngagementSettings() {
   const prisma = getMainPrisma() as any;
-  await prisma.academyEngagementSetting.upsert({
-    where: { id: "singleton" },
-    create: { id: "singleton", payload: DEFAULT_SETTINGS },
-    update: {},
-  });
+  try {
+    await prisma.academyEngagementSetting.upsert({
+      where: { id: "singleton" },
+      create: { id: "singleton", payload: DEFAULT_SETTINGS },
+      update: {},
+    });
+  } catch (error) {
+    if (!isMissingEngagementStorage(error)) throw error;
+    await createEngagementStorage(prisma);
+    await prisma.academyEngagementSetting.upsert({
+      where: { id: "singleton" },
+      create: { id: "singleton", payload: DEFAULT_SETTINGS },
+      update: {},
+    });
+  }
 }
 
 async function getSettings() {
@@ -499,6 +538,109 @@ async function awardEngagementBadge(agentId: string, badgeId: string, name: stri
   });
 }
 
+async function notifyLearner(userId: string, eventType: string, subject: string, body: string) {
+  await (getMainPrisma() as any).trainingNotification.create({
+    data: { userId, eventType, channel: "IN_APP", subject, body },
+  }).catch(() => null);
+}
+
+async function notifyOfficeHourAudience(officeHour: { id: string; courseId?: string | null; title: string; startsAt: Date }) {
+  const prisma = getMainPrisma() as any;
+  const existing = await prisma.trainingNotification.count({ where: { eventType: `ACADEMY_OFFICE_HOUR_${officeHour.id}` } });
+  if (existing > 0) return;
+  const learners = officeHour.courseId
+    ? await prisma.courseEnrolment.findMany({ where: { courseId: officeHour.courseId, status: "ACTIVE" }, select: { agentId: true }, take: 500 })
+    : await prisma.courseEnrolment.findMany({ where: { status: "ACTIVE" }, distinct: ["agentId"], select: { agentId: true }, take: 500 });
+  await Promise.all(learners.map((learner: any) => notifyLearner(
+    learner.agentId,
+    `ACADEMY_OFFICE_HOUR_${officeHour.id}`,
+    "New Academy office-hours session",
+    `${officeHour.title} is scheduled for ${officeHour.startsAt.toLocaleString("en")}. RSVP from your Academy Engagement Hub.`,
+  )));
+}
+
+async function sendProgressNudges() {
+  const prisma = getMainPrisma() as any;
+  const rows = await prisma.courseProgress.findMany({
+    where: { status: { not: "COMPLETED" }, percentComplete: { gt: 0, lt: 100 } },
+    include: { course: { select: { title: true } } },
+    take: 1000,
+  });
+  let created = 0;
+  for (const row of rows) {
+    const threshold = row.percentComplete >= 80 ? 80 : row.percentComplete >= 50 ? 50 : row.percentComplete >= 25 ? 25 : null;
+    if (!threshold) continue;
+    const eventType = `ACADEMY_PROGRESS_NUDGE_${row.courseId}_${row.agentId}_${threshold}`;
+    const existing = await prisma.trainingNotification.count({ where: { userId: row.agentId, eventType } });
+    if (existing > 0) continue;
+    await notifyLearner(
+      row.agentId,
+      eventType,
+      `You are ${threshold}% through ${row.course?.title ?? "your Academy course"}`,
+      buildProgressNudgeMessage(Number(row.percentComplete), row.course?.title),
+    );
+    created += 1;
+  }
+  return created;
+}
+
+function buildProgressNudgeMessage(progress: number, courseTitle?: string | null) {
+  if (progress >= 80) return `You are close to finishing ${courseTitle ?? "your Academy course"}. Open your learner dashboard and complete the final required checkpoints.`;
+  if (progress >= 50) return `You are halfway through ${courseTitle ?? "your Academy course"}. Keep going with the next unlocked lesson or checkpoint.`;
+  return `You have started building momentum in ${courseTitle ?? "your Academy course"}. Continue with the next lesson from your learner dashboard.`;
+}
+
+function buildEngagementReporting(input: {
+  profiles: any[];
+  testimonials: any[];
+  challenges: any[];
+  challengeSubmissions: any[];
+  officeHours: any[];
+  rsvps: any[];
+  referrals: any[];
+  moduleFeedback: any[];
+  courseProgressRows: any[];
+}) {
+  const uniqueEngagedLearners = unique([
+    ...input.profiles.map((row) => row.learnerId),
+    ...input.testimonials.map((row) => row.learnerId),
+    ...input.challengeSubmissions.map((row) => row.learnerId),
+    ...input.rsvps.map((row) => row.learnerId),
+    ...input.referrals.map((row) => row.referrerId),
+    ...input.moduleFeedback.map((row) => row.learnerId),
+  ]);
+  const activeLearners = unique(input.courseProgressRows.map((row) => row.agentId));
+  const rewardedReferrals = input.referrals.filter((row) => row.status === "REWARDED").length;
+  const registeredReferrals = input.referrals.filter((row) => ["REGISTERED", "REWARDED"].includes(row.status)).length;
+  const approvedTestimonials = input.testimonials.filter((row) => row.status === "APPROVED").length;
+  const submittedTestimonials = input.testimonials.length;
+  const approvedChallenges = input.challengeSubmissions.filter((row) => row.status === "APPROVED").length;
+  const submittedChallenges = input.challengeSubmissions.length;
+
+  return {
+    engagementRate: rate(uniqueEngagedLearners.length, activeLearners.length),
+    referralConversionRate: rate(rewardedReferrals, registeredReferrals || input.referrals.length),
+    testimonialApprovalRate: rate(approvedTestimonials, submittedTestimonials),
+    challengeApprovalRate: rate(approvedChallenges, submittedChallenges),
+    rsvpRate: rate(input.rsvps.filter((row) => row.status !== "CANCELLED").length, input.officeHours.length ? activeLearners.length : 0),
+    pendingWork: input.testimonials.filter((row) => row.status === "PENDING").length
+      + input.challengeSubmissions.filter((row) => row.status === "SUBMITTED").length
+      + input.moduleFeedback.filter((row) => row.status === "NEW").length
+      + input.profiles.filter((row) => row.spotlightConsent && row.spotlightStatus === "PENDING").length,
+    recentActivity: [
+      ...input.testimonials.map((row) => ({ id: row.id, type: "Testimonial", title: row.title, status: row.status, createdAt: row.createdAt })),
+      ...input.challengeSubmissions.map((row) => ({ id: row.id, type: "Challenge", title: row.challengeId, status: row.status, createdAt: row.submittedAt })),
+      ...input.referrals.map((row) => ({ id: row.id, type: "Referral", title: row.referralCode, status: row.status, createdAt: row.createdAt })),
+      ...input.moduleFeedback.map((row) => ({ id: row.id, type: "Feedback", title: row.courseId, status: row.status, createdAt: row.createdAt })),
+    ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 12),
+  };
+}
+
+function rate(numerator: number, denominator: number) {
+  if (!denominator) return 0;
+  return Math.round((numerator / denominator) * 100);
+}
+
 async function uniqueReferralCode(learnerId: string) {
   const prisma = getMainPrisma() as any;
   for (let i = 0; i < 5; i += 1) {
@@ -516,6 +658,153 @@ async function audit(actor: Actor, action: string, target: string, metadata: Rec
 
 function normalizeSettings(input: any) {
   return { ...DEFAULT_SETTINGS, ...(input && typeof input === "object" ? input : {}) };
+}
+
+function isMissingEngagementStorage(error: unknown) {
+  return Boolean(
+    error
+    && typeof error === "object"
+    && "code" in error
+    && (error as { code?: string }).code === "P2021",
+  );
+}
+
+async function createEngagementStorage(prisma: any) {
+  const sql = `
+CREATE TABLE IF NOT EXISTS "academy_engagement_settings" (
+  "id" TEXT NOT NULL DEFAULT 'singleton',
+  "payload" JSONB NOT NULL,
+  "updatedAt" TIMESTAMP(3) NOT NULL,
+  CONSTRAINT "academy_engagement_settings_pkey" PRIMARY KEY ("id")
+);
+CREATE TABLE IF NOT EXISTS "academy_engagement_profiles" (
+  "id" TEXT NOT NULL,
+  "learnerId" TEXT NOT NULL,
+  "courseId" TEXT,
+  "communityOptIn" BOOLEAN NOT NULL DEFAULT false,
+  "ambassadorOptIn" BOOLEAN NOT NULL DEFAULT false,
+  "directoryOptIn" BOOLEAN NOT NULL DEFAULT false,
+  "spotlightConsent" BOOLEAN NOT NULL DEFAULT false,
+  "publicVisibility" TEXT NOT NULL DEFAULT 'PRIVATE',
+  "profileHeadline" TEXT,
+  "profileBio" TEXT,
+  "referralCode" TEXT,
+  "spotlightStatus" TEXT NOT NULL DEFAULT 'NOT_SUBMITTED',
+  "sharedPostConfirmed" BOOLEAN NOT NULL DEFAULT false,
+  "sharedPostUrl" TEXT,
+  "consentedAt" TIMESTAMP(3),
+  "consentWithdrawnAt" TIMESTAMP(3),
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt" TIMESTAMP(3) NOT NULL,
+  CONSTRAINT "academy_engagement_profiles_pkey" PRIMARY KEY ("id")
+);
+CREATE TABLE IF NOT EXISTS "academy_referrals" (
+  "id" TEXT NOT NULL,
+  "referrerId" TEXT NOT NULL,
+  "referredLearnerId" TEXT,
+  "courseId" TEXT,
+  "referralCode" TEXT NOT NULL,
+  "referredName" TEXT,
+  "referredEmail" TEXT,
+  "status" TEXT NOT NULL DEFAULT 'INVITED',
+  "rewardLabel" TEXT,
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt" TIMESTAMP(3) NOT NULL,
+  CONSTRAINT "academy_referrals_pkey" PRIMARY KEY ("id")
+);
+CREATE TABLE IF NOT EXISTS "academy_testimonials" (
+  "id" TEXT NOT NULL,
+  "learnerId" TEXT NOT NULL,
+  "courseId" TEXT,
+  "rating" INTEGER,
+  "title" TEXT NOT NULL,
+  "body" TEXT NOT NULL,
+  "publicConsent" BOOLEAN NOT NULL DEFAULT false,
+  "status" TEXT NOT NULL DEFAULT 'PENDING',
+  "adminNote" TEXT,
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt" TIMESTAMP(3) NOT NULL,
+  CONSTRAINT "academy_testimonials_pkey" PRIMARY KEY ("id")
+);
+CREATE TABLE IF NOT EXISTS "academy_challenges" (
+  "id" TEXT NOT NULL,
+  "courseId" TEXT,
+  "title" TEXT NOT NULL,
+  "instructions" TEXT NOT NULL,
+  "rewardLabel" TEXT,
+  "status" TEXT NOT NULL DEFAULT 'DRAFT',
+  "startsAt" TIMESTAMP(3),
+  "endsAt" TIMESTAMP(3),
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt" TIMESTAMP(3) NOT NULL,
+  CONSTRAINT "academy_challenges_pkey" PRIMARY KEY ("id")
+);
+CREATE TABLE IF NOT EXISTS "academy_challenge_submissions" (
+  "id" TEXT NOT NULL,
+  "challengeId" TEXT NOT NULL,
+  "learnerId" TEXT NOT NULL,
+  "evidence" TEXT NOT NULL,
+  "status" TEXT NOT NULL DEFAULT 'SUBMITTED',
+  "adminNote" TEXT,
+  "submittedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "reviewedAt" TIMESTAMP(3),
+  CONSTRAINT "academy_challenge_submissions_pkey" PRIMARY KEY ("id")
+);
+CREATE TABLE IF NOT EXISTS "academy_office_hours" (
+  "id" TEXT NOT NULL,
+  "courseId" TEXT,
+  "title" TEXT NOT NULL,
+  "description" TEXT,
+  "startsAt" TIMESTAMP(3) NOT NULL,
+  "link" TEXT,
+  "capacity" INTEGER,
+  "active" BOOLEAN NOT NULL DEFAULT true,
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt" TIMESTAMP(3) NOT NULL,
+  CONSTRAINT "academy_office_hours_pkey" PRIMARY KEY ("id")
+);
+CREATE TABLE IF NOT EXISTS "academy_office_hour_rsvps" (
+  "id" TEXT NOT NULL,
+  "officeHourId" TEXT NOT NULL,
+  "learnerId" TEXT NOT NULL,
+  "status" TEXT NOT NULL DEFAULT 'GOING',
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt" TIMESTAMP(3) NOT NULL,
+  CONSTRAINT "academy_office_hour_rsvps_pkey" PRIMARY KEY ("id")
+);
+CREATE TABLE IF NOT EXISTS "academy_module_feedback" (
+  "id" TEXT NOT NULL,
+  "learnerId" TEXT NOT NULL,
+  "courseId" TEXT NOT NULL,
+  "moduleId" TEXT NOT NULL,
+  "lessonId" TEXT,
+  "question" TEXT NOT NULL,
+  "response" TEXT NOT NULL,
+  "status" TEXT NOT NULL DEFAULT 'NEW',
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt" TIMESTAMP(3) NOT NULL,
+  CONSTRAINT "academy_module_feedback_pkey" PRIMARY KEY ("id")
+);
+ALTER TABLE "academy_engagement_profiles" ADD COLUMN IF NOT EXISTS "spotlightStatus" TEXT NOT NULL DEFAULT 'NOT_SUBMITTED';
+ALTER TABLE "academy_engagement_profiles" ADD COLUMN IF NOT EXISTS "sharedPostConfirmed" BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE "academy_engagement_profiles" ADD COLUMN IF NOT EXISTS "sharedPostUrl" TEXT;
+ALTER TABLE "academy_referrals" ADD COLUMN IF NOT EXISTS "referredLearnerId" TEXT;
+CREATE UNIQUE INDEX IF NOT EXISTS "academy_engagement_profiles_learnerId_courseId_key" ON "academy_engagement_profiles"("learnerId", "courseId");
+CREATE UNIQUE INDEX IF NOT EXISTS "academy_engagement_profiles_referralCode_key" ON "academy_engagement_profiles"("referralCode");
+CREATE INDEX IF NOT EXISTS "academy_engagement_profiles_learnerId_idx" ON "academy_engagement_profiles"("learnerId");
+CREATE INDEX IF NOT EXISTS "academy_engagement_profiles_courseId_idx" ON "academy_engagement_profiles"("courseId");
+CREATE INDEX IF NOT EXISTS "academy_referrals_referrerId_idx" ON "academy_referrals"("referrerId");
+CREATE INDEX IF NOT EXISTS "academy_referrals_referredLearnerId_idx" ON "academy_referrals"("referredLearnerId");
+CREATE INDEX IF NOT EXISTS "academy_referrals_courseId_idx" ON "academy_referrals"("courseId");
+CREATE INDEX IF NOT EXISTS "academy_referrals_referralCode_idx" ON "academy_referrals"("referralCode");
+CREATE INDEX IF NOT EXISTS "academy_testimonials_status_idx" ON "academy_testimonials"("status");
+CREATE INDEX IF NOT EXISTS "academy_challenges_status_idx" ON "academy_challenges"("status");
+CREATE UNIQUE INDEX IF NOT EXISTS "academy_challenge_submissions_challengeId_learnerId_key" ON "academy_challenge_submissions"("challengeId", "learnerId");
+CREATE UNIQUE INDEX IF NOT EXISTS "academy_office_hour_rsvps_officeHourId_learnerId_key" ON "academy_office_hour_rsvps"("officeHourId", "learnerId");
+`;
+  for (const statement of sql.split(";").map((entry) => entry.trim()).filter(Boolean)) {
+    await prisma.$executeRawUnsafe(statement);
+  }
 }
 
 function buildReferralUrl(code: string, settings: Record<string, any>) {

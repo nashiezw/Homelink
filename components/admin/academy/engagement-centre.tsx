@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { CalendarClock, CheckCircle2, Megaphone, Send, ShieldCheck, Sparkles, Star, Trash2, Users } from "lucide-react";
+import { Activity, CalendarClock, CheckCircle2, Megaphone, Send, ShieldCheck, Sparkles, Star, Trash2, TrendingUp, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api/client";
 import { cn } from "@/lib/utils";
@@ -17,6 +17,15 @@ type EngagementData = {
   officeHours: Array<{ id: string; title: string; description?: string | null; startsAt: string; link?: string | null; capacity?: number | null; active: boolean; courseId?: string | null; course?: { title: string } | null; rsvps: number }>;
   referrals: Array<{ id: string; referralCode: string; status: string; referredName?: string | null; referredEmail?: string | null; referrer?: { name?: string | null; email?: string | null } | null; course?: { title: string } | null; createdAt: string }>;
   moduleFeedback: Array<{ id: string; learnerId: string; courseId: string; moduleId: string; question: string; response: string; status: string; createdAt: string; learner?: { name?: string | null; email?: string | null } | null; course?: { title: string } | null }>;
+  reporting: {
+    engagementRate: number;
+    referralConversionRate: number;
+    testimonialApprovalRate: number;
+    challengeApprovalRate: number;
+    rsvpRate: number;
+    pendingWork: number;
+    recentActivity: Array<{ id: string; type: string; title: string; status: string; createdAt: string }>;
+  };
 };
 
 const defaultChallenge = { title: "", instructions: "", rewardLabel: "", status: "DRAFT", courseId: "", startsAt: "", endsAt: "" };
@@ -26,6 +35,7 @@ export function AcademyEngagementCentre() {
   const [data, setData] = useState<EngagementData | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [settingsDraft, setSettingsDraft] = useState<Record<string, any>>({});
   const [challengeDraft, setChallengeDraft] = useState(defaultChallenge);
   const [officeDraft, setOfficeDraft] = useState(defaultOfficeHour);
@@ -33,11 +43,14 @@ export function AcademyEngagementCentre() {
   const [editingOfficeId, setEditingOfficeId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
+    setLoadError(null);
     const result = await apiFetch<EngagementData>("/api/v1/admin/academy/engagement", { cache: "no-store" });
     if (result.data) {
       setData(result.data);
       setSettingsDraft(result.data.settings);
+      return;
     }
+    setLoadError(result.error?.message ?? "Academy engagement data could not be loaded.");
   }, []);
 
   useEffect(() => { void load(); }, [load]);
@@ -85,7 +98,18 @@ export function AcademyEngagementCentre() {
   }
 
   if (!data) {
-    return <div className="min-h-[320px] rounded-2xl border border-white/10 bg-slate-950/80 p-8 text-slate-300">Loading Engagement Centre...</div>;
+    return (
+      <div className="min-h-[320px] rounded-2xl border border-white/10 bg-slate-950/80 p-8 text-slate-300">
+        {loadError ? (
+          <div className="max-w-2xl">
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-red-300">Engagement Centre needs attention</p>
+            <h2 className="mt-2 text-2xl font-black text-white">The engagement dashboard could not load</h2>
+            <p className="mt-3 text-sm leading-6 text-slate-300">{loadError}</p>
+            <Button className="mt-5" onClick={() => void load()}>Retry loading engagement centre</Button>
+          </div>
+        ) : "Loading Engagement Centre..."}
+      </div>
+    );
   }
 
   return (
@@ -101,6 +125,7 @@ export function AcademyEngagementCentre() {
             <a href="/api/v1/admin/academy/engagement?format=csv" className="inline-flex min-h-11 items-center justify-center rounded-lg border border-white/10 bg-white px-4 py-2.5 text-sm font-bold text-slate-950 shadow-sm transition hover:bg-emerald-50">
               Export CSV
             </a>
+            <Button variant="secondary" disabled={busy} onClick={() => action({ action: "send_progress_nudges" }, "Progress nudges sent to eligible learners.")}>Send progress nudges</Button>
             <Button disabled={busy} onClick={() => action({ action: "update_settings", settings: settingsDraft }, "Engagement settings saved.")}>Save engagement settings</Button>
           </div>
         </div>
@@ -115,6 +140,34 @@ export function AcademyEngagementCentre() {
         <Metric icon={CalendarClock} label="Office hours" value={data.metrics.upcomingOfficeHours ?? 0} />
         <Metric icon={Send} label="Referrals" value={data.metrics.referrals ?? 0} />
       </div>
+
+      <section className="grid gap-4 xl:grid-cols-[1fr_0.9fr]">
+        <Panel title="Engagement Reporting" icon={TrendingUp}>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <RateBar label="Learner engagement rate" value={data.reporting.engagementRate} />
+            <RateBar label="Referral conversion" value={data.reporting.referralConversionRate} />
+            <RateBar label="Testimonial approval" value={data.reporting.testimonialApprovalRate} />
+            <RateBar label="Challenge approval" value={data.reporting.challengeApprovalRate} />
+            <RateBar label="Office-hours RSVP rate" value={data.reporting.rsvpRate} />
+            <div className="rounded-2xl border border-amber-400/20 bg-amber-400/10 p-4">
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber-200">Pending admin work</p>
+              <p className="mt-3 text-3xl font-black text-white">{data.reporting.pendingWork}</p>
+              <p className="mt-1 text-sm text-amber-100/80">Testimonials, challenges, feedback, and spotlights awaiting review.</p>
+            </div>
+          </div>
+        </Panel>
+        <Panel title="Recent Engagement Activity" icon={Activity}>
+          <MiniList title="Latest records" empty="No engagement activity yet." rows={data.reporting.recentActivity.map((item) => ({
+            id: item.id,
+            title: `${item.type} - ${item.status}`,
+            detail: `${item.title} - ${formatDateTime(item.createdAt)}`,
+          }))} />
+          <div className="mt-4 rounded-2xl border border-emerald-400/20 bg-emerald-400/10 p-4">
+            <p className="text-sm font-black text-white">Automated learner communications</p>
+            <p className="mt-2 text-sm leading-6 text-emerald-100/80">Moderation decisions notify learners automatically. Office-hours announcements are sent once per event, and progress nudges can be sent manually without duplicating previous 25%, 50%, or 80% reminders.</p>
+          </div>
+        </Panel>
+      </section>
 
       <section className="grid gap-4 lg:grid-cols-[1fr_1.2fr]">
         <Panel title="Engagement Controls" icon={Megaphone}>
@@ -139,7 +192,16 @@ export function AcademyEngagementCentre() {
           </div>
           <div className="mt-4 grid gap-3">
             <Field label="Community name" value={settingsDraft.communityName ?? ""} onChange={(communityName) => setSettingsDraft({ ...settingsDraft, communityName })} />
-            <Field label="WhatsApp invite URL" value={settingsDraft.whatsappUrl ?? ""} onChange={(whatsappUrl) => setSettingsDraft({ ...settingsDraft, whatsappUrl })} />
+            <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/10 p-4">
+              <p className="text-sm font-black text-white">Community and sharing destinations</p>
+              <p className="mt-1 text-sm leading-6 text-emerald-100/80">These links are what learners see in the Engage tab. Leave any network blank to hide it.</p>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <Field label="WhatsApp group invite URL" value={settingsDraft.whatsappUrl ?? ""} onChange={(whatsappUrl) => setSettingsDraft({ ...settingsDraft, whatsappUrl })} />
+                <Field label="WhatsApp channel URL" value={settingsDraft.whatsappChannelUrl ?? ""} onChange={(whatsappChannelUrl) => setSettingsDraft({ ...settingsDraft, whatsappChannelUrl })} />
+                <Field label="Facebook page/group URL" value={settingsDraft.facebookPageUrl ?? ""} onChange={(facebookPageUrl) => setSettingsDraft({ ...settingsDraft, facebookPageUrl })} />
+                <Field label="LinkedIn page URL" value={settingsDraft.linkedinPageUrl ?? ""} onChange={(linkedinPageUrl) => setSettingsDraft({ ...settingsDraft, linkedinPageUrl })} />
+              </div>
+            </div>
             <Textarea label="Learner invitation" value={settingsDraft.invitation ?? ""} onChange={(invitation) => setSettingsDraft({ ...settingsDraft, invitation })} />
             <Textarea label="Share prompt" value={settingsDraft.sharePrompt ?? ""} onChange={(sharePrompt) => setSettingsDraft({ ...settingsDraft, sharePrompt })} />
             <Field label="Referral reward label" value={settingsDraft.referralRewardLabel ?? ""} onChange={(referralRewardLabel) => setSettingsDraft({ ...settingsDraft, referralRewardLabel })} />
@@ -246,6 +308,20 @@ export function AcademyEngagementCentre() {
 
 function Metric({ icon: Icon, label, value }: { icon: typeof Users; label: string; value: number }) {
   return <div className="rounded-2xl border border-white/10 bg-slate-950 p-4"><Icon className="size-5 text-emerald-300" /><p className="mt-4 text-2xl font-black text-white">{value}</p><p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">{label}</p></div>;
+}
+
+function RateBar({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-slate-900/80 p-4">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm font-bold text-slate-100">{label}</p>
+        <p className="text-sm font-black text-emerald-300">{value}%</p>
+      </div>
+      <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-800">
+        <div className="h-full rounded-full bg-emerald-400" style={{ width: `${Math.max(0, Math.min(100, value))}%` }} />
+      </div>
+    </div>
+  );
 }
 
 function Panel({ title, icon: Icon, children }: { title: string; icon: typeof Users; children: React.ReactNode }) {
