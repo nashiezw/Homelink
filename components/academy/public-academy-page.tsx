@@ -315,7 +315,8 @@ export function PublicAcademyPage() {
         showToast("Registration submitted successfully. Payment instructions sent to your email.");
       }
       
-      router.push(`/academy/registration-confirmation?id=${result.data.id}&emailSent=${emailSent}&finalPrice=${finalPrice ?? 0}&currency=${currency || 'USD'}`);
+      const priceQuery = typeof finalPrice === "number" && Number.isFinite(finalPrice) ? `&finalPrice=${finalPrice}` : "";
+      router.push(`/academy/registration-confirmation?id=${result.data.id}&emailSent=${emailSent}${priceQuery}&currency=${currency || 'USD'}`);
       return;
     }
     showToast("Registration saved.");

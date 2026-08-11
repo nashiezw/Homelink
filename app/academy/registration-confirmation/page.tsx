@@ -3,7 +3,7 @@
 import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { CheckCircle2, Clock, Mail, Upload, ArrowRight, Home } from "lucide-react";
+import { AlertCircle, ArrowRight, CheckCircle2, Clock, CreditCard, Home, Mail, ShieldCheck, Tag, Upload } from "lucide-react";
 import { PageShell } from "@/components/layout/page-shell";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api/client";
@@ -27,6 +27,9 @@ function RegistrationConfirmationContent() {
   const [status, setStatus] = useState<RegistrationStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [promoCode, setPromoCode] = useState("");
+  const [promoBusy, setPromoBusy] = useState(false);
+  const [promoMessage, setPromoMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   const registrationId = searchParams?.get("id");
   const emailSentParam = searchParams?.get("emailSent");
@@ -34,8 +37,8 @@ function RegistrationConfirmationContent() {
   const currencyParam = searchParams?.get("currency");
 
   const emailSent = emailSentParam === "true";
-  const finalPrice = finalPriceParam ? parseFloat(finalPriceParam) : undefined;
-  const currency = currencyParam || "USD";
+  const queryFinalPrice = finalPriceParam ? parseFloat(finalPriceParam) : undefined;
+  const queryCurrency = currencyParam || "USD";
 
   useEffect(() => {
     if (!registrationId) {
@@ -91,22 +94,71 @@ function RegistrationConfirmationContent() {
     );
   }
 
+  const dbFinalPrice = typeof status.finalPrice === "number" && Number.isFinite(status.finalPrice) ? status.finalPrice : undefined;
+  const finalPrice = dbFinalPrice ?? (typeof queryFinalPrice === "number" && Number.isFinite(queryFinalPrice) ? queryFinalPrice : undefined);
+  const currency = status.currency || queryCurrency;
+  const paymentPending = status.status === "PENDING_PAYMENT";
+  const paymentUploaded = status.status === "PAYMENT_UPLOADED";
+  const paymentRequired = (paymentPending || paymentUploaded) && (finalPrice === undefined || finalPrice > 0);
+  const noPaymentDue = (paymentPending || paymentUploaded) && finalPrice !== undefined && finalPrice <= 0;
+  const canApplyPromo = paymentPending && paymentRequired && !paymentUploaded;
+
+  async function applyPromoCode() {
+    const currentRegistrationId = status?.id;
+    if (!currentRegistrationId) return;
+    const code = promoCode.trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
+    if (!code) {
+      setPromoMessage({ type: "error", text: "Enter a promo code first." });
+      return;
+    }
+    setPromoBusy(true);
+    setPromoMessage(null);
+    const result = await apiFetch<RegistrationStatus & { promoApplied?: boolean; discountAmount?: number; code?: string }>(`/api/v1/academy/registration/${currentRegistrationId}/coupon`, {
+      method: "POST",
+      body: JSON.stringify({ code }),
+    });
+    setPromoBusy(false);
+    if (result.error) {
+      setPromoMessage({ type: "error", text: result.error.message });
+      return;
+    }
+    if (result.data) {
+      setStatus(result.data);
+      setPromoCode("");
+      const discount = typeof result.data.discountAmount === "number" ? `${result.data.currency || currency} ${result.data.discountAmount.toFixed(2)}` : "your discount";
+      setPromoMessage({ type: "success", text: `${result.data.code || code} applied. You saved ${discount}.` });
+    }
+  }
+
   return (
     <PageShell eyebrow="HouseLink Academy" title="Registration Confirmation" description="">
-      <div className="max-w-2xl mx-auto">
+      <div className="mx-auto max-w-4xl">
         {status.status === "APPROVED" && (
-          <div className="text-center py-12">
-            <div className="rounded-full bg-emerald-100 dark:bg-emerald-900/20 w-20 h-20 flex items-center justify-center mx-auto mb-6">
-              <CheckCircle2 className="size-10 text-emerald-600 dark:text-emerald-400" />
+          <div className="overflow-hidden rounded-2xl border border-emerald-200 bg-white shadow-xl shadow-emerald-900/5 dark:border-emerald-800/70 dark:bg-slate-950">
+            <div className="border-b border-emerald-100 bg-emerald-50 px-6 py-8 text-center dark:border-emerald-900/60 dark:bg-emerald-950/30 sm:px-10">
+              <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-600 text-white shadow-lg shadow-emerald-900/20">
+                <CheckCircle2 className="size-9" />
+              </div>
+              <h1 className="text-3xl font-bold text-slate-950 dark:text-white">Registration Complete</h1>
+              <p className="mx-auto mt-3 max-w-2xl text-base text-slate-600 dark:text-slate-300">You now have access to {status.courseTitle}.</p>
             </div>
-            <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100 mb-2">Registration Complete!</h1>
-            <p className="text-lg text-slate-600 dark:text-slate-400 mb-4">You now have access to {status.courseTitle}</p>
-            <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-xl p-6 mb-8">
-              <p className="text-emerald-800 dark:text-emerald-300 font-medium">Your course access is active and ready to use.</p>
+            <div className="grid gap-4 p-6 sm:grid-cols-3 sm:p-8">
+              <div className="rounded-xl border border-slate-200 p-4 dark:border-slate-800">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Course</p>
+                <p className="mt-2 font-semibold text-slate-950 dark:text-white">{status.courseTitle}</p>
+              </div>
+              <div className="rounded-xl border border-slate-200 p-4 dark:border-slate-800">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Access</p>
+                <p className="mt-2 font-semibold text-emerald-700 dark:text-emerald-300">Active</p>
+              </div>
+              <div className="rounded-xl border border-slate-200 p-4 dark:border-slate-800">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Payment</p>
+                <p className="mt-2 font-semibold text-slate-950 dark:text-white">{currency} {(finalPrice ?? 0).toFixed(2)}</p>
+              </div>
             </div>
-            <div className="flex flex-col sm:flex-row gap-3 w-full">
-              <Link href={`/dashboard/academy/${status.courseId}`} className="flex-1">
-                <Button className="w-full">
+            <div className="border-t border-slate-100 p-6 dark:border-slate-800 sm:p-8">
+              <Link href={`/dashboard/academy/${status.courseId}`}>
+                <Button className="w-full sm:w-auto">
                   <ArrowRight className="size-4 mr-2" /> Start Learning
                 </Button>
               </Link>
@@ -115,78 +167,120 @@ function RegistrationConfirmationContent() {
         )}
 
         {(status.status === "PENDING_PAYMENT" || status.status === "PAYMENT_UPLOADED") && (
-          <div className="text-center py-12">
-            <div className="rounded-full bg-amber-100 dark:bg-amber-900/20 w-20 h-20 flex items-center justify-center mx-auto mb-6">
-              <Clock className="size-10 text-amber-600 dark:text-amber-400" />
-            </div>
-            <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100 mb-2">Registration Submitted</h1>
-            <p className="text-lg text-slate-600 dark:text-slate-400 mb-4">Your registration for {status.courseTitle} is pending payment verification</p>
-            
-            <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-6 mb-8 text-left">
-              <h3 className="font-semibold text-amber-900 dark:text-amber-100 mb-3">Payment Required</h3>
-              <div className="space-y-3 text-amber-800 dark:text-amber-300">
-                {finalPrice !== undefined && finalPrice > 0 ? (
-                  <>
-                    <p className="text-base">
-                      <span className="font-medium">Amount to pay:</span>{" "}
-                      <span className="font-bold text-lg">{currency} {finalPrice.toFixed(2)}</span>
-                    </p>
-                    {status.needsPaymentProof && (
-                      <div className="bg-amber-100 dark:bg-amber-900/30 rounded-lg p-4 mt-4">
-                        <p className="font-medium mb-2">Action Required:</p>
-                        <p className="text-sm">Please upload proof of payment from your learner dashboard to complete your registration. Your access will be activated after admin verification.</p>
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <p className="text-base font-medium text-emerald-700 dark:text-emerald-300">
-                    This course is free! Your registration is complete and awaiting admin approval.
+          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl shadow-slate-900/5 dark:border-slate-800 dark:bg-slate-950">
+            <div className="bg-slate-950 px-6 py-8 text-white dark:bg-slate-900 sm:px-10">
+              <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide">
+                    {paymentUploaded ? <ShieldCheck className="size-4" /> : paymentRequired ? <CreditCard className="size-4" /> : <CheckCircle2 className="size-4" />}
+                    {paymentUploaded ? "Proof submitted" : paymentRequired ? "Payment pending" : "Approval pending"}
+                  </div>
+                  <h1 className="text-3xl font-bold">Registration Submitted</h1>
+                  <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300 sm:text-base">
+                    {paymentUploaded
+                      ? `Your payment proof for ${status.courseTitle} is awaiting admin verification.`
+                      : paymentRequired
+                        ? `Your registration for ${status.courseTitle} is saved. Complete payment to unlock admin approval.`
+                        : `Your registration for ${status.courseTitle} is awaiting admin approval.`}
                   </p>
-                )}
-              </div>
-              
-              <div className="mt-6 pt-4 border-t border-amber-200 dark:border-amber-800">
-                <h4 className="font-semibold text-amber-900 dark:text-amber-100 mb-2">Next Steps:</h4>
-                <ol className="space-y-2 text-sm text-amber-800 dark:text-amber-300">
-                  {finalPrice !== undefined && finalPrice > 0 && (
-                    <>
-                      {emailSent ? (
-                        <li className="flex items-start gap-3">
-                          <span className="flex-shrink-0 w-6 h-6 rounded-full bg-amber-200 dark:bg-amber-800 flex items-center justify-center text-amber-900 dark:text-amber-100 text-sm font-bold">1</span>
-                          <span>Complete payment using the instructions sent to your email</span>
-                        </li>
-                      ) : (
-                        <li className="flex items-start gap-3">
-                          <span className="flex-shrink-0 w-6 h-6 rounded-full bg-amber-200 dark:bg-amber-800 flex items-center justify-center text-amber-900 dark:text-amber-100 text-sm font-bold">1</span>
-                          <span>Check your learner dashboard for payment instructions</span>
-                        </li>
-                      )}
-                      {status.needsPaymentProof && (
-                        <li className="flex items-start gap-3">
-                          <span className="flex-shrink-0 w-6 h-6 rounded-full bg-amber-200 dark:bg-amber-800 flex items-center justify-center text-amber-900 dark:text-amber-100 text-sm font-bold">2</span>
-                          <span>Upload proof of payment from your learner dashboard</span>
-                        </li>
-                      )}
-                      <li className="flex items-start gap-3">
-                        <span className="flex-shrink-0 w-6 h-6 rounded-full bg-amber-200 dark:bg-amber-800 flex items-center justify-center text-amber-900 dark:text-amber-100 text-sm font-bold">
-                          {status.needsPaymentProof ? "3" : "2"}
-                        </span>
-                        <span>Wait for admin approval (usually within 24-48 hours)</span>
-                      </li>
-                    </>
-                  )}
-                  {finalPrice !== undefined && finalPrice === 0 && (
-                    <li className="flex items-start gap-3">
-                      <span className="flex-shrink-0 w-6 h-6 rounded-full bg-amber-200 dark:bg-amber-800 flex items-center justify-center text-amber-900 dark:text-amber-100 text-sm font-bold">1</span>
-                      <span>Wait for admin approval (usually within 24-48 hours)</span>
-                    </li>
-                  )}
-                </ol>
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-white/10 p-4 text-left sm:min-w-48">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-300">Balance Due</p>
+                  <p className="mt-1 text-3xl font-bold">{finalPrice === undefined ? "Check dashboard" : `${currency} ${finalPrice.toFixed(2)}`}</p>
+                </div>
               </div>
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-3">
-              {status.needsPaymentProof && finalPrice !== undefined && finalPrice > 0 && (
+            <div className="grid gap-5 p-6 sm:p-8 lg:grid-cols-[1.1fr_0.9fr]">
+              <div className="rounded-2xl border border-slate-200 p-5 dark:border-slate-800">
+                <h3 className="flex items-center gap-2 font-semibold text-slate-950 dark:text-white">
+                  {paymentUploaded ? <ShieldCheck className="size-5 text-emerald-600" /> : paymentRequired ? <CreditCard className="size-5 text-amber-600" /> : <CheckCircle2 className="size-5 text-emerald-600" />}
+                  {paymentUploaded ? "Payment proof uploaded" : paymentRequired ? "Payment required" : "No payment due"}
+                </h3>
+                <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
+                  {paymentUploaded
+                    ? "Your proof is safely recorded. Admin will verify it before activating your course access."
+                    : paymentRequired
+                      ? "Use the payment instructions in your dashboard, then upload proof of payment so admin can verify your access."
+                      : "No payment is due for this registration. Admin only needs to approve the learner application."}
+                </p>
+                <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-xl bg-slate-50 p-4 dark:bg-slate-900">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Course</p>
+                    <p className="mt-1 font-semibold text-slate-950 dark:text-white">{status.courseTitle}</p>
+                  </div>
+                  <div className="rounded-xl bg-slate-50 p-4 dark:bg-slate-900">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Current status</p>
+                    <p className="mt-1 font-semibold text-slate-950 dark:text-white">{paymentUploaded ? "Verification pending" : paymentRequired ? "Payment pending" : "Admin approval pending"}</p>
+                  </div>
+                </div>
+              </div>
+
+              {canApplyPromo && (
+                <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5 dark:border-emerald-900/70 dark:bg-emerald-950/20">
+                  <h3 className="flex items-center gap-2 font-semibold text-emerald-950 dark:text-emerald-100">
+                    <Tag className="size-5" />
+                    Have a promo code?
+                  </h3>
+                  <p className="mt-2 text-sm leading-6 text-emerald-800 dark:text-emerald-200">
+                    You can still apply a promo code before uploading payment proof.
+                  </p>
+                  <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+                    <input
+                      value={promoCode}
+                      onChange={(event) => {
+                        setPromoCode(event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""));
+                        setPromoMessage(null);
+                      }}
+                      placeholder="PROMO CODE"
+                      className="min-h-11 flex-1 rounded-xl border border-emerald-200 bg-white px-4 text-sm font-semibold uppercase tracking-wide text-slate-950 outline-none ring-emerald-500 transition focus:ring-2 dark:border-emerald-900 dark:bg-slate-950 dark:text-white"
+                    />
+                    <Button onClick={() => void applyPromoCode()} disabled={promoBusy} className="min-h-11">
+                      {promoBusy ? "Applying..." : "Apply"}
+                    </Button>
+                  </div>
+                  {promoMessage && (
+                    <p className={`mt-3 flex items-start gap-2 text-sm font-medium ${promoMessage.type === "success" ? "text-emerald-700 dark:text-emerald-200" : "text-red-700 dark:text-red-300"}`}>
+                      {promoMessage.type === "success" ? <CheckCircle2 className="mt-0.5 size-4 shrink-0" /> : <AlertCircle className="mt-0.5 size-4 shrink-0" />}
+                      {promoMessage.text}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              <div className="rounded-2xl border border-slate-200 p-5 dark:border-slate-800 lg:col-span-2">
+                <h4 className="font-semibold text-slate-950 dark:text-white">Next steps</h4>
+                <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                  {paymentRequired && (
+                    <>
+                      <div className="rounded-xl border border-slate-200 p-4 dark:border-slate-800">
+                        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-amber-100 text-sm font-bold text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">1</span>
+                        <p className="mt-3 text-sm font-medium text-slate-950 dark:text-white">{emailSent ? "Follow the payment email" : "Check dashboard instructions"}</p>
+                      </div>
+                      {status.needsPaymentProof && !paymentUploaded && (
+                        <div className="rounded-xl border border-slate-200 p-4 dark:border-slate-800">
+                          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-amber-100 text-sm font-bold text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">2</span>
+                          <p className="mt-3 text-sm font-medium text-slate-950 dark:text-white">Upload payment proof</p>
+                        </div>
+                      )}
+                      <div className="rounded-xl border border-slate-200 p-4 dark:border-slate-800">
+                        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-amber-100 text-sm font-bold text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">{status.needsPaymentProof && !paymentUploaded ? "3" : "2"}</span>
+                        <p className="mt-3 text-sm font-medium text-slate-950 dark:text-white">Wait for admin approval</p>
+                      </div>
+                    </>
+                  )}
+                  {noPaymentDue && (
+                    <div className="rounded-xl border border-slate-200 p-4 dark:border-slate-800">
+                      <span className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-100 text-sm font-bold text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200">1</span>
+                      <p className="mt-3 text-sm font-medium text-slate-950 dark:text-white">Wait for admin approval</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-3 border-t border-slate-100 p-6 dark:border-slate-800 sm:flex-row sm:p-8">
+              {status.needsPaymentProof && paymentRequired && !paymentUploaded && (
                 <Link href="/dashboard/academy" className="flex-1">
                   <Button className="w-full">
                     <Upload className="size-4 mr-2" /> Upload Payment Proof
@@ -208,16 +302,18 @@ function RegistrationConfirmationContent() {
         )}
 
         {status.status === "PENDING_EMAIL_VERIFICATION" && (
-          <div className="text-center py-12">
-            <div className="rounded-full bg-blue-100 dark:bg-blue-900/20 w-20 h-20 flex items-center justify-center mx-auto mb-6">
-              <Mail className="size-10 text-blue-600 dark:text-blue-400" />
+          <div className="overflow-hidden rounded-2xl border border-blue-200 bg-white shadow-xl shadow-blue-900/5 dark:border-blue-900 dark:bg-slate-950">
+            <div className="border-b border-blue-100 bg-blue-50 px-6 py-8 text-center dark:border-blue-900/60 dark:bg-blue-950/30 sm:px-10">
+              <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-lg shadow-blue-900/20">
+                <Mail className="size-9" />
+              </div>
+              <h1 className="text-3xl font-bold text-slate-950 dark:text-white">Verify Your Email</h1>
+              <p className="mx-auto mt-3 max-w-2xl text-base text-slate-600 dark:text-slate-300">We sent a verification link to your email address.</p>
             </div>
-            <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100 mb-2">Verify Your Email</h1>
-            <p className="text-lg text-slate-600 dark:text-slate-400 mb-4">We sent a verification link to your email address</p>
             
-            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-6 mb-8 text-left">
-              <h3 className="font-semibold text-blue-900 dark:text-blue-100 mb-3">To complete your registration:</h3>
-              <ol className="space-y-3 text-blue-800 dark:text-blue-300">
+            <div className="p-6 sm:p-8">
+              <h3 className="font-semibold text-slate-950 dark:text-white">To complete your registration</h3>
+              <ol className="mt-4 space-y-3 text-slate-700 dark:text-slate-300">
                 <li className="flex items-start gap-3">
                   <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-200 dark:bg-blue-800 flex items-center justify-center text-blue-900 dark:text-blue-100 text-sm font-bold">1</span>
                   <span>Check your email inbox for the verification link</span>
@@ -236,7 +332,7 @@ function RegistrationConfirmationContent() {
               </p>
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-3">
+            <div className="flex flex-col gap-3 border-t border-slate-100 p-6 dark:border-slate-800 sm:flex-row sm:p-8">
               <Button 
                 variant="secondary" 
                 className="w-full"

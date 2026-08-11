@@ -685,7 +685,14 @@ export async function registerPublicLearner(input: {
     });
   }
 
-  return { ...application, emailSent, emailError };
+  return {
+    ...application,
+    paymentId: payment.id,
+    finalPrice: Number(finalPrice),
+    currency: course.currency,
+    emailSent,
+    emailError,
+  };
 }
 
 export async function attachAcademyPaymentProof(paymentId: string, learnerId: string, proofUrl: string) {
