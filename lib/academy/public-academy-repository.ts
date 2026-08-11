@@ -1,6 +1,7 @@
 import { AcademyRegistrationStatus, PaymentProvider, PaymentStatus, Role, TrainingCourseStatus, TrainingVisibility, Prisma } from "@prisma/client";
 import { getMainPrisma } from "@/lib/db/main-prisma";
 import { sendRegistrationConfirmationEmail } from "@/lib/academy/academy-email";
+import { recordAcademyReferralRegistration, rewardSuccessfulAcademyReferral } from "@/lib/academy/engagement-repository";
 import { calculateCourseProgress, getCompletedLessonIds } from "@/lib/academy/academy-progress";
 import { getAssessmentGateState, getLessonGateState, getModuleGateState } from "@/lib/academy/academy-gates";
 import { awardProgrammeBadge, canAccessProgrammeCourse } from "@/lib/academy/academy-completion";
@@ -513,6 +514,7 @@ export async function registerPublicLearner(input: {
   motivation?: string;
   paymentMethod?: string;
   couponCode?: string;
+  referralCode?: string;
 }) {
   const prisma = getMainPrisma();
   const course = await prisma.trainingCourse.findFirst({
@@ -584,6 +586,7 @@ export async function registerPublicLearner(input: {
         learnerType: "PUBLIC_LEARNER", 
         referenceNumber: `HLA-${Date.now()}`,
         couponCode: input.couponCode || null,
+        referralCode: input.referralCode || null,
         couponId,
         discountAmount: discountAmount.toString(),
       } as Prisma.InputJsonObject,
@@ -644,12 +647,20 @@ export async function registerPublicLearner(input: {
       body: isFree ? `${course.title} is active in your learner dashboard.` : `Upload proof of payment for ${course.title} so an admin can activate your access.`,
     },
   });
+  await recordAcademyReferralRegistration({
+    referralCode: input.referralCode,
+    learnerId: input.learnerId,
+    courseId: course.id,
+    learnerName: input.fullName,
+    learnerEmail: input.email,
+  });
   if (isFree) {
     await prisma.courseEnrolment.upsert({
       where: { courseId_agentId: { courseId: course.id, agentId: input.learnerId } },
       create: { courseId: course.id, agentId: input.learnerId, status: "ACTIVE", dueAt: accessEndsAt },
       update: { status: "ACTIVE", dueAt: accessEndsAt },
     });
+    await rewardSuccessfulAcademyReferral({ learnerId: input.learnerId, courseId: course.id });
   }
 
   // Send registration confirmation email if payment is required
@@ -761,6 +772,7 @@ export async function reviewPublicLearnerApplication(input: {
       create: { courseId: application.courseId, agentId: application.learnerId, status: "ACTIVE", dueAt: accessEndsAt },
       update: { status: "ACTIVE", dueAt: accessEndsAt },
     });
+    await rewardSuccessfulAcademyReferral({ learnerId: application.learnerId, courseId: application.courseId });
   }
 
   // If rejecting, refunding, or expiring, remove coupon usage

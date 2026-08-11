@@ -80,6 +80,7 @@ export async function POST(request: Request) {
     motivation: typeof body.motivation === "string" ? body.motivation : undefined,
     paymentMethod: typeof body.paymentMethod === "string" ? body.paymentMethod : undefined,
     couponCode: typeof body.couponCode === "string" ? body.couponCode : undefined,
+    referralCode: typeof body.referralCode === "string" ? body.referralCode : undefined,
   });
   if (result === "COURSE_NOT_AVAILABLE") {
     return problem(404, "COURSE_NOT_AVAILABLE", "This course is not currently open for public registration.");

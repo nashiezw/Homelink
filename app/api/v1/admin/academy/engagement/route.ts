@@ -37,7 +37,8 @@ function toEngagementCsv(data: Awaited<ReturnType<typeof getAdminAcademyEngageme
         profile.communityOptIn && "community",
         profile.ambassadorOptIn && "ambassador",
         profile.directoryOptIn && "directory",
-        profile.spotlightConsent && "spotlight",
+        profile.spotlightConsent && `spotlight:${profile.spotlightStatus ?? "PENDING"}`,
+        profile.sharedPostConfirmed && "shared-post",
       ].filter(Boolean).join(" / "),
       profile.updatedAt,
     ]),
@@ -45,6 +46,7 @@ function toEngagementCsv(data: Awaited<ReturnType<typeof getAdminAcademyEngageme
     ...data.challenges.map((item: any) => ["Challenge", "", item.course?.title ?? "All learners", item.title, item.status, `${item.submissions} submission(s)`, item.createdAt]),
     ...data.officeHours.map((item: any) => ["Office hour", "", item.course?.title ?? "All learners", item.title, item.active ? "ACTIVE" : "INACTIVE", `${item.rsvps} RSVP(s)`, item.startsAt]),
     ...data.referrals.map((item: any) => ["Referral", item.referrer?.name ?? item.referrer?.email ?? item.referrerId, item.course?.title ?? "General", item.referralCode, item.status, item.referredName ?? item.referredEmail ?? "", item.createdAt]),
+    ...data.moduleFeedback.map((item: any) => ["Module feedback", item.learner?.name ?? item.learner?.email ?? item.learnerId, item.course?.title ?? item.courseId, "Module feedback", item.status, item.response, item.createdAt]),
   ];
   return rows.map((row) => row.map(csvCell).join(",")).join("\n");
 }

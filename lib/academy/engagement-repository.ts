@@ -9,20 +9,24 @@ const DEFAULT_SETTINGS = {
   referralsEnabled: true,
   testimonialsEnabled: true,
   directoryEnabled: true,
+  spotlightEnabled: true,
   challengesEnabled: true,
   officeHoursEnabled: true,
+  moduleFeedbackEnabled: true,
   communityName: "HouseLink Academy Learner Community",
   whatsappUrl: "",
   invitation: "Join the optional learner community for peer support, announcements, and practical field discussions.",
   sharePrompt: "I am building my real estate knowledge through HouseLink Academy.",
   referralRewardLabel: "Admin-reviewed recognition reward",
+  referralUrlBase: "",
   campaignSchedule: "Weekly learner wins, practical field prompts, and office-hours reminders.",
+  weeklyThemes: "Market update Monday\nDocument clinic Wednesday\nField win Friday",
 };
 
 export async function getAdminAcademyEngagement() {
   const prisma = getMainPrisma() as any;
   await ensureEngagementSettings();
-  const [settingsRow, courses, profiles, testimonials, challenges, challengeSubmissions, officeHours, rsvps, referrals] = await Promise.all([
+  const [settingsRow, courses, profiles, testimonials, challenges, challengeSubmissions, officeHours, rsvps, referrals, moduleFeedback] = await Promise.all([
     prisma.academyEngagementSetting.findUnique({ where: { id: "singleton" } }),
     prisma.trainingCourse.findMany({ select: { id: true, title: true, status: true }, orderBy: { title: "asc" } }),
     prisma.academyEngagementProfile.findMany({ orderBy: { updatedAt: "desc" }, take: 200 }),
@@ -32,6 +36,7 @@ export async function getAdminAcademyEngagement() {
     prisma.academyOfficeHour.findMany({ orderBy: { startsAt: "asc" }, take: 100 }),
     prisma.academyOfficeHourRsvp.findMany({ orderBy: { updatedAt: "desc" }, take: 200 }),
     prisma.academyReferral.findMany({ orderBy: { createdAt: "desc" }, take: 200 }),
+    prisma.academyModuleFeedback.findMany({ orderBy: { createdAt: "desc" }, take: 200 }),
   ]);
   const learnerIds = unique([
     ...profiles.map((row: any) => row.learnerId),
@@ -39,6 +44,8 @@ export async function getAdminAcademyEngagement() {
     ...challengeSubmissions.map((row: any) => row.learnerId),
     ...rsvps.map((row: any) => row.learnerId),
     ...referrals.map((row: any) => row.referrerId),
+    ...referrals.map((row: any) => row.referredLearnerId),
+    ...moduleFeedback.map((row: any) => row.learnerId),
   ]);
   const learners = learnerIds.length
     ? await prisma.user.findMany({ where: { id: { in: learnerIds } }, select: { id: true, name: true, email: true, phone: true } })
@@ -64,6 +71,7 @@ export async function getAdminAcademyEngagement() {
       activeChallenges: challenges.filter((row: any) => row.status === "PUBLISHED").length,
       upcomingOfficeHours: officeHours.filter((row: any) => row.active && new Date(row.startsAt).getTime() >= Date.now()).length,
       referrals: referrals.length,
+      moduleFeedback: moduleFeedback.length,
     },
     profiles: profiles.map((row: any) => ({
       ...serializeDates(row),
@@ -93,6 +101,11 @@ export async function getAdminAcademyEngagement() {
     referrals: referrals.map((row: any) => ({
       ...serializeDates(row),
       referrer: learnerById.get(row.referrerId) ?? null,
+      course: row.courseId ? courseById.get(row.courseId) ?? null : null,
+    })),
+    moduleFeedback: moduleFeedback.map((row: any) => ({
+      ...serializeDates(row),
+      learner: learnerById.get(row.learnerId) ?? null,
       course: row.courseId ? courseById.get(row.courseId) ?? null : null,
     })),
   };
@@ -184,6 +197,22 @@ export async function runAdminAcademyEngagementAction(body: Record<string, any>,
     await audit(actor, "academy.engagement.challenge_submission.moderate", row.id, { status: row.status });
     return row;
   }
+  if (action === "moderate_module_feedback") {
+    const row = await prisma.academyModuleFeedback.update({
+      where: { id: String(body.feedbackId) },
+      data: { status: ["NEW", "REVIEWED", "ARCHIVED"].includes(String(body.status)) ? String(body.status) : "REVIEWED" },
+    });
+    await audit(actor, "academy.engagement.module_feedback.moderate", row.id, { status: row.status });
+    return row;
+  }
+  if (action === "moderate_spotlight") {
+    const row = await prisma.academyEngagementProfile.update({
+      where: { id: String(body.profileId) },
+      data: { spotlightStatus: ["APPROVED", "REJECTED", "PENDING", "NOT_SUBMITTED"].includes(String(body.status)) ? String(body.status) : "PENDING" },
+    });
+    await audit(actor, "academy.engagement.spotlight.moderate", row.id, { status: row.spotlightStatus });
+    return row;
+  }
   return null;
 }
 
@@ -218,22 +247,24 @@ export async function getLearnerAcademyEngagement(learnerId: string) {
     prisma.academyOfficeHourRsvp.findMany({ where: { learnerId } }),
   ]);
   const profile = profiles.find((row: any) => row.courseId === null) ?? null;
+  const settings = normalizeSettings(settingsRow?.payload);
   return {
-    settings: normalizeSettings(settingsRow?.payload),
+    settings,
     courses,
     profile: profile ? serializeDates(profile) : null,
     profiles: profiles.map(serializeDates),
     referrals: referrals.map(serializeDates),
-    testimonials: testimonials.map(serializeDates),
-    challenges: challenges.map((challenge: any) => ({
+    referralUrl: profile?.referralCode ? buildReferralUrl(profile.referralCode, settings) : null,
+    testimonials: settings.testimonialsEnabled ? testimonials.map(serializeDates) : [],
+    challenges: settings.challengesEnabled ? challenges.map((challenge: any) => ({
       ...serializeDates(challenge),
       submitted: challengeSubmissions.some((submission: any) => submission.challengeId === challenge.id),
       submission: serializeDates(challengeSubmissions.find((submission: any) => submission.challengeId === challenge.id) ?? null),
-    })),
-    officeHours: officeHours.map((officeHour: any) => ({
+    })) : [],
+    officeHours: settings.officeHoursEnabled ? officeHours.map((officeHour: any) => ({
       ...serializeDates(officeHour),
       rsvp: serializeDates(rsvps.find((rsvp: any) => rsvp.officeHourId === officeHour.id) ?? null),
-    })),
+    })) : [],
   };
 }
 
@@ -241,28 +272,37 @@ export async function runLearnerAcademyEngagementAction(learnerId: string, body:
   const prisma = getMainPrisma() as any;
   const action = String(body.action ?? "");
   if (action === "save_profile") {
+    const settings = await getSettings();
     const input = body.profile ?? {};
     const optedIn = Boolean(input.communityOptIn || input.ambassadorOptIn || input.directoryOptIn || input.spotlightConsent);
     const existing = await prisma.academyEngagementProfile.findFirst({ where: { learnerId, courseId: null } });
     const data = {
-      communityOptIn: Boolean(input.communityOptIn),
-      ambassadorOptIn: Boolean(input.ambassadorOptIn),
-      directoryOptIn: Boolean(input.directoryOptIn),
-      spotlightConsent: Boolean(input.spotlightConsent),
-      publicVisibility: input.directoryOptIn ? "PUBLIC" : "PRIVATE",
+      communityOptIn: settings.communityEnabled && Boolean(input.communityOptIn),
+      ambassadorOptIn: settings.ambassadorEnabled && Boolean(input.ambassadorOptIn),
+      directoryOptIn: settings.directoryEnabled && Boolean(input.directoryOptIn),
+      spotlightConsent: settings.spotlightEnabled && Boolean(input.spotlightConsent),
+      publicVisibility: settings.directoryEnabled && input.directoryOptIn ? "PUBLIC" : "PRIVATE",
       profileHeadline: nullable(input.profileHeadline),
       profileBio: nullable(input.profileBio),
+      sharedPostConfirmed: settings.ambassadorEnabled && Boolean(input.sharedPostConfirmed),
+      sharedPostUrl: nullable(input.sharedPostUrl),
+      spotlightStatus: settings.spotlightEnabled && input.spotlightConsent ? (existing?.spotlightStatus === "APPROVED" ? "APPROVED" : "PENDING") : "NOT_SUBMITTED",
       consentedAt: optedIn ? new Date() : null,
       consentWithdrawnAt: optedIn ? null : new Date(),
     };
     const row = existing
       ? await prisma.academyEngagementProfile.update({ where: { id: existing.id }, data })
       : await prisma.academyEngagementProfile.create({ data: { learnerId, courseId: null, referralCode: await uniqueReferralCode(learnerId), ...data } });
+    if (data.communityOptIn) await awardEngagementBadge(learnerId, "academy-engagement-community", "Academy Community Member", "Opted in to the optional Academy learner community.", 50);
+    if (data.ambassadorOptIn) await awardEngagementBadge(learnerId, "academy-engagement-ambassador", "Academy Ambassador", "Opted in to the Academy ambassador programme.", 100);
+    if (data.sharedPostConfirmed) await awardEngagementBadge(learnerId, "academy-engagement-sharer", "Academy Story Sharer", "Confirmed an optional Academy enrolment or progress share.", 75);
     return row;
   }
   if (action === "submit_testimonial") {
+    const settings = await getSettings();
+    if (!settings.testimonialsEnabled) throw new Error("Testimonials are currently disabled.");
     const input = body.testimonial ?? {};
-    return prisma.academyTestimonial.create({
+    const row = await prisma.academyTestimonial.create({
       data: {
         learnerId,
         courseId: nullable(input.courseId),
@@ -273,8 +313,12 @@ export async function runLearnerAcademyEngagementAction(learnerId: string, body:
         status: "PENDING",
       },
     });
+    await awardEngagementBadge(learnerId, "academy-engagement-testimonial", "Academy Reviewer", "Submitted an optional Academy testimonial for moderation.", 75);
+    return row;
   }
   if (action === "submit_challenge") {
+    const settings = await getSettings();
+    if (!settings.challengesEnabled) throw new Error("Practical challenges are currently disabled.");
     const challengeId = String(body.challengeId);
     await assertPublishedChallengeAccess(learnerId, challengeId);
     return prisma.academyChallengeSubmission.upsert({
@@ -284,6 +328,8 @@ export async function runLearnerAcademyEngagementAction(learnerId: string, body:
     });
   }
   if (action === "rsvp_office_hour") {
+    const settings = await getSettings();
+    if (!settings.officeHoursEnabled) throw new Error("Office hours are currently disabled.");
     const officeHourId = String(body.officeHourId);
     await assertOfficeHourAccess(learnerId, officeHourId);
     return prisma.academyOfficeHourRsvp.upsert({
@@ -293,6 +339,8 @@ export async function runLearnerAcademyEngagementAction(learnerId: string, body:
     });
   }
   if (action === "create_referral") {
+    const settings = await getSettings();
+    if (!settings.referralsEnabled) throw new Error("Referrals are currently disabled.");
     const profile = await ensureLearnerReferralProfile(learnerId);
     return prisma.academyReferral.create({
       data: {
@@ -305,7 +353,81 @@ export async function runLearnerAcademyEngagementAction(learnerId: string, body:
       },
     });
   }
+  if (action === "submit_module_feedback") {
+    const settings = await getSettings();
+    if (!settings.moduleFeedbackEnabled) throw new Error("Module feedback is currently disabled.");
+    await assertCourseAccess(learnerId, String(body.courseId));
+    return prisma.academyModuleFeedback.create({
+      data: {
+        learnerId,
+        courseId: required(body.courseId, "Course"),
+        moduleId: required(body.moduleId, "Module"),
+        lessonId: nullable(body.lessonId),
+        question: "What was unclear in this module?",
+        response: required(body.response, "Feedback"),
+      },
+    });
+  }
   return null;
+}
+
+export async function recordAcademyReferralRegistration(input: { referralCode?: string | null; learnerId: string; courseId: string; learnerName?: string | null; learnerEmail?: string | null }) {
+  const code = String(input.referralCode ?? "").trim().toUpperCase();
+  if (!code) return null;
+  const prisma = getMainPrisma() as any;
+  const profile = await prisma.academyEngagementProfile.findUnique({ where: { referralCode: code } });
+  if (!profile || profile.learnerId === input.learnerId) return null;
+  const existing = await prisma.academyReferral.findFirst({ where: { referralCode: code, referredLearnerId: input.learnerId, courseId: input.courseId } });
+  if (existing) return existing;
+  return prisma.academyReferral.create({
+    data: {
+      referrerId: profile.learnerId,
+      referredLearnerId: input.learnerId,
+      courseId: input.courseId,
+      referralCode: code,
+      referredName: nullable(input.learnerName),
+      referredEmail: nullable(input.learnerEmail),
+      status: "REGISTERED",
+      rewardLabel: (await getSettings()).referralRewardLabel,
+    },
+  });
+}
+
+export async function rewardSuccessfulAcademyReferral(input: { learnerId: string; courseId: string }) {
+  const prisma = getMainPrisma() as any;
+  const referrals = await prisma.academyReferral.findMany({
+    where: { referredLearnerId: input.learnerId, courseId: input.courseId, status: { in: ["REGISTERED", "INVITED"] } },
+  });
+  for (const referral of referrals) {
+    await prisma.academyReferral.update({ where: { id: referral.id }, data: { status: "REWARDED" } });
+    await awardEngagementBadge(referral.referrerId, "academy-engagement-referrer", "Academy Referral Champion", "Referred a learner who successfully enrolled.", 150);
+    await prisma.trainingNotification.create({
+      data: {
+        userId: referral.referrerId,
+        eventType: "ACADEMY_REFERRAL_REWARDED",
+        channel: "IN_APP",
+        subject: "Referral reward recorded",
+        body: `A learner used your Academy referral code and their enrolment was approved. Reward: ${referral.rewardLabel ?? "Academy recognition"}.`,
+      },
+    }).catch(() => null);
+  }
+  return referrals.length;
+}
+
+export async function createCertificateTestimonialPrompt(learnerId: string, courseId: string, certificateNumber: string) {
+  const settings = await getSettings();
+  if (!settings.testimonialsEnabled) return null;
+  const prisma = getMainPrisma() as any;
+  const course = await prisma.trainingCourse.findUnique({ where: { id: courseId }, select: { title: true } });
+  return prisma.trainingNotification.create({
+    data: {
+      userId: learnerId,
+      eventType: "ACADEMY_TESTIMONIAL_REQUEST",
+      channel: "IN_APP",
+      subject: "Share your Academy experience",
+      body: `You completed ${course?.title ?? "your Academy course"} and certificate ${certificateNumber} is ready. If you are comfortable, submit a short review or testimonial from your Engagement Hub.`,
+    },
+  }).catch(() => null);
 }
 
 async function ensureEngagementSettings() {
@@ -315,6 +437,12 @@ async function ensureEngagementSettings() {
     create: { id: "singleton", payload: DEFAULT_SETTINGS },
     update: {},
   });
+}
+
+async function getSettings() {
+  await ensureEngagementSettings();
+  const settings = await (getMainPrisma() as any).academyEngagementSetting.findUnique({ where: { id: "singleton" } });
+  return normalizeSettings(settings?.payload);
 }
 
 async function ensureLearnerReferralProfile(learnerId: string) {
@@ -349,6 +477,28 @@ async function assertOfficeHourAccess(learnerId: string, officeHourId: string) {
   if (application?.status !== "APPROVED") throw new Error("Office hours event is not available for this learner.");
 }
 
+async function assertCourseAccess(learnerId: string, courseId: string) {
+  const prisma = getMainPrisma() as any;
+  const enrolment = await prisma.courseEnrolment.findUnique({ where: { courseId_agentId: { courseId, agentId: learnerId } } });
+  if (enrolment?.status === "ACTIVE") return;
+  const application = await prisma.academyLearnerApplication.findUnique({ where: { learnerId_courseId: { learnerId, courseId } } });
+  if (application?.status !== "APPROVED") throw new Error("This course is not available for this learner.");
+}
+
+async function awardEngagementBadge(agentId: string, badgeId: string, name: string, description: string, xp: number) {
+  const prisma = getMainPrisma() as any;
+  await prisma.badge.upsert({
+    where: { id: badgeId },
+    create: { id: badgeId, name, description, xp, active: true },
+    update: { name, description, xp, active: true },
+  });
+  await prisma.agentBadge.upsert({
+    where: { badgeId_agentId: { badgeId, agentId } },
+    create: { badgeId, agentId },
+    update: {},
+  });
+}
+
 async function uniqueReferralCode(learnerId: string) {
   const prisma = getMainPrisma() as any;
   for (let i = 0; i < 5; i += 1) {
@@ -366,6 +516,11 @@ async function audit(actor: Actor, action: string, target: string, metadata: Rec
 
 function normalizeSettings(input: any) {
   return { ...DEFAULT_SETTINGS, ...(input && typeof input === "object" ? input : {}) };
+}
+
+function buildReferralUrl(code: string, settings: Record<string, any>) {
+  const base = String(settings.referralUrlBase || process.env.NEXT_PUBLIC_APP_URL || "https://www.houselink.co.zw").replace(/\/$/, "");
+  return `${base}/academy?ref=${encodeURIComponent(code)}`;
 }
 
 function required(value: unknown, label: string) {

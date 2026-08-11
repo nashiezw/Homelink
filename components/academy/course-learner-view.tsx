@@ -190,6 +190,7 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
         lessons: m.sections.flatMap((s) =>
           s.lessons.map((lesson) => ({
             ...lesson,
+            moduleId: m.id,
             summary: lesson.summary ?? undefined,
           })),
         ),
@@ -206,6 +207,14 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
         onToggleBookmark={async (lessonId, bookmarked) => {
           await apiFetch("/api/v1/academy/bookmarks", { method: "POST", body: JSON.stringify({ lessonId, bookmarked }) });
           await load();
+        }}
+        onSubmitModuleFeedback={async ({ moduleId, lessonId, response }) => {
+          const result = await apiFetch("/api/v1/academy/engagement", {
+            method: "PATCH",
+            body: JSON.stringify({ action: "submit_module_feedback", courseId, moduleId, lessonId, response }),
+          });
+          if (result.error) showToast(result.error.message, "error");
+          else showToast("Thanks. Your feedback was sent to the Academy team.", "success");
         }}
         onCompleteLesson={async (lessonId) => {
           const result = await apiFetch<{ courseCompleted?: boolean }>("/api/v1/academy/progress", { method: "POST", body: JSON.stringify({ lessonId }) });

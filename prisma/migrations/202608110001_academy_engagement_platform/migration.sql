@@ -20,6 +20,9 @@ CREATE TABLE IF NOT EXISTS "academy_engagement_profiles" (
   "profileHeadline" TEXT,
   "profileBio" TEXT,
   "referralCode" TEXT,
+  "spotlightStatus" TEXT NOT NULL DEFAULT 'NOT_SUBMITTED',
+  "sharedPostConfirmed" BOOLEAN NOT NULL DEFAULT false,
+  "sharedPostUrl" TEXT,
   "consentedAt" TIMESTAMP(3),
   "consentWithdrawnAt" TIMESTAMP(3),
   "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -30,6 +33,7 @@ CREATE TABLE IF NOT EXISTS "academy_engagement_profiles" (
 CREATE TABLE IF NOT EXISTS "academy_referrals" (
   "id" TEXT NOT NULL,
   "referrerId" TEXT NOT NULL,
+  "referredLearnerId" TEXT,
   "courseId" TEXT,
   "referralCode" TEXT NOT NULL,
   "referredName" TEXT,
@@ -106,11 +110,31 @@ CREATE TABLE IF NOT EXISTS "academy_office_hour_rsvps" (
   CONSTRAINT "academy_office_hour_rsvps_pkey" PRIMARY KEY ("id")
 );
 
+CREATE TABLE IF NOT EXISTS "academy_module_feedback" (
+  "id" TEXT NOT NULL,
+  "learnerId" TEXT NOT NULL,
+  "courseId" TEXT NOT NULL,
+  "moduleId" TEXT NOT NULL,
+  "lessonId" TEXT,
+  "question" TEXT NOT NULL,
+  "response" TEXT NOT NULL,
+  "status" TEXT NOT NULL DEFAULT 'NEW',
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt" TIMESTAMP(3) NOT NULL,
+  CONSTRAINT "academy_module_feedback_pkey" PRIMARY KEY ("id")
+);
+
+ALTER TABLE "academy_engagement_profiles" ADD COLUMN IF NOT EXISTS "spotlightStatus" TEXT NOT NULL DEFAULT 'NOT_SUBMITTED';
+ALTER TABLE "academy_engagement_profiles" ADD COLUMN IF NOT EXISTS "sharedPostConfirmed" BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE "academy_engagement_profiles" ADD COLUMN IF NOT EXISTS "sharedPostUrl" TEXT;
+ALTER TABLE "academy_referrals" ADD COLUMN IF NOT EXISTS "referredLearnerId" TEXT;
+
 CREATE UNIQUE INDEX IF NOT EXISTS "academy_engagement_profiles_learnerId_courseId_key" ON "academy_engagement_profiles"("learnerId", "courseId");
 CREATE UNIQUE INDEX IF NOT EXISTS "academy_engagement_profiles_referralCode_key" ON "academy_engagement_profiles"("referralCode");
 CREATE INDEX IF NOT EXISTS "academy_engagement_profiles_learnerId_idx" ON "academy_engagement_profiles"("learnerId");
 CREATE INDEX IF NOT EXISTS "academy_engagement_profiles_courseId_idx" ON "academy_engagement_profiles"("courseId");
 CREATE INDEX IF NOT EXISTS "academy_referrals_referrerId_idx" ON "academy_referrals"("referrerId");
+CREATE INDEX IF NOT EXISTS "academy_referrals_referredLearnerId_idx" ON "academy_referrals"("referredLearnerId");
 CREATE INDEX IF NOT EXISTS "academy_referrals_courseId_idx" ON "academy_referrals"("courseId");
 CREATE INDEX IF NOT EXISTS "academy_referrals_referralCode_idx" ON "academy_referrals"("referralCode");
 CREATE INDEX IF NOT EXISTS "academy_testimonials_learnerId_idx" ON "academy_testimonials"("learnerId");
@@ -125,3 +149,6 @@ CREATE INDEX IF NOT EXISTS "academy_office_hours_courseId_idx" ON "academy_offic
 CREATE INDEX IF NOT EXISTS "academy_office_hours_startsAt_idx" ON "academy_office_hours"("startsAt");
 CREATE UNIQUE INDEX IF NOT EXISTS "academy_office_hour_rsvps_officeHourId_learnerId_key" ON "academy_office_hour_rsvps"("officeHourId", "learnerId");
 CREATE INDEX IF NOT EXISTS "academy_office_hour_rsvps_learnerId_idx" ON "academy_office_hour_rsvps"("learnerId");
+CREATE INDEX IF NOT EXISTS "academy_module_feedback_learnerId_idx" ON "academy_module_feedback"("learnerId");
+CREATE INDEX IF NOT EXISTS "academy_module_feedback_courseId_idx" ON "academy_module_feedback"("courseId");
+CREATE INDEX IF NOT EXISTS "academy_module_feedback_moduleId_idx" ON "academy_module_feedback"("moduleId");

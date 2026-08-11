@@ -87,6 +87,16 @@ type AcademyStatus = {
   primaryCourseId: string | null;
 };
 
+type AcademyRegistrationForm = {
+  phone: string;
+  organisation: string;
+  motivation: string;
+  paymentMethod: string;
+  registrationIntent: "TRAINING_ONLY" | "AGENT_TRAINING";
+  couponCode: string;
+  referralCode: string;
+};
+
 function courseRegistrationState(status: AcademyStatus | null, courseId: string) {
   const registration = status?.registrationsByCourseId[courseId];
   if (!registration) return "NOT_REGISTERED" as const;
@@ -162,13 +172,14 @@ export function PublicAcademyPage() {
   const [statusLoaded, setStatusLoaded] = useState(false);
   const [selectedId, setSelectedId] = useState("");
   const [busy, setBusy] = useState(false);
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<AcademyRegistrationForm>({
     phone: "",
     organisation: "",
     motivation: "",
     paymentMethod: "bank_transfer",
     registrationIntent: "TRAINING_ONLY" as "TRAINING_ONLY" | "AGENT_TRAINING",
     couponCode: "",
+    referralCode: searchParams?.get("ref")?.toUpperCase().replace(/[^A-Z0-9-]/g, "") ?? "",
   });
   const [couponValidation, setCouponValidation] = useState<{
     valid: boolean;
@@ -276,6 +287,7 @@ export function PublicAcademyPage() {
         paymentMethod: form.paymentMethod,
         registrationIntent: form.registrationIntent,
         couponCode: form.couponCode || undefined,
+        referralCode: form.referralCode || undefined,
       }),
     });
     setBusy(false);
@@ -408,6 +420,9 @@ export function PublicAcademyPage() {
             <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600 dark:text-slate-300">
               Start with the pathway. Select one level, scan the value, then expand only the details you need: outcomes, certificate requirements, curriculum, and toolkit.
             </p>
+            <Link href="/academy/directory" className="mt-4 inline-flex min-h-10 items-center justify-center rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-bold text-emerald-800 transition hover:bg-emerald-100 dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-200">
+              <Award className="mr-2 size-4" /> View opt-in graduate directory
+            </Link>
           </div>
           <div className="border-t border-slate-100 bg-slate-50/80 p-5 dark:border-slate-800 dark:bg-slate-900/40 lg:border-l lg:border-t-0">
             <div className="grid grid-cols-3 gap-2 text-center">
@@ -1043,8 +1058,8 @@ function AcademySidePanel({
   academyStatus: AcademyStatus | null;
   isAdmin: boolean;
   isAgent: boolean;
-  form: { phone: string; organisation: string; motivation: string; paymentMethod: string; registrationIntent: "TRAINING_ONLY" | "AGENT_TRAINING"; couponCode: string };
-  setForm: React.Dispatch<React.SetStateAction<typeof form>>;
+  form: AcademyRegistrationForm;
+  setForm: React.Dispatch<React.SetStateAction<AcademyRegistrationForm>>;
   displayPrice: number | null;
   busy: boolean;
   couponValidation: { valid: boolean; discountAmount: number; finalAmount: number; savings: number; message?: string } | null;
@@ -1215,6 +1230,17 @@ function AcademySidePanel({
                   )}
                 </div>
               )}
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+                Referral Code
+                <input
+                  type="text"
+                  value={form.referralCode}
+                  onChange={(event) => setForm({ ...form, referralCode: event.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, "") })}
+                  placeholder="Optional referral code"
+                  className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 font-mono uppercase focus:ring-2 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-900"
+                />
+                <span className="mt-1 block text-xs text-slate-500">Use this only if another learner shared a HouseLink Academy referral link or code with you.</span>
+              </label>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
                 Payment Method
                 <select value={form.paymentMethod} onChange={(event) => setForm({ ...form, paymentMethod: event.target.value })} className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-900 focus:ring-2 focus:ring-emerald-500">

@@ -3,6 +3,7 @@ import { awardProgrammeBadge, hasPassedCourseAssessments } from "@/lib/academy/a
 import { getProgrammeCourse } from "@/lib/academy/academy-programme";
 import { CertificateIssue } from "@/lib/academy/certificate-repository";
 import { getLessonCompletionGateState, getLessonGateState } from "@/lib/academy/academy-gates";
+import { createCertificateTestimonialPrompt } from "@/lib/academy/engagement-repository";
 
 type CourseWithLessons = {
   id: string;
@@ -215,6 +216,7 @@ export async function issueCertificateIfMissing(learnerId: string, courseId: str
     });
     
     await sendCertificateNotification(learnerId, courseId, certificateNumber);
+    await createCertificateTestimonialPrompt(learnerId, courseId, certificateNumber);
     
     return { ...issue, pdfUrl: `/dashboard/academy/certificate/${issue.id}` };
   } catch (error) {

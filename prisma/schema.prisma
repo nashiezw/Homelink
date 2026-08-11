@@ -2389,6 +2389,9 @@ model AcademyEngagementProfile {
   profileHeadline     String?
   profileBio          String?
   referralCode        String?   @unique
+  spotlightStatus     String    @default("NOT_SUBMITTED")
+  sharedPostConfirmed Boolean   @default(false)
+  sharedPostUrl       String?
   consentedAt         DateTime?
   consentWithdrawnAt  DateTime?
   createdAt           DateTime  @default(now())
@@ -2403,6 +2406,7 @@ model AcademyEngagementProfile {
 model AcademyReferral {
   id            String   @id @default(cuid())
   referrerId    String
+  referredLearnerId String?
   courseId      String?
   referralCode  String
   referredName  String?
@@ -2413,6 +2417,7 @@ model AcademyReferral {
   updatedAt     DateTime @updatedAt
 
   @@index([referrerId])
+  @@index([referredLearnerId])
   @@index([courseId])
   @@index([referralCode])
   @@map("academy_referrals")
@@ -2498,6 +2503,24 @@ model AcademyOfficeHourRsvp {
   @@unique([officeHourId, learnerId])
   @@index([learnerId])
   @@map("academy_office_hour_rsvps")
+}
+
+model AcademyModuleFeedback {
+  id        String   @id @default(cuid())
+  learnerId String
+  courseId  String
+  moduleId  String
+  lessonId  String?
+  question  String
+  response  String
+  status    String   @default("NEW")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([learnerId])
+  @@index([courseId])
+  @@index([moduleId])
+  @@map("academy_module_feedback")
 }
 
 model TrainingSetting {

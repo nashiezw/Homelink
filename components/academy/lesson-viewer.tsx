@@ -74,6 +74,7 @@ export function LessonViewer({
   onBack,
   onCompleteLesson,
   onToggleBookmark,
+  onSubmitModuleFeedback,
   primaryColour = "#008b68",
   courseTheme,
   toolkitLocked = false,
@@ -83,12 +84,15 @@ export function LessonViewer({
   onBack: () => void;
   onCompleteLesson?: (lessonId: string) => void;
   onToggleBookmark?: (lessonId: string, bookmarked: boolean) => void;
+  onSubmitModuleFeedback?: (input: { moduleId: string; lessonId: string; response: string }) => Promise<void> | void;
   primaryColour?: string;
   courseTheme?: CourseTheme;
   toolkitLocked?: boolean;
 }) {
   const [currentLessonId, setCurrentLessonId] = useState(initialLessonId || course.modules[0]?.lessons[0]?.id || "");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [feedbackText, setFeedbackText] = useState("");
+  const [feedbackBusy, setFeedbackBusy] = useState(false);
 
   const allLessons = useMemo(
     () => course.modules.flatMap((module) => module.lessons.map((lesson) => ({ ...lesson, moduleName: module.title, moduleId: module.id }))),
@@ -105,6 +109,7 @@ export function LessonViewer({
   const sidebarGradient = courseTheme?.sidebar ?? "from-emerald-50 via-white to-teal-50/60";
   const lessonNotes = useMemo(() => collectLessonNotes(currentLesson), [currentLesson]);
   const fieldForms = useMemo(() => collectFieldForms(currentLesson), [currentLesson]);
+  const currentModuleId = (currentLesson as Lesson & { moduleId?: string }).moduleId ?? "";
 
   if (!currentLesson) {
     return (
@@ -355,6 +360,40 @@ export function LessonViewer({
             )}
 
             {/* Footer nav */}
+            {onSubmitModuleFeedback && currentModuleId && (
+              <section className="mt-10 rounded-xl border border-emerald-100 bg-emerald-50/70 p-5 dark:border-emerald-900/40 dark:bg-emerald-950/20">
+                <div className="flex items-start gap-3">
+                  <MessageSquare className="mt-1 size-5 text-emerald-600" />
+                  <div className="min-w-0 flex-1">
+                    <h3 className="font-bold text-slate-950 dark:text-white">What was unclear in this module?</h3>
+                    <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">Your answer goes to the Academy team so lessons can be improved from real learner feedback.</p>
+                    <textarea
+                      value={feedbackText}
+                      onChange={(event) => setFeedbackText(event.target.value)}
+                      rows={3}
+                      className="mt-3 w-full rounded-xl border border-emerald-100 bg-white px-4 py-3 text-sm text-slate-950 outline-none focus:border-emerald-400 dark:border-slate-800 dark:bg-slate-950 dark:text-white"
+                      placeholder="Tell us what needs more explanation..."
+                    />
+                    <Button
+                      className="mt-3"
+                      disabled={feedbackBusy || !feedbackText.trim()}
+                      onClick={async () => {
+                        try {
+                          setFeedbackBusy(true);
+                          await onSubmitModuleFeedback({ moduleId: currentModuleId, lessonId: currentLesson.id, response: feedbackText });
+                          setFeedbackText("");
+                        } finally {
+                          setFeedbackBusy(false);
+                        }
+                      }}
+                    >
+                      Send feedback
+                    </Button>
+                  </div>
+                </div>
+              </section>
+            )}
+
             <div className="mt-12 flex flex-col gap-3 border-t border-slate-200 pt-8 sm:flex-row sm:items-center sm:justify-between dark:border-slate-800">
               {previousLesson ? (
                 <Button variant="secondary" className="w-full justify-start sm:w-auto" onClick={() => setCurrentLessonId(previousLesson.id)}>

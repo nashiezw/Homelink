@@ -10,12 +10,13 @@ type EngagementData = {
   settings: Record<string, any>;
   courses: Array<{ id: string; title: string; status: string }>;
   metrics: Record<string, number>;
-  profiles: Array<{ id: string; learnerId: string; communityOptIn: boolean; ambassadorOptIn: boolean; directoryOptIn: boolean; spotlightConsent: boolean; publicVisibility: string; learner?: { name?: string | null; email?: string | null } | null }>;
+  profiles: Array<{ id: string; learnerId: string; communityOptIn: boolean; ambassadorOptIn: boolean; directoryOptIn: boolean; spotlightConsent: boolean; publicVisibility: string; spotlightStatus?: string; sharedPostConfirmed?: boolean; learner?: { name?: string | null; email?: string | null } | null }>;
   testimonials: Array<{ id: string; title: string; body: string; rating?: number | null; status: string; publicConsent: boolean; learner?: { name?: string | null; email?: string | null } | null; course?: { title: string } | null; createdAt: string }>;
   challenges: Array<{ id: string; title: string; instructions: string; rewardLabel?: string | null; status: string; courseId?: string | null; course?: { title: string } | null; startsAt?: string | null; endsAt?: string | null; submissions: number }>;
   challengeSubmissions: Array<{ id: string; evidence: string; status: string; learner?: { name?: string | null; email?: string | null } | null; challenge?: { title: string } | null; submittedAt: string }>;
   officeHours: Array<{ id: string; title: string; description?: string | null; startsAt: string; link?: string | null; capacity?: number | null; active: boolean; courseId?: string | null; course?: { title: string } | null; rsvps: number }>;
   referrals: Array<{ id: string; referralCode: string; status: string; referredName?: string | null; referredEmail?: string | null; referrer?: { name?: string | null; email?: string | null } | null; course?: { title: string } | null; createdAt: string }>;
+  moduleFeedback: Array<{ id: string; learnerId: string; courseId: string; moduleId: string; question: string; response: string; status: string; createdAt: string; learner?: { name?: string | null; email?: string | null } | null; course?: { title: string } | null }>;
 };
 
 const defaultChallenge = { title: "", instructions: "", rewardLabel: "", status: "DRAFT", courseId: "", startsAt: "", endsAt: "" };
@@ -125,8 +126,10 @@ export function AcademyEngagementCentre() {
               ["referralsEnabled", "Referral programme"],
               ["testimonialsEnabled", "Testimonials"],
               ["directoryEnabled", "Graduate directory"],
+              ["spotlightEnabled", "Learner spotlight"],
               ["challengesEnabled", "Practical challenges"],
               ["officeHoursEnabled", "Office hours"],
+              ["moduleFeedbackEnabled", "Module feedback"],
             ].map(([key, label]) => (
               <label key={key} className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/5 px-3 py-3 text-sm font-semibold text-slate-100">
                 {label}
@@ -141,6 +144,7 @@ export function AcademyEngagementCentre() {
             <Textarea label="Share prompt" value={settingsDraft.sharePrompt ?? ""} onChange={(sharePrompt) => setSettingsDraft({ ...settingsDraft, sharePrompt })} />
             <Field label="Referral reward label" value={settingsDraft.referralRewardLabel ?? ""} onChange={(referralRewardLabel) => setSettingsDraft({ ...settingsDraft, referralRewardLabel })} />
             <Textarea label="Campaign schedule" value={settingsDraft.campaignSchedule ?? ""} onChange={(campaignSchedule) => setSettingsDraft({ ...settingsDraft, campaignSchedule })} />
+            <Textarea label="Weekly WhatsApp themes" value={settingsDraft.weeklyThemes ?? ""} onChange={(weeklyThemes) => setSettingsDraft({ ...settingsDraft, weeklyThemes })} />
           </div>
         </Panel>
 
@@ -149,7 +153,7 @@ export function AcademyEngagementCentre() {
             <MiniList title="Learner opt-ins" empty="No learner opt-ins yet." rows={data.profiles.slice(0, 8).map((profile) => ({
               id: profile.id,
               title: profile.learner?.name ?? profile.learner?.email ?? profile.learnerId,
-              detail: [profile.communityOptIn && "Community", profile.ambassadorOptIn && "Ambassador", profile.directoryOptIn && "Directory", profile.spotlightConsent && "Spotlight"].filter(Boolean).join(" / ") || "No active consent",
+              detail: [profile.communityOptIn && "Community", profile.ambassadorOptIn && "Ambassador", profile.directoryOptIn && "Directory", profile.spotlightConsent && `Spotlight ${profile.spotlightStatus ?? ""}`, profile.sharedPostConfirmed && "Shared post confirmed"].filter(Boolean).join(" / ") || "No active consent",
             }))} />
             <MiniList title="Referral activity" empty="No referrals yet." rows={data.referrals.slice(0, 8).map((referral) => ({
               id: referral.id,
@@ -163,6 +167,29 @@ export function AcademyEngagementCentre() {
             items={pendingTestimonials.map((item) => ({ id: item.id, title: item.title, detail: `${item.learner?.name ?? item.learner?.email ?? "Learner"} - ${item.course?.title ?? "General"} - ${item.rating ?? "No"} stars`, body: item.body }))}
             onApprove={(id) => action({ action: "moderate_testimonial", testimonialId: id, status: "APPROVED" }, "Testimonial approved.")}
             onReject={(id) => action({ action: "moderate_testimonial", testimonialId: id, status: "REJECTED" }, "Testimonial rejected.")}
+          />
+          <ModerationList
+            title="Module feedback"
+            empty="No learner module feedback yet."
+            items={data.moduleFeedback.slice(0, 8).map((item) => ({ id: item.id, title: item.course?.title ?? "Course feedback", detail: `${item.learner?.name ?? item.learner?.email ?? "Learner"} - ${item.status}`, body: item.response }))}
+            approveLabel="Mark reviewed"
+            rejectLabel="Archive"
+            onApprove={(id) => action({ action: "moderate_module_feedback", feedbackId: id, status: "REVIEWED" }, "Feedback marked reviewed.")}
+            onReject={(id) => action({ action: "moderate_module_feedback", feedbackId: id, status: "ARCHIVED" }, "Feedback archived.")}
+          />
+          <ModerationList
+            title="Learner spotlights"
+            empty="No spotlight permissions waiting for review."
+            items={data.profiles.filter((profile) => profile.spotlightConsent && profile.spotlightStatus === "PENDING").map((profile) => ({
+              id: profile.id,
+              title: profile.learner?.name ?? profile.learner?.email ?? "Learner",
+              detail: profile.publicVisibility,
+              body: "Learner has given optional permission to be considered for a graduate spotlight.",
+            }))}
+            approveLabel="Approve spotlight"
+            rejectLabel="Reject"
+            onApprove={(id) => action({ action: "moderate_spotlight", profileId: id, status: "APPROVED" }, "Spotlight approved.")}
+            onReject={(id) => action({ action: "moderate_spotlight", profileId: id, status: "REJECTED" }, "Spotlight rejected.")}
           />
         </Panel>
       </section>
@@ -245,8 +272,8 @@ function MiniList({ title, empty, rows }: { title: string; empty: string; rows: 
   return <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-3"><h4 className="text-sm font-black text-white">{title}</h4><div className="mt-3 space-y-2">{rows.length ? rows.map((row) => <div key={row.id} className="rounded-xl bg-slate-950 p-3"><p className="text-sm font-semibold text-white">{row.title}</p><p className="mt-1 text-xs text-slate-400">{row.detail}</p></div>) : <p className="text-sm text-slate-500">{empty}</p>}</div></div>;
 }
 
-function ModerationList({ title, empty, items, onApprove, onReject }: { title: string; empty: string; items: Array<{ id: string; title: string; detail: string; body: string }>; onApprove: (id: string) => void; onReject: (id: string) => void }) {
-  return <div className="mt-4 rounded-2xl border border-white/10 bg-slate-900/70 p-3"><h4 className="text-sm font-black text-white">{title}</h4><div className="mt-3 space-y-2">{items.length ? items.map((item) => <div key={item.id} className="rounded-xl bg-slate-950 p-3"><p className="font-semibold text-white">{item.title}</p><p className="text-xs text-slate-400">{item.detail}</p><p className="mt-2 text-sm leading-6 text-slate-300">{item.body}</p><div className="mt-3 flex flex-col gap-2 sm:flex-row"><Button onClick={() => onApprove(item.id)}><CheckCircle2 className="size-4" /> Approve</Button><Button variant="secondary" onClick={() => onReject(item.id)}>Needs work / reject</Button></div></div>) : <p className="text-sm text-slate-500">{empty}</p>}</div></div>;
+function ModerationList({ title, empty, items, approveLabel = "Approve", rejectLabel = "Needs work / reject", onApprove, onReject }: { title: string; empty: string; items: Array<{ id: string; title: string; detail: string; body: string }>; approveLabel?: string; rejectLabel?: string; onApprove: (id: string) => void; onReject: (id: string) => void }) {
+  return <div className="mt-4 rounded-2xl border border-white/10 bg-slate-900/70 p-3"><h4 className="text-sm font-black text-white">{title}</h4><div className="mt-3 space-y-2">{items.length ? items.map((item) => <div key={item.id} className="rounded-xl bg-slate-950 p-3"><p className="font-semibold text-white">{item.title}</p><p className="text-xs text-slate-400">{item.detail}</p><p className="mt-2 text-sm leading-6 text-slate-300">{item.body}</p><div className="mt-3 flex flex-col gap-2 sm:flex-row"><Button onClick={() => onApprove(item.id)}><CheckCircle2 className="size-4" /> {approveLabel}</Button><Button variant="secondary" onClick={() => onReject(item.id)}>{rejectLabel}</Button></div></div>) : <p className="text-sm text-slate-500">{empty}</p>}</div></div>;
 }
 
 function ItemStack({ items }: { items: Array<{ id: string; title: string; detail: string; onEdit: () => void; onDelete: () => void }> }) {

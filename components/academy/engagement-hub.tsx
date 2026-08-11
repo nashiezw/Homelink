@@ -8,18 +8,21 @@ import { apiFetch } from "@/lib/api/client";
 type EngagementData = {
   settings: Record<string, any>;
   courses: Array<{ id: string; title: string }>;
-  profile: { communityOptIn: boolean; ambassadorOptIn: boolean; directoryOptIn: boolean; spotlightConsent: boolean; profileHeadline?: string | null; profileBio?: string | null; referralCode?: string | null } | null;
+  profile: { communityOptIn: boolean; ambassadorOptIn: boolean; directoryOptIn: boolean; spotlightConsent: boolean; profileHeadline?: string | null; profileBio?: string | null; referralCode?: string | null; sharedPostConfirmed?: boolean; sharedPostUrl?: string | null } | null;
+  referralUrl?: string | null;
   referrals: Array<{ id: string; referralCode: string; status: string; referredName?: string | null; referredEmail?: string | null; createdAt: string }>;
   testimonials: Array<{ id: string; title: string; status: string; rating?: number | null; createdAt: string }>;
   challenges: Array<{ id: string; title: string; instructions: string; rewardLabel?: string | null; startsAt?: string | null; endsAt?: string | null; submitted: boolean; submission?: { status: string; adminNote?: string | null } | null }>;
   officeHours: Array<{ id: string; title: string; description?: string | null; startsAt: string; link?: string | null; capacity?: number | null; rsvp?: { status: string } | null }>;
 };
 
+type ConsentKey = "communityOptIn" | "ambassadorOptIn" | "directoryOptIn" | "spotlightConsent" | "sharedPostConfirmed";
+
 export function AcademyEngagementHub({ compact = false }: { compact?: boolean }) {
   const [data, setData] = useState<EngagementData | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
-  const [profile, setProfile] = useState({ communityOptIn: false, ambassadorOptIn: false, directoryOptIn: false, spotlightConsent: false, profileHeadline: "", profileBio: "" });
+  const [profile, setProfile] = useState({ communityOptIn: false, ambassadorOptIn: false, directoryOptIn: false, spotlightConsent: false, sharedPostConfirmed: false, sharedPostUrl: "", profileHeadline: "", profileBio: "" });
   const [testimonial, setTestimonial] = useState({ courseId: "", rating: "5", title: "", body: "", publicConsent: true });
   const [referral, setReferral] = useState({ courseId: "", referredName: "", referredEmail: "" });
   const [challengeEvidence, setChallengeEvidence] = useState<Record<string, string>>({});
@@ -33,6 +36,8 @@ export function AcademyEngagementHub({ compact = false }: { compact?: boolean })
         ambassadorOptIn: Boolean(result.data.profile?.ambassadorOptIn),
         directoryOptIn: Boolean(result.data.profile?.directoryOptIn),
         spotlightConsent: Boolean(result.data.profile?.spotlightConsent),
+        sharedPostConfirmed: Boolean(result.data.profile?.sharedPostConfirmed),
+        sharedPostUrl: result.data.profile?.sharedPostUrl ?? "",
         profileHeadline: result.data.profile?.profileHeadline ?? "",
         profileBio: result.data.profile?.profileBio ?? "",
       });
@@ -42,10 +47,26 @@ export function AcademyEngagementHub({ compact = false }: { compact?: boolean })
   useEffect(() => { void load(); }, [load]);
 
   const referralCode = data?.profile?.referralCode ?? data?.referrals[0]?.referralCode ?? "";
+  const referralUrl = data?.referralUrl ?? "";
   const shareText = useMemo(() => {
     const prompt = data?.settings.sharePrompt ?? "I am learning through HouseLink Academy.";
-    return referralCode ? `${prompt} Use my referral code: ${referralCode}` : prompt;
-  }, [data?.settings.sharePrompt, referralCode]);
+    return referralUrl ? `${prompt} ${referralUrl}` : referralCode ? `${prompt} Use my referral code: ${referralCode}` : prompt;
+  }, [data?.settings.sharePrompt, referralCode, referralUrl]);
+  const consentOptions = useMemo(() => {
+    if (!data) return [];
+    const options: Array<readonly [ConsentKey, string] | null> = [
+      data.settings.communityEnabled ? ["communityOptIn", "Community updates"] : null,
+      data.settings.ambassadorEnabled ? ["ambassadorOptIn", "Ambassador programme"] : null,
+      data.settings.directoryEnabled ? ["directoryOptIn", "Graduate directory"] : null,
+      data.settings.spotlightEnabled ? ["spotlightConsent", "Learner spotlight permission"] : null,
+      data.settings.ambassadorEnabled ? ["sharedPostConfirmed", "I shared my enrolment/progress"] : null,
+    ];
+    return options.filter((item): item is readonly [ConsentKey, string] => Boolean(item));
+  }, [data]);
+  const weeklyThemes = String(data?.settings.weeklyThemes ?? "")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
 
   async function action(body: Record<string, unknown>, success: string) {
     setBusy(true);
@@ -76,7 +97,7 @@ export function AcademyEngagementHub({ compact = false }: { compact?: boolean })
             <h2 className="mt-2 text-2xl font-black text-slate-950 dark:text-white">{data.settings.communityName ?? "Academy Engagement Hub"}</h2>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600 dark:text-slate-300">{data.settings.invitation}</p>
           </div>
-          {data.settings.whatsappUrl && (
+          {data.settings.communityEnabled && data.settings.whatsappUrl && (
             <a href={data.settings.whatsappUrl} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center justify-center rounded-xl bg-emerald-600 px-4 py-2 text-sm font-bold text-white shadow-sm hover:bg-emerald-500">
               <MessageCircle className="mr-2 size-4" /> Join community
             </a>
@@ -89,29 +110,28 @@ export function AcademyEngagementHub({ compact = false }: { compact?: boolean })
         <HubCard title="Consent and visibility" icon={ShieldCheck}>
           <p className="mb-4 text-sm leading-6 text-slate-600 dark:text-slate-300">These activities are optional. They never block your course progress, assessments, certificates or access.</p>
           <div className="grid gap-3 sm:grid-cols-2">
-            {[
-              ["communityOptIn", "Community updates"],
-              ["ambassadorOptIn", "Ambassador programme"],
-              ["directoryOptIn", "Graduate directory"],
-              ["spotlightConsent", "Learner spotlight permission"],
-            ].map(([key, label]) => (
+            {consentOptions.map(([key, label]) => (
               <label key={key} className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-3 text-sm font-bold text-slate-900 dark:border-slate-800 dark:bg-slate-900 dark:text-white">
                 {label}
-                <input type="checkbox" checked={Boolean((profile as any)[key])} onChange={(event) => setProfile({ ...profile, [key]: event.target.checked })} />
+                <input type="checkbox" checked={Boolean(profile[key])} onChange={(event) => setProfile({ ...profile, [key]: event.target.checked })} />
               </label>
             ))}
           </div>
-          <div className="mt-3 grid gap-3">
+          {(data.settings.directoryEnabled || data.settings.spotlightEnabled) && <div className="mt-3 grid gap-3">
             <Field label="Directory headline" value={profile.profileHeadline} onChange={(profileHeadline) => setProfile({ ...profile, profileHeadline })} />
             <Textarea label="Public profile bio" value={profile.profileBio} onChange={(profileBio) => setProfile({ ...profile, profileBio })} />
-          </div>
+          </div>}
+          {data.settings.ambassadorEnabled && <div className="mt-3 grid gap-3">
+            <Field label="Optional shared post link" value={profile.sharedPostUrl} onChange={(sharedPostUrl) => setProfile({ ...profile, sharedPostUrl })} />
+          </div>}
           <Button className="mt-4 w-full sm:w-auto" disabled={busy} onClick={() => action({ action: "save_profile", profile }, "Engagement preferences saved.")}>Save preferences</Button>
         </HubCard>
 
-        <HubCard title="Referral and sharing" icon={Send}>
+        {data.settings.referralsEnabled && <HubCard title="Referral and sharing" icon={Send}>
           <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-400/20 dark:bg-emerald-400/10">
             <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-800 dark:text-emerald-200">Your referral code</p>
             <p className="mt-2 break-all text-2xl font-black text-slate-950 dark:text-white">{referralCode || "Save preferences to generate"}</p>
+            {referralUrl && <p className="mt-2 break-all text-sm font-semibold text-emerald-900 dark:text-emerald-100">{referralUrl}</p>}
             <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">{data.settings.referralRewardLabel}</p>
             <Button variant="secondary" className="mt-3" onClick={copyShareText}><Copy className="size-4" /> Copy share message</Button>
           </div>
@@ -123,11 +143,19 @@ export function AcademyEngagementHub({ compact = false }: { compact?: boolean })
             </div>
             <Button disabled={busy} onClick={() => action({ action: "create_referral", ...referral, rewardLabel: data.settings.referralRewardLabel }, "Referral recorded.")}>Record referral</Button>
           </div>
-        </HubCard>
+        </HubCard>}
       </div>
 
       <div className="grid gap-4 xl:grid-cols-3">
-        <HubCard title="Course review / testimonial" icon={Star}>
+        {data.settings.communityEnabled && weeklyThemes.length > 0 && <HubCard title="Community calendar" icon={MessageCircle}>
+          <div className="space-y-2">
+            {weeklyThemes.map((theme) => (
+              <div key={theme} className="rounded-2xl border border-emerald-100 bg-emerald-50 px-3 py-3 text-sm font-bold text-emerald-950 dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-100">{theme}</div>
+            ))}
+          </div>
+        </HubCard>}
+
+        {data.settings.testimonialsEnabled && <HubCard title="Course review / testimonial" icon={Star}>
           <div className="grid gap-3">
             <Select label="Course" value={testimonial.courseId} options={[{ value: "", label: "General Academy experience" }, ...data.courses.map((course) => ({ value: course.id, label: course.title }))]} onChange={(courseId) => setTestimonial({ ...testimonial, courseId })} />
             <Field label="Title" value={testimonial.title} onChange={(title) => setTestimonial({ ...testimonial, title })} />
@@ -137,9 +165,9 @@ export function AcademyEngagementHub({ compact = false }: { compact?: boolean })
             <Button disabled={busy || !testimonial.title.trim() || !testimonial.body.trim()} onClick={() => action({ action: "submit_testimonial", testimonial }, "Testimonial submitted for moderation.")}>Submit testimonial</Button>
           </div>
           <MiniStatus rows={data.testimonials.map((item) => ({ id: item.id, title: item.title, detail: item.status }))} empty="No testimonials submitted yet." />
-        </HubCard>
+        </HubCard>}
 
-        <HubCard title="Practical challenges" icon={Sparkles}>
+        {data.settings.challengesEnabled && <HubCard title="Practical challenges" icon={Sparkles}>
           <div className="space-y-3">
             {data.challenges.length ? data.challenges.map((challenge) => (
               <div key={challenge.id} className="rounded-2xl border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
@@ -155,9 +183,9 @@ export function AcademyEngagementHub({ compact = false }: { compact?: boolean })
               </div>
             )) : <p className="text-sm text-slate-500">No active challenges right now.</p>}
           </div>
-        </HubCard>
+        </HubCard>}
 
-        <HubCard title="Office hours" icon={CalendarClock}>
+        {data.settings.officeHoursEnabled && <HubCard title="Office hours" icon={CalendarClock}>
           <div className="space-y-3">
             {data.officeHours.length ? data.officeHours.map((officeHour) => (
               <div key={officeHour.id} className="rounded-2xl border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
@@ -171,7 +199,7 @@ export function AcademyEngagementHub({ compact = false }: { compact?: boolean })
               </div>
             )) : <p className="text-sm text-slate-500">No upcoming office hours yet.</p>}
           </div>
-        </HubCard>
+        </HubCard>}
       </div>
     </section>
   );
