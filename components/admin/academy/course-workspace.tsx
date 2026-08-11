@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -783,7 +783,7 @@ export function CourseWorkspace({
               <Field label="Summary" value={lessonDraft.summary ?? ""} onChange={(v) => setLessonDraft({ ...lessonDraft, summary: v })} />
               <div className="rounded-xl border border-emerald-400/15 bg-emerald-400/[0.05] p-4">
                 <p className="text-sm font-semibold text-white">Lesson Learning Objectives</p>
-                <p className="mt-1 text-xs leading-5 text-slate-400">These are the checklist items shown to learners under “Learning objectives” inside this specific lesson. Enter one objective per line.</p>
+                <p className="mt-1 text-xs leading-5 text-slate-400">These are the checklist items shown to learners under â€œLearning objectivesâ€ inside this specific lesson. Enter one objective per line.</p>
                 <TextareaField
                   label="Objectives shown on learner lesson page"
                   value={(lessonDraft.objectives ?? []).join("\n")}
@@ -871,7 +871,7 @@ export function CourseWorkspace({
                       className={`w-full rounded-lg border px-3 py-2 text-left text-sm ${selectedQuizId === quiz.id ? "border-emerald-400/50 bg-emerald-500/15 text-emerald-50" : "border-white/10 bg-slate-950/50 text-slate-300 hover:bg-white/5"}`}
                     >
                       <span className="block font-semibold">{quiz.title}</span>
-                      <span className="mt-1 block text-xs text-slate-500">{checkpointLabel(quiz, tree)} � {quiz.questionCount ?? 0} questions � {quiz.active ? "Active" : "Archived"}</span>
+                      <span className="mt-1 block text-xs text-slate-500">{checkpointLabel(quiz, tree)} · {quiz.questionCount ?? 0} questions · {quiz.active ? "Active" : "Archived"}</span>
                     </button>
                   ))}
                   {!tree.quizzes.length && <p className="rounded-lg border border-dashed border-white/10 p-3 text-sm text-slate-500">No quizzes yet.</p>}
@@ -941,7 +941,7 @@ export function CourseWorkspace({
                       className={`w-full rounded-lg border px-3 py-2 text-left text-sm ${selectedAssignmentId === assignment.id ? "border-emerald-400/50 bg-emerald-500/15 text-emerald-50" : "border-white/10 bg-slate-950/50 text-slate-300 hover:bg-white/5"}`}
                     >
                       <span className="block font-semibold">{assignment.title}</span>
-                      <span className="mt-1 block text-xs text-slate-500">{checkpointLabel(assignment, tree)} � {assignment.points} points � {assignment.active ? "Active" : "Archived"}</span>
+                      <span className="mt-1 block text-xs text-slate-500">{checkpointLabel(assignment, tree)} · {assignment.points} points · {assignment.active ? "Active" : "Archived"}</span>
                     </button>
                   ))}
                   {!tree.assignments.length && <p className="rounded-lg border border-dashed border-white/10 p-3 text-sm text-slate-500">No assignments yet.</p>}
@@ -1411,7 +1411,7 @@ function _AssessmentCard({ title, items, onAdd }: { title: string; items: string
         <h4 className="font-semibold text-white">{title}</h4>
         <Button variant="secondary" onClick={onAdd}><Plus className="size-4" /></Button>
       </div>
-      <ul className="space-y-2 text-sm text-slate-400">{items.map((item) => <li key={item}>• {item}</li>)}</ul>
+      <ul className="space-y-2 text-sm text-slate-400">{items.map((item) => <li key={item}>â€¢ {item}</li>)}</ul>
     </div>
   );
 }
