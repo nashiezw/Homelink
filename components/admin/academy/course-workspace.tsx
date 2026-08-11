@@ -81,8 +81,8 @@ type CourseTree = {
     sortOrder: number;
     sections: Array<{ id: string; title: string; sortOrder: number; lessons: LessonNode[] }>;
   }>;
-  quizzes: Array<{ id: string; title: string; description?: string | null; passingPercentage: number; moduleId?: string | null; lessonId?: string | null; questionCount?: number }>;
-  assignments: Array<{ id: string; title: string; description: string; points: number; moduleId?: string | null; lessonId?: string | null }>;
+  quizzes: Array<{ id: string; title: string; description?: string | null; passingPercentage: number; moduleId?: string | null; lessonId?: string | null; questionCount?: number; active: boolean; randomise: boolean; timeLimitMinutes?: number | null }>;
+  assignments: Array<{ id: string; title: string; description: string; points: number; moduleId?: string | null; lessonId?: string | null; active: boolean; dueDays?: number | null }>;
   exams: Array<{ id: string; title: string; durationMinutes: number; passingScore: number }>;
   learners: Array<{ id: string; name: string; email: string; progress: number; status: string }>;
   stats: { moduleCount: number; lessonCount: number; quizCount: number; assignmentCount: number; examCount: number };
@@ -131,8 +131,8 @@ export function CourseWorkspace({
   const [overrideAssignmentId, setOverrideAssignmentId] = useState<string>("");
   const [overrideLessonId, setOverrideLessonId] = useState<string>("");
   const [overrideModuleId, setOverrideModuleId] = useState<string>("");
-  const [quizDraft, setQuizDraft] = useState({ title: "", description: "", passingPercentage: "80", moduleId: "", lessonId: "" });
-  const [assignmentDraft, setAssignmentDraft] = useState({ title: "", description: "", points: "100", moduleId: "", lessonId: "" });
+  const [quizDraft, setQuizDraft] = useState({ title: "", description: "", passingPercentage: "80", moduleId: "", lessonId: "", randomise: true, timeLimitMinutes: "" });
+  const [assignmentDraft, setAssignmentDraft] = useState({ title: "", description: "", points: "100", moduleId: "", lessonId: "", dueDays: "" });
   const [questionDraft, setQuestionDraft] = useState({ prompt: "", answers: ["", "", "", ""], correctIndex: 0, explanation: "" });
   const [certificationDraft, setCertificationDraft] = useState({
     passingPercentage: 80,
@@ -239,7 +239,7 @@ export function CourseWorkspace({
     if (!tree) return;
     const quiz = tree.quizzes.find((entry) => entry.id === selectedQuizId);
     if (!quiz) {
-      setQuizDraft({ title: "", description: "", passingPercentage: "80", moduleId: "", lessonId: "" });
+      setQuizDraft({ title: "", description: "", passingPercentage: "80", moduleId: "", lessonId: "", randomise: true, timeLimitMinutes: "" });
       return;
     }
     setQuizDraft({
@@ -248,6 +248,8 @@ export function CourseWorkspace({
       passingPercentage: String(quiz.passingPercentage ?? 80),
       moduleId: quiz.moduleId ?? "",
       lessonId: quiz.lessonId ?? "",
+      randomise: quiz.randomise !== false,
+      timeLimitMinutes: quiz.timeLimitMinutes == null ? "" : String(quiz.timeLimitMinutes),
     });
   }, [selectedQuizId, tree]);
 
@@ -255,7 +257,7 @@ export function CourseWorkspace({
     if (!tree) return;
     const assignment = tree.assignments.find((entry) => entry.id === selectedAssignmentId);
     if (!assignment) {
-      setAssignmentDraft({ title: "", description: "", points: "100", moduleId: "", lessonId: "" });
+      setAssignmentDraft({ title: "", description: "", points: "100", moduleId: "", lessonId: "", dueDays: "" });
       return;
     }
     setAssignmentDraft({
@@ -264,6 +266,7 @@ export function CourseWorkspace({
       points: String(assignment.points ?? 100),
       moduleId: assignment.moduleId ?? "",
       lessonId: assignment.lessonId ?? "",
+      dueDays: assignment.dueDays == null ? "" : String(assignment.dueDays),
     });
   }, [selectedAssignmentId, tree]);
 
@@ -866,7 +869,7 @@ export function CourseWorkspace({
                       className={`w-full rounded-lg border px-3 py-2 text-left text-sm ${selectedQuizId === quiz.id ? "border-emerald-400/50 bg-emerald-500/15 text-emerald-50" : "border-white/10 bg-slate-950/50 text-slate-300 hover:bg-white/5"}`}
                     >
                       <span className="block font-semibold">{quiz.title}</span>
-                      <span className="mt-1 block text-xs text-slate-500">{checkpointLabel(quiz, tree)}</span>
+                      <span className="mt-1 block text-xs text-slate-500">{checkpointLabel(quiz, tree)} � {quiz.questionCount ?? 0} questions � {quiz.active ? "Active" : "Archived"}</span>
                     </button>
                   ))}
                   {!tree.quizzes.length && <p className="rounded-lg border border-dashed border-white/10 p-3 text-sm text-slate-500">No quizzes yet.</p>}
@@ -876,7 +879,7 @@ export function CourseWorkspace({
                     <>
                       <Field label="Quiz title" value={quizDraft.title} onChange={(title) => setQuizDraft({ ...quizDraft, title })} />
                       <TextareaField label="Description" value={quizDraft.description} rows={3} onChange={(description) => setQuizDraft({ ...quizDraft, description })} />
-                      <NumberField label="Passing Percentage" value={quizDraft.passingPercentage} min={0} max={100} onChange={(passingPercentage) => setQuizDraft({ ...quizDraft, passingPercentage })} />
+                      <div className="grid gap-3 sm:grid-cols-2"><NumberField label="Passing Percentage" value={quizDraft.passingPercentage} min={0} max={100} onChange={(passingPercentage) => setQuizDraft({ ...quizDraft, passingPercentage })} /><NumberField label="Time limit (minutes)" value={quizDraft.timeLimitMinutes} min={0} onChange={(timeLimitMinutes) => setQuizDraft({ ...quizDraft, timeLimitMinutes })} /></div><label className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-slate-200"><input type="checkbox" checked={quizDraft.randomise} onChange={(event) => setQuizDraft({ ...quizDraft, randomise: event.target.checked })} /> Randomise question order</label>
                       <CheckpointPlacementFields
                         moduleId={quizDraft.moduleId}
                         lessonId={quizDraft.lessonId}
@@ -885,7 +888,7 @@ export function CourseWorkspace({
                         onModuleChange={(moduleId) => setQuizDraft({ ...quizDraft, moduleId, lessonId: "" })}
                         onLessonChange={(lessonId) => setQuizDraft({ ...quizDraft, lessonId })}
                       />
-                      <div className="flex justify-end">
+                      <div className="flex flex-wrap justify-between gap-2"><Button variant="secondary" disabled={busy} onClick={() => void run({ action: quiz.active ? "archive_quiz" : "restore_quiz", quizId: selectedQuizId }, quiz.active ? "Quiz archived." : "Quiz restored.").then(() => setSelectedQuizId(null))}>{quiz.active ? "Archive quiz" : "Restore quiz"}</Button>
                         <Button
                           disabled={busy || !quizDraft.title.trim()}
                           onClick={() => void run({
@@ -895,7 +898,7 @@ export function CourseWorkspace({
                               courseId,
                               title: quizDraft.title,
                               description: quizDraft.description,
-                              passingPercentage: clampPercentage(Number(quizDraft.passingPercentage) || 80),
+                              passingPercentage: clampPercentage(Number(quizDraft.passingPercentage) || 80), randomise: quizDraft.randomise, timeLimitMinutes: quizDraft.timeLimitMinutes ? Number(quizDraft.timeLimitMinutes) : null,
                               moduleId: quizDraft.lessonId ? allLessons.find((lesson) => lesson.id === quizDraft.lessonId)?.moduleId ?? quizDraft.moduleId : quizDraft.moduleId || null,
                               lessonId: quizDraft.lessonId || null,
                               active: true,
@@ -936,7 +939,7 @@ export function CourseWorkspace({
                       className={`w-full rounded-lg border px-3 py-2 text-left text-sm ${selectedAssignmentId === assignment.id ? "border-emerald-400/50 bg-emerald-500/15 text-emerald-50" : "border-white/10 bg-slate-950/50 text-slate-300 hover:bg-white/5"}`}
                     >
                       <span className="block font-semibold">{assignment.title}</span>
-                      <span className="mt-1 block text-xs text-slate-500">{checkpointLabel(assignment, tree)}</span>
+                      <span className="mt-1 block text-xs text-slate-500">{checkpointLabel(assignment, tree)} � {assignment.points} points � {assignment.active ? "Active" : "Archived"}</span>
                     </button>
                   ))}
                   {!tree.assignments.length && <p className="rounded-lg border border-dashed border-white/10 p-3 text-sm text-slate-500">No assignments yet.</p>}
@@ -946,7 +949,7 @@ export function CourseWorkspace({
                     <>
                       <Field label="Assignment title" value={assignmentDraft.title} onChange={(title) => setAssignmentDraft({ ...assignmentDraft, title })} />
                       <TextareaField label="Evidence instructions" value={assignmentDraft.description} rows={4} onChange={(description) => setAssignmentDraft({ ...assignmentDraft, description })} />
-                      <NumberField label="Points" value={assignmentDraft.points} min={1} onChange={(points) => setAssignmentDraft({ ...assignmentDraft, points })} />
+                      <div className="grid gap-3 sm:grid-cols-2"><NumberField label="Points" value={assignmentDraft.points} min={1} onChange={(points) => setAssignmentDraft({ ...assignmentDraft, points })} /><NumberField label="Due in days (optional)" value={assignmentDraft.dueDays} min={0} onChange={(dueDays) => setAssignmentDraft({ ...assignmentDraft, dueDays })} /></div>
                       <CheckpointPlacementFields
                         moduleId={assignmentDraft.moduleId}
                         lessonId={assignmentDraft.lessonId}
@@ -955,7 +958,7 @@ export function CourseWorkspace({
                         onModuleChange={(moduleId) => setAssignmentDraft({ ...assignmentDraft, moduleId, lessonId: "" })}
                         onLessonChange={(lessonId) => setAssignmentDraft({ ...assignmentDraft, lessonId })}
                       />
-                      <div className="flex justify-end">
+                      <div className="flex flex-wrap justify-between gap-2"><Button variant="secondary" disabled={busy} onClick={() => void run({ action: assignment.active ? "archive_assignment" : "restore_assignment", assignmentId: selectedAssignmentId }, assignment.active ? "Assignment archived." : "Assignment restored.").then(() => setSelectedAssignmentId(null))}>{assignment.active ? "Archive assignment" : "Restore assignment"}</Button>
                         <Button
                           disabled={busy || !assignmentDraft.title.trim() || !assignmentDraft.description.trim()}
                           onClick={() => void run({
@@ -965,7 +968,7 @@ export function CourseWorkspace({
                               courseId,
                               title: assignmentDraft.title,
                               description: assignmentDraft.description,
-                              points: Math.max(1, Number(assignmentDraft.points) || 100),
+                              points: Math.max(1, Number(assignmentDraft.points) || 100), dueDays: assignmentDraft.dueDays ? Number(assignmentDraft.dueDays) : null,
                               moduleId: assignmentDraft.lessonId ? allLessons.find((lesson) => lesson.id === assignmentDraft.lessonId)?.moduleId ?? assignmentDraft.moduleId : assignmentDraft.moduleId || null,
                               lessonId: assignmentDraft.lessonId || null,
                               active: true,

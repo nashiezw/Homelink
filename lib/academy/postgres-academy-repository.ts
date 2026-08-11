@@ -1732,6 +1732,9 @@ export async function getAdminCourseTree(courseId: string) {
       moduleId: quiz.moduleId,
       lessonId: quiz.lessonId,
       questionCount: quiz.questions.length,
+      active: quiz.active,
+      randomise: quiz.randomise,
+      timeLimitMinutes: quiz.timeLimitMinutes,
     })),
     assignments: course.assignments.map((assignment) => ({
       id: assignment.id,
@@ -1740,6 +1743,8 @@ export async function getAdminCourseTree(courseId: string) {
       points: assignment.points,
       moduleId: assignment.moduleId,
       lessonId: assignment.lessonId,
+      active: assignment.active,
+      dueDays: assignment.dueDays,
     })),
     exams: course.finalExams,
     learners: enrolments.map((enrolment) => {
