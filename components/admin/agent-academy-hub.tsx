@@ -1181,6 +1181,54 @@ function EmptyPanelText({ children }: { children: React.ReactNode }) {
   return <p className="rounded-lg border border-dashed border-white/10 bg-slate-950/35 p-3 text-sm text-slate-400">{children}</p>;
 }
 
+function usePagination<T>(items: T[], pageSize = 12) {
+  const [page, setPage] = useState(1);
+  const totalPages = Math.max(1, Math.ceil(items.length / pageSize));
+  useEffect(() => {
+    setPage((current) => Math.min(Math.max(1, current), totalPages));
+  }, [totalPages]);
+  const start = (page - 1) * pageSize;
+  return {
+    page,
+    setPage,
+    totalPages,
+    start,
+    pageItems: items.slice(start, start + pageSize),
+  };
+}
+
+function PaginationControls({
+  page,
+  totalPages,
+  totalItems,
+  pageSize,
+  onPageChange,
+}: {
+  page: number;
+  totalPages: number;
+  totalItems: number;
+  pageSize: number;
+  onPageChange: (page: number) => void;
+}) {
+  const start = totalItems ? (page - 1) * pageSize + 1 : 0;
+  const end = Math.min(totalItems, page * pageSize);
+  return (
+    <div className="flex flex-col gap-3 border-t border-white/10 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+      <p className="text-sm text-slate-400">
+        Showing <span className="font-semibold text-slate-200">{start}-{end}</span> of <span className="font-semibold text-slate-200">{totalItems}</span>
+      </p>
+      <div className="grid grid-cols-2 gap-2 sm:flex">
+        <Button variant="secondary" disabled={page <= 1} onClick={() => onPageChange(page - 1)}>
+          Previous
+        </Button>
+        <Button variant="secondary" disabled={page >= totalPages} onClick={() => onPageChange(page + 1)}>
+          Next
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 function RiskLine({ label, value, helper }: { label: string; value: string; helper: string }) {
   return (
     <div>
@@ -1416,6 +1464,8 @@ function LibraryView({
 }) {
   const [query, setQuery] = useState("");
   const filtered = documents.filter((document) => `${document.title} ${document.description ?? ""} ${document.tags.join(" ")}`.toLowerCase().includes(query.toLowerCase()));
+  const pageSize = 10;
+  const pagination = usePagination(filtered, pageSize);
   return (
     <div className="space-y-4">
       <AdminFilterBar>
@@ -1423,7 +1473,7 @@ function LibraryView({
         <Button onClick={onCreate}><Upload className="size-4" /> Upload Document</Button>
       </AdminFilterBar>
       <AdminDataTable
-        rows={filtered}
+        rows={pagination.pageItems}
         columns={[
           { key: "title", header: "Document", render: (document) => <DocumentCell document={document} /> },
           { key: "type", header: "Type", render: (document) => <AdminStatusBadge status={document.fileType} variant="info" /> },
@@ -1449,6 +1499,15 @@ function LibraryView({
         ]}
         emptyMessage="No Academy documents match your search."
       />
+      {filtered.length > pageSize && (
+        <PaginationControls
+          page={pagination.page}
+          totalPages={pagination.totalPages}
+          totalItems={filtered.length}
+          pageSize={pageSize}
+          onPageChange={pagination.setPage}
+        />
+      )}
     </div>
   );
 }
@@ -1800,6 +1859,8 @@ function BuilderList({
     if (!needle) return true;
     return `${row.title} ${String(row.detail ?? "")}`.toLowerCase().includes(needle);
   });
+  const pageSize = 10;
+  const pagination = usePagination(filteredRows, pageSize);
   return (
     <section className="rounded-xl border border-white/10 bg-slate-900/60">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-white/10 p-4">
@@ -1813,7 +1874,7 @@ function BuilderList({
         <AdminSearchInput value={search} onChange={setSearch} placeholder={`Search ${title.toLowerCase()}...`} />
       </div>
       <AdminDataTable
-        rows={filteredRows}
+        rows={pagination.pageItems}
         columns={[
           { key: "title", header: "Title", render: (row) => <span className="font-semibold text-white">{row.title}</span> },
           { key: "detail", header: "Detail", render: (row) => <span className="text-sm text-slate-400">{String(row.detail ?? "")}</span> },
@@ -1836,6 +1897,15 @@ function BuilderList({
         ]}
         emptyMessage={search ? "No matching records found." : "No records yet."}
       />
+      {filteredRows.length > pageSize && (
+        <PaginationControls
+          page={pagination.page}
+          totalPages={pagination.totalPages}
+          totalItems={filteredRows.length}
+          pageSize={pageSize}
+          onPageChange={pagination.setPage}
+        />
+      )}
       <AdminConfirmDialog
         open={Boolean(deleteTarget)}
         title="Delete record?"
@@ -2274,6 +2344,8 @@ function PublicLearnersPanel({
   }));
 
   const rows = [...enrolmentRows, ...resourceRows];
+  const pageSize = 12;
+  const pagination = usePagination(rows, pageSize);
 
   return (
     <section className="rounded-xl border border-white/10 bg-slate-900/60">
@@ -2285,7 +2357,7 @@ function PublicLearnersPanel({
         <AdminStatusBadge status={`${pendingCount} pending`} variant="warning" />
       </div>
       <AdminDataTable
-        rows={rows}
+        rows={pagination.pageItems}
         columns={[
           {
             key: "learner",
@@ -2340,6 +2412,15 @@ function PublicLearnersPanel({
         ]}
         emptyMessage="No learner registrations or resource access requests yet."
       />
+      {rows.length > pageSize && (
+        <PaginationControls
+          page={pagination.page}
+          totalPages={pagination.totalPages}
+          totalItems={rows.length}
+          pageSize={pageSize}
+          onPageChange={pagination.setPage}
+        />
+      )}
       <AdminConfirmDialog
         open={Boolean(deleteTarget)}
         title="Delete learner record?"
@@ -2398,6 +2479,8 @@ function LearnerActivationPanel({
     const matchesStatus = statusFilter === "ALL" || row.status === statusFilter;
     return matchesSearch && matchesCourse && matchesStatus;
   });
+  const pageSize = 9;
+  const pagination = usePagination(filteredRows, pageSize);
 
   async function copyActivationMessage(row: (typeof activationRows)[number]) {
     const href = row.firstLessonId ? `/dashboard/academy/${row.courseId}?lesson=${encodeURIComponent(row.firstLessonId)}` : `/dashboard/academy/${row.courseId}`;
@@ -2462,7 +2545,7 @@ function LearnerActivationPanel({
           <EmptyPanelText>No activation records match the current filters.</EmptyPanelText>
         ) : (
           <div className="grid gap-3 p-4 lg:grid-cols-2 2xl:grid-cols-3">
-            {filteredRows.map((row) => {
+            {pagination.pageItems.map((row) => {
               const previewHref = row.firstLessonId
                 ? `/dashboard/academy/${row.courseId}?lesson=${encodeURIComponent(row.firstLessonId)}`
                 : `/dashboard/academy/${row.courseId}`;
@@ -2503,6 +2586,15 @@ function LearnerActivationPanel({
               );
             })}
           </div>
+        )}
+        {filteredRows.length > pageSize && (
+          <PaginationControls
+            page={pagination.page}
+            totalPages={pagination.totalPages}
+            totalItems={filteredRows.length}
+            pageSize={pageSize}
+            onPageChange={pagination.setPage}
+          />
         )}
       </section>
 

@@ -173,21 +173,31 @@ export function AcademyEngagementCentre() {
 
   return (
     <div className="space-y-5">
-      <section className="rounded-2xl border border-emerald-400/20 bg-gradient-to-br from-slate-950 via-slate-950 to-emerald-950/30 p-4 sm:p-6">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+      <section className="overflow-hidden rounded-3xl border border-emerald-400/20 bg-[radial-gradient(circle_at_top_left,rgba(16,185,129,0.18),transparent_32%),linear-gradient(135deg,rgba(15,23,42,0.98),rgba(2,6,23,0.98))] shadow-2xl shadow-black/20">
+        <div className="grid gap-5 p-4 sm:p-6 xl:grid-cols-[minmax(0,1fr)_minmax(320px,420px)] xl:items-end">
           <div className="min-w-0">
             <p className="text-xs font-bold uppercase tracking-[0.22em] text-emerald-300">Academy Engagement Centre</p>
-            <h2 className="mt-2 text-2xl font-black leading-tight text-white">Community, referrals, testimonials and learner success</h2>
-            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">Engagement is optional and separate from course access, assessments, progress and certificates. Admin controls what is visible and moderates every public-facing learner submission.</p>
+            <h2 className="mt-2 text-2xl font-black leading-tight text-white sm:text-3xl">Community, referrals, testimonials and learner success</h2>
+            <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300">
+              Manage the optional learner journey after enrolment: community channels, nudges, reviews, graduate visibility, referrals, challenges, and office hours.
+            </p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <StatusPill label="Public sharing" value="Consent based" tone="success" />
+              <StatusPill label="Delivery truth" value="No fake sends" tone="info" />
+              <StatusPill label="Course access" value="Separate from gates" tone="default" />
+            </div>
           </div>
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <a href="/api/v1/admin/academy/engagement?format=csv" className="inline-flex min-h-11 items-center justify-center rounded-lg border border-white/10 bg-white px-4 py-2.5 text-sm font-bold text-slate-950 shadow-sm transition hover:bg-emerald-50">
-              Export CSV
-            </a>
-            <Button variant="secondary" disabled={busy} onClick={() => action({ action: "run_engagement_scheduler" }, "Engagement scheduler ran for eligible learners.")}>Run scheduler</Button>
-            <Button variant="secondary" disabled={busy} onClick={() => action({ action: "send_journey_playbook_nudges" }, "Journey playbook nudges sent to eligible learners.")}>Send journey nudges</Button>
-            <Button variant="secondary" disabled={busy} onClick={() => action({ action: "send_progress_nudges" }, "Progress nudges sent to eligible learners.")}>Send progress nudges</Button>
-            <Button disabled={busy} onClick={() => action({ action: "update_settings", settings: settingsDraft }, "Engagement settings saved.")}>Save engagement settings</Button>
+          <div className="rounded-2xl border border-white/10 bg-slate-950/70 p-3">
+            <p className="px-1 text-xs font-black uppercase tracking-[0.16em] text-slate-400">Admin actions</p>
+            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              <a href="/api/v1/admin/academy/engagement?format=csv" className="inline-flex min-h-11 items-center justify-center rounded-xl border border-white/10 bg-white px-4 py-2.5 text-sm font-bold text-slate-950 shadow-sm transition hover:bg-emerald-50">
+                Export CSV
+              </a>
+              <Button variant="secondary" disabled={busy} onClick={() => action({ action: "run_engagement_scheduler" }, "Engagement scheduler ran for eligible learners.")}>Run scheduler</Button>
+              <Button variant="secondary" disabled={busy} onClick={() => action({ action: "send_journey_playbook_nudges" }, "Journey playbook nudges sent to eligible learners.")}>Journey nudges</Button>
+              <Button variant="secondary" disabled={busy} onClick={() => action({ action: "send_progress_nudges" }, "Progress nudges sent to eligible learners.")}>Progress nudges</Button>
+              <Button className="sm:col-span-2" disabled={busy} onClick={() => action({ action: "update_settings", settings: settingsDraft }, "Engagement settings saved.")}>Save engagement settings</Button>
+            </div>
           </div>
         </div>
         {message && <p className="mt-4 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-100">{message}</p>}
@@ -203,7 +213,7 @@ export function AcademyEngagementCentre() {
       </div>
 
       <section className="grid gap-4 xl:grid-cols-[1fr_0.9fr]">
-        <Panel title="Diagnostics And Delivery" icon={ShieldCheck}>
+        <Panel title="Diagnostics and delivery" icon={ShieldCheck}>
           <div className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
             <DeliveryMetric label="Total Academy messages" value={data.deliverySummary?.total ?? 0} tone="default" />
             <DeliveryMetric label="Visible in app" value={data.deliverySummary?.visibleInApp ?? 0} tone="success" />
@@ -212,28 +222,46 @@ export function AcademyEngagementCentre() {
             <DeliveryMetric label="Failed" value={data.deliverySummary?.failed ?? 0} tone="danger" />
           </div>
           <div className="grid gap-3 md:grid-cols-2">
-            <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-4">
-              <p className="text-sm font-black text-white">Production storage check</p>
+            <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-4 shadow-[0_1px_0_rgba(255,255,255,0.04)_inset]">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-sm font-black text-white">Production storage check</p>
+                  <p className="mt-1 text-xs leading-5 text-slate-400">Real tables required by the engagement system.</p>
+                </div>
+                <StatusBadge
+                  label={(data.storageHealth ?? []).every((item) => item.status === "READY") ? "Ready" : "Review"}
+                  tone={(data.storageHealth ?? []).every((item) => item.status === "READY") ? "success" : "warning"}
+                />
+              </div>
               <p className="mt-1 text-xs leading-5 text-slate-400">These are the real database tables the engagement system needs. Missing items are shown here instead of causing a blank page.</p>
               <div className="mt-3 space-y-2">
                 {(data.storageHealth ?? []).map((item) => (
-                  <div key={item.table} className="flex flex-col gap-1 rounded-xl bg-slate-950 p-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div key={item.table} className="flex flex-col gap-1 rounded-xl border border-white/[0.06] bg-slate-950 p-3 sm:flex-row sm:items-center sm:justify-between">
                     <span className="break-words text-xs font-bold text-slate-200">{item.table}</span>
-                    <span className={cn("w-fit rounded-full px-2 py-1 text-[10px] font-black uppercase", item.status === "READY" ? "bg-emerald-400/10 text-emerald-200" : "bg-red-400/10 text-red-200")}>{item.status}</span>
+                    <StatusBadge label={item.status} tone={item.status === "READY" ? "success" : "danger"} />
                   </div>
                 ))}
                 {!data.storageHealth?.length && <p className="text-sm text-slate-500">Storage health has not reported any issues.</p>}
               </div>
             </div>
-            <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-4">
-              <p className="text-sm font-black text-white">Delivery integrations</p>
+            <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-4 shadow-[0_1px_0_rgba(255,255,255,0.04)_inset]">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-sm font-black text-white">Delivery integrations</p>
+                  <p className="mt-1 text-xs leading-5 text-slate-400">Only real configured senders are marked connected.</p>
+                </div>
+                <StatusBadge
+                  label={`${(data.deliveryIntegrations ?? []).filter((item) => item.connected).length}/${data.deliveryIntegrations?.length ?? 0}`}
+                  tone="info"
+                />
+              </div>
               <p className="mt-1 text-xs leading-5 text-slate-400">No fake external delivery is shown. Email and WhatsApp are only marked connected when provider configuration exists.</p>
               <div className="mt-3 space-y-2">
                 {(data.deliveryIntegrations ?? []).map((item) => (
-                  <div key={item.channel} className="rounded-xl bg-slate-950 p-3">
+                  <div key={item.channel} className="rounded-xl border border-white/[0.06] bg-slate-950 p-3">
                     <div className="flex items-start justify-between gap-3">
                       <p className="font-semibold text-white">{item.label}</p>
-                      <span className={cn("w-fit rounded-full px-2 py-1 text-[10px] font-black uppercase", item.connected ? "bg-emerald-400/10 text-emerald-200" : "bg-amber-400/10 text-amber-200")}>{item.connected ? "Connected" : "Setup needed"}</span>
+                      <StatusBadge label={item.connected ? "Connected" : "Setup needed"} tone={item.connected ? "success" : "warning"} />
                     </div>
                     <p className="mt-2 text-xs leading-5 text-slate-400">{item.receiptSupport}</p>
                     <p className="mt-1 text-xs leading-5 text-slate-500">{item.adminAction}</p>
@@ -519,8 +547,49 @@ export function AcademyEngagementCentre() {
   );
 }
 
+function StatusPill({ label, value, tone }: { label: string; value: string; tone: "default" | "success" | "info" }) {
+  return (
+    <span className={cn(
+      "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-bold",
+      tone === "success"
+        ? "border-emerald-400/25 bg-emerald-400/10 text-emerald-100"
+        : tone === "info"
+          ? "border-cyan-400/25 bg-cyan-400/10 text-cyan-100"
+          : "border-white/10 bg-white/5 text-slate-200",
+    )}>
+      <span className="text-slate-400">{label}</span>
+      {value}
+    </span>
+  );
+}
+
+function StatusBadge({ label, tone }: { label: string; tone: "success" | "warning" | "danger" | "info" }) {
+  return (
+    <span className={cn(
+      "w-fit rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-wide",
+      tone === "success"
+        ? "bg-emerald-400/10 text-emerald-200"
+        : tone === "warning"
+          ? "bg-amber-400/10 text-amber-200"
+          : tone === "danger"
+            ? "bg-red-400/10 text-red-200"
+            : "bg-cyan-400/10 text-cyan-200",
+    )}>
+      {label}
+    </span>
+  );
+}
+
 function Metric({ icon: Icon, label, value }: { icon: typeof Users; label: string; value: number }) {
-  return <div className="rounded-2xl border border-white/10 bg-slate-950 p-4"><Icon className="size-5 text-emerald-300" /><p className="mt-4 text-2xl font-black text-white">{value}</p><p className="text-xs font-bold uppercase tracking-[0.12em] text-slate-400 sm:tracking-[0.16em]">{label}</p></div>;
+  return (
+    <div className="rounded-2xl border border-white/10 bg-slate-950/90 p-4 shadow-[0_1px_0_rgba(255,255,255,0.04)_inset]">
+      <div className="flex items-start justify-between gap-3">
+        <Icon className="size-5 text-emerald-300" />
+        <p className="text-2xl font-black tabular-nums text-white">{value}</p>
+      </div>
+      <p className="mt-4 text-xs font-bold uppercase tracking-[0.12em] text-slate-400 sm:tracking-[0.16em]">{label}</p>
+    </div>
+  );
 }
 
 function RateBar({ label, value }: { label: string; value: number }) {
