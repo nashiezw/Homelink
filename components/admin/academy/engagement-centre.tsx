@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Activity, CalendarClock, CheckCircle2, Megaphone, Send, ShieldCheck, Sparkles, Star, Trash2, TrendingUp, Users } from "lucide-react";
+import { Activity, CalendarClock, CheckCircle2, MessageSquareText, Megaphone, Send, ShieldCheck, Sparkles, Star, Trash2, TrendingUp, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api/client";
 import { cn } from "@/lib/utils";
@@ -16,7 +16,7 @@ type EngagementData = {
   challengeSubmissions: Array<{ id: string; evidence: string; status: string; learner?: { name?: string | null; email?: string | null } | null; challenge?: { title: string } | null; submittedAt: string }>;
   officeHours: Array<{ id: string; title: string; description?: string | null; startsAt: string; link?: string | null; capacity?: number | null; active: boolean; courseId?: string | null; course?: { title: string } | null; rsvps: number }>;
   referrals: Array<{ id: string; referralCode: string; status: string; referredName?: string | null; referredEmail?: string | null; referrer?: { name?: string | null; email?: string | null } | null; course?: { title: string } | null; createdAt: string }>;
-  moduleFeedback: Array<{ id: string; learnerId: string; courseId: string; moduleId: string; question: string; response: string; status: string; createdAt: string; learner?: { name?: string | null; email?: string | null } | null; course?: { title: string } | null }>;
+  moduleFeedback: Array<{ id: string; learnerId: string; courseId: string; moduleId: string; lessonId?: string | null; question: string; response: string; status: string; adminNote?: string | null; reviewedAt?: string | null; archivedAt?: string | null; createdAt: string; learner?: { name?: string | null; email?: string | null } | null; course?: { title: string } | null; module?: { title: string; sortOrder?: number | null } | null; lesson?: { title: string; sortOrder?: number | null } | null }>;
   automationRules: Array<{ key: string; label: string; trigger: string; message: string; enabled: boolean }>;
   qaChecklist: Array<{ key: string; label: string; status: string; detail: string }>;
   engagementScores: Array<{ learnerId: string; score: number; detail: string[]; learner?: { name?: string | null; email?: string | null } | null }>;
@@ -45,7 +45,7 @@ type SelectedLearnerEngagement = {
   notifications: EngagementData["notificationHistory"];
 };
 
-type EngagementSection = "overview" | "messaging" | "settings" | "moderation" | "programmes" | "learners" | "health";
+type EngagementSection = "overview" | "messaging" | "settings" | "moderation" | "feedback" | "programmes" | "learners" | "health";
 
 const ENGAGEMENT_SECTIONS: Array<{
   id: EngagementSection;
@@ -57,6 +57,7 @@ const ENGAGEMENT_SECTIONS: Array<{
   { id: "messaging", label: "Messaging", description: "Nudges and receipts", icon: Send },
   { id: "settings", label: "Community Settings", description: "Links, prompts, switches", icon: Megaphone },
   { id: "moderation", label: "Moderation", description: "Reviews and consent", icon: ShieldCheck },
+  { id: "feedback", label: "Module Feedback", description: "Course improvement inbox", icon: MessageSquareText },
   { id: "programmes", label: "Challenges & Office Hours", description: "Events and tasks", icon: Sparkles },
   { id: "learners", label: "Learner Insights", description: "Timelines and scores", icon: Users },
   { id: "health", label: "System Health", description: "Storage and delivery", icon: Activity },
@@ -94,6 +95,15 @@ export function AcademyEngagementCentre() {
 
   const pendingTestimonials = useMemo(() => data?.testimonials.filter((item) => item.status === "PENDING") ?? [], [data]);
   const pendingChallengeSubmissions = useMemo(() => data?.challengeSubmissions.filter((item) => item.status === "SUBMITTED") ?? [], [data]);
+  const moduleFeedbackCounts = useMemo(() => {
+    const rows = data?.moduleFeedback ?? [];
+    return {
+      all: rows.length,
+      new: rows.filter((item) => item.status === "NEW").length,
+      reviewed: rows.filter((item) => item.status === "REVIEWED").length,
+      archived: rows.filter((item) => item.status === "ARCHIVED").length,
+    };
+  }, [data]);
   const filteredLearnerTimelines = useMemo(() => {
     const query = filters.query.trim().toLowerCase();
     return (data?.learnerTimelines ?? []).filter((timeline) => {
@@ -504,15 +514,6 @@ export function AcademyEngagementCentre() {
             onReject={(id) => action({ action: "moderate_testimonial", testimonialId: id, status: "REJECTED" }, "Testimonial rejected.")}
           />
           <ModerationList
-            title="Module feedback"
-            empty="No learner module feedback yet."
-            items={data.moduleFeedback.slice(0, 8).map((item) => ({ id: item.id, title: item.course?.title ?? "Course feedback", detail: `${item.learner?.name ?? item.learner?.email ?? "Learner"} - ${item.status}`, body: item.response }))}
-            approveLabel="Mark reviewed"
-            rejectLabel="Archive"
-            onApprove={(id) => action({ action: "moderate_module_feedback", feedbackId: id, status: "REVIEWED" }, "Feedback marked reviewed.")}
-            onReject={(id) => action({ action: "moderate_module_feedback", feedbackId: id, status: "ARCHIVED" }, "Feedback archived.")}
-          />
-          <ModerationList
             title="Learner spotlights"
             empty="No spotlight permissions waiting for review."
             items={data.profiles.filter((profile) => profile.spotlightConsent && profile.spotlightStatus === "PENDING").map((profile) => ({
@@ -527,6 +528,18 @@ export function AcademyEngagementCentre() {
             onReject={(id) => action({ action: "moderate_spotlight", profileId: id, status: "REJECTED" }, "Spotlight rejected.")}
           />
         </Panel>
+      )}
+
+      {section === "feedback" && (
+        <ModuleFeedbackManager
+          feedback={data.moduleFeedback}
+          counts={moduleFeedbackCounts}
+          busy={busy}
+          onModerate={(feedbackId, status, adminNote) => action(
+            { action: "moderate_module_feedback", feedbackId, status, adminNote },
+            status === "ARCHIVED" ? "Feedback archived." : "Feedback marked reviewed.",
+          )}
+        />
       )}
 
       {section === "programmes" && (
@@ -637,6 +650,171 @@ function AdminEngagementFilters({
       </div>
       <Button variant="secondary" onClick={() => setFilters({ query: "", course: "", stage: "", delivery: "" })}>Clear filters</Button>
     </div>
+  );
+}
+
+function ModuleFeedbackManager({
+  feedback,
+  counts,
+  busy,
+  onModerate,
+}: {
+  feedback: EngagementData["moduleFeedback"];
+  counts: { all: number; new: number; reviewed: number; archived: number };
+  busy: boolean;
+  onModerate: (feedbackId: string, status: "REVIEWED" | "ARCHIVED", adminNote: string) => void;
+}) {
+  const [status, setStatus] = useState<"NEW" | "REVIEWED" | "ARCHIVED" | "ALL">("NEW");
+  const [query, setQuery] = useState("");
+  const [notes, setNotes] = useState<Record<string, string>>({});
+  const filtered = useMemo(() => {
+    const search = query.trim().toLowerCase();
+    return feedback.filter((item) => {
+      if (status !== "ALL" && item.status !== status) return false;
+      if (!search) return true;
+      return [
+        item.learner?.name,
+        item.learner?.email,
+        item.course?.title,
+        item.module?.title,
+        item.lesson?.title,
+        item.response,
+        item.adminNote,
+        item.status,
+      ].filter(Boolean).join(" ").toLowerCase().includes(search);
+    });
+  }, [feedback, query, status]);
+  const mostReportedModules = useMemo(() => {
+    const countsByModule = new Map<string, { title: string; count: number; newCount: number }>();
+    for (const item of feedback) {
+      const title = item.module?.title ?? item.course?.title ?? "Unlinked module";
+      const current = countsByModule.get(title) ?? { title, count: 0, newCount: 0 };
+      current.count += 1;
+      if (item.status === "NEW") current.newCount += 1;
+      countsByModule.set(title, current);
+    }
+    return Array.from(countsByModule.values()).sort((a, b) => b.count - a.count).slice(0, 5);
+  }, [feedback]);
+
+  return (
+    <section className="grid gap-4 xl:grid-cols-[0.75fr_1.25fr]">
+      <Panel title="Feedback Dashboard" icon={MessageSquareText}>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <DeliveryMetric label="New feedback" value={counts.new} tone="warning" />
+          <DeliveryMetric label="Reviewed" value={counts.reviewed} tone="success" />
+          <DeliveryMetric label="Archived" value={counts.archived} tone="default" />
+          <DeliveryMetric label="Total records" value={counts.all} tone="default" />
+        </div>
+        <div className="mt-4 rounded-2xl border border-white/10 bg-slate-900/70 p-4">
+          <p className="text-sm font-black text-white">Most reported modules</p>
+          <p className="mt-1 text-xs leading-5 text-slate-400">Use this to spot lessons that may need clearer examples, visuals, or rewrite work.</p>
+          <div className="mt-3 space-y-2">
+            {mostReportedModules.length ? mostReportedModules.map((item) => (
+              <div key={item.title} className="rounded-xl bg-slate-950 p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="min-w-0 break-words text-sm font-bold text-white">{item.title}</p>
+                  <StatusBadge label={`${item.count}`} tone={item.newCount ? "warning" : "success"} />
+                </div>
+                <p className="mt-1 text-xs text-slate-500">{item.newCount} new item(s) still need review.</p>
+              </div>
+            )) : <p className="text-sm text-slate-500">No module feedback has been submitted yet.</p>}
+          </div>
+        </div>
+        <div className="mt-4 rounded-2xl border border-emerald-400/20 bg-emerald-400/10 p-4">
+          <p className="text-sm font-black text-white">Recommended workflow</p>
+          <p className="mt-2 text-sm leading-6 text-emerald-100/80">Review new feedback daily, add an internal note when a lesson needs improvement, then archive items that no longer need active attention.</p>
+        </div>
+      </Panel>
+
+      <Panel title="Module Feedback Inbox" icon={MessageSquareText}>
+        <div className="grid gap-3 lg:grid-cols-[1fr_auto] lg:items-end">
+          <Field label="Search feedback" value={query} onChange={setQuery} />
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:min-w-[420px]">
+            {[
+              { value: "NEW", label: "New", count: counts.new },
+              { value: "REVIEWED", label: "Reviewed", count: counts.reviewed },
+              { value: "ARCHIVED", label: "Archived", count: counts.archived },
+              { value: "ALL", label: "All", count: counts.all },
+            ].map((item) => (
+              <button
+                key={item.value}
+                type="button"
+                onClick={() => setStatus(item.value as typeof status)}
+                className={cn(
+                  "rounded-xl border px-3 py-3 text-left text-xs font-black uppercase tracking-[0.12em] transition",
+                  status === item.value
+                    ? "border-emerald-300/50 bg-emerald-400/15 text-emerald-100"
+                    : "border-white/10 bg-slate-900 text-slate-400 hover:border-emerald-300/30",
+                )}
+              >
+                <span className="block text-base text-white">{item.count}</span>
+                {item.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="mt-4 grid gap-3">
+          {filtered.length ? filtered.map((item) => {
+            const noteValue = notes[item.id] ?? item.adminNote ?? "";
+            const reviewed = item.status === "REVIEWED";
+            const archived = item.status === "ARCHIVED";
+            return (
+              <article key={item.id} className="rounded-2xl border border-white/10 bg-slate-900/70 p-4">
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <StatusBadge label={item.status} tone={item.status === "NEW" ? "warning" : item.status === "REVIEWED" ? "success" : "info"} />
+                      <span className="text-xs font-semibold text-slate-500">{formatDateTime(item.createdAt)}</span>
+                    </div>
+                    <h4 className="mt-3 break-words text-lg font-black text-white">{item.module?.title ?? item.course?.title ?? "Module feedback"}</h4>
+                    <p className="mt-1 text-sm leading-6 text-slate-400">{item.lesson?.title ? `Lesson: ${item.lesson.title}` : "No lesson context saved"} · {item.course?.title ?? "Course unknown"}</p>
+                    <p className="mt-1 text-sm text-slate-500">{item.learner?.name ?? item.learner?.email ?? "Learner"}</p>
+                  </div>
+                  <div className="grid gap-2 sm:grid-cols-2 lg:w-[280px]">
+                    <InfoBlock label="Reviewed" value={item.reviewedAt ? formatDateTime(item.reviewedAt) : reviewed ? "Reviewed" : "Not reviewed yet"} />
+                    <InfoBlock label="Archived" value={item.archivedAt ? formatDateTime(item.archivedAt) : archived ? "Archived" : "Not archived"} />
+                  </div>
+                </div>
+                <div className="mt-4 rounded-xl border border-white/10 bg-slate-950 p-4">
+                  <p className="text-[11px] font-black uppercase tracking-[0.14em] text-slate-500">{item.question}</p>
+                  <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-200">{item.response}</p>
+                </div>
+                <Textarea
+                  label="Admin note"
+                  help="Internal only. Use this to record whether the lesson needs a rewrite, extra example, or follow-up."
+                  value={noteValue}
+                  onChange={(value) => setNotes({ ...notes, [item.id]: value })}
+                />
+                <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                  {item.status === "NEW" && (
+                    <Button disabled={busy} onClick={() => onModerate(item.id, "REVIEWED", noteValue)}>
+                      <CheckCircle2 className="size-4" /> Mark reviewed
+                    </Button>
+                  )}
+                  {item.status !== "ARCHIVED" && (
+                    <Button variant="secondary" disabled={busy} onClick={() => onModerate(item.id, "ARCHIVED", noteValue)}>
+                      <Trash2 className="size-4" /> Archive
+                    </Button>
+                  )}
+                  {item.status !== "NEW" && (
+                    <span className="inline-flex min-h-10 items-center rounded-xl border border-white/10 bg-white/[0.03] px-3 text-sm font-semibold text-slate-300">
+                      {archived ? "Archived feedback is kept for course history." : "Reviewed feedback stays available for course improvement reports."}
+                    </span>
+                  )}
+                </div>
+              </article>
+            );
+          }) : (
+            <div className="rounded-2xl border border-dashed border-white/10 bg-slate-900/60 p-8 text-center">
+              <MessageSquareText className="mx-auto size-8 text-slate-500" />
+              <p className="mt-3 text-sm font-bold text-white">No feedback in this view</p>
+              <p className="mt-1 text-sm text-slate-500">Try another status tab or clear your search.</p>
+            </div>
+          )}
+        </div>
+      </Panel>
+    </section>
   );
 }
 

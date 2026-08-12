@@ -2521,20 +2521,24 @@ model AcademyOfficeHourRsvp {
 }
 
 model AcademyModuleFeedback {
-  id        String   @id @default(cuid())
-  learnerId String
-  courseId  String
-  moduleId  String
-  lessonId  String?
-  question  String
-  response  String
-  status    String   @default("NEW")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String    @id @default(cuid())
+  learnerId   String
+  courseId    String
+  moduleId    String
+  lessonId    String?
+  question    String
+  response    String
+  status      String    @default("NEW")
+  adminNote   String?
+  reviewedAt  DateTime?
+  archivedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   @@index([learnerId])
   @@index([courseId])
   @@index([moduleId])
+  @@index([status])
   @@map("academy_module_feedback")
 }
 

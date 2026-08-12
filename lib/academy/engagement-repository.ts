@@ -115,6 +115,18 @@ export async function getAdminAcademyEngagement() {
     : [];
   const learnerById = new Map<string, any>(learners.map((learner: any) => [learner.id, learner]));
   const courseById = new Map<string, any>(courses.map((course: any) => [course.id, course]));
+  const moduleIds = unique(moduleFeedback.map((row: any) => row.moduleId));
+  const lessonIds = unique(moduleFeedback.map((row: any) => row.lessonId).filter(Boolean));
+  const [feedbackModules, feedbackLessons] = await Promise.all([
+    moduleIds.length
+      ? prisma.trainingModule.findMany({ where: { id: { in: moduleIds } }, select: { id: true, title: true, sortOrder: true } })
+      : [],
+    lessonIds.length
+      ? prisma.trainingLesson.findMany({ where: { id: { in: lessonIds } }, select: { id: true, title: true, sortOrder: true } })
+      : [],
+  ]);
+  const moduleById = new Map<string, any>(feedbackModules.map((module: any) => [module.id, module]));
+  const lessonById = new Map<string, any>(feedbackLessons.map((lesson: any) => [lesson.id, lesson]));
   const submissionCountByChallenge = new Map<string, number>();
   for (const submission of challengeSubmissions) {
     submissionCountByChallenge.set(submission.challengeId, (submissionCountByChallenge.get(submission.challengeId) ?? 0) + 1);
@@ -202,6 +214,8 @@ export async function getAdminAcademyEngagement() {
       ...serializeDates(row),
       learner: learnerById.get(row.learnerId) ?? null,
       course: row.courseId ? courseById.get(row.courseId) ?? null : null,
+      module: row.moduleId ? moduleById.get(row.moduleId) ?? null : null,
+      lesson: row.lessonId ? lessonById.get(row.lessonId) ?? null : null,
     })),
   };
 }
@@ -298,11 +312,17 @@ export async function runAdminAcademyEngagementAction(body: Record<string, any>,
     return row;
   }
   if (action === "moderate_module_feedback") {
+    const status = ["NEW", "REVIEWED", "ARCHIVED"].includes(String(body.status)) ? String(body.status) : "REVIEWED";
     const row = await prisma.academyModuleFeedback.update({
       where: { id: String(body.feedbackId) },
-      data: { status: ["NEW", "REVIEWED", "ARCHIVED"].includes(String(body.status)) ? String(body.status) : "REVIEWED" },
+      data: {
+        status,
+        adminNote: nullable(body.adminNote),
+        reviewedAt: status === "REVIEWED" ? new Date() : undefined,
+        archivedAt: status === "ARCHIVED" ? new Date() : undefined,
+      },
     });
-    await audit(actor, "academy.engagement.module_feedback.moderate", row.id, { status: row.status });
+    await audit(actor, "academy.engagement.module_feedback.moderate", row.id, { status: row.status, adminNote: row.adminNote });
     if (row.status === "REVIEWED") {
       await notifyLearner(row.learnerId, "ACADEMY_MODULE_FEEDBACK_REVIEWED", "Module feedback reviewed", "Thank you for your module feedback. The Academy team has reviewed it and will use it to improve the course experience.");
     }
