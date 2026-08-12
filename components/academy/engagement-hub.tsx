@@ -6,6 +6,7 @@ import {
   CheckCircle2,
   Copy,
   ExternalLink,
+  BookOpen,
   MessageCircle,
   Send,
   ShieldCheck,
@@ -20,6 +21,21 @@ import { cn } from "@/lib/utils";
 type EngagementData = {
   settings: Record<string, any>;
   courses: Array<{ id: string; title: string }>;
+  journey: {
+    activeCourseCount: number;
+    completedCourseCount: number;
+    highestProgress: number;
+    hasActiveCourse: boolean;
+    hasMeaningfulProgress: boolean;
+    stage: "NOT_ENROLLED" | "ACTIVE_LEARNER" | "IN_PROGRESS" | "GRADUATE";
+    canUseCommunity: boolean;
+    canUseReferrals: boolean;
+    canUseChallenges: boolean;
+    canUseOfficeHours: boolean;
+    canSubmitReview: boolean;
+    canJoinDirectory: boolean;
+    canRequestSpotlight: boolean;
+  };
   profile: {
     communityOptIn: boolean;
     ambassadorOptIn: boolean;
@@ -130,6 +146,8 @@ export function AcademyEngagementHub({ compact = false }: { compact?: boolean })
 
   const hasCommunityContent = communityLinks.length > 0 || weeklyThemes.length > 0;
   const activeOptIns = consentOptions.filter(([key]) => Boolean(profile[key])).length;
+  const journeySteps = buildJourneySteps(data.journey);
+  const canEditPublicProfile = data.journey.canJoinDirectory || data.journey.canRequestSpotlight;
 
   return (
     <section className={compact ? "space-y-5" : "mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8"}>
@@ -137,27 +155,61 @@ export function AcademyEngagementHub({ compact = false }: { compact?: boolean })
         <div className="bg-gradient-to-br from-emerald-700 via-teal-700 to-slate-900 p-5 text-white sm:p-7">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
             <div className="min-w-0">
-              <p className="text-xs font-black uppercase tracking-[0.24em] text-emerald-100">Learner Engagement Hub</p>
+              <p className="text-xs font-black uppercase tracking-[0.24em] text-emerald-100">Learner Engagement Journey</p>
               <h2 className="mt-2 max-w-3xl text-2xl font-black leading-tight sm:text-3xl">{settings.communityName ?? "HouseLink Academy Learner Community"}</h2>
               {settings.invitation && <p className="mt-3 max-w-3xl text-sm leading-6 text-emerald-50/90">{settings.invitation}</p>}
             </div>
-            {settings.communityEnabled && communityLinks[0] && (
+            {settings.communityEnabled && data.journey.canUseCommunity && communityLinks[0] && (
               <a href={communityLinks[0].href} target="_blank" rel="noreferrer" className="inline-flex min-h-12 w-full items-center justify-center rounded-xl bg-white px-4 py-3 text-sm font-black text-emerald-800 shadow-sm transition hover:bg-emerald-50 sm:w-auto">
                 <MessageCircle className="mr-2 size-4" /> {communityLinks[0].label}
               </a>
             )}
           </div>
-          <div className="mt-6 grid gap-3 sm:grid-cols-3">
-            <MiniMetric label="Opt-ins selected" value={activeOptIns} />
-            <MiniMetric label="Referral records" value={data.referrals.length} />
-            <MiniMetric label="Reviews submitted" value={data.testimonials.length} />
+          <div className="mt-6 grid gap-3 sm:grid-cols-4">
+            <MiniMetric label="Active courses" value={data.journey.activeCourseCount} />
+            <MiniMetric label="Best progress" value={data.journey.highestProgress} suffix="%" />
+            <MiniMetric label="Completed" value={data.journey.completedCourseCount} />
+            <MiniMetric label="Opt-ins" value={activeOptIns} />
           </div>
         </div>
         {message && <p className="border-t border-emerald-100 bg-emerald-50 px-5 py-3 text-sm font-semibold text-emerald-900 dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-100">{message}</p>}
       </div>
 
+      <div className="rounded-[24px] border border-slate-200 bg-white p-4 shadow-[0_14px_40px_rgba(15,23,42,0.06)] dark:border-slate-800 dark:bg-slate-950 sm:p-5">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-700 dark:text-emerald-300">How this unlocks</p>
+            <h3 className="mt-1 text-xl font-black text-slate-950 dark:text-white">Your Academy participation path</h3>
+          </div>
+          {!data.journey.hasActiveCourse && <a href="/academy?browse=1" className="text-sm font-black text-emerald-700 hover:underline dark:text-emerald-300">Choose a course</a>}
+        </div>
+        <div className="mt-4 grid gap-3 md:grid-cols-4">
+          {journeySteps.map((step) => (
+            <div key={step.title} className={cn(
+              "rounded-2xl border p-3",
+              step.active
+                ? "border-emerald-200 bg-emerald-50 text-emerald-950 dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-50"
+                : "border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400",
+            )}>
+              <div className="flex items-center gap-2">
+                <span className={cn("grid size-7 place-items-center rounded-full text-xs font-black", step.active ? "bg-emerald-600 text-white" : "bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-300")}>{step.index}</span>
+                <p className="font-black">{step.title}</p>
+              </div>
+              <p className="mt-2 text-sm leading-5">{step.body}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {!data.journey.hasActiveCourse && (
+        <HubCard title="Start with a course" icon={BookOpen} eyebrow="First step">
+          <EmptyState title="Engagement unlocks after registration" body="Join an Academy course first. Then you can access learner community links, office hours, practical challenges, referrals, and later reviews or graduate visibility." />
+          <a href="/academy?browse=1" className="mt-4 inline-flex min-h-11 items-center justify-center rounded-xl bg-emerald-600 px-4 py-2 text-sm font-black text-white shadow-sm transition hover:bg-emerald-500">Browse Academy courses</a>
+        </HubCard>
+      )}
+
       <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1.05fr)_minmax(320px,0.95fr)]">
-        <HubCard title="Consent and public visibility" icon={ShieldCheck} eyebrow="Your choice">
+        {data.journey.hasActiveCourse && <HubCard title="Consent and public visibility" icon={ShieldCheck} eyebrow="Your choice">
           <p className="text-sm leading-6 text-slate-600 dark:text-slate-300">These options are voluntary. They do not affect course access, assessments, certificates, or progress.</p>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             {consentOptions.map(([key, label, detail]) => (
@@ -175,19 +227,21 @@ export function AcademyEngagementHub({ compact = false }: { compact?: boolean })
               </label>
             ))}
           </div>
-          {(settings.directoryEnabled || settings.spotlightEnabled) && (
+          {canEditPublicProfile ? (
             <div className="mt-4 grid gap-3">
               <Field label="Public headline" placeholder="e.g. Property assistant focused on rentals" value={profile.profileHeadline} onChange={(profileHeadline) => setProfile({ ...profile, profileHeadline })} />
               <Textarea label="Public profile bio" placeholder="Write a short, professional bio for directory or spotlight review." value={profile.profileBio} onChange={(profileBio) => setProfile({ ...profile, profileBio })} />
             </div>
+          ) : (
+            <LockedNotice title="Public profile unlocks later" body="Directory visibility requires a completed course. Learner spotlight unlocks after meaningful course progress." />
           )}
-          {settings.ambassadorEnabled && (
+          {settings.ambassadorEnabled && data.journey.canUseReferrals && (
             <Field className="mt-3" label="Optional shared post link" placeholder="Paste a WhatsApp status, Facebook, or LinkedIn post link if available" value={profile.sharedPostUrl} onChange={(sharedPostUrl) => setProfile({ ...profile, sharedPostUrl })} />
           )}
           <Button className="mt-4 w-full sm:w-auto" loading={busy} loadingText="Saving..." onClick={() => action({ action: "save_profile", profile }, "Engagement preferences saved.")}>Save preferences</Button>
-        </HubCard>
+        </HubCard>}
 
-        {settings.referralsEnabled && (
+        {settings.referralsEnabled && data.journey.canUseReferrals && (
           <HubCard title="Referral and sharing" icon={Send} eyebrow="Invite someone">
             <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-400/20 dark:bg-emerald-400/10">
               <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-800 dark:text-emerald-200">Your referral code</p>
@@ -213,7 +267,7 @@ export function AcademyEngagementHub({ compact = false }: { compact?: boolean })
       </div>
 
       <div className="grid items-start gap-5 md:grid-cols-2 xl:grid-cols-3">
-        {settings.communityEnabled && (
+        {settings.communityEnabled && data.journey.canUseCommunity && (
           <HubCard title="Community channels" icon={MessageCircle} eyebrow="Admin-managed">
             {hasCommunityContent ? (
               <div className="space-y-4">
@@ -251,7 +305,7 @@ export function AcademyEngagementHub({ compact = false }: { compact?: boolean })
 
         {settings.testimonialsEnabled && (
           <HubCard title="Course review" icon={Star} eyebrow="Moderated">
-            <div className="grid gap-3">
+            {data.journey.canSubmitReview ? <div className="grid gap-3">
               <Select label="Course" value={testimonial.courseId} options={[{ value: "", label: "General Academy experience" }, ...data.courses.map((course) => ({ value: course.id, label: course.title }))]} onChange={(courseId) => setTestimonial({ ...testimonial, courseId })} />
               <Field label="Review title" value={testimonial.title} onChange={(title) => setTestimonial({ ...testimonial, title })} />
               <Select label="Rating" value={testimonial.rating} options={[5, 4, 3, 2, 1].map((value) => ({ value: String(value), label: `${value} star${value === 1 ? "" : "s"}` }))} onChange={(rating) => setTestimonial({ ...testimonial, rating })} />
@@ -261,12 +315,12 @@ export function AcademyEngagementHub({ compact = false }: { compact?: boolean })
                 <span>I allow HouseLink to review this for public use.</span>
               </label>
               <Button loading={busy} disabled={!testimonial.title.trim() || !testimonial.body.trim()} onClick={() => action({ action: "submit_testimonial", testimonial }, "Testimonial submitted for moderation.")}>Submit review</Button>
-            </div>
+            </div> : <LockedNotice title="Reviews unlock after progress" body="Complete at least 25% of a course or finish a certificate before leaving a review. That keeps Academy reviews trustworthy." />}
             <MiniStatus rows={data.testimonials.map((item) => ({ id: item.id, title: item.title, detail: item.status }))} empty="No testimonials submitted yet." />
           </HubCard>
         )}
 
-        {settings.challengesEnabled && (
+        {settings.challengesEnabled && data.journey.canUseChallenges && (
           <HubCard title="Practical challenges" icon={Sparkles} eyebrow="Weekly practice">
             <div className="space-y-3">
               {data.challenges.length ? data.challenges.map((challenge) => (
@@ -291,7 +345,7 @@ export function AcademyEngagementHub({ compact = false }: { compact?: boolean })
           </HubCard>
         )}
 
-        {settings.officeHoursEnabled && (
+        {settings.officeHoursEnabled && data.journey.canUseOfficeHours && (
           <HubCard title="Office hours" icon={CalendarClock} eyebrow="Live support">
             <div className="space-y-3">
               {data.officeHours.length ? data.officeHours.map((officeHour) => (
@@ -328,13 +382,51 @@ function HubCard({ title, eyebrow, icon: Icon, children }: { title: string; eyeb
   );
 }
 
-function MiniMetric({ label, value }: { label: string; value: number }) {
+function MiniMetric({ label, value, suffix = "" }: { label: string; value: number; suffix?: string }) {
   return (
     <div className="rounded-2xl border border-white/15 bg-white/10 px-4 py-3">
-      <p className="text-2xl font-black">{value}</p>
+      <p className="text-2xl font-black">{value}{suffix}</p>
       <p className="text-xs font-bold uppercase tracking-[0.14em] text-emerald-50/80">{label}</p>
     </div>
   );
+}
+
+function LockedNotice({ title, body }: { title: string; body: string }) {
+  return (
+    <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950 dark:border-amber-400/20 dark:bg-amber-400/10 dark:text-amber-100">
+      <p className="font-black">{title}</p>
+      <p className="mt-1 leading-6">{body}</p>
+    </div>
+  );
+}
+
+function buildJourneySteps(journey: EngagementData["journey"]) {
+  return [
+    {
+      index: 1,
+      title: "Join",
+      body: journey.hasActiveCourse ? "You are registered in the Academy." : "Choose and register for a course to begin.",
+      active: journey.hasActiveCourse,
+    },
+    {
+      index: 2,
+      title: "Participate",
+      body: journey.canUseCommunity ? "Community, office hours, referrals and challenges are available." : "Learner features unlock after registration.",
+      active: journey.canUseCommunity,
+    },
+    {
+      index: 3,
+      title: "Reflect",
+      body: journey.canSubmitReview ? "You can submit a moderated review or testimonial." : "Reviews unlock after 25% progress or completion.",
+      active: journey.canSubmitReview,
+    },
+    {
+      index: 4,
+      title: "Graduate",
+      body: journey.canJoinDirectory ? "Graduate directory visibility is available with consent." : "Directory visibility unlocks after course completion.",
+      active: journey.canJoinDirectory,
+    },
+  ];
 }
 
 function Field({ label, value, onChange, type = "text", placeholder, className }: { label: string; value: string; onChange: (value: string) => void; type?: string; placeholder?: string; className?: string }) {

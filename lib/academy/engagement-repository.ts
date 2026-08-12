@@ -247,10 +247,12 @@ export async function runAdminAcademyEngagementAction(body: Record<string, any>,
 export async function getLearnerAcademyEngagement(learnerId: string) {
   const prisma = getMainPrisma() as any;
   await ensureEngagementSettings();
-  const [settingsRow, enrolments, applications] = await Promise.all([
+  const [settingsRow, enrolments, applications, progressRows, certificates] = await Promise.all([
     prisma.academyEngagementSetting.findUnique({ where: { id: "singleton" } }),
     prisma.courseEnrolment.findMany({ where: { agentId: learnerId, status: "ACTIVE" }, include: { course: { select: { id: true, title: true } } } }),
     prisma.academyLearnerApplication.findMany({ where: { learnerId, status: "APPROVED" }, include: { course: { select: { id: true, title: true } } } }),
+    prisma.courseProgress.findMany({ where: { agentId: learnerId }, select: { courseId: true, percentComplete: true, completedAt: true, status: true } }),
+    prisma.certificateIssue.findMany({ where: { agentId: learnerId, status: "ACTIVE" }, select: { courseId: true } }),
   ]);
   const courses = uniqueBy(
     [...enrolments.map((row: any) => row.course), ...applications.map((row: any) => row.course)].filter(Boolean),
@@ -276,9 +278,11 @@ export async function getLearnerAcademyEngagement(learnerId: string) {
   ]);
   const profile = profiles.find((row: any) => row.courseId === null) ?? null;
   const settings = normalizeSettings(settingsRow?.payload);
+  const journey = buildLearnerEngagementJourney({ courses, progressRows, certificates });
   return {
     settings,
     courses,
+    journey,
     profile: profile ? serializeDates(profile) : null,
     profiles: profiles.map(serializeDates),
     referrals: referrals.map(serializeDates),
@@ -301,20 +305,21 @@ export async function runLearnerAcademyEngagementAction(learnerId: string, body:
   const action = String(body.action ?? "");
   if (action === "save_profile") {
     const settings = await getSettings();
+    const journey = await getLearnerEngagementJourney(learnerId);
     const input = body.profile ?? {};
     const optedIn = Boolean(input.communityOptIn || input.ambassadorOptIn || input.directoryOptIn || input.spotlightConsent);
     const existing = await prisma.academyEngagementProfile.findFirst({ where: { learnerId, courseId: null } });
     const data = {
-      communityOptIn: settings.communityEnabled && Boolean(input.communityOptIn),
-      ambassadorOptIn: settings.ambassadorEnabled && Boolean(input.ambassadorOptIn),
-      directoryOptIn: settings.directoryEnabled && Boolean(input.directoryOptIn),
-      spotlightConsent: settings.spotlightEnabled && Boolean(input.spotlightConsent),
-      publicVisibility: settings.directoryEnabled && input.directoryOptIn ? "PUBLIC" : "PRIVATE",
+      communityOptIn: settings.communityEnabled && journey.canUseCommunity && Boolean(input.communityOptIn),
+      ambassadorOptIn: settings.ambassadorEnabled && journey.canUseReferrals && Boolean(input.ambassadorOptIn),
+      directoryOptIn: settings.directoryEnabled && journey.canJoinDirectory && Boolean(input.directoryOptIn),
+      spotlightConsent: settings.spotlightEnabled && journey.canRequestSpotlight && Boolean(input.spotlightConsent),
+      publicVisibility: settings.directoryEnabled && journey.canJoinDirectory && input.directoryOptIn ? "PUBLIC" : "PRIVATE",
       profileHeadline: nullable(input.profileHeadline),
       profileBio: nullable(input.profileBio),
-      sharedPostConfirmed: settings.ambassadorEnabled && Boolean(input.sharedPostConfirmed),
+      sharedPostConfirmed: settings.ambassadorEnabled && journey.canUseReferrals && Boolean(input.sharedPostConfirmed),
       sharedPostUrl: nullable(input.sharedPostUrl),
-      spotlightStatus: settings.spotlightEnabled && input.spotlightConsent ? (existing?.spotlightStatus === "APPROVED" ? "APPROVED" : "PENDING") : "NOT_SUBMITTED",
+      spotlightStatus: settings.spotlightEnabled && journey.canRequestSpotlight && input.spotlightConsent ? (existing?.spotlightStatus === "APPROVED" ? "APPROVED" : "PENDING") : "NOT_SUBMITTED",
       consentedAt: optedIn ? new Date() : null,
       consentWithdrawnAt: optedIn ? null : new Date(),
     };
@@ -329,6 +334,8 @@ export async function runLearnerAcademyEngagementAction(learnerId: string, body:
   if (action === "submit_testimonial") {
     const settings = await getSettings();
     if (!settings.testimonialsEnabled) throw new Error("Testimonials are currently disabled.");
+    const journey = await getLearnerEngagementJourney(learnerId);
+    if (!journey.canSubmitReview) throw new Error("Reviews unlock after meaningful course progress or completion.");
     const input = body.testimonial ?? {};
     const row = await prisma.academyTestimonial.create({
       data: {
@@ -347,6 +354,8 @@ export async function runLearnerAcademyEngagementAction(learnerId: string, body:
   if (action === "submit_challenge") {
     const settings = await getSettings();
     if (!settings.challengesEnabled) throw new Error("Practical challenges are currently disabled.");
+    const journey = await getLearnerEngagementJourney(learnerId);
+    if (!journey.canUseChallenges) throw new Error("Practical challenges are available to active learners.");
     const challengeId = String(body.challengeId);
     await assertPublishedChallengeAccess(learnerId, challengeId);
     return prisma.academyChallengeSubmission.upsert({
@@ -358,6 +367,8 @@ export async function runLearnerAcademyEngagementAction(learnerId: string, body:
   if (action === "rsvp_office_hour") {
     const settings = await getSettings();
     if (!settings.officeHoursEnabled) throw new Error("Office hours are currently disabled.");
+    const journey = await getLearnerEngagementJourney(learnerId);
+    if (!journey.canUseOfficeHours) throw new Error("Office hours are available to active learners.");
     const officeHourId = String(body.officeHourId);
     await assertOfficeHourAccess(learnerId, officeHourId);
     return prisma.academyOfficeHourRsvp.upsert({
@@ -369,6 +380,8 @@ export async function runLearnerAcademyEngagementAction(learnerId: string, body:
   if (action === "create_referral") {
     const settings = await getSettings();
     if (!settings.referralsEnabled) throw new Error("Referrals are currently disabled.");
+    const journey = await getLearnerEngagementJourney(learnerId);
+    if (!journey.canUseReferrals) throw new Error("Referrals unlock after you join an Academy course.");
     const profile = await ensureLearnerReferralProfile(learnerId);
     return prisma.academyReferral.create({
       data: {
@@ -397,6 +410,57 @@ export async function runLearnerAcademyEngagementAction(learnerId: string, body:
     });
   }
   return null;
+}
+
+async function getLearnerEngagementJourney(learnerId: string) {
+  const prisma = getMainPrisma() as any;
+  const [enrolments, applications, progressRows, certificates] = await Promise.all([
+    prisma.courseEnrolment.findMany({ where: { agentId: learnerId, status: "ACTIVE" }, include: { course: { select: { id: true, title: true } } } }),
+    prisma.academyLearnerApplication.findMany({ where: { learnerId, status: "APPROVED" }, include: { course: { select: { id: true, title: true } } } }),
+    prisma.courseProgress.findMany({ where: { agentId: learnerId }, select: { courseId: true, percentComplete: true, completedAt: true, status: true } }),
+    prisma.certificateIssue.findMany({ where: { agentId: learnerId, status: "ACTIVE" }, select: { courseId: true } }),
+  ]);
+  const courses = uniqueBy(
+    [...enrolments.map((row: any) => row.course), ...applications.map((row: any) => row.course)].filter(Boolean),
+    (course: any) => course.id,
+  );
+  return buildLearnerEngagementJourney({ courses, progressRows, certificates });
+}
+
+function buildLearnerEngagementJourney(input: {
+  courses: Array<{ id: string; title: string }>;
+  progressRows: Array<{ courseId: string; percentComplete?: number | null; completedAt?: Date | string | null; status?: string | null }>;
+  certificates: Array<{ courseId?: string | null }>;
+}) {
+  const courseIds = new Set(input.courses.map((course) => course.id));
+  const relevantProgress = input.progressRows.filter((row) => courseIds.has(row.courseId));
+  const highestProgress = relevantProgress.reduce((max, row) => Math.max(max, Number(row.percentComplete ?? 0)), 0);
+  const completedCourseIds = new Set<string>();
+  for (const row of relevantProgress) {
+    if (row.completedAt || row.status === "COMPLETED" || Number(row.percentComplete ?? 0) >= 100) completedCourseIds.add(row.courseId);
+  }
+  for (const certificate of input.certificates) {
+    if (certificate.courseId) completedCourseIds.add(certificate.courseId);
+  }
+  const activeCourseCount = input.courses.length;
+  const completedCourseCount = completedCourseIds.size;
+  const hasActiveCourse = activeCourseCount > 0;
+  const hasMeaningfulProgress = highestProgress >= 25 || completedCourseCount > 0;
+  return {
+    activeCourseCount,
+    completedCourseCount,
+    highestProgress,
+    hasActiveCourse,
+    hasMeaningfulProgress,
+    stage: completedCourseCount > 0 ? "GRADUATE" : hasMeaningfulProgress ? "IN_PROGRESS" : hasActiveCourse ? "ACTIVE_LEARNER" : "NOT_ENROLLED",
+    canUseCommunity: hasActiveCourse,
+    canUseReferrals: hasActiveCourse,
+    canUseChallenges: hasActiveCourse,
+    canUseOfficeHours: hasActiveCourse,
+    canSubmitReview: hasMeaningfulProgress,
+    canJoinDirectory: completedCourseCount > 0,
+    canRequestSpotlight: hasMeaningfulProgress,
+  };
 }
 
 export async function recordAcademyReferralRegistration(input: { referralCode?: string | null; learnerId: string; courseId: string; learnerName?: string | null; learnerEmail?: string | null }) {
