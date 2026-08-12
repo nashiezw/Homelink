@@ -1096,6 +1096,7 @@ export async function ensureAcademyEngagementStorage() {
 async function ensureEngagementSettings() {
   const prisma = getMainPrisma() as any;
   try {
+    await createEngagementStorage(prisma);
     const settings = await prisma.academyEngagementSetting.upsert({
       where: { id: "singleton" },
       create: { id: "singleton", payload: DEFAULT_SETTINGS },
@@ -1571,6 +1572,9 @@ CREATE TABLE IF NOT EXISTS "academy_module_feedback" (
   "question" TEXT NOT NULL,
   "response" TEXT NOT NULL,
   "status" TEXT NOT NULL DEFAULT 'NEW',
+  "adminNote" TEXT,
+  "reviewedAt" TIMESTAMP(3),
+  "archivedAt" TIMESTAMP(3),
   "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updatedAt" TIMESTAMP(3) NOT NULL,
   CONSTRAINT "academy_module_feedback_pkey" PRIMARY KEY ("id")
@@ -1590,6 +1594,9 @@ ALTER TABLE "academy_engagement_profiles" ADD COLUMN IF NOT EXISTS "spotlightSta
 ALTER TABLE "academy_engagement_profiles" ADD COLUMN IF NOT EXISTS "sharedPostConfirmed" BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE "academy_engagement_profiles" ADD COLUMN IF NOT EXISTS "sharedPostUrl" TEXT;
 ALTER TABLE "academy_referrals" ADD COLUMN IF NOT EXISTS "referredLearnerId" TEXT;
+ALTER TABLE "academy_module_feedback" ADD COLUMN IF NOT EXISTS "adminNote" TEXT;
+ALTER TABLE "academy_module_feedback" ADD COLUMN IF NOT EXISTS "reviewedAt" TIMESTAMP(3);
+ALTER TABLE "academy_module_feedback" ADD COLUMN IF NOT EXISTS "archivedAt" TIMESTAMP(3);
 CREATE UNIQUE INDEX IF NOT EXISTS "academy_engagement_profiles_learnerId_courseId_key" ON "academy_engagement_profiles"("learnerId", "courseId");
 CREATE UNIQUE INDEX IF NOT EXISTS "academy_engagement_profiles_referralCode_key" ON "academy_engagement_profiles"("referralCode");
 CREATE INDEX IF NOT EXISTS "academy_engagement_profiles_learnerId_idx" ON "academy_engagement_profiles"("learnerId");
@@ -1602,6 +1609,7 @@ CREATE INDEX IF NOT EXISTS "academy_testimonials_status_idx" ON "academy_testimo
 CREATE INDEX IF NOT EXISTS "academy_challenges_status_idx" ON "academy_challenges"("status");
 CREATE UNIQUE INDEX IF NOT EXISTS "academy_challenge_submissions_challengeId_learnerId_key" ON "academy_challenge_submissions"("challengeId", "learnerId");
 CREATE UNIQUE INDEX IF NOT EXISTS "academy_office_hour_rsvps_officeHourId_learnerId_key" ON "academy_office_hour_rsvps"("officeHourId", "learnerId");
+CREATE INDEX IF NOT EXISTS "academy_module_feedback_status_idx" ON "academy_module_feedback"("status");
 CREATE UNIQUE INDEX IF NOT EXISTS "academy_notification_receipts_notificationId_userId_key" ON "academy_notification_receipts"("notificationId", "userId");
 CREATE INDEX IF NOT EXISTS "academy_notification_receipts_userId_idx" ON "academy_notification_receipts"("userId");
 `;
