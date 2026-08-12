@@ -79,7 +79,7 @@ const ACADEMY_EMAIL_TEMPLATE_PURPOSES = [
     variables: ["{{learnerName}}", "{{courseTitle}}", "{{amount}}", "{{currency}}", "{{registrationId}}", "{{paymentInstructions}}", "{{logoUrl}}", "{{primaryColor}}"],
     subject: "Registration Confirmation: {{courseTitle}}",
     htmlContent:
-      `<h2>Registration received</h2><p>Hello {{learnerName}},</p><p>Your registration for <strong>{{courseTitle}}</strong> has been received.</p><p><strong>Amount due:</strong> {{currency}} {{amount}}</p><p><strong>Reference:</strong> {{registrationId}}</p><h3>Payment instructions</h3><p>{{paymentInstructions}}</p>`,
+      `<h2 style="margin:0 0 12px;color:#0f172a;font-size:24px;line-height:1.25;">Registration received</h2><p style="margin:0 0 16px;color:#334155;line-height:1.7;">Hello {{learnerName}}, your registration for <strong>{{courseTitle}}</strong> has been received.</p><div style="margin:22px 0;padding:18px;border-radius:12px;background:#ecfdf5;border:1px solid #bbf7d0;"><p style="margin:0 0 6px;color:#047857;font-size:12px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;">Amount due</p><p style="margin:0;color:#0f172a;font-size:28px;font-weight:800;">{{currency}} {{amount}}</p><p style="margin:10px 0 0;color:#475569;">Reference: <strong>{{registrationId}}</strong></p></div><h3 style="margin:24px 0 10px;color:#0f172a;font-size:16px;">Payment instructions</h3><p style="margin:0;color:#334155;line-height:1.7;">{{paymentInstructions}}</p>`,
     textContent:
       "Hello {{learnerName}}, your registration for {{courseTitle}} has been received. Amount due: {{currency}} {{amount}}. Reference: {{registrationId}}. Payment instructions: {{paymentInstructions}}",
   },
@@ -91,7 +91,7 @@ const ACADEMY_EMAIL_TEMPLATE_PURPOSES = [
     variables: ["{{userName}}", "{{verificationLink}}", "{{logoUrl}}", "{{primaryColor}}", "{{secondaryColor}}"],
     subject: "Verify Your Email - HouseLink Academy",
     htmlContent:
-      `<h2>Verify your email</h2><p>Hello {{userName}},</p><p>Please confirm your email address to continue with HouseLink Academy.</p><p><a href="{{verificationLink}}">Verify email address</a></p>`,
+      `<h2 style="margin:0 0 12px;color:#0f172a;font-size:24px;line-height:1.25;">Verify your email</h2><p style="margin:0 0 16px;color:#334155;line-height:1.7;">Hello {{userName}}, please confirm your email address to continue with HouseLink Academy.</p><p style="margin:24px 0;"><a href="{{verificationLink}}" style="display:inline-block;border-radius:10px;background:#047857;padding:12px 18px;color:#ffffff;font-weight:800;text-decoration:none;">Verify email address</a></p><p style="margin:0;color:#64748b;font-size:13px;line-height:1.6;">If the button does not work, copy this link into your browser: {{verificationLink}}</p>`,
     textContent: "Hello {{userName}}, verify your email address here: {{verificationLink}}",
   },
   {
@@ -102,7 +102,7 @@ const ACADEMY_EMAIL_TEMPLATE_PURPOSES = [
     variables: ["{{learnerName}}", "{{courseTitle}}", "{{amount}}", "{{currency}}", "{{registrationId}}", "{{reminderDay}}", "{{paymentInstructions}}", "{{logoUrl}}"],
     subject: "Payment Reminder: {{courseTitle}}",
     htmlContent:
-      `<h2>Payment reminder</h2><p>Hello {{learnerName}},</p><p>Your payment for <strong>{{courseTitle}}</strong> is still pending.</p><p><strong>Amount:</strong> {{currency}} {{amount}}</p><p><strong>Reference:</strong> {{registrationId}}</p><p>{{paymentInstructions}}</p>`,
+      `<h2 style="margin:0 0 12px;color:#0f172a;font-size:24px;line-height:1.25;">Payment reminder</h2><p style="margin:0 0 16px;color:#334155;line-height:1.7;">Hello {{learnerName}}, your payment for <strong>{{courseTitle}}</strong> is still pending.</p><div style="margin:22px 0;padding:18px;border-radius:12px;background:#fff7ed;border:1px solid #fed7aa;"><p style="margin:0 0 6px;color:#c2410c;font-size:12px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;">Payment due</p><p style="margin:0;color:#0f172a;font-size:28px;font-weight:800;">{{currency}} {{amount}}</p><p style="margin:10px 0 0;color:#475569;">Reference: <strong>{{registrationId}}</strong></p></div><p style="margin:0;color:#334155;line-height:1.7;">{{paymentInstructions}}</p>`,
     textContent: "Hello {{learnerName}}, your payment for {{courseTitle}} is still pending. Amount: {{currency}} {{amount}}. Reference: {{registrationId}}.",
   },
   {
@@ -113,12 +113,32 @@ const ACADEMY_EMAIL_TEMPLATE_PURPOSES = [
     variables: ["{{learnerName}}", "{{courseTitle}}", "{{courseUrl}}", "{{logoUrl}}", "{{primaryColor}}"],
     subject: "Spot Available: {{courseTitle}}",
     htmlContent:
-      `<h2>A course spot is available</h2><p>Hello {{learnerName}},</p><p>A spot has opened for <strong>{{courseTitle}}</strong>.</p><p><a href="{{courseUrl}}">Register now</a></p>`,
+      `<h2 style="margin:0 0 12px;color:#0f172a;font-size:24px;line-height:1.25;">A course spot is available</h2><p style="margin:0 0 16px;color:#334155;line-height:1.7;">Hello {{learnerName}}, a place has opened for <strong>{{courseTitle}}</strong>.</p><p style="margin:24px 0;"><a href="{{courseUrl}}" style="display:inline-block;border-radius:10px;background:#047857;padding:12px 18px;color:#ffffff;font-weight:800;text-decoration:none;">Register now</a></p><p style="margin:0;color:#64748b;font-size:13px;line-height:1.6;">Places may be limited, so complete your registration when you are ready.</p>`,
     textContent: "Hello {{learnerName}}, a spot has opened for {{courseTitle}}. Register here: {{courseUrl}}",
   },
 ] as const;
 
 type AcademyEmailTemplatePurposeKey = (typeof ACADEMY_EMAIL_TEMPLATE_PURPOSES)[number]["key"];
+
+const SAMPLE_EMAIL_VARIABLES: Record<string, string> = {
+  learnerName: "HouseLink Learner",
+  userName: "HouseLink Learner",
+  courseTitle: "Zimbabwe Real Estate Foundations",
+  amount: "30.00",
+  currency: "USD",
+  registrationId: "HLA-1234567890",
+  paymentInstructions: "EcoCash or bank transfer details will appear here with your HouseLink payment reference.",
+  verificationLink: "https://www.houselink.co.zw/auth/verify-email?token=sample",
+  courseUrl: "https://www.houselink.co.zw/academy",
+  reminderDay: "2",
+  logoUrl: "https://www.houselink.co.zw/brand/houselink-full-lockup.png",
+  primaryColor: "#047857",
+  secondaryColor: "#0f172a",
+};
+
+function renderEmailPreviewValue(value: string) {
+  return value.replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, (match, key: string) => SAMPLE_EMAIL_VARIABLES[key] ?? match);
+}
 
 export function EmailTemplatesManagementPanel({ action }: { action?: (body: Record<string, unknown>, success: string) => Promise<unknown> }) {
   const { showToast } = useApp();
@@ -304,6 +324,8 @@ export function EmailTemplatesManagementPanel({ action }: { action?: (body: Reco
     t.templateKey.toLowerCase().includes(search.toLowerCase()) ||
     t.subject.toLowerCase().includes(search.toLowerCase())
   );
+  const previewSubject = renderEmailPreviewValue(formData.subject || "No subject yet");
+  const previewHtml = renderEmailPreviewValue(formData.htmlContent || "<p>No HTML content yet.</p>");
 
   return (
     <div className="space-y-5">
@@ -474,12 +496,12 @@ export function EmailTemplatesManagementPanel({ action }: { action?: (body: Reco
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <p className="text-sm font-bold text-white">Email preview</p>
-                    <p className="mt-1 text-xs text-slate-500">Preview uses placeholder variables.</p>
+                    <p className="mt-1 text-xs text-slate-500">Preview uses realistic sample values. Live emails use each learner's real records.</p>
                   </div>
                   <AdminStatusBadge status={formData.active ? "Active" : "Inactive"} variant={formData.active ? "success" : "muted"} />
                 </div>
-                <p className="mt-4 rounded-lg bg-slate-900 px-3 py-2 text-sm font-semibold text-white">{formData.subject || "No subject yet"}</p>
-                <iframe title="Email template preview" srcDoc={formData.htmlContent || "<p>No HTML content yet.</p>"} className="mt-3 h-80 w-full rounded-lg border border-white/10 bg-white" />
+                <p className="mt-4 rounded-lg bg-slate-900 px-3 py-2 text-sm font-semibold text-white">{previewSubject}</p>
+                <iframe title="Email template preview" srcDoc={previewHtml} className="mt-3 h-80 w-full rounded-lg border border-white/10 bg-white" />
               </div>
 
               <label className="flex items-center gap-3 rounded-xl border border-white/10 bg-slate-950/70 p-4 text-sm text-slate-300">
@@ -498,7 +520,7 @@ export function EmailTemplatesManagementPanel({ action }: { action?: (body: Reco
 
               <div className="rounded-xl border border-white/10 bg-slate-950/70 p-4">
                 <p className="text-sm font-bold text-white">Send test email</p>
-                <p className="mt-1 text-xs leading-5 text-slate-500">Uses the live SMTP settings. Send to yourself before activating major copy changes.</p>
+                <p className="mt-1 text-xs leading-5 text-slate-500">Uses live SMTP and sample learner values so the inbox shows a finished email, not template code.</p>
                 <div className="mt-3 flex flex-col gap-2 sm:flex-row">
                   <input
                     value={testRecipient}

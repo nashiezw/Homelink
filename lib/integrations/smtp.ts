@@ -71,8 +71,30 @@ function textToHtml(body: string) {
     .join("");
 }
 
-function isHtml(value: string): boolean {
-  return value.trim().startsWith("<!DOCTYPE html") || value.trim().startsWith("<html");
+function isFullHtmlDocument(value: string): boolean {
+  const trimmed = value.trim().toLowerCase();
+  return trimmed.startsWith("<!doctype html") || trimmed.startsWith("<html");
+}
+
+function hasHtmlMarkup(value: string): boolean {
+  return /<\/?[a-z][\s\S]*>/i.test(value);
+}
+
+function htmlToText(value: string) {
+  return value
+    .replace(/<style[\s\S]*?<\/style>/gi, "")
+    .replace(/<script[\s\S]*?<\/script>/gi, "")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/(p|div|h[1-6]|li|tr)>/gi, "\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, "\"")
+    .replace(/&#39;/g, "'")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 }
 
 function buildHtmlEmail(input: { subject: string; body: string; preheader: string }) {
@@ -80,7 +102,11 @@ function buildHtmlEmail(input: { subject: string; body: string; preheader: strin
   const logoUrl = getLogoUrl();
   const subject = escapeHtml(input.subject);
   const preheader = escapeHtml(input.preheader);
-  const content = isHtml(input.body) ? input.body : textToHtml(input.body);
+  const fullDocument = isFullHtmlDocument(input.body);
+  const htmlMarkup = hasHtmlMarkup(input.body);
+  const content = htmlMarkup ? input.body : textToHtml(input.body);
+
+  if (fullDocument) return input.body;
 
   return `<!doctype html>
 <html lang="en">
@@ -106,7 +132,6 @@ function buildHtmlEmail(input: { subject: string; body: string; preheader: strin
             </tr>
             <tr>
               <td style="overflow:hidden;border:1px solid #e2e8f0;border-radius:14px;background:#ffffff;">
-                ${isHtml(input.body) ? content : `
                 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
                   <tr>
                     <td style="background:#064e3b;padding:6px 28px;"></td>
@@ -126,7 +151,7 @@ function buildHtmlEmail(input: { subject: string; body: string; preheader: strin
                       <a href="${appUrl}" style="display:inline-block;border-radius:8px;background:#047857;padding:11px 16px;color:#ffffff;font-size:14px;font-weight:700;text-decoration:none;">Open HouseLink</a>
                     </td>
                   </tr>
-                </table>`}
+                </table>
               </td>
             </tr>
             <tr>
@@ -305,8 +330,9 @@ export async function sendSmtpPlainEmail(
     const html = buildHtmlEmail({
       subject,
       body,
-      preheader: body.split(/\r?\n/).find((line) => line.trim())?.trim() || subject,
+      preheader: htmlToText(body).split(/\r?\n/).find((line) => line.trim())?.trim() || subject,
     });
+    const plainText = hasHtmlMarkup(body) ? htmlToText(body) : body;
     const message = [
       `From: HouseLink Zimbabwe <${from}>`,
       `To: ${to}`,
@@ -318,7 +344,7 @@ export async function sendSmtpPlainEmail(
       "Content-Type: text/plain; charset=utf-8",
       "Content-Transfer-Encoding: 8bit",
       "",
-      body,
+      plainText,
       "",
       `--${boundary}`,
       "Content-Type: text/html; charset=utf-8",

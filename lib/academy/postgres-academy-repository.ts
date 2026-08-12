@@ -1450,7 +1450,13 @@ export async function runAcademyAction(body: Record<string, any>, actor: Actor) 
     const subject = required(body.subject, "Email subject");
     const htmlContent = required(body.htmlContent, "Email HTML content");
     const platformSettings = await getHydratedRuntimePlatformSettings();
-    const result = await sendSmtpPlainEmail(platformSettings.integrations, to, `[Test] ${subject}`, htmlContent);
+    const { renderAcademyEmailTemplateString, SAMPLE_ACADEMY_EMAIL_VARIABLES } = await import("@/lib/academy/email-template-repository");
+    const result = await sendSmtpPlainEmail(
+      platformSettings.integrations,
+      to,
+      `[Test] ${renderAcademyEmailTemplateString(subject, SAMPLE_ACADEMY_EMAIL_VARIABLES)}`,
+      renderAcademyEmailTemplateString(htmlContent, SAMPLE_ACADEMY_EMAIL_VARIABLES),
+    );
     await audit(actor, "academy.email_template.test", String(body.templateKey ?? "custom"), { to, ok: result.ok, message: result.message });
     if (!result.ok) throw new Error(result.message);
     return { sent: true, message: result.message };

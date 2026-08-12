@@ -1,7 +1,7 @@
 import { getMainPrisma } from "@/lib/db/main-prisma";
 import { getRuntimePlatformSettings } from "@/lib/settings/runtime";
 import { sendSmtpPlainEmail } from "@/lib/integrations/smtp";
-import { getActiveEmailTemplate } from "@/lib/academy/email-template-repository";
+import { getActiveEmailTemplate, renderAcademyEmailTemplate } from "@/lib/academy/email-template-repository";
 import { getAcademyBranding } from "@/lib/academy/branding-repository";
 
 export async function sendWaitlistNotificationEmail(
@@ -24,16 +24,16 @@ export async function sendWaitlistNotificationEmail(
     if (customTemplate) {
       // Use custom template with branding
       const branding = await getAcademyBranding();
-      subject = customTemplate.subject.replace(/\{\{courseTitle\}\}/g, courseTitle);
-      
-      // Replace template variables
-      body = customTemplate.htmlContent
-        .replace(/\{\{learnerName\}\}/g, learnerName)
-        .replace(/\{\{courseTitle\}\}/g, courseTitle)
-        .replace(/\{\{courseUrl\}\}/g, courseUrl)
-        .replace(/\{\{primaryColor\}\}/g, branding.primaryColor)
-        .replace(/\{\{secondaryColor\}\}/g, branding.secondaryColor)
-        .replace(/\{\{logoUrl\}\}/g, branding.logoUrl || "");
+      const rendered = renderAcademyEmailTemplate(customTemplate, {
+        learnerName,
+        courseTitle,
+        courseUrl,
+        primaryColor: branding.primaryColor,
+        secondaryColor: branding.secondaryColor,
+        logoUrl: branding.logoUrl || "",
+      });
+      subject = rendered.subject;
+      body = rendered.htmlContent;
     } else {
       // Fallback to default template
       subject = `Spot Available: ${courseTitle}`;

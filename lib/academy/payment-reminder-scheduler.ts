@@ -1,7 +1,7 @@
 import { getMainPrisma } from "@/lib/db/main-prisma";
 import { getRuntimePlatformSettings } from "@/lib/settings/runtime";
 import { sendSmtpPlainEmail } from "@/lib/integrations/smtp";
-import { getActiveEmailTemplate } from "@/lib/academy/email-template-repository";
+import { getActiveEmailTemplate, renderAcademyEmailTemplate } from "@/lib/academy/email-template-repository";
 import { getAcademyBranding } from "@/lib/academy/branding-repository";
 import { getPostgresPaymentSettings } from "@/lib/admin/postgres-admin-config";
 
@@ -66,20 +66,20 @@ export async function sendPaymentReminderEmail(
     if (customTemplate) {
       // Use custom template with branding
       const branding = await getAcademyBranding();
-      subject = customTemplate.subject.replace(/\{\{courseTitle\}\}/g, courseTitle);
-      
-      // Replace template variables
-      body = customTemplate.htmlContent
-        .replace(/\{\{learnerName\}\}/g, learnerName)
-        .replace(/\{\{courseTitle\}\}/g, courseTitle)
-        .replace(/\{\{amount\}\}/g, amount.toString())
-        .replace(/\{\{currency\}\}/g, currency)
-        .replace(/\{\{registrationId\}\}/g, registrationId)
-        .replace(/\{\{reminderDay\}\}/g, reminderDay.toString())
-        .replace(/\{\{paymentInstructions\}\}/g, paymentInstructions.replace(/\n/g, "<br>"))
-        .replace(/\{\{primaryColor\}\}/g, branding.primaryColor)
-        .replace(/\{\{secondaryColor\}\}/g, branding.secondaryColor)
-        .replace(/\{\{logoUrl\}\}/g, branding.logoUrl || "");
+      const rendered = renderAcademyEmailTemplate(customTemplate, {
+        learnerName,
+        courseTitle,
+        amount: amount.toFixed(2),
+        currency,
+        registrationId,
+        reminderDay,
+        paymentInstructions: paymentInstructions.replace(/\n/g, "<br>"),
+        primaryColor: branding.primaryColor,
+        secondaryColor: branding.secondaryColor,
+        logoUrl: branding.logoUrl || "",
+      });
+      subject = rendered.subject;
+      body = rendered.htmlContent;
     } else {
       // Fallback to default template
       subject = `Payment Reminder: ${courseTitle}`;

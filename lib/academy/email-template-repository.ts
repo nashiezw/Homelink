@@ -28,6 +28,43 @@ export interface UpdateEmailTemplateInput {
   active?: boolean;
 }
 
+export type AcademyEmailTemplateVariables = Record<string, string | number | null | undefined>;
+
+export const SAMPLE_ACADEMY_EMAIL_VARIABLES: AcademyEmailTemplateVariables = {
+  learnerName: "HouseLink Learner",
+  userName: "HouseLink Learner",
+  courseTitle: "Zimbabwe Real Estate Foundations",
+  amount: "30.00",
+  currency: "USD",
+  registrationId: "HLA-1234567890",
+  paymentInstructions: "EcoCash or bank transfer details will appear here with your HouseLink payment reference.",
+  verificationLink: "https://www.houselink.co.zw/auth/verify-email?token=sample",
+  courseUrl: "https://www.houselink.co.zw/academy",
+  reminderDay: "2",
+  logoUrl: "https://www.houselink.co.zw/brand/houselink-full-lockup.png",
+  primaryColor: "#047857",
+  secondaryColor: "#0f172a",
+};
+
+export function renderAcademyEmailTemplateString(value: string, variables: AcademyEmailTemplateVariables) {
+  return value.replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, (match, key: string) => {
+    const replacement = variables[key];
+    if (replacement === null || replacement === undefined) return match;
+    return String(replacement);
+  });
+}
+
+export function renderAcademyEmailTemplate(
+  input: Pick<EmailTemplate, "subject" | "htmlContent" | "textContent">,
+  variables: AcademyEmailTemplateVariables,
+) {
+  return {
+    subject: renderAcademyEmailTemplateString(input.subject, variables),
+    htmlContent: renderAcademyEmailTemplateString(input.htmlContent, variables),
+    textContent: input.textContent ? renderAcademyEmailTemplateString(input.textContent, variables) : undefined,
+  };
+}
+
 export async function getEmailTemplate(
   templateKey: string,
   language: string = "en"
