@@ -17,6 +17,11 @@ type EngagementData = {
   officeHours: Array<{ id: string; title: string; description?: string | null; startsAt: string; link?: string | null; capacity?: number | null; active: boolean; courseId?: string | null; course?: { title: string } | null; rsvps: number }>;
   referrals: Array<{ id: string; referralCode: string; status: string; referredName?: string | null; referredEmail?: string | null; referrer?: { name?: string | null; email?: string | null } | null; course?: { title: string } | null; createdAt: string }>;
   moduleFeedback: Array<{ id: string; learnerId: string; courseId: string; moduleId: string; question: string; response: string; status: string; createdAt: string; learner?: { name?: string | null; email?: string | null } | null; course?: { title: string } | null }>;
+  automationRules: Array<{ key: string; label: string; trigger: string; message: string; enabled: boolean }>;
+  qaChecklist: Array<{ key: string; label: string; status: string; detail: string }>;
+  engagementScores: Array<{ learnerId: string; score: number; detail: string[]; learner?: { name?: string | null; email?: string | null } | null }>;
+  learnerTimelines: Array<{ learnerId: string; learner?: { name?: string | null; email?: string | null } | null; events: Array<{ id: string; type: string; title: string; detail: string; createdAt: string }> }>;
+  notificationHistory: Array<{ id: string; userId: string; eventType: string; subject: string; body: string; status: string; createdAt: string; sentAt?: string | null; learner?: { name?: string | null; email?: string | null } | null }>;
   reporting: {
     engagementRate: number;
     referralConversionRate: number;
@@ -178,6 +183,72 @@ export function AcademyEngagementCentre() {
           <div className="mt-4 rounded-2xl border border-emerald-400/20 bg-emerald-400/10 p-4">
             <p className="text-sm font-black text-white">Automated learner communications</p>
             <p className="mt-2 text-sm leading-6 text-emerald-100/80">Moderation decisions notify learners automatically. Office-hours announcements are sent once per event, and progress nudges can be sent manually without duplicating previous 25%, 50%, or 80% reminders.</p>
+          </div>
+        </Panel>
+      </section>
+
+      <section className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
+        <Panel title="Automation Rules And QA" icon={CheckCircle2}>
+          <div className="grid gap-3">
+            {data.automationRules.map((rule) => (
+              <div key={rule.key} className="rounded-2xl border border-white/10 bg-slate-900/70 p-4">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0">
+                    <p className="font-black text-white">{rule.label}</p>
+                    <p className="mt-1 text-xs font-bold uppercase tracking-[0.12em] text-slate-500">{rule.trigger}</p>
+                  </div>
+                  <span className={cn("w-fit rounded-full px-3 py-1 text-xs font-black uppercase", rule.enabled ? "bg-emerald-400/10 text-emerald-200" : "bg-slate-800 text-slate-400")}>{rule.enabled ? "Enabled" : "Off"}</span>
+                </div>
+                <p className="mt-3 text-sm leading-6 text-slate-300">{rule.message}</p>
+              </div>
+            ))}
+          </div>
+          <div className="mt-4 rounded-2xl border border-white/10 bg-slate-900/70 p-3">
+            <h4 className="text-sm font-black text-white">Engagement QA checklist</h4>
+            <div className="mt-3 grid gap-2">
+              {data.qaChecklist.map((item) => (
+                <div key={item.key} className="rounded-xl bg-slate-950 p-3">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                    <p className="font-semibold text-white">{item.label}</p>
+                    <span className={cn("w-fit rounded-full px-2 py-1 text-[11px] font-black uppercase", checklistTone(item.status))}>{item.status.replace(/_/g, " ")}</span>
+                  </div>
+                  <p className="mt-1 text-xs leading-5 text-slate-400">{item.detail}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </Panel>
+
+        <Panel title="Learner Timeline And Scores" icon={Users}>
+          <div className="grid gap-3 lg:grid-cols-2">
+            <MiniList title="Top engagement scores" empty="No engagement scores yet." rows={data.engagementScores.slice(0, 8).map((row) => ({
+              id: row.learnerId,
+              title: row.learner?.name ?? row.learner?.email ?? row.learnerId,
+              detail: `${row.score}/100 - ${row.detail.join(", ")}`,
+            }))} />
+            <MiniList title="Notification history" empty="No Academy notifications yet." rows={data.notificationHistory.slice(0, 8).map((item) => ({
+              id: item.id,
+              title: item.learner?.name ?? item.learner?.email ?? item.userId,
+              detail: `${item.subject} - ${formatDateTime(item.createdAt)}`,
+            }))} />
+          </div>
+          <div className="mt-4 rounded-2xl border border-white/10 bg-slate-900/70 p-3">
+            <h4 className="text-sm font-black text-white">Recent learner timelines</h4>
+            <div className="mt-3 grid gap-3">
+              {data.learnerTimelines.length ? data.learnerTimelines.slice(0, 6).map((timeline) => (
+                <div key={timeline.learnerId} className="rounded-xl bg-slate-950 p-3">
+                  <p className="font-semibold text-white">{timeline.learner?.name ?? timeline.learner?.email ?? timeline.learnerId}</p>
+                  <div className="mt-3 space-y-2">
+                    {timeline.events.slice(0, 4).map((event) => (
+                      <div key={event.id} className="border-l border-emerald-400/40 pl-3">
+                        <p className="text-sm font-bold text-slate-100">{event.type}: {event.title}</p>
+                        <p className="mt-1 text-xs leading-5 text-slate-400">{event.detail} - {formatDateTime(event.createdAt)}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )) : <p className="text-sm text-slate-500">No learner journey events yet.</p>}
+            </div>
           </div>
         </Panel>
       </section>
@@ -360,6 +431,13 @@ function StageCard({ label, value, tone = "default" }: { label: string; value: n
       <p className="mt-1 text-xs font-bold uppercase tracking-[0.12em] text-slate-400">{label}</p>
     </div>
   );
+}
+
+function checklistTone(status: string) {
+  if (status === "READY" || status === "EMPTY_OK") return "bg-emerald-400/10 text-emerald-200";
+  if (status === "OFF") return "bg-slate-800 text-slate-400";
+  if (status === "NEEDS_REVIEW") return "bg-amber-400/10 text-amber-200";
+  return "bg-red-400/10 text-red-200";
 }
 
 function Panel({ title, icon: Icon, children }: { title: string; icon: typeof Users; children: React.ReactNode }) {

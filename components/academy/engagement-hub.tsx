@@ -43,6 +43,7 @@ type EngagementData = {
     cta: string;
     tone: "info" | "warning" | "success";
   };
+  timeline: Array<{ id: string; type: string; title: string; detail: string; createdAt: string }>;
   profile: {
     communityOptIn: boolean;
     ambassadorOptIn: boolean;
@@ -232,6 +233,26 @@ export function AcademyEngagementHub({ compact = false }: { compact?: boolean })
         <HubCard title="Start with a course" icon={BookOpen} eyebrow="First step">
           <EmptyState title="Engagement unlocks after registration" body="Join an Academy course first. Then you can access learner community links, office hours, practical challenges, referrals, and later reviews or graduate visibility." />
           <a href="/academy?browse=1" className="mt-4 inline-flex min-h-11 items-center justify-center rounded-xl bg-emerald-600 px-4 py-2 text-sm font-black text-white shadow-sm transition hover:bg-emerald-500">Browse Academy courses</a>
+        </HubCard>
+      )}
+
+      {data.journey.hasActiveCourse && (
+        <HubCard title="Your engagement timeline" icon={CheckCircle2} eyebrow="Real activity">
+          {data.timeline.length ? (
+            <div className="space-y-3">
+              {data.timeline.slice(0, 6).map((event) => (
+                <div key={event.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-900">
+                  <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
+                    <p className="font-black text-slate-950 dark:text-white">{event.type}: {event.title}</p>
+                    <span className="text-xs font-bold uppercase tracking-[0.12em] text-emerald-700 dark:text-emerald-300">{formatDateTime(event.createdAt)}</span>
+                  </div>
+                  <p className="mt-2 line-clamp-3 text-sm leading-6 text-slate-600 dark:text-slate-300">{event.detail}</p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <EmptyState title="Your timeline starts with your next action" body="Open Lesson 1, submit a checkpoint, RSVP for office hours, or save your preferences to begin recording engagement activity." />
+          )}
         </HubCard>
       )}
 

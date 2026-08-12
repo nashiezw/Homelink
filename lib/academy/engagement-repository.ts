@@ -35,7 +35,7 @@ const DEFAULT_SETTINGS = {
 export async function getAdminAcademyEngagement() {
   const prisma = getMainPrisma() as any;
   await ensureEngagementSettings();
-  const [settingsRow, courses, profiles, testimonials, challenges, challengeSubmissions, officeHours, rsvps, referrals, moduleFeedback, courseProgressRows, activeEnrolments, approvedApplications] = await Promise.all([
+  const [settingsRow, courses, profiles, testimonials, challenges, challengeSubmissions, officeHours, rsvps, referrals, moduleFeedback, courseProgressRows, activeEnrolments, approvedApplications, certificates, notifications] = await Promise.all([
     prisma.academyEngagementSetting.findUnique({ where: { id: "singleton" } }),
     prisma.trainingCourse.findMany({ select: { id: true, title: true, status: true }, orderBy: { title: "asc" } }),
     prisma.academyEngagementProfile.findMany({ orderBy: { updatedAt: "desc" }, take: 200 }),
@@ -49,6 +49,8 @@ export async function getAdminAcademyEngagement() {
     prisma.courseProgress.findMany({ select: { agentId: true, courseId: true, percentComplete: true, status: true, updatedAt: true }, take: 2000 }),
     prisma.courseEnrolment.findMany({ where: { status: "ACTIVE" }, select: { agentId: true, courseId: true, createdAt: true }, take: 2000 }),
     prisma.academyLearnerApplication.findMany({ where: { status: "APPROVED" }, select: { learnerId: true, courseId: true, createdAt: true }, take: 2000 }),
+    prisma.certificateIssue.findMany({ where: { status: "ACTIVE" }, select: { id: true, agentId: true, courseId: true, certificateNumber: true, issuedAt: true }, take: 1000 }),
+    prisma.trainingNotification.findMany({ where: { eventType: { startsWith: "ACADEMY_" } }, orderBy: { createdAt: "desc" }, take: 300 }),
   ]);
   const learnerIds = unique([
     ...profiles.map((row: any) => row.learnerId),
@@ -58,12 +60,17 @@ export async function getAdminAcademyEngagement() {
     ...referrals.map((row: any) => row.referrerId),
     ...referrals.map((row: any) => row.referredLearnerId),
     ...moduleFeedback.map((row: any) => row.learnerId),
+    ...courseProgressRows.map((row: any) => row.agentId),
+    ...activeEnrolments.map((row: any) => row.agentId),
+    ...approvedApplications.map((row: any) => row.learnerId),
+    ...certificates.map((row: any) => row.agentId),
+    ...notifications.map((row: any) => row.userId),
   ]);
   const learners = learnerIds.length
     ? await prisma.user.findMany({ where: { id: { in: learnerIds } }, select: { id: true, name: true, email: true, phone: true } })
     : [];
-  const learnerById = new Map(learners.map((learner: any) => [learner.id, learner]));
-  const courseById = new Map(courses.map((course: any) => [course.id, course]));
+  const learnerById = new Map<string, any>(learners.map((learner: any) => [learner.id, learner]));
+  const courseById = new Map<string, any>(courses.map((course: any) => [course.id, course]));
   const submissionCountByChallenge = new Map<string, number>();
   for (const submission of challengeSubmissions) {
     submissionCountByChallenge.set(submission.challengeId, (submissionCountByChallenge.get(submission.challengeId) ?? 0) + 1);
@@ -92,6 +99,14 @@ export async function getAdminAcademyEngagement() {
       averageProgress: courseProgressRows.length ? Math.round(courseProgressRows.reduce((sum: number, row: any) => sum + Number(row.percentComplete ?? 0), 0) / courseProgressRows.length) : 0,
     },
     reporting: buildEngagementReporting({ profiles, testimonials, challenges, challengeSubmissions, officeHours, rsvps, referrals, moduleFeedback, courseProgressRows, activeEnrolments, approvedApplications }),
+    automationRules: buildAutomationRules(normalizeSettings(settingsRow?.payload)),
+    qaChecklist: buildEngagementQaChecklist({ settings: normalizeSettings(settingsRow?.payload), challenges, officeHours, testimonials, challengeSubmissions, moduleFeedback, profiles }),
+    engagementScores: buildEngagementScores({ learnerById, profiles, testimonials, challengeSubmissions, rsvps, referrals, moduleFeedback, courseProgressRows, certificates }),
+    learnerTimelines: buildAdminLearnerTimelines({ learnerById, courseById, profiles, testimonials, challenges, challengeSubmissions, officeHours, rsvps, referrals, moduleFeedback, courseProgressRows, activeEnrolments, approvedApplications, certificates, notifications }),
+    notificationHistory: notifications.map((row: any) => ({
+      ...serializeDates(row),
+      learner: learnerById.get(row.userId) ?? null,
+    })),
     profiles: profiles.map((row: any) => ({
       ...serializeDates(row),
       learner: learnerById.get(row.learnerId) ?? null,
@@ -261,15 +276,15 @@ export async function getLearnerAcademyEngagement(learnerId: string) {
     prisma.academyEngagementSetting.findUnique({ where: { id: "singleton" } }),
     prisma.courseEnrolment.findMany({ where: { agentId: learnerId, status: "ACTIVE" }, include: { course: { select: { id: true, title: true } } } }),
     prisma.academyLearnerApplication.findMany({ where: { learnerId, status: "APPROVED" }, include: { course: { select: { id: true, title: true } } } }),
-    prisma.courseProgress.findMany({ where: { agentId: learnerId }, select: { courseId: true, percentComplete: true, completedAt: true, status: true } }),
-    prisma.certificateIssue.findMany({ where: { agentId: learnerId, status: "ACTIVE" }, select: { courseId: true } }),
+    prisma.courseProgress.findMany({ where: { agentId: learnerId }, select: { courseId: true, percentComplete: true, completedAt: true, status: true, updatedAt: true } }),
+    prisma.certificateIssue.findMany({ where: { agentId: learnerId, status: "ACTIVE" }, select: { id: true, courseId: true, certificateNumber: true, issuedAt: true } }),
   ]);
   const courses = uniqueBy(
     [...enrolments.map((row: any) => row.course), ...applications.map((row: any) => row.course)].filter(Boolean),
     (course: any) => course.id,
   );
   const courseIds = courses.map((course: any) => course.id);
-  const [profiles, referrals, testimonials, challenges, challengeSubmissions, officeHours, rsvps] = await Promise.all([
+  const [profiles, referrals, testimonials, challenges, challengeSubmissions, officeHours, rsvps, notifications] = await Promise.all([
     prisma.academyEngagementProfile.findMany({ where: { learnerId, OR: [{ courseId: null }, { courseId: { in: courseIds } }] }, orderBy: { updatedAt: "desc" } }),
     prisma.academyReferral.findMany({ where: { referrerId: learnerId }, orderBy: { createdAt: "desc" } }),
     prisma.academyTestimonial.findMany({ where: { learnerId }, orderBy: { updatedAt: "desc" } }),
@@ -285,6 +300,7 @@ export async function getLearnerAcademyEngagement(learnerId: string) {
       take: 20,
     }),
     prisma.academyOfficeHourRsvp.findMany({ where: { learnerId } }),
+    prisma.trainingNotification.findMany({ where: { userId: learnerId, eventType: { startsWith: "ACADEMY_" } }, orderBy: { createdAt: "desc" }, take: 30 }),
   ]);
   const profile = profiles.find((row: any) => row.courseId === null) ?? null;
   const settings = normalizeSettings(settingsRow?.payload);
@@ -295,6 +311,7 @@ export async function getLearnerAcademyEngagement(learnerId: string) {
     courses,
     journey,
     nextAction,
+    timeline: buildLearnerTimeline({ progressRows, certificates, testimonials, challengeSubmissions, rsvps, referrals, notifications, courseById: new Map(courses.map((course: any) => [course.id, course.title])) }),
     profile: profile ? serializeDates(profile) : null,
     profiles: profiles.map(serializeDates),
     referrals: referrals.map(serializeDates),
@@ -519,6 +536,190 @@ function buildLearnerNextAction(journey: ReturnType<typeof buildLearnerEngagemen
     cta: "Review options",
     tone: "success",
   };
+}
+
+function buildAutomationRules(settings: Record<string, any>) {
+  return [
+    {
+      key: "lesson-one",
+      label: "Lesson 1 activation",
+      trigger: "Active learner has no course progress yet",
+      message: settings.lessonOnePlaybook,
+      enabled: Boolean(settings.enabled),
+    },
+    {
+      key: "progress",
+      label: "Progress milestones",
+      trigger: "Learner reaches 25%, 50%, or 80% progress",
+      message: settings.progressPlaybook,
+      enabled: Boolean(settings.enabled),
+    },
+    {
+      key: "completion",
+      label: "Graduate follow-up",
+      trigger: "Learner completes a course or receives a certificate",
+      message: settings.completionPlaybook,
+      enabled: Boolean(settings.enabled && settings.testimonialsEnabled),
+    },
+    {
+      key: "office-hours",
+      label: "Office-hours announcement",
+      trigger: "Admin creates an active future office-hours event",
+      message: "Learners with access receive one in-app invitation per event.",
+      enabled: Boolean(settings.enabled && settings.officeHoursEnabled),
+    },
+  ];
+}
+
+function buildEngagementQaChecklist(input: {
+  settings: Record<string, any>;
+  challenges: any[];
+  officeHours: any[];
+  testimonials: any[];
+  challengeSubmissions: any[];
+  moduleFeedback: any[];
+  profiles: any[];
+}) {
+  const activeChallenges = input.challenges.filter((row) => row.status === "PUBLISHED");
+  const activeOfficeHours = input.officeHours.filter((row) => row.active && new Date(row.startsAt).getTime() >= Date.now());
+  const pendingSpotlights = input.profiles.filter((row) => row.spotlightConsent && row.spotlightStatus === "PENDING").length;
+  return [
+    {
+      key: "community-links",
+      label: "Community links configured",
+      status: input.settings.communityEnabled ? (input.settings.whatsappUrl || input.settings.whatsappChannelUrl || input.settings.facebookPageUrl || input.settings.linkedinPageUrl ? "READY" : "NEEDS_SETUP") : "OFF",
+      detail: input.settings.communityEnabled ? "Add at least one WhatsApp, Facebook, or LinkedIn destination for learners." : "Community links are disabled.",
+    },
+    {
+      key: "calendar",
+      label: "No fake learner calendar",
+      status: String(input.settings.weeklyThemes ?? "").trim() ? "READY" : "EMPTY_OK",
+      detail: String(input.settings.weeklyThemes ?? "").trim() ? "Learner calendar themes are admin-saved." : "Calendar is hidden until admin adds real themes.",
+    },
+    {
+      key: "challenges",
+      label: "Practical challenges",
+      status: input.settings.challengesEnabled ? (activeChallenges.length ? "READY" : "NEEDS_CONTENT") : "OFF",
+      detail: activeChallenges.length ? `${activeChallenges.length} published challenge(s).` : "Publish a challenge only when instructions and evidence requirements are ready.",
+    },
+    {
+      key: "office-hours",
+      label: "Office hours",
+      status: input.settings.officeHoursEnabled ? (activeOfficeHours.length ? "READY" : "NEEDS_CONTENT") : "OFF",
+      detail: activeOfficeHours.length ? `${activeOfficeHours.length} upcoming event(s).` : "Schedule a real WhatsApp or Zoom session with a working link.",
+    },
+    {
+      key: "moderation",
+      label: "Moderation queue",
+      status: input.testimonials.filter((row) => row.status === "PENDING").length + input.challengeSubmissions.filter((row) => row.status === "SUBMITTED").length + input.moduleFeedback.filter((row) => row.status === "NEW").length + pendingSpotlights ? "NEEDS_REVIEW" : "READY",
+      detail: "Review pending testimonials, challenge submissions, module feedback, and spotlight permissions.",
+    },
+  ];
+}
+
+function buildEngagementScores(input: {
+  learnerById: Map<string, any>;
+  profiles: any[];
+  testimonials: any[];
+  challengeSubmissions: any[];
+  rsvps: any[];
+  referrals: any[];
+  moduleFeedback: any[];
+  courseProgressRows: any[];
+  certificates: any[];
+}) {
+  const scores = new Map<string, { learnerId: string; score: number; detail: string[] }>();
+  function add(learnerId: string | null | undefined, points: number, label: string) {
+    if (!learnerId) return;
+    const row = scores.get(learnerId) ?? { learnerId, score: 0, detail: [] };
+    row.score += points;
+    if (!row.detail.includes(label)) row.detail.push(label);
+    scores.set(learnerId, row);
+  }
+  for (const row of input.courseProgressRows) add(row.agentId, Math.min(40, Math.round(Number(row.percentComplete ?? 0) / 3)), "Course progress");
+  for (const row of input.profiles) if (row.communityOptIn || row.ambassadorOptIn || row.directoryOptIn || row.spotlightConsent) add(row.learnerId, 10, "Opted in");
+  for (const row of input.testimonials) add(row.learnerId, row.status === "APPROVED" ? 15 : 8, "Review/testimonial");
+  for (const row of input.challengeSubmissions) add(row.learnerId, row.status === "APPROVED" ? 18 : 10, "Challenge submission");
+  for (const row of input.rsvps) if (row.status !== "CANCELLED") add(row.learnerId, 8, "Office-hours RSVP");
+  for (const row of input.referrals) add(row.referrerId, row.status === "REWARDED" ? 20 : 8, "Referral");
+  for (const row of input.moduleFeedback) add(row.learnerId, 6, "Module feedback");
+  for (const row of input.certificates) add(row.agentId, 25, "Certificate");
+  return [...scores.values()]
+    .map((row) => ({
+      ...row,
+      score: Math.max(0, Math.min(100, row.score)),
+      learner: input.learnerById.get(row.learnerId) ?? null,
+    }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 20);
+}
+
+function buildAdminLearnerTimelines(input: {
+  learnerById: Map<string, any>;
+  courseById: Map<string, any>;
+  profiles: any[];
+  testimonials: any[];
+  challenges: any[];
+  challengeSubmissions: any[];
+  officeHours: any[];
+  rsvps: any[];
+  referrals: any[];
+  moduleFeedback: any[];
+  courseProgressRows: any[];
+  activeEnrolments: any[];
+  approvedApplications: any[];
+  certificates: any[];
+  notifications: any[];
+}) {
+  const eventsByLearner = new Map<string, Array<{ id: string; type: string; title: string; detail: string; createdAt: Date | string }>>();
+  function add(learnerId: string | null | undefined, event: { id: string; type: string; title: string; detail: string; createdAt: Date | string }) {
+    if (!learnerId) return;
+    const rows = eventsByLearner.get(learnerId) ?? [];
+    rows.push(event);
+    eventsByLearner.set(learnerId, rows);
+  }
+  for (const row of input.activeEnrolments) add(row.agentId, { id: `enrol-${row.agentId}-${row.courseId}`, type: "Enrolment", title: "Course access active", detail: input.courseById.get(row.courseId)?.title ?? row.courseId, createdAt: row.createdAt });
+  for (const row of input.approvedApplications) add(row.learnerId, { id: `application-${row.learnerId}-${row.courseId}`, type: "Application", title: "Application approved", detail: input.courseById.get(row.courseId)?.title ?? row.courseId, createdAt: row.createdAt });
+  for (const row of input.courseProgressRows) add(row.agentId, { id: `progress-${row.agentId}-${row.courseId}`, type: "Progress", title: `${Math.round(Number(row.percentComplete ?? 0))}% progress`, detail: input.courseById.get(row.courseId)?.title ?? row.courseId, createdAt: row.updatedAt });
+  for (const row of input.certificates) add(row.agentId, { id: row.id, type: "Certificate", title: "Certificate issued", detail: row.certificateNumber, createdAt: row.issuedAt });
+  for (const row of input.testimonials) add(row.learnerId, { id: row.id, type: "Testimonial", title: row.status, detail: row.title, createdAt: row.createdAt });
+  const challengeById = new Map(input.challenges.map((row) => [row.id, row.title]));
+  for (const row of input.challengeSubmissions) add(row.learnerId, { id: row.id, type: "Challenge", title: row.status, detail: challengeById.get(row.challengeId) ?? row.challengeId, createdAt: row.submittedAt });
+  const officeById = new Map(input.officeHours.map((row) => [row.id, row.title]));
+  for (const row of input.rsvps) add(row.learnerId, { id: row.id, type: "Office hours", title: row.status, detail: officeById.get(row.officeHourId) ?? row.officeHourId, createdAt: row.createdAt });
+  for (const row of input.referrals) add(row.referrerId, { id: row.id, type: "Referral", title: row.status, detail: row.referredName ?? row.referredEmail ?? row.referralCode, createdAt: row.createdAt });
+  for (const row of input.moduleFeedback) add(row.learnerId, { id: row.id, type: "Feedback", title: row.status, detail: row.response, createdAt: row.createdAt });
+  for (const row of input.notifications) add(row.userId, { id: row.id, type: "Notification", title: row.subject, detail: row.status, createdAt: row.createdAt });
+  return [...eventsByLearner.entries()]
+    .map(([learnerId, events]) => ({
+      learnerId,
+      learner: input.learnerById.get(learnerId) ?? null,
+      events: events.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 12).map(serializeDates),
+    }))
+    .sort((a, b) => new Date(b.events[0]?.createdAt ?? 0).getTime() - new Date(a.events[0]?.createdAt ?? 0).getTime())
+    .slice(0, 30);
+}
+
+function buildLearnerTimeline(input: {
+  progressRows: any[];
+  certificates: any[];
+  testimonials: any[];
+  challengeSubmissions: any[];
+  rsvps: any[];
+  referrals: any[];
+  notifications: any[];
+  courseById: Map<string, string>;
+}) {
+  const events = [
+    ...input.progressRows.map((row) => ({ id: `progress-${row.courseId}`, type: "Progress", title: `${Math.round(Number(row.percentComplete ?? 0))}% course progress`, detail: input.courseById.get(row.courseId) ?? row.courseId, createdAt: row.completedAt ?? row.updatedAt })),
+    ...input.certificates.map((row) => ({ id: row.id, type: "Certificate", title: "Certificate active", detail: row.certificateNumber ?? input.courseById.get(row.courseId ?? "") ?? "Academy certificate", createdAt: row.issuedAt })),
+    ...input.testimonials.map((row) => ({ id: row.id, type: "Review", title: row.status, detail: row.title, createdAt: row.createdAt })),
+    ...input.challengeSubmissions.map((row) => ({ id: row.id, type: "Challenge", title: row.status, detail: row.evidence, createdAt: row.submittedAt })),
+    ...input.rsvps.map((row) => ({ id: row.id, type: "Office hours", title: row.status, detail: "RSVP recorded", createdAt: row.createdAt })),
+    ...input.referrals.map((row) => ({ id: row.id, type: "Referral", title: row.status, detail: row.referredName ?? row.referredEmail ?? row.referralCode, createdAt: row.createdAt })),
+    ...input.notifications.map((row) => ({ id: row.id, type: "Notification", title: row.subject, detail: row.body, createdAt: row.createdAt })),
+  ];
+  return events.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 12).map(serializeDates);
 }
 
 export async function recordAcademyReferralRegistration(input: { referralCode?: string | null; learnerId: string; courseId: string; learnerName?: string | null; learnerEmail?: string | null }) {

@@ -72,6 +72,13 @@ async function getDirectoryProfiles(): Promise<DirectoryProfile[]> {
       headline: profile.profileHeadline ?? "HouseLink Academy learner",
       bio: profile.profileBio ?? null,
       courses: coursesForProfile,
+      certificates: certificates
+        .filter((certificate: any) => certificate.agentId === profile.learnerId && certificate.certificateNumber)
+        .map((certificate: any) => ({
+          number: certificate.certificateNumber,
+          course: certificate.course?.title ?? "Academy certificate",
+          href: `/academy/verify?certificate=${encodeURIComponent(certificate.certificateNumber)}`,
+        })),
       spotlightStatus: profile.spotlightStatus,
     };
   });
