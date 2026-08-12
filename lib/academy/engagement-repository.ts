@@ -70,7 +70,7 @@ export async function getAdminAcademyEngagement() {
     prisma.academyReferral.findMany({ orderBy: { createdAt: "desc" }, take: 200 }),
     prisma.academyModuleFeedback.findMany({ orderBy: { createdAt: "desc" }, take: 200 }),
     prisma.courseProgress.findMany({ select: { agentId: true, courseId: true, percentComplete: true, status: true, updatedAt: true }, take: 2000 }),
-    prisma.courseEnrolment.findMany({ where: { status: "ACTIVE" }, select: { agentId: true, courseId: true, createdAt: true }, take: 2000 }),
+    prisma.courseEnrolment.findMany({ where: { status: "ACTIVE" }, select: { agentId: true, courseId: true, enrolledAt: true }, take: 2000 }),
     prisma.academyLearnerApplication.findMany({ where: { status: "APPROVED" }, select: { learnerId: true, courseId: true, createdAt: true }, take: 2000 }),
   ]);
   const [certificates, notifications] = await Promise.all([
@@ -764,7 +764,7 @@ function buildAdminLearnerTimelines(input: {
     rows.push(event);
     eventsByLearner.set(learnerId, rows);
   }
-  for (const row of input.activeEnrolments) add(row.agentId, { id: `enrol-${row.agentId}-${row.courseId}`, type: "Enrolment", title: "Course access active", detail: input.courseById.get(row.courseId)?.title ?? row.courseId, createdAt: row.createdAt });
+  for (const row of input.activeEnrolments) add(row.agentId, { id: `enrol-${row.agentId}-${row.courseId}`, type: "Enrolment", title: "Course access active", detail: input.courseById.get(row.courseId)?.title ?? row.courseId, createdAt: row.enrolledAt });
   for (const row of input.approvedApplications) add(row.learnerId, { id: `application-${row.learnerId}-${row.courseId}`, type: "Application", title: "Application approved", detail: input.courseById.get(row.courseId)?.title ?? row.courseId, createdAt: row.createdAt });
   for (const row of input.courseProgressRows) add(row.agentId, { id: `progress-${row.agentId}-${row.courseId}`, type: "Progress", title: `${Math.round(Number(row.percentComplete ?? 0))}% progress`, detail: input.courseById.get(row.courseId)?.title ?? row.courseId, createdAt: row.updatedAt });
   for (const row of input.certificates) add(row.agentId, { id: row.id, type: "Certificate", title: "Certificate issued", detail: row.certificateNumber, createdAt: row.issuedAt });
