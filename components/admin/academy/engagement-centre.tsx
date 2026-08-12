@@ -45,6 +45,23 @@ type SelectedLearnerEngagement = {
   notifications: EngagementData["notificationHistory"];
 };
 
+type EngagementSection = "overview" | "messaging" | "settings" | "moderation" | "programmes" | "learners" | "health";
+
+const ENGAGEMENT_SECTIONS: Array<{
+  id: EngagementSection;
+  label: string;
+  description: string;
+  icon: typeof Users;
+}> = [
+  { id: "overview", label: "Overview", description: "Metrics and latest work", icon: TrendingUp },
+  { id: "messaging", label: "Messaging", description: "Nudges and receipts", icon: Send },
+  { id: "settings", label: "Community Settings", description: "Links, prompts, switches", icon: Megaphone },
+  { id: "moderation", label: "Moderation", description: "Reviews and consent", icon: ShieldCheck },
+  { id: "programmes", label: "Challenges & Office Hours", description: "Events and tasks", icon: Sparkles },
+  { id: "learners", label: "Learner Insights", description: "Timelines and scores", icon: Users },
+  { id: "health", label: "System Health", description: "Storage and delivery", icon: Activity },
+];
+
 const defaultChallenge = { title: "", instructions: "", rewardLabel: "", status: "DRAFT", courseId: "", startsAt: "", endsAt: "" };
 const defaultOfficeHour = { title: "", description: "", startsAt: "", link: "", capacity: "", courseId: "", active: true };
 
@@ -59,6 +76,7 @@ export function AcademyEngagementCentre() {
   const [editingChallengeId, setEditingChallengeId] = useState<string | null>(null);
   const [editingOfficeId, setEditingOfficeId] = useState<string | null>(null);
   const [selectedLearnerId, setSelectedLearnerId] = useState<string | null>(null);
+  const [section, setSection] = useState<EngagementSection>("overview");
   const [filters, setFilters] = useState({ query: "", course: "", stage: "", delivery: "" });
 
   const load = useCallback(async () => {
@@ -203,17 +221,62 @@ export function AcademyEngagementCentre() {
         {message && <p className="mt-4 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-100">{message}</p>}
       </section>
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
-        <Metric icon={Users} label="Opted in" value={data.metrics.optedInLearners ?? 0} />
-        <Metric icon={ShieldCheck} label="Directory" value={data.metrics.directoryProfiles ?? 0} />
-        <Metric icon={Star} label="Testimonials pending" value={data.metrics.pendingTestimonials ?? 0} />
-        <Metric icon={Sparkles} label="Active challenges" value={data.metrics.activeChallenges ?? 0} />
-        <Metric icon={CalendarClock} label="Office hours" value={data.metrics.upcomingOfficeHours ?? 0} />
-        <Metric icon={Send} label="Referrals" value={data.metrics.referrals ?? 0} />
-      </div>
+      <EngagementSectionNav active={section} onChange={setSection} />
 
-      <section className="grid gap-4 xl:grid-cols-[1fr_0.9fr]">
-        <Panel title="Diagnostics and delivery" icon={ShieldCheck}>
+      {section === "overview" && (
+        <>
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+            <Metric icon={Users} label="Opted in" value={data.metrics.optedInLearners ?? 0} />
+            <Metric icon={ShieldCheck} label="Directory" value={data.metrics.directoryProfiles ?? 0} />
+            <Metric icon={Star} label="Testimonials pending" value={data.metrics.pendingTestimonials ?? 0} />
+            <Metric icon={Sparkles} label="Active challenges" value={data.metrics.activeChallenges ?? 0} />
+            <Metric icon={CalendarClock} label="Office hours" value={data.metrics.upcomingOfficeHours ?? 0} />
+            <Metric icon={Send} label="Referrals" value={data.metrics.referrals ?? 0} />
+          </div>
+          <section className="grid gap-4 xl:grid-cols-[1fr_0.9fr]">
+            <Panel title="Engagement Reporting" icon={TrendingUp}>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <RateBar label="Learner engagement rate" value={data.reporting.engagementRate} />
+                <RateBar label="Referral conversion" value={data.reporting.referralConversionRate} />
+                <RateBar label="Testimonial approval" value={data.reporting.testimonialApprovalRate} />
+                <RateBar label="Challenge approval" value={data.reporting.challengeApprovalRate} />
+                <RateBar label="Office-hours RSVP rate" value={data.reporting.rsvpRate} />
+                <div className="rounded-2xl border border-amber-400/20 bg-amber-400/10 p-4">
+                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber-200">Pending admin work</p>
+                  <p className="mt-3 text-3xl font-black text-white">{data.reporting.pendingWork}</p>
+                  <p className="mt-1 text-sm text-amber-100/80">Testimonials, challenges, feedback, and spotlights awaiting review.</p>
+                </div>
+              </div>
+              <div className="mt-4 rounded-2xl border border-white/10 bg-slate-900/70 p-4">
+                <p className="text-sm font-black text-white">Learner journey stage distribution</p>
+                <p className="mt-1 text-sm leading-6 text-slate-400">Calculated from real active enrolments, approved learner applications, and course progress records.</p>
+                <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+                  <StageCard label="Not started" value={data.reporting.stageCounts.notStarted} tone="warning" />
+                  <StageCard label="Started" value={data.reporting.stageCounts.started} />
+                  <StageCard label="Halfway" value={data.reporting.stageCounts.halfway} />
+                  <StageCard label="Nearly complete" value={data.reporting.stageCounts.nearlyComplete} tone="success" />
+                  <StageCard label="Completed" value={data.reporting.stageCounts.completed} tone="success" />
+                </div>
+              </div>
+            </Panel>
+            <Panel title="Recent Engagement Activity" icon={Activity}>
+              <MiniList title="Latest records" empty="No engagement activity yet." rows={data.reporting.recentActivity.map((item) => ({
+                id: item.id,
+                title: `${item.type} - ${item.status}`,
+                detail: `${item.title} - ${formatDateTime(item.createdAt)}`,
+              }))} />
+              <div className="mt-4 rounded-2xl border border-emerald-400/20 bg-emerald-400/10 p-4">
+                <p className="text-sm font-black text-white">Automated learner communications</p>
+                <p className="mt-2 text-sm leading-6 text-emerald-100/80">Moderation decisions notify learners automatically. Office-hours announcements are sent once per event, and progress nudges can be sent manually without duplicating previous 25%, 50%, or 80% reminders.</p>
+              </div>
+            </Panel>
+          </section>
+        </>
+      )}
+
+      {section === "health" && (
+        <section className="grid gap-4 xl:grid-cols-[1fr_0.9fr]">
+          <Panel title="Diagnostics and delivery" icon={ShieldCheck}>
           <div className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
             <DeliveryMetric label="Total Academy messages" value={data.deliverySummary?.total ?? 0} tone="default" />
             <DeliveryMetric label="Visible in app" value={data.deliverySummary?.visibleInApp ?? 0} tone="success" />
@@ -280,122 +343,95 @@ export function AcademyEngagementCentre() {
               </div>
             </div>
           ) : null}
-        </Panel>
+          </Panel>
 
-        <Panel title="Admin Filters" icon={Activity}>
-          <div className="grid gap-3">
-            <Field label="Search learner, message, or event" value={filters.query} onChange={(query) => setFilters({ ...filters, query })} />
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Select label="Course" value={filters.course} options={[{ value: "", label: "All courses" }, ...data.courses.map((course) => ({ value: course.id, label: course.title }))]} onChange={(course) => setFilters({ ...filters, course })} />
-              <Select label="Journey signal" value={filters.stage} options={["", "Progress", "Notification", "Referral", "Certificate", "Challenge", "Office hours", "Feedback"].map((value) => ({ value, label: value || "All signals" }))} onChange={(stage) => setFilters({ ...filters, stage })} />
-              <Select label="Notification state" value={filters.delivery} options={["", "DELIVERED", "SENT", "QUEUED", "FAILED"].map((value) => ({ value, label: value || "All states" }))} onChange={(delivery) => setFilters({ ...filters, delivery })} />
-            </div>
-            <Button variant="secondary" onClick={() => setFilters({ query: "", course: "", stage: "", delivery: "" })}>Clear filters</Button>
-          </div>
-        </Panel>
-      </section>
-
-      <section className="grid gap-4 xl:grid-cols-[1fr_0.9fr]">
-        <Panel title="Engagement Reporting" icon={TrendingUp}>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <RateBar label="Learner engagement rate" value={data.reporting.engagementRate} />
-            <RateBar label="Referral conversion" value={data.reporting.referralConversionRate} />
-            <RateBar label="Testimonial approval" value={data.reporting.testimonialApprovalRate} />
-            <RateBar label="Challenge approval" value={data.reporting.challengeApprovalRate} />
-            <RateBar label="Office-hours RSVP rate" value={data.reporting.rsvpRate} />
-            <div className="rounded-2xl border border-amber-400/20 bg-amber-400/10 p-4">
-              <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber-200">Pending admin work</p>
-              <p className="mt-3 text-3xl font-black text-white">{data.reporting.pendingWork}</p>
-              <p className="mt-1 text-sm text-amber-100/80">Testimonials, challenges, feedback, and spotlights awaiting review.</p>
-            </div>
-          </div>
-          <div className="mt-4 rounded-2xl border border-white/10 bg-slate-900/70 p-4">
-            <p className="text-sm font-black text-white">Learner journey stage distribution</p>
-            <p className="mt-1 text-sm leading-6 text-slate-400">Calculated from real active enrolments, approved learner applications, and course progress records.</p>
-            <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-              <StageCard label="Not started" value={data.reporting.stageCounts.notStarted} tone="warning" />
-              <StageCard label="Started" value={data.reporting.stageCounts.started} />
-              <StageCard label="Halfway" value={data.reporting.stageCounts.halfway} />
-              <StageCard label="Nearly complete" value={data.reporting.stageCounts.nearlyComplete} tone="success" />
-              <StageCard label="Completed" value={data.reporting.stageCounts.completed} tone="success" />
-            </div>
-          </div>
-        </Panel>
-        <Panel title="Recent Engagement Activity" icon={Activity}>
-          <MiniList title="Latest records" empty="No engagement activity yet." rows={data.reporting.recentActivity.map((item) => ({
-            id: item.id,
-            title: `${item.type} - ${item.status}`,
-            detail: `${item.title} - ${formatDateTime(item.createdAt)}`,
-          }))} />
-          <div className="mt-4 rounded-2xl border border-emerald-400/20 bg-emerald-400/10 p-4">
-            <p className="text-sm font-black text-white">Automated learner communications</p>
-            <p className="mt-2 text-sm leading-6 text-emerald-100/80">Moderation decisions notify learners automatically. Office-hours announcements are sent once per event, and progress nudges can be sent manually without duplicating previous 25%, 50%, or 80% reminders.</p>
-          </div>
-        </Panel>
-      </section>
-
-      <section className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
-        <Panel title="Automation Rules And QA" icon={CheckCircle2}>
-          <div className="grid gap-3">
-            {data.automationRules.map((rule) => (
-              <div key={rule.key} className="rounded-2xl border border-white/10 bg-slate-900/70 p-4">
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                  <div className="min-w-0">
-                    <p className="font-black text-white">{rule.label}</p>
-                    <p className="mt-1 text-xs font-bold uppercase tracking-[0.12em] text-slate-500">{rule.trigger}</p>
-                  </div>
-                  <span className={cn("w-fit rounded-full px-3 py-1 text-xs font-black uppercase", rule.enabled ? "bg-emerald-400/10 text-emerald-200" : "bg-slate-800 text-slate-400")}>{rule.enabled ? "Enabled" : "Off"}</span>
-                </div>
-                <p className="mt-3 text-sm leading-6 text-slate-300">{rule.message}</p>
-              </div>
-            ))}
-          </div>
-          <div className="mt-4 rounded-2xl border border-white/10 bg-slate-900/70 p-3">
-            <h4 className="text-sm font-black text-white">Engagement QA checklist</h4>
-            <div className="mt-3 grid gap-2">
-              {data.qaChecklist.map((item) => (
-                <div key={item.key} className="rounded-xl bg-slate-950 p-3">
+          <Panel title="Automation Rules And QA" icon={CheckCircle2}>
+            <div className="grid gap-3">
+              {data.automationRules.map((rule) => (
+                <div key={rule.key} className="rounded-2xl border border-white/10 bg-slate-900/70 p-4">
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                    <p className="font-semibold text-white">{item.label}</p>
-                    <span className={cn("w-fit rounded-full px-2 py-1 text-[11px] font-black uppercase", checklistTone(item.status))}>{item.status.replace(/_/g, " ")}</span>
+                    <div className="min-w-0">
+                      <p className="font-black text-white">{rule.label}</p>
+                      <p className="mt-1 text-xs font-bold uppercase tracking-[0.12em] text-slate-500">{rule.trigger}</p>
+                    </div>
+                    <span className={cn("w-fit rounded-full px-3 py-1 text-xs font-black uppercase", rule.enabled ? "bg-emerald-400/10 text-emerald-200" : "bg-slate-800 text-slate-400")}>{rule.enabled ? "Enabled" : "Off"}</span>
                   </div>
-                  <p className="mt-1 text-xs leading-5 text-slate-400">{item.detail}</p>
+                  <p className="mt-3 text-sm leading-6 text-slate-300">{rule.message}</p>
                 </div>
               ))}
             </div>
-          </div>
-        </Panel>
-
-        <Panel title="Learner Timeline And Scores" icon={Users}>
-          <div className="grid gap-3 lg:grid-cols-2">
-            <ScoreList rows={filteredScores.slice(0, 8)} onOpen={setSelectedLearnerId} />
-            <NotificationHistoryList notifications={filteredNotifications.slice(0, 8)} onOpen={setSelectedLearnerId} />
-          </div>
-          <div className="mt-4 rounded-2xl border border-white/10 bg-slate-900/70 p-3">
-            <h4 className="text-sm font-black text-white">Recent learner timelines</h4>
-            <div className="mt-3 grid gap-3">
-              {filteredLearnerTimelines.length ? filteredLearnerTimelines.slice(0, 6).map((timeline) => (
-                <div key={timeline.learnerId} className="rounded-xl bg-slate-950 p-3">
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                    <p className="font-semibold text-white">{timeline.learner?.name ?? timeline.learner?.email ?? timeline.learnerId}</p>
-                    <Button variant="secondary" onClick={() => setSelectedLearnerId(timeline.learnerId)}>Details</Button>
+            <div className="mt-4 rounded-2xl border border-white/10 bg-slate-900/70 p-3">
+              <h4 className="text-sm font-black text-white">Engagement QA checklist</h4>
+              <div className="mt-3 grid gap-2">
+                {data.qaChecklist.map((item) => (
+                  <div key={item.key} className="rounded-xl bg-slate-950 p-3">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                      <p className="font-semibold text-white">{item.label}</p>
+                      <span className={cn("w-fit rounded-full px-2 py-1 text-[11px] font-black uppercase", checklistTone(item.status))}>{item.status.replace(/_/g, " ")}</span>
+                    </div>
+                    <p className="mt-1 text-xs leading-5 text-slate-400">{item.detail}</p>
                   </div>
-                  <div className="mt-3 space-y-2">
-                    {timeline.events.slice(0, 4).map((event) => (
-                      <div key={event.id} className="border-l border-emerald-400/40 pl-3">
-                        <p className="text-sm font-bold text-slate-100">{event.type}: {event.title}</p>
-                        <p className="mt-1 text-xs leading-5 text-slate-400">{event.detail} - {formatDateTime(event.createdAt)}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )) : <p className="text-sm text-slate-500">No learner journey events match these filters.</p>}
+                ))}
+              </div>
             </div>
-          </div>
-        </Panel>
-      </section>
+          </Panel>
+        </section>
+      )}
 
-      <section className="grid gap-4 lg:grid-cols-[1fr_1.2fr]">
+      {section === "messaging" && (
+        <section className="grid gap-4 xl:grid-cols-[0.8fr_1.2fr]">
+          <Panel title="Messaging Filters" icon={Activity}>
+            <AdminEngagementFilters data={data} filters={filters} setFilters={setFilters} />
+          </Panel>
+          <Panel title="Notification Delivery Ledger" icon={Send}>
+            <div className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+              <DeliveryMetric label="Total messages" value={data.deliverySummary?.total ?? 0} tone="default" />
+              <DeliveryMetric label="Visible in app" value={data.deliverySummary?.visibleInApp ?? 0} tone="success" />
+              <DeliveryMetric label="Read" value={data.deliverySummary?.read ?? 0} tone="success" />
+              <DeliveryMetric label="Waiting" value={data.deliverySummary?.waiting ?? 0} tone="warning" />
+              <DeliveryMetric label="Failed" value={data.deliverySummary?.failed ?? 0} tone="danger" />
+            </div>
+            <NotificationHistoryList notifications={filteredNotifications.slice(0, 20)} onOpen={setSelectedLearnerId} />
+          </Panel>
+        </section>
+      )}
+
+      {section === "learners" && (
+        <section className="grid gap-4 xl:grid-cols-[0.8fr_1.2fr]">
+          <Panel title="Learner Filters" icon={Activity}>
+            <AdminEngagementFilters data={data} filters={filters} setFilters={setFilters} />
+          </Panel>
+          <Panel title="Learner Timeline And Scores" icon={Users}>
+            <div className="grid gap-3 lg:grid-cols-2">
+              <ScoreList rows={filteredScores.slice(0, 12)} onOpen={setSelectedLearnerId} />
+              <NotificationHistoryList notifications={filteredNotifications.slice(0, 12)} onOpen={setSelectedLearnerId} />
+            </div>
+            <div className="mt-4 rounded-2xl border border-white/10 bg-slate-900/70 p-3">
+              <h4 className="text-sm font-black text-white">Recent learner timelines</h4>
+              <div className="mt-3 grid gap-3">
+                {filteredLearnerTimelines.length ? filteredLearnerTimelines.slice(0, 10).map((timeline) => (
+                  <div key={timeline.learnerId} className="rounded-xl bg-slate-950 p-3">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                      <p className="font-semibold text-white">{timeline.learner?.name ?? timeline.learner?.email ?? timeline.learnerId}</p>
+                      <Button variant="secondary" onClick={() => setSelectedLearnerId(timeline.learnerId)}>Details</Button>
+                    </div>
+                    <div className="mt-3 space-y-2">
+                      {timeline.events.slice(0, 4).map((event) => (
+                        <div key={event.id} className="border-l border-emerald-400/40 pl-3">
+                          <p className="text-sm font-bold text-slate-100">{event.type}: {event.title}</p>
+                          <p className="mt-1 text-xs leading-5 text-slate-400">{event.detail} - {formatDateTime(event.createdAt)}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )) : <p className="text-sm text-slate-500">No learner journey events match these filters.</p>}
+              </div>
+            </div>
+          </Panel>
+        </section>
+      )}
+
+      {section === "settings" && (
         <Panel title="Engagement Controls" icon={Megaphone}>
           <div className="grid gap-3 sm:grid-cols-2">
             {[
@@ -444,7 +480,9 @@ export function AcademyEngagementCentre() {
             </div>
           </div>
         </Panel>
+      )}
 
+      {section === "moderation" && (
         <Panel title="Consent And Moderation" icon={ShieldCheck}>
           <div className="grid gap-3 md:grid-cols-2">
             <MiniList title="Learner opt-ins" empty="No learner opt-ins yet." rows={data.profiles.slice(0, 8).map((profile) => ({
@@ -489,10 +527,11 @@ export function AcademyEngagementCentre() {
             onReject={(id) => action({ action: "moderate_spotlight", profileId: id, status: "REJECTED" }, "Spotlight rejected.")}
           />
         </Panel>
-      </section>
+      )}
 
-      <section className="grid gap-4 xl:grid-cols-2">
-        <Panel title="Practical Challenges" icon={Sparkles}>
+      {section === "programmes" && (
+        <section className="grid gap-4 xl:grid-cols-2">
+          <Panel title="Practical Challenges" icon={Sparkles}>
           <EngagementForm>
             <Field label="Challenge title" help="Shown on the learner Engage tab only when this challenge is published." value={challengeDraft.title} onChange={(title) => setChallengeDraft({ ...challengeDraft, title })} />
             <Textarea label="Learner instructions" help="Tell learners exactly what evidence, link, or written summary to submit." value={challengeDraft.instructions} onChange={(instructions) => setChallengeDraft({ ...challengeDraft, instructions })} />
@@ -516,9 +555,9 @@ export function AcademyEngagementCentre() {
             onApprove={(id) => action({ action: "moderate_challenge_submission", submissionId: id, status: "APPROVED" }, "Challenge submission approved.")}
             onReject={(id) => action({ action: "moderate_challenge_submission", submissionId: id, status: "NEEDS_WORK" }, "Learner asked to improve submission.")}
           />
-        </Panel>
+          </Panel>
 
-        <Panel title="Office Hours" icon={CalendarClock}>
+          <Panel title="Office Hours" icon={CalendarClock}>
           <EngagementForm>
             <Field label="Event title" help="Shown on the learner Engage tab and notification." value={officeDraft.title} onChange={(title) => setOfficeDraft({ ...officeDraft, title })} />
             <Textarea label="Description / reminder copy" help="Use this for what learners should bring, prepare, or ask." value={officeDraft.description} onChange={(description) => setOfficeDraft({ ...officeDraft, description })} />
@@ -535,14 +574,68 @@ export function AcademyEngagementCentre() {
             </div>
           </EngagementForm>
           <ItemStack items={data.officeHours.map((officeHour) => ({ id: officeHour.id, title: officeHour.title, detail: `${formatDateTime(officeHour.startsAt)} - ${officeHour.course?.title ?? "All learners"} - ${officeHour.rsvps} RSVP(s)`, onEdit: () => editOfficeHour(officeHour), onDelete: () => action({ action: "delete_office_hour", officeHourId: officeHour.id }, "Office hours deleted.") }))} />
-        </Panel>
-      </section>
+          </Panel>
+        </section>
+      )}
       {selectedLearner && (
         <LearnerEngagementDrawer
           learner={selectedLearner}
           onClose={() => setSelectedLearnerId(null)}
         />
       )}
+    </div>
+  );
+}
+
+function EngagementSectionNav({ active, onChange }: { active: EngagementSection; onChange: (section: EngagementSection) => void }) {
+  return (
+    <nav className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-7" aria-label="Engagement centre sections">
+      {ENGAGEMENT_SECTIONS.map((item) => {
+        const Icon = item.icon;
+        const selected = active === item.id;
+        return (
+          <button
+            key={item.id}
+            type="button"
+            onClick={() => onChange(item.id)}
+            className={cn(
+              "group min-h-[92px] rounded-2xl border p-4 text-left transition focus:outline-none focus:ring-2 focus:ring-emerald-300",
+              selected
+                ? "border-emerald-300/50 bg-emerald-400/15 shadow-lg shadow-emerald-950/30"
+                : "border-white/10 bg-slate-950/90 hover:border-emerald-300/30 hover:bg-slate-900",
+            )}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <Icon className={cn("size-5 shrink-0", selected ? "text-emerald-200" : "text-slate-400 group-hover:text-emerald-300")} />
+              {selected && <span className="rounded-full bg-emerald-300 px-2 py-0.5 text-[10px] font-black uppercase text-slate-950">Open</span>}
+            </div>
+            <p className="mt-3 text-sm font-black leading-tight text-white">{item.label}</p>
+            <p className="mt-1 text-xs leading-5 text-slate-400">{item.description}</p>
+          </button>
+        );
+      })}
+    </nav>
+  );
+}
+
+function AdminEngagementFilters({
+  data,
+  filters,
+  setFilters,
+}: {
+  data: EngagementData;
+  filters: { query: string; course: string; stage: string; delivery: string };
+  setFilters: (filters: { query: string; course: string; stage: string; delivery: string }) => void;
+}) {
+  return (
+    <div className="grid gap-3">
+      <Field label="Search learner, message, or event" value={filters.query} onChange={(query) => setFilters({ ...filters, query })} />
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Select label="Course" value={filters.course} options={[{ value: "", label: "All courses" }, ...data.courses.map((course) => ({ value: course.id, label: course.title }))]} onChange={(course) => setFilters({ ...filters, course })} />
+        <Select label="Journey signal" value={filters.stage} options={["", "Progress", "Notification", "Referral", "Certificate", "Challenge", "Office hours", "Feedback"].map((value) => ({ value, label: value || "All signals" }))} onChange={(stage) => setFilters({ ...filters, stage })} />
+        <Select label="Notification state" value={filters.delivery} options={["", "DELIVERED", "SENT", "QUEUED", "FAILED", "SKIPPED"].map((value) => ({ value, label: value || "All states" }))} onChange={(delivery) => setFilters({ ...filters, delivery })} />
+      </div>
+      <Button variant="secondary" onClick={() => setFilters({ query: "", course: "", stage: "", delivery: "" })}>Clear filters</Button>
     </div>
   );
 }
