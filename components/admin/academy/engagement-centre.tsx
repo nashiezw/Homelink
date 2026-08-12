@@ -21,7 +21,10 @@ type EngagementData = {
   qaChecklist: Array<{ key: string; label: string; status: string; detail: string }>;
   engagementScores: Array<{ learnerId: string; score: number; detail: string[]; learner?: { name?: string | null; email?: string | null } | null }>;
   learnerTimelines: Array<{ learnerId: string; learner?: { name?: string | null; email?: string | null } | null; events: Array<{ id: string; type: string; title: string; detail: string; createdAt: string }> }>;
-  notificationHistory: Array<{ id: string; userId: string; eventType: string; channel: string; subject: string; body: string; status: string; createdAt: string; sentAt?: string | null; deliveryLabel?: string; learner?: { name?: string | null; email?: string | null } | null }>;
+  notificationHistory: Array<{ id: string; userId: string; eventType: string; channel: string; subject: string; body: string; status: string; createdAt: string; sentAt?: string | null; deliveryLabel?: string; category?: string; cooldownLabel?: string; nextEligibleAt?: string | null; receipt?: { readAt?: string | null; clickedAt?: string | null; dismissedAt?: string | null } | null; learner?: { name?: string | null; email?: string | null } | null }>;
+  deliveryIntegrations?: Array<{ channel: string; label: string; connected: boolean; receiptSupport: string; adminAction: string }>;
+  storageHealth?: Array<{ table: string; status: string; message: string }>;
+  diagnostics?: Array<{ section: string; status: string; message: string }>;
   reporting: {
     engagementRate: number;
     referralConversionRate: number;
@@ -32,6 +35,13 @@ type EngagementData = {
     stageCounts: { notStarted: number; started: number; halfway: number; nearlyComplete: number; completed: number };
     recentActivity: Array<{ id: string; type: string; title: string; status: string; createdAt: string }>;
   };
+};
+
+type SelectedLearnerEngagement = {
+  timeline: EngagementData["learnerTimelines"][number] | null;
+  score: EngagementData["engagementScores"][number] | null;
+  profile: EngagementData["profiles"][number] | null;
+  notifications: EngagementData["notificationHistory"];
 };
 
 const defaultChallenge = { title: "", instructions: "", rewardLabel: "", status: "DRAFT", courseId: "", startsAt: "", endsAt: "" };
@@ -47,6 +57,8 @@ export function AcademyEngagementCentre() {
   const [officeDraft, setOfficeDraft] = useState(defaultOfficeHour);
   const [editingChallengeId, setEditingChallengeId] = useState<string | null>(null);
   const [editingOfficeId, setEditingOfficeId] = useState<string | null>(null);
+  const [selectedLearnerId, setSelectedLearnerId] = useState<string | null>(null);
+  const [filters, setFilters] = useState({ query: "", course: "", stage: "", delivery: "" });
 
   const load = useCallback(async () => {
     setLoadError(null);
@@ -63,6 +75,46 @@ export function AcademyEngagementCentre() {
 
   const pendingTestimonials = useMemo(() => data?.testimonials.filter((item) => item.status === "PENDING") ?? [], [data]);
   const pendingChallengeSubmissions = useMemo(() => data?.challengeSubmissions.filter((item) => item.status === "SUBMITTED") ?? [], [data]);
+  const filteredLearnerTimelines = useMemo(() => {
+    const query = filters.query.trim().toLowerCase();
+    return (data?.learnerTimelines ?? []).filter((timeline) => {
+      const learnerText = `${timeline.learner?.name ?? ""} ${timeline.learner?.email ?? ""} ${timeline.learnerId}`.toLowerCase();
+      const eventText = timeline.events.map((event) => `${event.title} ${event.detail} ${event.type}`).join(" ").toLowerCase();
+      if (query && !`${learnerText} ${eventText}`.includes(query)) return false;
+      if (filters.course && !eventText.includes((data?.courses.find((course) => course.id === filters.course)?.title ?? filters.course).toLowerCase())) return false;
+      if (filters.stage && !timeline.events.some((event) => event.type.toLowerCase().includes(filters.stage.toLowerCase()) || event.title.toLowerCase().includes(filters.stage.toLowerCase()))) return false;
+      return true;
+    });
+  }, [data, filters]);
+  const filteredScores = useMemo(() => {
+    const ids = new Set(filteredLearnerTimelines.map((row) => row.learnerId));
+    const query = filters.query.trim().toLowerCase();
+    return (data?.engagementScores ?? []).filter((row) => {
+      if (ids.size && !ids.has(row.learnerId)) return false;
+      if (!query) return true;
+      return `${row.learner?.name ?? ""} ${row.learner?.email ?? ""} ${row.learnerId} ${row.detail.join(" ")}`.toLowerCase().includes(query);
+    });
+  }, [data, filteredLearnerTimelines, filters.query]);
+  const filteredNotifications = useMemo(() => {
+    const query = filters.query.trim().toLowerCase();
+    return (data?.notificationHistory ?? []).filter((item) => {
+      if (filters.delivery && item.status !== filters.delivery) return false;
+      const text = `${item.learner?.name ?? ""} ${item.learner?.email ?? ""} ${item.subject} ${item.body} ${item.category ?? ""} ${item.eventType}`.toLowerCase();
+      return !query || text.includes(query);
+    });
+  }, [data, filters.delivery, filters.query]);
+  const selectedLearner = useMemo(() => {
+    if (!selectedLearnerId || !data) return null;
+    return {
+      timeline: data.learnerTimelines.find((row) => row.learnerId === selectedLearnerId) ?? null,
+      score: data.engagementScores.find((row) => row.learnerId === selectedLearnerId) ?? null,
+      profile: data.profiles.find((row) => row.learnerId === selectedLearnerId) ?? null,
+      notifications: data.notificationHistory.filter((row) => row.userId === selectedLearnerId),
+      referrals: data.referrals.filter((row) => row.referrer?.email === data.learnerTimelines.find((item) => item.learnerId === selectedLearnerId)?.learner?.email),
+      testimonials: data.testimonials.filter((row) => row.learner?.email === data.learnerTimelines.find((item) => item.learnerId === selectedLearnerId)?.learner?.email),
+      challengeSubmissions: data.challengeSubmissions.filter((row) => row.learner?.email === data.learnerTimelines.find((item) => item.learnerId === selectedLearnerId)?.learner?.email),
+    };
+  }, [data, selectedLearnerId]);
 
   async function action(body: Record<string, unknown>, success: string) {
     setBusy(true);
@@ -131,6 +183,7 @@ export function AcademyEngagementCentre() {
             <a href="/api/v1/admin/academy/engagement?format=csv" className="inline-flex min-h-11 items-center justify-center rounded-lg border border-white/10 bg-white px-4 py-2.5 text-sm font-bold text-slate-950 shadow-sm transition hover:bg-emerald-50">
               Export CSV
             </a>
+            <Button variant="secondary" disabled={busy} onClick={() => action({ action: "run_engagement_scheduler" }, "Engagement scheduler ran for eligible learners.")}>Run scheduler</Button>
             <Button variant="secondary" disabled={busy} onClick={() => action({ action: "send_journey_playbook_nudges" }, "Journey playbook nudges sent to eligible learners.")}>Send journey nudges</Button>
             <Button variant="secondary" disabled={busy} onClick={() => action({ action: "send_progress_nudges" }, "Progress nudges sent to eligible learners.")}>Send progress nudges</Button>
             <Button disabled={busy} onClick={() => action({ action: "update_settings", settings: settingsDraft }, "Engagement settings saved.")}>Save engagement settings</Button>
@@ -147,6 +200,64 @@ export function AcademyEngagementCentre() {
         <Metric icon={CalendarClock} label="Office hours" value={data.metrics.upcomingOfficeHours ?? 0} />
         <Metric icon={Send} label="Referrals" value={data.metrics.referrals ?? 0} />
       </div>
+
+      <section className="grid gap-4 xl:grid-cols-[1fr_0.9fr]">
+        <Panel title="Diagnostics And Delivery" icon={ShieldCheck}>
+          <div className="grid gap-3 md:grid-cols-2">
+            <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-4">
+              <p className="text-sm font-black text-white">Production storage check</p>
+              <p className="mt-1 text-xs leading-5 text-slate-400">These are the real database tables the engagement system needs. Missing items are shown here instead of causing a blank page.</p>
+              <div className="mt-3 space-y-2">
+                {(data.storageHealth ?? []).map((item) => (
+                  <div key={item.table} className="flex flex-col gap-1 rounded-xl bg-slate-950 p-3 sm:flex-row sm:items-center sm:justify-between">
+                    <span className="break-words text-xs font-bold text-slate-200">{item.table}</span>
+                    <span className={cn("w-fit rounded-full px-2 py-1 text-[10px] font-black uppercase", item.status === "READY" ? "bg-emerald-400/10 text-emerald-200" : "bg-red-400/10 text-red-200")}>{item.status}</span>
+                  </div>
+                ))}
+                {!data.storageHealth?.length && <p className="text-sm text-slate-500">Storage health has not reported any issues.</p>}
+              </div>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-4">
+              <p className="text-sm font-black text-white">Delivery integrations</p>
+              <p className="mt-1 text-xs leading-5 text-slate-400">No fake external delivery is shown. Email and WhatsApp are only marked connected when provider configuration exists.</p>
+              <div className="mt-3 space-y-2">
+                {(data.deliveryIntegrations ?? []).map((item) => (
+                  <div key={item.channel} className="rounded-xl bg-slate-950 p-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <p className="font-semibold text-white">{item.label}</p>
+                      <span className={cn("w-fit rounded-full px-2 py-1 text-[10px] font-black uppercase", item.connected ? "bg-emerald-400/10 text-emerald-200" : "bg-amber-400/10 text-amber-200")}>{item.connected ? "Connected" : "Setup needed"}</span>
+                    </div>
+                    <p className="mt-2 text-xs leading-5 text-slate-400">{item.receiptSupport}</p>
+                    <p className="mt-1 text-xs leading-5 text-slate-500">{item.adminAction}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+          {data.diagnostics?.length ? (
+            <div className="mt-4 rounded-2xl border border-amber-400/20 bg-amber-400/10 p-4">
+              <p className="text-sm font-black text-white">Items needing attention</p>
+              <div className="mt-3 grid gap-2">
+                {data.diagnostics.map((item, index) => (
+                  <p key={`${item.section}-${index}`} className="rounded-xl bg-slate-950/70 p-3 text-xs leading-5 text-amber-100"><span className="font-black">{item.section}:</span> {item.message}</p>
+                ))}
+              </div>
+            </div>
+          ) : null}
+        </Panel>
+
+        <Panel title="Admin Filters" icon={Activity}>
+          <div className="grid gap-3">
+            <Field label="Search learner, message, or event" value={filters.query} onChange={(query) => setFilters({ ...filters, query })} />
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Select label="Course" value={filters.course} options={[{ value: "", label: "All courses" }, ...data.courses.map((course) => ({ value: course.id, label: course.title }))]} onChange={(course) => setFilters({ ...filters, course })} />
+              <Select label="Journey signal" value={filters.stage} options={["", "Progress", "Notification", "Referral", "Certificate", "Challenge", "Office hours", "Feedback"].map((value) => ({ value, label: value || "All signals" }))} onChange={(stage) => setFilters({ ...filters, stage })} />
+              <Select label="Notification state" value={filters.delivery} options={["", "DELIVERED", "SENT", "QUEUED", "FAILED"].map((value) => ({ value, label: value || "All states" }))} onChange={(delivery) => setFilters({ ...filters, delivery })} />
+            </div>
+            <Button variant="secondary" onClick={() => setFilters({ query: "", course: "", stage: "", delivery: "" })}>Clear filters</Button>
+          </div>
+        </Panel>
+      </section>
 
       <section className="grid gap-4 xl:grid-cols-[1fr_0.9fr]">
         <Panel title="Engagement Reporting" icon={TrendingUp}>
@@ -221,19 +332,18 @@ export function AcademyEngagementCentre() {
 
         <Panel title="Learner Timeline And Scores" icon={Users}>
           <div className="grid gap-3 lg:grid-cols-2">
-            <MiniList title="Top engagement scores" empty="No engagement scores yet." rows={data.engagementScores.slice(0, 8).map((row) => ({
-              id: row.learnerId,
-              title: row.learner?.name ?? row.learner?.email ?? row.learnerId,
-              detail: `${row.score}/100 - ${row.detail.join(", ")}`,
-            }))} />
-            <NotificationHistoryList notifications={data.notificationHistory.slice(0, 8)} />
+            <ScoreList rows={filteredScores.slice(0, 8)} onOpen={setSelectedLearnerId} />
+            <NotificationHistoryList notifications={filteredNotifications.slice(0, 8)} onOpen={setSelectedLearnerId} />
           </div>
           <div className="mt-4 rounded-2xl border border-white/10 bg-slate-900/70 p-3">
             <h4 className="text-sm font-black text-white">Recent learner timelines</h4>
             <div className="mt-3 grid gap-3">
-              {data.learnerTimelines.length ? data.learnerTimelines.slice(0, 6).map((timeline) => (
+              {filteredLearnerTimelines.length ? filteredLearnerTimelines.slice(0, 6).map((timeline) => (
                 <div key={timeline.learnerId} className="rounded-xl bg-slate-950 p-3">
-                  <p className="font-semibold text-white">{timeline.learner?.name ?? timeline.learner?.email ?? timeline.learnerId}</p>
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="font-semibold text-white">{timeline.learner?.name ?? timeline.learner?.email ?? timeline.learnerId}</p>
+                    <Button variant="secondary" onClick={() => setSelectedLearnerId(timeline.learnerId)}>Details</Button>
+                  </div>
                   <div className="mt-3 space-y-2">
                     {timeline.events.slice(0, 4).map((event) => (
                       <div key={event.id} className="border-l border-emerald-400/40 pl-3">
@@ -243,7 +353,7 @@ export function AcademyEngagementCentre() {
                     ))}
                   </div>
                 </div>
-              )) : <p className="text-sm text-slate-500">No learner journey events yet.</p>}
+              )) : <p className="text-sm text-slate-500">No learner journey events match these filters.</p>}
             </div>
           </div>
         </Panel>
@@ -391,6 +501,12 @@ export function AcademyEngagementCentre() {
           <ItemStack items={data.officeHours.map((officeHour) => ({ id: officeHour.id, title: officeHour.title, detail: `${formatDateTime(officeHour.startsAt)} - ${officeHour.course?.title ?? "All learners"} - ${officeHour.rsvps} RSVP(s)`, onEdit: () => editOfficeHour(officeHour), onDelete: () => action({ action: "delete_office_hour", officeHourId: officeHour.id }, "Office hours deleted.") }))} />
         </Panel>
       </section>
+      {selectedLearner && (
+        <LearnerEngagementDrawer
+          learner={selectedLearner}
+          onClose={() => setSelectedLearnerId(null)}
+        />
+      )}
     </div>
   );
 }
@@ -460,10 +576,34 @@ function MiniList({ title, empty, rows }: { title: string; empty: string; rows: 
   return <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-3"><h4 className="text-sm font-black text-white">{title}</h4><div className="mt-3 space-y-2">{rows.length ? rows.map((row) => <div key={row.id} className="rounded-xl bg-slate-950 p-3"><p className="text-sm font-semibold text-white">{row.title}</p><p className="mt-1 text-xs text-slate-400">{row.detail}</p></div>) : <p className="text-sm text-slate-500">{empty}</p>}</div></div>;
 }
 
+function ScoreList({ rows, onOpen }: { rows: EngagementData["engagementScores"]; onOpen: (learnerId: string) => void }) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-3">
+      <h4 className="text-sm font-black text-white">Top engagement scores</h4>
+      <div className="mt-3 space-y-2">
+        {rows.length ? rows.map((row) => (
+          <div key={row.learnerId} className="rounded-xl bg-slate-950 p-3">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+              <div className="min-w-0">
+                <p className="break-words text-sm font-semibold text-white">{row.learner?.name ?? row.learner?.email ?? row.learnerId}</p>
+                <p className="mt-1 text-xs leading-5 text-slate-400">{row.detail.join(", ") || "No score details yet"}</p>
+              </div>
+              <span className="w-fit rounded-full bg-emerald-400/10 px-3 py-1 text-xs font-black text-emerald-200">{row.score}/100</span>
+            </div>
+            <Button className="mt-3 w-full sm:w-auto" variant="secondary" onClick={() => onOpen(row.learnerId)}>Open learner detail</Button>
+          </div>
+        )) : <p className="text-sm text-slate-500">No engagement scores match these filters.</p>}
+      </div>
+    </div>
+  );
+}
+
 function NotificationHistoryList({
   notifications,
+  onOpen,
 }: {
   notifications: EngagementData["notificationHistory"];
+  onOpen?: (learnerId: string) => void;
 }) {
   return (
     <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-3">
@@ -484,10 +624,63 @@ function NotificationHistoryList({
               <p><span className="font-bold text-slate-300">Created:</span> {formatDateTime(item.createdAt)}</p>
               <p><span className="font-bold text-slate-300">Sent:</span> {item.sentAt ? formatDateTime(item.sentAt) : "Not marked sent"}</p>
               <p><span className="font-bold text-slate-300">Delivery:</span> {item.deliveryLabel ?? "Unknown"}</p>
+              <p><span className="font-bold text-slate-300">Category:</span> {item.category ?? "Academy"}</p>
+              <p><span className="font-bold text-slate-300">Read:</span> {item.receipt?.readAt ? formatDateTime(item.receipt.readAt) : "Not read yet"}</p>
+              <p><span className="font-bold text-slate-300">Clicked:</span> {item.receipt?.clickedAt ? formatDateTime(item.receipt.clickedAt) : "No click recorded"}</p>
+              <p><span className="font-bold text-slate-300">Cooldown:</span> {item.cooldownLabel ?? "No cooldown"}</p>
             </div>
+            {onOpen && <Button className="mt-3 w-full sm:w-auto" variant="secondary" onClick={() => onOpen(item.userId)}>Open learner detail</Button>}
           </div>
         )) : <p className="text-sm text-slate-500">No Academy notifications yet.</p>}
       </div>
+    </div>
+  );
+}
+
+function LearnerEngagementDrawer({ learner, onClose }: { learner: SelectedLearnerEngagement; onClose: () => void }) {
+  const name = learner.timeline?.learner?.name ?? learner.timeline?.learner?.email ?? learner.score?.learner?.name ?? learner.score?.learner?.email ?? "Learner";
+  return (
+    <div className="fixed inset-0 z-50 bg-black/60 p-3 backdrop-blur-sm sm:p-6">
+      <aside className="ml-auto flex h-full w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-slate-950 shadow-2xl">
+        <div className="border-b border-white/10 p-4">
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0">
+              <p className="text-xs font-black uppercase tracking-[0.2em] text-emerald-300">Learner engagement detail</p>
+              <h3 className="mt-1 break-words text-2xl font-black text-white">{name}</h3>
+              <p className="mt-1 text-sm text-slate-400">{learner.score ? `${learner.score.score}/100 engagement score` : "No score calculated yet"}</p>
+            </div>
+            <Button variant="secondary" onClick={onClose}>Close</Button>
+          </div>
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto p-4">
+          <div className="grid gap-4">
+            <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-4">
+              <p className="text-sm font-black text-white">Consent profile</p>
+              <p className="mt-2 text-sm leading-6 text-slate-300">
+                {learner.profile ? [
+                  learner.profile.communityOptIn && "Community",
+                  learner.profile.ambassadorOptIn && "Ambassador",
+                  learner.profile.directoryOptIn && "Directory",
+                  learner.profile.spotlightConsent && `Spotlight ${learner.profile.spotlightStatus ?? ""}`,
+                  learner.profile.sharedPostConfirmed && "Shared post confirmed",
+                ].filter(Boolean).join(" / ") || "No active consent" : "No engagement consent profile yet."}
+              </p>
+            </div>
+            <NotificationHistoryList notifications={learner.notifications} />
+            <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-4">
+              <p className="text-sm font-black text-white">Timeline</p>
+              <div className="mt-3 space-y-3">
+                {learner.timeline?.events.length ? learner.timeline.events.map((event) => (
+                  <div key={event.id} className="border-l border-emerald-400/40 pl-3">
+                    <p className="text-sm font-bold text-slate-100">{event.type}: {event.title}</p>
+                    <p className="mt-1 text-xs leading-5 text-slate-400">{event.detail} - {formatDateTime(event.createdAt)}</p>
+                  </div>
+                )) : <p className="text-sm text-slate-500">No timeline events yet.</p>}
+              </div>
+            </div>
+          </div>
+        </div>
+      </aside>
     </div>
   );
 }

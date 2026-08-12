@@ -2331,6 +2331,21 @@ model TrainingNotification {
   @@map("notifications")
 }
 
+model AcademyNotificationReceipt {
+  id             String    @id @default(cuid())
+  notificationId String
+  userId         String
+  readAt         DateTime?
+  clickedAt      DateTime?
+  dismissedAt    DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@unique([notificationId, userId])
+  @@index([userId])
+  @@map("academy_notification_receipts")
+}
+
 model Badge {
   id          String       @id @default(cuid())
   name        String

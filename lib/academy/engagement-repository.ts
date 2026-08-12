@@ -4,6 +4,20 @@ type Actor = { id: string; name?: string | null };
 
 const LEGACY_DEFAULT_CAMPAIGN_SCHEDULE = "Weekly learner wins, practical field prompts, and office-hours reminders.";
 const LEGACY_DEFAULT_WEEKLY_THEMES = "Market update Monday\nDocument clinic Wednesday\nField win Friday";
+const NUDGE_COOLDOWN_HOURS = 20;
+const ENGAGEMENT_STORAGE_TABLES = [
+  "academy_engagement_settings",
+  "academy_engagement_profiles",
+  "academy_referrals",
+  "academy_testimonials",
+  "academy_challenges",
+  "academy_challenge_submissions",
+  "academy_office_hours",
+  "academy_office_hour_rsvps",
+  "academy_module_feedback",
+  "academy_notification_receipts",
+  "notifications",
+];
 
 const DEFAULT_SETTINGS = {
   enabled: true,
@@ -35,6 +49,15 @@ const DEFAULT_SETTINGS = {
 export async function getAdminAcademyEngagement() {
   const prisma = getMainPrisma() as any;
   await ensureEngagementSettings();
+  const diagnostics: Array<{ section: string; status: "READY" | "WARNING" | "MISSING"; message: string }> = [];
+  const optional = async <T>(section: string, query: () => Promise<T>, fallback: T): Promise<T> => {
+    try {
+      return await query();
+    } catch (error) {
+      diagnostics.push({ section, status: "WARNING", message: error instanceof Error ? error.message : "Optional data could not be loaded." });
+      return fallback;
+    }
+  };
   const [settingsRow, courses, profiles, testimonials, challenges, challengeSubmissions, officeHours, rsvps, referrals, moduleFeedback, courseProgressRows, activeEnrolments, approvedApplications] = await Promise.all([
     prisma.academyEngagementSetting.findUnique({ where: { id: "singleton" } }),
     prisma.trainingCourse.findMany({ select: { id: true, title: true, status: true }, orderBy: { title: "asc" } }),
@@ -51,9 +74,14 @@ export async function getAdminAcademyEngagement() {
     prisma.academyLearnerApplication.findMany({ where: { status: "APPROVED" }, select: { learnerId: true, courseId: true, createdAt: true }, take: 2000 }),
   ]);
   const [certificates, notifications] = await Promise.all([
-    safeQuery(() => prisma.certificateIssue.findMany({ where: { status: "ACTIVE" }, select: { id: true, agentId: true, courseId: true, certificateNumber: true, issuedAt: true }, take: 1000 }), []),
-    safeQuery(() => prisma.trainingNotification.findMany({ where: { eventType: { startsWith: "ACADEMY_" } }, orderBy: { createdAt: "desc" }, take: 300 }), []),
+    optional("Certificate history", () => prisma.certificateIssue.findMany({ where: { status: "ACTIVE" }, select: { id: true, agentId: true, courseId: true, certificateNumber: true, issuedAt: true }, take: 1000 }), []),
+    optional("Notification history", () => prisma.trainingNotification.findMany({ where: { eventType: { startsWith: "ACADEMY_" } }, orderBy: { createdAt: "desc" }, take: 300 }), []),
   ]);
+  const [storageHealth, receipts] = await Promise.all([
+    optional("Storage health", () => checkEngagementStorageHealth(prisma), []),
+    optional("Notification receipts", () => getNotificationReceipts(prisma, notifications.map((row: any) => row.id)), []),
+  ]);
+  const receiptByNotification = new Map<string, any>(receipts.map((row: any) => [row.notificationId, row]));
   const learnerIds = unique([
     ...profiles.map((row: any) => row.learnerId),
     ...testimonials.map((row: any) => row.learnerId),
@@ -109,7 +137,21 @@ export async function getAdminAcademyEngagement() {
       ...serializeDates(row),
       learner: learnerById.get(row.userId) ?? null,
       deliveryLabel: describeNotificationDelivery(row),
+      category: categorizeNotification(row),
+      cooldownLabel: describeNudgeCooldown(row),
+      nextEligibleAt: getNextNudgeEligibleAt(row),
+      receipt: serializeDates(receiptByNotification.get(row.id) ?? null),
     })),
+    deliveryIntegrations: buildDeliveryIntegrations(normalizeSettings(settingsRow?.payload)),
+    storageHealth,
+    diagnostics: [
+      ...diagnostics,
+      ...storageHealth.filter((item: any) => item.status !== "READY").map((item: any) => ({
+        section: item.table,
+        status: item.status,
+        message: item.message,
+      })),
+    ],
     profiles: profiles.map((row: any) => ({
       ...serializeDates(row),
       learner: learnerById.get(row.learnerId) ?? null,
@@ -269,7 +311,27 @@ export async function runAdminAcademyEngagementAction(body: Record<string, any>,
     await audit(actor, "academy.engagement.journey_playbook_nudges.send", "academy", { count });
     return { count };
   }
+  if (action === "run_engagement_scheduler") {
+    const result = await runAcademyEngagementScheduler(actor);
+    await audit(actor, "academy.engagement.scheduler.run", "academy", result);
+    return result;
+  }
   return null;
+}
+
+export async function runAcademyEngagementScheduler(_actor?: Actor) {
+  await ensureEngagementSettings();
+  const [journeyNudges, progressNudges] = await Promise.all([
+    sendJourneyPlaybookNudges(),
+    sendProgressNudges(),
+  ]);
+  return {
+    journeyNudges,
+    progressNudges,
+    total: journeyNudges + progressNudges,
+    ranAt: new Date().toISOString(),
+    cooldownHours: NUDGE_COOLDOWN_HOURS,
+  };
 }
 
 export async function getLearnerAcademyEngagement(learnerId: string) {
@@ -311,6 +373,8 @@ export async function getLearnerAcademyEngagement(learnerId: string) {
     () => prisma.trainingNotification.findMany({ where: { userId: learnerId, eventType: { startsWith: "ACADEMY_" } }, orderBy: { createdAt: "desc" }, take: 30 }),
     [],
   );
+  const receipts = await getNotificationReceipts(prisma, notifications.map((row: any) => row.id), learnerId);
+  const receiptByNotification = new Map<string, any>(receipts.map((row: any) => [row.notificationId, row]));
   const profile = profiles.find((row: any) => row.courseId === null) ?? null;
   const settings = normalizeSettings(settingsRow?.payload);
   const journey = buildLearnerEngagementJourney({ courses, progressRows, certificates });
@@ -321,6 +385,12 @@ export async function getLearnerAcademyEngagement(learnerId: string) {
     journey,
     nextAction,
     timeline: buildLearnerTimeline({ progressRows, certificates, testimonials, challengeSubmissions, rsvps, referrals, notifications, courseById: new Map(courses.map((course: any) => [course.id, course.title])) }),
+    messages: notifications.map((row: any) => ({
+      ...serializeDates(row),
+      category: categorizeNotification(row),
+      deliveryLabel: describeNotificationDelivery(row),
+      receipt: serializeDates(receiptByNotification.get(row.id) ?? null),
+    })),
     profile: profile ? serializeDates(profile) : null,
     profiles: profiles.map(serializeDates),
     referrals: referrals.map(serializeDates),
@@ -368,6 +438,13 @@ export async function runLearnerAcademyEngagementAction(learnerId: string, body:
     if (data.ambassadorOptIn) await awardEngagementBadge(learnerId, "academy-engagement-ambassador", "Academy Ambassador", "Opted in to the Academy ambassador programme.", 100);
     if (data.sharedPostConfirmed) await awardEngagementBadge(learnerId, "academy-engagement-sharer", "Academy Story Sharer", "Confirmed an optional Academy enrolment or progress share.", 75);
     return row;
+  }
+  if (["mark_notification_read", "mark_notification_clicked", "dismiss_notification"].includes(action)) {
+    return recordNotificationReceipt(
+      learnerId,
+      required(body.notificationId, "Notification"),
+      action === "mark_notification_read" ? "readAt" : action === "mark_notification_clicked" ? "clickedAt" : "dismissedAt",
+    );
   }
   if (action === "submit_testimonial") {
     const settings = await getSettings();
@@ -743,6 +820,109 @@ function describeNotificationDelivery(row: { channel?: string | null; status?: s
   if (status === "FAILED") return "Delivery failed";
   if (row.sentAt) return "Sent to external channel";
   return "Delivery receipt not available";
+}
+
+function categorizeNotification(row: { eventType?: string | null; subject?: string | null }) {
+  const key = `${row.eventType ?? ""} ${row.subject ?? ""}`.toUpperCase();
+  if (key.includes("CERTIFICATE") || key.includes("COMPLETE")) return "Graduate";
+  if (key.includes("TESTIMONIAL") || key.includes("REVIEW")) return "Review";
+  if (key.includes("OFFICE_HOUR") || key.includes("COMMUNITY")) return "Community";
+  if (key.includes("CHALLENGE") || key.includes("ASSIGNMENT")) return "Practice";
+  if (key.includes("PROGRESS") || key.includes("JOURNEY") || key.includes("LESSON")) return "Progress";
+  if (key.includes("REFERRAL")) return "Referral";
+  return "Academy";
+}
+
+function getNextNudgeEligibleAt(row: { eventType?: string | null; createdAt?: Date | string | null }) {
+  const eventType = row.eventType ?? "";
+  if (!eventType.startsWith("ACADEMY_PROGRESS_NUDGE_") && !eventType.startsWith("ACADEMY_JOURNEY_PLAYBOOK_")) return null;
+  const createdAt = row.createdAt ? new Date(row.createdAt) : null;
+  if (!createdAt || Number.isNaN(createdAt.getTime())) return null;
+  return new Date(createdAt.getTime() + NUDGE_COOLDOWN_HOURS * 60 * 60 * 1000).toISOString();
+}
+
+function describeNudgeCooldown(row: { eventType?: string | null; createdAt?: Date | string | null }) {
+  const eligibleAt = getNextNudgeEligibleAt(row);
+  if (!eligibleAt) return "No cooldown";
+  const remainingMs = new Date(eligibleAt).getTime() - Date.now();
+  if (remainingMs <= 0) return "Eligible if a new journey stage exists";
+  const hours = Math.ceil(remainingMs / 3600000);
+  return `${hours}h cooldown remaining`;
+}
+
+function buildDeliveryIntegrations(settings: Record<string, any>) {
+  const emailConnected = Boolean(process.env.RESEND_API_KEY || process.env.SMTP_HOST || process.env.EMAIL_PROVIDER);
+  const whatsappConnected = Boolean(process.env.WHATSAPP_ACCESS_TOKEN || process.env.WHATSAPP_BUSINESS_TOKEN || process.env.WHATSAPP_PROVIDER);
+  return [
+    {
+      channel: "IN_APP",
+      label: "In-app learner messages",
+      connected: true,
+      receiptSupport: "Created, visible, read, clicked, and dismissed states are tracked in HouseLink.",
+      adminAction: "No setup required.",
+    },
+    {
+      channel: "EMAIL",
+      label: "Email delivery",
+      connected: emailConnected,
+      receiptSupport: emailConnected ? "Ready for provider-level sent/bounce/open webhooks when connected." : "Not connected. No fake email delivery is reported.",
+      adminAction: emailConnected ? "Provider environment is configured." : "Connect SMTP, Resend, or another email provider before enabling email delivery.",
+    },
+    {
+      channel: "WHATSAPP",
+      label: "WhatsApp delivery",
+      connected: whatsappConnected,
+      receiptSupport: whatsappConnected ? "Ready for WhatsApp provider receipts when connected." : "Not connected. Learners only see admin-managed WhatsApp links/buttons.",
+      adminAction: settings.whatsappUrl ? "Community invite link is visible; automated WhatsApp sending still requires provider setup." : "Add WhatsApp links in Engagement Controls; connect a provider for automated sends.",
+    },
+  ];
+}
+
+async function checkEngagementStorageHealth(prisma: any) {
+  const rows = await prisma.$queryRawUnsafe(`
+SELECT table_name AS "table"
+FROM information_schema.tables
+WHERE table_schema = 'public'
+AND table_name IN (${ENGAGEMENT_STORAGE_TABLES.map(sqlLiteral).join(",")})
+`);
+  const existing = new Set((rows as any[]).map((row) => row.table));
+  return ENGAGEMENT_STORAGE_TABLES.map((table) => ({
+    table,
+    status: existing.has(table) ? "READY" : "MISSING",
+    message: existing.has(table) ? "Table exists in production database." : "Table is missing; opening Engagement Centre will try to create it if the database user has migration permission.",
+  }));
+}
+
+async function getNotificationReceipts(prisma: any, notificationIds: string[], userId?: string) {
+  await createEngagementStorage(prisma);
+  const ids = unique(notificationIds).map(String);
+  if (!ids.length) return [];
+  const whereUser = userId ? ` AND "userId" = ${sqlLiteral(userId)}` : "";
+  return prisma.$queryRawUnsafe(`
+SELECT "notificationId", "userId", "readAt", "clickedAt", "dismissedAt", "createdAt", "updatedAt"
+FROM "academy_notification_receipts"
+WHERE "notificationId" IN (${ids.map(sqlLiteral).join(",")})${whereUser}
+`);
+}
+
+async function recordNotificationReceipt(userId: string, notificationId: string, field: "readAt" | "clickedAt" | "dismissedAt") {
+  const prisma = getMainPrisma() as any;
+  await createEngagementStorage(prisma);
+  const notification = await prisma.trainingNotification.findFirst({ where: { id: notificationId, userId, eventType: { startsWith: "ACADEMY_" } }, select: { id: true } });
+  if (!notification) throw new Error("Notification is not available.");
+  const now = new Date().toISOString();
+  const id = crypto.randomUUID();
+  await prisma.$executeRawUnsafe(`
+INSERT INTO "academy_notification_receipts" ("id", "notificationId", "userId", "${field}", "createdAt", "updatedAt")
+VALUES (${sqlLiteral(id)}, ${sqlLiteral(notificationId)}, ${sqlLiteral(userId)}, ${sqlLiteral(now)}, ${sqlLiteral(now)}, ${sqlLiteral(now)})
+ON CONFLICT ("notificationId", "userId") DO UPDATE SET "${field}" = EXCLUDED."${field}", "updatedAt" = EXCLUDED."updatedAt"
+`);
+  const rows = await getNotificationReceipts(prisma, [notificationId], userId);
+  return rows[0] ?? { notificationId, userId };
+}
+
+function sqlLiteral(value: string) {
+  return `'${String(value).replace(/'/g, "''")}'`;
 }
 
 export async function recordAcademyReferralRegistration(input: { referralCode?: string | null; learnerId: string; courseId: string; learnerName?: string | null; learnerEmail?: string | null }) {
@@ -1226,6 +1406,17 @@ CREATE TABLE IF NOT EXISTS "academy_module_feedback" (
   "updatedAt" TIMESTAMP(3) NOT NULL,
   CONSTRAINT "academy_module_feedback_pkey" PRIMARY KEY ("id")
 );
+CREATE TABLE IF NOT EXISTS "academy_notification_receipts" (
+  "id" TEXT NOT NULL,
+  "notificationId" TEXT NOT NULL,
+  "userId" TEXT NOT NULL,
+  "readAt" TIMESTAMP(3),
+  "clickedAt" TIMESTAMP(3),
+  "dismissedAt" TIMESTAMP(3),
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT "academy_notification_receipts_pkey" PRIMARY KEY ("id")
+);
 ALTER TABLE "academy_engagement_profiles" ADD COLUMN IF NOT EXISTS "spotlightStatus" TEXT NOT NULL DEFAULT 'NOT_SUBMITTED';
 ALTER TABLE "academy_engagement_profiles" ADD COLUMN IF NOT EXISTS "sharedPostConfirmed" BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE "academy_engagement_profiles" ADD COLUMN IF NOT EXISTS "sharedPostUrl" TEXT;
@@ -1242,6 +1433,8 @@ CREATE INDEX IF NOT EXISTS "academy_testimonials_status_idx" ON "academy_testimo
 CREATE INDEX IF NOT EXISTS "academy_challenges_status_idx" ON "academy_challenges"("status");
 CREATE UNIQUE INDEX IF NOT EXISTS "academy_challenge_submissions_challengeId_learnerId_key" ON "academy_challenge_submissions"("challengeId", "learnerId");
 CREATE UNIQUE INDEX IF NOT EXISTS "academy_office_hour_rsvps_officeHourId_learnerId_key" ON "academy_office_hour_rsvps"("officeHourId", "learnerId");
+CREATE UNIQUE INDEX IF NOT EXISTS "academy_notification_receipts_notificationId_userId_key" ON "academy_notification_receipts"("notificationId", "userId");
+CREATE INDEX IF NOT EXISTS "academy_notification_receipts_userId_idx" ON "academy_notification_receipts"("userId");
 `;
   for (const statement of sql.split(";").map((entry) => entry.trim()).filter(Boolean)) {
     await prisma.$executeRawUnsafe(statement);

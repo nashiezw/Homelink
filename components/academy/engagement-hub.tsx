@@ -44,6 +44,7 @@ type EngagementData = {
     tone: "info" | "warning" | "success";
   };
   timeline: Array<{ id: string; type: string; title: string; detail: string; createdAt: string }>;
+  messages: Array<{ id: string; eventType: string; channel: string; subject: string; body: string; status: string; category?: string; deliveryLabel?: string; createdAt: string; sentAt?: string | null; receipt?: { readAt?: string | null; clickedAt?: string | null; dismissedAt?: string | null } | null }>;
   profile: {
     communityOptIn: boolean;
     ambassadorOptIn: boolean;
@@ -156,6 +157,7 @@ export function AcademyEngagementHub({ compact = false }: { compact?: boolean })
   const activeOptIns = consentOptions.filter(([key]) => Boolean(profile[key])).length;
   const journeySteps = buildJourneySteps(data.journey);
   const canEditPublicProfile = data.journey.canJoinDirectory || data.journey.canRequestSpotlight;
+  const visibleMessages = (data.messages ?? []).filter((item) => !item.receipt?.dismissedAt);
 
   return (
     <section className={compact ? "space-y-5" : "mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8"}>
@@ -233,6 +235,37 @@ export function AcademyEngagementHub({ compact = false }: { compact?: boolean })
         <HubCard title="Start with a course" icon={BookOpen} eyebrow="First step">
           <EmptyState title="Engagement unlocks after registration" body="Join an Academy course first. Then you can access learner community links, office hours, practical challenges, referrals, and later reviews or graduate visibility." />
           <a href="/academy?browse=1" className="mt-4 inline-flex min-h-11 items-center justify-center rounded-xl bg-emerald-600 px-4 py-2 text-sm font-black text-white shadow-sm transition hover:bg-emerald-500">Browse Academy courses</a>
+        </HubCard>
+      )}
+
+      {data.journey.hasActiveCourse && (
+        <HubCard title="Academy message centre" icon={MessageCircle} eyebrow="Your updates">
+          <p className="text-sm leading-6 text-slate-600 dark:text-slate-300">Messages here are generated from real Academy actions such as progress nudges, reviews, office hours, challenges, and certificates.</p>
+          <div className="mt-4 space-y-3">
+            {visibleMessages.length ? visibleMessages.slice(0, 8).map((item) => (
+              <div key={item.id} className={cn(
+                "rounded-2xl border p-3",
+                item.receipt?.readAt
+                  ? "border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900"
+                  : "border-emerald-200 bg-emerald-50 dark:border-emerald-400/20 dark:bg-emerald-400/10",
+              )}>
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0">
+                    <p className="text-xs font-black uppercase tracking-[0.14em] text-emerald-700 dark:text-emerald-300">{item.category ?? "Academy"}</p>
+                    <p className="mt-1 break-words font-black text-slate-950 dark:text-white">{item.subject}</p>
+                  </div>
+                  <span className="w-fit rounded-full bg-white px-2 py-1 text-[11px] font-black uppercase text-slate-600 dark:bg-slate-950 dark:text-slate-300">{item.receipt?.readAt ? "Read" : "New"}</span>
+                </div>
+                <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">{item.body}</p>
+                <p className="mt-2 text-xs font-semibold text-slate-500">{formatDateTime(item.createdAt)} - {item.deliveryLabel ?? item.channel}</p>
+                <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                  {!item.receipt?.readAt && <Button variant="secondary" loading={busy} onClick={() => action({ action: "mark_notification_read", notificationId: item.id }, "Message marked as read.")}>Mark read</Button>}
+                  {!item.receipt?.clickedAt && <Button loading={busy} onClick={() => action({ action: "mark_notification_clicked", notificationId: item.id }, "Message action recorded.")}>I acted on this</Button>}
+                  <Button variant="ghost" loading={busy} onClick={() => action({ action: "dismiss_notification", notificationId: item.id }, "Message dismissed.")}>Dismiss</Button>
+                </div>
+              </div>
+            )) : <EmptyState title="No Academy messages yet" body="When the Academy sends progress nudges, office-hours updates, review prompts, or certificate messages, they will appear here." />}
+          </div>
         </HubCard>
       )}
 

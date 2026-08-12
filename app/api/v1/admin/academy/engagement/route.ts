@@ -47,6 +47,13 @@ function toEngagementCsv(data: Awaited<ReturnType<typeof getAdminAcademyEngageme
     ...data.officeHours.map((item: any) => ["Office hour", "", item.course?.title ?? "All learners", item.title, item.active ? "ACTIVE" : "INACTIVE", `${item.rsvps} RSVP(s)`, item.startsAt]),
     ...data.referrals.map((item: any) => ["Referral", item.referrer?.name ?? item.referrer?.email ?? item.referrerId, item.course?.title ?? "General", item.referralCode, item.status, item.referredName ?? item.referredEmail ?? "", item.createdAt]),
     ...data.moduleFeedback.map((item: any) => ["Module feedback", item.learner?.name ?? item.learner?.email ?? item.learnerId, item.course?.title ?? item.courseId, "Module feedback", item.status, item.response, item.createdAt]),
+    ...data.notificationHistory.map((item: any) => ["Notification", item.learner?.name ?? item.learner?.email ?? item.userId, item.category ?? "Academy", item.subject, item.status, `${item.deliveryLabel ?? ""} / read:${item.receipt?.readAt ?? "no"} / clicked:${item.receipt?.clickedAt ?? "no"} / ${item.cooldownLabel ?? ""}`, item.createdAt]),
+    ...data.engagementScores.map((item: any) => ["Engagement score", item.learner?.name ?? item.learner?.email ?? item.learnerId, "", "Score", `${item.score}/100`, item.detail?.join(" / ") ?? "", new Date().toISOString()]),
+    ...data.learnerTimelines.flatMap((timeline: any) => timeline.events.map((event: any) => ["Learner timeline", timeline.learner?.name ?? timeline.learner?.email ?? timeline.learnerId, "", event.title, event.type, event.detail, event.createdAt])),
+    ...data.automationRules.map((item: any) => ["Automation rule", "", "", item.label, item.enabled ? "ENABLED" : "OFF", `${item.trigger} - ${item.message}`, new Date().toISOString()]),
+    ...data.qaChecklist.map((item: any) => ["QA checklist", "", "", item.label, item.status, item.detail, new Date().toISOString()]),
+    ...(data.storageHealth ?? []).map((item: any) => ["Storage health", "", "", item.table, item.status, item.message, new Date().toISOString()]),
+    ...(data.deliveryIntegrations ?? []).map((item: any) => ["Delivery integration", "", "", item.label, item.connected ? "CONNECTED" : "SETUP_NEEDED", `${item.receiptSupport} ${item.adminAction}`, new Date().toISOString()]),
   ];
   return rows.map((row) => row.map(csvCell).join(",")).join("\n");
 }
