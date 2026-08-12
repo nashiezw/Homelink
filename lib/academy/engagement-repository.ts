@@ -35,7 +35,7 @@ const DEFAULT_SETTINGS = {
 export async function getAdminAcademyEngagement() {
   const prisma = getMainPrisma() as any;
   await ensureEngagementSettings();
-  const [settingsRow, courses, profiles, testimonials, challenges, challengeSubmissions, officeHours, rsvps, referrals, moduleFeedback, courseProgressRows, activeEnrolments, approvedApplications, certificates, notifications] = await Promise.all([
+  const [settingsRow, courses, profiles, testimonials, challenges, challengeSubmissions, officeHours, rsvps, referrals, moduleFeedback, courseProgressRows, activeEnrolments, approvedApplications] = await Promise.all([
     prisma.academyEngagementSetting.findUnique({ where: { id: "singleton" } }),
     prisma.trainingCourse.findMany({ select: { id: true, title: true, status: true }, orderBy: { title: "asc" } }),
     prisma.academyEngagementProfile.findMany({ orderBy: { updatedAt: "desc" }, take: 200 }),
@@ -49,8 +49,10 @@ export async function getAdminAcademyEngagement() {
     prisma.courseProgress.findMany({ select: { agentId: true, courseId: true, percentComplete: true, status: true, updatedAt: true }, take: 2000 }),
     prisma.courseEnrolment.findMany({ where: { status: "ACTIVE" }, select: { agentId: true, courseId: true, createdAt: true }, take: 2000 }),
     prisma.academyLearnerApplication.findMany({ where: { status: "APPROVED" }, select: { learnerId: true, courseId: true, createdAt: true }, take: 2000 }),
-    prisma.certificateIssue.findMany({ where: { status: "ACTIVE" }, select: { id: true, agentId: true, courseId: true, certificateNumber: true, issuedAt: true }, take: 1000 }),
-    prisma.trainingNotification.findMany({ where: { eventType: { startsWith: "ACADEMY_" } }, orderBy: { createdAt: "desc" }, take: 300 }),
+  ]);
+  const [certificates, notifications] = await Promise.all([
+    safeQuery(() => prisma.certificateIssue.findMany({ where: { status: "ACTIVE" }, select: { id: true, agentId: true, courseId: true, certificateNumber: true, issuedAt: true }, take: 1000 }), []),
+    safeQuery(() => prisma.trainingNotification.findMany({ where: { eventType: { startsWith: "ACADEMY_" } }, orderBy: { createdAt: "desc" }, take: 300 }), []),
   ]);
   const learnerIds = unique([
     ...profiles.map((row: any) => row.learnerId),
@@ -106,6 +108,7 @@ export async function getAdminAcademyEngagement() {
     notificationHistory: notifications.map((row: any) => ({
       ...serializeDates(row),
       learner: learnerById.get(row.userId) ?? null,
+      deliveryLabel: describeNotificationDelivery(row),
     })),
     profiles: profiles.map((row: any) => ({
       ...serializeDates(row),
@@ -272,19 +275,22 @@ export async function runAdminAcademyEngagementAction(body: Record<string, any>,
 export async function getLearnerAcademyEngagement(learnerId: string) {
   const prisma = getMainPrisma() as any;
   await ensureEngagementSettings();
-  const [settingsRow, enrolments, applications, progressRows, certificates] = await Promise.all([
+  const [settingsRow, enrolments, applications, progressRows] = await Promise.all([
     prisma.academyEngagementSetting.findUnique({ where: { id: "singleton" } }),
     prisma.courseEnrolment.findMany({ where: { agentId: learnerId, status: "ACTIVE" }, include: { course: { select: { id: true, title: true } } } }),
     prisma.academyLearnerApplication.findMany({ where: { learnerId, status: "APPROVED" }, include: { course: { select: { id: true, title: true } } } }),
     prisma.courseProgress.findMany({ where: { agentId: learnerId }, select: { courseId: true, percentComplete: true, completedAt: true, status: true, updatedAt: true } }),
-    prisma.certificateIssue.findMany({ where: { agentId: learnerId, status: "ACTIVE" }, select: { id: true, courseId: true, certificateNumber: true, issuedAt: true } }),
   ]);
+  const certificates = await safeQuery(
+    () => prisma.certificateIssue.findMany({ where: { agentId: learnerId, status: "ACTIVE" }, select: { id: true, courseId: true, certificateNumber: true, issuedAt: true } }),
+    [],
+  );
   const courses = uniqueBy(
     [...enrolments.map((row: any) => row.course), ...applications.map((row: any) => row.course)].filter(Boolean),
     (course: any) => course.id,
   );
   const courseIds = courses.map((course: any) => course.id);
-  const [profiles, referrals, testimonials, challenges, challengeSubmissions, officeHours, rsvps, notifications] = await Promise.all([
+  const [profiles, referrals, testimonials, challenges, challengeSubmissions, officeHours, rsvps] = await Promise.all([
     prisma.academyEngagementProfile.findMany({ where: { learnerId, OR: [{ courseId: null }, { courseId: { in: courseIds } }] }, orderBy: { updatedAt: "desc" } }),
     prisma.academyReferral.findMany({ where: { referrerId: learnerId }, orderBy: { createdAt: "desc" } }),
     prisma.academyTestimonial.findMany({ where: { learnerId }, orderBy: { updatedAt: "desc" } }),
@@ -300,8 +306,11 @@ export async function getLearnerAcademyEngagement(learnerId: string) {
       take: 20,
     }),
     prisma.academyOfficeHourRsvp.findMany({ where: { learnerId } }),
-    prisma.trainingNotification.findMany({ where: { userId: learnerId, eventType: { startsWith: "ACADEMY_" } }, orderBy: { createdAt: "desc" }, take: 30 }),
   ]);
+  const notifications = await safeQuery(
+    () => prisma.trainingNotification.findMany({ where: { userId: learnerId, eventType: { startsWith: "ACADEMY_" } }, orderBy: { createdAt: "desc" }, take: 30 }),
+    [],
+  );
   const profile = profiles.find((row: any) => row.courseId === null) ?? null;
   const settings = normalizeSettings(settingsRow?.payload);
   const journey = buildLearnerEngagementJourney({ courses, progressRows, certificates });
@@ -722,6 +731,20 @@ function buildLearnerTimeline(input: {
   return events.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 12).map(serializeDates);
 }
 
+function describeNotificationDelivery(row: { channel?: string | null; status?: string | null; sentAt?: Date | string | null }) {
+  const channel = row.channel || "IN_APP";
+  const status = row.status || "QUEUED";
+  if (channel === "IN_APP" && (status === "DELIVERED" || row.sentAt)) {
+    return "Visible in learner notification centre";
+  }
+  if (channel === "IN_APP" && status === "QUEUED") {
+    return "Queued in app; learner visibility depends on notification polling";
+  }
+  if (status === "FAILED") return "Delivery failed";
+  if (row.sentAt) return "Sent to external channel";
+  return "Delivery receipt not available";
+}
+
 export async function recordAcademyReferralRegistration(input: { referralCode?: string | null; learnerId: string; courseId: string; learnerName?: string | null; learnerEmail?: string | null }) {
   const code = String(input.referralCode ?? "").trim().toUpperCase();
   if (!code) return null;
@@ -759,6 +782,8 @@ export async function rewardSuccessfulAcademyReferral(input: { learnerId: string
         channel: "IN_APP",
         subject: "Referral reward recorded",
         body: `A learner used your Academy referral code and their enrolment was approved. Reward: ${referral.rewardLabel ?? "Academy recognition"}.`,
+        status: "DELIVERED",
+        sentAt: new Date(),
       },
     }).catch(() => null);
   }
@@ -777,6 +802,8 @@ export async function createCertificateTestimonialPrompt(learnerId: string, cour
       channel: "IN_APP",
       subject: "Share your Academy experience",
       body: `You completed ${course?.title ?? "your Academy course"} and certificate ${certificateNumber} is ready. If you are comfortable, submit a short review or testimonial from your Engagement Hub.`,
+      status: "DELIVERED",
+      sentAt: new Date(),
     },
   }).catch(() => null);
 }
@@ -868,7 +895,7 @@ async function awardEngagementBadge(agentId: string, badgeId: string, name: stri
 
 async function notifyLearner(userId: string, eventType: string, subject: string, body: string) {
   await (getMainPrisma() as any).trainingNotification.create({
-    data: { userId, eventType, channel: "IN_APP", subject, body },
+    data: { userId, eventType, channel: "IN_APP", subject, body, status: "DELIVERED", sentAt: new Date() },
   }).catch(() => null);
 }
 
@@ -1258,6 +1285,15 @@ function requiredDate(value: unknown, label: string) {
 function serializeDates<T>(row: T): T {
   if (!row || typeof row !== "object") return row;
   return Object.fromEntries(Object.entries(row as Record<string, unknown>).map(([key, value]) => [key, value instanceof Date ? value.toISOString() : value])) as T;
+}
+
+async function safeQuery<T>(query: () => Promise<T>, fallback: T): Promise<T> {
+  try {
+    return await query();
+  } catch (error) {
+    console.warn("Optional Academy engagement data unavailable", error);
+    return fallback;
+  }
 }
 
 function unique<T>(values: T[]) {

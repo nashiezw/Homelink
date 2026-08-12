@@ -21,7 +21,7 @@ type EngagementData = {
   qaChecklist: Array<{ key: string; label: string; status: string; detail: string }>;
   engagementScores: Array<{ learnerId: string; score: number; detail: string[]; learner?: { name?: string | null; email?: string | null } | null }>;
   learnerTimelines: Array<{ learnerId: string; learner?: { name?: string | null; email?: string | null } | null; events: Array<{ id: string; type: string; title: string; detail: string; createdAt: string }> }>;
-  notificationHistory: Array<{ id: string; userId: string; eventType: string; subject: string; body: string; status: string; createdAt: string; sentAt?: string | null; learner?: { name?: string | null; email?: string | null } | null }>;
+  notificationHistory: Array<{ id: string; userId: string; eventType: string; channel: string; subject: string; body: string; status: string; createdAt: string; sentAt?: string | null; deliveryLabel?: string; learner?: { name?: string | null; email?: string | null } | null }>;
   reporting: {
     engagementRate: number;
     referralConversionRate: number;
@@ -226,11 +226,7 @@ export function AcademyEngagementCentre() {
               title: row.learner?.name ?? row.learner?.email ?? row.learnerId,
               detail: `${row.score}/100 - ${row.detail.join(", ")}`,
             }))} />
-            <MiniList title="Notification history" empty="No Academy notifications yet." rows={data.notificationHistory.slice(0, 8).map((item) => ({
-              id: item.id,
-              title: item.learner?.name ?? item.learner?.email ?? item.userId,
-              detail: `${item.subject} - ${formatDateTime(item.createdAt)}`,
-            }))} />
+            <NotificationHistoryList notifications={data.notificationHistory.slice(0, 8)} />
           </div>
           <div className="mt-4 rounded-2xl border border-white/10 bg-slate-900/70 p-3">
             <h4 className="text-sm font-black text-white">Recent learner timelines</h4>
@@ -462,6 +458,44 @@ function EngagementForm({ children }: { children: React.ReactNode }) {
 
 function MiniList({ title, empty, rows }: { title: string; empty: string; rows: Array<{ id: string; title: string; detail: string }> }) {
   return <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-3"><h4 className="text-sm font-black text-white">{title}</h4><div className="mt-3 space-y-2">{rows.length ? rows.map((row) => <div key={row.id} className="rounded-xl bg-slate-950 p-3"><p className="text-sm font-semibold text-white">{row.title}</p><p className="mt-1 text-xs text-slate-400">{row.detail}</p></div>) : <p className="text-sm text-slate-500">{empty}</p>}</div></div>;
+}
+
+function NotificationHistoryList({
+  notifications,
+}: {
+  notifications: EngagementData["notificationHistory"];
+}) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-3">
+      <h4 className="text-sm font-black text-white">Notification history</h4>
+      <p className="mt-1 text-xs leading-5 text-slate-500">Shows records created by the Academy system. In-app delivery means the learner can see it in their notification centre; external delivery receipts require a connected sender.</p>
+      <div className="mt-3 space-y-2">
+        {notifications.length ? notifications.map((item) => (
+          <div key={item.id} className="rounded-xl bg-slate-950 p-3">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+              <div className="min-w-0">
+                <p className="break-words text-sm font-semibold text-white">{item.learner?.name ?? item.learner?.email ?? item.userId}</p>
+                <p className="mt-1 break-words text-xs text-slate-400">{item.subject}</p>
+              </div>
+              <span className={cn("w-fit rounded-full px-2 py-1 text-[11px] font-black uppercase", notificationTone(item.status))}>{item.status}</span>
+            </div>
+            <div className="mt-3 grid gap-2 text-xs text-slate-400 sm:grid-cols-2">
+              <p><span className="font-bold text-slate-300">Channel:</span> {item.channel}</p>
+              <p><span className="font-bold text-slate-300">Created:</span> {formatDateTime(item.createdAt)}</p>
+              <p><span className="font-bold text-slate-300">Sent:</span> {item.sentAt ? formatDateTime(item.sentAt) : "Not marked sent"}</p>
+              <p><span className="font-bold text-slate-300">Delivery:</span> {item.deliveryLabel ?? "Unknown"}</p>
+            </div>
+          </div>
+        )) : <p className="text-sm text-slate-500">No Academy notifications yet.</p>}
+      </div>
+    </div>
+  );
+}
+
+function notificationTone(status: string) {
+  if (status === "DELIVERED" || status === "SENT") return "bg-emerald-400/10 text-emerald-200";
+  if (status === "FAILED") return "bg-red-400/10 text-red-200";
+  return "bg-amber-400/10 text-amber-200";
 }
 
 function ModerationList({ title, empty, items, approveLabel = "Approve", rejectLabel = "Needs work / reject", onApprove, onReject }: { title: string; empty: string; items: Array<{ id: string; title: string; detail: string; body: string }>; approveLabel?: string; rejectLabel?: string; onApprove: (id: string) => void; onReject: (id: string) => void }) {

@@ -2469,7 +2469,7 @@ function LearnerActivationPanel({
               render: (row) => <AdminStatusBadge status={row.status === "NOT_STARTED" ? "Not started Lesson 1" : "Started"} variant={row.status === "NOT_STARTED" ? "warning" : "success"} />,
             },
             { key: "firstLesson", header: "First lesson", render: (row) => <span className="text-sm text-slate-300">{row.firstLessonTitle}</span> },
-            { key: "age", header: "Age", render: (row) => <span className="text-sm text-slate-400">{row.daysSinceRegistration} day{row.daysSinceRegistration === 1 ? "" : "s"}</span> },
+            { key: "age", header: "Age", render: (row) => <span className="text-sm text-slate-400">{formatActivationAge(row.registeredAt, row.daysSinceRegistration)}</span> },
             {
               key: "actions",
               header: "Actions",
@@ -3500,6 +3500,16 @@ function daysSince(value?: string | null) {
   const time = new Date(value).getTime();
   if (!Number.isFinite(time)) return 0;
   return Math.max(0, Math.floor((Date.now() - time) / 86_400_000));
+}
+
+function formatActivationAge(registeredAt?: string | null, days = 0) {
+  const time = registeredAt ? new Date(registeredAt).getTime() : NaN;
+  if (Number.isFinite(time)) {
+    const hours = Math.max(0, Math.floor((Date.now() - time) / 3_600_000));
+    if (hours < 24) return hours <= 1 ? "Under 1 hour" : `${hours} hours`;
+  }
+  const wholeDays = Math.max(0, Math.floor(days));
+  return `${wholeDays} day${wholeDays === 1 ? "" : "s"}`;
 }
 
 function learnerDisplayName(record: { learnerName?: string | null; learnerEmail?: string | null; agentId?: string | null }) {

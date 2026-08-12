@@ -2501,7 +2501,7 @@ function slugify(value: string) {
 }
 
 function daysAgo(date: Date) {
-  return (Date.now() - date.getTime()) / 86400000;
+  return Math.max(0, Math.floor((Date.now() - date.getTime()) / 86400000));
 }
 
 function average(values: number[]) {
