@@ -8,6 +8,7 @@ import {
   Award,
   BadgeCheck,
   BarChart3,
+  Bell,
   BookOpen,
   CheckCircle2,
   ClipboardCheck,
@@ -24,6 +25,7 @@ import {
   Megaphone,
   MoreHorizontal,
   Pencil,
+  Play,
   Plus,
   RotateCcw,
   Search,
@@ -214,6 +216,20 @@ type AcademyData = {
     blockers: string[];
   }>;
   announcementDelivery?: Array<{ id: string; title: string; audience: string; active: boolean; estimatedReach: number; createdAt: string; expiresAt?: string | null }>;
+  firstLessonDropoffs?: Array<{
+    id: string;
+    learnerId: string;
+    learnerName: string;
+    learnerEmail: string;
+    courseId: string;
+    courseTitle: string;
+    firstLessonId: string;
+    firstLessonTitle: string;
+    moduleTitle?: string | null;
+    registeredAt: string;
+    accessStartsAt?: string | null;
+    daysSinceRegistration: number;
+  }>;
   leaderboard?: Array<{ id: string; agentId: string; learnerName?: string | null; learnerEmail?: string | null; badgeName: string; xp: number; awardedAt: string }>;
 };
 
@@ -323,6 +339,7 @@ const academyTabs = [
   "Dashboard",
   "Courses",
   "Public Learners",
+  "Learner Activation",
   "Student Analytics",
   "Certificates",
   "Certificate Templates",
@@ -579,6 +596,7 @@ export function AgentAcademyHub() {
             <ClickableStatPill label="Overdue Assignments" value={data.overdueAssignments} tone={data.overdueAssignments ? "warning" : "default"} onClick={() => openTab("Analytics")} />
             <ClickableStatPill label="Public Learners" value={data.metrics.publicLearners} tone="info" onClick={() => openTab("Public Learners")} />
             <ClickableStatPill label="Pending Public Approvals" value={data.metrics.pendingPublicApprovals} tone={data.metrics.pendingPublicApprovals ? "warning" : "success"} onClick={() => openTab("Public Learners")} />
+            <ClickableStatPill label="Not Started Lesson 1" value={data.metrics.firstLessonNotStarted ?? data.firstLessonDropoffs?.length ?? 0} tone={(data.firstLessonDropoffs?.length ?? 0) ? "warning" : "success"} onClick={() => openTab("Learner Activation")} />
             <ClickableStatPill label="Academy Revenue" value={`$${academyRevenue}`} tone="success" onClick={() => openTab("Analytics")} />
           </AdminMetricGrid>
 
@@ -609,6 +627,51 @@ export function AgentAcademyHub() {
                 {pendingPublicApplications.length ? pendingPublicApplications.slice(0, 5).map((item) => <MetricRow key={item.id} label={item.fullName} value={item.course.title} />) : <EmptyPanelText>No pending applications.</EmptyPanelText>}
               </ActivityPanel>
             </div>
+            <ActivityPanel title="First Lesson Activation" icon={Play}>
+              {data.firstLessonDropoffs?.length ? (
+                <div className="space-y-3">
+                  <div className="rounded-lg border border-emerald-400/20 bg-emerald-400/10 p-3">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <p className="text-sm font-bold text-white">{data.firstLessonDropoffs.length} learner{data.firstLessonDropoffs.length === 1 ? "" : "s"} need a first-lesson nudge</p>
+                        <p className="mt-1 text-xs text-emerald-100/70">Queues in-app reminders only for learners who have not been reminded in the last 20 hours.</p>
+                      </div>
+                      <Button
+                        variant="secondary"
+                        disabled={busy}
+                        onClick={() => void action({ action: "send_first_lesson_reminders" }, "First-lesson reminders queued.")}
+                        className="shrink-0"
+                      >
+                        <Bell className="size-4" /> Send Nudges
+                      </Button>
+                    </div>
+                  </div>
+                  {data.firstLessonDropoffs.slice(0, 6).map((item) => (
+                    <div key={item.id} className="rounded-lg border border-amber-400/20 bg-amber-400/10 p-3">
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-bold text-white">{item.learnerName}</p>
+                          <p className="truncate text-xs text-slate-400">{item.learnerEmail}</p>
+                          <p className="mt-1 text-xs leading-5 text-amber-100/80">
+                            Has access to {item.courseTitle}, but has not opened Lesson 1: {item.firstLessonTitle}.
+                          </p>
+                        </div>
+                        <a
+                          href={`/dashboard/academy/${item.courseId}?lesson=${encodeURIComponent(item.firstLessonId)}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex min-h-9 shrink-0 items-center justify-center rounded-lg bg-white px-3 text-xs font-bold text-slate-950 hover:bg-amber-50"
+                        >
+                          Preview
+                        </a>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <EmptyPanelText>Every approved learner has opened the first lesson.</EmptyPanelText>
+              )}
+            </ActivityPanel>
           </div>
         </div>
       )}
@@ -737,7 +800,7 @@ export function AgentAcademyHub() {
         </div>
       )}
 
-      {["Certificates", "Certificate Templates", "Certificate Monitoring", "Assignment Review", "Student Analytics", "Coupons", "Public Learners", "Learning Paths", "Engagement", "Announcements", "Discussion Board", "Leaderboard", "Badges", "Analytics", "Health", "Settings", "Email Templates", "Branding", "Instructors", "Refunds"].includes(tab) && (
+      {["Certificates", "Certificate Templates", "Certificate Monitoring", "Assignment Review", "Student Analytics", "Coupons", "Public Learners", "Learner Activation", "Learning Paths", "Engagement", "Announcements", "Discussion Board", "Leaderboard", "Badges", "Analytics", "Health", "Settings", "Email Templates", "Branding", "Instructors", "Refunds"].includes(tab) && (
         <FeatureWorkbench
           tab={tab}
           data={data}
@@ -1128,6 +1191,40 @@ function RiskLine({ label, value, helper }: { label: string; value: string; help
   );
 }
 
+function ActivationMetric({
+  label,
+  value,
+  tone = "default",
+}: {
+  label: string;
+  value: string | number;
+  tone?: "default" | "success" | "warning" | "info";
+}) {
+  const toneClass =
+    tone === "success"
+      ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-200"
+      : tone === "warning"
+        ? "border-amber-500/25 bg-amber-500/10 text-amber-200"
+        : tone === "info"
+          ? "border-cyan-500/20 bg-cyan-500/10 text-cyan-200"
+          : "border-white/10 bg-slate-950/35 text-white";
+  return (
+    <div className={cn("rounded-xl border p-4", toneClass)}>
+      <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-400">{label}</p>
+      <p className="mt-2 text-2xl font-black">{value}</p>
+    </div>
+  );
+}
+
+function ActivationAdvice({ title, body }: { title: string; body: string }) {
+  return (
+    <div className="rounded-xl border border-emerald-400/15 bg-slate-950/40 p-4">
+      <p className="font-semibold text-white">{title}</p>
+      <p className="mt-2 text-sm leading-6 text-emerald-100/80">{body}</p>
+    </div>
+  );
+}
+
 function TopCoursesPanel({ courses }: { courses: AcademyData["topCourses"] }) {
   const chartRows = courses.map((course) => ({
     label: course.title.slice(0, 24),
@@ -1406,6 +1503,9 @@ function FeatureWorkbench({
 }) {
   if (tab === "Certificates") {
     return <CertificateManagementPanel certificates={data.certificates} action={action} />;
+  }
+  if (tab === "Learner Activation") {
+    return <LearnerActivationPanel data={data} action={action} />;
   }
   if (tab === "Student Analytics") {
     return <StudentAnalyticsDashboard />;
@@ -2244,6 +2344,165 @@ function PublicLearnersPanel({
         }}
       />
     </section>
+  );
+}
+
+function LearnerActivationPanel({
+  data,
+  action,
+}: {
+  data: AcademyData;
+  action: (body: Record<string, unknown>, success: string) => Promise<unknown>;
+}) {
+  const { showToast } = useApp();
+  const [search, setSearch] = useState("");
+  const [courseFilter, setCourseFilter] = useState("ALL");
+  const [statusFilter, setStatusFilter] = useState<"ALL" | "NOT_STARTED" | "STARTED">("ALL");
+  const dropoffs = data.firstLessonDropoffs ?? [];
+  const approvedApplications = data.publicLearnerApplications.filter((row) => row.status === "APPROVED");
+  const startedCount = Math.max(0, approvedApplications.length - dropoffs.length);
+  const pendingCount = data.publicLearnerApplications.filter((row) => row.status === "PENDING_PAYMENT" || row.status === "PAYMENT_UPLOADED").length;
+  const courseOptions = [
+    { value: "ALL", label: "All courses" },
+    ...Array.from(new Map(approvedApplications.map((row) => [row.course.id, row.course.title])).entries()).map(([value, label]) => ({ value, label })),
+  ];
+  const activationRows = approvedApplications.map((application) => {
+    const dropoff = dropoffs.find((row) => row.learnerId === application.learner.id && row.courseId === application.course.id);
+    return {
+      id: `${application.id}-${dropoff ? "not-started" : "started"}`,
+      learnerId: application.learner.id,
+      learnerName: application.learner.name || application.fullName,
+      learnerEmail: application.learner.email || application.email,
+      courseId: application.course.id,
+      courseTitle: application.course.title,
+      status: dropoff ? "NOT_STARTED" : "STARTED",
+      firstLessonId: dropoff?.firstLessonId ?? null,
+      firstLessonTitle: dropoff?.firstLessonTitle ?? "First lesson opened",
+      daysSinceRegistration: dropoff?.daysSinceRegistration ?? daysSince(application.createdAt),
+      registeredAt: application.createdAt,
+    };
+  });
+  const filteredRows = activationRows.filter((row) => {
+    const needle = search.trim().toLowerCase();
+    const matchesSearch = !needle || `${row.learnerName} ${row.learnerEmail} ${row.courseTitle}`.toLowerCase().includes(needle);
+    const matchesCourse = courseFilter === "ALL" || row.courseId === courseFilter;
+    const matchesStatus = statusFilter === "ALL" || row.status === statusFilter;
+    return matchesSearch && matchesCourse && matchesStatus;
+  });
+
+  async function copyActivationMessage(row: (typeof activationRows)[number]) {
+    const href = row.firstLessonId ? `/dashboard/academy/${row.courseId}?lesson=${encodeURIComponent(row.firstLessonId)}` : `/dashboard/academy/${row.courseId}`;
+    const message = `Hi ${row.learnerName.split(" ")[0]}, your ${row.courseTitle} access is active. Please start Lesson 1 here: ${href}`;
+    await navigator.clipboard.writeText(message);
+    showToast("Learner message copied.");
+  }
+
+  return (
+    <div className="space-y-5">
+      <section className="overflow-hidden rounded-xl border border-white/10 bg-slate-900/60">
+        <div className="border-b border-white/10 bg-gradient-to-r from-emerald-500/10 to-slate-950 p-5">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.2em] text-emerald-300">Learner activation</p>
+              <h3 className="mt-2 text-2xl font-bold text-white">Move new learners into Lesson 1</h3>
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">
+                This uses real enrolment, application, and lesson progress records. A learner appears as not started only when they have approved access but no progress row for the first lesson.
+              </p>
+            </div>
+            <Button
+              disabled={!dropoffs.length}
+              onClick={() => void action({ action: "send_first_lesson_reminders" }, "First-lesson reminders queued.")}
+              className="w-full lg:w-auto"
+            >
+              <Bell className="size-4" /> Send First-Lesson Nudges
+            </Button>
+          </div>
+        </div>
+        <div className="grid gap-3 p-5 sm:grid-cols-2 xl:grid-cols-5">
+          <ActivationMetric label="Approved learners" value={approvedApplications.length} />
+          <ActivationMetric label="Started Lesson 1" value={startedCount} tone="success" />
+          <ActivationMetric label="Not started" value={dropoffs.length} tone={dropoffs.length ? "warning" : "success"} />
+          <ActivationMetric label="Pending payment/review" value={pendingCount} />
+          <ActivationMetric label="Start rate" value={`${approvedApplications.length ? Math.round((startedCount / approvedApplications.length) * 100) : 0}%`} tone="info" />
+        </div>
+      </section>
+
+      <AdminFilterBar>
+        <AdminSearchInput value={search} onChange={setSearch} placeholder="Search learner, email, or course..." className="lg:flex-1" />
+        <AdminSelect value={courseFilter} onChange={setCourseFilter} options={courseOptions} />
+        <AdminSelect
+          value={statusFilter}
+          onChange={(value) => setStatusFilter(value as typeof statusFilter)}
+          options={[
+            { value: "ALL", label: "All activation states" },
+            { value: "NOT_STARTED", label: "Not started Lesson 1" },
+            { value: "STARTED", label: "Started Lesson 1" },
+          ]}
+        />
+      </AdminFilterBar>
+
+      <section className="rounded-xl border border-white/10 bg-slate-900/60">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 p-4">
+          <div>
+            <h3 className="font-semibold text-white">Activation Queue</h3>
+            <p className="mt-1 text-sm text-slate-400">Search, copy follow-up messages, or preview the exact first lesson link.</p>
+          </div>
+          <AdminStatusBadge status={`${filteredRows.length} shown`} variant="info" />
+        </div>
+        <AdminDataTable
+          rows={filteredRows}
+          columns={[
+            {
+              key: "learner",
+              header: "Learner",
+              render: (row) => (
+                <div>
+                  <p className="font-semibold text-white">{row.learnerName}</p>
+                  <p className="text-xs text-slate-500">{row.learnerEmail}</p>
+                </div>
+              ),
+            },
+            { key: "course", header: "Course", render: (row) => <span className="text-sm text-slate-300">{row.courseTitle}</span> },
+            {
+              key: "state",
+              header: "State",
+              render: (row) => <AdminStatusBadge status={row.status === "NOT_STARTED" ? "Not started Lesson 1" : "Started"} variant={row.status === "NOT_STARTED" ? "warning" : "success"} />,
+            },
+            { key: "firstLesson", header: "First lesson", render: (row) => <span className="text-sm text-slate-300">{row.firstLessonTitle}</span> },
+            { key: "age", header: "Age", render: (row) => <span className="text-sm text-slate-400">{row.daysSinceRegistration} day{row.daysSinceRegistration === 1 ? "" : "s"}</span> },
+            {
+              key: "actions",
+              header: "Actions",
+              render: (row) => (
+                <div className="flex flex-wrap justify-end gap-2">
+                  <Button variant="secondary" onClick={() => void copyActivationMessage(row)}>
+                    <Copy className="size-4" /> Copy Message
+                  </Button>
+                  <a
+                    href={row.firstLessonId ? `/dashboard/academy/${row.courseId}?lesson=${encodeURIComponent(row.firstLessonId)}` : `/dashboard/academy/${row.courseId}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-white px-3 py-2 text-sm font-bold text-slate-950 hover:bg-emerald-50"
+                  >
+                    <Eye className="size-4" /> Preview
+                  </a>
+                </div>
+              ),
+            },
+          ]}
+          emptyMessage="No activation records match the current filters."
+        />
+      </section>
+
+      <section className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-5">
+        <h3 className="text-sm font-bold uppercase tracking-widest text-emerald-300">Recommended operating rhythm</h3>
+        <div className="mt-4 grid gap-3 md:grid-cols-3">
+          <ActivationAdvice title="Within 30 minutes" body="Send a short first-lesson nudge to learners who used a promo or were auto-approved." />
+          <ActivationAdvice title="After 24 hours" body="Follow up by WhatsApp using the copied message if Lesson 1 still has no progress record." />
+          <ActivationAdvice title="After 3 days" body="Ask what blocked them: login, mobile data, unclear course entry, or time. Use that feedback to improve onboarding." />
+        </div>
+      </section>
+    </div>
   );
 }
 
@@ -3234,6 +3493,13 @@ function formatShortDate(value?: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "recently";
   return date.toLocaleDateString("en-ZW", { month: "short", day: "numeric" });
+}
+
+function daysSince(value?: string | null) {
+  if (!value) return 0;
+  const time = new Date(value).getTime();
+  if (!Number.isFinite(time)) return 0;
+  return Math.max(0, Math.floor((Date.now() - time) / 86_400_000));
 }
 
 function learnerDisplayName(record: { learnerName?: string | null; learnerEmail?: string | null; agentId?: string | null }) {

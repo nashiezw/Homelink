@@ -283,6 +283,40 @@ export async function getLearnerAcademyDashboard(learnerId: string, options?: { 
     };
   })();
 
+  const firstLessonByCourseId = new Map(
+    approved
+      .map((entry) => {
+        const firstLesson = getFirstCourseLesson(entry.course);
+        return firstLesson
+          ? [
+              entry.course.id,
+              {
+                lessonId: firstLesson.id,
+                lessonTitle: replaceLegacyBrandingText(firstLesson.title),
+                courseId: entry.course.id,
+                courseTitle: entry.course.title,
+              },
+            ] as const
+          : null;
+      })
+      .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry)),
+  );
+
+  const firstLessonAction = (() => {
+    if (continueLearning?.lessonId) return null;
+    const notStarted = approved.find((entry) => {
+      const progress = courseProgressRows.find((row) => row.courseId === entry.course.id);
+      return !progress || (progress.percentComplete ?? 0) <= 0;
+    });
+    if (!notStarted) return null;
+    const firstLesson = firstLessonByCourseId.get(notStarted.course.id);
+    if (!firstLesson) return null;
+    return {
+      ...firstLesson,
+      href: `/dashboard/academy/${firstLesson.courseId}?lesson=${encodeURIComponent(firstLesson.lessonId)}`,
+    };
+  })();
+
   const settingsPayload = settings as Record<string, unknown>;
   const brandingPayload = (settingsPayload.branding ?? {}) as Record<string, unknown>;
 
@@ -343,6 +377,7 @@ export async function getLearnerAcademyDashboard(learnerId: string, options?: { 
             downloadUrl: `/dashboard/academy/certificate/${certificate.id}`,
           }
         : null,
+      firstLesson: firstLessonByCourseId.get(course.id) ?? null,
     };
   }))).sort((a, b) => a.sortOrder - b.sortOrder || a.title.localeCompare(b.title));
 
@@ -365,6 +400,7 @@ export async function getLearnerAcademyDashboard(learnerId: string, options?: { 
     },
     streak,
     continueLearning,
+    firstLessonAction,
     badges: agentBadges.map((entry) => ({
       id: entry.badge.id,
       name: entry.badge.name,
@@ -644,7 +680,7 @@ export async function registerPublicLearner(input: {
       eventType: "ACADEMY_REGISTRATION",
       channel: "IN_APP",
       subject: isFree ? "Academy access activated" : "Academy payment pending",
-      body: isFree ? `${course.title} is active in your learner dashboard.` : `Upload proof of payment for ${course.title} so an admin can activate your access.`,
+      body: isFree ? await buildStartLessonNotificationBody(course.id, course.title) : `Upload proof of payment for ${course.title} so an admin can activate your access.`,
     },
   });
   await recordAcademyReferralRegistration({
@@ -790,7 +826,7 @@ export async function reviewPublicLearnerApplication(input: {
       eventType: `ACADEMY_APPLICATION_${input.status}`,
       channel: "IN_APP",
       subject: approved ? "Academy access approved" : "Academy registration updated",
-      body: approved ? `${application.course.title} is now active in your learner dashboard.` : input.adminNote || `Your ${application.course.title} registration is ${input.status.toLowerCase()}.`,
+      body: approved ? await buildStartLessonNotificationBody(application.courseId, application.course.title) : input.adminNote || `Your ${application.course.title} registration is ${input.status.toLowerCase()}.`,
     },
   });
   await prisma.trainingAuditLog.create({
@@ -806,6 +842,41 @@ export async function reviewPublicLearnerApplication(input: {
 
 function countLessons(course: { modules: Array<{ sections: Array<{ lessons: unknown[] }> }> }) {
   return course.modules.reduce((sum, module) => sum + module.sections.reduce((count, section) => count + section.lessons.length, 0), 0);
+}
+
+function getFirstCourseLesson(course: {
+  modules: Array<{
+    sections: Array<{
+      lessons: Array<{ id: string; title: string }>;
+    }>;
+  }>;
+}) {
+  return course.modules.flatMap((module) => module.sections.flatMap((section) => section.lessons))[0] ?? null;
+}
+
+async function buildStartLessonNotificationBody(courseId: string, courseTitle: string) {
+  const course = await getMainPrisma().trainingCourse.findUnique({
+    where: { id: courseId },
+    select: {
+      modules: {
+        orderBy: { sortOrder: "asc" },
+        select: {
+          sections: {
+            orderBy: { sortOrder: "asc" },
+            select: {
+              lessons: { orderBy: { sortOrder: "asc" }, select: { title: true }, take: 1 },
+            },
+            take: 1,
+          },
+        },
+        take: 1,
+      },
+    },
+  });
+  const firstLesson = course ? getFirstCourseLesson(course) : null;
+  return firstLesson
+    ? `${courseTitle} is active. Start with Lesson 1: ${replaceLegacyBrandingText(firstLesson.title)}.`
+    : `${courseTitle} is active in your learner dashboard.`;
 }
 
 function computeLearningStreak(dates: Date[]) {

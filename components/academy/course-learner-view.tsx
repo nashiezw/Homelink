@@ -146,6 +146,7 @@ const VALID_TABS: Tab[] = ["curriculum", "toolkit", "materials", "assessments", 
 export function CourseLearnerView({ courseId }: { courseId: string }) {
   const searchParams = useSearchParams();
   const initialTab = searchParams?.get("tab");
+  const initialLessonId = searchParams?.get("lesson");
   const { user, showToast } = useApp();
   const [data, setData] = useState<CourseDetail | null>(null);
   const [tab, setTab] = useState<Tab>(() => (VALID_TABS.includes(initialTab as Tab) ? (initialTab as Tab) : "curriculum"));
@@ -164,6 +165,14 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    if (!data || !initialLessonId || viewingLessonId) return;
+    const lesson = data.course.modules
+      .flatMap((module) => module.sections.flatMap((section) => section.lessons))
+      .find((entry) => entry.id === initialLessonId);
+    if (lesson && !lesson.locked) setViewingLessonId(lesson.id);
+  }, [data, initialLessonId, viewingLessonId]);
 
   if (!user) {
     return (

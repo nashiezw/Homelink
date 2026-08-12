@@ -22,6 +22,7 @@ export const academySubTabs: Record<AcademyPrimaryTab, Array<{ id: string; label
   Courses: [{ id: "Courses", label: "Course Builder" }],
   Learners: [
     { id: "Public Learners", label: "Enrolments" },
+    { id: "Learner Activation", label: "Activation" },
     { id: "Student Analytics", label: "Student Analytics" },
     { id: "Coupons", label: "Coupons" },
     { id: "Certificates", label: "Certificates" },
@@ -64,6 +65,7 @@ export function resolveAcademyNav(requested?: string | null): { primary: Academy
     Assignments: { primary: "Courses", sub: "Courses" },
     "Final Exams": { primary: "Courses", sub: "Courses" },
     "Public Learners": { primary: "Learners", sub: "Public Learners" },
+    "Learner Activation": { primary: "Learners", sub: "Learner Activation" },
     "Student Analytics": { primary: "Learners", sub: "Student Analytics" },
     Coupons: { primary: "Learners", sub: "Coupons" },
     Certificates: { primary: "Learners", sub: "Certificates" },

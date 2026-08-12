@@ -12,6 +12,7 @@ type RegistrationStatus = {
   id: string;
   courseId: string;
   courseTitle: string;
+  firstLesson?: { lessonId: string; lessonTitle: string; href: string } | null;
   status: "APPROVED" | "PENDING_PAYMENT" | "PAYMENT_UPLOADED" | "PENDING_EMAIL_VERIFICATION";
   paymentId?: string;
   finalPrice?: number;
@@ -102,6 +103,7 @@ function RegistrationConfirmationContent() {
   const paymentRequired = (paymentPending || paymentUploaded) && (finalPrice === undefined || finalPrice > 0);
   const noPaymentDue = (paymentPending || paymentUploaded) && finalPrice !== undefined && finalPrice <= 0;
   const canApplyPromo = paymentPending && paymentRequired && !paymentUploaded;
+  const firstLessonHref = status.firstLesson?.href ?? `/dashboard/academy/${status.courseId}`;
 
   async function applyPromoCode() {
     const currentRegistrationId = status?.id;
@@ -157,9 +159,14 @@ function RegistrationConfirmationContent() {
               </div>
             </div>
             <div className="border-t border-slate-100 p-6 dark:border-slate-800 sm:p-8">
-              <Link href={`/dashboard/academy/${status.courseId}`}>
+              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5 dark:border-emerald-900/60 dark:bg-emerald-950/20">
+                <p className="text-xs font-bold uppercase tracking-widest text-emerald-700 dark:text-emerald-300">Recommended first step</p>
+                <h2 className="mt-2 text-xl font-bold text-slate-950 dark:text-white">{status.firstLesson?.lessonTitle ?? "Open your course"}</h2>
+                <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">Start immediately while your registration is fresh. Lesson progress is saved automatically on your learner dashboard.</p>
+              </div>
+              <Link href={firstLessonHref} className="mt-4 block">
                 <Button className="w-full sm:w-auto">
-                  <ArrowRight className="size-4 mr-2" /> Start Learning
+                  <ArrowRight className="size-4 mr-2" /> Start Lesson 1
                 </Button>
               </Link>
             </div>

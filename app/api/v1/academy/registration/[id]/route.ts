@@ -27,6 +27,23 @@ export async function GET(
             id: true,
             title: true,
             accessDurationDays: true,
+            modules: {
+              orderBy: { sortOrder: "asc" },
+              select: {
+                sections: {
+                  orderBy: { sortOrder: "asc" },
+                  select: {
+                    lessons: {
+                      orderBy: { sortOrder: "asc" },
+                      select: { id: true, title: true },
+                      take: 1,
+                    },
+                  },
+                  take: 1,
+                },
+              },
+              take: 1,
+            },
           },
         },
         payment: {
@@ -82,6 +99,7 @@ export async function GET(
       id: registration.id,
       courseId: registration.course.id,
       courseTitle: registration.course.title,
+      firstLesson: getFirstRegistrationLesson(registration.course),
       status: registration.status,
       paymentId: registration.paymentId,
       finalPrice: registration.payment ? Number(registration.payment.amount) : undefined,
@@ -95,4 +113,18 @@ export async function GET(
     console.error("Failed to fetch registration status", error);
     return problem(500, "SERVER_ERROR", "Failed to load registration status.");
   }
+}
+
+function getFirstRegistrationLesson(course: {
+  id: string;
+  title: string;
+  modules: Array<{ sections: Array<{ lessons: Array<{ id: string; title: string }> }> }>;
+}) {
+  const lesson = course.modules.flatMap((module) => module.sections.flatMap((section) => section.lessons))[0];
+  if (!lesson) return null;
+  return {
+    lessonId: lesson.id,
+    lessonTitle: lesson.title,
+    href: `/dashboard/academy/${course.id}?lesson=${encodeURIComponent(lesson.id)}`,
+  };
 }

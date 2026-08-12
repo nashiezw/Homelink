@@ -54,6 +54,13 @@ type LearnerDashboard = {
     courseTitle: string;
     lastViewedAt: string;
   } | null;
+  firstLessonAction?: {
+    lessonId: string;
+    lessonTitle: string;
+    courseId: string;
+    courseTitle: string;
+    href: string;
+  } | null;
   badges?: Array<{ id: string; name: string; description?: string | null; xp: number; awardedAt: string }>;
   bookmarks?: Array<{ lessonId: string; title: string; courseId: string; courseTitle: string }>;
   programmeCourses?: Array<{
@@ -67,6 +74,7 @@ type LearnerDashboard = {
     completed: boolean;
     badgeEarned: boolean;
     badgeName: string;
+    firstLesson?: { lessonId: string; lessonTitle: string; courseId: string; courseTitle: string } | null;
     certificate: { id: string; certificateNumber: string; downloadUrl: string } | null;
   }>;
   certificates: Array<{
@@ -263,6 +271,30 @@ export function LearnerDashboardClient() {
       }
     >
       {/* Hero continue learning */}
+      {data.firstLessonAction && (
+        <section
+          className="academy-panel relative overflow-hidden rounded-xl p-6 sm:p-8"
+          style={{ background: `linear-gradient(135deg, ${primary}18 0%, rgba(255,255,255,0) 68%)` }}
+        >
+          <div className="absolute inset-0 hidden bg-[linear-gradient(90deg,rgba(16,32,36,0.04)_1px,transparent_1px),linear-gradient(180deg,rgba(16,32,36,0.03)_1px,transparent_1px)] bg-[size:34px_34px] lg:block" />
+          <div className="relative flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+            <div className="max-w-2xl">
+              <p className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-xs font-black uppercase tracking-widest text-emerald-700 ring-1 ring-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-500/20">
+                <Sparkles className="size-3.5" /> Your course is ready
+              </p>
+              <h2 className="mt-3 text-2xl font-bold tracking-tight sm:text-3xl">Start Lesson 1 now</h2>
+              <p className="mt-2 text-base font-semibold text-slate-800 dark:text-slate-100">{data.firstLessonAction.lessonTitle}</p>
+              <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-400">{data.firstLessonAction.courseTitle}</p>
+            </div>
+            <Link href={data.firstLessonAction.href} className="w-full lg:w-auto">
+              <Button className="w-full shadow-soft px-6 py-3 text-base lg:w-auto" style={{ backgroundColor: primary }}>
+                <Play className="size-5 mr-2" /> Start Lesson 1
+              </Button>
+            </Link>
+          </div>
+        </section>
+      )}
+
       {data.continueLearning && approvedCourse && (
         <section
           className="academy-panel relative overflow-hidden rounded-xl p-6 sm:p-8"
@@ -397,8 +429,8 @@ export function LearnerDashboardClient() {
                   )}
                   <div className="mt-4 flex flex-col gap-2">
                     {hasCourseAccess ? (
-                      <Link href={`/dashboard/academy/${course.id}`} className="w-full">
-                        <Button className="w-full text-sm px-3 py-2.5" style={{ backgroundColor: course.theme.accent }}>{course.completed ? "Review course" : "Continue"}</Button>
+                      <Link href={course.progress <= 0 && course.firstLesson ? `/dashboard/academy/${course.id}?lesson=${encodeURIComponent(course.firstLesson.lessonId)}` : `/dashboard/academy/${course.id}`} className="w-full">
+                        <Button className="w-full text-sm px-3 py-2.5" style={{ backgroundColor: course.theme.accent }}>{course.completed ? "Review course" : course.progress <= 0 ? "Start Lesson 1" : "Continue"}</Button>
                       </Link>
                     ) : hasPendingApplication ? (
                       <Link href="/dashboard/academy" className="w-full">

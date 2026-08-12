@@ -284,6 +284,12 @@ export async function getAcademyDashboard(options: { compact?: boolean } = {}) {
     exams,
   });
   const announcementDelivery = buildAnnouncementDeliverySummary({ announcements, publicLearnerApplications, enrolments });
+  const firstLessonDropoffs = buildFirstLessonDropoffs({
+    courses,
+    publicLearnerApplications,
+    enrolments,
+    lessonProgress,
+  });
 
   return {
     metrics: {
@@ -311,6 +317,7 @@ export async function getAcademyDashboard(options: { compact?: boolean } = {}) {
       publicLearners: publicLearnerApplications.length,
       pendingPublicApprovals: pendingLearnerCount + pendingResourceCount,
       academyRevenue: Number(academyRevenue._sum.amount ?? 0),
+      firstLessonNotStarted: firstLessonDropoffs.length,
       certifiedAgents: certifiedAgentIds.length,
       certifiedActiveListings,
       certifiedClosedListings,
@@ -454,6 +461,7 @@ export async function getAcademyDashboard(options: { compact?: boolean } = {}) {
     learnerTimeline,
     certificateSimulations,
     announcementDelivery,
+    firstLessonDropoffs,
     leaderboard: agentBadges.map((entry) => ({
       id: entry.id,
       agentId: entry.agentId,
@@ -1447,6 +1455,11 @@ export async function runAcademyAction(body: Record<string, any>, actor: Actor) 
     if (!result.ok) throw new Error(result.message);
     return { sent: true, message: result.message };
   }
+  if (action === "send_first_lesson_reminders") {
+    const result = await sendFirstLessonActivationReminders(actor);
+    await audit(actor, "academy.activation.first_lesson_reminders", "academy", result as Prisma.InputJsonObject);
+    return result;
+  }
   if (action === "grant_extra_quiz_attempt") {
     const learnerId = required(body.learnerId, "Learner");
     const quizId = required(body.quizId, "Quiz");
@@ -2386,6 +2399,48 @@ async function notifyAgents(eventType: string, subject: string, body: string) {
   });
 }
 
+async function sendFirstLessonActivationReminders(actor: Actor) {
+  const prisma = getMainPrisma();
+  const [courses, applications, enrolments, lessonProgress] = await Promise.all([
+    prisma.trainingCourse.findMany({
+      where: { status: TrainingCourseStatus.PUBLISHED },
+      include: { modules: { include: { sections: { include: { lessons: true } } } } },
+    }),
+    prisma.academyLearnerApplication.findMany({
+      where: { status: "APPROVED" },
+      include: { learner: { select: { id: true, name: true, email: true } }, course: { select: { id: true, title: true } } },
+    }),
+    prisma.courseEnrolment.findMany({ where: { status: "ACTIVE" } }),
+    prisma.lessonProgress.findMany({ select: { lessonId: true, agentId: true } }),
+  ]);
+  const candidates = buildFirstLessonDropoffs({ courses, publicLearnerApplications: applications, enrolments, lessonProgress });
+  if (!candidates.length) return { queued: 0, checked: 0 };
+
+  const cutoff = new Date(Date.now() - 20 * 60 * 60 * 1000);
+  let queued = 0;
+  for (const candidate of candidates) {
+    const existing = await prisma.trainingNotification.findFirst({
+      where: {
+        userId: candidate.learnerId,
+        eventType: "ACADEMY_FIRST_LESSON_REMINDER",
+        createdAt: { gte: cutoff },
+      },
+    });
+    if (existing) continue;
+    await prisma.trainingNotification.create({
+      data: {
+        userId: candidate.learnerId,
+        eventType: "ACADEMY_FIRST_LESSON_REMINDER",
+        channel: "IN_APP",
+        subject: "Start Lesson 1",
+        body: `${candidate.courseTitle} is ready. Start with Lesson 1: ${candidate.firstLessonTitle}.`,
+      },
+    });
+    queued += 1;
+  }
+  return { queued, checked: candidates.length, actorId: actor.id };
+}
+
 async function audit(actor: Actor, action: string, target: string, metadata: Prisma.InputJsonObject) {
   await getMainPrisma().trainingAuditLog.create({
     data: { actorId: actor.id, action, target, metadata: { actorName: actor.name, ...metadata } },
@@ -2667,6 +2722,60 @@ function buildAnnouncementDeliverySummary({ announcements, publicLearnerApplicat
       expiresAt: announcement.expiresAt?.toISOString() ?? null,
     };
   });
+}
+
+function buildFirstLessonDropoffs({
+  courses,
+  publicLearnerApplications,
+  enrolments,
+  lessonProgress,
+}: {
+  courses: any[];
+  publicLearnerApplications: any[];
+  enrolments: any[];
+  lessonProgress: any[];
+}) {
+  const activeEnrolmentIds = new Set(enrolments.filter((entry) => entry.status === "ACTIVE").map((entry) => `${entry.courseId}:${entry.agentId}`));
+  const viewedFirstLessonIds = new Set(lessonProgress.map((entry) => `${entry.lessonId}:${entry.agentId}`));
+  const firstLessonByCourseId = new Map<string, { id: string; title: string; moduleTitle: string | null }>();
+
+  for (const course of courses) {
+    const modules = [...(course.modules ?? [])].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+    const lessons = modules.flatMap((module) =>
+      [...(module.sections ?? [])]
+        .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
+        .flatMap((section) =>
+          [...(section.lessons ?? [])]
+            .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
+            .map((lesson) => ({ id: lesson.id, title: lesson.title, moduleTitle: module.title ?? null })),
+        ),
+    );
+    if (lessons[0]) firstLessonByCourseId.set(course.id, lessons[0]);
+  }
+
+  return publicLearnerApplications
+    .filter((application) => application.status === "APPROVED" && activeEnrolmentIds.has(`${application.courseId}:${application.learnerId}`))
+    .map((application) => {
+      const firstLesson = firstLessonByCourseId.get(application.courseId);
+      if (!firstLesson || viewedFirstLessonIds.has(`${firstLesson.id}:${application.learnerId}`)) return null;
+      return {
+        id: application.id,
+        learnerId: application.learnerId,
+        learnerName: application.learner?.name ?? application.fullName ?? application.email,
+        learnerEmail: application.learner?.email ?? application.email,
+        courseId: application.courseId,
+        courseTitle: application.course?.title ?? "Academy course",
+        firstLessonId: firstLesson.id,
+        firstLessonTitle: firstLesson.title,
+        moduleTitle: firstLesson.moduleTitle,
+        registeredAt: application.createdAt.toISOString(),
+        accessStartsAt: application.accessStartsAt?.toISOString() ?? null,
+        daysSinceRegistration: daysAgo(application.createdAt),
+      };
+    })
+    .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry))
+    .sort((a, b) => b.daysSinceRegistration - a.daysSinceRegistration || a.learnerName.localeCompare(b.learnerName))
+    .slice(0, 25);
 }
 
 function buildTrainerInsights({
