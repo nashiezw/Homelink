@@ -1,4 +1,6 @@
 import { getMainPrisma } from "@/lib/db/main-prisma";
+import { sendSmtpPlainEmail } from "@/lib/integrations/smtp";
+import { describeWhatsAppSend, sendWhatsAppTextMessage } from "@/lib/integrations/whatsapp";
 import { getHydratedRuntimePlatformSettings } from "@/lib/settings/runtime";
 
 type Actor = { id: string; name?: string | null };
@@ -831,7 +833,9 @@ function describeNotificationDelivery(row: { channel?: string | null; status?: s
   if (channel === "IN_APP" && status === "QUEUED") {
     return "Queued in app; learner visibility depends on notification polling";
   }
+  if (status === "SKIPPED") return "Skipped because channel requirements were not met";
   if (status === "FAILED") return "Delivery failed";
+  if (status === "SENT") return channel === "EMAIL" ? "Sent to learner email" : channel === "WHATSAPP" ? "Submitted to learner WhatsApp number" : "Sent";
   if (row.sentAt) return "Sent to external channel";
   return "Delivery receipt not available";
 }
@@ -842,7 +846,9 @@ function getNotificationDisplayStatus(row: { channel?: string | null; status?: s
   if (receipt?.clickedAt) return "ACTION RECORDED";
   if (receipt?.readAt) return "READ";
   if (channel === "IN_APP" && (status === "DELIVERED" || status === "SENT" || row.sentAt)) return "VISIBLE IN APP";
+  if (status === "SKIPPED") return "SKIPPED";
   if (status === "FAILED") return "FAILED";
+  if (status === "SENT") return channel === "EMAIL" ? "EMAIL SENT" : channel === "WHATSAPP" ? "WHATSAPP SENT" : "SENT";
   if (channel === "EMAIL" && status === "QUEUED") return "EMAIL WAITING";
   if (channel === "WHATSAPP" && status === "QUEUED") return "WHATSAPP WAITING";
   return "WAITING";
@@ -1154,6 +1160,74 @@ async function notifyLearner(userId: string, eventType: string, subject: string,
   }).catch(() => null);
 }
 
+async function notifyLearnerAcrossConfiguredChannels(userId: string, eventType: string, subject: string, body: string) {
+  const prisma = getMainPrisma() as any;
+  const platformSettings = await getHydratedRuntimePlatformSettings();
+  const integrations = platformSettings.integrations;
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { email: true, phone: true },
+  }).catch(() => null);
+
+  await prisma.trainingNotification.create({
+    data: { userId, eventType, channel: "IN_APP", subject, body, status: "DELIVERED", sentAt: new Date() },
+  }).catch(() => null);
+
+  const emailConfigured = Boolean(integrations.smtpHost && integrations.smtpPort && integrations.smtpUser && integrations.smtpPass && integrations.smtpFrom);
+  if (emailConfigured && user?.email) {
+    const result = await sendSmtpPlainEmail(integrations, user.email, subject, body);
+    await prisma.trainingNotification.create({
+      data: {
+        userId,
+        eventType: `${eventType}_EMAIL`,
+        channel: "EMAIL",
+        subject,
+        body: result.message,
+        status: result.ok ? "SENT" : "FAILED",
+        sentAt: result.ok ? new Date() : null,
+      },
+    }).catch(() => null);
+  } else {
+    await prisma.trainingNotification.create({
+      data: {
+        userId,
+        eventType: `${eventType}_EMAIL_SKIPPED`,
+        channel: "EMAIL",
+        subject,
+        body: user?.email ? "Email not sent because SMTP is not fully configured." : "Email not sent because the learner has no email address.",
+        status: "SKIPPED",
+      },
+    }).catch(() => null);
+  }
+
+  const whatsappConfigured = Boolean(integrations.whatsappProvider && integrations.whatsappAccessToken && integrations.whatsappPhoneNumberId);
+  if (whatsappConfigured && user?.phone) {
+    const result = await sendWhatsAppTextMessage(integrations, user.phone, `${subject}\n\n${body}`);
+    await prisma.trainingNotification.create({
+      data: {
+        userId,
+        eventType: `${eventType}_WHATSAPP`,
+        channel: "WHATSAPP",
+        subject,
+        body: result.ok ? describeWhatsAppSend({ ok: true, to: user.phone, body }) : result.message,
+        status: result.ok ? "SENT" : "FAILED",
+        sentAt: result.ok ? new Date() : null,
+      },
+    }).catch(() => null);
+  } else {
+    await prisma.trainingNotification.create({
+      data: {
+        userId,
+        eventType: `${eventType}_WHATSAPP_SKIPPED`,
+        channel: "WHATSAPP",
+        subject,
+        body: user?.phone ? "WhatsApp not sent because provider settings are not fully configured." : "WhatsApp not sent because the learner has no phone number.",
+        status: "SKIPPED",
+      },
+    }).catch(() => null);
+  }
+}
+
 async function notifyOfficeHourAudience(officeHour: { id: string; courseId?: string | null; title: string; startsAt: Date }) {
   const prisma = getMainPrisma() as any;
   const existing = await prisma.trainingNotification.count({ where: { eventType: `ACADEMY_OFFICE_HOUR_${officeHour.id}` } });
@@ -1183,7 +1257,7 @@ async function sendProgressNudges() {
     const eventType = `ACADEMY_PROGRESS_NUDGE_${row.courseId}_${row.agentId}_${threshold}`;
     const existing = await prisma.trainingNotification.count({ where: { userId: row.agentId, eventType } });
     if (existing > 0) continue;
-    await notifyLearner(
+    await notifyLearnerAcrossConfiguredChannels(
       row.agentId,
       eventType,
       `You are ${threshold}% through ${row.course?.title ?? "your Academy course"}`,
@@ -1214,7 +1288,7 @@ async function sendJourneyPlaybookNudges() {
     const eventType = `ACADEMY_JOURNEY_PLAYBOOK_${enrolment.courseId}_${enrolment.agentId}_${stage}`;
     const existing = await prisma.trainingNotification.count({ where: { userId: enrolment.agentId, eventType } });
     if (existing > 0) continue;
-    await notifyLearner(
+    await notifyLearnerAcrossConfiguredChannels(
       enrolment.agentId,
       eventType,
       buildJourneyNudgeSubject(stage, enrolment.course?.title),

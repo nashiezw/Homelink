@@ -12,6 +12,7 @@ import { isPostgresStoreEnabled } from "@/lib/db/main-prisma";
 import { testCloudinaryConfig } from "@/lib/integrations/cloudinary";
 import { testGoogleMapsKey } from "@/lib/integrations/google-maps";
 import { sendSmtpTestEmail } from "@/lib/integrations/smtp";
+import { sendWhatsAppTestMessage } from "@/lib/integrations/whatsapp";
 import { getHydratedStore } from "@/lib/store/app-store";
 import { redactPaymentSettingsForAdmin, redactPlatformSettingsForAdmin, mergePlatformSecrets } from "@/lib/settings/redact";
 import { mergePlatformSettings } from "@/lib/settings/merge";
@@ -80,7 +81,7 @@ export async function PATCH(request: Request) {
   const body = (await request.json()) as {
     section?: string;
     settings?: Partial<PlatformSettings> | Partial<PaymentSettings>;
-    test?: { type: "smtp" | "maps" | "cloudinary"; email?: string };
+    test?: { type: "smtp" | "maps" | "cloudinary" | "whatsapp"; email?: string; phone?: string };
   };
 
   const section = body.section ?? "platform";
@@ -110,6 +111,11 @@ export async function PATCH(request: Request) {
       }
       if (body.test.type === "maps") return ok(await testGoogleMapsKey(liveSettings.integrations.googleMapsKey));
       if (body.test.type === "cloudinary") return ok(await testCloudinaryConfig(liveSettings.integrations));
+      if (body.test.type === "whatsapp") {
+        const recipient = body.test.phone?.trim();
+        if (!recipient) return ok({ ok: false, message: "Enter a WhatsApp recipient number with country code." });
+        return ok(await sendWhatsAppTestMessage(liveSettings.integrations, recipient));
+      }
     }
     if (section === "payments") {
       const settings = await savePostgresPaymentSettings((body.settings ?? {}) as Partial<PaymentSettings>);
@@ -150,6 +156,12 @@ export async function PATCH(request: Request) {
     }
     if (body.test.type === "cloudinary") {
       const result = await testCloudinaryConfig(liveSettings.integrations);
+      return ok(result);
+    }
+    if (body.test.type === "whatsapp") {
+      const recipient = body.test.phone?.trim();
+      if (!recipient) return ok({ ok: false, message: "Enter a WhatsApp recipient number with country code." });
+      const result = await sendWhatsAppTestMessage(liveSettings.integrations, recipient);
       return ok(result);
     }
   }

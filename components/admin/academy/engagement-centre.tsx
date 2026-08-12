@@ -183,7 +183,7 @@ export function AcademyEngagementCentre() {
             </p>
             <div className="mt-4 flex flex-wrap gap-2">
               <StatusPill label="Public sharing" value="Consent based" tone="success" />
-              <StatusPill label="Delivery truth" value="No fake sends" tone="info" />
+              <StatusPill label="Delivery truth" value="In-app, email, WhatsApp tracked" tone="info" />
               <StatusPill label="Course access" value="Separate from gates" tone="default" />
             </div>
           </div>

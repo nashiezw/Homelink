@@ -22,12 +22,13 @@ export function PlatformSettingsPanel({ defaultTab = "general" }: { defaultTab?:
   const [me, setMe] = useState<AdminMe | null>(null);
   const [tab, setTab] = useState<SettingsTab>(defaultTab);
   const [saving, setSaving] = useState(false);
-  const [testingIntegration, setTestingIntegration] = useState<"smtp" | "maps" | "cloudinary" | null>(null);
+  const [testingIntegration, setTestingIntegration] = useState<"smtp" | "maps" | "cloudinary" | "whatsapp" | null>(null);
   const [integrationTestResult, setIntegrationTestResult] = useState<{
     ok: boolean;
     message: string;
   } | null>(null);
   const [smtpTestEmail, setSmtpTestEmail] = useState("");
+  const [whatsappTestPhone, setWhatsappTestPhone] = useState("");
   const [promotingAdmin, setPromotingAdmin] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -104,7 +105,7 @@ export function PlatformSettingsPanel({ defaultTab = "general" }: { defaultTab?:
     void load();
   }
 
-  async function testIntegration(type: "smtp" | "maps" | "cloudinary") {
+  async function testIntegration(type: "smtp" | "maps" | "cloudinary" | "whatsapp") {
     if (!settings) return;
     setTestingIntegration(type);
     setIntegrationTestResult(null);
@@ -113,7 +114,11 @@ export function PlatformSettingsPanel({ defaultTab = "general" }: { defaultTab?:
         method: "PATCH",
         body: JSON.stringify({
           settings: syncGeoToFlatLists(settings),
-          test: { type, email: type === "smtp" ? smtpTestEmail.trim() || undefined : undefined },
+          test: {
+            type,
+            email: type === "smtp" ? smtpTestEmail.trim() || undefined : undefined,
+            phone: type === "whatsapp" ? whatsappTestPhone.trim() || undefined : undefined,
+          },
         }),
       });
       const message = result.data?.sample
@@ -334,15 +339,24 @@ export function PlatformSettingsPanel({ defaultTab = "general" }: { defaultTab?:
       {tab === "integrations" && (
         <div className="space-y-4">
           <div className="space-y-3 rounded-xl border border-white/10 bg-slate-950/40 p-4">
-            <div className="grid gap-3 lg:grid-cols-[minmax(220px,1fr)_auto_auto_auto] lg:items-end">
+            <div className="grid gap-3 lg:grid-cols-[minmax(220px,1fr)_minmax(220px,1fr)_auto_auto_auto_auto] lg:items-end">
               <Input
                 label="SMTP test recipient email"
                 value={smtpTestEmail}
                 onChange={setSmtpTestEmail}
                 type="email"
               />
+              <Input
+                label="WhatsApp test recipient"
+                value={whatsappTestPhone}
+                onChange={setWhatsappTestPhone}
+                type="tel"
+              />
               <Button className="w-full whitespace-nowrap lg:w-auto" variant="secondary" onClick={() => void testIntegration("smtp")} disabled={testingIntegration !== null}>
                 <TestTube2 className="size-4" /> {testingIntegration === "smtp" ? "Testing SMTP..." : "Test SMTP"}
+              </Button>
+              <Button className="w-full whitespace-nowrap lg:w-auto" variant="secondary" onClick={() => void testIntegration("whatsapp")} disabled={testingIntegration !== null}>
+                <TestTube2 className="size-4" /> {testingIntegration === "whatsapp" ? "Testing WhatsApp..." : "Test WhatsApp"}
               </Button>
               <Button className="w-full whitespace-nowrap lg:w-auto" variant="secondary" onClick={() => void testIntegration("maps")} disabled={testingIntegration !== null}>
                 <TestTube2 className="size-4" /> {testingIntegration === "maps" ? "Testing Maps..." : "Test Maps key"}
