@@ -1,4 +1,5 @@
 import { getMainPrisma } from "@/lib/db/main-prisma";
+import { getHydratedRuntimePlatformSettings } from "@/lib/settings/runtime";
 
 type Actor = { id: string; name?: string | null };
 
@@ -49,6 +50,10 @@ const DEFAULT_SETTINGS = {
 export async function getAdminAcademyEngagement() {
   const prisma = getMainPrisma() as any;
   await ensureEngagementSettings();
+  const [platformSettings, normalizedLegacyCount] = await Promise.all([
+    getHydratedRuntimePlatformSettings().catch(() => null),
+    normalizeLegacyInAppNotifications(prisma),
+  ]);
   const diagnostics: Array<{ section: string; status: "READY" | "WARNING" | "MISSING"; message: string }> = [];
   const optional = async <T>(section: string, query: () => Promise<T>, fallback: T): Promise<T> => {
     try {
@@ -77,6 +82,13 @@ export async function getAdminAcademyEngagement() {
     optional("Certificate history", () => prisma.certificateIssue.findMany({ where: { status: "ACTIVE" }, select: { id: true, agentId: true, courseId: true, certificateNumber: true, issuedAt: true }, take: 1000 }), []),
     optional("Notification history", () => prisma.trainingNotification.findMany({ where: { eventType: { startsWith: "ACADEMY_" } }, orderBy: { createdAt: "desc" }, take: 300 }), []),
   ]);
+  if (normalizedLegacyCount > 0) {
+    diagnostics.push({
+      section: "Notification history",
+      status: "READY",
+      message: `${normalizedLegacyCount} older in-app Academy notification(s) were normalised from QUEUED to DELIVERED.`,
+    });
+  }
   const [storageHealth, receipts] = await Promise.all([
     optional("Storage health", () => checkEngagementStorageHealth(prisma), []),
     optional("Notification receipts", () => getNotificationReceipts(prisma, notifications.map((row: any) => row.id)), []),
@@ -136,13 +148,15 @@ export async function getAdminAcademyEngagement() {
     notificationHistory: notifications.map((row: any) => ({
       ...serializeDates(row),
       learner: learnerById.get(row.userId) ?? null,
+      displayStatus: getNotificationDisplayStatus(row, receiptByNotification.get(row.id)),
       deliveryLabel: describeNotificationDelivery(row),
       category: categorizeNotification(row),
       cooldownLabel: describeNudgeCooldown(row),
       nextEligibleAt: getNextNudgeEligibleAt(row),
       receipt: serializeDates(receiptByNotification.get(row.id) ?? null),
     })),
-    deliveryIntegrations: buildDeliveryIntegrations(normalizeSettings(settingsRow?.payload)),
+    deliverySummary: buildDeliverySummary(notifications, receiptByNotification),
+    deliveryIntegrations: buildDeliveryIntegrations(normalizeSettings(settingsRow?.payload), platformSettings),
     storageHealth,
     diagnostics: [
       ...diagnostics,
@@ -822,6 +836,18 @@ function describeNotificationDelivery(row: { channel?: string | null; status?: s
   return "Delivery receipt not available";
 }
 
+function getNotificationDisplayStatus(row: { channel?: string | null; status?: string | null; sentAt?: Date | string | null }, receipt?: any) {
+  const channel = row.channel || "IN_APP";
+  const status = row.status || "QUEUED";
+  if (receipt?.clickedAt) return "ACTION RECORDED";
+  if (receipt?.readAt) return "READ";
+  if (channel === "IN_APP" && (status === "DELIVERED" || status === "SENT" || row.sentAt)) return "VISIBLE IN APP";
+  if (status === "FAILED") return "FAILED";
+  if (channel === "EMAIL" && status === "QUEUED") return "EMAIL WAITING";
+  if (channel === "WHATSAPP" && status === "QUEUED") return "WHATSAPP WAITING";
+  return "WAITING";
+}
+
 function categorizeNotification(row: { eventType?: string | null; subject?: string | null }) {
   const key = `${row.eventType ?? ""} ${row.subject ?? ""}`.toUpperCase();
   if (key.includes("CERTIFICATE") || key.includes("COMPLETE")) return "Graduate";
@@ -850,8 +876,34 @@ function describeNudgeCooldown(row: { eventType?: string | null; createdAt?: Dat
   return `${hours}h cooldown remaining`;
 }
 
-function buildDeliveryIntegrations(settings: Record<string, any>) {
-  const emailConnected = Boolean(process.env.RESEND_API_KEY || process.env.SMTP_HOST || process.env.EMAIL_PROVIDER);
+function buildDeliverySummary(notifications: any[], receiptByNotification: Map<string, any>) {
+  const summary = {
+    total: notifications.length,
+    visibleInApp: 0,
+    waiting: 0,
+    failed: 0,
+    read: 0,
+    actionRecorded: 0,
+  };
+  for (const row of notifications) {
+    const displayStatus = getNotificationDisplayStatus(row, receiptByNotification.get(row.id));
+    if (displayStatus === "ACTION RECORDED") summary.actionRecorded += 1;
+    if (displayStatus === "READ" || displayStatus === "ACTION RECORDED") summary.read += 1;
+    if (displayStatus === "VISIBLE IN APP" || displayStatus === "READ" || displayStatus === "ACTION RECORDED") summary.visibleInApp += 1;
+    else if (displayStatus === "FAILED") summary.failed += 1;
+    else summary.waiting += 1;
+  }
+  return summary;
+}
+
+function buildDeliveryIntegrations(settings: Record<string, any>, platformSettings: Awaited<ReturnType<typeof getHydratedRuntimePlatformSettings>> | null) {
+  const integrations = platformSettings?.integrations;
+  const emailConnected = Boolean(
+    integrations?.smtpHost
+    && integrations?.smtpPort
+    && integrations?.smtpUser
+    && integrations?.smtpPass,
+  );
   const whatsappConnected = Boolean(process.env.WHATSAPP_ACCESS_TOKEN || process.env.WHATSAPP_BUSINESS_TOKEN || process.env.WHATSAPP_PROVIDER);
   return [
     {
@@ -865,8 +917,8 @@ function buildDeliveryIntegrations(settings: Record<string, any>) {
       channel: "EMAIL",
       label: "Email delivery",
       connected: emailConnected,
-      receiptSupport: emailConnected ? "Ready for provider-level sent/bounce/open webhooks when connected." : "Not connected. No fake email delivery is reported.",
-      adminAction: emailConnected ? "Provider environment is configured." : "Connect SMTP, Resend, or another email provider before enabling email delivery.",
+      receiptSupport: emailConnected ? "SMTP is configured in Platform Admin Settings. Academy can use the same HouseLink email sender when email sending is enabled for a workflow." : "SMTP is not fully configured in Platform Admin Settings. No fake email delivery is reported.",
+      adminAction: emailConnected ? `Using Platform Admin SMTP: ${integrations?.smtpHost}:${integrations?.smtpPort}` : "Add SMTP host, port, username, password, and from address in Platform Admin Settings.",
     },
     {
       channel: "WHATSAPP",
@@ -876,6 +928,21 @@ function buildDeliveryIntegrations(settings: Record<string, any>) {
       adminAction: settings.whatsappUrl ? "Community invite link is visible; automated WhatsApp sending still requires provider setup." : "Add WhatsApp links in Engagement Controls; connect a provider for automated sends.",
     },
   ];
+}
+
+async function normalizeLegacyInAppNotifications(prisma: any) {
+  const result = await prisma.trainingNotification.updateMany({
+    where: {
+      eventType: { startsWith: "ACADEMY_" },
+      channel: "IN_APP",
+      status: "QUEUED",
+    },
+    data: {
+      status: "DELIVERED",
+      sentAt: new Date(),
+    },
+  }).catch(() => ({ count: 0 }));
+  return Number(result?.count ?? 0);
 }
 
 async function checkEngagementStorageHealth(prisma: any) {

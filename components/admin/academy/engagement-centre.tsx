@@ -21,7 +21,8 @@ type EngagementData = {
   qaChecklist: Array<{ key: string; label: string; status: string; detail: string }>;
   engagementScores: Array<{ learnerId: string; score: number; detail: string[]; learner?: { name?: string | null; email?: string | null } | null }>;
   learnerTimelines: Array<{ learnerId: string; learner?: { name?: string | null; email?: string | null } | null; events: Array<{ id: string; type: string; title: string; detail: string; createdAt: string }> }>;
-  notificationHistory: Array<{ id: string; userId: string; eventType: string; channel: string; subject: string; body: string; status: string; createdAt: string; sentAt?: string | null; deliveryLabel?: string; category?: string; cooldownLabel?: string; nextEligibleAt?: string | null; receipt?: { readAt?: string | null; clickedAt?: string | null; dismissedAt?: string | null } | null; learner?: { name?: string | null; email?: string | null } | null }>;
+  notificationHistory: Array<{ id: string; userId: string; eventType: string; channel: string; subject: string; body: string; status: string; displayStatus?: string; createdAt: string; sentAt?: string | null; deliveryLabel?: string; category?: string; cooldownLabel?: string; nextEligibleAt?: string | null; receipt?: { readAt?: string | null; clickedAt?: string | null; dismissedAt?: string | null } | null; learner?: { name?: string | null; email?: string | null } | null }>;
+  deliverySummary?: { total: number; visibleInApp: number; waiting: number; failed: number; read: number; actionRecorded: number };
   deliveryIntegrations?: Array<{ channel: string; label: string; connected: boolean; receiptSupport: string; adminAction: string }>;
   storageHealth?: Array<{ table: string; status: string; message: string }>;
   diagnostics?: Array<{ section: string; status: string; message: string }>;
@@ -203,6 +204,13 @@ export function AcademyEngagementCentre() {
 
       <section className="grid gap-4 xl:grid-cols-[1fr_0.9fr]">
         <Panel title="Diagnostics And Delivery" icon={ShieldCheck}>
+          <div className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+            <DeliveryMetric label="Total Academy messages" value={data.deliverySummary?.total ?? 0} tone="default" />
+            <DeliveryMetric label="Visible in app" value={data.deliverySummary?.visibleInApp ?? 0} tone="success" />
+            <DeliveryMetric label="Read by learners" value={data.deliverySummary?.read ?? 0} tone="success" />
+            <DeliveryMetric label="Waiting" value={data.deliverySummary?.waiting ?? 0} tone="warning" />
+            <DeliveryMetric label="Failed" value={data.deliverySummary?.failed ?? 0} tone="danger" />
+          </div>
           <div className="grid gap-3 md:grid-cols-2">
             <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-4">
               <p className="text-sm font-black text-white">Production storage check</p>
@@ -598,6 +606,21 @@ function ScoreList({ rows, onOpen }: { rows: EngagementData["engagementScores"];
   );
 }
 
+function DeliveryMetric({ label, value, tone }: { label: string; value: number; tone: "default" | "success" | "warning" | "danger" }) {
+  return (
+    <div className={cn(
+      "rounded-2xl border p-4",
+      tone === "success" ? "border-emerald-400/20 bg-emerald-400/10" :
+        tone === "warning" ? "border-amber-400/20 bg-amber-400/10" :
+          tone === "danger" ? "border-red-400/20 bg-red-400/10" :
+            "border-white/10 bg-slate-900/80",
+    )}>
+      <p className="text-2xl font-black text-white">{value}</p>
+      <p className="mt-1 text-xs font-bold uppercase tracking-[0.12em] text-slate-400">{label}</p>
+    </div>
+  );
+}
+
 function NotificationHistoryList({
   notifications,
   onOpen,
@@ -608,31 +631,40 @@ function NotificationHistoryList({
   return (
     <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-3">
       <h4 className="text-sm font-black text-white">Notification history</h4>
-      <p className="mt-1 text-xs leading-5 text-slate-500">Shows records created by the Academy system. In-app delivery means the learner can see it in their notification centre; external delivery receipts require a connected sender.</p>
-      <div className="mt-3 space-y-2">
+      <p className="mt-1 text-xs leading-5 text-slate-500">In-app messages are visible to learners when marked delivered. Email and WhatsApp only show external delivery when a sender is configured and the workflow actually uses that channel.</p>
+      <div className="mt-4 space-y-3">
         {notifications.length ? notifications.map((item) => (
-          <div key={item.id} className="rounded-xl bg-slate-950 p-3">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+          <div key={item.id} className="rounded-2xl border border-white/10 bg-slate-950 p-4">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
               <div className="min-w-0">
+                <p className="text-[11px] font-black uppercase tracking-[0.16em] text-emerald-300">{item.category ?? "Academy"} / {item.channel}</p>
                 <p className="break-words text-sm font-semibold text-white">{item.learner?.name ?? item.learner?.email ?? item.userId}</p>
-                <p className="mt-1 break-words text-xs text-slate-400">{item.subject}</p>
+                <p className="mt-2 break-words text-base font-black leading-snug text-slate-100">{item.subject}</p>
+                <p className="mt-2 line-clamp-2 text-xs leading-5 text-slate-400">{item.body}</p>
               </div>
-              <span className={cn("w-fit rounded-full px-2 py-1 text-[11px] font-black uppercase", notificationTone(item.status))}>{item.status}</span>
+              <span className={cn("w-fit shrink-0 rounded-full px-3 py-1.5 text-[11px] font-black uppercase", notificationTone(item.displayStatus ?? item.status))}>{item.displayStatus ?? item.status}</span>
             </div>
-            <div className="mt-3 grid gap-2 text-xs text-slate-400 sm:grid-cols-2">
-              <p><span className="font-bold text-slate-300">Channel:</span> {item.channel}</p>
-              <p><span className="font-bold text-slate-300">Created:</span> {formatDateTime(item.createdAt)}</p>
-              <p><span className="font-bold text-slate-300">Sent:</span> {item.sentAt ? formatDateTime(item.sentAt) : "Not marked sent"}</p>
-              <p><span className="font-bold text-slate-300">Delivery:</span> {item.deliveryLabel ?? "Unknown"}</p>
-              <p><span className="font-bold text-slate-300">Category:</span> {item.category ?? "Academy"}</p>
-              <p><span className="font-bold text-slate-300">Read:</span> {item.receipt?.readAt ? formatDateTime(item.receipt.readAt) : "Not read yet"}</p>
-              <p><span className="font-bold text-slate-300">Clicked:</span> {item.receipt?.clickedAt ? formatDateTime(item.receipt.clickedAt) : "No click recorded"}</p>
-              <p><span className="font-bold text-slate-300">Cooldown:</span> {item.cooldownLabel ?? "No cooldown"}</p>
+            <div className="mt-4 grid gap-3 md:grid-cols-2">
+              <InfoBlock label="Created" value={formatDateTime(item.createdAt)} />
+              <InfoBlock label="Sent / visible" value={item.sentAt ? formatDateTime(item.sentAt) : item.channel === "IN_APP" ? "Waiting to be visible in app" : "Waiting for sender"} />
+              <InfoBlock label="Delivery note" value={item.deliveryLabel ?? "Unknown"} />
+              <InfoBlock label="Cooldown" value={item.cooldownLabel ?? "No cooldown"} />
+              <InfoBlock label="Read receipt" value={item.receipt?.readAt ? formatDateTime(item.receipt.readAt) : "Not read yet"} />
+              <InfoBlock label="Action receipt" value={item.receipt?.clickedAt ? formatDateTime(item.receipt.clickedAt) : "No action recorded"} />
             </div>
             {onOpen && <Button className="mt-3 w-full sm:w-auto" variant="secondary" onClick={() => onOpen(item.userId)}>Open learner detail</Button>}
           </div>
         )) : <p className="text-sm text-slate-500">No Academy notifications yet.</p>}
       </div>
+    </div>
+  );
+}
+
+function InfoBlock({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+      <p className="text-[11px] font-black uppercase tracking-[0.14em] text-slate-500">{label}</p>
+      <p className="mt-1 break-words text-xs font-semibold leading-5 text-slate-200">{value}</p>
     </div>
   );
 }
@@ -686,7 +718,7 @@ function LearnerEngagementDrawer({ learner, onClose }: { learner: SelectedLearne
 }
 
 function notificationTone(status: string) {
-  if (status === "DELIVERED" || status === "SENT") return "bg-emerald-400/10 text-emerald-200";
+  if (status === "DELIVERED" || status === "SENT" || status === "VISIBLE IN APP" || status === "READ" || status === "ACTION RECORDED") return "bg-emerald-400/10 text-emerald-200";
   if (status === "FAILED") return "bg-red-400/10 text-red-200";
   return "bg-amber-400/10 text-amber-200";
 }
