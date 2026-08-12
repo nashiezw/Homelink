@@ -27,12 +27,15 @@ const DEFAULT_SETTINGS = {
   referralUrlBase: "",
   campaignSchedule: "",
   weeklyThemes: "",
+  lessonOnePlaybook: "If a learner has access but has not started, send a friendly first-lesson reminder within 24 hours.",
+  progressPlaybook: "At 25%, 50%, and 80%, send a progress nudge that points learners to the next unlocked action.",
+  completionPlaybook: "After completion, invite the learner to submit a review, opt in to the directory, and share a referral link.",
 };
 
 export async function getAdminAcademyEngagement() {
   const prisma = getMainPrisma() as any;
   await ensureEngagementSettings();
-  const [settingsRow, courses, profiles, testimonials, challenges, challengeSubmissions, officeHours, rsvps, referrals, moduleFeedback, courseProgressRows] = await Promise.all([
+  const [settingsRow, courses, profiles, testimonials, challenges, challengeSubmissions, officeHours, rsvps, referrals, moduleFeedback, courseProgressRows, activeEnrolments, approvedApplications] = await Promise.all([
     prisma.academyEngagementSetting.findUnique({ where: { id: "singleton" } }),
     prisma.trainingCourse.findMany({ select: { id: true, title: true, status: true }, orderBy: { title: "asc" } }),
     prisma.academyEngagementProfile.findMany({ orderBy: { updatedAt: "desc" }, take: 200 }),
@@ -44,6 +47,8 @@ export async function getAdminAcademyEngagement() {
     prisma.academyReferral.findMany({ orderBy: { createdAt: "desc" }, take: 200 }),
     prisma.academyModuleFeedback.findMany({ orderBy: { createdAt: "desc" }, take: 200 }),
     prisma.courseProgress.findMany({ select: { agentId: true, courseId: true, percentComplete: true, status: true, updatedAt: true }, take: 2000 }),
+    prisma.courseEnrolment.findMany({ where: { status: "ACTIVE" }, select: { agentId: true, courseId: true, createdAt: true }, take: 2000 }),
+    prisma.academyLearnerApplication.findMany({ where: { status: "APPROVED" }, select: { learnerId: true, courseId: true, createdAt: true }, take: 2000 }),
   ]);
   const learnerIds = unique([
     ...profiles.map((row: any) => row.learnerId),
@@ -86,7 +91,7 @@ export async function getAdminAcademyEngagement() {
       challengeApprovals: challengeSubmissions.filter((row: any) => row.status === "APPROVED").length,
       averageProgress: courseProgressRows.length ? Math.round(courseProgressRows.reduce((sum: number, row: any) => sum + Number(row.percentComplete ?? 0), 0) / courseProgressRows.length) : 0,
     },
-    reporting: buildEngagementReporting({ profiles, testimonials, challenges, challengeSubmissions, officeHours, rsvps, referrals, moduleFeedback, courseProgressRows }),
+    reporting: buildEngagementReporting({ profiles, testimonials, challenges, challengeSubmissions, officeHours, rsvps, referrals, moduleFeedback, courseProgressRows, activeEnrolments, approvedApplications }),
     profiles: profiles.map((row: any) => ({
       ...serializeDates(row),
       learner: learnerById.get(row.learnerId) ?? null,
@@ -241,6 +246,11 @@ export async function runAdminAcademyEngagementAction(body: Record<string, any>,
     await audit(actor, "academy.engagement.progress_nudges.send", "academy", { count });
     return { count };
   }
+  if (action === "send_journey_playbook_nudges") {
+    const count = await sendJourneyPlaybookNudges();
+    await audit(actor, "academy.engagement.journey_playbook_nudges.send", "academy", { count });
+    return { count };
+  }
   return null;
 }
 
@@ -279,10 +289,12 @@ export async function getLearnerAcademyEngagement(learnerId: string) {
   const profile = profiles.find((row: any) => row.courseId === null) ?? null;
   const settings = normalizeSettings(settingsRow?.payload);
   const journey = buildLearnerEngagementJourney({ courses, progressRows, certificates });
+  const nextAction = buildLearnerNextAction(journey, settings);
   return {
     settings,
     courses,
     journey,
+    nextAction,
     profile: profile ? serializeDates(profile) : null,
     profiles: profiles.map(serializeDates),
     referrals: referrals.map(serializeDates),
@@ -460,6 +472,52 @@ function buildLearnerEngagementJourney(input: {
     canSubmitReview: hasMeaningfulProgress,
     canJoinDirectory: completedCourseCount > 0,
     canRequestSpotlight: hasMeaningfulProgress,
+  };
+}
+
+function buildLearnerNextAction(journey: ReturnType<typeof buildLearnerEngagementJourney>, settings: Record<string, any>) {
+  if (!journey.hasActiveCourse) {
+    return {
+      title: "Choose your first Academy course",
+      body: "Register for a course to unlock the learner community, practical challenges, office hours, and progress support.",
+      href: "/academy?browse=1",
+      cta: "Browse courses",
+      tone: "info",
+    };
+  }
+  if (!journey.hasMeaningfulProgress) {
+    return {
+      title: "Start with Lesson 1",
+      body: "Open your course and complete the first lesson. Engagement tools stay light until you build your first progress record.",
+      href: "/dashboard/academy",
+      cta: "Open learner dashboard",
+      tone: "warning",
+    };
+  }
+  if (journey.completedCourseCount === 0) {
+    return {
+      title: "Keep momentum through the next checkpoint",
+      body: "You have started well. Continue the next lesson, quiz, assignment, or practical challenge that is available for your course.",
+      href: "/dashboard/academy",
+      cta: "Continue learning",
+      tone: "success",
+    };
+  }
+  if (settings.testimonialsEnabled) {
+    return {
+      title: "Share your graduate experience",
+      body: "You can submit a moderated review, opt in to the graduate directory, or invite another learner with your referral code.",
+      href: "/dashboard/academy",
+      cta: "Manage graduate options",
+      tone: "success",
+    };
+  }
+  return {
+    title: "Manage your graduate profile",
+    body: "Your course completion unlocks optional graduate visibility and community recognition controls.",
+    href: "/dashboard/academy",
+    cta: "Review options",
+    tone: "success",
   };
 }
 
@@ -653,10 +711,56 @@ async function sendProgressNudges() {
   return created;
 }
 
+async function sendJourneyPlaybookNudges() {
+  const prisma = getMainPrisma() as any;
+  const [settings, enrolments, progressRows] = await Promise.all([
+    getSettings(),
+    prisma.courseEnrolment.findMany({
+      where: { status: "ACTIVE" },
+      include: { course: { select: { title: true } } },
+      take: 1000,
+    }),
+    prisma.courseProgress.findMany({ select: { agentId: true, courseId: true, percentComplete: true, status: true }, take: 2000 }),
+  ]);
+  const progressByLearnerCourse = new Map<string, any>(progressRows.map((row: any) => [`${row.agentId}:${row.courseId}`, row]));
+  let created = 0;
+  for (const enrolment of enrolments) {
+    const progress = progressByLearnerCourse.get(`${enrolment.agentId}:${enrolment.courseId}`);
+    const percent = Number(progress?.percentComplete ?? 0);
+    const stage = !progress || percent <= 0 ? "START" : percent >= 100 || progress.status === "COMPLETED" ? "COMPLETE" : percent >= 80 ? "EIGHTY" : percent >= 50 ? "FIFTY" : percent >= 25 ? "TWENTY_FIVE" : "CONTINUE";
+    const eventType = `ACADEMY_JOURNEY_PLAYBOOK_${enrolment.courseId}_${enrolment.agentId}_${stage}`;
+    const existing = await prisma.trainingNotification.count({ where: { userId: enrolment.agentId, eventType } });
+    if (existing > 0) continue;
+    await notifyLearner(
+      enrolment.agentId,
+      eventType,
+      buildJourneyNudgeSubject(stage, enrolment.course?.title),
+      buildJourneyNudgeBody(stage, enrolment.course?.title, settings),
+    );
+    created += 1;
+  }
+  return created;
+}
+
 function buildProgressNudgeMessage(progress: number, courseTitle?: string | null) {
   if (progress >= 80) return `You are close to finishing ${courseTitle ?? "your Academy course"}. Open your learner dashboard and complete the final required checkpoints.`;
   if (progress >= 50) return `You are halfway through ${courseTitle ?? "your Academy course"}. Keep going with the next unlocked lesson or checkpoint.`;
   return `You have started building momentum in ${courseTitle ?? "your Academy course"}. Continue with the next lesson from your learner dashboard.`;
+}
+
+function buildJourneyNudgeSubject(stage: string, courseTitle?: string | null) {
+  if (stage === "START") return `Start Lesson 1 in ${courseTitle ?? "your Academy course"}`;
+  if (stage === "COMPLETE") return `Graduate options are open for ${courseTitle ?? "your Academy course"}`;
+  if (stage === "EIGHTY") return `You are close to finishing ${courseTitle ?? "your Academy course"}`;
+  if (stage === "FIFTY") return `You are halfway through ${courseTitle ?? "your Academy course"}`;
+  if (stage === "TWENTY_FIVE") return `Good progress in ${courseTitle ?? "your Academy course"}`;
+  return `Continue ${courseTitle ?? "your Academy course"}`;
+}
+
+function buildJourneyNudgeBody(stage: string, courseTitle?: string | null, settings?: Record<string, any>) {
+  if (stage === "START") return settings?.lessonOnePlaybook || `Your access to ${courseTitle ?? "the Academy course"} is active. Open your learner dashboard and start Lesson 1.`;
+  if (stage === "COMPLETE") return settings?.completionPlaybook || `You completed ${courseTitle ?? "your Academy course"}. You can now review graduate options in your Engagement Hub.`;
+  return settings?.progressPlaybook || `Keep going with ${courseTitle ?? "your Academy course"}. Open your learner dashboard for the next available lesson, quiz, assignment, or challenge.`;
 }
 
 function buildEngagementReporting(input: {
@@ -669,6 +773,8 @@ function buildEngagementReporting(input: {
   referrals: any[];
   moduleFeedback: any[];
   courseProgressRows: any[];
+  activeEnrolments: any[];
+  approvedApplications: any[];
 }) {
   const uniqueEngagedLearners = unique([
     ...input.profiles.map((row) => row.learnerId),
@@ -678,7 +784,26 @@ function buildEngagementReporting(input: {
     ...input.referrals.map((row) => row.referrerId),
     ...input.moduleFeedback.map((row) => row.learnerId),
   ]);
-  const activeLearners = unique(input.courseProgressRows.map((row) => row.agentId));
+  const activeLearners = unique([
+    ...input.courseProgressRows.map((row) => row.agentId),
+    ...input.activeEnrolments.map((row) => row.agentId),
+    ...input.approvedApplications.map((row) => row.learnerId),
+  ]);
+  const activeLearnerCoursePairs = unique([
+    ...input.activeEnrolments.map((row) => `${row.agentId}:${row.courseId}`),
+    ...input.approvedApplications.map((row) => `${row.learnerId}:${row.courseId}`),
+  ]);
+  const progressByLearnerCourse = new Map(input.courseProgressRows.map((row) => [`${row.agentId}:${row.courseId}`, row]));
+  const stageCounts = { notStarted: 0, started: 0, halfway: 0, nearlyComplete: 0, completed: 0 };
+  for (const pair of activeLearnerCoursePairs) {
+    const row = progressByLearnerCourse.get(pair);
+    const percent = Number(row?.percentComplete ?? 0);
+    if (!row || percent <= 0) stageCounts.notStarted += 1;
+    else if (row.status === "COMPLETED" || percent >= 100) stageCounts.completed += 1;
+    else if (percent >= 80) stageCounts.nearlyComplete += 1;
+    else if (percent >= 50) stageCounts.halfway += 1;
+    else stageCounts.started += 1;
+  }
   const rewardedReferrals = input.referrals.filter((row) => row.status === "REWARDED").length;
   const registeredReferrals = input.referrals.filter((row) => ["REGISTERED", "REWARDED"].includes(row.status)).length;
   const approvedTestimonials = input.testimonials.filter((row) => row.status === "APPROVED").length;
@@ -692,6 +817,7 @@ function buildEngagementReporting(input: {
     testimonialApprovalRate: rate(approvedTestimonials, submittedTestimonials),
     challengeApprovalRate: rate(approvedChallenges, submittedChallenges),
     rsvpRate: rate(input.rsvps.filter((row) => row.status !== "CANCELLED").length, input.officeHours.length ? activeLearners.length : 0),
+    stageCounts,
     pendingWork: input.testimonials.filter((row) => row.status === "PENDING").length
       + input.challengeSubmissions.filter((row) => row.status === "SUBMITTED").length
       + input.moduleFeedback.filter((row) => row.status === "NEW").length

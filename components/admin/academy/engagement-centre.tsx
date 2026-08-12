@@ -24,6 +24,7 @@ type EngagementData = {
     challengeApprovalRate: number;
     rsvpRate: number;
     pendingWork: number;
+    stageCounts: { notStarted: number; started: number; halfway: number; nearlyComplete: number; completed: number };
     recentActivity: Array<{ id: string; type: string; title: string; status: string; createdAt: string }>;
   };
 };
@@ -125,6 +126,7 @@ export function AcademyEngagementCentre() {
             <a href="/api/v1/admin/academy/engagement?format=csv" className="inline-flex min-h-11 items-center justify-center rounded-lg border border-white/10 bg-white px-4 py-2.5 text-sm font-bold text-slate-950 shadow-sm transition hover:bg-emerald-50">
               Export CSV
             </a>
+            <Button variant="secondary" disabled={busy} onClick={() => action({ action: "send_journey_playbook_nudges" }, "Journey playbook nudges sent to eligible learners.")}>Send journey nudges</Button>
             <Button variant="secondary" disabled={busy} onClick={() => action({ action: "send_progress_nudges" }, "Progress nudges sent to eligible learners.")}>Send progress nudges</Button>
             <Button disabled={busy} onClick={() => action({ action: "update_settings", settings: settingsDraft }, "Engagement settings saved.")}>Save engagement settings</Button>
           </div>
@@ -153,6 +155,17 @@ export function AcademyEngagementCentre() {
               <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber-200">Pending admin work</p>
               <p className="mt-3 text-3xl font-black text-white">{data.reporting.pendingWork}</p>
               <p className="mt-1 text-sm text-amber-100/80">Testimonials, challenges, feedback, and spotlights awaiting review.</p>
+            </div>
+          </div>
+          <div className="mt-4 rounded-2xl border border-white/10 bg-slate-900/70 p-4">
+            <p className="text-sm font-black text-white">Learner journey stage distribution</p>
+            <p className="mt-1 text-sm leading-6 text-slate-400">Calculated from real active enrolments, approved learner applications, and course progress records.</p>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+              <StageCard label="Not started" value={data.reporting.stageCounts.notStarted} tone="warning" />
+              <StageCard label="Started" value={data.reporting.stageCounts.started} />
+              <StageCard label="Halfway" value={data.reporting.stageCounts.halfway} />
+              <StageCard label="Nearly complete" value={data.reporting.stageCounts.nearlyComplete} tone="success" />
+              <StageCard label="Completed" value={data.reporting.stageCounts.completed} tone="success" />
             </div>
           </div>
         </Panel>
@@ -207,6 +220,15 @@ export function AcademyEngagementCentre() {
             <Field label="Referral reward label" help="Leave blank if there is no reward. This is visible to learners." value={settingsDraft.referralRewardLabel ?? ""} onChange={(referralRewardLabel) => setSettingsDraft({ ...settingsDraft, referralRewardLabel })} />
             <Textarea label="Campaign schedule" help="Internal admin reminder copy. This is not shown as a learner calendar unless you also add themes below." value={settingsDraft.campaignSchedule ?? ""} onChange={(campaignSchedule) => setSettingsDraft({ ...settingsDraft, campaignSchedule })} />
             <Textarea label="Community calendar themes" help="One learner-facing item per line. Leave blank to hide the Community calendar card." value={settingsDraft.weeklyThemes ?? ""} onChange={(weeklyThemes) => setSettingsDraft({ ...settingsDraft, weeklyThemes })} />
+            <div className="rounded-2xl border border-cyan-400/20 bg-cyan-400/10 p-4">
+              <p className="text-sm font-black text-white">Journey playbook messages</p>
+              <p className="mt-1 text-sm leading-6 text-cyan-100/80">These are admin-managed notification bodies used by Send journey nudges. Keep them practical and action-focused.</p>
+              <div className="mt-4 grid gap-3">
+                <Textarea label="Lesson 1 start playbook" help="Sent once to learners with active access but no course progress yet." value={settingsDraft.lessonOnePlaybook ?? ""} onChange={(lessonOnePlaybook) => setSettingsDraft({ ...settingsDraft, lessonOnePlaybook })} />
+                <Textarea label="Progress playbook" help="Sent once per learner/course stage while the learner is progressing." value={settingsDraft.progressPlaybook ?? ""} onChange={(progressPlaybook) => setSettingsDraft({ ...settingsDraft, progressPlaybook })} />
+                <Textarea label="Completion playbook" help="Sent once after completion to encourage review, directory opt-in, or referral sharing." value={settingsDraft.completionPlaybook ?? ""} onChange={(completionPlaybook) => setSettingsDraft({ ...settingsDraft, completionPlaybook })} />
+              </div>
+            </div>
           </div>
         </Panel>
 
@@ -320,6 +342,22 @@ function RateBar({ label, value }: { label: string; value: number }) {
       <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-800">
         <div className="h-full rounded-full bg-emerald-400" style={{ width: `${Math.max(0, Math.min(100, value))}%` }} />
       </div>
+    </div>
+  );
+}
+
+function StageCard({ label, value, tone = "default" }: { label: string; value: number; tone?: "default" | "warning" | "success" }) {
+  return (
+    <div className={cn(
+      "rounded-2xl border p-4",
+      tone === "warning"
+        ? "border-amber-400/20 bg-amber-400/10"
+        : tone === "success"
+          ? "border-emerald-400/20 bg-emerald-400/10"
+          : "border-white/10 bg-slate-950/70",
+    )}>
+      <p className="text-2xl font-black text-white">{value}</p>
+      <p className="mt-1 text-xs font-bold uppercase tracking-[0.12em] text-slate-400">{label}</p>
     </div>
   );
 }

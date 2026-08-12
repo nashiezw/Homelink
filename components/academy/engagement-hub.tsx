@@ -36,6 +36,13 @@ type EngagementData = {
     canJoinDirectory: boolean;
     canRequestSpotlight: boolean;
   };
+  nextAction: {
+    title: string;
+    body: string;
+    href: string;
+    cta: string;
+    tone: "info" | "warning" | "success";
+  };
   profile: {
     communityOptIn: boolean;
     ambassadorOptIn: boolean;
@@ -200,6 +207,26 @@ export function AcademyEngagementHub({ compact = false }: { compact?: boolean })
           ))}
         </div>
       </div>
+
+      <section className={cn(
+        "rounded-[24px] border p-4 shadow-[0_14px_40px_rgba(15,23,42,0.06)] sm:p-5",
+        data.nextAction.tone === "warning"
+          ? "border-amber-200 bg-amber-50 text-amber-950 dark:border-amber-400/20 dark:bg-amber-400/10 dark:text-amber-50"
+          : data.nextAction.tone === "success"
+            ? "border-emerald-200 bg-emerald-50 text-emerald-950 dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-50"
+            : "border-cyan-200 bg-cyan-50 text-cyan-950 dark:border-cyan-400/20 dark:bg-cyan-400/10 dark:text-cyan-50",
+      )}>
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div className="min-w-0">
+            <p className="text-xs font-black uppercase tracking-[0.18em] opacity-70">Recommended next step</p>
+            <h3 className="mt-1 text-xl font-black">{data.nextAction.title}</h3>
+            <p className="mt-2 max-w-3xl text-sm leading-6 opacity-80">{data.nextAction.body}</p>
+          </div>
+          <a href={data.nextAction.href} className="inline-flex min-h-11 w-full shrink-0 items-center justify-center rounded-xl bg-slate-950 px-4 py-2 text-sm font-black text-white shadow-sm transition hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-emerald-50 sm:w-auto">
+            {data.nextAction.cta}
+          </a>
+        </div>
+      </section>
 
       {!data.journey.hasActiveCourse && (
         <HubCard title="Start with a course" icon={BookOpen} eyebrow="First step">
