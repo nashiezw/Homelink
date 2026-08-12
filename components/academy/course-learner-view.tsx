@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import {
   Award,
@@ -144,6 +144,8 @@ type Tab = "curriculum" | "toolkit" | "materials" | "assessments" | "discussions
 const VALID_TABS: Tab[] = ["curriculum", "toolkit", "materials", "assessments", "discussions", "engagement", "progress"];
 
 export function CourseLearnerView({ courseId }: { courseId: string }) {
+  const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const initialTab = searchParams?.get("tab");
   const initialLessonId = searchParams?.get("lesson");
@@ -155,6 +157,14 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
   const [activeQuizId, setActiveQuizId] = useState<string | null>(null);
   const [activeExamId, setActiveExamId] = useState<string | null>(null);
   const [activeAssignmentId, setActiveAssignmentId] = useState<string | null>(null);
+
+  const clearLessonQuery = useCallback(() => {
+    if (!pathname || !searchParams?.has("lesson")) return;
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("lesson");
+    const query = params.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+  }, [pathname, router, searchParams]);
 
   const load = useCallback(async () => {
     const result = await apiFetch<CourseDetail>(`/api/v1/academy/courses/${courseId}`);
@@ -171,8 +181,11 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
     const lesson = data.course.modules
       .flatMap((module) => module.sections.flatMap((section) => section.lessons))
       .find((entry) => entry.id === initialLessonId);
-    if (lesson && !lesson.locked) setViewingLessonId(lesson.id);
-  }, [data, initialLessonId, viewingLessonId]);
+    if (lesson && !lesson.locked) {
+      setViewingLessonId(lesson.id);
+      clearLessonQuery();
+    }
+  }, [clearLessonQuery, data, initialLessonId, viewingLessonId]);
 
   if (!user) {
     return (
@@ -212,7 +225,10 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
         primaryColour={accent}
         courseTheme={theme}
         toolkitLocked={!data.toolkitAccess?.unlocked}
-        onBack={() => setViewingLessonId(null)}
+        onBack={() => {
+          setViewingLessonId(null);
+          clearLessonQuery();
+        }}
         onToggleBookmark={async (lessonId, bookmarked) => {
           await apiFetch("/api/v1/academy/bookmarks", { method: "POST", body: JSON.stringify({ lessonId, bookmarked }) });
           await load();
@@ -230,6 +246,7 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
           if (result.error) { showToast(result.error.message, "error"); return; }
           showToast(result.data?.courseCompleted ? "Course completed!" : "Lesson marked complete!");
           setViewingLessonId(null);
+          clearLessonQuery();
           await load();
         }}
       />

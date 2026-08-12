@@ -646,7 +646,7 @@ function buildLearnerNextAction(journey: ReturnType<typeof buildLearnerEngagemen
     return {
       title: "Share your graduate experience",
       body: "You can submit a moderated review, opt in to the graduate directory, or invite another learner with your referral code.",
-      href: "/dashboard/academy",
+      href: "#graduate-options",
       cta: "Manage graduate options",
       tone: "success",
     };
@@ -654,7 +654,7 @@ function buildLearnerNextAction(journey: ReturnType<typeof buildLearnerEngagemen
   return {
     title: "Manage your graduate profile",
     body: "Your course completion unlocks optional graduate visibility and community recognition controls.",
-    href: "/dashboard/academy",
+    href: "#graduate-options",
     cta: "Review options",
     tone: "success",
   };

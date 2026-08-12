@@ -69,6 +69,7 @@ export function AcademyEngagementHub({ compact = false }: { compact?: boolean })
   const [data, setData] = useState<EngagementData | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [pendingAction, setPendingAction] = useState<string | null>(null);
   const [profile, setProfile] = useState({
     communityOptIn: false,
     ambassadorOptIn: false,
@@ -133,14 +134,42 @@ export function AcademyEngagementHub({ compact = false }: { compact?: boolean })
     settings.linkedinPageUrl && { label: "Open LinkedIn page", href: String(settings.linkedinPageUrl), tone: "soft" },
   ].filter((link): link is { label: string; href: string; tone: string } => Boolean(link));
 
+  const nextActionHref = useMemo(() => {
+    if (!data) return "#";
+    if (!data.journey.hasActiveCourse) return "/academy?browse=1";
+    if (!data.journey.hasMeaningfulProgress) return "/dashboard/academy";
+    if (data.journey.completedCourseCount > 0) return "#graduate-options";
+    return "/dashboard/academy";
+  }, [data]);
+
   async function action(body: Record<string, unknown>, success: string) {
     setBusy(true);
+    setPendingAction(`${body.action ?? ""}:${body.notificationId ?? body.challengeId ?? body.officeHourId ?? ""}`);
     setMessage(null);
     const result = await apiFetch("/api/v1/academy/engagement", { method: "PATCH", body: JSON.stringify(body) });
     setBusy(false);
+    setPendingAction(null);
     if (result.error) {
       setMessage(result.error.message);
       return;
+    }
+    if (body.notificationId && result.data && data) {
+      const actionName = String(body.action ?? "");
+      const receipt = result.data as { readAt?: string | null; clickedAt?: string | null; dismissedAt?: string | null };
+      setData({
+        ...data,
+        messages: data.messages.map((item) => item.id === body.notificationId
+          ? {
+              ...item,
+              receipt: {
+                ...(item.receipt ?? {}),
+                ...(actionName === "mark_notification_read" ? { readAt: receipt.readAt ?? new Date().toISOString() } : {}),
+                ...(actionName === "mark_notification_clicked" ? { clickedAt: receipt.clickedAt ?? new Date().toISOString() } : {}),
+                ...(actionName === "dismiss_notification" ? { dismissedAt: receipt.dismissedAt ?? new Date().toISOString() } : {}),
+              },
+            }
+          : item),
+      });
     }
     setMessage(success);
     await load();
@@ -225,7 +254,7 @@ export function AcademyEngagementHub({ compact = false }: { compact?: boolean })
             <h3 className="mt-1 text-xl font-black">{data.nextAction.title}</h3>
             <p className="mt-2 max-w-3xl text-sm leading-6 opacity-80">{data.nextAction.body}</p>
           </div>
-          <a href={data.nextAction.href} className="inline-flex min-h-11 w-full shrink-0 items-center justify-center rounded-xl bg-slate-950 px-4 py-2 text-sm font-black text-white shadow-sm transition hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-emerald-50 sm:w-auto">
+          <a href={nextActionHref} className="inline-flex min-h-11 w-full shrink-0 items-center justify-center rounded-xl bg-slate-950 px-4 py-2 text-sm font-black text-white shadow-sm transition hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-emerald-50 sm:w-auto">
             {data.nextAction.cta}
           </a>
         </div>
@@ -259,9 +288,17 @@ export function AcademyEngagementHub({ compact = false }: { compact?: boolean })
                 <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">{item.body}</p>
                 <p className="mt-2 text-xs font-semibold text-slate-500">{formatDateTime(item.createdAt)} - {item.deliveryLabel ?? item.channel}</p>
                 <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-                  {!item.receipt?.readAt && <Button variant="secondary" loading={busy} onClick={() => action({ action: "mark_notification_read", notificationId: item.id }, "Message marked as read.")}>Mark read</Button>}
-                  {!item.receipt?.clickedAt && <Button loading={busy} onClick={() => action({ action: "mark_notification_clicked", notificationId: item.id }, "Message action recorded.")}>I acted on this</Button>}
-                  <Button variant="ghost" loading={busy} onClick={() => action({ action: "dismiss_notification", notificationId: item.id }, "Message dismissed.")}>Dismiss</Button>
+                  {!item.receipt?.readAt ? (
+                    <Button variant="secondary" loading={pendingAction === `mark_notification_read:${item.id}`} onClick={() => action({ action: "mark_notification_read", notificationId: item.id }, "Message marked as read.")}>Mark read</Button>
+                  ) : (
+                    <Button variant="secondary" disabled>Read</Button>
+                  )}
+                  {!item.receipt?.clickedAt ? (
+                    <Button loading={pendingAction === `mark_notification_clicked:${item.id}`} onClick={() => action({ action: "mark_notification_clicked", notificationId: item.id }, "Message action recorded.")}>I acted on this</Button>
+                  ) : (
+                    <Button disabled>Action recorded</Button>
+                  )}
+                  <Button variant="ghost" loading={pendingAction === `dismiss_notification:${item.id}`} onClick={() => action({ action: "dismiss_notification", notificationId: item.id }, "Message dismissed.")}>Dismiss</Button>
                 </div>
               </div>
             )) : <EmptyState title="No Academy messages yet" body="When the Academy sends progress nudges, office-hours updates, review prompts, or certificate messages, they will appear here." />}
@@ -289,7 +326,7 @@ export function AcademyEngagementHub({ compact = false }: { compact?: boolean })
         </HubCard>
       )}
 
-      <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1.05fr)_minmax(320px,0.95fr)]">
+      <div id="graduate-options" className="scroll-mt-24 grid items-start gap-5 lg:grid-cols-[minmax(0,1.05fr)_minmax(320px,0.95fr)]">
         {data.journey.hasActiveCourse && <HubCard title="Consent and public visibility" icon={ShieldCheck} eyebrow="Your choice">
           <p className="text-sm leading-6 text-slate-600 dark:text-slate-300">These options are voluntary. They do not affect course access, assessments, certificates, or progress.</p>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -319,7 +356,7 @@ export function AcademyEngagementHub({ compact = false }: { compact?: boolean })
           {settings.ambassadorEnabled && data.journey.canUseReferrals && (
             <Field className="mt-3" label="Optional shared post link" placeholder="Paste a WhatsApp status, Facebook, or LinkedIn post link if available" value={profile.sharedPostUrl} onChange={(sharedPostUrl) => setProfile({ ...profile, sharedPostUrl })} />
           )}
-          <Button className="mt-4 w-full sm:w-auto" loading={busy} loadingText="Saving..." onClick={() => action({ action: "save_profile", profile }, "Engagement preferences saved.")}>Save preferences</Button>
+          <Button className="mt-4 w-full sm:w-auto" loading={pendingAction === "save_profile:"} loadingText="Saving..." onClick={() => action({ action: "save_profile", profile }, "Engagement preferences saved.")}>Save preferences</Button>
         </HubCard>}
 
         {settings.referralsEnabled && data.journey.canUseReferrals && (
@@ -340,7 +377,7 @@ export function AcademyEngagementHub({ compact = false }: { compact?: boolean })
                 <Field label="Name" value={referral.referredName} onChange={(referredName) => setReferral({ ...referral, referredName })} />
                 <Field label="Email" type="email" value={referral.referredEmail} onChange={(referredEmail) => setReferral({ ...referral, referredEmail })} />
               </div>
-              <Button loading={busy} disabled={!referral.referredName.trim() && !referral.referredEmail.trim()} onClick={() => action({ action: "create_referral", ...referral, rewardLabel: settings.referralRewardLabel }, "Referral recorded.")}>Record referral</Button>
+              <Button loading={pendingAction === "create_referral:"} disabled={!referral.referredName.trim() && !referral.referredEmail.trim()} onClick={() => action({ action: "create_referral", ...referral, rewardLabel: settings.referralRewardLabel }, "Referral recorded.")}>Record referral</Button>
             </div>
             <MiniStatus rows={data.referrals.map((item) => ({ id: item.id, title: item.referredName || item.referredEmail || "Referral", detail: item.status }))} empty="No referrals recorded yet." />
           </HubCard>
@@ -395,7 +432,7 @@ export function AcademyEngagementHub({ compact = false }: { compact?: boolean })
                 <input className="mt-1" type="checkbox" checked={testimonial.publicConsent} onChange={(event) => setTestimonial({ ...testimonial, publicConsent: event.target.checked })} />
                 <span>I allow HouseLink to review this for public use.</span>
               </label>
-              <Button loading={busy} disabled={!testimonial.title.trim() || !testimonial.body.trim()} onClick={() => action({ action: "submit_testimonial", testimonial }, "Testimonial submitted for moderation.")}>Submit review</Button>
+              <Button loading={pendingAction === "submit_testimonial:"} disabled={!testimonial.title.trim() || !testimonial.body.trim()} onClick={() => action({ action: "submit_testimonial", testimonial }, "Testimonial submitted for moderation.")}>Submit review</Button>
             </div> : <LockedNotice title="Reviews unlock after progress" body="Complete at least 25% of a course or finish a certificate before leaving a review. That keeps Academy reviews trustworthy." />}
             <MiniStatus rows={data.testimonials.map((item) => ({ id: item.id, title: item.title, detail: item.status }))} empty="No testimonials submitted yet." />
           </HubCard>
@@ -417,7 +454,7 @@ export function AcademyEngagementHub({ compact = false }: { compact?: boolean })
                   ) : (
                     <div className="mt-3 grid gap-2">
                       <Textarea label="Evidence / link / summary" value={challengeEvidence[challenge.id] ?? ""} onChange={(value) => setChallengeEvidence({ ...challengeEvidence, [challenge.id]: value })} />
-                      <Button loading={busy} disabled={!challengeEvidence[challenge.id]?.trim()} onClick={() => action({ action: "submit_challenge", challengeId: challenge.id, evidence: challengeEvidence[challenge.id] }, "Challenge evidence submitted.")}>Submit evidence</Button>
+                      <Button loading={pendingAction === `submit_challenge:${challenge.id}`} disabled={!challengeEvidence[challenge.id]?.trim()} onClick={() => action({ action: "submit_challenge", challengeId: challenge.id, evidence: challengeEvidence[challenge.id] }, "Challenge evidence submitted.")}>Submit evidence</Button>
                     </div>
                   )}
                 </div>
@@ -435,7 +472,7 @@ export function AcademyEngagementHub({ compact = false }: { compact?: boolean })
                   <p className="text-sm text-slate-500">{formatDateTime(officeHour.startsAt)}</p>
                   {officeHour.description && <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">{officeHour.description}</p>}
                   <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-                    <Button loading={busy} onClick={() => action({ action: "rsvp_office_hour", officeHourId: officeHour.id, status: officeHour.rsvp?.status === "GOING" ? "CANCELLED" : "GOING" }, officeHour.rsvp?.status === "GOING" ? "RSVP cancelled." : "RSVP saved.")}>{officeHour.rsvp?.status === "GOING" ? "Cancel RSVP" : "RSVP"}</Button>
+                    <Button loading={pendingAction === `rsvp_office_hour:${officeHour.id}`} onClick={() => action({ action: "rsvp_office_hour", officeHourId: officeHour.id, status: officeHour.rsvp?.status === "GOING" ? "CANCELLED" : "GOING" }, officeHour.rsvp?.status === "GOING" ? "RSVP cancelled." : "RSVP saved.")}>{officeHour.rsvp?.status === "GOING" ? "Cancel RSVP" : "RSVP"}</Button>
                     {officeHour.link && <a href={officeHour.link} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center justify-center rounded-lg border border-slate-200 px-3 py-2 text-sm font-bold text-slate-800 dark:border-slate-700 dark:text-slate-100">Open link</a>}
                   </div>
                 </div>

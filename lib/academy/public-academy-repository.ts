@@ -305,7 +305,9 @@ export async function getLearnerAcademyDashboard(learnerId: string, options?: { 
   const firstLessonAction = (() => {
     if (continueLearning?.lessonId) return null;
     const notStarted = approved.find((entry) => {
+      if (completedOrCertifiedCourseIds.has(entry.course.id)) return false;
       const progress = courseProgressRows.find((row) => row.courseId === entry.course.id);
+      if (progress?.status === "COMPLETED" || (progress?.percentComplete ?? 0) >= 100) return false;
       return !progress || (progress.percentComplete ?? 0) <= 0;
     });
     if (!notStarted) return null;
