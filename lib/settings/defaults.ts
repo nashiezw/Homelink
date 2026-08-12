@@ -17,6 +17,7 @@ export function getPlatformIntegrationEnvOverrides(): Partial<PlatformSettings["
   const googleMapsKey = env("GOOGLE_MAPS_API_KEY") || env("NEXT_PUBLIC_GOOGLE_MAPS_API_KEY");
   const smtpPass = env("SMTP_PASS") || env("SMTP_PASSWORD") || env("RESEND_API_KEY");
   const smtpFrom = env("SMTP_FROM") || env("EMAIL_FROM") || env("RESEND_FROM") || env("FROM_EMAIL");
+  const whatsappAccessToken = env("WHATSAPP_ACCESS_TOKEN") || env("WHATSAPP_BUSINESS_TOKEN");
 
   if (googleMapsKey) overrides.googleMapsKey = googleMapsKey;
   if (env("CLOUDINARY_CLOUD_NAME")) overrides.cloudinaryCloud = env("CLOUDINARY_CLOUD_NAME");
@@ -33,6 +34,11 @@ export function getPlatformIntegrationEnvOverrides(): Partial<PlatformSettings["
     if (!overrides.smtpUser && env("RESEND_API_KEY")) overrides.smtpUser = "resend";
   }
   if (smtpFrom) overrides.smtpFrom = smtpFrom;
+  if (env("WHATSAPP_PROVIDER")) overrides.whatsappProvider = env("WHATSAPP_PROVIDER");
+  if (whatsappAccessToken) overrides.whatsappAccessToken = whatsappAccessToken;
+  if (env("WHATSAPP_PHONE_NUMBER_ID")) overrides.whatsappPhoneNumberId = env("WHATSAPP_PHONE_NUMBER_ID");
+  if (env("WHATSAPP_BUSINESS_ACCOUNT_ID")) overrides.whatsappBusinessAccountId = env("WHATSAPP_BUSINESS_ACCOUNT_ID");
+  if (env("WHATSAPP_TEMPLATE_NAMESPACE")) overrides.whatsappTemplateNamespace = env("WHATSAPP_TEMPLATE_NAMESPACE");
   if (env("NEXT_PUBLIC_ANALYTICS_ID")) overrides.analyticsId = env("NEXT_PUBLIC_ANALYTICS_ID");
   if (env("NEXT_PUBLIC_CDN_URL")) overrides.cdnUrl = env("NEXT_PUBLIC_CDN_URL");
 
@@ -366,6 +372,11 @@ export const defaultPlatformSettings: PlatformSettings = {
     smtpUser: env("SMTP_USER") || (env("RESEND_API_KEY") ? "resend" : ""),
     smtpPass: env("SMTP_PASS") || env("SMTP_PASSWORD") || env("RESEND_API_KEY"),
     smtpFrom: env("SMTP_FROM") || env("EMAIL_FROM") || env("RESEND_FROM") || env("FROM_EMAIL") || "support@houselink.co.zw",
+    whatsappProvider: env("WHATSAPP_PROVIDER"),
+    whatsappAccessToken: env("WHATSAPP_ACCESS_TOKEN") || env("WHATSAPP_BUSINESS_TOKEN"),
+    whatsappPhoneNumberId: env("WHATSAPP_PHONE_NUMBER_ID"),
+    whatsappBusinessAccountId: env("WHATSAPP_BUSINESS_ACCOUNT_ID"),
+    whatsappTemplateNamespace: env("WHATSAPP_TEMPLATE_NAMESPACE"),
     analyticsId: env("NEXT_PUBLIC_ANALYTICS_ID"),
     cdnUrl: env("NEXT_PUBLIC_CDN_URL"),
   },

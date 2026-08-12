@@ -200,6 +200,11 @@ export type PlatformSettings = {
     smtpUser: string;
     smtpPass: string;
     smtpFrom: string;
+    whatsappProvider: string;
+    whatsappAccessToken: string;
+    whatsappPhoneNumberId: string;
+    whatsappBusinessAccountId: string;
+    whatsappTemplateNamespace: string;
     analyticsId: string;
     cdnUrl: string;
   };

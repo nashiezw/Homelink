@@ -64,10 +64,22 @@ export async function createEmailTemplate(
 ): Promise<EmailTemplate> {
   const prisma = getMainPrisma();
   
-  const template = await prisma.academyEmailTemplate.create({
-    data: {
+  const template = await prisma.academyEmailTemplate.upsert({
+    where: {
+      templateKey_language: {
+        templateKey: input.templateKey,
+        language: input.language,
+      },
+    },
+    create: {
       templateKey: input.templateKey,
       language: input.language,
+      subject: input.subject,
+      htmlContent: input.htmlContent,
+      textContent: input.textContent,
+      active: input.active ?? true,
+    },
+    update: {
       subject: input.subject,
       htmlContent: input.htmlContent,
       textContent: input.textContent,

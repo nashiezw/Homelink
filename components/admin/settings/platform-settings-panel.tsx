@@ -363,7 +363,7 @@ export function PlatformSettingsPanel({ defaultTab = "general" }: { defaultTab?:
                 key={key}
                 label={key}
                 value={String(value)}
-                secret={key.toLowerCase().includes("secret") || key.toLowerCase().includes("pass")}
+                secret={key.toLowerCase().includes("secret") || key.toLowerCase().includes("pass") || key.toLowerCase().includes("token")}
                 onChange={(v) =>
                   setSettings({
                     ...settings,
@@ -480,7 +480,7 @@ function SettingsLoadError({ message, onRetry }: { message: string; onRetry: () 
 
 function mergeSavedSettingsForForm(serverSettings: PlatformSettings, submittedSettings: PlatformSettings): PlatformSettings {
   const integrations = { ...serverSettings.integrations };
-  for (const key of ["cloudinarySecret", "smtpPass"] as const) {
+  for (const key of ["cloudinarySecret", "smtpPass", "whatsappAccessToken"] as const) {
     const serverValue = integrations[key];
     const submittedValue = submittedSettings.integrations[key];
     

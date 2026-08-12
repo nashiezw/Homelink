@@ -314,7 +314,12 @@ export function EmailTemplatesManagementPanel({ action }: { action?: (body: Reco
             <h3 className="mt-2 text-2xl font-bold text-white">Transactional email templates</h3>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">Edit the real email templates used by Academy registration, verification, payment reminders, and waitlist alerts. Variables are shown per template so admins do not have to guess keys.</p>
           </div>
-          <AdminSearchInput value={search} onChange={setSearch} placeholder="Search saved templates..." className="lg:w-80" />
+          <div className="flex flex-col gap-2 sm:flex-row lg:items-center">
+            <AdminSearchInput value={search} onChange={setSearch} placeholder="Search saved templates..." className="lg:w-80" />
+            <Button className="w-full sm:w-auto" onClick={() => openTemplateEditor("registration_confirmation")}>
+              <Plus className="size-4" /> New template override
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -338,45 +343,65 @@ export function EmailTemplatesManagementPanel({ action }: { action?: (body: Reco
               <p className="mt-4 text-sm font-bold text-white">{purpose.label}</p>
               <p className="mt-2 min-h-12 text-xs leading-5 text-slate-400">{purpose.description}</p>
               <p className="mt-3 text-[11px] font-semibold uppercase tracking-wide text-slate-500">{purpose.key}</p>
+              <p className={`mt-4 rounded-xl border px-3 py-2 text-xs leading-5 ${existing ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-100" : "border-amber-400/20 bg-amber-400/10 text-amber-100"}`}>
+                {existing ? "Saved database template. Click to edit, deactivate, test, or delete this override." : "System default. Click to edit and save it as the admin-managed template."}
+              </p>
             </button>
           );
         })}
       </div>
 
-      {loading ? (
-        <div className="flex items-center justify-center py-12">
-          <RefreshCw className="size-8 animate-spin text-slate-400" />
+      <section className="overflow-hidden rounded-2xl border border-white/10 bg-slate-900/60">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 p-4">
+          <div>
+            <h3 className="font-semibold text-white">Saved database overrides</h3>
+            <p className="mt-1 text-sm text-slate-400">
+              These rows are the templates Academy emails will use before falling back to the system defaults.
+            </p>
+          </div>
+          <AdminStatusBadge status={`${filteredTemplates.length} saved`} variant="info" />
         </div>
-      ) : filteredTemplates.length === 0 ? (
-        <AdminEmptyState icon={Mail} title="No email templates found" description="Create your first email template to get started" />
-      ) : (
-        <AdminDataTable
-          rows={filteredTemplates}
-          columns={[
-            { key: "templateKey", header: "Purpose", render: (t) => <span className="font-semibold text-white">{ACADEMY_EMAIL_TEMPLATE_PURPOSES.find((purpose) => purpose.key === t.templateKey)?.label ?? t.templateKey}</span> },
-            { key: "language", header: "Language", render: (t) => t.language.toUpperCase() },
-            { key: "subject", header: "Subject", render: (t) => t.subject },
-            { key: "status", header: "Status", render: (t) => <AdminStatusBadge status={t.active ? "Active" : "Inactive"} variant={t.active ? "success" : "muted"} /> },
-            { key: "updatedAt", header: "Last Updated", render: (t) => new Date(t.updatedAt).toLocaleDateString() },
-            {
-              key: "actions",
-              header: "Actions",
-              render: (t) => (
-                <div className="flex gap-2">
-                  <Button variant="ghost" onClick={() => { setSelectedTemplate(t); setFormData({ ...t, textContent: t.textContent || "" }); setDrawer("edit"); }}>
-                    <Pencil className="size-4" />
-                  </Button>
-                  <Button variant="ghost" onClick={() => setDeleteTemplate(t)}>
-                    <Trash2 className="size-4 text-red-400" />
-                  </Button>
-                </div>
-              ),
-            },
-          ]}
-        />
-      )}
+        {loading ? (
+          <div className="flex items-center justify-center py-12">
+            <RefreshCw className="size-8 animate-spin text-slate-400" />
+          </div>
+        ) : filteredTemplates.length === 0 ? (
+          <div className="m-4 rounded-xl border border-dashed border-white/15 bg-slate-950/50 p-6 text-center">
+            <Mail className="mx-auto size-9 text-slate-500" />
+            <p className="mt-3 font-semibold text-white">No saved overrides yet</p>
+            <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-slate-400">
+              The system defaults are still editable. Click any card above, adjust the wording, then save it to make that template admin-managed.
+            </p>
+          </div>
+        ) : (
+          <AdminDataTable
+            rows={filteredTemplates}
+            columns={[
+              { key: "templateKey", header: "Purpose", render: (t) => <span className="font-semibold text-white">{ACADEMY_EMAIL_TEMPLATE_PURPOSES.find((purpose) => purpose.key === t.templateKey)?.label ?? t.templateKey}</span> },
+              { key: "language", header: "Language", render: (t) => t.language.toUpperCase() },
+              { key: "subject", header: "Subject", render: (t) => t.subject },
+              { key: "status", header: "Status", render: (t) => <AdminStatusBadge status={t.active ? "Active" : "Inactive"} variant={t.active ? "success" : "muted"} /> },
+              { key: "updatedAt", header: "Last Updated", render: (t) => new Date(t.updatedAt).toLocaleDateString() },
+              {
+                key: "actions",
+                header: "Actions",
+                render: (t) => (
+                  <div className="flex gap-2">
+                    <Button variant="ghost" onClick={() => { setSelectedTemplate(t); setFormData({ ...t, textContent: t.textContent || "" }); setDrawer("edit"); }}>
+                      <Pencil className="size-4" />
+                    </Button>
+                    <Button variant="ghost" onClick={() => setDeleteTemplate(t)}>
+                      <Trash2 className="size-4 text-red-400" />
+                    </Button>
+                  </div>
+                ),
+              },
+            ]}
+          />
+        )}
+      </section>
 
-      <AdminDrawer open={Boolean(drawer)} onClose={() => { setDrawer(null); setSelectedTemplate(null); }} title={drawer === "create" ? "Create Email Template" : "Edit Email Template"} width="xl">
+      <AdminDrawer open={Boolean(drawer)} onClose={() => { setDrawer(null); setSelectedTemplate(null); }} title={drawer === "create" ? "Create Template Override" : "Edit Saved Template"} width="xl">
         <div className="space-y-5">
           <div className="rounded-xl border border-emerald-400/20 bg-emerald-400/10 p-4">
             <p className="text-sm font-bold text-white">{selectedPurpose.label}</p>

@@ -904,7 +904,11 @@ function buildDeliveryIntegrations(settings: Record<string, any>, platformSettin
     && integrations?.smtpUser
     && integrations?.smtpPass,
   );
-  const whatsappConnected = Boolean(process.env.WHATSAPP_ACCESS_TOKEN || process.env.WHATSAPP_BUSINESS_TOKEN || process.env.WHATSAPP_PROVIDER);
+  const whatsappConnected = Boolean(
+    integrations?.whatsappProvider
+    && integrations?.whatsappAccessToken
+    && integrations?.whatsappPhoneNumberId,
+  );
   return [
     {
       channel: "IN_APP",
@@ -924,8 +928,12 @@ function buildDeliveryIntegrations(settings: Record<string, any>, platformSettin
       channel: "WHATSAPP",
       label: "WhatsApp delivery",
       connected: whatsappConnected,
-      receiptSupport: whatsappConnected ? "Ready for WhatsApp provider receipts when connected." : "Not connected. Learners only see admin-managed WhatsApp links/buttons.",
-      adminAction: settings.whatsappUrl ? "Community invite link is visible; automated WhatsApp sending still requires provider setup." : "Add WhatsApp links in Engagement Controls; connect a provider for automated sends.",
+      receiptSupport: whatsappConnected ? "WhatsApp provider settings are configured in Platform Admin Settings. Provider receipts can be recorded when the send workflow is enabled." : "WhatsApp provider is not fully configured. Learners can still see admin-managed WhatsApp links/buttons.",
+      adminAction: whatsappConnected
+        ? `Using ${integrations?.whatsappProvider || "WhatsApp Business"} with phone number ID ${integrations?.whatsappPhoneNumberId}.`
+        : settings.whatsappUrl
+          ? "Community invite link is visible. Add provider, access token, and phone number ID in Platform Admin Settings for automated sends."
+          : "Add WhatsApp community links in Engagement Controls, then add provider credentials in Platform Admin Settings for automated sends.",
     },
   ];
 }

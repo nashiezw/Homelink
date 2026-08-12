@@ -14,6 +14,7 @@ export function redactPlatformSettingsForAdmin(settings: PlatformSettings): Plat
       ...settings.integrations,
       cloudinarySecret: maskSecret(settings.integrations.cloudinarySecret),
       smtpPass: maskSecret(settings.integrations.smtpPass),
+      whatsappAccessToken: maskSecret(settings.integrations.whatsappAccessToken),
     },
   };
 }
@@ -54,6 +55,10 @@ export function mergePlatformSecrets(incoming: PlatformSettings, current: Platfo
         current.integrations.cloudinarySecret,
       ),
       smtpPass: applySecretPreservation(incoming.integrations.smtpPass, current.integrations.smtpPass),
+      whatsappAccessToken: applySecretPreservation(
+        incoming.integrations.whatsappAccessToken,
+        current.integrations.whatsappAccessToken,
+      ),
     },
   };
 }

@@ -60,6 +60,21 @@ export async function getPostgresPlatformSettings() {
   if (envOverrides.smtpFrom && !integrations.smtpFrom) {
     integrations.smtpFrom = envOverrides.smtpFrom;
   }
+  if (envOverrides.whatsappProvider && !integrations.whatsappProvider) {
+    integrations.whatsappProvider = envOverrides.whatsappProvider;
+  }
+  if (envOverrides.whatsappAccessToken && !integrations.whatsappAccessToken) {
+    integrations.whatsappAccessToken = envOverrides.whatsappAccessToken;
+  }
+  if (envOverrides.whatsappPhoneNumberId && !integrations.whatsappPhoneNumberId) {
+    integrations.whatsappPhoneNumberId = envOverrides.whatsappPhoneNumberId;
+  }
+  if (envOverrides.whatsappBusinessAccountId && !integrations.whatsappBusinessAccountId) {
+    integrations.whatsappBusinessAccountId = envOverrides.whatsappBusinessAccountId;
+  }
+  if (envOverrides.whatsappTemplateNamespace && !integrations.whatsappTemplateNamespace) {
+    integrations.whatsappTemplateNamespace = envOverrides.whatsappTemplateNamespace;
+  }
   if (envOverrides.analyticsId && !integrations.analyticsId) {
     integrations.analyticsId = envOverrides.analyticsId;
   }

@@ -1216,6 +1216,15 @@ function ActivationMetric({
   );
 }
 
+function ActivationDetail({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0">
+      <p className="text-[11px] font-black uppercase tracking-[0.14em] text-slate-500">{label}</p>
+      <p className="mt-1 break-words text-sm font-semibold text-slate-200">{value}</p>
+    </div>
+  );
+}
+
 function ActivationAdvice({ title, body }: { title: string; body: string }) {
   return (
     <div className="rounded-xl border border-emerald-400/15 bg-slate-950/40 p-4">
@@ -2449,49 +2458,52 @@ function LearnerActivationPanel({
           </div>
           <AdminStatusBadge status={`${filteredRows.length} shown`} variant="info" />
         </div>
-        <AdminDataTable
-          rows={filteredRows}
-          columns={[
-            {
-              key: "learner",
-              header: "Learner",
-              render: (row) => (
-                <div>
-                  <p className="font-semibold text-white">{row.learnerName}</p>
-                  <p className="text-xs text-slate-500">{row.learnerEmail}</p>
-                </div>
-              ),
-            },
-            { key: "course", header: "Course", render: (row) => <span className="text-sm text-slate-300">{row.courseTitle}</span> },
-            {
-              key: "state",
-              header: "State",
-              render: (row) => <AdminStatusBadge status={row.status === "NOT_STARTED" ? "Not started Lesson 1" : "Started"} variant={row.status === "NOT_STARTED" ? "warning" : "success"} />,
-            },
-            { key: "firstLesson", header: "First lesson", render: (row) => <span className="text-sm text-slate-300">{row.firstLessonTitle}</span> },
-            { key: "age", header: "Age", render: (row) => <span className="text-sm text-slate-400">{formatActivationAge(row.registeredAt, row.daysSinceRegistration)}</span> },
-            {
-              key: "actions",
-              header: "Actions",
-              render: (row) => (
-                <div className="flex flex-wrap justify-end gap-2">
-                  <Button variant="secondary" onClick={() => void copyActivationMessage(row)}>
-                    <Copy className="size-4" /> Copy Message
-                  </Button>
-                  <a
-                    href={row.firstLessonId ? `/dashboard/academy/${row.courseId}?lesson=${encodeURIComponent(row.firstLessonId)}` : `/dashboard/academy/${row.courseId}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-white px-3 py-2 text-sm font-bold text-slate-950 hover:bg-emerald-50"
-                  >
-                    <Eye className="size-4" /> Preview
-                  </a>
-                </div>
-              ),
-            },
-          ]}
-          emptyMessage="No activation records match the current filters."
-        />
+        {filteredRows.length === 0 ? (
+          <EmptyPanelText>No activation records match the current filters.</EmptyPanelText>
+        ) : (
+          <div className="grid gap-3 p-4 lg:grid-cols-2 2xl:grid-cols-3">
+            {filteredRows.map((row) => {
+              const previewHref = row.firstLessonId
+                ? `/dashboard/academy/${row.courseId}?lesson=${encodeURIComponent(row.firstLessonId)}`
+                : `/dashboard/academy/${row.courseId}`;
+              return (
+                <article key={row.id} className="rounded-2xl border border-white/10 bg-slate-950/50 p-4 shadow-[0_1px_0_rgba(255,255,255,0.04)_inset]">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0">
+                      <p className="break-words font-semibold text-white">{row.learnerName}</p>
+                      <p className="mt-1 break-all text-xs text-slate-500">{row.learnerEmail}</p>
+                    </div>
+                    <AdminStatusBadge
+                      status={row.status === "NOT_STARTED" ? "Not started Lesson 1" : "Started"}
+                      variant={row.status === "NOT_STARTED" ? "warning" : "success"}
+                    />
+                  </div>
+
+                  <div className="mt-4 grid gap-3 rounded-xl border border-white/[0.06] bg-slate-900/55 p-3 sm:grid-cols-2">
+                    <ActivationDetail label="Course" value={row.courseTitle} />
+                    <ActivationDetail label="First lesson" value={row.firstLessonTitle} />
+                    <ActivationDetail label="Age" value={formatActivationAge(row.registeredAt, row.daysSinceRegistration)} />
+                    <ActivationDetail label="Registered" value={row.registeredAt ? new Date(row.registeredAt).toLocaleDateString() : "Unknown"} />
+                  </div>
+
+                  <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                    <Button variant="secondary" onClick={() => void copyActivationMessage(row)} className="w-full">
+                      <Copy className="size-4" /> Copy Message
+                    </Button>
+                    <a
+                      href={previewHref}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-lg bg-white px-3 py-2 text-sm font-bold text-slate-950 hover:bg-emerald-50"
+                    >
+                      <Eye className="size-4" /> Preview Lesson
+                    </a>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        )}
       </section>
 
       <section className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-5">
