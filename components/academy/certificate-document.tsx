@@ -305,9 +305,6 @@ export function CertificateDocument({
               <filter id="soft-shadow" x="-20%" y="-20%" width="140%" height="140%">
                 <feDropShadow dx="0" dy="12" stdDeviation="12" floodColor="#061936" floodOpacity="0.18" />
               </filter>
-              <filter id="logo-plaque-shadow" x="-20%" y="-30%" width="140%" height="160%">
-                <feDropShadow dx="0" dy="4" stdDeviation="4" floodColor="#061936" floodOpacity="0.06" />
-              </filter>
               <path id="embossed-seal-top-arc" d="M105 590 A80 80 0 0 0 265 590" />
               <path id="embossed-seal-bottom-arc" d="M105 590 A80 80 0 0 1 265 590" />
               <path id="center-seal-top-arc" d="M668 834 A32 32 0 0 0 732 834" />
@@ -326,18 +323,18 @@ export function CertificateDocument({
             <CertificateCorner x={45} y={951} corner="bl" />
             <CertificateCorner x={1355} y={951} corner="br" />
 
+            <g opacity="0.82">
+              <line x1="76" y1="67" x2="510" y2="67" stroke="#d4ad5b" strokeWidth="2" />
+              <line x1="890" y1="67" x2="1324" y2="67" stroke="#d4ad5b" strokeWidth="2" />
+              <line x1="96" y1="91" x2="510" y2="91" stroke="#d4ad5b" strokeWidth="1" opacity="0.5" />
+              <line x1="890" y1="91" x2="1304" y2="91" stroke="#d4ad5b" strokeWidth="1" opacity="0.5" />
+            </g>
             <g>
-              <line x1="76" y1="69" x2="470" y2="69" stroke="#d4ad5b" strokeWidth="2" opacity="0.68" />
-              <line x1="930" y1="69" x2="1324" y2="69" stroke="#d4ad5b" strokeWidth="2" opacity="0.68" />
-              <line x1="96" y1="85" x2="468" y2="85" stroke="#d4ad5b" strokeWidth="1.2" opacity="0.42" />
-              <line x1="932" y1="85" x2="1304" y2="85" stroke="#d4ad5b" strokeWidth="1.2" opacity="0.42" />
+              <rect x="512" y="34" width="376" height="70" rx="5" fill="#fff8ea" opacity="0.56" />
+              <line x1="525" y1="43" x2="875" y2="43" stroke="#d4ad5b" strokeWidth="1" opacity="0.42" />
+              <line x1="525" y1="96" x2="875" y2="96" stroke="#d4ad5b" strokeWidth="1" opacity="0.42" />
             </g>
-            <g filter="url(#logo-plaque-shadow)">
-              <rect x="470" y="31" width="460" height="76" rx="22" fill="#fff8ea" opacity="0.92" stroke="#d4ad5b" strokeWidth="1.4" />
-              <rect x="484" y="43" width="432" height="52" rx="16" fill="none" stroke="#e5d8b7" strokeWidth="1" opacity="0.68" />
-              <line x1="525" y1="101" x2="875" y2="101" stroke="#d4ad5b" strokeWidth="1" opacity="0.55" />
-            </g>
-            <image href={getBase64Image(logoHref)} x="545" y="48" width="310" height="40" preserveAspectRatio="xMidYMid meet" />
+            <image href={getBase64Image(logoHref)} x="545" y="47" width="310" height="44" preserveAspectRatio="xMidYMid meet" />
             <text x="700" y="143" textAnchor="middle" fontFamily="Arial, sans-serif" fontSize="17" fontWeight="800" letterSpacing="9" fill="#071936">
               ZIMBABWE ACADEMY
             </text>
