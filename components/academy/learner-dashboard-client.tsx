@@ -76,6 +76,14 @@ type LearnerDashboard = {
     badgeName: string;
     firstLesson?: { lessonId: string; lessonTitle: string; courseId: string; courseTitle: string } | null;
     certificate: { id: string; certificateNumber: string; downloadUrl: string } | null;
+    certificatePreview?: {
+      enabled: boolean;
+      title: string;
+      learnerName: string;
+      courseTitle: string;
+      progress: number;
+      requirements: Array<{ label: string; complete: boolean }>;
+    };
   }>;
   certificates: Array<{
     id: string;
@@ -398,6 +406,16 @@ export function LearnerDashboardClient() {
                     <div className="h-full rounded-full transition-all" style={{ width: `${course.progress}%`, backgroundColor: course.theme.accent }} />
                   </div>
                   <p className="mt-2 text-xs text-slate-500">{course.progress}% complete / {course.badgeName}</p>
+                  {course.certificatePreview?.enabled && (
+                    <LockedCertificatePreview
+                      learnerName={course.certificatePreview.learnerName}
+                      courseTitle={course.certificatePreview.courseTitle}
+                      certificateTitle={course.certificatePreview.title}
+                      progress={course.certificatePreview.progress}
+                      unlocked={Boolean(course.certificate)}
+                      compact
+                    />
+                  )}
                   <button
                     type="button"
                     onClick={() => toggleProgrammeDetails(course.id)}
@@ -896,6 +914,56 @@ function StatusPill({ status }: { status: string }) {
     <span className={cn("inline-flex rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide", styles[status] ?? "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300")}>
       {status.replace(/_/g, " ")}
     </span>
+  );
+}
+
+function LockedCertificatePreview({
+  learnerName,
+  courseTitle,
+  certificateTitle,
+  progress,
+  unlocked,
+  compact = false,
+}: {
+  learnerName: string;
+  courseTitle: string;
+  certificateTitle: string;
+  progress: number;
+  unlocked: boolean;
+  compact?: boolean;
+}) {
+  return (
+    <div className={cn("mt-4 overflow-hidden rounded-xl border", unlocked ? "border-emerald-200 bg-emerald-50" : "border-amber-200 bg-amber-50/70")}>
+      <div className="flex items-center justify-between gap-3 px-3 py-2">
+        <div>
+          <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">{unlocked ? "Certificate unlocked" : "Certificate preview"}</p>
+          <p className="mt-0.5 line-clamp-1 text-xs font-bold text-slate-800">{certificateTitle}</p>
+        </div>
+        {unlocked ? <Award className="size-4 shrink-0 text-emerald-700" /> : <Lock className="size-4 shrink-0 text-amber-700" />}
+      </div>
+      <div className={cn("relative mx-3 mb-3 aspect-[1.414/1] overflow-hidden rounded-lg border border-slate-200 bg-[#061936] p-2 shadow-sm", !unlocked && "select-none")}>
+        <div className={cn("h-full rounded-md bg-[#fffaf0] p-3 text-center transition", !unlocked && "blur-[1.5px] opacity-75")}>
+          <div className="mx-auto mb-1 h-1 w-16 rounded-full bg-amber-400" />
+          <p className="text-[8px] font-black uppercase tracking-[0.24em] text-slate-700">HouseLink Zimbabwe Academy</p>
+          <p className={cn("font-serif font-black uppercase tracking-[0.18em] text-slate-900", compact ? "mt-1 text-[13px]" : "mt-2 text-lg")}>Certificate</p>
+          <p className="text-[8px] uppercase tracking-[0.2em] text-amber-700">of completion</p>
+          <p className={cn("mt-2 font-serif italic text-slate-950", compact ? "text-lg" : "text-2xl")}>{learnerName}</p>
+          <p className="mx-auto mt-1 max-w-[78%] text-[8px] font-semibold leading-snug text-slate-700">is working toward completion of</p>
+          <p className="mx-auto mt-1 max-w-[82%] text-[9px] font-black uppercase tracking-[0.12em] text-emerald-700">{courseTitle}</p>
+          <div className="mx-auto mt-2 h-1.5 w-28 overflow-hidden rounded-full bg-slate-200">
+            <div className="h-full rounded-full bg-emerald-600" style={{ width: `${Math.min(100, Math.max(0, progress))}%` }} />
+          </div>
+        </div>
+        {!unlocked && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/28 text-white">
+            <div className="flex size-11 items-center justify-center rounded-full bg-slate-950/75 shadow-lg">
+              <Lock className="size-5" />
+            </div>
+            <p className="mt-2 rounded-full bg-slate-950/75 px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em]">Locked</p>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 

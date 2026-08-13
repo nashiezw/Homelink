@@ -131,6 +131,8 @@ type CourseDetail = {
     exams: Array<{ id: string; title: string; description?: string | null; durationMinutes: number; passingScore: number; attemptLimit: number; attemptsUsed: number; attemptsRemaining: number; bestScore: number | null; passed: boolean }>;
   };
   materials: Array<{ id: string; title: string; subtitle: string; summary: string; moduleTitle: string; lessonTitle: string; estimatedMinutes: number; location: string; fileType: string; downloadUrl: string; viewUrl: string }>;
+  certificate?: { id: string; certificateNumber: string; issuedAt: string; downloadUrl: string } | null;
+  application?: { id: string; status: string; accessEndsAt?: string | null } | null;
 };
 
 type CourseGate = {
@@ -747,10 +749,13 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
       )}
 
       {tab === "progress" && (
-        <div className="academy-panel mt-6 rounded-xl p-6">
-          <p className="text-3xl font-bold text-emerald-600">{data.course.progress}%</p>
-          <p className="text-slate-600 mt-1">Course completion / Status: {data.course.status.replace(/_/g, " ")}</p>
-          <p className="text-sm text-slate-500 mt-4">Pass mark: {data.course.passingPercentage}% / Complete all training sessions{data.course.certificateEnabled ? " to earn your course certificate" : ""}.</p>
+        <div className="mt-6 space-y-5">
+          <CertificateUnlockPanel data={data} accent={accent} learnerName={user.name || "Learner Name"} onOpenTab={setTab} />
+          <div className="academy-panel rounded-xl p-6">
+            <p className="text-3xl font-bold text-emerald-600">{data.course.progress}%</p>
+            <p className="text-slate-600 mt-1">Course completion / Status: {data.course.status.replace(/_/g, " ")}</p>
+            <p className="text-sm text-slate-500 mt-4">Pass mark: {data.course.passingPercentage}% / Complete all training sessions{data.course.certificateEnabled ? " to earn your course certificate" : ""}.</p>
+          </div>
         </div>
       )}
     </PageShell>
@@ -762,6 +767,131 @@ function AssessmentStat({ label, value, accent }: { label: string; value: string
     <div className="academy-card rounded-xl p-4 sm:p-5">
       <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">{label}</p>
       <p className="mt-1 text-base font-bold leading-snug sm:text-lg" style={{ color: accent }}>{value}</p>
+    </div>
+  );
+}
+
+function CertificateUnlockPanel({ data, accent, learnerName, onOpenTab }: { data: CourseDetail; accent: string; learnerName: string; onOpenTab: (tab: Tab) => void }) {
+  const completedLessons = data.course.modules.reduce((sum, module) => sum + module.completedCount, 0);
+  const totalLessons = data.course.modules.reduce((sum, module) => sum + module.lessonCount, 0);
+  const quizzesPassed = data.assessments.quizzes.filter((quiz) => quiz.passed).length;
+  const assignmentsAccepted = data.assessments.assignments.filter((assignment) => assignment.passed).length;
+  const examsPassed = data.assessments.exams.filter((exam) => exam.passed).length;
+  const certificateUnlocked = Boolean(data.certificate);
+  const requirements = [
+    { label: `Complete lessons (${completedLessons}/${totalLessons})`, complete: totalLessons === 0 || completedLessons >= totalLessons, href: "#curriculum" },
+    { label: `Pass quizzes (${quizzesPassed}/${data.assessments.quizzes.length})`, complete: data.assessments.quizzes.length === 0 || quizzesPassed >= data.assessments.quizzes.length, href: "#assessments" },
+    { label: `Submit approved assignments (${assignmentsAccepted}/${data.assessments.assignments.length})`, complete: data.assessments.assignments.length === 0 || assignmentsAccepted >= data.assessments.assignments.length, href: "#assessments" },
+    { label: data.assessments.exams.length ? `Pass final exam (${examsPassed}/${data.assessments.exams.length})` : "Final exam not required", complete: data.assessments.exams.length === 0 || examsPassed >= data.assessments.exams.length, href: "#assessments" },
+    { label: "Reach 100% course completion", complete: data.course.progress >= 100, href: "#progress" },
+  ];
+  const remaining = requirements.filter((item) => !item.complete).length;
+  const nextRequirement = requirements.find((item) => !item.complete);
+
+  return (
+    <section className="academy-panel overflow-hidden rounded-xl p-0">
+      <div className="grid gap-0 lg:grid-cols-[0.95fr_1.05fr]">
+        <div className="relative overflow-hidden bg-slate-950 p-5 text-white sm:p-6">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(16,185,129,0.26),transparent_38%)]" />
+          <div className="relative">
+            <p className="text-[11px] font-black uppercase tracking-[0.2em] text-emerald-200">Your certificate</p>
+            <h3 className="mt-2 text-xl font-black leading-tight sm:text-2xl">
+              {certificateUnlocked ? "Certificate ready to view" : "Locked until completion"}
+            </h3>
+            <p className="mt-2 text-sm leading-6 text-slate-300">
+              {certificateUnlocked
+                ? `Your real certificate ${data.certificate?.certificateNumber ?? ""} is issued from the database and ready to open.`
+                : nextRequirement
+                  ? `${remaining} requirement${remaining === 1 ? "" : "s"} left. Next: ${nextRequirement.label}.`
+                  : "Final certificate checks are being prepared."}
+            </p>
+            <LockedCertificateMini
+              learnerName={learnerName}
+              courseTitle={data.course.title}
+              certificateTitle={data.programme?.certificateTitle ?? `${data.course.title} Certificate`}
+              progress={data.course.progress}
+              unlocked={certificateUnlocked}
+            />
+          </div>
+        </div>
+        <div className="p-5 sm:p-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-500">Unlock checklist</p>
+              <h3 className="mt-1 text-lg font-bold text-slate-950 dark:text-white">What you need to complete</h3>
+            </div>
+            <div className="rounded-full bg-slate-100 px-3 py-1 text-sm font-black text-slate-800 dark:bg-slate-800 dark:text-slate-100">{data.course.progress}% complete</div>
+          </div>
+          <div className="mt-5 space-y-3">
+            {requirements.map((item) => (
+              <div key={item.label} className={cn("flex items-start gap-3 rounded-xl border p-3", item.complete ? "border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-100" : "border-slate-200 bg-white text-slate-700 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300")}>
+                <CheckCircle2 className={cn("mt-0.5 size-4 shrink-0", item.complete ? "text-emerald-600" : "text-slate-300")} />
+                <span className="text-sm font-semibold leading-5">{item.label}</span>
+              </div>
+            ))}
+          </div>
+          {certificateUnlocked && data.certificate ? (
+            <Link
+              href={data.certificate.downloadUrl}
+              className="mt-5 inline-flex w-full items-center justify-center rounded-lg px-4 py-3 text-sm font-black text-white sm:w-auto"
+              style={{ backgroundColor: accent }}
+            >
+              View certificate
+            </Link>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                if (nextRequirement?.href === "#assessments") onOpenTab("assessments");
+                else if (nextRequirement?.href === "#curriculum") onOpenTab("curriculum");
+              }}
+              className="mt-5 inline-flex w-full items-center justify-center rounded-lg px-4 py-3 text-sm font-black text-white sm:w-auto"
+              style={{ backgroundColor: accent }}
+            >
+              Continue toward certificate
+            </button>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function LockedCertificateMini({
+  learnerName,
+  courseTitle,
+  certificateTitle,
+  progress,
+  unlocked,
+}: {
+  learnerName: string;
+  courseTitle: string;
+  certificateTitle: string;
+  progress: number;
+  unlocked: boolean;
+}) {
+  return (
+    <div className="relative mt-5 aspect-[1.414/1] overflow-hidden rounded-xl border border-white/20 bg-[#061936] p-2 shadow-hero">
+      <div className={cn("h-full rounded-lg bg-[#fffaf0] p-4 text-center transition", !unlocked && "blur-[1.6px] opacity-75")}>
+        <div className="mx-auto h-1 w-24 rounded-full bg-amber-400" />
+        <p className="mt-3 text-[9px] font-black uppercase tracking-[0.24em] text-slate-700">HouseLink Zimbabwe Academy</p>
+        <p className="mt-2 font-serif text-xl font-black uppercase tracking-[0.18em] text-slate-900 sm:text-2xl">Certificate</p>
+        <p className="text-[10px] uppercase tracking-[0.2em] text-amber-700">of completion</p>
+        <p className="mt-4 font-serif text-3xl italic text-slate-950 sm:text-4xl">{learnerName}</p>
+        <p className="mx-auto mt-2 max-w-[78%] text-xs font-semibold leading-snug text-slate-700">{certificateTitle}</p>
+        <p className="mx-auto mt-2 max-w-[80%] text-xs font-black uppercase tracking-[0.12em] text-emerald-700">{courseTitle}</p>
+        <div className="mx-auto mt-4 h-2 w-40 overflow-hidden rounded-full bg-slate-200">
+          <div className="h-full rounded-full bg-emerald-600" style={{ width: `${Math.min(100, Math.max(0, progress))}%` }} />
+        </div>
+      </div>
+      {!unlocked && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/35 text-white">
+          <div className="flex size-14 items-center justify-center rounded-full bg-slate-950/80 shadow-lg">
+            <Lock className="size-7" />
+          </div>
+          <p className="mt-3 rounded-full bg-slate-950/80 px-4 py-1.5 text-xs font-black uppercase tracking-[0.18em]">Locked preview</p>
+        </div>
+      )}
     </div>
   );
 }

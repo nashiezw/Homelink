@@ -122,7 +122,8 @@ export async function getLearnerAcademyDashboard(learnerId: string, options?: { 
   }
   if (options?.isTrainer) announcementAudiences.add("TRAINERS");
   if (options?.isPublicLearner) announcementAudiences.add("PUBLIC_LEARNERS");
-  const [applications, dashboardCourses, notifications, announcements, certificates, courseProgressRows, resourceAccessRows] = await Promise.all([
+  const [learner, applications, dashboardCourses, notifications, announcements, certificates, courseProgressRows, resourceAccessRows] = await Promise.all([
+    prisma.user.findUnique({ where: { id: learnerId }, select: { name: true, email: true } }),
     prisma.academyLearnerApplication.findMany({
       where: {
         learnerId,
@@ -166,6 +167,7 @@ export async function getLearnerAcademyDashboard(learnerId: string, options?: { 
         title: true,
         subtitle: true,
         shortDescription: true,
+        certificateEnabled: true,
         featured: true,
         createdAt: true,
       },
@@ -379,6 +381,18 @@ export async function getLearnerAcademyDashboard(learnerId: string, options?: { 
             downloadUrl: `/dashboard/academy/certificate/${certificate.id}`,
           }
         : null,
+      certificatePreview: {
+        enabled: course.certificateEnabled,
+        title: course.certificateEnabled ? `${course.title} Certificate` : "Course completion",
+        learnerName: learner?.name || "Learner Name",
+        courseTitle: course.title,
+        progress: Number(courseProgress?.percentComplete ?? 0),
+        requirements: buildDashboardCertificateRequirements({
+          progress: Number(courseProgress?.percentComplete ?? 0),
+          completed: Boolean(certificate) || courseProgress?.status === "COMPLETED" || Number(courseProgress?.percentComplete ?? 0) >= 100,
+          certificateIssued: Boolean(certificate),
+        }),
+      },
       firstLesson: firstLessonByCourseId.get(course.id) ?? null,
     };
   }))).sort((a, b) => a.sortOrder - b.sortOrder || a.title.localeCompare(b.title));
@@ -938,6 +952,14 @@ function buildAssessmentSummary(input: {
   return `Complete the lessons, ${joined}, and meet the ${input.passMark}% course pass requirement${input.certificateEnabled ? " to unlock the certificate" : ""}.`;
 }
 
+function buildDashboardCertificateRequirements(input: { progress: number; completed: boolean; certificateIssued: boolean }) {
+  return [
+    { label: "Reach 100% course progress", complete: input.completed || input.progress >= 100 },
+    { label: "Complete required assessments", complete: input.completed },
+    { label: "Certificate record issued", complete: input.certificateIssued },
+  ];
+}
+
 export async function getAcademySettingsPublic() {
   const settings = await getMainPrisma().trainingSetting.findUnique({ where: { id: "singleton" } });
   const payload = (settings?.payload ?? {}) as Record<string, unknown>;
@@ -986,7 +1008,7 @@ export async function getLearnerCourseDetail(learnerId: string, courseId: string
   const progress = calculateCourseProgress(course, completedIds);
   const courseProgress = await prisma.courseProgress.findUnique({ where: { courseId_agentId: { courseId, agentId: learnerId } } });
 
-  const [quizAttempts, assignmentSubmissions, examAttempts, settings, bookmarkRows, retakeRules, programmeBadge] = await Promise.all([
+  const [quizAttempts, assignmentSubmissions, examAttempts, settings, bookmarkRows, retakeRules, programmeBadge, certificate] = await Promise.all([
     prisma.quizAttempt.findMany({ where: { agentId: learnerId, quiz: { courseId } }, orderBy: { startedAt: "desc" } }),
     prisma.assignmentSubmission.findMany({ where: { agentId: learnerId, assignment: { courseId } }, orderBy: { submittedAt: "desc" } }),
     prisma.examAttempt.findMany({ where: { agentId: learnerId, exam: { courseId } }, orderBy: { startedAt: "desc" } }),
@@ -994,6 +1016,11 @@ export async function getLearnerCourseDetail(learnerId: string, courseId: string
     prisma.lessonProgress.findMany({ where: { agentId: learnerId, status: "BOOKMARKED" }, select: { lessonId: true } }),
     getCourseRetakeRules(courseId),
     programme ? prisma.badge.findUnique({ where: { id: programme.badgeId } }) : Promise.resolve(null),
+    prisma.certificateIssue.findFirst({
+      where: { agentId: learnerId, courseId, status: "ACTIVE" },
+      select: { id: true, certificateNumber: true, issuedAt: true },
+      orderBy: { issuedAt: "desc" },
+    }),
   ]);
   const bookmarkIds = new Set(bookmarkRows.map((row) => row.lessonId));
 
@@ -1222,6 +1249,14 @@ export async function getLearnerCourseDetail(learnerId: string, courseId: string
       readiness,
     },
     materials: flattenCourseMaterials(course),
+    certificate: certificate
+      ? {
+          id: certificate.id,
+          certificateNumber: certificate.certificateNumber,
+          issuedAt: certificate.issuedAt.toISOString(),
+          downloadUrl: `/dashboard/academy/certificate/${certificate.id}`,
+        }
+      : null,
     application: application
       ? {
           id: application.id,
