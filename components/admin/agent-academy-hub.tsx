@@ -65,6 +65,7 @@ import { BarChart, MetricRow } from "@/components/admin/charts";
 import { CourseWorkspace } from "@/components/admin/academy/course-workspace";
 import { AcademyHubNav, resolveAcademyNav, type AcademyPrimaryTab } from "@/components/admin/academy/academy-hub-nav";
 import { AcademyEngagementCentre } from "@/components/admin/academy/engagement-centre";
+import { LessonMediaPreview } from "@/components/admin/academy/lesson-media-preview";
 import { EmailTemplatesManagementPanel, BrandingManagementPanel, InstructorsManagementPanel, RefundsManagementPanel } from "@/components/admin/academy/enhancement-panels";
 import { cn } from "@/lib/utils";
 import type { LucideIcon } from "lucide-react";
@@ -253,6 +254,8 @@ type AcademyLesson = {
   lessonResources?: Array<{ id: string; title: string; body: string; type: string; sortOrder: number }>;
   lessonDownloads?: Array<{ id: string; title: string; url: string; type: string }>;
   richText?: string;
+  transcript?: string | null;
+  lessonNotes?: string | null;
   videoUrl?: string | null;
   embeddedVideoUrl?: string | null;
   coverImageUrl?: string | null;
@@ -2985,6 +2988,8 @@ function LessonDrawer({ open, busy, lesson: editingLesson, courses: _courses, on
     title: editingLesson?.title ?? "",
     summary: editingLesson?.summary ?? "",
     richText: editingLesson?.richText ?? "",
+    transcript: editingLesson?.transcript ?? "",
+    lessonNotes: editingLesson?.lessonNotes ?? "",
     lessonDepth: lessonDepthFromResources(editingLesson?.lessonResources ?? []),
     videoUrl: editingLesson?.videoUrl ?? "",
     embeddedVideoUrl: editingLesson?.embeddedVideoUrl ?? "",
@@ -3001,6 +3006,8 @@ function LessonDrawer({ open, busy, lesson: editingLesson, courses: _courses, on
       title: editingLesson?.title ?? "",
       summary: editingLesson?.summary ?? "",
       richText: editingLesson?.richText ?? "",
+      transcript: editingLesson?.transcript ?? "",
+      lessonNotes: editingLesson?.lessonNotes ?? "",
       lessonDepth: lessonDepthFromResources(editingLesson?.lessonResources ?? []),
       videoUrl: editingLesson?.videoUrl ?? "",
       embeddedVideoUrl: editingLesson?.embeddedVideoUrl ?? "",
@@ -3019,6 +3026,8 @@ function LessonDrawer({ open, busy, lesson: editingLesson, courses: _courses, on
         <TextInput label="Lesson title" value={lesson.title} onChange={(title) => setLesson({ ...lesson, title })} className="sm:col-span-2" />
         <TextArea label="Summary" value={lesson.summary} onChange={(summary) => setLesson({ ...lesson, summary })} className="sm:col-span-2" />
         <TextArea label="Rich content (HTML)" value={lesson.richText} onChange={(richText) => setLesson({ ...lesson, richText })} className="sm:col-span-2" rows={6} />
+        <TextArea label="Transcript" value={lesson.transcript} onChange={(transcript) => setLesson({ ...lesson, transcript })} className="sm:col-span-2" rows={4} />
+        <TextArea label="Lesson notes" value={lesson.lessonNotes} onChange={(lessonNotes) => setLesson({ ...lesson, lessonNotes })} className="sm:col-span-2" rows={3} />
         <div className="sm:col-span-2 rounded-xl border border-white/10 bg-slate-900/60 p-4">
           <p className="text-sm font-semibold text-white">Premium lesson depth</p>
           <p className="mt-1 text-xs text-slate-400">Optional per-lesson content. Empty fields use smart fallbacks, so every lesson still displays well.</p>
@@ -3051,6 +3060,7 @@ function LessonDrawer({ open, busy, lesson: editingLesson, courses: _courses, on
           onError={(message) => showToast(message, "error")}
           className="sm:col-span-2"
         />
+        <LessonMediaPreview input={lesson} className="sm:col-span-2" />
         <MediaUrlInput
           label="PDF"
           value={lesson.pdfUrl}
@@ -3562,9 +3572,17 @@ function MediaUrlInput({
         placeholder="Paste a hosted URL or upload a file"
         className="mt-1 w-full min-w-0 rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-white outline-none focus:border-emerald-500/40"
       />
+      <p className="mt-1 text-xs leading-5 text-slate-500">{mediaUploadGuidance(kind)}</p>
       {value ? <p className="mt-1 truncate text-xs text-slate-500">{value}</p> : null}
     </div>
   );
+}
+
+function mediaUploadGuidance(kind: "image" | "video" | "audio" | "document") {
+  if (kind === "video") return "Video: MP4, WebM, or MOV under 25MB.";
+  if (kind === "audio") return "Audio: MP3, M4A, WAV, or WebM under 15MB.";
+  if (kind === "image") return "Images: JPG, PNG, or WebP. Cover images should be 16:9, at least 1280x720.";
+  return "Documents: PDF, DOCX, XLSX, PPTX, or ZIP under 25MB.";
 }
 
 function TextArea({ label, value, onChange, className, rows = 4 }: { label: string; value: string; onChange: (value: string) => void; className?: string; rows?: number }) {

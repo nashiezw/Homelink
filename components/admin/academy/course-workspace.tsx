@@ -25,6 +25,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api/client";
 import { AdminStatPill, AdminStatusBadge } from "@/components/admin/ui/admin-ui";
+import { LessonMediaPreview } from "@/components/admin/academy/lesson-media-preview";
 
 type LessonNode = {
   id: string;
@@ -105,6 +106,14 @@ type CourseTree = {
 
 const STEPS = ["Overview", "Curriculum", "Lesson Editor", "Assessments", "Publish"] as const;
 type Step = (typeof STEPS)[number];
+type LessonMediaFilter = "ALL" | "MISSING" | "AUDIO" | "VIDEO" | "COVER_ONLY";
+const LESSON_MEDIA_FILTERS: Array<{ id: LessonMediaFilter; label: string }> = [
+  { id: "ALL", label: "All lessons" },
+  { id: "MISSING", label: "Missing media" },
+  { id: "AUDIO", label: "Audio lessons" },
+  { id: "VIDEO", label: "Video lessons" },
+  { id: "COVER_ONLY", label: "Cover only" },
+];
 
 const STEP_DETAILS: Record<Step, { icon: typeof Target; title: string; description: string }> = {
   Overview: { icon: Target, title: "Course setup", description: "Name, promise, media, SEO, pass mark, and retake rules." },
@@ -143,6 +152,7 @@ export function CourseWorkspace({
   const [selectedAssignmentId, setSelectedAssignmentId] = useState<string | null>(null);
   const [selectedQuestionId, setSelectedQuestionId] = useState<string | null>(null);
   const [selectedLearnerId, setSelectedLearnerId] = useState<string>("");
+  const [lessonMediaFilter, setLessonMediaFilter] = useState<LessonMediaFilter>("ALL");
   const [overrideQuizId, setOverrideQuizId] = useState<string>("");
   const [overrideAssignmentId, setOverrideAssignmentId] = useState<string>("");
   const [overrideLessonId, setOverrideLessonId] = useState<string>("");
@@ -201,6 +211,11 @@ export function CourseWorkspace({
   const allLessons = useMemo(
     () => tree?.modules.flatMap((m) => m.sections.flatMap((s) => s.lessons.map((l) => ({ ...l, moduleId: m.id, sectionId: s.id, moduleTitle: m.title })))) ?? [],
     [tree],
+  );
+  const mediaStats = useMemo(() => buildLessonMediaStats(allLessons), [allLessons]);
+  const filteredLessonEditorLessons = useMemo(
+    () => allLessons.filter((lesson) => lessonMatchesMediaFilter(lesson, lessonMediaFilter)),
+    [allLessons, lessonMediaFilter],
   );
   const moduleOptions = useMemo(() => tree?.modules.map((module) => ({ id: module.id, title: module.title })) ?? [], [tree]);
   const lessonOptions = useMemo(
@@ -503,6 +518,13 @@ export function CourseWorkspace({
             <AdminStatPill label="Quizzes" value={String(tree.stats.quizCount)} />
             <AdminStatPill label="Assignments" value={String(tree.stats.assignmentCount)} />
             <AdminStatPill label="Exams" value={String(tree.stats.examCount)} />
+          </div>
+          <div className="grid gap-4 md:grid-cols-5">
+            <AdminStatPill label="Video lessons" value={String(mediaStats.video)} />
+            <AdminStatPill label="Audio lessons" value={String(mediaStats.audio)} />
+            <AdminStatPill label="Cover only" value={String(mediaStats.coverOnly)} />
+            <AdminStatPill label="Coming soon" value={String(mediaStats.missing)} />
+            <AdminStatPill label="Audio transcripts" value={`${mediaStats.transcripts}/${mediaStats.audio}`} />
           </div>
           <div className="rounded-xl border border-white/10 p-4 text-sm text-slate-300">
             <AdminStatusBadge status={tree.status} variant={tree.status === "PUBLISHED" ? "success" : "warning"} />
@@ -836,11 +858,24 @@ export function CourseWorkspace({
       {step === "Lesson Editor" && (
         <div className="grid gap-4 lg:grid-cols-[240px_1fr]">
           <div className="max-h-[520px] overflow-y-auto rounded-xl border border-white/10 p-2">
-            {allLessons.map((lesson) => (
+            <div className="mb-2 grid gap-1">
+              {LESSON_MEDIA_FILTERS.map((filter) => (
+                <button
+                  key={filter.id}
+                  type="button"
+                  onClick={() => setLessonMediaFilter(filter.id)}
+                  className={`rounded-lg px-3 py-2 text-left text-xs font-bold transition ${lessonMediaFilter === filter.id ? "bg-cyan-400/15 text-cyan-100" : "text-slate-500 hover:bg-white/5 hover:text-slate-300"}`}
+                >
+                  {filter.label}
+                </button>
+              ))}
+            </div>
+            {filteredLessonEditorLessons.map((lesson) => (
               <button key={lesson.id} type="button" onClick={() => setSelectedLessonId(lesson.id)} className={`block w-full rounded-lg px-3 py-2 text-left text-sm ${selectedLessonId === lesson.id ? "bg-emerald-500/20 text-emerald-100" : "text-slate-300 hover:bg-white/5"}`}>
                 {lesson.title}
               </button>
             ))}
+            {!filteredLessonEditorLessons.length ? <p className="rounded-lg border border-dashed border-white/10 p-3 text-xs leading-5 text-slate-500">No lessons match this media filter.</p> : null}
           </div>
           {selectedLesson ? (
             <div className="space-y-4 rounded-xl border border-white/10 p-4">
@@ -883,6 +918,7 @@ export function CourseWorkspace({
                 <CourseMediaField label="Audio" value={lessonDraft.audioUrl ?? ""} accept="audio/*" kind="audio" onChange={(v) => setLessonDraft({ ...lessonDraft, audioUrl: v })} />
                 <CourseMediaField label="PDF" value={lessonDraft.pdfUrl ?? ""} accept=".pdf,application/pdf" kind="document" onChange={(v) => setLessonDraft({ ...lessonDraft, pdfUrl: v })} />
               </div>
+              <LessonMediaPreview input={lessonDraft} />
               <label className="block rounded-xl border border-white/10 bg-slate-950/50 p-4 text-sm text-slate-300">Completion gate
                 <select
                   value={lessonDraft.completionRequirement ?? "VIEW"}
@@ -1570,6 +1606,31 @@ function stripHtml(value: string | null | undefined) {
   return String(value ?? "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
 }
 
+function buildLessonMediaStats(lessons: Array<Partial<LessonNode>>) {
+  return lessons.reduce((stats, lesson) => {
+    const hasVideo = Boolean(lesson.videoUrl || lesson.embeddedVideoUrl);
+    const hasAudio = Boolean(lesson.audioUrl);
+    const hasCover = Boolean(lesson.coverImageUrl);
+    if (hasVideo) stats.video += 1;
+    else if (hasAudio) stats.audio += 1;
+    else if (hasCover) stats.coverOnly += 1;
+    else stats.missing += 1;
+    if (hasAudio && lesson.transcript?.trim()) stats.transcripts += 1;
+    return stats;
+  }, { video: 0, audio: 0, coverOnly: 0, missing: 0, transcripts: 0 });
+}
+
+function lessonMatchesMediaFilter(lesson: Partial<LessonNode>, filter: LessonMediaFilter) {
+  const hasVideo = Boolean(lesson.videoUrl || lesson.embeddedVideoUrl);
+  const hasAudio = Boolean(lesson.audioUrl);
+  const hasCover = Boolean(lesson.coverImageUrl);
+  if (filter === "VIDEO") return hasVideo;
+  if (filter === "AUDIO") return !hasVideo && hasAudio;
+  if (filter === "COVER_ONLY") return !hasVideo && !hasAudio && hasCover;
+  if (filter === "MISSING") return !hasVideo && !hasAudio && !hasCover;
+  return true;
+}
+
 function CourseMediaField({ label, value, accept, kind, onChange, courseId }: { label: string; value: string; accept: string; kind: "video" | "document" | "image" | "audio"; onChange: (v: string) => void; courseId?: string }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -1615,9 +1676,17 @@ function CourseMediaField({ label, value, accept, kind, onChange, courseId }: { 
         placeholder="Paste a hosted URL or upload a file"
         className="mt-1 w-full min-w-0 rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-white"
       />
+      <p className="mt-1 text-xs leading-5 text-slate-500">{mediaUploadGuidance(kind)}</p>
       {error ? <p className="mt-1 text-xs text-red-300">{error}</p> : null}
     </div>
   );
+}
+
+function mediaUploadGuidance(kind: "video" | "document" | "image" | "audio") {
+  if (kind === "video") return "Video: MP4, WebM, or MOV under 25MB.";
+  if (kind === "audio") return "Audio: MP3, M4A, WAV, or WebM under 15MB.";
+  if (kind === "image") return "Images: JPG, PNG, or WebP. Cover images should be 16:9, at least 1280x720.";
+  return "Documents: PDF, DOCX, XLSX, PPTX, or ZIP under 25MB.";
 }
 
 function TextareaField({ label, value, rows, onChange }: { label: string; value: string; rows: number; onChange: (v: string) => void }) {

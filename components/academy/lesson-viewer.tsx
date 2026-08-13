@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import {
   ArrowLeft,
@@ -97,6 +97,8 @@ export function LessonViewer({
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [feedbackText, setFeedbackText] = useState("");
   const [feedbackBusy, setFeedbackBusy] = useState(false);
+  const [audioCompletedLessonIds, setAudioCompletedLessonIds] = useState<Set<string>>(() => new Set());
+  const audioCompletionRef = useRef(new Set<string>());
 
   const allLessons = useMemo(
     () => course.modules.flatMap((module) => module.lessons.map((lesson) => ({ ...lesson, moduleName: module.title, moduleId: module.id }))),
@@ -236,7 +238,17 @@ export function LessonViewer({
               </div>
             )}
 
-            <LessonMediaFrame lesson={currentLesson} accent={accent} />
+            <LessonMediaFrame
+              lesson={currentLesson}
+              accent={accent}
+              onAudioComplete={onCompleteLesson && !currentLesson.completed ? () => {
+                if (audioCompletionRef.current.has(currentLesson.id)) return;
+                audioCompletionRef.current.add(currentLesson.id);
+                setAudioCompletedLessonIds((current) => new Set(current).add(currentLesson.id));
+                onCompleteLesson(currentLesson.id);
+              } : undefined}
+              audioAlreadyCompleted={audioCompletedLessonIds.has(currentLesson.id)}
+            />
 
             {/* Objectives */}
             {!!currentLesson.objectives?.length && (
@@ -645,7 +657,7 @@ function splitDepthList(value?: string) {
   return value.split(/\r?\n/).map((item) => item.replace(/^[-*]\s*/, "").trim()).filter(Boolean);
 }
 
-function LessonMediaFrame({ lesson, accent }: { lesson: Lesson; accent: string }) {
+function LessonMediaFrame({ lesson, accent, onAudioComplete, audioAlreadyCompleted = false }: { lesson: Lesson; accent: string; onAudioComplete?: () => void; audioAlreadyCompleted?: boolean }) {
   const hasVideo = Boolean(lesson.embeddedVideoUrl || lesson.videoUrl);
   const hasAudio = Boolean(lesson.audioUrl);
   const hasCover = Boolean(lesson.coverImageUrl);
@@ -658,7 +670,7 @@ function LessonMediaFrame({ lesson, accent }: { lesson: Lesson; accent: string }
             <iframe src={lesson.embeddedVideoUrl} className="h-full w-full" allowFullScreen title={lesson.title} />
           </div>
         ) : (
-          <video src={lesson.videoUrl!} poster={lesson.coverImageUrl ?? undefined} controls className="aspect-video w-full bg-black object-contain" preload="metadata" />
+          <video src={lesson.videoUrl!} poster={lesson.coverImageUrl ?? undefined} controls controlsList="nodownload" className="aspect-video w-full bg-black object-contain" preload="metadata" />
         )}
       </div>
     );
@@ -669,12 +681,12 @@ function LessonMediaFrame({ lesson, accent }: { lesson: Lesson; accent: string }
       <div className="mt-8 overflow-hidden rounded-2xl border border-slate-200 bg-slate-950 shadow-card-hover dark:border-slate-800">
         <div className="relative aspect-video">
           {hasCover ? (
-            <Image src={lesson.coverImageUrl!} alt="" fill sizes="(max-width: 768px) 100vw, 768px" className="object-cover" unoptimized />
+            <Image src={lesson.coverImageUrl!} alt="" fill sizes="(max-width: 768px) 100vw, 768px" className="pointer-events-none object-cover" unoptimized />
           ) : (
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(16,185,129,0.32),transparent_34%),linear-gradient(135deg,#0f172a,#020617)]" />
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(16,185,129,0.32),transparent_34%),linear-gradient(135deg,#0f172a,#020617)]" />
           )}
-          <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/30 to-slate-950/10" />
-          <div className="absolute inset-x-0 bottom-0 p-4 sm:p-5">
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/30 to-slate-950/10" />
+          <div className="pointer-events-auto absolute inset-x-0 bottom-0 z-20 p-4 sm:p-5">
             <div className="mb-3 flex items-center gap-3 text-white">
               <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-white/15 backdrop-blur-sm">
                 <Volume2 className="size-5" />
@@ -684,7 +696,22 @@ function LessonMediaFrame({ lesson, accent }: { lesson: Lesson; accent: string }
                 <p className="truncate text-sm font-semibold">{lesson.title}</p>
               </div>
             </div>
-            <audio src={lesson.audioUrl!} controls className="w-full" preload="metadata" />
+            <audio
+              key={lesson.audioUrl}
+              src={lesson.audioUrl!}
+              controls
+              controlsList="nodownload"
+              className="relative z-30 w-full"
+              preload="metadata"
+              onTimeUpdate={(event) => {
+                const audio = event.currentTarget;
+                if (!onAudioComplete || audioAlreadyCompleted || !Number.isFinite(audio.duration) || audio.duration <= 0) return;
+                if (audio.currentTime / audio.duration >= 0.9) onAudioComplete();
+              }}
+              onEnded={() => {
+                if (!audioAlreadyCompleted) onAudioComplete?.();
+              }}
+            />
           </div>
         </div>
       </div>
@@ -695,9 +722,9 @@ function LessonMediaFrame({ lesson, accent }: { lesson: Lesson; accent: string }
     return (
       <div className="mt-8 overflow-hidden rounded-2xl border border-slate-200 bg-slate-950 shadow-card-hover dark:border-slate-800">
         <div className="relative aspect-video">
-          <Image src={lesson.coverImageUrl!} alt="" fill sizes="(max-width: 768px) 100vw, 768px" className="object-cover" unoptimized />
-          <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/15 to-transparent" />
-          <div className="absolute bottom-0 left-0 right-0 p-5 text-white">
+          <Image src={lesson.coverImageUrl!} alt="" fill sizes="(max-width: 768px) 100vw, 768px" className="pointer-events-none object-cover" unoptimized />
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/15 to-transparent" />
+          <div className="absolute bottom-0 left-0 right-0 z-10 p-5 text-white">
             <div className="flex items-center gap-3">
               <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-white/15 backdrop-blur-sm" style={{ color: accent }}>
                 <ImageIcon className="size-5" />

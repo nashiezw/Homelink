@@ -19,6 +19,8 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
         title: body.title,
         summary: body.summary,
         richText: body.richText,
+        transcript: body.transcript,
+        lessonNotes: body.lessonNotes,
         videoUrl: body.videoUrl,
         embeddedVideoUrl: body.embeddedVideoUrl,
         coverImageUrl: body.coverImageUrl,
