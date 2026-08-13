@@ -41,6 +41,7 @@ export type CertificateDocumentProps = {
   customCss?: string;
   skillsAssessed?: string[];
   badgeName?: string;
+  previewMode?: boolean;
 };
 
 const SVG_WIDTH = 1400;
@@ -80,6 +81,7 @@ export function CertificateDocument({
   customHtml = "",
   customCss = "",
   badgeName,
+  previewMode = false,
 }: CertificateDocumentProps) {
   const svgRef = useRef<SVGSVGElement | null>(null);
   const issuedLong = formatDate(issuedAt);
@@ -240,10 +242,11 @@ export function CertificateDocument({
     : "";
 
   return (
-    <div id="houselink-certificate-print" className="certificate-print-host mx-auto w-full max-w-7xl px-3 py-6 print:max-w-none print:px-0 print:py-0">
-      <style
-        dangerouslySetInnerHTML={{
-          __html: `
+    <div id={previewMode ? undefined : "houselink-certificate-print"} className={previewMode ? "certificate-print-host w-full" : "certificate-print-host mx-auto w-full max-w-7xl px-3 py-6 print:max-w-none print:px-0 print:py-0"}>
+      {!previewMode ? (
+        <style
+          dangerouslySetInnerHTML={{
+            __html: `
             @import url('https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap');
             @media print {
               @page { size: A4 landscape; margin: 0; }
@@ -256,22 +259,25 @@ export function CertificateDocument({
               #houselink-certificate-print .certificate-svg { display: block !important; width: 297mm !important; height: 210mm !important; }
             }
           `,
-        }}
-      />
-      <div className="certificate-actions mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="min-w-0">
-          <p className="text-sm font-semibold text-emerald-700">HouseLink digital certificate</p>
-          <h1 className="break-words text-2xl font-bold text-slate-950 [overflow-wrap:anywhere]">{certificateTitle}</h1>
+          }}
+        />
+      ) : null}
+      {!previewMode ? (
+        <div className="certificate-actions mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-emerald-700">HouseLink digital certificate</p>
+            <h1 className="break-words text-2xl font-bold text-slate-950 [overflow-wrap:anywhere]">{certificateTitle}</h1>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-1">
+            <Button className="w-full" type="button" variant="secondary" onClick={() => window.print()}>
+              <Printer className="mr-2 size-4" /> Print
+            </Button>
+          </div>
         </div>
-        <div className="grid gap-2 sm:grid-cols-1">
-          <Button className="w-full" type="button" variant="secondary" onClick={() => window.print()}>
-            <Printer className="mr-2 size-4" /> Print
-          </Button>
-        </div>
-      </div>
+      ) : null}
 
       {renderedCustomHtml ? (
-        <article className="certificate-sheet relative mx-auto aspect-[1.414/1] w-full overflow-hidden rounded-lg bg-white shadow-hero print:rounded-none print:shadow-none">
+        <article className={previewMode ? "certificate-sheet relative mx-auto aspect-[1.414/1] w-full overflow-hidden rounded-lg bg-white shadow-sm" : "certificate-sheet relative mx-auto aspect-[1.414/1] w-full overflow-hidden rounded-lg bg-white shadow-hero print:rounded-none print:shadow-none"}>
           {customCss.trim() ? <style dangerouslySetInnerHTML={{ __html: customCss }} /> : null}
           <div className="h-full w-full" dangerouslySetInnerHTML={{ __html: renderedCustomHtml }} />
           <p className="absolute inset-x-[4%] bottom-[1.4%] text-center text-[clamp(5px,0.72vw,8px)] leading-tight text-slate-500">
@@ -279,7 +285,7 @@ export function CertificateDocument({
           </p>
         </article>
       ) : (
-        <article className="certificate-sheet mx-auto aspect-[1.414/1] w-full overflow-hidden rounded-lg bg-[#061936] shadow-hero print:rounded-none print:shadow-none">
+        <article className={previewMode ? "certificate-sheet mx-auto aspect-[1.414/1] w-full overflow-hidden rounded-lg bg-[#061936] shadow-sm" : "certificate-sheet mx-auto aspect-[1.414/1] w-full overflow-hidden rounded-lg bg-[#061936] shadow-hero print:rounded-none print:shadow-none"}>
           <svg
             ref={svgRef}
             className="certificate-svg block h-full w-full"

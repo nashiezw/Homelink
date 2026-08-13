@@ -122,7 +122,7 @@ export async function getLearnerAcademyDashboard(learnerId: string, options?: { 
   }
   if (options?.isTrainer) announcementAudiences.add("TRAINERS");
   if (options?.isPublicLearner) announcementAudiences.add("PUBLIC_LEARNERS");
-  const [learner, applications, dashboardCourses, notifications, announcements, certificates, courseProgressRows, resourceAccessRows] = await Promise.all([
+  const [learner, applications, dashboardCourses, notifications, announcements, certificates, courseProgressRows, resourceAccessRows, certificateTemplates] = await Promise.all([
     prisma.user.findUnique({ where: { id: learnerId }, select: { name: true, email: true } }),
     prisma.academyLearnerApplication.findMany({
       where: {
@@ -186,7 +186,7 @@ export async function getLearnerAcademyDashboard(learnerId: string, options?: { 
     }),
     prisma.certificateIssue.findMany({
       where: { agentId: learnerId, status: "ACTIVE" },
-      include: { course: true },
+      include: { course: true, template: true },
       orderBy: { issuedAt: "desc" },
     }),
     prisma.courseProgress.findMany({ where: { agentId: learnerId } }),
@@ -195,6 +195,7 @@ export async function getLearnerAcademyDashboard(learnerId: string, options?: { 
       include: { course: true, payment: true },
       orderBy: { updatedAt: "desc" },
     }),
+    prisma.certificateTemplate.findMany({ where: { active: true }, orderBy: { updatedAt: "desc" } }),
   ]);
 
   const visibleApplications = applications.filter((entry) => entry.courseId !== LEGACY_COURSE_ID);
@@ -379,6 +380,13 @@ export async function getLearnerAcademyDashboard(learnerId: string, options?: { 
             certificateNumber: certificate.certificateNumber,
             issuedAt: certificate.issuedAt.toISOString(),
             downloadUrl: `/dashboard/academy/certificate/${certificate.id}`,
+            preview: buildIssuedCertificatePreviewPayload({
+              certificate,
+              learnerName: learner?.name ?? "HouseLink Learner",
+              programme,
+              programmeBadge: badge,
+              fallbackTemplate: selectDashboardCertificateTemplateForCourse(certificateTemplates, certificate.courseId),
+            }),
           }
         : null,
       certificatePreview: {
@@ -958,6 +966,109 @@ function buildDashboardCertificateRequirements(input: { progress: number; comple
     { label: "Complete required assessments", complete: input.completed },
     { label: "Certificate record issued", complete: input.certificateIssued },
   ];
+}
+
+function buildIssuedCertificatePreviewPayload(input: {
+  certificate: {
+    id: string;
+    certificateNumber: string;
+    courseId: string | null;
+    issuedAt: Date;
+    expiresAt: Date | null;
+    course?: {
+      id: string;
+      title: string;
+      learningOutcomes: Prisma.JsonValue;
+    } | null;
+    template?: {
+      backgroundUrl: string | null;
+      logoUrl: string | null;
+      signatureUrl: string | null;
+      templateJson: Prisma.JsonValue;
+    } | null;
+  };
+  learnerName: string;
+  programme: ReturnType<typeof getProgrammeCourse> | null;
+  programmeBadge?: { name: string } | null;
+  fallbackTemplate?: {
+    backgroundUrl: string | null;
+    logoUrl: string | null;
+    signatureUrl: string | null;
+    templateJson: Prisma.JsonValue;
+  } | null;
+}) {
+  const template = input.certificate.template ?? input.fallbackTemplate ?? null;
+  const templateJson = (template?.templateJson ?? {}) as Record<string, unknown>;
+  const colours = (templateJson.colours ?? {}) as Record<string, unknown>;
+  const certificateTitle = typeof templateJson.title === "string" && templateJson.title.trim()
+    ? String(templateJson.title)
+    : input.certificate.course?.title
+      ? `${input.certificate.course.title} Certificate`
+      : "HouseLink Academy Training Certificate";
+  const learningOutcomes = Array.isArray(input.certificate.course?.learningOutcomes)
+    ? input.certificate.course.learningOutcomes.filter((item): item is string => typeof item === "string")
+    : [];
+
+  return {
+    learnerName: input.learnerName,
+    courseTitle: input.certificate.course?.title ?? "HouseLink Academy Course",
+    certificateTitle: trainingCertificateTitle(certificateTitle),
+    certificateNumber: input.certificate.certificateNumber,
+    issuedAt: input.certificate.issuedAt.toISOString(),
+    expiresAt: input.certificate.expiresAt?.toISOString() ?? null,
+    verifyUrl: `/academy/verify?certificate=${encodeURIComponent(input.certificate.certificateNumber)}`,
+    accent: String(colours.primary ?? input.programme?.theme.accent ?? "#008b68"),
+    backgroundUrl: template?.backgroundUrl ?? null,
+    logoUrl: template?.logoUrl ?? null,
+    signatureUrl: template?.signatureUrl ?? null,
+    signatureName: typeof templateJson.signatureName === "string" ? templateJson.signatureName : null,
+    signatureTitle: typeof templateJson.signatureTitle === "string" ? templateJson.signatureTitle : null,
+    secondSignatureUrl: typeof templateJson.secondSignatureUrl === "string" ? templateJson.secondSignatureUrl : null,
+    secondSignatureName: typeof templateJson.secondSignatureName === "string" ? templateJson.secondSignatureName : null,
+    secondSignatureTitle: typeof templateJson.secondSignatureTitle === "string" ? templateJson.secondSignatureTitle : null,
+    sealUrl: typeof templateJson.sealUrl === "string" ? templateJson.sealUrl : null,
+    leftLaurelUrl: typeof templateJson.leftLaurelUrl === "string" ? templateJson.leftLaurelUrl : null,
+    rightLaurelUrl: typeof templateJson.rightLaurelUrl === "string" ? templateJson.rightLaurelUrl : null,
+    designation: typeof templateJson.designation === "string" ? templateJson.designation : null,
+    completionIntro: typeof templateJson.completionIntro === "string" ? templateJson.completionIntro : null,
+    awardIntro: typeof templateJson.awardIntro === "string" ? templateJson.awardIntro : null,
+    badgeLine: typeof templateJson.badgeLine === "string" ? templateJson.badgeLine : null,
+    recognitionLineOne: typeof templateJson.recognitionLineOne === "string" ? templateJson.recognitionLineOne : null,
+    recognitionLineTwo: typeof templateJson.recognitionLineTwo === "string" ? templateJson.recognitionLineTwo : null,
+    learnerNameFont: typeof templateJson.learnerNameFont === "string" ? templateJson.learnerNameFont : null,
+    learnerNameMaxFontSize: typeof templateJson.learnerNameMaxFontSize === "number" ? templateJson.learnerNameMaxFontSize : null,
+    learnerNameMinFontSize: typeof templateJson.learnerNameMinFontSize === "number" ? templateJson.learnerNameMinFontSize : null,
+    designationMaxFontSize: typeof templateJson.designationMaxFontSize === "number" ? templateJson.designationMaxFontSize : null,
+    badgeLineMaxFontSize: typeof templateJson.badgeLineMaxFontSize === "number" ? templateJson.badgeLineMaxFontSize : null,
+    customHtml: typeof templateJson.customHtml === "string" ? templateJson.customHtml : "",
+    customCss: typeof templateJson.customCss === "string" ? templateJson.customCss : "",
+    skillsAssessed: learningOutcomes,
+    badgeName: input.programmeBadge?.name ?? null,
+  };
+}
+
+function selectDashboardCertificateTemplateForCourse<T extends { templateJson: Prisma.JsonValue }>(templates: T[], courseId: string | null): T | null {
+  if (!courseId) return templates[0] ?? null;
+  const courseTemplate = templates.find((template) => {
+    const templateJson = (template.templateJson ?? {}) as Record<string, unknown>;
+    const courseIds = Array.isArray(templateJson.courseIds) ? templateJson.courseIds.filter((id): id is string => typeof id === "string") : [];
+    return courseIds.includes(courseId);
+  });
+  if (courseTemplate) return courseTemplate;
+
+  return templates.find((template) => {
+    const templateJson = (template.templateJson ?? {}) as Record<string, unknown>;
+    const courseIds = Array.isArray(templateJson.courseIds) ? templateJson.courseIds.filter((id): id is string => typeof id === "string") : [];
+    return courseIds.length === 0;
+  }) ?? templates[0] ?? null;
+}
+
+function trainingCertificateTitle(title: string) {
+  if (/^Certified HouseLink Agent$/i.test(title.trim())) return "Certificate of Completion - HouseLink Agent Foundations";
+  if (/HouseLink Certified Agent - Foundations/i.test(title)) return "Certificate of Completion - HouseLink Agent Foundations";
+  if (/HouseLink Certified Agent - Listing & Client Mastery/i.test(title)) return "Certificate of Completion - HouseLink Listing & Client Mastery";
+  if (/HouseLink Certified Professional Agent/i.test(title)) return "Certificate of Completion - HouseLink Professional Training";
+  return title;
 }
 
 export async function getAcademySettingsPublic() {
