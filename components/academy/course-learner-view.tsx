@@ -170,7 +170,7 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
   }, [pathname, router, searchParams]);
 
   const load = useCallback(async () => {
-    const result = await apiFetch<CourseDetail>(`/api/v1/academy/courses/${courseId}`);
+    const result = await apiFetch<CourseDetail>(`/api/v1/academy/courses/${courseId}`, { cache: "no-store" });
     if (result.data) setData(result.data);
     else showToast(result.error?.message ?? "Course could not be loaded.", "error");
   }, [courseId, showToast]);

@@ -3020,6 +3020,11 @@ function LessonDrawer({ open, busy, lesson: editingLesson, courses: _courses, on
     });
   }, [editingLesson, open]);
   const editing = Boolean(editingLesson);
+  function saveUploadedLessonMedia(patch: Partial<Pick<typeof lesson, "videoUrl" | "coverImageUrl" | "pdfUrl" | "audioUrl">>) {
+    const nextLesson = { ...lesson, ...patch };
+    setLesson(nextLesson);
+    if (editing) void onSave(nextLesson);
+  }
   return (
     <AdminDrawer open={open} title={editing ? "Edit Lesson" : "Create Lesson"} description="Create and edit Academy lessons with rich text, video, PDF, audio, and completion requirements." onClose={onClose} width="xl">
       <FormGrid>
@@ -3046,6 +3051,7 @@ function LessonDrawer({ open, busy, lesson: editingLesson, courses: _courses, on
           accept="video/*"
           kind="video"
           onChange={(videoUrl) => setLesson({ ...lesson, videoUrl })}
+          onUploaded={(videoUrl) => saveUploadedLessonMedia({ videoUrl })}
           onError={(message) => showToast(message, "error")}
           className="sm:col-span-2"
         />
@@ -3057,6 +3063,7 @@ function LessonDrawer({ open, busy, lesson: editingLesson, courses: _courses, on
           accept="image/*"
           kind="image"
           onChange={(coverImageUrl) => setLesson({ ...lesson, coverImageUrl })}
+          onUploaded={(coverImageUrl) => saveUploadedLessonMedia({ coverImageUrl })}
           onError={(message) => showToast(message, "error")}
           className="sm:col-span-2"
         />
@@ -3068,6 +3075,7 @@ function LessonDrawer({ open, busy, lesson: editingLesson, courses: _courses, on
           accept=".pdf,application/pdf"
           kind="document"
           onChange={(pdfUrl) => setLesson({ ...lesson, pdfUrl })}
+          onUploaded={(pdfUrl) => saveUploadedLessonMedia({ pdfUrl })}
           onError={(message) => showToast(message, "error")}
         />
         <MediaUrlInput
@@ -3077,6 +3085,7 @@ function LessonDrawer({ open, busy, lesson: editingLesson, courses: _courses, on
           accept="audio/*"
           kind="audio"
           onChange={(audioUrl) => setLesson({ ...lesson, audioUrl })}
+          onUploaded={(audioUrl) => saveUploadedLessonMedia({ audioUrl })}
           onError={(message) => showToast(message, "error")}
         />
         <TextInput label="Estimated minutes" type="number" value={String(lesson.estimatedMinutes)} onChange={(estimatedMinutes) => setLesson({ ...lesson, estimatedMinutes: Number(estimatedMinutes) })} />
@@ -3513,6 +3522,7 @@ function MediaUrlInput({
   folder,
   className,
   onError,
+  onUploaded,
 }: {
   label: string;
   value: string;
@@ -3522,6 +3532,7 @@ function MediaUrlInput({
   folder: string;
   className?: string;
   onError: (message: string) => void;
+  onUploaded?: (value: string) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -3541,6 +3552,7 @@ function MediaUrlInput({
         return;
       }
       onChange(result.data.url);
+      onUploaded?.(result.data.url);
     } catch (error) {
       onError(error instanceof Error ? error.message : `${label} upload failed.`);
     } finally {

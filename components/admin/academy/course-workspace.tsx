@@ -385,6 +385,11 @@ export function CourseWorkspace({
     }, 1000);
   }, [run]);
 
+  const saveLessonMediaUpload = useCallback((lesson: Partial<Pick<LessonNode, "videoUrl" | "coverImageUrl" | "audioUrl" | "pdfUrl">>, success: string) => {
+    if (!selectedLessonId) return;
+    void run({ action: "update_lesson", lessonId: selectedLessonId, lesson }, success);
+  }, [run, selectedLessonId]);
+
   async function loadAuditLogs() {
     const result = await apiFetch<Array<{ id: string; action: string; createdAt: string }>>("/api/v1/admin/academy", {
       method: "PATCH",
@@ -913,10 +918,42 @@ export function CourseWorkspace({
               </label>
               <Field label="Discussion prompt" value={lessonDraft.discussionPrompt ?? ""} onChange={(v) => setLessonDraft({ ...lessonDraft, discussionPrompt: v })} />
               <div className="grid gap-3 sm:grid-cols-2">
-                <CourseMediaField label="Video" value={lessonDraft.videoUrl ?? ""} accept="video/*" kind="video" onChange={(v) => setLessonDraft({ ...lessonDraft, videoUrl: v })} />
-                <CourseMediaField label="Cover image" value={lessonDraft.coverImageUrl ?? ""} accept="image/*" kind="image" onChange={(v) => setLessonDraft({ ...lessonDraft, coverImageUrl: v })} />
-                <CourseMediaField label="Audio" value={lessonDraft.audioUrl ?? ""} accept="audio/*" kind="audio" onChange={(v) => setLessonDraft({ ...lessonDraft, audioUrl: v })} />
-                <CourseMediaField label="PDF" value={lessonDraft.pdfUrl ?? ""} accept=".pdf,application/pdf" kind="document" onChange={(v) => setLessonDraft({ ...lessonDraft, pdfUrl: v })} />
+                <CourseMediaField
+                  label="Video"
+                  value={lessonDraft.videoUrl ?? ""}
+                  accept="video/*"
+                  kind="video"
+                  onChange={(v) => setLessonDraft({ ...lessonDraft, videoUrl: v })}
+                  onUploaded={(videoUrl) => saveLessonMediaUpload({ videoUrl }, "Video uploaded and saved.")}
+                  courseId={courseId}
+                />
+                <CourseMediaField
+                  label="Cover image"
+                  value={lessonDraft.coverImageUrl ?? ""}
+                  accept="image/*"
+                  kind="image"
+                  onChange={(v) => setLessonDraft({ ...lessonDraft, coverImageUrl: v })}
+                  onUploaded={(coverImageUrl) => saveLessonMediaUpload({ coverImageUrl }, "Cover image uploaded and saved.")}
+                  courseId={courseId}
+                />
+                <CourseMediaField
+                  label="Audio"
+                  value={lessonDraft.audioUrl ?? ""}
+                  accept="audio/*"
+                  kind="audio"
+                  onChange={(v) => setLessonDraft({ ...lessonDraft, audioUrl: v })}
+                  onUploaded={(audioUrl) => saveLessonMediaUpload({ audioUrl }, "Audio uploaded and saved.")}
+                  courseId={courseId}
+                />
+                <CourseMediaField
+                  label="PDF"
+                  value={lessonDraft.pdfUrl ?? ""}
+                  accept=".pdf,application/pdf"
+                  kind="document"
+                  onChange={(v) => setLessonDraft({ ...lessonDraft, pdfUrl: v })}
+                  onUploaded={(pdfUrl) => saveLessonMediaUpload({ pdfUrl }, "PDF uploaded and saved.")}
+                  courseId={courseId}
+                />
               </div>
               <LessonMediaPreview input={lessonDraft} />
               <label className="block rounded-xl border border-white/10 bg-slate-950/50 p-4 text-sm text-slate-300">Completion gate
@@ -1631,7 +1668,23 @@ function lessonMatchesMediaFilter(lesson: Partial<LessonNode>, filter: LessonMed
   return true;
 }
 
-function CourseMediaField({ label, value, accept, kind, onChange, courseId }: { label: string; value: string; accept: string; kind: "video" | "document" | "image" | "audio"; onChange: (v: string) => void; courseId?: string }) {
+function CourseMediaField({
+  label,
+  value,
+  accept,
+  kind,
+  onChange,
+  onUploaded,
+  courseId,
+}: {
+  label: string;
+  value: string;
+  accept: string;
+  kind: "video" | "document" | "image" | "audio";
+  onChange: (v: string) => void;
+  onUploaded?: (v: string) => void;
+  courseId?: string;
+}) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -1652,6 +1705,7 @@ function CourseMediaField({ label, value, accept, kind, onChange, courseId }: { 
         return;
       }
       onChange(result.data.url);
+      onUploaded?.(result.data.url);
     } catch (uploadError) {
       setError(uploadError instanceof Error ? uploadError.message : `${label} upload failed.`);
     } finally {
