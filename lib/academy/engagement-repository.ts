@@ -173,7 +173,7 @@ export async function getAdminAcademyEngagement() {
       challengeApprovals: challengeSubmissions.filter((row: any) => row.status === "APPROVED").length,
       averageProgress: courseProgressRows.length ? Math.round(courseProgressRows.reduce((sum: number, row: any) => sum + Number(row.percentComplete ?? 0), 0) / courseProgressRows.length) : 0,
     },
-    reporting: buildEngagementReporting({ profiles, testimonials, challenges, challengeSubmissions, officeHours, rsvps, referrals, moduleFeedback, courseProgressRows, lessonProgressRows, activeEnrolments, approvedApplications }),
+    reporting: buildEngagementReporting({ profiles, testimonials, challenges, challengeSubmissions, officeHours, rsvps, referrals, moduleFeedback, courseProgressRows, lessonProgressRows, activeEnrolments, approvedApplications, learnerById, courseById, moduleById, lessonById }),
     automationRules: buildAutomationRules(normalizeSettings(settingsRow?.payload)),
     qaChecklist: buildEngagementQaChecklist({ settings: normalizeSettings(settingsRow?.payload), challenges, officeHours, testimonials, challengeSubmissions, moduleFeedback, profiles }),
     engagementScores: buildEngagementScores({ learnerById, profiles, testimonials, challengeSubmissions, rsvps, referrals, moduleFeedback, courseProgressRows, certificates }),
@@ -1373,6 +1373,10 @@ function buildEngagementReporting(input: {
   lessonProgressRows?: any[];
   activeEnrolments: any[];
   approvedApplications: any[];
+  learnerById?: Map<string, any>;
+  courseById?: Map<string, any>;
+  moduleById?: Map<string, any>;
+  lessonById?: Map<string, any>;
 }) {
   const uniqueEngagedLearners = unique([
     ...input.profiles.map((row) => row.learnerId),
@@ -1428,10 +1432,64 @@ function buildEngagementReporting(input: {
       + input.moduleFeedback.filter((row) => row.status === "NEW").length
       + input.profiles.filter((row) => row.spotlightConsent && row.spotlightStatus === "PENDING").length,
     recentActivity: [
-      ...input.testimonials.map((row) => ({ id: row.id, type: "Testimonial", title: row.title, status: row.status, createdAt: row.createdAt })),
-      ...input.challengeSubmissions.map((row) => ({ id: row.id, type: "Challenge", title: row.challengeId, status: row.status, createdAt: row.submittedAt })),
-      ...input.referrals.map((row) => ({ id: row.id, type: "Referral", title: row.referralCode, status: row.status, createdAt: row.createdAt })),
-      ...input.moduleFeedback.map((row) => ({ id: row.id, type: "Feedback", title: row.courseId, status: row.status, createdAt: row.createdAt })),
+      ...input.testimonials.map((row) => {
+        const learner = input.learnerById?.get(row.learnerId);
+        const course = row.courseId ? input.courseById?.get(row.courseId) : null;
+        return {
+          id: row.id,
+          type: "Testimonial",
+          title: row.title,
+          status: row.status,
+          createdAt: row.createdAt,
+          actor: learner?.name ?? learner?.email ?? row.learnerId,
+          context: course?.title ?? row.courseId ?? "General Academy",
+          preview: row.body,
+        };
+      }),
+      ...input.challengeSubmissions.map((row) => {
+        const learner = input.learnerById?.get(row.learnerId);
+        const challenge = input.challenges.find((item) => item.id === row.challengeId);
+        return {
+          id: row.id,
+          type: "Challenge",
+          title: challenge?.title ?? row.challengeId,
+          status: row.status,
+          createdAt: row.submittedAt,
+          actor: learner?.name ?? learner?.email ?? row.learnerId,
+          context: challenge?.title ?? row.challengeId,
+          preview: row.evidence,
+        };
+      }),
+      ...input.referrals.map((row) => {
+        const learner = input.learnerById?.get(row.referrerId);
+        const course = row.courseId ? input.courseById?.get(row.courseId) : null;
+        return {
+          id: row.id,
+          type: "Referral",
+          title: row.referredName || row.referredEmail || row.referralCode,
+          status: row.status,
+          createdAt: row.createdAt,
+          actor: learner?.name ?? learner?.email ?? row.referrerId,
+          context: course?.title ?? row.courseId ?? row.referralCode,
+          preview: row.referredEmail ? `Referred ${row.referredEmail}` : row.referralCode,
+        };
+      }),
+      ...input.moduleFeedback.map((row) => {
+        const learner = input.learnerById?.get(row.learnerId);
+        const course = row.courseId ? input.courseById?.get(row.courseId) : null;
+        const feedbackModule = row.moduleId ? input.moduleById?.get(row.moduleId) : null;
+        const lesson = row.lessonId ? input.lessonById?.get(row.lessonId) : null;
+        return {
+          id: row.id,
+          type: "Feedback",
+          title: feedbackModule?.title ?? lesson?.title ?? course?.title ?? "Module feedback",
+          status: row.status,
+          createdAt: row.createdAt,
+          actor: learner?.name ?? learner?.email ?? row.learnerId,
+          context: [course?.title ?? row.courseId, feedbackModule?.title, lesson?.title].filter(Boolean).join(" / "),
+          preview: row.response,
+        };
+      }),
     ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 12),
   };
 }

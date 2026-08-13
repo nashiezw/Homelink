@@ -34,7 +34,7 @@ type EngagementData = {
     rsvpRate: number;
     pendingWork: number;
     stageCounts: { notStarted: number; started: number; halfway: number; nearlyComplete: number; completed: number };
-    recentActivity: Array<{ id: string; type: string; title: string; status: string; createdAt: string }>;
+    recentActivity: Array<{ id: string; type: string; title: string; status: string; createdAt: string; actor?: string | null; context?: string | null; preview?: string | null }>;
   };
 };
 
@@ -275,7 +275,8 @@ export function AcademyEngagementCentre() {
               <MiniList title="Latest records" empty="No engagement activity yet." rows={data.reporting.recentActivity.map((item) => ({
                 id: item.id,
                 title: `${item.type} - ${item.status}`,
-                detail: `${item.title} - ${formatDateTime(item.createdAt)}`,
+                detail: [item.actor, item.context || item.title, formatDateTime(item.createdAt)].filter(Boolean).join(" - "),
+                body: item.preview,
               }))} />
               <div className="mt-4 rounded-2xl border border-emerald-400/20 bg-emerald-400/10 p-4">
                 <p className="text-sm font-black text-white">Automated learner communications</p>
@@ -922,8 +923,21 @@ function EngagementForm({ children }: { children: React.ReactNode }) {
   return <div className="mb-4 grid gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3">{children}</div>;
 }
 
-function MiniList({ title, empty, rows }: { title: string; empty: string; rows: Array<{ id: string; title: string; detail: string }> }) {
-  return <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-3"><h4 className="text-sm font-black text-white">{title}</h4><div className="mt-3 space-y-2">{rows.length ? rows.map((row) => <div key={row.id} className="rounded-xl bg-slate-950 p-3"><p className="text-sm font-semibold text-white">{row.title}</p><p className="mt-1 text-xs text-slate-400">{row.detail}</p></div>) : <p className="text-sm text-slate-500">{empty}</p>}</div></div>;
+function MiniList({ title, empty, rows }: { title: string; empty: string; rows: Array<{ id: string; title: string; detail: string; body?: string | null }> }) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-3">
+      <h4 className="text-sm font-black text-white">{title}</h4>
+      <div className="mt-3 space-y-2">
+        {rows.length ? rows.map((row) => (
+          <div key={row.id} className="rounded-xl bg-slate-950 p-3">
+            <p className="text-sm font-semibold text-white">{row.title}</p>
+            <p className="mt-1 break-words text-xs leading-5 text-slate-400">{row.detail}</p>
+            {row.body ? <p className="mt-2 line-clamp-2 whitespace-pre-wrap text-xs leading-5 text-slate-300">{row.body}</p> : null}
+          </div>
+        )) : <p className="text-sm text-slate-500">{empty}</p>}
+      </div>
+    </div>
+  );
 }
 
 function ScoreList({ rows, onOpen }: { rows: EngagementData["engagementScores"]; onOpen: (learnerId: string) => void }) {
