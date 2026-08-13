@@ -596,7 +596,7 @@ export function AgentAcademyHub() {
             <ClickableStatPill label="Overdue Assignments" value={data.overdueAssignments} tone={data.overdueAssignments ? "warning" : "default"} onClick={() => openTab("Analytics")} />
             <ClickableStatPill label="Public Learners" value={data.metrics.publicLearners} tone="info" onClick={() => openTab("Public Learners")} />
             <ClickableStatPill label="Pending Public Approvals" value={data.metrics.pendingPublicApprovals} tone={data.metrics.pendingPublicApprovals ? "warning" : "success"} onClick={() => openTab("Public Learners")} />
-            <ClickableStatPill label="Not Started Lesson 1" value={data.metrics.firstLessonNotStarted ?? data.firstLessonDropoffs?.length ?? 0} tone={(data.firstLessonDropoffs?.length ?? 0) ? "warning" : "success"} onClick={() => openTab("Learner Activation")} />
+            <ClickableStatPill label="Not Opened Lesson 1" value={data.metrics.firstLessonNotStarted ?? data.firstLessonDropoffs?.length ?? 0} tone={(data.firstLessonDropoffs?.length ?? 0) ? "warning" : "success"} onClick={() => openTab("Learner Activation")} />
             <ClickableStatPill label="Academy Revenue" value={`$${academyRevenue}`} tone="success" onClick={() => openTab("Analytics")} />
           </AdminMetricGrid>
 
@@ -2498,7 +2498,7 @@ function LearnerActivationPanel({
               <p className="text-xs font-black uppercase tracking-[0.2em] text-emerald-300">Learner activation</p>
               <h3 className="mt-2 text-2xl font-bold text-white">Move new learners into Lesson 1</h3>
               <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">
-                This uses real enrolment, application, and lesson progress records. A learner appears as not started only when they have approved access but no progress row for the first lesson.
+                This uses real enrolment, application, and lesson progress records. A learner appears as not started here only when they have approved access but no progress row for the first lesson. Overall course stage reporting may differ because it measures total course progress.
               </p>
             </div>
             <Button
@@ -2512,7 +2512,7 @@ function LearnerActivationPanel({
         </div>
         <div className="grid gap-3 p-5 sm:grid-cols-2 xl:grid-cols-5">
           <ActivationMetric label="Approved learners" value={approvedApplications.length} />
-          <ActivationMetric label="Started Lesson 1" value={startedCount} tone="success" />
+          <ActivationMetric label="Opened Lesson 1" value={startedCount} tone="success" />
           <ActivationMetric label="Not started" value={dropoffs.length} tone={dropoffs.length ? "warning" : "success"} />
           <ActivationMetric label="Pending payment/review" value={pendingCount} />
           <ActivationMetric label="Start rate" value={`${approvedApplications.length ? Math.round((startedCount / approvedApplications.length) * 100) : 0}%`} tone="info" />
@@ -2528,7 +2528,7 @@ function LearnerActivationPanel({
           options={[
             { value: "ALL", label: "All activation states" },
             { value: "NOT_STARTED", label: "Not started Lesson 1" },
-            { value: "STARTED", label: "Started Lesson 1" },
+            { value: "STARTED", label: "Opened Lesson 1" },
           ]}
         />
       </AdminFilterBar>

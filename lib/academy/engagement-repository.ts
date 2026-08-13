@@ -65,7 +65,7 @@ export async function getAdminAcademyEngagement() {
       return fallback;
     }
   };
-  const [settingsRow, courses, profiles, testimonials, challenges, challengeSubmissions, officeHours, rsvps, referrals, moduleFeedback, courseProgressRows, activeEnrolments, approvedApplications] = await Promise.all([
+  const [settingsRow, courses, profiles, testimonials, challenges, challengeSubmissions, officeHours, rsvps, referrals, moduleFeedback, courseProgressRows, lessonProgressRows, activeEnrolments, approvedApplications] = await Promise.all([
     prisma.academyEngagementSetting.findUnique({ where: { id: "singleton" } }),
     prisma.trainingCourse.findMany({ select: { id: true, title: true, status: true }, orderBy: { title: "asc" } }),
     prisma.academyEngagementProfile.findMany({ orderBy: { updatedAt: "desc" }, take: 200 }),
@@ -77,6 +77,25 @@ export async function getAdminAcademyEngagement() {
     prisma.academyReferral.findMany({ orderBy: { createdAt: "desc" }, take: 200 }),
     prisma.academyModuleFeedback.findMany({ orderBy: { createdAt: "desc" }, take: 200 }),
     prisma.courseProgress.findMany({ select: { agentId: true, courseId: true, percentComplete: true, status: true, updatedAt: true }, take: 2000 }),
+    prisma.lessonProgress.findMany({
+      select: {
+        agentId: true,
+        lesson: {
+          select: {
+            section: {
+              select: {
+                module: {
+                  select: {
+                    course: { select: { id: true } },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      take: 5000,
+    }),
     prisma.courseEnrolment.findMany({ where: { status: "ACTIVE" }, select: { agentId: true, courseId: true, enrolledAt: true }, take: 2000 }),
     prisma.academyLearnerApplication.findMany({ where: { status: "APPROVED" }, select: { learnerId: true, courseId: true, createdAt: true }, take: 2000 }),
   ]);
@@ -154,7 +173,7 @@ export async function getAdminAcademyEngagement() {
       challengeApprovals: challengeSubmissions.filter((row: any) => row.status === "APPROVED").length,
       averageProgress: courseProgressRows.length ? Math.round(courseProgressRows.reduce((sum: number, row: any) => sum + Number(row.percentComplete ?? 0), 0) / courseProgressRows.length) : 0,
     },
-    reporting: buildEngagementReporting({ profiles, testimonials, challenges, challengeSubmissions, officeHours, rsvps, referrals, moduleFeedback, courseProgressRows, activeEnrolments, approvedApplications }),
+    reporting: buildEngagementReporting({ profiles, testimonials, challenges, challengeSubmissions, officeHours, rsvps, referrals, moduleFeedback, courseProgressRows, lessonProgressRows, activeEnrolments, approvedApplications }),
     automationRules: buildAutomationRules(normalizeSettings(settingsRow?.payload)),
     qaChecklist: buildEngagementQaChecklist({ settings: normalizeSettings(settingsRow?.payload), challenges, officeHours, testimonials, challengeSubmissions, moduleFeedback, profiles }),
     engagementScores: buildEngagementScores({ learnerById, profiles, testimonials, challengeSubmissions, rsvps, referrals, moduleFeedback, courseProgressRows, certificates }),
@@ -1351,6 +1370,7 @@ function buildEngagementReporting(input: {
   referrals: any[];
   moduleFeedback: any[];
   courseProgressRows: any[];
+  lessonProgressRows?: any[];
   activeEnrolments: any[];
   approvedApplications: any[];
 }) {
@@ -1372,11 +1392,18 @@ function buildEngagementReporting(input: {
     ...input.approvedApplications.map((row) => `${row.learnerId}:${row.courseId}`),
   ]);
   const progressByLearnerCourse = new Map(input.courseProgressRows.map((row) => [`${row.agentId}:${row.courseId}`, row]));
+  const lessonProgressCounts = new Map<string, number>();
+  for (const row of input.lessonProgressRows ?? []) {
+    if (!row?.agentId || !row?.lesson?.section?.module?.course?.id) continue;
+    const key = `${row.agentId}:${row.lesson.section.module.course.id}`;
+    lessonProgressCounts.set(key, (lessonProgressCounts.get(key) ?? 0) + 1);
+  }
   const stageCounts = { notStarted: 0, started: 0, halfway: 0, nearlyComplete: 0, completed: 0 };
   for (const pair of activeLearnerCoursePairs) {
     const row = progressByLearnerCourse.get(pair);
     const percent = Number(row?.percentComplete ?? 0);
-    if (!row || percent <= 0) stageCounts.notStarted += 1;
+    const hasLessonActivity = (lessonProgressCounts.get(pair) ?? 0) > 0;
+    if ((!row || percent <= 0) && !hasLessonActivity) stageCounts.notStarted += 1;
     else if (row.status === "COMPLETED" || percent >= 100) stageCounts.completed += 1;
     else if (percent >= 80) stageCounts.nearlyComplete += 1;
     else if (percent >= 50) stageCounts.halfway += 1;

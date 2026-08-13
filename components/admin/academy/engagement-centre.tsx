@@ -258,8 +258,10 @@ export function AcademyEngagementCentre() {
                 </div>
               </div>
               <div className="mt-4 rounded-2xl border border-white/10 bg-slate-900/70 p-4">
-                <p className="text-sm font-black text-white">Learner journey stage distribution</p>
-                <p className="mt-1 text-sm leading-6 text-slate-400">Calculated from real active enrolments, approved learner applications, and course progress records.</p>
+                <p className="text-sm font-black text-white">Overall course progress distribution</p>
+                <p className="mt-1 text-sm leading-6 text-slate-400">
+                  Calculated from active learner-course access, course progress records, and lesson activity. This is different from the Lesson 1 activation queue, which only checks whether the first lesson was opened.
+                </p>
                 <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
                   <StageCard label="Not started" value={data.reporting.stageCounts.notStarted} tone="warning" />
                   <StageCard label="Started" value={data.reporting.stageCounts.started} />
