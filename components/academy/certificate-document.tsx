@@ -324,15 +324,16 @@ export function CertificateDocument({
             <CertificateCorner x={1355} y={951} corner="br" />
 
             <g opacity="0.82">
-              <line x1="76" y1="67" x2="510" y2="67" stroke="#d4ad5b" strokeWidth="2" />
-              <line x1="890" y1="67" x2="1324" y2="67" stroke="#d4ad5b" strokeWidth="2" />
-              <line x1="96" y1="91" x2="510" y2="91" stroke="#d4ad5b" strokeWidth="1" opacity="0.5" />
-              <line x1="890" y1="91" x2="1304" y2="91" stroke="#d4ad5b" strokeWidth="1" opacity="0.5" />
+              <line x1="76" y1="67" x2="497" y2="67" stroke="#d4ad5b" strokeWidth="2.2" />
+              <line x1="903" y1="67" x2="1324" y2="67" stroke="#d4ad5b" strokeWidth="2.2" />
+              <line x1="96" y1="91" x2="497" y2="91" stroke="#d4ad5b" strokeWidth="1.2" opacity="0.56" />
+              <line x1="903" y1="91" x2="1304" y2="91" stroke="#d4ad5b" strokeWidth="1.2" opacity="0.56" />
             </g>
             <g>
-              <rect x="512" y="34" width="376" height="70" rx="5" fill="#fff8ea" opacity="0.56" />
-              <line x1="525" y1="43" x2="875" y2="43" stroke="#d4ad5b" strokeWidth="1" opacity="0.42" />
-              <line x1="525" y1="96" x2="875" y2="96" stroke="#d4ad5b" strokeWidth="1" opacity="0.42" />
+              <rect x="497" y="34" width="406" height="70" rx="10" fill="#fff8ea" stroke="#d4ad5b" strokeWidth="2.2" />
+              <rect x="509" y="44" width="382" height="50" rx="7" fill="#fffaf0" stroke="#e6d6ad" strokeWidth="1" opacity="0.82" />
+              <line x1="528" y1="42" x2="872" y2="42" stroke="#f6edcf" strokeWidth="1" opacity="0.9" />
+              <line x1="528" y1="96" x2="872" y2="96" stroke="#c99f4f" strokeWidth="1" opacity="0.42" />
             </g>
             <image href={getBase64Image(logoHref)} x="545" y="47" width="310" height="44" preserveAspectRatio="xMidYMid meet" />
             <text x="700" y="143" textAnchor="middle" fontFamily="Arial, sans-serif" fontSize="17" fontWeight="800" letterSpacing="9" fill="#071936">
