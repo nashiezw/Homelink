@@ -63,6 +63,7 @@ export function LessonMediaPreview({ input, compact = false, className }: { inpu
     { label: "PDF", complete: Boolean(input.pdfUrl), detail: "Optional learner handout or notes" },
     { label: "Transcript", complete: Boolean(input.transcript?.trim()), detail: "Recommended for audio-first lessons" },
   ];
+  const legacyRawAudio = isLegacyCloudinaryRawAudio(input.audioUrl);
 
   return (
     <div className={cn(
@@ -106,6 +107,16 @@ export function LessonMediaPreview({ input, compact = false, className }: { inpu
           Add a transcript for audio-first lessons so learners can read along and accessibility stays strong.
         </div>
       ) : null}
+      {legacyRawAudio ? (
+        <div className="mt-3 flex items-start gap-2 rounded-lg border border-red-400/25 bg-red-500/10 p-3 text-xs leading-5 text-red-100">
+          <AlertCircle className="mt-0.5 size-4 shrink-0" />
+          This looks like an older Cloudinary raw audio upload. Re-upload the audio so it is stored as streamable media.
+        </div>
+      ) : null}
     </div>
   );
+}
+
+function isLegacyCloudinaryRawAudio(value?: string | null) {
+  return Boolean(value && /^https:\/\/res\.cloudinary\.com\/[^/]+\/raw\/upload\//i.test(value));
 }

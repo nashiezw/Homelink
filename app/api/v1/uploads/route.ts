@@ -55,7 +55,7 @@ export async function POST(request: Request) {
   if (!scanned.ok) return problem(503, "UPLOAD_SCAN_FAILED", scanned.reason);
 
   if (hasCloudinaryConfig()) {
-    const resourceType = validation.kind === "video" ? "video" : validation.kind === "document" || validation.kind === "audio" ? "raw" : "image";
+    const resourceType = validation.kind === "video" || validation.kind === "audio" ? "video" : validation.kind === "document" ? "raw" : "image";
     const intent = createCloudinaryUploadIntent({
       folder: `houselink/${folder}`,
       publicIdPrefix: `${folder}/${userId.slice(0, 8)}`,

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import {
   ArrowLeft,
@@ -661,6 +661,13 @@ function LessonMediaFrame({ lesson, accent, onAudioComplete, audioAlreadyComplet
   const hasVideo = Boolean(lesson.embeddedVideoUrl || lesson.videoUrl);
   const hasAudio = Boolean(lesson.audioUrl);
   const hasCover = Boolean(lesson.coverImageUrl);
+  const [audioLoadError, setAudioLoadError] = useState(false);
+  const [audioReady, setAudioReady] = useState(false);
+
+  useEffect(() => {
+    setAudioLoadError(false);
+    setAudioReady(false);
+  }, [lesson.audioUrl]);
 
   if (hasVideo) {
     return (
@@ -703,6 +710,18 @@ function LessonMediaFrame({ lesson, accent, onAudioComplete, audioAlreadyComplet
               controlsList="nodownload"
               className="relative z-30 w-full"
               preload="metadata"
+              onLoadedMetadata={() => {
+                setAudioLoadError(false);
+                setAudioReady(true);
+              }}
+              onCanPlay={() => {
+                setAudioLoadError(false);
+                setAudioReady(true);
+              }}
+              onError={() => {
+                setAudioReady(false);
+                setAudioLoadError(true);
+              }}
               onTimeUpdate={(event) => {
                 const audio = event.currentTarget;
                 if (!onAudioComplete || audioAlreadyCompleted || !Number.isFinite(audio.duration) || audio.duration <= 0) return;
@@ -712,6 +731,13 @@ function LessonMediaFrame({ lesson, accent, onAudioComplete, audioAlreadyComplet
                 if (!audioAlreadyCompleted) onAudioComplete?.();
               }}
             />
+            {audioLoadError ? (
+              <p className="mt-2 rounded-lg border border-red-400/30 bg-red-500/15 px-3 py-2 text-xs leading-5 text-red-100">
+                Audio could not load. Re-upload the audio file or use a direct MP3, M4A, WAV, or WebM URL.
+              </p>
+            ) : !audioReady ? (
+              <p className="mt-2 text-xs leading-5 text-slate-300">Loading audio metadata...</p>
+            ) : null}
           </div>
         </div>
       </div>
