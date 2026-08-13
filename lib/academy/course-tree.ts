@@ -52,6 +52,7 @@ export function mapLessonForLearner(
     reflectionQuestions?: unknown;
     videoUrl: string | null;
     embeddedVideoUrl: string | null;
+    coverImageUrl?: string | null;
     pdfUrl: string | null;
     audioUrl: string | null;
     estimatedMinutes: number;
@@ -76,6 +77,7 @@ export function mapLessonForLearner(
     discussionPrompt: lesson.discussionPrompt ? replaceLegacyBrandingText(lesson.discussionPrompt) : lesson.discussionPrompt,
     videoUrl: lesson.videoUrl,
     embeddedVideoUrl: lesson.embeddedVideoUrl,
+    coverImageUrl: lesson.coverImageUrl,
     pdfUrl: lesson.pdfUrl && !isFullTrainingManualUrl(lesson.pdfUrl) ? toAcademyFileDownloadUrl(lesson.pdfUrl) : null,
     audioUrl: lesson.audioUrl,
     estimatedMinutes: lesson.estimatedMinutes,

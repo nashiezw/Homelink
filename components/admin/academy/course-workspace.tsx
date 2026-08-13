@@ -39,7 +39,10 @@ type LessonNode = {
   completionRequirement: string;
   sortOrder: number;
   videoUrl?: string | null;
+  embeddedVideoUrl?: string | null;
+  coverImageUrl?: string | null;
   pdfUrl?: string | null;
+  audioUrl?: string | null;
   lessonResources?: Array<{ id: string; title: string; body: string; type: string; sortOrder: number }>;
 };
 
@@ -254,7 +257,10 @@ export function CourseWorkspace({
         estimatedMinutes: selectedLesson.estimatedMinutes,
         completionRequirement: selectedLesson.completionRequirement,
         videoUrl: selectedLesson.videoUrl,
+        embeddedVideoUrl: selectedLesson.embeddedVideoUrl,
+        coverImageUrl: selectedLesson.coverImageUrl,
         pdfUrl: selectedLesson.pdfUrl,
+        audioUrl: selectedLesson.audioUrl,
       });
       setLessonDepthDraft(lessonDepthFromResources(selectedLesson.lessonResources ?? []));
       setStep("Lesson Editor");
@@ -873,6 +879,8 @@ export function CourseWorkspace({
               <Field label="Discussion prompt" value={lessonDraft.discussionPrompt ?? ""} onChange={(v) => setLessonDraft({ ...lessonDraft, discussionPrompt: v })} />
               <div className="grid gap-3 sm:grid-cols-2">
                 <CourseMediaField label="Video" value={lessonDraft.videoUrl ?? ""} accept="video/*" kind="video" onChange={(v) => setLessonDraft({ ...lessonDraft, videoUrl: v })} />
+                <CourseMediaField label="Cover image" value={lessonDraft.coverImageUrl ?? ""} accept="image/*" kind="image" onChange={(v) => setLessonDraft({ ...lessonDraft, coverImageUrl: v })} />
+                <CourseMediaField label="Audio" value={lessonDraft.audioUrl ?? ""} accept="audio/*" kind="audio" onChange={(v) => setLessonDraft({ ...lessonDraft, audioUrl: v })} />
                 <CourseMediaField label="PDF" value={lessonDraft.pdfUrl ?? ""} accept=".pdf,application/pdf" kind="document" onChange={(v) => setLessonDraft({ ...lessonDraft, pdfUrl: v })} />
               </div>
               <label className="block rounded-xl border border-white/10 bg-slate-950/50 p-4 text-sm text-slate-300">Completion gate
@@ -1562,7 +1570,7 @@ function stripHtml(value: string | null | undefined) {
   return String(value ?? "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
 }
 
-function CourseMediaField({ label, value, accept, kind, onChange, courseId }: { label: string; value: string; accept: string; kind: "video" | "document" | "image"; onChange: (v: string) => void; courseId?: string }) {
+function CourseMediaField({ label, value, accept, kind, onChange, courseId }: { label: string; value: string; accept: string; kind: "video" | "document" | "image" | "audio"; onChange: (v: string) => void; courseId?: string }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);

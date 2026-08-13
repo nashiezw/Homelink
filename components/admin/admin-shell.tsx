@@ -12,6 +12,7 @@ import {
   Briefcase,
   Building2,
   BookOpen,
+  ChevronDown,
   ClipboardCheck,
   Command,
   CreditCard,
@@ -111,34 +112,58 @@ const NAV_GROUPS: Array<{ label: string; items: NavItem[] }> = [
     ],
   },
   {
-    label: "HouseLink Agent Academy",
+    label: "Academy Overview",
     items: [
-      { id: "academy", label: "Public Learners", icon: Users, badgeKey: "pendingAcademyApprovals", academyView: "Public Learners" },
-      { id: "academy", label: "Student Analytics", icon: Activity, academyView: "Student Analytics" },
-      { id: "academy", label: "Lesson Content", icon: FileText, academyView: "Lesson Content" },
       { id: "academy", label: "Dashboard", icon: GraduationCap, academyView: "Dashboard" },
+      { id: "academy", label: "Training Analytics", icon: Activity, academyView: "Analytics" },
+    ],
+  },
+  {
+    label: "Academy Learning",
+    items: [
       { id: "academy", label: "Courses", icon: BookOpen, academyView: "Courses" },
+      { id: "academy", label: "Lesson Content", icon: FileText, academyView: "Lesson Content" },
       { id: "academy", label: "Lessons", icon: FileText, academyView: "Lessons" },
       { id: "academy", label: "Learning Paths", icon: FolderOpen, academyView: "Learning Paths" },
       { id: "academy", label: "Quizzes", icon: ShieldCheck, academyView: "Quizzes" },
       { id: "academy", label: "Assignments", icon: ClipboardCheck, academyView: "Assignments" },
       { id: "academy", label: "Final Exams", icon: GraduationCap, academyView: "Final Exams" },
+      { id: "academy", label: "Training Resources", icon: FileText, academyView: "Training Resources" },
+      { id: "academy", label: "Video Library", icon: PlayCircle, academyView: "Video Library" },
+    ],
+  },
+  {
+    label: "Academy Learners",
+    items: [
+      { id: "academy", label: "Public Learners", icon: Users, badgeKey: "pendingAcademyApprovals", academyView: "Public Learners" },
+      { id: "academy", label: "Learner Activation", icon: Activity, academyView: "Learner Activation" },
+      { id: "academy", label: "Student Analytics", icon: Activity, academyView: "Student Analytics" },
+      { id: "academy", label: "Coupons", icon: CreditCard, academyView: "Coupons" },
       { id: "academy", label: "Certificates", icon: Award, academyView: "Certificates" },
       { id: "academy", label: "Certificate Templates", icon: Award, academyView: "Certificate Templates" },
       { id: "academy", label: "Certificate Monitoring", icon: ShieldCheck, academyView: "Certificate Monitoring" },
       { id: "academy", label: "Assignment Review", icon: ClipboardCheck, academyView: "Assignment Review" },
-      { id: "academy", label: "Training Resources", icon: FileText, academyView: "Training Resources" },
-      { id: "academy", label: "Video Library", icon: PlayCircle, academyView: "Video Library" },
+    ],
+  },
+  {
+    label: "Academy Community",
+    items: [
+      { id: "academy", label: "Engagement", icon: Megaphone, academyView: "Engagement" },
       { id: "academy", label: "Announcements", icon: Megaphone, academyView: "Announcements" },
       { id: "academy", label: "Discussion Board", icon: MessageSquare, academyView: "Discussion Board" },
       { id: "academy", label: "Leaderboard", icon: Trophy, academyView: "Leaderboard" },
       { id: "academy", label: "Badges", icon: Award, academyView: "Badges" },
-      { id: "academy", label: "Training Analytics", icon: Activity, academyView: "Analytics" },
+    ],
+  },
+  {
+    label: "Academy Admin",
+    items: [
       { id: "academy", label: "Email Templates", icon: MessageSquare, academyView: "Email Templates" },
       { id: "academy", label: "Branding", icon: Shield, academyView: "Branding" },
       { id: "academy", label: "Instructors", icon: Users, academyView: "Instructors" },
       { id: "academy", label: "Refunds", icon: CreditCard, academyView: "Refunds" },
       { id: "academy", label: "Training Settings", icon: Settings, academyView: "Settings" },
+      { id: "academy", label: "Health", icon: Activity, academyView: "Health" },
     ],
   },
   {
@@ -239,9 +264,18 @@ export function getAdminTabLabel(tab: AdminTab) {
 
 const ALL_NAV = NAV_GROUPS.flatMap((g) => g.items);
 const VALID_TABS = new Set(ALL_NAV.map((n) => n.id));
+const COLLAPSED_GROUPS_STORAGE_KEY = "houselink-admin-sidebar-collapsed-groups";
 
 function findNavGroup(tab: AdminTab) {
   return NAV_GROUPS.find((g) => g.items.some((i) => i.id === tab));
+}
+
+function isNavItemActive(item: NavItem, activeTab: AdminTab, activeAcademyView: string, activeLibraryView: string) {
+  return (
+    activeTab === item.id &&
+    (item.id !== "academy" || item.academyView === activeAcademyView) &&
+    (item.id !== "library" || item.libraryView === activeLibraryView)
+  );
 }
 
 function allowedTabsForRoles(roles: string[]): Set<AdminTab> | null {
@@ -271,6 +305,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
   const [permissions, setPermissions] = useState<string[]>([]);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(() => new Set(NAV_GROUPS.map((group) => group.label)));
 
   const navigate = useCallback(
     (item: NavItem | AdminTab) => {
@@ -325,6 +360,17 @@ export function AdminShell({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    const stored = window.localStorage.getItem(COLLAPSED_GROUPS_STORAGE_KEY);
+    if (!stored) return;
+    try {
+      const parsed = JSON.parse(stored);
+      if (Array.isArray(parsed)) setCollapsedGroups(new Set(parsed.filter((item) => typeof item === "string")));
+    } catch {
+      window.localStorage.removeItem(COLLAPSED_GROUPS_STORAGE_KEY);
+    }
+  }, []);
+
+  useEffect(() => {
     if (!user) return;
     const allowed = allowedTabsForRoles(user.roles);
     if (allowed && !allowed.has(activeTab)) {
@@ -362,6 +408,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
     ...group,
     items: group.items.filter((item) => !allowedTabs || allowedTabs.has(item.id)),
   })).filter((group) => group.items.length > 0);
+  const activeGroupLabel = visibleGroups.find((group) => group.items.some((item) => isNavItemActive(item, activeTab, activeAcademyView, activeLibraryView)))?.label ?? visibleGroups[0]?.label;
   const notificationCount = summary
     ? summary.pendingListings +
       summary.openTickets +
@@ -370,6 +417,16 @@ export function AdminShell({ children }: { children: ReactNode }) {
       summary.pendingAcademyApprovals +
       summary.pendingPaymentProofs
     : 0;
+
+  function toggleGroup(label: string) {
+    setCollapsedGroups((current) => {
+      const next = new Set(current);
+      if (next.has(label)) next.delete(label);
+      else next.add(label);
+      window.localStorage.setItem(COLLAPSED_GROUPS_STORAGE_KEY, JSON.stringify([...next]));
+      return next;
+    });
+  }
 
   const sidebar = (
     <>
@@ -383,21 +440,18 @@ export function AdminShell({ children }: { children: ReactNode }) {
       </div>
       <nav className="flex-1 overflow-y-auto p-3 scrollbar-thin">
         {visibleGroups.map((group) => (
-          <div key={group.label} className="mb-5">
-            <p className="mb-2 px-3 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-600">{group.label}</p>
-            {group.items.map((item) => (
-              <NavButton
-                key={`${item.id}-${item.academyView ?? item.libraryView ?? item.label}`}
-                item={item}
-                active={
-                  activeTab === item.id &&
-                  (item.id !== "academy" || item.academyView === activeAcademyView) &&
-                  (item.id !== "library" || item.libraryView === activeLibraryView)
-                }
-                badge={item.badgeKey && summary ? summary[item.badgeKey] : 0}
-                onClick={() => navigate(item)}
-              />
-            ))}
+          <div key={group.label} className="mb-2">
+            <SidebarGroup
+              group={group}
+              activeGroup={group.label === activeGroupLabel}
+              open={group.label === activeGroupLabel || !collapsedGroups.has(group.label)}
+              summary={summary}
+              activeTab={activeTab}
+              activeAcademyView={activeAcademyView}
+              activeLibraryView={activeLibraryView}
+              onToggle={() => toggleGroup(group.label)}
+              onNavigate={navigate}
+            />
           </div>
         ))}
       </nav>
@@ -633,6 +687,61 @@ function ExecutivePill({
       <span className="opacity-70">{label}</span>
       <span className="font-bold tabular-nums">{value}</span>
     </span>
+  );
+}
+
+function SidebarGroup({
+  group,
+  activeGroup,
+  open,
+  summary,
+  activeTab,
+  activeAcademyView,
+  activeLibraryView,
+  onToggle,
+  onNavigate,
+}: {
+  group: { label: string; items: NavItem[] };
+  activeGroup: boolean;
+  open: boolean;
+  summary: AdminSummary | null;
+  activeTab: AdminTab;
+  activeAcademyView: string;
+  activeLibraryView: string;
+  onToggle: () => void;
+  onNavigate: (item: NavItem) => void;
+}) {
+  const groupId = `admin-nav-group-${group.label.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}`;
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={onToggle}
+        className={cn(
+          "mb-1 flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-[10px] font-bold uppercase tracking-[0.16em] transition",
+          activeGroup ? "bg-emerald-500/10 text-emerald-300" : "text-slate-600 hover:bg-white/[0.04] hover:text-slate-300",
+        )}
+        aria-expanded={open}
+        aria-controls={groupId}
+      >
+        <span className="min-w-0 flex-1 truncate">{group.label}</span>
+        <ChevronDown className={cn("size-3 shrink-0 transition-transform", open ? "rotate-180" : "rotate-0")} />
+      </button>
+      {open && (
+        <div id={groupId} className="space-y-0.5 pb-2">
+          {group.items.map((item) => (
+            <NavButton
+              key={`${item.id}-${item.academyView ?? item.libraryView ?? item.label}`}
+              item={item}
+              active={isNavItemActive(item, activeTab, activeAcademyView, activeLibraryView)}
+              badge={item.badgeKey && summary ? summary[item.badgeKey] : 0}
+              onClick={() => onNavigate(item)}
+            />
+          ))}
+        </div>
+      )}
+    </>
   );
 }
 

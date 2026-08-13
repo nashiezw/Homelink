@@ -255,6 +255,7 @@ type AcademyLesson = {
   richText?: string;
   videoUrl?: string | null;
   embeddedVideoUrl?: string | null;
+  coverImageUrl?: string | null;
   pdfUrl?: string | null;
   audioUrl?: string | null;
 };
@@ -2987,6 +2988,7 @@ function LessonDrawer({ open, busy, lesson: editingLesson, courses: _courses, on
     lessonDepth: lessonDepthFromResources(editingLesson?.lessonResources ?? []),
     videoUrl: editingLesson?.videoUrl ?? "",
     embeddedVideoUrl: editingLesson?.embeddedVideoUrl ?? "",
+    coverImageUrl: editingLesson?.coverImageUrl ?? "",
     pdfUrl: editingLesson?.pdfUrl ?? "",
     audioUrl: editingLesson?.audioUrl ?? "",
     estimatedMinutes: editingLesson?.estimatedMinutes ?? 30,
@@ -3002,6 +3004,7 @@ function LessonDrawer({ open, busy, lesson: editingLesson, courses: _courses, on
       lessonDepth: lessonDepthFromResources(editingLesson?.lessonResources ?? []),
       videoUrl: editingLesson?.videoUrl ?? "",
       embeddedVideoUrl: editingLesson?.embeddedVideoUrl ?? "",
+      coverImageUrl: editingLesson?.coverImageUrl ?? "",
       pdfUrl: editingLesson?.pdfUrl ?? "",
       audioUrl: editingLesson?.audioUrl ?? "",
       estimatedMinutes: editingLesson?.estimatedMinutes ?? 30,
@@ -3038,6 +3041,16 @@ function LessonDrawer({ open, busy, lesson: editingLesson, courses: _courses, on
           className="sm:col-span-2"
         />
         <TextInput label="Embedded video URL (YouTube/Vimeo)" value={lesson.embeddedVideoUrl} onChange={(embeddedVideoUrl) => setLesson({ ...lesson, embeddedVideoUrl })} className="sm:col-span-2" />
+        <MediaUrlInput
+          label="Cover image"
+          value={lesson.coverImageUrl}
+          folder="academy/lessons"
+          accept="image/*"
+          kind="image"
+          onChange={(coverImageUrl) => setLesson({ ...lesson, coverImageUrl })}
+          onError={(message) => showToast(message, "error")}
+          className="sm:col-span-2"
+        />
         <MediaUrlInput
           label="PDF"
           value={lesson.pdfUrl}

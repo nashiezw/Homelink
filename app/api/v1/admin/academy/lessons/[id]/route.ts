@@ -21,6 +21,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
         richText: body.richText,
         videoUrl: body.videoUrl,
         embeddedVideoUrl: body.embeddedVideoUrl,
+        coverImageUrl: body.coverImageUrl,
         pdfUrl: body.pdfUrl,
         audioUrl: body.audioUrl,
         estimatedMinutes: body.estimatedMinutes,

@@ -1273,6 +1273,7 @@ model TrainingLesson {
   richText              String           @default("")
   videoUrl              String?
   embeddedVideoUrl      String?
+  coverImageUrl         String?
   pdfUrl                String?
   audioUrl              String?
   mapEmbedUrl           String?

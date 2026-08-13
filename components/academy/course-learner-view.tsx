@@ -102,6 +102,7 @@ type CourseDetail = {
           completed?: boolean;
           videoUrl?: string | null;
           embeddedVideoUrl?: string | null;
+          coverImageUrl?: string | null;
           pdfUrl?: string | null;
           audioUrl?: string | null;
           lessonVideos?: Array<{ id: string; title: string; url: string; provider: string }>;

@@ -620,6 +620,7 @@ export async function runAcademyAction(body: Record<string, any>, actor: Actor) 
                     richText: lesson.richText,
                     videoUrl: lesson.videoUrl,
                     embeddedVideoUrl: lesson.embeddedVideoUrl,
+                    coverImageUrl: lesson.coverImageUrl,
                     pdfUrl: lesson.pdfUrl,
                     audioUrl: lesson.audioUrl,
                     mapEmbedUrl: lesson.mapEmbedUrl,
@@ -999,6 +1000,7 @@ export async function runAcademyAction(body: Record<string, any>, actor: Actor) 
                 reflectionQuestions: lesson.reflectionQuestions ?? undefined,
                 videoUrl: lesson.videoUrl,
                 embeddedVideoUrl: lesson.embeddedVideoUrl,
+                coverImageUrl: lesson.coverImageUrl,
                 pdfUrl: lesson.pdfUrl,
                 audioUrl: lesson.audioUrl,
                 estimatedMinutes: lesson.estimatedMinutes,
@@ -1036,6 +1038,7 @@ export async function runAcademyAction(body: Record<string, any>, actor: Actor) 
         reflectionQuestions: source.reflectionQuestions ?? undefined,
         videoUrl: source.videoUrl,
         embeddedVideoUrl: source.embeddedVideoUrl,
+        coverImageUrl: source.coverImageUrl,
         pdfUrl: source.pdfUrl,
         audioUrl: source.audioUrl,
         estimatedMinutes: source.estimatedMinutes,
@@ -1795,7 +1798,10 @@ export async function getAdminCourseTree(courseId: string) {
           completionRequirement: lesson.completionRequirement,
           sortOrder: lesson.sortOrder,
           videoUrl: lesson.videoUrl,
+          embeddedVideoUrl: lesson.embeddedVideoUrl,
+          coverImageUrl: lesson.coverImageUrl,
           pdfUrl: lesson.pdfUrl,
+          audioUrl: lesson.audioUrl,
           lessonVideos: lesson.lessonVideos,
           lessonDocuments: lesson.lessonDocuments.map((d) => ({ id: d.id, documentId: d.documentId, title: d.document.title })),
           lessonResources: lesson.lessonResources,
@@ -1859,6 +1865,7 @@ export async function getAdminCourseTree(courseId: string) {
 
 export async function ensureAcademyDefaults() {
   const prisma = getMainPrisma();
+  await prisma.$executeRawUnsafe(`ALTER TABLE "training_lessons" ADD COLUMN IF NOT EXISTS "coverImageUrl" TEXT`);
   await prisma.$transaction([
     ...DEFAULT_TRAINING_CATEGORIES.map((name, sortOrder) =>
       prisma.trainingCategory.upsert({
@@ -2102,6 +2109,7 @@ function lessonInput(input: Record<string, any>): Prisma.TrainingLessonUpdateInp
   if (input.reflectionQuestions !== undefined) data.reflectionQuestions = input.reflectionQuestions;
   if (input.videoUrl !== undefined) data.videoUrl = stringOrNull(input.videoUrl);
   if (input.embeddedVideoUrl !== undefined) data.embeddedVideoUrl = stringOrNull(input.embeddedVideoUrl);
+  if (input.coverImageUrl !== undefined) data.coverImageUrl = stringOrNull(input.coverImageUrl);
   if (input.pdfUrl !== undefined) data.pdfUrl = stringOrNull(input.pdfUrl);
   if (input.audioUrl !== undefined) data.audioUrl = stringOrNull(input.audioUrl);
   if (input.mapEmbedUrl !== undefined) data.mapEmbedUrl = stringOrNull(input.mapEmbedUrl);

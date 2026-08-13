@@ -519,6 +519,7 @@ export async function getLearnerAcademyDashboard(learnerId: string, options?: { 
             completionRequirement: lesson.completionRequirement,
             videoUrl: lesson.videoUrl,
             embeddedVideoUrl: lesson.embeddedVideoUrl,
+            coverImageUrl: lesson.coverImageUrl,
             pdfUrl: lesson.pdfUrl ? toAcademyFileDownloadUrl(lesson.pdfUrl) : null,
             audioUrl: lesson.audioUrl,
             completed: completedIds.has(lesson.id),
