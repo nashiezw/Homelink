@@ -12,19 +12,43 @@ export function BarChart({
   className?: string;
   color?: string;
 }) {
-  const max = Math.max(...data.map((d) => d.value), 1);
+  const rows = normaliseChartData(data);
+  const max = Math.max(...rows.map((d) => d.value), 1);
+  const hasData = rows.some((d) => d.value > 0);
+
+  if (!rows.length || !hasData) {
+    return <EmptyChart className={className} message="No chart data yet." />;
+  }
+
   return (
-    <div className={cn("flex min-w-0 items-end gap-1.5 sm:gap-2", className)}>
-      {data.map((point) => (
-        <div key={point.label} className="flex min-h-40 min-w-0 flex-1 flex-col items-center justify-end gap-2 sm:min-h-48">
-          <div
-            className={cn("w-full rounded-t-md transition-all", color)}
-            style={{ height: `${(point.value / max) * 100}%`, minHeight: 4 }}
-            title={`${point.label}: ${point.value}`}
-          />
-          <span className="max-w-full break-words text-center text-[10px] leading-tight text-slate-400 [overflow-wrap:anywhere]">{point.label}</span>
+    <div className={cn("min-w-0", className)}>
+      <div className="relative h-48 min-w-0 border-b border-white/10 bg-[linear-gradient(to_top,rgba(148,163,184,0.10)_1px,transparent_1px)] bg-[length:100%_25%]">
+        <div className="absolute inset-0 flex min-w-0 items-end gap-1.5 sm:gap-2">
+          {rows.map((point) => {
+            const height = point.value > 0 ? Math.max((point.value / max) * 100, 8) : 0;
+            return (
+              <div key={point.label} className="flex h-full min-w-0 flex-1 flex-col items-center justify-end gap-1">
+                <span className="max-w-full truncate text-[10px] font-semibold leading-none text-slate-300" title={`${point.label}: ${point.value}`}>
+                  {formatChartValue(point.value)}
+                </span>
+                <div
+                  className={cn("w-full rounded-t-md shadow-[0_0_18px_rgba(16,185,129,0.18)] transition-all", color)}
+                  style={{ height: `${height}%` }}
+                  title={`${point.label}: ${point.value}`}
+                  aria-label={`${point.label}: ${point.value}`}
+                />
+              </div>
+            );
+          })}
         </div>
-      ))}
+      </div>
+      <div className="mt-2 flex min-w-0 gap-1.5 sm:gap-2">
+        {rows.map((point) => (
+          <span key={point.label} className="min-w-0 flex-1 break-words text-center text-[10px] leading-tight text-slate-400 [overflow-wrap:anywhere]" title={point.label}>
+            {point.label}
+          </span>
+        ))}
+      </div>
     </div>
   );
 }
@@ -36,11 +60,15 @@ export function DonutChart({
   data: ChartPoint[];
   colors?: string[];
 }) {
-  const total = data.reduce((sum, d) => sum + d.value, 0) || 1;
+  const rows = normaliseChartData(data);
+  const total = rows.reduce((sum, d) => sum + d.value, 0);
+  if (!rows.length || total <= 0) {
+    return <EmptyChart message="No chart data yet." />;
+  }
   const radius = 42;
   const circumference = 2 * Math.PI * radius;
   let offset = 0;
-  const segments = data.map((point, index) => {
+  const segments = rows.map((point, index) => {
     const pct = (point.value / total) * 100;
     const segment = {
       ...point,
@@ -92,10 +120,14 @@ export function DonutChart({
 }
 
 export function Sparkline({ values, className }: { values: number[]; className?: string }) {
-  const max = Math.max(...values, 1);
-  const min = Math.min(...values, 0);
+  const safeValues = values.map((value) => Number(value)).filter((value) => Number.isFinite(value));
+  if (!safeValues.length) {
+    return <EmptyChart className={cn("h-12", className)} message="No trend data yet." />;
+  }
+  const max = Math.max(...safeValues, 1);
+  const min = Math.min(...safeValues, 0);
   const range = max - min || 1;
-  const points = values
+  const points = safeValues
     .map((v, i) => {
       const x = (i / (values.length - 1 || 1)) * 100;
       const y = 100 - ((v - min) / range) * 100;
@@ -118,6 +150,29 @@ export function MetricRow({ label, value, delta }: { label: string; value: strin
         <span className="block break-words font-semibold leading-5 text-white [overflow-wrap:anywhere]">{value}</span>
         {delta && <p className="break-words text-xs leading-4 text-emerald-400 [overflow-wrap:anywhere]">{delta}</p>}
       </div>
+    </div>
+  );
+}
+
+function normaliseChartData(data: ChartPoint[]) {
+  return data
+    .map((point) => ({
+      label: String(point.label || "Untitled"),
+      value: Math.max(0, Number.isFinite(Number(point.value)) ? Number(point.value) : 0),
+    }))
+    .filter((point) => point.label.trim());
+}
+
+function formatChartValue(value: number) {
+  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(value >= 10_000_000 ? 0 : 1)}m`;
+  if (value >= 1_000) return `${(value / 1_000).toFixed(value >= 10_000 ? 0 : 1)}k`;
+  return String(value);
+}
+
+function EmptyChart({ message, className }: { message: string; className?: string }) {
+  return (
+    <div className={cn("flex min-h-40 min-w-0 items-center justify-center rounded-lg border border-dashed border-white/10 bg-slate-950/35 px-4 text-center text-sm text-slate-500", className)}>
+      {message}
     </div>
   );
 }
