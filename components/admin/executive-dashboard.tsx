@@ -230,6 +230,7 @@ export function ExecutiveDashboard({
                   <span className="mt-1.5 size-2 shrink-0 rounded-full bg-emerald-400" />
                   <div className="min-w-0">
                     <p className="text-slate-200">{item.message}</p>
+                    {item.detail && <p className="mt-1 break-words text-xs leading-4 text-slate-400">{item.detail}</p>}
                     <p className="text-xs text-slate-500">{item.time}</p>
                   </div>
                 </div>

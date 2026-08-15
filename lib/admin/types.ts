@@ -112,11 +112,13 @@ export type AuditEntry = {
   target: string;
   ip: string;
   createdAt: string;
+  metadata?: Record<string, unknown> | null;
 };
 
 export type ActivityItem = {
   id: string;
   message: string;
+  detail?: string;
   time: string;
   type: string;
 };

@@ -379,6 +379,7 @@ export async function getPostgresAuditLog(): Promise<AuditEntry[]> {
     target: row.target,
     ip: "",
     createdAt: row.createdAt.toISOString(),
+    metadata: readObject(row.metadata),
   }));
 }
 
@@ -386,7 +387,8 @@ export async function getPostgresActivityFeed(): Promise<ActivityItem[]> {
   const audit = await getPostgresAuditLog();
   return audit.slice(0, 8).map((entry) => ({
     id: entry.id,
-    message: `${entry.actor} - ${entry.action.replace(/_/g, " ").toLowerCase()}`,
+    message: `${entry.actor} - ${formatAuditAction(entry.action)}`,
+    detail: formatActivityDetail(entry),
     time: formatRelativeTime(entry.createdAt),
     type: entry.action.toLowerCase().includes("payment")
       ? "payment"
@@ -394,6 +396,19 @@ export async function getPostgresActivityFeed(): Promise<ActivityItem[]> {
         ? "verification"
         : "user",
   }));
+}
+
+function formatActivityDetail(entry: AuditEntry) {
+  const metadata = readObject(entry.metadata);
+  if (entry.action === "EMAIL_SEND_FAILED") {
+    const emailType = formatAuditAction(stringValue(metadata.emailType, "email"));
+    const target = maskEmail(entry.target);
+    const error = stringValue(metadata.error, "Email provider rejected the message.");
+    return `${emailType} to ${target}: ${error}`;
+  }
+  const reason = stringValue(metadata.reason, "");
+  const error = stringValue(metadata.error, "");
+  return reason || error || undefined;
 }
 
 export function getPostgresSupportTickets(): SupportTicket[] {
@@ -659,6 +674,17 @@ function formatEnum(value: string) {
   return value.toLowerCase().replace(/_/g, " ").replace(/^./, (char) => char.toUpperCase());
 }
 
+function formatAuditAction(value: string) {
+  return value.replace(/_/g, " ").toLowerCase();
+}
+
+function maskEmail(value: string) {
+  const [local, domain] = value.split("@");
+  if (!local || !domain) return value;
+  const visible = local.length <= 2 ? local[0] : local.slice(0, 2);
+  return `${visible}***@${domain}`;
+}
+
 function startOfToday() {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -680,8 +706,8 @@ function formatRelativeTime(iso: string) {
   return `${Math.round(hours / 24)}d ago`;
 }
 
-function readObject(value: Prisma.JsonValue): Record<string, unknown> {
-  return value && typeof value === "object" && !Array.isArray(value) ? value : {};
+function readObject(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
 }
 
 function stringValue(value: unknown, fallback: string) {

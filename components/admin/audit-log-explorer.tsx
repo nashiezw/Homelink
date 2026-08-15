@@ -1,6 +1,6 @@
 "use client";
 
-import { Search, X } from "lucide-react";
+import { RefreshCw, Search, X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 
@@ -26,6 +26,8 @@ export function AuditLogExplorer() {
   const [data, setData] = useState<AuditResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedEntry, setSelectedEntry] = useState<AuditEntry | null>(null);
+  const [resendingId, setResendingId] = useState<string | null>(null);
+  const [resendMessage, setResendMessage] = useState<{ ok: boolean; text: string } | null>(null);
 
   const load = useCallback(async (offset = 0) => {
     setLoading(true);
@@ -36,6 +38,25 @@ export function AuditLogExplorer() {
     if (json.data) setData(json.data);
     setLoading(false);
   }, [q]);
+
+  async function resendFailedEmail(entry: AuditEntry) {
+    setResendingId(entry.id);
+    setResendMessage(null);
+    try {
+      const response = await fetch(`/api/v1/admin/audit/${entry.id}/resend-email`, { method: "POST" });
+      const json = await response.json();
+      if (!response.ok || json.error) {
+        setResendMessage({ ok: false, text: json.error?.message || "Email could not be resent." });
+        return;
+      }
+      setResendMessage({ ok: true, text: json.data?.message || "Email resent." });
+      await load(data?.offset ?? 0);
+    } catch {
+      setResendMessage({ ok: false, text: "Email could not be resent. Please try again." });
+    } finally {
+      setResendingId(null);
+    }
+  }
 
   useEffect(() => {
     const timer = setTimeout(() => void load(0), 250);
@@ -118,7 +139,10 @@ export function AuditLogExplorer() {
               <h3 className="text-lg font-semibold text-white">Audit Entry Details</h3>
               <Button
                 variant="ghost"
-                onClick={() => setSelectedEntry(null)}
+                onClick={() => {
+                  setSelectedEntry(null);
+                  setResendMessage(null);
+                }}
               >
                 <X className="size-4" />
               </Button>
@@ -160,10 +184,42 @@ export function AuditLogExplorer() {
                   </pre>
                 </div>
               )}
+
+              {canResendEmail(selectedEntry) && (
+                <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold text-amber-100">Resend failed email</p>
+                      <p className="mt-1 text-xs text-amber-100/70">
+                        Sends through the current Platform Settings SMTP configuration and writes a new audit event.
+                      </p>
+                    </div>
+                    <Button
+                      variant="secondary"
+                      loading={resendingId === selectedEntry.id}
+                      loadingText="Resending..."
+                      onClick={() => void resendFailedEmail(selectedEntry)}
+                    >
+                      <RefreshCw className="size-4" />
+                      Resend email
+                    </Button>
+                  </div>
+                  {resendMessage && (
+                    <p className={`mt-3 rounded-md border px-3 py-2 text-sm ${resendMessage.ok ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-100" : "border-red-500/30 bg-red-500/10 text-red-100"}`}>
+                      {resendMessage.text}
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>
       )}
     </section>
   );
+}
+
+function canResendEmail(entry: AuditEntry) {
+  const emailType = typeof entry.metadata?.emailType === "string" ? entry.metadata.emailType : "";
+  return entry.action === "EMAIL_SEND_FAILED" && ["email_verification", "welcome_email"].includes(emailType);
 }

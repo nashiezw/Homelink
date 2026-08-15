@@ -1,9 +1,12 @@
 import { getHydratedRuntimePlatformSettings } from "@/lib/settings/runtime";
 import { sendSmtpPlainEmail } from "@/lib/integrations/smtp";
 import { getMainPrisma } from "@/lib/db/main-prisma";
+import type { PlatformSettings } from "@/lib/settings/types";
+
+type EmailIntegrations = PlatformSettings["integrations"];
 
 async function sendEmailWithRetry(
-  integrations: any,
+  integrations: EmailIntegrations,
   to: string,
   subject: string,
   body: string,
@@ -11,11 +14,14 @@ async function sendEmailWithRetry(
   maxRetries = 3,
   initialDelayMs = 1000,
 ): Promise<{ ok: boolean; message?: string }> {
+  let lastError = "Email send failed.";
+
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     const result = await sendSmtpPlainEmail(integrations, to, subject, body);
     if (result.ok) {
       return result;
     }
+    lastError = result.message || lastError;
     
     if (attempt < maxRetries - 1) {
       const delay = initialDelayMs * Math.pow(2, attempt);
@@ -32,9 +38,15 @@ async function sendEmailWithRetry(
         metadata: {
           emailType,
           subject,
-          error: `Failed after ${maxRetries} attempts`,
+          attempts: maxRetries,
+          error: lastError,
           timestamp: new Date().toISOString(),
-          smtpConfigured: Boolean(integrations.smtpHost && integrations.smtpPort && integrations.smtpUser),
+          smtpConfigured: Boolean(integrations.smtpHost && integrations.smtpPort && integrations.smtpUser && integrations.smtpPass && integrations.smtpFrom),
+          smtpHost: integrations.smtpHost || null,
+          smtpPort: integrations.smtpPort || null,
+          smtpFromConfigured: Boolean(integrations.smtpFrom),
+          smtpUserConfigured: Boolean(integrations.smtpUser),
+          smtpPassConfigured: Boolean(integrations.smtpPass),
         },
       },
     });
@@ -42,7 +54,7 @@ async function sendEmailWithRetry(
     console.error("Failed to log email error to audit:", logError);
   }
   
-  return { ok: false, message: `Failed after ${maxRetries} attempts` };
+  return { ok: false, message: `Failed after ${maxRetries} attempts: ${lastError}` };
 }
 
 export async function sendWelcomeEmail(userEmail: string, userName: string, _language: string = "en") {
