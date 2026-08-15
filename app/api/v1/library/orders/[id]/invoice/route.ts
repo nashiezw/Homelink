@@ -2,6 +2,9 @@ import { problem } from "@/lib/api/response";
 import { getPostgresPublicUserById, shouldUsePostgresAuth } from "@/lib/auth/postgres-auth";
 import { getSessionUserIdFromRequest } from "@/lib/auth/session";
 import { getLibraryInvoiceForUser, type LibraryShippingAddress } from "@/lib/library/repository";
+import { getProductionPaymentSettings, shouldUsePostgresPayments } from "@/lib/payments/postgres-payment-repository";
+import { formatBankDetailLabel } from "@/lib/payments/public-payment-config";
+import type { ManualPaymentMethodConfig, PaymentSettings } from "@/lib/settings/types";
 import { getStore } from "@/lib/store/app-store";
 
 export const dynamic = "force-dynamic";
@@ -32,11 +35,23 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
     discountTotal?: number;
     shipping?: LibraryShippingAddress | null;
     items?: Array<{ title: string; sku: string; quantity: number; unitPrice: number; total: number; productType?: string }>;
+    payment?: {
+      id?: string;
+      status?: string;
+      provider?: string | null;
+      method?: string | null;
+      manual?: boolean | null;
+      proofStatus?: string | null;
+      referenceNumber?: string | null;
+      metadata?: Record<string, unknown> | null;
+    } | null;
   };
+  const paymentSettings = await getInvoicePaymentSettings();
   const html = printableInvoiceHtml({
     invoiceNumber: invoice?.invoiceNumber ?? `HL-LIB-INV-${order.orderNumber}`,
     issuedAt: invoice?.issuedAt ? new Date(invoice.issuedAt).toISOString() : new Date().toISOString(),
     order,
+    paymentDetails: resolveInvoicePaymentDetails(order, paymentSettings),
     taxTotal: Number(invoice?.taxTotal ?? 0),
     subtotal: Number(invoice?.subtotal ?? order.subtotal ?? order.total),
     discountTotal: Number(invoice?.discountTotal ?? order.discountTotal ?? 0),
@@ -62,7 +77,17 @@ function printableInvoiceHtml(input: {
     total: number;
     shipping?: LibraryShippingAddress | null;
     items?: Array<{ title: string; sku: string; quantity: number; unitPrice: number; total: number; productType?: string }>;
+    payment?: {
+      id?: string;
+      status?: string;
+      provider?: string | null;
+      method?: string | null;
+      manual?: boolean | null;
+      proofStatus?: string | null;
+      referenceNumber?: string | null;
+    } | null;
   };
+  paymentDetails: InvoicePaymentDetails;
   taxTotal: number;
   subtotal: number;
   discountTotal: number;
@@ -96,6 +121,7 @@ function printableInvoiceHtml(input: {
   const discountRow = input.discountTotal > 0 ? `<div><span>Discount</span><strong>- ${money(input.discountTotal)}</strong></div>` : "";
   const taxRow = input.taxTotal > 0 ? `<div><span>Tax</span><strong>${money(input.taxTotal)}</strong></div>` : "";
   const emptyRows = rows || `<tr><td colspan="5" class="empty">No invoice items were found for this order.</td></tr>`;
+  const paymentDetailsBlock = renderPaymentDetails(input.paymentDetails);
 
   return `<!doctype html>
 <html>
@@ -297,6 +323,63 @@ function printableInvoiceHtml(input: {
       padding: 18px;
     }
     .message strong { display: block; margin-bottom: 4px; }
+    .payment-details {
+      margin-top: 28px;
+      border-radius: 14px;
+      border: 1px solid #dbe4ee;
+      background: #f8fafc;
+      padding: 20px;
+    }
+    .payment-details h2 {
+      margin: 0;
+      color: #0f172a;
+      font-size: 16px;
+    }
+    .payment-details .lead {
+      margin: 6px 0 0;
+      color: #475569;
+      font-size: 13px;
+    }
+    .payment-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 16px;
+    }
+    .payment-field {
+      min-width: 0;
+      border-radius: 12px;
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      padding: 12px;
+    }
+    .payment-field span {
+      display: block;
+      color: #64748b;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+    .payment-field strong {
+      display: block;
+      margin-top: 5px;
+      overflow-wrap: anywhere;
+      color: #0f172a;
+    }
+    .instructions {
+      margin-top: 14px;
+      border-left: 4px solid #009f73;
+      padding: 4px 0 4px 12px;
+      color: #334155;
+      white-space: pre-line;
+    }
+    .proof-note {
+      margin: 14px 0 0;
+      color: #0f513f;
+      font-size: 12px;
+      font-weight: 700;
+    }
     .totals {
       border-radius: 14px;
       border: 1px solid #dbe4ee;
@@ -334,6 +417,7 @@ function printableInvoiceHtml(input: {
       .page { min-height: auto; margin-bottom: 0; border: 0; }
       .hero, .content { padding-left: 22px; padding-right: 22px; }
       .hero-grid, .addresses, .payment-panel, .summary-strip { grid-template-columns: 1fr; }
+      .payment-grid { grid-template-columns: 1fr; }
       .summary-strip { margin-top: -40px; }
       .invoice-meta { min-width: 0; }
       .numeric { text-align: left; }
@@ -387,12 +471,12 @@ function printableInvoiceHtml(input: {
         <div class="summary-card">
           <span>Amount due</span>
           <strong>${money(input.order.total)}</strong>
-          <p>Library order total</p>
+          <p>${escapeHtml(input.paymentDetails.reference ? `Use ref ${input.paymentDetails.reference}` : "Library order total")}</p>
         </div>
         <div class="summary-card">
-          <span>Status</span>
-          <strong>Invoice issued</strong>
-          <p>Keep this for your records</p>
+          <span>Payment</span>
+          <strong>${escapeHtml(input.paymentDetails.statusLabel)}</strong>
+          <p>${escapeHtml(input.paymentDetails.methodLabel)}</p>
         </div>
       </div>
 
@@ -421,6 +505,8 @@ function printableInvoiceHtml(input: {
         </thead>
         <tbody>${emptyRows}</tbody>
       </table>
+
+      ${paymentDetailsBlock}
 
       <section class="payment-panel">
         <div class="message">
@@ -452,4 +538,97 @@ function printableInvoiceHtml(input: {
 
 function escapeHtml(value: string) {
   return value.replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[char] ?? char));
+}
+
+async function getInvoicePaymentSettings() {
+  if (shouldUsePostgresPayments()) return getProductionPaymentSettings().catch(() => null);
+  return getStore().getPaymentSettings();
+}
+
+type InvoicePaymentDetails = {
+  methodLabel: string;
+  statusLabel: string;
+  reference: string;
+  instructions?: string;
+  fields: Array<{ label: string; value: string }>;
+  requiresProof: boolean;
+};
+
+function resolveInvoicePaymentDetails(
+  order: {
+    orderNumber: string;
+    payment?: {
+      id?: string;
+      status?: string;
+      provider?: string | null;
+      method?: string | null;
+      manual?: boolean | null;
+      proofStatus?: string | null;
+      referenceNumber?: string | null;
+    } | null;
+  },
+  settings: PaymentSettings | null,
+): InvoicePaymentDetails {
+  const payment = order.payment;
+  const methodId = (payment?.method || payment?.provider || "").toLowerCase();
+  const manualMethod = settings?.manualMethods.find((method) => method.id.toLowerCase() === methodId && method.enabled)
+    ?? settings?.manualMethods.find((method) => methodId.includes(method.id.toLowerCase()) && method.enabled)
+    ?? null;
+  const gateway = settings?.gateways.find((item) => item.id.toLowerCase() === methodId);
+  const reference = payment?.referenceNumber || payment?.id || order.orderNumber;
+  const fields = manualMethod ? manualMethodFields(manualMethod) : [];
+
+  if (!fields.length && payment?.manual && settings?.bankDetails) {
+    for (const [key, value] of Object.entries(settings.bankDetails)) {
+      if (value) fields.push({ label: formatBankDetailLabel(key), value: String(value) });
+    }
+  }
+
+  return {
+    methodLabel: manualMethod?.label || gateway?.label || formatMethodLabel(methodId || payment?.provider || "Payment method"),
+    statusLabel: formatMethodLabel(payment?.status || "Invoice issued"),
+    reference,
+    instructions: manualMethod?.instructions,
+    fields,
+    requiresProof: Boolean(manualMethod?.requiresProof || payment?.manual),
+  };
+}
+
+function manualMethodFields(method: ManualPaymentMethodConfig) {
+  const fields: Array<{ label: string; value: string }> = [];
+  if (method.accountName) fields.push({ label: "Account name", value: method.accountName });
+  if (method.accountNumber) fields.push({ label: "Account number", value: method.accountNumber });
+  if (method.bankName) fields.push({ label: "Bank", value: method.bankName });
+  if (method.branch) fields.push({ label: "Branch", value: method.branch });
+  if (method.phoneNumber) fields.push({ label: "Phone", value: method.phoneNumber });
+  return fields;
+}
+
+function renderPaymentDetails(details: InvoicePaymentDetails) {
+  const fields = [
+    { label: "Payment method", value: details.methodLabel },
+    { label: "Payment status", value: details.statusLabel },
+    ...(details.reference ? [{ label: "Payment reference", value: details.reference }] : []),
+    ...details.fields,
+  ];
+  const fieldHtml = fields.map((field) => `
+    <div class="payment-field">
+      <span>${escapeHtml(field.label)}</span>
+      <strong>${escapeHtml(field.value)}</strong>
+    </div>
+  `).join("");
+  return `<section class="payment-details">
+    <h2>Payment details</h2>
+    <p class="lead">Use these details for this invoice. Always include the payment reference so finance can match the payment to the order.</p>
+    <div class="payment-grid">${fieldHtml}</div>
+    ${details.instructions ? `<p class="instructions">${escapeHtml(details.instructions)}</p>` : ""}
+    ${details.requiresProof ? `<p class="proof-note">After payment, upload proof from your order page or My Library order details.</p>` : ""}
+  </section>`;
+}
+
+function formatMethodLabel(value: string) {
+  return value
+    .replace(/_/g, " ")
+    .toLowerCase()
+    .replace(/\b\w/g, (char) => char.toUpperCase());
 }

@@ -2163,12 +2163,27 @@ export async function getLibraryInvoiceForUser(orderId: string, userId: string, 
   const admin = roles.some((role) => ["ADMIN", "SUPER_ADMIN"].includes(role));
   const order = await getMainPrisma().libraryOrder.findUnique({
     where: { id: orderId },
-    include: { customer: { select: { id: true, name: true, email: true } }, items: true, payment: { select: { status: true } } },
+    include: {
+      customer: { select: { id: true, name: true, email: true } },
+      items: true,
+      payment: {
+        select: {
+          id: true,
+          status: true,
+          provider: true,
+          method: true,
+          manual: true,
+          proofStatus: true,
+          metadata: true,
+        },
+      },
+    },
   });
   if (!order) return null;
   if (!admin && order.customerId !== userId) return "FORBIDDEN" as const;
   const invoice = await ensureLibraryInvoice(order.id);
   const metadata = (order.metadata ?? {}) as Record<string, unknown>;
+  const paymentMeta = (order.payment?.metadata ?? {}) as Record<string, unknown>;
   return {
     order: {
       ...toLibraryOrder(order),
@@ -2184,6 +2199,18 @@ export async function getLibraryInvoiceForUser(orderId: string, userId: string, 
         total: Number(item.total),
         productType: item.productType,
       })),
+      payment: order.payment
+        ? {
+            id: order.payment.id,
+            status: order.payment.status,
+            provider: order.payment.provider,
+            method: order.payment.method,
+            manual: order.payment.manual,
+            proofStatus: order.payment.proofStatus,
+            referenceNumber: typeof paymentMeta.referenceNumber === "string" ? paymentMeta.referenceNumber : null,
+            metadata: paymentMeta,
+          }
+        : null,
     },
     invoice,
   };
