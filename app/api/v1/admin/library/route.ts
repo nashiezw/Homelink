@@ -87,13 +87,17 @@ export async function POST(request: Request) {
       return created({ product });
     }
     if (body.action === "update_fulfilment" && body.id) {
+      const trackingUrl = optionalString(body.trackingUrl);
+      if (trackingUrl && !isHttpsUrl(trackingUrl)) {
+        return problem(400, "INVALID_TRACKING_URL", "Tracking URL must be a valid HTTPS link.");
+      }
       const fulfilment = await updateLibraryFulfilment(
         String(body.id),
         {
           status: optionalString(body.status),
           courier: optionalString(body.courier),
           trackingNumber: optionalString(body.trackingNumber),
-          trackingUrl: optionalString(body.trackingUrl),
+          trackingUrl,
           dispatchNotes: optionalString(body.dispatchNotes),
           deliveryNotes: optionalString(body.deliveryNotes),
         },
@@ -399,6 +403,14 @@ function optionalNullableString(value: unknown) {
 function optionalBoolean(value: unknown, fallback: boolean) {
   if (value == null) return fallback;
   return Boolean(value);
+}
+
+function isHttpsUrl(value: string) {
+  try {
+    return new URL(value).protocol === "https:";
+  } catch {
+    return false;
+  }
 }
 
 async function verifyLibraryFileDelivery(fileUrl: string, requestUrl: string) {

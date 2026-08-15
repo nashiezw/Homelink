@@ -2705,11 +2705,12 @@ function toIso(value: Date | string) {
 
 export async function updateLibraryFulfilment(id: string, input: { status?: string; courier?: string; trackingNumber?: string; trackingUrl?: string; dispatchNotes?: string; deliveryNotes?: string }, actorId?: string) {
   if (!shouldUsePostgresLibrary()) return null;
+  const trackingUrl = resolveTrackingUrl(input.courier, input.trackingNumber, input.trackingUrl);
   const data: Prisma.LibraryFulfilmentUpdateInput = {
     ...(input.status ? { status: input.status } : {}),
     ...(input.courier !== undefined ? { courier: input.courier || null } : {}),
     ...(input.trackingNumber !== undefined ? { trackingNumber: input.trackingNumber || null } : {}),
-    ...(input.trackingUrl !== undefined ? { trackingUrl: input.trackingUrl || null } : {}),
+    ...(input.trackingUrl !== undefined || input.trackingNumber !== undefined || input.courier !== undefined ? { trackingUrl } : {}),
     ...(input.dispatchNotes !== undefined ? { dispatchNotes: input.dispatchNotes || null } : {}),
     ...(input.deliveryNotes !== undefined ? { deliveryNotes: input.deliveryNotes || null } : {}),
     ...(input.status === "PACKED" ? { packedAt: new Date() } : {}),
@@ -2738,8 +2739,10 @@ export async function updateLibraryFulfilment(id: string, input: { status?: stri
         templateKey: "dispatchUpdate",
         variables: {
           orderNumber: fulfilment.order.orderNumber,
+          orderUrl: `${getCanonicalSiteUrl()}/dashboard/my-library/orders/${fulfilment.order.id}`,
           courier: input.courier || fulfilment.courier || "Courier",
           trackingNumber: input.trackingNumber || fulfilment.trackingNumber || "n/a",
+          trackingUrl: trackingUrl || fulfilment.trackingUrl || `${getCanonicalSiteUrl()}/dashboard/my-library/orders/${fulfilment.order.id}`,
           message: input.status === "DELIVERED" ? "Your order has been marked delivered." : "Your order has been dispatched.",
         },
         force: true,
@@ -2748,6 +2751,31 @@ export async function updateLibraryFulfilment(id: string, input: { status?: stri
   }
   await logLibraryActivity({ actorId, targetType: "fulfilment", targetId: id, action: "UPDATED", message: `Fulfilment marked ${fulfilment.status}.`, metadata: input });
   return fulfilment;
+}
+
+function resolveTrackingUrl(courier?: string, trackingNumber?: string, trackingUrl?: string) {
+  const explicit = normalizeTrackingUrl(trackingUrl);
+  if (explicit) return explicit;
+  const tracking = trackingNumber?.trim();
+  if (!tracking) return null;
+  const courierKey = courier?.trim().toLowerCase() ?? "";
+  const encoded = encodeURIComponent(tracking);
+  if (courierKey.includes("dhl")) return `https://www.dhl.com/global-en/home/tracking/tracking-express.html?submit=1&tracking-id=${encoded}`;
+  if (courierKey.includes("fedex")) return `https://www.fedex.com/fedextrack/?trknbr=${encoded}`;
+  if (courierKey.includes("ups")) return `https://www.ups.com/track?tracknum=${encoded}`;
+  if (courierKey.includes("aramex")) return `https://www.aramex.com/us/en/track/track-shipments?ShipmentNumber=${encoded}`;
+  return null;
+}
+
+function normalizeTrackingUrl(value?: string) {
+  const trimmed = value?.trim();
+  if (!trimmed) return null;
+  try {
+    const url = new URL(trimmed);
+    return url.protocol === "https:" ? url.toString() : null;
+  } catch {
+    return null;
+  }
 }
 
 export async function createLibraryExportJob(type: string, filters: unknown, actorId?: string) {

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { CheckCircle2, FileText, Mail, MapPin, MessageCircle, Package, Printer, Truck, Upload } from "lucide-react";
+import { CheckCircle2, ExternalLink, FileText, Mail, MapPin, MessageCircle, Package, Printer, Truck, Upload } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { PageShell } from "@/components/layout/page-shell";
 import { WhatsAppHelpLink } from "@/components/layout/whatsapp-help-link";
@@ -249,18 +249,28 @@ export function LibraryOrderClient({ initialOrder }: { initialOrder: OrderDetail
               )}
               {order.fulfilment && (
                 <div className="surface-panel rounded-lg p-5">
-                  <h2 className="flex items-center gap-2 font-semibold"><Truck className="size-4 text-emerald-600" /> Fulfilment tracking</h2>
-                  <p className="mt-3 text-sm font-semibold capitalize">{order.fulfilment.status.toLowerCase().replace(/_/g, " ")}</p>
-                  {order.fulfilment.courier && <p className="mt-2 text-sm text-slate-500">Courier: {order.fulfilment.courier}</p>}
-                  {order.fulfilment.trackingNumber && (
-                    <p className="mt-1 text-sm text-slate-500">
-                      Tracking:{" "}
-                      {order.fulfilment.trackingUrl ? (
-                        <a href={order.fulfilment.trackingUrl} target="_blank" rel="noreferrer" className="font-semibold text-emerald-700 hover:underline">
-                          {order.fulfilment.trackingNumber}
-                        </a>
-                      ) : order.fulfilment.trackingNumber}
-                    </p>
+                  <div className="flex items-start justify-between gap-3">
+                    <h2 className="flex items-center gap-2 font-semibold"><Truck className="size-4 text-emerald-600" /> Fulfilment tracking</h2>
+                    <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-200">
+                      {trackingStatusLabel(order.fulfilment.status)}
+                    </span>
+                  </div>
+                  <div className="mt-4 grid gap-3 text-sm">
+                    {order.fulfilment.courier && <TrackingFact label="Courier" value={order.fulfilment.courier} />}
+                    {order.fulfilment.trackingNumber && <TrackingFact label="Tracking number" value={order.fulfilment.trackingNumber} />}
+                    {order.fulfilment.dispatchedAt && <TrackingFact label="Dispatched" value={formatOrderDate(order.fulfilment.dispatchedAt)} />}
+                    {order.fulfilment.deliveredAt && <TrackingFact label="Delivered" value={formatOrderDate(order.fulfilment.deliveredAt)} />}
+                  </div>
+                  {isSafeTrackingUrl(order.fulfilment.trackingUrl) && (
+                    <a href={order.fulfilment.trackingUrl!} target="_blank" rel="noreferrer" className="mt-4 inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-500">
+                      Track package <ExternalLink className="size-4" />
+                    </a>
+                  )}
+                  {order.fulfilment.dispatchNotes && (
+                    <p className="mt-4 rounded-lg bg-slate-50 p-3 text-sm text-slate-600 dark:bg-slate-900 dark:text-slate-300">{order.fulfilment.dispatchNotes}</p>
+                  )}
+                  {order.fulfilment.deliveryNotes && (
+                    <p className="mt-3 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-200">{order.fulfilment.deliveryNotes}</p>
                   )}
                 </div>
               )}
@@ -300,4 +310,31 @@ export function LibraryOrderClient({ initialOrder }: { initialOrder: OrderDetail
       </div>
     </PageShell>
   );
+}
+
+function TrackingFact({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border border-slate-200 p-3 dark:border-slate-800">
+      <p className="text-xs font-bold uppercase text-slate-500">{label}</p>
+      <p className="mt-1 break-words font-semibold text-ink dark:text-white">{value}</p>
+    </div>
+  );
+}
+
+function trackingStatusLabel(status: string) {
+  return status.toLowerCase().replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function formatOrderDate(value: string) {
+  const date = new Date(value);
+  return Number.isFinite(date.getTime()) ? date.toLocaleDateString() : value;
+}
+
+function isSafeTrackingUrl(value?: string | null) {
+  if (!value) return false;
+  try {
+    return new URL(value).protocol === "https:";
+  } catch {
+    return false;
+  }
 }

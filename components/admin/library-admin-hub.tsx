@@ -1411,8 +1411,13 @@ export function LibraryAdminHub() {
 
   async function saveFulfilment() {
     if (!fulfilmentDraft) return;
-    await apiFetch("/api/v1/admin/library", { method: "POST", body: JSON.stringify({ action: "update_fulfilment", ...fulfilmentDraft }) });
+    const result = await apiFetch("/api/v1/admin/library", { method: "POST", body: JSON.stringify({ action: "update_fulfilment", ...fulfilmentDraft }) });
+    if (result.error) {
+      setFeedback({ tone: "error", message: result.error.message || "Fulfilment could not be saved." });
+      return;
+    }
     setFulfilmentDraft(null);
+    setFeedback({ tone: "success", message: "Fulfilment update saved." });
     await load();
   }
 
@@ -2511,12 +2516,15 @@ export function LibraryAdminHub() {
       )}
 
       {fulfilmentDraft && (
-        <CommerceModal title="Update Fulfilment" description="Packing, dispatch, tracking, and delivery notes for printed Library orders." onClose={() => setFulfilmentDraft(null)} onSave={() => void saveFulfilment()} saveLabel="Save Fulfilment">
+        <CommerceModal title="Update Fulfilment" description="Packing, dispatch, tracking, and delivery notes for printed Library orders." onClose={() => setFulfilmentDraft(null)} onSave={() => void saveFulfilment()} saveLabel={fulfilmentSaveLabel(fulfilmentDraft.status)}>
           <div className="grid gap-3 md:grid-cols-2">
             <SelectField label="Status" value={fulfilmentDraft.status} onChange={(value) => setFulfilmentDraft({ ...fulfilmentDraft, status: value })} options={["PENDING", "PACKED", "DISPATCHED", "DELIVERED", "RETURNED", "CANCELLED"]} />
             <Field label="Courier" value={fulfilmentDraft.courier} onChange={(value) => setFulfilmentDraft({ ...fulfilmentDraft, courier: value })} />
             <Field label="Tracking number" value={fulfilmentDraft.trackingNumber} onChange={(value) => setFulfilmentDraft({ ...fulfilmentDraft, trackingNumber: value })} />
-            <Field label="Tracking URL" value={fulfilmentDraft.trackingUrl} onChange={(value) => setFulfilmentDraft({ ...fulfilmentDraft, trackingUrl: value })} />
+            <div className="grid gap-1.5">
+              <Field label="Tracking URL" value={fulfilmentDraft.trackingUrl} onChange={(value) => setFulfilmentDraft({ ...fulfilmentDraft, trackingUrl: value })} placeholder="https://courier.example/track/123" />
+              <p className="text-xs text-slate-500">Optional HTTPS link. If left blank, HouseLink auto-builds links for DHL, FedEx, UPS, and Aramex when possible.</p>
+            </div>
             <TextAreaField label="Dispatch notes" value={fulfilmentDraft.dispatchNotes} onChange={(value) => setFulfilmentDraft({ ...fulfilmentDraft, dispatchNotes: value })} />
             <TextAreaField label="Delivery notes" value={fulfilmentDraft.deliveryNotes} onChange={(value) => setFulfilmentDraft({ ...fulfilmentDraft, deliveryNotes: value })} />
           </div>
@@ -4262,6 +4270,13 @@ function PaymentProofQueue({
 function libraryPaymentApprovalLabel(order: LibraryOrder) {
   if (order.hasDigitalItems) return order.hasPrintedItems ? "Approve & unlock digital" : "Approve & unlock";
   return "Approve payment";
+}
+
+function fulfilmentSaveLabel(status: string) {
+  if (status === "DISPATCHED") return "Dispatch order";
+  if (status === "DELIVERED") return "Mark delivered";
+  if (status === "PACKED") return "Mark packed";
+  return "Save update";
 }
 
 function OrdersTable({

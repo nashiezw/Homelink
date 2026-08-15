@@ -31,7 +31,7 @@ export const defaultLibraryEmailTemplates: Record<LibraryEmailTemplateKey, Libra
   },
   dispatchUpdate: {
     subject: "Dispatch update for {{orderNumber}}",
-    body: "Hi {{customerName}},\n\nYour printed Library order {{orderNumber}} has a fulfilment update.\nCourier: {{courier}}\nTracking: {{trackingNumber}}\n\n{{message}}\n\n— {{fromName}}",
+    body: "Hi {{customerName}},\n\nYour printed Library order {{orderNumber}} has a fulfilment update.\nCourier: {{courier}}\nTracking: {{trackingNumber}}\nTrack your order: {{trackingUrl}}\n\n{{message}}\n\nMy Library: {{orderUrl}}\n\n— {{fromName}}",
   },
   reviewRequest: {
     subject: "How was {{productTitle}}?",

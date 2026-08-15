@@ -41,7 +41,7 @@ const EMAIL_TEMPLATE_LABELS: Record<LibraryEmailTemplateKey, string> = {
 };
 
 const MERGE_TAG_HINT =
-  "{{orderNumber}} {{customerName}} {{storeName}} {{currency}} {{total}} {{orderUrl}} {{fromName}} {{productTitle}} {{productUrl}} {{courier}} {{trackingNumber}} {{message}} {{licenceText}} {{extra}} {{reason}} {{email}} {{claimUrl}} {{expiryDays}}";
+  "{{orderNumber}} {{customerName}} {{storeName}} {{currency}} {{total}} {{orderUrl}} {{fromName}} {{productTitle}} {{productUrl}} {{courier}} {{trackingNumber}} {{trackingUrl}} {{message}} {{licenceText}} {{extra}} {{reason}} {{email}} {{claimUrl}} {{expiryDays}}";
 
 const SORT_OPTIONS: Array<LibraryStoreSettings["merchandising"]["defaultSort"]> = [
   "newest",
