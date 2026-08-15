@@ -4218,7 +4218,7 @@ function PaymentProofQueue({
         <div>
           <h3 className="text-sm font-semibold uppercase tracking-wider text-amber-100">Payment proof queue</h3>
           <p className="mt-1 text-xs text-amber-100/80">
-            {queue.length} order{queue.length === 1 ? "" : "s"} awaiting finance review. Approve unlocks downloads; reject asks for clearer proof.
+            {queue.length} order{queue.length === 1 ? "" : "s"} awaiting finance review. Digital lines unlock downloads; print-only orders move to fulfilment.
           </p>
         </div>
         <span className="rounded-full bg-amber-400/20 px-3 py-1 text-xs font-bold text-amber-100">
@@ -4243,7 +4243,7 @@ function PaymentProofQueue({
               ) : null}
               {onApprovePayment ? (
                 <button type="button" onClick={() => onApprovePayment(order)} className="rounded-lg border border-emerald-500/30 px-3 py-2 text-xs font-bold text-emerald-300 hover:bg-emerald-500/10">
-                  Approve & unlock
+                  {libraryPaymentApprovalLabel(order)}
                 </button>
               ) : null}
               {onRejectPayment ? (
@@ -4257,6 +4257,11 @@ function PaymentProofQueue({
       </div>
     </div>
   );
+}
+
+function libraryPaymentApprovalLabel(order: LibraryOrder) {
+  if (order.hasDigitalItems) return order.hasPrintedItems ? "Approve & unlock digital" : "Approve & unlock";
+  return "Approve payment";
 }
 
 function OrdersTable({

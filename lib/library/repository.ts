@@ -152,7 +152,7 @@ const FALLBACK_TOKEN_TTL_SECONDS = 60 * 15;
 
 type LocalLibraryOrder = LibraryOrder & {
   customerId?: string;
-  items?: Array<{ id: string; title: string; sku: string; quantity: number; unitPrice: number; total: number; productId: string }>;
+  items?: Array<{ id: string; title: string; sku: string; quantity: number; unitPrice: number; total: number; productId: string; productType?: string }>;
   payment?: { status: string; proofStatus?: string | null; proofUrl?: string | null; id?: string };
 };
 
@@ -1104,6 +1104,8 @@ export async function createLibraryOrderFromCheckout(input: {
       total: quote.total,
       currency: quote.currency,
       itemCount: quote.items.reduce((sum, item) => sum + item.quantity, 0),
+      hasPrintedItems: quote.items.some((item) => item.formatType === "PRINTED_BOOK"),
+      hasDigitalItems: quote.items.some((item) => item.formatType !== "PRINTED_BOOK"),
       createdAt: new Date().toISOString(),
       payment: { status: "PENDING" },
       items: quote.items.map((item) => ({
@@ -1114,6 +1116,7 @@ export async function createLibraryOrderFromCheckout(input: {
         quantity: item.quantity,
         unitPrice: item.price ?? 0,
         total: (item.price ?? 0) * item.quantity,
+        productType: item.formatType,
       })),
     };
     localLibraryOrders.unshift(order);
@@ -1512,12 +1515,13 @@ export async function fulfillPaidLibraryOrdersForPayment(paymentId: string) {
     let orders = 0;
     localLibraryOrders.forEach((order) => {
       if (order.paymentId === paymentId) {
-        const hasPrint = (order.items ?? []).some((item) => /print/i.test(item.title));
+        const hasPrint = Boolean(order.hasPrintedItems ?? (order.items ?? []).some((item) => item.productType === "PRINTED_BOOK"));
+        const hasDigital = Boolean(order.hasDigitalItems ?? (order.items ?? []).some((item) => item.productType !== "PRINTED_BOOK"));
         order.status = hasPrint ? "PAID" : "FULFILLED";
         order.paymentStatus = "PAID";
         order.payment = { status: "PAID" };
         orders += 1;
-        downloads += hasPrint ? 0 : (order.items?.length ?? 0);
+        downloads += hasDigital ? (order.items ?? []).filter((item) => item.productType !== "PRINTED_BOOK").length : 0;
       }
     });
     return { orders, downloads };
@@ -4126,6 +4130,8 @@ function toLibraryOrder(row: DbOrder): LibraryOrder {
       (typeof paymentMeta.rejectReason === "string" && paymentMeta.rejectReason) ||
       (typeof paymentMeta.refundReason === "string" && paymentMeta.refundReason) ||
       null,
+    hasPrintedItems: row.items.some((item) => item.productType === "PRINTED_BOOK"),
+    hasDigitalItems: row.items.some((item) => item.productType !== "PRINTED_BOOK"),
   };
 }
 

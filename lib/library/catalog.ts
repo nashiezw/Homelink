@@ -841,6 +841,8 @@ export type LibraryOrder = {
   proofStatus?: string | null;
   proofUrl?: string | null;
   paymentAdminNote?: string | null;
+  hasPrintedItems?: boolean;
+  hasDigitalItems?: boolean;
 };
 
 export type LibraryAnalytics = {
