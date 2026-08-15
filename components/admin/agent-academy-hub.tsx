@@ -229,6 +229,7 @@ type AcademyData = {
     moduleTitle?: string | null;
     registeredAt: string;
     accessStartsAt?: string | null;
+    lastActivityAt?: string | null;
     daysSinceRegistration: number;
   }>;
   leaderboard?: Array<{ id: string; agentId: string; learnerName?: string | null; learnerEmail?: string | null; badgeName: string; xp: number; awardedAt: string }>;
@@ -2462,6 +2463,7 @@ function LearnerActivationPanel({
   ];
   const activationRows = approvedApplications.map((application) => {
     const dropoff = dropoffs.find((row) => row.learnerId === application.learner.id && row.courseId === application.course.id);
+    const learnerProfile = data.learnerProfiles?.find((profile) => profile.agentId === application.learner.id);
     return {
       id: `${application.id}-${dropoff ? "not-started" : "started"}`,
       learnerId: application.learner.id,
@@ -2474,6 +2476,7 @@ function LearnerActivationPanel({
       firstLessonTitle: dropoff?.firstLessonTitle ?? "First lesson opened",
       daysSinceRegistration: dropoff?.daysSinceRegistration ?? daysSince(application.createdAt),
       registeredAt: application.createdAt,
+      lastActivityAt: dropoff?.lastActivityAt ?? learnerProfile?.latestActivity ?? application.updatedAt ?? application.createdAt,
     };
   });
   const filteredRows = activationRows.filter((row) => {
@@ -2569,7 +2572,7 @@ function LearnerActivationPanel({
                   <div className="mt-4 grid gap-3 rounded-xl border border-white/[0.06] bg-slate-900/55 p-3 sm:grid-cols-2">
                     <ActivationDetail label="Course" value={row.courseTitle} />
                     <ActivationDetail label="First lesson" value={row.firstLessonTitle} />
-                    <ActivationDetail label="Age" value={formatActivationAge(row.registeredAt, row.daysSinceRegistration)} />
+                    <ActivationDetail label="Last active" value={formatRelativeActivity(row.lastActivityAt, daysSince(row.lastActivityAt))} />
                     <ActivationDetail label="Registered" value={row.registeredAt ? new Date(row.registeredAt).toLocaleDateString() : "Unknown"} />
                   </div>
 
@@ -3649,14 +3652,14 @@ function daysSince(value?: string | null) {
   return Math.max(0, Math.floor((Date.now() - time) / 86_400_000));
 }
 
-function formatActivationAge(registeredAt?: string | null, days = 0) {
-  const time = registeredAt ? new Date(registeredAt).getTime() : NaN;
+function formatRelativeActivity(value?: string | null, days = 0) {
+  const time = value ? new Date(value).getTime() : NaN;
   if (Number.isFinite(time)) {
     const hours = Math.max(0, Math.floor((Date.now() - time) / 3_600_000));
-    if (hours < 24) return hours <= 1 ? "Under 1 hour" : `${hours} hours`;
+    if (hours < 24) return hours <= 1 ? "Under 1 hour ago" : `${hours} hours ago`;
   }
   const wholeDays = Math.max(0, Math.floor(days));
-  return `${wholeDays} day${wholeDays === 1 ? "" : "s"}`;
+  return `${wholeDays} day${wholeDays === 1 ? "" : "s"} ago`;
 }
 
 function learnerDisplayName(record: { learnerName?: string | null; learnerEmail?: string | null; agentId?: string | null }) {

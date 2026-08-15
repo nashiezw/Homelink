@@ -67,6 +67,7 @@ export async function getAcademyDashboard(options: { compact?: boolean } = {}) {
     enrolments,
     courseProgress,
     lessonProgress,
+    appSessions,
     quizAttempts,
     examAttempts,
     assignmentSubmissions,
@@ -127,6 +128,7 @@ export async function getAcademyDashboard(options: { compact?: boolean } = {}) {
     prisma.courseEnrolment.findMany(),
     prisma.courseProgress.findMany({ orderBy: { updatedAt: "desc" }, ...(compact ? { take: 500 } : {}) }),
     prisma.lessonProgress.findMany({ orderBy: { lastViewedAt: "desc" }, ...(compact ? { take: 500 } : {}) }),
+    prisma.appSession.findMany({ select: { userId: true, lastSeenAt: true }, orderBy: { lastSeenAt: "desc" }, ...(compact ? { take: 1000 } : {}) }),
     prisma.quizAttempt.findMany({ orderBy: { startedAt: "desc" }, ...(compact ? { take: 500 } : {}) }),
     prisma.examAttempt.findMany({ orderBy: { startedAt: "desc" }, ...(compact ? { take: 300 } : {}) }),
     prisma.assignmentSubmission.findMany({ orderBy: { submittedAt: "desc" }, ...(compact ? { take: 300 } : {}) }),
@@ -288,7 +290,9 @@ export async function getAcademyDashboard(options: { compact?: boolean } = {}) {
     courses,
     publicLearnerApplications,
     enrolments,
+    courseProgress,
     lessonProgress,
+    appSessions,
   });
 
   return {
@@ -2427,7 +2431,7 @@ async function sendFirstLessonActivationReminders(actor: Actor) {
     prisma.courseEnrolment.findMany({ where: { status: "ACTIVE" } }),
     prisma.lessonProgress.findMany({ select: { lessonId: true, agentId: true } }),
   ]);
-  const candidates = buildFirstLessonDropoffs({ courses, publicLearnerApplications: applications, enrolments, lessonProgress });
+  const candidates = buildFirstLessonDropoffs({ courses, publicLearnerApplications: applications, enrolments, courseProgress: [], lessonProgress, appSessions: [] });
   if (!candidates.length) return { queued: 0, checked: 0 };
 
   const cutoff = new Date(Date.now() - 20 * 60 * 60 * 1000);
@@ -2516,6 +2520,15 @@ function slugify(value: string) {
 
 function daysAgo(date: Date) {
   return Math.max(0, Math.floor((Date.now() - date.getTime()) / 86400000));
+}
+
+function latestDate(values: Array<Date | string | null | undefined>) {
+  return values.reduce<Date | null>((latest, value) => {
+    if (!value) return latest;
+    const date = value instanceof Date ? value : new Date(value);
+    if (!Number.isFinite(date.getTime())) return latest;
+    return !latest || date > latest ? date : latest;
+  }, null);
 }
 
 function average(values: number[]) {
@@ -2742,16 +2755,25 @@ function buildFirstLessonDropoffs({
   courses,
   publicLearnerApplications,
   enrolments,
+  courseProgress,
   lessonProgress,
+  appSessions,
 }: {
   courses: any[];
   publicLearnerApplications: any[];
   enrolments: any[];
+  courseProgress: any[];
   lessonProgress: any[];
+  appSessions: Array<{ userId: string; lastSeenAt: Date }>;
 }) {
   const activeEnrolmentIds = new Set(enrolments.filter((entry) => entry.status === "ACTIVE").map((entry) => `${entry.courseId}:${entry.agentId}`));
   const viewedFirstLessonIds = new Set(lessonProgress.map((entry) => `${entry.lessonId}:${entry.agentId}`));
   const firstLessonByCourseId = new Map<string, { id: string; title: string; moduleTitle: string | null }>();
+  const latestSessionByLearnerId = new Map<string, Date>();
+  for (const session of appSessions) {
+    const current = latestSessionByLearnerId.get(session.userId);
+    if (!current || session.lastSeenAt > current) latestSessionByLearnerId.set(session.userId, session.lastSeenAt);
+  }
 
   for (const course of courses) {
     const modules = [...(course.modules ?? [])].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
@@ -2772,6 +2794,20 @@ function buildFirstLessonDropoffs({
     .map((application) => {
       const firstLesson = firstLessonByCourseId.get(application.courseId);
       if (!firstLesson || viewedFirstLessonIds.has(`${firstLesson.id}:${application.learnerId}`)) return null;
+      const latestCourseProgress = courseProgress
+        .filter((entry) => entry.courseId === application.courseId && entry.agentId === application.learnerId)
+        .map((entry) => entry.updatedAt);
+      const latestLessonProgress = lessonProgress
+        .filter((entry) => entry.agentId === application.learnerId)
+        .map((entry) => entry.completedAt ?? entry.lastViewedAt);
+      const lastActivityAt = latestDate([
+        latestSessionByLearnerId.get(application.learnerId),
+        ...latestCourseProgress,
+        ...latestLessonProgress,
+        application.accessStartsAt,
+        application.updatedAt,
+        application.createdAt,
+      ]);
       return {
         id: application.id,
         learnerId: application.learnerId,
@@ -2784,6 +2820,7 @@ function buildFirstLessonDropoffs({
         moduleTitle: firstLesson.moduleTitle,
         registeredAt: application.createdAt.toISOString(),
         accessStartsAt: application.accessStartsAt?.toISOString() ?? null,
+        lastActivityAt: lastActivityAt?.toISOString() ?? null,
         daysSinceRegistration: daysAgo(application.createdAt),
       };
     })
