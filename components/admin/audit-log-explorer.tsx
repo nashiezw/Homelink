@@ -3,6 +3,7 @@
 import { RefreshCw, Search, X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { apiFetch } from "@/lib/api/client";
 
 type AuditEntry = {
   id: string;
@@ -43,13 +44,12 @@ export function AuditLogExplorer() {
     setResendingId(entry.id);
     setResendMessage(null);
     try {
-      const response = await fetch(`/api/v1/admin/audit/${entry.id}/resend-email`, { method: "POST" });
-      const json = await response.json();
-      if (!response.ok || json.error) {
-        setResendMessage({ ok: false, text: json.error?.message || "Email could not be resent." });
+      const result = await apiFetch<{ message?: string }>(`/api/v1/admin/audit/${entry.id}/resend-email`, { method: "POST" });
+      if (result.error) {
+        setResendMessage({ ok: false, text: result.error.message || "Email could not be resent." });
         return;
       }
-      setResendMessage({ ok: true, text: json.data?.message || "Email resent." });
+      setResendMessage({ ok: true, text: result.data?.message || "Email resent." });
       await load(data?.offset ?? 0);
     } catch {
       setResendMessage({ ok: false, text: "Email could not be resent. Please try again." });
