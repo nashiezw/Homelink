@@ -128,7 +128,12 @@ export async function getAcademyDashboard(options: { compact?: boolean } = {}) {
     prisma.courseEnrolment.findMany(),
     prisma.courseProgress.findMany({ orderBy: { updatedAt: "desc" }, ...(compact ? { take: 500 } : {}) }),
     prisma.lessonProgress.findMany({ orderBy: { lastViewedAt: "desc" }, ...(compact ? { take: 500 } : {}) }),
-    prisma.appSession.findMany({ select: { userId: true, lastSeenAt: true }, orderBy: { lastSeenAt: "desc" }, ...(compact ? { take: 1000 } : {}) }),
+    prisma.appSession.findMany({
+      where: { revokedAt: null, expiresAt: { gt: new Date() } },
+      select: { userId: true, lastSeenAt: true },
+      orderBy: { lastSeenAt: "desc" },
+      ...(compact ? { take: 1000 } : {}),
+    }),
     prisma.quizAttempt.findMany({ orderBy: { startedAt: "desc" }, ...(compact ? { take: 500 } : {}) }),
     prisma.examAttempt.findMany({ orderBy: { startedAt: "desc" }, ...(compact ? { take: 300 } : {}) }),
     prisma.assignmentSubmission.findMany({ orderBy: { submittedAt: "desc" }, ...(compact ? { take: 300 } : {}) }),

@@ -1,7 +1,7 @@
 import type { AdminPermission } from "@/lib/settings/types";
 import { requireAdminPermission } from "@/lib/settings/rbac";
-import { getSessionUserIdFromRequest } from "@/lib/auth/session";
-import { getPostgresPublicUserById, shouldUsePostgresAuth } from "@/lib/auth/postgres-auth";
+import { getSessionUserIdFromRequest, getSignedSessionFromRequest } from "@/lib/auth/session";
+import { getPostgresPublicUserById, shouldUsePostgresAuth, touchPostgresSession } from "@/lib/auth/postgres-auth";
 import { problem } from "@/lib/api/response";
 import { getStore } from "@/lib/store/app-store";
 import type { StoreUser } from "@/lib/store/types";
@@ -54,6 +54,8 @@ export async function requireAdminAsync(request: Request, permission?: AdminPerm
   if (!userId) {
     return { error: problem(401, "UNAUTHORIZED", "Sign in to access admin.") };
   }
+  const session = getSignedSessionFromRequest(request);
+  if (session) await touchPostgresSession(session.sessionId);
   const user = await getPostgresPublicUserById(userId);
   if (!user || !user.roles.some((role) => ADMIN_ROLES.includes(role))) {
     return { error: problem(403, "FORBIDDEN", "Admin access required.") };
