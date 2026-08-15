@@ -42,6 +42,7 @@ type AuthResult =
 
 const AppContext = createContext<AppContextValue | null>(null);
 const COMPARE_KEY = "houselink_compare";
+const SESSION_HEARTBEAT_MS = 60_000;
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<PublicUser | null>(null);
@@ -60,7 +61,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const refreshUser = useCallback(async () => {
     try {
-      const result = await apiFetch<PublicUser>("/api/v1/auth/me");
+      const result = await apiFetch<PublicUser>("/api/v1/auth/session", { cache: "no-store" });
       if (result.data) {
         setUser(result.data);
         return result.data;
@@ -109,6 +110,37 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
     })();
   }, [refreshFavourites, refreshUser]);
+
+  const userId = user?.id;
+
+  useEffect(() => {
+    if (!userId) return;
+    let cancelled = false;
+    const touchSession = async () => {
+      const result = await apiFetch<PublicUser>("/api/v1/auth/session", { cache: "no-store" });
+      if (cancelled) return;
+      if (result.data) {
+        setUser(result.data);
+      } else if (result.error?.code === "UNAUTHORIZED") {
+        setUser(null);
+        setFavourites([]);
+      }
+    };
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") void touchSession();
+    };
+    const intervalId = window.setInterval(() => {
+      if (document.visibilityState === "visible") void touchSession();
+    }, SESSION_HEARTBEAT_MS);
+    window.addEventListener("focus", refreshWhenVisible);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+      window.removeEventListener("focus", refreshWhenVisible);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+    };
+  }, [userId]);
 
   const signIn = useCallback(
     async (input: { email: string; password: string }) => {
