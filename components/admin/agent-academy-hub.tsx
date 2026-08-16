@@ -2496,7 +2496,7 @@ function PublicLearnersPanel({
         </div>
       );
     }
-    return <span className="text-xs text-slate-500">Not uploaded</span>;
+    return <span className="text-xs font-semibold text-slate-500">Awaiting proof</span>;
   }
 
   const couponPreview = (() => {
@@ -2609,13 +2609,30 @@ function PublicLearnersPanel({
               <div className="min-w-32">
                 <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/25 bg-emerald-400/10 px-2.5 py-1 text-[11px] font-bold text-emerald-100">
                   <Ticket className="size-3" />
-                  {row.coupon.code} · -{row.currency} {row.coupon.discountAmount.toFixed(2)}
+                  {row.coupon.code} - {row.currency} {row.coupon.discountAmount.toFixed(2)} off
                 </span>
                 {row.coupon.appliedByAdmin && <p className="mt-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Admin applied</p>}
               </div>
-            ) : <span className="text-xs text-slate-500">None</span>,
+            ) : <span className="text-xs font-semibold text-slate-500">No coupon</span>,
           },
-          { key: "status", header: "Status", render: (row) => <AdminStatusBadge status={row.status.replace(/_/g, " ")} variant={row.status === "APPROVED" ? "success" : row.status === "REJECTED" ? "danger" : "warning"} /> },
+          {
+            key: "status",
+            header: "Status",
+            render: (row) => (
+              <span
+                className={cn(
+                  "inline-flex max-w-32 items-center rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.08em]",
+                  row.status === "APPROVED"
+                    ? "border-emerald-400/25 bg-emerald-400/10 text-emerald-200"
+                    : row.status === "REJECTED"
+                      ? "border-red-400/25 bg-red-400/10 text-red-200"
+                      : "border-amber-400/20 bg-amber-400/10 text-amber-200",
+                )}
+              >
+                {row.status.replace(/_/g, " ")}
+              </span>
+            ),
+          },
           {
             key: "proof",
             header: "Proof",
@@ -2636,20 +2653,15 @@ function PublicLearnersPanel({
                   >
                     <MessageCircle className="size-4" /> WhatsApp
                   </button>
-                  {"courseId" in row && !row.coupon && couponCanAdjust && (
-                    <Button variant="secondary" onClick={() => openCouponDrawer(row)}>
-                        Apply coupon
-                    </Button>
-                  )}
                   {canReview ? (
-                    <>
+                    <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-slate-950/35 p-1">
                       <Button onClick={() => void action({ action: row.reviewAction, [row.reviewIdKey]: row.id, status: "APPROVED" }, "Access approved.")}>
                         Approve
                       </Button>
                       <Button variant="secondary" onClick={() => void action({ action: row.reviewAction, [row.reviewIdKey]: row.id, status: "REJECTED", adminNote: "Payment proof could not be verified. Please upload a clearer proof of payment." }, "Registration rejected.")}>
                         Reject
                       </Button>
-                    </>
+                    </div>
                   ) : (
                     <span className="inline-flex min-h-10 flex-col justify-center rounded-lg border border-white/10 px-3 py-1.5 text-xs font-semibold text-slate-400">
                       <span>{row.status === "APPROVED" ? "Already approved" : "Rejected"}</span>
@@ -2658,10 +2670,13 @@ function PublicLearnersPanel({
                   )}
                   <ActionToolbar
                     actions={[
+                      ...("courseId" in row && !row.coupon && couponCanAdjust
+                        ? [{ label: "Apply coupon", icon: Ticket, more: true, onClick: () => openCouponDrawer(row) }]
+                        : []),
                       ...("courseId" in row && row.coupon && couponCanAdjust
                         ? [{ label: "Remove coupon", icon: RotateCcw, tone: "danger" as const, more: true, onClick: () => void removeCoupon(row) }]
                         : []),
-                      { label: "Delete", icon: Trash2, tone: "danger", more: !canReview, onClick: () => setDeleteTarget(row) },
+                      { label: "Delete", icon: Trash2, tone: "danger", more: true, onClick: () => setDeleteTarget(row) },
                     ]}
                   />
                 </div>
