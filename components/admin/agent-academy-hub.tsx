@@ -1305,11 +1305,19 @@ function ActivationMetric({
   );
 }
 
-function ActivationDetail({ label, value }: { label: string; value: string }) {
+function ActivationDetail({ label, value, tone = "default" }: { label: string; value: string; tone?: "default" | "success" | "warning" | "muted" }) {
+  const valueClass =
+    tone === "success"
+      ? "text-emerald-200"
+      : tone === "warning"
+        ? "text-amber-200"
+        : tone === "muted"
+          ? "text-slate-400"
+          : "text-slate-200";
   return (
     <div className="min-w-0">
       <p className="text-[11px] font-black uppercase tracking-[0.14em] text-slate-500">{label}</p>
-      <p className="mt-1 break-words text-sm font-semibold text-slate-200">{value}</p>
+      <p className={cn("mt-1 break-words text-sm font-semibold", valueClass)}>{value}</p>
     </div>
   );
 }
@@ -2476,6 +2484,21 @@ function PublicLearnersPanel({
     );
   }
 
+  function proofDisplay(row: (typeof rows)[number]) {
+    if (row.proofUrl) {
+      return <a href={row.proofUrl} target="_blank" className="text-sm font-semibold text-emerald-300">Open proof</a>;
+    }
+    if (row.coupon && row.amount <= 0) {
+      return (
+        <div className="text-xs">
+          <p className="font-semibold text-emerald-200">Covered by coupon</p>
+          <p className="mt-0.5 text-slate-500">No proof needed</p>
+        </div>
+      );
+    }
+    return <span className="text-xs text-slate-500">Not uploaded</span>;
+  }
+
   const couponPreview = (() => {
     if (!couponTarget || !couponCode.trim()) return null;
     const code = couponCode.trim().toUpperCase();
@@ -2567,14 +2590,16 @@ function PublicLearnersPanel({
             key: "amount",
             header: "Amount",
             render: (row) => (
-              <span className="text-sm text-slate-300">
+              <div className="min-w-24 text-sm">
                 {row.coupon?.originalAmount && row.coupon.originalAmount > row.amount ? (
                   <>
-                    <span className="mr-1 text-slate-500 line-through">{row.currency} {row.coupon.originalAmount.toFixed(2)}</span>
-                    <span className="font-semibold text-emerald-200">{row.currency} {row.amount.toFixed(2)}</span>
+                    <p className="font-semibold text-emerald-200">{row.currency} {row.amount.toFixed(2)}</p>
+                    <p className="mt-0.5 text-xs text-slate-500">was <span className="line-through">{row.currency} {row.coupon.originalAmount.toFixed(2)}</span></p>
                   </>
-                ) : `${row.currency} ${row.amount.toFixed(2)}`}
-              </span>
+                ) : (
+                  <p className="text-slate-300">{row.currency} {row.amount.toFixed(2)}</p>
+                )}
+              </div>
             ),
           },
           {
@@ -2582,8 +2607,10 @@ function PublicLearnersPanel({
             header: "Coupon",
             render: (row) => row.coupon ? (
               <div className="min-w-32">
-                <AdminStatusBadge status={row.coupon.code} variant="success" />
-                <p className="mt-1 text-xs text-emerald-200">-{row.currency} {row.coupon.discountAmount.toFixed(2)}</p>
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/25 bg-emerald-400/10 px-2.5 py-1 text-[11px] font-bold text-emerald-100">
+                  <Ticket className="size-3" />
+                  {row.coupon.code} · -{row.currency} {row.coupon.discountAmount.toFixed(2)}
+                </span>
                 {row.coupon.appliedByAdmin && <p className="mt-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Admin applied</p>}
               </div>
             ) : <span className="text-xs text-slate-500">None</span>,
@@ -2592,28 +2619,27 @@ function PublicLearnersPanel({
           {
             key: "proof",
             header: "Proof",
-            render: (row) => row.proofUrl ? <a href={row.proofUrl} target="_blank" className="text-sm font-semibold text-emerald-300">Open proof</a> : <span className="text-xs text-slate-500">Not uploaded</span>,
+            render: proofDisplay,
           },
           {
             key: "actions",
             header: "Actions",
             render: (row) => {
               const canReview = row.status !== "APPROVED" && row.status !== "REJECTED";
+              const couponCanAdjust = canAdjustCoupon(row);
               return (
-                <div className="flex flex-wrap justify-end gap-2">
-                  <Button variant="secondary" onClick={() => openRegistrationWhatsApp(row)}>
+                <div className="flex flex-wrap items-center justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => openRegistrationWhatsApp(row)}
+                    className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-emerald-400/30 bg-emerald-400/10 px-3 text-sm font-semibold text-emerald-100 transition hover:border-emerald-300/50 hover:bg-emerald-400/20"
+                  >
                     <MessageCircle className="size-4" /> WhatsApp
-                  </Button>
-                  {"courseId" in row && (
-                    row.coupon ? (
-                      <Button variant="secondary" disabled={!canAdjustCoupon(row)} onClick={() => void removeCoupon(row)}>
-                        Remove coupon
-                      </Button>
-                    ) : (
-                      <Button variant="secondary" disabled={!canAdjustCoupon(row)} onClick={() => openCouponDrawer(row)}>
+                  </button>
+                  {"courseId" in row && !row.coupon && couponCanAdjust && (
+                    <Button variant="secondary" onClick={() => openCouponDrawer(row)}>
                         Apply coupon
-                      </Button>
-                    )
+                    </Button>
                   )}
                   {canReview ? (
                     <>
@@ -2632,6 +2658,9 @@ function PublicLearnersPanel({
                   )}
                   <ActionToolbar
                     actions={[
+                      ...("courseId" in row && row.coupon && couponCanAdjust
+                        ? [{ label: "Remove coupon", icon: RotateCcw, tone: "danger" as const, more: true, onClick: () => void removeCoupon(row) }]
+                        : []),
                       { label: "Delete", icon: Trash2, tone: "danger", more: !canReview, onClick: () => setDeleteTarget(row) },
                     ]}
                   />
@@ -2818,6 +2847,24 @@ function LearnerActivationPanel({
     window.open(`https://wa.me/${phone}?text=${encodeURIComponent(buildActivationWhatsAppMessage(row, toAbsoluteAppUrl(href), messageSettings))}`, "_blank", "noopener,noreferrer");
   }
 
+  function activationStatusLabel(row: (typeof activationRows)[number]) {
+    if (row.status === "EXPIRED") return "Place expired";
+    if (row.status === "NOT_STARTED") return "Lesson 1 not started";
+    return "Lesson 1 opened";
+  }
+
+  function activationPrimaryDetail(row: (typeof activationRows)[number]) {
+    if (row.status === "STARTED") return { label: "Progress", value: "Lesson 1 opened", tone: "success" as const };
+    if (row.status === "EXPIRED") return { label: "Action needed", value: "Reactivate or release place", tone: "warning" as const };
+    return { label: "Start by", value: formatStartDeadline(row.firstLessonStartDeadlineAt, row.firstLessonStartHoursRemaining), tone: "warning" as const };
+  }
+
+  function activationNextStep(row: (typeof activationRows)[number]) {
+    if (row.status === "STARTED") return "Keep momentum with the next lesson";
+    if (row.status === "EXPIRED") return "Follow up before extending another 72h";
+    return "Send a warm nudge to open Lesson 1";
+  }
+
   return (
     <div className="space-y-5">
       <section className="overflow-hidden rounded-xl border border-white/10 bg-slate-900/60">
@@ -2888,54 +2935,61 @@ function LearnerActivationPanel({
                 ? `/dashboard/academy/${row.courseId}?lesson=${encodeURIComponent(row.firstLessonId)}`
                 : `/dashboard/academy/${row.courseId}`;
               return (
-                <article key={row.id} className="rounded-2xl border border-white/10 bg-slate-950/50 p-4 shadow-[0_1px_0_rgba(255,255,255,0.04)_inset]">
+                <article key={row.id} className="flex min-h-[300px] flex-col rounded-2xl border border-white/10 bg-slate-950/50 p-4 shadow-[0_1px_0_rgba(255,255,255,0.04)_inset]">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div className="min-w-0">
                       <p className="break-words font-semibold text-white">{row.learnerName}</p>
                       <p className="mt-1 break-all text-xs text-slate-500">{row.learnerEmail}</p>
                     </div>
                     <AdminStatusBadge
-                      status={row.status === "EXPIRED" ? "Expired place" : row.status === "NOT_STARTED" ? "Not started Lesson 1" : "Started"}
+                      status={activationStatusLabel(row)}
                       variant={row.status === "EXPIRED" ? "danger" : row.status === "NOT_STARTED" ? "warning" : "success"}
                     />
                   </div>
 
                   <div className="mt-4 grid gap-3 rounded-xl border border-white/[0.06] bg-slate-900/55 p-3 sm:grid-cols-2">
+                    {(() => {
+                      const detail = activationPrimaryDetail(row);
+                      return <ActivationDetail label={detail.label} value={detail.value} tone={detail.tone} />;
+                    })()}
+                    <ActivationDetail label="Next step" value={activationNextStep(row)} tone={row.status === "STARTED" ? "success" : "muted"} />
                     <ActivationDetail label="Course" value={row.courseTitle} />
                     <ActivationDetail label="First lesson" value={row.firstLessonTitle} />
                     <ActivationDetail label="Last active" value={formatRelativeActivity(row.lastActivityAt, daysSince(row.lastActivityAt))} />
                     <ActivationDetail label="Registered" value={row.registeredAt ? new Date(row.registeredAt).toLocaleDateString() : "Unknown"} />
-                    {row.status !== "STARTED" && (
-                      <ActivationDetail
-                        label="Start deadline"
-                        value={formatStartDeadline(row.firstLessonStartDeadlineAt, row.firstLessonStartHoursRemaining)}
-                      />
-                    )}
                   </div>
 
-                  <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-                    <Button variant="secondary" onClick={() => void copyActivationMessage(row)} className="w-full">
-                      <Copy className="size-4" /> Copy Message
-                    </Button>
-                    <Button variant="secondary" onClick={() => openWhatsApp(row)} className="w-full" disabled={row.status === "STARTED"}>
+                  <div className="mt-auto grid gap-2 pt-4 sm:grid-cols-[minmax(0,1.2fr)_auto_auto]">
+                    <button
+                      type="button"
+                      onClick={() => openWhatsApp(row)}
+                      className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-lg border border-emerald-400/30 bg-emerald-400/10 px-3 py-2 text-sm font-bold text-emerald-100 transition hover:border-emerald-300/50 hover:bg-emerald-400/20"
+                    >
                       <MessageCircle className="size-4" /> WhatsApp
-                    </Button>
-                    {row.status === "EXPIRED" && (
-                      <Button
-                        onClick={() => void action({ action: "reactivate_first_lesson_place", applicationId: row.applicationId }, "Learner place reactivated for another 72 hours.")}
-                        className="w-full"
-                      >
-                        <RotateCcw className="size-4" /> Reactivate 72h
-                      </Button>
-                    )}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void copyActivationMessage(row)}
+                      className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-white/10 px-3 py-2 text-sm font-semibold text-slate-300 transition hover:border-white/20 hover:bg-white/[0.04] hover:text-white"
+                    >
+                      <Copy className="size-4" /> Copy
+                    </button>
                     <a
                       href={previewHref}
                       target="_blank"
                       rel="noreferrer"
-                      className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-lg bg-white px-3 py-2 text-sm font-bold text-slate-950 hover:bg-emerald-50"
+                      className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-white/10 px-3 py-2 text-sm font-semibold text-slate-300 transition hover:border-emerald-400/30 hover:bg-emerald-400/10 hover:text-emerald-100"
                     >
-                      <Eye className="size-4" /> Preview Lesson
+                      <Eye className="size-4" /> Preview
                     </a>
+                    {row.status === "EXPIRED" && (
+                      <Button
+                        onClick={() => void action({ action: "reactivate_first_lesson_place", applicationId: row.applicationId }, "Learner place reactivated for another 72 hours.")}
+                        className="w-full sm:col-span-3"
+                      >
+                        <RotateCcw className="size-4" /> Reactivate 72h
+                      </Button>
+                    )}
                   </div>
                 </article>
               );
@@ -3120,6 +3174,7 @@ function buildActivationWhatsAppMessage(
     learnerName: string;
     courseTitle: string;
     status?: string;
+    firstLessonTitle?: string;
     firstLessonStartWindowHours?: number;
     firstLessonStartHoursRemaining?: number | null;
     certificateEnabled?: boolean;
@@ -3138,12 +3193,19 @@ function buildActivationWhatsAppMessage(
   if (row.status === "EXPIRED") {
     return renderWhatsAppTemplate(settings?.templates.expired, vars);
   }
+  if (row.status === "STARTED") {
+    return renderWhatsAppTemplate(settings?.templates.started, {
+      ...vars,
+      progress: "Lesson 1 opened",
+      nextLessonTitle: "your next lesson",
+    });
+  }
   const remaining = typeof row.firstLessonStartHoursRemaining === "number" && row.firstLessonStartHoursRemaining > 0
     ? ` You have about ${row.firstLessonStartHoursRemaining} hour${row.firstLessonStartHoursRemaining === 1 ? "" : "s"} left.`
     : "";
   return renderWhatsAppTemplate(settings?.templates.notStarted, {
     ...vars,
-    firstLessonTitle: "Lesson 1",
+    firstLessonTitle: row.firstLessonTitle ?? "Lesson 1",
     windowHours: String(row.firstLessonStartWindowHours ?? 72),
     hoursRemainingLine: remaining.trim(),
   });
@@ -3372,10 +3434,12 @@ function normaliseWhatsAppPhone(value?: string | null) {
 function formatStartDeadline(deadline?: string | null, hoursRemaining?: number | null) {
   if (!deadline) return "No deadline";
   const date = new Date(deadline);
-  const formatted = Number.isFinite(date.getTime()) ? date.toLocaleString() : "Deadline set";
+  const formatted = Number.isFinite(date.getTime())
+    ? date.toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })
+    : "Deadline set";
   if (typeof hoursRemaining === "number") {
-    if (hoursRemaining <= 0) return `${formatted} - expired`;
-    return `${formatted} - ${hoursRemaining}h left`;
+    if (hoursRemaining <= 0) return `${formatted} · expired`;
+    return `${formatted} · ${hoursRemaining}h left`;
   }
   return formatted;
 }
