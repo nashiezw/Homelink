@@ -1626,7 +1626,15 @@ function FeatureWorkbench({
     return <CouponManagementPanel coupons={data.coupons || []} onEditCoupon={(coupon) => onEditCoupon(coupon)} onCreateCoupon={() => onEditCoupon(null)} onResetCoupon={onResetCoupon} onDeleteCoupon={onDeleteCoupon} setDrawer={_setDrawer} />;
   }
   if (tab === "Public Learners") {
-    return <PublicLearnersPanel applications={data.publicLearnerApplications} resourceApplications={data.resourceAccessApplications ?? []} action={action} />;
+    return (
+      <PublicLearnersPanel
+        applications={data.publicLearnerApplications}
+        resourceApplications={data.resourceAccessApplications ?? []}
+        firstLessonDropoffs={data.firstLessonDropoffs ?? []}
+        learningFollowUps={data.learningFollowUps ?? []}
+        action={action}
+      />
+    );
   }
   if (tab === "Engagement") {
     return <AcademyEngagementCentre />;
@@ -2318,10 +2326,14 @@ function OperationalPanel({ tab }: { tab: AcademyTab }) {
 function PublicLearnersPanel({
   applications,
   resourceApplications,
+  firstLessonDropoffs,
+  learningFollowUps,
   action,
 }: {
   applications: AcademyData["publicLearnerApplications"];
   resourceApplications: NonNullable<AcademyData["resourceAccessApplications"]>;
+  firstLessonDropoffs: NonNullable<AcademyData["firstLessonDropoffs"]>;
+  learningFollowUps: NonNullable<AcademyData["learningFollowUps"]>;
   action: (body: Record<string, unknown>, success: string) => Promise<unknown>;
 }) {
   const { showToast } = useApp();
@@ -2361,6 +2373,7 @@ function PublicLearnersPanel({
   }));
 
   const enrolmentRows = applications.map((row) => ({
+    applicationId: row.id,
     id: row.id,
     status: row.status,
     learnerType: row.learnerType,
@@ -2373,6 +2386,8 @@ function PublicLearnersPanel({
     adminNote: row.adminNote,
     updatedAt: row.updatedAt,
     productLabel: row.course.title,
+    courseId: row.course.id,
+    learnerId: row.learner.id,
     reviewAction: "review_public_learner" as const,
     reviewIdKey: "applicationId" as const,
     deleteAction: "delete_public_learner" as const,
@@ -2380,11 +2395,13 @@ function PublicLearnersPanel({
   }));
 
   const rows = [...enrolmentRows, ...resourceRows];
+  const firstLessonDropoffByLearnerCourse = new Map(firstLessonDropoffs.map((dropoff) => [`${dropoff.learnerId}:${dropoff.courseId}`, dropoff]));
+  const learningFollowUpByLearnerCourse = new Map(learningFollowUps.map((followUp) => [`${followUp.learnerId}:${followUp.courseId}`, followUp]));
   const pageSize = 12;
   const pagination = usePagination(rows, pageSize);
 
   async function copyRegistrationMessage(row: (typeof rows)[number]) {
-    await navigator.clipboard.writeText(buildRegistrationWhatsAppMessage(row, toAbsoluteAppUrl("/dashboard/academy")));
+    await navigator.clipboard.writeText(buildRegistrationWhatsAppMessage(toRegistrationMessageContext(row), toAbsoluteAppUrl(registrationMessageHref(row))));
     showToast("WhatsApp follow-up copied.");
   }
 
@@ -2395,7 +2412,40 @@ function PublicLearnersPanel({
       showToast("No phone number found. Message copied instead.", "error");
       return;
     }
-    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(buildRegistrationWhatsAppMessage(row, toAbsoluteAppUrl("/dashboard/academy")))}`, "_blank", "noopener,noreferrer");
+    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(buildRegistrationWhatsAppMessage(toRegistrationMessageContext(row), toAbsoluteAppUrl(registrationMessageHref(row))))}`, "_blank", "noopener,noreferrer");
+  }
+
+  function toRegistrationMessageContext(row: (typeof rows)[number]) {
+    if (!("courseId" in row)) return row;
+    const key = `${row.learnerId}:${row.courseId}`;
+    const dropoff = firstLessonDropoffByLearnerCourse.get(key);
+    const followUp = learningFollowUpByLearnerCourse.get(key);
+    return {
+      ...row,
+      activationStatus: row.status === "EXPIRED" ? "EXPIRED" : dropoff ? "NOT_STARTED" : followUp ? "STARTED_INACTIVE" : "STARTED",
+      firstLessonTitle: dropoff?.firstLessonTitle ?? null,
+      firstLessonId: dropoff?.firstLessonId ?? null,
+      firstLessonStartWindowHours: dropoff?.firstLessonStartWindowHours ?? 72,
+      firstLessonStartHoursRemaining: dropoff?.firstLessonStartHoursRemaining ?? null,
+      progress: followUp?.progress ?? null,
+      nextLessonTitle: followUp?.nextLessonTitle ?? null,
+      nextLessonId: followUp?.nextLessonId ?? null,
+      inactiveDays: followUp?.inactiveDays ?? null,
+    };
+  }
+
+  function registrationMessageHref(row: (typeof rows)[number]) {
+    const context = toRegistrationMessageContext(row);
+    if ("courseId" in context && context.courseId) {
+      if (context.activationStatus === "NOT_STARTED" && context.firstLessonId) {
+        return `/dashboard/academy/${context.courseId}?lesson=${encodeURIComponent(context.firstLessonId)}`;
+      }
+      if ((context.activationStatus === "STARTED_INACTIVE" || context.activationStatus === "STARTED") && context.nextLessonId) {
+        return `/dashboard/academy/${context.courseId}?lesson=${encodeURIComponent(context.nextLessonId)}`;
+      }
+      return `/dashboard/academy/${context.courseId}`;
+    }
+    return "/dashboard/academy";
   }
 
   return (
@@ -2905,14 +2955,44 @@ function buildLearningFollowUpWhatsAppMessage(
   return `Hi ${firstName}, this is HouseLink Academy. You are ${row.progress}% through ${row.courseTitle} and have been inactive for ${row.inactiveDays} day${row.inactiveDays === 1 ? "" : "s"}. Continue with ${row.nextLessonTitle} here: ${href}`;
 }
 
-function buildRegistrationWhatsAppMessage(row: { fullName: string; productLabel: string; status: string }, dashboardUrl: string) {
+function buildRegistrationWhatsAppMessage(
+  row: {
+    fullName: string;
+    productLabel: string;
+    status: string;
+    activationStatus?: string;
+    firstLessonTitle?: string | null;
+    firstLessonStartWindowHours?: number;
+    firstLessonStartHoursRemaining?: number | null;
+    progress?: number | null;
+    nextLessonTitle?: string | null;
+    inactiveDays?: number | null;
+  },
+  dashboardUrl: string,
+) {
   const firstName = row.fullName.split(" ").filter(Boolean)[0] || "there";
   const isCourseRegistration = !/toolkit|manual/i.test(row.productLabel);
   if (row.status === "APPROVED") {
     if (!isCourseRegistration) {
       return `Hi ${firstName}, your HouseLink access for ${row.productLabel} has been approved. Please sign in to your dashboard to open it: ${dashboardUrl}`;
     }
-    return `Hi ${firstName}, your place for ${row.productLabel} has been reserved. Please start Lesson 1 within 72 hours to keep your place. The system releases unused places. Open your dashboard here: ${dashboardUrl}`;
+    if (row.activationStatus === "NOT_STARTED") {
+      const remaining = typeof row.firstLessonStartHoursRemaining === "number" && row.firstLessonStartHoursRemaining > 0
+        ? ` You have about ${row.firstLessonStartHoursRemaining} hour${row.firstLessonStartHoursRemaining === 1 ? "" : "s"} left.`
+        : "";
+      return `Hi ${firstName}, your place for ${row.productLabel} has been reserved. Please start Lesson 1${row.firstLessonTitle ? ` (${row.firstLessonTitle})` : ""} within ${row.firstLessonStartWindowHours ?? 72} hours to keep your place.${remaining} Start here: ${dashboardUrl}`;
+    }
+    if (row.activationStatus === "STARTED_INACTIVE") {
+      const progress = typeof row.progress === "number" ? `${row.progress}%` : "part-way";
+      const inactive = typeof row.inactiveDays === "number" && row.inactiveDays > 0
+        ? ` You have been inactive for ${row.inactiveDays} day${row.inactiveDays === 1 ? "" : "s"}.`
+        : "";
+      return `Hi ${firstName}, this is HouseLink Academy checking in. You have already started ${row.productLabel} and are ${progress} through.${inactive} Continue${row.nextLessonTitle ? ` with ${row.nextLessonTitle}` : ""} here: ${dashboardUrl}`;
+    }
+    return `Hi ${firstName}, this is HouseLink Academy. You already have approved access and have started ${row.productLabel}. Continue your course here: ${dashboardUrl}`;
+  }
+  if (row.status === "EXPIRED") {
+    return `Hi ${firstName}, your reserved place for ${row.productLabel} expired because Lesson 1 was not started within 72 hours. We are following up to see if you still want to continue.`;
   }
   if (row.status === "PAYMENT_UPLOADED") {
     return `Hi ${firstName}, HouseLink has received your proof for ${row.productLabel}. We are reviewing it and will update your access shortly. You can check your dashboard here: ${dashboardUrl}`;
