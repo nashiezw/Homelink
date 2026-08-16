@@ -17,6 +17,12 @@ import { tryCompleteCourseCertification } from "@/lib/academy/academy-progress";
 import { getCourseRetakeRules, normaliseRetakeRules, saveCourseRetakeRules } from "@/lib/academy/assessment-retake-rules";
 import { sendSmtpPlainEmail } from "@/lib/integrations/smtp";
 import { getHydratedRuntimePlatformSettings } from "@/lib/settings/runtime";
+import {
+  FIRST_LESSON_START_DEADLINE_HOURS,
+  getFirstLessonDeadline,
+  getReservationTimeLeft,
+  releaseExpiredFirstLessonReservations,
+} from "@/lib/academy/activation-deadline";
 
 export type AcademyDashboard = Awaited<ReturnType<typeof getAcademyDashboard>>;
 
@@ -51,6 +57,7 @@ const DEFAULT_TRAINING_CATEGORIES = [
 type Actor = { id: string; name: string };
 
 export async function getAcademyDashboard(options: { compact?: boolean } = {}) {
+  const reservationRelease = await releaseExpiredFirstLessonReservations();
   await ensureAcademyDefaults();
   const prisma = getMainPrisma();
   const compact = options.compact === true;
@@ -327,6 +334,8 @@ export async function getAcademyDashboard(options: { compact?: boolean } = {}) {
       pendingPublicApprovals: pendingLearnerCount + pendingResourceCount,
       academyRevenue: Number(academyRevenue._sum.amount ?? 0),
       firstLessonNotStarted: firstLessonDropoffs.length,
+      firstLessonReservationExpired: reservationRelease.released,
+      firstLessonStartWindowHours: FIRST_LESSON_START_DEADLINE_HOURS,
       certifiedAgents: certifiedAgentIds.length,
       certifiedActiveListings,
       certifiedClosedListings,
@@ -1478,6 +1487,11 @@ export async function runAcademyAction(body: Record<string, any>, actor: Actor) 
     await audit(actor, "academy.activation.first_lesson_reminders", "academy", result as Prisma.InputJsonObject);
     return result;
   }
+  if (action === "release_expired_first_lesson_places") {
+    const result = await releaseExpiredFirstLessonReservations(actor);
+    await audit(actor, "academy.activation.release_expired_places", "academy", result as Prisma.InputJsonObject);
+    return result;
+  }
   if (action === "grant_extra_quiz_attempt") {
     const learnerId = required(body.learnerId, "Learner");
     const quizId = required(body.quizId, "Quiz");
@@ -2431,7 +2445,7 @@ async function sendFirstLessonActivationReminders(actor: Actor) {
     }),
     prisma.academyLearnerApplication.findMany({
       where: { status: "APPROVED" },
-      include: { learner: { select: { id: true, name: true, email: true } }, course: { select: { id: true, title: true } } },
+      include: { learner: { select: { id: true, name: true, email: true, phone: true } }, course: { select: { id: true, title: true } } },
     }),
     prisma.courseEnrolment.findMany({ where: { status: "ACTIVE" } }),
     prisma.lessonProgress.findMany({ select: { lessonId: true, agentId: true } }),
@@ -2813,11 +2827,15 @@ function buildFirstLessonDropoffs({
         application.updatedAt,
         application.createdAt,
       ]);
+      const reservationStartedAt = application.accessStartsAt ?? application.approvedAt ?? application.updatedAt ?? application.createdAt;
+      const reservationDeadline = getFirstLessonDeadline(reservationStartedAt);
+      const timeLeft = getReservationTimeLeft(reservationDeadline);
       return {
         id: application.id,
         learnerId: application.learnerId,
         learnerName: application.learner?.name ?? application.fullName ?? application.email,
         learnerEmail: application.learner?.email ?? application.email,
+        learnerPhone: application.phone ?? application.learner?.phone ?? null,
         courseId: application.courseId,
         courseTitle: application.course?.title ?? "Academy course",
         firstLessonId: firstLesson.id,
@@ -2825,6 +2843,9 @@ function buildFirstLessonDropoffs({
         moduleTitle: firstLesson.moduleTitle,
         registeredAt: application.createdAt.toISOString(),
         accessStartsAt: application.accessStartsAt?.toISOString() ?? null,
+        firstLessonStartDeadlineAt: reservationDeadline?.toISOString() ?? null,
+        firstLessonStartHoursRemaining: timeLeft.hoursRemaining,
+        firstLessonStartWindowHours: FIRST_LESSON_START_DEADLINE_HOURS,
         lastActivityAt: lastActivityAt?.toISOString() ?? null,
         daysSinceRegistration: daysAgo(application.createdAt),
       };

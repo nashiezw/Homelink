@@ -20,6 +20,12 @@ import { fetchCourseTree, flattenCourseMaterials, mapLessonForLearner } from "@/
 import { toAcademyFileDownloadUrl } from "@/lib/academy/academy-files";
 import { replaceLegacyBrandingText } from "@/lib/brand/rebrand";
 import { lessonHandoutStoragePath } from "@/lib/academy/lesson-handouts";
+import {
+  FIRST_LESSON_START_DEADLINE_HOURS,
+  getFirstLessonDeadline,
+  getReservationTimeLeft,
+  releaseExpiredFirstLessonReservations,
+} from "@/lib/academy/activation-deadline";
 
 export type AcademyRegistrationIntent = "TRAINING_ONLY" | "AGENT_TRAINING";
 
@@ -112,6 +118,7 @@ export async function listPublicAcademyCourses() {
 }
 
 export async function getLearnerAcademyDashboard(learnerId: string, options?: { isAgent?: boolean; isAdmin?: boolean; isTrainer?: boolean; isPublicLearner?: boolean }) {
+  await releaseExpiredFirstLessonReservations();
   const prisma = getMainPrisma();
   const isAgent = Boolean(options?.isAgent);
   const announcementAudiences = new Set(["ALL", "LEARNERS"]);
@@ -477,68 +484,84 @@ export async function getLearnerAcademyDashboard(learnerId: string, options?: { 
         : new Set<string>();
       const progress = calculateCourseProgress(entry.course, completedIds);
       const courseProgress = courseProgressRows.find((row) => row.courseId === entry.course.id);
+      const firstLesson = getFirstCourseLesson(entry.course);
+      const firstLessonProgress = firstLesson
+        ? await prisma.lessonProgress.findUnique({
+          where: { lessonId_agentId: { lessonId: firstLesson.id, agentId: learnerId } },
+          select: { id: true },
+        })
+        : null;
+      const firstLessonStarted = firstLesson ? Boolean(firstLessonProgress) : progress.percentComplete > 0;
+      const reservationDeadline = entry.status === AcademyRegistrationStatus.APPROVED && !firstLessonStarted
+        ? getFirstLessonDeadline(entry.accessStartsAt ?? entry.approvedAt ?? entry.updatedAt)
+        : null;
+      const timeLeft = getReservationTimeLeft(reservationDeadline);
 
       return {
-      id: entry.id,
-      status: entry.status,
-      learnerType: entry.learnerType,
-      amount: Number(entry.amount),
-      currency: entry.currency,
-      proofUrl: entry.proofUrl,
-      accessStartsAt: entry.accessStartsAt?.toISOString(),
-      accessEndsAt: entry.accessEndsAt?.toISOString(),
-      adminNote: entry.adminNote,
-      progress: courseProgress?.percentComplete ?? progress.percentComplete,
-      payment: entry.payment ? {
-        id: entry.payment.id,
-        status: entry.payment.status,
-        proofStatus: entry.payment.proofStatus,
-        proofUrl: entry.payment.proofUrl,
-        method: entry.payment.method,
-        referenceNumber: typeof ((entry.payment.metadata ?? {}) as Record<string, unknown>).referenceNumber === "string"
-          ? String(((entry.payment.metadata ?? {}) as Record<string, unknown>).referenceNumber)
-          : null,
-      } : null,
-      course: {
-        id: entry.course.id,
-        title: entry.course.title,
-        slug: entry.course.slug,
-        description: entry.course.description,
-        shortDescription: entry.course.shortDescription,
-        subtitle: entry.course.subtitle,
-        certificateEnabled: entry.course.certificateEnabled,
-        modules: entry.course.modules.map((module) => ({
-          id: module.id,
-          title: replaceLegacyBrandingText(module.title),
-          lessons: module.sections.flatMap((section) => section.lessons.map((lesson) => ({
-            id: lesson.id,
-            title: replaceLegacyBrandingText(lesson.title),
-            summary: lesson.summary ? replaceLegacyBrandingText(lesson.summary) : lesson.summary,
-            richText: replaceLegacyBrandingText(lesson.richText),
-            estimatedMinutes: lesson.estimatedMinutes,
-            completionRequirement: lesson.completionRequirement,
-            videoUrl: lesson.videoUrl,
-            embeddedVideoUrl: lesson.embeddedVideoUrl,
-            coverImageUrl: lesson.coverImageUrl,
-            pdfUrl: lesson.pdfUrl ? toAcademyFileDownloadUrl(lesson.pdfUrl) : null,
-            audioUrl: lesson.audioUrl,
-            completed: completedIds.has(lesson.id),
-            lessonVideos: lesson.lessonVideos.map((video) => ({
-              id: video.id,
-              title: replaceLegacyBrandingText(video.title),
-              url: video.url,
-              provider: video.provider,
-            })),
-            lessonDownloads: lesson.lessonDownloads.map((download) => ({
-              id: download.id,
-              title: replaceLegacyBrandingText(download.title),
-              url: toAcademyFileDownloadUrl(download.url),
-              type: download.type,
-            })),
-          }))),
-        })),
-      },
-    };
+        id: entry.id,
+        status: entry.status,
+        learnerType: entry.learnerType,
+        amount: Number(entry.amount),
+        currency: entry.currency,
+        proofUrl: entry.proofUrl,
+        accessStartsAt: entry.accessStartsAt?.toISOString(),
+        accessEndsAt: entry.accessEndsAt?.toISOString(),
+        firstLessonStartDeadlineAt: reservationDeadline?.toISOString() ?? null,
+        firstLessonStartHoursRemaining: timeLeft.hoursRemaining,
+        firstLessonStartWindowHours: FIRST_LESSON_START_DEADLINE_HOURS,
+        firstLessonStarted,
+        adminNote: entry.adminNote,
+        progress: courseProgress?.percentComplete ?? progress.percentComplete,
+        payment: entry.payment ? {
+          id: entry.payment.id,
+          status: entry.payment.status,
+          proofStatus: entry.payment.proofStatus,
+          proofUrl: entry.payment.proofUrl,
+          method: entry.payment.method,
+          referenceNumber: typeof ((entry.payment.metadata ?? {}) as Record<string, unknown>).referenceNumber === "string"
+            ? String(((entry.payment.metadata ?? {}) as Record<string, unknown>).referenceNumber)
+            : null,
+        } : null,
+        course: {
+          id: entry.course.id,
+          title: entry.course.title,
+          slug: entry.course.slug,
+          description: entry.course.description,
+          shortDescription: entry.course.shortDescription,
+          subtitle: entry.course.subtitle,
+          certificateEnabled: entry.course.certificateEnabled,
+          modules: entry.course.modules.map((module) => ({
+            id: module.id,
+            title: replaceLegacyBrandingText(module.title),
+            lessons: module.sections.flatMap((section) => section.lessons.map((lesson) => ({
+              id: lesson.id,
+              title: replaceLegacyBrandingText(lesson.title),
+              summary: lesson.summary ? replaceLegacyBrandingText(lesson.summary) : lesson.summary,
+              richText: replaceLegacyBrandingText(lesson.richText),
+              estimatedMinutes: lesson.estimatedMinutes,
+              completionRequirement: lesson.completionRequirement,
+              videoUrl: lesson.videoUrl,
+              embeddedVideoUrl: lesson.embeddedVideoUrl,
+              coverImageUrl: lesson.coverImageUrl,
+              pdfUrl: lesson.pdfUrl ? toAcademyFileDownloadUrl(lesson.pdfUrl) : null,
+              audioUrl: lesson.audioUrl,
+              completed: completedIds.has(lesson.id),
+              lessonVideos: lesson.lessonVideos.map((video) => ({
+                id: video.id,
+                title: replaceLegacyBrandingText(video.title),
+                url: video.url,
+                provider: video.provider,
+              })),
+              lessonDownloads: lesson.lessonDownloads.map((download) => ({
+                id: download.id,
+                title: replaceLegacyBrandingText(download.title),
+                url: toAcademyFileDownloadUrl(download.url),
+                type: download.type,
+              })),
+            }))),
+          })),
+        },
+      };
     })),
     announcements,
     notifications,
@@ -705,7 +728,9 @@ export async function registerPublicLearner(input: {
       eventType: "ACADEMY_REGISTRATION",
       channel: "IN_APP",
       subject: isFree ? "Academy access activated" : "Academy payment pending",
-      body: isFree ? await buildStartLessonNotificationBody(course.id, course.title) : `Upload proof of payment for ${course.title} so an admin can activate your access.`,
+      body: isFree
+        ? await buildStartLessonNotificationBody(course.id, course.title)
+        : `Upload proof of payment for ${course.title} so an admin can activate your access.`,
     },
   });
   await recordAcademyReferralRegistration({
@@ -850,7 +875,7 @@ export async function reviewPublicLearnerApplication(input: {
       userId: application.learnerId,
       eventType: `ACADEMY_APPLICATION_${input.status}`,
       channel: "IN_APP",
-      subject: approved ? "Academy access approved" : "Academy registration updated",
+      subject: approved ? "Academy place reserved" : "Academy registration updated",
       body: approved ? await buildStartLessonNotificationBody(application.courseId, application.course.title) : input.adminNote || `Your ${application.course.title} registration is ${input.status.toLowerCase()}.`,
     },
   });
@@ -900,7 +925,7 @@ async function buildStartLessonNotificationBody(courseId: string, courseTitle: s
   });
   const firstLesson = course ? getFirstCourseLesson(course) : null;
   return firstLesson
-    ? `${courseTitle} is active. Start with Lesson 1: ${replaceLegacyBrandingText(firstLesson.title)}.`
+    ? `Your place has been reserved. Start your first lesson within ${FIRST_LESSON_START_DEADLINE_HOURS} hours to keep your place. The system will release unused places. Start with Lesson 1: ${replaceLegacyBrandingText(firstLesson.title)}.`
     : `${courseTitle} is active in your learner dashboard.`;
 }
 

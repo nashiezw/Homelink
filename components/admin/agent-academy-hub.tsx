@@ -23,6 +23,7 @@ import {
   Library,
   Loader2,
   Megaphone,
+  MessageCircle,
   MoreHorizontal,
   Pencil,
   Play,
@@ -222,6 +223,7 @@ type AcademyData = {
     learnerId: string;
     learnerName: string;
     learnerEmail: string;
+    learnerPhone?: string | null;
     courseId: string;
     courseTitle: string;
     firstLessonId: string;
@@ -229,6 +231,9 @@ type AcademyData = {
     moduleTitle?: string | null;
     registeredAt: string;
     accessStartsAt?: string | null;
+    firstLessonStartDeadlineAt?: string | null;
+    firstLessonStartHoursRemaining?: number | null;
+    firstLessonStartWindowHours?: number;
     lastActivityAt?: string | null;
     daysSinceRegistration: number;
   }>;
@@ -2294,6 +2299,7 @@ function PublicLearnersPanel({
   resourceApplications: NonNullable<AcademyData["resourceAccessApplications"]>;
   action: (body: Record<string, unknown>, success: string) => Promise<unknown>;
 }) {
+  const { showToast } = useApp();
   const [deleteTarget, setDeleteTarget] = useState<{
     id: string;
     fullName: string;
@@ -2352,6 +2358,21 @@ function PublicLearnersPanel({
   const pageSize = 12;
   const pagination = usePagination(rows, pageSize);
 
+  async function copyRegistrationMessage(row: (typeof rows)[number]) {
+    await navigator.clipboard.writeText(buildRegistrationWhatsAppMessage(row));
+    showToast("WhatsApp follow-up copied.");
+  }
+
+  function openRegistrationWhatsApp(row: (typeof rows)[number]) {
+    const phone = normaliseWhatsAppPhone(row.phone);
+    if (!phone) {
+      void copyRegistrationMessage(row);
+      showToast("No phone number found. Message copied instead.", "error");
+      return;
+    }
+    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(buildRegistrationWhatsAppMessage(row))}`, "_blank", "noopener,noreferrer");
+  }
+
   return (
     <section className="rounded-xl border border-white/10 bg-slate-900/60">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 p-4">
@@ -2390,6 +2411,9 @@ function PublicLearnersPanel({
               const canReview = row.status !== "APPROVED" && row.status !== "REJECTED";
               return (
                 <div className="flex flex-wrap justify-end gap-2">
+                  <Button variant="secondary" onClick={() => openRegistrationWhatsApp(row)}>
+                    <MessageCircle className="size-4" /> WhatsApp
+                  </Button>
                   {canReview ? (
                     <>
                       <Button onClick={() => void action({ action: row.reviewAction, [row.reviewIdKey]: row.id, status: "APPROVED" }, "Access approved.")}>
@@ -2469,6 +2493,7 @@ function LearnerActivationPanel({
       learnerId: application.learner.id,
       learnerName: application.learner.name || application.fullName,
       learnerEmail: application.learner.email || application.email,
+      learnerPhone: dropoff?.learnerPhone ?? application.phone ?? application.learner.phone ?? null,
       courseId: application.course.id,
       courseTitle: application.course.title,
       status: dropoff ? "NOT_STARTED" : "STARTED",
@@ -2476,6 +2501,9 @@ function LearnerActivationPanel({
       firstLessonTitle: dropoff?.firstLessonTitle ?? "First lesson opened",
       daysSinceRegistration: dropoff?.daysSinceRegistration ?? daysSince(application.createdAt),
       registeredAt: application.createdAt,
+      firstLessonStartDeadlineAt: dropoff?.firstLessonStartDeadlineAt ?? null,
+      firstLessonStartHoursRemaining: dropoff?.firstLessonStartHoursRemaining ?? null,
+      firstLessonStartWindowHours: dropoff?.firstLessonStartWindowHours ?? 72,
       lastActivityAt: dropoff?.lastActivityAt ?? learnerProfile?.latestActivity ?? application.updatedAt ?? application.createdAt,
     };
   });
@@ -2491,9 +2519,20 @@ function LearnerActivationPanel({
 
   async function copyActivationMessage(row: (typeof activationRows)[number]) {
     const href = row.firstLessonId ? `/dashboard/academy/${row.courseId}?lesson=${encodeURIComponent(row.firstLessonId)}` : `/dashboard/academy/${row.courseId}`;
-    const message = `Hi ${row.learnerName.split(" ")[0]}, your ${row.courseTitle} access is active. Please start Lesson 1 here: ${href}`;
+    const message = buildActivationWhatsAppMessage(row, href);
     await navigator.clipboard.writeText(message);
     showToast("Learner message copied.");
+  }
+
+  function openWhatsApp(row: (typeof activationRows)[number]) {
+    const phone = normaliseWhatsAppPhone(row.learnerPhone);
+    if (!phone) {
+      void copyActivationMessage(row);
+      showToast("No phone number found. Message copied instead.", "error");
+      return;
+    }
+    const href = row.firstLessonId ? `/dashboard/academy/${row.courseId}?lesson=${encodeURIComponent(row.firstLessonId)}` : `/dashboard/academy/${row.courseId}`;
+    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(buildActivationWhatsAppMessage(row, href))}`, "_blank", "noopener,noreferrer");
   }
 
   return (
@@ -2514,6 +2553,13 @@ function LearnerActivationPanel({
               className="w-full lg:w-auto"
             >
               <Bell className="size-4" /> Send First-Lesson Nudges
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => void action({ action: "release_expired_first_lesson_places" }, "Expired unused places released.")}
+              className="w-full lg:w-auto"
+            >
+              <RotateCcw className="size-4" /> Release Expired Places
             </Button>
           </div>
         </div>
@@ -2574,11 +2620,20 @@ function LearnerActivationPanel({
                     <ActivationDetail label="First lesson" value={row.firstLessonTitle} />
                     <ActivationDetail label="Last active" value={formatRelativeActivity(row.lastActivityAt, daysSince(row.lastActivityAt))} />
                     <ActivationDetail label="Registered" value={row.registeredAt ? new Date(row.registeredAt).toLocaleDateString() : "Unknown"} />
+                    {row.status === "NOT_STARTED" && (
+                      <ActivationDetail
+                        label="Start deadline"
+                        value={formatStartDeadline(row.firstLessonStartDeadlineAt, row.firstLessonStartHoursRemaining)}
+                      />
+                    )}
                   </div>
 
-                  <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                  <div className="mt-4 grid gap-2 sm:grid-cols-3">
                     <Button variant="secondary" onClick={() => void copyActivationMessage(row)} className="w-full">
                       <Copy className="size-4" /> Copy Message
+                    </Button>
+                    <Button variant="secondary" onClick={() => openWhatsApp(row)} className="w-full" disabled={row.status !== "NOT_STARTED"}>
+                      <MessageCircle className="size-4" /> WhatsApp
                     </Button>
                     <a
                       href={previewHref}
@@ -2615,6 +2670,59 @@ function LearnerActivationPanel({
       </section>
     </div>
   );
+}
+
+function buildActivationWhatsAppMessage(
+  row: {
+    learnerName: string;
+    courseTitle: string;
+    firstLessonStartWindowHours?: number;
+    firstLessonStartHoursRemaining?: number | null;
+  },
+  href: string,
+) {
+  const firstName = row.learnerName.split(" ").filter(Boolean)[0] || "there";
+  const remaining = typeof row.firstLessonStartHoursRemaining === "number" && row.firstLessonStartHoursRemaining > 0
+    ? ` You have about ${row.firstLessonStartHoursRemaining} hour${row.firstLessonStartHoursRemaining === 1 ? "" : "s"} left.`
+    : "";
+  return `Hi ${firstName}, your place for ${row.courseTitle} has been reserved. Please start Lesson 1 within ${row.firstLessonStartWindowHours ?? 72} hours to keep your place.${remaining} Start here: ${href}`;
+}
+
+function buildRegistrationWhatsAppMessage(row: { fullName: string; productLabel: string; status: string }) {
+  const firstName = row.fullName.split(" ").filter(Boolean)[0] || "there";
+  const isCourseRegistration = !/toolkit|manual/i.test(row.productLabel);
+  if (row.status === "APPROVED") {
+    if (!isCourseRegistration) {
+      return `Hi ${firstName}, your HouseLink access for ${row.productLabel} has been approved. Please sign in to your dashboard to open it.`;
+    }
+    return `Hi ${firstName}, your place for ${row.productLabel} has been reserved. Please start Lesson 1 within 72 hours to keep your place. The system releases unused places.`;
+  }
+  if (row.status === "PAYMENT_UPLOADED") {
+    return `Hi ${firstName}, HouseLink has received your proof for ${row.productLabel}. We are reviewing it and will update your access shortly.`;
+  }
+  if (row.status === "PENDING_PAYMENT") {
+    return `Hi ${firstName}, this is HouseLink following up on your ${row.productLabel} registration. Please complete payment and upload proof so we can reserve your place.`;
+  }
+  return `Hi ${firstName}, this is HouseLink following up on your ${row.productLabel} registration. Please let us know if you need help with the next step.`;
+}
+
+function normaliseWhatsAppPhone(value?: string | null) {
+  const digits = (value ?? "").replace(/\D/g, "");
+  if (!digits) return "";
+  if (digits.startsWith("00")) return digits.slice(2);
+  if (digits.startsWith("0") && digits.length >= 9) return `263${digits.slice(1)}`;
+  return digits;
+}
+
+function formatStartDeadline(deadline?: string | null, hoursRemaining?: number | null) {
+  if (!deadline) return "No deadline";
+  const date = new Date(deadline);
+  const formatted = Number.isFinite(date.getTime()) ? date.toLocaleString() : "Deadline set";
+  if (typeof hoursRemaining === "number") {
+    if (hoursRemaining <= 0) return `${formatted} - expired`;
+    return `${formatted} - ${hoursRemaining}h left`;
+  }
+  return formatted;
 }
 
 function CoursePreview({ course, onClose }: { course: AcademyCourse; onClose: () => void }) {

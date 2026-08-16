@@ -105,6 +105,10 @@ type LearnerDashboard = {
     currency: string;
     proofUrl?: string;
     accessEndsAt?: string;
+    firstLessonStartDeadlineAt?: string | null;
+    firstLessonStartHoursRemaining?: number | null;
+    firstLessonStartWindowHours?: number;
+    firstLessonStarted?: boolean;
     adminNote?: string;
     payment: { id: string; status: string; proofStatus?: string; proofUrl?: string; method?: string; referenceNumber?: string | null } | null;
     course: { id: string; title: string; slug?: string; description: string; certificateEnabled: boolean };
@@ -229,6 +233,11 @@ export function LearnerDashboardClient() {
   const professionalCertificate = data.certificates.find((certificate) => /Professional|HLP/i.test(`${certificate.courseTitle} ${certificate.certificateNumber}`));
   const nextActionCards = learnerNextActions(data);
   const progressNudges = buildProgressNudges(data.programmeCourses ?? []);
+  const firstLessonReservation = data.applications.find((application) =>
+    application.status === "APPROVED" &&
+    application.firstLessonStarted === false &&
+    Boolean(application.firstLessonStartDeadlineAt),
+  );
 
   function toggleProgrammeDetails(courseId: string) {
     setExpandedProgrammeIds((current) => {
@@ -297,6 +306,14 @@ export function LearnerDashboardClient() {
               <h2 className="mt-3 text-2xl font-bold tracking-tight sm:text-3xl">Start Lesson 1 now</h2>
               <p className="mt-2 text-base font-semibold text-slate-800 dark:text-slate-100">{data.firstLessonAction.lessonTitle}</p>
               <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-400">{data.firstLessonAction.courseTitle}</p>
+              {firstLessonReservation && (
+                <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm font-semibold leading-6 text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-100">
+                  Your place has been reserved. Start your first lesson within {firstLessonReservation.firstLessonStartWindowHours ?? 72} hours to keep your place. The system will release unused places.
+                  <span className="mt-1 block text-xs font-bold uppercase tracking-wide text-amber-700 dark:text-amber-200">
+                    Deadline: {formatReservationDeadline(firstLessonReservation.firstLessonStartDeadlineAt, firstLessonReservation.firstLessonStartHoursRemaining)}
+                  </span>
+                </div>
+              )}
             </div>
             <Link href={data.firstLessonAction.href} className="w-full lg:w-auto">
               <Button className="w-full shadow-soft px-6 py-3 text-base lg:w-auto" style={{ backgroundColor: primary }}>
@@ -920,6 +937,15 @@ function StatusPill({ status }: { status: string }) {
       {status.replace(/_/g, " ")}
     </span>
   );
+}
+
+function formatReservationDeadline(deadline?: string | null, hoursRemaining?: number | null) {
+  if (!deadline) return "Deadline pending";
+  const date = new Date(deadline);
+  const label = Number.isFinite(date.getTime()) ? date.toLocaleString() : "Deadline set";
+  if (typeof hoursRemaining !== "number") return label;
+  if (hoursRemaining <= 0) return `${label} - expired`;
+  return `${label} - ${hoursRemaining} hour${hoursRemaining === 1 ? "" : "s"} left`;
 }
 
 function LockedCertificatePreview({

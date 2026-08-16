@@ -13,7 +13,7 @@ type RegistrationStatus = {
   courseId: string;
   courseTitle: string;
   firstLesson?: { lessonId: string; lessonTitle: string; href: string } | null;
-  status: "APPROVED" | "PENDING_PAYMENT" | "PAYMENT_UPLOADED" | "PENDING_EMAIL_VERIFICATION";
+  status: "APPROVED" | "PENDING_PAYMENT" | "PAYMENT_UPLOADED" | "PENDING_EMAIL_VERIFICATION" | "EXPIRED" | "REJECTED" | "REFUNDED";
   paymentId?: string;
   finalPrice?: number;
   currency?: string;
@@ -21,6 +21,10 @@ type RegistrationStatus = {
   emailVerified?: boolean;
   emailSent?: boolean;
   emailError?: string;
+  firstLessonStarted?: boolean;
+  firstLessonStartDeadlineAt?: string | null;
+  firstLessonStartHoursRemaining?: number | null;
+  firstLessonStartWindowHours?: number;
 };
 
 function RegistrationConfirmationContent() {
@@ -104,6 +108,7 @@ function RegistrationConfirmationContent() {
   const noPaymentDue = (paymentPending || paymentUploaded) && finalPrice !== undefined && finalPrice <= 0;
   const canApplyPromo = paymentPending && paymentRequired && !paymentUploaded;
   const firstLessonHref = status.firstLesson?.href ?? `/dashboard/academy/${status.courseId}`;
+  const deadlineLabel = formatDeadline(status.firstLessonStartDeadlineAt, status.firstLessonStartHoursRemaining);
 
   async function applyPromoCode() {
     const currentRegistrationId = status?.id;
@@ -142,7 +147,7 @@ function RegistrationConfirmationContent() {
                 <CheckCircle2 className="size-9" />
               </div>
               <h1 className="text-3xl font-bold text-slate-950 dark:text-white">Registration Complete</h1>
-              <p className="mx-auto mt-3 max-w-2xl text-base text-slate-600 dark:text-slate-300">You now have access to {status.courseTitle}.</p>
+                <p className="mx-auto mt-3 max-w-2xl text-base text-slate-600 dark:text-slate-300">You now have access to {status.courseTitle}.</p>
             </div>
             <div className="grid gap-4 p-6 sm:grid-cols-3 sm:p-8">
               <div className="rounded-xl border border-slate-200 p-4 dark:border-slate-800">
@@ -151,7 +156,7 @@ function RegistrationConfirmationContent() {
               </div>
               <div className="rounded-xl border border-slate-200 p-4 dark:border-slate-800">
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Access</p>
-                <p className="mt-2 font-semibold text-emerald-700 dark:text-emerald-300">Active</p>
+                <p className="mt-2 font-semibold text-emerald-700 dark:text-emerald-300">Place reserved</p>
               </div>
               <div className="rounded-xl border border-slate-200 p-4 dark:border-slate-800">
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Payment</p>
@@ -162,13 +167,47 @@ function RegistrationConfirmationContent() {
               <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5 dark:border-emerald-900/60 dark:bg-emerald-950/20">
                 <p className="text-xs font-bold uppercase tracking-widest text-emerald-700 dark:text-emerald-300">Recommended first step</p>
                 <h2 className="mt-2 text-xl font-bold text-slate-950 dark:text-white">{status.firstLesson?.lessonTitle ?? "Open your course"}</h2>
-                <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">Start immediately while your registration is fresh. Lesson progress is saved automatically on your learner dashboard.</p>
+                <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
+                  Your place has been reserved. Start your first lesson within {status.firstLessonStartWindowHours ?? 72} hours to keep your place. The system will release unused places.
+                </p>
+                {deadlineLabel && <p className="mt-3 text-sm font-semibold text-emerald-800 dark:text-emerald-200">Start deadline: {deadlineLabel}</p>}
               </div>
               <Link href={firstLessonHref} className="mt-4 block">
                 <Button className="w-full sm:w-auto">
                   <ArrowRight className="size-4 mr-2" /> Start Lesson 1
                 </Button>
               </Link>
+            </div>
+          </div>
+        )}
+
+        {status.status === "EXPIRED" && (
+          <div className="overflow-hidden rounded-2xl border border-amber-200 bg-white shadow-xl shadow-amber-900/5 dark:border-amber-900 dark:bg-slate-950">
+            <div className="border-b border-amber-100 bg-amber-50 px-6 py-8 text-center dark:border-amber-900/60 dark:bg-amber-950/30 sm:px-10">
+              <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-600 text-white shadow-lg shadow-amber-900/20">
+                <Clock className="size-9" />
+              </div>
+              <h1 className="text-3xl font-bold text-slate-950 dark:text-white">Place Released</h1>
+              <p className="mx-auto mt-3 max-w-2xl text-base text-slate-600 dark:text-slate-300">
+                This reserved place for {status.courseTitle} was released because Lesson 1 was not started within {status.firstLessonStartWindowHours ?? 72} hours.
+              </p>
+            </div>
+            <div className="p-6 text-center sm:p-8">
+              <p className="text-sm leading-6 text-slate-600 dark:text-slate-300">
+                You can contact Academy admin or register again if places are available.
+              </p>
+              <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:justify-center">
+                <Link href="/academy">
+                  <Button variant="secondary" className="w-full sm:w-auto">
+                    <Home className="size-4 mr-2" /> Back to Academy
+                  </Button>
+                </Link>
+                <Link href="/dashboard/academy">
+                  <Button className="w-full sm:w-auto">
+                    <ArrowRight className="size-4 mr-2" /> Open Dashboard
+                  </Button>
+                </Link>
+              </div>
             </div>
           </div>
         )}
@@ -368,6 +407,18 @@ function RegistrationConfirmationContent() {
       </div>
     </PageShell>
   );
+}
+
+function formatDeadline(deadline?: string | null, hoursRemaining?: number | null) {
+  if (!deadline) return "";
+  const date = new Date(deadline);
+  if (!Number.isFinite(date.getTime())) return "";
+  const formatted = date.toLocaleString();
+  if (typeof hoursRemaining === "number") {
+    if (hoursRemaining <= 0) return `${formatted} - expired`;
+    return `${formatted} - ${hoursRemaining} hour${hoursRemaining === 1 ? "" : "s"} left`;
+  }
+  return formatted;
 }
 
 export default function RegistrationConfirmationPage() {

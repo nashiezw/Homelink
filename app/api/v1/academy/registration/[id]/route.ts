@@ -2,6 +2,12 @@ import { AcademyRegistrationStatus, Role } from "@prisma/client";
 import { getSessionUserIdFromRequest } from "@/lib/auth/session";
 import { ok, problem } from "@/lib/api/response";
 import { getMainPrisma } from "@/lib/db/main-prisma";
+import {
+  FIRST_LESSON_START_DEADLINE_HOURS,
+  getFirstLessonDeadline,
+  getReservationTimeLeft,
+  releaseExpiredFirstLessonReservations,
+} from "@/lib/academy/activation-deadline";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +22,7 @@ export async function GET(
   const prisma = getMainPrisma();
   
   try {
+    await releaseExpiredFirstLessonReservations();
     const registration = await prisma.academyLearnerApplication.findFirst({
       where: {
         id: id,
@@ -94,12 +101,23 @@ export async function GET(
     const metadata = emailAuditLog?.metadata as Record<string, unknown> | undefined;
     const emailSent = metadata?.emailSent as boolean | undefined;
     const emailError = metadata?.emailError as string | undefined;
+    const firstLesson = getFirstRegistrationLesson(registration.course);
+    const firstLessonStarted = firstLesson
+      ? Boolean(await prisma.lessonProgress.findUnique({
+          where: { lessonId_agentId: { lessonId: firstLesson.lessonId, agentId: userId } },
+          select: { id: true },
+        }))
+      : false;
+    const deadline = registration.status === AcademyRegistrationStatus.APPROVED && !firstLessonStarted
+      ? getFirstLessonDeadline(registration.accessStartsAt ?? registration.approvedAt ?? registration.updatedAt)
+      : null;
+    const deadlineState = getReservationTimeLeft(deadline);
 
     return ok({
       id: registration.id,
       courseId: registration.course.id,
       courseTitle: registration.course.title,
-      firstLesson: getFirstRegistrationLesson(registration.course),
+      firstLesson,
       status: registration.status,
       paymentId: registration.paymentId,
       finalPrice: registration.payment ? Number(registration.payment.amount) : undefined,
@@ -108,6 +126,10 @@ export async function GET(
       emailVerified: !!user?.emailVerifiedAt,
       emailSent,
       emailError,
+      firstLessonStarted,
+      firstLessonStartDeadlineAt: deadline?.toISOString() ?? null,
+      firstLessonStartHoursRemaining: deadlineState.hoursRemaining,
+      firstLessonStartWindowHours: FIRST_LESSON_START_DEADLINE_HOURS,
     });
   } catch (error) {
     console.error("Failed to fetch registration status", error);
