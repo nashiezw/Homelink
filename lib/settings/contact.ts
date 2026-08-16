@@ -43,28 +43,52 @@ export function buildWhatsAppMessage(
   ctx: WhatsAppHelpContext,
 ) {
   const lane = ctx.lane || resolveWhatsAppLane(ctx.pathname);
-  const quiet = contact.stickyWhatsAppQuietHours?.trim();
+  const quiet = normaliseWhatsAppText(contact.stickyWhatsAppQuietHours).trim();
   const quietNote = quiet ? ` (${quiet})` : "";
 
   if (ctx.orderNumber) {
     const ref = ctx.paymentReference ? ` Reference: ${ctx.paymentReference}.` : "";
     const total = ctx.totalLabel ? ` Total: ${ctx.totalLabel}.` : "";
-    return `Hi HouseLink — I need help with Library order ${ctx.orderNumber}.${ref}${total}${quietNote}`;
+    return `Hi HouseLink - I need help with Library order ${ctx.orderNumber}.${ref}${total}${quietNote}`;
   }
   if (ctx.productTitle) {
-    return `Hi HouseLink — I have a question about the Library book "${ctx.productTitle}".${quietNote}`;
+    return `Hi HouseLink - I have a question about the Library book "${ctx.productTitle}".${quietNote}`;
   }
   if (ctx.listingTitle) {
-    return `Hi HouseLink — I am interested in "${ctx.listingTitle}".${quietNote}`;
+    return `Hi HouseLink - I am interested in "${ctx.listingTitle}".${quietNote}`;
   }
+
+  const pageNote = buildWhatsAppPageNote(ctx.pathname);
   if (lane === "library") {
     const base =
-      contact.stickyWhatsAppLibraryMessage?.trim() ||
-      "Hi HouseLink — I need help with a Library / books order.";
-    return `${base}${quietNote}`;
+      cleanConfiguredWhatsAppMessage(contact.stickyWhatsAppLibraryMessage) ||
+      "Hi HouseLink - I need help with a Library book or order.";
+    return `${base}${pageNote}${quietNote}`;
   }
-  const base = contact.stickyWhatsAppMessage?.trim() || "Hi HouseLink — I need help with a property / Library order.";
-  return `${base}${quietNote}`;
+  const base = cleanConfiguredWhatsAppMessage(contact.stickyWhatsAppMessage) || "Hi HouseLink - I need help with a property listing or viewing.";
+  return `${base}${pageNote}${quietNote}`;
+}
+
+function cleanConfiguredWhatsAppMessage(value?: string | null) {
+  const message = normaliseWhatsAppText(value).trim();
+  if (!message) return "";
+  if (/property\s*\/\s*library\s+order/i.test(message)) return "";
+  if (/library\s*\/\s*books\s+order/i.test(message)) return "";
+  return message;
+}
+
+function normaliseWhatsAppText(value?: string | null) {
+  return String(value || "")
+    .replace(/â€”/g, "-")
+    .replace(/â€“/g, "-")
+    .replace(/—/g, "-")
+    .replace(/–/g, "-");
+}
+
+function buildWhatsAppPageNote(pathname?: string) {
+  const path = String(pathname || "").trim();
+  if (!path || path === "/") return "";
+  return ` Page: ${path}.`;
 }
 
 export function getWhatsAppHref(
