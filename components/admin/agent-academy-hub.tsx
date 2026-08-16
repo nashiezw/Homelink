@@ -220,6 +220,7 @@ type AcademyData = {
   announcementDelivery?: Array<{ id: string; title: string; audience: string; active: boolean; estimatedReach: number; createdAt: string; expiresAt?: string | null }>;
   firstLessonDropoffs?: Array<{
     id: string;
+    applicationStatus?: string;
     learnerId: string;
     learnerName: string;
     learnerEmail: string;
@@ -236,6 +237,25 @@ type AcademyData = {
     firstLessonStartWindowHours?: number;
     lastActivityAt?: string | null;
     daysSinceRegistration: number;
+  }>;
+  learningFollowUps?: Array<{
+    id: string;
+    learnerId: string;
+    learnerName: string;
+    learnerEmail: string;
+    learnerPhone?: string | null;
+    courseId: string;
+    courseTitle: string;
+    progress: number;
+    category: string;
+    blocker?: string | null;
+    currentLessonId: string;
+    currentLessonTitle: string;
+    nextLessonId: string;
+    nextLessonTitle: string;
+    lastActivityAt: string;
+    inactiveDays: number;
+    recommendedAction: string;
   }>;
   leaderboard?: Array<{ id: string; agentId: string; learnerName?: string | null; learnerEmail?: string | null; badgeName: string; xp: number; awardedAt: string }>;
 };
@@ -350,6 +370,7 @@ const academyTabs = [
   "Courses",
   "Public Learners",
   "Learner Activation",
+  "Learning Follow-Up",
   "Student Analytics",
   "Certificates",
   "Certificate Templates",
@@ -607,6 +628,7 @@ export function AgentAcademyHub() {
             <ClickableStatPill label="Public Learners" value={data.metrics.publicLearners} tone="info" onClick={() => openTab("Public Learners")} />
             <ClickableStatPill label="Pending Public Approvals" value={data.metrics.pendingPublicApprovals} tone={data.metrics.pendingPublicApprovals ? "warning" : "success"} onClick={() => openTab("Public Learners")} />
             <ClickableStatPill label="Not Opened Lesson 1" value={data.metrics.firstLessonNotStarted ?? data.firstLessonDropoffs?.length ?? 0} tone={(data.firstLessonDropoffs?.length ?? 0) ? "warning" : "success"} onClick={() => openTab("Learner Activation")} />
+            <ClickableStatPill label="Learning Follow-Up" value={data.metrics.learningFollowUps ?? data.learningFollowUps?.length ?? 0} tone={(data.learningFollowUps?.length ?? 0) ? "warning" : "success"} onClick={() => openTab("Learning Follow-Up")} />
             <ClickableStatPill label="Academy Revenue" value={`$${academyRevenue}`} tone="success" onClick={() => openTab("Analytics")} />
           </AdminMetricGrid>
 
@@ -810,7 +832,7 @@ export function AgentAcademyHub() {
         </div>
       )}
 
-      {["Certificates", "Certificate Templates", "Certificate Monitoring", "Assignment Review", "Student Analytics", "Coupons", "Public Learners", "Learner Activation", "Learning Paths", "Engagement", "Announcements", "Discussion Board", "Leaderboard", "Badges", "Analytics", "Health", "Settings", "Email Templates", "Branding", "Instructors", "Refunds"].includes(tab) && (
+      {["Certificates", "Certificate Templates", "Certificate Monitoring", "Assignment Review", "Student Analytics", "Coupons", "Public Learners", "Learner Activation", "Learning Follow-Up", "Learning Paths", "Engagement", "Announcements", "Discussion Board", "Leaderboard", "Badges", "Analytics", "Health", "Settings", "Email Templates", "Branding", "Instructors", "Refunds"].includes(tab) && (
         <FeatureWorkbench
           tab={tab}
           data={data}
@@ -1584,6 +1606,9 @@ function FeatureWorkbench({
   }
   if (tab === "Learner Activation") {
     return <LearnerActivationPanel data={data} action={action} />;
+  }
+  if (tab === "Learning Follow-Up") {
+    return <LearningFollowUpPanel rows={data.learningFollowUps ?? []} />;
   }
   if (tab === "Student Analytics") {
     return <StudentAnalyticsDashboard />;
@@ -2359,7 +2384,7 @@ function PublicLearnersPanel({
   const pagination = usePagination(rows, pageSize);
 
   async function copyRegistrationMessage(row: (typeof rows)[number]) {
-    await navigator.clipboard.writeText(buildRegistrationWhatsAppMessage(row));
+    await navigator.clipboard.writeText(buildRegistrationWhatsAppMessage(row, toAbsoluteAppUrl("/dashboard/academy")));
     showToast("WhatsApp follow-up copied.");
   }
 
@@ -2370,7 +2395,7 @@ function PublicLearnersPanel({
       showToast("No phone number found. Message copied instead.", "error");
       return;
     }
-    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(buildRegistrationWhatsAppMessage(row))}`, "_blank", "noopener,noreferrer");
+    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(buildRegistrationWhatsAppMessage(row, toAbsoluteAppUrl("/dashboard/academy")))}`, "_blank", "noopener,noreferrer");
   }
 
   return (
@@ -2476,29 +2501,34 @@ function LearnerActivationPanel({
   const { showToast } = useApp();
   const [search, setSearch] = useState("");
   const [courseFilter, setCourseFilter] = useState("ALL");
-  const [statusFilter, setStatusFilter] = useState<"ALL" | "NOT_STARTED" | "STARTED">("ALL");
+  const [statusFilter, setStatusFilter] = useState<"ALL" | "NOT_STARTED" | "STARTED" | "EXPIRED">("ALL");
   const dropoffs = data.firstLessonDropoffs ?? [];
   const approvedApplications = data.publicLearnerApplications.filter((row) => row.status === "APPROVED");
-  const startedCount = Math.max(0, approvedApplications.length - dropoffs.length);
+  const expiredApplications = data.publicLearnerApplications.filter((row) => row.status === "EXPIRED");
+  const activationApplications = data.publicLearnerApplications.filter((row) => row.status === "APPROVED" || row.status === "EXPIRED");
+  const approvedDropoffCount = dropoffs.filter((row) => row.applicationStatus !== "EXPIRED").length;
+  const startedCount = Math.max(0, approvedApplications.length - approvedDropoffCount);
   const pendingCount = data.publicLearnerApplications.filter((row) => row.status === "PENDING_PAYMENT" || row.status === "PAYMENT_UPLOADED").length;
   const courseOptions = [
     { value: "ALL", label: "All courses" },
-    ...Array.from(new Map(approvedApplications.map((row) => [row.course.id, row.course.title])).entries()).map(([value, label]) => ({ value, label })),
+    ...Array.from(new Map(activationApplications.map((row) => [row.course.id, row.course.title])).entries()).map(([value, label]) => ({ value, label })),
   ];
-  const activationRows = approvedApplications.map((application) => {
+  const activationRows = activationApplications.map((application) => {
     const dropoff = dropoffs.find((row) => row.learnerId === application.learner.id && row.courseId === application.course.id);
     const learnerProfile = data.learnerProfiles?.find((profile) => profile.agentId === application.learner.id);
+    const activationStatus = application.status === "EXPIRED" ? "EXPIRED" : dropoff ? "NOT_STARTED" : "STARTED";
     return {
-      id: `${application.id}-${dropoff ? "not-started" : "started"}`,
+      id: `${application.id}-${activationStatus.toLowerCase()}`,
+      applicationId: application.id,
       learnerId: application.learner.id,
       learnerName: application.learner.name || application.fullName,
       learnerEmail: application.learner.email || application.email,
       learnerPhone: dropoff?.learnerPhone ?? application.phone ?? application.learner.phone ?? null,
       courseId: application.course.id,
       courseTitle: application.course.title,
-      status: dropoff ? "NOT_STARTED" : "STARTED",
+      status: activationStatus,
       firstLessonId: dropoff?.firstLessonId ?? null,
-      firstLessonTitle: dropoff?.firstLessonTitle ?? "First lesson opened",
+      firstLessonTitle: dropoff?.firstLessonTitle ?? (activationStatus === "STARTED" ? "First lesson opened" : "Lesson 1"),
       daysSinceRegistration: dropoff?.daysSinceRegistration ?? daysSince(application.createdAt),
       registeredAt: application.createdAt,
       firstLessonStartDeadlineAt: dropoff?.firstLessonStartDeadlineAt ?? null,
@@ -2519,7 +2549,7 @@ function LearnerActivationPanel({
 
   async function copyActivationMessage(row: (typeof activationRows)[number]) {
     const href = row.firstLessonId ? `/dashboard/academy/${row.courseId}?lesson=${encodeURIComponent(row.firstLessonId)}` : `/dashboard/academy/${row.courseId}`;
-    const message = buildActivationWhatsAppMessage(row, href);
+    const message = buildActivationWhatsAppMessage(row, toAbsoluteAppUrl(href));
     await navigator.clipboard.writeText(message);
     showToast("Learner message copied.");
   }
@@ -2532,7 +2562,7 @@ function LearnerActivationPanel({
       return;
     }
     const href = row.firstLessonId ? `/dashboard/academy/${row.courseId}?lesson=${encodeURIComponent(row.firstLessonId)}` : `/dashboard/academy/${row.courseId}`;
-    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(buildActivationWhatsAppMessage(row, href))}`, "_blank", "noopener,noreferrer");
+    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(buildActivationWhatsAppMessage(row, toAbsoluteAppUrl(href)))}`, "_blank", "noopener,noreferrer");
   }
 
   return (
@@ -2563,10 +2593,11 @@ function LearnerActivationPanel({
             </Button>
           </div>
         </div>
-        <div className="grid gap-3 p-5 sm:grid-cols-2 xl:grid-cols-5">
+        <div className="grid gap-3 p-5 sm:grid-cols-2 xl:grid-cols-6">
           <ActivationMetric label="Approved learners" value={approvedApplications.length} />
           <ActivationMetric label="Opened Lesson 1" value={startedCount} tone="success" />
-          <ActivationMetric label="Not started" value={dropoffs.length} tone={dropoffs.length ? "warning" : "success"} />
+          <ActivationMetric label="Not started" value={approvedDropoffCount} tone={approvedDropoffCount ? "warning" : "success"} />
+          <ActivationMetric label="Expired places" value={expiredApplications.length} tone={expiredApplications.length ? "warning" : "success"} />
           <ActivationMetric label="Pending payment/review" value={pendingCount} />
           <ActivationMetric label="Start rate" value={`${approvedApplications.length ? Math.round((startedCount / approvedApplications.length) * 100) : 0}%`} tone="info" />
         </div>
@@ -2582,6 +2613,7 @@ function LearnerActivationPanel({
             { value: "ALL", label: "All activation states" },
             { value: "NOT_STARTED", label: "Not started Lesson 1" },
             { value: "STARTED", label: "Opened Lesson 1" },
+            { value: "EXPIRED", label: "Expired places" },
           ]}
         />
       </AdminFilterBar>
@@ -2610,8 +2642,8 @@ function LearnerActivationPanel({
                       <p className="mt-1 break-all text-xs text-slate-500">{row.learnerEmail}</p>
                     </div>
                     <AdminStatusBadge
-                      status={row.status === "NOT_STARTED" ? "Not started Lesson 1" : "Started"}
-                      variant={row.status === "NOT_STARTED" ? "warning" : "success"}
+                      status={row.status === "EXPIRED" ? "Expired place" : row.status === "NOT_STARTED" ? "Not started Lesson 1" : "Started"}
+                      variant={row.status === "EXPIRED" ? "danger" : row.status === "NOT_STARTED" ? "warning" : "success"}
                     />
                   </div>
 
@@ -2620,7 +2652,7 @@ function LearnerActivationPanel({
                     <ActivationDetail label="First lesson" value={row.firstLessonTitle} />
                     <ActivationDetail label="Last active" value={formatRelativeActivity(row.lastActivityAt, daysSince(row.lastActivityAt))} />
                     <ActivationDetail label="Registered" value={row.registeredAt ? new Date(row.registeredAt).toLocaleDateString() : "Unknown"} />
-                    {row.status === "NOT_STARTED" && (
+                    {row.status !== "STARTED" && (
                       <ActivationDetail
                         label="Start deadline"
                         value={formatStartDeadline(row.firstLessonStartDeadlineAt, row.firstLessonStartHoursRemaining)}
@@ -2628,13 +2660,21 @@ function LearnerActivationPanel({
                     )}
                   </div>
 
-                  <div className="mt-4 grid gap-2 sm:grid-cols-3">
+                  <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
                     <Button variant="secondary" onClick={() => void copyActivationMessage(row)} className="w-full">
                       <Copy className="size-4" /> Copy Message
                     </Button>
-                    <Button variant="secondary" onClick={() => openWhatsApp(row)} className="w-full" disabled={row.status !== "NOT_STARTED"}>
+                    <Button variant="secondary" onClick={() => openWhatsApp(row)} className="w-full" disabled={row.status === "STARTED"}>
                       <MessageCircle className="size-4" /> WhatsApp
                     </Button>
+                    {row.status === "EXPIRED" && (
+                      <Button
+                        onClick={() => void action({ action: "reactivate_first_lesson_place", applicationId: row.applicationId }, "Learner place reactivated for another 72 hours.")}
+                        className="w-full"
+                      >
+                        <RotateCcw className="size-4" /> Reactivate 72h
+                      </Button>
+                    )}
                     <a
                       href={previewHref}
                       target="_blank"
@@ -2672,38 +2712,227 @@ function LearnerActivationPanel({
   );
 }
 
+function LearningFollowUpPanel({ rows }: { rows: NonNullable<AcademyData["learningFollowUps"]> }) {
+  const { showToast } = useApp();
+  const [search, setSearch] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("ALL");
+  const categoryOptions = [
+    { value: "ALL", label: "All follow-ups" },
+    { value: "STARTED_INACTIVE", label: "Started then inactive" },
+    { value: "STUCK_ON_LESSON", label: "Stuck on lesson" },
+    { value: "ASSESSMENT_BLOCKED", label: "Assessment blocked" },
+    { value: "ALMOST_FINISHED", label: "Almost finished" },
+  ];
+  const counts = {
+    startedInactive: rows.filter((row) => row.category === "STARTED_INACTIVE").length,
+    stuck: rows.filter((row) => row.category === "STUCK_ON_LESSON").length,
+    blocked: rows.filter((row) => row.category === "ASSESSMENT_BLOCKED").length,
+    almostFinished: rows.filter((row) => row.category === "ALMOST_FINISHED").length,
+  };
+  const filteredRows = rows.filter((row) => {
+    const needle = search.trim().toLowerCase();
+    const matchesSearch = !needle || `${row.learnerName} ${row.learnerEmail} ${row.courseTitle} ${row.nextLessonTitle} ${row.blocker ?? ""}`.toLowerCase().includes(needle);
+    const matchesCategory = categoryFilter === "ALL" || row.category === categoryFilter;
+    return matchesSearch && matchesCategory;
+  });
+  const pageSize = 12;
+  const pagination = usePagination(filteredRows, pageSize);
+
+  async function copyFollowUpMessage(row: (typeof rows)[number]) {
+    await navigator.clipboard.writeText(buildLearningFollowUpWhatsAppMessage(row, toAbsoluteAppUrl(resumeHref(row))));
+    showToast("Learning follow-up copied.");
+  }
+
+  function openFollowUpWhatsApp(row: (typeof rows)[number]) {
+    const phone = normaliseWhatsAppPhone(row.learnerPhone);
+    if (!phone) {
+      void copyFollowUpMessage(row);
+      showToast("No phone number found. Message copied instead.", "error");
+      return;
+    }
+    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(buildLearningFollowUpWhatsAppMessage(row, toAbsoluteAppUrl(resumeHref(row))))}`, "_blank", "noopener,noreferrer");
+  }
+
+  return (
+    <div className="space-y-5">
+      <section className="overflow-hidden rounded-xl border border-white/10 bg-slate-900/60">
+        <div className="border-b border-white/10 bg-gradient-to-r from-cyan-500/10 to-slate-950 p-5">
+          <p className="text-xs font-black uppercase tracking-[0.2em] text-cyan-300">Learning follow-up</p>
+          <h3 className="mt-2 text-2xl font-bold text-white">Bring started learners back</h3>
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">
+            This queue uses real lesson progress, course progress, assessments, and last activity. It excludes learners who never opened Lesson 1 because those stay in Learner Activation.
+          </p>
+        </div>
+        <div className="grid gap-3 p-5 sm:grid-cols-2 xl:grid-cols-5">
+          <ActivationMetric label="Needs follow-up" value={rows.length} tone={rows.length ? "warning" : "success"} />
+          <ActivationMetric label="Started inactive" value={counts.startedInactive} />
+          <ActivationMetric label="Stuck on lesson" value={counts.stuck} tone={counts.stuck ? "warning" : "success"} />
+          <ActivationMetric label="Assessment blocked" value={counts.blocked} tone={counts.blocked ? "warning" : "success"} />
+          <ActivationMetric label="Almost finished" value={counts.almostFinished} tone={counts.almostFinished ? "info" : "success"} />
+        </div>
+      </section>
+
+      <AdminFilterBar>
+        <AdminSearchInput value={search} onChange={setSearch} placeholder="Search learner, course, next lesson, or blocker..." className="lg:flex-1" />
+        <AdminSelect value={categoryFilter} onChange={setCategoryFilter} options={categoryOptions} />
+      </AdminFilterBar>
+
+      <section className="rounded-xl border border-white/10 bg-slate-900/60">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 p-4">
+          <div>
+            <h3 className="font-semibold text-white">Inactive Learner Queue</h3>
+            <p className="mt-1 text-sm text-slate-400">Manual WhatsApp follow-ups with the learner's exact resume link.</p>
+          </div>
+          <AdminStatusBadge status={`${filteredRows.length} shown`} variant="info" />
+        </div>
+        {filteredRows.length === 0 ? (
+          <EmptyPanelText>No started learners need follow-up for the current filter.</EmptyPanelText>
+        ) : (
+          <div className="grid gap-3 p-4 lg:grid-cols-2 2xl:grid-cols-3">
+            {pagination.pageItems.map((row) => (
+              <article key={row.id} className="rounded-2xl border border-white/10 bg-slate-950/50 p-4 shadow-[0_1px_0_rgba(255,255,255,0.04)_inset]">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0">
+                    <p className="break-words font-semibold text-white">{row.learnerName}</p>
+                    <p className="mt-1 break-all text-xs text-slate-500">{row.learnerEmail}</p>
+                  </div>
+                  <AdminStatusBadge status={learningFollowUpLabel(row.category)} variant={row.category === "ALMOST_FINISHED" ? "info" : row.category === "STARTED_INACTIVE" ? "warning" : "danger"} />
+                </div>
+
+                <div className="mt-4 grid gap-3 rounded-xl border border-white/[0.06] bg-slate-900/55 p-3 sm:grid-cols-2">
+                  <ActivationDetail label="Course" value={row.courseTitle} />
+                  <ActivationDetail label="Progress" value={`${row.progress}%`} />
+                  <ActivationDetail label="Current lesson" value={row.currentLessonTitle} />
+                  <ActivationDetail label="Next lesson" value={row.nextLessonTitle} />
+                  <ActivationDetail label="Last active" value={formatRelativeActivity(row.lastActivityAt, row.inactiveDays)} />
+                  <ActivationDetail label="Blocker" value={row.blocker ?? "No blocker detected"} />
+                </div>
+
+                <p className="mt-3 rounded-xl border border-cyan-500/20 bg-cyan-500/10 p-3 text-xs font-semibold leading-5 text-cyan-100">
+                  {row.recommendedAction}
+                </p>
+
+                <div className="mt-4 grid gap-2 sm:grid-cols-3">
+                  <Button variant="secondary" onClick={() => void copyFollowUpMessage(row)} className="w-full">
+                    <Copy className="size-4" /> Copy
+                  </Button>
+                  <Button variant="secondary" onClick={() => openFollowUpWhatsApp(row)} className="w-full">
+                    <MessageCircle className="size-4" /> WhatsApp
+                  </Button>
+                  <a
+                    href={resumeHref(row)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-lg bg-white px-3 py-2 text-sm font-bold text-slate-950 hover:bg-emerald-50"
+                  >
+                    <Eye className="size-4" /> Preview
+                  </a>
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+        {filteredRows.length > pageSize && (
+          <PaginationControls
+            page={pagination.page}
+            totalPages={pagination.totalPages}
+            totalItems={filteredRows.length}
+            pageSize={pageSize}
+            onPageChange={pagination.setPage}
+          />
+        )}
+      </section>
+    </div>
+  );
+}
+
+function resumeHref(row: { courseId: string; nextLessonId?: string | null }) {
+  return row.nextLessonId ? `/dashboard/academy/${row.courseId}?lesson=${encodeURIComponent(row.nextLessonId)}` : `/dashboard/academy/${row.courseId}`;
+}
+
+function learningFollowUpLabel(category: string) {
+  const labels: Record<string, string> = {
+    STARTED_INACTIVE: "Started inactive",
+    STUCK_ON_LESSON: "Stuck on lesson",
+    ASSESSMENT_BLOCKED: "Assessment blocked",
+    ALMOST_FINISHED: "Almost finished",
+  };
+  return labels[category] ?? category.replace(/_/g, " ");
+}
+
 function buildActivationWhatsAppMessage(
   row: {
     learnerName: string;
     courseTitle: string;
+    status?: string;
     firstLessonStartWindowHours?: number;
     firstLessonStartHoursRemaining?: number | null;
   },
   href: string,
 ) {
   const firstName = row.learnerName.split(" ").filter(Boolean)[0] || "there";
+  if (row.status === "EXPIRED") {
+    return `Hi ${firstName}, your reserved place for ${row.courseTitle} expired because Lesson 1 was not started within 72 hours. We are following up to see if you still want to continue.`;
+  }
   const remaining = typeof row.firstLessonStartHoursRemaining === "number" && row.firstLessonStartHoursRemaining > 0
     ? ` You have about ${row.firstLessonStartHoursRemaining} hour${row.firstLessonStartHoursRemaining === 1 ? "" : "s"} left.`
     : "";
   return `Hi ${firstName}, your place for ${row.courseTitle} has been reserved. Please start Lesson 1 within ${row.firstLessonStartWindowHours ?? 72} hours to keep your place.${remaining} Start here: ${href}`;
 }
 
-function buildRegistrationWhatsAppMessage(row: { fullName: string; productLabel: string; status: string }) {
+function buildLearningFollowUpWhatsAppMessage(
+  row: {
+    learnerName: string;
+    courseTitle: string;
+    progress: number;
+    category: string;
+    blocker?: string | null;
+    nextLessonTitle: string;
+    inactiveDays: number;
+  },
+  href: string,
+) {
+  const firstName = row.learnerName.split(" ").filter(Boolean)[0] || "there";
+  if (row.category === "ASSESSMENT_BLOCKED") {
+    return `Hi ${firstName}, this is HouseLink Academy. You are ${row.progress}% through ${row.courseTitle}, but there may be an assessment item to resolve: ${row.blocker ?? "assessment follow-up needed"}. Please open your dashboard here: ${href}`;
+  }
+  if (row.category === "ALMOST_FINISHED") {
+    return `Hi ${firstName}, you are already ${row.progress}% through ${row.courseTitle}. You are close to finishing. Continue with ${row.nextLessonTitle} here: ${href}`;
+  }
+  if (row.category === "STUCK_ON_LESSON") {
+    return `Hi ${firstName}, this is HouseLink Academy checking in. It looks like you stopped on ${row.nextLessonTitle} in ${row.courseTitle}. Do you need help continuing? Resume here: ${href}`;
+  }
+  return `Hi ${firstName}, this is HouseLink Academy. You are ${row.progress}% through ${row.courseTitle} and have been inactive for ${row.inactiveDays} day${row.inactiveDays === 1 ? "" : "s"}. Continue with ${row.nextLessonTitle} here: ${href}`;
+}
+
+function buildRegistrationWhatsAppMessage(row: { fullName: string; productLabel: string; status: string }, dashboardUrl: string) {
   const firstName = row.fullName.split(" ").filter(Boolean)[0] || "there";
   const isCourseRegistration = !/toolkit|manual/i.test(row.productLabel);
   if (row.status === "APPROVED") {
     if (!isCourseRegistration) {
-      return `Hi ${firstName}, your HouseLink access for ${row.productLabel} has been approved. Please sign in to your dashboard to open it.`;
+      return `Hi ${firstName}, your HouseLink access for ${row.productLabel} has been approved. Please sign in to your dashboard to open it: ${dashboardUrl}`;
     }
-    return `Hi ${firstName}, your place for ${row.productLabel} has been reserved. Please start Lesson 1 within 72 hours to keep your place. The system releases unused places.`;
+    return `Hi ${firstName}, your place for ${row.productLabel} has been reserved. Please start Lesson 1 within 72 hours to keep your place. The system releases unused places. Open your dashboard here: ${dashboardUrl}`;
   }
   if (row.status === "PAYMENT_UPLOADED") {
-    return `Hi ${firstName}, HouseLink has received your proof for ${row.productLabel}. We are reviewing it and will update your access shortly.`;
+    return `Hi ${firstName}, HouseLink has received your proof for ${row.productLabel}. We are reviewing it and will update your access shortly. You can check your dashboard here: ${dashboardUrl}`;
   }
   if (row.status === "PENDING_PAYMENT") {
-    return `Hi ${firstName}, this is HouseLink following up on your ${row.productLabel} registration. Please complete payment and upload proof so we can reserve your place.`;
+    return `Hi ${firstName}, this is HouseLink following up on your ${row.productLabel} registration. Please complete payment and upload proof so we can reserve your place: ${dashboardUrl}`;
   }
-  return `Hi ${firstName}, this is HouseLink following up on your ${row.productLabel} registration. Please let us know if you need help with the next step.`;
+  return `Hi ${firstName}, this is HouseLink following up on your ${row.productLabel} registration. Please let us know if you need help with the next step. Dashboard: ${dashboardUrl}`;
+}
+
+function toAbsoluteAppUrl(pathOrUrl: string) {
+  try {
+    return new URL(pathOrUrl).toString();
+  } catch {
+    const configured = process.env.NEXT_PUBLIC_APP_URL?.trim();
+    const fallback = typeof window !== "undefined" ? window.location.origin : "https://www.houselink.co.zw";
+    const origin = (configured || fallback || "https://www.houselink.co.zw").replace(/\/+$/, "");
+    const path = pathOrUrl.startsWith("/") ? pathOrUrl : `/${pathOrUrl}`;
+    return `${origin}${path}`;
+  }
 }
 
 function normaliseWhatsAppPhone(value?: string | null) {

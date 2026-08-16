@@ -21,6 +21,7 @@ import {
   FIRST_LESSON_START_DEADLINE_HOURS,
   getFirstLessonDeadline,
   getReservationTimeLeft,
+  reactivateFirstLessonReservation,
   releaseExpiredFirstLessonReservations,
 } from "@/lib/academy/activation-deadline";
 
@@ -306,6 +307,18 @@ export async function getAcademyDashboard(options: { compact?: boolean } = {}) {
     lessonProgress,
     appSessions,
   });
+  const learningFollowUps = buildLearningFollowUps({
+    courses,
+    publicLearnerApplications,
+    enrolments,
+    courseProgress,
+    lessonProgress,
+    quizAttempts,
+    quizzes,
+    assignmentSubmissions,
+    assignments,
+    appSessions,
+  });
 
   return {
     metrics: {
@@ -334,6 +347,7 @@ export async function getAcademyDashboard(options: { compact?: boolean } = {}) {
       pendingPublicApprovals: pendingLearnerCount + pendingResourceCount,
       academyRevenue: Number(academyRevenue._sum.amount ?? 0),
       firstLessonNotStarted: firstLessonDropoffs.length,
+      learningFollowUps: learningFollowUps.length,
       firstLessonReservationExpired: reservationRelease.released,
       firstLessonStartWindowHours: FIRST_LESSON_START_DEADLINE_HOURS,
       certifiedAgents: certifiedAgentIds.length,
@@ -480,6 +494,7 @@ export async function getAcademyDashboard(options: { compact?: boolean } = {}) {
     certificateSimulations,
     announcementDelivery,
     firstLessonDropoffs,
+    learningFollowUps,
     leaderboard: agentBadges.map((entry) => ({
       id: entry.id,
       agentId: entry.agentId,
@@ -1491,6 +1506,10 @@ export async function runAcademyAction(body: Record<string, any>, actor: Actor) 
     const result = await releaseExpiredFirstLessonReservations(actor);
     await audit(actor, "academy.activation.release_expired_places", "academy", result as Prisma.InputJsonObject);
     return result;
+  }
+  if (action === "reactivate_first_lesson_place") {
+    const applicationId = required(body.applicationId, "Learner application");
+    return reactivateFirstLessonReservation(applicationId, actor);
   }
   if (action === "grant_extra_quiz_attempt") {
     const learnerId = required(body.learnerId, "Learner");
@@ -2809,7 +2828,10 @@ function buildFirstLessonDropoffs({
   }
 
   return publicLearnerApplications
-    .filter((application) => application.status === "APPROVED" && activeEnrolmentIds.has(`${application.courseId}:${application.learnerId}`))
+    .filter((application) =>
+      application.status === "EXPIRED" ||
+      (application.status === "APPROVED" && activeEnrolmentIds.has(`${application.courseId}:${application.learnerId}`)),
+    )
     .map((application) => {
       const firstLesson = firstLessonByCourseId.get(application.courseId);
       if (!firstLesson || viewedFirstLessonIds.has(`${firstLesson.id}:${application.learnerId}`)) return null;
@@ -2832,6 +2854,7 @@ function buildFirstLessonDropoffs({
       const timeLeft = getReservationTimeLeft(reservationDeadline);
       return {
         id: application.id,
+        applicationStatus: application.status,
         learnerId: application.learnerId,
         learnerName: application.learner?.name ?? application.fullName ?? application.email,
         learnerEmail: application.learner?.email ?? application.email,
@@ -2853,6 +2876,176 @@ function buildFirstLessonDropoffs({
     .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry))
     .sort((a, b) => b.daysSinceRegistration - a.daysSinceRegistration || a.learnerName.localeCompare(b.learnerName))
     .slice(0, 25);
+}
+
+function buildLearningFollowUps({
+  courses,
+  publicLearnerApplications,
+  enrolments,
+  courseProgress,
+  lessonProgress,
+  quizAttempts,
+  quizzes,
+  assignmentSubmissions,
+  assignments,
+  appSessions,
+}: {
+  courses: any[];
+  publicLearnerApplications: any[];
+  enrolments: any[];
+  courseProgress: any[];
+  lessonProgress: any[];
+  quizAttempts: Array<{ id: string; agentId: string; quizId: string; status: TrainingAttemptStatus; score: Prisma.Decimal | number; startedAt: Date; submittedAt: Date | null }>;
+  quizzes: Array<{ id: string; courseId?: string | null; moduleId?: string | null; lessonId?: string | null; title: string }>;
+  assignmentSubmissions: Array<{ id: string; agentId: string; assignmentId: string; status: AssignmentSubmissionStatus; submittedAt: Date; reviewedAt: Date | null }>;
+  assignments: Array<{ id: string; courseId?: string | null; moduleId?: string | null; lessonId?: string | null; title: string }>;
+  appSessions: Array<{ userId: string; lastSeenAt: Date }>;
+}) {
+  const activeEnrolmentIds = new Set(enrolments.filter((entry) => entry.status === "ACTIVE").map((entry) => `${entry.courseId}:${entry.agentId}`));
+  const courseStructure = buildCourseStructure(courses);
+  const latestSessionByLearnerId = new Map<string, Date>();
+  for (const session of appSessions) {
+    const current = latestSessionByLearnerId.get(session.userId);
+    if (!current || session.lastSeenAt > current) latestSessionByLearnerId.set(session.userId, session.lastSeenAt);
+  }
+  const courseIdByModuleId = new Map<string, string>();
+  const courseIdByLessonId = new Map<string, string>();
+  for (const course of courses) {
+    for (const courseModule of course.modules ?? []) {
+      courseIdByModuleId.set(courseModule.id, course.id);
+      for (const section of courseModule.sections ?? []) {
+        for (const lesson of section.lessons ?? []) courseIdByLessonId.set(lesson.id, course.id);
+      }
+    }
+  }
+
+  return publicLearnerApplications
+    .filter((application) => application.status === "APPROVED" && activeEnrolmentIds.has(`${application.courseId}:${application.learnerId}`))
+    .map((application) => {
+      const structure = courseStructure.get(application.courseId);
+      if (!structure?.lessons.length) return null;
+      const lessonRows = lessonProgress.filter((entry) => entry.agentId === application.learnerId && structure.lessonIds.has(entry.lessonId));
+      if (!lessonRows.length) return null;
+
+      const latestLessonProgress = [...lessonRows].sort((a, b) => new Date(b.completedAt ?? b.lastViewedAt).getTime() - new Date(a.completedAt ?? a.lastViewedAt).getTime())[0];
+      const completedLessonIds = new Set(lessonRows.filter((entry) => entry.status === "COMPLETED" || entry.percentComplete >= 100).map((entry) => entry.lessonId));
+      const nextLesson = structure.lessons.find((lesson) => !completedLessonIds.has(lesson.id)) ?? structure.lessons[structure.lessons.length - 1];
+      const currentLesson = structure.lessonById.get(latestLessonProgress.lessonId) ?? nextLesson;
+      const progress = courseProgress.find((entry) => entry.courseId === application.courseId && entry.agentId === application.learnerId);
+      const percentComplete = progress?.percentComplete ?? Math.round((completedLessonIds.size / structure.lessons.length) * 100);
+      if (percentComplete >= 100) return null;
+
+      const latestCourseProgressAt = progress?.updatedAt ?? null;
+      const latestActivityAt = latestDate([
+        latestLessonProgress.completedAt ?? latestLessonProgress.lastViewedAt,
+        latestCourseProgressAt,
+        latestSessionByLearnerId.get(application.learnerId),
+      ]);
+      if (!latestActivityAt) return null;
+      const inactiveDays = daysAgo(latestActivityAt);
+      if (inactiveDays < 1) return null;
+
+      const courseQuizIds = quizzes
+        .filter((quiz) => quiz.courseId === application.courseId || (quiz.moduleId && courseIdByModuleId.get(quiz.moduleId) === application.courseId) || (quiz.lessonId && courseIdByLessonId.get(quiz.lessonId) === application.courseId))
+        .map((quiz) => quiz.id);
+      const failedAttempt = quizAttempts
+        .filter((attempt) => attempt.agentId === application.learnerId && courseQuizIds.includes(attempt.quizId) && attempt.status === TrainingAttemptStatus.FAILED)
+        .sort((a, b) => new Date(b.submittedAt ?? b.startedAt).getTime() - new Date(a.submittedAt ?? a.startedAt).getTime())[0];
+      const failedQuizTitle = failedAttempt ? quizzes.find((quiz) => quiz.id === failedAttempt.quizId)?.title ?? "Quiz" : null;
+      const courseAssignmentIds = assignments
+        .filter((assignment) => assignment.courseId === application.courseId || (assignment.moduleId && courseIdByModuleId.get(assignment.moduleId) === application.courseId) || (assignment.lessonId && courseIdByLessonId.get(assignment.lessonId) === application.courseId))
+        .map((assignment) => assignment.id);
+      const blockedSubmission = assignmentSubmissions
+        .filter((submission) =>
+          submission.agentId === application.learnerId &&
+          courseAssignmentIds.includes(submission.assignmentId) &&
+          (submission.status === AssignmentSubmissionStatus.SUBMITTED || submission.status === AssignmentSubmissionStatus.RESUBMISSION_REQUESTED),
+        )
+        .sort((a, b) => new Date(b.reviewedAt ?? b.submittedAt).getTime() - new Date(a.reviewedAt ?? a.submittedAt).getTime())[0];
+      const blockedAssignmentTitle = blockedSubmission ? assignments.find((assignment) => assignment.id === blockedSubmission.assignmentId)?.title ?? "Assignment" : null;
+
+      const category = blockedSubmission || failedAttempt
+        ? "ASSESSMENT_BLOCKED"
+        : percentComplete >= 70
+          ? "ALMOST_FINISHED"
+          : inactiveDays >= 3 && latestLessonProgress.status !== "COMPLETED"
+            ? "STUCK_ON_LESSON"
+            : "STARTED_INACTIVE";
+      const blocker = blockedAssignmentTitle
+        ? `${blockedSubmission.status === AssignmentSubmissionStatus.RESUBMISSION_REQUESTED ? "Resubmission needed" : "Assignment awaiting review"}: ${blockedAssignmentTitle}`
+        : failedQuizTitle
+          ? `Failed quiz: ${failedQuizTitle}`
+          : null;
+
+      return {
+        id: `${application.id}-${application.courseId}`,
+        learnerId: application.learnerId,
+        learnerName: application.learner?.name ?? application.fullName ?? application.email,
+        learnerEmail: application.learner?.email ?? application.email,
+        learnerPhone: application.phone ?? application.learner?.phone ?? null,
+        courseId: application.courseId,
+        courseTitle: application.course?.title ?? structure.courseTitle,
+        progress: percentComplete,
+        category,
+        blocker,
+        currentLessonId: currentLesson.id,
+        currentLessonTitle: currentLesson.title,
+        nextLessonId: nextLesson.id,
+        nextLessonTitle: nextLesson.title,
+        lastActivityAt: latestActivityAt.toISOString(),
+        inactiveDays,
+        recommendedAction: learningFollowUpRecommendation(category, inactiveDays),
+      };
+    })
+    .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry))
+    .sort((a, b) => learningFollowUpPriority(b) - learningFollowUpPriority(a) || b.inactiveDays - a.inactiveDays || b.progress - a.progress)
+    .slice(0, 50);
+}
+
+function buildCourseStructure(courses: any[]) {
+  const structures = new Map<string, {
+    courseTitle: string;
+    lessons: Array<{ id: string; title: string }>;
+    lessonIds: Set<string>;
+    lessonById: Map<string, { id: string; title: string }>;
+  }>();
+  for (const course of courses) {
+    const modules = [...(course.modules ?? [])].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+    const lessons = modules.flatMap((module) =>
+      [...(module.sections ?? [])]
+        .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
+        .flatMap((section) =>
+          [...(section.lessons ?? [])]
+            .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
+            .map((lesson) => ({ id: lesson.id, title: lesson.title })),
+        ),
+    );
+    structures.set(course.id, {
+      courseTitle: course.title,
+      lessons,
+      lessonIds: new Set(lessons.map((lesson) => lesson.id)),
+      lessonById: new Map(lessons.map((lesson) => [lesson.id, lesson])),
+    });
+  }
+  return structures;
+}
+
+function learningFollowUpRecommendation(category: string, inactiveDays: number) {
+  if (category === "ASSESSMENT_BLOCKED") return "Help unblock the assessment before sending another lesson nudge.";
+  if (category === "ALMOST_FINISHED") return "Send a completion-focused message and point them to the next lesson.";
+  if (category === "STUCK_ON_LESSON") return "Ask what blocked them on the current lesson and offer direct help.";
+  if (inactiveDays >= 7) return "Send a stronger check-in and ask if they still want to continue.";
+  return "Send a gentle resume nudge with the next lesson link.";
+}
+
+function learningFollowUpPriority(row: { category: string; inactiveDays: number; progress: number }) {
+  const categoryPriority: Record<string, number> = {
+    ASSESSMENT_BLOCKED: 50,
+    ALMOST_FINISHED: 40,
+    STUCK_ON_LESSON: 30,
+    STARTED_INACTIVE: 20,
+  };
+  return (categoryPriority[row.category] ?? 0) + Math.min(row.inactiveDays, 14) + Math.round(row.progress / 10);
 }
 
 function buildTrainerInsights({

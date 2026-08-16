@@ -132,6 +132,83 @@ export async function releaseExpiredFirstLessonReservations(actor: Actor = {}) {
   return { checked, released, windowHours: FIRST_LESSON_START_DEADLINE_HOURS };
 }
 
+export async function reactivateFirstLessonReservation(applicationId: string, actor: Actor) {
+  const prisma = getMainPrisma();
+  const application = await prisma.academyLearnerApplication.findUnique({
+    where: { id: applicationId },
+    include: {
+      course: { select: { id: true, title: true, accessDurationDays: true } },
+      learner: { select: { name: true, email: true } },
+    },
+  });
+  if (!application) throw new Error("Learner application not found.");
+  if (application.status !== AcademyRegistrationStatus.EXPIRED) {
+    throw new Error("Only expired learner places can be reactivated.");
+  }
+
+  const now = new Date();
+  const accessEndsAt = new Date(now.getTime() + application.course.accessDurationDays * 86400000);
+  const deadline = getFirstLessonDeadline(now);
+  const note = `Place reactivated for another ${FIRST_LESSON_START_DEADLINE_HOURS} hours.`;
+
+  await prisma.$transaction([
+    prisma.academyLearnerApplication.update({
+      where: { id: application.id },
+      data: {
+        status: AcademyRegistrationStatus.APPROVED,
+        approvedById: actor.id,
+        approvedAt: now,
+        accessStartsAt: now,
+        accessEndsAt,
+        adminNote: appendAdminNote(application.adminNote, note),
+      },
+    }),
+    prisma.courseEnrolment.upsert({
+      where: { courseId_agentId: { courseId: application.courseId, agentId: application.learnerId } },
+      create: { courseId: application.courseId, agentId: application.learnerId, status: "ACTIVE", dueAt: accessEndsAt },
+      update: { status: "ACTIVE", dueAt: accessEndsAt },
+    }),
+    prisma.trainingNotification.create({
+      data: {
+        userId: application.learnerId,
+        eventType: "ACADEMY_PLACE_REACTIVATED",
+        channel: "IN_APP",
+        subject: "Academy place reactivated",
+        body: `Your Academy place for ${application.course.title} has been reactivated. Start Lesson 1 within ${FIRST_LESSON_START_DEADLINE_HOURS} hours to keep your place.`,
+      },
+    }),
+    prisma.trainingAuditLog.create({
+      data: {
+        actorId: actor.id,
+        action: "academy.activation.place_reactivated",
+        target: application.id,
+        metadata: {
+          actorName: actor.name ?? "Admin",
+          courseId: application.courseId,
+          courseTitle: application.course.title,
+          learnerId: application.learnerId,
+          learnerEmail: application.learner?.email ?? application.email,
+          accessStartsAt: now.toISOString(),
+          accessEndsAt: accessEndsAt.toISOString(),
+          deadlineAt: deadline?.toISOString() ?? null,
+          windowHours: FIRST_LESSON_START_DEADLINE_HOURS,
+        } satisfies Prisma.InputJsonObject,
+      },
+    }),
+  ]);
+
+  return {
+    applicationId: application.id,
+    learnerId: application.learnerId,
+    courseId: application.courseId,
+    status: AcademyRegistrationStatus.APPROVED,
+    accessStartsAt: now.toISOString(),
+    accessEndsAt: accessEndsAt.toISOString(),
+    firstLessonStartDeadlineAt: deadline?.toISOString() ?? null,
+    firstLessonStartWindowHours: FIRST_LESSON_START_DEADLINE_HOURS,
+  };
+}
+
 function getFirstCourseLesson(course: {
   modules: Array<{
     sections: Array<{
