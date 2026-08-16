@@ -64,7 +64,7 @@ export async function POST(request: Request) {
     
     if (!emailResult.success) {
       console.error("Failed to send verification email:", emailResult.error);
-      return problem(500, "EMAIL_SEND_FAILED", "Failed to send verification email. Please try again.");
+      return problem(502, "EMAIL_SEND_FAILED", emailResult.error || "Failed to send verification email. Please check Platform Settings SMTP configuration.");
     }
     
     return ok({
@@ -73,7 +73,7 @@ export async function POST(request: Request) {
       // Only return token in development for testing
       ...(process.env.NODE_ENV === "development" && { 
         verificationToken: token, 
-        verificationLink: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/auth/verify-email?token=${token}` 
+        verificationLink: `${process.env.NEXT_PUBLIC_APP_URL || "https://www.houselink.co.zw"}/auth/verify-email?token=${token}` 
       }),
     });
   } catch (error) {

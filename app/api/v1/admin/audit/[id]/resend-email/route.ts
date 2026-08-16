@@ -67,7 +67,8 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
         usedAt: null,
       },
     });
-    result = await sendEmailVerificationEmail(user.email, user.name, token);
+    const verificationPath = normalizeVerificationPath(stringValue(metadata.verificationPath, "/auth/verify-email"));
+    result = await sendEmailVerificationEmail(user.email, user.name, token, { verificationPath });
     responseMessage = "Verification email resent with a fresh 24-hour token.";
   } else {
     result = await sendWelcomeEmail(user.email, user.name);
@@ -82,6 +83,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       metadata: {
         sourceAuditId: audit.id,
         emailType,
+        verificationPath: typeof metadata.verificationPath === "string" ? metadata.verificationPath : null,
         error: result.error ?? null,
         timestamp: new Date().toISOString(),
       } satisfies Prisma.InputJsonObject,
@@ -105,4 +107,8 @@ function readObject(value: unknown): Record<string, unknown> {
 
 function stringValue(value: unknown, fallback: string) {
   return typeof value === "string" && value.trim() ? value : fallback;
+}
+
+function normalizeVerificationPath(value: string) {
+  return value === "/academy/verify-email" ? value : "/auth/verify-email";
 }

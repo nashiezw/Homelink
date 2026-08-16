@@ -17,6 +17,7 @@ async function sendEmailWithRetry(
   emailType: string = "email",
   maxRetries = 3,
   initialDelayMs = 1000,
+  auditMetadata: Record<string, unknown> = {},
 ): Promise<{ ok: boolean; message?: string }> {
   let lastError = "Email send failed.";
 
@@ -42,6 +43,7 @@ async function sendEmailWithRetry(
         action: "EMAIL_SEND_FAILED",
         target: to,
         metadata: {
+          ...auditMetadata,
           emailType,
           subject,
           attempts: maxRetries,
@@ -166,21 +168,42 @@ export async function sendRegistrationConfirmationEmail(
   }
 }
 
+type VerificationEmailOptions = {
+  redirectUrl?: string;
+  language?: string;
+  verificationPath?: string;
+};
+
+function getPublicAppUrl() {
+  return (process.env.NEXT_PUBLIC_APP_URL?.trim() || "https://www.houselink.co.zw").replace(/\/+$/, "");
+}
+
+function normalizeVerificationPath(path?: string) {
+  const trimmed = path?.trim();
+  if (!trimmed) return "/auth/verify-email";
+  return trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
+}
+
 export async function sendEmailVerificationEmail(
   userEmail: string,
   userName: string,
   verificationToken: string,
-  redirectUrl?: string,
+  redirectOrOptions?: string | VerificationEmailOptions,
   language: string = "en",
 ) {
   try {
     const settings = await getHydratedRuntimePlatformSettings();
     const integrations = settings.integrations;
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-    const verificationLink = `${baseUrl}/auth/verify-email?token=${verificationToken}${redirectUrl ? `&redirect=${encodeURIComponent(redirectUrl)}` : ''}`;
+    const options = typeof redirectOrOptions === "object" && redirectOrOptions !== null
+      ? redirectOrOptions
+      : { redirectUrl: redirectOrOptions, language };
+    const emailLanguage = options.language ?? language;
+    const verificationPath = normalizeVerificationPath(options.verificationPath);
+    const baseUrl = getPublicAppUrl();
+    const verificationLink = `${baseUrl}${verificationPath}?token=${verificationToken}${options.redirectUrl ? `&redirect=${encodeURIComponent(options.redirectUrl)}` : ''}`;
 
     // Try to get custom email template from database
-    const customTemplate = await getActiveEmailTemplate("email_verification", language);
+    const customTemplate = await getActiveEmailTemplate("email_verification", emailLanguage);
     let subject: string;
     let body: string;
 
@@ -207,7 +230,11 @@ export async function sendEmailVerificationEmail(
       body = renderVerificationEmail(templateData);
     }
 
-    const result = await sendEmailWithRetry(integrations, userEmail, subject, body, "email_verification");
+    const result = await sendEmailWithRetry(integrations, userEmail, subject, body, "email_verification", 3, 1000, {
+      verificationPath,
+      redirectUrl: options.redirectUrl ?? null,
+      appUrl: baseUrl,
+    });
     
     if (!result.ok) {
       console.error("Failed to send verification email:", result.message);

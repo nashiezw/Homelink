@@ -63,6 +63,8 @@ export async function POST(request: Request) {
     const userAgent = request.headers.get("user-agent") || "unknown";
 
     // Store verification token
+    const redirectUrl = "/dashboard/academy";
+
     await prisma.emailVerificationToken.upsert({
       where: { userId },
       create: {
@@ -71,24 +73,35 @@ export async function POST(request: Request) {
         expiresAt,
         ipAddress,
         userAgent,
+        redirectUrl,
       },
       update: {
         token,
         expiresAt,
         ipAddress,
         userAgent,
+        redirectUrl,
+        usedAt: null,
       },
     });
 
     // Send verification email
-    const emailResult = await sendEmailVerificationEmail(registration.learner.email, registration.learner.name || "Learner", token);
+    const emailResult = await sendEmailVerificationEmail(registration.learner.email, registration.learner.name || "Learner", token, {
+      verificationPath: "/academy/verify-email",
+      redirectUrl,
+    });
+
+    if (!emailResult.success) {
+      console.error("Failed to resend verification email:", emailResult.error);
+      return problem(502, "EMAIL_SEND_FAILED", emailResult.error || "Failed to resend verification email. Please check Platform Settings SMTP configuration.");
+    }
     
     return ok({
       verified: false,
       message: "Verification email resent.",
       emailSent: emailResult.success,
       // Only return token in development for testing
-      ...(process.env.NODE_ENV === "development" && { verificationToken: token, verificationLink: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/academy/verify-email?token=${token}` }),
+      ...(process.env.NODE_ENV === "development" && { verificationToken: token, verificationLink: `${process.env.NEXT_PUBLIC_APP_URL || "https://www.houselink.co.zw"}/academy/verify-email?token=${token}&redirect=${encodeURIComponent(redirectUrl)}` }),
     });
   } catch (error) {
     console.error("Failed to resend verification email", error);

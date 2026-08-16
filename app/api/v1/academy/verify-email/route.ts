@@ -1,5 +1,8 @@
 import { ok, problem } from "@/lib/api/response";
+import { createPostgresSession } from "@/lib/auth/postgres-auth";
 import { getMainPrisma } from "@/lib/db/main-prisma";
+import { randomUUID } from "crypto";
+import { cookies } from "next/headers";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +26,10 @@ export async function POST(request: Request) {
             id: true,
             email: true,
             emailVerifiedAt: true,
+            name: true,
+            roles: true,
+            phone: true,
+            accountStatus: true,
           },
         },
       },
@@ -44,7 +51,13 @@ export async function POST(request: Request) {
 
     // Check if email is already verified
     if (verificationToken.user.emailVerifiedAt) {
-      return ok({ message: "Email is already verified." });
+      const session = await createVerifiedAcademySession(verificationToken.user);
+      if ("error" in session) return session.error;
+      return ok({
+        message: "Email is already verified.",
+        user: session.user,
+        redirectUrl: verificationToken.redirectUrl || "/dashboard/academy",
+      });
     }
 
     // Mark token as used and verify email
@@ -59,9 +72,52 @@ export async function POST(request: Request) {
       }),
     ]);
 
-    return ok({ message: "Email verified successfully!" });
+    const session = await createVerifiedAcademySession(verificationToken.user);
+    if ("error" in session) return session.error;
+
+    return ok({
+      message: "Email verified successfully!",
+      user: session.user,
+      redirectUrl: verificationToken.redirectUrl || "/dashboard/academy",
+    });
   } catch (error) {
     console.error("Failed to verify email", error);
     return problem(500, "SERVER_ERROR", "Failed to verify email.");
   }
+}
+
+async function createVerifiedAcademySession(user: {
+  id: string;
+  name: string;
+  email: string;
+  phone: string | null;
+  roles: string[];
+  accountStatus: string;
+}) {
+  if (user.accountStatus !== "ACTIVE") {
+    return { error: problem(403, "ACCOUNT_INACTIVE", "Your account is not active. Please contact support.") };
+  }
+
+  const sessionId = `session_${randomUUID()}`;
+  const maxAgeSeconds = 60 * 60 * 24 * 30;
+  await createPostgresSession(user.id, sessionId, maxAgeSeconds);
+
+  const cookieStore = await cookies();
+  cookieStore.set("session", sessionId, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    maxAge: maxAgeSeconds,
+    path: "/",
+  });
+
+  return {
+    user: {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      phone: user.phone,
+      roles: user.roles,
+    },
+  };
 }

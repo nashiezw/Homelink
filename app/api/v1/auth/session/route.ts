@@ -122,12 +122,12 @@ export async function POST(request: Request) {
           const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
           const ipAddress = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "unknown";
           const userAgent = request.headers.get("user-agent") || "unknown";
-          const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+          const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://www.houselink.co.zw";
 
           await prisma.emailVerificationToken.upsert({
             where: { userId: existing.id },
             create: { userId: existing.id, token, expiresAt, ipAddress, userAgent, redirectUrl },
-            update: { token, expiresAt, ipAddress, userAgent, redirectUrl },
+            update: { token, expiresAt, ipAddress, userAgent, redirectUrl, usedAt: null },
           });
 
           // Send verification email
@@ -139,7 +139,10 @@ export async function POST(request: Request) {
                 user: toPublicPostgresUser(existing),
                 requiresEmailVerification: true,
                 emailSent: emailResult.success,
-                message: "An account with this email already exists but is not verified. A new verification link has been sent to your email.",
+                message: emailResult.success
+                  ? "An account with this email already exists but is not verified. A new verification link has been sent to your email."
+                  : `An account with this email already exists but is not verified. The verification email could not be sent: ${emailResult.error ?? "Check Platform Settings SMTP configuration."}`,
+                emailError: emailResult.success ? undefined : emailResult.error,
                 ...(process.env.NODE_ENV === "development" && { 
                   verificationToken: token, 
                   verificationLink: `${baseUrl}/auth/verify-email?token=${token}${redirectUrl ? `&redirect=${encodeURIComponent(redirectUrl)}` : ''}` 
@@ -177,7 +180,7 @@ export async function POST(request: Request) {
         await prisma.emailVerificationToken.upsert({
           where: { userId: user.id },
           create: { userId: user.id, token, expiresAt, ipAddress, userAgent, redirectUrl },
-          update: { token, expiresAt, ipAddress, userAgent, redirectUrl },
+          update: { token, expiresAt, ipAddress, userAgent, redirectUrl, usedAt: null },
         });
 
         // Send verification email
@@ -189,10 +192,13 @@ export async function POST(request: Request) {
               user: toPublicPostgresUser(user),
               requiresEmailVerification: true,
               emailSent: emailResult.success,
-              message: "Please verify your email address. A verification link has been sent to your email.",
+              message: emailResult.success
+                ? "Please verify your email address. A verification link has been sent to your email."
+                : `Please verify your email address. The verification email could not be sent: ${emailResult.error ?? "Check Platform Settings SMTP configuration."}`,
+              emailError: emailResult.success ? undefined : emailResult.error,
               ...(process.env.NODE_ENV === "development" && { 
                 verificationToken: token, 
-                verificationLink: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/auth/verify-email?token=${token}${redirectUrl ? `&redirect=${encodeURIComponent(redirectUrl)}` : ''}` 
+                verificationLink: `${process.env.NEXT_PUBLIC_APP_URL || "https://www.houselink.co.zw"}/auth/verify-email?token=${token}${redirectUrl ? `&redirect=${encodeURIComponent(redirectUrl)}` : ''}` 
               }),
             },
             meta: { requestId: crypto.randomUUID() },
@@ -246,12 +252,12 @@ export async function POST(request: Request) {
       const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
       const ipAddress = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "unknown";
       const userAgent = request.headers.get("user-agent") || "unknown";
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://www.houselink.co.zw";
 
       await prisma.emailVerificationToken.upsert({
         where: { userId: user.id },
         create: { userId: user.id, token, expiresAt, ipAddress, userAgent },
-        update: { token, expiresAt, ipAddress, userAgent },
+        update: { token, expiresAt, ipAddress, userAgent, usedAt: null },
       });
 
       // Send verification email
@@ -263,7 +269,10 @@ export async function POST(request: Request) {
             user: store.publicUser(user),
             requiresEmailVerification: true,
             emailSent: emailResult.success,
-            message: "Please verify your email address. A verification link has been sent to your email.",
+            message: emailResult.success
+              ? "Please verify your email address. A verification link has been sent to your email."
+              : `Please verify your email address. The verification email could not be sent: ${emailResult.error ?? "Check Platform Settings SMTP configuration."}`,
+            emailError: emailResult.success ? undefined : emailResult.error,
             ...(process.env.NODE_ENV === "development" && { 
               verificationToken: token, 
               verificationLink: `${baseUrl}/auth/verify-email?token=${token}` 
@@ -331,12 +340,12 @@ export async function POST(request: Request) {
       const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
       const ipAddress = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "unknown";
       const userAgent = request.headers.get("user-agent") || "unknown";
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://www.houselink.co.zw";
 
       await prisma.emailVerificationToken.upsert({
         where: { userId: user.id },
         create: { userId: user.id, token, expiresAt, ipAddress, userAgent, redirectUrl },
-        update: { token, expiresAt, ipAddress, userAgent, redirectUrl },
+        update: { token, expiresAt, ipAddress, userAgent, redirectUrl, usedAt: null },
       });
 
       // Send verification email
@@ -345,8 +354,10 @@ export async function POST(request: Request) {
       return problem(
         403,
         "EMAIL_VERIFICATION_REQUIRED",
-        "Please verify your email address before signing in. A new verification link has been sent to your email.",
-        { emailSent: emailResult.success, email: user.email, ...(process.env.NODE_ENV === "development" && { verificationToken: token, verificationLink: `${baseUrl}/auth/verify-email?token=${token}${redirectUrl ? `&redirect=${encodeURIComponent(redirectUrl)}` : ''}` }) }
+        emailResult.success
+          ? "Please verify your email address before signing in. A new verification link has been sent to your email."
+          : `Please verify your email address before signing in. The verification email could not be sent: ${emailResult.error ?? "Check Platform Settings SMTP configuration."}`,
+        { emailSent: emailResult.success, emailError: emailResult.success ? undefined : emailResult.error, email: user.email, ...(process.env.NODE_ENV === "development" && { verificationToken: token, verificationLink: `${baseUrl}/auth/verify-email?token=${token}${redirectUrl ? `&redirect=${encodeURIComponent(redirectUrl)}` : ''}` }) }
       );
     }
     

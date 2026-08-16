@@ -49,23 +49,31 @@ export async function POST(request: Request) {
     const ipAddress = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "unknown";
     const userAgent = request.headers.get("user-agent") || "unknown";
 
+    const redirectUrl = "/dashboard/academy";
+
     await prisma.emailVerificationToken.upsert({
       where: { userId },
-      create: { userId, token, expiresAt, ipAddress, userAgent },
-      update: { token, expiresAt, ipAddress, userAgent },
+      create: { userId, token, expiresAt, ipAddress, userAgent, redirectUrl },
+      update: { token, expiresAt, ipAddress, userAgent, redirectUrl, usedAt: null },
     });
 
     // Send verification email
-    const emailResult = await sendEmailVerificationEmail(userRecord.email, userRecord.name, token);
+    const emailResult = await sendEmailVerificationEmail(userRecord.email, userRecord.name, token, {
+      verificationPath: "/academy/verify-email",
+      redirectUrl,
+    });
     
     return ok({
       status: "PENDING_EMAIL_VERIFICATION",
       id: "pending-verification",
-      message: "Email verification required. A verification link has been sent to your email.",
+      message: emailResult.success
+        ? "Email verification required. A verification link has been sent to your email."
+        : `Email verification is required, but the email could not be sent: ${emailResult.error ?? "Check Platform Settings SMTP configuration."}`,
       emailSent: emailResult.success,
+      emailError: emailResult.success ? undefined : emailResult.error,
       ...(process.env.NODE_ENV === "development" && { 
         verificationToken: token, 
-        verificationLink: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/academy/verify-email?token=${token}` 
+        verificationLink: `${process.env.NEXT_PUBLIC_APP_URL || "https://www.houselink.co.zw"}/academy/verify-email?token=${token}&redirect=${encodeURIComponent(redirectUrl)}` 
       }),
     });
   }
