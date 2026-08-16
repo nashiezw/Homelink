@@ -138,6 +138,15 @@ type AcademyData = {
     course: { id: string; title: string };
     learner: { id: string; name: string; email: string; phone?: string; roles: string[] };
     payment: { id: string; status: string; proofStatus?: string; proofUrl?: string } | null;
+    coupon: {
+      code: string;
+      couponId: string | null;
+      discountAmount: number;
+      originalAmount: number | null;
+      finalAmount: number;
+      appliedByAdmin: boolean;
+      appliedAt: string | null;
+    } | null;
   }>;
   resourceAccessApplications?: Array<{
     id: string;
@@ -1634,6 +1643,7 @@ function FeatureWorkbench({
         learningFollowUps={data.learningFollowUps ?? []}
         settings={data.trainingSettings?.payload as Record<string, unknown> ?? {}}
         courses={data.courses}
+        coupons={data.coupons ?? []}
         action={action}
       />
     );
@@ -2332,6 +2342,7 @@ function PublicLearnersPanel({
   learningFollowUps,
   settings,
   courses,
+  coupons,
   action,
 }: {
   applications: AcademyData["publicLearnerApplications"];
@@ -2340,10 +2351,13 @@ function PublicLearnersPanel({
   learningFollowUps: NonNullable<AcademyData["learningFollowUps"]>;
   settings: Record<string, unknown>;
   courses: AcademyCourse[];
+  coupons: AcademyCoupon[];
   action: (body: Record<string, unknown>, success: string) => Promise<unknown>;
 }) {
   const { showToast } = useApp();
   const messageSettings = getAcademyMessageSettings(settings);
+  const [couponTarget, setCouponTarget] = useState<(typeof applications)[number] | null>(null);
+  const [couponCode, setCouponCode] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<{
     id: string;
     fullName: string;
@@ -2369,6 +2383,7 @@ function PublicLearnersPanel({
     proofUrl: row.proofUrl,
     adminNote: row.adminNote,
     updatedAt: row.updatedAt,
+    coupon: null,
     productLabel:
       row.resourceKind === "TRAINING_MANUAL"
         ? "Training manual"
@@ -2391,8 +2406,13 @@ function PublicLearnersPanel({
     currency: row.currency,
     proofUrl: row.proofUrl,
     adminNote: row.adminNote,
+    createdAt: row.createdAt,
     updatedAt: row.updatedAt,
     productLabel: row.course.title,
+    coupon: row.coupon,
+    course: row.course,
+    learner: row.learner,
+    payment: row.payment,
     courseId: row.course.id,
     learnerId: row.learner.id,
     reviewAction: "review_public_learner" as const,
@@ -2422,6 +2442,68 @@ function PublicLearnersPanel({
     }
     window.open(`https://wa.me/${phone}?text=${encodeURIComponent(buildRegistrationWhatsAppMessage(toRegistrationMessageContext(row), toAbsoluteAppUrl(registrationMessageHref(row)), messageSettings))}`, "_blank", "noopener,noreferrer");
   }
+
+  function openCouponDrawer(row: (typeof applications)[number]) {
+    setCouponTarget(row);
+    setCouponCode("");
+  }
+
+  async function applyCoupon() {
+    if (!couponTarget || !couponCode.trim()) return;
+    await action(
+      { action: "apply_admin_coupon_to_learner", applicationId: couponTarget.id, code: couponCode },
+      "Coupon applied to learner registration.",
+    );
+    setCouponTarget(null);
+    setCouponCode("");
+  }
+
+  async function removeCoupon(row: (typeof applications)[number]) {
+    await action(
+      { action: "remove_admin_coupon_from_learner", applicationId: row.id },
+      "Coupon removed and balance restored.",
+    );
+  }
+
+  function canAdjustCoupon(row: (typeof rows)[number]) {
+    return (
+      "courseId" in row &&
+      (row.status === "PENDING_PAYMENT" || row.status === "PAYMENT_UPLOADED") &&
+      row.payment &&
+      row.payment.proofStatus !== "UPLOADED" &&
+      row.payment.proofStatus !== "VERIFIED" &&
+      !row.proofUrl
+    );
+  }
+
+  const couponPreview = (() => {
+    if (!couponTarget || !couponCode.trim()) return null;
+    const code = couponCode.trim().toUpperCase();
+    const coupon = coupons.find((item) => item.code.toUpperCase() === code);
+    if (!coupon) return { found: false as const, code };
+    const originalAmount = couponTarget.amount;
+    const rawDiscount = coupon.discountType === "PERCENTAGE"
+      ? originalAmount * (coupon.discountValue / 100)
+      : coupon.discountValue;
+    const discountAmount = Math.min(originalAmount, Math.max(0, rawDiscount));
+    return {
+      found: true as const,
+      code: coupon.code,
+      discountAmount,
+      finalAmount: Math.max(0, originalAmount - discountAmount),
+      valid: coupon.isValid && (coupon.applicableCourses.length === 0 || coupon.applicableCourses.includes(couponTarget.course.id)),
+    };
+  })();
+
+  const couponBlockedReason = couponTarget
+    ? couponTarget.status !== "PENDING_PAYMENT" && couponTarget.status !== "PAYMENT_UPLOADED"
+      ? "Coupons can only be applied before approval, rejection, refund, expiry, or deletion."
+      : couponTarget.payment?.proofStatus === "UPLOADED" || couponTarget.payment?.proofStatus === "VERIFIED" || couponTarget.proofUrl
+        ? "Payment proof is already uploaded. Review or reject the proof before changing the balance."
+        : couponTarget.coupon
+          ? "This registration already has a coupon applied."
+          : ""
+    : "";
 
   function toRegistrationMessageContext(row: (typeof rows)[number]) {
     if (!("courseId" in row)) return row;
@@ -2481,7 +2563,31 @@ function PublicLearnersPanel({
           },
           { key: "product", header: "Product", render: (row) => <span className="text-sm text-slate-300">{row.productLabel}</span> },
           { key: "type", header: "Type", render: (row) => <AdminStatusBadge status={row.learnerType === "PUBLIC_LEARNER" ? "Training only" : "Agent training"} variant={row.learnerType === "PUBLIC_LEARNER" ? "info" : "success"} /> },
-          { key: "amount", header: "Amount", render: (row) => `${row.currency} ${row.amount.toFixed(2)}` },
+          {
+            key: "amount",
+            header: "Amount",
+            render: (row) => (
+              <span className="text-sm text-slate-300">
+                {row.coupon?.originalAmount && row.coupon.originalAmount > row.amount ? (
+                  <>
+                    <span className="mr-1 text-slate-500 line-through">{row.currency} {row.coupon.originalAmount.toFixed(2)}</span>
+                    <span className="font-semibold text-emerald-200">{row.currency} {row.amount.toFixed(2)}</span>
+                  </>
+                ) : `${row.currency} ${row.amount.toFixed(2)}`}
+              </span>
+            ),
+          },
+          {
+            key: "coupon",
+            header: "Coupon",
+            render: (row) => row.coupon ? (
+              <div className="min-w-32">
+                <AdminStatusBadge status={row.coupon.code} variant="success" />
+                <p className="mt-1 text-xs text-emerald-200">-{row.currency} {row.coupon.discountAmount.toFixed(2)}</p>
+                {row.coupon.appliedByAdmin && <p className="mt-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Admin applied</p>}
+              </div>
+            ) : <span className="text-xs text-slate-500">None</span>,
+          },
           { key: "status", header: "Status", render: (row) => <AdminStatusBadge status={row.status.replace(/_/g, " ")} variant={row.status === "APPROVED" ? "success" : row.status === "REJECTED" ? "danger" : "warning"} /> },
           {
             key: "proof",
@@ -2498,6 +2604,17 @@ function PublicLearnersPanel({
                   <Button variant="secondary" onClick={() => openRegistrationWhatsApp(row)}>
                     <MessageCircle className="size-4" /> WhatsApp
                   </Button>
+                  {"courseId" in row && (
+                    row.coupon ? (
+                      <Button variant="secondary" disabled={!canAdjustCoupon(row)} onClick={() => void removeCoupon(row)}>
+                        Remove coupon
+                      </Button>
+                    ) : (
+                      <Button variant="secondary" disabled={!canAdjustCoupon(row)} onClick={() => openCouponDrawer(row)}>
+                        Apply coupon
+                      </Button>
+                    )
+                  )}
                   {canReview ? (
                     <>
                       <Button onClick={() => void action({ action: row.reviewAction, [row.reviewIdKey]: row.id, status: "APPROVED" }, "Access approved.")}>
@@ -2534,6 +2651,76 @@ function PublicLearnersPanel({
           onPageChange={pagination.setPage}
         />
       )}
+      <AdminDrawer
+        open={Boolean(couponTarget)}
+        title="Apply coupon"
+        description="Validate and apply a coupon to this learner before approval or proof upload."
+        onClose={() => setCouponTarget(null)}
+        width="lg"
+      >
+        {couponTarget && (
+          <div className="space-y-4">
+            <div className="rounded-xl border border-white/10 bg-slate-900/70 p-4">
+              <p className="font-semibold text-white">{couponTarget.fullName}</p>
+              <p className="mt-1 text-sm text-slate-400">{couponTarget.course.title}</p>
+              <div className="mt-3 grid gap-2 text-sm sm:grid-cols-3">
+                <MetricRow label="Current amount" value={`${couponTarget.currency} ${couponTarget.amount.toFixed(2)}`} />
+                <MetricRow label="Status" value={couponTarget.status.replace(/_/g, " ")} />
+                <MetricRow label="Proof" value={couponTarget.payment?.proofStatus ?? "NONE"} />
+              </div>
+            </div>
+            {couponBlockedReason && (
+              <p className="rounded-xl border border-amber-400/30 bg-amber-400/10 p-3 text-sm font-semibold leading-6 text-amber-100">
+                {couponBlockedReason}
+              </p>
+            )}
+            <div className="grid gap-3">
+              <TextInput
+                label="Coupon code"
+                value={couponCode}
+                onChange={(value) => setCouponCode(value.toUpperCase().replace(/[^A-Z0-9]/g, ""))}
+              />
+              {coupons.filter((coupon) => coupon.isValid).length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {coupons.filter((coupon) => coupon.isValid).slice(0, 8).map((coupon) => (
+                    <button
+                      type="button"
+                      key={coupon.id}
+                      onClick={() => setCouponCode(coupon.code)}
+                      className="rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-1 text-xs font-bold text-emerald-100 hover:bg-emerald-400/20"
+                    >
+                      {coupon.code}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            {couponPreview && (
+              <div className={`rounded-xl border p-4 ${couponPreview.found && couponPreview.valid ? "border-emerald-400/30 bg-emerald-400/10" : "border-amber-400/30 bg-amber-400/10"}`}>
+                {couponPreview.found ? (
+                  <>
+                    <p className="text-sm font-bold text-white">Preview for {couponPreview.code}</p>
+                    <div className="mt-3 grid gap-2 text-sm sm:grid-cols-3">
+                      <MetricRow label="Discount" value={`${couponTarget.currency} ${couponPreview.discountAmount.toFixed(2)}`} />
+                      <MetricRow label="Final amount" value={`${couponTarget.currency} ${couponPreview.finalAmount.toFixed(2)}`} />
+                      <MetricRow label="Result" value={couponPreview.finalAmount <= 0 ? "Auto approve" : "Await proof"} />
+                    </div>
+                    {!couponPreview.valid && <p className="mt-3 text-sm font-semibold text-amber-100">This coupon is not currently valid for this course or usage limit.</p>}
+                  </>
+                ) : (
+                  <p className="text-sm font-semibold text-amber-100">Coupon {couponPreview.code} was not found.</p>
+                )}
+              </div>
+            )}
+            <div className="flex justify-end gap-2">
+              <Button variant="secondary" onClick={() => setCouponTarget(null)}>Cancel</Button>
+              <Button disabled={Boolean(couponBlockedReason) || !couponCode.trim() || !couponPreview?.found || !couponPreview.valid} onClick={() => void applyCoupon()}>
+                Apply coupon
+              </Button>
+            </div>
+          </div>
+        )}
+      </AdminDrawer>
       <AdminConfirmDialog
         open={Boolean(deleteTarget)}
         title="Delete learner record?"

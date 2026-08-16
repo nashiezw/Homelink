@@ -1,7 +1,10 @@
 import {
+  AcademyRegistrationStatus,
   AssignmentSubmissionStatus,
   ListingStatus,
+  PaymentStatus,
   Prisma,
+  Role,
   TrainingAttemptStatus,
   TrainingCourseStatus,
   TrainingDifficulty,
@@ -388,25 +391,41 @@ export async function getAcademyDashboard(options: { compact?: boolean } = {}) {
     announcements,
     badges,
     settings,
-    publicLearnerApplications: publicLearnerApplications.map((entry) => ({
-      id: entry.id,
-      status: entry.status,
-      learnerType: entry.learnerType,
-      fullName: entry.fullName,
-      email: entry.email,
-      phone: entry.phone,
-      organisation: entry.organisation,
-      amount: Number(entry.amount),
-      currency: entry.currency,
-      proofUrl: entry.proofUrl ?? entry.payment?.proofUrl,
-      adminNote: entry.adminNote,
-      createdAt: entry.createdAt.toISOString(),
-      updatedAt: entry.updatedAt.toISOString(),
-      course: { id: entry.course.id, title: entry.course.title },
-      learner: entry.learner,
-      payment: entry.payment ? { id: entry.payment.id, status: entry.payment.status, proofStatus: entry.payment.proofStatus, proofUrl: entry.payment.proofUrl } : null,
-      productType: "COURSE_ENROLMENT" as const,
-    })),
+    publicLearnerApplications: publicLearnerApplications.map((entry) => {
+      const paymentMetadata = readJsonObject(entry.payment?.metadata);
+      const discountAmount = numberFromJson(paymentMetadata.discountAmount);
+      const originalAmount = numberFromJson(paymentMetadata.originalAmount) ?? (discountAmount ? Number(entry.amount) + discountAmount : null);
+      return {
+        id: entry.id,
+        status: entry.status,
+        learnerType: entry.learnerType,
+        fullName: entry.fullName,
+        email: entry.email,
+        phone: entry.phone,
+        organisation: entry.organisation,
+        amount: Number(entry.amount),
+        currency: entry.currency,
+        proofUrl: entry.proofUrl ?? entry.payment?.proofUrl,
+        adminNote: entry.adminNote,
+        createdAt: entry.createdAt.toISOString(),
+        updatedAt: entry.updatedAt.toISOString(),
+        course: { id: entry.course.id, title: entry.course.title },
+        learner: entry.learner,
+        payment: entry.payment ? { id: entry.payment.id, status: entry.payment.status, proofStatus: entry.payment.proofStatus, proofUrl: entry.payment.proofUrl } : null,
+        coupon: paymentMetadata.couponCode
+          ? {
+              code: String(paymentMetadata.couponCode),
+              couponId: typeof paymentMetadata.couponId === "string" ? paymentMetadata.couponId : null,
+              discountAmount: discountAmount ?? 0,
+              originalAmount,
+              finalAmount: Number(entry.amount),
+              appliedByAdmin: Boolean(paymentMetadata.adminCouponApplied),
+              appliedAt: typeof paymentMetadata.adminCouponAppliedAt === "string" ? paymentMetadata.adminCouponAppliedAt : typeof paymentMetadata.lateCouponAppliedAt === "string" ? paymentMetadata.lateCouponAppliedAt : null,
+            }
+          : null,
+        productType: "COURSE_ENROLMENT" as const,
+      };
+    }),
     resourceAccessApplications: resourceAccessApplications.map((entry) => ({
       id: entry.id,
       status: entry.status,
@@ -1632,6 +1651,19 @@ export async function runAcademyAction(body: Record<string, any>, actor: Actor) 
       adminNote: typeof body.adminNote === "string" ? body.adminNote : undefined,
     });
   }
+  if (action === "apply_admin_coupon_to_learner") {
+    return applyAdminCouponToLearner({
+      applicationId: required(body.applicationId, "Application"),
+      code: required(body.code, "Coupon code"),
+      actor,
+    });
+  }
+  if (action === "remove_admin_coupon_from_learner") {
+    return removeAdminCouponFromLearner({
+      applicationId: required(body.applicationId, "Application"),
+      actor,
+    });
+  }
   if (action === "review_resource_access") {
     return reviewResourceAccessApplication({
       accessId: String(body.accessId),
@@ -2787,6 +2819,285 @@ function buildAnnouncementDeliverySummary({ announcements, publicLearnerApplicat
       expiresAt: announcement.expiresAt?.toISOString() ?? null,
     };
   });
+}
+
+type CouponApplicationInput = {
+  applicationId: string;
+  code: string;
+  actor: Actor;
+};
+
+function normalizeAcademyCouponCode(value: unknown) {
+  return String(value || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+}
+
+function readJsonObject(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
+}
+
+function numberFromJson(value: unknown) {
+  if (value == null || value === "") return null;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
+function appendStampedNote(current: string | null | undefined, note: string) {
+  const stamped = `${new Date().toISOString()} - ${note}`;
+  return current?.trim() ? `${current.trim()}\n${stamped}` : stamped;
+}
+
+async function applyAdminCouponToLearner({ applicationId, code, actor }: CouponApplicationInput) {
+  const prisma = getMainPrisma();
+  const normalizedCode = normalizeAcademyCouponCode(code);
+  if (!normalizedCode) throw new Error("Coupon code is required.");
+
+  const registration = await prisma.academyLearnerApplication.findUnique({
+    where: { id: applicationId },
+    include: {
+      course: true,
+      payment: true,
+      learner: { select: { id: true, name: true, email: true, roles: true } },
+    },
+  });
+  if (!registration) throw new Error("Learner registration was not found.");
+  if (registration.status !== AcademyRegistrationStatus.PENDING_PAYMENT && registration.status !== AcademyRegistrationStatus.PAYMENT_UPLOADED) {
+    throw new Error("Coupons can only be applied before approval, rejection, refund, expiry, or deletion.");
+  }
+  if (!registration.payment) throw new Error("No payment record is attached to this registration.");
+  if (registration.payment.proofStatus === "UPLOADED" || registration.payment.proofStatus === "VERIFIED" || registration.proofUrl || registration.payment.proofUrl) {
+    throw new Error("Payment proof is already uploaded. Review the proof or ask the learner to re-upload after any pricing change.");
+  }
+
+  const existingPaymentUsage = await prisma.academyCouponUsage.findFirst({ where: { paymentId: registration.payment.id } });
+  if (existingPaymentUsage) throw new Error("A coupon is already applied to this registration. Remove it before applying another code.");
+
+  const coupon = await prisma.academyCoupon.findUnique({
+    where: { code: normalizedCode },
+    include: { _count: { select: { usages: true } } },
+  });
+  if (!coupon) throw new Error("Coupon code was not found.");
+  if (!coupon.active) throw new Error("Coupon is inactive.");
+
+  const now = new Date();
+  if (coupon.validFrom && coupon.validFrom > now) throw new Error("Coupon is not yet valid.");
+  if (coupon.validUntil && coupon.validUntil < now) throw new Error("Coupon has expired.");
+  if (coupon.maxUses && coupon._count.usages >= coupon.maxUses) throw new Error("Coupon usage limit has been reached.");
+
+  const currentAmount = Number(registration.payment.amount);
+  if (!Number.isFinite(currentAmount) || currentAmount <= 0) throw new Error("There is no remaining balance to discount.");
+  if (coupon.minPurchaseAmount && currentAmount < Number(coupon.minPurchaseAmount)) {
+    throw new Error(`Minimum purchase amount of ${registration.currency} ${Number(coupon.minPurchaseAmount).toFixed(2)} is required for this coupon.`);
+  }
+  if (coupon.applicableCourses.length > 0 && !coupon.applicableCourses.includes(registration.courseId)) {
+    throw new Error("Coupon is not applicable to this course.");
+  }
+  if (coupon.applicableRoles.length > 0 && !coupon.applicableRoles.some((role) => registration.learner.roles.includes(role as never))) {
+    throw new Error("Learner is not eligible for this coupon.");
+  }
+
+  const previousLearnerUsage = await prisma.academyCouponUsage.findFirst({
+    where: { couponId: coupon.id, userId: registration.learnerId },
+  });
+  if (previousLearnerUsage) throw new Error("This learner has already used this coupon.");
+
+  const rawDiscount = coupon.discountType === "PERCENTAGE"
+    ? currentAmount * (Number(coupon.discountValue) / 100)
+    : Number(coupon.discountValue);
+  const discountAmount = Math.min(currentAmount, Math.max(0, rawDiscount));
+  if (discountAmount <= 0) throw new Error("Coupon does not reduce the current balance.");
+
+  const finalAmount = Math.max(0, currentAmount - discountAmount);
+  const fullyCovered = finalAmount <= 0;
+  const accessEndsAt = new Date(now.getTime() + registration.course.accessDurationDays * 86400000);
+  const paymentMetadata = readJsonObject(registration.payment.metadata);
+
+  await prisma.$transaction(async (tx) => {
+    await tx.academyCoupon.update({ where: { id: coupon.id }, data: { usedCount: { increment: 1 } } });
+    await tx.academyCouponUsage.create({
+      data: {
+        couponId: coupon.id,
+        userId: registration.learnerId,
+        paymentId: registration.payment!.id,
+        discountAmount: new Prisma.Decimal(discountAmount),
+        originalAmount: new Prisma.Decimal(currentAmount),
+        finalAmount: new Prisma.Decimal(finalAmount),
+      },
+    });
+    await tx.payment.update({
+      where: { id: registration.payment!.id },
+      data: {
+        amount: new Prisma.Decimal(finalAmount),
+        status: fullyCovered ? PaymentStatus.PAID : PaymentStatus.PENDING,
+        proofStatus: fullyCovered ? "NONE" : "REQUESTED",
+        manual: !fullyCovered,
+        metadata: {
+          ...paymentMetadata,
+          couponCode: coupon.code,
+          couponId: coupon.id,
+          originalAmount: currentAmount.toFixed(2),
+          discountAmount: discountAmount.toFixed(2),
+          finalAmount: finalAmount.toFixed(2),
+          adminCouponApplied: true,
+          adminCouponAppliedBy: actor.id,
+          adminCouponAppliedByName: actor.name,
+          adminCouponAppliedAt: now.toISOString(),
+        } satisfies Prisma.InputJsonObject,
+      },
+    });
+    await tx.academyLearnerApplication.update({
+      where: { id: registration.id },
+      data: {
+        amount: new Prisma.Decimal(finalAmount),
+        status: fullyCovered ? AcademyRegistrationStatus.APPROVED : AcademyRegistrationStatus.PENDING_PAYMENT,
+        approvedById: fullyCovered ? actor.id : registration.approvedById,
+        approvedAt: fullyCovered ? now : registration.approvedAt,
+        accessStartsAt: fullyCovered ? now : registration.accessStartsAt,
+        accessEndsAt: fullyCovered ? accessEndsAt : registration.accessEndsAt,
+        adminNote: appendStampedNote(registration.adminNote, `Admin applied coupon ${coupon.code}: ${registration.currency} ${currentAmount.toFixed(2)} -> ${registration.currency} ${finalAmount.toFixed(2)}.`),
+      },
+    });
+    if (fullyCovered) {
+      if (!registration.learner.roles.includes(Role.PUBLIC_LEARNER)) {
+        await tx.user.update({ where: { id: registration.learnerId }, data: { roles: [...registration.learner.roles, Role.PUBLIC_LEARNER] } });
+      }
+      await tx.courseEnrolment.upsert({
+        where: { courseId_agentId: { courseId: registration.courseId, agentId: registration.learnerId } },
+        create: { courseId: registration.courseId, agentId: registration.learnerId, status: "ACTIVE", dueAt: accessEndsAt },
+        update: { status: "ACTIVE", dueAt: accessEndsAt },
+      });
+    }
+    await tx.trainingNotification.create({
+      data: {
+        userId: registration.learnerId,
+        eventType: "ACADEMY_ADMIN_COUPON_APPLIED",
+        channel: "IN_APP",
+        subject: fullyCovered ? "Academy discount activated your course" : "Academy discount applied",
+        body: fullyCovered
+          ? `${coupon.code} covered your ${registration.course.title} registration. Your course access is active.`
+          : `${coupon.code} reduced your ${registration.course.title} balance to ${registration.currency} ${finalAmount.toFixed(2)}.`,
+      },
+    });
+    await tx.trainingAuditLog.create({
+      data: {
+        actorId: actor.id,
+        action: "academy.public_learner.admin_coupon_applied",
+        target: registration.id,
+        metadata: {
+          actorName: actor.name,
+          learnerId: registration.learnerId,
+          courseId: registration.courseId,
+          paymentId: registration.payment!.id,
+          couponId: coupon.id,
+          couponCode: coupon.code,
+          originalAmount: currentAmount,
+          discountAmount,
+          finalAmount,
+          fullyCovered,
+        } satisfies Prisma.InputJsonObject,
+      },
+    });
+  });
+
+  return {
+    applied: true,
+    applicationId: registration.id,
+    couponCode: coupon.code,
+    originalAmount: currentAmount,
+    discountAmount,
+    finalAmount,
+    fullyCovered,
+  };
+}
+
+async function removeAdminCouponFromLearner({ applicationId, actor }: { applicationId: string; actor: Actor }) {
+  const prisma = getMainPrisma();
+  const registration = await prisma.academyLearnerApplication.findUnique({
+    where: { id: applicationId },
+    include: { course: true, payment: true },
+  });
+  if (!registration) throw new Error("Learner registration was not found.");
+  if (registration.status !== AcademyRegistrationStatus.PENDING_PAYMENT && registration.status !== AcademyRegistrationStatus.PAYMENT_UPLOADED) {
+    throw new Error("Coupons can only be removed before approval, rejection, refund, expiry, or deletion.");
+  }
+  if (!registration.payment) throw new Error("No payment record is attached to this registration.");
+  if (registration.payment.proofStatus === "UPLOADED" || registration.payment.proofUrl || registration.proofUrl) {
+    throw new Error("Payment proof is already uploaded. Do not change the amount silently after proof upload.");
+  }
+
+  const usage = await prisma.academyCouponUsage.findFirst({
+    where: { paymentId: registration.payment.id },
+    include: { coupon: true },
+  });
+  if (!usage) throw new Error("No coupon is applied to this registration.");
+
+  const paymentMetadata = readJsonObject(registration.payment.metadata);
+  const restoredAmount = Number(usage.originalAmount);
+  const now = new Date();
+
+  await prisma.$transaction(async (tx) => {
+    await tx.academyCouponUsage.delete({ where: { id: usage.id } });
+    await tx.academyCoupon.update({ where: { id: usage.couponId }, data: { usedCount: { decrement: usage.coupon.usedCount > 0 ? 1 : 0 } } });
+    await tx.payment.update({
+      where: { id: registration.payment!.id },
+      data: {
+        amount: new Prisma.Decimal(restoredAmount),
+        status: PaymentStatus.PENDING,
+        proofStatus: "REQUESTED",
+        manual: true,
+        metadata: {
+          ...paymentMetadata,
+          couponCode: null,
+          couponId: null,
+          discountAmount: null,
+          finalAmount: restoredAmount.toFixed(2),
+          adminCouponRemoved: true,
+          adminCouponRemovedBy: actor.id,
+          adminCouponRemovedByName: actor.name,
+          adminCouponRemovedAt: now.toISOString(),
+        } satisfies Prisma.InputJsonObject,
+      },
+    });
+    await tx.academyLearnerApplication.update({
+      where: { id: registration.id },
+      data: {
+        amount: new Prisma.Decimal(restoredAmount),
+        status: AcademyRegistrationStatus.PENDING_PAYMENT,
+        adminNote: appendStampedNote(registration.adminNote, `Admin removed coupon ${usage.coupon.code}; balance restored to ${registration.currency} ${restoredAmount.toFixed(2)}.`),
+      },
+    });
+    await tx.trainingNotification.create({
+      data: {
+        userId: registration.learnerId,
+        eventType: "ACADEMY_ADMIN_COUPON_REMOVED",
+        channel: "IN_APP",
+        subject: "Academy discount removed",
+        body: `The ${usage.coupon.code} discount was removed from your ${registration.course.title} registration. Balance: ${registration.currency} ${restoredAmount.toFixed(2)}.`,
+      },
+    });
+    await tx.trainingAuditLog.create({
+      data: {
+        actorId: actor.id,
+        action: "academy.public_learner.admin_coupon_removed",
+        target: registration.id,
+        metadata: {
+          actorName: actor.name,
+          learnerId: registration.learnerId,
+          courseId: registration.courseId,
+          paymentId: registration.payment!.id,
+          couponId: usage.couponId,
+          couponCode: usage.coupon.code,
+          restoredAmount,
+        } satisfies Prisma.InputJsonObject,
+      },
+    });
+  });
+
+  return {
+    removed: true,
+    applicationId: registration.id,
+    couponCode: usage.coupon.code,
+    restoredAmount,
+  };
 }
 
 function buildFirstLessonDropoffs({
