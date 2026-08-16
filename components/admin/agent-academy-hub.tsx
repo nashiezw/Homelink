@@ -1605,10 +1605,10 @@ function FeatureWorkbench({
     return <CertificateManagementPanel certificates={data.certificates} action={action} />;
   }
   if (tab === "Learner Activation") {
-    return <LearnerActivationPanel data={data} action={action} />;
+    return <LearnerActivationPanel data={data} settings={data.trainingSettings?.payload as Record<string, unknown> ?? {}} courses={data.courses} action={action} />;
   }
   if (tab === "Learning Follow-Up") {
-    return <LearningFollowUpPanel rows={data.learningFollowUps ?? []} />;
+    return <LearningFollowUpPanel rows={data.learningFollowUps ?? []} settings={data.trainingSettings?.payload as Record<string, unknown> ?? {}} courses={data.courses} />;
   }
   if (tab === "Student Analytics") {
     return <StudentAnalyticsDashboard />;
@@ -1632,6 +1632,8 @@ function FeatureWorkbench({
         resourceApplications={data.resourceAccessApplications ?? []}
         firstLessonDropoffs={data.firstLessonDropoffs ?? []}
         learningFollowUps={data.learningFollowUps ?? []}
+        settings={data.trainingSettings?.payload as Record<string, unknown> ?? {}}
+        courses={data.courses}
         action={action}
       />
     );
@@ -2328,15 +2330,20 @@ function PublicLearnersPanel({
   resourceApplications,
   firstLessonDropoffs,
   learningFollowUps,
+  settings,
+  courses,
   action,
 }: {
   applications: AcademyData["publicLearnerApplications"];
   resourceApplications: NonNullable<AcademyData["resourceAccessApplications"]>;
   firstLessonDropoffs: NonNullable<AcademyData["firstLessonDropoffs"]>;
   learningFollowUps: NonNullable<AcademyData["learningFollowUps"]>;
+  settings: Record<string, unknown>;
+  courses: AcademyCourse[];
   action: (body: Record<string, unknown>, success: string) => Promise<unknown>;
 }) {
   const { showToast } = useApp();
+  const messageSettings = getAcademyMessageSettings(settings);
   const [deleteTarget, setDeleteTarget] = useState<{
     id: string;
     fullName: string;
@@ -2397,11 +2404,12 @@ function PublicLearnersPanel({
   const rows = [...enrolmentRows, ...resourceRows];
   const firstLessonDropoffByLearnerCourse = new Map(firstLessonDropoffs.map((dropoff) => [`${dropoff.learnerId}:${dropoff.courseId}`, dropoff]));
   const learningFollowUpByLearnerCourse = new Map(learningFollowUps.map((followUp) => [`${followUp.learnerId}:${followUp.courseId}`, followUp]));
+  const certificateEnabledByCourseId = new Map(courses.map((course) => [course.id, course.certificateEnabled]));
   const pageSize = 12;
   const pagination = usePagination(rows, pageSize);
 
   async function copyRegistrationMessage(row: (typeof rows)[number]) {
-    await navigator.clipboard.writeText(buildRegistrationWhatsAppMessage(toRegistrationMessageContext(row), toAbsoluteAppUrl(registrationMessageHref(row))));
+    await navigator.clipboard.writeText(buildRegistrationWhatsAppMessage(toRegistrationMessageContext(row), toAbsoluteAppUrl(registrationMessageHref(row)), messageSettings));
     showToast("WhatsApp follow-up copied.");
   }
 
@@ -2412,7 +2420,7 @@ function PublicLearnersPanel({
       showToast("No phone number found. Message copied instead.", "error");
       return;
     }
-    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(buildRegistrationWhatsAppMessage(toRegistrationMessageContext(row), toAbsoluteAppUrl(registrationMessageHref(row))))}`, "_blank", "noopener,noreferrer");
+    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(buildRegistrationWhatsAppMessage(toRegistrationMessageContext(row), toAbsoluteAppUrl(registrationMessageHref(row)), messageSettings))}`, "_blank", "noopener,noreferrer");
   }
 
   function toRegistrationMessageContext(row: (typeof rows)[number]) {
@@ -2431,6 +2439,7 @@ function PublicLearnersPanel({
       nextLessonTitle: followUp?.nextLessonTitle ?? null,
       nextLessonId: followUp?.nextLessonId ?? null,
       inactiveDays: followUp?.inactiveDays ?? null,
+      certificateEnabled: certificateEnabledByCourseId.get(row.courseId) !== false,
     };
   }
 
@@ -2543,12 +2552,17 @@ function PublicLearnersPanel({
 
 function LearnerActivationPanel({
   data,
+  settings,
+  courses,
   action,
 }: {
   data: AcademyData;
+  settings: Record<string, unknown>;
+  courses: AcademyCourse[];
   action: (body: Record<string, unknown>, success: string) => Promise<unknown>;
 }) {
   const { showToast } = useApp();
+  const messageSettings = getAcademyMessageSettings(settings);
   const [search, setSearch] = useState("");
   const [courseFilter, setCourseFilter] = useState("ALL");
   const [statusFilter, setStatusFilter] = useState<"ALL" | "NOT_STARTED" | "STARTED" | "EXPIRED">("ALL");
@@ -2556,6 +2570,7 @@ function LearnerActivationPanel({
   const approvedApplications = data.publicLearnerApplications.filter((row) => row.status === "APPROVED");
   const expiredApplications = data.publicLearnerApplications.filter((row) => row.status === "EXPIRED");
   const activationApplications = data.publicLearnerApplications.filter((row) => row.status === "APPROVED" || row.status === "EXPIRED");
+  const certificateEnabledByCourseId = new Map(courses.map((course) => [course.id, course.certificateEnabled]));
   const approvedDropoffCount = dropoffs.filter((row) => row.applicationStatus !== "EXPIRED").length;
   const startedCount = Math.max(0, approvedApplications.length - approvedDropoffCount);
   const pendingCount = data.publicLearnerApplications.filter((row) => row.status === "PENDING_PAYMENT" || row.status === "PAYMENT_UPLOADED").length;
@@ -2585,6 +2600,7 @@ function LearnerActivationPanel({
       firstLessonStartHoursRemaining: dropoff?.firstLessonStartHoursRemaining ?? null,
       firstLessonStartWindowHours: dropoff?.firstLessonStartWindowHours ?? 72,
       lastActivityAt: dropoff?.lastActivityAt ?? learnerProfile?.latestActivity ?? application.updatedAt ?? application.createdAt,
+      certificateEnabled: certificateEnabledByCourseId.get(application.course.id) !== false,
     };
   });
   const filteredRows = activationRows.filter((row) => {
@@ -2599,7 +2615,7 @@ function LearnerActivationPanel({
 
   async function copyActivationMessage(row: (typeof activationRows)[number]) {
     const href = row.firstLessonId ? `/dashboard/academy/${row.courseId}?lesson=${encodeURIComponent(row.firstLessonId)}` : `/dashboard/academy/${row.courseId}`;
-    const message = buildActivationWhatsAppMessage(row, toAbsoluteAppUrl(href));
+    const message = buildActivationWhatsAppMessage(row, toAbsoluteAppUrl(href), messageSettings);
     await navigator.clipboard.writeText(message);
     showToast("Learner message copied.");
   }
@@ -2612,7 +2628,7 @@ function LearnerActivationPanel({
       return;
     }
     const href = row.firstLessonId ? `/dashboard/academy/${row.courseId}?lesson=${encodeURIComponent(row.firstLessonId)}` : `/dashboard/academy/${row.courseId}`;
-    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(buildActivationWhatsAppMessage(row, toAbsoluteAppUrl(href)))}`, "_blank", "noopener,noreferrer");
+    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(buildActivationWhatsAppMessage(row, toAbsoluteAppUrl(href), messageSettings))}`, "_blank", "noopener,noreferrer");
   }
 
   return (
@@ -2762,8 +2778,10 @@ function LearnerActivationPanel({
   );
 }
 
-function LearningFollowUpPanel({ rows }: { rows: NonNullable<AcademyData["learningFollowUps"]> }) {
+function LearningFollowUpPanel({ rows, settings, courses }: { rows: NonNullable<AcademyData["learningFollowUps"]>; settings: Record<string, unknown>; courses: AcademyCourse[] }) {
   const { showToast } = useApp();
+  const messageSettings = getAcademyMessageSettings(settings);
+  const certificateEnabledByCourseId = new Map(courses.map((course) => [course.id, course.certificateEnabled]));
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("ALL");
   const categoryOptions = [
@@ -2789,7 +2807,7 @@ function LearningFollowUpPanel({ rows }: { rows: NonNullable<AcademyData["learni
   const pagination = usePagination(filteredRows, pageSize);
 
   async function copyFollowUpMessage(row: (typeof rows)[number]) {
-    await navigator.clipboard.writeText(buildLearningFollowUpWhatsAppMessage(row, toAbsoluteAppUrl(resumeHref(row))));
+    await navigator.clipboard.writeText(buildLearningFollowUpWhatsAppMessage({ ...row, certificateEnabled: certificateEnabledByCourseId.get(row.courseId) !== false }, toAbsoluteAppUrl(resumeHref(row)), messageSettings));
     showToast("Learning follow-up copied.");
   }
 
@@ -2800,7 +2818,7 @@ function LearningFollowUpPanel({ rows }: { rows: NonNullable<AcademyData["learni
       showToast("No phone number found. Message copied instead.", "error");
       return;
     }
-    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(buildLearningFollowUpWhatsAppMessage(row, toAbsoluteAppUrl(resumeHref(row))))}`, "_blank", "noopener,noreferrer");
+    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(buildLearningFollowUpWhatsAppMessage({ ...row, certificateEnabled: certificateEnabledByCourseId.get(row.courseId) !== false }, toAbsoluteAppUrl(resumeHref(row)), messageSettings))}`, "_blank", "noopener,noreferrer");
   }
 
   return (
@@ -2917,17 +2935,128 @@ function buildActivationWhatsAppMessage(
     status?: string;
     firstLessonStartWindowHours?: number;
     firstLessonStartHoursRemaining?: number | null;
+    certificateEnabled?: boolean;
   },
   href: string,
+  settings?: AcademyMessageSettings,
 ) {
   const firstName = row.learnerName.split(" ").filter(Boolean)[0] || "there";
+  const vars = buildFollowUpTemplateVariables({
+    firstName,
+    courseTitle: row.courseTitle,
+    dashboardUrl: href,
+    certificateEnabled: row.certificateEnabled !== false,
+    community: settings?.community,
+  });
   if (row.status === "EXPIRED") {
-    return `Hi ${firstName}, your reserved place for ${row.courseTitle} expired because Lesson 1 was not started within 72 hours. We are following up to see if you still want to continue.`;
+    return renderWhatsAppTemplate(settings?.templates.expired, vars);
   }
   const remaining = typeof row.firstLessonStartHoursRemaining === "number" && row.firstLessonStartHoursRemaining > 0
     ? ` You have about ${row.firstLessonStartHoursRemaining} hour${row.firstLessonStartHoursRemaining === 1 ? "" : "s"} left.`
     : "";
-  return `Hi ${firstName}, your place for ${row.courseTitle} has been reserved. Please start Lesson 1 within ${row.firstLessonStartWindowHours ?? 72} hours to keep your place.${remaining} Start here: ${href}`;
+  return renderWhatsAppTemplate(settings?.templates.notStarted, {
+    ...vars,
+    firstLessonTitle: "Lesson 1",
+    windowHours: String(row.firstLessonStartWindowHours ?? 72),
+    hoursRemainingLine: remaining.trim(),
+  });
+}
+
+type AcademyMessageSettings = {
+  community: AcademyCommunityMessageContext;
+  templates: AcademyWhatsAppTemplateSet;
+};
+
+type AcademyCommunityMessageContext = {
+  enabled: boolean;
+  name: string;
+  whatsappUrl: string;
+};
+
+type AcademyWhatsAppTemplateKey =
+  | "notStarted"
+  | "started"
+  | "startedInactive"
+  | "stuckOnLesson"
+  | "assessmentBlocked"
+  | "almostFinished"
+  | "expired"
+  | "resourceApproved";
+
+type AcademyWhatsAppTemplateSet = Record<AcademyWhatsAppTemplateKey, string>;
+
+const DEFAULT_ACADEMY_WHATSAPP_TEMPLATES = {
+  notStarted: "Hi {{firstName}}, your place for {{courseTitle}} has been reserved. Start {{firstLessonTitle}} within {{windowHours}} hours to keep your place{{certificateGoal}}. {{hoursRemainingLine}} Start here: {{dashboardUrl}}{{communityLine}}\n\nReply here if login, data, time, or lesson access is blocking you.",
+  started: "Hi {{firstName}}, great job starting {{courseTitle}}. Keep building your real estate skills{{certificateGoal}}. Continue here: {{dashboardUrl}}{{communityLine}}\n\nReply here if you need help continuing.",
+  startedInactive: "Hi {{firstName}}, this is HouseLink Academy checking in. You have already started {{courseTitle}} and are {{progress}} through. It looks like you paused for a few days. Continue with {{nextLessonTitle}}{{certificateGoal}}: {{dashboardUrl}}{{communityLine}}\n\nReply here if login, data, time, or lesson access is blocking you.",
+  stuckOnLesson: "Hi {{firstName}}, this is HouseLink Academy checking in. You have started {{courseTitle}}, but it looks like you stopped around {{nextLessonTitle}}. Keep the momentum going{{certificateGoal}}, and tell us if you need help: {{dashboardUrl}}{{communityLine}}",
+  assessmentBlocked: "Hi {{firstName}}, you are {{progress}} through {{courseTitle}}. You have made real progress, but one assessment item may need attention: {{blocker}}. Resolve it so you can keep moving{{certificateGoal}}: {{dashboardUrl}}{{communityLine}}",
+  almostFinished: "Hi {{firstName}}, you are already {{progress}} through {{courseTitle}}. You are close to finishing{{certificateGoal}}. Continue with {{nextLessonTitle}}: {{dashboardUrl}}{{communityLine}}",
+  expired: "Hi {{firstName}}, your reserved place for {{courseTitle}} expired because Lesson 1 was not started within 72 hours. We can help reactivate it if you still want to continue. Reply here and we will assist you.",
+  resourceApproved: "Hi {{firstName}}, your HouseLink access for {{courseTitle}} has been approved. Sign in to your dashboard to open it: {{dashboardUrl}}{{communityLine}}",
+} satisfies AcademyWhatsAppTemplateSet;
+
+function getAcademyMessageSettings(settings: Record<string, unknown>): AcademyMessageSettings {
+  const community = readRecord(settings.community);
+  const templateOverrides = readRecord(settings.whatsappFollowUpTemplates);
+  const enabled = Boolean(community.enabled ?? settings.communityEnabled);
+  return {
+    community: {
+      enabled,
+      name: stringFromSetting(community.name ?? settings.communityName, "HouseLink Academy learner community"),
+      whatsappUrl: stringFromSetting(community.whatsappUrl ?? settings.whatsappUrl, ""),
+    },
+    templates: Object.fromEntries(
+      Object.entries(DEFAULT_ACADEMY_WHATSAPP_TEMPLATES).map(([key, fallback]) => [key, stringFromSetting(templateOverrides[key], fallback)]),
+    ) as AcademyWhatsAppTemplateSet,
+  };
+}
+
+function academyCommunityLine(community?: AcademyCommunityMessageContext) {
+  if (!community?.enabled || !community.whatsappUrl) return "";
+  return `\n\nJoin the ${community.name} for updates and learner support: ${community.whatsappUrl}`;
+}
+
+function buildFollowUpTemplateVariables(input: {
+  firstName: string;
+  courseTitle: string;
+  dashboardUrl: string;
+  certificateEnabled: boolean;
+  community?: AcademyCommunityMessageContext;
+  progress?: string;
+  nextLessonTitle?: string;
+  blocker?: string;
+}) {
+  return {
+    firstName: input.firstName,
+    courseTitle: input.courseTitle,
+    dashboardUrl: input.dashboardUrl,
+    certificateGoal: input.certificateEnabled ? " and keep working toward your certificate" : "",
+    communityLine: academyCommunityLine(input.community),
+    progress: input.progress ?? "",
+    nextLessonTitle: input.nextLessonTitle ?? "your next lesson",
+    blocker: input.blocker ?? "assessment follow-up needed",
+    firstLessonTitle: "Lesson 1",
+    windowHours: "72",
+    hoursRemainingLine: "",
+  };
+}
+
+function renderWhatsAppTemplate(template: string | undefined, variables: Record<string, string>) {
+  const source = template?.trim() || "";
+  return source
+    .replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, (_match, key: string) => variables[key] ?? "")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/ {2,}/g, " ")
+    .trim();
+}
+
+function readRecord(value: unknown) {
+  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
+}
+
+function stringFromSetting(value: unknown, fallback: string) {
+  return typeof value === "string" && value.trim() ? value.trim() : fallback;
 }
 
 function buildLearningFollowUpWhatsAppMessage(
@@ -2939,20 +3068,35 @@ function buildLearningFollowUpWhatsAppMessage(
     blocker?: string | null;
     nextLessonTitle: string;
     inactiveDays: number;
+    certificateEnabled?: boolean;
   },
   href: string,
+  settings?: AcademyMessageSettings,
 ) {
   const firstName = row.learnerName.split(" ").filter(Boolean)[0] || "there";
+  const vars = buildFollowUpTemplateVariables({
+    firstName,
+    courseTitle: row.courseTitle,
+    dashboardUrl: href,
+    certificateEnabled: row.certificateEnabled !== false,
+    community: settings?.community,
+    progress: `${row.progress}%`,
+    nextLessonTitle: row.nextLessonTitle,
+    blocker: row.blocker ?? "assessment follow-up needed",
+  });
   if (row.category === "ASSESSMENT_BLOCKED") {
-    return `Hi ${firstName}, this is HouseLink Academy. You are ${row.progress}% through ${row.courseTitle}, but there may be an assessment item to resolve: ${row.blocker ?? "assessment follow-up needed"}. Please open your dashboard here: ${href}`;
+    return renderWhatsAppTemplate(settings?.templates.assessmentBlocked, vars);
   }
   if (row.category === "ALMOST_FINISHED") {
-    return `Hi ${firstName}, you are already ${row.progress}% through ${row.courseTitle}. You are close to finishing. Continue with ${row.nextLessonTitle} here: ${href}`;
+    return renderWhatsAppTemplate(settings?.templates.almostFinished, vars);
   }
   if (row.category === "STUCK_ON_LESSON") {
-    return `Hi ${firstName}, this is HouseLink Academy checking in. It looks like you stopped on ${row.nextLessonTitle} in ${row.courseTitle}. Do you need help continuing? Resume here: ${href}`;
+    return renderWhatsAppTemplate(settings?.templates.stuckOnLesson, vars);
   }
-  return `Hi ${firstName}, this is HouseLink Academy. You are ${row.progress}% through ${row.courseTitle} and have been inactive for ${row.inactiveDays} day${row.inactiveDays === 1 ? "" : "s"}. Continue with ${row.nextLessonTitle} here: ${href}`;
+  return renderWhatsAppTemplate(settings?.templates.startedInactive, {
+    ...vars,
+    inactiveDays: String(row.inactiveDays),
+  });
 }
 
 function buildRegistrationWhatsAppMessage(
@@ -2967,32 +3111,47 @@ function buildRegistrationWhatsAppMessage(
     progress?: number | null;
     nextLessonTitle?: string | null;
     inactiveDays?: number | null;
+    certificateEnabled?: boolean;
   },
   dashboardUrl: string,
+  settings?: AcademyMessageSettings,
 ) {
   const firstName = row.fullName.split(" ").filter(Boolean)[0] || "there";
   const isCourseRegistration = !/toolkit|manual/i.test(row.productLabel);
+  const vars = buildFollowUpTemplateVariables({
+    firstName,
+    courseTitle: row.productLabel,
+    dashboardUrl,
+    certificateEnabled: row.certificateEnabled !== false,
+    community: settings?.community,
+    progress: typeof row.progress === "number" ? `${row.progress}%` : "part-way",
+    nextLessonTitle: row.nextLessonTitle ?? "your next lesson",
+  });
   if (row.status === "APPROVED") {
     if (!isCourseRegistration) {
-      return `Hi ${firstName}, your HouseLink access for ${row.productLabel} has been approved. Please sign in to your dashboard to open it: ${dashboardUrl}`;
+      return renderWhatsAppTemplate(settings?.templates.resourceApproved, vars);
     }
     if (row.activationStatus === "NOT_STARTED") {
       const remaining = typeof row.firstLessonStartHoursRemaining === "number" && row.firstLessonStartHoursRemaining > 0
-        ? ` You have about ${row.firstLessonStartHoursRemaining} hour${row.firstLessonStartHoursRemaining === 1 ? "" : "s"} left.`
+        ? `You have about ${row.firstLessonStartHoursRemaining} hour${row.firstLessonStartHoursRemaining === 1 ? "" : "s"} left.`
         : "";
-      return `Hi ${firstName}, your place for ${row.productLabel} has been reserved. Please start Lesson 1${row.firstLessonTitle ? ` (${row.firstLessonTitle})` : ""} within ${row.firstLessonStartWindowHours ?? 72} hours to keep your place.${remaining} Start here: ${dashboardUrl}`;
+      return renderWhatsAppTemplate(settings?.templates.notStarted, {
+        ...vars,
+        firstLessonTitle: row.firstLessonTitle || "Lesson 1",
+        windowHours: String(row.firstLessonStartWindowHours ?? 72),
+        hoursRemainingLine: remaining,
+      });
     }
     if (row.activationStatus === "STARTED_INACTIVE") {
-      const progress = typeof row.progress === "number" ? `${row.progress}%` : "part-way";
-      const inactive = typeof row.inactiveDays === "number" && row.inactiveDays > 0
-        ? ` You have been inactive for ${row.inactiveDays} day${row.inactiveDays === 1 ? "" : "s"}.`
-        : "";
-      return `Hi ${firstName}, this is HouseLink Academy checking in. You have already started ${row.productLabel} and are ${progress} through.${inactive} Continue${row.nextLessonTitle ? ` with ${row.nextLessonTitle}` : ""} here: ${dashboardUrl}`;
+      return renderWhatsAppTemplate(settings?.templates.startedInactive, {
+        ...vars,
+        inactiveDays: typeof row.inactiveDays === "number" ? String(row.inactiveDays) : "a few",
+      });
     }
-    return `Hi ${firstName}, this is HouseLink Academy. You already have approved access and have started ${row.productLabel}. Continue your course here: ${dashboardUrl}`;
+    return renderWhatsAppTemplate(settings?.templates.started, vars);
   }
   if (row.status === "EXPIRED") {
-    return `Hi ${firstName}, your reserved place for ${row.productLabel} expired because Lesson 1 was not started within 72 hours. We are following up to see if you still want to continue.`;
+    return renderWhatsAppTemplate(settings?.templates.expired, vars);
   }
   if (row.status === "PAYMENT_UPLOADED") {
     return `Hi ${firstName}, HouseLink has received your proof for ${row.productLabel}. We are reviewing it and will update your access shortly. You can check your dashboard here: ${dashboardUrl}`;
@@ -3767,6 +3926,7 @@ function AcademySettingsPanel({ settings, auditLogs, onSave }: { settings: Recor
   const enrolmentSettings = (settings.enrolmentSettings ?? {}) as Record<string, unknown>;
   const completionRules = (settings.completionRules ?? {}) as Record<string, unknown>;
   const resourceAccess = (settings.resourceAccess ?? {}) as Record<string, unknown>;
+  const whatsappFollowUpTemplates = getAcademyMessageSettings(settings).templates;
   const [draft, setDraft] = useState({
     academyName: String(settings.academyName ?? "HouseLink Agent Academy"),
     certificatePrefix: String(settings.certificatePrefix ?? "HLA"),
@@ -3794,6 +3954,14 @@ function AcademySettingsPanel({ settings, auditLogs, onSave }: { settings: Recor
     manualPublicPrice: String(resourceAccess.manualPublicPrice ?? "35"),
     manualAgentPrice: String(resourceAccess.manualAgentPrice ?? "15"),
     manualSalesEnabled: resourceAccess.manualSalesEnabled !== false,
+    whatsappNotStartedTemplate: whatsappFollowUpTemplates.notStarted,
+    whatsappStartedTemplate: whatsappFollowUpTemplates.started,
+    whatsappStartedInactiveTemplate: whatsappFollowUpTemplates.startedInactive,
+    whatsappStuckOnLessonTemplate: whatsappFollowUpTemplates.stuckOnLesson,
+    whatsappAssessmentBlockedTemplate: whatsappFollowUpTemplates.assessmentBlocked,
+    whatsappAlmostFinishedTemplate: whatsappFollowUpTemplates.almostFinished,
+    whatsappExpiredTemplate: whatsappFollowUpTemplates.expired,
+    whatsappResourceApprovedTemplate: whatsappFollowUpTemplates.resourceApproved,
   });
   return (
     <div className="grid gap-4 xl:grid-cols-3">
@@ -3825,6 +3993,16 @@ function AcademySettingsPanel({ settings, auditLogs, onSave }: { settings: Recor
                   manualPublicPrice: Number(draft.manualPublicPrice) || 35,
                   manualAgentPrice: Number(draft.manualAgentPrice) || 15,
                   manualSalesEnabled: draft.manualSalesEnabled,
+                },
+                whatsappFollowUpTemplates: {
+                  notStarted: draft.whatsappNotStartedTemplate,
+                  started: draft.whatsappStartedTemplate,
+                  startedInactive: draft.whatsappStartedInactiveTemplate,
+                  stuckOnLesson: draft.whatsappStuckOnLessonTemplate,
+                  assessmentBlocked: draft.whatsappAssessmentBlockedTemplate,
+                  almostFinished: draft.whatsappAlmostFinishedTemplate,
+                  expired: draft.whatsappExpiredTemplate,
+                  resourceApproved: draft.whatsappResourceApprovedTemplate,
                 },
                 requireEmailVerification: draft.requireEmailVerification,
               })
@@ -3894,6 +4072,22 @@ function AcademySettingsPanel({ settings, auditLogs, onSave }: { settings: Recor
             <label className="flex items-center gap-2"><input type="checkbox" checked={draft.notifyAssignmentReview} onChange={(e) => setDraft({ ...draft, notifyAssignmentReview: e.target.checked })} /> Notify on assignment review</label>
             <label className="flex items-center gap-2"><input type="checkbox" checked={draft.notifyCourseUpdates} onChange={(e) => setDraft({ ...draft, notifyCourseUpdates: e.target.checked })} /> Notify on course updates</label>
             <label className="flex items-center gap-2"><input type="checkbox" checked={draft.allowManualGrading} onChange={(e) => setDraft({ ...draft, allowManualGrading: e.target.checked })} /> Allow manual assignment grading</label>
+          </div>
+        </div>
+        <div>
+          <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-emerald-300">WhatsApp Follow-Up Templates</p>
+          <p className="mb-3 text-sm leading-6 text-slate-400">
+            Admin-editable messages used by the manual WhatsApp buttons. Available variables include {"{{firstName}}"}, {"{{courseTitle}}"}, {"{{progress}}"}, {"{{nextLessonTitle}}"}, {"{{dashboardUrl}}"}, {"{{certificateGoal}}"}, and {"{{communityLine}}"}.
+          </p>
+          <div className="grid gap-3">
+            <TextArea label="Not started Lesson 1" value={draft.whatsappNotStartedTemplate} onChange={(whatsappNotStartedTemplate) => setDraft({ ...draft, whatsappNotStartedTemplate })} />
+            <TextArea label="Started and active" value={draft.whatsappStartedTemplate} onChange={(whatsappStartedTemplate) => setDraft({ ...draft, whatsappStartedTemplate })} />
+            <TextArea label="Started but inactive" value={draft.whatsappStartedInactiveTemplate} onChange={(whatsappStartedInactiveTemplate) => setDraft({ ...draft, whatsappStartedInactiveTemplate })} />
+            <TextArea label="Stuck on lesson" value={draft.whatsappStuckOnLessonTemplate} onChange={(whatsappStuckOnLessonTemplate) => setDraft({ ...draft, whatsappStuckOnLessonTemplate })} />
+            <TextArea label="Assessment blocked" value={draft.whatsappAssessmentBlockedTemplate} onChange={(whatsappAssessmentBlockedTemplate) => setDraft({ ...draft, whatsappAssessmentBlockedTemplate })} />
+            <TextArea label="Almost finished" value={draft.whatsappAlmostFinishedTemplate} onChange={(whatsappAlmostFinishedTemplate) => setDraft({ ...draft, whatsappAlmostFinishedTemplate })} />
+            <TextArea label="Expired place" value={draft.whatsappExpiredTemplate} onChange={(whatsappExpiredTemplate) => setDraft({ ...draft, whatsappExpiredTemplate })} />
+            <TextArea label="Resource/manual approved" value={draft.whatsappResourceApprovedTemplate} onChange={(whatsappResourceApprovedTemplate) => setDraft({ ...draft, whatsappResourceApprovedTemplate })} />
           </div>
         </div>
       </section>
