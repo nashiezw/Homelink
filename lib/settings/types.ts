@@ -208,6 +208,7 @@ export type PlatformSettings = {
     whatsappBusinessAccountId: string;
     whatsappTemplateNamespace: string;
     analyticsId: string;
+    metaPixelId: string;
     cdnUrl: string;
   };
   ai: {
@@ -269,6 +270,7 @@ export type PublicPlatformConfig = {
   integrations: {
     googleMapsKey: string;
     analyticsId: string;
+    metaPixelId: string;
     cdnUrl: string;
   };
   enquiries: PublicEnquiryConfig;

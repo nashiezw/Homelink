@@ -386,7 +386,7 @@ export function PlatformSettingsPanel({ defaultTab = "general" }: { defaultTab?:
             {Object.entries(settings.integrations).map(([key, value]) => (
               <Input
                 key={key}
-                label={key}
+                label={integrationFieldLabel(key)}
                 value={String(value)}
                 secret={key.toLowerCase().includes("secret") || key.toLowerCase().includes("pass") || key.toLowerCase().includes("token")}
                 onChange={(v) =>
@@ -838,6 +838,31 @@ function RbacEditor({
       </section>
     </div>
   );
+}
+
+function integrationFieldLabel(key: string) {
+  const labels: Record<string, string> = {
+    analyticsId: "Google Analytics Measurement ID",
+    metaPixelId: "Meta Pixel ID",
+    googleMapsKey: "Google Maps key",
+    cdnUrl: "CDN URL",
+    cloudinaryCloud: "Cloudinary cloud name",
+    cloudinaryKey: "Cloudinary API key",
+    cloudinarySecret: "Cloudinary API secret",
+    firebaseProjectId: "Firebase project ID",
+    clerkPublishableKey: "Clerk publishable key",
+    smtpHost: "SMTP host",
+    smtpPort: "SMTP port",
+    smtpUser: "SMTP username",
+    smtpPass: "SMTP password",
+    smtpFrom: "SMTP from address",
+    whatsappProvider: "WhatsApp provider",
+    whatsappAccessToken: "WhatsApp access token",
+    whatsappPhoneNumberId: "WhatsApp phone number ID",
+    whatsappBusinessAccountId: "WhatsApp business account ID",
+    whatsappTemplateNamespace: "WhatsApp template namespace",
+  };
+  return labels[key] ?? key;
 }
 
 function Input({

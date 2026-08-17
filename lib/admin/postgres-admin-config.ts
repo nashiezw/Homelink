@@ -78,6 +78,9 @@ export async function getPostgresPlatformSettings() {
   if (envOverrides.analyticsId && !integrations.analyticsId) {
     integrations.analyticsId = envOverrides.analyticsId;
   }
+  if (envOverrides.metaPixelId && !integrations.metaPixelId) {
+    integrations.metaPixelId = envOverrides.metaPixelId;
+  }
   if (envOverrides.cdnUrl && !integrations.cdnUrl) {
     integrations.cdnUrl = envOverrides.cdnUrl;
   }

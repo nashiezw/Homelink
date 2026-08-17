@@ -45,6 +45,7 @@ export function toPublicPlatformConfig(settings: PlatformSettings): PublicPlatfo
     integrations: {
       googleMapsKey: settings.integrations.googleMapsKey,
       analyticsId: settings.integrations.analyticsId,
+      metaPixelId: settings.integrations.metaPixelId,
       cdnUrl: settings.integrations.cdnUrl,
     },
     enquiries: {

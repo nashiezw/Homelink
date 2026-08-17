@@ -5,6 +5,7 @@ import { PlatformConfigProvider } from "@/components/providers/platform-config-p
 import { ChromeGate } from "@/components/layout/chrome-gate";
 import { NavigationProgress } from "@/components/navigation/navigation-progress";
 import { ToastBanner } from "@/components/ui/toast-banner";
+import { MarketingPixels } from "@/components/analytics/marketing-pixels";
 import { getCanonicalSiteUrl } from "@/lib/seo/site-url";
 import "./globals.css";
 
@@ -126,6 +127,7 @@ export default function RootLayout({
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData).replace(/</g, "\\u003c") }}
         />
+        <MarketingPixels />
         <PlatformConfigProvider>
           <AppProvider>
             <NavigationProgress />

@@ -40,6 +40,7 @@ export function getPlatformIntegrationEnvOverrides(): Partial<PlatformSettings["
   if (env("WHATSAPP_BUSINESS_ACCOUNT_ID")) overrides.whatsappBusinessAccountId = env("WHATSAPP_BUSINESS_ACCOUNT_ID");
   if (env("WHATSAPP_TEMPLATE_NAMESPACE")) overrides.whatsappTemplateNamespace = env("WHATSAPP_TEMPLATE_NAMESPACE");
   if (env("NEXT_PUBLIC_ANALYTICS_ID")) overrides.analyticsId = env("NEXT_PUBLIC_ANALYTICS_ID");
+  if (env("NEXT_PUBLIC_META_PIXEL_ID")) overrides.metaPixelId = env("NEXT_PUBLIC_META_PIXEL_ID");
   if (env("NEXT_PUBLIC_CDN_URL")) overrides.cdnUrl = env("NEXT_PUBLIC_CDN_URL");
 
   return overrides;
@@ -380,6 +381,7 @@ export const defaultPlatformSettings: PlatformSettings = {
     whatsappBusinessAccountId: env("WHATSAPP_BUSINESS_ACCOUNT_ID"),
     whatsappTemplateNamespace: env("WHATSAPP_TEMPLATE_NAMESPACE"),
     analyticsId: env("NEXT_PUBLIC_ANALYTICS_ID"),
+    metaPixelId: env("NEXT_PUBLIC_META_PIXEL_ID") || "1019981161033755",
     cdnUrl: env("NEXT_PUBLIC_CDN_URL"),
   },
   ai: {
