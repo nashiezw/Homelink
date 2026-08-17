@@ -105,22 +105,16 @@ const NAV_GROUPS: Array<{ label: string; items: NavItem[] }> = [
     label: "Operations",
     items: [
       { id: "overview", label: "Command Center", icon: LayoutDashboard },
-      { id: "property-requests", label: "Client Property Requests", icon: Bell },
       { id: "enquiries", label: "Enquiry CRM", icon: MessageSquare },
+      { id: "property-requests", label: "Client Property Requests", icon: Bell },
       { id: "proptech", label: "PropTech Suite", icon: Brain },
       { id: "reports", label: "Reports", icon: FileText },
     ],
   },
   {
-    label: "Academy Overview",
+    label: "Academy",
     items: [
       { id: "academy", label: "Dashboard", icon: GraduationCap, academyView: "Dashboard" },
-      { id: "academy", label: "Training Analytics", icon: Activity, academyView: "Analytics" },
-    ],
-  },
-  {
-    label: "Academy Learning",
-    items: [
       { id: "academy", label: "Courses", icon: BookOpen, academyView: "Courses" },
       { id: "academy", label: "Lesson Content", icon: FileText, academyView: "Lesson Content" },
       { id: "academy", label: "Lessons", icon: FileText, academyView: "Lessons" },
@@ -130,11 +124,6 @@ const NAV_GROUPS: Array<{ label: string; items: NavItem[] }> = [
       { id: "academy", label: "Final Exams", icon: GraduationCap, academyView: "Final Exams" },
       { id: "academy", label: "Training Resources", icon: FileText, academyView: "Training Resources" },
       { id: "academy", label: "Video Library", icon: PlayCircle, academyView: "Video Library" },
-    ],
-  },
-  {
-    label: "Academy Learners",
-    items: [
       { id: "academy", label: "Public Learners", icon: Users, badgeKey: "pendingAcademyApprovals", academyView: "Public Learners" },
       { id: "academy", label: "Learner Activation", icon: Activity, academyView: "Learner Activation" },
       { id: "academy", label: "Student Analytics", icon: Activity, academyView: "Student Analytics" },
@@ -143,31 +132,22 @@ const NAV_GROUPS: Array<{ label: string; items: NavItem[] }> = [
       { id: "academy", label: "Certificate Templates", icon: Award, academyView: "Certificate Templates" },
       { id: "academy", label: "Certificate Monitoring", icon: ShieldCheck, academyView: "Certificate Monitoring" },
       { id: "academy", label: "Assignment Review", icon: ClipboardCheck, academyView: "Assignment Review" },
-    ],
-  },
-  {
-    label: "Academy Community",
-    items: [
       { id: "academy", label: "Engagement", icon: Megaphone, academyView: "Engagement" },
       { id: "academy", label: "Announcements", icon: Megaphone, academyView: "Announcements" },
       { id: "academy", label: "Discussion Board", icon: MessageSquare, academyView: "Discussion Board" },
       { id: "academy", label: "Leaderboard", icon: Trophy, academyView: "Leaderboard" },
       { id: "academy", label: "Badges", icon: Award, academyView: "Badges" },
-    ],
-  },
-  {
-    label: "Academy Admin",
-    items: [
       { id: "academy", label: "Email Templates", icon: MessageSquare, academyView: "Email Templates" },
       { id: "academy", label: "Branding", icon: Shield, academyView: "Branding" },
       { id: "academy", label: "Instructors", icon: Users, academyView: "Instructors" },
       { id: "academy", label: "Refunds", icon: CreditCard, academyView: "Refunds" },
+      { id: "academy", label: "Training Analytics", icon: Activity, academyView: "Analytics" },
       { id: "academy", label: "Training Settings", icon: Settings, academyView: "Settings" },
       { id: "academy", label: "Health", icon: Activity, academyView: "Health" },
     ],
   },
   {
-    label: "HouseLink Library",
+    label: "Library",
     items: [
       { id: "library", label: "Dashboard", icon: LayoutDashboard, libraryView: "Dashboard" },
       { id: "library", label: "Products", icon: BookOpen, libraryView: "Products" },
@@ -186,16 +166,6 @@ const NAV_GROUPS: Array<{ label: string; items: NavItem[] }> = [
     ],
   },
   {
-    label: "People",
-    items: [
-      { id: "users", label: "Users & Directory", icon: Users },
-      { id: "landlords", label: "Landlords & Agents", icon: Building2 },
-      { id: "agents", label: "Agent Management", icon: Briefcase, badgeKey: "pendingAgents" as const },
-      { id: "verification", label: "Verification", icon: ShieldCheck, badgeKey: "pendingVerification" as const },
-      { id: "roommates", label: "Roommates", icon: Users, badgeKey: "pendingRoommates" as const },
-    ],
-  },
-  {
     label: "Properties",
     items: [
       { id: "properties", label: "Listings Hub", icon: Home, badgeKey: "pendingListings" as const },
@@ -206,10 +176,20 @@ const NAV_GROUPS: Array<{ label: string; items: NavItem[] }> = [
     ],
   },
   {
-    label: "Trust & Revenue",
+    label: "People",
     items: [
+      { id: "users", label: "Users & Directory", icon: Users },
+      { id: "landlords", label: "Landlords & Agents", icon: Building2 },
+      { id: "agents", label: "Agent Management", icon: Briefcase, badgeKey: "pendingAgents" as const },
+      { id: "verification", label: "Verification", icon: ShieldCheck, badgeKey: "pendingVerification" as const },
+      { id: "roommates", label: "Roommates", icon: Users, badgeKey: "pendingRoommates" as const },
       { id: "moderation", label: "Moderation", icon: Shield, badgeKey: "flaggedReports" as const },
       { id: "support", label: "Support CRM", icon: Headphones, badgeKey: "openTickets" as const },
+    ],
+  },
+  {
+    label: "Revenue",
+    items: [
       { id: "payments", label: "Payments", icon: CreditCard, badgeKey: "pendingPaymentProofs" },
     ],
   },
@@ -264,7 +244,7 @@ export function getAdminTabLabel(tab: AdminTab) {
 
 const ALL_NAV = NAV_GROUPS.flatMap((g) => g.items);
 const VALID_TABS = new Set(ALL_NAV.map((n) => n.id));
-const COLLAPSED_GROUPS_STORAGE_KEY = "houselink-admin-sidebar-collapsed-groups";
+const EXPANDED_GROUP_STORAGE_KEY = "houselink-admin-sidebar-expanded-group";
 
 function findNavGroup(tab: AdminTab) {
   return NAV_GROUPS.find((g) => g.items.some((i) => i.id === tab));
@@ -305,11 +285,20 @@ export function AdminShell({ children }: { children: ReactNode }) {
   const [permissions, setPermissions] = useState<string[]>([]);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(() => new Set(NAV_GROUPS.map((group) => group.label)));
+  const [expandedGroupLabel, setExpandedGroupLabel] = useState<string | null>(null);
 
   const navigate = useCallback(
     (item: NavItem | AdminTab) => {
       const id = typeof item === "string" ? item : item.id;
+      const targetGroup = NAV_GROUPS.find((group) =>
+        typeof item === "string"
+          ? group.items.some((navItem) => navItem.id === item)
+          : group.items.includes(item),
+      );
+      if (targetGroup) {
+        setExpandedGroupLabel(targetGroup.label);
+        window.localStorage.setItem(EXPANDED_GROUP_STORAGE_KEY, JSON.stringify(targetGroup.label));
+      }
       const next = new URLSearchParams();
       next.set("tab", id);
       if (typeof item !== "string" && item.academyView) {
@@ -360,13 +349,20 @@ export function AdminShell({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    const stored = window.localStorage.getItem(COLLAPSED_GROUPS_STORAGE_KEY);
+    const stored = window.localStorage.getItem(EXPANDED_GROUP_STORAGE_KEY);
     if (!stored) return;
     try {
       const parsed = JSON.parse(stored);
-      if (Array.isArray(parsed)) setCollapsedGroups(new Set(parsed.filter((item) => typeof item === "string")));
+      if (typeof parsed === "string" && NAV_GROUPS.some((group) => group.label === parsed)) {
+        setExpandedGroupLabel(parsed);
+        return;
+      }
+      if (Array.isArray(parsed)) {
+        const openGroup = NAV_GROUPS.find((group) => !parsed.includes(group.label));
+        setExpandedGroupLabel(openGroup?.label ?? null);
+      }
     } catch {
-      window.localStorage.removeItem(COLLAPSED_GROUPS_STORAGE_KEY);
+      window.localStorage.removeItem(EXPANDED_GROUP_STORAGE_KEY);
     }
   }, []);
 
@@ -409,6 +405,9 @@ export function AdminShell({ children }: { children: ReactNode }) {
     items: group.items.filter((item) => !allowedTabs || allowedTabs.has(item.id)),
   })).filter((group) => group.items.length > 0);
   const activeGroupLabel = visibleGroups.find((group) => group.items.some((item) => isNavItemActive(item, activeTab, activeAcademyView, activeLibraryView)))?.label ?? visibleGroups[0]?.label;
+  const openGroupLabel = visibleGroups.some((group) => group.label === expandedGroupLabel)
+    ? expandedGroupLabel
+    : activeGroupLabel;
   const notificationCount = summary
     ? summary.pendingListings +
       summary.openTickets +
@@ -419,11 +418,9 @@ export function AdminShell({ children }: { children: ReactNode }) {
     : 0;
 
   function toggleGroup(label: string) {
-    setCollapsedGroups((current) => {
-      const next = new Set(current);
-      if (next.has(label)) next.delete(label);
-      else next.add(label);
-      window.localStorage.setItem(COLLAPSED_GROUPS_STORAGE_KEY, JSON.stringify([...next]));
+    setExpandedGroupLabel((current) => {
+      const next = current === label ? null : label;
+      window.localStorage.setItem(EXPANDED_GROUP_STORAGE_KEY, JSON.stringify(next));
       return next;
     });
   }
@@ -444,7 +441,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
             <SidebarGroup
               group={group}
               activeGroup={group.label === activeGroupLabel}
-              open={group.label === activeGroupLabel || !collapsedGroups.has(group.label)}
+              open={group.label === openGroupLabel}
               summary={summary}
               activeTab={activeTab}
               activeAcademyView={activeAcademyView}
