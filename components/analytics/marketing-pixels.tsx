@@ -1,4 +1,3 @@
-import Script from "next/script";
 import { getHydratedPublicPlatformConfig } from "@/lib/settings/runtime";
 
 function normaliseGoogleAnalyticsId(value?: string | null) {
@@ -22,10 +21,9 @@ export async function MarketingPixels() {
     <>
       {googleAnalyticsId ? (
         <>
-          <Script id="houselink-ga-src" src={`https://www.googletagmanager.com/gtag/js?id=${googleAnalyticsId}`} strategy="afterInteractive" />
-          <Script
+          <script async src={`https://www.googletagmanager.com/gtag/js?id=${googleAnalyticsId}`} />
+          <script
             id="houselink-ga-init"
-            strategy="afterInteractive"
             dangerouslySetInnerHTML={{
               __html: `
                 window.dataLayer = window.dataLayer || [];
@@ -40,9 +38,8 @@ export async function MarketingPixels() {
 
       {metaPixelId ? (
         <>
-          <Script
+          <script
             id="houselink-meta-pixel"
-            strategy="afterInteractive"
             dangerouslySetInnerHTML={{
               __html: `
                 !function(f,b,e,v,n,t,s)
