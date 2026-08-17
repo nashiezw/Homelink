@@ -10,9 +10,31 @@ import { syncGeoToFlatLists } from "@/lib/settings/geo";
 import type { CareerRole, GeoCity, GeoProvince, PlatformSettings } from "@/lib/settings/types";
 
 type SettingsTab = "general" | "contact" | "careers" | "locations" | "integrations" | "notifications" | "legal" | "rbac" | "features" | "security";
+type IntegrationTestType = "smtp" | "maps" | "cloudinary" | "whatsapp" | "metaPixel";
 
 type AdminUser = { id: string; name: string; email: string };
 type AdminMe = { permissions: string[]; roles: string[] };
+
+declare global {
+  interface Window {
+    fbq?: (...args: unknown[]) => void;
+  }
+}
+
+function fireMetaPixelBrowserTest(metaPixelId: string) {
+  const pixelId = metaPixelId.replace(/\D/g, "");
+  if (typeof window === "undefined") return "";
+  if (!window.fbq) {
+    return "The public installation looks correct, but fbq is not available in this admin browser yet; an ad blocker, privacy extension, or script-blocking browser setting may be blocking Meta.";
+  }
+
+  window.fbq("trackCustom", "HouseLinkAdminPixelTest", {
+    pixelId,
+    source: "admin_platform_settings",
+    testedAt: new Date().toISOString(),
+  });
+  return "Browser test event sent as HouseLinkAdminPixelTest; check Meta Events Manager > Test Events for receipt.";
+}
 
 export function PlatformSettingsPanel({ defaultTab = "general" }: { defaultTab?: SettingsTab }) {
   const { showToast } = useApp();
@@ -22,7 +44,7 @@ export function PlatformSettingsPanel({ defaultTab = "general" }: { defaultTab?:
   const [me, setMe] = useState<AdminMe | null>(null);
   const [tab, setTab] = useState<SettingsTab>(defaultTab);
   const [saving, setSaving] = useState(false);
-  const [testingIntegration, setTestingIntegration] = useState<"smtp" | "maps" | "cloudinary" | "whatsapp" | null>(null);
+  const [testingIntegration, setTestingIntegration] = useState<IntegrationTestType | null>(null);
   const [integrationTestResult, setIntegrationTestResult] = useState<{
     ok: boolean;
     message: string;
@@ -105,7 +127,7 @@ export function PlatformSettingsPanel({ defaultTab = "general" }: { defaultTab?:
     void load();
   }
 
-  async function testIntegration(type: "smtp" | "maps" | "cloudinary" | "whatsapp") {
+  async function testIntegration(type: IntegrationTestType) {
     if (!settings) return;
     setTestingIntegration(type);
     setIntegrationTestResult(null);
@@ -121,10 +143,12 @@ export function PlatformSettingsPanel({ defaultTab = "general" }: { defaultTab?:
           },
         }),
       });
-      const message = result.data?.sample
+      const serverMessage = result.data?.sample
         ? `${result.data.message} (${result.data.sample})`
         : result.data?.message ?? result.error?.message ?? "Test complete.";
       const ok = result.data?.ok ?? false;
+      const browserMessage = type === "metaPixel" && ok ? fireMetaPixelBrowserTest(settings.integrations.metaPixelId) : "";
+      const message = browserMessage ? `${serverMessage} ${browserMessage}` : serverMessage;
       setIntegrationTestResult({ ok, message });
       showToast(message, ok ? "success" : "error");
     } catch (error) {
@@ -350,7 +374,7 @@ export function PlatformSettingsPanel({ defaultTab = "general" }: { defaultTab?:
       {tab === "integrations" && (
         <div className="space-y-4">
           <div className="space-y-3 rounded-xl border border-white/10 bg-slate-950/40 p-4">
-            <div className="grid gap-3 lg:grid-cols-[minmax(220px,1fr)_minmax(220px,1fr)_auto_auto_auto_auto] lg:items-end">
+            <div className="grid gap-3 lg:grid-cols-2 xl:grid-cols-[minmax(220px,1fr)_minmax(220px,1fr)_auto_auto_auto_auto_auto] xl:items-end">
               <Input
                 label="SMTP test recipient email"
                 value={smtpTestEmail}
@@ -374,6 +398,9 @@ export function PlatformSettingsPanel({ defaultTab = "general" }: { defaultTab?:
               </Button>
               <Button className="w-full whitespace-nowrap lg:w-auto" variant="secondary" onClick={() => void testIntegration("cloudinary")} disabled={testingIntegration !== null}>
                 <TestTube2 className="size-4" /> {testingIntegration === "cloudinary" ? "Testing Cloudinary..." : "Test Cloudinary"}
+              </Button>
+              <Button className="w-full whitespace-nowrap lg:w-auto" variant="secondary" onClick={() => void testIntegration("metaPixel")} disabled={testingIntegration !== null}>
+                <TestTube2 className="size-4" /> {testingIntegration === "metaPixel" ? "Testing Pixel..." : "Test Meta Pixel"}
               </Button>
             </div>
             {integrationTestResult && (

@@ -1,5 +1,16 @@
 import type { NextConfig } from "next";
 
+const contentSecurityPolicy = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-eval' 'unsafe-inline' *.vercel-scripts.com https://connect.facebook.net https://www.googletagmanager.com https://www.google-analytics.com",
+  "style-src 'self' 'unsafe-inline' *.googleapis.com",
+  "img-src 'self' data: blob: *.unsplash.com *.cloudinary.com https://www.facebook.com https://*.facebook.com https://www.googletagmanager.com https://www.google-analytics.com https://stats.g.doubleclick.net",
+  "media-src 'self' data: blob: *.cloudinary.com",
+  "font-src 'self' *.googleapis.com *.gstatic.com",
+  "connect-src 'self' *.vercel.app *.houselink.co.zw https://www.facebook.com https://*.facebook.com https://www.googletagmanager.com https://www.google-analytics.com https://analytics.google.com https://stats.g.doubleclick.net https://region1.google-analytics.com",
+  "frame-src 'self' *.youtube.com *.vimeo.com",
+].join("; ");
+
 const nextConfig: NextConfig = {
   output: "standalone",
   poweredByHeader: false,
@@ -13,7 +24,7 @@ const nextConfig: NextConfig = {
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           {
             key: "Content-Security-Policy",
-            value: "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline' *.vercel-scripts.com; style-src 'self' 'unsafe-inline' *.googleapis.com; img-src 'self' data: blob: *.unsplash.com *.cloudinary.com; media-src 'self' data: blob: *.cloudinary.com; font-src 'self' *.googleapis.com *.gstatic.com; connect-src 'self' *.vercel.app *.houselink.co.zw; frame-src 'self' *.youtube.com *.vimeo.com;"
+            value: contentSecurityPolicy,
           },
         ],
       },
