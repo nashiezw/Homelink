@@ -10,7 +10,7 @@ function normaliseMetaPixelId(value?: string | null) {
   return /^\d{6,32}$/.test(id) ? id : "";
 }
 
-export async function MarketingPixels() {
+export async function MarketingPixelScripts() {
   const config = await getHydratedPublicPlatformConfig();
   const googleAnalyticsId = normaliseGoogleAnalyticsId(config.integrations.analyticsId);
   const metaPixelId = normaliseMetaPixelId(config.integrations.metaPixelId);
@@ -55,18 +55,28 @@ export async function MarketingPixels() {
               `.replace(/</g, "\\u003c"),
             }}
           />
-          <noscript>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              height="1"
-              width="1"
-              style={{ display: "none" }}
-              alt=""
-              src={`https://www.facebook.com/tr?id=${metaPixelId}&ev=PageView&noscript=1`}
-            />
-          </noscript>
         </>
       ) : null}
     </>
+  );
+}
+
+export async function MarketingPixelNoScript() {
+  const config = await getHydratedPublicPlatformConfig();
+  const metaPixelId = normaliseMetaPixelId(config.integrations.metaPixelId);
+
+  if (!metaPixelId) return null;
+
+  return (
+    <noscript>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        height="1"
+        width="1"
+        style={{ display: "none" }}
+        alt=""
+        src={`https://www.facebook.com/tr?id=${metaPixelId}&ev=PageView&noscript=1`}
+      />
+    </noscript>
   );
 }
