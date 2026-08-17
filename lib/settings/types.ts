@@ -102,10 +102,12 @@ export type ContactSettings = {
   /** Optional lane overrides — empty falls back to whatsappNumber. */
   whatsappLibraryNumber: string;
   whatsappPropertyNumber: string;
+  whatsappAcademyNumber: string;
   /** Sticky left FAB — editable in Platform Settings → Contact. */
   stickyWhatsAppEnabled: boolean;
   stickyWhatsAppMessage: string;
   stickyWhatsAppLibraryMessage: string;
+  stickyWhatsAppAcademyMessage: string;
   stickyWhatsAppLabel: string;
   /** Shown under sticky + appended to prefills, e.g. We usually reply 8am–6pm CAT. */
   stickyWhatsAppQuietHours: string;

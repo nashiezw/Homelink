@@ -268,6 +268,11 @@ export function PlatformSettingsPanel({ defaultTab = "general" }: { defaultTab?:
             value={settings.contact.whatsappPropertyNumber ?? ""}
             onChange={(v) => setSettings({ ...settings, contact: { ...settings.contact, whatsappPropertyNumber: v } })}
           />
+          <Input
+            label="Academy WhatsApp number (optional)"
+            value={settings.contact.whatsappAcademyNumber ?? ""}
+            onChange={(v) => setSettings({ ...settings, contact: { ...settings.contact, whatsappAcademyNumber: v } })}
+          />
           <label className="flex items-center gap-2 text-sm font-medium text-slate-200 sm:col-span-2">
             <input
               type="checkbox"
@@ -301,6 +306,12 @@ export function PlatformSettingsPanel({ defaultTab = "general" }: { defaultTab?:
             label="Library WhatsApp prefilled message"
             value={settings.contact.stickyWhatsAppLibraryMessage ?? ""}
             onChange={(v) => setSettings({ ...settings, contact: { ...settings.contact, stickyWhatsAppLibraryMessage: v } })}
+            className="sm:col-span-2"
+          />
+          <TextArea
+            label="Academy WhatsApp prefilled message"
+            value={settings.contact.stickyWhatsAppAcademyMessage ?? ""}
+            onChange={(v) => setSettings({ ...settings, contact: { ...settings.contact, stickyWhatsAppAcademyMessage: v } })}
             className="sm:col-span-2"
           />
           <TextArea

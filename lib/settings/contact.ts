@@ -1,6 +1,6 @@
 import type { ContactSettings } from "@/lib/settings/types";
 
-export type WhatsAppLane = "library" | "property";
+export type WhatsAppLane = "academy" | "library" | "property";
 
 export type WhatsAppHelpContext = {
   source: string;
@@ -23,23 +23,26 @@ export function getTelHref(contact: Pick<ContactSettings, "phoneNumber">) {
 
 export function resolveWhatsAppLane(pathname?: string): WhatsAppLane {
   const path = String(pathname || "");
+  if (path.startsWith("/academy") || path.startsWith("/dashboard/academy")) return "academy";
   if (path.startsWith("/library") || path.startsWith("/dashboard/my-library")) return "library";
   return "property";
 }
 
 export function resolveWhatsAppNumber(
-  contact: Pick<ContactSettings, "whatsappNumber" | "whatsappLibraryNumber" | "whatsappPropertyNumber">,
+  contact: Pick<ContactSettings, "whatsappNumber" | "whatsappLibraryNumber" | "whatsappPropertyNumber"> & Partial<Pick<ContactSettings, "whatsappAcademyNumber">>,
   lane: WhatsAppLane,
 ) {
+  const academy = digitsOnly(contact.whatsappAcademyNumber || "");
   const library = digitsOnly(contact.whatsappLibraryNumber || "");
   const property = digitsOnly(contact.whatsappPropertyNumber || "");
+  if (lane === "academy" && academy.length >= 8) return contact.whatsappAcademyNumber;
   if (lane === "library" && library.length >= 8) return contact.whatsappLibraryNumber;
   if (lane === "property" && property.length >= 8) return contact.whatsappPropertyNumber;
-  return contact.whatsappNumber || (lane === "library" ? contact.whatsappLibraryNumber : contact.whatsappPropertyNumber) || "";
+  return contact.whatsappNumber || (lane === "academy" ? contact.whatsappAcademyNumber : lane === "library" ? contact.whatsappLibraryNumber : contact.whatsappPropertyNumber) || "";
 }
 
 export function buildWhatsAppMessage(
-  contact: Pick<ContactSettings, "stickyWhatsAppMessage" | "stickyWhatsAppLibraryMessage" | "stickyWhatsAppQuietHours">,
+  contact: Pick<ContactSettings, "stickyWhatsAppMessage" | "stickyWhatsAppLibraryMessage" | "stickyWhatsAppQuietHours"> & Partial<Pick<ContactSettings, "stickyWhatsAppAcademyMessage">>,
   ctx: WhatsAppHelpContext,
 ) {
   const lane = ctx.lane || resolveWhatsAppLane(ctx.pathname);
@@ -63,6 +66,12 @@ export function buildWhatsAppMessage(
     const base =
       cleanConfiguredWhatsAppMessage(contact.stickyWhatsAppLibraryMessage) ||
       "Hi HouseLink - I need help with a Library book or order.";
+    return `${base}${pageNote}${quietNote}`;
+  }
+  if (lane === "academy") {
+    const base =
+      cleanConfiguredWhatsAppMessage(contact.stickyWhatsAppAcademyMessage) ||
+      "Hi HouseLink - I need help with HouseLink Academy.";
     return `${base}${pageNote}${quietNote}`;
   }
   const base = cleanConfiguredWhatsAppMessage(contact.stickyWhatsAppMessage) || "Hi HouseLink - I need help with a property listing or viewing.";
@@ -92,7 +101,7 @@ function buildWhatsAppPageNote(pathname?: string) {
 }
 
 export function getWhatsAppHref(
-  contact: Pick<ContactSettings, "whatsappNumber" | "whatsappLibraryNumber" | "whatsappPropertyNumber">,
+  contact: Pick<ContactSettings, "whatsappNumber" | "whatsappLibraryNumber" | "whatsappPropertyNumber"> & Partial<Pick<ContactSettings, "whatsappAcademyNumber">>,
   options?: { message?: string; lane?: WhatsAppLane; number?: string },
 ) {
   const lane = options?.lane;
@@ -116,8 +125,10 @@ export function getMailtoHref(email: string, subject?: string) {
   return `mailto:${email}${suffix}`;
 }
 
-export function stickyWhatsAppVisible(contact: Pick<ContactSettings, "stickyWhatsAppEnabled" | "whatsappNumber" | "whatsappLibraryNumber" | "whatsappPropertyNumber">) {
+export function stickyWhatsAppVisible(contact: Pick<ContactSettings, "stickyWhatsAppEnabled" | "whatsappNumber" | "whatsappLibraryNumber" | "whatsappPropertyNumber"> & Partial<Pick<ContactSettings, "whatsappAcademyNumber">>) {
+  const academy = "whatsappAcademyNumber" in contact ? digitsOnly(String(contact.whatsappAcademyNumber || "")).length >= 8 : false;
   const hasNumber =
+    academy ||
     digitsOnly(contact.whatsappNumber || "").length >= 8 ||
     digitsOnly(contact.whatsappLibraryNumber || "").length >= 8 ||
     digitsOnly(contact.whatsappPropertyNumber || "").length >= 8;
