@@ -1,7 +1,7 @@
 "use client";
 
 import { X, type LucideIcon } from "lucide-react";
-import type { ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 export function AdminPageHeader({
@@ -340,8 +340,10 @@ export function AdminPagination({
   onPageChange: (page: number) => void;
 }) {
   const pages = Math.max(1, Math.ceil(total / pageSize));
-  const from = total === 0 ? 0 : (page - 1) * pageSize + 1;
-  const to = Math.min(page * pageSize, total);
+  const safePage = Math.min(Math.max(1, page), pages);
+  const from = total === 0 ? 0 : (safePage - 1) * pageSize + 1;
+  const to = Math.min(safePage * pageSize, total);
+  const visiblePages = getVisiblePageNumbers(safePage, pages);
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/[0.06] px-4 py-3 text-sm text-slate-400">
@@ -352,24 +354,23 @@ export function AdminPagination({
       <div className="flex max-w-full items-center gap-1 overflow-x-auto [scrollbar-width:none]">
         <button
           type="button"
-          disabled={page <= 1}
-          onClick={() => onPageChange(page - 1)}
+          disabled={safePage <= 1}
+          onClick={() => onPageChange(safePage - 1)}
           className="rounded-lg border border-white/10 px-3 py-1.5 transition hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
           aria-label="Go to previous page"
         >
           Prev
         </button>
-        {Array.from({ length: Math.min(pages, 5) }).map((_, i) => {
-          const p = i + 1;
+        {visiblePages.map((p) => {
           return (
             <button
               key={p}
               type="button"
               onClick={() => onPageChange(p)}
-              aria-current={page === p ? "page" : undefined}
+              aria-current={safePage === p ? "page" : undefined}
               className={cn(
                 "min-w-9 rounded-lg px-2 py-1.5 text-sm",
-                page === p ? "bg-emerald-600 text-white" : "border border-white/10 hover:bg-white/5",
+                safePage === p ? "bg-emerald-600 text-white" : "border border-white/10 hover:bg-white/5",
               )}
             >
               {p}
@@ -378,8 +379,8 @@ export function AdminPagination({
         })}
         <button
           type="button"
-          disabled={page >= pages}
-          onClick={() => onPageChange(page + 1)}
+          disabled={safePage >= pages}
+          onClick={() => onPageChange(safePage + 1)}
           className="rounded-lg border border-white/10 px-3 py-1.5 transition hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
           aria-label="Go to next page"
         >
@@ -388,6 +389,12 @@ export function AdminPagination({
       </div>
     </div>
   );
+}
+
+function getVisiblePageNumbers(page: number, pages: number) {
+  const count = Math.min(pages, 5);
+  const start = Math.min(Math.max(1, page - 2), Math.max(1, pages - count + 1));
+  return Array.from({ length: count }, (_, index) => start + index);
 }
 
 type Column<T> = {
@@ -408,6 +415,8 @@ export function AdminDataTable<T extends { id?: string }>({
   onToggleSelect,
   onToggleSelectAll,
   allSelected,
+  paginate,
+  pageSize = 12,
 }: {
   columns: Column<T>[];
   rows: T[];
@@ -419,7 +428,28 @@ export function AdminDataTable<T extends { id?: string }>({
   onToggleSelect?: (id: string) => void;
   onToggleSelectAll?: () => void;
   allSelected?: boolean;
+  paginate?: boolean;
+  pageSize?: number;
 }) {
+  const [page, setPage] = useState(1);
+  const shouldPaginate = paginate ?? rows.length > pageSize;
+  const pages = Math.max(1, Math.ceil(rows.length / pageSize));
+
+  useEffect(() => {
+    setPage((current) => Math.min(Math.max(1, current), pages));
+  }, [pages]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [rows.length, pageSize]);
+
+  const pageRows = useMemo(() => {
+    if (!shouldPaginate) return rows;
+    const safePage = Math.min(Math.max(1, page), pages);
+    const start = (safePage - 1) * pageSize;
+    return rows.slice(start, start + pageSize);
+  }, [page, pageSize, pages, rows, shouldPaginate]);
+
   if (!rows.length) {
     return <p className="p-8 text-center text-sm text-slate-500">{emptyMessage}</p>;
   }
@@ -427,8 +457,9 @@ export function AdminDataTable<T extends { id?: string }>({
   return (
     <>
       <div className="space-y-3 md:hidden">
-        {rows.map((row, idx) => {
-          const rowId = row.id ?? String(idx);
+        {pageRows.map((row, idx) => {
+          const rowIndex = shouldPaginate ? (Math.min(Math.max(1, page), pages) - 1) * pageSize + idx : idx;
+          const rowId = row.id ?? String(rowIndex);
           const active = selectedId === rowId;
           return (
             <article
@@ -497,8 +528,9 @@ export function AdminDataTable<T extends { id?: string }>({
             </tr>
           </thead>
           <tbody>
-            {rows.map((row, idx) => {
-              const rowId = row.id ?? String(idx);
+            {pageRows.map((row, idx) => {
+              const rowIndex = shouldPaginate ? (Math.min(Math.max(1, page), pages) - 1) * pageSize + idx : idx;
+              const rowId = row.id ?? String(rowIndex);
               const active = selectedId === rowId;
               return (
                 <tr
@@ -531,6 +563,14 @@ export function AdminDataTable<T extends { id?: string }>({
           </tbody>
         </table>
       </div>
+      {shouldPaginate && (
+        <AdminPagination
+          page={page}
+          pageSize={pageSize}
+          total={rows.length}
+          onPageChange={setPage}
+        />
+      )}
     </>
   );
 }

@@ -3,7 +3,7 @@
 import { CheckCircle2, Download, ExternalLink, Landmark, Plus, RefreshCw, Scale, ShieldAlert } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { AdminKpiCard } from "@/components/admin/kpi-card";
-import { AdminPanel, AdminStatusBadge, AdminTabStrip } from "@/components/admin/ui/admin-ui";
+import { AdminPagination, AdminPanel, AdminStatusBadge, AdminTabStrip } from "@/components/admin/ui/admin-ui";
 import { useApp } from "@/components/providers/app-provider";
 import { apiFetch } from "@/lib/api/client";
 import { Button } from "@/components/ui/button";
@@ -30,11 +30,14 @@ type PaymentsResponse = {
   health: PaymentHealth[];
 };
 
+const PAYMENT_LEDGER_PAGE_SIZE = 10;
+
 export function PaymentsAdminHub() {
   const { showToast } = useApp();
   const [data, setData] = useState<PaymentsResponse | null>(null);
   const [subTab, setSubTab] = useState<"ledger" | "escrow" | "chargebacks" | "tax">("ledger");
   const [filter, setFilter] = useState<"all" | "manual" | "pending">("all");
+  const [ledgerPage, setLedgerPage] = useState(1);
   const [selected, setSelected] = useState<Payment | null>(null);
   const [note, setNote] = useState("");
   const [showManualForm, setShowManualForm] = useState(false);
@@ -68,6 +71,15 @@ export function PaymentsAdminHub() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    setLedgerPage(1);
+  }, [filter]);
+
+  useEffect(() => {
+    const pages = Math.max(1, Math.ceil((data?.payments.length ?? 0) / PAYMENT_LEDGER_PAGE_SIZE));
+    setLedgerPage((current) => Math.min(Math.max(1, current), pages));
+  }, [data?.payments.length]);
 
   useEffect(() => {
     void apiFetch<{ users: Array<{ id: string; name: string; email: string }> }>("/api/v1/admin/users").then((r) => {
@@ -193,6 +205,8 @@ export function PaymentsAdminHub() {
   if (error) return <PaymentsLoadError message={error} onRetry={() => void load()} />;
   if (!data) return <p className="text-slate-400">Loading payments...</p>;
   const manualMethods = data.settings.manualMethods.filter((method) => method.enabled);
+  const safeLedgerPage = Math.min(Math.max(1, ledgerPage), Math.max(1, Math.ceil(data.payments.length / PAYMENT_LEDGER_PAGE_SIZE)));
+  const ledgerRows = data.payments.slice((safeLedgerPage - 1) * PAYMENT_LEDGER_PAGE_SIZE, safeLedgerPage * PAYMENT_LEDGER_PAGE_SIZE);
 
   return (
     <div className="space-y-6">
@@ -285,7 +299,7 @@ export function PaymentsAdminHub() {
           <div className="grid gap-4 lg:grid-cols-3">
             <AdminPanel title="Payment ledger" className="lg:col-span-2">
               <div className="space-y-3 md:hidden">
-                {data.payments.map((p) => (
+                {ledgerRows.map((p) => (
                   <article
                     key={p.id}
                     onClick={() => setSelected(p)}
@@ -322,7 +336,7 @@ export function PaymentsAdminHub() {
                     </tr>
                   </thead>
                   <tbody>
-                    {data.payments.map((p) => (
+                    {ledgerRows.map((p) => (
                       <tr key={p.id} onClick={() => setSelected(p)} className={`cursor-pointer border-b border-white/5 hover:bg-white/5 ${selected?.id === p.id ? "bg-emerald-500/10" : ""}`}>
                         <td className="px-3 py-2"><p className="text-white">{p.plan}</p><p className="text-xs text-slate-500">{p.userName}</p></td>
                         <td className="px-3 py-2 text-emerald-400">${p.amount}</td>
@@ -332,6 +346,14 @@ export function PaymentsAdminHub() {
                   </tbody>
                 </table>
               </div>
+              {data.payments.length > PAYMENT_LEDGER_PAGE_SIZE && (
+                <AdminPagination
+                  page={safeLedgerPage}
+                  pageSize={PAYMENT_LEDGER_PAGE_SIZE}
+                  total={data.payments.length}
+                  onPageChange={setLedgerPage}
+                />
+              )}
             </AdminPanel>
             <AdminPanel title="Payment actions">
               {!selected ? (
