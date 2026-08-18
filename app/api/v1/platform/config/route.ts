@@ -5,6 +5,6 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   const response = ok(await getHydratedPublicPlatformConfig());
-  response.headers.set("Cache-Control", "public, s-maxage=60, stale-while-revalidate=300");
+  response.headers.set("Cache-Control", "no-store, no-cache, must-revalidate");
   return response;
 }

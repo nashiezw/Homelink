@@ -1,9 +1,5 @@
 import { getHydratedPublicPlatformConfig } from "@/lib/settings/runtime";
-
-function normaliseGoogleAnalyticsId(value?: string | null) {
-  const id = String(value || "").trim().toUpperCase();
-  return /^G-[A-Z0-9-]+$/.test(id) ? id : "";
-}
+import { normaliseGoogleTagId } from "@/lib/integrations/google-tag";
 
 function normaliseMetaPixelId(value?: string | null) {
   const id = String(value || "").replace(/\D/g, "");
@@ -12,7 +8,7 @@ function normaliseMetaPixelId(value?: string | null) {
 
 export async function MarketingPixelScripts() {
   const config = await getHydratedPublicPlatformConfig();
-  const googleAnalyticsId = normaliseGoogleAnalyticsId(config.integrations.analyticsId);
+  const googleAnalyticsId = normaliseGoogleTagId(config.integrations.analyticsId);
   const metaPixelId = normaliseMetaPixelId(config.integrations.metaPixelId);
 
   if (!googleAnalyticsId && !metaPixelId) return null;

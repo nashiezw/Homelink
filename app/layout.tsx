@@ -6,6 +6,7 @@ import { ChromeGate } from "@/components/layout/chrome-gate";
 import { NavigationProgress } from "@/components/navigation/navigation-progress";
 import { ToastBanner } from "@/components/ui/toast-banner";
 import { MarketingPixelNoScript, MarketingPixelScripts } from "@/components/analytics/marketing-pixels";
+import { RuntimeMarketingPixels } from "@/components/analytics/runtime-marketing-pixels";
 import { getCanonicalSiteUrl } from "@/lib/seo/site-url";
 import "./globals.css";
 
@@ -129,6 +130,7 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData).replace(/</g, "\\u003c") }}
         />
         <MarketingPixelNoScript />
+        <RuntimeMarketingPixels />
         <PlatformConfigProvider>
           <AppProvider>
             <NavigationProgress />

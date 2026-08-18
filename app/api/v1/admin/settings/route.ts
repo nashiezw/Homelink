@@ -11,6 +11,7 @@ import { ok, problem } from "@/lib/api/response";
 import { isPostgresStoreEnabled } from "@/lib/db/main-prisma";
 import { testCloudinaryConfig } from "@/lib/integrations/cloudinary";
 import { testGoogleMapsKey } from "@/lib/integrations/google-maps";
+import { testGoogleTagInstallation } from "@/lib/integrations/google-tag";
 import { testMetaPixelInstallation } from "@/lib/integrations/meta-pixel";
 import { sendSmtpTestEmail } from "@/lib/integrations/smtp";
 import { sendWhatsAppTestMessage } from "@/lib/integrations/whatsapp";
@@ -82,7 +83,7 @@ export async function PATCH(request: Request) {
   const body = (await request.json()) as {
     section?: string;
     settings?: Partial<PlatformSettings> | Partial<PaymentSettings>;
-    test?: { type: "smtp" | "maps" | "cloudinary" | "whatsapp" | "metaPixel"; email?: string; phone?: string };
+    test?: { type: "smtp" | "maps" | "cloudinary" | "whatsapp" | "metaPixel" | "googleTag"; email?: string; phone?: string };
   };
 
   const section = body.section ?? "platform";
@@ -111,6 +112,7 @@ export async function PATCH(request: Request) {
         return ok(await sendSmtpTestEmail(liveSettings.integrations, recipient));
       }
       if (body.test.type === "maps") return ok(await testGoogleMapsKey(liveSettings.integrations.googleMapsKey));
+      if (body.test.type === "googleTag") return ok(await testGoogleTagInstallation(liveSettings.integrations.analyticsId));
       if (body.test.type === "cloudinary") return ok(await testCloudinaryConfig(liveSettings.integrations));
       if (body.test.type === "metaPixel") return ok(await testMetaPixelInstallation(liveSettings.integrations.metaPixelId));
       if (body.test.type === "whatsapp") {
@@ -154,6 +156,10 @@ export async function PATCH(request: Request) {
     }
     if (body.test.type === "maps") {
       const result = await testGoogleMapsKey(liveSettings.integrations.googleMapsKey);
+      return ok(result);
+    }
+    if (body.test.type === "googleTag") {
+      const result = await testGoogleTagInstallation(liveSettings.integrations.analyticsId);
       return ok(result);
     }
     if (body.test.type === "cloudinary") {

@@ -10,7 +10,7 @@ import { syncGeoToFlatLists } from "@/lib/settings/geo";
 import type { CareerRole, GeoCity, GeoProvince, PlatformSettings } from "@/lib/settings/types";
 
 type SettingsTab = "general" | "contact" | "careers" | "locations" | "integrations" | "notifications" | "legal" | "rbac" | "features" | "security";
-type IntegrationTestType = "smtp" | "maps" | "cloudinary" | "whatsapp" | "metaPixel";
+type IntegrationTestType = "smtp" | "maps" | "cloudinary" | "whatsapp" | "metaPixel" | "googleTag";
 
 type AdminUser = { id: string; name: string; email: string };
 type AdminMe = { permissions: string[]; roles: string[] };
@@ -18,7 +18,29 @@ type AdminMe = { permissions: string[]; roles: string[] };
 declare global {
   interface Window {
     fbq?: (...args: unknown[]) => void;
+    gtag?: (...args: unknown[]) => void;
   }
+}
+
+function normaliseGoogleTagId(value: string) {
+  const input = String(value || "").trim();
+  const decoded = input.replace(/&quot;/g, "\"").replace(/&#39;/g, "'").replace(/&amp;/g, "&");
+  return decoded.match(/\b(?:G|GT|AW|DC)-[A-Z0-9-]+\b/i)?.[0]?.toUpperCase() ?? "";
+}
+
+function fireGoogleTagBrowserTest(analyticsId: string) {
+  const tagId = normaliseGoogleTagId(analyticsId);
+  if (typeof window === "undefined") return "";
+  if (!window.gtag) {
+    return "The saved Google tag ID is valid, but gtag is not available in this admin browser yet; save settings, open the public website, and retry Google detection after the page reloads.";
+  }
+
+  window.gtag("event", "houselink_admin_google_tag_test", {
+    send_to: tagId,
+    source: "admin_platform_settings",
+    tested_at: new Date().toISOString(),
+  });
+  return "Browser test event sent as houselink_admin_google_tag_test.";
 }
 
 function fireMetaPixelBrowserTest(metaPixelId: string) {
@@ -147,7 +169,12 @@ export function PlatformSettingsPanel({ defaultTab = "general" }: { defaultTab?:
         ? `${result.data.message} (${result.data.sample})`
         : result.data?.message ?? result.error?.message ?? "Test complete.";
       const ok = result.data?.ok ?? false;
-      const browserMessage = type === "metaPixel" && ok ? fireMetaPixelBrowserTest(settings.integrations.metaPixelId) : "";
+      const browserMessage =
+        type === "metaPixel" && ok
+          ? fireMetaPixelBrowserTest(settings.integrations.metaPixelId)
+          : type === "googleTag" && ok
+            ? fireGoogleTagBrowserTest(settings.integrations.analyticsId)
+            : "";
       const message = browserMessage ? `${serverMessage} ${browserMessage}` : serverMessage;
       setIntegrationTestResult({ ok, message });
       showToast(message, ok ? "success" : "error");
@@ -374,7 +401,7 @@ export function PlatformSettingsPanel({ defaultTab = "general" }: { defaultTab?:
       {tab === "integrations" && (
         <div className="space-y-4">
           <div className="space-y-3 rounded-xl border border-white/10 bg-slate-950/40 p-4">
-            <div className="grid gap-3 lg:grid-cols-2 xl:grid-cols-[minmax(220px,1fr)_minmax(220px,1fr)_auto_auto_auto_auto_auto] xl:items-end">
+            <div className="grid gap-3 lg:grid-cols-2 xl:grid-cols-[minmax(220px,1fr)_minmax(220px,1fr)_auto_auto_auto_auto_auto_auto] xl:items-end">
               <Input
                 label="SMTP test recipient email"
                 value={smtpTestEmail}
@@ -395,6 +422,9 @@ export function PlatformSettingsPanel({ defaultTab = "general" }: { defaultTab?:
               </Button>
               <Button className="w-full whitespace-nowrap lg:w-auto" variant="secondary" onClick={() => void testIntegration("maps")} disabled={testingIntegration !== null}>
                 <TestTube2 className="size-4" /> {testingIntegration === "maps" ? "Testing Maps..." : "Test Maps key"}
+              </Button>
+              <Button className="w-full whitespace-nowrap lg:w-auto" variant="secondary" onClick={() => void testIntegration("googleTag")} disabled={testingIntegration !== null}>
+                <TestTube2 className="size-4" /> {testingIntegration === "googleTag" ? "Testing Tag..." : "Test Google tag"}
               </Button>
               <Button className="w-full whitespace-nowrap lg:w-auto" variant="secondary" onClick={() => void testIntegration("cloudinary")} disabled={testingIntegration !== null}>
                 <TestTube2 className="size-4" /> {testingIntegration === "cloudinary" ? "Testing Cloudinary..." : "Test Cloudinary"}
@@ -869,7 +899,7 @@ function RbacEditor({
 
 function integrationFieldLabel(key: string) {
   const labels: Record<string, string> = {
-    analyticsId: "Google Analytics Measurement ID",
+    analyticsId: "Google tag ID / Analytics Measurement ID",
     metaPixelId: "Meta Pixel ID",
     googleMapsKey: "Google Maps key",
     cdnUrl: "CDN URL",
