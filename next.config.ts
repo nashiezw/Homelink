@@ -2,13 +2,14 @@ import type { NextConfig } from "next";
 
 const contentSecurityPolicy = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-eval' 'unsafe-inline' *.vercel-scripts.com https://connect.facebook.net https://www.googletagmanager.com https://www.google-analytics.com",
+  "script-src 'self' 'unsafe-eval' 'unsafe-inline' *.vercel-scripts.com https://connect.facebook.net https://www.facebook.com https://*.facebook.com https://staticxx.facebook.com https://www.googletagmanager.com https://www.google-analytics.com",
   "style-src 'self' 'unsafe-inline' *.googleapis.com",
   "img-src 'self' data: blob: *.unsplash.com *.cloudinary.com https://www.facebook.com https://*.facebook.com https://www.googletagmanager.com https://www.google-analytics.com https://stats.g.doubleclick.net",
   "media-src 'self' data: blob: *.cloudinary.com",
   "font-src 'self' *.googleapis.com *.gstatic.com",
-  "connect-src 'self' *.vercel.app *.houselink.co.zw https://www.facebook.com https://*.facebook.com https://www.googletagmanager.com https://www.google-analytics.com https://analytics.google.com https://stats.g.doubleclick.net https://region1.google-analytics.com",
-  "frame-src 'self' *.youtube.com *.vimeo.com",
+  "connect-src 'self' *.vercel.app *.houselink.co.zw https://www.facebook.com https://*.facebook.com https://connect.facebook.net https://www.googletagmanager.com https://www.google-analytics.com https://analytics.google.com https://stats.g.doubleclick.net https://region1.google-analytics.com",
+  "frame-src 'self' *.youtube.com *.vimeo.com https://www.facebook.com https://business.facebook.com https://apps.facebook.com https://connect.facebook.net https://staticxx.facebook.com https://*.facebook.com https://*.fb.com",
+  "frame-ancestors 'self' https://www.facebook.com https://business.facebook.com https://apps.facebook.com https://*.facebook.com https://*.fb.com",
 ].join("; ");
 
 const nextConfig: NextConfig = {
@@ -76,7 +77,7 @@ const nextConfig: NextConfig = {
       },
       {
         source: "/:path*",
-        has: [{ type: "host", value: "www.houselinkzim.co.zw" }],
+        has: [{ type: "host", value: "www.homelinkzim.co.zw" }],
         destination: "https://www.houselink.co.zw/:path*",
         permanent: true,
       },
