@@ -29,6 +29,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
     orderNumber: string;
     customerName: string;
     customerEmail: string;
+    customerPhone?: string | null;
     currency: string;
     total: number;
     subtotal?: number;
@@ -73,6 +74,7 @@ function printableInvoiceHtml(input: {
     orderNumber: string;
     customerName: string;
     customerEmail: string;
+    customerPhone?: string | null;
     currency: string;
     total: number;
     shipping?: LibraryShippingAddress | null;
@@ -97,6 +99,8 @@ function printableInvoiceHtml(input: {
     ? issuedDate.toLocaleDateString("en-ZW", { year: "numeric", month: "short", day: "numeric" })
     : "Today";
   const money = (value: number) => `${escapeHtml(input.order.currency)} ${Number(value || 0).toFixed(2)}`;
+  const customerPhone = input.order.customerPhone?.trim() || "";
+  const customerPhoneLine = customerPhone ? `<br>Phone: ${escapeHtml(customerPhone)}` : "";
   const rows = (input.order.items ?? []).map((item) => `
     <tr>
       <td class="item-cell">
@@ -466,7 +470,7 @@ function printableInvoiceHtml(input: {
         <div class="summary-card">
           <span>Billed to</span>
           <strong>${escapeHtml(input.order.customerName)}</strong>
-          <p>${escapeHtml(input.order.customerEmail)}</p>
+          <p>${escapeHtml(input.order.customerEmail)}${customerPhoneLine}</p>
         </div>
         <div class="summary-card">
           <span>Amount due</span>
@@ -484,7 +488,7 @@ function printableInvoiceHtml(input: {
         <section class="address-card">
           <p class="section-label">Bill to</p>
           <p class="address-name">${escapeHtml(input.order.customerName)}</p>
-          <p>${escapeHtml(input.order.customerEmail)}</p>
+          <p>${escapeHtml(input.order.customerEmail)}${customerPhoneLine}</p>
         </section>
         ${shippingBlock || `<section class="address-card">
           <p class="section-label">Delivery</p>

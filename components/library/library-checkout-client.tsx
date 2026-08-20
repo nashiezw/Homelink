@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { CreditCard, Gift, Lock, MapPin, Minus, Plus, ShoppingCart, Trash2 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { PageShell } from "@/components/layout/page-shell";
 import { LibraryUpsellRail } from "@/components/library/library-upsell-rail";
 import { Button } from "@/components/ui/button";
@@ -147,6 +147,7 @@ export function LibraryCheckoutClient() {
   const [guestName, setGuestName] = useState("");
   const [guestEmail, setGuestEmail] = useState("");
   const [guestPhone, setGuestPhone] = useState("");
+  const buyerDetailsRef = useRef<HTMLElement | null>(null);
 
   // Autofill shipping form with user data when available
   useEffect(() => {
@@ -161,6 +162,8 @@ export function LibraryCheckoutClient() {
 
   const guestCheckoutEnabled = storeSettings?.checkout.guestCheckout !== false;
   const needsContinueEmail = !authLoading && !user && guestCheckoutEnabled;
+  const buyerPhone = guestPhone;
+  const needsBuyerPhone = !authLoading && Boolean(user || needsContinueEmail);
 
   const needsShipping = useMemo(
     () => cart.some((item) => item.formatType === "PRINTED_BOOK" || /print/i.test(item.formatLabel ?? "") || /print/i.test(item.title)),
@@ -395,6 +398,12 @@ export function LibraryCheckoutClient() {
     return Boolean(shipping.name.trim() && shipping.phone.trim() && shipping.line1.trim() && shipping.city.trim());
   }
 
+  function promptBuyerDetails(message: string) {
+    setBusy(false);
+    setError(message);
+    buyerDetailsRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+
   async function checkout() {
     setBusy(true);
     setError("");
@@ -410,15 +419,17 @@ export function LibraryCheckoutClient() {
     }
     if (needsContinueEmail) {
       if (!guestName.trim()) {
-        setBusy(false);
-        setError("Enter your name to continue.");
+        promptBuyerDetails("Please fill in your name to continue with this Library order.");
         return;
       }
       if (!guestEmail.trim() || !guestEmail.includes("@")) {
-        setBusy(false);
-        setError("Enter a valid email so we can attach your books and invoice.");
+        promptBuyerDetails("Please enter a valid email so we can attach your books and invoice.");
         return;
       }
+    }
+    if (needsBuyerPhone && !buyerPhone.trim()) {
+      promptBuyerDetails("Please add your phone number so HouseLink can follow up about payment proof and include it on your invoice.");
+      return;
     }
     if (storeSettings?.checkout.requireTerms && !termsAccepted) {
       setBusy(false);
@@ -443,15 +454,15 @@ export function LibraryCheckoutClient() {
         shipping: shippingPayload(),
         shippingMethod: needsShipping ? shippingMethod : undefined,
         termsAccepted,
-        ...(needsContinueEmail
-          ? {
-              customer: {
+        customer: {
+          ...(needsContinueEmail
+            ? {
                 name: guestName.trim(),
                 email: guestEmail.trim(),
-                phone: guestPhone.trim() || undefined,
-              },
-            }
-          : {}),
+              }
+            : {}),
+          phone: buyerPhone.trim(),
+        },
       }),
     });
     if (result.data?.redirectUrl) {
@@ -645,10 +656,10 @@ export function LibraryCheckoutClient() {
           />
 
           {needsContinueEmail ? (
-            <section className="surface-panel min-w-0 max-w-full rounded-lg p-4 sm:p-5">
+            <section ref={buyerDetailsRef} className="surface-panel min-w-0 max-w-full rounded-lg p-4 sm:p-5">
               <h2 className="text-lg font-semibold text-ink dark:text-white">Continue with email</h2>
               <p className="mt-1 break-words text-sm text-slate-500">
-                No password needed to place this order. We create a light HouseLink account for your invoice and downloads — you can set a password after checkout.
+                Please fill in these details to place your order. We use your phone number for payment-proof follow-ups and your invoice.
               </p>
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 <label className="block text-sm font-medium sm:col-span-2">
@@ -678,7 +689,7 @@ export function LibraryCheckoutClient() {
                   />
                 </label>
                 <label className="block text-sm font-medium">
-                  Phone (optional)
+                  Phone
                   <input
                     value={guestPhone}
                     onChange={(e) => {
@@ -688,6 +699,7 @@ export function LibraryCheckoutClient() {
                     className="mt-2 h-11 w-full rounded-lg border border-slate-200 px-3 dark:border-slate-700 dark:bg-slate-900"
                     placeholder="+263…"
                     autoComplete="tel"
+                    required
                   />
                 </label>
               </div>
@@ -710,13 +722,28 @@ export function LibraryCheckoutClient() {
               </Link>
             </section>
           ) : user ? (
-            <section className="surface-panel min-w-0 max-w-full rounded-lg p-4 sm:p-5">
+            <section ref={buyerDetailsRef} className="surface-panel min-w-0 max-w-full rounded-lg p-4 sm:p-5">
               <h2 className="text-lg font-semibold text-ink dark:text-white">Buying as</h2>
               <p className="mt-2 break-words text-sm text-slate-600 dark:text-slate-300">
                 <span className="font-semibold text-ink dark:text-white">{user.name}</span>
                 <span className="text-slate-400"> · </span>
                 {user.email}
               </p>
+              <label className="mt-4 block text-sm font-medium">
+                Phone
+                <input
+                  value={guestPhone}
+                  onChange={(e) => {
+                    setGuestPhone(e.target.value);
+                    setShipping((current) => ({ ...current, phone: current.phone || e.target.value }));
+                  }}
+                  className="mt-2 h-11 w-full rounded-lg border border-slate-200 px-3 dark:border-slate-700 dark:bg-slate-900"
+                  placeholder="+263..."
+                  autoComplete="tel"
+                  required
+                />
+              </label>
+              <p className="mt-2 text-xs text-slate-500">Used for payment-proof follow-ups and shown on your Library invoice.</p>
             </section>
           ) : null}
 
@@ -961,4 +988,3 @@ export function LibraryCheckoutClient() {
     </PageShell>
   );
 }
-

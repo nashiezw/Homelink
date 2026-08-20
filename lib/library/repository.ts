@@ -1075,6 +1075,7 @@ export async function createLibraryOrderFromCheckout(input: {
   paymentId: string;
   items: LibraryCartLine[];
   couponCode?: string;
+  customerPhone?: string;
   shipping?: LibraryShippingAddress | null;
   shippingMethod?: "SHIPPING" | "PICKUP";
 }) {
@@ -1230,6 +1231,7 @@ export async function createLibraryOrderFromCheckout(input: {
           estimatedDaysMin: quote.estimatedDaysMin,
           estimatedDaysMax: quote.estimatedDaysMax,
           shipping,
+          customerPhone: input.customerPhone?.trim() || null,
           pickupAddress: isPickup ? settings.delivery.pickupAddress || null : null,
           pickupInstructions: isPickup ? settings.delivery.pickupInstructions || null : null,
           pickupPhone: isPickup ? settings.delivery.pickupPhone || null : null,
@@ -2076,7 +2078,7 @@ export async function getLibraryOrderForUser(orderId: string, userId: string, ro
   const order = await getMainPrisma().libraryOrder.findUnique({
     where: { id: orderId },
     include: {
-      customer: { select: { id: true, name: true, email: true } },
+      customer: { select: { id: true, name: true, email: true, phone: true } },
       items: true,
       payment: {
         select: {
@@ -2164,7 +2166,7 @@ export async function getLibraryInvoiceForUser(orderId: string, userId: string, 
   const order = await getMainPrisma().libraryOrder.findUnique({
     where: { id: orderId },
     include: {
-      customer: { select: { id: true, name: true, email: true } },
+      customer: { select: { id: true, name: true, email: true, phone: true } },
       items: true,
       payment: {
         select: {
@@ -2187,6 +2189,10 @@ export async function getLibraryInvoiceForUser(orderId: string, userId: string, 
   return {
     order: {
       ...toLibraryOrder(order),
+      customerPhone:
+        typeof metadata.customerPhone === "string" && metadata.customerPhone.trim()
+          ? metadata.customerPhone.trim()
+          : order.customer.phone ?? null,
       subtotal: Number(order.subtotal),
       discountTotal: Number(order.discountTotal),
       shipping: (metadata.shipping as LibraryShippingAddress | null | undefined) ?? null,

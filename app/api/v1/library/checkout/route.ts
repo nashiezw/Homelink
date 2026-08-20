@@ -1,5 +1,6 @@
 import { getSessionUserIdFromRequest, sessionCookieHeader } from "@/lib/auth/session";
 import { ensureLibraryCheckoutBuyer } from "@/lib/auth/lightweight-user";
+import { getMainPrisma } from "@/lib/db/main-prisma";
 import { created, problem } from "@/lib/api/response";
 import {
   completePaymentInPostgres,
@@ -27,6 +28,12 @@ type CheckoutLine = {
   formatLabel?: string;
 };
 
+type CheckoutCustomer = {
+  name?: unknown;
+  email?: unknown;
+  phone?: unknown;
+};
+
 function withOptionalSessionCookie<T>(data: T, session?: { sessionId: string; maxAgeSeconds: number; userId: string } | null) {
   const response = created(data);
   if (session) {
@@ -51,20 +58,17 @@ export async function POST(request: Request) {
   let userId = getSessionUserIdFromRequest(request);
   let newSession: { sessionId: string; maxAgeSeconds: number; userId: string } | null = null;
   let continueEmail = false;
+  const customer = (body.customer && typeof body.customer === "object" ? body.customer : {}) as CheckoutCustomer;
+  const customerPhone = typeof customer.phone === "string" ? customer.phone.trim() : "";
 
   if (!userId) {
     if (!librarySettings.checkout.guestCheckout) {
       return problem(401, "UNAUTHORIZED", "Sign in to checkout.");
     }
-    const customer = (body.customer && typeof body.customer === "object" ? body.customer : {}) as {
-      name?: unknown;
-      email?: unknown;
-      phone?: unknown;
-    };
     const buyer = await ensureLibraryCheckoutBuyer({
       name: typeof customer.name === "string" ? customer.name : "",
       email: typeof customer.email === "string" ? customer.email : "",
-      phone: typeof customer.phone === "string" ? customer.phone : undefined,
+      phone: customerPhone,
     });
     if (!buyer.ok) {
       return problem(buyer.status, buyer.code, buyer.message);
@@ -77,6 +81,15 @@ export async function POST(request: Request) {
     };
     continueEmail = true;
   }
+
+  if (!customerPhone) {
+    return problem(400, "PHONE_REQUIRED", "Please add your phone number so HouseLink can follow up about payment proof and include it on your invoice.");
+  }
+  await saveLibraryCheckoutPhone(userId, customerPhone).catch((error) => {
+    if (process.env.NODE_ENV === "development") {
+      console.debug("library_checkout_phone_update_failed", error);
+    }
+  });
 
   const items = Array.isArray(body.items) ? (body.items as CheckoutLine[]) : [];
   if (!items.length) return problem(400, "EMPTY_CART", "Add at least one Library product to checkout.");
@@ -131,6 +144,7 @@ export async function POST(request: Request) {
         paymentId: payment.id,
         items,
         couponCode: typeof body.couponCode === "string" ? body.couponCode : undefined,
+        customerPhone,
         shipping,
         shippingMethod,
       });
@@ -177,6 +191,7 @@ export async function POST(request: Request) {
       paymentId: payment.id,
       items,
       couponCode: typeof body.couponCode === "string" ? body.couponCode : undefined,
+      customerPhone,
       shipping,
       shippingMethod,
     });
@@ -199,4 +214,13 @@ export async function POST(request: Request) {
     const message = error instanceof Error ? error.message : "Library order could not be created.";
     return problem(500, "LIBRARY_ORDER_FAILED", message);
   }
+}
+
+async function saveLibraryCheckoutPhone(userId: string, phone: string) {
+  const trimmed = phone.trim();
+  if (!trimmed) return;
+  await getMainPrisma().user.update({
+    where: { id: userId },
+    data: { phone: trimmed },
+  });
 }
