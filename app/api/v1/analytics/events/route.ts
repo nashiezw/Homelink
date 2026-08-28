@@ -18,14 +18,23 @@ export async function POST(request: Request) {
   const userId = getSessionUserIdFromRequest(request);
 
   if (isPostgresStoreEnabled()) {
-    await getMainPrisma().auditEvent.create({
-      data: {
-        actorId: userId,
-        action: `ANALYTICS_${body.event.toUpperCase()}`,
+    try {
+      await getMainPrisma().auditEvent.create({
+        data: {
+          actorId: userId,
+          action: `ANALYTICS_${body.event.toUpperCase()}`,
+          target: typeof body.target === "string" ? body.target.slice(0, 160) : "client",
+          metadata: metadata as Prisma.InputJsonObject,
+        },
+      });
+    } catch (error) {
+      console.warn("analytics_event_audit_failed", {
+        event: body.event,
         target: typeof body.target === "string" ? body.target.slice(0, 160) : "client",
-        metadata: metadata as Prisma.InputJsonObject,
-      },
-    });
+        reason: error instanceof Error ? error.message : "Unknown analytics audit failure",
+      });
+      return ok({ tracked: false, queued: false });
+    }
   } else {
     console.info("analytics_event", { event: body.event, target: body.target, userId, metadata });
   }
