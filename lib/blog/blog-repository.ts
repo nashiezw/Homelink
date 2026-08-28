@@ -1401,7 +1401,7 @@ export async function getPublicBlogIndex(params: { query?: string; category?: st
     const result = await getDatabaseBlogIndex(params);
     if (result.total > 0) return result;
   } catch (error) {
-    console.warn("Falling back to starter blog index", error);
+    logBlogFallback("index", error);
   }
   return getStarterBlogIndex(params);
 }
@@ -1412,7 +1412,7 @@ export async function getPublicBlogCategory(slug: string, params: { page?: numbe
     const category = await prisma.blogCategory.findFirst({ where: { slug, active: true } });
     if (category) return { category, ...(await getDatabaseBlogIndex({ category: slug, page: params.page, limit: params.limit })) };
   } catch (error) {
-    console.warn("Falling back to starter blog category", error);
+    logBlogFallback("category", error);
   }
   const category = starterCategories().find((item) => item.slug === slug);
   return category ? { category, ...getStarterBlogIndex({ category: slug, page: params.page, limit: params.limit }) } : null;
@@ -1423,7 +1423,7 @@ export async function getPublicBlogPost(slug: string, incrementView = false) {
     const post = await getDatabaseBlogPost(slug, incrementView);
     if (post) return post;
   } catch (error) {
-    console.warn("Falling back to starter blog post", error);
+    logBlogFallback("post", error);
   }
   return getStarterBlogPost(slug);
 }
@@ -1436,7 +1436,7 @@ export async function getPublicBlogSeries(slug: string) {
     const posts = await prisma.blogPost.findMany({ where: { slug: { in: [...series.posts] }, status: BlogPostStatus.PUBLISHED, noIndex: false }, include: blogIncludes(), orderBy: publicOrderBy() });
     return { series, posts: withUniqueBlogImages(posts), allSeries: BLOG_SERIES };
   } catch (error) {
-    console.warn("Falling back to starter blog series", error);
+    logBlogFallback("series", error);
   }
   return { series, posts: withUniqueBlogImages(getStarterPostsBySlugs(series.posts)), allSeries: BLOG_SERIES };
 }
@@ -1448,7 +1448,7 @@ export async function getPublicBlogHub(slug: string) {
     const index = await getDatabaseBlogIndex({ category: slugify(hub.category), limit: 8 });
     return { hub, ...index, hubs: BLOG_HUBS };
   } catch (error) {
-    console.warn("Falling back to starter blog hub", error);
+    logBlogFallback("hub", error);
   }
   return { hub, ...getStarterBlogIndex({ category: slugify(hub.category), limit: 8 }), hubs: BLOG_HUBS };
 }
@@ -1467,7 +1467,7 @@ export async function getPublicBlogAuthor(slug: string, params: { page?: number;
       return { author, posts: withUniqueBlogImages(posts), total, page, limit, hasMore: page * limit < total };
     }
   } catch (error) {
-    console.warn("Falling back to starter blog author", error);
+    logBlogFallback("author", error);
   }
   if (slug !== "houselink-editorial-team") return null;
   const fallback = getStarterBlogIndex({ page: params.page, limit: params.limit });
@@ -1492,7 +1492,7 @@ export async function getBlogSearchSuggestions(query: string) {
     ]);
     if (articles.length || categories.length || tags.length || authors.length) return { articles, categories, tags, authors };
   } catch (error) {
-    console.warn("Falling back to starter blog suggestions", error);
+    logBlogFallback("suggestions", error);
   }
   const lower = q.toLowerCase();
   const articles = starterPosts()
@@ -2047,6 +2047,17 @@ export async function runAdminBlogAction(body: Record<string, any>, actor: { id:
 
 function blogIncludes() {
   return { category: true, author: true, tags: true } satisfies Prisma.BlogPostInclude;
+}
+
+function logBlogFallback(area: string, error: unknown) {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  const code = typeof error === "object" && error && "code" in error ? String((error as { code?: unknown }).code ?? "") : "";
+  const databaseUnavailable = code === "P1001" || /can't reach database server/i.test(message);
+  if (databaseUnavailable) {
+    console.warn(`Blog database unavailable; using starter blog ${area} fallback.`);
+    return;
+  }
+  console.warn(`Falling back to starter blog ${area}`, error);
 }
 
 function normalisePostInput(input: Record<string, any>) {
