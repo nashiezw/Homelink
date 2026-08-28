@@ -1,5 +1,5 @@
 import { getMainPrisma, isPostgresStoreEnabled } from "@/lib/db/main-prisma";
-import { ensureCoreProductionSchema, isMissingSchemaError } from "@/lib/db/production-schema";
+import { ensureCoreProductionSchema, isDatabaseUnavailableError, isMissingSchemaError } from "@/lib/db/production-schema";
 import { isInternalAnalyticsPath } from "@/lib/analytics/site-analytics";
 
 export type PresenceHeartbeatInput = {
@@ -42,8 +42,6 @@ function cuidLike() {
 
 export async function upsertSitePresence(input: PresenceHeartbeatInput) {
   if (!isPostgresStoreEnabled()) return { ok: false };
-  await ensureCoreProductionSchema();
-  const prisma = getMainPrisma();
   const visitorId = clip(input.visitorId, 64);
   const sessionId = clip(input.sessionId, 64);
   const path = clip(input.path, 320) || "/";
@@ -62,6 +60,8 @@ export async function upsertSitePresence(input: PresenceHeartbeatInput) {
   const id = cuidLike();
 
   try {
+    await ensureCoreProductionSchema();
+    const prisma = getMainPrisma();
     await prisma.$executeRawUnsafe(
       `
       INSERT INTO "SitePresence" (
@@ -104,17 +104,17 @@ export async function upsertSitePresence(input: PresenceHeartbeatInput) {
     );
     return { ok: true };
   } catch (error) {
-    if (isMissingSchemaError(error)) return { ok: false };
+    if (isMissingSchemaError(error) || isDatabaseUnavailableError(error)) return { ok: false };
     throw error;
   }
 }
 
 export async function listLivePresence(withinMs = 5 * 60 * 1000): Promise<LivePresenceRow[]> {
   if (!isPostgresStoreEnabled()) return [];
-  await ensureCoreProductionSchema();
-  const prisma = getMainPrisma();
   const since = new Date(Date.now() - withinMs);
   try {
+    await ensureCoreProductionSchema();
+    const prisma = getMainPrisma();
     const rows = await prisma.$queryRawUnsafe<
       Array<{
         visitorId: string;
@@ -151,7 +151,7 @@ export async function listLivePresence(withinMs = 5 * 60 * 1000): Promise<LivePr
         lastSeenAt: row.lastSeenAt instanceof Date ? row.lastSeenAt : new Date(row.lastSeenAt),
       }));
   } catch (error) {
-    if (isMissingSchemaError(error)) return [];
+    if (isMissingSchemaError(error) || isDatabaseUnavailableError(error)) return [];
     throw error;
   }
 }

@@ -1,6 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import { getMainPrisma, isPostgresStoreEnabled } from "@/lib/db/main-prisma";
-import { isMissingSchemaError } from "@/lib/db/production-schema";
+import { isDatabaseUnavailableError, isMissingSchemaError } from "@/lib/db/production-schema";
 import {
   defaultLibraryStoreSettings,
   mergeLibraryStoreSettings,
@@ -27,6 +27,7 @@ export async function getLibraryStoreSettings(): Promise<LibraryStoreSettings> {
     return mergeLibraryStoreSettings(row?.payload);
   } catch (error) {
     if (isMissingSchemaError(error)) return defaultLibraryStoreSettings;
+    if (isDatabaseUnavailableError(error)) return defaultLibraryStoreSettings;
     console.error("[library/settings] failed to load", error);
     return defaultLibraryStoreSettings;
   }

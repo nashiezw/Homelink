@@ -1,7 +1,7 @@
 import { Prisma, Role } from "@prisma/client";
 import { listListings } from "@/lib/api/listing-service";
 import { getMainPrisma, isPostgresStoreEnabled } from "@/lib/db/main-prisma";
-import { ensureCoreProductionSchema } from "@/lib/db/production-schema";
+import { ensureCoreProductionSchema, isDatabaseUnavailableError } from "@/lib/db/production-schema";
 import { createDefaultHomepageCms } from "@/lib/homepage/cms-defaults";
 import type { HomepageCmsConfig } from "@/lib/homepage/cms-types";
 import type { HomepageData, HomeFeaturedAgent, HomePropertyType, HomeTrustMetric } from "@/lib/homepage/types";
@@ -294,11 +294,16 @@ function resolvePostgresFeaturedAgents(
 export async function getHomepageData(): Promise<HomepageData> {
   if (isPostgresStoreEnabled()) {
     return getPostgresHomepageData().catch((error: unknown) => {
-      console.error("Postgres homepage unavailable; using local homepage fallback.", error);
+      logHomepageFallback(error);
       return getLocalHomepageData();
     });
   }
   return getLocalHomepageData();
+}
+
+function logHomepageFallback(error: unknown) {
+  if (isDatabaseUnavailableError(error)) return;
+  console.error("Postgres homepage unavailable; using local homepage fallback.", error);
 }
 
 function getLocalHomepageData(): HomepageData {
@@ -549,7 +554,14 @@ function isMissingColumnOrTableError(error: unknown) {
 }
 
 export async function getHomepageSeo() {
-  if (isPostgresStoreEnabled()) return (await getPostgresHomepageCms()).seo;
+  if (isPostgresStoreEnabled()) {
+    try {
+      return (await getPostgresHomepageCms()).seo;
+    } catch (error) {
+      if (!isDatabaseUnavailableError(error)) throw error;
+      return getStore().getHomepageCms().seo;
+    }
+  }
   return getStore().getHomepageCms().seo;
 }
 

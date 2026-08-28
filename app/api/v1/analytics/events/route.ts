@@ -2,6 +2,7 @@ import { getSessionUserIdFromRequest } from "@/lib/auth/session";
 import { ok, problem } from "@/lib/api/response";
 import { isInternalAnalyticsPath } from "@/lib/analytics/site-analytics";
 import { getMainPrisma, isPostgresStoreEnabled } from "@/lib/db/main-prisma";
+import { isDatabaseUnavailableError } from "@/lib/db/production-schema";
 import { isAnalyticsEventName } from "@/lib/analytics/events";
 import type { Prisma } from "@prisma/client";
 
@@ -28,6 +29,9 @@ export async function POST(request: Request) {
         },
       });
     } catch (error) {
+      if (isDatabaseUnavailableError(error)) {
+        return ok({ tracked: false, databaseUnavailable: true });
+      }
       console.warn("analytics_event_audit_failed", {
         event: body.event,
         target: typeof body.target === "string" ? body.target.slice(0, 160) : "client",

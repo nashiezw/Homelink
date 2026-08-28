@@ -9,6 +9,17 @@ export function isMissingSchemaError(error: unknown) {
   return error instanceof Prisma.PrismaClientKnownRequestError && (error.code === "P2021" || error.code === "P2022");
 }
 
+export function isDatabaseUnavailableError(error: unknown) {
+  if (!error || typeof error !== "object") return false;
+  if (error instanceof Prisma.PrismaClientInitializationError) return true;
+  const candidate = error as { code?: unknown; errorCode?: unknown; message?: unknown };
+  return (
+    candidate.code === "P1001" ||
+    candidate.errorCode === "P1001" ||
+    (typeof candidate.message === "string" && /can't reach database server/i.test(candidate.message))
+  );
+}
+
 export async function ensureCoreProductionSchema() {
   if (!isPostgresStoreEnabled()) return;
   ensurePromise ??= applyCoreProductionSchema().catch((error) => {

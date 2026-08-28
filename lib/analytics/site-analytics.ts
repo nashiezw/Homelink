@@ -1,6 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import { getMainPrisma, isPostgresStoreEnabled } from "@/lib/db/main-prisma";
-import { ensureCoreProductionSchema, isMissingSchemaError } from "@/lib/db/production-schema";
+import { ensureCoreProductionSchema, isDatabaseUnavailableError, isMissingSchemaError } from "@/lib/db/production-schema";
 
 export type SitePageViewInput = {
   visitorId: string;
@@ -106,8 +106,6 @@ const publicAnalyticsFunnelWhere: Prisma.SiteFunnelEventWhereInput = {
 
 export async function recordSitePageView(input: SitePageViewInput) {
   if (!isPostgresStoreEnabled()) return { id: input.pageViewId || null };
-  await ensureCoreProductionSchema();
-  const prisma = getMainPrisma();
   const visitorId = clip(input.visitorId, 64);
   const sessionId = clip(input.sessionId, 64);
   const path = clip(input.path, 320) || "/";
@@ -115,6 +113,8 @@ export async function recordSitePageView(input: SitePageViewInput) {
   if (isInternalAnalyticsPath(path)) return { id: null };
 
   try {
+    await ensureCoreProductionSchema();
+    const prisma = getMainPrisma();
     if (input.action === "end" && input.pageViewId) {
       const durationMs =
         typeof input.durationMs === "number" && Number.isFinite(input.durationMs)
@@ -146,21 +146,21 @@ export async function recordSitePageView(input: SitePageViewInput) {
     });
     return { id: row.id };
   } catch (error) {
-    if (isMissingSchemaError(error)) return { id: null };
+    if (isMissingSchemaError(error) || isDatabaseUnavailableError(error)) return { id: null };
     throw error;
   }
 }
 
 export async function recordSiteFunnelEvent(input: SiteFunnelInput) {
   if (!isPostgresStoreEnabled()) return { id: null };
-  await ensureCoreProductionSchema();
-  const prisma = getMainPrisma();
   const visitorId = clip(input.visitorId, 64);
   const name = clip(input.name, 80);
   if (!visitorId || !name) return { id: null };
   if (isInternalAnalyticsPath(input.path) || isInternalAnalyticsPath(input.target)) return { id: null };
 
   try {
+    await ensureCoreProductionSchema();
+    const prisma = getMainPrisma();
     const row = await prisma.siteFunnelEvent.create({
       data: {
         visitorId,
@@ -176,21 +176,21 @@ export async function recordSiteFunnelEvent(input: SiteFunnelInput) {
     });
     return { id: row.id };
   } catch (error) {
-    if (isMissingSchemaError(error)) return { id: null };
+    if (isMissingSchemaError(error) || isDatabaseUnavailableError(error)) return { id: null };
     throw error;
   }
 }
 
 export async function stitchAnalyticsIdentity(input: AnalyticsIdentityInput) {
   if (!isPostgresStoreEnabled()) return { updated: 0 };
-  await ensureCoreProductionSchema();
-  const prisma = getMainPrisma();
   const visitorId = clip(input.visitorId, 64);
   const userId = clip(input.userId, 64);
   const email = clip(input.email, 160);
   if (!visitorId || !userId) return { updated: 0 };
 
   try {
+    await ensureCoreProductionSchema();
+    const prisma = getMainPrisma();
     const [pageViews, funnels, presence] = await Promise.all([
       prisma.sitePageView.updateMany({
         where: { visitorId, userId: null },
@@ -212,7 +212,7 @@ export async function stitchAnalyticsIdentity(input: AnalyticsIdentityInput) {
       email: email || undefined,
     };
   } catch (error) {
-    if (isMissingSchemaError(error)) return { updated: 0 };
+    if (isMissingSchemaError(error) || isDatabaseUnavailableError(error)) return { updated: 0 };
     throw error;
   }
 }
@@ -266,11 +266,11 @@ export async function getSiteAnalyticsReport(days = 30) {
     recentPaths: [] as Array<{ path: string; minutes: number; deviceType: string; referrer: string; at: string }>,
   };
   if (!isPostgresStoreEnabled()) return empty;
-  await ensureCoreProductionSchema();
-  const prisma = getMainPrisma();
   const since = new Date(Date.now() - Math.max(1, Math.min(90, days)) * 24 * 60 * 60 * 1000);
 
   try {
+    await ensureCoreProductionSchema();
+    const prisma = getMainPrisma();
     const [views, funnels, durationAgg, visitors, pendingProofs] = await Promise.all([
       prisma.sitePageView.findMany({
         where: { startedAt: { gte: since }, ...publicAnalyticsPageWhere },
@@ -431,7 +431,7 @@ export async function getSiteAnalyticsReport(days = 30) {
       })),
     };
   } catch (error) {
-    if (isMissingSchemaError(error)) return empty;
+    if (isMissingSchemaError(error) || isDatabaseUnavailableError(error)) return empty;
     throw error;
   }
 }

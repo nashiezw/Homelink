@@ -2053,10 +2053,7 @@ function logBlogFallback(area: string, error: unknown) {
   const message = error instanceof Error ? error.message : String(error ?? "");
   const code = typeof error === "object" && error && "code" in error ? String((error as { code?: unknown }).code ?? "") : "";
   const databaseUnavailable = code === "P1001" || /can't reach database server/i.test(message);
-  if (databaseUnavailable) {
-    console.warn(`Blog database unavailable; using starter blog ${area} fallback.`);
-    return;
-  }
+  if (databaseUnavailable) return;
   console.warn(`Falling back to starter blog ${area}`, error);
 }
 
