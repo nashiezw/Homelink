@@ -465,6 +465,7 @@ async function listHomepageListingsFromPostgres(): Promise<HomepageListing[]> {
     where: { status: { not: "DELETED" } },
     select: HOMEPAGE_LISTING_SELECT,
     orderBy: { createdAt: "desc" },
+    take: 80,
   });
   return rows.filter((row) => isPublicListingStatus(row.status)).map(toHomepageListing);
 }

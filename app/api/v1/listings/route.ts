@@ -18,6 +18,7 @@ import {
 } from "@/lib/listings/postgres-listing-repository";
 import { isPublicListingStatus } from "@/lib/listings/status";
 import { getStore } from "@/lib/store/app-store";
+import { isDatabaseUnavailableError } from "@/lib/db/production-schema";
 
 export async function GET(request: Request) {
   try {
@@ -34,7 +35,11 @@ export async function GET(request: Request) {
 
       for (let pageCount = 0; pageCount < 10 && listings.length < pagination.limit; pageCount += 1) {
         const remaining = pagination.limit - listings.length;
-        const page = await listPublicListingsPageFromPostgres(query, { limit: remaining, cursor }, sort);
+        const page = await listPublicListingsPageFromPostgres(query, { limit: remaining, cursor }, sort).catch((error: unknown) => {
+          if (isDatabaseUnavailableError(error)) return null;
+          throw error;
+        });
+        if (!page) break;
         const matched = page.listings
           .filter((listing) => isPublicListingStatus(listing.status))
           .map(toPublicPostgresListing)
@@ -46,12 +51,23 @@ export async function GET(request: Request) {
         cursor = page.nextCursor;
       }
 
-      return ok(listings, {
-        count: listings.length,
+      if (listings.length) {
+        return ok(listings, {
+          count: listings.length,
+          limit: pagination.limit,
+          sort,
+          nextCursor,
+          hasMore,
+        });
+      }
+      const fallback = paginateListings(sortListings(listListings(query), sort), pagination);
+      return ok(fallback.items, {
+        count: fallback.items.length,
         limit: pagination.limit,
         sort,
-        nextCursor,
-        hasMore,
+        nextCursor: fallback.nextCursor,
+        hasMore: fallback.hasMore,
+        databaseUnavailable: true,
       });
     }
 

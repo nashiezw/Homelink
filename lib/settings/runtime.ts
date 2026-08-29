@@ -2,6 +2,13 @@ import type { PlatformSettings, PublicPlatformConfig } from "@/lib/settings/type
 import { isPostgresStoreEnabled } from "@/lib/db/main-prisma";
 import { getHydratedStore, getStore } from "@/lib/store/app-store";
 
+const PUBLIC_PLATFORM_CONFIG_TTL_MS = 10 * 60 * 1000;
+let publicPlatformConfigCache: { value: PublicPlatformConfig; expiresAt: number } | null = null;
+
+export function invalidatePlatformSettingsCache() {
+  publicPlatformConfigCache = null;
+}
+
 export function getRuntimePlatformSettings(): PlatformSettings {
   if (isPostgresStoreEnabled()) {
     // For synchronous calls, we need to use the store fallback
@@ -63,6 +70,16 @@ export function getPublicPlatformConfig(): PublicPlatformConfig {
 
 export async function getHydratedPublicPlatformConfig(): Promise<PublicPlatformConfig> {
   return toPublicPlatformConfig(await getHydratedRuntimePlatformSettings());
+}
+
+export async function getCachedHydratedPublicPlatformConfig(): Promise<PublicPlatformConfig> {
+  const now = Date.now();
+  if (publicPlatformConfigCache && publicPlatformConfigCache.expiresAt > now) {
+    return publicPlatformConfigCache.value;
+  }
+  const value = await getHydratedPublicPlatformConfig();
+  publicPlatformConfigCache = { value, expiresAt: now + PUBLIC_PLATFORM_CONFIG_TTL_MS };
+  return value;
 }
 
 export function isMaintenanceMode() {

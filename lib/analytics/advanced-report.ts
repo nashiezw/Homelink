@@ -1,5 +1,5 @@
 import { getMainPrisma, isPostgresStoreEnabled } from "@/lib/db/main-prisma";
-import { ensureCoreProductionSchema, isMissingSchemaError } from "@/lib/db/production-schema";
+import { ensureCoreProductionSchema, isDatabaseUnavailableError, isMissingSchemaError } from "@/lib/db/production-schema";
 import { getSiteAnalyticsReport, isInternalAnalyticsPath, siteAnalyticsReportToCsv } from "@/lib/analytics/site-analytics";
 import { listLivePresence } from "@/lib/analytics/presence";
 import { buildTopClassAnalytics } from "@/lib/analytics/topclass";
@@ -95,7 +95,19 @@ const publicFunnelWhere = {
   ],
 };
 
-export async function getAdvancedSiteAnalyticsReport(days = 30) {
+type AdvancedSiteAnalyticsReport = any;
+const ADVANCED_REPORT_CACHE_TTL_MS = 5 * 60 * 1000;
+const advancedReportCache = new Map<string, { value: AdvancedSiteAnalyticsReport; expiresAt: number }>();
+
+export async function getAdvancedSiteAnalyticsReport(days = 30): Promise<AdvancedSiteAnalyticsReport> {
+  return buildAdvancedSiteAnalyticsReport(days);
+}
+
+async function buildAdvancedSiteAnalyticsReport(days = 30): Promise<AdvancedSiteAnalyticsReport> {
+  const normalizedDays = Math.max(1, Math.min(90, Math.round(days || 30)));
+  const cacheKey = `advanced:${normalizedDays}`;
+  const cached = advancedReportCache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) return cached.value;
   const base = await getSiteAnalyticsReport(days);
   const emptyAdvanced = {
     ...base,
@@ -167,7 +179,7 @@ export async function getAdvancedSiteAnalyticsReport(days = 30) {
     },
     alerts: [] as string[],
     topClass: buildTopClassAnalytics({
-      days,
+      days: normalizedDays,
       funnels: [],
       orders: [],
       abandoned: [],
@@ -186,7 +198,7 @@ export async function getAdvancedSiteAnalyticsReport(days = 30) {
   if (!isPostgresStoreEnabled()) return emptyAdvanced;
   await ensureCoreProductionSchema();
   const prisma = getMainPrisma();
-  const since = new Date(Date.now() - Math.max(1, Math.min(90, days)) * 86400000);
+  const since = new Date(Date.now() - normalizedDays * 86400000);
 
   try {
     const dayAgo = new Date(Date.now() - 86400000);
@@ -208,7 +220,7 @@ export async function getAdvancedSiteAnalyticsReport(days = 30) {
             userId: true,
             createdAt: true,
           },
-          take: 30000,
+          take: 5000,
           orderBy: { createdAt: "desc" },
         }),
         listLivePresence(5 * 60 * 1000),
@@ -507,7 +519,7 @@ export async function getAdvancedSiteAnalyticsReport(days = 30) {
       .reduce((sum, order) => sum + Number(order.total || 0), 0);
 
     const topClass = buildTopClassAnalytics({
-      days,
+      days: normalizedDays,
       funnels: publicFunnels,
       orders,
       abandoned,
@@ -523,7 +535,7 @@ export async function getAdvancedSiteAnalyticsReport(days = 30) {
       todayOrders: todayOrders.length,
     });
 
-    return {
+    const report = {
       ...base,
       live: {
         online: liveVisitors.length,
@@ -560,8 +572,10 @@ export async function getAdvancedSiteAnalyticsReport(days = 30) {
       alerts: [...alerts, ...topClass.anomalies.map((row) => `Anomaly ${row.metric}: ${row.current} vs baseline ${row.baseline}`)],
       topClass,
     };
+    advancedReportCache.set(cacheKey, { value: report, expiresAt: Date.now() + ADVANCED_REPORT_CACHE_TTL_MS });
+    return report;
   } catch (error) {
-    if (isMissingSchemaError(error)) return emptyAdvanced;
+    if (isMissingSchemaError(error) || isDatabaseUnavailableError(error)) return emptyAdvanced;
     throw error;
   }
 }

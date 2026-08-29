@@ -2,6 +2,7 @@ import { requireAdmin, requireAdminAsync } from "@/lib/admin/require-admin";
 import { ok, problem } from "@/lib/api/response";
 import { isPostgresStoreEnabled } from "@/lib/db/main-prisma";
 import { softDeleteLibraryProducts, updateLibraryProduct } from "@/lib/library/repository";
+import { revalidatePath } from "next/cache";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +15,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     try {
       const product = await updateLibraryProduct(id, body, auth.user.id);
       if (!product) return problem(404, "PRODUCT_NOT_FOUND", "Product not found.");
+      revalidatePublicLibrary(product.slug);
       return ok({ product });
     } catch (error) {
       if (error instanceof Error && /download file|format before publishing/i.test(error.message)) {
@@ -33,5 +35,12 @@ export async function DELETE(request: Request, context: { params: Promise<{ id: 
   const { id } = await context.params;
   const count = await softDeleteLibraryProducts([id], auth.user.id);
   if (!count) return problem(404, "PRODUCT_NOT_FOUND", "Product not found.");
+  revalidatePublicLibrary();
   return ok({ count });
+}
+
+function revalidatePublicLibrary(slug?: string) {
+  revalidatePath("/library");
+  revalidatePath("/library/[slug]", "page");
+  if (slug) revalidatePath(`/library/${slug}`);
 }

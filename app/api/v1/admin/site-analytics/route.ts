@@ -10,5 +10,7 @@ export async function GET(request: Request) {
 
   const url = new URL(request.url);
   const days = Number(url.searchParams.get("days") || 30);
-  return ok(await getAdvancedSiteAnalyticsReport(Number.isFinite(days) ? days : 30));
+  const response = ok(await getAdvancedSiteAnalyticsReport(Number.isFinite(days) ? days : 30));
+  response.headers.set("Cache-Control", "private, max-age=300, stale-while-revalidate=300");
+  return response;
 }

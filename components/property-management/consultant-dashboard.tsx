@@ -30,7 +30,9 @@ export function ConsultantDashboard() {
 
   useEffect(() => {
     void load();
-    const interval = setInterval(() => void load(), 10000);
+    const interval = setInterval(() => {
+      if (document.visibilityState === "visible") void load();
+    }, 60000);
     return () => clearInterval(interval);
   }, [load]);
 

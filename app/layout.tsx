@@ -130,8 +130,8 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData).replace(/</g, "\\u003c") }}
         />
         <MarketingPixelNoScript />
-        <RuntimeMarketingPixels />
         <PlatformConfigProvider>
+          <RuntimeMarketingPixels />
           <AppProvider>
             <NavigationProgress />
             <ChromeGate>{children}</ChromeGate>

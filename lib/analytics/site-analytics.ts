@@ -111,6 +111,12 @@ export async function recordSitePageView(input: SitePageViewInput) {
   const path = clip(input.path, 320) || "/";
   if (!visitorId || !sessionId) return { id: null };
   if (isInternalAnalyticsPath(path)) return { id: null };
+  const dedupeKey = `${visitorId}:${sessionId}:${path}`;
+  const now = Date.now();
+  if (input.action !== "end") {
+    const cached = pageViewStartDedupe.get(dedupeKey);
+    if (cached && cached.expiresAt > now) return { id: cached.id };
+  }
 
   try {
     await ensureCoreProductionSchema();
@@ -144,9 +150,13 @@ export async function recordSitePageView(input: SitePageViewInput) {
         userId: input.userId ? clip(input.userId, 64) : null,
       },
     });
+    rememberPageView(dedupeKey, row.id);
     return { id: row.id };
   } catch (error) {
-    if (isMissingSchemaError(error) || isDatabaseUnavailableError(error)) return { id: null };
+    if (isMissingSchemaError(error) || isDatabaseUnavailableError(error)) {
+      rememberPageView(dedupeKey, null);
+      return { id: null };
+    }
     throw error;
   }
 }
@@ -157,6 +167,15 @@ export async function recordSiteFunnelEvent(input: SiteFunnelInput) {
   const name = clip(input.name, 80);
   if (!visitorId || !name) return { id: null };
   if (isInternalAnalyticsPath(input.path) || isInternalAnalyticsPath(input.target)) return { id: null };
+  const path = clip(input.path, 320) || "";
+  const target = clip(input.target, 160) || "";
+  const sessionId = clip(input.sessionId, 64) || "";
+  const dedupeKey = `${visitorId}:${sessionId}:${name}:${path}:${target}`;
+  const now = Date.now();
+  const existing = funnelEventDedupe.get(dedupeKey);
+  if (existing && existing > now) return { id: null, duplicate: true };
+  cleanupTimestampMap(funnelEventDedupe, now);
+  funnelEventDedupe.set(dedupeKey, now + 15_000);
 
   try {
     await ensureCoreProductionSchema();
@@ -164,10 +183,10 @@ export async function recordSiteFunnelEvent(input: SiteFunnelInput) {
     const row = await prisma.siteFunnelEvent.create({
       data: {
         visitorId,
-        sessionId: clip(input.sessionId, 64) || null,
+        sessionId: sessionId || null,
         name,
-        path: clip(input.path, 320) || null,
-        target: clip(input.target, 160) || null,
+        path: path || null,
+        target: target || null,
         deviceType: clip(input.deviceType, 32) || null,
         referrer: clip(input.referrer, 400) || null,
         metadata: (input.metadata ?? {}) as Prisma.InputJsonValue,
@@ -240,9 +259,42 @@ function metaSource(metadata: unknown, target?: string | null) {
   return target?.trim() || "(unknown)";
 }
 
-export type SiteAnalyticsReport = Awaited<ReturnType<typeof getSiteAnalyticsReport>>;
+const REPORT_CACHE_TTL_MS = 5 * 60 * 1000;
+const pageViewStartDedupe = new Map<string, { id: string | null; expiresAt: number }>();
+const funnelEventDedupe = new Map<string, number>();
+const reportCache = new Map<string, { value: SiteAnalyticsReport; expiresAt: number }>();
 
-export async function getSiteAnalyticsReport(days = 30) {
+function rememberPageView(key: string, id: string | null) {
+  const now = Date.now();
+  cleanupExpiringMap(pageViewStartDedupe, now);
+  pageViewStartDedupe.set(key, { id, expiresAt: now + 30_000 });
+}
+
+function cleanupExpiringMap<T extends { expiresAt: number }>(map: Map<string, T>, now: number) {
+  if (map.size < 2000) return;
+  for (const [key, row] of map) {
+    if (row.expiresAt <= now) map.delete(key);
+  }
+}
+
+function cleanupTimestampMap(map: Map<string, number>, now: number) {
+  if (map.size < 4000) return;
+  for (const [key, expiresAt] of map) {
+    if (expiresAt <= now) map.delete(key);
+  }
+}
+
+function reportCacheKey(days: number) {
+  return `site:${Math.max(1, Math.min(90, Math.round(days || 30)))}`;
+}
+
+export type SiteAnalyticsReport = any;
+
+export async function getSiteAnalyticsReport(days = 30): Promise<SiteAnalyticsReport> {
+  return buildSiteAnalyticsReport(days);
+}
+
+async function buildSiteAnalyticsReport(days = 30): Promise<SiteAnalyticsReport> {
   const empty = {
     days,
     pageViews: 0,
@@ -266,42 +318,100 @@ export async function getSiteAnalyticsReport(days = 30) {
     recentPaths: [] as Array<{ path: string; minutes: number; deviceType: string; referrer: string; at: string }>,
   };
   if (!isPostgresStoreEnabled()) return empty;
-  const since = new Date(Date.now() - Math.max(1, Math.min(90, days)) * 24 * 60 * 60 * 1000);
+  const normalizedDays = Math.max(1, Math.min(90, Math.round(days || 30)));
+  const cacheKey = reportCacheKey(normalizedDays);
+  const cached = reportCache.get(cacheKey);
+  const nowMs = Date.now();
+  if (cached && cached.expiresAt > nowMs) return cached.value;
+  const since = new Date(nowMs - normalizedDays * 24 * 60 * 60 * 1000);
 
   try {
     await ensureCoreProductionSchema();
     const prisma = getMainPrisma();
-    const [views, funnels, durationAgg, visitors, pendingProofs] = await Promise.all([
+    const [
+      pageViews,
+      topPages,
+      devices,
+      referrers,
+      utmSources,
+      recentViews,
+      funnels,
+      whatsappEvents,
+      purchaseEvents,
+      durationAgg,
+      visitors,
+      utmVisitors,
+      organicVisitors,
+      pendingProofs,
+    ] = await Promise.all([
+      prisma.sitePageView.count({ where: { startedAt: { gte: since }, ...publicAnalyticsPageWhere } }),
+      prisma.sitePageView.groupBy({
+        by: ["path"],
+        where: { startedAt: { gte: since }, ...publicAnalyticsPageWhere },
+        _count: { _all: true },
+        orderBy: { _count: { path: "desc" } },
+        take: 12,
+      }),
+      prisma.sitePageView.groupBy({
+        by: ["deviceType"],
+        where: { startedAt: { gte: since }, ...publicAnalyticsPageWhere },
+        _count: { _all: true },
+        orderBy: { _count: { deviceType: "desc" } },
+        take: 12,
+      }),
+      prisma.sitePageView.groupBy({
+        by: ["referrer"],
+        where: { startedAt: { gte: since }, ...publicAnalyticsPageWhere },
+        _count: { _all: true },
+        orderBy: { _count: { referrer: "desc" } },
+        take: 12,
+      }),
+      prisma.sitePageView.groupBy({
+        by: ["utmSource"],
+        where: { startedAt: { gte: since }, utmSource: { not: null }, ...publicAnalyticsPageWhere },
+        _count: { _all: true },
+        orderBy: { _count: { utmSource: "desc" } },
+        take: 12,
+      }),
       prisma.sitePageView.findMany({
         where: { startedAt: { gte: since }, ...publicAnalyticsPageWhere },
-        select: {
-          path: true,
-          deviceType: true,
-          referrer: true,
-          utmSource: true,
-          durationMs: true,
-          startedAt: true,
-          visitorId: true,
-        },
-        take: 20000,
+        select: { path: true, deviceType: true, referrer: true, durationMs: true, startedAt: true },
+        take: 20,
         orderBy: { startedAt: "desc" },
       }),
+      prisma.siteFunnelEvent.groupBy({
+        by: ["name"],
+        where: { createdAt: { gte: since }, ...publicAnalyticsFunnelWhere },
+        _count: { _all: true },
+      }),
       prisma.siteFunnelEvent.findMany({
-        where: {
-          createdAt: { gte: since },
-          ...publicAnalyticsFunnelWhere,
-        },
-        select: { name: true, path: true, target: true, metadata: true, visitorId: true },
-        take: 20000,
+        where: { createdAt: { gte: since }, name: "whatsapp_click", ...publicAnalyticsFunnelWhere },
+        select: { target: true, metadata: true, visitorId: true },
+        take: 5000,
+      }),
+      prisma.siteFunnelEvent.findMany({
+        where: { createdAt: { gte: since }, name: "library_purchase_completed", ...publicAnalyticsFunnelWhere },
+        select: { visitorId: true },
+        take: 5000,
       }),
       prisma.sitePageView.aggregate({
         where: { startedAt: { gte: since }, durationMs: { not: null }, ...publicAnalyticsPageWhere },
         _avg: { durationMs: true },
       }),
-      prisma.sitePageView.findMany({
+      prisma.sitePageView.groupBy({
+        by: ["visitorId", "userId"],
         where: { startedAt: { gte: since }, ...publicAnalyticsPageWhere },
-        select: { visitorId: true, userId: true },
-        distinct: ["visitorId", "userId"],
+        _count: { _all: true },
+      }),
+      prisma.sitePageView.groupBy({
+        by: ["visitorId"],
+        where: { startedAt: { gte: since }, utmSource: { not: null }, ...publicAnalyticsPageWhere },
+        _count: { _all: true },
+      }),
+      prisma.sitePageView.groupBy({
+        by: ["visitorId"],
+        where: { startedAt: { gte: since }, utmSource: null, ...publicAnalyticsPageWhere },
+        _count: { _all: true },
       }),
       prisma.libraryOrder
         .findMany({
@@ -318,27 +428,6 @@ export async function getSiteAnalyticsReport(days = 30) {
         .catch(() => []),
     ]);
 
-    const publicViews = views.filter((view) => !isInternalAnalyticsPath(view.path));
-    const publicFunnels = funnels.filter((event) => !isInternalAnalyticsPath(event.path) && !isInternalAnalyticsPath(event.target));
-    const pageMap = new Map<string, number>();
-    const deviceMap = new Map<string, number>();
-    const referrerMap = new Map<string, number>();
-    const utmMap = new Map<string, number>();
-    const visitorsWithUtm = new Set<string>();
-    const visitorsOrganic = new Set<string>();
-    for (const view of publicViews) {
-      pageMap.set(view.path, (pageMap.get(view.path) ?? 0) + 1);
-      deviceMap.set(view.deviceType || "unknown", (deviceMap.get(view.deviceType || "unknown") ?? 0) + 1);
-      const ref = view.referrer?.trim() || "(direct)";
-      referrerMap.set(ref, (referrerMap.get(ref) ?? 0) + 1);
-      if (view.utmSource) {
-        utmMap.set(view.utmSource, (utmMap.get(view.utmSource) ?? 0) + 1);
-        visitorsWithUtm.add(view.visitorId);
-      } else {
-        visitorsOrganic.add(view.visitorId);
-      }
-    }
-
     const funnelOrder = [
       "library_product_viewed",
       "library_cart_added",
@@ -347,18 +436,13 @@ export async function getSiteAnalyticsReport(days = 30) {
       "library_purchase_completed",
       "library_download_started",
     ];
-    const funnelMap = new Map<string, number>();
+    const funnelMap = new Map(funnels.map((event) => [event.name, event._count._all]));
     const whatsappSourceMap = new Map<string, number>();
-    const whatsappVisitors = new Set<string>();
-    const purchaseVisitors = new Set<string>();
-    for (const event of publicFunnels) {
-      funnelMap.set(event.name, (funnelMap.get(event.name) ?? 0) + 1);
-      if (event.name === "whatsapp_click") {
-        whatsappVisitors.add(event.visitorId);
-        const source = metaSource(event.metadata, event.target);
-        whatsappSourceMap.set(source, (whatsappSourceMap.get(source) ?? 0) + 1);
-      }
-      if (event.name === "library_purchase_completed") purchaseVisitors.add(event.visitorId);
+    const whatsappVisitors = new Set(whatsappEvents.map((event) => event.visitorId));
+    const purchaseVisitors = new Set(purchaseEvents.map((event) => event.visitorId));
+    for (const event of whatsappEvents) {
+      const source = metaSource(event.metadata, event.target);
+      whatsappSourceMap.set(source, (whatsappSourceMap.get(source) ?? 0) + 1);
     }
 
     const funnel = [
@@ -385,7 +469,8 @@ export async function getSiteAnalyticsReport(days = 30) {
     for (const visitorId of purchaseVisitors) {
       if (whatsappVisitors.has(visitorId)) whatsappAssisted += 1;
     }
-    const organicOnly = [...visitorsOrganic].filter((id) => !visitorsWithUtm.has(id)).length;
+    const visitorsWithUtm = new Set(utmVisitors.map((row) => row.visitorId));
+    const organicOnly = organicVisitors.filter((row) => !visitorsWithUtm.has(row.visitorId)).length;
     const channels = [
       { label: "organic visitors", value: organicOnly },
       { label: "utm visitors", value: visitorsWithUtm.size },
@@ -408,21 +493,21 @@ export async function getSiteAnalyticsReport(days = 30) {
         .slice(0, 8),
     };
 
-    return {
-      days,
-      pageViews: publicViews.length,
+    const report = {
+      days: normalizedDays,
+      pageViews,
       uniqueVisitors: new Set(visitors.map((row) => row.userId || row.visitorId)).size,
       avgDurationSec: Math.round((durationAgg._avg.durationMs ?? 0) / 1000),
-      topPages: topCounts([...pageMap.entries()].map(([key, value]) => ({ key, value }))),
-      devices: topCounts([...deviceMap.entries()].map(([key, value]) => ({ key, value }))),
-      referrers: topCounts([...referrerMap.entries()].map(([key, value]) => ({ key, value }))),
-      utmSources: topCounts([...utmMap.entries()].map(([key, value]) => ({ key, value }))),
+      topPages: topCounts(topPages.map((row) => ({ key: row.path, value: row._count._all }))),
+      devices: topCounts(devices.map((row) => ({ key: row.deviceType || "unknown", value: row._count._all }))),
+      referrers: topCounts(referrers.map((row) => ({ key: row.referrer?.trim() || "(direct)", value: row._count._all }))),
+      utmSources: topCounts(utmSources.map((row) => ({ key: row.utmSource || "(unknown)", value: row._count._all }))),
       funnel,
       funnelDropoff,
       whatsappSources: topCounts([...whatsappSourceMap.entries()].map(([key, value]) => ({ key, value }))),
       channels,
       proofSla,
-      recentPaths: publicViews.slice(0, 20).map((view) => ({
+      recentPaths: recentViews.map((view) => ({
         path: view.path,
         minutes: view.durationMs != null ? Math.round((view.durationMs / 60000) * 10) / 10 : 0,
         deviceType: view.deviceType,
@@ -430,6 +515,8 @@ export async function getSiteAnalyticsReport(days = 30) {
         at: view.startedAt.toISOString(),
       })),
     };
+    reportCache.set(cacheKey, { value: report, expiresAt: Date.now() + REPORT_CACHE_TTL_MS });
+    return report;
   } catch (error) {
     if (isMissingSchemaError(error) || isDatabaseUnavailableError(error)) return empty;
     throw error;

@@ -17,7 +17,7 @@ export const metadata: Metadata = {
   },
 };
 
-export const dynamic = "force-dynamic";
+export const revalidate = 900;
 
 const editorialHeroImage = "/images/property-management-dusk.webp";
 

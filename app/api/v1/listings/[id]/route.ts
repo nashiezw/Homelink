@@ -12,6 +12,7 @@ import {
 import { LISTING_WORKFLOW_STATUSES, isAllowedAvailabilityStatus } from "@/lib/listings/status";
 import type { ListingWorkflowStatus } from "@/lib/listings/status";
 import { getStore } from "@/lib/store/app-store";
+import { isDatabaseUnavailableError } from "@/lib/db/production-schema";
 
 type RouteContext = {
   params: Promise<{
@@ -21,11 +22,16 @@ type RouteContext = {
 
 export async function GET(_request: Request, { params }: RouteContext) {
   const { id } = await params;
-  const listingRecord = shouldUsePostgresListings() ? await getListingByIdOrSlugFromPostgres(id) : null;
+  const listingRecord = shouldUsePostgresListings()
+    ? await getListingByIdOrSlugFromPostgres(id).catch((error: unknown) => {
+        if (isDatabaseUnavailableError(error)) return null;
+        throw error;
+      })
+    : null;
   const listing = shouldUsePostgresListings()
     ? listingRecord
       ? toPublicPostgresListing(listingRecord)
-      : null
+      : getListing(id, { incrementViews: true }) ?? null
     : getListing(id, { incrementViews: true });
 
   if (!listing) {

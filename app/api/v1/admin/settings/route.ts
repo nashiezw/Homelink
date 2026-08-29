@@ -19,6 +19,7 @@ import { getHydratedStore } from "@/lib/store/app-store";
 import { redactPaymentSettingsForAdmin, redactPlatformSettingsForAdmin, mergePlatformSecrets } from "@/lib/settings/redact";
 import { mergePlatformSettings } from "@/lib/settings/merge";
 import { savePersistedSettings } from "@/lib/settings/persist";
+import { invalidatePlatformSettingsCache } from "@/lib/settings/runtime";
 import type { AdminRbacSettings, PaymentSettings, PlatformSettings } from "@/lib/settings/types";
 export const dynamic = "force-dynamic";
 
@@ -123,9 +124,11 @@ export async function PATCH(request: Request) {
     }
     if (section === "payments") {
       const settings = await savePostgresPaymentSettings((body.settings ?? {}) as Partial<PaymentSettings>);
+      invalidatePlatformSettingsCache();
       return ok({ settings: redactPaymentSettingsForAdmin(settings), health: (await getPostgresPaymentSettingsResponse()).health });
     }
     const settings = await savePostgresPlatformSettings((body.settings ?? {}) as Partial<PlatformSettings>);
+    invalidatePlatformSettingsCache();
     return ok({ settings: redactPlatformSettingsForAdmin(settings) });
   }
 
@@ -195,6 +198,7 @@ export async function PATCH(request: Request) {
     try {
       await savePersistedSettings(store.getPlatformSettings(), settings);
       await flushStoreAfterSettingsSave(store);
+      invalidatePlatformSettingsCache();
     } catch {
       return problem(500, "PERSISTENCE_FAILED", "Settings could not be saved to the production database.");
     }
@@ -208,6 +212,7 @@ export async function PATCH(request: Request) {
   try {
     await savePersistedSettings(settings, store.getPaymentSettings());
     await flushStoreAfterSettingsSave(store);
+    invalidatePlatformSettingsCache();
   } catch {
     return problem(500, "PERSISTENCE_FAILED", "Settings could not be saved to the production database.");
   }

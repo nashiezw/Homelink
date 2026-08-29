@@ -4,7 +4,7 @@ import { listLibraryProducts } from "@/lib/library/repository";
 import { buildLibraryStoreJsonLd, buildLibraryStoreMetadata, safeJsonLd } from "@/lib/library/seo";
 import { getLibraryStoreSettings } from "@/lib/library/settings";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 900;
 
 export async function generateMetadata(): Promise<Metadata> {
   const settings = await getLibraryStoreSettings();

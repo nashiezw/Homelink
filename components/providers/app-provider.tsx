@@ -42,7 +42,7 @@ type AuthResult =
 
 const AppContext = createContext<AppContextValue | null>(null);
 const COMPARE_KEY = "houselink_compare";
-const SESSION_HEARTBEAT_MS = 60_000;
+const SESSION_HEARTBEAT_MS = 5 * 60_000;
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<PublicUser | null>(null);
@@ -116,7 +116,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!userId) return;
     let cancelled = false;
+    let lastTouchedAt = 0;
     const touchSession = async () => {
+      const now = Date.now();
+      if (now - lastTouchedAt < SESSION_HEARTBEAT_MS) return;
+      lastTouchedAt = now;
       const result = await apiFetch<PublicUser>("/api/v1/auth/session", { cache: "no-store" });
       if (cancelled) return;
       if (result.data) {

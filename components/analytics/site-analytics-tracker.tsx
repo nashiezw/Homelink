@@ -25,7 +25,9 @@ function ignoreAnalyticsFailure(error: unknown) {
 export function SiteAnalyticsTracker() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const queryString = searchParams?.toString() ?? "";
   const active = useRef<{ id: string; startedAt: number; path: string } | null>(null);
+  const lastPresenceAt = useRef(0);
 
   useEffect(() => {
     if (!pathname || pathname.startsWith("/dashboard/admin")) return;
@@ -35,7 +37,7 @@ export function SiteAnalyticsTracker() {
     const sessionId = getOrCreateSessionId();
     const deviceType = detectDeviceType();
     const utm = readUtmParams();
-    const path = `${pathname}${searchParams?.toString() ? `?${searchParams.toString()}` : ""}`;
+    const path = `${pathname}${queryString ? `?${queryString}` : ""}`;
     const startedAt = Date.now();
     let cancelled = false;
 
@@ -86,6 +88,9 @@ export function SiteAnalyticsTracker() {
 
     function heartbeat() {
       if (document.visibilityState === "hidden") return;
+      const now = Date.now();
+      if (now - lastPresenceAt.current < 60_000) return;
+      lastPresenceAt.current = now;
       const cart = libraryCartSnapshot();
       const productMatch = (pathname || "").match(/^\/library\/([^/?#]+)/);
       const productSlug = productMatch?.[1] && !["checkout", "claim"].includes(productMatch[1]) ? productMatch[1] : undefined;
@@ -114,23 +119,30 @@ export function SiteAnalyticsTracker() {
 
     void start();
     heartbeat();
-    const beat = window.setInterval(heartbeat, 30000);
+    const beat = window.setInterval(heartbeat, 120000);
     const onHide = () => {
       if (document.visibilityState === "hidden") end();
-      else heartbeat();
+      else {
+        lastPresenceAt.current = 0;
+        heartbeat();
+      }
     };
     window.addEventListener("pagehide", end);
     document.addEventListener("visibilitychange", onHide);
-    window.addEventListener("houselink:library-cart", heartbeat);
+    const onCartChanged = () => {
+      lastPresenceAt.current = 0;
+      heartbeat();
+    };
+    window.addEventListener("houselink:library-cart", onCartChanged);
     return () => {
       cancelled = true;
       end();
       window.clearInterval(beat);
       window.removeEventListener("pagehide", end);
       document.removeEventListener("visibilitychange", onHide);
-      window.removeEventListener("houselink:library-cart", heartbeat);
+      window.removeEventListener("houselink:library-cart", onCartChanged);
     };
-  }, [pathname, searchParams]);
+  }, [pathname, queryString]);
 
   return null;
 }

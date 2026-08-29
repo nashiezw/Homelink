@@ -21,7 +21,6 @@ export function OwnerPortal() {
   const { user, showToast } = useApp();
   const [requests, setRequests] = useState<PropertyManagementRequest[]>([]);
   const [selected, setSelected] = useState<PropertyManagementRequest | null>(null);
-  const [poll, setPoll] = useState(0);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -38,9 +37,11 @@ export function OwnerPortal() {
 
   useEffect(() => {
     void load();
-    const interval = setInterval(() => setPoll((p) => p + 1), 10000);
+    const interval = setInterval(() => {
+      if (document.visibilityState === "visible") void load();
+    }, 60000);
     return () => clearInterval(interval);
-  }, [load, poll]);
+  }, [load]);
 
   async function uploadDoc(file: File) {
     if (!selected) return;

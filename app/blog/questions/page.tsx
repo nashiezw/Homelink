@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   alternates: { canonical: "/blog/questions" },
 };
 
-export const dynamic = "force-dynamic";
+export const revalidate = 900;
 
 export default async function BlogQuestionsPage() {
   const data = await getPublicReaderQuestionDigest();

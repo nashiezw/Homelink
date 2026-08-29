@@ -18,7 +18,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-export const dynamic = "force-dynamic";
+export const revalidate = 900;
+export const dynamic = "force-static";
 
 export default async function BlogSeriesPage({ params }: Props) {
   const { slug } = await params;

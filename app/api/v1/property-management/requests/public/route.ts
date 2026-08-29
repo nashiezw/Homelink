@@ -2,6 +2,7 @@ import { getSessionUserIdFromRequest } from "@/lib/auth/session";
 import { created, problem } from "@/lib/api/response";
 import { createPMRequestInPostgres, shouldUsePostgresPM } from "@/lib/property-management/postgres-pm-repository";
 import { getStore } from "@/lib/store/app-store";
+import { isDatabaseUnavailableError } from "@/lib/db/production-schema";
 
 export const dynamic = "force-dynamic";
 
@@ -74,7 +75,12 @@ export async function POST(request: Request) {
     description: `Services requested: ${mappedServices.join(", ")}. Submitted via homepage hero.`,
     bedrooms: body.bedrooms ? Number(body.bedrooms) : undefined,
   };
-  const result = shouldUsePostgresPM() ? await createPMRequestInPostgres(input) : getStore().submitPMRequest(input, clientIp(request));
+  const result = shouldUsePostgresPM()
+    ? await createPMRequestInPostgres(input).catch((error: unknown) => {
+        if (isDatabaseUnavailableError(error)) return getStore().submitPMRequest(input, clientIp(request));
+        throw error;
+      })
+    : getStore().submitPMRequest(input, clientIp(request));
 
   return created({
     request: result.request,

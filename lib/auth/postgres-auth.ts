@@ -1,6 +1,6 @@
 import { Prisma, Role, VerificationStatus } from "@prisma/client";
 import { getMainPrisma, isPostgresStoreEnabled } from "@/lib/db/main-prisma";
-import { ensureCoreProductionSchema, isMissingSchemaError } from "@/lib/db/production-schema";
+import { ensureCoreProductionSchema, isDatabaseUnavailableError, isMissingSchemaError } from "@/lib/db/production-schema";
 
 export function shouldUsePostgresAuth() {
   return isPostgresStoreEnabled();
@@ -125,13 +125,14 @@ export async function revokePostgresSession(sessionId: string, userId?: string) 
 
 export async function touchPostgresSession(sessionId: string) {
   await ensureCoreProductionSchema();
+  const staleBefore = new Date(Date.now() - 5 * 60_000);
   await getMainPrisma().appSession
-    .update({
-      where: { id: sessionId },
+    .updateMany({
+      where: { id: sessionId, lastSeenAt: { lt: staleBefore } },
       data: { lastSeenAt: new Date() },
     })
     .catch((error: unknown) => {
-      if (!isMissingSchemaError(error) && !isRecordNotFoundError(error)) throw error;
+      if (!isMissingSchemaError(error) && !isDatabaseUnavailableError(error) && !isRecordNotFoundError(error)) throw error;
     });
 }
 
@@ -152,7 +153,7 @@ export async function recordPostgresAuditEvent(input: {
       },
     })
     .catch((error: unknown) => {
-      if (!isMissingSchemaError(error)) throw error;
+      if (!isMissingSchemaError(error) && !isDatabaseUnavailableError(error)) throw error;
     });
 }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Download, ExternalLink, RefreshCw } from "lucide-react";
 import { apiFetch } from "@/lib/api/client";
 
@@ -236,12 +236,16 @@ export function SiteAnalyticsPanel() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [selectedJourney, setSelectedJourney] = useState<string | null>(null);
+  const loadingRef = useRef(false);
 
   const tc = report?.topClass;
 
   async function load() {
+    if (loadingRef.current) return;
+    loadingRef.current = true;
     setLoading(true);
     const result = await apiFetch<AdvancedReport>(`/api/v1/admin/site-analytics?days=${days}`);
+    loadingRef.current = false;
     setLoading(false);
     if (result.error || !result.data) {
       setError(result.error?.message || "Could not load advanced analytics.");
@@ -254,8 +258,8 @@ export function SiteAnalyticsPanel() {
   useEffect(() => {
     void load();
     const timer = window.setInterval(() => {
-      if (tab === "live" || tab === "board") void load();
-    }, 20000);
+      if (document.visibilityState === "visible" && (tab === "live" || tab === "board")) void load();
+    }, 300000);
     return () => window.clearInterval(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [days, tab]);

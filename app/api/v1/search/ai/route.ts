@@ -8,6 +8,7 @@ import {
   toPublicPostgresListing,
 } from "@/lib/listings/postgres-listing-repository";
 import { isPublicListingStatus } from "@/lib/listings/status";
+import { isDatabaseUnavailableError } from "@/lib/db/production-schema";
 
 export async function POST(request: Request) {
   if (!isAiSearchEnabled()) {
@@ -22,7 +23,10 @@ export async function POST(request: Request) {
 
   const parsed = parseNaturalLanguageSearch(query);
   const matches = shouldUsePostgresListings()
-    ? (await listListingsFromPostgres())
+    ? (await listListingsFromPostgres().catch((error: unknown) => {
+        if (isDatabaseUnavailableError(error)) return null;
+        throw error;
+      }) ?? [])
         .filter((listing) => isPublicListingStatus(listing.status))
         .map(toPublicPostgresListing)
         .filter((listing) => matchesListing(listing, parsed))

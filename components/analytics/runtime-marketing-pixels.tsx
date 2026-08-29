@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect } from "react";
+import { usePlatformConfig } from "@/components/providers/platform-config-provider";
 import { normaliseGoogleTagId } from "@/lib/integrations/google-tag";
-import type { PublicPlatformConfig } from "@/lib/settings/types";
 
 declare global {
   interface Window {
@@ -86,36 +86,16 @@ function installMetaPixel(pixelId: string) {
 }
 
 export function RuntimeMarketingPixels() {
+  const { config } = usePlatformConfig();
+
   useEffect(() => {
-    let cancelled = false;
+    const integrations = config?.integrations;
+    const googleTagId = normaliseGoogleTagId(integrations?.analyticsId);
+    const metaPixelId = normaliseMetaPixelId(integrations?.metaPixelId);
 
-    async function loadRuntimeTags() {
-      try {
-        const response = await fetch("/api/v1/platform/config", {
-          cache: "no-store",
-          headers: { Accept: "application/json" },
-        });
-        if (!response.ok) return;
-        const payload = (await response.json()) as { data?: PublicPlatformConfig };
-        if (cancelled) return;
-
-        const integrations = payload.data?.integrations;
-        const googleTagId = normaliseGoogleTagId(integrations?.analyticsId);
-        const metaPixelId = normaliseMetaPixelId(integrations?.metaPixelId);
-
-        if (googleTagId) installGoogleTag(googleTagId);
-        if (metaPixelId) installMetaPixel(metaPixelId);
-      } catch {
-        // Marketing tags must never break the public website.
-      }
-    }
-
-    void loadRuntimeTags();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    if (googleTagId) installGoogleTag(googleTagId);
+    if (metaPixelId) installMetaPixel(metaPixelId);
+  }, [config]);
 
   return null;
 }

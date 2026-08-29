@@ -1,5 +1,6 @@
 import { ok } from "@/lib/api/response";
 import { getPublicAgentFromPostgres, shouldUsePostgresAgents } from "@/lib/agents/postgres-agent-repository";
+import { isDatabaseUnavailableError } from "@/lib/db/production-schema";
 import { getStore } from "@/lib/store/app-store";
 
 type RouteContext = { params: Promise<{ slug: string }> };
@@ -7,7 +8,11 @@ type RouteContext = { params: Promise<{ slug: string }> };
 export async function GET(_request: Request, context: RouteContext) {
   const { slug } = await context.params;
   if (shouldUsePostgresAgents()) {
-    return ok(await getPublicAgentFromPostgres(slug));
+    const agent = await getPublicAgentFromPostgres(slug).catch((error: unknown) => {
+      if (isDatabaseUnavailableError(error)) return null;
+      throw error;
+    });
+    if (agent) return ok(agent);
   }
   const store = getStore();
   const profile = store.getAgentProfileBySlug(slug);

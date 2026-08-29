@@ -1,6 +1,6 @@
 import { BlogArticleLayout, BlogPostStatus, ListingStatus, Prisma } from "@prisma/client";
 import { getMainPrisma } from "@/lib/db/main-prisma";
-import { ensureBlogProductionSchema } from "@/lib/db/production-schema";
+import { ensureBlogProductionSchema, isDatabaseUnavailableError } from "@/lib/db/production-schema";
 
 export type BlogBlock =
   | { type: "heading"; level: 2 | 3; text: string }
@@ -1617,7 +1617,7 @@ export async function getPublicReaderQuestionDigest() {
     });
     return { questions, hubs: BLOG_HUBS, series: BLOG_SERIES };
   } catch (error) {
-    if (!isMissingBlogEngagementTableError(error)) console.warn("Reader question digest unavailable", error);
+    if (!isMissingBlogEngagementTableError(error) && !isDatabaseUnavailableError(error)) console.warn("Reader question digest unavailable", error);
     return { questions: [], hubs: BLOG_HUBS, series: BLOG_SERIES };
   }
 }

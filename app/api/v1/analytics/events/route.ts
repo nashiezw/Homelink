@@ -6,6 +6,8 @@ import { isDatabaseUnavailableError } from "@/lib/db/production-schema";
 import { isAnalyticsEventName } from "@/lib/analytics/events";
 import type { Prisma } from "@prisma/client";
 
+const eventDedupe = new Map<string, number>();
+
 export async function POST(request: Request) {
   const body = await request.json().catch(() => ({}));
   if (!isAnalyticsEventName(body.event)) {
@@ -17,6 +19,20 @@ export async function POST(request: Request) {
     return ok({ tracked: false, ignored: true });
   }
   const userId = getSessionUserIdFromRequest(request);
+  const actor = userId || request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "anonymous";
+  const target = typeof body.target === "string" ? body.target.slice(0, 160) : "client";
+  const dedupeKey = `${actor}:${body.event}:${target}:${String(metadata.path || "")}`;
+  const now = Date.now();
+  const duplicateExpiresAt = eventDedupe.get(dedupeKey);
+  if (duplicateExpiresAt && duplicateExpiresAt > now) {
+    return ok({ tracked: false, duplicate: true });
+  }
+  if (eventDedupe.size > 4000) {
+    for (const [key, expiresAt] of eventDedupe) {
+      if (expiresAt <= now) eventDedupe.delete(key);
+    }
+  }
+  eventDedupe.set(dedupeKey, now + 15_000);
 
   if (isPostgresStoreEnabled()) {
     try {
@@ -24,7 +40,7 @@ export async function POST(request: Request) {
         data: {
           actorId: userId,
           action: `ANALYTICS_${body.event.toUpperCase()}`,
-          target: typeof body.target === "string" ? body.target.slice(0, 160) : "client",
+          target,
           metadata: metadata as Prisma.InputJsonObject,
         },
       });
@@ -34,7 +50,7 @@ export async function POST(request: Request) {
       }
       console.warn("analytics_event_audit_failed", {
         event: body.event,
-        target: typeof body.target === "string" ? body.target.slice(0, 160) : "client",
+        target,
         reason: error instanceof Error ? error.message : "Unknown analytics audit failure",
       });
       return ok({ tracked: false, queued: false });

@@ -21,6 +21,7 @@ import { getLibraryStoreSettings, listLibrarySettingsAudit, productTemplateForTy
 import { quoteLibraryShipping } from "@/lib/library/shipping";
 import { sendLibraryTemplatedEmail } from "@/lib/library/emails";
 import { getCanonicalSiteUrl } from "@/lib/seo/site-url";
+import { isDatabaseUnavailableError } from "@/lib/db/production-schema";
 
 export { getLibraryStoreSettings, listLibrarySettingsAudit, productTemplateForType, saveLibraryStoreSettings, type LibraryStoreSettings };
 
@@ -289,58 +290,63 @@ export async function listLibraryProducts(input: {
   if (!shouldUsePostgresLibrary()) {
     return filterAndSortLocalProducts(input);
   }
-  await seedLibraryIfEmpty();
-  if (!input.includeDrafts) {
-    await publishDueScheduledLibraryProducts();
+  try {
+    await seedLibraryIfEmpty();
+    if (!input.includeDrafts) {
+      await publishDueScheduledLibraryProducts();
+    }
+    const q = input.q?.trim();
+    const now = new Date();
+    const products = await getMainPrisma().libraryProduct.findMany({
+      where: {
+        deletedAt: null,
+        ...(input.includeDrafts
+          ? {}
+          : {
+              OR: [
+                { status: LibraryProductStatus.PUBLISHED },
+                { status: LibraryProductStatus.SCHEDULED, scheduledAt: null },
+                { status: LibraryProductStatus.SCHEDULED, scheduledAt: { lte: now } },
+              ],
+            }),
+        ...(input.status ? { status: normalizeStatus(input.status) } : {}),
+        ...(input.category ? { category: { name: input.category } } : {}),
+        ...(input.author ? { author: { name: input.author } } : {}),
+        ...(input.type ? { productType: normalizeType(input.type) } : {}),
+        ...(input.difficulty ? { difficulty: input.difficulty } : {}),
+        ...(q
+          ? {
+              OR: [
+                { title: { contains: q, mode: "insensitive" } },
+                { subtitle: { contains: q, mode: "insensitive" } },
+                { sku: { contains: q, mode: "insensitive" } },
+                { isbn: { contains: q, mode: "insensitive" } },
+                { searchVector: { contains: q, mode: "insensitive" } },
+                { author: { name: { contains: q, mode: "insensitive" } } },
+                { category: { name: { contains: q, mode: "insensitive" } } },
+              ],
+            }
+          : {}),
+      },
+      include: productInclude(),
+      orderBy: [{ featured: "desc" }, { publishedAt: "desc" }, { createdAt: "desc" }],
+      take: input.limit ?? 100,
+    });
+    const mapped = products.map(toLibraryProduct);
+    if (input.includeDrafts) return mapped;
+    const settings = await getLibraryStoreSettings();
+    if (!settings.inventory.hideOutOfStock) return mapped;
+    return mapped.filter((product) => {
+      const printedOnly = product.formats?.length
+        ? product.formats.every((format) => !format.enabled || format.type === "PRINTED_BOOK")
+        : product.productType === "PRINTED_BOOK";
+      if (!printedOnly) return true;
+      return product.stock == null || product.stock > 0;
+    });
+  } catch (error) {
+    if (isDatabaseUnavailableError(error)) return filterAndSortLocalProducts(input);
+    throw error;
   }
-  const q = input.q?.trim();
-  const now = new Date();
-  const products = await getMainPrisma().libraryProduct.findMany({
-    where: {
-      deletedAt: null,
-      ...(input.includeDrafts
-        ? {}
-        : {
-            OR: [
-              { status: LibraryProductStatus.PUBLISHED },
-              { status: LibraryProductStatus.SCHEDULED, scheduledAt: null },
-              { status: LibraryProductStatus.SCHEDULED, scheduledAt: { lte: now } },
-            ],
-          }),
-      ...(input.status ? { status: normalizeStatus(input.status) } : {}),
-      ...(input.category ? { category: { name: input.category } } : {}),
-      ...(input.author ? { author: { name: input.author } } : {}),
-      ...(input.type ? { productType: normalizeType(input.type) } : {}),
-      ...(input.difficulty ? { difficulty: input.difficulty } : {}),
-      ...(q
-        ? {
-            OR: [
-              { title: { contains: q, mode: "insensitive" } },
-              { subtitle: { contains: q, mode: "insensitive" } },
-              { sku: { contains: q, mode: "insensitive" } },
-              { isbn: { contains: q, mode: "insensitive" } },
-              { searchVector: { contains: q, mode: "insensitive" } },
-              { author: { name: { contains: q, mode: "insensitive" } } },
-              { category: { name: { contains: q, mode: "insensitive" } } },
-            ],
-          }
-        : {}),
-    },
-    include: productInclude(),
-    orderBy: [{ featured: "desc" }, { publishedAt: "desc" }, { createdAt: "desc" }],
-    take: input.limit ?? 100,
-  });
-  const mapped = products.map(toLibraryProduct);
-  if (input.includeDrafts) return mapped;
-  const settings = await getLibraryStoreSettings();
-  if (!settings.inventory.hideOutOfStock) return mapped;
-  return mapped.filter((product) => {
-    const printedOnly = product.formats?.length
-      ? product.formats.every((format) => !format.enabled || format.type === "PRINTED_BOOK")
-      : product.productType === "PRINTED_BOOK";
-    if (!printedOnly) return true;
-    return product.stock == null || product.stock > 0;
-  });
 }
 
 export async function publishDueScheduledLibraryProducts() {
@@ -363,20 +369,27 @@ export async function getLibraryProductBySlug(slug: string) {
   if (!shouldUsePostgresLibrary()) {
     return localLibraryProducts.find((product) => product.slug === slug && (product.status === "PUBLISHED" || product.status === "SCHEDULED")) ?? null;
   }
-  await seedLibraryIfEmpty();
-  await publishDueScheduledLibraryProducts();
-  const product = await getMainPrisma().libraryProduct.findUnique({
-    where: { slug },
-    include: productInclude(),
-  });
-  if (!product || product.deletedAt) return null;
-  const now = Date.now();
-  const scheduledFuture = product.status === LibraryProductStatus.SCHEDULED && product.scheduledAt && product.scheduledAt.getTime() > now;
-  if (product.status !== LibraryProductStatus.PUBLISHED && product.status !== LibraryProductStatus.SCHEDULED) {
-    return null;
+  try {
+    await seedLibraryIfEmpty();
+    await publishDueScheduledLibraryProducts();
+    const product = await getMainPrisma().libraryProduct.findUnique({
+      where: { slug },
+      include: productInclude(),
+    });
+    if (!product || product.deletedAt) return null;
+    const now = Date.now();
+    const scheduledFuture = product.status === LibraryProductStatus.SCHEDULED && product.scheduledAt && product.scheduledAt.getTime() > now;
+    if (product.status !== LibraryProductStatus.PUBLISHED && product.status !== LibraryProductStatus.SCHEDULED) {
+      return null;
+    }
+    if (scheduledFuture) return null;
+    return toLibraryProduct(product as DbProduct);
+  } catch (error) {
+    if (isDatabaseUnavailableError(error)) {
+      return localLibraryProducts.find((product) => product.slug === slug && (product.status === "PUBLISHED" || product.status === "SCHEDULED")) ?? null;
+    }
+    throw error;
   }
-  if (scheduledFuture) return null;
-  return toLibraryProduct(product as DbProduct);
 }
 
 export async function getLibraryProductSampleFile(slug: string) {
@@ -2942,10 +2955,10 @@ export async function sendLibraryWeeklyDigest() {
       .catch(() => 0),
   ]);
 
-  const whatsappClicks = site?.funnel.find((row) => /whatsapp/i.test(row.label))?.value ?? 0;
+  const whatsappClicks = site?.funnel.find((row: { label: string; value: number }) => /whatsapp/i.test(row.label))?.value ?? 0;
   const topPages = (site?.topPages ?? [])
     .slice(0, 5)
-    .map((row) => `- ${row.label}: ${row.value}`)
+    .map((row: { label: string; value: number }) => `- ${row.label}: ${row.value}`)
     .join("\n") || "- (no page data yet)";
 
   const result = await sendLibraryTemplatedEmail({

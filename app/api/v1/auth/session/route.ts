@@ -26,6 +26,7 @@ import {
   toPublicPostgresUser,
 } from "@/lib/auth/postgres-auth";
 import { getMainPrisma } from "@/lib/db/main-prisma";
+import { isDatabaseUnavailableError } from "@/lib/db/production-schema";
 import { getStore } from "@/lib/store/app-store";
 import { randomBytes } from "crypto";
 import { sendEmailVerificationEmail } from "@/lib/academy/academy-email";
@@ -511,15 +512,26 @@ export async function GET(request: Request) {
     return problem(401, "UNAUTHORIZED", "Sign in to continue.");
   }
   if (shouldUsePostgresAuth()) {
-    const session = getSignedSessionFromRequest(request);
-    if (session) {
-      await touchPostgresSession(session.sessionId);
+    try {
+      const session = getSignedSessionFromRequest(request);
+      if (session) {
+        await touchPostgresSession(session.sessionId);
+      }
+      const user = await getPostgresPublicUserById(userId);
+      if (!user) {
+        return problem(401, "UNAUTHORIZED", "Session is no longer valid.");
+      }
+      const response = ok(toPublicPostgresUser(user));
+      response.headers.set("Cache-Control", "private, max-age=60");
+      return response;
+    } catch (error) {
+      if (isDatabaseUnavailableError(error)) {
+        const response = ok(null);
+        response.headers.set("Cache-Control", "private, max-age=30");
+        return response;
+      }
+      throw error;
     }
-    const user = await getPostgresPublicUserById(userId);
-    if (!user) {
-      return problem(401, "UNAUTHORIZED", "Session is no longer valid.");
-    }
-    return ok(toPublicPostgresUser(user));
   }
   const user = getStore().getUserById(userId);
   if (!user) {

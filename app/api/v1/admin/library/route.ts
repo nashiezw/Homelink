@@ -36,6 +36,7 @@ import {
   type LibraryProductInput,
   type LibraryTaxonomyKind,
 } from "@/lib/library/repository";
+import { revalidatePath } from "next/cache";
 
 export const dynamic = "force-dynamic";
 
@@ -76,14 +77,19 @@ export async function POST(request: Request) {
   }
   try {
     if (body.action === "bulk_archive") {
-      return ok({ count: await archiveLibraryProducts(arrayOfStrings(body.ids), auth.user.id) });
+      const count = await archiveLibraryProducts(arrayOfStrings(body.ids), auth.user.id);
+      revalidatePublicLibrary();
+      return ok({ count });
     }
     if (body.action === "bulk_delete") {
-      return ok({ count: await softDeleteLibraryProducts(arrayOfStrings(body.ids), auth.user.id) });
+      const count = await softDeleteLibraryProducts(arrayOfStrings(body.ids), auth.user.id);
+      revalidatePublicLibrary();
+      return ok({ count });
     }
     if (body.action === "duplicate" && body.id) {
       const product = await duplicateLibraryProduct(String(body.id), auth.user.id);
       if (!product) return problem(404, "PRODUCT_NOT_FOUND", "Product not found.");
+      revalidatePublicLibrary(product.slug);
       return created({ product });
     }
     if (body.action === "update_fulfilment" && body.id) {
@@ -216,6 +222,7 @@ export async function POST(request: Request) {
     if (body.action === "save_store_settings") {
       try {
         const storeSettings = await saveLibraryStoreSettings(body.settings ?? body, auth.user.id);
+        revalidatePublicLibrary();
         return ok({ storeSettings });
       } catch (error) {
         const message = error instanceof Error ? error.message : "Library store settings could not be saved.";
@@ -256,32 +263,33 @@ export async function POST(request: Request) {
       const kind = taxonomyKind(body.kind);
       if (!kind) return problem(400, "INVALID_TAXONOMY", "A valid taxonomy kind is required.");
       if (!String(body.name ?? "").trim()) return problem(400, "INVALID_TAXONOMY", "Name is required.");
-      return ok({
-        taxonomy: await upsertLibraryTaxonomy(
-          kind,
-          {
-            id: optionalString(body.id),
-            name: String(body.name),
-            slug: optionalString(body.slug),
-            description: optionalString(body.description),
-            seoTitle: optionalString(body.seoTitle),
-            metaDescription: optionalString(body.metaDescription),
-            heroImageUrl: optionalString(body.heroImageUrl),
-            bio: optionalString(body.bio),
-            websiteUrl: optionalString(body.websiteUrl),
-            featured: Boolean(body.featured),
-            sortOrder: Number(body.sortOrder) || 0,
-            active: optionalBoolean(body.active, true),
-          },
-          auth.user.id,
-        ),
-      });
+      const taxonomy = await upsertLibraryTaxonomy(
+        kind,
+        {
+          id: optionalString(body.id),
+          name: String(body.name),
+          slug: optionalString(body.slug),
+          description: optionalString(body.description),
+          seoTitle: optionalString(body.seoTitle),
+          metaDescription: optionalString(body.metaDescription),
+          heroImageUrl: optionalString(body.heroImageUrl),
+          bio: optionalString(body.bio),
+          websiteUrl: optionalString(body.websiteUrl),
+          featured: Boolean(body.featured),
+          sortOrder: Number(body.sortOrder) || 0,
+          active: optionalBoolean(body.active, true),
+        },
+        auth.user.id,
+      );
+      revalidatePublicLibrary();
+      return ok({ taxonomy });
     }
     if (body.action === "delete_taxonomy") {
       const kind = taxonomyKind(body.kind);
       if (!kind) return problem(400, "INVALID_TAXONOMY", "A valid taxonomy kind is required.");
       const taxonomy = await deleteLibraryTaxonomy(kind, String(body.id), auth.user.id);
       if (!taxonomy) return problem(404, "TAXONOMY_NOT_FOUND", "Taxonomy record not found.");
+      revalidatePublicLibrary();
       return ok({ taxonomy });
     }
     if (body.action === "update_download_access") {
@@ -369,6 +377,7 @@ export async function POST(request: Request) {
     }
     try {
       const product = await createLibraryProduct({ ...(body as LibraryProductInput), price: Number(body.price) }, auth.user.id);
+      revalidatePublicLibrary(product.slug);
       return created({ product });
     } catch (error) {
       if (error instanceof Error && /download file|format before publishing/i.test(error.message)) {
@@ -380,6 +389,12 @@ export async function POST(request: Request) {
     console.error("[admin/library] POST failed", error);
     return problem(500, "LIBRARY_ADMIN_WRITE_FAILED", "Library admin change could not be saved to the database.");
   }
+}
+
+function revalidatePublicLibrary(slug?: string) {
+  revalidatePath("/library");
+  revalidatePath("/library/[slug]", "page");
+  if (slug) revalidatePath(`/library/${slug}`);
 }
 
 function arrayOfStrings(value: unknown) {

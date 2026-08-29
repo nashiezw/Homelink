@@ -17,9 +17,11 @@ const RATE_LIMITS = [
   { pattern: /^\/api\/v1\/search\/ai$/, limit: 12 },
   { pattern: /^\/api\/v1\/payments\/checkout$/, limit: 20 },
   { pattern: /^\/api\/v1\/messages(?:\/.*)?$/, limit: 60 },
-  { pattern: /^\/api\/v1\/analytics\/pageviews$/, limit: 240 },
-  { pattern: /^\/api\/v1\/analytics\/events$/, limit: 120 },
-  { pattern: /^\/api\/v1\/admin(?:\/.*)?$/, limit: 120 },
+  { pattern: /^\/api\/v1\/analytics\/pageviews$/, limit: 60 },
+  { pattern: /^\/api\/v1\/analytics\/events$/, limit: 60 },
+  { pattern: /^\/api\/v1\/platform\/config$/, limit: 60 },
+  { pattern: /^\/api\/v1\/academy\/(?:settings|courses)$/, limit: 60 },
+  { pattern: /^\/api\/v1\/admin(?:\/.*)?$/, limit: 60 },
 ];
 
 type Role = "ADMIN" | "AGENT" | "LANDLORD" | "CONSULTANT" | "TRAINER" | "LEARNER";

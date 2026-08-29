@@ -11,6 +11,7 @@ import {
 import { getHolidayHomeReviewSummaryFromPostgres } from "@/lib/holiday-homes/postgres-review-repository";
 import { getCanonicalSiteUrl } from "@/lib/seo/site-url";
 import { getStore } from "@/lib/store/app-store";
+import { isDatabaseUnavailableError } from "@/lib/db/production-schema";
 
 type ListingDetailPageProps = {
   params: Promise<{
@@ -27,11 +28,11 @@ export function generateStaticParams() {
 
 export async function generateMetadata({ params }: ListingDetailPageProps): Promise<Metadata> {
   const { id } = await params;
-  const listingRecord = shouldUsePostgresListings() ? await getListingByIdOrSlugFromPostgres(id) : null;
+  const listingRecord = await getPostgresListingSafely(id);
   const listing = shouldUsePostgresListings()
     ? listingRecord
       ? toPublicPostgresListing(listingRecord)
-      : null
+      : getListing(id) ?? null
     : getListing(id);
 
   if (!listing) {
@@ -66,11 +67,11 @@ export async function generateMetadata({ params }: ListingDetailPageProps): Prom
 
 export default async function ListingDetailPage({ params }: ListingDetailPageProps) {
   const { id } = await params;
-  const listingRecord = shouldUsePostgresListings() ? await getListingByIdOrSlugFromPostgres(id) : null;
+  const listingRecord = await getPostgresListingSafely(id);
   const listing = shouldUsePostgresListings()
     ? listingRecord
       ? toPublicPostgresListing(listingRecord)
-      : null
+      : getListing(id) ?? null
     : getListing(id);
 
   if (!listing) {
@@ -88,7 +89,10 @@ export default async function ListingDetailPage({ params }: ListingDetailPagePro
   const holidayReviewSummary =
     listing.type === "holiday_home"
       ? shouldUsePostgresListings()
-        ? await getHolidayHomeReviewSummaryFromPostgres(listingRecord?.id ?? id)
+        ? await getHolidayHomeReviewSummaryFromPostgres(listingRecord?.id ?? id).catch((error: unknown) => {
+            if (isDatabaseUnavailableError(error)) return null;
+            throw error;
+          })
         : getStore().getHolidayHomeReviewSummary(id)
       : null;
 
@@ -135,4 +139,14 @@ export default async function ListingDetailPage({ params }: ListingDetailPagePro
     />
     </>
   );
+}
+
+async function getPostgresListingSafely(id: string) {
+  if (!shouldUsePostgresListings()) return null;
+  try {
+    return await getListingByIdOrSlugFromPostgres(id);
+  } catch (error) {
+    if (isDatabaseUnavailableError(error)) return null;
+    throw error;
+  }
 }

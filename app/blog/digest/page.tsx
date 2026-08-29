@@ -11,7 +11,7 @@ export const metadata: Metadata = {
   alternates: { canonical: "/blog/digest" },
 };
 
-export const dynamic = "force-dynamic";
+export const revalidate = 900;
 
 export default async function BlogDigestPage() {
   const [blog, questions] = await Promise.all([

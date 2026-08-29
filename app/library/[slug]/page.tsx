@@ -6,12 +6,12 @@ import {
   listApprovedLibraryProductReviews,
   listLibraryBundleCompanions,
   listLibraryProducts,
-  recordLibraryProductView,
 } from "@/lib/library/repository";
 import { buildLibraryProductJsonLd, buildLibraryProductMetadata, safeJsonLd } from "@/lib/library/seo";
 import { getLibraryStoreSettings } from "@/lib/library/settings";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 900;
+export const dynamic = "force-static";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
@@ -24,7 +24,6 @@ export default async function LibraryProductRoute({ params }: { params: Promise<
   const { slug } = await params;
   const product = await getLibraryProductBySlug(slug);
   if (!product) notFound();
-  await recordLibraryProductView(slug);
   const [allProducts, reviews] = await Promise.all([
     listLibraryProducts(),
     listApprovedLibraryProductReviews(product.id),
