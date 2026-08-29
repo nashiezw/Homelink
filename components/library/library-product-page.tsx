@@ -343,6 +343,27 @@ export function LibraryProductPage({
     setSampleFrameFailed(false);
   }, [previewOpen, sampleUrl]);
 
+  function trackSampleOpened(surface: string) {
+    trackEvent("library_sample_opened", product.id, { title: product.title, slug: product.slug, surface });
+  }
+
+  function openSamplePreview(surface: string) {
+    trackSampleOpened(surface);
+    setPreviewOpen(true);
+  }
+
+  function openSampleInNewTab(surface: string) {
+    if (!sampleUrl) return;
+    trackEvent("library_sample_viewed", product.id, { title: product.title, slug: product.slug, surface });
+    window.open(sampleUrl, "_blank", "noopener,noreferrer");
+  }
+
+  function downloadSample(surface: string) {
+    if (!sampleDownloadUrl) return;
+    trackEvent("library_sample_downloaded", product.id, { title: product.title, slug: product.slug, surface });
+    window.open(sampleDownloadUrl, "_blank", "noopener,noreferrer");
+  }
+
   useEffect(() => {
     const marks = new Set<number>();
     function onScroll() {
@@ -1133,7 +1154,7 @@ export function LibraryProductPage({
               title="Sample Preview"
               icon={BookOpen}
               action={
-                <Button variant="secondary" onClick={() => { trackEvent("library_sample_opened", product.id, { title: product.title, slug: product.slug }); setPreviewOpen(true); }}>
+                <Button variant="secondary" onClick={() => openSamplePreview("side_cta")}>
                   <FileText className="size-4" /> Preview
                 </Button>
               }
@@ -1150,14 +1171,14 @@ export function LibraryProductPage({
                     {sampleMeta.label}. Open it inline, view it in a new tab, or download the preview for later.
                   </p>
                   <div className="mt-5 flex flex-wrap gap-2">
-                    <Button onClick={() => { trackEvent("library_sample_opened", product.id, { title: product.title, slug: product.slug, surface: "panel" }); setPreviewOpen(true); }}>
+                    <Button onClick={() => openSamplePreview("panel")}>
                       <FileText className="size-4" /> Preview sample
                     </Button>
-                    <Button variant="secondary" onClick={() => window.open(sampleUrl, "_blank", "noopener,noreferrer")}>
+                    <Button variant="secondary" onClick={() => openSampleInNewTab("panel")}>
                       <ExternalLink className="size-4" /> Open in new tab
                     </Button>
                     {sampleDownloadUrl ? (
-                      <Button variant="secondary" onClick={() => window.open(sampleDownloadUrl, "_blank", "noopener,noreferrer")}>
+                      <Button variant="secondary" onClick={() => downloadSample("panel")}>
                         <Download className="size-4" /> Download sample
                       </Button>
                     ) : null}
@@ -1505,7 +1526,7 @@ export function LibraryProductPage({
                 <ShoppingBag className="size-4" /> {productQuantity ? `In bag (${productQuantity})` : "Add to cart"}
               </Button>
               {sampleUrl ? (
-                <Button variant="secondary" onClick={() => { trackEvent("library_sample_opened", product.id, { title: product.title, slug: product.slug }); setPreviewOpen(true); }}>
+                <Button variant="secondary" onClick={() => openSamplePreview("sticky_bar")}>
                   <FileText className="size-4" /> Preview sample
                 </Button>
               ) : null}
@@ -1700,11 +1721,11 @@ export function LibraryProductPage({
                       <p className="mt-3 font-semibold text-ink dark:text-white">The embedded PDF preview could not load.</p>
                       <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">Open the sample in a new browser tab or download it instead.</p>
                       <div className="mt-5 flex justify-center gap-2">
-                        <Button variant="secondary" onClick={() => window.open(sampleUrl, "_blank", "noopener,noreferrer")}>
+                        <Button variant="secondary" onClick={() => openSampleInNewTab("fallback")}>
                           <ExternalLink className="size-4" /> Open in new tab
                         </Button>
                         {sampleDownloadUrl ? (
-                          <Button variant="secondary" onClick={() => window.open(sampleDownloadUrl, "_blank", "noopener,noreferrer")}>
+                          <Button variant="secondary" onClick={() => downloadSample("fallback")}>
                             <Download className="size-4" /> Download
                           </Button>
                         ) : null}
@@ -1712,14 +1733,20 @@ export function LibraryProductPage({
                     </div>
                   </div>
                 ) : (
-                  <iframe title={`${product.title} sample`} src={sampleUrl} className="h-[70dvh] w-full border-0" onError={() => setSampleFrameFailed(true)} />
+                  <iframe
+                    title={`${product.title} sample`}
+                    src={sampleUrl}
+                    className="h-[70dvh] w-full border-0"
+                    onLoad={() => trackEvent("library_sample_viewed", product.id, { title: product.title, slug: product.slug, surface: "modal" })}
+                    onError={() => setSampleFrameFailed(true)}
+                  />
                 )}
                 <div className="flex flex-wrap justify-end gap-2 border-t border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-950">
-                  <Button variant="secondary" onClick={() => window.open(sampleUrl, "_blank", "noopener,noreferrer")}>
+                  <Button variant="secondary" onClick={() => openSampleInNewTab("modal")}>
                     <ExternalLink className="size-4" /> Open in new tab
                   </Button>
                   {sampleDownloadUrl ? (
-                    <Button variant="secondary" onClick={() => window.open(sampleDownloadUrl, "_blank", "noopener,noreferrer")}>
+                    <Button variant="secondary" onClick={() => downloadSample("modal")}>
                       <Download className="size-4" /> Download sample
                     </Button>
                   ) : null}

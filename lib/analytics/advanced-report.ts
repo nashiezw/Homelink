@@ -123,6 +123,8 @@ function formatLiveStepName(name: string) {
   if (name === "library_cart_qty_changed") return "Changed bag quantity";
   if (name === "library_purchase_completed") return "Placed Library order";
   if (name === "library_sample_opened") return "Opened sample";
+  if (name === "library_sample_viewed") return "Viewed sample";
+  if (name === "library_sample_downloaded") return "Downloaded sample";
   if (name === "whatsapp_click") return "Clicked WhatsApp";
   return name.replace(/^library_/, "").replaceAll("_", " ");
 }
@@ -169,6 +171,7 @@ function createJourneyRow(input: {
     landingPage: currentPageLabel,
     currentPageLabel,
     productTitle: input.title !== "Unknown product" ? input.title : "",
+    productPath: productPathFrom(input.path),
     identityLabel: "Guest visitor",
     contactEmail: input.contactEmail || "",
     contactPhone: input.contactPhone || "",
@@ -176,6 +179,7 @@ function createJourneyRow(input: {
     leadStatus: { label: "Browsing", tone: "neutral" },
     intentScore: 0,
     nextAction: { label: "Keep watching", detail: "No clear sales action yet.", kind: "observe" },
+    followUp: { message: "", emailSubject: "", emailBody: "" },
     summary: "Visitor activity is still building.",
     filters: [],
     debug: { visitorId: input.visitorId, sessionId: input.sessionId, userId: input.userId, landingPath: cleanUrlPath(input.path) },
@@ -213,8 +217,21 @@ function updateJourneyContext(
   if (!journey.contactEmail && input.contactEmail) journey.contactEmail = input.contactEmail;
   if (!journey.contactPhone && input.contactPhone) journey.contactPhone = input.contactPhone;
   if (input.title && input.title !== "Unknown product") journey.productTitle = input.title;
+  const path = productPathFrom(input.path);
+  if (path) journey.productPath = path;
   if (input.name === "whatsapp_click") journey.whatsappAssisted = true;
   if (input.name === "library_purchase_completed") journey.purchased = true;
+}
+
+function productPathFrom(path: string | null | undefined) {
+  const clean = cleanUrlPath(path).split("?")[0];
+  if (!clean.startsWith("/library/")) return "";
+  if (["/library/checkout", "/library/claim"].includes(clean)) return "";
+  return clean;
+}
+
+function publicProductUrl(path: string) {
+  return path ? `https://www.houselink.co.zw${path}` : "https://www.houselink.co.zw/library";
 }
 
 async function fetchJourneyPresenceRows(sessionIds: string[], visitorIds: string[]) {
@@ -274,6 +291,8 @@ function applyPresenceToJourney(journey: JourneyRow, row: Awaited<ReturnType<typ
   if (!journey.contactEmail && row.contactEmail) journey.contactEmail = row.contactEmail;
   if (!journey.contactPhone && row.contactPhone) journey.contactPhone = row.contactPhone;
   if (!journey.productTitle && row.productTitle) journey.productTitle = row.productTitle;
+  const productPath = productPathFrom(row.path);
+  if (productPath) journey.productPath = productPath;
   const source = sourceLabel(row);
   if (source !== "Direct / unknown") journey.source = source;
   const location = locationLabel(row);
@@ -292,7 +311,8 @@ function finalizeJourneyRow(journey: JourneyRow, user?: { name: string | null; e
     .slice(-25);
   const names = new Set(steps.map((step) => step.name));
   const viewedProduct = names.has("library_product_viewed");
-  const openedSample = names.has("library_sample_opened");
+  const openedSample = names.has("library_sample_opened") || names.has("library_sample_viewed") || names.has("library_sample_downloaded");
+  const downloadedSample = names.has("library_sample_downloaded");
   const addedCart = names.has("library_cart_added") || names.has("library_bundle_added");
   const startedCheckout = names.has("library_checkout_started") || steps.some((step) => /checkout/i.test(step.detail));
   const uploadedProof = names.has("library_proof_uploaded");
@@ -313,6 +333,7 @@ function finalizeJourneyRow(journey: JourneyRow, user?: { name: string | null; e
   const score =
     (viewedProduct ? 15 : 0) +
     (openedSample ? 20 : 0) +
+    (downloadedSample ? 10 : 0) +
     (addedCart ? 25 : 0) +
     (startedCheckout ? 30 : 0) +
     (clickedWhatsapp ? 15 : 0) +
@@ -335,15 +356,31 @@ function finalizeJourneyRow(journey: JourneyRow, user?: { name: string | null; e
     startedCheckout,
     addedCart,
     openedSample,
+    downloadedSample,
     clickedWhatsapp,
     contactEmail,
     contactPhone,
     productTitle,
+    productUrl: publicProductUrl(journey.productPath),
+  });
+  const followUp = buildJourneyFollowUp({
+    placedOrder,
+    uploadedProof,
+    startedCheckout,
+    addedCart,
+    openedSample,
+    downloadedSample,
+    clickedWhatsapp,
+    contactEmail,
+    contactPhone,
+    productTitle,
+    productUrl: publicProductUrl(journey.productPath),
   });
   const filters = [
     score >= 55 ? "high-intent" : "",
     startedCheckout && !placedOrder ? "abandoned-checkout" : "",
     openedSample ? "sample-viewed" : "",
+    downloadedSample ? "sample-downloaded" : "",
     addedCart ? "cart-activity" : "",
     clickedWhatsapp ? "whatsapp" : "",
     contactEmail || contactPhone || journey.userId ? "known-contact" : "anonymous",
@@ -369,6 +406,7 @@ function finalizeJourneyRow(journey: JourneyRow, user?: { name: string | null; e
     whatsappAssisted: clickedWhatsapp,
     durationMinutes,
     productTitle,
+    productPath: journey.productPath,
     identityLabel,
     contactEmail,
     contactPhone,
@@ -376,6 +414,7 @@ function finalizeJourneyRow(journey: JourneyRow, user?: { name: string | null; e
     leadStatus,
     intentScore: Math.min(100, score),
     nextAction,
+    followUp,
     summary,
     filters,
     debug: { ...journey.debug, userId: journey.userId },
@@ -388,24 +427,74 @@ function journeyNextAction(input: {
   startedCheckout: boolean;
   addedCart: boolean;
   openedSample: boolean;
+  downloadedSample: boolean;
   clickedWhatsapp: boolean;
   contactEmail: string;
   contactPhone: string;
   productTitle: string;
+  productUrl: string;
 }): JourneyNextAction {
   const product = input.productTitle ? ` about ${input.productTitle}` : "";
+  const followUp = buildJourneyFollowUp(input);
   if (input.placedOrder) return { label: "Review order", detail: "Order was placed; check proof/payment fulfilment if needed.", kind: "order" };
   if (input.startedCheckout && !input.uploadedProof) {
-    if (input.contactPhone) return { label: "WhatsApp payment help", detail: `Follow up on checkout and proof upload${product}.`, href: whatsappUrl(input.contactPhone), kind: "whatsapp" };
-    if (input.contactEmail) return { label: "Email proof reminder", detail: `Ask the buyer to upload proof or request help${product}.`, href: `mailto:${input.contactEmail}`, kind: "email" };
+    if (input.contactPhone) return { label: "WhatsApp payment help", detail: `Follow up on checkout and proof upload${product}.`, href: followUp.whatsappHref, kind: "whatsapp" };
+    if (input.contactEmail) return { label: "Email proof reminder", detail: `Ask the buyer to upload proof or request help${product}.`, href: followUp.mailtoHref, kind: "email" };
     return { label: "Watch checkout recovery", detail: "Checkout began, but contact details are not yet available.", kind: "observe" };
   }
-  if (input.addedCart || input.openedSample) {
-    if (input.contactPhone) return { label: "WhatsApp product help", detail: `Offer help or answer questions${product}.`, href: whatsappUrl(input.contactPhone), kind: "whatsapp" };
-    if (input.contactEmail) return { label: "Email product link", detail: `Send the product link or answer questions${product}.`, href: `mailto:${input.contactEmail}`, kind: "email" };
+  if (input.addedCart || input.openedSample || input.downloadedSample) {
+    if (input.contactPhone) return { label: "WhatsApp product help", detail: `Offer help or answer questions${product}.`, href: followUp.whatsappHref, kind: "whatsapp" };
+    if (input.contactEmail) return { label: "Email product link", detail: `Send the product link or answer questions${product}.`, href: followUp.mailtoHref, kind: "email" };
   }
   if (input.clickedWhatsapp) return { label: "Check WhatsApp inbox", detail: "Visitor clicked WhatsApp; look for the matching conversation.", kind: "observe" };
   return { label: "No action yet", detail: "Low-intent browsing; keep this session for trend analysis.", kind: "observe" };
+}
+
+function buildJourneyFollowUp(input: {
+  placedOrder: boolean;
+  uploadedProof: boolean;
+  startedCheckout: boolean;
+  addedCart: boolean;
+  openedSample: boolean;
+  downloadedSample: boolean;
+  clickedWhatsapp: boolean;
+  contactEmail: string;
+  contactPhone: string;
+  productTitle: string;
+  productUrl: string;
+}): JourneyFollowUp {
+  const product = input.productTitle || "the HouseLink Library guide you were viewing";
+  const greeting = "Hi, I hope you are well.";
+  const productLine = `I noticed you were interested in ${product} on HouseLink Library.`;
+  const valueLine =
+    "It is a practical Zimbabwe-focused resource built to help property professionals make better decisions around land, approvals, compliance, legal documents, project planning, and risk management.";
+  const linkLine = `You can return to it here: ${input.productUrl}`;
+  let intentLine = "If you have any questions before purchasing, I can help you choose the right format and complete the order.";
+
+  if (input.startedCheckout && !input.uploadedProof) {
+    intentLine = "I noticed you reached checkout but payment/proof upload may not have been completed. I can help you finish the order and get access quickly.";
+  } else if (input.downloadedSample) {
+    intentLine = "Since you downloaded the sample, this may be a good fit for what you are researching. I can help you complete the full purchase if you would like the complete guide.";
+  } else if (input.openedSample) {
+    intentLine = "Since you opened the sample, I can help you unlock the full guide or answer any questions before you purchase.";
+  } else if (input.addedCart) {
+    intentLine = "I noticed it was added to your bag. I can help you complete checkout and make sure you receive the correct copy.";
+  } else if (input.clickedWhatsapp) {
+    intentLine = "You also opened WhatsApp from HouseLink, so I am happy to assist here if that is easier.";
+  } else if (input.placedOrder) {
+    intentLine = "Thank you for placing your order. I can help with proof confirmation, access, or the next step if needed.";
+  }
+
+  const close = "Would you like me to assist you with completing the purchase?";
+  const signature = "Kind regards,\nHouseLink Zimbabwe";
+  const message = [greeting, productLine, valueLine, intentLine, linkLine, close, signature].join("\n\n");
+  const emailSubject = input.startedCheckout ? "Need help completing your HouseLink Library order?" : `About ${product}`;
+  const emailBody = message;
+  const whatsappHref = input.contactPhone ? whatsappUrl(input.contactPhone, message) : undefined;
+  const mailtoHref = input.contactEmail
+    ? `mailto:${encodeURIComponent(input.contactEmail)}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`
+    : undefined;
+  return { message, emailSubject, emailBody, whatsappHref, mailtoHref };
 }
 
 function journeySummary(input: {
@@ -431,9 +520,10 @@ function journeySummary(input: {
   return `${who}${source} is browsing; latest action was ${input.lastStepName.toLowerCase()}${product}.`;
 }
 
-function whatsappUrl(phone: string) {
+function whatsappUrl(phone: string, message?: string) {
   const digits = phone.replace(/\D/g, "");
-  return digits ? `https://wa.me/${digits}` : undefined;
+  if (!digits) return undefined;
+  return message ? `https://wa.me/${digits}?text=${encodeURIComponent(message)}` : `https://wa.me/${digits}`;
 }
 
 function recentStepKey(step: { at: string; name: string; detail: string }) {
@@ -481,6 +571,7 @@ type AdvancedSiteAnalyticsReport = any;
 type LiveJourneyStep = { at: string; name: string; detail: string };
 type JourneyLeadStatus = { label: string; tone: "hot" | "warm" | "success" | "info" | "neutral" };
 type JourneyNextAction = { label: string; detail: string; href?: string; kind: "whatsapp" | "email" | "order" | "observe" };
+type JourneyFollowUp = { message: string; emailSubject: string; emailBody: string; whatsappHref?: string; mailtoHref?: string };
 type JourneyRow = {
   sessionId: string;
   visitorId: string;
@@ -497,6 +588,7 @@ type JourneyRow = {
   landingPage: string;
   currentPageLabel: string;
   productTitle: string;
+  productPath: string;
   identityLabel: string;
   contactEmail: string;
   contactPhone: string;
@@ -504,6 +596,7 @@ type JourneyRow = {
   leadStatus: JourneyLeadStatus;
   intentScore: number;
   nextAction: JourneyNextAction;
+  followUp: JourneyFollowUp;
   summary: string;
   filters: string[];
   debug: { visitorId: string; sessionId: string; userId: string | null; landingPath: string };

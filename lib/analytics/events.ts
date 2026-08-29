@@ -24,6 +24,8 @@ export const ANALYTICS_EVENTS = [
   "library_download_started",
   "library_download_completed",
   "library_sample_opened",
+  "library_sample_viewed",
+  "library_sample_downloaded",
   "library_scroll_depth",
   "library_review_submitted",
   "library_nps_submitted",

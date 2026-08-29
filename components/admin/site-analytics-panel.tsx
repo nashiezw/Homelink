@@ -3,7 +3,9 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   Activity,
+  Check,
   Clock,
+  Copy,
   Download,
   ExternalLink,
   Eye,
@@ -187,6 +189,7 @@ type AdvancedReport = {
     landingPage?: string;
     currentPageLabel?: string;
     productTitle?: string;
+    productPath?: string;
     identityLabel?: string;
     contactEmail?: string;
     contactPhone?: string;
@@ -194,6 +197,7 @@ type AdvancedReport = {
     leadStatus?: { label: string; tone: string };
     intentScore?: number;
     nextAction?: { label: string; detail: string; href?: string; kind: string };
+    followUp?: { message: string; emailSubject: string; emailBody: string; whatsappHref?: string; mailtoHref?: string };
     summary?: string;
     filters?: string[];
     debug?: { visitorId: string; sessionId: string; userId: string | null; landingPath: string };
@@ -210,13 +214,14 @@ type AdvancedReport = {
 
 type Journey = AdvancedReport["journeys"][number];
 type JourneyStep = Journey["steps"][number];
-type JourneyFilter = "all" | "high-intent" | "abandoned-checkout" | "sample-viewed" | "cart-activity" | "whatsapp" | "known-contact" | "anonymous";
+type JourneyFilter = "all" | "high-intent" | "abandoned-checkout" | "sample-viewed" | "sample-downloaded" | "cart-activity" | "whatsapp" | "known-contact" | "anonymous";
 
 const journeyFilters: Array<{ id: JourneyFilter; label: string }> = [
   { id: "all", label: "All" },
   { id: "high-intent", label: "High intent" },
   { id: "abandoned-checkout", label: "Checkout abandoned" },
   { id: "sample-viewed", label: "Sample viewed" },
+  { id: "sample-downloaded", label: "Sample downloaded" },
   { id: "cart-activity", label: "Cart activity" },
   { id: "whatsapp", label: "WhatsApp" },
   { id: "known-contact", label: "Known contact" },
@@ -249,6 +254,8 @@ function journeyStepLabel(name: string) {
   if (name === "page_view") return "Viewed page";
   if (name === "library_product_viewed") return "Viewed product";
   if (name === "library_sample_opened") return "Opened sample";
+  if (name === "library_sample_viewed") return "Viewed sample";
+  if (name === "library_sample_downloaded") return "Downloaded sample";
   if (name === "library_cart_added" || name === "library_bundle_added") return "Added to bag";
   if (name === "library_cart_removed") return "Removed from bag";
   if (name === "library_checkout_started") return "Started checkout";
@@ -274,13 +281,6 @@ function journeyLeadClass(tone?: string) {
   if (tone === "success") return "border-emerald-400/40 bg-emerald-500/10 text-emerald-100";
   if (tone === "info") return "border-sky-400/40 bg-sky-500/10 text-sky-100";
   return "border-white/10 bg-white/[0.04] text-slate-200";
-}
-
-function journeyActionIcon(kind?: string) {
-  if (kind === "whatsapp") return MessageCircle;
-  if (kind === "email") return Mail;
-  if (kind === "order") return Target;
-  return Activity;
 }
 
 type LiveVisitor = AdvancedReport["live"]["visitors"][number];
@@ -355,6 +355,7 @@ export function SiteAnalyticsPanel() {
   const [loading, setLoading] = useState(false);
   const [selectedJourney, setSelectedJourney] = useState<string | null>(null);
   const [journeyFilter, setJourneyFilter] = useState<JourneyFilter>("all");
+  const [copiedJourneyMessage, setCopiedJourneyMessage] = useState(false);
   const loadingRef = useRef(false);
 
   const tc = report?.topClass;
@@ -405,6 +406,14 @@ export function SiteAnalyticsPanel() {
     }
     if (selectedJourney !== selectedJourneyRow.sessionId) setSelectedJourney(selectedJourneyRow.sessionId);
   }, [selectedJourney, selectedJourneyRow]);
+
+  async function copyJourneyMessage(journey: Journey) {
+    const message = journey.followUp?.message;
+    if (!message) return;
+    await navigator.clipboard?.writeText(message).catch(() => null);
+    setCopiedJourneyMessage(true);
+    window.setTimeout(() => setCopiedJourneyMessage(false), 1800);
+  }
 
   const tabs: Array<{ id: Tab; label: string }> = [
     { id: "board", label: "Board" },
@@ -864,7 +873,10 @@ export function SiteAnalyticsPanel() {
                   <button
                     key={journey.sessionId}
                     type="button"
-                    onClick={() => setSelectedJourney(journey.sessionId)}
+                    onClick={() => {
+                      setSelectedJourney(journey.sessionId);
+                      setCopiedJourneyMessage(false);
+                    }}
                     className={`block w-full rounded-xl border p-3 text-left transition ${
                       selectedJourneyRow?.sessionId === journey.sessionId ? "border-emerald-400/50 bg-emerald-500/10" : "border-white/10 hover:bg-white/5"
                     }`}
@@ -936,21 +948,45 @@ export function SiteAnalyticsPanel() {
                           <p className="mt-1 font-semibold text-white">{selectedJourneyRow.nextAction.label}</p>
                           <p className="mt-1 text-sm leading-6 text-slate-300">{selectedJourneyRow.nextAction.detail}</p>
                         </div>
-                        {selectedJourneyRow.nextAction.href ? (
-                          <a
-                            href={selectedJourneyRow.nextAction.href}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-emerald-500 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-400"
-                          >
-                            {(() => {
-                              const Icon = journeyActionIcon(selectedJourneyRow.nextAction?.kind);
-                              return <Icon className="size-4" />;
-                            })()}
-                            Open
-                          </a>
-                        ) : null}
+                        <div className="flex shrink-0 flex-wrap gap-2">
+                          {selectedJourneyRow.followUp?.whatsappHref ? (
+                            <a
+                              href={selectedJourneyRow.followUp.whatsappHref}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-500 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-400"
+                            >
+                              <MessageCircle className="size-4" />
+                              WhatsApp
+                            </a>
+                          ) : null}
+                          {selectedJourneyRow.followUp?.mailtoHref ? (
+                            <a
+                              href={selectedJourneyRow.followUp.mailtoHref}
+                              className="inline-flex items-center justify-center gap-2 rounded-lg border border-white/10 px-3 py-2 text-xs font-bold text-slate-100 hover:bg-white/5"
+                            >
+                              <Mail className="size-4" />
+                              Email
+                            </a>
+                          ) : null}
+                          {selectedJourneyRow.followUp?.message ? (
+                            <button
+                              type="button"
+                              onClick={() => void copyJourneyMessage(selectedJourneyRow)}
+                              className="inline-flex items-center justify-center gap-2 rounded-lg border border-white/10 px-3 py-2 text-xs font-bold text-slate-100 hover:bg-white/5"
+                            >
+                              {copiedJourneyMessage ? <Check className="size-4 text-emerald-300" /> : <Copy className="size-4" />}
+                              {copiedJourneyMessage ? "Copied" : "Copy message"}
+                            </button>
+                          ) : null}
+                        </div>
                       </div>
+                      {selectedJourneyRow.followUp?.message ? (
+                        <div className="mt-4 rounded-lg border border-white/10 bg-slate-950/60 p-3">
+                          <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Prepared follow-up message</p>
+                          <p className="mt-2 whitespace-pre-line text-xs leading-6 text-slate-300">{selectedJourneyRow.followUp.message}</p>
+                        </div>
+                      ) : null}
                     </div>
                   ) : null}
 
