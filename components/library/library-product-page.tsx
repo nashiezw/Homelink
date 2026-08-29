@@ -279,16 +279,17 @@ export function LibraryProductPage({
   const whoThisIsFor = product.whoThisIsFor.filter((item) => item.trim());
   const includedDownloads = product.downloads.filter((item) => item.label?.trim() && !isLibrarySampleFile(item));
   const shortDescription = product.shortDescription?.replace(/\s+/g, " ").trim() || "";
-  const fullDescription = product.description?.replace(/\s+/g, " ").trim() || "";
+  const fullDescription = product.description?.trim() || "";
+  const compactFullDescription = fullDescription.replace(/\s+/g, " ").trim();
   const summaryExcerpt =
-    shortDescription && shortDescription !== fullDescription
+    shortDescription && shortDescription !== compactFullDescription
       ? shortDescription
-      : fullDescription
-        ? fullDescription.length > 220
-          ? `${fullDescription.slice(0, 217).trimEnd()}…`
-          : fullDescription
+      : compactFullDescription
+        ? compactFullDescription.length > 220
+          ? `${compactFullDescription.slice(0, 217).trimEnd()}...`
+          : compactFullDescription
         : "";
-  const showFullDescription = Boolean(fullDescription && fullDescription !== summaryExcerpt);
+  const showFullDescription = Boolean(fullDescription && compactFullDescription !== summaryExcerpt);
 
   function openLightbox(options?: { zoomed?: boolean }) {
     if (!activeGalleryImage?.url && !galleryImages[0]?.url) return;
@@ -1108,7 +1109,7 @@ export function LibraryProductPage({
               <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight text-ink dark:text-white">
                 <FileText className="size-5 text-emerald-700 dark:text-emerald-300" /> Description
               </h2>
-              <p className="mt-4 text-base leading-8 text-slate-700 dark:text-slate-300">{fullDescription}</p>
+              <FormattedProductDescription text={fullDescription} />
             </section>
           ) : null}
 
@@ -1766,6 +1767,77 @@ function formatSampleSize(bytes?: number) {
   if (bytes >= 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
   if (bytes >= 1024) return `${Math.round(bytes / 1024)} KB`;
   return `${bytes} B`;
+}
+
+function FormattedProductDescription({ text }: { text: string }) {
+  const sections = formatDescriptionSections(text);
+  return (
+    <div className="mt-4 space-y-4 text-base leading-8 text-slate-700 dark:text-slate-300">
+      {sections.map((section, sectionIndex) => (
+        <div key={`${section.type}-${sectionIndex}`} className={section.type === "list" ? "space-y-2" : undefined}>
+          {section.type === "list" ? (
+            <ul className="grid gap-2 sm:grid-cols-2">
+              {section.items.map((item, itemIndex) => (
+                <li key={`${item}-${itemIndex}`} className="flex gap-2 leading-7">
+                  <CheckCircle2 className="mt-1.5 size-4 shrink-0 text-emerald-600 dark:text-emerald-300" />
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className={section.emphasis ? "font-semibold text-ink dark:text-white" : undefined}>{section.text}</p>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function formatDescriptionSections(text: string) {
+  const prepared = text
+    .replace(/\r\n?/g, "\n")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .replace(/\s+([✓✔])\s+/g, "\n$1 ")
+    .replace(/\s+(Inside You(?:'|’)ll Learn:|Inside You Will Learn:|Perfect For:)/gi, "\n\n$1");
+
+  const sections: Array<{ type: "paragraph"; text: string; emphasis?: boolean } | { type: "list"; items: string[] }> = [];
+  for (const block of prepared.split(/\n\s*\n/)) {
+    const lines = block.split("\n").map((line) => line.trim()).filter(Boolean);
+    let paragraphLines: string[] = [];
+    let listItems: string[] = [];
+
+    const flushParagraph = () => {
+      const paragraph = paragraphLines.join(" ").replace(/\s+/g, " ").trim();
+      if (paragraph) {
+        sections.push({
+          type: "paragraph",
+          text: paragraph,
+          emphasis: /^[A-Z][A-Za-z\s'’]+:$/.test(paragraph),
+        });
+      }
+      paragraphLines = [];
+    };
+    const flushList = () => {
+      if (listItems.length) sections.push({ type: "list", items: listItems });
+      listItems = [];
+    };
+
+    for (const line of lines) {
+      const listMatch = line.match(/^(?:[-*•]|\d+[.)]|[✓✔])\s+(.+)$/);
+      if (listMatch?.[1]) {
+        flushParagraph();
+        listItems.push(listMatch[1].trim());
+      } else {
+        flushList();
+        paragraphLines.push(line);
+      }
+    }
+    flushParagraph();
+    flushList();
+  }
+
+  return sections.length ? sections : [{ type: "paragraph" as const, text: text.trim() }];
 }
 
 function HeroProof({ icon: Icon, label }: { icon: typeof ShieldCheck; label: string }) {
