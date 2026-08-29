@@ -1,5 +1,6 @@
-import { PaymentProvider, PaymentStatus, Role, VerificationStatus, type Prisma } from "@prisma/client";
+import { PaymentProvider, PaymentStatus, Prisma, Role, VerificationStatus } from "@prisma/client";
 import { getMainPrisma } from "@/lib/db/main-prisma";
+import { isDatabaseUnavailableError } from "@/lib/db/production-schema";
 import { createDefaultHomepageCms } from "@/lib/homepage/cms-defaults";
 import type { HomepageCmsConfig } from "@/lib/homepage/cms-types";
 import { defaultPaymentSettings, defaultPlatformSettings, getPlatformIntegrationEnvOverrides } from "@/lib/settings/defaults";
@@ -515,7 +516,11 @@ async function readLegacySnapshotPayload(): Promise<SnapshotPayload> {
   const row = await getMainPrisma().appStoreSnapshot.findUnique({
     where: { id: LEGACY_SNAPSHOT_ID },
     select: { payload: true },
-  }).catch(() => null);
+  }).catch((error: unknown) => {
+    if (isDatabaseUnavailableError(error)) throw error;
+    if (isMissingSnapshotTableError(error)) return null;
+    throw error;
+  });
   return jsonObject(row?.payload) as SnapshotPayload;
 }
 
@@ -524,7 +529,11 @@ async function readSettingsSnapshotPayload(): Promise<SnapshotPayload> {
   const dedicated = await prisma.appStoreSnapshot.findUnique({
     where: { id: SETTINGS_SNAPSHOT_ID },
     select: { payload: true },
-  }).catch(() => null);
+  }).catch((error: unknown) => {
+    if (isDatabaseUnavailableError(error)) throw error;
+    if (isMissingSnapshotTableError(error)) return null;
+    throw error;
+  });
   const dedicatedPayload = jsonObject(dedicated?.payload) as SnapshotPayload;
   const legacyPayload = await readLegacySnapshotPayload();
   const mergedPayload = compactSnapshotPayload({
@@ -562,8 +571,16 @@ async function readSettingsSnapshotPayloadWithoutMigration(): Promise<SnapshotPa
   const row = await getMainPrisma().appStoreSnapshot.findUnique({
     where: { id: SETTINGS_SNAPSHOT_ID },
     select: { payload: true },
-  }).catch(() => null);
+  }).catch((error: unknown) => {
+    if (isDatabaseUnavailableError(error)) throw error;
+    if (isMissingSnapshotTableError(error)) return null;
+    throw error;
+  });
   return jsonObject(row?.payload) as SnapshotPayload;
+}
+
+function isMissingSnapshotTableError(error: unknown) {
+  return error instanceof Prisma.PrismaClientKnownRequestError && (error.code === "P2021" || error.code === "P2022");
 }
 
 async function patchSnapshotPayload(patch: SnapshotPayload) {

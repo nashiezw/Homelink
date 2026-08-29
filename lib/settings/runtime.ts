@@ -1,9 +1,10 @@
 import type { PlatformSettings, PublicPlatformConfig } from "@/lib/settings/types";
 import { isPostgresStoreEnabled } from "@/lib/db/main-prisma";
+import { isDatabaseUnavailableError } from "@/lib/db/production-schema";
 import { getHydratedStore, getStore } from "@/lib/store/app-store";
 
 const PUBLIC_PLATFORM_CONFIG_TTL_MS = 10 * 60 * 1000;
-let publicPlatformConfigCache: { value: PublicPlatformConfig; expiresAt: number } | null = null;
+let publicPlatformConfigCache: { value: PublicPlatformConfig; expiresAt: number; fromDatabase: boolean } | null = null;
 
 export function invalidatePlatformSettingsCache() {
   publicPlatformConfigCache = null;
@@ -19,10 +20,13 @@ export function getRuntimePlatformSettings(): PlatformSettings {
   return getStore().getPlatformSettings();
 }
 
-export async function getHydratedRuntimePlatformSettings(): Promise<PlatformSettings> {
+export async function getHydratedRuntimePlatformSettings(options: { strictDatabase?: boolean } = {}): Promise<PlatformSettings> {
   if (isPostgresStoreEnabled()) {
     const { getPostgresPlatformSettings } = await import("@/lib/admin/postgres-admin-config");
-    return getPostgresPlatformSettings();
+    return getPostgresPlatformSettings().catch((error: unknown) => {
+      if (options.strictDatabase || !isDatabaseUnavailableError(error)) throw error;
+      return getStore().getPlatformSettings();
+    });
   }
   return (await getHydratedStore()).getPlatformSettings();
 }
@@ -73,13 +77,28 @@ export async function getHydratedPublicPlatformConfig(): Promise<PublicPlatformC
 }
 
 export async function getCachedHydratedPublicPlatformConfig(): Promise<PublicPlatformConfig> {
+  return (await getCachedHydratedPublicPlatformConfigResult()).config;
+}
+
+export async function getCachedHydratedPublicPlatformConfigResult(): Promise<{
+  config: PublicPlatformConfig;
+  degraded: boolean;
+}> {
   const now = Date.now();
   if (publicPlatformConfigCache && publicPlatformConfigCache.expiresAt > now) {
-    return publicPlatformConfigCache.value;
+    return { config: publicPlatformConfigCache.value, degraded: false };
   }
-  const value = await getHydratedPublicPlatformConfig();
-  publicPlatformConfigCache = { value, expiresAt: now + PUBLIC_PLATFORM_CONFIG_TTL_MS };
-  return value;
+  try {
+    const value = toPublicPlatformConfig(await getHydratedRuntimePlatformSettings({ strictDatabase: true }));
+    publicPlatformConfigCache = { value, expiresAt: now + PUBLIC_PLATFORM_CONFIG_TTL_MS, fromDatabase: isPostgresStoreEnabled() };
+    return { config: value, degraded: false };
+  } catch (error) {
+    if (isDatabaseUnavailableError(error)) {
+      if (publicPlatformConfigCache?.fromDatabase) return { config: publicPlatformConfigCache.value, degraded: true };
+      return { config: getPublicPlatformConfig(), degraded: true };
+    }
+    throw error;
+  }
 }
 
 export function isMaintenanceMode() {
