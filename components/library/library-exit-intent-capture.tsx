@@ -27,7 +27,7 @@ const HELP_OPTIONS = [
 ];
 
 const FIELD_CLASS =
-  "mt-2 h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-950 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-950 dark:text-white";
+  "mt-2 h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-base text-slate-950 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 sm:text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-white";
 
 function storageKey(productSlug: string | undefined, suffix: string) {
   return `houselink_library_exit_capture:${productSlug || "checkout"}:${suffix}`;
@@ -188,9 +188,9 @@ export function LibraryExitIntentCapture({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/70 px-4 py-6 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="library-exit-title">
-      <div className="w-full max-w-2xl overflow-hidden rounded-2xl border border-white/10 bg-white shadow-2xl dark:bg-slate-950">
-        <div className="relative border-b border-slate-200 bg-slate-950 px-5 py-5 text-white dark:border-slate-800">
+    <div className="fixed inset-0 z-[90] flex items-end justify-center bg-slate-950/70 px-3 pb-3 pt-16 backdrop-blur-sm sm:items-center sm:p-6" role="dialog" aria-modal="true" aria-labelledby="library-exit-title">
+      <div className="flex max-h-[92dvh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-white shadow-2xl sm:max-h-[min(92dvh,46rem)] dark:bg-slate-950">
+        <div className="relative shrink-0 border-b border-slate-200 bg-slate-950 px-4 py-4 text-white sm:px-5 sm:py-5 dark:border-slate-800">
           <button
             type="button"
             onClick={() => dismiss("stay")}
@@ -199,32 +199,33 @@ export function LibraryExitIntentCapture({
           >
             <X className="size-4" />
           </button>
-          <div className="flex min-w-0 items-start gap-3 pr-12">
-            <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-emerald-500/15 text-emerald-300">
+          <div className="flex min-w-0 items-start gap-3 pr-11">
+            <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-emerald-500/15 text-emerald-300 sm:size-11">
               <SmilePlus className="size-5" />
             </span>
             <div className="min-w-0">
               <p className="text-xs font-black uppercase tracking-wide text-emerald-300">Quick follow-up</p>
-              <h2 id="library-exit-title" className="mt-1 text-2xl font-black leading-tight">{heading}</h2>
-              <p className="mt-2 max-w-xl text-sm leading-6 text-slate-300">{valueLine}</p>
+              <h2 id="library-exit-title" className="mt-1 text-xl font-black leading-tight sm:text-2xl">{heading}</h2>
+              <p className="mt-2 max-w-xl text-sm leading-5 text-slate-300 sm:leading-6">{valueLine}</p>
             </div>
           </div>
         </div>
 
-        <div className="grid gap-5 p-5 md:grid-cols-[1fr_0.82fr]">
-          <div className="space-y-4">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+          <div className="grid gap-4 p-4 sm:gap-5 sm:p-5 md:grid-cols-[1fr_0.82fr]">
+          <div className="space-y-3.5 sm:space-y-4">
             <div>
               <label htmlFor="library-exit-name" className="text-xs font-black uppercase tracking-wide text-slate-500 dark:text-slate-400">Name</label>
-              <input id="library-exit-name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className={FIELD_CLASS} placeholder="Your name" autoFocus />
+              <input id="library-exit-name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className={FIELD_CLASS} placeholder="Your name" autoComplete="name" required autoFocus />
             </div>
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-3 sm:grid-cols-2 sm:gap-4">
               <div>
                 <label htmlFor="library-exit-phone" className="flex items-center gap-1 text-xs font-black uppercase tracking-wide text-slate-500 dark:text-slate-400"><Phone className="size-3.5" /> Phone</label>
-                <input id="library-exit-phone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className={FIELD_CLASS} placeholder="+263..." inputMode="tel" />
+                <input id="library-exit-phone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className={FIELD_CLASS} placeholder="+263..." autoComplete="tel" inputMode="tel" required />
               </div>
               <div>
                 <label htmlFor="library-exit-email" className="flex items-center gap-1 text-xs font-black uppercase tracking-wide text-slate-500 dark:text-slate-400"><Mail className="size-3.5" /> Email</label>
-                <input id="library-exit-email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className={FIELD_CLASS} placeholder="you@example.com" inputMode="email" />
+                <input id="library-exit-email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className={FIELD_CLASS} placeholder="you@example.com" autoComplete="email" inputMode="email" required />
               </div>
             </div>
             <div>
@@ -239,32 +240,37 @@ export function LibraryExitIntentCapture({
                 id="library-exit-note"
                 value={form.note}
                 onChange={(e) => setForm({ ...form, note: e.target.value })}
-                rows={3}
-                className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-950 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+                rows={2}
+                className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-base text-slate-950 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 sm:text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-white"
                 placeholder="Tell us what you were unsure about"
               />
             </div>
             {error && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-200">{error}</p>}
           </div>
 
-          <aside className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-950 dark:border-emerald-900/40 dark:bg-emerald-950/20 dark:text-emerald-100">
-            <ShieldCheck className="mb-3 size-6 text-emerald-600 dark:text-emerald-300" />
-            <p className="font-black">We will follow up professionally.</p>
-            <p className="mt-2 leading-6">Your phone and email are saved with the Library journey, product viewed, and cart context so the team can help without asking you to repeat everything.</p>
-            <div className="mt-4 rounded-lg border border-emerald-200 bg-white/70 p-3 dark:border-emerald-800 dark:bg-slate-950/40">
+          <aside className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-950 sm:p-4 dark:border-emerald-900/40 dark:bg-emerald-950/20 dark:text-emerald-100">
+            <div className="flex items-start gap-3 md:block">
+              <ShieldCheck className="mt-0.5 size-5 shrink-0 text-emerald-600 sm:size-6 md:mb-3 dark:text-emerald-300" />
+              <div>
+                <p className="font-black">We will follow up professionally.</p>
+                <p className="mt-1.5 leading-6 md:mt-2">Your phone and email are saved with the Library journey, product viewed, and cart context so the team can help without asking you to repeat everything.</p>
+              </div>
+            </div>
+            <div className="mt-3 rounded-lg border border-emerald-200 bg-white/70 p-3 dark:border-emerald-800 dark:bg-slate-950/40">
               <p className="text-xs font-black uppercase tracking-wide text-emerald-700 dark:text-emerald-300">Interested in</p>
               <p className="mt-1 font-semibold leading-snug">{productLabel}</p>
             </div>
           </aside>
+          </div>
         </div>
 
-        <div className="flex flex-col-reverse gap-2 border-t border-slate-200 px-5 py-4 sm:flex-row sm:items-center sm:justify-between dark:border-slate-800">
+        <div className="shrink-0 border-t border-slate-200 bg-white px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:flex sm:items-center sm:justify-between sm:px-5 sm:py-4 dark:border-slate-800 dark:bg-slate-950">
           <button type="button" onClick={() => dismiss("leave_anyway")} className="text-sm font-semibold text-slate-500 transition hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100">
             Leave anyway
           </button>
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <Button type="button" variant="secondary" onClick={() => dismiss("stay")}>Stay on page</Button>
-            <Button type="button" onClick={submit} loading={busy} loadingText="Saving details...">
+          <div className="mt-3 grid grid-cols-2 gap-2 sm:mt-0 sm:flex">
+            <Button type="button" variant="secondary" className="w-full sm:w-auto" onClick={() => dismiss("stay")}>Stay</Button>
+            <Button type="button" className="w-full sm:w-auto" onClick={submit} loading={busy} loadingText="Saving details...">
               <MessageCircle className="size-4" /> Send my details
             </Button>
           </div>
