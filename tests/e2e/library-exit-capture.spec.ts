@@ -25,12 +25,12 @@ test("Library checkout shows a polished exit capture prompt", async ({ page }) =
 
   await page.locator("body").dispatchEvent("mouseout", { clientY: 0, relatedTarget: null });
 
-  const dialog = page.getByRole("dialog", { name: /Before you leave checkout/i });
+  const dialog = page.getByRole("dialog", { name: /Need a hand finishing your Library order/i });
   await expect(dialog).toBeVisible();
   await expect(dialog.getByLabel("Name")).toBeVisible();
   await expect(dialog.getByLabel("Phone")).toBeVisible();
   await expect(dialog.getByLabel("Email")).toBeVisible();
   await expect(dialog.getByRole("button", { name: /Send my details/i })).toBeVisible();
-  await expect(dialog.getByRole("button", { name: /Stay on page/i })).toBeVisible();
+  await expect(dialog.getByRole("button", { name: /Stay/i })).toBeVisible();
   await expect(dialog.getByText(/payment, proof upload, invoice details/i)).toBeVisible();
 });
