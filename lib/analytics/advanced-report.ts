@@ -125,6 +125,9 @@ function formatLiveStepName(name: string) {
   if (name === "library_sample_opened") return "Opened sample";
   if (name === "library_sample_viewed") return "Viewed sample";
   if (name === "library_sample_downloaded") return "Downloaded sample";
+  if (name === "library_exit_intent_shown") return "Saw exit offer";
+  if (name === "library_exit_intent_dismissed") return "Dismissed exit offer";
+  if (name === "library_exit_lead_captured") return "Exit details captured";
   if (name === "whatsapp_click") return "Clicked WhatsApp";
   return name.replace(/^library_/, "").replaceAll("_", " ");
 }
@@ -313,6 +316,7 @@ function finalizeJourneyRow(journey: JourneyRow, user?: { name: string | null; e
   const viewedProduct = names.has("library_product_viewed");
   const openedSample = names.has("library_sample_opened") || names.has("library_sample_viewed") || names.has("library_sample_downloaded");
   const downloadedSample = names.has("library_sample_downloaded");
+  const capturedExitLead = names.has("library_exit_lead_captured");
   const addedCart = names.has("library_cart_added") || names.has("library_bundle_added");
   const startedCheckout = names.has("library_checkout_started") || steps.some((step) => /checkout/i.test(step.detail));
   const uploadedProof = names.has("library_proof_uploaded");
@@ -337,10 +341,13 @@ function finalizeJourneyRow(journey: JourneyRow, user?: { name: string | null; e
     (addedCart ? 25 : 0) +
     (startedCheckout ? 30 : 0) +
     (clickedWhatsapp ? 15 : 0) +
+    (capturedExitLead ? 35 : 0) +
     (contactEmail || contactPhone ? 15 : 0) +
     (placedOrder ? 40 : 0);
   const leadStatus: JourneyLeadStatus = placedOrder
     ? { label: "Order placed", tone: "success" }
+    : capturedExitLead
+      ? { label: "Hot: exit details captured", tone: "hot" }
     : startedCheckout && !uploadedProof
       ? { label: "Hot: checkout follow-up", tone: "hot" }
       : addedCart
@@ -357,6 +364,7 @@ function finalizeJourneyRow(journey: JourneyRow, user?: { name: string | null; e
     addedCart,
     openedSample,
     downloadedSample,
+    capturedExitLead,
     clickedWhatsapp,
     contactEmail,
     contactPhone,
@@ -370,6 +378,7 @@ function finalizeJourneyRow(journey: JourneyRow, user?: { name: string | null; e
     addedCart,
     openedSample,
     downloadedSample,
+    capturedExitLead,
     clickedWhatsapp,
     contactEmail,
     contactPhone,
@@ -381,6 +390,7 @@ function finalizeJourneyRow(journey: JourneyRow, user?: { name: string | null; e
     startedCheckout && !placedOrder ? "abandoned-checkout" : "",
     openedSample ? "sample-viewed" : "",
     downloadedSample ? "sample-downloaded" : "",
+    capturedExitLead ? "exit-lead" : "",
     addedCart ? "cart-activity" : "",
     clickedWhatsapp ? "whatsapp" : "",
     contactEmail || contactPhone || journey.userId ? "known-contact" : "anonymous",
@@ -395,6 +405,7 @@ function finalizeJourneyRow(journey: JourneyRow, user?: { name: string | null; e
     startedCheckout,
     addedCart,
     openedSample,
+    capturedExitLead,
     placedOrder,
     uploadedProof,
     lastStepName: lastStep ? formatLiveStepName(lastStep.name) : "Browsed",
@@ -428,6 +439,7 @@ function journeyNextAction(input: {
   addedCart: boolean;
   openedSample: boolean;
   downloadedSample: boolean;
+  capturedExitLead: boolean;
   clickedWhatsapp: boolean;
   contactEmail: string;
   contactPhone: string;
@@ -437,6 +449,10 @@ function journeyNextAction(input: {
   const product = input.productTitle ? ` about ${input.productTitle}` : "";
   const followUp = buildJourneyFollowUp(input);
   if (input.placedOrder) return { label: "Review order", detail: "Order was placed; check proof/payment fulfilment if needed.", kind: "order" };
+  if (input.capturedExitLead) {
+    if (input.contactPhone) return { label: "WhatsApp recovered lead", detail: `Follow up while purchase intent is fresh${product}.`, href: followUp.whatsappHref, kind: "whatsapp" };
+    if (input.contactEmail) return { label: "Email recovered lead", detail: `Send a helpful purchase follow-up${product}.`, href: followUp.mailtoHref, kind: "email" };
+  }
   if (input.startedCheckout && !input.uploadedProof) {
     if (input.contactPhone) return { label: "WhatsApp payment help", detail: `Follow up on checkout and proof upload${product}.`, href: followUp.whatsappHref, kind: "whatsapp" };
     if (input.contactEmail) return { label: "Email proof reminder", detail: `Ask the buyer to upload proof or request help${product}.`, href: followUp.mailtoHref, kind: "email" };
@@ -457,6 +473,7 @@ function buildJourneyFollowUp(input: {
   addedCart: boolean;
   openedSample: boolean;
   downloadedSample: boolean;
+  capturedExitLead: boolean;
   clickedWhatsapp: boolean;
   contactEmail: string;
   contactPhone: string;
@@ -471,7 +488,9 @@ function buildJourneyFollowUp(input: {
   const linkLine = `You can return to it here: ${input.productUrl}`;
   let intentLine = "If you have any questions before purchasing, I can help you choose the right format and complete the order.";
 
-  if (input.startedCheckout && !input.uploadedProof) {
+  if (input.capturedExitLead) {
+    intentLine = "You left your details before leaving, so I wanted to follow up while the guide is still fresh. I can answer questions, help with the right format, and make checkout quick.";
+  } else if (input.startedCheckout && !input.uploadedProof) {
     intentLine = "I noticed you reached checkout but payment/proof upload may not have been completed. I can help you finish the order and get access quickly.";
   } else if (input.downloadedSample) {
     intentLine = "Since you downloaded the sample, this may be a good fit for what you are researching. I can help you complete the full purchase if you would like the complete guide.";
@@ -506,6 +525,7 @@ function journeySummary(input: {
   startedCheckout: boolean;
   addedCart: boolean;
   openedSample: boolean;
+  capturedExitLead: boolean;
   placedOrder: boolean;
   uploadedProof: boolean;
   lastStepName: string;
@@ -514,6 +534,7 @@ function journeySummary(input: {
   const source = input.source && input.source !== "Direct / unknown" ? ` from ${input.source}` : "";
   const product = input.productTitle ? ` for ${input.productTitle}` : ` on ${input.currentPageLabel}`;
   if (input.placedOrder) return `${who}${source} placed a Library order${product}.`;
+  if (input.capturedExitLead) return `${who}${source} left contact details for Library follow-up${product}.`;
   if (input.startedCheckout && !input.uploadedProof) return `${who}${source} reached checkout${product}, but proof/payment is not complete.`;
   if (input.addedCart) return `${who}${source} added Library items to the bag${product}.`;
   if (input.openedSample) return `${who}${source} opened a sample${product}.`;

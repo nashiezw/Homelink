@@ -214,12 +214,13 @@ type AdvancedReport = {
 
 type Journey = AdvancedReport["journeys"][number];
 type JourneyStep = Journey["steps"][number];
-type JourneyFilter = "all" | "high-intent" | "abandoned-checkout" | "sample-viewed" | "sample-downloaded" | "cart-activity" | "whatsapp" | "known-contact" | "anonymous";
+type JourneyFilter = "all" | "high-intent" | "abandoned-checkout" | "exit-lead" | "sample-viewed" | "sample-downloaded" | "cart-activity" | "whatsapp" | "known-contact" | "anonymous";
 
 const journeyFilters: Array<{ id: JourneyFilter; label: string }> = [
   { id: "all", label: "All" },
   { id: "high-intent", label: "High intent" },
   { id: "abandoned-checkout", label: "Checkout abandoned" },
+  { id: "exit-lead", label: "Exit lead" },
   { id: "sample-viewed", label: "Sample viewed" },
   { id: "sample-downloaded", label: "Sample downloaded" },
   { id: "cart-activity", label: "Cart activity" },
@@ -256,6 +257,9 @@ function journeyStepLabel(name: string) {
   if (name === "library_sample_opened") return "Opened sample";
   if (name === "library_sample_viewed") return "Viewed sample";
   if (name === "library_sample_downloaded") return "Downloaded sample";
+  if (name === "library_exit_intent_shown") return "Saw exit offer";
+  if (name === "library_exit_intent_dismissed") return "Dismissed exit offer";
+  if (name === "library_exit_lead_captured") return "Exit details captured";
   if (name === "library_cart_added" || name === "library_bundle_added") return "Added to bag";
   if (name === "library_cart_removed") return "Removed from bag";
   if (name === "library_checkout_started") return "Started checkout";
@@ -270,6 +274,7 @@ function journeyStepLabel(name: string) {
 function journeyStepIcon(name: string) {
   if (name === "page_view") return Eye;
   if (name === "library_cart_added" || name === "library_bundle_added" || name === "library_cart_removed") return ShoppingBag;
+  if (name === "library_exit_lead_captured") return MessageCircle;
   if (name === "library_checkout_started" || name === "library_purchase_completed" || name === "library_proof_uploaded") return Target;
   if (name === "whatsapp_click") return MessageCircle;
   return MousePointerClick;

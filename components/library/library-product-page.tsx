@@ -30,6 +30,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { BookCover } from "@/components/library/book-cover";
 import { LibraryBulkQuoteDialog } from "@/components/library/library-bulk-quote-dialog";
 import { LibraryCartFab } from "@/components/library/library-cart-fab";
+import { LibraryExitIntentCapture } from "@/components/library/library-exit-intent-capture";
 import { LibraryFormatPickerDialog } from "@/components/library/library-format-picker-dialog";
 import { LibraryProductCard } from "@/components/library/library-product-card";
 import { WhatsAppHelpLink } from "@/components/layout/whatsapp-help-link";
@@ -117,6 +118,7 @@ export function LibraryProductPage({
   const [reviewBusy, setReviewBusy] = useState(false);
   const [reviewNotice, setReviewNotice] = useState("");
   const [softcopyBadgeVariant, setSoftcopyBadgeVariant] = useState("control");
+  const [sampleTouched, setSampleTouched] = useState(false);
 
   useEffect(() => {
     setSoftcopyBadgeVariant(getExperimentVariant("library_softcopy_badge", ["control", "save_callout"]));
@@ -344,6 +346,7 @@ export function LibraryProductPage({
   }, [previewOpen, sampleUrl]);
 
   function trackSampleOpened(surface: string) {
+    setSampleTouched(true);
     trackEvent("library_sample_opened", product.id, { title: product.title, slug: product.slug, surface });
   }
 
@@ -354,12 +357,14 @@ export function LibraryProductPage({
 
   function openSampleInNewTab(surface: string) {
     if (!sampleUrl) return;
+    setSampleTouched(true);
     trackEvent("library_sample_viewed", product.id, { title: product.title, slug: product.slug, surface });
     window.open(sampleUrl, "_blank", "noopener,noreferrer");
   }
 
   function downloadSample(surface: string) {
     if (!sampleDownloadUrl) return;
+    setSampleTouched(true);
     trackEvent("library_sample_downloaded", product.id, { title: product.title, slug: product.slug, surface });
     window.open(sampleDownloadUrl, "_blank", "noopener,noreferrer");
   }
@@ -720,6 +725,13 @@ export function LibraryProductPage({
 
   return (
     <main className={cn("bg-mist text-ink dark:bg-slate-950 dark:text-white", bundleLines.length > 1 && "pb-24 lg:pb-0")}>
+      <LibraryExitIntentCapture
+        productId={product.id}
+        productTitle={product.title}
+        productSlug={product.slug}
+        surface="product"
+        highIntent={sampleTouched || productQuantity > 0 || count > 0}
+      />
       <LibraryCartFab />
       {quoteOpen ? (
         <LibraryBulkQuoteDialog

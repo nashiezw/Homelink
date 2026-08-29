@@ -3766,16 +3766,16 @@ function LibraryTabManagement({
           </Button>
         </div>
         <div>
-          <h3 className="mb-2 text-sm font-semibold uppercase tracking-wider text-slate-300">Bulk quote inbox</h3>
+          <h3 className="mb-2 text-sm font-semibold uppercase tracking-wider text-slate-300">Quote and lead inbox</h3>
           <AdminDataTable
             rows={quoteRows}
-            emptyMessage="No bulk quote requests yet."
+            emptyMessage="No quote requests or exit leads yet."
             columns={[
               { key: "when", header: "When", render: (row) => new Date(row.createdAt).toLocaleDateString() },
               { key: "customer", header: "Customer", render: (row) => <span className="font-semibold text-white">{row.name || row.email}</span> },
               { key: "product", header: "Product", render: (row) => row.productTitle },
-              { key: "qty", header: "Qty", render: (row) => row.quantity },
-              { key: "detail", header: "Detail", render: (row) => [row.company, row.formatType, row.phone].filter(Boolean).join(" · ") || row.message || "—" },
+              { key: "qty", header: "Type", render: (row) => row.formatType === "EXIT_LEAD" ? "Exit lead" : `${row.quantity} qty` },
+              { key: "detail", header: "Detail", render: (row) => [row.company, row.formatType === "EXIT_LEAD" ? null : row.formatType, row.phone].filter(Boolean).join(" · ") || row.message || "—" },
               {
                 key: "status",
                 header: "Status",
