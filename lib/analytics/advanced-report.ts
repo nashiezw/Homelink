@@ -137,6 +137,237 @@ function liveLeadStatus(row: { path: string; cartItemCount: number; cartValue: n
   return { label: "Browsing", tone: "neutral" };
 }
 
+function createJourneyRow(input: {
+  sessionId: string;
+  visitorId: string;
+  userId: string | null;
+  at: Date;
+  path: string;
+  title: string;
+  deviceType?: string;
+  referrer?: string;
+  utmSource?: string;
+  utmCampaign?: string;
+  contactEmail?: string;
+  contactPhone?: string;
+}): JourneyRow {
+  const startedAt = input.at.toISOString();
+  const currentPageLabel = readablePageName(input.path, input.title);
+  return {
+    sessionId: input.sessionId,
+    visitorId: input.visitorId,
+    userId: input.userId,
+    startedAt,
+    endedAt: startedAt,
+    durationMinutes: 0,
+    steps: [],
+    whatsappAssisted: false,
+    purchased: false,
+    deviceType: input.deviceType || "unknown",
+    source: sourceLabel({ utmSource: input.utmSource, utmCampaign: input.utmCampaign, referrer: input.referrer }),
+    location: "Location unavailable",
+    landingPage: currentPageLabel,
+    currentPageLabel,
+    productTitle: input.title !== "Unknown product" ? input.title : "",
+    identityLabel: "Guest visitor",
+    contactEmail: input.contactEmail || "",
+    contactPhone: input.contactPhone || "",
+    contactStatus: "Anonymous",
+    leadStatus: { label: "Browsing", tone: "neutral" },
+    intentScore: 0,
+    nextAction: { label: "Keep watching", detail: "No clear sales action yet.", kind: "observe" },
+    summary: "Visitor activity is still building.",
+    filters: [],
+    debug: { visitorId: input.visitorId, sessionId: input.sessionId, userId: input.userId, landingPath: cleanUrlPath(input.path) },
+  };
+}
+
+function updateJourneyContext(
+  journey: JourneyRow,
+  input: {
+    at: Date;
+    name: string;
+    path: string;
+    title: string;
+    deviceType?: string;
+    referrer?: string;
+    utmSource?: string;
+    utmCampaign?: string;
+    contactEmail?: string;
+    contactPhone?: string;
+  },
+) {
+  const at = input.at.toISOString();
+  if (at < journey.startedAt) {
+    journey.startedAt = at;
+    journey.landingPage = readablePageName(input.path, input.title);
+    journey.debug.landingPath = cleanUrlPath(input.path);
+  }
+  if (at > journey.endedAt) {
+    journey.endedAt = at;
+    journey.currentPageLabel = readablePageName(input.path, input.title);
+  }
+  if ((!journey.deviceType || journey.deviceType === "unknown") && input.deviceType) journey.deviceType = input.deviceType;
+  const source = sourceLabel({ utmSource: input.utmSource, utmCampaign: input.utmCampaign, referrer: input.referrer });
+  if (source !== "Direct / unknown") journey.source = source;
+  if (!journey.contactEmail && input.contactEmail) journey.contactEmail = input.contactEmail;
+  if (!journey.contactPhone && input.contactPhone) journey.contactPhone = input.contactPhone;
+  if (input.title && input.title !== "Unknown product") journey.productTitle = input.title;
+  if (input.name === "whatsapp_click") journey.whatsappAssisted = true;
+  if (input.name === "library_purchase_completed") journey.purchased = true;
+}
+
+function finalizeJourneyRow(journey: JourneyRow, user?: { name: string | null; email: string | null; phone: string | null } | null): JourneyRow {
+  const steps = [...journey.steps]
+    .sort((a, b) => a.at.localeCompare(b.at))
+    .filter((step, index, rows) => index === 0 || recentStepKey(step) !== recentStepKey(rows[index - 1]))
+    .slice(-25);
+  const names = new Set(steps.map((step) => step.name));
+  const viewedProduct = names.has("library_product_viewed");
+  const openedSample = names.has("library_sample_opened");
+  const addedCart = names.has("library_cart_added") || names.has("library_bundle_added");
+  const startedCheckout = names.has("library_checkout_started") || steps.some((step) => /checkout/i.test(step.detail));
+  const uploadedProof = names.has("library_proof_uploaded");
+  const placedOrder = journey.purchased || names.has("library_purchase_completed");
+  const clickedWhatsapp = journey.whatsappAssisted || names.has("whatsapp_click");
+  const lastStep = steps[steps.length - 1];
+  const productTitle = journey.productTitle || steps.find((step) => step.name !== "page_view" && step.detail)?.detail || "";
+  const contactEmail = user?.email || journey.contactEmail || "";
+  const contactPhone = user?.phone || journey.contactPhone || "";
+  const identityLabel = user?.name?.trim() || (contactEmail ? contactEmail.split("@")[0] : journey.userId ? "Known buyer" : "Guest visitor");
+  const contactStatus = contactPhone
+    ? "Phone captured"
+    : contactEmail
+      ? "Email captured, phone missing"
+      : startedCheckout
+        ? "Checkout contact not captured yet"
+        : "Anonymous";
+  const score =
+    (viewedProduct ? 15 : 0) +
+    (openedSample ? 20 : 0) +
+    (addedCart ? 25 : 0) +
+    (startedCheckout ? 30 : 0) +
+    (clickedWhatsapp ? 15 : 0) +
+    (contactEmail || contactPhone ? 15 : 0) +
+    (placedOrder ? 40 : 0);
+  const leadStatus: JourneyLeadStatus = placedOrder
+    ? { label: "Order placed", tone: "success" }
+    : startedCheckout && !uploadedProof
+      ? { label: "Hot: checkout follow-up", tone: "hot" }
+      : addedCart
+        ? { label: "Warm: bag interest", tone: "warm" }
+        : openedSample
+          ? { label: "Warm: sample viewed", tone: "warm" }
+          : viewedProduct
+            ? { label: "Library browsing", tone: "info" }
+            : { label: "Browsing", tone: "neutral" };
+  const nextAction = journeyNextAction({
+    placedOrder,
+    uploadedProof,
+    startedCheckout,
+    addedCart,
+    openedSample,
+    clickedWhatsapp,
+    contactEmail,
+    contactPhone,
+    productTitle,
+  });
+  const filters = [
+    score >= 55 ? "high-intent" : "",
+    startedCheckout && !placedOrder ? "abandoned-checkout" : "",
+    openedSample ? "sample-viewed" : "",
+    addedCart ? "cart-activity" : "",
+    clickedWhatsapp ? "whatsapp" : "",
+    contactEmail || contactPhone || journey.userId ? "known-contact" : "anonymous",
+  ].filter(Boolean);
+  const durationMinutes = Math.max(0, Math.round((new Date(journey.endedAt).getTime() - new Date(journey.startedAt).getTime()) / 60000));
+  const summary = journeySummary({
+    deviceType: journey.deviceType,
+    source: journey.source,
+    identityLabel,
+    productTitle,
+    currentPageLabel: journey.currentPageLabel,
+    startedCheckout,
+    addedCart,
+    openedSample,
+    placedOrder,
+    uploadedProof,
+    lastStepName: lastStep ? formatLiveStepName(lastStep.name) : "Browsed",
+  });
+  return {
+    ...journey,
+    steps,
+    purchased: placedOrder,
+    whatsappAssisted: clickedWhatsapp,
+    durationMinutes,
+    productTitle,
+    identityLabel,
+    contactEmail,
+    contactPhone,
+    contactStatus,
+    leadStatus,
+    intentScore: Math.min(100, score),
+    nextAction,
+    summary,
+    filters,
+    debug: { ...journey.debug, userId: journey.userId },
+  };
+}
+
+function journeyNextAction(input: {
+  placedOrder: boolean;
+  uploadedProof: boolean;
+  startedCheckout: boolean;
+  addedCart: boolean;
+  openedSample: boolean;
+  clickedWhatsapp: boolean;
+  contactEmail: string;
+  contactPhone: string;
+  productTitle: string;
+}): JourneyNextAction {
+  const product = input.productTitle ? ` about ${input.productTitle}` : "";
+  if (input.placedOrder) return { label: "Review order", detail: "Order was placed; check proof/payment fulfilment if needed.", kind: "order" };
+  if (input.startedCheckout && !input.uploadedProof) {
+    if (input.contactPhone) return { label: "WhatsApp payment help", detail: `Follow up on checkout and proof upload${product}.`, href: whatsappUrl(input.contactPhone), kind: "whatsapp" };
+    if (input.contactEmail) return { label: "Email proof reminder", detail: `Ask the buyer to upload proof or request help${product}.`, href: `mailto:${input.contactEmail}`, kind: "email" };
+    return { label: "Watch checkout recovery", detail: "Checkout began, but contact details are not yet available.", kind: "observe" };
+  }
+  if (input.addedCart || input.openedSample) {
+    if (input.contactPhone) return { label: "WhatsApp product help", detail: `Offer help or answer questions${product}.`, href: whatsappUrl(input.contactPhone), kind: "whatsapp" };
+    if (input.contactEmail) return { label: "Email product link", detail: `Send the product link or answer questions${product}.`, href: `mailto:${input.contactEmail}`, kind: "email" };
+  }
+  if (input.clickedWhatsapp) return { label: "Check WhatsApp inbox", detail: "Visitor clicked WhatsApp; look for the matching conversation.", kind: "observe" };
+  return { label: "No action yet", detail: "Low-intent browsing; keep this session for trend analysis.", kind: "observe" };
+}
+
+function journeySummary(input: {
+  deviceType: string;
+  source: string;
+  identityLabel: string;
+  productTitle: string;
+  currentPageLabel: string;
+  startedCheckout: boolean;
+  addedCart: boolean;
+  openedSample: boolean;
+  placedOrder: boolean;
+  uploadedProof: boolean;
+  lastStepName: string;
+}) {
+  const who = input.identityLabel === "Guest visitor" ? `${input.deviceType || "Unknown"} visitor` : input.identityLabel;
+  const source = input.source && input.source !== "Direct / unknown" ? ` from ${input.source}` : "";
+  const product = input.productTitle ? ` for ${input.productTitle}` : ` on ${input.currentPageLabel}`;
+  if (input.placedOrder) return `${who}${source} placed a Library order${product}.`;
+  if (input.startedCheckout && !input.uploadedProof) return `${who}${source} reached checkout${product}, but proof/payment is not complete.`;
+  if (input.addedCart) return `${who}${source} added Library items to the bag${product}.`;
+  if (input.openedSample) return `${who}${source} opened a sample${product}.`;
+  return `${who}${source} is browsing; latest action was ${input.lastStepName.toLowerCase()}${product}.`;
+}
+
+function whatsappUrl(phone: string) {
+  const digits = phone.replace(/\D/g, "");
+  return digits ? `https://wa.me/${digits}` : undefined;
+}
+
 function recentStepKey(step: { at: string; name: string; detail: string }) {
   return `${step.at}:${step.name}:${step.detail}`;
 }
@@ -180,6 +411,35 @@ const publicFunnelWhere = {
 
 type AdvancedSiteAnalyticsReport = any;
 type LiveJourneyStep = { at: string; name: string; detail: string };
+type JourneyLeadStatus = { label: string; tone: "hot" | "warm" | "success" | "info" | "neutral" };
+type JourneyNextAction = { label: string; detail: string; href?: string; kind: "whatsapp" | "email" | "order" | "observe" };
+type JourneyRow = {
+  sessionId: string;
+  visitorId: string;
+  userId: string | null;
+  startedAt: string;
+  endedAt: string;
+  durationMinutes: number;
+  steps: LiveJourneyStep[];
+  whatsappAssisted: boolean;
+  purchased: boolean;
+  deviceType: string;
+  source: string;
+  location: string;
+  landingPage: string;
+  currentPageLabel: string;
+  productTitle: string;
+  identityLabel: string;
+  contactEmail: string;
+  contactPhone: string;
+  contactStatus: string;
+  leadStatus: JourneyLeadStatus;
+  intentScore: number;
+  nextAction: JourneyNextAction;
+  summary: string;
+  filters: string[];
+  debug: { visitorId: string; sessionId: string; userId: string | null; landingPath: string };
+};
 const ADVANCED_REPORT_CACHE_TTL_MS = 5 * 60 * 1000;
 const advancedReportCache = new Map<string, { value: AdvancedSiteAnalyticsReport; expiresAt: number }>();
 
@@ -251,15 +511,7 @@ async function buildAdvancedSiteAnalyticsReport(days = 30): Promise<AdvancedSite
       formatLabel: string;
       path: string;
     }>,
-    journeys: [] as Array<{
-      sessionId: string;
-      visitorId: string;
-      userId: string | null;
-      startedAt: string;
-      steps: Array<{ at: string; name: string; detail: string }>;
-      whatsappAssisted: boolean;
-      purchased: boolean;
-    }>,
+    journeys: [] as JourneyRow[],
     revenueByProduct: [] as Array<{ label: string; value: number }>,
     revenueByFormat: [] as Array<{ label: string; value: number }>,
     revenueByChannel: [] as Array<{ label: string; value: number }>,
@@ -311,6 +563,8 @@ async function buildAdvancedSiteAnalyticsReport(days = 30): Promise<AdvancedSite
             visitorId: true,
             sessionId: true,
             path: true,
+            deviceType: true,
+            referrer: true,
             userId: true,
             createdAt: true,
           },
@@ -412,7 +666,7 @@ async function buildAdvancedSiteAnalyticsReport(days = 30): Promise<AdvancedSite
     const cartActivity: typeof emptyAdvanced.cartActivity = [];
     const addHeat = new Map<string, number>();
     const removeHeat = new Map<string, number>();
-    const sessionMap = new Map<string, typeof emptyAdvanced.journeys[number]>();
+    const sessionMap = new Map<string, JourneyRow>();
     const engagementMap = new Map<string, number>();
     const marketplaceMap = new Map<string, number>();
 
@@ -424,17 +678,34 @@ async function buildAdvancedSiteAnalyticsReport(days = 30): Promise<AdvancedSite
       const sessionId = event.sessionId || `visitor:${event.visitorId}`;
 
       if (!sessionMap.has(sessionId)) {
-        sessionMap.set(sessionId, {
+        sessionMap.set(sessionId, createJourneyRow({
           sessionId,
           visitorId: event.visitorId,
           userId: event.userId,
-          startedAt: event.createdAt.toISOString(),
-          steps: [],
-          whatsappAssisted: false,
-          purchased: false,
-        });
+          at: event.createdAt,
+          path: event.path || event.target || "",
+          title,
+          deviceType: event.deviceType || undefined,
+          referrer: event.referrer || undefined,
+          utmSource: metaStr(meta, "utmSource", "source"),
+          utmCampaign: metaStr(meta, "utmCampaign", "campaign"),
+          contactEmail: metaStr(meta, "email", "contactEmail"),
+          contactPhone: metaStr(meta, "phone", "contactPhone"),
+        }));
       }
       const journey = sessionMap.get(sessionId)!;
+      updateJourneyContext(journey, {
+        at: event.createdAt,
+        name: event.name,
+        path: event.path || event.target || "",
+        title,
+        deviceType: event.deviceType || undefined,
+        referrer: event.referrer || undefined,
+        utmSource: metaStr(meta, "utmSource", "source"),
+        utmCampaign: metaStr(meta, "utmCampaign", "campaign"),
+        contactEmail: metaStr(meta, "email", "contactEmail"),
+        contactPhone: metaStr(meta, "phone", "contactPhone"),
+      });
       if (event.createdAt.toISOString() < journey.startedAt) journey.startedAt = event.createdAt.toISOString();
       if (event.userId) journey.userId = event.userId;
       const detail = title !== "Unknown product" ? title : event.path || event.target || "";
@@ -551,16 +822,18 @@ async function buildAdvancedSiteAnalyticsReport(days = 30): Promise<AdvancedSite
       .sort((a, b) => b.views - a.views || b.adds - a.adds)
       .slice(0, 100);
 
-    const liveUserIds = [...new Set(liveRows.map((row) => row.userId).filter((id): id is string => Boolean(id)))].slice(0, 200);
+    const liveUserIds = liveRows.map((row) => row.userId).filter((id): id is string => Boolean(id));
+    const journeyUserIds = [...sessionMap.values()].map((row) => row.userId).filter((id): id is string => Boolean(id));
+    const analyticsUserIds = [...new Set([...liveUserIds, ...journeyUserIds])].slice(0, 300);
     const liveSessionIds = [...new Set(liveRows.map((row) => row.sessionId).filter(Boolean))].slice(0, 200);
     const liveVisitorIds = [...new Set(liveRows.map((row) => row.visitorId).filter(Boolean))].slice(0, 200);
-    const [liveUsers, livePageViews] = await Promise.all([
-      liveUserIds.length
+    const [analyticsUsers, livePageViews] = await Promise.all([
+      analyticsUserIds.length
         ? prisma.user
             .findMany({
-              where: { id: { in: liveUserIds } },
+              where: { id: { in: analyticsUserIds } },
               select: { id: true, name: true, email: true, phone: true },
-              take: 200,
+              take: 300,
             })
             .catch(() => [])
         : Promise.resolve([]),
@@ -579,32 +852,45 @@ async function buildAdvancedSiteAnalyticsReport(days = 30): Promise<AdvancedSite
             .catch(() => [])
         : Promise.resolve([]),
     ]);
-    const liveUserById = new Map(liveUsers.map((user) => [user.id, user]));
+    const analyticsUserById = new Map(analyticsUsers.map((user) => [user.id, user]));
     for (const view of livePageViews) {
       const sessionId = view.sessionId || `visitor:${view.visitorId}`;
       const existing =
         sessionMap.get(sessionId) ??
-        sessionMap.get(`visitor:${view.visitorId}`) ?? {
+        sessionMap.get(`visitor:${view.visitorId}`) ??
+        createJourneyRow({
           sessionId,
           visitorId: view.visitorId,
           userId: null,
-          startedAt: view.startedAt.toISOString(),
-          steps: [],
-          whatsappAssisted: false,
-          purchased: false,
-        };
+          at: view.startedAt,
+          path: view.path,
+          title: readablePageName(view.path, view.title),
+          deviceType: undefined,
+          referrer: view.referrer || undefined,
+          utmSource: view.utmSource || undefined,
+          utmCampaign: view.utmCampaign || undefined,
+        });
       const step = {
         at: view.startedAt.toISOString(),
         name: "page_view",
         detail: readablePageName(view.path, view.title),
       };
       if (!existing.steps.some((item: LiveJourneyStep) => recentStepKey(item) === recentStepKey(step))) existing.steps.push(step);
-      if (view.startedAt.toISOString() < existing.startedAt) existing.startedAt = view.startedAt.toISOString();
+      updateJourneyContext(existing, {
+        at: view.startedAt,
+        name: "page_view",
+        path: view.path,
+        title: readablePageName(view.path, view.title),
+        deviceType: undefined,
+        referrer: view.referrer || undefined,
+        utmSource: view.utmSource || undefined,
+        utmCampaign: view.utmCampaign || undefined,
+      });
       sessionMap.set(existing.sessionId, existing);
     }
 
     const liveVisitors = liveRows.map((row) => {
-      const user = row.userId ? liveUserById.get(row.userId) : null;
+      const user = row.userId ? analyticsUserById.get(row.userId) : null;
       const journey = sessionMap.get(row.sessionId) ?? sessionMap.get(`visitor:${row.visitorId}`);
       const purchased = Boolean(journey?.purchased);
       const steps = (journey?.steps ?? [])
@@ -683,10 +969,7 @@ async function buildAdvancedSiteAnalyticsReport(days = 30): Promise<AdvancedSite
     ];
 
     const journeys = [...sessionMap.values()]
-      .map((journey) => ({
-        ...journey,
-        steps: [...journey.steps].reverse().slice(0, 25).reverse(),
-      }))
+      .map((journey) => finalizeJourneyRow(journey, journey.userId ? analyticsUserById.get(journey.userId) : null))
       .sort((a, b) => (a.startedAt < b.startedAt ? 1 : -1))
       .slice(0, 40);
 
@@ -781,7 +1064,7 @@ export function advancedAnalyticsToCsv(report: Awaited<ReturnType<typeof getAdva
   }
   for (const row of report.journeys) {
     lines.push(
-      `journeys,${csv(row.sessionId)},${row.steps.length},visitor=${row.visitorId};wa=${row.whatsappAssisted};purchased=${row.purchased};user=${row.userId || ""}`,
+      `journeys,${csv(row.summary || row.sessionId)},${row.intentScore ?? row.steps.length},visitor=${row.visitorId};wa=${row.whatsappAssisted};purchased=${row.purchased};user=${row.userId || ""};lead=${csv(row.leadStatus?.label || "")};action=${csv(row.nextAction?.label || "")};source=${csv(row.source || "")};contact=${csv(row.contactStatus || "")}`,
     );
   }
   for (const alert of report.alerts) {

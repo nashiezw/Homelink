@@ -1,7 +1,24 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Download, ExternalLink, Mail, MapPin, Phone, RefreshCw, UserRound } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  Activity,
+  Clock,
+  Download,
+  ExternalLink,
+  Eye,
+  Filter,
+  Mail,
+  MapPin,
+  MessageCircle,
+  MousePointerClick,
+  Phone,
+  RefreshCw,
+  Route,
+  ShoppingBag,
+  Target,
+  UserRound,
+} from "lucide-react";
 import { apiFetch } from "@/lib/api/client";
 
 type TopClassAnalytics = {
@@ -159,9 +176,27 @@ type AdvancedReport = {
     visitorId: string;
     userId: string | null;
     startedAt: string;
+    endedAt?: string;
+    durationMinutes?: number;
     steps: Array<{ at: string; name: string; detail: string }>;
     whatsappAssisted: boolean;
     purchased: boolean;
+    deviceType?: string;
+    source?: string;
+    location?: string;
+    landingPage?: string;
+    currentPageLabel?: string;
+    productTitle?: string;
+    identityLabel?: string;
+    contactEmail?: string;
+    contactPhone?: string;
+    contactStatus?: string;
+    leadStatus?: { label: string; tone: string };
+    intentScore?: number;
+    nextAction?: { label: string; detail: string; href?: string; kind: string };
+    summary?: string;
+    filters?: string[];
+    debug?: { visitorId: string; sessionId: string; userId: string | null; landingPath: string };
   }>;
   revenueByProduct: Array<{ label: string; value: number }>;
   revenueByFormat: Array<{ label: string; value: number }>;
@@ -175,28 +210,77 @@ type AdvancedReport = {
 
 type Journey = AdvancedReport["journeys"][number];
 type JourneyStep = Journey["steps"][number];
+type JourneyFilter = "all" | "high-intent" | "abandoned-checkout" | "sample-viewed" | "cart-activity" | "whatsapp" | "known-contact" | "anonymous";
+
+const journeyFilters: Array<{ id: JourneyFilter; label: string }> = [
+  { id: "all", label: "All" },
+  { id: "high-intent", label: "High intent" },
+  { id: "abandoned-checkout", label: "Checkout abandoned" },
+  { id: "sample-viewed", label: "Sample viewed" },
+  { id: "cart-activity", label: "Cart activity" },
+  { id: "whatsapp", label: "WhatsApp" },
+  { id: "known-contact", label: "Known contact" },
+  { id: "anonymous", label: "Anonymous" },
+];
 
 function formatStepName(name: string) {
   return name.replace(/^library_/, "").replaceAll("_", " ");
 }
 
 function describeJourneyStep(step: JourneyStep) {
-  const name = formatStepName(step.name);
+  const name = journeyStepLabel(step.name);
   return step.detail ? `${name}: ${step.detail}` : name;
 }
 
 function journeyHeadline(journey: Journey) {
-  const meaningful = [...journey.steps].reverse().find((step) => step.name !== "page_view") ?? journey.steps[journey.steps.length - 1];
-  if (!meaningful) return journey.purchased ? "Purchase completed" : "Browsing session";
-  return describeJourneyStep(meaningful);
+  return journey.leadStatus?.label || (journey.purchased ? "Order placed" : "Browsing session");
 }
 
 function journeyPreview(journey: Journey) {
+  if (journey.summary) return journey.summary;
   return journey.steps
     .filter((step) => step.name !== "page_view" || step.detail)
     .slice(-3)
     .map(describeJourneyStep)
     .join(" -> ");
+}
+
+function journeyStepLabel(name: string) {
+  if (name === "page_view") return "Viewed page";
+  if (name === "library_product_viewed") return "Viewed product";
+  if (name === "library_sample_opened") return "Opened sample";
+  if (name === "library_cart_added" || name === "library_bundle_added") return "Added to bag";
+  if (name === "library_cart_removed") return "Removed from bag";
+  if (name === "library_checkout_started") return "Started checkout";
+  if (name === "library_purchase_completed") return "Placed order";
+  if (name === "library_proof_uploaded") return "Uploaded proof";
+  if (name === "whatsapp_click") return "Clicked WhatsApp";
+  if (name === "experiment_exposure") return "Saw experiment";
+  if (name === "library_scroll_depth") return "Scrolled product";
+  return formatStepName(name);
+}
+
+function journeyStepIcon(name: string) {
+  if (name === "page_view") return Eye;
+  if (name === "library_cart_added" || name === "library_bundle_added" || name === "library_cart_removed") return ShoppingBag;
+  if (name === "library_checkout_started" || name === "library_purchase_completed" || name === "library_proof_uploaded") return Target;
+  if (name === "whatsapp_click") return MessageCircle;
+  return MousePointerClick;
+}
+
+function journeyLeadClass(tone?: string) {
+  if (tone === "hot") return "border-red-400/40 bg-red-500/10 text-red-100";
+  if (tone === "warm") return "border-amber-400/40 bg-amber-500/10 text-amber-100";
+  if (tone === "success") return "border-emerald-400/40 bg-emerald-500/10 text-emerald-100";
+  if (tone === "info") return "border-sky-400/40 bg-sky-500/10 text-sky-100";
+  return "border-white/10 bg-white/[0.04] text-slate-200";
+}
+
+function journeyActionIcon(kind?: string) {
+  if (kind === "whatsapp") return MessageCircle;
+  if (kind === "email") return Mail;
+  if (kind === "order") return Target;
+  return Activity;
 }
 
 type LiveVisitor = AdvancedReport["live"]["visitors"][number];
@@ -270,9 +354,25 @@ export function SiteAnalyticsPanel() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [selectedJourney, setSelectedJourney] = useState<string | null>(null);
+  const [journeyFilter, setJourneyFilter] = useState<JourneyFilter>("all");
   const loadingRef = useRef(false);
 
   const tc = report?.topClass;
+  const allJourneys = useMemo(() => report?.journeys ?? [], [report?.journeys]);
+  const filteredJourneys = useMemo(
+    () => allJourneys.filter((journey) => journeyFilter === "all" || journey.filters?.includes(journeyFilter)),
+    [allJourneys, journeyFilter],
+  );
+  const selectedJourneyRow = filteredJourneys.find((row) => row.sessionId === selectedJourney) ?? filteredJourneys[0] ?? null;
+  const journeyStats = useMemo(
+    () => ({
+      highIntent: allJourneys.filter((row) => row.filters?.includes("high-intent")).length,
+      checkout: allJourneys.filter((row) => row.filters?.includes("abandoned-checkout")).length,
+      known: allJourneys.filter((row) => row.filters?.includes("known-contact")).length,
+      phone: allJourneys.filter((row) => row.contactPhone).length,
+    }),
+    [allJourneys],
+  );
 
   async function load() {
     if (loadingRef.current) return;
@@ -297,6 +397,14 @@ export function SiteAnalyticsPanel() {
     return () => window.clearInterval(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [days, tab]);
+
+  useEffect(() => {
+    if (!selectedJourneyRow) {
+      setSelectedJourney(null);
+      return;
+    }
+    if (selectedJourney !== selectedJourneyRow.sessionId) setSelectedJourney(selectedJourneyRow.sessionId);
+  }, [selectedJourney, selectedJourneyRow]);
 
   const tabs: Array<{ id: Tab; label: string }> = [
     { id: "board", label: "Board" },
@@ -718,52 +826,162 @@ export function SiteAnalyticsPanel() {
       )}
 
       {tab === "journeys" && (
-        <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
-          <Panel title="Recent sessions">
-            <div className="max-h-[28rem] space-y-2 overflow-y-auto text-xs">
-              {(report?.journeys ?? []).map((journey) => (
+        <div className="grid gap-5">
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <Metric label="High-intent journeys" value={journeyStats.highIntent} accent="text-red-300" />
+            <Metric label="Checkout follow-ups" value={journeyStats.checkout} accent="text-amber-300" />
+            <Metric label="Known contacts" value={journeyStats.known} />
+            <Metric label="Phone captured" value={journeyStats.phone} />
+          </div>
+
+          <Panel
+            title="Journey filters"
+            icon={Filter}
+            action={<span className="text-xs text-slate-500">{filteredJourneys.length} of {allJourneys.length}</span>}
+          >
+            <div className="flex flex-wrap gap-2">
+              {journeyFilters.map((filter) => (
                 <button
-                  key={journey.sessionId}
+                  key={filter.id}
                   type="button"
-                  onClick={() => setSelectedJourney(journey.sessionId)}
-                  className={`block w-full rounded-lg border px-3 py-2 text-left ${
-                    selectedJourney === journey.sessionId ? "border-emerald-400/40 bg-emerald-500/10" : "border-white/10 hover:bg-white/5"
+                  onClick={() => setJourneyFilter(filter.id)}
+                  className={`rounded-lg border px-3 py-1.5 text-xs font-semibold ${
+                    journeyFilter === filter.id
+                      ? "border-emerald-400/40 bg-emerald-500/15 text-emerald-100"
+                      : "border-white/10 text-slate-300 hover:bg-white/5"
                   }`}
                 >
-                  <p className="break-words font-semibold text-white">{journeyHeadline(journey)}</p>
-                  <p className="mt-1 text-slate-400">
-                    {journey.steps.length} tracked {journey.steps.length === 1 ? "step" : "steps"} - {journey.purchased ? "purchased" : "browsing"}
-                    {journey.whatsappAssisted ? " - WhatsApp assisted" : ""}
-                  </p>
-                  {journeyPreview(journey) ? (
-                    <p className="mt-1 line-clamp-2 break-words text-slate-500">{journeyPreview(journey)}</p>
-                  ) : null}
-                  <p className="mt-1 text-slate-600">
-                    {new Date(journey.startedAt).toLocaleString()}
-                    {journey.userId ? " - known buyer" : ""}
-                  </p>
+                  {filter.label}
                 </button>
               ))}
-              {!report?.journeys?.length ? <p className="text-slate-400">Session journeys will appear as events stream in.</p> : null}
             </div>
           </Panel>
-          <Panel title="Session timeline">
-            {(() => {
-              const journey = report?.journeys.find((row) => row.sessionId === selectedJourney) ?? report?.journeys[0];
-              if (!journey) return <p className="text-sm text-slate-400">Select a session.</p>;
-              return (
-                <div className="max-h-[28rem] space-y-2 overflow-y-auto text-xs text-slate-300">
-                  {journey.steps.map((step, index) => (
-                    <div key={`${step.at}-${index}`} className="rounded-lg border border-white/10 px-3 py-2">
-                      <p className="font-semibold text-white">{formatStepName(step.name)}</p>
-                      <p className="mt-1 text-slate-400">{step.detail || "—"}</p>
-                      <p className="mt-1 text-slate-500">{new Date(step.at).toLocaleString()}</p>
+
+          <div className="grid gap-5 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.25fr)]">
+            <Panel title="Visitor journeys" icon={Route}>
+              <div className="max-h-[34rem] space-y-3 overflow-y-auto pr-1 text-xs">
+                {filteredJourneys.map((journey) => (
+                  <button
+                    key={journey.sessionId}
+                    type="button"
+                    onClick={() => setSelectedJourney(journey.sessionId)}
+                    className={`block w-full rounded-xl border p-3 text-left transition ${
+                      selectedJourneyRow?.sessionId === journey.sessionId ? "border-emerald-400/50 bg-emerald-500/10" : "border-white/10 hover:bg-white/5"
+                    }`}
+                  >
+                    <div className="flex flex-col gap-2 min-[520px]:flex-row min-[520px]:items-start min-[520px]:justify-between">
+                      <div className="min-w-0">
+                        <p className="break-words font-semibold text-white">{journey.identityLabel || "Guest visitor"}</p>
+                        <p className="mt-1 break-words text-slate-400">{journeyPreview(journey) || journeyHeadline(journey)}</p>
+                      </div>
+                      <span className={`shrink-0 rounded-full border px-2 py-1 text-[10px] font-bold uppercase tracking-wide ${journeyLeadClass(journey.leadStatus?.tone)}`}>
+                        {journey.leadStatus?.label || journeyHeadline(journey)}
+                      </span>
                     </div>
-                  ))}
+                    <div className="mt-3 grid gap-2 text-slate-400 min-[520px]:grid-cols-2">
+                      <span className="flex min-w-0 items-center gap-1.5">
+                        <MapPin className="size-3.5 shrink-0" />
+                        <span className="truncate">{journey.location || "Location unavailable"}</span>
+                      </span>
+                      <span className="flex min-w-0 items-center gap-1.5">
+                        <ExternalLink className="size-3.5 shrink-0" />
+                        <span className="truncate">{journey.source || "Direct / unknown"}</span>
+                      </span>
+                      <span className="flex min-w-0 items-center gap-1.5">
+                        <Clock className="size-3.5 shrink-0" />
+                        <span className="truncate">{shortTime(journey.endedAt || journey.startedAt)} · {journey.durationMinutes ?? 0} min</span>
+                      </span>
+                      <span className="flex min-w-0 items-center gap-1.5">
+                        <Target className="size-3.5 shrink-0" />
+                        <span className="truncate">Intent {journey.intentScore ?? 0}/100</span>
+                      </span>
+                    </div>
+                    <p className="mt-2 text-[11px] text-slate-500">{journey.contactStatus || "Anonymous"}</p>
+                  </button>
+                ))}
+                {!filteredJourneys.length ? (
+                  <p className="text-slate-400">No journeys match this filter yet.</p>
+                ) : null}
+              </div>
+            </Panel>
+
+            <Panel title="Selected journey" icon={Activity}>
+              {selectedJourneyRow ? (
+                <div className="space-y-4">
+                  <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                    <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-white">{selectedJourneyRow.identityLabel || "Guest visitor"}</p>
+                        <p className="mt-2 break-words text-sm leading-6 text-slate-300">{selectedJourneyRow.summary || journeyPreview(selectedJourneyRow)}</p>
+                      </div>
+                      <span className={`shrink-0 rounded-full border px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wide ${journeyLeadClass(selectedJourneyRow.leadStatus?.tone)}`}>
+                        {selectedJourneyRow.leadStatus?.label || "Browsing"}
+                      </span>
+                    </div>
+                    <div className="mt-4 grid gap-2 text-xs text-slate-400 sm:grid-cols-2 xl:grid-cols-3">
+                      <JourneyFact icon={UserRound} label="Visitor" value={selectedJourneyRow.userId ? "Registered user" : "Guest / anonymous"} />
+                      <JourneyFact icon={Phone} label="Phone" value={selectedJourneyRow.contactPhone || "Not captured"} />
+                      <JourneyFact icon={Mail} label="Email" value={selectedJourneyRow.contactEmail || "Not captured"} />
+                      <JourneyFact icon={MapPin} label="Location" value={selectedJourneyRow.location || "Unavailable"} />
+                      <JourneyFact icon={ExternalLink} label="Source" value={selectedJourneyRow.source || "Direct / unknown"} />
+                      <JourneyFact icon={Eye} label="Current page" value={selectedJourneyRow.currentPageLabel || selectedJourneyRow.landingPage || "Unknown"} />
+                    </div>
+                  </div>
+
+                  {selectedJourneyRow.nextAction ? (
+                    <div className="rounded-xl border border-emerald-400/25 bg-emerald-500/10 p-4">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold uppercase tracking-wide text-emerald-200">Next best action</p>
+                          <p className="mt-1 font-semibold text-white">{selectedJourneyRow.nextAction.label}</p>
+                          <p className="mt-1 text-sm leading-6 text-slate-300">{selectedJourneyRow.nextAction.detail}</p>
+                        </div>
+                        {selectedJourneyRow.nextAction.href ? (
+                          <a
+                            href={selectedJourneyRow.nextAction.href}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-emerald-500 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-400"
+                          >
+                            {(() => {
+                              const Icon = journeyActionIcon(selectedJourneyRow.nextAction?.kind);
+                              return <Icon className="size-4" />;
+                            })()}
+                            Open
+                          </a>
+                        ) : null}
+                      </div>
+                    </div>
+                  ) : null}
+
+                  <div className="max-h-[28rem] space-y-3 overflow-y-auto pr-1 text-xs text-slate-300">
+                    {selectedJourneyRow.steps.map((step, index) => {
+                      const Icon = journeyStepIcon(step.name);
+                      return (
+                        <div key={`${step.at}-${index}`} className="grid grid-cols-[1.75rem_minmax(0,1fr)] gap-3">
+                          <div className="flex flex-col items-center">
+                            <span className="grid size-7 place-items-center rounded-full border border-white/10 bg-slate-950 text-emerald-200">
+                              <Icon className="size-3.5" />
+                            </span>
+                            {index < selectedJourneyRow.steps.length - 1 ? <span className="mt-2 h-full min-h-5 w-px bg-white/10" /> : null}
+                          </div>
+                          <div className="min-w-0 rounded-lg border border-white/10 px-3 py-2">
+                            <div className="flex flex-col gap-1 min-[520px]:flex-row min-[520px]:items-center min-[520px]:justify-between">
+                              <p className="font-semibold text-white">{journeyStepLabel(step.name)}</p>
+                              <span className="text-[11px] text-slate-500">{new Date(step.at).toLocaleString()}</span>
+                            </div>
+                            <p className="mt-1 break-words text-slate-400">{step.detail || "-"}</p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
-              );
-            })()}
-          </Panel>
+              ) : (
+                <p className="text-sm text-slate-400">Select a journey.</p>
+              )}
+            </Panel>
+          </div>
         </div>
       )}
 
@@ -1560,6 +1778,18 @@ function LiveFact({ icon, label, value }: { icon?: ReactNode; label: string; val
   );
 }
 
+function JourneyFact({ icon: Icon, label, value }: { icon: typeof UserRound; label: string; value: string }) {
+  return (
+    <div className="min-w-0 rounded-lg border border-white/5 bg-white/[0.03] px-2.5 py-2">
+      <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-slate-500">
+        <Icon className="size-3.5" />
+        {label}
+      </p>
+      <p className="mt-1 break-words text-xs font-semibold text-slate-200">{value}</p>
+    </div>
+  );
+}
+
 function BigMetric({ label, value, accent }: { label: string; value: string | number; accent?: string }) {
   return (
     <div className="min-w-0 rounded-xl border border-white/10 bg-black/30 px-4 py-4">
@@ -1632,10 +1862,16 @@ function InventoryStatus({ status }: { status: string }) {
   return <span className={`text-[10px] font-bold uppercase ${colors[status] ?? "text-slate-400"}`}>{status.replaceAll("_", " ")}</span>;
 }
 
-function Panel({ title, children }: { title: string; children: ReactNode }) {
+function Panel({ title, icon: Icon, action, children }: { title: string; icon?: typeof UserRound; action?: ReactNode; children: ReactNode }) {
   return (
     <div className="min-w-0">
-      <h4 className="break-words text-sm font-semibold uppercase tracking-wider text-slate-300">{title}</h4>
+      <div className="flex items-center justify-between gap-3">
+        <h4 className="flex min-w-0 items-center gap-2 break-words text-sm font-semibold uppercase tracking-wider text-slate-300">
+          {Icon ? <Icon className="size-4 shrink-0 text-emerald-300" /> : null}
+          {title}
+        </h4>
+        {action ? <div className="shrink-0">{action}</div> : null}
+      </div>
       <div className="mt-3">{children}</div>
     </div>
   );
