@@ -58,6 +58,89 @@ function resolveDisplayTitle(title: string, productId: string, catalogTitles: Ma
   return catalog || "Unknown product";
 }
 
+function cleanUrlPath(path: string | null | undefined) {
+  const raw = String(path || "/").trim() || "/";
+  try {
+    const url = raw.startsWith("http") ? new URL(raw) : new URL(raw, "https://www.houselink.co.zw");
+    return `${url.pathname}${url.search}`;
+  } catch {
+    return raw.split("#")[0] || "/";
+  }
+}
+
+function readablePageName(path: string | null | undefined, title?: string | null) {
+  const clean = cleanUrlPath(path);
+  const pageTitle = String(title || "")
+    .replace(/\s*[|–-]\s*HouseLink.*$/i, "")
+    .replace(/\s*[|–-]\s*Library.*$/i, "")
+    .trim();
+  if (pageTitle && !/^HouseLink Zimbabwe$/i.test(pageTitle)) return pageTitle;
+  const pathname = clean.split("?")[0] || "/";
+  if (pathname === "/") return "Homepage";
+  if (pathname === "/library") return "Library storefront";
+  if (pathname === "/library/checkout") return "Library checkout";
+  if (pathname === "/dashboard/my-library") return "My Library";
+  if (pathname.startsWith("/library/")) return `Library product: ${decodeSlug(pathname.replace("/library/", ""))}`;
+  if (pathname === "/search") return "Property search";
+  if (pathname.startsWith("/listings/")) return `Listing: ${decodeSlug(pathname.replace("/listings/", ""))}`;
+  if (pathname.startsWith("/blog/")) return `Blog: ${decodeSlug(pathname.replace("/blog/", ""))}`;
+  return decodeSlug(pathname.replace(/^\/+/, "") || "Page");
+}
+
+function decodeSlug(value: string) {
+  return value
+    .split("?")[0]
+    .replace(/[-_]+/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase())
+    .trim();
+}
+
+function sourceLabel(row: { utmSource?: string | null; utmCampaign?: string | null; referrer?: string | null }) {
+  const source = row.utmSource?.trim();
+  const campaign = row.utmCampaign?.trim();
+  if (source && campaign) return `${source} · ${campaign}`;
+  if (source) return source;
+  const referrer = row.referrer?.trim();
+  if (!referrer) return "Direct / unknown";
+  try {
+    const host = new URL(referrer).hostname.replace(/^www\./, "");
+    return host || "Referral";
+  } catch {
+    return referrer.length > 42 ? `${referrer.slice(0, 42)}...` : referrer;
+  }
+}
+
+function locationLabel(row: { city?: string | null; region?: string | null; country?: string | null }) {
+  const parts = [row.city, row.region, row.country].map((part) => part?.trim()).filter(Boolean);
+  return parts.length ? parts.join(", ") : "Location unavailable";
+}
+
+function formatLiveStepName(name: string) {
+  if (name === "page_view") return "Viewed page";
+  if (name === "library_checkout_started") return "Started Library checkout";
+  if (name === "library_cart_added" || name === "library_bundle_added") return "Added to bag";
+  if (name === "library_cart_removed") return "Removed from bag";
+  if (name === "library_cart_qty_changed") return "Changed bag quantity";
+  if (name === "library_purchase_completed") return "Placed Library order";
+  if (name === "library_sample_opened") return "Opened sample";
+  if (name === "whatsapp_click") return "Clicked WhatsApp";
+  return name.replace(/^library_/, "").replaceAll("_", " ");
+}
+
+function liveLeadStatus(row: { path: string; cartItemCount: number; cartValue: number; userId: string | null }, purchased: boolean) {
+  if (purchased) return { label: "Order placed", tone: "success" };
+  if (row.path.includes("/library/checkout") && row.cartItemCount > 0) return { label: "Hot lead: checkout", tone: "hot" };
+  if (row.cartItemCount > 0 && row.cartValue >= 40) return { label: "High-value bag", tone: "hot" };
+  if (row.cartItemCount > 0) return { label: "Open bag", tone: "warm" };
+  if (row.path.startsWith("/library")) return { label: "Library browsing", tone: "info" };
+  if (row.userId) return { label: "Known visitor", tone: "info" };
+  return { label: "Browsing", tone: "neutral" };
+}
+
+function recentStepKey(step: { at: string; name: string; detail: string }) {
+  return `${step.at}:${step.name}:${step.detail}`;
+}
+
 const publicPageWhere = {
   NOT: [
     { path: { startsWith: "/dashboard/admin" } },
@@ -96,6 +179,7 @@ const publicFunnelWhere = {
 };
 
 type AdvancedSiteAnalyticsReport = any;
+type LiveJourneyStep = { at: string; name: string; detail: string };
 const ADVANCED_REPORT_CACHE_TTL_MS = 5 * 60 * 1000;
 const advancedReportCache = new Map<string, { value: AdvancedSiteAnalyticsReport; expiresAt: number }>();
 
@@ -126,6 +210,16 @@ async function buildAdvancedSiteAnalyticsReport(days = 30): Promise<AdvancedSite
         cartItemCount: number;
         cartValue: number;
         cartCurrency: string;
+        identityLabel: string;
+        contactEmail: string;
+        contactPhone: string;
+        contactStatus: string;
+        currentPageLabel: string;
+        location: string;
+        source: string;
+        leadStatus: { label: string; tone: string };
+        journey: Array<{ at: string; name: string; detail: string }>;
+        debug: { visitorId: string; sessionId: string; userId: string | null; rawPath: string };
         lastSeenAt: string;
         userId: string | null;
       }>,
@@ -239,7 +333,7 @@ async function buildAdvancedSiteAnalyticsReport(days = 30): Promise<AdvancedSite
               couponCode: true,
               items: { select: { productId: true, title: true, quantity: true, total: true, productType: true } },
               payment: { select: { status: true, proofStatus: true, createdAt: true, updatedAt: true } },
-              customer: { select: { email: true, name: true } },
+              customer: { select: { email: true, name: true, phone: true } },
             },
             take: 5000,
           })
@@ -457,18 +551,107 @@ async function buildAdvancedSiteAnalyticsReport(days = 30): Promise<AdvancedSite
       .sort((a, b) => b.views - a.views || b.adds - a.adds)
       .slice(0, 100);
 
-    const liveVisitors = liveRows.map((row) => ({
-      visitorId: row.visitorId,
-      path: row.path,
-      title: row.title || "",
-      deviceType: row.deviceType || "unknown",
-      productTitle: row.productTitle || "",
-      cartItemCount: row.cartItemCount,
-      cartValue: row.cartValue,
-      cartCurrency: row.cartCurrency || "USD",
-      lastSeenAt: row.lastSeenAt.toISOString(),
-      userId: row.userId,
-    }));
+    const liveUserIds = [...new Set(liveRows.map((row) => row.userId).filter((id): id is string => Boolean(id)))].slice(0, 200);
+    const liveSessionIds = [...new Set(liveRows.map((row) => row.sessionId).filter(Boolean))].slice(0, 200);
+    const liveVisitorIds = [...new Set(liveRows.map((row) => row.visitorId).filter(Boolean))].slice(0, 200);
+    const [liveUsers, livePageViews] = await Promise.all([
+      liveUserIds.length
+        ? prisma.user
+            .findMany({
+              where: { id: { in: liveUserIds } },
+              select: { id: true, name: true, email: true, phone: true },
+              take: 200,
+            })
+            .catch(() => [])
+        : Promise.resolve([]),
+      liveRows.length
+        ? prisma.sitePageView
+            .findMany({
+              where: {
+                startedAt: { gte: new Date(Date.now() - 2 * 60 * 60_000) },
+                ...publicPageWhere,
+                OR: [{ sessionId: { in: liveSessionIds } }, { visitorId: { in: liveVisitorIds } }],
+              },
+              select: { visitorId: true, sessionId: true, path: true, title: true, referrer: true, utmSource: true, utmCampaign: true, startedAt: true },
+              orderBy: { startedAt: "desc" },
+              take: 400,
+            })
+            .catch(() => [])
+        : Promise.resolve([]),
+    ]);
+    const liveUserById = new Map(liveUsers.map((user) => [user.id, user]));
+    for (const view of livePageViews) {
+      const sessionId = view.sessionId || `visitor:${view.visitorId}`;
+      const existing =
+        sessionMap.get(sessionId) ??
+        sessionMap.get(`visitor:${view.visitorId}`) ?? {
+          sessionId,
+          visitorId: view.visitorId,
+          userId: null,
+          startedAt: view.startedAt.toISOString(),
+          steps: [],
+          whatsappAssisted: false,
+          purchased: false,
+        };
+      const step = {
+        at: view.startedAt.toISOString(),
+        name: "page_view",
+        detail: readablePageName(view.path, view.title),
+      };
+      if (!existing.steps.some((item: LiveJourneyStep) => recentStepKey(item) === recentStepKey(step))) existing.steps.push(step);
+      if (view.startedAt.toISOString() < existing.startedAt) existing.startedAt = view.startedAt.toISOString();
+      sessionMap.set(existing.sessionId, existing);
+    }
+
+    const liveVisitors = liveRows.map((row) => {
+      const user = row.userId ? liveUserById.get(row.userId) : null;
+      const journey = sessionMap.get(row.sessionId) ?? sessionMap.get(`visitor:${row.visitorId}`);
+      const purchased = Boolean(journey?.purchased);
+      const steps = (journey?.steps ?? [])
+        .sort((a: LiveJourneyStep, b: LiveJourneyStep) => a.at.localeCompare(b.at))
+        .slice(-6)
+        .map((step: LiveJourneyStep) => ({
+          ...step,
+          name: formatLiveStepName(step.name),
+        }));
+      const contactEmail = user?.email ?? row.contactEmail ?? "";
+      const contactPhone = user?.phone ?? row.contactPhone ?? "";
+      const contactStatus = contactPhone
+        ? "Phone captured"
+        : contactEmail
+          ? "Email captured, phone missing"
+          : row.path.includes("/library/checkout")
+            ? "Checkout contact not captured yet"
+            : "Anonymous";
+      const currentPageLabel = readablePageName(row.path, row.title || row.productTitle);
+      return {
+        visitorId: row.visitorId,
+        path: cleanUrlPath(row.path),
+        title: row.title || "",
+        deviceType: row.deviceType || "unknown",
+        productTitle: row.productTitle || "",
+        cartItemCount: row.cartItemCount,
+        cartValue: row.cartValue,
+        cartCurrency: row.cartCurrency || "USD",
+        identityLabel: user?.name?.trim() || (contactEmail ? contactEmail.split("@")[0] : "Guest visitor"),
+        contactEmail,
+        contactPhone,
+        contactStatus,
+        currentPageLabel,
+        location: locationLabel(row),
+        source: sourceLabel(row),
+        leadStatus: liveLeadStatus(row, purchased),
+        journey: steps,
+        lastSeenAt: row.lastSeenAt.toISOString(),
+        userId: row.userId,
+        debug: {
+          visitorId: row.visitorId,
+          sessionId: row.sessionId,
+          userId: row.userId,
+          rawPath: row.path,
+        },
+      };
+    });
     const libraryShoppers = liveVisitors.filter((row) => row.path.startsWith("/library") || row.path.startsWith("/dashboard/my-library"));
     const onCheckout = liveVisitors.filter((row) => row.path.includes("/library/checkout"));
     const openBags = liveVisitors.filter((row) => row.cartItemCount > 0);

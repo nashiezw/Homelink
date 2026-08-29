@@ -234,6 +234,14 @@ async function applyCoreProductionSchema() {
     )
   `);
   await prisma.$executeRawUnsafe(`CREATE UNIQUE INDEX IF NOT EXISTS "SitePresence_visitorId_key" ON "SitePresence"("visitorId")`);
+  await prisma.$executeRawUnsafe(`ALTER TABLE "SitePresence" ADD COLUMN IF NOT EXISTS "referrer" TEXT`);
+  await prisma.$executeRawUnsafe(`ALTER TABLE "SitePresence" ADD COLUMN IF NOT EXISTS "utmSource" TEXT`);
+  await prisma.$executeRawUnsafe(`ALTER TABLE "SitePresence" ADD COLUMN IF NOT EXISTS "utmCampaign" TEXT`);
+  await prisma.$executeRawUnsafe(`ALTER TABLE "SitePresence" ADD COLUMN IF NOT EXISTS "contactEmail" TEXT`);
+  await prisma.$executeRawUnsafe(`ALTER TABLE "SitePresence" ADD COLUMN IF NOT EXISTS "contactPhone" TEXT`);
+  await prisma.$executeRawUnsafe(`ALTER TABLE "SitePresence" ADD COLUMN IF NOT EXISTS "country" TEXT`);
+  await prisma.$executeRawUnsafe(`ALTER TABLE "SitePresence" ADD COLUMN IF NOT EXISTS "region" TEXT`);
+  await prisma.$executeRawUnsafe(`ALTER TABLE "SitePresence" ADD COLUMN IF NOT EXISTS "city" TEXT`);
   await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "SitePresence_lastSeenAt_idx" ON "SitePresence"("lastSeenAt")`);
   await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "SitePresence_path_idx" ON "SitePresence"("path")`);
   await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "SitePresence_sessionId_idx" ON "SitePresence"("sessionId")`);

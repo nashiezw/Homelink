@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Download, ExternalLink, RefreshCw } from "lucide-react";
+import { Download, ExternalLink, Mail, MapPin, Phone, RefreshCw, UserRound } from "lucide-react";
 import { apiFetch } from "@/lib/api/client";
 
 type TopClassAnalytics = {
@@ -115,6 +115,16 @@ type AdvancedReport = {
       cartCurrency: string;
       lastSeenAt: string;
       userId: string | null;
+      identityLabel?: string;
+      contactEmail?: string;
+      contactPhone?: string;
+      contactStatus?: string;
+      currentPageLabel?: string;
+      location?: string;
+      source?: string;
+      leadStatus?: { label: string; tone: string };
+      journey?: Array<{ at: string; name: string; detail: string }>;
+      debug?: { visitorId: string; sessionId: string; userId: string | null; rawPath: string };
     }>;
     alerts: string[];
   };
@@ -187,6 +197,30 @@ function journeyPreview(journey: Journey) {
     .slice(-3)
     .map(describeJourneyStep)
     .join(" -> ");
+}
+
+type LiveVisitor = AdvancedReport["live"]["visitors"][number];
+
+function leadStatusClass(tone?: string) {
+  if (tone === "hot") return "border-red-400/40 bg-red-500/10 text-red-100";
+  if (tone === "warm") return "border-amber-400/40 bg-amber-500/10 text-amber-100";
+  if (tone === "success") return "border-emerald-400/40 bg-emerald-500/10 text-emerald-100";
+  if (tone === "info") return "border-sky-400/40 bg-sky-500/10 text-sky-100";
+  return "border-white/10 bg-white/[0.04] text-slate-200";
+}
+
+function shortTime(value: string) {
+  return new Date(value).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
+function debugShort(value: string) {
+  return value.length > 18 ? `${value.slice(0, 18)}...` : value;
+}
+
+function whatsappHref(phone: string) {
+  const digits = phone.replace(/\D/g, "");
+  if (!digits) return "";
+  return `https://wa.me/${digits}`;
 }
 
 type Tab =
@@ -472,23 +506,92 @@ export function SiteAnalyticsPanel() {
             <Metric label="Open bags" value={report?.live.openBags ?? "—"} />
             <Metric label="Open bag value" value={report ? `USD ${report.live.bagValue.toFixed(2)}` : "—"} />
           </div>
-          <Panel title="Who is online (last 5 minutes)">
-            <div className="max-h-96 space-y-2 overflow-y-auto text-xs text-slate-300">
+          <Panel title="Live visitor journeys (last 5 minutes)">
+            <div className="max-h-[34rem] space-y-3 overflow-y-auto text-xs text-slate-300">
               {(report?.live.visitors ?? []).length ? (
-                report!.live.visitors.map((row) => (
-                  <div key={`${row.visitorId}-${row.lastSeenAt}`} className="min-w-0 rounded-lg border border-white/10 px-3 py-2">
-                    <div className="grid gap-1 min-[520px]:flex min-[520px]:items-center min-[520px]:justify-between min-[520px]:gap-2">
-                      <p className="break-all font-semibold text-white">{row.path}</p>
-                      <span className="break-words text-slate-500 min-[520px]:shrink-0">
-                        {row.deviceType}
-                        {row.userId ? " · signed in" : ""}
-                      </span>
+                report!.live.visitors.map((row: LiveVisitor) => (
+                  <article key={`${row.visitorId}-${row.lastSeenAt}`} className="min-w-0 rounded-lg border border-white/10 bg-black/20 px-3 py-3">
+                    <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                      <div className="min-w-0">
+                        <div className="flex min-w-0 flex-wrap items-center gap-2">
+                          <span className={`rounded-full border px-2 py-1 text-[10px] font-bold uppercase tracking-wide ${leadStatusClass(row.leadStatus?.tone)}`}>
+                            {row.leadStatus?.label ?? "Browsing"}
+                          </span>
+                          <span className="text-[11px] uppercase tracking-wide text-slate-500">
+                            {row.deviceType}
+                            {row.userId ? " · signed in" : " · guest"}
+                          </span>
+                        </div>
+                        <h4 className="mt-2 break-words text-sm font-semibold text-white">{row.identityLabel || "Guest visitor"}</h4>
+                        <p className="mt-1 break-words text-slate-300">{row.currentPageLabel || row.title || row.path}</p>
+                      </div>
+                      <div className="grid gap-1 text-left text-slate-500 lg:text-right">
+                        <span>Last seen {shortTime(row.lastSeenAt)}</span>
+                        <span>Bag: {row.cartItemCount} · {row.cartCurrency} {row.cartValue.toFixed(2)}</span>
+                      </div>
                     </div>
-                    {row.productTitle ? <p className="mt-1 break-words text-emerald-300">{row.productTitle}</p> : null}
-                    <p className="mt-1 break-words text-slate-500">
-                      Bag: {row.cartItemCount} · {row.cartCurrency} {row.cartValue.toFixed(2)} · {new Date(row.lastSeenAt).toLocaleTimeString()}
-                    </p>
-                  </div>
+
+                    <div className="mt-3 grid gap-2 md:grid-cols-3">
+                      <LiveFact icon={<UserRound className="size-3.5" />} label="Contact" value={row.contactStatus || "Anonymous"} />
+                      <LiveFact icon={<MapPin className="size-3.5" />} label="Location" value={row.location || "Location unavailable"} />
+                      <LiveFact label="Source" value={row.source || "Direct / unknown"} />
+                    </div>
+
+                    {(row.contactEmail || row.contactPhone) && (
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {row.contactPhone ? (
+                          <a
+                            href={whatsappHref(row.contactPhone)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-[#25D366]/40 bg-[#25D366]/10 px-2 py-1 text-xs font-semibold text-[#25D366] hover:bg-[#25D366]/20"
+                          >
+                            <Phone className="size-3.5" />
+                            WhatsApp
+                          </a>
+                        ) : null}
+                        {row.contactEmail ? (
+                          <a
+                            href={`mailto:${row.contactEmail}`}
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-2 py-1 text-xs font-semibold text-slate-200 hover:bg-white/5"
+                          >
+                            <Mail className="size-3.5" />
+                            Email
+                          </a>
+                        ) : null}
+                      </div>
+                    )}
+
+                    <div className="mt-3 border-t border-white/10 pt-3">
+                      <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Recent journey</p>
+                      {(row.journey ?? []).length ? (
+                        <ol className="mt-2 grid gap-2">
+                          {row.journey!.map((step, index) => (
+                            <li key={`${step.at}-${step.name}-${index}`} className="grid grid-cols-[4.5rem_minmax(0,1fr)] gap-2">
+                              <span className="tabular-nums text-slate-500">{shortTime(step.at)}</span>
+                              <span className="min-w-0 break-words">
+                                <span className="font-semibold text-slate-100">{step.name}</span>
+                                {step.detail ? <span className="text-slate-400"> · {step.detail}</span> : null}
+                              </span>
+                            </li>
+                          ))}
+                        </ol>
+                      ) : (
+                        <p className="mt-2 text-slate-500">Waiting for more journey activity.</p>
+                      )}
+                    </div>
+
+                    <details className="mt-3 border-t border-white/10 pt-3">
+                      <summary className="cursor-pointer text-[10px] font-bold uppercase tracking-wide text-slate-500 hover:text-slate-300">
+                        Debug details
+                      </summary>
+                      <dl className="mt-2 grid gap-1 text-[11px] text-slate-500">
+                        <div className="min-w-0 break-all">Visitor: {debugShort(row.debug?.visitorId ?? row.visitorId)}</div>
+                        <div className="min-w-0 break-all">Session: {debugShort(row.debug?.sessionId ?? "")}</div>
+                        <div className="min-w-0 break-all">Path: {row.debug?.rawPath ?? row.path}</div>
+                      </dl>
+                    </details>
+                  </article>
                 ))
               ) : (
                 <p className="text-slate-400">No live visitors in the last 5 minutes.</p>
@@ -1441,6 +1544,18 @@ function Metric({ label, value, accent }: { label: string; value: string | numbe
     <div className="min-w-0 rounded-xl border border-white/10 bg-black/20 px-3 py-3">
       <p className="break-words text-[11px] font-semibold uppercase tracking-wide text-slate-400">{label}</p>
       <p className={`mt-1 break-words text-xl font-bold tabular-nums ${accent ?? "text-white"}`}>{value}</p>
+    </div>
+  );
+}
+
+function LiveFact({ icon, label, value }: { icon?: ReactNode; label: string; value: string }) {
+  return (
+    <div className="min-w-0 rounded-lg border border-white/5 bg-white/[0.03] px-2.5 py-2">
+      <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-slate-500">
+        {icon}
+        {label}
+      </p>
+      <p className="mt-1 break-words text-xs font-semibold text-slate-200">{value}</p>
     </div>
   );
 }

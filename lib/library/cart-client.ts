@@ -23,6 +23,33 @@ export type LibraryCartLine = {
 };
 
 const CART_KEY = "houselink_library_cart";
+const CHECKOUT_CONTACT_KEY = "houselink_library_checkout_contact";
+
+export function rememberLibraryCheckoutContact(input: { email?: string; phone?: string }) {
+  if (typeof window === "undefined") return;
+  const current = readLibraryCheckoutContact();
+  const next = {
+    email: input.email?.trim().toLowerCase() || current.email,
+    phone: input.phone?.trim() || current.phone,
+  };
+  if (!next.email && !next.phone) return;
+  const raw = JSON.stringify(next);
+  window.sessionStorage.setItem(CHECKOUT_CONTACT_KEY, raw);
+  window.dispatchEvent(new CustomEvent("houselink:library-cart", { detail: { contactUpdated: true } }));
+}
+
+function readLibraryCheckoutContact() {
+  if (typeof window === "undefined") return { email: "", phone: "" };
+  try {
+    const parsed = JSON.parse(window.sessionStorage.getItem(CHECKOUT_CONTACT_KEY) || "{}") as { email?: string; phone?: string };
+    return {
+      email: typeof parsed.email === "string" ? parsed.email.trim().toLowerCase() : "",
+      phone: typeof parsed.phone === "string" ? parsed.phone.trim() : "",
+    };
+  } catch {
+    return { email: "", phone: "" };
+  }
+}
 
 export function readLibraryCart(): LibraryCartLine[] {
   if (typeof window === "undefined") return [];
@@ -172,11 +199,13 @@ export function clearLibraryCart(options?: { track?: boolean }) {
   }
   window.localStorage.removeItem(CART_KEY);
   window.sessionStorage.removeItem(CART_KEY);
+  window.sessionStorage.removeItem(CHECKOUT_CONTACT_KEY);
   window.dispatchEvent(new CustomEvent("houselink:library-cart", { detail: { count: 0 } }));
 }
 
 export function libraryCartSnapshot() {
   const cart = readLibraryCart();
+  const contact = readLibraryCheckoutContact();
   const cartItemCount = cart.reduce((sum, line) => sum + line.quantity, 0);
   const cartValue = cart.reduce((sum, line) => sum + line.price * line.quantity, 0);
   return {
@@ -190,6 +219,8 @@ export function libraryCartSnapshot() {
       price: line.price,
       formatLabel: line.formatLabel,
     })),
+    contactEmail: contact.email || undefined,
+    contactPhone: contact.phone || undefined,
   };
 }
 

@@ -44,6 +44,14 @@ export async function POST(request: Request) {
       cartValue: typeof body.cartValue === "number" ? body.cartValue : undefined,
       cartCurrency: typeof body.cartCurrency === "string" ? body.cartCurrency : undefined,
       cartSummary,
+      referrer: typeof body.referrer === "string" ? body.referrer : undefined,
+      utmSource: typeof body.utmSource === "string" ? body.utmSource : undefined,
+      utmCampaign: typeof body.utmCampaign === "string" ? body.utmCampaign : undefined,
+      contactEmail: typeof body.contactEmail === "string" ? body.contactEmail : undefined,
+      contactPhone: typeof body.contactPhone === "string" ? body.contactPhone : undefined,
+      country: request.headers.get("x-vercel-ip-country") || undefined,
+      region: decodeHeaderValue(request.headers.get("x-vercel-ip-country-region")),
+      city: decodeHeaderValue(request.headers.get("x-vercel-ip-city")),
     });
     return ok(result);
   }
@@ -100,4 +108,13 @@ export async function POST(request: Request) {
     userId,
   });
   return ok(result);
+}
+
+function decodeHeaderValue(value: string | null) {
+  if (!value) return undefined;
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
 }

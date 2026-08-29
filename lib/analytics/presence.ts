@@ -15,6 +15,14 @@ export type PresenceHeartbeatInput = {
   cartValue?: number;
   cartCurrency?: string;
   cartSummary?: Array<{ productId: string; title: string; quantity: number; price: number; formatLabel?: string }>;
+  referrer?: string;
+  utmSource?: string;
+  utmCampaign?: string;
+  contactEmail?: string;
+  contactPhone?: string;
+  country?: string;
+  region?: string;
+  city?: string;
 };
 
 export type LivePresenceRow = {
@@ -29,6 +37,15 @@ export type LivePresenceRow = {
   cartItemCount: number;
   cartValue: number;
   cartCurrency: string | null;
+  cartSummary: unknown;
+  referrer: string | null;
+  utmSource: string | null;
+  utmCampaign: string | null;
+  contactEmail: string | null;
+  contactPhone: string | null;
+  country: string | null;
+  region: string | null;
+  city: string | null;
   lastSeenAt: Date;
 };
 
@@ -57,6 +74,14 @@ export async function upsertSitePresence(input: PresenceHeartbeatInput) {
   const cartValue = Math.max(0, Math.min(1_000_000, Number(input.cartValue) || 0));
   const cartCurrency = input.cartCurrency ? clip(input.cartCurrency, 8) : null;
   const cartSummary = JSON.stringify(input.cartSummary ?? []);
+  const referrer = input.referrer ? clip(input.referrer, 320) : null;
+  const utmSource = input.utmSource ? clip(input.utmSource, 80) : null;
+  const utmCampaign = input.utmCampaign ? clip(input.utmCampaign, 120) : null;
+  const contactEmail = input.contactEmail ? clip(input.contactEmail.toLowerCase(), 160) : null;
+  const contactPhone = input.contactPhone ? clip(input.contactPhone, 40) : null;
+  const country = input.country ? clip(input.country, 80) : null;
+  const region = input.region ? clip(input.region, 120) : null;
+  const city = input.city ? clip(input.city, 120) : null;
   const id = cuidLike();
 
   try {
@@ -67,10 +92,12 @@ export async function upsertSitePresence(input: PresenceHeartbeatInput) {
       INSERT INTO "SitePresence" (
         "id", "visitorId", "sessionId", "path", "title", "deviceType", "userId",
         "productId", "productTitle", "cartItemCount", "cartValue", "cartCurrency", "cartSummary",
+        "referrer", "utmSource", "utmCampaign", "contactEmail", "contactPhone", "country", "region", "city",
         "lastSeenAt", "createdAt", "updatedAt"
       ) VALUES (
         $1, $2, $3, $4, $5, $6, $7,
         $8, $9, $10, $11, $12, $13::jsonb,
+        $14, $15, $16, $17, $18, $19, $20, $21,
         NOW(), NOW(), NOW()
       )
       ON CONFLICT ("visitorId") DO UPDATE SET
@@ -85,6 +112,14 @@ export async function upsertSitePresence(input: PresenceHeartbeatInput) {
         "cartValue" = EXCLUDED."cartValue",
         "cartCurrency" = EXCLUDED."cartCurrency",
         "cartSummary" = EXCLUDED."cartSummary",
+        "referrer" = COALESCE(EXCLUDED."referrer", "SitePresence"."referrer"),
+        "utmSource" = COALESCE(EXCLUDED."utmSource", "SitePresence"."utmSource"),
+        "utmCampaign" = COALESCE(EXCLUDED."utmCampaign", "SitePresence"."utmCampaign"),
+        "contactEmail" = COALESCE(EXCLUDED."contactEmail", "SitePresence"."contactEmail"),
+        "contactPhone" = COALESCE(EXCLUDED."contactPhone", "SitePresence"."contactPhone"),
+        "country" = COALESCE(EXCLUDED."country", "SitePresence"."country"),
+        "region" = COALESCE(EXCLUDED."region", "SitePresence"."region"),
+        "city" = COALESCE(EXCLUDED."city", "SitePresence"."city"),
         "lastSeenAt" = NOW(),
         "updatedAt" = NOW()
       `,
@@ -101,6 +136,14 @@ export async function upsertSitePresence(input: PresenceHeartbeatInput) {
       cartValue,
       cartCurrency,
       cartSummary,
+      referrer,
+      utmSource,
+      utmCampaign,
+      contactEmail,
+      contactPhone,
+      country,
+      region,
+      city,
     );
     return { ok: true };
   } catch (error) {
@@ -128,13 +171,23 @@ export async function listLivePresence(withinMs = 5 * 60 * 1000): Promise<LivePr
         cartItemCount: number;
         cartValue: number;
         cartCurrency: string | null;
+        cartSummary: unknown;
+        referrer: string | null;
+        utmSource: string | null;
+        utmCampaign: string | null;
+        contactEmail: string | null;
+        contactPhone: string | null;
+        country: string | null;
+        region: string | null;
+        city: string | null;
         lastSeenAt: Date;
       }>
     >(
       `
       SELECT
         "visitorId", "sessionId", "path", "title", "deviceType", "userId",
-        "productId", "productTitle", "cartItemCount", "cartValue", "cartCurrency", "lastSeenAt"
+        "productId", "productTitle", "cartItemCount", "cartValue", "cartCurrency", "cartSummary",
+        "referrer", "utmSource", "utmCampaign", "contactEmail", "contactPhone", "country", "region", "city", "lastSeenAt"
       FROM "SitePresence"
       WHERE "lastSeenAt" >= $1
       ORDER BY "lastSeenAt" DESC

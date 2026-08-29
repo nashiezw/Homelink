@@ -109,9 +109,11 @@ export function SiteAnalyticsTracker() {
           sessionId,
           path,
           title: pageTitle,
+          referrer: typeof document !== "undefined" ? document.referrer || undefined : undefined,
           deviceType,
           productId: productSlug,
           productTitle: productSlug ? cleanProductTitle || productSlug : undefined,
+          ...utm,
           ...cart,
         }),
       }).catch(ignoreAnalyticsFailure);

@@ -12,6 +12,7 @@ import { apiFetch } from "@/lib/api/client";
 import {
   clearLibraryCart,
   libraryCartLineKey,
+  rememberLibraryCheckoutContact,
   notifyLibraryCartAdded,
   repriceLibraryCartLine,
   sameLibraryCartLine,
@@ -213,6 +214,13 @@ export function LibraryCheckoutClient() {
       phone: current.phone || user.phone || "",
     }));
   }, [user]);
+
+  useEffect(() => {
+    rememberLibraryCheckoutContact({
+      email: user?.email || guestEmail,
+      phone: user?.phone || guestPhone || shipping.phone,
+    });
+  }, [guestEmail, guestPhone, shipping.phone, user?.email, user?.phone]);
 
   useEffect(() => {
     if (!cart.length) return;
