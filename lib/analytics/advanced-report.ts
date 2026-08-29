@@ -217,6 +217,74 @@ function updateJourneyContext(
   if (input.name === "library_purchase_completed") journey.purchased = true;
 }
 
+async function fetchJourneyPresenceRows(sessionIds: string[], visitorIds: string[]) {
+  const clauses: string[] = [];
+  const params: string[] = [];
+  if (sessionIds.length) {
+    clauses.push(`"sessionId" IN (${sessionIds.map((_, index) => `$${params.length + index + 1}`).join(", ")})`);
+    params.push(...sessionIds);
+  }
+  if (visitorIds.length) {
+    clauses.push(`"visitorId" IN (${visitorIds.map((_, index) => `$${params.length + index + 1}`).join(", ")})`);
+    params.push(...visitorIds);
+  }
+  if (!clauses.length) return [];
+  try {
+    return await getMainPrisma().$queryRawUnsafe<
+      Array<{
+        visitorId: string;
+        sessionId: string;
+        path: string;
+        title: string | null;
+        deviceType: string | null;
+        userId: string | null;
+        productTitle: string | null;
+        referrer: string | null;
+        utmSource: string | null;
+        utmCampaign: string | null;
+        contactEmail: string | null;
+        contactPhone: string | null;
+        country: string | null;
+        region: string | null;
+        city: string | null;
+        lastSeenAt: Date;
+      }>
+    >(
+      `
+      SELECT
+        "visitorId", "sessionId", "path", "title", "deviceType", "userId", "productTitle",
+        "referrer", "utmSource", "utmCampaign", "contactEmail", "contactPhone",
+        "country", "region", "city", "lastSeenAt"
+      FROM "SitePresence"
+      WHERE ${clauses.join(" OR ")}
+      ORDER BY "lastSeenAt" DESC
+      LIMIT 300
+      `,
+      ...params,
+    );
+  } catch (error) {
+    if (isMissingSchemaError(error) || isDatabaseUnavailableError(error)) return [];
+    throw error;
+  }
+}
+
+function applyPresenceToJourney(journey: JourneyRow, row: Awaited<ReturnType<typeof fetchJourneyPresenceRows>>[number]) {
+  if (row.userId && !journey.userId) journey.userId = row.userId;
+  if ((!journey.deviceType || journey.deviceType === "unknown") && row.deviceType) journey.deviceType = row.deviceType;
+  if (!journey.contactEmail && row.contactEmail) journey.contactEmail = row.contactEmail;
+  if (!journey.contactPhone && row.contactPhone) journey.contactPhone = row.contactPhone;
+  if (!journey.productTitle && row.productTitle) journey.productTitle = row.productTitle;
+  const source = sourceLabel(row);
+  if (source !== "Direct / unknown") journey.source = source;
+  const location = locationLabel(row);
+  if (location !== "Location unavailable") journey.location = location;
+  const lastSeenAt = row.lastSeenAt instanceof Date ? row.lastSeenAt.toISOString() : new Date(row.lastSeenAt).toISOString();
+  if (lastSeenAt > journey.endedAt) {
+    journey.endedAt = lastSeenAt;
+    journey.currentPageLabel = readablePageName(row.path, row.title || row.productTitle);
+  }
+}
+
 function finalizeJourneyRow(journey: JourneyRow, user?: { name: string | null; email: string | null; phone: string | null } | null): JourneyRow {
   const steps = [...journey.steps]
     .sort((a, b) => a.at.localeCompare(b.at))
@@ -827,7 +895,9 @@ async function buildAdvancedSiteAnalyticsReport(days = 30): Promise<AdvancedSite
     const analyticsUserIds = [...new Set([...liveUserIds, ...journeyUserIds])].slice(0, 300);
     const liveSessionIds = [...new Set(liveRows.map((row) => row.sessionId).filter(Boolean))].slice(0, 200);
     const liveVisitorIds = [...new Set(liveRows.map((row) => row.visitorId).filter(Boolean))].slice(0, 200);
-    const [analyticsUsers, livePageViews] = await Promise.all([
+    const journeySessionIds = [...new Set([...sessionMap.keys(), ...liveSessionIds])].slice(0, 250);
+    const journeyVisitorIds = [...new Set([...sessionMap.values()].map((row) => row.visitorId).filter(Boolean))].slice(0, 250);
+    const [analyticsUsers, livePageViews, presenceRows] = await Promise.all([
       analyticsUserIds.length
         ? prisma.user
             .findMany({
@@ -851,8 +921,27 @@ async function buildAdvancedSiteAnalyticsReport(days = 30): Promise<AdvancedSite
             })
             .catch(() => [])
         : Promise.resolve([]),
+      journeySessionIds.length || journeyVisitorIds.length
+        ? fetchJourneyPresenceRows(journeySessionIds, journeyVisitorIds)
+        : Promise.resolve([]),
     ]);
     const analyticsUserById = new Map(analyticsUsers.map((user) => [user.id, user]));
+    const journeysByVisitorId = new Map<string, JourneyRow[]>();
+    for (const journey of sessionMap.values()) {
+      const rows = journeysByVisitorId.get(journey.visitorId) ?? [];
+      rows.push(journey);
+      journeysByVisitorId.set(journey.visitorId, rows);
+    }
+    for (const row of presenceRows) {
+      const matches = [
+        sessionMap.get(row.sessionId),
+        sessionMap.get(`visitor:${row.visitorId}`),
+        ...(journeysByVisitorId.get(row.visitorId) ?? []),
+      ].filter((journey, index, rows): journey is JourneyRow => Boolean(journey) && rows.indexOf(journey) === index);
+      for (const journey of matches) {
+        applyPresenceToJourney(journey, row);
+      }
+    }
     for (const view of livePageViews) {
       const sessionId = view.sessionId || `visitor:${view.visitorId}`;
       const existing =
