@@ -33,6 +33,15 @@ import { sendEmailVerificationEmail } from "@/lib/academy/academy-email";
 import { sendWelcomeEmail } from "@/lib/academy/welcome-email";
 
 export async function POST(request: Request) {
+  try {
+    return await handlePost(request);
+  } catch (error) {
+    if (isDatabaseUnavailableError(error)) return authDatabaseUnavailableProblem();
+    throw error;
+  }
+}
+
+async function handlePost(request: Request) {
   if (!hasUsableSessionSecret()) return sessionSecretProblem();
 
   const policy = getRegistrationPolicy();
@@ -486,6 +495,19 @@ export async function DELETE(request: Request) {
     }
   } catch (error) {
     if (isSessionSecretConfigurationError(error)) return sessionSecretProblem();
+    if (isDatabaseUnavailableError(error)) {
+      return new NextResponse(
+        JSON.stringify({ data: { signedOut: true }, meta: { requestId: crypto.randomUUID() } }),
+        {
+          status: 200,
+          headers: {
+            "Content-Type": "application/json",
+            "Set-Cookie": clearSessionCookieHeader(),
+            "Cache-Control": "private, no-store",
+          },
+        },
+      );
+    }
     throw error;
   }
   return new NextResponse(
@@ -546,4 +568,14 @@ function sessionSecretProblem() {
     "AUTH_CONFIGURATION_ERROR",
     "Authentication is not configured. Set HOUSELINK_SESSION_SECRET, AUTH_SECRET, or NEXTAUTH_SECRET to a 32+ character value.",
   );
+}
+
+function authDatabaseUnavailableProblem() {
+  const response = problem(
+    503,
+    "AUTH_TEMPORARILY_UNAVAILABLE",
+    "Authentication is temporarily unavailable. Please try again in a moment.",
+  );
+  response.headers.set("Cache-Control", "private, no-store");
+  return response;
 }

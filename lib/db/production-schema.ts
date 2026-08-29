@@ -4,6 +4,9 @@ import { getMainPrisma, isPostgresStoreEnabled } from "@/lib/db/main-prisma";
 
 let ensurePromise: Promise<void> | null = null;
 let ensureBlogPromise: Promise<void> | null = null;
+let coreSchemaUnavailableUntil = 0;
+let blogSchemaUnavailableUntil = 0;
+const SCHEMA_UNAVAILABLE_BACKOFF_MS = 60_000;
 
 export function isMissingSchemaError(error: unknown) {
   return error instanceof Prisma.PrismaClientKnownRequestError && (error.code === "P2021" || error.code === "P2022");
@@ -15,15 +18,22 @@ export function isDatabaseUnavailableError(error: unknown) {
   const candidate = error as { code?: unknown; errorCode?: unknown; message?: unknown };
   return (
     candidate.code === "P1001" ||
+    candidate.code === "P2024" ||
     candidate.errorCode === "P1001" ||
+    candidate.errorCode === "P2024" ||
     (typeof candidate.message === "string" && /can't reach database server/i.test(candidate.message))
   );
 }
 
 export async function ensureCoreProductionSchema() {
   if (!isPostgresStoreEnabled()) return;
+  if (Date.now() < coreSchemaUnavailableUntil) return;
   ensurePromise ??= applyCoreProductionSchema().catch((error) => {
     ensurePromise = null;
+    if (isDatabaseUnavailableError(error)) {
+      coreSchemaUnavailableUntil = Date.now() + SCHEMA_UNAVAILABLE_BACKOFF_MS;
+      return;
+    }
     throw error;
   });
   return ensurePromise;
@@ -31,8 +41,13 @@ export async function ensureCoreProductionSchema() {
 
 export async function ensureBlogProductionSchema() {
   if (!isPostgresStoreEnabled()) return;
+  if (Date.now() < blogSchemaUnavailableUntil) return;
   ensureBlogPromise ??= applyBlogProductionSchema().catch((error) => {
     ensureBlogPromise = null;
+    if (isDatabaseUnavailableError(error)) {
+      blogSchemaUnavailableUntil = Date.now() + SCHEMA_UNAVAILABLE_BACKOFF_MS;
+      return;
+    }
     throw error;
   });
   return ensureBlogPromise;
