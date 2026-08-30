@@ -25,6 +25,7 @@
     "check:blog-admin-cms": "node scripts/check-blog-admin-cms.mjs",
     "check:admin-permissions": "node scripts/check-admin-permissions.mjs",
     "check:launch-coverage": "node scripts/check-launch-coverage.mjs",
+    "check:live-chat": "node scripts/check-live-chat.mjs",
     "check:production": "node scripts/check-production-env.mjs && node scripts/check-production-persistence.mjs && node scripts/check-csrf-strategy.mjs && node scripts/check-auth-recovery.mjs && node scripts/check-blog-admin-cms.mjs && node scripts/check-admin-permissions.mjs && node scripts/check-launch-coverage.mjs && node scripts/check-production-readiness.mjs",
     "db:audit:production": "node scripts/audit-production-db.mjs",
     "db:seed:production": "node scripts/seed-production.mjs",

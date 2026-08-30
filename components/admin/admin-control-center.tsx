@@ -29,6 +29,7 @@ import { MarketingCmsHub } from "@/components/admin/marketing-cms-hub";
 import { PropertiesManagementHub } from "@/components/admin/properties-management-hub";
 import { PropertyManagementHub } from "@/components/admin/property-management-hub";
 import { SupportCrmHub } from "@/components/admin/support-crm-hub";
+import { LiveChatHub } from "@/components/admin/live-chat-hub";
 import { SystemOpsHub } from "@/components/admin/system-ops-hub";
 import { StudentAccommodationAdminHub } from "@/components/admin/student-accommodation-admin-hub";
 import { TenantRequestsHub } from "@/components/admin/tenant-requests-hub";
@@ -242,6 +243,7 @@ export function AdminControlCenter() {
       )}
 
       {tab === "support" && <SupportCrmHub />}
+      {tab === "live-chat" && <LiveChatHub />}
 
       {(tab === "tenant-requests" || tab === "property-requests") && <TenantRequestsHub />}
 
@@ -335,6 +337,7 @@ const tabDescriptions: Record<AdminTab, string> = {
   verification: "Review landlord, agency, and identity verification submissions.",
   moderation: "Resolve tenancy disputes and content moderation items from reports and review queue.",
   support: "Manage customer support tickets with assignment, escalation, and resolution.",
+  "live-chat": "Real-time customer support, sales conversations, active visitors, proactive help, and chat analytics.",
   enquiries: "Full enquiry CRM - assign agents, track pipeline, merge duplicates, and configure routing.",
   proptech: "Appointment booking, signed documents, AI market intelligence, virtual tour analytics, and notification operations in one enterprise dashboard.",
   landlords: "Verify landlords, manage agencies, and control premium tiers.",

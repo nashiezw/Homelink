@@ -58,6 +58,7 @@ export type AdminTab =
   | "verification"
   | "moderation"
   | "support"
+  | "live-chat"
   | "landlords"
   | "agents"
   | "academy"
@@ -109,6 +110,7 @@ const NAV_GROUPS: Array<{ label: string; items: NavItem[] }> = [
       { id: "property-requests", label: "Client Property Requests", icon: Bell },
       { id: "proptech", label: "PropTech Suite", icon: Brain },
       { id: "reports", label: "Reports", icon: FileText },
+      { id: "live-chat", label: "Live Chat", icon: Headphones, badgeKey: "openTickets" as const },
     ],
   },
   {
@@ -217,6 +219,7 @@ const TAB_LABELS: Record<AdminTab, string> = {
   verification: "Verification Queue",
   moderation: "Moderation Center",
   support: "Support CRM",
+  "live-chat": "Live Chat",
   landlords: "Landlords & Agents",
   agents: "Agent Management",
   academy: "HouseLink Agent Academy",

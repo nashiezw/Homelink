@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
+import { Suspense } from "react";
 import { AppProvider } from "@/components/providers/app-provider";
 import { PlatformConfigProvider } from "@/components/providers/platform-config-provider";
 import { ChromeGate } from "@/components/layout/chrome-gate";
@@ -7,6 +8,7 @@ import { NavigationProgress } from "@/components/navigation/navigation-progress"
 import { ToastBanner } from "@/components/ui/toast-banner";
 import { MarketingPixelNoScript, MarketingPixelScripts } from "@/components/analytics/marketing-pixels";
 import { RuntimeMarketingPixels } from "@/components/analytics/runtime-marketing-pixels";
+import { LiveChatWidget } from "@/components/live-chat/live-chat-widget";
 import { getCanonicalSiteUrl } from "@/lib/seo/site-url";
 import { socialShareImage, socialTwitterImages } from "@/lib/seo/social-image";
 import "./globals.css";
@@ -136,6 +138,9 @@ export default function RootLayout({
           <AppProvider>
             <NavigationProgress />
             <ChromeGate>{children}</ChromeGate>
+            <Suspense fallback={null}>
+              <LiveChatWidget />
+            </Suspense>
             <ToastBanner />
           </AppProvider>
         </PlatformConfigProvider>
