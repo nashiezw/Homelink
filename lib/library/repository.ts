@@ -18,6 +18,7 @@ import {
   type LibraryProductType as PublicLibraryProductType,
 } from "@/lib/library/catalog";
 import { getLibraryStoreSettings, listLibrarySettingsAudit, productTemplateForType, saveLibraryStoreSettings, type LibraryStoreSettings } from "@/lib/library/settings";
+import { findPreparedLibrarySample, isLibrarySampleCandidate } from "@/lib/library/sample-preview";
 import { quoteLibraryShipping } from "@/lib/library/shipping";
 import { sendLibraryTemplatedEmail } from "@/lib/library/emails";
 import { getCanonicalSiteUrl } from "@/lib/seo/site-url";
@@ -395,12 +396,19 @@ export async function getLibraryProductBySlug(slug: string) {
 export async function getLibraryProductSampleFile(slug: string) {
   const product = await getLibraryProductBySlug(slug);
   if (!product) return null;
-  const sample = product.downloads.find((file) => {
-    if (!file.previewable || !file.fileUrl) return false;
-    const label = `${file.label || ""} ${file.fileName || ""}`;
-    return /sample|preview/i.test(label);
-  }) ?? null;
-  if (!sample?.fileUrl) return null;
+  const sample = product.downloads.find(isLibrarySampleCandidate) ?? null;
+  if (!sample?.fileUrl) {
+    const prepared = findPreparedLibrarySample({ slug: product.slug, title: product.title });
+    if (!prepared) return null;
+    return {
+      productId: product.id,
+      productTitle: product.title,
+      fileId: `prepared-${product.slug}`,
+      fileUrl: prepared.fileUrl,
+      fileName: prepared.fileName,
+      fileType: prepared.fileType,
+    };
+  }
   return {
     productId: product.id,
     productTitle: product.title,

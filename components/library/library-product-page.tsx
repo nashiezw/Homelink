@@ -66,6 +66,7 @@ import {
   type LibraryProduct,
   type LibraryProductFormat,
 } from "@/lib/library/catalog";
+import { findPreparedLibrarySample, isLibrarySampleCandidate, type PreparedLibrarySample } from "@/lib/library/sample-preview";
 import { cn } from "@/lib/utils";
 
 export function LibraryProductPage({
@@ -264,8 +265,8 @@ export function LibraryProductPage({
         ? `${product.stock} printed ${product.stock === 1 ? "copy" : "copies"} in stock`
         : "Printed format out of stock";
   const sampleFile = useMemo(
-    () => product.downloads.find((file) => isLibrarySampleFile(file)) ?? null,
-    [product.downloads],
+    () => product.downloads.find(isLibrarySampleFile) ?? preparedSampleToDownload(findPreparedLibrarySample({ slug: product.slug, title: product.title })),
+    [product.downloads, product.slug, product.title],
   );
   const sampleUrl = sampleFile ? `/api/v1/library/products/${encodeURIComponent(product.slug)}/sample` : null;
   const sampleDownloadUrl = sampleUrl ? `${sampleUrl}?download=1` : null;
@@ -1799,8 +1800,22 @@ export function LibraryProductPage({
 }
 
 function isLibrarySampleFile(file: LibraryProduct["downloads"][number]) {
-  if (!file.previewable || !file.fileUrl) return false;
-  return /sample|preview/i.test(`${file.label || ""} ${file.fileName || ""}`);
+  return isLibrarySampleCandidate(file);
+}
+
+function preparedSampleToDownload(sample: PreparedLibrarySample | null): LibraryProduct["downloads"][number] | null {
+  if (!sample) return null;
+  return {
+    id: `prepared-${sample.slug}`,
+    label: sample.label,
+    fileType: sample.fileType,
+    size: sample.size,
+    secure: false,
+    fileUrl: sample.fileUrl,
+    fileName: sample.fileName,
+    fileSizeBytes: sample.fileSizeBytes,
+    previewable: true,
+  };
 }
 
 function formatSampleSize(bytes?: number) {
