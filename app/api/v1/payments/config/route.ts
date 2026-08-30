@@ -1,18 +1,26 @@
 import { getPlanPrice, PLAN_DEFINITIONS } from "@/lib/payments/plans";
 import { ok } from "@/lib/api/response";
 import { getPostgresPaymentSettings } from "@/lib/admin/postgres-admin-config";
+import { isDatabaseUnavailableError } from "@/lib/db/production-schema";
 import { shouldUsePostgresPayments } from "@/lib/payments/postgres-payment-repository";
+import { defaultPaymentSettings } from "@/lib/settings/defaults";
 import type { PaymentSettings } from "@/lib/settings/types";
 import { getStore } from "@/lib/store/app-store";
 
 export async function GET() {
   if (shouldUsePostgresPayments()) {
-    const settings = await getPostgresPaymentSettings();
-    return ok(paymentConfig(settings));
+    try {
+      const settings = await getPostgresPaymentSettings();
+      return ok(paymentConfig(settings), { source: "database" });
+    } catch (error) {
+      if (!isDatabaseUnavailableError(error)) throw error;
+      console.warn("[payments/config] database unavailable; returning default payment config");
+      return ok(paymentConfig(defaultPaymentSettings), { source: "defaults", degraded: true });
+    }
   }
   const store = getStore();
   const settings = store.getPaymentSettings();
-  return ok(paymentConfig(settings));
+  return ok(paymentConfig(settings), { source: "local" });
 }
 
 function paymentConfig(settings: PaymentSettings) {

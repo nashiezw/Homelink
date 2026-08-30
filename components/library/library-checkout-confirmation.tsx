@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { CheckCircle2, Clock, CreditCard, FileText, LibraryBig, MessageCircle, ReceiptText, RefreshCw, Upload, XCircle } from "lucide-react";
+import { Banknote, CheckCircle2, Clock, Copy, CreditCard, FileText, Landmark, LibraryBig, MessageCircle, ReceiptText, RefreshCw, Smartphone, Upload, XCircle } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { PageShell } from "@/components/layout/page-shell";
 import { WhatsAppHelpLink } from "@/components/layout/whatsapp-help-link";
@@ -59,6 +59,7 @@ export function LibraryCheckoutConfirmation({
   const [order, setOrder] = useState(initialOrder);
   const [config, setConfig] = useState<PublicPaymentConfig | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [paymentUpdating, setPaymentUpdating] = useState(false);
 
   const resolvedPaymentId = paymentId || order.payment?.id || undefined;
   const stage = useMemo(() => libraryOrderStageCopy(order), [order]);
@@ -91,8 +92,23 @@ export function LibraryCheckoutConfirmation({
     config?.manualMethods.find((item) => item.id.toLowerCase() === selectedMethodId) ??
     config?.manualMethods.find((item) => selectedMethodId.includes(item.id.toLowerCase())) ??
     config?.manualMethods[0];
-  const bankEntries = Object.entries(config?.bankDetails ?? {}).filter(([, value]) => Boolean(value));
   const reference = order.payment?.referenceNumber || resolvedPaymentId || order.orderNumber;
+  const methodEntries = [
+    method?.accountName ? ["Account name", method.accountName] : null,
+    method?.bankName ? ["Bank", method.bankName] : null,
+    method?.accountNumber ? ["Account number", method.accountNumber] : null,
+    method?.branch ? ["Branch", method.branch] : null,
+    method?.phoneNumber ? ["Mobile money number", method.phoneNumber] : null,
+  ].filter(Boolean) as Array<[string, string]>;
+  const fallbackBankEntries = Object.entries(config?.bankDetails ?? {})
+    .filter(([, value]) => Boolean(value))
+    .map(([key, value]) => [formatBankDetailLabel(key), String(value)] as [string, string]);
+  const paymentEntries = methodEntries.length ? methodEntries : fallbackBankEntries;
+  const canChangePaymentMethod =
+    Boolean(resolvedPaymentId && config?.manualMethods.length) &&
+    !paid &&
+    !order.payment?.proofUrl &&
+    !["proof_under_review", "fulfilled", "paid", "refunded"].includes(stage.stage);
   const whatsappContext = {
     source: stage.showProofReceived || stage.tone === "success" ? "order_status" : "confirmation",
     lane: "library" as const,
@@ -100,6 +116,40 @@ export function LibraryCheckoutConfirmation({
     paymentReference: reference,
     totalLabel: `${order.currency} ${order.total.toFixed(2)}`,
   };
+
+  async function copyReference() {
+    if (!reference || typeof navigator === "undefined" || !navigator.clipboard) return;
+    await navigator.clipboard.writeText(reference);
+    showToast("Payment reference copied.", "success");
+  }
+
+  async function changePaymentMethod(methodId: string) {
+    if (!resolvedPaymentId || methodId === method?.id || paymentUpdating) return;
+    setPaymentUpdating(true);
+    const result = await apiFetch(`/api/v1/library/orders/${order.id}/payment-method`, {
+      method: "PATCH",
+      body: JSON.stringify({ method: methodId }),
+    });
+    setPaymentUpdating(false);
+    if (result.error) {
+      showToast(result.error.message ?? "Could not change payment method.", "error");
+      return;
+    }
+    setOrder((current) => ({
+      ...current,
+      payment: current.payment
+        ? {
+            ...current.payment,
+            method: methodId,
+            proofStatus: "REQUESTED",
+            proofUrl: null,
+            manual: true,
+          }
+        : current.payment,
+    }));
+    showToast("Payment method updated. Use the new details below.", "success");
+    void refreshOrder(true);
+  }
 
   return (
     <PageShell
@@ -261,44 +311,105 @@ export function LibraryCheckoutConfirmation({
               <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">{stage.description}</p>
               {stage.showBankDetails && (
                 <>
-                  <ol className="mt-3 list-decimal space-y-1.5 pl-5 text-sm leading-6 text-slate-600 dark:text-slate-300">
-                    <li>Pay with the HouseLink details below.</li>
-                    <li>
-                      Put this reference on the transfer:{" "}
-                      <strong className="break-all text-ink dark:text-white">{reference}</strong>
-                    </li>
-                    <li>Upload a clear PDF or photo of the receipt (bank slip, EcoCash, or ZIPIT screenshot).</li>
-                  </ol>
-                  <WhatsAppHelpLink
-                    context={whatsappContext}
-                    className="mt-4 inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#25D366] px-4 text-sm font-bold text-white hover:bg-[#1ebe57]"
-                  >
-                    <MessageCircle className="size-4" />
-                    WhatsApp help with this payment
-                  </WhatsAppHelpLink>
-                  {method && (
-                    <div className="mt-4 rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950">
-                      <p className="text-sm font-bold text-ink dark:text-white">{method.label}</p>
-                      {method.instructions && <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">{method.instructions}</p>}
-                      <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
-                        {method.accountName && <Detail label="Account name" value={method.accountName} />}
-                        {method.accountNumber && <Detail label="Account number" value={method.accountNumber} />}
-                        {method.bankName && <Detail label="Bank" value={method.bankName} />}
-                        {method.branch && <Detail label="Branch" value={method.branch} />}
-                        {method.phoneNumber && <Detail label="Phone" value={method.phoneNumber} />}
-                      </dl>
+                  <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
+                    <div className="grid gap-0 md:grid-cols-[minmax(0,1fr)_minmax(16rem,0.7fr)]">
+                      <div className="min-w-0 p-4 sm:p-5">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="inline-flex h-8 items-center rounded-full bg-emerald-100 px-3 text-xs font-black uppercase text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-200">
+                            Step 1
+                          </span>
+                          <p className="text-sm font-bold text-ink dark:text-white">Choose how you want to pay</p>
+                        </div>
+                        {config?.manualMethods.length ? (
+                          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                            {config.manualMethods.map((item) => {
+                              const active = item.id === method?.id;
+                              const Icon = paymentMethodIcon(item.type);
+                              return (
+                                <button
+                                  key={item.id}
+                                  type="button"
+                                  disabled={!canChangePaymentMethod || paymentUpdating}
+                                  onClick={() => void changePaymentMethod(item.id)}
+                                  className={cn(
+                                    "min-w-0 rounded-xl border p-3 text-left transition",
+                                    active
+                                      ? "border-emerald-500 bg-emerald-50 text-emerald-950 shadow-[0_0_0_1px_rgba(16,185,129,0.35)] dark:bg-emerald-500/10 dark:text-emerald-50"
+                                      : "border-slate-200 bg-slate-50 text-slate-700 hover:border-emerald-300 hover:bg-white dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-emerald-700",
+                                    (!canChangePaymentMethod || paymentUpdating) && !active && "cursor-not-allowed opacity-60",
+                                  )}
+                                  aria-pressed={active}
+                                >
+                                  <span className="flex min-w-0 items-center gap-2">
+                                    <Icon className={cn("size-4 shrink-0", active ? "text-emerald-600" : "text-slate-500")} />
+                                    <span className="min-w-0 flex-1 break-words text-sm font-black">{item.label}</span>
+                                    {active && <CheckCircle2 className="size-4 shrink-0 text-emerald-600" />}
+                                  </span>
+                                  <span className="mt-1 block text-xs text-slate-500 dark:text-slate-400">
+                                    {active ? "Selected" : canChangePaymentMethod ? "Tap to switch" : "Locked after proof upload"}
+                                  </span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm font-semibold text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-100">
+                            Payment methods are loading. If this takes too long, use WhatsApp help and we will not make you explain the whole order again.
+                          </p>
+                        )}
+                        {!canChangePaymentMethod && order.payment?.proofUrl ? (
+                          <p className="mt-3 text-xs font-semibold text-slate-500">
+                            Method changes pause after proof is uploaded so finance does not verify the wrong receipt.
+                          </p>
+                        ) : null}
+                      </div>
+
+                      <div className="min-w-0 border-t border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900 md:border-l md:border-t-0 sm:p-5">
+                        <span className="inline-flex h-8 items-center rounded-full bg-slate-900 px-3 text-xs font-black uppercase text-white dark:bg-white dark:text-slate-950">
+                          Step 2
+                        </span>
+                        <p className="mt-3 text-sm font-bold text-ink dark:text-white">Use this payment reference</p>
+                        <button
+                          type="button"
+                          onClick={() => void copyReference()}
+                          className="mt-2 flex w-full min-w-0 items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-3 py-3 text-left font-black text-ink transition hover:border-emerald-400 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+                        >
+                          <span className="min-w-0 break-all">{reference}</span>
+                          <Copy className="size-4 shrink-0 text-emerald-600" />
+                        </button>
+                        <p className="mt-3 text-xs leading-5 text-slate-500 dark:text-slate-400">
+                          Put the reference on your bank, ZIPIT, EcoCash, or cash receipt. Without it, finance has to play detective, and no one ordered a mystery novel.
+                        </p>
+                      </div>
                     </div>
-                  )}
-                  {bankEntries.length > 0 && (
-                    <div className="mt-4 rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950">
-                      <p className="text-sm font-bold text-ink dark:text-white">Bank details</p>
-                      <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
-                        {bankEntries.map(([key, value]) => (
-                          <Detail key={key} label={formatBankDetailLabel(key)} value={String(value)} />
-                        ))}
-                      </dl>
+
+                    <div className="border-t border-slate-200 p-4 dark:border-slate-800 sm:p-5">
+                      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
+                        <div className="min-w-0">
+                          <p className="text-sm font-black text-ink dark:text-white">{method?.label ?? "Payment details"}</p>
+                          {method?.instructions && <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">{method.instructions}</p>}
+                          {paymentEntries.length > 0 ? (
+                            <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
+                              {paymentEntries.map(([label, value]) => (
+                                <Detail key={`${label}-${value}`} label={label} value={value} />
+                              ))}
+                            </dl>
+                          ) : (
+                            <p className="mt-3 text-sm font-semibold text-amber-700 dark:text-amber-200">
+                              This method does not have public details yet. Use WhatsApp help and include your order number.
+                            </p>
+                          )}
+                        </div>
+                        <WhatsAppHelpLink
+                          context={whatsappContext}
+                          className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#25D366] px-4 text-sm font-bold text-white hover:bg-[#1ebe57] lg:w-auto"
+                        >
+                          <MessageCircle className="size-4" />
+                          WhatsApp payment help
+                        </WhatsAppHelpLink>
+                      </div>
                     </div>
-                  )}
+                  </div>
                 </>
               )}
 
@@ -390,6 +501,13 @@ function Detail({ label, value }: { label: string; value: string }) {
       <dd className="mt-1 break-all font-semibold text-ink dark:text-white">{value}</dd>
     </div>
   );
+}
+
+function paymentMethodIcon(type?: string) {
+  if (type === "mobile_money") return Smartphone;
+  if (type === "cash") return Banknote;
+  if (type === "bank") return Landmark;
+  return CreditCard;
 }
 
 function StatusCard({ icon: Icon, label, value }: { icon: typeof LibraryBig; label: string; value: string }) {
