@@ -1,4 +1,5 @@
 import { Prisma, Role } from "@prisma/client";
+import { unstable_cache } from "next/cache";
 import { listListings } from "@/lib/api/listing-service";
 import { getMainPrisma, isPostgresStoreEnabled } from "@/lib/db/main-prisma";
 import { ensureCoreProductionSchema, isDatabaseUnavailableError } from "@/lib/db/production-schema";
@@ -293,13 +294,19 @@ function resolvePostgresFeaturedAgents(
 
 export async function getHomepageData(): Promise<HomepageData> {
   if (isPostgresStoreEnabled()) {
-    return getPostgresHomepageData().catch((error: unknown) => {
+    return getCachedPostgresHomepageData().catch((error: unknown) => {
       logHomepageFallback(error);
       return getLocalHomepageData();
     });
   }
   return getLocalHomepageData();
 }
+
+const getCachedPostgresHomepageData = unstable_cache(
+  () => getPostgresHomepageData(),
+  ["houselink-homepage-data-v2"],
+  { revalidate: 3600, tags: ["homepage"] },
+);
 
 function logHomepageFallback(error: unknown) {
   if (isDatabaseUnavailableError(error)) return;

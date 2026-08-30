@@ -1,15 +1,13 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { SearchPageClient } from "@/components/search/search-page-client";
-import { PROPERTY_CITY_LANDING_PAGES, resolveCity } from "@/lib/seo/property-landing-pages";
+import { resolveCity } from "@/lib/seo/property-landing-pages";
+
+export const dynamic = "force-dynamic";
 
 type PageProps = {
   params: Promise<{ location: string }>;
 };
-
-export function generateStaticParams() {
-  return PROPERTY_CITY_LANDING_PAGES.map((city) => ({ location: city.slug }));
-}
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { location } = await params;

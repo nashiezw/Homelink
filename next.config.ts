@@ -93,6 +93,7 @@ const nextConfig: NextConfig = {
     "/api/v1/academy/files/[...path]": ["./public/uploads/academy/**/*"],
     "/api/v1/academy/documents/[id]/download": ["./public/uploads/academy/**/*"],
     "/api/v1/library/downloads/[id]": ["./public/uploads/**/*"],
+    "/api/v1/library/products/[slug]/sample": ["./public/uploads/**/*"],
   },
   images: {
     formats: ["image/avif", "image/webp"],

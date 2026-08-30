@@ -45,6 +45,10 @@ export type LiveChatSettingsView = {
   soundEnabled: boolean;
   requireContact: boolean;
   proactiveEnabled: boolean;
+  retentionDays?: number;
+  businessTimezone?: string;
+  defaultDepartmentId?: string | null;
+  mobilePosition?: string;
   teamDisplayName?: string | null;
   teamAvatarUrl?: string | null;
 };
@@ -65,6 +69,7 @@ export type LiveChatAgentView = {
   displayName: string;
   avatarUrl?: string | null;
   title?: string | null;
+  publicIntro?: string | null;
   availability: LiveChatAvailability | string;
   department?: LiveChatDepartmentView | null;
 };

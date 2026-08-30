@@ -1,8 +1,9 @@
 "use client";
 
-import { Activity, Bell, BookOpen, Building2, CheckCircle2, Clock, GraduationCap, Headphones, Loader2, MessageSquare, NotebookPen, RefreshCw, Save, Search, Send, Settings, Shield, SlidersHorizontal, Tag, Trash2, UserCog, UserPlus, Users, Wifi } from "lucide-react";
+import { Activity, Bell, BookOpen, Building2, CheckCircle2, Clock, Globe2, GraduationCap, Headphones, Loader2, Mail, MapPin, MessageSquare, NotebookPen, Phone, RefreshCw, Save, Search, Send, Settings, Shield, SlidersHorizontal, Sparkles, Tag, Timer, Trash2, Upload, UserCog, UserPlus, Users, Wifi } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import type { ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api/client";
 import { cn } from "@/lib/utils";
@@ -33,23 +34,36 @@ export function LiveChatHub() {
   const [loadingInbox, setLoadingInbox] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const activeIdRef = useRef<string | null>(null);
+  const loadInFlightRef = useRef(false);
 
-  const load = useCallback(async () => {
-    setLoadingInbox(true);
-    const params = new URLSearchParams();
-    if (activeId) params.set("conversationId", activeId);
-    if (filter) params.set("filter", filter);
-    if (query.trim()) params.set("q", query.trim());
-    const result = await apiFetch<LiveChatInboxView>(`/api/v1/admin/live-chat?${params.toString()}`, { cache: "no-store" });
-    if (result.data) {
-      setData(result.data);
-      setError(null);
-      if (!activeId && result.data.conversations[0]) setActiveId(result.data.conversations[0].id);
-    } else {
-      setError(result.error?.message ?? "Live Chat could not be loaded.");
+  useEffect(() => {
+    activeIdRef.current = activeId;
+  }, [activeId]);
+
+  const load = useCallback(async (options?: { conversationId?: string | null; silent?: boolean }) => {
+    if (loadInFlightRef.current) return;
+    loadInFlightRef.current = true;
+    if (!options?.silent) setLoadingInbox(true);
+    try {
+      const params = new URLSearchParams();
+      const conversationId = options?.conversationId ?? activeIdRef.current;
+      if (conversationId) params.set("conversationId", conversationId);
+      if (filter) params.set("filter", filter);
+      if (query.trim()) params.set("q", query.trim());
+      const result = await apiFetch<LiveChatInboxView>(`/api/v1/admin/live-chat?${params.toString()}`, { cache: "no-store" });
+      if (result.data) {
+        setData(result.data);
+        setError(null);
+        if (!activeIdRef.current && result.data.conversations[0]) setActiveId(result.data.conversations[0].id);
+      } else {
+        setError(result.error?.message ?? "Live Chat could not be loaded.");
+      }
+    } finally {
+      if (!options?.silent) setLoadingInbox(false);
+      loadInFlightRef.current = false;
     }
-    setLoadingInbox(false);
-  }, [activeId, filter, query]);
+  }, [filter, query]);
 
   useEffect(() => {
     void load();
@@ -57,10 +71,10 @@ export function LiveChatHub() {
 
   useEffect(() => {
     const interval = window.setInterval(() => {
-      if (document.visibilityState === "visible") void load();
-    }, activeId ? 15000 : 20000);
+      if (document.visibilityState === "visible" && panel === "inbox") void load({ silent: true });
+    }, activeId ? 20000 : 30000);
     return () => window.clearInterval(interval);
-  }, [activeId, load]);
+  }, [activeId, load, panel]);
 
   const activeConversation = useMemo(
     () => data?.conversations.find((conversation) => conversation.id === activeId) ?? data?.conversations[0] ?? null,
@@ -178,7 +192,15 @@ export function LiveChatHub() {
             <div className="max-h-[560px] overflow-y-auto border-t border-white/10">
               {loadingInbox ? <div className="flex items-center gap-2 border-b border-white/10 p-3 text-xs text-slate-400"><Loader2 className="size-3 animate-spin" /> Refreshing inbox...</div> : null}
               {data.conversations.length ? data.conversations.map((conversation) => (
-                <button key={conversation.id} type="button" onClick={() => setActiveId(conversation.id)} className={cn("block w-full border-b border-white/10 p-3 text-left hover:bg-white/5", activeConversation?.id === conversation.id && "bg-emerald-500/10")}>
+                <button
+                  key={conversation.id}
+                  type="button"
+                  onClick={() => {
+                    setActiveId(conversation.id);
+                    void load({ conversationId: conversation.id });
+                  }}
+                  className={cn("block w-full border-b border-white/10 p-3 text-left hover:bg-white/5", activeConversation?.id === conversation.id && "bg-emerald-500/10")}
+                >
                   <div className="flex items-center justify-between gap-3">
                     <p className="truncate text-sm font-black">{conversation.visitor.name || "Guest visitor"}</p>
                     <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-black", statusTone(conversation.status))}>{conversation.status.replace(/_/g, " ")}</span>
@@ -238,38 +260,77 @@ function Metric({ icon: Icon, label, value, tone = "slate" }: { icon: typeof Mes
 
 function ConversationHeader({ conversation, data, action, busy }: { conversation: LiveChatConversationView | null; data: LiveChatInboxView; action: (body: Record<string, unknown>, success?: string) => Promise<void>; busy: string | null }) {
   if (!conversation) return <div className="border-b border-white/10 p-4 text-sm text-slate-400">No conversation selected.</div>;
+  const lastSeen = new Date(conversation.visitor.lastSeenAt);
+  const lastSeenLabel = Number.isNaN(lastSeen.getTime()) ? "Recently active" : `Last seen ${lastSeen.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
   return (
-    <div className="border-b border-white/10 p-4">
-      <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-        <div>
-          <p className="text-lg font-black">{conversation.visitor.name || "Guest visitor"}</p>
-          <p className="text-sm text-slate-400">{conversation.subject || conversation.currentTitle || "Live conversation"}</p>
+    <div className="border-b border-white/10 bg-slate-950/60 p-4">
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_420px]">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-lg font-black text-white">{conversation.visitor.name || "Guest visitor"}</p>
+            <span className={cn("rounded-full px-2 py-1 text-[10px] font-black uppercase", statusTone(conversation.status))}>{conversation.status.replace(/_/g, " ")}</span>
+            <span className="rounded-full bg-slate-800 px-2 py-1 text-[10px] font-black uppercase text-slate-300">{conversation.priority}</span>
+          </div>
+          <p className="mt-1 text-sm text-slate-400">{conversation.subject || conversation.currentTitle || "Live conversation"}</p>
+          <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+            <MiniFact icon={Phone} label="Phone" value={conversation.visitor.phone || "Not captured"} />
+            <MiniFact icon={Mail} label="Email" value={conversation.visitor.email || "Not captured"} />
+            <MiniFact icon={MapPin} label="Page" value={conversation.visitor.currentTitle || conversation.visitor.currentPath || "Unknown"} />
+            <MiniFact icon={Timer} label="Activity" value={lastSeenLabel} />
+          </div>
+          <div className="mt-2 grid gap-2 sm:grid-cols-2">
+            <MiniFact icon={Globe2} label="Source" value={conversation.visitor.utmSource || conversation.visitor.source || "Direct / Unknown"} />
+            <MiniFact icon={MapPin} label="Landing" value={conversation.visitor.landingPage || "Unknown"} />
+          </div>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <select className="h-10 rounded-md border border-white/10 bg-slate-900 px-2 text-sm" value={conversation.status} onChange={(event) => void action({ action: "status", conversationId: conversation.id, status: event.target.value }, "Status updated.")}>
-            {["NEW", "OPEN", "WAITING_FOR_CUSTOMER", "FOLLOW_UP", "RESOLVED", "CLOSED"].map((status) => <option key={status} value={status}>{status.replace(/_/g, " ")}</option>)}
-          </select>
-          <select className="h-10 rounded-md border border-white/10 bg-slate-900 px-2 text-sm" value={conversation.department?.id || ""} onChange={(event) => void action({ action: "transfer", conversationId: conversation.id, departmentId: event.target.value || undefined, agentId: conversation.assignedAgent?.id }, "Conversation transferred.")}>
-            <option value="">No department</option>
-            {data.departments.filter((department) => department.active).map((department) => <option key={department.id} value={department.id}>{department.name}</option>)}
-          </select>
-          <select className="h-10 rounded-md border border-white/10 bg-slate-900 px-2 text-sm" value={conversation.assignedAgent?.id || ""} onChange={(event) => void action({ action: "assign", conversationId: conversation.id, agentId: event.target.value || undefined, departmentId: conversation.department?.id }, "Conversation assigned.")}>
-            <option value="">Unassigned</option>
-            {data.agents.map((agent) => <option key={agent.id} value={agent.id}>{agent.displayName}</option>)}
-          </select>
-          <Button
-            variant="secondary"
-            onClick={() => {
-              if (window.confirm("Delete this conversation permanently?")) void action({ action: "delete_conversation", conversationId: conversation.id }, "Conversation deleted.");
-            }}
-            disabled={busy === "delete_conversation"}
-          >
-            {busy === "delete_conversation" ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />} Delete
-          </Button>
-          {busy === "assign" ? <Loader2 className="size-4 animate-spin text-emerald-300" /> : null}
+        <div className="rounded-lg border border-white/10 bg-slate-900 p-3">
+          <p className="mb-3 text-xs font-black uppercase tracking-wider text-slate-500">Conversation controls</p>
+          <div className="grid gap-2">
+            <ControlSelect label="Status" value={conversation.status} onChange={(value) => void action({ action: "status", conversationId: conversation.id, status: value }, "Status updated.")}>
+              {["NEW", "OPEN", "WAITING_FOR_CUSTOMER", "FOLLOW_UP", "RESOLVED", "CLOSED"].map((status) => <option key={status} value={status}>{status.replace(/_/g, " ")}</option>)}
+            </ControlSelect>
+            <ControlSelect label="Department" value={conversation.department?.id || ""} onChange={(value) => void action({ action: "transfer", conversationId: conversation.id, departmentId: value || undefined, agentId: conversation.assignedAgent?.id }, "Conversation transferred.")}>
+              <option value="">No department</option>
+              {data.departments.filter((department) => department.active).map((department) => <option key={department.id} value={department.id}>{department.name}</option>)}
+            </ControlSelect>
+            <ControlSelect label="Agent" value={conversation.assignedAgent?.id || ""} onChange={(value) => void action({ action: "assign", conversationId: conversation.id, agentId: value || undefined, departmentId: conversation.department?.id }, "Conversation assigned.")}>
+              <option value="">Unassigned</option>
+              {data.agents.map((agent) => <option key={agent.id} value={agent.id}>{agent.displayName}</option>)}
+            </ControlSelect>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                if (window.confirm("Delete this conversation permanently?")) void action({ action: "delete_conversation", conversationId: conversation.id }, "Conversation deleted.");
+              }}
+              disabled={busy === "delete_conversation"}
+              className="justify-self-start"
+            >
+              {busy === "delete_conversation" ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />} Delete
+            </Button>
+          </div>
         </div>
       </div>
     </div>
+  );
+}
+
+function MiniFact({ icon: Icon, label, value }: { icon: LucideIcon; label: string; value: string }) {
+  return (
+    <div className="min-w-0 rounded-md border border-white/10 bg-slate-900 px-3 py-2">
+      <p className="flex items-center gap-1.5 text-[10px] font-black uppercase text-slate-500"><Icon className="size-3" /> {label}</p>
+      <p className="mt-1 truncate text-xs font-semibold text-slate-200" title={value}>{value}</p>
+    </div>
+  );
+}
+
+function ControlSelect({ label, value, onChange, children }: { label: string; value: string; onChange: (value: string) => void; children: ReactNode }) {
+  return (
+    <label className="grid gap-1 sm:grid-cols-[6rem_minmax(0,1fr)] sm:items-center">
+      <span className="text-[10px] font-black uppercase text-slate-500">{label}</span>
+      <select className="h-10 min-w-0 rounded-md border border-white/10 bg-slate-950 px-2 text-sm text-white outline-none focus:border-emerald-400" value={value} onChange={(event) => onChange(event.target.value)}>
+        {children}
+      </select>
+    </label>
   );
 }
 
@@ -399,27 +460,64 @@ function VisitorsPanel({ visitors, startConversation, busy }: { visitors: LiveCh
 
 function ProfilePanel({ data, action, busy }: { data: LiveChatInboxView; action: (body: Record<string, unknown>, success?: string) => Promise<void>; busy: string | null }) {
   const agent = data.currentAgent;
+  const inputRef = useRef<HTMLInputElement | null>(null);
   const [displayName, setDisplayName] = useState(agent?.displayName || "");
   const [title, setTitle] = useState(agent?.title || "");
   const [avatarUrl, setAvatarUrl] = useState(agent?.avatarUrl || "");
   const [availability, setAvailability] = useState(agent?.availability || "ONLINE");
   const [departmentId, setDepartmentId] = useState(agent?.department?.id || "");
-  const [publicIntro, setPublicIntro] = useState("");
+  const [publicIntro, setPublicIntro] = useState(agent?.publicIntro || "");
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+
+  async function uploadAvatar(files: FileList | null) {
+    const file = files?.[0];
+    if (!file) return;
+    setUploadingAvatar(true);
+    try {
+      const dataUrl = await readProfileImageFile(file);
+      const result = await apiFetch<{ url: string }>("/api/v1/uploads", {
+        method: "POST",
+        body: JSON.stringify({
+          dataUrl,
+          kind: "image",
+          folder: "live-chat/avatars",
+          filename: file.name,
+        }),
+      });
+      if (result.data?.url) setAvatarUrl(result.data.url);
+      else throw new Error(result.error?.message ?? "Profile photo upload failed.");
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "Profile photo upload failed.");
+    } finally {
+      setUploadingAvatar(false);
+      if (inputRef.current) inputRef.current.value = "";
+    }
+  }
+
   return (
     <div className="grid gap-4 p-4 xl:grid-cols-[360px_minmax(0,1fr)]">
-      <section className="rounded-lg border border-white/10 bg-slate-900 p-4">
-        <h3 className="flex items-center gap-2 text-sm font-black uppercase tracking-wider text-slate-300"><UserCog className="size-4" /> Public team profile</h3>
-        <div className="mt-4 flex items-center gap-3">
-          <span
-            className="flex size-14 items-center justify-center overflow-hidden rounded-lg bg-emerald-500 bg-cover bg-center text-xl font-black text-white"
-            style={avatarUrl ? { backgroundImage: `url(${avatarUrl})` } : undefined}
-          >
-            {avatarUrl ? null : (displayName || "H").slice(0, 1).toUpperCase()}
-          </span>
-          <div>
-            <p className="font-black text-white">{displayName || "HouseLink Team"}</p>
-            <p className="text-sm text-slate-400">{title || "HouseLink Support"}</p>
-            <p className="mt-1 text-xs text-emerald-300">{availability}</p>
+      <section className="overflow-hidden rounded-lg border border-white/10 bg-slate-900">
+        <div className="border-b border-white/10 bg-gradient-to-br from-emerald-500/20 via-slate-900 to-slate-950 p-4">
+          <p className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-emerald-200"><UserCog className="size-4" /> Public team profile</p>
+          <div className="mt-5 flex items-center gap-4">
+            <span
+              className="grid size-20 shrink-0 place-items-center overflow-hidden rounded-xl border border-white/15 bg-emerald-500 bg-cover bg-center text-2xl font-black text-white shadow-lg shadow-emerald-950/30"
+              style={avatarUrl ? { backgroundImage: `url(${avatarUrl})` } : undefined}
+            >
+              {avatarUrl ? null : (displayName || "H").slice(0, 1).toUpperCase()}
+            </span>
+            <div className="min-w-0">
+              <p className="truncate text-lg font-black text-white">{displayName || "HouseLink Team"}</p>
+              <p className="text-sm text-slate-300">{title || "HouseLink Support"}</p>
+              <p className="mt-2 inline-flex rounded-full bg-emerald-400/15 px-2 py-1 text-[11px] font-black uppercase text-emerald-200">{availability}</p>
+            </div>
+          </div>
+        </div>
+        <div className="space-y-3 p-4 text-sm text-slate-300">
+          <p className="leading-6">{publicIntro || "Add a short intro so the public widget sounds personal, helpful, and unmistakably HouseLink."}</p>
+          <div className="rounded-md border border-emerald-400/20 bg-emerald-400/10 p-3 text-emerald-100">
+            <p className="font-bold">Shown to visitors</p>
+            <p className="mt-1 text-xs leading-5 text-emerald-100/80">Photo, name, title, and online state appear in the public chat header when this agent is available.</p>
           </div>
         </div>
       </section>
@@ -427,7 +525,17 @@ function ProfilePanel({ data, action, busy }: { data: LiveChatInboxView; action:
         <div className="grid gap-3 md:grid-cols-2">
           <Field label="Display name" value={displayName} onChange={setDisplayName} placeholder="e.g. Tendai from HouseLink" />
           <Field label="Title" value={title} onChange={setTitle} placeholder="e.g. Property & Library Support" />
-          <Field label="Profile photo URL" value={avatarUrl} onChange={setAvatarUrl} placeholder="https://..." />
+          <label className="block">
+            <span className="text-xs font-black uppercase text-slate-500">Profile photo</span>
+            <div className="mt-1 flex gap-2">
+              <input className="h-11 min-w-0 flex-1 rounded-md border border-white/10 bg-slate-950 px-3 text-sm text-white outline-none focus:border-emerald-400" value={avatarUrl} onChange={(event) => setAvatarUrl(event.target.value)} placeholder="Paste image URL or upload" />
+              <Button type="button" variant="secondary" onClick={() => inputRef.current?.click()} disabled={uploadingAvatar} className="shrink-0">
+                {uploadingAvatar ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}
+                {uploadingAvatar ? "Uploading" : "Upload"}
+              </Button>
+            </div>
+            <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={(event) => void uploadAvatar(event.currentTarget.files)} />
+          </label>
           <label className="block">
             <span className="text-xs font-black uppercase text-slate-500">Availability</span>
             <select className="mt-1 h-11 w-full rounded-md border border-white/10 bg-slate-950 px-3 text-sm text-white outline-none" value={availability} onChange={(event) => setAvailability(event.target.value)}>
@@ -463,23 +571,72 @@ function SettingsPanel({ data, action, busy }: { data: LiveChatInboxView; action
   const [welcomeMessage, setWelcomeMessage] = useState(data.settings.welcomeMessage);
   const [offlineMessage, setOfflineMessage] = useState(data.settings.offlineMessage);
   const [privacyNotice, setPrivacyNotice] = useState(data.settings.privacyNotice);
+  const [defaultDepartmentId, setDefaultDepartmentId] = useState(data.settings.defaultDepartmentId || "");
+  const [businessTimezone, setBusinessTimezone] = useState(data.settings.businessTimezone || "Africa/Harare");
+  const [retentionDays, setRetentionDays] = useState(String(data.settings.retentionDays || 180));
+  const [mobilePosition, setMobilePosition] = useState(data.settings.mobilePosition || "bottom-right");
   return (
     <div className="p-4">
-      <section className="rounded-lg border border-white/10 bg-slate-900 p-4">
-        <h3 className="flex items-center gap-2 text-sm font-black uppercase tracking-wider text-slate-300"><SlidersHorizontal className="size-4" /> Live Chat settings</h3>
-        <div className="mt-4 grid gap-3 md:grid-cols-2">
-          <Toggle label="Chat enabled" checked={enabled} onChange={setEnabled} />
-          <Toggle label="Proactive messages" checked={proactiveEnabled} onChange={setProactiveEnabled} />
-          <Toggle label="Sound alerts" checked={soundEnabled} onChange={setSoundEnabled} />
-          <Toggle label="Require contact before chat" checked={requireContact} onChange={setRequireContact} />
-          <Field label="Launcher greeting" value={widgetGreeting} onChange={setWidgetGreeting} placeholder="Hi, need help with HouseLink?" />
-          <Field label="Privacy note" value={privacyNotice} onChange={setPrivacyNotice} placeholder="How chat context is used" />
-          <TextField label="Welcome message" value={welcomeMessage} onChange={setWelcomeMessage} />
-          <TextField label="Offline message" value={offlineMessage} onChange={setOfflineMessage} />
+      <section className="overflow-hidden rounded-lg border border-white/10 bg-slate-900">
+        <div className="border-b border-white/10 bg-slate-950/70 p-4">
+          <h3 className="flex items-center gap-2 text-sm font-black uppercase tracking-wider text-slate-200"><SlidersHorizontal className="size-4 text-emerald-300" /> Live Chat settings</h3>
+          <p className="mt-1 text-sm text-slate-400">Control the public widget, routing defaults, contact capture, retention, and the exact words visitors see.</p>
         </div>
-        <Button className="mt-4" onClick={() => void action({ action: "settings", enabled, proactiveEnabled, soundEnabled, requireContact, widgetGreeting, welcomeMessage, offlineMessage, privacyNotice }, "Live Chat settings saved.")} disabled={busy === "settings"}>
-          {busy === "settings" ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />} Save settings
-        </Button>
+        <div className="grid gap-4 p-4 xl:grid-cols-[minmax(0,1fr)_360px]">
+          <div className="space-y-4">
+            <div className="grid gap-3 md:grid-cols-2">
+              <Toggle label="Chat enabled" checked={enabled} onChange={setEnabled} />
+              <Toggle label="Proactive messages" checked={proactiveEnabled} onChange={setProactiveEnabled} />
+              <Toggle label="Sound alerts" checked={soundEnabled} onChange={setSoundEnabled} />
+              <Toggle label="Require contact before chat" checked={requireContact} onChange={setRequireContact} />
+            </div>
+            <div className="grid gap-3 md:grid-cols-2">
+              <Field label="Launcher greeting" value={widgetGreeting} onChange={setWidgetGreeting} placeholder="Hi, need help with HouseLink?" />
+              <Field label="Privacy note" value={privacyNotice} onChange={setPrivacyNotice} placeholder="How chat context is used" />
+              <TextField label="Welcome message" value={welcomeMessage} onChange={setWelcomeMessage} />
+              <TextField label="Offline message" value={offlineMessage} onChange={setOfflineMessage} />
+            </div>
+            <div className="grid gap-3 md:grid-cols-2">
+              <label className="block">
+                <span className="text-xs font-black uppercase text-slate-500">Default department</span>
+                <select className="mt-1 h-11 w-full rounded-md border border-white/10 bg-slate-950 px-3 text-sm text-white outline-none focus:border-emerald-400" value={defaultDepartmentId} onChange={(event) => setDefaultDepartmentId(event.target.value)}>
+                  <option value="">General routing</option>
+                  {data.departments.filter((department) => department.active).map((department) => <option key={department.id} value={department.id}>{department.name}</option>)}
+                </select>
+              </label>
+              <label className="block">
+                <span className="text-xs font-black uppercase text-slate-500">Business timezone</span>
+                <select className="mt-1 h-11 w-full rounded-md border border-white/10 bg-slate-950 px-3 text-sm text-white outline-none focus:border-emerald-400" value={businessTimezone} onChange={(event) => setBusinessTimezone(event.target.value)}>
+                  {["Africa/Harare", "Africa/Johannesburg", "UTC"].map((zone) => <option key={zone} value={zone}>{zone}</option>)}
+                </select>
+              </label>
+              <label className="block">
+                <span className="text-xs font-black uppercase text-slate-500">Keep chat history</span>
+                <input className="mt-1 h-11 w-full rounded-md border border-white/10 bg-slate-950 px-3 text-sm text-white outline-none focus:border-emerald-400" inputMode="numeric" value={retentionDays} onChange={(event) => setRetentionDays(event.target.value.replace(/\D/g, "").slice(0, 3))} placeholder="180" />
+              </label>
+              <label className="block">
+                <span className="text-xs font-black uppercase text-slate-500">Mobile launcher position</span>
+                <select className="mt-1 h-11 w-full rounded-md border border-white/10 bg-slate-950 px-3 text-sm text-white outline-none focus:border-emerald-400" value={mobilePosition} onChange={(event) => setMobilePosition(event.target.value)}>
+                  <option value="bottom-right">Bottom right</option>
+                  <option value="bottom-left">Bottom left</option>
+                </select>
+              </label>
+            </div>
+          </div>
+          <aside className="rounded-lg border border-emerald-400/20 bg-emerald-400/10 p-4 text-emerald-50">
+            <p className="flex items-center gap-2 text-sm font-black"><Sparkles className="size-4" /> HouseLink standard</p>
+            <div className="mt-4 space-y-3 text-sm leading-6 text-emerald-50/85">
+              <p>Use proactive messages for checkout, Library samples, payment help, and high-intent listing visitors.</p>
+              <p>Require contact only when your team wants every chat to become a follow-up lead before the first message.</p>
+              <p>Keep retention long enough for payments and disputes, but short enough to avoid unnecessary database growth.</p>
+            </div>
+          </aside>
+        </div>
+        <div className="border-t border-white/10 p-4">
+          <Button onClick={() => void action({ action: "settings", enabled, proactiveEnabled, soundEnabled, requireContact, widgetGreeting, welcomeMessage, offlineMessage, privacyNotice, defaultDepartmentId, businessTimezone, retentionDays: Number(retentionDays) || 180, mobilePosition }, "Live Chat settings saved.")} disabled={busy === "settings"}>
+            {busy === "settings" ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />} Save settings
+          </Button>
+        </div>
       </section>
     </div>
   );
@@ -574,4 +731,13 @@ function statusTone(status: string) {
   if (status === "WAITING_FOR_CUSTOMER") return "bg-amber-500/15 text-amber-200";
   if (status === "RESOLVED" || status === "CLOSED") return "bg-slate-700 text-slate-300";
   return "bg-emerald-500/15 text-emerald-200";
+}
+
+function readProfileImageFile(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result ?? ""));
+    reader.onerror = () => reject(reader.error ?? new Error("Could not read profile photo."));
+    reader.readAsDataURL(file);
+  });
 }

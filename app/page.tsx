@@ -4,6 +4,7 @@ import { HomePageView } from "@/components/home/home-page-view";
 import { socialShareImage, socialTwitterImages } from "@/lib/seo/social-image";
 
 export const revalidate = 3600;
+export const dynamic = "force-dynamic";
 
 const homepageTitle = "HouseLink Property Search Zimbabwe";
 const homepageDescription =

@@ -1,15 +1,13 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { SearchPageClient } from "@/components/search/search-page-client";
-import { ROOM_SUBURB_LANDING_PAGES, resolveSuburb } from "@/lib/seo/property-landing-pages";
+import { resolveSuburb } from "@/lib/seo/property-landing-pages";
+
+export const dynamic = "force-dynamic";
 
 type PageProps = {
   params: Promise<{ suburb: string }>;
 };
-
-export function generateStaticParams() {
-  return ROOM_SUBURB_LANDING_PAGES.map((suburb) => ({ suburb: suburb.slug }));
-}
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { suburb: suburbSlug } = await params;

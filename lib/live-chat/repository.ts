@@ -398,7 +398,9 @@ export async function getLiveChatInbox(input: { activeConversationId?: string | 
         prisma.liveChatEvent.findMany({ where: { OR: [{ conversationId: selected.id }, { visitorId: selected.visitorId }] }, orderBy: { createdAt: "desc" }, take: 40 }),
       ])
     : [[], []];
-  await prisma.liveChatAgentProfile.update({ where: { userId: input.user.id }, data: { availability: "ONLINE", lastSeenAt: new Date() } }).catch(() => null);
+  if (!currentAgent.lastSeenAt || Date.now() - currentAgent.lastSeenAt.getTime() > 60_000) {
+    await prisma.liveChatAgentProfile.update({ where: { userId: input.user.id }, data: { availability: "ONLINE", lastSeenAt: new Date() } }).catch(() => null);
+  }
   const conversationByVisitor = new Map(visibleConversations.map((conversation) => [conversation.visitorId, conversation.publicId]));
   return {
     conversations: visibleConversations.map((conversation) => shapeConversation(conversation)),
@@ -630,7 +632,22 @@ export async function liveChatAdminAction(user: AdminUser, body: Record<string, 
   if (action === "settings") {
     const settings = await prisma.liveChatSettings.upsert({
       where: { id: "live-chat" },
-      create: { id: "live-chat", updatedAt: new Date() },
+      create: {
+        id: "live-chat",
+        enabled: Boolean(body.enabled ?? true),
+        widgetGreeting: cleanText(String(body.widgetGreeting || ""), 180) || "Hi, need help with HouseLink?",
+        welcomeMessage: cleanText(String(body.welcomeMessage || ""), 500) || "Hi, welcome to HouseLink. How can we help?",
+        offlineMessage: cleanText(String(body.offlineMessage || ""), 500) || "We are offline. Leave us a message.",
+        privacyNotice: cleanText(String(body.privacyNotice || ""), 500) || "We use this chat and page context to provide support.",
+        soundEnabled: Boolean(body.soundEnabled ?? true),
+        requireContact: Boolean(body.requireContact ?? false),
+        proactiveEnabled: Boolean(body.proactiveEnabled ?? true),
+        retentionDays: Math.min(730, Math.max(30, numberOr(body.retentionDays, 180))),
+        businessTimezone: cleanText(String(body.businessTimezone || ""), 80) || "Africa/Harare",
+        defaultDepartmentId: cleanText(String(body.defaultDepartmentId || ""), 80) || null,
+        mobilePosition: allowed(String(body.mobilePosition || ""), ["bottom-right", "bottom-left"], "bottom-right"),
+        updatedAt: new Date(),
+      },
       update: {
         enabled: Boolean(body.enabled ?? true),
         widgetGreeting: cleanText(String(body.widgetGreeting || ""), 180) || "Hi, need help with HouseLink?",
@@ -640,6 +657,10 @@ export async function liveChatAdminAction(user: AdminUser, body: Record<string, 
         soundEnabled: Boolean(body.soundEnabled ?? true),
         requireContact: Boolean(body.requireContact ?? false),
         proactiveEnabled: Boolean(body.proactiveEnabled ?? true),
+        retentionDays: Math.min(730, Math.max(30, numberOr(body.retentionDays, 180))),
+        businessTimezone: cleanText(String(body.businessTimezone || ""), 80) || "Africa/Harare",
+        defaultDepartmentId: cleanText(String(body.defaultDepartmentId || ""), 80) || null,
+        mobilePosition: allowed(String(body.mobilePosition || ""), ["bottom-right", "bottom-left"], "bottom-right"),
       },
     });
     analyticsCache = null;
@@ -1064,13 +1085,14 @@ function shapeDepartment(department: { id: string; name: string; slug: string; c
   };
 }
 
-function shapeAgent(agent: { id: string; userId: string; displayName: string; avatarUrl: string | null; title: string | null; availability: string; department?: { id: string; name: string; slug: string; color: string; active: boolean } | null }) {
+function shapeAgent(agent: { id: string; userId: string; displayName: string; avatarUrl: string | null; title: string | null; publicIntro?: string | null; availability: string; department?: { id: string; name: string; slug: string; color: string; active: boolean } | null }) {
   return {
     id: agent.id,
     userId: agent.userId,
     displayName: agent.displayName,
     avatarUrl: agent.avatarUrl,
     title: agent.title,
+    publicIntro: agent.publicIntro,
     availability: agent.availability,
     department: agent.department ? shapeDepartment(agent.department) : null,
   };
@@ -1100,7 +1122,7 @@ function shapeActiveVisitor(visitor: { publicId: string; name: string | null; em
   };
 }
 
-function shapeSettings(settings: { enabled: boolean; widgetGreeting: string; welcomeMessage: string; offlineMessage: string; privacyNotice: string; soundEnabled: boolean; requireContact: boolean; proactiveEnabled: boolean }): LiveChatSettingsView {
+function shapeSettings(settings: { enabled: boolean; widgetGreeting: string; welcomeMessage: string; offlineMessage: string; privacyNotice: string; soundEnabled: boolean; requireContact: boolean; proactiveEnabled: boolean; retentionDays?: number; businessTimezone?: string; defaultDepartmentId?: string | null; mobilePosition?: string }): LiveChatSettingsView {
   return {
     enabled: settings.enabled,
     widgetGreeting: settings.widgetGreeting,
@@ -1110,6 +1132,10 @@ function shapeSettings(settings: { enabled: boolean; widgetGreeting: string; wel
     soundEnabled: settings.soundEnabled,
     requireContact: settings.requireContact,
     proactiveEnabled: settings.proactiveEnabled,
+    retentionDays: settings.retentionDays,
+    businessTimezone: settings.businessTimezone,
+    defaultDepartmentId: settings.defaultDepartmentId,
+    mobilePosition: settings.mobilePosition,
   };
 }
 
@@ -1123,6 +1149,10 @@ function getLiveChatSettingsFallback(): LiveChatSettingsView {
     soundEnabled: true,
     requireContact: false,
     proactiveEnabled: true,
+    retentionDays: 180,
+    businessTimezone: "Africa/Harare",
+    defaultDepartmentId: null,
+    mobilePosition: "bottom-right",
   };
 }
 

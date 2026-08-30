@@ -3,14 +3,13 @@ import { readFile } from "fs/promises";
 import path from "path";
 import { problem } from "@/lib/api/response";
 import { getSessionUserIdFromRequest } from "@/lib/auth/session";
-import { getLibraryProductSampleFile, shouldUsePostgresLibrary } from "@/lib/library/repository";
+import { getLibraryProductSampleFile } from "@/lib/library/repository";
 import { findPreparedLibrarySample } from "@/lib/library/sample-preview";
 import { getLibraryStoreSettings } from "@/lib/library/settings";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request, context: { params: Promise<{ slug: string }> }) {
-  if (!shouldUsePostgresLibrary()) return problem(503, "SAMPLE_UNAVAILABLE", "Library samples require the database-backed Library.");
   const settings = await getLibraryStoreSettings();
   if (!settings.preview.enabled) return problem(403, "PREVIEW_DISABLED", "Library previews are currently disabled.");
   if (settings.preview.requireLogin && !getSessionUserIdFromRequest(request)) {
@@ -61,7 +60,7 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
     return new NextResponse(remote.body, {
       headers: {
         ...headers,
-        "Content-Type": remote.headers.get("content-type") || headers["Content-Type"],
+        "Content-Type": normalizeRemoteContentType(remote.headers.get("content-type"), headers["Content-Type"]),
       },
     });
   } catch (error) {
@@ -155,4 +154,9 @@ function contentType(fileType: string, fileName: string) {
   if (type === "pptx" || name.endsWith(".pptx")) return "application/vnd.openxmlformats-officedocument.presentationml.presentation";
   if (type === "zip" || name.endsWith(".zip")) return "application/zip";
   return "application/octet-stream";
+}
+
+function normalizeRemoteContentType(remoteType: string | null, fallback: string) {
+  if (fallback === "application/pdf") return "application/pdf";
+  return remoteType || fallback;
 }

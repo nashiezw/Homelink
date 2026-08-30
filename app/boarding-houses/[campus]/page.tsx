@@ -9,13 +9,11 @@ const CAMPUSES = [
   { slug: "university-of-zimbabwe", label: "University of Zimbabwe", location: "University of Zimbabwe" },
 ];
 
+export const dynamic = "force-dynamic";
+
 type PageProps = {
   params: Promise<{ campus: string }>;
 };
-
-export function generateStaticParams() {
-  return CAMPUSES.map((campus) => ({ campus: campus.slug }));
-}
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { campus } = await params;

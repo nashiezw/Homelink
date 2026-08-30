@@ -4,6 +4,8 @@ import { PageShell } from "@/components/layout/page-shell";
 import { TenanciesDashboard } from "@/components/tenancies/tenancies-dashboard";
 import { requireServerRole } from "@/lib/auth/server-session";
 
+export const dynamic = "force-dynamic";
+
 export default async function TenanciesPage() {
   await requireServerRole([], { anySignedIn: true, next: "/dashboard/tenancies" });
   return (

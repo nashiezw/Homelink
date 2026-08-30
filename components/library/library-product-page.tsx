@@ -33,6 +33,7 @@ import { LibraryCartFab } from "@/components/library/library-cart-fab";
 import { LibraryExitIntentCapture } from "@/components/library/library-exit-intent-capture";
 import { LibraryFormatPickerDialog } from "@/components/library/library-format-picker-dialog";
 import { LibraryProductCard } from "@/components/library/library-product-card";
+import { PdfSampleViewer } from "@/components/library/pdf-sample-viewer";
 import { WhatsAppHelpLink } from "@/components/layout/whatsapp-help-link";
 import { Button } from "@/components/ui/button";
 import { useApp } from "@/components/providers/app-provider";
@@ -90,7 +91,6 @@ export function LibraryProductPage({
   }>;
 }) {
   const [previewOpen, setPreviewOpen] = useState(false);
-  const [sampleFrameFailed, setSampleFrameFailed] = useState(false);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxZoomed, setLightboxZoomed] = useState(false);
   const [galleryIndex, setGalleryIndex] = useState(0);
@@ -342,11 +342,6 @@ export function LibraryProductPage({
       });
     }
   }, [bundleLines.length, product.id, product.title]);
-
-  useEffect(() => {
-    if (!previewOpen) return;
-    setSampleFrameFailed(false);
-  }, [previewOpen, sampleUrl]);
 
   function trackSampleOpened(surface: string) {
     setSampleTouched(true);
@@ -1723,43 +1718,23 @@ export function LibraryProductPage({
       ) : null}
 
       {previewOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4" onClick={() => setPreviewOpen(false)}>
-          <div className="flex max-h-[92dvh] w-full max-w-5xl flex-col overflow-hidden rounded-lg bg-white shadow-2xl dark:bg-slate-950" onClick={(event) => event.stopPropagation()}>
-            <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3 dark:border-slate-800">
-              <p className="font-semibold">{sampleUrl ? "Sample PDF" : "Sample preview"} - {product.title}</p>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-2 sm:p-4" onClick={() => setPreviewOpen(false)}>
+          <div className="flex h-[92dvh] max-h-[92dvh] w-full max-w-5xl flex-col overflow-hidden rounded-lg bg-white shadow-2xl dark:bg-slate-950" onClick={(event) => event.stopPropagation()}>
+            <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-3 dark:border-slate-800">
+              <p className="min-w-0 truncate font-semibold">{sampleUrl ? "Sample PDF" : "Sample preview"} - {product.title}</p>
               <button type="button" onClick={() => setPreviewOpen(false)} className="rounded-lg px-3 py-1 text-sm font-semibold hover:bg-slate-100 dark:hover:bg-slate-900">
                 Close
               </button>
             </div>
             {sampleUrl ? (
-              <div className="min-h-[70dvh] bg-slate-100 dark:bg-slate-900">
-                {sampleFrameFailed ? (
-                  <div className="grid min-h-[70dvh] place-items-center p-5">
-                    <div className="max-w-md rounded-lg bg-white p-6 text-center shadow-xl dark:bg-slate-950">
-                      <FileText className="mx-auto size-8 text-emerald-700 dark:text-emerald-300" />
-                      <p className="mt-3 font-semibold text-ink dark:text-white">The embedded PDF preview could not load.</p>
-                      <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">Open the sample in a new browser tab or download it instead.</p>
-                      <div className="mt-5 flex justify-center gap-2">
-                        <Button variant="secondary" onClick={() => openSampleInNewTab("fallback")}>
-                          <ExternalLink className="size-4" /> Open in new tab
-                        </Button>
-                        {sampleDownloadUrl ? (
-                          <Button variant="secondary" onClick={() => downloadSample("fallback")}>
-                            <Download className="size-4" /> Download
-                          </Button>
-                        ) : null}
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <iframe
-                    title={`${product.title} sample`}
-                    src={sampleUrl}
-                    className="h-[70dvh] w-full border-0"
-                    onLoad={() => trackEvent("library_sample_viewed", product.id, { title: product.title, slug: product.slug, surface: "modal" })}
-                    onError={() => setSampleFrameFailed(true)}
+              <div className="flex min-h-0 flex-1 flex-col bg-slate-100 dark:bg-slate-900">
+                <div className="min-h-0 flex-1">
+                  <PdfSampleViewer
+                    url={sampleUrl}
+                    title={product.title}
+                    onViewed={() => trackEvent("library_sample_viewed", product.id, { title: product.title, slug: product.slug, surface: "modal" })}
                   />
-                )}
+                </div>
                 <div className="flex flex-wrap justify-end gap-2 border-t border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-950">
                   <Button variant="secondary" onClick={() => openSampleInNewTab("modal")}>
                     <ExternalLink className="size-4" /> Open in new tab

@@ -59,7 +59,7 @@ const checks = [
   {
     file: "components/admin/live-chat-hub.tsx",
     label: "admin live chat avoids aggressive 5 second polling",
-    pattern: /activeId \? 15000 : 20000/,
+    pattern: /activeId \? 20000 : 30000/,
   },
   {
     file: "components/admin/live-chat-hub.tsx",

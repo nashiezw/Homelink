@@ -1,4 +1,5 @@
 import { requireAdmin, requireAdminAsync } from "@/lib/admin/require-admin";
+import { revalidateTag } from "next/cache";
 import {
   getPostgresHomepageAdminData,
   patchPostgresHomepageAgent,
@@ -80,17 +81,24 @@ export async function PATCH(request: Request) {
         featured: body.featureListing.featured,
         pinned: body.featureListing.pin,
       });
+      revalidateHomepage();
       return ok({ listing: null });
     }
     if (body.pinListing) {
       await patchPostgresHomepageListing({ listingId: body.pinListing.listingId, pinned: body.pinListing.pinned });
+      revalidateHomepage();
       return ok({ featuredListingIds: (await getPostgresHomepageAdminData()).cms.featuredListingIds });
     }
     if (body.pinAgent) {
       const cms = await patchPostgresHomepageAgent(body.pinAgent);
+      revalidateHomepage();
       return ok({ featuredAgentProfileIds: cms.featuredAgentProfileIds });
     }
-    if (body.cms) return ok({ cms: await savePostgresHomepageCms(body.cms) });
+    if (body.cms) {
+      const cms = await savePostgresHomepageCms(body.cms);
+      revalidateHomepage();
+      return ok({ cms });
+    }
   }
 
   const store = getStore();
@@ -121,6 +129,7 @@ export async function PATCH(request: Request) {
       store.updateHomepageCms({ featuredListingIds: [...ids] }, actor);
     }
     const listing = store.listListings().find((l) => l.id === listingId);
+    revalidateHomepage();
     return ok({ listing: listing ? toPublicListing(listing) : null });
   }
 
@@ -130,6 +139,7 @@ export async function PATCH(request: Request) {
     if (body.pinListing.pinned) ids.add(body.pinListing.listingId);
     else ids.delete(body.pinListing.listingId);
     const cmsUpdated = store.updateHomepageCms({ featuredListingIds: [...ids] }, actor);
+    revalidateHomepage();
     return ok({ featuredListingIds: cmsUpdated.featuredListingIds });
   }
 
@@ -139,13 +149,19 @@ export async function PATCH(request: Request) {
     if (body.pinAgent.pinned) ids.add(body.pinAgent.profileId);
     else ids.delete(body.pinAgent.profileId);
     const cmsUpdated = store.updateHomepageCms({ featuredAgentProfileIds: [...ids] }, actor);
+    revalidateHomepage();
     return ok({ featuredAgentProfileIds: cmsUpdated.featuredAgentProfileIds });
   }
 
   if (body.cms) {
     const cms = store.updateHomepageCms(body.cms, actor);
+    revalidateHomepage();
     return ok({ cms });
   }
 
   return problem(400, "INVALID_INPUT", "No valid update payload.");
+}
+
+function revalidateHomepage() {
+  revalidateTag("homepage");
 }

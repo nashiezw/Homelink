@@ -108,7 +108,7 @@ export function LiveChatWidget() {
         return result.data!;
       });
     };
-    const interval = window.setInterval(() => void poll(), open ? 4500 : 8000);
+    const interval = window.setInterval(() => void poll(), open ? 7000 : 15000);
     return () => {
       cancelled = true;
       window.clearInterval(interval);
@@ -174,8 +174,10 @@ export function LiveChatWidget() {
 
   if (hiddenOnThisRoute || (boot && !boot.settings.enabled)) return null;
 
+  const launcherPosition = boot?.settings.mobilePosition === "bottom-left" ? "left-4 items-start sm:left-5" : "right-4 items-end sm:right-5";
+
   return (
-    <div className="fixed bottom-4 right-4 z-[70] flex max-w-[calc(100vw-2rem)] flex-col items-end gap-3 sm:bottom-5 sm:right-5">
+    <div className={`fixed bottom-4 z-[70] flex max-w-[calc(100vw-2rem)] flex-col gap-3 sm:bottom-5 ${launcherPosition}`}>
       {open ? (
         <section className="flex h-[min(680px,calc(100vh-2rem))] w-[min(420px,calc(100vw-2rem))] flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-2xl shadow-slate-900/25 dark:border-slate-700 dark:bg-slate-950">
           <header className="flex items-center justify-between gap-3 bg-slate-950 px-4 py-3 text-white">
@@ -189,7 +191,7 @@ export function LiveChatWidget() {
               </span>
               <div className="min-w-0">
                 <p className="truncate text-sm font-bold">{boot?.supportAgent?.displayName || boot?.settings.teamDisplayName || "HouseLink Live"}</p>
-                <p className="truncate text-xs text-emerald-100">{boot?.supportAgent ? `${boot.supportAgent.title || "Support"} is online` : "Leave a message, the team will reply here"}</p>
+                <p className="truncate text-xs text-emerald-100">{boot?.supportAgent ? boot.supportAgent.publicIntro || `${boot.supportAgent.title || "Support"} is online` : "Leave a message, the team will reply here"}</p>
               </div>
             </div>
             <button type="button" onClick={() => toggleOpen(false)} className="rounded-md p-2 text-slate-200 hover:bg-white/10" aria-label="Minimise live chat">
