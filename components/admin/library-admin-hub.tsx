@@ -39,6 +39,7 @@ import {
   type LibraryVolumeTier,
 } from "@/lib/library/catalog";
 import { defaultLibraryStoreSettings, type LibraryStoreSettings } from "@/lib/library/settings-shared";
+import { socialShareImageUrl } from "@/lib/seo/social-image";
 import { cn } from "@/lib/utils";
 
 const views = [
@@ -503,6 +504,7 @@ export function LibraryAdminHub() {
   const draftSlug = draft.slug;
   const draftTitle = draft.title;
   const preparedSample = useMemo(() => findPreparedLibrarySample({ slug: draftSlug, title: draftTitle }), [draftSlug, draftTitle]);
+  const socialPreviewImage = useMemo(() => socialShareImageUrl(draft.seoImageUrl || draft.gallery[0]?.url || undefined), [draft.gallery, draft.seoImageUrl]);
   const [bundleCompanionQuery, setBundleCompanionQuery] = useState("");
   const [hidePrintOosCompanions, setHidePrintOosCompanions] = useState(false);
   const [editingProduct, setEditingProduct] = useState<LibraryProduct | null>(null);
@@ -1963,6 +1965,13 @@ export function LibraryAdminHub() {
                         <input type="file" accept="image/*" className="mt-2 block w-full text-xs" onChange={(event) => void uploadAsset(event.currentTarget.files, "seoImage", event.currentTarget)} />
                         <UploadInlineStatus status={uploadStatus.seoImage} />
                         <Field label="Social / OG image URL" value={draft.seoImageUrl} onChange={(value) => setDraft({ ...draft, seoImageUrl: value })} placeholder="Defaults to cover image if empty" />
+                        <div className="mt-3 overflow-hidden rounded-lg border border-white/10 bg-slate-950">
+                          <div className="aspect-[1200/630] bg-slate-900 bg-cover bg-center" style={{ backgroundImage: cssBackgroundImage(socialPreviewImage) }} />
+                          <div className="border-t border-white/10 px-3 py-2">
+                            <p className="text-xs font-black uppercase tracking-wide text-slate-500">Share image URL</p>
+                            <p className="mt-1 break-all text-xs font-semibold text-emerald-300">{socialPreviewImage}</p>
+                          </div>
+                        </div>
                       </div>
                       <div className="rounded-lg border border-white/10 bg-slate-900/60 p-3 text-sm text-slate-300">
                         <p className="text-xs font-black uppercase tracking-wide text-emerald-300">Search preview</p>
@@ -3293,6 +3302,10 @@ function Field({ label, value, onChange, placeholder, type = "text", required = 
       <input value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} type={type} className="w-full min-w-0 rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-white outline-none transition placeholder:text-slate-600 focus:border-emerald-500" />
     </label>
   );
+}
+
+function cssBackgroundImage(url: string) {
+  return `url("${url.replace(/["\\\n\r]/g, "")}")`;
 }
 
 function CreatableSelectField({

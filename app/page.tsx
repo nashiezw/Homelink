@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { getHomepageData } from "@/lib/homepage/data";
 import { HomePageView } from "@/components/home/home-page-view";
+import { socialShareImage, socialTwitterImages } from "@/lib/seo/social-image";
 
 export const revalidate = 3600;
 
@@ -18,13 +19,13 @@ export const metadata: Metadata = {
   openGraph: {
     title: homepageTitle,
     description: homepageDescription,
-    images: [{ url: homepageOgImage }],
+    images: [socialShareImage(homepageOgImage, homepageTitle)],
   },
   twitter: {
     card: "summary_large_image",
     title: homepageTitle,
     description: homepageDescription,
-    images: [homepageOgImage],
+    images: socialTwitterImages(homepageOgImage),
   },
 };
 

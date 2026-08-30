@@ -9,6 +9,7 @@ import { ArticleActions, ImageLightbox, ReadingProgress, RecentlyViewedArticles,
 import { BlogArticleFeedback, BlogComments, type PublicBlogComment } from "@/components/blog/blog-comments";
 import { ReaderQuestionForm } from "@/components/blog/reader-question-form";
 import { getCanonicalSiteUrl } from "@/lib/seo/site-url";
+import { absoluteUrl, socialShareImage, socialTwitterImages } from "@/lib/seo/social-image";
 import { getPublicBlogPost, type BlogBlock } from "@/lib/blog/blog-repository";
 import { anchorId } from "@/lib/blog/anchors";
 
@@ -36,9 +37,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       publishedTime: post.publishedAt?.toISOString(),
       modifiedTime: post.updatedAt.toISOString(),
       authors: [post.author?.name ?? "HouseLink Editorial Team"],
-      images: [{ url: image }],
+      images: [socialShareImage(image, title)],
     },
-    twitter: { card: "summary_large_image", title, description, images: [image] },
+    twitter: { card: "summary_large_image", title, description, images: socialTwitterImages(image) },
   };
 }
 
@@ -238,10 +239,6 @@ function AuthorBox({ post, articleCount }: { post: { author?: { name: string; sl
       </div>
     </section>
   );
-}
-
-function absoluteUrl(value: string) {
-  return value.startsWith("http") ? value : `${siteUrl}${value}`;
 }
 
 function authorInitials(name: string) {

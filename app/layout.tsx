@@ -8,6 +8,7 @@ import { ToastBanner } from "@/components/ui/toast-banner";
 import { MarketingPixelNoScript, MarketingPixelScripts } from "@/components/analytics/marketing-pixels";
 import { RuntimeMarketingPixels } from "@/components/analytics/runtime-marketing-pixels";
 import { getCanonicalSiteUrl } from "@/lib/seo/site-url";
+import { socialShareImage, socialTwitterImages } from "@/lib/seo/social-image";
 import "./globals.css";
 
 const siteUrl = getCanonicalSiteUrl();
@@ -59,7 +60,7 @@ export const metadata: Metadata = {
     description: siteDescription,
     url: "/",
     siteName,
-    images: [{ url: ogImage, width: 1200, height: 630, alt: siteName }],
+    images: [socialShareImage(ogImage, siteName)],
     locale: "en_ZW",
     type: "website",
   },
@@ -67,7 +68,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "HouseLink Zimbabwe | Find Your Next Home with Confidence",
     description: siteDescription,
-    images: [ogImage],
+    images: socialTwitterImages(ogImage),
   },
   verification: {
     google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION,

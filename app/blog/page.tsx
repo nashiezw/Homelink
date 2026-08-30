@@ -5,15 +5,26 @@ import { ArrowRight, BookOpen, Compass, MapPin, Newspaper } from "lucide-react";
 import { BlogIndexClient } from "@/components/blog/blog-index-client";
 import { blogImageUrl, isGeneratedBlogImage } from "@/components/blog/blog-card";
 import { getPublicBlogIndex } from "@/lib/blog/blog-repository";
+import { socialShareImage, socialTwitterImages } from "@/lib/seo/social-image";
+
+const blogTitle = "Property Blog & Advice | HouseLink Zimbabwe";
+const blogDescription = "HouseLink Zimbabwe's practical property blog for tenants, landlords, buyers, sellers, agents and investors.";
+const blogSocialImage = "/images/houselink-hero.webp";
 
 export const metadata: Metadata = {
-  title: "Property Blog & Advice | HouseLink Zimbabwe",
-  description: "HouseLink Zimbabwe's practical property blog for tenants, landlords, buyers, sellers, agents and investors.",
+  title: blogTitle,
+  description: blogDescription,
   alternates: { canonical: "/blog" },
   openGraph: {
-    title: "Property Blog & Advice | HouseLink Zimbabwe",
-    description: "HouseLink Zimbabwe's practical property blog for tenants, landlords, buyers, sellers, agents and investors.",
-    images: [{ url: "/images/houselink-hero.webp" }],
+    title: blogTitle,
+    description: blogDescription,
+    images: [socialShareImage(blogSocialImage, blogTitle)],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: blogTitle,
+    description: blogDescription,
+    images: socialTwitterImages(blogSocialImage),
   },
 };
 

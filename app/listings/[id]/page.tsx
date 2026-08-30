@@ -10,6 +10,7 @@ import {
 } from "@/lib/listings/postgres-listing-repository";
 import { getHolidayHomeReviewSummaryFromPostgres } from "@/lib/holiday-homes/postgres-review-repository";
 import { getCanonicalSiteUrl } from "@/lib/seo/site-url";
+import { socialShareImage, socialTwitterImages } from "@/lib/seo/social-image";
 import { getStore } from "@/lib/store/app-store";
 import { isDatabaseUnavailableError } from "@/lib/db/production-schema";
 
@@ -54,13 +55,13 @@ export async function generateMetadata({ params }: ListingDetailPageProps): Prom
       description,
       url: canonical,
       type: "website",
-      images: [{ url: listing.image, width: 1200, height: 630, alt: listing.title }],
+      images: [socialShareImage(listing.image, listing.title)],
     },
     twitter: {
       card: "summary_large_image",
       title,
       description,
-      images: [listing.image],
+      images: socialTwitterImages(listing.image),
     },
   };
 }

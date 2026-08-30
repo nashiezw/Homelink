@@ -4,6 +4,7 @@ import {
   type LibraryProduct,
 } from "@/lib/library/catalog";
 import type { LibraryStoreSettings } from "@/lib/library/settings-shared";
+import { socialShareImage, socialShareImageUrl, socialTwitterImages } from "@/lib/seo/social-image";
 import { getCanonicalSiteUrl } from "@/lib/seo/site-url";
 
 const SITE_NAME = "HouseLink Zimbabwe";
@@ -23,10 +24,7 @@ export function safeJsonLd(value: unknown) {
 }
 
 export function libraryAbsoluteUrl(pathOrUrl?: string | null) {
-  const siteUrl = getCanonicalSiteUrl();
-  if (!pathOrUrl?.trim()) return `${siteUrl}/images/houselink-hero.webp`;
-  if (/^https?:\/\//i.test(pathOrUrl)) return pathOrUrl;
-  return `${siteUrl}${pathOrUrl.startsWith("/") ? pathOrUrl : `/${pathOrUrl}`}`;
+  return socialShareImageUrl(pathOrUrl);
 }
 
 function truncateMeta(text: string, max = 160) {
@@ -60,7 +58,7 @@ export function buildLibraryStoreMetadata(settings: LibraryStoreSettings): Metad
     settings.seo.storeDescription?.trim() ||
       "Buy property books, manuals, contracts, forms, templates and digital toolkits for Zimbabwe real estate professionals.",
   );
-  const image = settings.seo.storeOgImage?.trim() || "/images/houselink-hero.webp";
+  const image = settings.seo.storeOgImage?.trim() || undefined;
   const keywords = [
     settings.seo.focusKeyword,
     "property books Zimbabwe",
@@ -82,13 +80,13 @@ export function buildLibraryStoreMetadata(settings: LibraryStoreSettings): Metad
       url: "/library",
       siteName: SITE_NAME,
       locale: "en_ZW",
-      images: [{ url: image, alt: title }],
+      images: [socialShareImage(image, title)],
     },
     twitter: {
       card: "summary_large_image",
       title,
       description,
-      images: [image],
+      images: socialTwitterImages(image),
     },
   };
 }
@@ -129,13 +127,13 @@ export function buildLibraryProductMetadata(
       url: `/library/${product.slug}`,
       siteName: SITE_NAME,
       locale: "en_ZW",
-      images: [{ url: image, alt: product.title }],
+      images: [socialShareImage(image, product.title)],
     },
     twitter: {
       card: "summary_large_image",
       title,
       description,
-      images: [image],
+      images: socialTwitterImages(image),
     },
   };
 }
