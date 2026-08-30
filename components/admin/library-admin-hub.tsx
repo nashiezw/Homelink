@@ -440,6 +440,7 @@ export function LibraryAdminHub() {
   const confirmResolverRef = useRef<((confirmed: boolean) => void) | null>(null);
   const [draftOpen, setDraftOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [savingAction, setSavingAction] = useState<"draft" | "publish" | null>(null);
   const emptyDraft: LibraryProductDraft = {
     title: "",
     slug: "",
@@ -623,8 +624,9 @@ export function LibraryAdminHub() {
     });
   }
 
-  async function createProduct(statusOverride?: string) {
+  async function createProduct(statusOverride?: string, action: "draft" | "publish" = "draft") {
     setSaving(true);
+    setSavingAction(action);
     setFeedback(null);
     try {
       const result = await apiFetch<{ product: LibraryProduct }>("/api/v1/admin/library", {
@@ -648,12 +650,14 @@ export function LibraryAdminHub() {
       setFeedback({ tone: "error", message: error instanceof Error ? `Product could not be created: ${error.message}` : "Product could not be created in the database." });
     } finally {
       setSaving(false);
+      setSavingAction(null);
     }
   }
 
-  async function saveProduct(statusOverride?: string) {
-    if (!editingProduct) return createProduct(statusOverride);
+  async function saveProduct(statusOverride?: string, action: "draft" | "publish" = "draft") {
+    if (!editingProduct) return createProduct(statusOverride, action);
     setSaving(true);
+    setSavingAction(action);
     setFeedback(null);
     try {
       const result = await apiFetch<{ product: LibraryProduct }>(`/api/v1/admin/library/products/${editingProduct.id}`, {
@@ -676,6 +680,7 @@ export function LibraryAdminHub() {
       setFeedback({ tone: "error", message: error instanceof Error ? `Product could not be saved: ${error.message}` : "Product could not be saved to the database." });
     } finally {
       setSaving(false);
+      setSavingAction(null);
     }
   }
 
@@ -688,7 +693,7 @@ export function LibraryAdminHub() {
       });
       if (!proceed) return;
     }
-    void saveProduct("PUBLISHED");
+    void saveProduct("PUBLISHED", "publish");
   }
 
   function moveBundleCompanion(id: string, direction: -1 | 1) {
@@ -2453,13 +2458,13 @@ export function LibraryAdminHub() {
                 );
               })()}
               <div className="flex flex-wrap justify-end gap-2">
-                <button type="button" onClick={closeEditor} className="rounded-lg border border-white/10 px-4 py-2 text-sm text-slate-300">Cancel</button>
+                <button type="button" onClick={closeEditor} disabled={saving} className="rounded-lg border border-white/10 px-4 py-2 text-sm text-slate-300 disabled:cursor-not-allowed disabled:opacity-60">Cancel</button>
                 <Button
                   variant="secondary"
-                  loading={saving}
+                  loading={savingAction === "draft"}
                   loadingText="Saving..."
-                  disabled={!draft.title.trim() || !draft.description.trim() || !draft.formats.some((format) => format.enabled)}
-                  onClick={() => void saveProduct(draft.status === "SCHEDULED" || draft.status === "ARCHIVED" ? draft.status : "DRAFT")}
+                  disabled={saving || !draft.title.trim() || !draft.description.trim() || !draft.formats.some((format) => format.enabled)}
+                  onClick={() => void saveProduct(draft.status === "SCHEDULED" || draft.status === "ARCHIVED" ? draft.status : "DRAFT", "draft")}
                 >
                   {draft.status === "SCHEDULED"
                       ? "Save scheduled"
@@ -2468,9 +2473,9 @@ export function LibraryAdminHub() {
                         : "Save draft"}
                 </Button>
                 <Button
-                  loading={saving}
+                  loading={savingAction === "publish"}
                   loadingText="Publishing..."
-                  disabled={libraryPublishBlockers(draft).length > 0}
+                  disabled={saving || libraryPublishBlockers(draft).length > 0}
                   onClick={confirmPublishThenSave}
                 >
                   Publish
