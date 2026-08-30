@@ -32,6 +32,11 @@ const checks = [
     pattern: /liveChatOpen/,
   },
   {
+    file: "components/live-chat/live-chat-widget.tsx",
+    label: "closed live chat launcher lifts above the mobile Library cart FAB",
+    pattern: /closedLiftForCart/,
+  },
+  {
     file: "components/layout/whatsapp-sticky-fab.tsx",
     label: "WhatsApp FAB hides while live chat is open",
     pattern: /liveChatOpen/,
@@ -55,6 +60,16 @@ const checks = [
     file: "components/live-chat/live-chat-widget.tsx",
     label: "public chat contact typing does not re-bootstrap chat",
     pattern: /contactRef\.current/,
+  },
+  {
+    file: "app/api/v1/live-chat/messages/route.ts",
+    label: "visitor messages carry the signed-in user identity",
+    pattern: /userId:\s*getSessionUserIdFromRequest\(request\)/,
+  },
+  {
+    file: "lib/live-chat/repository.ts",
+    label: "registered visitors are enriched from their saved user profile",
+    pattern: /select:\s*\{\s*name:\s*true,\s*email:\s*true,\s*phone:\s*true\s*\}/s,
   },
   {
     file: "components/admin/live-chat-hub.tsx",

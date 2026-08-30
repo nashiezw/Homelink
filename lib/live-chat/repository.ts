@@ -173,6 +173,9 @@ export async function bootstrapLiveChat(input: {
     orderBy: { updatedAt: "desc" },
     include: conversationInclude(),
   });
+  if (conversation && visitor.userId && conversation.userId !== visitor.userId) {
+    await prisma.liveChatConversation.update({ where: { id: conversation.id }, data: { userId: visitor.userId } }).catch(() => null);
+  }
   const messages = conversation
     ? await prisma.liveChatMessage.findMany({
         where: { conversationId: conversation.id, internal: false },
@@ -229,6 +232,7 @@ export async function updateLiveChatActivity(input: {
     await prisma.liveChatConversation.update({
       where: { id: conversation.id },
       data: {
+        userId: visitor.userId || conversation.userId,
         currentPath: cleanText(input.context.path, 500),
         currentTitle: cleanText(input.context.title, 300),
       },
@@ -245,13 +249,14 @@ export async function sendVisitorMessage(input: {
   contact?: LiveChatContactInput;
   context?: LiveChatVisitorContext;
   departmentId?: string;
+  userId?: string | null;
 }) {
   const body = sanitizeMessage(input.body);
   if (!body) throw new LiveChatError("EMPTY_MESSAGE", "Write a message first.", 400);
   if (isPostgresStoreEnabled() && !(await isLiveChatSchemaReady())) throw new LiveChatError("LIVE_CHAT_SETUP_REQUIRED", liveChatSetupMessage(), 503);
   if (!isPostgresStoreEnabled()) return memorySendVisitorMessage(input.visitorKey, body);
   await ensureLiveChatDefaults();
-  const visitor = await upsertVisitor({ request: input.request, visitorKey: input.visitorKey, context: input.context ?? {}, contact: input.contact });
+  const visitor = await upsertVisitor({ request: input.request, visitorKey: input.visitorKey, context: input.context ?? {}, contact: input.contact, userId: input.userId });
   if (visitor.blockedAt) throw new LiveChatError("VISITOR_BLOCKED", "Chat is not available for this browser.", 403);
   const prisma = getMainPrisma();
   let conversation = await prisma.liveChatConversation.findFirst({
@@ -307,6 +312,7 @@ export async function sendVisitorMessage(input: {
   await prisma.liveChatConversation.update({
     where: { id: conversation.id },
     data: {
+      userId: visitor.userId || conversation.userId,
       status: conversation.status === "CLOSED" ? "OPEN" : conversation.status,
       lastMessagePreview: preview(body),
       lastMessageAt: message.createdAt,
@@ -730,15 +736,26 @@ export class LiveChatError extends Error {
 async function upsertVisitor(input: { request: Request; visitorKey: string; context: LiveChatVisitorContext; contact?: LiveChatContactInput; userId?: string | null }) {
   const prisma = getMainPrisma();
   const keyHash = hashVisitorKey(input.visitorKey);
-  const existing = await prisma.liveChatVisitor.findUnique({ where: { visitorKeyHash: keyHash } });
+  const [existing, user] = await Promise.all([
+    prisma.liveChatVisitor.findUnique({ where: { visitorKeyHash: keyHash } }),
+    input.userId
+      ? prisma.user.findUnique({
+          where: { id: input.userId },
+          select: { name: true, email: true, phone: true },
+        }).catch(() => null)
+      : null,
+  ]);
   const context = input.context;
   const contact = input.contact ?? {};
   const source = cleanText(context.utmSource || context.referrer || "Direct / Unknown", 180);
+  const contactName = cleanText(contact.name, 120);
+  const contactEmail = cleanText(contact.email, 160);
+  const contactPhone = cleanText(contact.phone, 80);
   const data = {
     userId: input.userId ?? undefined,
-    name: cleanText(contact.name, 120) || existing?.name,
-    email: cleanText(contact.email, 160) || existing?.email,
-    phone: cleanText(contact.phone, 80) || existing?.phone,
+    name: contactName || existing?.name || user?.name,
+    email: contactEmail || existing?.email || user?.email,
+    phone: contactPhone || existing?.phone || user?.phone,
     source: source || existing?.source,
     referrer: cleanText(context.referrer, 500) || existing?.referrer,
     landingPage: cleanText(context.landingPage || context.path, 500) || existing?.landingPage,
@@ -1022,6 +1039,7 @@ function shapeConversation(conversation: Prisma.LiveChatConversationGetPayload<{
     updatedAt: conversation.updatedAt.toISOString(),
     visitor: {
       id: conversation.visitor.publicId,
+      userId: conversation.visitor.userId,
       name: conversation.visitor.name,
       email: conversation.visitor.email,
       phone: conversation.visitor.phone,
@@ -1098,10 +1116,11 @@ function shapeAgent(agent: { id: string; userId: string; displayName: string; av
   };
 }
 
-function shapeActiveVisitor(visitor: { publicId: string; name: string | null; email: string | null; phone: string | null; deviceType: string | null; currentPath: string | null; currentTitle: string | null; landingPage: string | null; source: string | null; utmSource: string | null; utmMedium: string | null; utmCampaign: string | null; lastSeenAt: Date; firstSeenAt: Date; blockedAt: Date | null; pageStartedAt: Date | null }, conversationId: string | null) {
+function shapeActiveVisitor(visitor: { publicId: string; userId: string | null; name: string | null; email: string | null; phone: string | null; deviceType: string | null; currentPath: string | null; currentTitle: string | null; landingPage: string | null; source: string | null; utmSource: string | null; utmMedium: string | null; utmCampaign: string | null; lastSeenAt: Date; firstSeenAt: Date; blockedAt: Date | null; pageStartedAt: Date | null }, conversationId: string | null) {
   const now = Date.now();
   return {
     id: visitor.publicId,
+    userId: visitor.userId,
     name: visitor.name,
     email: visitor.email,
     phone: visitor.phone,

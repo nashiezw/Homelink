@@ -202,7 +202,7 @@ export function LiveChatHub() {
                   className={cn("block w-full border-b border-white/10 p-3 text-left hover:bg-white/5", activeConversation?.id === conversation.id && "bg-emerald-500/10")}
                 >
                   <div className="flex items-center justify-between gap-3">
-                    <p className="truncate text-sm font-black">{conversation.visitor.name || "Guest visitor"}</p>
+                    <p className="truncate text-sm font-black">{visitorDisplayName(conversation.visitor)}</p>
                     <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-black", statusTone(conversation.status))}>{conversation.status.replace(/_/g, " ")}</span>
                   </div>
                   <p className="mt-1 truncate text-xs text-slate-400">{conversation.lastMessagePreview || conversation.subject || conversation.currentTitle || "No messages yet"}</p>
@@ -267,7 +267,7 @@ function ConversationHeader({ conversation, data, action, busy }: { conversation
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_420px]">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <p className="text-lg font-black text-white">{conversation.visitor.name || "Guest visitor"}</p>
+            <p className="text-lg font-black text-white">{visitorDisplayName(conversation.visitor)}</p>
             <span className={cn("rounded-full px-2 py-1 text-[10px] font-black uppercase", statusTone(conversation.status))}>{conversation.status.replace(/_/g, " ")}</span>
             <span className="rounded-full bg-slate-800 px-2 py-1 text-[10px] font-black uppercase text-slate-300">{conversation.priority}</span>
           </div>
@@ -408,7 +408,7 @@ function ContextPanel({ conversation, events, visitors, startConversation }: { c
         <div className="mt-4 space-y-2">
           {visitors.slice(0, 8).map((visitor) => (
             <div key={visitor.id} className="rounded-md border border-white/10 bg-slate-950 p-3">
-              <p className="text-sm font-bold">{visitor.name || "Guest visitor"}</p>
+              <p className="text-sm font-bold">{visitorDisplayName(visitor)}</p>
               <p className="truncate text-xs text-slate-400">{visitor.currentTitle || visitor.currentPath || "Browsing"}</p>
               <Button className="mt-2" variant="secondary" onClick={() => void startConversation(visitor.id)}><Send className="size-4" /> Start chat</Button>
             </div>
@@ -439,7 +439,7 @@ function VisitorsPanel({ visitors, startConversation, busy }: { visitors: LiveCh
         <article key={visitor.id} className="rounded-lg border border-white/10 bg-slate-900 p-4">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <p className="font-black text-white">{visitor.name || "Guest visitor"}</p>
+              <p className="font-black text-white">{visitorDisplayName(visitor)}</p>
               <p className="mt-1 truncate text-sm text-slate-400">{visitor.currentTitle || visitor.currentPath || "Browsing HouseLink"}</p>
             </div>
             <span className="rounded-full bg-emerald-500/15 px-2 py-1 text-[11px] font-black text-emerald-200">LIVE</span>
@@ -724,6 +724,10 @@ function Info({ label, value }: { label: string; value: string }) {
 
 function Empty({ label }: { label: string }) {
   return <div className="p-6 text-center text-sm text-slate-500">{label}</div>;
+}
+
+function visitorDisplayName(visitor: LiveChatConversationView["visitor"]) {
+  return visitor.name?.trim() || visitor.email?.trim() || visitor.phone?.trim() || (visitor.userId ? "Registered member" : "Guest visitor");
 }
 
 function statusTone(status: string) {

@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { created, ok, problem } from "@/lib/api/response";
 import { checkRateLimit, getClientIp } from "@/lib/api/request-meta";
+import { getSessionUserIdFromRequest } from "@/lib/auth/session";
 import { getVisitorMessages, LiveChatError, makeLiveChatVisitorKey, sendVisitorMessage } from "@/lib/live-chat/repository";
 
 export const dynamic = "force-dynamic";
@@ -43,6 +44,7 @@ export async function POST(request: Request) {
       contact: typeof body.contact === "object" && body.contact ? body.contact : undefined,
       context: typeof body.context === "object" && body.context ? body.context : undefined,
       departmentId: typeof body.departmentId === "string" ? body.departmentId : undefined,
+      userId: getSessionUserIdFromRequest(request),
     }));
   } catch (error) {
     if (error instanceof LiveChatError) return problem(error.status, error.code, error.message);

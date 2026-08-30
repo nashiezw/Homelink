@@ -6,13 +6,17 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { useApp } from "@/components/providers/app-provider";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api/client";
+import { useLibraryCart } from "@/lib/library/cart-client";
 import { isLiveChatFloatingOpen, setLiveChatFloatingOpen } from "@/lib/live-chat/floating-state";
+import { useHouseLinkBottomDock } from "@/lib/ui/bottom-dock";
+import { cn } from "@/lib/utils";
 import type { LiveChatBootstrapView, LiveChatMessageView, LiveChatVisitorContext } from "@/lib/live-chat/types";
 
 export function LiveChatWidget() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { user } = useApp();
+  const { count: libraryCartCount } = useLibraryCart();
   const [open, setOpen] = useState(false);
   const [boot, setBoot] = useState<LiveChatBootstrapView | null>(null);
   const [messages, setMessages] = useState<LiveChatMessageView[]>([]);
@@ -26,6 +30,7 @@ export function LiveChatWidget() {
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const contactRef = useRef(contact);
   const startedAtRef = useRef(new Date().toISOString());
+  const bottomDock = useHouseLinkBottomDock();
   const lastMessageId = messages[messages.length - 1]?.id;
   const hiddenOnThisRoute = pathname?.startsWith("/dashboard") || pathname?.startsWith("/auth") || pathname?.startsWith("/maintenance");
 
@@ -174,10 +179,19 @@ export function LiveChatWidget() {
 
   if (hiddenOnThisRoute || (boot && !boot.settings.enabled)) return null;
 
-  const launcherPosition = boot?.settings.mobilePosition === "bottom-left" ? "left-4 items-start sm:left-5" : "right-4 items-end sm:right-5";
+  const launcherOnLeft = boot?.settings.mobilePosition === "bottom-left";
+  const launcherPosition = launcherOnLeft ? "left-4 items-start sm:left-5" : "right-4 items-end sm:right-5";
+  const closedLiftForCart = !open && !launcherOnLeft && libraryCartCount > 0;
+  const bottomClass = open
+    ? "bottom-4 sm:bottom-5"
+    : closedLiftForCart && bottomDock
+      ? "bottom-[calc(9.75rem+env(safe-area-inset-bottom))] sm:bottom-[calc(10rem+env(safe-area-inset-bottom))]"
+      : closedLiftForCart
+        ? "bottom-[calc(5.25rem+env(safe-area-inset-bottom))] sm:bottom-[calc(5.5rem+env(safe-area-inset-bottom))]"
+        : "bottom-[max(1.25rem,env(safe-area-inset-bottom))] sm:bottom-5";
 
   return (
-    <div className={`fixed bottom-4 z-[70] flex max-w-[calc(100vw-2rem)] flex-col gap-3 sm:bottom-5 ${launcherPosition}`}>
+    <div className={cn("fixed z-[70] flex max-w-[calc(100vw-2rem)] flex-col gap-3 transition-[bottom] duration-200", bottomClass, launcherPosition)}>
       {open ? (
         <section className="flex h-[min(680px,calc(100vh-2rem))] w-[min(420px,calc(100vw-2rem))] flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-2xl shadow-slate-900/25 dark:border-slate-700 dark:bg-slate-950">
           <header className="flex items-center justify-between gap-3 bg-slate-950 px-4 py-3 text-white">

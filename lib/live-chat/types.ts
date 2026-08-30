@@ -103,6 +103,7 @@ export type LiveChatConversationView = {
   updatedAt: string;
   visitor: {
     id: string;
+    userId?: string | null;
     name?: string | null;
     email?: string | null;
     phone?: string | null;
