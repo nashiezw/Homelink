@@ -6,9 +6,8 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { useApp } from "@/components/providers/app-provider";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api/client";
+import { isLiveChatFloatingOpen, setLiveChatFloatingOpen } from "@/lib/live-chat/floating-state";
 import type { LiveChatBootstrapView, LiveChatMessageView, LiveChatVisitorContext } from "@/lib/live-chat/types";
-
-const STORAGE_KEY = "houselink_live_chat_open";
 
 export function LiveChatWidget() {
   const pathname = usePathname();
@@ -49,7 +48,7 @@ export function LiveChatWidget() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (!window.sessionStorage.getItem("hl_live_landing")) window.sessionStorage.setItem("hl_live_landing", `${pathname || "/"}${window.location.search}`);
-    setOpen(window.localStorage.getItem(STORAGE_KEY) === "1");
+    setOpen(isLiveChatFloatingOpen());
   }, [pathname]);
 
   const bootstrap = useCallback(async () => {
@@ -122,7 +121,7 @@ export function LiveChatWidget() {
 
   function toggleOpen(next: boolean) {
     setOpen(next);
-    window.localStorage.setItem(STORAGE_KEY, next ? "1" : "0");
+    setLiveChatFloatingOpen(next);
     if (next) setUnread(0);
   }
 
@@ -154,7 +153,7 @@ export function LiveChatWidget() {
   if (hiddenOnThisRoute || (boot && !boot.settings.enabled)) return null;
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 flex max-w-[calc(100vw-2rem)] flex-col items-end gap-3 sm:bottom-5 sm:right-5">
+    <div className="fixed bottom-4 right-4 z-[70] flex max-w-[calc(100vw-2rem)] flex-col items-end gap-3 sm:bottom-5 sm:right-5">
       {open ? (
         <section className="flex h-[min(680px,calc(100vh-2rem))] w-[min(420px,calc(100vw-2rem))] flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-2xl shadow-slate-900/25 dark:border-slate-700 dark:bg-slate-950">
           <header className="flex items-center justify-between gap-3 bg-slate-950 px-4 py-3 text-white">

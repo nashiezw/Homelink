@@ -5,6 +5,7 @@ import { ShoppingBag } from "lucide-react";
 import { useEffect, useState } from "react";
 import { LibraryBagDrawer } from "@/components/library/library-bag-drawer";
 import { useLibraryCart } from "@/lib/library/cart-client";
+import { useLiveChatFloatingOpen } from "@/lib/live-chat/floating-state";
 import { useHouseLinkBottomDock } from "@/lib/ui/bottom-dock";
 import { cn } from "@/lib/utils";
 
@@ -15,6 +16,7 @@ export function LibraryCartFab({ className }: { className?: string }) {
   const [open, setOpen] = useState(false);
   const [pulse, setPulse] = useState(false);
   const bottomDock = useHouseLinkBottomDock();
+  const liveChatOpen = useLiveChatFloatingOpen();
 
   useEffect(() => {
     function onAdded() {
@@ -25,7 +27,7 @@ export function LibraryCartFab({ className }: { className?: string }) {
     return () => window.removeEventListener("houselink:library-cart-added", onAdded);
   }, []);
 
-  if (!count || pathname?.startsWith("/library/checkout")) return null;
+  if (!count || liveChatOpen || pathname?.startsWith("/library/checkout")) return null;
 
   return (
     <div

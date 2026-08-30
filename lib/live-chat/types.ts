@@ -134,6 +134,8 @@ export type LiveChatBootstrapView = {
   departments: LiveChatDepartmentView[];
   settings: LiveChatSettingsView;
   suggestedMessage?: string | null;
+  setupRequired?: boolean;
+  setupMessage?: string;
 };
 
 export type LiveChatInboxView = {
@@ -156,4 +158,6 @@ export type LiveChatInboxView = {
     proactiveMessages: number;
     averageFirstResponseSeconds: number | null;
   };
+  setupRequired?: boolean;
+  setupMessage?: string;
 };

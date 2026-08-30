@@ -4,6 +4,7 @@ import { MessageCircle } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { trackWhatsAppClick } from "@/lib/analytics/whatsapp-client";
 import { usePlatformConfig } from "@/components/providers/platform-config-provider";
+import { useLiveChatFloatingOpen } from "@/lib/live-chat/floating-state";
 import {
   getContextualWhatsAppHref,
   resolveWhatsAppLane,
@@ -19,8 +20,10 @@ import { cn } from "@/lib/utils";
 export function WhatsAppStickyFab({ className }: { className?: string }) {
   const pathname = usePathname();
   const { config } = usePlatformConfig();
+  const liveChatOpen = useLiveChatFloatingOpen();
   const contact = config?.contact;
   if (!contact || !stickyWhatsAppVisible(contact)) return null;
+  if (liveChatOpen) return null;
   if (
     pathname?.startsWith("/dashboard/admin") ||
     pathname?.startsWith("/library/checkout") ||

@@ -17,6 +17,7 @@ import type {
 const OPEN_STATUSES = ["NEW", "OPEN", "WAITING_FOR_CUSTOMER", "FOLLOW_UP"];
 const ACTIVE_VISITOR_MS = 5 * 60_000;
 const MAX_MESSAGE_LENGTH = 2_000;
+const LIVE_CHAT_MIGRATION_NAME = "202608300001_live_chat_system";
 const DEFAULT_DEPARTMENTS = [
   ["Property Sales", "property-sales", "#0ea5e9", "Interested in a property? We can help with viewings, due diligence, and next steps."],
   ["Rentals", "rentals", "#22c55e", "Tell us what you need and we will help you find a practical rental option."],
@@ -53,6 +54,8 @@ const memory = {
   messages: [] as MemoryMessage[],
   events: [] as MemoryEvent[],
 };
+
+const schemaReadyCache = { checkedAt: 0, ready: false };
 
 type AdminUser = { id: string; name: string; email: string; roles: string[] };
 
@@ -143,6 +146,7 @@ export async function bootstrapLiveChat(input: {
   userId?: string | null;
 }) {
   const settings = await getLiveChatSettings();
+  const schemaReady = await isLiveChatSchemaReady();
   if (!settings.enabled) {
     return {
       visitorId: "",
@@ -151,10 +155,13 @@ export async function bootstrapLiveChat(input: {
       departments: [],
       settings,
       suggestedMessage: null,
+      setupRequired: !schemaReady,
+      setupMessage: !schemaReady ? liveChatSetupMessage() : undefined,
     } satisfies LiveChatBootstrapView;
   }
 
   if (!isPostgresStoreEnabled()) return memoryBootstrap(input.visitorKey, input.context, input.contact);
+  if (!schemaReady) return publicSetupRequiredBootstrap();
 
   await ensureLiveChatDefaults();
   const prisma = getMainPrisma();
@@ -192,6 +199,7 @@ export async function updateLiveChatActivity(input: {
   contact?: LiveChatContactInput;
   userId?: string | null;
 }) {
+  if (isPostgresStoreEnabled() && !(await isLiveChatSchemaReady())) return { ok: true, setupRequired: true };
   if (!isPostgresStoreEnabled()) {
     const boot = await memoryBootstrap(input.visitorKey, input.context, input.contact);
     return boot;
@@ -236,6 +244,7 @@ export async function sendVisitorMessage(input: {
 }) {
   const body = sanitizeMessage(input.body);
   if (!body) throw new LiveChatError("EMPTY_MESSAGE", "Write a message first.", 400);
+  if (isPostgresStoreEnabled() && !(await isLiveChatSchemaReady())) throw new LiveChatError("LIVE_CHAT_SETUP_REQUIRED", liveChatSetupMessage(), 503);
   if (!isPostgresStoreEnabled()) return memorySendVisitorMessage(input.visitorKey, body);
   await ensureLiveChatDefaults();
   const visitor = await upsertVisitor({ request: input.request, visitorKey: input.visitorKey, context: input.context ?? {}, contact: input.contact });
@@ -314,6 +323,7 @@ export async function sendVisitorMessage(input: {
 }
 
 export async function getVisitorMessages(visitorKey: string, conversationPublicId?: string | null) {
+  if (isPostgresStoreEnabled() && !(await isLiveChatSchemaReady())) return [];
   if (!isPostgresStoreEnabled()) {
     const visitor = memory.visitors.get(hashVisitorKey(visitorKey));
     const conversation = [...memory.conversations.values()].find((item) => item.visitorId === visitor?.id);
@@ -334,6 +344,7 @@ export async function getVisitorMessages(visitorKey: string, conversationPublicI
 }
 
 export async function markVisitorRead(visitorKey: string, conversationPublicId: string) {
+  if (isPostgresStoreEnabled() && !(await isLiveChatSchemaReady())) return { ok: true, setupRequired: true };
   if (!isPostgresStoreEnabled()) return { ok: true };
   const visitor = await getVisitorByKey(visitorKey);
   if (!visitor) return { ok: true };
@@ -347,6 +358,7 @@ export async function markVisitorRead(visitorKey: string, conversationPublicId: 
 
 export async function getLiveChatInbox(input: { activeConversationId?: string | null; filter?: string | null; query?: string | null; user: AdminUser }): Promise<LiveChatInboxView> {
   if (!isPostgresStoreEnabled()) return memoryInbox();
+  if (!(await isLiveChatSchemaReady())) return setupRequiredInbox();
   await ensureLiveChatDefaults(input.user);
   const prisma = getMainPrisma();
   await ensureAgentProfile(input.user);
@@ -404,6 +416,7 @@ export async function getLiveChatInbox(input: { activeConversationId?: string | 
 
 export async function liveChatAdminAction(user: AdminUser, body: Record<string, unknown>) {
   if (!isPostgresStoreEnabled()) return { ok: true };
+  if (!(await isLiveChatSchemaReady())) throw new LiveChatError("LIVE_CHAT_SETUP_REQUIRED", liveChatSetupMessage(), 503);
   await ensureLiveChatDefaults(user);
   const prisma = getMainPrisma();
   const agent = await ensureAgentProfile(user);
@@ -686,6 +699,69 @@ async function upsertVisitor(input: { request: Request; visitorKey: string; cont
   });
 }
 
+export async function isLiveChatSchemaReady() {
+  if (!isPostgresStoreEnabled()) return true;
+  const now = Date.now();
+  if (now - schemaReadyCache.checkedAt < 30_000) return schemaReadyCache.ready;
+  try {
+    const rows = await getMainPrisma().$queryRawUnsafe<Array<{ exists: boolean }>>("select to_regclass('public.live_chat_settings') is not null as exists");
+    schemaReadyCache.ready = Boolean(rows[0]?.exists);
+  } catch {
+    schemaReadyCache.ready = false;
+  }
+  schemaReadyCache.checkedAt = now;
+  return schemaReadyCache.ready;
+}
+
+function liveChatSetupMessage() {
+  return `Live Chat database tables are not installed yet. Run: npx prisma migrate deploy --schema prisma/schema.prisma. Expected migration: ${LIVE_CHAT_MIGRATION_NAME}.`;
+}
+
+function publicSetupRequiredBootstrap(): LiveChatBootstrapView {
+  return {
+    visitorId: "",
+    conversation: null,
+    messages: [],
+    departments: [],
+    settings: {
+      ...getLiveChatSettingsFallback(),
+      enabled: false,
+    },
+    suggestedMessage: null,
+    setupRequired: true,
+    setupMessage: liveChatSetupMessage(),
+  };
+}
+
+function setupRequiredInbox(): LiveChatInboxView {
+  return {
+    conversations: [],
+    activeVisitors: [],
+    messages: [],
+    events: [],
+    departments: [],
+    agents: [],
+    quickReplies: [],
+    tags: [],
+    settings: {
+      ...getLiveChatSettingsFallback(),
+      enabled: false,
+    },
+    analytics: {
+      totalConversations: 0,
+      openConversations: 0,
+      waitingConversations: 0,
+      resolvedConversations: 0,
+      activeVisitors: 0,
+      leadsCreated: 0,
+      proactiveMessages: 0,
+      averageFirstResponseSeconds: null,
+    },
+    setupRequired: true,
+    setupMessage: liveChatSetupMessage(),
+  };
+}
+
 async function getVisitorByKey(visitorKey: string) {
   if (!isPostgresStoreEnabled()) return null;
   return getMainPrisma().liveChatVisitor.findUnique({ where: { visitorKeyHash: hashVisitorKey(visitorKey) } });
@@ -773,44 +849,46 @@ async function ensureParticipant(conversationId: string, userId: string, agentPr
 
 async function maybeTriggerAutomation(visitorId: string, conversationId: string | null, context: LiveChatVisitorContext) {
   if (!isPostgresStoreEnabled()) return null;
+  if (!(await isLiveChatSchemaReady())) return null;
   const prisma = getMainPrisma();
-  const settings = await prisma.liveChatSettings.findUnique({ where: { id: "live-chat" } });
-  if (!settings?.proactiveEnabled || conversationId) return null;
-  const rules = await prisma.liveChatAutomationRule.findMany({ where: { active: true }, orderBy: [{ priority: "asc" }, { createdAt: "asc" }], take: 20 });
-  const matched = rules.find((rule) => automationMatches(rule.conditions, context));
-  if (!matched) return null;
-  const visitorResponded = await prisma.liveChatMessage.findFirst({
-    where: { conversation: { visitorId }, senderKind: "VISITOR" },
-    select: { id: true },
-  });
-  if (matched.stopAfterResponse && visitorResponded) return null;
-  await prisma.liveChatAutomationRule.update({ where: { id: matched.id }, data: { triggerCount: { increment: 1 }, lastTriggeredAt: new Date() } }).catch(() => null);
-  await prisma.liveChatEvent.create({
-    data: {
-      visitorId,
-      eventType: "PROACTIVE_RULE_MATCHED",
-      path: cleanText(context.path, 500),
-      title: cleanText(context.title, 300),
-      metadata: { ruleId: matched.id, ruleName: matched.name } as Prisma.InputJsonObject,
-    },
-  }).catch(() => null);
-  return matched.message;
+  try {
+    const settings = await prisma.liveChatSettings.findUnique({ where: { id: "live-chat" } });
+    if (!settings?.proactiveEnabled || conversationId) return null;
+    const rules = await prisma.liveChatAutomationRule.findMany({ where: { active: true }, orderBy: [{ priority: "asc" }, { createdAt: "asc" }], take: 20 });
+    const matched = rules.find((rule) => automationMatches(rule.conditions, context));
+    if (!matched) return null;
+    const visitorResponded = await prisma.liveChatMessage.findFirst({
+      where: { conversation: { visitorId }, senderKind: "VISITOR" },
+      select: { id: true },
+    });
+    if (matched.stopAfterResponse && visitorResponded) return null;
+    await prisma.liveChatAutomationRule.update({ where: { id: matched.id }, data: { triggerCount: { increment: 1 }, lastTriggeredAt: new Date() } }).catch(() => null);
+    await prisma.liveChatEvent.create({
+      data: {
+        visitorId,
+        eventType: "PROACTIVE_RULE_MATCHED",
+        path: cleanText(context.path, 500),
+        title: cleanText(context.title, 300),
+        metadata: { ruleId: matched.id, ruleName: matched.name } as Prisma.InputJsonObject,
+      },
+    }).catch(() => null);
+    return matched.message;
+  } catch {
+    return null;
+  }
 }
 
 async function getLiveChatSettings(): Promise<LiveChatSettingsView> {
   if (!isPostgresStoreEnabled()) {
+    return getLiveChatSettingsFallback();
+  }
+  if (!(await isLiveChatSchemaReady())) {
     return {
-      enabled: true,
-      widgetGreeting: "Hi, need help with HouseLink?",
-      welcomeMessage: "Hi, welcome to HouseLink. Ask us anything.",
-      offlineMessage: "We are currently offline. Leave your details and our team will follow up.",
-      privacyNotice: "We use this chat and your page context to provide support.",
-      soundEnabled: true,
-      requireContact: false,
-      proactiveEnabled: true,
+      ...getLiveChatSettingsFallback(),
+      enabled: false,
     };
   }
-  const record = await getMainPrisma().liveChatSettings.findUnique({ where: { id: "live-chat" } });
+  const record = await getMainPrisma().liveChatSettings.findUnique({ where: { id: "live-chat" } }).catch(() => null);
   if (!record) return getLiveChatSettingsFallback();
   return shapeSettings(record);
 }

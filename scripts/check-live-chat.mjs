@@ -22,6 +22,26 @@ const checks = [
     pattern: /pathname\?\.startsWith\("\/dashboard"\).*pathname\?\.startsWith\("\/auth"\)/s,
   },
   {
+    file: "components/live-chat/live-chat-widget.tsx",
+    label: "chat widget broadcasts floating open state",
+    pattern: /setLiveChatFloatingOpen\(next\)/,
+  },
+  {
+    file: "components/library/library-cart-fab.tsx",
+    label: "library cart FAB hides while live chat is open",
+    pattern: /liveChatOpen/,
+  },
+  {
+    file: "components/layout/whatsapp-sticky-fab.tsx",
+    label: "WhatsApp FAB hides while live chat is open",
+    pattern: /liveChatOpen/,
+  },
+  {
+    file: "lib/live-chat/repository.ts",
+    label: "missing Live Chat migration is handled before model queries",
+    pattern: /isLiveChatSchemaReady/,
+  },
+  {
     file: "components/admin/live-chat-hub.tsx",
     label: "staff can create internal notes without exposing them as visitor replies",
     pattern: /action:\s*"internal_note"/,

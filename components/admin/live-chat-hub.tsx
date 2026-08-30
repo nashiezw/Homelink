@@ -107,6 +107,12 @@ export function LiveChatHub() {
 
   return (
     <div className="space-y-4">
+      {data.setupRequired ? (
+        <section className="rounded-lg border border-amber-400/30 bg-amber-400/10 p-4 text-amber-100">
+          <p className="text-sm font-black uppercase tracking-wider">Live Chat database setup required</p>
+          <p className="mt-2 text-sm leading-6">{data.setupMessage || "Run the Live Chat Prisma migration before using the inbox."}</p>
+        </section>
+      ) : null}
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <Metric icon={MessageSquare} label="30-day chats" value={data.analytics.totalConversations} />
         <Metric icon={Activity} label="Active visitors" value={data.analytics.activeVisitors} tone="emerald" />
