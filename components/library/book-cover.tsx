@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { displayImageUrl } from "@/lib/images/display-image";
 import type { LibraryProduct } from "@/lib/library/catalog";
 import { cn } from "@/lib/utils";
 
@@ -40,8 +41,8 @@ export function BookCover({
 }) {
   const style = styleFor(product);
   const coverTitle = getCoverTitle(product);
-  const coverUrl = coverImageUrl(product, imageUrl);
   const shop = variant === "shop";
+  const coverUrl = displayImageUrl(coverImageUrl(product, imageUrl), { width: shop ? 520 : 760, height: shop ? 694 : 1014, crop: "fill" });
   const content = (
     <>
       {coverUrl ? (

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { cache } from "react";
 import { LibraryStorefront } from "@/components/library/library-storefront";
 import { listLibraryProducts } from "@/lib/library/repository";
 import { buildLibraryStoreJsonLd, buildLibraryStoreMetadata, safeJsonLd } from "@/lib/library/seo";
@@ -6,13 +7,16 @@ import { getLibraryStoreSettings } from "@/lib/library/settings";
 
 export const revalidate = 900;
 
+const listCachedLibraryProducts = cache(listLibraryProducts);
+const getCachedLibraryStoreSettings = cache(getLibraryStoreSettings);
+
 export async function generateMetadata(): Promise<Metadata> {
-  const settings = await getLibraryStoreSettings();
+  const settings = await getCachedLibraryStoreSettings();
   return buildLibraryStoreMetadata(settings);
 }
 
 export default async function LibraryPage() {
-  const [products, settings] = await Promise.all([listLibraryProducts(), getLibraryStoreSettings()]);
+  const [products, settings] = await Promise.all([listCachedLibraryProducts(), getCachedLibraryStoreSettings()]);
   const schemas = buildLibraryStoreJsonLd({ settings, products });
 
   return (

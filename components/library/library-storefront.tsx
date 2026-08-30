@@ -292,7 +292,6 @@ export function LibraryStorefront({
                   width={719}
                   height={1024}
                   priority
-                  unoptimized
                   className="relative z-[1] mx-auto h-auto w-full bg-transparent object-contain drop-shadow-[0_16px_36px_rgba(16,32,36,0.16)] lg:hidden"
                   sizes="(max-width: 1023px) 46vw, 1px"
                 />
@@ -306,7 +305,6 @@ export function LibraryStorefront({
                   width={719}
                   height={1024}
                   priority
-                  unoptimized
                   className="relative z-[1] mx-auto hidden h-auto w-full max-w-[24rem] bg-transparent object-contain drop-shadow-[0_22px_48px_rgba(16,32,36,0.18)] lg:block xl:max-w-[26rem]"
                   sizes="(min-width: 1024px) 380px, 1px"
                 />

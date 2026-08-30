@@ -39,6 +39,7 @@ import { useApp } from "@/components/providers/app-provider";
 import { trackEvent } from "@/lib/analytics/client";
 import { getExperimentVariant } from "@/lib/analytics/experiments";
 import { apiFetch } from "@/lib/api/client";
+import { displayImageUrl } from "@/lib/images/display-image";
 import {
   notifyLibraryCartAdded,
   repriceLibraryCartLine,
@@ -233,6 +234,7 @@ export function LibraryProductPage({
     [product.gallery],
   );
   const activeGalleryImage = galleryImages[galleryIndex] ?? galleryImages[0];
+  const activeGalleryDisplayUrl = displayImageUrl(activeGalleryImage?.url, { width: 900 });
   const isPrinted = selectedFormat?.type === "PRINTED_BOOK";
   const outOfStock = Boolean(isPrinted && product.stock === 0);
   const maxPrintQty = maxLibraryPrintQuantity(product);
@@ -791,7 +793,7 @@ export function LibraryProductPage({
                   {activeGalleryImage?.url ? (
                     <span className="relative block h-full w-full overflow-hidden rounded-xl shadow-[0_22px_48px_rgba(15,23,42,0.16)]">
                       <Image
-                        src={activeGalleryImage.url}
+                        src={activeGalleryDisplayUrl || activeGalleryImage.url}
                         alt={product.title}
                         fill
                         priority
@@ -1108,7 +1110,7 @@ export function LibraryProductPage({
                       )}
                       aria-label={`Show ${item.label || "gallery image"}`}
                     >
-                      <Image src={item.url} alt={item.label || product.title} fill sizes="54px" className="object-cover" />
+                      <Image src={displayImageUrl(item.url, { width: 120, height: 120, crop: "fill" }) || item.url} alt={item.label || product.title} fill sizes="54px" className="object-cover" />
                     </button>
                   ))}
                 </div>
@@ -1673,7 +1675,7 @@ export function LibraryProductPage({
               }}
             >
               <Image
-                src={activeGalleryImage.url}
+                src={displayImageUrl(activeGalleryImage.url, { width: lightboxZoomed ? 1800 : 1200 }) || activeGalleryImage.url}
                 alt={activeGalleryImage.label || product.title}
                 width={1200}
                 height={1600}

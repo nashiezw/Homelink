@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ShoppingCart, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { displayImageUrl } from "@/lib/images/display-image";
 import type {
   LibraryDigitalUpsellPack,
   LibraryDigitalUpsellSuggestion,
@@ -21,9 +22,10 @@ function CoverThumb({
 }) {
   const box = size === "sm" ? "size-11" : "size-14";
   if (coverUrl) {
+    const thumbUrl = displayImageUrl(coverUrl, { width: 120, height: 120, crop: "fill" });
     return (
       <Link href={href} className={cn("relative shrink-0 overflow-hidden rounded-md bg-slate-100 dark:bg-slate-900", box)}>
-        <Image src={coverUrl} alt="" fill className="object-cover" sizes="56px" />
+        <Image src={thumbUrl || coverUrl} alt="" fill className="object-cover" sizes="56px" />
       </Link>
     );
   }
