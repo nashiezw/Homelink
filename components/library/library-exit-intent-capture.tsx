@@ -29,6 +29,11 @@ const HELP_OPTIONS = [
 const FIELD_CLASS =
   "mt-2 h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-base text-slate-950 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 sm:text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-white";
 
+type ExitTrigger = "desktop_top_exit" | "back_button";
+
+const MIN_ENGAGEMENT_MS = 15_000;
+const RECENT_SCROLL_SUPPRESSION_MS = 900;
+
 function storageKey(productSlug: string | undefined, suffix: string) {
   return `houselink_library_exit_capture:${productSlug || "checkout"}:${suffix}`;
 }
@@ -53,7 +58,7 @@ export function LibraryExitIntentCapture({
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [trigger, setTrigger] = useState<"exit" | "back" | "helpful_delay">("helpful_delay");
+  const [trigger, setTrigger] = useState<ExitTrigger>("back_button");
   const [form, setForm] = useState({
     name: "",
     phone: "",
@@ -63,10 +68,32 @@ export function LibraryExitIntentCapture({
   });
   const allowLeaveRef = useRef(false);
   const armedRef = useRef(false);
+  const highIntentRef = useRef(highIntent);
+  const mountedAtRef = useRef(0);
+  const lastScrollAtRef = useRef(0);
 
   const heading = surface === "checkout" ? "Need help finishing your order?" : "Want help with this guide?";
   const productLabel = productTitle || "this HouseLink Library guide";
-  const showModal = useCallback((reason: typeof trigger) => {
+  const exitReady = useCallback((reason: ExitTrigger) => {
+    if (disabled || recentlySeen(productSlug)) return false;
+    if (!highIntentRef.current) return false;
+    if (Date.now() - mountedAtRef.current < MIN_ENGAGEMENT_MS) return false;
+    const active = document.activeElement;
+    if (
+      active instanceof HTMLInputElement ||
+      active instanceof HTMLTextAreaElement ||
+      active instanceof HTMLSelectElement ||
+      active instanceof HTMLButtonElement ||
+      active?.getAttribute("contenteditable") === "true"
+    ) {
+      return false;
+    }
+    if (reason === "desktop_top_exit" && Date.now() - lastScrollAtRef.current < RECENT_SCROLL_SUPPRESSION_MS) return false;
+    return true;
+  }, [disabled, productSlug]);
+
+  const showModal = useCallback((reason: ExitTrigger) => {
+    if (!exitReady(reason)) return false;
     if (disabled || recentlySeen(productSlug)) return false;
     window.localStorage.setItem(storageKey(productSlug, "shown_at"), String(Date.now()));
     setTrigger(reason);
@@ -79,27 +106,32 @@ export function LibraryExitIntentCapture({
       trigger: reason,
     });
     return true;
-  }, [disabled, productId, productSlug, productTitle, surface]);
+  }, [disabled, exitReady, productId, productSlug, productTitle, surface]);
+
+  useEffect(() => {
+    highIntentRef.current = highIntent;
+  }, [highIntent]);
 
   useEffect(() => {
     if (disabled || armedRef.current || typeof window === "undefined") return;
     if (recentlySeen(productSlug)) return;
     armedRef.current = true;
-
-    const delay = window.setTimeout(() => {
-      if (highIntent) showModal("helpful_delay");
-    }, surface === "checkout" ? 10_000 : 28_000);
+    mountedAtRef.current = Date.now();
 
     const onMouseOut = (event: MouseEvent) => {
-      if (event.clientY <= 0 && !event.relatedTarget) showModal("exit");
+      if (event.clientY <= 0 && !event.relatedTarget) showModal("desktop_top_exit");
+    };
+    const onScroll = () => {
+      lastScrollAtRef.current = Date.now();
     };
     document.addEventListener("mouseout", onMouseOut);
+    window.addEventListener("scroll", onScroll, { passive: true });
 
     const state = { ...(window.history.state ?? {}), houselinkLibraryExitGuard: true };
     window.history.pushState(state, "", window.location.href);
     const onPopState = () => {
       if (allowLeaveRef.current) return;
-      const shown = showModal("back");
+      const shown = showModal("back_button");
       if (shown) {
         window.history.pushState(state, "", window.location.href);
       } else {
@@ -110,11 +142,11 @@ export function LibraryExitIntentCapture({
     window.addEventListener("popstate", onPopState);
 
     return () => {
-      window.clearTimeout(delay);
       document.removeEventListener("mouseout", onMouseOut);
+      window.removeEventListener("scroll", onScroll);
       window.removeEventListener("popstate", onPopState);
     };
-  }, [disabled, highIntent, productSlug, showModal, surface]);
+  }, [disabled, productSlug, showModal]);
 
   const valueLine = useMemo(() => {
     if (surface === "checkout") {
@@ -135,7 +167,7 @@ export function LibraryExitIntentCapture({
     });
     if (mode === "leave_anyway") {
       allowLeaveRef.current = true;
-      if (trigger === "back") {
+      if (trigger === "back_button") {
         window.setTimeout(() => window.history.go(-2), 40);
       }
     }

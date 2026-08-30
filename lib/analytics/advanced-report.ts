@@ -125,8 +125,8 @@ function formatLiveStepName(name: string) {
   if (name === "library_sample_opened") return "Opened sample";
   if (name === "library_sample_viewed") return "Viewed sample";
   if (name === "library_sample_downloaded") return "Downloaded sample";
-  if (name === "library_exit_intent_shown") return "Saw exit offer";
-  if (name === "library_exit_intent_dismissed") return "Dismissed exit offer";
+  if (name === "library_exit_intent_shown") return "Exit help shown";
+  if (name === "library_exit_intent_dismissed") return "Dismissed exit help";
   if (name === "library_exit_lead_captured") return "Exit details captured";
   if (name === "whatsapp_click") return "Clicked WhatsApp";
   return name.replace(/^library_/, "").replaceAll("_", " ");
