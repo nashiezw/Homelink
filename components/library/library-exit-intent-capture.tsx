@@ -30,9 +30,18 @@ const FIELD_CLASS =
   "mt-2 h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-base text-slate-950 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 sm:text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-white";
 
 type ExitTrigger = "desktop_top_exit" | "back_button";
+type BlockReason =
+  | "disabled"
+  | "recently_seen"
+  | "low_intent"
+  | "too_early"
+  | "focused_input"
+  | "recent_scroll";
 
-const MIN_ENGAGEMENT_MS = 15_000;
+const BACK_BUTTON_MIN_ENGAGEMENT_MS = 4_000;
+const DESKTOP_EXIT_MIN_ENGAGEMENT_MS = 12_000;
 const RECENT_SCROLL_SUPPRESSION_MS = 900;
+const SHOWN_SUPPRESSION_MS = 4 * 60 * 60 * 1000;
 
 function storageKey(productSlug: string | undefined, suffix: string) {
   return `houselink_library_exit_capture:${productSlug || "checkout"}:${suffix}`;
@@ -43,7 +52,12 @@ function recentlySeen(productSlug?: string) {
   const submitted = window.localStorage.getItem(storageKey(productSlug, "submitted"));
   if (submitted) return true;
   const shownAt = Number(window.localStorage.getItem(storageKey(productSlug, "shown_at")) || 0);
-  return shownAt > 0 && Date.now() - shownAt < 24 * 60 * 60 * 1000;
+  return shownAt > 0 && Date.now() - shownAt < SHOWN_SUPPRESSION_MS;
+}
+
+function debugBlockedExit(reason: BlockReason, trigger: ExitTrigger, details?: Record<string, unknown>) {
+  if (process.env.NODE_ENV !== "development") return;
+  console.info("[library-exit-intent] blocked", { reason, trigger, ...details });
 }
 
 export function LibraryExitIntentCapture({
@@ -75,20 +89,39 @@ export function LibraryExitIntentCapture({
   const heading = surface === "checkout" ? "Need help finishing your order?" : "Want help with this guide?";
   const productLabel = productTitle || "this HouseLink Library guide";
   const exitReady = useCallback((reason: ExitTrigger) => {
-    if (disabled || recentlySeen(productSlug)) return false;
-    if (!highIntentRef.current) return false;
-    if (Date.now() - mountedAtRef.current < MIN_ENGAGEMENT_MS) return false;
+    if (disabled) {
+      debugBlockedExit("disabled", reason);
+      return false;
+    }
+    if (recentlySeen(productSlug)) {
+      debugBlockedExit("recently_seen", reason, { productSlug });
+      return false;
+    }
+    if (reason === "desktop_top_exit" && !highIntentRef.current) {
+      debugBlockedExit("low_intent", reason);
+      return false;
+    }
+    const minimumEngagement = reason === "back_button" ? BACK_BUTTON_MIN_ENGAGEMENT_MS : DESKTOP_EXIT_MIN_ENGAGEMENT_MS;
+    const engagementMs = Date.now() - mountedAtRef.current;
+    if (engagementMs < minimumEngagement) {
+      debugBlockedExit("too_early", reason, { engagementMs, minimumEngagement });
+      return false;
+    }
     const active = document.activeElement;
-    if (
+    if (reason === "desktop_top_exit" && (
       active instanceof HTMLInputElement ||
       active instanceof HTMLTextAreaElement ||
       active instanceof HTMLSelectElement ||
       active instanceof HTMLButtonElement ||
       active?.getAttribute("contenteditable") === "true"
-    ) {
+    )) {
+      debugBlockedExit("focused_input", reason);
       return false;
     }
-    if (reason === "desktop_top_exit" && Date.now() - lastScrollAtRef.current < RECENT_SCROLL_SUPPRESSION_MS) return false;
+    if (reason === "desktop_top_exit" && Date.now() - lastScrollAtRef.current < RECENT_SCROLL_SUPPRESSION_MS) {
+      debugBlockedExit("recent_scroll", reason);
+      return false;
+    }
     return true;
   }, [disabled, productSlug]);
 
