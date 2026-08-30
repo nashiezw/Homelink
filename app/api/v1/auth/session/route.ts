@@ -531,7 +531,9 @@ export async function GET(request: Request) {
     throw error;
   }
   if (!userId) {
-    return problem(401, "UNAUTHORIZED", "Sign in to continue.");
+    const response = ok(null);
+    response.headers.set("Cache-Control", "private, max-age=60");
+    return response;
   }
   if (shouldUsePostgresAuth()) {
     try {

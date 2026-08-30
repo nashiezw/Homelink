@@ -395,10 +395,14 @@ export function LibraryProductPage({
   }, [product.id, product.rating, product.reviewCount, initialReviews]);
 
   useEffect(() => {
+    if (!user) {
+      setWished(false);
+      return;
+    }
     void apiFetch<{ wished: boolean }>(`/api/v1/library/wishlist?productId=${encodeURIComponent(product.id)}`).then((result) => {
       if (result.data) setWished(result.data.wished);
     });
-  }, [product.id]);
+  }, [product.id, user]);
 
   useEffect(() => {
     if (!lightboxOpen) return;

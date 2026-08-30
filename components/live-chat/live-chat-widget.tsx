@@ -24,6 +24,7 @@ export function LiveChatWidget() {
   const [suggested, setSuggested] = useState<string | null>(null);
   const [unread, setUnread] = useState(0);
   const bottomRef = useRef<HTMLDivElement | null>(null);
+  const contactRef = useRef(contact);
   const startedAtRef = useRef(new Date().toISOString());
   const lastMessageId = messages[messages.length - 1]?.id;
   const hiddenOnThisRoute = pathname?.startsWith("/dashboard") || pathname?.startsWith("/auth") || pathname?.startsWith("/maintenance");
@@ -51,6 +52,10 @@ export function LiveChatWidget() {
     setOpen(isLiveChatFloatingOpen());
   }, [pathname]);
 
+  useEffect(() => {
+    contactRef.current = contact;
+  }, [contact]);
+
   const bootstrap = useCallback(async () => {
     if (hiddenOnThisRoute) return;
     setLoading(true);
@@ -58,7 +63,7 @@ export function LiveChatWidget() {
       method: "POST",
       body: JSON.stringify({
         context,
-        contact: normalizeContact(contact),
+        contact: normalizeContact(contactRef.current),
       }),
     });
     if (result.data) {
@@ -70,7 +75,7 @@ export function LiveChatWidget() {
       setError(result.error?.message ?? "Live Chat is unavailable.");
     }
     setLoading(false);
-  }, [contact, context, hiddenOnThisRoute]);
+  }, [context, hiddenOnThisRoute]);
 
   useEffect(() => {
     if (hiddenOnThisRoute) return;
@@ -83,11 +88,11 @@ export function LiveChatWidget() {
     const id = window.setTimeout(() => {
       void apiFetch("/api/v1/live-chat/activity", {
         method: "POST",
-        body: JSON.stringify({ context, contact: normalizeContact(contact) }),
+        body: JSON.stringify({ context, contact: normalizeContact(contactRef.current) }),
       });
     }, 1400);
     return () => window.clearTimeout(id);
-  }, [context, contact, hiddenOnThisRoute]);
+  }, [context, hiddenOnThisRoute]);
 
   useEffect(() => {
     if (!boot?.conversation?.id) return;
@@ -128,23 +133,40 @@ export function LiveChatWidget() {
   async function sendMessage(body = draft) {
     const text = body.trim();
     if (!text || sending) return;
+    const idempotencyKey = crypto.randomUUID();
+    const optimistic: LiveChatMessageView = {
+      id: `pending-${idempotencyKey}`,
+      conversationId: boot?.conversation?.id || "pending",
+      senderKind: "VISITOR",
+      senderName: contact.name || user?.name || "You",
+      body: text,
+      messageType: "TEXT",
+      internal: false,
+      automated: false,
+      createdAt: new Date().toISOString(),
+      deliveredAt: null,
+      readAt: null,
+    };
+    setMessages((current) => [...current, optimistic]);
+    setDraft("");
     setSending(true);
     setError(null);
     const result = await apiFetch<LiveChatMessageView>("/api/v1/live-chat/messages", {
       method: "POST",
       body: JSON.stringify({
         body: text,
-        idempotencyKey: crypto.randomUUID(),
-        contact: normalizeContact(contact),
+        idempotencyKey,
+        contact: normalizeContact(contactRef.current),
         context,
       }),
     });
     if (result.data) {
-      setMessages((current) => [...current.filter((message) => message.id !== result.data!.id), result.data!]);
-      setDraft("");
+      setMessages((current) => [...current.filter((message) => message.id !== optimistic.id && message.id !== result.data!.id), result.data!]);
       setSuggested(null);
       if (!boot?.conversation) void bootstrap();
     } else {
+      setMessages((current) => current.filter((message) => message.id !== optimistic.id));
+      setDraft(text);
       setError(result.error?.message ?? "Message failed. Please try again.");
     }
     setSending(false);
@@ -158,12 +180,16 @@ export function LiveChatWidget() {
         <section className="flex h-[min(680px,calc(100vh-2rem))] w-[min(420px,calc(100vw-2rem))] flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-2xl shadow-slate-900/25 dark:border-slate-700 dark:bg-slate-950">
           <header className="flex items-center justify-between gap-3 bg-slate-950 px-4 py-3 text-white">
             <div className="flex min-w-0 items-center gap-3">
-              <span className="flex size-10 shrink-0 items-center justify-center rounded-md bg-emerald-500 text-white">
-                <Headphones className="size-5" />
+              <span
+                className="relative flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-md bg-emerald-500 bg-cover bg-center text-white"
+                style={boot?.supportAgent?.avatarUrl ? { backgroundImage: `url(${boot.supportAgent.avatarUrl})` } : undefined}
+              >
+                {boot?.supportAgent?.avatarUrl ? null : <Headphones className="size-5" />}
+                <span className={`absolute bottom-0 right-0 size-2.5 rounded-full ring-2 ring-slate-950 ${boot?.supportAgent ? "bg-emerald-300" : "bg-amber-300"}`} />
               </span>
               <div className="min-w-0">
-                <p className="truncate text-sm font-bold">HouseLink Live</p>
-                <p className="truncate text-xs text-emerald-100">Properties, books, Academy and payments</p>
+                <p className="truncate text-sm font-bold">{boot?.supportAgent?.displayName || boot?.settings.teamDisplayName || "HouseLink Live"}</p>
+                <p className="truncate text-xs text-emerald-100">{boot?.supportAgent ? `${boot.supportAgent.title || "Support"} is online` : "Leave a message, the team will reply here"}</p>
               </div>
             </div>
             <button type="button" onClick={() => toggleOpen(false)} className="rounded-md p-2 text-slate-200 hover:bg-white/10" aria-label="Minimise live chat">
@@ -198,6 +224,14 @@ export function LiveChatWidget() {
               </button>
             ) : null}
             {messages.map((message) => <ChatBubble key={message.id} message={message} />)}
+            {sending ? (
+              <div className="flex justify-end">
+                <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-200">Sending...</span>
+              </div>
+            ) : null}
+            {draft.trim() ? (
+              <div className="text-xs text-slate-400">You are typing...</div>
+            ) : null}
             <div ref={bottomRef} />
           </div>
 

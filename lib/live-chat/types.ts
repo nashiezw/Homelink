@@ -45,6 +45,8 @@ export type LiveChatSettingsView = {
   soundEnabled: boolean;
   requireContact: boolean;
   proactiveEnabled: boolean;
+  teamDisplayName?: string | null;
+  teamAvatarUrl?: string | null;
 };
 
 export type LiveChatDepartmentView = {
@@ -132,6 +134,7 @@ export type LiveChatBootstrapView = {
   conversation: LiveChatConversationView | null;
   messages: LiveChatMessageView[];
   departments: LiveChatDepartmentView[];
+  supportAgent?: LiveChatAgentView | null;
   settings: LiveChatSettingsView;
   suggestedMessage?: string | null;
   setupRequired?: boolean;
@@ -145,6 +148,7 @@ export type LiveChatInboxView = {
   events: LiveChatEventView[];
   departments: LiveChatDepartmentView[];
   agents: LiveChatAgentView[];
+  currentAgent?: LiveChatAgentView | null;
   quickReplies: Array<{ id: string; title: string; shortcut: string; category?: string | null; body: string; departmentId?: string | null; active: boolean }>;
   tags: Array<{ id: string; name: string; slug: string; color: string; active: boolean }>;
   settings: LiveChatSettingsView;

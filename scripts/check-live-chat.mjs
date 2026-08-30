@@ -42,6 +42,31 @@ const checks = [
     pattern: /isLiveChatSchemaReady/,
   },
   {
+    file: "lib/live-chat/repository.ts",
+    label: "live chat default setup is cached away from hot paths",
+    pattern: /defaultsReadyCache/,
+  },
+  {
+    file: "lib/live-chat/repository.ts",
+    label: "admin analytics are cached to protect Vercel CPU",
+    pattern: /analyticsCache/,
+  },
+  {
+    file: "components/live-chat/live-chat-widget.tsx",
+    label: "public chat contact typing does not re-bootstrap chat",
+    pattern: /contactRef\.current/,
+  },
+  {
+    file: "components/admin/live-chat-hub.tsx",
+    label: "admin live chat avoids aggressive 5 second polling",
+    pattern: /activeId \? 15000 : 20000/,
+  },
+  {
+    file: "components/admin/live-chat-hub.tsx",
+    label: "admin team members can manage their public chat profile",
+    pattern: /action:\s*"profile"/,
+  },
+  {
     file: "components/admin/live-chat-hub.tsx",
     label: "staff can create internal notes without exposing them as visitor replies",
     pattern: /action:\s*"internal_note"/,

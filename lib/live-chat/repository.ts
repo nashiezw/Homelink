@@ -56,6 +56,8 @@ const memory = {
 };
 
 const schemaReadyCache = { checkedAt: 0, ready: false };
+const defaultsReadyCache = { checkedAt: 0, ready: false };
+let analyticsCache: { checkedAt: number; value: LiveChatInboxView["analytics"] } | null = null;
 
 type AdminUser = { id: string; name: string; email: string; roles: string[] };
 
@@ -178,8 +180,9 @@ export async function bootstrapLiveChat(input: {
         take: 80,
       })
     : [];
-  const [departments, proactive] = await Promise.all([
+  const [departments, supportAgent, proactive] = await Promise.all([
     prisma.liveChatDepartment.findMany({ where: { active: true }, orderBy: { name: "asc" } }),
+    getPublicSupportAgent(),
     maybeTriggerAutomation(visitor.id, conversation?.id ?? null, input.context),
   ]);
   return {
@@ -187,6 +190,7 @@ export async function bootstrapLiveChat(input: {
     conversation: conversation ? shapeConversation(conversation) : null,
     messages: messages.map(shapeMessage),
     departments: departments.map(shapeDepartment),
+    supportAgent,
     settings,
     suggestedMessage: proactive,
   } satisfies LiveChatBootstrapView;
@@ -361,19 +365,22 @@ export async function getLiveChatInbox(input: { activeConversationId?: string | 
   if (!(await isLiveChatSchemaReady())) return setupRequiredInbox();
   await ensureLiveChatDefaults(input.user);
   const prisma = getMainPrisma();
-  await ensureAgentProfile(input.user);
+  const currentAgent = await ensureAgentProfile(input.user);
   const where = conversationFilter(input.filter, input.query, input.user.id);
+  const activeConversationLookup = input.activeConversationId
+    ? getConversationByPublicId(input.activeConversationId).catch(() => null)
+    : Promise.resolve(null);
   const [conversations, activeVisitorsRaw, departments, agents, quickReplies, tags, settings, analytics, activeConversation] = await Promise.all([
     prisma.liveChatConversation.findMany({
       where,
       include: conversationInclude(),
       orderBy: [{ lastMessageAt: "desc" }, { updatedAt: "desc" }],
-      take: 50,
+      take: 30,
     }),
     prisma.liveChatVisitor.findMany({
       where: { lastSeenAt: { gte: new Date(Date.now() - ACTIVE_VISITOR_MS) }, blockedAt: null },
       orderBy: { lastSeenAt: "desc" },
-      take: 60,
+      take: 40,
     }),
     prisma.liveChatDepartment.findMany({ orderBy: [{ active: "desc" }, { name: "asc" }] }),
     prisma.liveChatAgentProfile.findMany({ include: { department: true }, orderBy: { displayName: "asc" } }),
@@ -381,9 +388,10 @@ export async function getLiveChatInbox(input: { activeConversationId?: string | 
     prisma.liveChatTag.findMany({ orderBy: [{ active: "desc" }, { name: "asc" }] }),
     getLiveChatSettings(),
     getLiveChatAnalytics(),
-    input.activeConversationId ? prisma.liveChatConversation.findUnique({ where: { publicId: input.activeConversationId } }) : null,
+    activeConversationLookup,
   ]);
   const selected = activeConversation ?? conversations[0] ?? null;
+  const visibleConversations = selected && !conversations.some((conversation) => conversation.id === selected.id) ? [selected, ...conversations] : conversations;
   const [messages, events] = selected
     ? await Promise.all([
         prisma.liveChatMessage.findMany({ where: { conversationId: selected.id }, orderBy: { createdAt: "asc" }, take: 150 }),
@@ -391,14 +399,15 @@ export async function getLiveChatInbox(input: { activeConversationId?: string | 
       ])
     : [[], []];
   await prisma.liveChatAgentProfile.update({ where: { userId: input.user.id }, data: { availability: "ONLINE", lastSeenAt: new Date() } }).catch(() => null);
-  const conversationByVisitor = new Map(conversations.map((conversation) => [conversation.visitorId, conversation.publicId]));
+  const conversationByVisitor = new Map(visibleConversations.map((conversation) => [conversation.visitorId, conversation.publicId]));
   return {
-    conversations: conversations.map((conversation) => shapeConversation(conversation)),
+    conversations: visibleConversations.map((conversation) => shapeConversation(conversation)),
     activeVisitors: activeVisitorsRaw.map((visitor) => shapeActiveVisitor(visitor, conversationByVisitor.get(visitor.id) ?? null)),
     messages: messages.map(shapeMessage),
     events: events.map(shapeEvent),
     departments: departments.map(shapeDepartment),
     agents: agents.map(shapeAgent),
+    currentAgent: shapeAgent(currentAgent),
     quickReplies: quickReplies.map((reply) => ({
       id: reply.id,
       title: reply.title,
@@ -554,6 +563,14 @@ export async function liveChatAdminAction(user: AdminUser, body: Record<string, 
     await auditEvent(conversation.visitorId, conversation.id, `STATUS_${status}`, user.id);
     return { ok: true };
   }
+  if (action === "delete_conversation") {
+    const conversation = await getConversationByPublicId(String(body.conversationId ?? ""));
+    if (!conversation) throw new LiveChatError("CONVERSATION_NOT_FOUND", "Conversation not found.", 404);
+    await auditEvent(conversation.visitorId, conversation.id, "CONVERSATION_DELETED", user.id);
+    await prisma.liveChatConversation.delete({ where: { id: conversation.id } });
+    analyticsCache = null;
+    return { ok: true };
+  }
   if (action === "lead") {
     const conversation = await getConversationByPublicId(String(body.conversationId ?? ""));
     if (!conversation) throw new LiveChatError("CONVERSATION_NOT_FOUND", "Conversation not found.", 404);
@@ -625,7 +642,36 @@ export async function liveChatAdminAction(user: AdminUser, body: Record<string, 
         proactiveEnabled: Boolean(body.proactiveEnabled ?? true),
       },
     });
+    analyticsCache = null;
     return shapeSettings(settings);
+  }
+  if (action === "profile") {
+    const displayName = cleanText(String(body.displayName ?? ""), 120) || user.name || "HouseLink Team";
+    const profile = await prisma.liveChatAgentProfile.upsert({
+      where: { userId: user.id },
+      create: {
+        userId: user.id,
+        displayName,
+        avatarUrl: cleanText(String(body.avatarUrl || ""), 500),
+        title: cleanText(String(body.title || ""), 120) || "HouseLink Support",
+        publicIntro: cleanText(String(body.publicIntro || ""), 500),
+        availability: allowed(String(body.availability || ""), ["ONLINE", "AWAY", "BUSY", "OFFLINE"], "ONLINE"),
+        departmentId: cleanText(String(body.departmentId || ""), 80) || null,
+        updatedAt: new Date(),
+      },
+      update: {
+        displayName,
+        avatarUrl: cleanText(String(body.avatarUrl || ""), 500),
+        title: cleanText(String(body.title || ""), 120) || "HouseLink Support",
+        publicIntro: cleanText(String(body.publicIntro || ""), 500),
+        availability: allowed(String(body.availability || ""), ["ONLINE", "AWAY", "BUSY", "OFFLINE"], "ONLINE"),
+        departmentId: cleanText(String(body.departmentId || ""), 80) || null,
+        lastSeenAt: new Date(),
+        updatedAt: new Date(),
+      },
+      include: { department: true },
+    });
+    return shapeAgent(profile);
   }
   if (action === "automation") {
     const name = cleanText(String(body.name ?? ""), 120);
@@ -723,6 +769,7 @@ function publicSetupRequiredBootstrap(): LiveChatBootstrapView {
     conversation: null,
     messages: [],
     departments: [],
+    supportAgent: null,
     settings: {
       ...getLiveChatSettingsFallback(),
       enabled: false,
@@ -741,6 +788,7 @@ function setupRequiredInbox(): LiveChatInboxView {
     events: [],
     departments: [],
     agents: [],
+    currentAgent: null,
     quickReplies: [],
     tags: [],
     settings: {
@@ -769,6 +817,7 @@ async function getVisitorByKey(visitorKey: string) {
 
 async function ensureLiveChatDefaults(user?: AdminUser) {
   if (!isPostgresStoreEnabled()) return;
+  if (defaultsReadyCache.ready && Date.now() - defaultsReadyCache.checkedAt < 10 * 60_000) return;
   const prisma = getMainPrisma();
   const settings = await prisma.liveChatSettings.findUnique({ where: { id: "live-chat" } });
   if (!settings) {
@@ -780,8 +829,7 @@ async function ensureLiveChatDefaults(user?: AdminUser) {
       },
     }).catch(() => null);
   }
-  for (const [name, slug, color, welcomeMessage] of DEFAULT_DEPARTMENTS) {
-    await prisma.liveChatDepartment.upsert({
+  await Promise.all(DEFAULT_DEPARTMENTS.map(([name, slug, color, welcomeMessage]) => prisma.liveChatDepartment.upsert({
       where: { slug },
       update: {},
       create: {
@@ -792,19 +840,16 @@ async function ensureLiveChatDefaults(user?: AdminUser) {
         offlineMessage: "We are away right now. Leave your details and we will follow up.",
         updatedAt: new Date(),
       },
-    }).catch(() => null);
-  }
-  for (const [name, slug, color] of DEFAULT_TAGS) {
-    await prisma.liveChatTag.upsert({
+    }).catch(() => null)));
+  await Promise.all(DEFAULT_TAGS.map(([name, slug, color]) => prisma.liveChatTag.upsert({
       where: { slug },
       update: {},
       create: { name, slug, color, updatedAt: new Date() },
-    }).catch(() => null);
-  }
+    }).catch(() => null)));
   const departments = await prisma.liveChatDepartment.findMany({ select: { id: true, name: true } });
-  for (const [title, shortcut, departmentName, body] of DEFAULT_QUICK_REPLIES) {
+  await Promise.all(DEFAULT_QUICK_REPLIES.map(([title, shortcut, departmentName, body]) => {
     const departmentId = departments.find((department) => department.name === departmentName)?.id;
-    await prisma.liveChatQuickReply.upsert({
+    return prisma.liveChatQuickReply.upsert({
       where: { id: `default-${slugify(title)}` },
       update: {},
       create: {
@@ -818,7 +863,9 @@ async function ensureLiveChatDefaults(user?: AdminUser) {
         updatedAt: new Date(),
       },
     }).catch(() => null);
-  }
+  }));
+  defaultsReadyCache.ready = true;
+  defaultsReadyCache.checkedAt = Date.now();
 }
 
 async function ensureAgentProfile(user: AdminUser) {
@@ -894,6 +941,7 @@ async function getLiveChatSettings(): Promise<LiveChatSettingsView> {
 }
 
 async function getLiveChatAnalytics() {
+  if (analyticsCache && Date.now() - analyticsCache.checkedAt < 60_000) return analyticsCache.value;
   const prisma = getMainPrisma();
   const since = new Date(Date.now() - 30 * 24 * 60 * 60_000);
   const [totalConversations, openConversations, waitingConversations, resolvedConversations, activeVisitors, leadsCreated, proactiveMessages, firstResponses] = await Promise.all([
@@ -909,7 +957,22 @@ async function getLiveChatAnalytics() {
   const avg = firstResponses.length
     ? Math.round(firstResponses.reduce((sum, item) => sum + ((item.firstResponseAt?.getTime() ?? item.createdAt.getTime()) - item.createdAt.getTime()) / 1000, 0) / firstResponses.length)
     : null;
-  return { totalConversations, openConversations, waitingConversations, resolvedConversations, activeVisitors, leadsCreated, proactiveMessages, averageFirstResponseSeconds: avg };
+  const value = { totalConversations, openConversations, waitingConversations, resolvedConversations, activeVisitors, leadsCreated, proactiveMessages, averageFirstResponseSeconds: avg };
+  analyticsCache = { checkedAt: Date.now(), value };
+  return value;
+}
+
+async function getPublicSupportAgent() {
+  if (!isPostgresStoreEnabled() || !(await isLiveChatSchemaReady())) return null;
+  const agent = await getMainPrisma().liveChatAgentProfile.findFirst({
+    where: {
+      availability: { in: ["ONLINE", "AWAY"] },
+      lastSeenAt: { gte: new Date(Date.now() - 10 * 60_000) },
+    },
+    include: { department: true },
+    orderBy: [{ availability: "asc" }, { lastSeenAt: "desc" }],
+  }).catch(() => null);
+  return agent ? shapeAgent(agent) : null;
 }
 
 function conversationInclude() {
@@ -1088,7 +1151,7 @@ function conversationFilter(filter?: string | null, query?: string | null, userI
 }
 
 async function getConversationByPublicId(publicId: string) {
-  return getMainPrisma().liveChatConversation.findUnique({ where: { publicId } });
+  return getMainPrisma().liveChatConversation.findUnique({ where: { publicId }, include: conversationInclude() });
 }
 
 async function auditEvent(visitorId: string | null, conversationId: string | null, eventType: string, createdById?: string, metadata?: unknown) {
@@ -1125,6 +1188,7 @@ function memoryBootstrap(visitorKey: string, context: LiveChatVisitorContext, co
     conversation: conversation ? shapeMemoryConversation(conversation, visitor) : null,
     messages: messages.map(shapeMemoryMessage),
     departments: DEFAULT_DEPARTMENTS.map(([name, slug, color, welcomeMessage]) => ({ id: slug, name, slug, color, active: true, welcomeMessage })),
+    supportAgent: null,
     settings: getLiveChatSettingsFallback(),
     suggestedMessage: null,
   };
@@ -1170,6 +1234,7 @@ function memoryInbox(): LiveChatInboxView {
     events: memory.events.map((event) => ({ id: event.id, eventType: event.eventType, path: event.path, title: event.title, metadata: event.metadata, createdAt: event.createdAt.toISOString() })),
     departments: DEFAULT_DEPARTMENTS.map(([name, slug, color, welcomeMessage]) => ({ id: slug, name, slug, color, active: true, welcomeMessage })),
     agents: [],
+    currentAgent: null,
     quickReplies: DEFAULT_QUICK_REPLIES.map(([title, shortcut, category, body]) => ({ id: shortcut, title, shortcut, category, body, active: true })),
     tags: DEFAULT_TAGS.map(([name, slug, color]) => ({ id: slug, name, slug, color, active: true })),
     settings: getLiveChatSettingsFallback(),
