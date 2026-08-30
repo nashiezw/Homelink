@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import type { ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { Search, Filter, AlertTriangle, User, BarChart3, Download, BookOpen, Award, Clock, RefreshCw, type LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api/client";
@@ -290,7 +291,9 @@ export function StudentAnalyticsDashboard() {
   const [searchQuery, setSearchQuery] = useState("");
   const [studentSearchResults, setStudentSearchResults] = useState<StudentSearchResult[]>([]);
   const [showStudentSearch, setShowStudentSearch] = useState(false);
+  const [studentSearchRect, setStudentSearchRect] = useState<{ left: number; top: number; width: number; maxHeight: number } | null>(null);
   const [selectedStudentId, setSelectedStudentId] = useState("");
+  const studentSearchRef = useRef<HTMLDivElement>(null);
   const [courseFilter, setCourseFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [riskFilter, setRiskFilter] = useState("all");
@@ -401,6 +404,36 @@ export function StudentAnalyticsDashboard() {
       setStudentSearchResults([]);
     }
   }, [searchQuery, showStudentSearch]);
+
+  useEffect(() => {
+    if (!showStudentSearch || !studentSearchResults.length) return;
+    updateStudentSearchPosition();
+    window.addEventListener("resize", updateStudentSearchPosition);
+    window.addEventListener("scroll", updateStudentSearchPosition, true);
+    return () => {
+      window.removeEventListener("resize", updateStudentSearchPosition);
+      window.removeEventListener("scroll", updateStudentSearchPosition, true);
+    };
+  }, [showStudentSearch, studentSearchResults.length]);
+
+  function updateStudentSearchPosition() {
+    const node = studentSearchRef.current;
+    if (!node) return;
+    const rect = node.getBoundingClientRect();
+    const gap = 8;
+    const sidePadding = 12;
+    const desiredHeight = 256;
+    const spaceBelow = window.innerHeight - rect.bottom - gap - sidePadding;
+    const spaceAbove = rect.top - gap - sidePadding;
+    const openUp = spaceBelow < 160 && spaceAbove > spaceBelow;
+    const maxHeight = Math.max(96, Math.min(desiredHeight, openUp ? spaceAbove : spaceBelow));
+    setStudentSearchRect({
+      left: Math.max(sidePadding, Math.min(rect.left, window.innerWidth - rect.width - sidePadding)),
+      top: openUp ? Math.max(sidePadding, rect.top - gap - maxHeight) : rect.bottom + gap,
+      width: Math.min(rect.width, window.innerWidth - sidePadding * 2),
+      maxHeight,
+    });
+  }
 
 
   const loadAtRiskStudents = async (courseId?: string) => {
@@ -634,7 +667,7 @@ export function StudentAnalyticsDashboard() {
       {view === "student-quiz" && (
         <div className="space-y-6">
           <div className="flex flex-col gap-3 sm:flex-row">
-            <div className="relative flex-1">
+            <div ref={studentSearchRef} className="relative flex-1">
               <input
                 type="text"
                 placeholder="Search students by name or email..."
@@ -643,12 +676,19 @@ export function StudentAnalyticsDashboard() {
                   setSearchQuery(e.target.value);
                   setSelectedStudentId("");
                   setShowStudentSearch(true);
+                  requestAnimationFrame(updateStudentSearchPosition);
                 }}
-                onFocus={() => setShowStudentSearch(true)}
+                onFocus={() => {
+                  setShowStudentSearch(true);
+                  requestAnimationFrame(updateStudentSearchPosition);
+                }}
                 className="w-full rounded-lg border border-white/10 bg-slate-900 px-4 py-2 text-white"
               />
-              {showStudentSearch && studentSearchResults.length > 0 && (
-                <div className="absolute top-full left-0 right-0 mt-2 rounded-lg border border-white/10 bg-slate-950 p-2 z-10 max-h-64 overflow-y-auto">
+              {showStudentSearch && studentSearchResults.length > 0 && studentSearchRect && typeof document !== "undefined" ? createPortal((
+                <div
+                  style={{ left: studentSearchRect.left, top: studentSearchRect.top, width: studentSearchRect.width, maxHeight: studentSearchRect.maxHeight }}
+                  className="fixed z-[90] overflow-y-auto rounded-lg border border-white/10 bg-slate-950 p-2 shadow-2xl shadow-black/40"
+                >
                   {studentSearchResults.map(student => (
                     <button
                       key={student.id}
@@ -662,7 +702,7 @@ export function StudentAnalyticsDashboard() {
                     </button>
                   ))}
                 </div>
-              )}
+              ), document.body) : null}
             </div>
             <Button 
               className="w-full sm:w-auto"

@@ -4,6 +4,7 @@ import { Boxes, ChevronDown, Copy, Download, Edit3, ExternalLink, FileArchive, F
 import type { LucideIcon } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
+import { createPortal } from "react-dom";
 import {
   AdminDataTable,
   AdminConfirmDialog,
@@ -3303,7 +3304,9 @@ function CreatableSelectField({
   placeholder?: string;
 }) {
   const [open, setOpen] = useState(false);
+  const [menuRect, setMenuRect] = useState<{ left: number; top: number; width: number; maxHeight: number } | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   const normalized = value.trim().toLowerCase();
   const filtered = options.filter((option) => !normalized || option.toLowerCase().includes(normalized));
   const exactMatch = options.some((option) => option.toLowerCase() === normalized);
@@ -3311,11 +3314,42 @@ function CreatableSelectField({
 
   useEffect(() => {
     function onPointerDown(event: PointerEvent) {
-      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+      const target = event.target as Node;
+      if (!rootRef.current?.contains(target) && !menuRef.current?.contains(target)) setOpen(false);
     }
     document.addEventListener("pointerdown", onPointerDown);
     return () => document.removeEventListener("pointerdown", onPointerDown);
   }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    updateMenuPosition();
+    window.addEventListener("resize", updateMenuPosition);
+    window.addEventListener("scroll", updateMenuPosition, true);
+    return () => {
+      window.removeEventListener("resize", updateMenuPosition);
+      window.removeEventListener("scroll", updateMenuPosition, true);
+    };
+  }, [open]);
+
+  function updateMenuPosition() {
+    const input = rootRef.current?.querySelector('[role="combobox"]') as HTMLElement | null;
+    if (!input) return;
+    const rect = input.getBoundingClientRect();
+    const gap = 6;
+    const sidePadding = 12;
+    const desiredHeight = 224;
+    const spaceBelow = window.innerHeight - rect.bottom - gap - sidePadding;
+    const spaceAbove = rect.top - gap - sidePadding;
+    const openUp = spaceBelow < 160 && spaceAbove > spaceBelow;
+    const maxHeight = Math.max(96, Math.min(desiredHeight, openUp ? spaceAbove : spaceBelow));
+    setMenuRect({
+      left: Math.max(sidePadding, Math.min(rect.left, window.innerWidth - rect.width - sidePadding)),
+      top: openUp ? Math.max(sidePadding, rect.top - gap - maxHeight) : rect.bottom + gap,
+      width: Math.min(rect.width, window.innerWidth - sidePadding * 2),
+      maxHeight,
+    });
+  }
 
   function choose(next: string) {
     onChange(next);
@@ -3333,8 +3367,12 @@ function CreatableSelectField({
           onChange={(event) => {
             onChange(event.target.value);
             setOpen(true);
+            requestAnimationFrame(updateMenuPosition);
           }}
-          onFocus={() => setOpen(true)}
+          onFocus={() => {
+            setOpen(true);
+            requestAnimationFrame(updateMenuPosition);
+          }}
           placeholder={placeholder}
           className="w-full rounded-lg border border-white/10 bg-slate-950 py-2 pl-3 pr-10 text-white outline-none transition placeholder:text-slate-600 focus:border-emerald-500"
           autoComplete="off"
@@ -3349,13 +3387,22 @@ function CreatableSelectField({
           aria-label={`Show ${label.toLowerCase()} options`}
           aria-expanded={open}
           aria-controls={listboxId}
-          onClick={() => setOpen((current) => !current)}
+          onClick={() => {
+            setOpen((current) => !current);
+            requestAnimationFrame(updateMenuPosition);
+          }}
         >
           <ChevronDown className={cn("size-4 transition", open && "rotate-180")} />
         </button>
       </div>
-      {open ? (
-        <div id={listboxId} role="listbox" className="absolute left-0 right-0 top-[calc(100%+0.25rem)] z-30 max-h-56 overflow-y-auto rounded-lg border border-white/10 bg-slate-950 shadow-2xl">
+      {open && menuRect && typeof document !== "undefined" ? createPortal((
+        <div
+          ref={menuRef}
+          id={listboxId}
+          role="listbox"
+          style={{ left: menuRect.left, top: menuRect.top, width: menuRect.width, maxHeight: menuRect.maxHeight }}
+          className="fixed z-[90] overflow-y-auto rounded-lg border border-white/10 bg-slate-950 shadow-2xl shadow-black/40"
+        >
           {filtered.length ? (
             filtered.map((option) => (
               <button
@@ -3389,7 +3436,7 @@ function CreatableSelectField({
             </button>
           ) : null}
         </div>
-      ) : null}
+      ), document.body) : null}
       <p className="text-xs text-slate-500">Pick an existing {label.toLowerCase()} or type a new one.</p>
     </div>
   );
