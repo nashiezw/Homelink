@@ -273,35 +273,35 @@ export function LiveChatHub() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="min-w-0 space-y-4 overflow-hidden">
       {data.setupRequired ? (
         <section className="rounded-lg border border-amber-400/30 bg-amber-400/10 p-4 text-amber-100">
           <p className="text-sm font-black uppercase tracking-wider">Live Chat database setup required</p>
           <p className="mt-2 text-sm leading-6">{data.setupMessage || "Run the Live Chat Prisma migration before using the inbox."}</p>
         </section>
       ) : null}
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid min-w-0 grid-cols-1 gap-3 min-[420px]:grid-cols-2 xl:grid-cols-4">
         <Metric icon={MessageSquare} label="30-day chats" value={data.analytics.totalConversations} />
         <Metric icon={Activity} label="Active visitors" value={data.analytics.activeVisitors} tone="emerald" />
         <Metric icon={Clock} label="Waiting" value={data.analytics.waitingConversations} tone="amber" />
         <Metric icon={UserPlus} label="Leads created" value={data.analytics.leadsCreated} tone="cyan" />
       </div>
 
-      <section className="overflow-hidden rounded-2xl border border-white/10 bg-slate-950 text-slate-100 shadow-2xl shadow-slate-950/20">
+      <section className="min-w-0 overflow-hidden rounded-2xl border border-white/10 bg-slate-950 text-slate-100 shadow-2xl shadow-slate-950/20">
         <div className="flex flex-col gap-3 border-b border-white/10 bg-slate-900/70 p-4 lg:flex-row lg:items-center lg:justify-between">
-          <div>
+          <div className="min-w-0">
             <p className="text-xs font-bold uppercase tracking-wider text-emerald-300">HouseLink Live</p>
-            <h2 className="text-xl font-black">Support and sales inbox</h2>
-            <p className="text-sm text-slate-400">Live conversations, visitor journeys, proactive help, and follow-up leads.</p>
+            <h2 className="text-xl font-black leading-tight">Support and sales inbox</h2>
+            <p className="text-sm leading-6 text-slate-400">Live conversations, visitor journeys, proactive help, and follow-up leads.</p>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <Button variant="secondary" onClick={() => void load()} disabled={loadingInbox}>{loadingInbox ? <Loader2 className="size-4 animate-spin" /> : <RefreshCw className="size-4" />} Refresh</Button>
-            <Button variant="secondary" onClick={() => void action({ action: "settings", ...data.settings, enabled: !data.settings.enabled }, data.settings.enabled ? "Live Chat disabled." : "Live Chat enabled.")}>
+          <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap">
+            <Button className="w-full sm:w-auto" variant="secondary" onClick={() => void load()} disabled={loadingInbox}>{loadingInbox ? <Loader2 className="size-4 animate-spin" /> : <RefreshCw className="size-4" />} Refresh</Button>
+            <Button className="w-full sm:w-auto" variant="secondary" onClick={() => void action({ action: "settings", ...data.settings, enabled: !data.settings.enabled }, data.settings.enabled ? "Live Chat disabled." : "Live Chat enabled.")}>
               <Settings className="size-4" /> {data.settings.enabled ? "Disable" : "Enable"}
             </Button>
           </div>
         </div>
-        <div className="flex gap-2 overflow-x-auto border-b border-white/10 px-4 py-3">
+        <div className="flex min-w-0 gap-2 overflow-x-auto border-b border-white/10 px-3 py-3 [scrollbar-width:none] sm:px-4">
           {([
             ["inbox", MessageSquare, "Inbox"],
             ["visitors", Wifi, `Live visitors (${data.activeVisitors.length})`],
@@ -326,10 +326,10 @@ export function LiveChatHub() {
         {panel === "settings" ? <SettingsPanel data={data} action={action} busy={busy} /> : null}
         {panel === "visitors" ? <VisitorsPanel visitors={data.activeVisitors.filter((visitor) => !deletedVisitorIds.includes(visitor.id))} startConversation={startConversation} openConversation={openConversation} startingVisitorId={startingVisitorId} /> : null}
 
-        {panel === "inbox" ? <div className="grid min-h-[660px] lg:grid-cols-[330px_minmax(0,1fr)_380px]">
+        {panel === "inbox" ? <div className="grid min-w-0 gap-0 lg:min-h-[660px] lg:grid-cols-[minmax(280px,330px)_minmax(0,1fr)_minmax(320px,380px)]">
           <aside className="border-b border-white/10 bg-slate-950/80 lg:border-b-0 lg:border-r lg:border-white/10">
             <div className="space-y-3 p-3">
-              <label className="flex h-10 items-center gap-2 rounded-md border border-white/10 bg-slate-900 px-3 text-sm">
+              <label className="flex min-h-10 min-w-0 items-center gap-2 rounded-md border border-white/10 bg-slate-900 px-3 text-sm">
                 <Search className="size-4 text-slate-500" />
                 <input className="min-w-0 flex-1 bg-transparent outline-none" placeholder="Search name, phone, message..." value={queryDraft} onChange={(event) => setQueryDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") setQuery(queryDraft); }} />
                 <button type="button" onClick={() => setQuery(queryDraft)} className="text-xs font-bold text-emerald-300">Search</button>
@@ -350,7 +350,7 @@ export function LiveChatHub() {
                 {data.conversations.length ? `Delete all in ${filterLabel(filter)}` : `No chats to delete in ${filterLabel(filter)}`}
               </button>
             </div>
-            <div className="max-h-[560px] overflow-y-auto border-t border-white/10">
+            <div className="max-h-[42dvh] overflow-y-auto border-t border-white/10 lg:max-h-[560px]">
               {loadingInbox ? <div className="flex items-center gap-2 border-b border-white/10 p-3 text-xs text-slate-400"><Loader2 className="size-3 animate-spin" /> Refreshing inbox...</div> : null}
               {data.conversations.length ? data.conversations.map((conversation) => (
                 <ConversationRow
@@ -366,9 +366,9 @@ export function LiveChatHub() {
             </div>
           </aside>
 
-          <main className="flex min-h-[620px] flex-col">
+          <main className="flex min-h-[70dvh] min-w-0 flex-col lg:min-h-[620px]">
             <ConversationHeader conversation={activeConversation} data={data} action={action} busy={busy} onDelete={deleteConversation} />
-            <div className="flex-1 space-y-4 overflow-y-auto bg-slate-950/70 p-4">
+            <div className="max-h-[52dvh] flex-1 space-y-4 overflow-y-auto bg-slate-950/70 p-3 sm:p-4 lg:max-h-none">
               {data.messages.length ? data.messages.map((message) => <AdminMessage key={message.id} message={message} />) : <Empty label="Select a conversation or start one from Active Visitors." />}
             </div>
             {activeConversation ? (
@@ -377,21 +377,21 @@ export function LiveChatHub() {
                 <ContextActions conversation={activeConversation} action={action} />
                 <div className="rounded-xl border border-white/10 bg-slate-900 p-2">
                   <textarea className="min-h-20 w-full resize-none rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm outline-none placeholder:text-slate-500 focus:border-emerald-400" placeholder="Reply to visitor..." value={draft} onChange={(event) => setDraft(event.target.value)} />
-                  <div className="mt-2 flex items-center justify-between gap-2">
+                  <div className="mt-2 grid gap-2 sm:flex sm:items-center sm:justify-between">
                     <p className="text-xs text-slate-500">Replies are visible to the visitor.</p>
-                    <Button onClick={() => void sendMessage()} disabled={!draft.trim() || busy === "send_message"}>{busy === "send_message" ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />} Send reply</Button>
+                    <Button className="w-full sm:w-auto" onClick={() => void sendMessage()} disabled={!draft.trim() || busy === "send_message"}>{busy === "send_message" ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />} Send reply</Button>
                   </div>
                 </div>
-                <div className="flex gap-2">
-                  <input className="h-10 flex-1 rounded-md border border-amber-400/20 bg-amber-400/10 px-3 text-sm outline-none placeholder:text-amber-100/50" placeholder="Internal note - never shown to visitor" value={note} onChange={(event) => setNote(event.target.value)} />
-                  <Button variant="secondary" onClick={() => void addNote()} disabled={!note.trim() || busy === "internal_note"}>{busy === "internal_note" ? <Loader2 className="size-4 animate-spin" /> : <NotebookPen className="size-4" />} Note</Button>
+                <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+                  <input className="h-10 min-w-0 rounded-md border border-amber-400/20 bg-amber-400/10 px-3 text-sm outline-none placeholder:text-amber-100/50" placeholder="Internal note - never shown to visitor" value={note} onChange={(event) => setNote(event.target.value)} />
+                  <Button className="w-full sm:w-auto" variant="secondary" onClick={() => void addNote()} disabled={!note.trim() || busy === "internal_note"}>{busy === "internal_note" ? <Loader2 className="size-4 animate-spin" /> : <NotebookPen className="size-4" />} Note</Button>
                 </div>
               </div>
             ) : null}
           </main>
 
           <aside className="border-t border-white/10 lg:border-l lg:border-t-0">
-            <div className="max-h-[680px] space-y-4 overflow-y-auto p-4">
+            <div className="max-h-none space-y-4 overflow-y-visible p-3 sm:p-4 lg:max-h-[680px] lg:overflow-y-auto">
               <ContextPanel conversation={activeConversation} events={data.events} startConversation={startConversation} visitors={data.activeVisitors} />
               <ManagementPanel data={data} activeConversation={activeConversation} action={action} busy={busy} />
             </div>
@@ -405,7 +405,7 @@ export function LiveChatHub() {
 function Metric({ icon: Icon, label, value, tone = "slate" }: { icon: typeof MessageSquare; label: string; value: number | string; tone?: "slate" | "emerald" | "amber" | "cyan" }) {
   const tones = { slate: "text-slate-300 bg-slate-800", emerald: "text-emerald-200 bg-emerald-500/15", amber: "text-amber-200 bg-amber-500/15", cyan: "text-cyan-200 bg-cyan-500/15" };
   return (
-    <div className="rounded-lg border border-white/10 bg-slate-900/70 p-4">
+    <div className="min-w-0 rounded-lg border border-white/10 bg-slate-900/70 p-4">
       <div className="flex items-center justify-between">
         <span className={cn("flex size-10 items-center justify-center rounded-md", tones[tone])}><Icon className="size-5" /></span>
         <p className="text-2xl font-black text-white">{value}</p>
@@ -427,21 +427,21 @@ function ConversationRow({ conversation, active, onOpen }: { conversation: LiveC
         urgent && !active && "bg-amber-400/10 shadow-[inset_3px_0_0_rgba(251,191,36,0.95)]",
       )}
     >
-      <div className="flex gap-3">
+      <div className="flex min-w-0 gap-3">
         <span className={cn("relative grid size-10 shrink-0 place-items-center rounded-full text-sm font-black text-slate-950", urgent ? "bg-gradient-to-br from-amber-300 to-emerald-300" : "bg-gradient-to-br from-emerald-400 to-cyan-400")}>
           {visitorInitials(conversation.visitor)}
           <span className={cn("absolute -bottom-0.5 -right-0.5 size-3 rounded-full border-2 border-slate-950", urgent ? "bg-amber-300" : "bg-emerald-400")} />
         </span>
         <span className="min-w-0 flex-1">
-          <span className="flex items-center justify-between gap-3">
-            <span className={cn("truncate text-sm", urgent ? "font-black text-white" : "font-black text-slate-100")}>{visitorDisplayName(conversation.visitor)}</span>
-            <span className="flex shrink-0 items-center gap-1.5">
+          <span className="grid min-w-0 gap-2 min-[420px]:grid-cols-[minmax(0,1fr)_auto] min-[420px]:items-center">
+            <span className={cn("min-w-0 truncate text-sm", urgent ? "font-black text-white" : "font-black text-slate-100")}>{visitorDisplayName(conversation.visitor)}</span>
+            <span className="flex min-w-0 flex-wrap items-center gap-1.5">
               {urgent ? <span className="rounded-full bg-amber-300 px-2 py-0.5 text-[10px] font-black uppercase text-slate-950">New reply</span> : null}
               <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-black", statusTone(conversation.status))}>{conversation.status.replace(/_/g, " ")}</span>
             </span>
           </span>
           <span className={cn("mt-1 block truncate text-xs", urgent ? "font-black text-amber-50" : "text-slate-300")}>{lastPreviewLabel(conversation)}</span>
-          <span className="mt-2 flex items-center gap-1 truncate text-[11px] text-slate-500"><Globe2 className="size-3" /> {pageLabel(conversation.visitor.currentTitle || conversation.currentTitle, conversation.visitor.currentPath || conversation.currentPath)}</span>
+          <span className="mt-2 flex min-w-0 items-center gap-1 text-[11px] text-slate-500"><Globe2 className="size-3 shrink-0" /> <span className="truncate">{pageLabel(conversation.visitor.currentTitle || conversation.currentTitle, conversation.visitor.currentPath || conversation.currentPath)}</span></span>
         </span>
       </div>
     </button>
@@ -453,7 +453,7 @@ function ConversationHeader({ conversation, data, action, busy, onDelete }: { co
   const lastSeen = new Date(conversation.visitor.lastSeenAt);
   const lastSeenLabel = Number.isNaN(lastSeen.getTime()) ? "Recently active" : `Last seen ${lastSeen.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
   return (
-    <div className="border-b border-white/10 bg-slate-950 p-4">
+    <div className="border-b border-white/10 bg-slate-950 p-3 sm:p-4">
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="min-w-0">
           <div className="flex items-start gap-3">
@@ -462,7 +462,7 @@ function ConversationHeader({ conversation, data, action, busy, onDelete }: { co
             </span>
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
-                <p className="truncate text-xl font-black text-white">{visitorDisplayName(conversation.visitor)}</p>
+                <p className="min-w-0 break-words text-lg font-black leading-tight text-white sm:text-xl">{visitorDisplayName(conversation.visitor)}</p>
                 <span className={cn("rounded-full px-2 py-1 text-[10px] font-black uppercase", statusTone(conversation.status))}>{conversation.status.replace(/_/g, " ")}</span>
                 <span className="rounded-full bg-slate-800 px-2 py-1 text-[10px] font-black uppercase text-slate-300">{conversation.priority}</span>
               </div>
@@ -497,7 +497,7 @@ function ConversationHeader({ conversation, data, action, busy, onDelete }: { co
               variant="secondary"
               onClick={() => void onDelete(conversation)}
               disabled={busy === `delete_conversation:${conversation.id}`}
-              className="mt-1 justify-self-start"
+              className="mt-1 w-full justify-self-start sm:w-auto"
             >
               {busy === `delete_conversation:${conversation.id}` ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />} Delete
             </Button>
@@ -512,7 +512,7 @@ function MiniFact({ icon: Icon, label, value }: { icon: LucideIcon; label: strin
   return (
     <div className="min-w-0 rounded-xl border border-white/10 bg-slate-900 px-3 py-2">
       <p className="flex items-center gap-1.5 text-[10px] font-black uppercase text-slate-500"><Icon className="size-3 text-emerald-300" /> {label}</p>
-      <p className="mt-1 truncate text-xs font-semibold text-slate-200" title={value}>{value}</p>
+      <p className="mt-1 break-words text-xs font-semibold text-slate-200 [overflow-wrap:anywhere]" title={value}>{value}</p>
     </div>
   );
 }
@@ -535,11 +535,11 @@ function AdminMessage({ message }: { message: LiveChatMessageView }) {
   if (system) return <p className="mx-auto max-w-xl rounded-full bg-slate-800 px-4 py-2 text-center text-xs font-semibold text-slate-300 shadow-sm ring-1 ring-white/10">{message.body}</p>;
   const card = message.metadata && typeof message.metadata === "object" ? message.metadata as { url?: string; title?: string; kind?: string } : null;
   return (
-    <div className={cn("flex", staff ? "justify-end" : "justify-start")}>
-      <div className={cn("max-w-[78%] rounded-[18px] border px-3.5 py-2.5 text-sm shadow-sm", internal ? "rounded-bl-md border-amber-400/30 bg-amber-400/10 text-amber-100" : staff ? "rounded-br-md border-emerald-500/20 bg-emerald-600 text-white" : "rounded-bl-md border-white/10 bg-slate-900 text-slate-100")}>
+    <div className={cn("flex min-w-0", staff ? "justify-end" : "justify-start")}>
+      <div className={cn("max-w-[92%] break-words rounded-[18px] border px-3.5 py-2.5 text-sm shadow-sm [overflow-wrap:anywhere] sm:max-w-[78%]", internal ? "rounded-bl-md border-amber-400/30 bg-amber-400/10 text-amber-100" : staff ? "rounded-br-md border-emerald-500/20 bg-emerald-600 text-white" : "rounded-bl-md border-white/10 bg-slate-900 text-slate-100")}>
         <p className={cn("mb-1 text-[10px] font-black uppercase", staff ? "text-emerald-50/80" : "text-emerald-600 dark:text-emerald-300")}>{internal ? "Internal note" : message.senderName || message.senderKind}</p>
         <p className="whitespace-pre-wrap leading-6">{message.body}</p>
-        {card?.url ? <a className="mt-2 block rounded-md bg-white/15 px-3 py-2 text-xs font-bold underline-offset-2 hover:underline" href={card.url} target="_blank" rel="noreferrer">{card.title || card.url}</a> : null}
+        {card?.url ? <a className="mt-2 block break-words rounded-md bg-white/15 px-3 py-2 text-xs font-bold underline-offset-2 [overflow-wrap:anywhere] hover:underline" href={card.url} target="_blank" rel="noreferrer">{card.title || card.url}</a> : null}
         <p className={cn("mt-1 text-[10px]", staff ? "text-emerald-50/80" : "text-slate-400")}>{new Date(message.createdAt).toLocaleString()}</p>
       </div>
     </div>
@@ -556,8 +556,9 @@ function ContextActions({ conversation, action }: { conversation: LiveChatConver
   const messageType = isLibrary ? "PRODUCT_CARD" : isProperty ? "PROPERTY_CARD" : isAcademy ? "COURSE_CARD" : "LINK";
   const Icon = isLibrary ? BookOpen : isProperty ? Building2 : isAcademy ? GraduationCap : MessageSquare;
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className="grid gap-2 sm:flex sm:flex-wrap">
       <Button
+        className="w-full sm:w-auto"
         variant="secondary"
         onClick={() => void action({
           action: "send_message",
@@ -575,7 +576,7 @@ function ContextActions({ conversation, action }: { conversation: LiveChatConver
 
 function QuickReplies({ data, onPick }: { data: LiveChatInboxView; onPick: (body: string) => void }) {
   return (
-    <div className="flex gap-2 overflow-x-auto pb-1">
+    <div className="flex min-w-0 gap-2 overflow-x-auto pb-1 [scrollbar-width:none]">
       {data.quickReplies.filter((reply) => reply.active).slice(0, 8).map((reply) => (
         <button key={reply.id} type="button" onClick={() => onPick(reply.body)} className="shrink-0 rounded-full border border-white/10 bg-slate-900 px-3 py-1.5 text-xs font-bold text-slate-300 hover:border-emerald-400 hover:text-emerald-200">
           {reply.shortcut} {reply.title}
@@ -587,7 +588,7 @@ function QuickReplies({ data, onPick }: { data: LiveChatInboxView; onPick: (body
 
 function ContextPanel({ conversation, events, visitors, startConversation }: { conversation: LiveChatConversationView | null; events: LiveChatInboxView["events"]; visitors: LiveChatInboxView["activeVisitors"]; startConversation: (visitorId: string, message?: string) => Promise<void> }) {
   return (
-    <section className="rounded-2xl border border-white/10 bg-slate-900 p-4">
+    <section className="min-w-0 rounded-2xl border border-white/10 bg-slate-900 p-3 sm:p-4">
       <h3 className="flex items-center gap-2 text-sm font-black uppercase tracking-wider text-slate-300"><Users className="size-4 text-emerald-300" /> Visitor profile</h3>
       {conversation ? (
         <div className="mt-4 space-y-3 text-sm">
@@ -619,7 +620,7 @@ function ContextPanel({ conversation, events, visitors, startConversation }: { c
             {events.slice(0, 10).map((event) => (
               <div key={event.id} className="border-l border-emerald-500/40 pl-3">
                 <p className="text-xs font-bold text-slate-200">{event.eventType.replace(/_/g, " ")}</p>
-                <p className="truncate text-[11px] text-slate-500">{event.title || event.path || new Date(event.createdAt).toLocaleString()}</p>
+              <p className="break-words text-[11px] text-slate-500 [overflow-wrap:anywhere]">{event.title || event.path || new Date(event.createdAt).toLocaleString()}</p>
               </div>
             ))}
           </div>
@@ -641,25 +642,25 @@ function VisitorsPanel({
   startingVisitorId: string | null;
 }) {
   return (
-    <div className="grid gap-3 p-4 md:grid-cols-2 xl:grid-cols-3">
+    <div className="grid min-w-0 grid-cols-1 gap-3 p-3 sm:p-4 md:grid-cols-2 xl:grid-cols-3">
       {visitors.length ? visitors.map((visitor) => {
         const hasConversation = Boolean(visitor.conversationId);
         const loading = startingVisitorId === visitor.id;
         const actionLabel = visitor.conversation ? visitorActionLabel(visitor.conversation.status) : "Start helpful chat";
         return (
-          <article key={visitor.id} className={cn("rounded-2xl border bg-slate-900 p-4", hasConversation ? "border-emerald-400/30" : "border-white/10")}>
-            <div className="flex items-start justify-between gap-3">
+          <article key={visitor.id} className={cn("min-w-0 rounded-2xl border bg-slate-900 p-3 sm:p-4", hasConversation ? "border-emerald-400/30" : "border-white/10")}>
+            <div className="grid min-w-0 gap-3 min-[420px]:grid-cols-[minmax(0,1fr)_auto]">
               <div className="flex min-w-0 gap-3">
                 <span className="relative grid size-11 shrink-0 place-items-center rounded-full bg-gradient-to-br from-emerald-400 to-cyan-400 text-sm font-black text-slate-950">
                   {visitorInitials(visitor)}
                   <span className="absolute -bottom-0.5 -right-0.5 size-3 rounded-full border-2 border-slate-900 bg-emerald-400" />
                 </span>
                 <div className="min-w-0">
-                  <p className="font-black text-white">{visitorDisplayName(visitor)}</p>
+                  <p className="break-words font-black text-white [overflow-wrap:anywhere]">{visitorDisplayName(visitor)}</p>
                   <p className="mt-1 truncate text-sm text-slate-400">{visitor.currentTitle || visitor.currentPath || "Browsing HouseLink"}</p>
                 </div>
               </div>
-              <span className={cn("rounded-full px-2 py-1 text-[11px] font-black uppercase", hasConversation ? statusTone(visitor.conversation?.status || "OPEN") : "bg-emerald-500/15 text-emerald-200")}>
+              <span className={cn("w-fit rounded-full px-2 py-1 text-[11px] font-black uppercase", hasConversation ? statusTone(visitor.conversation?.status || "OPEN") : "bg-emerald-500/15 text-emerald-200")}>
                 {hasConversation ? visitor.conversation?.status.replace(/_/g, " ") : "LIVE"}
               </span>
             </div>
@@ -721,11 +722,11 @@ function ProfilePanel({ data, action, busy }: { data: LiveChatInboxView; action:
   }
 
   return (
-    <div className="grid gap-4 p-4 xl:grid-cols-[360px_minmax(0,1fr)]">
-      <section className="overflow-hidden rounded-lg border border-white/10 bg-slate-900">
+    <div className="grid min-w-0 grid-cols-1 gap-4 p-3 sm:p-4 xl:grid-cols-[minmax(280px,360px)_minmax(0,1fr)]">
+      <section className="min-w-0 overflow-hidden rounded-lg border border-white/10 bg-slate-900">
         <div className="border-b border-white/10 bg-gradient-to-br from-emerald-500/20 via-slate-900 to-slate-950 p-4">
           <p className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-emerald-200"><UserCog className="size-4" /> Public team profile</p>
-          <div className="mt-5 flex items-center gap-4">
+          <div className="mt-5 flex min-w-0 items-center gap-4">
             <span
               className="grid size-20 shrink-0 place-items-center overflow-hidden rounded-xl border border-white/15 bg-emerald-500 bg-cover bg-center text-2xl font-black text-white shadow-lg shadow-emerald-950/30"
               style={avatarUrl ? { backgroundImage: `url(${avatarUrl})` } : undefined}
@@ -747,15 +748,15 @@ function ProfilePanel({ data, action, busy }: { data: LiveChatInboxView; action:
           </div>
         </div>
       </section>
-      <section className="rounded-lg border border-white/10 bg-slate-900 p-4">
+      <section className="min-w-0 rounded-lg border border-white/10 bg-slate-900 p-3 sm:p-4">
         <div className="grid gap-3 md:grid-cols-2">
           <Field label="Display name" value={displayName} onChange={setDisplayName} placeholder="e.g. Tendai from HouseLink" />
           <Field label="Title" value={title} onChange={setTitle} placeholder="e.g. Property & Library Support" />
           <label className="block">
             <span className="text-xs font-black uppercase text-slate-500">Profile photo</span>
-            <div className="mt-1 flex gap-2">
-              <input className="h-11 min-w-0 flex-1 rounded-md border border-white/10 bg-slate-950 px-3 text-sm text-white outline-none focus:border-emerald-400" value={avatarUrl} onChange={(event) => setAvatarUrl(event.target.value)} placeholder="Paste image URL or upload" />
-              <Button type="button" variant="secondary" onClick={() => inputRef.current?.click()} disabled={uploadingAvatar} className="shrink-0">
+            <div className="mt-1 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+              <input className="h-11 min-w-0 rounded-md border border-white/10 bg-slate-950 px-3 text-sm text-white outline-none focus:border-emerald-400" value={avatarUrl} onChange={(event) => setAvatarUrl(event.target.value)} placeholder="Paste image URL or upload" />
+              <Button type="button" variant="secondary" onClick={() => inputRef.current?.click()} disabled={uploadingAvatar} className="w-full sm:w-auto sm:shrink-0">
                 {uploadingAvatar ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}
                 {uploadingAvatar ? "Uploading" : "Upload"}
               </Button>
@@ -802,13 +803,13 @@ function SettingsPanel({ data, action, busy }: { data: LiveChatInboxView; action
   const [retentionDays, setRetentionDays] = useState(String(data.settings.retentionDays || 180));
   const [mobilePosition, setMobilePosition] = useState(data.settings.mobilePosition || "bottom-right");
   return (
-    <div className="p-4">
-      <section className="overflow-hidden rounded-lg border border-white/10 bg-slate-900">
+    <div className="min-w-0 p-3 sm:p-4">
+      <section className="min-w-0 overflow-hidden rounded-lg border border-white/10 bg-slate-900">
         <div className="border-b border-white/10 bg-slate-950/70 p-4">
           <h3 className="flex items-center gap-2 text-sm font-black uppercase tracking-wider text-slate-200"><SlidersHorizontal className="size-4 text-emerald-300" /> Live Chat settings</h3>
           <p className="mt-1 text-sm text-slate-400">Control the public widget, routing defaults, contact capture, retention, and the exact words visitors see.</p>
         </div>
-        <div className="grid gap-4 p-4 xl:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="grid min-w-0 grid-cols-1 gap-4 p-3 sm:p-4 xl:grid-cols-[minmax(0,1fr)_minmax(280px,360px)]">
           <div className="space-y-4">
             <div className="grid gap-3 md:grid-cols-2">
               <Toggle label="Chat enabled" checked={enabled} onChange={setEnabled} />
@@ -856,7 +857,7 @@ function SettingsPanel({ data, action, busy }: { data: LiveChatInboxView; action
               </label>
             </div>
           </div>
-          <aside className="rounded-lg border border-emerald-400/20 bg-emerald-400/10 p-4 text-emerald-50">
+          <aside className="min-w-0 rounded-lg border border-emerald-400/20 bg-emerald-400/10 p-4 text-emerald-50">
             <p className="flex items-center gap-2 text-sm font-black"><Sparkles className="size-4" /> HouseLink standard</p>
             <div className="mt-4 space-y-3 text-sm leading-6 text-emerald-50/85">
               <p>Use proactive messages for checkout, Library samples, payment help, and high-intent listing visitors.</p>
@@ -866,7 +867,7 @@ function SettingsPanel({ data, action, busy }: { data: LiveChatInboxView; action
           </aside>
         </div>
         <div className="border-t border-white/10 p-4">
-          <Button onClick={() => void action({ action: "settings", enabled, proactiveEnabled, soundEnabled, requireContact, widgetGreeting, welcomeMessage, offlineMessage, privacyNotice, defaultDepartmentId, businessTimezone, retentionDays: Number(retentionDays) || 180, mobilePosition }, "Live Chat settings saved.")} disabled={busy === "settings"}>
+          <Button className="w-full sm:w-auto" onClick={() => void action({ action: "settings", enabled, proactiveEnabled, soundEnabled, requireContact, widgetGreeting, welcomeMessage, offlineMessage, privacyNotice, defaultDepartmentId, businessTimezone, retentionDays: Number(retentionDays) || 180, mobilePosition }, "Live Chat settings saved.")} disabled={busy === "settings"}>
             {busy === "settings" ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />} Save settings
           </Button>
         </div>
@@ -879,7 +880,7 @@ function Field({ label, value, onChange, placeholder }: { label: string; value: 
   return (
     <label className="block">
       <span className="text-xs font-black uppercase text-slate-500">{label}</span>
-      <input className="mt-1 h-11 w-full rounded-md border border-white/10 bg-slate-950 px-3 text-sm text-white outline-none focus:border-emerald-400" value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} />
+      <input className="mt-1 h-11 w-full min-w-0 rounded-md border border-white/10 bg-slate-950 px-3 text-sm text-white outline-none focus:border-emerald-400" value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} />
     </label>
   );
 }
@@ -888,14 +889,14 @@ function TextField({ label, value, onChange }: { label: string; value: string; o
   return (
     <label className="block">
       <span className="text-xs font-black uppercase text-slate-500">{label}</span>
-      <textarea className="mt-1 min-h-24 w-full rounded-md border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white outline-none focus:border-emerald-400" value={value} onChange={(event) => onChange(event.target.value)} />
+      <textarea className="mt-1 min-h-24 w-full min-w-0 rounded-md border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white outline-none focus:border-emerald-400" value={value} onChange={(event) => onChange(event.target.value)} />
     </label>
   );
 }
 
 function Toggle({ label, checked, onChange }: { label: string; checked: boolean; onChange: (value: boolean) => void }) {
   return (
-    <label className="flex items-center justify-between gap-3 rounded-md border border-white/10 bg-slate-950 px-3 py-3">
+    <label className="flex min-w-0 items-center justify-between gap-3 rounded-md border border-white/10 bg-slate-950 px-3 py-3">
       <span className="text-sm font-bold text-slate-200">{label}</span>
       <input type="checkbox" className="size-5 accent-emerald-500" checked={checked} onChange={(event) => onChange(event.target.checked)} />
     </label>
@@ -908,8 +909,8 @@ function ManagementPanel({ data, activeConversation, action, busy }: { data: Liv
   const [replyTitle, setReplyTitle] = useState("");
   const [replyBody, setReplyBody] = useState("");
   return (
-    <div className="space-y-4">
-      <section className="rounded-lg border border-white/10 bg-slate-900 p-4">
+    <div className="min-w-0 space-y-4">
+      <section className="min-w-0 rounded-lg border border-white/10 bg-slate-900 p-3 sm:p-4">
         <h3 className="flex items-center gap-2 text-sm font-black uppercase tracking-wider text-slate-300"><Tag className="size-4" /> Tags and leads</h3>
         <div className="mt-3 flex flex-wrap gap-2">
           {data.tags.filter((tag) => tag.active).slice(0, 10).map((tag) => <span key={tag.id} className="rounded-full px-2 py-1 text-[11px] font-bold" style={{ backgroundColor: `${tag.color}22`, color: tag.color }}>{tag.name}</span>)}
@@ -920,12 +921,12 @@ function ManagementPanel({ data, activeConversation, action, busy }: { data: Liv
               {["GENERAL", "LIBRARY", "PROPERTY", "ACADEMY", "SUPPORT"].map((type) => <option key={type} value={type}>{type}</option>)}
             </select>
             <textarea className="min-h-20 w-full rounded-md border border-white/10 bg-slate-950 px-3 py-2 text-sm outline-none" placeholder="Lead note or follow-up context" value={leadNote} onChange={(event) => setLeadNote(event.target.value)} />
-            <Button onClick={() => void action({ action: "lead", conversationId: activeConversation.id, leadType, notes: leadNote }, "Lead created.")} disabled={busy === "lead"}><UserPlus className="size-4" /> Convert to lead</Button>
+            <Button className="w-full sm:w-auto" onClick={() => void action({ action: "lead", conversationId: activeConversation.id, leadType, notes: leadNote }, "Lead created.")} disabled={busy === "lead"}><UserPlus className="size-4" /> Convert to lead</Button>
           </div>
         ) : null}
       </section>
 
-      <section className="rounded-lg border border-white/10 bg-slate-900 p-4">
+      <section className="min-w-0 rounded-lg border border-white/10 bg-slate-900 p-3 sm:p-4">
         <h3 className="flex items-center gap-2 text-sm font-black uppercase tracking-wider text-slate-300"><Shield className="size-4" /> Settings</h3>
         <div className="mt-3 space-y-2 text-sm text-slate-400">
           <p><CheckCircle2 className="mr-1 inline size-4 text-emerald-300" /> Widget: {data.settings.enabled ? "enabled" : "disabled"}</p>
@@ -934,11 +935,11 @@ function ManagementPanel({ data, activeConversation, action, busy }: { data: Liv
         </div>
       </section>
 
-      <section className="rounded-lg border border-white/10 bg-slate-900 p-4">
+      <section className="min-w-0 rounded-lg border border-white/10 bg-slate-900 p-3 sm:p-4">
         <h3 className="flex items-center gap-2 text-sm font-black uppercase tracking-wider text-slate-300"><Headphones className="size-4" /> Quick reply</h3>
         <input className="mt-3 h-10 w-full rounded-md border border-white/10 bg-slate-950 px-3 text-sm outline-none" placeholder="Title" value={replyTitle} onChange={(event) => setReplyTitle(event.target.value)} />
         <textarea className="mt-2 min-h-20 w-full rounded-md border border-white/10 bg-slate-950 px-3 py-2 text-sm outline-none" placeholder="Response text" value={replyBody} onChange={(event) => setReplyBody(event.target.value)} />
-        <Button className="mt-2" variant="secondary" onClick={() => void action({ action: "quick_reply", title: replyTitle, body: replyBody }, "Quick reply saved.").then(() => { setReplyTitle(""); setReplyBody(""); })} disabled={!replyTitle.trim() || !replyBody.trim()}>
+        <Button className="mt-2 w-full sm:w-auto" variant="secondary" onClick={() => void action({ action: "quick_reply", title: replyTitle, body: replyBody }, "Quick reply saved.").then(() => { setReplyTitle(""); setReplyBody(""); })} disabled={!replyTitle.trim() || !replyBody.trim()}>
           Save reply
         </Button>
       </section>
@@ -948,7 +949,7 @@ function ManagementPanel({ data, activeConversation, action, busy }: { data: Liv
 
 function Info({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-md border border-white/10 bg-slate-950 p-3">
+    <div className="min-w-0 rounded-md border border-white/10 bg-slate-950 p-3">
       <p className="text-[11px] font-black uppercase text-slate-500">{label}</p>
       <p className="mt-1 break-words font-semibold text-slate-100">{value}</p>
     </div>
