@@ -4,6 +4,7 @@ import { Bell, ChevronDown, Headphones, Loader2, Mail, MessageCircle, Phone, Sen
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useApp } from "@/components/providers/app-provider";
+import { usePlatformConfig } from "@/components/providers/platform-config-provider";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api/client";
 import { getOrCreateSessionId, getOrCreateVisitorId } from "@/lib/analytics/visitor-client";
@@ -19,6 +20,7 @@ export function LiveChatWidget() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { user } = useApp();
+  const { config } = usePlatformConfig();
   const [open, setOpen] = useState(false);
   const [boot, setBoot] = useState<LiveChatBootstrapView | null>(null);
   const [messages, setMessages] = useState<LiveChatMessageView[]>([]);
@@ -263,11 +265,12 @@ export function LiveChatWidget() {
   if (hiddenOnThisRoute || libraryBagOpen || (boot && !boot.settings.enabled)) return null;
 
   const launcherOnLeft = boot?.settings.mobilePosition === "bottom-left";
-  const launcherPosition = launcherOnLeft ? "left-4 items-start sm:left-5" : "right-4 items-end sm:right-5";
+  const launcherPosition = launcherOnLeft ? "left-3 items-start sm:left-5" : "right-3 items-end sm:right-5";
   const agentName = boot?.supportAgent?.displayName || boot?.settings.teamDisplayName || "HouseLink Live";
+  const replyHint = config?.contact?.stickyWhatsAppQuietHours?.trim();
   const agentIntro = boot?.supportAgent
-    ? boot.supportAgent.publicIntro || `${boot.supportAgent.title || "Support"} is online`
-    : "Leave a message, the team will reply here";
+    ? replyHint || boot.supportAgent.publicIntro || `${boot.supportAgent.title || "Support"} is online`
+    : replyHint || "Leave a message, the team will reply here";
   const currentContext = context.viewed?.productTitle || context.viewed?.propertyTitle || context.viewed?.courseTitle || "this page";
   const quickReplies: Array<{ label: string; body: string; icon: typeof Sparkles; contactField?: "phone" | "email" }> = [
     { label: "Is this right for me?", body: `Hi, I am looking at ${currentContext}. Can you help me decide if it is the right fit for what I need?`, icon: Sparkles },
@@ -435,7 +438,7 @@ export function LiveChatWidget() {
           <button
             type="button"
             onClick={() => toggleOpen(true)}
-            className="group flex max-w-[330px] items-center gap-3 rounded-2xl border border-emerald-100 bg-white/95 p-3 text-left shadow-[0_18px_45px_rgba(15,23,42,0.18)] ring-1 ring-white/80 backdrop-blur transition hover:-translate-y-0.5 hover:border-emerald-300 dark:border-emerald-900 dark:bg-slate-950/95 dark:ring-slate-800"
+            className="group flex w-[min(20rem,calc(100vw-1.5rem))] max-w-[330px] items-center gap-3 rounded-2xl border border-emerald-100 bg-white/95 p-3 text-left shadow-[0_18px_45px_rgba(15,23,42,0.18)] ring-1 ring-white/80 backdrop-blur transition hover:-translate-y-0.5 hover:border-emerald-300 sm:w-[330px] dark:border-emerald-900 dark:bg-slate-950/95 dark:ring-slate-800"
             aria-label="Open HouseLink live chat"
           >
             <span className="relative flex size-12 shrink-0 items-center justify-center rounded-2xl bg-[#06111f] text-white shadow-lg shadow-slate-900/20 dark:bg-emerald-600">
