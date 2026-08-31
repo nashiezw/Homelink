@@ -13,6 +13,7 @@ import {
   Expand,
   FileText,
   Heart,
+  HelpCircle,
   Layers3,
   Lock,
   ReceiptText,
@@ -217,7 +218,7 @@ export function LibraryProductPage({
     if (selectedFormat?.type === "PRINTED_BOOK") {
       const digital = availableLibraryFormats(product).find((format) => format.type !== "PRINTED_BOOK")
         ?? enabledLibraryFormats(product).find((format) => format.type !== "PRINTED_BOOK");
-      if (digital) setSelectedFormatId(digital.id);
+      if (digital) chooseFormat(digital.id, "bundle_unlock");
     }
   }
   const bundlePreferenceLabel =
@@ -283,6 +284,26 @@ export function LibraryProductPage({
   const tableOfContents = product.tableOfContents.filter((item) => item.trim());
   const whoThisIsFor = product.whoThisIsFor.filter((item) => item.trim());
   const includedDownloads = product.downloads.filter((item) => item.label?.trim() && !isLibrarySampleFile(item));
+  const decisionAudience = whoThisIsFor.slice(0, 3).join(", ") || `${product.category} buyers`;
+  const decisionDownloads = includedDownloads.slice(0, 2).map((item) => item.label).join(", ") || `${selectedFormat?.label || "Library resource"} access`;
+  const urgencySignals = [
+    product.bestSeller ? "Best seller" : "",
+    product.newRelease ? "New release" : "",
+    product.viewCount >= 25 ? `Viewed ${product.viewCount} times` : "",
+    selectedFormat?.type === "PRINTED_BOOK" && product.stock != null && product.stock <= Math.max(1, product.lowStockThreshold) && product.stock > 0
+      ? `${product.stock} printed ${product.stock === 1 ? "copy" : "copies"} left`
+      : "",
+    selectedFormat?.type !== "PRINTED_BOOK" ? "Digital access after payment confirmation" : "",
+  ].filter(Boolean);
+  const buyerFaqs = buildBuyerFaqs({
+    productTitle: product.title,
+    selectedFormatLabel: selectedFormat?.label || "this format",
+    isPrinted,
+    sampleAvailable: Boolean(sampleUrl),
+    printStockLabel,
+    currency: product.currency,
+    price: selectedFormat?.price ?? product.price,
+  });
   const shortDescription = product.shortDescription?.replace(/\s+/g, " ").trim() || "";
   const fullDescription = product.description?.trim() || "";
   const compactFullDescription = fullDescription.replace(/\s+/g, " ").trim();
@@ -350,6 +371,7 @@ export function LibraryProductPage({
 
   function openSamplePreview(surface: string) {
     trackSampleOpened(surface);
+    trackEvent("library_cta_clicked", product.id, { title: product.title, slug: product.slug, cta: "preview_sample", surface });
     setPreviewOpen(true);
   }
 
@@ -365,6 +387,24 @@ export function LibraryProductPage({
     setSampleTouched(true);
     trackEvent("library_sample_downloaded", product.id, { title: product.title, slug: product.slug, surface });
     window.open(sampleDownloadUrl, "_blank", "noopener,noreferrer");
+  }
+
+  function chooseFormat(formatId: string, surface: string) {
+    setSelectedFormatId(formatId);
+    const format = formats.find((item) => item.id === formatId);
+    trackEvent("library_format_selected", product.id, {
+      title: product.title,
+      slug: product.slug,
+      formatId,
+      formatType: format?.type,
+      formatLabel: format?.label,
+      surface,
+    });
+  }
+
+  function trackFaqOpened(question: string, open: boolean) {
+    if (!open) return;
+    trackEvent("library_faq_opened", product.id, { title: product.title, slug: product.slug, question });
   }
 
   useEffect(() => {
@@ -540,6 +580,7 @@ export function LibraryProductPage({
 
   function addToCart() {
     if (!selectedFormat) return;
+    trackEvent("library_cta_clicked", product.id, { title: product.title, slug: product.slug, cta: "add_to_cart", formatId: selectedFormat.id });
     const qty = selectedQty;
     setCart((current) => {
       const existing = current.find((line) => line.productId === product.id && line.formatId === selectedFormat.id);
@@ -581,6 +622,7 @@ export function LibraryProductPage({
 
   function buyNow() {
     if (!selectedFormat) return;
+    trackEvent("library_cta_clicked", product.id, { title: product.title, slug: product.slug, cta: "buy_now", formatId: selectedFormat.id });
     const line = cartLineFromFormat(selectedFormat, selectedQty);
     writeLibraryCart([line]);
     trackLibraryCartEvent("CART_ADD_SINGLE", product.id, {
@@ -877,7 +919,7 @@ export function LibraryProductPage({
                         <button
                           key={format.id}
                           type="button"
-                          onClick={() => setSelectedFormatId(format.id)}
+                          onClick={() => chooseFormat(format.id, "hero_format_picker")}
                           className={cn(
                             "rounded-xl border px-4 py-3.5 text-left transition",
                             selected
@@ -1060,9 +1102,44 @@ export function LibraryProductPage({
                     ) : null}
                   </div>
                 ) : null}
+                <div className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50/80 p-4 dark:border-emerald-900 dark:bg-emerald-950/25">
+                  <p className="text-[0.68rem] font-bold uppercase tracking-[0.16em] text-emerald-800 dark:text-emerald-200">Quick decision check</p>
+                  <div className="mt-3 grid gap-2 text-sm leading-6 text-slate-700 dark:text-slate-200">
+                    <p className="flex gap-2">
+                      <Users className="mt-1 size-4 shrink-0 text-emerald-700 dark:text-emerald-300" />
+                      <span><strong>Best for:</strong> {decisionAudience}</span>
+                    </p>
+                    <p className="flex gap-2">
+                      <Download className="mt-1 size-4 shrink-0 text-emerald-700 dark:text-emerald-300" />
+                      <span><strong>You get:</strong> {decisionDownloads}</span>
+                    </p>
+                    <p className="flex gap-2">
+                      <ShieldCheck className="mt-1 size-4 shrink-0 text-emerald-700 dark:text-emerald-300" />
+                      <span><strong>Access:</strong> {isPrinted ? printStockLabel : "available after payment confirmation, with your invoice and Library access tracked."}</span>
+                    </p>
+                  </div>
+                  {urgencySignals.length ? (
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {urgencySignals.slice(0, 3).map((signal) => (
+                        <span key={signal} className="rounded-full bg-white px-2.5 py-1 text-xs font-bold text-emerald-800 ring-1 ring-emerald-100 dark:bg-slate-950 dark:text-emerald-100 dark:ring-emerald-900">
+                          {signal}
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
+                  {sampleUrl ? (
+                    <button
+                      type="button"
+                      onClick={() => openSamplePreview("decision_block")}
+                      className="mt-4 inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-white px-3 text-sm font-bold text-emerald-800 shadow-sm transition hover:border-emerald-400 hover:bg-emerald-50 dark:border-emerald-800 dark:bg-slate-950 dark:text-emerald-100"
+                    >
+                      <FileText className="size-4" /> Preview before buying
+                    </button>
+                  ) : null}
+                </div>
                 <div className="mt-5 grid gap-2.5 sm:grid-cols-2">
                   <Button disabled={outOfStock} onClick={buyNow} className="h-11">
-                    <ShoppingCart className="size-4" /> {product.preorder ? "Pre-order now" : "Buy now"}
+                    <ShoppingCart className="size-4" /> {product.preorder ? "Pre-order now" : isPrinted ? "Buy now" : "Get instant access"}
                   </Button>
                   <Button variant="secondary" disabled={outOfStock} onClick={addToCart} className="h-11">
                     <ShoppingBag className="size-4" /> {productQuantity ? `In bag (${productQuantity})` : "Add to cart"}
@@ -1153,13 +1230,14 @@ export function LibraryProductPage({
               <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight text-ink dark:text-white">
                 <Layers3 className="size-5 text-emerald-700 dark:text-emerald-300" /> What you get
               </h2>
-              <div className="mt-5 grid items-stretch gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                {learningOutcomes.slice(0, 6).map((item) => (
-                  <p key={item} className="flex h-full gap-2 rounded-xl border border-slate-200 bg-white p-3 text-sm leading-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
-                    <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-600" /> {item}
-                  </p>
+              <ol className="mt-5 grid gap-2">
+                {learningOutcomes.slice(0, 6).map((item, index) => (
+                  <li key={item} className="grid min-h-12 grid-cols-[2.75rem_minmax(0,1fr)] items-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm leading-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+                    <span className="text-sm font-bold tabular-nums text-emerald-700 dark:text-emerald-300">{String(index + 1).padStart(2, "0")}</span>
+                    <span>{item}</span>
+                  </li>
                 ))}
-              </div>
+              </ol>
             </section>
           ) : null}
 
@@ -1214,6 +1292,21 @@ export function LibraryProductPage({
               </ol>
             </Panel>
           ) : null}
+
+          <Panel title="Before You Buy" icon={HelpCircle}>
+            <div className="space-y-2">
+              {buyerFaqs.map((faq) => (
+                <details
+                  key={faq.question}
+                  className="rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-950"
+                  onToggle={(event) => trackFaqOpened(faq.question, event.currentTarget.open)}
+                >
+                  <summary className="cursor-pointer text-sm font-semibold text-ink dark:text-white">{faq.question}</summary>
+                  <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">{faq.answer}</p>
+                </details>
+              ))}
+            </div>
+          </Panel>
 
           {includedDownloads.length > 0 ? (
             <Panel title="Downloads Included" icon={Download}>
@@ -1512,7 +1605,7 @@ export function LibraryProductPage({
                     <button
                       key={`aside-${format.id}`}
                       type="button"
-                      onClick={() => setSelectedFormatId(format.id)}
+                      onClick={() => chooseFormat(format.id, "sidebar_format_picker")}
                       className={cn(
                         "flex items-center justify-between gap-2 rounded-lg border px-3 py-2 text-left text-sm transition",
                         selectedFormat?.id === format.id ? "border-emerald-600 bg-emerald-50 dark:bg-emerald-950/30" : "border-slate-200 dark:border-slate-700",
@@ -1534,7 +1627,7 @@ export function LibraryProductPage({
             )}
             <div className="mt-5 grid gap-2">
               <Button disabled={outOfStock} onClick={buyNow}>
-                <ShoppingCart className="size-4" /> {product.preorder ? "Pre-order now" : "Buy now"}
+                <ShoppingCart className="size-4" /> {product.preorder ? "Pre-order now" : isPrinted ? "Buy now" : "Get instant access"}
               </Button>
               <Button variant="secondary" disabled={outOfStock} onClick={addToCart}>
                 <ShoppingBag className="size-4" /> {productQuantity ? `In bag (${productQuantity})` : "Add to cart"}
@@ -1893,6 +1986,41 @@ function readableSubtitle(value: string) {
   if (upperRatio < 0.75) return trimmed;
   const lowered = trimmed.toLowerCase();
   return lowered.replace(/(^\s*[a-z])|([.!?]\s+[a-z])/g, (match) => match.toUpperCase());
+}
+
+function buildBuyerFaqs(input: {
+  productTitle: string;
+  selectedFormatLabel: string;
+  isPrinted: boolean;
+  sampleAvailable: boolean;
+  printStockLabel: string;
+  currency: string;
+  price: number;
+}) {
+  return [
+    {
+      question: "Is this guide right for me?",
+      answer: `${input.productTitle} is for buyers who want practical, Zimbabwe-focused guidance before making property, development, agency, or investment decisions.`,
+    },
+    {
+      question: "What happens after I pay?",
+      answer: input.isPrinted
+        ? `${input.printStockLabel}. After payment is confirmed, the team prepares fulfilment and keeps the order visible in your HouseLink Library account.`
+        : `After payment is confirmed, your ${input.selectedFormatLabel} is unlocked in your HouseLink Library account with invoice-backed access.`,
+    },
+    {
+      question: "Can I preview it before buying?",
+      answer: input.sampleAvailable
+        ? "Yes. Use the sample preview to inspect pages before paying, then return here if it looks like the right fit."
+        : "This product does not currently have a public sample. You can still ask HouseLink Live what is included before purchasing.",
+    },
+    {
+      question: "Which format should I choose?",
+      answer: input.isPrinted
+        ? `Choose printed if you want a physical copy. The selected price is ${input.currency} ${input.price.toFixed(2)} before any bulk tiers.`
+        : `Choose digital if you want the fastest access. The selected price is ${input.currency} ${input.price.toFixed(2)} and access is handled through your Library account after payment confirmation.`,
+    },
+  ];
 }
 
 function Panel({ title, icon: Icon, action, children }: { title: string; icon: typeof FileText; action?: React.ReactNode; children: React.ReactNode }) {

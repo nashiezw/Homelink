@@ -267,8 +267,8 @@ export function LiveChatWidget() {
     : "Leave a message, the team will reply here";
   const currentContext = context.viewed?.productTitle || context.viewed?.propertyTitle || context.viewed?.courseTitle || "this page";
   const quickReplies: Array<{ label: string; body: string; icon: typeof Sparkles; contactField?: "phone" | "email" }> = [
-    { label: "Help me buy this", body: `Hi, I am interested in ${currentContext}. Please help me with the best next step.`, icon: Sparkles },
-    { label: "Payment help", body: `Hi, I need help paying for ${currentContext}.`, icon: ShieldCheck },
+    { label: "Is this right for me?", body: `Hi, I am looking at ${currentContext}. Can you help me decide if it is the right fit for what I need?`, icon: Sparkles },
+    { label: "Payment help", body: `Hi, I want to buy ${currentContext}, but I need help with payment or proof upload.`, icon: ShieldCheck },
     { label: "WhatsApp me", body: "", icon: Phone, contactField: "phone" as const },
     { label: "Email me details", body: "", icon: Mail, contactField: "email" as const },
   ];

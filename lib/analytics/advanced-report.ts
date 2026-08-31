@@ -154,6 +154,9 @@ function formatLiveStepName(name: string) {
   if (name === "library_sample_opened") return "Opened sample";
   if (name === "library_sample_viewed") return "Viewed sample";
   if (name === "library_sample_downloaded") return "Downloaded sample";
+  if (name === "library_format_selected") return "Chose format";
+  if (name === "library_faq_opened") return "Opened buyer FAQ";
+  if (name === "library_cta_clicked") return "Clicked purchase CTA";
   if (name === "library_exit_intent_shown") return "Exit help shown";
   if (name === "library_exit_intent_dismissed") return "Dismissed exit help";
   if (name === "library_exit_lead_captured") return "Exit details captured";
@@ -1028,6 +1031,9 @@ async function buildAdvancedSiteAnalyticsReport(days = 30): Promise<AdvancedSite
       }
       if (event.name === "library_download_started") engagementMap.set("download starts", (engagementMap.get("download starts") ?? 0) + 1);
       if (event.name === "library_download_completed") engagementMap.set("download completes", (engagementMap.get("download completes") ?? 0) + 1);
+      if (event.name === "library_format_selected") engagementMap.set("format selections", (engagementMap.get("format selections") ?? 0) + 1);
+      if (event.name === "library_faq_opened") engagementMap.set("buyer FAQ opens", (engagementMap.get("buyer FAQ opens") ?? 0) + 1);
+      if (event.name === "library_cta_clicked") engagementMap.set("purchase CTA clicks", (engagementMap.get("purchase CTA clicks") ?? 0) + 1);
       if (event.name === "library_review_submitted") engagementMap.set("reviews submitted", (engagementMap.get("reviews submitted") ?? 0) + 1);
       if (event.name === "library_bundle_shown") engagementMap.set("bundle rails shown", (engagementMap.get("bundle rails shown") ?? 0) + 1);
       if (event.name === "gallery_opened") engagementMap.set("gallery opens", (engagementMap.get("gallery opens") ?? 0) + 1);
