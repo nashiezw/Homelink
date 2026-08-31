@@ -43,23 +43,34 @@ async function playLiveChatNotificationSoundNow() {
     const audio = getAudioContext();
     if (!audio) return;
     if (audio.state === "suspended") await audio.resume();
-    const first = audio.createOscillator();
-    const second = audio.createOscillator();
-    const gain = audio.createGain();
-    first.type = "sine";
-    second.type = "sine";
-    first.frequency.value = 740;
-    second.frequency.value = 980;
-    gain.gain.setValueAtTime(0.0001, audio.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.055, audio.currentTime + 0.02);
-    gain.gain.exponentialRampToValueAtTime(0.0001, audio.currentTime + 0.34);
-    first.connect(gain);
-    second.connect(gain);
-    gain.connect(audio.destination);
-    first.start(audio.currentTime);
-    first.stop(audio.currentTime + 0.18);
-    second.start(audio.currentTime + 0.13);
-    second.stop(audio.currentTime + 0.34);
+
+    const start = audio.currentTime;
+    const master = audio.createGain();
+    const compressor = audio.createDynamicsCompressor();
+    master.gain.setValueAtTime(0.0001, start);
+    master.gain.exponentialRampToValueAtTime(0.16, start + 0.025);
+    master.gain.setValueAtTime(0.16, start + 0.42);
+    master.gain.exponentialRampToValueAtTime(0.0001, start + 1.05);
+    master.connect(compressor);
+    compressor.connect(audio.destination);
+
+    [
+      { frequency: 740, startOffset: 0, duration: 0.28 },
+      { frequency: 980, startOffset: 0.22, duration: 0.32 },
+      { frequency: 1240, startOffset: 0.52, duration: 0.34 },
+    ].forEach(({ frequency, startOffset, duration }) => {
+      const oscillator = audio.createOscillator();
+      const noteGain = audio.createGain();
+      oscillator.type = "sine";
+      oscillator.frequency.value = frequency;
+      noteGain.gain.setValueAtTime(0.0001, start + startOffset);
+      noteGain.gain.exponentialRampToValueAtTime(0.72, start + startOffset + 0.025);
+      noteGain.gain.exponentialRampToValueAtTime(0.0001, start + startOffset + duration);
+      oscillator.connect(noteGain);
+      noteGain.connect(master);
+      oscillator.start(start + startOffset);
+      oscillator.stop(start + startOffset + duration + 0.04);
+    });
     unlocked = true;
   } catch {
     // Browsers can still block audio before user interaction; visual alerts remain available.

@@ -162,6 +162,11 @@ const checks = [
     pattern: /audio\.state === "suspended"\) await audio\.resume/,
   },
   {
+    file: "lib/live-chat/notification-sound.ts",
+    label: "live chat notification sound is longer and louder than a short beep",
+    pattern: /exponentialRampToValueAtTime\(0\.16[\s\S]*start \+ 1\.05[\s\S]*1240/,
+  },
+  {
     file: "components/admin/live-chat-hub.tsx",
     label: "live visitors can open an existing conversation instead of starting a duplicate",
     pattern: /visitorActionLabel\(visitor\.conversation\.status\)/,
