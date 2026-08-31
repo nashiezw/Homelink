@@ -34,10 +34,10 @@ export function LibraryCartFab({ className }: { className?: string }) {
       data-houselink-sticky="library-bag"
       className={cn(
         "fixed right-4 z-[60] flex flex-col items-end gap-3 sm:right-5 lg:hidden",
-        // Lift above the product-page mobile "Add bundle" dock when present.
+        // Keep the Library bag above the closed HouseLink Live launcher on mobile.
         bottomDock
-          ? "bottom-[calc(5.75rem+env(safe-area-inset-bottom))]"
-          : "bottom-[max(1.25rem,env(safe-area-inset-bottom))]",
+          ? "bottom-[calc(10rem+env(safe-area-inset-bottom))]"
+          : "bottom-[calc(5.25rem+env(safe-area-inset-bottom))]",
         className,
       )}
     >

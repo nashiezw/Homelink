@@ -33,13 +33,18 @@ const checks = [
   },
   {
     file: "components/live-chat/live-chat-widget.tsx",
-    label: "closed live chat launcher lifts above the mobile Library cart FAB",
-    pattern: /closedLiftForCart/,
+    label: "closed live chat launcher sits above the product mobile action dock",
+    pattern: /bottom-\[calc\(5\.75rem\+env\(safe-area-inset-bottom\)\)\]/,
+  },
+  {
+    file: "components/library/library-cart-fab.tsx",
+    label: "mobile Library cart FAB lifts above the closed live chat launcher",
+    pattern: /bottom-\[calc\(10rem\+env\(safe-area-inset-bottom\)\)\]/,
   },
   {
     file: "components/live-chat/live-chat-widget.tsx",
-    label: "public live chat bootstrap cannot leave the mobile widget spinning indefinitely",
-    pattern: /controller\.abort\(\)/,
+    label: "public live chat bootstrap uses a slow connection state instead of a false offline error",
+    pattern: /setSlowBootstrap\(true\)/,
   },
   {
     file: "components/layout/whatsapp-sticky-fab.tsx",
