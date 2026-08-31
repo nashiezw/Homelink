@@ -45,6 +45,9 @@ assert(/CREATE TABLE IF NOT EXISTS "SitePresence"/.test(prodSchema), "SitePresen
 assert(/upsertSitePresence|listLivePresence/.test(presence), "presence helpers exist");
 assert(/getAdvancedSiteAnalyticsReport/.test(report), "advanced report exists");
 assert(/products/.test(report) && /journeys/.test(report) && /cartActivity/.test(report) && /live:/.test(report), "advanced report covers products/carts/journeys/live");
+assert(/librarySlugFromPath/.test(report) && /productAliases/.test(report), "product analytics normalizes library slugs and titles");
+assert(/productPageViews/.test(report) && /sitePageView[\s\S]*startsWith: "\/library\/"/.test(report), "product analytics includes library page views");
+assert(/addProductView/.test(report) && /library_product_viewed[\s\S]*addProductView/.test(report), "product analytics dedupes event and page-view counts");
 assert(/Live now|Products|Carts|Journeys/.test(panel), "admin panel has advanced tabs");
 assert(/kind: "presence"|kind === "presence"|presence/.test(tracker), "tracker sends presence heartbeat");
 assert(/library_cart_removed|CART_REMOVE/.test(cart), "cart client tracks removes");

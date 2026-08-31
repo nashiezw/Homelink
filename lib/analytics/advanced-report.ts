@@ -42,6 +42,27 @@ function productKey(target: string | null | undefined, meta: Meta) {
   return fromMeta || targetValue || "";
 }
 
+function safeDecodePathPart(value: string) {
+  try {
+    return decodeURIComponent(value).toLowerCase();
+  } catch {
+    return value.toLowerCase();
+  }
+}
+
+function librarySlugFromPath(value: string | null | undefined) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  try {
+    const url = new URL(raw, "https://www.houselink.co.zw");
+    const parts = url.pathname.split("/").filter(Boolean);
+    return parts[0] === "library" && parts[1] && parts[1] !== "checkout" ? safeDecodePathPart(parts[1]) : "";
+  } catch {
+    const parts = raw.split("?")[0]?.split("#")[0]?.split("/").filter(Boolean) ?? [];
+    return parts[0] === "library" && parts[1] && parts[1] !== "checkout" ? safeDecodePathPart(parts[1]) : "";
+  }
+}
+
 function productTitle(target: string | null | undefined, meta: Meta, catalogTitle?: string) {
   const fromMeta = metaStr(meta, "title", "productTitle");
   if (fromMeta && !looksLikeProductId(fromMeta)) return fromMeta;
@@ -56,6 +77,14 @@ function resolveDisplayTitle(title: string, productId: string, catalogTitles: Ma
   if (catalog) return catalog;
   if (title && !looksLikeProductId(title) && title !== "Unknown product") return title;
   return catalog || "Unknown product";
+}
+
+function normalizeTitleKey(value: string | null | undefined) {
+  return String(value || "")
+    .replace(/\s*[|–-]\s*HouseLink.*$/i, "")
+    .replace(/\s*[|–-]\s*Library.*$/i, "")
+    .trim()
+    .toLowerCase();
 }
 
 function cleanUrlPath(path: string | null | undefined) {
@@ -734,7 +763,7 @@ async function buildAdvancedSiteAnalyticsReport(days = 30): Promise<AdvancedSite
     const startOfToday = new Date();
     startOfToday.setHours(0, 0, 0, 0);
 
-    const [funnels, liveRows, orders, firstViews, abandoned, catalog, views24h, views7d, events24h, events7d, platform] =
+    const [funnels, liveRows, orders, firstViews, abandoned, catalog, productPageViews, views24h, views7d, events24h, events7d, platform] =
       await Promise.all([
         prisma.siteFunnelEvent.findMany({
           where: { createdAt: { gte: since }, ...publicFunnelWhere },
@@ -799,8 +828,26 @@ async function buildAdvancedSiteAnalyticsReport(days = 30): Promise<AdvancedSite
         prisma.libraryProduct
           .findMany({
             where: { deletedAt: null },
-            select: { id: true, title: true, stock: true, lowStockThreshold: true, status: true },
+            select: { id: true, slug: true, title: true, stock: true, lowStockThreshold: true, status: true },
             take: 500,
+          })
+          .catch(() => []),
+        prisma.sitePageView
+          .findMany({
+            where: {
+              startedAt: { gte: since },
+              ...publicPageWhere,
+              OR: [{ path: { startsWith: "/library/" } }, { path: { contains: "houselink.co.zw/library/" } }],
+            },
+            select: {
+              visitorId: true,
+              sessionId: true,
+              path: true,
+              title: true,
+              startedAt: true,
+            },
+            orderBy: { startedAt: "desc" },
+            take: 5000,
           })
           .catch(() => []),
         prisma.sitePageView.count({ where: { startedAt: { gte: dayAgo }, ...publicPageWhere } }).catch(() => 0),
@@ -823,26 +870,61 @@ async function buildAdvancedSiteAnalyticsReport(days = 30): Promise<AdvancedSite
         purchases: number;
         samples: number;
         formats: Record<string, number>;
+        viewKeys: Set<string>;
       }
     >();
 
     const catalogTitles = new Map(catalog.map((row) => [row.id, row.title]));
+    const productAliases = new Map<string, string>();
+    for (const row of catalog) {
+      productAliases.set(row.id, row.id);
+      if (row.slug) {
+        productAliases.set(row.slug.toLowerCase(), row.id);
+        productAliases.set(`/library/${row.slug}`.toLowerCase(), row.id);
+      }
+      const titleKey = normalizeTitleKey(row.title);
+      if (titleKey) productAliases.set(titleKey, row.id);
+    }
+
+    const resolveProductId = (rawId: string, title: string, path?: string | null) => {
+      const id = rawId.trim();
+      if (id && catalogTitles.has(id)) return id;
+      const slug = librarySlugFromPath(path || id);
+      if (slug && productAliases.has(slug)) return productAliases.get(slug)!;
+      if (id && productAliases.has(id.toLowerCase())) return productAliases.get(id.toLowerCase())!;
+      const titleKey = normalizeTitleKey(title);
+      if (titleKey && productAliases.has(titleKey)) return productAliases.get(titleKey)!;
+      return id;
+    };
 
     const ensureProduct = (id: string, title: string) => {
       if (!id) return null;
-      const resolved = resolveDisplayTitle(title, id, catalogTitles);
-      let row = productMap.get(id);
+      const productId = resolveProductId(id, title);
+      const resolved = resolveDisplayTitle(title, productId, catalogTitles);
+      let row = productMap.get(productId);
       if (!row) {
-        row = { productId: id, title: resolved, views: 0, viewers: new Set(), adds: 0, removes: 0, purchases: 0, samples: 0, formats: {} };
-        productMap.set(id, row);
+        row = { productId, title: resolved, views: 0, viewers: new Set(), adds: 0, removes: 0, purchases: 0, samples: 0, formats: {}, viewKeys: new Set() };
+        productMap.set(productId, row);
       } else if (
         resolved &&
         resolved !== "Unknown product" &&
-        (row.title === "Unknown product" || looksLikeProductId(row.title) || row.title === id)
+        (row.title === "Unknown product" || looksLikeProductId(row.title) || row.title === productId)
       ) {
         row.title = resolved;
       }
       return row;
+    };
+
+    const addProductView = (id: string, title: string, visitorId: string, sessionId: string, at: Date, path?: string | null) => {
+      const productId = resolveProductId(id, title, path);
+      const row = ensureProduct(productId, title);
+      if (!row) return;
+      const bucket = Math.floor(at.getTime() / 30_000);
+      const key = `${visitorId || "visitor"}:${sessionId || "session"}:${productId}:${bucket}`;
+      if (row.viewKeys.has(key)) return;
+      row.viewKeys.add(key);
+      row.views += 1;
+      row.viewers.add(visitorId);
     };
 
     const cartActivity: typeof emptyAdvanced.cartActivity = [];
@@ -854,7 +936,8 @@ async function buildAdvancedSiteAnalyticsReport(days = 30): Promise<AdvancedSite
 
     for (const event of publicFunnels) {
       const meta = asMeta(event.metadata);
-      const id = productKey(event.target, meta);
+      const rawId = productKey(event.target || event.path, meta);
+      const id = resolveProductId(rawId, metaStr(meta, "title", "productTitle"), event.path || event.target);
       const title = productTitle(event.target, meta, id ? catalogTitles.get(id) : undefined);
       const format = metaStr(meta, "formatLabel", "formatType", "format") || "unknown";
       const sessionId = event.sessionId || `visitor:${event.visitorId}`;
@@ -898,11 +981,7 @@ async function buildAdvancedSiteAnalyticsReport(days = 30): Promise<AdvancedSite
       if (event.name === "library_purchase_completed") journey.purchased = true;
 
       if (event.name === "library_product_viewed" && id) {
-        const row = ensureProduct(id, title);
-        if (row) {
-          row.views += 1;
-          row.viewers.add(event.visitorId);
-        }
+        addProductView(id, title, event.visitorId, event.sessionId || "", event.createdAt, event.path || event.target);
       }
       if ((event.name === "library_cart_added" || event.name === "library_bundle_added") && id) {
         const row = ensureProduct(id, title);
@@ -959,6 +1038,14 @@ async function buildAdvancedSiteAnalyticsReport(days = 30): Promise<AdvancedSite
       if (event.name === "search_submitted") marketplaceMap.set("searches", (marketplaceMap.get("searches") ?? 0) + 1);
       if (event.name === "saved_listing") marketplaceMap.set("saved listings", (marketplaceMap.get("saved listings") ?? 0) + 1);
       if (event.name === "whatsapp_click") marketplaceMap.set("whatsapp clicks", (marketplaceMap.get("whatsapp clicks") ?? 0) + 1);
+    }
+
+    for (const pageView of productPageViews) {
+      const slug = librarySlugFromPath(pageView.path);
+      if (!slug) continue;
+      const id = resolveProductId(slug, pageView.title || "", pageView.path);
+      const title = productTitle(pageView.path, { title: pageView.title || "" }, id ? catalogTitles.get(id) : undefined);
+      addProductView(id, title, pageView.visitorId, pageView.sessionId, pageView.startedAt, pageView.path);
     }
 
     const revenueByProduct = new Map<string, number>();
