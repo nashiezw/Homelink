@@ -400,13 +400,23 @@ export function LiveChatWidget() {
             <button
               type="button"
               onClick={() => toggleOpen(true)}
-              className="w-[min(330px,calc(100vw-2rem))] rounded-2xl border border-emerald-100 bg-white p-3 text-left shadow-[0_18px_45px_rgba(15,23,42,0.18)] ring-1 ring-white/80 transition hover:-translate-y-0.5 hover:border-emerald-300 dark:border-emerald-900 dark:bg-slate-950 dark:ring-slate-800"
+              className="relative w-[min(360px,calc(100vw-1.25rem))] overflow-hidden rounded-2xl border border-emerald-200 bg-white p-3.5 text-left shadow-[0_22px_60px_rgba(6,95,70,0.28)] ring-1 ring-emerald-100 transition hover:-translate-y-0.5 hover:border-emerald-300 dark:border-emerald-800 dark:bg-slate-950 dark:ring-emerald-900"
             >
-              <span className="flex items-center gap-2 text-[11px] font-black uppercase text-emerald-700 dark:text-emerald-200">
-                <Sparkles className="size-3.5" /> {previewMessage.senderName || agentName}
+              <span className="absolute inset-x-0 top-0 h-1 bg-[linear-gradient(90deg,#14b8a6,#22c55e,#38bdf8)]" />
+              <span className="flex gap-3">
+                <span className="relative grid size-10 shrink-0 place-items-center rounded-2xl bg-[#07121f] text-white shadow-lg shadow-slate-950/20">
+                  <MessageCircle className="size-5" />
+                  <span className="absolute -right-0.5 -top-0.5 size-3 rounded-full bg-red-500 ring-2 ring-white" />
+                  <span className="absolute bottom-1 right-1 size-2.5 rounded-full bg-emerald-300 ring-2 ring-slate-950" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="flex items-center gap-2 text-[11px] font-black uppercase text-emerald-700 dark:text-emerald-200">
+                    <Bell className="size-3.5 animate-pulse" /> New message from {previewMessage.senderName || agentName}
+                  </span>
+                  <span className="mt-1 line-clamp-3 block text-sm font-black leading-5 text-slate-900 dark:text-slate-100">{previewMessage.body}</span>
+                  <span className="mt-2 inline-flex rounded-full bg-emerald-600 px-3 py-1 text-xs font-black text-white">Open chat to reply</span>
+                </span>
               </span>
-              <span className="mt-1 line-clamp-2 block text-sm font-semibold leading-5 text-slate-800 dark:text-slate-100">{previewMessage.body}</span>
-              <span className="mt-2 block text-xs font-semibold text-slate-500">Tap to reply</span>
             </button>
           ) : null}
           <button

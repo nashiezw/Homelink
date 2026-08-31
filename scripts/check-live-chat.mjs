@@ -98,6 +98,31 @@ const checks = [
   },
   {
     file: "components/admin/live-chat-hub.tsx",
+    label: "admin inbox has a needs-reply filter for unread visitor messages",
+    pattern: /\["needs-reply",\s*"Needs reply"\]/,
+  },
+  {
+    file: "components/admin/live-chat-hub.tsx",
+    label: "admin inbox rows show visitor replies as urgent",
+    pattern: /New reply/,
+  },
+  {
+    file: "lib/live-chat/repository.ts",
+    label: "conversation unread state depends on latest visible message sender",
+    pattern: /latestMessage\?\.senderKind === "VISITOR"/,
+  },
+  {
+    file: "lib/live-chat/repository.ts",
+    label: "admin can mark a live chat conversation read",
+    pattern: /action === "mark_staff_read"/,
+  },
+  {
+    file: "components/live-chat/live-chat-widget.tsx",
+    label: "public proactive popup shows a clear new-message card",
+    pattern: /New message from/,
+  },
+  {
+    file: "components/admin/live-chat-hub.tsx",
     label: "live visitors can open an existing conversation instead of starting a duplicate",
     pattern: /visitorActionLabel\(visitor\.conversation\.status\)/,
   },

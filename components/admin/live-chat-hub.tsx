@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import type { LiveChatConversationView, LiveChatInboxView, LiveChatMessageView } from "@/lib/live-chat/types";
 
 const FILTERS = [
+  ["needs-reply", "Needs reply"],
   ["new", "New"],
   ["unassigned", "Unassigned"],
   ["mine", "Mine"],
@@ -24,7 +25,7 @@ type LiveChatPanel = "inbox" | "visitors" | "profile" | "settings";
 export function LiveChatHub() {
   const [data, setData] = useState<LiveChatInboxView | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
-  const [filter, setFilter] = useState("open");
+  const [filter, setFilter] = useState("needs-reply");
   const [query, setQuery] = useState("");
   const [queryDraft, setQueryDraft] = useState("");
   const [panel, setPanel] = useState<LiveChatPanel>("inbox");
@@ -38,6 +39,7 @@ export function LiveChatHub() {
   const [notice, setNotice] = useState<string | null>(null);
   const activeIdRef = useRef<string | null>(null);
   const loadInFlightRef = useRef(false);
+  const lastNeedsReplyCountRef = useRef(0);
 
   useEffect(() => {
     activeIdRef.current = activeId;
@@ -89,6 +91,31 @@ export function LiveChatHub() {
     () => data?.conversations.find((conversation) => conversation.id === activeId) ?? data?.conversations[0] ?? null,
     [activeId, data?.conversations],
   );
+  const needsReplyCount = useMemo(() => data?.conversations.filter(needsReply).length ?? 0, [data?.conversations]);
+
+  useEffect(() => {
+    if (!data) return;
+    if (lastNeedsReplyCountRef.current > 0 && needsReplyCount > lastNeedsReplyCountRef.current) {
+      if (data.settings.soundEnabled) playInboxChime();
+      notifyInbox(conversationNeedingReply(data.conversations));
+    }
+    lastNeedsReplyCountRef.current = needsReplyCount;
+    document.title = needsReplyCount ? `(${needsReplyCount}) HouseLink Live` : "HouseLink Live";
+  }, [data, needsReplyCount]);
+
+  useEffect(() => {
+    if (!activeConversation?.id || !activeConversation.unreadForStaff) return;
+    void apiFetch("/api/v1/admin/live-chat", {
+      method: "POST",
+      body: JSON.stringify({ action: "mark_staff_read", conversationId: activeConversation.id }),
+    });
+    setData((current) => current
+      ? {
+          ...current,
+          conversations: current.conversations.map((conversation) => conversation.id === activeConversation.id ? { ...conversation, unreadForStaff: 0 } : conversation),
+        }
+      : current);
+  }, [activeConversation?.id, activeConversation?.unreadForStaff]);
 
   async function action(body: Record<string, unknown>, success = "Action completed.") {
     setBusy(String(body.action ?? "action"));
@@ -260,6 +287,12 @@ export function LiveChatHub() {
         </div>
         {error ? <div className="border-b border-red-500/30 bg-red-500/10 px-4 py-2 text-sm text-red-200">{error}</div> : null}
         {notice ? <div className="border-b border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-sm text-emerald-200">{notice}</div> : null}
+        {panel === "inbox" && needsReplyCount ? (
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-amber-400/20 bg-amber-400/10 px-4 py-3 text-sm text-amber-100">
+            <span className="flex items-center gap-2 font-bold"><Bell className="size-4" /> {needsReplyCount} visitor{needsReplyCount === 1 ? "" : "s"} need{needsReplyCount === 1 ? "s" : ""} a reply now</span>
+            {filter !== "needs-reply" ? <button type="button" onClick={() => changeFilter("needs-reply")} className="rounded-full bg-amber-300 px-3 py-1 text-xs font-black text-slate-950">View now</button> : null}
+          </div>
+        ) : null}
 
         {panel === "profile" ? <ProfilePanel data={data} action={action} busy={busy} /> : null}
         {panel === "settings" ? <SettingsPanel data={data} action={action} busy={busy} /> : null}
@@ -285,30 +318,15 @@ export function LiveChatHub() {
             <div className="max-h-[560px] overflow-y-auto border-t border-white/10">
               {loadingInbox ? <div className="flex items-center gap-2 border-b border-white/10 p-3 text-xs text-slate-400"><Loader2 className="size-3 animate-spin" /> Refreshing inbox...</div> : null}
               {data.conversations.length ? data.conversations.map((conversation) => (
-                <button
+                <ConversationRow
                   key={conversation.id}
-                  type="button"
-                  onClick={() => {
+                  conversation={conversation}
+                  active={activeConversation?.id === conversation.id}
+                  onOpen={() => {
                     setActiveId(conversation.id);
                     void load({ conversationId: conversation.id });
                   }}
-                  className={cn("block w-full border-b border-white/10 p-3 text-left transition hover:bg-white/5", activeConversation?.id === conversation.id && "bg-emerald-500/10 shadow-[inset_3px_0_0_rgba(52,211,153,0.85)]")}
-                >
-                  <div className="flex gap-3">
-                    <span className="relative grid size-10 shrink-0 place-items-center rounded-full bg-gradient-to-br from-emerald-400 to-cyan-400 text-sm font-black text-slate-950">
-                      {visitorInitials(conversation.visitor)}
-                      <span className="absolute -bottom-0.5 -right-0.5 size-3 rounded-full border-2 border-slate-950 bg-emerald-400" />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="flex items-center justify-between gap-3">
-                        <span className="truncate text-sm font-black">{visitorDisplayName(conversation.visitor)}</span>
-                        <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-black", statusTone(conversation.status))}>{conversation.status.replace(/_/g, " ")}</span>
-                      </span>
-                      <span className="mt-1 block truncate text-xs text-slate-300">{conversation.lastMessagePreview || conversation.subject || conversation.currentTitle || "No messages yet"}</span>
-                      <span className="mt-2 flex items-center gap-1 truncate text-[11px] text-slate-500"><Globe2 className="size-3" /> {pageLabel(conversation.visitor.currentTitle || conversation.currentTitle, conversation.visitor.currentPath || conversation.currentPath)}</span>
-                    </span>
-                  </div>
-                </button>
+                />
               )) : <Empty label="No conversations in this filter." />}
             </div>
           </aside>
@@ -359,6 +377,39 @@ function Metric({ icon: Icon, label, value, tone = "slate" }: { icon: typeof Mes
       </div>
       <p className="mt-3 text-xs font-bold uppercase tracking-wider text-slate-400">{label}</p>
     </div>
+  );
+}
+
+function ConversationRow({ conversation, active, onOpen }: { conversation: LiveChatConversationView; active: boolean; onOpen: () => void }) {
+  const urgent = needsReply(conversation);
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className={cn(
+        "block w-full border-b border-white/10 p-3 text-left transition hover:bg-white/5",
+        active && "bg-emerald-500/10 shadow-[inset_3px_0_0_rgba(52,211,153,0.85)]",
+        urgent && !active && "bg-amber-400/10 shadow-[inset_3px_0_0_rgba(251,191,36,0.95)]",
+      )}
+    >
+      <div className="flex gap-3">
+        <span className={cn("relative grid size-10 shrink-0 place-items-center rounded-full text-sm font-black text-slate-950", urgent ? "bg-gradient-to-br from-amber-300 to-emerald-300" : "bg-gradient-to-br from-emerald-400 to-cyan-400")}>
+          {visitorInitials(conversation.visitor)}
+          <span className={cn("absolute -bottom-0.5 -right-0.5 size-3 rounded-full border-2 border-slate-950", urgent ? "bg-amber-300" : "bg-emerald-400")} />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="flex items-center justify-between gap-3">
+            <span className={cn("truncate text-sm", urgent ? "font-black text-white" : "font-black text-slate-100")}>{visitorDisplayName(conversation.visitor)}</span>
+            <span className="flex shrink-0 items-center gap-1.5">
+              {urgent ? <span className="rounded-full bg-amber-300 px-2 py-0.5 text-[10px] font-black uppercase text-slate-950">New reply</span> : null}
+              <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-black", statusTone(conversation.status))}>{conversation.status.replace(/_/g, " ")}</span>
+            </span>
+          </span>
+          <span className={cn("mt-1 block truncate text-xs", urgent ? "font-black text-amber-50" : "text-slate-300")}>{lastPreviewLabel(conversation)}</span>
+          <span className="mt-2 flex items-center gap-1 truncate text-[11px] text-slate-500"><Globe2 className="size-3" /> {pageLabel(conversation.visitor.currentTitle || conversation.currentTitle, conversation.visitor.currentPath || conversation.currentPath)}</span>
+        </span>
+      </div>
+    </button>
   );
 }
 
@@ -874,6 +925,50 @@ function visitorInitials(visitor: LiveChatConversationView["visitor"]) {
   const name = visitorDisplayName(visitor);
   const parts = name.split(/[\s@.]+/).filter(Boolean);
   return (parts[0]?.[0] || "V").toUpperCase() + (parts[1]?.[0] || "").toUpperCase();
+}
+
+function needsReply(conversation: LiveChatConversationView) {
+  return conversation.unreadForStaff > 0 && conversation.lastMessageSenderKind === "VISITOR";
+}
+
+function lastPreviewLabel(conversation: LiveChatConversationView) {
+  const preview = conversation.lastMessagePreview || conversation.subject || conversation.currentTitle || "No messages yet";
+  if (conversation.lastMessageSenderKind === "VISITOR") return `Visitor: ${preview}`;
+  if (conversation.lastMessageSenderKind === "STAFF") return `You: ${preview}`;
+  return preview;
+}
+
+function conversationNeedingReply(conversations: LiveChatConversationView[]) {
+  return conversations.find(needsReply) ?? null;
+}
+
+function notifyInbox(conversation: LiveChatConversationView | null) {
+  if (!conversation || typeof window === "undefined" || !("Notification" in window) || Notification.permission !== "granted") return;
+  new Notification("New HouseLink Live message", {
+    body: `${visitorDisplayName(conversation.visitor)}: ${conversation.lastMessagePreview || "Visitor replied"}`,
+    tag: `houselink-live-${conversation.id}`,
+  });
+}
+
+function playInboxChime() {
+  try {
+    const AudioContextClass = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!AudioContextClass) return;
+    const audio = new AudioContextClass();
+    const oscillator = audio.createOscillator();
+    const gain = audio.createGain();
+    oscillator.type = "sine";
+    oscillator.frequency.value = 740;
+    gain.gain.setValueAtTime(0.0001, audio.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.04, audio.currentTime + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, audio.currentTime + 0.18);
+    oscillator.connect(gain);
+    gain.connect(audio.destination);
+    oscillator.start();
+    oscillator.stop(audio.currentTime + 0.2);
+  } catch {
+    // Browsers can block audio before user interaction; the visual unread state still works.
+  }
 }
 
 function filterLabel(filter: string) {

@@ -376,12 +376,12 @@ export async function getLiveChatInbox(input: { activeConversationId?: string | 
   const activeConversationLookup = input.activeConversationId
     ? getConversationByPublicId(input.activeConversationId).catch(() => null)
     : Promise.resolve(null);
-  const [conversations, activeVisitorsRaw, departments, agents, quickReplies, tags, settings, analytics, activeConversation] = await Promise.all([
+  const [conversationRows, activeVisitorsRaw, departments, agents, quickReplies, tags, settings, analytics, activeConversation] = await Promise.all([
     prisma.liveChatConversation.findMany({
       where,
       include: conversationInclude(),
       orderBy: [{ lastMessageAt: "desc" }, { updatedAt: "desc" }],
-      take: 30,
+      take: input.filter === "needs-reply" ? 80 : 30,
     }),
     prisma.liveChatVisitor.findMany({
       where: { lastSeenAt: { gte: new Date(Date.now() - ACTIVE_VISITOR_MS) }, blockedAt: null },
@@ -396,7 +396,12 @@ export async function getLiveChatInbox(input: { activeConversationId?: string | 
     getLiveChatAnalytics(),
     activeConversationLookup,
   ]);
-  const selected = activeConversation ?? conversations[0] ?? null;
+  const conversations = input.filter === "needs-reply"
+    ? conversationRows.filter(needsStaffReply)
+    : prioritizeConversations(conversationRows);
+  const selected = activeConversation && conversations.some((conversation) => conversation.id === activeConversation.id)
+    ? activeConversation
+    : conversations[0] ?? null;
   const visibleConversations = selected && !conversations.some((conversation) => conversation.id === selected.id) ? [selected, ...conversations] : conversations;
   const [messages, events] = selected
     ? await Promise.all([
@@ -580,6 +585,15 @@ export async function liveChatAdminAction(user: AdminUser, body: Record<string, 
       },
     });
     await auditEvent(conversation.visitorId, conversation.id, `STATUS_${status}`, user.id);
+    return { ok: true };
+  }
+  if (action === "mark_staff_read") {
+    const conversation = await getConversationByPublicId(String(body.conversationId ?? ""));
+    if (!conversation) throw new LiveChatError("CONVERSATION_NOT_FOUND", "Conversation not found.", 404);
+    await prisma.liveChatConversation.update({
+      where: { id: conversation.id },
+      data: { staffLastReadAt: new Date() },
+    });
     return { ok: true };
   }
   if (action === "delete_conversation") {
@@ -1048,12 +1062,14 @@ function conversationInclude() {
     department: true,
     assignedAgent: { include: { department: true } },
     tags: { include: { tag: true } },
+    messages: { where: { internal: false }, orderBy: { createdAt: "desc" }, take: 1 },
   } satisfies Prisma.LiveChatConversationInclude;
 }
 
 function shapeConversation(conversation: Prisma.LiveChatConversationGetPayload<{ include: ReturnType<typeof conversationInclude> }>): LiveChatConversationView {
   const staffReadAt = conversation.staffLastReadAt?.getTime() ?? 0;
   const visitorReadAt = conversation.visitorLastReadAt?.getTime() ?? 0;
+  const latestMessage = conversation.messages[0] ?? null;
   return {
     id: conversation.publicId,
     status: conversation.status,
@@ -1064,6 +1080,8 @@ function shapeConversation(conversation: Prisma.LiveChatConversationGetPayload<{
     currentTitle: conversation.currentTitle,
     lastMessagePreview: conversation.lastMessagePreview,
     lastMessageAt: conversation.lastMessageAt?.toISOString() ?? null,
+    lastMessageSenderKind: latestMessage?.senderKind ?? null,
+    lastMessageSenderName: latestMessage?.senderName ?? null,
     createdAt: conversation.createdAt.toISOString(),
     updatedAt: conversation.updatedAt.toISOString(),
     visitor: {
@@ -1087,8 +1105,8 @@ function shapeConversation(conversation: Prisma.LiveChatConversationGetPayload<{
     department: conversation.department ? shapeDepartment(conversation.department) : null,
     assignedAgent: conversation.assignedAgent ? shapeAgent(conversation.assignedAgent) : null,
     tags: conversation.tags.map((item) => ({ id: item.tag.id, name: item.tag.name, color: item.tag.color })),
-    unreadForStaff: conversation.lastMessageAt && conversation.lastMessageAt.getTime() > staffReadAt ? 1 : 0,
-    unreadForVisitor: conversation.lastMessageAt && conversation.lastMessageAt.getTime() > visitorReadAt ? 1 : 0,
+    unreadForStaff: latestMessage?.senderKind === "VISITOR" && latestMessage.createdAt.getTime() > staffReadAt ? 1 : 0,
+    unreadForVisitor: latestMessage && latestMessage.senderKind !== "VISITOR" && latestMessage.createdAt.getTime() > visitorReadAt ? 1 : 0,
   };
 }
 
@@ -1172,6 +1190,8 @@ function shapeActiveVisitor(visitor: { publicId: string; userId: string | null; 
           priority: conversation.priority,
           lastMessagePreview: conversation.lastMessagePreview,
           lastMessageAt: conversation.lastMessageAt,
+          lastMessageSenderKind: conversation.lastMessageSenderKind,
+          lastMessageSenderName: conversation.lastMessageSenderName,
           unreadForStaff: conversation.unreadForStaff,
           unreadForVisitor: conversation.unreadForVisitor,
         }
@@ -1220,7 +1240,7 @@ function conversationFilter(filter?: string | null, query?: string | null, userI
   if (filter === "mine" && userId) where.assignedAgent = { userId };
   if (filter === "unassigned") where.assignedAgentId = null;
   if (filter === "new") where.status = "NEW";
-  if (filter === "open") where.status = { in: ["NEW", "OPEN"] };
+  if (filter === "open" || filter === "needs-reply") where.status = { in: ["NEW", "OPEN", "FOLLOW_UP"] };
   if (filter === "waiting") where.status = "WAITING_FOR_CUSTOMER";
   if (filter === "follow-up") where.status = "FOLLOW_UP";
   if (filter === "resolved") where.status = { in: ["RESOLVED", "CLOSED"] };
@@ -1237,6 +1257,23 @@ function conversationFilter(filter?: string | null, query?: string | null, userI
     ];
   }
   return where;
+}
+
+function needsStaffReply(conversation: Prisma.LiveChatConversationGetPayload<{ include: ReturnType<typeof conversationInclude> }>) {
+  const latestMessage = conversation.messages[0] ?? null;
+  const staffReadAt = conversation.staffLastReadAt?.getTime() ?? 0;
+  return latestMessage?.senderKind === "VISITOR" && latestMessage.createdAt.getTime() > staffReadAt;
+}
+
+function prioritizeConversations(conversations: Array<Prisma.LiveChatConversationGetPayload<{ include: ReturnType<typeof conversationInclude> }>>) {
+  return [...conversations].sort((a, b) => {
+    const aNeedsReply = needsStaffReply(a) ? 1 : 0;
+    const bNeedsReply = needsStaffReply(b) ? 1 : 0;
+    if (aNeedsReply !== bNeedsReply) return bNeedsReply - aNeedsReply;
+    const aTime = a.lastMessageAt?.getTime() ?? a.updatedAt.getTime();
+    const bTime = b.lastMessageAt?.getTime() ?? b.updatedAt.getTime();
+    return bTime - aTime;
+  });
 }
 
 async function getConversationByPublicId(publicId: string) {
@@ -1332,6 +1369,7 @@ function memoryInbox(): LiveChatInboxView {
 }
 
 function shapeMemoryConversation(conversation: MemoryConversation, visitor: MemoryVisitor): LiveChatConversationView {
+  const latestMessage = memory.messages.filter((message) => message.conversationId === conversation.id && !message.internal).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0] ?? null;
   return {
     id: conversation.publicId,
     status: conversation.status,
@@ -1342,6 +1380,8 @@ function shapeMemoryConversation(conversation: MemoryConversation, visitor: Memo
     currentTitle: conversation.currentTitle,
     lastMessagePreview: conversation.lastMessagePreview,
     lastMessageAt: conversation.lastMessageAt?.toISOString() ?? null,
+    lastMessageSenderKind: latestMessage?.senderKind ?? null,
+    lastMessageSenderName: latestMessage?.senderName ?? null,
     createdAt: conversation.createdAt.toISOString(),
     updatedAt: conversation.updatedAt.toISOString(),
     visitor: shapeMemoryVisitor(visitor),

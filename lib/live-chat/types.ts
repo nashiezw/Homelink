@@ -99,6 +99,8 @@ export type LiveChatConversationView = {
   currentTitle?: string | null;
   lastMessagePreview?: string | null;
   lastMessageAt?: string | null;
+  lastMessageSenderKind?: string | null;
+  lastMessageSenderName?: string | null;
   createdAt: string;
   updatedAt: string;
   visitor: {
@@ -151,7 +153,7 @@ export type LiveChatInboxView = {
   conversations: LiveChatConversationView[];
   activeVisitors: Array<LiveChatConversationView["visitor"] & {
     conversationId?: string | null;
-    conversation?: Pick<LiveChatConversationView, "id" | "status" | "priority" | "lastMessagePreview" | "lastMessageAt" | "unreadForVisitor" | "unreadForStaff"> | null;
+    conversation?: Pick<LiveChatConversationView, "id" | "status" | "priority" | "lastMessagePreview" | "lastMessageAt" | "lastMessageSenderKind" | "lastMessageSenderName" | "unreadForVisitor" | "unreadForStaff"> | null;
     sessionSeconds: number;
     pageSeconds: number;
   }>;
