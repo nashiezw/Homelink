@@ -1,6 +1,6 @@
 "use client";
 
-import { Activity, Bell, BookOpen, Building2, CheckCircle2, Clock, Globe2, GraduationCap, Headphones, Loader2, Mail, MapPin, MessageSquare, NotebookPen, Phone, RefreshCw, Save, Search, Send, Settings, Shield, SlidersHorizontal, Sparkles, Tag, Timer, Trash2, Upload, UserCog, UserPlus, Users, Wifi } from "lucide-react";
+import { Activity, Bell, BookOpen, Building2, CheckCircle2, Clock, Globe2, GraduationCap, Headphones, Loader2, Mail, MapPin, MessageSquare, NotebookPen, Phone, RefreshCw, Save, Search, Send, Settings, Shield, SlidersHorizontal, Sparkles, Tag, Timer, Trash2, Upload, UserCog, UserPlus, Users, Volume2, Wifi } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -42,6 +42,7 @@ export function LiveChatHub() {
   const activeIdRef = useRef<string | null>(null);
   const loadInFlightRef = useRef(false);
   const lastNeedsReplyCountRef = useRef(0);
+  const notificationReadyRef = useRef(false);
   const notifiedVisitorMessageIdsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
@@ -115,7 +116,13 @@ export function LiveChatHub() {
       notifiedVisitorMessageIdsRef.current.add(messageKey);
       return true;
     });
-    if (lastNeedsReplyCountRef.current > 0 && newVisitorReplies.length) {
+    if (!notificationReadyRef.current) {
+      notificationReadyRef.current = true;
+      lastNeedsReplyCountRef.current = needsReplyCount;
+      document.title = needsReplyCount ? `(${needsReplyCount}) HouseLink Live` : "HouseLink Live";
+      return;
+    }
+    if (newVisitorReplies.length) {
       if (data.settings.soundEnabled) playLiveChatNotificationSound();
       notifyInbox(newVisitorReplies[0] ?? conversationNeedingReply(data.conversations));
     }
@@ -169,12 +176,13 @@ export function LiveChatHub() {
   async function startConversation(visitorId: string, message?: string) {
     setStartingVisitorId(visitorId);
     setError(null);
+    const visitor = data?.activeVisitors.find((item) => item.id === visitorId) ?? data?.conversations.find((conversation) => conversation.visitor.id === visitorId)?.visitor;
     const result = await apiFetch<{ conversationId: string }>("/api/v1/admin/live-chat", {
       method: "POST",
       body: JSON.stringify({
         action: "start_conversation",
         visitorId,
-        body: message || "Hi, I am from HouseLink. I noticed you are browsing and can help if you have questions.",
+        body: message || proactiveMessageForVisitor(visitor),
       }),
     });
     if (result.error) {
@@ -808,6 +816,13 @@ function SettingsPanel({ data, action, busy }: { data: LiveChatInboxView; action
               <Toggle label="Sound alerts" checked={soundEnabled} onChange={setSoundEnabled} />
               <Toggle label="Require contact before chat" checked={requireContact} onChange={setRequireContact} />
             </div>
+            <button
+              type="button"
+              onClick={() => playLiveChatNotificationSound()}
+              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-emerald-400/30 bg-emerald-500/10 px-3 py-2 text-sm font-black text-emerald-100 transition hover:border-emerald-300 hover:bg-emerald-500/20"
+            >
+              <Volume2 className="size-4" /> Test notification sound
+            </button>
             <div className="grid gap-3 md:grid-cols-2">
               <Field label="Launcher greeting" value={widgetGreeting} onChange={setWidgetGreeting} placeholder="Hi, need help with HouseLink?" />
               <Field label="Privacy note" value={privacyNotice} onChange={setPrivacyNotice} placeholder="How chat context is used" />
@@ -1028,6 +1043,24 @@ function visitorActionLabel(status: string) {
   if (status === "RESOLVED") return "Review resolved chat";
   if (status === "CLOSED") return "View closed chat";
   return "Open conversation";
+}
+
+function proactiveMessageForVisitor(visitor?: Pick<LiveChatConversationView["visitor"], "currentPath" | "currentTitle"> | null) {
+  const title = pageLabel(visitor?.currentTitle, visitor?.currentPath);
+  const path = cleanJourneyPath(visitor?.currentPath).toLowerCase();
+  if (path.includes("/library/checkout") || path.includes("payment")) {
+    return "Hi, welcome to HouseLink. I can help with payment, proof upload, or choosing another payment option so your order is completed smoothly.";
+  }
+  if (path.includes("/library/")) {
+    return `Hi, welcome to HouseLink. I can help you choose the right format, confirm payment steps, or answer any questions about ${title} before you buy.`;
+  }
+  if (path.includes("/academy")) {
+    return `Hi, welcome to HouseLink Academy. I can help with course details, registration, payment, or choosing the right course${title !== "HouseLink Academy" ? ` for ${title}` : ""}.`;
+  }
+  if (path.includes("/listings/") || path.includes("/rent/") || path.includes("/property-for-sale/")) {
+    return `Hi, welcome to HouseLink. I can help with viewing details, location questions, price checks, or the next step for ${title}.`;
+  }
+  return "Hi, welcome to HouseLink. I can help with the next step, pricing, payment, delivery, viewings, or any question before you decide.";
 }
 
 function statusTone(status: string) {

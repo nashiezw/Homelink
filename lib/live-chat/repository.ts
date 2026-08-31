@@ -512,7 +512,7 @@ export async function liveChatAdminAction(user: AdminUser, body: Record<string, 
       });
     }
     await ensureParticipant(conversation.id, user.id, agent.id);
-    const text = sanitizeMessage(String(body.body ?? "Hi, I am from HouseLink. I can help if you have questions."));
+    const text = sanitizeMessage(String(body.body || proactiveMessageForVisitor(visitor)));
     const message = await prisma.liveChatMessage.create({
       data: {
         publicId: makePublicId("msg"),
@@ -1428,6 +1428,28 @@ function shapeMemoryMessage(message: MemoryMessage): LiveChatMessageView {
     deliveredAt: message.deliveredAt?.toISOString() ?? null,
     readAt: message.readAt?.toISOString() ?? null,
   };
+}
+
+function proactiveMessageForVisitor(visitor?: { currentPath?: string | null; currentTitle?: string | null } | null) {
+  const title = cleanHouseLinkTitle(visitor?.currentTitle);
+  const path = visitor?.currentPath?.toLowerCase() ?? "";
+  if (path.includes("/library/checkout") || path.includes("payment")) {
+    return "Hi, welcome to HouseLink. I can help with payment, proof upload, or choosing another payment option so your order is completed smoothly.";
+  }
+  if (path.includes("/library/")) {
+    return `Hi, welcome to HouseLink. I can help you choose the right format, confirm payment steps, or answer any questions about ${title || "this book"} before you buy.`;
+  }
+  if (path.includes("/academy")) {
+    return `Hi, welcome to HouseLink Academy. I can help with course details, registration, payment, or choosing the right course${title ? ` for ${title}` : ""}.`;
+  }
+  if (path.includes("/listings/") || path.includes("/rent/") || path.includes("/property-for-sale/")) {
+    return `Hi, welcome to HouseLink. I can help with viewing details, location questions, price checks, or the next step${title ? ` for ${title}` : " for this property"}.`;
+  }
+  return "Hi, welcome to HouseLink. I can help with the next step, pricing, payment, delivery, viewings, or any question before you decide.";
+}
+
+function cleanHouseLinkTitle(value?: string | null) {
+  return cleanText(value, 160).replace(/\s*\|\s*HouseLink.*$/i, "").trim();
 }
 
 function sanitizeMessage(value: string) {

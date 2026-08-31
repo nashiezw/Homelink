@@ -143,12 +143,16 @@ export function LiveChatWidget() {
       setMessages((current) => {
         const hadLast = current[current.length - 1]?.id;
         const nextLast = result.data![result.data!.length - 1]?.id;
-        if (!open && nextLast && hadLast && nextLast !== hadLast) {
+        if (nextLast && hadLast && nextLast !== hadLast) {
           const latest = result.data![result.data!.length - 1];
-          setUnread((value) => value + 1);
           if (isVisitorPreviewMessage(latest) && !notifiedStaffMessageIdsRef.current.has(latest.id)) {
             notifiedStaffMessageIdsRef.current.add(latest.id);
-            showPreviewMessage(latest, boot.settings.soundEnabled);
+            if (open) {
+              if (boot.settings.soundEnabled) playLiveChatNotificationSound();
+            } else {
+              setUnread((value) => value + 1);
+              showPreviewMessage(latest, boot.settings.soundEnabled);
+            }
           }
         }
         return result.data!;

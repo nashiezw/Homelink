@@ -152,6 +152,11 @@ const checks = [
     pattern: /notifiedStaffMessageIdsRef/,
   },
   {
+    file: "components/live-chat/live-chat-widget.tsx",
+    label: "public chat plays sound for staff replies while chat is open",
+    pattern: /if \(open\) \{\s*if \(boot\.settings\.soundEnabled\) playLiveChatNotificationSound\(\);/s,
+  },
+  {
     file: "lib/live-chat/notification-sound.ts",
     label: "live chat notification sound resumes browser audio before playback",
     pattern: /audio\.state === "suspended"\) await audio\.resume/,
@@ -160,6 +165,26 @@ const checks = [
     file: "components/admin/live-chat-hub.tsx",
     label: "live visitors can open an existing conversation instead of starting a duplicate",
     pattern: /visitorActionLabel\(visitor\.conversation\.status\)/,
+  },
+  {
+    file: "components/admin/live-chat-hub.tsx",
+    label: "admin proactive messages are context-aware",
+    pattern: /function proactiveMessageForVisitor[\s\S]*payment, proof upload[\s\S]*right format[\s\S]*viewing details/,
+  },
+  {
+    file: "components/admin/live-chat-hub.tsx",
+    label: "admin sound settings include a test sound action",
+    pattern: /Test notification sound/,
+  },
+  {
+    file: "components/admin/live-chat-hub.tsx",
+    label: "admin sound waits until initial inbox load is seeded",
+    pattern: /notificationReadyRef/,
+  },
+  {
+    file: "lib/live-chat/repository.ts",
+    label: "server fallback proactive messages are context-aware",
+    pattern: /function proactiveMessageForVisitor[\s\S]*payment, proof upload[\s\S]*right format[\s\S]*viewing details/,
   },
   {
     file: "components/admin/live-chat-hub.tsx",
