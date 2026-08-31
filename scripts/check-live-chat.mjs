@@ -107,6 +107,16 @@ const checks = [
     pattern: /New reply/,
   },
   {
+    file: "components/admin/live-chat-hub.tsx",
+    label: "admin notification sound is keyed to new visitor message IDs",
+    pattern: /notifiedVisitorMessageIdsRef/,
+  },
+  {
+    file: "components/admin/live-chat-hub.tsx",
+    label: "admin bulk delete button remains readable when disabled",
+    pattern: /disabled:bg-red-950\/30/,
+  },
+  {
     file: "lib/live-chat/repository.ts",
     label: "conversation unread state depends on latest visible message sender",
     pattern: /latestMessage\?\.senderKind === "VISITOR"/,
@@ -120,6 +130,16 @@ const checks = [
     file: "components/live-chat/live-chat-widget.tsx",
     label: "public proactive popup shows a clear new-message card",
     pattern: /New message from/,
+  },
+  {
+    file: "components/live-chat/live-chat-widget.tsx",
+    label: "public notification sound is keyed to unseen staff messages",
+    pattern: /notifiedStaffMessageIdsRef/,
+  },
+  {
+    file: "lib/live-chat/notification-sound.ts",
+    label: "live chat notification sound resumes browser audio before playback",
+    pattern: /audio\.state === "suspended"\) await audio\.resume/,
   },
   {
     file: "components/admin/live-chat-hub.tsx",

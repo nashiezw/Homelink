@@ -7,6 +7,7 @@ import { useApp } from "@/components/providers/app-provider";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api/client";
 import { isLiveChatFloatingOpen, setLiveChatFloatingOpen, useLibraryBagFloatingOpen } from "@/lib/live-chat/floating-state";
+import { playLiveChatNotificationSound, unlockLiveChatNotificationSound } from "@/lib/live-chat/notification-sound";
 import { useHouseLinkBottomDock } from "@/lib/ui/bottom-dock";
 import { cn } from "@/lib/utils";
 import type { LiveChatBootstrapView, LiveChatMessageView, LiveChatVisitorContext } from "@/lib/live-chat/types";
@@ -35,6 +36,7 @@ export function LiveChatWidget() {
   const contactRef = useRef(contact);
   const openRef = useRef(open);
   const previewTimerRef = useRef<number | null>(null);
+  const notifiedStaffMessageIdsRef = useRef<Set<string>>(new Set());
   const startedAtRef = useRef(new Date().toISOString());
   const bottomDock = useHouseLinkBottomDock();
   const libraryBagOpen = useLibraryBagFloatingOpen();
@@ -69,8 +71,25 @@ export function LiveChatWidget() {
   }, [contact]);
 
   useEffect(() => {
+    const unlock = () => unlockLiveChatNotificationSound();
+    window.addEventListener("pointerdown", unlock, { once: true });
+    window.addEventListener("keydown", unlock, { once: true });
+    return () => {
+      window.removeEventListener("pointerdown", unlock);
+      window.removeEventListener("keydown", unlock);
+    };
+  }, []);
+
+  useEffect(() => {
     openRef.current = open;
   }, [open]);
+
+  const showPreviewMessage = useCallback((message: LiveChatMessageView, soundEnabled: boolean) => {
+    setPreviewMessage(message);
+    if (soundEnabled) playLiveChatNotificationSound();
+    if (previewTimerRef.current) window.clearTimeout(previewTimerRef.current);
+    previewTimerRef.current = window.setTimeout(() => setPreviewMessage(null), 12000);
+  }, []);
 
   const bootstrap = useCallback(async () => {
     if (hiddenOnThisRoute) return;
@@ -91,7 +110,10 @@ export function LiveChatWidget() {
         setSuggested(result.data.suggestedMessage || null);
         if (!openRef.current && result.data.conversation?.unreadForVisitor) {
           const latestStaffMessage = [...result.data.messages].reverse().find(isVisitorPreviewMessage) ?? null;
-          if (latestStaffMessage) showPreviewMessage(latestStaffMessage);
+          if (latestStaffMessage && !notifiedStaffMessageIdsRef.current.has(latestStaffMessage.id)) {
+            notifiedStaffMessageIdsRef.current.add(latestStaffMessage.id);
+            showPreviewMessage(latestStaffMessage, result.data.settings.soundEnabled);
+          }
           setUnread(result.data.conversation.unreadForVisitor);
         }
         setError(null);
@@ -102,7 +124,7 @@ export function LiveChatWidget() {
       window.clearTimeout(slowTimer);
       setLoading(false);
     }
-  }, [context, hiddenOnThisRoute]);
+  }, [context, hiddenOnThisRoute, showPreviewMessage]);
 
   useEffect(() => {
     if (hiddenOnThisRoute) return;
@@ -134,7 +156,10 @@ export function LiveChatWidget() {
         if (!open && nextLast && hadLast && nextLast !== hadLast) {
           const latest = result.data![result.data!.length - 1];
           setUnread((value) => value + 1);
-          if (isVisitorPreviewMessage(latest)) showPreviewMessage(latest);
+          if (isVisitorPreviewMessage(latest) && !notifiedStaffMessageIdsRef.current.has(latest.id)) {
+            notifiedStaffMessageIdsRef.current.add(latest.id);
+            showPreviewMessage(latest, boot.settings.soundEnabled);
+          }
         }
         return result.data!;
       });
@@ -144,7 +169,7 @@ export function LiveChatWidget() {
       cancelled = true;
       window.clearInterval(interval);
     };
-  }, [boot?.conversation, open]);
+  }, [boot?.conversation, boot?.settings.soundEnabled, open, showPreviewMessage]);
 
   useEffect(() => {
     if (!open) return;
@@ -228,12 +253,6 @@ export function LiveChatWidget() {
       return;
     }
     void sendMessage(body);
-  }
-
-  function showPreviewMessage(message: LiveChatMessageView) {
-    setPreviewMessage(message);
-    if (previewTimerRef.current) window.clearTimeout(previewTimerRef.current);
-    previewTimerRef.current = window.setTimeout(() => setPreviewMessage(null), 12000);
   }
 
   function dismissPreviewMessage() {

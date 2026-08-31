@@ -6,6 +6,7 @@ import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api/client";
+import { playLiveChatNotificationSound, unlockLiveChatNotificationSound } from "@/lib/live-chat/notification-sound";
 import { cn } from "@/lib/utils";
 import type { LiveChatConversationView, LiveChatInboxView, LiveChatMessageView } from "@/lib/live-chat/types";
 
@@ -40,10 +41,21 @@ export function LiveChatHub() {
   const activeIdRef = useRef<string | null>(null);
   const loadInFlightRef = useRef(false);
   const lastNeedsReplyCountRef = useRef(0);
+  const notifiedVisitorMessageIdsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     activeIdRef.current = activeId;
   }, [activeId]);
+
+  useEffect(() => {
+    const unlock = () => unlockLiveChatNotificationSound();
+    window.addEventListener("pointerdown", unlock, { once: true });
+    window.addEventListener("keydown", unlock, { once: true });
+    return () => {
+      window.removeEventListener("pointerdown", unlock);
+      window.removeEventListener("keydown", unlock);
+    };
+  }, []);
 
   const load = useCallback(async (options?: { conversationId?: string | null; silent?: boolean }) => {
     if (loadInFlightRef.current) return;
@@ -95,9 +107,16 @@ export function LiveChatHub() {
 
   useEffect(() => {
     if (!data) return;
-    if (lastNeedsReplyCountRef.current > 0 && needsReplyCount > lastNeedsReplyCountRef.current) {
-      if (data.settings.soundEnabled) playInboxChime();
-      notifyInbox(conversationNeedingReply(data.conversations));
+    const newVisitorReplies = data.conversations.filter((conversation) => {
+      if (!needsReply(conversation) || !conversation.lastMessageAt) return false;
+      const messageKey = `${conversation.id}:${conversation.lastMessageAt}`;
+      if (notifiedVisitorMessageIdsRef.current.has(messageKey)) return false;
+      notifiedVisitorMessageIdsRef.current.add(messageKey);
+      return true;
+    });
+    if (lastNeedsReplyCountRef.current > 0 && newVisitorReplies.length) {
+      if (data.settings.soundEnabled) playLiveChatNotificationSound();
+      notifyInbox(newVisitorReplies[0] ?? conversationNeedingReply(data.conversations));
     }
     lastNeedsReplyCountRef.current = needsReplyCount;
     document.title = needsReplyCount ? `(${needsReplyCount}) HouseLink Live` : "HouseLink Live";
@@ -311,8 +330,15 @@ export function LiveChatHub() {
                   <button key={id} type="button" onClick={() => changeFilter(id)} className={cn("rounded-md border px-2.5 py-1.5 text-xs font-bold", filter === id ? "border-emerald-400 bg-emerald-500/15 text-emerald-200" : "border-white/10 bg-slate-900 text-slate-400")}>{label}</button>
                 ))}
               </div>
-              <Button variant="secondary" className="w-full justify-center border-red-400/20 text-red-100 hover:border-red-300" onClick={() => void deleteConversationsInFilter()} disabled={!data.conversations.length || busy === "delete_conversations"}>
-                {busy === "delete_conversations" ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />} Delete all in {filterLabel(filter)}
+              <Button
+                variant="secondary"
+                className="w-full justify-center border-red-500/45 bg-red-600 text-white shadow-red-950/20 hover:border-red-400 hover:bg-red-500 disabled:border-red-500/25 disabled:bg-red-950/30 disabled:text-red-100/80 disabled:opacity-100 dark:border-red-400/50 dark:bg-red-600 dark:text-white"
+                onClick={() => void deleteConversationsInFilter()}
+                disabled={!data.conversations.length || busy === "delete_conversations"}
+                title={!data.conversations.length ? `No conversations in ${filterLabel(filter)} to delete` : `Delete conversations in ${filterLabel(filter)}`}
+              >
+                {busy === "delete_conversations" ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
+                {data.conversations.length ? `Delete all in ${filterLabel(filter)}` : `No chats to delete in ${filterLabel(filter)}`}
               </Button>
             </div>
             <div className="max-h-[560px] overflow-y-auto border-t border-white/10">
@@ -948,27 +974,6 @@ function notifyInbox(conversation: LiveChatConversationView | null) {
     body: `${visitorDisplayName(conversation.visitor)}: ${conversation.lastMessagePreview || "Visitor replied"}`,
     tag: `houselink-live-${conversation.id}`,
   });
-}
-
-function playInboxChime() {
-  try {
-    const AudioContextClass = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-    if (!AudioContextClass) return;
-    const audio = new AudioContextClass();
-    const oscillator = audio.createOscillator();
-    const gain = audio.createGain();
-    oscillator.type = "sine";
-    oscillator.frequency.value = 740;
-    gain.gain.setValueAtTime(0.0001, audio.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.04, audio.currentTime + 0.02);
-    gain.gain.exponentialRampToValueAtTime(0.0001, audio.currentTime + 0.18);
-    oscillator.connect(gain);
-    gain.connect(audio.destination);
-    oscillator.start();
-    oscillator.stop(audio.currentTime + 0.2);
-  } catch {
-    // Browsers can block audio before user interaction; the visual unread state still works.
-  }
 }
 
 function filterLabel(filter: string) {
