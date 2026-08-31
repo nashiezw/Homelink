@@ -1251,7 +1251,14 @@ async function buildAdvancedSiteAnalyticsReport(days = 30): Promise<AdvancedSite
       ...products
         .filter((row) => row.views >= 10 && row.addRate < 5)
         .slice(0, 5)
-        .map((row) => `Content gap: “${row.title}” has ${row.views} views but only ${row.addRate}% add-to-bag.`),
+        .map((row) => {
+          const sampleRate = row.views ? Math.round((row.samples / row.views) * 100) : 0;
+          const reason =
+            sampleRate < 10
+              ? "sample/value proof may be too easy to miss"
+              : "the above-the-fold offer may not be giving enough buying confidence";
+          return `Content gap: “${row.title}” has ${row.views} views but only ${row.addRate}% add-to-bag. Likely reason: ${reason}. Action: strengthen who-it-is-for, what-they-get, sample proof, and product-specific live chat follow-up.`;
+        }),
       ...products
         .filter((row) => row.removes >= 5 && row.removes > row.adds)
         .slice(0, 3)

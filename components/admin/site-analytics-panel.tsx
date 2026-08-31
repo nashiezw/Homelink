@@ -215,6 +215,17 @@ type AdvancedReport = {
 type Journey = AdvancedReport["journeys"][number];
 type JourneyStep = Journey["steps"][number];
 type JourneyFilter = "all" | "high-intent" | "abandoned-checkout" | "exit-lead" | "sample-viewed" | "sample-downloaded" | "cart-activity" | "whatsapp" | "known-contact" | "anonymous";
+type ProductConversionPlan = {
+  productId: string;
+  title: string;
+  views: number;
+  addRate: number;
+  sampleRate: number;
+  purchaseRate: number;
+  diagnosis: string;
+  action: string;
+  journey: string[];
+};
 
 const journeyFilters: Array<{ id: JourneyFilter; label: string }> = [
   { id: "all", label: "All" },
@@ -352,6 +363,45 @@ function pctChange(current: number, baseline: number) {
   return pct >= 0 ? `+${pct}%` : `${pct}%`;
 }
 
+function productConversionDiagnosis(row: AdvancedReport["products"][number]): ProductConversionPlan | null {
+  if (row.views < 10) return null;
+  const sampleRate = row.views ? Math.round((row.samples / row.views) * 100) : 0;
+  const purchaseRate = row.views ? Math.round((row.purchases / row.views) * 100) : 0;
+  const lowAdds = row.addRate < 8;
+  const lowSamples = sampleRate < 10;
+  const checkoutFriction = row.adds >= 3 && row.purchases === 0;
+  if (!lowAdds && !lowSamples && !checkoutFriction) return null;
+
+  const diagnosis = checkoutFriction
+    ? "People are interested enough to add it, but the decision is breaking around checkout, payment proof, or final confidence."
+    : lowSamples
+      ? "People are viewing the product but not sampling it enough, so they may not be seeing enough proof of value before deciding."
+      : "People are reading the page but not feeling a strong enough reason to put it in the bag.";
+  const action = checkoutFriction
+    ? "Use live chat and WhatsApp follow-up around payment help, proof upload, and delivery reassurance. Make the checkout promise very clear."
+    : lowSamples
+      ? "Move the sample CTA higher, label exactly what is inside, and position it as 'Preview the pages before you buy'."
+      : "Strengthen the above-the-fold offer: who it is for, what problem it solves, what they receive immediately, and why buying now is low-risk.";
+
+  return {
+    productId: row.productId,
+    title: row.title,
+    views: row.views,
+    addRate: row.addRate,
+    sampleRate,
+    purchaseRate,
+    diagnosis,
+    action,
+    journey: [
+      "Visitor lands on the product and instantly sees who it is for.",
+      "Page proves value with outcomes, sample pages, and what is included.",
+      "Visitor chooses digital or print with clear delivery/payment expectations.",
+      "Visitor adds to bag or starts checkout.",
+      "If they hesitate, live chat sends a helpful product-specific nudge.",
+    ],
+  };
+}
+
 export function SiteAnalyticsPanel() {
   const [days, setDays] = useState(30);
   const [tab, setTab] = useState<Tab>("board");
@@ -378,6 +428,10 @@ export function SiteAnalyticsPanel() {
       phone: allJourneys.filter((row) => row.contactPhone).length,
     }),
     [allJourneys],
+  );
+  const productConversionPlans = useMemo(
+    () => (report?.products ?? []).map(productConversionDiagnosis).filter((row): row is ProductConversionPlan => Boolean(row)).slice(0, 6),
+    [report?.products],
   );
 
   async function load() {
@@ -724,27 +778,67 @@ export function SiteAnalyticsPanel() {
       )}
 
       {tab === "products" && (
-        <div className="grid gap-3 md:hidden">
-          {(report?.products ?? []).length ? (
-            report!.products.map((row) => (
-              <MobileRecord key={row.productId} title={row.title}>
-                <MobileFacts
-                  rows={[
-                    ["Views", row.views],
-                    ["Uniques", row.uniqueViewers],
-                    ["Adds", row.adds],
-                    ["Removes", row.removes],
-                    ["Purchases", row.purchases],
-                    ["Add rate", `${row.addRate}%`],
-                    ["Buy rate", `${row.purchaseRate}%`],
-                    ["Samples", row.samples],
-                  ]}
-                />
-              </MobileRecord>
-            ))
-          ) : (
-            <p className="text-sm text-slate-400">Product views and cart events will appear as shoppers browse Library titles.</p>
-          )}
+        <div className="grid gap-5">
+          <Panel
+            title="Conversion journey"
+            icon={Target}
+            action={<span className="text-xs text-slate-500">{productConversionPlans.length ? "Needs attention" : "Healthy"}</span>}
+          >
+            {productConversionPlans.length ? (
+              <div className="grid gap-3 xl:grid-cols-2">
+                {productConversionPlans.map((row) => (
+                  <article key={`conversion-${row.productId}`} className="rounded-xl border border-amber-400/20 bg-amber-500/10 p-4 text-sm">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="min-w-0">
+                        <p className="break-words font-semibold text-white">{row.title}</p>
+                        <p className="mt-1 text-xs text-amber-100/80">
+                          {row.views} views · {row.addRate}% add-to-bag · {row.sampleRate}% sample · {row.purchaseRate}% purchase
+                        </p>
+                      </div>
+                      <span className="w-fit shrink-0 rounded-full border border-amber-300/30 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-amber-100">
+                        Rescue
+                      </span>
+                    </div>
+                    <p className="mt-3 leading-6 text-slate-200">{row.diagnosis}</p>
+                    <p className="mt-2 font-semibold leading-6 text-amber-100">{row.action}</p>
+                    <ol className="mt-3 grid gap-1.5 border-t border-white/10 pt-3 text-xs leading-5 text-slate-300">
+                      {row.journey.map((step, index) => (
+                        <li key={`${row.productId}-step-${index}`} className="grid grid-cols-[1.5rem_minmax(0,1fr)] gap-2">
+                          <span className="text-amber-200">{index + 1}</span>
+                          <span>{step}</span>
+                        </li>
+                      ))}
+                    </ol>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-slate-400">No high-view product conversion gaps detected in this period.</p>
+            )}
+          </Panel>
+
+          <div className="grid gap-3 md:hidden">
+            {(report?.products ?? []).length ? (
+              report!.products.map((row) => (
+                <MobileRecord key={row.productId} title={row.title}>
+                  <MobileFacts
+                    rows={[
+                      ["Views", row.views],
+                      ["Uniques", row.uniqueViewers],
+                      ["Adds", row.adds],
+                      ["Removes", row.removes],
+                      ["Purchases", row.purchases],
+                      ["Add rate", `${row.addRate}%`],
+                      ["Buy rate", `${row.purchaseRate}%`],
+                      ["Samples", row.samples],
+                    ]}
+                  />
+                </MobileRecord>
+              ))
+            ) : (
+              <p className="text-sm text-slate-400">Product views and cart events will appear as shoppers browse Library titles.</p>
+            )}
+          </div>
         </div>
       )}
 

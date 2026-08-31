@@ -49,6 +49,7 @@ assert(/librarySlugFromPath/.test(report) && /productAliases/.test(report), "pro
 assert(/productPageViews/.test(report) && /sitePageView[\s\S]*startsWith: "\/library\/"/.test(report), "product analytics includes library page views");
 assert(/addProductView/.test(report) && /library_product_viewed[\s\S]*addProductView/.test(report), "product analytics dedupes event and page-view counts");
 assert(/Live now|Products|Carts|Journeys/.test(panel), "admin panel has advanced tabs");
+assert(/Conversion journey/.test(panel) && /productConversionDiagnosis/.test(panel), "admin products tab explains product conversion gaps");
 assert(/kind: "presence"|kind === "presence"|presence/.test(tracker), "tracker sends presence heartbeat");
 assert(/library_cart_removed|CART_REMOVE/.test(cart), "cart client tracks removes");
 assert(/CART_QTY_CHANGE/.test(cart), "cart client tracks qty changes");
