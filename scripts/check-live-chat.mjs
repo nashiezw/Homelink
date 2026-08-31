@@ -39,7 +39,7 @@ const checks = [
   {
     file: "components/library/library-cart-fab.tsx",
     label: "mobile Library cart FAB lifts above the closed live chat launcher",
-    pattern: /bottom-\[calc\(10rem\+env\(safe-area-inset-bottom\)\)\]/,
+    pattern: /bottom-\[calc\(12\.5rem\+env\(safe-area-inset-bottom\)\)\]/,
   },
   {
     file: "components/live-chat/live-chat-widget.tsx",
@@ -70,6 +70,21 @@ const checks = [
     file: "components/live-chat/live-chat-widget.tsx",
     label: "public chat contact typing does not re-bootstrap chat",
     pattern: /contactRef\.current/,
+  },
+  {
+    file: "components/live-chat/live-chat-widget.tsx",
+    label: "public chat is chat-first instead of opening with a contact form",
+    pattern: /handleQuickReply\(reply\.body,\s*reply\.contactField\)/,
+  },
+  {
+    file: "components/live-chat/live-chat-widget.tsx",
+    label: "public chat captures WhatsApp and email from conversation text",
+    pattern: /mergeContactFromMessage/,
+  },
+  {
+    file: "components/live-chat/live-chat-widget.tsx",
+    label: "public chat hides while the Library bag drawer is open",
+    pattern: /libraryBagOpen/,
   },
   {
     file: "app/api/v1/live-chat/messages/route.ts",

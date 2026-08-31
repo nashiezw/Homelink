@@ -5,7 +5,7 @@ import { ShoppingBag } from "lucide-react";
 import { useEffect, useState } from "react";
 import { LibraryBagDrawer } from "@/components/library/library-bag-drawer";
 import { useLibraryCart } from "@/lib/library/cart-client";
-import { useLiveChatFloatingOpen } from "@/lib/live-chat/floating-state";
+import { setLibraryBagFloatingOpen, useLiveChatFloatingOpen } from "@/lib/live-chat/floating-state";
 import { useHouseLinkBottomDock } from "@/lib/ui/bottom-dock";
 import { cn } from "@/lib/utils";
 
@@ -27,6 +27,11 @@ export function LibraryCartFab({ className }: { className?: string }) {
     return () => window.removeEventListener("houselink:library-cart-added", onAdded);
   }, []);
 
+  useEffect(() => {
+    setLibraryBagFloatingOpen(open);
+    return () => setLibraryBagFloatingOpen(false);
+  }, [open]);
+
   if (!count || liveChatOpen || pathname?.startsWith("/library/checkout")) return null;
 
   return (
@@ -36,8 +41,8 @@ export function LibraryCartFab({ className }: { className?: string }) {
         "fixed right-4 z-[60] flex flex-col items-end gap-3 sm:right-5 lg:hidden",
         // Keep the Library bag above the closed HouseLink Live launcher on mobile.
         bottomDock
-          ? "bottom-[calc(10rem+env(safe-area-inset-bottom))]"
-          : "bottom-[calc(5.25rem+env(safe-area-inset-bottom))]",
+          ? "bottom-[calc(12.5rem+env(safe-area-inset-bottom))]"
+          : "bottom-[calc(7rem+env(safe-area-inset-bottom))]",
         className,
       )}
     >

@@ -19,12 +19,13 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<Api
       headers,
       credentials: "include",
     });
-  } catch {
+  } catch (error) {
+    const aborted = error instanceof DOMException && error.name === "AbortError";
     return {
       data: undefined as T,
       error: {
         code: "NETWORK_ERROR",
-        message: "Could not connect. Check your internet connection and try again.",
+        message: aborted ? "The request took longer than expected. Please try again." : "We could not reach the server just now. Please try again.",
       },
     };
   }

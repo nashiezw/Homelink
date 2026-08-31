@@ -6,10 +6,12 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { useApp } from "@/components/providers/app-provider";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api/client";
-import { isLiveChatFloatingOpen, setLiveChatFloatingOpen } from "@/lib/live-chat/floating-state";
+import { isLiveChatFloatingOpen, setLiveChatFloatingOpen, useLibraryBagFloatingOpen } from "@/lib/live-chat/floating-state";
 import { useHouseLinkBottomDock } from "@/lib/ui/bottom-dock";
 import { cn } from "@/lib/utils";
 import type { LiveChatBootstrapView, LiveChatMessageView, LiveChatVisitorContext } from "@/lib/live-chat/types";
+
+type ContactState = { name?: string; phone?: string; email?: string };
 
 export function LiveChatWidget() {
   const pathname = usePathname();
@@ -19,17 +21,20 @@ export function LiveChatWidget() {
   const [boot, setBoot] = useState<LiveChatBootstrapView | null>(null);
   const [messages, setMessages] = useState<LiveChatMessageView[]>([]);
   const [draft, setDraft] = useState("");
-  const [contact, setContact] = useState({ name: "", phone: "", email: "" });
+  const [contact, setContact] = useState<ContactState>({});
   const [loading, setLoading] = useState(true);
   const [slowBootstrap, setSlowBootstrap] = useState(false);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [contactNotice, setContactNotice] = useState<string | null>(null);
+  const [pendingContactField, setPendingContactField] = useState<"phone" | "email" | null>(null);
   const [suggested, setSuggested] = useState<string | null>(null);
   const [unread, setUnread] = useState(0);
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const contactRef = useRef(contact);
   const startedAtRef = useRef(new Date().toISOString());
   const bottomDock = useHouseLinkBottomDock();
+  const libraryBagOpen = useLibraryBagFloatingOpen();
   const lastMessageId = messages[messages.length - 1]?.id;
   const hiddenOnThisRoute = pathname?.startsWith("/dashboard") || pathname?.startsWith("/auth") || pathname?.startsWith("/maintenance");
 
@@ -79,7 +84,7 @@ export function LiveChatWidget() {
         setSuggested(result.data.suggestedMessage || null);
         setError(null);
       } else {
-        setError(result.error?.message ?? "Live Chat is unavailable.");
+        setError(result.error?.code === "NETWORK_ERROR" ? "HouseLink Live is taking longer than expected. You can still type your message and try again." : result.error?.message ?? "Live Chat is unavailable.");
       }
     } finally {
       window.clearTimeout(slowTimer);
@@ -143,12 +148,19 @@ export function LiveChatWidget() {
   async function sendMessage(body = draft) {
     const text = body.trim();
     if (!text || sending) return;
+    const nextContact = mergeContactFromMessage({ ...contactRef.current }, text, pendingContactField);
+    const capturedPhone = !contactRef.current.phone && nextContact.phone;
+    const capturedEmail = !contactRef.current.email && nextContact.email;
+    if (capturedPhone || capturedEmail) {
+      setContact(nextContact);
+      setContactNotice(capturedPhone ? "Saved your WhatsApp number with this chat." : "Saved your email with this chat.");
+    }
     const idempotencyKey = crypto.randomUUID();
     const optimistic: LiveChatMessageView = {
       id: `pending-${idempotencyKey}`,
       conversationId: boot?.conversation?.id || "pending",
       senderKind: "VISITOR",
-      senderName: contact.name || user?.name || "You",
+      senderName: nextContact.name || user?.name || "You",
       body: text,
       messageType: "TEXT",
       internal: false,
@@ -166,13 +178,14 @@ export function LiveChatWidget() {
       body: JSON.stringify({
         body: text,
         idempotencyKey,
-        contact: normalizeContact(contactRef.current),
+        contact: normalizeContact(nextContact),
         context,
       }),
     });
     if (result.data) {
       setMessages((current) => [...current.filter((message) => message.id !== optimistic.id && message.id !== result.data!.id), result.data!]);
       setSuggested(null);
+      setPendingContactField(null);
       if (!boot?.conversation) void bootstrap();
     } else {
       setMessages((current) => current.filter((message) => message.id !== optimistic.id));
@@ -182,7 +195,17 @@ export function LiveChatWidget() {
     setSending(false);
   }
 
-  if (hiddenOnThisRoute || (boot && !boot.settings.enabled)) return null;
+  function handleQuickReply(body: string, contactField?: "phone" | "email") {
+    if (contactField) {
+      setPendingContactField(contactField);
+      setDraft(contactField === "phone" ? "My WhatsApp number is " : "My email is ");
+      setContactNotice(contactField === "phone" ? "Type your WhatsApp number in the message box and send it. We will save it with this chat." : "Type your email in the message box and send it. We will save it with this chat.");
+      return;
+    }
+    void sendMessage(body);
+  }
+
+  if (hiddenOnThisRoute || libraryBagOpen || (boot && !boot.settings.enabled)) return null;
 
   const launcherOnLeft = boot?.settings.mobilePosition === "bottom-left";
   const launcherPosition = launcherOnLeft ? "left-4 items-start sm:left-5" : "right-4 items-end sm:right-5";
@@ -191,6 +214,12 @@ export function LiveChatWidget() {
     ? boot.supportAgent.publicIntro || `${boot.supportAgent.title || "Support"} is online`
     : "Leave a message, the team will reply here";
   const currentContext = context.viewed?.productTitle || context.viewed?.propertyTitle || context.viewed?.courseTitle || "this page";
+  const quickReplies: Array<{ label: string; body: string; icon: typeof Sparkles; contactField?: "phone" | "email" }> = [
+    { label: "Help me buy this", body: `Hi, I am interested in ${currentContext}. Please help me with the best next step.`, icon: Sparkles },
+    { label: "Payment help", body: `Hi, I need help paying for ${currentContext}.`, icon: ShieldCheck },
+    { label: "WhatsApp me", body: "", icon: Phone, contactField: "phone" as const },
+    { label: "Email me details", body: "", icon: Mail, contactField: "email" as const },
+  ];
   const bottomClass = open
     ? "bottom-4 sm:bottom-5"
     : bottomDock
@@ -230,12 +259,6 @@ export function LiveChatWidget() {
             {loading ? (slowBootstrap ? "Still connecting, but you can type your message now." : "Connecting you to HouseLink...") : boot?.settings.welcomeMessage || "Tell us what you need help with and the team will reply here."}
           </div>
 
-          <div className="grid gap-2 border-b border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-950 sm:grid-cols-3">
-            <ContactInput icon={UserRound} label="Name" value={contact.name || user?.name || ""} onChange={(value) => setContact((current) => ({ ...current, name: value }))} />
-            <ContactInput icon={Phone} label="WhatsApp" value={contact.phone || user?.phone || ""} onChange={(value) => setContact((current) => ({ ...current, phone: value }))} />
-            <ContactInput icon={Mail} label="Email" value={contact.email || user?.email || ""} onChange={(value) => setContact((current) => ({ ...current, email: value }))} />
-          </div>
-
           <div className="flex-1 space-y-3 overflow-y-auto bg-[linear-gradient(180deg,#f8fafc_0%,#eefdf6_100%)] p-4 dark:bg-none dark:bg-slate-900/80">
             {loading ? (
               <div className="mx-auto flex w-fit items-center rounded-full bg-white px-3 py-1.5 text-xs font-bold text-slate-500 shadow-sm ring-1 ring-slate-200 dark:bg-slate-950 dark:text-slate-300 dark:ring-slate-800"><Loader2 className="mr-2 size-3.5 animate-spin" /> Syncing chat</div>
@@ -243,17 +266,45 @@ export function LiveChatWidget() {
             {messages.length === 0 ? (
               <div className="overflow-hidden rounded-lg border border-emerald-100 bg-white shadow-sm ring-1 ring-slate-950/5 dark:border-slate-800 dark:bg-slate-950">
                 <div className="flex items-start gap-3 p-3">
-                  <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-200"><Sparkles className="size-4" /></span>
+                  <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-200"><Sparkles className="size-4" /></span>
                   <div className="min-w-0 text-sm text-slate-600 dark:text-slate-300">
-                    <p className="font-black text-slate-950 dark:text-white">{loading ? "You can start typing." : "How can we help?"}</p>
-                    <p className="mt-1 leading-6">{loading ? "HouseLink is opening your chat in the background." : `We can help with ${currentContext}, payment questions, viewing details, or the next best step.`}</p>
+                    <p className="font-black text-slate-950 dark:text-white">{loading ? "You can start typing." : "Hi, you are in the right place."}</p>
+                    <p className="mt-1 leading-6">{loading ? "HouseLink is opening your chat in the background." : `Ask about ${currentContext}, payment, delivery, or the next best step. We will only ask for your contact details when they help us follow up.`}</p>
                   </div>
                 </div>
-                <div className="border-t border-slate-100 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-500 dark:border-slate-800 dark:bg-slate-900/70">
-                  Your page context is shared so you do not have to explain everything again.
+                <div className="grid grid-cols-2 gap-2 border-t border-slate-100 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-900/70">
+                  {quickReplies.map((reply) => {
+                    const Icon = reply.icon;
+                    return (
+                      <button
+                        key={reply.label}
+                        type="button"
+                        onClick={() => handleQuickReply(reply.body, reply.contactField)}
+                        className="flex min-h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-left text-xs font-black text-slate-700 transition hover:border-emerald-300 hover:text-emerald-700 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200"
+                      >
+                        <Icon className="size-3.5 shrink-0 text-emerald-600" />
+                        <span>{reply.label}</span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             ) : null}
+            {messages.length > 0 && (pendingContactField || (!contact.phone && !user?.phone) || (!contact.email && !user?.email)) ? (
+              <div className="flex flex-wrap gap-2">
+                {!contact.phone && !user?.phone ? (
+                  <button type="button" onClick={() => handleQuickReply("", "phone")} className="rounded-full border border-emerald-200 bg-white px-3 py-1.5 text-xs font-black text-emerald-700 shadow-sm transition hover:border-emerald-400 dark:border-emerald-800 dark:bg-slate-950 dark:text-emerald-100">
+                    <Phone className="mr-1 inline size-3" /> Add WhatsApp
+                  </button>
+                ) : null}
+                {!contact.email && !user?.email ? (
+                  <button type="button" onClick={() => handleQuickReply("", "email")} className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-black text-slate-700 shadow-sm transition hover:border-emerald-400 hover:text-emerald-700 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200">
+                    <Mail className="mr-1 inline size-3" /> Add email
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
+            {contactNotice ? <p className="rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-100 dark:ring-emerald-900">{contactNotice}</p> : null}
             {suggested ? (
               <button type="button" onClick={() => void sendMessage(suggested)} className="w-full rounded-lg border border-emerald-200 bg-white p-3 text-left text-sm text-emerald-900 shadow-sm transition hover:border-emerald-400 hover:shadow-md dark:border-emerald-800 dark:bg-slate-950 dark:text-emerald-100">
                 <span className="flex items-center gap-1.5 text-xs font-black uppercase text-emerald-600"><Sparkles className="size-3.5" /> Suggested help</span>
@@ -323,21 +374,6 @@ export function LiveChatWidget() {
   );
 }
 
-function ContactInput({ icon: Icon, label, value, onChange }: { icon: typeof UserRound; label: string; value: string; onChange: (value: string) => void }) {
-  return (
-    <label className="group flex h-11 items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm transition focus-within:border-emerald-500 focus-within:bg-white focus-within:ring-2 focus-within:ring-emerald-500/15 dark:border-slate-700 dark:bg-slate-900 dark:focus-within:bg-slate-950">
-      <Icon className="size-4 shrink-0 text-slate-400 group-focus-within:text-emerald-600" />
-      <input
-        aria-label={label}
-        className="min-w-0 flex-1 bg-transparent font-medium text-slate-900 outline-none placeholder:text-slate-400 dark:text-white"
-        placeholder={label}
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-      />
-    </label>
-  );
-}
-
 function ChatBubble({ message }: { message: LiveChatMessageView }) {
   if (message.messageType === "SYSTEM") {
     return <p className="mx-auto max-w-[90%] rounded-full bg-white px-3 py-1.5 text-center text-xs font-semibold text-slate-500 shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-700">{message.body}</p>;
@@ -366,6 +402,14 @@ function normalizeContact(contact: { name?: string; phone?: string; email?: stri
     phone: contact.phone?.trim(),
     email: contact.email?.trim(),
   };
+}
+
+function mergeContactFromMessage(contact: ContactState, body: string, expectedField: "phone" | "email" | null) {
+  const email = body.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0];
+  const phone = body.match(/(?:\+?\d[\d\s().-]{6,}\d)/)?.[0]?.replace(/[^\d+]/g, "");
+  if ((expectedField === "email" || email) && email) contact.email = email;
+  if ((expectedField === "phone" || phone) && phone) contact.phone = phone;
+  return contact;
 }
 
 function inferViewedContext(path: string) {
