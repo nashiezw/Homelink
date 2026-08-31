@@ -381,7 +381,7 @@ export async function getLiveChatInbox(input: { activeConversationId?: string | 
       where,
       include: conversationInclude(),
       orderBy: [{ lastMessageAt: "desc" }, { updatedAt: "desc" }],
-      take: input.filter === "needs-reply" ? 80 : 30,
+      take: input.filter === "needs-reply" || input.filter === "all" ? 80 : 30,
     }),
     prisma.liveChatVisitor.findMany({
       where: { lastSeenAt: { gte: new Date(Date.now() - ACTIVE_VISITOR_MS) }, blockedAt: null },

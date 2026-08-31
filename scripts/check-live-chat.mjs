@@ -43,8 +43,13 @@ const checks = [
   },
   {
     file: "components/live-chat/live-chat-widget.tsx",
-    label: "public live chat bootstrap uses a slow connection state instead of a false offline error",
-    pattern: /setSlowBootstrap\(true\)/,
+    label: "public live chat opens as ready while history syncs in the background",
+    pattern: /Ready now\. Type your message anytime/,
+  },
+  {
+    file: "components/live-chat/live-chat-widget.tsx",
+    label: "public live chat does not show a blocking syncing loader",
+    pattern: /^(?![\s\S]*(Still connecting|Syncing chat|Opening your HouseLink chat))/,
   },
   {
     file: "components/layout/whatsapp-sticky-fab.tsx",
@@ -98,6 +103,11 @@ const checks = [
   },
   {
     file: "components/admin/live-chat-hub.tsx",
+    label: "admin inbox has an all filter before narrowed status filters",
+    pattern: /const FILTERS = \[\s*\["all",\s*"All"\]/,
+  },
+  {
+    file: "components/admin/live-chat-hub.tsx",
     label: "admin inbox has a needs-reply filter for unread visitor messages",
     pattern: /\["needs-reply",\s*"Needs reply"\]/,
   },
@@ -114,7 +124,12 @@ const checks = [
   {
     file: "components/admin/live-chat-hub.tsx",
     label: "admin bulk delete button remains readable when disabled",
-    pattern: /disabled:bg-red-950\/30/,
+    pattern: /disabled:bg-red-950\/70/,
+  },
+  {
+    file: "lib/live-chat/repository.ts",
+    label: "admin all filter returns a broader conversation window",
+    pattern: /input\.filter === "needs-reply" \|\| input\.filter === "all" \? 80 : 30/,
   },
   {
     file: "lib/live-chat/repository.ts",

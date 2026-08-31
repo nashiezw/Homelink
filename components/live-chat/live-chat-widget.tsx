@@ -23,8 +23,6 @@ export function LiveChatWidget() {
   const [messages, setMessages] = useState<LiveChatMessageView[]>([]);
   const [draft, setDraft] = useState("");
   const [contact, setContact] = useState<ContactState>({});
-  const [loading, setLoading] = useState(true);
-  const [slowBootstrap, setSlowBootstrap] = useState(false);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [contactNotice, setContactNotice] = useState<string | null>(null);
@@ -93,36 +91,28 @@ export function LiveChatWidget() {
 
   const bootstrap = useCallback(async () => {
     if (hiddenOnThisRoute) return;
-    setLoading(true);
-    setSlowBootstrap(false);
-    const slowTimer = window.setTimeout(() => setSlowBootstrap(true), 2500);
-    try {
-      const result = await apiFetch<LiveChatBootstrapView>("/api/v1/live-chat/bootstrap", {
-        method: "POST",
-        body: JSON.stringify({
-          context,
-          contact: normalizeContact(contactRef.current),
-        }),
-      });
-      if (result.data) {
-        setBoot(result.data);
-        setMessages(result.data.messages);
-        setSuggested(result.data.suggestedMessage || null);
-        if (!openRef.current && result.data.conversation?.unreadForVisitor) {
-          const latestStaffMessage = [...result.data.messages].reverse().find(isVisitorPreviewMessage) ?? null;
-          if (latestStaffMessage && !notifiedStaffMessageIdsRef.current.has(latestStaffMessage.id)) {
-            notifiedStaffMessageIdsRef.current.add(latestStaffMessage.id);
-            showPreviewMessage(latestStaffMessage, result.data.settings.soundEnabled);
-          }
-          setUnread(result.data.conversation.unreadForVisitor);
+    const result = await apiFetch<LiveChatBootstrapView>("/api/v1/live-chat/bootstrap", {
+      method: "POST",
+      body: JSON.stringify({
+        context,
+        contact: normalizeContact(contactRef.current),
+      }),
+    });
+    if (result.data) {
+      setBoot(result.data);
+      setMessages(result.data.messages);
+      setSuggested(result.data.suggestedMessage || null);
+      if (!openRef.current && result.data.conversation?.unreadForVisitor) {
+        const latestStaffMessage = [...result.data.messages].reverse().find(isVisitorPreviewMessage) ?? null;
+        if (latestStaffMessage && !notifiedStaffMessageIdsRef.current.has(latestStaffMessage.id)) {
+          notifiedStaffMessageIdsRef.current.add(latestStaffMessage.id);
+          showPreviewMessage(latestStaffMessage, result.data.settings.soundEnabled);
         }
-        setError(null);
-      } else {
-        setError(result.error?.code === "NETWORK_ERROR" ? "HouseLink Live is taking longer than expected. You can still type your message and try again." : result.error?.message ?? "Live Chat is unavailable.");
+        setUnread(result.data.conversation.unreadForVisitor);
       }
-    } finally {
-      window.clearTimeout(slowTimer);
-      setLoading(false);
+      setError(null);
+    } else {
+      setError(result.error?.code === "NETWORK_ERROR" ? "HouseLink Live is taking longer than expected. You can still type your message and try again." : result.error?.message ?? "Live Chat is unavailable.");
     }
   }, [context, hiddenOnThisRoute, showPreviewMessage]);
 
@@ -316,21 +306,18 @@ export function LiveChatWidget() {
 
           <div className="flex items-start gap-2 border-b border-emerald-100 bg-emerald-50 px-4 py-2.5 text-xs font-semibold leading-5 text-emerald-900 dark:border-emerald-900/40 dark:bg-emerald-950/20 dark:text-emerald-100">
             <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-200">
-              {loading ? <Loader2 className="size-3 animate-spin" /> : <ShieldCheck className="size-3" />}
+              <ShieldCheck className="size-3" />
             </span>
-            <span className="min-w-0">{loading ? (slowBootstrap ? "Still connecting. You can type while we wake the team." : "Opening your HouseLink chat...") : "Your page context is shared so you do not repeat yourself."}</span>
+            <span className="min-w-0">Ready now. Type your message anytime; we will attach this page context for the team.</span>
           </div>
 
           <div className="flex-1 space-y-3 overflow-y-auto bg-[linear-gradient(180deg,#f7fbfa_0%,#eefaf5_42%,#f8fafc_100%)] p-4 dark:bg-slate-900/90">
-            {loading ? (
-              <div className="mx-auto flex w-fit items-center rounded-full bg-white px-3 py-1.5 text-xs font-bold text-slate-500 shadow-sm ring-1 ring-slate-200 dark:bg-slate-950 dark:text-slate-300 dark:ring-slate-800"><Loader2 className="mr-2 size-3.5 animate-spin" /> Syncing chat</div>
-            ) : null}
             {messages.length === 0 ? (
               <div className="space-y-3">
                 <div className="flex justify-start">
                   <div className="max-w-[88%] rounded-[22px] rounded-tl-md bg-white px-4 py-3 text-sm text-slate-700 shadow-[0_12px_30px_rgba(15,23,42,0.08)] ring-1 ring-slate-200 dark:bg-slate-950 dark:text-slate-100 dark:ring-slate-800">
-                    <p className="font-black text-slate-950 dark:text-white">{loading ? "You can start typing." : "Hi, welcome to HouseLink."}</p>
-                    <p className="mt-1 leading-6">{loading ? "HouseLink is opening your chat in the background." : `Ask about ${currentContext}, payment, delivery, or the next best step. If we need your number, we will ask nicely. No clipboard interrogation today.`}</p>
+                    <p className="font-black text-slate-950 dark:text-white">Hi, welcome to HouseLink.</p>
+                    <p className="mt-1 leading-6">Ask about {currentContext}, payment, delivery, or the next best step. If we need your number, we will ask nicely. No clipboard interrogation today.</p>
                     <span className="mt-3 inline-flex max-w-full items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-800">
                       <Sparkles className="size-3" /> <span className="truncate">Viewing: {currentContext}</span>
                     </span>

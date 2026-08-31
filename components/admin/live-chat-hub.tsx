@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import type { LiveChatConversationView, LiveChatInboxView, LiveChatMessageView } from "@/lib/live-chat/types";
 
 const FILTERS = [
+  ["all", "All"],
   ["needs-reply", "Needs reply"],
   ["new", "New"],
   ["unassigned", "Unassigned"],
@@ -26,7 +27,7 @@ type LiveChatPanel = "inbox" | "visitors" | "profile" | "settings";
 export function LiveChatHub() {
   const [data, setData] = useState<LiveChatInboxView | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
-  const [filter, setFilter] = useState("needs-reply");
+  const [filter, setFilter] = useState("all");
   const [query, setQuery] = useState("");
   const [queryDraft, setQueryDraft] = useState("");
   const [panel, setPanel] = useState<LiveChatPanel>("inbox");
@@ -330,16 +331,16 @@ export function LiveChatHub() {
                   <button key={id} type="button" onClick={() => changeFilter(id)} className={cn("rounded-md border px-2.5 py-1.5 text-xs font-bold", filter === id ? "border-emerald-400 bg-emerald-500/15 text-emerald-200" : "border-white/10 bg-slate-900 text-slate-400")}>{label}</button>
                 ))}
               </div>
-              <Button
-                variant="secondary"
-                className="w-full justify-center border-red-500/45 bg-red-600 text-white shadow-red-950/20 hover:border-red-400 hover:bg-red-500 disabled:border-red-500/25 disabled:bg-red-950/30 disabled:text-red-100/80 disabled:opacity-100 dark:border-red-400/50 dark:bg-red-600 dark:text-white"
+              <button
+                type="button"
+                className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-red-500/50 bg-red-600 px-3 py-2.5 text-center text-sm font-black leading-tight text-white shadow-sm shadow-red-950/20 transition hover:bg-red-500 disabled:cursor-not-allowed disabled:border-red-400/30 disabled:bg-red-950/70 disabled:text-red-100 disabled:shadow-none"
                 onClick={() => void deleteConversationsInFilter()}
                 disabled={!data.conversations.length || busy === "delete_conversations"}
                 title={!data.conversations.length ? `No conversations in ${filterLabel(filter)} to delete` : `Delete conversations in ${filterLabel(filter)}`}
               >
                 {busy === "delete_conversations" ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
                 {data.conversations.length ? `Delete all in ${filterLabel(filter)}` : `No chats to delete in ${filterLabel(filter)}`}
-              </Button>
+              </button>
             </div>
             <div className="max-h-[560px] overflow-y-auto border-t border-white/10">
               {loadingInbox ? <div className="flex items-center gap-2 border-b border-white/10 p-3 text-xs text-slate-400"><Loader2 className="size-3 animate-spin" /> Refreshing inbox...</div> : null}
