@@ -21,9 +21,10 @@ const checks = [
       && /context\.analyticsSessionId/.test(repository),
   },
   {
-    label: "live chat KPI prefers shared live presence count",
-    pass: /listLivePresence\(ACTIVE_VISITOR_MS\)/.test(repository)
-      && /activeVisitors: sharedPresence\.length \|\| activeVisitors/.test(repository),
+    label: "live chat KPI uses the same visitor source as the live visitors tab",
+    pass: /prisma\.liveChatVisitor\.count\(\{ where: \{ lastSeenAt: \{ gte: new Date\(Date\.now\(\) - ACTIVE_VISITOR_MS\) \}, blockedAt: null \} \}\)/.test(repository)
+      && /activeVisitors: activeVisitorsRaw\.map/.test(repository)
+      && !/activeVisitors: sharedPresence/.test(repository),
   },
   {
     label: "library shoppers remain a subset of shared live visitors",

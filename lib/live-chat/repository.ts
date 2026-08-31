@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from "crypto";
 import type { Prisma } from "@prisma/client";
-import { listLivePresence, upsertSitePresence } from "@/lib/analytics/presence";
+import { upsertSitePresence } from "@/lib/analytics/presence";
 import { getMainPrisma, isPostgresStoreEnabled } from "@/lib/db/main-prisma";
 import { getClientIp } from "@/lib/api/request-meta";
 import type {
@@ -1067,7 +1067,6 @@ async function getLiveChatAnalytics() {
   if (analyticsCache && Date.now() - analyticsCache.checkedAt < 60_000) return analyticsCache.value;
   const prisma = getMainPrisma();
   const since = new Date(Date.now() - 30 * 24 * 60 * 60_000);
-  const sharedPresence = await listLivePresence(ACTIVE_VISITOR_MS).catch(() => []);
   const [totalConversations, openConversations, waitingConversations, resolvedConversations, activeVisitors, leadsCreated, proactiveMessages, firstResponses] = await Promise.all([
     prisma.liveChatConversation.count({ where: { createdAt: { gte: since } } }),
     prisma.liveChatConversation.count({ where: { status: { in: ["NEW", "OPEN", "FOLLOW_UP"] } } }),
@@ -1086,7 +1085,7 @@ async function getLiveChatAnalytics() {
     openConversations,
     waitingConversations,
     resolvedConversations,
-    activeVisitors: sharedPresence.length || activeVisitors,
+    activeVisitors,
     leadsCreated,
     proactiveMessages,
     averageFirstResponseSeconds: avg,
