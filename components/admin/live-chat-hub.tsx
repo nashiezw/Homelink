@@ -883,7 +883,7 @@ function filterLabel(filter: string) {
 function pageLabel(title?: string | null, path?: string | null) {
   const cleanTitle = title?.replace(/\s*\|\s*HouseLink.*$/i, "").trim();
   if (cleanTitle) return cleanTitle;
-  const cleanPath = (path || "").split("?")[0];
+  const cleanPath = cleanJourneyPath(path);
   const parts = cleanPath.split("/").filter(Boolean);
   if (!parts.length) return "Homepage";
   if (parts[0] === "library" && parts[1]) return `Library product: ${humanize(parts[1])}`;
@@ -892,6 +892,25 @@ function pageLabel(title?: string | null, path?: string | null) {
   if (parts[0] === "academy") return parts[1] ? `Academy: ${humanize(parts[1])}` : "HouseLink Academy";
   if (parts[0] === "blog" && parts[1]) return `Blog: ${humanize(parts[1])}`;
   return humanize(parts.join(" "));
+}
+
+function cleanJourneyPath(value?: string | null) {
+  const raw = String(value || "").trim();
+  if (!raw) return "/";
+  const decoded = safeDecode(raw);
+  try {
+    return new URL(decoded, "https://www.houselink.co.zw").pathname || "/";
+  } catch {
+    return decoded.split("?")[0].split("#")[0] || "/";
+  }
+}
+
+function safeDecode(value: string) {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
 }
 
 function humanize(value: string) {

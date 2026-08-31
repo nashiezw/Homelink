@@ -113,6 +113,11 @@ const checks = [
   },
   {
     file: "components/admin/live-chat-hub.tsx",
+    label: "admin page labels strip tracking query strings before rendering",
+    pattern: /function cleanJourneyPath[\s\S]*new URL/,
+  },
+  {
+    file: "components/admin/live-chat-hub.tsx",
     label: "admin bulk deletion is explicit and scoped to the current filter",
     pattern: /deleteConversationsInFilter/,
   },
