@@ -37,6 +37,11 @@ const checks = [
     pattern: /closedLiftForCart/,
   },
   {
+    file: "components/live-chat/live-chat-widget.tsx",
+    label: "public live chat bootstrap cannot leave the mobile widget spinning indefinitely",
+    pattern: /controller\.abort\(\)/,
+  },
+  {
     file: "components/layout/whatsapp-sticky-fab.tsx",
     label: "WhatsApp FAB hides while live chat is open",
     pattern: /liveChatOpen/,

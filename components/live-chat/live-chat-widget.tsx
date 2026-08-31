@@ -23,6 +23,7 @@ export function LiveChatWidget() {
   const [draft, setDraft] = useState("");
   const [contact, setContact] = useState({ name: "", phone: "", email: "" });
   const [loading, setLoading] = useState(true);
+  const [slowBootstrap, setSlowBootstrap] = useState(false);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [suggested, setSuggested] = useState<string | null>(null);
@@ -64,22 +65,32 @@ export function LiveChatWidget() {
   const bootstrap = useCallback(async () => {
     if (hiddenOnThisRoute) return;
     setLoading(true);
-    const result = await apiFetch<LiveChatBootstrapView>("/api/v1/live-chat/bootstrap", {
-      method: "POST",
-      body: JSON.stringify({
-        context,
-        contact: normalizeContact(contactRef.current),
-      }),
-    });
-    if (result.data) {
-      setBoot(result.data);
-      setMessages(result.data.messages);
-      setSuggested(result.data.suggestedMessage || null);
-      setError(null);
-    } else {
-      setError(result.error?.message ?? "Live Chat is unavailable.");
+    setSlowBootstrap(false);
+    const slowTimer = window.setTimeout(() => setSlowBootstrap(true), 2500);
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 9000);
+    try {
+      const result = await apiFetch<LiveChatBootstrapView>("/api/v1/live-chat/bootstrap", {
+        method: "POST",
+        signal: controller.signal,
+        body: JSON.stringify({
+          context,
+          contact: normalizeContact(contactRef.current),
+        }),
+      });
+      if (result.data) {
+        setBoot(result.data);
+        setMessages(result.data.messages);
+        setSuggested(result.data.suggestedMessage || null);
+        setError(null);
+      } else {
+        setError(result.error?.message ?? "Live Chat is unavailable.");
+      }
+    } finally {
+      window.clearTimeout(slowTimer);
+      window.clearTimeout(timeout);
+      setLoading(false);
     }
-    setLoading(false);
   }, [context, hiddenOnThisRoute]);
 
   useEffect(() => {
@@ -214,7 +225,7 @@ export function LiveChatWidget() {
           </header>
 
           <div className="border-b border-slate-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-950 dark:border-slate-800 dark:bg-emerald-950/30 dark:text-emerald-100">
-            {loading ? "Connecting you to HouseLink..." : boot?.settings.welcomeMessage}
+            {loading ? (slowBootstrap ? "Still connecting, but you can type your message now." : "Connecting you to HouseLink...") : boot?.settings.welcomeMessage || "Tell us what you need help with and the team will reply here."}
           </div>
 
           <div className="grid gap-3 border-b border-slate-200 p-3 dark:border-slate-800 sm:grid-cols-3">
@@ -225,12 +236,12 @@ export function LiveChatWidget() {
 
           <div className="flex-1 space-y-3 overflow-y-auto bg-slate-50 p-4 dark:bg-slate-900/80">
             {loading ? (
-              <div className="flex items-center justify-center py-10 text-sm text-slate-500"><Loader2 className="mr-2 size-4 animate-spin" /> Loading chat</div>
+              <div className="mx-auto flex w-fit items-center rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-500 shadow-sm dark:bg-slate-950 dark:text-slate-300"><Loader2 className="mr-2 size-3.5 animate-spin" /> Syncing chat</div>
             ) : null}
-            {messages.length === 0 && !loading ? (
+            {messages.length === 0 ? (
               <div className="rounded-lg border border-dashed border-slate-300 bg-white p-4 text-sm text-slate-600 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300">
-                <p className="font-semibold text-slate-900 dark:text-white">Ask freely.</p>
-                <p className="mt-1">No account needed. We will use your page context so you do not have to explain where you are stuck.</p>
+                <p className="font-semibold text-slate-900 dark:text-white">{loading ? "You can start typing." : "Ask freely."}</p>
+                <p className="mt-1">{loading ? "HouseLink is opening your chat in the background." : "No account needed. We will use your page context so you do not have to explain where you are stuck."}</p>
               </div>
             ) : null}
             {suggested ? (
