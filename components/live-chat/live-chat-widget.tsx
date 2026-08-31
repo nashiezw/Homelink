@@ -6,6 +6,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { useApp } from "@/components/providers/app-provider";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api/client";
+import { getOrCreateSessionId, getOrCreateVisitorId } from "@/lib/analytics/visitor-client";
 import { isLiveChatFloatingOpen, setLiveChatFloatingOpen, useLibraryBagFloatingOpen } from "@/lib/live-chat/floating-state";
 import { playLiveChatNotificationSound, unlockLiveChatNotificationSound } from "@/lib/live-chat/notification-sound";
 import { useHouseLinkBottomDock } from "@/lib/ui/bottom-dock";
@@ -45,6 +46,8 @@ export function LiveChatWidget() {
     const params = searchParams;
     const path = `${pathname || "/"}${params?.toString() ? `?${params.toString()}` : ""}`;
     return {
+      analyticsVisitorId: typeof window === "undefined" ? undefined : getOrCreateVisitorId(),
+      analyticsSessionId: typeof window === "undefined" ? undefined : getOrCreateSessionId(),
       path,
       title: typeof document === "undefined" ? path : document.title,
       referrer: typeof document === "undefined" ? "" : document.referrer,

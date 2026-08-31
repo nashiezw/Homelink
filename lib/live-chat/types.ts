@@ -5,6 +5,8 @@ export type LiveChatMessageType = "TEXT" | "SYSTEM" | "INTERNAL_NOTE" | "PRODUCT
 export type LiveChatAvailability = "ONLINE" | "AWAY" | "BUSY" | "OFFLINE";
 
 export type LiveChatVisitorContext = {
+  analyticsVisitorId?: string;
+  analyticsSessionId?: string;
   path?: string;
   title?: string;
   referrer?: string;

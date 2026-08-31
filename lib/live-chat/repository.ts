@@ -1,5 +1,6 @@
 import { createHash, randomBytes } from "crypto";
 import type { Prisma } from "@prisma/client";
+import { listLivePresence, upsertSitePresence } from "@/lib/analytics/presence";
 import { getMainPrisma, isPostgresStoreEnabled } from "@/lib/db/main-prisma";
 import { getClientIp } from "@/lib/api/request-meta";
 import type {
@@ -816,13 +817,54 @@ async function upsertVisitor(input: { request: Request; visitorKey: string; cont
       viewed: context.viewed,
     } as Prisma.InputJsonObject,
   };
-  if (existing) return prisma.liveChatVisitor.update({ where: { id: existing.id }, data });
-  return prisma.liveChatVisitor.create({
+  const visitor = existing
+    ? await prisma.liveChatVisitor.update({ where: { id: existing.id }, data })
+    : await prisma.liveChatVisitor.create({
     data: {
       publicId: makePublicId("vis"),
       visitorKeyHash: keyHash,
       ...data,
     },
+  });
+  void syncSharedPresenceFromLiveChat(input, visitor.publicId).catch(() => null);
+  return visitor;
+}
+
+async function syncSharedPresenceFromLiveChat(input: { request: Request; context: LiveChatVisitorContext; contact?: LiveChatContactInput; userId?: string | null }, fallbackVisitorId: string) {
+  const context = input.context;
+  const visitorId = cleanText(context.analyticsVisitorId, 80) || fallbackVisitorId;
+  const sessionId = cleanText(context.analyticsSessionId, 80) || visitorId;
+  if (!visitorId || !sessionId) return;
+  const cartItems = Array.isArray(context.cart?.items)
+    ? context.cart.items.slice(0, 12).map((item) => ({
+        productId: String(item.id || ""),
+        title: String(item.title || ""),
+        quantity: Number(item.quantity) || 0,
+        price: Number(item.price) || 0,
+        formatLabel: item.format,
+      }))
+    : undefined;
+  await upsertSitePresence({
+    visitorId,
+    sessionId,
+    path: cleanText(context.path, 320) || "/",
+    title: cleanText(context.title, 200) || undefined,
+    deviceType: cleanText(context.deviceType, 32) || undefined,
+    userId: input.userId ?? undefined,
+    productId: cleanText(context.viewed?.productId || context.viewed?.propertyId || context.viewed?.courseId, 64) || undefined,
+    productTitle: cleanText(context.viewed?.productTitle || context.viewed?.propertyTitle || context.viewed?.courseTitle, 200) || undefined,
+    cartItemCount: Number(context.cart?.itemCount) || undefined,
+    cartValue: Number(context.cart?.value) || undefined,
+    cartCurrency: context.cart?.currency,
+    cartSummary: cartItems,
+    referrer: cleanText(context.referrer, 320) || undefined,
+    utmSource: cleanText(context.utmSource, 80) || undefined,
+    utmCampaign: cleanText(context.utmCampaign, 120) || undefined,
+    contactEmail: cleanText(input.contact?.email, 160) || undefined,
+    contactPhone: cleanText(input.contact?.phone, 40) || undefined,
+    country: input.request.headers.get("x-vercel-ip-country") || undefined,
+    region: decodeHeaderValue(input.request.headers.get("x-vercel-ip-country-region")),
+    city: decodeHeaderValue(input.request.headers.get("x-vercel-ip-city")),
   });
 }
 
@@ -1025,6 +1067,7 @@ async function getLiveChatAnalytics() {
   if (analyticsCache && Date.now() - analyticsCache.checkedAt < 60_000) return analyticsCache.value;
   const prisma = getMainPrisma();
   const since = new Date(Date.now() - 30 * 24 * 60 * 60_000);
+  const sharedPresence = await listLivePresence(ACTIVE_VISITOR_MS).catch(() => []);
   const [totalConversations, openConversations, waitingConversations, resolvedConversations, activeVisitors, leadsCreated, proactiveMessages, firstResponses] = await Promise.all([
     prisma.liveChatConversation.count({ where: { createdAt: { gte: since } } }),
     prisma.liveChatConversation.count({ where: { status: { in: ["NEW", "OPEN", "FOLLOW_UP"] } } }),
@@ -1038,7 +1081,16 @@ async function getLiveChatAnalytics() {
   const avg = firstResponses.length
     ? Math.round(firstResponses.reduce((sum, item) => sum + ((item.firstResponseAt?.getTime() ?? item.createdAt.getTime()) - item.createdAt.getTime()) / 1000, 0) / firstResponses.length)
     : null;
-  const value = { totalConversations, openConversations, waitingConversations, resolvedConversations, activeVisitors, leadsCreated, proactiveMessages, averageFirstResponseSeconds: avg };
+  const value = {
+    totalConversations,
+    openConversations,
+    waitingConversations,
+    resolvedConversations,
+    activeVisitors: sharedPresence.length || activeVisitors,
+    leadsCreated,
+    proactiveMessages,
+    averageFirstResponseSeconds: avg,
+  };
   analyticsCache = { checkedAt: Date.now(), value };
   return value;
 }
@@ -1458,6 +1510,15 @@ function sanitizeMessage(value: string) {
 
 function cleanText(value: unknown, max = 200) {
   return typeof value === "string" ? value.trim().slice(0, max) : "";
+}
+
+function decodeHeaderValue(value: string | null) {
+  if (!value) return undefined;
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
 }
 
 function preview(value: string) {
