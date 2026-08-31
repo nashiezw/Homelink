@@ -32,6 +32,7 @@ export function LiveChatHub() {
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
   const [startingVisitorId, setStartingVisitorId] = useState<string | null>(null);
+  const [deletedVisitorIds, setDeletedVisitorIds] = useState<string[]>([]);
   const [loadingInbox, setLoadingInbox] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -56,7 +57,14 @@ export function LiveChatHub() {
       if (result.data) {
         setData(result.data);
         setError(null);
-        if (!activeIdRef.current && result.data.conversations[0]) setActiveId(result.data.conversations[0].id);
+        const nextActive = activeIdRef.current;
+        if (nextActive && !result.data.conversations.some((conversation) => conversation.id === nextActive)) {
+          setActiveId(result.data.conversations[0]?.id ?? null);
+          activeIdRef.current = result.data.conversations[0]?.id ?? null;
+        } else if (!nextActive && result.data.conversations[0]) {
+          setActiveId(result.data.conversations[0].id);
+          activeIdRef.current = result.data.conversations[0].id;
+        }
       } else {
         setError(result.error?.message ?? "Live Chat could not be loaded.");
       }
@@ -147,6 +155,59 @@ export function LiveChatHub() {
     void load({ conversationId });
   }
 
+  function changeFilter(nextFilter: string) {
+    setFilter(nextFilter);
+    setActiveId(null);
+    activeIdRef.current = null;
+    setDraft("");
+    setNote("");
+  }
+
+  async function deleteConversation(conversation: LiveChatConversationView) {
+    if (!window.confirm("Delete this conversation from the inbox? This removes the chat history for the team, but does not block the visitor from using support later.")) return;
+    setBusy(`delete_conversation:${conversation.id}`);
+    setError(null);
+    const result = await apiFetch<{ ok: boolean }>("/api/v1/admin/live-chat", {
+      method: "POST",
+      body: JSON.stringify({ action: "delete_conversation", conversationId: conversation.id }),
+    });
+    if (result.error) {
+      setError(result.error.message);
+    } else {
+      setNotice("Conversation deleted.");
+      window.setTimeout(() => setNotice(null), 2500);
+      setDeletedVisitorIds((current) => [...new Set([...current, conversation.visitor.id])]);
+      setActiveId(null);
+      activeIdRef.current = null;
+      setDraft("");
+      setNote("");
+      await load({ conversationId: null });
+    }
+    setBusy(null);
+  }
+
+  async function deleteConversationsInFilter() {
+    if (!window.confirm(`Delete all conversations currently matching "${filterLabel(filter)}"${query.trim() ? ` and "${query.trim()}"` : ""}?`)) return;
+    setBusy("delete_conversations");
+    setError(null);
+    const result = await apiFetch<{ count: number }>("/api/v1/admin/live-chat", {
+      method: "POST",
+      body: JSON.stringify({ action: "delete_conversations", filter, query }),
+    });
+    if (result.error) {
+      setError(result.error.message);
+    } else {
+      setNotice(`${result.data?.count ?? 0} conversation${result.data?.count === 1 ? "" : "s"} deleted.`);
+      window.setTimeout(() => setNotice(null), 2500);
+      setActiveId(null);
+      activeIdRef.current = null;
+      setDraft("");
+      setNote("");
+      await load({ conversationId: null });
+    }
+    setBusy(null);
+  }
+
   if (!data) {
     return (
       <section className="rounded-lg border border-white/10 bg-slate-900/70 p-6 text-slate-200">
@@ -202,7 +263,7 @@ export function LiveChatHub() {
 
         {panel === "profile" ? <ProfilePanel data={data} action={action} busy={busy} /> : null}
         {panel === "settings" ? <SettingsPanel data={data} action={action} busy={busy} /> : null}
-        {panel === "visitors" ? <VisitorsPanel visitors={data.activeVisitors} startConversation={startConversation} openConversation={openConversation} startingVisitorId={startingVisitorId} /> : null}
+        {panel === "visitors" ? <VisitorsPanel visitors={data.activeVisitors.filter((visitor) => !deletedVisitorIds.includes(visitor.id))} startConversation={startConversation} openConversation={openConversation} startingVisitorId={startingVisitorId} /> : null}
 
         {panel === "inbox" ? <div className="grid min-h-[660px] lg:grid-cols-[330px_minmax(0,1fr)_380px]">
           <aside className="border-b border-white/10 bg-slate-950/80 lg:border-b-0 lg:border-r lg:border-white/10">
@@ -214,9 +275,12 @@ export function LiveChatHub() {
               </label>
               <div className="flex flex-wrap gap-2">
                 {FILTERS.map(([id, label]) => (
-                  <button key={id} type="button" onClick={() => setFilter(id)} className={cn("rounded-md border px-2.5 py-1.5 text-xs font-bold", filter === id ? "border-emerald-400 bg-emerald-500/15 text-emerald-200" : "border-white/10 bg-slate-900 text-slate-400")}>{label}</button>
+                  <button key={id} type="button" onClick={() => changeFilter(id)} className={cn("rounded-md border px-2.5 py-1.5 text-xs font-bold", filter === id ? "border-emerald-400 bg-emerald-500/15 text-emerald-200" : "border-white/10 bg-slate-900 text-slate-400")}>{label}</button>
                 ))}
               </div>
+              <Button variant="secondary" className="w-full justify-center border-red-400/20 text-red-100 hover:border-red-300" onClick={() => void deleteConversationsInFilter()} disabled={!data.conversations.length || busy === "delete_conversations"}>
+                {busy === "delete_conversations" ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />} Delete all in {filterLabel(filter)}
+              </Button>
             </div>
             <div className="max-h-[560px] overflow-y-auto border-t border-white/10">
               {loadingInbox ? <div className="flex items-center gap-2 border-b border-white/10 p-3 text-xs text-slate-400"><Loader2 className="size-3 animate-spin" /> Refreshing inbox...</div> : null}
@@ -241,7 +305,7 @@ export function LiveChatHub() {
                         <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-black", statusTone(conversation.status))}>{conversation.status.replace(/_/g, " ")}</span>
                       </span>
                       <span className="mt-1 block truncate text-xs text-slate-300">{conversation.lastMessagePreview || conversation.subject || conversation.currentTitle || "No messages yet"}</span>
-                      <span className="mt-2 flex items-center gap-1 truncate text-[11px] text-slate-500"><Globe2 className="size-3" /> {conversation.currentPath || conversation.visitor.currentPath || "Unknown page"}</span>
+                      <span className="mt-2 flex items-center gap-1 truncate text-[11px] text-slate-500"><Globe2 className="size-3" /> {pageLabel(conversation.visitor.currentTitle || conversation.currentTitle, conversation.visitor.currentPath || conversation.currentPath)}</span>
                     </span>
                   </div>
                 </button>
@@ -250,8 +314,8 @@ export function LiveChatHub() {
           </aside>
 
           <main className="flex min-h-[620px] flex-col">
-            <ConversationHeader conversation={activeConversation} data={data} action={action} busy={busy} />
-            <div className="flex-1 space-y-4 overflow-y-auto bg-[#f4f7fb] p-4 dark:bg-slate-900/60">
+            <ConversationHeader conversation={activeConversation} data={data} action={action} busy={busy} onDelete={deleteConversation} />
+            <div className="flex-1 space-y-4 overflow-y-auto bg-slate-950/70 p-4">
               {data.messages.length ? data.messages.map((message) => <AdminMessage key={message.id} message={message} />) : <Empty label="Select a conversation or start one from Active Visitors." />}
             </div>
             {activeConversation ? (
@@ -298,7 +362,7 @@ function Metric({ icon: Icon, label, value, tone = "slate" }: { icon: typeof Mes
   );
 }
 
-function ConversationHeader({ conversation, data, action, busy }: { conversation: LiveChatConversationView | null; data: LiveChatInboxView; action: (body: Record<string, unknown>, success?: string) => Promise<void>; busy: string | null }) {
+function ConversationHeader({ conversation, data, action, busy, onDelete }: { conversation: LiveChatConversationView | null; data: LiveChatInboxView; action: (body: Record<string, unknown>, success?: string) => Promise<void>; busy: string | null; onDelete: (conversation: LiveChatConversationView) => Promise<void> }) {
   if (!conversation) return <div className="border-b border-white/10 p-4 text-sm text-slate-400">No conversation selected.</div>;
   const lastSeen = new Date(conversation.visitor.lastSeenAt);
   const lastSeenLabel = Number.isNaN(lastSeen.getTime()) ? "Recently active" : `Last seen ${lastSeen.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
@@ -345,13 +409,11 @@ function ConversationHeader({ conversation, data, action, busy }: { conversation
             </ControlSelect>
             <Button
               variant="secondary"
-              onClick={() => {
-                if (window.confirm("Delete this conversation permanently?")) void action({ action: "delete_conversation", conversationId: conversation.id }, "Conversation deleted.");
-              }}
-              disabled={busy === "delete_conversation"}
+              onClick={() => void onDelete(conversation)}
+              disabled={busy === `delete_conversation:${conversation.id}`}
               className="mt-1 justify-self-start"
             >
-              {busy === "delete_conversation" ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />} Delete
+              {busy === `delete_conversation:${conversation.id}` ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />} Delete
             </Button>
           </div>
         </div>
@@ -384,11 +446,11 @@ function AdminMessage({ message }: { message: LiveChatMessageView }) {
   const system = message.messageType === "SYSTEM";
   const internal = message.internal;
   const staff = message.senderKind === "STAFF";
-  if (system) return <p className="mx-auto max-w-xl rounded-full bg-white px-4 py-2 text-center text-xs font-semibold text-slate-500 shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-700">{message.body}</p>;
+  if (system) return <p className="mx-auto max-w-xl rounded-full bg-slate-800 px-4 py-2 text-center text-xs font-semibold text-slate-300 shadow-sm ring-1 ring-white/10">{message.body}</p>;
   const card = message.metadata && typeof message.metadata === "object" ? message.metadata as { url?: string; title?: string; kind?: string } : null;
   return (
     <div className={cn("flex", staff ? "justify-end" : "justify-start")}>
-      <div className={cn("max-w-[78%] rounded-[18px] border px-3.5 py-2.5 text-sm shadow-sm", internal ? "rounded-bl-md border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-400/30 dark:bg-amber-400/10 dark:text-amber-100" : staff ? "rounded-br-md border-emerald-500/20 bg-emerald-600 text-white" : "rounded-bl-md border-slate-200 bg-white text-slate-800 dark:border-white/10 dark:bg-slate-950 dark:text-slate-100")}>
+      <div className={cn("max-w-[78%] rounded-[18px] border px-3.5 py-2.5 text-sm shadow-sm", internal ? "rounded-bl-md border-amber-400/30 bg-amber-400/10 text-amber-100" : staff ? "rounded-br-md border-emerald-500/20 bg-emerald-600 text-white" : "rounded-bl-md border-white/10 bg-slate-900 text-slate-100")}>
         <p className={cn("mb-1 text-[10px] font-black uppercase", staff ? "text-emerald-50/80" : "text-emerald-600 dark:text-emerald-300")}>{internal ? "Internal note" : message.senderName || message.senderKind}</p>
         <p className="whitespace-pre-wrap leading-6">{message.body}</p>
         {card?.url ? <a className="mt-2 block rounded-md bg-white/15 px-3 py-2 text-xs font-bold underline-offset-2 hover:underline" href={card.url} target="_blank" rel="noreferrer">{card.title || card.url}</a> : null}
@@ -448,9 +510,9 @@ function ContextPanel({ conversation, events, visitors, startConversation }: { c
             <p className="mt-1 text-xs text-slate-400">{conversation.visitor.deviceType || "Unknown device"} visitor</p>
           </div>
           <Info label="Contact" value={[conversation.visitor.phone, conversation.visitor.email].filter(Boolean).join(" / ") || "Not captured yet"} />
-          <Info label="Current page" value={conversation.visitor.currentTitle || conversation.visitor.currentPath || "Unknown"} />
+          <Info label="Current page" value={pageLabel(conversation.visitor.currentTitle || conversation.currentTitle, conversation.visitor.currentPath || conversation.currentPath)} />
           <Info label="Source" value={conversation.visitor.utmSource || conversation.visitor.source || "Direct / Unknown"} />
-          <Info label="Landing page" value={conversation.visitor.landingPage || "Unknown"} />
+          <Info label="Landing page" value={pageLabel(null, conversation.visitor.landingPage)} />
           <Button variant="secondary" className="w-full justify-center" onClick={() => void startConversation(conversation.visitor.id)}><Bell className="size-4" /> Send proactive nudge</Button>
         </div>
       ) : (
@@ -458,7 +520,7 @@ function ContextPanel({ conversation, events, visitors, startConversation }: { c
           {visitors.slice(0, 8).map((visitor) => (
             <div key={visitor.id} className="rounded-md border border-white/10 bg-slate-950 p-3">
               <p className="text-sm font-bold">{visitorDisplayName(visitor)}</p>
-              <p className="truncate text-xs text-slate-400">{visitor.currentTitle || visitor.currentPath || "Browsing"}</p>
+              <p className="truncate text-xs text-slate-400">{pageLabel(visitor.currentTitle, visitor.currentPath)}</p>
               <Button className="mt-2" variant="secondary" onClick={() => void startConversation(visitor.id)}><Send className="size-4" /> Start chat</Button>
             </div>
           ))}
@@ -812,6 +874,32 @@ function visitorInitials(visitor: LiveChatConversationView["visitor"]) {
   const name = visitorDisplayName(visitor);
   const parts = name.split(/[\s@.]+/).filter(Boolean);
   return (parts[0]?.[0] || "V").toUpperCase() + (parts[1]?.[0] || "").toUpperCase();
+}
+
+function filterLabel(filter: string) {
+  return FILTERS.find(([id]) => id === filter)?.[1] ?? "current filter";
+}
+
+function pageLabel(title?: string | null, path?: string | null) {
+  const cleanTitle = title?.replace(/\s*\|\s*HouseLink.*$/i, "").trim();
+  if (cleanTitle) return cleanTitle;
+  const cleanPath = (path || "").split("?")[0];
+  const parts = cleanPath.split("/").filter(Boolean);
+  if (!parts.length) return "Homepage";
+  if (parts[0] === "library" && parts[1]) return `Library product: ${humanize(parts[1])}`;
+  if (parts[0] === "library") return "HouseLink Library";
+  if (parts[0] === "listings" && parts[1]) return `Property listing ${parts[1].slice(0, 8)}`;
+  if (parts[0] === "academy") return parts[1] ? `Academy: ${humanize(parts[1])}` : "HouseLink Academy";
+  if (parts[0] === "blog" && parts[1]) return `Blog: ${humanize(parts[1])}`;
+  return humanize(parts.join(" "));
+}
+
+function humanize(value: string) {
+  return value
+    .replace(/[-_]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 function visitorActionLabel(status: string) {

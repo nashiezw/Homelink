@@ -590,6 +590,24 @@ export async function liveChatAdminAction(user: AdminUser, body: Record<string, 
     analyticsCache = null;
     return { ok: true };
   }
+  if (action === "delete_conversations") {
+    const where = conversationFilter(String(body.filter || "open"), String(body.query || ""), user.id);
+    const rows = await prisma.liveChatConversation.findMany({ where, select: { id: true, visitorId: true }, take: 100 });
+    if (!rows.length) return { count: 0 };
+    await prisma.$transaction([
+      prisma.liveChatEvent.createMany({
+        data: rows.map((conversation) => ({
+          visitorId: conversation.visitorId,
+          conversationId: conversation.id,
+          eventType: "CONVERSATION_BULK_DELETED",
+          createdById: user.id,
+        })),
+      }),
+      prisma.liveChatConversation.deleteMany({ where: { id: { in: rows.map((conversation) => conversation.id) } } }),
+    ]);
+    analyticsCache = null;
+    return { count: rows.length };
+  }
   if (action === "lead") {
     const conversation = await getConversationByPublicId(String(body.conversationId ?? ""));
     if (!conversation) throw new LiveChatError("CONVERSATION_NOT_FOUND", "Conversation not found.", 404);

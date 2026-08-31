@@ -102,6 +102,26 @@ const checks = [
     pattern: /visitorActionLabel\(visitor\.conversation\.status\)/,
   },
   {
+    file: "components/admin/live-chat-hub.tsx",
+    label: "admin inbox filter changes clear the selected conversation",
+    pattern: /function changeFilter[\s\S]*activeIdRef\.current\s*=\s*null/,
+  },
+  {
+    file: "components/admin/live-chat-hub.tsx",
+    label: "admin inbox shows readable page labels instead of raw tracking URLs",
+    pattern: /function pageLabel/,
+  },
+  {
+    file: "components/admin/live-chat-hub.tsx",
+    label: "admin bulk deletion is explicit and scoped to the current filter",
+    pattern: /deleteConversationsInFilter/,
+  },
+  {
+    file: "lib/live-chat/repository.ts",
+    label: "bulk live chat deletion reuses the server-side conversation filter",
+    pattern: /action === "delete_conversations"[\s\S]*conversationFilter/,
+  },
+  {
     file: "lib/live-chat/repository.ts",
     label: "active visitors include latest conversation context for smarter admin actions",
     pattern: /activeVisitorConversations/,

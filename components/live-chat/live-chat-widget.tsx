@@ -268,13 +268,14 @@ export function LiveChatWidget() {
   return (
     <div className={cn("fixed z-[70] flex max-w-[calc(100vw-2rem)] flex-col gap-3 transition-[bottom] duration-200", bottomClass, launcherPosition)}>
       {open ? (
-        <section className="flex h-[min(690px,calc(100dvh-1.5rem))] w-[min(430px,calc(100vw-1rem))] flex-col overflow-hidden rounded-2xl border border-white/40 bg-white shadow-[0_24px_80px_rgba(2,6,23,0.32)] ring-1 ring-slate-950/5 dark:border-slate-700 dark:bg-slate-950">
-          <header className="relative overflow-hidden bg-[#06111f] px-4 py-3.5 text-white">
-            <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-300" />
+        <section className="flex h-[min(700px,calc(100dvh-1rem))] w-[min(440px,calc(100vw-0.75rem))] flex-col overflow-hidden rounded-[1.35rem] border border-white/60 bg-white shadow-[0_24px_90px_rgba(2,6,23,0.34)] ring-1 ring-emerald-900/10 dark:border-slate-700 dark:bg-slate-950">
+          <header className="relative overflow-hidden bg-[#07121f] px-4 py-4 text-white">
+            <div className="absolute inset-x-0 top-0 h-1 bg-[linear-gradient(90deg,#14b8a6,#22c55e,#38bdf8)]" />
+            <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(20,184,166,0.24),transparent_42%,rgba(56,189,248,0.16))]" />
             <div className="flex items-center justify-between gap-3">
               <div className="flex min-w-0 items-center gap-3">
                 <span
-                  className="relative flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-emerald-500 bg-cover bg-center text-white shadow-lg shadow-emerald-950/30 ring-1 ring-white/15"
+                  className="relative flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-emerald-500 bg-cover bg-center text-white shadow-lg shadow-emerald-950/30 ring-1 ring-white/20"
                   style={boot?.supportAgent?.avatarUrl ? { backgroundImage: `url(${boot.supportAgent.avatarUrl})` } : undefined}
                 >
                   {boot?.supportAgent?.avatarUrl ? null : <Headphones className="size-5" />}
@@ -294,23 +295,26 @@ export function LiveChatWidget() {
             </div>
           </header>
 
-          <div className="flex items-start gap-2 border-b border-slate-100 bg-white px-4 py-2.5 text-xs font-semibold leading-5 text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
+          <div className="flex items-start gap-2 border-b border-emerald-100 bg-emerald-50 px-4 py-2.5 text-xs font-semibold leading-5 text-emerald-900 dark:border-emerald-900/40 dark:bg-emerald-950/20 dark:text-emerald-100">
             <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-200">
               {loading ? <Loader2 className="size-3 animate-spin" /> : <ShieldCheck className="size-3" />}
             </span>
             <span className="min-w-0">{loading ? (slowBootstrap ? "Still connecting. You can type while we wake the team." : "Opening your HouseLink chat...") : "Your page context is shared so you do not repeat yourself."}</span>
           </div>
 
-          <div className="flex-1 space-y-3 overflow-y-auto bg-[#f6f8fb] p-4 dark:bg-slate-900/90">
+          <div className="flex-1 space-y-3 overflow-y-auto bg-[linear-gradient(180deg,#f7fbfa_0%,#eefaf5_42%,#f8fafc_100%)] p-4 dark:bg-slate-900/90">
             {loading ? (
               <div className="mx-auto flex w-fit items-center rounded-full bg-white px-3 py-1.5 text-xs font-bold text-slate-500 shadow-sm ring-1 ring-slate-200 dark:bg-slate-950 dark:text-slate-300 dark:ring-slate-800"><Loader2 className="mr-2 size-3.5 animate-spin" /> Syncing chat</div>
             ) : null}
             {messages.length === 0 ? (
               <div className="space-y-3">
                 <div className="flex justify-start">
-                  <div className="max-w-[86%] rounded-[18px] rounded-tl-md bg-white px-4 py-3 text-sm text-slate-700 shadow-sm ring-1 ring-slate-200 dark:bg-slate-950 dark:text-slate-100 dark:ring-slate-800">
+                  <div className="max-w-[88%] rounded-[22px] rounded-tl-md bg-white px-4 py-3 text-sm text-slate-700 shadow-[0_12px_30px_rgba(15,23,42,0.08)] ring-1 ring-slate-200 dark:bg-slate-950 dark:text-slate-100 dark:ring-slate-800">
                     <p className="font-black text-slate-950 dark:text-white">{loading ? "You can start typing." : "Hi, welcome to HouseLink."}</p>
-                    <p className="mt-1 leading-6">{loading ? "HouseLink is opening your chat in the background." : `Ask about ${currentContext}, payment, delivery, or the next best step. If we need your number, we will ask nicely. No interrogation desk here.`}</p>
+                    <p className="mt-1 leading-6">{loading ? "HouseLink is opening your chat in the background." : `Ask about ${currentContext}, payment, delivery, or the next best step. If we need your number, we will ask nicely. No clipboard interrogation today.`}</p>
+                    <span className="mt-3 inline-flex max-w-full items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-800">
+                      <Sparkles className="size-3" /> <span className="truncate">Viewing: {currentContext}</span>
+                    </span>
                   </div>
                 </div>
                 <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
@@ -321,7 +325,7 @@ export function LiveChatWidget() {
                         key={reply.label}
                         type="button"
                         onClick={() => handleQuickReply(reply.body, reply.contactField)}
-                        className="flex min-h-9 shrink-0 items-center gap-2 rounded-full border border-slate-200 bg-white px-3.5 py-2 text-left text-xs font-black text-slate-700 shadow-sm transition hover:border-emerald-300 hover:text-emerald-700 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200"
+                        className="flex min-h-9 shrink-0 items-center gap-2 rounded-full border border-emerald-100 bg-white px-3.5 py-2 text-left text-xs font-black text-slate-700 shadow-sm transition hover:border-emerald-300 hover:text-emerald-700 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200"
                       >
                         <Icon className="size-3.5 shrink-0 text-emerald-600" />
                         <span>{reply.label}</span>
@@ -331,7 +335,7 @@ export function LiveChatWidget() {
                 </div>
               </div>
             ) : null}
-            {contactNotice ? <p className="rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-100 dark:ring-emerald-900">{contactNotice}</p> : null}
+            {contactNotice ? <p className="rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-emerald-700 shadow-sm ring-1 ring-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-100 dark:ring-emerald-900">{contactNotice}</p> : null}
             {suggested ? (
               <button type="button" onClick={() => void sendMessage(suggested)} className="w-full rounded-lg border border-emerald-200 bg-white p-3 text-left text-sm text-emerald-900 shadow-sm transition hover:border-emerald-400 hover:shadow-md dark:border-emerald-800 dark:bg-slate-950 dark:text-emerald-100">
                 <span className="flex items-center gap-1.5 text-xs font-black uppercase text-emerald-600"><Sparkles className="size-3.5" /> Suggested help</span>
@@ -354,6 +358,18 @@ export function LiveChatWidget() {
             <div className="border-t border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-200">{error}</div>
           ) : null}
           <footer className="border-t border-slate-200 bg-white p-3 shadow-[0_-10px_30px_rgba(15,23,42,0.05)] dark:border-slate-800 dark:bg-slate-950">
+            {messages.length ? (
+              <div className="-mx-1 mb-2 flex gap-2 overflow-x-auto px-1 pb-1">
+                {quickReplies.slice(0, 3).map((reply) => {
+                  const Icon = reply.icon;
+                  return (
+                    <button key={reply.label} type="button" onClick={() => handleQuickReply(reply.body, reply.contactField)} className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 text-xs font-bold text-slate-700 transition hover:border-emerald-300 hover:text-emerald-700">
+                      <Icon className="size-3.5 text-emerald-600" /> {reply.label}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : null}
             <div className="flex gap-2">
               <textarea
                 aria-label="Chat message"
