@@ -407,7 +407,18 @@ export async function getLiveChatInbox(input: { activeConversationId?: string | 
   if (!currentAgent.lastSeenAt || Date.now() - currentAgent.lastSeenAt.getTime() > 60_000) {
     await prisma.liveChatAgentProfile.update({ where: { userId: input.user.id }, data: { availability: "ONLINE", lastSeenAt: new Date() } }).catch(() => null);
   }
-  const conversationByVisitor = new Map(visibleConversations.map((conversation) => [conversation.visitorId, conversation.publicId]));
+  const activeVisitorIds = activeVisitorsRaw.map((visitor) => visitor.id);
+  const activeVisitorConversations = activeVisitorIds.length
+    ? await prisma.liveChatConversation.findMany({
+        where: { visitorId: { in: activeVisitorIds }, status: { notIn: ["CLOSED"] } },
+        include: conversationInclude(),
+        orderBy: [{ lastMessageAt: "desc" }, { updatedAt: "desc" }],
+      })
+    : [];
+  const conversationByVisitor = new Map<string, ReturnType<typeof shapeConversation>>();
+  for (const conversation of activeVisitorConversations) {
+    if (!conversationByVisitor.has(conversation.visitorId)) conversationByVisitor.set(conversation.visitorId, shapeConversation(conversation));
+  }
   return {
     conversations: visibleConversations.map((conversation) => shapeConversation(conversation)),
     activeVisitors: activeVisitorsRaw.map((visitor) => shapeActiveVisitor(visitor, conversationByVisitor.get(visitor.id) ?? null)),
@@ -1116,7 +1127,7 @@ function shapeAgent(agent: { id: string; userId: string; displayName: string; av
   };
 }
 
-function shapeActiveVisitor(visitor: { publicId: string; userId: string | null; name: string | null; email: string | null; phone: string | null; deviceType: string | null; currentPath: string | null; currentTitle: string | null; landingPage: string | null; source: string | null; utmSource: string | null; utmMedium: string | null; utmCampaign: string | null; lastSeenAt: Date; firstSeenAt: Date; blockedAt: Date | null; pageStartedAt: Date | null }, conversationId: string | null) {
+function shapeActiveVisitor(visitor: { publicId: string; userId: string | null; name: string | null; email: string | null; phone: string | null; deviceType: string | null; currentPath: string | null; currentTitle: string | null; landingPage: string | null; source: string | null; utmSource: string | null; utmMedium: string | null; utmCampaign: string | null; lastSeenAt: Date; firstSeenAt: Date; blockedAt: Date | null; pageStartedAt: Date | null }, conversation: LiveChatConversationView | null) {
   const now = Date.now();
   return {
     id: visitor.publicId,
@@ -1135,7 +1146,18 @@ function shapeActiveVisitor(visitor: { publicId: string; userId: string | null; 
     lastSeenAt: visitor.lastSeenAt.toISOString(),
     firstSeenAt: visitor.firstSeenAt.toISOString(),
     blocked: Boolean(visitor.blockedAt),
-    conversationId,
+    conversationId: conversation?.id ?? null,
+    conversation: conversation
+      ? {
+          id: conversation.id,
+          status: conversation.status,
+          priority: conversation.priority,
+          lastMessagePreview: conversation.lastMessagePreview,
+          lastMessageAt: conversation.lastMessageAt,
+          unreadForStaff: conversation.unreadForStaff,
+          unreadForVisitor: conversation.unreadForVisitor,
+        }
+      : null,
     sessionSeconds: Math.max(0, Math.round((now - visitor.firstSeenAt.getTime()) / 1000)),
     pageSeconds: visitor.pageStartedAt ? Math.max(0, Math.round((now - visitor.pageStartedAt.getTime()) / 1000)) : 0,
   };

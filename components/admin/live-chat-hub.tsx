@@ -31,6 +31,7 @@ export function LiveChatHub() {
   const [draft, setDraft] = useState("");
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
+  const [startingVisitorId, setStartingVisitorId] = useState<string | null>(null);
   const [loadingInbox, setLoadingInbox] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -111,11 +112,39 @@ export function LiveChatHub() {
   }
 
   async function startConversation(visitorId: string, message?: string) {
-    await action({
-      action: "start_conversation",
-      visitorId,
-      body: message || "Hi, I am from HouseLink. I noticed you are browsing and can help if you have questions.",
-    }, "Proactive message sent.");
+    setStartingVisitorId(visitorId);
+    setError(null);
+    const result = await apiFetch<{ conversationId: string }>("/api/v1/admin/live-chat", {
+      method: "POST",
+      body: JSON.stringify({
+        action: "start_conversation",
+        visitorId,
+        body: message || "Hi, I am from HouseLink. I noticed you are browsing and can help if you have questions.",
+      }),
+    });
+    if (result.error) {
+      setError(result.error.message);
+    } else {
+      const conversationId = result.data?.conversationId;
+      setNotice("Proactive message sent.");
+      window.setTimeout(() => setNotice(null), 2500);
+      if (conversationId) {
+        setActiveId(conversationId);
+        activeIdRef.current = conversationId;
+        setPanel("inbox");
+        await load({ conversationId });
+      } else {
+        await load();
+      }
+    }
+    setStartingVisitorId(null);
+  }
+
+  function openConversation(conversationId: string) {
+    setActiveId(conversationId);
+    activeIdRef.current = conversationId;
+    setPanel("inbox");
+    void load({ conversationId });
   }
 
   if (!data) {
@@ -173,7 +202,7 @@ export function LiveChatHub() {
 
         {panel === "profile" ? <ProfilePanel data={data} action={action} busy={busy} /> : null}
         {panel === "settings" ? <SettingsPanel data={data} action={action} busy={busy} /> : null}
-        {panel === "visitors" ? <VisitorsPanel visitors={data.activeVisitors} startConversation={startConversation} busy={busy} /> : null}
+        {panel === "visitors" ? <VisitorsPanel visitors={data.activeVisitors} startConversation={startConversation} openConversation={openConversation} startingVisitorId={startingVisitorId} /> : null}
 
         {panel === "inbox" ? <div className="grid min-h-[660px] lg:grid-cols-[330px_minmax(0,1fr)_380px]">
           <aside className="border-b border-white/10 bg-slate-950/80 lg:border-b-0 lg:border-r lg:border-white/10">
@@ -452,28 +481,57 @@ function ContextPanel({ conversation, events, visitors, startConversation }: { c
   );
 }
 
-function VisitorsPanel({ visitors, startConversation, busy }: { visitors: LiveChatInboxView["activeVisitors"]; startConversation: (visitorId: string, message?: string) => Promise<void>; busy: string | null }) {
+function VisitorsPanel({
+  visitors,
+  startConversation,
+  openConversation,
+  startingVisitorId,
+}: {
+  visitors: LiveChatInboxView["activeVisitors"];
+  startConversation: (visitorId: string, message?: string) => Promise<void>;
+  openConversation: (conversationId: string) => void;
+  startingVisitorId: string | null;
+}) {
   return (
     <div className="grid gap-3 p-4 md:grid-cols-2 xl:grid-cols-3">
-      {visitors.length ? visitors.map((visitor) => (
-        <article key={visitor.id} className="rounded-lg border border-white/10 bg-slate-900 p-4">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <p className="font-black text-white">{visitorDisplayName(visitor)}</p>
-              <p className="mt-1 truncate text-sm text-slate-400">{visitor.currentTitle || visitor.currentPath || "Browsing HouseLink"}</p>
+      {visitors.length ? visitors.map((visitor) => {
+        const hasConversation = Boolean(visitor.conversationId);
+        const loading = startingVisitorId === visitor.id;
+        const actionLabel = visitor.conversation ? visitorActionLabel(visitor.conversation.status) : "Start helpful chat";
+        return (
+          <article key={visitor.id} className={cn("rounded-2xl border bg-slate-900 p-4", hasConversation ? "border-emerald-400/30" : "border-white/10")}>
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex min-w-0 gap-3">
+                <span className="relative grid size-11 shrink-0 place-items-center rounded-full bg-gradient-to-br from-emerald-400 to-cyan-400 text-sm font-black text-slate-950">
+                  {visitorInitials(visitor)}
+                  <span className="absolute -bottom-0.5 -right-0.5 size-3 rounded-full border-2 border-slate-900 bg-emerald-400" />
+                </span>
+                <div className="min-w-0">
+                  <p className="font-black text-white">{visitorDisplayName(visitor)}</p>
+                  <p className="mt-1 truncate text-sm text-slate-400">{visitor.currentTitle || visitor.currentPath || "Browsing HouseLink"}</p>
+                </div>
+              </div>
+              <span className={cn("rounded-full px-2 py-1 text-[11px] font-black uppercase", hasConversation ? statusTone(visitor.conversation?.status || "OPEN") : "bg-emerald-500/15 text-emerald-200")}>
+                {hasConversation ? visitor.conversation?.status.replace(/_/g, " ") : "LIVE"}
+              </span>
             </div>
-            <span className="rounded-full bg-emerald-500/15 px-2 py-1 text-[11px] font-black text-emerald-200">LIVE</span>
-          </div>
-          <div className="mt-4 grid gap-2 text-xs text-slate-400">
-            <Info label="Contact" value={[visitor.phone, visitor.email].filter(Boolean).join(" / ") || "Not captured yet"} />
-            <Info label="Source" value={visitor.utmSource || visitor.source || "Direct / Unknown"} />
-            <Info label="Journey" value={`${Math.round(visitor.sessionSeconds / 60)} min session, ${Math.round(visitor.pageSeconds / 60)} min on page`} />
-          </div>
-          <Button className="mt-4 w-full" onClick={() => void startConversation(visitor.id)} disabled={busy === "start_conversation"}>
-            {busy === "start_conversation" ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />} Start helpful chat
-          </Button>
-        </article>
-      )) : <Empty label="No live visitors in the last five minutes." />}
+            {visitor.conversation?.lastMessagePreview ? (
+              <div className="mt-4 rounded-xl border border-emerald-400/20 bg-emerald-400/10 p-3">
+                <p className="text-[10px] font-black uppercase text-emerald-200">Latest conversation</p>
+                <p className="mt-1 line-clamp-2 text-xs font-semibold text-emerald-50">{visitor.conversation.lastMessagePreview}</p>
+              </div>
+            ) : null}
+            <div className="mt-4 grid gap-2 text-xs text-slate-400">
+              <Info label="Contact" value={[visitor.phone, visitor.email].filter(Boolean).join(" / ") || "Not captured yet"} />
+              <Info label="Source" value={visitor.utmSource || visitor.source || "Direct / Unknown"} />
+              <Info label="Journey" value={`${Math.round(visitor.sessionSeconds / 60)} min session, ${Math.round(visitor.pageSeconds / 60)} min on page`} />
+            </div>
+            <Button className="mt-4 w-full" onClick={() => hasConversation && visitor.conversationId ? openConversation(visitor.conversationId) : void startConversation(visitor.id)} disabled={loading}>
+              {loading ? <Loader2 className="size-4 animate-spin" /> : hasConversation ? <MessageSquare className="size-4" /> : <Send className="size-4" />} {loading ? "Starting..." : actionLabel}
+            </Button>
+          </article>
+        );
+      }) : <Empty label="No live visitors in the last five minutes." />}
     </div>
   );
 }
@@ -754,6 +812,14 @@ function visitorInitials(visitor: LiveChatConversationView["visitor"]) {
   const name = visitorDisplayName(visitor);
   const parts = name.split(/[\s@.]+/).filter(Boolean);
   return (parts[0]?.[0] || "V").toUpperCase() + (parts[1]?.[0] || "").toUpperCase();
+}
+
+function visitorActionLabel(status: string) {
+  if (status === "WAITING_FOR_CUSTOMER") return "Waiting for visitor";
+  if (status === "FOLLOW_UP") return "Continue follow-up";
+  if (status === "RESOLVED") return "Review resolved chat";
+  if (status === "CLOSED") return "View closed chat";
+  return "Open conversation";
 }
 
 function statusTone(status: string) {

@@ -87,6 +87,26 @@ const checks = [
     pattern: /libraryBagOpen/,
   },
   {
+    file: "components/live-chat/live-chat-widget.tsx",
+    label: "public chat shows proactive staff messages as a launcher preview",
+    pattern: /previewMessage/,
+  },
+  {
+    file: "components/admin/live-chat-hub.tsx",
+    label: "live visitor proactive buttons track loading per visitor",
+    pattern: /startingVisitorId\s*===\s*visitor\.id/,
+  },
+  {
+    file: "components/admin/live-chat-hub.tsx",
+    label: "live visitors can open an existing conversation instead of starting a duplicate",
+    pattern: /visitorActionLabel\(visitor\.conversation\.status\)/,
+  },
+  {
+    file: "lib/live-chat/repository.ts",
+    label: "active visitors include latest conversation context for smarter admin actions",
+    pattern: /activeVisitorConversations/,
+  },
+  {
     file: "app/api/v1/live-chat/messages/route.ts",
     label: "visitor messages carry the signed-in user identity",
     pattern: /userId:\s*getSessionUserIdFromRequest\(request\)/,

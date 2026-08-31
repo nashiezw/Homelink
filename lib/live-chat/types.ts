@@ -149,7 +149,12 @@ export type LiveChatBootstrapView = {
 
 export type LiveChatInboxView = {
   conversations: LiveChatConversationView[];
-  activeVisitors: Array<LiveChatConversationView["visitor"] & { conversationId?: string | null; sessionSeconds: number; pageSeconds: number }>;
+  activeVisitors: Array<LiveChatConversationView["visitor"] & {
+    conversationId?: string | null;
+    conversation?: Pick<LiveChatConversationView, "id" | "status" | "priority" | "lastMessagePreview" | "lastMessageAt" | "unreadForVisitor" | "unreadForStaff"> | null;
+    sessionSeconds: number;
+    pageSeconds: number;
+  }>;
   messages: LiveChatMessageView[];
   events: LiveChatEventView[];
   departments: LiveChatDepartmentView[];

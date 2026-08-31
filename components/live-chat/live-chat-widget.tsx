@@ -30,8 +30,11 @@ export function LiveChatWidget() {
   const [pendingContactField, setPendingContactField] = useState<"phone" | "email" | null>(null);
   const [suggested, setSuggested] = useState<string | null>(null);
   const [unread, setUnread] = useState(0);
+  const [previewMessage, setPreviewMessage] = useState<LiveChatMessageView | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const contactRef = useRef(contact);
+  const openRef = useRef(open);
+  const previewTimerRef = useRef<number | null>(null);
   const startedAtRef = useRef(new Date().toISOString());
   const bottomDock = useHouseLinkBottomDock();
   const libraryBagOpen = useLibraryBagFloatingOpen();
@@ -65,6 +68,10 @@ export function LiveChatWidget() {
     contactRef.current = contact;
   }, [contact]);
 
+  useEffect(() => {
+    openRef.current = open;
+  }, [open]);
+
   const bootstrap = useCallback(async () => {
     if (hiddenOnThisRoute) return;
     setLoading(true);
@@ -82,6 +89,11 @@ export function LiveChatWidget() {
         setBoot(result.data);
         setMessages(result.data.messages);
         setSuggested(result.data.suggestedMessage || null);
+        if (!openRef.current && result.data.conversation?.unreadForVisitor) {
+          const latestStaffMessage = [...result.data.messages].reverse().find(isVisitorPreviewMessage) ?? null;
+          if (latestStaffMessage) showPreviewMessage(latestStaffMessage);
+          setUnread(result.data.conversation.unreadForVisitor);
+        }
         setError(null);
       } else {
         setError(result.error?.code === "NETWORK_ERROR" ? "HouseLink Live is taking longer than expected. You can still type your message and try again." : result.error?.message ?? "Live Chat is unavailable.");
@@ -119,7 +131,11 @@ export function LiveChatWidget() {
       setMessages((current) => {
         const hadLast = current[current.length - 1]?.id;
         const nextLast = result.data![result.data!.length - 1]?.id;
-        if (!open && nextLast && hadLast && nextLast !== hadLast) setUnread((value) => value + 1);
+        if (!open && nextLast && hadLast && nextLast !== hadLast) {
+          const latest = result.data![result.data!.length - 1];
+          setUnread((value) => value + 1);
+          if (isVisitorPreviewMessage(latest)) showPreviewMessage(latest);
+        }
         return result.data!;
       });
     };
@@ -139,10 +155,19 @@ export function LiveChatWidget() {
     }
   }, [boot?.conversation?.id, lastMessageId, open]);
 
+  useEffect(() => {
+    return () => {
+      if (previewTimerRef.current) window.clearTimeout(previewTimerRef.current);
+    };
+  }, []);
+
   function toggleOpen(next: boolean) {
     setOpen(next);
     setLiveChatFloatingOpen(next);
-    if (next) setUnread(0);
+    if (next) {
+      setUnread(0);
+      dismissPreviewMessage();
+    }
   }
 
   async function sendMessage(body = draft) {
@@ -203,6 +228,20 @@ export function LiveChatWidget() {
       return;
     }
     void sendMessage(body);
+  }
+
+  function showPreviewMessage(message: LiveChatMessageView) {
+    setPreviewMessage(message);
+    if (previewTimerRef.current) window.clearTimeout(previewTimerRef.current);
+    previewTimerRef.current = window.setTimeout(() => setPreviewMessage(null), 12000);
+  }
+
+  function dismissPreviewMessage() {
+    setPreviewMessage(null);
+    if (previewTimerRef.current) {
+      window.clearTimeout(previewTimerRef.current);
+      previewTimerRef.current = null;
+    }
   }
 
   if (hiddenOnThisRoute || libraryBagOpen || (boot && !boot.settings.enabled)) return null;
@@ -340,23 +379,38 @@ export function LiveChatWidget() {
           </footer>
         </section>
       ) : (
-        <button
-          type="button"
-          onClick={() => toggleOpen(true)}
-          className="group flex max-w-[330px] items-center gap-3 rounded-2xl border border-emerald-100 bg-white/95 p-3 text-left shadow-[0_18px_45px_rgba(15,23,42,0.18)] ring-1 ring-white/80 backdrop-blur transition hover:-translate-y-0.5 hover:border-emerald-300 dark:border-emerald-900 dark:bg-slate-950/95 dark:ring-slate-800"
-          aria-label="Open HouseLink live chat"
-        >
-          <span className="relative flex size-12 shrink-0 items-center justify-center rounded-2xl bg-[#06111f] text-white shadow-lg shadow-slate-900/20 dark:bg-emerald-600">
-            <MessageCircle className="size-6" />
-            {unread ? <span className="absolute -right-1 -top-1 flex size-5 items-center justify-center rounded-full bg-red-500 text-[11px] font-bold">{unread}</span> : null}
-            <span className="absolute bottom-1 right-1 size-2.5 rounded-full bg-emerald-300 ring-2 ring-slate-950" />
-          </span>
-          <span className="min-w-0">
-            <span className="block truncate text-sm font-black text-slate-950 dark:text-white">HouseLink Live</span>
-            <span className="block truncate text-xs text-slate-600 dark:text-slate-300">{messages[messages.length - 1]?.body || boot?.settings.widgetGreeting || "Need help choosing?"}</span>
-          </span>
-          {unread ? <Bell className="size-4 shrink-0 text-red-500" /> : null}
-        </button>
+        <>
+          {previewMessage ? (
+            <button
+              type="button"
+              onClick={() => toggleOpen(true)}
+              className="w-[min(330px,calc(100vw-2rem))] rounded-2xl border border-emerald-100 bg-white p-3 text-left shadow-[0_18px_45px_rgba(15,23,42,0.18)] ring-1 ring-white/80 transition hover:-translate-y-0.5 hover:border-emerald-300 dark:border-emerald-900 dark:bg-slate-950 dark:ring-slate-800"
+            >
+              <span className="flex items-center gap-2 text-[11px] font-black uppercase text-emerald-700 dark:text-emerald-200">
+                <Sparkles className="size-3.5" /> {previewMessage.senderName || agentName}
+              </span>
+              <span className="mt-1 line-clamp-2 block text-sm font-semibold leading-5 text-slate-800 dark:text-slate-100">{previewMessage.body}</span>
+              <span className="mt-2 block text-xs font-semibold text-slate-500">Tap to reply</span>
+            </button>
+          ) : null}
+          <button
+            type="button"
+            onClick={() => toggleOpen(true)}
+            className="group flex max-w-[330px] items-center gap-3 rounded-2xl border border-emerald-100 bg-white/95 p-3 text-left shadow-[0_18px_45px_rgba(15,23,42,0.18)] ring-1 ring-white/80 backdrop-blur transition hover:-translate-y-0.5 hover:border-emerald-300 dark:border-emerald-900 dark:bg-slate-950/95 dark:ring-slate-800"
+            aria-label="Open HouseLink live chat"
+          >
+            <span className="relative flex size-12 shrink-0 items-center justify-center rounded-2xl bg-[#06111f] text-white shadow-lg shadow-slate-900/20 dark:bg-emerald-600">
+              <MessageCircle className="size-6" />
+              {unread ? <span className="absolute -right-1 -top-1 flex size-5 items-center justify-center rounded-full bg-red-500 text-[11px] font-bold">{unread}</span> : null}
+              <span className="absolute bottom-1 right-1 size-2.5 rounded-full bg-emerald-300 ring-2 ring-slate-950" />
+            </span>
+            <span className="min-w-0">
+              <span className="block truncate text-sm font-black text-slate-950 dark:text-white">HouseLink Live</span>
+              <span className="block truncate text-xs text-slate-600 dark:text-slate-300">{previewMessage?.body || messages[messages.length - 1]?.body || boot?.settings.widgetGreeting || "Need help choosing?"}</span>
+            </span>
+            {unread ? <Bell className="size-4 shrink-0 text-red-500" /> : null}
+          </button>
+        </>
       )}
     </div>
   );
@@ -398,6 +452,10 @@ function mergeContactFromMessage(contact: ContactState, body: string, expectedFi
   if ((expectedField === "email" || email) && email) contact.email = email;
   if ((expectedField === "phone" || phone) && phone) contact.phone = phone;
   return contact;
+}
+
+function isVisitorPreviewMessage(message: LiveChatMessageView) {
+  return !message.internal && message.messageType !== "SYSTEM" && message.senderKind !== "VISITOR" && Boolean(message.body.trim());
 }
 
 function inferViewedContext(path: string) {
