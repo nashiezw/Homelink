@@ -142,8 +142,8 @@ export function LiveChatHub() {
         <Metric icon={UserPlus} label="Leads created" value={data.analytics.leadsCreated} tone="cyan" />
       </div>
 
-      <section className="overflow-hidden rounded-lg border border-white/10 bg-slate-950 text-slate-100 shadow-2xl shadow-slate-950/20">
-        <div className="flex flex-col gap-3 border-b border-white/10 p-4 lg:flex-row lg:items-center lg:justify-between">
+      <section className="overflow-hidden rounded-2xl border border-white/10 bg-slate-950 text-slate-100 shadow-2xl shadow-slate-950/20">
+        <div className="flex flex-col gap-3 border-b border-white/10 bg-slate-900/70 p-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <p className="text-xs font-bold uppercase tracking-wider text-emerald-300">HouseLink Live</p>
             <h2 className="text-xl font-black">Support and sales inbox</h2>
@@ -175,8 +175,8 @@ export function LiveChatHub() {
         {panel === "settings" ? <SettingsPanel data={data} action={action} busy={busy} /> : null}
         {panel === "visitors" ? <VisitorsPanel visitors={data.activeVisitors} startConversation={startConversation} busy={busy} /> : null}
 
-        {panel === "inbox" ? <div className="grid min-h-[660px] lg:grid-cols-[340px_minmax(0,1fr)_360px]">
-          <aside className="border-b border-white/10 lg:border-b-0 lg:border-r">
+        {panel === "inbox" ? <div className="grid min-h-[660px] lg:grid-cols-[330px_minmax(0,1fr)_380px]">
+          <aside className="border-b border-white/10 bg-slate-950/80 lg:border-b-0 lg:border-r lg:border-white/10">
             <div className="space-y-3 p-3">
               <label className="flex h-10 items-center gap-2 rounded-md border border-white/10 bg-slate-900 px-3 text-sm">
                 <Search className="size-4 text-slate-500" />
@@ -199,14 +199,22 @@ export function LiveChatHub() {
                     setActiveId(conversation.id);
                     void load({ conversationId: conversation.id });
                   }}
-                  className={cn("block w-full border-b border-white/10 p-3 text-left hover:bg-white/5", activeConversation?.id === conversation.id && "bg-emerald-500/10")}
+                  className={cn("block w-full border-b border-white/10 p-3 text-left transition hover:bg-white/5", activeConversation?.id === conversation.id && "bg-emerald-500/10 shadow-[inset_3px_0_0_rgba(52,211,153,0.85)]")}
                 >
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="truncate text-sm font-black">{visitorDisplayName(conversation.visitor)}</p>
-                    <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-black", statusTone(conversation.status))}>{conversation.status.replace(/_/g, " ")}</span>
+                  <div className="flex gap-3">
+                    <span className="relative grid size-10 shrink-0 place-items-center rounded-full bg-gradient-to-br from-emerald-400 to-cyan-400 text-sm font-black text-slate-950">
+                      {visitorInitials(conversation.visitor)}
+                      <span className="absolute -bottom-0.5 -right-0.5 size-3 rounded-full border-2 border-slate-950 bg-emerald-400" />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="flex items-center justify-between gap-3">
+                        <span className="truncate text-sm font-black">{visitorDisplayName(conversation.visitor)}</span>
+                        <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-black", statusTone(conversation.status))}>{conversation.status.replace(/_/g, " ")}</span>
+                      </span>
+                      <span className="mt-1 block truncate text-xs text-slate-300">{conversation.lastMessagePreview || conversation.subject || conversation.currentTitle || "No messages yet"}</span>
+                      <span className="mt-2 flex items-center gap-1 truncate text-[11px] text-slate-500"><Globe2 className="size-3" /> {conversation.currentPath || conversation.visitor.currentPath || "Unknown page"}</span>
+                    </span>
                   </div>
-                  <p className="mt-1 truncate text-xs text-slate-400">{conversation.lastMessagePreview || conversation.subject || conversation.currentTitle || "No messages yet"}</p>
-                  <p className="mt-2 truncate text-[11px] text-slate-500">{conversation.currentPath || conversation.visitor.currentPath || "Unknown page"}</p>
                 </button>
               )) : <Empty label="No conversations in this filter." />}
             </div>
@@ -214,16 +222,19 @@ export function LiveChatHub() {
 
           <main className="flex min-h-[620px] flex-col">
             <ConversationHeader conversation={activeConversation} data={data} action={action} busy={busy} />
-            <div className="flex-1 space-y-3 overflow-y-auto bg-slate-900/60 p-4">
+            <div className="flex-1 space-y-4 overflow-y-auto bg-[#f4f7fb] p-4 dark:bg-slate-900/60">
               {data.messages.length ? data.messages.map((message) => <AdminMessage key={message.id} message={message} />) : <Empty label="Select a conversation or start one from Active Visitors." />}
             </div>
             {activeConversation ? (
               <div className="space-y-3 border-t border-white/10 p-3">
                 <QuickReplies data={data} onPick={(body) => setDraft((current) => current ? `${current}\n${body}` : body)} />
                 <ContextActions conversation={activeConversation} action={action} />
-                <div className="flex gap-2">
-                  <textarea className="min-h-12 flex-1 resize-none rounded-md border border-white/10 bg-slate-900 px-3 py-2 text-sm outline-none focus:border-emerald-400" placeholder="Reply to visitor..." value={draft} onChange={(event) => setDraft(event.target.value)} />
-                  <Button onClick={() => void sendMessage()} disabled={!draft.trim() || busy === "send_message"}>{busy === "send_message" ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />} Send reply</Button>
+                <div className="rounded-xl border border-white/10 bg-slate-900 p-2">
+                  <textarea className="min-h-20 w-full resize-none rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm outline-none placeholder:text-slate-500 focus:border-emerald-400" placeholder="Reply to visitor..." value={draft} onChange={(event) => setDraft(event.target.value)} />
+                  <div className="mt-2 flex items-center justify-between gap-2">
+                    <p className="text-xs text-slate-500">Replies are visible to the visitor.</p>
+                    <Button onClick={() => void sendMessage()} disabled={!draft.trim() || busy === "send_message"}>{busy === "send_message" ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />} Send reply</Button>
+                  </div>
                 </div>
                 <div className="flex gap-2">
                   <input className="h-10 flex-1 rounded-md border border-amber-400/20 bg-amber-400/10 px-3 text-sm outline-none placeholder:text-amber-100/50" placeholder="Internal note - never shown to visitor" value={note} onChange={(event) => setNote(event.target.value)} />
@@ -263,34 +274,40 @@ function ConversationHeader({ conversation, data, action, busy }: { conversation
   const lastSeen = new Date(conversation.visitor.lastSeenAt);
   const lastSeenLabel = Number.isNaN(lastSeen.getTime()) ? "Recently active" : `Last seen ${lastSeen.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
   return (
-    <div className="border-b border-white/10 bg-slate-950/60 p-4">
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_420px]">
+    <div className="border-b border-white/10 bg-slate-950 p-4">
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <p className="text-lg font-black text-white">{visitorDisplayName(conversation.visitor)}</p>
-            <span className={cn("rounded-full px-2 py-1 text-[10px] font-black uppercase", statusTone(conversation.status))}>{conversation.status.replace(/_/g, " ")}</span>
-            <span className="rounded-full bg-slate-800 px-2 py-1 text-[10px] font-black uppercase text-slate-300">{conversation.priority}</span>
+          <div className="flex items-start gap-3">
+            <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-emerald-400 to-cyan-400 text-base font-black text-slate-950 shadow-lg shadow-emerald-950/20">
+              {visitorInitials(conversation.visitor)}
+            </span>
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="truncate text-xl font-black text-white">{visitorDisplayName(conversation.visitor)}</p>
+                <span className={cn("rounded-full px-2 py-1 text-[10px] font-black uppercase", statusTone(conversation.status))}>{conversation.status.replace(/_/g, " ")}</span>
+                <span className="rounded-full bg-slate-800 px-2 py-1 text-[10px] font-black uppercase text-slate-300">{conversation.priority}</span>
+              </div>
+              <p className="mt-1 line-clamp-2 text-sm text-slate-400">{conversation.subject || conversation.currentTitle || "Live conversation"}</p>
+            </div>
           </div>
-          <p className="mt-1 text-sm text-slate-400">{conversation.subject || conversation.currentTitle || "Live conversation"}</p>
           <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
             <MiniFact icon={Phone} label="Phone" value={conversation.visitor.phone || "Not captured"} />
             <MiniFact icon={Mail} label="Email" value={conversation.visitor.email || "Not captured"} />
-            <MiniFact icon={MapPin} label="Page" value={conversation.visitor.currentTitle || conversation.visitor.currentPath || "Unknown"} />
+            <MiniFact icon={MapPin} label="Current page" value={conversation.visitor.currentTitle || conversation.visitor.currentPath || "Unknown"} />
             <MiniFact icon={Timer} label="Activity" value={lastSeenLabel} />
           </div>
-          <div className="mt-2 grid gap-2 sm:grid-cols-2">
-            <MiniFact icon={Globe2} label="Source" value={conversation.visitor.utmSource || conversation.visitor.source || "Direct / Unknown"} />
-            <MiniFact icon={MapPin} label="Landing" value={conversation.visitor.landingPage || "Unknown"} />
-          </div>
         </div>
-        <div className="rounded-lg border border-white/10 bg-slate-900 p-3">
-          <p className="mb-3 text-xs font-black uppercase tracking-wider text-slate-500">Conversation controls</p>
+        <div className="rounded-xl border border-white/10 bg-slate-900 p-3">
+          <div className="mb-3 flex items-center justify-between gap-2">
+            <p className="text-xs font-black uppercase tracking-wider text-slate-400">Routing</p>
+            <span className="rounded-full bg-emerald-400/10 px-2 py-1 text-[10px] font-black uppercase text-emerald-200">Live desk</span>
+          </div>
           <div className="grid gap-2">
             <ControlSelect label="Status" value={conversation.status} onChange={(value) => void action({ action: "status", conversationId: conversation.id, status: value }, "Status updated.")}>
               {["NEW", "OPEN", "WAITING_FOR_CUSTOMER", "FOLLOW_UP", "RESOLVED", "CLOSED"].map((status) => <option key={status} value={status}>{status.replace(/_/g, " ")}</option>)}
             </ControlSelect>
-            <ControlSelect label="Department" value={conversation.department?.id || ""} onChange={(value) => void action({ action: "transfer", conversationId: conversation.id, departmentId: value || undefined, agentId: conversation.assignedAgent?.id }, "Conversation transferred.")}>
-              <option value="">No department</option>
+            <ControlSelect label="Team" value={conversation.department?.id || ""} onChange={(value) => void action({ action: "transfer", conversationId: conversation.id, departmentId: value || undefined, agentId: conversation.assignedAgent?.id }, "Conversation transferred.")}>
+              <option value="">General support</option>
               {data.departments.filter((department) => department.active).map((department) => <option key={department.id} value={department.id}>{department.name}</option>)}
             </ControlSelect>
             <ControlSelect label="Agent" value={conversation.assignedAgent?.id || ""} onChange={(value) => void action({ action: "assign", conversationId: conversation.id, agentId: value || undefined, departmentId: conversation.department?.id }, "Conversation assigned.")}>
@@ -303,7 +320,7 @@ function ConversationHeader({ conversation, data, action, busy }: { conversation
                 if (window.confirm("Delete this conversation permanently?")) void action({ action: "delete_conversation", conversationId: conversation.id }, "Conversation deleted.");
               }}
               disabled={busy === "delete_conversation"}
-              className="justify-self-start"
+              className="mt-1 justify-self-start"
             >
               {busy === "delete_conversation" ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />} Delete
             </Button>
@@ -316,8 +333,8 @@ function ConversationHeader({ conversation, data, action, busy }: { conversation
 
 function MiniFact({ icon: Icon, label, value }: { icon: LucideIcon; label: string; value: string }) {
   return (
-    <div className="min-w-0 rounded-md border border-white/10 bg-slate-900 px-3 py-2">
-      <p className="flex items-center gap-1.5 text-[10px] font-black uppercase text-slate-500"><Icon className="size-3" /> {label}</p>
+    <div className="min-w-0 rounded-xl border border-white/10 bg-slate-900 px-3 py-2">
+      <p className="flex items-center gap-1.5 text-[10px] font-black uppercase text-slate-500"><Icon className="size-3 text-emerald-300" /> {label}</p>
       <p className="mt-1 truncate text-xs font-semibold text-slate-200" title={value}>{value}</p>
     </div>
   );
@@ -338,15 +355,15 @@ function AdminMessage({ message }: { message: LiveChatMessageView }) {
   const system = message.messageType === "SYSTEM";
   const internal = message.internal;
   const staff = message.senderKind === "STAFF";
-  if (system) return <p className="mx-auto max-w-xl rounded-full bg-slate-800 px-3 py-1 text-center text-xs text-slate-300">{message.body}</p>;
+  if (system) return <p className="mx-auto max-w-xl rounded-full bg-white px-4 py-2 text-center text-xs font-semibold text-slate-500 shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-700">{message.body}</p>;
   const card = message.metadata && typeof message.metadata === "object" ? message.metadata as { url?: string; title?: string; kind?: string } : null;
   return (
     <div className={cn("flex", staff ? "justify-end" : "justify-start")}>
-      <div className={cn("max-w-[78%] rounded-lg border px-3 py-2 text-sm", internal ? "border-amber-400/30 bg-amber-400/10 text-amber-100" : staff ? "border-emerald-400/20 bg-emerald-500 text-white" : "border-white/10 bg-slate-950 text-slate-100")}>
-        <p className="mb-1 text-[11px] font-black uppercase opacity-70">{internal ? "Internal note" : message.senderName || message.senderKind}</p>
+      <div className={cn("max-w-[78%] rounded-[18px] border px-3.5 py-2.5 text-sm shadow-sm", internal ? "rounded-bl-md border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-400/30 dark:bg-amber-400/10 dark:text-amber-100" : staff ? "rounded-br-md border-emerald-500/20 bg-emerald-600 text-white" : "rounded-bl-md border-slate-200 bg-white text-slate-800 dark:border-white/10 dark:bg-slate-950 dark:text-slate-100")}>
+        <p className={cn("mb-1 text-[10px] font-black uppercase", staff ? "text-emerald-50/80" : "text-emerald-600 dark:text-emerald-300")}>{internal ? "Internal note" : message.senderName || message.senderKind}</p>
         <p className="whitespace-pre-wrap leading-6">{message.body}</p>
         {card?.url ? <a className="mt-2 block rounded-md bg-white/15 px-3 py-2 text-xs font-bold underline-offset-2 hover:underline" href={card.url} target="_blank" rel="noreferrer">{card.title || card.url}</a> : null}
-        <p className="mt-1 text-[10px] opacity-60">{new Date(message.createdAt).toLocaleString()}</p>
+        <p className={cn("mt-1 text-[10px]", staff ? "text-emerald-50/80" : "text-slate-400")}>{new Date(message.createdAt).toLocaleString()}</p>
       </div>
     </div>
   );
@@ -393,16 +410,19 @@ function QuickReplies({ data, onPick }: { data: LiveChatInboxView; onPick: (body
 
 function ContextPanel({ conversation, events, visitors, startConversation }: { conversation: LiveChatConversationView | null; events: LiveChatInboxView["events"]; visitors: LiveChatInboxView["activeVisitors"]; startConversation: (visitorId: string, message?: string) => Promise<void> }) {
   return (
-    <section className="rounded-lg border border-white/10 bg-slate-900 p-4">
-      <h3 className="flex items-center gap-2 text-sm font-black uppercase tracking-wider text-slate-300"><Users className="size-4" /> Visitor context</h3>
+    <section className="rounded-2xl border border-white/10 bg-slate-900 p-4">
+      <h3 className="flex items-center gap-2 text-sm font-black uppercase tracking-wider text-slate-300"><Users className="size-4 text-emerald-300" /> Visitor profile</h3>
       {conversation ? (
         <div className="mt-4 space-y-3 text-sm">
-          <Info label="Contact" value={[conversation.visitor.phone, conversation.visitor.email].filter(Boolean).join(" / ") || "Not captured"} />
+          <div className="rounded-xl border border-white/10 bg-slate-950 p-3">
+            <p className="text-base font-black text-white">{visitorDisplayName(conversation.visitor)}</p>
+            <p className="mt-1 text-xs text-slate-400">{conversation.visitor.deviceType || "Unknown device"} visitor</p>
+          </div>
+          <Info label="Contact" value={[conversation.visitor.phone, conversation.visitor.email].filter(Boolean).join(" / ") || "Not captured yet"} />
           <Info label="Current page" value={conversation.visitor.currentTitle || conversation.visitor.currentPath || "Unknown"} />
           <Info label="Source" value={conversation.visitor.utmSource || conversation.visitor.source || "Direct / Unknown"} />
           <Info label="Landing page" value={conversation.visitor.landingPage || "Unknown"} />
-          <Info label="Device" value={conversation.visitor.deviceType || "Unknown"} />
-          <Button variant="secondary" onClick={() => void startConversation(conversation.visitor.id)}><Bell className="size-4" /> Send proactive nudge</Button>
+          <Button variant="secondary" className="w-full justify-center" onClick={() => void startConversation(conversation.visitor.id)}><Bell className="size-4" /> Send proactive nudge</Button>
         </div>
       ) : (
         <div className="mt-4 space-y-2">
@@ -417,8 +437,8 @@ function ContextPanel({ conversation, events, visitors, startConversation }: { c
       )}
       {events.length ? (
         <div className="mt-5 border-t border-white/10 pt-4">
-          <p className="text-xs font-bold uppercase text-slate-500">Recent journey</p>
-          <div className="mt-2 space-y-2">
+          <p className="text-xs font-bold uppercase text-slate-500">Visited pages and actions</p>
+          <div className="mt-3 space-y-3">
             {events.slice(0, 10).map((event) => (
               <div key={event.id} className="border-l border-emerald-500/40 pl-3">
                 <p className="text-xs font-bold text-slate-200">{event.eventType.replace(/_/g, " ")}</p>
@@ -728,6 +748,12 @@ function Empty({ label }: { label: string }) {
 
 function visitorDisplayName(visitor: LiveChatConversationView["visitor"]) {
   return visitor.name?.trim() || visitor.email?.trim() || visitor.phone?.trim() || (visitor.userId ? "Registered member" : "Guest visitor");
+}
+
+function visitorInitials(visitor: LiveChatConversationView["visitor"]) {
+  const name = visitorDisplayName(visitor);
+  const parts = name.split(/[\s@.]+/).filter(Boolean);
+  return (parts[0]?.[0] || "V").toUpperCase() + (parts[1]?.[0] || "").toUpperCase();
 }
 
 function statusTone(status: string) {
