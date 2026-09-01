@@ -14,8 +14,8 @@ import { isLibraryProductPath } from "@/lib/ui/bottom-dock";
 import { cn } from "@/lib/utils";
 
 /**
- * Sticky WhatsApp help. On phones it stacks above HouseLink Live so both
- * support routes are visible without competing for the same bottom corner.
+ * Sticky WhatsApp help — all breakpoints (left).
+ * Hidden on Library product pages (in-page help + mobile bundle dock) and checkout.
  */
 export function WhatsAppStickyFab({ className }: { className?: string }) {
   const pathname = usePathname();
@@ -41,12 +41,12 @@ export function WhatsAppStickyFab({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        "fixed bottom-[calc(6.75rem+env(safe-area-inset-bottom))] left-4 z-[60] flex flex-col items-start gap-1 transition-[bottom] duration-200 sm:left-5 lg:bottom-[max(1.25rem,env(safe-area-inset-bottom))]",
+        "fixed bottom-[max(1.25rem,env(safe-area-inset-bottom))] left-4 z-[60] flex flex-col items-start gap-1 sm:left-5",
         className,
       )}
     >
       {quiet ? (
-        <p className="hidden max-w-[10rem] rounded-lg bg-white/90 px-2 py-1 text-[10px] font-medium leading-snug text-slate-600 shadow-sm dark:bg-slate-950/90 dark:text-slate-300 sm:block lg:max-w-[8rem]">
+        <p className="max-w-[10rem] rounded-lg bg-white/90 px-2 py-1 text-[10px] font-medium leading-snug text-slate-600 shadow-sm dark:bg-slate-950/90 dark:text-slate-300 lg:max-w-[8rem]">
           {quiet}
         </p>
       ) : null}
@@ -58,12 +58,13 @@ export function WhatsAppStickyFab({ className }: { className?: string }) {
         data-houselink-sticky="whatsapp"
         title={label}
         className={cn(
-          "inline-flex size-14 items-center justify-center gap-2 rounded-2xl bg-[#25D366] px-0 text-sm font-bold text-white shadow-[0_12px_30px_rgba(18,140,70,0.35)] transition hover:bg-[#1ebe57] sm:h-12 sm:w-auto sm:px-3.5 lg:size-12 lg:rounded-full lg:px-0",
+          "inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-[#25D366] text-sm font-bold text-white shadow-[0_12px_30px_rgba(18,140,70,0.35)] transition hover:bg-[#1ebe57]",
+          "px-3.5 lg:size-12 lg:rounded-full lg:px-0",
         )}
         aria-label={`Chat on WhatsApp — ${label}`}
       >
         <MessageCircle className="size-5 shrink-0" />
-        <span className="hidden max-w-[7rem] truncate sm:inline sm:max-w-none lg:hidden">{label}</span>
+        <span className="max-w-[7rem] truncate sm:max-w-none lg:hidden">{label}</span>
       </a>
     </div>
   );
