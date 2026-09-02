@@ -24,6 +24,9 @@ export function PdfSampleViewer({ url, title, onViewed }: PdfSampleViewerProps) 
   const containerRef = useRef<HTMLDivElement | null>(null);
   const canvasesRef = useRef(new Map<number, HTMLCanvasElement>());
   const viewedRef = useRef(false);
+  const onViewedRef = useRef(onViewed);
+  const renderRunRef = useRef(0);
+  const renderTasksRef = useRef<Array<{ cancel: () => void }>>([]);
   const [pdfjs, setPdfjs] = useState<PdfModule | null>(null);
   const [documentProxy, setDocumentProxy] = useState<PDFDocumentProxy | null>(null);
   const [pages, setPages] = useState<PageShell[]>([]);
@@ -32,6 +35,10 @@ export function PdfSampleViewer({ url, title, onViewed }: PdfSampleViewerProps) 
   const [rendering, setRendering] = useState(false);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    onViewedRef.current = onViewed;
+  }, [onViewed]);
 
   useEffect(() => {
     let cancelled = false;
@@ -111,6 +118,10 @@ export function PdfSampleViewer({ url, title, onViewed }: PdfSampleViewerProps) 
   useEffect(() => {
     if (!documentProxy || !pages.length || !containerWidth) return;
     let cancelled = false;
+    const runId = renderRunRef.current + 1;
+    renderRunRef.current = runId;
+    for (const task of renderTasksRef.current) task.cancel();
+    renderTasksRef.current = [];
     const pdf = documentProxy;
     async function renderPages() {
       setRendering(true);
@@ -126,31 +137,37 @@ export function PdfSampleViewer({ url, title, onViewed }: PdfSampleViewerProps) 
         const viewport = page.getViewport({ scale });
         const context = canvas.getContext("2d");
         if (!context) continue;
+        context.clearRect(0, 0, canvas.width, canvas.height);
         canvas.width = Math.floor(viewport.width * pixelRatio);
         canvas.height = Math.floor(viewport.height * pixelRatio);
         canvas.style.width = `${Math.floor(viewport.width)}px`;
         canvas.style.height = `${Math.floor(viewport.height)}px`;
         context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
-        await page.render({ canvas, canvasContext: context, viewport }).promise;
+        const renderTask = page.render({ canvas, canvasContext: context, viewport });
+        renderTasksRef.current.push(renderTask);
+        await renderTask.promise;
       }
-      if (!cancelled) {
+      if (!cancelled && renderRunRef.current === runId) {
         setRendering(false);
         if (!viewedRef.current) {
           viewedRef.current = true;
-          onViewed?.();
+          onViewedRef.current?.();
         }
       }
     }
-    void renderPages().catch(() => {
-      if (!cancelled) {
+    void renderPages().catch((error) => {
+      if (!cancelled && renderRunRef.current === runId && error?.name !== "RenderingCancelledException") {
+        console.error("[library/pdf-preview] render failed", error);
         setError("We couldn't render the preview. Open the sample in a new tab or download it instead.");
         setRendering(false);
       }
     });
     return () => {
       cancelled = true;
+      for (const task of renderTasksRef.current) task.cancel();
+      renderTasksRef.current = [];
     };
-  }, [containerWidth, documentProxy, onViewed, pages]);
+  }, [containerWidth, documentProxy, pages]);
 
   if (error) {
     return (

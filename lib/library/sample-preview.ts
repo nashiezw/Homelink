@@ -26,7 +26,24 @@ export function isLibrarySampleCandidate(file: SampleCandidate) {
 }
 
 export function findPreparedLibrarySample(input: { slug?: string; title?: string }) {
-  const slug = input.slug?.trim().toLowerCase();
-  const title = input.title?.trim().toLowerCase();
-  return preparedSamples.find((sample) => sample.slug.toLowerCase() === slug || sample.title.toLowerCase() === title) ?? null;
+  const keys = new Set([sampleLookupKey(input.slug), sampleLookupKey(input.title)].filter(Boolean));
+  return preparedSamples.find((sample) => {
+    const sampleKeys = [
+      sampleLookupKey(sample.slug),
+      sampleLookupKey(sample.title),
+      sampleLookupKey(`${sample.slug} ${sample.title}`),
+    ].filter(Boolean);
+    return sampleKeys.some((key) => keys.has(key));
+  }) ?? null;
+}
+
+function sampleLookupKey(value?: string | null) {
+  const normalized = String(value || "")
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\b(the|complete|guide|to|sample|preview)\b/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return normalized || null;
 }

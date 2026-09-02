@@ -22,6 +22,21 @@ const checks = [
     pattern: /pdf\.worker\.min\.mjs/,
   },
   {
+    file: "components/library/pdf-sample-viewer.tsx",
+    label: "PDF.js render tasks are cancelled across rerenders",
+    pattern: /renderTasksRef[\s\S]*\.cancel\(\)/,
+  },
+  {
+    file: "components/library/pdf-sample-viewer.tsx",
+    label: "sample viewed tracking does not restart rendering",
+    pattern: /onViewedRef[\s\S]*onViewedRef\.current\?\.\(\)/,
+  },
+  {
+    file: "lib/library/sample-preview.ts",
+    label: "prepared sample lookup normalizes product slug variants",
+    pattern: /sampleLookupKey[\s\S]*complete[\s\S]*guide/,
+  },
+  {
     file: "app/api/v1/library/products/[slug]/sample/route.ts",
     label: "sample route explicitly serves PDF content",
     pattern: /application\/pdf/,
