@@ -454,7 +454,7 @@ function ConversationHeader({ conversation, data, action, busy, onDelete }: { co
   const lastSeenLabel = Number.isNaN(lastSeen.getTime()) ? "Recently active" : `Last seen ${lastSeen.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
   return (
     <div className="border-b border-white/10 bg-slate-950 p-3 sm:p-4">
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
+      <div className="grid gap-4 min-[1180px]:grid-cols-[minmax(0,1fr)_minmax(18rem,20rem)]">
         <div className="min-w-0">
           <div className="flex items-start gap-3">
             <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-emerald-400 to-cyan-400 text-base font-black text-slate-950 shadow-lg shadow-emerald-950/20">
@@ -469,7 +469,7 @@ function ConversationHeader({ conversation, data, action, busy, onDelete }: { co
               <p className="mt-1 line-clamp-2 text-sm text-slate-400">{conversation.subject || conversation.currentTitle || "Live conversation"}</p>
             </div>
           </div>
-          <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="mt-4 grid gap-2 [grid-template-columns:repeat(auto-fit,minmax(min(100%,10.75rem),1fr))]">
             <MiniFact icon={Phone} label="Phone" value={conversation.visitor.phone || "Not captured"} />
             <MiniFact icon={Mail} label="Email" value={conversation.visitor.email || "Not captured"} />
             <MiniFact icon={MapPin} label="Current page" value={conversation.visitor.currentTitle || conversation.visitor.currentPath || "Unknown"} />

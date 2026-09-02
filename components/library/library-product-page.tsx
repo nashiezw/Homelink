@@ -313,6 +313,8 @@ export function LibraryProductPage({
     price: selectedFormat?.price ?? product.price,
   });
   const shortDescription = product.shortDescription?.replace(/\s+/g, " ").trim() || "";
+  const heroHeadline = product.salesHeadline?.replace(/\s+/g, " ").trim() || product.title;
+  const heroPitch = product.shortMarketingPitch?.replace(/\s+/g, " ").trim() || product.subtitle?.replace(/\s+/g, " ").trim() || "";
   const fullDescription = product.description?.trim() || "";
   const compactFullDescription = fullDescription.replace(/\s+/g, " ").trim();
   const summaryExcerpt =
@@ -900,11 +902,16 @@ export function LibraryProductPage({
                 {product.collection}
               </p>
               <h1 className="mt-3 text-balance text-[1.65rem] font-semibold leading-[1.18] tracking-[-0.025em] text-ink sm:text-[2.05rem] sm:leading-[1.14] dark:text-white">
-                {product.title}
+                {heroHeadline}
               </h1>
-              {product.subtitle ? (
+              {heroHeadline !== product.title ? (
+                <p className="mt-3 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
+                  Book: {product.title}
+                </p>
+              ) : null}
+              {heroPitch ? (
                 <p className="mt-4 max-w-[34rem] text-[0.98rem] leading-[1.65] text-slate-600 dark:text-slate-300">
-                  {readableSubtitle(product.subtitle)}
+                  {readableSubtitle(heroPitch)}
                 </p>
               ) : null}
 

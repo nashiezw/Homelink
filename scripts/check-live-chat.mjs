@@ -218,6 +218,11 @@ const checks = [
   },
   {
     file: "components/admin/live-chat-hub.tsx",
+    label: "admin conversation header uses auto-fit facts to avoid vertical text",
+    pattern: /\[grid-template-columns:repeat\(auto-fit,minmax\(min\(100%,10\.75rem\),1fr\)\)\]/,
+  },
+  {
+    file: "components/admin/live-chat-hub.tsx",
     label: "admin page labels strip tracking query strings before rendering",
     pattern: /function cleanJourneyPath[\s\S]*new URL/,
   },

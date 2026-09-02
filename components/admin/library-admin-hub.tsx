@@ -272,6 +272,8 @@ type LibraryProductDraft = {
   title: string;
   slug: string;
   subtitle: string;
+  salesHeadline: string;
+  shortMarketingPitch: string;
   author: string;
   publisher: string;
   edition: string;
@@ -451,6 +453,8 @@ export function LibraryAdminHub() {
     title: "",
     slug: "",
     subtitle: "",
+    salesHeadline: "",
+    shortMarketingPitch: "",
     author: "",
     publisher: "HouseLink Zimbabwe",
     edition: "Digital Edition",
@@ -786,6 +790,8 @@ export function LibraryAdminHub() {
       title: product.title,
       slug: product.slug,
       subtitle: product.subtitle,
+      salesHeadline: product.salesHeadline ?? "",
+      shortMarketingPitch: product.shortMarketingPitch ?? "",
       author: product.author,
       publisher: product.publisher,
       edition: product.edition,
@@ -1952,6 +1958,8 @@ export function LibraryAdminHub() {
                     <div className="grid gap-3 md:grid-cols-2">
                       <Field label="Title" value={draft.title} onChange={(value) => setDraft({ ...draft, title: value })} required className="md:col-span-2" />
                       <Field label="Subtitle" value={draft.subtitle} onChange={(value) => setDraft({ ...draft, subtitle: value })} className="md:col-span-2" />
+                      <Field label="Sales headline" value={draft.salesHeadline} onChange={(value) => setDraft({ ...draft, salesHeadline: value })} placeholder="Persuasive headline shown on the product page" className="md:col-span-2" />
+                      <Field label="Short marketing pitch" value={draft.shortMarketingPitch} onChange={(value) => setDraft({ ...draft, shortMarketingPitch: value })} placeholder="Short sales pitch shown below the headline" className="md:col-span-2" />
                       <Field label="Slug" value={draft.slug} onChange={(value) => setDraft({ ...draft, slug: value })} placeholder="Auto-generated from title if empty" />
                       <Field label="SKU" value={draft.sku} onChange={(value) => setDraft({ ...draft, sku: value })} placeholder="Auto-generated if empty" />
                       <CreatableSelectField label="Author" value={draft.author} onChange={(value) => setDraft({ ...draft, author: value })} options={taxonomyOptions.authors} placeholder="Select or create an author" />
@@ -2827,6 +2835,8 @@ function productPayload(draft: LibraryProductDraft, statusOverride?: string) {
     title: draft.title.trim(),
     slug: draft.slug.trim() || undefined,
     subtitle: draft.subtitle.trim(),
+    salesHeadline: draft.salesHeadline.trim() || undefined,
+    shortMarketingPitch: draft.shortMarketingPitch.trim() || undefined,
     author: draft.author.trim(),
     publisher: draft.publisher.trim(),
     edition: draft.edition.trim(),
@@ -3265,7 +3275,8 @@ function ProductPreview({ product }: { product: LibraryProduct }) {
       <div className="space-y-4">
         <div>
           <p className="text-xs font-black uppercase tracking-wide text-emerald-300">{formatSummary(product)}</p>
-          <h3 className="mt-1 text-2xl font-black text-white">{product.title}</h3>
+          <h3 className="mt-1 text-2xl font-black text-white">{product.salesHeadline || product.title}</h3>
+          {product.salesHeadline ? <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Book: {product.title}</p> : null}
           {product.subtitle && <p className="mt-1 text-sm text-slate-400">{product.subtitle}</p>}
         </div>
         <div className="flex flex-wrap gap-2 text-xs">
@@ -3273,7 +3284,7 @@ function ProductPreview({ product }: { product: LibraryProduct }) {
           <span className="rounded-full bg-white/10 px-2.5 py-0.5 font-semibold text-slate-300">{product.category}</span>
           <span className="rounded-full bg-white/10 px-2.5 py-0.5 font-semibold text-slate-300">{product.difficulty}</span>
         </div>
-        <p className="text-sm leading-6 text-slate-300">{product.shortDescription || product.description}</p>
+        <p className="text-sm leading-6 text-slate-300">{product.shortMarketingPitch || product.shortDescription || product.description}</p>
         <div className="grid gap-2 rounded-xl border border-white/10 bg-slate-900/60 p-4 text-sm text-slate-300">
           <div className="flex justify-between gap-3"><span>Price</span><strong className="text-white">{priceSummary(product)}</strong></div>
           {enabledLibraryFormats(product).map((format) => {

@@ -41,6 +41,8 @@ export type LibraryProduct = {
   slug: string;
   title: string;
   subtitle: string;
+  salesHeadline?: string;
+  shortMarketingPitch?: string;
   author: string;
   publisher: string;
   edition: string;

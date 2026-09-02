@@ -1758,6 +1758,8 @@ model LibraryProduct {
   slug                   String                     @unique
   title                  String
   subtitle               String?
+  salesHeadline          String?
+  shortMarketingPitch    String?
   authorId               String?
   publisher              String?
   edition                String?

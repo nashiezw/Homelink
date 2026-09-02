@@ -1,6 +1,9 @@
 import { readFileSync } from "node:fs";
 
 const productPage = readFileSync("components/library/library-product-page.tsx", "utf8");
+const libraryAdmin = readFileSync("components/admin/library-admin-hub.tsx", "utf8");
+const libraryRepository = readFileSync("lib/library/repository.ts", "utf8");
+const librarySchema = readFileSync("prisma/schema.prisma", "utf8");
 const liveChat = readFileSync("components/live-chat/live-chat-widget.tsx", "utf8");
 const analyticsEvents = readFileSync("lib/analytics/events.ts", "utf8");
 const advancedReport = readFileSync("lib/analytics/advanced-report.ts", "utf8");
@@ -9,6 +12,18 @@ const checks = [
   {
     label: "product page has a quick buyer decision block before purchase",
     pass: /Quick decision check/.test(productPage) && /Best for:/.test(productPage) && /You get:/.test(productPage) && /Access:/.test(productPage),
+  },
+  {
+    label: "product hero can use editable sales headline and marketing pitch without replacing the real title",
+    pass: /const heroHeadline = product\.salesHeadline/.test(productPage) && /const heroPitch = product\.shortMarketingPitch/.test(productPage) && /Book: \{product\.title\}/.test(productPage),
+  },
+  {
+    label: "admin product form saves editable sales headline and short marketing pitch",
+    pass: /label="Sales headline"/.test(libraryAdmin) && /label="Short marketing pitch"/.test(libraryAdmin) && /salesHeadline: draft\.salesHeadline/.test(libraryAdmin) && /shortMarketingPitch: draft\.shortMarketingPitch/.test(libraryAdmin),
+  },
+  {
+    label: "library product persistence includes marketing copy fields",
+    pass: /salesHeadline\s+String\?/.test(librarySchema) && /shortMarketingPitch\s+String\?/.test(librarySchema) && /salesHeadline: row\.salesHeadline/.test(libraryRepository) && /shortMarketingPitch: row\.shortMarketingPitch/.test(libraryRepository),
   },
   {
     label: "sample preview is positioned inside the buying decision area",

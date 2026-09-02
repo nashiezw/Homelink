@@ -77,6 +77,8 @@ export type LibraryProductInput = {
   title: string;
   slug?: string;
   subtitle?: string;
+  salesHeadline?: string;
+  shortMarketingPitch?: string;
   author?: string;
   publisher?: string;
   edition?: string;
@@ -4101,6 +4103,8 @@ async function productInputToPrisma(input: LibraryProductInput, actorId?: string
     ...(input.title !== undefined ? { title: input.title } : {}),
     ...(input.slug !== undefined || (!partial && input.title) ? { slug: input.slug || slugify(input.title) } : {}),
     ...(input.subtitle !== undefined ? { subtitle: input.subtitle || null } : {}),
+    ...(input.salesHeadline !== undefined ? { salesHeadline: input.salesHeadline || null } : {}),
+    ...(input.shortMarketingPitch !== undefined ? { shortMarketingPitch: input.shortMarketingPitch || null } : {}),
     ...(author ? { author: { connect: { id: author.id } } } : {}),
     ...(input.publisher !== undefined ? { publisher: input.publisher || null } : {}),
     ...(input.edition !== undefined ? { edition: input.edition || null } : {}),
@@ -4204,6 +4208,8 @@ function toLibraryProduct(row: DbProduct): LibraryProduct {
     slug: row.slug,
     title: row.title,
     subtitle: row.subtitle ?? "",
+    salesHeadline: row.salesHeadline ?? undefined,
+    shortMarketingPitch: row.shortMarketingPitch ?? undefined,
     author: row.author?.name ?? "HouseLink Zimbabwe",
     publisher: row.publisher ?? "HouseLink Zimbabwe",
     edition: row.edition ?? "Digital Edition",
@@ -4567,6 +4573,8 @@ function localProductFromInput(input: Partial<LibraryProductInput>, existing?: L
     slug,
     title,
     subtitle: input.subtitle ?? existing?.subtitle ?? "",
+    salesHeadline: input.salesHeadline ?? existing?.salesHeadline,
+    shortMarketingPitch: input.shortMarketingPitch ?? existing?.shortMarketingPitch,
     author: input.author ?? existing?.author ?? "HouseLink Zimbabwe Editorial Board",
     publisher: input.publisher ?? existing?.publisher ?? "HouseLink Zimbabwe",
     edition: input.edition ?? existing?.edition ?? "Digital Edition",
@@ -4685,8 +4693,8 @@ function slugify(value: string) {
   return value.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || `library-${Date.now()}`;
 }
 
-function buildSearchVector(input: Pick<LibraryProductInput, "title" | "subtitle" | "author" | "category" | "collection" | "description" | "tags" | "isbn" | "publisher">) {
-  return [input.title, input.subtitle, input.author, input.category, input.collection, input.description, input.isbn, input.publisher, input.tags?.join(" ")].filter(Boolean).join(" ").toLowerCase();
+function buildSearchVector(input: Pick<LibraryProductInput, "title" | "subtitle" | "salesHeadline" | "shortMarketingPitch" | "author" | "category" | "collection" | "description" | "tags" | "isbn" | "publisher">) {
+  return [input.title, input.subtitle, input.salesHeadline, input.shortMarketingPitch, input.author, input.category, input.collection, input.description, input.isbn, input.publisher, input.tags?.join(" ")].filter(Boolean).join(" ").toLowerCase();
 }
 
 function mediaKind(kind: string): LibraryProduct["gallery"][number]["kind"] {
