@@ -901,16 +901,16 @@ export function LibraryProductPage({
               <p className="text-[0.7rem] font-semibold uppercase tracking-[0.2em] text-emerald-700 dark:text-emerald-300">
                 {product.collection}
               </p>
-              <h1 className="mt-3 text-balance text-[1.65rem] font-semibold leading-[1.18] tracking-[-0.025em] text-ink sm:text-[2.05rem] sm:leading-[1.14] dark:text-white">
+              <h1 className="mt-4 max-w-[40rem] text-balance text-[1.85rem] font-black leading-[1.12] tracking-normal text-ink sm:text-[2.35rem] sm:leading-[1.08] dark:text-white">
                 {heroHeadline}
               </h1>
               {heroHeadline !== product.title ? (
-                <p className="mt-3 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
-                  Book: {product.title}
+                <p className="mt-2 max-w-[34rem] text-[0.8rem] font-semibold leading-5 text-slate-500 dark:text-slate-400">
+                  <span className="text-slate-400 dark:text-slate-500">Book title:</span> {product.title}
                 </p>
               ) : null}
               {heroPitch ? (
-                <p className="mt-4 max-w-[34rem] text-[0.98rem] leading-[1.65] text-slate-600 dark:text-slate-300">
+                <p className="mt-5 max-w-[34rem] text-[1rem] leading-7 text-slate-600 dark:text-slate-300">
                   {readableSubtitle(heroPitch)}
                 </p>
               ) : null}

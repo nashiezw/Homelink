@@ -15,7 +15,7 @@ const checks = [
   },
   {
     label: "product hero can use editable sales headline and marketing pitch without replacing the real title",
-    pass: /const heroHeadline = product\.salesHeadline/.test(productPage) && /const heroPitch = product\.shortMarketingPitch/.test(productPage) && /Book: \{product\.title\}/.test(productPage),
+    pass: /const heroHeadline = product\.salesHeadline/.test(productPage) && /const heroPitch = product\.shortMarketingPitch/.test(productPage) && /Book title:[\s\S]*\{product\.title\}/.test(productPage),
   },
   {
     label: "admin product form saves editable sales headline and short marketing pitch",
