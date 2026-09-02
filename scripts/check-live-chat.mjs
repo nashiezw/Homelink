@@ -203,6 +203,21 @@ const checks = [
   },
   {
     file: "components/admin/live-chat-hub.tsx",
+    label: "admin live visitors classify raw page links into readable source labels",
+    pattern: /function sourceKindLabel[\s\S]*Admin dashboard[\s\S]*Library product[\s\S]*HouseLink search/,
+  },
+  {
+    file: "components/admin/live-chat-hub.tsx",
+    label: "admin live visitors keep full URLs behind copy and open actions",
+    pattern: /function UrlActions[\s\S]*Copy \$\{label\} link[\s\S]*Open \$\{label\}/,
+  },
+  {
+    file: "components/admin/live-chat-hub.tsx",
+    label: "admin live visitor status renders as a round dot badge",
+    pattern: /function LiveStatusBadge[\s\S]*Live now[\s\S]*size-2 rounded-full/,
+  },
+  {
+    file: "components/admin/live-chat-hub.tsx",
     label: "admin page labels strip tracking query strings before rendering",
     pattern: /function cleanJourneyPath[\s\S]*new URL/,
   },

@@ -1,6 +1,6 @@
 "use client";
 
-import { Activity, Bell, BookOpen, Building2, CheckCircle2, Clock, Globe2, GraduationCap, Headphones, Loader2, Mail, MapPin, MessageSquare, NotebookPen, Phone, RefreshCw, Save, Search, Send, Settings, Shield, SlidersHorizontal, Sparkles, Tag, Timer, Trash2, Upload, UserCog, UserPlus, Users, Volume2, Wifi } from "lucide-react";
+import { Activity, Bell, BookOpen, Building2, CheckCircle2, Clock, Copy, ExternalLink, Globe2, GraduationCap, Headphones, Loader2, Mail, MapPin, MessageSquare, NotebookPen, Phone, RefreshCw, Save, Search, Send, Settings, Shield, SlidersHorizontal, Sparkles, Tag, Timer, Trash2, Upload, UserCog, UserPlus, Users, Volume2, Wifi } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -598,8 +598,8 @@ function ContextPanel({ conversation, events, visitors, startConversation }: { c
           </div>
           <Info label="Contact" value={[conversation.visitor.phone, conversation.visitor.email].filter(Boolean).join(" / ") || "Not captured yet"} />
           <Info label="Current page" value={pageLabel(conversation.visitor.currentTitle || conversation.currentTitle, conversation.visitor.currentPath || conversation.currentPath)} />
-          <Info label="Source" value={conversation.visitor.utmSource || conversation.visitor.source || "Direct / Unknown"} />
-          <Info label="Landing page" value={pageLabel(null, conversation.visitor.landingPage)} />
+          <Info label="Source" value={visitorSourceLabel(conversation.visitor)} action={<UrlActions url={fullHouseLinkUrl(conversation.visitor.source)} label="source" />} />
+          <Info label="Landing page" value={pageLabel(null, conversation.visitor.landingPage)} action={<UrlActions url={fullHouseLinkUrl(conversation.visitor.landingPage)} label="landing page" />} />
           <Button variant="secondary" className="w-full justify-center" onClick={() => void startConversation(conversation.visitor.id)}><Bell className="size-4" /> Send proactive nudge</Button>
         </div>
       ) : (
@@ -647,7 +647,10 @@ function VisitorsPanel({
         const hasConversation = Boolean(visitor.conversationId);
         const loading = startingVisitorId === visitor.id;
         const page = pageLabel(visitor.currentTitle, visitor.currentPath);
+        const pagePath = cleanJourneyPath(visitor.currentPath);
+        const pageUrl = fullHouseLinkUrl(visitor.currentPath);
         const source = visitorSourceLabel(visitor);
+        const sourceUrl = fullHouseLinkUrl(visitor.source);
         const contact = visitorContactLabel(visitor);
         const intent = visitorIntentLabel(visitor);
         const stage = visitorStageLabel(visitor);
@@ -672,9 +675,7 @@ function VisitorsPanel({
                     <p className="mt-1 line-clamp-2 text-sm leading-5 text-slate-300">{intent}</p>
                   </div>
                 </div>
-                <span className={cn("w-fit rounded-full px-2 py-1 text-[11px] font-black uppercase", hasConversation ? statusTone(visitor.conversation?.status || "OPEN") : "bg-emerald-500/15 text-emerald-200")}>
-                  {hasConversation ? visitor.conversation?.status.replace(/_/g, " ") : "Live"}
-                </span>
+                <LiveStatusBadge status={hasConversation ? visitor.conversation?.status : "LIVE"} />
               </div>
               <div className="mt-3 flex min-w-0 flex-wrap gap-2">
                 <MiniBadge icon={Activity} label={visitor.deviceType ? humanize(visitor.deviceType) : "Visitor"} />
@@ -686,6 +687,12 @@ function VisitorsPanel({
               <div className="rounded-xl border border-white/10 bg-slate-950/70 p-3">
                 <p className="flex items-center gap-2 text-[10px] font-black uppercase tracking-wide text-slate-500"><MapPin className="size-3.5" /> Current page</p>
                 <p className="mt-1 line-clamp-2 text-sm font-black leading-5 text-white">{page}</p>
+                <div className="mt-2 flex min-w-0 flex-wrap items-center gap-2">
+                  <span className="max-w-full truncate rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[11px] font-bold text-slate-300" title={pagePath}>
+                    {pagePath}
+                  </span>
+                  <UrlActions url={pageUrl} label="current page" />
+                </div>
                 <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-semibold text-slate-400">
                   <span className="inline-flex items-center gap-1"><Clock className="size-3.5" /> {pageTime ? `On this page ${pageTime}` : "Just arrived"}</span>
                   <span>{lastSeen}</span>
@@ -693,7 +700,7 @@ function VisitorsPanel({
               </div>
               <div className="grid gap-2 text-xs text-slate-400">
                 <Info label="Contact" value={contact} />
-                <Info label="Source" value={source} />
+                <Info label="Source" value={source} action={<UrlActions url={sourceUrl} label="source" />} />
               </div>
               {visitor.conversation?.lastMessagePreview ? (
                 <div className="rounded-xl border border-emerald-400/20 bg-emerald-400/10 p-3">
@@ -981,12 +988,58 @@ function ManagementPanel({ data, activeConversation, action, busy }: { data: Liv
   );
 }
 
-function Info({ label, value }: { label: string; value: string }) {
+function Info({ label, value, action }: { label: string; value: string; action?: ReactNode }) {
   return (
     <div className="min-w-0 rounded-md border border-white/10 bg-slate-950 p-3">
-      <p className="text-[11px] font-black uppercase text-slate-500">{label}</p>
-      <p className="mt-1 break-words font-semibold text-slate-100">{value}</p>
+      <div className="flex min-w-0 items-center justify-between gap-2">
+        <p className="text-[11px] font-black uppercase text-slate-500">{label}</p>
+        {action}
+      </div>
+      <p className="mt-1 break-words font-semibold text-slate-100 [overflow-wrap:anywhere]">{value}</p>
     </div>
+  );
+}
+
+function LiveStatusBadge({ status }: { status?: string | null }) {
+  const normalized = String(status || "LIVE").toUpperCase();
+  const label = normalized === "LIVE" ? "Live now" : normalized.replace(/_/g, " ");
+  const isLive = normalized === "LIVE" || normalized === "OPEN" || normalized === "NEW";
+  return (
+    <span className={cn("inline-flex h-7 w-fit shrink-0 items-center gap-1.5 rounded-full border px-2.5 text-[11px] font-black uppercase", isLive ? "border-emerald-400/25 bg-emerald-400/10 text-emerald-100" : statusTone(normalized))}>
+      <span className={cn("size-2 rounded-full", isLive ? "bg-emerald-300 shadow-[0_0_0_3px_rgba(52,211,153,0.14)]" : "bg-current")} />
+      {label}
+    </span>
+  );
+}
+
+function UrlActions({ url, label }: { url: string | null; label: string }) {
+  if (!url) return null;
+  return (
+    <span className="inline-flex items-center gap-1">
+      <button
+        type="button"
+        className="grid size-7 place-items-center rounded-full border border-white/10 bg-white/5 text-slate-300 hover:border-emerald-300/40 hover:text-emerald-100"
+        aria-label={`Copy ${label} link`}
+        title={`Copy ${label} link`}
+        onClick={(event) => {
+          event.stopPropagation();
+          void navigator.clipboard?.writeText(url);
+        }}
+      >
+        <Copy className="size-3.5" />
+      </button>
+      <a
+        href={url}
+        target="_blank"
+        rel="noreferrer"
+        className="grid size-7 place-items-center rounded-full border border-white/10 bg-white/5 text-slate-300 hover:border-emerald-300/40 hover:text-emerald-100"
+        aria-label={`Open ${label}`}
+        title={`Open ${label}`}
+        onClick={(event) => event.stopPropagation()}
+      >
+        <ExternalLink className="size-3.5" />
+      </a>
+    </span>
   );
 }
 
@@ -1023,7 +1076,13 @@ function visitorContactLabel(visitor: LiveChatConversationView["visitor"]) {
 }
 
 function visitorSourceLabel(visitor: Pick<LiveChatConversationView["visitor"], "utmSource" | "utmMedium" | "source">) {
-  const raw = visitor.utmSource || visitor.source || "Direct / Unknown";
+  if (visitor.utmSource) {
+    const medium = visitor.utmMedium ? ` / ${visitor.utmMedium}` : "";
+    return humanize(`${visitor.utmSource}${medium}`.replace(/^an$/i, "Analytics").replace(/^fb$/i, "Facebook"));
+  }
+  const sourceKind = sourceKindLabel(visitor.source);
+  if (sourceKind) return sourceKind;
+  const raw = visitor.source || "Direct / Unknown";
   const medium = visitor.utmMedium ? ` / ${visitor.utmMedium}` : "";
   return humanize(`${raw}${medium}`.replace(/^an$/i, "Analytics").replace(/^fb$/i, "Facebook"));
 }
@@ -1116,6 +1175,51 @@ function cleanJourneyPath(value?: string | null) {
     return new URL(decoded, "https://www.houselink.co.zw").pathname || "/";
   } catch {
     return decoded.split("?")[0].split("#")[0] || "/";
+  }
+}
+
+function fullHouseLinkUrl(value?: string | null) {
+  const raw = String(value || "").trim();
+  if (!raw) return null;
+  const decoded = safeDecode(raw);
+  if (!/^https?:\/\//i.test(decoded) && !decoded.startsWith("/")) return null;
+  try {
+    const parsed = new URL(decoded, "https://www.houselink.co.zw");
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return null;
+    return parsed.toString();
+  } catch {
+    return null;
+  }
+}
+
+function sourceKindLabel(value?: string | null) {
+  const raw = String(value || "").trim();
+  if (!raw) return null;
+  const path = cleanJourneyPath(raw).toLowerCase();
+  const host = hostLabel(raw);
+  if (path.startsWith("/dashboard/admin/live-chat")) return "Admin dashboard";
+  if (path.startsWith("/dashboard")) return "HouseLink dashboard";
+  if (path.startsWith("/library/checkout")) return "Library checkout";
+  if (path.startsWith("/library/")) return "Library product";
+  if (path === "/library") return "HouseLink Library";
+  if (path.startsWith("/academy")) return "HouseLink Academy";
+  if (path.startsWith("/listings/")) return "Property listing";
+  if (path.startsWith("/search")) return "HouseLink search";
+  if (host) return host;
+  return null;
+}
+
+function hostLabel(value: string) {
+  try {
+    const host = new URL(value).hostname.replace(/^www\./, "").toLowerCase();
+    if (!host) return null;
+    if (host.includes("houselink.co.zw")) return "HouseLink";
+    if (host.includes("facebook.com") || host === "fb") return "Facebook";
+    if (host.includes("google.")) return "Google";
+    if (host.includes("wa.me") || host.includes("whatsapp.")) return "WhatsApp";
+    return humanize(host.split(".")[0] || host);
+  } catch {
+    return null;
   }
 }
 
