@@ -20,7 +20,9 @@ import type {
 } from "@/lib/live-chat/types";
 
 const OPEN_STATUSES = ["NEW", "OPEN", "WAITING_FOR_CUSTOMER", "FOLLOW_UP"];
-const ACTIVE_VISITOR_MS = 5 * 60_000;
+const LIVE_VISITOR_MS = 90_000;
+const RECENT_VISITOR_MS = 5 * 60_000;
+const ACTIVE_VISITOR_MS = LIVE_VISITOR_MS;
 const MAX_MESSAGE_LENGTH = 2_000;
 const LIVE_CHAT_MIGRATION_NAME = "202608300001_live_chat_system";
 const DEFAULT_DEPARTMENTS = [
@@ -76,6 +78,7 @@ type LiveChatRealtimeEvent =
   | { type: "message"; conversationId: string; visitorId?: string | null; message: LiveChatMessageView; createdAt: string }
   | { type: "typing"; conversationId: string; visitorId?: string | null; typing: LiveChatTypingView; createdAt: string }
   | { type: "receipt"; conversationId: string; visitorId?: string | null; messageIds?: string[]; readAt?: string | null; deliveredAt?: string | null; createdAt: string }
+  | { type: "presence"; conversationId?: string | null; visitorId: string; presenceStatus: "LIVE"; createdAt: string }
   | { type: "inbox"; conversationId?: string | null; visitorId?: string | null; reason: string; createdAt: string };
 type LiveChatRealtimeListener = (event: LiveChatRealtimeEvent) => void;
 
@@ -259,6 +262,13 @@ export async function updateLiveChatActivity(input: {
       },
     }).catch(() => null);
   }
+  publishLiveChatRealtime({
+    type: "presence",
+    conversationId: conversation?.publicId ?? null,
+    visitorId: visitor.publicId,
+    presenceStatus: "LIVE",
+    createdAt: new Date().toISOString(),
+  });
   return { ok: true };
 }
 
@@ -1363,27 +1373,38 @@ function inferDepartmentSlug(body: string, context?: LiveChatVisitorContext) {
 }
 
 function scoreConversation(conversation: Prisma.LiveChatConversationGetPayload<{ include: ReturnType<typeof conversationInclude> }>) {
-  const latest = conversation.messages[0]?.body ?? conversation.lastMessagePreview ?? "";
-  const bodyText = latest.toLowerCase();
-  let value = conversation.priority === "URGENT" ? 55 : conversation.priority === "HIGH" ? 42 : 12;
-  if (/\b(today|now|urgent|asap|ready|serious|immediately)\b/.test(bodyText)) value += 24;
-  if (/\b(call me|phone me|whatsapp me|contact me)\b/.test(bodyText)) value += 20;
-  if (/\b(pay|paid|payment|proof|checkout|deposit|invoice|ecocash|bank transfer)\b/.test(bodyText)) value += 18;
-  if (/\b(buy|purchase|order|book|hard copy|soft copy|delivery)\b/.test(bodyText)) value += 14;
-  if (/\b(viewing|view|available|price|how much|rent|tenant|move in|location)\b/.test(bodyText)) value += 14;
-  if (conversation.tags.some((item) => ["payment-issue", "hot-lead"].includes(item.tag.slug))) value += 16;
-  if (conversation.visitor.phone) value += 10;
-  else if (conversation.visitor.email) value += 6;
-  if (conversation.status === "FOLLOW_UP" || conversation.tags.some((item) => item.tag.slug === "needs-follow-up")) value += 10;
-  if (conversation.lastMessageAt && Date.now() - conversation.lastMessageAt.getTime() > 10 * 60_000 && needsStaffReply(conversation)) value += 8;
+  const visitorMessage = conversation.messages.find((message) => message.senderKind === "VISITOR");
+  const bodyText = (visitorMessage?.body ?? "").toLowerCase();
+  const pageText = `${conversation.currentPath ?? ""} ${conversation.currentTitle ?? ""} ${conversation.visitor.currentPath ?? ""} ${conversation.visitor.currentTitle ?? ""}`.toLowerCase();
+  const sourceText = `${conversation.source ?? ""} ${conversation.visitor.source ?? ""} ${conversation.visitor.utmSource ?? ""} ${conversation.visitor.utmMedium ?? ""}`.toLowerCase();
+  const reasons: Array<{ label: string; points: number }> = [];
+  const add = (label: string, points: number) => {
+    reasons.push({ label, points });
+    return points;
+  };
+  let value = add("Started a live chat", 8);
+  if (conversation.priority === "URGENT") value += add("Urgent priority", 26);
+  else if (conversation.priority === "HIGH") value += add("High-priority page", 16);
+  if (/\b(today|now|urgent|asap|ready|serious|immediately)\b/.test(bodyText)) value += add("Visitor used urgent buying language", 22);
+  if (/\b(call me|phone me|whatsapp me|contact me)\b/.test(bodyText)) value += add("Visitor asked to be contacted", 18);
+  if (/\b(pay|paid|payment|proof|checkout|deposit|invoice|ecocash|bank transfer)\b/.test(bodyText)) value += add("Payment or checkout intent", 18);
+  if (/\b(buy|purchase|order|book|hard copy|soft copy|delivery)\b/.test(bodyText)) value += add("Order or purchase intent", 14);
+  if (/\b(viewing|view|available|price|how much|rent|tenant|move in|location)\b/.test(bodyText)) value += add("Property enquiry intent", 14);
+  if (/checkout|payment|property-for-sale|listings|academy\/checkout|library\/checkout/.test(pageText)) value += add("Currently on a high-intent page", 10);
+  if (/(paid|cpc|ppc|facebook|fb|google|ig|instagram)/.test(sourceText)) value += add("Paid or tracked acquisition source", 6);
+  if (conversation.tags.some((item) => ["payment-issue", "hot-lead"].includes(item.tag.slug))) value += add("Tagged as payment issue or hot lead", 16);
+  if (conversation.visitor.phone) value += add("WhatsApp or phone captured", 10);
+  else if (conversation.visitor.email) value += add("Email captured", 6);
+  if (conversation.status === "FOLLOW_UP" || conversation.tags.some((item) => item.tag.slug === "needs-follow-up")) value += add("Marked for follow-up", 8);
+  if (conversation.lastMessageAt && Date.now() - conversation.lastMessageAt.getTime() > 10 * 60_000 && needsStaffReply(conversation)) value += add("Visitor has waited over 10 minutes", 8);
   value = Math.max(0, Math.min(100, value));
   const temperature = value >= 70 ? "HOT" : value >= 40 ? "WARM" : "COLD";
   const nextAction = temperature === "HOT"
     ? "Reply now or move to WhatsApp before the lead cools."
-    : temperature === "WARM"
+    : temperature === "WARM" && !(conversation.visitor.phone || conversation.visitor.email)
       ? "Ask one qualifying question and capture contact details."
       : conversation.visitor.phone || conversation.visitor.email ? null : "Capture WhatsApp or email if they need follow-up.";
-  return { value, temperature: temperature as "HOT" | "WARM" | "COLD", nextAction };
+  return { value, temperature: temperature as "HOT" | "WARM" | "COLD", nextAction, reasons };
 }
 
 async function handleMissedChatRecovery(
@@ -1529,7 +1550,7 @@ function conversationInclude() {
     department: true,
     assignedAgent: { include: { department: true } },
     tags: { include: { tag: true } },
-    messages: { where: { internal: false }, orderBy: { createdAt: "desc" }, take: 1 },
+    messages: { where: { internal: false }, orderBy: { createdAt: "desc" }, take: 8 },
   } satisfies Prisma.LiveChatConversationInclude;
 }
 
@@ -1544,6 +1565,7 @@ function shapeConversation(conversation: Prisma.LiveChatConversationGetPayload<{
     priority: conversation.priority,
     leadScore: score.value,
     leadTemperature: score.temperature,
+    leadScoreReasons: score.reasons,
     nextAction: score.nextAction,
     subject: conversation.subject,
     source: conversation.source,
@@ -1636,6 +1658,9 @@ function shapeAgent(agent: { id: string; userId: string; displayName: string; av
 
 function shapeActiveVisitor(visitor: { publicId: string; userId: string | null; name: string | null; email: string | null; phone: string | null; deviceType: string | null; currentPath: string | null; currentTitle: string | null; landingPage: string | null; source: string | null; utmSource: string | null; utmMedium: string | null; utmCampaign: string | null; lastSeenAt: Date; firstSeenAt: Date; blockedAt: Date | null; pageStartedAt: Date | null }, conversation: LiveChatConversationView | null) {
   const now = Date.now();
+  const ageMs = now - visitor.lastSeenAt.getTime();
+  const presenceStatus: "LIVE" | "RECENT" | "OFFLINE" = ageMs <= LIVE_VISITOR_MS ? "LIVE" : ageMs <= RECENT_VISITOR_MS ? "RECENT" : "OFFLINE";
+  const presenceLabel = presenceStatus === "LIVE" ? "Live now" : presenceStatus === "RECENT" ? `Seen ${Math.max(1, Math.round(ageMs / 60_000))}m ago` : "Offline";
   return {
     id: visitor.publicId,
     userId: visitor.userId,
@@ -1653,6 +1678,8 @@ function shapeActiveVisitor(visitor: { publicId: string; userId: string | null; 
     lastSeenAt: visitor.lastSeenAt.toISOString(),
     firstSeenAt: visitor.firstSeenAt.toISOString(),
     blocked: Boolean(visitor.blockedAt),
+    presenceStatus,
+    presenceLabel,
     conversationId: conversation?.id ?? null,
     conversation: conversation
       ? {
@@ -1826,7 +1853,9 @@ function memoryInbox(): LiveChatInboxView {
   const selected = conversations[0];
   return {
     conversations: conversations.map((conversation) => shapeMemoryConversation(conversation, visitors.find((visitor) => visitor.id === conversation.visitorId)!)),
-    activeVisitors: visitors.map((visitor) => ({ ...shapeMemoryVisitor(visitor), conversationId: conversations.find((conversation) => conversation.visitorId === visitor.id)?.publicId ?? null, sessionSeconds: 0, pageSeconds: 0 })),
+    activeVisitors: visitors
+      .filter((visitor) => Date.now() - visitor.lastSeenAt.getTime() <= ACTIVE_VISITOR_MS)
+      .map((visitor) => ({ ...shapeMemoryVisitor(visitor), conversationId: conversations.find((conversation) => conversation.visitorId === visitor.id)?.publicId ?? null, presenceStatus: "LIVE" as const, presenceLabel: "Live now", sessionSeconds: 0, pageSeconds: 0 })),
     messages: memory.messages.filter((message) => message.conversationId === selected?.id).map(shapeMemoryMessage),
     events: memory.events.map((event) => ({ id: event.id, eventType: event.eventType, path: event.path, title: event.title, metadata: event.metadata, createdAt: event.createdAt.toISOString() })),
     departments: DEFAULT_DEPARTMENTS.map(([name, slug, color, welcomeMessage]) => ({ id: slug, name, slug, color, active: true, welcomeMessage })),
@@ -1847,6 +1876,7 @@ function shapeMemoryConversation(conversation: MemoryConversation, visitor: Memo
     priority: conversation.priority,
     leadScore: conversation.priority === "URGENT" ? 80 : conversation.priority === "HIGH" ? 55 : 30,
     leadTemperature: conversation.priority === "URGENT" ? "HOT" : conversation.priority === "HIGH" ? "WARM" : "COLD",
+    leadScoreReasons: [{ label: "Started a live chat", points: 8 }, { label: conversation.priority === "URGENT" ? "Urgent priority" : conversation.priority === "HIGH" ? "High-priority page" : "No strong buying signal yet", points: conversation.priority === "URGENT" ? 26 : conversation.priority === "HIGH" ? 16 : 0 }],
     nextAction: "Reply quickly and capture the best contact method.",
     subject: conversation.subject,
     source: conversation.source,

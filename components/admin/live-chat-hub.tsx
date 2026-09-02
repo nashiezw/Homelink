@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
 import type { LiveChatConversationView, LiveChatInboxView, LiveChatMessageView } from "@/lib/live-chat/types";
 
 type AdminRealtimeEvent = {
-  type?: "message" | "typing" | "receipt" | "inbox";
+  type?: "message" | "typing" | "receipt" | "inbox" | "presence";
   conversationId?: string | null;
   visitorId?: string | null;
   reason?: string;
@@ -180,6 +180,10 @@ export function LiveChatHub() {
         setActiveId(payload.conversationId);
       }
       scheduleLiveRefresh(payload?.conversationId ?? undefined);
+    });
+    source.addEventListener("presence", (event) => {
+      const payload = parseAdminRealtimeEvent(event);
+      scheduleLiveRefresh(payload?.conversationId ?? activeIdRef.current);
     });
     source.onerror = () => undefined;
     return () => {
@@ -569,7 +573,7 @@ function ConversationRow({ conversation, active, onOpen }: { conversation: LiveC
             <span className="flex min-w-0 flex-wrap items-center gap-1.5">
               {urgent ? <span className="rounded-full bg-amber-300 px-2 py-0.5 text-[10px] font-black uppercase text-slate-950">New reply</span> : null}
               {waitLabel ? <span className="rounded-full bg-red-500/15 px-2 py-0.5 text-[10px] font-black uppercase text-red-100">SLA {waitLabel}</span> : null}
-              <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-black uppercase", temperatureTone(temp))}>{temp} {conversation.leadScore ?? 0}</span>
+              {temp === "HOT" ? <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-black uppercase", temperatureTone(temp))}>Hot lead</span> : null}
               <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-black", statusTone(conversation.status))}>{conversation.status.replace(/_/g, " ")}</span>
             </span>
           </span>
@@ -788,6 +792,23 @@ function ContextPanel({ conversation, events, visitors, startConversation }: { c
           <Info label="Current page" value={pageLabel(conversation.visitor.currentTitle || conversation.currentTitle, conversation.visitor.currentPath || conversation.currentPath)} />
           <Info label="Source" value={visitorSourceLabel(conversation.visitor)} action={<UrlActions url={fullHouseLinkUrl(conversation.visitor.source)} label="source" />} />
           <Info label="Landing page" value={pageLabel(null, conversation.visitor.landingPage)} action={<UrlActions url={fullHouseLinkUrl(conversation.visitor.landingPage)} label="landing page" />} />
+          <div className="rounded-md border border-white/10 bg-slate-950 p-3">
+            <div className="flex min-w-0 items-start justify-between gap-3">
+              <div>
+                <p className="text-[11px] font-black uppercase text-slate-500">Lead score breakdown</p>
+                <p className="mt-1 text-sm font-black text-white">{conversation.leadTemperature || "COLD"} {conversation.leadScore ?? 0}/100</p>
+              </div>
+              <Sparkles className="size-4 shrink-0 text-emerald-300" />
+            </div>
+            <div className="mt-3 space-y-2">
+              {(conversation.leadScoreReasons?.length ? conversation.leadScoreReasons : [{ label: "No visitor buying signal yet", points: 0 }]).slice(0, 6).map((reason) => (
+                <div key={`${reason.label}:${reason.points}`} className="flex items-center justify-between gap-3 text-xs">
+                  <span className="min-w-0 break-words text-slate-300 [overflow-wrap:anywhere]">{reason.label}</span>
+                  <span className="shrink-0 rounded-full bg-white/5 px-2 py-0.5 font-black text-slate-200">+{reason.points}</span>
+                </div>
+              ))}
+            </div>
+          </div>
           <Button variant="secondary" className="w-full justify-center" onClick={() => void startConversation(conversation.visitor.id)}><Bell className="size-4" /> Send proactive nudge</Button>
         </div>
       ) : (
@@ -846,6 +867,7 @@ function VisitorsPanel({
         const stage = visitorStageLabel(visitor);
         const pageTime = formatVisitorDuration(visitor.pageSeconds);
         const lastSeen = formatRelativeVisitorTime(visitor.lastSeenAt);
+        const presence = visitorPresence(visitor.lastSeenAt);
         const suggestedMessage = proactiveMessageForVisitor(visitor, currentAgentName);
         const actionLabel = visitor.conversation ? visitorActionLabel(visitor.conversation.status) : "Send helpful message";
         return (
@@ -855,7 +877,7 @@ function VisitorsPanel({
                 <div className="flex min-w-0 gap-3">
                   <span className="relative grid size-11 shrink-0 place-items-center rounded-full bg-gradient-to-br from-emerald-300 to-cyan-300 text-sm font-black text-slate-950">
                     {visitorInitials(visitor)}
-                    <span className="absolute -bottom-0.5 -right-0.5 size-3 rounded-full border-2 border-slate-900 bg-emerald-400" />
+                    <span className={cn("absolute -bottom-0.5 -right-0.5 size-3 rounded-full border-2 border-slate-900", presence.dotClass)} title={presence.label} />
                   </span>
                   <div className="min-w-0">
                     <div className="flex min-w-0 flex-wrap items-center gap-2">
@@ -865,7 +887,7 @@ function VisitorsPanel({
                     <p className="mt-1 line-clamp-2 text-sm leading-5 text-slate-300">{intent}</p>
                   </div>
                 </div>
-                <LiveStatusBadge status={hasConversation ? visitor.conversation?.status : "LIVE"} />
+                <PresenceStatusBadge label={visitor.presenceLabel || presence.label} status={visitor.presenceStatus || "LIVE"} />
               </div>
               <div className="mt-3 flex min-w-0 flex-wrap gap-2">
                 <MiniBadge icon={Activity} label={visitor.deviceType ? humanize(visitor.deviceType) : "Visitor"} />
@@ -911,7 +933,7 @@ function VisitorsPanel({
             </div>
           </article>
         );
-      }) : <Empty label="No live visitors in the last five minutes." />}
+      }) : <Empty label="No visitors are live in the last 90 seconds." />}
     </div>
   );
 }
@@ -1231,13 +1253,13 @@ function Info({ label, value, action }: { label: string; value: string; action?:
   );
 }
 
-function LiveStatusBadge({ status }: { status?: string | null }) {
-  const normalized = String(status || "LIVE").toUpperCase();
-  const label = normalized === "LIVE" ? "Live now" : normalized.replace(/_/g, " ");
-  const isLive = normalized === "LIVE" || normalized === "OPEN" || normalized === "NEW";
+function PresenceStatusBadge({ status, label }: { status?: "LIVE" | "RECENT" | "OFFLINE" | string | null; label: string }) {
+  const normalized = String(status || "OFFLINE").toUpperCase();
+  const live = normalized === "LIVE";
+  const recent = normalized === "RECENT";
   return (
-    <span className={cn("inline-flex h-7 w-fit shrink-0 items-center gap-1.5 rounded-full border px-2.5 text-[11px] font-black uppercase", isLive ? "border-emerald-400/25 bg-emerald-400/10 text-emerald-100" : statusTone(normalized))}>
-      <span className={cn("size-2 rounded-full", isLive ? "bg-emerald-300 shadow-[0_0_0_3px_rgba(52,211,153,0.14)]" : "bg-current")} />
+    <span className={cn("inline-flex h-7 w-fit shrink-0 items-center gap-1.5 rounded-full border px-2.5 text-[11px] font-black uppercase", live ? "border-emerald-400/25 bg-emerald-400/10 text-emerald-100" : recent ? "border-amber-400/25 bg-amber-400/10 text-amber-100" : "border-white/10 bg-white/5 text-slate-300")}>
+      <span className={cn("size-2 rounded-full", live ? "bg-emerald-300 shadow-[0_0_0_3px_rgba(52,211,153,0.14)]" : recent ? "bg-amber-300" : "bg-slate-500")} />
       {label}
     </span>
   );

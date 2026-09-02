@@ -97,6 +97,7 @@ export type LiveChatConversationView = {
   priority: LiveChatPriority | string;
   leadScore?: number;
   leadTemperature?: "HOT" | "WARM" | "COLD";
+  leadScoreReasons?: Array<{ label: string; points: number }>;
   nextAction?: string | null;
   subject?: string | null;
   source?: string | null;
@@ -166,6 +167,8 @@ export type LiveChatInboxView = {
   activeVisitors: Array<LiveChatConversationView["visitor"] & {
     conversationId?: string | null;
     conversation?: Pick<LiveChatConversationView, "id" | "status" | "priority" | "lastMessagePreview" | "lastMessageAt" | "lastMessageSenderKind" | "lastMessageSenderName" | "unreadForVisitor" | "unreadForStaff"> | null;
+    presenceStatus: "LIVE" | "RECENT" | "OFFLINE";
+    presenceLabel: string;
     sessionSeconds: number;
     pageSeconds: number;
   }>;

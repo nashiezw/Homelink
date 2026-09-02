@@ -161,6 +161,24 @@ export function LiveChatWidget() {
   }, [context, hiddenOnThisRoute]);
 
   useEffect(() => {
+    if (hiddenOnThisRoute) return;
+    const postActivity = () => {
+      if (document.visibilityState !== "visible") return;
+      void apiFetch("/api/v1/live-chat/activity", {
+        method: "POST",
+        body: JSON.stringify({ context, contact: normalizeContact(contactRef.current) }),
+      });
+    };
+    const interval = window.setInterval(postActivity, 30_000);
+    const handleVisibility = () => postActivity();
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => {
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
+  }, [context, hiddenOnThisRoute]);
+
+  useEffect(() => {
     if (!boot?.conversation?.id) return;
     let cancelled = false;
     const poll = async () => {

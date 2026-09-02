@@ -213,8 +213,8 @@ const checks = [
   },
   {
     file: "components/admin/live-chat-hub.tsx",
-    label: "admin live visitor status renders as a round dot badge",
-    pattern: /function LiveStatusBadge[\s\S]*Live now[\s\S]*size-2 rounded-full/,
+    label: "admin live visitor status renders from real presence",
+    pattern: /visitor\.presenceLabel[\s\S]*function PresenceStatusBadge[\s\S]*size-2 rounded-full/,
   },
   {
     file: "components/admin/live-chat-hub.tsx",
@@ -333,8 +333,8 @@ const checks = [
   },
   {
     file: "components/admin/live-chat-hub.tsx",
-    label: "admin inbox shows SLA waiting time and lead temperature",
-    pattern: /waitingTimeLabel[\s\S]*leadTemperature/,
+    label: "admin inbox hides warm and cold numeric score badges from rows",
+    pattern: /temp === "HOT"[\s\S]*Hot lead/,
   },
   {
     file: "components/admin/live-chat-hub.tsx",
@@ -348,8 +348,23 @@ const checks = [
   },
   {
     file: "lib/live-chat/repository.ts",
-    label: "lead scoring uses message intent rather than broad page context",
-    pattern: /bodyText[\s\S]*conversation\.priority === "URGENT" \? 55[\s\S]*temperature = value >= 70/,
+    label: "lead scoring uses visitor message intent with explainable reasons",
+    pattern: /senderKind === "VISITOR"[\s\S]*Currently on a high-intent page[\s\S]*leadScoreReasons/,
+  },
+  {
+    file: "lib/live-chat/repository.ts",
+    label: "live visitors are limited to a true 90-second online window",
+    pattern: /const LIVE_VISITOR_MS = 90_000[\s\S]*ACTIVE_VISITOR_MS = LIVE_VISITOR_MS/,
+  },
+  {
+    file: "lib/live-chat/repository.ts",
+    label: "visitor activity publishes realtime presence events",
+    pattern: /type:\s*"presence"[\s\S]*presenceStatus:\s*"LIVE"/,
+  },
+  {
+    file: "components/live-chat/live-chat-widget.tsx",
+    label: "public widget sends recurring visitor activity heartbeats",
+    pattern: /setInterval\(postActivity, 30_000\)[\s\S]*visibilitychange/,
   },
   {
     file: "components/admin/live-chat-hub.tsx",
