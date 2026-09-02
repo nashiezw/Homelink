@@ -646,38 +646,72 @@ function VisitorsPanel({
       {visitors.length ? visitors.map((visitor) => {
         const hasConversation = Boolean(visitor.conversationId);
         const loading = startingVisitorId === visitor.id;
-        const actionLabel = visitor.conversation ? visitorActionLabel(visitor.conversation.status) : "Start helpful chat";
+        const page = pageLabel(visitor.currentTitle, visitor.currentPath);
+        const source = visitorSourceLabel(visitor);
+        const contact = visitorContactLabel(visitor);
+        const intent = visitorIntentLabel(visitor);
+        const stage = visitorStageLabel(visitor);
+        const pageTime = formatVisitorDuration(visitor.pageSeconds);
+        const lastSeen = formatRelativeVisitorTime(visitor.lastSeenAt);
+        const suggestedMessage = proactiveMessageForVisitor(visitor);
+        const actionLabel = visitor.conversation ? visitorActionLabel(visitor.conversation.status) : "Send helpful message";
         return (
-          <article key={visitor.id} className={cn("min-w-0 rounded-2xl border bg-slate-900 p-3 sm:p-4", hasConversation ? "border-emerald-400/30" : "border-white/10")}>
-            <div className="grid min-w-0 gap-3 min-[420px]:grid-cols-[minmax(0,1fr)_auto]">
-              <div className="flex min-w-0 gap-3">
-                <span className="relative grid size-11 shrink-0 place-items-center rounded-full bg-gradient-to-br from-emerald-400 to-cyan-400 text-sm font-black text-slate-950">
-                  {visitorInitials(visitor)}
-                  <span className="absolute -bottom-0.5 -right-0.5 size-3 rounded-full border-2 border-slate-900 bg-emerald-400" />
-                </span>
-                <div className="min-w-0">
-                  <p className="break-words font-black text-white [overflow-wrap:anywhere]">{visitorDisplayName(visitor)}</p>
-                  <p className="mt-1 truncate text-sm text-slate-400">{visitor.currentTitle || visitor.currentPath || "Browsing HouseLink"}</p>
+          <article key={visitor.id} className={cn("min-w-0 overflow-hidden rounded-2xl border bg-slate-900 shadow-[0_18px_50px_rgba(0,0,0,0.18)]", hasConversation ? "border-emerald-400/30" : "border-white/10")}>
+            <div className="border-b border-white/10 bg-gradient-to-br from-slate-800 via-slate-900 to-slate-950 p-3 sm:p-4">
+              <div className="grid min-w-0 gap-3 min-[420px]:grid-cols-[minmax(0,1fr)_auto]">
+                <div className="flex min-w-0 gap-3">
+                  <span className="relative grid size-11 shrink-0 place-items-center rounded-full bg-gradient-to-br from-emerald-300 to-cyan-300 text-sm font-black text-slate-950">
+                    {visitorInitials(visitor)}
+                    <span className="absolute -bottom-0.5 -right-0.5 size-3 rounded-full border-2 border-slate-900 bg-emerald-400" />
+                  </span>
+                  <div className="min-w-0">
+                    <div className="flex min-w-0 flex-wrap items-center gap-2">
+                      <p className="break-words font-black text-white [overflow-wrap:anywhere]">{visitorDisplayName(visitor)}</p>
+                      <span className="rounded-full bg-cyan-400/10 px-2 py-0.5 text-[10px] font-black uppercase text-cyan-200">{stage}</span>
+                    </div>
+                    <p className="mt-1 line-clamp-2 text-sm leading-5 text-slate-300">{intent}</p>
+                  </div>
                 </div>
+                <span className={cn("w-fit rounded-full px-2 py-1 text-[11px] font-black uppercase", hasConversation ? statusTone(visitor.conversation?.status || "OPEN") : "bg-emerald-500/15 text-emerald-200")}>
+                  {hasConversation ? visitor.conversation?.status.replace(/_/g, " ") : "Live"}
+                </span>
               </div>
-              <span className={cn("w-fit rounded-full px-2 py-1 text-[11px] font-black uppercase", hasConversation ? statusTone(visitor.conversation?.status || "OPEN") : "bg-emerald-500/15 text-emerald-200")}>
-                {hasConversation ? visitor.conversation?.status.replace(/_/g, " ") : "LIVE"}
-              </span>
-            </div>
-            {visitor.conversation?.lastMessagePreview ? (
-              <div className="mt-4 rounded-xl border border-emerald-400/20 bg-emerald-400/10 p-3">
-                <p className="text-[10px] font-black uppercase text-emerald-200">Latest conversation</p>
-                <p className="mt-1 line-clamp-2 text-xs font-semibold text-emerald-50">{visitor.conversation.lastMessagePreview}</p>
+              <div className="mt-3 flex min-w-0 flex-wrap gap-2">
+                <MiniBadge icon={Activity} label={visitor.deviceType ? humanize(visitor.deviceType) : "Visitor"} />
+                <MiniBadge icon={Globe2} label={source} />
+                <MiniBadge icon={contact === "Not captured yet" ? UserPlus : Phone} label={contact === "Not captured yet" ? "No contact yet" : "Contact captured"} tone={contact === "Not captured yet" ? "amber" : "emerald"} />
               </div>
-            ) : null}
-            <div className="mt-4 grid gap-2 text-xs text-slate-400">
-              <Info label="Contact" value={[visitor.phone, visitor.email].filter(Boolean).join(" / ") || "Not captured yet"} />
-              <Info label="Source" value={visitor.utmSource || visitor.source || "Direct / Unknown"} />
-              <Info label="Journey" value={`${Math.round(visitor.sessionSeconds / 60)} min session, ${Math.round(visitor.pageSeconds / 60)} min on page`} />
             </div>
-            <Button className="mt-4 w-full" onClick={() => hasConversation && visitor.conversationId ? openConversation(visitor.conversationId) : void startConversation(visitor.id)} disabled={loading}>
-              {loading ? <Loader2 className="size-4 animate-spin" /> : hasConversation ? <MessageSquare className="size-4" /> : <Send className="size-4" />} {loading ? "Starting..." : actionLabel}
-            </Button>
+            <div className="space-y-3 p-3 sm:p-4">
+              <div className="rounded-xl border border-white/10 bg-slate-950/70 p-3">
+                <p className="flex items-center gap-2 text-[10px] font-black uppercase tracking-wide text-slate-500"><MapPin className="size-3.5" /> Current page</p>
+                <p className="mt-1 line-clamp-2 text-sm font-black leading-5 text-white">{page}</p>
+                <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-semibold text-slate-400">
+                  <span className="inline-flex items-center gap-1"><Clock className="size-3.5" /> {pageTime ? `On this page ${pageTime}` : "Just arrived"}</span>
+                  <span>{lastSeen}</span>
+                </p>
+              </div>
+              <div className="grid gap-2 text-xs text-slate-400">
+                <Info label="Contact" value={contact} />
+                <Info label="Source" value={source} />
+              </div>
+              {visitor.conversation?.lastMessagePreview ? (
+                <div className="rounded-xl border border-emerald-400/20 bg-emerald-400/10 p-3">
+                  <p className="text-[10px] font-black uppercase text-emerald-200">Latest conversation</p>
+                  <p className="mt-1 line-clamp-2 text-xs font-semibold text-emerald-50">{visitor.conversation.lastMessagePreview}</p>
+                </div>
+              ) : (
+                <div className="rounded-xl border border-cyan-400/20 bg-cyan-400/10 p-3">
+                  <p className="flex items-center gap-1.5 text-[10px] font-black uppercase text-cyan-200"><Sparkles className="size-3.5" /> Suggested first message</p>
+                  <p className="mt-1 line-clamp-3 text-xs leading-5 text-cyan-50">{suggestedMessage}</p>
+                </div>
+              )}
+              <div className="flex min-w-0 gap-3">
+                <Button className="w-full" onClick={() => hasConversation && visitor.conversationId ? openConversation(visitor.conversationId) : void startConversation(visitor.id, suggestedMessage)} disabled={loading}>
+                  {loading ? <Loader2 className="size-4 animate-spin" /> : hasConversation ? <MessageSquare className="size-4" /> : <Send className="size-4" />} {loading ? "Sending..." : actionLabel}
+                </Button>
+              </div>
+            </div>
           </article>
         );
       }) : <Empty label="No live visitors in the last five minutes." />}
@@ -956,6 +990,20 @@ function Info({ label, value }: { label: string; value: string }) {
   );
 }
 
+function MiniBadge({ icon: Icon, label, tone = "slate" }: { icon: LucideIcon; label: string; tone?: "slate" | "emerald" | "amber" }) {
+  const toneClass = tone === "emerald"
+    ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-100"
+    : tone === "amber"
+      ? "border-amber-400/20 bg-amber-400/10 text-amber-100"
+      : "border-white/10 bg-white/5 text-slate-300";
+  return (
+    <span className={cn("inline-flex max-w-full items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-black", toneClass)}>
+      <Icon className="size-3.5 shrink-0" />
+      <span className="truncate">{label}</span>
+    </span>
+  );
+}
+
 function Empty({ label }: { label: string }) {
   return <div className="p-6 text-center text-sm text-slate-500">{label}</div>;
 }
@@ -968,6 +1016,55 @@ function visitorInitials(visitor: LiveChatConversationView["visitor"]) {
   const name = visitorDisplayName(visitor);
   const parts = name.split(/[\s@.]+/).filter(Boolean);
   return (parts[0]?.[0] || "V").toUpperCase() + (parts[1]?.[0] || "").toUpperCase();
+}
+
+function visitorContactLabel(visitor: LiveChatConversationView["visitor"]) {
+  return [visitor.phone, visitor.email].filter(Boolean).join(" / ") || "Not captured yet";
+}
+
+function visitorSourceLabel(visitor: Pick<LiveChatConversationView["visitor"], "utmSource" | "utmMedium" | "source">) {
+  const raw = visitor.utmSource || visitor.source || "Direct / Unknown";
+  const medium = visitor.utmMedium ? ` / ${visitor.utmMedium}` : "";
+  return humanize(`${raw}${medium}`.replace(/^an$/i, "Analytics").replace(/^fb$/i, "Facebook"));
+}
+
+function visitorIntentLabel(visitor: Pick<LiveChatConversationView["visitor"], "currentPath" | "currentTitle">) {
+  const page = pageLabel(visitor.currentTitle, visitor.currentPath);
+  const path = cleanJourneyPath(visitor.currentPath).toLowerCase();
+  if (path.includes("/library/checkout")) return `Checkout intent on ${page}`;
+  if (path.includes("/library/")) return `Considering ${page}`;
+  if (path.includes("/academy")) return `Exploring Academy help for ${page}`;
+  if (path.includes("/listings/")) return `Viewing property details for ${page}`;
+  if (path.includes("/rent/") || path.includes("/property-for-sale/") || path.includes("/search")) return `Searching for property on ${page}`;
+  return `Browsing ${page}`;
+}
+
+function visitorStageLabel(visitor: LiveChatConversationView["visitor"] & { sessionSeconds?: number }) {
+  if (visitor.userId) return "Registered";
+  const firstSeen = new Date(visitor.firstSeenAt).getTime();
+  if (Number.isFinite(firstSeen) && Date.now() - firstSeen > 30 * 60 * 1000) return "Returning";
+  if ((visitor.sessionSeconds ?? 0) > 10 * 60) return "Engaged";
+  return "New";
+}
+
+function formatVisitorDuration(seconds: number) {
+  const safeSeconds = Math.max(0, Math.round(Number(seconds) || 0));
+  if (safeSeconds < 45) return "";
+  const minutes = Math.round(safeSeconds / 60);
+  if (minutes < 60) return `${minutes} min`;
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = minutes % 60;
+  return remainingMinutes ? `${hours}h ${remainingMinutes}m` : `${hours}h`;
+}
+
+function formatRelativeVisitorTime(value: string) {
+  const time = new Date(value).getTime();
+  if (!Number.isFinite(time)) return "Last seen recently";
+  const seconds = Math.max(0, Math.round((Date.now() - time) / 1000));
+  if (seconds < 30) return "Last seen just now";
+  if (seconds < 90) return "Last seen 1 min ago";
+  const minutes = Math.round(seconds / 60);
+  return `Last seen ${minutes} min ago`;
 }
 
 function needsReply(conversation: LiveChatConversationView) {
