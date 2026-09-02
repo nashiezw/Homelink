@@ -19,6 +19,10 @@ const checks = [
     pass: /<ol className="mt-5 grid gap-2">[\s\S]*learningOutcomes\.slice\(0, 6\)/.test(productPage),
   },
   {
+    label: "Who This Is For uses a numbered stacked audience list",
+    pass: /<Panel title="Who This Is For" icon=\{Users\}>[\s\S]*<ol className="grid gap-2">[\s\S]*whoThisIsFor\.map\(\(item, index\)/.test(productPage),
+  },
+  {
     label: "product page has a tracked buyer FAQ",
     pass: /Before You Buy/.test(productPage) && /trackFaqOpened/.test(productPage) && /library_faq_opened/.test(productPage),
   },

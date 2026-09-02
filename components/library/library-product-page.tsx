@@ -1740,13 +1740,14 @@ export function LibraryProductPage({
           </Panel>
           {whoThisIsFor.length > 0 ? (
             <Panel title="Who This Is For" icon={Users}>
-              <div className="flex flex-wrap gap-2">
-                {whoThisIsFor.map((item) => (
-                  <span key={item} className="rounded-full bg-slate-100 px-3 py-1.5 text-sm font-semibold dark:bg-slate-800">
-                    {item}
-                  </span>
+              <ol className="grid gap-2">
+                {whoThisIsFor.map((item, index) => (
+                  <li key={item} className="grid min-h-12 grid-cols-[2.75rem_minmax(0,1fr)] items-start rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm leading-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+                    <span className="pt-0.5 text-sm font-bold tabular-nums text-emerald-700 dark:text-emerald-300">{String(index + 1).padStart(2, "0")}</span>
+                    <span className="text-slate-800 dark:text-slate-100">{item}</span>
+                  </li>
                 ))}
-              </div>
+              </ol>
             </Panel>
           ) : null}
         </aside>
