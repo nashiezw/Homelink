@@ -435,19 +435,19 @@ export function LiveChatWidget() {
           <button
             type="button"
             onClick={() => toggleOpen(true)}
-            className="group flex w-[min(17.5rem,calc(100vw-1.5rem))] max-w-[280px] items-center gap-2.5 rounded-2xl border border-emerald-100 bg-white/95 p-2.5 text-left shadow-[0_18px_45px_rgba(15,23,42,0.18)] ring-1 ring-white/80 backdrop-blur transition hover:-translate-y-0.5 hover:border-emerald-300 dark:border-emerald-900 dark:bg-slate-950/95 dark:ring-slate-800"
+            className="group flex w-[8.75rem] items-center gap-2 rounded-2xl border border-emerald-100 bg-white/95 p-2 text-left shadow-[0_18px_45px_rgba(15,23,42,0.18)] ring-1 ring-white/80 backdrop-blur transition hover:-translate-y-0.5 hover:border-emerald-300 sm:w-[17.5rem] sm:max-w-[280px] sm:gap-2.5 sm:p-2.5 dark:border-emerald-900 dark:bg-slate-950/95 dark:ring-slate-800"
             aria-label="Open HouseLink live chat"
           >
-            <span className="relative flex size-10 shrink-0 items-center justify-center rounded-xl bg-[#06111f] text-white shadow-lg shadow-slate-900/20 dark:bg-emerald-600">
-              <MessageCircle className="size-5" />
+            <span className="relative flex size-9 shrink-0 items-center justify-center rounded-xl bg-[#06111f] text-white shadow-lg shadow-slate-900/20 sm:size-10 dark:bg-emerald-600">
+              <MessageCircle className="size-4.5 sm:size-5" />
               {unread ? <span className="absolute -right-1 -top-1 flex size-5 items-center justify-center rounded-full bg-red-500 text-[11px] font-bold">{unread}</span> : null}
               <span className="absolute bottom-1 right-1 size-2.5 rounded-full bg-emerald-300 ring-2 ring-slate-950" />
             </span>
             <span className="min-w-0">
-              <span className="block truncate text-[13px] font-black text-slate-950 dark:text-white">HouseLink Live</span>
-              <span className="block truncate text-[11px] text-slate-600 dark:text-slate-300">{previewMessage?.body || messages[messages.length - 1]?.body || boot?.settings.widgetGreeting || "Need help choosing?"}</span>
+              <span className="block truncate text-[12px] font-black text-slate-950 sm:text-[13px] dark:text-white">HouseLink Live</span>
+              <span className="hidden truncate text-[11px] text-slate-600 sm:block dark:text-slate-300">{previewMessage?.body || messages[messages.length - 1]?.body || boot?.settings.widgetGreeting || "Need help choosing?"}</span>
             </span>
-            {unread ? <Bell className="size-4 shrink-0 text-red-500" /> : null}
+            {unread ? <Bell className="hidden size-4 shrink-0 text-red-500 sm:block" /> : null}
           </button>
         </>
       )}
