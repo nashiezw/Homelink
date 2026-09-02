@@ -533,6 +533,8 @@ function ConversationRow({ conversation, active, onOpen }: { conversation: LiveC
   const urgent = needsReply(conversation);
   const waitLabel = urgent ? waitingTimeLabel(conversation.lastMessageAt) : null;
   const temp = conversation.leadTemperature || "COLD";
+  const presence = visitorPresence(conversation.visitor.lastSeenAt);
+  const showNextAction = Boolean(conversation.nextAction && (urgent || temp === "HOT"));
   return (
     <button
       type="button"
@@ -544,9 +546,9 @@ function ConversationRow({ conversation, active, onOpen }: { conversation: LiveC
       )}
     >
       <div className="flex min-w-0 gap-3">
-        <span className={cn("relative grid size-10 shrink-0 place-items-center rounded-full text-sm font-black text-slate-950", urgent ? "bg-gradient-to-br from-amber-300 to-emerald-300" : "bg-gradient-to-br from-emerald-400 to-cyan-400")}>
+        <span className={cn("relative grid size-10 shrink-0 place-items-center rounded-full text-sm font-black text-slate-950", urgent ? "bg-gradient-to-br from-amber-300 to-emerald-300" : "bg-gradient-to-br from-slate-300 to-cyan-300")}>
           {visitorInitials(conversation.visitor)}
-          <span className={cn("absolute -bottom-0.5 -right-0.5 size-3 rounded-full border-2 border-slate-950", urgent ? "bg-amber-300" : "bg-emerald-400")} />
+          <span className={cn("absolute -bottom-0.5 -right-0.5 size-3 rounded-full border-2 border-slate-950", presence.dotClass)} title={presence.label} />
         </span>
         <span className="min-w-0 flex-1">
           <span className="grid min-w-0 gap-2 min-[420px]:grid-cols-[minmax(0,1fr)_auto] min-[420px]:items-center">
@@ -559,8 +561,11 @@ function ConversationRow({ conversation, active, onOpen }: { conversation: LiveC
             </span>
           </span>
           <span className={cn("mt-1 block truncate text-xs", urgent ? "font-black text-amber-50" : "text-slate-300")}>{lastPreviewLabel(conversation)}</span>
-          {conversation.nextAction ? <span className="mt-1 block truncate text-[11px] font-semibold text-emerald-200">{conversation.nextAction}</span> : null}
-          <span className="mt-2 flex min-w-0 items-center gap-1 text-[11px] text-slate-500"><Globe2 className="size-3 shrink-0" /> <span className="truncate">{pageLabel(conversation.visitor.currentTitle || conversation.currentTitle, conversation.visitor.currentPath || conversation.currentPath)}</span></span>
+          {showNextAction ? <span className="mt-1 block truncate text-[11px] font-semibold text-emerald-200">{conversation.nextAction}</span> : null}
+          <span className="mt-2 flex min-w-0 items-center gap-2 text-[11px] text-slate-500">
+            <span className="inline-flex items-center gap-1"><span className={cn("size-2 rounded-full", presence.dotClass)} /> {presence.label}</span>
+            <span className="inline-flex min-w-0 items-center gap-1"><Globe2 className="size-3 shrink-0" /> <span className="truncate">{pageLabel(conversation.visitor.currentTitle || conversation.currentTitle, conversation.visitor.currentPath || conversation.currentPath)}</span></span>
+          </span>
         </span>
       </div>
     </button>
@@ -570,7 +575,8 @@ function ConversationRow({ conversation, active, onOpen }: { conversation: LiveC
 function ConversationHeader({ conversation, data, action, busy, onDelete }: { conversation: LiveChatConversationView | null; data: LiveChatInboxView; action: (body: Record<string, unknown>, success?: string) => Promise<void>; busy: string | null; onDelete: (conversation: LiveChatConversationView) => Promise<void> }) {
   if (!conversation) return <div className="border-b border-white/10 p-4 text-sm text-slate-400">No conversation selected.</div>;
   const lastSeen = new Date(conversation.visitor.lastSeenAt);
-  const lastSeenLabel = Number.isNaN(lastSeen.getTime()) ? "Recently active" : `Last seen ${lastSeen.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
+  const presence = visitorPresence(conversation.visitor.lastSeenAt);
+  const lastSeenLabel = Number.isNaN(lastSeen.getTime()) ? presence.label : `${presence.label} / ${lastSeen.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
   const waitLabel = needsReply(conversation) ? waitingTimeLabel(conversation.lastMessageAt) : "No customer waiting";
   return (
     <div className="border-b border-white/10 bg-slate-950 p-3 sm:p-4">
@@ -597,6 +603,11 @@ function ConversationHeader({ conversation, data, action, busy, onDelete }: { co
             <MiniFact icon={Clock} label="SLA wait" value={waitLabel} />
             <MiniFact icon={Sparkles} label="Lead score" value={`${conversation.leadTemperature || "COLD"} ${conversation.leadScore ?? 0}/100`} />
           </div>
+          {conversation.nextAction ? (
+            <div className="mt-3 rounded-lg border border-emerald-400/20 bg-emerald-400/10 px-3 py-2 text-sm font-semibold text-emerald-100">
+              {conversation.nextAction}
+            </div>
+          ) : null}
         </div>
         <div className="rounded-xl border border-white/10 bg-slate-900 p-3">
           <div className="mb-3 flex items-center justify-between gap-2">
@@ -1331,6 +1342,15 @@ function formatRelativeVisitorTime(value: string) {
   if (seconds < 90) return "Last seen 1 min ago";
   const minutes = Math.round(seconds / 60);
   return `Last seen ${minutes} min ago`;
+}
+
+function visitorPresence(value: string) {
+  const time = new Date(value).getTime();
+  if (!Number.isFinite(time)) return { label: "Offline", dotClass: "bg-slate-500" };
+  const seconds = Math.max(0, Math.round((Date.now() - time) / 1000));
+  if (seconds <= 90) return { label: "Live now", dotClass: "bg-emerald-400 shadow-[0_0_0_3px_rgba(52,211,153,0.14)]" };
+  if (seconds <= 5 * 60) return { label: `Seen ${Math.round(seconds / 60)}m ago`, dotClass: "bg-amber-300" };
+  return { label: "Offline", dotClass: "bg-slate-500" };
 }
 
 function needsReply(conversation: LiveChatConversationView) {

@@ -1364,21 +1364,25 @@ function inferDepartmentSlug(body: string, context?: LiveChatVisitorContext) {
 
 function scoreConversation(conversation: Prisma.LiveChatConversationGetPayload<{ include: ReturnType<typeof conversationInclude> }>) {
   const latest = conversation.messages[0]?.body ?? conversation.lastMessagePreview ?? "";
-  const text = `${latest} ${conversation.subject ?? ""} ${conversation.currentPath ?? ""} ${conversation.currentTitle ?? ""} ${conversation.tags.map((item) => item.tag.slug).join(" ")}`.toLowerCase();
-  let value = conversation.priority === "URGENT" ? 70 : conversation.priority === "HIGH" ? 55 : 25;
-  if (/\b(today|now|urgent|asap|call me|whatsapp|ready|serious)\b/.test(text)) value += 25;
-  if (/\b(pay|paid|payment|proof|buy|purchase|order|checkout|deposit)\b/.test(text)) value += 20;
-  if (/\b(viewing|price|available|rent|tenant|property|house|flat|sale)\b/.test(text)) value += 18;
-  if (conversation.visitor.phone || conversation.visitor.email) value += 12;
-  if (conversation.firstResponseAt) value += 5;
+  const bodyText = latest.toLowerCase();
+  let value = conversation.priority === "URGENT" ? 55 : conversation.priority === "HIGH" ? 42 : 12;
+  if (/\b(today|now|urgent|asap|ready|serious|immediately)\b/.test(bodyText)) value += 24;
+  if (/\b(call me|phone me|whatsapp me|contact me)\b/.test(bodyText)) value += 20;
+  if (/\b(pay|paid|payment|proof|checkout|deposit|invoice|ecocash|bank transfer)\b/.test(bodyText)) value += 18;
+  if (/\b(buy|purchase|order|book|hard copy|soft copy|delivery)\b/.test(bodyText)) value += 14;
+  if (/\b(viewing|view|available|price|how much|rent|tenant|move in|location)\b/.test(bodyText)) value += 14;
+  if (conversation.tags.some((item) => ["payment-issue", "hot-lead"].includes(item.tag.slug))) value += 16;
+  if (conversation.visitor.phone) value += 10;
+  else if (conversation.visitor.email) value += 6;
   if (conversation.status === "FOLLOW_UP" || conversation.tags.some((item) => item.tag.slug === "needs-follow-up")) value += 10;
+  if (conversation.lastMessageAt && Date.now() - conversation.lastMessageAt.getTime() > 10 * 60_000 && needsStaffReply(conversation)) value += 8;
   value = Math.max(0, Math.min(100, value));
-  const temperature = value >= 70 ? "HOT" : value >= 42 ? "WARM" : "COLD";
+  const temperature = value >= 70 ? "HOT" : value >= 40 ? "WARM" : "COLD";
   const nextAction = temperature === "HOT"
     ? "Reply now or move to WhatsApp before the lead cools."
     : temperature === "WARM"
       ? "Ask one qualifying question and capture contact details."
-      : "Use a helpful quick reply and keep the chat warm.";
+      : conversation.visitor.phone || conversation.visitor.email ? null : "Capture WhatsApp or email if they need follow-up.";
   return { value, temperature: temperature as "HOT" | "WARM" | "COLD", nextAction };
 }
 

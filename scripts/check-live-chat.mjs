@@ -333,6 +333,21 @@ const checks = [
   },
   {
     file: "components/admin/live-chat-hub.tsx",
+    label: "admin visitor presence dot is based on real last-seen time",
+    pattern: /visitorPresence\(conversation\.visitor\.lastSeenAt\)[\s\S]*Live now[\s\S]*Offline/,
+  },
+  {
+    file: "components/admin/live-chat-hub.tsx",
+    label: "admin row guidance is hidden unless the lead is urgent or hot",
+    pattern: /showNextAction[\s\S]*urgent \|\| temp === "HOT"/,
+  },
+  {
+    file: "lib/live-chat/repository.ts",
+    label: "lead scoring uses message intent rather than broad page context",
+    pattern: /bodyText[\s\S]*conversation\.priority === "URGENT" \? 55[\s\S]*temperature = value >= 70/,
+  },
+  {
+    file: "components/admin/live-chat-hub.tsx",
     label: "admin dashboard can request desktop notification permission",
     pattern: /Notification\.requestPermission/,
   },
