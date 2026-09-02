@@ -139,12 +139,19 @@ export type LiveChatEventView = {
   createdAt: string;
 };
 
+export type LiveChatTypingView = {
+  conversationId: string;
+  visitorTyping: boolean;
+  staffTyping: Array<{ agentId: string; displayName: string }>;
+};
+
 export type LiveChatBootstrapView = {
   visitorId: string;
   conversation: LiveChatConversationView | null;
   messages: LiveChatMessageView[];
   departments: LiveChatDepartmentView[];
   supportAgent?: LiveChatAgentView | null;
+  typing?: LiveChatTypingView | null;
   settings: LiveChatSettingsView;
   suggestedMessage?: string | null;
   setupRequired?: boolean;
@@ -164,6 +171,7 @@ export type LiveChatInboxView = {
   departments: LiveChatDepartmentView[];
   agents: LiveChatAgentView[];
   currentAgent?: LiveChatAgentView | null;
+  typing?: LiveChatTypingView | null;
   quickReplies: Array<{ id: string; title: string; shortcut: string; category?: string | null; body: string; departmentId?: string | null; active: boolean }>;
   tags: Array<{ id: string; name: string; slug: string; color: string; active: boolean }>;
   settings: LiveChatSettingsView;

@@ -12,6 +12,7 @@ import type {
   LiveChatInboxView,
   LiveChatMessageView,
   LiveChatSettingsView,
+  LiveChatTypingView,
   LiveChatVisitorContext,
 } from "@/lib/live-chat/types";
 
@@ -56,11 +57,20 @@ const memory = {
   events: [] as MemoryEvent[],
 };
 
+const typingState = new Map<string, { visitor?: number; staff: Map<string, { displayName: string; expiresAt: number }> }>();
+const TYPING_TTL_MS = 8_000;
+
 const schemaReadyCache = { checkedAt: 0, ready: false };
 const defaultsReadyCache = { checkedAt: 0, ready: false };
 let analyticsCache: { checkedAt: number; value: LiveChatInboxView["analytics"] } | null = null;
 
 type AdminUser = { id: string; name: string; email: string; roles: string[] };
+type LiveChatRealtimeEvent =
+  | { type: "message"; conversationId: string; visitorId?: string | null; message: LiveChatMessageView; createdAt: string }
+  | { type: "typing"; conversationId: string; visitorId?: string | null; typing: LiveChatTypingView; createdAt: string };
+type LiveChatRealtimeListener = (event: LiveChatRealtimeEvent) => void;
+
+const realtimeSubscribers = new Map<string, Set<LiveChatRealtimeListener>>();
 
 type MemoryVisitor = {
   id: string;
@@ -195,6 +205,7 @@ export async function bootstrapLiveChat(input: {
     messages: messages.map(shapeMessage),
     departments: departments.map(shapeDepartment),
     supportAgent,
+    typing: conversation ? getTypingState(conversation.publicId) : null,
     settings,
     suggestedMessage: proactive,
   } satisfies LiveChatBootstrapView;
@@ -360,11 +371,67 @@ export async function markVisitorRead(visitorKey: string, conversationPublicId: 
   const visitor = await getVisitorByKey(visitorKey);
   if (!visitor) return { ok: true };
   const prisma = getMainPrisma();
-  await prisma.liveChatConversation.updateMany({
-    where: { publicId: conversationPublicId, visitorId: visitor.id },
-    data: { visitorLastReadAt: new Date() },
-  });
+  const conversation = await prisma.liveChatConversation.findFirst({ where: { publicId: conversationPublicId, visitorId: visitor.id } });
+  if (!conversation) return { ok: true };
+  const readAt = new Date();
+  await prisma.$transaction([
+    prisma.liveChatConversation.update({ where: { id: conversation.id }, data: { visitorLastReadAt: readAt } }),
+    prisma.liveChatMessage.updateMany({
+      where: { conversationId: conversation.id, senderKind: { not: "VISITOR" }, internal: false, readAt: null },
+      data: { readAt },
+    }),
+  ]);
   return { ok: true };
+}
+
+export async function updateVisitorTyping(visitorKey: string, conversationPublicId: string, typing: boolean) {
+  if (isPostgresStoreEnabled() && !(await isLiveChatSchemaReady())) return { ok: true, setupRequired: true };
+  if (isPostgresStoreEnabled()) {
+    const visitor = await getVisitorByKey(visitorKey);
+    if (!visitor) return { ok: true };
+    const conversation = await getMainPrisma().liveChatConversation.findFirst({ where: { publicId: conversationPublicId, visitorId: visitor.id } });
+    if (!conversation) return { ok: true };
+  }
+  setTypingState(conversationPublicId, "visitor", "Visitor", typing);
+  return { ok: true };
+}
+
+export function getLiveChatTyping(conversationPublicId: string): LiveChatTypingView {
+  return getTypingState(conversationPublicId);
+}
+
+export async function getLiveChatStreamTargets(visitorKey: string, conversationPublicId?: string | null) {
+  if (isPostgresStoreEnabled() && !(await isLiveChatSchemaReady())) return [];
+  if (!isPostgresStoreEnabled()) {
+    const visitor = memory.visitors.get(hashVisitorKey(visitorKey));
+    return visitor ? [`visitor:${visitor.publicId}`, ...(conversationPublicId ? [`conversation:${conversationPublicId}`] : [])] : [];
+  }
+  const visitor = await getVisitorByKey(visitorKey);
+  if (!visitor) return [];
+  const targets = [`visitor:${visitor.publicId}`];
+  if (conversationPublicId) {
+    const allowedConversation = await getMainPrisma().liveChatConversation.findFirst({ where: { publicId: conversationPublicId, visitorId: visitor.id }, select: { publicId: true } });
+    if (allowedConversation) targets.push(`conversation:${allowedConversation.publicId}`);
+  } else {
+    const conversation = await getMainPrisma().liveChatConversation.findFirst({ where: { visitorId: visitor.id, status: { in: OPEN_STATUSES } }, orderBy: { updatedAt: "desc" }, select: { publicId: true } });
+    if (conversation) targets.push(`conversation:${conversation.publicId}`);
+  }
+  return [...new Set(targets)];
+}
+
+export function subscribeLiveChatRealtime(targets: string[], listener: LiveChatRealtimeListener) {
+  for (const target of targets) {
+    const listeners = realtimeSubscribers.get(target) ?? new Set<LiveChatRealtimeListener>();
+    listeners.add(listener);
+    realtimeSubscribers.set(target, listeners);
+  }
+  return () => {
+    for (const target of targets) {
+      const listeners = realtimeSubscribers.get(target);
+      listeners?.delete(listener);
+      if (listeners?.size === 0) realtimeSubscribers.delete(target);
+    }
+  };
 }
 
 export async function getLiveChatInbox(input: { activeConversationId?: string | null; filter?: string | null; query?: string | null; user: AdminUser }): Promise<LiveChatInboxView> {
@@ -433,6 +500,7 @@ export async function getLiveChatInbox(input: { activeConversationId?: string | 
     departments: departments.map(shapeDepartment),
     agents: agents.map(shapeAgent),
     currentAgent: shapeAgent(currentAgent),
+    typing: selected ? getTypingState(selected.publicId) : null,
     quickReplies: quickReplies.map((reply) => ({
       id: reply.id,
       title: reply.title,
@@ -487,9 +555,19 @@ export async function liveChatAdminAction(user: AdminUser, body: Record<string, 
         lastMessageAt: internal ? conversation.lastMessageAt : message.createdAt,
       },
     });
-    await ensureParticipant(conversation.id, user.id, agent.id);
+    const participant = await ensureParticipant(conversation.id, user.id, agent.id);
+    if (participant?.joinedNow || participant?.rejoined) await createSystemTimelineMessage(conversation.id, `${agent.displayName} joined the conversation.`, conversation.publicId, conversation.visitor.publicId);
+    setTypingState(conversation.publicId, agent.id, agent.displayName, false);
+    const shaped = shapeMessage(message);
+    if (!internal) publishLiveChatRealtime({
+      type: "message",
+      conversationId: conversation.publicId,
+      visitorId: conversation.visitor.publicId,
+      message: shaped,
+      createdAt: new Date().toISOString(),
+    });
     await auditEvent(conversation.visitorId, conversation.id, internal ? "INTERNAL_NOTE" : "STAFF_MESSAGE", user.id, { messageType: message.messageType });
-    return shapeMessage(message);
+    return shaped;
   }
   if (action === "start_conversation") {
     const visitor = await prisma.liveChatVisitor.findUnique({ where: { publicId: String(body.visitorId ?? "") } });
@@ -512,8 +590,9 @@ export async function liveChatAdminAction(user: AdminUser, body: Record<string, 
         },
       });
     }
-    await ensureParticipant(conversation.id, user.id, agent.id);
-    const text = sanitizeMessage(String(body.body || proactiveMessageForVisitor(visitor)));
+    const participant = await ensureParticipant(conversation.id, user.id, agent.id);
+    if (participant?.joinedNow || participant?.rejoined) await createSystemTimelineMessage(conversation.id, `${agent.displayName} joined the conversation.`, conversation.publicId, visitor.publicId);
+    const text = sanitizeMessage(String(body.body || proactiveMessageForVisitor(visitor, agent.displayName)));
     const message = await prisma.liveChatMessage.create({
       data: {
         publicId: makePublicId("msg"),
@@ -535,8 +614,24 @@ export async function liveChatAdminAction(user: AdminUser, body: Record<string, 
         staffLastReadAt: new Date(),
       },
     });
+    const shaped = shapeMessage(message);
+    publishLiveChatRealtime({
+      type: "message",
+      conversationId: conversation.publicId,
+      visitorId: visitor.publicId,
+      message: shaped,
+      createdAt: new Date().toISOString(),
+    });
     await auditEvent(visitor.id, conversation.id, "PROACTIVE_STAFF_MESSAGE", user.id);
-    return { conversationId: conversation.publicId, message: shapeMessage(message) };
+    return { conversationId: conversation.publicId, message: shaped };
+  }
+  if (action === "typing") {
+    const conversation = await getConversationByPublicId(String(body.conversationId ?? ""));
+    if (!conversation) throw new LiveChatError("CONVERSATION_NOT_FOUND", "Conversation not found.", 404);
+    setTypingState(conversation.publicId, agent.id, agent.displayName, Boolean(body.typing));
+    const typing = getTypingState(conversation.publicId);
+    publishLiveChatRealtime({ type: "typing", conversationId: conversation.publicId, visitorId: conversation.visitor.publicId, typing, createdAt: new Date().toISOString() });
+    return { ok: true, typing };
   }
   if (action === "assign" || action === "transfer") {
     const conversation = await getConversationByPublicId(String(body.conversationId ?? ""));
@@ -553,13 +648,16 @@ export async function liveChatAdminAction(user: AdminUser, body: Record<string, 
     });
     if (assignedAgentId) {
       const assigned = await prisma.liveChatAgentProfile.findUnique({ where: { id: assignedAgentId } });
-      if (assigned?.userId) await ensureParticipant(conversation.id, assigned.userId, assigned.id);
+      if (assigned?.userId) {
+        const participant = await ensureParticipant(conversation.id, assigned.userId, assigned.id);
+        if (participant?.joinedNow || participant?.rejoined) await createSystemTimelineMessage(conversation.id, `${assigned.displayName} joined the conversation.`, conversation.publicId, conversation.visitor.publicId);
+      }
     }
     const department = departmentId ? await prisma.liveChatDepartment.findUnique({ where: { id: departmentId } }) : null;
     const text = action === "transfer"
       ? `Your conversation has been transferred${department ? ` to ${department.name}` : ""}.`
       : "A HouseLink team member has been assigned to this conversation.";
-    await prisma.liveChatMessage.create({
+    const systemMessage = await prisma.liveChatMessage.create({
       data: {
         publicId: makePublicId("msg"),
         conversationId: conversation.id,
@@ -569,6 +667,13 @@ export async function liveChatAdminAction(user: AdminUser, body: Record<string, 
         messageType: "SYSTEM",
         deliveredAt: new Date(),
       },
+    });
+    publishLiveChatRealtime({
+      type: "message",
+      conversationId: conversation.publicId,
+      visitorId: conversation.visitor.publicId,
+      message: shapeMessage(systemMessage),
+      createdAt: new Date().toISOString(),
     });
     await auditEvent(conversation.visitorId, conversation.id, action === "transfer" ? "TRANSFER" : "ASSIGN", user.id, { assignedAgentId, departmentId });
     return { ok: true };
@@ -591,10 +696,26 @@ export async function liveChatAdminAction(user: AdminUser, body: Record<string, 
   if (action === "mark_staff_read") {
     const conversation = await getConversationByPublicId(String(body.conversationId ?? ""));
     if (!conversation) throw new LiveChatError("CONVERSATION_NOT_FOUND", "Conversation not found.", 404);
-    await prisma.liveChatConversation.update({
-      where: { id: conversation.id },
-      data: { staffLastReadAt: new Date() },
+    const readAt = new Date();
+    await prisma.$transaction([
+      prisma.liveChatConversation.update({ where: { id: conversation.id }, data: { staffLastReadAt: readAt } }),
+      prisma.liveChatMessage.updateMany({
+        where: { conversationId: conversation.id, senderKind: "VISITOR", internal: false, readAt: null },
+        data: { readAt },
+      }),
+    ]);
+    return { ok: true };
+  }
+  if (action === "leave_conversation") {
+    const conversation = await getConversationByPublicId(String(body.conversationId ?? ""));
+    if (!conversation) throw new LiveChatError("CONVERSATION_NOT_FOUND", "Conversation not found.", 404);
+    await prisma.liveChatParticipant.updateMany({
+      where: { conversationId: conversation.id, userId: user.id, leftAt: null },
+      data: { leftAt: new Date() },
     });
+    setTypingState(conversation.publicId, agent.id, agent.displayName, false);
+    await createSystemTimelineMessage(conversation.id, `${agent.displayName} left the conversation.`, conversation.publicId, conversation.visitor.publicId);
+    await auditEvent(conversation.visitorId, conversation.id, "PARTICIPANT_LEFT", user.id, { agentId: agent.id });
     return { ok: true };
   }
   if (action === "delete_conversation") {
@@ -1010,11 +1131,83 @@ async function ensureAgentProfile(user: AdminUser) {
 }
 
 async function ensureParticipant(conversationId: string, userId: string, agentProfileId: string) {
-  return getMainPrisma().liveChatParticipant.upsert({
+  const prisma = getMainPrisma();
+  const existing = await prisma.liveChatParticipant.findUnique({ where: { conversationId_userId: { conversationId, userId } } }).catch(() => null);
+  const participant = await prisma.liveChatParticipant.upsert({
     where: { conversationId_userId: { conversationId, userId } },
-    update: { leftAt: null },
+    update: { leftAt: null, agentProfileId },
     create: { conversationId, userId, agentProfileId, role: "AGENT" },
   }).catch(() => null);
+  return participant ? { ...participant, joinedNow: !existing, rejoined: Boolean(existing?.leftAt) } : null;
+}
+
+async function createSystemTimelineMessage(conversationId: string, body: string, publicConversationId?: string, publicVisitorId?: string | null) {
+  const message = await getMainPrisma().liveChatMessage.create({
+    data: {
+      publicId: makePublicId("msg"),
+      conversationId,
+      senderKind: "SYSTEM",
+      senderName: "HouseLink",
+      body,
+      messageType: "SYSTEM",
+      deliveredAt: new Date(),
+    },
+  }).catch(() => null);
+  if (message && publicConversationId) {
+    publishLiveChatRealtime({
+      type: "message",
+      conversationId: publicConversationId,
+      visitorId: publicVisitorId,
+      message: shapeMessage(message),
+      createdAt: new Date().toISOString(),
+    });
+  }
+  return message;
+}
+
+function setTypingState(conversationId: string, actorId: string, displayName: string, typing: boolean) {
+  const record = typingState.get(conversationId) ?? { staff: new Map<string, { displayName: string; expiresAt: number }>() };
+  const expiresAt = Date.now() + TYPING_TTL_MS;
+  if (actorId === "visitor") {
+    if (typing) record.visitor = expiresAt;
+    else record.visitor = undefined;
+  } else if (typing) {
+    record.staff.set(actorId, { displayName, expiresAt });
+  } else {
+    record.staff.delete(actorId);
+  }
+  typingState.set(conversationId, record);
+}
+
+function getTypingState(conversationId: string): LiveChatTypingView {
+  const record = typingState.get(conversationId);
+  const now = Date.now();
+  if (!record) return { conversationId, visitorTyping: false, staffTyping: [] };
+  for (const [agentId, staff] of record.staff) {
+    if (staff.expiresAt <= now) record.staff.delete(agentId);
+  }
+  if (record.visitor && record.visitor <= now) record.visitor = undefined;
+  if (!record.visitor && record.staff.size === 0) typingState.delete(conversationId);
+  return {
+    conversationId,
+    visitorTyping: Boolean(record.visitor && record.visitor > now),
+    staffTyping: [...record.staff.entries()].map(([agentId, staff]) => ({ agentId, displayName: staff.displayName })),
+  };
+}
+
+function publishLiveChatRealtime(event: LiveChatRealtimeEvent) {
+  const targets = [`conversation:${event.conversationId}`];
+  if (event.visitorId) targets.push(`visitor:${event.visitorId}`);
+  const delivered = new Set<LiveChatRealtimeListener>();
+  for (const target of targets) {
+    const listeners = realtimeSubscribers.get(target);
+    if (!listeners) continue;
+    for (const listener of listeners) {
+      if (delivered.has(listener)) continue;
+      delivered.add(listener);
+      listener(event);
+    }
+  }
 }
 
 async function maybeTriggerAutomation(visitorId: string, conversationId: string | null, context: LiveChatVisitorContext) {
@@ -1481,22 +1674,23 @@ function shapeMemoryMessage(message: MemoryMessage): LiveChatMessageView {
   };
 }
 
-function proactiveMessageForVisitor(visitor?: { currentPath?: string | null; currentTitle?: string | null } | null) {
+function proactiveMessageForVisitor(visitor?: { currentPath?: string | null; currentTitle?: string | null } | null, agentName?: string | null) {
   const title = cleanHouseLinkTitle(visitor?.currentTitle);
   const path = visitor?.currentPath?.toLowerCase() ?? "";
+  const intro = agentName ? `Hi, this is ${agentName} from HouseLink.` : "Hi, welcome to HouseLink.";
   if (path.includes("/library/checkout") || path.includes("payment")) {
-    return "Hi, welcome to HouseLink. I can help with payment, proof upload, or choosing another payment option so your order is completed smoothly.";
+    return `${intro}\n\nI can help with payment, proof upload, or choosing another payment option so your order is completed smoothly.`;
   }
   if (path.includes("/library/")) {
-    return `Hi, welcome to HouseLink. I can help you choose the right format, confirm payment steps, or answer any questions about ${title || "this book"} before you buy.`;
+    return `${intro}\n\nI noticed you are viewing ${title || "this book"}. I can help you choose the right format, confirm payment steps, or answer any questions before you buy.`;
   }
   if (path.includes("/academy")) {
-    return `Hi, welcome to HouseLink Academy. I can help with course details, registration, payment, or choosing the right course${title ? ` for ${title}` : ""}.`;
+    return `${intro}\n\nI can help with course details, registration, payment, or choosing the right course${title ? ` for ${title}` : ""}.`;
   }
   if (path.includes("/listings/") || path.includes("/rent/") || path.includes("/property-for-sale/")) {
-    return `Hi, welcome to HouseLink. I can help with viewing details, location questions, price checks, or the next step${title ? ` for ${title}` : " for this property"}.`;
+    return `${intro}\n\nI noticed you are viewing ${title || "this property"}. I can help with viewing details, location questions, price checks, or the next step.`;
   }
-  return "Hi, welcome to HouseLink. I can help with the next step, pricing, payment, delivery, viewings, or any question before you decide.";
+  return `${intro}\n\nI can help with the next step, pricing, payment, delivery, viewings, or any question before you decide.`;
 }
 
 function cleanHouseLinkTitle(value?: string | null) {

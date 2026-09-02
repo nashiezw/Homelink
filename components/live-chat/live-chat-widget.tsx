@@ -1,19 +1,26 @@
 "use client";
 
-import { Bell, ChevronDown, Headphones, Loader2, Mail, MessageCircle, Phone, Send, ShieldCheck, Sparkles, UserRound } from "lucide-react";
+import { Bell, Check, CheckCheck, ChevronDown, Headphones, Loader2, Mail, MessageCircle, Phone, Send, ShieldCheck, Sparkles, UserRound } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useApp } from "@/components/providers/app-provider";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api/client";
 import { getOrCreateSessionId, getOrCreateVisitorId } from "@/lib/analytics/visitor-client";
+import { displayImageUrl } from "@/lib/images/display-image";
 import { isLiveChatFloatingOpen, setLiveChatFloatingOpen, useLibraryBagFloatingOpen } from "@/lib/live-chat/floating-state";
 import { playLiveChatNotificationSound, unlockLiveChatNotificationSound } from "@/lib/live-chat/notification-sound";
 import { useHouseLinkBottomDock } from "@/lib/ui/bottom-dock";
 import { cn } from "@/lib/utils";
-import type { LiveChatBootstrapView, LiveChatMessageView, LiveChatVisitorContext } from "@/lib/live-chat/types";
+import type { LiveChatBootstrapView, LiveChatMessageView, LiveChatTypingView, LiveChatVisitorContext } from "@/lib/live-chat/types";
 
 type ContactState = { name?: string; phone?: string; email?: string };
+type LiveChatRealtimeEvent = {
+  type?: "message" | "typing";
+  conversationId?: string;
+  message?: LiveChatMessageView;
+  typing?: LiveChatTypingView;
+};
 
 export function LiveChatWidget() {
   const pathname = usePathname();
@@ -31,10 +38,14 @@ export function LiveChatWidget() {
   const [suggested, setSuggested] = useState<string | null>(null);
   const [unread, setUnread] = useState(0);
   const [previewMessage, setPreviewMessage] = useState<LiveChatMessageView | null>(null);
+  const [typing, setTyping] = useState<LiveChatTypingView | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const contactRef = useRef(contact);
   const openRef = useRef(open);
+  const bootRef = useRef<LiveChatBootstrapView | null>(null);
   const previewTimerRef = useRef<number | null>(null);
+  const typingTimerRef = useRef<number | null>(null);
+  const typingActiveRef = useRef(false);
   const notifiedStaffMessageIdsRef = useRef<Set<string>>(new Set());
   const startedAtRef = useRef(new Date().toISOString());
   const bottomDock = useHouseLinkBottomDock();
@@ -85,6 +96,10 @@ export function LiveChatWidget() {
     openRef.current = open;
   }, [open]);
 
+  useEffect(() => {
+    bootRef.current = boot;
+  }, [boot]);
+
   const showPreviewMessage = useCallback((message: LiveChatMessageView, soundEnabled: boolean) => {
     setPreviewMessage(message);
     if (soundEnabled) playLiveChatNotificationSound();
@@ -104,6 +119,7 @@ export function LiveChatWidget() {
     if (result.data) {
       setBoot(result.data);
       setMessages(result.data.messages);
+      setTyping(result.data.typing ?? null);
       setSuggested(result.data.suggestedMessage || null);
       if (!openRef.current && result.data.conversation?.unreadForVisitor) {
         const latestStaffMessage = [...result.data.messages].reverse().find(isVisitorPreviewMessage) ?? null;
@@ -141,8 +157,13 @@ export function LiveChatWidget() {
     let cancelled = false;
     const poll = async () => {
       if (document.visibilityState !== "visible") return;
-      const result = await apiFetch<LiveChatMessageView[]>(`/api/v1/live-chat/messages?conversationId=${encodeURIComponent(boot.conversation!.id)}`, { cache: "no-store" });
-      if (cancelled || !result.data) return;
+      const [result, typingResult] = await Promise.all([
+        apiFetch<LiveChatMessageView[]>(`/api/v1/live-chat/messages?conversationId=${encodeURIComponent(boot.conversation!.id)}`, { cache: "no-store" }),
+        apiFetch<LiveChatTypingView | null>(`/api/v1/live-chat/typing?conversationId=${encodeURIComponent(boot.conversation!.id)}`, { cache: "no-store" }),
+      ]);
+      if (cancelled) return;
+      if (typingResult.data) setTyping(typingResult.data);
+      if (!result.data) return;
       setMessages((current) => {
         const hadLast = current[current.length - 1]?.id;
         const nextLast = result.data![result.data!.length - 1]?.id;
@@ -169,6 +190,58 @@ export function LiveChatWidget() {
   }, [boot?.conversation, boot?.settings.soundEnabled, open, showPreviewMessage]);
 
   useEffect(() => {
+    if (hiddenOnThisRoute || !boot?.visitorId || typeof window === "undefined" || !("EventSource" in window)) return;
+    const params = new URLSearchParams();
+    if (boot.conversation?.id) params.set("conversationId", boot.conversation.id);
+    const source = new EventSource(`/api/v1/live-chat/stream${params.toString() ? `?${params.toString()}` : ""}`);
+    source.addEventListener("message", (event) => {
+      const payload = parseRealtimeEvent(event);
+      const message = payload?.message;
+      if (!message) return;
+      setMessages((current) => mergeIncomingMessage(current, message));
+      if (payload?.conversationId && bootRef.current?.conversation?.id !== payload.conversationId) void bootstrap();
+      if (isVisitorPreviewMessage(message) && !notifiedStaffMessageIdsRef.current.has(message.id)) {
+        notifiedStaffMessageIdsRef.current.add(message.id);
+        const soundEnabled = bootRef.current?.settings.soundEnabled ?? true;
+        if (openRef.current) {
+          if (soundEnabled) playLiveChatNotificationSound();
+        } else {
+          setUnread((value) => value + 1);
+          showPreviewMessage(message, soundEnabled);
+        }
+      }
+    });
+    source.addEventListener("typing", (event) => {
+      const payload = parseRealtimeEvent(event);
+      if (payload?.typing) setTyping(payload.typing);
+    });
+    source.onerror = () => source.close();
+    return () => source.close();
+  }, [boot?.visitorId, boot?.conversation?.id, bootstrap, hiddenOnThisRoute, showPreviewMessage]);
+
+  useEffect(() => {
+    const conversationId = boot?.conversation?.id;
+    if (!conversationId) return;
+    if (typingTimerRef.current) window.clearTimeout(typingTimerRef.current);
+    if (draft.trim()) {
+      if (!typingActiveRef.current) {
+        typingActiveRef.current = true;
+        void apiFetch("/api/v1/live-chat/typing", { method: "POST", body: JSON.stringify({ conversationId, typing: true }) });
+      }
+      typingTimerRef.current = window.setTimeout(() => {
+        typingActiveRef.current = false;
+        void apiFetch("/api/v1/live-chat/typing", { method: "POST", body: JSON.stringify({ conversationId, typing: false }) });
+      }, 1800);
+    } else if (typingActiveRef.current) {
+      typingActiveRef.current = false;
+      void apiFetch("/api/v1/live-chat/typing", { method: "POST", body: JSON.stringify({ conversationId, typing: false }) });
+    }
+    return () => {
+      if (typingTimerRef.current) window.clearTimeout(typingTimerRef.current);
+    };
+  }, [boot?.conversation?.id, draft]);
+
+  useEffect(() => {
     if (!open) return;
     bottomRef.current?.scrollIntoView({ block: "end" });
     setUnread(0);
@@ -180,6 +253,7 @@ export function LiveChatWidget() {
   useEffect(() => {
     return () => {
       if (previewTimerRef.current) window.clearTimeout(previewTimerRef.current);
+      if (typingTimerRef.current) window.clearTimeout(typingTimerRef.current);
     };
   }, []);
 
@@ -218,6 +292,8 @@ export function LiveChatWidget() {
     };
     setMessages((current) => [...current, optimistic]);
     setDraft("");
+    typingActiveRef.current = false;
+    if (boot?.conversation?.id) void apiFetch("/api/v1/live-chat/typing", { method: "POST", body: JSON.stringify({ conversationId: boot.conversation.id, typing: false }) });
     setSending(true);
     setError(null);
     const result = await apiFetch<LiveChatMessageView>("/api/v1/live-chat/messages", {
@@ -265,6 +341,7 @@ export function LiveChatWidget() {
   const launcherOnLeft = boot?.settings.mobilePosition === "bottom-left";
   const launcherPosition = launcherOnLeft ? "left-4 items-start sm:left-5" : "right-4 items-end sm:right-5";
   const agentName = boot?.supportAgent?.displayName || boot?.settings.teamDisplayName || "HouseLink Live";
+  const supportAvatarUrl = displayImageUrl(boot?.supportAgent?.avatarUrl, { width: 96, height: 96, crop: "fill" });
   const agentIntro = boot?.supportAgent
     ? boot.supportAgent.publicIntro || `${boot.supportAgent.title || "Support"} is online`
     : "Leave a message, the team will reply here";
@@ -292,9 +369,9 @@ export function LiveChatWidget() {
               <div className="flex min-w-0 items-center gap-3">
                 <span
                   className="relative flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-emerald-500 bg-cover bg-center text-white shadow-lg shadow-emerald-950/30 ring-1 ring-white/20"
-                  style={boot?.supportAgent?.avatarUrl ? { backgroundImage: `url(${boot.supportAgent.avatarUrl})` } : undefined}
+                  style={supportAvatarUrl ? { backgroundImage: `url(${supportAvatarUrl})` } : undefined}
                 >
-                  {boot?.supportAgent?.avatarUrl ? null : <Headphones className="size-5" />}
+                  {supportAvatarUrl ? null : <Headphones className="size-5" />}
                   <span className={`absolute bottom-1.5 right-1.5 size-2.5 rounded-full ring-2 ring-slate-950 ${boot?.supportAgent ? "bg-emerald-300" : "bg-amber-300"}`} />
                 </span>
                 <div className="min-w-0">
@@ -355,15 +432,13 @@ export function LiveChatWidget() {
                 <span className="mt-1 block">{suggested}</span>
               </button>
             ) : null}
-            {messages.map((message) => <ChatBubble key={message.id} message={message} />)}
+            {messages.map((message, index) => <ChatBubble key={message.id} message={message} showReceipt={message.senderKind === "VISITOR" && index === latestVisitorMessageIndex(messages)} />)}
             {sending ? (
               <div className="flex justify-end">
                 <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-200">Sending...</span>
               </div>
             ) : null}
-            {draft.trim() ? (
-              <div className="text-xs text-slate-400">You are typing...</div>
-            ) : null}
+            {typing?.staffTyping.length ? <TypingIndicator names={typing.staffTyping.map((item) => item.displayName)} /> : null}
             <div ref={bottomRef} />
           </div>
 
@@ -455,7 +530,7 @@ export function LiveChatWidget() {
   );
 }
 
-function ChatBubble({ message }: { message: LiveChatMessageView }) {
+function ChatBubble({ message, showReceipt = false }: { message: LiveChatMessageView; showReceipt?: boolean }) {
   if (message.messageType === "SYSTEM") {
     return <p className="mx-auto max-w-[90%] rounded-full bg-white/90 px-3 py-1.5 text-center text-xs font-semibold text-slate-500 shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-700">{message.body}</p>;
   }
@@ -471,10 +546,50 @@ function ChatBubble({ message }: { message: LiveChatMessageView }) {
             {card.title || "Open HouseLink page"}
           </a>
         ) : null}
-        <p className={`mt-1 text-[10px] ${mine ? "text-emerald-50" : "text-slate-400"}`}>{new Date(message.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</p>
+        <p className={`mt-1 flex items-center justify-end gap-1 text-[10px] ${mine ? "text-emerald-50" : "text-slate-400"}`}>
+          <span>{new Date(message.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+          {mine && showReceipt ? <MessageReceipt message={message} /> : null}
+        </p>
       </div>
     </div>
   );
+}
+
+function MessageReceipt({ message }: { message: LiveChatMessageView }) {
+  if (message.readAt) return <span className="inline-flex items-center gap-1 font-bold text-cyan-100"><CheckCheck className="size-3.5" /> Read</span>;
+  if (message.deliveredAt) return <span className="inline-flex items-center gap-1 font-bold"><CheckCheck className="size-3.5" /> Delivered</span>;
+  return <span className="inline-flex items-center gap-1 font-bold"><Check className="size-3.5" /> Sent</span>;
+}
+
+function TypingIndicator({ names }: { names: string[] }) {
+  const label = names.length > 1 ? `${names.slice(0, 2).join(" and ")} are typing...` : `${names[0] || "HouseLink"} is typing...`;
+  return (
+    <div className="flex justify-start">
+      <div className="rounded-full bg-white px-3 py-2 text-xs font-semibold text-slate-500 shadow-sm ring-1 ring-slate-200 dark:bg-slate-950 dark:text-slate-300 dark:ring-slate-800">
+        {label}
+      </div>
+    </div>
+  );
+}
+
+function latestVisitorMessageIndex(messages: LiveChatMessageView[]) {
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    if (messages[index].senderKind === "VISITOR" && messages[index].messageType !== "SYSTEM") return index;
+  }
+  return -1;
+}
+
+function parseRealtimeEvent(event: Event) {
+  try {
+    return JSON.parse((event as MessageEvent<string>).data) as LiveChatRealtimeEvent;
+  } catch {
+    return null;
+  }
+}
+
+function mergeIncomingMessage(messages: LiveChatMessageView[], message: LiveChatMessageView) {
+  if (messages.some((item) => item.id === message.id)) return messages;
+  return [...messages, message].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
 }
 
 function normalizeContact(contact: { name?: string; phone?: string; email?: string }) {

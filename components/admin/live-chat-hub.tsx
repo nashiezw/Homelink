@@ -1,11 +1,12 @@
 "use client";
 
-import { Activity, Bell, BookOpen, Building2, CheckCircle2, Clock, Copy, ExternalLink, Globe2, GraduationCap, Headphones, Loader2, Mail, MapPin, MessageSquare, NotebookPen, Phone, RefreshCw, Save, Search, Send, Settings, Shield, SlidersHorizontal, Sparkles, Tag, Timer, Trash2, Upload, UserCog, UserPlus, Users, Volume2, Wifi } from "lucide-react";
+import { Activity, Bell, BookOpen, Building2, Check, CheckCheck, CheckCircle2, Clock, Copy, ExternalLink, Globe2, GraduationCap, Headphones, Keyboard, Loader2, LogOut, Mail, MapPin, MessageSquare, NotebookPen, Phone, RefreshCw, Save, Search, Send, Settings, Shield, SlidersHorizontal, Sparkles, Tag, Timer, Trash2, Upload, UserCog, UserPlus, Users, Volume2, Wifi } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api/client";
+import { displayImageUrl } from "@/lib/images/display-image";
 import { playLiveChatNotificationSound, unlockLiveChatNotificationSound } from "@/lib/live-chat/notification-sound";
 import { cn } from "@/lib/utils";
 import type { LiveChatConversationView, LiveChatInboxView, LiveChatMessageView } from "@/lib/live-chat/types";
@@ -44,6 +45,8 @@ export function LiveChatHub() {
   const lastNeedsReplyCountRef = useRef(0);
   const notificationReadyRef = useRef(false);
   const notifiedVisitorMessageIdsRef = useRef<Set<string>>(new Set());
+  const typingTimerRef = useRef<number | null>(null);
+  const typingActiveRef = useRef(false);
 
   useEffect(() => {
     activeIdRef.current = activeId;
@@ -108,6 +111,28 @@ export function LiveChatHub() {
   const needsReplyCount = useMemo(() => data?.conversations.filter(needsReply).length ?? 0, [data?.conversations]);
 
   useEffect(() => {
+    const conversationId = activeConversation?.id;
+    if (!conversationId) return;
+    if (typingTimerRef.current) window.clearTimeout(typingTimerRef.current);
+    if (draft.trim()) {
+      if (!typingActiveRef.current) {
+        typingActiveRef.current = true;
+        void apiFetch("/api/v1/admin/live-chat", { method: "POST", body: JSON.stringify({ action: "typing", conversationId, typing: true }) });
+      }
+      typingTimerRef.current = window.setTimeout(() => {
+        typingActiveRef.current = false;
+        void apiFetch("/api/v1/admin/live-chat", { method: "POST", body: JSON.stringify({ action: "typing", conversationId, typing: false }) });
+      }, 1800);
+    } else if (typingActiveRef.current) {
+      typingActiveRef.current = false;
+      void apiFetch("/api/v1/admin/live-chat", { method: "POST", body: JSON.stringify({ action: "typing", conversationId, typing: false }) });
+    }
+    return () => {
+      if (typingTimerRef.current) window.clearTimeout(typingTimerRef.current);
+    };
+  }, [activeConversation?.id, draft]);
+
+  useEffect(() => {
     if (!data) return;
     const newVisitorReplies = data.conversations.filter((conversation) => {
       if (!needsReply(conversation) || !conversation.lastMessageAt) return false;
@@ -163,6 +188,8 @@ export function LiveChatHub() {
 
   async function sendMessage() {
     if (!activeConversation || !draft.trim()) return;
+    typingActiveRef.current = false;
+    void apiFetch("/api/v1/admin/live-chat", { method: "POST", body: JSON.stringify({ action: "typing", conversationId: activeConversation.id, typing: false }) });
     await action({ action: "send_message", conversationId: activeConversation.id, body: draft }, "Message sent.");
     setDraft("");
   }
@@ -324,7 +351,7 @@ export function LiveChatHub() {
 
         {panel === "profile" ? <ProfilePanel data={data} action={action} busy={busy} /> : null}
         {panel === "settings" ? <SettingsPanel data={data} action={action} busy={busy} /> : null}
-        {panel === "visitors" ? <VisitorsPanel visitors={data.activeVisitors.filter((visitor) => !deletedVisitorIds.includes(visitor.id))} startConversation={startConversation} openConversation={openConversation} startingVisitorId={startingVisitorId} /> : null}
+        {panel === "visitors" ? <VisitorsPanel visitors={data.activeVisitors.filter((visitor) => !deletedVisitorIds.includes(visitor.id))} startConversation={startConversation} openConversation={openConversation} startingVisitorId={startingVisitorId} currentAgentName={data.currentAgent?.displayName} /> : null}
 
         {panel === "inbox" ? <div className="grid min-w-0 gap-0 lg:min-h-[660px] lg:grid-cols-[minmax(280px,330px)_minmax(0,1fr)_minmax(320px,380px)]">
           <aside className="border-b border-white/10 bg-slate-950/80 lg:border-b-0 lg:border-r lg:border-white/10">
@@ -370,6 +397,7 @@ export function LiveChatHub() {
             <ConversationHeader conversation={activeConversation} data={data} action={action} busy={busy} onDelete={deleteConversation} />
             <div className="max-h-[52dvh] flex-1 space-y-4 overflow-y-auto bg-slate-950/70 p-3 sm:p-4 lg:max-h-none">
               {data.messages.length ? data.messages.map((message) => <AdminMessage key={message.id} message={message} />) : <Empty label="Select a conversation or start one from Active Visitors." />}
+              {data.typing?.visitorTyping ? <AdminTypingIndicator /> : null}
             </div>
             {activeConversation ? (
               <div className="space-y-3 border-t border-white/10 p-3">
@@ -493,14 +521,19 @@ function ConversationHeader({ conversation, data, action, busy, onDelete }: { co
               <option value="">Unassigned</option>
               {data.agents.map((agent) => <option key={agent.id} value={agent.id}>{agent.displayName}</option>)}
             </ControlSelect>
-            <Button
-              variant="secondary"
-              onClick={() => void onDelete(conversation)}
-              disabled={busy === `delete_conversation:${conversation.id}`}
-              className="mt-1 w-full justify-self-start sm:w-auto"
-            >
-              {busy === `delete_conversation:${conversation.id}` ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />} Delete
-            </Button>
+            <div className="mt-1 flex flex-wrap gap-2">
+              <Button variant="secondary" onClick={() => void action({ action: "leave_conversation", conversationId: conversation.id }, "You left the conversation.")} disabled={busy === "leave_conversation"} className="w-full justify-self-start sm:w-auto">
+                {busy === "leave_conversation" ? <Loader2 className="size-4 animate-spin" /> : <LogOut className="size-4" />} Leave
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => void onDelete(conversation)}
+                disabled={busy === `delete_conversation:${conversation.id}`}
+                className="w-full justify-self-start sm:w-auto"
+              >
+                {busy === `delete_conversation:${conversation.id}` ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />} Delete
+              </Button>
+            </div>
           </div>
         </div>
       </div>
@@ -540,7 +573,26 @@ function AdminMessage({ message }: { message: LiveChatMessageView }) {
         <p className={cn("mb-1 text-[10px] font-black uppercase", staff ? "text-emerald-50/80" : "text-emerald-600 dark:text-emerald-300")}>{internal ? "Internal note" : message.senderName || message.senderKind}</p>
         <p className="whitespace-pre-wrap leading-6">{message.body}</p>
         {card?.url ? <a className="mt-2 block break-words rounded-md bg-white/15 px-3 py-2 text-xs font-bold underline-offset-2 [overflow-wrap:anywhere] hover:underline" href={card.url} target="_blank" rel="noreferrer">{card.title || card.url}</a> : null}
-        <p className={cn("mt-1 text-[10px]", staff ? "text-emerald-50/80" : "text-slate-400")}>{new Date(message.createdAt).toLocaleString()}</p>
+        <p className={cn("mt-1 flex items-center justify-end gap-1 text-[10px]", staff ? "text-emerald-50/80" : "text-slate-400")}>
+          <span>{new Date(message.createdAt).toLocaleString()}</span>
+          {staff && !internal ? <AdminMessageReceipt message={message} /> : null}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function AdminMessageReceipt({ message }: { message: LiveChatMessageView }) {
+  if (message.readAt) return <span className="inline-flex items-center gap-1 font-bold text-cyan-100"><CheckCheck className="size-3.5" /> Read</span>;
+  if (message.deliveredAt) return <span className="inline-flex items-center gap-1 font-bold"><CheckCheck className="size-3.5" /> Delivered</span>;
+  return <span className="inline-flex items-center gap-1 font-bold"><Check className="size-3.5" /> Sent</span>;
+}
+
+function AdminTypingIndicator() {
+  return (
+    <div className="flex justify-start">
+      <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-slate-900 px-3 py-2 text-xs font-semibold text-slate-300">
+        <Keyboard className="size-3.5 text-emerald-300" /> Visitor is typing...
       </div>
     </div>
   );
@@ -635,11 +687,13 @@ function VisitorsPanel({
   startConversation,
   openConversation,
   startingVisitorId,
+  currentAgentName,
 }: {
   visitors: LiveChatInboxView["activeVisitors"];
   startConversation: (visitorId: string, message?: string) => Promise<void>;
   openConversation: (conversationId: string) => void;
   startingVisitorId: string | null;
+  currentAgentName?: string | null;
 }) {
   return (
     <div className="grid min-w-0 grid-cols-1 gap-3 p-3 sm:p-4 md:grid-cols-2 xl:grid-cols-3">
@@ -656,7 +710,7 @@ function VisitorsPanel({
         const stage = visitorStageLabel(visitor);
         const pageTime = formatVisitorDuration(visitor.pageSeconds);
         const lastSeen = formatRelativeVisitorTime(visitor.lastSeenAt);
-        const suggestedMessage = proactiveMessageForVisitor(visitor);
+        const suggestedMessage = proactiveMessageForVisitor(visitor, currentAgentName);
         const actionLabel = visitor.conversation ? visitorActionLabel(visitor.conversation.status) : "Send helpful message";
         return (
           <article key={visitor.id} className={cn("min-w-0 overflow-hidden rounded-2xl border bg-slate-900 shadow-[0_18px_50px_rgba(0,0,0,0.18)]", hasConversation ? "border-emerald-400/30" : "border-white/10")}>
@@ -736,6 +790,7 @@ function ProfilePanel({ data, action, busy }: { data: LiveChatInboxView; action:
   const [departmentId, setDepartmentId] = useState(agent?.department?.id || "");
   const [publicIntro, setPublicIntro] = useState(agent?.publicIntro || "");
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const avatarPreviewUrl = displayImageUrl(avatarUrl, { width: 128, height: 128, crop: "fill" });
 
   async function uploadAvatar(files: FileList | null) {
     const file = files?.[0];
@@ -770,9 +825,9 @@ function ProfilePanel({ data, action, busy }: { data: LiveChatInboxView; action:
           <div className="mt-5 flex min-w-0 items-center gap-4">
             <span
               className="grid size-20 shrink-0 place-items-center overflow-hidden rounded-xl border border-white/15 bg-emerald-500 bg-cover bg-center text-2xl font-black text-white shadow-lg shadow-emerald-950/30"
-              style={avatarUrl ? { backgroundImage: `url(${avatarUrl})` } : undefined}
+              style={avatarPreviewUrl ? { backgroundImage: `url(${avatarPreviewUrl})` } : undefined}
             >
-              {avatarUrl ? null : (displayName || "H").slice(0, 1).toUpperCase()}
+              {avatarPreviewUrl ? null : (displayName || "H").slice(0, 1).toUpperCase()}
             </span>
             <div className="min-w-0">
               <p className="truncate text-lg font-black text-white">{displayName || "HouseLink Team"}</p>
@@ -1247,22 +1302,23 @@ function visitorActionLabel(status: string) {
   return "Open conversation";
 }
 
-function proactiveMessageForVisitor(visitor?: Pick<LiveChatConversationView["visitor"], "currentPath" | "currentTitle"> | null) {
+function proactiveMessageForVisitor(visitor?: Pick<LiveChatConversationView["visitor"], "currentPath" | "currentTitle"> | null, agentName?: string | null) {
   const title = pageLabel(visitor?.currentTitle, visitor?.currentPath);
   const path = cleanJourneyPath(visitor?.currentPath).toLowerCase();
+  const intro = agentName ? `Hi, this is ${agentName} from HouseLink.` : "Hi, welcome to HouseLink.";
   if (path.includes("/library/checkout") || path.includes("payment")) {
-    return "Hi, welcome to HouseLink. I can help with payment, proof upload, or choosing another payment option so your order is completed smoothly.";
+    return `${intro}\n\nI can help with payment, proof upload, or choosing another payment option so your order is completed smoothly.`;
   }
   if (path.includes("/library/")) {
-    return `Hi, welcome to HouseLink. I can help you choose the right format, confirm payment steps, or answer any questions about ${title} before you buy.`;
+    return `${intro}\n\nI noticed you are viewing ${title}. I can help you choose the right format, confirm payment steps, or answer any questions before you buy.`;
   }
   if (path.includes("/academy")) {
-    return `Hi, welcome to HouseLink Academy. I can help with course details, registration, payment, or choosing the right course${title !== "HouseLink Academy" ? ` for ${title}` : ""}.`;
+    return `${intro}\n\nI can help with course details, registration, payment, or choosing the right course${title !== "HouseLink Academy" ? ` for ${title}` : ""}.`;
   }
   if (path.includes("/listings/") || path.includes("/rent/") || path.includes("/property-for-sale/")) {
-    return `Hi, welcome to HouseLink. I can help with viewing details, location questions, price checks, or the next step for ${title}.`;
+    return `${intro}\n\nI noticed you are viewing ${title}. I can help with viewing details, location questions, price checks, or the next step.`;
   }
-  return "Hi, welcome to HouseLink. I can help with the next step, pricing, payment, delivery, viewings, or any question before you decide.";
+  return `${intro}\n\nI can help with the next step, pricing, payment, delivery, viewings, or any question before you decide.`;
 }
 
 function statusTone(status: string) {

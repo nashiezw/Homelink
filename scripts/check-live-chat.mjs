@@ -267,6 +267,26 @@ const checks = [
     pattern: /action:\s*"internal_note"/,
   },
   {
+    file: "app/api/v1/live-chat/stream/route.ts",
+    label: "public live chat has a server-sent events stream for instant visitor updates",
+    pattern: /subscribeLiveChatRealtime[\s\S]*text\/event-stream/,
+  },
+  {
+    file: "components/live-chat/live-chat-widget.tsx",
+    label: "public widget listens for instant live chat stream messages",
+    pattern: /new EventSource\(`\/api\/v1\/live-chat\/stream/,
+  },
+  {
+    file: "components/admin/live-chat-hub.tsx",
+    label: "suggested first messages introduce the logged-in team member",
+    pattern: /Hi, this is \$\{agentName\} from HouseLink/,
+  },
+  {
+    file: "components/live-chat/live-chat-widget.tsx",
+    label: "public live chat optimizes support avatar images before rendering",
+    pattern: /displayImageUrl\(boot\?\.supportAgent\?\.avatarUrl,\s*\{\s*width:\s*96,\s*height:\s*96,\s*crop:\s*"fill"\s*\}\)/,
+  },
+  {
     file: "prisma/schema.prisma",
     label: "live chat messages enforce idempotency per conversation",
     pattern: /@@unique\(\[conversationId,\s*idempotencyKey\]\)/,
