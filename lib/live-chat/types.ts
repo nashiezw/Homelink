@@ -95,6 +95,9 @@ export type LiveChatConversationView = {
   id: string;
   status: LiveChatStatus | string;
   priority: LiveChatPriority | string;
+  leadScore?: number;
+  leadTemperature?: "HOT" | "WARM" | "COLD";
+  nextAction?: string | null;
   subject?: string | null;
   source?: string | null;
   currentPath?: string | null;
@@ -183,6 +186,11 @@ export type LiveChatInboxView = {
     activeVisitors: number;
     leadsCreated: number;
     proactiveMessages: number;
+    missedChats: number;
+    recoveredChats: number;
+    whatsappFollowUps: number;
+    hotLeads: number;
+    unreadNeedingReply: number;
     averageFirstResponseSeconds: number | null;
   };
   setupRequired?: boolean;

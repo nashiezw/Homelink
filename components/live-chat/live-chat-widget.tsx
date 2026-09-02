@@ -16,10 +16,13 @@ import type { LiveChatBootstrapView, LiveChatMessageView, LiveChatTypingView, Li
 
 type ContactState = { name?: string; phone?: string; email?: string };
 type LiveChatRealtimeEvent = {
-  type?: "message" | "typing";
+  type?: "message" | "typing" | "receipt";
   conversationId?: string;
   message?: LiveChatMessageView;
   typing?: LiveChatTypingView;
+  messageIds?: string[];
+  readAt?: string | null;
+  deliveredAt?: string | null;
 };
 
 const UNREAD_STORAGE_KEY = "hl_live_unread_count";
@@ -228,6 +231,10 @@ export function LiveChatWidget() {
       const payload = parseRealtimeEvent(event);
       if (payload?.typing) setTyping(payload.typing);
     });
+    source.addEventListener("receipt", (event) => {
+      const payload = parseRealtimeEvent(event);
+      if (payload) setMessages((current) => applyReceiptToMessages(current, payload));
+    });
     source.onerror = () => source.close();
     return () => source.close();
   }, [boot?.visitorId, boot?.conversation?.id, bootstrap, hiddenOnThisRoute, showPreviewMessage]);
@@ -363,11 +370,13 @@ export function LiveChatWidget() {
   const supportAvatarUrl = displayImageUrl(boot?.supportAgent?.avatarUrl, { width: 96, height: 96, crop: "fill" });
   const agentTitle = boot?.supportAgent?.title || "HouseLink Support";
   const agentDepartment = boot?.conversation?.department?.name || boot?.supportAgent?.department?.name || "Support team";
+  const availabilityLabel = boot?.supportAgent ? "Online" : "After hours";
   const agentIntro = boot?.supportAgent
     ? boot.supportAgent.publicIntro || `${agentTitle} is online`
-    : "Leave a message, the team will reply here";
+    : "Leave your name and WhatsApp number, the team will follow up";
   const currentContext = context.viewed?.productTitle || context.viewed?.propertyTitle || context.viewed?.courseTitle || "this page";
   const quickReplies: Array<{ label: string; body: string; icon: typeof Sparkles; contactField?: "phone" | "email" }> = [
+    ...(!boot?.supportAgent ? [{ label: "Request callback", body: "Hi, please call or WhatsApp me back. My name is ", icon: Phone }] : []),
     { label: "Is this right for me?", body: `Hi, I am looking at ${currentContext}. Can you help me decide if it is the right fit for what I need?`, icon: Sparkles },
     { label: "Payment help", body: `Hi, I want to buy ${currentContext}, but I need help with payment or proof upload.`, icon: ShieldCheck },
     { label: "WhatsApp me", body: "", icon: Phone, contactField: "phone" as const },
@@ -398,7 +407,7 @@ export function LiveChatWidget() {
                 <div className="min-w-0">
                   <div className="flex min-w-0 items-center gap-2">
                     <p className="truncate text-[15px] font-black">{agentName}</p>
-                    <span className="rounded-full bg-emerald-400/15 px-2 py-0.5 text-[10px] font-black uppercase text-emerald-100">Online</span>
+                    <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-black uppercase", boot?.supportAgent ? "bg-emerald-400/15 text-emerald-100" : "bg-amber-400/15 text-amber-100")}>{availabilityLabel}</span>
                   </div>
                   <p className="mt-0.5 truncate text-xs text-slate-300">{agentTitle} / {agentDepartment}</p>
                   <p className="mt-0.5 truncate text-[11px] text-slate-400">{agentIntro}</p>
@@ -423,7 +432,7 @@ export function LiveChatWidget() {
                 <div className="flex justify-start">
                   <div className="max-w-[88%] rounded-[22px] rounded-tl-md bg-white px-4 py-3 text-sm text-slate-700 shadow-[0_12px_30px_rgba(15,23,42,0.08)] ring-1 ring-slate-200 dark:bg-slate-950 dark:text-slate-100 dark:ring-slate-800">
                     <p className="font-black text-slate-950 dark:text-white">Hi, welcome to HouseLink.</p>
-                    <p className="mt-1 leading-6">Ask about {currentContext}, payment, delivery, or the next best step. If we need your number, we will ask nicely. No clipboard interrogation today.</p>
+                    <p className="mt-1 leading-6">{boot?.supportAgent ? `Ask about ${currentContext}, payment, delivery, or the next best step. If we need your number, we will ask nicely.` : `Tell us what you need about ${currentContext}, then leave your WhatsApp number so the team can recover the sale even if you leave this page.`}</p>
                     <span className="mt-3 inline-flex max-w-full items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-800">
                       <Sparkles className="size-3" /> <span className="truncate">Viewing: {currentContext}</span>
                     </span>
@@ -584,7 +593,7 @@ function ChatBubble({ message, showReceipt = false, onRetry }: { message: LiveCh
 }
 
 function MessageReceipt({ message }: { message: LiveChatMessageView }) {
-  if (message.readAt) return <span className="inline-flex items-center gap-1 font-bold text-cyan-100"><CheckCheck className="size-3.5" /> Read</span>;
+  if (message.readAt) return <span className="inline-flex items-center gap-1 font-bold text-[#34b7f1]"><CheckCheck className="size-3.5" /> Read</span>;
   if (message.deliveredAt) return <span className="inline-flex items-center gap-1 font-bold"><CheckCheck className="size-3.5" /> Delivered</span>;
   return <span className="inline-flex items-center gap-1 font-bold"><Check className="size-3.5" /> Sent</span>;
 }
@@ -622,6 +631,19 @@ function parseRealtimeEvent(event: Event) {
 function mergeIncomingMessage(messages: LiveChatMessageView[], message: LiveChatMessageView) {
   if (messages.some((item) => item.id === message.id)) return messages;
   return [...messages, message].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+}
+
+function applyReceiptToMessages(messages: LiveChatMessageView[], receipt: LiveChatRealtimeEvent) {
+  const ids = new Set(receipt.messageIds ?? []);
+  if (!ids.size && !receipt.readAt && !receipt.deliveredAt) return messages;
+  return messages.map((message) => {
+    if (ids.size && !ids.has(message.id)) return message;
+    return {
+      ...message,
+      deliveredAt: receipt.deliveredAt ?? message.deliveredAt,
+      readAt: receipt.readAt ?? message.readAt,
+    };
+  });
 }
 
 function unreadStaffMessageCount(messages: LiveChatMessageView[]) {

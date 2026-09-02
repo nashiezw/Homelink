@@ -51,6 +51,10 @@ const DEFAULT_QUICK_REPLIES = [
   ["Hard copy delivery", "/delivery", "Books & Orders", "Hard copies can be arranged with delivery or collection depending on location. Send your preferred city and we will confirm the best option."],
   ["Property viewing", "/viewing", "Property Sales", "We can help arrange a viewing. Please share your preferred day, time, and whether you are looking to rent or buy."],
   ["Academy enrolment", "/academy", "Academy", "I can help with Academy enrolment. Which course are you interested in, and are you registering for yourself or a team?"],
+  ["WhatsApp follow-up", "/whatsapp", "General Enquiries", "I can continue this on WhatsApp so you do not miss the next step. Please send your WhatsApp number, or confirm if the number already shared is correct."],
+  ["After-hours capture", "/afterhours", "General Enquiries", "Thanks for reaching HouseLink. If our team misses you here, please leave your name, WhatsApp number, and what you need so we can follow up quickly."],
+  ["Hot lead callback", "/callback", "Property Sales", "This sounds urgent. Please send your best WhatsApp number and preferred call time, and I will help move this forward."],
+  ["Payment proof help", "/proof", "Books & Orders", "I can help check the payment/proof step. Please send the order name, payment method, and whether you uploaded proof already."],
 ] as const;
 
 const memory = {
@@ -71,6 +75,7 @@ type AdminUser = { id: string; name: string; email: string; roles: string[] };
 type LiveChatRealtimeEvent =
   | { type: "message"; conversationId: string; visitorId?: string | null; message: LiveChatMessageView; createdAt: string }
   | { type: "typing"; conversationId: string; visitorId?: string | null; typing: LiveChatTypingView; createdAt: string }
+  | { type: "receipt"; conversationId: string; visitorId?: string | null; messageIds?: string[]; readAt?: string | null; deliveredAt?: string | null; createdAt: string }
   | { type: "inbox"; conversationId?: string | null; visitorId?: string | null; reason: string; createdAt: string };
 type LiveChatRealtimeListener = (event: LiveChatRealtimeEvent) => void;
 
@@ -280,13 +285,16 @@ export async function sendVisitorMessage(input: {
     orderBy: { updatedAt: "desc" },
   });
   if (!conversation) {
-    const settings = await prisma.liveChatSettings.findUnique({ where: { id: "live-chat" } });
+    const [settings, routedDepartment] = await Promise.all([
+      prisma.liveChatSettings.findUnique({ where: { id: "live-chat" } }),
+      findDepartmentByRoute(body, input.context),
+    ]);
     conversation = await prisma.liveChatConversation.create({
       data: {
         publicId: makePublicId("chat"),
         visitorId: visitor.id,
         userId: visitor.userId,
-        departmentId: input.departmentId || settings?.defaultDepartmentId || undefined,
+        departmentId: input.departmentId || routedDepartment?.id || settings?.defaultDepartmentId || undefined,
         status: "NEW",
         priority: inferPriority(input.context),
         source: visitor.source,
@@ -394,6 +402,11 @@ export async function markVisitorRead(visitorKey: string, conversationPublicId: 
   const conversation = await prisma.liveChatConversation.findFirst({ where: { publicId: conversationPublicId, visitorId: visitor.id } });
   if (!conversation) return { ok: true };
   const readAt = new Date();
+  const messages = await prisma.liveChatMessage.findMany({
+    where: { conversationId: conversation.id, senderKind: { not: "VISITOR" }, internal: false, readAt: null },
+    select: { publicId: true },
+    take: 100,
+  });
   await prisma.$transaction([
     prisma.liveChatConversation.update({ where: { id: conversation.id }, data: { visitorLastReadAt: readAt } }),
     prisma.liveChatMessage.updateMany({
@@ -401,6 +414,14 @@ export async function markVisitorRead(visitorKey: string, conversationPublicId: 
       data: { readAt },
     }),
   ]);
+  publishLiveChatRealtime({
+    type: "receipt",
+    conversationId: conversation.publicId,
+    visitorId: visitor.publicId,
+    messageIds: messages.map((message) => message.publicId),
+    readAt: readAt.toISOString(),
+    createdAt: new Date().toISOString(),
+  });
   return { ok: true };
 }
 
@@ -604,12 +625,13 @@ export async function liveChatAdminAction(user: AdminUser, body: Record<string, 
     if (!visitor) throw new LiveChatError("VISITOR_NOT_FOUND", "Visitor not found.", 404);
     let conversation = await prisma.liveChatConversation.findFirst({ where: { visitorId: visitor.id, status: { in: OPEN_STATUSES } }, orderBy: { updatedAt: "desc" } });
     if (!conversation) {
+      const routedDepartment = await findDepartmentByRoute(String(body.body || ""), { path: visitor.currentPath ?? undefined, title: visitor.currentTitle ?? undefined });
       conversation = await prisma.liveChatConversation.create({
         data: {
           publicId: makePublicId("chat"),
           visitorId: visitor.id,
           userId: visitor.userId,
-          departmentId: String(body.departmentId || agent.departmentId || "") || undefined,
+          departmentId: String(body.departmentId || agent.departmentId || routedDepartment?.id || "") || undefined,
           assignedAgentId: agent.id,
           status: "OPEN",
           priority: "NORMAL",
@@ -731,6 +753,11 @@ export async function liveChatAdminAction(user: AdminUser, body: Record<string, 
     const conversation = await getConversationByPublicId(String(body.conversationId ?? ""));
     if (!conversation) throw new LiveChatError("CONVERSATION_NOT_FOUND", "Conversation not found.", 404);
     const readAt = new Date();
+    const messages = await prisma.liveChatMessage.findMany({
+      where: { conversationId: conversation.id, senderKind: "VISITOR", internal: false, readAt: null },
+      select: { publicId: true },
+      take: 100,
+    });
     await prisma.$transaction([
       prisma.liveChatConversation.update({ where: { id: conversation.id }, data: { staffLastReadAt: readAt } }),
       prisma.liveChatMessage.updateMany({
@@ -738,6 +765,14 @@ export async function liveChatAdminAction(user: AdminUser, body: Record<string, 
         data: { readAt },
       }),
     ]);
+    publishLiveChatRealtime({
+      type: "receipt",
+      conversationId: conversation.publicId,
+      visitorId: conversation.visitor.publicId,
+      messageIds: messages.map((message) => message.publicId),
+      readAt: readAt.toISOString(),
+      createdAt: new Date().toISOString(),
+    });
     return { ok: true };
   }
   if (action === "leave_conversation") {
@@ -1088,6 +1123,11 @@ function setupRequiredInbox(): LiveChatInboxView {
       activeVisitors: 0,
       leadsCreated: 0,
       proactiveMessages: 0,
+      missedChats: 0,
+      recoveredChats: 0,
+      whatsappFollowUps: 0,
+      hotLeads: 0,
+      unreadNeedingReply: 0,
       averageFirstResponseSeconds: null,
     },
     setupRequired: true,
@@ -1305,6 +1345,43 @@ function inferLeadIntent(body: string, context?: LiveChatVisitorContext) {
   return null;
 }
 
+async function findDepartmentByRoute(body: string, context?: LiveChatVisitorContext) {
+  const slug = inferDepartmentSlug(body, context);
+  if (!slug) return null;
+  return getMainPrisma().liveChatDepartment.findUnique({ where: { slug }, select: { id: true, name: true, slug: true } }).catch(() => null);
+}
+
+function inferDepartmentSlug(body: string, context?: LiveChatVisitorContext) {
+  const text = `${body} ${context?.path ?? ""} ${context?.title ?? ""}`.toLowerCase();
+  if (/\/library|checkout|book|order|delivery|format|pdf|hard copy|payment|proof/.test(text)) return "books-orders";
+  if (/\/academy|academy|course|training|certificate|lesson|enrol|enroll/.test(text)) return "academy";
+  if (/property-management|landlord|manage my property|management request/.test(text)) return "property-management";
+  if (/\/rent|tenant|rental|room|flat|lease/.test(text)) return "rentals";
+  if (/\/listings|property-for-sale|buy|sale|viewing|price|investment/.test(text)) return "property-sales";
+  if (/error|bug|not working|failed|technical|support/.test(text)) return "technical-support";
+  return null;
+}
+
+function scoreConversation(conversation: Prisma.LiveChatConversationGetPayload<{ include: ReturnType<typeof conversationInclude> }>) {
+  const latest = conversation.messages[0]?.body ?? conversation.lastMessagePreview ?? "";
+  const text = `${latest} ${conversation.subject ?? ""} ${conversation.currentPath ?? ""} ${conversation.currentTitle ?? ""} ${conversation.tags.map((item) => item.tag.slug).join(" ")}`.toLowerCase();
+  let value = conversation.priority === "URGENT" ? 70 : conversation.priority === "HIGH" ? 55 : 25;
+  if (/\b(today|now|urgent|asap|call me|whatsapp|ready|serious)\b/.test(text)) value += 25;
+  if (/\b(pay|paid|payment|proof|buy|purchase|order|checkout|deposit)\b/.test(text)) value += 20;
+  if (/\b(viewing|price|available|rent|tenant|property|house|flat|sale)\b/.test(text)) value += 18;
+  if (conversation.visitor.phone || conversation.visitor.email) value += 12;
+  if (conversation.firstResponseAt) value += 5;
+  if (conversation.status === "FOLLOW_UP" || conversation.tags.some((item) => item.tag.slug === "needs-follow-up")) value += 10;
+  value = Math.max(0, Math.min(100, value));
+  const temperature = value >= 70 ? "HOT" : value >= 42 ? "WARM" : "COLD";
+  const nextAction = temperature === "HOT"
+    ? "Reply now or move to WhatsApp before the lead cools."
+    : temperature === "WARM"
+      ? "Ask one qualifying question and capture contact details."
+      : "Use a helpful quick reply and keep the chat warm.";
+  return { value, temperature: temperature as "HOT" | "WARM" | "COLD", nextAction };
+}
+
 async function handleMissedChatRecovery(
   conversation: { id: string; publicId: string; visitorId: string; lastMessagePreview?: string | null; subject?: string | null; visitor: { publicId: string; name?: string | null; email?: string | null; phone?: string | null; lastSeenAt: Date } },
   agentName: string,
@@ -1392,7 +1469,7 @@ async function getLiveChatAnalytics() {
   if (analyticsCache && Date.now() - analyticsCache.checkedAt < 60_000) return analyticsCache.value;
   const prisma = getMainPrisma();
   const since = new Date(Date.now() - 30 * 24 * 60 * 60_000);
-  const [totalConversations, openConversations, waitingConversations, resolvedConversations, activeVisitors, leadsCreated, proactiveMessages, firstResponses] = await Promise.all([
+  const [totalConversations, openConversations, waitingConversations, resolvedConversations, activeVisitors, leadsCreated, proactiveMessages, firstResponses, missedChats, recoveredChats, whatsappFollowUps, scoredConversations, unreadConversations] = await Promise.all([
     prisma.liveChatConversation.count({ where: { createdAt: { gte: since } } }),
     prisma.liveChatConversation.count({ where: { status: { in: ["NEW", "OPEN", "FOLLOW_UP"] } } }),
     prisma.liveChatConversation.count({ where: { status: "WAITING_FOR_CUSTOMER" } }),
@@ -1401,6 +1478,11 @@ async function getLiveChatAnalytics() {
     prisma.liveChatLead.count({ where: { createdAt: { gte: since } } }),
     prisma.liveChatEvent.count({ where: { eventType: { in: ["PROACTIVE_RULE_MATCHED", "PROACTIVE_STAFF_MESSAGE"] }, createdAt: { gte: since } } }),
     prisma.liveChatConversation.findMany({ where: { firstResponseAt: { not: null }, createdAt: { gte: since } }, select: { createdAt: true, firstResponseAt: true }, take: 500 }),
+    prisma.liveChatEvent.count({ where: { eventType: { in: ["MISSED_CHAT_FOLLOW_UP_READY", "MISSED_CHAT_EMAIL_READY", "MISSED_CHAT_WHATSAPP_READY"] }, createdAt: { gte: since } } }),
+    prisma.liveChatEvent.count({ where: { eventType: { in: ["MISSED_CHAT_EMAIL_SENT", "MISSED_CHAT_WHATSAPP_SENT"] }, createdAt: { gte: since } } }),
+    prisma.liveChatEvent.count({ where: { eventType: { in: ["MISSED_CHAT_WHATSAPP_SENT", "MISSED_CHAT_WHATSAPP_READY"] }, createdAt: { gte: since } } }),
+    prisma.liveChatConversation.findMany({ where: { createdAt: { gte: since } }, include: conversationInclude(), take: 200 }),
+    prisma.liveChatConversation.findMany({ where: { status: { in: ["NEW", "OPEN", "FOLLOW_UP"] } }, include: conversationInclude(), take: 200 }),
   ]);
   const avg = firstResponses.length
     ? Math.round(firstResponses.reduce((sum, item) => sum + ((item.firstResponseAt?.getTime() ?? item.createdAt.getTime()) - item.createdAt.getTime()) / 1000, 0) / firstResponses.length)
@@ -1413,6 +1495,11 @@ async function getLiveChatAnalytics() {
     activeVisitors,
     leadsCreated,
     proactiveMessages,
+    missedChats,
+    recoveredChats,
+    whatsappFollowUps,
+    hotLeads: scoredConversations.filter((conversation) => scoreConversation(conversation).temperature === "HOT").length,
+    unreadNeedingReply: unreadConversations.filter(needsStaffReply).length,
     averageFirstResponseSeconds: avg,
   };
   analyticsCache = { checkedAt: Date.now(), value };
@@ -1446,10 +1533,14 @@ function shapeConversation(conversation: Prisma.LiveChatConversationGetPayload<{
   const staffReadAt = conversation.staffLastReadAt?.getTime() ?? 0;
   const visitorReadAt = conversation.visitorLastReadAt?.getTime() ?? 0;
   const latestMessage = conversation.messages[0] ?? null;
+  const score = scoreConversation(conversation);
   return {
     id: conversation.publicId,
     status: conversation.status,
     priority: conversation.priority,
+    leadScore: score.value,
+    leadTemperature: score.temperature,
+    nextAction: score.nextAction,
     subject: conversation.subject,
     source: conversation.source,
     currentPath: conversation.currentPath,
@@ -1740,7 +1831,7 @@ function memoryInbox(): LiveChatInboxView {
     quickReplies: DEFAULT_QUICK_REPLIES.map(([title, shortcut, category, body]) => ({ id: shortcut, title, shortcut, category, body, active: true })),
     tags: DEFAULT_TAGS.map(([name, slug, color]) => ({ id: slug, name, slug, color, active: true })),
     settings: getLiveChatSettingsFallback(),
-    analytics: { totalConversations: conversations.length, openConversations: conversations.length, waitingConversations: 0, resolvedConversations: 0, activeVisitors: visitors.length, leadsCreated: 0, proactiveMessages: 0, averageFirstResponseSeconds: null },
+    analytics: { totalConversations: conversations.length, openConversations: conversations.length, waitingConversations: 0, resolvedConversations: 0, activeVisitors: visitors.length, leadsCreated: 0, proactiveMessages: 0, missedChats: 0, recoveredChats: 0, whatsappFollowUps: 0, hotLeads: 0, unreadNeedingReply: 0, averageFirstResponseSeconds: null },
   };
 }
 
@@ -1750,6 +1841,9 @@ function shapeMemoryConversation(conversation: MemoryConversation, visitor: Memo
     id: conversation.publicId,
     status: conversation.status,
     priority: conversation.priority,
+    leadScore: conversation.priority === "URGENT" ? 80 : conversation.priority === "HIGH" ? 55 : 30,
+    leadTemperature: conversation.priority === "URGENT" ? "HOT" : conversation.priority === "HIGH" ? "WARM" : "COLD",
+    nextAction: "Reply quickly and capture the best contact method.",
     subject: conversation.subject,
     source: conversation.source,
     currentPath: conversation.currentPath,

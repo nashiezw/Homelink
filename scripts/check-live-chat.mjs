@@ -288,13 +288,68 @@ const checks = [
   },
   {
     file: "app/api/v1/admin/live-chat/stream/route.ts",
-    label: "admin inbox has a realtime stream with database-backed updates",
-    pattern: /subscribeLiveChatAdminRealtime[\s\S]*getLiveChatInbox[\s\S]*2_500/,
+    label: "admin inbox has a realtime stream without aggressive database polling",
+    pattern: /subscribeLiveChatAdminRealtime[\s\S]*heartbeat[\s\S]*25_000/,
   },
   {
     file: "components/admin/live-chat-hub.tsx",
     label: "admin inbox listens for realtime stream updates",
     pattern: /new EventSource\("\/api\/v1\/admin\/live-chat\/stream"\)/,
+  },
+  {
+    file: "components/admin/live-chat-hub.tsx",
+    label: "admin realtime refreshes are debounced and cannot lock controls",
+    pattern: /queuedLoadRef[\s\S]*scheduleLiveRefresh[\s\S]*450/,
+  },
+  {
+    file: "components/admin/live-chat-hub.tsx",
+    label: "admin inbox requests time out instead of spinning forever",
+    pattern: /AbortController[\s\S]*12_000/,
+  },
+  {
+    file: "lib/live-chat/repository.ts",
+    label: "live chat read receipts publish realtime receipt events",
+    pattern: /type:\s*"receipt"[\s\S]*messageIds/,
+  },
+  {
+    file: "components/live-chat/live-chat-widget.tsx",
+    label: "visitor read ticks turn WhatsApp-blue when read",
+    pattern: /text-\[#34b7f1\][\s\S]*Read/,
+  },
+  {
+    file: "components/admin/live-chat-hub.tsx",
+    label: "admin read ticks turn WhatsApp-blue when read",
+    pattern: /text-\[#34b7f1\][\s\S]*Read/,
+  },
+  {
+    file: "lib/live-chat/repository.ts",
+    label: "new chats are automatically routed to departments by page and message intent",
+    pattern: /findDepartmentByRoute[\s\S]*inferDepartmentSlug/,
+  },
+  {
+    file: "components/admin/live-chat-hub.tsx",
+    label: "admin inbox shows SLA waiting time and lead temperature",
+    pattern: /waitingTimeLabel[\s\S]*leadTemperature/,
+  },
+  {
+    file: "components/admin/live-chat-hub.tsx",
+    label: "admin dashboard can request desktop notification permission",
+    pattern: /Notification\.requestPermission/,
+  },
+  {
+    file: "components/live-chat/live-chat-widget.tsx",
+    label: "public widget switches to after-hours contact capture when no agent is live",
+    pattern: /After hours[\s\S]*Request callback/,
+  },
+  {
+    file: "components/admin/live-chat-hub.tsx",
+    label: "admin panel includes missed-sales reporting",
+    pattern: /Missed-sales report[\s\S]*recoveredChats/,
+  },
+  {
+    file: "components/admin/live-chat-hub.tsx",
+    label: "admin can convert chats into CRM records by lead type",
+    pattern: /Convert chat to CRM[\s\S]*PROPERTY[\s\S]*LIBRARY[\s\S]*ACADEMY/,
   },
   {
     file: "components/live-chat/live-chat-widget.tsx",

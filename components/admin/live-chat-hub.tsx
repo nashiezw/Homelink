@@ -12,10 +12,13 @@ import { cn } from "@/lib/utils";
 import type { LiveChatConversationView, LiveChatInboxView, LiveChatMessageView } from "@/lib/live-chat/types";
 
 type AdminRealtimeEvent = {
-  type?: "message" | "typing" | "inbox";
+  type?: "message" | "typing" | "receipt" | "inbox";
   conversationId?: string | null;
   visitorId?: string | null;
   reason?: string;
+  messageIds?: string[];
+  readAt?: string | null;
+  deliveredAt?: string | null;
 };
 
 const FILTERS = [
@@ -47,8 +50,12 @@ export function LiveChatHub() {
   const [loadingInbox, setLoadingInbox] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [desktopAlerts, setDesktopAlerts] = useState<NotificationPermission | "unsupported">("unsupported");
   const activeIdRef = useRef<string | null>(null);
   const loadInFlightRef = useRef(false);
+  const queuedLoadRef = useRef<{ conversationId?: string | null; silent?: boolean } | null>(null);
+  const liveRefreshTimerRef = useRef<number | null>(null);
+  const pendingLiveConversationIdRef = useRef<string | null | undefined>(undefined);
   const lastNeedsReplyCountRef = useRef(0);
   const notificationReadyRef = useRef(false);
   const notifiedVisitorMessageIdsRef = useRef<Set<string>>(new Set());
@@ -61,6 +68,7 @@ export function LiveChatHub() {
 
   useEffect(() => {
     const unlock = () => unlockLiveChatNotificationSound();
+    if ("Notification" in window) setDesktopAlerts(Notification.permission);
     window.addEventListener("pointerdown", unlock, { once: true });
     window.addEventListener("keydown", unlock, { once: true });
     return () => {
@@ -69,17 +77,35 @@ export function LiveChatHub() {
     };
   }, []);
 
+  async function enableDesktopAlerts() {
+    if (!("Notification" in window)) {
+      setDesktopAlerts("unsupported");
+      return;
+    }
+    const permission = await Notification.requestPermission();
+    setDesktopAlerts(permission);
+    if (permission === "granted") {
+      setNotice("Desktop alerts enabled.");
+      window.setTimeout(() => setNotice(null), 2500);
+    }
+  }
+
   const load = useCallback(async (options?: { conversationId?: string | null; silent?: boolean }) => {
-    if (loadInFlightRef.current) return;
+    if (loadInFlightRef.current) {
+      if (options?.silent) queuedLoadRef.current = { conversationId: options.conversationId ?? activeIdRef.current, silent: true };
+      return;
+    }
     loadInFlightRef.current = true;
     if (!options?.silent) setLoadingInbox(true);
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), options?.silent ? 8_000 : 12_000);
     try {
       const params = new URLSearchParams();
       const conversationId = options?.conversationId ?? activeIdRef.current;
       if (conversationId) params.set("conversationId", conversationId);
       if (filter) params.set("filter", filter);
       if (query.trim()) params.set("q", query.trim());
-      const result = await apiFetch<LiveChatInboxView>(`/api/v1/admin/live-chat?${params.toString()}`, { cache: "no-store" });
+      const result = await apiFetch<LiveChatInboxView>(`/api/v1/admin/live-chat?${params.toString()}`, { cache: "no-store", signal: controller.signal });
       if (result.data) {
         setData(result.data);
         setError(null);
@@ -92,13 +118,30 @@ export function LiveChatHub() {
           activeIdRef.current = result.data.conversations[0].id;
         }
       } else {
-        setError(result.error?.message ?? "Live Chat could not be loaded.");
+        if (!options?.silent) setError(result.error?.message ?? "Live Chat could not be loaded.");
       }
     } finally {
+      window.clearTimeout(timeout);
       if (!options?.silent) setLoadingInbox(false);
       loadInFlightRef.current = false;
+      const queued = queuedLoadRef.current;
+      if (queued) {
+        queuedLoadRef.current = null;
+        window.setTimeout(() => void load(queued), 150);
+      }
     }
   }, [filter, query]);
+
+  const scheduleLiveRefresh = useCallback((conversationId?: string | null) => {
+    pendingLiveConversationIdRef.current = conversationId ?? pendingLiveConversationIdRef.current;
+    if (liveRefreshTimerRef.current) window.clearTimeout(liveRefreshTimerRef.current);
+    liveRefreshTimerRef.current = window.setTimeout(() => {
+      const pendingConversationId = pendingLiveConversationIdRef.current;
+      pendingLiveConversationIdRef.current = undefined;
+      liveRefreshTimerRef.current = null;
+      if (document.visibilityState === "visible") void load({ conversationId: pendingConversationId, silent: true });
+    }, 450);
+  }, [load]);
 
   useEffect(() => {
     void load();
@@ -115,10 +158,17 @@ export function LiveChatHub() {
     if (typeof window === "undefined" || !("EventSource" in window)) return;
     const source = new EventSource("/api/v1/admin/live-chat/stream");
     source.addEventListener("message", () => {
-      if (document.visibilityState === "visible") void load({ silent: true });
+      scheduleLiveRefresh();
     });
     source.addEventListener("typing", () => {
-      if (document.visibilityState === "visible" && panel === "inbox") void load({ silent: true });
+      if (panel === "inbox") scheduleLiveRefresh(activeIdRef.current);
+    });
+    source.addEventListener("receipt", (event) => {
+      const payload = parseAdminRealtimeEvent(event);
+      if (payload) {
+        setData((current) => current ? { ...current, messages: applyReceiptToMessages(current.messages, payload) } : current);
+      }
+      scheduleLiveRefresh(payload?.conversationId ?? activeIdRef.current);
     });
     source.addEventListener("inbox", (event) => {
       const payload = parseAdminRealtimeEvent(event);
@@ -126,11 +176,14 @@ export function LiveChatHub() {
         activeIdRef.current = payload.conversationId;
         setActiveId(payload.conversationId);
       }
-      if (document.visibilityState === "visible") void load({ conversationId: payload?.conversationId ?? undefined, silent: true });
+      scheduleLiveRefresh(payload?.conversationId ?? undefined);
     });
-    source.onerror = () => source.close();
-    return () => source.close();
-  }, [load, panel]);
+    source.onerror = () => undefined;
+    return () => {
+      if (liveRefreshTimerRef.current) window.clearTimeout(liveRefreshTimerRef.current);
+      source.close();
+    };
+  }, [panel, scheduleLiveRefresh]);
 
   const activeConversation = useMemo(
     () => data?.conversations.find((conversation) => conversation.id === activeId) ?? data?.conversations[0] ?? null,
@@ -338,8 +391,8 @@ export function LiveChatHub() {
       <div className="grid min-w-0 grid-cols-1 gap-3 min-[420px]:grid-cols-2 xl:grid-cols-4">
         <Metric icon={MessageSquare} label="30-day chats" value={data.analytics.totalConversations} />
         <Metric icon={Activity} label="Active visitors" value={data.analytics.activeVisitors} tone="emerald" />
-        <Metric icon={Clock} label="Waiting" value={data.analytics.waitingConversations} tone="amber" />
-        <Metric icon={UserPlus} label="Leads created" value={data.analytics.leadsCreated} tone="cyan" />
+        <Metric icon={Clock} label="Need reply" value={data.analytics.unreadNeedingReply} tone="amber" />
+        <Metric icon={UserPlus} label="Hot leads" value={data.analytics.hotLeads} tone="cyan" />
       </div>
 
       <section className="min-w-0 overflow-hidden rounded-2xl border border-white/10 bg-slate-950 text-slate-100 shadow-2xl shadow-slate-950/20">
@@ -351,6 +404,11 @@ export function LiveChatHub() {
           </div>
           <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap">
             <Button className="w-full sm:w-auto" variant="secondary" onClick={() => void load()} disabled={loadingInbox}>{loadingInbox ? <Loader2 className="size-4 animate-spin" /> : <RefreshCw className="size-4" />} Refresh</Button>
+            {desktopAlerts !== "granted" ? (
+              <Button className="w-full sm:w-auto" variant="secondary" onClick={() => void enableDesktopAlerts()} disabled={desktopAlerts === "denied"}>
+                <Bell className="size-4" /> {desktopAlerts === "denied" ? "Alerts blocked" : "Enable alerts"}
+              </Button>
+            ) : null}
             <Button className="w-full sm:w-auto" variant="secondary" onClick={() => void action({ action: "settings", ...data.settings, enabled: !data.settings.enabled }, data.settings.enabled ? "Live Chat disabled." : "Live Chat enabled.")}>
               <Settings className="size-4" /> {data.settings.enabled ? "Disable" : "Enable"}
             </Button>
@@ -473,6 +531,8 @@ function Metric({ icon: Icon, label, value, tone = "slate" }: { icon: typeof Mes
 
 function ConversationRow({ conversation, active, onOpen }: { conversation: LiveChatConversationView; active: boolean; onOpen: () => void }) {
   const urgent = needsReply(conversation);
+  const waitLabel = urgent ? waitingTimeLabel(conversation.lastMessageAt) : null;
+  const temp = conversation.leadTemperature || "COLD";
   return (
     <button
       type="button"
@@ -493,10 +553,13 @@ function ConversationRow({ conversation, active, onOpen }: { conversation: LiveC
             <span className={cn("min-w-0 truncate text-sm", urgent ? "font-black text-white" : "font-black text-slate-100")}>{visitorDisplayName(conversation.visitor)}</span>
             <span className="flex min-w-0 flex-wrap items-center gap-1.5">
               {urgent ? <span className="rounded-full bg-amber-300 px-2 py-0.5 text-[10px] font-black uppercase text-slate-950">New reply</span> : null}
+              {waitLabel ? <span className="rounded-full bg-red-500/15 px-2 py-0.5 text-[10px] font-black uppercase text-red-100">SLA {waitLabel}</span> : null}
+              <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-black uppercase", temperatureTone(temp))}>{temp} {conversation.leadScore ?? 0}</span>
               <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-black", statusTone(conversation.status))}>{conversation.status.replace(/_/g, " ")}</span>
             </span>
           </span>
           <span className={cn("mt-1 block truncate text-xs", urgent ? "font-black text-amber-50" : "text-slate-300")}>{lastPreviewLabel(conversation)}</span>
+          {conversation.nextAction ? <span className="mt-1 block truncate text-[11px] font-semibold text-emerald-200">{conversation.nextAction}</span> : null}
           <span className="mt-2 flex min-w-0 items-center gap-1 text-[11px] text-slate-500"><Globe2 className="size-3 shrink-0" /> <span className="truncate">{pageLabel(conversation.visitor.currentTitle || conversation.currentTitle, conversation.visitor.currentPath || conversation.currentPath)}</span></span>
         </span>
       </div>
@@ -508,6 +571,7 @@ function ConversationHeader({ conversation, data, action, busy, onDelete }: { co
   if (!conversation) return <div className="border-b border-white/10 p-4 text-sm text-slate-400">No conversation selected.</div>;
   const lastSeen = new Date(conversation.visitor.lastSeenAt);
   const lastSeenLabel = Number.isNaN(lastSeen.getTime()) ? "Recently active" : `Last seen ${lastSeen.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
+  const waitLabel = needsReply(conversation) ? waitingTimeLabel(conversation.lastMessageAt) : "No customer waiting";
   return (
     <div className="border-b border-white/10 bg-slate-950 p-3 sm:p-4">
       <div className="grid gap-4 min-[1180px]:grid-cols-[minmax(0,1fr)_minmax(18rem,20rem)]">
@@ -530,6 +594,8 @@ function ConversationHeader({ conversation, data, action, busy, onDelete }: { co
             <MiniFact icon={Mail} label="Email" value={conversation.visitor.email || "Not captured"} />
             <MiniFact icon={MapPin} label="Current page" value={conversation.visitor.currentTitle || conversation.visitor.currentPath || "Unknown"} />
             <MiniFact icon={Timer} label="Activity" value={lastSeenLabel} />
+            <MiniFact icon={Clock} label="SLA wait" value={waitLabel} />
+            <MiniFact icon={Sparkles} label="Lead score" value={`${conversation.leadTemperature || "COLD"} ${conversation.leadScore ?? 0}/100`} />
           </div>
         </div>
         <div className="rounded-xl border border-white/10 bg-slate-900 p-3">
@@ -578,6 +644,24 @@ function MiniFact({ icon: Icon, label, value }: { icon: LucideIcon; label: strin
   );
 }
 
+function ReportStat({ label, value }: { label: string; value: number | string }) {
+  return (
+    <div className="rounded-md border border-amber-300/20 bg-slate-950/60 px-2.5 py-2">
+      <p className="text-[10px] font-black uppercase text-amber-100/70">{label}</p>
+      <p className="mt-1 text-base font-black text-white">{value}</p>
+    </div>
+  );
+}
+
+function formatSlaSeconds(seconds: number) {
+  if (seconds < 60) return `${seconds}s`;
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  const remaining = minutes % 60;
+  return remaining ? `${hours}h ${remaining}m` : `${hours}h`;
+}
+
 function ControlSelect({ label, value, onChange, children }: { label: string; value: string; onChange: (value: string) => void; children: ReactNode }) {
   return (
     <label className="grid gap-1 sm:grid-cols-[6rem_minmax(0,1fr)] sm:items-center">
@@ -611,7 +695,7 @@ function AdminMessage({ message }: { message: LiveChatMessageView }) {
 }
 
 function AdminMessageReceipt({ message }: { message: LiveChatMessageView }) {
-  if (message.readAt) return <span className="inline-flex items-center gap-1 font-bold text-cyan-100"><CheckCheck className="size-3.5" /> Read</span>;
+  if (message.readAt) return <span className="inline-flex items-center gap-1 font-bold text-[#34b7f1]"><CheckCheck className="size-3.5" /> Read</span>;
   if (message.deliveredAt) return <span className="inline-flex items-center gap-1 font-bold"><CheckCheck className="size-3.5" /> Delivered</span>;
   return <span className="inline-flex items-center gap-1 font-bold"><Check className="size-3.5" /> Sent</span>;
 }
@@ -1034,6 +1118,18 @@ function ManagementPanel({ data, activeConversation, action, busy }: { data: Liv
   const [replyBody, setReplyBody] = useState("");
   return (
     <div className="min-w-0 space-y-4">
+      <section className="min-w-0 rounded-lg border border-amber-400/20 bg-amber-400/10 p-3 sm:p-4">
+        <h3 className="flex items-center gap-2 text-sm font-black uppercase tracking-wider text-amber-100"><Clock className="size-4" /> Missed-sales report</h3>
+        <div className="mt-3 grid grid-cols-2 gap-2 text-xs sm:grid-cols-3">
+          <ReportStat label="Need reply" value={data.analytics.unreadNeedingReply} />
+          <ReportStat label="Missed" value={data.analytics.missedChats} />
+          <ReportStat label="Recovered" value={data.analytics.recoveredChats} />
+          <ReportStat label="WhatsApp" value={data.analytics.whatsappFollowUps} />
+          <ReportStat label="Leads" value={data.analytics.leadsCreated} />
+          <ReportStat label="Avg first reply" value={data.analytics.averageFirstResponseSeconds ? formatSlaSeconds(data.analytics.averageFirstResponseSeconds) : "N/A"} />
+        </div>
+      </section>
+
       <section className="min-w-0 rounded-lg border border-white/10 bg-slate-900 p-3 sm:p-4">
         <h3 className="flex items-center gap-2 text-sm font-black uppercase tracking-wider text-slate-300"><Tag className="size-4" /> Tags and leads</h3>
         <div className="mt-3 flex flex-wrap gap-2">
@@ -1045,7 +1141,16 @@ function ManagementPanel({ data, activeConversation, action, busy }: { data: Liv
               {["GENERAL", "LIBRARY", "PROPERTY", "ACADEMY", "SUPPORT"].map((type) => <option key={type} value={type}>{type}</option>)}
             </select>
             <textarea className="min-h-20 w-full rounded-md border border-white/10 bg-slate-950 px-3 py-2 text-sm outline-none" placeholder="Lead note or follow-up context" value={leadNote} onChange={(event) => setLeadNote(event.target.value)} />
-            <Button className="w-full sm:w-auto" onClick={() => void action({ action: "lead", conversationId: activeConversation.id, leadType, notes: leadNote }, "Lead created.")} disabled={busy === "lead"}><UserPlus className="size-4" /> Convert to lead</Button>
+            <div className="grid gap-2">
+              <Button className="w-full" onClick={() => void action({ action: "lead", conversationId: activeConversation.id, leadType, notes: leadNote }, "Lead created.")} disabled={busy === "lead"}><UserPlus className="size-4" /> Convert chat to CRM</Button>
+              <div className="grid grid-cols-2 gap-2">
+                {["PROPERTY", "LIBRARY", "ACADEMY", "SUPPORT"].map((type) => (
+                  <button key={type} type="button" className="rounded-md border border-white/10 bg-slate-950 px-2 py-2 text-xs font-black text-slate-300 hover:border-emerald-400 hover:text-emerald-100" onClick={() => void action({ action: "lead", conversationId: activeConversation.id, leadType: type, notes: leadNote || `${type} lead from live chat.` }, `${type} CRM record created.`)}>
+                    {type}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         ) : null}
       </section>
@@ -1259,6 +1364,19 @@ function parseAdminRealtimeEvent(event: Event) {
   }
 }
 
+function applyReceiptToMessages(messages: LiveChatMessageView[], receipt: AdminRealtimeEvent) {
+  const ids = new Set(receipt.messageIds ?? []);
+  if (!ids.size && !receipt.readAt && !receipt.deliveredAt) return messages;
+  return messages.map((message) => {
+    if (ids.size && !ids.has(message.id)) return message;
+    return {
+      ...message,
+      deliveredAt: receipt.deliveredAt ?? message.deliveredAt,
+      readAt: receipt.readAt ?? message.readAt,
+    };
+  });
+}
+
 function filterLabel(filter: string) {
   return FILTERS.find(([id]) => id === filter)?.[1] ?? "current filter";
 }
@@ -1395,6 +1513,24 @@ function statusTone(status: string) {
   if (status === "WAITING_FOR_CUSTOMER") return "bg-amber-500/15 text-amber-200";
   if (status === "RESOLVED" || status === "CLOSED") return "bg-slate-700 text-slate-300";
   return "bg-emerald-500/15 text-emerald-200";
+}
+
+function temperatureTone(temperature: string) {
+  if (temperature === "HOT") return "bg-red-500/20 text-red-100";
+  if (temperature === "WARM") return "bg-amber-500/20 text-amber-100";
+  return "bg-slate-700 text-slate-300";
+}
+
+function waitingTimeLabel(value?: string | null) {
+  const time = value ? new Date(value).getTime() : NaN;
+  if (!Number.isFinite(time)) return "just now";
+  const seconds = Math.max(0, Math.round((Date.now() - time) / 1000));
+  if (seconds < 60) return `${seconds}s`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  const remaining = minutes % 60;
+  return remaining ? `${hours}h ${remaining}m` : `${hours}h`;
 }
 
 function readProfileImageFile(file: File): Promise<string> {
