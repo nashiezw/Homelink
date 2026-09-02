@@ -1979,23 +1979,31 @@ model LibraryDownloadAccess {
 }
 
 model LibraryReview {
-  id          String         @id @default(cuid())
-  productId   String
-  userId      String
-  rating      Int
-  title       String?
-  body        String?
-  status      String         @default("PENDING")
-  verified    Boolean        @default(false)
-  featured    Boolean        @default(false)
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
-  displayName String?
-  product     LibraryProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
-  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id             String         @id @default(cuid())
+  productId      String
+  userId         String?
+  rating         Int
+  title          String?
+  body           String?
+  status         String         @default("PENDING")
+  verified       Boolean        @default(false)
+  featured       Boolean        @default(false)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  displayName    String?
+  guestName      String?
+  guestEmail     String?
+  guestPhone     String?
+  purchaseSource String?
+  adminNote      String?
+  product        LibraryProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user           User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@unique([productId, userId])
   @@index([status])
+  @@index([productId, status, createdAt])
+  @@index([guestEmail])
+  @@index([guestPhone])
   @@map("library_reviews")
 }
 

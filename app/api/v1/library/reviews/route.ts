@@ -13,8 +13,17 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   const userId = getSessionUserIdFromRequest(request);
-  if (!userId) return problem(401, "UNAUTHORIZED", "Sign in to leave a Library review.");
-  let body: { productId?: string; rating?: number; title?: string; body?: string; displayName?: string };
+  let body: {
+    productId?: string;
+    rating?: number;
+    title?: string;
+    body?: string;
+    displayName?: string;
+    guestName?: string;
+    guestEmail?: string;
+    guestPhone?: string;
+    purchaseSource?: string;
+  };
   try {
     body = await request.json();
   } catch {
@@ -28,14 +37,15 @@ export async function POST(request: Request) {
     title: body.title,
     body: body.body,
     displayName: body.displayName,
+    guestName: body.guestName,
+    guestEmail: body.guestEmail,
+    guestPhone: body.guestPhone,
+    purchaseSource: body.purchaseSource,
   });
   if (!result) return problem(400, "INVALID_REVIEW", "A valid rating and purchased product are required.");
   if ("error" in result) {
     if (result.error === "REVIEWS_DISABLED") {
       return problem(403, "REVIEWS_DISABLED", "Library reviews are currently disabled.");
-    }
-    if (result.error === "PURCHASE_REQUIRED") {
-      return problem(403, "PURCHASE_REQUIRED", "You can review products after purchasing digital or printed formats.");
     }
     if (result.error === "INVALID_RATING") {
       const min = "minRating" in result && typeof result.minRating === "number" ? result.minRating : 1;
@@ -51,6 +61,9 @@ export async function POST(request: Request) {
     }
     if (result.error === "INVALID_DISPLAY_NAME") {
       return problem(400, "INVALID_DISPLAY_NAME", "Display name must be at least 2 characters.");
+    }
+    if (result.error === "GUEST_CONTACT_REQUIRED") {
+      return problem(400, "GUEST_CONTACT_REQUIRED", "Add your name and either a phone number or email so HouseLink can verify the review privately.");
     }
     return problem(400, "INVALID_REVIEW", "A valid rating and product are required.");
   }

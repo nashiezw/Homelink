@@ -198,6 +198,11 @@ type LibraryReviewAdmin = {
   userName?: string | null;
   userEmail?: string | null;
   displayName?: string | null;
+  guestName?: string | null;
+  guestEmail?: string | null;
+  guestPhone?: string | null;
+  purchaseSource?: string | null;
+  adminNote?: string | null;
   rating: number;
   title?: string | null;
   body?: string | null;
@@ -1440,9 +1445,31 @@ export function LibraryAdminHub() {
     await load();
   }
 
-  async function moderateReview(id: string, status: string, patch: { featured?: boolean; verified?: boolean } = {}) {
-    await apiFetch("/api/v1/admin/library", { method: "POST", body: JSON.stringify({ action: "moderate_review", id, status, ...patch }) });
+  async function moderateReview(id: string, status: string, patch: { featured?: boolean; verified?: boolean; title?: string | null; body?: string | null; adminNote?: string | null } = {}) {
+    const result = await apiFetch("/api/v1/admin/library", { method: "POST", body: JSON.stringify({ action: "moderate_review", id, status, ...patch }) });
+    if (result.error) {
+      setFeedback({ tone: "error", message: result.error.message || "Review could not be updated." });
+      return;
+    }
     await load();
+    setFeedback({ tone: "success", message: "Review moderation updated." });
+  }
+
+  async function deleteReview(row: LibraryReviewAdmin) {
+    const proceed = await requestConfirm({
+      title: "Delete Review",
+      description: `Delete this review for ${row.productTitle}? This removes it from moderation permanently.`,
+      confirmLabel: "Delete Review",
+      danger: true,
+    });
+    if (!proceed) return;
+    const result = await apiFetch("/api/v1/admin/library", { method: "POST", body: JSON.stringify({ action: "delete_review", id: row.id }) });
+    if (result.error) {
+      setFeedback({ tone: "error", message: result.error.message || "Review could not be deleted." });
+      return;
+    }
+    await load();
+    setFeedback({ tone: "success", message: "Review deleted." });
   }
 
   function openManualOrder() {
@@ -1850,6 +1877,7 @@ export function LibraryAdminHub() {
             onReportFilterChange={setReportFilter}
             onUpdateQuoteRequest={updateQuoteRequestStatus}
             onProcessAbandonedCarts={processAbandonedCarts}
+            onDeleteReview={deleteReview}
           />
           {view === "Settings" && (
             <div className="mt-5 rounded-xl border border-white/[0.08] bg-slate-950/40 p-4">
@@ -3672,6 +3700,7 @@ function LibraryTabManagement({
   onReportFilterChange,
   onUpdateQuoteRequest,
   onProcessAbandonedCarts,
+  onDeleteReview,
 }: {
   view: string;
   products: LibraryProduct[];
@@ -3699,7 +3728,8 @@ function LibraryTabManagement({
   onEditTaxonomy: (kind: LibraryGroupField, row?: LibraryTaxonomyAdmin) => void;
   onDeleteTaxonomy: (kind: LibraryGroupField, id: string) => void | Promise<void>;
   onEditDownloadAccess: (row: LibraryDownloadAccessAdmin) => void;
-  onModerateReview: (id: string, status: string, patch?: { featured?: boolean; verified?: boolean }) => void | Promise<void>;
+  onModerateReview: (id: string, status: string, patch?: { featured?: boolean; verified?: boolean; title?: string | null; body?: string | null; adminNote?: string | null }) => void | Promise<void>;
+  onDeleteReview: (row: LibraryReviewAdmin) => void | Promise<void>;
   onOpenInventoryMovement: (product?: LibraryProduct) => void;
   onOpenRecommendation: (product?: LibraryProduct) => void;
   onEditRecommendation: (row: LibraryRecommendationAdmin) => void;
@@ -3760,18 +3790,90 @@ function LibraryTabManagement({
   }
 
   if (view === "Reviews") {
+    const statusCounts = operations.reviews.reduce((map, review) => {
+      map.set(review.status, (map.get(review.status) ?? 0) + 1);
+      return map;
+    }, new Map<string, number>());
+    const editReview = (row: LibraryReviewAdmin) => {
+      const title = window.prompt("Edit the public review title", row.title ?? "");
+      if (title === null) return;
+      const body = window.prompt("Edit the public review text", row.body ?? "");
+      if (body === null) return;
+      void onModerateReview(row.id, row.status, { title, body });
+    };
+    const addAdminNote = (row: LibraryReviewAdmin) => {
+      const adminNote = window.prompt("Private admin note. This is never shown publicly.", row.adminNote ?? "");
+      if (adminNote === null) return;
+      void onModerateReview(row.id, row.status, { adminNote });
+    };
     return (
-      <AdminDataTable
-        rows={operations.reviews}
-        emptyMessage="No Library reviews yet."
-        columns={[
-          { key: "product", header: "Product", render: (row) => <div><p className="font-semibold text-white">{row.productTitle}</p><p className="text-xs text-slate-500">{row.displayName ? `${row.displayName} · ${row.userName ?? row.userEmail ?? "Customer"}` : (row.userName ?? row.userEmail ?? "Customer")}</p></div> },
-          { key: "rating", header: "Rating", render: (row) => `${row.rating}/5` },
-          { key: "review", header: "Review", render: (row) => <div><p className="font-semibold text-slate-200">{row.title ?? "Untitled"}</p><p className="line-clamp-2 text-xs text-slate-500">{row.body ?? "No written review"}</p></div> },
-          { key: "status", header: "Status", render: (row) => <AdminStatusBadge status={row.status} variant={row.status === "APPROVED" ? "success" : row.status === "REJECTED" ? "danger" : "warning"} /> },
-          { key: "actions", header: "Actions", render: (row) => <div className="flex flex-wrap gap-2"><button type="button" onClick={() => onModerateReview(row.id, "APPROVED")} className="rounded-lg border border-white/10 px-3 py-2 text-xs font-bold text-slate-300 hover:bg-white/5">Approve</button><button type="button" onClick={() => onModerateReview(row.id, row.status, { featured: !row.featured })} className="rounded-lg border border-white/10 px-3 py-2 text-xs font-bold text-slate-300 hover:bg-white/5">{row.featured ? "Unfeature" : "Feature"}</button><button type="button" onClick={() => onModerateReview(row.id, row.status, { verified: !row.verified })} className="rounded-lg border border-white/10 px-3 py-2 text-xs font-bold text-slate-300 hover:bg-white/5">{row.verified ? "Unverify" : "Verify"}</button><IconButton icon={Trash2} label="Reject" danger onClick={() => void onModerateReview(row.id, "REJECTED")} /></div> },
-        ]}
-      />
+      <div className="grid gap-4">
+        <MiniMetricGrid rows={[
+          { label: "Pending", value: statusCounts.get("PENDING") ?? 0, detail: "Need approval" },
+          { label: "Approved", value: (statusCounts.get("APPROVED") ?? 0) + (statusCounts.get("PUBLISHED") ?? 0), detail: "Visible publicly" },
+          { label: "Rejected", value: statusCounts.get("REJECTED") ?? 0, detail: "Hidden from product pages" },
+        ]} />
+        <AdminDataTable
+          rows={operations.reviews}
+          emptyMessage="No Library reviews yet."
+          columns={[
+            {
+              key: "customer",
+              header: "Customer / private verification",
+              render: (row) => {
+                const publicName = row.displayName || row.guestName || row.userName || "HouseLink customer";
+                const privateContact = row.guestPhone || row.guestEmail || row.userEmail || "No contact captured";
+                return (
+                  <div className="min-w-0">
+                    <p className="font-semibold text-white">{publicName}</p>
+                    <p className="break-words text-xs text-slate-500 [overflow-wrap:anywhere]">{privateContact}</p>
+                    <p className="mt-1 text-[11px] font-bold uppercase tracking-wider text-slate-500">{formatPurchaseSource(row.purchaseSource)}</p>
+                  </div>
+                );
+              },
+            },
+            { key: "product", header: "Product", render: (row) => <span className="font-semibold text-slate-200">{row.productTitle}</span> },
+            { key: "rating", header: "Rating", render: (row) => <span className="text-amber-300">{"★".repeat(row.rating)}{"☆".repeat(Math.max(0, 5 - row.rating))}</span> },
+            {
+              key: "review",
+              header: "Review",
+              render: (row) => (
+                <div className="max-w-xl">
+                  <p className="font-semibold text-slate-200">{row.title ?? "Untitled"}</p>
+                  <p className="line-clamp-3 text-xs leading-5 text-slate-500">{row.body ?? "No written review"}</p>
+                  {row.adminNote ? <p className="mt-2 rounded-md border border-amber-400/20 bg-amber-400/10 px-2 py-1 text-xs text-amber-100">Admin note: {row.adminNote}</p> : null}
+                </div>
+              ),
+            },
+            {
+              key: "status",
+              header: "Moderation",
+              render: (row) => (
+                <div className="grid gap-2">
+                  <AdminStatusBadge status={row.status} variant={row.status === "APPROVED" || row.status === "PUBLISHED" ? "success" : row.status === "REJECTED" ? "danger" : "warning"} />
+                  {row.verified ? <AdminStatusBadge status="VERIFIED PURCHASE" variant="success" /> : <AdminStatusBadge status="UNVERIFIED" variant="muted" />}
+                  {row.featured ? <AdminStatusBadge status="FEATURED" variant="info" /> : null}
+                </div>
+              ),
+            },
+            {
+              key: "actions",
+              header: "Actions",
+              render: (row) => (
+                <div className="flex flex-wrap gap-2">
+                  <button type="button" onClick={() => onModerateReview(row.id, "APPROVED")} className="rounded-lg border border-emerald-500/30 px-3 py-2 text-xs font-bold text-emerald-300 hover:bg-emerald-500/10">Approve</button>
+                  <button type="button" onClick={() => onModerateReview(row.id, "REJECTED")} className="rounded-lg border border-amber-500/30 px-3 py-2 text-xs font-bold text-amber-200 hover:bg-amber-500/10">Reject</button>
+                  <button type="button" onClick={() => editReview(row)} className="rounded-lg border border-white/10 px-3 py-2 text-xs font-bold text-slate-300 hover:bg-white/5">Edit copy</button>
+                  <button type="button" onClick={() => addAdminNote(row)} className="rounded-lg border border-white/10 px-3 py-2 text-xs font-bold text-slate-300 hover:bg-white/5">Admin note</button>
+                  <button type="button" onClick={() => onModerateReview(row.id, row.status, { verified: !row.verified })} className="rounded-lg border border-white/10 px-3 py-2 text-xs font-bold text-slate-300 hover:bg-white/5">{row.verified ? "Unverify" : "Verify"}</button>
+                  <button type="button" onClick={() => onModerateReview(row.id, row.status, { featured: !row.featured })} className="rounded-lg border border-white/10 px-3 py-2 text-xs font-bold text-slate-300 hover:bg-white/5">{row.featured ? "Unfeature" : "Feature"}</button>
+                  <IconButton icon={Trash2} label="Delete review" danger onClick={() => void onDeleteReview(row)} />
+                </div>
+              ),
+            },
+          ]}
+        />
+      </div>
     );
   }
 
@@ -4517,6 +4619,17 @@ function initials(name: string) {
   const parts = name.trim().split(/\s+/).filter(Boolean);
   if (!parts.length) return "HL";
   return parts.slice(0, 2).map((part) => part[0]?.toUpperCase()).join("");
+}
+
+function formatPurchaseSource(source?: string | null) {
+  const labels: Record<string, string> = {
+    WEBSITE: "Website purchase",
+    WHATSAPP: "WhatsApp purchase",
+    IN_STORE: "In-store / collection",
+    DELIVERY: "Delivery sale",
+    OTHER: "Other source",
+  };
+  return labels[String(source || "OTHER").toUpperCase()] ?? "Other source";
 }
 
 function readFile(file: File): Promise<string> {

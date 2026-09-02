@@ -218,6 +218,11 @@ export type LibraryReviewAdmin = {
   userName?: string | null;
   userEmail?: string | null;
   displayName?: string | null;
+  guestName?: string | null;
+  guestEmail?: string | null;
+  guestPhone?: string | null;
+  purchaseSource?: string | null;
+  adminNote?: string | null;
   rating: number;
   title?: string | null;
   body?: string | null;
@@ -1822,16 +1827,20 @@ export async function isLibraryWishlisted(userId: string, productId: string) {
 }
 
 export async function createLibraryCustomerReview(input: {
-  userId: string;
+  userId?: string | null;
   productId: string;
   rating: number;
   title?: string;
   body?: string;
   displayName?: string;
+  guestName?: string;
+  guestEmail?: string;
+  guestPhone?: string;
+  purchaseSource?: string;
 }) {
   const settings = await getLibraryStoreSettings();
   if (!settings.reviews.enabled) return { error: "REVIEWS_DISABLED" as const };
-  if (!input.userId || !input.productId) return { error: "INVALID_REVIEW" as const };
+  if (!input.productId) return { error: "INVALID_REVIEW" as const };
 
   const rating = Math.round(Number(input.rating));
   if (!Number.isFinite(rating) || rating < 1 || rating > 5 || rating < settings.reviews.minRating) {
@@ -1847,24 +1856,36 @@ export async function createLibraryCustomerReview(input: {
     return { error: "INVALID_BODY" as const, minLength: LIBRARY_REVIEW_MIN_BODY };
   }
 
-  const displayName = settings.reviews.allowGuestNames
-    ? (input.displayName?.trim().replace(/\s+/g, " ").slice(0, 60) || null)
-    : null;
-  if (settings.reviews.allowGuestNames && displayName && displayName.length < 2) {
+  const userId = input.userId?.trim() || null;
+  const guestName = normalizeReviewText(input.guestName, 80);
+  const guestEmail = normalizeReviewEmail(input.guestEmail);
+  const guestPhone = normalizeReviewPhone(input.guestPhone);
+  const purchaseSource = normalizePurchaseSource(input.purchaseSource);
+  const displayName = normalizeReviewText(input.displayName || guestName || undefined, 60);
+  const publicName = displayName || guestName;
+  if (publicName && publicName.length < 2) {
     return { error: "INVALID_DISPLAY_NAME" as const };
   }
+  if (!userId && (!guestName || (!guestEmail && !guestPhone))) {
+    return { error: "GUEST_CONTACT_REQUIRED" as const };
+  }
 
-  const autoApproved = Boolean(settings.reviews.autoApprove);
+  const autoApproved = Boolean(userId && settings.reviews.autoApprove);
   const status = autoApproved ? "APPROVED" : "PENDING";
 
   if (!shouldUsePostgresLibrary()) {
     return {
       id: `local-review-${Date.now()}`,
       productId: input.productId,
+      userId,
       rating,
       title,
       body,
       displayName,
+      guestName,
+      guestEmail,
+      guestPhone,
+      purchaseSource,
       status,
       verified: false,
       autoApproved,
@@ -1873,47 +1894,42 @@ export async function createLibraryCustomerReview(input: {
   }
 
   const prisma = getMainPrisma();
-  const access = await prisma.libraryDownloadAccess.findFirst({
-    where: { userId: input.userId, productId: input.productId, status: { in: ["ACTIVE", "EXPIRED"] } },
-    select: { id: true },
-  });
-  const purchased = access
-    ? true
-    : Boolean(
-        await prisma.libraryOrderItem.findFirst({
-          where: {
-            productId: input.productId,
-            order: { customerId: input.userId, status: { in: ["PAID", "FULFILLED"] } },
-          },
-          select: { id: true },
-        }),
-      );
+  const purchased = userId ? await hasLibraryProductPurchase(prisma, userId, input.productId) : false;
 
-  if (settings.reviews.requirePurchase && !purchased) return { error: "PURCHASE_REQUIRED" as const };
-
-  const review = await prisma.libraryReview.upsert({
-    where: { productId_userId: { productId: input.productId, userId: input.userId } },
-    create: {
+  const reviewData = {
       productId: input.productId,
-      userId: input.userId,
+      userId,
       rating,
       title,
       body,
       displayName,
+      guestName,
+      guestEmail,
+      guestPhone,
+      purchaseSource,
       status,
       verified: purchased,
       featured: false,
-    },
-    update: {
-      rating,
-      title,
-      body,
-      displayName,
-      // Resubmits always re-enter moderation unless auto-approve is on.
-      status,
-      verified: purchased,
-    },
-  });
+  };
+  const review = userId
+    ? await prisma.libraryReview.upsert({
+        where: { productId_userId: { productId: input.productId, userId } },
+        create: reviewData,
+        update: {
+          rating,
+          title,
+          body,
+          displayName,
+          guestName,
+          guestEmail,
+          guestPhone,
+          purchaseSource,
+          // Resubmits always re-enter moderation unless auto-approve is on.
+          status,
+          verified: purchased,
+        },
+      })
+    : await prisma.libraryReview.create({ data: reviewData });
   const productRating = await recalculateLibraryProductRating(input.productId);
   return { ...review, autoApproved, productRating };
 }
@@ -1934,8 +1950,66 @@ export async function listApprovedLibraryProductReviews(productId: string, limit
     featured: row.featured,
     verified: row.verified,
     createdAt: row.createdAt.toISOString(),
-    authorName: row.displayName?.trim() || row.user.name || "HouseLink customer",
+    authorName: row.displayName?.trim() || row.guestName?.trim() || row.user?.name || "HouseLink customer",
   }));
+}
+
+async function hasLibraryProductPurchase(prisma: ReturnType<typeof getMainPrisma>, userId: string, productId: string) {
+  const access = await prisma.libraryDownloadAccess.findFirst({
+    where: { userId, productId, status: { in: ["ACTIVE", "EXPIRED"] } },
+    select: { id: true },
+  });
+  if (access) return true;
+  return Boolean(
+    await prisma.libraryOrderItem.findFirst({
+      where: {
+        productId,
+        order: { customerId: userId, status: { in: ["PAID", "FULFILLED"] } },
+      },
+      select: { id: true },
+    }),
+  );
+}
+
+function normalizeReviewText(value: unknown, maxLength: number) {
+  const normalized = String(value ?? "").trim().replace(/\s+/g, " ").slice(0, maxLength);
+  return normalized || null;
+}
+
+function normalizeReviewEmail(value: unknown) {
+  const email = String(value ?? "").trim().toLowerCase().slice(0, 160);
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : null;
+}
+
+function normalizeReviewPhone(value: unknown) {
+  const phone = String(value ?? "").trim().replace(/[^\d+()\-\s]/g, "").replace(/\s+/g, " ").slice(0, 40);
+  return phone.length >= 7 ? phone : null;
+}
+
+function normalizePurchaseSource(value: unknown) {
+  const source = String(value ?? "").trim().toUpperCase().replace(/[^A-Z_ -]/g, "").replace(/\s+/g, "_");
+  const allowed = new Set(["WEBSITE", "WHATSAPP", "IN_STORE", "DELIVERY", "OTHER"]);
+  return allowed.has(source) ? source : "OTHER";
+}
+
+export async function deleteLibraryReview(id: string, actorId?: string) {
+  if (!shouldUsePostgresLibrary()) return null;
+  const prisma = getMainPrisma();
+  const row = await prisma.libraryReview.delete({
+    where: { id },
+    select: { id: true, productId: true, title: true, status: true },
+  }).catch(() => null);
+  if (!row) return null;
+  await recalculateLibraryProductRating(row.productId);
+  await logLibraryActivity({
+    actorId,
+    targetType: "review",
+    targetId: row.id,
+    action: "REVIEW_DELETED",
+    message: `Deleted Library review${row.title ? `: ${row.title}` : ""}.`,
+    metadata: { status: row.status },
+  });
+  return { deleted: true, id: row.id, productId: row.productId };
 }
 
 export async function buildLibraryExportCsv(type: string) {
@@ -3443,15 +3517,25 @@ export async function updateLibraryDownloadAccess(id: string, input: { status?: 
   return toLibraryDownloadAccessAdmin(row);
 }
 
-export async function moderateLibraryReview(id: string, input: { status?: string; featured?: boolean; verified?: boolean }, actorId?: string) {
+export async function moderateLibraryReview(
+  id: string,
+  input: { status?: string; featured?: boolean; verified?: boolean; title?: string | null; body?: string | null; adminNote?: string | null },
+  actorId?: string,
+) {
   if (!shouldUsePostgresLibrary()) return null;
   const prisma = getMainPrisma();
+  const title = input.title === undefined ? undefined : normalizeReviewText(input.title, 120);
+  const body = input.body === undefined ? undefined : String(input.body ?? "").trim().slice(0, 4000) || null;
+  const adminNote = input.adminNote === undefined ? undefined : normalizeReviewText(input.adminNote, 500);
   const row = await prisma.libraryReview.update({
     where: { id },
     data: {
       ...(input.status ? { status: input.status } : {}),
       ...(input.featured !== undefined ? { featured: input.featured } : {}),
       ...(input.verified !== undefined ? { verified: input.verified } : {}),
+      ...(title !== undefined ? { title } : {}),
+      ...(body !== undefined ? { body } : {}),
+      ...(adminNote !== undefined ? { adminNote } : {}),
     },
     include: { product: { select: { title: true } }, user: { select: { name: true, email: true } } },
   }).catch(() => null);
@@ -4339,6 +4423,11 @@ function toLibraryReviewAdmin(row: {
   verified: boolean;
   featured: boolean;
   createdAt: Date;
+  guestName?: string | null;
+  guestEmail?: string | null;
+  guestPhone?: string | null;
+  purchaseSource?: string | null;
+  adminNote?: string | null;
   product?: { title: string } | null;
   user?: { name: string | null; email: string } | null;
 }): LibraryReviewAdmin {
@@ -4349,6 +4438,11 @@ function toLibraryReviewAdmin(row: {
     userName: row.user?.name ?? null,
     userEmail: row.user?.email ?? null,
     displayName: row.displayName ?? null,
+    guestName: row.guestName ?? null,
+    guestEmail: row.guestEmail ?? null,
+    guestPhone: row.guestPhone ?? null,
+    purchaseSource: row.purchaseSource ?? null,
+    adminNote: row.adminNote ?? null,
     rating: row.rating,
     title: row.title,
     body: row.body,

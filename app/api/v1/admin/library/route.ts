@@ -15,6 +15,7 @@ import {
   deleteLibraryExportJob,
   deleteLibraryTaxSetting,
   deleteLibraryTaxonomy,
+  deleteLibraryReview,
   disableLibraryCustomer,
   duplicateLibraryProduct,
   getAdminLibraryData,
@@ -321,11 +322,21 @@ export async function POST(request: Request) {
           status: optionalString(body.status),
           featured: body.featured === undefined ? undefined : Boolean(body.featured),
           verified: body.verified === undefined ? undefined : Boolean(body.verified),
+          title: body.title === undefined ? undefined : optionalNullableString(body.title),
+          body: body.body === undefined ? undefined : optionalNullableString(body.body),
+          adminNote: body.adminNote === undefined ? undefined : optionalNullableString(body.adminNote),
         },
         auth.user.id,
       );
       if (!review) return problem(404, "REVIEW_NOT_FOUND", "Review not found.");
+      revalidatePublicLibrary();
       return ok({ review });
+    }
+    if (body.action === "delete_review") {
+      const result = await deleteLibraryReview(String(body.id), auth.user.id);
+      if (!result) return problem(404, "REVIEW_NOT_FOUND", "Review not found.");
+      revalidatePublicLibrary();
+      return ok(result);
     }
     if (body.action === "create_guest_claim") {
       if (!body.orderId || !body.email) return problem(400, "INVALID_CLAIM", "orderId and email are required.");

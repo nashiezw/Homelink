@@ -117,7 +117,15 @@ export function LibraryProductPage({
     autoApprove: boolean;
     allowGuestNames: boolean;
   } | null>(null);
-  const [reviewForm, setReviewForm] = useState({ rating: 5, title: "", body: "", displayName: "" });
+  const [reviewForm, setReviewForm] = useState({
+    rating: 5,
+    title: "",
+    body: "",
+    displayName: "",
+    guestName: "",
+    guestContact: "",
+    purchaseSource: "WEBSITE",
+  });
   const [reviewBusy, setReviewBusy] = useState(false);
   const [reviewNotice, setReviewNotice] = useState("");
   const [softcopyBadgeVariant, setSoftcopyBadgeVariant] = useState("control");
@@ -494,10 +502,6 @@ export function LibraryProductPage({
   }
 
   async function submitReview() {
-    if (!user) {
-      setReviewNotice("Sign in to leave a review.");
-      return;
-    }
     if (reviewSettings && !reviewSettings.enabled) {
       setReviewNotice("Reviews are currently disabled.");
       return;
@@ -515,10 +519,21 @@ export function LibraryProductPage({
       setReviewNotice("Write a review of at least 20 characters.");
       return;
     }
-    if (reviewSettings?.allowGuestNames && reviewForm.displayName.trim() && reviewForm.displayName.trim().length < 2) {
+    if (!user && reviewForm.guestName.trim().length < 2) {
+      setReviewNotice("Add your name so the team can verify the review.");
+      return;
+    }
+    if (!user && !reviewForm.guestContact.trim()) {
+      setReviewNotice("Add a phone number or email. It is only visible to HouseLink admins.");
+      return;
+    }
+    if (reviewForm.displayName.trim() && reviewForm.displayName.trim().length < 2) {
       setReviewNotice("Display name must be at least 2 characters.");
       return;
     }
+    const guestContact = reviewForm.guestContact.trim();
+    const guestEmail = guestContact.includes("@") ? guestContact : undefined;
+    const guestPhone = guestContact.includes("@") ? undefined : guestContact;
     setReviewBusy(true);
     setReviewNotice("");
     const result = await apiFetch<{
@@ -532,7 +547,11 @@ export function LibraryProductPage({
         rating: reviewForm.rating,
         title: reviewForm.title,
         body: reviewForm.body,
-        displayName: reviewSettings?.allowGuestNames ? reviewForm.displayName : undefined,
+        displayName: reviewForm.displayName || reviewForm.guestName || undefined,
+        guestName: user ? undefined : reviewForm.guestName,
+        guestEmail,
+        guestPhone,
+        purchaseSource: reviewForm.purchaseSource,
       }),
     });
     setReviewBusy(false);
@@ -540,11 +559,11 @@ export function LibraryProductPage({
       setReviewNotice(result.error.message || "Could not submit review.");
       return;
     }
-    setReviewForm({ rating: Math.max(5, minRating), title: "", body: "", displayName: "" });
+    setReviewForm({ rating: 5, title: "", body: "", displayName: "", guestName: "", guestContact: "", purchaseSource: "WEBSITE" });
     setReviewNotice(
       result.data?.autoApproved
         ? "Thanks — your review is live."
-        : "Thanks — your review was submitted for moderation.",
+        : "Thank you for your review! Your review has been submitted and will appear once approved.",
     );
     if (result.data?.productRating) {
       setRatingSummary({
@@ -1348,27 +1367,26 @@ export function LibraryProductPage({
                 </p>
               )}
               {reviewSettings?.enabled === false ? null : (
-                <div className="rounded-xl border border-dashed border-slate-300 p-4 dark:border-slate-700">
-                  <p className="font-semibold">Write a review</p>
-                  <p className="mt-1 text-xs text-slate-500">
-                    {!user
-                      ? "Sign in to leave a review."
-                      : reviewSettings?.requirePurchase !== false
-                        ? "Available after you purchase this product (digital or print)."
-                        : reviewSettings?.autoApprove
-                          ? "Your review will appear immediately after you submit."
-                          : "Your review will appear after moderation."}
-                  </p>
-                  {!user ? (
-                    <div className="mt-3">
-                      <Link href={`/auth?next=${encodeURIComponent(`/library/${product.slug}`)}`} className="inline-flex">
-                        <Button>Sign in to review</Button>
-                      </Link>
-                      {reviewNotice && <p className="mt-2 text-sm font-semibold text-slate-600 dark:text-slate-300">{reviewNotice}</p>}
+                <div className="rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-50 via-white to-white p-4 shadow-sm dark:border-emerald-900/50 dark:from-emerald-950/20 dark:via-slate-950 dark:to-slate-950">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <p className="text-lg font-semibold text-ink dark:text-white">Bought this book? Share your experience</p>
+                      <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-600 dark:text-slate-300">
+                        Your feedback helps other readers decide if this book is right for them. We review submissions first, and your phone or email is only used privately for verification.
+                      </p>
                     </div>
-                  ) : (
-                    <>
-                      <div className="mt-3 grid gap-3 sm:grid-cols-[8rem_minmax(0,1fr)]">
+                    {!user ? (
+                      <Link href={`/auth?next=${encodeURIComponent(`/library/${product.slug}`)}`} className="text-sm font-semibold text-emerald-700 hover:text-emerald-800 dark:text-emerald-300">
+                        Already have an account? Sign in
+                      </Link>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200">
+                        <ShieldCheck className="size-3.5" /> Signed in
+                      </span>
+                    )}
+                  </div>
+                  <div className="mt-4 rounded-xl border border-white bg-white/85 p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950/70">
+                      <div className="grid gap-3 sm:grid-cols-[8rem_minmax(0,1fr)]">
                         <label className="text-sm font-medium">
                           Rating
                           <select
@@ -1394,7 +1412,47 @@ export function LibraryProductPage({
                           />
                         </label>
                       </div>
-                      {reviewSettings?.allowGuestNames ? (
+                      {!user ? (
+                        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                          <label className="text-sm font-medium">
+                            Name <span className="text-xs font-normal text-slate-500">(public)</span>
+                            <input
+                              value={reviewForm.guestName}
+                              onChange={(e) => setReviewForm({ ...reviewForm, guestName: e.target.value })}
+                              className="mt-1 h-10 w-full rounded-lg border border-slate-200 px-3 dark:border-slate-700 dark:bg-slate-900"
+                              placeholder="Your name"
+                              required
+                              maxLength={80}
+                            />
+                          </label>
+                          <label className="text-sm font-medium">
+                            Phone or email <span className="text-xs font-normal text-slate-500">(private)</span>
+                            <input
+                              value={reviewForm.guestContact}
+                              onChange={(e) => setReviewForm({ ...reviewForm, guestContact: e.target.value })}
+                              className="mt-1 h-10 w-full rounded-lg border border-slate-200 px-3 dark:border-slate-700 dark:bg-slate-900"
+                              placeholder="+263... or you@example.com"
+                              required
+                              maxLength={160}
+                            />
+                          </label>
+                        </div>
+                      ) : null}
+                      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                        <label className="text-sm font-medium">
+                          Where did you purchase?
+                          <select
+                            value={reviewForm.purchaseSource}
+                            onChange={(e) => setReviewForm({ ...reviewForm, purchaseSource: e.target.value })}
+                            className="mt-1 h-10 w-full rounded-lg border border-slate-200 px-3 dark:border-slate-700 dark:bg-slate-900"
+                          >
+                            <option value="WEBSITE">Website</option>
+                            <option value="WHATSAPP">WhatsApp</option>
+                            <option value="IN_STORE">In-store / collection</option>
+                            <option value="DELIVERY">Delivery</option>
+                            <option value="OTHER">Other</option>
+                          </select>
+                        </label>
                         <label className="mt-3 block text-sm font-medium">
                           Display name <span className="text-xs font-normal text-slate-500">(optional public name)</span>
                           <input
@@ -1405,7 +1463,7 @@ export function LibraryProductPage({
                             maxLength={60}
                           />
                         </label>
-                      ) : null}
+                      </div>
                       <label className="mt-3 block text-sm font-medium">
                         Review <span className="text-xs font-normal text-slate-500">(min. 20 characters)</span>
                         <textarea
@@ -1423,10 +1481,16 @@ export function LibraryProductPage({
                         <Button disabled={reviewBusy} onClick={() => void submitReview()}>
                           {reviewBusy ? "Submitting…" : "Submit review"}
                         </Button>
-                        {reviewNotice && <p className="text-sm font-semibold text-slate-600 dark:text-slate-300">{reviewNotice}</p>}
+                        {reviewNotice && (
+                          <p className={cn(
+                            "text-sm font-semibold",
+                            /thank|live/i.test(reviewNotice) ? "text-emerald-700 dark:text-emerald-300" : "text-slate-600 dark:text-slate-300",
+                          )}>
+                            {reviewNotice}
+                          </p>
+                        )}
                       </div>
-                    </>
-                  )}
+                  </div>
                 </div>
               )}
             </div>

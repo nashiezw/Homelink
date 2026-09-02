@@ -259,10 +259,10 @@ export const defaultLibraryStoreSettings: LibraryStoreSettings = {
   },
   reviews: {
     enabled: true,
-    requirePurchase: true,
+    requirePurchase: false,
     autoApprove: false,
     minRating: 1,
-    allowGuestNames: false,
+    allowGuestNames: true,
   },
   seo: {
     storeTitle: "HouseLink Library | Property Books, Manuals & Contracts Zimbabwe",
