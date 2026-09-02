@@ -3,6 +3,9 @@ import type { Prisma } from "@prisma/client";
 import { upsertSitePresence } from "@/lib/analytics/presence";
 import { getMainPrisma, isPostgresStoreEnabled } from "@/lib/db/main-prisma";
 import { getClientIp } from "@/lib/api/request-meta";
+import { sendSmtpPlainEmail } from "@/lib/integrations/smtp";
+import { describeWhatsAppSend, sendWhatsAppTextMessage } from "@/lib/integrations/whatsapp";
+import { getHydratedRuntimePlatformSettings } from "@/lib/settings/runtime";
 import type {
   LiveChatBootstrapView,
   LiveChatContactInput,
@@ -67,7 +70,8 @@ let analyticsCache: { checkedAt: number; value: LiveChatInboxView["analytics"] }
 type AdminUser = { id: string; name: string; email: string; roles: string[] };
 type LiveChatRealtimeEvent =
   | { type: "message"; conversationId: string; visitorId?: string | null; message: LiveChatMessageView; createdAt: string }
-  | { type: "typing"; conversationId: string; visitorId?: string | null; typing: LiveChatTypingView; createdAt: string };
+  | { type: "typing"; conversationId: string; visitorId?: string | null; typing: LiveChatTypingView; createdAt: string }
+  | { type: "inbox"; conversationId?: string | null; visitorId?: string | null; reason: string; createdAt: string };
 type LiveChatRealtimeListener = (event: LiveChatRealtimeEvent) => void;
 
 const realtimeSubscribers = new Map<string, Set<LiveChatRealtimeListener>>();
@@ -341,7 +345,23 @@ export async function sendVisitorMessage(input: {
       title: visitor.currentTitle,
     },
   }).catch(() => null);
-  return shapeMessage(message);
+  await captureLeadIntentFromVisitorMessage(conversation.id, visitor.id, body, input.context);
+  const shaped = shapeMessage(message);
+  publishLiveChatRealtime({
+    type: "message",
+    conversationId: conversation.publicId,
+    visitorId: visitor.publicId,
+    message: shaped,
+    createdAt: new Date().toISOString(),
+  });
+  publishLiveChatRealtime({
+    type: "inbox",
+    conversationId: conversation.publicId,
+    visitorId: visitor.publicId,
+    reason: "visitor_message",
+    createdAt: new Date().toISOString(),
+  });
+  return shaped;
 }
 
 export async function getVisitorMessages(visitorKey: string, conversationPublicId?: string | null) {
@@ -391,8 +411,13 @@ export async function updateVisitorTyping(visitorKey: string, conversationPublic
     if (!visitor) return { ok: true };
     const conversation = await getMainPrisma().liveChatConversation.findFirst({ where: { publicId: conversationPublicId, visitorId: visitor.id } });
     if (!conversation) return { ok: true };
+    setTypingState(conversationPublicId, "visitor", "Visitor", typing);
+    const typingState = getTypingState(conversationPublicId);
+    publishLiveChatRealtime({ type: "typing", conversationId: conversationPublicId, visitorId: visitor.publicId, typing: typingState, createdAt: new Date().toISOString() });
+    return { ok: true };
   }
   setTypingState(conversationPublicId, "visitor", "Visitor", typing);
+  publishLiveChatRealtime({ type: "typing", conversationId: conversationPublicId, typing: getTypingState(conversationPublicId), createdAt: new Date().toISOString() });
   return { ok: true };
 }
 
@@ -432,6 +457,10 @@ export function subscribeLiveChatRealtime(targets: string[], listener: LiveChatR
       if (listeners?.size === 0) realtimeSubscribers.delete(target);
     }
   };
+}
+
+export function subscribeLiveChatAdminRealtime(listener: LiveChatRealtimeListener) {
+  return subscribeLiveChatRealtime(["admin"], listener);
 }
 
 export async function getLiveChatInbox(input: { activeConversationId?: string | null; filter?: string | null; query?: string | null; user: AdminUser }): Promise<LiveChatInboxView> {
@@ -566,6 +595,7 @@ export async function liveChatAdminAction(user: AdminUser, body: Record<string, 
       message: shaped,
       createdAt: new Date().toISOString(),
     });
+    if (!internal) void handleMissedChatRecovery(conversation, agent.displayName, text).catch(() => null);
     await auditEvent(conversation.visitorId, conversation.id, internal ? "INTERNAL_NOTE" : "STAFF_MESSAGE", user.id, { messageType: message.messageType });
     return shaped;
   }
@@ -622,6 +652,7 @@ export async function liveChatAdminAction(user: AdminUser, body: Record<string, 
       message: shaped,
       createdAt: new Date().toISOString(),
     });
+    void handleMissedChatRecovery({ ...conversation, visitor }, agent.displayName, text).catch(() => null);
     await auditEvent(visitor.id, conversation.id, "PROACTIVE_STAFF_MESSAGE", user.id);
     return { conversationId: conversation.publicId, message: shaped };
   }
@@ -646,17 +677,20 @@ export async function liveChatAdminAction(user: AdminUser, body: Record<string, 
         status: "OPEN",
       },
     });
+    let assignedName: string | null = null;
     if (assignedAgentId) {
       const assigned = await prisma.liveChatAgentProfile.findUnique({ where: { id: assignedAgentId } });
+      assignedName = assigned?.displayName ?? null;
       if (assigned?.userId) {
         const participant = await ensureParticipant(conversation.id, assigned.userId, assigned.id);
         if (participant?.joinedNow || participant?.rejoined) await createSystemTimelineMessage(conversation.id, `${assigned.displayName} joined the conversation.`, conversation.publicId, conversation.visitor.publicId);
       }
     }
     const department = departmentId ? await prisma.liveChatDepartment.findUnique({ where: { id: departmentId } }) : null;
+    const fromDepartment = conversation.department?.name;
     const text = action === "transfer"
-      ? `Your conversation has been transferred${department ? ` to ${department.name}` : ""}.`
-      : "A HouseLink team member has been assigned to this conversation.";
+      ? `Your conversation has been transferred${fromDepartment && department && fromDepartment !== department.name ? ` from ${fromDepartment}` : ""}${department ? ` to ${department.name}` : " to another HouseLink team"}.${assignedName ? ` ${assignedName} joined the conversation.` : ""}`
+      : `${assignedName || "A HouseLink team member"} has joined this conversation.`;
     const systemMessage = await prisma.liveChatMessage.create({
       data: {
         publicId: makePublicId("msg"),
@@ -769,6 +803,13 @@ export async function liveChatAdminAction(user: AdminUser, body: Record<string, 
     });
     await auditEvent(conversation.visitorId, conversation.id, "LEAD_CREATED", user.id, { leadId: lead.id, leadType: lead.leadType });
     return { id: lead.id };
+  }
+  if (action === "missed_follow_up") {
+    const conversation = await getConversationByPublicId(String(body.conversationId ?? ""));
+    if (!conversation) throw new LiveChatError("CONVERSATION_NOT_FOUND", "Conversation not found.", 404);
+    const text = sanitizeMessage(String(body.body || missedChatFollowUpBody(agent.displayName, conversation.lastMessagePreview || conversation.subject || "your HouseLink chat")));
+    const result = await sendMissedChatFollowUp(conversation, agent.displayName, text);
+    return result;
   }
   if (action === "department") {
     const name = cleanText(String(body.name ?? ""), 120);
@@ -1196,7 +1237,8 @@ function getTypingState(conversationId: string): LiveChatTypingView {
 }
 
 function publishLiveChatRealtime(event: LiveChatRealtimeEvent) {
-  const targets = [`conversation:${event.conversationId}`];
+  const targets = ["admin"];
+  if ("conversationId" in event && event.conversationId) targets.push(`conversation:${event.conversationId}`);
   if (event.visitorId) targets.push(`visitor:${event.visitorId}`);
   const delivered = new Set<LiveChatRealtimeListener>();
   for (const target of targets) {
@@ -1208,6 +1250,96 @@ function publishLiveChatRealtime(event: LiveChatRealtimeEvent) {
       listener(event);
     }
   }
+}
+
+async function captureLeadIntentFromVisitorMessage(conversationId: string, visitorId: string, body: string, context?: LiveChatVisitorContext) {
+  const intent = inferLeadIntent(body, context);
+  if (!intent) return;
+  const prisma = getMainPrisma();
+  const since = new Date(Date.now() - 24 * 60 * 60_000);
+  const existing = await prisma.liveChatLead.findFirst({
+    where: { conversationId, leadType: intent.leadType, createdAt: { gte: since } },
+    select: { id: true },
+  }).catch(() => null);
+  if (!existing) {
+    await prisma.liveChatLead.create({
+      data: {
+        conversationId,
+        visitorId,
+        leadType: intent.leadType,
+        interest: intent.interest,
+        status: "NEW",
+        notes: `Auto-detected from chat: ${preview(body)}`,
+        source: "LIVE_CHAT_AUTO_INTENT",
+      },
+    }).catch(() => null);
+  }
+  const tag = await prisma.liveChatTag.findUnique({ where: { slug: intent.tagSlug }, select: { id: true } }).catch(() => null);
+  if (tag) {
+    await prisma.liveChatConversationTag.create({ data: { conversationId, tagId: tag.id } }).catch(() => null);
+  }
+  await prisma.liveChatEvent.create({
+    data: {
+      visitorId,
+      conversationId,
+      eventType: "LEAD_INTENT_DETECTED",
+      metadata: { leadType: intent.leadType, tagSlug: intent.tagSlug, interest: intent.interest } as Prisma.InputJsonObject,
+    },
+  }).catch(() => null);
+}
+
+function inferLeadIntent(body: string, context?: LiveChatVisitorContext) {
+  const text = `${body} ${context?.path ?? ""} ${context?.title ?? ""}`.toLowerCase();
+  if (/\b(pay|payment|paid|ecocash|zipit|bank|invoice|proof|checkout|buy|purchase|order|delivery|format|book|pdf|hard copy)\b/.test(text)) {
+    return { leadType: "LIBRARY", tagSlug: text.includes("payment") || text.includes("proof") ? "payment-issue" : "book-buyer", interest: "Book/order or payment help" };
+  }
+  if (/\b(viewing|rent|rental|tenant|landlord|property|house|flat|room|buy|sale|price|location)\b/.test(text)) {
+    return { leadType: "PROPERTY", tagSlug: text.includes("tenant") || text.includes("rent") ? "tenant" : "property-buyer", interest: "Property enquiry" };
+  }
+  if (/\b(academy|course|training|certificate|enrol|enroll|registration|lesson)\b/.test(text)) {
+    return { leadType: "ACADEMY", tagSlug: "academy", interest: "Academy/course enquiry" };
+  }
+  if (/\b(error|bug|not working|failed|issue|support|help)\b/.test(text)) {
+    return { leadType: "SUPPORT", tagSlug: "needs-follow-up", interest: "Support request" };
+  }
+  return null;
+}
+
+async function handleMissedChatRecovery(
+  conversation: { id: string; publicId: string; visitorId: string; lastMessagePreview?: string | null; subject?: string | null; visitor: { publicId: string; name?: string | null; email?: string | null; phone?: string | null; lastSeenAt: Date } },
+  agentName: string,
+  message: string,
+) {
+  if (Date.now() - conversation.visitor.lastSeenAt.getTime() < 2 * 60_000) return;
+  await sendMissedChatFollowUp(conversation, agentName, missedChatFollowUpBody(agentName, message));
+}
+
+async function sendMissedChatFollowUp(
+  conversation: { id: string; publicId: string; visitorId: string; lastMessagePreview?: string | null; subject?: string | null; visitor: { publicId: string; name?: string | null; email?: string | null; phone?: string | null } },
+  agentName: string,
+  body: string,
+) {
+  const settings = await getHydratedRuntimePlatformSettings().catch(() => null);
+  const results: string[] = [];
+  if (settings?.integrations && conversation.visitor.phone) {
+    const whatsapp = await sendWhatsAppTextMessage(settings.integrations, conversation.visitor.phone, body).catch((error: unknown) => ({ ok: false, message: error instanceof Error ? error.message : "WhatsApp follow-up failed" }));
+    results.push(describeWhatsAppSend({ ok: whatsapp.ok, to: conversation.visitor.phone, body }));
+    await auditEvent(conversation.visitorId, conversation.id, whatsapp.ok ? "MISSED_CHAT_WHATSAPP_SENT" : "MISSED_CHAT_WHATSAPP_READY", undefined, { message: whatsapp.message, to: conversation.visitor.phone });
+  }
+  if (settings?.integrations && conversation.visitor.email) {
+    const email = await sendSmtpPlainEmail(settings.integrations, conversation.visitor.email, "HouseLink replied to your chat", body).catch((error: unknown) => ({ ok: false, message: error instanceof Error ? error.message : "Email follow-up failed" }));
+    results.push(email.ok ? `Email sent to ${conversation.visitor.email}` : `Email ready for ${conversation.visitor.email}`);
+    await auditEvent(conversation.visitorId, conversation.id, email.ok ? "MISSED_CHAT_EMAIL_SENT" : "MISSED_CHAT_EMAIL_READY", undefined, { message: email.message, to: conversation.visitor.email });
+  }
+  if (!results.length) {
+    await auditEvent(conversation.visitorId, conversation.id, "MISSED_CHAT_FOLLOW_UP_READY", undefined, { reason: "No visitor phone or email captured" });
+  }
+  publishLiveChatRealtime({ type: "inbox", conversationId: conversation.publicId, visitorId: conversation.visitor.publicId, reason: "missed_chat_recovery", createdAt: new Date().toISOString() });
+  return { ok: true, results };
+}
+
+function missedChatFollowUpBody(agentName: string, message: string) {
+  return `Hi, this is ${agentName} from HouseLink.\n\nI replied to your live chat but you may have left the page. ${message}\n\nYou can return to HouseLink and continue the conversation anytime.`;
 }
 
 async function maybeTriggerAutomation(visitorId: string, conversationId: string | null, context: LiveChatVisitorContext) {
@@ -1678,6 +1810,9 @@ function proactiveMessageForVisitor(visitor?: { currentPath?: string | null; cur
   const title = cleanHouseLinkTitle(visitor?.currentTitle);
   const path = visitor?.currentPath?.toLowerCase() ?? "";
   const intro = agentName ? `Hi, this is ${agentName} from HouseLink.` : "Hi, welcome to HouseLink.";
+  if (path.includes("failed") || path.includes("cancelled") || path.includes("proof")) {
+    return `${intro}\n\nI noticed you may need help completing payment or uploading proof. I can help you finish the order now so you do not lose access to the item.`;
+  }
   if (path.includes("/library/checkout") || path.includes("payment")) {
     return `${intro}\n\nI can help with payment, proof upload, or choosing another payment option so your order is completed smoothly.`;
   }

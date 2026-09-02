@@ -22,6 +22,8 @@ type LiveChatRealtimeEvent = {
   typing?: LiveChatTypingView;
 };
 
+const UNREAD_STORAGE_KEY = "hl_live_unread_count";
+
 export function LiveChatWidget() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -76,6 +78,7 @@ export function LiveChatWidget() {
     if (typeof window === "undefined") return;
     if (!window.sessionStorage.getItem("hl_live_landing")) window.sessionStorage.setItem("hl_live_landing", `${pathname || "/"}${window.location.search}`);
     setOpen(isLiveChatFloatingOpen());
+    setUnread(readStoredUnreadCount());
   }, [pathname]);
 
   useEffect(() => {
@@ -127,7 +130,9 @@ export function LiveChatWidget() {
           notifiedStaffMessageIdsRef.current.add(latestStaffMessage.id);
           showPreviewMessage(latestStaffMessage, result.data.settings.soundEnabled);
         }
-        setUnread(result.data.conversation.unreadForVisitor);
+        const nextUnread = Math.max(readStoredUnreadCount(), unreadStaffMessageCount(result.data.messages));
+        setUnread(nextUnread);
+        storeUnreadCount(nextUnread);
       }
       setError(null);
     } else {
@@ -171,12 +176,16 @@ export function LiveChatWidget() {
           const latest = result.data![result.data!.length - 1];
           if (isVisitorPreviewMessage(latest) && !notifiedStaffMessageIdsRef.current.has(latest.id)) {
             notifiedStaffMessageIdsRef.current.add(latest.id);
-            if (open) {
-              if (boot.settings.soundEnabled) playLiveChatNotificationSound();
-            } else {
-              setUnread((value) => value + 1);
-              showPreviewMessage(latest, boot.settings.soundEnabled);
-            }
+          if (open) {
+            if (boot.settings.soundEnabled) playLiveChatNotificationSound();
+          } else {
+            setUnread((value) => {
+              const next = value + 1;
+              storeUnreadCount(next);
+              return next;
+            });
+            showPreviewMessage(latest, boot.settings.soundEnabled);
+          }
           }
         }
         return result.data!;
@@ -206,7 +215,11 @@ export function LiveChatWidget() {
         if (openRef.current) {
           if (soundEnabled) playLiveChatNotificationSound();
         } else {
-          setUnread((value) => value + 1);
+          setUnread((value) => {
+            const next = value + 1;
+            storeUnreadCount(next);
+            return next;
+          });
           showPreviewMessage(message, soundEnabled);
         }
       }
@@ -260,10 +273,11 @@ export function LiveChatWidget() {
   function toggleOpen(next: boolean) {
     setOpen(next);
     setLiveChatFloatingOpen(next);
-    if (next) {
-      setUnread(0);
-      dismissPreviewMessage();
-    }
+      if (next) {
+        setUnread(0);
+        storeUnreadCount(0);
+        dismissPreviewMessage();
+      }
   }
 
   async function sendMessage(body = draft) {
@@ -289,6 +303,7 @@ export function LiveChatWidget() {
       createdAt: new Date().toISOString(),
       deliveredAt: null,
       readAt: null,
+      metadata: { deliveryStatus: "sending" },
     };
     setMessages((current) => [...current, optimistic]);
     setDraft("");
@@ -311,11 +326,15 @@ export function LiveChatWidget() {
       setPendingContactField(null);
       if (!boot?.conversation) void bootstrap();
     } else {
-      setMessages((current) => current.filter((message) => message.id !== optimistic.id));
-      setDraft(text);
+      setMessages((current) => current.map((message) => message.id === optimistic.id ? { ...message, metadata: { deliveryStatus: "failed", error: result.error?.message ?? "Message failed. Please try again." } } : message));
       setError(result.error?.message ?? "Message failed. Please try again.");
     }
     setSending(false);
+  }
+
+  async function retryMessage(message: LiveChatMessageView) {
+    setMessages((current) => current.filter((item) => item.id !== message.id));
+    await sendMessage(message.body);
   }
 
   function handleQuickReply(body: string, contactField?: "phone" | "email") {
@@ -342,8 +361,10 @@ export function LiveChatWidget() {
   const launcherPosition = launcherOnLeft ? "left-4 items-start sm:left-5" : "right-4 items-end sm:right-5";
   const agentName = boot?.supportAgent?.displayName || boot?.settings.teamDisplayName || "HouseLink Live";
   const supportAvatarUrl = displayImageUrl(boot?.supportAgent?.avatarUrl, { width: 96, height: 96, crop: "fill" });
+  const agentTitle = boot?.supportAgent?.title || "HouseLink Support";
+  const agentDepartment = boot?.conversation?.department?.name || boot?.supportAgent?.department?.name || "Support team";
   const agentIntro = boot?.supportAgent
-    ? boot.supportAgent.publicIntro || `${boot.supportAgent.title || "Support"} is online`
+    ? boot.supportAgent.publicIntro || `${agentTitle} is online`
     : "Leave a message, the team will reply here";
   const currentContext = context.viewed?.productTitle || context.viewed?.propertyTitle || context.viewed?.courseTitle || "this page";
   const quickReplies: Array<{ label: string; body: string; icon: typeof Sparkles; contactField?: "phone" | "email" }> = [
@@ -379,7 +400,8 @@ export function LiveChatWidget() {
                     <p className="truncate text-[15px] font-black">{agentName}</p>
                     <span className="rounded-full bg-emerald-400/15 px-2 py-0.5 text-[10px] font-black uppercase text-emerald-100">Online</span>
                   </div>
-                  <p className="mt-0.5 truncate text-xs text-slate-300">{agentIntro}</p>
+                  <p className="mt-0.5 truncate text-xs text-slate-300">{agentTitle} / {agentDepartment}</p>
+                  <p className="mt-0.5 truncate text-[11px] text-slate-400">{agentIntro}</p>
                 </div>
               </div>
               <button type="button" onClick={() => toggleOpen(false)} className="rounded-full p-2 text-slate-200 transition hover:bg-white/10" aria-label="Minimise live chat">
@@ -432,7 +454,7 @@ export function LiveChatWidget() {
                 <span className="mt-1 block">{suggested}</span>
               </button>
             ) : null}
-            {messages.map((message, index) => <ChatBubble key={message.id} message={message} showReceipt={message.senderKind === "VISITOR" && index === latestVisitorMessageIndex(messages)} />)}
+            {messages.map((message, index) => <ChatBubble key={message.id} message={message} showReceipt={message.senderKind === "VISITOR" && index === latestVisitorMessageIndex(messages)} onRetry={isFailedLocalMessage(message) ? () => void retryMessage(message) : undefined} />)}
             {sending ? (
               <div className="flex justify-end">
                 <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-200">Sending...</span>
@@ -530,15 +552,16 @@ export function LiveChatWidget() {
   );
 }
 
-function ChatBubble({ message, showReceipt = false }: { message: LiveChatMessageView; showReceipt?: boolean }) {
+function ChatBubble({ message, showReceipt = false, onRetry }: { message: LiveChatMessageView; showReceipt?: boolean; onRetry?: () => void }) {
   if (message.messageType === "SYSTEM") {
     return <p className="mx-auto max-w-[90%] rounded-full bg-white/90 px-3 py-1.5 text-center text-xs font-semibold text-slate-500 shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-700">{message.body}</p>;
   }
   const mine = message.senderKind === "VISITOR";
   const card = message.metadata && typeof message.metadata === "object" ? message.metadata as { url?: string; title?: string } : null;
+  const failed = isFailedLocalMessage(message);
   return (
     <div className={`flex ${mine ? "justify-end" : "justify-start"}`}>
-      <div className={`max-w-[82%] rounded-[18px] px-3.5 py-2.5 text-sm shadow-sm ring-1 ${mine ? "rounded-br-md bg-emerald-600 text-white ring-emerald-700/20" : "rounded-bl-md bg-white text-slate-800 ring-slate-200 dark:bg-slate-950 dark:text-slate-100 dark:ring-slate-800"}`}>
+      <div className={`max-w-[82%] rounded-[18px] px-3.5 py-2.5 text-sm shadow-sm ring-1 ${failed ? "rounded-br-md bg-red-600 text-white ring-red-700/20" : mine ? "rounded-br-md bg-emerald-600 text-white ring-emerald-700/20" : "rounded-bl-md bg-white text-slate-800 ring-slate-200 dark:bg-slate-950 dark:text-slate-100 dark:ring-slate-800"}`}>
         {!mine ? <p className="mb-1 flex items-center gap-1 text-[10px] font-black uppercase text-emerald-600"><UserRound className="size-3" /> {message.senderName || "HouseLink"}</p> : null}
         <p className="whitespace-pre-wrap leading-6">{message.body}</p>
         {card?.url ? (
@@ -550,6 +573,11 @@ function ChatBubble({ message, showReceipt = false }: { message: LiveChatMessage
           <span>{new Date(message.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
           {mine && showReceipt ? <MessageReceipt message={message} /> : null}
         </p>
+        {failed && onRetry ? (
+          <button type="button" onClick={onRetry} className="mt-2 rounded-full bg-white px-3 py-1 text-xs font-black text-red-700">
+            Failed to send. Tap to retry.
+          </button>
+        ) : null}
       </div>
     </div>
   );
@@ -579,6 +607,10 @@ function latestVisitorMessageIndex(messages: LiveChatMessageView[]) {
   return -1;
 }
 
+function isFailedLocalMessage(message: LiveChatMessageView) {
+  return Boolean(message.id.startsWith("pending-") && message.metadata && typeof message.metadata === "object" && (message.metadata as { deliveryStatus?: string }).deliveryStatus === "failed");
+}
+
 function parseRealtimeEvent(event: Event) {
   try {
     return JSON.parse((event as MessageEvent<string>).data) as LiveChatRealtimeEvent;
@@ -590,6 +622,22 @@ function parseRealtimeEvent(event: Event) {
 function mergeIncomingMessage(messages: LiveChatMessageView[], message: LiveChatMessageView) {
   if (messages.some((item) => item.id === message.id)) return messages;
   return [...messages, message].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+}
+
+function unreadStaffMessageCount(messages: LiveChatMessageView[]) {
+  return messages.filter((message) => isVisitorPreviewMessage(message) && !message.readAt).length;
+}
+
+function readStoredUnreadCount() {
+  if (typeof window === "undefined") return 0;
+  const value = Number(window.localStorage.getItem(UNREAD_STORAGE_KEY));
+  return Number.isFinite(value) && value > 0 ? Math.min(99, Math.round(value)) : 0;
+}
+
+function storeUnreadCount(value: number) {
+  if (typeof window === "undefined") return;
+  if (value > 0) window.localStorage.setItem(UNREAD_STORAGE_KEY, String(Math.min(99, value)));
+  else window.localStorage.removeItem(UNREAD_STORAGE_KEY);
 }
 
 function normalizeContact(contact: { name?: string; phone?: string; email?: string }) {

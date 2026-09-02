@@ -11,6 +11,13 @@ import { playLiveChatNotificationSound, unlockLiveChatNotificationSound } from "
 import { cn } from "@/lib/utils";
 import type { LiveChatConversationView, LiveChatInboxView, LiveChatMessageView } from "@/lib/live-chat/types";
 
+type AdminRealtimeEvent = {
+  type?: "message" | "typing" | "inbox";
+  conversationId?: string | null;
+  visitorId?: string | null;
+  reason?: string;
+};
+
 const FILTERS = [
   ["all", "All"],
   ["needs-reply", "Needs reply"],
@@ -103,6 +110,27 @@ export function LiveChatHub() {
     }, activeId ? 20000 : 30000);
     return () => window.clearInterval(interval);
   }, [activeId, load, panel]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !("EventSource" in window)) return;
+    const source = new EventSource("/api/v1/admin/live-chat/stream");
+    source.addEventListener("message", () => {
+      if (document.visibilityState === "visible") void load({ silent: true });
+    });
+    source.addEventListener("typing", () => {
+      if (document.visibilityState === "visible" && panel === "inbox") void load({ silent: true });
+    });
+    source.addEventListener("inbox", (event) => {
+      const payload = parseAdminRealtimeEvent(event);
+      if (payload?.conversationId && !activeIdRef.current) {
+        activeIdRef.current = payload.conversationId;
+        setActiveId(payload.conversationId);
+      }
+      if (document.visibilityState === "visible") void load({ conversationId: payload?.conversationId ?? undefined, silent: true });
+    });
+    source.onerror = () => source.close();
+    return () => source.close();
+  }, [load, panel]);
 
   const activeConversation = useMemo(
     () => data?.conversations.find((conversation) => conversation.id === activeId) ?? data?.conversations[0] ?? null,
@@ -1022,6 +1050,25 @@ function ManagementPanel({ data, activeConversation, action, busy }: { data: Liv
         ) : null}
       </section>
 
+      {activeConversation ? (
+        <section className="min-w-0 rounded-lg border border-emerald-400/20 bg-emerald-400/10 p-3 sm:p-4">
+          <h3 className="flex items-center gap-2 text-sm font-black uppercase tracking-wider text-emerald-100"><Phone className="size-4" /> Missed chat recovery</h3>
+          <p className="mt-2 text-sm leading-6 text-emerald-50/85">If the visitor leaves before seeing the reply, HouseLink records the recovery need and can use configured WhatsApp or email follow-up.</p>
+          <div className="mt-3 grid gap-2">
+            {activeConversation.visitor.phone ? (
+              <a className="inline-flex min-h-11 max-w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-3 py-2.5 text-center text-sm font-black leading-tight text-white transition hover:bg-emerald-500" href={whatsappFollowUpUrl(activeConversation)} target="_blank" rel="noreferrer">
+                <Phone className="size-4" /> Continue on WhatsApp
+              </a>
+            ) : (
+              <p className="rounded-md border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-xs font-semibold text-amber-100">No WhatsApp number captured yet.</p>
+            )}
+            <Button variant="secondary" className="w-full" onClick={() => void action({ action: "missed_follow_up", conversationId: activeConversation.id }, "Follow-up recovery checked.")} disabled={busy === "missed_follow_up"}>
+              {busy === "missed_follow_up" ? <Loader2 className="size-4 animate-spin" /> : <Bell className="size-4" />} Send configured follow-up
+            </Button>
+          </div>
+        </section>
+      ) : null}
+
       <section className="min-w-0 rounded-lg border border-white/10 bg-slate-900 p-3 sm:p-4">
         <h3 className="flex items-center gap-2 text-sm font-black uppercase tracking-wider text-slate-300"><Shield className="size-4" /> Settings</h3>
         <div className="mt-3 space-y-2 text-sm text-slate-400">
@@ -1204,6 +1251,14 @@ function notifyInbox(conversation: LiveChatConversationView | null) {
   });
 }
 
+function parseAdminRealtimeEvent(event: Event) {
+  try {
+    return JSON.parse((event as MessageEvent<string>).data) as AdminRealtimeEvent;
+  } catch {
+    return null;
+  }
+}
+
 function filterLabel(filter: string) {
   return FILTERS.find(([id]) => id === filter)?.[1] ?? "current filter";
 }
@@ -1245,6 +1300,17 @@ function fullHouseLinkUrl(value?: string | null) {
   } catch {
     return null;
   }
+}
+
+function whatsappFollowUpUrl(conversation: LiveChatConversationView) {
+  const phone = cleanPhoneForWhatsApp(conversation.visitor.phone || "");
+  const context = conversation.subject || pageLabel(conversation.visitor.currentTitle || conversation.currentTitle, conversation.visitor.currentPath || conversation.currentPath);
+  const text = `Hi, this is HouseLink following up on your live chat about ${context}. How can we help you complete the next step?`;
+  return `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
+}
+
+function cleanPhoneForWhatsApp(value: string) {
+  return value.replace(/[^\d+]/g, "").replace(/^\+/, "");
 }
 
 function sourceKindLabel(value?: string | null) {
@@ -1306,6 +1372,9 @@ function proactiveMessageForVisitor(visitor?: Pick<LiveChatConversationView["vis
   const title = pageLabel(visitor?.currentTitle, visitor?.currentPath);
   const path = cleanJourneyPath(visitor?.currentPath).toLowerCase();
   const intro = agentName ? `Hi, this is ${agentName} from HouseLink.` : "Hi, welcome to HouseLink.";
+  if (path.includes("failed") || path.includes("cancelled") || path.includes("proof")) {
+    return `${intro}\n\nI noticed you may need help completing payment or uploading proof. I can help you finish the order now so you do not lose access to the item.`;
+  }
   if (path.includes("/library/checkout") || path.includes("payment")) {
     return `${intro}\n\nI can help with payment, proof upload, or choosing another payment option so your order is completed smoothly.`;
   }

@@ -287,6 +287,51 @@ const checks = [
     pattern: /displayImageUrl\(boot\?\.supportAgent\?\.avatarUrl,\s*\{\s*width:\s*96,\s*height:\s*96,\s*crop:\s*"fill"\s*\}\)/,
   },
   {
+    file: "app/api/v1/admin/live-chat/stream/route.ts",
+    label: "admin inbox has a realtime stream with database-backed updates",
+    pattern: /subscribeLiveChatAdminRealtime[\s\S]*getLiveChatInbox[\s\S]*2_500/,
+  },
+  {
+    file: "components/admin/live-chat-hub.tsx",
+    label: "admin inbox listens for realtime stream updates",
+    pattern: /new EventSource\("\/api\/v1\/admin\/live-chat\/stream"\)/,
+  },
+  {
+    file: "components/live-chat/live-chat-widget.tsx",
+    label: "public unread badge persists across refreshes",
+    pattern: /UNREAD_STORAGE_KEY[\s\S]*localStorage/,
+  },
+  {
+    file: "components/live-chat/live-chat-widget.tsx",
+    label: "visitor failed messages can be retried",
+    pattern: /Failed to send\. Tap to retry/,
+  },
+  {
+    file: "lib/live-chat/repository.ts",
+    label: "visitor messages auto-detect lead intent",
+    pattern: /captureLeadIntentFromVisitorMessage[\s\S]*LEAD_INTENT_DETECTED/,
+  },
+  {
+    file: "components/admin/live-chat-hub.tsx",
+    label: "admin can continue captured phone leads on WhatsApp",
+    pattern: /Continue on WhatsApp[\s\S]*whatsappFollowUpUrl/,
+  },
+  {
+    file: "lib/live-chat/repository.ts",
+    label: "missed chats can trigger configured follow-up recovery",
+    pattern: /action === "missed_follow_up"[\s\S]*sendMissedChatFollowUp/,
+  },
+  {
+    file: "components/live-chat/live-chat-widget.tsx",
+    label: "visitor chat header shows agent title and department",
+    pattern: /agentTitle[\s\S]*agentDepartment/,
+  },
+  {
+    file: "lib/live-chat/repository.ts",
+    label: "transfer messages name the source and destination teams",
+    pattern: /fromDepartment[\s\S]*has been transferred/,
+  },
+  {
     file: "prisma/schema.prisma",
     label: "live chat messages enforce idempotency per conversation",
     pattern: /@@unique\(\[conversationId,\s*idempotencyKey\]\)/,

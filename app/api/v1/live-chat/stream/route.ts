@@ -1,5 +1,5 @@
 import { cookies } from "next/headers";
-import { getLiveChatStreamTargets, subscribeLiveChatRealtime } from "@/lib/live-chat/repository";
+import { getVisitorMessages, getLiveChatStreamTargets, subscribeLiveChatRealtime } from "@/lib/live-chat/repository";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -17,25 +17,41 @@ export async function GET(request: Request) {
 
   const encoder = new TextEncoder();
   let heartbeat: ReturnType<typeof setInterval> | null = null;
+  let messagePoll: ReturnType<typeof setInterval> | null = null;
   let unsubscribe: (() => void) | null = null;
+  const seenMessageIds = new Set<string>();
 
   const stream = new ReadableStream<Uint8Array>({
-    start(controller) {
+    async start(controller) {
       const send = (event: string, data: unknown) => {
         controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
       };
+      const conversationId = searchParams.get("conversationId");
+      const initialMessages = await getVisitorMessages(visitorKey, conversationId);
+      for (const message of initialMessages) seenMessageIds.add(message.id);
       unsubscribe = subscribeLiveChatRealtime(targets, (event) => send(event.type, event));
       send("ready", { ok: true, targets: targets.length });
       heartbeat = setInterval(() => send("heartbeat", { now: new Date().toISOString() }), 25_000);
+      messagePoll = setInterval(() => {
+        void getVisitorMessages(visitorKey, conversationId).then((messages) => {
+          for (const message of messages) {
+            if (seenMessageIds.has(message.id)) continue;
+            seenMessageIds.add(message.id);
+            send("message", { type: "message", conversationId: conversationId ?? message.conversationId, message, createdAt: new Date().toISOString() });
+          }
+        }).catch(() => null);
+      }, 2_500);
     },
     cancel() {
       if (heartbeat) clearInterval(heartbeat);
+      if (messagePoll) clearInterval(messagePoll);
       unsubscribe?.();
     },
   });
 
   request.signal.addEventListener("abort", () => {
     if (heartbeat) clearInterval(heartbeat);
+    if (messagePoll) clearInterval(messagePoll);
     unsubscribe?.();
   });
 
