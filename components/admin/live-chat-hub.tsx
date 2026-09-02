@@ -61,6 +61,7 @@ export function LiveChatHub() {
   const notifiedVisitorMessageIdsRef = useRef<Set<string>>(new Set());
   const typingTimerRef = useRef<number | null>(null);
   const typingActiveRef = useRef(false);
+  const hasLoadedInboxRef = useRef(false);
 
   useEffect(() => {
     activeIdRef.current = activeId;
@@ -98,7 +99,8 @@ export function LiveChatHub() {
     loadInFlightRef.current = true;
     if (!options?.silent) setLoadingInbox(true);
     const controller = new AbortController();
-    const timeout = window.setTimeout(() => controller.abort(), options?.silent ? 8_000 : 12_000);
+    const timeoutMs = options?.silent ? 8_000 : hasLoadedInboxRef.current ? 18_000 : 45_000;
+    const timeout = window.setTimeout(() => controller.abort(), timeoutMs);
     try {
       const params = new URLSearchParams();
       const conversationId = options?.conversationId ?? activeIdRef.current;
@@ -107,6 +109,7 @@ export function LiveChatHub() {
       if (query.trim()) params.set("q", query.trim());
       const result = await apiFetch<LiveChatInboxView>(`/api/v1/admin/live-chat?${params.toString()}`, { cache: "no-store", signal: controller.signal });
       if (result.data) {
+        hasLoadedInboxRef.current = true;
         setData(result.data);
         setError(null);
         const nextActive = activeIdRef.current;
@@ -374,8 +377,18 @@ export function LiveChatHub() {
   if (!data) {
     return (
       <section className="rounded-lg border border-white/10 bg-slate-900/70 p-6 text-slate-200">
-        <div className="flex items-center gap-2 text-sm"><Loader2 className="size-4 animate-spin" /> Loading HouseLink Live...</div>
-        {error ? <p className="mt-3 text-sm text-red-300">{error}</p> : null}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2 text-sm">
+            {loadingInbox ? <Loader2 className="size-4 animate-spin" /> : <MessageSquare className="size-4 text-emerald-300" />}
+            {loadingInbox ? "Loading HouseLink Live..." : "HouseLink Live did not load yet."}
+          </div>
+          {error ? (
+            <Button variant="secondary" onClick={() => void load()} disabled={loadingInbox}>
+              {loadingInbox ? <Loader2 className="size-4 animate-spin" /> : <RefreshCw className="size-4" />} Retry
+            </Button>
+          ) : null}
+        </div>
+        {error ? <p className="mt-3 text-sm text-red-300">{error}</p> : <p className="mt-3 text-sm text-slate-400">The first load can take longer after a deployment or database cold start.</p>}
       </section>
     );
   }

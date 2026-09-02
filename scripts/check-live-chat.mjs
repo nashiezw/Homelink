@@ -304,7 +304,12 @@ const checks = [
   {
     file: "components/admin/live-chat-hub.tsx",
     label: "admin inbox requests time out instead of spinning forever",
-    pattern: /AbortController[\s\S]*12_000/,
+    pattern: /AbortController[\s\S]*45_000/,
+  },
+  {
+    file: "components/admin/live-chat-hub.tsx",
+    label: "admin initial live chat timeout screen offers retry",
+    pattern: /HouseLink Live did not load yet[\s\S]*Retry/,
   },
   {
     file: "lib/live-chat/repository.ts",
