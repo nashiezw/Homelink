@@ -12,14 +12,15 @@ import { isLiveChatFloatingOpen, setLiveChatFloatingOpen, useLibraryBagFloatingO
 import { playLiveChatNotificationSound, unlockLiveChatNotificationSound } from "@/lib/live-chat/notification-sound";
 import { isLibraryProductPath, useHouseLinkBottomDock } from "@/lib/ui/bottom-dock";
 import { cn } from "@/lib/utils";
-import type { LiveChatBootstrapView, LiveChatMessageView, LiveChatTypingView, LiveChatVisitorContext } from "@/lib/live-chat/types";
+import type { LiveChatAvailabilityView, LiveChatBootstrapView, LiveChatMessageView, LiveChatTypingView, LiveChatVisitorContext } from "@/lib/live-chat/types";
 
 type ContactState = { name?: string; phone?: string; email?: string };
 type LiveChatRealtimeEvent = {
-  type?: "message" | "typing" | "receipt";
+  type?: "message" | "typing" | "receipt" | "availability";
   conversationId?: string;
   message?: LiveChatMessageView;
   typing?: LiveChatTypingView;
+  availability?: LiveChatAvailabilityView;
   messageIds?: string[];
   readAt?: string | null;
   deliveredAt?: string | null;
@@ -253,6 +254,16 @@ export function LiveChatWidget() {
       const payload = parseRealtimeEvent(event);
       if (payload) setMessages((current) => applyReceiptToMessages(current, payload));
     });
+    source.addEventListener("availability", (event) => {
+      const payload = parseRealtimeEvent(event);
+      if (payload?.availability) {
+        setBoot((current) => current ? {
+          ...current,
+          supportAgent: payload.availability!.supportAgent ?? null,
+          settings: payload.availability!.settings,
+        } : current);
+      }
+    });
     source.onerror = () => source.close();
     return () => source.close();
   }, [boot?.visitorId, boot?.conversation?.id, bootstrap, hiddenOnThisRoute, showPreviewMessage]);
@@ -388,7 +399,11 @@ export function LiveChatWidget() {
   const supportAvatarUrl = displayImageUrl(boot?.supportAgent?.avatarUrl, { width: 96, height: 96, crop: "fill" });
   const agentTitle = boot?.supportAgent?.title || "HouseLink Support";
   const agentDepartment = boot?.conversation?.department?.name || boot?.supportAgent?.department?.name || "Support team";
-  const availabilityLabel = boot?.supportAgent ? "Online" : "After hours";
+  const availabilityLabel = supportAvailabilityLabel(boot?.supportAgent?.availability);
+  const availabilityOnline = Boolean(boot?.supportAgent);
+  const availabilityNotice = availabilityOnline
+    ? "Ready now. Type your message and the team can reply here in real time."
+    : "After hours. Type your message anytime; we will attach this page context for the team.";
   const agentIntro = boot?.supportAgent
     ? boot.supportAgent.publicIntro || `${agentTitle} is online`
     : "Leave your name and WhatsApp number, the team will follow up";
@@ -423,12 +438,12 @@ export function LiveChatWidget() {
                   style={supportAvatarUrl ? { backgroundImage: `url(${supportAvatarUrl})` } : undefined}
                 >
                   {supportAvatarUrl ? null : <Headphones className="size-5" />}
-                  <span className={`absolute bottom-1.5 right-1.5 size-2.5 rounded-full ring-2 ring-slate-950 ${boot?.supportAgent ? "bg-emerald-300" : "bg-amber-300"}`} />
+                  <span className={`absolute bottom-1.5 right-1.5 size-2.5 rounded-full ring-2 ring-slate-950 ${availabilityOnline ? "bg-emerald-300" : "bg-amber-300"}`} />
                 </span>
                 <div className="min-w-0">
                   <div className="flex min-w-0 items-center gap-2">
                     <p className="truncate text-[15px] font-black">{agentName}</p>
-                    <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-black uppercase", boot?.supportAgent ? "bg-emerald-400/15 text-emerald-100" : "bg-amber-400/15 text-amber-100")}>{availabilityLabel}</span>
+                    <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-black uppercase", availabilityOnline ? "bg-emerald-400/15 text-emerald-100" : "bg-amber-400/15 text-amber-100")}>{availabilityLabel}</span>
                   </div>
                   <p className="mt-0.5 truncate text-xs text-slate-300">{agentTitle} / {agentDepartment}</p>
                   <p className="mt-0.5 truncate text-[11px] text-slate-400">{agentIntro}</p>
@@ -444,7 +459,7 @@ export function LiveChatWidget() {
             <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-200">
               <ShieldCheck className="size-3" />
             </span>
-            <span className="min-w-0">Ready now. Type your message anytime; we will attach this page context for the team.</span>
+            <span className="min-w-0">{availabilityNotice}</span>
           </div>
 
           <div className="flex-1 space-y-3 overflow-y-auto bg-[linear-gradient(180deg,#f7fbfa_0%,#eefaf5_42%,#f8fafc_100%)] p-4 dark:bg-slate-900/90">
@@ -701,6 +716,14 @@ function mergeContactFromMessage(contact: ContactState, body: string, expectedFi
 
 function isVisitorPreviewMessage(message: LiveChatMessageView) {
   return !message.internal && message.messageType !== "SYSTEM" && message.senderKind !== "VISITOR" && Boolean(message.body.trim());
+}
+
+function supportAvailabilityLabel(availability?: string | null) {
+  const value = String(availability ?? "").toUpperCase();
+  if (value === "AWAY") return "Away";
+  if (value === "BUSY") return "Busy";
+  if (value === "ONLINE") return "Online";
+  return "After hours";
 }
 
 function inferViewedContext(path: string) {

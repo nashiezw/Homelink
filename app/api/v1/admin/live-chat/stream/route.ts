@@ -1,6 +1,6 @@
 import { requireAdminAsync, requireAdmin } from "@/lib/admin/require-admin";
 import { isPostgresStoreEnabled } from "@/lib/db/main-prisma";
-import { canManageLiveChat, getLiveChatInbox, subscribeLiveChatAdminRealtime } from "@/lib/live-chat/repository";
+import { canManageLiveChat, getLiveChatInbox, subscribeLiveChatAdminRealtime, touchLiveChatAgentPresence } from "@/lib/live-chat/repository";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -19,9 +19,13 @@ export async function GET(request: Request) {
         controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
       };
       await getLiveChatInbox({ filter: "all", user: auth.user }).catch(() => null);
+      await touchLiveChatAgentPresence(auth.user, "admin_stream_ready").catch(() => null);
       unsubscribe = subscribeLiveChatAdminRealtime((event) => send(event.type, event));
       send("ready", { ok: true });
-      heartbeat = setInterval(() => send("heartbeat", { now: new Date().toISOString() }), 25_000);
+      heartbeat = setInterval(() => {
+        void touchLiveChatAgentPresence(auth.user!, "admin_stream_heartbeat").catch(() => null);
+        send("heartbeat", { now: new Date().toISOString() });
+      }, 20_000);
     },
     cancel() {
       if (heartbeat) clearInterval(heartbeat);

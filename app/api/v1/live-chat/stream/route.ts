@@ -1,5 +1,5 @@
 import { cookies } from "next/headers";
-import { getVisitorMessages, getLiveChatStreamTargets, subscribeLiveChatRealtime } from "@/lib/live-chat/repository";
+import { getPublicLiveChatAvailability, getVisitorMessages, getLiveChatStreamTargets, subscribeLiveChatRealtime } from "@/lib/live-chat/repository";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -31,7 +31,12 @@ export async function GET(request: Request) {
       for (const message of initialMessages) seenMessageIds.add(message.id);
       unsubscribe = subscribeLiveChatRealtime(targets, (event) => send(event.type, event));
       send("ready", { ok: true, targets: targets.length });
-      heartbeat = setInterval(() => send("heartbeat", { now: new Date().toISOString() }), 25_000);
+      send("availability", { type: "availability", availability: await getPublicLiveChatAvailability(), createdAt: new Date().toISOString() });
+      heartbeat = setInterval(() => {
+        void getPublicLiveChatAvailability()
+          .then((availability) => send("availability", { type: "availability", availability, createdAt: new Date().toISOString() }))
+          .catch(() => send("heartbeat", { now: new Date().toISOString() }));
+      }, 10_000);
       messagePoll = setInterval(() => {
         void getVisitorMessages(visitorKey, conversationId).then((messages) => {
           for (const message of messages) {

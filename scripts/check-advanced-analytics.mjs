@@ -31,6 +31,8 @@ const liveChatHub = readFileSync(join(root, "components/admin/live-chat-hub.tsx"
 const libraryProductRoute = readFileSync(join(root, "app/api/v1/library/products/[slug]/route.ts"), "utf8");
 const libraryRepository = readFileSync(join(root, "lib/library/repository.ts"), "utf8");
 const liveChatRepository = readFileSync(join(root, "lib/live-chat/repository.ts"), "utf8");
+const liveChatPublicStream = readFileSync(join(root, "app/api/v1/live-chat/stream/route.ts"), "utf8");
+const liveChatAdminStream = readFileSync(join(root, "app/api/v1/admin/live-chat/stream/route.ts"), "utf8");
 const schema = readFileSync(join(root, "prisma/schema.prisma"), "utf8");
 const prodSchema = readFileSync(join(root, "lib/db/production-schema.ts"), "utf8");
 
@@ -82,6 +84,11 @@ assert(/LIVE_VISITORS_REFRESH_MS = 5_000[\s\S]*source\.addEventListener\("heartb
 assert(/grid min-w-0 grid-cols-2 gap-2 border-b[\s\S]*<span className="min-w-0 truncate">\{label\}<\/span>/.test(liveChatHub), "live chat admin tabs fit narrow mobile screens");
 assert(/function QuickReplies[\s\S]*flex-wrap[\s\S]*overflow-wrap:anywhere/.test(liveChatHub), "live chat quick replies wrap on mobile");
 assert(/function AdminMessage[\s\S]*max-w-\[88%\][\s\S]*overflow-wrap:anywhere/.test(liveChatHub), "live chat admin messages stay inside mobile viewport");
+assert(/getPublicLiveChatAvailability[\s\S]*availability: \{ in: \["ONLINE", "AWAY", "BUSY"\] \}[\s\S]*lastSeenAt: \{ gte: new Date\(Date\.now\(\) - 90_000\) \}/.test(liveChatRepository), "public live chat availability uses fresh active agents");
+assert(/event\.type === "availability"[\s\S]*targets\.push\("public"\)/.test(liveChatRepository), "live chat broadcasts availability to public widgets");
+assert(/touchLiveChatAgentPresence[\s\S]*admin_stream_heartbeat/.test(liveChatAdminStream), "admin live chat stream keeps agent presence fresh");
+assert(/send\("availability"[\s\S]*getPublicLiveChatAvailability/.test(liveChatPublicStream), "public live chat stream sends availability updates");
+assert(/source\.addEventListener\("availability"[\s\S]*supportAgent: payload\.availability!\.supportAgent[\s\S]*supportAvailabilityLabel/.test(liveChatWidget), "public live chat widget applies realtime availability updates");
 
 if (process.exitCode) {
   console.error("Advanced analytics checks failed.");

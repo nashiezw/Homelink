@@ -162,6 +162,13 @@ export type LiveChatBootstrapView = {
   setupMessage?: string;
 };
 
+export type LiveChatAvailabilityView = {
+  supportAgent?: LiveChatAgentView | null;
+  settings: LiveChatSettingsView;
+  available: boolean;
+  label: "Online" | "Away" | "Busy" | "After hours";
+};
+
 export type LiveChatInboxView = {
   conversations: LiveChatConversationView[];
   activeVisitors: Array<LiveChatConversationView["visitor"] & {

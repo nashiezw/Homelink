@@ -7,6 +7,7 @@ import { sendSmtpPlainEmail } from "@/lib/integrations/smtp";
 import { describeWhatsAppSend, sendWhatsAppTextMessage } from "@/lib/integrations/whatsapp";
 import { getHydratedRuntimePlatformSettings } from "@/lib/settings/runtime";
 import type {
+  LiveChatAvailabilityView,
   LiveChatBootstrapView,
   LiveChatContactInput,
   LiveChatConversationView,
@@ -78,6 +79,7 @@ type LiveChatRealtimeEvent =
   | { type: "message"; conversationId: string; visitorId?: string | null; message: LiveChatMessageView; createdAt: string }
   | { type: "typing"; conversationId: string; visitorId?: string | null; typing: LiveChatTypingView; createdAt: string }
   | { type: "receipt"; conversationId: string; visitorId?: string | null; messageIds?: string[]; readAt?: string | null; deliveredAt?: string | null; createdAt: string }
+  | { type: "availability"; availability: LiveChatAvailabilityView; reason?: string; createdAt: string }
   | { type: "presence"; conversationId?: string | null; visitorId: string; presenceStatus: "LIVE"; createdAt: string }
   | { type: "inbox"; conversationId?: string | null; visitorId?: string | null; reason: string; createdAt: string };
 type LiveChatRealtimeListener = (event: LiveChatRealtimeEvent) => void;
@@ -460,11 +462,11 @@ export async function getLiveChatStreamTargets(visitorKey: string, conversationP
   if (isPostgresStoreEnabled() && !(await isLiveChatSchemaReady())) return [];
   if (!isPostgresStoreEnabled()) {
     const visitor = memory.visitors.get(hashVisitorKey(visitorKey));
-    return visitor ? [`visitor:${visitor.publicId}`, ...(conversationPublicId ? [`conversation:${conversationPublicId}`] : [])] : [];
+    return visitor ? ["public", `visitor:${visitor.publicId}`, ...(conversationPublicId ? [`conversation:${conversationPublicId}`] : [])] : [];
   }
   const visitor = await getVisitorByKey(visitorKey);
   if (!visitor) return [];
-  const targets = [`visitor:${visitor.publicId}`];
+  const targets = ["public", `visitor:${visitor.publicId}`];
   if (conversationPublicId) {
     const allowedConversation = await getMainPrisma().liveChatConversation.findFirst({ where: { publicId: conversationPublicId, visitorId: visitor.id }, select: { publicId: true } });
     if (allowedConversation) targets.push(`conversation:${allowedConversation.publicId}`);
@@ -492,6 +494,51 @@ export function subscribeLiveChatRealtime(targets: string[], listener: LiveChatR
 
 export function subscribeLiveChatAdminRealtime(listener: LiveChatRealtimeListener) {
   return subscribeLiveChatRealtime(["admin"], listener);
+}
+
+export async function getPublicLiveChatAvailability(): Promise<LiveChatAvailabilityView> {
+  const [settings, supportAgent] = await Promise.all([
+    getLiveChatSettings(),
+    getPublicSupportAgent(),
+  ]);
+  const availability = String(supportAgent?.availability ?? "").toUpperCase();
+  const label: LiveChatAvailabilityView["label"] = availability === "AWAY"
+    ? "Away"
+    : availability === "BUSY"
+      ? "Busy"
+      : supportAgent
+        ? "Online"
+        : "After hours";
+  return {
+    supportAgent,
+    settings,
+    available: Boolean(supportAgent),
+    label,
+  };
+}
+
+export async function publishLiveChatAvailability(reason = "availability_refresh") {
+  const availability = await getPublicLiveChatAvailability();
+  publishLiveChatRealtime({
+    type: "availability",
+    availability,
+    reason,
+    createdAt: new Date().toISOString(),
+  });
+  return availability;
+}
+
+export async function touchLiveChatAgentPresence(user: AdminUser, reason = "agent_presence") {
+  if (!isPostgresStoreEnabled() || !(await isLiveChatSchemaReady())) return null;
+  await ensureLiveChatDefaults(user);
+  const prisma = getMainPrisma();
+  const agent = await ensureAgentProfile(user);
+  const nextAvailability = agent.availability === "OFFLINE" ? "ONLINE" : agent.availability;
+  await prisma.liveChatAgentProfile.update({
+    where: { userId: user.id },
+    data: { availability: nextAvailability, lastSeenAt: new Date(), updatedAt: new Date() },
+  }).catch(() => null);
+  return publishLiveChatAvailability(reason);
 }
 
 export async function getLiveChatInbox(input: { activeConversationId?: string | null; filter?: string | null; query?: string | null; user: AdminUser }): Promise<LiveChatInboxView> {
@@ -537,9 +584,7 @@ export async function getLiveChatInbox(input: { activeConversationId?: string | 
         prisma.liveChatEvent.findMany({ where: { OR: [{ conversationId: selected.id }, { visitorId: selected.visitorId }] }, orderBy: { createdAt: "desc" }, take: 40 }),
       ])
     : [[], []];
-  if (!currentAgent.lastSeenAt || Date.now() - currentAgent.lastSeenAt.getTime() > 60_000) {
-    await prisma.liveChatAgentProfile.update({ where: { userId: input.user.id }, data: { availability: "ONLINE", lastSeenAt: new Date() } }).catch(() => null);
-  }
+  void touchLiveChatAgentPresence(input.user, "admin_inbox").catch(() => null);
   const activeVisitorIds = activeVisitorsRaw.map((visitor) => visitor.id);
   const activeVisitorConversations = activeVisitorIds.length
     ? await prisma.liveChatConversation.findMany({
@@ -588,6 +633,7 @@ export async function liveChatAdminAction(user: AdminUser, body: Record<string, 
   await ensureLiveChatDefaults(user);
   const prisma = getMainPrisma();
   const agent = await ensureAgentProfile(user);
+  void touchLiveChatAgentPresence(user, "admin_action").catch(() => null);
   const action = String(body.action ?? "");
   if (action === "send_message" || action === "internal_note") {
     const conversation = await getConversationByPublicId(String(body.conversationId ?? ""));
@@ -1294,8 +1340,9 @@ function getTypingState(conversationId: string): LiveChatTypingView {
 
 function publishLiveChatRealtime(event: LiveChatRealtimeEvent) {
   const targets = ["admin"];
+  if (event.type === "availability") targets.push("public");
   if ("conversationId" in event && event.conversationId) targets.push(`conversation:${event.conversationId}`);
-  if (event.visitorId) targets.push(`visitor:${event.visitorId}`);
+  if ("visitorId" in event && event.visitorId) targets.push(`visitor:${event.visitorId}`);
   const delivered = new Set<LiveChatRealtimeListener>();
   for (const target of targets) {
     const listeners = realtimeSubscribers.get(target);
@@ -1539,15 +1586,24 @@ async function getLiveChatAnalytics() {
 
 async function getPublicSupportAgent() {
   if (!isPostgresStoreEnabled() || !(await isLiveChatSchemaReady())) return null;
-  const agent = await getMainPrisma().liveChatAgentProfile.findFirst({
+  const agents = await getMainPrisma().liveChatAgentProfile.findMany({
     where: {
-      availability: { in: ["ONLINE", "AWAY"] },
-      lastSeenAt: { gte: new Date(Date.now() - 10 * 60_000) },
+      availability: { in: ["ONLINE", "AWAY", "BUSY"] },
+      lastSeenAt: { gte: new Date(Date.now() - 90_000) },
     },
     include: { department: true },
-    orderBy: [{ availability: "asc" }, { lastSeenAt: "desc" }],
+    orderBy: { lastSeenAt: "desc" },
+    take: 12,
   }).catch(() => null);
+  const agent = agents?.sort((a, b) => availabilityRank(a.availability) - availabilityRank(b.availability))[0] ?? null;
   return agent ? shapeAgent(agent) : null;
+}
+
+function availabilityRank(availability: string) {
+  if (availability === "ONLINE") return 0;
+  if (availability === "AWAY") return 1;
+  if (availability === "BUSY") return 2;
+  return 3;
 }
 
 function conversationInclude() {
